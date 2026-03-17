@@ -1,0 +1,28 @@
+{
+  "name": "@rtc/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dev": "tsx watch src/index.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@rtc/domain": "workspace:*",
+    "@rtc/shared": "workspace:*",
+    "@marblejs/core": "^4",
+    "@marblejs/http": "^4",
+    "@marblejs/websockets": "^4",
+    "rxjs": "^7.8",
+    "fp-ts": "^2.16"
+  },
+  "devDependencies": {
+    "tsx": "^4",
+    "vitest": "^3"
+  }
+}
