@@ -1,8 +1,30 @@
 import { LiveRatesPanel } from "../fx/live-rates/live-rates-panel";
 import { FxBlotter } from "../blotter/fx-blotter";
 import { AnalyticsPanel } from "../analytics/analytics-panel";
+import { CreditWorkspace } from "../credit/credit-workspace";
+import type { WorkspaceTab } from "./header";
 
-export function Workspace() {
+interface WorkspaceProps {
+  activeTab: WorkspaceTab;
+}
+
+function FxWorkspace() {
+  return (
+    <>
+      <div style={{ display: "flex", gap: 16 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <LiveRatesPanel />
+        </div>
+        <div style={{ width: 320, flexShrink: 0 }}>
+          <AnalyticsPanel />
+        </div>
+      </div>
+      <FxBlotter />
+    </>
+  );
+}
+
+export function Workspace({ activeTab }: WorkspaceProps) {
   return (
     <main
       style={{
@@ -15,15 +37,7 @@ export function Workspace() {
         gap: 16,
       }}
     >
-      <div style={{ display: "flex", gap: 16 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <LiveRatesPanel />
-        </div>
-        <div style={{ width: 320, flexShrink: 0 }}>
-          <AnalyticsPanel />
-        </div>
-      </div>
-      <FxBlotter />
+      {activeTab === "fx" ? <FxWorkspace /> : <CreditWorkspace />}
     </main>
   );
 }

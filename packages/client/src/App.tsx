@@ -1,9 +1,12 @@
-import { Header } from "./layout/header";
+import { useState } from "react";
+import { Header, type WorkspaceTab } from "./layout/header";
 import { Footer } from "./layout/footer";
 import { Workspace } from "./layout/workspace";
 import { ConnectionOverlay } from "./connection/connection-overlay";
 
 export function App() {
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
+
   return (
     <div
       style={{
@@ -14,8 +17,8 @@ export function App() {
         color: "var(--text-primary)",
       }}
     >
-      <Header />
-      <Workspace />
+      <Header activeTab={activeTab} onTabChange={setActiveTab} />
+      <Workspace activeTab={activeTab} />
       <Footer />
       <ConnectionOverlay />
     </div>

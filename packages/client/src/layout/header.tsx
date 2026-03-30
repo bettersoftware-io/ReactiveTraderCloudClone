@@ -1,6 +1,13 @@
 import { ThemeToggle } from "../theme/theme-toggle";
 
-export function Header() {
+export type WorkspaceTab = "fx" | "credit";
+
+interface HeaderProps {
+  activeTab: WorkspaceTab;
+  onTabChange: (tab: WorkspaceTab) => void;
+}
+
+export function Header({ activeTab, onTabChange }: HeaderProps) {
   return (
     <header
       style={{
@@ -17,7 +24,7 @@ export function Header() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          gap: 16,
         }}
       >
         <span
@@ -30,6 +37,27 @@ export function Header() {
         >
           Reactive Trader
         </span>
+        <nav style={{ display: "flex", gap: 2 }}>
+          {(["fx", "credit"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => onTabChange(tab)}
+              style={{
+                padding: "6px 14px",
+                fontSize: 13,
+                border: "none",
+                borderRadius: 3,
+                cursor: "pointer",
+                fontWeight: activeTab === tab ? 600 : 400,
+                backgroundColor:
+                  activeTab === tab ? "var(--accent-primary)" : "transparent",
+                color: activeTab === tab ? "#fff" : "var(--text-secondary)",
+              }}
+            >
+              {tab === "fx" ? "FX" : "Credit"}
+            </button>
+          ))}
+        </nav>
       </div>
       <ThemeToggle />
     </header>
