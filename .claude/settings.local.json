@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.github.com)",
+      "WebSearch",
+      "WebFetch(domain:www.wisp.blog)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.pkgpulse.com)",
+      "WebFetch(domain:moonrepo.dev)",
+      "WebFetch(domain:dev.to)"
+    ]
+  }
+}
