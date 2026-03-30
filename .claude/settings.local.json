@@ -7,7 +7,13 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:www.pkgpulse.com)",
       "WebFetch(domain:moonrepo.dev)",
-      "WebFetch(domain:dev.to)"
+      "WebFetch(domain:dev.to)",
+      "Bash(for pkg:*)",
+      "Bash(do echo:*)",
+      "Read(//Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone/packages/**)",
+      "Bash(done)",
+      "Bash(pnpm:*)",
+      "Bash(git:*)"
     ]
   }
 }
