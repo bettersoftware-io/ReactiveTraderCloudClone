@@ -12,8 +12,8 @@ Full phased plan for building ReactiveTraderCloudClone from behavioral specifica
 | 3 | Client Shell: Connection + Theme + Layout | **Done** | client |
 | 4 | FX Live Rates: Tile Grid + Streaming Prices | **Done** | client |
 | 5 | FX Trade Execution + Blotter | **Done** | client |
-| 6 | FX RFQ Flow | Pending | client |
-| 7 | Analytics Panel | Pending | client |
+| 6 | FX RFQ Flow | **Done** | client |
+| 7 | Analytics Panel | **Done** | client |
 | 8 | Credit Reference Data + RFQ Creation | Pending | domain, client |
 | 9 | Credit RFQ Tiles + Blotter + Sell-Side | Pending | client |
 | 10 | Server + Admin | Pending | server, client |
@@ -32,11 +32,11 @@ Phase 3 (Client Shell)                   ✅
     |
 Phase 4 (FX Live Rates)                  ✅
     |
-    +-------> Phase 6 (FX RFQ Flow)
+    +-------> Phase 6 (FX RFQ Flow)           ✅
     |
 Phase 5 (FX Execution + Blotter)          ✅
     |
-    +-------> Phase 7 (Analytics Panel)
+    +-------> Phase 7 (Analytics Panel)      ✅
     |
 Phase 8 (Credit Reference Data + RFQ Creation)
     |
