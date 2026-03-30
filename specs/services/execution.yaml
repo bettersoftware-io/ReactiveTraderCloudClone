@@ -1,0 +1,32 @@
+service: ExecutionService
+description: Executes FX spot trades.
+
+operations:
+  executeTrade:
+    type: rpc
+    description: Submit a trade for execution. Returns the executed (or rejected) trade.
+    request:
+      currencyPair: { type: string, example: "EURUSD" }
+      spotRate: { type: number, description: "Price at time of execution" }
+      valueDate: { type: date, description: "Settlement date (ISO format YYYY-MM-DD)" }
+      direction: { type: Direction, description: "Buy or Sell" }
+      notional: { type: number, description: "Trade size" }
+      dealtCurrency: { type: string, description: "Currency being dealt (base for Buy, terms for Sell)" }
+    response:
+      trade:
+        tradeId: { type: integer }
+        tradeName: { type: string }
+        currencyPair: { type: string }
+        notional: { type: number }
+        dealtCurrency: { type: string }
+        direction: { type: Direction }
+        spotRate: { type: number }
+        status: { type: TradeStatus, description: "Done or Rejected (never Pending)" }
+        tradeDate: { type: date }
+        valueDate: { type: date }
+    behavior:
+      - Response contains the complete Trade object with status Done or Rejected
+      - Status is never Pending in the response (server decides immediately)
+      - Client applies a 30-second timeout; if no response, treat as Timeout
+      - Client may also pre-check via limit checker; if limit exceeded, trade is never sent to server
+      - Successful trades will also appear in the BlotterService trade stream

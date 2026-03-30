@@ -1,0 +1,109 @@
+service: WorkflowService
+description: Manages the credit RFQ lifecycle -- creating, quoting, accepting, passing, and cancelling RFQs.
+
+operations:
+  subscribe:
+    type: subscription
+    description: Streams all RFQ and quote updates using marker-based State-of-the-World.
+    response_stream:
+      delivery: marker_sow
+      update_types:
+        startOfStateOfTheWorld:
+          description: Marks beginning of initial snapshot
+        endOfStateOfTheWorld:
+          description: Marks end of initial snapshot
+        rfqCreated:
+          payload: RfqBody
+        quoteCreated:
+          payload: QuoteBody
+        quoteQuoted:
+          payload: QuoteBody (state = pendingWithPrice with price)
+        quotePassed:
+          payload: QuoteBody (state = passed)
+        quoteAccepted:
+          payload: QuoteBody (state = accepted with price)
+        rfqClosed:
+          payload: RfqBody (state = Closed/Expired/Cancelled)
+    behavior:
+      - SoW replays all existing RFQs and their quotes between start/end markers
+      - After SoW, incremental updates stream in real-time
+      - Client must buffer updates until endOfStateOfTheWorld before processing
+      - Client accumulates RFQ state by scanning updates and building an RFQ-by-ID map
+
+  createRfq:
+    type: rpc
+    description: Creates a new RFQ for a credit instrument.
+    request:
+      instrumentId:
+        type: integer
+      dealerIds:
+        type: array of integer
+        description: Dealers to request quotes from
+      quantity:
+        type: number
+        description: Trade quantity (already multiplied by 1000)
+      direction:
+        type: Direction
+      expirySecs:
+        type: integer
+        description: Seconds until RFQ expires
+    response:
+      type: ack_nack
+      ack_payload:
+        type: integer
+        description: The created RFQ ID
+    behavior:
+      - On ack, returns the new RFQ ID as payload
+      - Triggers rfqCreated and quoteCreated updates on the subscription stream
+      - Each dealer in dealerIds gets a quoteCreated event
+
+  cancelRfq:
+    type: rpc
+    description: Cancels an open RFQ.
+    request:
+      rfqId:
+        type: integer
+    response:
+      type: ack_nack
+    behavior:
+      - Only open RFQs can be cancelled
+      - Triggers rfqClosed update with state=Cancelled
+
+  quote:
+    type: rpc
+    description: Dealer submits a price quote for an RFQ.
+    request:
+      quoteId:
+        type: integer
+      price:
+        type: number
+    response:
+      type: ack_nack
+    behavior:
+      - Only valid for quotes in pendingWithoutPrice state
+      - Triggers quoteQuoted update on the subscription stream
+
+  pass:
+    type: rpc
+    description: Dealer declines to quote on an RFQ.
+    request:
+      quoteId:
+        type: integer
+    response:
+      type: ack_nack
+    behavior:
+      - Triggers quotePassed update on the subscription stream
+
+  accept:
+    type: rpc
+    description: Accept a dealer's quote, completing the trade.
+    request:
+      quoteId:
+        type: integer
+    response:
+      type: ack_nack
+    behavior:
+      - Only valid for quotes in pendingWithPrice state
+      - Triggers quoteAccepted update for the accepted quote
+      - All other pending quotes on the same RFQ are auto-rejected
+      - The RFQ transitions to Closed state

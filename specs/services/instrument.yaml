@@ -1,0 +1,45 @@
+service: InstrumentService
+description: Streams the set of available credit instruments (bonds).
+
+operations:
+  subscribe:
+    type: subscription
+    description: Streams credit instruments using marker-based State-of-the-World.
+    response_stream:
+      delivery: marker_sow
+      update_types:
+        startOfStateOfTheWorld:
+          description: Marks beginning of initial snapshot
+        endOfStateOfTheWorld:
+          description: Marks end of initial snapshot
+        added:
+          payload:
+            id:
+              type: integer
+            name:
+              type: string
+              example: "ORCL 4.755 08/15/2026"
+            cusip:
+              type: string
+              example: "68389X105"
+            ticker:
+              type: string
+              example: "ORCL"
+            maturity:
+              type: date
+              example: "20250815"
+            interestRate:
+              type: number
+              example: 4.755
+            benchmark:
+              type: string
+              example: "5Y UST 1.500 08/2026"
+        removed:
+          payload:
+            type: integer
+            description: Instrument ID to remove
+    behavior:
+      - Client accumulates instruments keyed by CUSIP
+      - On startOfStateOfTheWorld, client resets its instrument collection
+      - Added instruments are inserted/updated by CUSIP
+      - Removed instruments are filtered out by ID

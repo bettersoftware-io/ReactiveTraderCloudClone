@@ -1,0 +1,30 @@
+service: AnalyticsService
+description: Streams real-time position and P&L analytics.
+
+operations:
+  getAnalytics:
+    type: subscription
+    description: Streams aggregated position and P&L data.
+    request:
+      currency: { type: string, description: "Base currency for P&L calculation", example: "USD" }
+    response_stream:
+      delivery: individual
+      item:
+        currentPositions:
+          type: array of CurrencyPairPosition
+          item:
+            symbol: { type: string, description: "Currency pair", example: "EURUSD" }
+            basePnl: { type: number, description: "P&L in base currency" }
+            baseTradedAmount: { type: number, description: "Total base currency traded" }
+            counterTradedAmount: { type: number, description: "Total counter currency traded" }
+        history:
+          type: array of HistoricPosition
+          item:
+            timestamp: { type: string, description: "ISO timestamp" }
+            usdPnl: { type: number, description: "Cumulative P&L in USD at this point" }
+    behavior:
+      - Streams position updates continuously as trades are executed
+      - currentPositions contains one entry per currency pair with open positions
+      - history contains time-series P&L data for charting
+      - Always requested with currency="USD" (the app's base reporting currency)
+      - Stale data detection applies (compare data timestamp vs connection timestamp)

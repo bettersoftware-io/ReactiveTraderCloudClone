@@ -1,0 +1,29 @@
+service: DealerService
+description: Streams the set of available credit dealers (counterparties).
+
+operations:
+  subscribe:
+    type: subscription
+    description: Streams credit dealers using marker-based State-of-the-World.
+    response_stream:
+      delivery: marker_sow
+      update_types:
+        startOfStateOfTheWorld:
+          description: Marks beginning of initial snapshot
+        endOfStateOfTheWorld:
+          description: Marks end of initial snapshot
+        added:
+          payload:
+            id:
+              type: integer
+            name:
+              type: string
+              example: "J.P. Morgan"
+        removed:
+          payload:
+            type: integer
+            description: Dealer ID to remove
+    behavior:
+      - Client accumulates dealers as an ordered array
+      - On startOfStateOfTheWorld, client resets its dealer collection
+      - Special dealer "Adaptive Bank" is the user's own institution (used for sell-side)

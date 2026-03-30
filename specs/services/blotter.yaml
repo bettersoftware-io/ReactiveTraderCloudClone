@@ -1,0 +1,38 @@
+service: BlotterService
+description: Streams the trade blotter — a history of all FX trades with real-time updates.
+
+operations:
+  getTradeStream:
+    type: subscription
+    description: Streams all trades with State-of-the-World pattern.
+    response_stream:
+      delivery: bulk_sow
+      envelope:
+        updates:
+          type: array of Trade
+          description: List of trades in this batch
+        isStateOfTheWorld:
+          type: boolean
+          description: True for initial full snapshot, false for incremental updates
+        isStale:
+          type: boolean
+          description: True when data hasn't been received after reconnection
+      item:
+        tradeId: { type: integer }
+        tradeName: { type: string }
+        currencyPair: { type: string }
+        notional: { type: number }
+        dealtCurrency: { type: string }
+        direction: { type: Direction }
+        spotRate: { type: number }
+        status: { type: TradeStatus }
+        tradeDate: { type: date }
+        valueDate: { type: date }
+    behavior:
+      - First emission contains ALL existing trades with isStateOfTheWorld=true
+      - Subsequent emissions contain only new/updated trades with isStateOfTheWorld=false
+      - On reconnection, full SoW is re-sent
+      - Client accumulates trades using tradeId as key
+      - When SoW arrives, it replaces all existing trades; incremental updates merge by tradeId
+      - Trades are displayed in reverse order (newest first)
+      - New trades trigger a highlight animation in the UI (3-second flash)

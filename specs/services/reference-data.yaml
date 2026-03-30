@@ -1,0 +1,35 @@
+service: ReferenceDataService
+description: Provides the universe of tradeable currency pairs.
+
+operations:
+  getCurrencyPairs:
+    type: subscription
+    description: Streams the full set of available currency pairs with incremental add/remove updates.
+    response_stream:
+      delivery: bulk_sow
+      envelope:
+        updates:
+          type: array of CurrencyPairUpdate
+        isStateOfTheWorld:
+          type: boolean
+          description: True for initial snapshot, false for incremental updates.
+        isStale:
+          type: boolean
+          description: True when data has not yet been received after reconnection.
+      item_type: CurrencyPairUpdate
+      variants:
+        added:
+          payload:
+            symbol: { type: string, example: "EURUSD" }
+            ratePrecision: { type: integer, example: 5 }
+            pipsPosition: { type: integer, example: 4 }
+        removed:
+          payload:
+            symbol: { type: string }
+            ratePrecision: { type: integer }
+            pipsPosition: { type: integer }
+    behavior:
+      - First emission is the complete set with isStateOfTheWorld=true
+      - Subsequent emissions are incremental (added/removed) with isStateOfTheWorld=false
+      - On reconnection, a fresh SoW is delivered
+      - The client derives base/terms currencies and defaultNotional from the symbol locally

@@ -1,0 +1,39 @@
+service: PricingService
+description: Streams real-time price updates and historical prices for currency pairs.
+
+operations:
+  getPriceUpdates:
+    type: subscription
+    description: Continuous stream of price ticks for a given currency pair.
+    request:
+      symbol: { type: string, description: "Currency pair symbol", example: "EURUSD" }
+    response_stream:
+      delivery: individual
+      item:
+        symbol: { type: string }
+        bid: { type: number, description: "Best bid price" }
+        ask: { type: number, description: "Best ask price" }
+        mid: { type: number, description: "Mid-market price" }
+        valueDate: { type: date, description: "Settlement date (ISO format)" }
+        creationTimestamp: { type: integer, description: "Tick timestamp (epoch ms)" }
+    behavior:
+      - Emits individual PriceTick objects at variable intervals
+      - Stream remains active until unsubscribed or disconnected
+      - Each tick represents the current market price for the pair
+      - Client enriches ticks with movementType and spread (see domain/fx-trading.md)
+
+  getPriceHistory:
+    type: subscription
+    description: Returns the last 50 historical price ticks for a pair. Single emission.
+    request:
+      symbol: { type: string, example: "EURUSD" }
+    response_stream:
+      delivery: single_emission
+      item:
+        prices:
+          type: array of PriceTick
+          description: Last 50 price ticks, chronologically ordered
+    behavior:
+      - Emits once with the historical price array, then completes
+      - Used to initialize the price chart and provide the first displayable price
+      - Client takes the last element as the initial "current" price until a live update arrives
