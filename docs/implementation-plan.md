@@ -11,7 +11,7 @@ Full phased plan for building ReactiveTraderCloudClone from behavioral specifica
 | 2 | FX Mock Backend | **Done** | domain |
 | 3 | Client Shell: Connection + Theme + Layout | **Done** | client |
 | 4 | FX Live Rates: Tile Grid + Streaming Prices | **Done** | client |
-| 5 | FX Trade Execution + Blotter | Pending | client |
+| 5 | FX Trade Execution + Blotter | **Done** | client |
 | 6 | FX RFQ Flow | Pending | client |
 | 7 | Analytics Panel | Pending | client |
 | 8 | Credit Reference Data + RFQ Creation | Pending | domain, client |
@@ -34,7 +34,7 @@ Phase 4 (FX Live Rates)                  ✅
     |
     +-------> Phase 6 (FX RFQ Flow)
     |
-Phase 5 (FX Execution + Blotter)
+Phase 5 (FX Execution + Blotter)          ✅
     |
     +-------> Phase 7 (Analytics Panel)
     |
