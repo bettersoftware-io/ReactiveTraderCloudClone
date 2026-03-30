@@ -9,7 +9,7 @@ Full phased plan for building ReactiveTraderCloudClone from behavioral specifica
 | 0 | Domain Types + Ports | **Done** | domain |
 | 1 | Shared DTOs | **Done** | shared |
 | 2 | FX Mock Backend | **Done** | domain |
-| 3 | Client Shell: Connection + Theme + Layout | Pending | client |
+| 3 | Client Shell: Connection + Theme + Layout | **Done** | client |
 | 4 | FX Live Rates: Tile Grid + Streaming Prices | Pending | client |
 | 5 | FX Trade Execution + Blotter | Pending | client |
 | 6 | FX RFQ Flow | Pending | client |
@@ -28,7 +28,7 @@ Phase 1 (Shared DTOs)                    ✅
     |
 Phase 2 (FX Mock Backend)                ✅
     |
-Phase 3 (Client Shell)
+Phase 3 (Client Shell)                   ✅
     |
 Phase 4 (FX Live Rates)
     |

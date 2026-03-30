@@ -1,12 +1,37 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { ThemeProvider } from "./theme/theme-provider";
+import { ServiceProvider } from "./services/service-provider";
+import { ConnectionProvider } from "./connection/connection-provider";
+import { App } from "./App";
 
-function App() {
-  return <h1>Reactive Trader</h1>;
-}
+// Global reset
+const style = document.createElement("style");
+style.textContent = `
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  html, body, #root {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue",
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+`;
+document.head.appendChild(style);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <ThemeProvider>
+      <ServiceProvider>
+        <ConnectionProvider>
+          <App />
+        </ConnectionProvider>
+      </ServiceProvider>
+    </ThemeProvider>
   </StrictMode>,
 );
