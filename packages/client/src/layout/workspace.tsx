@@ -1,3 +1,5 @@
+import { LiveRatesPanel } from "../fx/live-rates/live-rates-panel";
+
 export function Workspace() {
   return (
     <main
@@ -5,14 +7,10 @@ export function Workspace() {
         flex: 1,
         overflow: "auto",
         backgroundColor: "var(--bg-primary)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "var(--text-muted)",
-        fontSize: 14,
+        padding: 16,
       }}
     >
-      {/* Panels will be added in subsequent phases */}
+      <LiveRatesPanel />
     </main>
   );
 }
