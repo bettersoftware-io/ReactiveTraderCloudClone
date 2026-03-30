@@ -22,6 +22,7 @@ export function ConnectionStatusBar() {
 
   return (
     <div
+      data-testid="connection-status"
       style={{
         display: "flex",
         alignItems: "center",

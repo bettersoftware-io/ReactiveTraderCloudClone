@@ -7,10 +7,11 @@ interface CurrencyFilterProps {
 
 export function CurrencyFilter({ selected, onChange }: CurrencyFilterProps) {
   return (
-    <div style={{ display: "flex", gap: 2 }}>
+    <div data-testid="currency-filter" style={{ display: "flex", gap: 2 }}>
       {CURRENCY_CATEGORIES.map((cat) => (
         <button
           key={cat}
+          data-testid={`filter-${cat}`}
           onClick={() => onChange(cat)}
           style={{
             padding: "4px 10px",

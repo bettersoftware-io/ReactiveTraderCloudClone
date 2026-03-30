@@ -6,6 +6,7 @@ interface QuickFilterProps {
 export function QuickFilter({ value, onChange }: QuickFilterProps) {
   return (
     <input
+      data-testid="quick-filter"
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}

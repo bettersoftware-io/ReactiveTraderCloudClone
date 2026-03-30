@@ -10,6 +10,7 @@ interface HeaderProps {
 export function Header({ activeTab, onTabChange }: HeaderProps) {
   return (
     <header
+      data-testid="header"
       style={{
         display: "flex",
         alignItems: "center",
@@ -41,6 +42,7 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
           {(["fx", "credit", "admin"] as const).map((tab) => (
             <button
               key={tab}
+              data-testid={`tab-${tab}`}
               onClick={() => onTabChange(tab)}
               style={{
                 padding: "6px 14px",

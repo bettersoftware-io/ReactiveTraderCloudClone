@@ -81,6 +81,7 @@ export function TileConfirmation({ state, onDismiss }: TileConfirmationProps) {
 
   return (
     <div
+      data-testid="trade-confirmation"
       onClick={state.status !== "started" ? onDismiss : undefined}
       style={{
         position: "absolute",

@@ -17,7 +17,7 @@ Full phased plan for building ReactiveTraderCloudClone from behavioral specifica
 | 8 | Credit Reference Data + RFQ Creation | **Done** | domain, client |
 | 9 | Credit RFQ Tiles + Blotter + Sell-Side | **Done** | client |
 | 10 | Server + Admin | **Done** | server, client |
-| 11 | E2E Tests + Polish | Pending | client |
+| 11 | E2E Tests + Polish | **Done** | client |
 
 ## Phase Dependency Graph
 
@@ -43,7 +43,7 @@ Phase 8 (Credit Reference Data + RFQ Creation)
 Phase 9 (Credit RFQ Tiles + Blotter + Sell-Side)
 
 Phase 10 (Server + Admin) — ✅
-Phase 11 (E2E + Polish) — after all other phases
+Phase 11 (E2E + Polish) — ✅
 ```
 
 Phases 6 and 7 can run in parallel with Phase 5 (they depend on Phase 4, not Phase 5). Phase 10 (server) can begin after Phase 1 and proceed independently of client work.

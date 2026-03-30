@@ -3,9 +3,12 @@ import { PnlChart } from "./pnl-chart";
 import { PnlValue } from "./pnl-value";
 import { PositionBubbles } from "./position-bubbles";
 import { PairPnlBars } from "./pair-pnl-bars";
+import { StaleIndicator } from "../stale/stale-indicator";
+import { useStaleDetection } from "../stale/use-stale-detection";
 
 export function AnalyticsPanel() {
-  const data = useAnalytics();
+  const { data, version } = useAnalytics();
+  const stale = useStaleDetection(version);
 
   if (!data) {
     return (
@@ -31,7 +34,9 @@ export function AnalyticsPanel() {
       : 0;
 
   return (
+    <StaleIndicator stale={stale}>
     <div
+      data-testid="analytics-panel"
       style={{
         backgroundColor: "var(--bg-tile)",
         border: "1px solid var(--border-primary)",
@@ -75,5 +80,6 @@ export function AnalyticsPanel() {
         <PairPnlBars positions={data.currentPositions} />
       </div>
     </div>
+    </StaleIndicator>
   );
 }

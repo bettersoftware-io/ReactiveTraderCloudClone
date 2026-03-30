@@ -15,10 +15,11 @@ export function CreditWorkspace() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-      <div style={{ display: "flex", gap: 4 }}>
+      <div data-testid="credit-nav" style={{ display: "flex", gap: 4 }}>
         {(["tiles", "new-rfq", "sell-side"] as const).map((v) => (
           <button
             key={v}
+            data-testid={`credit-tab-${v}`}
             onClick={() => setView(v)}
             style={{
               padding: "4px 12px",

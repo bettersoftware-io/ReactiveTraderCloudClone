@@ -9,6 +9,7 @@ export function TileExecution({ onExecute, disabled }: TileExecutionProps) {
   return (
     <div style={{ display: "flex", gap: 4 }}>
       <button
+        data-testid="sell-btn"
         onClick={() => onExecute(Direction.Sell)}
         disabled={disabled}
         style={{
@@ -28,6 +29,7 @@ export function TileExecution({ onExecute, disabled }: TileExecutionProps) {
         Sell
       </button>
       <button
+        data-testid="buy-btn"
         onClick={() => onExecute(Direction.Buy)}
         disabled={disabled}
         style={{

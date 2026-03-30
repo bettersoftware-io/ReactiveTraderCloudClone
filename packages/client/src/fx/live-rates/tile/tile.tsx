@@ -14,6 +14,8 @@ import { TileNotional } from "./tile-notional";
 import { TileExecution } from "./tile-execution";
 import { TileConfirmation } from "./tile-confirmation";
 import { TileRfq } from "./tile-rfq";
+import { StaleIndicator } from "../../../stale/stale-indicator";
+import { useStaleDetection } from "../../../stale/use-stale-detection";
 
 interface TileProps {
   pair: CurrencyPair;
@@ -21,7 +23,8 @@ interface TileProps {
 }
 
 export function Tile({ pair, showChart }: TileProps) {
-  const price = usePriceStream(pair);
+  const { price, version: priceVersion } = usePriceStream(pair);
+  const stale = useStaleDetection(priceVersion);
   const history = usePriceHistory(pair.symbol);
   const notional = useNotional(pair.defaultNotional);
   const tileState = useTileState();
@@ -47,7 +50,9 @@ export function Tile({ pair, showChart }: TileProps) {
   );
 
   return (
+    <StaleIndicator stale={stale}>
     <div
+      data-testid={`tile-${pair.symbol}`}
       style={{
         backgroundColor: "var(--bg-tile)",
         border: "1px solid var(--border-primary)",
@@ -115,5 +120,6 @@ export function Tile({ pair, showChart }: TileProps) {
 
       <TileConfirmation state={tileState.state} onDismiss={tileState.dismiss} />
     </div>
+    </StaleIndicator>
   );
 }

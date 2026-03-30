@@ -20,9 +20,18 @@ function enrichTick(
   };
 }
 
-export function usePriceStream(pair: CurrencyPair): Price | null {
+interface PriceStreamResult {
+  price: Price | null;
+  /** Increments on each new tick — use with useStaleDetection */
+  version: number;
+}
+
+export function usePriceStream(pair: CurrencyPair): PriceStreamResult {
   const { pricing } = useServices();
-  const [price, setPrice] = useState<Price | null>(null);
+  const [state, setState] = useState<{ price: Price | null; version: number }>({
+    price: null,
+    version: 0,
+  });
   const prevMidRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -34,7 +43,7 @@ export function usePriceStream(pair: CurrencyPair): Price | null {
         if (cancelled) break;
         const enriched = enrichTick(tick, prevMidRef.current, pair);
         prevMidRef.current = tick.mid;
-        setPrice(enriched);
+        setState((prev) => ({ price: enriched, version: prev.version + 1 }));
       }
     })();
 
@@ -43,5 +52,5 @@ export function usePriceStream(pair: CurrencyPair): Price | null {
     };
   }, [pricing, pair]);
 
-  return price;
+  return state;
 }

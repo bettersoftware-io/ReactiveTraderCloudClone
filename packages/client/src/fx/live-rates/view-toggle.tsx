@@ -8,6 +8,7 @@ interface ViewToggleProps {
 export function ViewToggle({ mode, onChange }: ViewToggleProps) {
   return (
     <button
+      data-testid="view-toggle"
       onClick={() => onChange(mode === "chart" ? "price" : "chart")}
       title={`Switch to ${mode === "chart" ? "price" : "chart"} view`}
       style={{

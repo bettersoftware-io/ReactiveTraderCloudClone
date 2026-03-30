@@ -111,6 +111,7 @@ export function FxBlotter() {
           )}
         </div>
         <button
+          data-testid="export-csv"
           onClick={() => exportToCsv(processedTrades)}
           style={{
             padding: "4px 10px",
@@ -128,6 +129,7 @@ export function FxBlotter() {
 
       <div style={{ overflow: "auto", maxHeight: 300 }}>
         <table
+          data-testid="blotter-table"
           style={{
             width: "100%",
             borderCollapse: "collapse",

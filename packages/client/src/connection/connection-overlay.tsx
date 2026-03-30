@@ -17,6 +17,7 @@ export function ConnectionOverlay() {
 
   return (
     <div
+      data-testid="connection-overlay"
       style={{
         position: "fixed",
         inset: 0,
