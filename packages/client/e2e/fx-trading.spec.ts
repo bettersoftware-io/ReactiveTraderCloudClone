@@ -48,12 +48,15 @@ test.describe("FX Trading", () => {
     const confirmation = tile.getByTestId("trade-confirmation");
     await expect(confirmation).toBeVisible({ timeout: 5000 });
 
-    // Wait for it to be clickable (not in "started" state)
-    await page.waitForTimeout(1500);
+    // Wait for the execution to complete (moves past "started" state)
+    await expect(confirmation).toContainText(
+      /You Bought|You Sold|rejected|timed out|Credit limit/i,
+      { timeout: 10000 },
+    );
 
     // Click to dismiss
     await confirmation.click();
-    await expect(confirmation).toBeHidden({ timeout: 3000 });
+    await expect(confirmation).toBeHidden({ timeout: 5000 });
   });
 
   test("executed trade appears in the blotter", async ({ page }) => {

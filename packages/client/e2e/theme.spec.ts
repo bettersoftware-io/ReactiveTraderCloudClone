@@ -12,10 +12,11 @@ test.describe("Theme", () => {
 
   test("clicking theme toggle changes the theme", async ({ page }) => {
     const toggle = page.getByTestId("theme-toggle");
-    const root = page.locator("#root");
+    // The app's outermost div has the background color via CSS variable
+    const appDiv = page.locator("#root > div");
 
     // Get initial background color
-    const initialBg = await root.evaluate(
+    const initialBg = await appDiv.evaluate(
       (el) => getComputedStyle(el).backgroundColor,
     );
 
@@ -23,7 +24,7 @@ test.describe("Theme", () => {
     await toggle.click();
 
     // Background color should change
-    const newBg = await root.evaluate(
+    const newBg = await appDiv.evaluate(
       (el) => getComputedStyle(el).backgroundColor,
     );
     expect(newBg).not.toBe(initialBg);
