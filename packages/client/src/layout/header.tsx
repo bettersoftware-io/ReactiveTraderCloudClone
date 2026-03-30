@@ -1,6 +1,6 @@
 import { ThemeToggle } from "../theme/theme-toggle";
 
-export type WorkspaceTab = "fx" | "credit";
+export type WorkspaceTab = "fx" | "credit" | "admin";
 
 interface HeaderProps {
   activeTab: WorkspaceTab;
@@ -38,7 +38,7 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
           Reactive Trader
         </span>
         <nav style={{ display: "flex", gap: 2 }}>
-          {(["fx", "credit"] as const).map((tab) => (
+          {(["fx", "credit", "admin"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => onTabChange(tab)}
@@ -54,7 +54,7 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
                 color: activeTab === tab ? "#fff" : "var(--text-secondary)",
               }}
             >
-              {tab === "fx" ? "FX" : "Credit"}
+              {tab === "fx" ? "FX" : tab === "credit" ? "Credit" : "Admin"}
             </button>
           ))}
         </nav>

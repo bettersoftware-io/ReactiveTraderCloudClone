@@ -2,6 +2,7 @@ import { LiveRatesPanel } from "../fx/live-rates/live-rates-panel";
 import { FxBlotter } from "../blotter/fx-blotter";
 import { AnalyticsPanel } from "../analytics/analytics-panel";
 import { CreditWorkspace } from "../credit/credit-workspace";
+import { AdminPanel } from "../admin/admin-panel";
 import type { WorkspaceTab } from "./header";
 
 interface WorkspaceProps {
@@ -37,7 +38,7 @@ export function Workspace({ activeTab }: WorkspaceProps) {
         gap: 16,
       }}
     >
-      {activeTab === "fx" ? <FxWorkspace /> : <CreditWorkspace />}
+      {activeTab === "fx" ? <FxWorkspace /> : activeTab === "credit" ? <CreditWorkspace /> : <AdminPanel />}
     </main>
   );
 }
