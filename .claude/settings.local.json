@@ -13,7 +13,11 @@
       "Read(//Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone/packages/**)",
       "Bash(done)",
       "Bash(pnpm:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(find /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone/node_modules/@marblejs/websockets -name *.d.ts -maxdepth 3)",
+      "Bash(find /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone -type f -name *phase* -o -name *plan*)",
+      "Bash(npx playwright:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }
