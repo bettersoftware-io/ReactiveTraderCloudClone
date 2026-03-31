@@ -20,7 +20,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm dev",
+    command: `PORT=${PORT} pnpm dev`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
   },
