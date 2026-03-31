@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 4173;
+const PORT = 3000;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -20,7 +20,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npx vite --port ${PORT}`,
+    command: "pnpm dev",
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
   },
