@@ -160,11 +160,11 @@ Request for Quote is triggered when the notional meets or exceeds the RFQ thresh
 
 ```
           +------+
-          | Init |<----------------------------------------------+
-          +------+                                               |
-              |                                                  |
+          | Init |<--------------------------------------------+
+          +------+                                             |
+              |                                                |
         user clicks                                        2s delay
-        "Initiate RFQ"                                          |
+        "Initiate RFQ"                                         |
               |                                           +----------+
               v                                           | Rejected |
         +-----------+                                     +----------+

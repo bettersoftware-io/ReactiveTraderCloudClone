@@ -27,18 +27,18 @@ Manages the lifecycle of the client's connection to the trading gateway, includi
           |       +------------------+                           |
           |         |       |       |                            |
           |         |       |       |                            |
-          |   gateway    no mouse   browser                     |
-          |   disconnects movement  goes                        |
-          |   or error   for 15min  offline                     |
+          |   gateway    no mouse   browser                      |
+          |   disconnects movement  goes                         |
+          |   or error   for 15min  offline                      |
           |         |       |       |                            |
           |         v       v       v                            |
-          |  +--------+ +-------+ +----------+                  |
-          |  |DISCONN.| | IDLE  | | OFFLINE  |                  |
-          |  |        | | DISC. | | DISC.    |                  |
-          |  +--------+ +-------+ +----------+                  |
+          |  +--------+ +-------+ +----------+                   |
+          |  |DISCONN.| | IDLE  | | OFFLINE  |                   |
+          |  |        | | DISC. | | DISC.    |                   |
+          |  +--------+ +-------+ +----------+                   |
           |      |          |           |                        |
-          |  auto-reconnect mouse move/ browser                 |
-          |  after 10s     click       comes online             |
+          |  auto-reconnect mouse move/ browser                  |
+          |  after 10s     click       comes online              |
           |      |          |           |                        |
           |      +----------+-----------+------------------------+
           |

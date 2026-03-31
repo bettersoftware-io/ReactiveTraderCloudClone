@@ -17,7 +17,8 @@
       "Bash(find /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone/node_modules/@marblejs/websockets -name *.d.ts -maxdepth 3)",
       "Bash(find /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone -type f -name *phase* -o -name *plan*)",
       "Bash(npx playwright:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "mcp__claude_ai_Mermaid_Chart__validate_and_render_mermaid_diagram"
     ]
   }
 }

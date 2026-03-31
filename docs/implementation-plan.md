@@ -22,28 +22,29 @@ Full phased plan for building ReactiveTraderCloudClone from behavioral specifica
 ## Phase Dependency Graph
 
 ```
-Phase 0 (Domain Types + Ports)           ✅
+Phase 0 (Domain Types + Ports)                    ✅
     |
-Phase 1 (Shared DTOs)                    ✅
+Phase 1 (Shared DTOs)                             ✅
     |
-Phase 2 (FX Mock Backend)                ✅
+Phase 2 (FX Mock Backend)                         ✅
     |
-Phase 3 (Client Shell)                   ✅
+Phase 3 (Client Shell)                            ✅
     |
-Phase 4 (FX Live Rates)                  ✅
+Phase 4 (FX Live Rates)                           ✅
     |
-    +-------> Phase 6 (FX RFQ Flow)           ✅
+    +-------> Phase 6 (FX RFQ Flow)               ✅
     |
-Phase 5 (FX Execution + Blotter)          ✅
+Phase 5 (FX Execution + Blotter)                  ✅
     |
-    +-------> Phase 7 (Analytics Panel)      ✅
+    +-------> Phase 7 (Analytics Panel)           ✅
     |
-Phase 8 (Credit Reference Data + RFQ Creation)
+Phase 8 (Credit Reference Data + RFQ Creation)    ✅
     |
-Phase 9 (Credit RFQ Tiles + Blotter + Sell-Side)
-
-Phase 10 (Server + Admin) — ✅
-Phase 11 (E2E + Polish) — ✅
+Phase 9 (Credit RFQ Tiles + Blotter + Sell-Side)  ✅
+    |
+Phase 10 (Server + Admin) —                       ✅
+    |
+Phase 11 (E2E + Polish) —                         ✅
 ```
 
 Phases 6 and 7 can run in parallel with Phase 5 (they depend on Phase 4, not Phase 5). Phase 10 (server) can begin after Phase 1 and proceed independently of client work.
