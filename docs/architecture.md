@@ -791,9 +791,9 @@ sequenceDiagram
     participant Tiles as RFQ Tiles (React)
     participant Hook as useRfqs (react-rxjs)
     participant Presenter as RfqsPresenter
-    participant Create as CreateRfqUseCase
-    participant Accept as AcceptQuoteUseCase
-    participant Events as WorkflowEventStreamUseCase
+    participant CreateUC as CreateRfqUseCase
+    participant AcceptUC as AcceptQuoteUseCase
+    participant EventsUC as WorkflowEventStreamUseCase
     participant Adapter as Port Adapter
     participant Server as WS Server
     participant Sim as CreditRfqSimulator
@@ -802,8 +802,8 @@ sequenceDiagram
     Trader->>Form: Clicks Send RFQ
     Form->>Hook: createRfq(...)
     Hook->>Presenter: dispatch createIntent
-    Presenter->>Create: execute(request)
-    Create->>Adapter: createRfq(request)
+    Presenter->>CreateUC: execute(request)
+    CreateUC->>Adapter: createRfq(request)
     Adapter->>Server: rpc.createRfq with correlationId N
     Server->>Sim: createRfq(request)
     Sim->>Sim: Create Rfq state Open
@@ -812,30 +812,30 @@ sequenceDiagram
         Sim->>Sim: Create Quote pendingWithoutPrice
         Sim-->>Server: RfqEvent quoteCreated
         Server-->>Adapter: stream.workflowEvent
-        Adapter-->>Events: yield event
-        Events-->>Presenter: yield event
+        Adapter-->>EventsUC: yield event
+        EventsUC-->>Presenter: yield event
         Presenter-->>Hook: rfqs$ updated
     end
 
     Sim-->>Server: RfqEvent rfqCreated
     Server-->>Adapter: rpc.createRfq.response correlationId N
-    Adapter-->>Create: resolved rfqId
-    Create-->>Presenter: rfqId
+    Adapter-->>CreateUC: resolved rfqId
+    CreateUC-->>Presenter: rfqId
 
     par Dealer simulation 0-30s, 70 percent respond
         Sim->>Sim: Dealer A quotes
         Sim-->>Server: RfqEvent quoteQuoted
         Server-->>Adapter: stream.workflowEvent
-        Adapter-->>Events: yield
-        Events-->>Presenter: rfqs$ updated
+        Adapter-->>EventsUC: yield
+        EventsUC-->>Presenter: rfqs$ updated
         Presenter-->>Hook: emit
         Hook-->>Tiles: Quote A shows price
     and
         Sim->>Sim: Dealer B quotes
         Sim-->>Server: RfqEvent quoteQuoted
         Server-->>Adapter: stream.workflowEvent
-        Adapter-->>Events: yield
-        Events-->>Presenter: rfqs$ updated
+        Adapter-->>EventsUC: yield
+        EventsUC-->>Presenter: rfqs$ updated
         Presenter-->>Hook: emit
         Hook-->>Tiles: Quote B shows price
     end
@@ -843,15 +843,15 @@ sequenceDiagram
     Trader->>Tiles: Clicks Accept on best quote
     Tiles->>Hook: acceptQuote(quoteId)
     Hook->>Presenter: dispatch acceptIntent
-    Presenter->>Accept: execute(quoteId)
-    Accept->>Adapter: accept(quoteId)
+    Presenter->>AcceptUC: execute(quoteId)
+    AcceptUC->>Adapter: accept(quoteId)
     Adapter->>Server: rpc.accept
     Server->>Sim: accept(quoteId)
     Sim->>Sim: Accepted quote, others rejected, Rfq Closed
     Sim-->>Server: quoteAccepted + quoteRejected + rfqClosed events
     Server-->>Adapter: stream.workflowEvent x N
-    Adapter-->>Events: yield events
-    Events-->>Presenter: rfqs$ updated
+    Adapter-->>EventsUC: yield events
+    EventsUC-->>Presenter: rfqs$ updated
     Presenter-->>Hook: emit
     Hook-->>Tiles: RFQ Closed, accepted quote highlighted
     Tiles->>Trader: Accepted quote highlighted
