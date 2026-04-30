@@ -48,10 +48,10 @@ export {
   ExecutionSimulator,
   TradeStoreSimulator,
   AnalyticsSimulator,
-  MockInstrumentService,
-  MockDealerService,
+  InstrumentSimulator,
+  DealerSimulator,
   MockCreditRfqEngine,
-  MOCK_INSTRUMENTS,
-  MOCK_DEALERS,
+  INSTRUMENTS_CATALOG,
+  DEALERS_CATALOG,
 } from "./simulators/index.js";
 export type { RfqQuoteResult, TradeListener } from "./simulators/index.js";

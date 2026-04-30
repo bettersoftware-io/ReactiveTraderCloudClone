@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { MockInstrumentService, MockDealerService, MOCK_INSTRUMENTS, MOCK_DEALERS } from "./credit-reference-data-mock.js";
+import { InstrumentSimulator, DealerSimulator, INSTRUMENTS_CATALOG, DEALERS_CATALOG } from "./credit-reference-data-simulator.js";
 
-describe("MockInstrumentService", () => {
+describe("InstrumentSimulator", () => {
   it("emits 11 instruments", async () => {
-    const service = new MockInstrumentService();
+    const service = new InstrumentSimulator();
     for await (const instruments of service.subscribe()) {
       expect(instruments).toHaveLength(11);
       break;
@@ -11,7 +11,7 @@ describe("MockInstrumentService", () => {
   });
 
   it("instruments have required fields", () => {
-    const orcl = MOCK_INSTRUMENTS[0];
+    const orcl = INSTRUMENTS_CATALOG[0];
     expect(orcl.ticker).toBe("ORCL");
     expect(orcl.cusip).toBe("68389X105");
     expect(orcl.interestRate).toBe(4.755);
@@ -19,9 +19,9 @@ describe("MockInstrumentService", () => {
   });
 });
 
-describe("MockDealerService", () => {
+describe("DealerSimulator", () => {
   it("emits 10 dealers", async () => {
-    const service = new MockDealerService();
+    const service = new DealerSimulator();
     for await (const dealers of service.subscribe()) {
       expect(dealers).toHaveLength(10);
       break;
@@ -29,12 +29,12 @@ describe("MockDealerService", () => {
   });
 
   it("does not include Adaptive Bank", () => {
-    const names = MOCK_DEALERS.map((d) => d.name);
+    const names = DEALERS_CATALOG.map((d) => d.name);
     expect(names).not.toContain("Adaptive Bank");
   });
 
   it("includes expected dealers", () => {
-    const names = MOCK_DEALERS.map((d) => d.name);
+    const names = DEALERS_CATALOG.map((d) => d.name);
     expect(names).toContain("J.P. Morgan");
     expect(names).toContain("Goldman Sachs");
     expect(names).toContain("Capital One");

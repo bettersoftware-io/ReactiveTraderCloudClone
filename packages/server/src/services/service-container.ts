@@ -4,10 +4,10 @@ import {
   ExecutionSimulator,
   TradeStoreSimulator,
   AnalyticsSimulator,
-  MockInstrumentService,
-  MockDealerService,
+  InstrumentSimulator,
+  DealerSimulator,
   MockCreditRfqEngine,
-  MOCK_DEALERS,
+  DEALERS_CATALOG,
 } from "@rtc/domain";
 import { ThroughputService } from "./throughput-service.js";
 
@@ -17,8 +17,8 @@ export interface ServiceContainer {
   readonly execution: ExecutionSimulator;
   readonly blotter: TradeStoreSimulator;
   readonly analytics: AnalyticsSimulator;
-  readonly instruments: MockInstrumentService;
-  readonly dealers: MockDealerService;
+  readonly instruments: InstrumentSimulator;
+  readonly dealers: DealerSimulator;
   readonly workflow: MockCreditRfqEngine;
   readonly throughput: ThroughputService;
 }
@@ -29,9 +29,9 @@ export function createServices(): ServiceContainer {
   const execution = new ExecutionSimulator();
   const blotter = new TradeStoreSimulator(execution);
   const analytics = new AnalyticsSimulator();
-  const instruments = new MockInstrumentService();
-  const dealers = new MockDealerService();
-  const workflow = new MockCreditRfqEngine(MOCK_DEALERS);
+  const instruments = new InstrumentSimulator();
+  const dealers = new DealerSimulator();
+  const workflow = new MockCreditRfqEngine(DEALERS_CATALOG);
   const throughput = new ThroughputService();
 
   return {

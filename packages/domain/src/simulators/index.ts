@@ -6,5 +6,10 @@ export { ExecutionSimulator } from "./execution-simulator.js";
 export type { TradeListener } from "./execution-simulator.js";
 export { TradeStoreSimulator } from "./trade-store-simulator.js";
 export { AnalyticsSimulator } from "./analytics-simulator.js";
-export { MockInstrumentService, MockDealerService, MOCK_INSTRUMENTS, MOCK_DEALERS } from "./credit-reference-data-mock.js";
+export {
+  InstrumentSimulator,
+  DealerSimulator,
+  INSTRUMENTS_CATALOG,
+  DEALERS_CATALOG,
+} from "./credit-reference-data-simulator.js";
 export { MockCreditRfqEngine } from "./credit-rfq-engine.js";

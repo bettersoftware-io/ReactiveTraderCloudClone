@@ -3,7 +3,7 @@ import type { Dealer } from "../credit/dealer.js";
 import type { InstrumentPort } from "../ports/instrument-port.js";
 import type { DealerPort } from "../ports/dealer-port.js";
 
-export const MOCK_INSTRUMENTS: readonly Instrument[] = [
+export const INSTRUMENTS_CATALOG: readonly Instrument[] = [
   { id: 0, name: "ORCL 4.755 08/15/2026", cusip: "68389X105", ticker: "ORCL", maturity: "20250815", interestRate: 4.755, benchmark: "5Y UST 1.500 08/2026" },
   { id: 1, name: "AAPL 4.111 01/12/2024", cusip: "037833100", ticker: "AAPL", maturity: "20240112", interestRate: 4.111, benchmark: "2Y UST 2.250 01/2024" },
   { id: 2, name: "GOOGL 5.001 01/01/2024", cusip: "38259P508", ticker: "GOOGL", maturity: "20240101", interestRate: 5.001, benchmark: "2Y UST 2.500 01/2024" },
@@ -17,7 +17,7 @@ export const MOCK_INSTRUMENTS: readonly Instrument[] = [
   { id: 10, name: "KO 2.957 08/27/2025", cusip: "191216CN8", ticker: "KO", maturity: "20250827", interestRate: 2.957, benchmark: "3Y UST 2.875 08/2025" },
 ];
 
-export const MOCK_DEALERS: readonly Dealer[] = [
+export const DEALERS_CATALOG: readonly Dealer[] = [
   { id: 0, name: "J.P. Morgan" },
   { id: 1, name: "Wells Fargo" },
   { id: 2, name: "Bank of America" },
@@ -30,14 +30,14 @@ export const MOCK_DEALERS: readonly Dealer[] = [
   { id: 9, name: "Capital One" },
 ];
 
-export class MockInstrumentService implements InstrumentPort {
+export class InstrumentSimulator implements InstrumentPort {
   async *subscribe(): AsyncIterable<readonly Instrument[]> {
-    yield MOCK_INSTRUMENTS;
+    yield INSTRUMENTS_CATALOG;
   }
 }
 
-export class MockDealerService implements DealerPort {
+export class DealerSimulator implements DealerPort {
   async *subscribe(): AsyncIterable<readonly Dealer[]> {
-    yield MOCK_DEALERS;
+    yield DEALERS_CATALOG;
   }
 }

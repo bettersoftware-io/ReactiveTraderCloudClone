@@ -4,10 +4,10 @@ import {
   ExecutionSimulator,
   TradeStoreSimulator,
   AnalyticsSimulator,
-  MockInstrumentService,
-  MockDealerService,
+  InstrumentSimulator,
+  DealerSimulator,
   MockCreditRfqEngine,
-  MOCK_DEALERS,
+  DEALERS_CATALOG,
   type ReferenceDataPort,
   type PricingPort,
   type ExecutionPort,
@@ -35,9 +35,9 @@ export function createMockServices(): Services {
   const execution = new ExecutionSimulator();
   const blotter = new TradeStoreSimulator(execution);
   const analytics = new AnalyticsSimulator();
-  const instruments = new MockInstrumentService();
-  const dealers = new MockDealerService();
-  const workflow = new MockCreditRfqEngine(MOCK_DEALERS);
+  const instruments = new InstrumentSimulator();
+  const dealers = new DealerSimulator();
+  const workflow = new MockCreditRfqEngine(DEALERS_CATALOG);
 
   return {
     referenceData,
