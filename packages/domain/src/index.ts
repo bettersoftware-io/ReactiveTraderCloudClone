@@ -41,7 +41,7 @@ export type { InstrumentPort } from "./ports/instrument-port.js";
 export type { DealerPort } from "./ports/dealer-port.js";
 export type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "./ports/workflow-port.js";
 
-// Mock Backend
+// Simulators (in-memory port implementations)
 export {
   MockReferenceDataService,
   MockPricingEngine,
@@ -53,5 +53,5 @@ export {
   MockCreditRfqEngine,
   MOCK_INSTRUMENTS,
   MOCK_DEALERS,
-} from "./mock/index.js";
-export type { RfqQuoteResult, TradeListener } from "./mock/index.js";
+} from "./simulators/index.js";
+export type { RfqQuoteResult, TradeListener } from "./simulators/index.js";
