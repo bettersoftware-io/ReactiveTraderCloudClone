@@ -1,6 +1,6 @@
 import type { Trade } from "../fx/trade.js";
 import type { BlotterPort } from "../ports/blotter-port.js";
-import type { MockExecutionEngine } from "./execution-engine.js";
+import type { ExecutionSimulator } from "./execution-simulator.js";
 
 /**
  * Mock trade store that accumulates trades from the execution engine.
@@ -11,7 +11,7 @@ export class MockTradeStore implements BlotterPort {
   private readonly trades = new Map<number, Trade>();
   private pendingResolve: ((value: void) => void) | null = null;
 
-  constructor(executionEngine: MockExecutionEngine) {
+  constructor(executionEngine: ExecutionSimulator) {
     executionEngine.onTrade((trade) => {
       this.trades.set(trade.tradeId, trade);
       // Wake up any waiting consumer

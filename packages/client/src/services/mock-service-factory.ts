@@ -1,7 +1,7 @@
 import {
   MockReferenceDataService,
   PricingSimulator,
-  MockExecutionEngine,
+  ExecutionSimulator,
   MockTradeStore,
   MockAnalyticsEngine,
   MockInstrumentService,
@@ -32,7 +32,7 @@ export interface Services {
 export function createMockServices(): Services {
   const referenceData = new MockReferenceDataService();
   const pricing = new PricingSimulator();
-  const execution = new MockExecutionEngine();
+  const execution = new ExecutionSimulator();
   const blotter = new MockTradeStore(execution);
   const analytics = new MockAnalyticsEngine();
   const instruments = new MockInstrumentService();

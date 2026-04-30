@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { MockExecutionEngine } from "./execution-engine.js";
+import { ExecutionSimulator } from "./execution-simulator.js";
 import { MockTradeStore } from "./trade-store.js";
 import { Direction, TradeStatus } from "../fx/trade.js";
 
 describe("MockTradeStore", () => {
   it("starts with empty trade list", async () => {
-    const engine = new MockExecutionEngine();
+    const engine = new ExecutionSimulator();
     const store = new MockTradeStore(engine);
 
     for await (const trades of store.getTradeStream()) {
@@ -15,7 +15,7 @@ describe("MockTradeStore", () => {
   });
 
   it("accumulates Done trades", async () => {
-    const engine = new MockExecutionEngine();
+    const engine = new ExecutionSimulator();
     const store = new MockTradeStore(engine);
     const results: any[][] = [];
 
@@ -43,7 +43,7 @@ describe("MockTradeStore", () => {
   });
 
   it("accumulates Rejected trades too", async () => {
-    const engine = new MockExecutionEngine();
+    const engine = new ExecutionSimulator();
     const store = new MockTradeStore(engine);
 
     const iter = store.getTradeStream()[Symbol.asyncIterator]();
@@ -66,7 +66,7 @@ describe("MockTradeStore", () => {
   });
 
   it("displays newest first", async () => {
-    const engine = new MockExecutionEngine();
+    const engine = new ExecutionSimulator();
     const store = new MockTradeStore(engine);
 
     const iter = store.getTradeStream()[Symbol.asyncIterator]();

@@ -11,7 +11,7 @@ const DEFAULT_TRADER_NAME = "RTC";
 
 export type TradeListener = (trade: Trade) => void;
 
-export class MockExecutionEngine implements ExecutionPort {
+export class ExecutionSimulator implements ExecutionPort {
   private nextId = 1;
   private readonly listeners: TradeListener[] = [];
 
