@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { MockReferenceDataService } from "./reference-data-mock.js";
+import { ReferenceDataSimulator } from "./reference-data-simulator.js";
 
-describe("MockReferenceDataService", () => {
+describe("ReferenceDataSimulator", () => {
   it("emits all 9 currency pairs", async () => {
-    const service = new MockReferenceDataService();
+    const service = new ReferenceDataSimulator();
     const pairs: any[] = [];
 
     for await (const batch of service.getCurrencyPairs()) {
@@ -19,7 +19,7 @@ describe("MockReferenceDataService", () => {
   });
 
   it("NZDUSD has defaultNotional of 10M", async () => {
-    const service = new MockReferenceDataService();
+    const service = new ReferenceDataSimulator();
 
     for await (const batch of service.getCurrencyPairs()) {
       const nzd = batch.find((p) => p.symbol === "NZDUSD");
@@ -30,7 +30,7 @@ describe("MockReferenceDataService", () => {
   });
 
   it("all non-NZDUSD pairs have defaultNotional of 1M", async () => {
-    const service = new MockReferenceDataService();
+    const service = new ReferenceDataSimulator();
 
     for await (const batch of service.getCurrencyPairs()) {
       for (const pair of batch) {

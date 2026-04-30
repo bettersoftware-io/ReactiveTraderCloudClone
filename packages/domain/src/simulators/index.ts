@@ -1,5 +1,5 @@
 export { delay, randomDelay } from "./delay.js";
-export { MockReferenceDataService } from "./reference-data-mock.js";
+export { ReferenceDataSimulator } from "./reference-data-simulator.js";
 export { PricingSimulator } from "./pricing-simulator.js";
 export type { RfqQuoteResult } from "./pricing-simulator.js";
 export { ExecutionSimulator } from "./execution-simulator.js";

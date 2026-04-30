@@ -22,7 +22,8 @@
       "Bash(tee /tmp/build.log)",
       "Bash(tee /tmp/typecheck.log)",
       "Bash(tee /tmp/test.log)",
-      "Bash(tee /tmp/e2e.log)"
+      "Bash(tee /tmp/e2e.log)",
+      "Bash(grep -E \"^\\\\s+$\")"
     ]
   }
 }

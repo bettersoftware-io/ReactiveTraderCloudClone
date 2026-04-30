@@ -1,5 +1,5 @@
 import {
-  MockReferenceDataService,
+  ReferenceDataSimulator,
   PricingSimulator,
   ExecutionSimulator,
   TradeStoreSimulator,
@@ -30,7 +30,7 @@ export interface Services {
 }
 
 export function createMockServices(): Services {
-  const referenceData = new MockReferenceDataService();
+  const referenceData = new ReferenceDataSimulator();
   const pricing = new PricingSimulator();
   const execution = new ExecutionSimulator();
   const blotter = new TradeStoreSimulator(execution);
