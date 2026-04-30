@@ -18,7 +18,11 @@
       "Bash(find /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone -type f -name *phase* -o -name *plan*)",
       "Bash(npx playwright:*)",
       "Bash(npx vite:*)",
-      "mcp__claude_ai_Mermaid_Chart__validate_and_render_mermaid_diagram"
+      "mcp__claude_ai_Mermaid_Chart__validate_and_render_mermaid_diagram",
+      "Bash(tee /tmp/build.log)",
+      "Bash(tee /tmp/typecheck.log)",
+      "Bash(tee /tmp/test.log)",
+      "Bash(tee /tmp/e2e.log)"
     ]
   }
 }
