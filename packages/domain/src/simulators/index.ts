@@ -1,7 +1,7 @@
 export { delay, randomDelay } from "./delay.js";
 export { MockReferenceDataService } from "./reference-data-mock.js";
-export { MockPricingEngine } from "./pricing-engine.js";
-export type { RfqQuoteResult } from "./pricing-engine.js";
+export { PricingSimulator } from "./pricing-simulator.js";
+export type { RfqQuoteResult } from "./pricing-simulator.js";
 export { MockExecutionEngine } from "./execution-engine.js";
 export type { TradeListener } from "./execution-engine.js";
 export { MockTradeStore } from "./trade-store.js";

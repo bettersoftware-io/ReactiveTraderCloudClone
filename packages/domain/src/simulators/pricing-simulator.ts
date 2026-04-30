@@ -42,7 +42,7 @@ function tickInterval(): number {
   return Math.max(MIN_TICK_INTERVAL_MS, Math.random() * MAX_TICK_INTERVAL_MS);
 }
 
-export class MockPricingEngine implements PricingPort {
+export class PricingSimulator implements PricingPort {
   private readonly pairs = new Map<string, PairState>();
 
   constructor() {

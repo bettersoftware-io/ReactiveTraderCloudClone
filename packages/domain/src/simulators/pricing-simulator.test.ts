@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { MockPricingEngine } from "./pricing-engine.js";
+import { PricingSimulator } from "./pricing-simulator.js";
 
-describe("MockPricingEngine", () => {
+describe("PricingSimulator", () => {
   it("getPriceHistory returns 50 ticks", async () => {
-    const engine = new MockPricingEngine();
+    const engine = new PricingSimulator();
     const history = await engine.getPriceHistory("EURUSD");
     expect(history).toHaveLength(50);
   });
 
   it("each tick has correct structure", async () => {
-    const engine = new MockPricingEngine();
+    const engine = new PricingSimulator();
     const history = await engine.getPriceHistory("EURUSD");
     const tick = history[0];
 
@@ -22,7 +22,7 @@ describe("MockPricingEngine", () => {
   });
 
   it("ask = mid + 0.0002 and bid = mid - 0.0002", async () => {
-    const engine = new MockPricingEngine();
+    const engine = new PricingSimulator();
     const history = await engine.getPriceHistory("EURUSD");
 
     for (const tick of history) {
@@ -32,7 +32,7 @@ describe("MockPricingEngine", () => {
   });
 
   it("history ticks are in chronological order", async () => {
-    const engine = new MockPricingEngine();
+    const engine = new PricingSimulator();
     const history = await engine.getPriceHistory("EURUSD");
 
     for (let i = 1; i < history.length; i++) {
@@ -41,7 +41,7 @@ describe("MockPricingEngine", () => {
   });
 
   it("getPriceUpdates yields initial history then new ticks", async () => {
-    const engine = new MockPricingEngine();
+    const engine = new PricingSimulator();
     const ticks: any[] = [];
 
     for await (const tick of engine.getPriceUpdates("EURUSD")) {
@@ -54,7 +54,7 @@ describe("MockPricingEngine", () => {
   });
 
   it("getRfqQuote widens the spread", () => {
-    const engine = new MockPricingEngine();
+    const engine = new PricingSimulator();
     const quote = engine.getRfqQuote("EURUSD", 4);
 
     // priceChange = 0.3 / 10^4 = 0.00003
@@ -65,7 +65,7 @@ describe("MockPricingEngine", () => {
   });
 
   it("throws for unknown symbol", async () => {
-    const engine = new MockPricingEngine();
+    const engine = new PricingSimulator();
     await expect(engine.getPriceHistory("INVALID")).rejects.toThrow("Unknown symbol");
   });
 });

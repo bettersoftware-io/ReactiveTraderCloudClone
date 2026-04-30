@@ -1,6 +1,6 @@
 import {
   MockReferenceDataService,
-  MockPricingEngine,
+  PricingSimulator,
   MockExecutionEngine,
   MockTradeStore,
   MockAnalyticsEngine,
@@ -13,7 +13,7 @@ import { ThroughputService } from "./throughput-service.js";
 
 export interface ServiceContainer {
   readonly referenceData: MockReferenceDataService;
-  readonly pricing: MockPricingEngine;
+  readonly pricing: PricingSimulator;
   readonly execution: MockExecutionEngine;
   readonly blotter: MockTradeStore;
   readonly analytics: MockAnalyticsEngine;
@@ -25,7 +25,7 @@ export interface ServiceContainer {
 
 export function createServices(): ServiceContainer {
   const referenceData = new MockReferenceDataService();
-  const pricing = new MockPricingEngine();
+  const pricing = new PricingSimulator();
   const execution = new MockExecutionEngine();
   const blotter = new MockTradeStore(execution);
   const analytics = new MockAnalyticsEngine();

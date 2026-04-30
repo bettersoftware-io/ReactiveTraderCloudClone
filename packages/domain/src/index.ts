@@ -44,7 +44,7 @@ export type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "./p
 // Simulators (in-memory port implementations)
 export {
   MockReferenceDataService,
-  MockPricingEngine,
+  PricingSimulator,
   MockExecutionEngine,
   MockTradeStore,
   MockAnalyticsEngine,
