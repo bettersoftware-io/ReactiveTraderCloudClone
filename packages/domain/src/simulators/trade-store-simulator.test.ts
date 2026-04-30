@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { ExecutionSimulator } from "./execution-simulator.js";
-import { MockTradeStore } from "./trade-store.js";
+import { TradeStoreSimulator } from "./trade-store-simulator.js";
 import { Direction, TradeStatus } from "../fx/trade.js";
 
-describe("MockTradeStore", () => {
+describe("TradeStoreSimulator", () => {
   it("starts with empty trade list", async () => {
     const engine = new ExecutionSimulator();
-    const store = new MockTradeStore(engine);
+    const store = new TradeStoreSimulator(engine);
 
     for await (const trades of store.getTradeStream()) {
       expect(trades).toHaveLength(0);
@@ -16,7 +16,7 @@ describe("MockTradeStore", () => {
 
   it("accumulates Done trades", async () => {
     const engine = new ExecutionSimulator();
-    const store = new MockTradeStore(engine);
+    const store = new TradeStoreSimulator(engine);
     const results: any[][] = [];
 
     const iter = store.getTradeStream()[Symbol.asyncIterator]();
@@ -44,7 +44,7 @@ describe("MockTradeStore", () => {
 
   it("accumulates Rejected trades too", async () => {
     const engine = new ExecutionSimulator();
-    const store = new MockTradeStore(engine);
+    const store = new TradeStoreSimulator(engine);
 
     const iter = store.getTradeStream()[Symbol.asyncIterator]();
     await iter.next(); // skip initial empty
@@ -67,7 +67,7 @@ describe("MockTradeStore", () => {
 
   it("displays newest first", async () => {
     const engine = new ExecutionSimulator();
-    const store = new MockTradeStore(engine);
+    const store = new TradeStoreSimulator(engine);
 
     const iter = store.getTradeStream()[Symbol.asyncIterator]();
     await iter.next(); // skip initial empty

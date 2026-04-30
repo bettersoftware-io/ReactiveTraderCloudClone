@@ -7,7 +7,7 @@ import type { ExecutionSimulator } from "./execution-simulator.js";
  * In mock mode, the blotter does NOT subscribe to a BlotterService —
  * it accumulates from the local execution stream instead.
  */
-export class MockTradeStore implements BlotterPort {
+export class TradeStoreSimulator implements BlotterPort {
   private readonly trades = new Map<number, Trade>();
   private pendingResolve: ((value: void) => void) | null = null;
 

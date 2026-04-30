@@ -46,7 +46,7 @@ export {
   MockReferenceDataService,
   PricingSimulator,
   ExecutionSimulator,
-  MockTradeStore,
+  TradeStoreSimulator,
   MockAnalyticsEngine,
   MockInstrumentService,
   MockDealerService,

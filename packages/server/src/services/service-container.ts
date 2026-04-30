@@ -2,7 +2,7 @@ import {
   MockReferenceDataService,
   PricingSimulator,
   ExecutionSimulator,
-  MockTradeStore,
+  TradeStoreSimulator,
   MockAnalyticsEngine,
   MockInstrumentService,
   MockDealerService,
@@ -15,7 +15,7 @@ export interface ServiceContainer {
   readonly referenceData: MockReferenceDataService;
   readonly pricing: PricingSimulator;
   readonly execution: ExecutionSimulator;
-  readonly blotter: MockTradeStore;
+  readonly blotter: TradeStoreSimulator;
   readonly analytics: MockAnalyticsEngine;
   readonly instruments: MockInstrumentService;
   readonly dealers: MockDealerService;
@@ -27,7 +27,7 @@ export function createServices(): ServiceContainer {
   const referenceData = new MockReferenceDataService();
   const pricing = new PricingSimulator();
   const execution = new ExecutionSimulator();
-  const blotter = new MockTradeStore(execution);
+  const blotter = new TradeStoreSimulator(execution);
   const analytics = new MockAnalyticsEngine();
   const instruments = new MockInstrumentService();
   const dealers = new MockDealerService();
