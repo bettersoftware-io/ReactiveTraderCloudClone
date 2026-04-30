@@ -6,7 +6,7 @@ import {
   AnalyticsSimulator,
   InstrumentSimulator,
   DealerSimulator,
-  MockCreditRfqEngine,
+  CreditRfqSimulator,
   DEALERS_CATALOG,
   type ReferenceDataPort,
   type PricingPort,
@@ -37,7 +37,7 @@ export function createMockServices(): Services {
   const analytics = new AnalyticsSimulator();
   const instruments = new InstrumentSimulator();
   const dealers = new DealerSimulator();
-  const workflow = new MockCreditRfqEngine(DEALERS_CATALOG);
+  const workflow = new CreditRfqSimulator(DEALERS_CATALOG);
 
   return {
     referenceData,

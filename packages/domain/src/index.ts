@@ -50,7 +50,7 @@ export {
   AnalyticsSimulator,
   InstrumentSimulator,
   DealerSimulator,
-  MockCreditRfqEngine,
+  CreditRfqSimulator,
   INSTRUMENTS_CATALOG,
   DEALERS_CATALOG,
 } from "./simulators/index.js";

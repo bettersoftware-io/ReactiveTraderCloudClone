@@ -13,7 +13,7 @@ const MAX_PRICE_CHANGE = 10;
 
 type EventCallback = (event: RfqEvent) => void;
 
-export class MockCreditRfqEngine implements WorkflowPort {
+export class CreditRfqSimulator implements WorkflowPort {
   private nextRfqId = 1;
   private nextQuoteId = 1;
   private readonly rfqs = new Map<number, Rfq>();

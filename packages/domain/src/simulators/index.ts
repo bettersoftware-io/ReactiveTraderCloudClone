@@ -12,4 +12,4 @@ export {
   INSTRUMENTS_CATALOG,
   DEALERS_CATALOG,
 } from "./credit-reference-data-simulator.js";
-export { MockCreditRfqEngine } from "./credit-rfq-engine.js";
+export { CreditRfqSimulator } from "./credit-rfq-simulator.js";
