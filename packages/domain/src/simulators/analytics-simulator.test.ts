@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { MockAnalyticsEngine } from "./analytics-engine.js";
+import { AnalyticsSimulator } from "./analytics-simulator.js";
 
-describe("MockAnalyticsEngine", () => {
+describe("AnalyticsSimulator", () => {
   it("emits 90 history points initially", async () => {
-    const engine = new MockAnalyticsEngine();
+    const engine = new AnalyticsSimulator();
 
     for await (const update of engine.getAnalytics("USD")) {
       expect(update.history).toHaveLength(90);
@@ -12,7 +12,7 @@ describe("MockAnalyticsEngine", () => {
   });
 
   it("history is in chronological order", async () => {
-    const engine = new MockAnalyticsEngine();
+    const engine = new AnalyticsSimulator();
 
     for await (const update of engine.getAnalytics("USD")) {
       for (let i = 1; i < update.history.length; i++) {
@@ -25,7 +25,7 @@ describe("MockAnalyticsEngine", () => {
   });
 
   it("emits static positions for 9 pairs", async () => {
-    const engine = new MockAnalyticsEngine();
+    const engine = new AnalyticsSimulator();
 
     for await (const update of engine.getAnalytics("USD")) {
       expect(update.currentPositions).toHaveLength(9);

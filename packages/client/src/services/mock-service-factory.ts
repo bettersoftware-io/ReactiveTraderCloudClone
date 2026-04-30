@@ -3,7 +3,7 @@ import {
   PricingSimulator,
   ExecutionSimulator,
   TradeStoreSimulator,
-  MockAnalyticsEngine,
+  AnalyticsSimulator,
   MockInstrumentService,
   MockDealerService,
   MockCreditRfqEngine,
@@ -34,7 +34,7 @@ export function createMockServices(): Services {
   const pricing = new PricingSimulator();
   const execution = new ExecutionSimulator();
   const blotter = new TradeStoreSimulator(execution);
-  const analytics = new MockAnalyticsEngine();
+  const analytics = new AnalyticsSimulator();
   const instruments = new MockInstrumentService();
   const dealers = new MockDealerService();
   const workflow = new MockCreditRfqEngine(MOCK_DEALERS);

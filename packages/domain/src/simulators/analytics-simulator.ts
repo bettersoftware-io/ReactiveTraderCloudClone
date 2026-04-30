@@ -21,7 +21,7 @@ function randomWalkStep(value: number): number {
   return value * (1 + (Math.random() - 0.5) / 100);
 }
 
-export class MockAnalyticsEngine implements AnalyticsPort {
+export class AnalyticsSimulator implements AnalyticsPort {
   private history: HistoricPosition[] = [];
   private currentPrice: number;
 
