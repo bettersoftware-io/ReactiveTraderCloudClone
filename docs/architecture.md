@@ -3,15 +3,22 @@
 ## Table of Contents
 
 1. [Overview](#1-overview)
+   - [Purpose](#11-purpose)
+   - [Architectural Principles](#12-architectural-principles)
+   - [Layered Architecture & Terminology](#13-layered-architecture--terminology)
+   - [Technology Choices](#14-technology-choices)
 2. [C4 Model](#2-c4-model)
    - [System Context](#21-system-context-diagram)
    - [Container Diagram](#22-container-diagram)
-   - [Component Diagram -- Client](#23-component-diagram--web-client)
-   - [Component Diagram -- Server](#24-component-diagram--websocket-server)
+   - [Component Diagram -- Client App](#23-component-diagram--client-app)
+   - [Component Diagram -- WebSocket Server](#24-component-diagram--websocket-server)
 3. [UML Class Diagrams](#3-uml-class-diagrams)
    - [FX Domain Entities](#31-fx-domain-entities)
    - [Credit Domain Entities](#32-credit-domain-entities)
    - [Ports & Adapters](#33-ports--adapters-hexagonal-architecture)
+   - [Use Cases](#34-use-cases)
+   - [Presenters & State Streams](#35-presenters--state-streams)
+   - [No DI in the UI](#36-no-di-in-the-ui)
 4. [Sequence Diagrams](#4-sequence-diagrams)
    - [FX Price Streaming](#41-fx-price-streaming)
    - [FX Trade Execution](#42-fx-trade-execution-rpc)
@@ -23,30 +30,97 @@
    - [FX Trade Execution Flow](#54-fx-trade-execution-flow)
 6. [Package Dependencies](#6-package-dependencies)
 7. [Communication Patterns](#7-communication-patterns)
-8. [Key Design Decisions](#8-key-design-decisions)
+8. [Replaceability Matrix](#8-replaceability-matrix)
+9. [Test Strategy](#9-test-strategy)
+10. [Key Design Decisions](#10-key-design-decisions)
+11. [Key Files Reference](#11-key-files-reference)
 
 ---
 
 ## 1. Overview
 
-**Reactive Trader Cloud Clone** is a real-time FX trading and Credit RFQ (Request for Quote) platform built as a monorepo with pnpm workspaces and Turborepo. It demonstrates reactive streaming, domain-driven design, and hexagonal architecture (ports & adapters).
+### 1.1 Purpose
 
-**Key characteristics:**
-- **Streaming-first**: All data flows as `AsyncIterable<T>` -- the universal abstraction from domain through server to client
-- **Hexagonal architecture**: Pure domain logic with zero dependencies; adapters plug in at boundaries
-- **WebSocket protocol**: Subscriptions for streaming data, RPC with correlation IDs for commands
-- **State-of-the-World (SoW)**: Ensures consistent client state after (re)connection
+**Reactive Trader Cloud Clone** is a real-time FX trading and Credit RFQ (Request for Quote) platform. It serves equally as a working trading app and as a reference for clean, framework-agnostic architecture.
 
-**Technology stack:**
+The codebase is organised so that any single technology -- React, RxJS, react-rxjs, Vite, the WebSocket transport, Vitest, Playwright -- can be replaced with another by changing only its layer. The rest of the system, and the behavioural test suite, continue to work unchanged.
 
-| Layer | Technology |
-|-------|-----------|
-| Domain | Pure TypeScript, zero runtime dependencies |
-| Shared | TypeScript DTOs and wire-format contracts |
-| Client | React 19, Vite, custom async-iterator hooks |
-| Server | Node.js, native WebSocket, TypeScript |
-| Build | pnpm workspaces, Turborepo |
-| Test | Vitest (unit), Playwright (e2e) |
+### 1.2 Architectural Principles
+
+These rules override individual technology choices.
+
+**1. Make Choices, Defer Commitment.** Picking a technology is fine; binding the rest of the codebase to it is not. Framework types never cross inward boundaries. Choices are made at the edges and bound at a single Composition Root.
+
+**2. The Dependency Rule** ([Uncle Bob, Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)). Source-code dependencies point only inward. Inner circles know nothing about outer circles. Entities know nothing about use cases; use cases know nothing about presenters; presenters know nothing about UI frameworks.
+
+**3. Dumb UI.** The UI layer renders state and emits intents. It contains no business logic, no transport awareness, and no orchestration. A complete UI rewrite from React to SolidJS (or anything else) should be tractable, given a hook-shaped contract and a behavioural test suite.
+
+**4. Behavioural Tests as Insurance.** Tests describe *what* the system does, not *how*. They do not import React, RxJS, or Playwright internals; framework-specific glue lives in step definitions and page objects. Behavioural specs survive technology swaps and are the contract that makes a swap safe.
+
+**5. Don't Over-Abstract.** Some technologies (a WebSocket transport, an HTTP client) are easy to wrap behind a port. Others (React, RxJS) are not -- abstracting them produces awkward, leaky facades that fight the framework's grain. Where wrapping is hard, keep the layer that uses the framework deliberately thin, so a behavioural-test-backed regeneration is cheap.
+
+### 1.3 Layered Architecture & Terminology
+
+Two terms commonly conflated -- "client" and "UI" -- mean different things here.
+
+| Term | Meaning |
+|---|---|
+| **Domain** | Pure-TypeScript entities, value objects, ports, and use cases. Lives in `@rtc/domain`. Zero runtime dependencies. Knows nothing about UI, transport, or RxJS. |
+| **Server** | Process that hosts adapters around domain ports and serves data to clients over WebSocket. |
+| **Client** | Everything that runs in the browser -- the entire JavaScript bundle. **Includes** use cases, presenters, *and* the UI layer. |
+| **Application Layer (client)** | Use cases (vanilla TS, may be shared with domain) + Presenters (RxJS streams). Lives inside `@rtc/client` but contains zero React. Could be promoted to `@rtc/client-app` later if useful. |
+| **UI Layer (client)** | React components + react-rxjs-bound hooks. Consumes the Application Layer through hook contracts only. Never imports `rxjs`. |
+
+Note: **"no RxJS on the UI side" is not the same as "no RxJS on the client side"**. RxJS is permitted (and expected) in the client's Application Layer. It is forbidden in the UI Layer and in any port or use-case signature.
+
+```mermaid
+graph TB
+    subgraph FrameworksDrivers["Frameworks & Drivers (outer)"]
+        UI["UI Components<br/>React (dumb)"]
+        WS["WebSocket Transport<br/>(browser API)"]
+    end
+    subgraph InterfaceAdapters["Interface Adapters"]
+        Hooks["react-rxjs Hooks<br/>(thin generated bridge)"]
+        Presenters["Presenters / State Streams<br/>(RxJS, vanilla)"]
+        Adapters["Port Adapters<br/>(WS-backed, simulators)"]
+    end
+    subgraph ApplicationCircle["Application / Use Cases"]
+        UseCases["Use Cases<br/>(vanilla TS)"]
+    end
+    subgraph EntitiesCircle["Entities (innermost)"]
+        Entities["Entities & Value Objects<br/>Price, Trade, Rfq, ..."]
+    end
+    Ports["Port Interfaces<br/>(AsyncIterable, Promise)"]
+
+    UI --> Hooks
+    Hooks --> Presenters
+    Presenters --> UseCases
+    UseCases --> Ports
+    UseCases --> Entities
+    Adapters -.implements.-> Ports
+    WS -.used by.-> Adapters
+```
+
+The arrows are source-code dependencies. The UI imports hooks but has no path to ports, adapters, or use cases. Ports are dependency-inverted -- adapters point at port interfaces, never the reverse.
+
+### 1.4 Technology Choices
+
+The current stack is a snapshot, not a commitment. Each row says what role is being played and what's playing it today. Cost-of-replacement is detailed in [§8 Replaceability Matrix](#8-replaceability-matrix).
+
+| Role | Currently | Allowed inside the layer? |
+|---|---|---|
+| Entities & use cases | Pure TypeScript | Nothing else |
+| Boundary stream type | `AsyncIterable<T>` | Language primitive only |
+| Client state streams | RxJS (planned) | RxJS, vanilla TS |
+| UI ↔ stream bridge | react-rxjs (planned) | The bridge library only |
+| UI rendering | React 19 | React; **no `rxjs` import** |
+| Build tooling | Vite | -- |
+| Server framework | Node.js + native WebSocket | -- |
+| Wire format | JSON over WebSocket | DTOs in `@rtc/shared` |
+| Unit test runner | Vitest | -- |
+| E2E driver | Playwright | -- |
+| Behavioural specs | Gherkin (planned) | -- |
+| Build orchestration | pnpm workspaces + Turborepo | -- |
 
 ---
 
@@ -76,7 +150,7 @@ C4Context
 
 ### 2.2 Container Diagram
 
-Shows the four packages inside the system boundary and their relationships.
+Containers are described by **role first, current technology second**. The roles are the contract; the technology is replaceable.
 
 ```mermaid
 C4Container
@@ -85,53 +159,68 @@ C4Container
     Person(trader, "Trader", "FX and Credit trader")
 
     System_Boundary(rtc, "Reactive Trader Cloud") {
-        Container(client, "Web Client", "React 19, Vite, TypeScript", "SPA delivering live rates, trade tiles, blotter, analytics, and credit RFQ UI")
-        Container(server, "WebSocket Server", "Node.js, TypeScript", "Streams prices, executes trades, manages RFQ workflow over WebSocket")
-        Container(domain, "Domain Library", "Pure TypeScript", "Entities, value objects, use-case logic, port interfaces with zero runtime dependencies")
-        Container(shared, "Shared Contracts", "TypeScript", "DTOs, wire-format envelopes (RPC, SoW), protocol constants")
+        Container(client, "Client App", "Browser bundle (currently React 19 + Vite + RxJS + react-rxjs)", "Application layer (use cases, presenters) + dumb UI")
+        Container(server, "WebSocket Server", "Node service (currently Node.js + native WS)", "Hosts port adapters around domain simulators; streams data and processes RPC")
+        Container(domain, "Domain Library", "Pure TypeScript", "Entities, value objects, use cases, port interfaces -- zero runtime dependencies")
+        Container(shared, "Shared Contracts", "TypeScript", "DTOs, wire-format envelopes, protocol constants")
     }
 
     Rel(trader, client, "Uses", "HTTPS / Browser")
-    Rel(client, server, "Subscribes to streams, sends RPC commands", "WebSocket JSON")
-    Rel(client, domain, "Imports entities and port interfaces", "TypeScript import")
-    Rel(client, shared, "Imports DTOs for deserialization", "TypeScript import")
-    Rel(server, domain, "Imports entities, ports, and mock implementations", "TypeScript import")
-    Rel(server, shared, "Imports DTOs and protocol types", "TypeScript import")
+    Rel(client, server, "Subscribes to streams; sends RPC", "WebSocket JSON")
+    Rel(client, domain, "Imports entities, ports, use cases", "TypeScript import")
+    Rel(client, shared, "Imports DTOs", "TypeScript import")
+    Rel(server, domain, "Imports entities, ports, simulators", "TypeScript import")
+    Rel(server, shared, "Imports DTOs", "TypeScript import")
     Rel(shared, domain, "Depends on domain types", "TypeScript import")
 ```
 
-### 2.3 Component Diagram -- Web Client
+### 2.3 Component Diagram -- Client App
+
+The client splits into two layers. The **Application Layer** is plain TypeScript + RxJS -- no React imports anywhere. The **UI Layer** is React components plus a tiny generated hook bridge (`react-rxjs`). Replacing React means rewriting only the UI Layer; the Application Layer is untouched.
 
 ```mermaid
 C4Component
-    title Component Diagram - Web Client
+    title Component Diagram - Client App
 
-    Container_Boundary(client, "Web Client") {
-        Component(app, "App Shell", "React", "Tab layout FX/Credit/Admin, header, footer, connection overlay")
-        Component(fxTiles, "FX Live Rates", "React", "Price tiles with bid/ask, spread, trade buttons, RFQ trigger")
-        Component(blotter, "FX Blotter", "React", "Live trade stream table with filtering and sorting")
+    Container_Boundary(uiLayer, "UI Layer (React, dumb)") {
+        Component(app, "App Shell", "React", "Tab layout (FX/Credit/Admin), header, footer, connection overlay")
+        Component(fxTiles, "FX Live Rates", "React", "Price tiles -- bid/ask/spread/movement, Buy/Sell, RFQ trigger")
+        Component(blotter, "FX Blotter", "React", "Live trade table -- filter, sort")
         Component(analytics, "Analytics Panel", "React", "PnL chart and currency position breakdown")
-        Component(creditRfq, "Credit RFQ", "React", "New RFQ form, RFQ tiles with dealer quote cards")
-        Component(connMgr, "Connection Manager", "React Context", "State machine: CONNECTING CONNECTED DISCONNECTED IDLE OFFLINE")
-        Component(svcProvider, "Service Provider", "React Context", "DI container: mock services or real WebSocket adapters")
-        Component(wsAdapter, "WebSocket Adapter", "TypeScript", "Transport: send, rpc with correlation IDs, event handlers, reconnect")
-        Component(hooks, "Streaming Hooks", "React Hooks", "usePriceStream, useRfqStream, useExecuteTrade, etc.")
+        Component(creditRfq, "Credit RFQ", "React", "RFQ form, RFQ tiles with dealer quote cards")
+        Component(connOverlay, "Connection Overlay", "React", "Dumb display of connection status")
+        Component(rxHooks, "react-rxjs Hooks", "Generated bindings", "usePrice, useTrades, useAnalytics, useRfqs, useConnectionStatus -- the only contract exposed to UI")
+    }
+
+    Container_Boundary(appLayer, "Application Layer (vanilla TS + RxJS)") {
+        Component(presenters, "Presenters / State Streams", "RxJS Observables", "price$, tradeBlotter$, analytics$, rfqs$, connectionStatus$ -- UI-shaped state")
+        Component(useCases, "Use Cases", "Vanilla TS", "PriceStreamUseCase, ExecuteTradeUseCase, CreateRfqUseCase, AcceptQuoteUseCase, ... -- orchestrate ports and entities")
+        Component(composition, "Composition Root", "Vanilla TS", "Wires ports → use cases → presenters at startup; selects simulators or WS adapters")
+        Component(wsAdapter, "WebSocket Transport", "TypeScript", "send, rpc with correlation IDs, reconnect")
+        Component(portAdapters, "Port Adapters", "TypeScript", "WsRealPricingAdapter, WsRealExecutionAdapter, ... wrap WsAdapter as port impls")
     }
 
     Container(server, "WebSocket Server", "Node.js")
 
     Rel(app, fxTiles, "Renders")
     Rel(app, blotter, "Renders")
-    Rel(app, analytics, "Renders")
     Rel(app, creditRfq, "Renders")
-    Rel(app, connMgr, "Reads connection status")
-    Rel(fxTiles, hooks, "Calls")
-    Rel(blotter, hooks, "Calls")
-    Rel(creditRfq, hooks, "Calls")
-    Rel(hooks, svcProvider, "Reads port implementations")
-    Rel(svcProvider, wsAdapter, "Creates real adapters using")
-    Rel(wsAdapter, server, "WebSocket JSON messages")
+    Rel(app, connOverlay, "Reads")
+    Rel(fxTiles, rxHooks, "Calls")
+    Rel(blotter, rxHooks, "Calls")
+    Rel(analytics, rxHooks, "Calls")
+    Rel(creditRfq, rxHooks, "Calls")
+    Rel(rxHooks, presenters, "Subscribes to streams")
+    Rel(presenters, useCases, "Pipes use case output")
+    Rel(useCases, portAdapters, "Through port interfaces")
+    Rel(composition, portAdapters, "Instantiates")
+    Rel(composition, useCases, "Instantiates")
+    Rel(composition, presenters, "Instantiates")
+    Rel(portAdapters, wsAdapter, "Uses")
+    Rel(wsAdapter, server, "WebSocket JSON")
 ```
+
+**Key boundary**: anything below the `react-rxjs Hooks` component may use RxJS freely. Anything above must not import `rxjs` and must not see `Observable<T>`. The hooks layer is the only place that bridges the two worlds, and it is small enough (see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)) to be regenerated for SolidJS (a hypothetical `solid-rxjs`) without touching the Application Layer.
 
 ### 2.4 Component Diagram -- WebSocket Server
 
@@ -141,35 +230,37 @@ C4Component
 
     Container_Boundary(server, "WebSocket Server") {
         Component(http, "HTTP Server", "Node.js http", "Health check, CORS, throughput API, WebSocket upgrade")
-        Component(wsHandler, "WS Handler", "TypeScript", "Message routing: dispatches subscriptions and RPC calls per connection")
-        Component(protocol, "Protocol Constants", "TypeScript", "CLIENT_MSG and SERVER_MSG type enums for all message types")
-        Component(svcContainer, "Service Container", "TypeScript", "Singleton factory for all domain mock implementations")
+        Component(wsHandler, "WS Handler", "TypeScript", "Message routing -- dispatches subscriptions and RPC per connection")
+        Component(protocol, "Protocol Constants", "TypeScript", "CLIENT_MSG / SERVER_MSG type enums for all message types")
+        Component(svcContainer, "Service Container", "TypeScript", "Wires simulators at startup and resolves them per request")
         Component(throughput, "Throughput Service", "TypeScript", "Configurable message rate throttling for perf testing")
     }
 
-    Container_Boundary(domainMocks, "Domain Mock Implementations") {
-        Component(pricingEngine, "Pricing Engine", "TypeScript", "Random-walk price generation at 150-1000ms intervals")
-        Component(execEngine, "Execution Engine", "TypeScript", "Trade execution with simulated delays and rejections")
+    Container_Boundary(simulators, "Domain Simulators (in-memory port impls)") {
+        Component(pricingSim, "Pricing Simulator", "TypeScript", "Random-walk price generation at 150-1000ms intervals")
+        Component(execSim, "Execution Simulator", "TypeScript", "Trade execution with simulated delays and rejections")
         Component(tradeStore, "Trade Store", "TypeScript", "In-memory trade blotter with listener pattern")
-        Component(analyticsEngine, "Analytics Engine", "TypeScript", "PnL history and position tracking")
-        Component(rfqEngine, "Credit RFQ Engine", "TypeScript", "RFQ lifecycle, dealer simulation, quote state machine")
+        Component(analyticsSim, "Analytics Simulator", "TypeScript", "PnL history and position tracking")
+        Component(rfqSim, "Credit RFQ Simulator", "TypeScript", "RFQ lifecycle, dealer simulation, quote state machine")
         Component(refData, "Reference Data", "TypeScript", "Currency pairs, instruments, dealers catalogs")
     }
 
-    Container(client, "Web Client", "React SPA")
+    Container(client, "Client App", "Browser bundle")
 
-    Rel(client, http, "WebSocket upgrade", "HTTP to WS")
-    Rel(http, wsHandler, "Delegates WebSocket connections")
-    Rel(wsHandler, protocol, "Uses message type constants")
-    Rel(wsHandler, svcContainer, "Gets service instances")
-    Rel(svcContainer, pricingEngine, "Creates")
-    Rel(svcContainer, execEngine, "Creates")
+    Rel(client, http, "WebSocket upgrade", "HTTP -> WS")
+    Rel(http, wsHandler, "Delegates")
+    Rel(wsHandler, protocol, "Uses")
+    Rel(wsHandler, svcContainer, "Resolves simulators")
+    Rel(svcContainer, pricingSim, "Creates")
+    Rel(svcContainer, execSim, "Creates")
     Rel(svcContainer, tradeStore, "Creates")
-    Rel(svcContainer, analyticsEngine, "Creates")
-    Rel(svcContainer, rfqEngine, "Creates")
+    Rel(svcContainer, analyticsSim, "Creates")
+    Rel(svcContainer, rfqSim, "Creates")
     Rel(svcContainer, refData, "Creates")
-    Rel(tradeStore, execEngine, "Listens for new trades")
+    Rel(tradeStore, execSim, "Listens for new trades")
 ```
+
+> **Naming**: these are **simulators**, not "mocks". They are production code that stands in for an external pricing or execution venue. *Test* mocks are a separate concept and live alongside tests.
 
 ---
 
@@ -278,6 +369,8 @@ classDiagram
 - `deriveDealtCurrency(direction, pair)` -- Buy = base currency; Sell = terms currency
 
 **Constants:** `DEFAULT_NOTIONAL = 1M`, `RFQ_THRESHOLD = 10M`, `MAX_NOTIONAL = 1B`, `PRICE_HISTORY_SIZE = 50`
+
+> These functions are pure, vendor-neutral, and are consumed by use cases (not by hooks). The current code in client hooks that calls `detectMovement + calculateSpread` directly is a target for relocation into `PriceStreamUseCase`.
 
 ### 3.2 Credit Domain Entities
 
@@ -414,22 +507,22 @@ classDiagram
         +accept(quoteId) Promise~void~
     }
 
-    class MockPricingEngine {
+    class PricingSimulator {
         +getPriceUpdates(symbol) AsyncIterable~PriceTick~
         +getPriceHistory(symbol) Promise~PriceTick[]~
         +getRfqQuote(symbol) PriceTick
     }
 
-    class MockExecutionEngine {
+    class ExecutionSimulator {
         +executeTrade(request) Promise~Trade~
         +onTrade(listener) void
     }
 
-    class MockTradeStore {
+    class TradeStoreSimulator {
         +getTradeStream() AsyncIterable~Trade[]~
     }
 
-    class MockCreditRfqEngine {
+    class CreditRfqSimulator {
         +subscribe() AsyncIterable~RfqEvent~
         +createRfq(request) Promise~number~
         +cancelRfq(rfqId) Promise~void~
@@ -449,17 +542,149 @@ classDiagram
         +executeTrade(request) Promise~Trade~
     }
 
-    PricingPort <|.. MockPricingEngine : implements
+    PricingPort <|.. PricingSimulator : implements
     PricingPort <|.. WsRealPricingAdapter : implements
-    ExecutionPort <|.. MockExecutionEngine : implements
+    ExecutionPort <|.. ExecutionSimulator : implements
     ExecutionPort <|.. WsRealExecutionAdapter : implements
-    BlotterPort <|.. MockTradeStore : implements
-    WorkflowPort <|.. MockCreditRfqEngine : implements
+    BlotterPort <|.. TradeStoreSimulator : implements
+    WorkflowPort <|.. CreditRfqSimulator : implements
 ```
 
-**Adapter selection** is controlled by `VITE_SERVER_URL`:
-- **Unset** (mock mode): `createMockServices()` instantiates domain mocks directly
-- **Set** (real mode): `createRealServices()` creates WebSocket-backed adapters via `WsAdapter`
+**Adapter selection** is performed at the **Composition Root** (single startup point), not at render time. `VITE_SERVER_URL` controls the choice:
+- **Unset** -- Composition Root constructs simulators directly (in-process, no transport).
+- **Set** -- Composition Root constructs `WsAdapter` and the `WsReal*Adapter` family.
+
+### 3.4 Use Cases
+
+Use cases sit between ports and presenters. They are **vanilla TypeScript** -- no React, no RxJS, no DOM. They take ports in their constructor (or factory), accept inputs, and return `AsyncIterable<T>` for streams or `Promise<T>` for commands. They are the home for application-specific orchestration and enrichment that today leaks into client hooks (e.g. `detectMovement + calculateSpread` for FX prices).
+
+```mermaid
+classDiagram
+    direction TB
+
+    class PriceStreamUseCase {
+        -PricingPort pricing
+        +execute(symbol) AsyncIterable~Price~
+    }
+
+    class ExecuteTradeUseCase {
+        -ExecutionPort execution
+        +execute(request) Promise~Trade~
+    }
+
+    class TradeBlotterUseCase {
+        -BlotterPort blotter
+        +execute() AsyncIterable~Trade[]~
+    }
+
+    class AnalyticsUseCase {
+        -AnalyticsPort analytics
+        +execute(currency) AsyncIterable~PositionUpdates~
+    }
+
+    class CreateRfqUseCase {
+        -WorkflowPort workflow
+        +execute(request) Promise~number~
+    }
+
+    class AcceptQuoteUseCase {
+        -WorkflowPort workflow
+        +execute(quoteId) Promise~void~
+    }
+
+    class WorkflowEventStreamUseCase {
+        -WorkflowPort workflow
+        +execute() AsyncIterable~RfqEvent~
+    }
+
+    class ConnectionStatusUseCase {
+        -ConnectionEventsPort events
+        +execute() AsyncIterable~ConnectionStatus~
+    }
+
+    PriceStreamUseCase --> PricingPort
+    ExecuteTradeUseCase --> ExecutionPort
+    TradeBlotterUseCase --> BlotterPort
+    AnalyticsUseCase --> AnalyticsPort
+    CreateRfqUseCase --> WorkflowPort
+    AcceptQuoteUseCase --> WorkflowPort
+    WorkflowEventStreamUseCase --> WorkflowPort
+    ConnectionStatusUseCase --> ConnectionEventsPort
+```
+
+**Boundary types**: only `AsyncIterable<T>` and `Promise<T>`. No `Observable`, no React types.
+
+**Why this layer exists**: it isolates application logic from both ports below (transport-agnostic) and presenters above (UI-framework-agnostic). Use cases are exhaustively tested via behavioural specs that swap port implementations between simulator and contract-test fixtures. Replacing RxJS or React leaves use cases entirely untouched.
+
+### 3.5 Presenters & State Streams
+
+Presenters are the client-side glue between use cases (which emit `AsyncIterable<T>`) and the UI (which consumes hooks). RxJS lives here -- chosen because it gives us share-replay, multicasting, derived streams, and time-based operators for free, all of which are central to a streaming UI.
+
+The presenter layer is **the only allowed home of RxJS in the client**. RxJS does not appear in:
+- port signatures (use `AsyncIterable<T>`)
+- use-case signatures (use `AsyncIterable<T>` / `Promise<T>`)
+- React components or hook call sites (use react-rxjs hooks)
+
+Presenters bridge `AsyncIterable<T>` -> RxJS `Observable<T>` (one-line interop), apply UI-shaping operators (`scan`, `shareReplay`, `combineLatest`), and expose the resulting stream to react-rxjs which auto-generates a hook.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class PriceStreamPresenter {
+        -PriceStreamUseCase useCase
+        +price$(symbol) Observable~Price~
+    }
+
+    class TradeBlotterPresenter {
+        -TradeBlotterUseCase useCase
+        +trades$ Observable~Trade[]~
+    }
+
+    class AnalyticsPresenter {
+        -AnalyticsUseCase useCase
+        +analytics$(currency) Observable~PositionUpdates~
+    }
+
+    class RfqsPresenter {
+        -WorkflowEventStreamUseCase events
+        -CreateRfqUseCase create
+        -AcceptQuoteUseCase accept
+        +rfqs$ Observable~RfqViewModel[]~
+        +createRfq(request) Promise~number~
+        +acceptQuote(quoteId) Promise~void~
+    }
+
+    class ConnectionStatusPresenter {
+        -ConnectionStatusUseCase useCase
+        +status$ Observable~ConnectionStatus~
+    }
+
+    class ReactRxJsHooks {
+        <<generated bridge>>
+        usePrice(symbol)
+        useTrades()
+        useAnalytics(currency)
+        useRfqs()
+        useConnectionStatus()
+    }
+
+    ReactRxJsHooks ..> PriceStreamPresenter : binds
+    ReactRxJsHooks ..> TradeBlotterPresenter : binds
+    ReactRxJsHooks ..> AnalyticsPresenter : binds
+    ReactRxJsHooks ..> RfqsPresenter : binds
+    ReactRxJsHooks ..> ConnectionStatusPresenter : binds
+```
+
+**Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)) that maps an `Observable<T>` to a React hook with Suspense semantics. To swap React -> SolidJS, write a tiny `solid-rxjs` analogue that maps an `Observable<T>` to a Solid signal. Presenters and below are unchanged. UI components are rewritten -- but their contracts (the hook signatures) are mirrored 1:1, and the behavioural spec suite verifies the rewrite.
+
+**Replacing RxJS itself** (for example with effect-ts): rewrite only the presenter layer. Use cases are unchanged because their signatures are `AsyncIterable<T>` / `Promise<T>`. Behavioural tests at the UI level don't change; presenter-level contract tests are rewritten.
+
+### 3.6 No DI in the UI
+
+A consequence of the layering above: **the UI has no need for a DI container**. The Composition Root constructs port adapters → use cases → presenters once at startup. react-rxjs binds presenters to hooks at module load. A React component imports a hook; the hook is already wired to a pre-instantiated presenter. There is no per-render injection and no Context-based service locator inside the UI tree.
+
+The earlier `ServiceProvider` React Context is therefore retired. Its only remaining responsibility -- selecting simulator vs. real adapters at startup -- moves to the Composition Root, which runs **before** React renders.
 
 ---
 
@@ -470,80 +695,91 @@ classDiagram
 ```mermaid
 sequenceDiagram
     participant Trader
-    participant Tile as FX Tile Component
-    participant Hook as usePriceStream Hook
-    participant SvcCtx as Service Provider
-    participant WsAdapter as WebSocket Adapter
-    participant Server as WS Handler
-    participant Engine as MockPricingEngine
+    participant Tile as FX Tile (React)
+    participant Hook as usePrice (react-rxjs)
+    participant Presenter as PriceStreamPresenter
+    participant UC as PriceStreamUseCase
+    participant Adapter as Port Adapter (Simulator or WsReal)
+    participant Server as WS Server (real mode only)
 
     Trader->>Tile: Opens FX workspace
-    Tile->>Hook: Mount with CurrencyPair
-    Hook->>SvcCtx: Get PricingPort
-    SvcCtx-->>Hook: pricing adapter
+    Tile->>Hook: usePrice("EURUSD")
+    Hook->>Presenter: subscribe price$("EURUSD")
+    Presenter->>UC: execute("EURUSD")
+    UC->>Adapter: getPriceUpdates("EURUSD") returns AsyncIterable
 
-    alt Mock Mode
-        Hook->>Engine: getPriceUpdates(EURUSD)
+    alt Mock mode (in-process simulator)
         loop Every 150-1000ms
-            Engine-->>Hook: PriceTick via async iterable yield
-            Hook->>Hook: detectMovement + calculateSpread
-            Hook->>Tile: setState(Price)
-            Tile->>Trader: Render bid/ask/spread/movement
+            Adapter-->>UC: yield PriceTick
+            UC->>UC: detectMovement + calculateSpread
+            UC-->>Presenter: yield Price
+            Presenter-->>Hook: emit Price
+            Hook-->>Tile: re-render
+            Tile->>Trader: bid/ask/spread/movement
         end
-    else Real Mode via WebSocket
-        Hook->>WsAdapter: getPriceUpdates(EURUSD)
-        WsAdapter->>Server: subscribe.pricing with symbol EURUSD
-        Server->>Engine: getPriceUpdates(EURUSD)
-        loop Continuous streaming
-            Engine-->>Server: PriceTick via async iterable yield
-            Server-->>WsAdapter: stream.priceTick with PriceTickDto
-            WsAdapter-->>Hook: asyncQueue yields PriceTick
-            Hook->>Hook: detectMovement + calculateSpread
-            Hook->>Tile: setState(Price)
-            Tile->>Trader: Render bid/ask/spread/movement
+    else Real mode (WS adapter)
+        Adapter->>Server: subscribe.pricing(EURUSD)
+        loop Continuous
+            Server-->>Adapter: stream.priceTick(PriceTickDto)
+            Adapter-->>UC: yield PriceTick
+            UC->>UC: detectMovement + calculateSpread
+            UC-->>Presenter: yield Price
+            Presenter-->>Hook: emit Price
+            Hook-->>Tile: re-render
+            Tile->>Trader: bid/ask/spread/movement
         end
     end
 ```
+
+The React tile knows nothing about subscriptions, transports, or enrichment. It calls `usePrice(symbol)` and renders. Enrichment (`detectMovement + calculateSpread`) lives in the use case, not the hook.
 
 ### 4.2 FX Trade Execution (RPC)
 
 ```mermaid
 sequenceDiagram
     participant Trader
-    participant Tile as FX Tile
-    participant ExecHook as useExecuteTrade
-    participant WsAdapter as WebSocket Adapter
-    participant Server as WS Handler
-    participant Engine as MockExecutionEngine
-    participant Store as MockTradeStore
-    participant Blotter as Blotter Component
+    participant Tile as FX Tile (React)
+    participant Hook as useExecuteTrade (react-rxjs)
+    participant Presenter as TradeExecutionPresenter
+    participant UC as ExecuteTradeUseCase
+    participant Adapter as Port Adapter
+    participant Server as WS Server
+    participant ExecSim as ExecutionSimulator
+    participant Store as TradeStoreSimulator
+    participant BlotterHook as useTrades (Blotter)
 
     Trader->>Tile: Clicks Buy/Sell at displayed rate
-    Tile->>ExecHook: execute with currencyPair, spotRate, direction, notional
-    ExecHook->>ExecHook: setState pending
+    Tile->>Hook: execute(currencyPair, spotRate, direction, notional)
+    Hook->>Presenter: dispatch executionIntent
+    Presenter->>UC: execute(ExecutionRequest)
+    UC->>Adapter: executeTrade(request) returns Promise
 
-    ExecHook->>WsAdapter: executeTrade(ExecutionRequest)
-    WsAdapter->>Server: rpc.executeTrade with correlationId 42
-    Server->>Engine: executeTrade(request)
-
-    alt Normal Execution with 0-2s delay
-        Engine-->>Server: Trade with status Done
-        Engine->>Store: notifyListeners(trade)
-    else GBPJPY always rejected
-        Engine-->>Server: Trade with status Rejected
-    else EURJPY with 4s extra delay
-        Note over Engine: Simulated slow execution
-        Engine-->>Server: Trade with status Done
-        Engine->>Store: notifyListeners(trade)
+    alt Real mode
+        Adapter->>Server: rpc.executeTrade with correlationId 42
+        Server->>ExecSim: executeTrade(request)
+        alt Normal (0-2s delay)
+            ExecSim-->>Server: Trade Done
+            ExecSim->>Store: notifyListeners(trade)
+        else GBPJPY always rejected
+            ExecSim-->>Server: Trade Rejected
+        else EURJPY (4s extra delay)
+            ExecSim-->>Server: Trade Done
+            ExecSim->>Store: notifyListeners(trade)
+        end
+        Server-->>Adapter: rpc.executeTrade.response with correlationId 42
+    else Mock mode (in-process)
+        Adapter->>ExecSim: executeTrade(request)
+        ExecSim-->>Adapter: Trade
     end
 
-    Server-->>WsAdapter: rpc.executeTrade.response with ack and correlationId 42
-    WsAdapter-->>ExecHook: resolve(Trade)
-    ExecHook->>Tile: setState trade result
-    Tile->>Trader: Show confirmation with 5s auto-dismiss
+    Adapter-->>UC: resolved Trade
+    UC-->>Presenter: Trade
+    Presenter-->>Hook: emit Trade
+    Hook-->>Tile: confirmation state
+    Tile->>Trader: confirmation (5s auto-dismiss)
 
-    Store-->>Blotter: AsyncIterable yields updated trade list
-    Blotter->>Trader: New trade appears in blotter
+    Store-->>BlotterHook: trade list updated (separate stream)
+    BlotterHook->>Trader: New trade appears in blotter
 ```
 
 ### 4.3 Credit RFQ Workflow
@@ -551,59 +787,74 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Trader
-    participant Form as New RFQ Form
-    participant RfqHook as useCreateRfq / useRfqStream
-    participant WsAdapter as WebSocket Adapter
-    participant Server as WS Handler
-    participant Engine as MockCreditRfqEngine
-    participant Tiles as RFQ Tiles Panel
+    participant Form as New RFQ Form (React)
+    participant Tiles as RFQ Tiles (React)
+    participant Hook as useRfqs (react-rxjs)
+    participant Presenter as RfqsPresenter
+    participant Create as CreateRfqUseCase
+    participant Accept as AcceptQuoteUseCase
+    participant Events as WorkflowEventStreamUseCase
+    participant Adapter as Port Adapter
+    participant Server as WS Server
+    participant Sim as CreditRfqSimulator
 
     Trader->>Form: Selects instrument, dealers, quantity, direction
     Trader->>Form: Clicks Send RFQ
-    Form->>RfqHook: createRfq with instrumentId, dealerIds, quantity, direction, expirySecs
-    RfqHook->>WsAdapter: rpc createRfq
-    WsAdapter->>Server: rpc.createRfq with correlationId N
-    Server->>Engine: createRfq(request)
-    Engine->>Engine: Create Rfq with state Open
+    Form->>Hook: createRfq(...)
+    Hook->>Presenter: dispatch createIntent
+    Presenter->>Create: execute(request)
+    Create->>Adapter: createRfq(request)
+    Adapter->>Server: rpc.createRfq with correlationId N
+    Server->>Sim: createRfq(request)
+    Sim->>Sim: Create Rfq state Open
 
-    loop For each selected dealer
-        Engine->>Engine: Create Quote with state pendingWithoutPrice
-        Engine-->>Server: RfqEvent quoteCreated
-        Server-->>WsAdapter: stream.workflowEvent
-        WsAdapter-->>RfqHook: asyncQueue yields event
+    loop Per selected dealer
+        Sim->>Sim: Create Quote pendingWithoutPrice
+        Sim-->>Server: RfqEvent quoteCreated
+        Server-->>Adapter: stream.workflowEvent
+        Adapter-->>Events: yield event
+        Events-->>Presenter: yield event
+        Presenter-->>Hook: rfqs$ updated
     end
 
-    Engine-->>Server: RfqEvent rfqCreated
-    Server-->>WsAdapter: rpc.createRfq.response with correlationId N
+    Sim-->>Server: RfqEvent rfqCreated
+    Server-->>Adapter: rpc.createRfq.response correlationId N
+    Adapter-->>Create: resolved rfqId
+    Create-->>Presenter: rfqId
 
-    RfqHook->>Tiles: Update state with new RFQ and pending quotes
-    Tiles->>Trader: Shows RFQ card with dealer quote slots
-
-    par Dealer Simulation within 0-30s and 70 percent respond
-        Engine->>Engine: Dealer A quotes price
-        Engine-->>Server: RfqEvent quoteQuoted
-        Server-->>WsAdapter: stream.workflowEvent
-        WsAdapter-->>RfqHook: event
-        RfqHook->>Tiles: Quote A shows price
+    par Dealer simulation 0-30s, 70 percent respond
+        Sim->>Sim: Dealer A quotes
+        Sim-->>Server: RfqEvent quoteQuoted
+        Server-->>Adapter: stream.workflowEvent
+        Adapter-->>Events: yield
+        Events-->>Presenter: rfqs$ updated
+        Presenter-->>Hook: emit
+        Hook-->>Tiles: Quote A shows price
     and
-        Engine->>Engine: Dealer B quotes price
-        Engine-->>Server: RfqEvent quoteQuoted
-        Server-->>WsAdapter: stream.workflowEvent
-        WsAdapter-->>RfqHook: event
-        RfqHook->>Tiles: Quote B shows price
+        Sim->>Sim: Dealer B quotes
+        Sim-->>Server: RfqEvent quoteQuoted
+        Server-->>Adapter: stream.workflowEvent
+        Adapter-->>Events: yield
+        Events-->>Presenter: rfqs$ updated
+        Presenter-->>Hook: emit
+        Hook-->>Tiles: Quote B shows price
     end
 
     Trader->>Tiles: Clicks Accept on best quote
-    Tiles->>RfqHook: accept(quoteId)
-    RfqHook->>WsAdapter: rpc accept with quoteId
-    WsAdapter->>Server: rpc.accept
-    Server->>Engine: accept(quoteId)
-    Engine->>Engine: Accepted quote, others rejected, Rfq Closed
-    Engine-->>Server: quoteAccepted + quoteRejected + rfqClosed events
-    Server-->>WsAdapter: stream.workflowEvent multiple
-    WsAdapter-->>RfqHook: events
-    RfqHook->>Tiles: RFQ shows Closed state
-    Tiles->>Trader: Accepted quote highlighted and RFQ closed
+    Tiles->>Hook: acceptQuote(quoteId)
+    Hook->>Presenter: dispatch acceptIntent
+    Presenter->>Accept: execute(quoteId)
+    Accept->>Adapter: accept(quoteId)
+    Adapter->>Server: rpc.accept
+    Server->>Sim: accept(quoteId)
+    Sim->>Sim: Accepted quote, others rejected, Rfq Closed
+    Sim-->>Server: quoteAccepted + quoteRejected + rfqClosed events
+    Server-->>Adapter: stream.workflowEvent x N
+    Adapter-->>Events: yield events
+    Events-->>Presenter: rfqs$ updated
+    Presenter-->>Hook: emit
+    Hook-->>Tiles: RFQ Closed, accepted quote highlighted
+    Tiles->>Trader: Accepted quote highlighted
 ```
 
 ---
@@ -703,9 +954,9 @@ stateDiagram-v2
 ```mermaid
 graph TB
     subgraph Monorepo
-        domain["@rtc/domain\nPure TypeScript\nZero dependencies"]
+        domain["@rtc/domain\nPure TypeScript\nZero dependencies\n(entities, ports, use cases)"]
         shared["@rtc/shared\nDTOs and Protocol\nWire-format contracts"]
-        client["@rtc/client\nReact 19 + Vite\nWeb SPA"]
+        client["@rtc/client\nApplication Layer + UI Layer\n(currently React 19 + Vite + RxJS)"]
         server["@rtc/server\nNode.js\nWebSocket Server"]
         mobile["@rtc/mobile\nReact Native\nPlanned"]
     end
@@ -726,11 +977,13 @@ graph TB
 ```
 
 **Dependency rule:** Dependencies flow inward only.
-- `domain` has **zero** runtime dependencies (enforced by pnpm strict mode)
-- `shared` depends only on `domain`
-- `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other
+- `domain` has **zero** runtime dependencies (enforced by pnpm strict mode).
+- `shared` depends only on `domain`.
+- `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other.
 
-**Build order** (Turborepo topological): `domain` -> `shared` -> `client` | `server`
+**Build order** (Turborepo topological): `domain` -> `shared` -> `client` | `server` | `mobile`.
+
+> The Application Layer and UI Layer currently coexist inside `@rtc/client`. If the size or rate of change justifies it later, the Application Layer can be promoted to its own package (`@rtc/client-app`) without breaking any consumer, because UI components only ever import the hook bridge -- not RxJS or use cases.
 
 ---
 
@@ -784,39 +1037,134 @@ Ensures clients have a consistent view after (re)connection.
 
 ### Async Iteration Pattern
 
-Both client and server use `AsyncIterable<T>` as the universal streaming abstraction:
+`AsyncIterable<T>` is the universal streaming abstraction across the boundary. Inside the client Application Layer, it is bridged to RxJS at the presenter boundary; inside the server, simulators emit it directly.
 
 ```
 Domain Port (interface)     ->  AsyncIterable<PriceTick>
   |
-Mock Implementation         ->  async generator yielding ticks
+Simulator (server)          ->  async generator yielding ticks
   |
 Server WS Handler           ->  for await (tick of port) { ws.send(toDto(tick)) }
   |
 Client WS Adapter           ->  createAsyncQueue<T>() bridges ws.onmessage -> AsyncIterable
   |
-React Hook                  ->  for await (tick of port) { setState(enrich(tick)) }
+Use Case                    ->  enriches AsyncIterable<PriceTick> -> AsyncIterable<Price>
+  |
+Presenter                   ->  from(asyncIterable) -> Observable<Price> (RxJS)
+  |
+react-rxjs hook             ->  bind(price$) -> usePrice(symbol)
+  |
+React component             ->  const price = usePrice(symbol); render
 ```
 
 ---
 
-## 8. Key Design Decisions
+## 8. Replaceability Matrix
 
-| Decision | Rationale |
-|----------|-----------|
-| **AsyncIterable everywhere (no RxJS on client)** | Simpler than Observables for fire-and-forget streams; same abstraction domain-to-UI |
-| **Streaming-first data model** | Real-time financial data naturally flows as streams, not snapshots + polling |
-| **Mock implementations in domain** | Tests run without network; prod uses same port interfaces with different adapters |
-| **WebSocket + RPC pattern** | Subscriptions for data, RPC for commands -- clean separation of concerns |
-| **SoW markers** | Ensures consistent state after reconnect without full re-fetch |
-| **Pure domain with zero deps** | Fully testable, portable; any framework is replaceable by changing only its package |
-| **Correlation IDs for RPC** | Multiplexes many concurrent RPC calls over a single WebSocket connection |
-| **React Context for DI** | `ServiceProvider` swaps mock/real adapters; no prop drilling |
-| **AbortController per subscription** | Graceful cleanup when WebSocket closes -- all active streams are cancelled |
+This is the load-bearing section: the architecture's value comes from the cost-of-change for each technology being bounded and well-understood.
+
+| Component | Currently | Cost to replace | Contract that must hold | Tests that verify |
+|---|---|---|---|---|
+| **UI framework** | React 19 | ~1 dev-week (rewrite components) | Hook signatures (`usePrice`, `useTrades`, ...) and intent callbacks. No business logic in components. | Behavioural specs (Gherkin), unchanged |
+| **State streams ↔ UI bridge** | react-rxjs | ~1 dev-day (write `solid-rxjs` etc.) | `Observable<T>` -> framework-native reactive primitive | Hook contract tests, unchanged |
+| **State streams** | RxJS | ~1 dev-week (rewrite presenter layer) | `AsyncIterable<T>` in, framework-native stream out at hook boundary | Use-case tests + presenter contract tests |
+| **Use cases** | Vanilla TS | N/A (this is the domain) | -- | Unit tests over use cases with simulator ports |
+| **Boundary stream type** | `AsyncIterable<T>` | Very high (this is the spine) | -- | -- |
+| **Port adapters (transport)** | WebSocket-backed | ~1 dev-week per adapter family | Implements port interface | Contract tests parameterised over adapter |
+| **Server framework** | Node.js + native WS | ~1 dev-week | Adapter-side: implements port. Wire format: DTOs in `@rtc/shared`. | Server integration tests against DTOs |
+| **Wire format** | JSON over WS | High (both ends change together) | DTOs in `@rtc/shared` + protocol type enums | DTO round-trip tests + e2e |
+| **Build tooling** | Vite | ~1 dev-day | Bundles `@rtc/client`, serves dev | -- |
+| **Unit test runner** | Vitest | ~1 dev-day | Same test files runnable | The tests themselves |
+| **E2E driver** | Playwright | ~3 dev-days | Page Object interfaces unchanged; only their bodies are rewritten | Behavioural specs (Gherkin) drive both old and new |
+| **Behavioural spec language** | Gherkin (planned) | High (rewrite specs) | -- | -- |
+| **Build orchestration** | pnpm + Turborepo | ~1 dev-day | Build graph: domain -> shared -> client/server | -- |
+
+**How this is achieved**: every "Cost" above assumes the rest of the system stays put. That is only true because (a) inner layers never import outer-layer types, (b) ports are dependency-inverted, and (c) behavioural tests are written against behaviour, not implementation.
 
 ---
 
-## Key Files Reference
+## 9. Test Strategy
+
+Tests are layered the same way the system is. Each layer has its own kind of test, and **no test is allowed to import a tool from a layer it isn't testing**.
+
+```
+Behavioural Specs (Gherkin)             - WHAT the system does
+  |
+Step Definitions / Page Objects         - HOW to drive the system today
+  |  (Playwright today; replaceable)
+  |
+Test Runner / Driver                    - Vitest, Playwright, ...
+```
+
+### 9.1 Layers
+
+| Test layer | Tests | Tooling-coupled? | Survives technology swap? |
+|---|---|---|---|
+| **Behavioural specs** (Gherkin `.feature` files) | End-user behaviour, scenario style | No -- pure spec | Yes |
+| **Step definitions** | Map Gherkin steps to actions | Yes -- import the driver | Rewritten when driver changes |
+| **Page Objects** | Encapsulate selectors, waits, intent emission | Yes -- import the driver | Rewritten when UI framework or driver changes |
+| **Use-case tests** | Use case behaviour with stubbed ports | Test framework only | Yes (tests import vanilla TS) |
+| **Port contract tests** | Same suite run against simulator and WsReal adapters | Test framework only | Yes |
+| **Domain entity tests** | Pure functions over entities | Test framework only | Yes |
+| **Component tests** (optional) | Render component, assert hook contract is honoured | UI framework + test framework | Rewritten when UI framework changes |
+
+### 9.2 Gherkin example
+
+```gherkin
+Feature: FX price streaming
+  As a trader
+  I want to see live bid/ask prices
+  So that I can decide when to trade
+
+  Scenario: a price tile shows the latest mid price
+    Given the trader has the FX workspace open
+    When the pricing service emits a tick for "EURUSD" with bid 1.1000 and ask 1.1002
+    Then the EURUSD tile shows bid "1.1000" and ask "1.1002"
+    And the spread is rendered as "2.0" pips
+```
+
+The same `.feature` file is consumed by:
+- **client-side e2e step defs** (Playwright today) -- drives a real browser, asserts DOM.
+- **application-layer step defs** -- drives presenters directly, asserts hook output, no browser. Fast.
+
+If Playwright is replaced by another driver, only the e2e step defs change. Replacing React with SolidJS rewrites the page objects but not the specs.
+
+### 9.3 Linking specs to existing project specs
+
+The codebase already contains specs (separate from tests) that describe expected behaviour. The intent is to **converge** on Gherkin: existing specs become the seed for `.feature` files, and the `.feature` files become the single source of truth that all test layers reference. Where today's specs are prose, they will be incrementally rewritten in Given/When/Then form.
+
+### 9.4 Port contract tests
+
+A single test suite is parameterised over **all** adapters that implement a port. The same scenarios run against:
+- the in-process simulator,
+- the WsReal adapter (against a stub WebSocket server),
+- any future adapter (e.g. a different transport).
+
+This is what makes "swap an adapter" a low-cost operation: the contract is encoded in tests and they all must pass.
+
+---
+
+## 10. Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **`AsyncIterable<T>` at every boundary** | Language primitive, not framework type. Decouples domain and use cases from RxJS, Observables, signals, etc. |
+| **RxJS only in the presenter layer** | Earns its keep for share-replay, derived streams, time operators. Confined so that swapping it touches one layer, not the codebase. |
+| **react-rxjs as the UI bridge** | Tiny library, easy to replicate for SolidJS/Svelte/etc. UI sees only hook contracts, never `Observable<T>`. |
+| **No DI in the UI tree** | Composition Root constructs the graph at startup. UI imports already-bound hooks. No `ServiceProvider` Context. |
+| **Use cases own enrichment, not hooks** | `detectMovement + calculateSpread` and similar live in `PriceStreamUseCase`, so a UI rewrite cannot lose them. |
+| **Streaming-first data model** | Real-time financial data naturally flows as streams, not snapshots + polling. |
+| **Simulators in the domain (not "mocks")** | Production code that stands in for an external venue. Same port interfaces; adapters are swapped at the Composition Root. |
+| **WebSocket + RPC pattern** | Subscriptions for data, RPC with correlation IDs for commands -- clean separation, multiplexed over one connection. |
+| **SoW markers** | Ensures consistent state after reconnect without full re-fetch. |
+| **Pure domain with zero deps** | Fully testable, portable; pnpm strict mode enforces zero `dependencies` in `@rtc/domain/package.json`. |
+| **AbortController per subscription** | Graceful cleanup when WebSocket closes -- all active streams are cancelled. |
+| **Behavioural specs in Gherkin** (planned) | One source of truth for expected behaviour, runnable from multiple test drivers. Survives driver and framework swaps. |
+| **Don't abstract React or RxJS behind portability shims** | Wrapping them produces leaky facades; instead keep their layers thin and rely on behavioural tests to make regeneration cheap. |
+
+---
+
+## 11. Key Files Reference
 
 | Area | Path | Description |
 |------|------|-------------|
@@ -824,12 +1172,17 @@ React Hook                  ->  for await (tick of port) { setState(enrich(tick)
 | **FX Entities** | `packages/domain/src/fx/*.ts` | CurrencyPair, Price, Trade, Notional |
 | **Credit Entities** | `packages/domain/src/credit/*.ts` | Instrument, Dealer, Rfq, Quote |
 | **Connection** | `packages/domain/src/connection/*.ts` | ConnectionStatus state machine |
-| **Domain Mocks** | `packages/domain/src/mock/*.ts` | 8 mock implementations |
+| **Use Cases** (target location) | `packages/domain/src/usecases/*.ts` or `packages/client/src/app/usecases/*.ts` | Application logic; today partially in client hooks |
+| **Simulators** | `packages/domain/src/simulators/*.ts` (today: `mock/`) | In-memory port impls |
 | **Shared DTOs** | `packages/shared/src/fx/*.ts`, `credit/*.ts` | Wire-format contracts |
 | **Protocol** | `packages/shared/src/protocol/*.ts` | RPC and SoW envelopes |
-| **Client Services** | `packages/client/src/services/*.ts` | WsAdapter, mock/real factories |
-| **Client FX Hooks** | `packages/client/src/fx/hooks/*.ts` | usePriceStream, useExecuteTrade |
-| **Client Credit Hooks** | `packages/client/src/credit/hooks/*.ts` | useRfqStream, useCreateRfq |
+| **Composition Root** (target) | `packages/client/src/app/composition.ts` | Wires ports → use cases → presenters at startup |
+| **Presenters** (target) | `packages/client/src/app/presenters/*.ts` | RxJS streams, one file per area |
+| **react-rxjs Hooks** (target) | `packages/client/src/ui/hooks/*.ts` | Generated bindings to presenters |
+| **Client Services** (current) | `packages/client/src/services/*.ts` | WsAdapter, simulator/real factories -- to be reorganised under `app/` |
+| **Client UI Components** | `packages/client/src/ui/**/*.tsx` | React components -- target location after reorg |
 | **Server Entry** | `packages/server/src/index.ts` | HTTP + WebSocket setup |
 | **Server WS Handler** | `packages/server/src/ws/ws-handler.ts` | Subscription & RPC routing |
 | **Server Protocol** | `packages/server/src/ws/protocol.ts` | Message type constants |
+| **Behavioural Specs** (planned) | `tests/specs/**/*.feature` | Gherkin scenarios, framework-free |
+| **Page Objects** (planned) | `tests/page-objects/**/*.ts` | Encapsulate Playwright selectors |
