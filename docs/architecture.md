@@ -1173,7 +1173,7 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 | **Credit Entities** | `packages/domain/src/credit/*.ts` | Instrument, Dealer, Rfq, Quote |
 | **Connection** | `packages/domain/src/connection/*.ts` | ConnectionStatus state machine |
 | **Use Cases** (target location) | `packages/domain/src/usecases/*.ts` or `packages/client/src/app/usecases/*.ts` | Application logic; today partially in client hooks |
-| **Simulators** | `packages/domain/src/simulators/*.ts` (today: `mock/`) | In-memory port impls |
+| **Simulators** | `packages/domain/src/simulators/*.ts` | In-memory port impls |
 | **Shared DTOs** | `packages/shared/src/fx/*.ts`, `credit/*.ts` | Wire-format contracts |
 | **Protocol** | `packages/shared/src/protocol/*.ts` | RPC and SoW envelopes |
 | **Composition Root** (target) | `packages/client/src/app/composition.ts` | Wires ports → use cases → presenters at startup |
