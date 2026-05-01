@@ -1,25 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import { type PriceTick, PRICE_HISTORY_SIZE } from "@rtc/domain";
+import { useEffect, useState } from "react";
+import { type PriceTick, PriceHistoryUseCase } from "@rtc/domain";
 import { useServices } from "../../services/service-provider";
 
 export function usePriceHistory(symbol: string): readonly PriceTick[] {
   const { pricing } = useServices();
   const [history, setHistory] = useState<readonly PriceTick[]>([]);
-  const bufferRef = useRef<PriceTick[]>([]);
 
   useEffect(() => {
+    const useCase = new PriceHistoryUseCase(pricing);
     let cancelled = false;
-    bufferRef.current = [];
 
     (async () => {
-      for await (const tick of pricing.getPriceUpdates(symbol)) {
+      for await (const window of useCase.execute(symbol)) {
         if (cancelled) break;
-        const buf = bufferRef.current;
-        buf.push(tick);
-        if (buf.length > PRICE_HISTORY_SIZE) {
-          buf.shift();
-        }
-        setHistory([...buf]);
+        setHistory(window);
       }
     })();
 
