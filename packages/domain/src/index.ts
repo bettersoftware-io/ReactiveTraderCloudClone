@@ -55,3 +55,6 @@ export {
   DEALERS_CATALOG,
 } from "./simulators/index.js";
 export type { RfqQuoteResult, TradeListener } from "./simulators/index.js";
+
+// Use Cases
+export { PriceStreamUseCase } from "./usecases/index.js";
