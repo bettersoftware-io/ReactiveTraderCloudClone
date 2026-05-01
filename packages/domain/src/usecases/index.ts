@@ -8,3 +8,5 @@ export {
   reduceRfqEvent,
 } from "./workflow-event-stream-use-case.js";
 export type { RfqStreamState } from "./workflow-event-stream-use-case.js";
+export { CreateRfqUseCase, RFQ_DEFAULT_EXPIRY_SECS } from "./create-rfq-use-case.js";
+export type { CreateRfqInput } from "./create-rfq-use-case.js";

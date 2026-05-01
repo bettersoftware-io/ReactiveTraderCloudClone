@@ -57,5 +57,5 @@ export {
 export type { RfqQuoteResult, TradeListener } from "./simulators/index.js";
 
 // Use Cases
-export { PriceStreamUseCase, PriceHistoryUseCase, ExecuteTradeUseCase, AnalyticsUseCase, WorkflowEventStreamUseCase, reduceRfqEvent } from "./usecases/index.js";
-export type { ExecuteTradeInput, ExecuteTradeResult, RfqStreamState } from "./usecases/index.js";
+export { PriceStreamUseCase, PriceHistoryUseCase, ExecuteTradeUseCase, AnalyticsUseCase, WorkflowEventStreamUseCase, reduceRfqEvent, CreateRfqUseCase, RFQ_DEFAULT_EXPIRY_SECS } from "./usecases/index.js";
+export type { ExecuteTradeInput, ExecuteTradeResult, RfqStreamState, CreateRfqInput } from "./usecases/index.js";

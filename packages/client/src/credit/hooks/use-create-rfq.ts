@@ -1,29 +1,18 @@
 import { useCallback } from "react";
-import { Direction, CREDIT_QUANTITY_MULTIPLIER } from "@rtc/domain";
+import { type Direction, CreateRfqUseCase } from "@rtc/domain";
 import { useServices } from "../../services/service-provider";
 
-interface CreateRfqParams {
+export interface CreateRfqParams {
   instrumentId: number;
   dealerIds: number[];
-  quantity: number; // raw user input (will be multiplied)
+  quantity: number;
   direction: Direction;
 }
 
-export function useCreateRfq() {
+export function useCreateRfq(): (params: CreateRfqParams) => Promise<number> {
   const { workflow } = useServices();
-
-  const createRfq = useCallback(
-    async (params: CreateRfqParams): Promise<number> => {
-      return workflow.createRfq({
-        instrumentId: params.instrumentId,
-        dealerIds: params.dealerIds,
-        quantity: params.quantity * CREDIT_QUANTITY_MULTIPLIER,
-        direction: params.direction,
-        expirySecs: 120,
-      });
-    },
+  return useCallback(
+    (params) => new CreateRfqUseCase(workflow).execute(params),
     [workflow],
   );
-
-  return createRfq;
 }
