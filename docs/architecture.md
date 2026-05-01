@@ -1172,7 +1172,7 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 | **FX Entities** | `packages/domain/src/fx/*.ts` | CurrencyPair, Price, Trade, Notional |
 | **Credit Entities** | `packages/domain/src/credit/*.ts` | Instrument, Dealer, Rfq, Quote |
 | **Connection** | `packages/domain/src/connection/*.ts` | ConnectionStatus state machine |
-| **Use Cases** (target location) | `packages/domain/src/usecases/*.ts` or `packages/client/src/app/usecases/*.ts` | Application logic; today partially in client hooks |
+| **Use Cases** | `packages/domain/src/usecases/*.ts` | Application logic; 6 use cases extracted in Phase 2 |
 | **Simulators** | `packages/domain/src/simulators/*.ts` | In-memory port impls |
 | **Shared DTOs** | `packages/shared/src/fx/*.ts`, `credit/*.ts` | Wire-format contracts |
 | **Protocol** | `packages/shared/src/protocol/*.ts` | RPC and SoW envelopes |
