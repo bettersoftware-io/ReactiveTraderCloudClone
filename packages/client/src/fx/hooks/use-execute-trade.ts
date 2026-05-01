@@ -4,8 +4,7 @@ import {
   type Price,
   Direction,
   ExecutionStatus,
-  TradeStatus,
-  deriveDealtCurrency,
+  ExecuteTradeUseCase,
 } from "@rtc/domain";
 import { useServices } from "../../services/service-provider";
 import type { UseTileStateResult } from "./use-tile-state";
@@ -18,32 +17,18 @@ export function useExecuteTrade(
 
   const execute = useCallback(
     async (direction: Direction, price: Price, notional: number) => {
-      const spotRate =
-        direction === Direction.Buy ? price.ask : price.bid;
-      const dealtCurrency = deriveDealtCurrency(pair.symbol, direction);
+      const useCase = new ExecuteTradeUseCase(execution);
 
       tileState.start();
 
       try {
-        const trade = await execution.executeTrade({
-          currencyPair: pair.symbol,
-          spotRate,
-          direction,
-          notional,
-          dealtCurrency,
-        });
-
-        const executionStatus =
-          trade.status === TradeStatus.Rejected
-            ? ExecutionStatus.Rejected
-            : ExecutionStatus.Done;
-
-        tileState.finish(executionStatus, trade);
+        const { status, trade } = await useCase.execute({ pair, direction, price, notional });
+        tileState.finish(status, trade);
       } catch {
         tileState.finish(ExecutionStatus.Timeout);
       }
     },
-    [execution, pair.symbol, tileState],
+    [execution, pair, tileState],
   );
 
   return execute;

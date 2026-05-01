@@ -57,4 +57,5 @@ export {
 export type { RfqQuoteResult, TradeListener } from "./simulators/index.js";
 
 // Use Cases
-export { PriceStreamUseCase, PriceHistoryUseCase } from "./usecases/index.js";
+export { PriceStreamUseCase, PriceHistoryUseCase, ExecuteTradeUseCase } from "./usecases/index.js";
+export type { ExecuteTradeInput, ExecuteTradeResult } from "./usecases/index.js";
