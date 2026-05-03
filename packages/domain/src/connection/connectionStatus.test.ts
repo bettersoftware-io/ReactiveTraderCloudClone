@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ConnectionStatus, nextConnectionStatus, mapGatewayStatus } from "./connection-status.js";
-import type { ConnectionEvent } from "./connection-status.js";
+import { ConnectionStatus, nextConnectionStatus, mapGatewayStatus } from "./connectionStatus.js";
+import type { ConnectionEvent } from "./connectionStatus.js";
 
 describe("nextConnectionStatus", () => {
   it("CONNECTING -> CONNECTED on gatewayConnected", () => {

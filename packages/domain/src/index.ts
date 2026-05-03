@@ -1,6 +1,6 @@
 // FX
-export type { CurrencyPair } from "./fx/currency-pair.js";
-export { deriveBaseTerm, KNOWN_CURRENCY_PAIRS } from "./fx/currency-pair.js";
+export type { CurrencyPair } from "./fx/currencyPair.js";
+export { deriveBaseTerm, KNOWN_CURRENCY_PAIRS } from "./fx/currencyPair.js";
 
 export type { PriceTick, Price } from "./fx/price.js";
 export { PriceMovementType, calculateSpread, detectMovement, PRICE_HISTORY_SIZE } from "./fx/price.js";
@@ -11,12 +11,12 @@ export { Direction, TradeStatus, ExecutionStatus, deriveDealtCurrency, EXECUTION
 export type { NotionalParseResult } from "./fx/notional.js";
 export { parseNotional, isRfqRequired, validateNotional, DEFAULT_NOTIONAL, MAX_NOTIONAL, RFQ_THRESHOLD } from "./fx/notional.js";
 
-export type { CurrencyCategory } from "./fx/currency-filter.js";
-export { CURRENCY_CATEGORIES, matchesCurrencyFilter } from "./fx/currency-filter.js";
+export type { CurrencyCategory } from "./fx/currencyFilter.js";
+export { CURRENCY_CATEGORIES, matchesCurrencyFilter } from "./fx/currencyFilter.js";
 
 // Connection
-export { ConnectionStatus, IDLE_TIMEOUT_MS, RECONNECT_INTERVAL_MS, nextConnectionStatus, mapGatewayStatus } from "./connection/connection-status.js";
-export type { ConnectionEvent, GatewayStatus } from "./connection/connection-status.js";
+export { ConnectionStatus, IDLE_TIMEOUT_MS, RECONNECT_INTERVAL_MS, nextConnectionStatus, mapGatewayStatus } from "./connection/connectionStatus.js";
+export type { ConnectionEvent, GatewayStatus } from "./connection/connectionStatus.js";
 
 // Analytics
 export type { CurrencyPairPosition, HistoricPosition, PositionUpdates } from "./analytics/position.js";
@@ -29,7 +29,7 @@ export type { Rfq } from "./credit/rfq.js";
 export { RfqState, CREDIT_QUANTITY_MULTIPLIER, CREDIT_MAX_QUANTITY_INPUT } from "./credit/rfq.js";
 export type { Quote, QuoteState } from "./credit/quote.js";
 export { validQuoteTransitions } from "./credit/quote.js";
-export type { CreditTrade } from "./credit/credit-trade.js";
+export type { CreditTrade } from "./credit/creditTrade.js";
 
 // Ports
 export type { ReferenceDataPort } from "./ports/referenceDataPort.js";

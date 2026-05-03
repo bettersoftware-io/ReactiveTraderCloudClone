@@ -1,7 +1,7 @@
 import type { PriceTick } from "../fx/price.js";
-import type { CurrencyPair } from "../fx/currency-pair.js";
+import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { PricingPort } from "../ports/pricingPort.js";
-import { KNOWN_CURRENCY_PAIRS } from "../fx/currency-pair.js";
+import { KNOWN_CURRENCY_PAIRS } from "../fx/currencyPair.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
 
 const HALF_SPREAD = 0.0002;

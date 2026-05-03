@@ -1,4 +1,4 @@
-import type { CurrencyPair } from "../fx/currency-pair.js";
+import type { CurrencyPair } from "../fx/currencyPair.js";
 
 export interface ReferenceDataPort {
   getCurrencyPairs(): AsyncIterable<readonly CurrencyPair[]>;

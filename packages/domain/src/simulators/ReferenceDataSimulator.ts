@@ -1,6 +1,6 @@
-import type { CurrencyPair } from "../fx/currency-pair.js";
+import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { ReferenceDataPort } from "../ports/referenceDataPort.js";
-import { KNOWN_CURRENCY_PAIRS } from "../fx/currency-pair.js";
+import { KNOWN_CURRENCY_PAIRS } from "../fx/currencyPair.js";
 import { delay } from "./delay.js";
 
 const INITIAL_DELAY_MS = 1_000;

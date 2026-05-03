@@ -1,5 +1,5 @@
 import type { PricingPort } from "../ports/pricingPort.js";
-import type { CurrencyPair } from "../fx/currency-pair.js";
+import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { Price } from "../fx/price.js";
 import { calculateSpread, detectMovement } from "../fx/price.js";
 

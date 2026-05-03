@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ExecuteTradeUseCase } from "./ExecuteTradeUseCase.js";
 import type { ExecutionPort } from "../ports/executionPort.js";
-import type { CurrencyPair } from "../fx/currency-pair.js";
+import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { Price } from "../fx/price.js";
 import { PriceMovementType } from "../fx/price.js";
 import type { Trade, ExecutionRequest } from "../fx/trade.js";

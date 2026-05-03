@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { matchesCurrencyFilter } from "./currency-filter.js";
+import { matchesCurrencyFilter } from "./currencyFilter.js";
 
 describe("matchesCurrencyFilter", () => {
   it("All matches everything", () => {
