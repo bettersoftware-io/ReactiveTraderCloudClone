@@ -8,18 +8,8 @@ export function usePriceHistory(symbol: string): readonly PriceTick[] {
 
   useEffect(() => {
     const useCase = new PriceHistoryUseCase(pricing);
-    let cancelled = false;
-
-    (async () => {
-      for await (const window of useCase.execute(symbol)) {
-        if (cancelled) break;
-        setHistory(window);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    const sub = useCase.execute(symbol).subscribe(setHistory);
+    return () => sub.unsubscribe();
   }, [pricing, symbol]);
 
   return history;

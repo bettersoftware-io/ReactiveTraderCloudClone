@@ -1,6 +1,7 @@
 import type {
   ReferenceDataPort,
   PricingPort,
+  RfqQuoteResult,
   ExecutionPort,
   BlotterPort,
   AnalyticsPort,
@@ -149,35 +150,72 @@ function createReferenceDataPort(ws: WsAdapter): ReferenceDataPort {
 
 function createPricingPort(ws: WsAdapter): PricingPort {
   return {
-    getPriceUpdates(symbol: string): AsyncIterable<PriceTick> {
-      const q = createAsyncQueue<PriceTick>();
-      const unsub = ws.on(SERVER_MSG.PRICE_TICK, (payload) => {
-        const dto = payload as PriceTickDto;
-        if (dto.symbol === symbol) {
-          q.push(dto);
-        }
+    getPriceUpdates(symbol: string): Observable<PriceTick> {
+      return new Observable<PriceTick>((subscriber) => {
+        const unsub = ws.on(SERVER_MSG.PRICE_TICK, (payload) => {
+          const dto = payload as PriceTickDto;
+          if (dto.symbol === symbol) {
+            subscriber.next(dto);
+          }
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_PRICING, { symbol });
+        return () => {
+          unsub();
+        };
       });
-      ws.send(CLIENT_MSG.SUBSCRIBE_PRICING, { symbol });
-      const original = q.iterable;
-      return {
-        [Symbol.asyncIterator]() {
-          const iter = original[Symbol.asyncIterator]();
-          return {
-            next: () => iter.next(),
-            return() {
-              unsub();
-              q.dispose();
-              return iter.return!();
-            },
-          };
-        },
-      };
     },
 
-    async getPriceHistory(symbol: string): Promise<readonly PriceTick[]> {
-      const resp = await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, { symbol }) as RpcResponse<PriceHistoryDto>;
-      if (resp.type === "nack") throw new Error("Failed to get price history");
-      return resp.payload!.prices;
+    getPriceHistory(symbol: string): Observable<readonly PriceTick[]> {
+      return new Observable<readonly PriceTick[]>((subscriber) => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, { symbol })) as RpcResponse<PriceHistoryDto>;
+            if (cancelled) return;
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Failed to get price history"));
+              return;
+            }
+            subscriber.next(resp.payload!.prices);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      });
+    },
+
+    getRfqQuote(symbol: string, pipsPosition: number): Observable<RfqQuoteResult> {
+      // No dedicated wire RPC for FX RFQ quotes; derive from the latest price-history tick.
+      return new Observable<RfqQuoteResult>((subscriber) => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, { symbol })) as RpcResponse<PriceHistoryDto>;
+            if (cancelled) return;
+            if (resp.type === "nack" || !resp.payload || resp.payload.prices.length === 0) {
+              subscriber.error(new Error(`No price available for ${symbol}`));
+              return;
+            }
+            const last = resp.payload.prices[resp.payload.prices.length - 1];
+            const priceChange = 0.3 / Math.pow(10, pipsPosition);
+            subscriber.next({
+              ask: last.ask + priceChange,
+              bid: last.bid - priceChange,
+              mid: last.mid,
+            });
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      });
     },
   };
 }

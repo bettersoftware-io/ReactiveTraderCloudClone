@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { from, of, firstValueFrom } from "rxjs";
+import { toArray } from "rxjs/operators";
 import { PriceStreamUseCase } from "./PriceStreamUseCase.js";
 import type { PricingPort } from "../ports/pricingPort.js";
 import type { PriceTick, Price } from "../fx/price.js";
@@ -16,19 +18,10 @@ const EURUSD: CurrencyPair = {
 
 function stubPricing(ticks: PriceTick[]): PricingPort {
   return {
-    async *getPriceUpdates(_symbol: string) {
-      for (const tick of ticks) yield tick;
-    },
-    async getPriceHistory(_symbol: string) {
-      return [];
-    },
+    getPriceUpdates: () => from(ticks),
+    getPriceHistory: () => of([] as readonly PriceTick[]),
+    getRfqQuote: () => of({ bid: 0, ask: 0, mid: 0 }),
   };
-}
-
-async function collect<T>(iter: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of iter) out.push(item);
-  return out;
 }
 
 describe("PriceStreamUseCase", () => {
@@ -40,7 +33,7 @@ describe("PriceStreamUseCase", () => {
     ];
     const useCase = new PriceStreamUseCase(stubPricing(ticks));
 
-    const results: Price[] = await collect(useCase.execute(EURUSD));
+    const results: Price[] = await firstValueFrom(useCase.execute(EURUSD).pipe(toArray()));
 
     expect(results).toHaveLength(3);
     expect(results[0].movementType).toBe(PriceMovementType.NONE);
@@ -56,8 +49,8 @@ describe("PriceStreamUseCase", () => {
     ];
     const useCase = new PriceStreamUseCase(stubPricing(ticks));
 
-    const first = await collect(useCase.execute(EURUSD));
-    const second = await collect(useCase.execute(EURUSD));
+    const first = await firstValueFrom(useCase.execute(EURUSD).pipe(toArray()));
+    const second = await firstValueFrom(useCase.execute(EURUSD).pipe(toArray()));
 
     expect(first[0].movementType).toBe(PriceMovementType.NONE);
     expect(second[0].movementType).toBe(PriceMovementType.NONE);

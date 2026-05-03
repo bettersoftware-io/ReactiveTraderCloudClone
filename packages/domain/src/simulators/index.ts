@@ -1,7 +1,6 @@
 export { delay, randomDelay } from "./delay.js";
 export { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";
 export { PricingSimulator } from "./PricingSimulator.js";
-export type { RfqQuoteResult } from "./PricingSimulator.js";
 export { ExecutionSimulator } from "./ExecutionSimulator.js";
 export type { TradeListener } from "./ExecutionSimulator.js";
 export { TradeStoreSimulator } from "./TradeStoreSimulator.js";

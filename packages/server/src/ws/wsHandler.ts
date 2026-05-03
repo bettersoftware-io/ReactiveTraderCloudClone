@@ -21,6 +21,7 @@ import type {
   CancelRfqRequestDto,
 } from "@rtc/shared";
 import type { RfqEvent } from "@rtc/domain";
+import { firstValueFrom } from "rxjs";
 import { CLIENT_MSG, SERVER_MSG, type WsMessage } from "./protocol.js";
 
 type AbortSet = Set<AbortController>;
@@ -193,14 +194,29 @@ function streamReferenceData(ws: WebSocket, svc: ServiceContainer, subs: AbortSe
 }
 
 function streamPricing(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, payload: { symbol: string }): void {
-  iterateStream(ws, subs, svc.pricing.getPriceUpdates(payload.symbol), SERVER_MSG.PRICE_TICK, (tick): PriceTickDto => ({
-    symbol: tick.symbol,
-    bid: tick.bid,
-    ask: tick.ask,
-    mid: tick.mid,
-    valueDate: tick.valueDate,
-    creationTimestamp: tick.creationTimestamp,
-  }));
+  const ac = createSubscription(subs);
+  const sub = svc.pricing.getPriceUpdates(payload.symbol).subscribe({
+    next: (tick) => {
+      if (ac.signal.aborted) return;
+      const dto: PriceTickDto = {
+        symbol: tick.symbol,
+        bid: tick.bid,
+        ask: tick.ask,
+        mid: tick.mid,
+        valueDate: tick.valueDate,
+        creationTimestamp: tick.creationTimestamp,
+      };
+      send(ws, SERVER_MSG.PRICE_TICK, dto);
+    },
+    error: (e) => {
+      if (!ac.signal.aborted) console.error("Pricing stream error:", e);
+      subs.delete(ac);
+    },
+    complete: () => {
+      subs.delete(ac);
+    },
+  });
+  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
 }
 
 function streamBlotter(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
@@ -404,7 +420,7 @@ async function handleExecuteTrade(ws: WebSocket, svc: ServiceContainer, msg: WsM
 async function handleGetPriceHistory(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
   try {
     const { symbol } = msg.payload as { symbol: string };
-    const prices = await svc.pricing.getPriceHistory(symbol);
+    const prices = await firstValueFrom(svc.pricing.getPriceHistory(symbol));
     send(ws, SERVER_MSG.PRICE_HISTORY_RESPONSE, {
       type: "ack",
       payload: { prices: prices.map((p) => ({

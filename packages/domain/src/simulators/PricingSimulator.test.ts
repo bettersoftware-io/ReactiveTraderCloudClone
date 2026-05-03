@@ -1,16 +1,25 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { firstValueFrom, lastValueFrom } from "rxjs";
+import { take, toArray } from "rxjs/operators";
 import { PricingSimulator } from "./PricingSimulator.js";
+import { PRICE_HISTORY_SIZE } from "../fx/price.js";
+
+const MAX_TICK_INTERVAL_MS = 1_000;
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("PricingSimulator", () => {
   it("getPriceHistory returns 50 ticks", async () => {
     const engine = new PricingSimulator();
-    const history = await engine.getPriceHistory("EURUSD");
+    const history = await firstValueFrom(engine.getPriceHistory("EURUSD"));
     expect(history).toHaveLength(50);
   });
 
   it("each tick has correct structure", async () => {
     const engine = new PricingSimulator();
-    const history = await engine.getPriceHistory("EURUSD");
+    const history = await firstValueFrom(engine.getPriceHistory("EURUSD"));
     const tick = history[0];
 
     expect(tick.symbol).toBe("EURUSD");
@@ -23,7 +32,7 @@ describe("PricingSimulator", () => {
 
   it("ask = mid + 0.0002 and bid = mid - 0.0002", async () => {
     const engine = new PricingSimulator();
-    const history = await engine.getPriceHistory("EURUSD");
+    const history = await firstValueFrom(engine.getPriceHistory("EURUSD"));
 
     for (const tick of history) {
       expect(tick.ask).toBeCloseTo(tick.mid + 0.0002, 10);
@@ -33,7 +42,7 @@ describe("PricingSimulator", () => {
 
   it("history ticks are in chronological order", async () => {
     const engine = new PricingSimulator();
-    const history = await engine.getPriceHistory("EURUSD");
+    const history = await firstValueFrom(engine.getPriceHistory("EURUSD"));
 
     for (let i = 1; i < history.length; i++) {
       expect(history[i].creationTimestamp).toBeGreaterThanOrEqual(history[i - 1].creationTimestamp);
@@ -41,21 +50,21 @@ describe("PricingSimulator", () => {
   });
 
   it("getPriceUpdates yields initial history then new ticks", async () => {
+    vi.useFakeTimers();
     const engine = new PricingSimulator();
-    const ticks: any[] = [];
-
-    for await (const tick of engine.getPriceUpdates("EURUSD")) {
-      ticks.push(tick);
-      if (ticks.length >= 52) break; // 50 history + 2 new
-    }
-
-    expect(ticks.length).toBeGreaterThanOrEqual(52);
+    const promise = lastValueFrom(
+      engine.getPriceUpdates("EURUSD").pipe(take(PRICE_HISTORY_SIZE + 2), toArray()),
+    );
+    // Drive the live tick scheduler — random interval is bounded by MAX_TICK_INTERVAL_MS.
+    await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 4);
+    const ticks = await promise;
+    expect(ticks.length).toBeGreaterThanOrEqual(PRICE_HISTORY_SIZE + 2);
     expect(ticks[0].symbol).toBe("EURUSD");
   });
 
-  it("getRfqQuote widens the spread", () => {
+  it("getRfqQuote widens the spread", async () => {
     const engine = new PricingSimulator();
-    const quote = engine.getRfqQuote("EURUSD", 4);
+    const quote = await firstValueFrom(engine.getRfqQuote("EURUSD", 4));
 
     // priceChange = 0.3 / 10^4 = 0.00003
     const expectedAsk = quote.mid + 0.0002 + 0.00003;
@@ -66,6 +75,6 @@ describe("PricingSimulator", () => {
 
   it("throws for unknown symbol", async () => {
     const engine = new PricingSimulator();
-    await expect(engine.getPriceHistory("INVALID")).rejects.toThrow("Unknown symbol");
+    await expect(firstValueFrom(engine.getPriceHistory("INVALID"))).rejects.toThrow("Unknown symbol");
   });
 });

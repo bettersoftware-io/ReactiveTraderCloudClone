@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { from, of, firstValueFrom } from "rxjs";
+import { toArray } from "rxjs/operators";
 import { PriceHistoryUseCase } from "./PriceHistoryUseCase.js";
 import type { PricingPort } from "../ports/pricingPort.js";
 import type { PriceTick } from "../fx/price.js";
@@ -6,12 +8,9 @@ import { PRICE_HISTORY_SIZE } from "../fx/price.js";
 
 function stubPricing(ticks: PriceTick[]): PricingPort {
   return {
-    async *getPriceUpdates(_symbol: string) {
-      for (const tick of ticks) yield tick;
-    },
-    async getPriceHistory(_symbol: string) {
-      return [];
-    },
+    getPriceUpdates: () => from(ticks),
+    getPriceHistory: () => of([] as readonly PriceTick[]),
+    getRfqQuote: () => of({ bid: 0, ask: 0, mid: 0 }),
   };
 }
 
@@ -26,18 +25,12 @@ function tick(timestamp: number, mid: number): PriceTick {
   };
 }
 
-async function collect<T>(iter: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of iter) out.push(item);
-  return out;
-}
-
 describe("PriceHistoryUseCase", () => {
   it("yields a growing window for the first N ticks", async () => {
     const ticks = [tick(1, 1.10), tick(2, 1.11), tick(3, 1.12)];
     const useCase = new PriceHistoryUseCase(stubPricing(ticks));
 
-    const windows = await collect(useCase.execute("EURUSD"));
+    const windows = await firstValueFrom(useCase.execute("EURUSD").pipe(toArray()));
 
     expect(windows).toHaveLength(3);
     expect(windows[0]).toEqual([ticks[0]]);
@@ -49,7 +42,7 @@ describe("PriceHistoryUseCase", () => {
     const allTicks = Array.from({ length: PRICE_HISTORY_SIZE + 3 }, (_, i) => tick(i, i));
     const useCase = new PriceHistoryUseCase(stubPricing(allTicks));
 
-    const windows = await collect(useCase.execute("EURUSD"));
+    const windows = await firstValueFrom(useCase.execute("EURUSD").pipe(toArray()));
 
     expect(windows).toHaveLength(PRICE_HISTORY_SIZE + 3);
     const last = windows[windows.length - 1];

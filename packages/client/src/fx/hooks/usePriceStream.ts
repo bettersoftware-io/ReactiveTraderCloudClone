@@ -21,18 +21,10 @@ export function usePriceStream(pair: CurrencyPair): PriceStreamResult {
 
   useEffect(() => {
     const useCase = new PriceStreamUseCase(pricing);
-    let cancelled = false;
-
-    (async () => {
-      for await (const enriched of useCase.execute(pair)) {
-        if (cancelled) break;
-        setState((prev) => ({ price: enriched, version: prev.version + 1 }));
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    const sub = useCase.execute(pair).subscribe((price) =>
+      setState((prev) => ({ price, version: prev.version + 1 })),
+    );
+    return () => sub.unsubscribe();
   }, [pricing, pair]);
 
   return state;

@@ -33,7 +33,7 @@ export type { CreditTrade } from "./credit/creditTrade.js";
 
 // Ports
 export type { ReferenceDataPort } from "./ports/referenceDataPort.js";
-export type { PricingPort } from "./ports/pricingPort.js";
+export type { PricingPort, RfqQuoteResult } from "./ports/pricingPort.js";
 export type { ExecutionPort } from "./ports/executionPort.js";
 export type { BlotterPort } from "./ports/blotterPort.js";
 export type { AnalyticsPort } from "./ports/analyticsPort.js";
@@ -54,7 +54,7 @@ export {
   INSTRUMENTS_CATALOG,
   DEALERS_CATALOG,
 } from "./simulators/index.js";
-export type { RfqQuoteResult, TradeListener } from "./simulators/index.js";
+export type { TradeListener } from "./simulators/index.js";
 
 // Use Cases
 export { PriceStreamUseCase, PriceHistoryUseCase, ExecuteTradeUseCase, AnalyticsUseCase, WorkflowEventStreamUseCase, reduceRfqEvent, CreateRfqUseCase, RFQ_DEFAULT_EXPIRY_SECS } from "./usecases/index.js";
