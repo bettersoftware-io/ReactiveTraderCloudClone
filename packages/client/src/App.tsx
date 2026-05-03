@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Header, type WorkspaceTab } from "./layout/header";
-import { Footer } from "./layout/footer";
-import { Workspace } from "./layout/workspace";
+import { Header, type WorkspaceTab } from "./layout/Header";
+import { Footer } from "./layout/Footer";
+import { Workspace } from "./layout/Workspace";
 import { ConnectionOverlay } from "./connection/connection-overlay";
 
 export function App() {

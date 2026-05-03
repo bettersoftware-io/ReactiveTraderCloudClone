@@ -1,9 +1,9 @@
 import { LiveRatesPanel } from "../fx/live-rates/live-rates-panel";
 import { FxBlotter } from "../blotter/fx-blotter";
-import { AnalyticsPanel } from "../analytics/analytics-panel";
+import { AnalyticsPanel } from "../analytics/AnalyticsPanel";
 import { CreditWorkspace } from "../credit/credit-workspace";
-import { AdminPanel } from "../admin/admin-panel";
-import type { WorkspaceTab } from "./header";
+import { AdminPanel } from "../admin/AdminPanel";
+import type { WorkspaceTab } from "./Header";
 
 interface WorkspaceProps {
   activeTab: WorkspaceTab;

@@ -1,8 +1,8 @@
-import { useAnalytics } from "./hooks/use-analytics";
-import { PnlChart } from "./pnl-chart";
-import { PnlValue } from "./pnl-value";
-import { PositionBubbles } from "./position-bubbles";
-import { PairPnlBars } from "./pair-pnl-bars";
+import { useAnalytics } from "./hooks/useAnalytics";
+import { PnlChart } from "./PnlChart";
+import { PnlValue } from "./PnlValue";
+import { PositionBubbles } from "./PositionBubbles";
+import { PairPnlBars } from "./PairPnlBars";
 import { StaleIndicator } from "../stale/stale-indicator";
 import { useStaleDetection } from "../stale/use-stale-detection";
 
