@@ -12,6 +12,9 @@
     "dev": "tsc --build --watch",
     "clean": "rm -rf dist"
   },
+  "dependencies": {
+    "rxjs": "^7.8"
+  },
   "devDependencies": {
     "vitest": "^3"
   }

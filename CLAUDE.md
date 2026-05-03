@@ -25,7 +25,7 @@ pnpm clean       # Remove dist/ in all packages
 
 ```
 packages/
-  domain/    @rtc/domain   — Pure TS, ZERO runtime dependencies. Entities, use cases, port interfaces.
+  domain/    @rtc/domain   — Pure TS, depends only on rxjs at runtime. Entities, use cases, port interfaces, simulators.
   shared/    @rtc/shared   — DTOs, wire-format contracts. Depends on domain.
   client/    @rtc/client   — React + RxJS + Vite. Depends on domain, shared.
   mobile/    @rtc/mobile   — React Native (planned). Depends on domain, shared.
@@ -34,7 +34,7 @@ packages/
 
 **Dependency rule:** dependencies flow inward only. `domain` has zero runtime deps. `shared` depends only on `domain`. `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other.
 
-**Zero-dep constraint on `@rtc/domain`:** Domain must never have `dependencies` in its `package.json`. It uses native JS abstractions (e.g., `AsyncIterable<T>`) — never framework types like `Observable<T>`. pnpm strict mode enforces this at install time.
+**Single-dep constraint on `@rtc/domain`:** Domain may depend on `rxjs` at runtime — and only on `rxjs`. RxJS is the explicit architectural exception, chosen for its declarative stream operators and the team's familiarity with it. No other runtime dependencies are permitted. pnpm strict mode enforces this at install time.
 
 ## Architecture Goals
 
