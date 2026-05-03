@@ -6,7 +6,7 @@ import {
   ExecutionStatus,
   ExecuteTradeUseCase,
 } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 import type { UseTileStateResult } from "./use-tile-state";
 
 export function useExecuteTrade(

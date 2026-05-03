@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { type PositionUpdates, AnalyticsUseCase } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 
 interface AnalyticsResult {
   data: PositionUpdates | null;

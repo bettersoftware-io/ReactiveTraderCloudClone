@@ -4,7 +4,7 @@ import {
   type CurrencyPair,
   PriceStreamUseCase,
 } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 
 interface PriceStreamResult {
   price: Price | null;

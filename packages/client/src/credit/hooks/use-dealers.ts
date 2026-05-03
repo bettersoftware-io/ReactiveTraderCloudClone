@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Dealer } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 
 export function useDealers(): readonly Dealer[] {
   const { dealers } = useServices();

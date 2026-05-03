@@ -3,7 +3,7 @@ import { RfqState, type Instrument, type Dealer } from "@rtc/domain";
 import { useRfqStream } from "../hooks/use-rfq-stream";
 import { useInstruments } from "../hooks/use-instruments";
 import { useDealers } from "../hooks/use-dealers";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 import { RfqCard } from "./rfq-card";
 import { RfqFilterTabs, type RfqFilter } from "./rfq-filter-tabs";
 

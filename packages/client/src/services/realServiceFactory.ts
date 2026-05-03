@@ -31,8 +31,8 @@ import type {
   RpcResponse,
   PriceHistoryDto,
 } from "@rtc/shared";
-import type { WsAdapter } from "./ws-adapter";
-import type { Services } from "./mock-service-factory";
+import type { WsAdapter } from "./WsAdapter";
+import type { Services } from "./mockServiceFactory";
 
 // ── Protocol constants (mirrored from server) ───────────────────
 

@@ -5,7 +5,7 @@ import {
   type RfqStreamState,
   WorkflowEventStreamUseCase,
 } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 
 function emptySnapshot(): RfqStreamState {
   return { rfqs: new Map(), quotes: new Map() };

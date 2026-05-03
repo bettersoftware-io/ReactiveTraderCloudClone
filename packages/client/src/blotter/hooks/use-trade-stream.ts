@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Trade } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 
 export function useTradeStream(): readonly Trade[] {
   const { blotter } = useServices();

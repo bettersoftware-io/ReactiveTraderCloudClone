@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CurrencyPair } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 
 export function useCurrencyPairs(): readonly CurrencyPair[] {
   const { referenceData } = useServices();

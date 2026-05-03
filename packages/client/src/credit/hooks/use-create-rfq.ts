@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { type Direction, CreateRfqUseCase } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 
 export interface CreateRfqParams {
   instrumentId: number;

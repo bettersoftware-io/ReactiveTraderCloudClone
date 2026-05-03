@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { CurrencyPair } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 import type { UseRfqStateResult, RfqQuote } from "./use-rfq-state";
 
 const RFQ_TIMEOUT_MS = 10_000;

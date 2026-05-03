@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { type Rfq, type Quote, type Instrument, RfqState } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 
 interface TradeTicketProps {
   rfq: Rfq;

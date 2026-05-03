@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Instrument } from "@rtc/domain";
-import { useServices } from "../../services/service-provider";
+import { useServices } from "../../services/ServiceProvider";
 
 export function useInstruments(): readonly Instrument[] {
   const { instruments } = useServices();

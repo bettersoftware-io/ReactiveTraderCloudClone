@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { createMockServices, type Services } from "./mock-service-factory";
-import { createRealServices } from "./real-service-factory";
-import { WsAdapter } from "./ws-adapter";
+import { createMockServices, type Services } from "./mockServiceFactory";
+import { createRealServices } from "./realServiceFactory";
+import { WsAdapter } from "./WsAdapter";
 
 const ServiceContext = createContext<Services | null>(null);
 
