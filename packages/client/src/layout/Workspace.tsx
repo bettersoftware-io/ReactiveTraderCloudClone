@@ -1,5 +1,5 @@
 import { LiveRatesPanel } from "../fx/live-rates/live-rates-panel";
-import { FxBlotter } from "../blotter/fx-blotter";
+import { FxBlotter } from "../blotter/FxBlotter";
 import { AnalyticsPanel } from "../analytics/AnalyticsPanel";
 import { CreditWorkspace } from "../credit/credit-workspace";
 import { AdminPanel } from "../admin/AdminPanel";

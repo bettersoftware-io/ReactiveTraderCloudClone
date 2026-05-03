@@ -1,5 +1,5 @@
 import type { Trade } from "@rtc/domain";
-import { COLUMNS, formatCellValue } from "./blotter-columns";
+import { COLUMNS, formatCellValue } from "./blotterColumns";
 
 export function exportToCsv(trades: readonly Trade[]): void {
   const headers = COLUMNS.map((c) => c.label);

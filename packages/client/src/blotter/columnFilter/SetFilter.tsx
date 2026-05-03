@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Trade } from "@rtc/domain";
-import type { ColumnFilter } from "./filter-state";
+import type { ColumnFilter } from "./filterState";
 
 interface SetFilterProps {
   column: keyof Trade;

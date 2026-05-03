@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import type { Trade } from "@rtc/domain";
-import type { ColumnFilter, Comparator } from "./filter-state";
+import type { ColumnFilter, Comparator } from "./filterState";
 
-interface NumberFilterProps {
+interface DateFilterProps {
   column: keyof Trade;
   currentFilter: ColumnFilter | undefined;
   onApply: (filter: ColumnFilter | null) => void;
@@ -18,32 +18,28 @@ const comparators: { value: Comparator; label: string }[] = [
   { value: "inRange", label: "In range" },
 ];
 
-export function NumberFilter({ column, currentFilter, onApply }: NumberFilterProps) {
+export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) {
   const [comparator, setComparator] = useState<Comparator>(
-    currentFilter?.type === "number" ? currentFilter.comparator : "eq",
+    currentFilter?.type === "date" ? currentFilter.comparator : "eq",
   );
   const [value, setValue] = useState(
-    currentFilter?.type === "number" ? String(currentFilter.value) : "",
+    currentFilter?.type === "date" ? currentFilter.value : "",
   );
   const [valueTo, setValueTo] = useState(
-    currentFilter?.type === "number" && currentFilter.valueTo != null
-      ? String(currentFilter.valueTo)
-      : "",
+    currentFilter?.type === "date" && currentFilter.valueTo ? currentFilter.valueTo : "",
   );
 
   const handleApply = useCallback(() => {
-    const num = parseFloat(value);
-    if (isNaN(num)) {
+    if (!value) {
       onApply(null);
       return;
     }
-    const numTo = comparator === "inRange" ? parseFloat(valueTo) : undefined;
     onApply({
-      type: "number",
+      type: "date",
       column,
       comparator,
-      value: num,
-      valueTo: numTo !== undefined && !isNaN(numTo) ? numTo : undefined,
+      value,
+      valueTo: comparator === "inRange" ? valueTo : undefined,
     });
   }, [column, comparator, value, valueTo, onApply]);
 
@@ -59,18 +55,16 @@ export function NumberFilter({ column, currentFilter, onApply }: NumberFilterPro
         ))}
       </select>
       <input
-        type="number"
+        type="date"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Value"
         style={{ fontSize: 11, padding: 2, color: "var(--text-primary)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)" }}
       />
       {comparator === "inRange" && (
         <input
-          type="number"
+          type="date"
           value={valueTo}
           onChange={(e) => setValueTo(e.target.value)}
-          placeholder="To"
           style={{ fontSize: 11, padding: 2, color: "var(--text-primary)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)" }}
         />
       )}

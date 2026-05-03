@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { TradeStatus, type Trade } from "@rtc/domain";
-import { COLUMNS, formatCellValue } from "./blotter-columns";
+import { COLUMNS, formatCellValue } from "./blotterColumns";
 
 interface BlotterRowProps {
   trade: Trade;

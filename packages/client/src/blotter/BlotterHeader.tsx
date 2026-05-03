@@ -1,11 +1,11 @@
 import { useCallback, useState } from "react";
 import type { Trade } from "@rtc/domain";
-import { COLUMNS, type ColumnDef } from "./blotter-columns";
-import type { SortState } from "./column-sort";
-import type { ColumnFilter } from "./column-filter/filter-state";
-import { SetFilter } from "./column-filter/set-filter";
-import { NumberFilter } from "./column-filter/number-filter";
-import { DateFilter } from "./column-filter/date-filter";
+import { COLUMNS, type ColumnDef } from "./blotterColumns";
+import type { SortState } from "./columnSort";
+import type { ColumnFilter } from "./columnFilter/filterState";
+import { SetFilter } from "./columnFilter/SetFilter";
+import { NumberFilter } from "./columnFilter/NumberFilter";
+import { DateFilter } from "./columnFilter/DateFilter";
 
 interface BlotterHeaderProps {
   sort: SortState;
