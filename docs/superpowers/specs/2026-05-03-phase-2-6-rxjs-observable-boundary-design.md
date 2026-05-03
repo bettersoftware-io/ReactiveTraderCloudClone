@@ -67,15 +67,15 @@ export interface AnalyticsPort {
 }
 
 export interface ReferenceDataPort {
-  /* current method shape preserved; only return type swap. */
+  getCurrencyPairs(): Observable<readonly CurrencyPair[]>;
 }
 
 export interface InstrumentPort {
-  /* current method shape preserved; only return type swap. */
+  getInstruments(): Observable<readonly Instrument[]>;   // RENAMED from subscribe() — same reason as WorkflowPort
 }
 
 export interface DealerPort {
-  /* current method shape preserved; only return type swap. */
+  getDealers(): Observable<readonly Dealer[]>;           // RENAMED from subscribe()
 }
 
 export interface WorkflowPort {
