@@ -1,3 +1,5 @@
+import { type Observable, defer, concat, of, interval } from "rxjs";
+import { map } from "rxjs/operators";
 import type { CurrencyPairPosition, HistoricPosition, PositionUpdates } from "../analytics/position.js";
 import type { AnalyticsPort } from "../ports/analyticsPort.js";
 
@@ -40,30 +42,29 @@ export class AnalyticsSimulator implements AnalyticsPort {
     }
   }
 
-  async *getAnalytics(_currency: string): AsyncIterable<PositionUpdates> {
-    // Emit initial state
-    yield {
-      currentPositions: STATIC_POSITIONS,
-      history: [...this.history],
-    };
-
-    // Update every 10 seconds
-    while (true) {
-      await new Promise<void>((resolve) => setTimeout(resolve, UPDATE_INTERVAL_MS));
-
-      this.currentPrice = randomWalkStep(this.currentPrice);
-      this.history.push({
-        timestamp: new Date().toISOString(),
-        usdPnl: this.currentPrice,
-      });
-      if (this.history.length > HISTORY_SIZE) {
-        this.history.shift();
-      }
-
-      yield {
+  getAnalytics(_currency: string): Observable<PositionUpdates> {
+    return defer(() => {
+      const initial: PositionUpdates = {
         currentPositions: STATIC_POSITIONS,
         history: [...this.history],
       };
-    }
+      const updates$ = interval(UPDATE_INTERVAL_MS).pipe(
+        map<number, PositionUpdates>(() => {
+          this.currentPrice = randomWalkStep(this.currentPrice);
+          this.history.push({
+            timestamp: new Date().toISOString(),
+            usdPnl: this.currentPrice,
+          });
+          if (this.history.length > HISTORY_SIZE) {
+            this.history.shift();
+          }
+          return {
+            currentPositions: STATIC_POSITIONS,
+            history: [...this.history],
+          };
+        }),
+      );
+      return concat(of(initial), updates$);
+    });
   }
 }

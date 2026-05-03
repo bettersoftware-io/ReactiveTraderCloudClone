@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { firstValueFrom, from, lastValueFrom, of } from "rxjs";
+import { toArray } from "rxjs/operators";
 import { AnalyticsUseCase } from "./AnalyticsUseCase.js";
 import type { AnalyticsPort } from "../ports/analyticsPort.js";
 import type { PositionUpdates } from "../analytics/position.js";
@@ -6,9 +8,9 @@ import type { PositionUpdates } from "../analytics/position.js";
 function stubAnalytics(updates: PositionUpdates[]): { port: AnalyticsPort; lastCurrency: { current: string | null } } {
   const lastCurrency = { current: null as string | null };
   const port: AnalyticsPort = {
-    async *getAnalytics(currency) {
+    getAnalytics(currency: string) {
       lastCurrency.current = currency;
-      for (const u of updates) yield u;
+      return from(updates);
     },
   };
   return { port, lastCurrency };
@@ -21,18 +23,12 @@ function buildUpdate(): PositionUpdates {
   };
 }
 
-async function collect<T>(iter: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of iter) out.push(item);
-  return out;
-}
-
 describe("AnalyticsUseCase", () => {
   it("calls the port with the default base currency 'USD'", async () => {
     const { port, lastCurrency } = stubAnalytics([buildUpdate()]);
     const useCase = new AnalyticsUseCase(port);
 
-    await collect(useCase.execute());
+    await firstValueFrom(useCase.execute());
 
     expect(lastCurrency.current).toBe("USD");
   });
@@ -41,18 +37,30 @@ describe("AnalyticsUseCase", () => {
     const { port, lastCurrency } = stubAnalytics([buildUpdate()]);
     const useCase = new AnalyticsUseCase(port, "EUR");
 
-    await collect(useCase.execute());
+    await firstValueFrom(useCase.execute());
 
     expect(lastCurrency.current).toBe("EUR");
   });
 
-  it("yields every update from the port unchanged", async () => {
+  it("emits every update from the port unchanged", async () => {
     const updates = [buildUpdate(), buildUpdate(), buildUpdate()];
     const { port } = stubAnalytics(updates);
     const useCase = new AnalyticsUseCase(port);
 
-    const results = await collect(useCase.execute());
+    const results = await lastValueFrom(useCase.execute().pipe(toArray()));
 
     expect(results).toHaveLength(3);
+  });
+
+  it("supports a single emission via of()", async () => {
+    const update = buildUpdate();
+    const port: AnalyticsPort = {
+      getAnalytics: () => of(update),
+    };
+    const useCase = new AnalyticsUseCase(port);
+
+    const result = await firstValueFrom(useCase.execute());
+
+    expect(result).toBe(update);
   });
 });

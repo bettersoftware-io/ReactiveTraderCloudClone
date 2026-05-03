@@ -257,24 +257,33 @@ function streamBlotter(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): vo
 }
 
 function streamAnalytics(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, payload: { currency: string }): void {
-  iterateStream(
-    ws,
-    subs,
-    svc.analytics.getAnalytics(payload.currency),
-    SERVER_MSG.ANALYTICS,
-    (pos): AnalyticsDto => ({
-      currentPositions: pos.currentPositions.map((p) => ({
-        symbol: p.symbol,
-        basePnl: p.basePnl,
-        baseTradedAmount: p.baseTradedAmount,
-        counterTradedAmount: p.counterTradedAmount,
-      })),
-      history: pos.history.map((h) => ({
-        timestamp: h.timestamp,
-        usdPnl: h.usdPnl,
-      })),
-    }),
-  );
+  const ac = createSubscription(subs);
+  const sub = svc.analytics.getAnalytics(payload.currency).subscribe({
+    next: (pos) => {
+      if (ac.signal.aborted) return;
+      const dto: AnalyticsDto = {
+        currentPositions: pos.currentPositions.map((p) => ({
+          symbol: p.symbol,
+          basePnl: p.basePnl,
+          baseTradedAmount: p.baseTradedAmount,
+          counterTradedAmount: p.counterTradedAmount,
+        })),
+        history: pos.history.map((h) => ({
+          timestamp: h.timestamp,
+          usdPnl: h.usdPnl,
+        })),
+      };
+      send(ws, SERVER_MSG.ANALYTICS, dto);
+    },
+    error: (e) => {
+      if (!ac.signal.aborted) console.error("Analytics stream error:", e);
+      subs.delete(ac);
+    },
+    complete: () => {
+      subs.delete(ac);
+    },
+  });
+  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
 }
 
 // ── Credit Streams ──────────────────────────────────────────────

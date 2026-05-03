@@ -14,17 +14,12 @@ export function useAnalytics(): AnalyticsResult {
 
   useEffect(() => {
     const useCase = new AnalyticsUseCase(analytics);
-    let cancelled = false;
-
-    (async () => {
-      for await (const update of useCase.execute()) {
-        if (cancelled) break;
-        setState((prev) => ({ data: update, version: prev.version + 1 }));
-      }
-    })();
+    const sub = useCase.execute().subscribe((update) => {
+      setState((prev) => ({ data: update, version: prev.version + 1 }));
+    });
 
     return () => {
-      cancelled = true;
+      sub.unsubscribe();
     };
   }, [analytics]);
 

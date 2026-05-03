@@ -286,30 +286,20 @@ function createBlotterPort(ws: WsAdapter): BlotterPort {
 
 function createAnalyticsPort(ws: WsAdapter): AnalyticsPort {
   return {
-    getAnalytics(currency: string): AsyncIterable<PositionUpdates> {
-      const q = createAsyncQueue<PositionUpdates>();
-      const unsub = ws.on(SERVER_MSG.ANALYTICS, (payload) => {
-        const dto = payload as AnalyticsDto;
-        q.push({
-          currentPositions: dto.currentPositions,
-          history: dto.history,
+    getAnalytics(currency: string): Observable<PositionUpdates> {
+      return new Observable<PositionUpdates>((subscriber) => {
+        const unsub = ws.on(SERVER_MSG.ANALYTICS, (payload) => {
+          const dto = payload as AnalyticsDto;
+          subscriber.next({
+            currentPositions: dto.currentPositions,
+            history: dto.history,
+          });
         });
+        ws.send(CLIENT_MSG.SUBSCRIBE_ANALYTICS, { currency });
+        return () => {
+          unsub();
+        };
       });
-      ws.send(CLIENT_MSG.SUBSCRIBE_ANALYTICS, { currency });
-      const original = q.iterable;
-      return {
-        [Symbol.asyncIterator]() {
-          const iter = original[Symbol.asyncIterator]();
-          return {
-            next: () => iter.next(),
-            return() {
-              unsub();
-              q.dispose();
-              return iter.return!();
-            },
-          };
-        },
-      };
     },
   };
 }
