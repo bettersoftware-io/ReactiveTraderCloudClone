@@ -1,5 +1,5 @@
 import type { Trade } from "../fx/trade.js";
-import type { BlotterPort } from "../ports/blotter-port.js";
+import type { BlotterPort } from "../ports/blotterPort.js";
 import type { ExecutionSimulator } from "./execution-simulator.js";
 
 /**

@@ -1,7 +1,7 @@
 import type { Instrument } from "../credit/instrument.js";
 import type { Dealer } from "../credit/dealer.js";
-import type { InstrumentPort } from "../ports/instrument-port.js";
-import type { DealerPort } from "../ports/dealer-port.js";
+import type { InstrumentPort } from "../ports/instrumentPort.js";
+import type { DealerPort } from "../ports/dealerPort.js";
 
 export const INSTRUMENTS_CATALOG: readonly Instrument[] = [
   { id: 0, name: "ORCL 4.755 08/15/2026", cusip: "68389X105", ticker: "ORCL", maturity: "20250815", interestRate: 4.755, benchmark: "5Y UST 1.500 08/2026" },

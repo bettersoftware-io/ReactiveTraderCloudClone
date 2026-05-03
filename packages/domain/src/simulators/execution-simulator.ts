@@ -1,5 +1,5 @@
 import type { ExecutionRequest, Trade } from "../fx/trade.js";
-import type { ExecutionPort } from "../ports/execution-port.js";
+import type { ExecutionPort } from "../ports/executionPort.js";
 import { TradeStatus } from "../fx/trade.js";
 import { delay } from "./delay.js";
 

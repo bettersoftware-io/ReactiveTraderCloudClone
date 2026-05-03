@@ -1,7 +1,7 @@
 import type { Direction } from "../fx/trade.js";
 import type { Rfq } from "../credit/rfq.js";
 import type { Quote, QuoteState } from "../credit/quote.js";
-import type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "../ports/workflow-port.js";
+import type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "../ports/workflowPort.js";
 import { RfqState } from "../credit/rfq.js";
 import { ADAPTIVE_BANK_NAME } from "../credit/dealer.js";
 import type { Dealer } from "../credit/dealer.js";

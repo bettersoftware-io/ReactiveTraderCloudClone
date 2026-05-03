@@ -1,5 +1,5 @@
 import type { CurrencyPairPosition, HistoricPosition, PositionUpdates } from "../analytics/position.js";
-import type { AnalyticsPort } from "../ports/analytics-port.js";
+import type { AnalyticsPort } from "../ports/analyticsPort.js";
 
 const HISTORY_SIZE = 90;
 const UPDATE_INTERVAL_MS = 10_000;

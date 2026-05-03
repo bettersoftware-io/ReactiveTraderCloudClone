@@ -1,4 +1,4 @@
-import type { AnalyticsPort } from "../ports/analytics-port.js";
+import type { AnalyticsPort } from "../ports/analyticsPort.js";
 import type { PositionUpdates } from "../analytics/position.js";
 
 const DEFAULT_BASE_CURRENCY = "USD";

@@ -32,14 +32,14 @@ export { validQuoteTransitions } from "./credit/quote.js";
 export type { CreditTrade } from "./credit/credit-trade.js";
 
 // Ports
-export type { ReferenceDataPort } from "./ports/reference-data-port.js";
-export type { PricingPort } from "./ports/pricing-port.js";
-export type { ExecutionPort } from "./ports/execution-port.js";
-export type { BlotterPort } from "./ports/blotter-port.js";
-export type { AnalyticsPort } from "./ports/analytics-port.js";
-export type { InstrumentPort } from "./ports/instrument-port.js";
-export type { DealerPort } from "./ports/dealer-port.js";
-export type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "./ports/workflow-port.js";
+export type { ReferenceDataPort } from "./ports/referenceDataPort.js";
+export type { PricingPort } from "./ports/pricingPort.js";
+export type { ExecutionPort } from "./ports/executionPort.js";
+export type { BlotterPort } from "./ports/blotterPort.js";
+export type { AnalyticsPort } from "./ports/analyticsPort.js";
+export type { InstrumentPort } from "./ports/instrumentPort.js";
+export type { DealerPort } from "./ports/dealerPort.js";
+export type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "./ports/workflowPort.js";
 
 // Simulators (in-memory port implementations)
 export {

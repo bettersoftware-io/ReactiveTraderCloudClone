@@ -1,4 +1,4 @@
-import type { WorkflowPort, RfqEvent } from "../ports/workflow-port.js";
+import type { WorkflowPort, RfqEvent } from "../ports/workflowPort.js";
 import type { Rfq } from "../credit/rfq.js";
 import type { Quote } from "../credit/quote.js";
 

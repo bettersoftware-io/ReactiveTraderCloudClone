@@ -4,7 +4,7 @@ import {
   reduceRfqEvent,
   type RfqStreamState,
 } from "./workflow-event-stream-use-case.js";
-import type { WorkflowPort, RfqEvent } from "../ports/workflow-port.js";
+import type { WorkflowPort, RfqEvent } from "../ports/workflowPort.js";
 import type { Rfq } from "../credit/rfq.js";
 import { RfqState } from "../credit/rfq.js";
 import { Direction } from "../fx/trade.js";

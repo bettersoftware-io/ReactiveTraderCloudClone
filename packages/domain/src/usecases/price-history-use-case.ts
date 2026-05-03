@@ -1,4 +1,4 @@
-import type { PricingPort } from "../ports/pricing-port.js";
+import type { PricingPort } from "../ports/pricingPort.js";
 import type { PriceTick } from "../fx/price.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
 

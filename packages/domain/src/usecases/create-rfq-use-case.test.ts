@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CreateRfqUseCase, RFQ_DEFAULT_EXPIRY_SECS } from "./create-rfq-use-case.js";
-import type { WorkflowPort, CreateRfqRequest } from "../ports/workflow-port.js";
+import type { WorkflowPort, CreateRfqRequest } from "../ports/workflowPort.js";
 import { CREDIT_QUANTITY_MULTIPLIER } from "../credit/rfq.js";
 import { Direction } from "../fx/trade.js";
 

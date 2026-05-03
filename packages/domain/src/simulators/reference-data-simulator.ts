@@ -1,5 +1,5 @@
 import type { CurrencyPair } from "../fx/currency-pair.js";
-import type { ReferenceDataPort } from "../ports/reference-data-port.js";
+import type { ReferenceDataPort } from "../ports/referenceDataPort.js";
 import { KNOWN_CURRENCY_PAIRS } from "../fx/currency-pair.js";
 import { delay } from "./delay.js";
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { AnalyticsUseCase } from "./analytics-use-case.js";
-import type { AnalyticsPort } from "../ports/analytics-port.js";
+import type { AnalyticsPort } from "../ports/analyticsPort.js";
 import type { PositionUpdates } from "../analytics/position.js";
 
 function stubAnalytics(updates: PositionUpdates[]): { port: AnalyticsPort; lastCurrency: { current: string | null } } {

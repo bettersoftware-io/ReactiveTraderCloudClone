@@ -1,4 +1,4 @@
-import type { WorkflowPort, CreateRfqRequest } from "../ports/workflow-port.js";
+import type { WorkflowPort, CreateRfqRequest } from "../ports/workflowPort.js";
 import type { Direction } from "../fx/trade.js";
 import { CREDIT_QUANTITY_MULTIPLIER } from "../credit/rfq.js";
 
