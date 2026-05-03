@@ -1,5 +1,5 @@
 import { ConnectionStatus } from "@rtc/domain";
-import { useConnection } from "./use-connection";
+import { useConnection } from "./useConnection";
 
 const statusLabel: Record<ConnectionStatus, string> = {
   [ConnectionStatus.CONNECTING]: "Connecting...",

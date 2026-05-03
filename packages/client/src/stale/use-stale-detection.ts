@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ConnectionStatus } from "@rtc/domain";
-import { useConnection } from "../connection/use-connection";
+import { useConnection } from "../connection/useConnection";
 
 /**
  * Returns true when a data stream should be considered stale.

@@ -1,4 +1,4 @@
-import { ConnectionStatusBar } from "../connection/connection-status-bar";
+import { ConnectionStatusBar } from "../connection/ConnectionStatusBar";
 
 export function Footer() {
   return (

@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./theme/theme-provider";
 import { ServiceProvider } from "./services/ServiceProvider";
-import { ConnectionProvider } from "./connection/connection-provider";
+import { ConnectionProvider } from "./connection/ConnectionProvider";
 import { App } from "./App";
 
 // Global reset

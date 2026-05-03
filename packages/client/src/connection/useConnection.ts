@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { ConnectionContext } from "./connection-provider";
+import { ConnectionContext } from "./ConnectionProvider";
 import type { ConnectionStatus } from "@rtc/domain";
 
 export function useConnection(): ConnectionStatus {
