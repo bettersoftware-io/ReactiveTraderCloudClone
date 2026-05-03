@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { WebSocketServer } from "ws";
-import { createServices } from "./services/service-container.js";
-import { handleConnection } from "./ws/ws-handler.js";
+import { createServices } from "./services/serviceContainer.js";
+import { handleConnection } from "./ws/wsHandler.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
 const HOSTNAME = process.env.HOSTNAME ?? "0.0.0.0";

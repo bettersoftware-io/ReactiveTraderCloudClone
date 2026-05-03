@@ -1,5 +1,5 @@
 import type { WebSocket } from "ws";
-import type { ServiceContainer } from "../services/service-container.js";
+import type { ServiceContainer } from "../services/serviceContainer.js";
 import type {
   CurrencyPairUpdateDto,
   ReferenceDataMessage,

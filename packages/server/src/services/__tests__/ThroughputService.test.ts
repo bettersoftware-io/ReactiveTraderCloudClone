@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ThroughputService } from "../throughput-service.js";
+import { ThroughputService } from "../ThroughputService.js";
 
 describe("ThroughputService", () => {
   it("returns default throughput of 100", () => {

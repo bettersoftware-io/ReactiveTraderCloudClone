@@ -9,7 +9,7 @@ import {
   CreditRfqSimulator,
   DEALERS_CATALOG,
 } from "@rtc/domain";
-import { ThroughputService } from "./throughput-service.js";
+import { ThroughputService } from "./ThroughputService.js";
 
 export interface ServiceContainer {
   readonly referenceData: ReferenceDataSimulator;
