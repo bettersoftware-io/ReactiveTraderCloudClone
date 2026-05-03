@@ -1,6 +1,6 @@
 import type { Trade } from "../fx/trade.js";
 import type { BlotterPort } from "../ports/blotterPort.js";
-import type { ExecutionSimulator } from "./execution-simulator.js";
+import type { ExecutionSimulator } from "./ExecutionSimulator.js";
 
 /**
  * Mock trade store that accumulates trades from the execution engine.

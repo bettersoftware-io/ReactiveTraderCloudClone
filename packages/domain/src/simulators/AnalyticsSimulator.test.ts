@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AnalyticsSimulator } from "./analytics-simulator.js";
+import { AnalyticsSimulator } from "./AnalyticsSimulator.js";
 
 describe("AnalyticsSimulator", () => {
   it("emits 90 history points initially", async () => {

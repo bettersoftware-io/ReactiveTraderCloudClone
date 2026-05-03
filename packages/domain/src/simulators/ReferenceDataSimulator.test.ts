@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ReferenceDataSimulator } from "./reference-data-simulator.js";
+import { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";
 
 describe("ReferenceDataSimulator", () => {
   it("emits all 9 currency pairs", async () => {

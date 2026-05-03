@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ExecutionSimulator } from "./execution-simulator.js";
+import { ExecutionSimulator } from "./ExecutionSimulator.js";
 import { Direction, TradeStatus } from "../fx/trade.js";
 import type { ExecutionRequest } from "../fx/trade.js";
 

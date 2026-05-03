@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { InstrumentSimulator, DealerSimulator, INSTRUMENTS_CATALOG, DEALERS_CATALOG } from "./credit-reference-data-simulator.js";
+import { InstrumentSimulator, DealerSimulator, INSTRUMENTS_CATALOG, DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
 
 describe("InstrumentSimulator", () => {
   it("emits 11 instruments", async () => {

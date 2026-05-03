@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { ExecutionSimulator } from "./execution-simulator.js";
-import { TradeStoreSimulator } from "./trade-store-simulator.js";
+import { ExecutionSimulator } from "./ExecutionSimulator.js";
+import { TradeStoreSimulator } from "./TradeStoreSimulator.js";
 import { Direction, TradeStatus } from "../fx/trade.js";
 
 describe("TradeStoreSimulator", () => {

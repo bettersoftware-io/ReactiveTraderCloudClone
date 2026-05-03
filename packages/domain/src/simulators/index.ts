@@ -1,15 +1,15 @@
 export { delay, randomDelay } from "./delay.js";
-export { ReferenceDataSimulator } from "./reference-data-simulator.js";
-export { PricingSimulator } from "./pricing-simulator.js";
-export type { RfqQuoteResult } from "./pricing-simulator.js";
-export { ExecutionSimulator } from "./execution-simulator.js";
-export type { TradeListener } from "./execution-simulator.js";
-export { TradeStoreSimulator } from "./trade-store-simulator.js";
-export { AnalyticsSimulator } from "./analytics-simulator.js";
+export { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";
+export { PricingSimulator } from "./PricingSimulator.js";
+export type { RfqQuoteResult } from "./PricingSimulator.js";
+export { ExecutionSimulator } from "./ExecutionSimulator.js";
+export type { TradeListener } from "./ExecutionSimulator.js";
+export { TradeStoreSimulator } from "./TradeStoreSimulator.js";
+export { AnalyticsSimulator } from "./AnalyticsSimulator.js";
 export {
   InstrumentSimulator,
   DealerSimulator,
   INSTRUMENTS_CATALOG,
   DEALERS_CATALOG,
-} from "./credit-reference-data-simulator.js";
-export { CreditRfqSimulator } from "./credit-rfq-simulator.js";
+} from "./creditReferenceDataSimulator.js";
+export { CreditRfqSimulator } from "./CreditRfqSimulator.js";

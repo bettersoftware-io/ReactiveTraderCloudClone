@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PricingSimulator } from "./pricing-simulator.js";
+import { PricingSimulator } from "./PricingSimulator.js";
 
 describe("PricingSimulator", () => {
   it("getPriceHistory returns 50 ticks", async () => {
