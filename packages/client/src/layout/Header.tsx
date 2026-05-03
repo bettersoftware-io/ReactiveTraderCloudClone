@@ -1,4 +1,4 @@
-import { ThemeToggle } from "../theme/theme-toggle";
+import { ThemeToggle } from "../theme/ThemeToggle";
 
 export type WorkspaceTab = "fx" | "credit" | "admin";
 

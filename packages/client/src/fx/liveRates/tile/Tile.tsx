@@ -14,8 +14,8 @@ import { TileNotional } from "./TileNotional";
 import { TileExecution } from "./TileExecution";
 import { TileConfirmation } from "./TileConfirmation";
 import { TileRfq } from "./TileRfq";
-import { StaleIndicator } from "../../../stale/stale-indicator";
-import { useStaleDetection } from "../../../stale/use-stale-detection";
+import { StaleIndicator } from "../../../stale/StaleIndicator";
+import { useStaleDetection } from "../../../stale/useStaleDetection";
 
 interface TileProps {
   pair: CurrencyPair;

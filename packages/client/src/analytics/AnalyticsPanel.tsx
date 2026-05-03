@@ -3,8 +3,8 @@ import { PnlChart } from "./PnlChart";
 import { PnlValue } from "./PnlValue";
 import { PositionBubbles } from "./PositionBubbles";
 import { PairPnlBars } from "./PairPnlBars";
-import { StaleIndicator } from "../stale/stale-indicator";
-import { useStaleDetection } from "../stale/use-stale-detection";
+import { StaleIndicator } from "../stale/StaleIndicator";
+import { useStaleDetection } from "../stale/useStaleDetection";
 
 export function AnalyticsPanel() {
   const { data, version } = useAnalytics();
