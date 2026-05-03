@@ -1,13 +1,15 @@
 import { describe, it, expect } from "vitest";
+import { firstValueFrom } from "rxjs";
+import { toArray } from "rxjs/operators";
 import { InstrumentSimulator, DealerSimulator, INSTRUMENTS_CATALOG, DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
 
 describe("InstrumentSimulator", () => {
-  it("emits 11 instruments", async () => {
+  it("emits the instruments catalog and completes", async () => {
     const service = new InstrumentSimulator();
-    for await (const instruments of service.subscribe()) {
-      expect(instruments).toHaveLength(11);
-      break;
-    }
+    const emissions = await firstValueFrom(service.getInstruments().pipe(toArray()));
+    expect(emissions).toHaveLength(1);
+    expect(emissions[0]).toHaveLength(11);
+    expect(emissions[0]).toEqual(INSTRUMENTS_CATALOG);
   });
 
   it("instruments have required fields", () => {
@@ -20,12 +22,12 @@ describe("InstrumentSimulator", () => {
 });
 
 describe("DealerSimulator", () => {
-  it("emits 10 dealers", async () => {
+  it("emits the dealers catalog and completes", async () => {
     const service = new DealerSimulator();
-    for await (const dealers of service.subscribe()) {
-      expect(dealers).toHaveLength(10);
-      break;
-    }
+    const emissions = await firstValueFrom(service.getDealers().pipe(toArray()));
+    expect(emissions).toHaveLength(1);
+    expect(emissions[0]).toHaveLength(10);
+    expect(emissions[0]).toEqual(DEALERS_CATALOG);
   });
 
   it("does not include Adaptive Bank", () => {

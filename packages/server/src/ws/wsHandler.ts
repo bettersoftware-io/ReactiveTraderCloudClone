@@ -164,30 +164,32 @@ async function iterateStream<T>(
 
 function streamReferenceData(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
   const ac = createSubscription(subs);
-  (async () => {
-    try {
-      let isFirst = true;
-      for await (const pairs of svc.referenceData.getCurrencyPairs()) {
-        if (ac.signal.aborted) break;
-        const updates: CurrencyPairUpdateDto[] = pairs.map((p) => ({
-          symbol: p.symbol,
-          ratePrecision: p.ratePrecision,
-          pipsPosition: p.pipsPosition,
-        }));
-        const message: ReferenceDataMessage = {
-          updates,
-          isStateOfTheWorld: isFirst,
-          isStale: false,
-        };
-        send(ws, SERVER_MSG.REFERENCE_DATA, message);
-        isFirst = false;
-      }
-    } catch (e) {
+  let isFirst = true;
+  const sub = svc.referenceData.getCurrencyPairs().subscribe({
+    next: (pairs) => {
+      if (ac.signal.aborted) return;
+      const updates: CurrencyPairUpdateDto[] = pairs.map((p) => ({
+        symbol: p.symbol,
+        ratePrecision: p.ratePrecision,
+        pipsPosition: p.pipsPosition,
+      }));
+      const message: ReferenceDataMessage = {
+        updates,
+        isStateOfTheWorld: isFirst,
+        isStale: false,
+      };
+      send(ws, SERVER_MSG.REFERENCE_DATA, message);
+      isFirst = false;
+    },
+    error: (e) => {
       if (!ac.signal.aborted) console.error("ReferenceData stream error:", e);
-    } finally {
       subs.delete(ac);
-    }
-  })();
+    },
+    complete: () => {
+      subs.delete(ac);
+    },
+  });
+  ac.signal.addEventListener("abort", () => sub.unsubscribe(), { once: true });
 }
 
 function streamPricing(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, payload: { symbol: string }): void {
@@ -261,63 +263,69 @@ function streamAnalytics(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, p
 
 function streamInstruments(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
   const ac = createSubscription(subs);
-  (async () => {
-    try {
-      // Send SoW markers
-      send(ws, SERVER_MSG.INSTRUMENT_EVENT, { type: "startOfStateOfTheWorld" } satisfies InstrumentEvent);
 
-      let isFirst = true;
-      for await (const instruments of svc.instruments.subscribe()) {
-        if (ac.signal.aborted) break;
-        for (const inst of instruments) {
-          const dto: InstrumentDto = {
-            id: inst.id,
-            name: inst.name,
-            cusip: inst.cusip,
-            ticker: inst.ticker,
-            maturity: inst.maturity,
-            interestRate: inst.interestRate,
-            benchmark: inst.benchmark,
-          };
-          send(ws, SERVER_MSG.INSTRUMENT_EVENT, { type: "added", payload: dto } satisfies InstrumentEvent);
-        }
-        if (isFirst) {
-          send(ws, SERVER_MSG.INSTRUMENT_EVENT, { type: "endOfStateOfTheWorld" } satisfies InstrumentEvent);
-          isFirst = false;
-        }
+  // Send SoW markers
+  send(ws, SERVER_MSG.INSTRUMENT_EVENT, { type: "startOfStateOfTheWorld" } satisfies InstrumentEvent);
+
+  let isFirst = true;
+  const sub = svc.instruments.getInstruments().subscribe({
+    next: (instruments) => {
+      if (ac.signal.aborted) return;
+      for (const inst of instruments) {
+        const dto: InstrumentDto = {
+          id: inst.id,
+          name: inst.name,
+          cusip: inst.cusip,
+          ticker: inst.ticker,
+          maturity: inst.maturity,
+          interestRate: inst.interestRate,
+          benchmark: inst.benchmark,
+        };
+        send(ws, SERVER_MSG.INSTRUMENT_EVENT, { type: "added", payload: dto } satisfies InstrumentEvent);
       }
-    } catch (e) {
+      if (isFirst) {
+        send(ws, SERVER_MSG.INSTRUMENT_EVENT, { type: "endOfStateOfTheWorld" } satisfies InstrumentEvent);
+        isFirst = false;
+      }
+    },
+    error: (e) => {
       if (!ac.signal.aborted) console.error("Instruments stream error:", e);
-    } finally {
       subs.delete(ac);
-    }
-  })();
+    },
+    complete: () => {
+      subs.delete(ac);
+    },
+  });
+  ac.signal.addEventListener("abort", () => sub.unsubscribe(), { once: true });
 }
 
 function streamDealers(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
   const ac = createSubscription(subs);
-  (async () => {
-    try {
-      send(ws, SERVER_MSG.DEALER_EVENT, { type: "startOfStateOfTheWorld" } satisfies DealerEvent);
 
-      let isFirst = true;
-      for await (const dealers of svc.dealers.subscribe()) {
-        if (ac.signal.aborted) break;
-        for (const dealer of dealers) {
-          const dto: DealerDto = { id: dealer.id, name: dealer.name };
-          send(ws, SERVER_MSG.DEALER_EVENT, { type: "added", payload: dto } satisfies DealerEvent);
-        }
-        if (isFirst) {
-          send(ws, SERVER_MSG.DEALER_EVENT, { type: "endOfStateOfTheWorld" } satisfies DealerEvent);
-          isFirst = false;
-        }
+  send(ws, SERVER_MSG.DEALER_EVENT, { type: "startOfStateOfTheWorld" } satisfies DealerEvent);
+
+  let isFirst = true;
+  const sub = svc.dealers.getDealers().subscribe({
+    next: (dealers) => {
+      if (ac.signal.aborted) return;
+      for (const dealer of dealers) {
+        const dto: DealerDto = { id: dealer.id, name: dealer.name };
+        send(ws, SERVER_MSG.DEALER_EVENT, { type: "added", payload: dto } satisfies DealerEvent);
       }
-    } catch (e) {
+      if (isFirst) {
+        send(ws, SERVER_MSG.DEALER_EVENT, { type: "endOfStateOfTheWorld" } satisfies DealerEvent);
+        isFirst = false;
+      }
+    },
+    error: (e) => {
       if (!ac.signal.aborted) console.error("Dealers stream error:", e);
-    } finally {
       subs.delete(ac);
-    }
-  })();
+    },
+    complete: () => {
+      subs.delete(ac);
+    },
+  });
+  ac.signal.addEventListener("abort", () => sub.unsubscribe(), { once: true });
 }
 
 function streamWorkflow(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {

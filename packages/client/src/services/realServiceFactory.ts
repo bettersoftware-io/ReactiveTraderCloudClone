@@ -18,6 +18,7 @@ import type {
   QuoteRequest,
 } from "@rtc/domain";
 import { deriveBaseTerm } from "@rtc/domain";
+import { Observable } from "rxjs";
 import type {
   ReferenceDataMessage,
   PriceTickDto,
@@ -124,35 +125,24 @@ function createAsyncQueue<T>(): {
 
 function createReferenceDataPort(ws: WsAdapter): ReferenceDataPort {
   return {
-    getCurrencyPairs(): AsyncIterable<readonly CurrencyPair[]> {
-      const q = createAsyncQueue<readonly CurrencyPair[]>();
-      const unsub = ws.on(SERVER_MSG.REFERENCE_DATA, (payload) => {
-        const msg = payload as ReferenceDataMessage;
-        const pairs: CurrencyPair[] = msg.updates.map((dto) => ({
-          ...deriveBaseTerm(dto.symbol),
-          symbol: dto.symbol,
-          ratePrecision: dto.ratePrecision,
-          pipsPosition: dto.pipsPosition,
-          defaultNotional: dto.symbol === "NZDUSD" ? 10_000_000 : 1_000_000,
-        }));
-        q.push(pairs);
+    getCurrencyPairs(): Observable<readonly CurrencyPair[]> {
+      return new Observable<readonly CurrencyPair[]>((subscriber) => {
+        const unsub = ws.on(SERVER_MSG.REFERENCE_DATA, (payload) => {
+          const msg = payload as ReferenceDataMessage;
+          const pairs: CurrencyPair[] = msg.updates.map((dto) => ({
+            ...deriveBaseTerm(dto.symbol),
+            symbol: dto.symbol,
+            ratePrecision: dto.ratePrecision,
+            pipsPosition: dto.pipsPosition,
+            defaultNotional: dto.symbol === "NZDUSD" ? 10_000_000 : 1_000_000,
+          }));
+          subscriber.next(pairs);
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_REFERENCE_DATA);
+        return () => {
+          unsub();
+        };
       });
-      ws.send(CLIENT_MSG.SUBSCRIBE_REFERENCE_DATA);
-      // Return the iterable, caller can break to unsubscribe
-      const original = q.iterable;
-      return {
-        [Symbol.asyncIterator]() {
-          const iter = original[Symbol.asyncIterator]();
-          return {
-            next: () => iter.next(),
-            return() {
-              unsub();
-              q.dispose();
-              return iter.return!();
-            },
-          };
-        },
-      };
     },
   };
 }
@@ -281,98 +271,78 @@ function createAnalyticsPort(ws: WsAdapter): AnalyticsPort {
 
 function createInstrumentPort(ws: WsAdapter): InstrumentPort {
   return {
-    subscribe(): AsyncIterable<readonly Instrument[]> {
-      const instruments: Instrument[] = [];
-      let inSoW = false;
-      const q = createAsyncQueue<readonly Instrument[]>();
+    getInstruments(): Observable<readonly Instrument[]> {
+      return new Observable<readonly Instrument[]>((subscriber) => {
+        const instruments: Instrument[] = [];
+        let inSoW = false;
 
-      const unsub = ws.on(SERVER_MSG.INSTRUMENT_EVENT, (payload) => {
-        const event = payload as InstrumentEvent;
-        switch (event.type) {
-          case "startOfStateOfTheWorld":
-            instruments.length = 0;
-            inSoW = true;
-            break;
-          case "endOfStateOfTheWorld":
-            inSoW = false;
-            q.push([...instruments]);
-            break;
-          case "added":
-            instruments.push(event.payload);
-            if (!inSoW) q.push([...instruments]);
-            break;
-          case "removed": {
-            const idx = instruments.findIndex((i) => i.id === event.payload);
-            if (idx >= 0) instruments.splice(idx, 1);
-            if (!inSoW) q.push([...instruments]);
-            break;
+        const unsub = ws.on(SERVER_MSG.INSTRUMENT_EVENT, (payload) => {
+          const event = payload as InstrumentEvent;
+          switch (event.type) {
+            case "startOfStateOfTheWorld":
+              instruments.length = 0;
+              inSoW = true;
+              break;
+            case "endOfStateOfTheWorld":
+              inSoW = false;
+              subscriber.next([...instruments]);
+              break;
+            case "added":
+              instruments.push(event.payload);
+              if (!inSoW) subscriber.next([...instruments]);
+              break;
+            case "removed": {
+              const idx = instruments.findIndex((i) => i.id === event.payload);
+              if (idx >= 0) instruments.splice(idx, 1);
+              if (!inSoW) subscriber.next([...instruments]);
+              break;
+            }
           }
-        }
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_INSTRUMENTS);
+        return () => {
+          unsub();
+        };
       });
-      ws.send(CLIENT_MSG.SUBSCRIBE_INSTRUMENTS);
-      const original = q.iterable;
-      return {
-        [Symbol.asyncIterator]() {
-          const iter = original[Symbol.asyncIterator]();
-          return {
-            next: () => iter.next(),
-            return() {
-              unsub();
-              q.dispose();
-              return iter.return!();
-            },
-          };
-        },
-      };
     },
   };
 }
 
 function createDealerPort(ws: WsAdapter): DealerPort {
   return {
-    subscribe(): AsyncIterable<readonly Dealer[]> {
-      const dealers: Dealer[] = [];
-      let inSoW = false;
-      const q = createAsyncQueue<readonly Dealer[]>();
+    getDealers(): Observable<readonly Dealer[]> {
+      return new Observable<readonly Dealer[]>((subscriber) => {
+        const dealers: Dealer[] = [];
+        let inSoW = false;
 
-      const unsub = ws.on(SERVER_MSG.DEALER_EVENT, (payload) => {
-        const event = payload as DealerEvent;
-        switch (event.type) {
-          case "startOfStateOfTheWorld":
-            dealers.length = 0;
-            inSoW = true;
-            break;
-          case "endOfStateOfTheWorld":
-            inSoW = false;
-            q.push([...dealers]);
-            break;
-          case "added":
-            dealers.push(event.payload);
-            if (!inSoW) q.push([...dealers]);
-            break;
-          case "removed": {
-            const idx = dealers.findIndex((d) => d.id === event.payload);
-            if (idx >= 0) dealers.splice(idx, 1);
-            if (!inSoW) q.push([...dealers]);
-            break;
+        const unsub = ws.on(SERVER_MSG.DEALER_EVENT, (payload) => {
+          const event = payload as DealerEvent;
+          switch (event.type) {
+            case "startOfStateOfTheWorld":
+              dealers.length = 0;
+              inSoW = true;
+              break;
+            case "endOfStateOfTheWorld":
+              inSoW = false;
+              subscriber.next([...dealers]);
+              break;
+            case "added":
+              dealers.push(event.payload);
+              if (!inSoW) subscriber.next([...dealers]);
+              break;
+            case "removed": {
+              const idx = dealers.findIndex((d) => d.id === event.payload);
+              if (idx >= 0) dealers.splice(idx, 1);
+              if (!inSoW) subscriber.next([...dealers]);
+              break;
+            }
           }
-        }
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_DEALERS);
+        return () => {
+          unsub();
+        };
       });
-      ws.send(CLIENT_MSG.SUBSCRIBE_DEALERS);
-      const original = q.iterable;
-      return {
-        [Symbol.asyncIterator]() {
-          const iter = original[Symbol.asyncIterator]();
-          return {
-            next: () => iter.next(),
-            return() {
-              unsub();
-              q.dispose();
-              return iter.return!();
-            },
-          };
-        },
-      };
     },
   };
 }

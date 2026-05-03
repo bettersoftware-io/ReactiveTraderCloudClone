@@ -1,3 +1,4 @@
+import { type Observable, of } from "rxjs";
 import type { Instrument } from "../credit/instrument.js";
 import type { Dealer } from "../credit/dealer.js";
 import type { InstrumentPort } from "../ports/instrumentPort.js";
@@ -31,13 +32,13 @@ export const DEALERS_CATALOG: readonly Dealer[] = [
 ];
 
 export class InstrumentSimulator implements InstrumentPort {
-  async *subscribe(): AsyncIterable<readonly Instrument[]> {
-    yield INSTRUMENTS_CATALOG;
+  getInstruments(): Observable<readonly Instrument[]> {
+    return of(INSTRUMENTS_CATALOG);
   }
 }
 
 export class DealerSimulator implements DealerPort {
-  async *subscribe(): AsyncIterable<readonly Dealer[]> {
-    yield DEALERS_CATALOG;
+  getDealers(): Observable<readonly Dealer[]> {
+    return of(DEALERS_CATALOG);
   }
 }

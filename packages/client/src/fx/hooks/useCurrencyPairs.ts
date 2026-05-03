@@ -7,18 +7,8 @@ export function useCurrencyPairs(): readonly CurrencyPair[] {
   const [pairs, setPairs] = useState<readonly CurrencyPair[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      for await (const snapshot of referenceData.getCurrencyPairs()) {
-        if (cancelled) break;
-        setPairs(snapshot);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    const sub = referenceData.getCurrencyPairs().subscribe(setPairs);
+    return () => sub.unsubscribe();
   }, [referenceData]);
 
   return pairs;

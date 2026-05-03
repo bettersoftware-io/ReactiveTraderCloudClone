@@ -1,44 +1,60 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { firstValueFrom } from "rxjs";
+import { toArray } from "rxjs/operators";
 import { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";
 
 describe("ReferenceDataSimulator", () => {
-  it("emits all 9 currency pairs", async () => {
-    const service = new ReferenceDataSimulator();
-    const pairs: any[] = [];
+  it("emits all 9 currency pairs after the 1s initial delay then completes", async () => {
+    vi.useFakeTimers();
+    try {
+      const service = new ReferenceDataSimulator();
+      const promise = firstValueFrom(service.getCurrencyPairs().pipe(toArray()));
+      await vi.advanceTimersByTimeAsync(1_000);
+      const emissions = await promise;
 
-    for await (const batch of service.getCurrencyPairs()) {
-      pairs.push(...batch);
-      break; // only one emission expected
+      expect(emissions).toHaveLength(1);
+      const pairs = emissions[0];
+      expect(pairs).toHaveLength(9);
+      const symbols = pairs.map((p) => p.symbol);
+      expect(symbols).toContain("EURUSD");
+      expect(symbols).toContain("NZDUSD");
+      expect(symbols).toContain("EURAUD");
+    } finally {
+      vi.useRealTimers();
     }
-
-    expect(pairs).toHaveLength(9);
-    const symbols = pairs.map((p) => p.symbol);
-    expect(symbols).toContain("EURUSD");
-    expect(symbols).toContain("NZDUSD");
-    expect(symbols).toContain("EURAUD");
   });
 
   it("NZDUSD has defaultNotional of 10M", async () => {
-    const service = new ReferenceDataSimulator();
+    vi.useFakeTimers();
+    try {
+      const service = new ReferenceDataSimulator();
+      const promise = firstValueFrom(service.getCurrencyPairs());
+      await vi.advanceTimersByTimeAsync(1_000);
+      const batch = await promise;
 
-    for await (const batch of service.getCurrencyPairs()) {
       const nzd = batch.find((p) => p.symbol === "NZDUSD");
       expect(nzd).toBeDefined();
       expect(nzd!.defaultNotional).toBe(10_000_000);
-      break;
+    } finally {
+      vi.useRealTimers();
     }
   });
 
   it("all non-NZDUSD pairs have defaultNotional of 1M", async () => {
-    const service = new ReferenceDataSimulator();
+    vi.useFakeTimers();
+    try {
+      const service = new ReferenceDataSimulator();
+      const promise = firstValueFrom(service.getCurrencyPairs());
+      await vi.advanceTimersByTimeAsync(1_000);
+      const batch = await promise;
 
-    for await (const batch of service.getCurrencyPairs()) {
       for (const pair of batch) {
         if (pair.symbol !== "NZDUSD") {
           expect(pair.defaultNotional).toBe(1_000_000);
         }
       }
-      break;
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

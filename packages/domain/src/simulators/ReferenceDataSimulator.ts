@@ -1,14 +1,13 @@
+import { type Observable, of } from "rxjs";
+import { delay } from "rxjs/operators";
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { ReferenceDataPort } from "../ports/referenceDataPort.js";
 import { KNOWN_CURRENCY_PAIRS } from "../fx/currencyPair.js";
-import { delay } from "./delay.js";
 
 const INITIAL_DELAY_MS = 1_000;
 
 export class ReferenceDataSimulator implements ReferenceDataPort {
-  async *getCurrencyPairs(): AsyncIterable<readonly CurrencyPair[]> {
-    await delay(INITIAL_DELAY_MS);
-    yield KNOWN_CURRENCY_PAIRS;
-    // No incremental updates in mock mode — generator ends after initial snapshot
+  getCurrencyPairs(): Observable<readonly CurrencyPair[]> {
+    return of(KNOWN_CURRENCY_PAIRS).pipe(delay(INITIAL_DELAY_MS));
   }
 }

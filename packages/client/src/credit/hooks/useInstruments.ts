@@ -7,14 +7,8 @@ export function useInstruments(): readonly Instrument[] {
   const [data, setData] = useState<readonly Instrument[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      for await (const snapshot of instruments.subscribe()) {
-        if (cancelled) break;
-        setData(snapshot);
-      }
-    })();
-    return () => { cancelled = true; };
+    const sub = instruments.getInstruments().subscribe(setData);
+    return () => sub.unsubscribe();
   }, [instruments]);
 
   return data;
