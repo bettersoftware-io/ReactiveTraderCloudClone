@@ -189,7 +189,7 @@ function streamReferenceData(ws: WebSocket, svc: ServiceContainer, subs: AbortSe
       subs.delete(ac);
     },
   });
-  ac.signal.addEventListener("abort", () => sub.unsubscribe(), { once: true });
+  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
 }
 
 function streamPricing(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, payload: { symbol: string }): void {
@@ -296,7 +296,7 @@ function streamInstruments(ws: WebSocket, svc: ServiceContainer, subs: AbortSet)
       subs.delete(ac);
     },
   });
-  ac.signal.addEventListener("abort", () => sub.unsubscribe(), { once: true });
+  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
 }
 
 function streamDealers(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
@@ -325,7 +325,7 @@ function streamDealers(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): vo
       subs.delete(ac);
     },
   });
-  ac.signal.addEventListener("abort", () => sub.unsubscribe(), { once: true });
+  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
 }
 
 function streamWorkflow(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
