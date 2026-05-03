@@ -1,3 +1,4 @@
+import { type Observable, Subject, defer, concat, of } from "rxjs";
 import type { Trade } from "../fx/trade.js";
 import type { BlotterPort } from "../ports/blotterPort.js";
 import type { ExecutionSimulator } from "./ExecutionSimulator.js";
@@ -9,31 +10,19 @@ import type { ExecutionSimulator } from "./ExecutionSimulator.js";
  */
 export class TradeStoreSimulator implements BlotterPort {
   private readonly trades = new Map<number, Trade>();
-  private pendingResolve: ((value: void) => void) | null = null;
+  private readonly snapshots$ = new Subject<readonly Trade[]>();
 
   constructor(executionEngine: ExecutionSimulator) {
     executionEngine.onTrade((trade) => {
       this.trades.set(trade.tradeId, trade);
-      // Wake up any waiting consumer
-      if (this.pendingResolve) {
-        const resolve = this.pendingResolve;
-        this.pendingResolve = null;
-        resolve();
-      }
+      this.snapshots$.next(this.snapshot());
     });
   }
 
-  async *getTradeStream(): AsyncIterable<readonly Trade[]> {
-    // Emit initial empty state
-    yield this.snapshot();
-
-    // Then yield on each new trade
-    while (true) {
-      await new Promise<void>((resolve) => {
-        this.pendingResolve = resolve;
-      });
-      yield this.snapshot();
-    }
+  getTradeStream(): Observable<readonly Trade[]> {
+    return defer(() =>
+      concat(of(this.snapshot()), this.snapshots$.asObservable()),
+    );
   }
 
   private snapshot(): readonly Trade[] {

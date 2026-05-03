@@ -1,3 +1,5 @@
+import { type Observable } from "rxjs";
+import { map } from "rxjs/operators";
 import type { ExecutionPort } from "../ports/executionPort.js";
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { Price } from "../fx/price.js";
@@ -24,7 +26,7 @@ export interface ExecuteTradeResult {
 export class ExecuteTradeUseCase {
   constructor(private readonly execution: ExecutionPort) {}
 
-  async execute(input: ExecuteTradeInput): Promise<ExecuteTradeResult> {
+  execute(input: ExecuteTradeInput): Observable<ExecuteTradeResult> {
     const spotRate =
       input.direction === Direction.Buy ? input.price.ask : input.price.bid;
     const dealtCurrency = deriveDealtCurrency(input.pair.symbol, input.direction);
@@ -35,11 +37,14 @@ export class ExecuteTradeUseCase {
       notional: input.notional,
       dealtCurrency,
     };
-    const trade = await this.execution.executeTrade(request);
-    const status =
-      trade.status === TradeStatus.Rejected
-        ? ExecutionStatus.Rejected
-        : ExecutionStatus.Done;
-    return { trade, status };
+    return this.execution.executeTrade(request).pipe(
+      map((trade) => ({
+        trade,
+        status:
+          trade.status === TradeStatus.Rejected
+            ? ExecutionStatus.Rejected
+            : ExecutionStatus.Done,
+      })),
+    );
   }
 }

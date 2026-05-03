@@ -1,7 +1,8 @@
+import { type Observable, defer, timer } from "rxjs";
+import { map, tap } from "rxjs/operators";
 import type { ExecutionRequest, Trade } from "../fx/trade.js";
 import type { ExecutionPort } from "../ports/executionPort.js";
 import { TradeStatus } from "../fx/trade.js";
-import { delay } from "./delay.js";
 
 const REJECTED_PAIR = "GBPJPY";
 const DELAYED_PAIR = "EURJPY";
@@ -19,45 +20,35 @@ export class ExecutionSimulator implements ExecutionPort {
     this.listeners.push(listener);
   }
 
-  async executeTrade(request: ExecutionRequest): Promise<Trade> {
-    const tradeId = this.nextId++;
-    const now = new Date().toISOString().slice(0, 10);
-
-    // Determine delay and status based on pair
-    let delayMs: number;
-    let status: TradeStatus;
-
-    if (request.currencyPair === REJECTED_PAIR) {
-      status = TradeStatus.Rejected;
-      delayMs = Math.random() * NORMAL_MAX_DELAY_MS;
-    } else if (request.currencyPair === DELAYED_PAIR) {
-      status = TradeStatus.Done;
-      delayMs = DELAYED_PAIR_MS;
-    } else {
-      status = TradeStatus.Done;
-      delayMs = Math.random() * NORMAL_MAX_DELAY_MS;
-    }
-
-    await delay(delayMs);
-
-    const trade: Trade = {
-      tradeId,
-      tradeName: DEFAULT_TRADER_NAME,
-      currencyPair: request.currencyPair,
-      notional: request.notional,
-      dealtCurrency: request.dealtCurrency,
-      direction: request.direction,
-      spotRate: request.spotRate,
-      status,
-      tradeDate: now,
-      valueDate: now,
-    };
-
-    // Notify listeners (trade store picks these up)
-    for (const listener of this.listeners) {
-      listener(trade);
-    }
-
-    return trade;
+  executeTrade(request: ExecutionRequest): Observable<Trade> {
+    return defer(() => {
+      const tradeId = this.nextId++;
+      const now = new Date().toISOString().slice(0, 10);
+      const status =
+        request.currencyPair === REJECTED_PAIR
+          ? TradeStatus.Rejected
+          : TradeStatus.Done;
+      const delayMs =
+        request.currencyPair === DELAYED_PAIR
+          ? DELAYED_PAIR_MS
+          : Math.random() * NORMAL_MAX_DELAY_MS;
+      return timer(delayMs).pipe(
+        map<number, Trade>(() => ({
+          tradeId,
+          tradeName: DEFAULT_TRADER_NAME,
+          currencyPair: request.currencyPair,
+          notional: request.notional,
+          dealtCurrency: request.dealtCurrency,
+          direction: request.direction,
+          spotRate: request.spotRate,
+          status,
+          tradeDate: now,
+          valueDate: now,
+        })),
+        tap((trade) => {
+          for (const listener of this.listeners) listener(trade);
+        }),
+      );
+    });
   }
 }

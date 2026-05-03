@@ -7,18 +7,8 @@ export function useTradeStream(): readonly Trade[] {
   const [trades, setTrades] = useState<readonly Trade[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      for await (const snapshot of blotter.getTradeStream()) {
-        if (cancelled) break;
-        setTrades(snapshot);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    const sub = blotter.getTradeStream().subscribe(setTrades);
+    return () => sub.unsubscribe();
   }, [blotter]);
 
   return trades;

@@ -222,57 +222,64 @@ function createPricingPort(ws: WsAdapter): PricingPort {
 
 function createExecutionPort(ws: WsAdapter): ExecutionPort {
   return {
-    async executeTrade(request) {
-      const dto: ExecutionRequestDto = {
-        currencyPair: request.currencyPair,
-        spotRate: request.spotRate,
-        valueDate: new Date().toISOString().slice(0, 10),
-        direction: request.direction,
-        notional: request.notional,
-        dealtCurrency: request.dealtCurrency,
-      };
-      const resp = await ws.rpc(CLIENT_MSG.EXECUTE_TRADE, dto) as RpcResponse<ExecutionResponseDto>;
-      if (resp.type === "nack") throw new Error("Trade execution failed");
-      const r = resp.payload!;
-      return {
-        tradeId: r.tradeId,
-        tradeName: r.tradeName,
-        currencyPair: r.currencyPair,
-        notional: r.notional,
-        dealtCurrency: r.dealtCurrency,
-        direction: r.direction,
-        spotRate: r.spotRate,
-        status: r.status,
-        tradeDate: r.tradeDate,
-        valueDate: r.valueDate,
-      };
+    executeTrade(request): Observable<Trade> {
+      return new Observable<Trade>((subscriber) => {
+        let cancelled = false;
+        const dto: ExecutionRequestDto = {
+          currencyPair: request.currencyPair,
+          spotRate: request.spotRate,
+          valueDate: new Date().toISOString().slice(0, 10),
+          direction: request.direction,
+          notional: request.notional,
+          dealtCurrency: request.dealtCurrency,
+        };
+        (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.EXECUTE_TRADE, dto)) as RpcResponse<ExecutionResponseDto>;
+            if (cancelled) return;
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Trade execution failed"));
+              return;
+            }
+            const r = resp.payload!;
+            subscriber.next({
+              tradeId: r.tradeId,
+              tradeName: r.tradeName,
+              currencyPair: r.currencyPair,
+              notional: r.notional,
+              dealtCurrency: r.dealtCurrency,
+              direction: r.direction,
+              spotRate: r.spotRate,
+              status: r.status,
+              tradeDate: r.tradeDate,
+              valueDate: r.valueDate,
+            });
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      });
     },
   };
 }
 
 function createBlotterPort(ws: WsAdapter): BlotterPort {
   return {
-    getTradeStream(): AsyncIterable<readonly Trade[]> {
-      const q = createAsyncQueue<readonly Trade[]>();
-      const unsub = ws.on(SERVER_MSG.BLOTTER, (payload) => {
-        const msg = payload as BlotterMessage;
-        q.push(msg.updates);
+    getTradeStream(): Observable<readonly Trade[]> {
+      return new Observable<readonly Trade[]>((subscriber) => {
+        const unsub = ws.on(SERVER_MSG.BLOTTER, (payload) => {
+          const msg = payload as BlotterMessage;
+          subscriber.next(msg.updates);
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_BLOTTER);
+        return () => {
+          unsub();
+        };
       });
-      ws.send(CLIENT_MSG.SUBSCRIBE_BLOTTER);
-      const original = q.iterable;
-      return {
-        [Symbol.asyncIterator]() {
-          const iter = original[Symbol.asyncIterator]();
-          return {
-            next: () => iter.next(),
-            return() {
-              unsub();
-              q.dispose();
-              return iter.return!();
-            },
-          };
-        },
-      };
     },
   };
 }

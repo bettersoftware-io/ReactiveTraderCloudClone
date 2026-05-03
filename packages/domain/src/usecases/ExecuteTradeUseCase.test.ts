@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { firstValueFrom, of, throwError } from "rxjs";
 import { ExecuteTradeUseCase } from "./ExecuteTradeUseCase.js";
 import type { ExecutionPort } from "../ports/executionPort.js";
 import type { CurrencyPair } from "../fx/currencyPair.js";
@@ -30,9 +31,9 @@ const PRICE: Price = {
 function stubExecution(trade: Trade): { port: ExecutionPort; lastRequest: { current: ExecutionRequest | null } } {
   const lastRequest = { current: null as ExecutionRequest | null };
   const port: ExecutionPort = {
-    async executeTrade(request) {
+    executeTrade(request) {
       lastRequest.current = request;
-      return trade;
+      return of(trade);
     },
   };
   return { port, lastRequest };
@@ -58,12 +59,14 @@ describe("ExecuteTradeUseCase", () => {
     const { port, lastRequest } = stubExecution(buildTrade(TradeStatus.Done));
     const useCase = new ExecuteTradeUseCase(port);
 
-    const result = await useCase.execute({
-      pair: EURUSD,
-      direction: Direction.Buy,
-      price: PRICE,
-      notional: 1_000_000,
-    });
+    const result = await firstValueFrom(
+      useCase.execute({
+        pair: EURUSD,
+        direction: Direction.Buy,
+        price: PRICE,
+        notional: 1_000_000,
+      }),
+    );
 
     expect(lastRequest.current).toEqual({
       currencyPair: "EURUSD",
@@ -80,12 +83,14 @@ describe("ExecuteTradeUseCase", () => {
     const { port, lastRequest } = stubExecution(buildTrade(TradeStatus.Done));
     const useCase = new ExecuteTradeUseCase(port);
 
-    await useCase.execute({
-      pair: EURUSD,
-      direction: Direction.Sell,
-      price: PRICE,
-      notional: 1_000_000,
-    });
+    await firstValueFrom(
+      useCase.execute({
+        pair: EURUSD,
+        direction: Direction.Sell,
+        price: PRICE,
+        notional: 1_000_000,
+      }),
+    );
 
     expect(lastRequest.current?.spotRate).toBe(1.10000);
     expect(lastRequest.current?.dealtCurrency).toBe("USD");
@@ -96,12 +101,14 @@ describe("ExecuteTradeUseCase", () => {
     const { port } = stubExecution(buildTrade(TradeStatus.Rejected));
     const useCase = new ExecuteTradeUseCase(port);
 
-    const result = await useCase.execute({
-      pair: EURUSD,
-      direction: Direction.Buy,
-      price: PRICE,
-      notional: 1_000_000,
-    });
+    const result = await firstValueFrom(
+      useCase.execute({
+        pair: EURUSD,
+        direction: Direction.Buy,
+        price: PRICE,
+        notional: 1_000_000,
+      }),
+    );
 
     expect(result.status).toBe(ExecutionStatus.Rejected);
     expect(result.trade.status).toBe(TradeStatus.Rejected);
@@ -109,14 +116,16 @@ describe("ExecuteTradeUseCase", () => {
 
   it("propagates errors from the port (timeout handling stays in the hook)", async () => {
     const port: ExecutionPort = {
-      async executeTrade() {
-        throw new Error("timeout");
+      executeTrade() {
+        return throwError(() => new Error("timeout"));
       },
     };
     const useCase = new ExecuteTradeUseCase(port);
 
     await expect(
-      useCase.execute({ pair: EURUSD, direction: Direction.Buy, price: PRICE, notional: 1_000_000 }),
+      firstValueFrom(
+        useCase.execute({ pair: EURUSD, direction: Direction.Buy, price: PRICE, notional: 1_000_000 }),
+      ),
     ).rejects.toThrow("timeout");
   });
 });

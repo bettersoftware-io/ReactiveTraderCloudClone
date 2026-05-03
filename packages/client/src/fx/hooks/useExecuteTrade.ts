@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { firstValueFrom } from "rxjs";
 import {
   type CurrencyPair,
   type Price,
@@ -22,7 +23,9 @@ export function useExecuteTrade(
       tileState.start();
 
       try {
-        const { status, trade } = await useCase.execute({ pair, direction, price, notional });
+        const { status, trade } = await firstValueFrom(
+          useCase.execute({ pair, direction, price, notional }),
+        );
         tileState.finish(status, trade);
       } catch {
         tileState.finish(ExecutionStatus.Timeout);

@@ -221,37 +221,39 @@ function streamPricing(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, pay
 
 function streamBlotter(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
   const ac = createSubscription(subs);
-  (async () => {
-    try {
-      let isFirst = true;
-      for await (const trades of svc.blotter.getTradeStream()) {
-        if (ac.signal.aborted) break;
-        const updates: TradeDto[] = trades.map((t) => ({
-          tradeId: t.tradeId,
-          tradeName: t.tradeName,
-          currencyPair: t.currencyPair,
-          notional: t.notional,
-          dealtCurrency: t.dealtCurrency,
-          direction: t.direction,
-          spotRate: t.spotRate,
-          status: t.status,
-          tradeDate: t.tradeDate,
-          valueDate: t.valueDate,
-        }));
-        const message: BlotterMessage = {
-          updates,
-          isStateOfTheWorld: isFirst,
-          isStale: false,
-        };
-        send(ws, SERVER_MSG.BLOTTER, message);
-        isFirst = false;
-      }
-    } catch (e) {
+  let isFirst = true;
+  const sub = svc.blotter.getTradeStream().subscribe({
+    next: (trades) => {
+      if (ac.signal.aborted) return;
+      const updates: TradeDto[] = trades.map((t) => ({
+        tradeId: t.tradeId,
+        tradeName: t.tradeName,
+        currencyPair: t.currencyPair,
+        notional: t.notional,
+        dealtCurrency: t.dealtCurrency,
+        direction: t.direction,
+        spotRate: t.spotRate,
+        status: t.status,
+        tradeDate: t.tradeDate,
+        valueDate: t.valueDate,
+      }));
+      const message: BlotterMessage = {
+        updates,
+        isStateOfTheWorld: isFirst,
+        isStale: false,
+      };
+      send(ws, SERVER_MSG.BLOTTER, message);
+      isFirst = false;
+    },
+    error: (e) => {
       if (!ac.signal.aborted) console.error("Blotter stream error:", e);
-    } finally {
       subs.delete(ac);
-    }
-  })();
+    },
+    complete: () => {
+      subs.delete(ac);
+    },
+  });
+  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
 }
 
 function streamAnalytics(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, payload: { currency: string }): void {
@@ -392,13 +394,13 @@ function streamWorkflow(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): v
 async function handleExecuteTrade(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
   try {
     const req = msg.payload as ExecutionRequestDto;
-    const trade = await svc.execution.executeTrade({
+    const trade = await firstValueFrom(svc.execution.executeTrade({
       currencyPair: req.currencyPair,
       spotRate: req.spotRate,
       direction: req.direction,
       notional: req.notional,
       dealtCurrency: req.dealtCurrency,
-    });
+    }));
     const response: ExecutionResponseDto = {
       tradeId: trade.tradeId,
       tradeName: trade.tradeName,

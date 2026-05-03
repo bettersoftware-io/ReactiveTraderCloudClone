@@ -1,100 +1,130 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { firstValueFrom } from "rxjs";
 import { ExecutionSimulator } from "./ExecutionSimulator.js";
 import { TradeStoreSimulator } from "./TradeStoreSimulator.js";
 import { Direction, TradeStatus } from "../fx/trade.js";
+import type { Trade } from "../fx/trade.js";
+
+const NORMAL_MAX_DELAY_MS = 2_000;
 
 describe("TradeStoreSimulator", () => {
-  it("starts with empty trade list", async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("starts with empty trade list", () => {
     const engine = new ExecutionSimulator();
     const store = new TradeStoreSimulator(engine);
+    const snapshots: (readonly Trade[])[] = [];
 
-    for await (const trades of store.getTradeStream()) {
-      expect(trades).toHaveLength(0);
-      break; // only check initial emission
-    }
+    const sub = store.getTradeStream().subscribe((s) => snapshots.push(s));
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]).toHaveLength(0);
+    sub.unsubscribe();
   });
 
   it("accumulates Done trades", async () => {
+    vi.useFakeTimers();
     const engine = new ExecutionSimulator();
     const store = new TradeStoreSimulator(engine);
-    const results: any[][] = [];
+    const snapshots: (readonly Trade[])[] = [];
 
-    const iter = store.getTradeStream()[Symbol.asyncIterator]();
+    const sub = store.getTradeStream().subscribe((s) => snapshots.push(s));
 
-    // Get initial empty state
-    const first = await iter.next();
-    results.push([...(first.value as any)]);
+    // initial empty snapshot
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]).toHaveLength(0);
 
-    // Execute a trade, then read next emission
-    const tradePromise = engine.executeTrade({
-      currencyPair: "EURUSD",
-      spotRate: 1.5,
-      direction: Direction.Buy,
-      notional: 1_000_000,
-      dealtCurrency: "EUR",
-    });
+    // Execute a trade
+    const tradePromise = firstValueFrom(
+      engine.executeTrade({
+        currencyPair: "EURUSD",
+        spotRate: 1.5,
+        direction: Direction.Buy,
+        notional: 1_000_000,
+        dealtCurrency: "EUR",
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);
+    const trade = await tradePromise;
 
-    const [trade, second] = await Promise.all([tradePromise, iter.next()]);
-    results.push([...(second.value as any)]);
+    expect(snapshots).toHaveLength(2);
+    expect(snapshots[1]).toHaveLength(1);
+    expect(snapshots[1][0].tradeId).toBe(trade.tradeId);
 
-    expect(results[0]).toHaveLength(0);
-    expect(results[1]).toHaveLength(1);
-    expect(results[1][0].tradeId).toBe(trade.tradeId);
+    sub.unsubscribe();
   });
 
   it("accumulates Rejected trades too", async () => {
+    vi.useFakeTimers();
     const engine = new ExecutionSimulator();
     const store = new TradeStoreSimulator(engine);
+    const snapshots: (readonly Trade[])[] = [];
 
-    const iter = store.getTradeStream()[Symbol.asyncIterator]();
-    await iter.next(); // skip initial empty
+    const sub = store.getTradeStream().subscribe((s) => snapshots.push(s));
 
-    const tradePromise = engine.executeTrade({
-      currencyPair: "GBPJPY",
-      spotRate: 150.0,
-      direction: Direction.Sell,
-      notional: 1_000_000,
-      dealtCurrency: "JPY",
-    });
-
-    const [trade, next] = await Promise.all([tradePromise, iter.next()]);
+    const tradePromise = firstValueFrom(
+      engine.executeTrade({
+        currencyPair: "GBPJPY",
+        spotRate: 150.0,
+        direction: Direction.Sell,
+        notional: 1_000_000,
+        dealtCurrency: "JPY",
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);
+    const trade = await tradePromise;
 
     expect(trade.status).toBe(TradeStatus.Rejected);
-    const trades = next.value as any[];
+    expect(snapshots).toHaveLength(2);
+    const trades = snapshots[1];
     expect(trades).toHaveLength(1);
     expect(trades[0].status).toBe(TradeStatus.Rejected);
+
+    sub.unsubscribe();
   });
 
   it("displays newest first", async () => {
+    vi.useFakeTimers();
     const engine = new ExecutionSimulator();
     const store = new TradeStoreSimulator(engine);
+    const snapshots: (readonly Trade[])[] = [];
 
-    const iter = store.getTradeStream()[Symbol.asyncIterator]();
-    await iter.next(); // skip initial empty
+    const sub = store.getTradeStream().subscribe((s) => snapshots.push(s));
 
     // Execute first trade
-    const t1Promise = engine.executeTrade({
-      currencyPair: "EURUSD",
-      spotRate: 1.5,
-      direction: Direction.Buy,
-      notional: 1_000_000,
-      dealtCurrency: "EUR",
-    });
-    const [t1] = await Promise.all([t1Promise, iter.next()]);
+    const t1Promise = firstValueFrom(
+      engine.executeTrade({
+        currencyPair: "EURUSD",
+        spotRate: 1.5,
+        direction: Direction.Buy,
+        notional: 1_000_000,
+        dealtCurrency: "EUR",
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);
+    const t1 = await t1Promise;
 
     // Execute second trade
-    const t2Promise = engine.executeTrade({
-      currencyPair: "AUDUSD",
-      spotRate: 0.75,
-      direction: Direction.Sell,
-      notional: 500_000,
-      dealtCurrency: "USD",
-    });
-    const [t2, snapshot] = await Promise.all([t2Promise, iter.next()]);
+    const t2Promise = firstValueFrom(
+      engine.executeTrade({
+        currencyPair: "AUDUSD",
+        spotRate: 0.75,
+        direction: Direction.Sell,
+        notional: 500_000,
+        dealtCurrency: "USD",
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);
+    const t2 = await t2Promise;
 
-    const trades = snapshot.value as any[];
+    // snapshots: [initial empty, after t1, after t2]
+    expect(snapshots).toHaveLength(3);
+    const trades = snapshots[2];
     expect(trades).toHaveLength(2);
     expect(trades[0].tradeId).toBe(t2.tradeId); // newest first
     expect(trades[1].tradeId).toBe(t1.tradeId);
+
+    sub.unsubscribe();
   });
 });
