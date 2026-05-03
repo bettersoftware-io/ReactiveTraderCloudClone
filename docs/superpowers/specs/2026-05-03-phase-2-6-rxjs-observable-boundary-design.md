@@ -43,75 +43,84 @@ Replace `AsyncIterable<T>` (and `Promise<T>`) at the `@rtc/domain` boundary with
 
 ## 2. Port + use case signatures
 
-### Port shape
+### Port shape (signatures match the existing methods, only return types change)
 
 ```ts
 import type { Observable } from "rxjs";
 
 export interface PricingPort {
-  priceStream(pair: CurrencyPair): Observable<PriceTick>;
-  getRfqQuote(req: RfqQuoteRequest): Observable<RfqQuoteResult>;  // promoted from duck-typed
+  getPriceUpdates(symbol: string): Observable<PriceTick>;
+  getPriceHistory(symbol: string): Observable<readonly PriceTick[]>;       // was Promise<readonly PriceTick[]>
+  getRfqQuote(symbol: string, pipsPosition: number): Observable<RfqQuoteResult>;  // promoted from duck-typed on simulator into the port
 }
 
 export interface ExecutionPort {
-  execute(req: ExecutionRequest): Observable<Trade | ExecutionStatus>;
+  executeTrade(request: ExecutionRequest): Observable<Trade>;
 }
 
 export interface BlotterPort {
-  tradeStream(): Observable<Trade>;
+  getTradeStream(): Observable<readonly Trade[]>;                          // emits whole snapshot per change (existing behaviour preserved)
 }
 
 export interface AnalyticsPort {
-  positions(baseCurrency: string): Observable<PositionUpdates>;
+  getAnalytics(baseCurrency: string): Observable<PositionUpdates>;
 }
 
 export interface ReferenceDataPort {
-  currencyPairs(): Observable<CurrencyPairUpdate>;
+  /* current method shape preserved; only return type swap. */
 }
 
 export interface InstrumentPort {
-  instruments(): Observable<InstrumentEvent>;
+  /* current method shape preserved; only return type swap. */
 }
 
 export interface DealerPort {
-  dealers(): Observable<DealerEvent>;
+  /* current method shape preserved; only return type swap. */
 }
 
 export interface WorkflowPort {
-  events(): Observable<RfqEvent>;
-  createRfq(req: CreateRfqRequest): Observable<void>;
-  acceptQuote(req: AcceptRequest): Observable<void>;
-  passQuote(req: PassRequest): Observable<void>;
-  cancelRfq(req: CancelRfqRequest): Observable<void>;
-  quote(req: QuoteRequest): Observable<void>;
+  events(): Observable<RfqEvent>;                                          // RENAMED from subscribe() — port.subscribe() collides with Observable.subscribe() and reads as a verb instead of a query
+  createRfq(request: CreateRfqRequest): Observable<number>;                // returns the new RFQ id (existing behaviour preserved)
+  cancelRfq(rfqId: number): Observable<void>;
+  quote(request: QuoteRequest): Observable<void>;
+  pass(quoteId: number): Observable<void>;
+  accept(quoteId: number): Observable<void>;
 }
 ```
 
-### Use case shape — `previousMid` ref becomes `scan`
+### Use case shape — `previousMid` ref becomes a per-subscription closure
 
 ```ts
 class PriceStreamUseCase {
   constructor(private readonly pricing: PricingPort) {}
 
-  execute(pair: CurrencyPair): Observable<EnrichedPriceTick> {
-    return this.pricing.priceStream(pair).pipe(
-      scan<PriceTick, EnrichedPriceTick | null>(
-        (prev, tick) => ({ ...tick, movement: detectMovement(prev?.mid, tick.mid) }),
-        null,
-      ),
-      filter((t): t is EnrichedPriceTick => t !== null),
-    );
+  execute(pair: CurrencyPair): Observable<Price> {
+    return defer(() => {
+      let previousMid: number | undefined;
+      return this.pricing.getPriceUpdates(pair.symbol).pipe(
+        map((tick) => {
+          const enriched: Price = {
+            ...tick,
+            movementType: detectMovement(tick.mid, previousMid),
+            spread: calculateSpread(tick.bid, tick.ask, pair.pipsPosition, pair.ratePrecision),
+          };
+          previousMid = tick.mid;
+          return enriched;
+        }),
+      );
+    });
   }
 }
 ```
 
-`PriceHistoryUseCase` similarly replaces its imperative ring buffer with `scan` over the upstream observable.
+`defer` gives each subscription a fresh `previousMid` — same isolation the AsyncIterable version got from a function-scoped `let`. `PriceHistoryUseCase` follows the same pattern with a per-subscription rolling buffer.
 
-### Three notable contract changes (beyond the type swap)
+### Four notable contract changes (beyond the type swap)
 
 1. **`PricingPort.getRfqQuote` is promoted from duck-typed to contract method** — closes the deferred-from-Phase-2 cleanup tracked in `STATUS.md`.
-2. **`WorkflowPort` command methods return `Observable<void>`** — they emit `undefined` once and complete on success, or error on failure. Callers do `firstValueFrom(...)` to await imperatively.
-3. **Use cases stay cold** — no `shareReplay` baked in. The presenter layer in Phase 3 owns multicast.
+2. **`WorkflowPort.subscribe()` is renamed to `events()`** — `port.subscribe().subscribe(...)` reads terribly once both verbs are in play, and `events()` is a noun-shaped query, which fits the read-stream contract.
+3. **`WorkflowPort` command methods return `Observable<T>`** — they emit once and complete on success, or error on failure. `createRfq` emits the new RFQ id; `cancelRfq`/`quote`/`pass`/`accept` emit `void`. Callers do `firstValueFrom(...)` to await imperatively.
+4. **Use cases stay cold** — no `shareReplay` baked in. The presenter layer in Phase 3 owns multicast.
 
 ---
 
@@ -119,50 +128,66 @@ class PriceStreamUseCase {
 
 Three patterns cover all 8 simulators. Each pattern matches a category of operation; they're not interchangeable.
 
-### Pattern A — `defer` + `interval` (continuous timer-driven streams)
+### Pattern A — `defer` + (variable-interval recursion via `new Observable`) (continuous timer-driven streams)
 
-Used by `PricingSimulator.priceStream`, `AnalyticsSimulator.positions`.
+Used by `PricingSimulator.getPriceUpdates`, `AnalyticsSimulator.getAnalytics`.
 
 ```ts
-priceStream(pair: CurrencyPair): Observable<PriceTick> {
+getPriceUpdates(symbol: string): Observable<PriceTick> {
   return defer(() => {
-    let mid = this.initialMid(pair);
-    return interval(this.intervalMs).pipe(
-      map(() => {
-        mid = this.randomWalk(mid);
-        return this.toTick(pair, mid);
-      }),
-    );
+    const state = this.pairs.get(symbol);
+    if (!state) return throwError(() => new Error(`Unknown symbol: ${symbol}`));
+    const live$ = new Observable<PriceTick>((subscriber) => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+      const scheduleNext = () => {
+        timeoutId = setTimeout(() => {
+          state.mid = applyRandomWalk(state.mid);
+          const tick = createTick(symbol, state.mid, Date.now());
+          state.history.push(tick);
+          if (state.history.length > PRICE_HISTORY_SIZE) state.history.shift();
+          subscriber.next(tick);
+          scheduleNext();
+        }, tickInterval());
+      };
+      scheduleNext();
+      return () => clearTimeout(timeoutId);
+    });
+    return concat(from(state.history), live$);
   });
 }
 ```
 
-`defer` per-subscription so each consumer gets fresh state. `interval` honours `vi.useFakeTimers()` for tests. Cold; if many consumers want sharing they use `shareReplay` downstream.
+`defer` per-subscription so each consumer gets the historical snapshot first. `new Observable` is used (rather than `interval`) because the existing simulator's tick spacing is randomised between min/max bounds; `interval` only takes a fixed period. `setTimeout` honours `vi.useFakeTimers()` for tests. The teardown function clears the pending timeout so unsubscribing actually stops the loop. For `AnalyticsSimulator.getAnalytics` (fixed period), use `interval(periodMs).pipe(map(...))` instead — simpler.
 
 ### Pattern B — `defer` + `timer` + `of` (one-shot operations)
 
-Used by `ExecutionSimulator.execute`, `PricingSimulator.getRfqQuote`, every `WorkflowPort` command method.
+Used by `ExecutionSimulator.executeTrade`, `PricingSimulator.getRfqQuote`, `PricingSimulator.getPriceHistory`, every `WorkflowPort` command method.
 
 ```ts
-execute(req: ExecutionRequest): Observable<Trade | ExecutionStatus> {
+executeTrade(request: ExecutionRequest): Observable<Trade> {
   return defer(() => {
-    if (this.shouldReject(req.pair)) return of<ExecutionStatus>({ status: "rejected" });
-    return timer(this.delayMs).pipe(
-      map(() => this.makeTrade(req)),
-      tap((trade) => this.tradeStore.addTrade(trade)),
+    const tradeId = this.nextId++;
+    const status = request.currencyPair === REJECTED_PAIR ? TradeStatus.Rejected : TradeStatus.Done;
+    const delayMs = request.currencyPair === DELAYED_PAIR ? DELAYED_PAIR_MS : Math.random() * NORMAL_MAX_DELAY_MS;
+    return timer(delayMs).pipe(
+      map(() => this.makeTrade(tradeId, status, request)),
+      tap((trade) => this.notifyListeners(trade)),
     );
   });
 }
 
-createRfq(req: CreateRfqRequest): Observable<void> {
+createRfq(request: CreateRfqRequest): Observable<number> {
   return defer(() => {
-    const rfq = this.makeRfq(req);
+    const rfq = this.buildRfq(request);
     this.rfqs.set(rfq.id, rfq);
-    this.events$.next({ type: "rfqCreated", rfq });
-    return of(undefined);  // emit once + complete so firstValueFrom resolves
+    this.emit({ type: "rfqCreated", payload: rfq });
+    this.scheduleQuoteResponses(rfq);  // existing side effect
+    return of(rfq.id);  // emit once + complete so firstValueFrom resolves with the id
   });
 }
 ```
+
+Pattern B for synchronous-today ops (`getRfqQuote`, `getPriceHistory`) is the simplest case: just `defer(() => of(this.compute(...)))`.
 
 ### Pattern C — `defer` + `concat(snapshot, subject$)` (state-of-the-world + live)
 
@@ -210,28 +235,28 @@ import { firstValueFrom, lastValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 
 // 1) Collect N from an infinite stream (price ticks, positions, trade stream)
-it("emits 3 price ticks", async () => {
+it("emits 3 price ticks after the historical snapshot", async () => {
   vi.useFakeTimers();
   const sim = new PricingSimulator();
   const promise = firstValueFrom(
-    sim.priceStream(EURUSD).pipe(take(3), toArray()),
+    sim.getPriceUpdates("EURUSD").pipe(skip(PRICE_HISTORY_SIZE), take(3), toArray()),
   );
-  await vi.advanceTimersByTimeAsync(3_000);
+  await vi.advanceTimersByTimeAsync(5_000);
   expect(await promise).toHaveLength(3);
 });
 
 // 2) Collect everything from a finite/completing stream (catalog snapshot)
-it("emits the catalog then completes", async () => {
-  const all = await firstValueFrom(sim.instruments().pipe(toArray()));
+it("emits the instrument catalog then completes", async () => {
+  const all = await firstValueFrom(sim.getInstruments().pipe(toArray()));
   expect(all).toHaveLength(INSTRUMENTS_CATALOG.length);
 });
 
-// 3) Await a one-shot (execute, getRfqQuote, command methods)
+// 3) Await a one-shot (executeTrade, getRfqQuote, getPriceHistory, command methods)
 it("executes a trade", async () => {
   vi.useFakeTimers();
-  const sim = new ExecutionSimulator(...);
-  const promise = firstValueFrom(sim.execute(req));
-  await vi.advanceTimersByTimeAsync(100);
+  const sim = new ExecutionSimulator();
+  const promise = firstValueFrom(sim.executeTrade(req));
+  await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);
   expect(await promise).toMatchObject({ tradeId: 1 });
 });
 ```
