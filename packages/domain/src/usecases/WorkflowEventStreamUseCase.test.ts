@@ -3,7 +3,7 @@ import {
   WorkflowEventStreamUseCase,
   reduceRfqEvent,
   type RfqStreamState,
-} from "./workflow-event-stream-use-case.js";
+} from "./WorkflowEventStreamUseCase.js";
 import type { WorkflowPort, RfqEvent } from "../ports/workflowPort.js";
 import type { Rfq } from "../credit/rfq.js";
 import { RfqState } from "../credit/rfq.js";

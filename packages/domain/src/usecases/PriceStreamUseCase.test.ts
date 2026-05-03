@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PriceStreamUseCase } from "./price-stream-use-case.js";
+import { PriceStreamUseCase } from "./PriceStreamUseCase.js";
 import type { PricingPort } from "../ports/pricingPort.js";
 import type { PriceTick, Price } from "../fx/price.js";
 import { PriceMovementType } from "../fx/price.js";

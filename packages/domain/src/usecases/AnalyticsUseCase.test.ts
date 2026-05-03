@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AnalyticsUseCase } from "./analytics-use-case.js";
+import { AnalyticsUseCase } from "./AnalyticsUseCase.js";
 import type { AnalyticsPort } from "../ports/analyticsPort.js";
 import type { PositionUpdates } from "../analytics/position.js";
 
