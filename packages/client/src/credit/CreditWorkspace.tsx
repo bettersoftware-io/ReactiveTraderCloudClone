@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
-import { NewRfqForm } from "./new-rfq/new-rfq-form";
-import { RfqTilesPanel } from "./rfq-tiles/rfq-tiles-panel";
-import { CreditBlotter } from "./blotter/credit-blotter";
-import { SellSidePanel } from "./sell-side/sell-side-panel";
+import { NewRfqForm } from "./newRfq/NewRfqForm";
+import { RfqTilesPanel } from "./rfqTiles/RfqTilesPanel";
+import { CreditBlotter } from "./blotter/CreditBlotter";
+import { SellSidePanel } from "./sellSide/SellSidePanel";
 
 type CreditView = "tiles" | "new-rfq" | "sell-side";
 

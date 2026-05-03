@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { type Rfq, type Quote, type Instrument, type Dealer, type CreditTrade, RfqState } from "@rtc/domain";
-import { useRfqStream } from "../hooks/use-rfq-stream";
-import { useInstruments } from "../hooks/use-instruments";
-import { useDealers } from "../hooks/use-dealers";
+import { useRfqStream } from "../hooks/useRfqStream";
+import { useInstruments } from "../hooks/useInstruments";
+import { useDealers } from "../hooks/useDealers";
 
 const COLUMNS = [
   "Trade ID", "Status", "Trade Date", "Direction", "Counterparty",

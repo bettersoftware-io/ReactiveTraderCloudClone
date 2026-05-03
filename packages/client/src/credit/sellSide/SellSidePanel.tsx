@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { ADAPTIVE_BANK_NAME, type Instrument } from "@rtc/domain";
-import { useRfqStream } from "../hooks/use-rfq-stream";
-import { useInstruments } from "../hooks/use-instruments";
-import { useDealers } from "../hooks/use-dealers";
-import { TradeTicket } from "./trade-ticket";
+import { useRfqStream } from "../hooks/useRfqStream";
+import { useInstruments } from "../hooks/useInstruments";
+import { useDealers } from "../hooks/useDealers";
+import { TradeTicket } from "./TradeTicket";
 
 export function SellSidePanel() {
   const { rfqs, getQuotesForRfq } = useRfqStream();

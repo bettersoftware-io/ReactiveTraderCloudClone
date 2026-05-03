@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { RfqState, type Instrument, type Dealer } from "@rtc/domain";
-import { useRfqStream } from "../hooks/use-rfq-stream";
-import { useInstruments } from "../hooks/use-instruments";
-import { useDealers } from "../hooks/use-dealers";
+import { useRfqStream } from "../hooks/useRfqStream";
+import { useInstruments } from "../hooks/useInstruments";
+import { useDealers } from "../hooks/useDealers";
 import { useServices } from "../../services/ServiceProvider";
-import { RfqCard } from "./rfq-card";
-import { RfqFilterTabs, type RfqFilter } from "./rfq-filter-tabs";
+import { RfqCard } from "./RfqCard";
+import { RfqFilterTabs, type RfqFilter } from "./RfqFilterTabs";
 
 function filterMatches(state: string, filter: RfqFilter): boolean {
   switch (filter) {

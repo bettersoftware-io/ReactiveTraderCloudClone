@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { type Rfq, type Quote, type Instrument, type Dealer, RfqState } from "@rtc/domain";
-import { QuoteCard } from "./quote-card";
+import { QuoteCard } from "./QuoteCard";
 
 interface RfqCardProps {
   rfq: Rfq;
