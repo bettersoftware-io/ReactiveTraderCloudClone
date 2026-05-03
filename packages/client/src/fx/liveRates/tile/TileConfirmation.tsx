@@ -1,5 +1,5 @@
 import { ExecutionStatus, Direction, type Trade } from "@rtc/domain";
-import type { TileState } from "../../hooks/use-tile-state";
+import type { TileState } from "../../hooks/useTileState";
 
 interface TileConfirmationProps {
   state: TileState;

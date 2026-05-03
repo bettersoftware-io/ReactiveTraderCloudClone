@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { matchesCurrencyFilter, type CurrencyCategory } from "@rtc/domain";
-import { useCurrencyPairs } from "../hooks/use-currency-pairs";
-import { CurrencyFilter } from "./currency-filter";
-import { ViewToggle, type ViewMode } from "./view-toggle";
-import { Tile } from "./tile/tile";
+import { useCurrencyPairs } from "../hooks/useCurrencyPairs";
+import { CurrencyFilter } from "./CurrencyFilter";
+import { ViewToggle, type ViewMode } from "./ViewToggle";
+import { Tile } from "./tile/Tile";
 
 const STORAGE_KEY = "rtc-view-mode";
 

@@ -7,7 +7,7 @@ import {
   ExecuteTradeUseCase,
 } from "@rtc/domain";
 import { useServices } from "../../services/ServiceProvider";
-import type { UseTileStateResult } from "./use-tile-state";
+import type { UseTileStateResult } from "./useTileState";
 
 export function useExecuteTrade(
   pair: CurrencyPair,
