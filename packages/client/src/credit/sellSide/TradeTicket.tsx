@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { firstValueFrom } from "rxjs";
 import { type Rfq, type Quote, type Instrument, RfqState } from "@rtc/domain";
 import { useServices } from "../../services/ServiceProvider";
 
@@ -19,12 +20,12 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
   const handleSubmit = useCallback(async () => {
     const num = parseFloat(price);
     if (isNaN(num) || num <= 0) return;
-    await workflow.quote({ quoteId: quote.id, price: num });
+    await firstValueFrom(workflow.quote({ quoteId: quote.id, price: num }));
     setSubmitted(true);
   }, [workflow, quote.id, price]);
 
   const handlePass = useCallback(async () => {
-    await workflow.pass(quote.id);
+    await firstValueFrom(workflow.pass(quote.id));
     setSubmitted(true);
   }, [workflow, quote.id]);
 

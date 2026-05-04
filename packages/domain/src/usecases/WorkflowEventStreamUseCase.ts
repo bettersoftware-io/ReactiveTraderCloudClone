@@ -1,3 +1,5 @@
+import { type Observable } from "rxjs";
+import { scan } from "rxjs/operators";
 import type { WorkflowPort, RfqEvent } from "../ports/workflowPort.js";
 import type { Rfq } from "../credit/rfq.js";
 import type { Quote } from "../credit/quote.js";
@@ -37,11 +39,7 @@ export function reduceRfqEvent(state: RfqStreamState, event: RfqEvent): RfqStrea
 export class WorkflowEventStreamUseCase {
   constructor(private readonly workflow: WorkflowPort) {}
 
-  async *execute(): AsyncIterable<RfqStreamState> {
-    let state = emptyState();
-    for await (const event of this.workflow.subscribe()) {
-      state = reduceRfqEvent(state, event);
-      yield state;
-    }
+  execute(): Observable<RfqStreamState> {
+    return this.workflow.events().pipe(scan(reduceRfqEvent, emptyState()));
   }
 }

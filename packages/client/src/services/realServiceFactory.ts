@@ -72,56 +72,6 @@ const SERVER_MSG = {
   ACCEPT_RESPONSE: "rpc.accept.response",
 } as const;
 
-// ── Helpers ─────────────────────────────────────────────────────
-
-function createAsyncQueue<T>(): {
-  iterable: AsyncIterable<T>;
-  push: (value: T) => void;
-  dispose: () => void;
-} {
-  let resolve: ((value: IteratorResult<T>) => void) | null = null;
-  const queue: T[] = [];
-  let done = false;
-
-  const iterable: AsyncIterable<T> = {
-    [Symbol.asyncIterator]() {
-      return {
-        next(): Promise<IteratorResult<T>> {
-          if (queue.length > 0) {
-            return Promise.resolve({ value: queue.shift()!, done: false });
-          }
-          if (done) return Promise.resolve({ value: undefined, done: true });
-          return new Promise((r) => { resolve = r; });
-        },
-        return(): Promise<IteratorResult<T>> {
-          done = true;
-          return Promise.resolve({ value: undefined, done: true });
-        },
-      };
-    },
-  };
-
-  return {
-    iterable,
-    push(value: T) {
-      if (done) return;
-      if (resolve) {
-        const r = resolve;
-        resolve = null;
-        r({ value, done: false });
-      } else {
-        queue.push(value);
-      }
-    },
-    dispose() {
-      done = true;
-      if (resolve) {
-        resolve({ value: undefined, done: true });
-      }
-    },
-  };
-}
-
 // ── Port Implementations ────────────────────────────────────────
 
 function createReferenceDataPort(ws: WsAdapter): ReferenceDataPort {
@@ -384,58 +334,137 @@ function createDealerPort(ws: WsAdapter): DealerPort {
 
 function createWorkflowPort(ws: WsAdapter): WorkflowPort {
   return {
-    subscribe(): AsyncIterable<RfqEvent> {
-      const q = createAsyncQueue<RfqEvent>();
-      const unsub = ws.on(SERVER_MSG.WORKFLOW_EVENT, (payload) => {
-        q.push(payload as WorkflowEvent as RfqEvent);
+    events(): Observable<RfqEvent> {
+      return new Observable<RfqEvent>((subscriber) => {
+        const unsub = ws.on(SERVER_MSG.WORKFLOW_EVENT, (payload) => {
+          subscriber.next(payload as WorkflowEvent as RfqEvent);
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_WORKFLOW);
+        return () => {
+          unsub();
+        };
       });
-      ws.send(CLIENT_MSG.SUBSCRIBE_WORKFLOW);
-      const original = q.iterable;
-      return {
-        [Symbol.asyncIterator]() {
-          const iter = original[Symbol.asyncIterator]();
-          return {
-            next: () => iter.next(),
-            return() {
-              unsub();
-              q.dispose();
-              return iter.return!();
-            },
-          };
-        },
-      };
     },
 
-    async createRfq(request: CreateRfqRequest): Promise<number> {
-      const resp = await ws.rpc(CLIENT_MSG.CREATE_RFQ, {
-        instrumentId: request.instrumentId,
-        dealerIds: request.dealerIds,
-        quantity: request.quantity,
-        direction: request.direction,
-        expirySecs: request.expirySecs,
-      }) as RpcResponse<number>;
-      if (resp.type === "nack") throw new Error("Failed to create RFQ");
-      return resp.payload!;
+    createRfq(request: CreateRfqRequest): Observable<number> {
+      return new Observable<number>((subscriber) => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.CREATE_RFQ, {
+              instrumentId: request.instrumentId,
+              dealerIds: request.dealerIds,
+              quantity: request.quantity,
+              direction: request.direction,
+              expirySecs: request.expirySecs,
+            })) as RpcResponse<number>;
+            if (cancelled) return;
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Failed to create RFQ"));
+              return;
+            }
+            subscriber.next(resp.payload!);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      });
     },
 
-    async cancelRfq(rfqId: number): Promise<void> {
-      const resp = await ws.rpc(CLIENT_MSG.CANCEL_RFQ, { rfqId }) as RpcResponse;
-      if (resp.type === "nack") throw new Error("Failed to cancel RFQ");
+    cancelRfq(rfqId: number): Observable<void> {
+      return new Observable<void>((subscriber) => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.CANCEL_RFQ, { rfqId })) as RpcResponse;
+            if (cancelled) return;
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Failed to cancel RFQ"));
+              return;
+            }
+            subscriber.next(undefined);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      });
     },
 
-    async quote(request: QuoteRequest): Promise<void> {
-      const resp = await ws.rpc(CLIENT_MSG.QUOTE, request) as RpcResponse;
-      if (resp.type === "nack") throw new Error("Failed to submit quote");
+    quote(request: QuoteRequest): Observable<void> {
+      return new Observable<void>((subscriber) => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.QUOTE, request)) as RpcResponse;
+            if (cancelled) return;
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Failed to submit quote"));
+              return;
+            }
+            subscriber.next(undefined);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      });
     },
 
-    async pass(quoteId: number): Promise<void> {
-      const resp = await ws.rpc(CLIENT_MSG.PASS, { quoteId }) as RpcResponse;
-      if (resp.type === "nack") throw new Error("Failed to pass on quote");
+    pass(quoteId: number): Observable<void> {
+      return new Observable<void>((subscriber) => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.PASS, { quoteId })) as RpcResponse;
+            if (cancelled) return;
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Failed to pass on quote"));
+              return;
+            }
+            subscriber.next(undefined);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      });
     },
 
-    async accept(quoteId: number): Promise<void> {
-      const resp = await ws.rpc(CLIENT_MSG.ACCEPT, { quoteId }) as RpcResponse;
-      if (resp.type === "nack") throw new Error("Failed to accept quote");
+    accept(quoteId: number): Observable<void> {
+      return new Observable<void>((subscriber) => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.ACCEPT, { quoteId })) as RpcResponse;
+            if (cancelled) return;
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Failed to accept quote"));
+              return;
+            }
+            subscriber.next(undefined);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      });
     },
   };
 }

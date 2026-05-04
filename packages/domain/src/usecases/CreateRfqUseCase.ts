@@ -1,3 +1,4 @@
+import { type Observable } from "rxjs";
 import type { WorkflowPort, CreateRfqRequest } from "../ports/workflowPort.js";
 import type { Direction } from "../fx/trade.js";
 import { CREDIT_QUANTITY_MULTIPLIER } from "../credit/rfq.js";
@@ -16,7 +17,7 @@ export interface CreateRfqInput {
 export class CreateRfqUseCase {
   constructor(private readonly workflow: WorkflowPort) {}
 
-  async execute(input: CreateRfqInput): Promise<number> {
+  execute(input: CreateRfqInput): Observable<number> {
     const request: CreateRfqRequest = {
       instrumentId: input.instrumentId,
       dealerIds: [...input.dealerIds],

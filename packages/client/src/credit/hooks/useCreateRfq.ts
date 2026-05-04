@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { firstValueFrom } from "rxjs";
 import { type Direction, CreateRfqUseCase } from "@rtc/domain";
 import { useServices } from "../../services/ServiceProvider";
 
@@ -12,7 +13,7 @@ export interface CreateRfqParams {
 export function useCreateRfq(): (params: CreateRfqParams) => Promise<number> {
   const { workflow } = useServices();
   return useCallback(
-    (params) => new CreateRfqUseCase(workflow).execute(params),
+    (params) => firstValueFrom(new CreateRfqUseCase(workflow).execute(params)),
     [workflow],
   );
 }

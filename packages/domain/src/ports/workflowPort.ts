@@ -1,3 +1,4 @@
+import type { Observable } from "rxjs";
 import type { Direction } from "../fx/trade.js";
 import type { Rfq } from "../credit/rfq.js";
 import type { Quote } from "../credit/quote.js";
@@ -26,10 +27,10 @@ export interface QuoteRequest {
 }
 
 export interface WorkflowPort {
-  subscribe(): AsyncIterable<RfqEvent>;
-  createRfq(request: CreateRfqRequest): Promise<number>;
-  cancelRfq(rfqId: number): Promise<void>;
-  quote(request: QuoteRequest): Promise<void>;
-  pass(quoteId: number): Promise<void>;
-  accept(quoteId: number): Promise<void>;
+  events(): Observable<RfqEvent>;
+  createRfq(request: CreateRfqRequest): Observable<number>;
+  cancelRfq(rfqId: number): Observable<void>;
+  quote(request: QuoteRequest): Observable<void>;
+  pass(quoteId: number): Observable<void>;
+  accept(quoteId: number): Observable<void>;
 }

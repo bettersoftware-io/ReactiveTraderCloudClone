@@ -141,26 +141,6 @@ function createSubscription(subs: AbortSet): AbortController {
   return ac;
 }
 
-async function iterateStream<T>(
-  ws: WebSocket,
-  subs: AbortSet,
-  iterable: AsyncIterable<T>,
-  serverMsgType: string,
-  transform: (value: T) => unknown,
-): Promise<void> {
-  const ac = createSubscription(subs);
-  try {
-    for await (const value of iterable) {
-      if (ac.signal.aborted) break;
-      send(ws, serverMsgType, transform(value));
-    }
-  } catch (e) {
-    if (!ac.signal.aborted) console.error(`Stream error [${serverMsgType}]:`, e);
-  } finally {
-    subs.delete(ac);
-  }
-}
-
 // ── FX Streams ──────────────────────────────────────────────────
 
 function streamReferenceData(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
@@ -356,46 +336,55 @@ function streamDealers(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): vo
 }
 
 function streamWorkflow(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
-  iterateStream(
-    ws,
-    subs,
-    svc.workflow.subscribe(),
-    SERVER_MSG.WORKFLOW_EVENT,
-    (event: RfqEvent): WorkflowEventDto => {
-      switch (event.type) {
-        case "startOfStateOfTheWorld":
-        case "endOfStateOfTheWorld":
-          return { type: event.type };
-        case "rfqCreated":
-        case "rfqClosed":
-          return {
-            type: event.type,
-            payload: {
-              id: event.payload.id,
-              instrumentId: event.payload.instrumentId,
-              quantity: event.payload.quantity,
-              direction: event.payload.direction,
-              state: event.payload.state,
-              expirySecs: event.payload.expirySecs,
-              creationTimestamp: event.payload.creationTimestamp,
-            },
-          };
-        case "quoteCreated":
-        case "quoteQuoted":
-        case "quotePassed":
-        case "quoteAccepted":
-          return {
-            type: event.type,
-            payload: {
-              id: event.payload.id,
-              rfqId: event.payload.rfqId,
-              dealerId: event.payload.dealerId,
-              state: event.payload.state,
-            },
-          };
-      }
+  const ac = createSubscription(subs);
+  const transform = (event: RfqEvent): WorkflowEventDto => {
+    switch (event.type) {
+      case "startOfStateOfTheWorld":
+      case "endOfStateOfTheWorld":
+        return { type: event.type };
+      case "rfqCreated":
+      case "rfqClosed":
+        return {
+          type: event.type,
+          payload: {
+            id: event.payload.id,
+            instrumentId: event.payload.instrumentId,
+            quantity: event.payload.quantity,
+            direction: event.payload.direction,
+            state: event.payload.state,
+            expirySecs: event.payload.expirySecs,
+            creationTimestamp: event.payload.creationTimestamp,
+          },
+        };
+      case "quoteCreated":
+      case "quoteQuoted":
+      case "quotePassed":
+      case "quoteAccepted":
+        return {
+          type: event.type,
+          payload: {
+            id: event.payload.id,
+            rfqId: event.payload.rfqId,
+            dealerId: event.payload.dealerId,
+            state: event.payload.state,
+          },
+        };
+    }
+  };
+  const sub = svc.workflow.events().subscribe({
+    next: (event) => {
+      if (ac.signal.aborted) return;
+      send(ws, SERVER_MSG.WORKFLOW_EVENT, transform(event));
     },
-  );
+    error: (e) => {
+      if (!ac.signal.aborted) console.error("Workflow stream error:", e);
+      subs.delete(ac);
+    },
+    complete: () => {
+      subs.delete(ac);
+    },
+  });
+  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
 }
 
 // ── RPC Handlers ────────────────────────────────────────────────
@@ -451,13 +440,13 @@ async function handleGetPriceHistory(ws: WebSocket, svc: ServiceContainer, msg: 
 async function handleCreateRfq(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
   try {
     const req = msg.payload as CreateRfqRequestDto;
-    const rfqId = await svc.workflow.createRfq({
+    const rfqId = await firstValueFrom(svc.workflow.createRfq({
       instrumentId: req.instrumentId,
       dealerIds: [...req.dealerIds],
       quantity: req.quantity,
       direction: req.direction,
       expirySecs: req.expirySecs,
-    });
+    }));
     send(ws, SERVER_MSG.CREATE_RFQ_RESPONSE, { type: "ack", payload: rfqId }, msg.correlationId);
   } catch {
     send(ws, SERVER_MSG.CREATE_RFQ_RESPONSE, { type: "nack" }, msg.correlationId);
@@ -467,7 +456,7 @@ async function handleCreateRfq(ws: WebSocket, svc: ServiceContainer, msg: WsMess
 async function handleCancelRfq(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
   try {
     const { rfqId } = msg.payload as CancelRfqRequestDto;
-    await svc.workflow.cancelRfq(rfqId);
+    await firstValueFrom(svc.workflow.cancelRfq(rfqId));
     send(ws, SERVER_MSG.CANCEL_RFQ_RESPONSE, { type: "ack" }, msg.correlationId);
   } catch {
     send(ws, SERVER_MSG.CANCEL_RFQ_RESPONSE, { type: "nack" }, msg.correlationId);
@@ -477,7 +466,7 @@ async function handleCancelRfq(ws: WebSocket, svc: ServiceContainer, msg: WsMess
 async function handleQuote(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
   try {
     const req = msg.payload as QuoteRequestDto;
-    await svc.workflow.quote(req);
+    await firstValueFrom(svc.workflow.quote(req));
     send(ws, SERVER_MSG.QUOTE_RESPONSE, { type: "ack" }, msg.correlationId);
   } catch {
     send(ws, SERVER_MSG.QUOTE_RESPONSE, { type: "nack" }, msg.correlationId);
@@ -487,7 +476,7 @@ async function handleQuote(ws: WebSocket, svc: ServiceContainer, msg: WsMessage)
 async function handlePass(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
   try {
     const { quoteId } = msg.payload as PassRequestDto;
-    await svc.workflow.pass(quoteId);
+    await firstValueFrom(svc.workflow.pass(quoteId));
     send(ws, SERVER_MSG.PASS_RESPONSE, { type: "ack" }, msg.correlationId);
   } catch {
     send(ws, SERVER_MSG.PASS_RESPONSE, { type: "nack" }, msg.correlationId);
@@ -497,7 +486,7 @@ async function handlePass(ws: WebSocket, svc: ServiceContainer, msg: WsMessage):
 async function handleAccept(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
   try {
     const { quoteId } = msg.payload as AcceptRequestDto;
-    await svc.workflow.accept(quoteId);
+    await firstValueFrom(svc.workflow.accept(quoteId));
     send(ws, SERVER_MSG.ACCEPT_RESPONSE, { type: "ack" }, msg.correlationId);
   } catch {
     send(ws, SERVER_MSG.ACCEPT_RESPONSE, { type: "nack" }, msg.correlationId);

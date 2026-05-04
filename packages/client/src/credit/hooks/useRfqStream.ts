@@ -17,18 +17,8 @@ export function useRfqStream() {
 
   useEffect(() => {
     const useCase = new WorkflowEventStreamUseCase(workflow);
-    let cancelled = false;
-
-    (async () => {
-      for await (const next of useCase.execute()) {
-        if (cancelled) break;
-        setSnapshot(next);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    const sub = useCase.execute().subscribe(setSnapshot);
+    return () => sub.unsubscribe();
   }, [workflow]);
 
   const getQuotesForRfq = useCallback(
