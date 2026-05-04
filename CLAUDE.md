@@ -32,7 +32,7 @@ packages/
   server/    @rtc/server   — Marble.js + RxJS. Depends on domain, shared.
 ```
 
-**Dependency rule:** dependencies flow inward only. `domain` has zero runtime deps. `shared` depends only on `domain`. `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other.
+**Dependency rule:** dependencies flow inward only. `domain` has only `rxjs` as a runtime dep. `shared` depends only on `domain`. `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other.
 
 **Single-dep constraint on `@rtc/domain`:** Domain may depend on `rxjs` at runtime — and only on `rxjs`. RxJS is the explicit architectural exception, chosen for its declarative stream operators and the team's familiarity with it. No other runtime dependencies are permitted. pnpm strict mode enforces this at install time.
 

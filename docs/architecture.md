@@ -65,13 +65,13 @@ Two terms commonly conflated -- "client" and "UI" -- mean different things here.
 
 | Term | Meaning |
 |---|---|
-| **Domain** | Pure-TypeScript entities, value objects, ports, and use cases. Lives in `@rtc/domain`. Zero runtime dependencies. Knows nothing about UI, transport, or RxJS. |
+| **Domain** | Pure-TypeScript entities, value objects, ports, and use cases. Lives in `@rtc/domain`. RxJS is the single permitted runtime dependency (used as the boundary stream type). Knows nothing about UI or transport. |
 | **Server** | Process that hosts adapters around domain ports and serves data to clients over WebSocket. |
 | **Client** | Everything that runs in the browser -- the entire JavaScript bundle. **Includes** use cases, presenters, *and* the UI layer. |
-| **Application Layer (client)** | Use cases (vanilla TS, may be shared with domain) + Presenters (RxJS streams). Lives inside `@rtc/client` but contains zero React. Could be promoted to `@rtc/client-app` later if useful. |
+| **Application Layer (client)** | Use cases (vanilla TS + RxJS, shared with domain) + Presenters (RxJS streams). Lives inside `@rtc/client` but contains zero React. Could be promoted to `@rtc/client-app` later if useful. |
 | **UI Layer (client)** | React components + react-rxjs-bound hooks. Consumes the Application Layer through hook contracts only. Never imports `rxjs`. |
 
-Note: **"no RxJS on the UI side" is not the same as "no RxJS on the client side"**. RxJS is permitted (and expected) in the client's Application Layer. It is forbidden in the UI Layer and in any port or use-case signature.
+Note: **"no RxJS on the UI side" is not the same as "no RxJS on the client side"**. RxJS is the boundary stream type for ports and use cases (in `@rtc/domain`) and is also the implementation language of the client's presenter layer. It is forbidden in the UI Layer.
 
 ```mermaid
 graph TB
@@ -90,7 +90,7 @@ graph TB
     subgraph EntitiesCircle["Entities (innermost)"]
         Entities["Entities & Value Objects<br/>Price, Trade, Rfq, ..."]
     end
-    Ports["Port Interfaces<br/>(AsyncIterable, Promise)"]
+    Ports["Port Interfaces<br/>(RxJS Observable)"]
 
     UI --> Hooks
     Hooks --> Presenters
@@ -109,8 +109,8 @@ The current stack is a snapshot, not a commitment. Each row says what role is be
 
 | Role | Currently | Allowed inside the layer? |
 |---|---|---|
-| Entities & use cases | Pure TypeScript | Nothing else |
-| Boundary stream type | `AsyncIterable<T>` | Language primitive only |
+| Entities & use cases | Pure TypeScript + RxJS | RxJS only (the explicit architectural exception in `@rtc/domain`) |
+| Boundary stream type | RxJS `Observable<T>` | RxJS, the single explicit dependency exception in `@rtc/domain` |
 | Client state streams | RxJS (planned) | RxJS, vanilla TS |
 | UI ↔ stream bridge | react-rxjs (planned) | The bridge library only |
 | UI rendering | React 19 | React; **no `rxjs` import** |
@@ -455,7 +455,7 @@ classDiagram
 
 ### 3.3 Ports & Adapters (Hexagonal Architecture)
 
-All ports use `AsyncIterable<T>` for streaming and `Promise<T>` for RPC -- no framework types leak into the domain.
+All ports use RxJS `Observable<T>` -- streaming feeds and one-shot ops alike. RxJS is the single explicit dependency exception in `@rtc/domain` (see [§1.3](#13-layered-architecture--terminology)). No other framework types leak into the domain.
 
 ```mermaid
 classDiagram
@@ -463,83 +463,84 @@ classDiagram
 
     class PricingPort {
         <<interface>>
-        +getPriceUpdates(symbol) AsyncIterable~PriceTick~
-        +getPriceHistory(symbol) Promise~PriceTick[]~
+        +getPriceUpdates(symbol) Observable~PriceTick~
+        +getPriceHistory(symbol) Observable~PriceTick[]~
+        +getRfqQuote(symbol, pipsPosition) Observable~RfqQuoteResult~
     }
 
     class ReferenceDataPort {
         <<interface>>
-        +getCurrencyPairs() AsyncIterable~CurrencyPair[]~
+        +getCurrencyPairs() Observable~CurrencyPair[]~
     }
 
     class ExecutionPort {
         <<interface>>
-        +executeTrade(request) Promise~Trade~
+        +executeTrade(request) Observable~Trade~
     }
 
     class BlotterPort {
         <<interface>>
-        +getTradeStream() AsyncIterable~Trade[]~
+        +getTradeStream() Observable~Trade[]~
     }
 
     class AnalyticsPort {
         <<interface>>
-        +getAnalytics(currency) AsyncIterable~PositionUpdates~
+        +getAnalytics(currency) Observable~PositionUpdates~
     }
 
     class InstrumentPort {
         <<interface>>
-        +subscribe() AsyncIterable~Instrument[]~
+        +getInstruments() Observable~Instrument[]~
     }
 
     class DealerPort {
         <<interface>>
-        +subscribe() AsyncIterable~Dealer[]~
+        +getDealers() Observable~Dealer[]~
     }
 
     class WorkflowPort {
         <<interface>>
-        +subscribe() AsyncIterable~RfqEvent~
-        +createRfq(request) Promise~number~
-        +cancelRfq(rfqId) Promise~void~
-        +quote(request) Promise~void~
-        +pass(quoteId) Promise~void~
-        +accept(quoteId) Promise~void~
+        +events() Observable~RfqEvent~
+        +createRfq(request) Observable~number~
+        +cancelRfq(rfqId) Observable~void~
+        +quote(request) Observable~void~
+        +pass(quoteId) Observable~void~
+        +accept(quoteId) Observable~void~
     }
 
     class PricingSimulator {
-        +getPriceUpdates(symbol) AsyncIterable~PriceTick~
-        +getPriceHistory(symbol) Promise~PriceTick[]~
-        +getRfqQuote(symbol) PriceTick
+        +getPriceUpdates(symbol) Observable~PriceTick~
+        +getPriceHistory(symbol) Observable~PriceTick[]~
+        +getRfqQuote(symbol, pipsPosition) Observable~RfqQuoteResult~
     }
 
     class ExecutionSimulator {
-        +executeTrade(request) Promise~Trade~
+        +executeTrade(request) Observable~Trade~
         +onTrade(listener) void
     }
 
     class TradeStoreSimulator {
-        +getTradeStream() AsyncIterable~Trade[]~
+        +getTradeStream() Observable~Trade[]~
     }
 
     class CreditRfqSimulator {
-        +subscribe() AsyncIterable~RfqEvent~
-        +createRfq(request) Promise~number~
-        +cancelRfq(rfqId) Promise~void~
-        +quote(request) Promise~void~
-        +pass(quoteId) Promise~void~
-        +accept(quoteId) Promise~void~
+        +events() Observable~RfqEvent~
+        +createRfq(request) Observable~number~
+        +cancelRfq(rfqId) Observable~void~
+        +quote(request) Observable~void~
+        +pass(quoteId) Observable~void~
+        +accept(quoteId) Observable~void~
     }
 
     class WsRealPricingAdapter {
         -WsAdapter ws
-        +getPriceUpdates(symbol) AsyncIterable~PriceTick~
-        +getPriceHistory(symbol) Promise~PriceTick[]~
+        +getPriceUpdates(symbol) Observable~PriceTick~
+        +getPriceHistory(symbol) Observable~PriceTick[]~
     }
 
     class WsRealExecutionAdapter {
         -WsAdapter ws
-        +executeTrade(request) Promise~Trade~
+        +executeTrade(request) Observable~Trade~
     }
 
     PricingPort <|.. PricingSimulator : implements
@@ -556,7 +557,7 @@ classDiagram
 
 ### 3.4 Use Cases
 
-Use cases sit between ports and presenters. They are **vanilla TypeScript** -- no React, no RxJS, no DOM. They take ports in their constructor (or factory), accept inputs, and return `AsyncIterable<T>` for streams or `Promise<T>` for commands. They are the home for application-specific orchestration and enrichment that today leaks into client hooks (e.g. `detectMovement + calculateSpread` for FX prices).
+Use cases sit between ports and presenters. They take ports in their constructor (or factory), accept inputs, and return `Observable<T>` -- streams *and* one-shot ops alike. They are the home for application-specific orchestration and enrichment that today leaks into client hooks (e.g. `detectMovement + calculateSpread` for FX prices). Use cases may use RxJS operators (`map`, `scan`, `defer`, ...) but no React, no DOM.
 
 ```mermaid
 classDiagram
@@ -564,42 +565,42 @@ classDiagram
 
     class PriceStreamUseCase {
         -PricingPort pricing
-        +execute(symbol) AsyncIterable~Price~
+        +execute(pair) Observable~Price~
     }
 
     class ExecuteTradeUseCase {
         -ExecutionPort execution
-        +execute(request) Promise~Trade~
+        +execute(request) Observable~Trade~
     }
 
     class TradeBlotterUseCase {
         -BlotterPort blotter
-        +execute() AsyncIterable~Trade[]~
+        +execute() Observable~Trade[]~
     }
 
     class AnalyticsUseCase {
         -AnalyticsPort analytics
-        +execute(currency) AsyncIterable~PositionUpdates~
+        +execute(currency) Observable~PositionUpdates~
     }
 
     class CreateRfqUseCase {
         -WorkflowPort workflow
-        +execute(request) Promise~number~
+        +execute(request) Observable~number~
     }
 
     class AcceptQuoteUseCase {
         -WorkflowPort workflow
-        +execute(quoteId) Promise~void~
+        +execute(quoteId) Observable~void~
     }
 
     class WorkflowEventStreamUseCase {
         -WorkflowPort workflow
-        +execute() AsyncIterable~RfqEvent~
+        +execute() Observable~RfqEvent~
     }
 
     class ConnectionStatusUseCase {
         -ConnectionEventsPort events
-        +execute() AsyncIterable~ConnectionStatus~
+        +execute() Observable~ConnectionStatus~
     }
 
     PriceStreamUseCase --> PricingPort
@@ -612,20 +613,35 @@ classDiagram
     ConnectionStatusUseCase --> ConnectionEventsPort
 ```
 
-**Boundary types**: only `AsyncIterable<T>` and `Promise<T>`. No `Observable`, no React types.
+**Boundary type**: `Observable<T>` everywhere. No React types, no DOM types. Commands (`executeTrade`, `createRfq`, `accept`, ...) emit once and complete; callers `firstValueFrom(...)` to await imperatively when needed.
 
-**Why this layer exists**: it isolates application logic from both ports below (transport-agnostic) and presenters above (UI-framework-agnostic). Use cases are exhaustively tested via behavioural specs that swap port implementations between simulator and contract-test fixtures. Replacing RxJS or React leaves use cases entirely untouched.
+**Closure-in-`defer` pattern for stateful pipes.** Use cases that need per-subscription state (e.g. `PriceStreamUseCase` keeps `previousMid` to compute movement; `PriceHistoryUseCase` keeps a rolling buffer) wrap the pipeline in `defer(() => { ... })`. `defer` runs the factory on every `subscribe`, so each subscriber gets a fresh closure -- the same isolation the previous `AsyncIterable` version got from a function-scoped `let`:
+
+```typescript
+execute(pair: CurrencyPair): Observable<Price> {
+  return defer(() => {
+    let previousMid: number | undefined;
+    return this.pricing.getPriceUpdates(pair.symbol).pipe(
+      map((tick) => {
+        const movement = detectMovement(tick.mid, previousMid);
+        previousMid = tick.mid;
+        return enrich(tick, movement);
+      }),
+    );
+  });
+}
+```
+
+**Why this layer exists**: it isolates application logic from both ports below (transport-agnostic) and presenters above (UI-framework-agnostic). Use cases are exhaustively tested via behavioural specs that swap port implementations between simulator and contract-test fixtures. RxJS in this layer is the explicit architectural exception; replacing React leaves use cases entirely untouched.
 
 ### 3.5 Presenters & State Streams
 
-Presenters are the client-side glue between use cases (which emit `AsyncIterable<T>`) and the UI (which consumes hooks). RxJS lives here -- chosen because it gives us share-replay, multicasting, derived streams, and time-based operators for free, all of which are central to a streaming UI.
+Presenters are the client-side glue between use cases (which already emit `Observable<T>`) and the UI (which consumes hooks). The presenter layer is where multicasting and UI-shaping happen -- `share`/`shareReplay` so the underlying port subscription is started once per symbol, `combineLatest` to fan in derived state, `scan` for accumulators that the UI snapshots.
 
-The presenter layer is **the only allowed home of RxJS in the client**. RxJS does not appear in:
-- port signatures (use `AsyncIterable<T>`)
-- use-case signatures (use `AsyncIterable<T>` / `Promise<T>`)
-- React components or hook call sites (use react-rxjs hooks)
+RxJS appears in three layers: **port signatures** (`@rtc/domain` ports), **use cases** (`@rtc/domain` use cases), and **presenters** (`@rtc/client`). It does **not** appear in:
+- React components or hook call sites (use react-rxjs hooks; never import `rxjs`)
 
-Presenters bridge `AsyncIterable<T>` -> RxJS `Observable<T>` (one-line interop), apply UI-shaping operators (`scan`, `shareReplay`, `combineLatest`), and expose the resulting stream to react-rxjs which auto-generates a hook.
+Because use cases already return `Observable<T>`, presenters are usually a thin `pipe(...)` over a use-case output rather than an `AsyncIterable -> Observable` conversion. Presenters expose the resulting stream to react-rxjs which auto-generates a hook.
 
 ```mermaid
 classDiagram
@@ -678,7 +694,7 @@ classDiagram
 
 **Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)) that maps an `Observable<T>` to a React hook with Suspense semantics. To swap React -> SolidJS, write a tiny `solid-rxjs` analogue that maps an `Observable<T>` to a Solid signal. Presenters and below are unchanged. UI components are rewritten -- but their contracts (the hook signatures) are mirrored 1:1, and the behavioural spec suite verifies the rewrite.
 
-**Replacing RxJS itself** (for example with effect-ts): rewrite only the presenter layer. Use cases are unchanged because their signatures are `AsyncIterable<T>` / `Promise<T>`. Behavioural tests at the UI level don't change; presenter-level contract tests are rewritten.
+**Replacing RxJS itself** (for example with effect-ts): high-cost. RxJS is the boundary stream type, so swapping it touches every port, every simulator, every use case, and every presenter. The change is mechanical -- mostly `Observable<T>` → `Stream<T>` and operator-name remapping -- and behavioural tests at the UI level don't change, but it is no longer a single-layer rewrite. This is the cost paid in exchange for the simplicity of a single boundary stream type ([§8 Replaceability Matrix](#8-replaceability-matrix) tracks the trade-off).
 
 ### 3.6 No DI in the UI
 
@@ -706,13 +722,13 @@ sequenceDiagram
     Tile->>Hook: usePrice("EURUSD")
     Hook->>Presenter: subscribe price$("EURUSD")
     Presenter->>UC: execute("EURUSD")
-    UC->>Adapter: getPriceUpdates("EURUSD") returns AsyncIterable
+    UC->>Adapter: getPriceUpdates("EURUSD") returns Observable
 
     alt Mock mode (in-process simulator)
         loop Every 150-1000ms
-            Adapter-->>UC: yield PriceTick
+            Adapter-->>UC: emit PriceTick
             UC->>UC: detectMovement + calculateSpread
-            UC-->>Presenter: yield Price
+            UC-->>Presenter: emit Price
             Presenter-->>Hook: emit Price
             Hook-->>Tile: re-render
             Tile->>Trader: bid/ask/spread/movement
@@ -721,9 +737,9 @@ sequenceDiagram
         Adapter->>Server: subscribe.pricing(EURUSD)
         loop Continuous
             Server-->>Adapter: stream.priceTick(PriceTickDto)
-            Adapter-->>UC: yield PriceTick
+            Adapter-->>UC: emit PriceTick
             UC->>UC: detectMovement + calculateSpread
-            UC-->>Presenter: yield Price
+            UC-->>Presenter: emit Price
             Presenter-->>Hook: emit Price
             Hook-->>Tile: re-render
             Tile->>Trader: bid/ask/spread/movement
@@ -752,7 +768,7 @@ sequenceDiagram
     Tile->>Hook: execute(currencyPair, spotRate, direction, notional)
     Hook->>Presenter: dispatch executionIntent
     Presenter->>UC: execute(ExecutionRequest)
-    UC->>Adapter: executeTrade(request) returns Promise
+    UC->>Adapter: executeTrade(request) returns Observable (emits once)
 
     alt Real mode
         Adapter->>Server: rpc.executeTrade with correlationId 42
@@ -812,8 +828,8 @@ sequenceDiagram
         Sim->>Sim: Create Quote pendingWithoutPrice
         Sim-->>Server: RfqEvent quoteCreated
         Server-->>Adapter: stream.workflowEvent
-        Adapter-->>EventsUC: yield event
-        EventsUC-->>Presenter: yield event
+        Adapter-->>EventsUC: emit event
+        EventsUC-->>Presenter: emit event
         Presenter-->>Hook: rfqs$ updated
     end
 
@@ -826,7 +842,7 @@ sequenceDiagram
         Sim->>Sim: Dealer A quotes
         Sim-->>Server: RfqEvent quoteQuoted
         Server-->>Adapter: stream.workflowEvent
-        Adapter-->>EventsUC: yield
+        Adapter-->>EventsUC: emit
         EventsUC-->>Presenter: rfqs$ updated
         Presenter-->>Hook: emit
         Hook-->>Tiles: Quote A shows price
@@ -834,7 +850,7 @@ sequenceDiagram
         Sim->>Sim: Dealer B quotes
         Sim-->>Server: RfqEvent quoteQuoted
         Server-->>Adapter: stream.workflowEvent
-        Adapter-->>EventsUC: yield
+        Adapter-->>EventsUC: emit
         EventsUC-->>Presenter: rfqs$ updated
         Presenter-->>Hook: emit
         Hook-->>Tiles: Quote B shows price
@@ -850,7 +866,7 @@ sequenceDiagram
     Sim->>Sim: Accepted quote, others rejected, Rfq Closed
     Sim-->>Server: quoteAccepted + quoteRejected + rfqClosed events
     Server-->>Adapter: stream.workflowEvent x N
-    Adapter-->>EventsUC: yield events
+    Adapter-->>EventsUC: emit events
     EventsUC-->>Presenter: rfqs$ updated
     Presenter-->>Hook: emit
     Hook-->>Tiles: RFQ Closed, accepted quote highlighted
@@ -954,7 +970,7 @@ stateDiagram-v2
 ```mermaid
 graph TB
     subgraph Monorepo
-        domain["@rtc/domain\nPure TypeScript\nZero dependencies\n(entities, ports, use cases)"]
+        domain["@rtc/domain\nPure TypeScript + RxJS\n(entities, ports, use cases)"]
         shared["@rtc/shared\nDTOs and Protocol\nWire-format contracts"]
         client["@rtc/client\nApplication Layer + UI Layer\n(currently React 19 + Vite + RxJS)"]
         server["@rtc/server\nNode.js\nWebSocket Server"]
@@ -977,7 +993,7 @@ graph TB
 ```
 
 **Dependency rule:** Dependencies flow inward only.
-- `domain` has **zero** runtime dependencies (enforced by pnpm strict mode).
+- `domain` has **`rxjs` as its single runtime dependency** -- the explicit architectural exception, used as the boundary stream type. No other runtime deps are permitted (enforced by pnpm strict mode).
 - `shared` depends only on `domain`.
 - `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other.
 
@@ -1035,22 +1051,23 @@ Ensures clients have a consistent view after (re)connection.
 { type: "added", payload: NewInstrumentDto }  // live updates after marker
 ```
 
-### Async Iteration Pattern
+### Observable Pipeline
 
-`AsyncIterable<T>` is the universal streaming abstraction across the boundary. Inside the client Application Layer, it is bridged to RxJS at the presenter boundary; inside the server, simulators emit it directly.
+RxJS `Observable<T>` is the universal streaming abstraction across the boundary -- streams *and* one-shot ops. Simulators on the server emit Observables directly; client WS adapters wrap incoming WS messages as Observables. The presenter layer applies UI-shaping operators; react-rxjs binds the resulting stream to a React hook.
 
 ```
-Domain Port (interface)     ->  AsyncIterable<PriceTick>
+Domain Port (interface)     ->  Observable<PriceTick>
   |
-Simulator (server)          ->  async generator yielding ticks
+Simulator (server)          ->  defer(...) + new Observable / interval / Subject
   |
-Server WS Handler           ->  for await (tick of port) { ws.send(toDto(tick)) }
+Server WS Handler           ->  port.subscribe({ next: tick => ws.send(toDto(tick)) })
   |
-Client WS Adapter           ->  createAsyncQueue<T>() bridges ws.onmessage -> AsyncIterable
+Client WS Adapter           ->  new Observable<T>(sub => ws.onmessage handler)
   |
-Use Case                    ->  enriches AsyncIterable<PriceTick> -> AsyncIterable<Price>
+Use Case                    ->  enriches Observable<PriceTick> -> Observable<Price>
+                                 (defer + closure for per-subscription state)
   |
-Presenter                   ->  from(asyncIterable) -> Observable<Price> (RxJS)
+Presenter                   ->  pipe(share/shareReplay/combineLatest) -> price$
   |
 react-rxjs hook             ->  bind(price$) -> usePrice(symbol)
   |
@@ -1067,9 +1084,9 @@ This is the load-bearing section: the architecture's value comes from the cost-o
 |---|---|---|---|---|
 | **UI framework** | React 19 | ~1 dev-week (rewrite components) | Hook signatures (`usePrice`, `useTrades`, ...) and intent callbacks. No business logic in components. | Behavioural specs (Gherkin), unchanged |
 | **State streams ↔ UI bridge** | react-rxjs | ~1 dev-day (write `solid-rxjs` etc.) | `Observable<T>` -> framework-native reactive primitive | Hook contract tests, unchanged |
-| **State streams** | RxJS | ~1 dev-week (rewrite presenter layer) | `AsyncIterable<T>` in, framework-native stream out at hook boundary | Use-case tests + presenter contract tests |
-| **Use cases** | Vanilla TS | N/A (this is the domain) | -- | Unit tests over use cases with simulator ports |
-| **Boundary stream type** | `AsyncIterable<T>` | Very high (this is the spine) | -- | -- |
+| **State streams** | RxJS | High -- swap touches ports, simulators, use cases, presenters together | Boundary stream type matches across all four layers | Use-case tests + port contract tests + presenter contract tests |
+| **Use cases** | Vanilla TS + RxJS | N/A (this is the domain) | -- | Unit tests over use cases with simulator ports |
+| **Boundary stream type** | RxJS `Observable<T>` | Very high (this is the spine) | -- | -- |
 | **Port adapters (transport)** | WebSocket-backed | ~1 dev-week per adapter family | Implements port interface | Contract tests parameterised over adapter |
 | **Server framework** | Node.js + native WS | ~1 dev-week | Adapter-side: implements port. Wire format: DTOs in `@rtc/shared`. | Server integration tests against DTOs |
 | **Wire format** | JSON over WS | High (both ends change together) | DTOs in `@rtc/shared` + protocol type enums | DTO round-trip tests + e2e |
@@ -1148,8 +1165,8 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 
 | Decision | Rationale |
 |----------|-----------|
-| **`AsyncIterable<T>` at every boundary** | Language primitive, not framework type. Decouples domain and use cases from RxJS, Observables, signals, etc. |
-| **RxJS only in the presenter layer** | Earns its keep for share-replay, derived streams, time operators. Confined so that swapping it touches one layer, not the codebase. |
+| **RxJS `Observable<T>` at every boundary** | RxJS is the explicit dependency exception in `@rtc/domain`, chosen because (a) the team already uses RxJS in the client and server, (b) `defer` + operators give per-subscription state and UI-shaping cheaply, and (c) one stream type across ports / use cases / presenters removes the `AsyncIterable -> Observable` interop seam. The cost is binding the spine to RxJS; behavioural tests still validate behaviour after a hypothetical swap. |
+| **Closure-in-`defer` for stateful pipes** | Use cases that need per-subscription state (`previousMid`, rolling buffer, ...) wrap the pipeline in `defer(() => { let state; return source$.pipe(...); })`. Each subscriber gets a fresh closure -- same isolation a function-scoped `let` gave the earlier `AsyncIterable` version. |
 | **react-rxjs as the UI bridge** | Tiny library, easy to replicate for SolidJS/Svelte/etc. UI sees only hook contracts, never `Observable<T>`. |
 | **No DI in the UI tree** | Composition Root constructs the graph at startup. UI imports already-bound hooks. No `ServiceProvider` Context. |
 | **Use cases own enrichment, not hooks** | `detectMovement + calculateSpread` and similar live in `PriceStreamUseCase`, so a UI rewrite cannot lose them. |
@@ -1157,7 +1174,7 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 | **Simulators in the domain (not "mocks")** | Production code that stands in for an external venue. Same port interfaces; adapters are swapped at the Composition Root. |
 | **WebSocket + RPC pattern** | Subscriptions for data, RPC with correlation IDs for commands -- clean separation, multiplexed over one connection. |
 | **SoW markers** | Ensures consistent state after reconnect without full re-fetch. |
-| **Pure domain with zero deps** | Fully testable, portable; pnpm strict mode enforces zero `dependencies` in `@rtc/domain/package.json`. |
+| **Pure domain with one dep (rxjs)** | Fully testable, portable; pnpm strict mode enforces that the only `dependencies` entry in `@rtc/domain/package.json` is `rxjs`. |
 | **AbortController per subscription** | Graceful cleanup when WebSocket closes -- all active streams are cancelled. |
 | **Behavioural specs in Gherkin** (planned) | One source of truth for expected behaviour, runnable from multiple test drivers. Survives driver and framework swaps. |
 | **Don't abstract React or RxJS behind portability shims** | Wrapping them produces leaky facades; instead keep their layers thin and rely on behavioural tests to make regeneration cheap. |

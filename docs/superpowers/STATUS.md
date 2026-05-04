@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-03
+**Last updated:** 2026-05-02
 
 ---
 
@@ -11,7 +11,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD` (Phase 2.5 added 14 rename commits + the plan + this status update on top of any earlier unpushed work)
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 106 unit (18 domain + 1 server test files) + 40 e2e
+- **Test counts:** 109 unit (18 domain + 1 server test files; 104 + 5 cases) + 40 e2e
 
 ## Phases
 
@@ -20,7 +20,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 1 — Rename `mock/` → `simulators/`, all `Mock*` classes → `*Simulator`, constants → `*_CATALOG` | ✅ DONE | `plans/2026-04-30-clean-architecture-alignment.md` | `a67b8f9..48d8f20` (9 commits) |
 | Phase 2 — Extract Use Cases from React hooks (6 use cases in `packages/domain/src/usecases/`) | ✅ DONE | `plans/2026-05-01-phase-2-extract-use-cases.md` | `6cebdc5..e92f532` (7 commits) |
 | Phase 2.5 — Rename all source files to camelCase / PascalCase (drop kebab-case) | ✅ DONE | `plans/2026-05-02-phase-2-5-rename-files-camelcase.md` | `69c17ac..e93fc29` (14 commits) |
-| Phase 2.6 — Replace `AsyncIterable<T>` boundary with RxJS `Observable<T>` (rxjs becomes the explicit architectural exception in `@rtc/domain`) | ⏳ NOT STARTED | (to brainstorm + plan) | — |
+| Phase 2.6 — Replace `AsyncIterable<T>` boundary with RxJS `Observable<T>` (rxjs becomes the explicit architectural exception in `@rtc/domain`) | ✅ DONE | `plans/2026-05-03-phase-2-6-rxjs-observable-boundary.md` | `da7cc7f..f9d35d5` (9 commits) |
 | Phase 3 — Presenters + react-rxjs hook bridge + Composition Root (retire `ServiceProvider`) — spec at `specs/2026-05-01-phase-3-presenters-react-rxjs-design.md` REQUIRES REVISION post 2.6 | ⏳ NOT STARTED | (to be written after 2.6) | — |
 | Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5 — Gherkin specs + page-object harnesses + port contract tests | ⏳ NOT STARTED | (to be written) | — |

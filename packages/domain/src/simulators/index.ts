@@ -1,4 +1,3 @@
-export { delay, randomDelay } from "./delay.js";
 export { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";
 export { PricingSimulator } from "./PricingSimulator.js";
 export { ExecutionSimulator } from "./ExecutionSimulator.js";
