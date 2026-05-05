@@ -12,6 +12,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@react-rxjs/core": "^0.10.7",
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
     "react": "^19",
