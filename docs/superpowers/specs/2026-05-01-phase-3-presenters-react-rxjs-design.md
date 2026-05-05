@@ -8,6 +8,21 @@
 
 ---
 
+## Revisions
+
+### 2026-05-04 — Post-Phase-2.6 amendments
+
+Phase 2.6 replaced the `AsyncIterable<T>` / `Promise<T>` boundary with `Observable<T>` across `@rtc/domain`. The design in this spec stands intact; only the boundary type changes. Specifically:
+
+- All port methods return `Observable<T>` — including one-shot commands. `AppHooks` command hooks return Observables, not Promises. The two kept hooks (`useExecuteTrade`, `useRfqQuote`) call `firstValueFrom(...)` internally to preserve their `async`/`await` orchestration around `tileState`/`rfqState`.
+- Presenters drop the `from(...)` adapter that wrapped use-case calls — use cases already return `Observable<T>`.
+- `RfqQuotePresenter.requestQuote()` returns `Observable<RfqQuoteResult>` (bid/ask/mid). Phase 2.6 already added `PricingPort.getRfqQuote(symbol, pipsPosition): Observable<RfqQuoteResult>` and a synchronous Pattern-B impl in `PricingSimulator`. Phase 3 only needs to move the artificial 500–2000 ms delay from the `useRfqQuote` hook into the simulator (extend the existing `defer` with `timer + map`).
+- `ConnectionEventsPort.events()` returns `Observable<ConnectionEvent>`; `ConnectionStatusUseCase` becomes an `events.pipe(scan(...), startWith(...))` chain. `BrowserConnectionEventsAdapter` constructs its Observable via `new Observable(subscriber => { /* addEventListener */; return () => /* removeEventListener */ })`.
+
+Affected sections: §2, §3, §4, §5, §6 baseline counts. Architectural decisions (1–10) and §7 sequencing are unchanged.
+
+---
+
 ## Architectural Decisions
 
 These decisions were made during brainstorming. They drive every part of the design below.
@@ -20,11 +35,11 @@ These decisions were made during brainstorming. They drive every part of the des
 
 4. **Two hooks kept** — `useExecuteTrade` and `useRfqQuote`. Both orchestrate per-component state machines (`tileState`, `rfqState`). They become thin React adapters fusing a bound hook with a state machine. Deleting them would push that orchestration into 5+ component files.
 
-5. **`version` counter dropped.** `usePriceStream`'s `version` field was a workaround for not exposing `Price` reference identity. With react-rxjs, every emit produces a new `Price` reference; `use-stale-detection` updates to track the `Price` reference (or its `creationTimestamp`) instead.
+5. **`version` counter dropped.** `usePriceStream`'s `version` field was a workaround for not exposing `Price` reference identity. With react-rxjs, every emit produces a new `Price` reference; `useStaleDetection` updates to track the `Price` reference (or its `creationTimestamp`) instead.
 
-6. **`PricingPort` evolves with `getRfqQuote(symbol): Promise<PriceTick>`.** The artificial 500–2000 ms delay that today lives in `useRfqQuote` moves into the simulator. The hook just `await`s.
+6. **`PricingPort.getRfqQuote(symbol, pipsPosition): Observable<RfqQuoteResult>`** is already in place after Phase 2.6 (synchronous Pattern-B emission via `defer + of`). Phase 3 moves the artificial 500–2000 ms delay from the `useRfqQuote` hook into the simulator (extending the existing `defer` with `timer + map`). The hook awaits the single emission via `firstValueFrom`.
 
-7. **`ConnectionEventsPort` introduced.** The browser-event listening (mouse activity, online/offline, idle timer) currently inside `connection-provider.tsx` becomes a `BrowserConnectionEventsAdapter` that implements the new port. The state machine (`nextConnectionStatus`) — already in `@rtc/domain` — runs through a `ConnectionStatusUseCase` and a `ConnectionStatusPresenter`.
+7. **`ConnectionEventsPort` introduced.** The browser-event listening (mouse activity, online/offline, idle timer) currently inside `ConnectionProvider.tsx` becomes a `BrowserConnectionEventsAdapter` that implements the new port. The state machine (`nextConnectionStatus`) — already in `@rtc/domain` — runs through a `ConnectionStatusUseCase` and a `ConnectionStatusPresenter`.
 
 8. **No new module-level singletons.** Composition runs at the React root (`main.tsx`), not at module load. Tests can `createApp(stubPorts)` and render with their own `<HooksProvider>` — no `vi.mock` required.
 
@@ -41,20 +56,20 @@ Phase 3 introduces two new layers in `@rtc/client` and retires two React Context
 **New layers**:
 - `packages/client/src/app/presenters/*.ts` — RxJS presenter classes wrapping use cases. No React imports. Each exposes one or more `Observable<T>` streams.
 - `packages/client/src/app/composition.ts` — `createApp(ports?): AppHooks` function that constructs the dependency graph and returns bound hooks.
-- `packages/client/src/app/hooks-provider.tsx` — Tiny React Context (`HooksContext`) + `<HooksProvider>` + `useHooks()` consumer.
-- `packages/client/src/app/adapters/*.ts` — Plain-TS port adapters (the WS adapter, the simulator factory, the WS-real factory, the browser connection events adapter). Absorbs today's `services/ws-adapter.ts`, `services/mock-service-factory.ts`, `services/real-service-factory.ts`.
+- `packages/client/src/app/HooksProvider.tsx` — Tiny React Context (`HooksContext`) + `<HooksProvider>` + `useHooks()` consumer.
+- `packages/client/src/app/adapters/*.ts` — Plain-TS port adapters (the WS adapter, the simulator factory, the WS-real factory, the browser connection events adapter). Absorbs today's `services/WsAdapter.ts`, `services/mockServiceFactory.ts`, `services/realServiceFactory.ts`.
 
 **Retired**:
-- `packages/client/src/services/service-provider.tsx` — DELETED.
-- `packages/client/src/services/mock-service-factory.ts` and `real-service-factory.ts` — MERGED into a single `packages/client/src/app/adapters/port-factory.ts` exporting `createSimulatorPorts()` and `createWsRealPorts(ws)`. Original two files deleted.
-- `packages/client/src/services/ws-adapter.ts` — moved verbatim to `packages/client/src/app/adapters/ws-adapter.ts` (no logic change).
+- `packages/client/src/services/ServiceProvider.tsx` — DELETED.
+- `packages/client/src/services/mockServiceFactory.ts` and `realServiceFactory.ts` — MERGED into a single `packages/client/src/app/adapters/portFactory.ts` exporting `createSimulatorPorts()` and `createWsRealPorts(ws)`. Original two files deleted.
+- `packages/client/src/services/WsAdapter.ts` — moved verbatim to `packages/client/src/app/adapters/WsAdapter.ts` (no logic change).
 - `packages/client/src/services/` directory itself is removed once empty.
-- `packages/client/src/connection/connection-provider.tsx` — DELETED. Browser event listening moves into `BrowserConnectionEventsAdapter`.
-- `packages/client/src/connection/use-connection.ts` — DELETED. Replaced by `useConnectionStatus()` from `useHooks()`.
+- `packages/client/src/connection/ConnectionProvider.tsx` — DELETED. Browser event listening moves into `BrowserConnectionEventsAdapter`.
+- `packages/client/src/connection/useConnection.ts` — DELETED. Replaced by `useConnectionStatus()` from `useHooks()`.
 
 **Domain additions (in `@rtc/domain`)**:
-- `packages/domain/src/ports/connection-events-port.ts` — new `ConnectionEventsPort` interface.
-- `packages/domain/src/ports/pricing-port.ts` — `getRfqQuote(symbol): Promise<PriceTick>` added.
+- `packages/domain/src/ports/connectionEventsPort.ts` — new `ConnectionEventsPort` interface.
+- `packages/domain/src/ports/pricingPort.ts` — already has `getRfqQuote(symbol, pipsPosition): Observable<RfqQuoteResult>` (added in Phase 2.6). Phase 3 moves the artificial delay from the `useRfqQuote` hook into the simulator's existing `defer` block (extends with `timer + map`); no port-interface change.
 - `packages/domain/src/usecases/` — 6 new use cases:
   - `CurrencyPairsUseCase`
   - `TradeBlotterUseCase`
@@ -75,7 +90,7 @@ React component
                            ├─→ private state$ source
                            └─→ use case (domain)
                                 └─→ port adapter (simulator or WsReal)
-                                     └─→ ws-adapter or in-process simulator
+                                     └─→ WsAdapter or in-process simulator
 ```
 
 No `useServices()`, no `useContext(ConnectionContext)`, no service-locator pattern anywhere.
@@ -91,8 +106,8 @@ Each presenter is a class with: ports/use-cases injected in the constructor → 
 Single output stream cached per `CurrencyPair.symbol`:
 
 ```ts
-// packages/client/src/app/presenters/price-stream-presenter.ts
-import { from, type Observable, shareReplay } from "rxjs";
+// packages/client/src/app/presenters/PriceStreamPresenter.ts
+import { type Observable, shareReplay } from "rxjs";
 import {
   type CurrencyPair, type Price,
   PriceStreamUseCase,
@@ -108,7 +123,7 @@ export class PriceStreamPresenter {
     let stream = this.cache.get(key);
     if (!stream) {
       const useCase = new PriceStreamUseCase(this.pricing);
-      stream = from(useCase.execute(pair)).pipe(
+      stream = useCase.execute(pair).pipe(
         shareReplay({ bufferSize: 1, refCount: true })
       );
       this.cache.set(key, stream);
@@ -118,15 +133,15 @@ export class PriceStreamPresenter {
 }
 ```
 
-`shareReplay({ bufferSize: 1, refCount: true })` ensures multiple FX tiles for the same pair share one underlying subscription, and the inner `for await` tears down when the last tile unmounts.
+`shareReplay({ bufferSize: 1, refCount: true })` ensures multiple FX tiles for the same pair share one underlying subscription, and the upstream simulator's teardown (Pattern A — see Phase 2.6) fires when the last tile unmounts.
 
 ### Hybrid case — `RfqsPresenter`
 
 One source of truth, multiple narrow streams:
 
 ```ts
-// packages/client/src/app/presenters/rfqs-presenter.ts
-import { from, map, distinctUntilChanged, shareReplay, type Observable } from "rxjs";
+// packages/client/src/app/presenters/RfqsPresenter.ts
+import { map, distinctUntilChanged, shareReplay, type Observable } from "rxjs";
 import {
   type Quote, type Rfq, type RfqStreamState,
   WorkflowEventStreamUseCase,
@@ -142,7 +157,7 @@ export class RfqsPresenter {
 
   constructor(private readonly workflow: WorkflowPort) {
     const events = new WorkflowEventStreamUseCase(this.workflow);
-    this.state$ = from(events.execute()).pipe(
+    this.state$ = events.execute().pipe(
       shareReplay({ bufferSize: 1, refCount: true })
     );
     this.rfqs$ = this.state$.pipe(
@@ -164,11 +179,11 @@ export class RfqsPresenter {
     return stream;
   }
 
-  createRfq(input: CreateRfqInput): Promise<number> {
+  createRfq(input: CreateRfqInput): Observable<number> {
     return new CreateRfqUseCase(this.workflow).execute(input);
   }
 
-  // acceptQuote, cancelRfq, passQuote follow the same pattern.
+  // acceptQuote, cancelRfq, passQuote return Observable<void> and follow the same pattern.
 }
 
 function shallowArrayEquals<T>(a: readonly T[], b: readonly T[]): boolean {
@@ -182,7 +197,7 @@ function shallowArrayEquals<T>(a: readonly T[], b: readonly T[]): boolean {
 Notes:
 - `state$` is the single source of truth; `rfqs$` and `quotesForRfq$(id)` are derived. No state desync.
 - `distinctUntilChanged(shallowArrayEquals)` prevents downstream re-renders when array content is reference-equal.
-- Commands (`createRfq`, etc.) are methods that delegate to command use cases — they return Promises, not Observables.
+- Commands (`createRfq`, etc.) are methods that delegate to command use cases — they return one-shot `Observable<T>`, uniform with the streams. Callers that need imperative `await` semantics use `firstValueFrom(...)`.
 - `allQuotes$` exposes `ReadonlyMap` cleanly. The Phase 2 `Map<>` cast workaround is gone.
 
 ### Presenter inventory (11 total)
@@ -215,6 +230,7 @@ Notes:
 // packages/client/src/app/composition.ts
 import { bind } from "@react-rxjs/core";
 import { useCallback } from "react";
+import type { Observable } from "rxjs";
 import {
   // Use cases
   CurrencyPairsUseCase, TradeBlotterUseCase, InstrumentsUseCase,
@@ -229,21 +245,21 @@ import {
   type ConnectionEventsPort,
 } from "@rtc/domain";
 
-import { PriceStreamPresenter } from "./presenters/price-stream-presenter";
-import { PriceHistoryPresenter } from "./presenters/price-history-presenter";
-import { TradeExecutionPresenter } from "./presenters/trade-execution-presenter";
-import { BlotterPresenter } from "./presenters/blotter-presenter";
-import { AnalyticsPresenter } from "./presenters/analytics-presenter";
-import { RfqsPresenter } from "./presenters/rfqs-presenter";
-import { CurrencyPairsPresenter } from "./presenters/currency-pairs-presenter";
-import { InstrumentsPresenter } from "./presenters/instruments-presenter";
-import { DealersPresenter } from "./presenters/dealers-presenter";
-import { ConnectionStatusPresenter } from "./presenters/connection-status-presenter";
-import { RfqQuotePresenter } from "./presenters/rfq-quote-presenter";
+import { PriceStreamPresenter } from "./presenters/PriceStreamPresenter";
+import { PriceHistoryPresenter } from "./presenters/PriceHistoryPresenter";
+import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
+import { BlotterPresenter } from "./presenters/BlotterPresenter";
+import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
+import { RfqsPresenter } from "./presenters/RfqsPresenter";
+import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
+import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
+import { DealersPresenter } from "./presenters/DealersPresenter";
+import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
+import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
 
-import { WsAdapter } from "./adapters/ws-adapter";
-import { createWsRealPorts, createSimulatorPorts } from "./adapters/port-factory";
-import { BrowserConnectionEventsAdapter } from "./adapters/browser-connection-events-adapter";
+import { WsAdapter } from "./adapters/WsAdapter";
+import { createWsRealPorts, createSimulatorPorts } from "./adapters/portFactory";
+import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
 
 export interface AppPorts {
   pricing: PricingPort;
@@ -270,13 +286,14 @@ export interface AppHooks {
   useInstruments: () => readonly Instrument[];
   useDealers: () => readonly Dealer[];
   useConnectionStatus: () => ConnectionStatus;
-  // Commands (each returns a stable callback)
-  useExecuteTrade: () => (input: ExecuteTradeInput) => Promise<ExecuteTradeResult>;
-  useCreateRfq: () => (input: CreateRfqInput) => Promise<number>;
-  useAcceptQuote: () => (quoteId: number) => Promise<void>;
-  useCancelRfq: () => (rfqId: number) => Promise<void>;
-  usePassQuote: () => (quoteId: number) => Promise<void>;
-  useRequestRfqQuote: () => (symbol: string) => Promise<PriceTick>;
+  // Commands (each returns a stable callback; one-shot Observables, callers
+  // wrap with firstValueFrom when imperative await is needed)
+  useExecuteTrade: () => (input: ExecuteTradeInput) => Observable<ExecuteTradeResult>;
+  useCreateRfq: () => (input: CreateRfqInput) => Observable<number>;
+  useAcceptQuote: () => (quoteId: number) => Observable<void>;
+  useCancelRfq: () => (rfqId: number) => Observable<void>;
+  usePassQuote: () => (quoteId: number) => Observable<void>;
+  useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => Observable<RfqQuoteResult>;
 }
 
 export function buildDefaultPorts(): AppPorts {
@@ -342,7 +359,7 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): AppHooks {
 ```
 
 ```tsx
-// packages/client/src/app/hooks-provider.tsx
+// packages/client/src/app/HooksProvider.tsx
 import { createContext, useContext, type ReactNode } from "react";
 import type { AppHooks } from "./composition";
 
@@ -362,7 +379,7 @@ export function useHooks(): AppHooks {
 ```tsx
 // packages/client/src/main.tsx (root)
 import { createApp } from "./app/composition";
-import { HooksProvider } from "./app/hooks-provider";
+import { HooksProvider } from "./app/HooksProvider";
 
 const hooks = createApp();
 
@@ -388,37 +405,62 @@ function Tile({ pair }: { pair: CurrencyPair }) {
 
 ## 4. Port Evolution
 
-### `PricingPort.getRfqQuote`
+### `PricingPort.getRfqQuote` — already present, simulator delay to move
+
+Phase 2.6 added the method:
 
 ```ts
-// packages/domain/src/ports/pricing-port.ts
+// packages/domain/src/ports/pricingPort.ts (already in place)
+import type { Observable } from "rxjs";
+
+export interface RfqQuoteResult {
+  readonly bid: number;
+  readonly ask: number;
+  readonly mid: number;
+}
+
 export interface PricingPort {
-  getPriceUpdates(symbol: string): AsyncIterable<PriceTick>;
-  getPriceHistory(symbol: string): Promise<readonly PriceTick[]>;
-  getRfqQuote(symbol: string): Promise<PriceTick>;  // NEW
+  getPriceUpdates(symbol: string): Observable<PriceTick>;
+  getPriceHistory(symbol: string): Observable<readonly PriceTick[]>;
+  getRfqQuote(symbol: string, pipsPosition: number): Observable<RfqQuoteResult>;
 }
 ```
 
-**Simulator** (`PricingSimulator`): existing private logic promoted to port-conforming async method, with the artificial 500–2000 ms delay moved here:
+**Simulator change in Phase 3** — extend the existing synchronous `defer + of` block with a `timer + map` to internalise the 500–2000 ms delay that today lives in the `useRfqQuote` hook:
 
 ```ts
-async getRfqQuote(symbol: string): Promise<PriceTick> {
-  await randomDelay(500, 2000);
-  return this.computeRfqQuote(symbol);  // existing private method
+// packages/domain/src/simulators/PricingSimulator.ts
+import { defer, map, of, throwError, timer } from "rxjs";
+
+getRfqQuote(symbol: string, pipsPosition: number): Observable<RfqQuoteResult> {
+  return defer(() => {
+    const state = this.pairs.get(symbol);
+    if (!state) return throwError(() => new Error(`Unknown symbol: ${symbol}`));
+    const priceChange = 0.3 / Math.pow(10, pipsPosition);
+    const delayMs = 500 + Math.floor(Math.random() * 1500);
+    return timer(delayMs).pipe(
+      map(() => ({
+        ask: state.mid + HALF_SPREAD + priceChange,
+        bid: state.mid - HALF_SPREAD - priceChange,
+        mid: state.mid,
+      })),
+    );
+  });
 }
 ```
 
-**WS-real adapter** (`WsRealPricingAdapter`): adds `getRfqQuote(symbol)` as an `rpc.getRfqQuote` call with correlation ID, mirroring the existing `executeTrade` pattern.
-
-**Server**: adds `rpc.getRfqQuote` to the protocol message types and a handler in `ws-handler.ts` that delegates to `PricingSimulator.getRfqQuote(symbol)`.
+**WS-real adapter** (`realServiceFactory.ts` adapter): already sends `rpc.getRfqQuote` and returns the result — no change needed beyond the simulator-side delay (server forwards from `PricingSimulator`, which now embeds the delay).
 
 **`RfqQuoteUseCase`** in `packages/domain/src/usecases/`:
 
 ```ts
+import type { Observable } from "rxjs";
+import type { PricingPort, RfqQuoteResult } from "../ports/pricingPort.js";
+
 export class RfqQuoteUseCase {
   constructor(private readonly pricing: PricingPort) {}
-  execute(symbol: string): Promise<PriceTick> {
-    return this.pricing.getRfqQuote(symbol);
+  execute(symbol: string, pipsPosition: number): Observable<RfqQuoteResult> {
+    return this.pricing.getRfqQuote(symbol, pipsPosition);
   }
 }
 ```
@@ -426,35 +468,62 @@ export class RfqQuoteUseCase {
 ### `ConnectionEventsPort` (new)
 
 ```ts
-// packages/domain/src/ports/connection-events-port.ts
-import type { ConnectionEvent } from "../connection/connection-status.js";
+// packages/domain/src/ports/connectionEventsPort.ts
+import type { Observable } from "rxjs";
+import type { ConnectionEvent } from "../connection/connectionStatus.js";
 
 export interface ConnectionEventsPort {
-  events(): AsyncIterable<ConnectionEvent>;
+  events(): Observable<ConnectionEvent>;
 }
 ```
 
 `ConnectionStatusUseCase` consumes events from this port and folds them through `nextConnectionStatus` into a stream of `ConnectionStatus`:
 
 ```ts
+import { scan, startWith, type Observable } from "rxjs";
+
 export class ConnectionStatusUseCase {
   constructor(
     private readonly events: ConnectionEventsPort,
     private readonly initial: ConnectionStatus = "CONNECTING",
   ) {}
 
-  async *execute(): AsyncIterable<ConnectionStatus> {
-    let state = this.initial;
-    yield state;
-    for await (const event of this.events.events()) {
-      state = nextConnectionStatus(state, event);
-      yield state;
-    }
+  execute(): Observable<ConnectionStatus> {
+    return this.events.events().pipe(
+      scan((state, event) => nextConnectionStatus(state, event), this.initial),
+      startWith(this.initial),
+    );
   }
 }
 ```
 
-**`BrowserConnectionEventsAdapter`** in `packages/client/src/app/adapters/`: implements `ConnectionEventsPort` by listening to browser events (mouse/keyboard/online/offline) and the idle timer, yielding the corresponding `ConnectionEvent`s. Absorbs the event-listening logic from today's `connection-provider.tsx`. The state machine is no longer in the adapter — it's in the use case.
+**`BrowserConnectionEventsAdapter`** in `packages/client/src/app/adapters/`: implements `ConnectionEventsPort` by listening to browser events (mouse/keyboard/online/offline) and the idle timer, emitting the corresponding `ConnectionEvent`s. Absorbs the event-listening logic from today's `ConnectionProvider.tsx`. The state machine is no longer in the adapter — it's in the use case. Construction pattern (DOM listeners with explicit teardown):
+
+```ts
+import { Observable } from "rxjs";
+
+events(): Observable<ConnectionEvent> {
+  return new Observable<ConnectionEvent>((subscriber) => {
+    const onActivity = () => subscriber.next({ type: "activity" });
+    const onOnline = () => subscriber.next({ type: "online" });
+    const onOffline = () => subscriber.next({ type: "offline" });
+    window.addEventListener("mousemove", onActivity);
+    window.addEventListener("keydown", onActivity);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    const idleTimer = setInterval(() => subscriber.next({ type: "idleTick" }), IDLE_INTERVAL_MS);
+    return () => {
+      window.removeEventListener("mousemove", onActivity);
+      window.removeEventListener("keydown", onActivity);
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      clearInterval(idleTimer);
+    };
+  });
+}
+```
+
+(Exact `ConnectionEvent` payload shape comes from the existing `@rtc/domain/connection/connectionStatus.ts`; the snippet above is illustrative.)
 
 ---
 
@@ -499,14 +568,15 @@ The `useQuotesForRfq(id)` per-row pattern gives fine-grained reactivity: each ro
 
 These hooks fuse a bound hook with a per-component state machine. They remain as thin React adapters.
 
-**`useExecuteTrade(pair, tileState)`** — orchestrates `tileState.start()` / `tileState.finish(status, trade)` around an `executeTrade` callback:
+**`useExecuteTrade(pair, tileState)`** — orchestrates `tileState.start()` / `tileState.finish(status, trade)` around an `executeTrade` callback. The presenter returns `Observable<ExecuteTradeResult>`; the adapter awaits the single emission via `firstValueFrom`:
 
 ```ts
 // after Phase 3
 import { useCallback } from "react";
-import { useHooks } from "../../app/hooks-provider";
+import { firstValueFrom } from "rxjs";
+import { useHooks } from "../../app/HooksProvider";
 import { ExecutionStatus, type CurrencyPair, type Direction, type Price } from "@rtc/domain";
-import type { UseTileStateResult } from "./use-tile-state";
+import type { UseTileStateResult } from "./useTileState";
 
 export function useExecuteTrade(pair: CurrencyPair, tileState: UseTileStateResult) {
   const { useExecuteTrade } = useHooks();
@@ -515,7 +585,9 @@ export function useExecuteTrade(pair: CurrencyPair, tileState: UseTileStateResul
     async (direction: Direction, price: Price, notional: number) => {
       tileState.start();
       try {
-        const { status, trade } = await execute({ pair, direction, price, notional });
+        const { status, trade } = await firstValueFrom(
+          execute({ pair, direction, price, notional }),
+        );
         tileState.finish(status, trade);
       } catch {
         tileState.finish(ExecutionStatus.Timeout);
@@ -526,14 +598,15 @@ export function useExecuteTrade(pair: CurrencyPair, tileState: UseTileStateResul
 }
 ```
 
-**`useRfqQuote(pair, rfqState)`** — orchestrates `rfqState.requested()` / `rfqState.received(quote)` / `rfqState.rejected()` around a `requestQuote` callback:
+**`useRfqQuote(pair, rfqState)`** — orchestrates `rfqState.requested()` / `rfqState.received(quote)` / `rfqState.rejected()` around a `requestQuote` callback. Same `firstValueFrom` adaptation:
 
 ```ts
 // after Phase 3
 import { useCallback } from "react";
-import { useHooks } from "../../app/hooks-provider";
+import { firstValueFrom } from "rxjs";
+import { useHooks } from "../../app/HooksProvider";
 import type { CurrencyPair } from "@rtc/domain";
-import type { UseRfqStateResult } from "./use-rfq-state";
+import type { UseRfqStateResult } from "./useRfqState";
 
 export function useRfqQuote(pair: CurrencyPair, rfqState: UseRfqStateResult) {
   const { useRequestRfqQuote } = useHooks();
@@ -541,7 +614,7 @@ export function useRfqQuote(pair: CurrencyPair, rfqState: UseRfqStateResult) {
   return useCallback(async () => {
     rfqState.requested();
     try {
-      const quote = await requestQuote(pair.symbol);
+      const quote = await firstValueFrom(requestQuote(pair.symbol));
       rfqState.received(quote);
     } catch {
       rfqState.rejected();
@@ -552,9 +625,9 @@ export function useRfqQuote(pair: CurrencyPair, rfqState: UseRfqStateResult) {
 
 ### Untouched (UI-only state machines)
 
-These hooks have no port access and need no migration: `use-notional`, `use-tile-state`, `use-rfq-state`, `use-stale-detection`, `use-throughput`. They stay where they are.
+These hooks have no port access and need no migration: `useNotional`, `useTileState`, `useRfqState`, `useStaleDetection`, `useThroughput`. They stay where they are.
 
-**One small update**: `use-stale-detection.ts` currently watches the `version` counter from `usePriceStream`. After Phase 3 it watches the `Price` reference itself (which changes per tick). One-line change:
+**One small update**: `useStaleDetection.ts` currently watches the `version` counter from `usePriceStream`. After Phase 3 it watches the `Price` reference itself (which changes per tick). One-line change:
 
 ```ts
 // before
@@ -575,7 +648,7 @@ The 6 new domain use cases each get a vitest file with stub-port tests. Pattern 
 - `ConnectionStatusUseCase`: tests for the state transition through `nextConnectionStatus` over a stream of stub events. ~3–4 tests.
 - `RfqQuoteUseCase`: tests for delegation to `pricing.getRfqQuote`. ~1–2 tests.
 
-Domain test count grows from 101 → ~115.
+Domain test count grows from 104 → ~118 (Phase 2.6 left domain at 104; +14 for the 6 new use cases).
 
 ### Presenter tests (~40–50 new)
 
@@ -600,7 +673,7 @@ E2E is the canary for hook migration. Run after each migration task. The fx-trad
 
 ### Phase 3 final test counts
 
-- Unit: 106 (Phase 2 end) + ~46–56 = **~152–162**.
+- Unit: 109 (Phase 2.6 end: 104 domain + 5 server) + ~54–64 (≈14 new domain + ~40–50 new client presenter) = **~163–173**.
 - E2E: 40 (unchanged).
 
 ---
@@ -610,11 +683,11 @@ E2E is the canary for hook migration. Run after each migration task. The fx-trad
 ### In scope
 
 - Domain: 1 new port (`ConnectionEventsPort`), 1 port evolution (`PricingPort.getRfqQuote`), 6 new use cases.
-- Client: 11 presenters, Composition Root, `HooksProvider` Context, `BrowserConnectionEventsAdapter`, port-factory adapters relocated under `app/adapters/`.
+- Client: 11 presenters, Composition Root, `HooksProvider` Context, `BrowserConnectionEventsAdapter`, `portFactory` adapters relocated under `app/adapters/`.
 - 12 hooks migrated: 10 deleted, 2 thinned and rebased on `useHooks()`.
 - ~13 consumer components migrated.
-- `use-stale-detection.ts` updated.
-- Deletion: `services/service-provider.tsx`, `services/mock-service-factory.ts`, `services/real-service-factory.ts`, `services/ws-adapter.ts` (relocated, not strictly deleted), `connection/connection-provider.tsx`, `connection/use-connection.ts`.
+- `useStaleDetection.ts` updated.
+- Deletion: `services/ServiceProvider.tsx`, `services/mockServiceFactory.ts`, `services/realServiceFactory.ts`, `services/WsAdapter.ts` (relocated, not strictly deleted), `connection/ConnectionProvider.tsx`, `connection/useConnection.ts`.
 - New dependency: `@react-rxjs/core` in `@rtc/client`.
 
 ### Out of scope (deferred)
@@ -636,7 +709,7 @@ Safety first — keep the app running at every commit. The new world is built al
    - Blotter, Analytics, Reference Data.
    - Connection (the most invasive — Context retirement).
    E2E run after each area.
-5. **Cleanup** — delete `ServiceProvider`, `mock-service-factory`, `real-service-factory`, `connection-provider`, the deleted wrapper hooks, `use-connection`. Verify zero references remain.
+5. **Cleanup** — delete `ServiceProvider`, `mockServiceFactory`, `realServiceFactory`, `ConnectionProvider`, the deleted wrapper hooks, `useConnection`. Verify zero references remain.
 6. **Final verification + docs** — full unit + e2e suite green; architecture.md §11 updated to mark Composition Root and presenters as implemented.
 
 ### Approximate task count
@@ -655,6 +728,6 @@ Safety first — keep the app running at every commit. The new world is built al
 - `grep -rn "useServices\|ServiceProvider" packages/client/src` yields zero matches.
 - `grep -rn "ConnectionContext\|ConnectionProvider" packages/client/src` yields zero matches.
 - `grep -rn "from \"\.\./services" packages/client/src` yields zero matches (the services/ directory is gone).
-- Unit tests: ~152–162. E2E: 40 (unchanged).
-- `@rtc/domain` zero runtime deps invariant intact.
+- Unit tests: ~163–173. E2E: 40 (unchanged).
+- `@rtc/domain` single-runtime-dep invariant intact (rxjs only, established in Phase 2.6).
 - `architecture.md` §11 updated.
