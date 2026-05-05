@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { matchesCurrencyFilter, type CurrencyCategory } from "@rtc/domain";
-import { useCurrencyPairs } from "../hooks/useCurrencyPairs";
+import { useHooks } from "../../app/HooksProvider";
 import { CurrencyFilter } from "./CurrencyFilter";
 import { ViewToggle, type ViewMode } from "./ViewToggle";
 import { Tile } from "./tile/Tile";
@@ -18,7 +18,7 @@ function readStoredViewMode(): ViewMode {
 }
 
 export function LiveRatesPanel() {
-  const pairs = useCurrencyPairs();
+  const pairs = useHooks().useCurrencyPairs();
   const [filter, setFilter] = useState<CurrencyCategory>("All");
   const [viewMode, setViewMode] = useState<ViewMode>(readStoredViewMode);
 

@@ -1,39 +1,36 @@
 import { useEffect, useRef, useState } from "react";
 import { ConnectionStatus } from "@rtc/domain";
-import { useConnection } from "../connection/useConnection";
+import { useHooks } from "../app/HooksProvider";
 
 /**
  * Returns true when a data stream should be considered stale.
  *
  * A stream is stale when the connection was lost and reconnected
- * but the stream has not yet received new data. The caller passes
- * a "version" value (e.g. a counter or latest timestamp) that
- * increments whenever the stream yields new data. Once a new value
- * arrives after reconnection, stale clears.
+ * but the stream has not yet emitted a new reference. The caller
+ * passes the latest value (any reference); a change indicates new
+ * data, which clears the stale flag.
  */
-export function useStaleDetection(dataVersion: number): boolean {
-  const status = useConnection();
+export function useStaleDetection(value: unknown): boolean {
+  const status = useHooks().useConnectionStatus();
   const [stale, setStale] = useState(false);
   const wasDisconnectedRef = useRef(false);
-  const versionAtReconnectRef = useRef(dataVersion);
+  const valueAtReconnectRef = useRef(value);
 
   useEffect(() => {
     if (status !== ConnectionStatus.CONNECTED) {
       wasDisconnectedRef.current = true;
     } else if (wasDisconnectedRef.current) {
-      // Just reconnected — mark stale until new data arrives
-      versionAtReconnectRef.current = dataVersion;
+      valueAtReconnectRef.current = value;
       setStale(true);
       wasDisconnectedRef.current = false;
     }
-  }, [status, dataVersion]);
+  }, [status, value]);
 
-  // Clear stale once dataVersion advances past the reconnection snapshot
   useEffect(() => {
-    if (stale && dataVersion !== versionAtReconnectRef.current) {
+    if (stale && value !== valueAtReconnectRef.current) {
       setStale(false);
     }
-  }, [stale, dataVersion]);
+  }, [stale, value]);
 
   return stale;
 }

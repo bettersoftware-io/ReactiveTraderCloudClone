@@ -1,38 +1,29 @@
 import { useCallback } from "react";
 import { firstValueFrom } from "rxjs";
 import {
-  type CurrencyPair,
-  type Price,
-  Direction,
-  ExecutionStatus,
-  ExecuteTradeUseCase,
+  type CurrencyPair, type Price, Direction, ExecutionStatus,
 } from "@rtc/domain";
-import { useServices } from "../../services/ServiceProvider";
+import { useHooks } from "../../app/HooksProvider";
 import type { UseTileStateResult } from "./useTileState";
 
 export function useExecuteTrade(
   pair: CurrencyPair,
   tileState: UseTileStateResult,
 ) {
-  const { execution } = useServices();
+  const execute = useHooks().useExecuteTrade();
 
-  const execute = useCallback(
+  return useCallback(
     async (direction: Direction, price: Price, notional: number) => {
-      const useCase = new ExecuteTradeUseCase(execution);
-
       tileState.start();
-
       try {
         const { status, trade } = await firstValueFrom(
-          useCase.execute({ pair, direction, price, notional }),
+          execute({ pair, direction, price, notional }),
         );
         tileState.finish(status, trade);
       } catch {
         tileState.finish(ExecutionStatus.Timeout);
       }
     },
-    [execution, pair, tileState],
+    [pair, execute, tileState],
   );
-
-  return execute;
 }

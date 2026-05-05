@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { type CurrencyPair, type Direction, type Price } from "@rtc/domain";
-import { usePriceStream } from "../../hooks/usePriceStream";
-import { usePriceHistory } from "../../hooks/usePriceHistory";
+import { useHooks } from "../../../app/HooksProvider";
 import { useNotional } from "../../hooks/useNotional";
 import { useTileState } from "../../hooks/useTileState";
 import { useExecuteTrade } from "../../hooks/useExecuteTrade";
@@ -23,9 +22,10 @@ interface TileProps {
 }
 
 export function Tile({ pair, showChart }: TileProps) {
-  const { price, version: priceVersion } = usePriceStream(pair);
-  const stale = useStaleDetection(priceVersion);
-  const history = usePriceHistory(pair.symbol);
+  const hooks = useHooks();
+  const price = hooks.usePrice(pair);
+  const stale = useStaleDetection(price);
+  const history = hooks.usePriceHistory(pair.symbol);
   const notional = useNotional(pair.defaultNotional);
   const tileState = useTileState();
   const executeTrade = useExecuteTrade(pair, tileState);
