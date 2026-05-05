@@ -15,3 +15,4 @@ export { TradeBlotterUseCase } from "./TradeBlotterUseCase.js";
 export { InstrumentsUseCase } from "./InstrumentsUseCase.js";
 export { DealersUseCase } from "./DealersUseCase.js";
 export { RfqQuoteUseCase } from "./RfqQuoteUseCase.js";
+export { ConnectionStatusUseCase } from "./ConnectionStatusUseCase.js";

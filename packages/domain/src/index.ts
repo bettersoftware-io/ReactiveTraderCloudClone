@@ -40,6 +40,7 @@ export type { AnalyticsPort } from "./ports/analyticsPort.js";
 export type { InstrumentPort } from "./ports/instrumentPort.js";
 export type { DealerPort } from "./ports/dealerPort.js";
 export type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "./ports/workflowPort.js";
+export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
 
 // Simulators (in-memory port implementations)
 export {
@@ -57,5 +58,5 @@ export {
 export type { TradeListener } from "./simulators/index.js";
 
 // Use Cases
-export { PriceStreamUseCase, PriceHistoryUseCase, ExecuteTradeUseCase, AnalyticsUseCase, WorkflowEventStreamUseCase, reduceRfqEvent, CreateRfqUseCase, RFQ_DEFAULT_EXPIRY_SECS } from "./usecases/index.js";
+export { PriceStreamUseCase, PriceHistoryUseCase, ExecuteTradeUseCase, AnalyticsUseCase, WorkflowEventStreamUseCase, reduceRfqEvent, CreateRfqUseCase, RFQ_DEFAULT_EXPIRY_SECS, ConnectionStatusUseCase } from "./usecases/index.js";
 export type { ExecuteTradeInput, ExecuteTradeResult, RfqStreamState, CreateRfqInput } from "./usecases/index.js";
