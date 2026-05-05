@@ -4,6 +4,8 @@ import { ThemeProvider } from "./theme/ThemeProvider";
 import { ServiceProvider } from "./services/ServiceProvider";
 import { ConnectionProvider } from "./connection/ConnectionProvider";
 import { App } from "./App";
+import { createApp } from "./app/composition";
+import { HooksProvider } from "./app/HooksProvider";
 
 // Global reset
 const style = document.createElement("style");
@@ -24,14 +26,18 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+const hooks = createApp();
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
-      <ServiceProvider>
-        <ConnectionProvider>
-          <App />
-        </ConnectionProvider>
-      </ServiceProvider>
+      <HooksProvider hooks={hooks}>
+        <ServiceProvider>
+          <ConnectionProvider>
+            <App />
+          </ConnectionProvider>
+        </ServiceProvider>
+      </HooksProvider>
     </ThemeProvider>
   </StrictMode>,
 );
