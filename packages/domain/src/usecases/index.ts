@@ -10,3 +10,8 @@ export {
 export type { RfqStreamState } from "./WorkflowEventStreamUseCase.js";
 export { CreateRfqUseCase, RFQ_DEFAULT_EXPIRY_SECS } from "./CreateRfqUseCase.js";
 export type { CreateRfqInput } from "./CreateRfqUseCase.js";
+export { CurrencyPairsUseCase } from "./CurrencyPairsUseCase.js";
+export { TradeBlotterUseCase } from "./TradeBlotterUseCase.js";
+export { InstrumentsUseCase } from "./InstrumentsUseCase.js";
+export { DealersUseCase } from "./DealersUseCase.js";
+export { RfqQuoteUseCase } from "./RfqQuoteUseCase.js";
