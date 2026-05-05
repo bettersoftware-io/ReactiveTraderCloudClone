@@ -1,4 +1,4 @@
-import { Observable, of, defer, throwError, concat, from } from "rxjs";
+import { Observable, of, defer, throwError, concat, from, map, timer } from "rxjs";
 import type { PriceTick } from "../fx/price.js";
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { PricingPort, RfqQuoteResult } from "../ports/pricingPort.js";
@@ -94,17 +94,20 @@ export class PricingSimulator implements PricingPort {
   /**
    * Generate an RFQ quote with widened spread.
    * priceChange = 0.3 / 10^pipsPosition
+   * Emits after a 500–2000 ms artificial delay (simulates network/pricing engine latency).
    */
   getRfqQuote(symbol: string, pipsPosition: number): Observable<RfqQuoteResult> {
     return defer(() => {
       const state = this.pairs.get(symbol);
       if (!state) return throwError(() => new Error(`Unknown symbol: ${symbol}`));
       const priceChange = 0.3 / Math.pow(10, pipsPosition);
-      return of({
+      const delayMs = 500 + Math.floor(Math.random() * 1500);
+      const result: RfqQuoteResult = {
         ask: state.mid + HALF_SPREAD + priceChange,
         bid: state.mid - HALF_SPREAD - priceChange,
         mid: state.mid,
-      });
+      };
+      return timer(delayMs).pipe(map(() => result));
     });
   }
 }

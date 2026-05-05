@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { firstValueFrom, lastValueFrom } from "rxjs";
+import { firstValueFrom, lastValueFrom, Subscription } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 import { PricingSimulator } from "./PricingSimulator.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
+import type { RfqQuoteResult } from "../ports/pricingPort.js";
 
 const MAX_TICK_INTERVAL_MS = 1_000;
 
@@ -63,14 +64,40 @@ describe("PricingSimulator", () => {
   });
 
   it("getRfqQuote widens the spread", async () => {
+    vi.useFakeTimers();
     const engine = new PricingSimulator();
-    const quote = await firstValueFrom(engine.getRfqQuote("EURUSD", 4));
+    const promise = firstValueFrom(engine.getRfqQuote("EURUSD", 4));
+    // Advance past the maximum possible delay (2000ms ceiling).
+    await vi.advanceTimersByTimeAsync(2000);
+    const quote = await promise;
 
     // priceChange = 0.3 / 10^4 = 0.00003
     const expectedAsk = quote.mid + 0.0002 + 0.00003;
     const expectedBid = quote.mid - 0.0002 - 0.00003;
     expect(quote.ask).toBeCloseTo(expectedAsk, 8);
     expect(quote.bid).toBeCloseTo(expectedBid, 8);
+  });
+
+  it("emits the RFQ quote after a 500–2000 ms delay", async () => {
+    vi.useFakeTimers();
+    try {
+      const sim = new PricingSimulator();
+      const symbol = "EURUSD";
+      let received: RfqQuoteResult | undefined;
+      const sub: Subscription = sim.getRfqQuote(symbol, 4).subscribe((q) => {
+        received = q;
+      });
+      // Below the 500ms floor — must not have emitted yet.
+      await vi.advanceTimersByTimeAsync(499);
+      expect(received).toBeUndefined();
+      // Past the 2000ms ceiling — must have emitted exactly once by now.
+      await vi.advanceTimersByTimeAsync(1501);
+      expect(received).toBeDefined();
+      expect(received!.bid).toBeLessThan(received!.ask);
+      sub.unsubscribe();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("throws for unknown symbol", async () => {
