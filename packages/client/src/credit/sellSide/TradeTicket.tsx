@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { firstValueFrom } from "rxjs";
 import { type Rfq, type Quote, type Instrument, RfqState } from "@rtc/domain";
-import { useServices } from "../../services/ServiceProvider";
+import { useHooks } from "../../app/HooksProvider";
 
 interface TradeTicketProps {
   rfq: Rfq;
@@ -10,7 +10,9 @@ interface TradeTicketProps {
 }
 
 export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
-  const { workflow } = useServices();
+  const hooks = useHooks();
+  const quoteRfq = hooks.useQuoteRfq();
+  const passQuote = hooks.usePassQuote();
   const [price, setPrice] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -20,14 +22,14 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
   const handleSubmit = useCallback(async () => {
     const num = parseFloat(price);
     if (isNaN(num) || num <= 0) return;
-    await firstValueFrom(workflow.quote({ quoteId: quote.id, price: num }));
+    await firstValueFrom(quoteRfq({ quoteId: quote.id, price: num }));
     setSubmitted(true);
-  }, [workflow, quote.id, price]);
+  }, [quoteRfq, quote.id, price]);
 
   const handlePass = useCallback(async () => {
-    await firstValueFrom(workflow.pass(quote.id));
+    await firstValueFrom(passQuote(quote.id));
     setSubmitted(true);
-  }, [workflow, quote.id]);
+  }, [passQuote, quote.id]);
 
   return (
     <div style={{

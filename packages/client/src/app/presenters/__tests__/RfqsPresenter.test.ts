@@ -77,4 +77,20 @@ describe("RfqsPresenter", () => {
     expect(await firstValueFrom(presenter.cancelRfq(1))).toBeUndefined();
     expect(await firstValueFrom(presenter.passQuote(1))).toBeUndefined();
   });
+
+  it("quoteRfq delegates to WorkflowPort.quote", async () => {
+    let received: unknown;
+    const wp: WorkflowPort = {
+      ...port([]),
+      quote: (req) => {
+        received = req;
+        return of(undefined);
+      },
+    };
+    const presenter = new RfqsPresenter(wp);
+    expect(
+      await firstValueFrom(presenter.quoteRfq({ quoteId: 99, price: 101.5 })),
+    ).toBeUndefined();
+    expect(received).toEqual({ quoteId: 99, price: 101.5 });
+  });
 });

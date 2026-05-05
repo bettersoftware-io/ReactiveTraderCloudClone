@@ -4,7 +4,7 @@ import { QuoteCard } from "./QuoteCard";
 
 interface RfqCardProps {
   rfq: Rfq;
-  quotes: Quote[];
+  quotes: readonly Quote[];
   instrument: Instrument | undefined;
   dealers: readonly Dealer[];
   onAccept: (quoteId: number) => void;

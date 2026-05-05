@@ -9,7 +9,7 @@ import {
   type Rfq, type Quote, type PositionUpdates,
   type Instrument, type Dealer,
   type ExecuteTradeInput, type ExecuteTradeResult, type CreateRfqInput,
-  type RfqQuoteResult,
+  type RfqQuoteResult, type QuoteRequest,
 } from "@rtc/domain";
 
 import { PriceStreamPresenter } from "./presenters/PriceStreamPresenter";
@@ -53,6 +53,7 @@ export interface AppHooks {
   useAcceptQuote: () => (quoteId: number) => Observable<void>;
   useCancelRfq: () => (rfqId: number) => Observable<void>;
   usePassQuote: () => (quoteId: number) => Observable<void>;
+  useQuoteRfq: () => (request: QuoteRequest) => Observable<void>;
   useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => Observable<RfqQuoteResult>;
 }
 
@@ -146,6 +147,7 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): AppHooks {
     useAcceptQuote: () => useCallback((quoteId) => presenters.rfqs.acceptQuote(quoteId), []),
     useCancelRfq: () => useCallback((rfqId) => presenters.rfqs.cancelRfq(rfqId), []),
     usePassQuote: () => useCallback((quoteId) => presenters.rfqs.passQuote(quoteId), []),
+    useQuoteRfq: () => useCallback((req) => presenters.rfqs.quoteRfq(req), []),
     useRequestRfqQuote: () =>
       useCallback((symbol, pipsPosition) => presenters.rfqQuote.requestQuote(symbol, pipsPosition), []),
   };

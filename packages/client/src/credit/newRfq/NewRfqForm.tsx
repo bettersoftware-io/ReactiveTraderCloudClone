@@ -1,8 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
+import { firstValueFrom } from "rxjs";
 import { Direction, CREDIT_MAX_QUANTITY_INPUT, type Instrument } from "@rtc/domain";
-import { useInstruments } from "../hooks/useInstruments";
-import { useDealers } from "../hooks/useDealers";
-import { useCreateRfq } from "../hooks/useCreateRfq";
+import { useHooks } from "../../app/HooksProvider";
 import { InstrumentSearch } from "./InstrumentSearch";
 import { DealerSelection } from "./DealerSelection";
 import { QuantityInput } from "./QuantityInput";
@@ -12,9 +11,10 @@ interface NewRfqFormProps {
 }
 
 export function NewRfqForm({ onCreated }: NewRfqFormProps) {
-  const instruments = useInstruments();
-  const dealers = useDealers();
-  const createRfq = useCreateRfq();
+  const hooks = useHooks();
+  const instruments = hooks.useInstruments();
+  const dealers = hooks.useDealers();
+  const createRfq = hooks.useCreateRfq();
 
   const [instrument, setInstrument] = useState<Instrument | null>(null);
   const [direction, setDirection] = useState<Direction>(Direction.Buy);
@@ -48,12 +48,12 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
     if (!canSubmit || !instrument) return;
     setSubmitting(true);
     try {
-      const rfqId = await createRfq({
+      const rfqId = await firstValueFrom(createRfq({
         instrumentId: instrument.id,
         dealerIds: [...selectedDealerIds],
         quantity: quantityNum,
         direction,
-      });
+      }));
       setConfirmation(rfqId);
       setTimeout(() => onCreated(rfqId), 1500);
     } finally {

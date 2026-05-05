@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import { type Rfq, type Quote, type Instrument, type Dealer, type CreditTrade, RfqState } from "@rtc/domain";
-import { useRfqStream } from "../hooks/useRfqStream";
-import { useInstruments } from "../hooks/useInstruments";
-import { useDealers } from "../hooks/useDealers";
+import { useHooks } from "../../app/HooksProvider";
 
 const COLUMNS = [
   "Trade ID", "Status", "Trade Date", "Direction", "Counterparty",
@@ -18,8 +16,8 @@ function formatDate(timestamp: number): string {
 }
 
 function deriveTrades(
-  rfqs: Rfq[],
-  allQuotes: Map<number, Quote>,
+  rfqs: readonly Rfq[],
+  allQuotes: ReadonlyMap<number, Quote>,
   instruments: Map<number, Instrument>,
   dealers: Map<number, Dealer>,
 ): CreditTrade[] {
@@ -55,9 +53,11 @@ function deriveTrades(
 }
 
 export function CreditBlotter() {
-  const { rfqs, allQuotes } = useRfqStream();
-  const instruments = useInstruments();
-  const dealers = useDealers();
+  const hooks = useHooks();
+  const rfqs = hooks.useRfqs();
+  const allQuotes = hooks.useAllQuotes();
+  const instruments = hooks.useInstruments();
+  const dealers = hooks.useDealers();
 
   const instrumentMap = useMemo(() => {
     const m = new Map<number, Instrument>();

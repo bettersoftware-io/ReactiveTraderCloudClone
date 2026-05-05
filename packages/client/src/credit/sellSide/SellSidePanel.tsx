@@ -1,14 +1,32 @@
 import { useMemo } from "react";
-import { ADAPTIVE_BANK_NAME, type Instrument } from "@rtc/domain";
-import { useRfqStream } from "../hooks/useRfqStream";
-import { useInstruments } from "../hooks/useInstruments";
-import { useDealers } from "../hooks/useDealers";
+import { ADAPTIVE_BANK_NAME, type Instrument, type Rfq } from "@rtc/domain";
+import { useHooks } from "../../app/HooksProvider";
 import { TradeTicket } from "./TradeTicket";
 
+interface SellSideRfqRowProps {
+  rfq: Rfq;
+  adaptiveBankId: number;
+  instrumentMap: Map<number, Instrument>;
+}
+
+function SellSideRfqRow({ rfq, adaptiveBankId, instrumentMap }: SellSideRfqRowProps) {
+  const quotes = useHooks().useQuotesForRfq(rfq.id);
+  const abQuote = quotes.find((q) => q.dealerId === adaptiveBankId);
+  if (!abQuote) return null;
+  return (
+    <TradeTicket
+      rfq={rfq}
+      quote={abQuote}
+      instrument={instrumentMap.get(rfq.instrumentId)}
+    />
+  );
+}
+
 export function SellSidePanel() {
-  const { rfqs, getQuotesForRfq } = useRfqStream();
-  const instruments = useInstruments();
-  const dealers = useDealers();
+  const hooks = useHooks();
+  const rfqs = hooks.useRfqs();
+  const instruments = hooks.useInstruments();
+  const dealers = hooks.useDealers();
 
   const adaptiveBankId = useMemo(
     () => dealers.find((d) => d.name === ADAPTIVE_BANK_NAME)?.id,
@@ -21,20 +39,6 @@ export function SellSidePanel() {
     return m;
   }, [instruments]);
 
-  // Filter RFQs that include Adaptive Bank
-  const tickets = useMemo(() => {
-    if (adaptiveBankId === undefined) return [];
-
-    return rfqs
-      .map((rfq) => {
-        const quotes = getQuotesForRfq(rfq.id);
-        const abQuote = quotes.find((q) => q.dealerId === adaptiveBankId);
-        if (!abQuote) return null;
-        return { rfq, quote: abQuote };
-      })
-      .filter(Boolean) as { rfq: (typeof rfqs)[number]; quote: ReturnType<typeof getQuotesForRfq>[number] }[];
-  }, [rfqs, getQuotesForRfq, adaptiveBankId]);
-
   return (
     <div style={{
       display: "flex",
@@ -45,17 +49,17 @@ export function SellSidePanel() {
         Sell Side (Adaptive Bank)
       </span>
 
-      {tickets.length === 0 ? (
+      {adaptiveBankId === undefined || rfqs.length === 0 ? (
         <div style={{ padding: 16, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
           No RFQs for Adaptive Bank
         </div>
       ) : (
-        tickets.map(({ rfq, quote }) => (
-          <TradeTicket
-            key={quote.id}
+        rfqs.map((rfq) => (
+          <SellSideRfqRow
+            key={rfq.id}
             rfq={rfq}
-            quote={quote}
-            instrument={instrumentMap.get(rfq.instrumentId)}
+            adaptiveBankId={adaptiveBankId}
+            instrumentMap={instrumentMap}
           />
         ))
       )}

@@ -5,7 +5,7 @@ import {
   type Quote, type Rfq, type RfqStreamState,
   WorkflowEventStreamUseCase,
   CreateRfqUseCase, type CreateRfqInput,
-  type WorkflowPort,
+  type WorkflowPort, type QuoteRequest,
 } from "@rtc/domain";
 
 function shallowArrayEquals<T>(a: readonly T[], b: readonly T[]): boolean {
@@ -59,5 +59,8 @@ export class RfqsPresenter {
   }
   passQuote(quoteId: number): Observable<void> {
     return this.workflow.pass(quoteId);
+  }
+  quoteRfq(request: QuoteRequest): Observable<void> {
+    return this.workflow.quote(request);
   }
 }

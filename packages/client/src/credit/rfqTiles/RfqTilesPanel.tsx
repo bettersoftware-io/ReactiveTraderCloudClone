@@ -1,10 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { firstValueFrom } from "rxjs";
-import { RfqState, type Instrument, type Dealer } from "@rtc/domain";
-import { useRfqStream } from "../hooks/useRfqStream";
-import { useInstruments } from "../hooks/useInstruments";
-import { useDealers } from "../hooks/useDealers";
-import { useServices } from "../../services/ServiceProvider";
+import { RfqState, type Instrument, type Dealer, type Rfq } from "@rtc/domain";
+import { useHooks } from "../../app/HooksProvider";
 import { RfqCard } from "./RfqCard";
 import { RfqFilterTabs, type RfqFilter } from "./RfqFilterTabs";
 
@@ -18,11 +15,34 @@ function filterMatches(state: string, filter: RfqFilter): boolean {
   }
 }
 
+interface RfqTileRowProps {
+  rfq: Rfq;
+  instrumentMap: Map<number, Instrument>;
+  dealers: readonly Dealer[];
+  onAccept: (quoteId: number) => Promise<void>;
+  onDismiss: (rfqId: number) => void;
+}
+
+function RfqTileRow({ rfq, instrumentMap, dealers, onAccept, onDismiss }: RfqTileRowProps) {
+  const quotes = useHooks().useQuotesForRfq(rfq.id);
+  return (
+    <RfqCard
+      rfq={rfq}
+      quotes={quotes}
+      instrument={instrumentMap.get(rfq.instrumentId)}
+      dealers={dealers}
+      onAccept={onAccept}
+      onDismiss={onDismiss}
+    />
+  );
+}
+
 export function RfqTilesPanel() {
-  const { rfqs, getQuotesForRfq } = useRfqStream();
-  const instruments = useInstruments();
-  const dealers = useDealers();
-  const { workflow } = useServices();
+  const hooks = useHooks();
+  const rfqs = hooks.useRfqs();
+  const instruments = hooks.useInstruments();
+  const dealers = hooks.useDealers();
+  const acceptQuote = hooks.useAcceptQuote();
   const [filter, setFilter] = useState<RfqFilter>("Live");
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
 
@@ -41,9 +61,9 @@ export function RfqTilesPanel() {
 
   const handleAccept = useCallback(
     async (quoteId: number) => {
-      await firstValueFrom(workflow.accept(quoteId));
+      await firstValueFrom(acceptQuote(quoteId));
     },
-    [workflow],
+    [acceptQuote],
   );
 
   const handleDismiss = useCallback((rfqId: number) => {
@@ -70,11 +90,10 @@ export function RfqTilesPanel() {
           gap: 8,
         }}>
           {filteredRfqs.map((rfq) => (
-            <RfqCard
+            <RfqTileRow
               key={rfq.id}
               rfq={rfq}
-              quotes={getQuotesForRfq(rfq.id)}
-              instrument={instrumentMap.get(rfq.instrumentId)}
+              instrumentMap={instrumentMap}
               dealers={dealers}
               onAccept={handleAccept}
               onDismiss={handleDismiss}
