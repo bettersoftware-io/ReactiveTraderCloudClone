@@ -1,4 +1,4 @@
-import { useAnalytics } from "./hooks/useAnalytics";
+import { useHooks } from "../app/HooksProvider";
 import { PnlChart } from "./PnlChart";
 import { PnlValue } from "./PnlValue";
 import { PositionBubbles } from "./PositionBubbles";
@@ -7,8 +7,8 @@ import { StaleIndicator } from "../stale/StaleIndicator";
 import { useStaleDetection } from "../stale/useStaleDetection";
 
 export function AnalyticsPanel() {
-  const { data, version } = useAnalytics();
-  const stale = useStaleDetection(version);
+  const data = useHooks().useAnalytics();
+  const stale = useStaleDetection(data);
 
   if (!data) {
     return (

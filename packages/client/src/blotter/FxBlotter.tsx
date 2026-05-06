@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { Trade } from "@rtc/domain";
-import { useTradeStream } from "./hooks/useTradeStream";
+import { useHooks } from "../app/HooksProvider";
 import { COLUMNS } from "./blotterColumns";
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";
@@ -17,7 +17,7 @@ import {
 } from "./columnFilter/filterState";
 
 export function FxBlotter() {
-  const trades = useTradeStream();
+  const trades = useHooks().useTrades();
   const [sort, setSort] = useState<SortState>({ column: null, direction: null });
   const [filters, setFilters] = useState<Map<keyof Trade, ColumnFilter>>(new Map());
   const [quickFilter, setQuickFilter] = useState("");
