@@ -62,13 +62,21 @@ For future plans: read the actual entity types and existing hook bodies before w
 
 ## Phase 3 lessons / corrections
 
-Four non-trivial corrections surfaced during execution:
+Five non-trivial corrections surfaced during execution:
 
 1. **Missing root-index re-exports** — The five new use cases added in Task 3 (`CurrencyPairsUseCase`, `TradeBlotterUseCase`, `InstrumentsUseCase`, `DealersUseCase`, `RfqQuoteUseCase`) were not re-exported from `packages/domain/src/index.ts`, only from the use-cases barrel. Caught in Task 7 review; fixed by adding them to the root index.
 2. **`PriceHistoryPresenter` must use `PriceHistoryUseCase`** — The plan initially called `getPriceHistory` directly on the port. The use case's ring-buffer accumulation is needed for live-tick accumulation; switching to `PriceHistoryUseCase` preserved correct behaviour.
 3. **`useRfqState` method names** — The plan spec listed method names `requested/received/rejected` for `useRfqState`; the actual implementation uses `initiate/receiveQuote/reject`. Tests were written against the correct names.
 4. **`useQuoteRfq` in `TradeTicket.tsx`** — The plan only listed `SellSidePanel.tsx` as needing `useQuoteRfq`. `TradeTicket.tsx` also required it; added during Task 12 migration.
 5. **`browserOnline` → `CONNECTING` not `CONNECTED`** — The `withSyntheticGatewayConnected` function in `composition.ts` initially only synthesized a single `gatewayConnected` at startup. After coming back online, the state machine returned to `CONNECTING` (not `CONNECTED`) because no new `gatewayConnected` event fired. Fixed in Task 14 by also synthesizing `gatewayConnected` after every `browserOnline` event (restoring the mock-mode behaviour of the retired `ConnectionProvider`).
+
+## Phase 3 follow-ups (carry into Phase 4)
+
+End-of-phase code review flagged improvements that were not addressed in Phase 3; tracked here so they aren't lost:
+
+1. **Replace `withSyntheticGatewayConnected` with a real gateway-events adapter.** `composition.ts` synthesises `gatewayConnected` at boot and after every `browserOnline` event. This works in simulator mode and matches the legacy `ConnectionProvider` behaviour, but in WS-real mode it can produce a CONNECTED → DISCONNECTED flash on reconnect when the server is actually down. Phase 4 should fold a real `WsAdapter`-driven `ConnectionEventsPort` adapter into the composition root and delete `withSyntheticGatewayConnected` entirely. The state machine itself is correct; only the synthetic event source is the workaround.
+
+2. **Strengthen presenter test depth.** The simple stream presenters (`Blotter`, `Analytics`, `CurrencyPairs`, `Instruments`, `Dealers`) have one assertion each (basic delegation). The hybrid `RfqsPresenter`'s `distinctUntilChanged` suppression and `shareReplay` multicast contract aren't directly asserted at the presenter-test layer. Spec §6 deferred component-level tests to Phase 5; presenter-level coverage gaps fit naturally with that work — add `distinctUntilChanged` suppression + `shareReplay` multicast tests when the harness expands.
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 

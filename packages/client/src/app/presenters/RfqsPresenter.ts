@@ -32,6 +32,7 @@ export class RfqsPresenter {
     );
     this.allQuotes$ = this.state$.pipe(
       map((s) => s.quotes),
+      distinctUntilChanged(),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
   }

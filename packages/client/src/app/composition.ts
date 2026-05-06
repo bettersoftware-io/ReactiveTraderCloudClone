@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { bind } from "@react-rxjs/core";
 import { concatMap, from, merge, of, type Observable } from "rxjs";
 import {
@@ -143,6 +142,19 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): AppHooks {
     ConnectionStatus.CONNECTING,
   );
 
+  // Command callbacks are constructed once at createApp time so each use*()
+  // returns a stable reference. This avoids useCallback (keeping createApp
+  // React-free) while preserving the stable-reference contract React consumers
+  // rely on for memo/effect dep arrays.
+  const executeTrade = (input: ExecuteTradeInput) => presenters.execution.execute(input);
+  const createRfq = (input: CreateRfqInput) => presenters.rfqs.createRfq(input);
+  const acceptQuote = (quoteId: number) => presenters.rfqs.acceptQuote(quoteId);
+  const cancelRfq = (rfqId: number) => presenters.rfqs.cancelRfq(rfqId);
+  const passQuote = (quoteId: number) => presenters.rfqs.passQuote(quoteId);
+  const quoteRfq = (req: QuoteRequest) => presenters.rfqs.quoteRfq(req);
+  const requestRfqQuote = (symbol: string, pipsPosition: number) =>
+    presenters.rfqQuote.requestQuote(symbol, pipsPosition);
+
   return {
     usePrice,
     usePriceHistory,
@@ -155,13 +167,12 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): AppHooks {
     useInstruments,
     useDealers,
     useConnectionStatus,
-    useExecuteTrade: () => useCallback((input) => presenters.execution.execute(input), []),
-    useCreateRfq: () => useCallback((input) => presenters.rfqs.createRfq(input), []),
-    useAcceptQuote: () => useCallback((quoteId) => presenters.rfqs.acceptQuote(quoteId), []),
-    useCancelRfq: () => useCallback((rfqId) => presenters.rfqs.cancelRfq(rfqId), []),
-    usePassQuote: () => useCallback((quoteId) => presenters.rfqs.passQuote(quoteId), []),
-    useQuoteRfq: () => useCallback((req) => presenters.rfqs.quoteRfq(req), []),
-    useRequestRfqQuote: () =>
-      useCallback((symbol, pipsPosition) => presenters.rfqQuote.requestQuote(symbol, pipsPosition), []),
+    useExecuteTrade: () => executeTrade,
+    useCreateRfq: () => createRfq,
+    useAcceptQuote: () => acceptQuote,
+    useCancelRfq: () => cancelRfq,
+    usePassQuote: () => passQuote,
+    useQuoteRfq: () => quoteRfq,
+    useRequestRfqQuote: () => requestRfqQuote,
   };
 }
