@@ -109,14 +109,14 @@ The pre-flight step in Task 1 must reconfirm this before any change.
 **Files:**
 - Modify: `packages/client/package.json`
 
-- [ ] **Step 1: Confirm baseline is green**
+- [x] **Step 1: Confirm baseline is green**
 
 Run: `cd /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone && pnpm typecheck && pnpm test && pnpm test:e2e`
 Expected: typecheck clean; 109 unit tests pass; 40 e2e tests pass.
 
 If any of those fail, STOP — investigate and report. Do not continue.
 
-- [ ] **Step 2: Add `@react-rxjs/core` to client dependencies**
+- [x] **Step 2: Add `@react-rxjs/core` to client dependencies**
 
 Edit `packages/client/package.json`. In the `dependencies` block, add `"@react-rxjs/core": "^0.10.7"` (latest stable at time of writing) so the section reads:
 
@@ -131,22 +131,22 @@ Edit `packages/client/package.json`. In the `dependencies` block, add `"@react-r
   },
 ```
 
-- [ ] **Step 3: Install**
+- [x] **Step 3: Install**
 
 Run: `pnpm install`
 Expected: `@react-rxjs/core` installed in `packages/client/node_modules`. Watch for React 19 peer-dep warnings — `@react-rxjs/core` declares `react@>=16` peer, so React 19 satisfies; if pnpm errors, add a peer-deps override in the root `package.json` `pnpm.peerDependencyRules.allowedVersions` block. Do not run `--no-strict-peer-deps`.
 
-- [ ] **Step 4: Sanity import**
+- [x] **Step 4: Sanity import**
 
 Run: `cd packages/client && node -e "import('@react-rxjs/core').then(m => console.log(typeof m.bind))"`
 Expected: `function`.
 
-- [ ] **Step 5: Confirm typecheck still clean**
+- [x] **Step 5: Confirm typecheck still clean**
 
 Run: `pnpm typecheck`
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/client/package.json pnpm-lock.yaml
@@ -163,7 +163,7 @@ The 500–2000 ms delay currently lives in `useRfqQuote.ts` (an imperative `setT
 - Modify: `packages/domain/src/simulators/PricingSimulator.ts`
 - Modify: `packages/domain/src/simulators/PricingSimulator.test.ts`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Open `packages/domain/src/simulators/PricingSimulator.test.ts`. Find the existing `getRfqQuote` describe block (or add one if absent). Add this test inside it:
 
@@ -202,12 +202,12 @@ import { PricingSimulator } from "./PricingSimulator.js";
 import type { RfqQuoteResult } from "../ports/pricingPort.js";
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cd /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone && pnpm --filter @rtc/domain test -- --run --reporter=verbose simulators/PricingSimulator.test.ts`
 Expected: FAIL — the new test reports `received` is defined within the first tick (currently the simulator emits synchronously via `defer + of`).
 
-- [ ] **Step 3: Update `getRfqQuote` to wrap with `timer + map`**
+- [x] **Step 3: Update `getRfqQuote` to wrap with `timer + map`**
 
 Open `packages/domain/src/simulators/PricingSimulator.ts`. Replace the `getRfqQuote` method body (currently uses `of(...)`) with this `defer + timer + map` form. The full method body:
 
@@ -239,19 +239,19 @@ import { Observable, of, defer, throwError, concat, from, map, timer } from "rxj
 
 (`of` may now be unused inside `getRfqQuote` but is still used by `getPriceHistory`. Confirm by re-reading the file; do not remove an import another method needs.)
 
-- [ ] **Step 4: Run the test — should now pass**
+- [x] **Step 4: Run the test — should now pass**
 
 Run: `pnpm --filter @rtc/domain test -- --run --reporter=verbose simulators/PricingSimulator.test.ts`
 Expected: PASS — the new test plus all pre-existing PricingSimulator tests.
 
 If a pre-existing test that called `firstValueFrom(sim.getRfqQuote(...))` now hangs because it relied on synchronous emission, switch it to use `vi.useFakeTimers()` + advance + `firstValueFrom`, or use `take(1) + toArray()` with a timer.
 
-- [ ] **Step 5: Run the full domain suite to confirm nothing else broke**
+- [x] **Step 5: Run the full domain suite to confirm nothing else broke**
 
 Run: `pnpm --filter @rtc/domain test`
 Expected: 105 unit tests pass (was 104; one new test added).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/domain/src/simulators/PricingSimulator.ts packages/domain/src/simulators/PricingSimulator.test.ts
@@ -282,7 +282,7 @@ Five tiny use cases that each delegate to a port. Each adds an architectural slo
 - Create: `packages/domain/src/usecases/RfqQuoteUseCase.test.ts`
 - Modify: `packages/domain/src/usecases/index.ts`
 
-- [ ] **Step 1: Write the five test files**
+- [x] **Step 1: Write the five test files**
 
 Create `packages/domain/src/usecases/CurrencyPairsUseCase.test.ts`:
 
@@ -392,12 +392,12 @@ describe("RfqQuoteUseCase", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they all fail**
+- [x] **Step 2: Run the tests to verify they all fail**
 
 Run: `pnpm --filter @rtc/domain test -- --run --reporter=verbose usecases/CurrencyPairsUseCase usecases/TradeBlotterUseCase usecases/InstrumentsUseCase usecases/DealersUseCase usecases/RfqQuoteUseCase`
 Expected: FAIL — five files report "Cannot find module" for the use-case implementations.
 
-- [ ] **Step 3: Write the five implementation files**
+- [x] **Step 3: Write the five implementation files**
 
 Create `packages/domain/src/usecases/CurrencyPairsUseCase.ts`:
 
@@ -473,7 +473,7 @@ export class RfqQuoteUseCase {
 }
 ```
 
-- [ ] **Step 4: Update the use-cases barrel**
+- [x] **Step 4: Update the use-cases barrel**
 
 Open `packages/domain/src/usecases/index.ts`. Append:
 
@@ -485,12 +485,12 @@ export { DealersUseCase } from "./DealersUseCase.js";
 export { RfqQuoteUseCase } from "./RfqQuoteUseCase.js";
 ```
 
-- [ ] **Step 5: Run the tests — should now pass**
+- [x] **Step 5: Run the tests — should now pass**
 
 Run: `pnpm --filter @rtc/domain test`
 Expected: all five new tests pass; total domain test count 105 → 110.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/domain/src/usecases/CurrencyPairsUseCase.ts packages/domain/src/usecases/CurrencyPairsUseCase.test.ts packages/domain/src/usecases/TradeBlotterUseCase.ts packages/domain/src/usecases/TradeBlotterUseCase.test.ts packages/domain/src/usecases/InstrumentsUseCase.ts packages/domain/src/usecases/InstrumentsUseCase.test.ts packages/domain/src/usecases/DealersUseCase.ts packages/domain/src/usecases/DealersUseCase.test.ts packages/domain/src/usecases/RfqQuoteUseCase.ts packages/domain/src/usecases/RfqQuoteUseCase.test.ts packages/domain/src/usecases/index.ts
@@ -517,11 +517,11 @@ The connection state machine `nextConnectionStatus` already lives in `packages/d
 - Modify: `packages/domain/src/usecases/index.ts`
 - Modify: `packages/domain/src/index.ts`
 
-- [ ] **Step 1: Inspect what's exported today from the domain index for ports**
+- [x] **Step 1: Inspect what's exported today from the domain index for ports**
 
 Open `packages/domain/src/index.ts` and confirm it re-exports the existing 8 port interface modules. The new `ConnectionEventsPort` must follow the same export pattern. (If the index file structures this differently than expected, adapt the new exports to match — don't restructure the index.)
 
-- [ ] **Step 2: Write the failing use-case test**
+- [x] **Step 2: Write the failing use-case test**
 
 Create `packages/domain/src/usecases/ConnectionStatusUseCase.test.ts`:
 
@@ -588,12 +588,12 @@ describe("ConnectionStatusUseCase", () => {
 });
 ```
 
-- [ ] **Step 3: Run the test — confirm it fails**
+- [x] **Step 3: Run the test — confirm it fails**
 
 Run: `pnpm --filter @rtc/domain test -- --run --reporter=verbose usecases/ConnectionStatusUseCase`
 Expected: FAIL — module not found.
 
-- [ ] **Step 4: Create the port interface**
+- [x] **Step 4: Create the port interface**
 
 Create `packages/domain/src/ports/connectionEventsPort.ts`:
 
@@ -606,7 +606,7 @@ export interface ConnectionEventsPort {
 }
 ```
 
-- [ ] **Step 5: Create the use case**
+- [x] **Step 5: Create the use case**
 
 Create `packages/domain/src/usecases/ConnectionStatusUseCase.ts`:
 
@@ -637,7 +637,7 @@ export class ConnectionStatusUseCase {
 }
 ```
 
-- [ ] **Step 6: Re-export from the use-cases barrel**
+- [x] **Step 6: Re-export from the use-cases barrel**
 
 Open `packages/domain/src/usecases/index.ts`. Append:
 
@@ -645,7 +645,7 @@ Open `packages/domain/src/usecases/index.ts`. Append:
 export { ConnectionStatusUseCase } from "./ConnectionStatusUseCase.js";
 ```
 
-- [ ] **Step 7: Re-export the port from the domain root**
+- [x] **Step 7: Re-export the port from the domain root**
 
 Open `packages/domain/src/index.ts`. Find the existing port re-exports and add (placing near the other port exports):
 
@@ -653,17 +653,17 @@ Open `packages/domain/src/index.ts`. Find the existing port re-exports and add (
 export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
 ```
 
-- [ ] **Step 8: Run the test — should pass**
+- [x] **Step 8: Run the test — should pass**
 
 Run: `pnpm --filter @rtc/domain test`
 Expected: 4 new tests pass; total domain test count 110 → 114.
 
-- [ ] **Step 9: Typecheck — confirm no broken imports**
+- [x] **Step 9: Typecheck — confirm no broken imports**
 
 Run: `pnpm --filter @rtc/domain typecheck`
 Expected: pass.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add packages/domain/src/ports/connectionEventsPort.ts packages/domain/src/usecases/ConnectionStatusUseCase.ts packages/domain/src/usecases/ConnectionStatusUseCase.test.ts packages/domain/src/usecases/index.ts packages/domain/src/index.ts
@@ -686,7 +686,7 @@ The originals are NOT deleted yet; existing `useServices()` consumers still need
 - Create: `packages/client/src/app/adapters/WsAdapter.ts` (copy + tweak imports)
 - Create: `packages/client/src/app/adapters/portFactory.ts`
 
-- [ ] **Step 1: Create the directory + relocate `WsAdapter`**
+- [x] **Step 1: Create the directory + relocate `WsAdapter`**
 
 Run:
 
@@ -702,7 +702,7 @@ cp /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone
 
 The original `services/WsAdapter.ts` is NOT deleted yet — `services/realServiceFactory.ts` (still used by `ServiceProvider`) imports it. Both copies coexist until Task 14.
 
-- [ ] **Step 2: Create `portFactory.ts`**
+- [x] **Step 2: Create `portFactory.ts`**
 
 Create `packages/client/src/app/adapters/portFactory.ts`:
 
@@ -773,7 +773,7 @@ export { WsAdapter };
 
 Note the imports: `createRealServices` and the legacy `WsAdapter` are pulled from the old locations on purpose. We deliberately accept a temporary indirection during the migration phase. The legacy `realServiceFactory.ts` already returns the `Services` shape that is structurally identical to `TransportPorts` — TypeScript will accept the assignment because both have the same eight port fields. If TypeScript complains, the fix is a single `as TransportPorts` cast at the return site — but try without it first.
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 Run: `pnpm --filter @rtc/client typecheck`
 Expected: pass. The `Services` and `TransportPorts` types must be structurally compatible.
@@ -786,12 +786,12 @@ export function createWsRealPorts(ws: WsAdapter): TransportPorts {
 }
 ```
 
-- [ ] **Step 4: Build the client to confirm Vite is happy**
+- [x] **Step 4: Build the client to confirm Vite is happy**
 
 Run: `pnpm --filter @rtc/client build`
 Expected: build succeeds.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/client/src/app/adapters/WsAdapter.ts packages/client/src/app/adapters/portFactory.ts
@@ -813,7 +813,7 @@ Implements `ConnectionEventsPort` by listening to DOM events: mouse / keydown / 
 - Create: `packages/client/src/app/adapters/BrowserConnectionEventsAdapter.ts`
 - Create: `packages/client/src/app/adapters/BrowserConnectionEventsAdapter.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/client/src/app/adapters/BrowserConnectionEventsAdapter.test.ts`:
 
@@ -888,7 +888,7 @@ describe("BrowserConnectionEventsAdapter", () => {
 
 This test runs under jsdom — confirm `packages/client/vitest.config.ts` sets `environment: 'jsdom'`. If not, configure that first (a small one-line config change is acceptable inside this task; commit it together).
 
-- [ ] **Step 2: Confirm the vitest environment**
+- [x] **Step 2: Confirm the vitest environment**
 
 Run: `cat /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone/packages/client/vitest.config.ts`
 
@@ -906,12 +906,12 @@ export default defineConfig({
 
 (Install `jsdom` if not already a devDependency: check `packages/client/package.json` — if missing, add `"jsdom": "^25"` to devDependencies and run `pnpm install`.)
 
-- [ ] **Step 3: Run the test — should fail**
+- [x] **Step 3: Run the test — should fail**
 
 Run: `pnpm --filter @rtc/client test -- --run --reporter=verbose adapters/BrowserConnectionEventsAdapter`
 Expected: FAIL — module not found.
 
-- [ ] **Step 4: Implement the adapter**
+- [x] **Step 4: Implement the adapter**
 
 Create `packages/client/src/app/adapters/BrowserConnectionEventsAdapter.ts`:
 
@@ -964,12 +964,12 @@ export class BrowserConnectionEventsAdapter implements ConnectionEventsPort {
 }
 ```
 
-- [ ] **Step 5: Run the tests — should pass**
+- [x] **Step 5: Run the tests — should pass**
 
 Run: `pnpm --filter @rtc/client test`
 Expected: 4 new tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/client/src/app/adapters/BrowserConnectionEventsAdapter.ts packages/client/src/app/adapters/BrowserConnectionEventsAdapter.test.ts packages/client/vitest.config.ts packages/client/package.json pnpm-lock.yaml
@@ -994,7 +994,7 @@ Each presenter wraps a use case and exposes one or two `Observable<T>` streams (
 - Create: `packages/client/src/app/presenters/BlotterPresenter.ts` (+ `__tests__/BlotterPresenter.test.ts`)
 - Create: `packages/client/src/app/presenters/AnalyticsPresenter.ts` (+ `__tests__/AnalyticsPresenter.test.ts`)
 
-- [ ] **Step 1: Write all four failing tests**
+- [x] **Step 1: Write all four failing tests**
 
 Create `packages/client/src/app/presenters/__tests__/PriceStreamPresenter.test.ts`:
 
@@ -1113,12 +1113,12 @@ describe("AnalyticsPresenter", () => {
 });
 ```
 
-- [ ] **Step 2: Run — should fail**
+- [x] **Step 2: Run — should fail**
 
 Run: `pnpm --filter @rtc/client test -- --run --reporter=verbose presenters/`
 Expected: FAIL on all four with "Cannot find module".
 
-- [ ] **Step 3: Implement the four presenters**
+- [x] **Step 3: Implement the four presenters**
 
 Create `packages/client/src/app/presenters/PriceStreamPresenter.ts`:
 
@@ -1205,12 +1205,12 @@ export class AnalyticsPresenter {
 
 (`AnalyticsUseCase.execute()` already takes its base currency internally — verify by reading `packages/domain/src/usecases/AnalyticsUseCase.ts`. If it requires a `currency` argument, pass `"USD"` here.)
 
-- [ ] **Step 4: Run the tests — should pass**
+- [x] **Step 4: Run the tests — should pass**
 
 Run: `pnpm --filter @rtc/client test`
 Expected: 6 new client tests pass (2 per Price/History, 1 each for Blotter/Analytics).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/client/src/app/presenters/PriceStreamPresenter.ts packages/client/src/app/presenters/PriceHistoryPresenter.ts packages/client/src/app/presenters/BlotterPresenter.ts packages/client/src/app/presenters/AnalyticsPresenter.ts packages/client/src/app/presenters/__tests__/PriceStreamPresenter.test.ts packages/client/src/app/presenters/__tests__/PriceHistoryPresenter.test.ts packages/client/src/app/presenters/__tests__/BlotterPresenter.test.ts packages/client/src/app/presenters/__tests__/AnalyticsPresenter.test.ts
@@ -1233,7 +1233,7 @@ Same shape as Task 7 but for the remaining four streams. `ConnectionStatusPresen
 - Create: `packages/client/src/app/presenters/DealersPresenter.ts` (+ test)
 - Create: `packages/client/src/app/presenters/ConnectionStatusPresenter.ts` (+ test)
 
-- [ ] **Step 1: Write all four failing tests**
+- [x] **Step 1: Write all four failing tests**
 
 Create `packages/client/src/app/presenters/__tests__/CurrencyPairsPresenter.test.ts`:
 
@@ -1328,12 +1328,12 @@ describe("ConnectionStatusPresenter", () => {
 });
 ```
 
-- [ ] **Step 2: Run — should fail on all four**
+- [x] **Step 2: Run — should fail on all four**
 
 Run: `pnpm --filter @rtc/client test -- --run --reporter=verbose presenters/`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement the four presenters**
+- [x] **Step 3: Implement the four presenters**
 
 Create `packages/client/src/app/presenters/CurrencyPairsPresenter.ts`:
 
@@ -1408,12 +1408,12 @@ export class ConnectionStatusPresenter {
 }
 ```
 
-- [ ] **Step 4: Run — should pass**
+- [x] **Step 4: Run — should pass**
 
 Run: `pnpm --filter @rtc/client test`
 Expected: 5 new tests pass (1 each for CurrencyPairs/Instruments/Dealers; 2 for ConnectionStatus).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/client/src/app/presenters/CurrencyPairsPresenter.ts packages/client/src/app/presenters/InstrumentsPresenter.ts packages/client/src/app/presenters/DealersPresenter.ts packages/client/src/app/presenters/ConnectionStatusPresenter.ts packages/client/src/app/presenters/__tests__/CurrencyPairsPresenter.test.ts packages/client/src/app/presenters/__tests__/InstrumentsPresenter.test.ts packages/client/src/app/presenters/__tests__/DealersPresenter.test.ts packages/client/src/app/presenters/__tests__/ConnectionStatusPresenter.test.ts
@@ -1434,7 +1434,7 @@ consumers (overlay + status bar) share the single state machine."
 - Create: `packages/client/src/app/presenters/TradeExecutionPresenter.ts` (+ test)
 - Create: `packages/client/src/app/presenters/RfqQuotePresenter.ts` (+ test)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `packages/client/src/app/presenters/__tests__/RfqsPresenter.test.ts`:
 
@@ -1590,12 +1590,12 @@ describe("RfqQuotePresenter", () => {
 });
 ```
 
-- [ ] **Step 2: Run — should fail**
+- [x] **Step 2: Run — should fail**
 
 Run: `pnpm --filter @rtc/client test -- --run --reporter=verbose presenters/`
 Expected: FAIL on three new files.
 
-- [ ] **Step 3: Implement the three presenters**
+- [x] **Step 3: Implement the three presenters**
 
 Create `packages/client/src/app/presenters/RfqsPresenter.ts`:
 
@@ -1702,12 +1702,12 @@ export class RfqQuotePresenter {
 }
 ```
 
-- [ ] **Step 4: Run — should pass**
+- [x] **Step 4: Run — should pass**
 
 Run: `pnpm --filter @rtc/client test`
 Expected: tests pass. Note: the `TradeExecutionPresenter` test fixture uses a `Price`-shaped object — the test cast (`as never`) avoids brittle field listing; if that test fails for a missing required `Price` field, fill it in by reading `packages/domain/src/fx/price.ts`. The test target is correct delegation, not exact shape.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/client/src/app/presenters/RfqsPresenter.ts packages/client/src/app/presenters/TradeExecutionPresenter.ts packages/client/src/app/presenters/RfqQuotePresenter.ts packages/client/src/app/presenters/__tests__/RfqsPresenter.test.ts packages/client/src/app/presenters/__tests__/TradeExecutionPresenter.test.ts packages/client/src/app/presenters/__tests__/RfqQuotePresenter.test.ts
@@ -1731,7 +1731,7 @@ The `createApp()` factory needs to populate the `connectionEvents` field of `App
 - Create: `packages/client/src/app/HooksProvider.tsx`
 - Modify: `packages/client/src/main.tsx`
 
-- [ ] **Step 1: Implement `HooksProvider.tsx`**
+- [x] **Step 1: Implement `HooksProvider.tsx`**
 
 Create `packages/client/src/app/HooksProvider.tsx`:
 
@@ -1758,7 +1758,7 @@ export function useHooks(): AppHooks {
 }
 ```
 
-- [ ] **Step 2: Implement `composition.ts`**
+- [x] **Step 2: Implement `composition.ts`**
 
 Create `packages/client/src/app/composition.ts`:
 
@@ -1917,7 +1917,7 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): AppHooks {
 }
 ```
 
-- [ ] **Step 3: Wire into `main.tsx`**
+- [x] **Step 3: Wire into `main.tsx`**
 
 Open `packages/client/src/main.tsx`. After the existing imports add:
 
@@ -1950,17 +1950,17 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
-- [ ] **Step 4: Typecheck the client**
+- [x] **Step 4: Typecheck the client**
 
 Run: `pnpm --filter @rtc/client typecheck`
 Expected: pass.
 
-- [ ] **Step 5: Build the client**
+- [x] **Step 5: Build the client**
 
 Run: `pnpm --filter @rtc/client build`
 Expected: build succeeds.
 
-- [ ] **Step 6: Smoke test in dev mode**
+- [x] **Step 6: Smoke test in dev mode**
 
 Run: `pnpm --filter @rtc/client dev` (background, then visit http://localhost:5173 in a browser; or skip the browser visit if pure subagent execution).
 
@@ -1968,12 +1968,12 @@ If running with a real browser: confirm the app loads, FX tiles render, trade fl
 
 Stop the dev server.
 
-- [ ] **Step 7: Run the full unit suite + e2e**
+- [x] **Step 7: Run the full unit suite + e2e**
 
 Run: `pnpm test && pnpm test:e2e`
 Expected: 109 unit tests + 40 e2e all pass (the new presenters/use cases bring unit count to ~125 — verify roughly).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/client/src/app/composition.ts packages/client/src/app/HooksProvider.tsx packages/client/src/main.tsx
@@ -2002,7 +2002,7 @@ The kept hooks (`useExecuteTrade`, `useRfqQuote`) keep the same exported shape s
 - Delete: `packages/client/src/fx/hooks/usePriceHistory.ts`
 - Delete: `packages/client/src/fx/hooks/useCurrencyPairs.ts`
 
-- [ ] **Step 1: Rebase `useExecuteTrade` on `useHooks`**
+- [x] **Step 1: Rebase `useExecuteTrade` on `useHooks`**
 
 Replace the body of `packages/client/src/fx/hooks/useExecuteTrade.ts` with:
 
@@ -2038,7 +2038,7 @@ export function useExecuteTrade(
 }
 ```
 
-- [ ] **Step 2: Rebase `useRfqQuote` on `useHooks` (drop the imperative delay)**
+- [x] **Step 2: Rebase `useRfqQuote` on `useHooks` (drop the imperative delay)**
 
 Replace the body of `packages/client/src/fx/hooks/useRfqQuote.ts` with:
 
@@ -2078,7 +2078,7 @@ Note: `useRfqState` exposes `initiate()` / `receiveQuote(quote)` / `reject()` �
 
 The hook no longer does a `setTimeout` — the simulator emits after its own delay (Task 2).
 
-- [ ] **Step 3: Update `useStaleDetection` to take a value reference**
+- [x] **Step 3: Update `useStaleDetection` to take a value reference**
 
 Replace `packages/client/src/stale/useStaleDetection.ts` with:
 
@@ -2122,7 +2122,7 @@ export function useStaleDetection(value: unknown): boolean {
 }
 ```
 
-- [ ] **Step 4: Update `LiveRatesPanel.tsx`**
+- [x] **Step 4: Update `LiveRatesPanel.tsx`**
 
 Open `packages/client/src/fx/liveRates/LiveRatesPanel.tsx`. Find the `useCurrencyPairs` import line and replace with:
 
@@ -2139,7 +2139,7 @@ const pairs = useCurrencyPairs();
 
 (Replaces `const pairs = useCurrencyPairs();` from the deleted hook import.)
 
-- [ ] **Step 5: Update `Tile.tsx`**
+- [x] **Step 5: Update `Tile.tsx`**
 
 Open `packages/client/src/fx/liveRates/tile/Tile.tsx`. Replace the imports for `usePriceStream` and `usePriceHistory` with the consolidated `useHooks` import, and update the call sites. Specifically:
 
@@ -2172,7 +2172,7 @@ const history = usePriceHistory(pair.symbol);
 
 The spec's drop-the-`version` decision is now realised: `usePrice` returns `Price | null`. `Tile.tsx` consumers that reference `price.bid` etc. need a null check; it likely already exists (component skeleton renders nothing while price is null). Confirm by reading Tile.tsx — if it currently does `price?.bid`, no change needed; if it does `price.bid` unconditionally and was relying on `usePriceStream` returning `{price: null, version: 0}` to gate render with `if (!price) return null;`, ensure the same gate is in place after the change.
 
-- [ ] **Step 6: Delete the three pass-through hooks**
+- [x] **Step 6: Delete the three pass-through hooks**
 
 Run:
 
@@ -2182,23 +2182,23 @@ rm /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone
    /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone/packages/client/src/fx/hooks/useCurrencyPairs.ts
 ```
 
-- [ ] **Step 7: Typecheck — verify no stale references**
+- [x] **Step 7: Typecheck — verify no stale references**
 
 Run: `pnpm --filter @rtc/client typecheck`
 Expected: pass. If there are unresolved imports in `Tile.tsx` or other FX files, fix them now.
 
-- [ ] **Step 8: E2E for the FX area**
+- [x] **Step 8: E2E for the FX area**
 
 Run: `pnpm --filter @rtc/client test:e2e -- fx-trading.spec.ts` (or whatever the actual FX e2e file name is — `ls packages/client/tests/` to confirm).
 
 Expected: all FX-related e2e tests pass. (If your e2e files cover full-app smoke without per-area filtering, `pnpm test:e2e` is fine — but it'll re-test other areas not yet migrated, which may take longer.)
 
-- [ ] **Step 9: Run unit tests**
+- [x] **Step 9: Run unit tests**
 
 Run: `pnpm test`
 Expected: 109 + ~16 new = ~125 unit tests pass.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add packages/client/src/fx/hooks/useExecuteTrade.ts packages/client/src/fx/hooks/useRfqQuote.ts packages/client/src/stale/useStaleDetection.ts packages/client/src/fx/liveRates/LiveRatesPanel.tsx packages/client/src/fx/liveRates/tile/Tile.tsx
@@ -2228,7 +2228,7 @@ Four hooks deleted; four components updated (`RfqTilesPanel`, `NewRfqForm`, `Cre
 - Delete: `packages/client/src/credit/hooks/useRfqStream.ts`
 - Delete: `packages/client/src/credit/hooks/useCreateRfq.ts`
 
-- [ ] **Step 1: Update `RfqTilesPanel.tsx`**
+- [x] **Step 1: Update `RfqTilesPanel.tsx`**
 
 Open `packages/client/src/credit/rfqTiles/RfqTilesPanel.tsx`. Replace the four hook imports with one:
 
@@ -2262,7 +2262,7 @@ function RfqTileRow({ rfq }: { rfq: Rfq }) {
 
 If `RfqTilesPanel` previously had inline render logic for each rfq, lift that JSX into the new `RfqTileRow` component within the same file.
 
-- [ ] **Step 2: Update `NewRfqForm.tsx`**
+- [x] **Step 2: Update `NewRfqForm.tsx`**
 
 Open `packages/client/src/credit/newRfq/NewRfqForm.tsx`. Replace the three hook imports with `useHooks`:
 
@@ -2297,7 +2297,7 @@ const id = await firstValueFrom(
 
 (Import `RFQ_DEFAULT_EXPIRY_SECS` from `@rtc/domain`.)
 
-- [ ] **Step 3: Update `CreditBlotter.tsx`**
+- [x] **Step 3: Update `CreditBlotter.tsx`**
 
 Open `packages/client/src/credit/blotter/CreditBlotter.tsx`. Replace the three hook imports with `useHooks`:
 
@@ -2320,7 +2320,7 @@ const instruments = useInstruments();
 const dealers = useDealers();
 ```
 
-- [ ] **Step 4: Update `SellSidePanel.tsx`**
+- [x] **Step 4: Update `SellSidePanel.tsx`**
 
 Open `packages/client/src/credit/sellSide/SellSidePanel.tsx`. Same pattern as `RfqTilesPanel`:
 
@@ -2367,7 +2367,7 @@ Plus `import type { QuoteRequest } from "@rtc/domain";` at the top of `compositi
 
 (If `SellSidePanel` doesn't actually use `quote` and you just need `pass`, skip the `useQuoteRfq` addition. Read the file first to know which workflow commands it issues.)
 
-- [ ] **Step 5: Delete the four pass-through hooks**
+- [x] **Step 5: Delete the four pass-through hooks**
 
 Run:
 
@@ -2378,23 +2378,23 @@ rm /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone
    /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone/packages/client/src/credit/hooks/useCreateRfq.ts
 ```
 
-- [ ] **Step 6: Typecheck**
+- [x] **Step 6: Typecheck**
 
 Run: `pnpm --filter @rtc/client typecheck`
 Expected: pass. Fix any unresolved imports.
 
-- [ ] **Step 7: E2E for credit**
+- [x] **Step 7: E2E for credit**
 
 Run: `pnpm --filter @rtc/client test:e2e -- credit-rfq.spec.ts` (or the actual e2e filename — the credit RFQ flow is the most invasive component change in Phase 3, so this is the highest-risk step).
 
 Expected: all credit e2e tests pass. If any fail, the most likely cause is the per-row `useQuotesForRfq(rfq.id)` extraction not being applied where it needed to be.
 
-- [ ] **Step 8: Unit tests**
+- [x] **Step 8: Unit tests**
 
 Run: `pnpm test`
 Expected: count unchanged from Task 11 (no new tests; only deletions and rewires).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add packages/client/src/credit/rfqTiles/RfqTilesPanel.tsx packages/client/src/credit/newRfq/NewRfqForm.tsx packages/client/src/credit/blotter/CreditBlotter.tsx packages/client/src/credit/sellSide/SellSidePanel.tsx
@@ -2421,7 +2421,7 @@ Two pass-through hooks deleted; two consumer components updated. `AnalyticsPanel
 - Delete: `packages/client/src/blotter/hooks/useTradeStream.ts`
 - Delete: `packages/client/src/analytics/hooks/useAnalytics.ts`
 
-- [ ] **Step 1: Update `FxBlotter.tsx`**
+- [x] **Step 1: Update `FxBlotter.tsx`**
 
 Open `packages/client/src/blotter/FxBlotter.tsx`. Replace the `useTradeStream` import with `useHooks`:
 
@@ -2439,7 +2439,7 @@ const { useTrades } = useHooks();
 const trades = useTrades();
 ```
 
-- [ ] **Step 2: Update `AnalyticsPanel.tsx`**
+- [x] **Step 2: Update `AnalyticsPanel.tsx`**
 
 Open `packages/client/src/analytics/AnalyticsPanel.tsx`. Replace the `useAnalytics` import:
 
@@ -2461,7 +2461,7 @@ const stale = useStaleDetection(data);
 
 (`data` is `PositionUpdates | null`. Each emission produces a new reference, so `useStaleDetection` will see a change and clear stale.)
 
-- [ ] **Step 3: Delete the two pass-through hooks**
+- [x] **Step 3: Delete the two pass-through hooks**
 
 Run:
 
@@ -2470,17 +2470,17 @@ rm /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone
    /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone/packages/client/src/analytics/hooks/useAnalytics.ts
 ```
 
-- [ ] **Step 4: Typecheck + tests**
+- [x] **Step 4: Typecheck + tests**
 
 Run: `pnpm --filter @rtc/client typecheck && pnpm test`
 Expected: both green.
 
-- [ ] **Step 5: E2E**
+- [x] **Step 5: E2E**
 
 Run: `pnpm test:e2e`
 Expected: all 40 e2e tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/client/src/blotter/FxBlotter.tsx packages/client/src/analytics/AnalyticsPanel.tsx
@@ -2511,7 +2511,7 @@ The last migration retires `<ServiceProvider>` and `<ConnectionProvider>`, the `
 - Delete: `packages/client/src/connection/useConnection.ts`
 - Modify: `docs/superpowers/STATUS.md`
 
-- [ ] **Step 1: Update `ConnectionOverlay.tsx`**
+- [x] **Step 1: Update `ConnectionOverlay.tsx`**
 
 Open `packages/client/src/connection/ConnectionOverlay.tsx`. Replace the `useConnection` import with `useHooks`:
 
@@ -2529,7 +2529,7 @@ const { useConnectionStatus } = useHooks();
 const status = useConnectionStatus();
 ```
 
-- [ ] **Step 2: Update `ConnectionStatusBar.tsx`**
+- [x] **Step 2: Update `ConnectionStatusBar.tsx`**
 
 Same pattern:
 
@@ -2540,7 +2540,7 @@ const { useConnectionStatus } = useHooks();
 const status = useConnectionStatus();
 ```
 
-- [ ] **Step 3: Inline `createRealServices` into `portFactory.ts`**
+- [x] **Step 3: Inline `createRealServices` into `portFactory.ts`**
 
 The temporary indirection from Task 5 — `createWsRealPorts` calling `createRealServices` from the legacy file — needs to go before we can delete `services/`.
 
@@ -2586,7 +2586,7 @@ Mechanical procedure (no semantic change to the runtime behaviour — bodies are
 
 The "verbatim" rule is strict: do not refactor the eight `createXxxPort` bodies even if they look repetitive. Drift between the inlined version and the legacy version (which is about to be deleted) introduces wire-format risk.
 
-- [ ] **Step 4: Strip the legacy providers from `main.tsx`**
+- [x] **Step 4: Strip the legacy providers from `main.tsx`**
 
 Open `packages/client/src/main.tsx`. Remove these imports:
 
@@ -2609,7 +2609,7 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
-- [ ] **Step 5: Delete the legacy files + directory**
+- [x] **Step 5: Delete the legacy files + directory**
 
 Run:
 
@@ -2623,7 +2623,7 @@ rm /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone
    /Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone/packages/client/src/connection/useConnection.ts
 ```
 
-- [ ] **Step 6: Verify zero references remain**
+- [x] **Step 6: Verify zero references remain**
 
 Run all four:
 
@@ -2636,12 +2636,12 @@ grep -rn "from \"\\.\\./\\.\\./services" packages/client/src
 
 Expected: no output for any of the four (or only matches in `app/HooksProvider.tsx` for the literal substring `Provider` — that's fine, it's not the legacy `ServiceProvider`).
 
-- [ ] **Step 7: Full unit + e2e + typecheck + build**
+- [x] **Step 7: Full unit + e2e + typecheck + build**
 
 Run: `pnpm clean && pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e`
 Expected: all green. Domain ~119 tests, client ~28 new presenter tests, server 5 = ~152 unit total. E2E: 40.
 
-- [ ] **Step 8: Smoke test in dev mode**
+- [x] **Step 8: Smoke test in dev mode**
 
 Run: `pnpm --filter @rtc/client dev` (background).
 
@@ -2655,7 +2655,7 @@ Visit the app in a browser if available. Confirm:
 
 Stop the dev server.
 
-- [ ] **Step 9: Update `docs/superpowers/STATUS.md`**
+- [x] **Step 9: Update `docs/superpowers/STATUS.md`**
 
 Open `docs/superpowers/STATUS.md`. In the Phases table, change Phase 3's status from `⏳ NOT STARTED` to `✅ DONE`. Set the Plan column to `plans/2026-05-05-phase-3-presenters-react-rxjs-composition-root.md`. Set the Commits column to the SHA range produced by this work (run `git log --oneline | head -20` and pick the first and last Phase-3 SHAs).
 
@@ -2665,7 +2665,7 @@ Update the **Current state / Test counts** line to the actual final numbers (fro
 
 Add a brief "Phase 3 lessons" subsection if any non-trivial corrections came up during execution (modelled on the existing "Phase 2 lessons" section).
 
-- [ ] **Step 10: Final commit**
+- [x] **Step 10: Final commit**
 
 ```bash
 git add packages/client/src/connection/ConnectionOverlay.tsx packages/client/src/connection/ConnectionStatusBar.tsx packages/client/src/app/adapters/portFactory.ts packages/client/src/main.tsx docs/superpowers/STATUS.md
@@ -2684,14 +2684,14 @@ the application root; UI components consume only useHooks()."
 
 ## Verification Checklist (after Task 14)
 
-- [ ] `git status` clean (apart from `.claude/settings.local.json`).
-- [ ] `pnpm clean && pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e` all pass.
-- [ ] `grep -rn "useServices\|ServiceProvider" packages/client/src` returns nothing.
-- [ ] `grep -rn "ConnectionContext\|ConnectionProvider" packages/client/src` returns nothing.
-- [ ] `grep -rn "from \"\\.\\./services" packages/client/src` returns nothing.
-- [ ] `packages/client/src/services/` directory does not exist.
-- [ ] `STATUS.md` Phase 3 row marked `✅ DONE`.
-- [ ] All 14 task checkboxes ticked.
+- [x] `git status` clean (apart from `.claude/settings.local.json`).
+- [x] `pnpm clean && pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e` all pass.
+- [x] `grep -rn "useServices\|ServiceProvider" packages/client/src` returns nothing.
+- [x] `grep -rn "ConnectionContext\|ConnectionProvider" packages/client/src` returns nothing.
+- [x] `grep -rn "from \"\\.\\./services" packages/client/src` returns nothing.
+- [x] `packages/client/src/services/` directory does not exist.
+- [x] `STATUS.md` Phase 3 row marked `✅ DONE`.
+- [x] All 14 task checkboxes ticked.
 
 ---
 

@@ -1,5 +1,5 @@
 import { ConnectionStatus } from "@rtc/domain";
-import { useConnection } from "./useConnection";
+import { useHooks } from "../app/HooksProvider";
 
 const statusLabel: Record<ConnectionStatus, string> = {
   [ConnectionStatus.CONNECTING]: "Connecting...",
@@ -18,7 +18,8 @@ const statusColor: Record<ConnectionStatus, string> = {
 };
 
 export function ConnectionStatusBar() {
-  const status = useConnection();
+  const { useConnectionStatus } = useHooks();
+  const status = useConnectionStatus();
 
   return (
     <div

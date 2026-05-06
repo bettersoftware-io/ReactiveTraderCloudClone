@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { bind } from "@react-rxjs/core";
-import { merge, of, type Observable } from "rxjs";
+import { concatMap, filter, merge, of, type Observable } from "rxjs";
 import {
   ConnectionStatus,
   type ConnectionEvent,
@@ -60,15 +60,27 @@ export interface AppHooks {
 /**
  * Wraps the BrowserConnectionEventsAdapter with a synthetic startup
  * `gatewayConnected` event so the state machine reaches CONNECTED
- * during application boot. In future phases a real gateway adapter
- * will replace this synthetic emission.
+ * during application boot. Also synthesizes a `gatewayConnected` event
+ * after every `browserOnline` event so that coming back from offline
+ * returns to CONNECTED (not just CONNECTING). In future phases a real
+ * gateway adapter will replace these synthetic emissions.
  */
 function withSyntheticGatewayConnected(
   inner: ConnectionEventsPort,
 ): ConnectionEventsPort {
   return {
     events(): Observable<ConnectionEvent> {
-      return merge(of<ConnectionEvent>({ type: "gatewayConnected" }), inner.events());
+      const innerEvents$ = inner.events().pipe(
+        concatMap((event) => {
+          if (event.type === "browserOnline") {
+            // Emit browserOnline then immediately follow with gatewayConnected
+            // so the state machine moves OFFLINE_DISCONNECTED → CONNECTING → CONNECTED.
+            return of<ConnectionEvent>(event, { type: "gatewayConnected" });
+          }
+          return of(event);
+        }),
+      );
+      return merge(of<ConnectionEvent>({ type: "gatewayConnected" }), innerEvents$);
     },
   };
 }

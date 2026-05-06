@@ -1,8 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./theme/ThemeProvider";
-import { ServiceProvider } from "./services/ServiceProvider";
-import { ConnectionProvider } from "./connection/ConnectionProvider";
 import { App } from "./App";
 import { createApp } from "./app/composition";
 import { HooksProvider } from "./app/HooksProvider";
@@ -32,11 +30,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <HooksProvider hooks={hooks}>
-        <ServiceProvider>
-          <ConnectionProvider>
-            <App />
-          </ConnectionProvider>
-        </ServiceProvider>
+        <App />
       </HooksProvider>
     </ThemeProvider>
   </StrictMode>,

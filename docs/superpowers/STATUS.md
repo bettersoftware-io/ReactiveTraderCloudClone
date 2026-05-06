@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-05-05
 
 ---
 
@@ -11,7 +11,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD` (Phase 2.5 added 14 rename commits + the plan + this status update on top of any earlier unpushed work)
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 109 unit (18 domain + 1 server test files; 104 + 5 cases) + 40 e2e
+- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 40 e2e
 
 ## Phases
 
@@ -21,7 +21,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 2 — Extract Use Cases from React hooks (6 use cases in `packages/domain/src/usecases/`) | ✅ DONE | `plans/2026-05-01-phase-2-extract-use-cases.md` | `6cebdc5..e92f532` (7 commits) |
 | Phase 2.5 — Rename all source files to camelCase / PascalCase (drop kebab-case) | ✅ DONE | `plans/2026-05-02-phase-2-5-rename-files-camelcase.md` | `69c17ac..e93fc29` (14 commits) |
 | Phase 2.6 — Replace `AsyncIterable<T>` boundary with RxJS `Observable<T>` (rxjs becomes the explicit architectural exception in `@rtc/domain`) | ✅ DONE | `plans/2026-05-03-phase-2-6-rxjs-observable-boundary.md` | `da7cc7f..285e19e` (9 commits) |
-| Phase 3 — Presenters + react-rxjs hook bridge + Composition Root (retire `ServiceProvider`) — spec at `specs/2026-05-01-phase-3-presenters-react-rxjs-design.md` REQUIRES REVISION post 2.6 | ⏳ NOT STARTED | (to be written after 2.6) | — |
+| Phase 3 — Presenters + react-rxjs hook bridge + Composition Root (retire `ServiceProvider`) | ✅ DONE | `plans/2026-05-05-phase-3-presenters-react-rxjs-composition-root.md` | `94d6f6e..` (14 tasks, 15 commits) |
 | Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5 — Gherkin specs + page-object harnesses + port contract tests | ⏳ NOT STARTED | (to be written) | — |
 
@@ -60,6 +60,16 @@ Implementer subagents caught three plan-level errors during execution:
 
 For future plans: read the actual entity types and existing hook bodies before writing test fixtures and use case interfaces.
 
+## Phase 3 lessons / corrections
+
+Four non-trivial corrections surfaced during execution:
+
+1. **Missing root-index re-exports** — The five new use cases added in Task 3 (`CurrencyPairsUseCase`, `TradeBlotterUseCase`, `InstrumentsUseCase`, `DealersUseCase`, `RfqQuoteUseCase`) were not re-exported from `packages/domain/src/index.ts`, only from the use-cases barrel. Caught in Task 7 review; fixed by adding them to the root index.
+2. **`PriceHistoryPresenter` must use `PriceHistoryUseCase`** — The plan initially called `getPriceHistory` directly on the port. The use case's ring-buffer accumulation is needed for live-tick accumulation; switching to `PriceHistoryUseCase` preserved correct behaviour.
+3. **`useRfqState` method names** — The plan spec listed method names `requested/received/rejected` for `useRfqState`; the actual implementation uses `initiate/receiveQuote/reject`. Tests were written against the correct names.
+4. **`useQuoteRfq` in `TradeTicket.tsx`** — The plan only listed `SellSidePanel.tsx` as needing `useQuoteRfq`. `TradeTicket.tsx` also required it; added during Task 12 migration.
+5. **`browserOnline` → `CONNECTING` not `CONNECTED`** — The `withSyntheticGatewayConnected` function in `composition.ts` initially only synthesized a single `gatewayConnected` at startup. After coming back online, the state machine returned to `CONNECTING` (not `CONNECTED`) because no new `gatewayConnected` event fired. Fixed in Task 14 by also synthesizing `gatewayConnected` after every `browserOnline` event (restoring the mock-mode behaviour of the retired `ConnectionProvider`).
+
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
 1. **react-rxjs version + dependency**: `rxjs ^7.8` is already in `@rtc/client`. `react-rxjs` to be added — confirm latest version + interop with React 19.
@@ -91,5 +101,5 @@ When you come back:
 
 1. Confirm `git status` is clean. If `.claude/settings.local.json` is dirty, ignore.
 2. Confirm `git log origin/main..HEAD` (if origin updated) — push if not yet pushed.
-3. Decide: Phase 3 next, or pause? If Phase 3, brainstorm the open questions above before writing the plan.
-4. Read `docs/architecture.md` §3.5 (Presenters & State Streams) and §3.4 (Use Cases) for the architectural intent.
+3. Phase 3 is done. Next: Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees. Write the Phase 4 plan before touching code.
+4. Read `docs/architecture.md` for the architectural intent before starting Phase 4.
