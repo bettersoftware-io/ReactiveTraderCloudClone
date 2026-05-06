@@ -21,7 +21,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 2 — Extract Use Cases from React hooks (6 use cases in `packages/domain/src/usecases/`) | ✅ DONE | `plans/2026-05-01-phase-2-extract-use-cases.md` | `6cebdc5..e92f532` (7 commits) |
 | Phase 2.5 — Rename all source files to camelCase / PascalCase (drop kebab-case) | ✅ DONE | `plans/2026-05-02-phase-2-5-rename-files-camelcase.md` | `69c17ac..e93fc29` (14 commits) |
 | Phase 2.6 — Replace `AsyncIterable<T>` boundary with RxJS `Observable<T>` (rxjs becomes the explicit architectural exception in `@rtc/domain`) | ✅ DONE | `plans/2026-05-03-phase-2-6-rxjs-observable-boundary.md` | `da7cc7f..285e19e` (9 commits) |
-| Phase 3 — Presenters + react-rxjs hook bridge + Composition Root (retire `ServiceProvider`) | ✅ DONE | `plans/2026-05-05-phase-3-presenters-react-rxjs-composition-root.md` | `94d6f6e..` (14 tasks, 15 commits) |
+| Phase 3 — Presenters + react-rxjs hook bridge + Composition Root (retire `ServiceProvider`) | ✅ DONE | `plans/2026-05-05-phase-3-presenters-react-rxjs-composition-root.md` | `94d6f6e..b5c9445` (14 tasks, 16 commits) |
 | Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5 — Gherkin specs + page-object harnesses + port contract tests | ⏳ NOT STARTED | (to be written) | — |
 
