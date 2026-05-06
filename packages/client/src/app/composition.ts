@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { bind } from "@react-rxjs/core";
-import { concatMap, filter, merge, of, type Observable } from "rxjs";
+import { concatMap, from, merge, of, type Observable } from "rxjs";
 import {
   ConnectionStatus,
   type ConnectionEvent,
@@ -75,7 +75,8 @@ function withSyntheticGatewayConnected(
           if (event.type === "browserOnline") {
             // Emit browserOnline then immediately follow with gatewayConnected
             // so the state machine moves OFFLINE_DISCONNECTED → CONNECTING → CONNECTED.
-            return of<ConnectionEvent>(event, { type: "gatewayConnected" });
+            const pair: ConnectionEvent[] = [event, { type: "gatewayConnected" }];
+            return from(pair);
           }
           return of(event);
         }),
