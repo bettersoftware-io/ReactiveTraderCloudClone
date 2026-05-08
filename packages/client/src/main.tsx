@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { App } from "./App";
 import { createApp } from "./app/composition";
+import { createAppHooks } from "./ui/hooks/createAppHooks";
 import { HooksProvider } from "./ui/hooks/HooksProvider";
 
 // Global reset
@@ -24,7 +25,8 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-const hooks = createApp();
+const { presenters } = createApp();
+const hooks = createAppHooks(presenters);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
