@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 import { type CurrencyPair, type Direction, type Price } from "@rtc/domain";
-import { useHooks } from "../../../ui/hooks/HooksProvider";
-import { useNotional } from "../../hooks/useNotional";
-import { useTileState } from "../../hooks/useTileState";
-import { useExecuteTrade } from "../../hooks/useExecuteTrade";
-import { useRfqState } from "../../hooks/useRfqState";
-import { useRfqQuote } from "../../hooks/useRfqQuote";
+import { useHooks } from "../../../hooks/HooksProvider";
+import { useNotional } from "./hooks/useNotional";
+import { useTileState } from "./hooks/useTileState";
+import { useExecuteTrade } from "./hooks/useExecuteTrade";
+import { useRfqState } from "./hooks/useRfqState";
+import { useRfqQuote } from "./hooks/useRfqQuote";
 import { TileHeader } from "./TileHeader";
 import { TilePrice, SpreadDisplay } from "./TilePrice";
 import { TileChart } from "./TileChart";
@@ -13,8 +13,8 @@ import { TileNotional } from "./TileNotional";
 import { TileExecution } from "./TileExecution";
 import { TileConfirmation } from "./TileConfirmation";
 import { TileRfq } from "./TileRfq";
-import { StaleIndicator } from "../../../stale/StaleIndicator";
-import { useStaleDetection } from "../../../stale/useStaleDetection";
+import { StaleIndicator } from "../../../../stale/StaleIndicator";
+import { useStaleDetection } from "../../../../stale/useStaleDetection";
 
 interface TileProps {
   pair: CurrencyPair;

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { type CurrencyPair, Direction, type Price } from "@rtc/domain";
-import type { UseRfqStateResult } from "../../hooks/useRfqState";
+import type { UseRfqStateResult } from "./hooks/useRfqState";
 import { RfqCountdown } from "./RfqCountdown";
 
 interface TileRfqProps {
