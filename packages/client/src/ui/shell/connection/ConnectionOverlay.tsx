@@ -1,5 +1,5 @@
 import { ConnectionStatus } from "@rtc/domain";
-import { useHooks } from "../ui/hooks/HooksProvider";
+import { useHooks } from "../../hooks/HooksProvider";
 
 const overlayMessages: Partial<Record<ConnectionStatus, string>> = {
   [ConnectionStatus.DISCONNECTED]: "Disconnected. Reconnecting...",

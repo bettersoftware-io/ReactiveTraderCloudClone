@@ -13,8 +13,8 @@ import { TileNotional } from "./TileNotional";
 import { TileExecution } from "./TileExecution";
 import { TileConfirmation } from "./TileConfirmation";
 import { TileRfq } from "./TileRfq";
-import { StaleIndicator } from "../../../../stale/StaleIndicator";
-import { useStaleDetection } from "../../../../stale/useStaleDetection";
+import { StaleIndicator } from "../../../shell/stale/StaleIndicator";
+import { useStaleDetection } from "../../../shell/stale/useStaleDetection";
 
 interface TileProps {
   pair: CurrencyPair;

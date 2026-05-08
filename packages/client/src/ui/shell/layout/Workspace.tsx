@@ -1,8 +1,8 @@
-import { LiveRatesPanel } from "../ui/fx/liveRates/LiveRatesPanel";
-import { FxBlotter } from "../ui/fx/blotter/FxBlotter";
-import { AnalyticsPanel } from "../ui/fx/analytics/AnalyticsPanel";
-import { CreditWorkspace } from "../ui/credit/CreditWorkspace";
-import { AdminPanel } from "../ui/admin/AdminPanel";
+import { LiveRatesPanel } from "../../fx/liveRates/LiveRatesPanel";
+import { FxBlotter } from "../../fx/blotter/FxBlotter";
+import { AnalyticsPanel } from "../../fx/analytics/AnalyticsPanel";
+import { CreditWorkspace } from "../../credit/CreditWorkspace";
+import { AdminPanel } from "../../admin/AdminPanel";
 import type { WorkspaceTab } from "./Header";
 
 interface WorkspaceProps {

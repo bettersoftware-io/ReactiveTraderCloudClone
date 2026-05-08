@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ThemeProvider } from "./theme/ThemeProvider";
+import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
 import { App } from "./App";
 import { createApp } from "./app/composition";
 import { createAppHooks } from "./ui/hooks/createAppHooks";

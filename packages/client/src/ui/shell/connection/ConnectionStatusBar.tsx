@@ -1,5 +1,5 @@
 import { ConnectionStatus } from "@rtc/domain";
-import { useHooks } from "../ui/hooks/HooksProvider";
+import { useHooks } from "../../hooks/HooksProvider";
 
 const statusLabel: Record<ConnectionStatus, string> = {
   [ConnectionStatus.CONNECTING]: "Connecting...",

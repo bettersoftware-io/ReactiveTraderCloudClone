@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ConnectionStatus } from "@rtc/domain";
-import { useHooks } from "../ui/hooks/HooksProvider";
+import { useHooks } from "../../hooks/HooksProvider";
 
 /**
  * Returns true when a data stream should be considered stale.
