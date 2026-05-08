@@ -1193,11 +1193,12 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 | **Simulators** | `packages/domain/src/simulators/*.ts` | In-memory port impls |
 | **Shared DTOs** | `packages/shared/src/fx/*.ts`, `credit/*.ts` | Wire-format contracts |
 | **Protocol** | `packages/shared/src/protocol/*.ts` | RPC and SoW envelopes |
-| **Composition Root** (target) | `packages/client/src/app/composition.ts` | Wires ports → use cases → presenters at startup |
-| **Presenters** (target) | `packages/client/src/app/presenters/*.ts` | RxJS streams, one file per area |
-| **react-rxjs Hooks** (target) | `packages/client/src/ui/hooks/*.ts` | Generated bindings to presenters |
-| **Client Services** (current) | `packages/client/src/services/*.ts` | WsAdapter, simulator/real factories -- to be reorganised under `app/` |
-| **Client UI Components** | `packages/client/src/ui/**/*.tsx` | React components -- target location after reorg |
+| **Composition Root** | `packages/client/src/app/composition.ts` | React-free factory; returns `{ presenters, ports }` from wired-up adapters |
+| **Presenters** | `packages/client/src/app/presenters/*.ts` | RxJS streams, one file per area |
+| **Port Adapters** | `packages/client/src/app/adapters/*.ts` | WsAdapter, BrowserConnectionEventsAdapter, simulator/real port factory |
+| **react-rxjs Hooks Bridge** | `packages/client/src/ui/hooks/createAppHooks.ts` | `bind()` calls + `AppHooks` type; only file importing `@react-rxjs/core` |
+| **Hooks Provider** | `packages/client/src/ui/hooks/HooksProvider.tsx` | React Context distributing `AppHooks` |
+| **Client UI Components** | `packages/client/src/ui/{fx,credit,shell,admin}/**/*.tsx` | React components grouped by trading domain |
 | **Server Entry** | `packages/server/src/index.ts` | HTTP + WebSocket setup |
 | **Server WS Handler** | `packages/server/src/ws/ws-handler.ts` | Subscription & RPC routing |
 | **Server Protocol** | `packages/server/src/ws/protocol.ts` | Message type constants |
