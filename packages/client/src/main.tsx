@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
-import { App } from "./App";
+import { App } from "./ui/App";
 import { createApp } from "./app/composition";
 import { createAppHooks } from "./ui/hooks/createAppHooks";
 import { HooksProvider } from "./ui/hooks/HooksProvider";
