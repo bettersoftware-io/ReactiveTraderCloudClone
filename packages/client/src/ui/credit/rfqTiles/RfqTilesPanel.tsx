@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { firstValueFrom } from "rxjs";
 import { RfqState, type Instrument, type Dealer, type Rfq } from "@rtc/domain";
-import { useHooks } from "../../ui/hooks/HooksProvider";
+import { useHooks } from "../../hooks/HooksProvider";
 import { RfqCard } from "./RfqCard";
 import { RfqFilterTabs, type RfqFilter } from "./RfqFilterTabs";
 

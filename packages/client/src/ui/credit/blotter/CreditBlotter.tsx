@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { type Rfq, type Quote, type Instrument, type Dealer, type CreditTrade, RfqState } from "@rtc/domain";
-import { useHooks } from "../../ui/hooks/HooksProvider";
+import { useHooks } from "../../hooks/HooksProvider";
 
 const COLUMNS = [
   "Trade ID", "Status", "Trade Date", "Direction", "Counterparty",
