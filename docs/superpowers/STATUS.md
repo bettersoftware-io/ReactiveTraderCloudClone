@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-05
+**Last updated:** 2026-05-08
 
 ---
 
@@ -22,7 +22,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 2.5 — Rename all source files to camelCase / PascalCase (drop kebab-case) | ✅ DONE | `plans/2026-05-02-phase-2-5-rename-files-camelcase.md` | `69c17ac..e93fc29` (14 commits) |
 | Phase 2.6 — Replace `AsyncIterable<T>` boundary with RxJS `Observable<T>` (rxjs becomes the explicit architectural exception in `@rtc/domain`) | ✅ DONE | `plans/2026-05-03-phase-2-6-rxjs-observable-boundary.md` | `da7cc7f..285e19e` (9 commits) |
 | Phase 3 — Presenters + react-rxjs hook bridge + Composition Root (retire `ServiceProvider`) | ✅ DONE | `plans/2026-05-05-phase-3-presenters-react-rxjs-composition-root.md` | `94d6f6e..3434bd7` (14 tasks + 2 review follow-ups, 17 commits) |
-| Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees | ⏳ NOT STARTED | (to be written) | — |
+| Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees | ✅ DONE | `plans/2026-05-07-phase-4-app-ui-reorg.md` | `dd84f6a..10861fe` (10 task commits) + this STATUS update |
 | Phase 5 — Gherkin specs + page-object harnesses + port contract tests | ⏳ NOT STARTED | (to be written) | — |
 
 ## Use cases extracted in Phase 2
@@ -70,7 +70,7 @@ Five non-trivial corrections surfaced during execution:
 4. **`useQuoteRfq` in `TradeTicket.tsx`** — The plan only listed `SellSidePanel.tsx` as needing `useQuoteRfq`. `TradeTicket.tsx` also required it; added during Task 12 migration.
 5. **`browserOnline` → `CONNECTING` not `CONNECTED`** — The `withSyntheticGatewayConnected` function in `composition.ts` initially only synthesized a single `gatewayConnected` at startup. After coming back online, the state machine returned to `CONNECTING` (not `CONNECTED`) because no new `gatewayConnected` event fired. Fixed in Task 14 by also synthesizing `gatewayConnected` after every `browserOnline` event (restoring the mock-mode behaviour of the retired `ConnectionProvider`).
 
-## Phase 3 follow-ups (carry into Phase 4)
+## Phase 3 follow-ups (carry into Phase 5)
 
 End-of-phase code review flagged improvements that were not addressed in Phase 3; tracked here so they aren't lost:
 
@@ -109,5 +109,5 @@ When you come back:
 
 1. Confirm `git status` is clean. If `.claude/settings.local.json` is dirty, ignore.
 2. Confirm `git log origin/main..HEAD` (if origin updated) — push if not yet pushed.
-3. Phase 3 is done. Next: Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees. Write the Phase 4 plan before touching code.
-4. Read `docs/architecture.md` for the architectural intent before starting Phase 4.
+3. Phase 4 is done. Next: Phase 5 — Gherkin specs + page-object harnesses + port contract tests. Brainstorm and write the spec before writing the plan.
+4. The two Phase 3 follow-ups (real gateway adapter; presenter test depth) can fold into Phase 5 work or be carved off separately — decide during brainstorming.
