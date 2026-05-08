@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
-import type { AppHooks } from "./composition";
+import type { AppHooks } from "../../app/composition";
 
 const HooksContext = createContext<AppHooks | null>(null);
 

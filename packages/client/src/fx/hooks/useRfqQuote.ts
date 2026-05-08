@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { firstValueFrom } from "rxjs";
 import type { CurrencyPair } from "@rtc/domain";
-import { useHooks } from "../../app/HooksProvider";
+import { useHooks } from "../../ui/hooks/HooksProvider";
 import type { UseRfqStateResult, RfqQuote } from "./useRfqState";
 
 const RFQ_TIMEOUT_MS = 10_000;

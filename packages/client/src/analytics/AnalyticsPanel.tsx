@@ -1,4 +1,4 @@
-import { useHooks } from "../app/HooksProvider";
+import { useHooks } from "../ui/hooks/HooksProvider";
 import { PnlChart } from "./PnlChart";
 import { PnlValue } from "./PnlValue";
 import { PositionBubbles } from "./PositionBubbles";

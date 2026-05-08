@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { ADAPTIVE_BANK_NAME, type Instrument, type Rfq } from "@rtc/domain";
-import { useHooks } from "../../app/HooksProvider";
+import { useHooks } from "../../ui/hooks/HooksProvider";
 import { TradeTicket } from "./TradeTicket";
 
 interface SellSideRfqRowProps {

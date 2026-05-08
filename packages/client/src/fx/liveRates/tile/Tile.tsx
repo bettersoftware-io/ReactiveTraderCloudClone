@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { type CurrencyPair, type Direction, type Price } from "@rtc/domain";
-import { useHooks } from "../../../app/HooksProvider";
+import { useHooks } from "../../../ui/hooks/HooksProvider";
 import { useNotional } from "../../hooks/useNotional";
 import { useTileState } from "../../hooks/useTileState";
 import { useExecuteTrade } from "../../hooks/useExecuteTrade";

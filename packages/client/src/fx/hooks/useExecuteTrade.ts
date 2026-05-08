@@ -3,7 +3,7 @@ import { firstValueFrom } from "rxjs";
 import {
   type CurrencyPair, type Price, Direction, ExecutionStatus,
 } from "@rtc/domain";
-import { useHooks } from "../../app/HooksProvider";
+import { useHooks } from "../../ui/hooks/HooksProvider";
 import type { UseTileStateResult } from "./useTileState";
 
 export function useExecuteTrade(

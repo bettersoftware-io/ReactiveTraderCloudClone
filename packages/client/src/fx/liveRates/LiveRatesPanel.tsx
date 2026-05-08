@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { matchesCurrencyFilter, type CurrencyCategory } from "@rtc/domain";
-import { useHooks } from "../../app/HooksProvider";
+import { useHooks } from "../../ui/hooks/HooksProvider";
 import { CurrencyFilter } from "./CurrencyFilter";
 import { ViewToggle, type ViewMode } from "./ViewToggle";
 import { Tile } from "./tile/Tile";

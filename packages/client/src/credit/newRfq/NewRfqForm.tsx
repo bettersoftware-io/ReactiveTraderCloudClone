@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { firstValueFrom } from "rxjs";
 import { Direction, CREDIT_MAX_QUANTITY_INPUT, type Instrument } from "@rtc/domain";
-import { useHooks } from "../../app/HooksProvider";
+import { useHooks } from "../../ui/hooks/HooksProvider";
 import { InstrumentSearch } from "./InstrumentSearch";
 import { DealerSelection } from "./DealerSelection";
 import { QuantityInput } from "./QuantityInput";

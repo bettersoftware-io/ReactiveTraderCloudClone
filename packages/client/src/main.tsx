@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { App } from "./App";
 import { createApp } from "./app/composition";
-import { HooksProvider } from "./app/HooksProvider";
+import { HooksProvider } from "./ui/hooks/HooksProvider";
 
 // Global reset
 const style = document.createElement("style");

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { firstValueFrom } from "rxjs";
 import { type Rfq, type Quote, type Instrument, RfqState } from "@rtc/domain";
-import { useHooks } from "../../app/HooksProvider";
+import { useHooks } from "../../ui/hooks/HooksProvider";
 
 interface TradeTicketProps {
   rfq: Rfq;
