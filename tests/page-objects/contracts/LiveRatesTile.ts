@@ -13,6 +13,13 @@ export interface LiveRatesTilePO {
   clickViewToggle(): Promise<void>;
   viewToggleLabel(): Promise<string>;
 
+  /** Whether the first tile shows a buy button. */
+  firstTileBuyVisible(): Promise<boolean>;
+  /** Whether the first tile shows a sell button. */
+  firstTileSellVisible(): Promise<boolean>;
+  /** Whether the view-toggle button is visible. */
+  viewToggleVisible(): Promise<boolean>;
+
   /** Trade execution on the first tile. */
   clickBuyOnFirst(): Promise<void>;
   clickSellOnFirst(): Promise<void>;

@@ -1,29 +1,56 @@
-import type { Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
 import type { LiveRatesTilePO } from "../contracts/LiveRatesTile";
 import { TESTIDS } from "../contracts/testids";
 
 export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
   constructor(private readonly page: Page) {}
-  async waitForFirstTile(timeoutMs: number): Promise<void> {
-    await this.page
-      .locator(`[data-testid^='${TESTIDS.liveRates.tilePrefix}']`)
-      .first()
-      .waitFor({ state: "visible", timeout: timeoutMs });
+
+  private allTiles() {
+    return this.page.locator(`[data-testid^='${TESTIDS.liveRates.tilePrefix}']`);
   }
-  count(): Promise<number> { throw notYet("LiveRatesTile.count"); }
-  firstTileText(): Promise<string> { throw notYet("LiveRatesTile.firstTileText"); }
-  clickFilter(_c: string): Promise<void> { throw notYet("LiveRatesTile.clickFilter"); }
-  clickViewToggle(): Promise<void> { throw notYet("LiveRatesTile.clickViewToggle"); }
-  viewToggleLabel(): Promise<string> { throw notYet("LiveRatesTile.viewToggleLabel"); }
-  clickBuyOnFirst(): Promise<void> { throw notYet("LiveRatesTile.clickBuyOnFirst"); }
-  clickSellOnFirst(): Promise<void> { throw notYet("LiveRatesTile.clickSellOnFirst"); }
-  waitForConfirmation(_t: number): Promise<void> { throw notYet("LiveRatesTile.waitForConfirmation"); }
-  confirmationContainsAny(_p: readonly RegExp[], _t: number): Promise<void> { throw notYet("LiveRatesTile.confirmationContainsAny"); }
-  dismissConfirmation(): Promise<void> { throw notYet("LiveRatesTile.dismissConfirmation"); }
-  confirmationHidden(_t: number): Promise<void> { throw notYet("LiveRatesTile.confirmationHidden"); }
-  isConfirmationVisible(): Promise<boolean> { throw notYet("LiveRatesTile.isConfirmationVisible"); }
-  fillFirstTileNotional(_v: string): Promise<void> { throw notYet("LiveRatesTile.fillFirstTileNotional"); }
-  isNotionalInputVisible(): Promise<boolean> { throw notYet("LiveRatesTile.isNotionalInputVisible"); }
+  private firstTile() {
+    return this.allTiles().first();
+  }
+
+  async waitForFirstTile(timeoutMs: number): Promise<void> {
+    await this.firstTile().waitFor({ state: "visible", timeout: timeoutMs });
+  }
+  async count(): Promise<number> {
+    return await this.allTiles().count();
+  }
+  async firstTileText(): Promise<string> {
+    return await this.firstTile().innerText();
+  }
+  async clickFilter(category: string): Promise<void> {
+    await this.page.getByTestId(TESTIDS.liveRates.filter(category)).click();
+  }
+  async clickViewToggle(): Promise<void> {
+    await this.page.getByTestId(TESTIDS.liveRates.viewToggle).click();
+  }
+  async viewToggleLabel(): Promise<string> {
+    return (await this.page.getByTestId(TESTIDS.liveRates.viewToggle).textContent()) ?? "";
+  }
+
+  async firstTileBuyVisible(): Promise<boolean> {
+    return await this.firstTile().getByTestId(TESTIDS.liveRates.buyBtn).isVisible();
+  }
+  async firstTileSellVisible(): Promise<boolean> {
+    return await this.firstTile().getByTestId(TESTIDS.liveRates.sellBtn).isVisible();
+  }
+  async viewToggleVisible(): Promise<boolean> {
+    return await this.page.getByTestId(TESTIDS.liveRates.viewToggle).isVisible();
+  }
+
+  // Trade execution (filled in Task 8)
+  async clickBuyOnFirst(): Promise<void> { throw notYet("LiveRatesTile.clickBuyOnFirst"); }
+  async clickSellOnFirst(): Promise<void> { throw notYet("LiveRatesTile.clickSellOnFirst"); }
+  async waitForConfirmation(_t: number): Promise<void> { throw notYet("LiveRatesTile.waitForConfirmation"); }
+  async confirmationContainsAny(_p: readonly RegExp[], _t: number): Promise<void> { throw notYet("LiveRatesTile.confirmationContainsAny"); }
+  async dismissConfirmation(): Promise<void> { throw notYet("LiveRatesTile.dismissConfirmation"); }
+  async confirmationHidden(_t: number): Promise<void> { throw notYet("LiveRatesTile.confirmationHidden"); }
+  async isConfirmationVisible(): Promise<boolean> { throw notYet("LiveRatesTile.isConfirmationVisible"); }
+  async fillFirstTileNotional(_v: string): Promise<void> { throw notYet("LiveRatesTile.fillFirstTileNotional"); }
+  async isNotionalInputVisible(): Promise<boolean> { throw notYet("LiveRatesTile.isNotionalInputVisible"); }
 }
 
 function notYet(name: string): Error {
