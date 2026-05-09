@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:e2e": "cucumber-js",
+    "test:e2e": "NODE_OPTIONS='--import tsx/esm' cucumber-js",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
