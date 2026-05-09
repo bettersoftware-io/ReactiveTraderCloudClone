@@ -1,12 +1,16 @@
 import type { Page } from "@playwright/test";
 import type { FooterPO } from "../contracts/Footer";
+import { TESTIDS } from "../contracts/testids";
 
 export class PlaywrightFooter implements FooterPO {
   constructor(private readonly page: Page) {}
-  connectionLabel(): Promise<string> { throw notYet("Footer.connectionLabel"); }
-  isStatusVisible(): Promise<boolean> { throw notYet("Footer.isStatusVisible"); }
-}
-
-function notYet(name: string): Error {
-  return new Error(`${name} is not yet implemented in 5A.1; landing in a later task`);
+  private locator() {
+    return this.page.getByTestId(TESTIDS.connection.status);
+  }
+  async connectionLabel(): Promise<string> {
+    return (await this.locator().textContent()) ?? "";
+  }
+  async isStatusVisible(): Promise<boolean> {
+    return await this.locator().isVisible();
+  }
 }
