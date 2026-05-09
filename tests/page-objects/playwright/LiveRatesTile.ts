@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import type { LiveRatesTilePO } from "../contracts/LiveRatesTile";
 import { TESTIDS } from "../contracts/testids";
 
@@ -41,18 +41,40 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
     return await this.page.getByTestId(TESTIDS.liveRates.viewToggle).isVisible();
   }
 
-  // Trade execution (filled in Task 8)
-  async clickBuyOnFirst(): Promise<void> { throw notYet("LiveRatesTile.clickBuyOnFirst"); }
-  async clickSellOnFirst(): Promise<void> { throw notYet("LiveRatesTile.clickSellOnFirst"); }
-  async waitForConfirmation(_t: number): Promise<void> { throw notYet("LiveRatesTile.waitForConfirmation"); }
-  async confirmationContainsAny(_p: readonly RegExp[], _t: number): Promise<void> { throw notYet("LiveRatesTile.confirmationContainsAny"); }
-  async dismissConfirmation(): Promise<void> { throw notYet("LiveRatesTile.dismissConfirmation"); }
-  async confirmationHidden(_t: number): Promise<void> { throw notYet("LiveRatesTile.confirmationHidden"); }
-  async isConfirmationVisible(): Promise<boolean> { throw notYet("LiveRatesTile.isConfirmationVisible"); }
-  async fillFirstTileNotional(_v: string): Promise<void> { throw notYet("LiveRatesTile.fillFirstTileNotional"); }
-  async isNotionalInputVisible(): Promise<boolean> { throw notYet("LiveRatesTile.isNotionalInputVisible"); }
-}
-
-function notYet(name: string): Error {
-  return new Error(`${name} is not yet implemented in 5A.1; landing in a later task`);
+  async clickBuyOnFirst(): Promise<void> {
+    await this.firstTile().getByTestId(TESTIDS.liveRates.buyBtn).click();
+  }
+  async clickSellOnFirst(): Promise<void> {
+    await this.firstTile().getByTestId(TESTIDS.liveRates.sellBtn).click();
+  }
+  async waitForConfirmation(timeoutMs: number): Promise<void> {
+    await expect(
+      this.firstTile().getByTestId(TESTIDS.liveRates.tradeConfirmation),
+    ).toBeVisible({ timeout: timeoutMs });
+  }
+  async confirmationContainsAny(patterns: readonly RegExp[], timeoutMs: number): Promise<void> {
+    const confirmation = this.firstTile().getByTestId(TESTIDS.liveRates.tradeConfirmation);
+    const combined = new RegExp(patterns.map((p) => p.source).join("|"), "i");
+    await expect(confirmation).toContainText(combined, { timeout: timeoutMs });
+  }
+  async dismissConfirmation(): Promise<void> {
+    await this.firstTile().getByTestId(TESTIDS.liveRates.tradeConfirmation).click();
+  }
+  async confirmationHidden(timeoutMs: number): Promise<void> {
+    await expect(
+      this.firstTile().getByTestId(TESTIDS.liveRates.tradeConfirmation),
+    ).toBeHidden({ timeout: timeoutMs });
+  }
+  async isConfirmationVisible(): Promise<boolean> {
+    return await this.firstTile().getByTestId(TESTIDS.liveRates.tradeConfirmation).isVisible();
+  }
+  async fillFirstTileNotional(value: string): Promise<void> {
+    const input = this.firstTile().locator("input");
+    await input.click();
+    await input.fill(value);
+    await input.press("Enter");
+  }
+  async isNotionalInputVisible(): Promise<boolean> {
+    return await this.firstTile().locator("input").isVisible();
+  }
 }
