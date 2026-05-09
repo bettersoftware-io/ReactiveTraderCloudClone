@@ -9,6 +9,7 @@ export const TESTIDS = {
     overlay: "connection-overlay",
   },
   liveRates: {
+    tilePrefix: "tile-",
     tile: (pair: string) => `tile-${pair}`,
     sellBtn: "sell-btn",
     buyBtn: "buy-btn",

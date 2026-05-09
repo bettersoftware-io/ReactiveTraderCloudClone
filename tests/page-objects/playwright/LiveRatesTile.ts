@@ -1,11 +1,12 @@
 import type { Page } from "@playwright/test";
 import type { LiveRatesTilePO } from "../contracts/LiveRatesTile";
+import { TESTIDS } from "../contracts/testids";
 
 export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
   constructor(private readonly page: Page) {}
   async waitForFirstTile(timeoutMs: number): Promise<void> {
     await this.page
-      .locator("[data-testid^='tile-']")
+      .locator(`[data-testid^='${TESTIDS.liveRates.tilePrefix}']`)
       .first()
       .waitFor({ state: "visible", timeout: timeoutMs });
   }
