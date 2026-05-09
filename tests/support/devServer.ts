@@ -46,8 +46,18 @@ export async function startDevServer(): Promise<DevServerHandle> {
   );
   await waitForPort(30_000);
   return {
-    stop: async () => {
-      child.kill("SIGTERM");
-    },
+    stop: () =>
+      new Promise<void>((resolve) => {
+        if (child.exitCode !== null) {
+          resolve();
+          return;
+        }
+        const killTimer = setTimeout(() => child.kill("SIGKILL"), 5_000);
+        child.once("exit", () => {
+          clearTimeout(killTimer);
+          resolve();
+        });
+        child.kill("SIGTERM");
+      }),
   };
 }
