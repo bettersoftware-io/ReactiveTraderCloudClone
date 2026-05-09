@@ -1202,5 +1202,8 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 | **Server Entry** | `packages/server/src/index.ts` | HTTP + WebSocket setup |
 | **Server WS Handler** | `packages/server/src/ws/ws-handler.ts` | Subscription & RPC routing |
 | **Server Protocol** | `packages/server/src/ws/protocol.ts` | Message type constants |
-| **Behavioural Specs** (planned) | `tests/specs/**/*.feature` | Gherkin scenarios, framework-free |
-| **Page Objects** (planned) | `tests/page-objects/**/*.ts` | Encapsulate Playwright selectors |
+| **Behavioural Specs** | `tests/specs/**/*.feature` | Gherkin scenarios, framework-free; SOT for behaviour |
+| **Page Object Contracts** | `tests/page-objects/contracts/**/*.ts` | Driver-free TS interfaces + `data-testid` constants; SOT for the UI surface |
+| **Page Objects (Playwright)** | `tests/page-objects/playwright/**/*.ts` | Playwright implementations of the contracts |
+| **Step Definitions** | `tests/steps/browser/**/*.ts` | Cucumber-JS step defs for the browser driver; import only contracts |
+| **Test World + Hooks** | `tests/support/**/*.ts` | `PlaywrightWorld`, dev-server lifecycle, hooks |

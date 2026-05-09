@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-08
+**Last updated:** 2026-05-09
 
 ---
 
@@ -23,7 +23,13 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 2.6 — Replace `AsyncIterable<T>` boundary with RxJS `Observable<T>` (rxjs becomes the explicit architectural exception in `@rtc/domain`) | ✅ DONE | `plans/2026-05-03-phase-2-6-rxjs-observable-boundary.md` | `da7cc7f..285e19e` (9 commits) |
 | Phase 3 — Presenters + react-rxjs hook bridge + Composition Root (retire `ServiceProvider`) | ✅ DONE | `plans/2026-05-05-phase-3-presenters-react-rxjs-composition-root.md` | `94d6f6e..3434bd7` (14 tasks + 2 review follow-ups, 17 commits) |
 | Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees | ✅ DONE | `plans/2026-05-07-phase-4-app-ui-reorg.md` | `dd84f6a..10861fe` (10 task commits) + this STATUS update |
-| Phase 5 — Gherkin specs + page-object harnesses + port contract tests | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5A.1 — Gherkin + page objects (Cucumber + Playwright) | ✅ DONE | `plans/2026-05-08-phase-5a-1-gherkin-page-objects.md` | _to be filled with SHA range when commits land_ |
+| Phase 5A.2 — Cucumber + Cypress sharing the same `.feature` files | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5A.3 — Raw Playwright reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5A.4 — Raw Cypress reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5B — Presenter-direct step definitions for the same `.feature` files | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5C — Port contract tests (simulator vs WsReal) | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5D — Real gateway-events adapter; delete `withSyntheticGatewayConnected` | ⏳ NOT STARTED | (to be written) | — |
 
 ## Use cases extracted in Phase 2
 
@@ -70,9 +76,9 @@ Five non-trivial corrections surfaced during execution:
 4. **`useQuoteRfq` in `TradeTicket.tsx`** — The plan only listed `SellSidePanel.tsx` as needing `useQuoteRfq`. `TradeTicket.tsx` also required it; added during Task 12 migration.
 5. **`browserOnline` → `CONNECTING` not `CONNECTED`** — The `withSyntheticGatewayConnected` function in `composition.ts` initially only synthesized a single `gatewayConnected` at startup. After coming back online, the state machine returned to `CONNECTING` (not `CONNECTED`) because no new `gatewayConnected` event fired. Fixed in Task 14 by also synthesizing `gatewayConnected` after every `browserOnline` event (restoring the mock-mode behaviour of the retired `ConnectionProvider`).
 
-## Phase 3 follow-ups (carry into Phase 5)
+## Phase 3 follow-ups (carry into Phase 5B/5D)
 
-End-of-phase code review flagged improvements that were not addressed in Phase 3; tracked here so they aren't lost:
+End-of-phase code review flagged improvements that were not addressed in Phase 3; tracked here to carry into Phase 5B (presenter-direct step defs) and Phase 5D (real gateway adapter):
 
 1. **Replace `withSyntheticGatewayConnected` with a real gateway-events adapter.** `composition.ts` synthesises `gatewayConnected` at boot and after every `browserOnline` event. This works in simulator mode and matches the legacy `ConnectionProvider` behaviour, but in WS-real mode it can produce a CONNECTED → DISCONNECTED flash on reconnect when the server is actually down. Phase 4 should fold a real `WsAdapter`-driven `ConnectionEventsPort` adapter into the composition root and delete `withSyntheticGatewayConnected` entirely. The state machine itself is correct; only the synthetic event source is the workaround.
 
@@ -109,5 +115,5 @@ When you come back:
 
 1. Confirm `git status` is clean. If `.claude/settings.local.json` is dirty, ignore.
 2. Confirm `git log origin/main..HEAD` (if origin updated) — push if not yet pushed.
-3. Phase 4 is done. Next: Phase 5 — Gherkin specs + page-object harnesses + port contract tests. Brainstorm and write the spec before writing the plan.
+3. Phase 5A.1 is done. The natural next step is Phase 5A.2 (Cypress + Cucumber, reusing the same `.feature` files and PO contracts). Brainstorm before writing the spec.
 4. The two Phase 3 follow-ups (real gateway adapter; presenter test depth) can fold into Phase 5 work or be carved off separately — decide during brainstorming.
