@@ -13,7 +13,7 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
   }
 
   async waitForFirstTile(timeoutMs: number): Promise<void> {
-    await this.firstTile().waitFor({ state: "visible", timeout: timeoutMs });
+    await expect(this.firstTile()).toBeVisible({ timeout: timeoutMs });
   }
   async count(): Promise<number> {
     return await this.allTiles().count();

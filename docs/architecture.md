@@ -119,7 +119,7 @@ The current stack is a snapshot, not a commitment. Each row says what role is be
 | Wire format | JSON over WebSocket | DTOs in `@rtc/shared` |
 | Unit test runner | Vitest | -- |
 | E2E driver | Playwright | -- |
-| Behavioural specs | Gherkin (planned) | -- |
+| Behavioural specs | Gherkin | -- |
 | Build orchestration | pnpm workspaces + Turborepo | -- |
 
 ---
@@ -1093,7 +1093,7 @@ This is the load-bearing section: the architecture's value comes from the cost-o
 | **Build tooling** | Vite | ~1 dev-day | Bundles `@rtc/client`, serves dev | -- |
 | **Unit test runner** | Vitest | ~1 dev-day | Same test files runnable | The tests themselves |
 | **E2E driver** | Playwright | ~3 dev-days | Page Object interfaces unchanged; only their bodies are rewritten | Behavioural specs (Gherkin) drive both old and new |
-| **Behavioural spec language** | Gherkin (planned) | High (rewrite specs) | -- | -- |
+| **Behavioural spec language** | Gherkin | High (rewrite specs) | -- | -- |
 | **Build orchestration** | pnpm + Turborepo | ~1 dev-day | Build graph: domain -> shared -> client/server | -- |
 
 **How this is achieved**: every "Cost" above assumes the rest of the system stays put. That is only true because (a) inner layers never import outer-layer types, (b) ports are dependency-inverted, and (c) behavioural tests are written against behaviour, not implementation.
@@ -1176,7 +1176,7 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 | **SoW markers** | Ensures consistent state after reconnect without full re-fetch. |
 | **Pure domain with one dep (rxjs)** | Fully testable, portable; pnpm strict mode enforces that the only `dependencies` entry in `@rtc/domain/package.json` is `rxjs`. |
 | **AbortController per subscription** | Graceful cleanup when WebSocket closes -- all active streams are cancelled. |
-| **Behavioural specs in Gherkin** (planned) | One source of truth for expected behaviour, runnable from multiple test drivers. Survives driver and framework swaps. |
+| **Behavioural specs in Gherkin** | One source of truth for expected behaviour, runnable from multiple test drivers. Survives driver and framework swaps. |
 | **Don't abstract React or RxJS behind portability shims** | Wrapping them produces leaky facades; instead keep their layers thin and rely on behavioural tests to make regeneration cheap. |
 
 ---
