@@ -1,13 +1,27 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import type { FxRfqFormPO } from "../contracts/FxRfqForm";
+import { TESTIDS } from "../contracts/testids";
 
 export class PlaywrightFxRfqForm implements FxRfqFormPO {
   constructor(private readonly page: Page) {}
-  waitForRfqButton(_t: number): Promise<void> { throw notYet("FxRfqForm.waitForRfqButton"); }
-  clickInitiateRfq(): Promise<void> { throw notYet("FxRfqForm.clickInitiateRfq"); }
-  waitForCountdownOrQuote(_t: number): Promise<void> { throw notYet("FxRfqForm.waitForCountdownOrQuote"); }
-}
 
-function notYet(name: string): Error {
-  return new Error(`${name} is not yet implemented in 5A.1; landing in a later task`);
+  private firstTile() {
+    return this.page.locator(`[data-testid^='${TESTIDS.liveRates.tilePrefix}']`).first();
+  }
+  private rfqButton() {
+    return this.firstTile().getByText(/initiate rfq|request quote/i);
+  }
+  private countdownOrQuote() {
+    return this.firstTile().getByText(/\d+s|accepting|expired|quote/i);
+  }
+
+  async waitForRfqButton(timeoutMs: number): Promise<void> {
+    await expect(this.rfqButton()).toBeVisible({ timeout: timeoutMs });
+  }
+  async clickInitiateRfq(): Promise<void> {
+    await this.rfqButton().click();
+  }
+  async waitForCountdownOrQuote(timeoutMs: number): Promise<void> {
+    await expect(this.countdownOrQuote()).toBeVisible({ timeout: timeoutMs });
+  }
 }
