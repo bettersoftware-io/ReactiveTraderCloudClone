@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:e2e": "cucumber-js"
+    "test:e2e": "cucumber-js",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^11.0.0",
