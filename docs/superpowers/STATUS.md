@@ -23,7 +23,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 2.6 — Replace `AsyncIterable<T>` boundary with RxJS `Observable<T>` (rxjs becomes the explicit architectural exception in `@rtc/domain`) | ✅ DONE | `plans/2026-05-03-phase-2-6-rxjs-observable-boundary.md` | `da7cc7f..285e19e` (9 commits) |
 | Phase 3 — Presenters + react-rxjs hook bridge + Composition Root (retire `ServiceProvider`) | ✅ DONE | `plans/2026-05-05-phase-3-presenters-react-rxjs-composition-root.md` | `94d6f6e..3434bd7` (14 tasks + 2 review follow-ups, 17 commits) |
 | Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees | ✅ DONE | `plans/2026-05-07-phase-4-app-ui-reorg.md` | `dd84f6a..10861fe` (10 task commits) + this STATUS update |
-| Phase 5A.1 — Gherkin + page objects (Cucumber + Playwright) | ✅ DONE | `plans/2026-05-08-phase-5a-1-gherkin-page-objects.md` | _to be filled with SHA range when commits land_ |
+| Phase 5A.1 — Gherkin + page objects (Cucumber + Playwright) | ✅ DONE | `plans/2026-05-08-phase-5a-1-gherkin-page-objects.md` | `49e5764..3680a05` (14 commits) |
 | Phase 5A.2 — Cucumber + Cypress sharing the same `.feature` files | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5A.3 — Raw Playwright reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5A.4 — Raw Cypress reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
