@@ -11,6 +11,9 @@ export class PlaywrightBlotterTable implements BlotterTablePO {
   private rows() {
     return this.locator().locator("tbody tr");
   }
+  private firstRow() {
+    return this.rows().first();
+  }
 
   async waitVisible(timeoutMs: number): Promise<void> {
     await expect(this.locator()).toBeVisible({ timeout: timeoutMs });
@@ -21,16 +24,30 @@ export class PlaywrightBlotterTable implements BlotterTablePO {
   async rowCount(): Promise<number> {
     return await this.rows().count();
   }
-  async clickFirstHeader(): Promise<void> { throw notYet("BlotterTable.clickFirstHeader"); }
-  async fillQuickFilter(_t: string): Promise<void> { throw notYet("BlotterTable.fillQuickFilter"); }
-  async clearQuickFilter(): Promise<void> { throw notYet("BlotterTable.clearQuickFilter"); }
-  async isExportCsvVisible(): Promise<boolean> { throw notYet("BlotterTable.isExportCsvVisible"); }
-  async exportCsvText(): Promise<string> { throw notYet("BlotterTable.exportCsvText"); }
-  async hoverFirstRow(): Promise<void> { throw notYet("BlotterTable.hoverFirstRow"); }
-  async firstRowBackgroundColor(): Promise<string> { throw notYet("BlotterTable.firstRowBackgroundColor"); }
-  async isFirstRowVisible(): Promise<boolean> { throw notYet("BlotterTable.isFirstRowVisible"); }
-}
-
-function notYet(name: string): Error {
-  return new Error(`${name} is not yet implemented in 5A.1; landing in a later task`);
+  async clickFirstHeader(): Promise<void> {
+    await this.locator().locator("th").first().click();
+  }
+  async fillQuickFilter(text: string): Promise<void> {
+    await this.page.getByTestId(TESTIDS.blotter.quickFilter).fill(text);
+  }
+  async clearQuickFilter(): Promise<void> {
+    await this.page.getByTestId(TESTIDS.blotter.quickFilter).clear();
+  }
+  async isExportCsvVisible(): Promise<boolean> {
+    return await this.page.getByTestId(TESTIDS.blotter.exportCsv).isVisible();
+  }
+  async exportCsvText(): Promise<string> {
+    return (await this.page.getByTestId(TESTIDS.blotter.exportCsv).textContent()) ?? "";
+  }
+  async hoverFirstRow(): Promise<void> {
+    await this.firstRow().hover();
+  }
+  async firstRowBackgroundColor(): Promise<string> {
+    return await this.firstRow().evaluate(
+      (el) => getComputedStyle(el as HTMLElement).backgroundColor,
+    );
+  }
+  async isFirstRowVisible(): Promise<boolean> {
+    return await this.firstRow().isVisible();
+  }
 }
