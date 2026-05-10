@@ -1,5 +1,5 @@
 import type { TestContext } from "../support/testContext";
-import { assertContains, assertNotEqual, assertTrue } from "./assert";
+import { assertContains, assertEquals, assertNotEqual, assertTrue } from "./assert";
 
 export async function toggleAndCaptureBackgrounds(ctx: TestContext): Promise<void> {
   ctx.scratch.theme.backgroundBefore = await ctx.po.workspace.rootBackgroundColor();
@@ -21,11 +21,11 @@ export async function expectBackgroundChanged(ctx: TestContext): Promise<void> {
 
 export async function expectBackgroundMatchesToggled(ctx: TestContext): Promise<void> {
   const current = await ctx.po.workspace.rootBackgroundColor();
-  if (current !== ctx.scratch.theme.backgroundAfter) {
-    throw new Error(
-      `expected current bg ${current} to equal recorded post-toggle ${ctx.scratch.theme.backgroundAfter}`,
-    );
-  }
+  assertEquals(
+    current,
+    ctx.scratch.theme.backgroundAfter,
+    `expected current bg ${current} to equal recorded post-toggle ${ctx.scratch.theme.backgroundAfter}`,
+  );
 }
 
 export async function expectThemeToggleAriaLabelMentions(
