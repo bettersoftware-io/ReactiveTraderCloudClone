@@ -102,7 +102,7 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
   }
 
   fillFirstTileNotional(value: string): Promise<void> {
-    this.firstTile()
+    return this.firstTile()
       .scrollIntoView()
       .find("input")
       .then(($input) => {
@@ -115,8 +115,7 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
         nativeSet!.call($input[0], value);
         $input[0].dispatchEvent(new Event("input", { bubbles: true }));
       })
-      .type("{enter}");
-    return cy.wrap(undefined) as unknown as Promise<void>;
+      .type("{enter}") as unknown as Promise<void>;
   }
 
   isNotionalInputVisible(): Promise<boolean> {
