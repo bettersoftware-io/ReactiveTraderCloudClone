@@ -22,6 +22,7 @@ export type {
   BlotterTablePO,
 };
 export { TESTIDS } from "./testids";
+export { STRINGS } from "./strings";
 
 export interface PageObjects {
   workspace: WorkspacePO;
