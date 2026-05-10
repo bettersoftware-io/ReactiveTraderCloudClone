@@ -7,7 +7,9 @@ export interface DevServerHandle {
 }
 
 const DEV_PORT = 3000;
-const DEV_BASE_URL = `http://localhost:${DEV_PORT}`;
+// Use 127.0.0.1 explicitly: Vite ≥6 binds the dev server to ::1 only on hosts
+// where `localhost` resolves to IPv6 first, while Node fetch defaults to IPv4.
+const DEV_BASE_URL = `http://127.0.0.1:${DEV_PORT}`;
 // Resolve the monorepo root (two levels up from tests/support/)
 const MONOREPO_ROOT = join(fileURLToPath(import.meta.url), "..", "..", "..");
 
