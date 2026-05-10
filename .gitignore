@@ -4,3 +4,6 @@ dist/
 *.tsbuildinfo
 playwright-report/
 test-results/
+
+# Claude Code: per-machine settings (paths, machine-specific allow-listings)
+.claude/settings.local.json

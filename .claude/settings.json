@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm test)",
+      "Bash(pnpm test:e2e)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm build)",
+      "Bash(pnpm clean)",
+      "Bash(pnpm -w test)",
+      "Bash(pnpm -w typecheck)",
+      "Bash(pnpm --filter @rtc/tests test:e2e)",
+      "Bash(pnpm --filter @rtc/tests typecheck)",
+      "Bash(pnpm --filter @rtc/client test)",
+      "Bash(pnpm --filter @rtc/client test:e2e)",
+      "Bash(pnpm --filter @rtc/client typecheck)"
+    ]
+  }
+}
