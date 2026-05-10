@@ -12,10 +12,9 @@ function run(cmd: string, args: string[]): Promise<number> {
 const dev = await startDevServer();
 let combinedExit = 0;
 try {
-  const playwrightExit = await run("pnpm", ["test:e2e:playwright"]);
-  combinedExit = combinedExit | playwrightExit;
-  const cypressExit = await run("pnpm", ["test:e2e:cypress"]);
-  combinedExit = combinedExit | cypressExit;
+  combinedExit |= await run("pnpm", ["test:e2e:playwright"]);
+  combinedExit |= await run("pnpm", ["test:e2e:raw-playwright"]);
+  combinedExit |= await run("pnpm", ["test:e2e:cypress"]);
 } finally {
   await dev.stop();
 }

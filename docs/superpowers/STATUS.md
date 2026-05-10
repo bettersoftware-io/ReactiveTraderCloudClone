@@ -11,7 +11,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD` (Phase 2.5 added 14 rename commits + the plan + this status update on top of any earlier unpushed work)
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 40 e2e (Playwright) + 40 e2e (Cypress)
+- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 40 e2e (Cucumber+Playwright) + 40 e2e (raw Playwright) + 40 e2e (Cucumber+Cypress)
 
 ## Phases
 
