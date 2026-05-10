@@ -1,6 +1,6 @@
 import { Then, When } from "@cucumber/cucumber";
-import type { StepContext } from "../../support/testContext";
-import * as connection from "../../scenarios/connection";
+import type { StepContext } from "../support/testContext";
+import * as connection from "../scenarios/connection";
 
 When("the browser goes offline",
   function(this: StepContext) { return connection.setBrowserOffline(this.ctx, true); });

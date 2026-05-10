@@ -1,6 +1,6 @@
 import { Then, When } from "@cucumber/cucumber";
-import type { StepContext } from "../../support/testContext";
-import * as fxTrading from "../../scenarios/fxTrading";
+import type { StepContext } from "../support/testContext";
+import * as fxTrading from "../scenarios/fxTrading";
 
 When("the trader clicks buy on the first tile",
   function(this: StepContext) { return fxTrading.clickBuyOnFirstTile(this.ctx); });

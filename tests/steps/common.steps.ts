@@ -1,6 +1,6 @@
 import { Given, When } from "@cucumber/cucumber";
-import type { StepContext } from "../../support/testContext";
-import * as common from "../../scenarios/common";
+import type { StepContext } from "../support/testContext";
+import * as common from "../scenarios/common";
 
 Given("the trader has the workspace open",
   function(this: StepContext) { return common.openWorkspace(this.ctx); });

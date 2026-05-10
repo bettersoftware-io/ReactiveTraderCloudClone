@@ -1,6 +1,6 @@
 import { Then, When } from "@cucumber/cucumber";
-import type { StepContext } from "../../support/testContext";
-import * as fxRfq from "../../scenarios/fxRfq";
+import type { StepContext } from "../support/testContext";
+import * as fxRfq from "../scenarios/fxRfq";
 
 Then("the RFQ initiation button appears within {int} seconds",
   function(this: StepContext, seconds: number) {

@@ -1,6 +1,6 @@
 import { Then, When } from "@cucumber/cucumber";
-import type { StepContext } from "../../support/testContext";
-import * as creditRfq from "../../scenarios/creditRfq";
+import type { StepContext } from "../support/testContext";
+import * as creditRfq from "../scenarios/creditRfq";
 
 When("the trader switches to the credit {string} tab",
   function(this: StepContext, tab: string) { return creditRfq.clickCreditTab(this.ctx, tab); });

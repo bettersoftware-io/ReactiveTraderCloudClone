@@ -1,6 +1,6 @@
 import { After, AfterAll, Before, BeforeAll } from "@cucumber/cucumber";
 import { chromium, type Browser } from "@playwright/test";
-import { startDevServer, type DevServerHandle } from "./devServer";
+import { startDevServer, type DevServerHandle } from "../devServer";
 import { PlaywrightWorld } from "./world";
 
 let browser: Browser | undefined;

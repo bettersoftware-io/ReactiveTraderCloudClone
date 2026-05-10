@@ -1,6 +1,6 @@
 import { Then, When } from "@cucumber/cucumber";
-import type { StepContext } from "../../support/testContext";
-import * as fxLiveRates from "../../scenarios/fxLiveRates";
+import type { StepContext } from "../support/testContext";
+import * as fxLiveRates from "../scenarios/fxLiveRates";
 
 Then("a price tile is visible within {int} seconds",
   function(this: StepContext, seconds: number) {

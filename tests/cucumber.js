@@ -8,11 +8,11 @@
 // - No `loader: ["tsx/esm"]` here. tsx 4.21+'s initialize hook throws when
 //   Cucumber invokes it via `node:module.register(specifier)` (Cucumber omits
 //   the `data` arg). Instead, tsx is loaded via NODE_OPTIONS in
-//   tests/package.json `test:e2e` script: `NODE_OPTIONS='--import tsx/esm'`.
+//   tests/package.json `test:e2e:playwright` script: `NODE_OPTIONS='--import tsx/esm'`.
 
 export default {
   paths: ["specs/**/*.feature"],
-  import: ["support/**/*.ts", "steps/browser/**/*.ts"],
+  import: ["support/testContext.ts", "support/playwright/**/*.ts", "steps/**/*.ts"],
   format: ["progress-bar", "html:reports/cucumber.html", "summary"],
   parallel: process.env.CI ? 1 : 2,
   retry: process.env.CI ? 2 : 0,

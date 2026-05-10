@@ -1,6 +1,6 @@
 import { Then, When } from "@cucumber/cucumber";
-import type { StepContext } from "../../support/testContext";
-import * as blotter from "../../scenarios/blotter";
+import type { StepContext } from "../support/testContext";
+import * as blotter from "../scenarios/blotter";
 
 When("the trader clicks the first blotter header",
   function(this: StepContext) { return blotter.clickFirstBlotterHeader(this.ctx); });

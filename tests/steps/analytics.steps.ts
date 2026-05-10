@@ -1,6 +1,6 @@
 import { Then } from "@cucumber/cucumber";
-import type { StepContext } from "../../support/testContext";
-import * as analytics from "../../scenarios/analytics";
+import type { StepContext } from "../support/testContext";
+import * as analytics from "../scenarios/analytics";
 
 Then("the analytics panel is visible within {int} seconds",
   function(this: StepContext, seconds: number) {
