@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-09
+**Last updated:** 2026-05-10
 
 ---
 
@@ -24,7 +24,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 3 — Presenters + react-rxjs hook bridge + Composition Root (retire `ServiceProvider`) | ✅ DONE | `plans/2026-05-05-phase-3-presenters-react-rxjs-composition-root.md` | `94d6f6e..3434bd7` (14 tasks + 2 review follow-ups, 17 commits) |
 | Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees | ✅ DONE | `plans/2026-05-07-phase-4-app-ui-reorg.md` | `dd84f6a..10861fe` (10 task commits) + this STATUS update |
 | Phase 5A.1 — Gherkin + page objects (Cucumber + Playwright) | ✅ DONE | `plans/2026-05-08-phase-5a-1-gherkin-page-objects.md` | `49e5764..892c128` (15 commits) |
-| Phase 5A.2 — Cucumber + Cypress sharing the same `.feature` files | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5A.2 — Cucumber + Cypress sharing the same `.feature` files | 🟡 IN PROGRESS (9/18 tasks done; paused on Xvfb blocker) | `plans/2026-05-10-phase-5a-2-cypress-cucumber.md` | `c8706ec..81487c2` so far (11 commits, including 1 test-infra fix + 1 review follow-up). Tasks 10-13 require Cypress to run, blocked on missing Xvfb in sandbox. |
 | Phase 5A.3 — Raw Playwright reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5A.4 — Raw Cypress reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5B — Presenter-direct step definitions for the same `.feature` files | ⏳ NOT STARTED | (to be written) | — |
@@ -115,5 +115,5 @@ When you come back:
 
 1. Confirm `git status` is clean. If `.claude/settings.local.json` is dirty, ignore.
 2. Confirm `git log origin/main..HEAD` (if origin updated) — push if not yet pushed.
-3. Phase 5A.1 is done. The natural next step is Phase 5A.2 (Cypress + Cucumber, reusing the same `.feature` files and PO contracts). Brainstorm before writing the spec.
+3. **Phase 5A.2 is in progress.** Tasks 1-9 of 18 are done (`c8706ec..81487c2`). Cucumber-side migration is fully complete (all 9 step files driver-free, legacy `po` field retired, support/ restructured). Cypress is installed and configured. Tasks 10-13 implement Cypress page-object impls and validate scenarios. They require running Cypress, which on Linux needs Xvfb. **To resume:** install Xvfb in the sandbox (`apt-get install -y xvfb libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libnss3 libxss1 libasound2t64 libxtst6 xauth`), then ask Claude to continue from Task 10. The TaskList persistence does not survive sessions, so the controller will rebuild it from the plan.
 4. The two Phase 3 follow-ups (real gateway adapter; presenter test depth) can fold into Phase 5 work or be carved off separately — decide during brainstorming.
