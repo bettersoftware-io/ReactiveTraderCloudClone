@@ -43,7 +43,7 @@ export class CypressWorkspace implements WorkspacePO {
     cy.window({ log: false }).then((win) => {
       win.dispatchEvent(new win.Event(offline ? "offline" : "online"));
     });
-    return cy.wrap(undefined, { log: false }) as unknown as Promise<void>;
+    return cy.wrap(undefined) as unknown as Promise<void>;
   }
   rootBackgroundColor(): Promise<string> {
     return cy.get("#root > div").then(($el) =>
