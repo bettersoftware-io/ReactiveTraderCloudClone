@@ -24,7 +24,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 3 — Presenters + react-rxjs hook bridge + Composition Root (retire `ServiceProvider`) | ✅ DONE | `plans/2026-05-05-phase-3-presenters-react-rxjs-composition-root.md` | `94d6f6e..3434bd7` (14 tasks + 2 review follow-ups, 17 commits) |
 | Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees | ✅ DONE | `plans/2026-05-07-phase-4-app-ui-reorg.md` | `dd84f6a..10861fe` (10 task commits) + this STATUS update |
 | Phase 5A.1 — Gherkin + page objects (Cucumber + Playwright) | ✅ DONE | `plans/2026-05-08-phase-5a-1-gherkin-page-objects.md` | `49e5764..892c128` (15 commits) |
-| Phase 5A.2 — Cucumber + Cypress sharing the same `.feature` files | ✅ DONE | `plans/2026-05-10-phase-5a-2-cypress-cucumber.md` | `c8706ec..HEAD` (placeholder — replaced by exact SHA range in Task 18 commit) |
+| Phase 5A.2 — Cucumber + Cypress sharing the same `.feature` files | ✅ DONE | `plans/2026-05-10-phase-5a-2-cypress-cucumber.md` | `c8706ec..05ecee4` (24 task commits) + this STATUS update |
 | Phase 5A.3 — Raw Playwright reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5A.4 — Raw Cypress reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5B — Presenter-direct step definitions for the same `.feature` files | ⏳ NOT STARTED | (to be written) | — |
@@ -83,6 +83,16 @@ End-of-phase code review flagged improvements that were not addressed in Phase 3
 1. **Replace `withSyntheticGatewayConnected` with a real gateway-events adapter.** `composition.ts` synthesises `gatewayConnected` at boot and after every `browserOnline` event. This works in simulator mode and matches the legacy `ConnectionProvider` behaviour, but in WS-real mode it can produce a CONNECTED → DISCONNECTED flash on reconnect when the server is actually down. Phase 4 should fold a real `WsAdapter`-driven `ConnectionEventsPort` adapter into the composition root and delete `withSyntheticGatewayConnected` entirely. The state machine itself is correct; only the synthetic event source is the workaround.
 
 2. **Strengthen presenter test depth.** The simple stream presenters (`Blotter`, `Analytics`, `CurrencyPairs`, `Instruments`, `Dealers`) have one assertion each (basic delegation). The hybrid `RfqsPresenter`'s `distinctUntilChanged` suppression and `shareReplay` multicast contract aren't directly asserted at the presenter-test layer. Spec §6 deferred component-level tests to Phase 5; presenter-level coverage gaps fit naturally with that work — add `distinctUntilChanged` suppression + `shareReplay` multicast tests when the harness expands.
+
+## Phase 5A.2 follow-ups (carry into Phase 5A.3+)
+
+End-of-phase code review flagged the following non-blocking items; landed as-is in 5A.2 and tracked here for 5A.3+:
+
+1. **`CypressWorkspace.ts` idiom unification.** All void methods return `cy.wrap(undefined) as unknown as Promise<void>` after firing cy commands separately, while every other Cypress PO uses `return <last-cy-command> as unknown as Promise<void>` (cast on the chain). The pattern works either way under the cucumber-shim, but `Workspace` is the lone outlier from the Task 10 era. Unify to the cast idiom when next touching the file.
+
+2. **`cucumber-shim.ts` `isCyElement` guard.** The first branch of the result-type check (`isCyElement`) is not a documented Cypress API and is effectively unreachable in practice (the authoritative `Cypress.isCy(result)` on the next line handles all relevant cases). Either remove or comment which runtime case it defends against.
+
+3. **STRINGS coverage expansion.** `tests/page-objects/contracts/strings.ts` currently has entries for `creditRfq` only. Other PO impls (e.g. `AnalyticsDashboard` section names, footer copy) still embed regex patterns directly in the impl. Acceptable for 5A.2 because no copy-as-selector is duplicated between drivers in those areas, but worth expanding for consistency in 5A.3+.
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
