@@ -1,20 +1,16 @@
 import { Then, When } from "@cucumber/cucumber";
-import type { PlaywrightWorld } from "../../support/world";
+import type { StepContext } from "../../support/testContext";
+import * as fxRfq from "../../scenarios/fxRfq";
 
-Then(
-  "the RFQ initiation button appears within {int} seconds",
-  async function (this: PlaywrightWorld, seconds: number) {
-    await this.po.fxRfqForm.waitForRfqButton(seconds * 1_000);
-  },
-);
+Then("the RFQ initiation button appears within {int} seconds",
+  function(this: StepContext, seconds: number) {
+    return fxRfq.expectRfqInitiationButtonWithin(this.ctx, seconds);
+  });
 
-When("the trader clicks the RFQ initiation button", async function (this: PlaywrightWorld) {
-  await this.po.fxRfqForm.clickInitiateRfq();
-});
+When("the trader clicks the RFQ initiation button",
+  function(this: StepContext) { return fxRfq.clickRfqInitiationButton(this.ctx); });
 
-Then(
-  "a countdown or quote indicator appears within {int} seconds",
-  async function (this: PlaywrightWorld, seconds: number) {
-    await this.po.fxRfqForm.waitForCountdownOrQuote(seconds * 1_000);
-  },
-);
+Then("a countdown or quote indicator appears within {int} seconds",
+  function(this: StepContext, seconds: number) {
+    return fxRfq.expectCountdownOrQuoteWithin(this.ctx, seconds);
+  });
