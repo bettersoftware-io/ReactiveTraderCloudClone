@@ -34,10 +34,16 @@ export class CypressWorkspace implements WorkspacePO {
     cy.reload();
     return cy.wrap(undefined) as unknown as Promise<void>;
   }
-  setOffline(_offline: boolean): Promise<void> {
-    // Implemented in Task 14 via CDP. Throw a clear marker for now so any
-    // scenario that hits this path before Task 14 fails loudly.
-    throw new Error("CypressWorkspace.setOffline pending Task 14 (CDP); tag affected scenarios @playwright-only if blocking");
+  setOffline(offline: boolean): Promise<void> {
+    // The app's BrowserConnectionEventsAdapter listens to the window "online"
+    // and "offline" events. Dispatching them directly (without CDP) is more
+    // reliable across Cypress/Electron versions and avoids the cucumber
+    // preprocessor's cy.task() context restriction that fires when
+    // Cypress.automation native-Promise callbacks resolve outside the queue.
+    cy.window({ log: false }).then((win) => {
+      win.dispatchEvent(new win.Event(offline ? "offline" : "online"));
+    });
+    return cy.wrap(undefined, { log: false }) as unknown as Promise<void>;
   }
   rootBackgroundColor(): Promise<string> {
     return cy.get("#root > div").then(($el) =>
