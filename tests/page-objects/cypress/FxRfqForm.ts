@@ -1,11 +1,31 @@
 import type { FxRfqFormPO } from "../contracts/FxRfqForm";
+import { TESTIDS } from "../contracts/testids";
 
-function notYet(name: string): never {
-  throw new Error(`CypressFxRfqForm.${name}() not yet implemented (Phase 5A.2 task >10)`);
-}
+const TILE_PREFIX_SELECTOR = `[data-testid^="${TESTIDS.liveRates.tilePrefix}"]`;
 
 export class CypressFxRfqForm implements FxRfqFormPO {
-  waitForRfqButton(timeoutMs: number): Promise<void> { notYet("waitForRfqButton"); }
-  clickInitiateRfq(): Promise<void> { notYet("clickInitiateRfq"); }
-  waitForCountdownOrQuote(timeoutMs: number): Promise<void> { notYet("waitForCountdownOrQuote"); }
+  private firstTile() {
+    return cy.get(TILE_PREFIX_SELECTOR).first();
+  }
+
+  waitForRfqButton(timeoutMs: number): Promise<void> {
+    return this.firstTile()
+      .scrollIntoView()
+      .contains(/initiate rfq|request quote/i, { timeout: timeoutMs })
+      .should("be.visible") as unknown as Promise<void>;
+  }
+
+  clickInitiateRfq(): Promise<void> {
+    return this.firstTile()
+      .scrollIntoView()
+      .contains(/initiate rfq|request quote/i)
+      .click() as unknown as Promise<void>;
+  }
+
+  waitForCountdownOrQuote(timeoutMs: number): Promise<void> {
+    return this.firstTile()
+      .scrollIntoView()
+      .contains(/\d+s|accepting|expired|quote/i, { timeout: timeoutMs })
+      .should("be.visible") as unknown as Promise<void>;
+  }
 }

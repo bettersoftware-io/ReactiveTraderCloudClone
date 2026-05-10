@@ -35,6 +35,7 @@ export default defineConfig({
     supportFile: "support/cypress/e2e.ts",
     video: false,
     screenshotOnRunFailure: true,
+    defaultCommandTimeout: 10000,
     async setupNodeEvents(on, config) {
       await addCucumberPreprocessorPlugin(on, config);
       on(
