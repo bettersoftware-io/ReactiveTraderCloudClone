@@ -118,7 +118,7 @@ The current stack is a snapshot, not a commitment. Each row says what role is be
 | Server framework | Node.js + native WebSocket | -- |
 | Wire format | JSON over WebSocket | DTOs in `@rtc/shared` |
 | Unit test runner | Vitest | -- |
-| E2E driver | Playwright | -- |
+| E2E driver | Playwright + Cypress | -- |
 | Behavioural specs | Gherkin | -- |
 | Build orchestration | pnpm workspaces + Turborepo | -- |
 
@@ -1092,7 +1092,7 @@ This is the load-bearing section: the architecture's value comes from the cost-o
 | **Wire format** | JSON over WS | High (both ends change together) | DTOs in `@rtc/shared` + protocol type enums | DTO round-trip tests + e2e |
 | **Build tooling** | Vite | ~1 dev-day | Bundles `@rtc/client`, serves dev | -- |
 | **Unit test runner** | Vitest | ~1 dev-day | Same test files runnable | The tests themselves |
-| **E2E driver** | Playwright | ~3 dev-days | Page Object interfaces unchanged; only their bodies are rewritten | Behavioural specs (Gherkin) drive both old and new |
+| **E2E driver** | Playwright + Cypress | ~3 dev-days per new driver | Page Object interfaces unchanged; only implementations are added | Behavioural specs (Gherkin) drive all drivers via one shared step tree |
 | **Behavioural spec language** | Gherkin | High (rewrite specs) | -- | -- |
 | **Build orchestration** | pnpm + Turborepo | ~1 dev-day | Build graph: domain -> shared -> client/server | -- |
 
@@ -1108,9 +1108,9 @@ Tests are layered the same way the system is. Each layer has its own kind of tes
 Behavioural Specs (Gherkin)             - WHAT the system does
   |
 Step Definitions / Page Objects         - HOW to drive the system today
-  |  (Playwright today; replaceable)
+  |  (Cucumber-JS + Cypress; one tree)
   |
-Test Runner / Driver                    - Vitest, Playwright, ...
+Test Runner / Driver                    - Vitest, Playwright, Cypress, ...
 ```
 
 ### 9.1 Layers
@@ -1141,10 +1141,10 @@ Feature: FX price streaming
 ```
 
 The same `.feature` file is consumed by:
-- **client-side e2e step defs** (Playwright today) -- drives a real browser, asserts DOM.
+- **client-side e2e step defs** (Playwright + Cypress — both share one step tree) -- drives a real browser, asserts DOM.
 - **application-layer step defs** -- drives presenters directly, asserts hook output, no browser. Fast.
 
-If Playwright is replaced by another driver, only the e2e step defs change. Replacing React with SolidJS rewrites the page objects but not the specs.
+If a browser driver is replaced, only the page-object implementations for that driver change. Replacing React with SolidJS rewrites the page objects but not the specs.
 
 ### 9.3 Linking specs to existing project specs
 
@@ -1158,6 +1158,23 @@ A single test suite is parameterised over **all** adapters that implement a port
 - any future adapter (e.g. a different transport).
 
 This is what makes "swap an adapter" a low-cost operation: the contract is encoded in tests and they all must pass.
+
+### 9.5 Dual-runner stack (Cucumber-JS + cypress-cucumber-preprocessor)
+
+Both browser drivers run the **same** Gherkin specs and share a single step-definition tree:
+
+| Layer | Stack |
+|---|---|
+| Behaviour specs (`.feature`) | Gherkin · Cucumber-JS 11 (Playwright) + cypress-cucumber-preprocessor 22 (Cypress) |
+| Step definitions | One shared tree — bundler alias maps `@cucumber/cucumber` → preprocessor for Cypress |
+| Scenarios layer | Pure functions taking `(ctx: TestContext, args)`; driver-free |
+| Page-object contracts | TypeScript interfaces; `TESTIDS` and `STRINGS` SOTs |
+| Page-object impls (drivers) | `tests/page-objects/playwright/` (Playwright) + `tests/page-objects/cypress/` (Cypress) |
+| Per-runner support | `tests/support/playwright/{world,hooks}.ts` and `tests/support/cypress/{world,e2e}.ts` |
+
+**Bundler-alias seam.** `tests/steps/*.steps.ts` files unconditionally `import { Given, When, Then } from "@cucumber/cucumber"`. Cucumber-JS resolves this natively in Node. Cypress's esbuild bundler (configured in `tests/cypress.config.ts`) installs a 5-line plugin that intercepts the specifier and remaps it to `@badeball/cypress-cucumber-preprocessor`. Both packages expose API-compatible `Given/When/Then/And/But/defineParameterType` decorators, so the same call sites compile cleanly under either resolution.
+
+The trick is invisible at the step-file level. Hooks and `World/setWorldConstructor` are NOT shared — they live in the per-runner `tests/support/{playwright,cypress}/` directories.
 
 ---
 
@@ -1205,5 +1222,8 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 | **Behavioural Specs** | `tests/specs/**/*.feature` | Gherkin scenarios, framework-free; SOT for behaviour |
 | **Page Object Contracts** | `tests/page-objects/contracts/**/*.ts` | Driver-free TS interfaces + `data-testid` constants; SOT for the UI surface |
 | **Page Objects (Playwright)** | `tests/page-objects/playwright/**/*.ts` | Playwright implementations of the contracts |
-| **Step Definitions** | `tests/steps/browser/**/*.ts` | Cucumber-JS step defs for the browser driver; import only contracts |
-| **Test World + Hooks** | `tests/support/**/*.ts` | `PlaywrightWorld`, dev-server lifecycle, hooks |
+| **Page Objects (Cypress)** | `tests/page-objects/cypress/**/*.ts` | Cypress implementations of the contracts |
+| **Step Definitions** | `tests/steps/**/*.ts` | Cucumber-JS step defs (shared tree); import only contracts |
+| **Test World + Hooks** | `tests/support/playwright/{world,hooks}.ts` and `tests/support/cypress/{world,e2e}.ts` | Per-runner World, dev-server lifecycle, hooks |
+| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based) |
+| **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and cross-runner orchestration |

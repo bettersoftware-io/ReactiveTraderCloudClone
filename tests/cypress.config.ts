@@ -14,7 +14,7 @@ const require = createRequire(import.meta.url);
  * native-Promise guard. The shim itself re-exports everything else from the
  * browser entrypoint unchanged.
  *
- * See docs/architecture.md §11 for the full seam description.
+ * See docs/architecture.md §9.5 for the full seam description.
  */
 const aliasCucumber: import("esbuild").Plugin = {
   name: "alias-cucumber",
