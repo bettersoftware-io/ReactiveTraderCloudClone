@@ -122,4 +122,27 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
     return this.firstTile()
       .then(($tile) => $tile.find("input").is(":visible")) as unknown as Promise<boolean>;
   }
+
+  buyNTimesWithDismissals(n: number): Promise<void> {
+    // Implement the loop with recursive Cypress chaining to avoid mixing
+    // async/await with cy commands, which Cypress does not permit inside a
+    // Promise returned to Cucumber's step runner.
+    const loop = (remaining: number): void => {
+      if (remaining <= 0) return;
+      this.firstTile()
+        .find(`[data-testid="${TESTIDS.liveRates.buyBtn}"]`)
+        .click();
+      cy.wait(1_500);
+      cy.get("body").then(($body) => {
+        const found = $body.find(TILE_CONFIRMATION_SELECTOR);
+        if (found.length > 0 && found.css("display") !== "none") {
+          cy.get(TILE_CONFIRMATION_SELECTOR).first().click();
+          cy.wait(500);
+        }
+      });
+      cy.wrap(null).then(() => loop(remaining - 1));
+    };
+    loop(n);
+    return cy.wrap(undefined) as unknown as Promise<void>;
+  }
 }

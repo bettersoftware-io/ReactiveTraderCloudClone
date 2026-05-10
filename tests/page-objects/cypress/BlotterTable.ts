@@ -54,9 +54,15 @@ export class CypressBlotterTable implements BlotterTablePO {
   }
 
   isExportCsvVisible(): Promise<boolean> {
+    // Use css("display") !== "none" instead of jQuery :visible, because
+    // Cypress's :visible requires the element to be within the viewport —
+    // but the blotter sits below the fold. This matches the same pattern
+    // used in isVisible() for the blotter table itself.
     return cy.get("body").then(($body) => {
       const found = $body.find(`[data-testid="${TESTIDS.blotter.exportCsv}"]`);
-      return found.length > 0 && found.is(":visible");
+      if (found.length === 0) return false;
+      const css = (found as JQuery<HTMLElement>).css("display");
+      return css !== "none";
     }) as unknown as Promise<boolean>;
   }
 
@@ -76,7 +82,15 @@ export class CypressBlotterTable implements BlotterTablePO {
   }
 
   isFirstRowVisible(): Promise<boolean> {
+    // Use css("display") !== "none" instead of jQuery :visible for the same
+    // reason as isVisible()/isExportCsvVisible(): the blotter is below the
+    // fold so Cypress's viewport-based :visible check returns false even when
+    // the row is fully rendered and interactable.
     return this.rows()
-      .then(($rows) => $rows.length > 0 && $rows.first().is(":visible")) as unknown as Promise<boolean>;
+      .then(($rows) => {
+        if ($rows.length === 0) return false;
+        const css = ($rows.first() as JQuery<HTMLElement>).css("display");
+        return css !== "none";
+      }) as unknown as Promise<boolean>;
   }
 }

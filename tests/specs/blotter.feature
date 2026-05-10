@@ -25,7 +25,8 @@ Feature: FX trade blotter
     Then the blotter row count equals "all"
 
   Scenario: export CSV button is visible and labeled
-    Then the export CSV button is visible
+    Then the blotter table is visible
+    And the export CSV button is visible
     And the export CSV button text contains "Export CSV"
 
   Scenario: new trade row has a non-empty background color

@@ -77,4 +77,14 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
   async isNotionalInputVisible(): Promise<boolean> {
     return await this.firstTile().locator("input").isVisible();
   }
+  async buyNTimesWithDismissals(n: number): Promise<void> {
+    for (let i = 0; i < n; i++) {
+      await this.clickBuyOnFirst();
+      await this.page.waitForTimeout(1_500);
+      if (await this.isConfirmationVisible()) {
+        await this.dismissConfirmation();
+        await this.page.waitForTimeout(500);
+      }
+    }
+  }
 }

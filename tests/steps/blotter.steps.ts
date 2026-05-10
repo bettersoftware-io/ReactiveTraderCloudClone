@@ -35,8 +35,5 @@ Then("the first blotter row background color is non-empty",
 When("the trader hovers the first blotter row",
   function(this: StepContext) { return blotter.hoverFirstBlotterRow(this.ctx); });
 
-When(
-  "the trader buys {int} times with confirmation dismissals",
-  { timeout: 30_000 },
-  function(this: StepContext, n: number) { return blotter.buyNTimesWithDismissals(this.ctx, n); },
-);
+When("the trader buys {int} times with confirmation dismissals",
+  function(this: StepContext, n: number) { return blotter.buyNTimesWithDismissals(this.ctx, n); });

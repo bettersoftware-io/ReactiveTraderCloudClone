@@ -1,7 +1,11 @@
-import { After, AfterAll, Before, BeforeAll } from "@cucumber/cucumber";
+import { After, AfterAll, Before, BeforeAll, setDefaultTimeout } from "@cucumber/cucumber";
 import { chromium, type Browser } from "@playwright/test";
 import { startDevServer, type DevServerHandle } from "../devServer";
 import { PlaywrightWorld } from "./world";
+
+// Extend the step timeout to 30 s so that multi-step scenarios (e.g. buy
+// N times with confirmation dismissals) have room to finish under Playwright.
+setDefaultTimeout(30_000);
 
 let browser: Browser | undefined;
 let dev: DevServerHandle | undefined;

@@ -34,4 +34,13 @@ export interface LiveRatesTilePO {
   /** Notional input on the first tile. */
   fillFirstTileNotional(value: string): Promise<void>;
   isNotionalInputVisible(): Promise<boolean>;
+
+  /**
+   * Buy n times, each time pausing 1.5 s after clicking, then dismissing the
+   * confirmation overlay (if visible) and pausing 0.5 s after dismissal.
+   * Encapsulated in the PO so Cypress can implement the loop natively with
+   * its command queue instead of an async for-loop (which conflicts with
+   * Cypress's own Promise model).
+   */
+  buyNTimesWithDismissals(n: number): Promise<void>;
 }

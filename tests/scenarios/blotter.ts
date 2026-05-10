@@ -51,12 +51,5 @@ export async function hoverFirstBlotterRow(ctx: TestContext): Promise<void> {
 }
 
 export async function buyNTimesWithDismissals(ctx: TestContext, n: number): Promise<void> {
-  for (let i = 0; i < n; i++) {
-    await ctx.po.liveRatesTile.clickBuyOnFirst();
-    await ctx.po.workspace.wait(1_500);
-    if (await ctx.po.liveRatesTile.isConfirmationVisible()) {
-      await ctx.po.liveRatesTile.dismissConfirmation();
-      await ctx.po.workspace.wait(500);
-    }
-  }
+  await ctx.po.liveRatesTile.buyNTimesWithDismissals(n);
 }
