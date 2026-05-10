@@ -6,5 +6,11 @@
 export const STRINGS = {
   creditRfq: {
     submitButton: "Submit RFQ",
+    noRfqsMessage: "No RFQs to display",
+    sellSideHeading: "Sell Side (Adaptive Bank)",
+    creditTradesHeading: "Credit Trades",
+    buyButton: "Buy",
+    sellButton: "Sell",
+    directionLabel: "Direction",
   },
 } as const;
