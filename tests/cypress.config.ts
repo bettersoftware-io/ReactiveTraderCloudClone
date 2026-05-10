@@ -1,5 +1,6 @@
 import { defineConfig } from "cypress";
 import { createRequire } from "node:module";
+import path from "node:path";
 import createBundler from "@bahmutov/cypress-esbuild-preprocessor";
 import { addCucumberPreprocessorPlugin } from "@badeball/cypress-cucumber-preprocessor";
 import createEsbuildPlugin from "@badeball/cypress-cucumber-preprocessor/esbuild";
@@ -7,15 +8,22 @@ import createEsbuildPlugin from "@badeball/cypress-cucumber-preprocessor/esbuild
 const require = createRequire(import.meta.url);
 
 /**
- * Aliases @cucumber/cucumber → @badeball/cypress-cucumber-preprocessor at
- * bundle time so step files can share one tree across both runners. See
- * docs/architecture.md §11 for the full seam description.
+ * Aliases @cucumber/cucumber → a thin shim that wraps Given/When/Then handlers
+ * in cy.wrap().then() so async step bodies (which return native Promises) are
+ * presented to the preprocessor as Cypress Chainables — avoiding the v24+
+ * native-Promise guard. The shim itself re-exports everything else from the
+ * browser entrypoint unchanged.
+ *
+ * See docs/architecture.md §11 for the full seam description.
  */
 const aliasCucumber: import("esbuild").Plugin = {
   name: "alias-cucumber",
   setup(build) {
     build.onResolve({ filter: /^@cucumber\/cucumber$/ }, () => ({
-      path: require.resolve("@badeball/cypress-cucumber-preprocessor"),
+      path: path.resolve(
+        new URL(".", import.meta.url).pathname,
+        "support/cypress/cucumber-shim.ts"
+      ),
     }));
   },
 };
