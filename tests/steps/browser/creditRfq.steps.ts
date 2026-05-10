@@ -1,66 +1,35 @@
 import { Then, When } from "@cucumber/cucumber";
-import { expect } from "@playwright/test";
-import type { PlaywrightWorld } from "../../support/world";
+import type { StepContext } from "../../support/testContext";
+import * as creditRfq from "../../scenarios/creditRfq";
 
-When(
-  "the trader switches to the credit {string} tab",
-  async function (this: PlaywrightWorld, tab: string) {
-    if (tab !== "tiles" && tab !== "new-rfq" && tab !== "sell-side") {
-      throw new Error(`unsupported credit tab: ${tab}`);
-    }
-    await this.po.creditRfqPanel.clickTab(tab);
-  },
-);
+When("the trader switches to the credit {string} tab",
+  function(this: StepContext, tab: string) { return creditRfq.clickCreditTab(this.ctx, tab); });
 
-Then(
-  "the credit {string} tab is visible",
-  async function (this: PlaywrightWorld, tab: string) {
-    if (tab !== "tiles" && tab !== "new-rfq" && tab !== "sell-side") {
-      throw new Error(`unsupported credit tab: ${tab}`);
-    }
-    expect(await this.po.creditRfqPanel.tabIsVisible(tab)).toBe(true);
-  },
-);
+Then("the credit {string} tab is visible",
+  function(this: StepContext, tab: string) { return creditRfq.expectCreditTabVisible(this.ctx, tab); });
 
-Then(
-  "the message {string} appears within {int} seconds",
-  async function (this: PlaywrightWorld, message: string, seconds: number) {
-    if (message === "No RFQs to display") {
-      await this.po.creditRfqPanel.waitForNoRfqsMessage(seconds * 1_000);
-    } else {
-      throw new Error(`message "${message}" has no PO method; add one if needed`);
-    }
-  },
-);
+Then("the message {string} appears within {int} seconds",
+  function(this: StepContext, message: string, seconds: number) {
+    return creditRfq.expectMessageWithin(this.ctx, message, seconds);
+  });
 
-Then(
-  "the credit RFQ submit button appears within {int} seconds",
-  async function (this: PlaywrightWorld, seconds: number) {
-    await this.po.creditRfqForm.waitForSubmitButton(seconds * 1_000);
-  },
-);
+Then("the credit RFQ submit button appears within {int} seconds",
+  function(this: StepContext, seconds: number) {
+    return creditRfq.expectCreditRfqSubmitButtonWithin(this.ctx, seconds);
+  });
 
-Then(
-  "the credit RFQ form has Buy and Sell direction buttons",
-  async function (this: PlaywrightWorld) {
-    expect(await this.po.creditRfqForm.hasBuyAndSellButtons()).toBe(true);
-  },
-);
+Then("the credit RFQ form has Buy and Sell direction buttons",
+  function(this: StepContext) { return creditRfq.expectCreditRfqHasBuySellButtons(this.ctx); });
 
-Then("the credit RFQ form has a Direction label", async function (this: PlaywrightWorld) {
-  expect(await this.po.creditRfqForm.hasDirectionLabel()).toBe(true);
-});
+Then("the credit RFQ form has a Direction label",
+  function(this: StepContext) { return creditRfq.expectCreditRfqHasDirectionLabel(this.ctx); });
 
-Then(
-  "the sell-side heading {string} appears within {int} seconds",
-  async function (this: PlaywrightWorld, _heading: string, seconds: number) {
-    await this.po.creditRfqPanel.waitForSellSideHeading(seconds * 1_000);
-  },
-);
+Then("the sell-side heading {string} appears within {int} seconds",
+  function(this: StepContext, _heading: string, seconds: number) {
+    return creditRfq.expectSellSideHeadingWithin(this.ctx, seconds);
+  });
 
-Then(
-  "the credit trades heading {string} appears within {int} seconds",
-  async function (this: PlaywrightWorld, _heading: string, seconds: number) {
-    await this.po.creditRfqPanel.waitForCreditTradesHeading(seconds * 1_000);
-  },
-);
+Then("the credit trades heading {string} appears within {int} seconds",
+  function(this: StepContext, _heading: string, seconds: number) {
+    return creditRfq.expectCreditTradesHeadingWithin(this.ctx, seconds);
+  });
