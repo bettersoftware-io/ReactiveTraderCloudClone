@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:e2e": "tsx scripts/run-all.ts",
+    "test:e2e": "pnpm gates && tsx scripts/run-all.ts",
     "test:e2e:playwright": "NODE_OPTIONS='--import tsx/esm' cucumber-js",
     "test:e2e:cypress": "tsx scripts/with-server.ts cypress run --headless",
     "test:e2e:cypress:open": "tsx scripts/with-server.ts cypress open --e2e",
+    "gates": "tsx scripts/grep-gates.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
