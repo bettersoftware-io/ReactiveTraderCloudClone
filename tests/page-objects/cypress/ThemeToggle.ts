@@ -1,11 +1,16 @@
 import type { ThemeTogglePO } from "../contracts/ThemeToggle";
-
-function notYet(name: string): never {
-  throw new Error(`CypressThemeToggle.${name}() not yet implemented (Phase 5A.2 task >10)`);
-}
+import { TESTIDS } from "../contracts/testids";
 
 export class CypressThemeToggle implements ThemeTogglePO {
-  click(): Promise<void> { notYet("click"); }
-  isVisible(): Promise<boolean> { notYet("isVisible"); }
-  ariaLabel(): Promise<string> { notYet("ariaLabel"); }
+  click(): Promise<void> {
+    return cy.get(`[data-testid="${TESTIDS.shell.themeToggle}"]`).click() as unknown as Promise<void>;
+  }
+  isVisible(): Promise<boolean> {
+    return cy.get(`[data-testid="${TESTIDS.shell.themeToggle}"]`)
+      .then(($el) => $el.is(":visible")) as unknown as Promise<boolean>;
+  }
+  ariaLabel(): Promise<string> {
+    return cy.get(`[data-testid="${TESTIDS.shell.themeToggle}"]`)
+      .then(($el) => $el.attr("aria-label") ?? "") as unknown as Promise<string>;
+  }
 }

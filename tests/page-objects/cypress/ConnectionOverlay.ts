@@ -1,12 +1,23 @@
 import type { ConnectionOverlayPO } from "../contracts/ConnectionOverlay";
-
-function notYet(name: string): never {
-  throw new Error(`CypressConnectionOverlay.${name}() not yet implemented (Phase 5A.2 task >10)`);
-}
+import { TESTIDS } from "../contracts/testids";
 
 export class CypressConnectionOverlay implements ConnectionOverlayPO {
-  isHidden(): Promise<boolean> { notYet("isHidden"); }
-  waitVisible(timeoutMs: number): Promise<void> { notYet("waitVisible"); }
-  waitHidden(timeoutMs: number): Promise<void> { notYet("waitHidden"); }
-  text(): Promise<string> { notYet("text"); }
+  isHidden(): Promise<boolean> {
+    return cy.get("body").then(($body) => {
+      const found = $body.find(`[data-testid="${TESTIDS.connection.overlay}"]`);
+      return found.length === 0 || !found.is(":visible");
+    }) as unknown as Promise<boolean>;
+  }
+  waitVisible(timeoutMs: number): Promise<void> {
+    return cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`, { timeout: timeoutMs })
+      .should("be.visible") as unknown as Promise<void>;
+  }
+  waitHidden(timeoutMs: number): Promise<void> {
+    return cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`, { timeout: timeoutMs })
+      .should("not.exist") as unknown as Promise<void>;
+  }
+  text(): Promise<string> {
+    return cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`)
+      .then(($el) => $el.text()) as unknown as Promise<string>;
+  }
 }

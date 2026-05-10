@@ -1,11 +1,17 @@
 import type { AnalyticsDashboardPO } from "../contracts/AnalyticsDashboard";
-
-function notYet(name: string): never {
-  throw new Error(`CypressAnalyticsDashboard.${name}() not yet implemented (Phase 5A.2 task >10)`);
-}
+import { TESTIDS } from "../contracts/testids";
 
 export class CypressAnalyticsDashboard implements AnalyticsDashboardPO {
-  waitVisible(timeoutMs: number): Promise<void> { notYet("waitVisible"); }
-  isVisible(): Promise<boolean> { notYet("isVisible"); }
-  hasSection(name: string): Promise<boolean> { notYet("hasSection"); }
+  waitVisible(timeoutMs: number): Promise<void> {
+    return cy.get(`[data-testid="${TESTIDS.analytics.panel}"]`, { timeout: timeoutMs })
+      .should("be.visible") as unknown as Promise<void>;
+  }
+  isVisible(): Promise<boolean> {
+    return cy.get(`[data-testid="${TESTIDS.analytics.panel}"]`)
+      .then(($el) => $el.is(":visible")) as unknown as Promise<boolean>;
+  }
+  hasSection(name: string): Promise<boolean> {
+    return cy.get(`[data-testid="${TESTIDS.analytics.panel}"]`)
+      .then(($panel) => $panel.text().includes(name)) as unknown as Promise<boolean>;
+  }
 }
