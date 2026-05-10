@@ -1,0 +1,5 @@
+{
+  "stepDefinitions": ["steps/*.steps.ts"],
+  "json": { "enabled": false },
+  "html": { "enabled": true, "output": "reports/cypress-cucumber.html" }
+}

@@ -6,7 +6,7 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
-    "types": ["node"],
+    "types": ["node", "cypress", "@badeball/cypress-cucumber-preprocessor/methods"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
   "include": [
@@ -14,6 +14,7 @@
     "page-objects/**/*.ts",
     "steps/**/*.ts",
     "raw/**/*.ts",
-    "cucumber.js"
+    "cucumber.js",
+    "cypress.config.ts"
   ]
 }
