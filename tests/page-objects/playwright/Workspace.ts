@@ -34,4 +34,7 @@ export class PlaywrightWorkspace implements WorkspacePO {
       (el) => getComputedStyle(el as HTMLElement).backgroundColor,
     );
   }
+  async wait(ms: number): Promise<void> {
+    await this.page.waitForTimeout(ms);
+  }
 }
