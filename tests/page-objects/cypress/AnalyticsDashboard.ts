@@ -11,7 +11,14 @@ export class CypressAnalyticsDashboard implements AnalyticsDashboardPO {
       .then(($el) => $el.is(":visible")) as unknown as Promise<boolean>;
   }
   hasSection(name: string): Promise<boolean> {
-    return cy.get(`[data-testid="${TESTIDS.analytics.panel}"]`)
-      .then(($panel) => $panel.text().includes(name)) as unknown as Promise<boolean>;
+    return cy.get("body").then(($body) => {
+      const $panel = $body.find(`[data-testid="${TESTIDS.analytics.panel}"]`);
+      if ($panel.length === 0) return false;
+      const $matches = $panel.find(":visible").filter((_, el) => {
+        const text = el.textContent ?? "";
+        return text.includes(name);
+      });
+      return $matches.length > 0;
+    }) as unknown as Promise<boolean>;
   }
 }
