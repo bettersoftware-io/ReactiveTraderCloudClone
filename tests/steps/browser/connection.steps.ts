@@ -1,51 +1,35 @@
 import { Then, When } from "@cucumber/cucumber";
-import { expect } from "@playwright/test";
-import type { PlaywrightWorld } from "../../support/world";
+import type { StepContext } from "../../support/testContext";
+import * as connection from "../../scenarios/connection";
 
-When("the browser goes offline", async function (this: PlaywrightWorld) {
-  await this.po.workspace.setOffline(true);
-});
+When("the browser goes offline",
+  function(this: StepContext) { return connection.setBrowserOffline(this.ctx, true); });
 
-When("the browser comes back online", async function (this: PlaywrightWorld) {
-  await this.po.workspace.setOffline(false);
-});
+When("the browser comes back online",
+  function(this: StepContext) { return connection.setBrowserOffline(this.ctx, false); });
 
-Then("the connection status footer is visible", async function (this: PlaywrightWorld) {
-  expect(await this.po.footer.isStatusVisible()).toBe(true);
-});
+Then("the connection status footer is visible",
+  function(this: StepContext) { return connection.expectConnectionStatusFooterVisible(this.ctx); });
 
-Then(
-  "the connection status footer shows {string}",
-  async function (this: PlaywrightWorld, expected: string) {
-    await expect.poll(async () => await this.po.footer.connectionLabel(), { timeout: 5_000 }).toContain(expected);
-  },
-);
+Then("the connection status footer shows {string}",
+  function(this: StepContext, expected: string) {
+    return connection.expectConnectionStatusFooterShows(this.ctx, expected);
+  });
 
-Then("the connection overlay is hidden", async function (this: PlaywrightWorld) {
-  expect(await this.po.connectionOverlay.isHidden()).toBe(true);
-});
+Then("the connection overlay is hidden",
+  function(this: StepContext) { return connection.expectConnectionOverlayHidden(this.ctx); });
 
-Then(
-  "the connection overlay becomes visible within {int} seconds",
-  async function (this: PlaywrightWorld, seconds: number) {
-    await this.po.connectionOverlay.waitVisible(seconds * 1_000);
-  },
-);
+Then("the connection overlay becomes visible within {int} seconds",
+  function(this: StepContext, seconds: number) {
+    return connection.expectConnectionOverlayVisibleWithin(this.ctx, seconds);
+  });
 
-Then(
-  "the connection overlay is hidden within {int} seconds",
-  async function (this: PlaywrightWorld, seconds: number) {
-    await this.po.connectionOverlay.waitHidden(seconds * 1_000);
-  },
-);
+Then("the connection overlay is hidden within {int} seconds",
+  function(this: StepContext, seconds: number) {
+    return connection.expectConnectionOverlayHiddenWithin(this.ctx, seconds);
+  });
 
-Then(
-  "the connection overlay text matches {}",
-  async function (this: PlaywrightWorld, raw: string) {
-    const match = raw.match(/^\/(.+)\/([gimsuy]*)$/);
-    if (!match) throw new Error(`bad regex literal: ${raw}`);
-    const re = new RegExp(match[1], match[2]);
-    const text = await this.po.connectionOverlay.text();
-    expect(text).toMatch(re);
-  },
-);
+Then("the connection overlay text matches {}",
+  function(this: StepContext, raw: string) {
+    return connection.expectConnectionOverlayTextMatches(this.ctx, raw);
+  });

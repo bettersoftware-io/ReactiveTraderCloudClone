@@ -1,28 +1,18 @@
 import { Given, When } from "@cucumber/cucumber";
-import type { PlaywrightWorld } from "../../support/world";
+import type { StepContext } from "../../support/testContext";
+import * as common from "../../scenarios/common";
 
-Given("the trader has the workspace open", async function (this: PlaywrightWorld) {
-  await this.po.workspace.open();
-});
+Given("the trader has the workspace open",
+  function(this: StepContext) { return common.openWorkspace(this.ctx); });
 
-Given("the trader has the FX workspace open", async function (this: PlaywrightWorld) {
-  await this.po.workspace.openFx();
-});
+Given("the trader has the FX workspace open",
+  function(this: StepContext) { return common.openFxWorkspace(this.ctx); });
 
-Given("the credit workspace is open", async function (this: PlaywrightWorld) {
-  await this.po.workspace.openCredit();
-});
+Given("the credit workspace is open",
+  function(this: StepContext) { return common.openCreditWorkspace(this.ctx); });
 
-When(
-  "the trader switches to the {string} tab",
-  async function (this: PlaywrightWorld, tab: string) {
-    if (tab !== "fx" && tab !== "credit" && tab !== "admin") {
-      throw new Error(`unsupported tab: ${tab}`);
-    }
-    await this.po.workspace.clickTab(tab);
-  },
-);
+When("the trader switches to the {string} tab",
+  function(this: StepContext, tab: string) { return common.clickTab(this.ctx, tab); });
 
-When("the trader reloads the page", async function (this: PlaywrightWorld) {
-  await this.po.workspace.reload();
-});
+When("the trader reloads the page",
+  function(this: StepContext) { return common.reloadPage(this.ctx); });
