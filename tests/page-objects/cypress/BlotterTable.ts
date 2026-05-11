@@ -13,8 +13,11 @@ export class CypressBlotterTable implements BlotterTablePO {
   }
 
   waitVisible(timeoutMs: number): Promise<void> {
-    return cy.get(`[data-testid="${TESTIDS.blotter.table}"]`, { timeout: timeoutMs })
-      .should("be.visible") as unknown as Promise<void>;
+    return new Promise<void>((resolve) => {
+      cy.get(`[data-testid="${TESTIDS.blotter.table}"]`, { timeout: timeoutMs })
+        .should("be.visible")
+        .then(() => resolve());
+    });
   }
 
   isVisible(): Promise<boolean> {
@@ -22,35 +25,50 @@ export class CypressBlotterTable implements BlotterTablePO {
     // Cypress considers off-viewport elements "not visible". Match Playwright's
     // behavior by checking for DOM presence (not CSS hidden) rather than strict
     // Cypress viewport-visibility.
-    return cy.get("body").then(($body) => {
-      const found = $body.find(`[data-testid="${TESTIDS.blotter.table}"]`);
-      if (found.length === 0) return false;
-      const css = (found as JQuery<HTMLElement>).css("display");
-      return css !== "none";
-    }) as unknown as Promise<boolean>;
+    return new Promise<boolean>((resolve) => {
+      cy.get("body").then(($body) => {
+        const found = $body.find(`[data-testid="${TESTIDS.blotter.table}"]`);
+        if (found.length === 0) {
+          resolve(false);
+          return;
+        }
+        const css = (found as JQuery<HTMLElement>).css("display");
+        resolve(css !== "none");
+      });
+    });
   }
 
   rowCount(): Promise<number> {
-    return this.rows()
-      .then(($rows) => $rows.length) as unknown as Promise<number>;
+    return new Promise<number>((resolve) => {
+      this.rows().then(($rows) => resolve($rows.length));
+    });
   }
 
   clickFirstHeader(): Promise<void> {
-    return this.tableEl()
-      .find("th")
-      .first()
-      .click() as unknown as Promise<void>;
+    return new Promise<void>((resolve) => {
+      this.tableEl()
+        .find("th")
+        .first()
+        .click()
+        .then(() => resolve());
+    });
   }
 
   fillQuickFilter(text: string): Promise<void> {
-    return cy.get(`[data-testid="${TESTIDS.blotter.quickFilter}"]`)
-      .clear()
-      .type(text) as unknown as Promise<void>;
+    return new Promise<void>((resolve) => {
+      cy.get(`[data-testid="${TESTIDS.blotter.quickFilter}"]`)
+        .clear()
+        .type(text)
+        .then(() => resolve());
+    });
   }
 
   clearQuickFilter(): Promise<void> {
-    return cy.get(`[data-testid="${TESTIDS.blotter.quickFilter}"]`)
-      .clear() as unknown as Promise<void>;
+    return new Promise<void>((resolve) => {
+      cy.get(`[data-testid="${TESTIDS.blotter.quickFilter}"]`)
+        .clear()
+        .then(() => resolve());
+    });
   }
 
   isExportCsvVisible(): Promise<boolean> {
@@ -58,27 +76,39 @@ export class CypressBlotterTable implements BlotterTablePO {
     // Cypress's :visible requires the element to be within the viewport —
     // but the blotter sits below the fold. This matches the same pattern
     // used in isVisible() for the blotter table itself.
-    return cy.get("body").then(($body) => {
-      const found = $body.find(`[data-testid="${TESTIDS.blotter.exportCsv}"]`);
-      if (found.length === 0) return false;
-      const css = (found as JQuery<HTMLElement>).css("display");
-      return css !== "none";
-    }) as unknown as Promise<boolean>;
+    return new Promise<boolean>((resolve) => {
+      cy.get("body").then(($body) => {
+        const found = $body.find(`[data-testid="${TESTIDS.blotter.exportCsv}"]`);
+        if (found.length === 0) {
+          resolve(false);
+          return;
+        }
+        const css = (found as JQuery<HTMLElement>).css("display");
+        resolve(css !== "none");
+      });
+    });
   }
 
   exportCsvText(): Promise<string> {
-    return cy.get(`[data-testid="${TESTIDS.blotter.exportCsv}"]`)
-      .then(($el) => $el.text()) as unknown as Promise<string>;
+    return new Promise<string>((resolve) => {
+      cy.get(`[data-testid="${TESTIDS.blotter.exportCsv}"]`)
+        .then(($el) => resolve($el.text()));
+    });
   }
 
   hoverFirstRow(): Promise<void> {
-    return this.firstRow()
-      .trigger("mouseover") as unknown as Promise<void>;
+    return new Promise<void>((resolve) => {
+      this.firstRow()
+        .trigger("mouseover")
+        .then(() => resolve());
+    });
   }
 
   firstRowBackgroundColor(): Promise<string> {
-    return this.firstRow()
-      .then(($el) => getComputedStyle($el[0]).backgroundColor) as unknown as Promise<string>;
+    return new Promise<string>((resolve) => {
+      this.firstRow()
+        .then(($el) => resolve(getComputedStyle($el[0]).backgroundColor));
+    });
   }
 
   isFirstRowVisible(): Promise<boolean> {
@@ -86,11 +116,15 @@ export class CypressBlotterTable implements BlotterTablePO {
     // reason as isVisible()/isExportCsvVisible(): the blotter is below the
     // fold so Cypress's viewport-based :visible check returns false even when
     // the row is fully rendered and interactable.
-    return this.rows()
-      .then(($rows) => {
-        if ($rows.length === 0) return false;
+    return new Promise<boolean>((resolve) => {
+      this.rows().then(($rows) => {
+        if ($rows.length === 0) {
+          resolve(false);
+          return;
+        }
         const css = ($rows.first() as JQuery<HTMLElement>).css("display");
-        return css !== "none";
-      }) as unknown as Promise<boolean>;
+        resolve(css !== "none");
+      });
+    });
   }
 }
