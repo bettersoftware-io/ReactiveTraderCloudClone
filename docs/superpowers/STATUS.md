@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-10
+**Last updated:** 2026-05-11
 
 ---
 
@@ -25,7 +25,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 4 — Reorganise `packages/client/src/` into `app/` + `ui/` subtrees | ✅ DONE | `plans/2026-05-07-phase-4-app-ui-reorg.md` | `dd84f6a..10861fe` (10 task commits) + this STATUS update |
 | Phase 5A.1 — Gherkin + page objects (Cucumber + Playwright) | ✅ DONE | `plans/2026-05-08-phase-5a-1-gherkin-page-objects.md` | `49e5764..892c128` (15 commits) |
 | Phase 5A.2 — Cucumber + Cypress sharing the same `.feature` files | ✅ DONE | `plans/2026-05-10-phase-5a-2-cypress-cucumber.md` | `c8706ec..05ecee4` (24 task commits) + this STATUS update |
-| Phase 5A.3 — Raw Playwright reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5A.3 — Raw Playwright reusing PO contracts | ✅ DONE | `plans/2026-05-10-phase-5a-3-raw-playwright-po-contracts.md` | `f26ae72..55a5fe7` (11 task commits) + this STATUS update |
 | Phase 5A.4 — Raw Cypress reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5B — Presenter-direct step definitions for the same `.feature` files | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5C — Port contract tests (simulator vs WsReal) | ⏳ NOT STARTED | (to be written) | — |
@@ -93,6 +93,12 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 2. **`cucumber-shim.ts` `isCyElement` guard.** The first branch of the result-type check (`isCyElement`) is not a documented Cypress API and is effectively unreachable in practice (the authoritative `Cypress.isCy(result)` on the next line handles all relevant cases). Either remove or comment which runtime case it defends against.
 
 3. **STRINGS coverage expansion.** `tests/page-objects/contracts/strings.ts` currently has entries for `creditRfq` only. Other PO impls (e.g. `AnalyticsDashboard` section names, footer copy) still embed regex patterns directly in the impl. Acceptable for 5A.2 because no copy-as-selector is duplicated between drivers in those areas, but worth expanding for consistency in 5A.3+.
+
+## Phase 5A.3 follow-ups (carry into Phase 5A.4+)
+
+1. **`waitSeconds` is mis-located.** `tests/scenarios/fxLiveRates.ts` exports `waitSeconds`, but it wraps `ctx.po.workspace.wait` and has nothing FX-Live-Rates-specific. It is reused from `blotter.spec.ts` and `fxTrading.spec.ts`. Move to `tests/scenarios/common.ts` when next touching either file.
+
+2. **`tests/.gitignore` `test-results/` line is redundant.** The repo-root `.gitignore` already covers `test-results/`. The defense-in-depth entry is harmless but could be dropped if/when consolidating ignore rules.
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
