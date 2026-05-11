@@ -1159,22 +1159,24 @@ A single test suite is parameterised over **all** adapters that implement a port
 
 This is what makes "swap an adapter" a low-cost operation: the contract is encoded in tests and they all must pass.
 
-### 9.5 Dual-runner stack (Cucumber-JS + cypress-cucumber-preprocessor)
+### 9.5 Tri-runner stack (Cucumber-JS + Cypress + raw @playwright/test)
 
-Both browser drivers run the **same** Gherkin specs and share a single step-definition tree:
+Three runners exercise the same behavioural surface via two binding styles. Cucumber-JS (with Playwright) and Cypress (via cypress-cucumber-preprocessor) bind Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree. Raw `@playwright/test` binds the same scenarios programmatically — one `test()` per `Scenario:`, calling the same `scenarios/*.ts` functions the step tree would. All three reach the UI through one set of Playwright (and one of Cypress) page-object implementations.
 
 | Layer | Stack |
 |---|---|
 | Behaviour specs (`.feature`) | Gherkin · Cucumber-JS 11 (Playwright) + cypress-cucumber-preprocessor 22 (Cypress) |
 | Step definitions | One shared tree — bundler alias maps `@cucumber/cucumber` → preprocessor for Cypress |
-| Scenarios layer | Pure functions taking `(ctx: TestContext, args)`; driver-free |
+| Raw Playwright specs (`.spec.ts`) | `tests/raw/playwright/*.spec.ts` — bind scenarios via `@playwright/test` `test()` bodies; no Gherkin |
+| Scenarios layer | Pure functions taking `(ctx: TestContext, args)`; driver-free; shared by all three runners |
 | Page-object contracts | TypeScript interfaces; `TESTIDS` and `STRINGS` SOTs |
 | Page-object impls (drivers) | `tests/page-objects/playwright/` (Playwright) + `tests/page-objects/cypress/` (Cypress) |
-| Per-runner support | `tests/support/playwright/{world,hooks}.ts` and `tests/support/cypress/{world,e2e}.ts` |
+| Per-runner support | `tests/support/playwright/{world,hooks}.ts` (Cucumber+Playwright) · `tests/support/cypress/{world,e2e}.ts` (Cucumber+Cypress) · `tests/raw/playwright/{_context,_openWorkspace}.ts` (raw Playwright fixture + Background helpers) |
+| Orchestration | `tests/scripts/run-all.ts` — three peers, one shared dev server, OR-ed exit codes |
 
-**Bundler-alias seam.** `tests/steps/*.steps.ts` files unconditionally `import { Given, When, Then } from "@cucumber/cucumber"`. Cucumber-JS resolves this natively in Node. Cypress's esbuild bundler (configured in `tests/cypress.config.ts`) installs a 5-line plugin that intercepts the specifier and remaps it to `@badeball/cypress-cucumber-preprocessor`. Both packages expose API-compatible `Given/When/Then/And/But/defineParameterType` decorators, so the same call sites compile cleanly under either resolution.
+**Bundler-alias seam (Cucumber+Cypress).** `tests/steps/*.steps.ts` files unconditionally `import { Given, When, Then } from "@cucumber/cucumber"`. Cucumber-JS resolves this natively in Node. Cypress's esbuild bundler (configured in `tests/cypress.config.ts`) installs a 5-line plugin that intercepts the specifier and remaps it to `@badeball/cypress-cucumber-preprocessor`. Both packages expose API-compatible `Given/When/Then/And/But/defineParameterType` decorators, so the same call sites compile cleanly under either resolution. The trick is invisible at the step-file level. Hooks and `World/setWorldConstructor` are NOT shared — they live in the per-runner `tests/support/{playwright,cypress}/` directories.
 
-The trick is invisible at the step-file level. Hooks and `World/setWorldConstructor` are NOT shared — they live in the per-runner `tests/support/{playwright,cypress}/` directories.
+**Raw Playwright binding.** `tests/raw/playwright/*.spec.ts` files import a `test` symbol from `./_context.ts`, a Playwright fixture extension that exposes `{ ctx: TestContext }` built from `buildPlaywrightPageObjects(page) + new Scratchpad()`. Each `.feature` file has a sibling `.spec.ts` whose `test.describe` title, `test()` titles, and step ordering mirror the Gherkin 1:1. Three named helpers in `_openWorkspace.ts` (`withWorkspaceOpen` / `withFxWorkspaceOpen` / `withCreditWorkspaceOpen`) map 1:1 to the three Background phrasings, replacing Cucumber's implicit Background mechanism. Test bodies contain only `await scenarios.fn(ctx, ...)` calls — no direct `page.*`, `expect`, or `ctx.po.*` — enforced by grep gates 9–11 in `tests/scripts/grep-gates.ts`.
 
 ---
 
@@ -1223,7 +1225,9 @@ The trick is invisible at the step-file level. Hooks and `World/setWorldConstruc
 | **Page Object Contracts** | `tests/page-objects/contracts/**/*.ts` | Driver-free TS interfaces + `data-testid` constants; SOT for the UI surface |
 | **Page Objects (Playwright)** | `tests/page-objects/playwright/**/*.ts` | Playwright implementations of the contracts |
 | **Page Objects (Cypress)** | `tests/page-objects/cypress/**/*.ts` | Cypress implementations of the contracts |
-| **Step Definitions** | `tests/steps/**/*.ts` | Cucumber-JS step defs (shared tree); import only contracts |
-| **Test World + Hooks** | `tests/support/playwright/{world,hooks}.ts` and `tests/support/cypress/{world,e2e}.ts` | Per-runner World, dev-server lifecycle, hooks |
+| **Step Definitions** | `tests/steps/**/*.ts` | Cucumber-JS step defs (shared tree for Cucumber+Playwright + Cucumber+Cypress); import only contracts |
+| **Raw Playwright Specs** | `tests/raw/playwright/*.spec.ts` | `@playwright/test` bodies binding scenarios directly; no Gherkin |
+| **Raw Playwright Harness** | `tests/raw/playwright/{playwright.config,_context,_openWorkspace}.ts` | `@playwright/test` config (Chromium, serial); fixture exposing `{ ctx }`; named Background helpers |
+| **Test World + Hooks (Cucumber)** | `tests/support/playwright/{world,hooks}.ts` and `tests/support/cypress/{world,e2e}.ts` | Per-runner World, dev-server lifecycle, hooks |
 | **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based) |
-| **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and cross-runner orchestration |
+| **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and three-peer orchestration |
