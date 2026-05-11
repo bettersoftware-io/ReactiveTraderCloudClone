@@ -57,6 +57,28 @@ const GATES: Gate[] = [
     paths: ["steps/"],
     excludes: ["/node_modules/"],
   },
+  {
+    name: "9. No raw @playwright/test imports in raw Playwright test bodies",
+    pattern: 'from "@playwright/test"',
+    paths: ["raw/playwright/"],
+    excludes: [
+      "/node_modules/",
+      "raw/playwright/playwright.config.ts",
+      "raw/playwright/_context.ts",
+    ],
+  },
+  {
+    name: "10. No direct ctx.po.* access in raw Playwright test bodies",
+    pattern: 'ctx\\.po\\.',
+    paths: ["raw/playwright/"],
+    excludes: ["/node_modules/", "raw/playwright/_context.ts"],
+  },
+  {
+    name: "11. No direct page.* calls in raw Playwright test bodies",
+    pattern: '\\bpage\\.',
+    paths: ["raw/playwright/"],
+    excludes: ["/node_modules/", "raw/playwright/_context.ts"],
+  },
 ];
 
 let failed = 0;
