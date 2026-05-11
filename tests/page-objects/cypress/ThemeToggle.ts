@@ -3,14 +3,22 @@ import { TESTIDS } from "../contracts/testids";
 
 export class CypressThemeToggle implements ThemeTogglePO {
   click(): Promise<void> {
-    return cy.get(`[data-testid="${TESTIDS.shell.themeToggle}"]`).click() as unknown as Promise<void>;
+    return new Promise<void>((resolve) => {
+      cy.get(`[data-testid="${TESTIDS.shell.themeToggle}"]`)
+        .click()
+        .then(() => resolve());
+    });
   }
   isVisible(): Promise<boolean> {
-    return cy.get(`[data-testid="${TESTIDS.shell.themeToggle}"]`)
-      .then(($el) => $el.is(":visible")) as unknown as Promise<boolean>;
+    return new Promise<boolean>((resolve) => {
+      cy.get(`[data-testid="${TESTIDS.shell.themeToggle}"]`)
+        .then(($el) => resolve($el.is(":visible")));
+    });
   }
   ariaLabel(): Promise<string> {
-    return cy.get(`[data-testid="${TESTIDS.shell.themeToggle}"]`)
-      .then(($el) => $el.attr("aria-label") ?? "") as unknown as Promise<string>;
+    return new Promise<string>((resolve) => {
+      cy.get(`[data-testid="${TESTIDS.shell.themeToggle}"]`)
+        .then(($el) => resolve($el.attr("aria-label") ?? ""));
+    });
   }
 }

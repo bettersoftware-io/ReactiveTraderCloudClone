@@ -9,23 +9,32 @@ export class CypressFxRfqForm implements FxRfqFormPO {
   }
 
   waitForRfqButton(timeoutMs: number): Promise<void> {
-    return this.firstTile()
-      .scrollIntoView()
-      .contains(/initiate rfq|request quote/i, { timeout: timeoutMs })
-      .should("be.visible") as unknown as Promise<void>;
+    return new Promise<void>((resolve) => {
+      this.firstTile()
+        .scrollIntoView()
+        .contains(/initiate rfq|request quote/i, { timeout: timeoutMs })
+        .should("be.visible")
+        .then(() => resolve());
+    });
   }
 
   clickInitiateRfq(): Promise<void> {
-    return this.firstTile()
-      .scrollIntoView()
-      .contains(/initiate rfq|request quote/i)
-      .click() as unknown as Promise<void>;
+    return new Promise<void>((resolve) => {
+      this.firstTile()
+        .scrollIntoView()
+        .contains(/initiate rfq|request quote/i)
+        .click()
+        .then(() => resolve());
+    });
   }
 
   waitForCountdownOrQuote(timeoutMs: number): Promise<void> {
-    return this.firstTile()
-      .scrollIntoView()
-      .contains(/\d+s|accepting|expired|quote/i, { timeout: timeoutMs })
-      .should("be.visible") as unknown as Promise<void>;
+    return new Promise<void>((resolve) => {
+      this.firstTile()
+        .scrollIntoView()
+        .contains(/\d+s|accepting|expired|quote/i, { timeout: timeoutMs })
+        .should("be.visible")
+        .then(() => resolve());
+    });
   }
 }
