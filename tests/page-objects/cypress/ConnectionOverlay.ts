@@ -3,31 +3,21 @@ import { TESTIDS } from "../contracts/testids";
 
 export class CypressConnectionOverlay implements ConnectionOverlayPO {
   isHidden(): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-      cy.get("body").then(($body) => {
-        const found = $body.find(`[data-testid="${TESTIDS.connection.overlay}"]`);
-        resolve(found.length === 0 || !found.is(":visible"));
-      });
-    });
+    return cy.get("body").then(($body) => {
+      const found = $body.find(`[data-testid="${TESTIDS.connection.overlay}"]`);
+      return found.length === 0 || !found.is(":visible");
+    }) as unknown as Promise<boolean>;
   }
   waitVisible(timeoutMs: number): Promise<void> {
-    return new Promise<void>((resolve) => {
-      cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`, { timeout: timeoutMs })
-        .should("be.visible")
-        .then(() => resolve());
-    });
+    return cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`, { timeout: timeoutMs })
+      .should("be.visible") as unknown as Promise<void>;
   }
   waitHidden(timeoutMs: number): Promise<void> {
-    return new Promise<void>((resolve) => {
-      cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`, { timeout: timeoutMs })
-        .should("not.exist")
-        .then(() => resolve());
-    });
+    return cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`, { timeout: timeoutMs })
+      .should("not.exist") as unknown as Promise<void>;
   }
   text(): Promise<string> {
-    return new Promise<string>((resolve) => {
-      cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`)
-        .then(($el) => resolve($el.text()));
-    });
+    return cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`)
+      .then(($el) => $el.text()) as unknown as Promise<string>;
   }
 }

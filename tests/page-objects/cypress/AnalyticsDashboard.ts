@@ -3,32 +3,22 @@ import { TESTIDS } from "../contracts/testids";
 
 export class CypressAnalyticsDashboard implements AnalyticsDashboardPO {
   waitVisible(timeoutMs: number): Promise<void> {
-    return new Promise<void>((resolve) => {
-      cy.get(`[data-testid="${TESTIDS.analytics.panel}"]`, { timeout: timeoutMs })
-        .should("be.visible")
-        .then(() => resolve());
-    });
+    return cy.get(`[data-testid="${TESTIDS.analytics.panel}"]`, { timeout: timeoutMs })
+      .should("be.visible") as unknown as Promise<void>;
   }
   isVisible(): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-      cy.get(`[data-testid="${TESTIDS.analytics.panel}"]`)
-        .then(($el) => resolve($el.is(":visible")));
-    });
+    return cy.get(`[data-testid="${TESTIDS.analytics.panel}"]`)
+      .then(($el) => $el.is(":visible")) as unknown as Promise<boolean>;
   }
   hasSection(name: string): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-      cy.get("body").then(($body) => {
-        const $panel = $body.find(`[data-testid="${TESTIDS.analytics.panel}"]`);
-        if ($panel.length === 0) {
-          resolve(false);
-          return;
-        }
-        const $matches = $panel.find(":visible").filter((_, el) => {
-          const text = el.textContent ?? "";
-          return text.includes(name);
-        });
-        resolve($matches.length > 0);
+    return cy.get("body").then(($body) => {
+      const $panel = $body.find(`[data-testid="${TESTIDS.analytics.panel}"]`);
+      if ($panel.length === 0) return false;
+      const $matches = $panel.find(":visible").filter((_, el) => {
+        const text = el.textContent ?? "";
+        return text.includes(name);
       });
-    });
+      return $matches.length > 0;
+    }) as unknown as Promise<boolean>;
   }
 }
