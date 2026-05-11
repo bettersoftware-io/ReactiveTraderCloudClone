@@ -76,6 +76,37 @@ Acceptance criteria for the rewrite commit:
 - `pnpm --filter @rtc/tests test:e2e:raw-playwright` and `test:e2e:playwright` are unaffected.
 - `_context.ts` line 2 comment updated to `// Body shape: async/await — see Phase 5A.4 spec §3.1.`
 
+### 3.2 Addendum — §3.1 superseded; shape 3 (`cy.then` wrap) chosen
+
+The §3.1 PO rewrite was necessary-but-insufficient: even with real native PO Promises, an async `it()` body still fails between awaits because the cy command queue drains between them, and the next PO call queues cy commands after Cypress has declared the test "done" — yielding `CypressError: Cypress test was stopped while running this command`. The single-`it()` smoke masks this because there's nothing queued after the first await.
+
+**User decision (2026-05-11):** revert the §3.1 PO rewrite (commit `4fc1148`) and adopt **shape 3** — wrap every `it()` body in a `cy.then(async () => { ... })` call. Pattern:
+
+```ts
+it("clicking theme toggle changes the theme", () => {
+  cy.then(() => (async () => {
+    const ctx = getCtx();
+    await theme.toggleAndCaptureBackgrounds(ctx);
+    await theme.expectBackgroundChanged(ctx);
+  })());
+});
+```
+
+Why this works: `cy.then(cb)` is a single Cypress command. Its callback can return a Promise; Cypress's queue treats the command as in-flight until that Promise resolves. All `await`s inside the callback execute inside this single command, so new cy commands queued by later awaits land in the still-alive queue and never trigger "test was stopped." The PO impls revert to returning Cypress Chainables cast as `Promise<T>` (the original 5A.2 pattern), which is fine inside a `cy.then` async callback because Cypress's Chainable thenable contract resolves correctly under that context.
+
+Gate 14 (no `cy.*` in raw Cypress test bodies) requires a one-line tweak: exclude the `cy.then(` wrapper opener at the top of each `it()` body. The pattern adjustment: gate the `cy.X` pattern but EXCLUDE `cy\.then\(` AS THE FIRST `cy.*` CALL — equivalently, scope the gate so `cy.then(...)` IS allowed but no other `cy.*` is. Concretely: change gate 14's pattern from `\\bcy\\.` to `\\bcy\\.(?!then\\()`, which matches any `cy.X` where X is not `then(`. The existing `_context.ts` exclude continues to apply.
+
+Affected files when this decision is executed:
+- `tests/page-objects/cypress/*.ts` (all 10 PO impls): revert via `git revert 4fc1148` to the chainable-cast pattern.
+- `tests/raw/cypress/_context.ts` line 2: set to `// Body shape: cy.then-wrapped async — see Phase 5A.4 spec §3.2.`
+- `tests/raw/cypress/*.spec.ts`: every `it()` body uses the shape 3 pattern.
+- Task 11's gate 14 pattern: `\\bcy\\.(?!then\\()` instead of `\\bcy\\.`.
+
+Acceptance criteria for the shape-3 adoption:
+- `pnpm --filter @rtc/tests test:e2e:cypress` continues to pass 40/40 (revert restores the working chainable-cast POs).
+- `pnpm --filter @rtc/tests test:e2e:raw-cypress` passes the full theme.spec.ts (5 scenarios) after the Task 2 rewrite.
+- `pnpm --filter @rtc/tests test:e2e:raw-playwright` and `test:e2e:playwright` are unaffected.
+
 ---
 
 ## 4. File layout
