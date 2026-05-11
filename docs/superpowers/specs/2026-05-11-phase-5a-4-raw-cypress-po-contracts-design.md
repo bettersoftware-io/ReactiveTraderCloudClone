@@ -52,6 +52,30 @@ The 5A.3 raw-Playwright bodies are `async ({ ctx }) => { await scenarios.foo(ctx
 
 The fallback ladder is run during Task 1 against ONE simple scenario (e.g. theme's "theme toggle button is visible") shipped as the only `it()` in `theme.spec.ts` in shape 1; if that smoke spec fails under `pnpm --filter @rtc/tests test:e2e:raw-cypress`, retry in shape 2; if both fail, stop. Task 2 then overwrites `theme.spec.ts` with the full 5-scenario port using whichever shape Task 1 confirmed; Tasks 3–9 use the same shape.
 
+### 3.1 Addendum — Cypress PO rewrite, decided after Task 1 + Task 2 attempts
+
+During execution, the §3 hard-stop was reached: shape 1 (sync fire-and-forget) silently breaks multi-call `it()` bodies because Cypress doesn't drain its command queue between synchronous calls (scratchpad side-effects from one scenario fn aren't visible to the next); shape 2 (async/await) fails because `await chainable` in a raw `it()` body does not unwrap a Cypress Chainable to its subject (the `cy.wrap(...) as unknown as Promise<T>` return type lies at runtime). Cucumber+Cypress works around both via the `cucumber-shim.ts` seam, which is unavailable in raw Cypress.
+
+**User decision (2026-05-11):** rewrite every Cypress PO method to return a **real native Promise** that resolves only after the queued `cy.*` commands complete. Pattern:
+
+```ts
+ariaLabel(): Promise<string> {
+  return new Promise<string>((resolve) => {
+    cy.get(/* ... */).then(($el) => resolve($el.attr("aria-label") ?? ""));
+  });
+}
+```
+
+This makes the PO contract honest at runtime (`Promise<T>` no longer lies). Scenarios' `await ctx.po.x.method()` calls then yield the actual subject. Raw Cypress test bodies adopt shape 2 (async/await) cleanly; Cucumber+Cypress remains green because the `cucumber-shim.ts` already discards native Promise returns from step handlers and orders via the cy queue.
+
+Affected files: all 10 PO impls under `tests/page-objects/cypress/`. The PO contracts in `tests/page-objects/contracts/` are unchanged. Spec §1 non-goal "changing any PO impl" is **expressly overridden** by this addendum.
+
+Acceptance criteria for the rewrite commit:
+- `pnpm --filter @rtc/tests test:e2e:cypress` continues to pass 40/40 (Cucumber+Cypress regression-free).
+- `pnpm --filter @rtc/tests test:e2e:raw-cypress` passes the existing single-`it()` smoke spec.
+- `pnpm --filter @rtc/tests test:e2e:raw-playwright` and `test:e2e:playwright` are unaffected.
+- `_context.ts` line 2 comment updated to `// Body shape: async/await — see Phase 5A.4 spec §3.1.`
+
 ---
 
 ## 4. File layout
