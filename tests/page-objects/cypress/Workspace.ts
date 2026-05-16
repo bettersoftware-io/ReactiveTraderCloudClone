@@ -2,51 +2,37 @@ import type { WorkspacePO } from "../contracts/Workspace";
 import { TESTIDS } from "../contracts/testids";
 
 /**
- * Cypress impl of WorkspacePO. Methods return native Promise<T> by wrapping
- * the underlying Cypress chain in `new Promise(...)` and resolving in a
- * trailing `.then(...)`. This makes the contract honest at runtime so that
- * `await ctx.po.workspace.x()` in raw Cypress `it()` bodies actually yields
- * the subject (rather than a Chainable cast as a Promise).
+ * Cypress impl of WorkspacePO. Methods return Promise<T> by chaining `.then`
+ * on the underlying Cypress chainable so step bodies awaiting these calls
+ * resolve in the same way they do under Playwright.
  */
 export class CypressWorkspace implements WorkspacePO {
   open(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      cy.visit("/");
-      cy.wrap(undefined).then(() => resolve());
-    });
+    cy.visit("/");
+    return cy.wrap(undefined) as unknown as Promise<void>;
   }
   openFx(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      cy.visit("/");
-      cy.get(`[data-testid="${TESTIDS.shell.tab("fx")}"]`).click();
-      cy.wrap(undefined).then(() => resolve());
-    });
+    cy.visit("/");
+    cy.get(`[data-testid="${TESTIDS.shell.tab("fx")}"]`).click();
+    return cy.wrap(undefined) as unknown as Promise<void>;
   }
   openCredit(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      cy.visit("/");
-      cy.get(`[data-testid="${TESTIDS.shell.tab("credit")}"]`).click();
-      cy.wrap(undefined).then(() => resolve());
-    });
+    cy.visit("/");
+    cy.get(`[data-testid="${TESTIDS.shell.tab("credit")}"]`).click();
+    return cy.wrap(undefined) as unknown as Promise<void>;
   }
   openAdmin(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      cy.visit("/");
-      cy.get(`[data-testid="${TESTIDS.shell.tab("admin")}"]`).click();
-      cy.wrap(undefined).then(() => resolve());
-    });
+    cy.visit("/");
+    cy.get(`[data-testid="${TESTIDS.shell.tab("admin")}"]`).click();
+    return cy.wrap(undefined) as unknown as Promise<void>;
   }
   clickTab(tab: "fx" | "credit" | "admin"): Promise<void> {
-    return new Promise<void>((resolve) => {
-      cy.get(`[data-testid="${TESTIDS.shell.tab(tab)}"]`).click();
-      cy.wrap(undefined).then(() => resolve());
-    });
+    cy.get(`[data-testid="${TESTIDS.shell.tab(tab)}"]`).click();
+    return cy.wrap(undefined) as unknown as Promise<void>;
   }
   reload(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      cy.reload();
-      cy.wrap(undefined).then(() => resolve());
-    });
+    cy.reload();
+    return cy.wrap(undefined) as unknown as Promise<void>;
   }
   setOffline(offline: boolean): Promise<void> {
     // The app's BrowserConnectionEventsAdapter listens to the window "online"
@@ -54,24 +40,18 @@ export class CypressWorkspace implements WorkspacePO {
     // reliable across Cypress/Electron versions and avoids the cucumber
     // preprocessor's cy.task() context restriction that fires when
     // Cypress.automation native-Promise callbacks resolve outside the queue.
-    return new Promise<void>((resolve) => {
-      cy.window({ log: false }).then((win) => {
-        win.dispatchEvent(new win.Event(offline ? "offline" : "online"));
-      });
-      cy.wrap(undefined).then(() => resolve());
+    cy.window({ log: false }).then((win) => {
+      win.dispatchEvent(new win.Event(offline ? "offline" : "online"));
     });
+    return cy.wrap(undefined) as unknown as Promise<void>;
   }
   rootBackgroundColor(): Promise<string> {
-    return new Promise<string>((resolve) => {
-      cy.get("#root > div").then(($el) =>
-        resolve(getComputedStyle($el[0]).backgroundColor),
-      );
-    });
+    return cy.get("#root > div").then(($el) =>
+      getComputedStyle($el[0]).backgroundColor
+    ) as unknown as Promise<string>;
   }
   wait(ms: number): Promise<void> {
-    return new Promise<void>((resolve) => {
-      cy.wait(ms);
-      cy.wrap(undefined).then(() => resolve());
-    });
+    cy.wait(ms);
+    return cy.wrap(undefined) as unknown as Promise<void>;
   }
 }
