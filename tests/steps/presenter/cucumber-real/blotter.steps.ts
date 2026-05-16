@@ -10,3 +10,7 @@ Then("the blotter table is visible", function(this: PresenterWorld) {
 Then("the blotter has at least {int} row", function(this: PresenterWorld, n: number) {
   return blotter.expectBlotterHasAtLeastNRows(this, n);
 });
+
+Then("the blotter has at least {int} rows", function(this: PresenterWorld, n: number) {
+  return blotter.expectBlotterHasAtLeastNRows(this, n);
+});

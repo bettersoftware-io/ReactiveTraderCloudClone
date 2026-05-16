@@ -41,6 +41,11 @@ Then("the blotter has at least {int} row",
     return fxTrading.expectBlotterHasAtLeastNRows(this.ctx, n);
   });
 
+Then("the blotter has at least {int} rows",
+  function(this: StepContext, n: number) {
+    return fxTrading.expectBlotterHasAtLeastNRows(this.ctx, n);
+  });
+
 Then("the notional input on the first tile is visible",
   function(this: StepContext) { return fxTrading.expectFirstTileNotionalInputVisible(this.ctx); });
 

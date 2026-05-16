@@ -37,6 +37,7 @@ Feature: FX trade blotter
     And the first blotter row is visible
     And the first blotter row background color is non-empty
 
+  @presenter
   Scenario: rejected trade flow does not error after multiple buys
     Then a price tile is visible within 5 seconds
     When the trader buys 3 times with confirmation dismissals
@@ -51,3 +52,11 @@ Feature: FX trade blotter
     And the first blotter row is visible
     When the trader hovers the first blotter row
     Then the first blotter row background color is non-empty
+
+  @presenter
+  Scenario: blotter accumulates after multiple trades
+    Then a price tile is visible within 5 seconds
+    When the trader clicks buy on the first tile
+    And the trader clicks buy on the first tile
+    And the trader waits 2 seconds
+    Then the blotter has at least 2 rows

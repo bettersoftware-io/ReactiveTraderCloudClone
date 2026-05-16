@@ -69,4 +69,13 @@ describe("FX trade blotter", () => {
     blotter.hoverFirstBlotterRow(ctx);
     blotter.expectFirstBlotterRowBackgroundNonEmpty(ctx);
   });
+
+  it("blotter accumulates after multiple trades", () => {
+    const ctx = getCtx();
+    fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    fxTrading.clickBuyOnFirstTile(ctx);
+    fxTrading.clickBuyOnFirstTile(ctx);
+    fxLiveRates.waitSeconds(ctx, 2);
+    fxTrading.expectBlotterHasAtLeastNRows(ctx, 2);
+  });
 });

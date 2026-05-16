@@ -62,4 +62,12 @@ test.describe("FX trade blotter", () => {
     await blotter.hoverFirstBlotterRow(ctx);
     await blotter.expectFirstBlotterRowBackgroundNonEmpty(ctx);
   });
+
+  test("blotter accumulates after multiple trades", async ({ ctx }) => {
+    await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    await fxTrading.clickBuyOnFirstTile(ctx);
+    await fxTrading.clickBuyOnFirstTile(ctx);
+    await fxLiveRates.waitSeconds(ctx, 2);
+    await fxTrading.expectBlotterHasAtLeastNRows(ctx, 2);
+  });
 });
