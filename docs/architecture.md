@@ -1159,24 +1159,28 @@ A single test suite is parameterised over **all** adapters that implement a port
 
 This is what makes "swap an adapter" a low-cost operation: the contract is encoded in tests and they all must pass.
 
-### 9.5 Tri-runner stack (Cucumber-JS + Cypress + raw @playwright/test)
+### 9.5 Quad-runner stack (Cucumber-JS + Cypress + raw @playwright/test + raw Cypress)
 
-Three runners exercise the same behavioural surface via two binding styles. Cucumber-JS (with Playwright) and Cypress (via cypress-cucumber-preprocessor) bind Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree. Raw `@playwright/test` binds the same scenarios programmatically — one `test()` per `Scenario:`, calling the same `scenarios/*.ts` functions the step tree would. All three reach the UI through one set of Playwright (and one of Cypress) page-object implementations.
+Four runners exercise the same behavioural surface via two binding styles. Cucumber-JS (with Playwright) and Cypress (via cypress-cucumber-preprocessor) bind Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree. Raw `@playwright/test` binds the same scenarios programmatically — one `test()` per `Scenario:`, calling the same `scenarios/*.ts` functions the step tree would. Raw Cypress (`cypress run` without the Cucumber preprocessor) does the same, but against a **forked sync scenarios layer** at `tests/scenarios/cypress/*.ts` — necessary because Cypress's command-queue model is incompatible with the shared Promise-shaped scenarios in raw `it()` bodies; see Phase 5A.4 spec §3.3 for the architectural reasoning.
 
 | Layer | Stack |
 |---|---|
 | Behaviour specs (`.feature`) | Gherkin · Cucumber-JS 11 (Playwright) + cypress-cucumber-preprocessor 22 (Cypress) |
 | Step definitions | One shared tree — bundler alias maps `@cucumber/cucumber` → preprocessor for Cypress |
 | Raw Playwright specs (`.spec.ts`) | `tests/raw/playwright/*.spec.ts` — bind scenarios via `@playwright/test` `test()` bodies; no Gherkin |
-| Scenarios layer | Pure functions taking `(ctx: TestContext, args)`; driver-free; shared by all three runners |
+| Raw Cypress specs (`.spec.ts`) | `tests/raw/cypress/*.spec.ts` — bind cypress-forked scenarios via Mocha `it()` bodies; no Gherkin |
+| Scenarios layer (shared) | `tests/scenarios/*.ts` — async fns taking `(ctx: TestContext, args)`; driver-free; used by Cucumber+Playwright, Cucumber+Cypress, raw Playwright |
+| Scenarios layer (Cypress fork) | `tests/scenarios/cypress/*.ts` — sync fns mirroring shared names 1:1; queue-aware; used by raw Cypress only |
 | Page-object contracts | TypeScript interfaces; `TESTIDS` and `STRINGS` SOTs |
 | Page-object impls (drivers) | `tests/page-objects/playwright/` (Playwright) + `tests/page-objects/cypress/` (Cypress) |
-| Per-runner support | `tests/support/playwright/{world,hooks}.ts` (Cucumber+Playwright) · `tests/support/cypress/{world,e2e}.ts` (Cucumber+Cypress) · `tests/raw/playwright/{_context,_openWorkspace}.ts` (raw Playwright fixture + Background helpers) |
-| Orchestration | `tests/scripts/run-all.ts` — three peers, one shared dev server, OR-ed exit codes |
+| Per-runner support | `tests/support/playwright/{world,hooks}.ts` (Cucumber+Playwright) · `tests/support/cypress/{world,e2e}.ts` (Cucumber+Cypress) · `tests/raw/playwright/{_context,_openWorkspace}.ts` (raw Playwright fixture) · `tests/raw/cypress/{_context,_openWorkspace}.ts` (raw Cypress getCtx accessor) |
+| Orchestration | `tests/scripts/run-all.ts` — four peers, one shared dev server, OR-ed exit codes |
 
 **Bundler-alias seam (Cucumber+Cypress).** `tests/steps/*.steps.ts` files unconditionally `import { Given, When, Then } from "@cucumber/cucumber"`. Cucumber-JS resolves this natively in Node. Cypress's esbuild bundler (configured in `tests/cypress.config.ts`) installs a 5-line plugin that intercepts the specifier and remaps it to `@badeball/cypress-cucumber-preprocessor`. Both packages expose API-compatible `Given/When/Then/And/But/defineParameterType` decorators, so the same call sites compile cleanly under either resolution. The trick is invisible at the step-file level. Hooks and `World/setWorldConstructor` are NOT shared — they live in the per-runner `tests/support/{playwright,cypress}/` directories.
 
 **Raw Playwright binding.** `tests/raw/playwright/*.spec.ts` files import a `test` symbol from `./_context.ts`, a Playwright fixture extension that exposes `{ ctx: TestContext }` built from `buildPlaywrightPageObjects(page) + new Scratchpad()`. Each `.feature` file has a sibling `.spec.ts` whose `test.describe` title, `test()` titles, and step ordering mirror the Gherkin 1:1. Three named helpers in `_openWorkspace.ts` (`withWorkspaceOpen` / `withFxWorkspaceOpen` / `withCreditWorkspaceOpen`) map 1:1 to the three Background phrasings, replacing Cucumber's implicit Background mechanism. Test bodies contain only `await scenarios.fn(ctx, ...)` calls — no direct `page.*`, `expect`, or `ctx.po.*` — enforced by grep gates 9–11 in `tests/scripts/grep-gates.ts`.
+
+**Raw Cypress binding (Phase 5A.4 §3.3).** `tests/raw/cypress/*.spec.ts` files are pure Mocha `describe`/`it` blocks. Each `it()` body opens with `const ctx = getCtx()` (from `_context.ts`'s module-scoped beforeEach builder) and then calls **synchronous** scenario fns from `tests/scenarios/cypress/*.ts`. No `async`, no `await`, no `cy.*`, no `ctx.po.*`, no driver imports — enforced by grep gates 12–14. The forked `tests/scenarios/cypress/` layer mirrors `tests/scenarios/*.ts` fn-for-fn but uses cy queue idioms: a `chainable<T>` cast helper (in `_chainable.ts`) exposes Cypress's Chainable runtime under the shared layer's `Promise<T>` PO contract; reads call `.then(cb)` on chainables (queue-aware, propagates the subject); cross-call scratchpad reads sit inside `cy.then(() => ...)` to ensure ordering. **The fork was necessary, not desired:** Cypress's command-queue model and Promise-vs-Chainable thenable semantics make the shared async scenarios unusable in raw `it()` bodies; four prior combinations were attempted and documented in spec §3.1, §3.2, §3.3 before this design landed. This is the architectural cost that proves the Cucumber-mediated stacks share strictly more (features + step defs + scenarios + Background mechanism) than the raw stacks do (only PO contracts + features).
 
 ---
 
@@ -1228,6 +1232,9 @@ Three runners exercise the same behavioural surface via two binding styles. Cucu
 | **Step Definitions** | `tests/steps/**/*.ts` | Cucumber-JS step defs (shared tree for Cucumber+Playwright + Cucumber+Cypress); import only contracts |
 | **Raw Playwright Specs** | `tests/raw/playwright/*.spec.ts` | `@playwright/test` bodies binding scenarios directly; no Gherkin |
 | **Raw Playwright Harness** | `tests/raw/playwright/{playwright.config,_context,_openWorkspace}.ts` | `@playwright/test` config (Chromium, serial); fixture exposing `{ ctx }`; named Background helpers |
+| **Raw Cypress Specs** | `tests/raw/cypress/*.spec.ts` | Sync Mocha `it()` bodies binding cypress-forked scenarios; no Gherkin; no `async`/`await`/`cy.*`/`ctx.po.*` |
+| **Raw Cypress Harness** | `tests/raw/cypress/{cypress.config,_context,_openWorkspace}.ts` | Cypress config (no preprocessor); `getCtx()` accessor with module-scoped beforeEach builder; named Background helpers |
+| **Cypress-forked Scenarios** | `tests/scenarios/cypress/*.ts` (+ `_chainable.ts`) | Sync scenario fns mirroring shared `scenarios/*.ts` 1:1 by name; queue-aware (use `chainable<T>` cast helper to expose Cypress Chainable under the shared `Promise<T>` PO contract); used by raw Cypress only |
 | **Test World + Hooks (Cucumber)** | `tests/support/playwright/{world,hooks}.ts` and `tests/support/cypress/{world,e2e}.ts` | Per-runner World, dev-server lifecycle, hooks |
-| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based) |
-| **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and three-peer orchestration |
+| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based; 14 gates) |
+| **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and four-peer orchestration |
