@@ -74,14 +74,6 @@ Then(
   },
 );
 
-Then("the blotter table is visible", function(this: PresenterWorld) {
-  return trading.expectBlotterVisible(this);
-});
-
-Then("the blotter has at least {int} row", function(this: PresenterWorld, n: number) {
-  return trading.expectBlotterHasAtLeastNRows(this, n);
-});
-
 function parseRegexList(raw: string): RegExp[] {
   // Splits "/A/i, /B/i, /C/i" into [/A/i, /B/i, /C/i]
   return raw
