@@ -55,7 +55,7 @@ Then(
 
 Then(
   "the trade confirmation hides within {int} seconds",
-  function(this: PresenterWorld) {
+  function(this: PresenterWorld, _n: number) {
     return trading.expectTradeConfirmationHides(this);
   },
 );

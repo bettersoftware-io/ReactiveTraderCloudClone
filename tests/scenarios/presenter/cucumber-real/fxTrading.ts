@@ -4,7 +4,7 @@
 // With verbatimModuleSyntax + isolatedModules, ambient const enums cannot be
 // accessed as values from a different package. We import them as types only
 // and cast their string literals to the correct type via `as unknown as`.
-import { firstValueFrom, take, timeout } from "rxjs";
+import { firstValueFrom, timeout } from "rxjs";
 import type { Direction, ExecutionStatus } from "@rtc/domain";
 import type { PresenterWorld } from "../../../support/presenter/cucumber-real/world";
 
@@ -33,7 +33,7 @@ async function executeOnFirstPair(
   const result = await firstValueFrom(
     w.ctx.app.presenters.execution
       .execute({ pair, direction, price, notional })
-      .pipe(take(1), timeout(5000)),
+      .pipe(timeout(5000)),
   );
   return { status: result.status, notional: result.trade.notional };
 }
@@ -141,7 +141,7 @@ export async function buyNTimesWithDismissals(
     const result = await firstValueFrom(
       w.ctx.app.presenters.execution
         .execute({ pair: gbpjpy, direction: DIR_BUY, price, notional: 1_000_000 })
-        .pipe(take(1), timeout(5000)),
+        .pipe(timeout(5000)),
     );
     if ((result.status as unknown as string) === "Rejected") {
       w.scratch.rejectedSeen = true;
