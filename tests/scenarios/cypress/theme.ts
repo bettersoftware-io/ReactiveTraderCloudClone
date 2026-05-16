@@ -3,12 +3,7 @@
 // See Phase 5A.4 spec §3.3.
 import type { TestContext } from "../../support/testContext";
 import { assertContains, assertEquals, assertNotEqual, assertTrue } from "../assert";
-
-// PO methods return runtime Cypress Chainables typed as Promise<T> for shared-code
-// compat. This local helper exposes the chainable nature so .then(cb) receives the
-// subject and runs as part of the cy queue. Scoped to the cypress scenarios fork.
-const chainable = <T>(p: Promise<T>): Cypress.Chainable<T> =>
-  p as unknown as Cypress.Chainable<T>;
+import { chainable } from "./_chainable";
 
 export function toggleAndCaptureBackgrounds(ctx: TestContext): void {
   chainable(ctx.po.workspace.rootBackgroundColor())
