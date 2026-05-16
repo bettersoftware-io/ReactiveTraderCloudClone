@@ -107,6 +107,111 @@ Acceptance criteria for the shape-3 adoption:
 - `pnpm --filter @rtc/tests test:e2e:raw-cypress` passes the full theme.spec.ts (5 scenarios) after the Task 2 rewrite.
 - `pnpm --filter @rtc/tests test:e2e:raw-playwright` and `test:e2e:playwright` are unaffected.
 
+### 3.3 Addendum — final approach: forked Cypress scenarios layer
+
+§3.2's shape 3 also failed in practice:
+- **Shape 3 + chainable-cast POs:** `await chainable` inside the `cy.then` async IIFE still resolves to `undefined`, not the subject — same failure mode as §3.1's diagnosis but now manifesting inside the cy.then wrap.
+- **Shape 3 + §3.1's native-Promise POs:** triggers `CypressError: cy.then() timed out after waiting 10000ms — your callback function returned a promise that never resolved`. Deadlock: the async IIFE awaits a PO Promise; the PO Promise resolves only when its queued cy command runs; the queued cy command can't run because Cypress is blocked waiting for the cy.then callback's outer Promise. The native Promise wrapper broke Cypress's queue-awareness.
+
+Four distinct combinations have now failed:
+
+| Test body shape | PO impl | Failure mode |
+|---|---|---|
+| 1 (sync fire-and-forget) | Chainable-cast | Multi-call ordering broken; scratchpad reads return undefined |
+| 2 (async/await) | Chainable-cast | `await chainable === undefined` |
+| 3 (cy.then wrap) | Chainable-cast | `await chainable === undefined` (same) |
+| 3 (cy.then wrap) | Native Promise (§3.1) | cy.then callback Promise never resolves (deadlock) |
+
+**Diagnosis of the deeper problem.** The shared `tests/scenarios/*.ts` layer is written for **Playwright's Promise-native model** — each scenario fn is `async` and `await`s PO methods. This works in raw Playwright (Promise-native runtime) and in Cucumber+Cypress (cucumber-shim provides a per-step queue-drain bridge that converts step boundaries into cy.wrap(undefined) handoffs). It does NOT work in raw Cypress because:
+- Cypress is queue-native, not Promise-native. The cy command queue serializes work, not JS `await`.
+- An entire scenario in raw Cypress is one `it()` body with multiple PO calls. There's no per-PO-call queue boundary equivalent to Cucumber's per-step boundary.
+- `await chainable` in a raw Cypress `it()` body does not propagate the chainable's subject through `then(cb).then(resolve)` chains — observed empirically on Cypress 15.14.2.
+
+**User decision (2026-05-15):** abandon the "raw Cypress reuses shared scenarios" goal. Replace it with a narrower but still valuable goal: **raw Cypress and raw Playwright test files look structurally similar, so migration between them is almost mechanical**. The abstraction sharing happens at the contract layer (PO contracts + testids + strings + `.feature` files) and at the Cucumber+X stack level (full sharing); the raw Cypress runner forks scenarios.
+
+**New architecture:**
+- `tests/page-objects/cypress/*.ts` — Cypress PO impls, **chainable-cast-as-Promise** pattern (the original, pre-§3.1 form). Unchanged. Works for Cucumber+Cypress (shared by step defs) and for the new Cypress-scenarios layer (which never `await`s the result; only `.then(cb)` on the runtime chainable).
+- `tests/scenarios/*.ts` — shared async scenarios. Unchanged. Used by Cucumber+Playwright, Cucumber+Cypress (via step defs), and raw Playwright.
+- `tests/scenarios/cypress/*.ts` — **NEW parallel layer for raw Cypress only**. Each fn has the same name and signature as its `tests/scenarios/*.ts` sibling but synchronous (no `async`, no `await`, returns `void`). Bodies use the runtime chainable nature of POs to chain via `.then(cb)` for value reads and `.should(...)` for assertions; the cy queue handles ordering. Cross-PO-call scratchpad reads use `cy.then(() => { ... })` to ensure the read happens after the queue drains.
+- Raw Cypress test bodies — **synchronous `it()` bodies that call cypress-scenario fns directly**. No `async`/`await`, no `cy.then` wrapper. Structurally similar to raw Playwright bodies: same describe/it shape, same scenario-fn names, same call order. The visual diff between a raw Playwright `.spec.ts` and the equivalent raw Cypress `.spec.ts` is exactly four mechanical substitutions: `test.describe → describe`, `test → it`, `async ({ ctx }) =>` → `() => { const ctx = getCtx();`, `await scenarios.foo(ctx)` → `scenarios.foo(ctx)`.
+
+**Reference comparison — the proof of "migration is mechanical":**
+
+Raw Playwright (`tests/raw/playwright/theme.spec.ts`):
+```ts
+import * as theme from "../../scenarios/theme";
+import * as common from "../../scenarios/common";
+
+test.describe("Theme", () => {
+  withWorkspaceOpen();
+  test("clicking theme toggle changes the theme", async ({ ctx }) => {
+    await theme.toggleAndCaptureBackgrounds(ctx);
+    await theme.expectBackgroundChanged(ctx);
+  });
+});
+```
+
+Raw Cypress (`tests/raw/cypress/theme.spec.ts`):
+```ts
+import { getCtx } from "./_context";
+import { withWorkspaceOpen } from "./_openWorkspace";
+import * as theme from "../../scenarios/cypress/theme";
+import * as common from "../../scenarios/cypress/common";
+
+describe("Theme", () => {
+  withWorkspaceOpen();
+  it("clicking theme toggle changes the theme", () => {
+    const ctx = getCtx();
+    theme.toggleAndCaptureBackgrounds(ctx);
+    theme.expectBackgroundChanged(ctx);
+  });
+});
+```
+
+**Sample `scenarios/cypress/theme.ts` body (one fn):**
+
+```ts
+import type { TestContext } from "../../support/testContext";
+import { assertTrue, assertNotEqual } from "../assert";
+
+const chainable = <T>(p: Promise<T>): Cypress.Chainable<T> =>
+  p as unknown as Cypress.Chainable<T>;
+
+export function toggleAndCaptureBackgrounds(ctx: TestContext): void {
+  chainable(ctx.po.workspace.rootBackgroundColor())
+    .then((c) => { ctx.scratch.theme.backgroundBefore = c; });
+  ctx.po.themeToggle.click();
+  chainable(ctx.po.workspace.rootBackgroundColor())
+    .then((c) => { ctx.scratch.theme.backgroundAfter = c; });
+}
+
+export function expectBackgroundChanged(ctx: TestContext): void {
+  cy.then(() => {
+    assertNotEqual(
+      ctx.scratch.theme.backgroundBefore,
+      ctx.scratch.theme.backgroundAfter,
+      "background colour to change after theme toggle",
+    );
+  });
+}
+```
+
+The `chainable<T>(p)` cast helper localizes the type-lie to the cypress-scenarios layer. The `cy.then(() => assert(...))` wrap in `expectBackgroundChanged` ensures the scratchpad read happens after the queue drains.
+
+**Why this proves the user's point:** the Cucumber+X stacks share `tests/scenarios/*.ts` AND `tests/steps/*.ts` AND `.feature` files (with only PO impls forking). The raw stacks must fork their test files (Playwright `test.describe`/`test` vs Cypress `describe`/`it` is a hard Mocha-vs-Playwright boundary) AND the cypress raw stack must fork scenarios. **Cucumber shares strictly more**: features, step defs, scenarios. **Raw stacks share less**: only PO contracts. The forked-scenarios approach demonstrates that even with the fork, migration is mechanical because the structure is preserved 1:1.
+
+**Affected files when this decision is executed:**
+- `tests/page-objects/cypress/*.ts`: chainable-cast pattern (revert §3.1 if currently rewritten — done via `git revert 9237a31` on 2026-05-16, commit `8047ce1`).
+- `tests/raw/cypress/_context.ts` line 2: set to `// Body shape: sync, fire-and-forget; scenarios forked under tests/scenarios/cypress/ — see Phase 5A.4 spec §3.3.`
+- NEW: `tests/scenarios/cypress/` directory with per-area `.ts` files (theme, common, connection, analytics, fxLiveRates, fxTrading, fxRfq, creditRfq, blotter) created task-by-task alongside their `tests/raw/cypress/*.spec.ts` siblings.
+- `tests/raw/cypress/*.spec.ts`: synchronous `it()` bodies calling forked scenarios.
+- Task 11's gate 14: pattern remains `\\bcy\\.` (no `cy.then(` wrapper opener exception needed since `cy.*` doesn't appear in raw test bodies under §3.3 — only in `scenarios/cypress/`). Gate 14 now also implicitly forbids any `cy.*` in `scenarios/cypress/` if scoped to `raw/cypress/` only. Scope adjustment may be needed depending on enforcement intent.
+
+**Acceptance criteria for §3.3 (Task 2 retry):**
+- `pnpm --filter @rtc/tests test:e2e:raw-cypress` passes 5/5 (theme.spec.ts in shape §3.3).
+- `pnpm --filter @rtc/tests test:e2e:cypress` continues to pass 40/40 (PO chainable-cast pattern restored).
+- `pnpm --filter @rtc/tests test:e2e:raw-playwright` and `test:e2e:playwright` are unaffected.
+
 ---
 
 ## 4. File layout
