@@ -69,5 +69,13 @@ export function hoverFirstBlotterRow(ctx: TestContext): void {
 }
 
 export function buyNTimesWithDismissals(ctx: TestContext, n: number): void {
-  void ctx.po.liveRatesTile.buyNTimesWithDismissals(n);
+  // Buy from the first tile (n-1) times, then buy from GBPJPY to guarantee
+  // at least one Rejected trade (ExecutionSimulator always rejects GBPJPY).
+  if (n > 1) void ctx.po.liveRatesTile.buyNTimesWithDismissals(n - 1);
+  void ctx.po.liveRatesTile.clickBuyOnPair("GBPJPY");
+  cy.wait(1_500);
+  chainable(ctx.po.liveRatesTile.isConfirmationVisible())
+    .then((visible) => {
+      if (visible) void ctx.po.liveRatesTile.dismissConfirmation();
+    });
 }

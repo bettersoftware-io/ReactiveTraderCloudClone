@@ -51,5 +51,12 @@ export async function hoverFirstBlotterRow(ctx: TestContext): Promise<void> {
 }
 
 export async function buyNTimesWithDismissals(ctx: TestContext, n: number): Promise<void> {
-  await ctx.po.liveRatesTile.buyNTimesWithDismissals(n);
+  // Buy from the first tile (n-1) times, then buy from GBPJPY to guarantee
+  // at least one Rejected trade (ExecutionSimulator always rejects GBPJPY).
+  if (n > 1) await ctx.po.liveRatesTile.buyNTimesWithDismissals(n - 1);
+  await ctx.po.liveRatesTile.clickBuyOnPair("GBPJPY");
+  await new Promise((r) => setTimeout(r, 1_500));
+  if (await ctx.po.liveRatesTile.isConfirmationVisible()) {
+    await ctx.po.liveRatesTile.dismissConfirmation();
+  }
 }

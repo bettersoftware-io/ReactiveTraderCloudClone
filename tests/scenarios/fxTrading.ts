@@ -62,3 +62,34 @@ export async function expectFirstTileNotionalInputVisible(ctx: TestContext): Pro
 export async function setFirstTileNotional(ctx: TestContext, value: string): Promise<void> {
   await ctx.po.liveRatesTile.fillFirstTileNotional(value);
 }
+
+export async function setNotionalAndBuy(ctx: TestContext, value: string): Promise<void> {
+  await ctx.po.liveRatesTile.fillFirstTileNotional(value);
+  await ctx.po.liveRatesTile.clickBuyOnFirst();
+}
+
+export async function expectBlotterContainsText(ctx: TestContext, text: string): Promise<void> {
+  // Wait briefly for the trade to appear in the blotter
+  await new Promise((r) => setTimeout(r, 2_000));
+  // Try the raw text first, then locale-formatted (e.g. "1000000" → "1,000,000")
+  const formatted = Number.isFinite(Number(text))
+    ? Number(text).toLocaleString("en-US", { maximumFractionDigits: 0 })
+    : text;
+  const rawFound = await ctx.po.blotterTable.tableContainsText(text);
+  const fmtFound = await ctx.po.blotterTable.tableContainsText(formatted);
+  assertTrue(rawFound || fmtFound, `blotter does not contain text "${text}" (also tried "${formatted}")`);
+}
+
+export async function clickBuyOnGbpjpy(ctx: TestContext): Promise<void> {
+  // GBPJPY is always rejected by the ExecutionSimulator — use it to get a
+  // deterministic "Rejected" result without relying on random probability.
+  await ctx.po.liveRatesTile.clickBuyOnPair("GBPJPY");
+}
+
+export async function expectAtLeastOneRejectionInBlotter(ctx: TestContext): Promise<void> {
+  // After a GBPJPY buy, verify the blotter shows at least one Rejected trade.
+  // Wait briefly for the trade to appear.
+  await new Promise((r) => setTimeout(r, 3_000));
+  const found = await ctx.po.blotterTable.tableContainsText("Rejected");
+  assertTrue(found, 'blotter does not contain any "Rejected" trade');
+}

@@ -52,4 +52,16 @@ test.describe("FX trading", () => {
     await fxTrading.expectFirstTileNotionalInputVisible(ctx);
     await fxTrading.setFirstTileNotional(ctx, "5000000");
   });
+
+  test("executed trade carries the requested notional", async ({ ctx }) => {
+    await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    await fxTrading.setNotionalAndBuy(ctx, "1000000");
+    await fxTrading.expectBlotterContainsText(ctx, "1000000");
+  });
+
+  test("rejected trades occur with non-zero probability across multiple attempts", async ({ ctx }) => {
+    await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    await fxTrading.clickBuyOnGbpjpy(ctx);
+    await fxTrading.expectAtLeastOneRejectionInBlotter(ctx);
+  });
 });

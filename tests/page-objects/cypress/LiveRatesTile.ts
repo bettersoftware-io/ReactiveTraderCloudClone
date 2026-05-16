@@ -72,6 +72,12 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
       .click() as unknown as Promise<void>;
   }
 
+  clickBuyOnPair(symbol: string): Promise<void> {
+    return cy.get(`[data-testid="${TESTIDS.liveRates.tile(symbol)}"]`)
+      .find(`[data-testid="${TESTIDS.liveRates.buyBtn}"]`)
+      .click() as unknown as Promise<void>;
+  }
+
   waitForConfirmation(timeoutMs: number): Promise<void> {
     return cy.get(TILE_CONFIRMATION_SELECTOR, { timeout: timeoutMs })
       .should("be.visible") as unknown as Promise<void>;

@@ -47,6 +47,10 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
   async clickSellOnFirst(): Promise<void> {
     await this.firstTile().getByTestId(TESTIDS.liveRates.sellBtn).click();
   }
+  async clickBuyOnPair(symbol: string): Promise<void> {
+    await this.page.getByTestId(TESTIDS.liveRates.tile(symbol))
+      .getByTestId(TESTIDS.liveRates.buyBtn).click();
+  }
   async waitForConfirmation(timeoutMs: number): Promise<void> {
     await expect(
       this.firstTile().getByTestId(TESTIDS.liveRates.tradeConfirmation),

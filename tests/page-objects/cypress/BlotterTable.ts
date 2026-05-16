@@ -93,4 +93,9 @@ export class CypressBlotterTable implements BlotterTablePO {
         return css !== "none";
       }) as unknown as Promise<boolean>;
   }
+
+  tableContainsText(text: string): Promise<boolean> {
+    return this.tableEl()
+      .then(($el) => $el.text().includes(text)) as unknown as Promise<boolean>;
+  }
 }

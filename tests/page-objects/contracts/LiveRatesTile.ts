@@ -23,6 +23,8 @@ export interface LiveRatesTilePO {
   /** Trade execution on the first tile. */
   clickBuyOnFirst(): Promise<void>;
   clickSellOnFirst(): Promise<void>;
+  /** Trade execution on a specific pair tile (e.g. "GBPJPY"). */
+  clickBuyOnPair(symbol: string): Promise<void>;
 
   /** Trade confirmation overlay. */
   waitForConfirmation(timeoutMs: number): Promise<void>;

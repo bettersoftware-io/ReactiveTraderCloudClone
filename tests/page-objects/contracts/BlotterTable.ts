@@ -10,4 +10,6 @@ export interface BlotterTablePO {
   hoverFirstRow(): Promise<void>;
   firstRowBackgroundColor(): Promise<string>;
   isFirstRowVisible(): Promise<boolean>;
+  /** Return true if the blotter table's text content contains the given string. */
+  tableContainsText(text: string): Promise<boolean>;
 }

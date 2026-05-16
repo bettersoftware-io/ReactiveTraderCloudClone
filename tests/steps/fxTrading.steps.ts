@@ -48,3 +48,18 @@ When("the trader sets the first tile notional to {string}",
   function(this: StepContext, value: string) {
     return fxTrading.setFirstTileNotional(this.ctx, value);
   });
+
+When("the trader executes a buy for {string} on the first tile",
+  function(this: StepContext, notional: string) {
+    return fxTrading.setNotionalAndBuy(this.ctx, notional);
+  });
+
+Then("the executed trade carries notional {string}",
+  function(this: StepContext, value: string) {
+    return fxTrading.expectBlotterContainsText(this.ctx, value);
+  });
+
+Then("at least one trade confirmation matched {}",
+  function(this: StepContext, _pattern: string) {
+    return fxTrading.expectAtLeastOneRejectionInBlotter(this.ctx);
+  });

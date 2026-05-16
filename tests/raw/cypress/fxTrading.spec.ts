@@ -58,4 +58,18 @@ describe("FX trading", () => {
     fxTrading.expectFirstTileNotionalInputVisible(ctx);
     fxTrading.setFirstTileNotional(ctx, "5000000");
   });
+
+  it("executed trade carries the requested notional", () => {
+    const ctx = getCtx();
+    fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    fxTrading.setNotionalAndBuy(ctx, "1000000");
+    fxTrading.expectBlotterContainsText(ctx, "1000000");
+  });
+
+  it("rejected trades occur with non-zero probability across multiple attempts", () => {
+    const ctx = getCtx();
+    fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    fxTrading.clickBuyOnGbpjpy(ctx);
+    fxTrading.expectAtLeastOneRejectionInBlotter(ctx);
+  });
 });

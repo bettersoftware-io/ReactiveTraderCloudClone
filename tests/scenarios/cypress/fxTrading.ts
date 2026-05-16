@@ -64,3 +64,34 @@ export function expectFirstTileNotionalInputVisible(ctx: TestContext): void {
 export function setFirstTileNotional(ctx: TestContext, value: string): void {
   void ctx.po.liveRatesTile.fillFirstTileNotional(value);
 }
+
+export function setNotionalAndBuy(ctx: TestContext, value: string): void {
+  void ctx.po.liveRatesTile.fillFirstTileNotional(value);
+  void ctx.po.liveRatesTile.clickBuyOnFirst();
+}
+
+export function expectBlotterContainsText(ctx: TestContext, text: string): void {
+  cy.wait(2_000);
+  // Try the raw text first, then locale-formatted (e.g. "1000000" → "1,000,000")
+  const formatted = Number.isFinite(Number(text))
+    ? Number(text).toLocaleString("en-US", { maximumFractionDigits: 0 })
+    : text;
+  chainable(ctx.po.blotterTable.tableContainsText(text))
+    .then((rawFound) => {
+      if (rawFound) return;
+      chainable(ctx.po.blotterTable.tableContainsText(formatted))
+        .then((fmtFound) => {
+          assertTrue(fmtFound, `blotter does not contain text "${text}" (also tried "${formatted}")`);
+        });
+    });
+}
+
+export function clickBuyOnGbpjpy(ctx: TestContext): void {
+  void ctx.po.liveRatesTile.clickBuyOnPair("GBPJPY");
+}
+
+export function expectAtLeastOneRejectionInBlotter(ctx: TestContext): void {
+  cy.wait(3_000);
+  chainable(ctx.po.blotterTable.tableContainsText("Rejected"))
+    .then((v) => assertTrue(v, 'blotter does not contain any "Rejected" trade'));
+}
