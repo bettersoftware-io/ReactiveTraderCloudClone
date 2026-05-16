@@ -53,7 +53,7 @@ export interface App {
  * returns to CONNECTED (not just CONNECTING). In future phases a real
  * gateway adapter will replace these synthetic emissions.
  */
-function withSyntheticGatewayConnected(
+export function withSyntheticGatewayConnected(
   inner: ConnectionEventsPort,
 ): ConnectionEventsPort {
   return {
