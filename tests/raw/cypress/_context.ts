@@ -1,5 +1,5 @@
 // tests/raw/cypress/_context.ts
-// Body shape: sync fire-and-forget — see Phase 5A.4 spec §3.
+// Body shape: sync, fire-and-forget; scenarios forked under tests/scenarios/cypress/ — see Phase 5A.4 spec §3.3.
 import type { TestContext } from "../../support/testContext";
 import { Scratchpad } from "../../support/testContext";
 import { buildCypressPageObjects } from "../../page-objects/cypress/factory";
