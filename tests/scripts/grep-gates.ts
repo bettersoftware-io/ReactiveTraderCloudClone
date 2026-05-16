@@ -79,6 +79,28 @@ const GATES: Gate[] = [
     paths: ["raw/playwright/"],
     excludes: ["/node_modules/", "raw/playwright/_context.ts"],
   },
+  {
+    name: "12. No driver imports in raw Cypress test bodies",
+    pattern: '"cypress"|@badeball|@playwright/test',
+    paths: ["raw/cypress/"],
+    excludes: [
+      "/node_modules/",
+      "raw/cypress/cypress.config.ts",
+      "raw/cypress/_context.ts",
+    ],
+  },
+  {
+    name: "13. No direct ctx.po.* access in raw Cypress test bodies",
+    pattern: 'ctx\\.po\\.',
+    paths: ["raw/cypress/"],
+    excludes: ["/node_modules/", "raw/cypress/_context.ts"],
+  },
+  {
+    name: "14. No direct cy.* calls in raw Cypress test bodies",
+    pattern: '\\bcy\\.',
+    paths: ["raw/cypress/"],
+    excludes: ["/node_modules/", "raw/cypress/_context.ts"],
+  },
 ];
 
 let failed = 0;
