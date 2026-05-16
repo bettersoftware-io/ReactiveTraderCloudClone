@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-11
+**Last updated:** 2026-05-16
 
 ---
 
@@ -26,7 +26,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 5A.1 — Gherkin + page objects (Cucumber + Playwright) | ✅ DONE | `plans/2026-05-08-phase-5a-1-gherkin-page-objects.md` | `49e5764..892c128` (15 commits) |
 | Phase 5A.2 — Cucumber + Cypress sharing the same `.feature` files | ✅ DONE | `plans/2026-05-10-phase-5a-2-cypress-cucumber.md` | `c8706ec..05ecee4` (24 task commits) + this STATUS update |
 | Phase 5A.3 — Raw Playwright reusing PO contracts | ✅ DONE | `plans/2026-05-10-phase-5a-3-raw-playwright-po-contracts.md` | `f26ae72..55a5fe7` (11 task commits) + this STATUS update |
-| Phase 5A.4 — Raw Cypress reusing PO contracts | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5A.4 — Raw Cypress reusing PO contracts | ✅ DONE | `plans/2026-05-11-phase-5a-4-raw-cypress-po-contracts.md` | `3356d7e..936408f` (22 commits incl. 4 spec amendments + 2 revert pairs reflecting the §3 hard-stop → §3.3 forked-scenarios decision) |
 | Phase 5B — Presenter-direct step definitions for the same `.feature` files | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5C — Port contract tests (simulator vs WsReal) | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5D — Real gateway-events adapter; delete `withSyntheticGatewayConnected` | ⏳ NOT STARTED | (to be written) | — |
@@ -99,6 +99,18 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 1. **`waitSeconds` is mis-located.** `tests/scenarios/fxLiveRates.ts` exports `waitSeconds`, but it wraps `ctx.po.workspace.wait` and has nothing FX-Live-Rates-specific. It is reused from `blotter.spec.ts` and `fxTrading.spec.ts`. Move to `tests/scenarios/common.ts` when next touching either file.
 
 2. **`tests/.gitignore` `test-results/` line is redundant.** The repo-root `.gitignore` already covers `test-results/`. The defense-in-depth entry is harmless but could be dropped if/when consolidating ignore rules.
+
+## Phase 5A.4 follow-ups (carry into Phase 5B+)
+
+1. **§3.3 race-guard rationale could be more durable.** `tests/scenarios/cypress/connection.ts:setBrowserOffline` has an inline-documented race guard (waits for "Connected" before dispatching `offline`) that is Cypress-only — Playwright uses real CDP. The inline comment explains the symptom and the why; consider whether spec §3.3 itself or this section should re-state the rationale so a future contributor removing the guard sees the explanation without grepping the scenarios file. The Task 3 reviewer suggested adding "the .should() form is load-bearing — switching to .then() loses Cypress's auto-retry" as a complementary one-liner so maintainers don't accidentally simplify the retry mechanism away.
+
+2. **Default timeout drift in `expectTradeConfirmationMatchesOneOf`.** Task 6 originally diverged (10s vs shared 5s); fixed in commit `0214f0c`. Worth a note that other scenario fns that internally apply a default timeout should be cross-checked against their shared counterparts the next time someone tweaks the timing layer.
+
+3. **`chainable<T>` cast helper is necessary but ugly.** Lives in `tests/scenarios/cypress/_chainable.ts`. It's a type-unsafety entry point that future readers may try to "clean up." The comment on the helper is brief; a follow-up could expand it to explain that the PO contract is `Promise<T>` for Playwright shape, but the Cypress runtime IS a `Chainable<T>` — the cast is the bridge between the two worlds at the §3.3 fork layer.
+
+4. **Carry-over from Phase 5A.3** (`waitSeconds` mis-located in `scenarios/fxLiveRates.ts`; `tests/.gitignore` redundancy) — still not fixed in 5A.4. The cypress fork mirrors the mis-location in `scenarios/cypress/fxLiveRates.ts`. Fold both into the next pass.
+
+5. **Spec history.** §3.1, §3.2, §3.3 are all in the spec as audit trail. Future readers will see the dead ends. Consider whether to leave them (preserves the "what we tried and why it failed" learning) or collapse into a single §3 section. Currently leaning toward leaving them — the failure modes documented are exactly the kind of Cypress quirks that bite contributors next time someone considers async/await in a raw Cypress body.
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
