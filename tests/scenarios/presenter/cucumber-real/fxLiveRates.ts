@@ -30,8 +30,13 @@ export async function recordFirstTileText(w: PresenterWorld): Promise<void> {
 }
 
 export async function expectFirstTileTextNonEmpty(w: PresenterWorld): Promise<void> {
-  if (!w.scratch.lastPrice || !Number.isFinite(w.scratch.lastPrice.mid)) {
-    throw new Error("first tile mid is not a finite number");
+  const pair = w.scratch.firstPair;
+  if (!pair) throw new Error("firstPair not captured yet");
+  const current = await firstValueFrom(
+    w.ctx.app.presenters.priceStream.price$(pair).pipe(timeout(2000)),
+  );
+  if (!Number.isFinite(current.mid)) {
+    throw new Error(`first tile mid is not a finite number, got: ${current.mid}`);
   }
 }
 
