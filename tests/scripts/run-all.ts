@@ -15,6 +15,7 @@ try {
   combinedExit |= await run("pnpm", ["test:e2e:playwright"]);
   combinedExit |= await run("pnpm", ["test:e2e:raw-playwright"]);
   combinedExit |= await run("pnpm", ["test:e2e:cypress"]);
+  combinedExit |= await run("pnpm", ["test:e2e:raw-cypress"]);
 } finally {
   await dev.stop();
 }
