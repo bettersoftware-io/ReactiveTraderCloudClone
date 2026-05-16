@@ -56,4 +56,15 @@ describe("FX live rates", () => {
     fxLiveRates.waitSeconds(ctx, 2);
     fxLiveRates.expectFirstTileTextNonEmpty(ctx);
   });
+
+  it("currency pairs list has at least 7 entries", () => {
+    const ctx = getCtx();
+    fxLiveRates.expectAtLeastNTilesVisibleWithin(ctx, 7, 5);
+  });
+
+  it("first tile shows a numeric mid value", () => {
+    const ctx = getCtx();
+    fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    fxLiveRates.expectFirstTileTextMatches(ctx, /\d+\.\d+/);
+  });
 });

@@ -87,3 +87,18 @@ export function expectFirstTileTextNonEmpty(ctx: TestContext): void {
       assertGreaterThanZero(current.length, "current first tile text should be non-empty");
     });
 }
+
+export function expectAtLeastNTilesVisibleWithin(
+  ctx: TestContext,
+  n: number,
+  seconds: number,
+): void {
+  void ctx.po.liveRatesTile.waitForFirstTile(seconds * 1_000);
+  chainable(ctx.po.liveRatesTile.count())
+    .then((c) => assertGte(c, n));
+}
+
+export function expectFirstTileTextMatches(ctx: TestContext, pattern: RegExp): void {
+  chainable(ctx.po.liveRatesTile.firstTileText())
+    .then((text) => assertTrue(pattern.test(text), `first tile text "${text}" did not match ${pattern}`));
+}

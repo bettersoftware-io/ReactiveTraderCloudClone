@@ -72,3 +72,20 @@ export async function expectFirstTileTextNonEmpty(ctx: TestContext): Promise<voi
     "snapshot length should be > 0");
   assertGreaterThanZero(current.length, "current first tile text should be non-empty");
 }
+
+export async function expectAtLeastNTilesVisibleWithin(
+  ctx: TestContext,
+  n: number,
+  seconds: number,
+): Promise<void> {
+  await ctx.po.liveRatesTile.waitForFirstTile(seconds * 1_000);
+  assertGte(await ctx.po.liveRatesTile.count(), n);
+}
+
+export async function expectFirstTileTextMatches(
+  ctx: TestContext,
+  pattern: RegExp,
+): Promise<void> {
+  const text = await ctx.po.liveRatesTile.firstTileText();
+  assertTrue(pattern.test(text), `first tile text "${text}" did not match ${pattern}`);
+}

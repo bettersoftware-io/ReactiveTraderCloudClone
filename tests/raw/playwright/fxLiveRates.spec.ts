@@ -49,4 +49,13 @@ test.describe("FX live rates", () => {
     await fxLiveRates.waitSeconds(ctx, 2);
     await fxLiveRates.expectFirstTileTextNonEmpty(ctx);
   });
+
+  test("currency pairs list has at least 7 entries", async ({ ctx }) => {
+    await fxLiveRates.expectAtLeastNTilesVisibleWithin(ctx, 7, 5);
+  });
+
+  test("first tile shows a numeric mid value", async ({ ctx }) => {
+    await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    await fxLiveRates.expectFirstTileTextMatches(ctx, /\d+\.\d+/);
+  });
 });

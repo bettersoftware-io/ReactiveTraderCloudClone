@@ -54,3 +54,15 @@ When("the trader waits {int} seconds",
 
 Then("the first tile text is non-empty",
   function(this: StepContext) { return fxLiveRates.expectFirstTileTextNonEmpty(this.ctx); });
+
+Then("there are at least {int} visible tiles within {int} seconds",
+  function(this: StepContext, n: number, s: number) {
+    return fxLiveRates.expectAtLeastNTilesVisibleWithin(this.ctx, n, s);
+  });
+
+Then("the first tile text matches {}",
+  function(this: StepContext, regexAsString: string) {
+    const m = regexAsString.match(/^\/(.+)\/([a-z]*)$/);
+    if (!m) throw new Error(`bad regex literal in: ${regexAsString}`);
+    return fxLiveRates.expectFirstTileTextMatches(this.ctx, new RegExp(m[1]!, m[2]!));
+  });

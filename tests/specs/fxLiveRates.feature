@@ -3,6 +3,7 @@ Feature: FX live rates
   Background:
     Given the trader has the FX workspace open
 
+  @presenter
   Scenario: tile grid renders streaming prices
     Then a price tile is visible within 5 seconds
     And there is at least 1 visible tile
@@ -35,8 +36,18 @@ Feature: FX live rates
     And the trader switches to the "fx" tab
     Then the view toggle button shows "Chart"
 
+  @presenter
   Scenario: prices update over time
     Then a price tile is visible within 5 seconds
     When the trader records the first tile text
     And the trader waits 2 seconds
     Then the first tile text is non-empty
+
+  @presenter
+  Scenario: currency pairs list has at least 7 entries
+    Then there are at least 7 visible tiles within 5 seconds
+
+  @presenter
+  Scenario: first tile shows a numeric mid value
+    Then a price tile is visible within 5 seconds
+    And the first tile text matches /\d+\.\d+/
