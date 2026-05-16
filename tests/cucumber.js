@@ -12,7 +12,12 @@
 
 export default {
   paths: ["specs/**/*.feature"],
-  import: ["support/testContext.ts", "support/playwright/**/*.ts", "steps/**/*.ts"],
+  import: [
+    "support/testContext.ts",
+    "support/playwright/**/*.ts",
+    "steps/*.steps.ts",
+    "steps/cypress/*.steps.ts",
+  ],
   format: ["progress-bar", "html:reports/cucumber.html", "summary"],
   parallel: process.env.CI ? 1 : 2,
   retry: process.env.CI ? 2 : 0,

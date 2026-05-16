@@ -3,19 +3,23 @@ Feature: Connection status
   Background:
     Given the trader has the workspace open
 
+  @presenter
   Scenario: connected status is shown in the footer
     Then the connection status footer is visible
     And the connection status footer shows "Connected"
 
+  @presenter
   Scenario: connection overlay is hidden when connected
     Then the connection overlay is hidden
 
+  @presenter
   Scenario: going offline shows the overlay with an offline message
     When the browser goes offline
     Then the connection overlay becomes visible within 3 seconds
     And the connection overlay text matches /offline/i
     And the connection status footer shows "Offline"
 
+  @presenter
   Scenario: coming back online dismisses the overlay
     When the browser goes offline
     And the connection overlay becomes visible within 3 seconds
