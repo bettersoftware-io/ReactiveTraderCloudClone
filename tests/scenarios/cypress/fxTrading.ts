@@ -28,10 +28,10 @@ export function expectTradeConfirmationMatchesOneOf(
     .filter(Boolean)
     .map((token) => {
       const m = token.match(/^\/(.+)\/([gimsuy]*)$/);
-      if (!m) throw new Error(`bad regex literal in: ${token}`);
+      if (!m) throw new Error(`bad regex literal: ${token}`);
       return new RegExp(m[1], m[2]);
     });
-  void ctx.po.liveRatesTile.confirmationContainsAny(patterns, timeoutMs ?? 10_000);
+  void ctx.po.liveRatesTile.confirmationContainsAny(patterns, timeoutMs ?? 5_000);
 }
 
 export function dismissTradeConfirmation(ctx: TestContext): void {
