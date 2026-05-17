@@ -3,7 +3,7 @@ import { firstValueFrom } from "rxjs";
 import type { PresenterWorld } from "../_world";
 
 export async function expectPriceTileVisibleWithin(w: PresenterWorld, seconds: number): Promise<void> {
-  const pairs = await firstValueFrom(w.ctx.app.presenters.currencyPairs.pairs$);
+  const pairs = await w.awaitFirstWithin(w.ctx.app.presenters.currencyPairs.pairs$, seconds * 1000);
   if (pairs.length === 0) throw new Error("no currency pairs available");
   const pair = pairs[0]!;
   const price = await w.awaitFirstWithin(
