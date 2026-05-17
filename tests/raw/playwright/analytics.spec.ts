@@ -28,4 +28,8 @@ test.describe("Analytics panel", () => {
     await theme.expectFirstPriceTileVisible(ctx, 5_000);
     await analytics.expectAnalyticsPanelVisibleWithin(ctx, 5);
   });
+
+  test("analytics presenter emits a non-empty snapshot", async ({ ctx }) => {
+    await analytics.expectAnalyticsPanelVisibleWithin(ctx, 5);
+  });
 });

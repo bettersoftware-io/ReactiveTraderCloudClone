@@ -18,6 +18,11 @@ Feature: Analytics panel
     Then the analytics panel is visible within 5 seconds
     And the analytics panel shows the section "Positions"
 
+  @presenter
   Scenario: analytics panel shows alongside live rates
     Then a price tile is visible
     And the analytics panel is visible within 5 seconds
+
+  @presenter
+  Scenario: analytics presenter emits a non-empty snapshot
+    Then the analytics presenter emits within 5 seconds

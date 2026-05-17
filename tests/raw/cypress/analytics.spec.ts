@@ -33,4 +33,9 @@ describe("Analytics panel", () => {
     theme.expectFirstPriceTileVisible(ctx, 5_000);
     analytics.expectAnalyticsPanelVisibleWithin(ctx, 5);
   });
+
+  it("analytics presenter emits a non-empty snapshot", () => {
+    const ctx = getCtx();
+    analytics.expectAnalyticsPanelVisibleWithin(ctx, 5);
+  });
 });
