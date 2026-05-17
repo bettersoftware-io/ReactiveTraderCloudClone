@@ -37,3 +37,7 @@ Feature: Credit RFQ
     Then the message "No RFQs to display" appears within 3 seconds
     When the trader switches to the credit "sell-side" tab
     Then the sell-side heading "Sell Side (Adaptive Bank)" appears within 3 seconds
+
+  @presenter
+  Scenario: credit RFQ list is empty when no RFQs have been created
+    Then the credit RFQ list is empty within 3 seconds

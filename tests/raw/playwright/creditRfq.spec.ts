@@ -47,4 +47,8 @@ test.describe("Credit RFQ", () => {
     await creditRfq.clickCreditTab(ctx, "sell-side");
     await creditRfq.expectSellSideHeadingWithin(ctx, 3);
   });
+
+  test("credit RFQ list is empty when no RFQs have been created", async ({ ctx }) => {
+    await creditRfq.expectMessageWithin(ctx, "No RFQs to display", 3);
+  });
 });

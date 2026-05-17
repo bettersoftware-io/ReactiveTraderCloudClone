@@ -33,3 +33,8 @@ Then("the credit trades heading {string} appears within {int} seconds",
   function(this: StepContext, _heading: string, seconds: number) {
     return creditRfq.expectCreditTradesHeadingWithin(this.ctx, seconds);
   });
+
+Then("the credit RFQ list is empty within {int} seconds",
+  function(this: StepContext, seconds: number) {
+    return creditRfq.expectMessageWithin(this.ctx, "No RFQs to display", seconds);
+  });

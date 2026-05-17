@@ -55,4 +55,9 @@ describe("Credit RFQ", () => {
     creditRfq.clickCreditTab(ctx, "sell-side");
     creditRfq.expectSellSideHeadingWithin(ctx, 3);
   });
+
+  it("credit RFQ list is empty when no RFQs have been created", () => {
+    const ctx = getCtx();
+    creditRfq.expectMessageWithin(ctx, "No RFQs to display", 3);
+  });
 });
