@@ -1159,9 +1159,9 @@ A single test suite is parameterised over **all** adapters that implement a port
 
 This is what makes "swap an adapter" a low-cost operation: the contract is encoded in tests and they all must pass.
 
-### 9.5 Five-runner stack (Cucumber-JS + Cypress + raw @playwright/test + raw Cypress + presenter-direct)
+### 9.5 Six-runner stack (Cucumber-JS + Cypress + raw @playwright/test + raw Cypress + presenter-direct × 2)
 
-Five runners exercise the same behavioural surface via three binding styles. Cucumber-JS (with Playwright) and Cypress (via cypress-cucumber-preprocessor) bind Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree. Raw `@playwright/test` and raw Cypress bind scenarios programmatically through their own step trees. A fifth peer — **presenter-direct** — binds a subset of the same scenarios (tagged `@presenter`) to the RxJS presenter layer in pure Node with no browser; see Phase 5B.1 spec for details.
+Six runners exercise the same behavioural surface via four binding styles. Cucumber-JS (with Playwright) and Cypress (via cypress-cucumber-preprocessor) bind Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree. Raw `@playwright/test` and raw Cypress bind scenarios programmatically through their own step trees. Two presenter-direct peers — **cucumber-presenter-real** and **cucumber-presenter-fake** — bind a subset of the same scenarios (tagged `@presenter`) to the RxJS presenter layer in pure Node with no browser; the real-time peer uses wall-clock waits while the fake-time peer wraps the same scenario bodies in `@sinonjs/fake-timers` virtual time. See Phase 5B.1 and Phase 5B.2 specs for details.
 
 | Layer | Stack |
 |---|---|
@@ -1174,11 +1174,13 @@ Five runners exercise the same behavioural surface via three binding styles. Cuc
 | Page-object contracts | TypeScript interfaces; `TESTIDS` and `STRINGS` SOTs |
 | Page-object impls (drivers) | `tests/page-objects/playwright/` (Playwright) + `tests/page-objects/cypress/` (Cypress) |
 | Per-runner support | `tests/support/playwright/{world,hooks}.ts` (Cucumber+Playwright) · `tests/support/cypress/{world,e2e}.ts` (Cucumber+Cypress) · `tests/raw/playwright/{_context,_openWorkspace}.ts` (raw Playwright fixture) · `tests/raw/cypress/{_context,_openWorkspace}.ts` (raw Cypress getCtx accessor) |
-| Orchestration | `tests/scripts/run-all.ts` — five peers, one shared dev server, OR-ed exit codes |
+| Orchestration | `tests/scripts/run-all.ts` — six peers, one shared dev server, OR-ed exit codes |
 | Presenter-direct specs | Same `tests/specs/**/*.feature` files, scenarios tagged `@presenter` |
 | Presenter-direct step defs | `tests/steps/presenter/cucumber-real/*.steps.ts` — bind to presenter streams; no driver imports |
 | Presenter-direct scenarios | `tests/scenarios/presenter/cucumber-real/*.ts` — subscribe to RxJS streams with `firstValueFrom + timeout` |
 | Presenter-direct harness | `tests/scenarios/presenter/_buildApp.ts` (App + simulator + test ConnectionEventsPort) · `tests/support/presenter/cucumber-real/{world,hooks}.ts` |
+| Presenter-fake runner | `tests/cucumber-presenter-fake.js` · `@cucumber/cucumber` + `@sinonjs/fake-timers` — same 19 `@presenter` scenarios under virtual time |
+| Presenter-fake harness | `tests/support/presenter/cucumber-fake/{world,hooks}.ts` (FakePresenterWorld installs/uninstalls `clock` per scenario; `_await.ts` shared `AwaitHelpers` interface) |
 
 **Bundler-alias seam (Cucumber+Cypress).** `tests/steps/*.steps.ts` files unconditionally `import { Given, When, Then } from "@cucumber/cucumber"`. Cucumber-JS resolves this natively in Node. Cypress's esbuild bundler (configured in `tests/cypress.config.ts`) installs a 5-line plugin that intercepts the specifier and remaps it to `@badeball/cypress-cucumber-preprocessor`. Both packages expose API-compatible `Given/When/Then/And/But/defineParameterType` decorators, so the same call sites compile cleanly under either resolution. The trick is invisible at the step-file level. Hooks and `World/setWorldConstructor` are NOT shared — they live in the per-runner `tests/support/{playwright,cypress}/` directories.
 
@@ -1187,6 +1189,8 @@ Five runners exercise the same behavioural surface via three binding styles. Cuc
 **Raw Cypress binding (Phase 5A.4 §3.3).** `tests/raw/cypress/*.spec.ts` files are pure Mocha `describe`/`it` blocks. Each `it()` body opens with `const ctx = getCtx()` (from `_context.ts`'s module-scoped beforeEach builder) and then calls **synchronous** scenario fns from `tests/scenarios/cypress/*.ts`. No `async`, no `await`, no `cy.*`, no `ctx.po.*`, no driver imports — enforced by grep gates 12–14. The forked `tests/scenarios/cypress/` layer mirrors `tests/scenarios/*.ts` fn-for-fn but uses cy queue idioms: a `chainable<T>` cast helper (in `_chainable.ts`) exposes Cypress's Chainable runtime under the shared layer's `Promise<T>` PO contract; reads call `.then(cb)` on chainables (queue-aware, propagates the subject); cross-call scratchpad reads sit inside `cy.then(() => ...)` to ensure ordering. **The fork was necessary, not desired:** Cypress's command-queue model and Promise-vs-Chainable thenable semantics make the shared async scenarios unusable in raw `it()` bodies; four prior combinations were attempted and documented in spec §3.1, §3.2, §3.3 before this design landed. This is the architectural cost that proves the Cucumber-mediated stacks share strictly more (features + step defs + scenarios + Background mechanism) than the raw stacks do (only PO contracts + features).
 
 **Presenter-direct binding (Phase 5B.1).** `tests/steps/presenter/cucumber-real/*.steps.ts` files use Cucumber-JS but in pure Node — no browser, no DOM, no React. Step bodies delegate to scenarios fns at `tests/scenarios/presenter/cucumber-real/*.ts`, which subscribe to presenter streams (`priceStream.price$`, `connection.status$`, `blotter.trades$`, etc.) via `firstValueFrom + timeout` and assert on emitted values. Background steps are no-ops (workspaces are a UI concern). The `@presenter` tag in `.feature` files selects 19 scenarios that map cleanly to the application layer; UI-only scenarios (theme, hover, CSS, tabs) remain browser-only. `tests/scenarios/presenter/_buildApp.ts` is the sole seam to `createApp(simulatorPorts)`; grep gate 17 enforces it. Demonstrates that the same behavioural specs validate the application layer with no UI framework — closing the loop on `architecture.md §1.1` rule #4 ("Behavioural Tests as Insurance"). First sub-phase of Phase 5B; sub-phases 5B.2-5B.4 add variants (fake timers; Vitest+Gherkin; Vitest+plain-TS) as a comparison artifact.
+
+**Virtual-time binding (Phase 5B.2):** the cucumber-presenter-fake runner reuses the same 19 `@presenter` scenarios as cucumber-presenter-real but runs each under `@sinonjs/fake-timers`. The `FakePresenterWorld` implements the same `AwaitHelpers` interface as the real-time `PresenterWorld`, advancing virtual time inside `awaitFirstWithin` via `clock.tickAsync`. Scenario bodies are shared verbatim. Runtime: ~1s vs ~18.6s for the real-time peer (≈19× speedup).
 
 ---
 

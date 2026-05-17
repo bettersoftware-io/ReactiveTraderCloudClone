@@ -11,7 +11,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD`
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-direct)
+- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-real) + 19 (presenter-fake) — 48×4 + 19×2 = 230 e2e scenarios (4 browser peers × 48 scenarios; 2 presenter peers × 19 scenarios)
 
 ## Phases
 
@@ -28,7 +28,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 5A.3 — Raw Playwright reusing PO contracts | ✅ DONE | `plans/2026-05-10-phase-5a-3-raw-playwright-po-contracts.md` | `f26ae72..55a5fe7` (11 task commits) + this STATUS update |
 | Phase 5A.4 — Raw Cypress reusing PO contracts | ✅ DONE | `plans/2026-05-11-phase-5a-4-raw-cypress-po-contracts.md` | `3356d7e..936408f` (21 task commits incl. 3 spec amendments + 2 revert pairs reflecting the §3 hard-stop → §3.3 forked-scenarios decision) + this STATUS update |
 | Phase 5B.1 — Cucumber-JS + real-time presenter step defs (foundation for 5B comparison artifact) | ✅ DONE | `plans/2026-05-16-phase-5b-1-presenter-direct-step-defs.md` | `eecc786..00bc43b` (20 task commits) + this STATUS update |
-| Phase 5B.2 — Cucumber-JS + fake timers (virtual time) | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5B.2 — Cucumber-JS + fake timers (virtual time) | ✅ DONE | `plans/2026-05-17-phase-5b-2-cucumber-fake-timers.md` | `22c77ff..47c43df` (12 task commits) + this STATUS update |
 | Phase 5B.3 — Vitest + Gherkin + fake timers | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5B.4 — Vitest + plain TS (no Gherkin) + fake timers | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5C — Port contract tests (simulator vs WsReal) | ⏳ NOT STARTED | (to be written) | — |
@@ -130,6 +130,14 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 6. **Dead scratchpad fields.** `PresenterScratchpad` (`tests/scenarios/presenter/cucumber-real/common.ts`) contains four write-only fields (`lastPrice`, `observedTradeCount`, `lastTradeDirection`, `recordedCount`) that are never consumed by any presenter-side assertion. Add comments marking them as pre-declared for 5B.2-5B.4, or prune them when 5B.2 confirms they're not needed.
 
 7. **`at least one trade confirmation matched {}` step ignores its pattern argument.** The step at `tests/steps/presenter/cucumber-real/fxTrading.steps.ts` discards its `_pattern` argument and unconditionally calls `expectAtLeastOneRejection`. Safe today (only caller uses `/rejected/i` with GBPJPY targeting which is deterministically rejected), but will silently pass wrong assertions for any future scenario passing a different pattern. Rename to `at least one trade was rejected` or guard the pattern.
+
+## Phase 5B.2 follow-ups (carry into 5B.3+)
+
+1. **Precision-tick mode.** If a future scenario chains time-bounded waits where over-advance matters, switch fake-world `awaitFirstWithin` to a `nextAsync` probe loop (advance to next scheduled timer, check promise state, repeat until promise resolved or deadline reached).
+2. **`tests/scenarios/presenter/cucumber-real/` directory rename.** Now consumed by both runners; consider renaming to `shared/` (or splitting `_common/` from runner-specific bits). Defer to a dedicated naming refactor.
+3. **5B.3 / 5B.4 should reuse `_await.ts` + `_world.ts`** when adding Vitest runners; install fake-timers per `test()` rather than per scenario.
+4. **Plan note correction.** The plan claimed `priceStream.price$(pair)` and `currencyPairs.pairs$` are both sync-on-subscribe. Only the former is true — `pairs$` is `of(...).pipe(delay(1000))` and required `w.awaitFirstWithin` wrapping in `expectPriceTileVisibleWithin` (fxLiveRates.ts) and both `currencyPairs.pairs$` reads in `fxTrading.ts`. Two fix commits: `0f85701`, and inline-fixed in `b34c7e5`. Future plans should grep simulators before claiming sync-on-subscribe.
+5. **`@sinonjs/fake-timers` v14 does NOT bundle TS types.** Required adding `@types/sinonjs__fake-timers@^15.0.1` to `tests/package.json` devDependencies (commit `112e02d`).
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
