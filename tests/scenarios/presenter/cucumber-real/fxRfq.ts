@@ -1,6 +1,5 @@
 // tests/scenarios/presenter/cucumber-real/fxRfq.ts
-import { firstValueFrom, timeout } from "rxjs";
-import type { PresenterWorld } from "../../../support/presenter/cucumber-real/world";
+import type { PresenterWorld } from "../_world";
 
 // Notional input is UI state; the simulator's getRfqQuote doesn't gate on notional.
 // At presenter level this is recorded but not used for the assertion.
@@ -14,8 +13,9 @@ export async function setFirstTileNotional(w: PresenterWorld, _notional: number)
 export async function requestRfqQuoteOnFirstTile(w: PresenterWorld): Promise<void> {
   const pair = w.scratch.firstPair;
   if (!pair) throw new Error("firstPair not captured (run a 'price tile is visible' step first)");
-  const quote = await firstValueFrom(
-    w.ctx.app.presenters.rfqQuote.requestQuote(pair.symbol, pair.pipsPosition).pipe(timeout(5_000)),
+  const quote = await w.awaitFirstWithin(
+    w.ctx.app.presenters.rfqQuote.requestQuote(pair.symbol, pair.pipsPosition),
+    5_000,
   );
   w.scratch.rfqQuote = quote;
 }
