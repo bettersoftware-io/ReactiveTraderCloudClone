@@ -139,6 +139,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50
         version: 1.58.2
+      '@sinonjs/fake-timers':
+        specifier: ^14.0.0
+        version: 14.0.0
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
@@ -1112,6 +1115,12 @@ packages:
     resolution: {integrity: sha512-Z+3hjU2xh1HisLxt+W5hlYX/eGSDaXXP+ns82gq/PLZpkXLu0uwcNUh9RLY3Clq4zT+hSsA3vcpIGt6+UAb8rQ==}
     peerDependencies:
       rxjs: '>=7'
+
+  '@sinonjs/commons@3.0.1':
+    resolution: {integrity: sha512-K3mCHKQ9sVh8o1C9cxkwxaOmXoAMlDxC1mYyHrjqOWEcBjYr76t96zL2zlj5dUGZ3HSw240X1qgH3Mjf1yJWpQ==}
+
+  '@sinonjs/fake-timers@14.0.0':
+    resolution: {integrity: sha512-QfoXRaUTjMVVn/ZbnD4LS3TPtqOkOdKIYCKldIVPnuClcwRKat6LI2mRZ2s5qiBfO6Fy03An35dSls/2/FEc0Q==}
 
   '@teppeis/multimaps@3.0.0':
     resolution: {integrity: sha512-ID7fosbc50TbT0MK0EG12O+gAP3W3Aa/Pz4DaTtQtEvlc9Odaqi0de+xuZ7Li2GtK4HzEX7IuRWS/JmZLksR3Q==}
@@ -3205,6 +3214,10 @@ packages:
   tweetnacl@0.14.5:
     resolution: {integrity: sha512-KXXFFdAbFXY4geFIwoyNK+f5Z1b7swfXABfL7HXCmoIWMKU3dmS26672A4EeQtDzLKy7SXmfBu51JolvEKwtGA==}
 
+  type-detect@4.0.8:
+    resolution: {integrity: sha512-0fr/mIH1dlO+x7TlcMy+bIDqKPsw/70tVyeHW787goQjhmqaZe10uwLujubK9q9Lg6Fiho1KUKDYz0Z7k7g5/g==}
+    engines: {node: '>=4'}
+
   type-fest@0.8.1:
     resolution: {integrity: sha512-4dbzIzqvjtgiM5rw1k5rEHtBANKmdudhGyBEajN01fEyhaAIhsoKNy6y7+IN93IfpFtwY9iqi7kD+xwKhQsNJA==}
     engines: {node: '>=8'}
@@ -4377,6 +4390,14 @@ snapshots:
   '@rx-state/core@0.1.4(rxjs@7.8.2)':
     dependencies:
       rxjs: 7.8.2
+
+  '@sinonjs/commons@3.0.1':
+    dependencies:
+      type-detect: 4.0.8
+
+  '@sinonjs/fake-timers@14.0.0':
+    dependencies:
+      '@sinonjs/commons': 3.0.1
 
   '@teppeis/multimaps@3.0.0': {}
 
@@ -6617,6 +6638,8 @@ snapshots:
       turbo-windows-arm64: 2.8.17
 
   tweetnacl@0.14.5: {}
+
+  type-detect@4.0.8: {}
 
   type-fest@0.8.1: {}
 
