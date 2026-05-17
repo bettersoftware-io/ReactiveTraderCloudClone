@@ -19,4 +19,5 @@ Feature: FX RFQ flow
   Scenario: large notional triggers an RFQ flow on the first tile
     Then a price tile is visible within 5 seconds
     When the trader sets the first tile notional to "10000000"
+    And the trader requests an RFQ quote on the first tile
     Then an RFQ quote arrives within 5 seconds

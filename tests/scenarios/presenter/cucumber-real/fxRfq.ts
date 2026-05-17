@@ -9,12 +9,20 @@ export async function setFirstTileNotional(w: PresenterWorld, _notional: number)
   void w;
 }
 
-export async function expectRfqQuoteArrivesWithin(w: PresenterWorld, seconds: number): Promise<void> {
+// Requests an RFQ quote via the presenter layer and stores the result in scratch.
+// This is the presenter-layer analogue of clicking the "Initiate RFQ" button in the browser.
+export async function requestRfqQuoteOnFirstTile(w: PresenterWorld): Promise<void> {
   const pair = w.scratch.firstPair;
   if (!pair) throw new Error("firstPair not captured (run a 'price tile is visible' step first)");
-  // RfqQuotePresenter.requestQuote(symbol, pipsPosition): Observable<RfqQuoteResult>
   const quote = await firstValueFrom(
-    w.ctx.app.presenters.rfqQuote.requestQuote(pair.symbol, 4).pipe(timeout(seconds * 1000)),
+    w.ctx.app.presenters.rfqQuote.requestQuote(pair.symbol, 4).pipe(timeout(5_000)),
   );
   w.scratch.rfqQuote = quote;
+}
+
+// Asserts that an RFQ quote was already obtained (by requestRfqQuoteOnFirstTile).
+export async function expectRfqQuoteArrivesWithin(w: PresenterWorld, _seconds: number): Promise<void> {
+  const quote = w.scratch.rfqQuote;
+  if (!quote) throw new Error("rfqQuote not captured (run 'requests an RFQ quote' step first)");
+  if (!quote.mid) throw new Error("RFQ quote arrived but has no mid price");
 }

@@ -28,6 +28,8 @@ describe("FX RFQ flow", () => {
     const ctx = getCtx();
     fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     fxTrading.setFirstTileNotional(ctx, "10000000");
+    fxRfq.expectRfqInitiationButtonWithin(ctx, 3);
+    fxRfq.clickRfqInitiationButton(ctx);
     fxRfq.expectCountdownOrQuoteWithin(ctx, 5);
   });
 });
