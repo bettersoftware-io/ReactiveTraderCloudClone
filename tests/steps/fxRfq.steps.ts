@@ -14,3 +14,8 @@ Then("a countdown or quote indicator appears within {int} seconds",
   function(this: StepContext, seconds: number) {
     return fxRfq.expectCountdownOrQuoteWithin(this.ctx, seconds);
   });
+
+Then("an RFQ quote arrives within {int} seconds",
+  function(this: StepContext, seconds: number) {
+    return fxRfq.expectCountdownOrQuoteWithin(this.ctx, seconds);
+  });

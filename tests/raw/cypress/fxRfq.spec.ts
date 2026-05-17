@@ -23,4 +23,11 @@ describe("FX RFQ flow", () => {
     fxRfq.clickRfqInitiationButton(ctx);
     fxRfq.expectCountdownOrQuoteWithin(ctx, 5);
   });
+
+  it("large notional triggers an RFQ flow on the first tile", () => {
+    const ctx = getCtx();
+    fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    fxTrading.setFirstTileNotional(ctx, "10000000");
+    fxRfq.expectCountdownOrQuoteWithin(ctx, 5);
+  });
 });

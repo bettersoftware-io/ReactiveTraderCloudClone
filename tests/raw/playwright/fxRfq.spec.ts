@@ -20,4 +20,10 @@ test.describe("FX RFQ flow", () => {
     await fxRfq.clickRfqInitiationButton(ctx);
     await fxRfq.expectCountdownOrQuoteWithin(ctx, 5);
   });
+
+  test("large notional triggers an RFQ flow on the first tile", async ({ ctx }) => {
+    await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    await fxTrading.setFirstTileNotional(ctx, "10000000");
+    await fxRfq.expectCountdownOrQuoteWithin(ctx, 5);
+  });
 });
