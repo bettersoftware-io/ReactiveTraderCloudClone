@@ -103,9 +103,9 @@ const GATES: Gate[] = [
   },
   {
     name: "15. No driver imports in presenter step/scenario/support files",
-    pattern: '"cypress"|@badeball|@playwright/test',
+    pattern: '"cypress"|@badeball|@playwright/test|"quickpickle"',
     paths: ["steps/presenter/", "scenarios/presenter/", "support/presenter/"],
-    excludes: ["/node_modules/"],
+    excludes: ["/node_modules/", "/vitest-fake/"],
   },
   {
     name: "16. No DOM/page references in presenter step/scenario files",
@@ -123,6 +123,17 @@ const GATES: Gate[] = [
     name: "18. No rxjs 'timeout' keyword in presenter scenarios (use w.awaitFirstWithin)",
     pattern: '\\btimeout\\b',
     paths: ["scenarios/presenter/_shared/"],
+    excludes: ["/node_modules/"],
+  },
+  {
+    name: "19. No vitest/qpickle-loader imports outside vitest-fake peer",
+    pattern: '"vitest"|"quickpickle"|from "vitest/',
+    paths: [
+      "scenarios/presenter/",
+      "support/presenter/cucumber-real/",
+      "support/presenter/cucumber-fake/",
+      "steps/presenter/cucumber-real/",
+    ],
     excludes: ["/node_modules/"],
   },
 ];
