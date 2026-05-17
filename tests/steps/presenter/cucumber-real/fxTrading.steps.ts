@@ -1,7 +1,7 @@
 // tests/steps/presenter/cucumber-real/fxTrading.steps.ts
 import { Then, When } from "@cucumber/cucumber";
 import type { PresenterWorld } from "../../../support/presenter/cucumber-real/world";
-import * as trading from "../../../scenarios/presenter/cucumber-real/fxTrading";
+import * as trading from "../../../scenarios/presenter/_shared/fxTrading";
 
 When("the trader clicks buy on the first tile", function(this: PresenterWorld) {
   return trading.executeBuyOnFirstTile(this);

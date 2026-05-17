@@ -2,7 +2,7 @@
 import { Before, After } from "@cucumber/cucumber";
 import FakeTimers from "@sinonjs/fake-timers";
 import { buildPresenterApp } from "../../../scenarios/presenter/_buildApp";
-import { newScratchpad } from "../../../scenarios/presenter/cucumber-real/common";
+import { newScratchpad } from "../../../scenarios/presenter/_shared/common";
 import type { FakePresenterWorld } from "./world";
 
 Before(function(this: FakePresenterWorld) {

@@ -5,7 +5,7 @@ export default {
     "support/presenter/cucumber-fake/**/*.ts",
     "scenarios/presenter/_buildApp.ts",
     "scenarios/presenter/_await.ts",
-    "scenarios/presenter/cucumber-real/**/*.ts",
+    "scenarios/presenter/_shared/**/*.ts",
     "steps/presenter/cucumber-real/**/*.ts",
   ],
   tags: "@presenter",

@@ -2,7 +2,7 @@
 import { setWorldConstructor, World } from "@cucumber/cucumber";
 import type { Observable, Subscription } from "rxjs";
 import type { PresenterCtx } from "../../../scenarios/presenter/_buildApp";
-import { type PresenterScratchpad, newScratchpad } from "../../../scenarios/presenter/cucumber-real/common";
+import { type PresenterScratchpad, newScratchpad } from "../../../scenarios/presenter/_shared/common";
 import { type AwaitHelpers, RealAwaitHelpers } from "../../../scenarios/presenter/_await";
 
 export class PresenterWorld extends World implements AwaitHelpers {

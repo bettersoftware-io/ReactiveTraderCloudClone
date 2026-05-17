@@ -3,7 +3,7 @@ import { setWorldConstructor, World } from "@cucumber/cucumber";
 import { firstValueFrom, timeout, type Observable, type Subscription } from "rxjs";
 import type { InstalledClock } from "@sinonjs/fake-timers";
 import type { PresenterCtx } from "../../../scenarios/presenter/_buildApp";
-import { type PresenterScratchpad, newScratchpad } from "../../../scenarios/presenter/cucumber-real/common";
+import { type PresenterScratchpad, newScratchpad } from "../../../scenarios/presenter/_shared/common";
 import type { AwaitHelpers } from "../../../scenarios/presenter/_await";
 
 export class FakePresenterWorld extends World implements AwaitHelpers {

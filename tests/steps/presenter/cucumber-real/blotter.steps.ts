@@ -1,7 +1,7 @@
 // tests/steps/presenter/cucumber-real/blotter.steps.ts
 import { Then } from "@cucumber/cucumber";
 import type { PresenterWorld } from "../../../support/presenter/cucumber-real/world";
-import * as blotter from "../../../scenarios/presenter/cucumber-real/blotter";
+import * as blotter from "../../../scenarios/presenter/_shared/blotter";
 
 Then("the blotter table is visible", function(this: PresenterWorld) {
   return blotter.expectBlotterVisible(this);

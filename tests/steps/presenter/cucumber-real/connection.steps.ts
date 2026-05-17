@@ -8,7 +8,7 @@
 import { Then, When } from "@cucumber/cucumber";
 import type { ConnectionStatus } from "@rtc/domain";
 import type { PresenterWorld } from "../../../support/presenter/cucumber-real/world";
-import * as conn from "../../../scenarios/presenter/cucumber-real/connection";
+import * as conn from "../../../scenarios/presenter/_shared/connection";
 
 // String-literal stand-ins for ConnectionStatus const enum values.
 const CS_CONNECTED = "CONNECTED" as unknown as ConnectionStatus;

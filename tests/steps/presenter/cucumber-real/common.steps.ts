@@ -1,7 +1,7 @@
 // tests/steps/presenter/cucumber-real/common.steps.ts
 import { Given, When } from "@cucumber/cucumber";
 import type { PresenterWorld } from "../../../support/presenter/cucumber-real/world";
-import * as common from "../../../scenarios/presenter/cucumber-real/common";
+import * as common from "../../../scenarios/presenter/_shared/common";
 
 Given("the trader has the workspace open",
   function(this: PresenterWorld) { return common.openWorkspace(this); });

@@ -1,7 +1,7 @@
 // tests/steps/presenter/cucumber-real/fxLiveRates.steps.ts
 import { Then, When } from "@cucumber/cucumber";
 import type { PresenterWorld } from "../../../support/presenter/cucumber-real/world";
-import * as fx from "../../../scenarios/presenter/cucumber-real/fxLiveRates";
+import * as fx from "../../../scenarios/presenter/_shared/fxLiveRates";
 
 Then("a price tile is visible within {int} seconds",
   function(this: PresenterWorld, n: number) { return fx.expectPriceTileVisibleWithin(this, n); });
