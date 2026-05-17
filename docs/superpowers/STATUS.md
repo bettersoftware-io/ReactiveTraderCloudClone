@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-16
+**Last updated:** 2026-05-17
 
 ---
 
@@ -11,7 +11,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD`
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 40 e2e (Cucumber+Playwright) + 40 e2e (raw Playwright) + 40 e2e (Cucumber+Cypress) + 40 e2e (raw Cypress)
+- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-direct)
 
 ## Phases
 
@@ -27,7 +27,10 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 5A.2 — Cucumber + Cypress sharing the same `.feature` files | ✅ DONE | `plans/2026-05-10-phase-5a-2-cypress-cucumber.md` | `c8706ec..05ecee4` (24 task commits) + this STATUS update |
 | Phase 5A.3 — Raw Playwright reusing PO contracts | ✅ DONE | `plans/2026-05-10-phase-5a-3-raw-playwright-po-contracts.md` | `f26ae72..55a5fe7` (11 task commits) + this STATUS update |
 | Phase 5A.4 — Raw Cypress reusing PO contracts | ✅ DONE | `plans/2026-05-11-phase-5a-4-raw-cypress-po-contracts.md` | `3356d7e..936408f` (21 task commits incl. 3 spec amendments + 2 revert pairs reflecting the §3 hard-stop → §3.3 forked-scenarios decision) + this STATUS update |
-| Phase 5B — Presenter-direct step definitions for the same `.feature` files | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5B.1 — Cucumber-JS + real-time presenter step defs (foundation for 5B comparison artifact) | ✅ DONE | `plans/2026-05-16-phase-5b-1-presenter-direct-step-defs.md` | `eecc786..00bc43b` (20 task commits) + this STATUS update |
+| Phase 5B.2 — Cucumber-JS + fake timers (virtual time) | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5B.3 — Vitest + Gherkin + fake timers | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5B.4 — Vitest + plain TS (no Gherkin) + fake timers | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5C — Port contract tests (simulator vs WsReal) | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5D — Real gateway-events adapter; delete `withSyntheticGatewayConnected` | ⏳ NOT STARTED | (to be written) | — |
 
@@ -111,6 +114,18 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 4. **Carry-over from Phase 5A.3** (`waitSeconds` mis-located in `scenarios/fxLiveRates.ts`; `tests/.gitignore` redundancy) — still not fixed in 5A.4. The cypress fork mirrors the mis-location in `scenarios/cypress/fxLiveRates.ts`. Fold both into the next pass.
 
 5. **Spec history.** §3.1, §3.2, §3.3 are all in the spec as audit trail. Future readers will see the dead ends. Consider whether to leave them (preserves the "what we tried and why it failed" learning) or collapse into a single §3 section. Currently leaning toward leaving them — the failure modes documented are exactly the kind of Cypress quirks that bite contributors next time someone considers async/await in a raw Cypress body.
+
+## Phase 5B.1 follow-ups (carry into 5B.2+)
+
+1. **App teardown.** `createApp` does not return a `dispose()` method. If subscription leaks cause flake across scenarios, add one. Recorded as a risk; defer to first sub-phase that surfaces flake.
+
+2. **`Subject` vs `BehaviorSubject` for `connectionEvents$`.** A step subscribing before the first event misses it. Acceptable in 5B.1 (events come from explicit step bodies); revisit if scenarios get more complex.
+
+3. **Browser-side step coverage for new scenarios.** Several new @presenter scenarios required adding step-def synonyms on the browser side. If these become idiomatic, consider extracting common phrasing patterns.
+
+4. **`@rtc/client` package exports.** 5B.1 added a top-level barrel + `exports` field + `tsconfig.types.json` for declaration emission. Other tooling that imports `@rtc/client` (Vite build, server, etc.) wasn't affected, but verify on the next major dep bump.
+
+5. **GBPJPY-targeted rejection.** `buyNTimesWithDismissals` in shared browser scenarios now targets GBPJPY for n-th buy to guarantee a rejection. Behavior shift for n=1 (only-GBPJPY); no current caller uses n=1. Worth a name change if a future scenario uses n=1.
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
