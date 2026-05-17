@@ -127,6 +127,10 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 
 5. **GBPJPY-targeted rejection.** `buyNTimesWithDismissals` in shared browser scenarios now targets GBPJPY for n-th buy to guarantee a rejection. Behavior shift for n=1 (only-GBPJPY); no current caller uses n=1. Worth a name change if a future scenario uses n=1.
 
+6. **Dead scratchpad fields.** `PresenterScratchpad` (`tests/scenarios/presenter/cucumber-real/common.ts`) contains four write-only fields (`lastPrice`, `observedTradeCount`, `lastTradeDirection`, `recordedCount`) that are never consumed by any presenter-side assertion. Add comments marking them as pre-declared for 5B.2-5B.4, or prune them when 5B.2 confirms they're not needed.
+
+7. **`at least one trade confirmation matched {}` step ignores its pattern argument.** The step at `tests/steps/presenter/cucumber-real/fxTrading.steps.ts` discards its `_pattern` argument and unconditionally calls `expectAtLeastOneRejection`. Safe today (only caller uses `/rejected/i` with GBPJPY targeting which is deterministically rejected), but will silently pass wrong assertions for any future scenario passing a different pattern. Rename to `at least one trade was rejected` or guard the pattern.
+
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
 1. **react-rxjs version + dependency**: `rxjs ^7.8` is already in `@rtc/client`. `react-rxjs` to be added — confirm latest version + interop with React 19.
