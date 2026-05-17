@@ -7,6 +7,7 @@
     "test:e2e": "pnpm gates && tsx scripts/run-all.ts",
     "test:e2e:playwright": "NODE_OPTIONS='--import tsx/esm' cucumber-js",
     "test:presenter:cucumber-real": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config cucumber-presenter-real.js",
+    "test:presenter:cucumber-fake": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config cucumber-presenter-fake.js",
     "test:e2e:raw-playwright": "tsx scripts/with-server.ts playwright test --config raw/playwright/playwright.config.ts",
     "test:e2e:cypress": "tsx scripts/with-server.ts cypress run --headless",
     "test:e2e:raw-cypress": "tsx scripts/with-server.ts cypress run --headless --config-file raw/cypress/cypress.config.ts",
