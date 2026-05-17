@@ -154,14 +154,24 @@ importers:
       esbuild:
         specifier: 0.28.0
         version: 0.28.0
+      quickpickle:
+        specifier: ^1.11
+        version: 1.11.2(vitest@3.2.4(@types/node@25.5.0)(jsdom@25.0.1)(tsx@4.21.0)(yaml@2.8.4))
       tsx:
         specifier: ^4.19.0
         version: 4.21.0
       typescript:
         specifier: ^5.8
         version: 5.9.3
+      vitest:
+        specifier: ^3.2
+        version: 3.2.4(@types/node@25.5.0)(jsdom@25.0.1)(tsx@4.21.0)(yaml@2.8.4)
 
 packages:
+
+  '@a11y-tools/aria-roles@1.0.0':
+    resolution: {integrity: sha512-9rLDOQxgwJ6l9zhikwPx1L3fmsCO1aR19C0mBY5Zfdge9HmpbRNksynEjckqY8uSL/58mRTfSfZ3/uLWGUCwoA==}
+    engines: {node: '>=18.0.0'}
 
   '@actions/core@2.0.3':
     resolution: {integrity: sha512-Od9Thc3T1mQJYddvVPM4QGiLUewdh+3txmDYHHxoNdkqysR1MbCT+rFOtNUxYAz+7+6RIsqipVahY2GJqGPyxA==}
@@ -367,6 +377,9 @@ packages:
 
   '@cucumber/gherkin@31.0.0':
     resolution: {integrity: sha512-wlZfdPif7JpBWJdqvHk1Mkr21L5vl4EfxVUOS4JinWGf3FLRV6IKUekBv5bb5VX79fkDcfDvESzcQ8WQc07Wgw==}
+
+  '@cucumber/gherkin@32.2.0':
+    resolution: {integrity: sha512-X8xuVhSIqlUjxSRifRJ7t0TycVWyX58fygJH3wDNmHINLg9sYEkvQT0SO2G5YlRZnYc11TIFr4YPenscvdlBIw==}
 
   '@cucumber/gherkin@38.0.0':
     resolution: {integrity: sha512-duEXK+KDfQUzu3vsSzXjkxQ2tirF5PRsc1Xrts6THKHJO6mjw4RjM8RV+vliuDasmhhrmdLcOcM7d9nurNTJKw==}
@@ -1420,6 +1433,9 @@ packages:
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
 
+  buffer@6.0.3:
+    resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
+
   cac@6.7.14:
     resolution: {integrity: sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==}
     engines: {node: '>=8'}
@@ -2140,6 +2156,9 @@ packages:
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
 
+  image-crop-or-pad@1.0.1:
+    resolution: {integrity: sha512-0Gu+rHoFyKLZ14oaj+CJCElQz/5EOlMHvO9WwsANukerPSGG4MFpC81oDbvsN1wMbSzAhsgTPvgbBICl7ecazg==}
+
   import-fresh@3.3.1:
     resolution: {integrity: sha512-TR3KfrTZTYLPB6jUjfx6MF9WcWrHL9su5TObK4ZkYgBdWKPOFoSoQIdEuTuR82pmtxH2spWG9h6etwfr1pLBqQ==}
     engines: {node: '>=6'}
@@ -2367,6 +2386,9 @@ packages:
   locate-path@6.0.0:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
+
+  lodash-es@4.18.1:
+    resolution: {integrity: sha512-J8xewKD/Gk22OZbhpOVSwcs60zhd95ESDwezOFuA3/099925PdHJ7OFHNTGtajL3AlZkykD32HykiMo+BIBI8A==}
 
   lodash.merge@4.6.2:
     resolution: {integrity: sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==}
@@ -2666,6 +2688,10 @@ packages:
     resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
     engines: {node: '>=4'}
 
+  pngjs@7.0.0:
+    resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+    engines: {node: '>=14.19.0'}
+
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
@@ -2724,6 +2750,15 @@ packages:
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
+
+  quickpickle@1.11.2:
+    resolution: {integrity: sha512-sm/3DOOiTnqIQh8TYNtop27nHe3MnkO/1pKcGTJflR2JDi9rHqTxMJulUhgeyInd7UI2HrPw+yvJQIdotLTxfg==}
+    peerDependencies:
+      pixelmatch: ^6.0.0
+      vitest: ^1.0.0 || >=2.0.0
+    peerDependenciesMeta:
+      pixelmatch:
+        optional: true
 
   quote-unquote@1.0.0:
     resolution: {integrity: sha512-twwRO/ilhlG/FIgYeKGFqyHhoEhqgnKVkcmqMKi2r524gz3ZbDTcyFt38E9xjJI2vT+KbRNHVbnJ/e0I25Azwg==}
@@ -3526,6 +3561,8 @@ packages:
 
 snapshots:
 
+  '@a11y-tools/aria-roles@1.0.0': {}
+
   '@actions/core@2.0.3':
     dependencies:
       '@actions/exec': 2.0.0
@@ -3868,6 +3905,10 @@ snapshots:
   '@cucumber/gherkin@31.0.0':
     dependencies:
       '@cucumber/messages': 26.0.1
+
+  '@cucumber/gherkin@32.2.0':
+    dependencies:
+      '@cucumber/messages': 27.2.0
 
   '@cucumber/gherkin@38.0.0':
     dependencies:
@@ -4714,6 +4755,11 @@ snapshots:
   buffer-from@1.1.2: {}
 
   buffer@5.7.1:
+    dependencies:
+      base64-js: 1.5.1
+      ieee754: 1.2.1
+
+  buffer@6.0.3:
     dependencies:
       base64-js: 1.5.1
       ieee754: 1.2.1
@@ -5581,6 +5627,8 @@ snapshots:
 
   ieee754@1.2.1: {}
 
+  image-crop-or-pad@1.0.1: {}
+
   import-fresh@3.3.1:
     dependencies:
       parent-module: 1.0.1
@@ -5803,6 +5851,8 @@ snapshots:
   locate-path@6.0.0:
     dependencies:
       p-locate: 5.0.0
+
+  lodash-es@4.18.1: {}
 
   lodash.merge@4.6.2: {}
 
@@ -6079,6 +6129,8 @@ snapshots:
 
   pluralize@8.0.0: {}
 
+  pngjs@7.0.0: {}
+
   possible-typed-array-names@1.1.0: {}
 
   postcss-values-parser@6.0.2(postcss@8.5.14):
@@ -6146,6 +6198,21 @@ snapshots:
       side-channel: 1.1.0
 
   queue-microtask@1.2.3: {}
+
+  quickpickle@1.11.2(vitest@3.2.4(@types/node@25.5.0)(jsdom@25.0.1)(tsx@4.21.0)(yaml@2.8.4)):
+    dependencies:
+      '@a11y-tools/aria-roles': 1.0.0
+      '@cucumber/cucumber-expressions': 18.0.1
+      '@cucumber/gherkin': 32.2.0
+      '@cucumber/messages': 27.2.0
+      '@cucumber/tag-expressions': 6.1.2
+      buffer: 6.0.3
+      image-crop-or-pad: 1.0.1
+      js-yaml: 4.1.1
+      lodash: 4.18.1
+      lodash-es: 4.18.1
+      pngjs: 7.0.0
+      vitest: 3.2.4(@types/node@25.5.0)(jsdom@25.0.1)(tsx@4.21.0)(yaml@2.8.4)
 
   quote-unquote@1.0.0: {}
 

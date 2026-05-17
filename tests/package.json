@@ -8,6 +8,7 @@
     "test:e2e:playwright": "NODE_OPTIONS='--import tsx/esm' cucumber-js",
     "test:presenter:cucumber-real": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config cucumber-presenter-real.js",
     "test:presenter:cucumber-fake": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config cucumber-presenter-fake.js",
+    "test:presenter:vitest-fake": "vitest run --config vitest-presenter-fake.config.ts",
     "test:e2e:raw-playwright": "tsx scripts/with-server.ts playwright test --config raw/playwright/playwright.config.ts",
     "test:e2e:cypress": "tsx scripts/with-server.ts cypress run --headless",
     "test:e2e:raw-cypress": "tsx scripts/with-server.ts cypress run --headless --config-file raw/cypress/cypress.config.ts",
@@ -30,7 +31,9 @@
     "@types/sinonjs__fake-timers": "^15.0.1",
     "cypress": "15.14.2",
     "esbuild": "0.28.0",
+    "quickpickle": "^1.11",
     "tsx": "^4.19.0",
-    "typescript": "^5.8"
+    "typescript": "^5.8",
+    "vitest": "^3.2"
   }
 }
