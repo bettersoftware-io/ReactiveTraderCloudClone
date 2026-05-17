@@ -11,4 +11,4 @@ Given("the credit workspace is open",
   function(this: PresenterWorld) { return common.openCreditWorkspace(this); });
 
 When("the trader waits {int} seconds",
-  function(this: PresenterWorld, n: number) { return common.waitSeconds(this, n); });
+  function(this: PresenterWorld, n: number) { return this.waitSeconds(n); });
