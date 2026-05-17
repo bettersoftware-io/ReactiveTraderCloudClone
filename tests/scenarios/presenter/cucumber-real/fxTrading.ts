@@ -4,15 +4,13 @@
 // With verbatimModuleSyntax + isolatedModules, ambient const enums cannot be
 // accessed as values from a different package. We import them as types only
 // and cast their string literals to the correct type via `as unknown as`.
-import { firstValueFrom, timeout } from "rxjs";
+import { firstValueFrom } from "rxjs";
 import type { Direction, ExecutionStatus } from "@rtc/domain";
-import type { PresenterWorld } from "../../../support/presenter/cucumber-real/world";
+import type { PresenterWorld } from "../_world";
 
-// String-literal stand-ins for Direction const enum values.
 const DIR_BUY = "Buy" as unknown as Direction;
 const DIR_SELL = "Sell" as unknown as Direction;
 
-// String-literal stand-ins for ExecutionStatus const enum values.
 const ES_DONE = "Done" as unknown as ExecutionStatus;
 const ES_REJECTED = "Rejected" as unknown as ExecutionStatus;
 const ES_CREDIT_EXCEEDED = "CreditExceeded" as unknown as ExecutionStatus;
@@ -25,15 +23,14 @@ async function executeOnFirstPair(
 ): Promise<{ status: ExecutionStatus; notional: number }> {
   const pair =
     w.scratch.firstPair ??
-    (await firstValueFrom(w.ctx.app.presenters.currencyPairs.pairs$))[0]!;
+    (await w.awaitFirstWithin(w.ctx.app.presenters.currencyPairs.pairs$, 5000))[0]!;
   w.scratch.firstPair = pair;
   const price = await firstValueFrom(
     w.ctx.app.presenters.priceStream.price$(pair),
   );
-  const result = await firstValueFrom(
-    w.ctx.app.presenters.execution
-      .execute({ pair, direction, price, notional })
-      .pipe(timeout(5000)),
+  const result = await w.awaitFirstWithin(
+    w.ctx.app.presenters.execution.execute({ pair, direction, price, notional }),
+    5000,
   );
   return { status: result.status, notional: result.trade.notional };
 }
@@ -65,13 +62,6 @@ export async function executeBuyWithNotional(
   w.scratch.observedTradeCount += 1;
 }
 
-/**
- * UI patterns ("/You Bought/i", "/Executing/i", etc.) describe the React-rendered
- * confirmation text. At presenter level the equivalent is the ExecutionStatus enum
- * returned by execute(). This table maps UI patterns to the presenter statuses they
- * correspond to. A scenario passes if the observed status is any value mapped by ANY
- * of the patterns asserted by the scenario.
- */
 const UI_PATTERN_TO_STATUSES: Array<{
   test: (p: RegExp) => boolean;
   statuses: ExecutionStatus[];
@@ -105,7 +95,6 @@ export async function expectTradeConfirmationMatchesOneOf(
     for (const rule of UI_PATTERN_TO_STATUSES) {
       if (rule.test(p)) for (const s of rule.statuses) accepted.add(s);
     }
-    // Also allow direct enum-name match (e.g. pattern /Done/i matches "Done")
     if (p.test(status as unknown as string)) accepted.add(status);
   }
   if (!accepted.has(status)) {
@@ -116,32 +105,23 @@ export async function expectTradeConfirmationMatchesOneOf(
   }
 }
 
-/**
- * Buys N times, deliberately targeting GBPJPY which the ExecutionSimulator
- * always rejects deterministically. This guarantees at least one rejection
- * while keeping execution time predictable (no EURJPY 4-second delay).
- * Falls back to the first pair if GBPJPY is not in the pair list.
- */
 export async function buyNTimesWithDismissals(
   w: PresenterWorld,
   n: number,
 ): Promise<void> {
-  // Resolve all available pairs once
-  const pairs = await firstValueFrom(
+  const pairs = await w.awaitFirstWithin(
     w.ctx.app.presenters.currencyPairs.pairs$,
+    5000,
   );
-
-  // Prefer GBPJPY (always rejected in simulator) for a deterministic result.
   const gbpjpy = pairs.find((p) => p.symbol === "GBPJPY") ?? pairs[0]!;
 
   for (let i = 0; i < n; i++) {
     const price = await firstValueFrom(
       w.ctx.app.presenters.priceStream.price$(gbpjpy),
     );
-    const result = await firstValueFrom(
-      w.ctx.app.presenters.execution
-        .execute({ pair: gbpjpy, direction: DIR_BUY, price, notional: 1_000_000 })
-        .pipe(timeout(5000)),
+    const result = await w.awaitFirstWithin(
+      w.ctx.app.presenters.execution.execute({ pair: gbpjpy, direction: DIR_BUY, price, notional: 1_000_000 }),
+      5000,
     );
     if ((result.status as unknown as string) === "Rejected") {
       w.scratch.rejectedSeen = true;
@@ -173,7 +153,7 @@ export async function expectTradeConfirmationHides(
 export async function expectTradeNotionalEquals(
   w: PresenterWorld,
   expected: number,
-): Promise<void> {
+  ): Promise<void> {
   if (w.scratch.lastTradeNotional !== expected) {
     throw new Error(
       `trade notional ${w.scratch.lastTradeNotional} != expected ${expected}`,
