@@ -1,7 +1,7 @@
 // tests/scenarios/presenter/cucumber-real/connection.ts
-import { firstValueFrom, filter, timeout } from "rxjs";
+import { filter } from "rxjs";
 import type { ConnectionStatus } from "@rtc/domain";
-import type { PresenterWorld } from "../../../support/presenter/cucumber-real/world";
+import type { PresenterWorld } from "../_world";
 
 export async function browserGoesOffline(w: PresenterWorld): Promise<void> {
   w.ctx.connectionEvents$.next({ type: "browserOffline" });
@@ -14,22 +14,18 @@ export async function browserComesBackOnline(w: PresenterWorld): Promise<void> {
 export async function expectStatusEqualsWithin(
   w: PresenterWorld, status: ConnectionStatus, seconds: number,
 ): Promise<void> {
-  await firstValueFrom(
-    w.ctx.app.presenters.connection.status$.pipe(
-      filter((s) => s === status),
-      timeout(seconds * 1000),
-    ),
+  await w.awaitFirstWithin(
+    w.ctx.app.presenters.connection.status$.pipe(filter((s) => s === status)),
+    seconds * 1000,
   );
 }
 
 export async function expectStatusNotEqualsWithin(
   w: PresenterWorld, status: ConnectionStatus, seconds: number,
 ): Promise<void> {
-  await firstValueFrom(
-    w.ctx.app.presenters.connection.status$.pipe(
-      filter((s) => s !== status),
-      timeout(seconds * 1000),
-    ),
+  await w.awaitFirstWithin(
+    w.ctx.app.presenters.connection.status$.pipe(filter((s) => s !== status)),
+    seconds * 1000,
   );
 }
 
