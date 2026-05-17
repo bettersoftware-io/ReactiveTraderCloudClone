@@ -119,6 +119,12 @@ const GATES: Gate[] = [
     paths: ["steps/presenter/", "scenarios/presenter/", "support/presenter/"],
     excludes: ["/node_modules/", "scenarios/presenter/_buildApp.ts"],
   },
+  {
+    name: "18. No rxjs 'timeout' keyword in presenter scenarios (use w.awaitFirstWithin)",
+    pattern: '\\btimeout\\b',
+    paths: ["scenarios/presenter/cucumber-real/"],
+    excludes: ["/node_modules/"],
+  },
 ];
 
 let failed = 0;

@@ -17,6 +17,7 @@ try {
   combinedExit |= await run("pnpm", ["test:e2e:cypress"]);
   combinedExit |= await run("pnpm", ["test:e2e:raw-cypress"]);
   combinedExit |= await run("pnpm", ["test:presenter:cucumber-real"]);
+  combinedExit |= await run("pnpm", ["test:presenter:cucumber-fake"]);
 } finally {
   await dev.stop();
 }
