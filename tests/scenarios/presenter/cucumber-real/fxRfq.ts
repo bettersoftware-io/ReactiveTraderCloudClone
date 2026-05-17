@@ -15,7 +15,7 @@ export async function requestRfqQuoteOnFirstTile(w: PresenterWorld): Promise<voi
   const pair = w.scratch.firstPair;
   if (!pair) throw new Error("firstPair not captured (run a 'price tile is visible' step first)");
   const quote = await firstValueFrom(
-    w.ctx.app.presenters.rfqQuote.requestQuote(pair.symbol, 4).pipe(timeout(5_000)),
+    w.ctx.app.presenters.rfqQuote.requestQuote(pair.symbol, pair.pipsPosition).pipe(timeout(5_000)),
   );
   w.scratch.rfqQuote = quote;
 }
