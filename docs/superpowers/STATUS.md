@@ -11,7 +11,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD`
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-real) + 19 (presenter-fake) — 48×4 + 19×2 = 230 e2e scenarios (4 browser peers × 48 scenarios; 2 presenter peers × 19 scenarios)
+- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-cucumber-real) + 19 (presenter-cucumber-fake) + 19 (presenter-vitest-fake) — 48×4 + 19×3 = 249 e2e scenarios (4 browser peers × 48 scenarios; 3 presenter peers × 19 scenarios)
 
 ## Phases
 
@@ -29,7 +29,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 5A.4 — Raw Cypress reusing PO contracts | ✅ DONE | `plans/2026-05-11-phase-5a-4-raw-cypress-po-contracts.md` | `3356d7e..936408f` (21 task commits incl. 3 spec amendments + 2 revert pairs reflecting the §3 hard-stop → §3.3 forked-scenarios decision) + this STATUS update |
 | Phase 5B.1 — Cucumber-JS + real-time presenter step defs (foundation for 5B comparison artifact) | ✅ DONE | `plans/2026-05-16-phase-5b-1-presenter-direct-step-defs.md` | `eecc786..00bc43b` (20 task commits) + this STATUS update |
 | Phase 5B.2 — Cucumber-JS + fake timers (virtual time) | ✅ DONE | `plans/2026-05-17-phase-5b-2-cucumber-fake-timers.md` | `22c77ff..47c43df` (12 task commits) + this STATUS update |
-| Phase 5B.3 — Vitest + Gherkin + fake timers | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5B.3 — Vitest + Gherkin + fake timers | ✅ DONE | `plans/2026-05-17-phase-5b-3-vitest-gherkin-fake-timers.md` | `9c3bfc2..cf75376` (10 task commits incl. 1 code-quality fix) + this STATUS update |
 | Phase 5B.4 — Vitest + plain TS (no Gherkin) + fake timers | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5C — Port contract tests (simulator vs WsReal) | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5D — Real gateway-events adapter; delete `withSyntheticGatewayConnected` | ⏳ NOT STARTED | (to be written) | — |
@@ -127,17 +127,24 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 
 5. **GBPJPY-targeted rejection.** `buyNTimesWithDismissals` in shared browser scenarios now targets GBPJPY for n-th buy to guarantee a rejection. Behavior shift for n=1 (only-GBPJPY); no current caller uses n=1. Worth a name change if a future scenario uses n=1.
 
-6. **Dead scratchpad fields.** `PresenterScratchpad` (`tests/scenarios/presenter/cucumber-real/common.ts`) contains four write-only fields (`lastPrice`, `observedTradeCount`, `lastTradeDirection`, `recordedCount`) that are never consumed by any presenter-side assertion. Add comments marking them as pre-declared for 5B.2-5B.4, or prune them when 5B.2 confirms they're not needed.
+6. **Dead scratchpad fields.** `PresenterScratchpad` (`tests/scenarios/presenter/_shared/common.ts`) contains four write-only fields (`lastPrice`, `observedTradeCount`, `lastTradeDirection`, `recordedCount`) that are never consumed by any presenter-side assertion. Add comments marking them as pre-declared for 5B.2-5B.4, or prune them when 5B.4 confirms they're not needed.
 
 7. **`at least one trade confirmation matched {}` step ignores its pattern argument.** The step at `tests/steps/presenter/cucumber-real/fxTrading.steps.ts` discards its `_pattern` argument and unconditionally calls `expectAtLeastOneRejection`. Safe today (only caller uses `/rejected/i` with GBPJPY targeting which is deterministically rejected), but will silently pass wrong assertions for any future scenario passing a different pattern. Rename to `at least one trade was rejected` or guard the pattern.
 
 ## Phase 5B.2 follow-ups (carry into 5B.3+)
 
 1. **Precision-tick mode.** If a future scenario chains time-bounded waits where over-advance matters, switch fake-world `awaitFirstWithin` to a `nextAsync` probe loop (advance to next scheduled timer, check promise state, repeat until promise resolved or deadline reached).
-2. **`tests/scenarios/presenter/cucumber-real/` directory rename.** Now consumed by both runners; consider renaming to `shared/` (or splitting `_common/` from runner-specific bits). Defer to a dedicated naming refactor.
-3. **5B.3 / 5B.4 should reuse `_await.ts` + `_world.ts`** when adding Vitest runners; install fake-timers per `test()` rather than per scenario.
-4. **Plan note correction.** The plan claimed `priceStream.price$(pair)` and `currencyPairs.pairs$` are both sync-on-subscribe. Only the former is true — `pairs$` is `of(...).pipe(delay(1000))` and required `w.awaitFirstWithin` wrapping in `expectPriceTileVisibleWithin` (fxLiveRates.ts) and both `currencyPairs.pairs$` reads in `fxTrading.ts`. Two fix commits: `0f85701`, and inline-fixed in `b34c7e5`. Future plans should grep simulators before claiming sync-on-subscribe.
-5. **`@sinonjs/fake-timers` v14 does NOT bundle TS types.** Required adding `@types/sinonjs__fake-timers@^15.0.1` to `tests/package.json` devDependencies (commit `112e02d`).
+2. **Plan note correction.** The plan claimed `priceStream.price$(pair)` and `currencyPairs.pairs$` are both sync-on-subscribe. Only the former is true — `pairs$` is `of(...).pipe(delay(1000))` and required `w.awaitFirstWithin` wrapping in `expectPriceTileVisibleWithin` (fxLiveRates.ts) and both `currencyPairs.pairs$` reads in `fxTrading.ts`. Two fix commits: `0f85701`, and inline-fixed in `b34c7e5`. Future plans should grep simulators before claiming sync-on-subscribe.
+3. **`@sinonjs/fake-timers` v14 does NOT bundle TS types.** Required adding `@types/sinonjs__fake-timers@^15.0.1` to `tests/package.json` devDependencies (commit `112e02d`).
+
+## Phase 5B.3 follow-ups (carry into 5B.4+)
+
+1. **qpickle-loader's step-timeout interacts with vitest fake timers.** quickpickle wraps each step in `Promise.race([work, setTimeout(reject, stepTimeout)])`. `vi.useFakeTimers()` patches `global.setTimeout`, so `vi.advanceTimersByTimeAsync(N)` ALSO fires the step-timeout when `N >= stepTimeout`. `tests/vitest-presenter-fake.config.ts` raises `stepTimeout: 60_000` (well above the worst-case 30s advance in `buyNTimesWithDismissals`). Documented inline in the config; carry into 5B.4 if Vitest is reused there.
+2. **Vitest worker startup overhead.** ~0.5s gap between cucumber-fake (~1s) and vitest-fake (~1.5s) is dominated by Vitest's thread-pool boot. Acceptable here, but flag if 5B.4's plain-TS variant doesn't show the same delta — would indicate the loader plugin itself adds non-trivial cost worth profiling.
+3. **Step-tree triplication.** Three step trees (cucumber-real, cucumber-fake, vitest-fake) now exist as near-identical mirrors. 5B.3 deliberately forks them to make the runner difference visible; if a fourth peer (5B.4) lands, revisit whether a single source-of-truth step registry that adapts to each lib makes sense — but only after 5B.4 confirms the duplication cost is real.
+4. **Plan-template drift.** The Phase 5B.3 plan templates the step/hook callbacks as cucumber-js's `function(this: PresenterWorld)` shape (Task 4 hooks + Task 5 step files). That shape doesn't compile against qpickle-loader's actual types — `HookFunction = (state) => Promise<void>` and step `f: (state, ...args) => any`. Shipped code uses `async (state: VitestFakePresenterWorld, ...args) =>` across all hooks + 8 step files. Future readers grepping the plan should not trust those templates verbatim. The plan doc itself was not amended post-shipment; the actual code is the source of truth.
+5. **qpickle-loader dep-graph quirks.** `quickpickle@1.11.2` pulls in both `lodash@4.18.1` and `lodash-es@4.18.1` (CommonJS + ESM duplicates), AND adds a fourth concurrent `@cucumber/gherkin` version to the lockfile (`32.2.0` via `@cucumber/messages@27.2.0`, alongside the existing 30.0.4 / 31.0.0 / 38.0.0). Neither is a defect introduced by us — upstream quirks of qpickle-loader's own dep design — but worth flagging for any future audit targeting `@rtc/tests` bundle size or transitive graph.
+6. **vitest-fake/setup.ts barrel completeness has no enforcement.** If a 9th step file is added to `tests/steps/presenter/vitest-fake/`, the barrel `tests/support/presenter/vitest-fake/setup.ts` must be manually updated. There is no grep gate or compiler check that asserts barrel completeness. A future contributor could see tests silently skip steps. Consider adding a grep gate that counts step-file imports vs file count.
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
