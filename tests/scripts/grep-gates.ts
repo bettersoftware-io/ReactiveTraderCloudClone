@@ -101,6 +101,24 @@ const GATES: Gate[] = [
     paths: ["raw/cypress/"],
     excludes: ["/node_modules/", "raw/cypress/_context.ts"],
   },
+  {
+    name: "15. No driver imports in presenter step/scenario/support files",
+    pattern: '"cypress"|@badeball|@playwright/test',
+    paths: ["steps/presenter/", "scenarios/presenter/", "support/presenter/"],
+    excludes: ["/node_modules/"],
+  },
+  {
+    name: "16. No DOM/page references in presenter step/scenario files",
+    pattern: 'getByTestId|page\\.|cy\\.',
+    paths: ["steps/presenter/", "scenarios/presenter/"],
+    excludes: ["/node_modules/"],
+  },
+  {
+    name: "17. No createApp/createSimulatorPorts outside _buildApp.ts",
+    pattern: 'createApp|createSimulatorPorts',
+    paths: ["steps/presenter/", "scenarios/presenter/", "support/presenter/"],
+    excludes: ["/node_modules/", "scenarios/presenter/_buildApp.ts"],
+  },
 ];
 
 let failed = 0;
