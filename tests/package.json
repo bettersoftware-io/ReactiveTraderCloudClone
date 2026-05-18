@@ -9,6 +9,7 @@
     "test:presenter:cucumber-real": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config cucumber-presenter-real.js",
     "test:presenter:cucumber-fake": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config cucumber-presenter-fake.js",
     "test:presenter:vitest-fake": "vitest run --config vitest-presenter-fake.config.ts",
+    "test:presenter:vitest-plain": "vitest run --config vitest-presenter-plain.config.ts",
     "test:e2e:raw-playwright": "tsx scripts/with-server.ts playwright test --config raw/playwright/playwright.config.ts",
     "test:e2e:cypress": "tsx scripts/with-server.ts cypress run --headless",
     "test:e2e:raw-cypress": "tsx scripts/with-server.ts cypress run --headless --config-file raw/cypress/cypress.config.ts",
