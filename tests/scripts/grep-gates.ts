@@ -1,11 +1,57 @@
 #!/usr/bin/env tsx
 import { spawnSync } from "node:child_process";
+import { readFileSync, existsSync } from "node:fs";
 
 interface Gate {
   name: string;
   pattern: string;
   paths: string[];
   excludes?: string[];
+  /**
+   * Optional custom check. When present, runs INSTEAD OF the grep pipeline;
+   * pattern/paths/excludes are ignored. Returns an array of failure-message
+   * strings (empty array = pass).
+   */
+  customCheck?: () => string[];
+}
+
+const FEATURE_NAMES = [
+  "connection", "fxLiveRates", "fxTrading", "analytics",
+  "blotter", "fxRfq", "creditRfq",
+];
+
+function checkPresenterScenarioCounts(): string[] {
+  const failures: string[] = [];
+  for (const feat of FEATURE_NAMES) {
+    const featurePath = `specs/${feat}.feature`;
+    if (!existsSync(featurePath)) {
+      failures.push(`${feat}: feature file missing at ${featurePath}`);
+      continue;
+    }
+    const featureSrc = readFileSync(featurePath, "utf8");
+    const presenterScenarios = (featureSrc.match(/@presenter\s*\n\s*Scenario:/g) ?? []).length;
+
+    const testPath = `presenter-tests/vitest-plain/${feat}.test.ts`;
+    if (presenterScenarios === 0 && !existsSync(testPath)) continue;
+    if (presenterScenarios === 0 && existsSync(testPath)) {
+      failures.push(`${feat}: 0 @presenter scenarios but ${testPath} exists`);
+      continue;
+    }
+    if (!existsSync(testPath)) {
+      failures.push(`${feat}: ${presenterScenarios} @presenter scenarios but ${testPath} missing`);
+      continue;
+    }
+    const testSrc = readFileSync(testPath, "utf8");
+    // Count it("...") and it.skip("...") at line start (after indent) — NOT describe(.
+    const itBlocks = (testSrc.match(/^\s*it(?:\.skip)?\(/gm) ?? []).length;
+    if (itBlocks !== presenterScenarios) {
+      failures.push(
+        `${feat}: ${presenterScenarios} @presenter scenarios in ${featurePath} ` +
+        `but ${itBlocks} it() blocks in ${testPath}`,
+      );
+    }
+  }
+  return failures;
 }
 
 const GATES: Gate[] = [
@@ -142,23 +188,35 @@ const GATES: Gate[] = [
     paths: ["presenter-tests/vitest-plain/"],
     excludes: ["/node_modules/"],
   },
+  {
+    name: "21. vitest-plain it() count matches @presenter scenario count per .feature",
+    pattern: "",
+    paths: [],
+    customCheck: checkPresenterScenarioCounts,
+  },
 ];
 
 let failed = 0;
 
 for (const gate of GATES) {
-  const args = ["-rE", gate.pattern, ...gate.paths];
-  const result = spawnSync("grep", args, { encoding: "utf8" });
-  if (result.status === 2) {
-    console.error(`ERROR running gate "${gate.name}":`, result.stderr);
-    failed++;
-    continue;
+  let lines: string[];
+
+  if (gate.customCheck) {
+    lines = gate.customCheck();
+  } else {
+    const args = ["-rE", gate.pattern, ...gate.paths];
+    const result = spawnSync("grep", args, { encoding: "utf8" });
+    if (result.status === 2) {
+      console.error(`ERROR running gate "${gate.name}":`, result.stderr);
+      failed++;
+      continue;
+    }
+    const out = result.stdout ?? "";
+    lines = out
+      .split("\n")
+      .filter(Boolean)
+      .filter((line) => !(gate.excludes ?? []).some((e) => line.includes(e)));
   }
-  const out = result.stdout ?? "";
-  const lines = out
-    .split("\n")
-    .filter(Boolean)
-    .filter((line) => !(gate.excludes ?? []).some((e) => line.includes(e)));
 
   if (lines.length > 0) {
     console.error(`FAIL ${gate.name}`);
