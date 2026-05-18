@@ -130,7 +130,10 @@ export const analyticsFrame = (
   currentPositions: [
     { symbol: "EURUSD", basePnl: 0, baseTradedAmount: 0, counterTradedAmount: 0 },
   ],
-  history: [{ timestamp: new Date().toISOString(), usdPnl: 0 }],
+  history: [
+    { timestamp: new Date(Date.now() - 1000).toISOString(), usdPnl: 0 },
+    { timestamp: new Date().toISOString(), usdPnl: 0 },
+  ],
   ...opts,
 });
 
