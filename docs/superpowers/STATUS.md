@@ -11,7 +11,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD`
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-cucumber-real) + 19 (presenter-cucumber-fake) + 19 (presenter-vitest-fake) — 48×4 + 19×3 = 249 e2e scenarios (4 browser peers × 48 scenarios; 3 presenter peers × 19 scenarios)
+- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-cucumber-real) + 19 (presenter-cucumber-fake) + 19 (presenter-vitest-fake) + 19 (presenter-vitest-plain) — 48×4 + 19×4 = 268 e2e scenarios (4 browser peers × 48 scenarios; 4 presenter peers × 19 scenarios)
 
 ## Phases
 
@@ -30,7 +30,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 5B.1 — Cucumber-JS + real-time presenter step defs (foundation for 5B comparison artifact) | ✅ DONE | `plans/2026-05-16-phase-5b-1-presenter-direct-step-defs.md` | `eecc786..00bc43b` (20 task commits) + this STATUS update |
 | Phase 5B.2 — Cucumber-JS + fake timers (virtual time) | ✅ DONE | `plans/2026-05-17-phase-5b-2-cucumber-fake-timers.md` | `22c77ff..47c43df` (12 task commits) + this STATUS update |
 | Phase 5B.3 — Vitest + Gherkin + fake timers | ✅ DONE | `plans/2026-05-17-phase-5b-3-vitest-gherkin-fake-timers.md` | `9c3bfc2..cf75376` (10 task commits incl. 1 code-quality fix) + this STATUS update |
-| Phase 5B.4 — Vitest + plain TS (no Gherkin) + fake timers | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5B.4 — Vitest + plain TS (no Gherkin) + fake timers | ✅ DONE | `plans/2026-05-17-phase-5b-4-vitest-plain-fake-timers.md` | `c78b93d..077386d` (11 task commits) + this STATUS update |
 | Phase 5C — Port contract tests (simulator vs WsReal) | ⏳ NOT STARTED | (to be written) | — |
 | Phase 5D — Real gateway-events adapter; delete `withSyntheticGatewayConnected` | ⏳ NOT STARTED | (to be written) | — |
 
@@ -145,6 +145,18 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 4. **Plan-template drift.** The Phase 5B.3 plan templates the step/hook callbacks as cucumber-js's `function(this: PresenterWorld)` shape (Task 4 hooks + Task 5 step files). That shape doesn't compile against qpickle-loader's actual types — `HookFunction = (state) => Promise<void>` and step `f: (state, ...args) => any`. Shipped code uses `async (state: VitestFakePresenterWorld, ...args) =>` across all hooks + 8 step files. Future readers grepping the plan should not trust those templates verbatim. The plan doc itself was not amended post-shipment; the actual code is the source of truth.
 5. **qpickle-loader dep-graph quirks.** `quickpickle@1.11.2` pulls in both `lodash@4.18.1` and `lodash-es@4.18.1` (CommonJS + ESM duplicates), AND adds a fourth concurrent `@cucumber/gherkin` version to the lockfile (`32.2.0` via `@cucumber/messages@27.2.0`, alongside the existing 30.0.4 / 31.0.0 / 38.0.0). Neither is a defect introduced by us — upstream quirks of qpickle-loader's own dep design — but worth flagging for any future audit targeting `@rtc/tests` bundle size or transitive graph.
 6. **vitest-fake/setup.ts barrel completeness has no enforcement.** If a 9th step file is added to `tests/steps/presenter/vitest-fake/`, the barrel `tests/support/presenter/vitest-fake/setup.ts` must be manually updated. There is no grep gate or compiler check that asserts barrel completeness. A future contributor could see tests silently skip steps. Consider adding a grep gate that counts step-file imports vs file count.
+
+## Phase 5B.4 follow-ups (carry into 5C+)
+
+1. **Scratchpad audit.** 5B.1 follow-up #6 flagged write-only fields in `PresenterScratchpad` (`lastPrice`, `observedTradeCount`, `lastTradeDirection`, `recordedCount`). 5B.4 reused the scratchpad unchanged, so the audit remains a pure read-only review that can land separately.
+
+2. **Step-tree de-duplication.** 5B.3 follow-up #3 suggested revisiting a "source-of-truth step registry" after 5B.4. vitest-plain has no step tree, so it doesn't add to the triplication. Re-evaluate as part of 5C.
+
+3. **Gate 21 catches add/remove drift only.** Step-body changes inside an existing `@presenter` scenario won't trip gate 21 (e.g., editing a Gherkin step's text or arguments will not fail the gate). Acceptable for 5B.4 because the 19 `@presenter` scenarios are frozen by the 5B comparison artifact; revisit if presenter scenarios start changing meaningfully.
+
+4. **`@presenter` tag in `describe` title is convention, not enforced.** A future contributor could omit the `"@presenter "` prefix in a vitest-plain `describe` title. Add a gate (or extend gate 21's `customCheck`) to assert the prefix if this becomes a recurring oversight.
+
+5. **Naming asymmetry.** vitest-plain lives in `tests/presenter-tests/`, while the other 3 presenter peers' glue lives under `tests/steps/presenter/` and `tests/support/presenter/`. Deliberate (`steps/` is a misnomer for files with no step defs), but a reader scanning the file tree won't see all 4 presenter peers at one level. The STATUS phases table and `docs/architecture.md` presenter test stack table provide the unified view.
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
