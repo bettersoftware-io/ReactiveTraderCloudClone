@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-18
+**Last updated:** 2026-05-18 (5B.4 follow-up sweep)
 
 ---
 
@@ -127,7 +127,7 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 
 5. **GBPJPY-targeted rejection.** `buyNTimesWithDismissals` in shared browser scenarios now targets GBPJPY for n-th buy to guarantee a rejection. Behavior shift for n=1 (only-GBPJPY); no current caller uses n=1. Worth a name change if a future scenario uses n=1.
 
-6. **Dead scratchpad fields.** `PresenterScratchpad` (`tests/scenarios/presenter/_shared/common.ts`) contains four write-only fields (`lastPrice`, `observedTradeCount`, `lastTradeDirection`, `recordedCount`) that are never consumed by any presenter-side assertion. Add comments marking them as pre-declared for 5B.2-5B.4, or prune them when 5B.4 confirms they're not needed.
+6. **Dead scratchpad fields.** ✅ RESOLVED in commit `b41e5e5` (2026-05-18) — pruned `lastPrice`, `observedTradeCount`, `lastTradeDirection`, `recordedCount` from `PresenterScratchpad` along with nine write sites in `_shared/fxLiveRates.ts` and `_shared/fxTrading.ts`. `expectPriceTileVisibleWithin` and `recordFirstTileText` retain their subscription side effects (load-bearing in fake-time peers) but no longer bind the result.
 
 7. **`at least one trade confirmation matched {}` step ignores its pattern argument.** The step at `tests/steps/presenter/cucumber-real/fxTrading.steps.ts` discards its `_pattern` argument and unconditionally calls `expectAtLeastOneRejection`. Safe today (only caller uses `/rejected/i` with GBPJPY targeting which is deterministically rejected), but will silently pass wrong assertions for any future scenario passing a different pattern. Rename to `at least one trade was rejected` or guard the pattern.
 
@@ -148,13 +148,13 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 
 ## Phase 5B.4 follow-ups (carry into 5C+)
 
-1. **Scratchpad audit.** 5B.1 follow-up #6 flagged write-only fields in `PresenterScratchpad` (`lastPrice`, `observedTradeCount`, `lastTradeDirection`, `recordedCount`). 5B.4 reused the scratchpad unchanged, so the audit remains a pure read-only review that can land separately.
+1. **Scratchpad audit.** ✅ RESOLVED in commit `b41e5e5` (2026-05-18) — see Phase 5B.1 follow-up #6.
 
 2. **Step-tree de-duplication.** 5B.3 follow-up #3 suggested revisiting a "source-of-truth step registry" after 5B.4. vitest-plain has no step tree, so it doesn't add to the triplication. Re-evaluate as part of 5C.
 
 3. **Gate 21 catches add/remove drift only.** Step-body changes inside an existing `@presenter` scenario won't trip gate 21 (e.g., editing a Gherkin step's text or arguments will not fail the gate). Acceptable for 5B.4 because the 19 `@presenter` scenarios are frozen by the 5B comparison artifact; revisit if presenter scenarios start changing meaningfully.
 
-4. **`@presenter` tag in `describe` title is convention, not enforced.** A future contributor could omit the `"@presenter "` prefix in a vitest-plain `describe` title. Add a gate (or extend gate 21's `customCheck`) to assert the prefix if this becomes a recurring oversight.
+4. **`@presenter` tag in `describe` title is convention, not enforced.** ✅ RESOLVED in commit `df91926` (2026-05-18) — added gate 22 + `checkPresenterDescribePrefix` helper asserting every `describe(...)` title in `presenter-tests/vitest-plain/*.test.ts` starts with `"@presenter Feature: "`. Smoke-tested by temporarily stripping the prefix on `blotter.test.ts`: the gate failed with a precise file + offending title, then passed once restored.
 
 5. **Naming asymmetry.** vitest-plain lives in `tests/presenter-tests/`, while the other 3 presenter peers' glue lives under `tests/steps/presenter/` and `tests/support/presenter/`. Deliberate (`steps/` is a misnomer for files with no step defs), but a reader scanning the file tree won't see all 4 presenter peers at one level. The STATUS phases table and `docs/architecture.md` presenter test stack table provide the unified view.
 
