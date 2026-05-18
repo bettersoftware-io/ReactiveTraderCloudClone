@@ -136,6 +136,12 @@ const GATES: Gate[] = [
     ],
     excludes: ["/node_modules/"],
   },
+  {
+    name: "20. No Gherkin loader imports in vitest-plain peer",
+    pattern: '"quickpickle"|"@cucumber/cucumber"|from "quickpickle/',
+    paths: ["presenter-tests/vitest-plain/"],
+    excludes: ["/node_modules/"],
+  },
 ];
 
 let failed = 0;
