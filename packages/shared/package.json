@@ -5,6 +5,16 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./__fixtures__/wireFrames": {
+      "types": "./dist/__fixtures__/wireFrames.d.ts",
+      "import": "./dist/__fixtures__/wireFrames.js"
+    }
+  },
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --noEmit",

@@ -5,6 +5,16 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./ports/__contracts__/*": {
+      "types": "./dist/ports/__contracts__/*.d.ts",
+      "import": "./dist/ports/__contracts__/*.js"
+    }
+  },
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --noEmit",
