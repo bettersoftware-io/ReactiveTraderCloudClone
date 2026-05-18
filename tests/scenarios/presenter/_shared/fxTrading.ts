@@ -38,17 +38,13 @@ async function executeOnFirstPair(
 export async function executeBuyOnFirstTile(w: PresenterWorld): Promise<void> {
   const r = await executeOnFirstPair(w, DIR_BUY, 1_000_000);
   w.scratch.lastTradeStatus = r.status;
-  w.scratch.lastTradeDirection = DIR_BUY;
   w.scratch.lastTradeNotional = r.notional;
-  w.scratch.observedTradeCount += 1;
 }
 
 export async function executeSellOnFirstTile(w: PresenterWorld): Promise<void> {
   const r = await executeOnFirstPair(w, DIR_SELL, 1_000_000);
   w.scratch.lastTradeStatus = r.status;
-  w.scratch.lastTradeDirection = DIR_SELL;
   w.scratch.lastTradeNotional = r.notional;
-  w.scratch.observedTradeCount += 1;
 }
 
 export async function executeBuyWithNotional(
@@ -57,9 +53,7 @@ export async function executeBuyWithNotional(
 ): Promise<void> {
   const r = await executeOnFirstPair(w, DIR_BUY, notional);
   w.scratch.lastTradeStatus = r.status;
-  w.scratch.lastTradeDirection = DIR_BUY;
   w.scratch.lastTradeNotional = r.notional;
-  w.scratch.observedTradeCount += 1;
 }
 
 const UI_PATTERN_TO_STATUSES: Array<{
@@ -126,7 +120,6 @@ export async function buyNTimesWithDismissals(
     if ((result.status as unknown as string) === "Rejected") {
       w.scratch.rejectedSeen = true;
     }
-    w.scratch.observedTradeCount += 1;
   }
 }
 
