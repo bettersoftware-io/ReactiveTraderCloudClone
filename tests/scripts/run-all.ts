@@ -19,6 +19,7 @@ try {
   combinedExit |= await run("pnpm", ["test:presenter:cucumber-real"]);
   combinedExit |= await run("pnpm", ["test:presenter:cucumber-fake"]);
   combinedExit |= await run("pnpm", ["test:presenter:vitest-fake"]);
+  combinedExit |= await run("pnpm", ["test:presenter:vitest-plain"]);
 } finally {
   await dev.stop();
 }
