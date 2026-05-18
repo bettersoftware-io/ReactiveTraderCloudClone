@@ -54,6 +54,24 @@ function checkPresenterScenarioCounts(): string[] {
   return failures;
 }
 
+function checkPresenterDescribePrefix(): string[] {
+  const failures: string[] = [];
+  for (const feat of FEATURE_NAMES) {
+    const testPath = `presenter-tests/vitest-plain/${feat}.test.ts`;
+    if (!existsSync(testPath)) continue;
+    const testSrc = readFileSync(testPath, "utf8");
+    const titles = [...testSrc.matchAll(/^\s*describe\(\s*"([^"]+)"/gm)].map((m) => m[1]!);
+    for (const title of titles) {
+      if (!title.startsWith("@presenter Feature: ")) {
+        failures.push(
+          `${testPath}: describe title "${title}" missing "@presenter Feature: " prefix`,
+        );
+      }
+    }
+  }
+  return failures;
+}
+
 const GATES: Gate[] = [
   {
     name: "1. No raw data-testid literals outside testids.ts",
@@ -193,6 +211,12 @@ const GATES: Gate[] = [
     pattern: "",
     paths: [],
     customCheck: checkPresenterScenarioCounts,
+  },
+  {
+    name: "22. vitest-plain describe titles start with \"@presenter Feature: \"",
+    pattern: "",
+    paths: [],
+    customCheck: checkPresenterDescribePrefix,
   },
 ];
 
