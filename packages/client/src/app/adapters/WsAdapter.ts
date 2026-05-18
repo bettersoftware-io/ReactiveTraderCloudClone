@@ -3,17 +3,17 @@
  * Manages connection lifecycle and message routing between client and server.
  */
 
+import type { IWsAdapter, MessageHandler } from "./IWsAdapter";
+
 interface WsMessage {
   readonly type: string;
   readonly payload?: unknown;
   readonly correlationId?: string;
 }
 
-type MessageHandler = (payload: unknown) => void;
-
 const RECONNECT_DELAY_MS = 3_000;
 
-export class WsAdapter {
+export class WsAdapter implements IWsAdapter {
   private ws: WebSocket | null = null;
   private readonly url: string;
   private readonly handlers = new Map<string, Set<MessageHandler>>();

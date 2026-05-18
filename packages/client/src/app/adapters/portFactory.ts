@@ -44,6 +44,7 @@ import type {
   PriceHistoryDto,
 } from "@rtc/shared";
 import { WsAdapter } from "./WsAdapter";
+import type { IWsAdapter } from "./IWsAdapter";
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
@@ -111,7 +112,7 @@ const SERVER_MSG = {
 
 // ── Port Implementations ────────────────────────────────────────
 
-function createReferenceDataPort(ws: WsAdapter): ReferenceDataPort {
+function createReferenceDataPort(ws: IWsAdapter): ReferenceDataPort {
   return {
     getCurrencyPairs(): Observable<readonly CurrencyPair[]> {
       return new Observable<readonly CurrencyPair[]>((subscriber) => {
@@ -135,7 +136,7 @@ function createReferenceDataPort(ws: WsAdapter): ReferenceDataPort {
   };
 }
 
-function createPricingPort(ws: WsAdapter): PricingPort {
+function createPricingPort(ws: IWsAdapter): PricingPort {
   return {
     getPriceUpdates(symbol: string): Observable<PriceTick> {
       return new Observable<PriceTick>((subscriber) => {
@@ -207,7 +208,7 @@ function createPricingPort(ws: WsAdapter): PricingPort {
   };
 }
 
-function createExecutionPort(ws: WsAdapter): ExecutionPort {
+function createExecutionPort(ws: IWsAdapter): ExecutionPort {
   return {
     executeTrade(request): Observable<Trade> {
       return new Observable<Trade>((subscriber) => {
@@ -254,7 +255,7 @@ function createExecutionPort(ws: WsAdapter): ExecutionPort {
   };
 }
 
-function createBlotterPort(ws: WsAdapter): BlotterPort {
+function createBlotterPort(ws: IWsAdapter): BlotterPort {
   return {
     getTradeStream(): Observable<readonly Trade[]> {
       return new Observable<readonly Trade[]>((subscriber) => {
@@ -271,7 +272,7 @@ function createBlotterPort(ws: WsAdapter): BlotterPort {
   };
 }
 
-function createAnalyticsPort(ws: WsAdapter): AnalyticsPort {
+function createAnalyticsPort(ws: IWsAdapter): AnalyticsPort {
   return {
     getAnalytics(currency: string): Observable<PositionUpdates> {
       return new Observable<PositionUpdates>((subscriber) => {
@@ -291,7 +292,7 @@ function createAnalyticsPort(ws: WsAdapter): AnalyticsPort {
   };
 }
 
-function createInstrumentPort(ws: WsAdapter): InstrumentPort {
+function createInstrumentPort(ws: IWsAdapter): InstrumentPort {
   return {
     getInstruments(): Observable<readonly Instrument[]> {
       return new Observable<readonly Instrument[]>((subscriber) => {
@@ -330,7 +331,7 @@ function createInstrumentPort(ws: WsAdapter): InstrumentPort {
   };
 }
 
-function createDealerPort(ws: WsAdapter): DealerPort {
+function createDealerPort(ws: IWsAdapter): DealerPort {
   return {
     getDealers(): Observable<readonly Dealer[]> {
       return new Observable<readonly Dealer[]>((subscriber) => {
@@ -369,7 +370,7 @@ function createDealerPort(ws: WsAdapter): DealerPort {
   };
 }
 
-function createWorkflowPort(ws: WsAdapter): WorkflowPort {
+function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
   return {
     events(): Observable<RfqEvent> {
       return new Observable<RfqEvent>((subscriber) => {
@@ -508,7 +509,7 @@ function createWorkflowPort(ws: WsAdapter): WorkflowPort {
 
 // ── Factory ─────────────────────────────────────────────────────
 
-export function createWsRealPorts(ws: WsAdapter): TransportPorts {
+export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
   return {
     referenceData: createReferenceDataPort(ws),
     pricing: createPricingPort(ws),
