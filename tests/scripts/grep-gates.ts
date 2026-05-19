@@ -218,6 +218,12 @@ const GATES: Gate[] = [
     paths: [],
     customCheck: checkPresenterDescribePrefix,
   },
+  {
+    name: "23. Contract describers stay pure (no impl imports)",
+    pattern: 'from "(\\.\\./)+simulators|from "@rtc/(client|shared/__fixtures__)',
+    paths: ["../packages/domain/src/ports/__contracts__/"],
+    excludes: ["/node_modules/"],
+  },
 ];
 
 let failed = 0;
