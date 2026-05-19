@@ -1,6 +1,6 @@
-import { concatMap, from, merge, of, type Observable } from "rxjs";
+import { merge } from "rxjs";
 import {
-  type ConnectionEvent,
+  ConnectionEventsSimulator,
   type ConnectionEventsPort,
 } from "@rtc/domain";
 
@@ -18,6 +18,7 @@ import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
 
 import { WsAdapter } from "./adapters/WsAdapter";
 import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
+import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
 import {
   createSimulatorPorts,
   createWsRealPorts,
@@ -45,40 +46,22 @@ export interface App {
   ports: AppPorts;
 }
 
-/**
- * Wraps the BrowserConnectionEventsAdapter with a synthetic startup
- * `gatewayConnected` event so the state machine reaches CONNECTED
- * during application boot. Also synthesizes a `gatewayConnected` event
- * after every `browserOnline` event so that coming back from offline
- * returns to CONNECTED (not just CONNECTING). In future phases a real
- * gateway adapter will replace these synthetic emissions.
- */
-export function withSyntheticGatewayConnected(
-  inner: ConnectionEventsPort,
-): ConnectionEventsPort {
-  return {
-    events(): Observable<ConnectionEvent> {
-      const innerEvents$ = inner.events().pipe(
-        concatMap((event) => {
-          if (event.type === "browserOnline") {
-            const pair: ConnectionEvent[] = [event, { type: "gatewayConnected" }];
-            return from(pair);
-          }
-          return of(event);
-        }),
-      );
-      return merge(of<ConnectionEvent>({ type: "gatewayConnected" }), innerEvents$);
-    },
-  };
-}
-
 export function buildDefaultPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
-  const transport = url ? createWsRealPorts(new WsAdapter(url)) : createSimulatorPorts();
-  return {
-    ...transport,
-    connectionEvents: withSyntheticGatewayConnected(new BrowserConnectionEventsAdapter()),
+  const browser = new BrowserConnectionEventsAdapter();
+  if (url) {
+    const ws = new WsAdapter(url);
+    const gateway = new WsConnectionEventsAdapter(ws);
+    const connectionEvents: ConnectionEventsPort = {
+      events: () => merge(gateway.events(), browser.events()),
+    };
+    return { ...createWsRealPorts(ws), connectionEvents };
+  }
+  const gateway = new ConnectionEventsSimulator();
+  const connectionEvents: ConnectionEventsPort = {
+    events: () => merge(gateway.events(), browser.events()),
   };
+  return { ...createSimulatorPorts(), connectionEvents };
 }
 
 export function createApp(ports: AppPorts = buildDefaultPorts()): App {
