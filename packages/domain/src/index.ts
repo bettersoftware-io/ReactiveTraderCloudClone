@@ -52,6 +52,7 @@ export {
   InstrumentSimulator,
   DealerSimulator,
   CreditRfqSimulator,
+  ConnectionEventsSimulator,
   INSTRUMENTS_CATALOG,
   DEALERS_CATALOG,
 } from "./simulators/index.js";

@@ -11,3 +11,4 @@ export {
   DEALERS_CATALOG,
 } from "./creditReferenceDataSimulator.js";
 export { CreditRfqSimulator } from "./CreditRfqSimulator.js";
+export { ConnectionEventsSimulator } from "./ConnectionEventsSimulator.js";
