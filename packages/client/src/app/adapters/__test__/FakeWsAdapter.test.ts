@@ -55,4 +55,36 @@ describe("FakeWsAdapter", () => {
     expect(ws.hasPendingRpc("rpc.executeTrade")).toBe(false);
     expect(ws.sentMessages()).toEqual([]);
   });
+
+  it("emitConnectionEvent('gatewayConnected') reaches connectionEvents() subscribers", () => {
+    const ws = new FakeWsAdapter();
+    const events: { type: string }[] = [];
+    ws.connectionEvents().subscribe((e) => events.push(e));
+    ws.emitConnectionEvent("gatewayConnected");
+    expect(events).toEqual([{ type: "gatewayConnected" }]);
+  });
+
+  it("emitConnectionEvent('gatewayDisconnected') reaches subscribers", () => {
+    const ws = new FakeWsAdapter();
+    const events: { type: string }[] = [];
+    ws.connectionEvents().subscribe((e) => events.push(e));
+    ws.emitConnectionEvent("gatewayDisconnected");
+    expect(events).toEqual([{ type: "gatewayDisconnected" }]);
+  });
+
+  it("connectionEvents() replays the last event to late subscribers", () => {
+    const ws = new FakeWsAdapter();
+    ws.emitConnectionEvent("gatewayConnected");
+    const lateEvents: { type: string }[] = [];
+    ws.connectionEvents().subscribe((e) => lateEvents.push(e));
+    expect(lateEvents).toEqual([{ type: "gatewayConnected" }]);
+  });
+
+  it("dispose() completes the connection-events subject", () => {
+    const ws = new FakeWsAdapter();
+    let completed = false;
+    ws.connectionEvents().subscribe({ complete: () => { completed = true; } });
+    ws.dispose();
+    expect(completed).toBe(true);
+  });
 });

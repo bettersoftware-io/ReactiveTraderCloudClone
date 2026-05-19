@@ -43,6 +43,7 @@ export class FakeWsAdapter implements IWsAdapter {
   }
 
   dispose(): void {
+    this.connectionEvents$.complete();
     this.listeners.clear();
     this.pendingRpcs = [];
     this.sent = [];
@@ -73,5 +74,10 @@ export class FakeWsAdapter implements IWsAdapter {
   /** True iff at least one RPC of `type` is currently awaiting a response. */
   hasPendingRpc(type: string): boolean {
     return this.pendingRpcs.some((r) => r.type === type);
+  }
+
+  /** Drive a fake gateway lifecycle event to all connectionEvents() subscribers. */
+  emitConnectionEvent(type: "gatewayConnected" | "gatewayDisconnected"): void {
+    this.connectionEvents$.next({ type });
   }
 }
