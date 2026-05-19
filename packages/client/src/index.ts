@@ -1,7 +1,6 @@
 export {
   createApp,
   buildDefaultPorts,
-  withSyntheticGatewayConnected,
   type App,
   type Presenters,
   type AppPorts,
