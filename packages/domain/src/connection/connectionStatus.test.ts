@@ -9,6 +9,12 @@ describe("nextConnectionStatus", () => {
     ).toBe(ConnectionStatus.CONNECTED);
   });
 
+  it("CONNECTING -> DISCONNECTED on gatewayDisconnected (boot-time server-down)", () => {
+    expect(
+      nextConnectionStatus(ConnectionStatus.CONNECTING, { type: "gatewayDisconnected" }),
+    ).toBe(ConnectionStatus.DISCONNECTED);
+  });
+
   it("CONNECTED -> DISCONNECTED on gatewayDisconnected", () => {
     expect(
       nextConnectionStatus(ConnectionStatus.CONNECTED, { type: "gatewayDisconnected" }),

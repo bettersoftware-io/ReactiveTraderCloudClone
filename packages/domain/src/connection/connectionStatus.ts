@@ -30,6 +30,8 @@ export function nextConnectionStatus(
       switch (event.type) {
         case "gatewayConnected":
           return ConnectionStatus.CONNECTED;
+        case "gatewayDisconnected":
+          return ConnectionStatus.DISCONNECTED;
         case "browserOffline":
           return ConnectionStatus.OFFLINE_DISCONNECTED;
         default:
