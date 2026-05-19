@@ -17,6 +17,7 @@ class MockWebSocket {
 let lastMock: MockWebSocket;
 
 beforeEach(() => {
+  vi.useFakeTimers();
   vi.stubGlobal(
     "WebSocket",
     vi.fn().mockImplementation(() => {
