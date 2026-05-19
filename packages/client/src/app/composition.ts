@@ -65,8 +65,8 @@ export function buildDefaultPorts(): AppPorts {
         gateway.events(),
         browser.events().pipe(
           mergeMap((e) =>
-            e.type === "browserOnline"
-              ? of(e, { type: "gatewayConnected" } as ConnectionEvent)
+            e.type === "browserOnline" || e.type === "userActivity"
+              ? of(e, { type: "gatewayConnected" as const })
               : of(e),
           ),
         ),
