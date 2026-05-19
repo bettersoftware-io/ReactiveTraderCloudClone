@@ -1,4 +1,6 @@
 // packages/client/src/app/adapters/__test__/FakeWsAdapter.ts
+import { ReplaySubject, type Observable } from "rxjs";
+import type { ConnectionEvent } from "@rtc/domain";
 import type { IWsAdapter, MessageHandler } from "../IWsAdapter";
 import type { RpcResponse } from "@rtc/shared";
 
@@ -15,6 +17,7 @@ export class FakeWsAdapter implements IWsAdapter {
     type: string;
     resolve: (r: unknown) => void;
   }> = [];
+  private connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
   on(type: string, handler: MessageHandler): () => void {
     if (!this.listeners.has(type)) this.listeners.set(type, new Set());
@@ -33,6 +36,10 @@ export class FakeWsAdapter implements IWsAdapter {
     return new Promise((resolve) => {
       this.pendingRpcs.push({ type, resolve });
     });
+  }
+
+  connectionEvents(): Observable<ConnectionEvent> {
+    return this.connectionEvents$.asObservable();
   }
 
   dispose(): void {

@@ -3,6 +3,8 @@
  * Manages connection lifecycle and message routing between client and server.
  */
 
+import { ReplaySubject, type Observable } from "rxjs";
+import type { ConnectionEvent } from "@rtc/domain";
 import type { IWsAdapter, MessageHandler } from "./IWsAdapter";
 
 interface WsMessage {
@@ -21,6 +23,7 @@ export class WsAdapter implements IWsAdapter {
   private nextCorrelationId = 1;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
+  private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
   constructor(url: string) {
     this.url = url;
@@ -120,6 +123,10 @@ export class WsAdapter implements IWsAdapter {
       };
       check();
     });
+  }
+
+  connectionEvents(): Observable<ConnectionEvent> {
+    return this.connectionEvents$.asObservable();
   }
 
   dispose(): void {
