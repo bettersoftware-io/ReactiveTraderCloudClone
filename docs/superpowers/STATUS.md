@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-18 (5B.4 follow-up sweep)
+**Last updated:** 2026-05-19 (5C DONE)
 
 ---
 
@@ -31,7 +31,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 5B.2 — Cucumber-JS + fake timers (virtual time) | ✅ DONE | `plans/2026-05-17-phase-5b-2-cucumber-fake-timers.md` | `22c77ff..47c43df` (12 task commits) + this STATUS update |
 | Phase 5B.3 — Vitest + Gherkin + fake timers | ✅ DONE | `plans/2026-05-17-phase-5b-3-vitest-gherkin-fake-timers.md` | `9c3bfc2..cf75376` (10 task commits incl. 1 code-quality fix) + this STATUS update |
 | Phase 5B.4 — Vitest + plain TS (no Gherkin) + fake timers | ✅ DONE | `plans/2026-05-17-phase-5b-4-vitest-plain-fake-timers.md` | `c78b93d..077386d` (11 task commits) + this STATUS update |
-| Phase 5C — Port contract tests (simulator vs WsReal) | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5C — Port contract tests (simulator vs WsReal) | ✅ DONE | `plans/2026-05-18-phase-5c-port-contract-tests.md` | `769a47b..23db8c7` (18 task commits + 2 fixture-fix commits) + this STATUS update |
 | Phase 5D — Real gateway-events adapter; delete `withSyntheticGatewayConnected` | ⏳ NOT STARTED | (to be written) | — |
 
 ## Use cases extracted in Phase 2
@@ -157,6 +157,18 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 4. **`@presenter` tag in `describe` title is convention, not enforced.** ✅ RESOLVED in commit `df91926` (2026-05-18) — added gate 22 + `checkPresenterDescribePrefix` helper asserting every `describe(...)` title in `presenter-tests/vitest-plain/*.test.ts` starts with `"@presenter Feature: "`. Smoke-tested by temporarily stripping the prefix on `blotter.test.ts`: the gate failed with a precise file + offending title, then passed once restored.
 
 5. **Naming asymmetry.** vitest-plain lives in `tests/presenter-tests/`, while the other 3 presenter peers' glue lives under `tests/steps/presenter/` and `tests/support/presenter/`. Deliberate (`steps/` is a misnomer for files with no step defs), but a reader scanning the file tree won't see all 4 presenter peers at one level. The STATUS phases table and `docs/architecture.md` presenter test stack table provide the unified view.
+
+## Phase 5C follow-ups (carry into 5D+)
+
+1. **Type-only filtering in `WorkflowPortContract`.** The describer's `isRfqCreated`/`isAccepted` guards filter on `e.type` only, not on rfqId/quoteId, because the simulator generates IDs internally while WsReal relays them — so a portable describer cannot assert specific ID round-trips. Specific ID round-trips are covered (or should be) by per-impl use-case tests. Phase 5D can revisit if a stronger contract becomes useful.
+
+2. **`emitQuotedEvent` is declared in `WorkflowDriver` but unused by any contract test.** The `quoteCreated` event type has no contract coverage. Either add a fourth invariant covering quoteCreated, or prune the unused driver method. Deferred to 5D+ when workflow-port behavior is revisited.
+
+3. **`supportsLiveAdd` capability flag on Instrument/Dealer harnesses.** Both `InstrumentSimulator` and `DealerSimulator` are static (return `of(CATALOG)`) so the "subsequent emissions are full snapshots" invariant fast-paths through `teardown()` and asserts nothing. The simulator-side test passes vacuously. If/when either simulator gains a live-add API, flip the flag and the assertion runs for real.
+
+4. **`while (!ws.hasPendingRpc(...)) await Promise.resolve()` has no explicit timeout.** RPC-driver test harnesses (Pricing, Execution, Workflow) poll for the port's RPC registration with a microtask loop. Vitest's 5s default test-timeout is the only safety net. Consider adding an explicit iteration cap with a clearer error message if these tests ever flake.
+
+5. **`workflowEventQuoted` factory emits `type: "quoteCreated"`, not `type: "quoteQuoted"`.** Matches the plan's template and the test-usage pattern, but the function name is semantically misleading. Rename or document if the distinction (quote-created vs quote-priced) becomes load-bearing.
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
