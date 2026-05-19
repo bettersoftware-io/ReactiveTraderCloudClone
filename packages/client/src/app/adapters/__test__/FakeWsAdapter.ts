@@ -17,7 +17,7 @@ export class FakeWsAdapter implements IWsAdapter {
     type: string;
     resolve: (r: unknown) => void;
   }> = [];
-  private connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
+  private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
   on(type: string, handler: MessageHandler): () => void {
     if (!this.listeners.has(type)) this.listeners.set(type, new Set());
