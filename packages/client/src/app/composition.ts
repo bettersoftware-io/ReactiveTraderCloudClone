@@ -1,6 +1,7 @@
-import { merge } from "rxjs";
+import { merge, mergeMap, of } from "rxjs";
 import {
   ConnectionEventsSimulator,
+  type ConnectionEvent,
   type ConnectionEventsPort,
 } from "@rtc/domain";
 
@@ -59,7 +60,17 @@ export function buildDefaultPorts(): AppPorts {
   }
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
-    events: () => merge(gateway.events(), browser.events()),
+    events: () =>
+      merge(
+        gateway.events(),
+        browser.events().pipe(
+          mergeMap((e) =>
+            e.type === "browserOnline"
+              ? of(e, { type: "gatewayConnected" } as ConnectionEvent)
+              : of(e),
+          ),
+        ),
+      ),
   };
   return { ...createSimulatorPorts(), connectionEvents };
 }
