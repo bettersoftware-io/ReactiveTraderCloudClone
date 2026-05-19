@@ -37,6 +37,7 @@ export class WsAdapter implements IWsAdapter {
 
     this.ws.onopen = () => {
       console.log("[WsAdapter] Connected to", this.url);
+      this.connectionEvents$.next({ type: "gatewayConnected" });
     };
 
     this.ws.onmessage = (event) => {
@@ -66,6 +67,7 @@ export class WsAdapter implements IWsAdapter {
 
     this.ws.onclose = () => {
       if (this.disposed) return;
+      this.connectionEvents$.next({ type: "gatewayDisconnected" });
       console.log("[WsAdapter] Disconnected, reconnecting in", RECONNECT_DELAY_MS, "ms");
       this.scheduleReconnect();
     };
@@ -131,6 +133,7 @@ export class WsAdapter implements IWsAdapter {
 
   dispose(): void {
     this.disposed = true;
+    this.connectionEvents$.complete();
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.ws?.close();
     this.handlers.clear();
