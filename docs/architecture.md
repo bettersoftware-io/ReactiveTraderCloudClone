@@ -34,6 +34,7 @@
 9. [Test Strategy](#9-test-strategy)
 10. [Key Design Decisions](#10-key-design-decisions)
 11. [Key Files Reference](#11-key-files-reference)
+12. [Architectural Gates](#12-architectural-gates)
 
 ---
 
@@ -1201,6 +1202,28 @@ Eight runners exercise the same behavioural surface via six binding styles. Cucu
 
 **Plain-TS binding (Phase 5B.4):** the vitest-presenter-plain runner reuses the same 19 `@presenter` scenarios as the other 3 presenter peers but executes them under Vitest with **no Gherkin loader at all** — hand-written `describe`/`it` blocks in `tests/presenter-tests/vitest-plain/*.test.ts` call the existing `tests/scenarios/presenter/_shared/*.ts` modules directly. The `VitestPlainPresenterWorld` is a plain object literal (not a class) implementing the same `AwaitHelpers` interface as the other presenter peers; `buildWorld()` / `teardownWorld()` run in `beforeEach` / `afterEach`. No step-def files exist for this peer — the test bodies inline what would otherwise be step-def delegation. The peer is the **plain-TS portability proof:** the `_shared/` scenario modules, the `AwaitHelpers` interface, and the `PresenterWorld` shape are abstractions useful enough that a contributor writing presenter tests in raw Vitest tomorrow would not need a new abstraction layer. Grep gate 20 forbids Gherkin loader imports inside `presenter-tests/vitest-plain/`; gate 21 enforces `@presenter` scenario count parity between `.feature` files and `*.test.ts` files via a `customCheck` extension to `grep-gates.ts`; gate 22 asserts every `describe(...)` title in that folder begins with `"@presenter Feature: "`. Wall-clock: ~1.5s (parity with vitest-fake — same Vitest worker startup, same fake-timer mechanism).
 
+### 9.6 Port contract test layer
+
+The 8 transport ports (`ReferenceDataPort`, `PricingPort`, `ExecutionPort`,
+`BlotterPort`, `AnalyticsPort`, `InstrumentPort`, `DealerPort`,
+`WorkflowPort`) each have a contract describer at
+`packages/domain/src/ports/__contracts__/<Port>Contract.ts` asserting
+happy-path behavioral invariants the TypeScript type signature cannot
+catch — emission shapes, SoW protocol, RFQ lifecycle, multi-subscriber
+identity. Each describer is parameterised by a `makeHarness()` factory
+returning `{port, driver, teardown}`, so the same assertions run twice:
+once against the simulator implementation in `packages/domain/src/simulators/`
+and once against the WsReal implementation in
+`packages/client/src/app/adapters/portFactory.ts` driven by an in-memory
+`FakeWsAdapter` that scripts canonical wire frames from
+`packages/shared/src/__fixtures__/wireFrames.ts`.
+
+The contract is happy-path only. Error semantics (RPC nack handling) are
+covered by three `wsReal<Execution|Pricing|Workflow>.errors.test.ts`
+files outside the contract, since simulators have no equivalent failure
+mode. Gate 23 (see §12) keeps the describers pure: they receive a port
+via `makeHarness`, they don't reach into either implementation.
+
 ---
 
 ## 10. Key Design Decisions
@@ -1255,5 +1278,38 @@ Eight runners exercise the same behavioural surface via six binding styles. Cucu
 | **Raw Cypress Harness** | `tests/raw/cypress/{cypress.config,_context,_openWorkspace}.ts` | Cypress config (no preprocessor); `getCtx()` accessor with module-scoped beforeEach builder; named Background helpers |
 | **Cypress-forked Scenarios** | `tests/scenarios/cypress/*.ts` (+ `_chainable.ts`) | Sync scenario fns mirroring shared `scenarios/*.ts` 1:1 by name; queue-aware (use `chainable<T>` cast helper to expose Cypress Chainable under the shared `Promise<T>` PO contract); used by raw Cypress only |
 | **Test World + Hooks (Cucumber)** | `tests/support/playwright/{world,hooks}.ts` and `tests/support/cypress/{world,e2e}.ts` | Per-runner World, dev-server lifecycle, hooks |
-| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based; 22 gates) |
+| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based; 23 gates) |
+| **Port Contract Describers** | `packages/domain/src/ports/__contracts__/<Port>Contract.ts` | Parameterised happy-path suites for all 8 transport ports; run against simulator + WsReal via `makeHarness()` |
 | **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and four-peer orchestration |
+
+---
+
+## 12. Architectural Gates
+
+`tests/scripts/grep-gates.ts` encodes 23 import-boundary rules enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
+
+| Gate | Rule |
+|------|------|
+| 1 | No raw `data-testid="..."` literals outside `testids.ts` (must use `TESTIDS` constants) |
+| 2 | No driver imports (`@playwright/test`, `cypress`, `@badeball`) in page-object contracts |
+| 3 | No driver names or `data-testid` references in `.feature` spec files |
+| 4 | No raw `getByTestId("...")` calls in page-object implementations (must use `TESTIDS` constants) |
+| 5 | No driver imports (`@playwright/test`, `"cypress"`, `@badeball`) in the scenarios layer |
+| 6 | No `from "@playwright/test"` imports in step definition files |
+| 7 | No copy-as-selector hardcoded text strings in page-object implementations (must use `STRINGS` constants) |
+| 8 | No `this.page.*` calls in step definition files |
+| 9 | No `from "@playwright/test"` imports in raw Playwright spec bodies (allowed only in `playwright.config.ts` and `_context.ts`) |
+| 10 | No direct `ctx.po.*` access in raw Playwright spec bodies (allowed only in `_context.ts`) |
+| 11 | No direct `page.*` calls in raw Playwright spec bodies (allowed only in `_context.ts`) |
+| 12 | No driver imports (`"cypress"`, `@badeball`, `@playwright/test`) in raw Cypress spec bodies (allowed only in `cypress.config.ts` and `_context.ts`) |
+| 13 | No direct `ctx.po.*` access in raw Cypress spec bodies (allowed only in `_context.ts`) |
+| 14 | No direct `cy.*` calls in raw Cypress spec bodies (allowed only in `_context.ts`) |
+| 15 | No driver imports in presenter step/scenario/support files (excludes the vitest-fake peer) |
+| 16 | No DOM or page references (`getByTestId`, `page.*`, `cy.*`) in presenter step/scenario files |
+| 17 | `createApp` / `createSimulatorPorts` may only appear in `scenarios/presenter/_buildApp.ts` |
+| 18 | No RxJS `timeout` keyword in presenter `_shared/` scenarios (must use `w.awaitFirstWithin`) |
+| 19 | No vitest or qpickle-loader imports in the cucumber-real, cucumber-fake, or shared presenter scenarios |
+| 20 | No Gherkin loader imports (`quickpickle`, `@cucumber/cucumber`) inside `presenter-tests/vitest-plain/` |
+| 21 | `@presenter` scenario count per `.feature` file must equal `it()` block count in the matching `vitest-plain/*.test.ts` file (custom check) |
+| 22 | Every `describe(...)` title in `presenter-tests/vitest-plain/` must begin with `"@presenter Feature: "` |
+| 23 | Contract describers in `packages/domain/src/ports/__contracts__/` may not import from `simulators/`, `@rtc/client`, or `@rtc/shared/__fixtures__/` |
