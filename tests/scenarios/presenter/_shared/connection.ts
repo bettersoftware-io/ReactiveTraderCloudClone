@@ -9,6 +9,7 @@ export async function browserGoesOffline(w: PresenterWorld): Promise<void> {
 
 export async function browserComesBackOnline(w: PresenterWorld): Promise<void> {
   w.ctx.connectionEvents$.next({ type: "browserOnline" });
+  w.ctx.connectionEvents$.next({ type: "gatewayConnected" });
 }
 
 export async function expectStatusEqualsWithin(
