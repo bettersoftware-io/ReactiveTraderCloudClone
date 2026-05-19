@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-19 (5C DONE)
+**Last updated:** 2026-05-19 (5D DONE)
 
 ---
 
@@ -11,7 +11,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD`
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 141 unit (114 domain + 22 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-cucumber-real) + 19 (presenter-cucumber-fake) + 19 (presenter-vitest-fake) + 19 (presenter-vitest-plain) — 48×4 + 19×4 = 268 e2e scenarios (4 browser peers × 48 scenarios; 4 presenter peers × 19 scenarios)
+- **Test counts:** 207 unit (137 domain + 65 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-cucumber-real) + 19 (presenter-cucumber-fake) + 19 (presenter-vitest-fake) + 19 (presenter-vitest-plain) — 48×4 + 19×4 = 268 e2e scenarios (4 browser peers × 48 scenarios; 4 presenter peers × 19 scenarios)
 
 ## Phases
 
@@ -32,7 +32,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 5B.3 — Vitest + Gherkin + fake timers | ✅ DONE | `plans/2026-05-17-phase-5b-3-vitest-gherkin-fake-timers.md` | `9c3bfc2..cf75376` (10 task commits incl. 1 code-quality fix) + this STATUS update |
 | Phase 5B.4 — Vitest + plain TS (no Gherkin) + fake timers | ✅ DONE | `plans/2026-05-17-phase-5b-4-vitest-plain-fake-timers.md` | `c78b93d..077386d` (11 task commits) + this STATUS update |
 | Phase 5C — Port contract tests (simulator vs WsReal) | ✅ DONE | `plans/2026-05-18-phase-5c-port-contract-tests.md` | `769a47b..23db8c7` (18 task commits + 2 fixture-fix commits) + this STATUS update |
-| Phase 5D — Real gateway-events adapter; delete `withSyntheticGatewayConnected` | ⏳ NOT STARTED | (to be written) | — |
+| Phase 5D — Real gateway-events adapter; delete `withSyntheticGatewayConnected` | ✅ DONE | `plans/2026-05-19-phase-5d-real-gateway-events.md` | `45fe824..d365ca8` (13 commits) + this STATUS update |
 
 ## Use cases extracted in Phase 2
 
@@ -169,6 +169,15 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 4. **`while (!ws.hasPendingRpc(...)) await Promise.resolve()` has no explicit timeout.** RPC-driver test harnesses (Pricing, Execution, Workflow) poll for the port's RPC registration with a microtask loop. Vitest's 5s default test-timeout is the only safety net. Consider adding an explicit iteration cap with a clearer error message if these tests ever flake.
 
 5. **`workflowEventQuoted` factory emits `type: "quoteCreated"`, not `type: "quoteQuoted"`.** Matches the plan's template and the test-usage pattern, but the function name is semantically misleading. Rename or document if the distinction (quote-created vs quote-priced) becomes load-bearing.
+
+## Phase 5D follow-ups (carry into 5E+)
+
+1. **`WsAdapter.ts` size review.** With the lifecycle additions, the class now juggles message I/O, reconnect scheduling, RPC tracking, AND lifecycle observation. The file is still readable (<200 lines), but a future contributor may benefit from splitting lifecycle observation into a helper or rethinking the reconnect loop.
+2. **`RECONNECT_DELAY_MS = 3_000` is hard-coded.** Consider making it configurable (constructor option or environment variable) for tests and for tuning production reconnect behavior.
+3. **State-diagram `DISCONNECTED → CONNECTING : reconnectAttempt every 10s` is still aspirational.** No `reconnectAttempt` event type exists; the actual reconnect goes DISCONNECTED → CONNECTED directly when `WsAdapter.onopen` fires. Either implement the intermediate transition (requires a new event type + emitter) or remove the arrow from the diagram for accuracy.
+4. **Double `gatewayDisconnected` on browser-offline.** When the browser goes offline, both `BrowserConnectionEventsAdapter` (immediate `browserOffline`) and `WsAdapter` (`onclose` from TCP teardown) emit events. The state machine handles this correctly via default branches in OFFLINE_DISCONNECTED, but the duplication is conceptually ugly and could be cleaned up by gating WS lifecycle emissions on the browser state.
+5. **Simulator-mode browserOnline → gatewayConnected synthesis.** Discovered during Task 10 e2e verification: simulator mode needs a `mergeMap` in `composition.ts` to fake `gatewayConnected` after each `browserOnline`, because `ConnectionEventsSimulator` is one-shot. This is a partial reintroduction of synthetic behavior, scoped to simulator mode only (WS-real reconnect handles itself via real `onopen`). The plan/spec assumed all e2e ran in WS-real mode; it doesn't (no `VITE_SERVER_URL` is set in dev). Consider whether a `SimulatorReconnectAdapter` or richer simulator design would better encapsulate this.
+6. **No `ConnectionEventsPort` contract test layer.** Phase 5C's 8-port contract pattern doesn't extend here because simulator and WS-real impls are fundamentally divergent (one-shot vs long-lived lifecycle). Revisit if a third impl emerges (e.g. server-side health-ping).
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
