@@ -6,7 +6,6 @@ import type { WorkflowPort, RfqEvent } from "../workflowPort.js";
 export interface WorkflowDriver {
   ackCreateRfq(rfqId: number): Promise<void>;
   emitCreatedEvent(rfqId: number): Promise<void>;
-  emitQuotedEvent(rfqId: number, quoteId: number): Promise<void>;
   emitAcceptedEvent(rfqId: number, quoteId: number): Promise<void>;
   ackAccept(): Promise<void>;
 }

@@ -1,7 +1,6 @@
 import { describeWorkflowPortContract } from "@rtc/domain/ports/__contracts__/WorkflowPortContract";
 import {
   workflowEventCreated,
-  workflowEventQuoted,
   workflowEventAccepted,
   rpcAck,
 } from "@rtc/shared/__fixtures__/wireFrames";
@@ -23,10 +22,6 @@ describeWorkflowPortContract("wsRealWorkflow", () => {
       emitCreatedEvent: async (rfqId) => {
         await Promise.resolve();
         ws.emit("stream.workflowEvent", workflowEventCreated(rfqId));
-      },
-      emitQuotedEvent: async (rfqId, quoteId) => {
-        await Promise.resolve();
-        ws.emit("stream.workflowEvent", workflowEventQuoted(rfqId, quoteId));
       },
       emitAcceptedEvent: async (rfqId, quoteId) => {
         await Promise.resolve();

@@ -64,10 +64,6 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
         await vi.advanceTimersByTimeAsync(0);
       },
 
-      emitQuotedEvent: async () => {
-        await vi.advanceTimersByTimeAsync(5_000);
-      },
-
       // Invariant 3: emit a quoteAccepted event.
       // Steps: createRfq → capture quoteId → quote (give it a price) → accept.
       emitAcceptedEvent: async () => {
