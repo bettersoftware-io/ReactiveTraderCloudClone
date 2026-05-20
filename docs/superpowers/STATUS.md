@@ -33,7 +33,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 5B.4 — Vitest + plain TS (no Gherkin) + fake timers | ✅ DONE | `plans/2026-05-17-phase-5b-4-vitest-plain-fake-timers.md` | `c78b93d..077386d` (11 task commits) + this STATUS update |
 | Phase 5C — Port contract tests (simulator vs WsReal) | ✅ DONE | `plans/2026-05-18-phase-5c-port-contract-tests.md` | `769a47b..23db8c7` (18 task commits + 2 fixture-fix commits) + this STATUS update |
 | Phase 5D — Real gateway-events adapter; delete `withSyntheticGatewayConnected` | ✅ DONE | `plans/2026-05-19-phase-5d-real-gateway-events.md` | `45fe824..d365ca8` (13 commits) + this STATUS update |
-| Phase 5E — Follow-up cleanups + STATUS.md grooming | ✅ DONE | `plans/2026-05-20-phase-5e-cleanup.md` | `6d86565..a3b955a` (12 commits) + this STATUS update |
+| Phase 5E — Follow-up cleanups + STATUS.md grooming | ✅ DONE | `plans/2026-05-20-phase-5e-cleanup.md` | `6d86565..3aff596` (13 commits) + this STATUS update |
 
 ## Use cases extracted in Phase 2
 
