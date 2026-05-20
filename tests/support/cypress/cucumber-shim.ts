@@ -39,9 +39,9 @@ function wrapStepFn(fn: StepFn): StepFn {
     // the preprocessor can chain off it. Otherwise return cy.wrap(undefined)
     // as a safe no-op anchor. Either way the preprocessor never sees a native
     // Promise.
-    if (result != null && typeof (result as { isCyElement?: unknown }).isCyElement !== "undefined") {
-      return result;
-    }
+    // Cypress.isCy() returns true for any value in the Cypress chainable hierarchy
+    // (Chainable, $, jQuery wrappers), so this single check covers every shape a
+    // step handler can plausibly return that the preprocessor expects.
     if (Cypress.isCy(result)) {
       return result;
     }
