@@ -224,7 +224,7 @@ export const workflowEventCreated = (rfqId: number): WorkflowEvent => ({
   payload: rfqBodyDto({ id: rfqId }),
 });
 
-export const workflowEventQuoted = (
+export const workflowEventQuoteCreated = (
   rfqId: number,
   quoteId: number,
 ): WorkflowEvent => ({
