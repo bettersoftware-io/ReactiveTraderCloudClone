@@ -2,4 +2,3 @@ node_modules/
 reports/
 cypress/screenshots/
 cypress/videos/
-test-results/
