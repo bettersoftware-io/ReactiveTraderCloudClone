@@ -61,8 +61,8 @@ Then(
 );
 
 Then(
-  "at least one trade confirmation matched {}",
-  function(this: PresenterWorld, _pattern: string) {
+  "at least one trade was rejected",
+  function(this: PresenterWorld) {
     return trading.expectAtLeastOneRejection(this);
   },
 );

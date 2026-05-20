@@ -48,4 +48,4 @@ Feature: FX trading
   Scenario: rejected trades occur with non-zero probability across multiple attempts
     Then a price tile is visible within 5 seconds
     When the trader buys 5 times with confirmation dismissals
-    Then at least one trade confirmation matched /rejected/i
+    Then at least one trade was rejected

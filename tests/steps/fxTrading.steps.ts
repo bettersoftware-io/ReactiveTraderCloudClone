@@ -64,7 +64,7 @@ Then("the executed trade carries notional {string}",
     return fxTrading.expectBlotterContainsText(this.ctx, value);
   });
 
-Then("at least one trade confirmation matched {}",
-  function(this: StepContext, _pattern: string) {
+Then("at least one trade was rejected",
+  function(this: StepContext) {
     return fxTrading.expectAtLeastOneRejectionInBlotter(this.ctx);
   });

@@ -54,8 +54,8 @@ Then(
 );
 
 Then(
-  "at least one trade confirmation matched {}",
-  async (state: VitestFakePresenterWorld, _pattern: string) =>
+  "at least one trade was rejected",
+  async (state: VitestFakePresenterWorld) =>
     trading.expectAtLeastOneRejection(state),
 );
 
