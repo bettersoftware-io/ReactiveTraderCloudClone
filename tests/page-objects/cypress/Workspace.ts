@@ -8,31 +8,25 @@ import { TESTIDS } from "../contracts/testids";
  */
 export class CypressWorkspace implements WorkspacePO {
   open(): Promise<void> {
-    cy.visit("/");
-    return cy.wrap(undefined) as unknown as Promise<void>;
+    return cy.visit("/") as unknown as Promise<void>;
   }
   openFx(): Promise<void> {
     cy.visit("/");
-    cy.get(`[data-testid="${TESTIDS.shell.tab("fx")}"]`).click();
-    return cy.wrap(undefined) as unknown as Promise<void>;
+    return cy.get(`[data-testid="${TESTIDS.shell.tab("fx")}"]`).click() as unknown as Promise<void>;
   }
   openCredit(): Promise<void> {
     cy.visit("/");
-    cy.get(`[data-testid="${TESTIDS.shell.tab("credit")}"]`).click();
-    return cy.wrap(undefined) as unknown as Promise<void>;
+    return cy.get(`[data-testid="${TESTIDS.shell.tab("credit")}"]`).click() as unknown as Promise<void>;
   }
   openAdmin(): Promise<void> {
     cy.visit("/");
-    cy.get(`[data-testid="${TESTIDS.shell.tab("admin")}"]`).click();
-    return cy.wrap(undefined) as unknown as Promise<void>;
+    return cy.get(`[data-testid="${TESTIDS.shell.tab("admin")}"]`).click() as unknown as Promise<void>;
   }
   clickTab(tab: "fx" | "credit" | "admin"): Promise<void> {
-    cy.get(`[data-testid="${TESTIDS.shell.tab(tab)}"]`).click();
-    return cy.wrap(undefined) as unknown as Promise<void>;
+    return cy.get(`[data-testid="${TESTIDS.shell.tab(tab)}"]`).click() as unknown as Promise<void>;
   }
   reload(): Promise<void> {
-    cy.reload();
-    return cy.wrap(undefined) as unknown as Promise<void>;
+    return cy.reload() as unknown as Promise<void>;
   }
   setOffline(offline: boolean): Promise<void> {
     // The app's BrowserConnectionEventsAdapter listens to the window "online"
@@ -40,10 +34,9 @@ export class CypressWorkspace implements WorkspacePO {
     // reliable across Cypress/Electron versions and avoids the cucumber
     // preprocessor's cy.task() context restriction that fires when
     // Cypress.automation native-Promise callbacks resolve outside the queue.
-    cy.window({ log: false }).then((win) => {
+    return cy.window({ log: false }).then((win) => {
       win.dispatchEvent(new win.Event(offline ? "offline" : "online"));
-    });
-    return cy.wrap(undefined) as unknown as Promise<void>;
+    }) as unknown as Promise<void>;
   }
   rootBackgroundColor(): Promise<string> {
     return cy.get("#root > div").then(($el) =>
@@ -51,7 +44,6 @@ export class CypressWorkspace implements WorkspacePO {
     ) as unknown as Promise<string>;
   }
   wait(ms: number): Promise<void> {
-    cy.wait(ms);
-    return cy.wrap(undefined) as unknown as Promise<void>;
+    return cy.wait(ms) as unknown as Promise<void>;
   }
 }
