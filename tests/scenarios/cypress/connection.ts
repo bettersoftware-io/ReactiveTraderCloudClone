@@ -6,6 +6,9 @@ import { assertTrue } from "../assert";
 import { chainable } from "./_chainable";
 
 export function setBrowserOffline(ctx: TestContext, offline: boolean): void {
+  // The .should() retry below (and in expectConnectionStatusFooterShows) is
+  // load-bearing — switching to .then() loses Cypress's auto-retry. See
+  // _chainable.ts for the broader rationale.
   // Cypress synthesizes the online/offline event via win.dispatchEvent (see
   // CypressWorkspace.setOffline). Unlike Playwright's page.context().setOffline,
   // which flips a CDP-level offline switch that the browser delivers whenever
