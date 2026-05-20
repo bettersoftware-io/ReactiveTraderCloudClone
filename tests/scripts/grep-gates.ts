@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { spawnSync } from "node:child_process";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 
 interface Gate {
   name: string;
@@ -67,6 +67,25 @@ function checkPresenterDescribePrefix(): string[] {
           `${testPath}: describe title "${title}" missing "@presenter Feature: " prefix`,
         );
       }
+    }
+  }
+  return failures;
+}
+
+function checkVitestFakeBarrelCompleteness(): string[] {
+  const failures: string[] = [];
+  const stepsDir = "steps/presenter/vitest-fake";
+  const setupPath = "support/presenter/vitest-fake/setup.ts";
+  if (!existsSync(stepsDir) || !existsSync(setupPath)) return failures;
+  const stepFiles = readdirSync(stepsDir).filter((f) => f.endsWith(".steps.ts"));
+  const setupSrc = readFileSync(setupPath, "utf8");
+  for (const f of stepFiles) {
+    const stem = f.replace(/\.ts$/, "");
+    const importMarker = `steps/presenter/vitest-fake/${stem}`;
+    if (!setupSrc.includes(importMarker)) {
+      failures.push(
+        `${setupPath}: missing import for ${stepsDir}/${f} (expected literal containing ${JSON.stringify(importMarker)})`,
+      );
     }
   }
   return failures;
@@ -223,6 +242,12 @@ const GATES: Gate[] = [
     pattern: 'from "(\\.\\./)+simulators|from "@rtc/(client|shared/__fixtures__)',
     paths: ["../packages/domain/src/ports/__contracts__/"],
     excludes: ["/node_modules/"],
+  },
+  {
+    name: "24. vitest-fake/setup.ts imports every step file in tests/steps/presenter/vitest-fake/",
+    pattern: "",
+    paths: [],
+    customCheck: checkVitestFakeBarrelCompleteness,
   },
 ];
 
