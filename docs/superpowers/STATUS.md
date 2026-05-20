@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-19 (5D DONE)
+**Last updated:** 2026-05-20 (5E DONE)
 
 ---
 
@@ -11,7 +11,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD`
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 207 unit (137 domain + 65 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-cucumber-real) + 19 (presenter-cucumber-fake) + 19 (presenter-vitest-fake) + 19 (presenter-vitest-plain) — 48×4 + 19×4 = 268 e2e scenarios (4 browser peers × 48 scenarios; 4 presenter peers × 19 scenarios)
+- **Test counts:** 208 unit (137 domain + 66 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-cucumber-real) + 19 (presenter-cucumber-fake) + 19 (presenter-vitest-fake) + 19 (presenter-vitest-plain) — 48×4 + 19×4 = 268 e2e scenarios (4 browser peers × 48 scenarios; 4 presenter peers × 19 scenarios)
 
 ## Phases
 
@@ -33,6 +33,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 | Phase 5B.4 — Vitest + plain TS (no Gherkin) + fake timers | ✅ DONE | `plans/2026-05-17-phase-5b-4-vitest-plain-fake-timers.md` | `c78b93d..077386d` (11 task commits) + this STATUS update |
 | Phase 5C — Port contract tests (simulator vs WsReal) | ✅ DONE | `plans/2026-05-18-phase-5c-port-contract-tests.md` | `769a47b..23db8c7` (18 task commits + 2 fixture-fix commits) + this STATUS update |
 | Phase 5D — Real gateway-events adapter; delete `withSyntheticGatewayConnected` | ✅ DONE | `plans/2026-05-19-phase-5d-real-gateway-events.md` | `45fe824..d365ca8` (13 commits) + this STATUS update |
+| Phase 5E — Follow-up cleanups + STATUS.md grooming | ✅ DONE | `plans/2026-05-20-phase-5e-cleanup.md` | `6d86565..a3b955a` (12 commits) + this STATUS update |
 
 ## Use cases extracted in Phase 2
 
@@ -87,33 +88,11 @@ End-of-phase code review flagged improvements that were not addressed in Phase 3
 
 2. **Strengthen presenter test depth.** The simple stream presenters (`Blotter`, `Analytics`, `CurrencyPairs`, `Instruments`, `Dealers`) have one assertion each (basic delegation). The hybrid `RfqsPresenter`'s `distinctUntilChanged` suppression and `shareReplay` multicast contract aren't directly asserted at the presenter-test layer. Spec §6 deferred component-level tests to Phase 5; presenter-level coverage gaps fit naturally with that work — add `distinctUntilChanged` suppression + `shareReplay` multicast tests when the harness expands.
 
-## Phase 5A.2 follow-ups (carry into Phase 5A.3+)
-
-End-of-phase code review flagged the following non-blocking items; landed as-is in 5A.2 and tracked here for 5A.3+:
-
-1. **`CypressWorkspace.ts` idiom unification.** All void methods return `cy.wrap(undefined) as unknown as Promise<void>` after firing cy commands separately, while every other Cypress PO uses `return <last-cy-command> as unknown as Promise<void>` (cast on the chain). The pattern works either way under the cucumber-shim, but `Workspace` is the lone outlier from the Task 10 era. Unify to the cast idiom when next touching the file.
-
-2. **`cucumber-shim.ts` `isCyElement` guard.** The first branch of the result-type check (`isCyElement`) is not a documented Cypress API and is effectively unreachable in practice (the authoritative `Cypress.isCy(result)` on the next line handles all relevant cases). Either remove or comment which runtime case it defends against.
-
-3. **STRINGS coverage expansion.** `tests/page-objects/contracts/strings.ts` currently has entries for `creditRfq` only. Other PO impls (e.g. `AnalyticsDashboard` section names, footer copy) still embed regex patterns directly in the impl. Acceptable for 5A.2 because no copy-as-selector is duplicated between drivers in those areas, but worth expanding for consistency in 5A.3+.
-
-## Phase 5A.3 follow-ups (carry into Phase 5A.4+)
-
-1. **`waitSeconds` is mis-located.** `tests/scenarios/fxLiveRates.ts` exports `waitSeconds`, but it wraps `ctx.po.workspace.wait` and has nothing FX-Live-Rates-specific. It is reused from `blotter.spec.ts` and `fxTrading.spec.ts`. Move to `tests/scenarios/common.ts` when next touching either file.
-
-2. **`tests/.gitignore` `test-results/` line is redundant.** The repo-root `.gitignore` already covers `test-results/`. The defense-in-depth entry is harmless but could be dropped if/when consolidating ignore rules.
-
 ## Phase 5A.4 follow-ups (carry into Phase 5B+)
 
-1. **§3.3 race-guard rationale could be more durable.** `tests/scenarios/cypress/connection.ts:setBrowserOffline` has an inline-documented race guard (waits for "Connected" before dispatching `offline`) that is Cypress-only — Playwright uses real CDP. The inline comment explains the symptom and the why; consider whether spec §3.3 itself or this section should re-state the rationale so a future contributor removing the guard sees the explanation without grepping the scenarios file. The Task 3 reviewer suggested adding "the .should() form is load-bearing — switching to .then() loses Cypress's auto-retry" as a complementary one-liner so maintainers don't accidentally simplify the retry mechanism away.
+1. **Default timeout drift in `expectTradeConfirmationMatchesOneOf`.** Task 6 originally diverged (10s vs shared 5s); fixed in commit `0214f0c`. Worth a note that other scenario fns that internally apply a default timeout should be cross-checked against their shared counterparts the next time someone tweaks the timing layer.
 
-2. **Default timeout drift in `expectTradeConfirmationMatchesOneOf`.** Task 6 originally diverged (10s vs shared 5s); fixed in commit `0214f0c`. Worth a note that other scenario fns that internally apply a default timeout should be cross-checked against their shared counterparts the next time someone tweaks the timing layer.
-
-3. **`chainable<T>` cast helper is necessary but ugly.** Lives in `tests/scenarios/cypress/_chainable.ts`. It's a type-unsafety entry point that future readers may try to "clean up." The comment on the helper is brief; a follow-up could expand it to explain that the PO contract is `Promise<T>` for Playwright shape, but the Cypress runtime IS a `Chainable<T>` — the cast is the bridge between the two worlds at the §3.3 fork layer.
-
-4. **Carry-over from Phase 5A.3** (`waitSeconds` mis-located in `scenarios/fxLiveRates.ts`; `tests/.gitignore` redundancy) — still not fixed in 5A.4. The cypress fork mirrors the mis-location in `scenarios/cypress/fxLiveRates.ts`. Fold both into the next pass.
-
-5. **Spec history.** §3.1, §3.2, §3.3 are all in the spec as audit trail. Future readers will see the dead ends. Consider whether to leave them (preserves the "what we tried and why it failed" learning) or collapse into a single §3 section. Currently leaning toward leaving them — the failure modes documented are exactly the kind of Cypress quirks that bite contributors next time someone considers async/await in a raw Cypress body.
+2. **Spec history.** §3.1, §3.2, §3.3 are all in the spec as audit trail. Future readers will see the dead ends. Consider whether to leave them (preserves the "what we tried and why it failed" learning) or collapse into a single §3 section. Currently leaning toward leaving them — the failure modes documented are exactly the kind of Cypress quirks that bite contributors next time someone considers async/await in a raw Cypress body.
 
 ## Phase 5B.1 follow-ups (carry into 5B.2+)
 
@@ -129,8 +108,6 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 
 6. **Dead scratchpad fields.** ✅ RESOLVED in commit `b41e5e5` (2026-05-18) — pruned `lastPrice`, `observedTradeCount`, `lastTradeDirection`, `recordedCount` from `PresenterScratchpad` along with nine write sites in `_shared/fxLiveRates.ts` and `_shared/fxTrading.ts`. `expectPriceTileVisibleWithin` and `recordFirstTileText` retain their subscription side effects (load-bearing in fake-time peers) but no longer bind the result.
 
-7. **`at least one trade confirmation matched {}` step ignores its pattern argument.** The step at `tests/steps/presenter/cucumber-real/fxTrading.steps.ts` discards its `_pattern` argument and unconditionally calls `expectAtLeastOneRejection`. Safe today (only caller uses `/rejected/i` with GBPJPY targeting which is deterministically rejected), but will silently pass wrong assertions for any future scenario passing a different pattern. Rename to `at least one trade was rejected` or guard the pattern.
-
 ## Phase 5B.2 follow-ups (carry into 5B.3+)
 
 1. **Precision-tick mode.** If a future scenario chains time-bounded waits where over-advance matters, switch fake-world `awaitFirstWithin` to a `nextAsync` probe loop (advance to next scheduled timer, check promise state, repeat until promise resolved or deadline reached).
@@ -144,7 +121,6 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 3. **Step-tree triplication.** Three step trees (cucumber-real, cucumber-fake, vitest-fake) now exist as near-identical mirrors. 5B.3 deliberately forks them to make the runner difference visible; if a fourth peer (5B.4) lands, revisit whether a single source-of-truth step registry that adapts to each lib makes sense — but only after 5B.4 confirms the duplication cost is real.
 4. **Plan-template drift.** The Phase 5B.3 plan templates the step/hook callbacks as cucumber-js's `function(this: PresenterWorld)` shape (Task 4 hooks + Task 5 step files). That shape doesn't compile against qpickle-loader's actual types — `HookFunction = (state) => Promise<void>` and step `f: (state, ...args) => any`. Shipped code uses `async (state: VitestFakePresenterWorld, ...args) =>` across all hooks + 8 step files. Future readers grepping the plan should not trust those templates verbatim. The plan doc itself was not amended post-shipment; the actual code is the source of truth.
 5. **qpickle-loader dep-graph quirks.** `quickpickle@1.11.2` pulls in both `lodash@4.18.1` and `lodash-es@4.18.1` (CommonJS + ESM duplicates), AND adds a fourth concurrent `@cucumber/gherkin` version to the lockfile (`32.2.0` via `@cucumber/messages@27.2.0`, alongside the existing 30.0.4 / 31.0.0 / 38.0.0). Neither is a defect introduced by us — upstream quirks of qpickle-loader's own dep design — but worth flagging for any future audit targeting `@rtc/tests` bundle size or transitive graph.
-6. **vitest-fake/setup.ts barrel completeness has no enforcement.** If a 9th step file is added to `tests/steps/presenter/vitest-fake/`, the barrel `tests/support/presenter/vitest-fake/setup.ts` must be manually updated. There is no grep gate or compiler check that asserts barrel completeness. A future contributor could see tests silently skip steps. Consider adding a grep gate that counts step-file imports vs file count.
 
 ## Phase 5B.4 follow-ups (carry into 5C+)
 
@@ -162,22 +138,19 @@ End-of-phase code review flagged the following non-blocking items; landed as-is 
 
 1. **Type-only filtering in `WorkflowPortContract`.** The describer's `isRfqCreated`/`isAccepted` guards filter on `e.type` only, not on rfqId/quoteId, because the simulator generates IDs internally while WsReal relays them — so a portable describer cannot assert specific ID round-trips. Specific ID round-trips are covered (or should be) by per-impl use-case tests. Phase 5D can revisit if a stronger contract becomes useful.
 
-2. **`emitQuotedEvent` is declared in `WorkflowDriver` but unused by any contract test.** The `quoteCreated` event type has no contract coverage. Either add a fourth invariant covering quoteCreated, or prune the unused driver method. Deferred to 5D+ when workflow-port behavior is revisited.
-
-3. **`supportsLiveAdd` capability flag on Instrument/Dealer harnesses.** Both `InstrumentSimulator` and `DealerSimulator` are static (return `of(CATALOG)`) so the "subsequent emissions are full snapshots" invariant fast-paths through `teardown()` and asserts nothing. The simulator-side test passes vacuously. If/when either simulator gains a live-add API, flip the flag and the assertion runs for real.
-
-4. **`while (!ws.hasPendingRpc(...)) await Promise.resolve()` has no explicit timeout.** RPC-driver test harnesses (Pricing, Execution, Workflow) poll for the port's RPC registration with a microtask loop. Vitest's 5s default test-timeout is the only safety net. Consider adding an explicit iteration cap with a clearer error message if these tests ever flake.
-
-5. **`workflowEventQuoted` factory emits `type: "quoteCreated"`, not `type: "quoteQuoted"`.** Matches the plan's template and the test-usage pattern, but the function name is semantically misleading. Rename or document if the distinction (quote-created vs quote-priced) becomes load-bearing.
+2. **`supportsLiveAdd` capability flag on Instrument/Dealer harnesses.** Both `InstrumentSimulator` and `DealerSimulator` are static (return `of(CATALOG)`) so the "subsequent emissions are full snapshots" invariant fast-paths through `teardown()` and asserts nothing. The simulator-side test passes vacuously. If/when either simulator gains a live-add API, flip the flag and the assertion runs for real.
 
 ## Phase 5D follow-ups (carry into 5E+)
 
 1. **`WsAdapter.ts` size review.** With the lifecycle additions, the class now juggles message I/O, reconnect scheduling, RPC tracking, AND lifecycle observation. The file is still readable (<200 lines), but a future contributor may benefit from splitting lifecycle observation into a helper or rethinking the reconnect loop.
-2. **`RECONNECT_DELAY_MS = 3_000` is hard-coded.** Consider making it configurable (constructor option or environment variable) for tests and for tuning production reconnect behavior.
-3. **State-diagram `DISCONNECTED → CONNECTING : reconnectAttempt every 10s` is still aspirational.** No `reconnectAttempt` event type exists; the actual reconnect goes DISCONNECTED → CONNECTED directly when `WsAdapter.onopen` fires. Either implement the intermediate transition (requires a new event type + emitter) or remove the arrow from the diagram for accuracy.
-4. **Double `gatewayDisconnected` on browser-offline.** When the browser goes offline, both `BrowserConnectionEventsAdapter` (immediate `browserOffline`) and `WsAdapter` (`onclose` from TCP teardown) emit events. The state machine handles this correctly via default branches in OFFLINE_DISCONNECTED, but the duplication is conceptually ugly and could be cleaned up by gating WS lifecycle emissions on the browser state.
-5. **Simulator-mode browserOnline → gatewayConnected synthesis.** Discovered during Task 10 e2e verification: simulator mode needs a `mergeMap` in `composition.ts` to fake `gatewayConnected` after each `browserOnline`, because `ConnectionEventsSimulator` is one-shot. This is a partial reintroduction of synthetic behavior, scoped to simulator mode only (WS-real reconnect handles itself via real `onopen`). The plan/spec assumed all e2e ran in WS-real mode; it doesn't (no `VITE_SERVER_URL` is set in dev). Consider whether a `SimulatorReconnectAdapter` or richer simulator design would better encapsulate this.
-6. **No `ConnectionEventsPort` contract test layer.** Phase 5C's 8-port contract pattern doesn't extend here because simulator and WS-real impls are fundamentally divergent (one-shot vs long-lived lifecycle). Revisit if a third impl emerges (e.g. server-side health-ping).
+2. **State-diagram `DISCONNECTED → CONNECTING : reconnectAttempt every 10s` is still aspirational.** No `reconnectAttempt` event type exists; the actual reconnect goes DISCONNECTED → CONNECTED directly when `WsAdapter.onopen` fires. Either implement the intermediate transition (requires a new event type + emitter) or remove the arrow from the diagram for accuracy.
+3. **Double `gatewayDisconnected` on browser-offline.** When the browser goes offline, both `BrowserConnectionEventsAdapter` (immediate `browserOffline`) and `WsAdapter` (`onclose` from TCP teardown) emit events. The state machine handles this correctly via default branches in OFFLINE_DISCONNECTED, but the duplication is conceptually ugly and could be cleaned up by gating WS lifecycle emissions on the browser state.
+4. **Simulator-mode browserOnline → gatewayConnected synthesis.** Discovered during Task 10 e2e verification: simulator mode needs a `mergeMap` in `composition.ts` to fake `gatewayConnected` after each `browserOnline`, because `ConnectionEventsSimulator` is one-shot. This is a partial reintroduction of synthetic behavior, scoped to simulator mode only (WS-real reconnect handles itself via real `onopen`). The plan/spec assumed all e2e ran in WS-real mode; it doesn't (no `VITE_SERVER_URL` is set in dev). Consider whether a `SimulatorReconnectAdapter` or richer simulator design would better encapsulate this.
+5. **No `ConnectionEventsPort` contract test layer.** Phase 5C's 8-port contract pattern doesn't extend here because simulator and WS-real impls are fundamentally divergent (one-shot vs long-lived lifecycle). Revisit if a third impl emerges (e.g. server-side health-ping).
+
+## Phase 5E follow-ups (carry into 5F+)
+
+_No new follow-ups; Phase 5E pruned 14 items from previous follow-up sections._
 
 ## Open questions for Phase 3 (brainstorm before writing the plan)
 
