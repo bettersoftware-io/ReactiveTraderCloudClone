@@ -3,6 +3,7 @@ import { withFxWorkspaceOpen } from "./_openWorkspace";
 import * as blotter from "../../scenarios/blotter";
 import * as fxLiveRates from "../../scenarios/fxLiveRates";
 import * as fxTrading from "../../scenarios/fxTrading";
+import * as common from "../../scenarios/common";
 
 test.describe("FX trade blotter", () => {
   withFxWorkspaceOpen();
@@ -20,14 +21,14 @@ test.describe("FX trade blotter", () => {
   test("quick filter narrows trade rows", async ({ ctx }) => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await fxTrading.clickBuyOnFirstTile(ctx);
-    await fxLiveRates.waitSeconds(ctx, 2);
+    await common.waitSeconds(ctx, 2);
     await fxTrading.expectBlotterVisible(ctx);
     await blotter.recordBlotterRowCount(ctx, "all");
     await blotter.setBlotterQuickFilter(ctx, "ZZZZZ_NO_MATCH");
-    await fxLiveRates.waitSeconds(ctx, 1);
+    await common.waitSeconds(ctx, 1);
     await blotter.expectBlotterRowCountAtMost(ctx, "all");
     await blotter.clearBlotterQuickFilter(ctx);
-    await fxLiveRates.waitSeconds(ctx, 1);
+    await common.waitSeconds(ctx, 1);
     await blotter.expectBlotterRowCountEquals(ctx, "all");
   });
 
@@ -40,7 +41,7 @@ test.describe("FX trade blotter", () => {
   test("new trade row has a non-empty background color", async ({ ctx }) => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await fxTrading.clickBuyOnFirstTile(ctx);
-    await fxLiveRates.waitSeconds(ctx, 2);
+    await common.waitSeconds(ctx, 2);
     await fxTrading.expectBlotterVisible(ctx);
     await blotter.expectFirstBlotterRowVisible(ctx);
     await blotter.expectFirstBlotterRowBackgroundNonEmpty(ctx);
@@ -56,7 +57,7 @@ test.describe("FX trade blotter", () => {
   test("row hover yields a non-empty background color", async ({ ctx }) => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await fxTrading.clickBuyOnFirstTile(ctx);
-    await fxLiveRates.waitSeconds(ctx, 2);
+    await common.waitSeconds(ctx, 2);
     await fxTrading.expectBlotterVisible(ctx);
     await blotter.expectFirstBlotterRowVisible(ctx);
     await blotter.hoverFirstBlotterRow(ctx);
@@ -67,7 +68,7 @@ test.describe("FX trade blotter", () => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await fxTrading.clickBuyOnFirstTile(ctx);
     await fxTrading.clickBuyOnFirstTile(ctx);
-    await fxLiveRates.waitSeconds(ctx, 2);
+    await common.waitSeconds(ctx, 2);
     await fxTrading.expectBlotterHasAtLeastNRows(ctx, 2);
   });
 });

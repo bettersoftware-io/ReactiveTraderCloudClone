@@ -1,6 +1,7 @@
 import { Then, When } from "@cucumber/cucumber";
 import type { StepContext } from "../support/testContext";
 import * as fxLiveRates from "../scenarios/fxLiveRates";
+import * as common from "../scenarios/common";
 
 Then("a price tile is visible within {int} seconds",
   function(this: StepContext, seconds: number) {
@@ -50,7 +51,7 @@ When("the trader records the first tile text",
   function(this: StepContext) { return fxLiveRates.recordFirstTileText(this.ctx); });
 
 When("the trader waits {int} seconds",
-  function(this: StepContext, n: number) { return fxLiveRates.waitSeconds(this.ctx, n); });
+  function(this: StepContext, n: number) { return common.waitSeconds(this.ctx, n); });
 
 Then("the first tile text is non-empty",
   function(this: StepContext) { return fxLiveRates.expectFirstTileTextNonEmpty(this.ctx); });

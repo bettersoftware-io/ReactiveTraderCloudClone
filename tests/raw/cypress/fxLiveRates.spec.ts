@@ -53,7 +53,7 @@ describe("FX live rates", () => {
     const ctx = getCtx();
     fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     fxLiveRates.recordFirstTileText(ctx);
-    fxLiveRates.waitSeconds(ctx, 2);
+    common.waitSeconds(ctx, 2);
     fxLiveRates.expectFirstTileTextNonEmpty(ctx);
   });
 

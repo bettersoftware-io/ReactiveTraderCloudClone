@@ -62,10 +62,6 @@ export async function recordFirstTileText(ctx: TestContext): Promise<void> {
   ctx.scratch.fxLiveRates.firstTileTextSnapshot = await ctx.po.liveRatesTile.firstTileText();
 }
 
-export async function waitSeconds(ctx: TestContext, seconds: number): Promise<void> {
-  await ctx.po.workspace.wait(seconds * 1_000);
-}
-
 export async function expectFirstTileTextNonEmpty(ctx: TestContext): Promise<void> {
   const current = await ctx.po.liveRatesTile.firstTileText();
   assertGreaterThanZero(ctx.scratch.fxLiveRates.firstTileTextSnapshot?.length ?? 0,

@@ -3,6 +3,7 @@ import { withFxWorkspaceOpen } from "./_openWorkspace";
 import * as blotter from "../../scenarios/cypress/blotter";
 import * as fxLiveRates from "../../scenarios/cypress/fxLiveRates";
 import * as fxTrading from "../../scenarios/cypress/fxTrading";
+import * as common from "../../scenarios/cypress/common";
 
 describe("FX trade blotter", () => {
   withFxWorkspaceOpen();
@@ -23,14 +24,14 @@ describe("FX trade blotter", () => {
     const ctx = getCtx();
     fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     fxTrading.clickBuyOnFirstTile(ctx);
-    fxLiveRates.waitSeconds(ctx, 2);
+    common.waitSeconds(ctx, 2);
     fxTrading.expectBlotterVisible(ctx);
     blotter.recordBlotterRowCount(ctx, "all");
     blotter.setBlotterQuickFilter(ctx, "ZZZZZ_NO_MATCH");
-    fxLiveRates.waitSeconds(ctx, 1);
+    common.waitSeconds(ctx, 1);
     blotter.expectBlotterRowCountAtMost(ctx, "all");
     blotter.clearBlotterQuickFilter(ctx);
-    fxLiveRates.waitSeconds(ctx, 1);
+    common.waitSeconds(ctx, 1);
     blotter.expectBlotterRowCountEquals(ctx, "all");
   });
 
@@ -45,7 +46,7 @@ describe("FX trade blotter", () => {
     const ctx = getCtx();
     fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     fxTrading.clickBuyOnFirstTile(ctx);
-    fxLiveRates.waitSeconds(ctx, 2);
+    common.waitSeconds(ctx, 2);
     fxTrading.expectBlotterVisible(ctx);
     blotter.expectFirstBlotterRowVisible(ctx);
     blotter.expectFirstBlotterRowBackgroundNonEmpty(ctx);
@@ -63,7 +64,7 @@ describe("FX trade blotter", () => {
     const ctx = getCtx();
     fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     fxTrading.clickBuyOnFirstTile(ctx);
-    fxLiveRates.waitSeconds(ctx, 2);
+    common.waitSeconds(ctx, 2);
     fxTrading.expectBlotterVisible(ctx);
     blotter.expectFirstBlotterRowVisible(ctx);
     blotter.hoverFirstBlotterRow(ctx);
@@ -75,7 +76,7 @@ describe("FX trade blotter", () => {
     fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     fxTrading.clickBuyOnFirstTile(ctx);
     fxTrading.clickBuyOnFirstTile(ctx);
-    fxLiveRates.waitSeconds(ctx, 2);
+    common.waitSeconds(ctx, 2);
     fxTrading.expectBlotterHasAtLeastNRows(ctx, 2);
   });
 });

@@ -25,3 +25,7 @@ export async function clickTab(
 export async function reloadPage(ctx: TestContext): Promise<void> {
   await ctx.po.workspace.reload();
 }
+
+export async function waitSeconds(ctx: TestContext, seconds: number): Promise<void> {
+  await ctx.po.workspace.wait(seconds * 1_000);
+}

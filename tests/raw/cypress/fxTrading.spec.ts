@@ -3,6 +3,7 @@ import { getCtx } from "./_context";
 import { withFxWorkspaceOpen } from "./_openWorkspace";
 import * as fxTrading from "../../scenarios/cypress/fxTrading";
 import * as fxLiveRates from "../../scenarios/cypress/fxLiveRates";
+import * as common from "../../scenarios/cypress/common";
 
 describe("FX trading", () => {
   withFxWorkspaceOpen();
@@ -47,7 +48,7 @@ describe("FX trading", () => {
     const ctx = getCtx();
     fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     fxTrading.clickBuyOnFirstTile(ctx);
-    fxLiveRates.waitSeconds(ctx, 2);
+    common.waitSeconds(ctx, 2);
     fxTrading.expectBlotterVisible(ctx);
     fxTrading.expectBlotterHasAtLeastNRows(ctx, 1);
   });

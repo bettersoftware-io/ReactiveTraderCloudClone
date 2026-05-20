@@ -71,10 +71,6 @@ export function recordFirstTileText(ctx: TestContext): void {
     .then((s) => { ctx.scratch.fxLiveRates.firstTileTextSnapshot = s; });
 }
 
-export function waitSeconds(ctx: TestContext, seconds: number): void {
-  void ctx.po.workspace.wait(seconds * 1_000);
-}
-
 export function expectFirstTileTextNonEmpty(ctx: TestContext): void {
   // Read snapshot inside the chainable's .then callback so the read happens
   // after the prior recordFirstTileText has drained the cy queue.

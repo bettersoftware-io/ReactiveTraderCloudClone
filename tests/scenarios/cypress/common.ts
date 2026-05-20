@@ -26,3 +26,7 @@ export function clickTab(ctx: TestContext, tab: string): void {
 export function reloadPage(ctx: TestContext): void {
   void ctx.po.workspace.reload();
 }
+
+export function waitSeconds(ctx: TestContext, seconds: number): void {
+  void ctx.po.workspace.wait(seconds * 1_000);
+}

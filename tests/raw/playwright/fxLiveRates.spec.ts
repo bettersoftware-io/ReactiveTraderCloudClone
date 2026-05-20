@@ -46,7 +46,7 @@ test.describe("FX live rates", () => {
   test("prices update over time", async ({ ctx }) => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await fxLiveRates.recordFirstTileText(ctx);
-    await fxLiveRates.waitSeconds(ctx, 2);
+    await common.waitSeconds(ctx, 2);
     await fxLiveRates.expectFirstTileTextNonEmpty(ctx);
   });
 

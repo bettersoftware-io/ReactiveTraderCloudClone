@@ -2,6 +2,7 @@ import { test } from "./_context";
 import { withFxWorkspaceOpen } from "./_openWorkspace";
 import * as fxTrading from "../../scenarios/fxTrading";
 import * as fxLiveRates from "../../scenarios/fxLiveRates";
+import * as common from "../../scenarios/common";
 
 test.describe("FX trading", () => {
   withFxWorkspaceOpen();
@@ -42,7 +43,7 @@ test.describe("FX trading", () => {
   test("executed trade appears in the blotter", async ({ ctx }) => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await fxTrading.clickBuyOnFirstTile(ctx);
-    await fxLiveRates.waitSeconds(ctx, 2);
+    await common.waitSeconds(ctx, 2);
     await fxTrading.expectBlotterVisible(ctx);
     await fxTrading.expectBlotterHasAtLeastNRows(ctx, 1);
   });
