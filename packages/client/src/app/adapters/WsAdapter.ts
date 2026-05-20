@@ -13,11 +13,16 @@ interface WsMessage {
   readonly correlationId?: string;
 }
 
-const RECONNECT_DELAY_MS = 3_000;
+const DEFAULT_RECONNECT_DELAY_MS = 3_000;
+
+export interface WsAdapterOptions {
+  reconnectDelayMs?: number;
+}
 
 export class WsAdapter implements IWsAdapter {
   private ws: WebSocket | null = null;
   private readonly url: string;
+  private readonly reconnectDelayMs: number;
   private readonly handlers = new Map<string, Set<MessageHandler>>();
   private readonly pendingRpcs = new Map<string, { resolve: (p: unknown) => void; reject: (e: Error) => void }>();
   private nextCorrelationId = 1;
@@ -25,8 +30,9 @@ export class WsAdapter implements IWsAdapter {
   private disposed = false;
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
-  constructor(url: string) {
+  constructor(url: string, options: WsAdapterOptions = {}) {
     this.url = url;
+    this.reconnectDelayMs = options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
     this.connect();
   }
 
@@ -68,7 +74,7 @@ export class WsAdapter implements IWsAdapter {
     this.ws.onclose = () => {
       if (this.disposed) return;
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
-      console.log("[WsAdapter] Disconnected, reconnecting in", RECONNECT_DELAY_MS, "ms");
+      console.log("[WsAdapter] Disconnected, reconnecting in", this.reconnectDelayMs, "ms");
       this.scheduleReconnect();
     };
 
@@ -79,7 +85,7 @@ export class WsAdapter implements IWsAdapter {
 
   private scheduleReconnect(): void {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = setTimeout(() => this.connect(), RECONNECT_DELAY_MS);
+    this.reconnectTimer = setTimeout(() => this.connect(), this.reconnectDelayMs);
   }
 
   send(type: string, payload?: unknown): void {

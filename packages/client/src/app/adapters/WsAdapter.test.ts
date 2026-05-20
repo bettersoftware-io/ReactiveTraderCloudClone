@@ -5,6 +5,7 @@ import { WsAdapter } from "./WsAdapter";
 
 class MockWebSocket {
   static OPEN = 1;
+  static constructed = 0;
   readyState = 0;
   onopen: ((ev: Event) => void) | null = null;
   onclose: ((ev: CloseEvent) => void) | null = null;
@@ -12,12 +13,16 @@ class MockWebSocket {
   onerror: ((ev: Event) => void) | null = null;
   send = vi.fn();
   close = vi.fn();
+  constructor() {
+    MockWebSocket.constructed++;
+  }
 }
 
 let lastMock: MockWebSocket;
 
 beforeEach(() => {
   vi.useFakeTimers();
+  MockWebSocket.constructed = 0;
   vi.stubGlobal(
     "WebSocket",
     vi.fn().mockImplementation(() => {
@@ -84,5 +89,24 @@ describe("WsAdapter.connectionEvents()", () => {
     adapter.dispose();
     lastMock.onclose?.(new CloseEvent("close"));
     expect(events).toEqual([]);
+  });
+
+  it("uses the configured reconnectDelayMs for scheduling reconnect", () => {
+    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    // Initial construction => 1 socket built
+    expect(MockWebSocket.constructed).toBe(1);
+
+    // Trigger close: schedules a reconnect after configured delay
+    lastMock.onclose?.(new CloseEvent("close"));
+
+    // 49ms after close: still not reconnecting
+    vi.advanceTimersByTime(49);
+    expect(MockWebSocket.constructed).toBe(1);
+
+    // 1ms more crosses the 50ms boundary -> new socket constructed
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.constructed).toBe(2);
+
+    adapter.dispose();
   });
 });
