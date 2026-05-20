@@ -5,6 +5,7 @@ import {
 } from "@rtc/shared/__fixtures__/wireFrames";
 import { createWsRealPorts } from "./portFactory";
 import { FakeWsAdapter } from "./__test__/FakeWsAdapter";
+import { awaitPendingRpc } from "./__test__/awaitPendingRpc";
 
 describePricingPortContract("wsRealPricing", () => {
   const ws = new FakeWsAdapter();
@@ -19,16 +20,12 @@ describePricingPortContract("wsRealPricing", () => {
       },
       ackHistory: async (_symbol) => {
         // Poll until the port's getPriceHistory RPC is registered, then resolve it
-        while (!ws.hasPendingRpc("rpc.getPriceHistory")) {
-          await Promise.resolve();
-        }
+        await awaitPendingRpc(ws, "rpc.getPriceHistory");
         ws.nextRpcResponse("rpc.getPriceHistory", priceHistoryResponse(_symbol));
       },
       ackRfqQuote: async (_symbol) => {
         // getRfqQuote reuses rpc.getPriceHistory — confirmed in portFactory.ts
-        while (!ws.hasPendingRpc("rpc.getPriceHistory")) {
-          await Promise.resolve();
-        }
+        await awaitPendingRpc(ws, "rpc.getPriceHistory");
         ws.nextRpcResponse("rpc.getPriceHistory", priceHistoryResponse(_symbol));
       },
     },

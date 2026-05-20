@@ -2,6 +2,7 @@ import { describeExecutionPortContract } from "@rtc/domain/ports/__contracts__/E
 import { executionResponseAck } from "@rtc/shared/__fixtures__/wireFrames";
 import { createWsRealPorts } from "./portFactory";
 import { FakeWsAdapter } from "./__test__/FakeWsAdapter";
+import { awaitPendingRpc } from "./__test__/awaitPendingRpc";
 
 describeExecutionPortContract("wsRealExecution", () => {
   const ws = new FakeWsAdapter();
@@ -10,9 +11,7 @@ describeExecutionPortContract("wsRealExecution", () => {
     port: ports.execution,
     driver: {
       ackExecute: async () => {
-        while (!ws.hasPendingRpc("rpc.executeTrade")) {
-          await Promise.resolve();
-        }
+        await awaitPendingRpc(ws, "rpc.executeTrade");
         const sent = ws.sentMessages().find((m) => m.type === "rpc.executeTrade");
         const req = sent?.payload as {
           currencyPair: string;

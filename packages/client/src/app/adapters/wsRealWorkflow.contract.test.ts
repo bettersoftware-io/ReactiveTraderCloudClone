@@ -6,6 +6,7 @@ import {
 } from "@rtc/shared/__fixtures__/wireFrames";
 import { createWsRealPorts } from "./portFactory";
 import { FakeWsAdapter } from "./__test__/FakeWsAdapter";
+import { awaitPendingRpc } from "./__test__/awaitPendingRpc";
 
 describeWorkflowPortContract("wsRealWorkflow", () => {
   const ws = new FakeWsAdapter();
@@ -14,9 +15,7 @@ describeWorkflowPortContract("wsRealWorkflow", () => {
     port: ports.workflow,
     driver: {
       ackCreateRfq: async (rfqId) => {
-        while (!ws.hasPendingRpc("rpc.createRfq")) {
-          await Promise.resolve();
-        }
+        await awaitPendingRpc(ws, "rpc.createRfq");
         ws.nextRpcResponse("rpc.createRfq", rpcAck(rfqId));
       },
       emitCreatedEvent: async (rfqId) => {
@@ -28,9 +27,7 @@ describeWorkflowPortContract("wsRealWorkflow", () => {
         ws.emit("stream.workflowEvent", workflowEventAccepted(rfqId, quoteId));
       },
       ackAccept: async () => {
-        while (!ws.hasPendingRpc("rpc.accept")) {
-          await Promise.resolve();
-        }
+        await awaitPendingRpc(ws, "rpc.accept");
         ws.nextRpcResponse("rpc.accept", rpcAck(undefined));
       },
     },

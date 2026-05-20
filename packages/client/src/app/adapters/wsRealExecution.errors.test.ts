@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { createWsRealPorts } from "./portFactory";
 import { FakeWsAdapter } from "./__test__/FakeWsAdapter";
+import { awaitPendingRpc } from "./__test__/awaitPendingRpc";
 import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
 import { Direction } from "@rtc/domain";
 
@@ -18,9 +19,7 @@ describe("wsRealExecution :: error paths", () => {
         dealtCurrency: "EUR",
       }),
     );
-    while (!ws.hasPendingRpc("rpc.executeTrade")) {
-      await Promise.resolve();
-    }
+    await awaitPendingRpc(ws, "rpc.executeTrade");
     ws.nextRpcResponse("rpc.executeTrade", rpcNack());
     await expect(promise).rejects.toThrow(/Trade execution failed/);
     ws.dispose();
