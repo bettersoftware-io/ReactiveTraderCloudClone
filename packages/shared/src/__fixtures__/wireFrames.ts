@@ -224,14 +224,6 @@ export const workflowEventCreated = (rfqId: number): WorkflowEvent => ({
   payload: rfqBodyDto({ id: rfqId }),
 });
 
-export const workflowEventQuoteCreated = (
-  rfqId: number,
-  quoteId: number,
-): WorkflowEvent => ({
-  type: "quoteCreated",
-  payload: quoteBodyDto({ id: quoteId, rfqId }),
-});
-
 export const workflowEventAccepted = (
   rfqId: number,
   quoteId: number,
