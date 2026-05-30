@@ -128,7 +128,7 @@ End-of-phase code review flagged improvements that were not addressed in Phase 3
 
 2. **Step-tree de-duplication.** 5B.3 follow-up #3 suggested revisiting a "source-of-truth step registry" after 5B.4. vitest-plain has no step tree, so it doesn't add to the triplication. Re-evaluate as part of 5C.
 
-3. **Gate 21 catches add/remove drift only.** Step-body changes inside an existing `@presenter` scenario won't trip gate 21 (e.g., editing a Gherkin step's text or arguments will not fail the gate). Acceptable for 5B.4 because the 19 `@presenter` scenarios are frozen by the 5B comparison artifact; revisit if presenter scenarios start changing meaningfully.
+3. **Gate 21 catches add/remove drift only.** Step-body changes inside an existing `@presenter` scenario won't trip gate 21 (e.g., editing a Gherkin step's text or arguments will not fail the gate). The `@presenter` set is no longer strictly frozen at the 5B.4 count of 19 — a 20th scenario (gateway disconnect → reconnect) was added 2026-05-30 across all four peers in lockstep, preserving the comparison artifact's "same scenarios in every peer" invariant (gate 21 enforced the vitest-plain parity). Revisit if presenter scenarios start changing meaningfully.
 
 4. **`@presenter` tag in `describe` title is convention, not enforced.** ✅ RESOLVED in commit `df91926` (2026-05-18) — added gate 22 + `checkPresenterDescribePrefix` helper asserting every `describe(...)` title in `presenter-tests/vitest-plain/*.test.ts` starts with `"@presenter Feature: "`. Smoke-tested by temporarily stripping the prefix on `blotter.test.ts`: the gate failed with a precise file + offending title, then passed once restored.
 

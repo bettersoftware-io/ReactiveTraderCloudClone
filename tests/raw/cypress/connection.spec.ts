@@ -3,6 +3,11 @@ import { getCtx } from "./_context";
 import { withWorkspaceOpen } from "./_openWorkspace";
 import * as connection from "../../scenarios/cypress/connection";
 
+// The @presenter "gateway disconnect ... reconnecting" scenario in
+// specs/connection.feature is intentionally NOT mirrored here: a gateway
+// drop/reconnect cannot be injected through the browser DOM (it originates in
+// WsAdapter / the test ConnectionEventsPort), so it lives only in the
+// presenter peers.
 describe("Connection status", () => {
   withWorkspaceOpen();
 
