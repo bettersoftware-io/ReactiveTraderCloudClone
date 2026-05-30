@@ -8,3 +8,5 @@ test-results/
 
 # Claude Code: per-machine settings (paths, machine-specific allow-listings)
 .claude/settings.local.json
+# Claude Code: runtime scheduled-task lock (not a project file)
+.claude/scheduled_tasks.lock
