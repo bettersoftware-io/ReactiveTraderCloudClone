@@ -13,6 +13,17 @@ import * as conn from "../../../scenarios/presenter/_shared/connection";
 // String-literal stand-ins for ConnectionStatus const enum values.
 const CS_CONNECTED = "CONNECTED" as unknown as ConnectionStatus;
 const CS_OFFLINE = "OFFLINE_DISCONNECTED" as unknown as ConnectionStatus;
+const CS_DISCONNECTED = "DISCONNECTED" as unknown as ConnectionStatus;
+const CS_CONNECTING = "CONNECTING" as unknown as ConnectionStatus;
+const CS_IDLE = "IDLE_DISCONNECTED" as unknown as ConnectionStatus;
+
+const FOOTER_LABEL_TO_STATUS: Record<string, ConnectionStatus> = {
+  Connected: CS_CONNECTED,
+  Offline: CS_OFFLINE,
+  Disconnected: CS_DISCONNECTED,
+  "Connecting...": CS_CONNECTING,
+  Idle: CS_IDLE,
+};
 
 When("the browser goes offline",
   function(this: PresenterWorld) { return conn.browserGoesOffline(this); });
@@ -20,12 +31,21 @@ When("the browser goes offline",
 When("the browser comes back online",
   function(this: PresenterWorld) { return conn.browserComesBackOnline(this); });
 
+When("the gateway connection drops",
+  function(this: PresenterWorld) { return conn.gatewayDrops(this); });
+
+When("the gateway attempts to reconnect",
+  function(this: PresenterWorld) { return conn.gatewayAttemptsReconnect(this); });
+
+When("the gateway connection is restored",
+  function(this: PresenterWorld) { return conn.gatewayConnectionRestored(this); });
+
 Then("the connection status footer is visible",
   function(this: PresenterWorld) { return conn.noopAssertConnectionUiPresent(this); });
 
 Then("the connection status footer shows {string}",
   function(this: PresenterWorld, label: string) {
-    const target = label === "Connected" ? CS_CONNECTED : CS_OFFLINE;
+    const target = FOOTER_LABEL_TO_STATUS[label] ?? CS_OFFLINE;
     return conn.expectStatusEqualsWithin(this, target, 3);
   });
 

@@ -13,6 +13,17 @@ import * as conn from "../../../scenarios/presenter/_shared/connection";
 // String-literal stand-ins for ConnectionStatus const enum values.
 const CS_CONNECTED = "CONNECTED" as unknown as ConnectionStatus;
 const CS_OFFLINE = "OFFLINE_DISCONNECTED" as unknown as ConnectionStatus;
+const CS_DISCONNECTED = "DISCONNECTED" as unknown as ConnectionStatus;
+const CS_CONNECTING = "CONNECTING" as unknown as ConnectionStatus;
+const CS_IDLE = "IDLE_DISCONNECTED" as unknown as ConnectionStatus;
+
+const FOOTER_LABEL_TO_STATUS: Record<string, ConnectionStatus> = {
+  Connected: CS_CONNECTED,
+  Offline: CS_OFFLINE,
+  Disconnected: CS_DISCONNECTED,
+  "Connecting...": CS_CONNECTING,
+  Idle: CS_IDLE,
+};
 
 When("the browser goes offline",
   async (state: VitestFakePresenterWorld) => conn.browserGoesOffline(state));
@@ -20,12 +31,21 @@ When("the browser goes offline",
 When("the browser comes back online",
   async (state: VitestFakePresenterWorld) => conn.browserComesBackOnline(state));
 
+When("the gateway connection drops",
+  async (state: VitestFakePresenterWorld) => conn.gatewayDrops(state));
+
+When("the gateway attempts to reconnect",
+  async (state: VitestFakePresenterWorld) => conn.gatewayAttemptsReconnect(state));
+
+When("the gateway connection is restored",
+  async (state: VitestFakePresenterWorld) => conn.gatewayConnectionRestored(state));
+
 Then("the connection status footer is visible",
   async (state: VitestFakePresenterWorld) => conn.noopAssertConnectionUiPresent(state));
 
 Then("the connection status footer shows {string}",
   async (state: VitestFakePresenterWorld, label: string) => {
-    const target = label === "Connected" ? CS_CONNECTED : CS_OFFLINE;
+    const target = FOOTER_LABEL_TO_STATUS[label] ?? CS_OFFLINE;
     return conn.expectStatusEqualsWithin(state, target, 3);
   });
 

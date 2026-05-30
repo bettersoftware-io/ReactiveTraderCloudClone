@@ -12,6 +12,21 @@ export async function browserComesBackOnline(w: PresenterWorld): Promise<void> {
   w.ctx.connectionEvents$.next({ type: "gatewayConnected" });
 }
 
+export async function gatewayDrops(w: PresenterWorld): Promise<void> {
+  w.ctx.connectionEvents$.next({ type: "gatewayDisconnected" });
+}
+
+export async function gatewayAttemptsReconnect(w: PresenterWorld): Promise<void> {
+  // In production this event is emitted by WsAdapter's reconnect timer
+  // (WS-real mode only); injected directly here so the presenter projection
+  // of the DISCONNECTED -> CONNECTING transition can be asserted.
+  w.ctx.connectionEvents$.next({ type: "reconnectAttempt" });
+}
+
+export async function gatewayConnectionRestored(w: PresenterWorld): Promise<void> {
+  w.ctx.connectionEvents$.next({ type: "gatewayConnected" });
+}
+
 export async function expectStatusEqualsWithin(
   w: PresenterWorld, status: ConnectionStatus, seconds: number,
 ): Promise<void> {

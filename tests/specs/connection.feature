@@ -26,3 +26,16 @@ Feature: Connection status
     And the browser comes back online
     Then the connection overlay is hidden within 5 seconds
     And the connection status footer shows "Connected"
+
+  # Presenter-only: a gateway drop/reconnect cannot be injected through the
+  # browser DOM (gatewayDisconnected/reconnectAttempt originate in WsAdapter in
+  # WS-real mode, or the test ConnectionEventsPort in presenter mode), so the
+  # browser peers cannot exercise this transition.
+  @presenter
+  Scenario: gateway disconnect transitions through reconnecting back to connected
+    When the gateway connection drops
+    Then the connection status footer shows "Disconnected"
+    When the gateway attempts to reconnect
+    Then the connection status footer shows "Connecting..."
+    When the gateway connection is restored
+    Then the connection status footer shows "Connected"

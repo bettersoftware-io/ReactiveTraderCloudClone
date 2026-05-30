@@ -9,6 +9,8 @@ import type { ConnectionStatus } from "@rtc/domain";
 // package. The members are string-valued so the cast is safe at runtime.
 const CS_CONNECTED = "CONNECTED" as unknown as ConnectionStatus;
 const CS_OFFLINE = "OFFLINE_DISCONNECTED" as unknown as ConnectionStatus;
+const CS_DISCONNECTED = "DISCONNECTED" as unknown as ConnectionStatus;
+const CS_CONNECTING = "CONNECTING" as unknown as ConnectionStatus;
 
 describe("@presenter Feature: Connection status", () => {
   let w: VitestPlainPresenterWorld;
@@ -36,6 +38,15 @@ describe("@presenter Feature: Connection status", () => {
     await conn.expectStatusEqualsWithin(w, CS_OFFLINE, 3);
     await conn.browserComesBackOnline(w);
     await conn.expectStatusEqualsWithin(w, CS_CONNECTED, 5);
+    await conn.expectStatusEqualsWithin(w, CS_CONNECTED, 3);
+  });
+
+  it("gateway disconnect transitions through reconnecting back to connected", async () => {
+    await conn.gatewayDrops(w);
+    await conn.expectStatusEqualsWithin(w, CS_DISCONNECTED, 3);
+    await conn.gatewayAttemptsReconnect(w);
+    await conn.expectStatusEqualsWithin(w, CS_CONNECTING, 3);
+    await conn.gatewayConnectionRestored(w);
     await conn.expectStatusEqualsWithin(w, CS_CONNECTED, 3);
   });
 });
