@@ -12,6 +12,7 @@ export const RECONNECT_INTERVAL_MS = 10_000; // 10 seconds
 export type ConnectionEvent =
   | { type: "gatewayConnected" }
   | { type: "gatewayDisconnected" }
+  | { type: "reconnectAttempt" }
   | { type: "idleTimeout" }
   | { type: "userActivity" }
   | { type: "browserOffline" }
@@ -51,8 +52,12 @@ export function nextConnectionStatus(
       }
 
     case ConnectionStatus.DISCONNECTED:
-      // Auto-reconnect after 10s triggers CONNECTING
       switch (event.type) {
+        // A reconnect attempt (fired by the transport every RECONNECT_INTERVAL_MS)
+        // moves back to CONNECTING; success then yields gatewayConnected -> CONNECTED,
+        // failure yields gatewayDisconnected -> DISCONNECTED and the cycle repeats.
+        case "reconnectAttempt":
+          return ConnectionStatus.CONNECTING;
         case "gatewayConnected":
           return ConnectionStatus.CONNECTED;
         case "browserOffline":

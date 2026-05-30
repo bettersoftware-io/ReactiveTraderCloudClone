@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-20 (5E DONE)
+**Last updated:** 2026-05-30 (architecture.md consistency pass + connection reconnecting-state implementation)
 
 ---
 
@@ -11,7 +11,7 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD`
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 208 unit (137 domain + 66 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-cucumber-real) + 19 (presenter-cucumber-fake) + 19 (presenter-vitest-fake) + 19 (presenter-vitest-plain) — 48×4 + 19×4 = 268 e2e scenarios (4 browser peers × 48 scenarios; 4 presenter peers × 19 scenarios)
+- **Test counts:** 211 unit (139 domain + 67 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 19 (presenter-cucumber-real) + 19 (presenter-cucumber-fake) + 19 (presenter-vitest-fake) + 19 (presenter-vitest-plain) — 48×4 + 19×4 = 268 e2e scenarios (4 browser peers × 48 scenarios; 4 presenter peers × 19 scenarios)
 
 ## Phases
 
@@ -143,7 +143,7 @@ End-of-phase code review flagged improvements that were not addressed in Phase 3
 ## Phase 5D follow-ups (carry into 5E+)
 
 1. **`WsAdapter.ts` size review.** With the lifecycle additions, the class now juggles message I/O, reconnect scheduling, RPC tracking, AND lifecycle observation. The file is still readable (<200 lines), but a future contributor may benefit from splitting lifecycle observation into a helper or rethinking the reconnect loop.
-2. **State-diagram `DISCONNECTED → CONNECTING : reconnectAttempt every 10s` is still aspirational.** No `reconnectAttempt` event type exists; the actual reconnect goes DISCONNECTED → CONNECTED directly when `WsAdapter.onopen` fires. Either implement the intermediate transition (requires a new event type + emitter) or remove the arrow from the diagram for accuracy.
+2. **State-diagram `DISCONNECTED → CONNECTING : reconnectAttempt every 10s`** — ✅ RESOLVED (2026-05-30). Implemented the intermediate transition: added a `reconnectAttempt` event to the `ConnectionEvent` union + the `DISCONNECTED → CONNECTING` case in `nextConnectionStatus`; `WsAdapter.scheduleReconnect` now emits `reconnectAttempt` when the retry timer fires (before re-`connect()`); the composition root feeds `RECONNECT_INTERVAL_MS` (10s) as `WsAdapter`'s `reconnectDelayMs` so the previously-dead constant is now load-bearing. Covered by 2 new domain transition tests + 1 new `WsAdapter` emission test (208 → 211 unit tests).
 3. **Double `gatewayDisconnected` on browser-offline.** When the browser goes offline, both `BrowserConnectionEventsAdapter` (immediate `browserOffline`) and `WsAdapter` (`onclose` from TCP teardown) emit events. The state machine handles this correctly via default branches in OFFLINE_DISCONNECTED, but the duplication is conceptually ugly and could be cleaned up by gating WS lifecycle emissions on the browser state.
 4. **Simulator-mode browserOnline → gatewayConnected synthesis.** Discovered during Task 10 e2e verification: simulator mode needs a `mergeMap` in `composition.ts` to fake `gatewayConnected` after each `browserOnline`, because `ConnectionEventsSimulator` is one-shot. This is a partial reintroduction of synthetic behavior, scoped to simulator mode only (WS-real reconnect handles itself via real `onopen`). The plan/spec assumed all e2e ran in WS-real mode; it doesn't (no `VITE_SERVER_URL` is set in dev). Consider whether a `SimulatorReconnectAdapter` or richer simulator design would better encapsulate this.
 5. **No `ConnectionEventsPort` contract test layer.** Phase 5C's 8-port contract pattern doesn't extend here because simulator and WS-real impls are fundamentally divergent (one-shot vs long-lived lifecycle). Revisit if a third impl emerges (e.g. server-side health-ping).

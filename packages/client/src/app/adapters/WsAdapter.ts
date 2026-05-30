@@ -85,7 +85,13 @@ export class WsAdapter implements IWsAdapter {
 
   private scheduleReconnect(): void {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = setTimeout(() => this.connect(), this.reconnectDelayMs);
+    this.reconnectTimer = setTimeout(() => {
+      if (this.disposed) return;
+      // Surface the retry so the connection state machine can show CONNECTING
+      // (DISCONNECTED -> CONNECTING) while the socket is being re-established.
+      this.connectionEvents$.next({ type: "reconnectAttempt" });
+      this.connect();
+    }, this.reconnectDelayMs);
   }
 
   send(type: string, payload?: unknown): void {

@@ -91,6 +91,25 @@ describe("WsAdapter.connectionEvents()", () => {
     expect(events).toEqual([]);
   });
 
+  it("emits reconnectAttempt when the reconnect timer fires", () => {
+    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const events: ConnectionEvent[] = [];
+    adapter.connectionEvents().subscribe((e) => events.push(e));
+
+    lastMock.onopen?.(new Event("open"));
+    lastMock.onclose?.(new CloseEvent("close"));
+    // Close schedules a reconnect; advancing past the delay fires reconnectAttempt
+    // immediately before the socket is rebuilt.
+    vi.advanceTimersByTime(50);
+
+    expect(events).toEqual([
+      { type: "gatewayConnected" },
+      { type: "gatewayDisconnected" },
+      { type: "reconnectAttempt" },
+    ]);
+    adapter.dispose();
+  });
+
   it("uses the configured reconnectDelayMs for scheduling reconnect", () => {
     const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
     // Initial construction => 1 socket built

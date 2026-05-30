@@ -57,6 +57,21 @@ describe("nextConnectionStatus", () => {
     ).toBe(ConnectionStatus.CONNECTED);
   });
 
+  it("DISCONNECTED -> CONNECTING on reconnectAttempt", () => {
+    expect(
+      nextConnectionStatus(ConnectionStatus.DISCONNECTED, { type: "reconnectAttempt" }),
+    ).toBe(ConnectionStatus.CONNECTING);
+  });
+
+  it("ignores reconnectAttempt outside DISCONNECTED", () => {
+    expect(
+      nextConnectionStatus(ConnectionStatus.CONNECTED, { type: "reconnectAttempt" }),
+    ).toBe(ConnectionStatus.CONNECTED);
+    expect(
+      nextConnectionStatus(ConnectionStatus.OFFLINE_DISCONNECTED, { type: "reconnectAttempt" }),
+    ).toBe(ConnectionStatus.OFFLINE_DISCONNECTED);
+  });
+
   it("ignores irrelevant events", () => {
     expect(
       nextConnectionStatus(ConnectionStatus.CONNECTING, { type: "idleTimeout" }),

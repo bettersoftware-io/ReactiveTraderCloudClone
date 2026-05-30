@@ -194,8 +194,8 @@ C4Component
     }
 
     Container_Boundary(appLayer, "Application Layer (vanilla TS + RxJS)") {
-        Component(presenters, "Presenters / State Streams", "RxJS Observables", "price$, tradeBlotter$, analytics$, rfqs$, connectionStatus$ -- UI-shaped state")
-        Component(useCases, "Use Cases", "Vanilla TS", "PriceStreamUseCase, ExecuteTradeUseCase, CreateRfqUseCase, AcceptQuoteUseCase, ... -- orchestrate ports and entities")
+        Component(presenters, "Presenters / State Streams", "RxJS Observables", "price$, trades$, position$, rfqs$, status$ -- UI-shaped state")
+        Component(useCases, "Use Cases", "Vanilla TS", "PriceStreamUseCase, ExecuteTradeUseCase, CreateRfqUseCase, WorkflowEventStreamUseCase, ... -- orchestrate ports and entities")
         Component(composition, "Composition Root", "Vanilla TS", "Wires ports → use cases → presenters at startup; selects simulators or WS adapters")
         Component(wsAdapter, "WebSocket Transport", "TypeScript", "send, rpc with correlation IDs, reconnect")
         Component(portAdapters, "Port Adapters", "TypeScript", "WsRealPricingAdapter, WsRealExecutionAdapter, ... wrap WsAdapter as port impls")
@@ -299,14 +299,13 @@ classDiagram
         +string valueDate
         +number creationTimestamp
         +MovementType movementType
-        +number spread
-        +number version
+        +string spread
     }
 
     class Trade {
         +number tradeId
         +string currencyPair
-        +string traderName
+        +string tradeName
         +number notional
         +string dealtCurrency
         +Direction direction
@@ -363,7 +362,7 @@ classDiagram
 ```
 
 **Key functions:**
-- `calculateSpread(bid, ask, pipsPosition)` -- converts bid-ask difference to pips
+- `calculateSpread(bid, ask, pipsPosition, ratePrecision)` -- converts bid-ask difference to a pips string formatted to `ratePrecision - pipsPosition` decimals
 - `detectMovement(current, previous)` -- compares mid prices to determine UP/DOWN/NONE
 - `parseNotional(input)` -- supports k/m suffixes ("1.5m" = 1,500,000)
 - `isRfqRequired(notional)` -- true when notional >= 10M (triggers RFQ instead of direct execution)
@@ -431,6 +430,7 @@ classDiagram
         +number quantity
         +string orderType
         +number unitPrice
+        +string tradeDate
     }
 
     class RfqState {
@@ -509,6 +509,11 @@ classDiagram
         +accept(quoteId) Observable~void~
     }
 
+    class ConnectionEventsPort {
+        <<interface>>
+        +events() Observable~ConnectionEvent~
+    }
+
     class PricingSimulator {
         +getPriceUpdates(symbol) Observable~PriceTick~
         +getPriceHistory(symbol) Observable~PriceTick[]~
@@ -544,13 +549,31 @@ classDiagram
         +executeTrade(request) Observable~Trade~
     }
 
+    class ConnectionEventsSimulator {
+        +events() Observable~ConnectionEvent~
+    }
+
+    class WsConnectionEventsAdapter {
+        -IWsAdapter ws
+        +events() Observable~ConnectionEvent~
+    }
+
+    class BrowserConnectionEventsAdapter {
+        +events() Observable~ConnectionEvent~
+    }
+
     PricingPort <|.. PricingSimulator : implements
     PricingPort <|.. WsRealPricingAdapter : implements
     ExecutionPort <|.. ExecutionSimulator : implements
     ExecutionPort <|.. WsRealExecutionAdapter : implements
     BlotterPort <|.. TradeStoreSimulator : implements
     WorkflowPort <|.. CreditRfqSimulator : implements
+    ConnectionEventsPort <|.. ConnectionEventsSimulator : implements
+    ConnectionEventsPort <|.. WsConnectionEventsAdapter : implements
+    ConnectionEventsPort <|.. BrowserConnectionEventsAdapter : implements
 ```
+
+> **`WsReal*` adapters are factory functions, not classes.** The boxes above (`WsRealPricingAdapter`, `WsRealExecutionAdapter`, ...) are drawn as classes for diagram symmetry, but the real-mode port implementations are produced by factory functions (`createPricingPort`, `createExecutionPort`, ...) in `packages/client/src/app/adapters/portFactory.ts`, each closing over a shared `WsAdapter`. There are nine port interfaces in total: the eight transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](#96-port-contract-test-layer)).
 
 **Adapter selection** is performed at the **Composition Root** (single startup point), not at render time. `VITE_SERVER_URL` controls the choice:
 - **Unset** -- Composition Root constructs simulators directly (in-process, no transport).
@@ -595,11 +618,6 @@ classDiagram
         +execute(request) Observable~number~
     }
 
-    class AcceptQuoteUseCase {
-        -WorkflowPort workflow
-        +execute(quoteId) Observable~void~
-    }
-
     class WorkflowEventStreamUseCase {
         -WorkflowPort workflow
         +execute() Observable~RfqEvent~
@@ -615,10 +633,11 @@ classDiagram
     TradeBlotterUseCase --> BlotterPort
     AnalyticsUseCase --> AnalyticsPort
     CreateRfqUseCase --> WorkflowPort
-    AcceptQuoteUseCase --> WorkflowPort
     WorkflowEventStreamUseCase --> WorkflowPort
     ConnectionStatusUseCase --> ConnectionEventsPort
 ```
+
+The diagram shows the use cases that carry real orchestration or enrichment. The full set in `packages/domain/src/usecases/` also includes `PriceHistoryUseCase` (rolling buffer), `CurrencyPairsUseCase`, `InstrumentsUseCase`, `DealersUseCase`, and `RfqQuoteUseCase` — twelve in total. The remaining workflow commands (`accept`, `cancel`, `pass`, `quote`) carry no application logic, so they are **not** wrapped in use cases: `RfqsPresenter` calls `WorkflowPort.accept`/`cancelRfq`/`pass`/`quote` directly. This follows the "Don't Over-Abstract" principle ([§1.2](#12-architectural-principles)) — a use case is added only when there is logic to home.
 
 **Boundary type**: `Observable<T>` everywhere. No React types, no DOM types. Commands (`executeTrade`, `createRfq`, `accept`, ...) emit once and complete; callers `firstValueFrom(...)` to await imperatively when needed.
 
@@ -659,23 +678,26 @@ classDiagram
         +price$(symbol) Observable~Price~
     }
 
-    class TradeBlotterPresenter {
+    class BlotterPresenter {
         -TradeBlotterUseCase useCase
         +trades$ Observable~Trade[]~
     }
 
     class AnalyticsPresenter {
-        -AnalyticsUseCase useCase
-        +analytics$(currency) Observable~PositionUpdates~
+        -AnalyticsPort analytics
+        +position$ Observable~PositionUpdates~
     }
 
     class RfqsPresenter {
-        -WorkflowEventStreamUseCase events
-        -CreateRfqUseCase create
-        -AcceptQuoteUseCase accept
-        +rfqs$ Observable~RfqViewModel[]~
-        +createRfq(request) Promise~number~
-        +acceptQuote(quoteId) Promise~void~
+        -WorkflowPort workflow
+        +rfqs$ Observable~Rfq[]~
+        +allQuotes$ Observable~Map~
+        +quotesForRfq$(rfqId) Observable~Quote[]~
+        +createRfq(input) Observable~number~
+        +acceptQuote(quoteId) Observable~void~
+        +cancelRfq(rfqId) Observable~void~
+        +passQuote(quoteId) Observable~void~
+        +quoteRfq(request) Observable~void~
     }
 
     class ConnectionStatusPresenter {
@@ -693,11 +715,13 @@ classDiagram
     }
 
     ReactRxJsHooks ..> PriceStreamPresenter : binds
-    ReactRxJsHooks ..> TradeBlotterPresenter : binds
+    ReactRxJsHooks ..> BlotterPresenter : binds
     ReactRxJsHooks ..> AnalyticsPresenter : binds
     ReactRxJsHooks ..> RfqsPresenter : binds
     ReactRxJsHooks ..> ConnectionStatusPresenter : binds
 ```
+
+The diagram shows the representative presenters. The full set in `packages/client/src/app/presenters/` also includes `PriceHistoryPresenter`, `CurrencyPairsPresenter`, `InstrumentsPresenter`, `DealersPresenter`, `TradeExecutionPresenter`, and `RfqQuotePresenter`. **Command methods return `Observable<T>`, not `Promise<T>`** — they are one-shot streams; UI call sites apply `firstValueFrom(...)` when they need to `await` (e.g. `NewRfqForm`, `RfqTilesPanel`). This keeps the command return type uniform with the streaming surface; `firstValueFrom` is the only RxJS symbol the UI layer imports.
 
 **Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)) that maps an `Observable<T>` to a React hook with Suspense semantics. To swap React -> SolidJS, write a tiny `solid-rxjs` analogue that maps an `Observable<T>` to a Solid signal. Presenters and below are unchanged. UI components are rewritten -- but their contracts (the hook signatures) are mirrored 1:1, and the behavioural spec suite verifies the rewrite.
 
@@ -815,7 +839,6 @@ sequenceDiagram
     participant Hook as useRfqs (react-rxjs)
     participant Presenter as RfqsPresenter
     participant CreateUC as CreateRfqUseCase
-    participant AcceptUC as AcceptQuoteUseCase
     participant EventsUC as WorkflowEventStreamUseCase
     participant Adapter as Port Adapter
     participant Server as WS Server
@@ -865,9 +888,9 @@ sequenceDiagram
 
     Trader->>Tiles: Clicks Accept on best quote
     Tiles->>Hook: acceptQuote(quoteId)
-    Hook->>Presenter: dispatch acceptIntent
-    Presenter->>AcceptUC: execute(quoteId)
-    AcceptUC->>Adapter: accept(quoteId)
+    Hook->>Presenter: acceptQuote(quoteId)
+    Presenter->>Adapter: workflow.accept(quoteId)
+    Note over Presenter,Adapter: accept/cancel/pass are direct port pass-throughs (no use case)
     Adapter->>Server: rpc.accept
     Server->>Sim: accept(quoteId)
     Sim->>Sim: Accepted quote, others rejected, Rfq Closed
@@ -969,6 +992,8 @@ stateDiagram-v2
 ```
 
 **Constants:** `EXECUTION_TIMEOUT_MS = 30s`, `TOO_LONG_THRESHOLD_MS = 2s`, `CONFIRMATION_DISMISS_MS = 5s`
+
+> **Implementation note.** The diagram names states for clarity; the `TileState` union in `useTileState.ts` uses `ready` (Idle), `started` (Executing), `tooLong`, `timeout`, and a single `finished` state that carries an `executionStatus` discriminator (`Done` / `Rejected` / `Timeout` / `CreditExceeded`) plus the resulting `Trade`. So the diagram's `Done` and `Rejected` are both the `finished` state with different `executionStatus` values, not separate union members.
 
 ---
 
@@ -1256,7 +1281,7 @@ via `makeHarness`, they don't reach into either implementation.
 
 | Area | Path | Description |
 |------|------|-------------|
-| **Domain Ports** | `packages/domain/src/ports/*.ts` | 8 port interfaces |
+| **Domain Ports** | `packages/domain/src/ports/*.ts` | 9 port interfaces (8 transport ports + `ConnectionEventsPort`) |
 | **FX Entities** | `packages/domain/src/fx/*.ts` | CurrencyPair, Price, Trade, Notional |
 | **Credit Entities** | `packages/domain/src/credit/*.ts` | Instrument, Dealer, Rfq, Quote |
 | **Connection** | `packages/domain/src/connection/*.ts` | ConnectionStatus state machine |
@@ -1284,15 +1309,15 @@ via `makeHarness`, they don't reach into either implementation.
 | **Raw Cypress Harness** | `tests/raw/cypress/{cypress.config,_context,_openWorkspace}.ts` | Cypress config (no preprocessor); `getCtx()` accessor with module-scoped beforeEach builder; named Background helpers |
 | **Cypress-forked Scenarios** | `tests/scenarios/cypress/*.ts` (+ `_chainable.ts`) | Sync scenario fns mirroring shared `scenarios/*.ts` 1:1 by name; queue-aware (use `chainable<T>` cast helper to expose Cypress Chainable under the shared `Promise<T>` PO contract); used by raw Cypress only |
 | **Test World + Hooks (Cucumber)** | `tests/support/playwright/{world,hooks}.ts` and `tests/support/cypress/{world,e2e}.ts` | Per-runner World, dev-server lifecycle, hooks |
-| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based; 23 gates) |
+| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based; 24 gates) |
 | **Port Contract Describers** | `packages/domain/src/ports/__contracts__/<Port>Contract.ts` | Parameterised happy-path suites for all 8 transport ports; run against simulator + WsReal via `makeHarness()` |
-| **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and four-peer orchestration |
+| **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and eight-peer orchestration |
 
 ---
 
 ## 12. Architectural Gates
 
-`tests/scripts/grep-gates.ts` encodes 23 import-boundary rules enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
+`tests/scripts/grep-gates.ts` encodes 24 import-boundary rules enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
 
 | Gate | Rule |
 |------|------|
@@ -1319,3 +1344,4 @@ via `makeHarness`, they don't reach into either implementation.
 | 21 | `@presenter` scenario count per `.feature` file must equal `it()` block count in the matching `vitest-plain/*.test.ts` file (custom check) |
 | 22 | Every `describe(...)` title in `presenter-tests/vitest-plain/` must begin with `"@presenter Feature: "` |
 | 23 | Contract describers in `packages/domain/src/ports/__contracts__/` may not import from `simulators/`, `@rtc/client`, or `@rtc/shared/__fixtures__/` |
+| 24 | `vitest-fake/setup.ts` must import every step file in `tests/steps/presenter/vitest-fake/` (barrel completeness) |
