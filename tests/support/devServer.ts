@@ -7,6 +7,10 @@ export interface DevServerHandle {
 }
 
 const DEV_PORT = 3000;
+// Set to "1" by the orchestrator (run-all.ts) around its child runners to opt
+// into reusing the single shared dev server it started. Absent it, startDevServer
+// refuses to reuse a server it didn't start (see the throw there).
+export const SHARED_DEV_SERVER_ENV = "RTC_DEV_SERVER_SHARED";
 // Use 127.0.0.1 explicitly: Vite ≥6 binds the dev server to ::1 only on hosts
 // where `localhost` resolves to IPv6 first, while Node fetch defaults to IPv4.
 const DEV_BASE_URL = `http://127.0.0.1:${DEV_PORT}`;
@@ -33,7 +37,24 @@ async function waitForPort(timeoutMs: number): Promise<void> {
 
 export async function startDevServer(): Promise<DevServerHandle> {
   if (await pingPort()) {
-    return { stop: async () => {} };
+    // Something is already serving :3000. Only reuse it when the orchestrator
+    // (run-all.ts) has explicitly claimed ownership of a shared simulator-mode
+    // server via SHARED_DEV_SERVER_ENV — that's the one case where sharing is
+    // intentional. In every other case, refuse: silently reusing an unknown
+    // server (a leftover from a killed run, a hand-started `pnpm dev`, or one
+    // in WS-real mode) runs the tests against the wrong app/mode and produces
+    // confusing, hard-to-diagnose failures. Fail loudly instead.
+    if (process.env[SHARED_DEV_SERVER_ENV] === "1") {
+      return { stop: async () => {} };
+    }
+    throw new Error(
+      `Port ${DEV_PORT} is already in use, but this runner expects to start its own ` +
+        `dev server (simulator mode). Refusing to reuse an unknown server — it may be a ` +
+        `stale process or the wrong connection mode, which causes misleading test failures.\n\n` +
+        `Free the port and re-run:\n` +
+        `  lsof -tiTCP:${DEV_PORT} -sTCP:LISTEN | xargs kill\n\n` +
+        `(To share one dev server across all runners on purpose, use \`pnpm test:e2e\`.)`,
+    );
   }
   const child: ChildProcess = spawn(
     "pnpm",

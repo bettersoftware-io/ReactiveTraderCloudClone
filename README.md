@@ -124,11 +124,20 @@ No — every step boots whatever it needs and tears it down afterwards, so
 
 - The **eight runners** test the client against **in-process domain simulators**
   (`VITE_SERVER_URL` unset) — no backend at all. Each browser runner starts its
-  own Vite frontend (on `http://127.0.0.1:3000`, reusing one already on that
-  port); the four presenter peers don't even need a browser.
+  own Vite frontend on `http://127.0.0.1:3000`; the four presenter peers don't
+  even need a browser.
 - The **two full-stack smokes** are the only steps that involve the real
   backend, and each starts its own server (and, for the browser smoke, its own
   client) on dedicated ports.
+
+> **Port 3000 must be free.** A browser runner refuses to reuse a server it
+> didn't start: if something is already on `:3000` it fails immediately rather
+> than running the tests against an unknown server (a leftover dev server, or a
+> hand-started `pnpm dev` that may be in WS-real mode) — which otherwise causes
+> confusing, misattributed failures. The error message tells you how to free the
+> port (`lsof -tiTCP:3000 -sTCP:LISTEN | xargs kill`). The sole exception is
+> `pnpm test:e2e`, which deliberately starts **one** shared simulator-mode
+> server and signals its child runners (via `RTC_DEV_SERVER_SHARED`) to reuse it.
 
 ### Scope: what the eight runners do *not* cover
 
@@ -150,7 +159,8 @@ covered separately by two layers:
 ### Running individual test runners
 
 All runners are scripts in the `@rtc/tests` package; run any one in isolation
-with a filter (each browser runner auto-starts/​reuses the frontend):
+with a filter (each browser runner starts its own frontend on `:3000`, which
+must be free — see the port note above):
 
 ```bash
 # Browser peers (drive the real UI against simulators)
