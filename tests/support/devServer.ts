@@ -6,7 +6,9 @@ export interface DevServerHandle {
   stop(): Promise<void>;
 }
 
-export const DEV_PORT = 3000;
+// Overridable per-suite via RTC_DEV_PORT so parallel browser runners can each
+// own a dev server on a distinct port; defaults to 3000 for standalone runs.
+export const DEV_PORT = Number(process.env.RTC_DEV_PORT ?? 3000);
 // Set to "1" by the orchestrator (run-all.ts) around its child runners to opt
 // into reusing the single shared dev server it started. Absent it, startDevServer
 // refuses to reuse a server it didn't start (see the throw there).

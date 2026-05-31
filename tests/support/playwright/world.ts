@@ -14,7 +14,9 @@ export class PlaywrightWorld extends World {
   }
 
   async open(browser: Browser): Promise<void> {
-    this.context = await browser.newContext({ baseURL: "http://localhost:3000" });
+    // Per-suite port via RTC_DEV_PORT (parallel runners); defaults to 3000.
+    const baseURL = `http://localhost:${process.env.RTC_DEV_PORT ?? 3000}`;
+    this.context = await browser.newContext({ baseURL });
     this.page = await this.context.newPage();
     this.ctx = {
       po: buildPlaywrightPageObjects(this.page),

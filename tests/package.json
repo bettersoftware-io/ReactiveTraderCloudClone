@@ -10,7 +10,7 @@
     "port:free": "tsx scripts/free-port.ts",
     "test:browser:cypress": "CYPRESS_TAGS='not @presenterOnly' tsx scripts/with-server.ts cypress run --headless",
     "test:browser:cypress:open": "CYPRESS_TAGS='not @presenterOnly' tsx scripts/with-server.ts cypress open --e2e",
-    "test:browser:playwright": "NODE_OPTIONS='--import tsx/esm' cucumber-js",
+    "test:browser:playwright": "NODE_OPTIONS='--import tsx/esm' tsx scripts/with-server.ts cucumber-js",
     "test:browser:raw-cypress": "tsx scripts/with-server.ts cypress run --headless --config-file raw/cypress/cypress.config.ts",
     "test:browser:raw-playwright": "tsx scripts/with-server.ts playwright test --config raw/playwright/playwright.config.ts",
     "test:e2e": "pnpm gates && tsx scripts/run-all.ts",

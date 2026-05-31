@@ -30,7 +30,9 @@ const aliasCucumber: import("esbuild").Plugin = {
 
 export default defineConfig({
   e2e: {
-    baseUrl: "http://localhost:3000",
+    // Port overridable per-suite (RTC_DEV_PORT) so parallel browser suites each
+    // target their own dev server; defaults to 3000 for standalone runs.
+    baseUrl: `http://localhost:${process.env.RTC_DEV_PORT ?? 3000}`,
     specPattern: "specs/**/*.feature",
     supportFile: "support/cypress/e2e.ts",
     video: false,
