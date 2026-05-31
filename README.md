@@ -154,11 +154,11 @@ with a filter (each browser runner auto-starts/​reuses the frontend):
 
 ```bash
 # Browser peers (drive the real UI against simulators)
-pnpm --filter @rtc/tests test:e2e:playwright       # Cucumber + Playwright
-pnpm --filter @rtc/tests test:e2e:raw-playwright   # raw Playwright
-pnpm --filter @rtc/tests test:e2e:cypress          # Cucumber + Cypress
-pnpm --filter @rtc/tests test:e2e:raw-cypress      # raw Cypress
-pnpm --filter @rtc/tests test:e2e:cypress:open     # Cypress interactive runner
+pnpm --filter @rtc/tests test:browser:playwright       # Cucumber + Playwright
+pnpm --filter @rtc/tests test:browser:raw-playwright   # raw Playwright
+pnpm --filter @rtc/tests test:browser:cypress          # Cucumber + Cypress
+pnpm --filter @rtc/tests test:browser:raw-cypress      # raw Cypress
+pnpm --filter @rtc/tests test:browser:cypress:open     # Cypress interactive runner
 
 # Presenter peers (pure Node, no browser/server)
 pnpm --filter @rtc/tests test:presenter:cucumber-real
@@ -167,8 +167,8 @@ pnpm --filter @rtc/tests test:presenter:vitest-fake
 pnpm --filter @rtc/tests test:presenter:vitest-plain
 
 # Full-stack smokes (real server + real client)
-pnpm --filter @rtc/tests test:e2e:fullstack-node     # real socket, no browser
-pnpm --filter @rtc/tests test:e2e:fullstack-browser  # real browser via VITE_SERVER_URL
+pnpm --filter @rtc/tests test:fullstack:node     # real socket, no browser
+pnpm --filter @rtc/tests test:fullstack:browser  # real browser via VITE_SERVER_URL
 ```
 
 ### What "verification" means here
