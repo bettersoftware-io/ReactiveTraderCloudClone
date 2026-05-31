@@ -12,7 +12,7 @@
  * Happy path: subscribe to pricing and receive a tick; execute a trade and
  * receive an ack. Exits non-zero on any failure.
  */
-import { firstValueFrom } from "rxjs";
+import { firstValueFrom, timeout } from "rxjs";
 import { WsAdapter, createWsRealPorts } from "@rtc/client";
 import type { Direction } from "@rtc/domain";
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.js";
@@ -30,6 +30,10 @@ if (typeof (globalThis as { WebSocket?: unknown }).WebSocket === "undefined") {
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.FULLSTACK_PORT ?? 4123);
+// Upper bound on how long any single stream/RPC may take to produce its first
+// value. A smoke test must always terminate: if the real stack stops emitting
+// (e.g. a dropped subscription), fail loudly here instead of hanging forever.
+const FIRST_VALUE_TIMEOUT_MS = 15_000;
 
 function assert(cond: unknown, message: string): asserts cond {
   if (!cond) throw new Error(`assertion failed: ${message}`);
@@ -40,7 +44,9 @@ async function runChecks(): Promise<void> {
   const ports = createWsRealPorts(ws);
   try {
     // 1. Pricing stream: subscribe → receive a live tick from the real server.
-    const tick = await firstValueFrom(ports.pricing.getPriceUpdates("EURUSD"));
+    const tick = await firstValueFrom(
+      ports.pricing.getPriceUpdates("EURUSD").pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
+    );
     assert(tick.symbol === "EURUSD", `pricing tick symbol (got ${tick.symbol})`);
     assert(typeof tick.bid === "number", "pricing tick bid is a number");
     assert(typeof tick.ask === "number", "pricing tick ask is a number");
@@ -49,13 +55,15 @@ async function runChecks(): Promise<void> {
 
     // 2. Trade execution RPC: request → ack with a real trade.
     const trade = await firstValueFrom(
-      ports.execution.executeTrade({
-        currencyPair: "EURUSD",
-        spotRate: 1.1,
-        direction: DIR_BUY,
-        notional: 1_000_000,
-        dealtCurrency: "EUR",
-      }),
+      ports.execution
+        .executeTrade({
+          currencyPair: "EURUSD",
+          spotRate: 1.1,
+          direction: DIR_BUY,
+          notional: 1_000_000,
+          dealtCurrency: "EUR",
+        })
+        .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
     );
     assert(typeof trade.tradeId === "number", "trade has a numeric tradeId");
     assert(trade.currencyPair === "EURUSD", "trade currencyPair echoed");

@@ -25,6 +25,11 @@ export class WsAdapter implements IWsAdapter {
   private readonly reconnectDelayMs: number;
   private readonly handlers = new Map<string, Set<MessageHandler>>();
   private readonly pendingRpcs = new Map<string, { resolve: (p: unknown) => void; reject: (e: Error) => void }>();
+  // Messages issued before the socket reaches OPEN, held until onopen flushes
+  // them. Without this, a subscription sent in the same tick as construction
+  // (before the handshake completes) would be silently dropped and the stream
+  // would never start.
+  private readonly sendQueue: string[] = [];
   private nextCorrelationId = 1;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
@@ -44,6 +49,7 @@ export class WsAdapter implements IWsAdapter {
     this.ws.onopen = () => {
       console.log("[WsAdapter] Connected to", this.url);
       this.connectionEvents$.next({ type: "gatewayConnected" });
+      this.flushSendQueue();
     };
 
     this.ws.onmessage = (event) => {
@@ -95,9 +101,23 @@ export class WsAdapter implements IWsAdapter {
   }
 
   send(type: string, payload?: unknown): void {
-    if (this.ws?.readyState !== WebSocket.OPEN) return;
+    if (this.disposed) return;
     const msg: WsMessage = { type, payload };
-    this.ws.send(JSON.stringify(msg));
+    const serialized = JSON.stringify(msg);
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(serialized);
+    } else {
+      // Socket not open yet (or reconnecting) — buffer until onopen flushes.
+      this.sendQueue.push(serialized);
+    }
+  }
+
+  private flushSendQueue(): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) return;
+    for (const serialized of this.sendQueue) {
+      this.ws.send(serialized);
+    }
+    this.sendQueue.length = 0;
   }
 
   rpc(type: string, payload?: unknown): Promise<unknown> {
@@ -146,6 +166,7 @@ export class WsAdapter implements IWsAdapter {
   dispose(): void {
     this.disposed = true;
     this.connectionEvents$.complete();
+    this.sendQueue.length = 0;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.ws?.close();
     this.handlers.clear();

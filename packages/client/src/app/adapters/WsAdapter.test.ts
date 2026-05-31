@@ -23,13 +23,14 @@ let lastMock: MockWebSocket;
 beforeEach(() => {
   vi.useFakeTimers();
   MockWebSocket.constructed = 0;
-  vi.stubGlobal(
-    "WebSocket",
-    vi.fn().mockImplementation(() => {
-      lastMock = new MockWebSocket();
-      return lastMock;
-    }),
-  );
+  const WebSocketStub = vi.fn().mockImplementation(() => {
+    lastMock = new MockWebSocket();
+    return lastMock;
+  });
+  // The real global WebSocket constructor carries a static OPEN (=1); mirror it
+  // so WsAdapter.send()'s readyState check behaves as it does in a browser/Node.
+  (WebSocketStub as unknown as { OPEN: number }).OPEN = MockWebSocket.OPEN;
+  vi.stubGlobal("WebSocket", WebSocketStub);
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -107,6 +108,36 @@ describe("WsAdapter.connectionEvents()", () => {
       { type: "gatewayDisconnected" },
       { type: "reconnectAttempt" },
     ]);
+    adapter.dispose();
+  });
+
+  it("buffers a message sent before the socket opens and flushes it on connect", () => {
+    const adapter = new WsAdapter("ws://test");
+    // Socket is still CONNECTING (readyState 0) — the subscribe must not be lost.
+    adapter.send("subscribe.pricing", { symbol: "EURUSD" });
+    expect(lastMock.send).not.toHaveBeenCalled();
+
+    // Once the socket opens, the buffered message is delivered.
+    lastMock.readyState = MockWebSocket.OPEN;
+    lastMock.onopen?.(new Event("open"));
+
+    expect(lastMock.send).toHaveBeenCalledTimes(1);
+    expect(lastMock.send).toHaveBeenCalledWith(
+      JSON.stringify({ type: "subscribe.pricing", payload: { symbol: "EURUSD" } }),
+    );
+    adapter.dispose();
+  });
+
+  it("sends immediately when the socket is already open", () => {
+    const adapter = new WsAdapter("ws://test");
+    lastMock.readyState = MockWebSocket.OPEN;
+    lastMock.onopen?.(new Event("open"));
+
+    adapter.send("subscribe.blotter");
+
+    expect(lastMock.send).toHaveBeenCalledWith(
+      JSON.stringify({ type: "subscribe.blotter" }),
+    );
     adapter.dispose();
   });
 
