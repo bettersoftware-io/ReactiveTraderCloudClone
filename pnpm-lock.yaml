@@ -123,6 +123,9 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../packages/domain
+      '@rtc/server':
+        specifier: workspace:*
+        version: link:../packages/server
       rxjs:
         specifier: ^7.8
         version: 7.8.2
@@ -148,6 +151,9 @@ importers:
       '@types/sinonjs__fake-timers':
         specifier: ^15.0.1
         version: 15.0.1
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       cypress:
         specifier: 15.14.2
         version: 15.14.2

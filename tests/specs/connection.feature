@@ -30,7 +30,11 @@ Feature: Connection status
   # Presenter-only: a gateway drop/reconnect cannot be injected through the
   # browser DOM (gatewayDisconnected/reconnectAttempt originate in WsAdapter in
   # WS-real mode, or the test ConnectionEventsPort in presenter mode), so the
-  # browser peers cannot exercise this transition.
+  # browser peers cannot exercise this transition. The two browser Cucumber
+  # peers exclude it via `not @presenterOnly` (the two raw browser peers simply
+  # omit it); the four presenter peers run it via the `@presenter` tag. The
+  # `@presenter` tag is kept last so grep gate 21's scenario-count regex matches.
+  @presenterOnly
   @presenter
   Scenario: gateway disconnect transitions through reconnecting back to connected
     When the gateway connection drops

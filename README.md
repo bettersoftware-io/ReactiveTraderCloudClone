@@ -100,13 +100,13 @@ Everything below is wired through Turborepo, so runs are cached and incremental.
 ```bash
 pnpm typecheck                    # tsc --noEmit across every package
 pnpm test                         # unit tests (Vitest) across every package
-pnpm test:e2e                     # runs the gates, then all eight runners
+pnpm test:e2e                     # gates, then eight runners, then two full-stack smokes
 pnpm --filter @rtc/tests gates    # architectural "grep gates" only
 ```
 
-`pnpm test:e2e` is the full behavioural suite: it runs the gates first and then
-drives all eight runners in sequence, reporting pass/fail per peer. To run the
-entire verification stack in one go:
+`pnpm test:e2e` is the full behavioural suite: it runs the gates first, then
+drives all eight runners, then the two full-stack smokes (see below), reporting
+pass/fail per step. To run the entire verification stack in one go:
 
 ```bash
 pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e
@@ -119,23 +119,41 @@ pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e
 
 ### Do I need to start the servers first?
 
-No. **Every browser runner starts the frontend on its own** (Vite on
-`http://127.0.0.1:3000`) and tears it down afterwards — and if something is
-already listening on that port, the runner reuses it instead of spawning another.
-So `pnpm test:e2e` works from a cold checkout with nothing running.
+No — every step boots whatever it needs and tears it down afterwards, so
+`pnpm test:e2e` works from a cold checkout with nothing running.
 
-The **backend is not involved in the e2e suite at all**: the client under test
-runs against in-process domain simulators (`VITE_SERVER_URL` unset), so there is
-no gateway to boot. The four presenter peers don't even need a browser — they
-drive the RxJS presenter layer directly in Node.
+- The **eight runners** test the client against **in-process domain simulators**
+  (`VITE_SERVER_URL` unset) — no backend at all. Each browser runner starts its
+  own Vite frontend (on `http://127.0.0.1:3000`, reusing one already on that
+  port); the four presenter peers don't even need a browser.
+- The **two full-stack smokes** are the only steps that involve the real
+  backend, and each starts its own server (and, for the browser smoke, its own
+  client) on dedicated ports.
+
+### Scope: what the eight runners do *not* cover
+
+The eight-runner suite is end-to-end *within the client* (UI → presenters →
+RxJS → adapters → **domain simulators**) — it is deliberately **not** full-stack.
+It never starts `@rtc/server`, so the server's WebSocket translation layer is
+covered separately by two layers:
+
+- **Server protocol tests** (`packages/server/src/ws/wsHandler.test.ts`, run by
+  `pnpm test`) — drive the real handler through a fake socket and assert it
+  routes client frames to domain calls and emits the correct `@rtc/shared` wire
+  shapes (subscribe routing, state-of-the-world markers, ack/nack, teardown).
+- **Full-stack smokes** (`tests/fullstack/`, run by `pnpm test:e2e`) — boot the
+  real server and drive the real client against it. The **node** smoke connects
+  the client's `WsAdapter` over a real socket (subscribe→tick, execute→ack); the
+  **browser** smoke points a Vite-built client at the server via `VITE_SERVER_URL`
+  and asserts live prices render in the DOM.
 
 ### Running individual test runners
 
-All eight runners are scripts in the `@rtc/tests` package; run any one in
-isolation with a filter (each browser runner auto-starts/​reuses the frontend):
+All runners are scripts in the `@rtc/tests` package; run any one in isolation
+with a filter (each browser runner auto-starts/​reuses the frontend):
 
 ```bash
-# Browser peers (drive the real UI)
+# Browser peers (drive the real UI against simulators)
 pnpm --filter @rtc/tests test:e2e:playwright       # Cucumber + Playwright
 pnpm --filter @rtc/tests test:e2e:raw-playwright   # raw Playwright
 pnpm --filter @rtc/tests test:e2e:cypress          # Cucumber + Cypress
@@ -147,6 +165,10 @@ pnpm --filter @rtc/tests test:presenter:cucumber-real
 pnpm --filter @rtc/tests test:presenter:cucumber-fake
 pnpm --filter @rtc/tests test:presenter:vitest-fake
 pnpm --filter @rtc/tests test:presenter:vitest-plain
+
+# Full-stack smokes (real server + real client)
+pnpm --filter @rtc/tests test:e2e:fullstack-node     # real socket, no browser
+pnpm --filter @rtc/tests test:e2e:fullstack-browser  # real browser via VITE_SERVER_URL
 ```
 
 ### What "verification" means here
@@ -160,12 +182,13 @@ exercised by **eight independent runners** so they can be compared head-to-head:
   domain simulators — cucumber-real, cucumber-fake, vitest-fake, and
   vitest-plain.
 
-All eight are run together by `pnpm test:e2e`, which summarises pass/fail per
-peer and exits non-zero if any peer fails. On top of the runners, **24
-grep-based architectural gates** (`pnpm gates`, also run first by `test:e2e`)
-assert structural invariants that types alone can't — e.g. the dependency rule,
-layering boundaries, and parity between the spec scenarios and the tests that
-implement them. See
+All eight run against in-process simulators; on top of them the **two full-stack
+smokes** (above) exercise the real backend end to end. `pnpm test:e2e` runs the
+gates, then all eight runners, then both smokes, exiting non-zero if any step
+fails. The **24 grep-based architectural gates** (`pnpm gates`, also run first by
+`test:e2e`) assert structural invariants that types alone can't — e.g. the
+dependency rule, layering boundaries, and parity between the spec scenarios and
+the tests that implement them. See
 [`docs/superpowers/STATUS.md`](docs/superpowers/STATUS.md) for the current map and
 the phase 5a–5e specs under [`docs/superpowers/`](docs/superpowers/) for the
 design rationale.
@@ -183,6 +206,6 @@ pnpm --filter @rtc/client dev
 ## Status
 
 All planned phases are complete; the platform builds, typechecks, and passes the
-full eight-runner suite and all gates. See
+full eight-runner suite, the two full-stack smokes, and all gates. See
 [`docs/superpowers/STATUS.md`](docs/superpowers/STATUS.md) for the authoritative
 per-phase breakdown.

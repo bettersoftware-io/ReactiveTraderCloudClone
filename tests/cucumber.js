@@ -21,4 +21,8 @@ export default {
   format: ["progress-bar", "html:reports/cucumber.html", "summary"],
   parallel: process.env.CI ? 1 : 2,
   retry: process.env.CI ? 2 : 0,
+  // Browser peers can't inject gateway lifecycle events through the DOM, so the
+  // presenter-only reconnect scenario is excluded here. The presenter cucumber
+  // configs override this with `tags: "@presenter"` and still run it.
+  tags: "not @presenterOnly",
 };

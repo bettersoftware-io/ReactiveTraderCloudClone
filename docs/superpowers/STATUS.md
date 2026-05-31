@@ -2,7 +2,7 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-05-30 (architecture.md consistency pass + connection reconnecting-state implementation)
+**Last updated:** 2026-05-31 (server protocol tests + full-stack smokes; architecture.md §9.8)
 
 ---
 
@@ -11,7 +11,8 @@ Tracks the multi-phase refactor that brings this codebase into alignment with `d
 - **Branch:** `main`
 - **Commits ahead of `origin/main`:** check `git log origin/main..HEAD`
 - **Working tree:** clean except `.claude/settings.local.json` (Claude Code permission auto-grants; not a project file)
-- **Test counts:** 211 unit (139 domain + 67 client + 5 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 20 (presenter-cucumber-real) + 20 (presenter-cucumber-fake) + 20 (presenter-vitest-fake) + 20 (presenter-vitest-plain) — 48×4 + 20×4 = 272 e2e scenarios (4 browser peers × 48 scenarios; 4 presenter peers × 20 scenarios)
+- **Test counts:** 219 unit (139 domain + 67 client + 13 server) + 48 (Cucumber+Playwright) + 48 (raw Playwright) + 48 (Cucumber+Cypress) + 48 (raw Cypress) + 20 (presenter-cucumber-real) + 20 (presenter-cucumber-fake) + 20 (presenter-vitest-fake) + 20 (presenter-vitest-plain) — 48×4 + 20×4 = 272 e2e scenarios (4 browser peers × 48 scenarios; 4 presenter peers × 20 scenarios) — plus 2 full-stack smokes (real client ↔ real server: 1 node-socket, 1 browser) run by `test:e2e` after the eight peers
+- **Server coverage (2026-05-31):** added 8 server protocol tests (`packages/server/src/ws/wsHandler.test.ts`, 5 → 13 server unit tests) covering the WS translation layer (subscribe routing, SoW markers, ack/nack + correlationId, unknown/malformed-frame tolerance, teardown-on-close), plus the two full-stack smokes in `tests/fullstack/`. Together they close the gap the eight-runner suite left open: it runs the client against in-process simulators and never starts `@rtc/server`. See `docs/architecture.md` §9.8.
 
 ## Phases
 

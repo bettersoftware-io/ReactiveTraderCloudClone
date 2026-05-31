@@ -11,15 +11,18 @@
     "test:presenter:vitest-fake": "vitest run --config vitest-presenter-fake.config.ts",
     "test:presenter:vitest-plain": "vitest run --config vitest-presenter-plain.config.ts",
     "test:e2e:raw-playwright": "tsx scripts/with-server.ts playwright test --config raw/playwright/playwright.config.ts",
-    "test:e2e:cypress": "tsx scripts/with-server.ts cypress run --headless",
+    "test:e2e:cypress": "TAGS='not @presenterOnly' tsx scripts/with-server.ts cypress run --headless",
     "test:e2e:raw-cypress": "tsx scripts/with-server.ts cypress run --headless --config-file raw/cypress/cypress.config.ts",
-    "test:e2e:cypress:open": "tsx scripts/with-server.ts cypress open --e2e",
+    "test:e2e:cypress:open": "TAGS='not @presenterOnly' tsx scripts/with-server.ts cypress open --e2e",
+    "test:e2e:fullstack-node": "tsx fullstack/node-smoke.ts",
+    "test:e2e:fullstack-browser": "tsx fullstack/browser-smoke.ts",
     "gates": "tsx scripts/grep-gates.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@rtc/client": "workspace:*",
     "@rtc/domain": "workspace:*",
+    "@rtc/server": "workspace:*",
     "rxjs": "^7.8"
   },
   "devDependencies": {
@@ -30,6 +33,7 @@
     "@sinonjs/fake-timers": "^14.0.0",
     "@types/node": "^25.5.0",
     "@types/sinonjs__fake-timers": "^15.0.1",
+    "@types/ws": "^8.18.1",
     "cypress": "15.14.2",
     "esbuild": "0.28.0",
     "quickpickle": "^1.11",
