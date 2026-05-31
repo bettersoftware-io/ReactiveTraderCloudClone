@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev": "tsx watch src/index.ts",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "clean:deep": "pnpm run clean && rm -rf node_modules"
   },
   "dependencies": {
     "@marblejs/core": "^4",

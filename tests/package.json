@@ -17,7 +17,9 @@
     "test:fullstack:node": "tsx fullstack/node-smoke.ts",
     "test:fullstack:browser": "tsx fullstack/browser-smoke.ts",
     "gates": "tsx scripts/grep-gates.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo reports test-results cypress/screenshots cypress/videos",
+    "clean:deep": "pnpm run clean && rm -rf node_modules"
   },
   "dependencies": {
     "@rtc/client": "workspace:*",

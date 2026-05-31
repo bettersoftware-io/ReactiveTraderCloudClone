@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev": "tsc --build --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "clean:deep": "pnpm run clean && rm -rf node_modules"
   },
   "dependencies": {
     "rxjs": "^7.8"
