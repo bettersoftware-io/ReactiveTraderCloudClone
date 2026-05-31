@@ -1,5 +1,7 @@
 {
   "stepDefinitions": ["steps/*.steps.ts"],
+  "omitFiltered": true,
+  "filterSpecs": true,
   "json": { "enabled": false },
   "html": { "enabled": true, "output": "reports/cypress-cucumber.html" }
 }
