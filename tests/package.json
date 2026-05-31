@@ -7,6 +7,7 @@
     "clean": "rm -rf .turbo reports test-results cypress/screenshots cypress/videos",
     "clean:deep": "pnpm run clean && rm -rf node_modules",
     "gates": "tsx scripts/grep-gates.ts",
+    "port:free": "tsx scripts/free-port.ts",
     "test:browser:cypress": "CYPRESS_TAGS='not @presenterOnly' tsx scripts/with-server.ts cypress run --headless",
     "test:browser:cypress:open": "CYPRESS_TAGS='not @presenterOnly' tsx scripts/with-server.ts cypress open --e2e",
     "test:browser:playwright": "NODE_OPTIONS='--import tsx/esm' cucumber-js",

@@ -134,8 +134,10 @@ No — every step boots whatever it needs and tears it down afterwards, so
 > didn't start: if something is already on `:3000` it fails immediately rather
 > than running the tests against an unknown server (a leftover dev server, or a
 > hand-started `pnpm dev` that may be in WS-real mode) — which otherwise causes
-> confusing, misattributed failures. The error message tells you how to free the
-> port (`lsof -tiTCP:3000 -sTCP:LISTEN | xargs kill`). The sole exception is
+> confusing, misattributed failures. To free the port, run
+> `pnpm --filter @rtc/tests port:free` — a cross-platform helper that probes for
+> `lsof`, `ss`, or `fuser` (whichever your machine has; macOS ships `lsof`, our
+> linuxkit/CI images often ship only `ss`) and kills the listener. The sole exception is
 > `pnpm test:e2e`, which deliberately starts **one** shared simulator-mode
 > server and signals its child runners (via `RTC_DEV_SERVER_SHARED`) to reuse it.
 

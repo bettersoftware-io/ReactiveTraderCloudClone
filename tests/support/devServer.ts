@@ -6,7 +6,7 @@ export interface DevServerHandle {
   stop(): Promise<void>;
 }
 
-const DEV_PORT = 3000;
+export const DEV_PORT = 3000;
 // Set to "1" by the orchestrator (run-all.ts) around its child runners to opt
 // into reusing the single shared dev server it started. Absent it, startDevServer
 // refuses to reuse a server it didn't start (see the throw there).
@@ -52,7 +52,9 @@ export async function startDevServer(): Promise<DevServerHandle> {
         `dev server (simulator mode). Refusing to reuse an unknown server — it may be a ` +
         `stale process or the wrong connection mode, which causes misleading test failures.\n\n` +
         `Free the port and re-run:\n` +
-        `  lsof -tiTCP:${DEV_PORT} -sTCP:LISTEN | xargs kill\n\n` +
+        `  pnpm --filter @rtc/tests port:free\n\n` +
+        `(That helper works on both macOS and Linux — it probes for lsof, ss, or ` +
+        `fuser, whichever your machine has.)\n\n` +
         `(To share one dev server across all runners on purpose, use \`pnpm test:e2e\`.)`,
     );
   }
