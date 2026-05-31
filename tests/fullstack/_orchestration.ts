@@ -23,6 +23,9 @@ export function startServer(port: number, host = "127.0.0.1"): ChildProcess {
     {
       cwd: MONOREPO_ROOT,
       stdio: "ignore",
+      // Detached so stopProcess can kill the whole group (the real server runs as
+      // a grandchild of this `pnpm` wrapper, which doesn't forward signals).
+      detached: true,
       env: { ...process.env, PORT: String(port), HOSTNAME: host, NODE_OPTIONS: "" },
     },
   );
@@ -42,6 +45,9 @@ export function startClient(
     {
       cwd: MONOREPO_ROOT,
       stdio: "ignore",
+      // Detached so stopProcess can kill the whole group (Vite is a grandchild of
+      // this `pnpm` wrapper, which doesn't forward signals).
+      detached: true,
       env: {
         ...process.env,
         PORT: String(clientPort),
@@ -68,15 +74,25 @@ export async function waitForHttp(url: string, timeoutMs: number): Promise<void>
   throw new Error(`${url} not reachable after ${timeoutMs}ms`);
 }
 
-/** Gracefully stop a spawned process (SIGTERM, then SIGKILL after 5s). */
+/** Gracefully stop a spawned process group (SIGTERM, then SIGKILL after 5s). */
 export function stopProcess(child: ChildProcess | undefined): Promise<void> {
   return new Promise((resolve) => {
-    if (!child || child.exitCode !== null) return resolve();
-    const kill = setTimeout(() => child.kill("SIGKILL"), 5_000);
+    const pid = child?.pid;
+    if (!child || child.exitCode !== null || pid === undefined) return resolve();
+    // Kill the process group (negative pid) so the real server/Vite grandchild
+    // dies with its `pnpm` wrapper instead of orphaning on its port.
+    const killGroup = (signal: NodeJS.Signals) => {
+      try {
+        process.kill(-pid, signal);
+      } catch {
+        // group already gone
+      }
+    };
+    const kill = setTimeout(() => killGroup("SIGKILL"), 5_000);
     child.once("exit", () => {
       clearTimeout(kill);
       resolve();
     });
-    child.kill("SIGTERM");
+    killGroup("SIGTERM");
   });
 }

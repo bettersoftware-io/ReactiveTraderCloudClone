@@ -65,7 +65,10 @@ export async function startDevServer(): Promise<DevServerHandle> {
     ["--filter", "@rtc/client", "dev"],
     {
       stdio: "ignore",
-      detached: false,
+      // Detached → the child leads its own process group, so stop() can kill the
+      // whole group. The child is a `pnpm` wrapper that spawns Vite as its own
+      // child; signalling only the wrapper leaves Vite orphaned on the port.
+      detached: true,
       cwd: MONOREPO_ROOT,
       // Omit NODE_OPTIONS so the spawned Vite process does not inherit tsx hooks
       env: { ...process.env, PORT: String(DEV_PORT), NODE_OPTIONS: "" },
@@ -75,16 +78,25 @@ export async function startDevServer(): Promise<DevServerHandle> {
   return {
     stop: () =>
       new Promise<void>((resolve) => {
-        if (child.exitCode !== null) {
+        const pid = child.pid;
+        if (child.exitCode !== null || pid === undefined) {
           resolve();
           return;
         }
-        const killTimer = setTimeout(() => child.kill("SIGKILL"), 5_000);
+        // Kill the process group (negative pid) so Vite dies with its wrapper.
+        const killGroup = (signal: NodeJS.Signals) => {
+          try {
+            process.kill(-pid, signal);
+          } catch {
+            // group already gone
+          }
+        };
+        const killTimer = setTimeout(() => killGroup("SIGKILL"), 5_000);
         child.once("exit", () => {
           clearTimeout(killTimer);
           resolve();
         });
-        child.kill("SIGTERM");
+        killGroup("SIGTERM");
       }),
   };
 }
