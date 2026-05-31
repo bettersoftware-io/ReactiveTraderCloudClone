@@ -50,8 +50,7 @@ export class PlaywrightBlotterTable implements BlotterTablePO {
   async isFirstRowVisible(): Promise<boolean> {
     return await this.firstRow().isVisible();
   }
-  async tableContainsText(text: string): Promise<boolean> {
-    const content = await this.locator().textContent() ?? "";
-    return content.includes(text);
+  async expectContainsText(text: string, timeoutMs: number): Promise<void> {
+    await expect(this.locator()).toContainText(text, { timeout: timeoutMs });
   }
 }

@@ -94,8 +94,16 @@ export class CypressBlotterTable implements BlotterTablePO {
       }) as unknown as Promise<boolean>;
   }
 
-  tableContainsText(text: string): Promise<boolean> {
-    return this.tableEl()
-      .then(($el) => $el.text().includes(text)) as unknown as Promise<boolean>;
+  expectContainsText(text: string, timeoutMs: number): Promise<void> {
+    // A trade reaches the blotter only after an in-app rxjs timer settles the
+    // execution (≤ NORMAL_MAX_DELAY_MS, 2s, in simulator mode). Under the
+    // cucumber-cypress runner the app's timers are starved while a bare
+    // cy.get().should() retries — verified: 10s of retry advances the settle
+    // timer by 0ms — so the trade never lands and the assertion always fails.
+    // cy.wait() yields the event loop so the settle timer fires; the should()
+    // below then confirms the text (with its own retry for the DOM render).
+    cy.wait(2_500);
+    return cy.get(`[data-testid="${TESTIDS.blotter.table}"]`, { timeout: timeoutMs })
+      .should("contain.text", text) as unknown as Promise<void>;
   }
 }

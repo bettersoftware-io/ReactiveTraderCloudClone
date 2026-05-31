@@ -71,19 +71,13 @@ export function setNotionalAndBuy(ctx: TestContext, value: string): void {
 }
 
 export function expectBlotterContainsText(ctx: TestContext, text: string): void {
-  cy.wait(2_000);
-  // Try the raw text first, then locale-formatted (e.g. "1000000" → "1,000,000")
-  const formatted = Number.isFinite(Number(text))
+  // The blotter renders a numeric notional locale-formatted ("1000000" →
+  // "1,000,000"); assert on the formatted form (non-numeric text is unchanged).
+  // expectContainsText uses cy.should auto-retry — no fixed cy.wait, no race.
+  const expected = Number.isFinite(Number(text))
     ? Number(text).toLocaleString("en-US", { maximumFractionDigits: 0 })
     : text;
-  chainable(ctx.po.blotterTable.tableContainsText(text))
-    .then((rawFound) => {
-      if (rawFound) return;
-      chainable(ctx.po.blotterTable.tableContainsText(formatted))
-        .then((fmtFound) => {
-          assertTrue(fmtFound, `blotter does not contain text "${text}" (also tried "${formatted}")`);
-        });
-    });
+  void ctx.po.blotterTable.expectContainsText(expected, 10_000);
 }
 
 export function clickBuyOnGbpjpy(ctx: TestContext): void {
@@ -91,7 +85,5 @@ export function clickBuyOnGbpjpy(ctx: TestContext): void {
 }
 
 export function expectAtLeastOneRejectionInBlotter(ctx: TestContext): void {
-  cy.wait(3_000);
-  chainable(ctx.po.blotterTable.tableContainsText("Rejected"))
-    .then((v) => assertTrue(v, 'blotter does not contain any "Rejected" trade'));
+  void ctx.po.blotterTable.expectContainsText("Rejected", 10_000);
 }

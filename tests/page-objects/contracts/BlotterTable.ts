@@ -10,6 +10,12 @@ export interface BlotterTablePO {
   hoverFirstRow(): Promise<void>;
   firstRowBackgroundColor(): Promise<string>;
   isFirstRowVisible(): Promise<boolean>;
-  /** Return true if the blotter table's text content contains the given string. */
-  tableContainsText(text: string): Promise<boolean>;
+  /**
+   * Assert, retrying up to `timeoutMs`, that the blotter table's text content
+   * contains the given string. The assertion must run in the driver's own
+   * retry/wait machinery (Cypress command queue / Playwright expect) — not via a
+   * fixed sleep + JS-side check, which is flaky and, under the Cypress cucumber
+   * shim, leaks a failure as an unhandled rejection onto a later scenario.
+   */
+  expectContainsText(text: string, timeoutMs: number): Promise<void>;
 }

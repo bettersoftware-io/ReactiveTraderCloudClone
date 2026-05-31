@@ -69,15 +69,16 @@ export async function setNotionalAndBuy(ctx: TestContext, value: string): Promis
 }
 
 export async function expectBlotterContainsText(ctx: TestContext, text: string): Promise<void> {
-  // Wait briefly for the trade to appear in the blotter
-  await new Promise((r) => setTimeout(r, 2_000));
-  // Try the raw text first, then locale-formatted (e.g. "1000000" → "1,000,000")
-  const formatted = Number.isFinite(Number(text))
+  // The blotter renders a numeric notional locale-formatted (e.g. "1000000" →
+  // "1,000,000"), so assert on the formatted form (non-numeric text passes
+  // through unchanged). expectContainsText retries until the trade settles into
+  // the blotter — no fixed sleep. Under Cypress the retry runs in the command
+  // queue (a synthetic delay + JS-side assert would leak as an unhandled
+  // rejection onto a later scenario).
+  const expected = Number.isFinite(Number(text))
     ? Number(text).toLocaleString("en-US", { maximumFractionDigits: 0 })
     : text;
-  const rawFound = await ctx.po.blotterTable.tableContainsText(text);
-  const fmtFound = await ctx.po.blotterTable.tableContainsText(formatted);
-  assertTrue(rawFound || fmtFound, `blotter does not contain text "${text}" (also tried "${formatted}")`);
+  await ctx.po.blotterTable.expectContainsText(expected, 10_000);
 }
 
 export async function clickBuyOnGbpjpy(ctx: TestContext): Promise<void> {
@@ -88,8 +89,6 @@ export async function clickBuyOnGbpjpy(ctx: TestContext): Promise<void> {
 
 export async function expectAtLeastOneRejectionInBlotter(ctx: TestContext): Promise<void> {
   // After a GBPJPY buy, verify the blotter shows at least one Rejected trade.
-  // Wait briefly for the trade to appear.
-  await new Promise((r) => setTimeout(r, 3_000));
-  const found = await ctx.po.blotterTable.tableContainsText("Rejected");
-  assertTrue(found, 'blotter does not contain any "Rejected" trade');
+  // Retries until it settles in (no fixed sleep).
+  await ctx.po.blotterTable.expectContainsText("Rejected", 10_000);
 }
