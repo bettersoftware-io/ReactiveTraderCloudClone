@@ -100,13 +100,15 @@ Everything below is wired through Turborepo, so runs are cached and incremental.
 ```bash
 pnpm typecheck                    # tsc --noEmit across every package
 pnpm test                         # unit tests (Vitest) across every package
-pnpm test:e2e                     # gates, then eight runners, then two full-stack smokes
+pnpm test:e2e                     # gates, then all 10 suites in parallel (8 runners + 2 smokes)
 pnpm --filter @rtc/tests gates    # architectural "grep gates" only
 ```
 
 `pnpm test:e2e` is the full behavioural suite: it runs the gates first, then
-drives all eight runners, then the two full-stack smokes (see below), reporting
-pass/fail per step. To run the entire verification stack in one go:
+launches all ten suites — the eight runners and the two full-stack smokes (see
+below) — **in parallel**, buffering each suite's output and printing a pass/fail
+summary at the end (non-zero exit if any fails). Wall-clock time is the slowest
+single suite, not the sum. To run the entire verification stack in one go:
 
 ```bash
 pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e
@@ -124,22 +126,28 @@ No — every step boots whatever it needs and tears it down afterwards, so
 
 - The **eight runners** test the client against **in-process domain simulators**
   (`VITE_SERVER_URL` unset) — no backend at all. Each browser runner starts its
-  own Vite frontend on `http://127.0.0.1:3000`; the four presenter peers don't
-  even need a browser.
+  **own** Vite frontend: on a dedicated port during `pnpm test:e2e` (`:3001`–
+  `:3004`, so the four run concurrently), or on `http://127.0.0.1:3000` by
+  default when run standalone (override with `RTC_DEV_PORT`). The four presenter
+  peers don't even need a browser.
 - The **two full-stack smokes** are the only steps that involve the real
   backend, and each starts its own server (and, for the browser smoke, its own
   client) on dedicated ports.
 
-> **Port 3000 must be free.** A browser runner refuses to reuse a server it
-> didn't start: if something is already on `:3000` it fails immediately rather
-> than running the tests against an unknown server (a leftover dev server, or a
-> hand-started `pnpm dev` that may be in WS-real mode) — which otherwise causes
-> confusing, misattributed failures. To free the port, run
-> `pnpm --filter @rtc/tests port:free` — a cross-platform helper that probes for
-> `lsof`, `ss`, or `fuser` (whichever your machine has; macOS ships `lsof`, our
-> linuxkit/CI images often ship only `ss`) and kills the listener. The sole exception is
-> `pnpm test:e2e`, which deliberately starts **one** shared simulator-mode
-> server and signals its child runners (via `RTC_DEV_SERVER_SHARED`) to reuse it.
+> **The target port must be free.** A browser runner refuses to reuse a server
+> it didn't start: if something is already on its port it fails immediately
+> rather than running the tests against an unknown server (a leftover dev server,
+> or a hand-started `pnpm dev` that may be in WS-real mode) — which otherwise
+> causes confusing, misattributed failures. `pnpm test:e2e` sidesteps contention
+> by giving each browser suite its own port (`:3001`–`:3004`); a standalone
+> runner uses `:3000` unless you set `RTC_DEV_PORT`. Within the Cucumber+Playwright
+> suite, its parallel workers reuse the one server their runner started (signalled
+> via `RTC_DEV_SERVER_SHARED`) rather than each binding the port. To free a port,
+> run `pnpm --filter @rtc/tests port:free` (or
+> `RTC_DEV_PORT=3002 pnpm --filter @rtc/tests port:free` for a specific one) — a
+> cross-platform helper that probes for `lsof`, `ss`, or `fuser` (whichever your
+> machine has; macOS ships `lsof`, our linuxkit/CI images often ship only `ss`)
+> and kills the listener.
 
 ### Scope: what the eight runners do *not* cover
 
@@ -161,8 +169,8 @@ covered separately by two layers:
 ### Running individual test runners
 
 All runners are scripts in the `@rtc/tests` package; run any one in isolation
-with a filter (each browser runner starts its own frontend on `:3000`, which
-must be free — see the port note above):
+with a filter (each browser runner starts its own frontend on `:3000` by default
+— must be free; override with `RTC_DEV_PORT` — see the port note above):
 
 ```bash
 # Browser peers (drive the real UI against simulators)
@@ -196,8 +204,7 @@ exercised by **eight independent runners** so they can be compared head-to-head:
 
 All eight run against in-process simulators; on top of them the **two full-stack
 smokes** (above) exercise the real backend end to end. `pnpm test:e2e` runs the
-gates, then all eight runners, then both smokes, exiting non-zero if any step
-fails. The **24 grep-based architectural gates** (`pnpm gates`, also run first by
+gates, then all ten suites in parallel, exiting non-zero if any fails. The **24 grep-based architectural gates** (`pnpm gates`, also run first by
 `test:e2e`) assert structural invariants that types alone can't — e.g. the
 dependency rule, layering boundaries, and parity between the spec scenarios and
 the tests that implement them. See
