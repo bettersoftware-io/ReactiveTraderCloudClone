@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ConnectionEvent } from "@rtc/domain";
 import { WsAdapter } from "./WsAdapter";
 
+let lastMock: MockWebSocket;
+
 class MockWebSocket {
   static OPEN = 1;
   static constructed = 0;
@@ -15,22 +17,20 @@ class MockWebSocket {
   close = vi.fn();
   constructor() {
     MockWebSocket.constructed++;
+    // Capture the most recently constructed socket so tests can drive its
+    // event handlers. WsAdapter does `new WebSocket(url)`, so a constructable
+    // stub is required — vitest 4 forwards `new` to the stubbed global, and an
+    // arrow `mockImplementation` is not a constructor.
+    lastMock = this;
   }
 }
-
-let lastMock: MockWebSocket;
 
 beforeEach(() => {
   vi.useFakeTimers();
   MockWebSocket.constructed = 0;
-  const WebSocketStub = vi.fn().mockImplementation(() => {
-    lastMock = new MockWebSocket();
-    return lastMock;
-  });
-  // The real global WebSocket constructor carries a static OPEN (=1); mirror it
+  // The class carries a static OPEN (=1) like the real WebSocket constructor,
   // so WsAdapter.send()'s readyState check behaves as it does in a browser/Node.
-  (WebSocketStub as unknown as { OPEN: number }).OPEN = MockWebSocket.OPEN;
-  vi.stubGlobal("WebSocket", WebSocketStub);
+  vi.stubGlobal("WebSocket", MockWebSocket);
 });
 afterEach(() => {
   vi.unstubAllGlobals();
