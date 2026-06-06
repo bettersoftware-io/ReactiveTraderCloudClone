@@ -33,6 +33,25 @@ const analyticsData: PositionUpdates = {
   ],
 };
 
+const gbpusd: CurrencyPair = {
+  symbol: "GBPUSD", ratePrecision: 5, pipsPosition: 4,
+  base: "GBP", terms: "USD", defaultNotional: 1_000_000,
+};
+const usdjpy: CurrencyPair = {
+  symbol: "USDJPY", ratePrecision: 3, pipsPosition: 2,
+  base: "USD", terms: "JPY", defaultNotional: 1_000_000,
+};
+const gbpusdPrice: Price = {
+  symbol: "GBPUSD", bid: 1.26410, ask: 1.26428, mid: 1.26419,
+  valueDate: "2026-06-08", creationTimestamp: 1_750_000_000_000,
+  movementType: PriceMovementType.DOWN, spread: "1.8",
+};
+const usdjpyPrice: Price = {
+  symbol: "USDJPY", bid: 151.203, ask: 151.219, mid: 151.211,
+  valueDate: "2026-06-08", creationTimestamp: 1_750_000_000_000,
+  movementType: PriceMovementType.UP, spread: "1.6",
+};
+
 export const fixtures: Record<string, AppData> = {
   "connection-connected": makeAppData({
     connectionStatus: ConnectionStatus.CONNECTED,
@@ -52,5 +71,9 @@ export const fixtures: Record<string, AppData> = {
   "analytics-loading": makeAppData({ analytics: null }),
   "connection-offline": makeAppData({
     connectionStatus: ConnectionStatus.OFFLINE_DISCONNECTED,
+  }),
+  "live-rates-populated": makeAppData({
+    currencyPairs: [eurusd, gbpusd, usdjpy],
+    prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
   }),
 };
