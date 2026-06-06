@@ -76,4 +76,10 @@ export const fixtures: Record<string, AppData> = {
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
   }),
+  "app-fx": makeAppData({
+    currencyPairs: [eurusd, gbpusd, usdjpy],
+    prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
+    analytics: analyticsData,
+    connectionStatus: ConnectionStatus.CONNECTED,
+  }),
 };

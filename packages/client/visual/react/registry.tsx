@@ -4,6 +4,7 @@ import { Tile } from "../../src/ui/fx/liveRates/tile/Tile";
 import { AnalyticsPanel } from "../../src/ui/fx/analytics/AnalyticsPanel";
 import { ConnectionOverlay } from "../../src/ui/shell/connection/ConnectionOverlay";
 import { LiveRatesPanel } from "../../src/ui/fx/liveRates/LiveRatesPanel";
+import { App } from "../../src/ui/App";
 import { fixtures } from "../shared/fixtures";
 
 // Maps a neutral componentKey to a concrete React element, given the scenario's
@@ -18,4 +19,5 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   AnalyticsPanel: () => <AnalyticsPanel />,
   ConnectionOverlay: () => <ConnectionOverlay />,
   LiveRatesPanel: () => <LiveRatesPanel />,
+  App: () => <App />,
 };

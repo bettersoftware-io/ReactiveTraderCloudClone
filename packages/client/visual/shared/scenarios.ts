@@ -20,4 +20,5 @@ export const scenarios: Record<string, Scenario> = {
   "analytics/loading": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-loading" },
   "connection-overlay/offline": { componentKey: "ConnectionOverlay", fixtureKey: "connection-offline" },
   "live-rates/populated": { componentKey: "LiveRatesPanel", fixtureKey: "live-rates-populated" },
+  "app/fx": { componentKey: "App", fixtureKey: "app-fx" },
 };

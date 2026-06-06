@@ -5,6 +5,10 @@ import { fixtures } from "../shared/fixtures";
 import { buildFakeHooks } from "./buildFakeHooks";
 import { registry } from "./registry";
 
+// Components that paint their own full-height/viewport container and must not
+// sit inside the padded inline-block wrapper used for component-level shots.
+const FULL_BLEED = new Set(["App"]);
+
 export function VisualScenario({ name }: { name: string }) {
   const scenario = scenarios[name];
   if (!scenario) throw new Error(`Unknown visual scenario: ${name}`);
@@ -12,6 +16,16 @@ export function VisualScenario({ name }: { name: string }) {
   if (!data) throw new Error(`Unknown fixture: ${scenario.fixtureKey}`);
   const render = registry[scenario.componentKey];
   if (!render) throw new Error(`Unknown component: ${scenario.componentKey}`);
+
+  if (FULL_BLEED.has(scenario.componentKey)) {
+    return (
+      <ThemeProvider>
+        <HooksProvider hooks={buildFakeHooks(data)}>
+          {render(scenario.fixtureKey)}
+        </HooksProvider>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider>
