@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { ConnectionStatusBar } from "../../src/ui/shell/connection/ConnectionStatusBar";
 import { Tile } from "../../src/ui/fx/liveRates/tile/Tile";
+import { AnalyticsPanel } from "../../src/ui/fx/analytics/AnalyticsPanel";
 import { fixtures } from "../shared/fixtures";
 
 // Maps a neutral componentKey to a concrete React element, given the scenario's
@@ -12,4 +13,5 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     const pair = fixtures[fixtureKey].currencyPairs[0];
     return <Tile pair={pair} showChart={false} />;
   },
+  AnalyticsPanel: () => <AnalyticsPanel />,
 };

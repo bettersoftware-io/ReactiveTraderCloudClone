@@ -16,4 +16,6 @@ export const scenarios: Record<string, Scenario> = {
   },
   "tile/eurusd-up": { componentKey: "Tile", fixtureKey: "tile-eurusd-up" },
   "tile/loading": { componentKey: "Tile", fixtureKey: "tile-loading" },
+  "analytics/populated": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-populated" },
+  "analytics/loading": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-loading" },
 };
