@@ -43,9 +43,9 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^4",
-    "jsdom": "^25",
-    "vite": "^6",
-    "vitest": "^3"
+    "@vitejs/plugin-react": "^6",
+    "jsdom": "^29",
+    "vite": "^8",
+    "vitest": "^4"
   }
 }

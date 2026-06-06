@@ -42,6 +42,6 @@
     "quickpickle": "^1.11",
     "tsx": "^4.19.0",
     "typescript": "^5.8",
-    "vitest": "^3.2"
+    "vitest": "^4"
   }
 }
