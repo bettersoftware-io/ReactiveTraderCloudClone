@@ -17,7 +17,8 @@ export default defineConfig({
   retries: 0,
   reporter: process.env.CI ? "line" : "list",
   use: {
-    viewport: { width: 1280, height: 800 },
+    // Desktop Chrome's 1280×720 viewport (from the project's device descriptor)
+    // applies; no explicit override needed.
     ctViteConfig: {
       plugins: [react()],
       resolve: { alias: { "@ui-harness": uiHarness } },

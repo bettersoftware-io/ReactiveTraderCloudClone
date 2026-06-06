@@ -3,7 +3,7 @@
 // framework-agnostic, so plain-Playwright and vitest-browser share this table.
 // CT specs do not use it — they were hand-written first and stay as-is.
 
-export interface ScenarioAction {
+export type ScenarioAction = {
   /** Screenshot the whole page (full App or a fixed-position overlay) rather
    *  than just the #scenario-root component box. */
   readonly fullPage?: boolean;
@@ -13,10 +13,17 @@ export interface ScenarioAction {
   readonly click?: string;
   /** Visible text to wait for after the click, proving the view switched. */
   readonly waitForText?: string;
-  /** A testid whose aria-label must equal `expectAriaLabel` before capture. */
-  readonly assertAriaLabelOf?: string;
-  readonly expectAriaLabel?: string;
-}
+} & (
+  | {
+      /** A testid whose aria-label must equal `expectAriaLabel` before capture. */
+      readonly assertAriaLabelOf?: undefined;
+      readonly expectAriaLabel?: undefined;
+    }
+  | {
+      readonly assertAriaLabelOf: string;
+      readonly expectAriaLabel: string;
+    }
+);
 
 // Keyed by scenario name (see visual/shared/scenarios.ts). Absent key == a
 // component-level shot with no interaction.

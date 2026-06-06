@@ -13,7 +13,8 @@ export default defineConfig({
   reporter: process.env.CI ? "line" : "list",
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
-    viewport: { width: 1280, height: 800 },
+    // Desktop Chrome's 1280×720 viewport applies (the device descriptor below
+    // sets it); kept consistent with the other runners.
     ...devices["Desktop Chrome"],
   },
   webServer: {

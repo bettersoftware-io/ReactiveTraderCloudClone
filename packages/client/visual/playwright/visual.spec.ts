@@ -27,10 +27,10 @@ for (const name of Object.keys(scenarios)) {
     if (action.waitForText) {
       await expect(page.getByText(action.waitForText)).toBeVisible();
     }
-    if (action.assertAriaLabelOf) {
+    if (action.assertAriaLabelOf !== undefined) {
       await expect(page.getByTestId(action.assertAriaLabelOf)).toHaveAttribute(
         "aria-label",
-        action.expectAriaLabel!,
+        action.expectAriaLabel,
       );
     }
 
