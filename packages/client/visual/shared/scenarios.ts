@@ -21,4 +21,16 @@ export const scenarios: Record<string, Scenario> = {
   "connection-overlay/offline": { componentKey: "ConnectionOverlay", fixtureKey: "connection-offline" },
   "live-rates/populated": { componentKey: "LiveRatesPanel", fixtureKey: "live-rates-populated" },
   "app/fx": { componentKey: "App", fixtureKey: "app-fx" },
+  // FX blotter populated with trades (the app/fx page only ever shows it empty).
+  "fx-blotter/populated": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  // Credit tab — component-level views + the full page (Credit tab active).
+  "credit/rfq-tiles": { componentKey: "RfqTilesPanel", fixtureKey: "credit-populated" },
+  "credit/new-rfq": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
+  "credit/blotter": { componentKey: "CreditBlotter", fixtureKey: "credit-populated" },
+  "credit/sell-side": { componentKey: "SellSidePanel", fixtureKey: "credit-populated" },
+  "app/credit": { componentKey: "App", fixtureKey: "credit-populated" },
+  // Admin tab — App with the throughput fetch stubbed by the spec.
+  "app/admin": { componentKey: "App", fixtureKey: "app-fx" },
+  // Light-theme variant of the FX page (spec seeds localStorage rtc-theme=light).
+  "app/fx-light": { componentKey: "App", fixtureKey: "app-fx" },
 };
