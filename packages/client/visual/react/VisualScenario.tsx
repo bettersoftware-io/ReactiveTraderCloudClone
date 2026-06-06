@@ -26,7 +26,7 @@ export function VisualScenario({ name }: { name: string }) {
             display: "inline-block",
           }}
         >
-          {render()}
+          {render(scenario.fixtureKey)}
         </div>
       </HooksProvider>
     </ThemeProvider>

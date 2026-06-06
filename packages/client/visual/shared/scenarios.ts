@@ -14,4 +14,6 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "ConnectionStatusBar",
     fixtureKey: "connection-disconnected",
   },
+  "tile/eurusd-up": { componentKey: "Tile", fixtureKey: "tile-eurusd-up" },
+  "tile/loading": { componentKey: "Tile", fixtureKey: "tile-loading" },
 };
