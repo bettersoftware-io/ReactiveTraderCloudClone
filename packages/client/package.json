@@ -16,6 +16,9 @@
     "build-types": "tsc -p tsconfig.types.json --noCheck",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
+    "test:visual": "playwright test -c playwright-ct.config.ts",
+    "test:visual:update": "playwright test -c playwright-ct.config.ts --update-snapshots",
+    "test:visual:ui": "playwright test -c playwright-ct.config.ts --ui",
     "dev": "vite",
     "clean": "rm -rf dist .turbo *.tsbuildinfo playwright-report test-results",
     "clean:deep": "pnpm run clean && rm -rf node_modules"
@@ -29,6 +32,7 @@
     "rxjs": "^7.8"
   },
   "devDependencies": {
+    "@playwright/experimental-ct-react": "^1.50",
     "@types/node": "^25.5.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
