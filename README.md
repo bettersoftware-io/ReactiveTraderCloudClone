@@ -101,6 +101,7 @@ Everything below is wired through Turborepo, so runs are cached and incremental.
 pnpm typecheck                    # tsc --noEmit across every package
 pnpm test                         # unit tests (Vitest) across every package
 pnpm test:e2e                     # gates, then all 10 suites in parallel (8 runners + 2 smokes)
+pnpm --filter @rtc/client test:visual   # UI visual-diff screenshots (client only)
 pnpm --filter @rtc/tests gates    # architectural "grep gates" only
 ```
 
@@ -118,6 +119,25 @@ pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e
 > `pnpm --filter @rtc/tests gates` (or `pnpm gates` from inside `tests/`).
 > Turborepo caches results; to force a clean run append `-- --force`
 > (e.g. `pnpm test -- --force`) or run `pnpm clean` first.
+
+### Visual-diff tests (a third tier — neither e2e nor integration)
+
+`pnpm --filter @rtc/client test:visual` is a separate tier that screenshots
+`@rtc/client` UI components and pages rendered against **injected fake data**.
+It mounts only `src/ui/**` behind the `HooksProvider` seam — no presenters, no
+domain use cases, no server, no live streams, no timers — so it tests *rendering
+only*, the exact layer a future SolidJS port would replace. The fixtures,
+scenario manifest, and golden PNGs live in a React-free `visual/shared/` core so
+the same baselines can later gate that reimplementation.
+
+```bash
+pnpm --filter @rtc/client test:visual          # compare against committed goldens
+pnpm --filter @rtc/client test:visual:update   # (re)generate goldens — inspect before committing
+pnpm --filter @rtc/client test:visual:ui       # interactive Playwright runner
+```
+
+See `packages/client/visual/README.md` for the layout and the SolidJS porting
+recipe.
 
 ### Do I need to start the servers first?
 
