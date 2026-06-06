@@ -60,6 +60,38 @@ Reasons, in priority order:
   offline-checkout reasons above.
 - **jsdom + jest-image-snapshot:** non-starter; jsdom does not paint.
 
+### Vitest browser mode — attempted (Task 3)
+
+We attempted to stand up a third comparison tier driven by Vitest's
+`@vitest/browser` + `vitest-browser-react`, using the **experimental**
+`expect.element(...).toMatchScreenshot()` matcher. That matcher only ships in
+**Vitest 4**; this repo pins **Vitest 3.2.4**, and the same `vitest` dependency
+backs the unit suite (`src/**/*.test.ts(x)`). The tier was **not adopted** — it
+was dropped at **decision Gate A (the unit-suite guard), before the matcher
+itself was ever exercised**.
+
+Concretely: installing `vitest@4.1.8` / `@vitest/browser@4.1.8` /
+`vitest-browser-react@1.0.1` / `playwright@1.60.0` and re-running
+`pnpm --filter @rtc/client test` broke the existing unit suite — **9 of 69 tests
+failed** (1 of 26 files), all in `src/app/adapters/WsAdapter.test.ts`. The
+failure is a Vitest-4 behavioral change in `vi.stubGlobal`: that test stubs the
+global `WebSocket` with an **arrow function**
+(`vi.stubGlobal("WebSocket", () => { ... return new MockWebSocket(); })`), and on
+v4 the stubbed global is now invoked with `new`, so it throws
+`TypeError: (() => {...}) is not a constructor` at `new WebSocket(this.url)`
+(`WsAdapter.ts:47`). This is unrelated to the visual-diff work and out of scope
+for this tier, so per the task's hard gate we reverted `package.json` +
+`pnpm-lock.yaml` to Vitest 3.2.4, reinstalled, and confirmed the unit suite is
+green again (26 files / 69 tests).
+
+Net: `toMatchScreenshot` was never reached — the v4 prerequisite regressed an
+unrelated, in-scope suite, and the two Playwright tiers (CT and plain) already
+provide the cross-framework golden comparison this matcher would have
+duplicated. Vitest browser mode remains the recommended *driver for a future
+Solid port* (see below); revisiting it cleanly would require first migrating the
+unit suite's global mocks to a v4-compatible form (e.g. stub `WebSocket` with a
+real class rather than an arrow function).
+
 ## Switching the UI framework — is Playwright CT an impediment?
 
 No, *if* you treat the **goldens + the React-free `shared/` manifest** as the
