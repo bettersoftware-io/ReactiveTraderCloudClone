@@ -3,6 +3,20 @@
 Screenshots of the UI layer rendered against injected fake data. No server,
 no presenters, no live streams — the dependency graph stops at HooksProvider.
 
+## Coverage
+
+- **Shell** — connection status bar, offline overlay, header/footer/tabs, theme.
+- **FX** — Tile (price / loading), LiveRatesPanel, AnalyticsPanel, FxBlotter
+  (populated), and the full App on the FX tab (dark **and** light theme).
+- **Credit** — RfqTilesPanel, NewRfqForm, CreditBlotter, SellSidePanel, and the
+  full App on the Credit tab.
+- **Admin** — the App on the Admin tab (the throughput fetch is stubbed in the
+  spec via `page.route`, since `AdminPanel` reads its own hook outside the
+  HooksProvider seam).
+
+Excluded by design: the RFQ-active tile states (countdown / confirmation) are
+timer-driven and non-deterministic, so they are not screenshotted here.
+
 ## Layout
 
 - `shared/` — framework-neutral core. `appData.ts` (data contract),
