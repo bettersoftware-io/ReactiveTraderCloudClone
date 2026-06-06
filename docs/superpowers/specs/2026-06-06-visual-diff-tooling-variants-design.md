@@ -107,13 +107,27 @@ Each scenario's stabilizations must be reproduced with each runner's API:
 test:visual:playwright-ct:react     playwright test -c playwright-ct.config.ts
 test:visual:playwright:react        playwright test -c playwright.config.ts
 test:visual:vitest-browser:react    vitest run -c vitest-browser.config.ts
-test:visual:react                   runs all three that exist
-test:visual                         alias → test:visual:react
+test:visual:react                   all runners for React (the implemented ones)
+test:visual                         EVERYTHING: all frameworks × all runners,
+                                    run concurrently
 ```
 Plus `:update` variants where each runner supports baseline regeneration.
 
+**`test:visual` is the "run everything" entry — not an alias to the React set.**
+Today the only framework is React, so it currently resolves to the React
+runners; the moment a `:solid` set exists it fans out to **react + solid + …**
+and runs them **concurrently**, mirroring the existing `test:e2e` parallel
+run-all orchestrator (per-variant output buffered, pass/fail summary, non-zero
+exit on any failure). `test:visual:<framework>` (e.g. `test:visual:react`) is the
+per-framework entry that `test:visual` fans out over.
+
+> **Perf-measurement caveat:** concurrent runs contend for CPU/GPU and will skew
+> per-runner wall-clock and peak memory. The speed/memory comparison (a separate,
+> out-of-scope effort) must run each variant **in isolation** for fair numbers —
+> `test:visual`'s parallel mode is for fast feedback, not benchmarking.
+
 `turbo.json`'s `test:visual` task already exists (cache:false); it will invoke
-the aggregate.
+the run-everything aggregate.
 
 ## Data flow (all runners)
 
