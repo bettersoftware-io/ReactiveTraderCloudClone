@@ -1,0 +1,34 @@
+import { EMPTY, type Observable } from "rxjs";
+import {
+  type CurrencyPair,
+  type ExecuteTradeInput, type ExecuteTradeResult, type CreateRfqInput,
+  type RfqQuoteResult, type QuoteRequest,
+} from "@rtc/domain";
+import type { AppHooks } from "../../src/ui/hooks/createAppHooks";
+import type { AppData } from "../shared/appData";
+
+export function buildFakeHooks(data: AppData): AppHooks {
+  return {
+    usePrice: (pair: CurrencyPair) => data.prices[pair.symbol] ?? null,
+    usePriceHistory: (symbol: string) => data.priceHistory[symbol] ?? [],
+    useTrades: () => data.trades,
+    useAnalytics: () => data.analytics,
+    useRfqs: () => data.rfqs,
+    useQuotesForRfq: (rfqId: number) => data.quotesForRfq[rfqId] ?? [],
+    useAllQuotes: () => data.allQuotes,
+    useCurrencyPairs: () => data.currencyPairs,
+    useInstruments: () => data.instruments,
+    useDealers: () => data.dealers,
+    useConnectionStatus: () => data.connectionStatus,
+    // Commands: no-op observables. Not exercised by static screenshots.
+    useExecuteTrade: () => (_input: ExecuteTradeInput) =>
+      EMPTY as Observable<ExecuteTradeResult>,
+    useCreateRfq: () => (_input: CreateRfqInput) => EMPTY as Observable<number>,
+    useAcceptQuote: () => (_quoteId: number) => EMPTY as Observable<void>,
+    useCancelRfq: () => (_rfqId: number) => EMPTY as Observable<void>,
+    usePassQuote: () => (_quoteId: number) => EMPTY as Observable<void>,
+    useQuoteRfq: () => (_request: QuoteRequest) => EMPTY as Observable<void>,
+    useRequestRfqQuote: () => (_symbol: string, _pipsPosition: number) =>
+      EMPTY as Observable<RfqQuoteResult>,
+  };
+}

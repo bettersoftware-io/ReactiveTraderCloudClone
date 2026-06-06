@@ -1,0 +1,19 @@
+{
+  // Type-checks the visual-diff harness (visual/) together with the src files
+  // it mounts. The main tsconfig.json restricts rootDir to src, so the visual
+  // tier — which lives outside src and imports both @rtc/domain and ../../src —
+  // needs its own no-emit program for `pnpm typecheck` to catch drift between
+  // buildFakeHooks and the AppHooks interface.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["src", "visual"],
+  "references": [{ "path": "../domain" }, { "path": "../shared" }]
+}

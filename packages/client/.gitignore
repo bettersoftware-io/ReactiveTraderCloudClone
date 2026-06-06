@@ -1,0 +1,5 @@
+playwright-report/
+test-results/
+playwright/.cache/
+visual/__screenshots__/**/*-actual.png
+visual/__screenshots__/**/*-diff.png
