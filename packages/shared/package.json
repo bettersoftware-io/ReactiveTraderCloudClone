@@ -27,6 +27,6 @@
     "@rtc/domain": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^3"
+    "vitest": "^4"
   }
 }

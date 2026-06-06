@@ -27,6 +27,6 @@
     "rxjs": "^7.8"
   },
   "devDependencies": {
-    "vitest": "^3"
+    "vitest": "^4"
   }
 }

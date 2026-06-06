@@ -20,6 +20,14 @@ export default defineConfig({
     // Desktop Chrome's 1280×720 viewport (from the project's device descriptor)
     // applies; no explicit override needed.
     ctViteConfig: {
+      // Version-skew note (load-bearing): `react()` here is the app's
+      // @vitejs/plugin-react@6 (peers vite ^8), but Playwright CT bundles this
+      // harness with its OWN privately-pinned vite@6.4.1 — not the app's vite 8.
+      // The lockfile does NOT protect this coupling (it's config-injected, not a
+      // declared peer edge), so it rests on empirical green: the visual suite
+      // passes 2/2 today. If a future plugin-react@6.x patch starts using a
+      // vite-8-only build API, or a Playwright CT bump moves its bundled vite,
+      // this runner can break with no package.json/lockfile change to warn you.
       plugins: [react()],
       resolve: { alias: { "@ui-harness": uiHarness } },
     },
