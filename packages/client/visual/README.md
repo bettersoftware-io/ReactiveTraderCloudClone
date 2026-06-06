@@ -56,3 +56,8 @@ The goal: run the **same** scenarios and match the **same** goldens.
 
 Keep the contract in the data (`shared/`) and the goldens — not in the
 React-shaped `AppHooks` interface, which each framework adapts to its own model.
+
+For *why Playwright CT* and whether it impedes a framework switch (it doesn't,
+if you treat the goldens as the contract — but pick the driver per target; the
+official Solid CT adapter lags), see
+[`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md).
