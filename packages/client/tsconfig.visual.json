@@ -12,7 +12,12 @@
     "declarationMap": false,
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@ui-harness": ["visual/react"],
+      "@ui-harness/*": ["visual/react/*"]
+    }
   },
   "include": ["src", "visual"],
   "references": [{ "path": "../domain" }, { "path": "../shared" }]

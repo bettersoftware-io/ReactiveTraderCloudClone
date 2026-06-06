@@ -31,6 +31,7 @@ export function VisualScenario({ name }: { name: string }) {
     <ThemeProvider>
       <HooksProvider hooks={buildFakeHooks(data)}>
         <div
+          data-testid="scenario-root"
           style={{
             // ThemeProvider sets CSS vars on <html>; paint a real backdrop so
             // component-level shots aren't on default white.
