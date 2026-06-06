@@ -50,4 +50,7 @@ export const fixtures: Record<string, AppData> = {
   }),
   "analytics-populated": makeAppData({ analytics: analyticsData }),
   "analytics-loading": makeAppData({ analytics: null }),
+  "connection-offline": makeAppData({
+    connectionStatus: ConnectionStatus.OFFLINE_DISCONNECTED,
+  }),
 };
