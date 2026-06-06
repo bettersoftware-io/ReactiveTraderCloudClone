@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/experimental-ct-react";
-import { VisualScenario } from "./react/VisualScenario";
+import { VisualScenario } from "@ui-harness";
 
 test("app/fx", async ({ mount, page }) => {
   await page.addInitScript(() => window.localStorage.clear());

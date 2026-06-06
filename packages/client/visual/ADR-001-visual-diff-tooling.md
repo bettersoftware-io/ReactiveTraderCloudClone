@@ -60,6 +60,60 @@ Reasons, in priority order:
   offline-checkout reasons above.
 - **jsdom + jest-image-snapshot:** non-starter; jsdom does not paint.
 
+### Vitest browser mode — attempted (Task 3)
+
+We attempted to stand up a third comparison tier driven by Vitest's
+`@vitest/browser` + `vitest-browser-react`, using the **experimental**
+`expect.element(...).toMatchScreenshot()` matcher. That matcher only ships in
+**Vitest 4**; this repo pins **Vitest 3.2.4**, and the same `vitest` dependency
+backs the unit suite (`src/**/*.test.ts(x)`). The tier was **not adopted** — it
+was dropped at **decision Gate A (the unit-suite guard), before the matcher
+itself was ever exercised**.
+
+Concretely: installing `vitest@4.1.8` / `@vitest/browser@4.1.8` /
+`vitest-browser-react@1.0.1` / `playwright@1.60.0` and re-running
+`pnpm --filter @rtc/client test` broke the existing unit suite — **9 of 69 tests
+failed** (1 of 26 files), all in `src/app/adapters/WsAdapter.test.ts`. The
+failure is a Vitest-4 behavioral change in `vi.stubGlobal`: that test stubs the
+global `WebSocket` with an **arrow function**
+(`vi.stubGlobal("WebSocket", () => { ... return new MockWebSocket(); })`), and on
+v4 the stubbed global is now invoked with `new`, so it throws
+`TypeError: (() => {...}) is not a constructor` at `new WebSocket(this.url)`
+(`WsAdapter.ts:47`). This is unrelated to the visual-diff work and out of scope
+for this tier, so per the task's hard gate we reverted `package.json` +
+`pnpm-lock.yaml` to Vitest 3.2.4, reinstalled, and confirmed the unit suite is
+green again (26 files / 69 tests).
+
+Net: `toMatchScreenshot` was never reached — the v4 prerequisite regressed an
+unrelated, in-scope suite, and the two Playwright tiers (CT and plain) already
+provide the cross-framework golden comparison this matcher would have
+duplicated. Vitest browser mode remains the recommended *driver for a future
+Solid port* (see below); revisiting it cleanly would require first migrating the
+unit suite's global mocks to a v4-compatible form (e.g. stub `WebSocket` with a
+real class rather than an arrow function).
+
+## Runner comparison
+
+Two runners are currently implemented (vitest-browser was attempted and dropped —
+see "Vitest browser mode — attempted (Task 3)" above).
+
+| | **playwright-ct** (Tier 1) | **playwright** (Tier 2) |
+|---|---|---|
+| **Mount mechanism** | CT adapter mounts `VisualScenario` inside Chromium via `@playwright/experimental-ct-react` | Plain `page.goto("/?scenario=<name>")` against a tiny served Vite host (`visual/playwright/host/`) |
+| **Screenshot** | `expect(component).toHaveScreenshot(...)` | `expect(page).toHaveScreenshot(...)` |
+| **Spec file** | Framework-specific — imports `@ui-harness`, calls `mount(...)` | **Framework-agnostic** — URL navigation only; reused verbatim for any framework |
+| **Goldens** | `playwright-ct/__screenshots__/react/` | `playwright/__screenshots__/react/` |
+| **Ergonomics** | Tighter feedback loop; components mount in-process; no server needed | Slightly heavier (Vite dev server started per run); but the spec is maximally portable |
+| **Solid-reuse story** | **Alias-swap** — re-point `@ui-harness` in the CT Vite config to `visual/solid/` and swap the CT adapter; one config change | **Verbatim reuse** — `visual.spec.ts` needs zero changes; only the Vite host's `main.tsx` is replaced |
+| **Framework lock-in** | CT adapter per framework (React adapter lags for Solid — see adapter-status table below) | None; depends only on a running Vite server |
+
+**Orchestration:** `tsx visual/run-all.ts` discovers all scripts matching
+`test:visual:<runner>:<framework>` (exactly 4 colon-separated parts) in
+`package.json` and runs them concurrently. `test:visual` and `test:visual:react`
+are alias scripts for the orchestrator. When a `:solid` framework set lands and
+its scripts are added to `package.json`, they are auto-discovered with no change
+to `run-all.ts`.
+
 ## Switching the UI framework — is Playwright CT an impediment?
 
 No, *if* you treat the **goldens + the React-free `shared/` manifest** as the
