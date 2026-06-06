@@ -37,13 +37,19 @@ runners.forEach((r) => console.log(`  • ${r}`));
 
 const run = (script: string) =>
   new Promise<{ script: string; code: number; output: string }>((resolve) => {
+    const chunks: Buffer[] = [];
     const child = spawn("pnpm", ["run", script], { shell: false });
-    let output = "";
-    child.stdout.on("data", (d) => (output += d));
-    child.stderr.on("data", (d) => (output += d));
-    child.on("close", (code) =>
-      resolve({ script, code: code ?? 1, output }),
-    );
+    child.stdout.on("data", (d: Buffer) => chunks.push(d));
+    child.stderr.on("data", (d: Buffer) => chunks.push(d));
+
+    const finish = (code: number) =>
+      resolve({ script, code, output: Buffer.concat(chunks).toString("utf8") });
+
+    child.on("error", (err) => {
+      chunks.push(Buffer.from(`failed to spawn: ${String(err)}\n`));
+      finish(1);
+    });
+    child.on("exit", (code) => finish(code ?? 1));
   });
 
 const results = await Promise.all(runners.map(run));
