@@ -19,6 +19,9 @@
     "test:visual:playwright-ct:react": "playwright test -c playwright-ct.config.ts",
     "test:visual:playwright-ct:react:update": "playwright test -c playwright-ct.config.ts --update-snapshots",
     "test:visual:playwright-ct:react:ui": "playwright test -c playwright-ct.config.ts --ui",
+    "test:visual:playwright:react": "playwright test -c playwright.config.ts",
+    "test:visual:playwright:react:update": "playwright test -c playwright.config.ts --update-snapshots",
+    "test:visual:playwright:react:ui": "playwright test -c playwright.config.ts --ui",
     "dev": "vite",
     "clean": "rm -rf dist .turbo *.tsbuildinfo playwright-report test-results",
     "clean:deep": "pnpm run clean && rm -rf node_modules"
@@ -33,6 +36,7 @@
   },
   "devDependencies": {
     "@playwright/experimental-ct-react": "^1.60.0",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^25.5.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",

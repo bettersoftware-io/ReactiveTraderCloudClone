@@ -39,6 +39,9 @@ importers:
       '@playwright/experimental-ct-react':
         specifier: ^1.60.0
         version: 1.60.0(@types/node@25.5.0)(tsx@4.21.0)(vite@6.4.1(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.4))(yaml@2.8.4)
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
