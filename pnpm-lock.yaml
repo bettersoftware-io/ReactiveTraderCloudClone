@@ -57,6 +57,9 @@ importers:
       jsdom:
         specifier: ^25
         version: 25.0.1
+      tsx:
+        specifier: ^4
+        version: 4.21.0
       vite:
         specifier: ^6
         version: 6.4.1(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.4)
