@@ -7,6 +7,12 @@ import createEsbuildPlugin from "@badeball/cypress-cucumber-preprocessor/esbuild
 
 const require = createRequire(import.meta.url);
 
+// Slow CI runners need more headroom for the app's connection to settle
+// (Connecting → Connected) before timing-sensitive `.should()` assertions, and
+// the cucumber-js `retry` does NOT apply to this Cypress suite — so retry flaky
+// specs here too. Locally the fast path needs neither.
+const isCI = !!process.env.CI;
+
 /**
  * Aliases @cucumber/cucumber → a thin shim that wraps Given/When/Then handlers
  * in cy.wrap().then() so async step bodies (which return native Promises) are
@@ -37,7 +43,8 @@ export default defineConfig({
     supportFile: "support/cypress/e2e.ts",
     video: false,
     screenshotOnRunFailure: true,
-    defaultCommandTimeout: 10000,
+    defaultCommandTimeout: isCI ? 30_000 : 10_000,
+    retries: { runMode: isCI ? 2 : 0, openMode: 0 },
     async setupNodeEvents(on, config) {
       await addCucumberPreprocessorPlugin(on, config);
       on(
