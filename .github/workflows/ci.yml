@@ -105,8 +105,13 @@ jobs:
       - name: Install Playwright Chromium + OS deps
         run: pnpm --filter @rtc/client exec playwright install --with-deps chromium
 
+      # Invoke through turbo (NOT `pnpm --filter`) so the task's declared
+      # dependsOn ["^build"] runs first: the visual harness imports the
+      # @rtc/domain / @rtc/shared workspace libs via their built dist/, which a
+      # fresh CI checkout hasn't produced. A direct `pnpm --filter` call bypasses
+      # turbo's graph and fails to resolve @rtc/domain.
       - name: Visual diffs (playwright-ct + playwright)
-        run: pnpm --filter @rtc/client test:visual
+        run: pnpm test:visual
 
       # On a mismatch, publish the actual-vs-expected images so cross-platform
       # rendering diffs (sandbox goldens vs the ubuntu runner) can be inspected.
@@ -167,10 +172,13 @@ jobs:
       - name: Install xvfb (for parallel headless Cypress)
         run: sudo apt-get update && sudo apt-get install -y xvfb
 
-      # Runs `pnpm gates` then the 10-way parallel orchestrator. CI=true (set by
-      # GitHub) makes cucumber use parallel:1 + retry:2, as configured.
+      # Invoke through turbo (root script = `turbo run test:e2e`, NOT
+      # `pnpm --filter`) so the task's dependsOn ["build"] builds every workspace
+      # lib first — the suites import @rtc/{domain,shared,client,server} via their
+      # dist/. turbo then runs `pnpm gates` + the 10-way parallel orchestrator.
+      # CI=true (set by GitHub) makes cucumber use parallel:1 + retry:2.
       - name: e2e suite (10 parallel suites)
-        run: pnpm --filter @rtc/tests test:e2e
+        run: pnpm test:e2e
 
       - name: Upload e2e artifacts on failure
         if: failure()
