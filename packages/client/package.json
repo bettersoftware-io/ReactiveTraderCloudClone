@@ -27,7 +27,7 @@
     "test:visual-diff:vitest-browser:react": "vitest run -c tests/visual-diff/vitest-browser/vitest-browser.config.ts",
     "test:visual-diff:vitest-browser:react:update": "vitest run -c tests/visual-diff/vitest-browser/vitest-browser.config.ts --update",
     "dev": "vite",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo playwright-report test-results",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports",
     "clean:deep": "pnpm run clean && rm -rf node_modules"
   },
   "dependencies": {
@@ -47,6 +47,7 @@
     "@vitejs/plugin-react": "^6",
     "@vitest/browser": "4.1.8",
     "@vitest/browser-playwright": "4.1.8",
+    "@vitest/ui": "^4.1.8",
     "jsdom": "^29",
     "playwright": "^1.60.0",
     "tsx": "^4",

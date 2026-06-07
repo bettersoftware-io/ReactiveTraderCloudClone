@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "clean": "rm -rf .turbo reports test-results cypress/screenshots cypress/videos",
+    "clean": "rm -rf .turbo reports",
     "clean:deep": "pnpm run clean && rm -rf node_modules",
     "gates": "tsx scripts/grep-gates.ts",
     "port:free": "tsx scripts/free-port.ts",
@@ -36,7 +36,9 @@
     "@sinonjs/fake-timers": "^15.0.0",
     "@types/node": "^25.5.0",
     "@types/ws": "^8.18.1",
+    "@vitest/ui": "^4.1.8",
     "cypress": "15.16.0",
+    "cypress-mochawesome-reporter": "^4.0.2",
     "esbuild": "0.28.0",
     "quickpickle": "^1.11",
     "tsx": "^4.19.0",

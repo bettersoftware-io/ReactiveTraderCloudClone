@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev": "tsx watch src/index.ts",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports",
     "clean:deep": "pnpm run clean && rm -rf node_modules"
   },
   "dependencies": {
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",
+    "@vitest/ui": "^4.1.8",
     "tsx": "^4",
     "vitest": "^4"
   }

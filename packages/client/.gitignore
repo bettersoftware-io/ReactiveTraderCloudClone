@@ -1,5 +1,4 @@
-playwright-report/
-test-results/
+reports/
 tests/visual-diff/playwright-ct/host/.cache/
 tests/visual-diff/**/__screenshots__/**/*-actual.png
 tests/visual-diff/**/__screenshots__/**/*-diff.png

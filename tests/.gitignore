@@ -1,8 +1,2 @@
 node_modules/
 reports/
-cypress/screenshots/
-cypress/videos/
-cucumber-presenter-fake-timers.html
-cucumber-presenter.html
-playwright-cucumber.html
-cypress-cucumber.html
