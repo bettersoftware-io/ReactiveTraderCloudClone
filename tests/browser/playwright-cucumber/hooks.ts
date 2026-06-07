@@ -1,4 +1,4 @@
-import { After, AfterAll, Before, BeforeAll, setDefaultTimeout } from "@cucumber/cucumber";
+import { After, AfterAll, Before, BeforeAll, Status, setDefaultTimeout } from "@cucumber/cucumber";
 import { chromium, type Browser } from "@playwright/test";
 import { startDevServer, type DevServerHandle } from "../../scripts/devServer";
 import { PlaywrightWorld } from "./world";
@@ -25,6 +25,19 @@ Before(async function (this: PlaywrightWorld) {
   await this.open(browser);
 });
 
-After(async function (this: PlaywrightWorld) {
+After(async function (this: PlaywrightWorld, { result }) {
+  // On failure, embed a screenshot into the cucumber HTML report (image/png
+  // attachments render inline under the failed scenario) before the page closes.
+  if (result?.status === Status.FAILED && this.page) {
+    try {
+      await this.attach(
+        await this.page.screenshot({ fullPage: true, timeout: 5_000 }),
+        "image/png",
+      );
+    } catch {
+      // Page gone (open() failed or browser crashed) or screenshot stalled —
+      // skip the attach so the original failure stays visible and close() runs.
+    }
+  }
   await this.close();
 });

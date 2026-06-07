@@ -21,7 +21,7 @@ export default {
     "browser/playwright-cucumber/*.ts",
     "browser/steps/*.steps.ts",
   ],
-  format: ["progress-bar", "html:reports/playwright-cucumber.html", "summary"],
+  format: ["progress-bar", "html:reports/browser/playwright-cucumber/report/index.html", "summary"],
   parallel: process.env.CI ? 1 : 2,
   retry: process.env.CI ? 2 : 0,
   // Browser peers can't inject gateway lifecycle events through the DOM, so the
