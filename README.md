@@ -117,8 +117,35 @@ pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e
 
 > The architectural gates live in the `@rtc/tests` package, so run them with
 > `pnpm --filter @rtc/tests gates` (or `pnpm gates` from inside `tests/`).
-> Turborepo caches results; to force a clean run append `-- --force`
-> (e.g. `pnpm test -- --force`) or run `pnpm clean` first.
+
+### Caching: why `pnpm test` can return instantly
+
+`build`, `typecheck`, and `test` are **cached** Turborepo tasks. Turbo hashes
+each task's inputs (source files, workspace deps, declared env vars); on a hash
+hit it replays the stored logs instead of re-running — that's the instant
+`>>> FULL TURBO` / `cache hit, replaying logs` output. An instant pass means
+the inputs genuinely didn't change, so the result would be the same.
+
+To force a real run anyway (a flaky test, something turbo doesn't hash, or you
+just want to watch it run):
+
+```bash
+pnpm test --force                                       # ignore the cache, run fresh
+TURBO_FORCE=true pnpm test                              # same, via env var
+pnpm exec turbo run test --filter @rtc/client --force   # one package only
+```
+
+Two tasks are deliberately **never cached** (`cache: false` in `turbo.json`):
+`test:e2e` and `test:visual`. They exercise real browsers and servers, and a
+cached "pass" replaying old logs has masked real failures here before.
+
+Two non-solutions to know about:
+
+- `pnpm clean` does **not** force a fresh run — it removes `dist/`, but turbo
+  restores it straight from cache on the next run. `--force` is the tool.
+- `pnpm --filter <pkg> <script>` bypasses turbo entirely (always fresh), but it
+  also skips the task graph, so workspace deps are **not** auto-built — on a
+  fresh checkout run `pnpm build` first.
 
 ### Visual-diff tests (a third tier — neither e2e nor integration)
 

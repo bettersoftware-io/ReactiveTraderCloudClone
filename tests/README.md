@@ -85,6 +85,20 @@ server on port 4123 and drives it directly over a Node WebSocket;
 3100, then runs a Playwright spec against the live UI. Neither uses mocks or
 simulators.
 
+## Caching & freshness
+
+Nothing in this package is ever cache-replayed:
+
+- Root `pnpm test:e2e` runs through Turborepo, but the task is `cache: false`
+  in `turbo.json` — a cached "pass" would replay old logs without running
+  anything, which masked real failures here once. (Unlike the cached unit-test
+  task, there is no `--force` to remember.)
+- The per-suite scripts in the table above, invoked via
+  `pnpm --filter @rtc/tests …`, bypass turbo entirely — always fresh. The flip
+  side: they also skip turbo's task graph, so workspace packages are **not**
+  auto-built; on a fresh checkout run `pnpm build` at the root first
+  (`test:e2e` does this for you via its `dependsOn: ["build"]`).
+
 ## Why so many overlapping suites?
 
 The browser pairs and the four presenter peers intentionally implement the

@@ -25,6 +25,15 @@ for re-implementing this UI in another framework (e.g. SolidJS) with
 pixel-parity; a future `:solid` runner is discovered by `visual/run-all.ts`
 automatically.
 
+Caching: from the repo root, `pnpm test` runs through Turborepo and is
+**cached** — an instant `>>> FULL TURBO` pass is a log replay because no input
+changed; `pnpm test --force` re-runs for real. `pnpm test:visual` is never
+cached (`cache: false` in `turbo.json`). Invoked directly
+(`pnpm --filter @rtc/client test`), scripts bypass turbo — always fresh, but
+workspace deps (`@rtc/domain`, `@rtc/shared`) are not auto-built; run
+`pnpm build` at the root first on a fresh checkout. See "Caching" in the root
+README.
+
 ## Test portfolio
 
 **Unit (`pnpm test`)** — `src/**/*.test.ts(x)`: presenter streams
