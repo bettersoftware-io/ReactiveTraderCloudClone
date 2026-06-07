@@ -23,7 +23,13 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
-  reporter: process.env.CI ? "line" : "list",
+  // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
+  // siblings (the html reporter wipes its own folder). ../../../ = packages/client.
+  reporter: [
+    [process.env.CI ? "line" : "list"],
+    ["html", { outputFolder: "../../../reports/visual-diff/playwright/react/report", open: "never" }],
+  ],
+  outputDir: "../../../reports/visual-diff/playwright/react/artifacts",
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     // Desktop Chrome's 1280×720 viewport applies (the device descriptor below

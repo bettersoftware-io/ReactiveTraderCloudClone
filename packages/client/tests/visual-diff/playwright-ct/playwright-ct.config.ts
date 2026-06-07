@@ -23,7 +23,13 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
-  reporter: process.env.CI ? "line" : "list",
+  // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
+  // siblings (the html reporter wipes its own folder). ../../../ = packages/client.
+  reporter: [
+    [process.env.CI ? "line" : "list"],
+    ["html", { outputFolder: "../../../reports/visual-diff/playwright-ct/react/report", open: "never" }],
+  ],
+  outputDir: "../../../reports/visual-diff/playwright-ct/react/artifacts",
   use: {
     // The CT host template (index.html + index.tsx) lives in-suite as host/,
     // symmetric with the plain-Playwright tier's host/ — instead of CT's default

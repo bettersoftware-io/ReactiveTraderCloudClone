@@ -29,6 +29,14 @@ export default defineConfig({
     // `include` and screenshot paths are stable regardless of invocation cwd.
     root: fileURLToPath(new URL("../../..", import.meta.url)),
     include: ["tests/visual-diff/vitest-browser/**/*.spec.tsx"],
+    // HTML report (additive): test:visual-diff:vitest-browser:react =>
+    // reports/visual-diff/vitest-browser/react/. outputFile is root-relative
+    // (root is pinned to the package dir above). On failure the html reporter
+    // also embeds the actual/diff PNGs into report/data/, so the report is
+    // self-contained; the on-disk failure PNGs are routed next to the goldens
+    // by `resolveDiffPath` below.
+    reporters: ["default", "html"],
+    outputFile: { html: "reports/visual-diff/vitest-browser/react/report/index.html" },
     browser: {
       enabled: true,
       provider: playwright(),
@@ -58,6 +66,34 @@ export default defineConfig({
               baseline,
               testFileName,
               `${arg}-${browserName}${ext}`,
+            ),
+          // Vitest's default `resolveDiffPath` drops failure artifacts into
+          // `.vitest-attachments/…/<arg>-{actual,diff}-<browser>-<platform>.png`,
+          // which the committed gitignore + CI failure-upload globs
+          // (`__screenshots__/**/*-{actual,diff}.png`) never match. Route them
+          // next to the golden they were compared against instead. The kind
+          // suffix (`-reference`/`-actual`/`-diff`) arrives pre-appended to
+          // `arg`, so re-order it after the browser name to mirror the golden's
+          // filename and end in exactly `-actual.png`/`-diff.png`:
+          //   golden  <arg>-chromium.png
+          //   failure <arg>-chromium-actual.png / <arg>-chromium-diff.png
+          // On mismatch Vitest writes ONLY the actual+diff here — the golden
+          // path is written solely on --update or when a golden is missing.
+          resolveDiffPath: ({
+            root,
+            testFileDirectory,
+            testFileName,
+            arg,
+            browserName,
+            ext,
+          }) =>
+            resolve(
+              root,
+              testFileDirectory,
+              "__screenshots__",
+              baseline,
+              testFileName,
+              `${arg.replace(/-(reference|actual|diff)$/, `-${browserName}-$1`)}${ext}`,
             ),
         },
       },
