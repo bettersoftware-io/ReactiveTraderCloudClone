@@ -31,9 +31,9 @@
   "devDependencies": {
     "@badeball/cypress-cucumber-preprocessor": "24.0.1",
     "@bahmutov/cypress-esbuild-preprocessor": "2.2.8",
-    "@cucumber/cucumber": "^11.0.0",
+    "@cucumber/cucumber": "^13.0.0",
     "@playwright/test": "^1.60.0",
-    "@sinonjs/fake-timers": "^14.0.0",
+    "@sinonjs/fake-timers": "^15.0.0",
     "@types/node": "^25.5.0",
     "@types/sinonjs__fake-timers": "^15.0.1",
     "@types/ws": "^8.18.1",

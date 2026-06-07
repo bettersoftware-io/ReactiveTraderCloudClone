@@ -1,7 +1,9 @@
 // tests/support/presenter/cucumber-fake/world.ts
 import { setWorldConstructor, World } from "@cucumber/cucumber";
 import { firstValueFrom, timeout, type Observable, type Subscription } from "rxjs";
-import type { InstalledClock } from "@sinonjs/fake-timers";
+// fake-timers 15 ships its own types and merged InstalledClock into Clock
+// (install() returns Clock, which now carries uninstall()/tickAsync()).
+import type { Clock } from "@sinonjs/fake-timers";
 import type { PresenterCtx } from "../../../scenarios/presenter/_buildApp";
 import { type PresenterScratchpad, newScratchpad } from "../../../scenarios/presenter/_shared/common";
 import type { AwaitHelpers } from "../../../scenarios/presenter/_await";
@@ -9,7 +11,7 @@ import type { AwaitHelpers } from "../../../scenarios/presenter/_await";
 export class FakePresenterWorld extends World implements AwaitHelpers {
   ctx!: PresenterCtx;
   scratch: PresenterScratchpad = newScratchpad();
-  clock!: InstalledClock;
+  clock!: Clock;
   /** Held for the entire scenario to keep shareReplay streams warm. */
   _statusSub?: Subscription;
 
