@@ -20,7 +20,7 @@ timer-driven and non-deterministic, so they are not screenshotted here.
 ## Layout
 
 ```
-visual/
+tests/visual-diff/
   shared/            — Framework-neutral core (no React imports)
     appData.ts       — AppData type: the injectable data contract
     fixtures.ts      — Named fixture data sets
@@ -33,9 +33,14 @@ visual/
   scenarioActions.ts — Runner-neutral per-scenario interaction table (used by
                        URL-driven runners to click/hover before screenshotting)
   playwright-ct/     — Tier 1: Playwright Component Testing specs + goldens
+    playwright-ct.config.ts — in-suite runner config
     __screenshots__/react/
     *.spec.tsx
+    host/            — CT bootstrap template (generated .cache/ is gitignored)
+      index.html
+      index.tsx
   playwright/        — Tier 2: plain Playwright over a Vite host + goldens
+    playwright.config.ts — in-suite runner config
     __screenshots__/react/
     host/            — Tiny Vite app served at /?scenario=<name>
       index.html
@@ -43,6 +48,7 @@ visual/
       vite.config.ts
     visual.spec.ts   — Framework-agnostic URL-navigation spec
   vitest-browser/    — Tier 3: Vitest browser mode (toMatchScreenshot) + goldens
+    vitest-browser.config.ts — in-suite runner config
     __screenshots__/react/
     visual.spec.tsx  — Data-driven spec (shares scenarioActions with Tier 2)
   run-all.ts         — Parallel orchestrator (reads package.json scripts)
@@ -78,11 +84,11 @@ CI reads/writes `react/`. An intentional UI change therefore means updating
 
 ### Tier 1 — Playwright Component Testing (`playwright-ct/`)
 
-Config: `playwright-ct.config.ts`. Uses `@playwright/experimental-ct-react`
+Config: `playwright-ct/playwright-ct.config.ts`. Uses `@playwright/experimental-ct-react`
 to mount `VisualScenario` directly inside a Chromium process via the CT adapter.
-Each spec imports `@ui-harness` (the alias pointing at `visual/react/`) and
+Each spec imports `@ui-harness` (the alias pointing at `react/`) and
 calls `mount(...)` + `expect(component).toHaveScreenshot(...)`. Goldens live in
-`visual/playwright-ct/__screenshots__/react/`.
+`playwright-ct/__screenshots__/react/`.
 
 For a framework port, the `@ui-harness` alias in `playwright-ct.config.ts`'s
 `ctViteConfig` is the single re-point: swap `react/` for `solid/`
@@ -92,26 +98,26 @@ recommended alternative.)
 
 ### Tier 2 — Plain Playwright over a Vite host (`playwright/`)
 
-Config: `playwright.config.ts`. Serves a tiny Vite page (`visual/playwright/host/`)
+Config: `playwright/playwright.config.ts`. Serves a tiny Vite page (`playwright/host/`)
 that reads `?scenario=<name>` from the URL, looks up the scenario in `registry`,
 and mounts `VisualScenario`. Playwright then navigates to `/?scenario=<name>`,
 applies any per-scenario interactions from `scenarioActions.ts`, and calls
-`toHaveScreenshot(...)`. Goldens live in `visual/playwright/__screenshots__/react/`.
+`toHaveScreenshot(...)`. Goldens live in `playwright/__screenshots__/react/`.
 
-`visual/playwright/visual.spec.ts` is **fully framework-agnostic** — it only
+`playwright/visual.spec.ts` is **fully framework-agnostic** — it only
 navigates URLs and takes screenshots. A SolidJS port reuses this spec verbatim;
-only the host at `visual/playwright/host/` needs a new `main.tsx` (or `main.tsx`
+only the host at `playwright/host/` needs a new `main.tsx` (or `main.tsx`
 replaced by a Solid equivalent) that mounts the Solid `VisualScenario`.
 
 ### Tier 3 — Vitest browser mode (`vitest-browser/`)
 
-Config: `vitest-browser.config.ts`. Uses `vitest-browser-react`'s `render(...)`
+Config: `vitest-browser/vitest-browser.config.ts`. Uses `vitest-browser-react`'s `render(...)`
 to mount `VisualScenario` in a real Chromium via the `@vitest/browser-playwright`
 provider, then diffs with Vitest 4's experimental
-`expect.element(...).toMatchScreenshot(...)`. `visual/vitest-browser/visual.spec.tsx`
+`expect.element(...).toMatchScreenshot(...)`. `vitest-browser/visual.spec.tsx`
 is data-driven and **shares the `scenarioActions.ts` table with Tier 2**, so the
 two stay behaviourally in lock-step. Goldens live in
-`visual/vitest-browser/__screenshots__/react/`.
+`vitest-browser/__screenshots__/react/`.
 
 This tier was originally blocked on the Vitest 3→4 upgrade (its matcher is
 v4-only) and was deferred; once Plan A upgraded the repo to Vitest 4 — and the
@@ -132,42 +138,45 @@ this tier is the recommended Solid driver.
 ### Run everything
 
 ```
-pnpm test:visual              # runs all implemented runners concurrently, prints summary
-pnpm test:visual:react        # same (today every runner is :react — identical)
+pnpm test:visual-diff              # runs all implemented runners concurrently, prints summary
+pnpm test:visual-diff:react        # same (today every runner is :react — identical)
 ```
 
 ### Per-runner
 
 ```
-pnpm test:visual:playwright-ct:react          # Tier 1: CT runner
-pnpm test:visual:playwright-ct:react:update   # regenerate Tier 1 goldens
-pnpm test:visual:playwright-ct:react:ui       # Playwright UI for Tier 1
+pnpm test:visual-diff:playwright-ct:react          # Tier 1: CT runner
+pnpm test:visual-diff:playwright-ct:react:update   # regenerate Tier 1 goldens
+pnpm test:visual-diff:playwright-ct:react:ui       # Playwright UI for Tier 1
 
-pnpm test:visual:playwright:react             # Tier 2: URL-driven runner
-pnpm test:visual:playwright:react:update      # regenerate Tier 2 goldens
-pnpm test:visual:playwright:react:ui          # Playwright UI for Tier 2
+pnpm test:visual-diff:playwright:react             # Tier 2: URL-driven runner
+pnpm test:visual-diff:playwright:react:update      # regenerate Tier 2 goldens
+pnpm test:visual-diff:playwright:react:ui          # Playwright UI for Tier 2
 
-pnpm test:visual:vitest-browser:react         # Tier 3: Vitest browser mode
-pnpm test:visual:vitest-browser:react:update  # regenerate Tier 3 goldens
+pnpm test:visual-diff:vitest-browser:react         # Tier 3: Vitest browser mode
+pnpm test:visual-diff:vitest-browser:react:update  # regenerate Tier 3 goldens
 ```
 
-`test:visual` and `test:visual:react` are wired to `tsx visual/run-all.ts`.
-The orchestrator reads `package.json` scripts and discovers every entry matching
-`test:visual:<runner>:<framework>` (exactly four colon-delimited parts). When a
+`test:visual-diff` and `test:visual-diff:react` are wired to
+`tsx tests/visual-diff/run-all.ts`. The orchestrator reads `package.json`
+scripts and discovers every entry matching
+`test:visual-diff:<runner>:<framework>` (exactly four colon-delimited parts). When a
 `:solid` framework set lands (with its own runner scripts), it is auto-discovered
 with no edit to `run-all.ts`.
 
-**Perf caveat:** `test:visual` runs runners concurrently for fast feedback.
+**Perf caveat:** `test:visual-diff` runs runners concurrently for fast feedback.
 Concurrent runs contend for CPU/GPU, so the wall-clock time is NOT a fair
 per-runner benchmark. Run a single runner in isolation to measure actual speed.
 
 ## Type-checking
 
-The harness is type-checked by `pnpm typecheck` via `tsconfig.visual.json`. The
-main `tsconfig.json` restricts `rootDir` to `src`; without the separate visual
-project, drift between `buildFakeHooks` and the `AppHooks` interface would go
-unnoticed (the Playwright CT bundle strips types without checking them). The
-visual tsconfig covers both `src` and `visual`, including `run-all.ts`.
+The harness is type-checked by `pnpm typecheck` via `tsconfig.visual-diff.json`.
+The main `tsconfig.json` restricts `rootDir` to `src`; without the separate
+visual-diff project, drift between `buildFakeHooks` and the `AppHooks` interface
+would go unnoticed (the Playwright CT bundle strips types without checking
+them). The visual-diff tsconfig covers both `src` and `tests` (the whole
+visual-diff suite, including `run-all.ts` — minus
+`playwright-ct/playwright-ct.config.ts`, see the comment in the tsconfig).
 
 ## Porting to another UI framework (e.g. SolidJS)
 
@@ -176,30 +185,31 @@ The goal: run the **same** scenarios and match the **same** goldens.
 **What to reuse verbatim:**
 
 - `shared/` — untouched (or extracted to a shared package)
-- `visual/playwright/visual.spec.ts` — URL-driven, zero framework assumptions
-- `visual/playwright-ct/__screenshots__/react/` and
-  `visual/playwright/__screenshots__/react/` — the canonical (CI-enforced)
+- `playwright/visual.spec.ts` — URL-driven, zero framework assumptions
+- `playwright-ct/__screenshots__/react/` and
+  `playwright/__screenshots__/react/` — the canonical (CI-enforced)
   golden contract (see "Goldens: two committed sets" above; the per-arch
   `react-local/` sets are local-feedback only)
 
 **What to implement for the new framework:**
 
-1. A new `visual/<framework>/` folder with:
+1. A new `<framework>/` folder with:
    - `buildFakeHooks.ts` (or equivalent) — AppData fed into that framework's
      context/store model
    - `registry` — same `componentKey`s mapped to the new components
    - `VisualScenario` wrapper (theme + provider + backdrop)
    - `index.ts` barrel (the `@ui-harness` alias target)
-2. A new `visual/playwright-ct/` CT config if a stable CT adapter exists for
+2. A new `playwright-ct/` CT config if a stable CT adapter exists for
    the framework; otherwise use the plain-Playwright host (Tier 2).
-3. New scripts `test:visual:playwright-ct:<framework>` /
-   `test:visual:playwright:<framework>` in `package.json`. They are discovered
+3. New scripts `test:visual-diff:playwright-ct:<framework>` /
+   `test:visual-diff:playwright:<framework>` in `package.json`. They are discovered
    automatically by `run-all.ts`.
 
 **The single framework seam:**
 
 The `@ui-harness` alias is declared in each runner's Vite config and in
-`tsconfig.visual.json`'s `paths`. Pointing it at `visual/<new-framework>` is
+`tsconfig.visual-diff.json`'s `paths`. Pointing it at
+`tests/visual-diff/<new-framework>` is
 the only structural change. The plain-Playwright `visual.spec.ts` needs **no
 change at all** — it only navigates URLs.
 

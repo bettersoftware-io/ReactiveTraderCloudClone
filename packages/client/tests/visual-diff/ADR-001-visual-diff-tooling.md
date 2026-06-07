@@ -79,7 +79,7 @@ A third comparison tier driven by Vitest's `@vitest/browser` +
 `expect.element(...).toMatchScreenshot()` matcher (Vitest 4). It mounts the React
 harness in a real Chromium via the Playwright provider and diffs against the same
 committed, env-routed goldens as the other tiers
-(`visual/vitest-browser/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/`).
+(`vitest-browser/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/`).
 
 **Previously blocked, now unblocked.** This tier was originally dropped at a
 decision gate because `toMatchScreenshot` needs **Vitest 4**, and at the time the
@@ -122,7 +122,7 @@ prerequisite landed — see "Vitest browser mode — implemented (Tier 3)" above
 
 | | **playwright-ct** (Tier 1) | **playwright** (Tier 2) | **vitest-browser** (Tier 3) |
 |---|---|---|---|
-| **Mount mechanism** | CT adapter mounts `VisualScenario` inside Chromium via `@playwright/experimental-ct-react` | Plain `page.goto("/?scenario=<name>")` against a tiny served Vite host (`visual/playwright/host/`) | `vitest-browser-react` `render(<VisualScenario/>)` in Chromium via the `@vitest/browser-playwright` provider |
+| **Mount mechanism** | CT adapter mounts `VisualScenario` inside Chromium via `@playwright/experimental-ct-react` | Plain `page.goto("/?scenario=<name>")` against a tiny served Vite host (`playwright/host/`) | `vitest-browser-react` `render(<VisualScenario/>)` in Chromium via the `@vitest/browser-playwright` provider |
 | **Screenshot** | `expect(component).toHaveScreenshot(...)` | `expect(page).toHaveScreenshot(...)` | `expect.element(locator).toMatchScreenshot(...)` |
 | **Spec file** | Framework-specific — imports `@ui-harness`, calls `mount(...)` | **Framework-agnostic** — URL navigation only; reused verbatim for any framework | Framework-specific — imports `@ui-harness`, calls `render(...)`; shares the `scenarioActions` table with Tier 2 |
 | **Goldens** | `playwright-ct/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` | `playwright/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` (CI vs local) | `vitest-browser/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` |
@@ -130,9 +130,9 @@ prerequisite landed — see "Vitest browser mode — implemented (Tier 3)" above
 | **Solid-reuse story** | **Alias-swap** — re-point `@ui-harness` in the CT Vite config to `solid/` and swap the CT adapter; one config change | **Verbatim reuse** — `visual.spec.ts` needs zero changes; only the Vite host's `main.tsx` is replaced | **Alias-swap + render shim** — re-point `@ui-harness` and swap `vitest-browser-react` for the framework's `render`; no lagging CT adapter to track |
 | **Framework lock-in** | CT adapter per framework (React adapter lags for Solid — see adapter-status table below) | None; depends only on a running Vite server | `vitest-browser-<framework>` render shim; Vite-native, no separate CT-adapter version to track |
 
-**Orchestration:** `tsx visual/run-all.ts` discovers all scripts matching
-`test:visual:<runner>:<framework>` (exactly 4 colon-separated parts) in
-`package.json` and runs them concurrently. `test:visual` and `test:visual:react`
+**Orchestration:** `tsx tests/visual-diff/run-all.ts` discovers all scripts matching
+`test:visual-diff:<runner>:<framework>` (exactly 4 colon-separated parts) in
+`package.json` and runs them concurrently. `test:visual-diff` and `test:visual-diff:react`
 are alias scripts for the orchestrator. When a `:solid` framework set lands and
 its scripts are added to `package.json`, they are auto-discovered with no change
 to `run-all.ts`.
