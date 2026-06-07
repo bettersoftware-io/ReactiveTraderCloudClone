@@ -1,6 +1,6 @@
 import { After, AfterAll, Before, BeforeAll, setDefaultTimeout } from "@cucumber/cucumber";
 import { chromium, type Browser } from "@playwright/test";
-import { startDevServer, type DevServerHandle } from "../devServer";
+import { startDevServer, type DevServerHandle } from "../../scripts/devServer";
 import { PlaywrightWorld } from "./world";
 
 // Extend the step timeout to 30 s so that multi-step scenarios (e.g. buy
