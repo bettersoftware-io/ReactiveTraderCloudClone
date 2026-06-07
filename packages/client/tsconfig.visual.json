@@ -13,10 +13,12 @@
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node"],
-    "baseUrl": ".",
+    // baseUrl removed for TS6 (deprecated, TS5101). Without baseUrl, `paths`
+    // entries resolve relative to this config file's directory — identical to
+    // the previous `baseUrl: "."` since these mappings were already relative.
     "paths": {
-      "@ui-harness": ["visual/react"],
-      "@ui-harness/*": ["visual/react/*"]
+      "@ui-harness": ["./visual/react"],
+      "@ui-harness/*": ["./visual/react/*"]
     }
   },
   "include": ["src", "visual"],
