@@ -13,7 +13,8 @@
     },
     "test:e2e": {
       "dependsOn": ["build"],
-      "cache": false
+      "cache": false,
+      "passThroughEnv": ["RTC_E2E_MAX_PARALLEL"]
     },
     "test:visual": {
       "dependsOn": ["^build"],

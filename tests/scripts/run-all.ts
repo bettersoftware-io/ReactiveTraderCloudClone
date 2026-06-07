@@ -47,21 +47,55 @@ const browserScripts = [
   "test:browser:raw-cypress",
 ];
 
+// Order matters when a concurrency cap is in effect (see MAX_PARALLEL below):
+// the pool starts suites in array order. Front-load the light, in-process
+// presenter suites and the timing-sensitive full-stack smokes (their WS
+// connection to the real server is starved if it competes with a heavy browser
+// suite on a small CI runner) so they run first, uncontended. The four heavy
+// browser suites (each = a dev server + a real browser) run last. Browser-suite
+// dev-server ports stay fixed regardless of order (baked in via the map index).
 const suites: Suite[] = [
-  ...browserScripts.map((script, i) => ({
-    script,
-    env: { RTC_DEV_PORT: String(BROWSER_BASE_PORT + i) },
-    isolateDisplay: script.includes("cypress"),
-  })),
+  // Full-stack smokes — self-contained on their own ports; quick but timing-sensitive.
+  { script: "test:fullstack:node" },
+  { script: "test:fullstack:browser" },
   // Presenter peers — in-process, no server, mutually independent.
   { script: "test:presenter:cucumber-real" },
   { script: "test:presenter:cucumber-fake" },
   { script: "test:presenter:vitest-fake" },
   { script: "test:presenter:vitest-plain" },
-  // Full-stack smokes — self-contained on their own ports.
-  { script: "test:fullstack:node" },
-  { script: "test:fullstack:browser" },
+  // Heavy browser suites — one dev server + browser each.
+  ...browserScripts.map((script, i) => ({
+    script,
+    env: { RTC_DEV_PORT: String(BROWSER_BASE_PORT + i) },
+    isolateDisplay: script.includes("cypress"),
+  })),
 ];
+
+// Concurrency cap. Unset/invalid → run every suite at once (the default; ideal on
+// a multi-core dev box). On a small CI runner the 10-wide fan-out starves the
+// CPU and trips timing-sensitive suites, so CI sets RTC_E2E_MAX_PARALLEL=2 to run
+// in small batches — slower wall-clock, but reliable.
+const envCap = Number(process.env.RTC_E2E_MAX_PARALLEL);
+const MAX_PARALLEL = Number.isFinite(envCap) && envCap > 0 ? Math.floor(envCap) : suites.length;
+
+// Run `fn` over `items` with at most `limit` in flight at once. Results are kept
+// in input order; each item's own completion logging still fires as it finishes.
+async function mapWithLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const worker = async (): Promise<void> => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await fn(items[index]!);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
 
 interface Result {
   readonly script: string;
@@ -116,20 +150,21 @@ if (process.platform === "linux" && !hasXvfbRun && suites.some((s) => s.isolateD
 }
 
 const overallStart = Date.now();
+if (MAX_PARALLEL < suites.length) {
+  console.log(`(running at most ${MAX_PARALLEL} suite(s) at a time — RTC_E2E_MAX_PARALLEL)`);
+}
 
 // Resolve as each suite finishes so logs flush in completion order, not in a
 // final batch — keeps a long run feeling responsive without interleaving.
-const results = await Promise.all(
-  suites.map((s) =>
-    runSuite(s).then((r) => {
-      const status = r.code === 0 ? "PASS" : "FAIL";
-      console.log(
-        `\n${rule("=")}\n${status}  ${r.script}  (${r.seconds.toFixed(1)}s)\n${rule("=")}`,
-      );
-      process.stdout.write(r.output.endsWith("\n") ? r.output : `${r.output}\n`);
-      return r;
-    }),
-  ),
+const results = await mapWithLimit(suites, MAX_PARALLEL, (s) =>
+  runSuite(s).then((r) => {
+    const status = r.code === 0 ? "PASS" : "FAIL";
+    console.log(
+      `\n${rule("=")}\n${status}  ${r.script}  (${r.seconds.toFixed(1)}s)\n${rule("=")}`,
+    );
+    process.stdout.write(r.output.endsWith("\n") ? r.output : `${r.output}\n`);
+    return r;
+  }),
 );
 
 const failures = results.filter((r) => r.code !== 0);
