@@ -56,13 +56,16 @@ jobs:
       - name: Build workspace libraries
         run: pnpm build
 
-      # Re-render and overwrite the goldens for both runners (browsers are
-      # preinstalled in the image at PLAYWRIGHT_BROWSERS_PATH).
+      # Re-render and overwrite the canonical x86 `react/` goldens for all three
+      # runners (browsers are preinstalled in the image at PLAYWRIGHT_BROWSERS_PATH).
       - name: Regenerate playwright-ct goldens
         run: pnpm --filter @rtc/client test:visual:playwright-ct:react:update
 
       - name: Regenerate playwright goldens
         run: pnpm --filter @rtc/client test:visual:playwright:react:update
+
+      - name: Regenerate vitest-browser goldens
+        run: pnpm --filter @rtc/client test:visual:vitest-browser:react:update
 
       - name: Upload regenerated goldens
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -71,5 +74,6 @@ jobs:
           path: |
             packages/client/visual/playwright-ct/__screenshots__/
             packages/client/visual/playwright/__screenshots__/
+            packages/client/visual/vitest-browser/__screenshots__/
           if-no-files-found: error
           retention-days: 7

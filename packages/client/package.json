@@ -24,6 +24,8 @@
     "test:visual:playwright:react": "playwright test -c playwright.config.ts",
     "test:visual:playwright:react:update": "playwright test -c playwright.config.ts --update-snapshots",
     "test:visual:playwright:react:ui": "playwright test -c playwright.config.ts --ui",
+    "test:visual:vitest-browser:react": "vitest run -c vitest-browser.config.ts",
+    "test:visual:vitest-browser:react:update": "vitest run -c vitest-browser.config.ts --update",
     "dev": "vite",
     "clean": "rm -rf dist .turbo *.tsbuildinfo playwright-report test-results",
     "clean:deep": "pnpm run clean && rm -rf node_modules"
@@ -38,14 +40,18 @@
   },
   "devDependencies": {
     "@playwright/experimental-ct-react": "^1.60.0",
-    "tsx": "^4",
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.5.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6",
+    "@vitest/browser": "4.1.8",
+    "@vitest/browser-playwright": "4.1.8",
     "jsdom": "^29",
+    "playwright": "^1.60.0",
+    "tsx": "^4",
     "vite": "^8",
-    "vitest": "^4"
+    "vitest": "^4",
+    "vitest-browser-react": "^1.0.1"
   }
 }

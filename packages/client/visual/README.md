@@ -42,6 +42,9 @@ visual/
       main.tsx
       vite.config.ts
     visual.spec.ts   — Framework-agnostic URL-navigation spec
+  vitest-browser/    — Tier 3: Vitest browser mode (toMatchScreenshot) + goldens
+    __screenshots__/react/
+    visual.spec.tsx  — Data-driven spec (shares scenarioActions with Tier 2)
   run-all.ts         — Parallel orchestrator (reads package.json scripts)
   ADR-001-visual-diff-tooling.md
   README.md          — this file
@@ -71,7 +74,7 @@ A non-CI run (no `CI` env var) reads/writes the `react-local/<plat>-<arch>` set;
 CI reads/writes `react/`. An intentional UI change therefore means updating
 **both** sets. See ADR-001 → "Cross-platform pixel drift" for the rationale.
 
-## The two implemented runners
+## The three implemented runners
 
 ### Tier 1 — Playwright Component Testing (`playwright-ct/`)
 
@@ -100,21 +103,29 @@ navigates URLs and takes screenshots. A SolidJS port reuses this spec verbatim;
 only the host at `visual/playwright/host/` needs a new `main.tsx` (or `main.tsx`
 replaced by a Solid equivalent) that mounts the Solid `VisualScenario`.
 
-## Attempted and dropped: vitest-browser
+### Tier 3 — Vitest browser mode (`vitest-browser/`)
 
-Vitest browser mode (`@vitest/browser` + `vitest-browser-react`) was evaluated
-as a third comparison tier. The `toMatchScreenshot` matcher it provides only
-ships in **Vitest 4**; this repo pins **Vitest 3.2.4**, and the same `vitest`
-dependency backs the unit suite (`src/**/*.test.ts(x)`). Bumping to v4 regressed
-9 of 69 unit tests in `WsAdapter.test.ts` (a v4 behavioral change in
-`vi.stubGlobal` with arrow-function stubs). The tier was dropped at **Gate A
-(the unit-suite guard)** before `toMatchScreenshot` was ever reached. See the
-"Vitest browser mode — attempted (Task 3)" subsection in
-[`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md) for full
-details.
+Config: `vitest-browser.config.ts`. Uses `vitest-browser-react`'s `render(...)`
+to mount `VisualScenario` in a real Chromium via the `@vitest/browser-playwright`
+provider, then diffs with Vitest 4's experimental
+`expect.element(...).toMatchScreenshot(...)`. `visual/vitest-browser/visual.spec.tsx`
+is data-driven and **shares the `scenarioActions.ts` table with Tier 2**, so the
+two stay behaviourally in lock-step. Goldens live in
+`visual/vitest-browser/__screenshots__/react/`.
 
-vitest-browser is NOT currently part of the suite. There is no vitest-browser
-config, spec, or script.
+This tier was originally blocked on the Vitest 3→4 upgrade (its matcher is
+v4-only) and was deferred; once Plan A upgraded the repo to Vitest 4 — and the
+unit suite's `WebSocket` stub was migrated to a real class — it was built. A few
+v4-API specifics worth knowing (the provider is a factory from
+`@vitest/browser-playwright`; the golden path is set via a custom
+`resolveScreenshotPath`; full-bleed `App` shots target `document.body` since they
+have no `scenario-root`; the admin fetch is stubbed via `window.fetch`) are
+documented in [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md)
+under "Vitest browser mode — implemented (Tier 3)".
+
+For a Solid port, swap the `@ui-harness` alias and `vitest-browser-react` for the
+framework's render shim — there's no lagging CT adapter to track, which is why
+this tier is the recommended Solid driver.
 
 ## Commands
 
@@ -135,6 +146,9 @@ pnpm test:visual:playwright-ct:react:ui       # Playwright UI for Tier 1
 pnpm test:visual:playwright:react             # Tier 2: URL-driven runner
 pnpm test:visual:playwright:react:update      # regenerate Tier 2 goldens
 pnpm test:visual:playwright:react:ui          # Playwright UI for Tier 2
+
+pnpm test:visual:vitest-browser:react         # Tier 3: Vitest browser mode
+pnpm test:visual:vitest-browser:react:update  # regenerate Tier 3 goldens
 ```
 
 `test:visual` and `test:visual:react` are wired to `tsx visual/run-all.ts`.

@@ -59,9 +59,11 @@ Reasons, in priority order:
 ## Alternatives considered
 
 - **Vitest browser mode** (v4): the closest alternative since the repo already
-  runs Vitest. Loses on visual-assertion maturity (`toHaveScreenshot` has
-  masking/threshold/retry-until-stable; Vitest's visual matcher is newer). It is,
-  however, the recommended *driver for a Solid port* — see below.
+  runs Vitest. It was *not* chosen as the primary tier (its `toMatchScreenshot`
+  is newer/less mature than `toHaveScreenshot`'s masking/threshold/retry), but it
+  was later **adopted as a complementary third tier** once the Vitest 4
+  prerequisite landed, and is the recommended *driver for a Solid port* — see
+  "Vitest browser mode — implemented (Tier 3)" below.
 - **Storybook + test-runner / Chromatic:** duplicates the role of
   `scenarios.ts`/`registry.tsx`, adds a large dependency, and (Chromatic) moves
   baselines off-repo.
@@ -70,52 +72,63 @@ Reasons, in priority order:
   offline-checkout reasons above.
 - **jsdom + jest-image-snapshot:** non-starter; jsdom does not paint.
 
-### Vitest browser mode — attempted (Task 3)
+### Vitest browser mode — implemented (Tier 3)
 
-We attempted to stand up a third comparison tier driven by Vitest's
-`@vitest/browser` + `vitest-browser-react`, using the **experimental**
-`expect.element(...).toMatchScreenshot()` matcher. That matcher only ships in
-**Vitest 4**; this repo pins **Vitest 3.2.4**, and the same `vitest` dependency
-backs the unit suite (`src/**/*.test.ts(x)`). The tier was **not adopted** — it
-was dropped at **decision Gate A (the unit-suite guard), before the matcher
-itself was ever exercised**.
+A third comparison tier driven by Vitest's `@vitest/browser` +
+`vitest-browser-react`, using the **experimental**
+`expect.element(...).toMatchScreenshot()` matcher (Vitest 4). It mounts the React
+harness in a real Chromium via the Playwright provider and diffs against the same
+committed, env-routed goldens as the other tiers
+(`visual/vitest-browser/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/`).
 
-Concretely: installing `vitest@4.1.8` / `@vitest/browser@4.1.8` /
-`vitest-browser-react@1.0.1` / `playwright@1.60.0` and re-running
-`pnpm --filter @rtc/client test` broke the existing unit suite — **9 of 69 tests
-failed** (1 of 26 files), all in `src/app/adapters/WsAdapter.test.ts`. The
-failure is a Vitest-4 behavioral change in `vi.stubGlobal`: that test stubs the
-global `WebSocket` with an **arrow function**
-(`vi.stubGlobal("WebSocket", () => { ... return new MockWebSocket(); })`), and on
-v4 the stubbed global is now invoked with `new`, so it throws
-`TypeError: (() => {...}) is not a constructor` at `new WebSocket(this.url)`
-(`WsAdapter.ts:47`). This is unrelated to the visual-diff work and out of scope
-for this tier, so per the task's hard gate we reverted `package.json` +
-`pnpm-lock.yaml` to Vitest 3.2.4, reinstalled, and confirmed the unit suite is
-green again (26 files / 69 tests).
+**Previously blocked, now unblocked.** This tier was originally dropped at a
+decision gate because `toMatchScreenshot` needs **Vitest 4**, and at the time the
+repo pinned **Vitest 3.2.4** sharing one `vitest` dependency with the unit suite.
+Bumping to v4 then regressed `src/app/adapters/WsAdapter.test.ts` (9/69 tests): a
+v4 `vi.stubGlobal` change invokes the stubbed global with `new`, and the test
+stubbed `WebSocket` with an **arrow function** (not a constructor). Both blockers
+are now resolved — Plan A upgraded the repo to `vitest@4.1.8`, and the stub is now
+a real class (`vi.stubGlobal("WebSocket", MockWebSocket)`), the exact v4-safe form
+the original finding prescribed. The unit suite is green on v4 (26 files / 69
+tests), so the tier was built.
 
-Net: `toMatchScreenshot` was never reached — the v4 prerequisite regressed an
-unrelated, in-scope suite, and the two Playwright tiers (CT and plain) already
-provide the cross-framework golden comparison this matcher would have
-duplicated. Vitest browser mode remains the recommended *driver for a future
-Solid port* (see below); revisiting it cleanly would require first migrating the
-unit suite's global mocks to a v4-compatible form (e.g. stub `WebSocket` with a
-real class rather than an arrow function).
+**API specifics (stable Vitest 4.1.8 differs from the early-v4 sketch):**
+
+- **Provider is a factory, not a string.** `browser.provider: "playwright"` is
+  rejected; import `playwright()` from the separate `@vitest/browser-playwright`
+  package and pass the factory.
+- **`screenshotDirectory` mis-resolves custom paths.** The built-in golden-path
+  template resolves a custom `screenshotDirectory` to an absolute path and then
+  mis-joins it under the spec's directory (yielding a mangled `…/Users/…/…`
+  path). We bypass it with a custom `browser.expect.toMatchScreenshot.`
+  `resolveScreenshotPath` that builds the env-routed path deterministically.
+- **Full-page App scenarios have no `scenario-root`.** `VisualScenario` renders
+  full-bleed `App` without the padded wrapper, so component shots target
+  `screen.getByTestId("scenario-root")` while `fullPage` shots target
+  `page.elementLocator(document.body)`.
+- **No `page.route`.** The admin throughput fetch is stubbed by overriding
+  `window.fetch` before the App mounts (vs the Playwright tier's `page.route`).
+- **Filename carries the browser, dir carries the arch.** Goldens are named
+  `<scenario>-chromium.png`; the per-arch split lives in the baseline directory.
+
+Vitest browser mode is also the recommended *driver for a future Solid port* (see
+below) — having it as a live tier means the Solid port can reuse this runner
+directly rather than standing it up from scratch.
 
 ## Runner comparison
 
-Two runners are currently implemented (vitest-browser was attempted and dropped —
-see "Vitest browser mode — attempted (Task 3)" above).
+Three runners are implemented (Tier 3, vitest-browser, was added once the Vitest 4
+prerequisite landed — see "Vitest browser mode — implemented (Tier 3)" above).
 
-| | **playwright-ct** (Tier 1) | **playwright** (Tier 2) |
-|---|---|---|
-| **Mount mechanism** | CT adapter mounts `VisualScenario` inside Chromium via `@playwright/experimental-ct-react` | Plain `page.goto("/?scenario=<name>")` against a tiny served Vite host (`visual/playwright/host/`) |
-| **Screenshot** | `expect(component).toHaveScreenshot(...)` | `expect(page).toHaveScreenshot(...)` |
-| **Spec file** | Framework-specific — imports `@ui-harness`, calls `mount(...)` | **Framework-agnostic** — URL navigation only; reused verbatim for any framework |
-| **Goldens** | `playwright-ct/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` | `playwright/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` (CI vs local) |
-| **Ergonomics** | Tighter feedback loop; components mount in-process; no server needed | Slightly heavier (Vite dev server started per run); but the spec is maximally portable |
-| **Solid-reuse story** | **Alias-swap** — re-point `@ui-harness` in the CT Vite config to `visual/solid/` and swap the CT adapter; one config change | **Verbatim reuse** — `visual.spec.ts` needs zero changes; only the Vite host's `main.tsx` is replaced |
-| **Framework lock-in** | CT adapter per framework (React adapter lags for Solid — see adapter-status table below) | None; depends only on a running Vite server |
+| | **playwright-ct** (Tier 1) | **playwright** (Tier 2) | **vitest-browser** (Tier 3) |
+|---|---|---|---|
+| **Mount mechanism** | CT adapter mounts `VisualScenario` inside Chromium via `@playwright/experimental-ct-react` | Plain `page.goto("/?scenario=<name>")` against a tiny served Vite host (`visual/playwright/host/`) | `vitest-browser-react` `render(<VisualScenario/>)` in Chromium via the `@vitest/browser-playwright` provider |
+| **Screenshot** | `expect(component).toHaveScreenshot(...)` | `expect(page).toHaveScreenshot(...)` | `expect.element(locator).toMatchScreenshot(...)` |
+| **Spec file** | Framework-specific — imports `@ui-harness`, calls `mount(...)` | **Framework-agnostic** — URL navigation only; reused verbatim for any framework | Framework-specific — imports `@ui-harness`, calls `render(...)`; shares the `scenarioActions` table with Tier 2 |
+| **Goldens** | `playwright-ct/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` | `playwright/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` (CI vs local) | `vitest-browser/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` |
+| **Ergonomics** | Tighter feedback loop; components mount in-process; no server needed | Slightly heavier (Vite dev server started per run); but the spec is maximally portable | In-process mount, no server; fastest of the three locally (~2–4s for all 17) |
+| **Solid-reuse story** | **Alias-swap** — re-point `@ui-harness` in the CT Vite config to `visual/solid/` and swap the CT adapter; one config change | **Verbatim reuse** — `visual.spec.ts` needs zero changes; only the Vite host's `main.tsx` is replaced | **Alias-swap + render shim** — re-point `@ui-harness` and swap `vitest-browser-react` for the framework's `render`; no lagging CT adapter to track |
+| **Framework lock-in** | CT adapter per framework (React adapter lags for Solid — see adapter-status table below) | None; depends only on a running Vite server | `vitest-browser-<framework>` render shim; Vite-native, no separate CT-adapter version to track |
 
 **Orchestration:** `tsx visual/run-all.ts` discovers all scripts matching
 `test:visual:<runner>:<framework>` (exactly 4 colon-separated parts) in
