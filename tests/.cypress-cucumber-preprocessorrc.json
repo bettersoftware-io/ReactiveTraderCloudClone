@@ -3,5 +3,5 @@
   "omitFiltered": true,
   "filterSpecs": true,
   "json": { "enabled": false },
-  "html": { "enabled": true, "output": "reports/cypress-cucumber.html" }
+  "html": { "enabled": true, "output": "reports/browser/cypress-cucumber/report/index.html" }
 }

@@ -43,6 +43,7 @@ export default defineConfig({
     supportFile: "browser/cypress-cucumber/e2e.ts",
     video: false,
     screenshotOnRunFailure: true,
+    screenshotsFolder: "reports/browser/cypress-cucumber/artifacts",
     defaultCommandTimeout: isCI ? 30_000 : 10_000,
     retries: { runMode: isCI ? 2 : 0, openMode: 0 },
     async setupNodeEvents(on, config) {
