@@ -1,0 +1,117 @@
+name: CI
+
+# Fast gates only — typecheck, unit tests, build, the architecture + supply-chain
+# grep/audit gates, and the visual-diff suite. The heavy e2e suite (xvfb + the
+# 10-way parallel browser orchestration in tests/scripts/run-all.ts) is
+# intentionally NOT run here; it is a separate, larger job to stabilize later.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push to the same branch/PR cancels the in-flight run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # pnpm is provisioned by Corepack from the `packageManager` pin; silence its
+  # first-run download prompt so non-interactive CI never stalls.
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  checks:
+    name: typecheck · test · build · gates
+    runs-on: ubuntu-latest
+    env:
+      # These checks don't exercise Cypress; skip its heavy binary download.
+      # `allowBuilds` still permits the postinstall script — this just no-ops the
+      # binary fetch, keeping the job fast.
+      CYPRESS_INSTALL_BINARY: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable Corepack (pins pnpm 11.5.2 from the packageManager field)
+        run: corepack enable
+
+      - name: Resolve pnpm store path
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
+
+      - name: Cache the pnpm content-addressable store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      # --frozen-lockfile fails if the lockfile is out of date, and under pnpm 11
+      # it also enforces the supply-chain policy: the minimumReleaseAge cooldown
+      # and the allowBuilds install-script allowlist. A PR that introduces a
+      # too-fresh (<24h) dependency, an unvetted build script, or a stale lockfile
+      # is rejected here.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Architecture + supply-chain gates (grep gates + pnpm audit --prod)
+        run: pnpm --filter @rtc/tests gates
+
+  visual:
+    name: visual diffs
+    runs-on: ubuntu-latest
+    env:
+      CYPRESS_INSTALL_BINARY: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable Corepack (pins pnpm 11.5.2 from the packageManager field)
+        run: corepack enable
+
+      - name: Resolve pnpm store path
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
+
+      - name: Cache the pnpm content-addressable store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Both visual runners (playwright-ct + plain playwright) drive Chromium.
+      - name: Install Playwright Chromium + OS deps
+        run: pnpm --filter @rtc/client exec playwright install --with-deps chromium
+
+      - name: Visual diffs (playwright-ct + playwright)
+        run: pnpm --filter @rtc/client test:visual
+
+      # On a mismatch, publish the actual-vs-expected images so cross-platform
+      # rendering diffs (sandbox goldens vs the ubuntu runner) can be inspected.
+      - name: Upload visual diff report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diff-report
+          path: |
+            packages/client/test-results/
+            packages/client/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
