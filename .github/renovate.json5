@@ -36,14 +36,15 @@
 
   packageRules: [
     {
-      // Hands off the `ws` entry in pnpm-workspace.yaml: it's a hand-crafted
-      // SECURITY override (force marblejs's transitive ws@7 up to the patched
-      // 7.5.10, staying in marblejs's declared 7.x major). Renovate treated it
-      // as an ordinary dep and bumped it to ^8 — forcing marblejs onto an
-      // undeclared ws major. Match by file so the server's DIRECT ws@8 in
-      // packages/server/package.json stays managed; only the override is frozen.
+      // Hands off EVERYTHING in pnpm-workspace.yaml. Its only deps are the
+      // hand-crafted `overrides` — security/compatibility pins (ws@7→7.5.10,
+      // serialize-javascript→7.0.3, and any future ones). Renovate treats
+      // overrides as ordinary deps: it once bumped `ws@7: ^7.5.10` to ^8,
+      // force-upgrading marblejs onto an undeclared major. Matching the whole
+      // file freezes all overrides at once; the real dependencies they patch
+      // (e.g. the server's direct ws@8 in packages/server/package.json) live
+      // elsewhere and stay fully managed by Renovate.
       matchFileNames: ["pnpm-workspace.yaml"],
-      matchPackageNames: ["ws"],
       enabled: false,
     },
   ],
