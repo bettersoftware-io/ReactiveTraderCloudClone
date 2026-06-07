@@ -1,5 +1,5 @@
 // Framework-neutral snapshot of everything the UI reads through AppHooks.
-// No React/Solid imports — this file (and the rest of visual/shared) is the
+// No React/Solid imports — this file (and the rest of shared/) is the
 // portable core shared by every UI implementation.
 import {
   ConnectionStatus,

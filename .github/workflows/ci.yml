@@ -115,8 +115,8 @@ jobs:
       # @rtc/domain / @rtc/shared workspace libs via their built dist/, which a
       # fresh checkout hasn't produced. A direct `pnpm --filter` call bypasses
       # turbo's graph and fails to resolve @rtc/domain.
-      - name: Visual diffs (playwright-ct + playwright)
-        run: pnpm test:visual
+      - name: Visual diffs (playwright-ct + playwright + vitest-browser)
+        run: pnpm test:visual-diff
 
       # On a mismatch, publish the actual-vs-expected images so cross-platform
       # rendering diffs (sandbox goldens vs the ubuntu runner) can be inspected.
@@ -126,8 +126,9 @@ jobs:
         with:
           name: visual-diff-report
           path: |
-            packages/client/test-results/
-            packages/client/playwright-report/
+            packages/client/tests/visual-diff/*/test-results/
+            packages/client/tests/visual-diff/**/__screenshots__/**/*-actual.png
+            packages/client/tests/visual-diff/**/__screenshots__/**/*-diff.png
           if-no-files-found: ignore
           retention-days: 7
 

@@ -85,7 +85,7 @@ calls `mount(...)` + `expect(component).toHaveScreenshot(...)`. Goldens live in
 `visual/playwright-ct/__screenshots__/react/`.
 
 For a framework port, the `@ui-harness` alias in `playwright-ct.config.ts`'s
-`ctViteConfig` is the single re-point: swap `visual/react` for `visual/solid`
+`ctViteConfig` is the single re-point: swap `react/` for `solid/`
 and point to a matching CT adapter. (Note: the official Solid CT adapter lags the
 core Playwright version — see ADR-001 for the adapter-status table and the
 recommended alternative.)
@@ -175,7 +175,7 @@ The goal: run the **same** scenarios and match the **same** goldens.
 
 **What to reuse verbatim:**
 
-- `visual/shared/` — untouched (or extracted to a shared package)
+- `shared/` — untouched (or extracted to a shared package)
 - `visual/playwright/visual.spec.ts` — URL-driven, zero framework assumptions
 - `visual/playwright-ct/__screenshots__/react/` and
   `visual/playwright/__screenshots__/react/` — the canonical (CI-enforced)

@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
 // Root is this host dir; @ui-harness resolves to the React render target two
-// levels up. A Solid host would point the alias at visual/solid instead.
+// levels up. A Solid host would point the alias at ../../solid instead.
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
   plugins: [react()],

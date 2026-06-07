@@ -20,7 +20,7 @@ through `useHooks()` (`AppHooks` interface); production wires presenters via
 | `clean` / `clean:deep` | remove build/test artifacts (/ + node_modules) |
 
 Script naming: `test:visual:<runner>:<framework>` — the framework axis exists
-because the goldens + `visual/shared/` fixtures are the portability contract
+because the goldens + `tests/visual-diff/shared/` fixtures are the portability contract
 for re-implementing this UI in another framework (e.g. SolidJS) with
 pixel-parity; a future `:solid` runner is discovered by `visual/run-all.ts`
 automatically.
@@ -43,7 +43,7 @@ tests (`src/app/adapters/`). No browser, no screenshots.
 **Visual (`pnpm test:visual`)** — screenshots of components and full pages
 rendered against injected fake data via the `HooksProvider` seam; no server,
 no presenters. Three runners share one scenario manifest
-(`visual/shared/scenarios.ts`); goldens are committed in TWO sets per runner —
+(`tests/visual-diff/shared/scenarios.ts`); goldens are committed in TWO sets per runner —
 `react/` (CI, x86) and `react-local/<platform>-<arch>/` (fast local
 feedback). UI changes require regenerating BOTH sets
 (`:update` scripts locally; the `update-visual-goldens` workflow for the CI

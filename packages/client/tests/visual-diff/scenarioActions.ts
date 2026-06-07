@@ -25,7 +25,7 @@ export type ScenarioAction = {
     }
 );
 
-// Keyed by scenario name (see visual/shared/scenarios.ts). Absent key == a
+// Keyed by scenario name (see shared/scenarios.ts). Absent key == a
 // component-level shot with no interaction.
 export const scenarioActions: Record<string, ScenarioAction> = {
   "connection-overlay/offline": { fullPage: true },

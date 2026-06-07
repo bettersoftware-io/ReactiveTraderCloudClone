@@ -12,13 +12,13 @@ const PORT = 3200;
 // commit time, but only the x86 `react/` set is additionally re-rendered and
 // enforced by the CI visual job (no CI runner reproduces a dev arch). So an
 // intentional UI change means updating BOTH: `:update` locally for the arm64 set
-// AND the update-visual-goldens workflow for the x86 set. See ADR-001.
+// AND the update-visual-goldens workflow for the x86 set. See ../ADR-001-visual-diff-tooling.md.
 const baseline = process.env.CI ? "react" : `react-local/${os.platform()}-${os.arch()}`;
 
 export default defineConfig({
-  testDir: "./visual/playwright",
+  testDir: ".",
   testMatch: "**/*.spec.ts",
-  snapshotDir: "./visual/playwright/__screenshots__",
+  snapshotDir: "./__screenshots__",
   snapshotPathTemplate: `{snapshotDir}/${baseline}/{testFileName}/{arg}{ext}`,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -31,7 +31,10 @@ export default defineConfig({
     ...devices["Desktop Chrome"],
   },
   webServer: {
-    command: "vite --config visual/playwright/host/vite.config.ts",
+    // cwd for this command is the directory of THIS config file, so the host
+    // vite config is addressed in-suite; `pnpm exec` resolves the vite binary
+    // from the owning package regardless of cwd depth.
+    command: "pnpm exec vite --config host/vite.config.ts",
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

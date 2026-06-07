@@ -1,5 +1,5 @@
 playwright-report/
 test-results/
-playwright/.cache/
-visual/__screenshots__/**/*-actual.png
-visual/__screenshots__/**/*-diff.png
+tests/visual-diff/playwright-ct/host/.cache/
+tests/visual-diff/**/__screenshots__/**/*-actual.png
+tests/visual-diff/**/__screenshots__/**/*-diff.png

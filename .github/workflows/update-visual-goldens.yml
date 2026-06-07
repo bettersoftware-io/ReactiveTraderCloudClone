@@ -13,9 +13,11 @@ name: Update visual goldens
 # sets used for local feedback — those never match the x86 pixels and no CI
 # runner reproduces them. After an intentional UI change you must ALSO regenerate
 # your local set on your own machine and commit it:
-#   pnpm test:visual:playwright-ct:react:update && pnpm test:visual:playwright:react:update
-# Otherwise `pnpm test:visual` stays red locally even once CI is green. See
-# packages/client/visual/ADR-001-visual-diff-tooling.md ("Cross-platform pixel drift").
+#   pnpm test:visual-diff:playwright-ct:react:update &&
+#   pnpm test:visual-diff:playwright:react:update &&
+#   pnpm test:visual-diff:vitest-browser:react:update
+# Otherwise `pnpm test:visual-diff` stays red locally even once CI is green. See
+# packages/client/tests/visual-diff/ADR-001-visual-diff-tooling.md ("Cross-platform pixel drift").
 on:
   workflow_dispatch:
 
@@ -59,21 +61,21 @@ jobs:
       # Re-render and overwrite the canonical x86 `react/` goldens for all three
       # runners (browsers are preinstalled in the image at PLAYWRIGHT_BROWSERS_PATH).
       - name: Regenerate playwright-ct goldens
-        run: pnpm --filter @rtc/client test:visual:playwright-ct:react:update
+        run: pnpm --filter @rtc/client test:visual-diff:playwright-ct:react:update
 
       - name: Regenerate playwright goldens
-        run: pnpm --filter @rtc/client test:visual:playwright:react:update
+        run: pnpm --filter @rtc/client test:visual-diff:playwright:react:update
 
       - name: Regenerate vitest-browser goldens
-        run: pnpm --filter @rtc/client test:visual:vitest-browser:react:update
+        run: pnpm --filter @rtc/client test:visual-diff:vitest-browser:react:update
 
       - name: Upload regenerated goldens
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: visual-goldens
           path: |
-            packages/client/visual/playwright-ct/__screenshots__/
-            packages/client/visual/playwright/__screenshots__/
-            packages/client/visual/vitest-browser/__screenshots__/
+            packages/client/tests/visual-diff/playwright-ct/__screenshots__/
+            packages/client/tests/visual-diff/playwright/__screenshots__/
+            packages/client/tests/visual-diff/vitest-browser/__screenshots__/
           if-no-files-found: error
           retention-days: 7

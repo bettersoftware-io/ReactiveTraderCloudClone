@@ -1,15 +1,15 @@
 import type { ReactElement } from "react";
-import { ConnectionStatusBar } from "../../src/ui/shell/connection/ConnectionStatusBar";
-import { Tile } from "../../src/ui/fx/liveRates/tile/Tile";
-import { AnalyticsPanel } from "../../src/ui/fx/analytics/AnalyticsPanel";
-import { ConnectionOverlay } from "../../src/ui/shell/connection/ConnectionOverlay";
-import { LiveRatesPanel } from "../../src/ui/fx/liveRates/LiveRatesPanel";
-import { FxBlotter } from "../../src/ui/fx/blotter/FxBlotter";
-import { RfqTilesPanel } from "../../src/ui/credit/rfqTiles/RfqTilesPanel";
-import { NewRfqForm } from "../../src/ui/credit/newRfq/NewRfqForm";
-import { CreditBlotter } from "../../src/ui/credit/blotter/CreditBlotter";
-import { SellSidePanel } from "../../src/ui/credit/sellSide/SellSidePanel";
-import { App } from "../../src/ui/App";
+import { ConnectionStatusBar } from "../../../src/ui/shell/connection/ConnectionStatusBar";
+import { Tile } from "../../../src/ui/fx/liveRates/tile/Tile";
+import { AnalyticsPanel } from "../../../src/ui/fx/analytics/AnalyticsPanel";
+import { ConnectionOverlay } from "../../../src/ui/shell/connection/ConnectionOverlay";
+import { LiveRatesPanel } from "../../../src/ui/fx/liveRates/LiveRatesPanel";
+import { FxBlotter } from "../../../src/ui/fx/blotter/FxBlotter";
+import { RfqTilesPanel } from "../../../src/ui/credit/rfqTiles/RfqTilesPanel";
+import { NewRfqForm } from "../../../src/ui/credit/newRfq/NewRfqForm";
+import { CreditBlotter } from "../../../src/ui/credit/blotter/CreditBlotter";
+import { SellSidePanel } from "../../../src/ui/credit/sellSide/SellSidePanel";
+import { App } from "../../../src/ui/App";
 import { fixtures } from "../shared/fixtures";
 
 // Maps a neutral componentKey to a concrete React element, given the scenario's

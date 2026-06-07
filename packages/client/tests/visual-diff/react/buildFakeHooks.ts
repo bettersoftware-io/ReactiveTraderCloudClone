@@ -4,7 +4,7 @@ import {
   type ExecuteTradeInput, type ExecuteTradeResult, type CreateRfqInput,
   type RfqQuoteResult, type QuoteRequest,
 } from "@rtc/domain";
-import type { AppHooks } from "../../src/ui/hooks/createAppHooks";
+import type { AppHooks } from "../../../src/ui/hooks/createAppHooks";
 import type { AppData } from "../shared/appData";
 
 export function buildFakeHooks(data: AppData): AppHooks {
