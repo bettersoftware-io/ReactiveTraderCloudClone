@@ -1,9 +1,14 @@
 name: CI
 
-# Fast gates only — typecheck, unit tests, build, the architecture + supply-chain
-# grep/audit gates, and the visual-diff suite. The heavy e2e suite (xvfb + the
-# 10-way parallel browser orchestration in tests/scripts/run-all.ts) is
-# intentionally NOT run here; it is a separate, larger job to stabilize later.
+# Fast gates (typecheck, unit tests, build, the architecture + supply-chain
+# grep/audit gates, visual diffs) plus the full e2e suite. The e2e job is the
+# heavy one (real Cypress binary, Playwright Chromium, xvfb, the 10-way parallel
+# orchestration in tests/scripts/run-all.ts); it runs alongside the fast jobs so
+# it never slows them down.
+#
+# All third-party actions are pinned to immutable commit SHAs (with the human
+# version in a trailing comment). Renovate (helpers:pinGitHubActionDigests in
+# .github/renovate.json5) keeps the digests current.
 on:
   pull_request:
   push:
@@ -29,9 +34,9 @@ jobs:
       # binary fetch, keeping the job fast.
       CYPRESS_INSTALL_BINARY: "0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
 
@@ -42,7 +47,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
 
       - name: Cache the pnpm content-addressable store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ env.STORE_PATH }}
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -74,9 +79,9 @@ jobs:
     env:
       CYPRESS_INSTALL_BINARY: "0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
 
@@ -87,7 +92,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
 
       - name: Cache the pnpm content-addressable store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ env.STORE_PATH }}
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -107,11 +112,75 @@ jobs:
       # rendering diffs (sandbox goldens vs the ubuntu runner) can be inspected.
       - name: Upload visual diff report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: visual-diff-report
           path: |
             packages/client/test-results/
             packages/client/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  e2e:
+    name: e2e (browser · presenter · fullstack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Enable Corepack (pins pnpm 11.5.2 from the packageManager field)
+        run: corepack enable
+
+      - name: Resolve pnpm store path
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
+
+      - name: Cache the pnpm content-addressable store
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      # This job, unlike the fast ones, genuinely needs the Cypress binary, so we
+      # do NOT set CYPRESS_INSTALL_BINARY=0. Cache it keyed on the lockfile (the
+      # pinned cypress version lives there) so it isn't re-downloaded every run.
+      - name: Cache the Cypress binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: cypress-${{ runner.os }}-
+
+      - name: Install dependencies (incl. Cypress binary)
+        run: pnpm install --frozen-lockfile
+
+      # The e2e browser suites run Playwright (cucumber-driven + raw) against
+      # Chromium; install it from the @rtc/tests package (the one that launches it).
+      - name: Install Playwright Chromium + OS deps
+        run: pnpm --filter @rtc/tests exec playwright install --with-deps chromium
+
+      # run-all.ts wraps each parallel Cypress suite in `xvfb-run -a` so the two
+      # Cypress suites don't collide on the fixed X display :99. Provide xvfb.
+      - name: Install xvfb (for parallel headless Cypress)
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      # Runs `pnpm gates` then the 10-way parallel orchestrator. CI=true (set by
+      # GitHub) makes cucumber use parallel:1 + retry:2, as configured.
+      - name: e2e suite (10 parallel suites)
+        run: pnpm --filter @rtc/tests test:e2e
+
+      - name: Upload e2e artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-report
+          path: |
+            tests/reports/
+            tests/test-results/
+            tests/cypress/screenshots/
+            tests/cypress/videos/
           if-no-files-found: ignore
           retention-days: 7
