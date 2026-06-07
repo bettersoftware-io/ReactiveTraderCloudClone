@@ -32,7 +32,8 @@ for (const name of Object.keys(scenarios)) {
         })) as typeof fetch;
     }
 
-    const screen = render(<VisualScenario name={name} />);
+    // vitest-browser-react v2: render() is async (wraps React's async act).
+    const screen = await render(<VisualScenario name={name} />);
 
     if (action.click) {
       await userEvent.click(screen.getByTestId(action.click).element());
