@@ -23,3 +23,10 @@ minimumReleaseAge: 1440
 # undeclared ws major. A packageRule in .github/renovate.json5 pins this override.
 overrides:
   ws@7: ^7.5.10
+  # Force the dev-only transitive serialize-javascript (6.0.2, pulled in by
+  # mocha, itself under @badeball/cypress-cucumber-preprocessor) up to the
+  # patched 7.0.3+ — fixes the RCE GHSA-5c6j-r48x-rmvq (high) and the related
+  # GHSA-qj8w-gfj5-8c6v (moderate). Dependabot CANNOT fix this by version bump:
+  # the preprocessor is already latest (24.0.1) and even latest mocha (11.7.6)
+  # still declares serialize-javascript ^6.0.2, so an override is the only path.
+  serialize-javascript: ^7.0.3
