@@ -8,7 +8,10 @@ export default defineConfig({
   root: fileURLToPath(new URL("../..", import.meta.url)),
   test: {
     include: ["presenter/vitest-fake-timers/**/*.test.ts"],
-    reporters: ["default"],
+    // HTML report (additive): test:presenter:vitest-fake-timers =>
+    // reports/presenter/vitest-fake-timers/. outputFile is root-relative (tests/).
+    reporters: ["default", "html"],
+    outputFile: { html: "reports/presenter/vitest-fake-timers/report/index.html" },
     pool: "threads",
   },
 });

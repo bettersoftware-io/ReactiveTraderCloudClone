@@ -18,7 +18,10 @@ export default defineConfig({
     include: ["specs/**/*.feature"],
     setupFiles: ["./presenter/vitest-quickpickle-fake-timers/setup.ts"],
     testNamePattern: "@presenter",
-    reporters: ["default"],
+    // HTML report (additive): test:presenter:vitest-quickpickle-fake-timers =>
+    // reports/presenter/vitest-quickpickle-fake-timers/. Root-relative (tests/).
+    reporters: ["default", "html"],
+    outputFile: { html: "reports/presenter/vitest-quickpickle-fake-timers/report/index.html" },
     pool: "threads",
   },
 });
