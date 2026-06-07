@@ -194,33 +194,35 @@ with a filter (each browser runner starts its own frontend on `:3000` by default
 
 ```bash
 # Browser peers (drive the real UI against simulators)
-pnpm --filter @rtc/tests test:browser:playwright       # Cucumber + Playwright
-pnpm --filter @rtc/tests test:browser:raw-playwright   # raw Playwright
-pnpm --filter @rtc/tests test:browser:cypress          # Cucumber + Cypress
-pnpm --filter @rtc/tests test:browser:raw-cypress      # raw Cypress
-pnpm --filter @rtc/tests test:browser:cypress:open     # Cypress interactive runner
+pnpm --filter @rtc/tests test:browser:playwright            # native Playwright
+pnpm --filter @rtc/tests test:browser:playwright-cucumber   # Cucumber + Playwright
+pnpm --filter @rtc/tests test:browser:cypress               # native Cypress
+pnpm --filter @rtc/tests test:browser:cypress-cucumber      # Cucumber + Cypress
+pnpm --filter @rtc/tests test:browser:cypress-cucumber:open # Cypress interactive runner
 
 # Presenter peers (pure Node, no browser/server)
-pnpm --filter @rtc/tests test:presenter:cucumber-real
-pnpm --filter @rtc/tests test:presenter:cucumber-fake
-pnpm --filter @rtc/tests test:presenter:vitest-fake
-pnpm --filter @rtc/tests test:presenter:vitest-plain
+pnpm --filter @rtc/tests test:presenter:cucumber              # real timers (default)
+pnpm --filter @rtc/tests test:presenter:cucumber-fake-timers
+pnpm --filter @rtc/tests test:presenter:vitest                # plain vitest (no Gherkin)
+pnpm --filter @rtc/tests test:presenter:vitest-fake-timers
 
 # Full-stack smokes (real server + real client)
 pnpm --filter @rtc/tests test:fullstack:node     # real socket, no browser
 pnpm --filter @rtc/tests test:fullstack:browser  # real browser via VITE_SERVER_URL
 ```
 
+See tests/README.md for the full suite matrix and naming convention.
+
 ### What "verification" means here
 
 This is where the project earns its keep. The same user-facing behaviour is
 exercised by **eight independent runners** so they can be compared head-to-head:
 
-- **Four browser peers** drive the real UI — Cucumber+Playwright, raw
-  Playwright, Cucumber+Cypress, and raw Cypress.
+- **Four browser peers** drive the real UI — Cucumber+Playwright, native
+  Playwright, Cucumber+Cypress, and native Cypress.
 - **Four presenter peers** drive the RxJS presenter layer in pure Node against
-  domain simulators — cucumber-real, cucumber-fake, vitest-fake, and
-  vitest-plain.
+  domain simulators — cucumber (real timers), cucumber-fake-timers, vitest, and
+  vitest-fake-timers.
 
 All eight run against in-process simulators; on top of them the **two full-stack
 smokes** (above) exercise the real backend end to end. `pnpm test:e2e` runs the
