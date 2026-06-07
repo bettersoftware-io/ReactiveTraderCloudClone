@@ -19,4 +19,4 @@ minimumReleaseAge: 1440
 # up to the patched 7.5.10 — fixes GHSA-3h5v-q93c-6h6q (DoS) without disturbing
 # the server's direct ws@8. (pnpm 11 reads overrides here, not from package.json.)
 overrides:
-  ws@7: ^7.5.10
+  ws@7: ^8.0.0
