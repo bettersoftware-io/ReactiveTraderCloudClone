@@ -1,14 +1,14 @@
 # Dependabot configuration — SECURITY UPDATES ONLY.
 #
-# Routine version-bump PRs are disabled (open-pull-requests-limit: 0) because this
-# repo has no CI yet to validate them — opening unvalidated bump PRs would just be
-# noise. Dependabot *security* updates (PRs that patch known CVEs) are enabled at
-# the repository level (Settings → Code security) and are NOT capped by the limit
-# below, so vulnerability fixes still flow.
+# Routine version-bump PRs are disabled here (open-pull-requests-limit: 0) and
+# stay disabled on purpose: routine bumps (and GitHub Action digest updates) are
+# owned by Renovate (.github/renovate.json5), which applies the supply-chain
+# cooldown. Running both bots on routine updates would just open duplicate PRs.
 #
-# When CI lands, raise the limit to turn on gated routine updates, and add a
-# `cooldown:` block mirroring the pnpm `minimumReleaseAge` cooldown in
-# pnpm-workspace.yaml so the bot won't even propose a too-fresh release.
+# Dependabot's role is narrow and complementary: *security* updates (PRs that
+# patch known CVEs), enabled at the repository level (Settings → Code security).
+# Those are NOT capped by the limit below, so vulnerability fixes still flow, and
+# Renovate's own vulnerability handling is disabled so the two never overlap.
 version: 2
 updates:
   - package-ecosystem: "npm" # also covers pnpm workspaces

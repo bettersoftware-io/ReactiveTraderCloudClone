@@ -1,0 +1,36 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  // Renovate handles ROUTINE version bumps (Dependabot is configured
+  // security-updates-only in .github/dependabot.yml). To activate this, the
+  // Mend Renovate GitHub App must be installed on the repo — the config file
+  // alone does nothing, exactly like Dependabot's repo-level toggle.
+  extends: [
+    "config:recommended",
+    // Pin every GitHub Action `uses:` to an immutable commit SHA and keep the
+    // pinned digest updated. This is why we don't add a `github-actions`
+    // ecosystem entry to dependabot.yml — Renovate owns action digests.
+    "helpers:pinGitHubActionDigests",
+  ],
+
+  // Supply-chain cooldown: don't even open a PR for a release published fewer
+  // than this many ago. Mirrors `minimumReleaseAge: 1440` (24h) in
+  // pnpm-workspace.yaml so the policy is identical whether a version arrives via
+  // a Renovate PR or a manual `pnpm install`. Raise both together if desired.
+  minimumReleaseAge: "1 day",
+
+  // With a cooldown set, hold the update internally until it passes the age gate
+  // rather than opening a pending PR immediately.
+  internalChecksFilter: "strict",
+
+  // Security/CVE fixes stay with Dependabot (alerts + security updates were
+  // enabled at the repo level as Tier 1). Disabling Renovate's vulnerability
+  // handling avoids duplicate security PRs from the two bots.
+  vulnerabilityAlerts: {
+    enabled: false,
+  },
+
+  // Keep the cooldown meaningful and the PR volume low.
+  prConcurrentLimit: 5,
+  prHourlyLimit: 2,
+}
