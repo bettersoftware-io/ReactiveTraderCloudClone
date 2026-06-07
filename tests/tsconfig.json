@@ -12,8 +12,9 @@
   "include": [
     "browser/**/*.ts",
     "browser/playwright-cucumber/cucumber.js",
-    "steps/**/*.ts",
-    "support/**/*.ts",
+    "presenter/**/*.ts",
+    "presenter/cucumber/cucumber.js",
+    "presenter/cucumber-fake-timers/cucumber.js",
     "fullstack/**/*.ts",
     "scripts/**/*.ts"
   ]

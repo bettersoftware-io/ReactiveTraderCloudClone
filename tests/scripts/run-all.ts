@@ -59,10 +59,10 @@ const suites: Suite[] = [
   { script: "test:fullstack:node" },
   { script: "test:fullstack:browser" },
   // Presenter peers — in-process, no server, mutually independent.
-  { script: "test:presenter:cucumber-real" },
-  { script: "test:presenter:cucumber-fake" },
-  { script: "test:presenter:vitest-fake" },
-  { script: "test:presenter:vitest-plain" },
+  { script: "test:presenter:cucumber" },
+  { script: "test:presenter:cucumber-fake-timers" },
+  { script: "test:presenter:vitest-fake-timers" },
+  { script: "test:presenter:vitest" },
   // Heavy browser suites — one dev server + browser each.
   ...browserScripts.map((script, i) => ({
     script,

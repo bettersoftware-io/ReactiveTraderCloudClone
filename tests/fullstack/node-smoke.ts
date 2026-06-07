@@ -19,7 +19,7 @@ import { startServer, stopProcess, waitForHttp } from "./_orchestration.js";
 
 // Direction is a `const enum` in @rtc/domain, inaccessible under
 // verbatimModuleSyntax; use the underlying string literal (same pattern as
-// tests/scenarios/presenter/_shared/fxTrading.ts).
+// tests/presenter/scenarios/_shared/fxTrading.ts).
 const DIR_BUY = "Buy" as unknown as Direction;
 
 // Node < 22 exposes WebSocket only behind a flag; polyfill from `ws` if absent.

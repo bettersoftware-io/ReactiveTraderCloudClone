@@ -16,10 +16,10 @@
     "test:e2e": "pnpm gates && tsx scripts/run-all.ts",
     "test:fullstack:browser": "tsx fullstack/browser-smoke.ts",
     "test:fullstack:node": "tsx fullstack/node-smoke.ts",
-    "test:presenter:cucumber-fake": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config cucumber-presenter-fake.js",
-    "test:presenter:cucumber-real": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config cucumber-presenter-real.js",
-    "test:presenter:vitest-fake": "vitest run --config vitest-presenter-fake.config.ts",
-    "test:presenter:vitest-plain": "vitest run --config vitest-presenter-plain.config.ts",
+    "test:presenter:cucumber": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config presenter/cucumber/cucumber.js",
+    "test:presenter:cucumber-fake-timers": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config presenter/cucumber-fake-timers/cucumber.js",
+    "test:presenter:vitest": "vitest run --config presenter/vitest/vitest.config.ts",
+    "test:presenter:vitest-fake-timers": "vitest run --config presenter/vitest-fake-timers/vitest.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -32,7 +32,7 @@ function checkPresenterScenarioCounts(): string[] {
     const featureSrc = readFileSync(featurePath, "utf8");
     const presenterScenarios = (featureSrc.match(/@presenter\s*\n\s*Scenario:/g) ?? []).length;
 
-    const testPath = `presenter-tests/vitest-plain/${feat}.test.ts`;
+    const testPath = `presenter/vitest/${feat}.test.ts`;
     if (presenterScenarios === 0 && !existsSync(testPath)) continue;
     if (presenterScenarios === 0 && existsSync(testPath)) {
       failures.push(`${feat}: 0 @presenter scenarios but ${testPath} exists`);
@@ -58,7 +58,7 @@ function checkPresenterScenarioCounts(): string[] {
 function checkPresenterDescribePrefix(): string[] {
   const failures: string[] = [];
   for (const feat of FEATURE_NAMES) {
-    const testPath = `presenter-tests/vitest-plain/${feat}.test.ts`;
+    const testPath = `presenter/vitest/${feat}.test.ts`;
     if (!existsSync(testPath)) continue;
     const testSrc = readFileSync(testPath, "utf8");
     const titles = [...testSrc.matchAll(/^\s*describe\(\s*"([^"]+)"/gm)].map((m) => m[1]!);
@@ -73,16 +73,16 @@ function checkPresenterDescribePrefix(): string[] {
   return failures;
 }
 
-function checkVitestFakeBarrelCompleteness(): string[] {
+function checkVitestFakeTimersBarrelCompleteness(): string[] {
   const failures: string[] = [];
-  const stepsDir = "steps/presenter/vitest-fake";
-  const setupPath = "support/presenter/vitest-fake/setup.ts";
+  const stepsDir = "presenter/vitest-fake-timers/steps";
+  const setupPath = "presenter/vitest-fake-timers/setup.ts";
   if (!existsSync(stepsDir) || !existsSync(setupPath)) return failures;
   const stepFiles = readdirSync(stepsDir).filter((f) => f.endsWith(".steps.ts"));
   const setupSrc = readFileSync(setupPath, "utf8");
   for (const f of stepFiles) {
     const stem = f.replace(/\.ts$/, "");
-    const importMarker = `steps/presenter/vitest-fake/${stem}`;
+    const importMarker = `./steps/${stem}`;
     if (!setupSrc.includes(importMarker)) {
       failures.push(
         `${setupPath}: missing import for ${stepsDir}/${f} (expected literal containing ${JSON.stringify(importMarker)})`,
@@ -154,13 +154,13 @@ const GATES: Gate[] = [
   {
     name: "5. No driver imports in scenarios layer",
     pattern: '@playwright/test|"cypress"|@badeball',
-    paths: ["scenarios/", "browser/scenarios/", "browser/cypress/scenarios/"],
+    paths: ["browser/scenarios/", "browser/cypress/scenarios/", "presenter/scenarios/"],
     excludes: ["/node_modules/"],
   },
   {
     name: "6. No @playwright/test expect in step files",
     pattern: 'from "@playwright/test"',
-    paths: ["steps/", "browser/steps/"],
+    paths: ["browser/steps/", "presenter/steps/", "presenter/vitest-fake-timers/steps/"],
     excludes: ["/node_modules/"],
   },
   {
@@ -172,7 +172,7 @@ const GATES: Gate[] = [
   {
     name: "8. No this.page.* in step files",
     pattern: 'this\\.page\\.',
-    paths: ["steps/", "browser/steps/"],
+    paths: ["browser/steps/", "presenter/steps/", "presenter/vitest-fake-timers/steps/"],
     excludes: ["/node_modules/"],
   },
   {
@@ -231,52 +231,52 @@ const GATES: Gate[] = [
   {
     name: "15. No driver imports in presenter step/scenario/support files",
     pattern: '"cypress"|@badeball|@playwright/test|"quickpickle"',
-    paths: ["steps/presenter/", "scenarios/presenter/", "support/presenter/"],
-    excludes: ["/node_modules/", "/vitest-fake/"],
+    paths: ["presenter/steps/", "presenter/scenarios/", "presenter/cucumber/", "presenter/cucumber-fake-timers/"],
+    excludes: ["/node_modules/"],
   },
   {
     name: "16. No DOM/page references in presenter step/scenario files",
     pattern: 'getByTestId|page\\.|cy\\.',
-    paths: ["steps/presenter/", "scenarios/presenter/"],
+    paths: ["presenter/steps/", "presenter/vitest-fake-timers/steps/", "presenter/scenarios/"],
     excludes: ["/node_modules/"],
   },
   {
     name: "17. No createApp/createSimulatorPorts outside _buildApp.ts",
     pattern: 'createApp|createSimulatorPorts',
-    paths: ["steps/presenter/", "scenarios/presenter/", "support/presenter/"],
-    excludes: ["/node_modules/", "scenarios/presenter/_buildApp.ts"],
+    paths: ["presenter/steps/", "presenter/scenarios/", "presenter/cucumber/", "presenter/cucumber-fake-timers/", "presenter/vitest/", "presenter/vitest-fake-timers/"],
+    excludes: ["/node_modules/", "presenter/scenarios/_buildApp.ts"],
   },
   {
     name: "18. No rxjs 'timeout' keyword in presenter scenarios (use w.awaitFirstWithin)",
     pattern: '\\btimeout\\b',
-    paths: ["scenarios/presenter/_shared/"],
+    paths: ["presenter/scenarios/_shared/"],
     excludes: ["/node_modules/"],
   },
   {
-    name: "19. No vitest/qpickle-loader imports outside vitest-fake peer",
+    name: "19. No vitest/qpickle-loader imports outside the two vitest peers",
     pattern: '"vitest"|"quickpickle"|from "vitest/',
     paths: [
-      "scenarios/presenter/",
-      "support/presenter/cucumber-real/",
-      "support/presenter/cucumber-fake/",
-      "steps/presenter/cucumber-real/",
+      "presenter/scenarios/",
+      "presenter/cucumber/",
+      "presenter/cucumber-fake-timers/",
+      "presenter/steps/",
     ],
     excludes: ["/node_modules/"],
   },
   {
-    name: "20. No Gherkin loader imports in vitest-plain peer",
+    name: "20. No Gherkin loader imports in the plain vitest peer",
     pattern: '"quickpickle"|"@cucumber/cucumber"|from "quickpickle/',
-    paths: ["presenter-tests/vitest-plain/"],
+    paths: ["presenter/vitest/"],
     excludes: ["/node_modules/"],
   },
   {
-    name: "21. vitest-plain it() count matches @presenter scenario count per .feature",
+    name: "21. plain vitest it() count matches @presenter scenario count per .feature",
     pattern: "",
     paths: [],
     customCheck: checkPresenterScenarioCounts,
   },
   {
-    name: "22. vitest-plain describe titles start with \"@presenter Feature: \"",
+    name: "22. plain vitest describe titles start with \"@presenter Feature: \"",
     pattern: "",
     paths: [],
     customCheck: checkPresenterDescribePrefix,
@@ -288,10 +288,10 @@ const GATES: Gate[] = [
     excludes: ["/node_modules/"],
   },
   {
-    name: "24. vitest-fake/setup.ts imports every step file in tests/steps/presenter/vitest-fake/",
+    name: "24. vitest-fake-timers/setup.ts imports every step file in tests/presenter/vitest-fake-timers/steps/",
     pattern: "",
     paths: [],
-    customCheck: checkVitestFakeBarrelCompleteness,
+    customCheck: checkVitestFakeTimersBarrelCompleteness,
   },
   {
     name: "25. No high/critical advisories in production deps (pnpm audit --prod)",
