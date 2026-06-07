@@ -33,4 +33,18 @@
   // Keep the cooldown meaningful and the PR volume low.
   prConcurrentLimit: 5,
   prHourlyLimit: 2,
+
+  packageRules: [
+    {
+      // Hands off the `ws` entry in pnpm-workspace.yaml: it's a hand-crafted
+      // SECURITY override (force marblejs's transitive ws@7 up to the patched
+      // 7.5.10, staying in marblejs's declared 7.x major). Renovate treated it
+      // as an ordinary dep and bumped it to ^8 — forcing marblejs onto an
+      // undeclared ws major. Match by file so the server's DIRECT ws@8 in
+      // packages/server/package.json stays managed; only the override is frozen.
+      matchFileNames: ["pnpm-workspace.yaml"],
+      matchPackageNames: ["ws"],
+      enabled: false,
+    },
+  ],
 }
