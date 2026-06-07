@@ -44,6 +44,10 @@ variants. Each `test:<group>:<suite>` script now maps to `tests/<group>/<suite>/
 Full mapping: `docs/superpowers/plans/2026-06-07-test-suite-naming-restructure.md`.
 Historical plans/specs in this folder intentionally keep the old names.
 
+Post-review correction: the plain vitest peer also runs virtual time, so the
+vitest pair is named `vitest-fake-timers` (plain) and
+`vitest-quickpickle-fake-timers` (Gherkin via quickpickle).
+
 ## Use cases extracted in Phase 2
 
 All in `packages/domain/src/usecases/`:

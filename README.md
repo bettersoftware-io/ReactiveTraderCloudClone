@@ -201,10 +201,10 @@ pnpm --filter @rtc/tests test:browser:cypress-cucumber      # Cucumber + Cypress
 pnpm --filter @rtc/tests test:browser:cypress-cucumber:open # Cypress interactive runner
 
 # Presenter peers (pure Node, no browser/server)
-pnpm --filter @rtc/tests test:presenter:cucumber              # real timers (default)
-pnpm --filter @rtc/tests test:presenter:cucumber-fake-timers
-pnpm --filter @rtc/tests test:presenter:vitest                # plain vitest (no Gherkin)
-pnpm --filter @rtc/tests test:presenter:vitest-fake-timers
+pnpm --filter @rtc/tests test:presenter:cucumber                       # Gherkin, real timers (default)
+pnpm --filter @rtc/tests test:presenter:cucumber-fake-timers           # Gherkin, virtual time
+pnpm --filter @rtc/tests test:presenter:vitest-fake-timers             # plain vitest it() blocks, virtual time
+pnpm --filter @rtc/tests test:presenter:vitest-quickpickle-fake-timers # Gherkin via quickpickle, virtual time
 
 # Full-stack smokes (real server + real client)
 pnpm --filter @rtc/tests test:fullstack:node     # real socket, no browser
@@ -221,12 +221,13 @@ exercised by **eight independent runners** so they can be compared head-to-head:
 - **Four browser peers** drive the real UI — Cucumber+Playwright, native
   Playwright, Cucumber+Cypress, and native Cypress.
 - **Four presenter peers** drive the RxJS presenter layer in pure Node against
-  domain simulators — cucumber (real timers), cucumber-fake-timers, vitest, and
-  vitest-fake-timers.
+  domain simulators — `cucumber` (real timers), `cucumber-fake-timers`,
+  `vitest-fake-timers` (plain `it()`), and `vitest-quickpickle-fake-timers`
+  (Gherkin via quickpickle).
 
 All eight run against in-process simulators; on top of them the **two full-stack
 smokes** (above) exercise the real backend end to end. `pnpm test:e2e` runs the
-gates, then all ten suites in parallel, exiting non-zero if any fails. The **24 grep-based architectural gates** (`pnpm gates`, also run first by
+gates, then all ten suites in parallel, exiting non-zero if any fails. The **25 architectural gates** (`pnpm gates`, also run first by
 `test:e2e`) assert structural invariants that types alone can't — e.g. the
 dependency rule, layering boundaries, and parity between the spec scenarios and
 the tests that implement them. See

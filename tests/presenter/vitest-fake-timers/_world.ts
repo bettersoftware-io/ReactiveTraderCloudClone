@@ -14,7 +14,7 @@ export interface VitestPlainPresenterWorld extends AwaitHelpers {
 export function buildWorld(): VitestPlainPresenterWorld {
   // Install fake timers BEFORE buildPresenterApp so simulators capture patched
   // setTimeout/setInterval. Seed virtual now() with real Date.now() so simulator
-  // historical timestamps stay sensible. Same ordering as vitest-fake-timers/hooks.ts.
+  // historical timestamps stay sensible. Same ordering as vitest-quickpickle-fake-timers/hooks.ts.
   vi.useFakeTimers({ now: Date.now(), shouldAdvanceTime: false });
   const ctx = buildPresenterApp();
   const w: VitestPlainPresenterWorld = {

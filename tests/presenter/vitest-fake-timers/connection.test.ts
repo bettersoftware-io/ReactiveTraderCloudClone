@@ -4,7 +4,7 @@ import * as conn from "../scenarios/_shared/connection";
 import type { ConnectionStatus } from "@rtc/domain";
 
 // String-literal stand-ins for the ConnectionStatus const enum. Same trick as
-// presenter/vitest-fake-timers/steps/connection.steps.ts — verbatimModuleSyntax +
+// presenter/vitest-quickpickle-fake-timers/steps/connection.steps.ts — verbatimModuleSyntax +
 // isolatedModules forbid accessing ambient const enum values from a different
 // package. The members are string-valued so the cast is safe at runtime.
 const CS_CONNECTED = "CONNECTED" as unknown as ConnectionStatus;

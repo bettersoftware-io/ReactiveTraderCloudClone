@@ -1,4 +1,4 @@
-// tests/presenter/vitest-fake-timers/setup.ts
+// tests/presenter/vitest-quickpickle-fake-timers/setup.ts
 // Loaded once via vitest setupFiles. Side-effect order matters:
 //   1. world.ts installs setWorldConstructor
 //   2. hooks.ts registers Before/After

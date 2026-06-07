@@ -62,7 +62,7 @@ const suites: Suite[] = [
   { script: "test:presenter:cucumber" },
   { script: "test:presenter:cucumber-fake-timers" },
   { script: "test:presenter:vitest-fake-timers" },
-  { script: "test:presenter:vitest" },
+  { script: "test:presenter:vitest-quickpickle-fake-timers" },
   // Heavy browser suites — one dev server + browser each.
   ...browserScripts.map((script, i) => ({
     script,

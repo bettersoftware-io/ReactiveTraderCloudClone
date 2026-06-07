@@ -1,4 +1,4 @@
-// tests/presenter/vitest-fake-timers/world.ts
+// tests/presenter/vitest-quickpickle-fake-timers/world.ts
 import { setWorldConstructor, QuickPickleWorld } from "quickpickle";
 import { firstValueFrom, timeout, type Observable, type Subscription } from "rxjs";
 import { vi } from "vitest";

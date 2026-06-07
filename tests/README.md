@@ -10,10 +10,11 @@ visual-diff tests live inside each package (see `packages/client/README.md`).
 - `test:<group>:<suite>` ⇒ code lives at `tests/<group>/<suite>/`.
 - Bare `cypress` / `playwright` = the runner's **native** authoring style (the
   default). The `-cucumber` suffix marks the Gherkin-driven variants.
-- The presenter group has two base runners — `cucumber` (Gherkin) and `vitest`
-  (plain `it()` blocks) — and both run **real timers** by default. The
-  `-fake-timers` suffix marks their virtual-time variants
-  (`@sinonjs/fake-timers` under cucumber, `vi.useFakeTimers` under vitest).
+- The presenter reference suite is `cucumber` (Gherkin, **real timers**).
+  Every other presenter peer runs **virtual time**: `cucumber-fake-timers`
+  (`@sinonjs/fake-timers`), `vitest-fake-timers` (plain `it()` blocks,
+  `vi.useFakeTimers`), and `vitest-quickpickle-fake-timers` (`.feature` files
+  via quickpickle, `vi.useFakeTimers`).
 
 ## Scripts
 
@@ -27,8 +28,8 @@ visual-diff tests live inside each package (see `packages/client/README.md`).
 | `test:browser:cypress-cucumber:open` | the above in the interactive Cypress runner | dev server |
 | `test:presenter:cucumber` | cucumber-js against live presenters (in-process simulators), real timers | none |
 | `test:presenter:cucumber-fake-timers` | same scenarios under `@sinonjs/fake-timers` | none |
-| `test:presenter:vitest` | same scenarios as plain vitest `it()` blocks (no Gherkin) | none |
-| `test:presenter:vitest-fake-timers` | same `.feature` files via quickpickle + `vi.useFakeTimers` | none |
+| `test:presenter:vitest-fake-timers` | same scenarios as plain vitest `it()` blocks (no Gherkin), virtual time | none |
+| `test:presenter:vitest-quickpickle-fake-timers` | same `.feature` files via quickpickle + `vi.useFakeTimers` | none |
 | `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server |
 | `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client |
 | `gates` | 25 grep/custom architecture gates (`scripts/grep-gates.ts`) | none |
@@ -55,8 +56,8 @@ browser/
 presenter/
   cucumber/             cucumber.js config + world/hooks (real timers)
   cucumber-fake-timers/ cucumber.js config + world/hooks (virtual time)
-  vitest/               vitest config + plain *.test.ts files
-  vitest-fake-timers/   vitest config + quickpickle setup + steps/
+  vitest-fake-timers/   vitest config + plain *.test.ts files
+  vitest-quickpickle-fake-timers/  vitest config + quickpickle setup + steps/
   steps/                [shared: both presenter cucumber suites] step defs
   scenarios/            [shared: all 4 presenter peers] _buildApp seam + _shared/
 specs/                  [shared: all 5 Gherkin-driven suites] .feature files

@@ -1,4 +1,4 @@
-// tests/presenter/vitest-fake-timers/steps/connection.steps.ts
+// tests/presenter/vitest-quickpickle-fake-timers/steps/connection.steps.ts
 //
 // NOTE: ConnectionStatus is a `const enum` in @rtc/domain source. With
 // verbatimModuleSyntax + isolatedModules, ambient const enums cannot be

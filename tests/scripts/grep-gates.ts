@@ -32,7 +32,7 @@ function checkPresenterScenarioCounts(): string[] {
     const featureSrc = readFileSync(featurePath, "utf8");
     const presenterScenarios = (featureSrc.match(/@presenter\s*\n\s*Scenario:/g) ?? []).length;
 
-    const testPath = `presenter/vitest/${feat}.test.ts`;
+    const testPath = `presenter/vitest-fake-timers/${feat}.test.ts`;
     if (presenterScenarios === 0 && !existsSync(testPath)) continue;
     if (presenterScenarios === 0 && existsSync(testPath)) {
       failures.push(`${feat}: 0 @presenter scenarios but ${testPath} exists`);
@@ -58,7 +58,7 @@ function checkPresenterScenarioCounts(): string[] {
 function checkPresenterDescribePrefix(): string[] {
   const failures: string[] = [];
   for (const feat of FEATURE_NAMES) {
-    const testPath = `presenter/vitest/${feat}.test.ts`;
+    const testPath = `presenter/vitest-fake-timers/${feat}.test.ts`;
     if (!existsSync(testPath)) continue;
     const testSrc = readFileSync(testPath, "utf8");
     const titles = [...testSrc.matchAll(/^\s*describe\(\s*"([^"]+)"/gm)].map((m) => m[1]!);
@@ -73,10 +73,10 @@ function checkPresenterDescribePrefix(): string[] {
   return failures;
 }
 
-function checkVitestFakeTimersBarrelCompleteness(): string[] {
+function checkQuickpickleBarrelCompleteness(): string[] {
   const failures: string[] = [];
-  const stepsDir = "presenter/vitest-fake-timers/steps";
-  const setupPath = "presenter/vitest-fake-timers/setup.ts";
+  const stepsDir = "presenter/vitest-quickpickle-fake-timers/steps";
+  const setupPath = "presenter/vitest-quickpickle-fake-timers/setup.ts";
   if (!existsSync(stepsDir) || !existsSync(setupPath)) return failures;
   const stepFiles = readdirSync(stepsDir).filter((f) => f.endsWith(".steps.ts"));
   const setupSrc = readFileSync(setupPath, "utf8");
@@ -160,7 +160,7 @@ const GATES: Gate[] = [
   {
     name: "6. No @playwright/test expect in step files",
     pattern: 'from "@playwright/test"',
-    paths: ["browser/steps/", "presenter/steps/", "presenter/vitest-fake-timers/steps/"],
+    paths: ["browser/steps/", "presenter/steps/", "presenter/vitest-quickpickle-fake-timers/steps/"],
     excludes: ["/node_modules/"],
   },
   {
@@ -172,7 +172,7 @@ const GATES: Gate[] = [
   {
     name: "8. No this.page.* in step files",
     pattern: 'this\\.page\\.',
-    paths: ["browser/steps/", "presenter/steps/", "presenter/vitest-fake-timers/steps/"],
+    paths: ["browser/steps/", "presenter/steps/", "presenter/vitest-quickpickle-fake-timers/steps/"],
     excludes: ["/node_modules/"],
   },
   {
@@ -237,13 +237,13 @@ const GATES: Gate[] = [
   {
     name: "16. No DOM/page references in presenter step/scenario files",
     pattern: 'getByTestId|page\\.|cy\\.',
-    paths: ["presenter/steps/", "presenter/vitest-fake-timers/steps/", "presenter/scenarios/"],
+    paths: ["presenter/steps/", "presenter/vitest-quickpickle-fake-timers/steps/", "presenter/scenarios/"],
     excludes: ["/node_modules/"],
   },
   {
     name: "17. No createApp/createSimulatorPorts outside _buildApp.ts",
     pattern: 'createApp|createSimulatorPorts',
-    paths: ["presenter/steps/", "presenter/scenarios/", "presenter/cucumber/", "presenter/cucumber-fake-timers/", "presenter/vitest/", "presenter/vitest-fake-timers/"],
+    paths: ["presenter/steps/", "presenter/scenarios/", "presenter/cucumber/", "presenter/cucumber-fake-timers/", "presenter/vitest-fake-timers/", "presenter/vitest-quickpickle-fake-timers/"],
     excludes: ["/node_modules/", "presenter/scenarios/_buildApp.ts"],
   },
   {
@@ -266,7 +266,7 @@ const GATES: Gate[] = [
   {
     name: "20. No Gherkin loader imports in the plain vitest peer",
     pattern: '"quickpickle"|"@cucumber/cucumber"|from "quickpickle/',
-    paths: ["presenter/vitest/"],
+    paths: ["presenter/vitest-fake-timers/"],
     excludes: ["/node_modules/"],
   },
   {
@@ -288,10 +288,10 @@ const GATES: Gate[] = [
     excludes: ["/node_modules/"],
   },
   {
-    name: "24. vitest-fake-timers/setup.ts imports every step file in tests/presenter/vitest-fake-timers/steps/",
+    name: "24. vitest-quickpickle-fake-timers/setup.ts imports every step file in tests/presenter/vitest-quickpickle-fake-timers/steps/",
     pattern: "",
     paths: [],
-    customCheck: checkVitestFakeTimersBarrelCompleteness,
+    customCheck: checkQuickpickleBarrelCompleteness,
   },
   {
     name: "25. No high/critical advisories in production deps (pnpm audit --prod)",

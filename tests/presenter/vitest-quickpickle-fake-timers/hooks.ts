@@ -1,4 +1,4 @@
-// tests/presenter/vitest-fake-timers/hooks.ts
+// tests/presenter/vitest-quickpickle-fake-timers/hooks.ts
 import { Before, After } from "quickpickle";
 import { vi } from "vitest";
 import { buildPresenterApp } from "../scenarios/_buildApp";

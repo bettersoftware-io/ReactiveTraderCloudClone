@@ -1,4 +1,4 @@
-// tests/presenter/vitest-fake-timers/steps/blotter.steps.ts
+// tests/presenter/vitest-quickpickle-fake-timers/steps/blotter.steps.ts
 import { Then } from "quickpickle";
 import type { VitestFakePresenterWorld } from "../world";
 import * as blotter from "../../scenarios/_shared/blotter";
