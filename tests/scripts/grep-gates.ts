@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 import { spawnSync } from "node:child_process";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
 
 interface Gate {
   name: string;
@@ -89,6 +90,40 @@ function checkVitestFakeBarrelCompleteness(): string[] {
     }
   }
   return failures;
+}
+
+/**
+ * Supply-chain gate: fail if any PRODUCTION dependency has a known high/critical
+ * advisory. Runs `pnpm audit --prod --audit-level high` from the repo root (this
+ * script's cwd is the tests package). Dev-only advisories are intentionally not
+ * gated here — those are surfaced by Dependabot and a plain `pnpm audit`. If the
+ * audit can't complete (e.g. offline), it warns rather than blocking, so the gate
+ * never produces false failures on a flaky network.
+ */
+function checkProductionAudit(): string[] {
+  const result = spawnSync(
+    "pnpm",
+    ["audit", "--prod", "--audit-level", "high"],
+    { cwd: resolve(process.cwd(), ".."), encoding: "utf8" },
+  );
+  if (result.status === 0) return [];
+  const out = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+  // Distinguish real advisories from an audit that couldn't run (network/registry).
+  if (/vulnerabilit(?:y|ies)\s+found/i.test(out)) {
+    const summary = out
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /^Severity:/i.test(l) || /vulnerabilit/i.test(l));
+    return [
+      "high/critical advisory in production dependencies:",
+      ...summary,
+      'remediate by bumping the package or adding a pnpm-workspace.yaml override; run "pnpm audit --prod" for details.',
+    ];
+  }
+  console.warn(
+    `WARN gate "pnpm audit --prod": audit did not complete; treating as non-blocking.\n${out.trim().slice(0, 400)}`,
+  );
+  return [];
 }
 
 const GATES: Gate[] = [
@@ -248,6 +283,12 @@ const GATES: Gate[] = [
     pattern: "",
     paths: [],
     customCheck: checkVitestFakeBarrelCompleteness,
+  },
+  {
+    name: "25. No high/critical advisories in production deps (pnpm audit --prod)",
+    pattern: "",
+    paths: [],
+    customCheck: checkProductionAudit,
   },
 ];
 

@@ -8,3 +8,15 @@ packages:
 allowBuilds:
   cypress: true
   esbuild: true
+
+# Supply-chain cooldown: refuse to install any package version published fewer
+# than this many minutes ago (1440 = 24h). This is pnpm 11's default, pinned
+# explicitly so the policy is visible in-repo and survives any future change to
+# the default. Add packages to `minimumReleaseAgeExclude` to bypass per-package.
+minimumReleaseAge: 1440
+
+# Force the vulnerable transitive ws (7.4.6, pulled in by @marblejs/websockets)
+# up to the patched 7.5.10 — fixes GHSA-3h5v-q93c-6h6q (DoS) without disturbing
+# the server's direct ws@8. (pnpm 11 reads overrides here, not from package.json.)
+overrides:
+  ws@7: ^7.5.10
