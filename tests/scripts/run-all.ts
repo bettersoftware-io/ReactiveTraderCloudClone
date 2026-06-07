@@ -42,9 +42,9 @@ const hasXvfbRun =
 const BROWSER_BASE_PORT = 3001;
 const browserScripts = [
   "test:browser:playwright",
-  "test:browser:raw-playwright",
+  "test:browser:playwright-cucumber",
   "test:browser:cypress",
-  "test:browser:raw-cypress",
+  "test:browser:cypress-cucumber",
 ];
 
 // Order matters when a concurrency cap is in effect (see MAX_PARALLEL below):

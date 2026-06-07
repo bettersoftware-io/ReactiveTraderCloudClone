@@ -10,12 +10,11 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
   "include": [
-    "support/**/*.ts",
-    "page-objects/**/*.ts",
+    "browser/**/*.ts",
+    "browser/playwright-cucumber/cucumber.js",
     "steps/**/*.ts",
-    "raw/**/*.ts",
+    "support/**/*.ts",
     "fullstack/**/*.ts",
-    "cucumber.js",
-    "cypress.config.ts"
+    "scripts/**/*.ts"
   ]
 }
