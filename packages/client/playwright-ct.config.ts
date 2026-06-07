@@ -1,17 +1,24 @@
+import os from "node:os";
 import { defineConfig, devices } from "@playwright/experimental-ct-react";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
 const uiHarness = fileURLToPath(new URL("./visual/react", import.meta.url));
 
+// Goldens live under a per-framework subdir (`react/`) so a future Solid run can
+// write `solid/` alongside without colliding — that per-framework split is the
+// cross-framework contract. Orthogonally, the leading segment is routed by
+// environment: CI (x86 Linux container) owns the canonical `react/` set; a local
+// dev machine writes its own committed `react-local/<platform>-<arch>/` set,
+// because font rasterization differs by OS/arch and never matches the x86 set.
+// See playwright.config.ts and ADR-001 for the full rationale.
+const baseline = process.env.CI ? "react" : `react-local/${os.platform()}-${os.arch()}`;
+
 export default defineConfig({
   testDir: "./visual/playwright-ct",
   testMatch: "**/*.spec.tsx",
   snapshotDir: "./visual/playwright-ct/__screenshots__",
-  // React goldens live under a per-framework subdir so a future Solid run can
-  // write ./solid/ alongside without colliding. Identical filename on every
-  // OS/arch keeps baselines portable across machines.
-  snapshotPathTemplate: "{snapshotDir}/react/{testFileName}/{arg}{ext}",
+  snapshotPathTemplate: `{snapshotDir}/${baseline}/{testFileName}/{arg}{ext}`,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,

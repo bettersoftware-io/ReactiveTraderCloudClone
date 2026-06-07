@@ -52,6 +52,25 @@ The contract is the data (`shared/`) and the goldens (`__screenshots__/`) — no
 the React-shaped `AppHooks` interface, which each framework adapts to its own
 model.
 
+### Goldens: two committed sets (CI vs local)
+
+Screenshot pixels depend on OS/arch font rasterization, so one golden set is not
+portable across machines. Both configs route `snapshotPathTemplate` by
+environment:
+
+- **`__screenshots__/react/`** — rendered by CI on x86 Linux in the pinned
+  Playwright container. This is the **canonical, enforced** set and the
+  cross-framework contract. Regenerate it via the `update-visual-goldens`
+  GitHub workflow (it runs in that container); never hand-edit it locally.
+- **`__screenshots__/react-local/<platform>-<arch>/`** — written by a local
+  `:update` run for a fast inner loop on your own machine (e.g.
+  `react-local/linux-arm64/`). Committed and reviewed, but **not** re-rendered
+  by CI, so it's your responsibility to regenerate it when the UI changes.
+
+A non-CI run (no `CI` env var) reads/writes the `react-local/<plat>-<arch>` set;
+CI reads/writes `react/`. An intentional UI change therefore means updating
+**both** sets. See ADR-001 → "Cross-platform pixel drift" for the rationale.
+
 ## The two implemented runners
 
 ### Tier 1 — Playwright Component Testing (`playwright-ct/`)
@@ -145,7 +164,9 @@ The goal: run the **same** scenarios and match the **same** goldens.
 - `visual/shared/` — untouched (or extracted to a shared package)
 - `visual/playwright/visual.spec.ts` — URL-driven, zero framework assumptions
 - `visual/playwright-ct/__screenshots__/react/` and
-  `visual/playwright/__screenshots__/react/` — these are the golden contract
+  `visual/playwright/__screenshots__/react/` — the canonical (CI-enforced)
+  golden contract (see "Goldens: two committed sets" above; the per-arch
+  `react-local/` sets are local-feedback only)
 
 **What to implement for the new framework:**
 

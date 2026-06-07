@@ -40,9 +40,19 @@ Reasons, in priority order:
 ## Consequences / known weaknesses
 
 - **Experimental API.** `experimental-ct-*` can change between releases.
-- **Cross-platform pixel drift.** Local-screenshot tools are subject to OS/arch
-  font rendering. We generate on Linux with a single golden filename; a stricter
-  setup would pin baseline generation to a container.
+- **Cross-platform pixel drift → two committed baselines.** Screenshot pixels
+  depend on OS/arch font rasterization (FreeType/HarfBuzz), so a single golden
+  filename is *not* portable across machines. We route by environment
+  (`snapshotPathTemplate` in both Playwright configs): CI renders on x86 Linux
+  inside the pinned Playwright container and owns the canonical `react/`
+  baseline — the cross-framework contract, and the only set the CI visual job
+  re-renders and enforces. A local dev machine writes its own committed
+  `react-local/<platform>-<arch>/` set, giving a fast local inner loop without
+  an emulated container (which on Apple Silicon would be slow qemu amd64). Both
+  sets are versioned and reviewed at commit time; an intentional UI change must
+  regenerate **both** — the x86 set via the `update-visual-goldens` workflow,
+  each local set via the runner's `:update` script — since no CI runner
+  reproduces a developer's architecture.
 - **No review UI.** Baselines are inspected by eye and committed (no
   Chromatic-style approve/reject workflow).
 
@@ -102,7 +112,7 @@ see "Vitest browser mode — attempted (Task 3)" above).
 | **Mount mechanism** | CT adapter mounts `VisualScenario` inside Chromium via `@playwright/experimental-ct-react` | Plain `page.goto("/?scenario=<name>")` against a tiny served Vite host (`visual/playwright/host/`) |
 | **Screenshot** | `expect(component).toHaveScreenshot(...)` | `expect(page).toHaveScreenshot(...)` |
 | **Spec file** | Framework-specific — imports `@ui-harness`, calls `mount(...)` | **Framework-agnostic** — URL navigation only; reused verbatim for any framework |
-| **Goldens** | `playwright-ct/__screenshots__/react/` | `playwright/__screenshots__/react/` |
+| **Goldens** | `playwright-ct/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` | `playwright/__screenshots__/{react ⎮ react-local/<plat>-<arch>}/` (CI vs local) |
 | **Ergonomics** | Tighter feedback loop; components mount in-process; no server needed | Slightly heavier (Vite dev server started per run); but the spec is maximally portable |
 | **Solid-reuse story** | **Alias-swap** — re-point `@ui-harness` in the CT Vite config to `visual/solid/` and swap the CT adapter; one config change | **Verbatim reuse** — `visual.spec.ts` needs zero changes; only the Vite host's `main.tsx` is replaced |
 | **Framework lock-in** | CT adapter per framework (React adapter lags for Solid — see adapter-status table below) | None; depends only on a running Vite server |

@@ -1,12 +1,25 @@
+import os from "node:os";
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3200;
+
+// Two committed golden sets, routed by environment. CI renders on x86 Linux in
+// the pinned Playwright container and owns the canonical `react/` baseline — the
+// cross-framework portability contract. A local dev machine (e.g. Apple Silicon,
+// linux-arm64) rasterizes fonts differently (FreeType/HarfBuzz + arch), so its
+// pixels never match the x86 set; it gets its OWN committed baseline under
+// `react-local/<platform>-<arch>/`. Both sets are versioned and reviewed at
+// commit time, but only the x86 `react/` set is additionally re-rendered and
+// enforced by the CI visual job (no CI runner reproduces a dev arch). So an
+// intentional UI change means updating BOTH: `:update` locally for the arm64 set
+// AND the update-visual-goldens workflow for the x86 set. See ADR-001.
+const baseline = process.env.CI ? "react" : `react-local/${os.platform()}-${os.arch()}`;
 
 export default defineConfig({
   testDir: "./visual/playwright",
   testMatch: "**/*.spec.ts",
   snapshotDir: "./visual/playwright/__screenshots__",
-  snapshotPathTemplate: "{snapshotDir}/react/{testFileName}/{arg}{ext}",
+  snapshotPathTemplate: `{snapshotDir}/${baseline}/{testFileName}/{arg}{ext}`,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
