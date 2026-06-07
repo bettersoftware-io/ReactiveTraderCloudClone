@@ -41,7 +41,7 @@
     "esbuild": "0.28.0",
     "quickpickle": "^1.11",
     "tsx": "^4.19.0",
-    "typescript": "^5.8",
+    "typescript": "^6",
     "vitest": "^4"
   }
 }
