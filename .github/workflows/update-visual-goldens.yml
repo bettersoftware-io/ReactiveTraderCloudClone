@@ -7,6 +7,15 @@ name: Update visual goldens
 # regenerated __screenshots__ as an artifact for a human to download, review, and
 # commit. Run this whenever the UI intentionally changes or the container tag is
 # bumped. Keep the container tag in sync with the `visual` job in ci.yml.
+#
+# SCOPE: this refreshes ONLY the canonical x86 `react/` set (the CI-enforced
+# baseline). It does NOT touch the per-arch `react-local/<platform>-<arch>/`
+# sets used for local feedback — those never match the x86 pixels and no CI
+# runner reproduces them. After an intentional UI change you must ALSO regenerate
+# your local set on your own machine and commit it:
+#   pnpm test:visual:playwright-ct:react:update && pnpm test:visual:playwright:react:update
+# Otherwise `pnpm test:visual` stays red locally even once CI is green. See
+# packages/client/visual/ADR-001-visual-diff-tooling.md ("Cross-platform pixel drift").
 on:
   workflow_dispatch:
 
