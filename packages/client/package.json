@@ -27,7 +27,7 @@
     "test:visual-diff:vitest-browser:react": "vitest run -c tests/visual-diff/vitest-browser/vitest-browser.config.ts",
     "test:visual-diff:vitest-browser:react:update": "vitest run -c tests/visual-diff/vitest-browser/vitest-browser.config.ts --update",
     "dev": "vite",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo reports",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports .vitest-attachments",
     "clean:deep": "pnpm run clean && rm -rf node_modules"
   },
   "dependencies": {
