@@ -105,6 +105,11 @@ pnpm test:visual-diff             # UI visual-diff screenshots (all 3 runners)
 pnpm --filter @rtc/tests gates    # architectural "grep gates" only
 ```
 
+Every test script writes an HTML report mirroring its name —
+`test:<a>:<b>` ⇒ `<package>/reports/<a>/<b>/report/index.html` (failure
+artifacts in the `artifacts/` sibling; bare `test` ⇒ `reports/unit/`; sole
+exception: `test:fullstack:node`, terminal only).
+
 `pnpm test:e2e` is the full behavioural suite: it runs the gates first, then
 launches all ten suites — the eight runners and the two full-stack smokes (see
 below) — **in parallel**, buffering each suite's output and printing a pass/fail
@@ -146,6 +151,9 @@ Two non-solutions to know about:
 - `pnpm --filter <pkg> <script>` bypasses turbo entirely (always fresh), but it
   also skips the task graph, so workspace deps are **not** auto-built — on a
   fresh checkout run `pnpm build` first.
+
+A cached `pnpm test` replay also restores `reports/unit/` from cache (declared
+turbo outputs) — `--force` regenerates them.
 
 ### Visual-diff tests (a third tier — neither e2e nor integration)
 

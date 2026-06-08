@@ -126,9 +126,10 @@ jobs:
         with:
           name: visual-diff-report
           path: |
-            packages/client/tests/visual-diff/*/test-results/
+            packages/client/reports/
             packages/client/tests/visual-diff/**/__screenshots__/**/*-actual.png
             packages/client/tests/visual-diff/**/__screenshots__/**/*-diff.png
+            packages/client/tests/visual-diff/**/__screenshots__/**/*-reference.png
           if-no-files-found: ignore
           retention-days: 7
 
@@ -199,8 +200,5 @@ jobs:
           name: e2e-report
           path: |
             tests/reports/
-            tests/test-results/
-            tests/cypress/screenshots/
-            tests/cypress/videos/
           if-no-files-found: ignore
           retention-days: 7

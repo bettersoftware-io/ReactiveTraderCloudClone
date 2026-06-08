@@ -59,6 +59,24 @@ with tier 2's `host/`. Goldens moved by `git mv`, verified pixel-identical 3/3
 `docs/superpowers/specs/2026-06-07-test-report-consistency-design.md`; Part B
 (per-suite HTML reports under `reports/<segments>/{report,artifacts}`) follows.
 
+## 2026-06-07 — consistent HTML test reports (Part B of the test-report consistency spec)
+
+Every test script now writes an HTML report mirroring its name:
+`test:<a>:<b>` ⇒ `<package>/reports/<a>/<b>/report/index.html`, with raw
+failure output in the `artifacts/` sibling (the reporter owns and wipes only
+`report/` — empirically spiked). Bare `test` ⇒ `reports/unit/` in all four
+vitest packages (turbo `outputs: ["reports/**"]`, cache-restored). New deps:
+`@vitest/ui` (×5), `cypress-mochawesome-reporter` (tests). Failure screenshots
+embed in all four browser-suite reports (Playwright `only-on-failure`,
+cucumber `After`-hook attach, mochawesome embedded, badeball auto-attach —
+the latter only for in-queue failures; post-`await` JS throws crash badeball
+upstream, no report). Tier-3 failure PNGs route next to the goldens via a
+`resolveDiffPath` override (vitest 4.1.8 defaults them into
+`.vitest-attachments/`). Exception: `test:fullstack:node` (bare tsx, terminal
+only). Clean scripts and the two CI failure uploads collapse onto `reports/`.
+Spec: `docs/superpowers/specs/2026-06-07-test-report-consistency-design.md`
+(Part B).
+
 ## Use cases extracted in Phase 2
 
 All in `packages/domain/src/usecases/`:

@@ -18,22 +18,22 @@ visual-diff tests live inside each package (see `packages/client/README.md`).
 
 ## Scripts
 
-| script | what it runs | server |
-|---|---|---|
-| `test:e2e` | gates, then ALL 10 suites below in parallel via `scripts/run-all.ts` | per-suite |
-| `test:browser:playwright` | native `@playwright/test` specs, `browser/playwright/` | dev server |
-| `test:browser:cypress` | native Cypress Mocha specs, `browser/cypress/` | dev server |
-| `test:browser:playwright-cucumber` | cucumber-js driving Playwright, `specs/*.feature` + `browser/steps/` | dev server |
-| `test:browser:cypress-cucumber` | Cypress + @badeball preprocessor, same features/steps | dev server |
-| `test:browser:cypress-cucumber:open` | the above in the interactive Cypress runner | dev server |
-| `test:presenter:cucumber` | cucumber-js against live presenters (in-process simulators), real timers | none |
-| `test:presenter:cucumber-fake-timers` | same scenarios under `@sinonjs/fake-timers` | none |
-| `test:presenter:vitest-fake-timers` | same scenarios as plain vitest `it()` blocks (no Gherkin), virtual time | none |
-| `test:presenter:vitest-quickpickle-fake-timers` | same `.feature` files via quickpickle + `vi.useFakeTimers` | none |
-| `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server |
-| `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client |
-| `gates` | 25 grep/custom architecture gates (`scripts/grep-gates.ts`) | none |
-| `port:free` | frees the dev-server port (`RTC_DEV_PORT`, default 3000) | — |
+| script | what it runs | server | report (under `reports/`) |
+|---|---|---|---|
+| `test:e2e` | gates, then ALL 10 suites below in parallel via `scripts/run-all.ts` | per-suite | — (each suite writes its own) |
+| `test:browser:playwright` | native `@playwright/test` specs, `browser/playwright/` | dev server | `browser/playwright/` |
+| `test:browser:cypress` | native Cypress Mocha specs, `browser/cypress/` | dev server | `browser/cypress/` |
+| `test:browser:playwright-cucumber` | cucumber-js driving Playwright, `specs/*.feature` + `browser/steps/` | dev server | `browser/playwright-cucumber/` |
+| `test:browser:cypress-cucumber` | Cypress + @badeball preprocessor, same features/steps | dev server | `browser/cypress-cucumber/` |
+| `test:browser:cypress-cucumber:open` | the above in the interactive Cypress runner | dev server | — (interactive) |
+| `test:presenter:cucumber` | cucumber-js against live presenters (in-process simulators), real timers | none | `presenter/cucumber/` |
+| `test:presenter:cucumber-fake-timers` | same scenarios under `@sinonjs/fake-timers` | none | `presenter/cucumber-fake-timers/` |
+| `test:presenter:vitest-fake-timers` | same scenarios as plain vitest `it()` blocks (no Gherkin), virtual time | none | `presenter/vitest-fake-timers/` |
+| `test:presenter:vitest-quickpickle-fake-timers` | same `.feature` files via quickpickle + `vi.useFakeTimers` | none | `presenter/vitest-quickpickle-fake-timers/` |
+| `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare tsx script, no framework — the one exception) |
+| `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client | `fullstack/browser/` |
+| `gates` | 25 grep/custom architecture gates (`scripts/grep-gates.ts`) | none | — |
+| `port:free` | frees the dev-server port (`RTC_DEV_PORT`, default 3000) | — | — |
 
 Utility scripts (`clean`, `clean:deep`, `typecheck`) are not included in the
 table — they are not part of the test pipeline.
@@ -69,6 +69,23 @@ Path-resolution rule: cucumber `import:` globs, cypress `specPattern`/
 `supportFile`, and the preprocessorrc `stepDefinitions` are all **tests-root
 relative** (CWD/projectRoot = `tests/`), even though the config files live in
 suite folders. The vitest configs pin `root` back to `tests/` explicitly.
+
+## Reports
+
+Every test script writes an HTML report whose path mirrors the script name:
+`test:<group>:<suite>` ⇒ `reports/<group>/<suite>/report/index.html` — open
+that. Browser suites also write raw failure output (screenshots, traces) to
+the `artifacts/` **sibling**; the two are siblings because each HTML reporter
+owns — and wipes — its own `report/` folder at write time.
+
+Failure screenshots are embedded in the report itself for all four browser
+suites. One caveat: a step that throws from plain `await`ed JS (outside the
+Cypress command queue) crashes the badeball plugin before report write
+("Unexpected state in testStepFinishedHandler", upstream), so the
+cypress-cucumber report only appears when failures stay in-queue — assert
+via `cy` commands, per the steps' existing convention. The one script with
+no report: `test:fullstack:node` (a bare tsx script with no test framework —
+terminal output only). `reports/` is gitignored and removed by `pnpm clean`.
 
 ## Orchestration
 

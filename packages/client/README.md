@@ -6,18 +6,18 @@ through `useHooks()` (`AppHooks` interface); production wires presenters via
 
 ## Scripts
 
-| script | purpose |
-|---|---|
-| `dev` | Vite dev server |
-| `build` / `build-types` | Vite build + `.d.ts` emit |
-| `typecheck` | app + node + visual-diff tsconfigs |
-| `test` | **unit tier** — Vitest (jsdom): presenters, adapters |
-| `test:visual-diff` | **visual tier** — every runner × every framework variant present, in parallel |
-| `test:visual-diff:react` | all visual runners, react only |
-| `test:visual-diff:playwright-ct:react[:update\|:ui]` | Tier 1 — Playwright Component Testing |
-| `test:visual-diff:playwright:react[:update\|:ui]` | Tier 2 — plain Playwright over a Vite host page |
-| `test:visual-diff:vitest-browser:react[:update]` | Tier 3 — Vitest browser mode (`toMatchScreenshot`) |
-| `clean` / `clean:deep` | remove build/test artifacts (/ + node_modules) |
+| script | purpose | report (under `reports/`) |
+|---|---|---|
+| `dev` | Vite dev server | — |
+| `build` / `build-types` | Vite build + `.d.ts` emit | — |
+| `typecheck` | app + node + visual-diff tsconfigs | — |
+| `test` | **unit tier** — Vitest (jsdom): presenters, adapters | `unit/` |
+| `test:visual-diff` | **visual tier** — every runner × every framework variant present, in parallel | per-runner, below |
+| `test:visual-diff:react` | all visual runners, react only | per-runner, below |
+| `test:visual-diff:playwright-ct:react[:update\|:ui]` | Tier 1 — Playwright Component Testing | `visual-diff/playwright-ct/react/` |
+| `test:visual-diff:playwright:react[:update\|:ui]` | Tier 2 — plain Playwright over a Vite host page | `visual-diff/playwright/react/` |
+| `test:visual-diff:vitest-browser:react[:update]` | Tier 3 — Vitest browser mode (`toMatchScreenshot`) | `visual-diff/vitest-browser/react/` |
+| `clean` / `clean:deep` | remove build/test artifacts (/ + node_modules) | — |
 
 Script naming: `test:visual-diff:<runner>:<framework>` — the framework axis exists
 because the goldens + `tests/visual-diff/shared/` fixtures are the portability contract
@@ -32,7 +32,8 @@ cached (`cache: false` in `turbo.json`). Invoked directly
 (`pnpm --filter @rtc/client test`), scripts bypass turbo — always fresh, but
 workspace deps (`@rtc/domain`, `@rtc/shared`) are not auto-built; run
 `pnpm build` at the root first on a fresh checkout. See "Caching" in the root
-README.
+README. The unit report under `reports/unit/` is a declared turbo output, so a cached
+replay *restores* it — fresh reports need `--force` too.
 
 ## Test portfolio
 
