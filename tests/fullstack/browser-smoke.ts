@@ -26,17 +26,21 @@ const CLIENT_PORT = Number(process.env.FULLSTACK_CLIENT_PORT ?? 3100);
 
 function runPlaywright(): Promise<number> {
   return new Promise((resolve) => {
+    const args = [
+      "--filter",
+      "@rtc/tests",
+      "exec",
+      "playwright",
+      "test",
+      "--config",
+      "fullstack/browser/playwright.config.ts",
+    ];
+    // FULLSTACK_HEADED (set by the :headed script) runs the real browser
+    // visibly against the real backend, so the full stack can be watched live.
+    if (process.env.FULLSTACK_HEADED) args.push("--headed");
     const child = spawn(
       "pnpm",
-      [
-        "--filter",
-        "@rtc/tests",
-        "exec",
-        "playwright",
-        "test",
-        "--config",
-        "fullstack/browser/playwright.config.ts",
-      ],
+      args,
       {
         cwd: MONOREPO_ROOT,
         stdio: "inherit",

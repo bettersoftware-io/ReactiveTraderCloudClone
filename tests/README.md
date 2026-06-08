@@ -22,21 +22,27 @@ visual-diff tests live inside each package (see `packages/client/README.md`).
 |---|---|---|---|
 | `test:e2e` | gates, then ALL 10 suites below in parallel via `scripts/run-all.ts` | per-suite | — (each suite writes its own) |
 | `test:browser:playwright` | native `@playwright/test` specs, `browser/playwright/` | dev server | `browser/playwright/` |
+| `test:browser:playwright:headed` | ↑ in a visible browser (`playwright test --headed`, one window at a time) | dev server | `browser/playwright/` |
 | `test:browser:cypress` | native Cypress Mocha specs, `browser/cypress/` | dev server | `browser/cypress/` |
+| `test:browser:cypress:headed` | ↑ in the interactive Cypress runner (`cypress open`) | dev server | — (interactive) |
 | `test:browser:playwright-cucumber` | cucumber-js driving Playwright, `specs/*.feature` + `browser/steps/` | dev server | `browser/playwright-cucumber/` |
+| `test:browser:playwright-cucumber:headed` | ↑ in a visible browser (headed Chromium + slowMo) | dev server | `browser/playwright-cucumber/` |
 | `test:browser:cypress-cucumber` | Cypress + @badeball preprocessor, same features/steps | dev server | `browser/cypress-cucumber/` |
-| `test:browser:cypress-cucumber:open` | the above in the interactive Cypress runner | dev server | — (interactive) |
+| `test:browser:cypress-cucumber:headed` | ↑ in the interactive Cypress runner (`cypress open`) | dev server | — (interactive) |
 | `test:presenter:cucumber` | cucumber-js against live presenters (in-process simulators), real timers | none | `presenter/cucumber/` |
 | `test:presenter:cucumber-fake-timers` | same scenarios under `@sinonjs/fake-timers` | none | `presenter/cucumber-fake-timers/` |
 | `test:presenter:vitest-fake-timers` | same scenarios as plain vitest `it()` blocks (no Gherkin), virtual time | none | `presenter/vitest-fake-timers/` |
 | `test:presenter:vitest-quickpickle-fake-timers` | same `.feature` files via quickpickle + `vi.useFakeTimers` | none | `presenter/vitest-quickpickle-fake-timers/` |
 | `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare tsx script, no framework — the one exception) |
 | `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client | `fullstack/browser/` |
+| `test:fullstack:browser:headed` | ↑ in a visible browser (`--headed`) | own server + client | `fullstack/browser/` |
 | `gates` | 25 grep/custom architecture gates (`scripts/grep-gates.ts`) | none | — |
 | `port:free` | frees the dev-server port (`RTC_DEV_PORT`, default 3000) | — | — |
 
 Utility scripts (`clean`, `clean:deep`, `typecheck`) are not included in the
-table — they are not part of the test pipeline.
+table — they are not part of the test pipeline. The `:headed` variants are
+interactive dev tools (watch a suite live in a visible browser) and are NOT run
+by `test:e2e`.
 
 ## Layout
 

@@ -237,7 +237,6 @@ pnpm --filter @rtc/tests test:browser:playwright            # native Playwright
 pnpm --filter @rtc/tests test:browser:playwright-cucumber   # Cucumber + Playwright
 pnpm --filter @rtc/tests test:browser:cypress               # native Cypress
 pnpm --filter @rtc/tests test:browser:cypress-cucumber      # Cucumber + Cypress
-pnpm --filter @rtc/tests test:browser:cypress-cucumber:open # Cypress interactive runner
 
 # Presenter peers (pure Node, no browser/server)
 pnpm --filter @rtc/tests test:presenter:cucumber                       # Gherkin, real timers (default)
@@ -248,6 +247,13 @@ pnpm --filter @rtc/tests test:presenter:vitest-quickpickle-fake-timers # Gherkin
 # Full-stack smokes (real server + real client)
 pnpm --filter @rtc/tests test:fullstack:node     # real socket, no browser
 pnpm --filter @rtc/tests test:fullstack:browser  # real browser via VITE_SERVER_URL
+
+# Watch any browser suite live (:headed) — dev tools, not part of test:e2e
+pnpm --filter @rtc/tests test:browser:playwright:headed          # Playwright --headed (runs once)
+pnpm --filter @rtc/tests test:browser:playwright-cucumber:headed # headed Chromium + slowMo
+pnpm --filter @rtc/tests test:browser:cypress:headed             # Cypress interactive runner (open)
+pnpm --filter @rtc/tests test:browser:cypress-cucumber:headed    # Cypress interactive runner (open)
+pnpm --filter @rtc/tests test:fullstack:browser:headed           # full stack, --headed
 ```
 
 See tests/README.md for the full suite matrix and naming convention.

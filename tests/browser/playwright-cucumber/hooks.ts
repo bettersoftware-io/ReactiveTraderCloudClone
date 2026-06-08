@@ -12,7 +12,12 @@ let dev: DevServerHandle | undefined;
 
 BeforeAll({ timeout: 60_000 }, async () => {
   dev = await startDevServer();
-  browser = await chromium.launch();
+  // PWCUCUMBER_HEADED (set by the :headed script) launches a visible browser
+  // with slowMo so the scenario can be watched live. cucumber-js has no UI
+  // mode, so a headed browser is the real-time view.
+  browser = await chromium.launch(
+    process.env.PWCUCUMBER_HEADED ? { headless: false, slowMo: 250 } : {},
+  );
 });
 
 AfterAll(async () => {
