@@ -22,7 +22,10 @@ export default {
     "browser/steps/*.steps.ts",
   ],
   format: ["progress-bar", "html:reports/browser/playwright-cucumber/report/index.html", "summary"],
-  parallel: process.env.CI ? 1 : 2,
+  // PWCUCUMBER_HEADED (the :headed script) forces a single worker so the run
+  // is one followable window — otherwise each cucumber worker launches its own
+  // visible browser. CI already pins 1; both are the "watchable run" path.
+  parallel: process.env.CI || process.env.PWCUCUMBER_HEADED ? 1 : 2,
   retry: process.env.CI ? 2 : 0,
   // Browser peers can't inject gateway lifecycle events through the DOM, so the
   // presenter-only reconnect scenario is excluded here. The presenter cucumber
