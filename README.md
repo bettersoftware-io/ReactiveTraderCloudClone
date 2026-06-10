@@ -250,6 +250,7 @@ pnpm --filter @rtc/tests test:fullstack:browser  # real browser via VITE_SERVER_
 
 # Watch any browser suite live (:headed) — dev tools, not part of test:e2e
 pnpm --filter @rtc/tests test:browser:playwright:headed          # Playwright --headed (runs once)
+pnpm --filter @rtc/tests test:browser:playwright:ui              # Playwright UI mode (sidebar, watch, time-travel)
 pnpm --filter @rtc/tests test:browser:playwright-cucumber:headed # headed Chromium + slowMo
 pnpm --filter @rtc/tests test:browser:cypress:headed             # Cypress interactive runner (open)
 pnpm --filter @rtc/tests test:browser:cypress-cucumber:headed    # Cypress interactive runner (open)

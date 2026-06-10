@@ -14,6 +14,7 @@
     "test:browser:cypress-cucumber:headed": "CYPRESS_TAGS='not @presenterOnly' tsx scripts/with-server.ts cypress open --e2e --config-file browser/cypress-cucumber/cypress.config.ts",
     "test:browser:playwright": "tsx scripts/with-server.ts playwright test --config browser/playwright/playwright.config.ts",
     "test:browser:playwright:headed": "tsx scripts/with-server.ts playwright test --headed --config browser/playwright/playwright.config.ts",
+    "test:browser:playwright:ui": "tsx scripts/with-server.ts playwright test --ui --config browser/playwright/playwright.config.ts",
     "test:browser:playwright-cucumber": "NODE_OPTIONS='--import tsx/esm' tsx scripts/with-server.ts cucumber-js --config browser/playwright-cucumber/cucumber.js",
     "test:browser:playwright-cucumber:headed": "PWCUCUMBER_HEADED=1 NODE_OPTIONS='--import tsx/esm' tsx scripts/with-server.ts cucumber-js --config browser/playwright-cucumber/cucumber.js",
     "test:e2e": "pnpm gates && tsx scripts/run-all.ts",

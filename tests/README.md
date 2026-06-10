@@ -23,6 +23,7 @@ visual-diff tests live inside each package (see `packages/client/README.md`).
 | `test:e2e` | gates, then ALL 10 suites below in parallel via `scripts/run-all.ts` | per-suite | — (each suite writes its own) |
 | `test:browser:playwright` | native `@playwright/test` specs, `browser/playwright/` | dev server | `browser/playwright/` |
 | `test:browser:playwright:headed` | ↑ in a visible browser (`playwright test --headed`, one window at a time) | dev server | `browser/playwright/` |
+| `test:browser:playwright:ui` | ↑ in Playwright UI mode (`playwright test --ui`: test-tree sidebar, watch mode, time-travel/trace) | dev server | — (interactive) |
 | `test:browser:cypress` | native Cypress Mocha specs, `browser/cypress/` | dev server | `browser/cypress/` |
 | `test:browser:cypress:headed` | ↑ in the interactive Cypress runner (`cypress open`) | dev server | — (interactive) |
 | `test:browser:playwright-cucumber` | cucumber-js driving Playwright, `specs/*.feature` + `browser/steps/` | dev server | `browser/playwright-cucumber/` |
@@ -40,9 +41,13 @@ visual-diff tests live inside each package (see `packages/client/README.md`).
 | `port:free` | frees the dev-server port (`RTC_DEV_PORT`, default 3000) | — | — |
 
 Utility scripts (`clean`, `clean:deep`, `typecheck`) are not included in the
-table — they are not part of the test pipeline. The `:headed` variants are
-interactive dev tools (watch a suite live in a visible browser) and are NOT run
-by `test:e2e`.
+table — they are not part of the test pipeline. The `:headed` and `:ui` variants
+are interactive dev tools and are NOT run by `test:e2e`. `:headed` watches a suite
+live in a visible browser; `:ui` (native Playwright only) opens Playwright UI mode
+— a separate runner app with a test-tree sidebar, watch mode, and time-travel
+debugging. UI mode requires the native `@playwright/test` runner to enumerate the
+test tree, so the cucumber-driven suites (which drive Playwright through their own
+cucumber-js runner) get a `:headed` variant only, not `:ui`.
 
 ## Layout
 
