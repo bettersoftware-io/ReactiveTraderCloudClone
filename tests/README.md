@@ -49,6 +49,9 @@ debugging. UI mode requires the native `@playwright/test` runner to enumerate th
 test tree, so the cucumber-driven suites (which drive Playwright through their own
 cucumber-js runner) get a `:headed` variant only, not `:ui`.
 
+> **Heads-up:** the Cypress suites currently hang (silently, 100% CPU) in the
+> arm64 dev container — see "Known issue" below. They still pass on x86 CI.
+
 ## Layout
 
 Folders without a `[shared: …]` tag belong only to the suite they sit in.
@@ -126,6 +129,59 @@ Nothing in this package is ever cache-replayed:
   side: they also skip turbo's task graph, so workspace packages are **not**
   auto-built; on a fresh checkout run `pnpm build` at the root first
   (`test:e2e` does this for you via its `dependsOn: ["build"]`).
+
+## Known issue: Cypress suites hang in the arm64 dev container (2026-06)
+
+**Symptom:** every `test:browser:cypress*` script (headless and `:headed`)
+produces no output forever; the Cypress main process pins one core at 100%
+CPU and never connects to its X display. Playwright suites are unaffected,
+and all four browser suites pass on x86 CI.
+
+**Root cause (established empirically, 2026-06-08 → 06-10):** the Cypress
+runner is itself an Electron *app* — server, proxy, and reporter boot on the
+bundled Electron before any test browser is chosen. In this container, every
+Electron browser-process boot fails: vanilla Electron 37.6.0 (Cypress 15.16's
+exact bundle) **and** latest 42.4.0 die with a silent SIGTRAP after the Node
+side boots but before `app.whenReady()`, while Playwright's plain Chromium 148
+boots fine under the same Xvfb. Cypress's wrapper turns that same boot failure
+into an infinite respawn spin — hence "stuck" rather than an error.
+
+**Not fixable in this repo:**
+
+- `--browser <path>` can't help — the orchestrator dies before the browser
+  option is read. (Electron's Chromium is compiled in; it is not swappable.)
+- No Cypress version helps — 15.14.2 and 15.16.0 hang identically, and the
+  newest Electron crashes the same way.
+- Falsified: GPU/GL, X11/GTK (`--ozone-platform=headless` crashes too),
+  io_uring, `/dev/shm`, dbus, suite renames, page size, glibc, fd limits,
+  and the agent-sandbox seccomp layer.
+
+**Suspected trigger:** a Docker Desktop upgrade replacing the VM under the
+container (kernel `6.12.76-linuxkit`, built 2026-05-28). Cypress runs fine
+natively on the same Apple-Silicon Mac. Quick in-container health check —
+this should print a version instantly; if it hangs, the issue is still live:
+
+```bash
+timeout 20 ~/.cache/Cypress/15.16.0/Cypress/Cypress --no-sandbox --version
+```
+
+Host-side isolation test (stock container, no repo code; `FAIL exit=133`
+on the current Docker Desktop + `PASS` after downgrading one release would
+confirm a Docker Desktop regression worth filing at docker/for-mac):
+
+```bash
+docker run --rm node:24-bookworm bash -c '
+  apt-get update -qq && apt-get install -qq -y --no-install-recommends \
+    xvfb libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libgtk-3-0 libgbm1 libasound2 >/dev/null
+  mkdir /t && cd /t && npm init -y >/dev/null && npm i electron@37.6.0 >/dev/null 2>&1
+  echo "const {app}=require(\"electron\");app.whenReady().then(()=>{console.log(\"ELECTRON BOOT OK\");app.quit()})" > m.js
+  xvfb-run ./node_modules/.bin/electron --no-sandbox m.js && echo PASS || echo "FAIL exit=$?"
+'
+```
+
+**Until resolved:** use the Playwright suites locally (including `:headed` /
+`:ui`); treat the Cypress suites as CI-verified. Alternatively run the dev
+container as `linux/amd64` (matches CI, but emulation-slow).
 
 ## Why so many overlapping suites?
 
