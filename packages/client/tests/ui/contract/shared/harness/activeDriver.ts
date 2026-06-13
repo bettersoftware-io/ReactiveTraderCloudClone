@@ -21,24 +21,24 @@ export interface MountedRoot {
 }
 
 /** A framework adapter that knows how to render a token into the DOM. */
-export interface BehaviourDriver {
+export interface UiContractDriver {
   render<P, Page extends MountedComponent<P>>(
     token: ComponentToken<P, Page>,
     inputs: RenderInputs<P>,
   ): MountedRoot;
 }
 
-let active: BehaviourDriver | null = null;
+let active: UiContractDriver | null = null;
 
-export function setDriver(driver: BehaviourDriver): void {
+export function setDriver(driver: UiContractDriver): void {
   active = driver;
 }
 
-export function getDriver(): BehaviourDriver {
+export function getDriver(): UiContractDriver {
   if (!active) {
     throw new Error(
-      "No behaviour-test driver registered. Ensure the tier's setupFiles entry " +
-        "(tests/behaviour/react/setup.ts) ran before the spec.",
+      "No ui-contract test driver registered. Ensure the tier's setupFiles entry " +
+        "(tests/ui/contract/react/setup.ts) ran before the spec.",
     );
   }
   return active;

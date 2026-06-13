@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { mount } from "@behaviour/mount";
-import { ConnectionStatusBar } from "@behaviour/components";
+import { mount } from "@ui-contract/mount";
+import { ConnectionStatusBar } from "@ui-contract/components";
 import { ConnectionStatus } from "@rtc/domain";
 
 describe("ConnectionStatusBar", () => {

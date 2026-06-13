@@ -7,7 +7,7 @@ import type {
   RfqQuoteResult,
   QuoteRequest,
 } from "@rtc/domain";
-import type { AppHooks } from "../../../src/ui/hooks/createAppHooks";
+import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import type { World } from "../shared/harness/world";
 
 /** Subscribe a React component to a BehaviorSubject; re-render on each emission. */

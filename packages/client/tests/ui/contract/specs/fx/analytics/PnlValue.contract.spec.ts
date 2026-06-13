@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { mount } from "@behaviour/mount";
-import { PnlValue } from "@behaviour/components";
+import { mount } from "@ui-contract/mount";
+import { PnlValue } from "@ui-contract/components";
 
 describe("PnlValue", () => {
   it("shows a positive value with a + sign", () => {

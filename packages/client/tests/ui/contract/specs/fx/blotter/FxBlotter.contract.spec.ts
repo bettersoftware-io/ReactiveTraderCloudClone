@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Direction, TradeStatus, type Trade } from "@rtc/domain";
-import { mount } from "@behaviour/mount";
-import { FxBlotter } from "@behaviour/components";
+import { mount } from "@ui-contract/mount";
+import { FxBlotter } from "@ui-contract/components";
 
 const trade = (tradeId: number, over: Partial<Trade> = {}): Trade => ({
   tradeId,

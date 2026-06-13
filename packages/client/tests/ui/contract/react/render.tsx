@@ -1,9 +1,9 @@
 import { render as rtlRender, act } from "@testing-library/react";
 import { useSyncExternalStore, type ReactElement } from "react";
 import type { BehaviorSubject } from "rxjs";
-import { ThemeProvider } from "../../../src/ui/shell/theme/ThemeProvider";
-import { HooksProvider } from "../../../src/ui/hooks/HooksProvider";
-import type { BehaviourDriver } from "../shared/harness/activeDriver";
+import { ThemeProvider } from "../../../../src/ui/shell/theme/ThemeProvider";
+import { HooksProvider } from "../../../../src/ui/hooks/HooksProvider";
+import type { UiContractDriver } from "../shared/harness/activeDriver";
 import { reactHooks } from "./hooksFromWorld";
 import { registry } from "./registry";
 
@@ -25,7 +25,7 @@ function PropsHost<P>({
   return build(props);
 }
 
-export const reactDriver: BehaviourDriver = {
+export const reactDriver: UiContractDriver = {
   render(token, { propsSubject, world }) {
     const build = registry.get(token);
     if (!build) throw new Error("No React registry entry for the given token.");
