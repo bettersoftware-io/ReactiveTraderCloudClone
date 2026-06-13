@@ -43,6 +43,12 @@ import {
   TileConfirmation,
   RfqCountdown,
   TileRfq,
+  ConnectionOverlay,
+  Footer,
+  Header,
+  StaleIndicator,
+  ThemeToggle,
+  AdminPanel,
 } from "../shared/components";
 import { LiveRatesPanel as LiveRatesPanelComponent } from "../../../../src/ui/fx/liveRates/LiveRatesPanel";
 import { CurrencyFilter as CurrencyFilterComponent } from "../../../../src/ui/fx/liveRates/CurrencyFilter";
@@ -78,6 +84,12 @@ import { RfqTilesPanel as RfqTilesPanelComponent } from "../../../../src/ui/cred
 import { SellSidePanel as SellSidePanelComponent } from "../../../../src/ui/credit/sellSide/SellSidePanel";
 import { TradeTicket as TradeTicketComponent } from "../../../../src/ui/credit/sellSide/TradeTicket";
 import { CreditBlotter as CreditBlotterComponent } from "../../../../src/ui/credit/blotter/CreditBlotter";
+import { ConnectionOverlay as ConnectionOverlayComponent } from "../../../../src/ui/shell/connection/ConnectionOverlay";
+import { Footer as FooterComponent } from "../../../../src/ui/shell/layout/Footer";
+import { Header as HeaderComponent, type WorkspaceTab } from "../../../../src/ui/shell/layout/Header";
+import { StaleIndicator as StaleIndicatorComponent } from "../../../../src/ui/shell/stale/StaleIndicator";
+import { ThemeToggle as ThemeToggleComponent } from "../../../../src/ui/shell/theme/ThemeToggle";
+import { AdminPanel as AdminPanelComponent } from "../../../../src/ui/admin/AdminPanel";
 
 const noopFilter = (_f: ColumnFilter | null): void => {};
 
@@ -299,4 +311,25 @@ export const registry = new Map<AnyToken, ElementFor>([
       />
     ),
   ],
+  [ConnectionOverlay, () => <ConnectionOverlayComponent />],
+  [Footer, () => <FooterComponent />],
+  [
+    Header,
+    (p) => (
+      <HeaderComponent
+        activeTab={(p.activeTab as WorkspaceTab) ?? "fx"}
+        onTabChange={(p.onTabChange as ((t: WorkspaceTab) => void)) ?? (() => {})}
+      />
+    ),
+  ],
+  [
+    StaleIndicator,
+    (p) => (
+      <StaleIndicatorComponent stale={(p.stale as boolean) ?? false}>
+        <span>{(p.childLabel as string) ?? "content"}</span>
+      </StaleIndicatorComponent>
+    ),
+  ],
+  [ThemeToggle, () => <ThemeToggleComponent />],
+  [AdminPanel, () => <AdminPanelComponent />],
 ]);

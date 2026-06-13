@@ -31,6 +31,12 @@ import { TileNotionalPage, type TileNotionalProps } from "./pages/fx/liveRates/t
 import { TileConfirmationPage, type TileConfirmationProps } from "./pages/fx/liveRates/tile/TileConfirmationPage";
 import { RfqCountdownPage, type RfqCountdownProps } from "./pages/fx/liveRates/tile/RfqCountdownPage";
 import { TileRfqPage, type TileRfqProps } from "./pages/fx/liveRates/tile/TileRfqPage";
+import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverlayPage";
+import { FooterPage } from "./pages/shell/layout/FooterPage";
+import { HeaderPage, type HeaderProps } from "./pages/shell/layout/HeaderPage";
+import { StaleIndicatorPage, type StaleIndicatorProps } from "./pages/shell/stale/StaleIndicatorPage";
+import { ThemeTogglePage } from "./pages/shell/theme/ThemeTogglePage";
+import { AdminPanelPage } from "./pages/admin/AdminPanelPage";
 
 export const AnalyticsPanel = component<Record<string, never>, AnalyticsPanelPage>(
   (ctx) => new AnalyticsPanelPage(ctx),
@@ -150,4 +156,28 @@ export const RfqCountdown = component<RfqCountdownProps, RfqCountdownPage>(
 
 export const TileRfq = component<TileRfqProps, TileRfqPage>(
   (ctx) => new TileRfqPage(ctx),
+);
+
+export const ConnectionOverlay = component<Record<string, never>, ConnectionOverlayPage>(
+  (ctx) => new ConnectionOverlayPage(ctx),
+);
+
+export const Footer = component<Record<string, never>, FooterPage>(
+  (ctx) => new FooterPage(ctx),
+);
+
+export const Header = component<HeaderProps, HeaderPage>(
+  (ctx) => new HeaderPage(ctx),
+);
+
+export const StaleIndicator = component<StaleIndicatorProps, StaleIndicatorPage>(
+  (ctx) => new StaleIndicatorPage(ctx),
+);
+
+export const ThemeToggle = component<Record<string, never>, ThemeTogglePage>(
+  (ctx) => new ThemeTogglePage(ctx),
+);
+
+export const AdminPanel = component<Record<string, never>, AdminPanelPage>(
+  (ctx) => new AdminPanelPage(ctx),
 );

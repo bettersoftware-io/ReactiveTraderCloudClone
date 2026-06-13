@@ -67,6 +67,12 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      # The ui:contract coverage gate over the whole src/ui surface (≥95%). It
+      # runs the neutral sociable contract specs AND the co-located src/ui unit
+      # tests, so the percentage reflects their true combined coverage.
+      - name: UI contract coverage gate (≥95%)
+        run: pnpm --filter @rtc/client test:ui:contract:coverage
+
       - name: Build
         run: pnpm build
 

@@ -13,7 +13,7 @@ through `useHooks()` (`AppHooks` interface); production wires presenters via
 | `typecheck` | app + node + visual-diff + ui-contract tsconfigs | — |
 | `test:app` | **app tier** — Vitest (jsdom): presenters, adapters (`src/app`) | `app/` |
 | `test:ui:contract` | **ui contract tier** — sociable RTL specs over `src/ui` | `ui/contract/` |
-| `test:ui:contract:coverage` | ↑ + v8 coverage | `ui/contract/coverage/` |
+| `test:ui:contract:coverage` | **≥95% coverage gate** — combined `src/ui` surface (contract specs + co-located unit tests) | `ui/contract/coverage/` |
 | `test` | **default** — Vitest (jsdom): union of app + ui-contract (30 files / 90 tests) | `unit/` |
 | `test:visual-diff` | **visual tier** — every runner × every framework variant present, in parallel | per-runner, below |
 | `test:visual-diff:react` | all visual runners, react only | per-runner, below |
@@ -52,8 +52,17 @@ contract tests (`src/app/adapters/`). No browser, no screenshots. Report under
 React Testing Library specs over `src/ui` (`tests/ui/contract/`): they assert
 text, roles, structure, recorded command inputs, and dynamic re-renders — the
 behavioural counterpart to the pixel-only visual-diff tier, and the second
-framework-swap portability pillar. Add `:coverage` for v8 coverage. Reports
-under `reports/ui/contract/` (and `…/coverage/`). See
+framework-swap portability pillar. Reports under `reports/ui/contract/`.
+
+`test:ui:contract:coverage` is the **≥95% coverage gate** (statements / branches /
+functions / lines) over the whole `src/ui` surface. It measures the **combined**
+coverage of the two Phase-2 test styles — the neutral sociable contract specs
+**and** the co-located `src/ui/**/*.test.{ts,tsx}` unit tests (hook/util edge
+cases) — via a dedicated `vitest.coverage.config.ts`, so the percentage reflects
+true coverage rather than just the contract tier. The plain `test:ui:contract`
+runner stays pure (neutral specs only). The HTML report lands at
+`reports/ui/contract/coverage/index.html`. **CI enforces the gate** (the
+"UI contract coverage gate" step in `.github/workflows/ci.yml`). See
 [`tests/ui/contract/README.md`](tests/ui/contract/README.md).
 
 **Visual diff (`pnpm test:visual-diff`)** — screenshots of components and full pages

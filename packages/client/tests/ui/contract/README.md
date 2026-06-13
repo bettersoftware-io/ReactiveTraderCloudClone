@@ -41,10 +41,17 @@ Drive updates via the returned page object: `page.setProps({...})`,
 ## Running
 
 - `pnpm --filter @rtc/client test` — runs these with the unit suite (jsdom).
-- `pnpm --filter @rtc/client test:ui:contract` — focused runner; HTML report at
-  `reports/ui/contract/report/index.html`.
-- `pnpm --filter @rtc/client test:ui:contract:coverage` — same focused runner
-  with v8 coverage; report at `reports/ui/contract/coverage/index.html`.
+- `pnpm --filter @rtc/client test:ui:contract` — focused runner (neutral specs
+  only, no coverage); HTML report at `reports/ui/contract/report/index.html`.
+- `pnpm --filter @rtc/client test:ui:contract:coverage` — the **≥95% coverage
+  gate** (statements / branches / functions / lines). Runs via a dedicated
+  `vitest.coverage.config.ts` that adds the co-located `src/ui/**/*.test.{ts,tsx}`
+  unit tests to the include set, so coverage reflects the **combined** `src/ui`
+  surface of both Phase-2 test styles (these sociable contract specs **and** the
+  co-located hook/util unit tests) — not just this tier. The plain
+  `test:ui:contract` runner above stays pure. HTML report at
+  `reports/ui/contract/coverage/index.html`. **CI enforces this gate** (the
+  "UI contract coverage gate" step in `.github/workflows/ci.yml`).
 
 ## Swapping the UI framework (e.g. SolidJS)
 
