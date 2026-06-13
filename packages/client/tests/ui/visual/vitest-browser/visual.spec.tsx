@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { render } from "vitest-browser-react";
 import { page, userEvent } from "vitest/browser";
-import { VisualScenario } from "@ui-harness";
+import { VisualScenario } from "@ui-visual";
 import { scenarios } from "../shared/scenarios";
 import { scenarioActions } from "../scenarioActions";
 

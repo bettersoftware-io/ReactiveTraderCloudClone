@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/experimental-ct-react";
-import { VisualScenario } from "@ui-harness";
+import { VisualScenario } from "@ui-visual";
 
 test("tile/eurusd-up", async ({ mount }) => {
   const c = await mount(<VisualScenario name="tile/eurusd-up" />);

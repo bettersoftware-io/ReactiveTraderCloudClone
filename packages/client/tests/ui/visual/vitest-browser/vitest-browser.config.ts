@@ -21,22 +21,22 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@ui-harness": fileURLToPath(new URL("../react", import.meta.url)),
+      "@ui-visual": fileURLToPath(new URL("../react", import.meta.url)),
     },
   },
   test: {
-    // Pin root to the package dir (three levels up from this suite folder) so
+    // Pin root to the package dir (four levels up from this suite folder) so
     // `include` and screenshot paths are stable regardless of invocation cwd.
-    root: fileURLToPath(new URL("../../..", import.meta.url)),
-    include: ["tests/visual-diff/vitest-browser/**/*.spec.tsx"],
-    // HTML report (additive): test:visual-diff:vitest-browser:react =>
-    // reports/visual-diff/vitest-browser/react/. outputFile is root-relative
+    root: fileURLToPath(new URL("../../../..", import.meta.url)),
+    include: ["tests/ui/visual/vitest-browser/**/*.spec.tsx"],
+    // HTML report (additive): test:ui:visual:vitest-browser:react =>
+    // reports/ui/visual/vitest-browser/react/. outputFile is root-relative
     // (root is pinned to the package dir above). On failure the html reporter
     // also embeds the actual/diff PNGs into report/data/, so the report is
     // self-contained; the on-disk failure PNGs are routed next to the goldens
     // by `resolveDiffPath` below.
     reporters: ["default", "html"],
-    outputFile: { html: "reports/visual-diff/vitest-browser/react/report/index.html" },
+    outputFile: { html: "reports/ui/visual/vitest-browser/react/report/index.html" },
     browser: {
       enabled: true,
       provider: playwright(),
@@ -47,7 +47,7 @@ export default defineConfig({
       // custom value to an absolute path and then mis-joins it under the spec's
       // directory (producing a mangled `…/Users/…/…` path). Bypass it with our
       // own resolver, which deterministically yields:
-      //   tests/visual-diff/vitest-browser/__screenshots__/<baseline>/<spec>/<arg>-<browser>.png
+      //   tests/ui/visual/vitest-browser/__screenshots__/<baseline>/<spec>/<arg>-<browser>.png
       // Arch lives in <baseline>, so the filename needs no platform suffix.
       expect: {
         toMatchScreenshot: {

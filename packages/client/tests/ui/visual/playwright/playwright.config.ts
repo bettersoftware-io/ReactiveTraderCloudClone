@@ -24,12 +24,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 0,
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
-  // siblings (the html reporter wipes its own folder). ../../../ = packages/client.
+  // siblings (the html reporter wipes its own folder). ../../../../ = packages/client.
   reporter: [
     [process.env.CI ? "line" : "list"],
-    ["html", { outputFolder: "../../../reports/visual-diff/playwright/react/report", open: "never" }],
+    ["html", { outputFolder: "../../../../reports/ui/visual/playwright/react/report", open: "never" }],
   ],
-  outputDir: "../../../reports/visual-diff/playwright/react/artifacts",
+  outputDir: "../../../../reports/ui/visual/playwright/react/artifacts",
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     // Desktop Chrome's 1280×720 viewport applies (the device descriptor below

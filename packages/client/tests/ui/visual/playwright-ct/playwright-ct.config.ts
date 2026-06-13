@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/experimental-ct-react";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
-const uiHarness = fileURLToPath(new URL("../react", import.meta.url));
+const uiVisual = fileURLToPath(new URL("../react", import.meta.url));
 
 // Goldens live under a per-framework subdir (`react/`) so a future Solid run can
 // write `solid/` alongside without colliding — that per-framework split is the
@@ -24,12 +24,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 0,
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
-  // siblings (the html reporter wipes its own folder). ../../../ = packages/client.
+  // siblings (the html reporter wipes its own folder). ../../../../ = packages/client.
   reporter: [
     [process.env.CI ? "line" : "list"],
-    ["html", { outputFolder: "../../../reports/visual-diff/playwright-ct/react/report", open: "never" }],
+    ["html", { outputFolder: "../../../../reports/ui/visual/playwright-ct/react/report", open: "never" }],
   ],
-  outputDir: "../../../reports/visual-diff/playwright-ct/react/artifacts",
+  outputDir: "../../../../reports/ui/visual/playwright-ct/react/artifacts",
   use: {
     // The CT host template (index.html + index.tsx) lives in-suite as host/,
     // symmetric with the plain-Playwright tier's host/ — instead of CT's default
@@ -49,7 +49,7 @@ export default defineConfig({
       // vite-8-only build API, or a Playwright CT bump moves its bundled vite,
       // this runner can break with no package.json/lockfile change to warn you.
       plugins: [react()],
-      resolve: { alias: { "@ui-harness": uiHarness } },
+      resolve: { alias: { "@ui-visual": uiVisual } },
     },
     ctPort: 3100,
   },
