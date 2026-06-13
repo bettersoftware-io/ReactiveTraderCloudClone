@@ -19,5 +19,14 @@ export default defineConfig({
     passWithNoTests: false,
     reporters: ["default", "html"],
     outputFile: { html: "reports/behaviour/report/index.html" },
+    coverage: {
+      provider: "v8",
+      // Count every UI component, even ones no behaviour spec mounts yet, so the
+      // report surfaces wholly-untested files at 0% rather than omitting them.
+      // Narrow this to specific components if the full-surface view is too noisy.
+      include: ["src/ui/**"],
+      reporter: ["text", "html", "lcov"],
+      reportsDirectory: "reports/behaviour/coverage",
+    },
   },
 });
