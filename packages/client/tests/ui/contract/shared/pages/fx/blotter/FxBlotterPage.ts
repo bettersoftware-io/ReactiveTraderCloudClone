@@ -45,7 +45,7 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
     const rows = [...this.table().querySelectorAll("tbody tr")];
     return rows
       .map((r) => r.querySelectorAll("td"))
-      .filter((cells) => cells.length > idx + 0 && cells.length > 1) // skip empty-state row (single colspan cell)
+      .filter((cells) => cells.length > idx && cells.length > 1) // skip empty-state row (single colspan cell)
       .map((cells) => cells[idx]?.textContent?.trim() ?? "");
   }
 
