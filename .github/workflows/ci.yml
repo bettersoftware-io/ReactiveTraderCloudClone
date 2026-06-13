@@ -122,7 +122,7 @@ jobs:
       # fresh checkout hasn't produced. A direct `pnpm --filter` call bypasses
       # turbo's graph and fails to resolve @rtc/domain.
       - name: Visual diffs (playwright-ct + playwright + vitest-browser)
-        run: pnpm test:visual-diff
+        run: pnpm test:ui:visual
 
       # On a mismatch, publish the actual-vs-expected images so cross-platform
       # rendering diffs (sandbox goldens vs the ubuntu runner) can be inspected.
@@ -130,12 +130,12 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: visual-diff-report
+          name: ui-visual-report
           path: |
             packages/client/reports/
-            packages/client/tests/visual-diff/**/__screenshots__/**/*-actual.png
-            packages/client/tests/visual-diff/**/__screenshots__/**/*-diff.png
-            packages/client/tests/visual-diff/**/__screenshots__/**/*-reference.png
+            packages/client/tests/ui/visual/**/__screenshots__/**/*-actual.png
+            packages/client/tests/ui/visual/**/__screenshots__/**/*-diff.png
+            packages/client/tests/ui/visual/**/__screenshots__/**/*-reference.png
           if-no-files-found: ignore
           retention-days: 7
 
