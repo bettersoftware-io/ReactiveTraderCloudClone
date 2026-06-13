@@ -14,7 +14,7 @@ through `useHooks()` (`AppHooks` interface); production wires presenters via
 | `test:app` | **app tier** — Vitest (jsdom): presenters, adapters (`src/app`) | `app/` |
 | `test:ui:contract` | **ui contract tier** — sociable RTL specs over `src/ui` | `ui/contract/` |
 | `test:ui:contract:coverage` | **≥95% coverage gate** — combined `src/ui` surface (contract specs + co-located unit tests) | `ui/contract/coverage/` |
-| `test` | **default** — Vitest (jsdom): union of app + ui-contract (30 files / 90 tests) | `unit/` |
+| `test` | **default** — Vitest (jsdom): union of app + ui-contract (72 files / 406 tests) | `unit/` |
 | `test:visual-diff` | **visual tier** — every runner × every framework variant present, in parallel | per-runner, below |
 | `test:visual-diff:react` | all visual runners, react only | per-runner, below |
 | `test:visual-diff:playwright-ct:react[:update\|:ui]` | Tier 1 — Playwright Component Testing | `visual-diff/playwright-ct/react/` |
@@ -40,8 +40,8 @@ replay *restores* it — fresh reports need `--force` too.
 
 ## Test portfolio
 
-The default `pnpm test` runs the **union** of two co-resident tiers (30 files /
-90 tests, report under `reports/unit/`); each tier also has a focused runner:
+The default `pnpm test` runs the **union** of two co-resident tiers (72 files /
+406 tests, report under `reports/unit/`); each tier also has a focused runner:
 
 **App tier (`pnpm test:app`)** — co-located `src/app/**/*.test.ts(x)`: presenter
 streams (`src/app/presenters/__tests__/`), WS adapters incl. real-gateway
