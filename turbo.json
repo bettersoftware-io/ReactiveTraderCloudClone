@@ -17,7 +17,7 @@
       "cache": false,
       "passThroughEnv": ["RTC_E2E_MAX_PARALLEL", "PLAYWRIGHT_BROWSERS_PATH"]
     },
-    "test:visual-diff": {
+    "test:ui:visual": {
       "dependsOn": ["^build"],
       "cache": false,
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]

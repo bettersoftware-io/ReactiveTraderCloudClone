@@ -7,7 +7,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
-    "test:visual-diff": "turbo run test:visual-diff",
+    "test:ui:visual": "turbo run test:ui:visual",
     "lint": "turbo run lint",
     "dev": "turbo run dev",
     "clean": "turbo run clean && rm -rf .turbo",
