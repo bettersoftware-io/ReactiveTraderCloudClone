@@ -44,7 +44,7 @@
     "@vitest/ui": "^4.1.8",
     "cypress": "15.16.0",
     "cypress-mochawesome-reporter": "^4.0.2",
-    "esbuild": "0.28.0",
+    "esbuild": "0.28.1",
     "quickpickle": "^1.11",
     "tsx": "^4.19.0",
     "typescript": "^6",
