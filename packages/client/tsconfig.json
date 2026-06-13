@@ -7,7 +7,10 @@
     "declaration": false,
     "declarationMap": false,
     "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@behaviour/*": ["tests/behaviour/shared/*"]
+    }
   },
   "include": ["src"],
   "references": [{ "path": "../domain" }, { "path": "../shared" }]
