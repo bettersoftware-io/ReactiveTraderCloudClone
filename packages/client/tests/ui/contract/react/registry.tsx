@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import type { Trade } from "@rtc/domain";
 import type { ComponentToken, MountedComponent } from "../shared/harness/component";
 import {
+  AnalyticsPanel,
   PnlValue,
   ConnectionStatusBar,
   FxBlotter,
@@ -13,6 +14,7 @@ import {
   DateFilter,
   NewRfqForm,
 } from "../shared/components";
+import { AnalyticsPanel as AnalyticsPanelComponent } from "../../../../src/ui/fx/analytics/AnalyticsPanel";
 import { PnlValue as PnlValueComponent } from "../../../../src/ui/fx/analytics/PnlValue";
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "../../../../src/ui/shell/connection/ConnectionStatusBar";
 import { FxBlotter as FxBlotterComponent } from "../../../../src/ui/fx/blotter/FxBlotter";
@@ -35,6 +37,7 @@ type ElementFor = (props: Record<string, any>) => ReactElement;
 
 /** token → React element factory. Identity-keyed; no string keys. */
 export const registry = new Map<AnyToken, ElementFor>([
+  [AnalyticsPanel, () => <AnalyticsPanelComponent />],
   [PnlValue, (p) => <PnlValueComponent value={p.value as number} />],
   [ConnectionStatusBar, () => <ConnectionStatusBarComponent />],
   [FxBlotter, () => <FxBlotterComponent />],

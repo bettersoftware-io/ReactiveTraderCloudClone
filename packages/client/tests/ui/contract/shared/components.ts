@@ -1,4 +1,5 @@
 import { component } from "./harness/component";
+import { AnalyticsPanelPage } from "./pages/fx/analytics/AnalyticsPanelPage";
 import { PnlValuePage, type PnlValueProps } from "./pages/fx/analytics/PnlValuePage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
 import { FxBlotterPage } from "./pages/fx/blotter/FxBlotterPage";
@@ -9,6 +10,10 @@ import { SetFilterPage, type SetFilterProps } from "./pages/fx/blotter/SetFilter
 import { NumberFilterPage, type NumberFilterProps } from "./pages/fx/blotter/NumberFilterPage";
 import { DateFilterPage, type DateFilterProps } from "./pages/fx/blotter/DateFilterPage";
 import { NewRfqFormPage, type NewRfqFormProps } from "./pages/credit/newRfq/NewRfqFormPage";
+
+export const AnalyticsPanel = component<Record<string, never>, AnalyticsPanelPage>(
+  (ctx) => new AnalyticsPanelPage(ctx),
+);
 
 export const PnlValue = component<PnlValueProps, PnlValuePage>(
   (ctx) => new PnlValuePage(ctx),
