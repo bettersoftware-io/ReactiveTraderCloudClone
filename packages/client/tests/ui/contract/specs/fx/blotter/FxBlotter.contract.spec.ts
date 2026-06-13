@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { Direction, TradeStatus, type Trade } from "@rtc/domain";
 import { mount } from "@ui-contract/mount";
 import { FxBlotter } from "@ui-contract/components";
@@ -51,5 +51,126 @@ describe("FxBlotter", () => {
     blotter.emit({ useTrades: [t1, t2, trade(4003, { currencyPair: "GBPUSD" })] });
     expect(blotter.tradeRowCount()).toBe(3);
     expect(blotter.hasCell("GBPUSD")).toBe(true);
+  });
+
+  describe("sorting", () => {
+    const a = trade(4001, { currencyPair: "EURUSD", notional: 3_000_000 });
+    const b = trade(4002, { currencyPair: "USDJPY", notional: 1_000_000 });
+    const c = trade(4003, { currencyPair: "GBPUSD", notional: 2_000_000 });
+
+    it("sorts a numeric column descending on first header click", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
+      await blotter.clickColumnHeader("Notional");
+      expect(blotter.sortIndicatorFor("Notional")).toBe("desc");
+      expect(blotter.columnValues("Notional")).toEqual(["3,000,000", "2,000,000", "1,000,000"]);
+    });
+
+    it("toggles a numeric column to ascending on the second click", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
+      await blotter.clickColumnHeader("Notional");
+      await blotter.clickColumnHeader("Notional");
+      expect(blotter.sortIndicatorFor("Notional")).toBe("asc");
+      expect(blotter.columnValues("Notional")).toEqual(["1,000,000", "2,000,000", "3,000,000"]);
+    });
+
+    it("clears the sort on the third click", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
+      await blotter.clickColumnHeader("Notional");
+      await blotter.clickColumnHeader("Notional");
+      await blotter.clickColumnHeader("Notional");
+      expect(blotter.sortIndicatorFor("Notional")).toBe(null);
+      // Back to insertion order.
+      expect(blotter.columnValues("Notional")).toEqual(["3,000,000", "1,000,000", "2,000,000"]);
+    });
+
+    it("sorts a text column ascending on first click", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
+      await blotter.clickColumnHeader("CCYCCY");
+      expect(blotter.sortIndicatorFor("CCYCCY")).toBe("asc");
+      expect(blotter.columnValues("CCYCCY")).toEqual(["EURUSD", "GBPUSD", "USDJPY"]);
+    });
+  });
+
+  describe("quick filter", () => {
+    it("filters rows to those matching the typed term", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
+      expect(blotter.tradeRowCount()).toBe(2);
+      await blotter.typeQuickFilter("usdjpy");
+      expect(blotter.tradeRowCount()).toBe(1);
+      expect(blotter.hasCell("USDJPY")).toBe(true);
+    });
+
+    it("shows the no-match message when nothing matches the quick filter", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
+      await blotter.typeQuickFilter("zzz-nomatch");
+      expect(blotter.tradeRowCount()).toBe(0);
+      expect(blotter.emptyMessage()).toMatch(/no trades match/i);
+    });
+  });
+
+  describe("column filter", () => {
+    it("filters rows via a set filter and shows the active-filter summary", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
+      await blotter.openColumnFilter("CCYCCY");
+      // Set filter starts all-selected; unselect EURUSD so only USDJPY remains.
+      await blotter.toggleSetOption("EURUSD");
+      await blotter.applyOpenFilter();
+      expect(blotter.tradeRowCount()).toBe(1);
+      expect(blotter.hasCell("USDJPY")).toBe(true);
+      expect(blotter.activeFilterSummary()).toMatch(/CCYCCY/);
+    });
+
+    it("filters rows via a number filter (greater-than)", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
+      await blotter.openColumnFilter("Notional");
+      await blotter.applyNumberFilter("gt", "2000000");
+      // t1 = 1,000,000 ; t2 = 5,000,000 → only t2 remains.
+      expect(blotter.tradeRowCount()).toBe(1);
+      expect(blotter.hasCell("5,000,000")).toBe(true);
+    });
+
+    it("removes a column filter when it is reset", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
+      await blotter.openColumnFilter("Notional");
+      await blotter.applyNumberFilter("gt", "2000000");
+      expect(blotter.tradeRowCount()).toBe(1);
+      expect(blotter.activeFilterSummary()).toMatch(/Notional/);
+      // Re-open and reset → filter is removed, both rows return.
+      await blotter.openColumnFilter("Notional");
+      await blotter.resetOpenFilter();
+      expect(blotter.tradeRowCount()).toBe(2);
+      expect(blotter.activeFilterSummary()).toBeNull();
+    });
+  });
+
+  describe("CSV export", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    it("serializes the visible trades when Export CSV is clicked", async () => {
+      // jsdom lacks URL.createObjectURL; stub the download plumbing.
+      const RealBlob = globalThis.Blob;
+      let captured = "";
+      class RecordingBlob extends RealBlob {
+        constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
+          super(parts, options);
+          captured = (parts ?? []).map((p) => String(p)).join("");
+        }
+      }
+      vi.stubGlobal("Blob", RecordingBlob);
+      vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock");
+      vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
+      await blotter.clickExport();
+
+      expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+      const lines = captured.split("\n");
+      expect(lines[0]).toContain("Trade ID");
+      expect(lines).toHaveLength(3); // header + 2 trades
+    });
   });
 });
