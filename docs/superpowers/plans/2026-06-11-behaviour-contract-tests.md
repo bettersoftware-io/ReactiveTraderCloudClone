@@ -2,54 +2,62 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a jsdom + React Testing Library "behaviour" test tier for `@rtc/client` UI components — sociable contract tests with explicit behavioural assertions — whose specs and page objects are framework-neutral and survive a future React→SolidJS/Vue/Svelte swap by changing one driver file.
+**Goal:** Add a jsdom + React Testing Library "behaviour" test tier for `@rtc/client` UI components — sociable contract tests with explicit behavioural assertions, including dynamic re-render tests — whose specs and page objects are framework-neutral and survive a future React→SolidJS/Vue/Svelte swap by changing only a small `react/` trio.
 
-**Architecture:** Three layers. (1) **Neutral specs** under `tests/behaviour/specs/` mirror `src/ui/` and import only `@behaviour/mount` + domain types. (2) **Neutral page objects + harness** under `tests/behaviour/shared/` query raw DOM via `@testing-library/dom` (framework-agnostic) and record commands via faked `AppHooks`. (3) A **single framework driver** under `tests/behaviour/react/` (`render.tsx` + `registry.tsx` + `setup.ts`) is the only swap surface. A `setDriver()/getDriver()` seam (dependency inversion) connects them; the vitest `setupFiles` entry selects the driver. Reuses the visual-diff tier's neutral data manifest (`shared/fixtures.ts`, `appData.ts`).
+**Architecture:** Three layers. (1) **Neutral specs** under `tests/behaviour/specs/` mirror `src/ui/` and import only `@behaviour/mount`, `@behaviour/components` (tokens), and domain types. (2) **Neutral harness + page objects** under `tests/behaviour/shared/`: a `World` of RxJS `BehaviorSubject`s (one per hook + one for props) that the test pushes to; page objects query raw DOM via `@testing-library/dom` and drive updates via `setProps`/`emit`. (3) A **framework driver** under `tests/behaviour/react/` (`registry.tsx` + `hooksFromWorld.ts` + `render.tsx` + `setup.ts`) is the only swap surface; it turns the neutral World into reactive `AppHooks` via `useSyncExternalStore`. A `setDriver()/getDriver()` seam connects them; the vitest `setupFiles` entry selects the driver.
 
-**Tech Stack:** Vitest 4 (jsdom env), `@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`, `@vitejs/plugin-react`, RxJS (for command observables), `@rtc/domain` types.
+**Tech Stack:** Vitest 4 (jsdom env), `@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`, `@vitejs/plugin-react`, RxJS `BehaviorSubject` (controllable sources), React `useSyncExternalStore`, `@rtc/domain` types.
+
+---
+
+## Design vocabulary (read first)
+
+- **Token** — a neutral handle for a component, exported from `@behaviour/components`
+  (e.g. `PnlValue`). Carries the component's prop type `P` and a `makePage`
+  factory. The spec names the token; the React `registry` maps the token to a
+  React element. Identity-keyed (a `Map`), no string keys.
+- **World** — neutral controllable state: a `BehaviorSubject` per hook value, a
+  command results bag, and a command log. `mount` builds one per test.
+- **Channels** — `mount(Token, { props, hooks, commands })`. `props` = real props
+  (incl. callbacks); `hooks` = initial values keyed by hook name; `commands` =
+  canned command results.
+- **Page object** — extends `MountedComponent<P>`; exposes query methods
+  (DOM via `@testing-library/dom`), action methods (`user-event`), update drivers
+  (`setProps`, `emit`), and command-log accessors (`createdRfq()`).
 
 ---
 
 ## File structure
 
-**Create (neutral — never changes on a framework swap):**
-- `packages/client/tests/behaviour/shared/activeDriver.ts` — `BehaviourDriver` interface + `setDriver`/`getDriver` seam.
-- `packages/client/tests/behaviour/shared/recordingHooks.ts` — `buildRecordingHooks(data, results)`: `AppHooks` whose query hooks read fixture data and whose command hooks record inputs + emit canned Observables.
-- `packages/client/tests/behaviour/shared/cases.ts` — `cases` manifest (caseName → componentKey + fixtureKey/data/props/results) + `ComponentKey`/`CaseName` types.
-- `packages/client/tests/behaviour/shared/mount.ts` — typed `mount(caseName)` → page object; `cleanupMounted()`.
-- `packages/client/tests/behaviour/shared/pages/index.ts` — `componentKey → page-object factory` + `PageByKey` type map.
-- `packages/client/tests/behaviour/shared/pages/fx/analytics/PnlValuePage.ts`
-- `packages/client/tests/behaviour/shared/pages/shell/connection/ConnectionStatusBarPage.ts`
-- `packages/client/tests/behaviour/shared/pages/fx/blotter/FxBlotterPage.ts`
-- `packages/client/tests/behaviour/shared/pages/credit/newRfq/NewRfqFormPage.ts`
+**Create — neutral harness (`tests/behaviour/shared/`), never changes on swap:**
+- `harness/world.ts` — `HookValues`, `createWorld()`, `CommandResults`, `CommandLog`, `World`.
+- `harness/component.ts` — `ComponentToken`, `PageContext`, `MountedComponent` base, `component()` factory.
+- `harness/activeDriver.ts` — `BehaviourDriver` interface + `setDriver`/`getDriver`.
+- `mount.ts` — typed `mount(token, opts)` + `cleanupMounted()`.
+- `components.ts` — the neutral tokens.
+- `pages/fx/analytics/PnlValuePage.ts`, `pages/shell/connection/ConnectionStatusBarPage.ts`, `pages/fx/blotter/FxBlotterPage.ts`, `pages/credit/newRfq/NewRfqFormPage.ts`.
 
-**Create (framework-specific — the only swap surface):**
-- `packages/client/tests/behaviour/react/registry.tsx` — `componentKey → ReactElement` factory (props-aware).
-- `packages/client/tests/behaviour/react/render.tsx` — `reactDriver`: `@testing-library/react` render wrapped in `ThemeProvider` + `HooksProvider`.
-- `packages/client/tests/behaviour/react/setup.ts` — `setDriver(reactDriver)` + `afterEach(cleanupMounted)`.
+**Create — framework driver (`tests/behaviour/react/`), the only swap surface:**
+- `registry.tsx` — `Map<token, (props) => ReactElement>`.
+- `hooksFromWorld.ts` — `reactHooks(world): AppHooks` via `useSyncExternalStore`.
+- `render.tsx` — `reactDriver` (providers + `PropsHost`).
+- `setup.ts` — `setDriver(reactDriver)` + `afterEach(cleanupMounted)`.
 
-**Create (specs — neutral; mirror `src/ui/` + component PascalCase):**
-- `packages/client/tests/behaviour/specs/fx/analytics/PnlValue.behaviour.spec.ts`
-- `packages/client/tests/behaviour/specs/shell/connection/ConnectionStatusBar.behaviour.spec.ts`
-- `packages/client/tests/behaviour/specs/fx/blotter/FxBlotter.behaviour.spec.ts`
-- `packages/client/tests/behaviour/specs/credit/newRfq/NewRfqForm.behaviour.spec.ts`
+**Create — specs (neutral; mirror `src/ui/` + PascalCase):**
+- `specs/fx/analytics/PnlValue.behaviour.spec.ts`
+- `specs/shell/connection/ConnectionStatusBar.behaviour.spec.ts`
+- `specs/fx/blotter/FxBlotter.behaviour.spec.ts`
+- `specs/credit/newRfq/NewRfqForm.behaviour.spec.ts`
 
-**Create (config + docs):**
-- `packages/client/tests/behaviour/vitest.config.ts` — focused `test:behaviour` runner config.
-- `packages/client/tests/behaviour/README.md` — tier overview + swap instructions.
+**Create — config + docs:** `tests/behaviour/vitest.config.ts`, `tests/behaviour/README.md`.
 
-**Modify:**
-- `packages/client/package.json` — add 3 dev deps + `test:behaviour` script.
-- `packages/client/tsconfig.json` — add `@behaviour/*` path (editor DX).
-- `packages/client/vitest.config.ts` — add react plugin, `@behaviour` alias, behaviour `setupFiles`, fold behaviour specs into the default `pnpm test` include.
+**Modify:** `packages/client/package.json` (deps + script), `tsconfig.json` (alias), `vitest.config.ts` (default-run wiring).
 
 ---
 
 ## Task 1: Dependencies and editor path alias
 
-**Files:**
-- Modify: `packages/client/package.json` (devDependencies)
-- Modify: `packages/client/tsconfig.json`
+**Files:** Modify `packages/client/package.json`, `packages/client/tsconfig.json`.
 
 - [ ] **Step 1: Add the testing-library dev dependencies**
 
@@ -57,41 +65,25 @@ Run (from repo root):
 ```bash
 pnpm --filter @rtc/client add -D @testing-library/react @testing-library/dom @testing-library/user-event
 ```
-Expected: pnpm resolves and writes versions into `packages/client/package.json` `devDependencies` (e.g. `@testing-library/react ^16.x`, `@testing-library/dom ^10.x`, `@testing-library/user-event ^14.x`); lockfile updates; no peer-dependency errors against React 19.
+Expected: versions written to `devDependencies` (e.g. `@testing-library/react ^16.x`, `/dom ^10.x`, `/user-event ^14.x`); lockfile updates; no React-19 peer errors.
 
 - [ ] **Step 2: Add the `@behaviour/*` path to the client tsconfig (editor DX only)**
 
-Edit `packages/client/tsconfig.json` — add a `paths` entry inside `compilerOptions` (after the `lib` line):
+Edit `packages/client/tsconfig.json` — add `paths` inside `compilerOptions` (after `lib`):
 
 ```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "paths": {
       "@behaviour/*": ["tests/behaviour/shared/*"]
     }
-  },
-  "include": ["src"],
-  "references": [{ "path": "../domain" }, { "path": "../shared" }]
-}
 ```
 
-Note: `include` stays `["src"]`, so `pnpm typecheck` scope is unchanged (tests are not type-checked by the build, matching the existing visual-diff tier). The alias is resolved at test runtime by vitest (Task 2); this `paths` entry only feeds the editor's TS server.
+`include` stays `["src"]`, so `pnpm typecheck` scope is unchanged (tests are not type-checked by the build, matching visual-diff). The alias is resolved at runtime by vitest (Task 2); this `paths` entry only feeds the editor.
 
 - [ ] **Step 3: Verify install is clean**
 
-Run (from repo root):
-```bash
-pnpm --filter @rtc/client exec vitest run 2>&1 | tail -5
-```
-Expected: the existing unit suite still passes (e.g. "Test Files … passed"), confirming the new deps did not disturb the current config.
+Run: `pnpm --filter @rtc/client exec vitest run 2>&1 | tail -5`
+Expected: the existing unit suite still passes.
 
 - [ ] **Step 4: Commit**
 
@@ -102,14 +94,11 @@ git commit -m "build(client): add testing-library deps for behaviour test tier"
 
 ---
 
-## Task 2: Harness vertical slice — PnlValue end-to-end
+## Task 2: Reactive harness vertical slice — PnlValue (static + setProps)
 
-This task builds the entire neutral harness + the React driver, proven by the first (PnlValue) spec. PnlValue is a pure-prop leaf: no hooks, no providers needed, no testid — it proves the prop-driven mount path and the framework-driver seam.
+Builds the whole neutral harness + React driver, proven by PnlValue: a pure-prop leaf that exercises the props channel and `setProps` re-render.
 
-**Files:**
-- Create: all `shared/*` harness files, all `react/*` driver files (PnlValue entries only), `tests/behaviour/vitest.config.ts`
-- Test: `packages/client/tests/behaviour/specs/fx/analytics/PnlValue.behaviour.spec.ts`
-- Modify: `packages/client/package.json` (add `test:behaviour` script)
+**Files:** all `shared/harness/*`, `shared/mount.ts`, `shared/components.ts` (PnlValue token), `shared/pages/fx/analytics/PnlValuePage.ts`, all `react/*` (PnlValue entry), `tests/behaviour/vitest.config.ts`; test `specs/fx/analytics/PnlValue.behaviour.spec.ts`; modify `package.json`.
 
 - [ ] **Step 1: Write the failing spec**
 
@@ -118,52 +107,202 @@ Create `packages/client/tests/behaviour/specs/fx/analytics/PnlValue.behaviour.sp
 ```ts
 import { describe, it, expect } from "vitest";
 import { mount } from "@behaviour/mount";
+import { PnlValue } from "@behaviour/components";
 
 describe("PnlValue", () => {
   it("shows a positive value with a + sign", () => {
-    expect(mount("pnl/positive-units").text()).toBe("+500");
+    expect(mount(PnlValue, { props: { value: 500 } }).text()).toBe("+500");
   });
 
   it("shows a negative value with a - sign", () => {
-    expect(mount("pnl/negative-units").text()).toBe("-500");
+    expect(mount(PnlValue, { props: { value: -500 } }).text()).toBe("-500");
   });
 
   it("treats zero as positive", () => {
-    expect(mount("pnl/zero").text()).toBe("+0");
+    expect(mount(PnlValue, { props: { value: 0 } }).text()).toBe("+0");
   });
 
   it("abbreviates thousands with one decimal and a k suffix", () => {
-    expect(mount("pnl/positive-thousands").text()).toBe("+12.5k");
-    expect(mount("pnl/negative-thousands").text()).toBe("-2.5k");
+    expect(mount(PnlValue, { props: { value: 12_500 } }).text()).toBe("+12.5k");
+    expect(mount(PnlValue, { props: { value: -2_500 } }).text()).toBe("-2.5k");
   });
 
   it("abbreviates millions with two decimals and an m suffix", () => {
-    expect(mount("pnl/positive-millions").text()).toBe("+1.50m");
+    expect(mount(PnlValue, { props: { value: 1_500_000 } }).text()).toBe("+1.50m");
+  });
+
+  it("re-renders when its value prop changes", () => {
+    const pnl = mount(PnlValue, { props: { value: 100 } });
+    expect(pnl.text()).toBe("+100");
+    pnl.setProps({ value: 12_500 });
+    expect(pnl.text()).toBe("+12.5k");
   });
 });
 ```
 
-- [ ] **Step 2: Create the driver seam**
+- [ ] **Step 2: Create the World**
 
-Create `packages/client/tests/behaviour/shared/activeDriver.ts`:
+Create `packages/client/tests/behaviour/shared/harness/world.ts`:
 
 ```ts
-import type { AppHooks } from "../../../src/ui/hooks/createAppHooks";
+import { BehaviorSubject } from "rxjs";
+import {
+  ConnectionStatus,
+  type Trade,
+  type Instrument,
+  type Dealer,
+  type Rfq,
+  type Quote,
+  type CurrencyPair,
+  type PositionUpdates,
+  type CreateRfqInput,
+} from "@rtc/domain";
 
-export interface RenderInputs {
-  readonly props: Record<string, unknown>;
-  readonly hooks: AppHooks;
+/** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
+ *  are returned as static empties by the adapter and are not in this map. */
+export interface HookValues {
+  useConnectionStatus: ConnectionStatus;
+  useTrades: readonly Trade[];
+  useAnalytics: PositionUpdates | null;
+  useRfqs: readonly Rfq[];
+  useAllQuotes: ReadonlyMap<number, Quote>;
+  useCurrencyPairs: readonly CurrencyPair[];
+  useInstruments: readonly Instrument[];
+  useDealers: readonly Dealer[];
+}
+
+const DEFAULTS: HookValues = {
+  useConnectionStatus: ConnectionStatus.CONNECTED,
+  useTrades: [],
+  useAnalytics: null,
+  useRfqs: [],
+  useAllQuotes: new Map(),
+  useCurrencyPairs: [],
+  useInstruments: [],
+  useDealers: [],
+};
+
+/** Canned results emitted by command hooks. */
+export interface CommandResults {
+  createRfq?: number;
+}
+
+/** Inputs captured from command hooks during a test. */
+export interface CommandLog {
+  createRfq: CreateRfqInput[];
+}
+
+export interface World {
+  readonly sources: { [K in keyof HookValues]: BehaviorSubject<HookValues[K]> };
+  readonly results: CommandResults;
+  readonly commands: CommandLog;
+  /** Push new values for one or more hooks (drives re-renders). */
+  push(patch: Partial<HookValues>): void;
+}
+
+export function createWorld(
+  initial: Partial<HookValues> = {},
+  results: CommandResults = {},
+): World {
+  const merged: HookValues = { ...DEFAULTS, ...initial };
+  const sources = {} as { [K in keyof HookValues]: BehaviorSubject<HookValues[K]> };
+  for (const key of Object.keys(merged) as (keyof HookValues)[]) {
+    // Each subject is typed by its own key; the cast bridges the per-key union.
+    (sources[key] as BehaviorSubject<unknown>) = new BehaviorSubject<unknown>(merged[key]);
+  }
+  return {
+    sources,
+    results,
+    commands: { createRfq: [] },
+    push(patch) {
+      for (const key of Object.keys(patch) as (keyof HookValues)[]) {
+        (sources[key] as BehaviorSubject<unknown>).next(patch[key]);
+      }
+    },
+  };
+}
+```
+
+- [ ] **Step 3: Create the component/token/page base**
+
+Create `packages/client/tests/behaviour/shared/harness/component.ts`:
+
+```ts
+import type { HookValues, CommandLog } from "./world";
+
+/** Everything a page object needs: the rendered root + update drivers + command log. */
+export interface PageContext<P> {
+  readonly root: HTMLElement;
+  setProps(next: Partial<P>): void;
+  emit(patch: Partial<HookValues>): void;
+  readonly commands: CommandLog;
+}
+
+/** Base class for all page objects. Provides the neutral update drivers. */
+export abstract class MountedComponent<P> {
+  protected readonly root: HTMLElement;
+  private readonly ctx: PageContext<P>;
+
+  constructor(ctx: PageContext<P>) {
+    this.root = ctx.root;
+    this.ctx = ctx;
+  }
+
+  /** Push new props → re-render the same instance. */
+  setProps(next: Partial<P>): void {
+    this.ctx.setProps(next);
+  }
+
+  /** Push new hook data → re-render the same instance. */
+  emit(patch: Partial<HookValues>): void {
+    this.ctx.emit(patch);
+  }
+
+  /** Inputs recorded by the faked command hooks (unit-mode convenience). */
+  protected commandLog(): CommandLog {
+    return this.ctx.commands;
+  }
+}
+
+/** Neutral handle for a component: carries its prop type and a page factory. */
+export interface ComponentToken<P, Page extends MountedComponent<P>> {
+  readonly makePage: (ctx: PageContext<P>) => Page;
+}
+
+export function component<P, Page extends MountedComponent<P>>(
+  makePage: (ctx: PageContext<P>) => Page,
+): ComponentToken<P, Page> {
+  return { makePage };
+}
+```
+
+- [ ] **Step 4: Create the driver seam**
+
+Create `packages/client/tests/behaviour/shared/harness/activeDriver.ts`:
+
+```ts
+import type { BehaviorSubject } from "rxjs";
+import type { World } from "./world";
+import type { ComponentToken, MountedComponent } from "./component";
+
+export interface RenderInputs<P> {
+  /** Reactive props source; the driver renders the component from its latest value. */
+  readonly propsSubject: BehaviorSubject<Partial<P>>;
+  /** The controllable hook world; the driver turns it into reactive AppHooks. */
+  readonly world: World;
 }
 
 export interface MountedRoot {
-  /** The DOM subtree the component rendered into. */
   readonly root: HTMLElement;
   readonly unmount: () => void;
 }
 
-/** A framework adapter that knows how to render a component key into the DOM. */
+/** A framework adapter that knows how to render a token into the DOM. */
 export interface BehaviourDriver {
-  render(componentKey: string, inputs: RenderInputs): MountedRoot;
+  render<P, Page extends MountedComponent<P>>(
+    token: ComponentToken<P, Page>,
+    inputs: RenderInputs<P>,
+  ): MountedRoot;
 }
 
 let active: BehaviourDriver | null = null;
@@ -183,191 +322,48 @@ export function getDriver(): BehaviourDriver {
 }
 ```
 
-- [ ] **Step 3: Create the recording hooks**
-
-Create `packages/client/tests/behaviour/shared/recordingHooks.ts`:
-
-```ts
-import { EMPTY, of, type Observable } from "rxjs";
-import type {
-  CurrencyPair,
-  ExecuteTradeInput,
-  ExecuteTradeResult,
-  CreateRfqInput,
-  RfqQuoteResult,
-  QuoteRequest,
-} from "@rtc/domain";
-import type { AppData } from "../../visual-diff/shared/appData";
-import type { AppHooks } from "../../../src/ui/hooks/createAppHooks";
-
-/** Inputs captured from the (faked) command hooks during a test. */
-export interface CommandRecorder {
-  readonly createRfq: CreateRfqInput[];
-}
-
-/** Canned results the faked command hooks emit. */
-export interface CommandResults {
-  readonly createRfq?: number;
-}
-
-export interface RecordingHooks {
-  readonly hooks: AppHooks;
-  readonly recorder: CommandRecorder;
-}
-
-/**
- * Builds an AppHooks whose query hooks read from `data` and whose command
- * hooks record their inputs into `recorder` and emit canned one-shot
- * Observables (so callers' firstValueFrom(...) resolves). This is the sociable
- * boundary: real child components render; only the AppHooks port is faked.
- */
-export function buildRecordingHooks(
-  data: AppData,
-  results: CommandResults = {},
-): RecordingHooks {
-  const recorder: CommandRecorder = { createRfq: [] };
-  const hooks: AppHooks = {
-    usePrice: (pair: CurrencyPair) => data.prices[pair.symbol] ?? null,
-    usePriceHistory: (symbol: string) => data.priceHistory[symbol] ?? [],
-    useTrades: () => data.trades,
-    useAnalytics: () => data.analytics,
-    useRfqs: () => data.rfqs,
-    useQuotesForRfq: (rfqId: number) => data.quotesForRfq[rfqId] ?? [],
-    useAllQuotes: () => data.allQuotes,
-    useCurrencyPairs: () => data.currencyPairs,
-    useInstruments: () => data.instruments,
-    useDealers: () => data.dealers,
-    useConnectionStatus: () => data.connectionStatus,
-    useExecuteTrade: () => (_input: ExecuteTradeInput) =>
-      EMPTY as Observable<ExecuteTradeResult>,
-    useCreateRfq: () => (input: CreateRfqInput) => {
-      recorder.createRfq.push(input);
-      return of(results.createRfq ?? 0);
-    },
-    useAcceptQuote: () => () => EMPTY as Observable<void>,
-    useCancelRfq: () => () => EMPTY as Observable<void>,
-    usePassQuote: () => () => EMPTY as Observable<void>,
-    useQuoteRfq: () => () => EMPTY as Observable<void>,
-    useRequestRfqQuote: () => (_symbol: string, _pips: number) =>
-      EMPTY as Observable<RfqQuoteResult>,
-  };
-  return { hooks, recorder };
-}
-```
-
-- [ ] **Step 4: Create the case manifest (PnlValue cases only for now)**
-
-Create `packages/client/tests/behaviour/shared/cases.ts`:
-
-```ts
-import type { AppData } from "../../visual-diff/shared/appData";
-import type { CommandResults } from "./recordingHooks";
-
-export type ComponentKey =
-  | "PnlValue"
-  | "ConnectionStatusBar"
-  | "NewRfqForm"
-  | "FxBlotter";
-
-export interface CaseDef {
-  readonly componentKey: ComponentKey;
-  /** Reuse a visual-diff fixture by key. */
-  readonly fixtureKey?: string;
-  /** Or supply an inline data override (merged over defaultAppData). */
-  readonly data?: Partial<AppData>;
-  /** Props passed straight to the component (prop-driven leaves). */
-  readonly props?: Record<string, unknown>;
-  /** Canned command results for interaction tests. */
-  readonly results?: CommandResults;
-}
-
-export const cases = {
-  "pnl/zero": { componentKey: "PnlValue", props: { value: 0 } },
-  "pnl/positive-units": { componentKey: "PnlValue", props: { value: 500 } },
-  "pnl/negative-units": { componentKey: "PnlValue", props: { value: -500 } },
-  "pnl/positive-thousands": { componentKey: "PnlValue", props: { value: 12_500 } },
-  "pnl/negative-thousands": { componentKey: "PnlValue", props: { value: -2_500 } },
-  "pnl/positive-millions": { componentKey: "PnlValue", props: { value: 1_500_000 } },
-} as const satisfies Record<string, CaseDef>;
-
-export type CaseName = keyof typeof cases;
-```
-
-- [ ] **Step 5: Create the PnlValue page object**
-
-Create `packages/client/tests/behaviour/shared/pages/fx/analytics/PnlValuePage.ts`:
-
-```ts
-/** Page object for the PnlValue leaf. Queries the rendered DOM only. */
-export class PnlValuePage {
-  constructor(private readonly root: HTMLElement) {}
-
-  /** The formatted P&L text the user sees, e.g. "+12.5k". */
-  text(): string {
-    return this.root.textContent?.trim() ?? "";
-  }
-}
-```
-
-- [ ] **Step 6: Create the page-object registry**
-
-Create `packages/client/tests/behaviour/shared/pages/index.ts`:
-
-```ts
-import type { MountedRoot } from "../activeDriver";
-import type { CommandRecorder } from "../recordingHooks";
-import type { ComponentKey } from "../cases";
-import { PnlValuePage } from "./fx/analytics/PnlValuePage";
-
-/** Concrete page-object type per component key (used to type `mount`). */
-export interface PageByKey {
-  PnlValue: PnlValuePage;
-  ConnectionStatusBar: unknown;
-  NewRfqForm: unknown;
-  FxBlotter: unknown;
-}
-
-type PageFactory = (mounted: MountedRoot, recorder: CommandRecorder) => unknown;
-
-export const pages: Record<ComponentKey, PageFactory> = {
-  PnlValue: (m) => new PnlValuePage(m.root),
-  ConnectionStatusBar: (m) => m, // replaced in Task 3
-  NewRfqForm: (m) => m, // replaced in Task 5
-  FxBlotter: (m) => m, // replaced in Task 4
-};
-```
-
-Note: `ConnectionStatusBar`/`NewRfqForm`/`FxBlotter` are stubbed to `unknown` here and replaced with real page objects in their tasks. This keeps Task 2 self-contained and compiling.
-
-- [ ] **Step 7: Create the typed mount + cleanup**
+- [ ] **Step 5: Create the typed mount + cleanup**
 
 Create `packages/client/tests/behaviour/shared/mount.ts`:
 
 ```ts
-import { makeAppData, type AppData } from "../../visual-diff/shared/appData";
-import { fixtures } from "../../visual-diff/shared/fixtures";
-import { getDriver, type MountedRoot } from "./activeDriver";
-import { buildRecordingHooks } from "./recordingHooks";
-import { cases, type CaseName } from "./cases";
-import { pages, type PageByKey } from "./pages";
+import { BehaviorSubject } from "rxjs";
+import { createWorld, type HookValues, type CommandResults } from "./harness/world";
+import {
+  getDriver,
+  type MountedRoot,
+} from "./harness/activeDriver";
+import type {
+  ComponentToken,
+  MountedComponent,
+  PageContext,
+} from "./harness/component";
 
-type PageFor<K extends CaseName> = PageByKey[(typeof cases)[K]["componentKey"]];
+export interface MountOptions<P> {
+  props?: P;
+  hooks?: Partial<HookValues>;
+  commands?: CommandResults;
+}
 
 const mounted: MountedRoot[] = [];
 
-/** Render a named case via the active framework driver, return its page object. */
-export function mount<K extends CaseName>(name: K): PageFor<K> {
-  const def = cases[name];
-  const data: AppData = def.fixtureKey
-    ? fixtures[def.fixtureKey]
-    : makeAppData(def.data ?? {});
-  const { hooks, recorder } = buildRecordingHooks(data, def.results);
-  const root = getDriver().render(def.componentKey, {
-    props: def.props ?? {},
-    hooks,
-  });
-  mounted.push(root);
-  return pages[def.componentKey](root, recorder) as PageFor<K>;
+export function mount<P, Page extends MountedComponent<P>>(
+  token: ComponentToken<P, Page>,
+  opts: MountOptions<P> = {},
+): Page {
+  const world = createWorld(opts.hooks, opts.commands);
+  const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
+  const rendered = getDriver().render(token, { propsSubject, world });
+  mounted.push(rendered);
+
+  const ctx: PageContext<P> = {
+    root: rendered.root,
+    setProps: (next) =>
+      propsSubject.next({ ...propsSubject.getValue(), ...next }),
+    emit: (patch) => world.push(patch),
+    commands: world.commands,
+  };
+  return token.makePage(ctx);
 }
 
 /** Unmount everything mounted since the last cleanup (call in afterEach). */
@@ -376,48 +372,160 @@ export function cleanupMounted(): void {
 }
 ```
 
-- [ ] **Step 8: Create the React component registry (PnlValue entry)**
+- [ ] **Step 6: Create the PnlValue page object**
+
+Create `packages/client/tests/behaviour/shared/pages/fx/analytics/PnlValuePage.ts`:
+
+```ts
+import { MountedComponent } from "../../../harness/component";
+
+export interface PnlValueProps {
+  value: number;
+}
+
+/** Page object for the PnlValue leaf. */
+export class PnlValuePage extends MountedComponent<PnlValueProps> {
+  /** The formatted P&L text the user sees, e.g. "+12.5k". */
+  text(): string {
+    return this.root.textContent?.trim() ?? "";
+  }
+}
+```
+
+- [ ] **Step 7: Create the tokens module (PnlValue only for now)**
+
+Create `packages/client/tests/behaviour/shared/components.ts`:
+
+```ts
+import { component } from "./harness/component";
+import { PnlValuePage, type PnlValueProps } from "./pages/fx/analytics/PnlValuePage";
+
+export const PnlValue = component<PnlValueProps, PnlValuePage>(
+  (ctx) => new PnlValuePage(ctx),
+);
+```
+
+- [ ] **Step 8: Create the React hook adapter**
+
+Create `packages/client/tests/behaviour/react/hooksFromWorld.ts`:
+
+```ts
+import { useSyncExternalStore } from "react";
+import { EMPTY, of, type Observable } from "rxjs";
+import type { BehaviorSubject } from "rxjs";
+import type {
+  ExecuteTradeResult,
+  RfqQuoteResult,
+} from "@rtc/domain";
+import type { AppHooks } from "../../../src/ui/hooks/createAppHooks";
+import type { World } from "../shared/harness/world";
+
+/** Subscribe a React component to a BehaviorSubject; re-render on each emission. */
+function useSubject<T>(subject: BehaviorSubject<T>): T {
+  return useSyncExternalStore(
+    (onChange) => {
+      const sub = subject.subscribe(onChange);
+      return () => sub.unsubscribe();
+    },
+    () => subject.getValue(),
+  );
+}
+
+/** Build a reactive AppHooks backed by the neutral World. */
+export function reactHooks(world: World): AppHooks {
+  const s = world.sources;
+  return {
+    // Parametric query hooks are not exercised by the current slice.
+    usePrice: () => null,
+    usePriceHistory: () => [],
+    useQuotesForRfq: () => [],
+    // Nullary query hooks: reactive, re-render on push.
+    useTrades: () => useSubject(s.useTrades),
+    useAnalytics: () => useSubject(s.useAnalytics),
+    useRfqs: () => useSubject(s.useRfqs),
+    useAllQuotes: () => useSubject(s.useAllQuotes),
+    useCurrencyPairs: () => useSubject(s.useCurrencyPairs),
+    useInstruments: () => useSubject(s.useInstruments),
+    useDealers: () => useSubject(s.useDealers),
+    useConnectionStatus: () => useSubject(s.useConnectionStatus),
+    // Commands: record input, emit canned result.
+    useExecuteTrade: () => () => EMPTY as Observable<ExecuteTradeResult>,
+    useCreateRfq: () => (input) => {
+      world.commands.createRfq.push(input);
+      return of(world.results.createRfq ?? 0);
+    },
+    useAcceptQuote: () => () => EMPTY as Observable<void>,
+    useCancelRfq: () => () => EMPTY as Observable<void>,
+    usePassQuote: () => () => EMPTY as Observable<void>,
+    useQuoteRfq: () => () => EMPTY as Observable<void>,
+    useRequestRfqQuote: () => () => EMPTY as Observable<RfqQuoteResult>,
+  };
+}
+```
+
+- [ ] **Step 9: Create the React registry (PnlValue entry)**
 
 Create `packages/client/tests/behaviour/react/registry.tsx`:
 
 ```tsx
 import type { ReactElement } from "react";
-import type { ComponentKey } from "../shared/cases";
-import { PnlValue } from "../../../src/ui/fx/analytics/PnlValue";
+import type { ComponentToken, MountedComponent } from "../shared/harness/component";
+import { PnlValue } from "../shared/components";
+import { PnlValue as PnlValueComponent } from "../../../src/ui/fx/analytics/PnlValue";
 
-/** Maps a neutral component key to a concrete React element, given its props. */
-export const behaviourRegistry: Record<
-  ComponentKey,
-  (props: Record<string, unknown>) => ReactElement
-> = {
-  PnlValue: (p) => <PnlValue value={p.value as number} />,
-  // ConnectionStatusBar / FxBlotter / NewRfqForm entries added in their tasks.
-  ConnectionStatusBar: () => <PnlValue value={0} />, // placeholder, replaced in Task 3
-  FxBlotter: () => <PnlValue value={0} />, // placeholder, replaced in Task 4
-  NewRfqForm: () => <PnlValue value={0} />, // placeholder, replaced in Task 5
-};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyToken = ComponentToken<any, MountedComponent<any>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ElementFor = (props: Record<string, any>) => ReactElement;
+
+/** token → React element factory. Identity-keyed; no string keys. */
+export const registry = new Map<AnyToken, ElementFor>([
+  [PnlValue, (p) => <PnlValueComponent value={p.value as number} />],
+]);
 ```
 
-Note: placeholders keep the `Record<ComponentKey, …>` exhaustive and compiling; each is replaced with the real component in its task.
-
-- [ ] **Step 9: Create the React render driver**
+- [ ] **Step 10: Create the React render driver**
 
 Create `packages/client/tests/behaviour/react/render.tsx`:
 
 ```tsx
 import { render as rtlRender } from "@testing-library/react";
+import { useSyncExternalStore, type ReactElement } from "react";
+import type { BehaviorSubject } from "rxjs";
 import { ThemeProvider } from "../../../src/ui/shell/theme/ThemeProvider";
 import { HooksProvider } from "../../../src/ui/hooks/HooksProvider";
-import type { BehaviourDriver } from "../shared/activeDriver";
-import type { ComponentKey } from "../shared/cases";
-import { behaviourRegistry } from "./registry";
+import type { BehaviourDriver } from "../shared/harness/activeDriver";
+import { reactHooks } from "./hooksFromWorld";
+import { registry } from "./registry";
+
+/** Renders the component from the latest props on the subject; re-renders on push. */
+function PropsHost<P>({
+  subject,
+  build,
+}: {
+  subject: BehaviorSubject<Partial<P>>;
+  build: (props: Partial<P>) => ReactElement;
+}) {
+  const props = useSyncExternalStore(
+    (onChange) => {
+      const sub = subject.subscribe(onChange);
+      return () => sub.unsubscribe();
+    },
+    () => subject.getValue(),
+  );
+  return build(props);
+}
 
 export const reactDriver: BehaviourDriver = {
-  render(componentKey, { props, hooks }) {
-    const element = behaviourRegistry[componentKey as ComponentKey](props);
+  render(token, { propsSubject, world }) {
+    const build = registry.get(token);
+    if (!build) throw new Error("No React registry entry for the given token.");
+    const hooks = reactHooks(world);
     const { container, unmount } = rtlRender(
       <ThemeProvider>
-        <HooksProvider hooks={hooks}>{element}</HooksProvider>
+        <HooksProvider hooks={hooks}>
+          <PropsHost subject={propsSubject} build={build} />
+        </HooksProvider>
       </ThemeProvider>,
     );
     return { root: container, unmount };
@@ -425,13 +533,13 @@ export const reactDriver: BehaviourDriver = {
 };
 ```
 
-- [ ] **Step 10: Create the React setup file**
+- [ ] **Step 11: Create the React setup file**
 
 Create `packages/client/tests/behaviour/react/setup.ts`:
 
 ```ts
 import { afterEach } from "vitest";
-import { setDriver } from "../shared/activeDriver";
+import { setDriver } from "../shared/harness/activeDriver";
 import { cleanupMounted } from "../shared/mount";
 import { reactDriver } from "./render";
 
@@ -439,7 +547,7 @@ setDriver(reactDriver);
 afterEach(() => cleanupMounted());
 ```
 
-- [ ] **Step 11: Create the focused behaviour vitest config**
+- [ ] **Step 12: Create the focused behaviour vitest config**
 
 Create `packages/client/tests/behaviour/vitest.config.ts`:
 
@@ -456,9 +564,8 @@ export default defineConfig({
     },
   },
   test: {
-    // Pin root to the package dir (two levels up from this suite folder) so
-    // include/setup/report paths are stable regardless of invocation cwd —
-    // mirrors tests/visual-diff/vitest-browser/vitest-browser.config.ts.
+    // Pin root to the package dir (two levels up) so include/setup/report paths
+    // are stable regardless of invocation cwd — mirrors the visual-diff configs.
     root: fileURLToPath(new URL("../..", import.meta.url)),
     environment: "jsdom",
     include: ["tests/behaviour/specs/**/*.behaviour.spec.ts"],
@@ -470,39 +577,33 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 12: Add the `test:behaviour` script**
+- [ ] **Step 13: Add the `test:behaviour` script**
 
-Edit `packages/client/package.json` `scripts` — add (after the `test` line):
+Edit `packages/client/package.json` `scripts` — add after the `test` line:
 
 ```json
     "test:behaviour": "vitest run -c tests/behaviour/vitest.config.ts",
 ```
 
-- [ ] **Step 13: Run the spec to verify it passes**
+- [ ] **Step 14: Run the spec to verify it passes**
 
-Run (from repo root):
-```bash
-pnpm --filter @rtc/client test:behaviour
-```
-Expected: PASS — 1 file, 5 tests passed (PnlValue). If a `+1.50m` / `+12.5k` assertion fails, the harness wiring (driver/registry/mount) is the suspect, not the assertions — the expected strings are derived from `PnlValue.formatPnl`.
+Run: `pnpm --filter @rtc/client test:behaviour`
+Expected: PASS — 1 file, 6 tests (PnlValue, incl. the `setProps` re-render). The expected strings derive from `PnlValue.formatPnl`; if the `setProps` test fails but the statics pass, the `PropsHost`/`useSyncExternalStore` wiring is the suspect.
 
-- [ ] **Step 14: Commit**
+- [ ] **Step 15: Commit**
 
 ```bash
 git add packages/client/tests/behaviour packages/client/package.json
-git commit -m "test(client): behaviour test harness + PnlValue contract specs"
+git commit -m "test(client): reactive behaviour harness + PnlValue contract specs"
 ```
 
 ---
 
-## Task 3: ConnectionStatusBar contract specs
+## Task 3: ConnectionStatusBar (static + emit)
 
-Hooks-connected display. Proves query-hook injection (via inline `data`) across all five connection states.
+Hook-connected display. Proves the `hooks` channel + `emit`-driven re-render.
 
-**Files:**
-- Create: `packages/client/tests/behaviour/shared/pages/shell/connection/ConnectionStatusBarPage.ts`
-- Modify: `packages/client/tests/behaviour/shared/cases.ts`, `shared/pages/index.ts`, `react/registry.tsx`
-- Test: `packages/client/tests/behaviour/specs/shell/connection/ConnectionStatusBar.behaviour.spec.ts`
+**Files:** create `shared/pages/shell/connection/ConnectionStatusBarPage.ts`; modify `shared/components.ts`, `react/registry.tsx`; test `specs/shell/connection/ConnectionStatusBar.behaviour.spec.ts`.
 
 - [ ] **Step 1: Write the failing spec**
 
@@ -511,26 +612,52 @@ Create `packages/client/tests/behaviour/specs/shell/connection/ConnectionStatusB
 ```ts
 import { describe, it, expect } from "vitest";
 import { mount } from "@behaviour/mount";
+import { ConnectionStatusBar } from "@behaviour/components";
+import { ConnectionStatus } from "@rtc/domain";
 
 describe("ConnectionStatusBar", () => {
   it("labels a connecting session", () => {
-    expect(mount("connection-status/connecting").statusText()).toBe("Connecting...");
+    expect(
+      mount(ConnectionStatusBar, { hooks: { useConnectionStatus: ConnectionStatus.CONNECTING } })
+        .statusText(),
+    ).toBe("Connecting...");
   });
 
   it("labels a connected session", () => {
-    expect(mount("connection-status/connected").statusText()).toBe("Connected");
+    expect(
+      mount(ConnectionStatusBar, { hooks: { useConnectionStatus: ConnectionStatus.CONNECTED } })
+        .statusText(),
+    ).toBe("Connected");
   });
 
   it("labels a disconnected session", () => {
-    expect(mount("connection-status/disconnected").statusText()).toBe("Disconnected");
+    expect(
+      mount(ConnectionStatusBar, { hooks: { useConnectionStatus: ConnectionStatus.DISCONNECTED } })
+        .statusText(),
+    ).toBe("Disconnected");
   });
 
   it("labels an idle session", () => {
-    expect(mount("connection-status/idle").statusText()).toBe("Idle");
+    expect(
+      mount(ConnectionStatusBar, { hooks: { useConnectionStatus: ConnectionStatus.IDLE_DISCONNECTED } })
+        .statusText(),
+    ).toBe("Idle");
   });
 
   it("labels an offline session", () => {
-    expect(mount("connection-status/offline").statusText()).toBe("Offline");
+    expect(
+      mount(ConnectionStatusBar, { hooks: { useConnectionStatus: ConnectionStatus.OFFLINE_DISCONNECTED } })
+        .statusText(),
+    ).toBe("Offline");
+  });
+
+  it("reflects a live connection drop", () => {
+    const bar = mount(ConnectionStatusBar, {
+      hooks: { useConnectionStatus: ConnectionStatus.CONNECTED },
+    });
+    expect(bar.statusText()).toBe("Connected");
+    bar.emit({ useConnectionStatus: ConnectionStatus.DISCONNECTED });
+    expect(bar.statusText()).toBe("Disconnected");
   });
 });
 ```
@@ -538,49 +665,17 @@ describe("ConnectionStatusBar", () => {
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `pnpm --filter @rtc/client test:behaviour`
-Expected: FAIL — unknown case `connection-status/connecting` (not yet in `cases.ts`) / TypeScript error on the case name.
+Expected: FAIL — `ConnectionStatusBar` is not exported from `@behaviour/components` (TypeScript/import error).
 
-- [ ] **Step 3: Add the connection cases**
-
-Edit `packages/client/tests/behaviour/shared/cases.ts` — add the `ConnectionStatus` import at the top and the five cases inside the `cases` object (after the `pnl/*` entries):
-
-```ts
-import { ConnectionStatus } from "@rtc/domain";
-```
-
-```ts
-  "connection-status/connecting": {
-    componentKey: "ConnectionStatusBar",
-    data: { connectionStatus: ConnectionStatus.CONNECTING },
-  },
-  "connection-status/connected": {
-    componentKey: "ConnectionStatusBar",
-    data: { connectionStatus: ConnectionStatus.CONNECTED },
-  },
-  "connection-status/disconnected": {
-    componentKey: "ConnectionStatusBar",
-    data: { connectionStatus: ConnectionStatus.DISCONNECTED },
-  },
-  "connection-status/idle": {
-    componentKey: "ConnectionStatusBar",
-    data: { connectionStatus: ConnectionStatus.IDLE_DISCONNECTED },
-  },
-  "connection-status/offline": {
-    componentKey: "ConnectionStatusBar",
-    data: { connectionStatus: ConnectionStatus.OFFLINE_DISCONNECTED },
-  },
-```
-
-- [ ] **Step 4: Create the page object**
+- [ ] **Step 3: Create the page object**
 
 Create `packages/client/tests/behaviour/shared/pages/shell/connection/ConnectionStatusBarPage.ts`:
 
 ```ts
 import { within } from "@testing-library/dom";
+import { MountedComponent } from "../../../harness/component";
 
-export class ConnectionStatusBarPage {
-  constructor(private readonly root: HTMLElement) {}
-
+export class ConnectionStatusBarPage extends MountedComponent<Record<string, never>> {
   /** The human-readable connection status label, e.g. "Connected". */
   statusText(): string {
     return (
@@ -590,41 +685,47 @@ export class ConnectionStatusBarPage {
 }
 ```
 
-- [ ] **Step 5: Wire the page object into the registry**
+- [ ] **Step 4: Add the token**
 
-Edit `packages/client/tests/behaviour/shared/pages/index.ts`:
-- Add import: `import { ConnectionStatusBarPage } from "./shell/connection/ConnectionStatusBarPage";`
-- Change the `PageByKey` field: `ConnectionStatusBar: ConnectionStatusBarPage;`
-- Replace the factory entry: `ConnectionStatusBar: (m) => new ConnectionStatusBarPage(m.root),`
+Edit `packages/client/tests/behaviour/shared/components.ts` — add:
 
-- [ ] **Step 6: Wire the real component into the React registry**
+```ts
+import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
+
+export const ConnectionStatusBar = component<Record<string, never>, ConnectionStatusBarPage>(
+  (ctx) => new ConnectionStatusBarPage(ctx),
+);
+```
+
+- [ ] **Step 5: Add the registry entry**
 
 Edit `packages/client/tests/behaviour/react/registry.tsx`:
-- Add import: `import { ConnectionStatusBar } from "../../../src/ui/shell/connection/ConnectionStatusBar";`
-- Replace the placeholder entry with: `ConnectionStatusBar: () => <ConnectionStatusBar />,`
+- Add imports:
+  ```tsx
+  import { ConnectionStatusBar } from "../shared/components";
+  import { ConnectionStatusBar as ConnectionStatusBarComponent } from "../../../src/ui/shell/connection/ConnectionStatusBar";
+  ```
+- Add a `Map` entry: `[ConnectionStatusBar, () => <ConnectionStatusBarComponent />],`
 
-- [ ] **Step 7: Run to verify it passes**
+- [ ] **Step 6: Run to verify it passes**
 
 Run: `pnpm --filter @rtc/client test:behaviour`
-Expected: PASS — 2 files, 10 tests (PnlValue 5 + ConnectionStatusBar 5).
+Expected: PASS — 2 files, 12 tests.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add packages/client/tests/behaviour
-git commit -m "test(client): ConnectionStatusBar behaviour contract specs"
+git commit -m "test(client): ConnectionStatusBar behaviour specs (incl. live update)"
 ```
 
 ---
 
-## Task 4: FxBlotter contract specs
+## Task 4: FxBlotter (static list + streamed-trade emit)
 
-Sociable list/table (renders the real BlotterHeader/BlotterRow/QuickFilter). Proves collection queries + empty state.
+Sociable list/table (real BlotterHeader/BlotterRow/QuickFilter). Proves collection queries, empty state, and `emit`-driven append on the same instance.
 
-**Files:**
-- Create: `packages/client/tests/behaviour/shared/pages/fx/blotter/FxBlotterPage.ts`
-- Modify: `packages/client/tests/behaviour/shared/cases.ts`, `shared/pages/index.ts`, `react/registry.tsx`
-- Test: `packages/client/tests/behaviour/specs/fx/blotter/FxBlotter.behaviour.spec.ts`
+**Files:** create `shared/pages/fx/blotter/FxBlotterPage.ts`; modify `shared/components.ts`, `react/registry.tsx`; test `specs/fx/blotter/FxBlotter.behaviour.spec.ts`.
 
 - [ ] **Step 1: Write the failing spec**
 
@@ -632,15 +733,34 @@ Create `packages/client/tests/behaviour/specs/fx/blotter/FxBlotter.behaviour.spe
 
 ```ts
 import { describe, it, expect } from "vitest";
+import { Direction, TradeStatus, type Trade } from "@rtc/domain";
 import { mount } from "@behaviour/mount";
+import { FxBlotter } from "@behaviour/components";
+
+const trade = (tradeId: number, over: Partial<Trade> = {}): Trade => ({
+  tradeId,
+  tradeName: `Trade ${tradeId}`,
+  currencyPair: "EURUSD",
+  notional: 1_000_000,
+  dealtCurrency: "EUR",
+  direction: Direction.Buy,
+  spotRate: 1.09221,
+  status: TradeStatus.Done,
+  tradeDate: "2026-06-06",
+  valueDate: "2026-06-08",
+  ...over,
+});
+
+const t1 = trade(4001, { currencyPair: "EURUSD" });
+const t2 = trade(4002, { currencyPair: "USDJPY", notional: 5_000_000, status: TradeStatus.Rejected });
 
 describe("FxBlotter", () => {
   it("renders one row per trade", () => {
-    expect(mount("fx-blotter/populated").tradeRowCount()).toBe(3);
+    expect(mount(FxBlotter, { hooks: { useTrades: [t1, t2] } }).tradeRowCount()).toBe(2);
   });
 
   it("shows each trade's key cells, including rejected trades", () => {
-    const blotter = mount("fx-blotter/populated");
+    const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
     expect(blotter.hasCell("EURUSD")).toBe(true);
     expect(blotter.hasCell("USDJPY")).toBe(true);
     expect(blotter.hasCell("5,000,000")).toBe(true);
@@ -648,15 +768,23 @@ describe("FxBlotter", () => {
   });
 
   it("exposes the trade columns", () => {
-    const headers = mount("fx-blotter/populated").columnHeaders();
+    const headers = mount(FxBlotter, { hooks: { useTrades: [t1] } }).columnHeaders();
     expect(headers.some((h) => h.includes("Trade ID"))).toBe(true);
     expect(headers.some((h) => h.includes("Status"))).toBe(true);
   });
 
   it("shows an empty-state message when there are no trades", () => {
-    const blotter = mount("fx-blotter/empty");
+    const blotter = mount(FxBlotter, { hooks: { useTrades: [] } });
     expect(blotter.tradeRowCount()).toBe(0);
     expect(blotter.emptyMessage()).toMatch(/no trades yet/i);
+  });
+
+  it("appends a newly streamed trade to the same blotter", () => {
+    const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
+    expect(blotter.tradeRowCount()).toBe(2);
+    blotter.emit({ useTrades: [t1, t2, trade(4003, { currencyPair: "GBPUSD" })] });
+    expect(blotter.tradeRowCount()).toBe(3);
+    expect(blotter.hasCell("GBPUSD")).toBe(true);
   });
 });
 ```
@@ -664,27 +792,17 @@ describe("FxBlotter", () => {
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `pnpm --filter @rtc/client test:behaviour`
-Expected: FAIL — unknown case `fx-blotter/populated` / TypeScript error on the case name.
+Expected: FAIL — `FxBlotter` is not exported from `@behaviour/components`.
 
-- [ ] **Step 3: Add the blotter cases**
-
-Edit `packages/client/tests/behaviour/shared/cases.ts` — add (after the connection cases):
-
-```ts
-  "fx-blotter/populated": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
-  "fx-blotter/empty": { componentKey: "FxBlotter", data: {} },
-```
-
-- [ ] **Step 4: Create the page object**
+- [ ] **Step 3: Create the page object**
 
 Create `packages/client/tests/behaviour/shared/pages/fx/blotter/FxBlotterPage.ts`:
 
 ```ts
 import { within } from "@testing-library/dom";
+import { MountedComponent } from "../../../harness/component";
 
-export class FxBlotterPage {
-  constructor(private readonly root: HTMLElement) {}
-
+export class FxBlotterPage extends MountedComponent<Record<string, never>> {
   private table(): HTMLElement {
     return within(this.root).getByTestId("blotter-table");
   }
@@ -717,41 +835,47 @@ export class FxBlotterPage {
 }
 ```
 
-- [ ] **Step 5: Wire the page object into the registry**
+- [ ] **Step 4: Add the token**
 
-Edit `packages/client/tests/behaviour/shared/pages/index.ts`:
-- Add import: `import { FxBlotterPage } from "./fx/blotter/FxBlotterPage";`
-- Change the `PageByKey` field: `FxBlotter: FxBlotterPage;`
-- Replace the factory entry: `FxBlotter: (m) => new FxBlotterPage(m.root),`
+Edit `packages/client/tests/behaviour/shared/components.ts` — add:
 
-- [ ] **Step 6: Wire the real component into the React registry**
+```ts
+import { FxBlotterPage } from "./pages/fx/blotter/FxBlotterPage";
+
+export const FxBlotter = component<Record<string, never>, FxBlotterPage>(
+  (ctx) => new FxBlotterPage(ctx),
+);
+```
+
+- [ ] **Step 5: Add the registry entry**
 
 Edit `packages/client/tests/behaviour/react/registry.tsx`:
-- Add import: `import { FxBlotter } from "../../../src/ui/fx/blotter/FxBlotter";`
-- Replace the placeholder entry with: `FxBlotter: () => <FxBlotter />,`
+- Add imports:
+  ```tsx
+  import { FxBlotter } from "../shared/components";
+  import { FxBlotter as FxBlotterComponent } from "../../../src/ui/fx/blotter/FxBlotter";
+  ```
+- Add a `Map` entry: `[FxBlotter, () => <FxBlotterComponent />],`
 
-- [ ] **Step 7: Run to verify it passes**
+- [ ] **Step 6: Run to verify it passes**
 
 Run: `pnpm --filter @rtc/client test:behaviour`
-Expected: PASS — 3 files, 14 tests. If `columnHeaders().some(... "Trade ID")` fails, inspect `src/ui/fx/blotter/BlotterHeader.tsx` for the actual header text; the `.includes` substring match is intentionally tolerant of sort/filter chrome inside the `<th>`.
+Expected: PASS — 3 files, 17 tests. If `columnHeaders().some(... "Trade ID")` fails, check `src/ui/fx/blotter/BlotterHeader.tsx` for the actual header text; the `.includes` match tolerates sort/filter chrome in the `<th>`.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add packages/client/tests/behaviour
-git commit -m "test(client): FxBlotter behaviour contract specs"
+git commit -m "test(client): FxBlotter behaviour specs (incl. streamed trade)"
 ```
 
 ---
 
-## Task 5: NewRfqForm contract specs
+## Task 5: NewRfqForm (sociable interaction + command spy)
 
-Sociable interaction + command spy. Renders real InstrumentSearch/DealerSelection/QuantityInput children; fakes only `useCreateRfq`. Proves user-event actions, the command recorder, validation, and async confirmation via `findBy`.
+Real InstrumentSearch/DealerSelection/QuantityInput children; only `useCreateRfq` faked. Proves user-event actions, the command recorder, validation, and async confirmation. Reuses the credit fixture for instruments/dealers.
 
-**Files:**
-- Create: `packages/client/tests/behaviour/shared/pages/credit/newRfq/NewRfqFormPage.ts`
-- Modify: `packages/client/tests/behaviour/shared/cases.ts`, `shared/pages/index.ts`, `react/registry.tsx`
-- Test: `packages/client/tests/behaviour/specs/credit/newRfq/NewRfqForm.behaviour.spec.ts`
+**Files:** create `shared/pages/credit/newRfq/NewRfqFormPage.ts`; modify `shared/components.ts`, `react/registry.tsx`; test `specs/credit/newRfq/NewRfqForm.behaviour.spec.ts`.
 
 - [ ] **Step 1: Write the failing spec**
 
@@ -759,12 +883,29 @@ Create `packages/client/tests/behaviour/specs/credit/newRfq/NewRfqForm.behaviour
 
 ```ts
 import { describe, it, expect } from "vitest";
-import { Direction } from "@rtc/domain";
+import { Direction, type Instrument, type Dealer, ADAPTIVE_BANK_NAME } from "@rtc/domain";
 import { mount } from "@behaviour/mount";
+import { NewRfqForm } from "@behaviour/components";
+
+const instruments: readonly Instrument[] = [
+  { id: 1, name: "US Treasury 10Y", cusip: "912828ZQ6", ticker: "T 1.5 02/34", maturity: "2034-02-15", interestRate: 1.5, benchmark: "10Y" },
+  { id: 2, name: "Apple Inc 2030", cusip: "037833EK8", ticker: "AAPL 2.4 30", maturity: "2030-05-11", interestRate: 2.4, benchmark: "7Y" },
+];
+const dealers: readonly Dealer[] = [
+  { id: 1, name: ADAPTIVE_BANK_NAME },
+  { id: 2, name: "Citi" },
+];
+
+const ready = () =>
+  mount(NewRfqForm, {
+    props: { onCreated: () => {} },
+    hooks: { useInstruments: instruments, useDealers: dealers },
+    commands: { createRfq: 555 },
+  });
 
 describe("NewRfqForm", () => {
   it("keeps submit disabled until an instrument and quantity are provided", async () => {
-    const form = mount("new-rfq/ready");
+    const form = ready();
     expect(form.isSubmitDisabled()).toBe(true);
     await form.chooseInstrument("Apple Inc 2030");
     await form.setQuantity(5);
@@ -772,7 +913,7 @@ describe("NewRfqForm", () => {
   });
 
   it("submits the entered RFQ details to the create-RFQ command", async () => {
-    const form = mount("new-rfq/ready");
+    const form = ready();
     await form.chooseInstrument("Apple Inc 2030");
     await form.setQuantity(5);
     await form.setDirection(Direction.Sell);
@@ -785,7 +926,7 @@ describe("NewRfqForm", () => {
   });
 
   it("confirms creation to the user", async () => {
-    const form = mount("new-rfq/ready");
+    const form = ready();
     await form.chooseInstrument("Apple Inc 2030");
     await form.setQuantity(5);
     await form.submit();
@@ -793,7 +934,7 @@ describe("NewRfqForm", () => {
   });
 
   it("blocks submission when the quantity exceeds the maximum", async () => {
-    const form = mount("new-rfq/ready");
+    const form = ready();
     await form.chooseInstrument("Apple Inc 2030");
     await form.setQuantity(200_000_000);
     expect(form.hasQuantityError()).toBe(true);
@@ -805,21 +946,9 @@ describe("NewRfqForm", () => {
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `pnpm --filter @rtc/client test:behaviour`
-Expected: FAIL — unknown case `new-rfq/ready` / TypeScript error on the case name.
+Expected: FAIL — `NewRfqForm` is not exported from `@behaviour/components`.
 
-- [ ] **Step 3: Add the new-rfq case**
-
-Edit `packages/client/tests/behaviour/shared/cases.ts` — add (after the blotter cases):
-
-```ts
-  "new-rfq/ready": {
-    componentKey: "NewRfqForm",
-    fixtureKey: "credit-populated",
-    results: { createRfq: 555 },
-  },
-```
-
-- [ ] **Step 4: Create the page object**
+- [ ] **Step 3: Create the page object**
 
 Create `packages/client/tests/behaviour/shared/pages/credit/newRfq/NewRfqFormPage.ts`:
 
@@ -827,15 +956,14 @@ Create `packages/client/tests/behaviour/shared/pages/credit/newRfq/NewRfqFormPag
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { type Direction, type CreateRfqInput } from "@rtc/domain";
-import type { CommandRecorder } from "../../../recordingHooks";
+import { MountedComponent } from "../../../harness/component";
 
-export class NewRfqFormPage {
+export interface NewRfqFormProps {
+  onCreated: (rfqId: number) => void;
+}
+
+export class NewRfqFormPage extends MountedComponent<NewRfqFormProps> {
   private readonly user: UserEvent = userEvent.setup();
-
-  constructor(
-    private readonly root: HTMLElement,
-    private readonly recorder: CommandRecorder,
-  ) {}
 
   private q() {
     return within(this.root);
@@ -876,7 +1004,7 @@ export class NewRfqFormPage {
 
   /** The RFQ input recorded by the faked create-RFQ command, or null. */
   createdRfq(): CreateRfqInput | null {
-    return this.recorder.createRfq[0] ?? null;
+    return this.commandLog().createRfq[0] ?? null;
   }
 
   /** Resolves once the post-submit confirmation is shown. */
@@ -886,39 +1014,48 @@ export class NewRfqFormPage {
 }
 ```
 
-- [ ] **Step 5: Wire the page object into the registry**
+- [ ] **Step 4: Add the token**
 
-Edit `packages/client/tests/behaviour/shared/pages/index.ts`:
-- Add import: `import { NewRfqFormPage } from "./credit/newRfq/NewRfqFormPage";`
-- Change the `PageByKey` field: `NewRfqForm: NewRfqFormPage;`
-- Replace the factory entry: `NewRfqForm: (m, r) => new NewRfqFormPage(m.root, r),`
+Edit `packages/client/tests/behaviour/shared/components.ts` — add:
 
-- [ ] **Step 6: Wire the real component into the React registry**
+```ts
+import { NewRfqFormPage, type NewRfqFormProps } from "./pages/credit/newRfq/NewRfqFormPage";
+
+export const NewRfqForm = component<NewRfqFormProps, NewRfqFormPage>(
+  (ctx) => new NewRfqFormPage(ctx),
+);
+```
+
+- [ ] **Step 5: Add the registry entry**
 
 Edit `packages/client/tests/behaviour/react/registry.tsx`:
-- Add import: `import { NewRfqForm } from "../../../src/ui/credit/newRfq/NewRfqForm";`
-- Replace the placeholder entry with:
-  `NewRfqForm: (p) => <NewRfqForm onCreated={(p.onCreated as ((id: number) => void)) ?? (() => {})} />,`
+- Add imports:
+  ```tsx
+  import { NewRfqForm } from "../shared/components";
+  import { NewRfqForm as NewRfqFormComponent } from "../../../src/ui/credit/newRfq/NewRfqForm";
+  ```
+- Add a `Map` entry (props carries the callback; default to a no-op if absent):
+  ```tsx
+  [NewRfqForm, (p) => <NewRfqFormComponent onCreated={(p.onCreated as ((id: number) => void)) ?? (() => {})} />],
+  ```
 
-- [ ] **Step 7: Run to verify it passes**
+- [ ] **Step 6: Run to verify it passes**
 
 Run: `pnpm --filter @rtc/client test:behaviour`
-Expected: PASS — 4 files, 18 tests. `act(...)` warnings (if any) are non-fatal; the `findBy`-based confirmation handles React's async settle. If `chooseInstrument` times out on `findByText`, confirm the fixture instrument name is exactly `"Apple Inc 2030"` (per `visual-diff/shared/fixtures.ts`).
+Expected: PASS — 4 files, 21 tests. `act(...)` warnings (if any) are non-fatal. If `chooseInstrument` times out on `findByText`, confirm the instrument name passed in the spec exactly matches a fixture instrument (`"Apple Inc 2030"`).
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add packages/client/tests/behaviour
-git commit -m "test(client): NewRfqForm behaviour contract specs"
+git commit -m "test(client): NewRfqForm behaviour specs (sociable interaction + command spy)"
 ```
 
 ---
 
 ## Task 6: Fold into default `pnpm test`, document, and verify
 
-**Files:**
-- Modify: `packages/client/vitest.config.ts`
-- Create: `packages/client/tests/behaviour/README.md`
+**Files:** modify `packages/client/vitest.config.ts`; create `packages/client/tests/behaviour/README.md`.
 
 - [ ] **Step 1: Extend the default vitest config**
 
@@ -960,12 +1097,12 @@ The behaviour specs now run with the unit suite under `pnpm test` (driver regist
 - [ ] **Step 2: Run the full client suite to verify nothing regressed**
 
 Run: `pnpm --filter @rtc/client test`
-Expected: PASS — the prior unit suite (26 files / 69 tests per ADR-001) **plus** the 4 behaviour files / 18 tests = 30 files / 87 tests, all passing.
+Expected: PASS — the prior unit suite (26 files / 69 tests per ADR-001) **plus** the 4 behaviour files / 21 tests = 30 files / 90 tests, all passing.
 
 - [ ] **Step 3: Verify the focused runner still works**
 
 Run: `pnpm --filter @rtc/client test:behaviour`
-Expected: PASS — 4 files, 18 tests; HTML report written to `packages/client/reports/behaviour/report/index.html`.
+Expected: PASS — 4 files, 21 tests; HTML report at `packages/client/reports/behaviour/report/index.html`.
 
 - [ ] **Step 4: Verify typecheck and build are unaffected**
 
@@ -973,7 +1110,7 @@ Run (from repo root):
 ```bash
 pnpm --filter @rtc/client typecheck && pnpm --filter @rtc/client build
 ```
-Expected: both succeed. `typecheck` covers `src` only (tests excluded by design), so it is unchanged; `build` is unaffected by test files.
+Expected: both succeed (`typecheck` covers `src` only; `build` ignores tests).
 
 - [ ] **Step 5: Write the tier README**
 
@@ -983,24 +1120,42 @@ Create `packages/client/tests/behaviour/README.md`:
 # Behaviour (contract) test tier
 
 Sociable React Testing Library tests with explicit behavioural assertions,
-complementing the pixel-only `tests/visual-diff/` tier. They assert text,
-roles, structure, and recorded command inputs — never colour or layout (that
-stays the visual tier's job).
+complementing the pixel-only `tests/visual-diff/` tier. They assert text, roles,
+structure, recorded command/callback inputs, and dynamic re-renders — never
+colour or layout (that stays the visual tier's job).
 
 ## Layers
 
 - `specs/` — the tests. Mirror `src/ui/` (minus `ui/`) with component PascalCase
   (`specs/fx/analytics/PnlValue.behaviour.spec.ts`). Import only
-  `@behaviour/mount` and `@rtc/domain` types. **No React / testing-library
-  imports.**
-- `shared/` — framework-neutral harness: `mount()`, the `cases` manifest,
-  `recordingHooks` (sociable AppHooks fake + command recorder), the
-  `activeDriver` seam, and `pages/` (page objects querying raw DOM via
-  `@testing-library/dom`). Reuses the visual-diff data manifest
-  (`../visual-diff/shared/fixtures.ts`, `appData.ts`).
-- `react/` — **the only framework-specific surface**: `render.tsx` (the
-  `@testing-library/react` driver), `registry.tsx` (component key → element),
-  and `setup.ts` (registers the driver via `setDriver`).
+  `@behaviour/mount`, `@behaviour/components` (tokens), and `@rtc/domain` types.
+  **No React / testing-library imports.**
+- `shared/` — framework-neutral harness:
+  - `harness/world.ts` — a `BehaviorSubject` per hook (the controllable "World")
+    plus a command log; `createWorld()`.
+  - `harness/component.ts` — `ComponentToken`, the `MountedComponent` page-object
+    base (`setProps`/`emit`/`commandLog`), and `component()`.
+  - `harness/activeDriver.ts` — the `setDriver`/`getDriver` seam.
+  - `mount.ts` — `mount(token, { props, hooks, commands })`.
+  - `components.ts` — the neutral tokens.
+  - `pages/` — page objects querying raw DOM via `@testing-library/dom`.
+- `react/` — **the only framework-specific surface**:
+  - `registry.tsx` — token → React element.
+  - `hooksFromWorld.ts` — `reactHooks(world)` via `useSyncExternalStore`
+    (re-renders the consuming component on each `emit`/`setProps`).
+  - `render.tsx` — the driver (providers + a `PropsHost` for the props subject).
+  - `setup.ts` — registers the driver via `setDriver`.
+
+## Input channels
+
+`mount(Token, { props?, hooks?, commands? })`:
+- `props` — real component props, including callbacks (`onCreated: vi.fn()`).
+- `hooks` — initial value per hook, keyed by hook name (`{ useTrades: [...] }`).
+- `commands` — canned command results (`{ createRfq: 555 }`).
+
+Drive updates via the returned page object: `page.setProps({...})`,
+`page.emit({ useTrades: [...] })`; read recorded commands via accessors like
+`page.createdRfq()`.
 
 ## Running
 
@@ -1010,14 +1165,25 @@ stays the visual tier's job).
 
 ## Swapping the UI framework (e.g. SolidJS)
 
-1. Add `tests/behaviour/solid/render.tsx`, `solid/registry.tsx`, `solid/setup.ts`
-   (use `@solidjs/testing-library`, which re-exports the same
-   `@testing-library/dom` queries the page objects already use).
+1. Add a `solid/` trio — `registry.tsx` (token → Solid element),
+   `hooksFromWorld.ts` (`from(subject)` → signal), `render.tsx`
+   (`@solidjs/testing-library`, which re-exports the same `@testing-library/dom`
+   queries), and `setup.ts`.
 2. Point the vitest config's `setupFiles` at `solid/setup.ts`.
 
-`specs/`, `shared/pages/`, `shared/mount.ts`, `shared/cases.ts`, and
-`shared/recordingHooks.ts` are untouched. The first Solid run's failures are the
+`specs/`, `shared/components.ts` (tokens), `shared/pages/**`, `shared/harness/**`,
+and `shared/mount.ts` are untouched. The first Solid run's failures are the
 behavioural-parity punch-list.
+
+## Dual use: sociable unit and integration
+
+The driver's only output is an `AppHooks` handed to `HooksProvider`. This tier
+uses **fake** hooks built from the `World`. The same tokens, page objects, and
+specs can drive an **integration** test by handing the provider the real
+`createAppHooks(presenters)` (real presenters fed by the domain `simulators`):
+the query methods are valid in both modes; `emit`/`setProps`/`createdRfq` are
+unit-mode conveniences. (Integration mode is supported by the design but not yet
+built.)
 ```
 
 - [ ] **Step 6: Commit**
@@ -1031,9 +1197,34 @@ git commit -m "test(client): run behaviour tier in default suite + document it"
 
 ## Self-review notes (for the implementer)
 
-- **Spec coverage vs design:** all five design decisions are realised — substrate (jsdom + `@testing-library/react`, Task 1/2), spec style (query + assert, every spec), directory/script (`tests/behaviour/` + `test:behaviour`, Task 2), run wiring (default + focused, Task 6), and the proving slice's four patterns (Tasks 2–5). The `@behaviour/*` alias and mirrored layout (the post-design refinement) are in Task 1/2 and every page-object path.
-- **Single swap surface:** only `react/render.tsx`, `react/registry.tsx`, `react/setup.ts` import React or `@testing-library/react`. Page objects use `@testing-library/dom` + `@testing-library/user-event` (DOM-level, framework-neutral). Specs import neither. Verify this holds after Task 5 with:
-  `grep -rl "@testing-library/react\|from \"react\"" packages/client/tests/behaviour` — should list **only** files under `tests/behaviour/react/`.
-- **Type consistency:** `BehaviourDriver.render` / `MountedRoot` / `RenderInputs` (activeDriver.ts) are used unchanged by `render.tsx` and `mount.ts`. `CommandRecorder.createRfq` (recordingHooks.ts) is read by `NewRfqFormPage.createdRfq()`. `ComponentKey` union (cases.ts) keys both `behaviourRegistry` and `pages`. `PageByKey` (pages/index.ts) drives `PageFor` in mount.ts.
-- **Known live-component caveats already handled:** NewRfqForm's `setTimeout(onCreated, 1500)` is avoided (assert recorded input + `findBy` confirmation, not the callback); BlotterRow's highlight `setTimeout` never fires on initial mount (no new trades); `hasCell` is scoped to `<tbody>` so header filter chrome can't cause duplicate-text matches.
+- **Spec coverage vs design:** all six design goals are realised — RTL+jsdom
+  substrate (Task 1/2); tokens replace string keys/cases (`components.ts`, every
+  spec); three input channels `props`/`hooks`/`commands` (mount + every spec);
+  dynamic updates via `setProps`/`emit` backed by RxJS Subjects (world.ts,
+  hooksFromWorld.ts, PnlValue/ConnectionStatusBar/FxBlotter dynamic tests);
+  dual-use documented (README); mirrored layout + `@behaviour/*` alias (Task 1/2,
+  every path).
+- **Single swap surface:** only `react/registry.tsx`, `react/hooksFromWorld.ts`,
+  `react/render.tsx`, `react/setup.ts` import React or `@testing-library/react`.
+  Page objects use `@testing-library/dom` + `@testing-library/user-event`
+  (DOM-level). Specs import neither. Verify after Task 5:
+  `grep -rl "@testing-library/react\|useSyncExternalStore\|from \"react\"" packages/client/tests/behaviour`
+  should list **only** files under `tests/behaviour/react/`.
+- **Type consistency:** `ComponentToken<P, Page>` / `MountedComponent<P>` /
+  `PageContext<P>` (component.ts) flow through `mount` (mount.ts), the tokens
+  (components.ts), and every page object. `RenderInputs<P>` / `MountedRoot` /
+  `BehaviourDriver` (activeDriver.ts) are implemented by `reactDriver`
+  (render.tsx). `HookValues` keys (world.ts) are the `emit`/`hooks` keys in specs
+  and the `reactHooks` source reads. `CommandLog.createRfq` is read by
+  `NewRfqFormPage.createdRfq()`.
+- **Known live-component caveats handled:** NewRfqForm's `setTimeout(onCreated,
+  1500)` is avoided (assert recorded `createdRfq()` input + `findBy`
+  confirmation, not the delayed callback); FxBlotter's "new trade" highlight is
+  colour-only, so the streamed-trade test asserts the row *appeared* (count + a
+  new cell), not the flash; `seenTradeIds`/`useRef` survives `emit` because
+  `useSyncExternalStore` re-renders the **same instance**; `hasCell` is scoped to
+  `<tbody>` so header filter chrome can't cause duplicate-text matches.
+- **`Record<string, never>` prop type** is used for the propless components
+  (ConnectionStatusBar, FxBlotter); `mount(Token)` is called with no `props`, and
+  `setProps`/`emit` typing still resolves.
 ```
