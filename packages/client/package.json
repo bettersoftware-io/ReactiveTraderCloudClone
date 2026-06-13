@@ -14,7 +14,7 @@
   "scripts": {
     "build": "vite build && tsc -p tsconfig.types.json --noCheck",
     "build-types": "tsc -p tsconfig.types.json --noCheck",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.visual-diff.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.visual-diff.json && tsc --noEmit -p tsconfig.behaviour.json",
     "test": "vitest run",
     "test:behaviour": "vitest run -c tests/behaviour/vitest.config.ts",
     "test:visual-diff": "tsx tests/visual-diff/run-all.ts",
