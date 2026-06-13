@@ -1,0 +1,37 @@
+import { within } from "@testing-library/dom";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
+import { MountedComponent } from "../../../harness/component";
+
+export type RfqFilter = "Live" | "All" | "Done" | "Expired" | "Cancelled";
+
+export interface RfqFilterTabsProps {
+  selected: RfqFilter;
+  onChange: (filter: RfqFilter) => void;
+}
+
+export class RfqFilterTabsPage extends MountedComponent<RfqFilterTabsProps> {
+  private readonly user: UserEvent = userEvent.setup();
+
+  private q() {
+    return within(this.root);
+  }
+
+  /** All tab labels, in order. */
+  tabLabels(): string[] {
+    return this.q()
+      .getAllByRole("button")
+      .map((b) => b.textContent?.trim() ?? "");
+  }
+
+  /** Whether the tab with the given label is rendered as the active one. */
+  isActive(label: string): boolean {
+    const btn = this.q().getByRole("button", { name: label });
+    // Active tab is bold (fontWeight 600).
+    return btn.style.fontWeight === "600";
+  }
+
+  /** Click the tab with the given label. */
+  async clickTab(label: string): Promise<void> {
+    await this.user.click(this.q().getByRole("button", { name: label }));
+  }
+}

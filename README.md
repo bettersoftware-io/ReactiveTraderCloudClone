@@ -110,6 +110,11 @@ Every test script writes an HTML report mirroring its name —
 artifacts in the `artifacts/` sibling; bare `test` ⇒ `reports/unit/`; sole
 exception: `test:fullstack:node`, terminal only).
 
+`pnpm test` runs each package's bare `test`; in `@rtc/client` that's the
+**union** of two co-resident tiers — the **app tier** (`test:app`: presenters +
+adapters under `src/app`) and the **ui contract tier** (`test:ui:contract`:
+sociable RTL specs over `src/ui`) — which also have focused per-tier runners.
+
 `pnpm test:e2e` is the full behavioural suite: it runs the gates first, then
 launches all ten suites — the eight runners and the two full-stack smokes (see
 below) — **in parallel**, buffering each suite's output and printing a pass/fail

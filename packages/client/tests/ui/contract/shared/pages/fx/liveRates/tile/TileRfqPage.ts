@@ -1,0 +1,56 @@
+import { within } from "@testing-library/dom";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
+import type { CurrencyPair, Direction, Price } from "@rtc/domain";
+import type {
+  RfqState,
+  RfqQuote,
+} from "../../../../../../../../src/ui/fx/liveRates/tile/hooks/useRfqState";
+import { MountedComponent } from "../../../../harness/component";
+
+/** Controllable double for the rfq-state hook result the component consumes. */
+export interface RfqStateLike {
+  state: RfqState;
+  initiate: () => void;
+  cancel: () => void;
+  receiveQuote: (quote: RfqQuote) => void;
+  reject: () => void;
+  accept: () => RfqQuote | null;
+}
+
+export interface TileRfqProps {
+  pair: CurrencyPair;
+  rfqState: RfqStateLike;
+  onRequestQuote: () => void;
+  onExecute: (direction: Direction, price: Price, notional: number) => void;
+  notional: number;
+}
+
+export class TileRfqPage extends MountedComponent<TileRfqProps> {
+  private readonly user: UserEvent = userEvent.setup();
+
+  private q() {
+    return within(this.root);
+  }
+
+  /** True when the root renders no content (the null branch). */
+  isEmpty(): boolean {
+    return this.root.textContent?.trim() === "";
+  }
+
+  text(): string {
+    return this.root.textContent?.trim() ?? "";
+  }
+
+  hasButton(name: RegExp): boolean {
+    return this.q().queryByRole("button", { name }) !== null;
+  }
+
+  async click(name: RegExp): Promise<void> {
+    await this.user.click(this.q().getByRole("button", { name }));
+  }
+
+  /** The countdown caption, when a quote is shown. */
+  countdownCaption(): string | null {
+    return this.q().queryByText(/remaining/i)?.textContent?.trim() ?? null;
+  }
+}
