@@ -14,6 +14,7 @@ import {
   type ExecuteTradeInput,
   type ExecuteTradeResult,
   type RfqQuoteResult,
+  type QuoteRequest,
 } from "@rtc/domain";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
@@ -52,6 +53,8 @@ const DEFAULTS: HookValues = {
 export interface ParametricSeed {
   prices?: Readonly<Record<string, Price | null>>;
   histories?: Readonly<Record<string, readonly PriceTick[]>>;
+  /** Quotes per RFQ, keyed by rfqId (mirrors useQuotesForRfq(rfqId)). */
+  quotesForRfq?: Readonly<Record<number, readonly Quote[]>>;
 }
 
 /**
@@ -72,6 +75,10 @@ export interface CommandLog {
   createRfq: CreateRfqInput[];
   executeTrade: ExecuteTradeInput[];
   requestRfqQuote: { symbol: string; pipsPosition: number }[];
+  acceptQuote: number[];
+  cancelRfq: number[];
+  passQuote: number[];
+  quoteRfq: QuoteRequest[];
 }
 
 export interface World {
@@ -80,10 +87,14 @@ export interface World {
   priceFor(symbol: string): BehaviorSubject<Price | null>;
   /** Per-key subject for usePriceHistory(symbol). */
   historyFor(symbol: string): BehaviorSubject<readonly PriceTick[]>;
+  /** Per-key subject for useQuotesForRfq(rfqId), keyed by rfqId. */
+  quotesForRfq(rfqId: number): BehaviorSubject<readonly Quote[]>;
   /** Push a new price for one symbol (drives that tile's re-render). */
   setPrice(symbol: string, value: Price | null): void;
   /** Push a new price history for one symbol. */
   setHistory(symbol: string, value: readonly PriceTick[]): void;
+  /** Push new quotes for one RFQ (drives that card's re-render). */
+  setQuotesForRfq(rfqId: number, value: readonly Quote[]): void;
   readonly results: CommandResults;
   readonly commands: CommandLog;
   /** Push new values for one or more NULLARY hooks (drives re-renders). */
@@ -104,6 +115,7 @@ export function createWorld(
 
   const prices = new Map<string, BehaviorSubject<Price | null>>();
   const histories = new Map<string, BehaviorSubject<readonly PriceTick[]>>();
+  const quotes = new Map<number, BehaviorSubject<readonly Quote[]>>();
 
   const priceFor = (symbol: string): BehaviorSubject<Price | null> => {
     let subject = prices.get(symbol);
@@ -122,21 +134,43 @@ export function createWorld(
     return subject;
   };
 
+  const quotesForRfq = (rfqId: number): BehaviorSubject<readonly Quote[]> => {
+    let subject = quotes.get(rfqId);
+    if (!subject) {
+      subject = new BehaviorSubject<readonly Quote[]>([]);
+      quotes.set(rfqId, subject);
+    }
+    return subject;
+  };
+
   for (const [symbol, value] of Object.entries(parametric.prices ?? {})) {
     priceFor(symbol).next(value);
   }
   for (const [symbol, value] of Object.entries(parametric.histories ?? {})) {
     historyFor(symbol).next(value);
   }
+  for (const [rfqId, value] of Object.entries(parametric.quotesForRfq ?? {})) {
+    quotesForRfq(Number(rfqId)).next(value);
+  }
 
   return {
     sources,
     priceFor,
     historyFor,
+    quotesForRfq,
     setPrice: (symbol, value) => priceFor(symbol).next(value),
     setHistory: (symbol, value) => historyFor(symbol).next(value),
+    setQuotesForRfq: (rfqId, value) => quotesForRfq(rfqId).next(value),
     results,
-    commands: { createRfq: [], executeTrade: [], requestRfqQuote: [] },
+    commands: {
+      createRfq: [],
+      executeTrade: [],
+      requestRfqQuote: [],
+      acceptQuote: [],
+      cancelRfq: [],
+      passQuote: [],
+      quoteRfq: [],
+    },
     push(patch) {
       for (const key of Object.keys(patch) as (keyof HookValues)[]) {
         (sources[key] as BehaviorSubject<unknown>).next(patch[key]);

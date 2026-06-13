@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Direction, type Instrument, type Dealer, ADAPTIVE_BANK_NAME } from "@rtc/domain";
 import { mount } from "@ui-contract/mount";
 import { NewRfqForm } from "@ui-contract/components";
@@ -55,5 +55,51 @@ describe("NewRfqForm", () => {
     await form.setQuantity(200_000_000);
     expect(form.hasQuantityError()).toBe(true);
     expect(form.isSubmitDisabled()).toBe(true);
+  });
+
+  it("lets the user clear a chosen instrument and search again", async () => {
+    const form = ready();
+    await form.chooseInstrument("Apple Inc 2030");
+    expect(form.hasSelectedInstrument()).toBe(true);
+    await form.clearInstrument();
+    expect(form.hasSelectedInstrument()).toBe(false);
+    // After clearing, the submit button is disabled again (no instrument).
+    expect(form.isSubmitDisabled()).toBe(true);
+  });
+
+  it("pre-selects every dealer and lets the user toggle them off and on", async () => {
+    const form = ready();
+    expect(form.dealerNames()).toEqual([ADAPTIVE_BANK_NAME, "Citi"]);
+    expect(form.isDealerSelected("Citi")).toBe(true);
+    await form.toggleDealer("Citi");
+    expect(form.isDealerSelected("Citi")).toBe(false);
+    await form.toggleDealer("Citi");
+    expect(form.isDealerSelected("Citi")).toBe(true);
+  });
+
+  it("notifies the parent with the created RFQ id", async () => {
+    // shouldAdvanceTime keeps real time ticking the fake clock so userEvent's
+    // and findBy's internal polling still resolves; we retain manual control of
+    // the component's 1.5s onCreated setTimeout via advanceTimersByTimeAsync.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const onCreated = vi.fn();
+      const form = mount(NewRfqForm, {
+        props: { onCreated },
+        hooks: { useInstruments: instruments, useDealers: dealers },
+        commands: { createRfq: 555 },
+      });
+      // userEvent waits on real timers by default; route its delays through the
+      // installed fake clock so interactions still resolve under fake timers.
+      form.useFakeTimerAdvance(vi.advanceTimersByTime);
+      await form.chooseInstrument("Apple Inc 2030");
+      await form.setQuantity(5);
+      await form.submit();
+      // The component fires onCreated on a 1.5s setTimeout after createRfq resolves.
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(onCreated).toHaveBeenCalledWith(555);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

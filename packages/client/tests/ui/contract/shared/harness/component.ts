@@ -1,4 +1,4 @@
-import type { Price, PriceTick } from "@rtc/domain";
+import type { Price, PriceTick, Quote } from "@rtc/domain";
 import type { HookValues, CommandLog } from "./world";
 
 /** Everything a page object needs: the rendered root + update drivers + command log. */
@@ -10,6 +10,8 @@ export interface PageContext<P> {
   setPrice(symbol: string, value: Price | null): void;
   /** Push a new price history for one symbol (parametric usePriceHistory source). */
   setHistory(symbol: string, value: readonly PriceTick[]): void;
+  /** Push new quotes for one RFQ (parametric useQuotesForRfq source). */
+  setQuotesForRfq(rfqId: number, value: readonly Quote[]): void;
   readonly commands: CommandLog;
 }
 
@@ -41,6 +43,11 @@ export abstract class MountedComponent<P> {
   /** Push a new price history for one symbol → re-render the subscribing tile. */
   setHistory(symbol: string, value: readonly PriceTick[]): void {
     this.ctx.setHistory(symbol, value);
+  }
+
+  /** Push new quotes for one RFQ → re-render the subscribing card. */
+  setQuotesForRfq(rfqId: number, value: readonly Quote[]): void {
+    this.ctx.setQuotesForRfq(rfqId, value);
   }
 
   /** Inputs recorded by the faked command hooks (unit-mode convenience). */

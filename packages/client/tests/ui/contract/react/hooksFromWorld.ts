@@ -32,7 +32,7 @@ export function reactHooks(world: World): AppHooks {
     // streams (presenters.priceStream.price$(pair), priceHistory.history$(sym)).
     usePrice: (pair: CurrencyPair) => useSubject(world.priceFor(pair.symbol)),
     usePriceHistory: (symbol: string) => useSubject(world.historyFor(symbol)),
-    useQuotesForRfq: () => [],
+    useQuotesForRfq: (rfqId: number) => useSubject(world.quotesForRfq(rfqId)),
     // Nullary query hooks: reactive, re-render on push.
     useTrades: () => useSubject(s.useTrades),
     useAnalytics: () => useSubject(s.useAnalytics),
@@ -55,10 +55,25 @@ export function reactHooks(world: World): AppHooks {
       world.commands.createRfq.push(input);
       return of(world.results.createRfq ?? 0);
     },
-    useAcceptQuote: () => (_quoteId: number) => EMPTY as Observable<void>,
-    useCancelRfq: () => (_rfqId: number) => EMPTY as Observable<void>,
-    usePassQuote: () => (_quoteId: number) => EMPTY as Observable<void>,
-    useQuoteRfq: () => (_request: QuoteRequest) => EMPTY as Observable<void>,
+    // Void commands: record input and emit a single value so the consuming
+    // component's `firstValueFrom(...)` resolves (an empty Observable would
+    // reject with EmptyError and skip the post-await state transition).
+    useAcceptQuote: () => (quoteId: number) => {
+      world.commands.acceptQuote.push(quoteId);
+      return of(undefined) as Observable<void>;
+    },
+    useCancelRfq: () => (rfqId: number) => {
+      world.commands.cancelRfq.push(rfqId);
+      return of(undefined) as Observable<void>;
+    },
+    usePassQuote: () => (quoteId: number) => {
+      world.commands.passQuote.push(quoteId);
+      return of(undefined) as Observable<void>;
+    },
+    useQuoteRfq: () => (request: QuoteRequest) => {
+      world.commands.quoteRfq.push(request);
+      return of(undefined) as Observable<void>;
+    },
     useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => {
       world.commands.requestRfqQuote.push({ symbol, pipsPosition });
       if (world.results.requestRfqQuoteThrows) {

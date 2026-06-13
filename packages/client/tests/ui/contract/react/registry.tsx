@@ -6,6 +6,10 @@ import type {
   PriceTick,
   CurrencyCategory,
   Direction,
+  Rfq,
+  Quote,
+  Instrument,
+  Dealer,
 } from "@rtc/domain";
 import type { ComponentToken, MountedComponent } from "../shared/harness/component";
 import {
@@ -20,6 +24,13 @@ import {
   NumberFilter,
   DateFilter,
   NewRfqForm,
+  RfqFilterTabs,
+  QuoteCard,
+  RfqCard,
+  RfqTilesPanel,
+  SellSidePanel,
+  TradeTicket,
+  CreditBlotter,
   LiveRatesPanel,
   CurrencyFilter,
   ViewToggle,
@@ -60,6 +71,13 @@ import { DateFilter as DateFilterComponent } from "../../../../src/ui/fx/blotter
 import type { ColumnFilter } from "../../../../src/ui/fx/blotter/columnFilter/filterState";
 import type { SortState } from "../../../../src/ui/fx/blotter/columnSort";
 import { NewRfqForm as NewRfqFormComponent } from "../../../../src/ui/credit/newRfq/NewRfqForm";
+import { RfqFilterTabs as RfqFilterTabsComponent, type RfqFilter } from "../../../../src/ui/credit/rfqTiles/RfqFilterTabs";
+import { QuoteCard as QuoteCardComponent } from "../../../../src/ui/credit/rfqTiles/QuoteCard";
+import { RfqCard as RfqCardComponent } from "../../../../src/ui/credit/rfqTiles/RfqCard";
+import { RfqTilesPanel as RfqTilesPanelComponent } from "../../../../src/ui/credit/rfqTiles/RfqTilesPanel";
+import { SellSidePanel as SellSidePanelComponent } from "../../../../src/ui/credit/sellSide/SellSidePanel";
+import { TradeTicket as TradeTicketComponent } from "../../../../src/ui/credit/sellSide/TradeTicket";
+import { CreditBlotter as CreditBlotterComponent } from "../../../../src/ui/credit/blotter/CreditBlotter";
 
 const noopFilter = (_f: ColumnFilter | null): void => {};
 
@@ -143,6 +161,51 @@ export const registry = new Map<AnyToken, ElementFor>([
     ),
   ],
   [NewRfqForm, (p) => <NewRfqFormComponent onCreated={(p.onCreated as ((id: number) => void)) ?? (() => {})} />],
+  [
+    RfqFilterTabs,
+    (p) => (
+      <RfqFilterTabsComponent
+        selected={(p.selected as RfqFilter) ?? "Live"}
+        onChange={(p.onChange as ((f: RfqFilter) => void)) ?? (() => {})}
+      />
+    ),
+  ],
+  [
+    QuoteCard,
+    (p) => (
+      <QuoteCardComponent
+        quote={p.quote as Quote}
+        dealer={p.dealer as Dealer | undefined}
+        onAccept={p.onAccept as ((id: number) => void) | undefined}
+      />
+    ),
+  ],
+  [
+    RfqCard,
+    (p) => (
+      <RfqCardComponent
+        rfq={p.rfq as Rfq}
+        quotes={(p.quotes as readonly Quote[]) ?? []}
+        instrument={p.instrument as Instrument | undefined}
+        dealers={(p.dealers as readonly Dealer[]) ?? []}
+        onAccept={(p.onAccept as ((id: number) => void)) ?? (() => {})}
+        onDismiss={p.onDismiss as ((id: number) => void) | undefined}
+      />
+    ),
+  ],
+  [RfqTilesPanel, () => <RfqTilesPanelComponent />],
+  [SellSidePanel, () => <SellSidePanelComponent />],
+  [
+    TradeTicket,
+    (p) => (
+      <TradeTicketComponent
+        rfq={p.rfq as Rfq}
+        quote={p.quote as Quote}
+        instrument={p.instrument as Instrument | undefined}
+      />
+    ),
+  ],
+  [CreditBlotter, () => <CreditBlotterComponent />],
   [LiveRatesPanel, () => <LiveRatesPanelComponent />],
   [
     CurrencyFilter,

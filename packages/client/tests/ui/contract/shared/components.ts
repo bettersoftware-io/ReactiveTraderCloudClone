@@ -10,6 +10,15 @@ import { SetFilterPage, type SetFilterProps } from "./pages/fx/blotter/SetFilter
 import { NumberFilterPage, type NumberFilterProps } from "./pages/fx/blotter/NumberFilterPage";
 import { DateFilterPage, type DateFilterProps } from "./pages/fx/blotter/DateFilterPage";
 import { NewRfqFormPage, type NewRfqFormProps } from "./pages/credit/newRfq/NewRfqFormPage";
+import { RfqFilterTabsPage, type RfqFilterTabsProps, type RfqFilter } from "./pages/credit/rfqTiles/RfqFilterTabsPage";
+
+export type { RfqFilter };
+import { QuoteCardPage, type QuoteCardProps } from "./pages/credit/rfqTiles/QuoteCardPage";
+import { RfqCardPage, type RfqCardProps } from "./pages/credit/rfqTiles/RfqCardPage";
+import { RfqTilesPanelPage } from "./pages/credit/rfqTiles/RfqTilesPanelPage";
+import { SellSidePanelPage } from "./pages/credit/sellSide/SellSidePanelPage";
+import { TradeTicketPage, type TradeTicketProps } from "./pages/credit/sellSide/TradeTicketPage";
+import { CreditBlotterPage } from "./pages/credit/blotter/CreditBlotterPage";
 import { LiveRatesPanelPage } from "./pages/fx/liveRates/LiveRatesPanelPage";
 import { CurrencyFilterPage, type CurrencyFilterProps } from "./pages/fx/liveRates/CurrencyFilterPage";
 import { ViewTogglePage, type ViewToggleProps } from "./pages/fx/liveRates/ViewTogglePage";
@@ -65,6 +74,34 @@ export const DateFilter = component<DateFilterProps, DateFilterPage>(
 
 export const NewRfqForm = component<NewRfqFormProps, NewRfqFormPage>(
   (ctx) => new NewRfqFormPage(ctx),
+);
+
+export const RfqFilterTabs = component<RfqFilterTabsProps, RfqFilterTabsPage>(
+  (ctx) => new RfqFilterTabsPage(ctx),
+);
+
+export const QuoteCard = component<QuoteCardProps, QuoteCardPage>(
+  (ctx) => new QuoteCardPage(ctx),
+);
+
+export const RfqCard = component<RfqCardProps, RfqCardPage>(
+  (ctx) => new RfqCardPage(ctx),
+);
+
+export const RfqTilesPanel = component<Record<string, never>, RfqTilesPanelPage>(
+  (ctx) => new RfqTilesPanelPage(ctx),
+);
+
+export const SellSidePanel = component<Record<string, never>, SellSidePanelPage>(
+  (ctx) => new SellSidePanelPage(ctx),
+);
+
+export const TradeTicket = component<TradeTicketProps, TradeTicketPage>(
+  (ctx) => new TradeTicketPage(ctx),
+);
+
+export const CreditBlotter = component<Record<string, never>, CreditBlotterPage>(
+  (ctx) => new CreditBlotterPage(ctx),
 );
 
 export const LiveRatesPanel = component<Record<string, never>, LiveRatesPanelPage>(

@@ -46,6 +46,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     emit: (patch) => flush(() => world.push(patch)),
     setPrice: (symbol, value) => flush(() => world.setPrice(symbol, value)),
     setHistory: (symbol, value) => flush(() => world.setHistory(symbol, value)),
+    setQuotesForRfq: (rfqId, value) => flush(() => world.setQuotesForRfq(rfqId, value)),
     commands: world.commands,
   };
   return token.makePage(ctx);

@@ -8,7 +8,18 @@ export interface NewRfqFormProps {
 }
 
 export class NewRfqFormPage extends MountedComponent<NewRfqFormProps> {
-  private readonly user: UserEvent = userEvent.setup();
+  private user: UserEvent = userEvent.setup();
+
+  /**
+   * Re-configure the page's userEvent instance to advance fake timers between
+   * interactions. Call this from a spec that has installed `vi.useFakeTimers()`
+   * BEFORE driving any interaction, passing `vi.advanceTimersByTime`. Without
+   * this, userEvent's internal delays wait on real timers and never resolve
+   * once fake timers are installed.
+   */
+  useFakeTimerAdvance(advanceTimers: (ms: number) => void): void {
+    this.user = userEvent.setup({ advanceTimers });
+  }
 
   private q() {
     return within(this.root);
@@ -28,6 +39,33 @@ export class NewRfqFormPage extends MountedComponent<NewRfqFormProps> {
     const input = this.q().getByPlaceholderText(/enter quantity/i);
     await this.user.clear(input);
     await this.user.type(input, String(value));
+  }
+
+  /** True once an instrument is selected (the search collapses to a summary). */
+  hasSelectedInstrument(): boolean {
+    return this.q().queryByRole("button", { name: /change/i }) !== null;
+  }
+
+  /** Click the "Change" button to clear the selected instrument. */
+  async clearInstrument(): Promise<void> {
+    await this.user.click(this.q().getByRole("button", { name: /change/i }));
+  }
+
+  /** The labels of all dealer checkboxes, in order. */
+  dealerNames(): string[] {
+    return this.q()
+      .getAllByRole("checkbox")
+      .map((c) => c.closest("label")?.textContent?.trim() ?? "");
+  }
+
+  /** Whether the dealer with the given name is currently checked. */
+  isDealerSelected(name: string): boolean {
+    return (this.q().getByRole("checkbox", { name }) as HTMLInputElement).checked;
+  }
+
+  /** Toggle the dealer checkbox with the given name. */
+  async toggleDealer(name: string): Promise<void> {
+    await this.user.click(this.q().getByRole("checkbox", { name }));
   }
 
   async setDirection(direction: Direction): Promise<void> {
