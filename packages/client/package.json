@@ -14,8 +14,9 @@
   "scripts": {
     "build": "vite build && tsc -p tsconfig.types.json --noCheck",
     "build-types": "tsc -p tsconfig.types.json --noCheck",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.visual-diff.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.visual-diff.json && tsc --noEmit -p tsconfig.behaviour.json",
     "test": "vitest run",
+    "test:behaviour": "vitest run -c tests/behaviour/vitest.config.ts",
     "test:visual-diff": "tsx tests/visual-diff/run-all.ts",
     "test:visual-diff:react": "tsx tests/visual-diff/run-all.ts react",
     "test:visual-diff:playwright-ct:react": "playwright test -c tests/visual-diff/playwright-ct/playwright-ct.config.ts",
@@ -41,6 +42,9 @@
   "devDependencies": {
     "@playwright/experimental-ct-react": "^1.60.0",
     "@playwright/test": "^1.60.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^25.5.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
