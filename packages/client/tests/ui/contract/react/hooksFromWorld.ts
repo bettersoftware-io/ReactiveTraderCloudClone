@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
-import { EMPTY, of, type Observable } from "rxjs";
+import { EMPTY, of, throwError, type Observable } from "rxjs";
 import type { BehaviorSubject } from "rxjs";
 import type {
+  CurrencyPair,
   ExecuteTradeInput,
   ExecuteTradeResult,
   RfqQuoteResult,
@@ -25,9 +26,12 @@ function useSubject<T>(subject: BehaviorSubject<T>): T {
 export function reactHooks(world: World): AppHooks {
   const s = world.sources;
   return {
-    // Parametric query hooks are not exercised by the current slice.
-    usePrice: () => null,
-    usePriceHistory: () => [],
+    // Parametric query hooks: each call subscribes to the World's per-key
+    // subject, so a tile reading usePrice("EURUSD") re-renders only when that
+    // symbol is pushed — faithfully mirroring @react-rxjs `bind`'s per-argument
+    // streams (presenters.priceStream.price$(pair), priceHistory.history$(sym)).
+    usePrice: (pair: CurrencyPair) => useSubject(world.priceFor(pair.symbol)),
+    usePriceHistory: (symbol: string) => useSubject(world.historyFor(symbol)),
     useQuotesForRfq: () => [],
     // Nullary query hooks: reactive, re-render on push.
     useTrades: () => useSubject(s.useTrades),
@@ -38,8 +42,15 @@ export function reactHooks(world: World): AppHooks {
     useInstruments: () => useSubject(s.useInstruments),
     useDealers: () => useSubject(s.useDealers),
     useConnectionStatus: () => useSubject(s.useConnectionStatus),
-    // Commands: record input, emit canned result.
-    useExecuteTrade: () => (_input: ExecuteTradeInput) => EMPTY as Observable<ExecuteTradeResult>,
+    // Commands: record input, emit canned result (or error to drive catch paths).
+    useExecuteTrade: () => (input: ExecuteTradeInput) => {
+      world.commands.executeTrade.push(input);
+      if (world.results.executeTradeThrows) {
+        return throwError(() => new Error("execute failed")) as Observable<ExecuteTradeResult>;
+      }
+      const result = world.results.executeTrade;
+      return result ? of(result) : (EMPTY as Observable<ExecuteTradeResult>);
+    },
     useCreateRfq: () => (input) => {
       world.commands.createRfq.push(input);
       return of(world.results.createRfq ?? 0);
@@ -48,6 +59,13 @@ export function reactHooks(world: World): AppHooks {
     useCancelRfq: () => (_rfqId: number) => EMPTY as Observable<void>,
     usePassQuote: () => (_quoteId: number) => EMPTY as Observable<void>,
     useQuoteRfq: () => (_request: QuoteRequest) => EMPTY as Observable<void>,
-    useRequestRfqQuote: () => (_symbol: string, _pipsPosition: number) => EMPTY as Observable<RfqQuoteResult>,
+    useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => {
+      world.commands.requestRfqQuote.push({ symbol, pipsPosition });
+      if (world.results.requestRfqQuoteThrows) {
+        return throwError(() => new Error("rfq failed")) as Observable<RfqQuoteResult>;
+      }
+      const result = world.results.requestRfqQuote;
+      return result ? of(result) : (EMPTY as Observable<RfqQuoteResult>);
+    },
   };
 }

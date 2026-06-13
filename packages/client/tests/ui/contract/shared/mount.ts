@@ -1,5 +1,10 @@
 import { BehaviorSubject } from "rxjs";
-import { createWorld, type HookValues, type CommandResults } from "./harness/world";
+import {
+  createWorld,
+  type HookValues,
+  type CommandResults,
+  type ParametricSeed,
+} from "./harness/world";
 import {
   getDriver,
   type MountedRoot,
@@ -14,6 +19,8 @@ export interface MountOptions<P> {
   props?: P;
   hooks?: Partial<HookValues>;
   commands?: CommandResults;
+  /** Seed values for parametric query hooks (usePrice / usePriceHistory). */
+  parametric?: ParametricSeed;
 }
 
 const mounted: MountedRoot[] = [];
@@ -22,7 +29,7 @@ export function mount<P, Page extends MountedComponent<P>>(
   token: ComponentToken<P, Page>,
   opts: MountOptions<P> = {},
 ): Page {
-  const world = createWorld(opts.hooks, opts.commands);
+  const world = createWorld(opts.hooks, opts.commands, opts.parametric);
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });
   mounted.push(rendered);
@@ -37,6 +44,8 @@ export function mount<P, Page extends MountedComponent<P>>(
     setProps: (next) =>
       flush(() => propsSubject.next({ ...propsSubject.getValue(), ...next })),
     emit: (patch) => flush(() => world.push(patch)),
+    setPrice: (symbol, value) => flush(() => world.setPrice(symbol, value)),
+    setHistory: (symbol, value) => flush(() => world.setHistory(symbol, value)),
     commands: world.commands,
   };
   return token.makePage(ctx);
