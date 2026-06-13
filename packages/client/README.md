@@ -10,8 +10,11 @@ through `useHooks()` (`AppHooks` interface); production wires presenters via
 |---|---|---|
 | `dev` | Vite dev server | — |
 | `build` / `build-types` | Vite build + `.d.ts` emit | — |
-| `typecheck` | app + node + visual-diff tsconfigs | — |
-| `test` | **unit tier** — Vitest (jsdom): presenters, adapters | `unit/` |
+| `typecheck` | app + node + visual-diff + ui-contract tsconfigs | — |
+| `test:app` | **app tier** — Vitest (jsdom): presenters, adapters (`src/app`) | `app/` |
+| `test:ui:contract` | **ui contract tier** — sociable RTL specs over `src/ui` | `ui/contract/` |
+| `test:ui:contract:coverage` | ↑ + v8 coverage | `ui/contract/coverage/` |
+| `test` | **default** — Vitest (jsdom): union of app + ui-contract (30 files / 90 tests) | `unit/` |
 | `test:visual-diff` | **visual tier** — every runner × every framework variant present, in parallel | per-runner, below |
 | `test:visual-diff:react` | all visual runners, react only | per-runner, below |
 | `test:visual-diff:playwright-ct:react[:update\|:ui]` | Tier 1 — Playwright Component Testing | `visual-diff/playwright-ct/react/` |
@@ -37,9 +40,21 @@ replay *restores* it — fresh reports need `--force` too.
 
 ## Test portfolio
 
-**Unit (`pnpm test`)** — `src/**/*.test.ts(x)`: presenter streams
-(`src/app/presenters/__tests__/`), WS adapters incl. real-gateway contract
-tests (`src/app/adapters/`). No browser, no screenshots.
+The default `pnpm test` runs the **union** of two co-resident tiers (30 files /
+90 tests, report under `reports/unit/`); each tier also has a focused runner:
+
+**App tier (`pnpm test:app`)** — co-located `src/app/**/*.test.ts(x)`: presenter
+streams (`src/app/presenters/__tests__/`), WS adapters incl. real-gateway
+contract tests (`src/app/adapters/`). No browser, no screenshots. Report under
+`reports/app/`.
+
+**UI contract tier (`pnpm test:ui:contract`)** — framework-neutral sociable
+React Testing Library specs over `src/ui` (`tests/ui/contract/`): they assert
+text, roles, structure, recorded command inputs, and dynamic re-renders — the
+behavioural counterpart to the pixel-only visual-diff tier, and the second
+framework-swap portability pillar. Add `:coverage` for v8 coverage. Reports
+under `reports/ui/contract/` (and `…/coverage/`). See
+[`tests/ui/contract/README.md`](tests/ui/contract/README.md).
 
 **Visual diff (`pnpm test:visual-diff`)** — screenshots of components and full pages
 rendered against injected fake data via the `HooksProvider` seam; no server,

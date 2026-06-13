@@ -1,4 +1,4 @@
-# Behaviour (contract) test tier
+# UI contract test tier
 
 Sociable React Testing Library tests with explicit behavioural assertions,
 complementing the pixel-only `tests/visual-diff/` tier. They assert text, roles,
@@ -8,8 +8,8 @@ colour or layout (that stays the visual tier's job).
 ## Layers
 
 - `specs/` — the tests. Mirror `src/ui/` (minus `ui/`) with component PascalCase
-  (`specs/fx/analytics/PnlValue.behaviour.spec.ts`). Import only
-  `@behaviour/mount`, `@behaviour/components` (tokens), and `@rtc/domain` types.
+  (`specs/fx/analytics/PnlValue.contract.spec.ts`). Import only
+  `@ui-contract/mount`, `@ui-contract/components` (tokens), and `@rtc/domain` types.
   **No React / testing-library imports.**
 - `shared/` — framework-neutral harness:
   - `harness/world.ts` — a `BehaviorSubject` per hook (the controllable "World")
@@ -41,8 +41,10 @@ Drive updates via the returned page object: `page.setProps({...})`,
 ## Running
 
 - `pnpm --filter @rtc/client test` — runs these with the unit suite (jsdom).
-- `pnpm --filter @rtc/client test:behaviour` — focused runner; HTML report at
-  `reports/behaviour/report/index.html`.
+- `pnpm --filter @rtc/client test:ui:contract` — focused runner; HTML report at
+  `reports/ui/contract/report/index.html`.
+- `pnpm --filter @rtc/client test:ui:contract:coverage` — same focused runner
+  with v8 coverage; report at `reports/ui/contract/coverage/index.html`.
 
 ## Swapping the UI framework (e.g. SolidJS)
 
