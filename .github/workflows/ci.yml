@@ -64,7 +64,7 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Unit tests
+      - name: Tests (unit + ui:contract)
         run: pnpm test
 
       # The ui:contract coverage gate over the whole src/ui surface (≥95%). It
