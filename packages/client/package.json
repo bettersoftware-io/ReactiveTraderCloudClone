@@ -30,6 +30,7 @@
     "test:ui:visual:playwright:react:ui": "playwright test -c tests/ui/visual/playwright/playwright.config.ts --ui",
     "test:ui:visual:vitest-browser:react": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts",
     "test:ui:visual:vitest-browser:react:update": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts --update",
+    "test:ui:visual:vitest-browser:react:coverage": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.coverage.config.ts --coverage",
     "dev": "vite",
     "clean": "rm -rf dist .turbo *.tsbuildinfo reports .vitest-attachments tests/ui/visual/playwright-ct/host/.cache",
     "clean:deep": "pnpm run clean && rm -rf node_modules"
@@ -54,6 +55,7 @@
     "@vitejs/plugin-react": "^6",
     "@vitest/browser": "4.1.8",
     "@vitest/browser-playwright": "4.1.8",
+    "@vitest/coverage-istanbul": "^4.1.8",
     "@vitest/coverage-v8": "^4.1.8",
     "@vitest/ui": "^4.1.8",
     "jsdom": "^29",
