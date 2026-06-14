@@ -216,3 +216,11 @@ change at all** — it only navigates URLs.
 For the full rationale, the adapter-status table, and guidance on choosing a
 driver per target (CT adapter vs. vitest-browser vs. plain Playwright), see
 [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md).
+
+## Coverage gaps
+
+`test:ui:visual:vitest-browser:react:coverage` instruments `src/ui` (istanbul)
+while the vitest-browser tier renders every scenario, so uncovered branches are
+visual states with no golden. See [`COVERAGE-GAPS.md`](./COVERAGE-GAPS.md)
+(snapshot 2026-06-14) for the current inventory. Red = definitely no snapshot;
+green = rendered into some frame (not a guarantee of a dedicated scenario).
