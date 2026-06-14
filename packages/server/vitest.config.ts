@@ -13,6 +13,11 @@ export default defineConfig({
       // Count every src file (even ones no test imports) so wholly-untested
       // modules surface at 0% rather than vanishing from the denominator.
       include: ["src/**"],
+      exclude: [
+        "src/index.ts", // HTTP/WS bootstrap; binds a port on import, not unit-testable
+                        // without a production refactor — covered by tests/fullstack smokes
+        "src/services/serviceContainer.ts", // pure `new X()` wiring; covered by the smokes
+      ],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/unit/coverage",
     },

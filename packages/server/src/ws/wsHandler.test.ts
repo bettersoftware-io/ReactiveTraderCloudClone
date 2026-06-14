@@ -1,7 +1,19 @@
 import { EventEmitter } from "node:events";
 import { describe, it, expect } from "vitest";
 import { type Observable, of, interval, map, throwError } from "rxjs";
-import { Direction, TradeStatus } from "@rtc/domain";
+import { Direction, TradeStatus, type RfqEvent } from "@rtc/domain";
+import {
+  priceTickFrame,
+  priceHistoryResponse,
+  executionResponseAck,
+  rpcNack,
+  rpcAck,
+  tradeFrame,
+  blotterFrame,
+  analyticsFrame,
+  dealerAdded,
+  workflowEventCreated,
+} from "@rtc/shared/__fixtures__/wireFrames";
 import type { WebSocket } from "ws";
 import { ThroughputService } from "../services/ThroughputService.js";
 import type { ServiceContainer } from "../services/serviceContainer.js";
@@ -50,6 +62,49 @@ class FakeWs extends EventEmitter {
 
 const wait = (ms = 5): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+// ── Wire-shape contract helper ───────────────────────────────────
+
+/**
+ * Recursively asserts `actual` has the SAME shape (key set + value types) as
+ * `canonical` — NOT the same values (stream payloads are simulator-random).
+ * Arrays are checked element-shape against the first canonical element. This
+ * ties the server's emitted frames to the @rtc/shared fixture spine without
+ * coupling to non-deterministic values or to handler internals.
+ */
+function expectShape(actual: unknown, canonical: unknown, path = "payload"): void {
+  if (Array.isArray(canonical)) {
+    expect(Array.isArray(actual), `${path} should be an array`).toBe(true);
+    const arr = actual as unknown[];
+    // Element shape is checked against the first element only. Empty arrays on
+    // either side are NOT shape-checked — keep the fakes emitting ≥1 element so
+    // array assertions don't silently become vacuous.
+    if (canonical.length > 0 && arr.length > 0) {
+      expectShape(arr[0], canonical[0], `${path}[0]`);
+    }
+    return;
+  }
+  if (canonical !== null && typeof canonical === "object") {
+    expect(
+      actual !== null && typeof actual === "object",
+      `${path} should be an object`,
+    ).toBe(true);
+    const obj = actual as Record<string, unknown>;
+    for (const key of Object.keys(canonical as Record<string, unknown>)) {
+      expect(obj, `${path} missing key "${key}"`).toHaveProperty(key);
+      expectShape(obj[key], (canonical as Record<string, unknown>)[key], `${path}.${key}`);
+    }
+    return;
+  }
+  expect(typeof actual, `${path} type`).toBe(typeof canonical);
+}
+
+/** Assert a frame has the expected protocol type and a payload matching the canonical wire shape. */
+function expectFrameShape(frame: WsMessage | undefined, type: string, canonicalPayload: unknown): void {
+  expect(frame, `expected a ${type} frame`).toBeDefined();
+  expect(frame!.type).toBe(type);
+  expectShape(frame!.payload, canonicalPayload, "payload");
+}
+
 // ── Fake domain services ─────────────────────────────────────────
 
 const PRICE_TICK_MS = 10;
@@ -86,7 +141,17 @@ function fakeServices(overrides: Partial<ServiceContainer> = {}): ServiceContain
             creationTimestamp: 1,
           })),
         ),
-      getPriceHistory: () => of([]),
+      getPriceHistory: () =>
+        of([
+          {
+            symbol: "EURUSD",
+            bid: 1.0998,
+            ask: 1.1002,
+            mid: 1.1,
+            valueDate: "2026-01-01",
+            creationTimestamp: 1,
+          },
+        ]),
     },
     execution: {
       executeTrade: (req: {
@@ -109,8 +174,32 @@ function fakeServices(overrides: Partial<ServiceContainer> = {}): ServiceContain
           valueDate: "2026-01-01",
         }),
     },
-    blotter: { getTradeStream: () => of([]) },
-    analytics: { getAnalytics: () => of({ currentPositions: [], history: [] }) },
+    blotter: {
+      getTradeStream: () =>
+        of([
+          {
+            tradeId: 1,
+            tradeName: "RTC",
+            currencyPair: "EURUSD",
+            notional: 1_000_000,
+            dealtCurrency: "EUR",
+            direction: Direction.Buy,
+            spotRate: 1.1,
+            status: TradeStatus.Done,
+            tradeDate: "2026-01-01",
+            valueDate: "2026-01-01",
+          },
+        ]),
+    },
+    analytics: {
+      getAnalytics: () =>
+        of({
+          currentPositions: [
+            { symbol: "EURUSD", basePnl: 1, baseTradedAmount: 2, counterTradedAmount: 3 },
+          ],
+          history: [{ timestamp: "2026-01-01T00:00:00.000Z", usdPnl: 4 }],
+        }),
+    },
     instruments: {
       getInstruments: () =>
         of([
@@ -125,8 +214,29 @@ function fakeServices(overrides: Partial<ServiceContainer> = {}): ServiceContain
           },
         ]),
     },
-    dealers: { getDealers: () => of([]) },
-    workflow: { events: () => of() },
+    dealers: {
+      getDealers: () => of([{ id: 1, name: "Acme Bank" }]),
+    },
+    workflow: {
+      events: (): Observable<RfqEvent> =>
+        of({
+          type: "rfqCreated",
+          payload: {
+            id: 1,
+            instrumentId: 1,
+            quantity: 1_000_000,
+            direction: Direction.Buy,
+            state: "Open",
+            expirySecs: 120,
+            creationTimestamp: 1,
+          },
+        } as unknown as RfqEvent),
+      createRfq: () => of(1),
+      cancelRfq: () => of(undefined),
+      quote: () => of(undefined),
+      pass: () => of(undefined),
+      accept: () => of(undefined),
+    },
     throughput: new ThroughputService(),
   };
   return { ...base, ...overrides } as unknown as ServiceContainer;
@@ -194,6 +304,51 @@ describe("wsHandler protocol", () => {
     );
   });
 
+  it("routes subscribe.blotter to a stream.blotter frame matching the BlotterMessage shape", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_BLOTTER });
+    await wait();
+
+    const [frame] = ws.framesOfType(SERVER_MSG.BLOTTER);
+    expectFrameShape(frame, SERVER_MSG.BLOTTER, blotterFrame([tradeFrame()]));
+    expect((frame!.payload as { isStateOfTheWorld: boolean }).isStateOfTheWorld).toBe(true);
+  });
+
+  it("routes subscribe.analytics to a stream.analytics frame matching the AnalyticsDto shape", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_ANALYTICS, payload: { currency: "USD" } });
+    await wait();
+
+    const [frame] = ws.framesOfType(SERVER_MSG.ANALYTICS);
+    expectFrameShape(frame, SERVER_MSG.ANALYTICS, analyticsFrame());
+  });
+
+  it("brackets subscribe.dealers with SoW markers and emits added DealerDto events", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_DEALERS });
+    await wait();
+
+    const frames = ws.framesOfType(SERVER_MSG.DEALER_EVENT);
+    const types = frames.map((m) => (m.payload as { type: string }).type);
+    expect(types[0]).toBe("startOfStateOfTheWorld");
+    expect(types).toContain("added");
+    expect(types).toContain("endOfStateOfTheWorld");
+    expect(types.indexOf("startOfStateOfTheWorld")).toBeLessThan(
+      types.indexOf("endOfStateOfTheWorld"),
+    );
+    const added = frames.find((m) => (m.payload as { type: string }).type === "added");
+    expectFrameShape(added, SERVER_MSG.DEALER_EVENT, dealerAdded());
+  });
+
+  it("routes subscribe.workflow to a stream.workflowEvent frame matching the WorkflowEvent shape", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+    await wait();
+
+    const [frame] = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT);
+    expectFrameShape(frame, SERVER_MSG.WORKFLOW_EVENT, workflowEventCreated(1));
+  });
+
   it("answers rpc.executeTrade with an ack carrying the correlationId and a trade", async () => {
     const ws = connect(fakeServices());
     ws.receive({
@@ -246,6 +401,185 @@ describe("wsHandler protocol", () => {
     expect((resp!.payload as { type: string }).type).toBe("nack");
   });
 
+  it("answers rpc.getPriceHistory with an ack echoing correlationId and a prices payload", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.GET_PRICE_HISTORY, correlationId: "ph-1", payload: { symbol: "EURUSD" } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.PRICE_HISTORY_RESPONSE);
+    expect(resp!.correlationId).toBe("ph-1");
+    expectFrameShape(resp, SERVER_MSG.PRICE_HISTORY_RESPONSE, priceHistoryResponse("EURUSD", 1));
+  });
+
+  it("answers rpc.getPriceHistory with a nack when the service fails", async () => {
+    const failing = {
+      getPriceUpdates: () => of(),
+      getPriceHistory: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["pricing"];
+    const ws = connect(fakeServices({ pricing: failing }));
+    ws.receive({ type: CLIENT_MSG.GET_PRICE_HISTORY, correlationId: "ph-2", payload: { symbol: "EURUSD" } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.PRICE_HISTORY_RESPONSE);
+    expect(resp!.correlationId).toBe("ph-2");
+    expectFrameShape(resp, SERVER_MSG.PRICE_HISTORY_RESPONSE, rpcNack());
+  });
+
+  it("answers rpc.createRfq with an ack carrying the rfqId and correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({
+      type: CLIENT_MSG.CREATE_RFQ,
+      correlationId: "rfq-1",
+      payload: { instrumentId: 1, dealerIds: [1], quantity: 1_000_000, direction: Direction.Buy, expirySecs: 120 },
+    });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.CREATE_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("rfq-1");
+    expectFrameShape(resp, SERVER_MSG.CREATE_RFQ_RESPONSE, rpcAck(1));
+  });
+
+  it("answers rpc.createRfq with a nack when the workflow fails", async () => {
+    const failing = {
+      events: () => of(),
+      createRfq: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["workflow"];
+    const ws = connect(fakeServices({ workflow: failing }));
+    ws.receive({
+      type: CLIENT_MSG.CREATE_RFQ,
+      correlationId: "rfq-2",
+      payload: { instrumentId: 1, dealerIds: [1], quantity: 1_000_000, direction: Direction.Buy, expirySecs: 120 },
+    });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.CREATE_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("rfq-2");
+    expectFrameShape(resp, SERVER_MSG.CREATE_RFQ_RESPONSE, rpcNack());
+  });
+
+  it("answers rpc.cancelRfq with an ack echoing correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.CANCEL_RFQ, correlationId: "cx-1", payload: { rfqId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.CANCEL_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("cx-1");
+    expect((resp!.payload as { type: string }).type).toBe("ack");
+  });
+
+  it("answers rpc.cancelRfq with a nack when the workflow fails", async () => {
+    const failing = {
+      events: () => of(),
+      cancelRfq: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["workflow"];
+    const ws = connect(fakeServices({ workflow: failing }));
+    ws.receive({ type: CLIENT_MSG.CANCEL_RFQ, correlationId: "cx-2", payload: { rfqId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.CANCEL_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("cx-2");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("answers rpc.quote with an ack echoing correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.QUOTE, correlationId: "q-1", payload: { quoteId: 1, price: 100 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.QUOTE_RESPONSE);
+    expect(resp!.correlationId).toBe("q-1");
+    expect((resp!.payload as { type: string }).type).toBe("ack");
+  });
+
+  it("answers rpc.quote with a nack when the workflow fails", async () => {
+    const failing = {
+      events: () => of(),
+      quote: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["workflow"];
+    const ws = connect(fakeServices({ workflow: failing }));
+    ws.receive({ type: CLIENT_MSG.QUOTE, correlationId: "q-2", payload: { quoteId: 1, price: 100 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.QUOTE_RESPONSE);
+    expect(resp!.correlationId).toBe("q-2");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("answers rpc.pass with an ack echoing correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.PASS, correlationId: "p-1", payload: { quoteId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.PASS_RESPONSE);
+    expect(resp!.correlationId).toBe("p-1");
+    expect((resp!.payload as { type: string }).type).toBe("ack");
+  });
+
+  it("answers rpc.pass with a nack when the workflow fails", async () => {
+    const failing = {
+      events: () => of(),
+      pass: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["workflow"];
+    const ws = connect(fakeServices({ workflow: failing }));
+    ws.receive({ type: CLIENT_MSG.PASS, correlationId: "p-2", payload: { quoteId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.PASS_RESPONSE);
+    expect(resp!.correlationId).toBe("p-2");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("answers rpc.accept with an ack echoing correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.ACCEPT, correlationId: "a-1", payload: { quoteId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.ACCEPT_RESPONSE);
+    expect(resp!.correlationId).toBe("a-1");
+    expect((resp!.payload as { type: string }).type).toBe("ack");
+  });
+
+  it("answers rpc.accept with a nack when the workflow fails", async () => {
+    const failing = {
+      events: () => of(),
+      accept: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["workflow"];
+    const ws = connect(fakeServices({ workflow: failing }));
+    ws.receive({ type: CLIENT_MSG.ACCEPT, correlationId: "a-2", payload: { quoteId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.ACCEPT_RESPONSE);
+    expect(resp!.correlationId).toBe("a-2");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("answers admin.getThroughput with an ack carrying a numeric value and correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.GET_THROUGHPUT, correlationId: "tp-1" });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.THROUGHPUT_RESPONSE);
+    expect(resp!.correlationId).toBe("tp-1");
+    const body = resp!.payload as { type: string; payload: number };
+    expect(body.type).toBe("ack");
+    expect(typeof body.payload).toBe("number");
+  });
+
+  it("acks admin.setThroughput and the new value is observable via getThroughput", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.SET_THROUGHPUT, correlationId: "tp-2", payload: { value: 42 } });
+    await wait();
+
+    const [setResp] = ws.framesOfType(SERVER_MSG.SET_THROUGHPUT_RESPONSE);
+    expect(setResp!.correlationId).toBe("tp-2");
+    expect((setResp!.payload as { type: string }).type).toBe("ack");
+
+    ws.receive({ type: CLIENT_MSG.GET_THROUGHPUT, correlationId: "tp-3" });
+    await wait();
+    const [getResp] = ws.framesOfType(SERVER_MSG.THROUGHPUT_RESPONSE);
+    expect((getResp!.payload as { type: string; payload: number }).payload).toBe(42);
+  });
+
   it("ignores unknown message types without sending or throwing", async () => {
     const ws = connect(fakeServices());
     expect(() => ws.receive({ type: "totally.unknown", payload: {} })).not.toThrow();
@@ -273,5 +607,22 @@ describe("wsHandler protocol", () => {
 
     const after = ws.framesOfType(SERVER_MSG.PRICE_TICK).length;
     expect(after).toBe(before);
+  });
+});
+
+describe("expectShape helper", () => {
+  it("passes when shapes match regardless of values", () => {
+    expect(() => expectShape({ a: 1, b: "x" }, { a: 99, b: "y" })).not.toThrow();
+  });
+  it("passes for nested objects and arrays by element shape", () => {
+    expect(() =>
+      expectShape({ xs: [{ n: 5 }] }, { xs: [{ n: 0 }] }),
+    ).not.toThrow();
+  });
+  it("fails when a key is missing", () => {
+    expect(() => expectShape({ a: 1 }, { a: 1, b: 2 })).toThrow();
+  });
+  it("fails when a value type differs", () => {
+    expect(() => expectShape({ a: "1" }, { a: 1 })).toThrow();
   });
 });
