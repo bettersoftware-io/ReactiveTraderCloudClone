@@ -10,6 +10,8 @@ export default defineConfig({
     outputFile: { html: "reports/unit/report/index.html" },
     coverage: {
       provider: "v8",
+      // Count every src file (even ones no test imports) so wholly-untested
+      // modules surface at 0% rather than vanishing from the denominator.
       include: ["src/**"],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/unit/coverage",
