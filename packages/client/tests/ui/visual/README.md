@@ -221,6 +221,8 @@ driver per target (CT adapter vs. vitest-browser vs. plain Playwright), see
 
 `test:ui:visual:vitest-browser:react:coverage` instruments `src/ui` (istanbul)
 while the vitest-browser tier renders every scenario, so uncovered branches are
-visual states with no golden. See [`COVERAGE-GAPS.md`](./COVERAGE-GAPS.md)
+visual states with no golden. The report (HTML + `lcov.info`) lands at
+`reports/ui/visual/coverage/` (open `reports/ui/visual/coverage/index.html`); it
+is report-only, with no threshold gate. See [`COVERAGE-GAPS.md`](./COVERAGE-GAPS.md)
 (snapshot 2026-06-14) for the current inventory. Red = definitely no snapshot;
 green = rendered into some frame (not a guarantee of a dedicated scenario).

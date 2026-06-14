@@ -101,6 +101,13 @@ via `cy` commands, per the steps' existing convention. The one script with
 no report: `test:fullstack:node` (a bare tsx script with no test framework —
 terminal output only). `reports/` is gitignored and removed by `pnpm clean`.
 
+These suites measure **behaviour, not coverage** — they drive the app in a
+separate process from the test runner, so there are no coverage reports here.
+Code-coverage lives in the in-process tiers (`@rtc/domain` / `@rtc/server`
+`test:coverage`, and `@rtc/client` `test:app:coverage` /
+`test:ui:contract:coverage` / `test:ui:visual:vitest-browser:react:coverage`);
+see the root README's report map.
+
 ## Orchestration
 
 `test:e2e` → `scripts/run-all.ts`: every suite runs concurrently; each browser

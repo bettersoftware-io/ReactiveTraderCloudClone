@@ -105,10 +105,34 @@ pnpm test:ui:visual               # UI visual regression screenshots (all 3 runn
 pnpm --filter @rtc/tests gates    # architectural "grep gates" only
 ```
 
-Every test script writes an HTML report mirroring its name —
-`test:<a>:<b>` ⇒ `<package>/reports/<a>/<b>/report/index.html` (failure
-artifacts in the `artifacts/` sibling; bare `test` ⇒ `reports/unit/`; sole
-exception: `test:fullstack:node`, terminal only).
+Reports land under each package's own `reports/` tree — gitignored, and wiped by
+`pnpm clean`. There are two kinds, both keyed off the script name:
+
+- **Test results** (HTML) — every test script writes one, mirroring its name:
+  `test:<a>:<b>` ⇒ `<package>/reports/<a>/<b>/report/index.html` (bare `test` ⇒
+  `reports/unit/report/`). Browser suites also drop failure traces/screenshots in
+  the `artifacts/` sibling. Sole exception: `test:fullstack:node` is terminal-only.
+- **Coverage** (HTML + `lcov.info`) — the opt-in `:coverage` scripts ⇒
+  `<package>/reports/<a>/<b>/coverage/` (`@rtc/domain` & `@rtc/server`
+  `test:coverage` ⇒ `reports/unit/coverage/`). All report-only except
+  `@rtc/client test:ui:contract:coverage`, a CI-enforced ≥95% gate. The
+  `@rtc/client test:ui:visual:vitest-browser:react:coverage` report is a
+  **gap-finder**: uncovered `src/ui` branches are visual states with no golden
+  snapshot (inventory: `packages/client/tests/ui/visual/COVERAGE-GAPS.md`).
+
+Where each package writes:
+
+| Package | Test-result reports | Coverage reports |
+|---|---|---|
+| `@rtc/domain` | `reports/unit/report/` | `reports/unit/coverage/` (`test:coverage`) |
+| `@rtc/server` | `reports/unit/report/` | `reports/unit/coverage/` (`test:coverage`) |
+| `@rtc/shared` | `reports/unit/report/` | — (package has no tests) |
+| `@rtc/client` | `reports/{unit,app,ui/contract}/report/`, `reports/ui/visual/<runner>/react/report/` | `reports/{app,ui/contract,ui/visual}/coverage/` |
+| `@rtc/tests` (e2e) | `reports/{presenter,browser,fullstack}/<suite>/report/` | — (cross-process; not measured) |
+
+Per-package detail: [`packages/client/README.md`](packages/client/README.md)
+(every client script ↔ report dir) and [`tests/README.md`](tests/README.md) (the
+e2e suite matrix).
 
 `pnpm test` runs each package's bare `test`; in `@rtc/client` that's the
 **union** of two co-resident tiers — the **app tier** (`test:app`: presenters +
