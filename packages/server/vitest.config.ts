@@ -8,5 +8,11 @@ export default defineConfig({
     // reports/unit/ per the repo-wide rule: test:<a>:<b> => reports/<a>/<b>/.
     reporters: ["default", "html"],
     outputFile: { html: "reports/unit/report/index.html" },
+    coverage: {
+      provider: "v8",
+      include: ["src/**"],
+      reporter: ["text", "html", "lcov"],
+      reportsDirectory: "reports/unit/coverage",
+    },
   },
 });
