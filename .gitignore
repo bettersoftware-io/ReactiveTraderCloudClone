@@ -7,6 +7,7 @@ playwright-report/
 test-results/
 .pnpm-store/
 .idea/
+.github/.token
 
 # Claude Code: per-machine settings (paths, machine-specific allow-listings)
 .claude/settings.local.json
