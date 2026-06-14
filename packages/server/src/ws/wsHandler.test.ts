@@ -301,6 +301,51 @@ describe("wsHandler protocol", () => {
     );
   });
 
+  it("routes subscribe.blotter to a stream.blotter frame matching the BlotterMessage shape", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_BLOTTER });
+    await wait();
+
+    const [frame] = ws.framesOfType(SERVER_MSG.BLOTTER);
+    expectFrameShape(frame, SERVER_MSG.BLOTTER, blotterFrame([tradeFrame()]));
+    expect((frame!.payload as { isStateOfTheWorld: boolean }).isStateOfTheWorld).toBe(true);
+  });
+
+  it("routes subscribe.analytics to a stream.analytics frame matching the AnalyticsDto shape", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_ANALYTICS, payload: { currency: "USD" } });
+    await wait();
+
+    const [frame] = ws.framesOfType(SERVER_MSG.ANALYTICS);
+    expectFrameShape(frame, SERVER_MSG.ANALYTICS, analyticsFrame());
+  });
+
+  it("brackets subscribe.dealers with SoW markers and emits added DealerDto events", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_DEALERS });
+    await wait();
+
+    const frames = ws.framesOfType(SERVER_MSG.DEALER_EVENT);
+    const types = frames.map((m) => (m.payload as { type: string }).type);
+    expect(types[0]).toBe("startOfStateOfTheWorld");
+    expect(types).toContain("added");
+    expect(types).toContain("endOfStateOfTheWorld");
+    expect(types.indexOf("startOfStateOfTheWorld")).toBeLessThan(
+      types.indexOf("endOfStateOfTheWorld"),
+    );
+    const added = frames.find((m) => (m.payload as { type: string }).type === "added");
+    expectFrameShape(added, SERVER_MSG.DEALER_EVENT, dealerAdded());
+  });
+
+  it("routes subscribe.workflow to a stream.workflowEvent frame matching the WorkflowEvent shape", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+    await wait();
+
+    const [frame] = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT);
+    expectFrameShape(frame, SERVER_MSG.WORKFLOW_EVENT, workflowEventCreated(1));
+  });
+
   it("answers rpc.executeTrade with an ack carrying the correlationId and a trade", async () => {
     const ws = connect(fakeServices());
     ws.receive({
