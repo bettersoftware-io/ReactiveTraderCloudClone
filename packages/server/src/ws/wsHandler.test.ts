@@ -550,6 +550,33 @@ describe("wsHandler protocol", () => {
     expect((resp!.payload as { type: string }).type).toBe("nack");
   });
 
+  it("answers admin.getThroughput with an ack carrying a numeric value and correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.GET_THROUGHPUT, correlationId: "tp-1" });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.THROUGHPUT_RESPONSE);
+    expect(resp!.correlationId).toBe("tp-1");
+    const body = resp!.payload as { type: string; payload: number };
+    expect(body.type).toBe("ack");
+    expect(typeof body.payload).toBe("number");
+  });
+
+  it("acks admin.setThroughput and the new value is observable via getThroughput", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.SET_THROUGHPUT, correlationId: "tp-2", payload: { value: 42 } });
+    await wait();
+
+    const [setResp] = ws.framesOfType(SERVER_MSG.SET_THROUGHPUT_RESPONSE);
+    expect(setResp!.correlationId).toBe("tp-2");
+    expect((setResp!.payload as { type: string }).type).toBe("ack");
+
+    ws.receive({ type: CLIENT_MSG.GET_THROUGHPUT, correlationId: "tp-3" });
+    await wait();
+    const [getResp] = ws.framesOfType(SERVER_MSG.THROUGHPUT_RESPONSE);
+    expect((getResp!.payload as { type: string; payload: number }).payload).toBe(42);
+  });
+
   it("ignores unknown message types without sending or throwing", async () => {
     const ws = connect(fakeServices());
     expect(() => ws.receive({ type: "totally.unknown", payload: {} })).not.toThrow();
