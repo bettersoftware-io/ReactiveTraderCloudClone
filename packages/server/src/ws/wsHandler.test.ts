@@ -398,6 +398,158 @@ describe("wsHandler protocol", () => {
     expect((resp!.payload as { type: string }).type).toBe("nack");
   });
 
+  it("answers rpc.getPriceHistory with an ack echoing correlationId and a prices payload", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.GET_PRICE_HISTORY, correlationId: "ph-1", payload: { symbol: "EURUSD" } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.PRICE_HISTORY_RESPONSE);
+    expect(resp!.correlationId).toBe("ph-1");
+    expectFrameShape(resp, SERVER_MSG.PRICE_HISTORY_RESPONSE, priceHistoryResponse("EURUSD", 1));
+  });
+
+  it("answers rpc.getPriceHistory with a nack when the service fails", async () => {
+    const failing = {
+      getPriceUpdates: () => of(),
+      getPriceHistory: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["pricing"];
+    const ws = connect(fakeServices({ pricing: failing }));
+    ws.receive({ type: CLIENT_MSG.GET_PRICE_HISTORY, correlationId: "ph-2", payload: { symbol: "EURUSD" } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.PRICE_HISTORY_RESPONSE);
+    expect(resp!.correlationId).toBe("ph-2");
+    expectFrameShape(resp, SERVER_MSG.PRICE_HISTORY_RESPONSE, rpcNack());
+  });
+
+  it("answers rpc.createRfq with an ack carrying the rfqId and correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({
+      type: CLIENT_MSG.CREATE_RFQ,
+      correlationId: "rfq-1",
+      payload: { instrumentId: 1, dealerIds: [1], quantity: 1_000_000, direction: Direction.Buy, expirySecs: 120 },
+    });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.CREATE_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("rfq-1");
+    expectFrameShape(resp, SERVER_MSG.CREATE_RFQ_RESPONSE, rpcAck(1));
+  });
+
+  it("answers rpc.createRfq with a nack when the workflow fails", async () => {
+    const failing = {
+      events: () => of(),
+      createRfq: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["workflow"];
+    const ws = connect(fakeServices({ workflow: failing }));
+    ws.receive({
+      type: CLIENT_MSG.CREATE_RFQ,
+      correlationId: "rfq-2",
+      payload: { instrumentId: 1, dealerIds: [1], quantity: 1_000_000, direction: Direction.Buy, expirySecs: 120 },
+    });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.CREATE_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("rfq-2");
+    expectFrameShape(resp, SERVER_MSG.CREATE_RFQ_RESPONSE, rpcNack());
+  });
+
+  it("answers rpc.cancelRfq with an ack echoing correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.CANCEL_RFQ, correlationId: "cx-1", payload: { rfqId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.CANCEL_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("cx-1");
+    expect((resp!.payload as { type: string }).type).toBe("ack");
+  });
+
+  it("answers rpc.cancelRfq with a nack when the workflow fails", async () => {
+    const failing = {
+      events: () => of(),
+      cancelRfq: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["workflow"];
+    const ws = connect(fakeServices({ workflow: failing }));
+    ws.receive({ type: CLIENT_MSG.CANCEL_RFQ, correlationId: "cx-2", payload: { rfqId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.CANCEL_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("cx-2");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("answers rpc.quote with an ack echoing correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.QUOTE, correlationId: "q-1", payload: { quoteId: 1, price: 100 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.QUOTE_RESPONSE);
+    expect(resp!.correlationId).toBe("q-1");
+    expect((resp!.payload as { type: string }).type).toBe("ack");
+  });
+
+  it("answers rpc.quote with a nack when the workflow fails", async () => {
+    const failing = {
+      events: () => of(),
+      quote: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["workflow"];
+    const ws = connect(fakeServices({ workflow: failing }));
+    ws.receive({ type: CLIENT_MSG.QUOTE, correlationId: "q-2", payload: { quoteId: 1, price: 100 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.QUOTE_RESPONSE);
+    expect(resp!.correlationId).toBe("q-2");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("answers rpc.pass with an ack echoing correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.PASS, correlationId: "p-1", payload: { quoteId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.PASS_RESPONSE);
+    expect(resp!.correlationId).toBe("p-1");
+    expect((resp!.payload as { type: string }).type).toBe("ack");
+  });
+
+  it("answers rpc.pass with a nack when the workflow fails", async () => {
+    const failing = {
+      events: () => of(),
+      pass: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["workflow"];
+    const ws = connect(fakeServices({ workflow: failing }));
+    ws.receive({ type: CLIENT_MSG.PASS, correlationId: "p-2", payload: { quoteId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.PASS_RESPONSE);
+    expect(resp!.correlationId).toBe("p-2");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("answers rpc.accept with an ack echoing correlationId", async () => {
+    const ws = connect(fakeServices());
+    ws.receive({ type: CLIENT_MSG.ACCEPT, correlationId: "a-1", payload: { quoteId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.ACCEPT_RESPONSE);
+    expect(resp!.correlationId).toBe("a-1");
+    expect((resp!.payload as { type: string }).type).toBe("ack");
+  });
+
+  it("answers rpc.accept with a nack when the workflow fails", async () => {
+    const failing = {
+      events: () => of(),
+      accept: () => throwError(() => new Error("boom")),
+    } as unknown as ServiceContainer["workflow"];
+    const ws = connect(fakeServices({ workflow: failing }));
+    ws.receive({ type: CLIENT_MSG.ACCEPT, correlationId: "a-2", payload: { quoteId: 1 } });
+    await wait();
+
+    const [resp] = ws.framesOfType(SERVER_MSG.ACCEPT_RESPONSE);
+    expect(resp!.correlationId).toBe("a-2");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
   it("ignores unknown message types without sending or throwing", async () => {
     const ws = connect(fakeServices());
     expect(() => ws.receive({ type: "totally.unknown", payload: {} })).not.toThrow();
