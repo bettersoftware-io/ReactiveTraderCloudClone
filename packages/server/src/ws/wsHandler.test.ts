@@ -1,7 +1,19 @@
 import { EventEmitter } from "node:events";
 import { describe, it, expect } from "vitest";
 import { type Observable, of, interval, map, throwError } from "rxjs";
-import { Direction, TradeStatus } from "@rtc/domain";
+import { Direction, TradeStatus, type RfqEvent } from "@rtc/domain";
+import {
+  priceTickFrame,
+  priceHistoryResponse,
+  executionResponseAck,
+  rpcNack,
+  rpcAck,
+  tradeFrame,
+  blotterFrame,
+  analyticsFrame,
+  dealerAdded,
+  workflowEventCreated,
+} from "@rtc/shared/__fixtures__/wireFrames";
 import type { WebSocket } from "ws";
 import { ThroughputService } from "../services/ThroughputService.js";
 import type { ServiceContainer } from "../services/serviceContainer.js";
@@ -50,6 +62,46 @@ class FakeWs extends EventEmitter {
 
 const wait = (ms = 5): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+// ── Wire-shape contract helper ───────────────────────────────────
+
+/**
+ * Recursively asserts `actual` has the SAME shape (key set + value types) as
+ * `canonical` — NOT the same values (stream payloads are simulator-random).
+ * Arrays are checked element-shape against the first canonical element. This
+ * ties the server's emitted frames to the @rtc/shared fixture spine without
+ * coupling to non-deterministic values or to handler internals.
+ */
+function expectShape(actual: unknown, canonical: unknown, path = "payload"): void {
+  if (Array.isArray(canonical)) {
+    expect(Array.isArray(actual), `${path} should be an array`).toBe(true);
+    const arr = actual as unknown[];
+    if (canonical.length > 0 && arr.length > 0) {
+      expectShape(arr[0], canonical[0], `${path}[0]`);
+    }
+    return;
+  }
+  if (canonical !== null && typeof canonical === "object") {
+    expect(
+      actual !== null && typeof actual === "object",
+      `${path} should be an object`,
+    ).toBe(true);
+    const obj = actual as Record<string, unknown>;
+    for (const key of Object.keys(canonical as Record<string, unknown>)) {
+      expect(obj, `${path} missing key "${key}"`).toHaveProperty(key);
+      expectShape(obj[key], (canonical as Record<string, unknown>)[key], `${path}.${key}`);
+    }
+    return;
+  }
+  expect(typeof actual, `${path} type`).toBe(typeof canonical);
+}
+
+/** Assert a frame has the expected protocol type and a payload matching the canonical wire shape. */
+function expectFrameShape(frame: WsMessage | undefined, type: string, canonicalPayload: unknown): void {
+  expect(frame, `expected a ${type} frame`).toBeDefined();
+  expect(frame!.type).toBe(type);
+  expectShape(frame!.payload, canonicalPayload, "payload");
+}
+
 // ── Fake domain services ─────────────────────────────────────────
 
 const PRICE_TICK_MS = 10;
@@ -86,7 +138,17 @@ function fakeServices(overrides: Partial<ServiceContainer> = {}): ServiceContain
             creationTimestamp: 1,
           })),
         ),
-      getPriceHistory: () => of([]),
+      getPriceHistory: () =>
+        of([
+          {
+            symbol: "EURUSD",
+            bid: 1.0998,
+            ask: 1.1002,
+            mid: 1.1,
+            valueDate: "2026-01-01",
+            creationTimestamp: 1,
+          },
+        ]),
     },
     execution: {
       executeTrade: (req: {
@@ -109,8 +171,32 @@ function fakeServices(overrides: Partial<ServiceContainer> = {}): ServiceContain
           valueDate: "2026-01-01",
         }),
     },
-    blotter: { getTradeStream: () => of([]) },
-    analytics: { getAnalytics: () => of({ currentPositions: [], history: [] }) },
+    blotter: {
+      getTradeStream: () =>
+        of([
+          {
+            tradeId: 1,
+            tradeName: "RTC",
+            currencyPair: "EURUSD",
+            notional: 1_000_000,
+            dealtCurrency: "EUR",
+            direction: Direction.Buy,
+            spotRate: 1.1,
+            status: TradeStatus.Done,
+            tradeDate: "2026-01-01",
+            valueDate: "2026-01-01",
+          },
+        ]),
+    },
+    analytics: {
+      getAnalytics: () =>
+        of({
+          currentPositions: [
+            { symbol: "EURUSD", basePnl: 1, baseTradedAmount: 2, counterTradedAmount: 3 },
+          ],
+          history: [{ timestamp: "2026-01-01T00:00:00.000Z", usdPnl: 4 }],
+        }),
+    },
     instruments: {
       getInstruments: () =>
         of([
@@ -125,8 +211,29 @@ function fakeServices(overrides: Partial<ServiceContainer> = {}): ServiceContain
           },
         ]),
     },
-    dealers: { getDealers: () => of([]) },
-    workflow: { events: () => of() },
+    dealers: {
+      getDealers: () => of([{ id: 1, name: "Acme Bank" }]),
+    },
+    workflow: {
+      events: (): Observable<RfqEvent> =>
+        of({
+          type: "rfqCreated",
+          payload: {
+            id: 1,
+            instrumentId: 1,
+            quantity: 1_000_000,
+            direction: Direction.Buy,
+            state: "Open",
+            expirySecs: 120,
+            creationTimestamp: 1,
+          },
+        } as unknown as RfqEvent),
+      createRfq: () => of(1),
+      cancelRfq: () => of(undefined),
+      quote: () => of(undefined),
+      pass: () => of(undefined),
+      accept: () => of(undefined),
+    },
     throughput: new ThroughputService(),
   };
   return { ...base, ...overrides } as unknown as ServiceContainer;
@@ -273,5 +380,22 @@ describe("wsHandler protocol", () => {
 
     const after = ws.framesOfType(SERVER_MSG.PRICE_TICK).length;
     expect(after).toBe(before);
+  });
+});
+
+describe("expectShape helper", () => {
+  it("passes when shapes match regardless of values", () => {
+    expect(() => expectShape({ a: 1, b: "x" }, { a: 99, b: "y" })).not.toThrow();
+  });
+  it("passes for nested objects and arrays by element shape", () => {
+    expect(() =>
+      expectShape({ xs: [{ n: 5 }] }, { xs: [{ n: 0 }] }),
+    ).not.toThrow();
+  });
+  it("fails when a key is missing", () => {
+    expect(() => expectShape({ a: 1 }, { a: 1, b: 2 })).toThrow();
+  });
+  it("fails when a value type differs", () => {
+    expect(() => expectShape({ a: "1" }, { a: 1 })).toThrow();
   });
 });
