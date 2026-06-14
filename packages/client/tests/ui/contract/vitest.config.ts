@@ -25,7 +25,7 @@ export default defineConfig({
       // report surfaces wholly-untested files at 0% rather than omitting them.
       include: ["src/ui/**"],
       exclude: [
-        // Full-page composition roots — owned by visual-diff app/* + e2e.
+        // Full-page composition roots — owned by the visual (tests/ui/visual) tier, app/*, + e2e.
         "src/ui/App.tsx",
         "src/ui/shell/layout/Workspace.tsx",
         "src/ui/credit/CreditWorkspace.tsx",
@@ -34,7 +34,7 @@ export default defineConfig({
         "src/ui/hooks/HooksProvider.tsx",
         "src/ui/shell/theme/ThemeProvider.tsx",
         "src/ui/shell/theme/tokens.ts",
-        // Canvas/chart leaves with no DOM-assertable logic — owned by visual-diff.
+        // Canvas/chart leaves with no DOM-assertable logic — owned by the visual tier.
         "src/ui/fx/analytics/PnlChart.tsx",
         "src/ui/fx/analytics/PositionBubbles.tsx",
         "src/ui/fx/analytics/PairPnlBars.tsx",

@@ -48,16 +48,18 @@ Post-review correction: the plain vitest peer also runs virtual time, so the
 vitest pair is named `vitest-fake-timers` (plain) and
 `vitest-quickpickle-fake-timers` (Gherkin via quickpickle).
 
-## 2026-06-07 — client visual tier moved to tests/visual-diff (Part A of the test-report consistency spec)
+## 2026-06-07 — client visual tier moved in-suite (Part A of the test-report consistency spec)
 
-Scripts renamed `test:visual*` → `test:visual-diff*` (folder = script segments,
-full-information name per the naming rule); tier configs moved in-suite; the
-stray root-level `playwright/` CT host template is now
-`tests/visual-diff/playwright-ct/host/` (explicit `ctTemplateDir`), symmetric
+Scripts and folder renamed to the full-information name per the naming rule; tier
+configs moved in-suite; the stray root-level `playwright/` CT host template is now
+the suite's `playwright-ct/host/` (explicit `ctTemplateDir`), symmetric
 with tier 2's `host/`. Goldens moved by `git mv`, verified pixel-identical 3/3
 — no regeneration. Spec:
 `docs/superpowers/specs/2026-06-07-test-report-consistency-design.md`; Part B
 (per-suite HTML reports under `reports/<segments>/{report,artifacts}`) follows.
+(The tier was later folded under the `tests/ui/` umbrella alongside the contract
+tier — it now lives at `tests/ui/visual/`, with scripts `test:ui:visual*` and
+the `@ui-visual` import alias.)
 
 ## 2026-06-07 — consistent HTML test reports (Part B of the test-report consistency spec)
 

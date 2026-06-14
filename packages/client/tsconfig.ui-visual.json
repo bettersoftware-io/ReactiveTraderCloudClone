@@ -1,8 +1,8 @@
 {
-  // Type-checks the visual-diff harness (tests/visual-diff/) together with the
+  // Type-checks the visual harness (tests/ui/visual/) together with the
   // src files it mounts. The main tsconfig.json restricts rootDir to src, so the
-  // visual-diff tier — which lives outside src and imports both @rtc/domain and
-  // ../../../src — needs its own no-emit program for `pnpm typecheck` to catch
+  // visual tier — which lives outside src and imports both @rtc/domain and
+  // ../../../../src — needs its own no-emit program for `pnpm typecheck` to catch
   // drift between buildFakeHooks and the AppHooks interface.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
@@ -17,14 +17,14 @@
     // entries resolve relative to this config file's directory — identical to
     // the previous `baseUrl: "."` since these mappings were already relative.
     "paths": {
-      "@ui-harness": ["./tests/visual-diff/react"],
-      "@ui-harness/*": ["./tests/visual-diff/react/*"]
+      "@ui-visual": ["./tests/ui/visual/react"],
+      "@ui-visual/*": ["./tests/ui/visual/react/*"]
     }
   },
   "include": ["src", "tests"],
   // Exclude only the CT config: it alone fails tsc, due to the vite 6/8 plugin
   // type skew (config-injected — see the load-bearing comment in that file).
   // The other suite configs typecheck clean and stay included.
-  "exclude": ["tests/visual-diff/playwright-ct/playwright-ct.config.ts", "tests/ui/contract"],
+  "exclude": ["tests/ui/visual/playwright-ct/playwright-ct.config.ts", "tests/ui/contract"],
   "references": [{ "path": "../domain" }, { "path": "../shared" }]
 }

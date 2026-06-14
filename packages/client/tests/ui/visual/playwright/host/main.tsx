@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { VisualScenario } from "@ui-harness";
+import { VisualScenario } from "@ui-visual";
 
 // Same reset the real app uses, so full-App scenarios lay out at full height.
 const style = document.createElement("style");

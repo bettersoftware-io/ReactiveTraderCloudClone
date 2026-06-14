@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/experimental-ct-react";
-import { VisualScenario } from "@ui-harness";
+import { VisualScenario } from "@ui-visual";
 
 test("live-rates/populated", async ({ mount, page }) => {
   await page.addInitScript(() => window.localStorage.clear());

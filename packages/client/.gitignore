@@ -1,6 +1,6 @@
 reports/
 coverage/
-tests/visual-diff/playwright-ct/host/.cache/
-tests/visual-diff/**/__screenshots__/**/*-actual.png
-tests/visual-diff/**/__screenshots__/**/*-diff.png
+tests/ui/visual/playwright-ct/host/.cache/
+tests/ui/visual/**/__screenshots__/**/*-actual.png
+tests/ui/visual/**/__screenshots__/**/*-diff.png
 .vitest-attachments/

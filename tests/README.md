@@ -1,7 +1,7 @@
 # @rtc/tests — cross-package test suites
 
 Browser e2e, presenter integration, and full-stack smoke suites. Unit tests and
-visual-diff tests live inside each package (see `packages/client/README.md`).
+visual tests live inside each package (see `packages/client/README.md`).
 
 ## Naming convention
 

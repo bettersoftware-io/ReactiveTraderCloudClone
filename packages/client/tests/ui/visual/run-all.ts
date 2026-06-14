@@ -1,6 +1,6 @@
-// Runs every implemented visual-diff runner concurrently and prints a pass/fail
-// summary. `tsx tests/visual-diff/run-all.ts` runs all frameworks;
-// `tsx tests/visual-diff/run-all.ts react` runs only react:* runners. Today only
+// Runs every implemented visual runner concurrently and prints a pass/fail
+// summary. `tsx tests/ui/visual/run-all.ts` runs all frameworks;
+// `tsx tests/ui/visual/run-all.ts react` runs only react runners. Today only
 // :react exists, so both are the same; when :solid lands it is discovered
 // automatically (no edit here).
 //
@@ -10,30 +10,31 @@ import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const pkgUrl = new URL("../../package.json", import.meta.url);
+const pkgUrl = new URL("../../../package.json", import.meta.url);
 const pkg = JSON.parse(readFileSync(fileURLToPath(pkgUrl), "utf8")) as {
   scripts: Record<string, string>;
 };
 
 const frameworkFilter = process.argv[2]; // e.g. "react" | undefined
 
-// Leaf runner scripts only: test:visual-diff:<runner>:<framework> (exactly 4
-// parts), excluding :update / :ui variants and the aggregates added below.
+// Leaf runner scripts only: test:ui:visual:<runner>:<framework> (exactly 5
+// parts), excluding :update / :ui variants (6 parts) and the aggregates
+// (test:ui:visual and test:ui:visual:<framework>, which are ≤4 parts).
 const runners = Object.keys(pkg.scripts).filter((name) => {
   const parts = name.split(":");
-  if (parts.length !== 4) return false;
-  if (parts[0] !== "test" || parts[1] !== "visual-diff") return false;
-  return frameworkFilter ? parts[3] === frameworkFilter : true;
+  if (parts.length !== 5) return false;
+  if (parts[0] !== "test" || parts[1] !== "ui" || parts[2] !== "visual") return false;
+  return frameworkFilter ? parts[4] === frameworkFilter : true;
 });
 
 if (runners.length === 0) {
   console.error(
-    `No visual-diff runners found${frameworkFilter ? ` for "${frameworkFilter}"` : ""}.`,
+    `No visual runners found${frameworkFilter ? ` for "${frameworkFilter}"` : ""}.`,
   );
   process.exit(1);
 }
 
-console.log(`Running ${runners.length} visual-diff runner(s) concurrently:`);
+console.log(`Running ${runners.length} visual runner(s) concurrently:`);
 runners.forEach((r) => console.log(`  • ${r}`));
 
 const run = (script: string) =>
@@ -62,6 +63,6 @@ for (const r of results) {
 
 const failed = results.filter((r) => r.code !== 0);
 console.log(
-  `\nVisual-diff summary: ${results.length - failed.length}/${results.length} runner(s) passed.`,
+  `\nVisual summary: ${results.length - failed.length}/${results.length} runner(s) passed.`,
 );
 process.exit(failed.length === 0 ? 0 : 1);

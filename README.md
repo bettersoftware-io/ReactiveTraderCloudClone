@@ -101,7 +101,7 @@ Everything below is wired through Turborepo, so runs are cached and incremental.
 pnpm typecheck                    # tsc --noEmit across every package
 pnpm test                         # unit tests (Vitest) across every package
 pnpm test:e2e                     # gates, then all 10 suites in parallel (8 runners + 2 smokes)
-pnpm test:visual-diff             # UI visual-diff screenshots (all 3 runners)
+pnpm test:ui:visual               # UI visual regression screenshots (all 3 runners)
 pnpm --filter @rtc/tests gates    # architectural "grep gates" only
 ```
 
@@ -146,7 +146,7 @@ pnpm exec turbo run test --filter @rtc/client --force   # one package only
 ```
 
 Two tasks are deliberately **never cached** (`cache: false` in `turbo.json`):
-`test:e2e` and `test:visual-diff`. They exercise real browsers and servers, and a
+`test:e2e` and `test:ui:visual`. They exercise real browsers and servers, and a
 cached "pass" replaying old logs has masked real failures here before.
 
 Two non-solutions to know about:
@@ -160,27 +160,27 @@ Two non-solutions to know about:
 A cached `pnpm test` replay also restores `reports/unit/` from cache (declared
 turbo outputs) — `--force` regenerates them.
 
-### Visual-diff tests (a third tier — neither e2e nor integration)
+### Visual tests (a third tier — neither e2e nor integration)
 
-`pnpm test:visual-diff` is a separate tier that screenshots
+`pnpm test:ui:visual` is a separate tier that screenshots
 `@rtc/client` UI components and pages rendered against **injected fake data**.
 It mounts only `src/ui/**` behind the `HooksProvider` seam — no presenters, no
 domain use cases, no server, no live streams, no timers — so it tests *rendering
 only*, the exact layer a future SolidJS port would replace. The fixtures,
 scenario manifest, and golden PNGs live in a React-free
-`tests/visual-diff/shared/` core so the same baselines can later gate that
+`tests/ui/visual/shared/` core so the same baselines can later gate that
 reimplementation.
 
 ```bash
-pnpm test:visual-diff                                              # all 3 runners vs committed goldens
-pnpm --filter @rtc/client test:visual-diff:playwright-ct:react:ui  # interactive (runner 1; runner 2 has :ui too)
+pnpm test:ui:visual                                              # all 3 runners vs committed goldens
+pnpm --filter @rtc/client test:ui:visual:playwright-ct:react:ui  # interactive (runner 1; runner 2 has :ui too)
 # Regenerate goldens per runner — inspect before committing:
-pnpm --filter @rtc/client test:visual-diff:playwright-ct:react:update
-pnpm --filter @rtc/client test:visual-diff:playwright:react:update
-pnpm --filter @rtc/client test:visual-diff:vitest-browser:react:update
+pnpm --filter @rtc/client test:ui:visual:playwright-ct:react:update
+pnpm --filter @rtc/client test:ui:visual:playwright:react:update
+pnpm --filter @rtc/client test:ui:visual:vitest-browser:react:update
 ```
 
-See `packages/client/tests/visual-diff/README.md` for the layout and the SolidJS porting
+See `packages/client/tests/ui/visual/README.md` for the layout and the SolidJS porting
 recipe.
 
 ### Do I need to start the servers first?

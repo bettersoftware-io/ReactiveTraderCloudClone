@@ -1,7 +1,7 @@
 # UI contract test tier
 
 Sociable React Testing Library tests with explicit behavioural assertions,
-complementing the pixel-only `tests/visual-diff/` tier. They assert text, roles,
+complementing the pixel-only `tests/ui/visual/` tier. They assert text, roles,
 structure, recorded command/callback inputs, and dynamic re-renders — never
 colour or layout (that stays the visual tier's job).
 
