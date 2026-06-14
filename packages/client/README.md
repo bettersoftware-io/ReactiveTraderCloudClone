@@ -12,6 +12,7 @@ through `useHooks()` (`AppHooks` interface); production wires presenters via
 | `build` / `build-types` | Vite build + `.d.ts` emit | — |
 | `typecheck` | app + node + ui-visual + ui-contract tsconfigs | — |
 | `test:app` | **app tier** — Vitest (jsdom): presenters, adapters (`src/app`) | `app/` |
+| `test:app:coverage` | **app-tier coverage** — report-only v8 coverage over `src/app` | `app/coverage/` |
 | `test:ui:contract` | **ui contract tier** — sociable RTL specs over `src/ui` | `ui/contract/` |
 | `test:ui:contract:coverage` | **≥95% coverage gate** — combined `src/ui` surface (contract specs + co-located unit tests) | `ui/contract/coverage/` |
 | `test` | **default** — Vitest (jsdom): union of app + ui-contract (72 files / 406 tests) | `unit/` |
@@ -20,6 +21,7 @@ through `useHooks()` (`AppHooks` interface); production wires presenters via
 | `test:ui:visual:playwright-ct:react[:update\|:ui]` | Tier 1 — Playwright Component Testing | `ui/visual/playwright-ct/react/` |
 | `test:ui:visual:playwright:react[:update\|:ui]` | Tier 2 — plain Playwright over a Vite host page | `ui/visual/playwright/react/` |
 | `test:ui:visual:vitest-browser:react[:update]` | Tier 3 — Vitest browser mode (`toMatchScreenshot`) | `ui/visual/vitest-browser/react/` |
+| `test:ui:visual:vitest-browser:react:coverage` | **visual gap-finder** — istanbul coverage of `src/ui`; uncovered branches = no golden snapshot | `ui/visual/coverage/` |
 | `clean` / `clean:deep` | remove build/test artifacts (/ + node_modules) | — |
 
 Script naming: `test:ui:visual:<runner>:<framework>` — the framework axis exists
