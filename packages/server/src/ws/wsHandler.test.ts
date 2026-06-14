@@ -75,6 +75,9 @@ function expectShape(actual: unknown, canonical: unknown, path = "payload"): voi
   if (Array.isArray(canonical)) {
     expect(Array.isArray(actual), `${path} should be an array`).toBe(true);
     const arr = actual as unknown[];
+    // Element shape is checked against the first element only. Empty arrays on
+    // either side are NOT shape-checked — keep the fakes emitting ≥1 element so
+    // array assertions don't silently become vacuous.
     if (canonical.length > 0 && arr.length > 0) {
       expectShape(arr[0], canonical[0], `${path}[0]`);
     }
