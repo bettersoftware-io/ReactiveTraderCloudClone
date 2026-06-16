@@ -3,6 +3,17 @@
 // framework-agnostic, so plain-Playwright and vitest-browser share this table.
 // CT specs do not use it — they were hand-written first and stay as-is.
 
+// A single ordered interaction step for multi-step scenarios (form fill, open a
+// filter popover then apply it). Runner-neutral: keyed on testids + literal
+// text/values so plain-Playwright and vitest-browser drive them identically.
+export type ScenarioStep =
+  /** Click the element with this testid. */
+  | { readonly click: string }
+  /** Type `text` into the input with this testid (clears first). */
+  | { readonly type: string; readonly text: string }
+  /** Select `value` in the <select> with this testid. */
+  | { readonly select: string; readonly value: string };
+
 export type ScenarioAction = {
   /** Screenshot the whole page (full App or a fixed-position overlay) rather
    *  than just the #scenario-root component box. */
@@ -11,6 +22,9 @@ export type ScenarioAction = {
   readonly stubThroughput?: number;
   /** A testid to click after the page settles (e.g. a tab or the theme toggle). */
   readonly click?: string;
+  /** Ordered interaction steps, run after `click`, before `waitForText`. Used
+   *  for blotter sort/filter and the new-RFQ form states. */
+  readonly steps?: readonly ScenarioStep[];
   /** Visible text to wait for after the click, proving the view switched. */
   readonly waitForText?: string;
 } & (
@@ -55,4 +69,71 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   "credit/workspace-sell-side": { click: "credit-tab-sell-side", waitForText: "Sell Side (Adaptive Bank)" },
   // Admin panel loaded state: stub the throughput fetch so the slider renders.
   "admin/panel-loaded": { stubThroughput: 250, waitForText: "Throughput Control" },
+
+  // --- Phase V testid-gated interaction scenarios ---
+  // Blotter: click a column header to sort (ascending arrow appears). No
+  // waitForText: the click is synchronous and "Notional" is non-unique.
+  "fx-blotter/sorted": { click: "blotter-sort-notional" },
+  // Blotter: open the Notional number filter, enter an exact value, apply ->
+  // a subset of rows survives (eq 1,000,000 keeps only trade 4001).
+  "fx-blotter/filtered": {
+    steps: [
+      { click: "blotter-filter-toggle-notional" },
+      { type: "number-filter-value", text: "1000000" },
+      { click: "number-filter-apply" },
+    ],
+    waitForText: "Filtered: Notional",
+  },
+  // Blotter: a filter matching zero rows -> the empty "no rows match" message.
+  "fx-blotter/no-match": {
+    steps: [
+      { click: "blotter-filter-toggle-notional" },
+      { type: "number-filter-value", text: "1" },
+      { click: "number-filter-apply" },
+    ],
+    waitForText: "No trades match the current filters",
+  },
+  // Blotter: open each filter-type popover (no apply) to snapshot the controls.
+  // Number/date popovers carry a unique "Reset" button; the set popover has
+  // only "Apply" (no comparator <select>, so its options can't shadow it).
+  "fx-blotter/filter-date": { click: "blotter-filter-toggle-tradeDate", waitForText: "Reset" },
+  "fx-blotter/filter-number": { click: "blotter-filter-toggle-notional", waitForText: "Reset" },
+  "fx-blotter/filter-set": { click: "blotter-filter-toggle-status", waitForText: "Apply" },
+
+  // Credit RFQ filter: click the "All" tab (shows Live + terminal RFQs). No
+  // waitForText: the click is synchronous and "All" is a non-unique substring.
+  "credit/rfq-tiles-all": { click: "rfq-filter-All" },
+
+  // Credit new-RFQ form states.
+  // Search dropdown open with results (typed query matches instruments).
+  "credit/new-rfq-search-open": {
+    steps: [{ type: "instrument-search-input", text: "Treasury" }],
+    waitForText: "CUSIP: 912828ZQ6",
+  },
+  // Instrument chosen -> the selected-instrument summary (CUSIP + Coupon).
+  "credit/new-rfq-instrument-selected": {
+    steps: [
+      { type: "instrument-search-input", text: "Treasury" },
+      { click: "instrument-result-1" },
+    ],
+    waitForText: "Coupon: 1.5%",
+  },
+  // Filled: instrument + (default) dealers + valid quantity -> submit enabled.
+  "credit/new-rfq-filled": {
+    steps: [
+      { type: "instrument-search-input", text: "Treasury" },
+      { click: "instrument-result-1" },
+      { type: "quantity-input", text: "5000" },
+    ],
+    waitForText: "Submit RFQ",
+  },
+  // Invalid quantity (> CREDIT_MAX_QUANTITY_INPUT) -> the validation error.
+  "credit/new-rfq-invalid": {
+    steps: [
+      { type: "instrument-search-input", text: "Treasury" },
+      { click: "instrument-result-1" },
+      { type: "quantity-input", text: "200000000" },
+    ],
+    waitForText: "Max quantity exceeded",
+  },
 };

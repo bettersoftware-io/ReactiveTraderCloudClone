@@ -38,6 +38,20 @@ for (const name of Object.keys(scenarios)) {
     if (action.click) {
       await userEvent.click(screen.getByTestId(action.click).element());
     }
+    for (const step of action.steps ?? []) {
+      if ("click" in step) {
+        await userEvent.click(screen.getByTestId(step.click).element());
+      } else if ("type" in step) {
+        const el = screen.getByTestId(step.type).element() as HTMLInputElement;
+        await userEvent.clear(el);
+        await userEvent.type(el, step.text);
+      } else {
+        await userEvent.selectOptions(
+          screen.getByTestId(step.select).element(),
+          step.value,
+        );
+      }
+    }
     if (action.waitForText) {
       await expect.element(screen.getByText(action.waitForText)).toBeVisible();
     }

@@ -60,6 +60,7 @@ export function NumberFilter({ column, currentFilter, onApply }: NumberFilterPro
       </select>
       <input
         type="number"
+        data-testid="number-filter-value"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Value"
@@ -76,6 +77,7 @@ export function NumberFilter({ column, currentFilter, onApply }: NumberFilterPro
       )}
       <div style={{ display: "flex", gap: 4 }}>
         <button
+          data-testid="number-filter-apply"
           onClick={handleApply}
           style={{ flex: 1, padding: "4px 8px", fontSize: 11, border: "1px solid var(--border-primary)", borderRadius: 3, backgroundColor: "var(--accent-primary)", color: "#fff", cursor: "pointer" }}
         >

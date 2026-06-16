@@ -63,4 +63,20 @@ export const scenarios: Record<string, Scenario> = {
   "credit/workspace-sell-side": { componentKey: "CreditWorkspace", fixtureKey: "credit-populated" },
   // Admin panel loaded (slider) state — throughput fetch stubbed.
   "admin/panel-loaded": { componentKey: "AdminPanel", fixtureKey: "app-fx" },
+
+  // --- Phase V testid-gated interaction scenarios (see scenarioActions.ts) ---
+  // FX blotter sort + filter + popovers (drive BlotterHeader / *Filter).
+  "fx-blotter/sorted": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  "fx-blotter/filtered": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  "fx-blotter/no-match": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  "fx-blotter/filter-date": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  "fx-blotter/filter-number": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  "fx-blotter/filter-set": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  // Credit RFQ "All" filter tab (RfqFilterTabs).
+  "credit/rfq-tiles-all": { componentKey: "RfqTilesPanel", fixtureKey: "credit-populated" },
+  // Credit new-RFQ form states (InstrumentSearch / QuantityInput / submit gate).
+  "credit/new-rfq-search-open": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
+  "credit/new-rfq-instrument-selected": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
+  "credit/new-rfq-filled": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
+  "credit/new-rfq-invalid": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
 };

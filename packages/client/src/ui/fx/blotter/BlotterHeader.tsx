@@ -82,6 +82,7 @@ export function BlotterHeader({
       {COLUMNS.map((col) => (
         <th
           key={col.key}
+          data-testid={`blotter-sort-${col.key}`}
           style={{
             padding: "6px 8px",
             fontSize: 11,
@@ -104,6 +105,7 @@ export function BlotterHeader({
             )}
           </span>
           <button
+            data-testid={`blotter-filter-toggle-${col.key}`}
             onClick={(e) => {
               e.stopPropagation();
               setOpenFilter(openFilter === col.key ? null : col.key);

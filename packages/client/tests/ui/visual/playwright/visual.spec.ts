@@ -24,6 +24,15 @@ for (const name of Object.keys(scenarios)) {
     if (action.click) {
       await page.getByTestId(action.click).click();
     }
+    for (const step of action.steps ?? []) {
+      if ("click" in step) {
+        await page.getByTestId(step.click).click();
+      } else if ("type" in step) {
+        await page.getByTestId(step.type).fill(step.text);
+      } else {
+        await page.getByTestId(step.select).selectOption(step.value);
+      }
+    }
     if (action.waitForText) {
       await expect(page.getByText(action.waitForText)).toBeVisible();
     }
