@@ -700,6 +700,31 @@ describe("wsHandler stream-error callbacks", () => {
   });
 });
 
+describe("wsHandler workflow quote-event transforms", () => {
+  const workflowEmitting = (event: RfqEvent): ServiceContainer["workflow"] => ({
+    events: (): Observable<RfqEvent> => of(event),
+    createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => of(undefined), accept: () => of(undefined),
+  } as unknown as ServiceContainer["workflow"]);
+
+  const quoteEvent = (type: RfqEvent["type"]): RfqEvent => ({
+    type, payload: { id: 7, rfqId: 3, dealerId: 2, state: { type: "pendingWithoutPrice" } },
+  } as unknown as RfqEvent);
+
+  for (const type of ["quoteCreated", "quoteQuoted", "quotePassed", "quoteAccepted"] as const) {
+    it(`maps a ${type} RfqEvent to a stream.workflowEvent QuoteBodyDto frame`, async () => {
+      const ws = connect(fakeServices({ workflow: workflowEmitting(quoteEvent(type)) }));
+      ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+      await wait();
+      const [frame] = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT);
+      expect(frame).toBeDefined();
+      expect(frame!.type).toBe(SERVER_MSG.WORKFLOW_EVENT);
+      const body = frame!.payload as { type: string; payload: { id: number; rfqId: number; dealerId: number; state: { type: string } } };
+      expect(body.type).toBe(type);
+      expect(body.payload).toEqual({ id: 7, rfqId: 3, dealerId: 2, state: { type: "pendingWithoutPrice" } });
+    });
+  }
+});
+
 describe("expectShape helper", () => {
   it("passes when shapes match regardless of values", () => {
     expect(() => expectShape({ a: 1, b: "x" }, { a: 99, b: "y" })).not.toThrow();
