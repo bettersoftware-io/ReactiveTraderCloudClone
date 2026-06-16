@@ -1,3 +1,4 @@
+import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { state } from "@react-rxjs/core";
@@ -70,5 +71,14 @@ describe("useMachine", () => {
 
     unmount();
     expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls the factory exactly once even inside React.StrictMode (StrictMode-safe lazy ref)", () => {
+    const factory = vi.fn(() => makeTestMachine(new BehaviorSubject(0)).machine);
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <React.StrictMode>{children}</React.StrictMode>
+    );
+    renderHook(() => useMachine(factory), { wrapper });
+    expect(factory).toHaveBeenCalledTimes(1);
   });
 });

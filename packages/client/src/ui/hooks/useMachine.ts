@@ -7,7 +7,7 @@ import type { Machine } from "./machine";
  * useStateObservable, returns { state, ...intents } (stable intent refs), and
  * disposes on unmount. The only UI primitive allowed to import react-rxjs;
  * components never import it (createAppHooks does). */
-export function useMachine<TState, TIntents extends object>(
+export function useMachine<TState, TIntents extends object & { state?: never }>(
   factory: () => Machine<TState, TIntents>,
 ): { state: TState } & TIntents {
   const ref = useRef<Machine<TState, TIntents> | null>(null);
