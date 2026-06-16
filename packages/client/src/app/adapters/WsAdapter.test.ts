@@ -160,3 +160,65 @@ describe("WsAdapter.connectionEvents()", () => {
     adapter.dispose();
   });
 });
+
+describe("WsAdapter.rpc() + message routing", () => {
+  function open(adapter: WsAdapter): MockWebSocket {
+    lastMock.readyState = MockWebSocket.OPEN;
+    lastMock.onopen?.(new Event("open"));
+    return lastMock;
+  }
+  it("ignores a malformed (non-JSON) inbound frame without throwing", () => {
+    const adapter = new WsAdapter("ws://test");
+    const received: unknown[] = [];
+    adapter.on("stream.priceTick", (p) => received.push(p));
+    open(adapter);
+    expect(() => lastMock.onmessage?.(new MessageEvent("message", { data: "not json{" }))).not.toThrow();
+    expect(received).toEqual([]);
+    adapter.dispose();
+  });
+  it("routes a response with an unknown correlationId to the stream handler", () => {
+    const adapter = new WsAdapter("ws://test");
+    const received: unknown[] = [];
+    adapter.on("stream.priceTick", (p) => received.push(p));
+    open(adapter);
+    lastMock.onmessage?.(new MessageEvent("message", { data: JSON.stringify({ type: "stream.priceTick", payload: { symbol: "EURUSD" }, correlationId: "999" }) }));
+    expect(received).toEqual([{ symbol: "EURUSD" }]);
+    adapter.dispose();
+  });
+  it("rejects rpc() when the socket is not open", async () => {
+    const adapter = new WsAdapter("ws://test");
+    await expect(adapter.rpc("rpc.executeTrade", { foo: 1 })).rejects.toThrow(/WebSocket not connected/);
+    expect(lastMock.send).not.toHaveBeenCalled();
+    adapter.dispose();
+  });
+  it("resolves an in-flight rpc() when its correlated response arrives", async () => {
+    const adapter = new WsAdapter("ws://test");
+    open(adapter);
+    const promise = adapter.rpc("rpc.executeTrade", { foo: 1 });
+    lastMock.onmessage?.(new MessageEvent("message", { data: JSON.stringify({ type: "rpc.executeTrade.response", payload: { tradeId: 7 }, correlationId: "1" }) }));
+    await expect(promise).resolves.toEqual({ tradeId: 7 });
+    adapter.dispose();
+  });
+  it("dispose() rejects every pending rpc()", async () => {
+    const adapter = new WsAdapter("ws://test");
+    open(adapter);
+    const pending = adapter.rpc("rpc.executeTrade", { foo: 1 });
+    adapter.dispose();
+    await expect(pending).rejects.toThrow(/WsAdapter disposed/);
+  });
+  it("waitForConnection() resolves immediately when already open", async () => {
+    const adapter = new WsAdapter("ws://test");
+    lastMock.readyState = MockWebSocket.OPEN;
+    lastMock.onopen?.(new Event("open"));
+    await expect(adapter.waitForConnection()).resolves.toBeUndefined();
+    adapter.dispose();
+  });
+  it("waitForConnection() resolves once the socket transitions to open", async () => {
+    const adapter = new WsAdapter("ws://test");
+    const waited = adapter.waitForConnection();
+    lastMock.readyState = MockWebSocket.OPEN;
+    await vi.advanceTimersByTimeAsync(100);
+    await expect(waited).resolves.toBeUndefined();
+    adapter.dispose();
+  });
+});
