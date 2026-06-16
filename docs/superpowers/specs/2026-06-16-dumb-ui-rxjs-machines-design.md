@@ -6,12 +6,17 @@
 
 ## Goal
 
-Enforce the architecture's **Dumb-UI** rule for the FX tile by relocating all
-business logic, orchestration, and timers that currently live in six React-local
-hooks into the **client application (presenter) layer as vanilla RxJS state
-machines** — exposed to components through the **single `AppHooks` seam** via one
-new, logic-free bridge hook. The UI layer ends up containing no state machines,
-no timers, no orchestration, and no `rxjs` — only rendering and intent emission.
+Enforce the architecture's **Dumb-UI** rule by relocating all business logic,
+orchestration, transport, and timers that currently live in **seven** React-local
+hooks out of the UI layer:
+- the six tile/stale hooks → **client presenter-layer RxJS state machines**;
+- the admin `useThroughput` hook → a proper **`AdminPort` + WS adapter + presenter**
+  (it additionally does raw HTTP transport, so it needs a port, not just a machine).
+
+All seven are exposed to components through the **single `AppHooks` seam** via one
+new, logic-free bridge hook. The UI layer ends up containing no business logic,
+no transport awareness, no orchestration, and no `rxjs` — only rendering and
+intent emission.
 
 ## Why (the violation)
 
@@ -35,6 +40,22 @@ global streams through the seam (`usePrice`, `usePriceHistory`) but imports six
 | `useNotional` | per-input form reducer (rules already in `@rtc/domain`) | reducer + formatting |
 | `useExecuteTrade` | **orchestration** (start→execute→finish/timeout) | folds into the tile machine |
 | `useRfqQuote` | **orchestration** (initiate→request→receive/reject) | folds into the RFQ machine |
+| `useThroughput` | **raw HTTP transport** (`fetch` GET/PUT `${VITE_SERVER_HTTP_URL}/throughput`) + debounce/dismiss timers + loading/message state | the whole hook → `AdminPort` + adapter + presenter |
+
+`useThroughput` (imported by `AdminPanel.tsx`) is the most severe: it breaks
+*two* Dumb-UI clauses — orchestration **and** transport awareness — talking HTTP
+on a side-channel that bypasses the entire ports/presenters/WS stack the rest of
+the app uses. The server already exposes throughput over WS
+(`admin.getThroughput`/`admin.setThroughput`, in the protocol + `wsHandler` +
+already contract-tested), so the fix also removes a WS-vs-HTTP duplication.
+
+`useStaleDetection` has **two** consumers — `Tile.tsx` **and**
+`AnalyticsPanel.tsx` — so its migration touches both (it is a shell-level hook,
+not tile-only).
+
+Out of scope: `useTheme`/`ThemeProvider` (dark/light + `localStorage`) is a pure
+**presentation** concern — not domain/app logic or transport — so it
+legitimately stays in the UI layer.
 
 This leak is also the **root cause of the visual-coverage pain**: because the
 timer/state-machine logic lives in the UI, the only place it runs is the browser
@@ -111,11 +132,45 @@ implemented by `useMachine` over an injected factory:
 - `useRfqTile(pair): { state, requestQuote, cancel, reject, accept }`
 - `useStaleFlag(pair): boolean`
 - `useNotional(defaultNotional): { displayValue, numericValue, error, isRfq, isDefault, change, reset }`
+- `useThroughput(): { value, loading, message, setValue }` (backed by the
+  ThroughputPresenter over the AdminPort — see piece 4)
 
 The composition root passes factory creators (bound to their command/stream
 deps) into `createAppHooks`, e.g. `useTileExecution: (pair) => useMachine(() =>
 factories.tileExecution(pair))`. Components still only ever call `useHooks()` —
 **one contract, one framework-swap point, one test/snapshot injection point.**
+
+### 4. Admin throughput → `AdminPort` over WS (transport, not just a machine)
+
+`useThroughput` is migrated through the **full ports/presenters stack** like every
+other transport concern, not as a UI machine:
+- **`AdminPort`** (`@rtc/domain/ports`): `getThroughput(): Observable<number>` +
+  `setThroughput(value: number): Observable<void>`.
+- **WsReal adapter** (`packages/client/src/app/adapters/`): implements `AdminPort`
+  via `wsAdapter.rpc("admin.getThroughput")` / `rpc("admin.setThroughput", { value })`
+  — the RPCs already exist in `protocol.ts` + `wsHandler` and are contract-tested.
+- **Simulator adapter** (`@rtc/domain/simulators`, e.g. `ThroughputSimulator`):
+  in-memory get/set, for sim mode (the app's default in dev). Pinned by the same
+  port-contract pattern as the other 8 ports (so this becomes the 9th port).
+- **`portFactory`** wires `admin` into both `createWsRealPorts` and
+  `createSimulatorPorts`.
+- **`ThroughputPresenter`** (`packages/client/src/app/presenters/`, RxJS): holds
+  the `value`/`loading`/`message` state and the debounce + message-dismiss timing
+  **as RxJS** (`debounceTime`, `timer`) over a `setValue` intent; reads initial
+  value via `AdminPort.getThroughput()`; maps set success/failure to the message.
+  Marble-tested.
+- **Seam:** `AppHooks.useThroughput()` binds the presenter (a shared/global
+  presenter via react-rxjs `bind`, or `useMachine` if kept per-mount).
+- **`AdminPanel.tsx`** becomes thin (reads `useHooks().useThroughput()`); the raw
+  `fetch`, the `VITE_SERVER_HTTP_URL` read, and the debounce/dismiss `setTimeout`s
+  leave the UI entirely.
+- **Transport unification:** the client no longer uses HTTP at all. The server's
+  HTTP `GET/PUT /throughput` route (in `src/index.ts`) becomes dead code; this
+  workstream **removes it** (small `index.ts` edit) so WS is the single transport.
+  `VITE_SERVER_HTTP_URL` is removed from the client env usage.
+
+Timing constants: `DEBOUNCE_MS` / `MESSAGE_DISMISS_MS` move to the presenter (UI
+feedback cadence) or `@rtc/domain` if deemed domain-semantic — decided in the plan.
 
 ### Result — thin components
 `Tile.tsx` reduces to: read `usePrice`/`usePriceHistory`/`useStaleFlag`/
@@ -123,15 +178,19 @@ factories.tileExecution(pair))`. Components still only ever call `useHooks()` �
 view-derivations (`isLoading`, `isBusy`, …), and render sub-components by
 `state.status`. It imports no local hooks, no `rxjs`, no timers. The leaf
 components (`RfqCountdown`, `TileConfirmation`, `TileRfq`, `StaleIndicator`) are
-already pure and unchanged. The six hook files + their `*.test.tsx` are deleted
-(their logic now lives in marble-tested machines).
+already pure and unchanged. `AnalyticsPanel.tsx` (the other `useStaleDetection`
+consumer) and `AdminPanel.tsx` likewise drop to reading the seam only. All seven
+hook files + their `*.test.tsx` are deleted (their logic now lives in
+marble-tested machines/presenters).
 
 ## Testing strategy
 
 - **App layer (new home of the logic):** marble tests with `TestScheduler` for
-  each of the four machines — every transition, timeout, countdown tick, and
-  error path, deterministically. This is where coverage of the timing logic now
-  lives (and it can reach ~100% because RxJS time is virtual).
+  each of the four tile/stale machines **and** the `ThroughputPresenter` — every
+  transition, timeout, countdown tick, debounce, and error path, deterministically.
+  Plus the `AdminPort` port-contract test (simulator vs WsReal). This is where
+  coverage of the timing/transport logic now lives (and it can reach ~100% because
+  RxJS time is virtual).
 - **Bridge:** one focused test for `useMachine` (mount instantiates, state
   updates propagate, intents passthrough, unmount disposes).
 - **UI layer:** the existing **contract tier** (sociable RTL) already covers the
@@ -147,8 +206,9 @@ already pure and unchanged. The six hook files + their `*.test.tsx` are deleted
 
 ## Fakes (`buildFakeHooks` for visual + contract tiers)
 
-The fake `AppHooks` gains static implementations of the four new seam hooks that
-return injected state + no-op intents, e.g.
+The fake `AppHooks` gains static implementations of the five new seam hooks
+(`useTileExecution`/`useRfqTile`/`useStaleFlag`/`useNotional`/`useThroughput`)
+that return injected state + no-op intents, e.g.
 `useTileExecution: () => ({ state: appData.tileExecution ?? { status: "ready" }, execute: noop, dismiss: noop })`.
 This lets a scenario render any tile state directly (started / tooLong / timeout /
 finished×status / RFQ received-with-countdown / stale) — the clean total
@@ -160,33 +220,41 @@ swap that Option 1 uniquely preserves.
 - No change to the global-stream hooks or the presenters that already exist.
 - No `rxjs` in the UI layer except the sanctioned `useMachine` bridge (mirrors
   the existing react-rxjs `bind` exception).
-- No new CI gates; no `turbo.json`/transport/`@rtc/shared` changes.
-- No migration of hooks outside the tile/stale set (this workstream is those six).
+- No new CI gates; no `turbo.json`/`@rtc/shared` changes. (Transport DOES change:
+  admin throughput moves from HTTP to the existing WS admin RPCs; the server's
+  HTTP `/throughput` route is removed.)
+- No migration of hooks outside the seven in scope; `useTheme`/`ThemeProvider`
+  stays in the UI (pure presentation/view-chrome).
 - The fake-timer "integrated-tile" visual scenarios proposed earlier are dropped
   — this refactor makes them unnecessary.
 
 ## Success criteria
 
-1. The six hooks (`useTileState`, `useRfqState`, `useStaleDetection`,
-   `useNotional`, `useExecuteTrade`, `useRfqQuote`) are deleted from the UI layer;
-   their logic lives in four marble-tested RxJS machines in
-   `packages/client/src/app/presenters/`.
-2. `Tile.tsx` and the tile subtree import no local logic hooks, no `rxjs`, no
-   timers; all interaction state comes through `useHooks()`.
+1. All seven hooks (`useTileState`, `useRfqState`, `useStaleDetection`,
+   `useNotional`, `useExecuteTrade`, `useRfqQuote`, `useThroughput`) are deleted
+   from the UI layer; their logic lives in four marble-tested RxJS machines + the
+   `ThroughputPresenter` in `packages/client/src/app/`, and (for throughput) an
+   `AdminPort` + adapters.
+2. `Tile.tsx`, `AnalyticsPanel.tsx`, and `AdminPanel.tsx` import no local logic
+   hooks, no `rxjs`, no timers, no `fetch`/env; all state comes through `useHooks()`.
 3. `AppHooks` exposes `useTileExecution` / `useRfqTile` / `useStaleFlag` /
-   `useNotional`; `useMachine` is the only new UI primitive and is not imported by
-   components.
-4. Each machine has marble tests covering all transitions/timeouts/countdown
-   (deterministic `TestScheduler`); the four machines reach ~100% in the app
-   coverage tier.
+   `useNotional` / `useThroughput`; `useMachine` is the only new UI primitive and
+   is not imported by components.
+4. Each machine + the `ThroughputPresenter` has marble tests covering all
+   transitions/timeouts/countdown/debounce (deterministic `TestScheduler`); the
+   new `AdminPort` has a simulator-vs-WsReal port-contract test. The relocated
+   logic reaches ~100% in the app coverage tier.
 5. The visual coverage config **un-excludes** `RfqCountdown`, `TileConfirmation`,
    `TileRfq`, `StaleIndicator`; scenarios inject their states via `buildFakeHooks`
    and commit goldens (local `react-local/<arch>`; CI `react/` via the
    `update-visual-goldens` workflow).
-6. All existing suites stay green: domain, server, client `test:app` /
+6. Admin throughput rides the WS admin RPCs end to end; the client makes no HTTP
+   calls; the server's HTTP `/throughput` route + the client `VITE_SERVER_HTTP_URL`
+   usage are removed; the full-stack smokes still pass.
+7. All existing suites stay green: domain, server, client `test:app` /
    `test:ui:contract` / `test:ui:visual:react`, and the presenter + e2e
    behavioural suites (the faithfulness guardrail).
-7. UI-layer gate holds: no `rxjs` import in `src/ui/**` except `src/ui/hooks/`
+8. UI-layer gate holds: no `rxjs` import in `src/ui/**` except `src/ui/hooks/`
    (the bridge layer). Confirm/extend the existing architecture grep-gate.
 
 ## Decomposition (phases — one workstream, sequential)
@@ -197,11 +265,18 @@ swap that Option 1 uniquely preserves.
    execution wiring → delete `useTileState.ts`/`useExecuteTrade.ts` + tests.
 3. **Phase 2 — RfqTile machine** (absorbs `useRfqState` + `useRfqQuote`): same
    shape; delete the two hooks + tests.
-4. **Phase 3 — StaleFlag machine** (replaces `useStaleDetection`): delete the hook + test.
+4. **Phase 3 — StaleFlag machine** (replaces `useStaleDetection`): thin both
+   `Tile.tsx` **and** `AnalyticsPanel.tsx`; delete the hook + test.
 5. **Phase 4 — Notional machine** (replaces `useNotional`): delete the hook + test.
-6. **Phase 5 — Visual**: un-exclude the four components, add state scenarios +
+6. **Phase 5 — Throughput over WS** (the port-shaped one): `AdminPort` (domain) +
+   `ThroughputSimulator` + port-contract test → WsReal admin adapter →
+   `portFactory` wiring → `ThroughputPresenter` (+ marble tests) → seam
+   `useThroughput` + fake → thin `AdminPanel.tsx` → delete `useThroughput.ts` +
+   test → remove server HTTP `/throughput` + client `VITE_SERVER_HTTP_URL`.
+   Verify with the full-stack smokes.
+7. **Phase 6 — Visual**: un-exclude the four components, add state scenarios +
    goldens, refresh `COVERAGE-GAPS.md`/`README.md`.
-7. **Final verification**: all suites green; UI `rxjs` gate; thin-component check;
+8. **Final verification**: all suites green; UI `rxjs` gate; thin-component check;
    coverage deltas reported.
 
 Each phase keeps the app building and the behavioural suites green (the migration
