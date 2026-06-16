@@ -1,4 +1,4 @@
-# Restore Dumb-UI: move tile/stale interaction logic into RxJS machines — Design
+# Restore Dumb-UI across the client: relocate logic out of React components — Design
 
 **Date:** 2026-06-16
 
@@ -183,6 +183,55 @@ consumer) and `AdminPanel.tsx` likewise drop to reading the seam only. All seven
 hook files + their `*.test.tsx` are deleted (their logic now lives in
 marble-tested machines/presenters).
 
+## Scope expansion — inline component logic (no extracted hook)
+
+A full `src/ui` audit (objective signals: direct `rxjs` / `localStorage` /
+`fetch` / `setTimeout` / `import.meta.env`) found logic living **inline** in
+components (not in a hook file) that also violates Dumb-UI. The rule applied:
+**move everything except transient view state pertinent to that one component**
+(dropdown open, hover, active tab, controlled-input draft, pure-function
+composition over local state). Confirmed findings:
+
+### 5. Seam commands must return `Promise`, not `Observable` (kills `rxjs` in UI)
+`RfqTilesPanel.tsx`, `NewRfqForm.tsx`, and `TradeTicket.tsx` import `rxjs`
+(`firstValueFrom`) because the `AppHooks` command callbacks are typed
+`=> Observable<T>` (the seam literally tells callers to `firstValueFrom` them).
+**Fix (systemic):** change the seam's command callbacks to `=> Promise<T>` — the
+**bridge** (`createAppHooks`) performs the `firstValueFrom` internally. Then no
+component imports `rxjs`. This is the single change that clears the violation in
+all three components. (Commands: `useExecuteTrade`, `useCreateRfq`,
+`useAcceptQuote`, `useCancelRfq`, `usePassQuote`, `useQuoteRfq`,
+`useRequestRfqQuote` — all flip `Observable` → `Promise` at the seam.)
+
+### 6. `PreferencesPort` — no `localStorage` in the UI
+`LiveRatesPanel.tsx` (viewMode) and `ThemeProvider.tsx` (theme) read/write
+`localStorage` directly. Introduce a **`PreferencesPort`** (`@rtc/domain`):
+`getTheme()/setTheme()`, `getViewMode()/setViewMode()` (or a small generic
+get/set keyed contract) with a **localStorage adapter** (client) + an in-memory
+adapter (sim/tests), behind presenters bound to the seam
+(`useThemePreference`, `useViewModePreference`). The theme **toggle UI** stays in
+`ThemeProvider`; the **persistence** leaves. `LiveRatesPanel`'s category filter
+**stays** (transient). After this, `localStorage` appears nowhere in `src/ui`.
+
+### 7. Residual orchestration → presenters
+- **`NewRfqForm.tsx`** — the post-submit confirmation + `setTimeout(1500)`
+  redirect is timing/orchestration → move to a presenter (e.g. fold into
+  `RfqsPresenter` or a small `RfqSubmissionPresenter`); the form **draft inputs**
+  (instrument/direction/quantity/dealers/submitting) **stay**.
+- **`TradeTicket.tsx`** — the submit/pass orchestration + `submitted` response
+  flag → presenter; the **price draft input stays**.
+- **`RfqTilesPanel.tsx`** — its orchestration is cleared by the seam→`Promise`
+  change (§5); `filter` + `dismissed` **stay** (transient).
+
+### STAY (transient view state — explicitly left in the UI)
+`App` active tab · `CreditWorkspace` view · `InstrumentSearch` query/open + pure
+client-side result filtering (user-approved) · `RfqTilesPanel` filter/dismissed ·
+`BlotterHeader` popover-open · `BlotterRow` hover + 3 s highlight-fade animation ·
+`Date/Number/Set` filter draft inputs · `FxBlotter` sort/filter/quick-filter
+state composing the already-pure `columnSort.ts`/`filterState.ts` (no
+persistence/transport/timers). `setTimeout` for the `BlotterRow` highlight is a
+pure animation and stays; no other component-level `setTimeout` survives.
+
 ## Testing strategy
 
 - **App layer (new home of the logic):** marble tests with `TestScheduler` for
@@ -223,8 +272,11 @@ swap that Option 1 uniquely preserves.
 - No new CI gates; no `turbo.json`/`@rtc/shared` changes. (Transport DOES change:
   admin throughput moves from HTTP to the existing WS admin RPCs; the server's
   HTTP `/throughput` route is removed.)
-- No migration of hooks outside the seven in scope; `useTheme`/`ThemeProvider`
-  stays in the UI (pure presentation/view-chrome).
+- `useTheme`/`ThemeProvider`'s **toggle UI** stays in the UI; only its
+  `localStorage` persistence moves (to `PreferencesPort`).
+- Transient view state stays (see the STAY list): active tab, view routing,
+  dropdown/popover open, hover, filter draft inputs, `FxBlotter` sort/filter,
+  `InstrumentSearch` query/filter, `BlotterRow` highlight animation.
 - The fake-timer "integrated-tile" visual scenarios proposed earlier are dropped
   — this refactor makes them unnecessary.
 
@@ -256,6 +308,14 @@ swap that Option 1 uniquely preserves.
    behavioural suites (the faithfulness guardrail).
 8. UI-layer gate holds: no `rxjs` import in `src/ui/**` except `src/ui/hooks/`
    (the bridge layer). Confirm/extend the existing architecture grep-gate.
+9. Seam commands return `Promise<T>` (not `Observable<T>`); `RfqTilesPanel`,
+   `NewRfqForm`, `TradeTicket` no longer import `rxjs`.
+10. No `localStorage` anywhere in `src/ui` — theme + viewMode persistence go
+    through `PreferencesPort`; only the toggle UIs remain. Extend the grep-gate to
+    assert no `localStorage`/`fetch`/`import.meta.env` in `src/ui` (the bridge +
+    composition root excepted).
+11. The only `setTimeout` remaining in `src/ui` is the `BlotterRow` highlight
+    animation; `NewRfqForm`/`TradeTicket` timing+orchestration moved to presenters.
 
 ## Decomposition (phases — one workstream, sequential)
 
@@ -274,11 +334,22 @@ swap that Option 1 uniquely preserves.
    `useThroughput` + fake → thin `AdminPanel.tsx` → delete `useThroughput.ts` +
    test → remove server HTTP `/throughput` + client `VITE_SERVER_HTTP_URL`.
    Verify with the full-stack smokes.
-7. **Phase 6 — Visual**: un-exclude the four components, add state scenarios +
-   goldens, refresh `COVERAGE-GAPS.md`/`README.md`.
-8. **Final verification**: all suites green; UI `rxjs` gate; thin-component check;
-   coverage deltas reported.
+7. **Phase 6 — Seam commands → `Promise`**: flip the `AppHooks` command
+   callbacks from `Observable<T>` to `Promise<T>` (bridge absorbs `firstValueFrom`);
+   remove `rxjs` from `RfqTilesPanel`/`NewRfqForm`/`TradeTicket`; update fakes.
+8. **Phase 7 — `PreferencesPort`**: domain port + localStorage adapter +
+   in-memory adapter + port-contract test → `ThemePreference`/`ViewModePreference`
+   presenters → seam hooks → thin `ThemeProvider` (toggle only) + `LiveRatesPanel`
+   (no `localStorage`); remove all `localStorage` from `src/ui`.
+9. **Phase 8 — Residual orchestration**: move `NewRfqForm` confirmation/redirect
+   timing and `TradeTicket` submit/pass orchestration into presenters; components
+   keep only draft inputs.
+10. **Phase 9 — Visual**: un-exclude the four components, add state scenarios +
+    goldens, refresh `COVERAGE-GAPS.md`/`README.md`.
+11. **Phase 10 — Gates + final verification**: extend the architecture grep-gate
+    (no `rxjs`/`localStorage`/`fetch`/`import.meta.env` in `src/ui` outside the
+    bridge); all suites green; thin-component check; coverage deltas reported.
 
 Each phase keeps the app building and the behavioural suites green (the migration
-is incremental — one machine at a time, old hook deleted only once its
+is incremental — one machine/port at a time, old code deleted only once its
 replacement is wired and behaviour-verified).
