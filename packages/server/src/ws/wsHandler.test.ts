@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { type Observable, of, interval, map, throwError } from "rxjs";
 import { Direction, TradeStatus, type RfqEvent } from "@rtc/domain";
 import {
@@ -607,6 +607,195 @@ describe("wsHandler protocol", () => {
 
     const after = ws.framesOfType(SERVER_MSG.PRICE_TICK).length;
     expect(after).toBe(before);
+  });
+});
+
+describe("wsHandler stream-error callbacks", () => {
+  it("logs and emits no frames when referenceData stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      referenceData: { getCurrencyPairs: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["referenceData"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_REFERENCE_DATA });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("ReferenceData stream error:", expect.any(Error));
+    expect(ws.framesOfType(SERVER_MSG.REFERENCE_DATA)).toHaveLength(0);
+    spy.mockRestore();
+  });
+
+  it("logs and emits no frames when pricing stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      pricing: { getPriceUpdates: () => throwError(() => new Error("boom")), getPriceHistory: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["pricing"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_PRICING, payload: { symbol: "EURUSD" } });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Pricing stream error:", expect.any(Error));
+    expect(ws.framesOfType(SERVER_MSG.PRICE_TICK)).toHaveLength(0);
+    spy.mockRestore();
+  });
+
+  it("logs and emits no frames when blotter stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      blotter: { getTradeStream: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["blotter"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_BLOTTER });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Blotter stream error:", expect.any(Error));
+    expect(ws.framesOfType(SERVER_MSG.BLOTTER)).toHaveLength(0);
+    spy.mockRestore();
+  });
+
+  it("logs and emits no frames when analytics stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      analytics: { getAnalytics: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["analytics"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_ANALYTICS, payload: { currency: "USD" } });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Analytics stream error:", expect.any(Error));
+    expect(ws.framesOfType(SERVER_MSG.ANALYTICS)).toHaveLength(0);
+    spy.mockRestore();
+  });
+
+  it("logs and emits no added frames when instruments stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      instruments: { getInstruments: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["instruments"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_INSTRUMENTS });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Instruments stream error:", expect.any(Error));
+    const types = ws.framesOfType(SERVER_MSG.INSTRUMENT_EVENT).map((m) => (m.payload as { type: string }).type);
+    expect(types).not.toContain("added");
+    expect(types).not.toContain("endOfStateOfTheWorld");
+    spy.mockRestore();
+  });
+
+  it("logs and emits no added frames when dealers stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      dealers: { getDealers: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["dealers"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_DEALERS });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Dealers stream error:", expect.any(Error));
+    const types = ws.framesOfType(SERVER_MSG.DEALER_EVENT).map((m) => (m.payload as { type: string }).type);
+    expect(types).not.toContain("added");
+    expect(types).not.toContain("endOfStateOfTheWorld");
+    spy.mockRestore();
+  });
+
+  it("logs and emits no frames when workflow stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      workflow: { events: () => throwError(() => new Error("boom")), createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => of(undefined), accept: () => of(undefined) } as unknown as ServiceContainer["workflow"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Workflow stream error:", expect.any(Error));
+    expect(ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT)).toHaveLength(0);
+    spy.mockRestore();
+  });
+});
+
+describe("wsHandler workflow quote-event transforms", () => {
+  const workflowEmitting = (event: RfqEvent): ServiceContainer["workflow"] => ({
+    events: (): Observable<RfqEvent> => of(event),
+    createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => of(undefined), accept: () => of(undefined),
+  } as unknown as ServiceContainer["workflow"]);
+
+  const quoteEvent = (type: RfqEvent["type"]): RfqEvent => ({
+    type, payload: { id: 7, rfqId: 3, dealerId: 2, state: { type: "pendingWithoutPrice" } },
+  } as unknown as RfqEvent);
+
+  for (const type of ["quoteCreated", "quoteQuoted", "quotePassed", "quoteAccepted"] as const) {
+    it(`maps a ${type} RfqEvent to a stream.workflowEvent QuoteBodyDto frame`, async () => {
+      const ws = connect(fakeServices({ workflow: workflowEmitting(quoteEvent(type)) }));
+      ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+      await wait();
+      const [frame] = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT);
+      expect(frame).toBeDefined();
+      expect(frame!.type).toBe(SERVER_MSG.WORKFLOW_EVENT);
+      const body = frame!.payload as { type: string; payload: { id: number; rfqId: number; dealerId: number; state: { type: string } } };
+      expect(body.type).toBe(type);
+      expect(body.payload).toEqual({ id: 7, rfqId: 3, dealerId: 2, state: { type: "pendingWithoutPrice" } });
+    });
+  }
+});
+
+describe("wsHandler RPC synchronous-throw handling", () => {
+  it("nacks rpc.executeTrade when execution throws synchronously", async () => {
+    const ws = connect(fakeServices({ execution: { executeTrade: () => { throw new Error("boom"); } } as unknown as ServiceContainer["execution"] }));
+    ws.receive({ type: CLIENT_MSG.EXECUTE_TRADE, correlationId: "sync-exec", payload: { currencyPair: "EURUSD", spotRate: 1.1, direction: Direction.Buy, notional: 1_000_000, dealtCurrency: "EUR" } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.EXECUTION_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-exec");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.getPriceHistory when pricing throws synchronously", async () => {
+    const ws = connect(fakeServices({ pricing: { getPriceUpdates: () => of(), getPriceHistory: () => { throw new Error("boom"); } } as unknown as ServiceContainer["pricing"] }));
+    ws.receive({ type: CLIENT_MSG.GET_PRICE_HISTORY, correlationId: "sync-ph", payload: { symbol: "EURUSD" } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.PRICE_HISTORY_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-ph");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.createRfq when the workflow throws synchronously", async () => {
+    const ws = connect(fakeServices({ workflow: { events: () => of(), createRfq: () => { throw new Error("boom"); }, cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => of(undefined), accept: () => of(undefined) } as unknown as ServiceContainer["workflow"] }));
+    ws.receive({ type: CLIENT_MSG.CREATE_RFQ, correlationId: "sync-rfq", payload: { instrumentId: 1, dealerIds: [1], quantity: 1_000_000, direction: Direction.Buy, expirySecs: 120 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.CREATE_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-rfq");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.cancelRfq when the workflow throws synchronously", async () => {
+    const ws = connect(fakeServices({ workflow: { events: () => of(), createRfq: () => of(1), cancelRfq: () => { throw new Error("boom"); }, quote: () => of(undefined), pass: () => of(undefined), accept: () => of(undefined) } as unknown as ServiceContainer["workflow"] }));
+    ws.receive({ type: CLIENT_MSG.CANCEL_RFQ, correlationId: "sync-cancel", payload: { rfqId: 1 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.CANCEL_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-cancel");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.quote when the workflow throws synchronously", async () => {
+    const ws = connect(fakeServices({ workflow: { events: () => of(), createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => { throw new Error("boom"); }, pass: () => of(undefined), accept: () => of(undefined) } as unknown as ServiceContainer["workflow"] }));
+    ws.receive({ type: CLIENT_MSG.QUOTE, correlationId: "sync-quote", payload: { quoteId: 1, price: 100 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.QUOTE_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-quote");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.pass when the workflow throws synchronously", async () => {
+    const ws = connect(fakeServices({ workflow: { events: () => of(), createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => { throw new Error("boom"); }, accept: () => of(undefined) } as unknown as ServiceContainer["workflow"] }));
+    ws.receive({ type: CLIENT_MSG.PASS, correlationId: "sync-pass", payload: { quoteId: 1 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.PASS_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-pass");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.accept when the workflow throws synchronously", async () => {
+    const ws = connect(fakeServices({ workflow: { events: () => of(), createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => of(undefined), accept: () => { throw new Error("boom"); } } as unknown as ServiceContainer["workflow"] }));
+    ws.receive({ type: CLIENT_MSG.ACCEPT, correlationId: "sync-accept", payload: { quoteId: 1 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.ACCEPT_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-accept");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks admin.setThroughput when the throughput service throws synchronously", async () => {
+    const ws = connect(fakeServices({ throughput: { getThroughput: () => 0, setThroughput: () => { throw new Error("boom"); } } as unknown as ServiceContainer["throughput"] }));
+    ws.receive({ type: CLIENT_MSG.SET_THROUGHPUT, correlationId: "sync-tp", payload: { value: 42 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.SET_THROUGHPUT_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-tp");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
   });
 });
 

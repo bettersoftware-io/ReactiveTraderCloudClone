@@ -104,4 +104,26 @@ describe("PricingSimulator", () => {
     const engine = new PricingSimulator();
     await expect(firstValueFrom(engine.getPriceHistory("INVALID"))).rejects.toThrow("Unknown symbol");
   });
+
+  it("getPriceUpdates throws for unknown symbol", async () => {
+    const engine = new PricingSimulator();
+    await expect(firstValueFrom(engine.getPriceUpdates("INVALID"))).rejects.toThrow("Unknown symbol");
+  });
+
+  it("getRfqQuote throws for unknown symbol", async () => {
+    const engine = new PricingSimulator();
+    await expect(firstValueFrom(engine.getRfqQuote("INVALID", 4))).rejects.toThrow("Unknown symbol");
+  });
+
+  it("live ticks keep the price history capped at PRICE_HISTORY_SIZE", async () => {
+    vi.useFakeTimers();
+    const engine = new PricingSimulator();
+    const consumed = lastValueFrom(
+      engine.getPriceUpdates("EURUSD").pipe(take(PRICE_HISTORY_SIZE + 10), toArray()),
+    );
+    await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 12);
+    await consumed;
+    const history = await firstValueFrom(engine.getPriceHistory("EURUSD"));
+    expect(history).toHaveLength(PRICE_HISTORY_SIZE);
+  });
 });

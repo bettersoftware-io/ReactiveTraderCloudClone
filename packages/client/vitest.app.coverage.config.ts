@@ -14,6 +14,13 @@ export default mergeConfig(
         provider: "v8",
         // Count every src/app file so untested presenters/adapters surface at 0%.
         include: ["src/app/**"],
+        exclude: [
+          // Composition root: import.meta.env detection + `new X()` port/presenter
+          // wiring + DOM bootstrap; not unit-testable without a production refactor.
+          // Covered by tests/fullstack + UI smokes. Mirrors the server's
+          // src/index.ts / serviceContainer.ts coverage exclude.
+          "src/app/composition.ts",
+        ],
         reporter: ["text", "html", "lcov"],
         reportsDirectory: "reports/app/coverage",
       },

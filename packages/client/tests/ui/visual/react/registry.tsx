@@ -9,6 +9,9 @@ import { RfqTilesPanel } from "../../../../src/ui/credit/rfqTiles/RfqTilesPanel"
 import { NewRfqForm } from "../../../../src/ui/credit/newRfq/NewRfqForm";
 import { CreditBlotter } from "../../../../src/ui/credit/blotter/CreditBlotter";
 import { SellSidePanel } from "../../../../src/ui/credit/sellSide/SellSidePanel";
+import { RfqCard } from "../../../../src/ui/credit/rfqTiles/RfqCard";
+import { CreditWorkspace } from "../../../../src/ui/credit/CreditWorkspace";
+import { AdminPanel } from "../../../../src/ui/admin/AdminPanel";
 import { App } from "../../../../src/ui/App";
 import { fixtures } from "../shared/fixtures";
 
@@ -21,6 +24,11 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     const pair = fixtures[fixtureKey].currencyPairs[0];
     return <Tile pair={pair} showChart={false} />;
   },
+  // Same Tile component with the sparkline shown (TileChart sub-component).
+  TileChart: (fixtureKey) => {
+    const pair = fixtures[fixtureKey].currencyPairs[0];
+    return <Tile pair={pair} showChart={true} />;
+  },
   AnalyticsPanel: () => <AnalyticsPanel />,
   ConnectionOverlay: () => <ConnectionOverlay />,
   LiveRatesPanel: () => <LiveRatesPanel />,
@@ -29,5 +37,24 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   NewRfqForm: () => <NewRfqForm onCreated={() => {}} />,
   CreditBlotter: () => <CreditBlotter />,
   SellSidePanel: () => <SellSidePanel />,
+  // Prop-driven single RFQ card: pull the fixture's lone rfq + its quotes.
+  RfqCard: (fixtureKey) => {
+    const data = fixtures[fixtureKey];
+    const rfq = data.rfqs[0];
+    const quotes = data.quotesForRfq[rfq.id] ?? [];
+    const instrument = data.instruments.find((i) => i.id === rfq.instrumentId);
+    return (
+      <RfqCard
+        rfq={rfq}
+        quotes={quotes}
+        instrument={instrument}
+        dealers={data.dealers}
+        onAccept={() => {}}
+        onDismiss={() => {}}
+      />
+    );
+  },
+  CreditWorkspace: () => <CreditWorkspace />,
+  AdminPanel: () => <AdminPanel />,
   App: () => <App />,
 };

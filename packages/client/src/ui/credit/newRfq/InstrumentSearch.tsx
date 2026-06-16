@@ -54,6 +54,7 @@ export function InstrumentSearch({ instruments, selected, onSelect }: Instrument
       ) : (
         <>
           <input
+            data-testid="instrument-search-input"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
@@ -85,6 +86,7 @@ export function InstrumentSearch({ instruments, selected, onSelect }: Instrument
               {results.map((inst) => (
                 <div
                   key={inst.id}
+                  data-testid={`instrument-result-${inst.id}`}
                   onClick={() => handleSelect(inst)}
                   style={{
                     padding: "6px 8px",

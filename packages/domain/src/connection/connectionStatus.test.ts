@@ -33,6 +33,12 @@ describe("nextConnectionStatus", () => {
     ).toBe(ConnectionStatus.OFFLINE_DISCONNECTED);
   });
 
+  it("CONNECTING -> OFFLINE_DISCONNECTED on browserOffline", () => {
+    expect(
+      nextConnectionStatus(ConnectionStatus.CONNECTING, { type: "browserOffline" }),
+    ).toBe(ConnectionStatus.OFFLINE_DISCONNECTED);
+  });
+
   it("IDLE_DISCONNECTED ignores gatewayDisconnected (idle takes precedence)", () => {
     expect(
       nextConnectionStatus(ConnectionStatus.IDLE_DISCONNECTED, { type: "gatewayDisconnected" }),

@@ -13,6 +13,7 @@ export function RfqFilterTabs({ selected, onChange }: RfqFilterTabsProps) {
       {FILTERS.map((f) => (
         <button
           key={f}
+          data-testid={`rfq-filter-${f}`}
           onClick={() => onChange(f)}
           style={{
             padding: "4px 10px",

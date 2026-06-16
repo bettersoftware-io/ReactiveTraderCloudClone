@@ -1,4 +1,4 @@
-# Visual coverage gaps — snapshot 2026-06-14
+# Visual coverage gaps — snapshot 2026-06-16
 
 One-time inventory of `src/ui` components and conditional branches the **visual**
 tier does not render, i.e. that have **no golden snapshot**. Produced by reading
@@ -6,85 +6,113 @@ the istanbul report from
 `pnpm --filter @rtc/client test:ui:visual:vitest-browser:react:coverage`
 (report: `reports/ui/visual/coverage/index.html`).
 
-**This is a point-in-time snapshot, not a live document.** Writing the scenarios
-to close these gaps is deferred follow-up work.
+**This is a point-in-time snapshot, not a live document.** It was refreshed after
+the Phase V deterministic golden batch (21 scenarios) plus the testid-gated
+interaction batch (11 scenarios) landed. The remaining rows are non-deterministic
+timer/transition states. The blotter sort/filter, RFQ "All" filter, and new-RFQ
+form states are now snapshotted — the user authorized **`data-testid`-only**
+production additions (no logic/markup changes) so the runner-neutral
+`scenarioActions` table can drive them.
 
 **How to read it:** an uncovered branch is *definitely* unsnapshotted
 (false-negative-free). A branch shown as covered was rendered into *some* captured
 frame, which does NOT guarantee a dedicated scenario asserts that exact state.
 
-**How to regenerate:** run the command above, then for every file with
-`% Funcs` or `% Branch` < 100, list the missing state below.
+**Denominator:** the coverage config (`vitest-browser.coverage.config.ts`) was
+narrowed in Phase V to `src/ui/**/*.tsx` only — the presentational layer. Pure
+`.ts` logic/hook files (sort/filter/CSV/state-machine hooks) are covered by the
+unit/contract tiers, not here; see the "Utility logic" table below for the list.
 
-| File | Gap (function / branch) | Visual state it represents | Suggested scenario name |
-|---|---|---|---|
-| `fx/liveRates/tile/TileRfq.tsx` | whole file at 0% funcs/branch | RFQ-notional tile body: Initiate-RFQ button, "Awaiting Price…", two-sided quote with countdown, "Quote expired" — none rendered | `tile/rfq-init`, `tile/rfq-requested`, `tile/rfq-received`, `tile/rfq-rejected` |
-| `fx/liveRates/tile/RfqCountdown.tsx` | whole file at 0% funcs/branch; both arms of `fraction > 0.3` (primary vs aware colour) | countdown progress bar in normal (blue) and low-time (amber) states | `tile/rfq-received` (full bar) + `tile/rfq-received-expiring` (low-time amber arm) |
-| `fx/liveRates/tile/TileConfirmation.tsx` | 12.5% stmts, 3.12% branch; `ConfirmationContent` arms (started / tooLong / timeout / Done / Rejected / Timeout / CreditExceeded) all uncovered | the post-execution confirmation banner in each execution outcome | `tile/confirm-done`, `tile/confirm-rejected`, `tile/confirm-too-long`, `tile/confirm-credit-exceeded` |
-| `fx/liveRates/tile/Tile.tsx` | 52% branch; `notional.isRfq` arm, the `!isBusy` gate, and `notionalDisabled` arm uncovered | the RFQ tile layout and the busy/disabled-notional tile (only the plain price tile + loading are snapshotted) | `tile/rfq-init`, `tile/executing` |
-| `fx/liveRates/tile/TileChart.tsx` | 33.33% branch; `isUp` false arm + empty-path (`history.length < 2`) arm uncovered | the sparkline drawn red (down trend) and the empty/insufficient-history chart | `tile/chart-down`, `tile/chart-empty` |
-| `fx/liveRates/tile/TilePrice.tsx` | 70% branch; `movement` DOWN and NONE colour arms uncovered (only UP rendered) | bid/ask price buttons coloured for a down-tick and for a flat/no-movement tick | `tile/eurusd-down`, `tile/eurusd-flat` |
-| `fx/liveRates/tile/TileNotional.tsx` | 37.5% branch; `!notional.isDefault` (reset button) and `notional.error` (inline error) arms uncovered | the notional input showing the reset (↺) button and the validation-error state | `tile/notional-edited`, `tile/notional-error` |
-| `fx/liveRates/ViewToggle.tsx` | 33.33% branch; the `mode === "price"` label/title arm uncovered | the view toggle showing its "Chart" label (price-mode), not the default "Price" label | `live-rates/price-view` |
-| `fx/liveRates/LiveRatesPanel.tsx` | 83% branch; the stored-view-mode (`localStorage` = price) read arm uncovered | the panel restored into price-view mode from storage | `live-rates/price-view` |
-| `fx/blotter/FxBlotter.tsx` | 50% branch; the active-filter-label arm (line 107) and the "No trades match the current filters" empty-after-filter arm (line 167) uncovered | the blotter showing its "Filtered: …" badge, and the no-rows-match-filters empty state | `fx-blotter/filtered`, `fx-blotter/no-match` |
-| `fx/blotter/BlotterHeader.tsx` | 33% funcs, 22% branch; `SortIndicator` (▲/▼) and the open `FilterPanel` popover uncovered | header showing a sort arrow and the open per-column filter popover | `fx-blotter/sorted`, `fx-blotter/filter-open` |
-| `fx/blotter/BlotterRow.tsx` | 57% funcs; the **hover** background arm (line 29) uncovered — the "new trade" highlight arm (line 27) IS covered | a row in its hover state (interaction-driven; hard to snapshot statically) | `fx-blotter/row-hover` |
-| `fx/blotter/columnFilter/DateFilter.tsx` | 0% funcs / 0% branch (whole file) | the date-column filter popover (and its inRange arm) | `fx-blotter/date-filter-open` |
-| `fx/blotter/columnFilter/NumberFilter.tsx` | 0% funcs / 0% branch (whole file) | the number-column filter popover (and its inRange arm) | `fx-blotter/number-filter-open` |
-| `fx/blotter/columnFilter/SetFilter.tsx` | 0% funcs / 0% branch (whole file) | the set/checkbox-column filter popover | `fx-blotter/set-filter-open` |
-| `credit/newRfq/InstrumentSearch.tsx` | 22% funcs, 30% branch; the `selected` summary arm and the open results-dropdown arm uncovered | the instrument typeahead with a selection shown, and with the live results dropdown open | `credit/new-rfq-instrument-selected`, `credit/new-rfq-search-open` |
-| `credit/newRfq/DealerSelection.tsx` | 50% funcs, 0% branch; `selectedIds.has` checked/unchecked arms uncovered | the dealer checkbox list with some dealers checked | `credit/new-rfq-dealers-selected` |
-| `credit/newRfq/NewRfqForm.tsx` | 57% funcs, 48% branch; validation-error and submit-enabled branches uncovered | the new-RFQ form in its filled/valid and error states (only the empty form is snapshotted) | `credit/new-rfq-filled`, `credit/new-rfq-invalid` |
-| `credit/newRfq/QuantityInput.tsx` | 50% branch; the `error` arm uncovered | the quantity field showing its validation error | `credit/new-rfq-invalid` |
-| `credit/rfqTiles/RfqCard.tsx` | 29% branch; `stateLabel`/`stateBadgeColor` arms for Closed/Expired/Cancelled and the `canDismiss` dismiss-button arm uncovered | RFQ cards in Done/Expired/Cancelled states with the dismiss control | `credit/rfq-tiles-done`, `credit/rfq-tiles-expired`, `credit/rfq-tiles-cancelled` |
-| `credit/rfqTiles/QuoteCard.tsx` | 61% branch; the accepted / passed / rejected `stateColor` + opacity arms uncovered | quote rows coloured for accepted (green tint), passed, and rejected outcomes | `credit/rfq-tiles-accepted`, `credit/rfq-tiles-passed` |
-| `credit/rfqTiles/RfqTilesPanel.tsx` | 44% branch; the non-"Live" filter path and empty-after-filter arm uncovered | the panel filtered to a non-Live tab, and the empty-state when no RFQs match | `credit/rfq-tiles-all`, `credit/rfq-tiles-empty` |
-| `credit/sellSide/TradeTicket.tsx` | 25% funcs, 25% branch; `isActive` quoting form vs `hasResponded`/`submitted` responded arms; passed / quoted / cancelled / expired status arms uncovered | the sell-side ticket in active (price entry) vs already-responded (passed / quoted / cancelled / expired) states | `credit/sell-side-active`, `credit/sell-side-responded` |
-| `credit/sellSide/SellSidePanel.tsx` | 83% branch; the empty arm (`adaptiveBankId === undefined \|\| rfqs.length === 0`) uncovered | the "No RFQs for Adaptive Bank" empty state | `credit/sell-side-empty` |
-| `credit/CreditWorkspace.tsx` | 50% funcs; the `new-rfq` and `sell-side` view arms uncovered (only `tiles` rendered) | the workspace with the New-RFQ and Sell-Side sub-views active | `credit/workspace-new-rfq`, `credit/workspace-sell-side` |
-| `credit/blotter/CreditBlotter.tsx` | 71% branch; the empty-state and non-default row-state arms uncovered | the credit blotter empty, and rows in their various terminal states | `credit/blotter-empty` |
-| `fx/analytics/AnalyticsPanel.tsx` | 75% branch (line 32); the empty/no-position arm uncovered | the analytics panel with no open positions | `analytics/empty` |
-| `fx/analytics/PnlValue.tsx` | 50% branch; the negative-value arm uncovered (only positive P&L rendered) | a P&L figure styled negative (red, "-" prefix) | `analytics/negative-pnl` |
-| `fx/analytics/PnlChart.tsx` | 68% branch | the negative-line colour arm (line 73) and the `< 2`-point empty/insufficient-series arms (lines 12, 33, 47) | `analytics/negative-pnl`, `analytics/pnl-empty` |
-| `fx/analytics/PairPnlBars.tsx` | 80% branch | the `formatPnl` ≥1m / ≥1k magnitude-abbreviation arms (lines 9–10) — the +/- bar-colour arms are covered | `analytics/large-pnl` |
-| `fx/analytics/PositionBubbles.tsx` | 87% branch (line 14) | the `maxAbsPnl === 0` degenerate arm (all-flat positions → min-radius bubbles) — the +/- sign arms are covered | `analytics/flat-positions` |
-| `fx/admin/AdminPanel.tsx` (`admin/AdminPanel.tsx`) | 33% funcs, 27% branch; the loaded (slider) body uncovered — only the `loading` arm captured by the stubbed `app/admin` scenario | the throughput slider in its loaded state | `app/admin-loaded` |
-| `shell/stale/StaleIndicator.tsx` | 75% branch; the `stale` overlay arm uncovered | a tile with the "Reconnecting…" stale overlay shown | `tile/stale` |
-| `shell/theme/ThemeProvider.tsx` | 70% branch (lines 49–68); the non-default / system-preference theme arms uncovered | the provider resolving to the non-seeded theme path | (provider logic — see note) |
+Current headline (2026-06-16, `src/ui/**/*.tsx`):
+**83.75% stmts / 75.96% branch / 78.19% funcs / 85.88% lines.** The residual gap
+is now dominated by the timer/transition/runtime-only states below (RFQ tile state
+machine, countdown, confirmation, staleness overlay), which a static screenshot
+cannot pin deterministically — those are covered by the unit/contract tiers.
 
-## Interaction handlers not exercised by the visual tier
+## Closed by the Phase V deterministic batch
 
-These components are **fully branch-covered** (every visual arm `BRH == BRF`),
-so they have **no missing snapshot**. Their only gap is an uncovered event
-**handler** (a `< 100% funcs` figure). A static visual snapshot can't capture a
-click/change/hover callback, so these get **no visual scenario** — drive the
-handler from the unit/contract tier instead.
+The following gaps from the 2026-06-14 snapshot now have a dedicated golden and
+are no longer listed:
 
-| File | Coverage | Uncovered handler |
+- `TilePrice.tsx` DOWN/NONE colour arms → `tile/eurusd-down`, `tile/eurusd-flat`
+- `TileChart.tsx` down-trend + empty-path arms → `tile/chart-down`, `tile/chart-empty`
+- `ViewToggle.tsx` / `LiveRatesPanel.tsx` price-mode arm → `live-rates/price-view`
+- `AnalyticsPanel.tsx` empty arm + `PnlValue`/`PnlChart` negative arms → `analytics/negative-pnl`, `analytics/empty`
+- `PositionBubbles.tsx` all-flat degenerate arm → `analytics/flat-positions`
+- `RfqCard.tsx` Done/Expired/Cancelled badge + dismiss arms → `credit/rfq-tiles-{done,expired,cancelled}`
+- `QuoteCard.tsx` accepted/passed/rejected colour arms → `credit/rfq-tiles-{accepted,passed}`
+- `RfqTilesPanel.tsx` empty-after-filter arm → `credit/rfq-tiles-empty`
+- `TradeTicket.tsx` active vs responded arms → `credit/sell-side-{active,responded}`
+- `SellSidePanel.tsx` empty arm → `credit/sell-side-empty`
+- `CreditBlotter.tsx` empty arm → `credit/blotter-empty`
+- `CreditWorkspace.tsx` new-rfq / sell-side view arms → `credit/workspace-{new-rfq,sell-side}`
+- `AdminPanel.tsx` loaded slider arm → `admin/panel-loaded`
+
+## Closed by the testid-gated interaction batch (2026-06-16)
+
+These were previously listed as testid-gated residual. With the user's
+authorization of **`data-testid`-only** production additions (pure attribute
+additions, no logic/markup change), the runner-neutral `scenarioActions` table
+now drives them and each has a dedicated golden across all three runners:
+
+- `fx/blotter/BlotterHeader.tsx` sort + filter-toggle → `fx-blotter/sorted`, `fx-blotter/filter-{date,number,set}`
+- `fx/blotter/FxBlotter.tsx` "Filtered: …" badge + no-rows-match empty arm → `fx-blotter/filtered`, `fx-blotter/no-match`
+- `fx/blotter/columnFilter/{Date,Number,Set}Filter.tsx` popover render → `fx-blotter/filter-{date,number,set}` (+ NumberFilter apply via `fx-blotter/filtered`/`no-match`)
+- `credit/rfqTiles/RfqFilterTabs.tsx` + `RfqTilesPanel.tsx` "All" filter tab → `credit/rfq-tiles-all`
+- `credit/newRfq/InstrumentSearch.tsx` open-results dropdown + selected summary → `credit/new-rfq-search-open`, `credit/new-rfq-instrument-selected`
+- `credit/newRfq/NewRfqForm.tsx` + `QuantityInput.tsx` filled/valid + validation-error → `credit/new-rfq-filled`, `credit/new-rfq-invalid`
+
+## Residual — deliberately unsnapshotted
+
+### Still testid-gated / interaction-only (covered by the contract tier)
+
+Reachable only by clicking/typing into a control with **no `data-testid`** that
+was out of this batch's scope. The sociable contract tier (`tests/ui/contract/`)
+drives these handlers directly, so the behaviour is covered — only the *pixel* is
+not. (A future testid-only batch could lift these into goldens.)
+
+| File | Uncovered visual state | Covered by |
 |---|---|---|
-| `fx/liveRates/tile/TileExecution.tsx` | 100% branch, 33% funcs | the buy/sell `onClick` handlers (both arms of the `disabled` styling are already rendered) |
-| `fx/liveRates/CurrencyFilter.tsx` | 100% branch, 66% funcs | the category-tab `onChange` handler (the `selected === cat` highlight arm is already rendered) |
-| `fx/blotter/QuickFilter.tsx` | no branches, 50% funcs | the input `onChange` handler (component has no conditional rendering) |
-| `credit/rfqTiles/RfqFilterTabs.tsx` | 100% branch, 66% funcs | the tab `onChange` handler (the `selected === f` highlight arm is rendered for the selected tab) |
+| `fx/blotter/columnFilter/{Date,Number}Filter.tsx` | `inRange` two-input arm + Reset path | contract tier |
+| `fx/blotter/columnFilter/SetFilter.tsx` | checkbox toggle + apply (subset) arm | contract tier |
+| `fx/blotter/QuickFilter.tsx` | input `onChange` handler | contract tier |
+| `credit/newRfq/DealerSelection.tsx` | dealer checkbox checked/unchecked toggle arms | contract tier |
+| `credit/newRfq/NewRfqForm.tsx` | submit/confirmation success arm (timer + RPC) | contract tier |
+| `fx/liveRates/tile/TileExecution.tsx` | buy/sell `onClick` handlers | contract tier |
+| `fx/liveRates/tile/TileNotional.tsx` | reset (↺) button + inline-error arms | contract tier |
+| `fx/liveRates/CurrencyFilter.tsx` | category-tab `onChange` handler | contract tier |
+
+### Timer / transition / runtime-only states (non-deterministic)
+
+These render only after a timer fires, a transition completes, or a hover/
+runtime preference resolves — a static screenshot can't pin them deterministically.
+
+| File | Uncovered visual state | Why no golden |
+|---|---|---|
+| `fx/liveRates/tile/TileRfq.tsx` | Initiate-RFQ / awaiting / received / expired tile body | timer + execution-state-machine driven |
+| `fx/liveRates/tile/RfqCountdown.tsx` | countdown bar (normal + low-time amber) | timer-driven |
+| `fx/liveRates/tile/TileConfirmation.tsx` | post-execution confirmation banner (each outcome) | execution-state-machine driven |
+| `fx/liveRates/tile/Tile.tsx` | RFQ-notional layout + busy/disabled-notional arms | RFQ/execution state machine |
+| `fx/blotter/BlotterRow.tsx` | row hover-background arm | hover-only (interaction, not a static state) |
+| `shell/stale/StaleIndicator.tsx` | "Reconnecting…" stale overlay arm | staleness-timer driven |
+| `shell/theme/ThemeProvider.tsx` | non-default / system-preference theme arms | `system-preference` theme unimplemented; runtime media-query |
 
 ## Utility logic not exercised by the visual tier
 
-These are pure logic / data files, not rendered components. Their uncovered
-lines are **code the visual tier doesn't drive**, not *missing snapshots* — a
-util branch has no "visual state", so they get no scenario name. Listed for
-completeness; cover them in the unit/contract tiers instead.
+Pure logic / data / hook files (now excluded from the visual denominator — the
+config includes `*.tsx` only). Their uncovered lines are **code the visual tier
+doesn't drive**, not *missing snapshots*. Cover them in the unit/contract tiers.
 
-| File | Coverage | Note |
-|---|---|---|
-| `fx/blotter/csvExport.ts` | 0% / 0% | CSV export (Blob/anchor click) — never invoked by a snapshot |
-| `fx/blotter/columnSort.ts` | 13% / 10% | sort-direction cycling + comparator logic |
-| `fx/blotter/columnFilter/filterState.ts` | 9% / 5% | filter predicate construction/application |
-| `fx/blotter/blotterColumns.ts` | 100% funcs / 85% branch (line 32) | one `formatCellValue` arm unexercised |
-| `admin/hooks/useThroughput.ts` | 60% funcs / 31% branch | fetch/poll hook — stubbed away in the visual `app/admin` scenario |
-| `fx/liveRates/tile/hooks/useNotional.ts` | 60% funcs / 0% branch | notional parse/validate hook |
-| `fx/liveRates/tile/hooks/useTileState.ts` | 25% funcs / 25% branch | execution state machine |
-| `fx/liveRates/tile/hooks/useRfqState.ts` | 25% funcs / 14% branch | RFQ state machine |
-| `fx/liveRates/tile/hooks/useExecuteTrade.ts` | 50% funcs | trade-execution side effect |
-| `fx/liveRates/tile/hooks/useRfqQuote.ts` | 50% funcs | RFQ quote request side effect |
-| `shell/stale/useStaleDetection.ts` | 100% funcs / 50% branch | staleness timer logic (drives the `StaleIndicator` overlay above) |
+| File | Note |
+|---|---|
+| `fx/blotter/csvExport.ts` | CSV export (Blob/anchor click) — never invoked by a snapshot |
+| `fx/blotter/columnSort.ts` | sort-direction cycling + comparator logic |
+| `fx/blotter/columnFilter/filterState.ts` | filter predicate construction/application |
+| `fx/blotter/blotterColumns.ts` | one `formatCellValue` arm unexercised |
+| `admin/hooks/useThroughput.ts` | fetch/poll hook — stubbed away in the visual admin scenario |
+| `fx/liveRates/tile/hooks/useNotional.ts` | notional parse/validate hook |
+| `fx/liveRates/tile/hooks/useTileState.ts` | execution state machine |
+| `fx/liveRates/tile/hooks/useRfqState.ts` | RFQ state machine |
+| `fx/liveRates/tile/hooks/useExecuteTrade.ts` | trade-execution side effect |
+| `fx/liveRates/tile/hooks/useRfqQuote.ts` | RFQ quote request side effect |
+| `shell/stale/useStaleDetection.ts` | staleness timer logic |

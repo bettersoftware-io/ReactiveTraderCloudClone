@@ -9,24 +9,27 @@ import base from "./vitest-browser.config";
 // supported in browser mode); istanbul also gives truer branch granularity,
 // which is exactly what a branch-level gap-finder needs.
 //
-// Denominator = src/ui minus branchless glue (no conditional render path a
-// scenario could miss). Charts and full-page roots (App, Workspace,
-// CreditWorkspace, PnlChart, PositionBubbles, PairPnlBars, TileChart) stay IN —
-// they are exactly what this tier uniquely renders.
+// Denominator = presentational components only (src/ui/**/*.tsx). The .tsx-only
+// include automatically drops the .ts logic/hook files (csvExport, columnSort,
+// filterState, use*.ts, etc.) — those carry no JSX render path a golden could
+// capture and are covered by the app / contract tiers. Charts and full-page
+// roots (App, Workspace, CreditWorkspace, PnlChart, PositionBubbles,
+// PairPnlBars, TileChart) stay IN — they are exactly what this tier uniquely
+// renders.
 export default mergeConfig(
   base,
   defineConfig({
     test: {
       coverage: {
         provider: "istanbul",
-        include: ["src/ui/**"],
+        include: ["src/ui/**/*.tsx"],
         exclude: [
           "src/ui/hooks/HooksProvider.tsx", // pure context provider, no branches
-          "src/ui/hooks/createAppHooks.ts", // real presenter wiring; never run in
-                                            // the visual tier (renders via
-                                            // buildFakeHooks)
-          "src/ui/shell/theme/tokens.ts", // CSS-var constants, no logic
           "src/ui/**/*.test.{ts,tsx}", // co-located unit tests; never the SUT
+          "src/ui/fx/liveRates/tile/RfqCountdown.tsx", // timer-driven countdown; non-deterministic, no golden
+          "src/ui/fx/liveRates/tile/TileConfirmation.tsx", // transient confirmation/transition state, not snapshotted
+          "src/ui/fx/liveRates/tile/TileRfq.tsx", // transient RFQ-in-tile state, not snapshotted
+          "src/ui/shell/stale/StaleIndicator.tsx", // timer-driven stale arm; non-deterministic, not snapshotted
         ],
         reporter: ["text", "html", "lcov"],
         reportsDirectory: "reports/ui/visual/coverage",
