@@ -47,4 +47,12 @@ export const scenarioActions: Record<string, ScenarioAction> = {
     assertAriaLabelOf: "theme-toggle",
     expectAriaLabel: "Switch to dark theme",
   },
+  // Toggle the live-rates view from chart to price; the button label flips to
+  // "Chart" (offering a switch back), proving the price-mode arm rendered.
+  "live-rates/price-view": { click: "view-toggle", waitForText: "Chart" },
+  // Credit workspace sub-views: click the tab, wait for that view's heading.
+  "credit/workspace-new-rfq": { click: "credit-tab-new-rfq", waitForText: "Submit RFQ" },
+  "credit/workspace-sell-side": { click: "credit-tab-sell-side", waitForText: "Sell Side (Adaptive Bank)" },
+  // Admin panel loaded state: stub the throughput fetch so the slider renders.
+  "admin/panel-loaded": { stubThroughput: 250, waitForText: "Throughput Control" },
 };

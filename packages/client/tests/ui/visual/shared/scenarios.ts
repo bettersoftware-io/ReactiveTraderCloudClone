@@ -33,4 +33,34 @@ export const scenarios: Record<string, Scenario> = {
   "app/admin": { componentKey: "App", fixtureKey: "app-fx" },
   // Light-theme variant of the FX page (spec seeds localStorage rtc-theme=light).
   "app/fx-light": { componentKey: "App", fixtureKey: "app-fx" },
+
+  // --- Phase V deterministic golden scenarios ---
+  // FX tiles: TilePrice DOWN / NONE colour arms + TileChart down/empty arms.
+  "tile/eurusd-down": { componentKey: "Tile", fixtureKey: "tile-eurusd-down" },
+  "tile/eurusd-flat": { componentKey: "Tile", fixtureKey: "tile-eurusd-flat" },
+  "tile/chart-down": { componentKey: "TileChart", fixtureKey: "tile-chart-down" },
+  "tile/chart-empty": { componentKey: "TileChart", fixtureKey: "tile-chart-empty" },
+  // FX live-rates: toggle to price view (ViewToggle "Chart" label / stored-mode arm).
+  "live-rates/price-view": { componentKey: "LiveRatesPanel", fixtureKey: "live-rates-populated" },
+  // FX analytics: negative / empty / all-flat arms.
+  "analytics/negative-pnl": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-negative" },
+  "analytics/empty": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-empty" },
+  "analytics/flat-positions": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-flat" },
+  // Credit RFQ cards: terminal-state badges + accepted/passed quote colours.
+  "credit/rfq-tiles-done": { componentKey: "RfqCard", fixtureKey: "rfq-done" },
+  "credit/rfq-tiles-expired": { componentKey: "RfqCard", fixtureKey: "rfq-expired" },
+  "credit/rfq-tiles-cancelled": { componentKey: "RfqCard", fixtureKey: "rfq-cancelled" },
+  "credit/rfq-tiles-accepted": { componentKey: "RfqCard", fixtureKey: "rfq-accepted" },
+  "credit/rfq-tiles-passed": { componentKey: "RfqCard", fixtureKey: "rfq-passed" },
+  "credit/rfq-tiles-empty": { componentKey: "RfqTilesPanel", fixtureKey: "rfq-tiles-empty" },
+  // Credit sell-side ticket arms + empty; credit blotter empty.
+  "credit/sell-side-active": { componentKey: "SellSidePanel", fixtureKey: "sell-side-active" },
+  "credit/sell-side-responded": { componentKey: "SellSidePanel", fixtureKey: "sell-side-responded" },
+  "credit/sell-side-empty": { componentKey: "SellSidePanel", fixtureKey: "sell-side-empty" },
+  "credit/blotter-empty": { componentKey: "CreditBlotter", fixtureKey: "credit-blotter-empty" },
+  // Credit workspace sub-views (click the credit-tab-* control).
+  "credit/workspace-new-rfq": { componentKey: "CreditWorkspace", fixtureKey: "credit-populated" },
+  "credit/workspace-sell-side": { componentKey: "CreditWorkspace", fixtureKey: "credit-populated" },
+  // Admin panel loaded (slider) state — throughput fetch stubbed.
+  "admin/panel-loaded": { componentKey: "AdminPanel", fixtureKey: "app-fx" },
 };
