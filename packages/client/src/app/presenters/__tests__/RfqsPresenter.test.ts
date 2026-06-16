@@ -1,4 +1,4 @@
-import { firstValueFrom, of, toArray } from "rxjs";
+import { firstValueFrom, lastValueFrom, of, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
 import {
   Direction, RfqState,
@@ -92,5 +92,55 @@ describe("RfqsPresenter", () => {
       await firstValueFrom(presenter.quoteRfq({ quoteId: 99, price: 101.5 })),
     ).toBeUndefined();
     expect(received).toEqual({ quoteId: 99, price: 101.5 });
+  });
+
+  it("allQuotes$ emits the quotes map keyed by quote id", async () => {
+    const events: RfqEvent[] = [
+      { type: "startOfStateOfTheWorld" },
+      { type: "quoteCreated", payload: quote(10, 1) },
+      { type: "quoteCreated", payload: quote(11, 2) },
+    ];
+    const presenter = new RfqsPresenter(port(events));
+    const map = await lastValueFrom(presenter.allQuotes$);
+    expect([...map.keys()].sort()).toEqual([10, 11]);
+    expect(map.get(10)?.rfqId).toBe(1);
+  });
+
+  it("re-emits rfqs$ across a length change (shallowArrayEquals length-mismatch arm)", async () => {
+    const events: RfqEvent[] = [
+      { type: "startOfStateOfTheWorld" },
+      { type: "rfqCreated", payload: rfq(1) },
+      { type: "endOfStateOfTheWorld" },
+      { type: "rfqCreated", payload: rfq(2) },
+    ];
+    const presenter = new RfqsPresenter(port(events));
+    const emissions = await firstValueFrom(presenter.rfqs$.pipe(toArray()));
+    const lengths = emissions.map((e) => e.length);
+    expect(lengths).toContain(1);
+    expect(lengths).toContain(2);
+  });
+
+  it("re-emits quotesForRfq$ when an element changes identity (element-diff arm)", async () => {
+    // quoteQuoted is the real "replace existing quote" RfqEvent variant; the
+    // reducer sets a NEW Quote object into a fresh Map, so the filtered array
+    // keeps length 1 but the element changes identity -> shallowArrayEquals
+    // fails on the element comparison -> re-emit.
+    const events: RfqEvent[] = [
+      { type: "startOfStateOfTheWorld" },
+      { type: "quoteCreated", payload: quote(20, 5) },
+      { type: "quoteQuoted", payload: quote(20, 5) },
+    ];
+    const presenter = new RfqsPresenter(port(events));
+    const emissions = await firstValueFrom(presenter.quotesForRfq$(5).pipe(toArray()));
+    const lenOne = emissions.filter((e) => e.length === 1);
+    expect(lenOne.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("quotesForRfq$ returns the same Observable instance on repeat calls (cache)", () => {
+    const presenter = new RfqsPresenter(port([]));
+    const first = presenter.quotesForRfq$(7);
+    const second = presenter.quotesForRfq$(7);
+    expect(second).toBe(first);
+    expect(presenter.quotesForRfq$(8)).not.toBe(first);
   });
 });
