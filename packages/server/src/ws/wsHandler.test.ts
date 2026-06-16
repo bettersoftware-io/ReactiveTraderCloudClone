@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { type Observable, of, interval, map, throwError } from "rxjs";
 import { Direction, TradeStatus, type RfqEvent } from "@rtc/domain";
 import {
@@ -607,6 +607,96 @@ describe("wsHandler protocol", () => {
 
     const after = ws.framesOfType(SERVER_MSG.PRICE_TICK).length;
     expect(after).toBe(before);
+  });
+});
+
+describe("wsHandler stream-error callbacks", () => {
+  it("logs and emits no frames when referenceData stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      referenceData: { getCurrencyPairs: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["referenceData"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_REFERENCE_DATA });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("ReferenceData stream error:", expect.any(Error));
+    expect(ws.framesOfType(SERVER_MSG.REFERENCE_DATA)).toHaveLength(0);
+    spy.mockRestore();
+  });
+
+  it("logs and emits no frames when pricing stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      pricing: { getPriceUpdates: () => throwError(() => new Error("boom")), getPriceHistory: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["pricing"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_PRICING, payload: { symbol: "EURUSD" } });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Pricing stream error:", expect.any(Error));
+    expect(ws.framesOfType(SERVER_MSG.PRICE_TICK)).toHaveLength(0);
+    spy.mockRestore();
+  });
+
+  it("logs and emits no frames when blotter stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      blotter: { getTradeStream: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["blotter"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_BLOTTER });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Blotter stream error:", expect.any(Error));
+    expect(ws.framesOfType(SERVER_MSG.BLOTTER)).toHaveLength(0);
+    spy.mockRestore();
+  });
+
+  it("logs and emits no frames when analytics stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      analytics: { getAnalytics: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["analytics"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_ANALYTICS, payload: { currency: "USD" } });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Analytics stream error:", expect.any(Error));
+    expect(ws.framesOfType(SERVER_MSG.ANALYTICS)).toHaveLength(0);
+    spy.mockRestore();
+  });
+
+  it("logs and emits no added frames when instruments stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      instruments: { getInstruments: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["instruments"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_INSTRUMENTS });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Instruments stream error:", expect.any(Error));
+    const types = ws.framesOfType(SERVER_MSG.INSTRUMENT_EVENT).map((m) => (m.payload as { type: string }).type);
+    expect(types).not.toContain("added");
+    expect(types).not.toContain("endOfStateOfTheWorld");
+    spy.mockRestore();
+  });
+
+  it("logs and emits no added frames when dealers stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      dealers: { getDealers: () => throwError(() => new Error("boom")) } as unknown as ServiceContainer["dealers"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_DEALERS });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Dealers stream error:", expect.any(Error));
+    const types = ws.framesOfType(SERVER_MSG.DEALER_EVENT).map((m) => (m.payload as { type: string }).type);
+    expect(types).not.toContain("added");
+    expect(types).not.toContain("endOfStateOfTheWorld");
+    spy.mockRestore();
+  });
+
+  it("logs and emits no frames when workflow stream errors", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ws = connect(fakeServices({
+      workflow: { events: () => throwError(() => new Error("boom")), createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => of(undefined), accept: () => of(undefined) } as unknown as ServiceContainer["workflow"],
+    }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+    await wait();
+    expect(spy).toHaveBeenCalledWith("Workflow stream error:", expect.any(Error));
+    expect(ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT)).toHaveLength(0);
+    spy.mockRestore();
   });
 });
 
