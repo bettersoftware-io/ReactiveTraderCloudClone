@@ -9,6 +9,8 @@ import type {
   QuoteRequest,
 } from "@rtc/domain";
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
+import { useMachine } from "../../../../src/ui/hooks/useMachine";
+import { createTileExecutionMachine } from "../../../../src/app/presenters/TileExecutionMachine";
 import type { World } from "../shared/harness/world";
 
 /** Subscribe a React component to a BehaviorSubject; re-render on each emission. */
@@ -82,5 +84,22 @@ export function reactHooks(world: World): AppHooks {
       const result = world.results.requestRfqQuote;
       return result ? of(result) : (EMPTY as Observable<RfqQuoteResult>);
     },
+    // Machine: the REAL createTileExecutionMachine, driven by a World-backed
+    // execute command that records inputs and emits the canned result (or errors
+    // to drive the timeout-confirmation path), faithfully exercising the
+    // relocated lifecycle through the same useMachine bridge the app uses.
+    useTileExecution: (pair: CurrencyPair) =>
+      useMachine(() =>
+        createTileExecutionMachine(pair, {
+          execute: (input: ExecuteTradeInput) => {
+            world.commands.executeTrade.push(input);
+            if (world.results.executeTradeThrows) {
+              return throwError(() => new Error("execute failed")) as Observable<ExecuteTradeResult>;
+            }
+            const result = world.results.executeTrade;
+            return result ? of(result) : (EMPTY as Observable<ExecuteTradeResult>);
+          },
+        }),
+      ),
   };
 }

@@ -7,6 +7,7 @@ import {
   type Rfq, type Quote, type PositionUpdates,
   type Instrument, type Dealer,
 } from "@rtc/domain";
+import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
 
 export interface AppData {
   prices: Record<string, Price | null>;
@@ -20,6 +21,8 @@ export interface AppData {
   instruments: readonly Instrument[];
   dealers: readonly Dealer[];
   connectionStatus: ConnectionStatus;
+  /** Tile execution overlay state; defaults to "ready" when omitted. */
+  tileExecution?: TileExecutionState;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

@@ -9,6 +9,20 @@ import {
   type RfqQuoteResult, type QuoteRequest,
 } from "@rtc/domain";
 import type { Presenters } from "../../app/composition";
+import type { Machine } from "./machine";
+import { useMachine } from "./useMachine";
+import type {
+  TileExecutionState,
+  TileExecutionIntents,
+} from "../../app/presenters/TileExecutionMachine";
+
+/** App-layer machine factories injected into the hooks seam. Each builds a
+ * fresh machine instance per component mount (useMachine owns its lifecycle). */
+export interface MachineFactories {
+  tileExecution: (
+    pair: CurrencyPair,
+  ) => Machine<TileExecutionState, TileExecutionIntents>;
+}
 
 export interface AppHooks {
   // Streams
@@ -31,9 +45,14 @@ export interface AppHooks {
   usePassQuote: () => (quoteId: number) => Observable<void>;
   useQuoteRfq: () => (request: QuoteRequest) => Observable<void>;
   useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => Observable<RfqQuoteResult>;
+  // Machines (app-layer RxJS behind the useMachine bridge)
+  useTileExecution: (pair: CurrencyPair) => { state: TileExecutionState } & TileExecutionIntents;
 }
 
-export function createAppHooks(presenters: Presenters): AppHooks {
+export function createAppHooks(
+  presenters: Presenters,
+  machines: MachineFactories,
+): AppHooks {
   const [usePrice] = bind(
     (pair: CurrencyPair) => presenters.priceStream.price$(pair),
     null,
@@ -97,5 +116,7 @@ export function createAppHooks(presenters: Presenters): AppHooks {
     usePassQuote: () => passQuote,
     useQuoteRfq: () => quoteRfq,
     useRequestRfqQuote: () => requestRfqQuote,
+    useTileExecution: (pair: CurrencyPair) =>
+      useMachine(() => machines.tileExecution(pair)),
   };
 }

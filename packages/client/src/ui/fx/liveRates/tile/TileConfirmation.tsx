@@ -1,8 +1,8 @@
 import { ExecutionStatus, Direction, type Trade } from "@rtc/domain";
-import type { TileState } from "./hooks/useTileState";
+import type { TileExecutionState } from "../../../../app/presenters/TileExecutionMachine";
 
 interface TileConfirmationProps {
-  state: TileState;
+  state: TileExecutionState;
   onDismiss: () => void;
 }
 
@@ -20,7 +20,7 @@ function formatNotional(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
-function ConfirmationContent({ state }: { state: TileState }) {
+function ConfirmationContent({ state }: { state: TileExecutionState }) {
   if (state.status === "started") {
     return <span>Executing...</span>;
   }

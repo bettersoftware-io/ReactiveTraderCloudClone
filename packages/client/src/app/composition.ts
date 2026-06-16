@@ -16,6 +16,8 @@ import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
 import { DealersPresenter } from "./presenters/DealersPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
 import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
+import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
+import type { MachineFactories } from "../ui/hooks/createAppHooks";
 
 import { WsAdapter } from "./adapters/WsAdapter";
 import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
@@ -90,4 +92,15 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     rfqQuote: new RfqQuotePresenter(ports.pricing),
   };
   return { presenters, ports };
+}
+
+/** Build the app-layer machine factories the hooks seam injects. Each factory
+ * spins up a fresh machine per component mount, wired to the presenters. */
+export function createMachineFactories(presenters: Presenters): MachineFactories {
+  return {
+    tileExecution: (pair) =>
+      createTileExecutionMachine(pair, {
+        execute: (input) => presenters.execution.execute(input),
+      }),
+  };
 }

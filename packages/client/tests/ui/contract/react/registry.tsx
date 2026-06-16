@@ -60,7 +60,7 @@ import { TileExecution as TileExecutionComponent } from "../../../../src/ui/fx/l
 import { TileNotional as TileNotionalComponent } from "../../../../src/ui/fx/liveRates/tile/TileNotional";
 import type { UseNotionalResult } from "../../../../src/ui/fx/liveRates/tile/hooks/useNotional";
 import { TileConfirmation as TileConfirmationComponent } from "../../../../src/ui/fx/liveRates/tile/TileConfirmation";
-import type { TileState } from "../../../../src/ui/fx/liveRates/tile/hooks/useTileState";
+import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
 import { RfqCountdown as RfqCountdownComponent } from "../../../../src/ui/fx/liveRates/tile/RfqCountdown";
 import { TileRfq as TileRfqComponent } from "../../../../src/ui/fx/liveRates/tile/TileRfq";
 import type { UseRfqStateResult } from "../../../../src/ui/fx/liveRates/tile/hooks/useRfqState";
@@ -284,7 +284,7 @@ export const registry = new Map<AnyToken, ElementFor>([
     TileConfirmation,
     (p) => (
       <TileConfirmationComponent
-        state={p.state as TileState}
+        state={p.state as TileExecutionState}
         onDismiss={(p.onDismiss as (() => void)) ?? (() => {})}
       />
     ),

@@ -7,6 +7,8 @@ import {
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import type { AppData } from "../shared/appData";
 
+const noop = (): void => {};
+
 export function buildFakeHooks(data: AppData): AppHooks {
   return {
     usePrice: (pair: CurrencyPair) => data.prices[pair.symbol] ?? null,
@@ -30,5 +32,11 @@ export function buildFakeHooks(data: AppData): AppHooks {
     useQuoteRfq: () => (_request: QuoteRequest) => EMPTY as Observable<void>,
     useRequestRfqQuote: () => (_symbol: string, _pipsPosition: number) =>
       EMPTY as Observable<RfqQuoteResult>,
+    // Machine: static snapshot for screenshots; intents are no-ops.
+    useTileExecution: () => ({
+      state: data.tileExecution ?? { status: "ready" },
+      execute: noop,
+      dismiss: noop,
+    }),
   };
 }
