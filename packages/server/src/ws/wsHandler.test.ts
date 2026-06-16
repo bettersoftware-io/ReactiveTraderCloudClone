@@ -725,6 +725,80 @@ describe("wsHandler workflow quote-event transforms", () => {
   }
 });
 
+describe("wsHandler RPC synchronous-throw handling", () => {
+  it("nacks rpc.executeTrade when execution throws synchronously", async () => {
+    const ws = connect(fakeServices({ execution: { executeTrade: () => { throw new Error("boom"); } } as unknown as ServiceContainer["execution"] }));
+    ws.receive({ type: CLIENT_MSG.EXECUTE_TRADE, correlationId: "sync-exec", payload: { currencyPair: "EURUSD", spotRate: 1.1, direction: Direction.Buy, notional: 1_000_000, dealtCurrency: "EUR" } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.EXECUTION_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-exec");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.getPriceHistory when pricing throws synchronously", async () => {
+    const ws = connect(fakeServices({ pricing: { getPriceUpdates: () => of(), getPriceHistory: () => { throw new Error("boom"); } } as unknown as ServiceContainer["pricing"] }));
+    ws.receive({ type: CLIENT_MSG.GET_PRICE_HISTORY, correlationId: "sync-ph", payload: { symbol: "EURUSD" } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.PRICE_HISTORY_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-ph");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.createRfq when the workflow throws synchronously", async () => {
+    const ws = connect(fakeServices({ workflow: { events: () => of(), createRfq: () => { throw new Error("boom"); }, cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => of(undefined), accept: () => of(undefined) } as unknown as ServiceContainer["workflow"] }));
+    ws.receive({ type: CLIENT_MSG.CREATE_RFQ, correlationId: "sync-rfq", payload: { instrumentId: 1, dealerIds: [1], quantity: 1_000_000, direction: Direction.Buy, expirySecs: 120 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.CREATE_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-rfq");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.cancelRfq when the workflow throws synchronously", async () => {
+    const ws = connect(fakeServices({ workflow: { events: () => of(), createRfq: () => of(1), cancelRfq: () => { throw new Error("boom"); }, quote: () => of(undefined), pass: () => of(undefined), accept: () => of(undefined) } as unknown as ServiceContainer["workflow"] }));
+    ws.receive({ type: CLIENT_MSG.CANCEL_RFQ, correlationId: "sync-cancel", payload: { rfqId: 1 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.CANCEL_RFQ_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-cancel");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.quote when the workflow throws synchronously", async () => {
+    const ws = connect(fakeServices({ workflow: { events: () => of(), createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => { throw new Error("boom"); }, pass: () => of(undefined), accept: () => of(undefined) } as unknown as ServiceContainer["workflow"] }));
+    ws.receive({ type: CLIENT_MSG.QUOTE, correlationId: "sync-quote", payload: { quoteId: 1, price: 100 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.QUOTE_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-quote");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.pass when the workflow throws synchronously", async () => {
+    const ws = connect(fakeServices({ workflow: { events: () => of(), createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => { throw new Error("boom"); }, accept: () => of(undefined) } as unknown as ServiceContainer["workflow"] }));
+    ws.receive({ type: CLIENT_MSG.PASS, correlationId: "sync-pass", payload: { quoteId: 1 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.PASS_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-pass");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks rpc.accept when the workflow throws synchronously", async () => {
+    const ws = connect(fakeServices({ workflow: { events: () => of(), createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => of(undefined), accept: () => { throw new Error("boom"); } } as unknown as ServiceContainer["workflow"] }));
+    ws.receive({ type: CLIENT_MSG.ACCEPT, correlationId: "sync-accept", payload: { quoteId: 1 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.ACCEPT_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-accept");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+
+  it("nacks admin.setThroughput when the throughput service throws synchronously", async () => {
+    const ws = connect(fakeServices({ throughput: { getThroughput: () => 0, setThroughput: () => { throw new Error("boom"); } } as unknown as ServiceContainer["throughput"] }));
+    ws.receive({ type: CLIENT_MSG.SET_THROUGHPUT, correlationId: "sync-tp", payload: { value: 42 } });
+    await wait();
+    const [resp] = ws.framesOfType(SERVER_MSG.SET_THROUGHPUT_RESPONSE);
+    expect(resp!.correlationId).toBe("sync-tp");
+    expect((resp!.payload as { type: string }).type).toBe("nack");
+  });
+});
+
 describe("expectShape helper", () => {
   it("passes when shapes match regardless of values", () => {
     expect(() => expectShape({ a: 1, b: "x" }, { a: 99, b: "y" })).not.toThrow();
