@@ -14,6 +14,7 @@ export function QuantityInput({ value, onChange, error }: QuantityInputProps) {
       </label>
       <input
         type="number"
+        data-testid="quantity-input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         max={CREDIT_MAX_QUANTITY_INPUT}

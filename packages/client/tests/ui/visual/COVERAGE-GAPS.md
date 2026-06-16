@@ -7,9 +7,12 @@ the istanbul report from
 (report: `reports/ui/visual/coverage/index.html`).
 
 **This is a point-in-time snapshot, not a live document.** It was refreshed after
-the Phase V deterministic golden batch (21 scenarios) landed; the remaining rows
-are either testid-gated interaction states (need a production `data-testid` edit,
-out of scope for visual goldens) or non-deterministic timer/transition states.
+the Phase V deterministic golden batch (21 scenarios) plus the testid-gated
+interaction batch (11 scenarios) landed. The remaining rows are non-deterministic
+timer/transition states. The blotter sort/filter, RFQ "All" filter, and new-RFQ
+form states are now snapshotted — the user authorized **`data-testid`-only**
+production additions (no logic/markup changes) so the runner-neutral
+`scenarioActions` table can drive them.
 
 **How to read it:** an uncovered branch is *definitely* unsnapshotted
 (false-negative-free). A branch shown as covered was rendered into *some* captured
@@ -21,10 +24,10 @@ narrowed in Phase V to `src/ui/**/*.tsx` only — the presentational layer. Pure
 unit/contract tiers, not here; see the "Utility logic" table below for the list.
 
 Current headline (2026-06-16, `src/ui/**/*.tsx`):
-**71.6% stmts / 64.17% branch / 61.17% funcs / 73.72% lines.** The residual gap
-is dominated by the testid-gated set below, each of which needs a production
-`src/` edit (a `data-testid` on an unlabelled control) that the visual-golden
-policy forbids — those states are covered by the sociable contract tier instead.
+**83.75% stmts / 75.96% branch / 78.19% funcs / 85.88% lines.** The residual gap
+is now dominated by the timer/transition/runtime-only states below (RFQ tile state
+machine, countdown, confirmation, staleness overlay), which a static screenshot
+cannot pin deterministically — those are covered by the unit/contract tiers.
 
 ## Closed by the Phase V deterministic batch
 
@@ -45,31 +48,36 @@ are no longer listed:
 - `CreditWorkspace.tsx` new-rfq / sell-side view arms → `credit/workspace-{new-rfq,sell-side}`
 - `AdminPanel.tsx` loaded slider arm → `admin/panel-loaded`
 
+## Closed by the testid-gated interaction batch (2026-06-16)
+
+These were previously listed as testid-gated residual. With the user's
+authorization of **`data-testid`-only** production additions (pure attribute
+additions, no logic/markup change), the runner-neutral `scenarioActions` table
+now drives them and each has a dedicated golden across all three runners:
+
+- `fx/blotter/BlotterHeader.tsx` sort + filter-toggle → `fx-blotter/sorted`, `fx-blotter/filter-{date,number,set}`
+- `fx/blotter/FxBlotter.tsx` "Filtered: …" badge + no-rows-match empty arm → `fx-blotter/filtered`, `fx-blotter/no-match`
+- `fx/blotter/columnFilter/{Date,Number,Set}Filter.tsx` popover render → `fx-blotter/filter-{date,number,set}` (+ NumberFilter apply via `fx-blotter/filtered`/`no-match`)
+- `credit/rfqTiles/RfqFilterTabs.tsx` + `RfqTilesPanel.tsx` "All" filter tab → `credit/rfq-tiles-all`
+- `credit/newRfq/InstrumentSearch.tsx` open-results dropdown + selected summary → `credit/new-rfq-search-open`, `credit/new-rfq-instrument-selected`
+- `credit/newRfq/NewRfqForm.tsx` + `QuantityInput.tsx` filled/valid + validation-error → `credit/new-rfq-filled`, `credit/new-rfq-invalid`
+
 ## Residual — deliberately unsnapshotted
 
-### Testid-gated interaction states (covered by the contract tier)
+### Still testid-gated / interaction-only (covered by the contract tier)
 
-Reachable only by clicking/typing into a control that has **no `data-testid`**.
-The runner-neutral `scenarioActions` table keys on testids; adding one is a
-production `src/` edit the visual-golden policy forbids. The sociable contract
-tier (`tests/ui/contract/`) drives these handlers directly, so the behaviour is
-covered — only the *pixel* is not. (Authorizing testid-only additions could lift
-these into goldens in a follow-up; see the plan's "Open decision".)
+Reachable only by clicking/typing into a control with **no `data-testid`** that
+was out of this batch's scope. The sociable contract tier (`tests/ui/contract/`)
+drives these handlers directly, so the behaviour is covered — only the *pixel* is
+not. (A future testid-only batch could lift these into goldens.)
 
 | File | Uncovered visual state | Covered by |
 |---|---|---|
-| `fx/blotter/BlotterHeader.tsx` | sort arrow (▲/▼) + open per-column filter popover | contract tier |
-| `fx/blotter/FxBlotter.tsx` | active-filter "Filtered: …" badge + no-rows-match empty arm | contract tier |
-| `fx/blotter/columnFilter/DateFilter.tsx` | date-column filter popover (inRange arm) | contract tier |
-| `fx/blotter/columnFilter/NumberFilter.tsx` | number-column filter popover (inRange arm) | contract tier |
-| `fx/blotter/columnFilter/SetFilter.tsx` | set/checkbox-column filter popover | contract tier |
+| `fx/blotter/columnFilter/{Date,Number}Filter.tsx` | `inRange` two-input arm + Reset path | contract tier |
+| `fx/blotter/columnFilter/SetFilter.tsx` | checkbox toggle + apply (subset) arm | contract tier |
 | `fx/blotter/QuickFilter.tsx` | input `onChange` handler | contract tier |
-| `credit/rfqTiles/RfqTilesPanel.tsx` | non-"Live" / "All" filter tab path | contract tier |
-| `credit/rfqTiles/RfqFilterTabs.tsx` | tab `onChange` handler | contract tier |
-| `credit/newRfq/NewRfqForm.tsx` | filled/valid + validation-error form states | contract tier |
-| `credit/newRfq/InstrumentSearch.tsx` | selected summary + open results dropdown | contract tier |
-| `credit/newRfq/DealerSelection.tsx` | dealer checkbox checked/unchecked arms | contract tier |
-| `credit/newRfq/QuantityInput.tsx` | quantity validation-error arm | contract tier |
+| `credit/newRfq/DealerSelection.tsx` | dealer checkbox checked/unchecked toggle arms | contract tier |
+| `credit/newRfq/NewRfqForm.tsx` | submit/confirmation success arm (timer + RPC) | contract tier |
 | `fx/liveRates/tile/TileExecution.tsx` | buy/sell `onClick` handlers | contract tier |
 | `fx/liveRates/tile/TileNotional.tsx` | reset (↺) button + inline-error arms | contract tier |
 | `fx/liveRates/CurrencyFilter.tsx` | category-tab `onChange` handler | contract tier |

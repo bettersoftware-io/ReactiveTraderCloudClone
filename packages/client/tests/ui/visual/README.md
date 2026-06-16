@@ -8,33 +8,43 @@ no presenters, no live streams — the dependency graph stops at `HooksProvider`
 - **Shell** — connection status bar, offline overlay, header/footer/tabs, theme.
 - **FX** — Tile (price up/down/flat, loading, and chart down/empty sparkline),
   LiveRatesPanel (chart **and** price view), AnalyticsPanel (populated,
-  loading, negative-PnL, empty, all-flat positions), FxBlotter (populated), and
-  the full App on the FX tab (dark **and** light theme).
-- **Credit** — RfqTilesPanel (populated + empty), the RfqCard terminal states
-  (done / expired / cancelled / accepted / passed), NewRfqForm, CreditBlotter
-  (populated + empty), SellSidePanel (active / responded / empty), the
-  CreditWorkspace sub-views (new-RFQ + sell-side tabs), and the full App on the
-  Credit tab.
+  loading, negative-PnL, empty, all-flat positions), FxBlotter (populated,
+  sorted, filtered, no-match, and each filter-type popover — date / number /
+  set), and the full App on the FX tab (dark **and** light theme).
+- **Credit** — RfqTilesPanel (populated + empty + the "All" filter tab), the
+  RfqCard terminal states (done / expired / cancelled / accepted / passed),
+  NewRfqForm (default, search-open, instrument-selected, filled, invalid),
+  CreditBlotter (populated + empty), SellSidePanel (active / responded / empty),
+  the CreditWorkspace sub-views (new-RFQ + sell-side tabs), and the full App on
+  the Credit tab.
 - **Admin** — the loaded AdminPanel slider (`admin/panel-loaded`) and the full
   App on the Admin tab. The throughput fetch is stubbed (`page.route` for the
   Playwright tiers, `window.fetch` for vitest-browser), since `AdminPanel` reads
   its own hook outside the `HooksProvider` seam.
 
+### Interaction-driven goldens
+
+The blotter sort/filter states, the RFQ "All" filter tab, and the new-RFQ form
+states are reached by clicking/typing into controls keyed by **`data-testid`**.
+The user authorized **`data-testid`-only** production additions for these (pure
+attribute additions — no logic/markup/styling change), so the runner-neutral
+`scenarioActions` table can drive multi-step interactions (its `steps` array:
+`click` / `type` / `select` by testid). Each has a golden across all three runners.
+
 ### Excluded by design
 
-Two classes of state have **no golden** on purpose (see
+These states have **no golden** on purpose (see
 [`COVERAGE-GAPS.md`](./COVERAGE-GAPS.md) for the full per-file inventory):
 
 - **Timer / transition / runtime-only** — the RFQ-active tile states (countdown,
   awaiting, confirmation), the stale "Reconnecting…" overlay, blotter-row hover,
   and the system-preference theme arm. These render only after a timer fires or a
   runtime preference resolves, so a static screenshot can't pin them.
-- **Testid-gated interaction states** — blotter sort/filter/popovers, the RFQ
-  "All" filter, and the new-RFQ form's filled/error states. Reaching them means
-  clicking a control that has **no `data-testid`**; the runner-neutral
-  `scenarioActions` table keys on testids, and adding one is a production `src/`
-  edit the visual-golden policy forbids. The sociable **contract** tier drives
-  these handlers directly, so the behaviour is covered — only the pixel is not.
+- **Remaining testid-gated arms** — the filter `inRange` two-input arm, the set
+  filter checkbox toggle, `DealerSelection` checkboxes, `QuickFilter`, and the
+  tile execution/notional handlers were out of this batch's scope (their controls
+  still have no `data-testid`). The sociable **contract** tier drives these
+  handlers directly, so the behaviour is covered — only the pixel is not.
 
 ## Layout
 

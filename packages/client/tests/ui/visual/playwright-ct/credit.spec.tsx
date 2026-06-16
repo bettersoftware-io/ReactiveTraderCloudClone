@@ -84,3 +84,41 @@ test("credit/workspace-sell-side", async ({ mount, page }) => {
   await expect(page.getByText("Sell Side (Adaptive Bank)")).toBeVisible();
   await expect(c).toHaveScreenshot("workspace-sell-side.png", { animations: "disabled" });
 });
+
+test("credit/rfq-tiles-all", async ({ mount, page }) => {
+  const c = await mount(<VisualScenario name="credit/rfq-tiles-all" />);
+  await page.getByTestId("rfq-filter-All").click();
+  await expect(c).toHaveScreenshot("rfq-tiles-all.png", { animations: "disabled" });
+});
+
+test("credit/new-rfq-search-open", async ({ mount, page }) => {
+  const c = await mount(<VisualScenario name="credit/new-rfq-search-open" />);
+  await page.getByTestId("instrument-search-input").fill("Treasury");
+  await expect(page.getByText("CUSIP: 912828ZQ6")).toBeVisible();
+  await expect(c).toHaveScreenshot("new-rfq-search-open.png", { animations: "disabled" });
+});
+
+test("credit/new-rfq-instrument-selected", async ({ mount, page }) => {
+  const c = await mount(<VisualScenario name="credit/new-rfq-instrument-selected" />);
+  await page.getByTestId("instrument-search-input").fill("Treasury");
+  await page.getByTestId("instrument-result-1").click();
+  await expect(page.getByText("Coupon: 1.5%")).toBeVisible();
+  await expect(c).toHaveScreenshot("new-rfq-instrument-selected.png", { animations: "disabled" });
+});
+
+test("credit/new-rfq-filled", async ({ mount, page }) => {
+  const c = await mount(<VisualScenario name="credit/new-rfq-filled" />);
+  await page.getByTestId("instrument-search-input").fill("Treasury");
+  await page.getByTestId("instrument-result-1").click();
+  await page.getByTestId("quantity-input").fill("5000");
+  await expect(c).toHaveScreenshot("new-rfq-filled.png", { animations: "disabled" });
+});
+
+test("credit/new-rfq-invalid", async ({ mount, page }) => {
+  const c = await mount(<VisualScenario name="credit/new-rfq-invalid" />);
+  await page.getByTestId("instrument-search-input").fill("Treasury");
+  await page.getByTestId("instrument-result-1").click();
+  await page.getByTestId("quantity-input").fill("200000000");
+  await expect(page.getByText("Max quantity exceeded")).toBeVisible();
+  await expect(c).toHaveScreenshot("new-rfq-invalid.png", { animations: "disabled" });
+});
