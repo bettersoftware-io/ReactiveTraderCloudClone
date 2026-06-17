@@ -14,7 +14,7 @@ import {
   takeUntil,
   take,
 } from "rxjs/operators";
-import { state, type StateObservable } from "@rx-state/core";
+import { state, type DefaultedStateObservable } from "@rx-state/core";
 import {
   type CurrencyPair,
   type RfqQuoteResult,
@@ -128,10 +128,11 @@ export function createRfqTileMachine(
     }),
   );
 
-  const state$: StateObservable<RfqState> = state(runs$, INIT);
+  const state$: DefaultedStateObservable<RfqState> = state(runs$, INIT);
   // state(obs, default) yields a DefaultedStateObservable whose getValue() is
-  // synchronous — used below to guard intents on the current status.
-  const current = (): RfqState => state$.getValue() as RfqState;
+  // synchronous and returns RfqState directly — used below to guard intents on
+  // the current status.
+  const current = (): RfqState => state$.getValue();
 
   // Keep state$ warm so it carries its default before useMachine first renders.
   const warm = state$.subscribe();

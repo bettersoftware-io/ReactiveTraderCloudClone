@@ -1,5 +1,10 @@
 import { useCallback } from "react";
-import { type CurrencyPair, Direction, type Price } from "@rtc/domain";
+import {
+  type CurrencyPair,
+  Direction,
+  type Price,
+  PriceMovementType,
+} from "@rtc/domain";
 import type {
   RfqState,
   RfqTileIntents,
@@ -45,10 +50,10 @@ export function TileRfq({
         mid: (quote.bid + quote.ask) / 2,
         valueDate: new Date().toISOString().slice(0, 10),
         creationTimestamp: Date.now(),
-        movementType: "NONE" as const,
+        movementType: PriceMovementType.NONE,
         spread: "0",
-      };
-      onExecute(direction, syntheticPrice as Price, notional);
+      } satisfies Price;
+      onExecute(direction, syntheticPrice, notional);
     },
     [rfqState, state.quote, pair, onExecute, notional],
   );

@@ -30,8 +30,7 @@ export function Tile({ pair, showChart }: TileProps) {
   const isBusy = tileExecution.state.status !== "ready";
   const hasError = !!notional.error;
   const isRfqActive = rfqState.state.status !== "init";
-  const notionalDisabled =
-    isLoading || isBusy || (isRfqActive && rfqState.state.status !== "init");
+  const notionalDisabled = isLoading || isBusy || isRfqActive;
 
   const handleExecute = useCallback(
     (direction: Direction, priceVal?: Price, notionalVal?: number) => {
