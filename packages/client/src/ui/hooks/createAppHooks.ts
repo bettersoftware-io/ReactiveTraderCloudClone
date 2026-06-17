@@ -15,6 +15,10 @@ import type {
   TileExecutionState,
   TileExecutionIntents,
 } from "../../app/presenters/TileExecutionMachine";
+import type {
+  RfqState,
+  RfqTileIntents,
+} from "../../app/presenters/RfqTileMachine";
 
 export interface AppHooks {
   // Streams
@@ -39,6 +43,7 @@ export interface AppHooks {
   useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => Observable<RfqQuoteResult>;
   // Machines (app-layer RxJS behind the useMachine bridge)
   useTileExecution: (pair: CurrencyPair) => { state: TileExecutionState } & TileExecutionIntents;
+  useRfqTile: (pair: CurrencyPair) => { state: RfqState } & RfqTileIntents;
 }
 
 export function createAppHooks(
@@ -110,5 +115,7 @@ export function createAppHooks(
     useRequestRfqQuote: () => requestRfqQuote,
     useTileExecution: (pair: CurrencyPair) =>
       useMachine(() => machines.tileExecution(pair)),
+    useRfqTile: (pair: CurrencyPair) =>
+      useMachine(() => machines.rfqTile(pair)),
   };
 }

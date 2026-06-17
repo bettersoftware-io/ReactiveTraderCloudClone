@@ -2,8 +2,6 @@ import { useCallback } from "react";
 import { type CurrencyPair, type Direction, type Price } from "@rtc/domain";
 import { useHooks } from "../../../hooks/HooksProvider";
 import { useNotional } from "./hooks/useNotional";
-import { useRfqState } from "./hooks/useRfqState";
-import { useRfqQuote } from "./hooks/useRfqQuote";
 import { TileHeader } from "./TileHeader";
 import { TilePrice, SpreadDisplay } from "./TilePrice";
 import { TileChart } from "./TileChart";
@@ -26,8 +24,7 @@ export function Tile({ pair, showChart }: TileProps) {
   const history = hooks.usePriceHistory(pair.symbol);
   const notional = useNotional(pair.defaultNotional);
   const tileExecution = hooks.useTileExecution(pair);
-  const rfqState = useRfqState();
-  const requestQuote = useRfqQuote(pair, rfqState);
+  const rfqState = hooks.useRfqTile(pair);
 
   const isLoading = !price;
   const isBusy = tileExecution.state.status !== "ready";
@@ -97,7 +94,7 @@ export function Tile({ pair, showChart }: TileProps) {
           <TileRfq
             pair={pair}
             rfqState={rfqState}
-            onRequestQuote={requestQuote}
+            onRequestQuote={rfqState.requestQuote}
             onExecute={handleExecute}
             notional={notional.numericValue}
           />

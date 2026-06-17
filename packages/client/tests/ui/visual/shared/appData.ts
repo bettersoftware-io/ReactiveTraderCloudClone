@@ -8,6 +8,7 @@ import {
   type Instrument, type Dealer,
 } from "@rtc/domain";
 import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
+import type { RfqState } from "../../../../src/app/presenters/RfqTileMachine";
 
 export interface AppData {
   prices: Record<string, Price | null>;
@@ -23,6 +24,8 @@ export interface AppData {
   connectionStatus: ConnectionStatus;
   /** Tile execution overlay state; defaults to "ready" when omitted. */
   tileExecution?: TileExecutionState;
+  /** RFQ tile state; defaults to "init" when omitted. */
+  rfqTile?: RfqState;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

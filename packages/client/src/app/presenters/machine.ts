@@ -4,6 +4,7 @@ import type {
   TileExecutionState,
   TileExecutionIntents,
 } from "./TileExecutionMachine";
+import type { RfqState, RfqTileIntents } from "./RfqTileMachine";
 
 /** Every app-layer machine factory returns this: a framework-agnostic
  * StateObservable carrying current state, plain intent methods, and dispose()
@@ -31,4 +32,5 @@ export interface MachineFactories {
   tileExecution: (
     pair: CurrencyPair,
   ) => Machine<TileExecutionState, TileExecutionIntents>;
+  rfqTile: (pair: CurrencyPair) => Machine<RfqState, RfqTileIntents>;
 }

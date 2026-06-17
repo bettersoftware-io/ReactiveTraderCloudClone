@@ -11,6 +11,7 @@ import type {
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import { useMachine } from "../../../../src/ui/hooks/useMachine";
 import { createTileExecutionMachine } from "../../../../src/app/presenters/TileExecutionMachine";
+import { createRfqTileMachine } from "../../../../src/app/presenters/RfqTileMachine";
 import type { World } from "../shared/harness/world";
 
 /** Subscribe a React component to a BehaviorSubject; re-render on each emission. */
@@ -98,6 +99,23 @@ export function reactHooks(world: World): AppHooks {
             }
             const result = world.results.executeTrade;
             return result ? of(result) : (EMPTY as Observable<ExecuteTradeResult>);
+          },
+        }),
+      ),
+    // Machine: the REAL createRfqTileMachine, driven by a World-backed
+    // request-quote command that records inputs and emits the canned result (or
+    // errors to drive the rejected path), exercising the relocated RFQ lifecycle
+    // through the same useMachine bridge the app uses.
+    useRfqTile: (pair: CurrencyPair) =>
+      useMachine(() =>
+        createRfqTileMachine(pair, {
+          requestQuote: (symbol: string, pipsPosition: number) => {
+            world.commands.requestRfqQuote.push({ symbol, pipsPosition });
+            if (world.results.requestRfqQuoteThrows) {
+              return throwError(() => new Error("rfq failed")) as Observable<RfqQuoteResult>;
+            }
+            const result = world.results.requestRfqQuote;
+            return result ? of(result) : (EMPTY as Observable<RfqQuoteResult>);
           },
         }),
       ),

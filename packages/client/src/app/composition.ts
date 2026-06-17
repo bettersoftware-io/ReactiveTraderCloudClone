@@ -17,6 +17,7 @@ import { DealersPresenter } from "./presenters/DealersPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
 import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
+import { createRfqTileMachine } from "./presenters/RfqTileMachine";
 import type { MachineFactories } from "./presenters/machine";
 
 import { WsAdapter } from "./adapters/WsAdapter";
@@ -101,6 +102,11 @@ export function createMachineFactories(presenters: Presenters): MachineFactories
     tileExecution: (pair) =>
       createTileExecutionMachine(pair, {
         execute: (input) => presenters.execution.execute(input),
+      }),
+    rfqTile: (pair) =>
+      createRfqTileMachine(pair, {
+        requestQuote: (symbol, pipsPosition) =>
+          presenters.rfqQuote.requestQuote(symbol, pipsPosition),
       }),
   };
 }

@@ -47,3 +47,8 @@ export function deriveDealtCurrency(symbol: string, direction: Direction): strin
 export const EXECUTION_TIMEOUT_MS = 30_000;
 export const TOO_LONG_THRESHOLD_MS = 2_000;
 export const CONFIRMATION_DISMISS_MS = 5_000;
+
+/** How long a received RFQ quote stays live before it auto-expires. */
+export const RFQ_TIMEOUT_MS = 10_000;
+/** How long the "Quote expired" rejected state is shown before resetting. */
+export const REJECTED_DISPLAY_MS = 2_000;

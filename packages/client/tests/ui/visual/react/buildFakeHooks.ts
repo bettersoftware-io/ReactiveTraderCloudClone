@@ -38,5 +38,12 @@ export function buildFakeHooks(data: AppData): AppHooks {
       execute: noop,
       dismiss: noop,
     }),
+    useRfqTile: () => ({
+      state: data.rfqTile ?? { status: "init", quote: null, remainingMs: 0 },
+      requestQuote: noop,
+      cancel: noop,
+      reject: noop,
+      accept: noop,
+    }),
   };
 }

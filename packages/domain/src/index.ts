@@ -6,7 +6,7 @@ export type { PriceTick, Price } from "./fx/price.js";
 export { PriceMovementType, calculateSpread, detectMovement, PRICE_HISTORY_SIZE } from "./fx/price.js";
 
 export type { ExecutionRequest, Trade } from "./fx/trade.js";
-export { Direction, TradeStatus, ExecutionStatus, deriveDealtCurrency, EXECUTION_TIMEOUT_MS, TOO_LONG_THRESHOLD_MS, CONFIRMATION_DISMISS_MS } from "./fx/trade.js";
+export { Direction, TradeStatus, ExecutionStatus, deriveDealtCurrency, EXECUTION_TIMEOUT_MS, TOO_LONG_THRESHOLD_MS, CONFIRMATION_DISMISS_MS, RFQ_TIMEOUT_MS, REJECTED_DISPLAY_MS } from "./fx/trade.js";
 
 export type { NotionalParseResult } from "./fx/notional.js";
 export { parseNotional, isRfqRequired, validateNotional, DEFAULT_NOTIONAL, MAX_NOTIONAL, RFQ_THRESHOLD } from "./fx/notional.js";

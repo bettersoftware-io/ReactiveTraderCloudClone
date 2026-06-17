@@ -3,19 +3,14 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 import type {
   RfqState,
-  RfqQuote,
-} from "../../../../../../../../src/ui/fx/liveRates/tile/hooks/useRfqState";
+  RfqTileIntents,
+} from "../../../../../../../../src/app/presenters/RfqTileMachine";
 import { MountedComponent } from "../../../../harness/component";
 
-/** Controllable double for the rfq-state hook result the component consumes. */
-export interface RfqStateLike {
-  state: RfqState;
-  initiate: () => void;
-  cancel: () => void;
-  receiveQuote: (quote: RfqQuote) => void;
-  reject: () => void;
-  accept: () => RfqQuote | null;
-}
+/** Controllable double for the rfq machine result the component consumes:
+ * current state plus the RFQ intents (accept returns void — the quote is
+ * captured from state.quote by the component before accepting). */
+export type RfqStateLike = { state: RfqState } & RfqTileIntents;
 
 export interface TileRfqProps {
   pair: CurrencyPair;

@@ -1,11 +1,17 @@
 import { useCallback } from "react";
 import { type CurrencyPair, Direction, type Price } from "@rtc/domain";
-import type { UseRfqStateResult } from "./hooks/useRfqState";
+import type {
+  RfqState,
+  RfqTileIntents,
+} from "../../../../app/presenters/RfqTileMachine";
 import { RfqCountdown } from "./RfqCountdown";
+
+/** The machine result the tile passes down: current state plus the RFQ intents. */
+export type TileRfqState = { state: RfqState } & RfqTileIntents;
 
 interface TileRfqProps {
   pair: CurrencyPair;
-  rfqState: UseRfqStateResult;
+  rfqState: TileRfqState;
   onRequestQuote: () => void;
   onExecute: (direction: Direction, price: Price, notional: number) => void;
   notional: number;
@@ -26,7 +32,10 @@ export function TileRfq({
 
   const handleAccept = useCallback(
     (direction: Direction) => {
-      const quote = rfqState.accept();
+      // Capture the quote BEFORE accepting: accept() resets the machine to init
+      // and no longer returns the quote synchronously.
+      const quote = state.quote;
+      rfqState.accept();
       if (!quote) return;
       // Create a synthetic Price to pass to execution
       const syntheticPrice = {
@@ -41,7 +50,7 @@ export function TileRfq({
       };
       onExecute(direction, syntheticPrice as Price, notional);
     },
-    [rfqState, pair, onExecute, notional],
+    [rfqState, state.quote, pair, onExecute, notional],
   );
 
   if (state.status === "init") {
