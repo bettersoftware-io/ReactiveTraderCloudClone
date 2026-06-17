@@ -18,6 +18,7 @@ import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresente
 import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { createRfqTileMachine } from "./presenters/RfqTileMachine";
+import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
 import type { MachineFactories } from "./presenters/machine";
 
 import { WsAdapter } from "./adapters/WsAdapter";
@@ -107,6 +108,16 @@ export function createMachineFactories(presenters: Presenters): MachineFactories
       createRfqTileMachine(pair, {
         requestQuote: (symbol, pipsPosition) =>
           presenters.rfqQuote.requestQuote(symbol, pipsPosition),
+      }),
+    staleFlag: (pair) =>
+      createStaleFlagMachine({
+        status$: presenters.connection.status$,
+        value$: presenters.priceStream.price$(pair),
+      }),
+    analyticsStaleFlag: () =>
+      createStaleFlagMachine({
+        status$: presenters.connection.status$,
+        value$: presenters.analytics.position$,
       }),
   };
 }

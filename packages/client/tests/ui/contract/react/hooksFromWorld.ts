@@ -12,6 +12,7 @@ import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import { useMachine } from "../../../../src/ui/hooks/useMachine";
 import { createTileExecutionMachine } from "../../../../src/app/presenters/TileExecutionMachine";
 import { createRfqTileMachine } from "../../../../src/app/presenters/RfqTileMachine";
+import { createStaleFlagMachine } from "../../../../src/app/presenters/StaleFlagMachine";
 import type { World } from "../shared/harness/world";
 
 /** Subscribe a React component to a BehaviorSubject; re-render on each emission. */
@@ -119,5 +120,23 @@ export function reactHooks(world: World): AppHooks {
           },
         }),
       ),
+    // Intent-free derived flags: the REAL createStaleFlagMachine, sourced from
+    // the World's connection-status subject and the per-key price / analytics
+    // subjects — so disconnect/reconnect/new-value pushed onto the World drives
+    // the relocated stale logic through the same useMachine bridge the app uses.
+    useStaleFlag: (pair: CurrencyPair) =>
+      useMachine(() =>
+        createStaleFlagMachine({
+          status$: s.useConnectionStatus,
+          value$: world.priceFor(pair.symbol),
+        }),
+      ).state,
+    useAnalyticsStaleFlag: () =>
+      useMachine(() =>
+        createStaleFlagMachine({
+          status$: s.useConnectionStatus,
+          value$: s.useAnalytics,
+        }),
+      ).state,
   };
 }

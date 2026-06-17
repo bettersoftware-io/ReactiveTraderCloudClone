@@ -4,11 +4,10 @@ import { PnlValue } from "./PnlValue";
 import { PositionBubbles } from "./PositionBubbles";
 import { PairPnlBars } from "./PairPnlBars";
 import { StaleIndicator } from "../../shell/stale/StaleIndicator";
-import { useStaleDetection } from "../../shell/stale/useStaleDetection";
 
 export function AnalyticsPanel() {
   const data = useHooks().useAnalytics();
-  const stale = useStaleDetection(data);
+  const stale = useHooks().useAnalyticsStaleFlag();
 
   if (!data) {
     return (

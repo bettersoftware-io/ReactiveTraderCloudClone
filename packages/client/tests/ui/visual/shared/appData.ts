@@ -26,6 +26,10 @@ export interface AppData {
   tileExecution?: TileExecutionState;
   /** RFQ tile state; defaults to "init" when omitted. */
   rfqTile?: RfqState;
+  /** Per-symbol stale flag for tiles (useStaleFlag); defaults to false. */
+  stale?: Record<string, boolean>;
+  /** Stale flag for the analytics panel (useAnalyticsStaleFlag); defaults to false. */
+  analyticsStale?: boolean;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

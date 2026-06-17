@@ -10,7 +10,6 @@ import { TileExecution } from "./TileExecution";
 import { TileConfirmation } from "./TileConfirmation";
 import { TileRfq } from "./TileRfq";
 import { StaleIndicator } from "../../../shell/stale/StaleIndicator";
-import { useStaleDetection } from "../../../shell/stale/useStaleDetection";
 
 interface TileProps {
   pair: CurrencyPair;
@@ -20,7 +19,7 @@ interface TileProps {
 export function Tile({ pair, showChart }: TileProps) {
   const hooks = useHooks();
   const price = hooks.usePrice(pair);
-  const stale = useStaleDetection(price);
+  const stale = hooks.useStaleFlag(pair);
   const history = hooks.usePriceHistory(pair.symbol);
   const notional = useNotional(pair.defaultNotional);
   const tileExecution = hooks.useTileExecution(pair);

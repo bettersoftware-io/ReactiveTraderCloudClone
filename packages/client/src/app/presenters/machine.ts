@@ -33,4 +33,8 @@ export interface MachineFactories {
     pair: CurrencyPair,
   ) => Machine<TileExecutionState, TileExecutionIntents>;
   rfqTile: (pair: CurrencyPair) => Machine<RfqState, RfqTileIntents>;
+  /** Stale flag for a tile's price stream (intent-free derived boolean). */
+  staleFlag: (pair: CurrencyPair) => Machine<boolean, Record<string, never>>;
+  /** Stale flag for the analytics position stream (intent-free). */
+  analyticsStaleFlag: () => Machine<boolean, Record<string, never>>;
 }

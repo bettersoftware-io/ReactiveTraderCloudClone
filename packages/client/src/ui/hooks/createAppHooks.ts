@@ -44,6 +44,9 @@ export interface AppHooks {
   // Machines (app-layer RxJS behind the useMachine bridge)
   useTileExecution: (pair: CurrencyPair) => { state: TileExecutionState } & TileExecutionIntents;
   useRfqTile: (pair: CurrencyPair) => { state: RfqState } & RfqTileIntents;
+  // Intent-free derived flags: return just the boolean (no intents to expose).
+  useStaleFlag: (pair: CurrencyPair) => boolean;
+  useAnalyticsStaleFlag: () => boolean;
 }
 
 export function createAppHooks(
@@ -117,5 +120,9 @@ export function createAppHooks(
       useMachine(() => machines.tileExecution(pair)),
     useRfqTile: (pair: CurrencyPair) =>
       useMachine(() => machines.rfqTile(pair)),
+    useStaleFlag: (pair: CurrencyPair) =>
+      useMachine(() => machines.staleFlag(pair)).state,
+    useAnalyticsStaleFlag: () =>
+      useMachine(() => machines.analyticsStaleFlag()).state,
   };
 }

@@ -45,5 +45,8 @@ export function buildFakeHooks(data: AppData): AppHooks {
       reject: noop,
       accept: noop,
     }),
+    // Intent-free derived flags: static snapshot for screenshots.
+    useStaleFlag: (pair: CurrencyPair) => data.stale?.[pair.symbol] ?? false,
+    useAnalyticsStaleFlag: () => data.analyticsStale ?? false,
   };
 }
