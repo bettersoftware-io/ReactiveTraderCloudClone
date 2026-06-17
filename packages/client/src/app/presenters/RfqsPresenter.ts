@@ -1,9 +1,9 @@
 import {
   distinctUntilChanged, map, type Observable, shareReplay,
-  Subject, merge, of, timer, concat, EMPTY,
-  catchError, switchMap, takeUntil,
+  Subject, merge, of, timer, concat,
+  catchError, switchMap, tap, ignoreElements,
 } from "rxjs";
-import { state, type StateObservable } from "@rx-state/core";
+import { state, type DefaultedStateObservable } from "@rx-state/core";
 import {
   type Quote, type Rfq, type RfqStreamState,
   WorkflowEventStreamUseCase,
@@ -121,14 +121,14 @@ export class RfqsPresenter {
             switchMap((rfqId) =>
               merge(
                 of<RfqSubmissionState>({ status: "confirmed", rfqId }),
-                // Redirect after the delay. The mapped emission carries no new
-                // state — it only side-effects onRedirect — so we drop it with
-                // EMPTY tail; dispose() (completing submit$) tears the timer down.
+                // Redirect after the delay. The redirect timer is cancelled when
+                // warm.unsubscribe() (in dispose()) tears down the subscription
+                // chain — NOT by submit$ completing, since switchMap does not
+                // unsubscribe its current inner observable when the source
+                // completes.
                 timer(REDIRECT_DELAY_MS).pipe(
-                  switchMap(() => {
-                    onRedirect(rfqId);
-                    return EMPTY;
-                  }),
+                  tap(() => onRedirect(rfqId)),
+                  ignoreElements(),
                 ),
               ),
             ),
@@ -139,7 +139,7 @@ export class RfqsPresenter {
       ),
     );
 
-    const state$: StateObservable<RfqSubmissionState> = state(runs$, EDITING);
+    const state$: DefaultedStateObservable<RfqSubmissionState> = state(runs$, EDITING);
     const warm = state$.subscribe();
 
     return {
@@ -180,7 +180,7 @@ export class RfqsPresenter {
       ),
     );
 
-    const state$: StateObservable<TicketSubmissionState> = state(
+    const state$: DefaultedStateObservable<TicketSubmissionState> = state(
       runs$,
       NOT_SUBMITTED,
     );

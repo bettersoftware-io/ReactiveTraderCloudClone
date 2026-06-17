@@ -13,6 +13,7 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
   const ticket = hooks.useTicketSubmission();
+  const { submitPrice, pass } = ticket;
   const [price, setPrice] = useState("");
   const submitted = ticket.state.submitted;
 
@@ -22,12 +23,12 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
   const handleSubmit = useCallback(() => {
     const num = parseFloat(price);
     if (isNaN(num) || num <= 0) return;
-    ticket.submitPrice(quote.id, num);
-  }, [ticket, quote.id, price]);
+    submitPrice(quote.id, num);
+  }, [submitPrice, quote.id, price]);
 
   const handlePass = useCallback(() => {
-    ticket.pass(quote.id);
-  }, [ticket, quote.id]);
+    pass(quote.id);
+  }, [pass, quote.id]);
 
   return (
     <div style={{

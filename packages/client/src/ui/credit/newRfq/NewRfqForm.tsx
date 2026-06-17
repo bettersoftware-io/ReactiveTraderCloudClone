@@ -17,6 +17,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
   // keeps only draft input state below; orchestration (incl. the redirect
   // delay) lives in RfqsPresenter.createSubmission().
   const submission = hooks.useRfqSubmission();
+  const { submit } = submission;
 
   const [instrument, setInstrument] = useState<Instrument | null>(null);
   const [direction, setDirection] = useState<Direction>(Direction.Buy);
@@ -48,7 +49,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit || !instrument) return;
-    submission.submit(
+    submit(
       {
         instrumentId: instrument.id,
         dealerIds: [...selectedDealerIds],
@@ -57,7 +58,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
       },
       onCreated,
     );
-  }, [canSubmit, instrument, submission, selectedDealerIds, quantityNum, direction, onCreated]);
+  }, [canSubmit, instrument, submit, selectedDealerIds, quantityNum, direction, onCreated]);
 
   if (submission.state.status === "confirmed") {
     return (
