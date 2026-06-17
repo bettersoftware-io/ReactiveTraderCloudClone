@@ -13,3 +13,5 @@ export {
 export { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 export { ConnectionEventsSimulator } from "./ConnectionEventsSimulator.js";
 export { ThroughputSimulator } from "./ThroughputSimulator.js";
+export { PreferencesSimulator } from "./PreferencesSimulator.js";
+export type { PreferencesSeed } from "./PreferencesSimulator.js";

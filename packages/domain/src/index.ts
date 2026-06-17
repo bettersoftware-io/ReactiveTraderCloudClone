@@ -21,6 +21,10 @@ export type { ConnectionEvent, GatewayStatus } from "./connection/connectionStat
 // Analytics
 export type { CurrencyPairPosition, HistoricPosition, PositionUpdates } from "./analytics/position.js";
 
+// Preferences
+export type { Theme, ViewMode } from "./preferences/preferences.js";
+export { DEFAULT_THEME, DEFAULT_VIEW_MODE } from "./preferences/preferences.js";
+
 // Credit
 export type { Instrument } from "./credit/instrument.js";
 export type { Dealer } from "./credit/dealer.js";
@@ -42,6 +46,7 @@ export type { DealerPort } from "./ports/dealerPort.js";
 export type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "./ports/workflowPort.js";
 export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
 export type { AdminPort } from "./ports/adminPort.js";
+export type { PreferencesPort } from "./ports/preferencesPort.js";
 
 // Simulators (in-memory port implementations)
 export {
@@ -55,10 +60,11 @@ export {
   CreditRfqSimulator,
   ConnectionEventsSimulator,
   ThroughputSimulator,
+  PreferencesSimulator,
   INSTRUMENTS_CATALOG,
   DEALERS_CATALOG,
 } from "./simulators/index.js";
-export type { TradeListener } from "./simulators/index.js";
+export type { TradeListener, PreferencesSeed } from "./simulators/index.js";
 
 // Use Cases
 export { PriceStreamUseCase, PriceHistoryUseCase, ExecuteTradeUseCase, AnalyticsUseCase, WorkflowEventStreamUseCase, reduceRfqEvent, CreateRfqUseCase, RFQ_DEFAULT_EXPIRY_SECS, ConnectionStatusUseCase, TradeBlotterUseCase, CurrencyPairsUseCase, InstrumentsUseCase, DealersUseCase, RfqQuoteUseCase } from "./usecases/index.js";
