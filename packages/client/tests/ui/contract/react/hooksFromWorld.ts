@@ -47,45 +47,39 @@ export function reactHooks(world: World): AppHooks {
     useInstruments: () => useSubject(s.useInstruments),
     useDealers: () => useSubject(s.useDealers),
     useConnectionStatus: () => useSubject(s.useConnectionStatus),
-    // Commands: record input, emit canned result (or error to drive catch paths).
-    useExecuteTrade: () => (input: ExecuteTradeInput) => {
+    // Commands: record input, resolve the canned result (or reject to drive the
+    // consuming component's catch path). Async so the component's `await` runs.
+    useExecuteTrade: () => async (input: ExecuteTradeInput) => {
       world.commands.executeTrade.push(input);
       if (world.results.executeTradeThrows) {
-        return throwError(() => new Error("execute failed")) as Observable<ExecuteTradeResult>;
+        throw new Error("execute failed");
       }
-      const result = world.results.executeTrade;
-      return result ? of(result) : (EMPTY as Observable<ExecuteTradeResult>);
+      return (world.results.executeTrade ?? ({} as ExecuteTradeResult));
     },
-    useCreateRfq: () => (input) => {
+    useCreateRfq: () => async (input) => {
       world.commands.createRfq.push(input);
-      return of(world.results.createRfq ?? 0);
+      return world.results.createRfq ?? 0;
     },
-    // Void commands: record input and emit a single value so the consuming
-    // component's `firstValueFrom(...)` resolves (an empty Observable would
-    // reject with EmptyError and skip the post-await state transition).
-    useAcceptQuote: () => (quoteId: number) => {
+    // Void commands: record input and resolve undefined so the consuming
+    // component's `await` proceeds to its post-await state transition.
+    useAcceptQuote: () => async (quoteId: number) => {
       world.commands.acceptQuote.push(quoteId);
-      return of(undefined) as Observable<void>;
     },
-    useCancelRfq: () => (rfqId: number) => {
+    useCancelRfq: () => async (rfqId: number) => {
       world.commands.cancelRfq.push(rfqId);
-      return of(undefined) as Observable<void>;
     },
-    usePassQuote: () => (quoteId: number) => {
+    usePassQuote: () => async (quoteId: number) => {
       world.commands.passQuote.push(quoteId);
-      return of(undefined) as Observable<void>;
     },
-    useQuoteRfq: () => (request: QuoteRequest) => {
+    useQuoteRfq: () => async (request: QuoteRequest) => {
       world.commands.quoteRfq.push(request);
-      return of(undefined) as Observable<void>;
     },
-    useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => {
+    useRequestRfqQuote: () => async (symbol: string, pipsPosition: number) => {
       world.commands.requestRfqQuote.push({ symbol, pipsPosition });
       if (world.results.requestRfqQuoteThrows) {
-        return throwError(() => new Error("rfq failed")) as Observable<RfqQuoteResult>;
+        throw new Error("rfq failed");
       }
-      const result = world.results.requestRfqQuote;
-      return result ? of(result) : (EMPTY as Observable<RfqQuoteResult>);
+      return (world.results.requestRfqQuote ?? ({} as RfqQuoteResult));
     },
     // Machine: the REAL createTileExecutionMachine, driven by a World-backed
     // execute command that records inputs and emits the canned result (or errors

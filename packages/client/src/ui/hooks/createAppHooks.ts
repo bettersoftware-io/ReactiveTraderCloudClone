@@ -1,5 +1,5 @@
 import { bind } from "@react-rxjs/core";
-import type { Observable } from "rxjs";
+import { firstValueFrom } from "rxjs";
 import {
   ConnectionStatus,
   type CurrencyPair, type Price, type PriceTick, type Trade,
@@ -38,14 +38,14 @@ export interface AppHooks {
   useInstruments: () => readonly Instrument[];
   useDealers: () => readonly Dealer[];
   useConnectionStatus: () => ConnectionStatus;
-  // Commands (one-shot Observables; callers use firstValueFrom)
-  useExecuteTrade: () => (input: ExecuteTradeInput) => Observable<ExecuteTradeResult>;
-  useCreateRfq: () => (input: CreateRfqInput) => Observable<number>;
-  useAcceptQuote: () => (quoteId: number) => Observable<void>;
-  useCancelRfq: () => (rfqId: number) => Observable<void>;
-  usePassQuote: () => (quoteId: number) => Observable<void>;
-  useQuoteRfq: () => (request: QuoteRequest) => Observable<void>;
-  useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => Observable<RfqQuoteResult>;
+  // Commands (one-shot fire-and-await; the bridge does firstValueFrom)
+  useExecuteTrade: () => (input: ExecuteTradeInput) => Promise<ExecuteTradeResult>;
+  useCreateRfq: () => (input: CreateRfqInput) => Promise<number>;
+  useAcceptQuote: () => (quoteId: number) => Promise<void>;
+  useCancelRfq: () => (rfqId: number) => Promise<void>;
+  usePassQuote: () => (quoteId: number) => Promise<void>;
+  useQuoteRfq: () => (request: QuoteRequest) => Promise<void>;
+  useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => Promise<RfqQuoteResult>;
   // Machines (app-layer RxJS behind the useMachine bridge)
   useTileExecution: (pair: CurrencyPair) => { state: TileExecutionState } & TileExecutionIntents;
   useRfqTile: (pair: CurrencyPair) => { state: RfqState } & RfqTileIntents;
@@ -103,15 +103,24 @@ export function createAppHooks(
   const setThroughput = (value: number) => presenters.throughput.setValue(value);
 
   // Pre-bound command callbacks. Stable references across calls so React
-  // memo/effect dep arrays remain stable.
-  const executeTrade = (input: ExecuteTradeInput) => presenters.execution.execute(input);
-  const createRfq = (input: CreateRfqInput) => presenters.rfqs.createRfq(input);
-  const acceptQuote = (quoteId: number) => presenters.rfqs.acceptQuote(quoteId);
-  const cancelRfq = (rfqId: number) => presenters.rfqs.cancelRfq(rfqId);
-  const passQuote = (quoteId: number) => presenters.rfqs.passQuote(quoteId);
-  const quoteRfq = (req: QuoteRequest) => presenters.rfqs.quoteRfq(req);
+  // memo/effect dep arrays remain stable. The bridge converts each one-shot
+  // presenter Observable to a Promise via firstValueFrom — the void commands'
+  // presenters emit `undefined` before completing, so firstValueFrom resolves
+  // (rather than rejecting with EmptyError) without needing a defaultValue.
+  const executeTrade = (input: ExecuteTradeInput) =>
+    firstValueFrom(presenters.execution.execute(input));
+  const createRfq = (input: CreateRfqInput) =>
+    firstValueFrom(presenters.rfqs.createRfq(input));
+  const acceptQuote = (quoteId: number) =>
+    firstValueFrom(presenters.rfqs.acceptQuote(quoteId));
+  const cancelRfq = (rfqId: number) =>
+    firstValueFrom(presenters.rfqs.cancelRfq(rfqId));
+  const passQuote = (quoteId: number) =>
+    firstValueFrom(presenters.rfqs.passQuote(quoteId));
+  const quoteRfq = (req: QuoteRequest) =>
+    firstValueFrom(presenters.rfqs.quoteRfq(req));
   const requestRfqQuote = (symbol: string, pipsPosition: number) =>
-    presenters.rfqQuote.requestQuote(symbol, pipsPosition);
+    firstValueFrom(presenters.rfqQuote.requestQuote(symbol, pipsPosition));
 
   return {
     usePrice,

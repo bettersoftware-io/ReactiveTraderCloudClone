@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { firstValueFrom } from "rxjs";
 import { Direction, CREDIT_MAX_QUANTITY_INPUT, type Instrument } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import { InstrumentSearch } from "./InstrumentSearch";
@@ -48,12 +47,12 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
     if (!canSubmit || !instrument) return;
     setSubmitting(true);
     try {
-      const rfqId = await firstValueFrom(createRfq({
+      const rfqId = await createRfq({
         instrumentId: instrument.id,
         dealerIds: [...selectedDealerIds],
         quantity: quantityNum,
         direction,
-      }));
+      });
       setConfirmation(rfqId);
       setTimeout(() => onCreated(rfqId), 1500);
     } finally {

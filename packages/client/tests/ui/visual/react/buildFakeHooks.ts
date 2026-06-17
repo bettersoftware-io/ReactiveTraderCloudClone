@@ -1,4 +1,3 @@
-import { EMPTY, type Observable } from "rxjs";
 import {
   type CurrencyPair,
   type ExecuteTradeInput, type ExecuteTradeResult, type CreateRfqInput,
@@ -23,16 +22,17 @@ export function buildFakeHooks(data: AppData): AppHooks {
     useInstruments: () => data.instruments,
     useDealers: () => data.dealers,
     useConnectionStatus: () => data.connectionStatus,
-    // Commands: no-op observables. Not exercised by static screenshots.
-    useExecuteTrade: () => (_input: ExecuteTradeInput) =>
-      EMPTY as Observable<ExecuteTradeResult>,
-    useCreateRfq: () => (_input: CreateRfqInput) => EMPTY as Observable<number>,
-    useAcceptQuote: () => (_quoteId: number) => EMPTY as Observable<void>,
-    useCancelRfq: () => (_rfqId: number) => EMPTY as Observable<void>,
-    usePassQuote: () => (_quoteId: number) => EMPTY as Observable<void>,
-    useQuoteRfq: () => (_request: QuoteRequest) => EMPTY as Observable<void>,
-    useRequestRfqQuote: () => (_symbol: string, _pipsPosition: number) =>
-      EMPTY as Observable<RfqQuoteResult>,
+    // Commands: async no-ops. Not exercised by static screenshots, so the
+    // non-void results are type-correct placeholders.
+    useExecuteTrade: () => async (_input: ExecuteTradeInput) =>
+      ({} as ExecuteTradeResult),
+    useCreateRfq: () => async (_input: CreateRfqInput) => 0,
+    useAcceptQuote: () => async (_quoteId: number) => {},
+    useCancelRfq: () => async (_rfqId: number) => {},
+    usePassQuote: () => async (_quoteId: number) => {},
+    useQuoteRfq: () => async (_request: QuoteRequest) => {},
+    useRequestRfqQuote: () => async (_symbol: string, _pipsPosition: number) =>
+      ({} as RfqQuoteResult),
     // Machine: static snapshot for screenshots; intents are no-ops.
     useTileExecution: () => ({
       state: data.tileExecution ?? { status: "ready" },

@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { firstValueFrom } from "rxjs";
 import { RfqState, type Instrument, type Dealer, type Rfq } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import { RfqCard } from "./RfqCard";
@@ -61,7 +60,7 @@ export function RfqTilesPanel() {
 
   const handleAccept = useCallback(
     async (quoteId: number) => {
-      await firstValueFrom(acceptQuote(quoteId));
+      await acceptQuote(quoteId);
     },
     [acceptQuote],
   );
