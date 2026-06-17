@@ -9,6 +9,7 @@ import {
 } from "@rtc/domain";
 import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
 import type { RfqState } from "../../../../src/app/presenters/RfqTileMachine";
+import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
 
 export interface AppData {
   prices: Record<string, Price | null>;
@@ -30,6 +31,8 @@ export interface AppData {
   stale?: Record<string, boolean>;
   /** Stale flag for the analytics panel (useAnalyticsStaleFlag); defaults to false. */
   analyticsStale?: boolean;
+  /** Notional view override for TileNotional screenshots; defaults to formatted defaultNotional. */
+  notional?: NotionalView;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

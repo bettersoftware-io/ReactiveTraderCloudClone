@@ -6,6 +6,7 @@ import {
 } from "@rtc/domain";
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import type { AppData } from "../shared/appData";
+import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
 
 const noop = (): void => {};
 
@@ -48,5 +49,20 @@ export function buildFakeHooks(data: AppData): AppHooks {
     // Intent-free derived flags: static snapshot for screenshots.
     useStaleFlag: (pair: CurrencyPair) => data.stale?.[pair.symbol] ?? false,
     useAnalyticsStaleFlag: () => data.analyticsStale ?? false,
+    // Machine: static snapshot for screenshots; intents are no-ops.
+    useNotional: (defaultNotional: number) => {
+      const override = data.notional as NotionalView | undefined;
+      const displayValue = override?.displayValue ??
+        defaultNotional.toLocaleString("en-US", { maximumFractionDigits: 0, useGrouping: true });
+      return {
+        displayValue,
+        numericValue: override?.numericValue ?? defaultNotional,
+        error: override?.error ?? null,
+        isRfq: override?.isRfq ?? false,
+        isDefault: override?.isDefault ?? true,
+        onChange: noop,
+        reset: noop,
+      };
+    },
   };
 }

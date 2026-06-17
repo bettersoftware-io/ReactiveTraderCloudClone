@@ -5,6 +5,7 @@ import type {
   TileExecutionIntents,
 } from "./TileExecutionMachine";
 import type { RfqState, RfqTileIntents } from "./RfqTileMachine";
+import type { NotionalView, NotionalIntents } from "./NotionalMachine";
 
 /** Every app-layer machine factory returns this: a framework-agnostic
  * StateObservable carrying current state, plain intent methods, and dispose()
@@ -42,4 +43,6 @@ export interface MachineFactories {
   staleFlag: (pair: CurrencyPair) => ReadOnlyMachine<boolean>;
   /** Stale flag for the analytics position stream (intent-free). */
   analyticsStaleFlag: () => ReadOnlyMachine<boolean>;
+  /** Notional input state machine for a single tile. */
+  notional: (defaultNotional: number) => Machine<NotionalView, NotionalIntents>;
 }

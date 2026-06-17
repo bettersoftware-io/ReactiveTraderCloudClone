@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { type CurrencyPair, type Direction, type Price } from "@rtc/domain";
 import { useHooks } from "../../../hooks/HooksProvider";
-import { useNotional } from "./hooks/useNotional";
 import { TileHeader } from "./TileHeader";
 import { TilePrice, SpreadDisplay } from "./TilePrice";
 import { TileChart } from "./TileChart";
@@ -21,7 +20,7 @@ export function Tile({ pair, showChart }: TileProps) {
   const price = hooks.usePrice(pair);
   const stale = hooks.useStaleFlag(pair);
   const history = hooks.usePriceHistory(pair.symbol);
-  const notional = useNotional(pair.defaultNotional);
+  const notional = hooks.useNotional(pair.defaultNotional);
   const tileExecution = hooks.useTileExecution(pair);
   const rfqState = hooks.useRfqTile(pair);
 

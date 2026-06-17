@@ -19,6 +19,7 @@ import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { createRfqTileMachine } from "./presenters/RfqTileMachine";
 import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
+import { createNotionalMachine } from "./presenters/NotionalMachine";
 import type { MachineFactories } from "./presenters/machine";
 
 import { WsAdapter } from "./adapters/WsAdapter";
@@ -119,5 +120,6 @@ export function createMachineFactories(presenters: Presenters): MachineFactories
         status$: presenters.connection.status$,
         value$: presenters.analytics.position$,
       }),
+    notional: (defaultNotional) => createNotionalMachine(defaultNotional),
   };
 }

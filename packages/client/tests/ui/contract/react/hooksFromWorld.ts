@@ -13,6 +13,7 @@ import { useMachine } from "../../../../src/ui/hooks/useMachine";
 import { createTileExecutionMachine } from "../../../../src/app/presenters/TileExecutionMachine";
 import { createRfqTileMachine } from "../../../../src/app/presenters/RfqTileMachine";
 import { createStaleFlagMachine } from "../../../../src/app/presenters/StaleFlagMachine";
+import { createNotionalMachine } from "../../../../src/app/presenters/NotionalMachine";
 import type { World } from "../shared/harness/world";
 
 /** Subscribe a React component to a BehaviorSubject; re-render on each emission. */
@@ -138,5 +139,13 @@ export function reactHooks(world: World): AppHooks {
           value$: s.useAnalytics,
         }),
       ).state,
+    // Machine: the REAL createNotionalMachine, exercising the relocated notional
+    // logic through the same useMachine bridge the app uses.
+    useNotional: (defaultNotional: number) => {
+      const { state, change, reset } = useMachine(
+        () => createNotionalMachine(defaultNotional),
+      );
+      return { ...state, onChange: change, reset };
+    },
   };
 }

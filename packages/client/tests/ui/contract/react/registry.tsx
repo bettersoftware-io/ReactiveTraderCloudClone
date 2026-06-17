@@ -58,7 +58,7 @@ import { TileHeader as TileHeaderComponent } from "../../../../src/ui/fx/liveRat
 import { TilePrice as TilePriceComponent, SpreadDisplay as SpreadDisplayComponent } from "../../../../src/ui/fx/liveRates/tile/TilePrice";
 import { TileExecution as TileExecutionComponent } from "../../../../src/ui/fx/liveRates/tile/TileExecution";
 import { TileNotional as TileNotionalComponent } from "../../../../src/ui/fx/liveRates/tile/TileNotional";
-import type { UseNotionalResult } from "../../../../src/ui/fx/liveRates/tile/hooks/useNotional";
+import type { NotionalResult } from "../../../../src/app/presenters/NotionalMachine";
 import { TileConfirmation as TileConfirmationComponent } from "../../../../src/ui/fx/liveRates/tile/TileConfirmation";
 import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
 import { RfqCountdown as RfqCountdownComponent } from "../../../../src/ui/fx/liveRates/tile/RfqCountdown";
@@ -273,7 +273,7 @@ export const registry = new Map<AnyToken, ElementFor>([
     TileNotional,
     (p) => (
       <TileNotionalComponent
-        notional={p.notional as UseNotionalResult}
+        notional={p.notional as NotionalResult}
         baseCurrency={p.baseCurrency as string}
         disabled={p.disabled as boolean | undefined}
       />

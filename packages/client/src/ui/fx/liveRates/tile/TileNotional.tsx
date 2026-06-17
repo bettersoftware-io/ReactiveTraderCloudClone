@@ -1,8 +1,8 @@
 import { useCallback, useRef, type ChangeEvent, type KeyboardEvent } from "react";
-import type { UseNotionalResult } from "./hooks/useNotional";
+import type { NotionalResult } from "../../../../app/presenters/NotionalMachine";
 
 interface TileNotionalProps {
-  notional: UseNotionalResult;
+  notional: NotionalResult;
   baseCurrency: string;
   disabled?: boolean;
 }
