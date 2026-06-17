@@ -9,20 +9,12 @@ import {
   type RfqQuoteResult, type QuoteRequest,
 } from "@rtc/domain";
 import type { Presenters } from "../../app/composition";
-import type { Machine } from "./machine";
+import type { MachineFactories } from "../../app/presenters/machine";
 import { useMachine } from "./useMachine";
 import type {
   TileExecutionState,
   TileExecutionIntents,
 } from "../../app/presenters/TileExecutionMachine";
-
-/** App-layer machine factories injected into the hooks seam. Each builds a
- * fresh machine instance per component mount (useMachine owns its lifecycle). */
-export interface MachineFactories {
-  tileExecution: (
-    pair: CurrencyPair,
-  ) => Machine<TileExecutionState, TileExecutionIntents>;
-}
 
 export interface AppHooks {
   // Streams

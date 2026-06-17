@@ -30,6 +30,9 @@ importers:
       '@rtc/shared':
         specifier: workspace:*
         version: link:../shared
+      '@rx-state/core':
+        specifier: ^0.1.4
+        version: 0.1.4(rxjs@7.8.2)
       react:
         specifier: ^19
         version: 19.2.7

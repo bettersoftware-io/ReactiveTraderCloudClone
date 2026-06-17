@@ -1,10 +1,10 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { state } from "@react-rxjs/core";
+import { state } from "@rx-state/core";
 import { BehaviorSubject } from "rxjs";
 import { useMachine } from "./useMachine";
-import type { Machine } from "./machine";
+import type { Machine } from "../../app/presenters/machine";
 
 /** Build a minimal test machine from a BehaviorSubject.
  * We subscribe immediately so the StateObservable stays warm

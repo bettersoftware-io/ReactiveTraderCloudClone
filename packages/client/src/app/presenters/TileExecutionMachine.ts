@@ -14,7 +14,7 @@ import {
   distinctUntilChanged,
   takeUntil,
 } from "rxjs/operators";
-import { state, type StateObservable } from "@react-rxjs/core";
+import { state, type StateObservable } from "@rx-state/core";
 import {
   type CurrencyPair,
   type Price,
@@ -27,7 +27,7 @@ import {
   EXECUTION_TIMEOUT_MS,
   CONFIRMATION_DISMISS_MS,
 } from "@rtc/domain";
-import type { Machine } from "../../ui/hooks/machine";
+import type { Machine } from "./machine";
 
 /** The execution lifecycle of a single tile, relocated out of the old
  * useTileState + useExecuteTrade React hooks. The overlay reads this state. */

@@ -17,7 +17,7 @@ import { DealersPresenter } from "./presenters/DealersPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
 import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
-import type { MachineFactories } from "../ui/hooks/createAppHooks";
+import type { MachineFactories } from "./presenters/machine";
 
 import { WsAdapter } from "./adapters/WsAdapter";
 import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
