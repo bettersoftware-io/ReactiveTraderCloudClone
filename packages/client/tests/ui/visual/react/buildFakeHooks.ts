@@ -47,6 +47,16 @@ export function buildFakeHooks(data: AppData): AppHooks {
       reject: noop,
       accept: noop,
     }),
+    // Submission machines: static snapshots for screenshots; intents are no-ops.
+    useRfqSubmission: () => ({
+      state: data.rfqSubmission ?? { status: "editing" },
+      submit: noop,
+    }),
+    useTicketSubmission: () => ({
+      state: data.ticketSubmission ?? { submitted: false },
+      submitPrice: noop,
+      pass: noop,
+    }),
     // Intent-free derived flags: static snapshot for screenshots.
     useStaleFlag: (pair: CurrencyPair) => data.stale?.[pair.symbol] ?? false,
     useAnalyticsStaleFlag: () => data.analyticsStale ?? false,

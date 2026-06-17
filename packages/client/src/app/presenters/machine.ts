@@ -6,6 +6,12 @@ import type {
 } from "./TileExecutionMachine";
 import type { RfqState, RfqTileIntents } from "./RfqTileMachine";
 import type { NotionalView, NotionalIntents } from "./NotionalMachine";
+import type {
+  RfqSubmissionState,
+  RfqSubmissionIntents,
+  TicketSubmissionState,
+  TicketSubmissionIntents,
+} from "./RfqsPresenter";
 
 /** Every app-layer machine factory returns this: a framework-agnostic
  * StateObservable carrying current state, plain intent methods, and dispose()
@@ -45,4 +51,11 @@ export interface MachineFactories {
   analyticsStaleFlag: () => ReadOnlyMachine<boolean>;
   /** Notional input state machine for a single tile. */
   notional: (defaultNotional: number) => Machine<NotionalView, NotionalIntents>;
+  /** NewRfqForm create→confirm→redirect submission machine. */
+  rfqSubmission: () => Machine<RfqSubmissionState, RfqSubmissionIntents>;
+  /** TradeTicket submit-price / pass submission machine. */
+  ticketSubmission: () => Machine<
+    TicketSubmissionState,
+    TicketSubmissionIntents
+  >;
 }

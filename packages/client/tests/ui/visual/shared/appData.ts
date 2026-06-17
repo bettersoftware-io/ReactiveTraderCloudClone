@@ -11,6 +11,10 @@ import {
 import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
 import type { RfqState } from "../../../../src/app/presenters/RfqTileMachine";
 import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
+import type {
+  RfqSubmissionState,
+  TicketSubmissionState,
+} from "../../../../src/app/presenters/RfqsPresenter";
 import type { ThroughputView } from "../../../../src/app/presenters/ThroughputPresenter";
 
 export interface AppData {
@@ -35,6 +39,10 @@ export interface AppData {
   analyticsStale?: boolean;
   /** Notional view override for TileNotional screenshots; defaults to formatted defaultNotional. */
   notional?: NotionalView;
+  /** NewRfqForm submission state (useRfqSubmission); defaults to "editing". */
+  rfqSubmission?: RfqSubmissionState;
+  /** TradeTicket submission state (useTicketSubmission); defaults to not submitted. */
+  ticketSubmission?: TicketSubmissionState;
   /** Throughput control view (useThroughput); defaults to a loaded value of 100. */
   throughput?: ThroughputView;
   /** Theme preference (useThemePreference); defaults to DEFAULT_THEME ("dark"). */

@@ -25,6 +25,12 @@ import type {
   NotionalView,
   NotionalIntents,
 } from "../../app/presenters/NotionalMachine";
+import type {
+  RfqSubmissionState,
+  RfqSubmissionIntents,
+  TicketSubmissionState,
+  TicketSubmissionIntents,
+} from "../../app/presenters/RfqsPresenter";
 import type { ThroughputView } from "../../app/presenters/ThroughputPresenter";
 
 export interface AppHooks {
@@ -56,6 +62,10 @@ export interface AppHooks {
   useAnalyticsStaleFlag: () => boolean;
   /** Notional input state for a tile — view state plus intents. */
   useNotional: (defaultNotional: number) => { state: NotionalView } & NotionalIntents;
+  /** NewRfqForm create→confirm→redirect submission state plus the submit intent. */
+  useRfqSubmission: () => { state: RfqSubmissionState } & RfqSubmissionIntents;
+  /** TradeTicket submit-price / pass submission state plus its intents. */
+  useTicketSubmission: () => { state: TicketSubmissionState } & TicketSubmissionIntents;
   /** Global throughput control — shared view state plus the setValue intent. */
   useThroughput: () => ThroughputView & { setValue: (value: number) => void };
   /** Global theme preference — current theme plus write/zero-arg-toggle intents. */
@@ -174,6 +184,8 @@ export function createAppHooks(
       useMachine(() => machines.analyticsStaleFlag()).state,
     useNotional: (defaultNotional: number) =>
       useMachine(() => machines.notional(defaultNotional)),
+    useRfqSubmission: () => useMachine(() => machines.rfqSubmission()),
+    useTicketSubmission: () => useMachine(() => machines.ticketSubmission()),
     useThroughput: () => ({ ...useThroughputState(), setValue: setThroughput }),
     // Global theme: read the currently-bound theme in the hook body so the
     // component calls a zero-arg toggle() that flips relative to the live value.

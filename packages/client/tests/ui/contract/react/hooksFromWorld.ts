@@ -1,8 +1,9 @@
-import { useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { EMPTY, of, throwError, type Observable } from "rxjs";
 import type { BehaviorSubject } from "rxjs";
 import type {
   CurrencyPair,
+  CreateRfqInput,
   ExecuteTradeInput,
   ExecuteTradeResult,
   RfqQuoteResult,
@@ -10,6 +11,10 @@ import type {
   Theme,
   ViewMode,
 } from "@rtc/domain";
+import type {
+  RfqSubmissionState,
+  TicketSubmissionState,
+} from "../../../../src/app/presenters/RfqsPresenter";
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import { useMachine } from "../../../../src/ui/hooks/useMachine";
 import { createTileExecutionMachine } from "../../../../src/app/presenters/TileExecutionMachine";
@@ -17,6 +22,12 @@ import { createRfqTileMachine } from "../../../../src/app/presenters/RfqTileMach
 import { createStaleFlagMachine } from "../../../../src/app/presenters/StaleFlagMachine";
 import { createNotionalMachine } from "../../../../src/app/presenters/NotionalMachine";
 import type { World } from "../shared/harness/world";
+
+/** Mirror of RfqsPresenter's presenter-local redirect delay. The contract spec
+ * drives this with fake timers (advanceTimersByTimeAsync(1500)), so the fake
+ * schedules onRedirect via a REAL setTimeout — preserving the exact timing the
+ * spec asserts, instead of redirecting instantly. */
+const REDIRECT_DELAY_MS = 1500;
 
 /** Subscribe a React component to a BehaviorSubject; re-render on each emission. */
 function useSubject<T>(subject: BehaviorSubject<T>): T {
@@ -139,6 +150,43 @@ export function reactHooks(world: World): AppHooks {
     // logic through the same useMachine bridge the app uses.
     useNotional: (defaultNotional: number) =>
       useMachine(() => createNotionalMachine(defaultNotional)),
+    // Submission machine fake: stateful per-mount store that records the RFQ to
+    // world.commands.createRfq, flips editing→submitting→confirmed, and schedules
+    // onRedirect via a REAL setTimeout(REDIRECT_DELAY_MS) so the spec's fake-timer
+    // advance drives the redirect with the same timing as the real RxJS timer.
+    useRfqSubmission: () => {
+      const [submissionState, setSubmissionState] = useState<RfqSubmissionState>({
+        status: "editing",
+      });
+      const submit = useCallback(
+        (input: CreateRfqInput, onRedirect: (rfqId: number) => void) => {
+          world.commands.createRfq.push(input);
+          setSubmissionState({ status: "submitting" });
+          const rfqId = world.results.createRfq ?? 0;
+          setSubmissionState({ status: "confirmed", rfqId });
+          setTimeout(() => onRedirect(rfqId), REDIRECT_DELAY_MS);
+        },
+        [],
+      );
+      return { state: submissionState, submit };
+    },
+    // Ticket submission machine fake: stateful per-mount store that records the
+    // quote/pass command to world.commands.* and flips submitted:true, mirroring
+    // the relocated submit-price / pass flow.
+    useTicketSubmission: () => {
+      const [ticketState, setTicketState] = useState<TicketSubmissionState>({
+        submitted: false,
+      });
+      const submitPrice = useCallback((quoteId: number, price: number) => {
+        world.commands.quoteRfq.push({ quoteId, price });
+        setTicketState({ submitted: true });
+      }, []);
+      const pass = useCallback((quoteId: number) => {
+        world.commands.passQuote.push(quoteId);
+        setTicketState({ submitted: true });
+      }, []);
+      return { state: ticketState, submitPrice, pass };
+    },
     // Global throughput: reactive view backed by the World subject; setValue
     // records the value and optimistically echoes it into the view (mirroring
     // the presenter's immediate echo), so the panel reflects the edit at once.

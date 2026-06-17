@@ -130,5 +130,7 @@ export function createMachineFactories(presenters: Presenters): MachineFactories
         value$: presenters.analytics.position$,
       }),
     notional: (defaultNotional) => createNotionalMachine(defaultNotional),
+    rfqSubmission: () => presenters.rfqs.createSubmission(),
+    ticketSubmission: () => presenters.rfqs.createTicketSubmission(),
   };
 }
