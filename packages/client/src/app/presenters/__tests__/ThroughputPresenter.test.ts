@@ -4,11 +4,10 @@ import { type Observable } from "rxjs";
 import type { AdminPort } from "@rtc/domain";
 import {
   ThroughputPresenter,
+  DEBOUNCE_MS,
+  MESSAGE_DISMISS_MS,
   type ThroughputView,
 } from "../ThroughputPresenter";
-
-const DEBOUNCE_MS = 300;
-const MESSAGE_DISMISS_MS = 3_000;
 
 function scheduler() {
   return new TestScheduler((actual, expected) => {
@@ -85,7 +84,7 @@ describe("ThroughputPresenter", () => {
         // Fire setValue just after load; observe the optimistic value lands
         // before the debounce window (300ms) elapses.
         ts.schedule(() => presenter.setValue(420), 1);
-        ts.schedule(() => {}, 100); // stop the window before debounce fires
+        ts.schedule(() => {}, 100); // no-op; flush() advances past debounce AND the dismiss timer, so the last state's message is null because MESSAGE_DISMISS_MS elapses — not because the debounce was cut short
       },
     );
     // last observed value within the first 100ms is the optimistic 420
@@ -167,5 +166,61 @@ describe("ThroughputPresenter", () => {
       { value: 100, loading: true, message: null },
       { value: 100, loading: false, message: null },
     ]);
+  });
+
+  it("cancels the in-flight dismiss timer when a new setValue arrives during the message window", () => {
+    // Timeline (virtual ms):
+    //   t=1    setValue(420) → optimistic echo
+    //   t=301  debounce fires → setThroughput(420) resolves → banner A appears
+    //   t=1000 setValue(999) during A's 3s window → optimistic echo; debounce restarts
+    //          switchMap drops A's pending concat (cancels the dismiss at t=3301)
+    //   t=1300 debounce fires → setThroughput(999) resolves → banner B appears
+    //   t=4300 dismiss for B fires (MESSAGE_DISMISS_MS after B's banner)
+    //          A's original dismiss at t=3301 must NOT have fired.
+    const events: { time: number; message: ThroughputView["message"] }[] = [];
+    const ts = scheduler();
+    ts.run(({ flush }) => {
+      const built = fakeAdmin(ts, { get: { marble: "(a|)", values: { a: 100 } } });
+      const presenter = new ThroughputPresenter(built.port);
+      const sub = presenter.state$.subscribe((s) =>
+        events.push({ time: ts.now(), message: s.message }),
+      );
+      ts.schedule(() => presenter.setValue(420), 1);
+      ts.schedule(() => presenter.setValue(999), 1000);
+      flush();
+      sub.unsubscribe();
+    });
+
+    const bannerA = events.find(
+      (e) => e.message?.isError === false && e.message.text.includes("420"),
+    );
+    const bannerB = events.find(
+      (e) => e.message?.isError === false && e.message.text.includes("999"),
+    );
+    const finalDismiss = [...events]
+      .reverse()
+      .find((e) => e.message === null && e.time > (bannerB?.time ?? 0));
+
+    // Both banners must appear, A before B.
+    expect(bannerA?.message).toEqual({
+      text: "Throughput has been set to 420",
+      isError: false,
+    });
+    expect(bannerB?.message).toEqual({
+      text: "Throughput has been set to 999",
+      isError: false,
+    });
+    expect(bannerA!.time).toBeLessThan(bannerB!.time);
+
+    // B's banner is anchored to its own debounce (t=1000+DEBOUNCE_MS=1300).
+    expect(bannerB!.time).toBe(1000 + DEBOUNCE_MS);
+
+    // The final dismiss fires MESSAGE_DISMISS_MS after B's banner — not after A's.
+    expect(finalDismiss!.time).toBe(1000 + DEBOUNCE_MS + MESSAGE_DISMISS_MS);
+
+    // A's original dismiss (would have fired at t=1+DEBOUNCE_MS+MESSAGE_DISMISS_MS=3301)
+    // must NOT appear as an event — switchMap cancelled it when setValue(999) debounced.
+    const aDismissTime = 1 + DEBOUNCE_MS + MESSAGE_DISMISS_MS;
+    expect(events.some((e) => e.time === aDismissTime && e.message === null)).toBe(false);
   });
 });

@@ -20,8 +20,8 @@ import type { AdminPort } from "@rtc/domain";
 /** UI cadence constants relocated out of the old useThroughput React hook.
  *  These are presentation timings (debounce the write, auto-dismiss the
  *  confirmation), not domain rules, so they live here in the presenter. */
-const DEBOUNCE_MS = 300;
-const MESSAGE_DISMISS_MS = 3_000;
+export const DEBOUNCE_MS = 300;
+export const MESSAGE_DISMISS_MS = 3_000;
 
 /** Default value shown when the initial load fails (mirrors the old hook's
  *  useState(100) seed, which it kept on a failed fetch). */
