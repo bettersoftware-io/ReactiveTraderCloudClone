@@ -10,6 +10,7 @@ import type {
   Quote,
   Instrument,
   Dealer,
+  ViewMode,
 } from "@rtc/domain";
 import type { ComponentToken, MountedComponent } from "../shared/harness/component";
 import {
@@ -52,7 +53,7 @@ import {
 } from "../shared/components";
 import { LiveRatesPanel as LiveRatesPanelComponent } from "../../../../src/ui/fx/liveRates/LiveRatesPanel";
 import { CurrencyFilter as CurrencyFilterComponent } from "../../../../src/ui/fx/liveRates/CurrencyFilter";
-import { ViewToggle as ViewToggleComponent, type ViewMode } from "../../../../src/ui/fx/liveRates/ViewToggle";
+import { ViewToggle as ViewToggleComponent } from "../../../../src/ui/fx/liveRates/ViewToggle";
 import { Tile as TileComponent } from "../../../../src/ui/fx/liveRates/tile/Tile";
 import { TileHeader as TileHeaderComponent } from "../../../../src/ui/fx/liveRates/tile/TileHeader";
 import { TilePrice as TilePriceComponent, SpreadDisplay as SpreadDisplayComponent } from "../../../../src/ui/fx/liveRates/tile/TilePrice";

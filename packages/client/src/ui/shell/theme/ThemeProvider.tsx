@@ -4,10 +4,9 @@ import {
   useLayoutEffect,
   type ReactNode,
 } from "react";
+import { type Theme } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import { darkTokens, lightTokens, type ThemeTokens } from "./tokens";
-
-export type Theme = "dark" | "light";
 
 interface ThemeContextValue {
   theme: Theme;
