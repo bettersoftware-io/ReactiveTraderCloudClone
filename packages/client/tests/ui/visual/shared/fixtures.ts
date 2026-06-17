@@ -210,6 +210,15 @@ export const fixtures: Record<string, AppData> = {
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
   }),
+  // Same data as live-rates-populated but seeded into price view through the
+  // seam (viewMode "price"). The view mode now lives behind PreferencesPort, so
+  // the price-mode arm is reached by seeding state, not by a runtime toggle —
+  // the rendered output (charts suppressed, ViewToggle offers "Chart") is identical.
+  "live-rates-price": makeAppData({
+    currencyPairs: [eurusd, gbpusd, usdjpy],
+    prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
+    viewMode: "price",
+  }),
   "app-fx": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
@@ -218,6 +227,18 @@ export const fixtures: Record<string, AppData> = {
     // Admin tab throughput: a loaded value of 250 (was the old fetch-stub value),
     // so the AdminPanel slider/input render deterministically through the seam.
     throughput: { value: 250, loading: false, message: null },
+  }),
+  // Light-theme variant of the FX page. The theme now lives behind
+  // PreferencesPort, so the light arm is reached by seeding theme "light" rather
+  // than clicking the toggle — the rendered output is identical to the old
+  // post-click state, and the ThemeToggle's aria-label reads "Switch to dark theme".
+  "app-fx-light": makeAppData({
+    currencyPairs: [eurusd, gbpusd, usdjpy],
+    prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
+    analytics: analyticsData,
+    connectionStatus: ConnectionStatus.CONNECTED,
+    throughput: { value: 250, loading: false, message: null },
+    theme: "light",
   }),
   "fx-trades": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],

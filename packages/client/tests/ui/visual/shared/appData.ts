@@ -6,6 +6,7 @@ import {
   type CurrencyPair, type Price, type PriceTick, type Trade,
   type Rfq, type Quote, type PositionUpdates,
   type Instrument, type Dealer,
+  type Theme, type ViewMode,
 } from "@rtc/domain";
 import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
 import type { RfqState } from "../../../../src/app/presenters/RfqTileMachine";
@@ -36,6 +37,10 @@ export interface AppData {
   notional?: NotionalView;
   /** Throughput control view (useThroughput); defaults to a loaded value of 100. */
   throughput?: ThroughputView;
+  /** Theme preference (useThemePreference); defaults to DEFAULT_THEME ("dark"). */
+  theme?: Theme;
+  /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
+  viewMode?: ViewMode;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

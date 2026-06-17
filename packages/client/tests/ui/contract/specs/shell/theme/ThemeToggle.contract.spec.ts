@@ -3,9 +3,9 @@ import { mount, cleanupMounted } from "@ui-contract/mount";
 import { ThemeToggle } from "@ui-contract/components";
 
 beforeEach(() => {
-  // The ThemeProvider persists the chosen theme to localStorage and publishes
-  // it on the document root; reset both so each spec starts from the default.
-  localStorage.clear();
+  // The ThemeProvider reads the theme through the seam (a fresh World per mount,
+  // defaulting to dark) and publishes it on the document root; reset the root
+  // dataset so each spec starts from a clean global state.
   delete document.documentElement.dataset.theme;
 });
 

@@ -7,6 +7,8 @@ import type {
   ExecuteTradeResult,
   RfqQuoteResult,
   QuoteRequest,
+  Theme,
+  ViewMode,
 } from "@rtc/domain";
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import { useMachine } from "../../../../src/ui/hooks/useMachine";
@@ -148,6 +150,26 @@ export function reactHooks(world: World): AppHooks {
           world.throughputSets.push(value);
           world.setThroughputView({ value });
         },
+      };
+    },
+    // Global theme: reactive view backed by the World subject; setTheme/toggle
+    // push back so a click through the seam flips the rendered theme (mirroring
+    // the PreferencesPort's replay-current theme$ stream).
+    useThemePreference: () => {
+      const theme = useSubject(world.theme);
+      return {
+        theme,
+        setTheme: (next: Theme) => world.theme.next(next),
+        toggle: () => world.theme.next(theme === "dark" ? "light" : "dark"),
+      };
+    },
+    // Global view-mode: reactive view backed by the World subject; setViewMode
+    // pushes back so a toggle through the seam flips the rendered mode.
+    useViewModePreference: () => {
+      const viewMode = useSubject(world.viewMode);
+      return {
+        viewMode,
+        setViewMode: (next: ViewMode) => world.viewMode.next(next),
       };
     },
   };

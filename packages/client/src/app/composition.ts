@@ -17,6 +17,8 @@ import { DealersPresenter } from "./presenters/DealersPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
 import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
 import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
+import { ThemePreferencePresenter } from "./presenters/ThemePreferencePresenter";
+import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { createRfqTileMachine } from "./presenters/RfqTileMachine";
 import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
@@ -47,6 +49,8 @@ export interface Presenters {
   connection: ConnectionStatusPresenter;
   rfqQuote: RfqQuotePresenter;
   throughput: ThroughputPresenter;
+  themePreference: ThemePreferencePresenter;
+  viewModePreference: ViewModePreferencePresenter;
 }
 
 export interface App {
@@ -96,6 +100,8 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     connection: new ConnectionStatusPresenter(ports.connectionEvents),
     rfqQuote: new RfqQuotePresenter(ports.pricing),
     throughput: new ThroughputPresenter(ports.admin),
+    themePreference: new ThemePreferencePresenter(ports.preferences),
+    viewModePreference: new ViewModePreferencePresenter(ports.preferences),
   };
   return { presenters, ports };
 }

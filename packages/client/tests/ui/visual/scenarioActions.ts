@@ -52,15 +52,18 @@ export const scenarioActions: Record<string, ScenarioAction> = {
     click: "tab-admin",
     waitForText: "Throughput Control",
   },
+  // Light theme is seeded through the seam (fixture app-fx-light, theme "light"),
+  // so no toggle click is needed; the ThemeToggle's aria-label confirms the
+  // light arm rendered (it offers a switch back to dark).
   "app/fx-light": {
     fullPage: true,
-    click: "theme-toggle",
     assertAriaLabelOf: "theme-toggle",
     expectAriaLabel: "Switch to dark theme",
   },
-  // Toggle the live-rates view from chart to price; the button label flips to
-  // "Chart" (offering a switch back), proving the price-mode arm rendered.
-  "live-rates/price-view": { click: "view-toggle", waitForText: "Chart" },
+  // Price view is seeded through the seam (fixture live-rates-price, viewMode
+  // "price"); the ViewToggle label reads "Chart" (offering a switch back),
+  // proving the price-mode arm rendered.
+  "live-rates/price-view": { waitForText: "Chart" },
   // Credit workspace sub-views: click the tab, wait for that view's heading.
   "credit/workspace-new-rfq": { click: "credit-tab-new-rfq", waitForText: "Submit RFQ" },
   "credit/workspace-sell-side": { click: "credit-tab-sell-side", waitForText: "Sell Side (Adaptive Bank)" },

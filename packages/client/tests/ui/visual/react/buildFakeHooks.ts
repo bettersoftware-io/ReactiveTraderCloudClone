@@ -1,4 +1,5 @@
 import {
+  DEFAULT_THEME, DEFAULT_VIEW_MODE,
   type CurrencyPair,
   type ExecuteTradeInput, type ExecuteTradeResult, type CreateRfqInput,
   type RfqQuoteResult, type QuoteRequest,
@@ -73,6 +74,16 @@ export function buildFakeHooks(data: AppData): AppHooks {
       loading: data.throughput?.loading ?? false,
       message: data.throughput?.message ?? null,
       setValue: noop,
+    }),
+    // Display preferences: static snapshots for screenshots; setters are no-ops.
+    useThemePreference: () => ({
+      theme: data.theme ?? DEFAULT_THEME,
+      setTheme: noop,
+      toggle: noop,
+    }),
+    useViewModePreference: () => ({
+      viewMode: data.viewMode ?? DEFAULT_VIEW_MODE,
+      setViewMode: noop,
     }),
   };
 }

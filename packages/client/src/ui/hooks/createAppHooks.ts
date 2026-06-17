@@ -2,11 +2,13 @@ import { bind } from "@react-rxjs/core";
 import { firstValueFrom } from "rxjs";
 import {
   ConnectionStatus,
+  DEFAULT_THEME, DEFAULT_VIEW_MODE,
   type CurrencyPair, type Price, type PriceTick, type Trade,
   type Rfq, type Quote, type PositionUpdates,
   type Instrument, type Dealer,
   type ExecuteTradeInput, type ExecuteTradeResult, type CreateRfqInput,
   type RfqQuoteResult, type QuoteRequest,
+  type Theme, type ViewMode,
 } from "@rtc/domain";
 import type { Presenters } from "../../app/composition";
 import type { MachineFactories } from "../../app/presenters/machine";
@@ -56,6 +58,17 @@ export interface AppHooks {
   useNotional: (defaultNotional: number) => { state: NotionalView } & NotionalIntents;
   /** Global throughput control — shared view state plus the setValue intent. */
   useThroughput: () => ThroughputView & { setValue: (value: number) => void };
+  /** Global theme preference — current theme plus write/zero-arg-toggle intents. */
+  useThemePreference: () => {
+    theme: Theme;
+    setTheme: (theme: Theme) => void;
+    toggle: () => void;
+  };
+  /** Global live-rates view-mode preference — current mode plus the write intent. */
+  useViewModePreference: () => {
+    viewMode: ViewMode;
+    setViewMode: (viewMode: ViewMode) => void;
+  };
 }
 
 export function createAppHooks(
@@ -101,6 +114,16 @@ export function createAppHooks(
     message: null,
   } as ThroughputView);
   const setThroughput = (value: number) => presenters.throughput.setValue(value);
+
+  // Global/shared display preferences → plain binds (not per-mount machines).
+  const [useThemeValue] = bind(presenters.themePreference.theme$, DEFAULT_THEME);
+  const setTheme = (theme: Theme) => presenters.themePreference.setTheme(theme);
+  const [useViewModeValue] = bind(
+    presenters.viewModePreference.viewMode$,
+    DEFAULT_VIEW_MODE,
+  );
+  const setViewMode = (viewMode: ViewMode) =>
+    presenters.viewModePreference.setViewMode(viewMode);
 
   // Pre-bound command callbacks. Stable references across calls so React
   // memo/effect dep arrays remain stable. The bridge converts each one-shot
@@ -152,5 +175,19 @@ export function createAppHooks(
     useNotional: (defaultNotional: number) =>
       useMachine(() => machines.notional(defaultNotional)),
     useThroughput: () => ({ ...useThroughputState(), setValue: setThroughput }),
+    // Global theme: read the currently-bound theme in the hook body so the
+    // component calls a zero-arg toggle() that flips relative to the live value.
+    useThemePreference: () => {
+      const theme = useThemeValue();
+      return {
+        theme,
+        setTheme,
+        toggle: () => presenters.themePreference.toggle(theme),
+      };
+    },
+    useViewModePreference: () => ({
+      viewMode: useViewModeValue(),
+      setViewMode,
+    }),
   };
 }

@@ -27,11 +27,9 @@ test("app/admin", async ({ mount, page }) => {
 });
 
 test("app/fx-light", async ({ mount, page }) => {
-  await page.addInitScript(() => window.localStorage.clear());
+  // Light theme is seeded through the seam (fixture theme "light"); confirm the
+  // toggle now offers switching back to dark before screenshotting.
   await mount(<VisualScenario name="app/fx-light" />);
-  // Default theme is dark; toggle to light, then confirm the switch took effect
-  // (the button now offers switching back to dark) before screenshotting.
-  await page.getByTestId("theme-toggle").click();
   await expect(page.getByTestId("theme-toggle")).toHaveAttribute(
     "aria-label",
     "Switch to dark theme",

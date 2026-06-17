@@ -30,10 +30,10 @@ const hooks = createAppHooks(presenters, createMachineFactories(presenters));
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider>
-      <HooksProvider hooks={hooks}>
+    <HooksProvider hooks={hooks}>
+      <ThemeProvider>
         <App />
-      </HooksProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </HooksProvider>
   </StrictMode>,
 );

@@ -1,11 +1,10 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useLayoutEffect,
-  useState,
   type ReactNode,
 } from "react";
+import { useHooks } from "../../hooks/HooksProvider";
 import { darkTokens, lightTokens, type ThemeTokens } from "./tokens";
 
 export type Theme = "dark" | "light";
@@ -14,8 +13,6 @@ interface ThemeContextValue {
   theme: Theme;
   toggle: () => void;
 }
-
-const STORAGE_KEY = "rtc-theme";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
@@ -26,35 +23,15 @@ function applyTokens(tokens: ThemeTokens) {
   }
 }
 
-function readStoredTheme(): Theme {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark") return stored;
-  } catch {
-    // localStorage may be unavailable
-  }
-  return "dark";
-}
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(readStoredTheme);
+  // Persistence/state lives behind the seam (PreferencesPort); the provider
+  // only reads the current theme and paints the CSS tokens for it.
+  const { theme, toggle } = useHooks().useThemePreference();
 
   useLayoutEffect(() => {
     applyTokens(theme === "dark" ? darkTokens : lightTokens);
     document.documentElement.dataset.theme = theme;
   }, [theme]);
-
-  const toggle = useCallback(() => {
-    setTheme((prev) => {
-      const next = prev === "dark" ? "light" : "dark";
-      try {
-        localStorage.setItem(STORAGE_KEY, next);
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>

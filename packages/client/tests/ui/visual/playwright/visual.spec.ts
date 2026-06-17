@@ -9,10 +9,9 @@ for (const name of Object.keys(scenarios)) {
   const action = scenarioActions[name] ?? {};
 
   test(name, async ({ page }) => {
-    // Theme persists to localStorage (rtc-theme); clear it so dark/light
-    // scenarios are deterministic regardless of run order or a reused context.
-    await page.addInitScript(() => window.localStorage.clear());
-
+    // Theme and view-mode are seeded through the seam (per-fixture data.theme /
+    // data.viewMode), so dark/light and chart/price scenarios are deterministic
+    // without any localStorage involvement.
     await page.goto(`/?scenario=${encodeURIComponent(name)}`);
 
     if (action.click) {

@@ -31,8 +31,8 @@ export const scenarios: Record<string, Scenario> = {
   "app/credit": { componentKey: "App", fixtureKey: "credit-populated" },
   // Admin tab — App with the throughput fetch stubbed by the spec.
   "app/admin": { componentKey: "App", fixtureKey: "app-fx" },
-  // Light-theme variant of the FX page (spec seeds localStorage rtc-theme=light).
-  "app/fx-light": { componentKey: "App", fixtureKey: "app-fx" },
+  // Light-theme variant of the FX page (fixture seeds theme "light" through the seam).
+  "app/fx-light": { componentKey: "App", fixtureKey: "app-fx-light" },
 
   // --- Phase V deterministic golden scenarios ---
   // FX tiles: TilePrice DOWN / NONE colour arms + TileChart down/empty arms.
@@ -40,8 +40,8 @@ export const scenarios: Record<string, Scenario> = {
   "tile/eurusd-flat": { componentKey: "Tile", fixtureKey: "tile-eurusd-flat" },
   "tile/chart-down": { componentKey: "TileChart", fixtureKey: "tile-chart-down" },
   "tile/chart-empty": { componentKey: "TileChart", fixtureKey: "tile-chart-empty" },
-  // FX live-rates: toggle to price view (ViewToggle "Chart" label / stored-mode arm).
-  "live-rates/price-view": { componentKey: "LiveRatesPanel", fixtureKey: "live-rates-populated" },
+  // FX live-rates: price view seeded through the seam (ViewToggle "Chart" label / price-mode arm).
+  "live-rates/price-view": { componentKey: "LiveRatesPanel", fixtureKey: "live-rates-price" },
   // FX analytics: negative / empty / all-flat arms.
   "analytics/negative-pnl": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-negative" },
   "analytics/empty": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-empty" },
