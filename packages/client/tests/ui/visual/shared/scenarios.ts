@@ -79,4 +79,24 @@ export const scenarios: Record<string, Scenario> = {
   "credit/new-rfq-instrument-selected": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
   "credit/new-rfq-filled": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
   "credit/new-rfq-invalid": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
+
+  // --- Phase 9 deterministic tile execution / RFQ / stale arms ---
+  // Their state is now injected through the seam (per-symbol tileExecution /
+  // rfqTile / stale records), so each transient timer state is a static shot —
+  // no scenarioActions (no clicks / waits).
+  // TileConfirmation overlay arms.
+  "tile/execution-started": { componentKey: "Tile", fixtureKey: "tile-exec-started" },
+  "tile/execution-too-long": { componentKey: "Tile", fixtureKey: "tile-exec-too-long" },
+  "tile/execution-timeout": { componentKey: "Tile", fixtureKey: "tile-exec-timeout" },
+  "tile/execution-done": { componentKey: "Tile", fixtureKey: "tile-exec-done" },
+  "tile/execution-rejected": { componentKey: "Tile", fixtureKey: "tile-exec-rejected" },
+  "tile/execution-credit-exceeded": { componentKey: "Tile", fixtureKey: "tile-exec-credit-exceeded" },
+  "tile/execution-finished-timeout": { componentKey: "Tile", fixtureKey: "tile-exec-finished-timeout" },
+  // TileRfq body arms (RfqCountdown green vs amber low-time).
+  "tile/rfq-requested": { componentKey: "Tile", fixtureKey: "tile-rfq-requested" },
+  "tile/rfq-received": { componentKey: "Tile", fixtureKey: "tile-rfq-received" },
+  "tile/rfq-received-low": { componentKey: "Tile", fixtureKey: "tile-rfq-received-low" },
+  "tile/rfq-rejected": { componentKey: "Tile", fixtureKey: "tile-rfq-rejected" },
+  // StaleIndicator "Reconnecting…" overlay arm.
+  "tile/stale": { componentKey: "Tile", fixtureKey: "tile-stale" },
 };

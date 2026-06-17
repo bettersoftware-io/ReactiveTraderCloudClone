@@ -34,14 +34,17 @@ export function buildFakeHooks(data: AppData): AppHooks {
     useQuoteRfq: () => async (_request: QuoteRequest) => {},
     useRequestRfqQuote: () => async (_symbol: string, _pipsPosition: number) =>
       ({} as RfqQuoteResult),
-    // Machine: static snapshot for screenshots; intents are no-ops.
-    useTileExecution: () => ({
-      state: data.tileExecution ?? { status: "ready" },
+    // Machine: per-symbol static snapshot for screenshots; intents are no-ops.
+    // A missing key renders the same neutral state the real machine emits
+    // initially ("ready" / "init"), so existing goldens are unchanged.
+    useTileExecution: (pair: CurrencyPair) => ({
+      state: data.tileExecution[pair.symbol] ?? { status: "ready" },
       execute: noop,
       dismiss: noop,
     }),
-    useRfqTile: () => ({
-      state: data.rfqTile ?? { status: "init", quote: null, remainingMs: 0 },
+    useRfqTile: (pair: CurrencyPair) => ({
+      state:
+        data.rfqTile[pair.symbol] ?? { status: "init", quote: null, remainingMs: 0 },
       requestQuote: noop,
       cancel: noop,
       reject: noop,
@@ -58,7 +61,7 @@ export function buildFakeHooks(data: AppData): AppHooks {
       pass: noop,
     }),
     // Intent-free derived flags: static snapshot for screenshots.
-    useStaleFlag: (pair: CurrencyPair) => data.stale?.[pair.symbol] ?? false,
+    useStaleFlag: (pair: CurrencyPair) => data.stale[pair.symbol] ?? false,
     useAnalyticsStaleFlag: () => data.analyticsStale ?? false,
     // Machine: static snapshot for screenshots; intents are no-ops.
     useNotional: (defaultNotional: number) => {

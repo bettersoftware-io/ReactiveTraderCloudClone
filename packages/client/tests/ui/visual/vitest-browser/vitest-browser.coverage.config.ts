@@ -26,10 +26,6 @@ export default mergeConfig(
         exclude: [
           "src/ui/hooks/HooksProvider.tsx", // pure context provider, no branches
           "src/ui/**/*.test.{ts,tsx}", // co-located unit tests; never the SUT
-          "src/ui/fx/liveRates/tile/RfqCountdown.tsx", // timer-driven countdown; non-deterministic, no golden
-          "src/ui/fx/liveRates/tile/TileConfirmation.tsx", // transient confirmation/transition state, not snapshotted
-          "src/ui/fx/liveRates/tile/TileRfq.tsx", // transient RFQ-in-tile state, not snapshotted
-          "src/ui/shell/stale/StaleIndicator.tsx", // timer-driven stale arm; non-deterministic, not snapshotted
         ],
         reporter: ["text", "html", "lcov"],
         reportsDirectory: "reports/ui/visual/coverage",

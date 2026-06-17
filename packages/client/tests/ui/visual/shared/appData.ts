@@ -29,12 +29,12 @@ export interface AppData {
   instruments: readonly Instrument[];
   dealers: readonly Dealer[];
   connectionStatus: ConnectionStatus;
-  /** Tile execution overlay state; defaults to "ready" when omitted. */
-  tileExecution?: TileExecutionState;
-  /** RFQ tile state; defaults to "init" when omitted. */
-  rfqTile?: RfqState;
-  /** Per-symbol stale flag for tiles (useStaleFlag); defaults to false. */
-  stale?: Record<string, boolean>;
+  /** Per-symbol tile execution overlay state; a missing key defaults to "ready". */
+  tileExecution: Record<string, TileExecutionState>;
+  /** Per-symbol RFQ tile state; a missing key defaults to "init". */
+  rfqTile: Record<string, RfqState>;
+  /** Per-symbol stale flag for tiles (useStaleFlag); a missing key defaults to false. */
+  stale: Record<string, boolean>;
   /** Stale flag for the analytics panel (useAnalyticsStaleFlag); defaults to false. */
   analyticsStale?: boolean;
   /** Notional view override for TileNotional screenshots; defaults to formatted defaultNotional. */
@@ -64,6 +64,9 @@ export const defaultAppData: AppData = {
   instruments: [],
   dealers: [],
   connectionStatus: ConnectionStatus.CONNECTED,
+  tileExecution: {},
+  rfqTile: {},
+  stale: {},
 };
 
 /** Shallow-merge a partial fixture over the baseline. */

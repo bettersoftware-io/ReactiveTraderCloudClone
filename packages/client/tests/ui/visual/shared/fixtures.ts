@@ -1,7 +1,8 @@
 import {
   ConnectionStatus,
   PriceMovementType,
-  Direction, RfqState, TradeStatus, ADAPTIVE_BANK_NAME,
+  Direction, RfqState, TradeStatus, ExecutionStatus, ADAPTIVE_BANK_NAME,
+  RFQ_TIMEOUT_MS, RFQ_THRESHOLD,
   type CurrencyPair, type Price, type PriceTick, type PositionUpdates,
   type Trade, type Instrument, type Dealer, type Rfq, type Quote,
 } from "@rtc/domain";
@@ -186,6 +187,36 @@ const sellSideRespondedQuotes: readonly Quote[] = [
   { id: 4101, rfqId: 302, dealerId: 1, state: { type: "pendingWithPrice", price: 101.25 } },
 ];
 
+// --- Phase 9: tile execution / RFQ / stale states injected per-symbol ---
+// Previously timer-driven and excluded; now the app-layer machine state is
+// injectable through the seam, so each arm is a deterministic static snapshot.
+
+// A base EURUSD tile (price present so the tile body renders). Execution and
+// stale arms reuse it; RFQ arms additionally flip notional to the RFQ layout.
+const eurusdTileBase = { currencyPairs: [eurusd], prices: { EURUSD: eurusdPrice } };
+
+// The Done arm needs a representative completed Trade for the confirmation card.
+const eurusdDoneTrade: Trade = {
+  tradeId: 4242, tradeName: "Trade 4242", currencyPair: "EURUSD",
+  notional: 1_000_000, dealtCurrency: "EUR", direction: Direction.Buy,
+  spotRate: 1.09227, status: TradeStatus.Done,
+  tradeDate: "2026-06-08", valueDate: "2026-06-10",
+};
+
+// RFQ-active layout: a notional at/above RFQ_THRESHOLD flips the tile to the
+// TileRfq body (Tile only renders TileRfq when notional.state.isRfq is true).
+const rfqNotional = {
+  displayValue: RFQ_THRESHOLD.toLocaleString("en-US"),
+  numericValue: RFQ_THRESHOLD,
+  error: null,
+  isRfq: true,
+  isDefault: false,
+};
+
+// A received quote built from the EURUSD price. totalMs = RFQ_TIMEOUT_MS so the
+// countdown fraction is remainingMs / RFQ_TIMEOUT_MS.
+const eurusdQuote = { bid: eurusdPrice.bid, ask: eurusdPrice.ask, timeoutMs: RFQ_TIMEOUT_MS };
+
 export const fixtures: Record<string, AppData> = {
   "connection-connected": makeAppData({
     connectionStatus: ConnectionStatus.CONNECTED,
@@ -284,4 +315,24 @@ export const fixtures: Record<string, AppData> = {
   "sell-side-empty": makeAppData({ instruments: creditInstruments, dealers: creditDealers, rfqs: [] }),
   // CreditBlotter empty arm: no Closed-with-accepted rfqs => "No credit trades yet".
   "credit-blotter-empty": makeAppData({ instruments: creditInstruments, dealers: creditDealers, rfqs: [] }),
+
+  // --- Phase 9: tile execution confirmation arms (TileConfirmation overlay) ---
+  "tile-exec-started": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "started" } } }),
+  "tile-exec-too-long": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "tooLong" } } }),
+  "tile-exec-timeout": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "timeout" } } }),
+  "tile-exec-done": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "finished", executionStatus: ExecutionStatus.Done, trade: eurusdDoneTrade } } }),
+  "tile-exec-rejected": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "finished", executionStatus: ExecutionStatus.Rejected } } }),
+  "tile-exec-credit-exceeded": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "finished", executionStatus: ExecutionStatus.CreditExceeded } } }),
+  "tile-exec-finished-timeout": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "finished", executionStatus: ExecutionStatus.Timeout } } }),
+
+  // --- Phase 9: RFQ tile arms (TileRfq body; notional flipped to RFQ layout) ---
+  "tile-rfq-requested": makeAppData({ ...eurusdTileBase, notional: rfqNotional, rfqTile: { EURUSD: { status: "requested", quote: null, remainingMs: 0 } } }),
+  // received with ~70% remaining: countdown bar is in the green (fraction > 0.3) arm.
+  "tile-rfq-received": makeAppData({ ...eurusdTileBase, notional: rfqNotional, rfqTile: { EURUSD: { status: "received", quote: eurusdQuote, remainingMs: 7000 } } }),
+  // received with 2000ms remaining: fraction 0.2 (< 0.3) → the amber low-time arm.
+  "tile-rfq-received-low": makeAppData({ ...eurusdTileBase, notional: rfqNotional, rfqTile: { EURUSD: { status: "received", quote: eurusdQuote, remainingMs: 2000 } } }),
+  "tile-rfq-rejected": makeAppData({ ...eurusdTileBase, notional: rfqNotional, rfqTile: { EURUSD: { status: "rejected", quote: null, remainingMs: 0 } } }),
+
+  // --- Phase 9: stale "Reconnecting…" overlay arm ---
+  "tile-stale": makeAppData({ ...eurusdTileBase, stale: { EURUSD: true } }),
 };

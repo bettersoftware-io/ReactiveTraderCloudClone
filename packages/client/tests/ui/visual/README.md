@@ -6,7 +6,12 @@ no presenters, no live streams — the dependency graph stops at `HooksProvider`
 ## Coverage
 
 - **Shell** — connection status bar, offline overlay, header/footer/tabs, theme.
-- **FX** — Tile (price up/down/flat, loading, and chart down/empty sparkline),
+- **FX** — Tile (price up/down/flat, loading, and chart down/empty sparkline;
+  plus the execution-confirmation overlay for every outcome — started, taking
+  too long, timeout, done, rejected, credit-exceeded, finished-timeout; the RFQ
+  tile body — requested / received / received-low / rejected, exercising the
+  countdown's green **and** amber low-time arms; and the stale "Reconnecting…"
+  overlay),
   LiveRatesPanel (chart **and** price view), AnalyticsPanel (populated,
   loading, negative-PnL, empty, all-flat positions), FxBlotter (populated,
   sorted, filtered, no-match, and each filter-type popover — date / number /
@@ -36,10 +41,12 @@ attribute additions — no logic/markup/styling change), so the runner-neutral
 These states have **no golden** on purpose (see
 [`COVERAGE-GAPS.md`](./COVERAGE-GAPS.md) for the full per-file inventory):
 
-- **Timer / transition / runtime-only** — the RFQ-active tile states (countdown,
-  awaiting, confirmation), the stale "Reconnecting…" overlay, blotter-row hover,
-  and the system-preference theme arm. These render only after a timer fires or a
-  runtime preference resolves, so a static screenshot can't pin them.
+- **Runtime-only** — blotter-row hover and the system-preference theme arm.
+  These render only on a real hover or after a runtime media-query resolves, so a
+  static screenshot can't pin them. (The RFQ-active tile states — countdown,
+  awaiting, confirmation — and the stale "Reconnecting…" overlay were **closed by
+  Phase 9**: their app-layer machine state is now injectable per-symbol through
+  the seam, so each is a deterministic golden.)
 - **Remaining testid-gated arms** — the filter `inRange` two-input arm, the set
   filter checkbox toggle, `DealerSelection` checkboxes, `QuickFilter`, and the
   tile execution/notional handlers were out of this batch's scope (their controls
