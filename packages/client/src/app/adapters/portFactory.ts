@@ -19,6 +19,7 @@ import {
   type WorkflowPort,
   type ConnectionEventsPort,
   type AdminPort,
+  type PreferencesPort,
   type RfqQuoteResult,
   type CurrencyPair,
   type PriceTick,
@@ -47,6 +48,7 @@ import type {
 } from "@rtc/shared";
 import { WsAdapter } from "./WsAdapter";
 import type { IWsAdapter } from "./IWsAdapter";
+import { LocalStoragePreferencesAdapter } from "./LocalStoragePreferencesAdapter";
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
@@ -58,6 +60,7 @@ export interface AppPorts {
   dealers: DealerPort;
   workflow: WorkflowPort;
   admin: AdminPort;
+  preferences: PreferencesPort;
   connectionEvents: ConnectionEventsPort;
 }
 
@@ -75,6 +78,9 @@ export function createSimulatorPorts(): TransportPorts {
     dealers: new DealerSimulator(),
     workflow: new CreditRfqSimulator(DEALERS_CATALOG),
     admin: new ThroughputSimulator(),
+    // Real browser persistence even in sim mode — PreferencesSimulator is for
+    // domain tests/fakes only.
+    preferences: new LocalStoragePreferencesAdapter(),
   };
 }
 
@@ -578,6 +584,8 @@ export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
     dealers: createDealerPort(ws),
     workflow: createWorkflowPort(ws),
     admin: createAdminPort(ws),
+    // Browser persistence is independent of the transport.
+    preferences: new LocalStoragePreferencesAdapter(),
   };
 }
 
