@@ -16,6 +16,7 @@ import {
   type RfqQuoteResult,
   type QuoteRequest,
 } from "@rtc/domain";
+import type { ThroughputView } from "../../../../../src/app/presenters/ThroughputPresenter";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
  *  are modelled by the per-key subject maps below, not by this map. */
@@ -81,8 +82,21 @@ export interface CommandLog {
   quoteRfq: QuoteRequest[];
 }
 
+/** The default throughput view a fresh World reports (loaded, value 100). */
+const DEFAULT_THROUGHPUT: ThroughputView = {
+  value: 100,
+  loading: false,
+  message: null,
+};
+
 export interface World {
   readonly sources: { [K in keyof HookValues]: BehaviorSubject<HookValues[K]> };
+  /** Reactive throughput view backing useThroughput (drives AdminPanel). */
+  readonly throughput: BehaviorSubject<ThroughputView>;
+  /** Values captured from useThroughput().setValue calls. */
+  readonly throughputSets: number[];
+  /** Push a new throughput view (drives the AdminPanel's re-render). */
+  setThroughputView(patch: Partial<ThroughputView>): void;
   /** Per-key subject for usePrice(pair), keyed by pair.symbol. */
   priceFor(symbol: string): BehaviorSubject<Price | null>;
   /** Per-key subject for usePriceHistory(symbol). */
@@ -105,6 +119,7 @@ export function createWorld(
   initial: Partial<HookValues> = {},
   results: CommandResults = {},
   parametric: ParametricSeed = {},
+  throughputSeed: Partial<ThroughputView> = {},
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as { [K in keyof HookValues]: BehaviorSubject<HookValues[K]> };
@@ -153,8 +168,18 @@ export function createWorld(
     quotesForRfq(Number(rfqId)).next(value);
   }
 
+  const throughput = new BehaviorSubject<ThroughputView>({
+    ...DEFAULT_THROUGHPUT,
+    ...throughputSeed,
+  });
+  const throughputSets: number[] = [];
+
   return {
     sources,
+    throughput,
+    throughputSets,
+    setThroughputView: (patch) =>
+      throughput.next({ ...throughput.getValue(), ...patch }),
     priceFor,
     historyFor,
     quotesForRfq,

@@ -10,6 +10,7 @@ import {
 import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
 import type { RfqState } from "../../../../src/app/presenters/RfqTileMachine";
 import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
+import type { ThroughputView } from "../../../../src/app/presenters/ThroughputPresenter";
 
 export interface AppData {
   prices: Record<string, Price | null>;
@@ -33,6 +34,8 @@ export interface AppData {
   analyticsStale?: boolean;
   /** Notional view override for TileNotional screenshots; defaults to formatted defaultNotional. */
   notional?: NotionalView;
+  /** Throughput control view (useThroughput); defaults to a loaded value of 100. */
+  throughput?: ThroughputView;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

@@ -16,6 +16,7 @@ import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
 import { DealersPresenter } from "./presenters/DealersPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
 import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
+import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { createRfqTileMachine } from "./presenters/RfqTileMachine";
 import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
@@ -45,6 +46,7 @@ export interface Presenters {
   dealers: DealersPresenter;
   connection: ConnectionStatusPresenter;
   rfqQuote: RfqQuotePresenter;
+  throughput: ThroughputPresenter;
 }
 
 export interface App {
@@ -93,6 +95,7 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     dealers: new DealersPresenter(ports.dealers),
     connection: new ConnectionStatusPresenter(ports.connectionEvents),
     rfqQuote: new RfqQuotePresenter(ports.pricing),
+    throughput: new ThroughputPresenter(ports.admin),
   };
   return { presenters, ports };
 }

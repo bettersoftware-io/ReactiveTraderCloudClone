@@ -13,12 +13,6 @@ for (const name of Object.keys(scenarios)) {
     // scenarios are deterministic regardless of run order or a reused context.
     await page.addInitScript(() => window.localStorage.clear());
 
-    if (action.stubThroughput !== undefined) {
-      await page.route("**/throughput", (route) =>
-        route.fulfill({ json: { value: action.stubThroughput } }),
-      );
-    }
-
     await page.goto(`/?scenario=${encodeURIComponent(name)}`);
 
     if (action.click) {

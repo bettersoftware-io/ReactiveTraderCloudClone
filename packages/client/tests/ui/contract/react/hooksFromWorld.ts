@@ -143,5 +143,18 @@ export function reactHooks(world: World): AppHooks {
     // logic through the same useMachine bridge the app uses.
     useNotional: (defaultNotional: number) =>
       useMachine(() => createNotionalMachine(defaultNotional)),
+    // Global throughput: reactive view backed by the World subject; setValue
+    // records the value and optimistically echoes it into the view (mirroring
+    // the presenter's immediate echo), so the panel reflects the edit at once.
+    useThroughput: () => {
+      const view = useSubject(world.throughput);
+      return {
+        ...view,
+        setValue: (value: number) => {
+          world.throughputSets.push(value);
+          world.setThroughputView({ value });
+        },
+      };
+    },
   };
 }

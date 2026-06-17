@@ -215,6 +215,9 @@ export const fixtures: Record<string, AppData> = {
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
     analytics: analyticsData,
     connectionStatus: ConnectionStatus.CONNECTED,
+    // Admin tab throughput: a loaded value of 250 (was the old fetch-stub value),
+    // so the AdminPanel slider/input render deterministically through the seam.
+    throughput: { value: 250, loading: false, message: null },
   }),
   "fx-trades": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],

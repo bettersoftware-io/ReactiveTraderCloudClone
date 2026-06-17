@@ -66,5 +66,13 @@ export function buildFakeHooks(data: AppData): AppHooks {
         reset: noop,
       };
     },
+    // Throughput: static snapshot for screenshots; setValue is a no-op. Defaults
+    // to a loaded value of 100 (loading:false) so the slider renders.
+    useThroughput: () => ({
+      value: data.throughput?.value ?? 100,
+      loading: data.throughput?.loading ?? false,
+      message: data.throughput?.message ?? null,
+      setValue: noop,
+    }),
   };
 }

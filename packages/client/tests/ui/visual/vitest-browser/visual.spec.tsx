@@ -22,16 +22,6 @@ for (const name of Object.keys(scenarios)) {
     // the dark/light scenarios are deterministic regardless of run order.
     window.localStorage.clear();
 
-    // Admin throughput fetch: the browser tier has no `page.route`, so stub the
-    // global fetch before App mounts and fires the request (admin only).
-    if (action.stubThroughput !== undefined) {
-      const value = action.stubThroughput;
-      window.fetch = (async () =>
-        new Response(JSON.stringify({ value }), {
-          headers: { "content-type": "application/json" },
-        })) as typeof fetch;
-    }
-
     // vitest-browser-react v2: render() is async (wraps React's async act).
     const screen = await render(<VisualScenario name={name} />);
 

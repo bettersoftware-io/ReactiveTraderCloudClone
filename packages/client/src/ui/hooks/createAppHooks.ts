@@ -23,6 +23,7 @@ import type {
   NotionalView,
   NotionalIntents,
 } from "../../app/presenters/NotionalMachine";
+import type { ThroughputView } from "../../app/presenters/ThroughputPresenter";
 
 export interface AppHooks {
   // Streams
@@ -53,6 +54,8 @@ export interface AppHooks {
   useAnalyticsStaleFlag: () => boolean;
   /** Notional input state for a tile — view state plus intents. */
   useNotional: (defaultNotional: number) => { state: NotionalView } & NotionalIntents;
+  /** Global throughput control — shared view state plus the setValue intent. */
+  useThroughput: () => ThroughputView & { setValue: (value: number) => void };
 }
 
 export function createAppHooks(
@@ -91,6 +94,13 @@ export function createAppHooks(
     presenters.connection.status$,
     ConnectionStatus.CONNECTING,
   );
+  // Global/shared throughput state → a plain bind (not a per-mount machine).
+  const [useThroughputState] = bind(presenters.throughput.state$, {
+    value: 100,
+    loading: true,
+    message: null,
+  } as ThroughputView);
+  const setThroughput = (value: number) => presenters.throughput.setValue(value);
 
   // Pre-bound command callbacks. Stable references across calls so React
   // memo/effect dep arrays remain stable.
@@ -132,5 +142,6 @@ export function createAppHooks(
       useMachine(() => machines.analyticsStaleFlag()).state,
     useNotional: (defaultNotional: number) =>
       useMachine(() => machines.notional(defaultNotional)),
+    useThroughput: () => ({ ...useThroughputState(), setValue: setThroughput }),
   };
 }

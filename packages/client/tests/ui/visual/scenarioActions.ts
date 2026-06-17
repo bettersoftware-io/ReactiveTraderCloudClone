@@ -1,7 +1,7 @@
 // Runner-neutral description of how each visual scenario is stabilized and
-// captured. The DOM hooks (testids, visible text, the throughput URL) are
-// framework-agnostic, so plain-Playwright and vitest-browser share this table.
-// CT specs do not use it — they were hand-written first and stay as-is.
+// captured. The DOM hooks (testids, visible text) are framework-agnostic, so
+// plain-Playwright and vitest-browser share this table. CT specs do not use it —
+// they were hand-written first and stay as-is.
 
 // A single ordered interaction step for multi-step scenarios (form fill, open a
 // filter popover then apply it). Runner-neutral: keyed on testids + literal
@@ -18,8 +18,6 @@ export type ScenarioAction = {
   /** Screenshot the whole page (full App or a fixed-position overlay) rather
    *  than just the #scenario-root component box. */
   readonly fullPage?: boolean;
-  /** A `**\/throughput` JSON response to stub before navigation (admin only). */
-  readonly stubThroughput?: number;
   /** A testid to click after the page settles (e.g. a tab or the theme toggle). */
   readonly click?: string;
   /** Ordered interaction steps, run after `click`, before `waitForText`. Used
@@ -51,7 +49,6 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   },
   "app/admin": {
     fullPage: true,
-    stubThroughput: 250,
     click: "tab-admin",
     waitForText: "Throughput Control",
   },
@@ -67,8 +64,8 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   // Credit workspace sub-views: click the tab, wait for that view's heading.
   "credit/workspace-new-rfq": { click: "credit-tab-new-rfq", waitForText: "Submit RFQ" },
   "credit/workspace-sell-side": { click: "credit-tab-sell-side", waitForText: "Sell Side (Adaptive Bank)" },
-  // Admin panel loaded state: stub the throughput fetch so the slider renders.
-  "admin/panel-loaded": { stubThroughput: 250, waitForText: "Throughput Control" },
+  // Admin panel loaded state: the seam fake provides a loaded value (250).
+  "admin/panel-loaded": { waitForText: "Throughput Control" },
 
   // --- Phase V testid-gated interaction scenarios ---
   // Blotter: click a column header to sort (ascending arrow appears). No
