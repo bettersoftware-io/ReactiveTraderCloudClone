@@ -26,6 +26,11 @@ export interface Machine<TState, TIntents extends object> {
   dispose: () => void;
 }
 
+/** A machine with no intents — a purely derived, read-only state stream. The
+ * seam hook returns just its `.state`. Names the intent-free contract once so
+ * future read-only machines don't re-derive the `Record<string, never>` idiom. */
+export type ReadOnlyMachine<TState> = Machine<TState, Record<string, never>>;
+
 /** App-layer machine factories injected into the hooks seam. Each builds a
  * fresh machine instance per component mount (useMachine owns its lifecycle). */
 export interface MachineFactories {
@@ -34,7 +39,7 @@ export interface MachineFactories {
   ) => Machine<TileExecutionState, TileExecutionIntents>;
   rfqTile: (pair: CurrencyPair) => Machine<RfqState, RfqTileIntents>;
   /** Stale flag for a tile's price stream (intent-free derived boolean). */
-  staleFlag: (pair: CurrencyPair) => Machine<boolean, Record<string, never>>;
+  staleFlag: (pair: CurrencyPair) => ReadOnlyMachine<boolean>;
   /** Stale flag for the analytics position stream (intent-free). */
-  analyticsStaleFlag: () => Machine<boolean, Record<string, never>>;
+  analyticsStaleFlag: () => ReadOnlyMachine<boolean>;
 }

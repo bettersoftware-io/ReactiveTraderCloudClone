@@ -2,7 +2,7 @@ import { merge, type Observable } from "rxjs";
 import { map, scan, distinctUntilChanged, startWith } from "rxjs/operators";
 import { state, type StateObservable } from "@rx-state/core";
 import { ConnectionStatus } from "@rtc/domain";
-import type { Machine } from "./machine";
+import type { ReadOnlyMachine } from "./machine";
 
 /** Generic stale-detection derived flag, relocated out of the old
  * useStaleDetection React hook. It has NO intents — it's a pure read-only
@@ -41,7 +41,7 @@ interface Acc<T> {
 
 export function createStaleFlagMachine<T>(
   deps: StaleFlagDeps<T>,
-): Machine<boolean, Record<string, never>> {
+): ReadOnlyMachine<boolean> {
   const events$ = merge(
     deps.status$.pipe(
       map((status): Event<T> => ({ kind: "status", status })),
@@ -93,6 +93,10 @@ export function createStaleFlagMachine<T>(
     // Seed the default `false` here (not as state()'s separate default) so the
     // scan's own identical first `false` is collapsed by distinctUntilChanged —
     // otherwise state() would replay its default AND the stream's first false.
+    // Precondition for copying this idiom: it is only needed when the default
+    // value can be structurally equal to the stream's first emission (here,
+    // `false`). Machines whose default differs from their first real state
+    // (e.g. an object READY) can use `state(stream$, DEFAULT)` directly.
     startWith(false),
     distinctUntilChanged(),
   );
