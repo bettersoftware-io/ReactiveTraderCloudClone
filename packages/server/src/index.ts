@@ -10,43 +10,16 @@ const services = createServices();
 
 // ── HTTP Server ─────────────────────────────────────────────────
 
+// The WebSocket transport is the sole app data path (throughput included, via
+// the admin.* RPC). The only remaining HTTP endpoint is the /health probe — a
+// simple cross-origin GET, so a permissive ACAO is all the CORS it needs.
 const httpServer = createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
+  res.setHeader("Access-Control-Allow-Methods", "GET");
 
   if (req.url === "/health" && req.method === "GET") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true }));
-    return;
-  }
-
-  if (req.url === "/throughput" && req.method === "GET") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ value: services.throughput.getThroughput() }));
-    return;
-  }
-
-  if (req.url === "/throughput" && req.method === "PUT") {
-    let body = "";
-    req.on("data", (chunk) => { body += chunk; });
-    req.on("end", () => {
-      try {
-        const { value } = JSON.parse(body) as { value: number };
-        services.throughput.setThroughput(value);
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: true, value }));
-      } catch (e) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: false, error: String(e) }));
-      }
-    });
     return;
   }
 
