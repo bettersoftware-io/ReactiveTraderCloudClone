@@ -41,6 +41,7 @@ export type { InstrumentPort } from "./ports/instrumentPort.js";
 export type { DealerPort } from "./ports/dealerPort.js";
 export type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "./ports/workflowPort.js";
 export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
+export type { AdminPort } from "./ports/adminPort.js";
 
 // Simulators (in-memory port implementations)
 export {
@@ -53,6 +54,7 @@ export {
   DealerSimulator,
   CreditRfqSimulator,
   ConnectionEventsSimulator,
+  ThroughputSimulator,
   INSTRUMENTS_CATALOG,
   DEALERS_CATALOG,
 } from "./simulators/index.js";

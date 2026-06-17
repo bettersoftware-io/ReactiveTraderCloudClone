@@ -12,3 +12,4 @@ export {
 } from "./creditReferenceDataSimulator.js";
 export { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 export { ConnectionEventsSimulator } from "./ConnectionEventsSimulator.js";
+export { ThroughputSimulator } from "./ThroughputSimulator.js";
