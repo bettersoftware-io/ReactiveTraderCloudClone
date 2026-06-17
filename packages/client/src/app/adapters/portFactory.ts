@@ -7,6 +7,7 @@ import {
   InstrumentSimulator,
   DealerSimulator,
   CreditRfqSimulator,
+  ThroughputSimulator,
   DEALERS_CATALOG,
   type ReferenceDataPort,
   type PricingPort,
@@ -17,6 +18,7 @@ import {
   type DealerPort,
   type WorkflowPort,
   type ConnectionEventsPort,
+  type AdminPort,
   type RfqQuoteResult,
   type CurrencyPair,
   type PriceTick,
@@ -55,6 +57,7 @@ export interface AppPorts {
   instruments: InstrumentPort;
   dealers: DealerPort;
   workflow: WorkflowPort;
+  admin: AdminPort;
   connectionEvents: ConnectionEventsPort;
 }
 
@@ -71,6 +74,7 @@ export function createSimulatorPorts(): TransportPorts {
     instruments: new InstrumentSimulator(),
     dealers: new DealerSimulator(),
     workflow: new CreditRfqSimulator(DEALERS_CATALOG),
+    admin: new ThroughputSimulator(),
   };
 }
 
@@ -91,6 +95,8 @@ const CLIENT_MSG = {
   QUOTE: "rpc.quote",
   PASS: "rpc.pass",
   ACCEPT: "rpc.accept",
+  GET_THROUGHPUT: "admin.getThroughput",
+  SET_THROUGHPUT: "admin.setThroughput",
 } as const;
 
 const SERVER_MSG = {
@@ -108,6 +114,8 @@ const SERVER_MSG = {
   QUOTE_RESPONSE: "rpc.quote.response",
   PASS_RESPONSE: "rpc.pass.response",
   ACCEPT_RESPONSE: "rpc.accept.response",
+  THROUGHPUT_RESPONSE: "admin.getThroughput.response",
+  SET_THROUGHPUT_RESPONSE: "admin.setThroughput.response",
 } as const;
 
 // ── Port Implementations ────────────────────────────────────────
@@ -507,6 +515,56 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
   };
 }
 
+function createAdminPort(ws: IWsAdapter): AdminPort {
+  return {
+    getThroughput(): Observable<number> {
+      return new Observable<number>((subscriber) => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.GET_THROUGHPUT)) as RpcResponse<number>;
+            if (cancelled) return;
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Failed to get throughput"));
+              return;
+            }
+            subscriber.next(resp.payload!);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      });
+    },
+
+    setThroughput(value: number): Observable<void> {
+      return new Observable<void>((subscriber) => {
+        let cancelled = false;
+        (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.SET_THROUGHPUT, { value })) as RpcResponse;
+            if (cancelled) return;
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Failed to set throughput"));
+              return;
+            }
+            subscriber.next(undefined);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      });
+    },
+  };
+}
+
 // ── Factory ─────────────────────────────────────────────────────
 
 export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
@@ -519,6 +577,7 @@ export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
     instruments: createInstrumentPort(ws),
     dealers: createDealerPort(ws),
     workflow: createWorkflowPort(ws),
+    admin: createAdminPort(ws),
   };
 }
 
