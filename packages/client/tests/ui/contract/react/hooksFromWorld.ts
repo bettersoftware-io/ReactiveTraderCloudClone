@@ -141,11 +141,7 @@ export function reactHooks(world: World): AppHooks {
       ).state,
     // Machine: the REAL createNotionalMachine, exercising the relocated notional
     // logic through the same useMachine bridge the app uses.
-    useNotional: (defaultNotional: number) => {
-      const { state, change, reset } = useMachine(
-        () => createNotionalMachine(defaultNotional),
-      );
-      return { ...state, onChange: change, reset };
-    },
+    useNotional: (defaultNotional: number) =>
+      useMachine(() => createNotionalMachine(defaultNotional)),
   };
 }

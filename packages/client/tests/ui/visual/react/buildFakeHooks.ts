@@ -55,12 +55,14 @@ export function buildFakeHooks(data: AppData): AppHooks {
       const displayValue = override?.displayValue ??
         defaultNotional.toLocaleString("en-US", { maximumFractionDigits: 0, useGrouping: true });
       return {
-        displayValue,
-        numericValue: override?.numericValue ?? defaultNotional,
-        error: override?.error ?? null,
-        isRfq: override?.isRfq ?? false,
-        isDefault: override?.isDefault ?? true,
-        onChange: noop,
+        state: {
+          displayValue,
+          numericValue: override?.numericValue ?? defaultNotional,
+          error: override?.error ?? null,
+          isRfq: override?.isRfq ?? false,
+          isDefault: override?.isDefault ?? true,
+        },
+        change: noop,
         reset: noop,
       };
     },

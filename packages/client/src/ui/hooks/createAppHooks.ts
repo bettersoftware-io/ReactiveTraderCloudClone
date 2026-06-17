@@ -19,7 +19,10 @@ import type {
   RfqState,
   RfqTileIntents,
 } from "../../app/presenters/RfqTileMachine";
-import type { NotionalResult } from "../../app/presenters/NotionalMachine";
+import type {
+  NotionalView,
+  NotionalIntents,
+} from "../../app/presenters/NotionalMachine";
 
 export interface AppHooks {
   // Streams
@@ -48,8 +51,8 @@ export interface AppHooks {
   // Intent-free derived flags: return just the boolean (no intents to expose).
   useStaleFlag: (pair: CurrencyPair) => boolean;
   useAnalyticsStaleFlag: () => boolean;
-  /** Notional input state for a tile — view data plus onChange/reset callbacks. */
-  useNotional: (defaultNotional: number) => NotionalResult;
+  /** Notional input state for a tile — view state plus intents. */
+  useNotional: (defaultNotional: number) => { state: NotionalView } & NotionalIntents;
 }
 
 export function createAppHooks(
@@ -127,11 +130,7 @@ export function createAppHooks(
       useMachine(() => machines.staleFlag(pair)).state,
     useAnalyticsStaleFlag: () =>
       useMachine(() => machines.analyticsStaleFlag()).state,
-    useNotional: (defaultNotional: number) => {
-      const { state, change, reset } = useMachine(
-        () => machines.notional(defaultNotional),
-      );
-      return { ...state, onChange: change, reset };
-    },
+    useNotional: (defaultNotional: number) =>
+      useMachine(() => machines.notional(defaultNotional)),
   };
 }

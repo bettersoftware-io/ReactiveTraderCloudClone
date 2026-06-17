@@ -25,14 +25,6 @@ export interface NotionalIntents {
   reset: () => void;
 }
 
-/** Full result type returned by useNotional — view data plus UI callbacks.
- * Matches the shape of the old UseNotionalResult so TileNotional.tsx and
- * Tile.tsx need no props changes. */
-export type NotionalResult = NotionalView & {
-  onChange: (input: string) => void;
-  reset: () => void;
-};
-
 type NotionalEvent =
   | { type: "change"; input: string }
   | { type: "reset" };

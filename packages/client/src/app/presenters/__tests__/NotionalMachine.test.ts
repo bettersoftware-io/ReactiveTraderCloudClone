@@ -80,6 +80,18 @@ describe("createNotionalMachine", () => {
     m.dispose();
   });
 
+  it("reset() after a max-exceeded warning restores the initial view", () => {
+    const m = make(1_000_000);
+    m.intents.change("2000m");
+    expect(current(m).error).toBe("Max exceeded");
+    m.intents.reset();
+    const v = current(m);
+    expect(v.error).toBeNull();
+    expect(v.isDefault).toBe(true);
+    expect(v.displayValue).toBe("1,000,000");
+    m.dispose();
+  });
+
   it("reset() returns to the formatted default", () => {
     const m = make(1_000_000);
     m.intents.change("123");

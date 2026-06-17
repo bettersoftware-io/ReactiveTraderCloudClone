@@ -1,8 +1,8 @@
 import { useCallback, useRef, type ChangeEvent, type KeyboardEvent } from "react";
-import type { NotionalResult } from "../../../../app/presenters/NotionalMachine";
+import type { NotionalView, NotionalIntents } from "../../../../app/presenters/NotionalMachine";
 
 interface TileNotionalProps {
-  notional: NotionalResult;
+  notional: { state: NotionalView } & NotionalIntents;
   baseCurrency: string;
   disabled?: boolean;
 }
@@ -16,7 +16,7 @@ export function TileNotional({
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
-      notional.onChange(e.target.value);
+      notional.change(e.target.value);
     },
     [notional],
   );
@@ -54,7 +54,7 @@ export function TileNotional({
       </span>
       <input
         ref={inputRef}
-        value={notional.displayValue}
+        value={notional.state.displayValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
@@ -63,7 +63,7 @@ export function TileNotional({
           flex: 1,
           background: "none",
           border: "none",
-          borderBottom: `1px solid ${notional.error ? "var(--accent-negative)" : "var(--border-primary)"}`,
+          borderBottom: `1px solid ${notional.state.error ? "var(--accent-negative)" : "var(--border-primary)"}`,
           color: "var(--text-primary)",
           fontSize: 13,
           padding: "2px 0",
@@ -72,7 +72,7 @@ export function TileNotional({
           fontFamily: "inherit",
         }}
       />
-      {!notional.isDefault && (
+      {!notional.state.isDefault && (
         <button
           onClick={notional.reset}
           title="Reset to default"
@@ -89,7 +89,7 @@ export function TileNotional({
           \u21BA
         </button>
       )}
-      {notional.error && (
+      {notional.state.error && (
         <span
           style={{
             position: "absolute",
@@ -99,7 +99,7 @@ export function TileNotional({
             color: "var(--accent-negative)",
           }}
         >
-          {notional.error}
+          {notional.state.error}
         </span>
       )}
     </div>

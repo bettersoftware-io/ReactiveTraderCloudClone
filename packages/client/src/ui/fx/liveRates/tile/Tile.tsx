@@ -26,18 +26,18 @@ export function Tile({ pair, showChart }: TileProps) {
 
   const isLoading = !price;
   const isBusy = tileExecution.state.status !== "ready";
-  const hasError = !!notional.error;
+  const hasError = !!notional.state.error;
   const isRfqActive = rfqState.state.status !== "init";
   const notionalDisabled = isLoading || isBusy || isRfqActive;
 
   const handleExecute = useCallback(
     (direction: Direction, priceVal?: Price, notionalVal?: number) => {
       const p = priceVal ?? price;
-      const n = notionalVal ?? notional.numericValue;
+      const n = notionalVal ?? notional.state.numericValue;
       if (!p || hasError) return;
       tileExecution.execute(direction, p, n);
     },
-    [price, hasError, tileExecution, notional.numericValue],
+    [price, hasError, tileExecution, notional.state.numericValue],
   );
 
   return (
@@ -86,14 +86,14 @@ export function Tile({ pair, showChart }: TileProps) {
         </div>
       )}
 
-      {notional.isRfq ? (
+      {notional.state.isRfq ? (
         !isBusy && (
           <TileRfq
             pair={pair}
             rfqState={rfqState}
             onRequestQuote={rfqState.requestQuote}
             onExecute={handleExecute}
-            notional={notional.numericValue}
+            notional={notional.state.numericValue}
           />
         )
       ) : (
