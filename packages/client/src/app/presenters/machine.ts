@@ -49,6 +49,9 @@ export interface MachineFactories {
   staleFlag: (pair: CurrencyPair) => ReadOnlyMachine<boolean>;
   /** Stale flag for the analytics position stream (intent-free). */
   analyticsStaleFlag: () => ReadOnlyMachine<boolean>;
+  /** Transient new-row highlight for a blotter row (intent-free derived boolean,
+   * `isNew` captured at mount). */
+  rowHighlight: (isNew: boolean) => ReadOnlyMachine<boolean>;
   /** Notional input state machine for a single tile. */
   notional: (defaultNotional: number) => Machine<NotionalView, NotionalIntents>;
   /** NewRfqForm create→confirm→redirect submission machine. */

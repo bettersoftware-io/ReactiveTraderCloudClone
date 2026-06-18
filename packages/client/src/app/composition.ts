@@ -22,6 +22,7 @@ import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePres
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { createRfqTileMachine } from "./presenters/RfqTileMachine";
 import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
+import { createRowHighlightMachine } from "./presenters/RowHighlightMachine";
 import { createNotionalMachine } from "./presenters/NotionalMachine";
 import type { MachineFactories } from "./presenters/machine";
 
@@ -129,6 +130,7 @@ export function createMachineFactories(presenters: Presenters): MachineFactories
         status$: presenters.connection.status$,
         value$: presenters.analytics.position$,
       }),
+    rowHighlight: (isNew) => createRowHighlightMachine(isNew),
     notional: (defaultNotional) => createNotionalMachine(defaultNotional),
     rfqSubmission: () => presenters.rfqs.createSubmission(),
     ticketSubmission: () => presenters.rfqs.createTicketSubmission(),
