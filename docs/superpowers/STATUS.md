@@ -2,7 +2,44 @@
 
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
-**Last updated:** 2026-06-07 (test suite rename + suite-first layout; living docs updated)
+**Last updated:** 2026-06-18 (Dumb-UI rxjs-machines workstream complete; coverage + security housekeeping)
+
+---
+
+## 2026-06-18 — Dumb-UI rxjs-machines workstream (complete)
+
+Separate workstream (not a clean-arch Phase N), merged to `main`. Spec/plan:
+`specs/2026-06-16-dumb-ui-rxjs-machines-design.md`, `plans/2026-06-16-dumb-ui-rxjs-machines.md`.
+
+- **Relocated all business/timer/transport/persistence/orchestration logic out of
+  `src/ui`** into the app layer: 4 per-instance RxJS machines (`TileExecution`,
+  `RfqTile`, `StaleFlag`, `Notional`) bridged by the logic-free `useMachine`
+  (`src/ui/hooks/`, the only React-aware seam piece) + `RfqsPresenter` submission
+  machines. App-layer machines use the framework-agnostic `@rx-state/core` (added
+  as an explicit client dep) — `src/app` imports zero React-binding code, ready for
+  the planned SolidJS swap. 7 logic hooks deleted; 6 dead seam command hooks pruned.
+- **Two new ports:** `AdminPort` (9th — throughput over WS; server HTTP `/throughput`
+  route + `VITE_SERVER_HTTP_URL` retired, WS is sole transport) and `PreferencesPort`
+  (10th — theme/viewMode; `LocalStoragePreferencesAdapter` is the only `localStorage`
+  site, gone from `src/ui`). Seam command callbacks flipped `Observable → Promise`.
+- **4 enforcement grep-gates** (26–29): no rxjs / localStorage / fetch+env / setTimeout
+  in `src/ui` (gate 29 absolute — `BlotterRow`'s highlight also moved to a machine).
+- **Visual:** the 4 timer-driven components (RfqCountdown/TileConfirmation/TileRfq/
+  StaleIndicator) un-excluded via injectable seam state; `src/ui` visual coverage
+  ~52% → ~84%. Coverage now domain 95.9% / server 90.0% / app 90.9%.
+- **Key catch:** a `useMachine` StrictMode regression (effect-cleanup dispose killed
+  the useRef-held machine on React's mount double-invoke) broke the live app; caught
+  by e2e vs the pre-refactor baseline, fixed with deferred disposal. See memory
+  `reference_usemachine_strictmode`.
+
+## 2026-06-18 — Security + dep housekeeping
+
+- pnpm `overrides` (in `pnpm-workspace.yaml`) added for two transitive dev-only
+  Dependabot alerts: `form-data ^4.0.6` (HIGH, via cypress) and `uuid@11 ^11.1.1`
+  (medium; scoped to the 11.x line so marblejs's uuid@7 etc. are untouched).
+- Remaining low alerts (esbuild, diff) left for dismissal — overriding them risks
+  the vite/mocha toolchain (esbuild 0.x-minor; diff two majors) for unreachable
+  dev-only advisories.
 
 ---
 
