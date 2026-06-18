@@ -27,6 +27,10 @@ export const scenarios: Record<string, Scenario> = {
   // Now that the highlight is injected through the seam (useRowHighlight), the
   // highlighted state is a deterministic static shot — no timer, no waiting.
   "fx-blotter/highlighted-row": { componentKey: "BlotterRowHighlighted", fixtureKey: "fx-trades" },
+  // The isolated non-highlighted baseline for the row above (isNew=false →
+  // settled/transparent), so the highlight is the only delta when the two are
+  // diffed as isolated components.
+  "fx-blotter/non-highlighted-row": { componentKey: "BlotterRowDefault", fixtureKey: "fx-trades" },
   // Credit tab — component-level views + the full page (Credit tab active).
   "credit/rfq-tiles": { componentKey: "RfqTilesPanel", fixtureKey: "credit-populated" },
   "credit/new-rfq": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
