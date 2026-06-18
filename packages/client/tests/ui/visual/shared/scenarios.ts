@@ -23,6 +23,10 @@ export const scenarios: Record<string, Scenario> = {
   "app/fx": { componentKey: "App", fixtureKey: "app-fx" },
   // FX blotter populated with trades (the app/fx page only ever shows it empty).
   "fx-blotter/populated": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  // A newly-arrived (isNew) row: snapshots the blue new-row highlight branch.
+  // Now that the highlight is injected through the seam (useRowHighlight), the
+  // highlighted state is a deterministic static shot — no timer, no waiting.
+  "fx-blotter/highlighted-row": { componentKey: "BlotterRowHighlighted", fixtureKey: "fx-trades" },
   // Credit tab — component-level views + the full page (Credit tab active).
   "credit/rfq-tiles": { componentKey: "RfqTilesPanel", fixtureKey: "credit-populated" },
   "credit/new-rfq": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },

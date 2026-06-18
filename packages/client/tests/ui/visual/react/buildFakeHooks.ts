@@ -52,6 +52,9 @@ export function buildFakeHooks(data: AppData): AppHooks {
     // Intent-free derived flags: static snapshot for screenshots.
     useStaleFlag: (pair: CurrencyPair) => data.stale[pair.symbol] ?? false,
     useAnalyticsStaleFlag: () => data.analyticsStale ?? false,
+    // New-row highlight: deterministic — the highlight tracks isNew instantly (no
+    // timer), so the highlighted (isNew) branch is snapshotted with no waiting.
+    useRowHighlight: (isNew: boolean) => isNew,
     // Machine: static snapshot for screenshots; intents are no-ops.
     useNotional: (defaultNotional: number) => {
       const override = data.notional as NotionalView | undefined;
