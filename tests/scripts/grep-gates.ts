@@ -127,12 +127,14 @@ function checkProductionAudit(): string[] {
 }
 
 /**
- * Dumb-UI gate: the ONLY setTimeout/setInterval permitted in production src/ui
- * is the transient row-highlight in BlotterRow.tsx. Any other timer in a React
- * component is business/timer logic that belongs in the app-layer (machines/
- * presenters) behind the AppHooks seam. Test files are not gated here.
+ * Dumb-UI gate: NO setTimeout/setInterval anywhere in production src/ui. Every
+ * timer is business/timer logic that belongs in the app-layer (machines/
+ * presenters) behind the AppHooks seam — the last holdout, BlotterRow's new-row
+ * highlight, has been relocated to createRowHighlightMachine. The useMachine
+ * bridge schedules disposal with queueMicrotask (not setTimeout), so no hooks
+ * exception is needed. Test files are not gated here.
  */
-function checkLoneUiTimer(): string[] {
+function checkNoUiTimer(): string[] {
   const result = spawnSync(
     "grep",
     ["-rnE", "setTimeout|setInterval", "../packages/client/src/ui/"],
@@ -143,8 +145,7 @@ function checkLoneUiTimer(): string[] {
     .split("\n")
     .filter(Boolean)
     .filter((line) => !line.includes("/node_modules/"))
-    .filter((line) => !line.includes(".test.") && !line.includes(".spec."))
-    .filter((line) => !line.includes("/fx/blotter/BlotterRow.tsx:"));
+    .filter((line) => !line.includes(".test.") && !line.includes(".spec."));
 }
 
 const GATES: Gate[] = [
@@ -354,10 +355,10 @@ const GATES: Gate[] = [
     ],
   },
   {
-    name: "29. No setTimeout/setInterval in src/ui except BlotterRow.tsx",
+    name: "29. No setTimeout/setInterval anywhere in src/ui",
     pattern: "",
     paths: [],
-    customCheck: checkLoneUiTimer,
+    customCheck: checkNoUiTimer,
   },
 ];
 
