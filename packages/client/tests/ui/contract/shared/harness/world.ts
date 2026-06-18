@@ -81,7 +81,6 @@ export interface CommandLog {
   executeTrade: ExecuteTradeInput[];
   requestRfqQuote: { symbol: string; pipsPosition: number }[];
   acceptQuote: number[];
-  cancelRfq: number[];
   passQuote: number[];
   quoteRfq: QuoteRequest[];
 }
@@ -210,7 +209,6 @@ export function createWorld(
       executeTrade: [],
       requestRfqQuote: [],
       acceptQuote: [],
-      cancelRfq: [],
       passQuote: [],
       quoteRfq: [],
     },

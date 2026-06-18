@@ -7,7 +7,6 @@ import type {
   ExecuteTradeInput,
   ExecuteTradeResult,
   RfqQuoteResult,
-  QuoteRequest,
   Theme,
   ViewMode,
 } from "@rtc/domain";
@@ -60,39 +59,10 @@ export function reactHooks(world: World): AppHooks {
     useInstruments: () => useSubject(s.useInstruments),
     useDealers: () => useSubject(s.useDealers),
     useConnectionStatus: () => useSubject(s.useConnectionStatus),
-    // Commands: record input, resolve the canned result (or reject to drive the
-    // consuming component's catch path). Async so the component's `await` runs.
-    useExecuteTrade: () => async (input: ExecuteTradeInput) => {
-      world.commands.executeTrade.push(input);
-      if (world.results.executeTradeThrows) {
-        throw new Error("execute failed");
-      }
-      return (world.results.executeTrade ?? ({} as ExecuteTradeResult));
-    },
-    useCreateRfq: () => async (input) => {
-      world.commands.createRfq.push(input);
-      return world.results.createRfq ?? 0;
-    },
-    // Void commands: record input and resolve undefined so the consuming
-    // component's `await` proceeds to its post-await state transition.
+    // Command: record input and resolve undefined so the consuming component's
+    // `await` proceeds to its post-await state transition.
     useAcceptQuote: () => async (quoteId: number) => {
       world.commands.acceptQuote.push(quoteId);
-    },
-    useCancelRfq: () => async (rfqId: number) => {
-      world.commands.cancelRfq.push(rfqId);
-    },
-    usePassQuote: () => async (quoteId: number) => {
-      world.commands.passQuote.push(quoteId);
-    },
-    useQuoteRfq: () => async (request: QuoteRequest) => {
-      world.commands.quoteRfq.push(request);
-    },
-    useRequestRfqQuote: () => async (symbol: string, pipsPosition: number) => {
-      world.commands.requestRfqQuote.push({ symbol, pipsPosition });
-      if (world.results.requestRfqQuoteThrows) {
-        throw new Error("rfq failed");
-      }
-      return (world.results.requestRfqQuote ?? ({} as RfqQuoteResult));
     },
     // Machine: the REAL createTileExecutionMachine, driven by a World-backed
     // execute command that records inputs and emits the canned result (or errors

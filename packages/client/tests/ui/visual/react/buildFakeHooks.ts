@@ -1,8 +1,6 @@
 import {
   DEFAULT_THEME, DEFAULT_VIEW_MODE,
   type CurrencyPair,
-  type ExecuteTradeInput, type ExecuteTradeResult, type CreateRfqInput,
-  type RfqQuoteResult, type QuoteRequest,
 } from "@rtc/domain";
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import type { AppData } from "../shared/appData";
@@ -23,17 +21,8 @@ export function buildFakeHooks(data: AppData): AppHooks {
     useInstruments: () => data.instruments,
     useDealers: () => data.dealers,
     useConnectionStatus: () => data.connectionStatus,
-    // Commands: async no-ops. Not exercised by static screenshots, so the
-    // non-void results are type-correct placeholders.
-    useExecuteTrade: () => async (_input: ExecuteTradeInput) =>
-      ({} as ExecuteTradeResult),
-    useCreateRfq: () => async (_input: CreateRfqInput) => 0,
+    // Commands: async no-op. Not exercised by static screenshots.
     useAcceptQuote: () => async (_quoteId: number) => {},
-    useCancelRfq: () => async (_rfqId: number) => {},
-    usePassQuote: () => async (_quoteId: number) => {},
-    useQuoteRfq: () => async (_request: QuoteRequest) => {},
-    useRequestRfqQuote: () => async (_symbol: string, _pipsPosition: number) =>
-      ({} as RfqQuoteResult),
     // Machine: per-symbol static snapshot for screenshots; intents are no-ops.
     // A missing key renders the same neutral state the real machine emits
     // initially ("ready" / "init"), so existing goldens are unchanged.

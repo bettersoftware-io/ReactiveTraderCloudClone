@@ -6,8 +6,6 @@ import {
   type CurrencyPair, type Price, type PriceTick, type Trade,
   type Rfq, type Quote, type PositionUpdates,
   type Instrument, type Dealer,
-  type ExecuteTradeInput, type ExecuteTradeResult, type CreateRfqInput,
-  type RfqQuoteResult, type QuoteRequest,
   type Theme, type ViewMode,
 } from "@rtc/domain";
 import type { Presenters } from "../../app/composition";
@@ -47,13 +45,7 @@ export interface AppHooks {
   useDealers: () => readonly Dealer[];
   useConnectionStatus: () => ConnectionStatus;
   // Commands (one-shot fire-and-await; the bridge does firstValueFrom)
-  useExecuteTrade: () => (input: ExecuteTradeInput) => Promise<ExecuteTradeResult>;
-  useCreateRfq: () => (input: CreateRfqInput) => Promise<number>;
   useAcceptQuote: () => (quoteId: number) => Promise<void>;
-  useCancelRfq: () => (rfqId: number) => Promise<void>;
-  usePassQuote: () => (quoteId: number) => Promise<void>;
-  useQuoteRfq: () => (request: QuoteRequest) => Promise<void>;
-  useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => Promise<RfqQuoteResult>;
   // Machines (app-layer RxJS behind the useMachine bridge)
   useTileExecution: (pair: CurrencyPair) => { state: TileExecutionState } & TileExecutionIntents;
   useRfqTile: (pair: CurrencyPair) => { state: RfqState } & RfqTileIntents;
@@ -140,20 +132,8 @@ export function createAppHooks(
   // presenter Observable to a Promise via firstValueFrom — the void commands'
   // presenters emit `undefined` before completing, so firstValueFrom resolves
   // (rather than rejecting with EmptyError) without needing a defaultValue.
-  const executeTrade = (input: ExecuteTradeInput) =>
-    firstValueFrom(presenters.execution.execute(input));
-  const createRfq = (input: CreateRfqInput) =>
-    firstValueFrom(presenters.rfqs.createRfq(input));
   const acceptQuote = (quoteId: number) =>
     firstValueFrom(presenters.rfqs.acceptQuote(quoteId));
-  const cancelRfq = (rfqId: number) =>
-    firstValueFrom(presenters.rfqs.cancelRfq(rfqId));
-  const passQuote = (quoteId: number) =>
-    firstValueFrom(presenters.rfqs.passQuote(quoteId));
-  const quoteRfq = (req: QuoteRequest) =>
-    firstValueFrom(presenters.rfqs.quoteRfq(req));
-  const requestRfqQuote = (symbol: string, pipsPosition: number) =>
-    firstValueFrom(presenters.rfqQuote.requestQuote(symbol, pipsPosition));
 
   return {
     usePrice,
@@ -167,13 +147,7 @@ export function createAppHooks(
     useInstruments,
     useDealers,
     useConnectionStatus,
-    useExecuteTrade: () => executeTrade,
-    useCreateRfq: () => createRfq,
     useAcceptQuote: () => acceptQuote,
-    useCancelRfq: () => cancelRfq,
-    usePassQuote: () => passQuote,
-    useQuoteRfq: () => quoteRfq,
-    useRequestRfqQuote: () => requestRfqQuote,
     useTileExecution: (pair: CurrencyPair) =>
       useMachine(() => machines.tileExecution(pair)),
     useRfqTile: (pair: CurrencyPair) =>
