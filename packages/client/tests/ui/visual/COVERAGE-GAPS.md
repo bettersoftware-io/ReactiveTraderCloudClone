@@ -38,6 +38,68 @@ interaction-only handlers and the runtime media-query theme arm (below), which a
 static screenshot still cannot pin deterministically — those are covered by the
 unit/contract tiers.
 
+## Phase 10 (final) — Dumb-UI gates + whole-workstream verification (2026-06-18)
+
+**Architecture gates 26–29 added and GREEN.** `tests/scripts/grep-gates.ts`
+now ENFORCES the Dumb-UI rules against production `src/ui` (the
+`src/ui/hooks/` bridge dir and `*.test.`/`*.spec.` files are exempt):
+
+- **26** — no `rxjs` / `@react-rxjs` / `@rx-state` import in `src/ui` (bridge only).
+- **27** — no `localStorage` in `src/ui` (persistence lives in app-layer ports).
+- **28** — no `fetch(` / `import.meta.env` in `src/ui` (transport/config app-layer).
+- **29** — the ONLY `setTimeout`/`setInterval` permitted in `src/ui` is the
+  transient row-highlight in `fx/blotter/BlotterRow.tsx` (customCheck).
+
+All 29 gates pass. The 4 un-excluded components (`RfqCountdown`,
+`TileConfirmation`, `TileRfq`, `StaleIndicator`) plus `Tile.tsx`,
+`AnalyticsPanel.tsx`, `AdminPanel.tsx` carry **no** rxjs / timer / localStorage /
+fetch / env reference and no import of a deleted hook — the seam-method calls
+(`useNotional`, `useThroughput`, etc.) are app-layer-backed and allowed.
+
+**Visual `src/ui/**/*.tsx` coverage after Phase 9:** 83.7 % stmts / 77.17 %
+branch / 77.08 % funcs / 85.41 % lines (up from ~52 % pre-refactor) — the Phase 9
+tile/RFQ/stale goldens did the lifting; the residual gap is the interaction-only
+handlers + runtime media-query theme arm tabulated below.
+
+**App / domain / server coverage (machines + presenters + port contracts):**
+domain 95.93 % stmts / 96.42 % lines (169 tests); server 90.04 % / 98.94 %
+(54 tests); client app 90.85 % / 95.02 % (158 tests); contract tier 246 tests
+green. The AdminPort / PreferencesPort contracts and the execution/RFQ/throughput
+machines sit at ~100 % where applicable.
+
+**Dead seam command hooks (for a HUMAN pruning decision — NOT removed):** of the
+7 command hooks on `AppHooks`, only **`useAcceptQuote`** still has a `src/ui`
+component caller (`credit/rfqTiles/RfqTilesPanel.tsx`). The other six —
+**`useExecuteTrade`, `useCreateRfq`, `useCancelRfq`, `usePassQuote`,
+`useQuoteRfq`, `useRequestRfqQuote`** — are **dead**: present only in the
+`AppHooks` interface + `createAppHooks` impl + the two test fakes
+(`tests/ui/contract/react/hooksFromWorld.ts`,
+`tests/ui/visual/react/buildFakeHooks.ts`), with no component consumer. Earlier
+phases (esp. 8) routed those commands through machines, leaving the seam methods
+orphaned. Pruning requires deleting each from the interface, the impl, and both
+fakes together.
+
+**Two expected reds:**
+
+1. **Visual `react/` (x86 CI) goldens lag** until the `update-visual-goldens`
+   workflow regenerates them on x86 — the local `react-local/<arch>/` set is the
+   one validated here; both sets are the framework-portability contract.
+2. **Cypress e2e is CI-only on aarch64** — the bundled-Electron message pump
+   busy-spins at 100 % CPU in this container (headless too), so the two Cypress
+   suites only pass on x86 CI. The Playwright e2e suites run locally.
+
+**Found concern (pre-existing, NOT a Phase-10 regression):** 9 of 48 Playwright
+**browser** e2e tests fail locally — the `fxTrading` confirmation-overlay,
+`fxRfq`, and multi-trade `blotter` flows. The trade itself executes (the
+"executed trade appears in the blotter" test passes), but the transient
+`trade-confirmation` overlay isn't observed within the 5 s window (architecture
+auto-dismiss is 5 s; e2e runs in **simulator** mode per STATUS.md item 4). The
+failure **reproduces on pristine HEAD with the gate change stashed**, so it is
+independent of Phase 10 (a test-only gate edit has zero runtime effect). The same
+flows are covered deterministically and green by the contract (246) and visual
+tiers, which exercise `TileConfirmation` directly. Left for a separate fix per
+the Phase-10 rule not to edit production `src` speculatively to chase e2e.
+
 ## Closed by the Phase V deterministic batch
 
 The following gaps from the 2026-06-14 snapshot now have a dedicated golden and
