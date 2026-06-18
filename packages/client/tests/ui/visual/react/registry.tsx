@@ -47,6 +47,19 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
       </table>
     );
   },
+  // The isolated baseline for the row above: same component, isNew=false, so it
+  // snapshots the settled (transparent) branch. Pairing the two makes the
+  // highlight the ONLY visual delta when diffing the isolated component.
+  BlotterRowDefault: (fixtureKey) => {
+    const trade = fixtures[fixtureKey].trades[0];
+    return (
+      <table style={{ borderCollapse: "collapse" }}>
+        <tbody>
+          <BlotterRow trade={trade} isNew={false} />
+        </tbody>
+      </table>
+    );
+  },
   RfqTilesPanel: () => <RfqTilesPanel />,
   NewRfqForm: () => <NewRfqForm onCreated={() => {}} />,
   CreditBlotter: () => <CreditBlotter />,
