@@ -6,6 +6,8 @@ settings:
 
 overrides:
   ws@7: ^7.5.10
+  form-data: ^4.0.6
+  uuid@11: ^11.1.1
   serialize-javascript: ^7.0.3
 
 importers:
@@ -2318,8 +2320,8 @@ packages:
   forever-agent@0.6.1:
     resolution: {integrity: sha512-j0KLYPhm6zeac4lz3oJ3o65qvgQCcPubiyotZrXqEaG4hNagNYO8qdlUrX5vwqv9ohqeT/Z3j6+yW067yWWdUw==}
 
-  form-data@4.0.5:
-    resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
+  form-data@4.0.6:
+    resolution: {integrity: sha512-vKatAh4SlVfgbv+YtmhiRjhEMJsYpsG1Y2rMQtR+SVSbytsSD1YGzDIcrAJmdFec88u/+VoGmxnl+80gL1tRCQ==}
     engines: {node: '>= 6'}
 
   fp-ts@2.16.11:
@@ -3793,8 +3795,8 @@ packages:
   util-arity@1.1.0:
     resolution: {integrity: sha512-kkyIsXKwemfSy8ZEoaIz06ApApnWsk5hQO0vLjZS6UkBiGiW++Jsyb8vSBoc0WKlffGoGs5yYy/j5pp8zckrFA==}
 
-  uuid@11.0.5:
-    resolution: {integrity: sha512-508e6IcKLrhxKdBbcA2b4KQZlLVp2+J5UwQ6F7Drckkc5N9ZJwFa4TgWtsww9UG8fGHbm6gbV19TdM5pQ4GaIA==}
+  uuid@11.1.1:
+    resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
     hasBin: true
 
   uuid@13.0.2:
@@ -4469,7 +4471,7 @@ snapshots:
       '@types/uuid': 10.0.0
       class-transformer: 0.5.1
       reflect-metadata: 0.2.2
-      uuid: 11.0.5
+      uuid: 11.1.1
 
   '@cucumber/messages@32.3.1':
     dependencies:
@@ -4509,7 +4511,7 @@ snapshots:
       combined-stream: 1.0.8
       extend: 3.0.2
       forever-agent: 0.6.1
-      form-data: 4.0.5
+      form-data: 4.0.6
       http-signature: 1.4.0
       is-typedarray: 1.0.0
       isstream: 0.1.2
@@ -6256,7 +6258,7 @@ snapshots:
 
   forever-agent@0.6.1: {}
 
-  form-data@4.0.5:
+  form-data@4.0.6:
     dependencies:
       asynckit: 0.4.0
       combined-stream: 1.0.8
@@ -7691,7 +7693,7 @@ snapshots:
 
   util-arity@1.1.0: {}
 
-  uuid@11.0.5: {}
+  uuid@11.1.1: {}
 
   uuid@13.0.2: {}
 

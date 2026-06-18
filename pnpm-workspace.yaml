@@ -23,6 +23,17 @@ minimumReleaseAge: 1440
 # undeclared ws major. A packageRule in .github/renovate.json5 pins this override.
 overrides:
   ws@7: ^7.5.10
+  # Force the dev-only transitive form-data (4.0.5, via cypress >
+  # @cypress/request) up to the patched 4.0.6 — fixes GHSA-fjxv-7rqg-78g4 (high):
+  # form-data used unsafe randomness for the multipart boundary. The advisory's
+  # fix floor is 4.0.6, which no cypress version yet pulls, so an override is the
+  # only path. Only one 4.0.x exists in the tree.
+  form-data: ^4.0.6
+  # Force the dev-only transitive uuid 11.0.x (11.0.5) up to the patched 11.1.1
+  # (medium). Scoped to the 11.x line ONLY (`uuid@11`) so the older uuid majors
+  # legitimately pinned by other deps — uuid@7 (@marblejs/core), uuid@8, uuid@13
+  # — are left untouched (bumping those would break their parents' declared API).
+  uuid@11: ^11.1.1
   # Force the dev-only transitive serialize-javascript (6.0.2, pulled in by
   # mocha, itself under @badeball/cypress-cucumber-preprocessor) up to the
   # patched 7.0.3+ — fixes the RCE GHSA-5c6j-r48x-rmvq (high) and the related
