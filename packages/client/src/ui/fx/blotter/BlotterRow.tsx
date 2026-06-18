@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { TradeStatus, type Trade } from "@rtc/domain";
+import { useHooks } from "../../hooks/HooksProvider";
 import { COLUMNS, formatCellValue } from "./blotterColumns";
 
 interface BlotterRowProps {
@@ -8,16 +9,12 @@ interface BlotterRowProps {
 }
 
 export function BlotterRow({ trade, isNew }: BlotterRowProps) {
-  const [highlight, setHighlight] = useState(isNew);
+  // The transient new-row highlight (true for HIGHLIGHT_MS then false) now lives
+  // in the app-layer createRowHighlightMachine behind the seam, so this row holds
+  // no timer. Hover stays here — it's pure interaction view state, no timer.
+  const highlight = useHooks().useRowHighlight(isNew);
   const [hovered, setHovered] = useState(false);
   const isRejected = trade.status === TradeStatus.Rejected;
-
-  useEffect(() => {
-    if (!isNew) return;
-    setHighlight(true);
-    const timer = setTimeout(() => setHighlight(false), 3000);
-    return () => clearTimeout(timer);
-  }, [isNew]);
 
   return (
     <tr

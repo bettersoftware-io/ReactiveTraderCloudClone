@@ -19,6 +19,7 @@ import { useMachine } from "../../../../src/ui/hooks/useMachine";
 import { createTileExecutionMachine } from "../../../../src/app/presenters/TileExecutionMachine";
 import { createRfqTileMachine } from "../../../../src/app/presenters/RfqTileMachine";
 import { createStaleFlagMachine } from "../../../../src/app/presenters/StaleFlagMachine";
+import { createRowHighlightMachine } from "../../../../src/app/presenters/RowHighlightMachine";
 import { createNotionalMachine } from "../../../../src/app/presenters/NotionalMachine";
 import type { World } from "../shared/harness/world";
 
@@ -116,6 +117,12 @@ export function reactHooks(world: World): AppHooks {
           value$: s.useAnalytics,
         }),
       ).state,
+    // Intent-free derived flag: the REAL createRowHighlightMachine. The contract
+    // spec drives the 3s fade with fake timers, so the real RxJS timer(HIGHLIGHT_MS)
+    // is driven by the spec's advanceTimersByTime through the same useMachine bridge
+    // the app uses — preserving the exact fade timing.
+    useRowHighlight: (isNew: boolean) =>
+      useMachine(() => createRowHighlightMachine(isNew)).state,
     // Machine: the REAL createNotionalMachine, exercising the relocated notional
     // logic through the same useMachine bridge the app uses.
     useNotional: (defaultNotional: number) =>

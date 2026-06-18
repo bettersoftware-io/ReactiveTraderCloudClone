@@ -52,6 +52,8 @@ export interface AppHooks {
   // Intent-free derived flags: return just the boolean (no intents to expose).
   useStaleFlag: (pair: CurrencyPair) => boolean;
   useAnalyticsStaleFlag: () => boolean;
+  /** Transient new-row highlight for a blotter row (`isNew` captured at mount). */
+  useRowHighlight: (isNew: boolean) => boolean;
   /** Notional input state for a tile — view state plus intents. */
   useNotional: (defaultNotional: number) => { state: NotionalView } & NotionalIntents;
   /** NewRfqForm create→confirm→redirect submission state plus the submit intent. */
@@ -156,6 +158,8 @@ export function createAppHooks(
       useMachine(() => machines.staleFlag(pair)).state,
     useAnalyticsStaleFlag: () =>
       useMachine(() => machines.analyticsStaleFlag()).state,
+    useRowHighlight: (isNew: boolean) =>
+      useMachine(() => machines.rowHighlight(isNew)).state,
     useNotional: (defaultNotional: number) =>
       useMachine(() => machines.notional(defaultNotional)),
     useRfqSubmission: () => useMachine(() => machines.rfqSubmission()),

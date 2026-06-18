@@ -6,6 +6,11 @@ test("fx-blotter/populated", async ({ mount }) => {
   await expect(c).toHaveScreenshot("populated.png", { animations: "disabled" });
 });
 
+test("fx-blotter/highlighted-row", async ({ mount }) => {
+  const c = await mount(<VisualScenario name="fx-blotter/highlighted-row" />);
+  await expect(c).toHaveScreenshot("highlighted-row.png", { animations: "disabled" });
+});
+
 test("fx-blotter/sorted", async ({ mount, page }) => {
   const c = await mount(<VisualScenario name="fx-blotter/sorted" />);
   await page.getByTestId("blotter-sort-notional").click();

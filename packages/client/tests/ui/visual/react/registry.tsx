@@ -5,6 +5,7 @@ import { AnalyticsPanel } from "../../../../src/ui/fx/analytics/AnalyticsPanel";
 import { ConnectionOverlay } from "../../../../src/ui/shell/connection/ConnectionOverlay";
 import { LiveRatesPanel } from "../../../../src/ui/fx/liveRates/LiveRatesPanel";
 import { FxBlotter } from "../../../../src/ui/fx/blotter/FxBlotter";
+import { BlotterRow } from "../../../../src/ui/fx/blotter/BlotterRow";
 import { RfqTilesPanel } from "../../../../src/ui/credit/rfqTiles/RfqTilesPanel";
 import { NewRfqForm } from "../../../../src/ui/credit/newRfq/NewRfqForm";
 import { CreditBlotter } from "../../../../src/ui/credit/blotter/CreditBlotter";
@@ -33,6 +34,19 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   ConnectionOverlay: () => <ConnectionOverlay />,
   LiveRatesPanel: () => <LiveRatesPanel />,
   FxBlotter: () => <FxBlotter />,
+  // Prop-driven single highlighted (isNew) row, wrapped in a table so the <tr>
+  // renders. The fake's useRowHighlight(isNew) returns isNew, so this snapshots
+  // the blue-highlight branch deterministically (no timer / no waiting).
+  BlotterRowHighlighted: (fixtureKey) => {
+    const trade = fixtures[fixtureKey].trades[0];
+    return (
+      <table style={{ borderCollapse: "collapse" }}>
+        <tbody>
+          <BlotterRow trade={trade} isNew={true} />
+        </tbody>
+      </table>
+    );
+  },
   RfqTilesPanel: () => <RfqTilesPanel />,
   NewRfqForm: () => <NewRfqForm onCreated={() => {}} />,
   CreditBlotter: () => <CreditBlotter />,
