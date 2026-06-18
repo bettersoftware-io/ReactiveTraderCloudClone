@@ -25,6 +25,17 @@ function applyTokens(tokens: ThemeTokens) {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   // Persistence/state lives behind the seam (PreferencesPort); the provider
   // only reads the current theme and paints the CSS tokens for it.
+  //
+  // The DOM writes below (CSS variables on :root + dataset.theme) intentionally
+  // STAY here: applying a theme to the document is RENDERING, which is the View's
+  // job — not business logic, transport, or persistence (Dumb-UI forbids those,
+  // not painting). The token VALUES (darkTokens/lightTokens) are data and the
+  // theme CHOICE is a port; only the paint remains, and it is coupled to the WEB
+  // render target (`document.documentElement`) — exactly the layer that gets
+  // rewritten per target (a SolidJS web app writes the same :root vars; a React
+  // Native app applies the theme its own way in its own ThemeProvider). Wrapping
+  // this behind a port would be over-abstraction: ports are I/O boundaries, not
+  // "how the View paints".
   const { theme, toggle } = useHooks().useThemePreference();
 
   useLayoutEffect(() => {

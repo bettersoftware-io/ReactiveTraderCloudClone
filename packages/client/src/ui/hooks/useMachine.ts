@@ -8,6 +8,18 @@ import type { Machine } from "../../app/presenters/machine";
  * disposes on unmount. The only UI primitive allowed to import react-rxjs;
  * components never import it (createAppHooks does).
  *
+ * Why a hand-written bridge and NOT react-rxjs `bind`: `bind`/`state` model
+ * GLOBAL, shared, refcounted singletons (one stream the whole app reads — e.g.
+ * prices, throughput, theme; those use `bind` directly, no bridge). A machine
+ * here is the opposite: ONE PER COMPONENT INSTANCE, constructed with that
+ * instance's args (e.g. the tile's CurrencyPair), born and disposed with that
+ * mount. react-rxjs has no primitive for "instantiate this factory per mount
+ * and tear it down on unmount" — a component instance's LIFETIME isn't a value
+ * stream you can `bind`, it's React's ref/effect model. So this bridge owns only
+ * that lifecycle; the DATA read is still react-rxjs (`useStateObservable`) and
+ * the machine's LOGIC is still pure RxJS (in the factory). Nothing logic-shaped
+ * lives here — only the irreducibly-React per-instance lifecycle glue.
+ *
  * StrictMode-safe disposal: React 19 StrictMode runs the mount-time effect
  * cycle setup -> cleanup -> setup synchronously within the commit. The machine
  * lives in a lazy useRef (created once), so a cleanup that disposed eagerly
