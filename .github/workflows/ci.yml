@@ -90,7 +90,7 @@ jobs:
     # is set by it), so no `playwright install` step is needed. The goldens are
     # regenerated in this SAME image via .github/workflows/update-visual-goldens.yml.
     # Tag must track the @playwright/test version in packages/client.
-    container: mcr.microsoft.com/playwright:v1.60.0-noble
+    container: mcr.microsoft.com/playwright:v1.61.0-noble
     env:
       CYPRESS_INSTALL_BINARY: "0"
     steps:
