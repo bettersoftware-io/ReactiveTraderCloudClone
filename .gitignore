@@ -13,3 +13,13 @@ test-results/
 .claude/settings.local.json
 # Claude Code: runtime scheduled-task lock (not a project file)
 .claude/scheduled_tasks.lock
+
+# Visual test screenshots: only the curated golden sets under react/ (CI x86)
+# and react-local/<arch>/ (local feedback) are committed. The Playwright /
+# vitest-browser runners also drop transient debris into a spec-named dir
+# DIRECTLY under __screenshots__/ (e.g. __screenshots__/visual.spec.tsx/
+# app-credit-1.png) — never a golden, must never be committed. Real goldens
+# always have react/ or react-local/<arch>/ between __screenshots__ and the spec
+# dir, so this can't match them.
+packages/client/tests/ui/visual/**/__screenshots__/*.spec.ts/
+packages/client/tests/ui/visual/**/__screenshots__/*.spec.tsx/
