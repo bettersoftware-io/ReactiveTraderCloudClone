@@ -1,11 +1,6 @@
 import { useCallback } from "react";
 import { type CurrencyPair, type Direction, type Price } from "@rtc/domain";
 import { useHooks } from "../../../hooks/HooksProvider";
-import { useNotional } from "./hooks/useNotional";
-import { useTileState } from "./hooks/useTileState";
-import { useExecuteTrade } from "./hooks/useExecuteTrade";
-import { useRfqState } from "./hooks/useRfqState";
-import { useRfqQuote } from "./hooks/useRfqQuote";
 import { TileHeader } from "./TileHeader";
 import { TilePrice, SpreadDisplay } from "./TilePrice";
 import { TileChart } from "./TileChart";
@@ -14,7 +9,6 @@ import { TileExecution } from "./TileExecution";
 import { TileConfirmation } from "./TileConfirmation";
 import { TileRfq } from "./TileRfq";
 import { StaleIndicator } from "../../../shell/stale/StaleIndicator";
-import { useStaleDetection } from "../../../shell/stale/useStaleDetection";
 
 interface TileProps {
   pair: CurrencyPair;
@@ -24,29 +18,26 @@ interface TileProps {
 export function Tile({ pair, showChart }: TileProps) {
   const hooks = useHooks();
   const price = hooks.usePrice(pair);
-  const stale = useStaleDetection(price);
+  const stale = hooks.useStaleFlag(pair);
   const history = hooks.usePriceHistory(pair.symbol);
-  const notional = useNotional(pair.defaultNotional);
-  const tileState = useTileState();
-  const executeTrade = useExecuteTrade(pair, tileState);
-  const rfqState = useRfqState();
-  const requestQuote = useRfqQuote(pair, rfqState);
+  const notional = hooks.useNotional(pair.defaultNotional);
+  const tileExecution = hooks.useTileExecution(pair);
+  const rfqState = hooks.useRfqTile(pair);
 
   const isLoading = !price;
-  const isBusy = tileState.state.status !== "ready";
-  const hasError = !!notional.error;
+  const isBusy = tileExecution.state.status !== "ready";
+  const hasError = !!notional.state.error;
   const isRfqActive = rfqState.state.status !== "init";
-  const notionalDisabled =
-    isLoading || isBusy || (isRfqActive && rfqState.state.status !== "init");
+  const notionalDisabled = isLoading || isBusy || isRfqActive;
 
   const handleExecute = useCallback(
     (direction: Direction, priceVal?: Price, notionalVal?: number) => {
       const p = priceVal ?? price;
-      const n = notionalVal ?? notional.numericValue;
+      const n = notionalVal ?? notional.state.numericValue;
       if (!p || hasError) return;
-      executeTrade(direction, p, n);
+      tileExecution.execute(direction, p, n);
     },
-    [price, hasError, executeTrade, notional.numericValue],
+    [price, hasError, tileExecution, notional.state.numericValue],
   );
 
   return (
@@ -95,14 +86,14 @@ export function Tile({ pair, showChart }: TileProps) {
         </div>
       )}
 
-      {notional.isRfq ? (
+      {notional.state.isRfq ? (
         !isBusy && (
           <TileRfq
             pair={pair}
             rfqState={rfqState}
-            onRequestQuote={requestQuote}
+            onRequestQuote={rfqState.requestQuote}
             onExecute={handleExecute}
-            notional={notional.numericValue}
+            notional={notional.state.numericValue}
           />
         )
       ) : (
@@ -118,7 +109,7 @@ export function Tile({ pair, showChart }: TileProps) {
         disabled={notionalDisabled}
       />
 
-      <TileConfirmation state={tileState.state} onDismiss={tileState.dismiss} />
+      <TileConfirmation state={tileExecution.state} onDismiss={tileExecution.dismiss} />
     </div>
     </StaleIndicator>
   );

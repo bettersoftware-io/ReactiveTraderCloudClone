@@ -1,4 +1,4 @@
-export type ViewMode = "chart" | "price";
+import { type ViewMode } from "@rtc/domain";
 
 interface ViewToggleProps {
   mode: ViewMode;

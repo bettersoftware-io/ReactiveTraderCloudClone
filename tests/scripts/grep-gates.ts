@@ -126,6 +126,27 @@ function checkProductionAudit(): string[] {
   return [];
 }
 
+/**
+ * Dumb-UI gate: the ONLY setTimeout/setInterval permitted in production src/ui
+ * is the transient row-highlight in BlotterRow.tsx. Any other timer in a React
+ * component is business/timer logic that belongs in the app-layer (machines/
+ * presenters) behind the AppHooks seam. Test files are not gated here.
+ */
+function checkLoneUiTimer(): string[] {
+  const result = spawnSync(
+    "grep",
+    ["-rnE", "setTimeout|setInterval", "../packages/client/src/ui/"],
+    { encoding: "utf8" },
+  );
+  const out = result.stdout ?? "";
+  return out
+    .split("\n")
+    .filter(Boolean)
+    .filter((line) => !line.includes("/node_modules/"))
+    .filter((line) => !line.includes(".test.") && !line.includes(".spec."))
+    .filter((line) => !line.includes("/fx/blotter/BlotterRow.tsx:"));
+}
+
 const GATES: Gate[] = [
   {
     name: "1. No raw data-testid literals outside testids.ts",
@@ -298,6 +319,45 @@ const GATES: Gate[] = [
     pattern: "",
     paths: [],
     customCheck: checkProductionAudit,
+  },
+  {
+    name: "26. No rxjs/react-rxjs imports in src/ui (only src/ui/hooks bridge may)",
+    pattern: 'from "rxjs"|@react-rxjs|@rx-state',
+    paths: ["../packages/client/src/ui/"],
+    excludes: [
+      "/node_modules/",
+      "/src/ui/hooks/",
+      ".test.",
+      ".spec.",
+    ],
+  },
+  {
+    name: "27. No localStorage in src/ui (persistence belongs in app-layer ports)",
+    pattern: 'localStorage',
+    paths: ["../packages/client/src/ui/"],
+    excludes: [
+      "/node_modules/",
+      "/src/ui/hooks/",
+      ".test.",
+      ".spec.",
+    ],
+  },
+  {
+    name: "28. No fetch/import.meta.env in src/ui (transport/config belongs in app-layer)",
+    pattern: 'fetch\\(|import\\.meta\\.env',
+    paths: ["../packages/client/src/ui/"],
+    excludes: [
+      "/node_modules/",
+      "/src/ui/hooks/",
+      ".test.",
+      ".spec.",
+    ],
+  },
+  {
+    name: "29. No setTimeout/setInterval in src/ui except BlotterRow.tsx",
+    pattern: "",
+    paths: [],
+    customCheck: checkLoneUiTimer,
   },
 ];
 

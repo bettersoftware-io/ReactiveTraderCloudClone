@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { KNOWN_CURRENCY_PAIRS, type CurrencyPair } from "@rtc/domain";
 import { mount } from "@ui-contract/mount";
 import { LiveRatesPanel } from "@ui-contract/components";
@@ -8,13 +8,7 @@ const eurusd = pairs.find((p) => p.symbol === "EURUSD")!;
 const usdjpy = pairs.find((p) => p.symbol === "USDJPY")!;
 const gbpjpy = pairs.find((p) => p.symbol === "GBPJPY")!;
 
-const STORAGE_KEY = "rtc-view-mode";
-
 describe("LiveRatesPanel", () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
   it("shows a loading placeholder until currency pairs arrive", () => {
     const panel = mount(LiveRatesPanel, { hooks: { useCurrencyPairs: [] } });
     expect(panel.loadingMessage()).toMatch(/loading currency pairs/i);
@@ -60,19 +54,23 @@ describe("LiveRatesPanel", () => {
     expect(panel.viewToggleLabel()).toMatch(/price/i);
   });
 
-  it("toggles to price view, hiding the charts, and persists the choice", async () => {
+  it("toggles to price view, hiding the charts", async () => {
     const panel = mount(LiveRatesPanel, { hooks: { useCurrencyPairs: [eurusd] } });
     expect(panel.hasAnyChart()).toBe(true);
     await panel.toggleView();
+    // The toggle routes through the seam (useViewModePreference); the panel
+    // re-renders with charts suppressed. Persistence is the presenter's job and
+    // is verified at the app/presenter layer, not in the UI contract.
     expect(panel.hasAnyChart()).toBe(false);
     expect(panel.viewToggleLabel()).toMatch(/chart/i);
-    expect(localStorage.getItem(STORAGE_KEY)).toBe("price");
   });
 
-  it("restores the persisted view mode on mount", () => {
-    localStorage.setItem(STORAGE_KEY, "price");
-    const panel = mount(LiveRatesPanel, { hooks: { useCurrencyPairs: [eurusd] } });
-    // Persisted "price" → charts suppressed, toggle offers "chart".
+  it("reflects the seeded view mode on mount", () => {
+    const panel = mount(LiveRatesPanel, {
+      hooks: { useCurrencyPairs: [eurusd] },
+      viewMode: "price",
+    });
+    // Seeded "price" → charts suppressed, toggle offers "chart".
     expect(panel.hasAnyChart()).toBe(false);
     expect(panel.viewToggleLabel()).toMatch(/chart/i);
   });

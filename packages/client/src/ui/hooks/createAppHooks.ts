@@ -1,14 +1,35 @@
 import { bind } from "@react-rxjs/core";
-import type { Observable } from "rxjs";
+import { firstValueFrom } from "rxjs";
 import {
   ConnectionStatus,
+  DEFAULT_THEME, DEFAULT_VIEW_MODE,
   type CurrencyPair, type Price, type PriceTick, type Trade,
   type Rfq, type Quote, type PositionUpdates,
   type Instrument, type Dealer,
-  type ExecuteTradeInput, type ExecuteTradeResult, type CreateRfqInput,
-  type RfqQuoteResult, type QuoteRequest,
+  type Theme, type ViewMode,
 } from "@rtc/domain";
 import type { Presenters } from "../../app/composition";
+import type { MachineFactories } from "../../app/presenters/machine";
+import { useMachine } from "./useMachine";
+import type {
+  TileExecutionState,
+  TileExecutionIntents,
+} from "../../app/presenters/TileExecutionMachine";
+import type {
+  RfqState,
+  RfqTileIntents,
+} from "../../app/presenters/RfqTileMachine";
+import type {
+  NotionalView,
+  NotionalIntents,
+} from "../../app/presenters/NotionalMachine";
+import type {
+  RfqSubmissionState,
+  RfqSubmissionIntents,
+  TicketSubmissionState,
+  TicketSubmissionIntents,
+} from "../../app/presenters/RfqsPresenter";
+import type { ThroughputView } from "../../app/presenters/ThroughputPresenter";
 
 export interface AppHooks {
   // Streams
@@ -23,17 +44,39 @@ export interface AppHooks {
   useInstruments: () => readonly Instrument[];
   useDealers: () => readonly Dealer[];
   useConnectionStatus: () => ConnectionStatus;
-  // Commands (one-shot Observables; callers use firstValueFrom)
-  useExecuteTrade: () => (input: ExecuteTradeInput) => Observable<ExecuteTradeResult>;
-  useCreateRfq: () => (input: CreateRfqInput) => Observable<number>;
-  useAcceptQuote: () => (quoteId: number) => Observable<void>;
-  useCancelRfq: () => (rfqId: number) => Observable<void>;
-  usePassQuote: () => (quoteId: number) => Observable<void>;
-  useQuoteRfq: () => (request: QuoteRequest) => Observable<void>;
-  useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => Observable<RfqQuoteResult>;
+  // Commands (one-shot fire-and-await; the bridge does firstValueFrom)
+  useAcceptQuote: () => (quoteId: number) => Promise<void>;
+  // Machines (app-layer RxJS behind the useMachine bridge)
+  useTileExecution: (pair: CurrencyPair) => { state: TileExecutionState } & TileExecutionIntents;
+  useRfqTile: (pair: CurrencyPair) => { state: RfqState } & RfqTileIntents;
+  // Intent-free derived flags: return just the boolean (no intents to expose).
+  useStaleFlag: (pair: CurrencyPair) => boolean;
+  useAnalyticsStaleFlag: () => boolean;
+  /** Notional input state for a tile — view state plus intents. */
+  useNotional: (defaultNotional: number) => { state: NotionalView } & NotionalIntents;
+  /** NewRfqForm create→confirm→redirect submission state plus the submit intent. */
+  useRfqSubmission: () => { state: RfqSubmissionState } & RfqSubmissionIntents;
+  /** TradeTicket submit-price / pass submission state plus its intents. */
+  useTicketSubmission: () => { state: TicketSubmissionState } & TicketSubmissionIntents;
+  /** Global throughput control — shared view state plus the setValue intent. */
+  useThroughput: () => ThroughputView & { setValue: (value: number) => void };
+  /** Global theme preference — current theme plus write/zero-arg-toggle intents. */
+  useThemePreference: () => {
+    theme: Theme;
+    setTheme: (theme: Theme) => void;
+    toggle: () => void;
+  };
+  /** Global live-rates view-mode preference — current mode plus the write intent. */
+  useViewModePreference: () => {
+    viewMode: ViewMode;
+    setViewMode: (viewMode: ViewMode) => void;
+  };
 }
 
-export function createAppHooks(presenters: Presenters): AppHooks {
+export function createAppHooks(
+  presenters: Presenters,
+  machines: MachineFactories,
+): AppHooks {
   const [usePrice] = bind(
     (pair: CurrencyPair) => presenters.priceStream.price$(pair),
     null,
@@ -66,17 +109,31 @@ export function createAppHooks(presenters: Presenters): AppHooks {
     presenters.connection.status$,
     ConnectionStatus.CONNECTING,
   );
+  // Global/shared throughput state → a plain bind (not a per-mount machine).
+  const [useThroughputState] = bind(presenters.throughput.state$, {
+    value: 100,
+    loading: true,
+    message: null,
+  } as ThroughputView);
+  const setThroughput = (value: number) => presenters.throughput.setValue(value);
+
+  // Global/shared display preferences → plain binds (not per-mount machines).
+  const [useThemeValue] = bind(presenters.themePreference.theme$, DEFAULT_THEME);
+  const setTheme = (theme: Theme) => presenters.themePreference.setTheme(theme);
+  const [useViewModeValue] = bind(
+    presenters.viewModePreference.viewMode$,
+    DEFAULT_VIEW_MODE,
+  );
+  const setViewMode = (viewMode: ViewMode) =>
+    presenters.viewModePreference.setViewMode(viewMode);
 
   // Pre-bound command callbacks. Stable references across calls so React
-  // memo/effect dep arrays remain stable.
-  const executeTrade = (input: ExecuteTradeInput) => presenters.execution.execute(input);
-  const createRfq = (input: CreateRfqInput) => presenters.rfqs.createRfq(input);
-  const acceptQuote = (quoteId: number) => presenters.rfqs.acceptQuote(quoteId);
-  const cancelRfq = (rfqId: number) => presenters.rfqs.cancelRfq(rfqId);
-  const passQuote = (quoteId: number) => presenters.rfqs.passQuote(quoteId);
-  const quoteRfq = (req: QuoteRequest) => presenters.rfqs.quoteRfq(req);
-  const requestRfqQuote = (symbol: string, pipsPosition: number) =>
-    presenters.rfqQuote.requestQuote(symbol, pipsPosition);
+  // memo/effect dep arrays remain stable. The bridge converts each one-shot
+  // presenter Observable to a Promise via firstValueFrom — the void commands'
+  // presenters emit `undefined` before completing, so firstValueFrom resolves
+  // (rather than rejecting with EmptyError) without needing a defaultValue.
+  const acceptQuote = (quoteId: number) =>
+    firstValueFrom(presenters.rfqs.acceptQuote(quoteId));
 
   return {
     usePrice,
@@ -90,12 +147,33 @@ export function createAppHooks(presenters: Presenters): AppHooks {
     useInstruments,
     useDealers,
     useConnectionStatus,
-    useExecuteTrade: () => executeTrade,
-    useCreateRfq: () => createRfq,
     useAcceptQuote: () => acceptQuote,
-    useCancelRfq: () => cancelRfq,
-    usePassQuote: () => passQuote,
-    useQuoteRfq: () => quoteRfq,
-    useRequestRfqQuote: () => requestRfqQuote,
+    useTileExecution: (pair: CurrencyPair) =>
+      useMachine(() => machines.tileExecution(pair)),
+    useRfqTile: (pair: CurrencyPair) =>
+      useMachine(() => machines.rfqTile(pair)),
+    useStaleFlag: (pair: CurrencyPair) =>
+      useMachine(() => machines.staleFlag(pair)).state,
+    useAnalyticsStaleFlag: () =>
+      useMachine(() => machines.analyticsStaleFlag()).state,
+    useNotional: (defaultNotional: number) =>
+      useMachine(() => machines.notional(defaultNotional)),
+    useRfqSubmission: () => useMachine(() => machines.rfqSubmission()),
+    useTicketSubmission: () => useMachine(() => machines.ticketSubmission()),
+    useThroughput: () => ({ ...useThroughputState(), setValue: setThroughput }),
+    // Global theme: read the currently-bound theme in the hook body so the
+    // component calls a zero-arg toggle() that flips relative to the live value.
+    useThemePreference: () => {
+      const theme = useThemeValue();
+      return {
+        theme,
+        setTheme,
+        toggle: () => presenters.themePreference.toggle(theme),
+      };
+    },
+    useViewModePreference: () => ({
+      viewMode: useViewModeValue(),
+      setViewMode,
+    }),
   };
 }

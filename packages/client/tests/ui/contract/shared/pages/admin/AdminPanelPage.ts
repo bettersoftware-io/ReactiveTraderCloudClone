@@ -1,12 +1,15 @@
 import { within, waitFor, fireEvent } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
+import type { ThroughputView } from "../../../../../../src/app/presenters/ThroughputPresenter";
 import { MountedComponent } from "../../harness/component";
 
 /**
- * Page object for the AdminPanel throughput control. The panel drives itself
- * from the `useThroughput` hook (which fetches/persists over HTTP); specs stub
- * `fetch` before mounting and use {@link waitUntilLoaded} to settle the initial
- * load.
+ * Page object for the AdminPanel throughput control. The panel is dumb: it reads
+ * its view from the `useThroughput()` seam and calls `setValue` to persist. The
+ * contract harness backs that seam with the World's throughput subject — specs
+ * seed the loaded view via `mount(..., { throughput })`, drive edits through the
+ * inputs, and assert against the recorded `setValue` values (the old PUT body)
+ * and a server-pushed banner ({@link pushView}).
  */
 export class AdminPanelPage extends MountedComponent<Record<string, never>> {
   private readonly user: UserEvent = userEvent.setup();
@@ -16,11 +19,21 @@ export class AdminPanelPage extends MountedComponent<Record<string, never>> {
     return within(this.root).queryByText(/loading throughput/i) !== null;
   }
 
-  /** Wait for the initial throughput fetch to settle and the panel to render. */
+  /** Wait for the panel (past its loading placeholder) to render. */
   async waitUntilLoaded(): Promise<void> {
     await waitFor(() =>
       within(this.root).getByRole("heading", { name: /throughput control/i }),
     );
+  }
+
+  /** The values the panel asked to persist, in order (old PUT-body equivalent). */
+  recordedSets(): number[] {
+    return this.throughputSets();
+  }
+
+  /** Push a new throughput view from the "server" (e.g. a confirmation banner). */
+  pushView(patch: Partial<ThroughputView>): void {
+    this.setThroughputView(patch);
   }
 
   /** The panel heading text. */

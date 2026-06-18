@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@react-rxjs/core": "^0.10.7",
+    "@rx-state/core": "^0.1.4",
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
     "react": "^19",

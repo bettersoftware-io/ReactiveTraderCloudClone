@@ -16,6 +16,14 @@ import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
 import { DealersPresenter } from "./presenters/DealersPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
 import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
+import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
+import { ThemePreferencePresenter } from "./presenters/ThemePreferencePresenter";
+import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
+import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
+import { createRfqTileMachine } from "./presenters/RfqTileMachine";
+import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
+import { createNotionalMachine } from "./presenters/NotionalMachine";
+import type { MachineFactories } from "./presenters/machine";
 
 import { WsAdapter } from "./adapters/WsAdapter";
 import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
@@ -40,6 +48,9 @@ export interface Presenters {
   dealers: DealersPresenter;
   connection: ConnectionStatusPresenter;
   rfqQuote: RfqQuotePresenter;
+  throughput: ThroughputPresenter;
+  themePreference: ThemePreferencePresenter;
+  viewModePreference: ViewModePreferencePresenter;
 }
 
 export interface App {
@@ -88,6 +99,38 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     dealers: new DealersPresenter(ports.dealers),
     connection: new ConnectionStatusPresenter(ports.connectionEvents),
     rfqQuote: new RfqQuotePresenter(ports.pricing),
+    throughput: new ThroughputPresenter(ports.admin),
+    themePreference: new ThemePreferencePresenter(ports.preferences),
+    viewModePreference: new ViewModePreferencePresenter(ports.preferences),
   };
   return { presenters, ports };
+}
+
+/** Build the app-layer machine factories the hooks seam injects. Each factory
+ * spins up a fresh machine per component mount, wired to the presenters. */
+export function createMachineFactories(presenters: Presenters): MachineFactories {
+  return {
+    tileExecution: (pair) =>
+      createTileExecutionMachine(pair, {
+        execute: (input) => presenters.execution.execute(input),
+      }),
+    rfqTile: (pair) =>
+      createRfqTileMachine(pair, {
+        requestQuote: (symbol, pipsPosition) =>
+          presenters.rfqQuote.requestQuote(symbol, pipsPosition),
+      }),
+    staleFlag: (pair) =>
+      createStaleFlagMachine({
+        status$: presenters.connection.status$,
+        value$: presenters.priceStream.price$(pair),
+      }),
+    analyticsStaleFlag: () =>
+      createStaleFlagMachine({
+        status$: presenters.connection.status$,
+        value$: presenters.analytics.position$,
+      }),
+    notional: (defaultNotional) => createNotionalMachine(defaultNotional),
+    rfqSubmission: () => presenters.rfqs.createSubmission(),
+    ticketSubmission: () => presenters.rfqs.createTicketSubmission(),
+  };
 }

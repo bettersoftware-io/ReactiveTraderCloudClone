@@ -1,7 +1,7 @@
-import { useThroughput } from "./hooks/useThroughput";
+import { useHooks } from "../hooks/HooksProvider";
 
 export function AdminPanel() {
-  const { value, loading, message, setValue } = useThroughput();
+  const { value, loading, message, setValue } = useHooks().useThroughput();
 
   if (loading) {
     return (

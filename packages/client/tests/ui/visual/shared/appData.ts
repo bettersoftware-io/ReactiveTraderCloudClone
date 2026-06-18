@@ -6,7 +6,16 @@ import {
   type CurrencyPair, type Price, type PriceTick, type Trade,
   type Rfq, type Quote, type PositionUpdates,
   type Instrument, type Dealer,
+  type Theme, type ViewMode,
 } from "@rtc/domain";
+import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
+import type { RfqState } from "../../../../src/app/presenters/RfqTileMachine";
+import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
+import type {
+  RfqSubmissionState,
+  TicketSubmissionState,
+} from "../../../../src/app/presenters/RfqsPresenter";
+import type { ThroughputView } from "../../../../src/app/presenters/ThroughputPresenter";
 
 export interface AppData {
   prices: Record<string, Price | null>;
@@ -20,6 +29,26 @@ export interface AppData {
   instruments: readonly Instrument[];
   dealers: readonly Dealer[];
   connectionStatus: ConnectionStatus;
+  /** Per-symbol tile execution overlay state; a missing key defaults to "ready". */
+  tileExecution: Record<string, TileExecutionState>;
+  /** Per-symbol RFQ tile state; a missing key defaults to "init". */
+  rfqTile: Record<string, RfqState>;
+  /** Per-symbol stale flag for tiles (useStaleFlag); a missing key defaults to false. */
+  stale: Record<string, boolean>;
+  /** Stale flag for the analytics panel (useAnalyticsStaleFlag); defaults to false. */
+  analyticsStale?: boolean;
+  /** Notional view override for TileNotional screenshots; defaults to formatted defaultNotional. */
+  notional?: NotionalView;
+  /** NewRfqForm submission state (useRfqSubmission); defaults to "editing". */
+  rfqSubmission?: RfqSubmissionState;
+  /** TradeTicket submission state (useTicketSubmission); defaults to not submitted. */
+  ticketSubmission?: TicketSubmissionState;
+  /** Throughput control view (useThroughput); defaults to a loaded value of 100. */
+  throughput?: ThroughputView;
+  /** Theme preference (useThemePreference); defaults to DEFAULT_THEME ("dark"). */
+  theme?: Theme;
+  /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
+  viewMode?: ViewMode;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */
@@ -35,6 +64,9 @@ export const defaultAppData: AppData = {
   instruments: [],
   dealers: [],
   connectionStatus: ConnectionStatus.CONNECTED,
+  tileExecution: {},
+  rfqTile: {},
+  stale: {},
 };
 
 /** Shallow-merge a partial fixture over the baseline. */

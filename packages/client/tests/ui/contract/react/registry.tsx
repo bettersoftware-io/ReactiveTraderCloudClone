@@ -10,6 +10,7 @@ import type {
   Quote,
   Instrument,
   Dealer,
+  ViewMode,
 } from "@rtc/domain";
 import type { ComponentToken, MountedComponent } from "../shared/harness/component";
 import {
@@ -52,18 +53,17 @@ import {
 } from "../shared/components";
 import { LiveRatesPanel as LiveRatesPanelComponent } from "../../../../src/ui/fx/liveRates/LiveRatesPanel";
 import { CurrencyFilter as CurrencyFilterComponent } from "../../../../src/ui/fx/liveRates/CurrencyFilter";
-import { ViewToggle as ViewToggleComponent, type ViewMode } from "../../../../src/ui/fx/liveRates/ViewToggle";
+import { ViewToggle as ViewToggleComponent } from "../../../../src/ui/fx/liveRates/ViewToggle";
 import { Tile as TileComponent } from "../../../../src/ui/fx/liveRates/tile/Tile";
 import { TileHeader as TileHeaderComponent } from "../../../../src/ui/fx/liveRates/tile/TileHeader";
 import { TilePrice as TilePriceComponent, SpreadDisplay as SpreadDisplayComponent } from "../../../../src/ui/fx/liveRates/tile/TilePrice";
 import { TileExecution as TileExecutionComponent } from "../../../../src/ui/fx/liveRates/tile/TileExecution";
 import { TileNotional as TileNotionalComponent } from "../../../../src/ui/fx/liveRates/tile/TileNotional";
-import type { UseNotionalResult } from "../../../../src/ui/fx/liveRates/tile/hooks/useNotional";
+import type { NotionalView, NotionalIntents } from "../../../../src/app/presenters/NotionalMachine";
 import { TileConfirmation as TileConfirmationComponent } from "../../../../src/ui/fx/liveRates/tile/TileConfirmation";
-import type { TileState } from "../../../../src/ui/fx/liveRates/tile/hooks/useTileState";
+import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
 import { RfqCountdown as RfqCountdownComponent } from "../../../../src/ui/fx/liveRates/tile/RfqCountdown";
-import { TileRfq as TileRfqComponent } from "../../../../src/ui/fx/liveRates/tile/TileRfq";
-import type { UseRfqStateResult } from "../../../../src/ui/fx/liveRates/tile/hooks/useRfqState";
+import { TileRfq as TileRfqComponent, type TileRfqState } from "../../../../src/ui/fx/liveRates/tile/TileRfq";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "../../../../src/ui/fx/analytics/AnalyticsPanel";
 import { PnlValue as PnlValueComponent } from "../../../../src/ui/fx/analytics/PnlValue";
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "../../../../src/ui/shell/connection/ConnectionStatusBar";
@@ -274,7 +274,7 @@ export const registry = new Map<AnyToken, ElementFor>([
     TileNotional,
     (p) => (
       <TileNotionalComponent
-        notional={p.notional as UseNotionalResult}
+        notional={p.notional as { state: NotionalView } & NotionalIntents}
         baseCurrency={p.baseCurrency as string}
         disabled={p.disabled as boolean | undefined}
       />
@@ -284,7 +284,7 @@ export const registry = new Map<AnyToken, ElementFor>([
     TileConfirmation,
     (p) => (
       <TileConfirmationComponent
-        state={p.state as TileState}
+        state={p.state as TileExecutionState}
         onDismiss={(p.onDismiss as (() => void)) ?? (() => {})}
       />
     ),
@@ -303,7 +303,7 @@ export const registry = new Map<AnyToken, ElementFor>([
     (p) => (
       <TileRfqComponent
         pair={p.pair as CurrencyPair}
-        rfqState={p.rfqState as UseRfqStateResult}
+        rfqState={p.rfqState as TileRfqState}
         onRequestQuote={(p.onRequestQuote as (() => void)) ?? (() => {})}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onExecute={(p.onExecute as any) ?? (() => {})}

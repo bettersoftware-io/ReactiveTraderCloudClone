@@ -19,17 +19,17 @@ export function VisualScenario({ name }: { name: string }) {
 
   if (FULL_BLEED.has(scenario.componentKey)) {
     return (
-      <ThemeProvider>
-        <HooksProvider hooks={buildFakeHooks(data)}>
+      <HooksProvider hooks={buildFakeHooks(data)}>
+        <ThemeProvider>
           {render(scenario.fixtureKey)}
-        </HooksProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </HooksProvider>
     );
   }
 
   return (
-    <ThemeProvider>
-      <HooksProvider hooks={buildFakeHooks(data)}>
+    <HooksProvider hooks={buildFakeHooks(data)}>
+      <ThemeProvider>
         <div
           data-testid="scenario-root"
           style={{
@@ -43,7 +43,7 @@ export function VisualScenario({ name }: { name: string }) {
         >
           {render(scenario.fixtureKey)}
         </div>
-      </HooksProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </HooksProvider>
   );
 }

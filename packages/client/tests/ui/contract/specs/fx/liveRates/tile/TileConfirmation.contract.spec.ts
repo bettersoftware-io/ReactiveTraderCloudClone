@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ExecutionStatus, Direction, TradeStatus, type Trade } from "@rtc/domain";
 import { mount } from "@ui-contract/mount";
 import { TileConfirmation } from "@ui-contract/components";
-import type { TileState } from "../../../../../../../src/ui/fx/liveRates/tile/hooks/useTileState";
+import type { TileExecutionState as TileState } from "../../../../../../../src/app/presenters/TileExecutionMachine";
 
 const doneTrade: Trade = {
   tradeId: 9001,

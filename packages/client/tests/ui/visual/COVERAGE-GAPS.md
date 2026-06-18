@@ -1,4 +1,4 @@
-# Visual coverage gaps — snapshot 2026-06-16
+# Visual coverage gaps — snapshot 2026-06-17
 
 One-time inventory of `src/ui` components and conditional branches the **visual**
 tier does not render, i.e. that have **no golden snapshot**. Produced by reading
@@ -23,11 +23,82 @@ narrowed in Phase V to `src/ui/**/*.tsx` only — the presentational layer. Pure
 `.ts` logic/hook files (sort/filter/CSV/state-machine hooks) are covered by the
 unit/contract tiers, not here; see the "Utility logic" table below for the list.
 
-Current headline (2026-06-16, `src/ui/**/*.tsx`):
-**83.75% stmts / 75.96% branch / 78.19% funcs / 85.88% lines.** The residual gap
-is now dominated by the timer/transition/runtime-only states below (RFQ tile state
-machine, countdown, confirmation, staleness overlay), which a static screenshot
-cannot pin deterministically — those are covered by the unit/contract tiers.
+**Phase 9 update (2026-06-17):** the four formerly timer-driven tile components
+(`RfqCountdown`, `TileConfirmation`, `TileRfq`, `StaleIndicator`) are now
+snapshotted — their app-layer machine state is injectable per-symbol through the
+seam (`data.tileExecution` / `data.rfqTile` / `data.stale` records), so each
+transient state is a deterministic static shot. They were un-excluded from the
+coverage denominator (`vitest-browser.coverage.config.ts`) and now carry goldens.
+
+Current headline (2026-06-17, `src/ui/**/*.tsx`): re-run
+`pnpm --filter @rtc/client test:ui:visual:vitest-browser:react:coverage` to
+refresh the exact figures; the Phase 9 batch lifts the tile execution / RFQ /
+stale branches into "covered". The residual gap is now the genuinely
+interaction-only handlers and the runtime media-query theme arm (below), which a
+static screenshot still cannot pin deterministically — those are covered by the
+unit/contract tiers.
+
+## Phase 10 (final) — Dumb-UI gates + whole-workstream verification (2026-06-18)
+
+**Architecture gates 26–29 added and GREEN.** `tests/scripts/grep-gates.ts`
+now ENFORCES the Dumb-UI rules against production `src/ui` (the
+`src/ui/hooks/` bridge dir and `*.test.`/`*.spec.` files are exempt):
+
+- **26** — no `rxjs` / `@react-rxjs` / `@rx-state` import in `src/ui` (bridge only).
+- **27** — no `localStorage` in `src/ui` (persistence lives in app-layer ports).
+- **28** — no `fetch(` / `import.meta.env` in `src/ui` (transport/config app-layer).
+- **29** — the ONLY `setTimeout`/`setInterval` permitted in `src/ui` is the
+  transient row-highlight in `fx/blotter/BlotterRow.tsx` (customCheck).
+
+All 29 gates pass. The 4 un-excluded components (`RfqCountdown`,
+`TileConfirmation`, `TileRfq`, `StaleIndicator`) plus `Tile.tsx`,
+`AnalyticsPanel.tsx`, `AdminPanel.tsx` carry **no** rxjs / timer / localStorage /
+fetch / env reference and no import of a deleted hook — the seam-method calls
+(`useNotional`, `useThroughput`, etc.) are app-layer-backed and allowed.
+
+**Visual `src/ui/**/*.tsx` coverage after Phase 9:** 83.7 % stmts / 77.17 %
+branch / 77.08 % funcs / 85.41 % lines (up from ~52 % pre-refactor) — the Phase 9
+tile/RFQ/stale goldens did the lifting; the residual gap is the interaction-only
+handlers + runtime media-query theme arm tabulated below.
+
+**App / domain / server coverage (machines + presenters + port contracts):**
+domain 95.93 % stmts / 96.42 % lines (169 tests); server 90.04 % / 98.94 %
+(54 tests); client app 90.85 % / 95.02 % (158 tests); contract tier 246 tests
+green. The AdminPort / PreferencesPort contracts and the execution/RFQ/throughput
+machines sit at ~100 % where applicable.
+
+**Dead seam command hooks (for a HUMAN pruning decision — NOT removed):** of the
+7 command hooks on `AppHooks`, only **`useAcceptQuote`** still has a `src/ui`
+component caller (`credit/rfqTiles/RfqTilesPanel.tsx`). The other six —
+**`useExecuteTrade`, `useCreateRfq`, `useCancelRfq`, `usePassQuote`,
+`useQuoteRfq`, `useRequestRfqQuote`** — are **dead**: present only in the
+`AppHooks` interface + `createAppHooks` impl + the two test fakes
+(`tests/ui/contract/react/hooksFromWorld.ts`,
+`tests/ui/visual/react/buildFakeHooks.ts`), with no component consumer. Earlier
+phases (esp. 8) routed those commands through machines, leaving the seam methods
+orphaned. Pruning requires deleting each from the interface, the impl, and both
+fakes together.
+
+**Two expected reds:**
+
+1. **Visual `react/` (x86 CI) goldens lag** until the `update-visual-goldens`
+   workflow regenerates them on x86 — the local `react-local/<arch>/` set is the
+   one validated here; both sets are the framework-portability contract.
+2. **Cypress e2e is CI-only on aarch64** — the bundled-Electron message pump
+   busy-spins at 100 % CPU in this container (headless too), so the two Cypress
+   suites only pass on x86 CI. The Playwright e2e suites run locally.
+
+**Found concern (pre-existing, NOT a Phase-10 regression):** 9 of 48 Playwright
+**browser** e2e tests fail locally — the `fxTrading` confirmation-overlay,
+`fxRfq`, and multi-trade `blotter` flows. The trade itself executes (the
+"executed trade appears in the blotter" test passes), but the transient
+`trade-confirmation` overlay isn't observed within the 5 s window (architecture
+auto-dismiss is 5 s; e2e runs in **simulator** mode per STATUS.md item 4). The
+failure **reproduces on pristine HEAD with the gate change stashed**, so it is
+independent of Phase 10 (a test-only gate edit has zero runtime effect). The same
+flows are covered deterministically and green by the contract (246) and visual
+tiers, which exercise `TileConfirmation` directly. Left for a separate fix per
+the Phase-10 rule not to edit production `src` speculatively to chase e2e.
 
 ## Closed by the Phase V deterministic batch
 
@@ -62,6 +133,24 @@ now drives them and each has a dedicated golden across all three runners:
 - `credit/newRfq/InstrumentSearch.tsx` open-results dropdown + selected summary → `credit/new-rfq-search-open`, `credit/new-rfq-instrument-selected`
 - `credit/newRfq/NewRfqForm.tsx` + `QuantityInput.tsx` filled/valid + validation-error → `credit/new-rfq-filled`, `credit/new-rfq-invalid`
 
+## Closed by Phase 9 (2026-06-17)
+
+The tile execution / RFQ / staleness states were previously listed below as
+timer/transition-driven and **excluded** from the coverage denominator. Earlier
+"Dumb-UI" phases relocated that logic into app-layer machines exposed through the
+`AppHooks` seam, so the state is now **injectable per-symbol** (static, no live
+timers) and each arm has a dedicated golden across all three runners:
+
+- `fx/liveRates/tile/TileConfirmation.tsx` — every execution-outcome banner →
+  `tile/execution-{started,too-long,timeout,done,rejected,credit-exceeded,finished-timeout}`
+- `fx/liveRates/tile/TileRfq.tsx` — Initiate / awaiting / received / expired tile
+  body → `tile/rfq-{requested,received,rejected}`
+- `fx/liveRates/tile/RfqCountdown.tsx` — countdown bar, green (fraction > 0.3) **and**
+  amber low-time (fraction ≤ 0.3) arms → `tile/rfq-received` (7000ms) / `tile/rfq-received-low` (2000ms)
+- `fx/liveRates/tile/Tile.tsx` — RFQ-notional layout + busy/disabled-notional arms
+  (exercised by the execution and RFQ scenarios above)
+- `shell/stale/StaleIndicator.tsx` — "Reconnecting…" stale overlay → `tile/stale`
+
 ## Residual — deliberately unsnapshotted
 
 ### Still testid-gated / interaction-only (covered by the contract tier)
@@ -87,14 +176,13 @@ not. (A future testid-only batch could lift these into goldens.)
 These render only after a timer fires, a transition completes, or a hover/
 runtime preference resolves — a static screenshot can't pin them deterministically.
 
+(The tile execution / RFQ / countdown / staleness states that used to sit here
+were closed by Phase 9 — see "Closed by Phase 9" above. Their state is now
+injected statically through the seam, so they are deterministic goldens.)
+
 | File | Uncovered visual state | Why no golden |
 |---|---|---|
-| `fx/liveRates/tile/TileRfq.tsx` | Initiate-RFQ / awaiting / received / expired tile body | timer + execution-state-machine driven |
-| `fx/liveRates/tile/RfqCountdown.tsx` | countdown bar (normal + low-time amber) | timer-driven |
-| `fx/liveRates/tile/TileConfirmation.tsx` | post-execution confirmation banner (each outcome) | execution-state-machine driven |
-| `fx/liveRates/tile/Tile.tsx` | RFQ-notional layout + busy/disabled-notional arms | RFQ/execution state machine |
 | `fx/blotter/BlotterRow.tsx` | row hover-background arm | hover-only (interaction, not a static state) |
-| `shell/stale/StaleIndicator.tsx` | "Reconnecting…" stale overlay arm | staleness-timer driven |
 | `shell/theme/ThemeProvider.tsx` | non-default / system-preference theme arms | `system-preference` theme unimplemented; runtime media-query |
 
 ## Utility logic not exercised by the visual tier
@@ -109,10 +197,10 @@ doesn't drive**, not *missing snapshots*. Cover them in the unit/contract tiers.
 | `fx/blotter/columnSort.ts` | sort-direction cycling + comparator logic |
 | `fx/blotter/columnFilter/filterState.ts` | filter predicate construction/application |
 | `fx/blotter/blotterColumns.ts` | one `formatCellValue` arm unexercised |
-| `admin/hooks/useThroughput.ts` | fetch/poll hook — stubbed away in the visual admin scenario |
-| `fx/liveRates/tile/hooks/useNotional.ts` | notional parse/validate hook |
-| `fx/liveRates/tile/hooks/useTileState.ts` | execution state machine |
-| `fx/liveRates/tile/hooks/useRfqState.ts` | RFQ state machine |
-| `fx/liveRates/tile/hooks/useExecuteTrade.ts` | trade-execution side effect |
-| `fx/liveRates/tile/hooks/useRfqQuote.ts` | RFQ quote request side effect |
-| `shell/stale/useStaleDetection.ts` | staleness timer logic |
+
+> The per-tile React hooks that used to be listed here
+> (`useTileState` / `useExecuteTrade` / `useRfqState` / `useRfqQuote` /
+> `useStaleDetection` / `useNotional` / `useThroughput`) were removed by the
+> "Dumb-UI" refactor — their logic now lives in app-layer machines/presenters
+> behind the `AppHooks` seam, tested in the unit/contract tiers and (for the
+> render arms) snapshotted by Phase 9.

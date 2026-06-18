@@ -1,41 +1,19 @@
-import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { mount, cleanupMounted } from "@ui-contract/mount";
 import { AdminPanel } from "@ui-contract/components";
 
-const okJson = (body: unknown): Response =>
-  ({ ok: true, json: async () => body }) as Response;
-
-/** Typed fetch stub: preserves the [input, init?] call tuple for PUT assertions. */
-function mockFetch(impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) {
-  return vi.fn(impl);
-}
-
-const isPut = (call: [RequestInfo | URL, RequestInit?]): boolean =>
-  call[1]?.method === "PUT";
-
-const putBody = (call: [RequestInfo | URL, RequestInit?]): unknown =>
-  JSON.parse(call[1]!.body as string);
-
-beforeEach(() => {
-  vi.restoreAllMocks();
-});
-
 afterEach(() => {
   cleanupMounted();
-  vi.unstubAllGlobals();
 });
 
 describe("AdminPanel", () => {
-  it("shows a loading placeholder until the initial throughput arrives", () => {
-    // Never-resolving fetch keeps the panel in its loading state.
-    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
-    const panel = mount(AdminPanel);
+  it("shows a loading placeholder until the throughput view is loaded", () => {
+    const panel = mount(AdminPanel, { throughput: { loading: true } });
     expect(panel.isLoading()).toBe(true);
   });
 
-  it("renders the throughput control seeded from the server value", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => okJson({ value: 250 })));
-    const panel = mount(AdminPanel);
+  it("renders the throughput control seeded from the loaded view", async () => {
+    const panel = mount(AdminPanel, { throughput: { value: 250, loading: false } });
     await panel.waitUntilLoaded();
     expect(panel.heading()).toBe("Throughput Control");
     expect(panel.value()).toBe(250);
@@ -43,40 +21,42 @@ describe("AdminPanel", () => {
     expect(panel.message()).toBeNull();
   });
 
-  it("persists an edited value and confirms it through a status banner", async () => {
-    const fetchMock = mockFetch(async () => okJson({ value: 100 }));
-    vi.stubGlobal("fetch", fetchMock);
-    const panel = mount(AdminPanel);
+  it("records an edited value and reflects it optimistically", async () => {
+    const panel = mount(AdminPanel, { throughput: { value: 100, loading: false } });
     await panel.waitUntilLoaded();
 
     await panel.setValue(420);
     expect(panel.value()).toBe(420);
 
-    // Wait for the debounced PUT to fire and the success banner to show.
-    await vi.waitFor(() => expect(panel.message()).toMatch(/has been set to 420/i));
-
-    const puts = fetchMock.mock.calls.filter(isPut);
-    expect(puts.length).toBeGreaterThanOrEqual(1);
-    expect(putBody(puts[puts.length - 1])).toEqual({ value: 420 });
+    // The panel asked the seam to persist 420 (old debounced-PUT body).
+    expect(panel.recordedSets()).toContain(420);
   });
 
-  it("mirrors a slider move into the numeric input and persists it", async () => {
-    const fetchMock = vi.fn(async () => okJson({ value: 100 }));
-    vi.stubGlobal("fetch", fetchMock);
-    const panel = mount(AdminPanel);
+  it("confirms a persisted value through a server-pushed status banner", async () => {
+    const panel = mount(AdminPanel, { throughput: { value: 100, loading: false } });
+    await panel.waitUntilLoaded();
+
+    await panel.setValue(420);
+    // The seam (presenter) would surface the confirmation; the harness models
+    // that push directly. The dumb panel just renders whatever message it gets.
+    panel.pushView({
+      message: { text: "Throughput has been set to 420", isError: false },
+    });
+    expect(panel.message()).toMatch(/has been set to 420/i);
+  });
+
+  it("mirrors a slider move into the numeric input and records it", async () => {
+    const panel = mount(AdminPanel, { throughput: { value: 100, loading: false } });
     await panel.waitUntilLoaded();
 
     panel.dragSlider(600);
     expect(panel.value()).toBe(600);
     expect(panel.sliderValue()).toBe(600);
-
-    await vi.waitFor(() => expect(panel.message()).toMatch(/has been set to 600/i));
+    expect(panel.recordedSets()).toContain(600);
   });
 
   it("rejects an out-of-range numeric entry", async () => {
-    const fetchMock = vi.fn(async () => okJson({ value: 100 }));
-    vi.stubGlobal("fetch", fetchMock);
-    const panel = mount(AdminPanel);
+    const panel = mount(AdminPanel, { throughput: { value: 100, loading: false } });
     await panel.waitUntilLoaded();
 
     // 2000 exceeds the 0..1000 range; the last in-range keystroke (200) sticks.
@@ -84,16 +64,14 @@ describe("AdminPanel", () => {
     expect(panel.value()).toBe(200);
   });
 
-  it("shows an error banner when the server rejects the update", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(okJson({ value: 100 }))
-      .mockResolvedValue({ ok: false } as Response);
-    vi.stubGlobal("fetch", fetchMock);
-    const panel = mount(AdminPanel);
+  it("renders a server-pushed error banner", async () => {
+    const panel = mount(AdminPanel, { throughput: { value: 100, loading: false } });
     await panel.waitUntilLoaded();
 
     panel.dragSlider(800);
-    await vi.waitFor(() => expect(panel.message()).toMatch(/error setting throughput/i));
+    panel.pushView({
+      message: { text: "Error setting throughput", isError: true },
+    });
+    expect(panel.message()).toMatch(/error setting throughput/i);
   });
 });

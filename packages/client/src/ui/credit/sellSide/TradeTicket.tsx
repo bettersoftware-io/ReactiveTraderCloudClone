@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { firstValueFrom } from "rxjs";
 import { type Rfq, type Quote, type Instrument, RfqState } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 
@@ -11,25 +10,25 @@ interface TradeTicketProps {
 
 export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
   const hooks = useHooks();
-  const quoteRfq = hooks.useQuoteRfq();
-  const passQuote = hooks.usePassQuote();
+  // App-layer machine: submit-price / pass flow + the submitted flag. The
+  // component keeps only the price draft + parseFloat guard below.
+  const ticket = hooks.useTicketSubmission();
+  const { submitPrice, pass } = ticket;
   const [price, setPrice] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const submitted = ticket.state.submitted;
 
   const isActive = rfq.state === RfqState.Open && quote.state.type === "pendingWithoutPrice";
   const hasResponded = quote.state.type !== "pendingWithoutPrice";
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(() => {
     const num = parseFloat(price);
     if (isNaN(num) || num <= 0) return;
-    await firstValueFrom(quoteRfq({ quoteId: quote.id, price: num }));
-    setSubmitted(true);
-  }, [quoteRfq, quote.id, price]);
+    submitPrice(quote.id, num);
+  }, [submitPrice, quote.id, price]);
 
-  const handlePass = useCallback(async () => {
-    await firstValueFrom(passQuote(quote.id));
-    setSubmitted(true);
-  }, [passQuote, quote.id]);
+  const handlePass = useCallback(() => {
+    pass(quote.id);
+  }, [pass, quote.id]);
 
   return (
     <div style={{

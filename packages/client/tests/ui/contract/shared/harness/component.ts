@@ -1,4 +1,5 @@
 import type { Price, PriceTick, Quote } from "@rtc/domain";
+import type { ThroughputView } from "../../../../../src/app/presenters/ThroughputPresenter";
 import type { HookValues, CommandLog } from "./world";
 
 /** Everything a page object needs: the rendered root + update drivers + command log. */
@@ -12,6 +13,10 @@ export interface PageContext<P> {
   setHistory(symbol: string, value: readonly PriceTick[]): void;
   /** Push new quotes for one RFQ (parametric useQuotesForRfq source). */
   setQuotesForRfq(rfqId: number, value: readonly Quote[]): void;
+  /** Push a new throughput view (useThroughput source). */
+  setThroughputView(patch: Partial<ThroughputView>): void;
+  /** Values captured from useThroughput().setValue calls. */
+  readonly throughputSets: number[];
   readonly commands: CommandLog;
 }
 
@@ -48,6 +53,16 @@ export abstract class MountedComponent<P> {
   /** Push new quotes for one RFQ → re-render the subscribing card. */
   setQuotesForRfq(rfqId: number, value: readonly Quote[]): void {
     this.ctx.setQuotesForRfq(rfqId, value);
+  }
+
+  /** Push a new throughput view → re-render the AdminPanel. */
+  protected setThroughputView(patch: Partial<ThroughputView>): void {
+    this.ctx.setThroughputView(patch);
+  }
+
+  /** Values recorded by the faked useThroughput().setValue (PUT equivalent). */
+  protected throughputSets(): number[] {
+    return this.ctx.throughputSets;
   }
 
   /** Inputs recorded by the faked command hooks (unit-mode convenience). */

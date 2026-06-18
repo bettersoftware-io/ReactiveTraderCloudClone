@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { firstValueFrom } from "rxjs";
 import { Direction, CREDIT_MAX_QUANTITY_INPUT, type Instrument } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import { InstrumentSearch } from "./InstrumentSearch";
@@ -14,14 +13,18 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
   const hooks = useHooks();
   const instruments = hooks.useInstruments();
   const dealers = hooks.useDealers();
-  const createRfq = hooks.useCreateRfq();
+  // App-layer machine: create→confirmation→redirect lifecycle. The component
+  // keeps only draft input state below; orchestration (incl. the redirect
+  // delay) lives in RfqsPresenter.createSubmission().
+  const submission = hooks.useRfqSubmission();
+  const { submit } = submission;
 
   const [instrument, setInstrument] = useState<Instrument | null>(null);
   const [direction, setDirection] = useState<Direction>(Direction.Buy);
   const [quantity, setQuantity] = useState("");
   const [selectedDealerIds, setSelectedDealerIds] = useState<Set<number>>(new Set());
-  const [submitting, setSubmitting] = useState(false);
-  const [confirmation, setConfirmation] = useState<number | null>(null);
+
+  const submitting = submission.state.status === "submitting";
 
   // Default all dealers selected
   useMemo(() => {
@@ -44,24 +47,20 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
     selectedDealerIds.size > 0 &&
     !submitting;
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(() => {
     if (!canSubmit || !instrument) return;
-    setSubmitting(true);
-    try {
-      const rfqId = await firstValueFrom(createRfq({
+    submit(
+      {
         instrumentId: instrument.id,
         dealerIds: [...selectedDealerIds],
         quantity: quantityNum,
         direction,
-      }));
-      setConfirmation(rfqId);
-      setTimeout(() => onCreated(rfqId), 1500);
-    } finally {
-      setSubmitting(false);
-    }
-  }, [canSubmit, instrument, createRfq, selectedDealerIds, quantityNum, direction, onCreated]);
+      },
+      onCreated,
+    );
+  }, [canSubmit, instrument, submit, selectedDealerIds, quantityNum, direction, onCreated]);
 
-  if (confirmation !== null) {
+  if (submission.state.status === "confirmed") {
     return (
       <div style={{
         backgroundColor: "var(--bg-tile)",
@@ -73,7 +72,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
       }}>
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>RFQ Created</div>
         <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-          {instrument?.name} | {direction} | RFQ ID: {confirmation}
+          {instrument?.name} | {direction} | RFQ ID: {submission.state.rfqId}
         </div>
       </div>
     );

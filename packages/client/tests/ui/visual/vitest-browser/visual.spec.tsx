@@ -18,19 +18,9 @@ for (const name of Object.keys(scenarios)) {
   const action = scenarioActions[name] ?? {};
 
   test(name, async () => {
-    // Theme persists to localStorage (rtc-theme); clear it before each render so
-    // the dark/light scenarios are deterministic regardless of run order.
-    window.localStorage.clear();
-
-    // Admin throughput fetch: the browser tier has no `page.route`, so stub the
-    // global fetch before App mounts and fires the request (admin only).
-    if (action.stubThroughput !== undefined) {
-      const value = action.stubThroughput;
-      window.fetch = (async () =>
-        new Response(JSON.stringify({ value }), {
-          headers: { "content-type": "application/json" },
-        })) as typeof fetch;
-    }
+    // Theme and view-mode are seeded through the seam (per-fixture data.theme /
+    // data.viewMode), so dark/light and chart/price scenarios are deterministic
+    // without any localStorage involvement.
 
     // vitest-browser-react v2: render() is async (wraps React's async act).
     const screen = await render(<VisualScenario name={name} />);

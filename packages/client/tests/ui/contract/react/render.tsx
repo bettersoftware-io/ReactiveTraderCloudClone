@@ -31,11 +31,11 @@ export const reactDriver: UiContractDriver = {
     if (!build) throw new Error("No React registry entry for the given token.");
     const hooks = reactHooks(world);
     const { container, unmount } = rtlRender(
-      <ThemeProvider>
-        <HooksProvider hooks={hooks}>
+      <HooksProvider hooks={hooks}>
+        <ThemeProvider>
           <PropsHost subject={propsSubject} build={build} />
-        </HooksProvider>
-      </ThemeProvider>,
+        </ThemeProvider>
+      </HooksProvider>,
     );
     return {
       root: container,

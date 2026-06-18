@@ -1,15 +1,32 @@
-import { useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { EMPTY, of, throwError, type Observable } from "rxjs";
 import type { BehaviorSubject } from "rxjs";
 import type {
   CurrencyPair,
+  CreateRfqInput,
   ExecuteTradeInput,
   ExecuteTradeResult,
   RfqQuoteResult,
-  QuoteRequest,
+  Theme,
+  ViewMode,
 } from "@rtc/domain";
+import type {
+  RfqSubmissionState,
+  TicketSubmissionState,
+} from "../../../../src/app/presenters/RfqsPresenter";
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
+import { useMachine } from "../../../../src/ui/hooks/useMachine";
+import { createTileExecutionMachine } from "../../../../src/app/presenters/TileExecutionMachine";
+import { createRfqTileMachine } from "../../../../src/app/presenters/RfqTileMachine";
+import { createStaleFlagMachine } from "../../../../src/app/presenters/StaleFlagMachine";
+import { createNotionalMachine } from "../../../../src/app/presenters/NotionalMachine";
 import type { World } from "../shared/harness/world";
+
+/** Mirror of RfqsPresenter's presenter-local redirect delay. The contract spec
+ * drives this with fake timers (advanceTimersByTimeAsync(1500)), so the fake
+ * schedules onRedirect via a REAL setTimeout — preserving the exact timing the
+ * spec asserts, instead of redirecting instantly. */
+const REDIRECT_DELAY_MS = 1500;
 
 /** Subscribe a React component to a BehaviorSubject; re-render on each emission. */
 function useSubject<T>(subject: BehaviorSubject<T>): T {
@@ -42,45 +59,136 @@ export function reactHooks(world: World): AppHooks {
     useInstruments: () => useSubject(s.useInstruments),
     useDealers: () => useSubject(s.useDealers),
     useConnectionStatus: () => useSubject(s.useConnectionStatus),
-    // Commands: record input, emit canned result (or error to drive catch paths).
-    useExecuteTrade: () => (input: ExecuteTradeInput) => {
-      world.commands.executeTrade.push(input);
-      if (world.results.executeTradeThrows) {
-        return throwError(() => new Error("execute failed")) as Observable<ExecuteTradeResult>;
-      }
-      const result = world.results.executeTrade;
-      return result ? of(result) : (EMPTY as Observable<ExecuteTradeResult>);
-    },
-    useCreateRfq: () => (input) => {
-      world.commands.createRfq.push(input);
-      return of(world.results.createRfq ?? 0);
-    },
-    // Void commands: record input and emit a single value so the consuming
-    // component's `firstValueFrom(...)` resolves (an empty Observable would
-    // reject with EmptyError and skip the post-await state transition).
-    useAcceptQuote: () => (quoteId: number) => {
+    // Command: record input and resolve undefined so the consuming component's
+    // `await` proceeds to its post-await state transition.
+    useAcceptQuote: () => async (quoteId: number) => {
       world.commands.acceptQuote.push(quoteId);
-      return of(undefined) as Observable<void>;
     },
-    useCancelRfq: () => (rfqId: number) => {
-      world.commands.cancelRfq.push(rfqId);
-      return of(undefined) as Observable<void>;
+    // Machine: the REAL createTileExecutionMachine, driven by a World-backed
+    // execute command that records inputs and emits the canned result (or errors
+    // to drive the timeout-confirmation path), faithfully exercising the
+    // relocated lifecycle through the same useMachine bridge the app uses.
+    useTileExecution: (pair: CurrencyPair) =>
+      useMachine(() =>
+        createTileExecutionMachine(pair, {
+          execute: (input: ExecuteTradeInput) => {
+            world.commands.executeTrade.push(input);
+            if (world.results.executeTradeThrows) {
+              return throwError(() => new Error("execute failed")) as Observable<ExecuteTradeResult>;
+            }
+            const result = world.results.executeTrade;
+            return result ? of(result) : (EMPTY as Observable<ExecuteTradeResult>);
+          },
+        }),
+      ),
+    // Machine: the REAL createRfqTileMachine, driven by a World-backed
+    // request-quote command that records inputs and emits the canned result (or
+    // errors to drive the rejected path), exercising the relocated RFQ lifecycle
+    // through the same useMachine bridge the app uses.
+    useRfqTile: (pair: CurrencyPair) =>
+      useMachine(() =>
+        createRfqTileMachine(pair, {
+          requestQuote: (symbol: string, pipsPosition: number) => {
+            world.commands.requestRfqQuote.push({ symbol, pipsPosition });
+            if (world.results.requestRfqQuoteThrows) {
+              return throwError(() => new Error("rfq failed")) as Observable<RfqQuoteResult>;
+            }
+            const result = world.results.requestRfqQuote;
+            return result ? of(result) : (EMPTY as Observable<RfqQuoteResult>);
+          },
+        }),
+      ),
+    // Intent-free derived flags: the REAL createStaleFlagMachine, sourced from
+    // the World's connection-status subject and the per-key price / analytics
+    // subjects — so disconnect/reconnect/new-value pushed onto the World drives
+    // the relocated stale logic through the same useMachine bridge the app uses.
+    useStaleFlag: (pair: CurrencyPair) =>
+      useMachine(() =>
+        createStaleFlagMachine({
+          status$: s.useConnectionStatus,
+          value$: world.priceFor(pair.symbol),
+        }),
+      ).state,
+    useAnalyticsStaleFlag: () =>
+      useMachine(() =>
+        createStaleFlagMachine({
+          status$: s.useConnectionStatus,
+          value$: s.useAnalytics,
+        }),
+      ).state,
+    // Machine: the REAL createNotionalMachine, exercising the relocated notional
+    // logic through the same useMachine bridge the app uses.
+    useNotional: (defaultNotional: number) =>
+      useMachine(() => createNotionalMachine(defaultNotional)),
+    // Submission machine fake: stateful per-mount store that records the RFQ to
+    // world.commands.createRfq, flips editing→submitting→confirmed, and schedules
+    // onRedirect via a REAL setTimeout(REDIRECT_DELAY_MS) so the spec's fake-timer
+    // advance drives the redirect with the same timing as the real RxJS timer.
+    useRfqSubmission: () => {
+      const [submissionState, setSubmissionState] = useState<RfqSubmissionState>({
+        status: "editing",
+      });
+      const submit = useCallback(
+        (input: CreateRfqInput, onRedirect: (rfqId: number) => void) => {
+          world.commands.createRfq.push(input);
+          setSubmissionState({ status: "submitting" });
+          const rfqId = world.results.createRfq ?? 0;
+          setSubmissionState({ status: "confirmed", rfqId });
+          setTimeout(() => onRedirect(rfqId), REDIRECT_DELAY_MS);
+        },
+        [],
+      );
+      return { state: submissionState, submit };
     },
-    usePassQuote: () => (quoteId: number) => {
-      world.commands.passQuote.push(quoteId);
-      return of(undefined) as Observable<void>;
+    // Ticket submission machine fake: stateful per-mount store that records the
+    // quote/pass command to world.commands.* and flips submitted:true, mirroring
+    // the relocated submit-price / pass flow.
+    useTicketSubmission: () => {
+      const [ticketState, setTicketState] = useState<TicketSubmissionState>({
+        submitted: false,
+      });
+      const submitPrice = useCallback((quoteId: number, price: number) => {
+        world.commands.quoteRfq.push({ quoteId, price });
+        setTicketState({ submitted: true });
+      }, []);
+      const pass = useCallback((quoteId: number) => {
+        world.commands.passQuote.push(quoteId);
+        setTicketState({ submitted: true });
+      }, []);
+      return { state: ticketState, submitPrice, pass };
     },
-    useQuoteRfq: () => (request: QuoteRequest) => {
-      world.commands.quoteRfq.push(request);
-      return of(undefined) as Observable<void>;
+    // Global throughput: reactive view backed by the World subject; setValue
+    // records the value and optimistically echoes it into the view (mirroring
+    // the presenter's immediate echo), so the panel reflects the edit at once.
+    useThroughput: () => {
+      const view = useSubject(world.throughput);
+      return {
+        ...view,
+        setValue: (value: number) => {
+          world.throughputSets.push(value);
+          world.setThroughputView({ value });
+        },
+      };
     },
-    useRequestRfqQuote: () => (symbol: string, pipsPosition: number) => {
-      world.commands.requestRfqQuote.push({ symbol, pipsPosition });
-      if (world.results.requestRfqQuoteThrows) {
-        return throwError(() => new Error("rfq failed")) as Observable<RfqQuoteResult>;
-      }
-      const result = world.results.requestRfqQuote;
-      return result ? of(result) : (EMPTY as Observable<RfqQuoteResult>);
+    // Global theme: reactive view backed by the World subject; setTheme/toggle
+    // push back so a click through the seam flips the rendered theme (mirroring
+    // the PreferencesPort's replay-current theme$ stream).
+    useThemePreference: () => {
+      const theme = useSubject(world.theme);
+      return {
+        theme,
+        setTheme: (next: Theme) => world.theme.next(next),
+        toggle: () => world.theme.next(theme === "dark" ? "light" : "dark"),
+      };
+    },
+    // Global view-mode: reactive view backed by the World subject; setViewMode
+    // pushes back so a toggle through the seam flips the rendered mode.
+    useViewModePreference: () => {
+      const viewMode = useSubject(world.viewMode);
+      return {
+        viewMode,
+        setViewMode: (next: ViewMode) => world.viewMode.next(next),
+      };
     },
   };
 }

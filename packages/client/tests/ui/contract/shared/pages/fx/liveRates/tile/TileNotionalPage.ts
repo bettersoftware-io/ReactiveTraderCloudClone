@@ -4,12 +4,14 @@ import { MountedComponent } from "../../../../harness/component";
 
 /** Shape of the notional hook result the component consumes. */
 export interface NotionalLike {
-  displayValue: string;
-  numericValue: number;
-  error: string | null;
-  isRfq: boolean;
-  isDefault: boolean;
-  onChange: (input: string) => void;
+  state: {
+    displayValue: string;
+    numericValue: number;
+    error: string | null;
+    isRfq: boolean;
+    isDefault: boolean;
+  };
+  change: (input: string) => void;
   reset: () => void;
 }
 

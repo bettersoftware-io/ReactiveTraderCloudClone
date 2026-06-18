@@ -31,8 +31,8 @@ export const scenarios: Record<string, Scenario> = {
   "app/credit": { componentKey: "App", fixtureKey: "credit-populated" },
   // Admin tab — App with the throughput fetch stubbed by the spec.
   "app/admin": { componentKey: "App", fixtureKey: "app-fx" },
-  // Light-theme variant of the FX page (spec seeds localStorage rtc-theme=light).
-  "app/fx-light": { componentKey: "App", fixtureKey: "app-fx" },
+  // Light-theme variant of the FX page (fixture seeds theme "light" through the seam).
+  "app/fx-light": { componentKey: "App", fixtureKey: "app-fx-light" },
 
   // --- Phase V deterministic golden scenarios ---
   // FX tiles: TilePrice DOWN / NONE colour arms + TileChart down/empty arms.
@@ -40,8 +40,8 @@ export const scenarios: Record<string, Scenario> = {
   "tile/eurusd-flat": { componentKey: "Tile", fixtureKey: "tile-eurusd-flat" },
   "tile/chart-down": { componentKey: "TileChart", fixtureKey: "tile-chart-down" },
   "tile/chart-empty": { componentKey: "TileChart", fixtureKey: "tile-chart-empty" },
-  // FX live-rates: toggle to price view (ViewToggle "Chart" label / stored-mode arm).
-  "live-rates/price-view": { componentKey: "LiveRatesPanel", fixtureKey: "live-rates-populated" },
+  // FX live-rates: price view seeded through the seam (ViewToggle "Chart" label / price-mode arm).
+  "live-rates/price-view": { componentKey: "LiveRatesPanel", fixtureKey: "live-rates-price" },
   // FX analytics: negative / empty / all-flat arms.
   "analytics/negative-pnl": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-negative" },
   "analytics/empty": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-empty" },
@@ -79,4 +79,24 @@ export const scenarios: Record<string, Scenario> = {
   "credit/new-rfq-instrument-selected": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
   "credit/new-rfq-filled": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
   "credit/new-rfq-invalid": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
+
+  // --- Phase 9 deterministic tile execution / RFQ / stale arms ---
+  // Their state is now injected through the seam (per-symbol tileExecution /
+  // rfqTile / stale records), so each transient timer state is a static shot —
+  // no scenarioActions (no clicks / waits).
+  // TileConfirmation overlay arms.
+  "tile/execution-started": { componentKey: "Tile", fixtureKey: "tile-exec-started" },
+  "tile/execution-too-long": { componentKey: "Tile", fixtureKey: "tile-exec-too-long" },
+  "tile/execution-timeout": { componentKey: "Tile", fixtureKey: "tile-exec-timeout" },
+  "tile/execution-done": { componentKey: "Tile", fixtureKey: "tile-exec-done" },
+  "tile/execution-rejected": { componentKey: "Tile", fixtureKey: "tile-exec-rejected" },
+  "tile/execution-credit-exceeded": { componentKey: "Tile", fixtureKey: "tile-exec-credit-exceeded" },
+  "tile/execution-finished-timeout": { componentKey: "Tile", fixtureKey: "tile-exec-finished-timeout" },
+  // TileRfq body arms (RfqCountdown green vs amber low-time).
+  "tile/rfq-requested": { componentKey: "Tile", fixtureKey: "tile-rfq-requested" },
+  "tile/rfq-received": { componentKey: "Tile", fixtureKey: "tile-rfq-received" },
+  "tile/rfq-received-low": { componentKey: "Tile", fixtureKey: "tile-rfq-received-low" },
+  "tile/rfq-rejected": { componentKey: "Tile", fixtureKey: "tile-rfq-rejected" },
+  // StaleIndicator "Reconnecting…" overlay arm.
+  "tile/stale": { componentKey: "Tile", fixtureKey: "tile-stale" },
 };

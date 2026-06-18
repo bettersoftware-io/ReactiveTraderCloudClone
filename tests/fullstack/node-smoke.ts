@@ -69,6 +69,21 @@ async function runChecks(): Promise<void> {
     assert(trade.currencyPair === "EURUSD", "trade currencyPair echoed");
     assert(trade.direction === DIR_BUY, "trade direction echoed");
     console.log(`  ✓ execution: trade ${trade.tradeId} ${trade.status} for ${trade.currencyPair}`);
+
+    // 3. Admin throughput RPC round-trip (the WS path that replaced the old
+    //    HTTP /throughput route): get → set 250 → get reflects the new value.
+    const initialThroughput = await firstValueFrom(
+      ports.admin.getThroughput().pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
+    );
+    assert(typeof initialThroughput === "number", "initial throughput is a number");
+    await firstValueFrom(
+      ports.admin.setThroughput(250).pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
+    );
+    const updatedThroughput = await firstValueFrom(
+      ports.admin.getThroughput().pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
+    );
+    assert(updatedThroughput === 250, `throughput round-trip (got ${updatedThroughput})`);
+    console.log(`  ✓ admin: throughput ${initialThroughput} → set 250 → ${updatedThroughput}`);
   } finally {
     ws.dispose();
   }

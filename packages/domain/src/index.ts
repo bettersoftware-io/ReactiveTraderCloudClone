@@ -6,7 +6,7 @@ export type { PriceTick, Price } from "./fx/price.js";
 export { PriceMovementType, calculateSpread, detectMovement, PRICE_HISTORY_SIZE } from "./fx/price.js";
 
 export type { ExecutionRequest, Trade } from "./fx/trade.js";
-export { Direction, TradeStatus, ExecutionStatus, deriveDealtCurrency, EXECUTION_TIMEOUT_MS, TOO_LONG_THRESHOLD_MS, CONFIRMATION_DISMISS_MS } from "./fx/trade.js";
+export { Direction, TradeStatus, ExecutionStatus, deriveDealtCurrency, EXECUTION_TIMEOUT_MS, TOO_LONG_THRESHOLD_MS, CONFIRMATION_DISMISS_MS, RFQ_TIMEOUT_MS, REJECTED_DISPLAY_MS } from "./fx/trade.js";
 
 export type { NotionalParseResult } from "./fx/notional.js";
 export { parseNotional, isRfqRequired, validateNotional, DEFAULT_NOTIONAL, MAX_NOTIONAL, RFQ_THRESHOLD } from "./fx/notional.js";
@@ -20,6 +20,10 @@ export type { ConnectionEvent, GatewayStatus } from "./connection/connectionStat
 
 // Analytics
 export type { CurrencyPairPosition, HistoricPosition, PositionUpdates } from "./analytics/position.js";
+
+// Preferences
+export type { Theme, ViewMode } from "./preferences/preferences.js";
+export { DEFAULT_THEME, DEFAULT_VIEW_MODE } from "./preferences/preferences.js";
 
 // Credit
 export type { Instrument } from "./credit/instrument.js";
@@ -41,6 +45,8 @@ export type { InstrumentPort } from "./ports/instrumentPort.js";
 export type { DealerPort } from "./ports/dealerPort.js";
 export type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "./ports/workflowPort.js";
 export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
+export type { AdminPort } from "./ports/adminPort.js";
+export type { PreferencesPort } from "./ports/preferencesPort.js";
 
 // Simulators (in-memory port implementations)
 export {
@@ -53,10 +59,12 @@ export {
   DealerSimulator,
   CreditRfqSimulator,
   ConnectionEventsSimulator,
+  ThroughputSimulator,
+  PreferencesSimulator,
   INSTRUMENTS_CATALOG,
   DEALERS_CATALOG,
 } from "./simulators/index.js";
-export type { TradeListener } from "./simulators/index.js";
+export type { TradeListener, PreferencesSeed } from "./simulators/index.js";
 
 // Use Cases
 export { PriceStreamUseCase, PriceHistoryUseCase, ExecuteTradeUseCase, AnalyticsUseCase, WorkflowEventStreamUseCase, reduceRfqEvent, CreateRfqUseCase, RFQ_DEFAULT_EXPIRY_SECS, ConnectionStatusUseCase, TradeBlotterUseCase, CurrencyPairsUseCase, InstrumentsUseCase, DealersUseCase, RfqQuoteUseCase } from "./usecases/index.js";

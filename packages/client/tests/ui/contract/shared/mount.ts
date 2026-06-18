@@ -1,4 +1,6 @@
 import { BehaviorSubject } from "rxjs";
+import type { Theme, ViewMode } from "@rtc/domain";
+import type { ThroughputView } from "../../../../src/app/presenters/ThroughputPresenter";
 import {
   createWorld,
   type HookValues,
@@ -21,6 +23,12 @@ export interface MountOptions<P> {
   commands?: CommandResults;
   /** Seed values for parametric query hooks (usePrice / usePriceHistory). */
   parametric?: ParametricSeed;
+  /** Seed the initial throughput view (useThroughput). */
+  throughput?: Partial<ThroughputView>;
+  /** Seed the initial theme preference (useThemePreference); defaults to DEFAULT_THEME. */
+  theme?: Theme;
+  /** Seed the initial view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE. */
+  viewMode?: ViewMode;
 }
 
 const mounted: MountedRoot[] = [];
@@ -29,7 +37,14 @@ export function mount<P, Page extends MountedComponent<P>>(
   token: ComponentToken<P, Page>,
   opts: MountOptions<P> = {},
 ): Page {
-  const world = createWorld(opts.hooks, opts.commands, opts.parametric);
+  const world = createWorld(
+    opts.hooks,
+    opts.commands,
+    opts.parametric,
+    opts.throughput,
+    opts.theme,
+    opts.viewMode,
+  );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });
   mounted.push(rendered);
@@ -47,6 +62,8 @@ export function mount<P, Page extends MountedComponent<P>>(
     setPrice: (symbol, value) => flush(() => world.setPrice(symbol, value)),
     setHistory: (symbol, value) => flush(() => world.setHistory(symbol, value)),
     setQuotesForRfq: (rfqId, value) => flush(() => world.setQuotesForRfq(rfqId, value)),
+    setThroughputView: (patch) => flush(() => world.setThroughputView(patch)),
+    throughputSets: world.throughputSets,
     commands: world.commands,
   };
   return token.makePage(ctx);

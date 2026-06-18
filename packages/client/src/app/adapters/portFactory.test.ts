@@ -6,7 +6,7 @@ import { awaitPendingRpc } from "./__test__/awaitPendingRpc";
 import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
 
 describe("createSimulatorPorts", () => {
-  it("wires all eight transport ports with their port methods", () => {
+  it("wires all nine transport ports with their port methods", () => {
     const ports = createSimulatorPorts();
     expect(typeof ports.referenceData.getCurrencyPairs).toBe("function");
     expect(typeof ports.pricing.getPriceUpdates).toBe("function");
@@ -16,6 +16,7 @@ describe("createSimulatorPorts", () => {
     expect(typeof ports.instruments.getInstruments).toBe("function");
     expect(typeof ports.dealers.getDealers).toBe("function");
     expect(typeof ports.workflow.events).toBe("function");
+    expect(typeof ports.admin.getThroughput).toBe("function");
   });
   it("threads the ExecutionSimulator into the blotter so the store emits", async () => {
     const ports = createSimulatorPorts();
