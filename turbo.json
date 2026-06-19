@@ -12,6 +12,10 @@
       "dependsOn": ["build"],
       "outputs": ["reports/**"]
     },
+    "test:coverage": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
     "test:e2e": {
       "dependsOn": ["build"],
       "cache": false,
