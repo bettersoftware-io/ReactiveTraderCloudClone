@@ -186,9 +186,36 @@ docker run --rm node:24-bookworm bash -c '
 '
 ```
 
+**What's reported upstream (researched 2026-06-19):** no exact public match
+exists for this signature (silent SIGTRAP before `app.whenReady()` on the
+`6.12.76-linuxkit` arm64 VM), but the surrounding evidence triangulates it:
+
+- The well-known aarch64 Chromium SIGTRAP bug is a **64KB-page** PartitionAlloc
+  failure (Red Hat Bugzilla 2166146, Chromium issue 40257452), fixed ~Chromium
+  121. We falsified page size above, so ours is a *different* mechanism.
+- Electron's own arm64 silent-SIGTRAP reports (electron/electron#32754, #35829)
+  match the symptom but are all closed "not planned / need-repro" — upstream
+  treats this family as environment-specific, so no Electron-side fix is coming.
+- Docker Desktop linuxkit kernel regressions on Apple Silicon are a recurring
+  2026 theme (docker/for-mac#7176 kernel-6.6.12 crash since Docker 4.27.1, #7024
+  virtualization.framework crash, #7852 a 4.60.0 Electron crash) — consistent
+  with the VM-upgrade trigger, though none is an exact match.
+
+The load-bearing discriminator is local: Playwright's standalone Chromium 148
+boots under the *same* Xvfb while Electron's older bundled Chromium does not.
+Best current reading: the Docker Desktop linuxkit kernel is the **trigger**, and
+the latent incompatibility lives in Electron's (older) bundled Chromium, which
+newer standalone Chromium has already worked around. So the two cheap ways to
+confirm are (a) try an Electron whose Chromium approaches 148 — if it boots, the
+bundled-Chromium-version gap is the cause; (b) run the host-side isolation test
+above before/after downgrading Docker Desktop one release — a flip from FAIL to
+PASS confirms a docker/for-mac regression worth filing.
+
 **Until resolved:** use the Playwright suites locally (including `:headed` /
-`:ui`); treat the Cypress suites as CI-verified. Alternatively run the dev
-container as `linux/amd64` (matches CI, but emulation-slow).
+`:ui`); treat the Cypress suites as CI-verified. To run the full e2e set minus
+Cypress in a constrained sandbox, use `pnpm test:e2e:no-cypress` (sets
+`RTC_E2E_SKIP_CYPRESS=1`). Alternatively run the dev container as `linux/amd64`
+(matches CI, but emulation-slow).
 
 ## Why so many overlapping suites?
 
