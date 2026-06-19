@@ -7,6 +7,8 @@ playwright-report/
 test-results/
 .pnpm-store/
 .idea/
+# macOS Finder metadata (can appear in any directory)
+.DS_Store
 .github/.token
 
 # Claude Code: per-machine settings (paths, machine-specific allow-listings)
