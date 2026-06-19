@@ -15,6 +15,12 @@ export default mergeConfig(
         // Count every src/app file so untested presenters/adapters surface at 0%.
         include: ["src/app/**"],
         exclude: [
+          // Vitest auto-excludes the *executed* test files (*.test.ts), but NOT
+          // non-spec test-support modules (the __tests__/ FakeWsAdapter double +
+          // awaitPendingRpc helper). vitest v4's coverageConfigDefaults.exclude is
+          // empty, so the broad src/app/** include would otherwise count them as
+          // production source. Exclude the whole __tests__/ convention explicitly.
+          "**/__tests__/**",
           // Composition root: import.meta.env detection + `new X()` port/presenter
           // wiring + DOM bootstrap; not unit-testable without a production refactor.
           // Covered by tests/fullstack + UI smokes. Mirrors the server's

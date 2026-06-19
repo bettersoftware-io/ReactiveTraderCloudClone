@@ -5,8 +5,8 @@ import {
   rpcAck,
 } from "@rtc/shared/__fixtures__/wireFrames";
 import { createWsRealPorts } from "./portFactory";
-import { FakeWsAdapter } from "./__test__/FakeWsAdapter";
-import { awaitPendingRpc } from "./__test__/awaitPendingRpc";
+import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
 
 describeWorkflowPortContract("wsRealWorkflow", () => {
   const ws = new FakeWsAdapter();

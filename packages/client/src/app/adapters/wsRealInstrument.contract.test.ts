@@ -5,7 +5,7 @@ import {
   instrumentAdded,
 } from "@rtc/shared/__fixtures__/wireFrames";
 import { createWsRealPorts } from "./portFactory";
-import { FakeWsAdapter } from "./__test__/FakeWsAdapter";
+import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 
 describeInstrumentPortContract("wsRealInstrument", () => {
   const ws = new FakeWsAdapter();

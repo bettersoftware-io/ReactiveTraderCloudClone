@@ -1,4 +1,4 @@
-// packages/client/src/app/adapters/__test__/FakeWsAdapter.test.ts
+// packages/client/src/app/adapters/__tests__/FakeWsAdapter.test.ts
 import { describe, it, expect } from "vitest";
 import { FakeWsAdapter } from "./FakeWsAdapter";
 

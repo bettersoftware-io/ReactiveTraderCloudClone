@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { createWsRealPorts } from "./portFactory";
-import { FakeWsAdapter } from "./__test__/FakeWsAdapter";
-import { awaitPendingRpc } from "./__test__/awaitPendingRpc";
+import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
 import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
 
 describe("wsRealPricing :: error paths", () => {

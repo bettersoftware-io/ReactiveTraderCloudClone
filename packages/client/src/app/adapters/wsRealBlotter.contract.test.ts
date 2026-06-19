@@ -4,7 +4,7 @@ import {
   tradeFrame,
 } from "@rtc/shared/__fixtures__/wireFrames";
 import { createWsRealPorts } from "./portFactory";
-import { FakeWsAdapter } from "./__test__/FakeWsAdapter";
+import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 
 describeBlotterPortContract("wsRealBlotter", () => {
   const ws = new FakeWsAdapter();
