@@ -7,6 +7,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
+    "test:e2e:no-cypress": "RTC_E2E_SKIP_CYPRESS=1 turbo run test:e2e",
     "test:ui:visual": "turbo run test:ui:visual",
     "lint": "turbo run lint",
     "dev": "turbo run dev",

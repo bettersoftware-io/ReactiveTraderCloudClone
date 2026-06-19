@@ -71,12 +71,30 @@ const suites: Suite[] = [
   })),
 ];
 
+// Optionally drop the Cypress suites. Cypress's bundled Electron busy-spins at
+// 100% CPU and never completes in some virtualized environments (notably the
+// local aarch64 dev container — see the docs note + feedback memory), hanging
+// the whole run. RTC_E2E_SKIP_CYPRESS=1 excludes the two Cypress suites so the
+// rest (Playwright + presenter + full-stack) still run; surfaced as the
+// `test:e2e:no-cypress` script. Cypress is unaffected on CI (x86), which keeps
+// running the full set.
+const skipCypress = ["1", "true"].includes(
+  (process.env.RTC_E2E_SKIP_CYPRESS ?? "").toLowerCase(),
+);
+const droppedCypress = skipCypress
+  ? suites.filter((s) => s.script.includes("cypress")).map((s) => s.script)
+  : [];
+const activeSuites = skipCypress
+  ? suites.filter((s) => !s.script.includes("cypress"))
+  : suites;
+
 // Concurrency cap. Unset/invalid → run every suite at once (the default; ideal on
 // a multi-core dev box). On a small CI runner the 10-wide fan-out starves the
 // CPU and trips timing-sensitive suites, so CI sets RTC_E2E_MAX_PARALLEL=2 to run
 // in small batches — slower wall-clock, but reliable.
 const envCap = Number(process.env.RTC_E2E_MAX_PARALLEL);
-const MAX_PARALLEL = Number.isFinite(envCap) && envCap > 0 ? Math.floor(envCap) : suites.length;
+const MAX_PARALLEL =
+  Number.isFinite(envCap) && envCap > 0 ? Math.floor(envCap) : activeSuites.length;
 
 // Run `fn` over `items` with at most `limit` in flight at once. Results are kept
 // in input order; each item's own completion logging still fires as it finishes.
@@ -142,7 +160,13 @@ function runSuite(suite: Suite): Promise<Result> {
 
 const rule = (ch: string) => ch.repeat(72);
 
-if (process.platform === "linux" && !hasXvfbRun && suites.some((s) => s.isolateDisplay)) {
+if (skipCypress) {
+  console.log(
+    `(RTC_E2E_SKIP_CYPRESS — skipping ${droppedCypress.length} Cypress suite(s): ${droppedCypress.join(", ")})`,
+  );
+}
+
+if (process.platform === "linux" && !hasXvfbRun && activeSuites.some((s) => s.isolateDisplay)) {
   console.log(
     "⚠ xvfb-run not found — the parallel Cypress suites may collide on X display :99. " +
       "Install xvfb (provides xvfb-run) for reliable parallel Cypress runs.",
@@ -150,13 +174,13 @@ if (process.platform === "linux" && !hasXvfbRun && suites.some((s) => s.isolateD
 }
 
 const overallStart = Date.now();
-if (MAX_PARALLEL < suites.length) {
+if (MAX_PARALLEL < activeSuites.length) {
   console.log(`(running at most ${MAX_PARALLEL} suite(s) at a time — RTC_E2E_MAX_PARALLEL)`);
 }
 
 // Resolve as each suite finishes so logs flush in completion order, not in a
 // final batch — keeps a long run feeling responsive without interleaving.
-const results = await mapWithLimit(suites, MAX_PARALLEL, (s) =>
+const results = await mapWithLimit(activeSuites, MAX_PARALLEL, (s) =>
   runSuite(s).then((r) => {
     const status = r.code === 0 ? "PASS" : "FAIL";
     console.log(
