@@ -19,6 +19,7 @@
     "test:app": "vitest run src/app --outputFile.html=reports/app/report/index.html",
     "test:app:coverage": "vitest run src/app -c vitest.app.coverage.config.ts --coverage",
     "test:coverage": "pnpm test:app:coverage",
+    "test:ui:coverage": "pnpm test:ui:contract:coverage && pnpm test:ui:visual:vitest-browser:react:coverage",
     "test:ui:contract": "vitest run -c tests/ui/contract/vitest.config.ts",
     "test:ui:contract:coverage": "vitest run -c tests/ui/contract/vitest.coverage.config.ts --coverage",
     "test:ui:visual": "tsx tests/ui/visual/run-all.ts",

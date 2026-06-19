@@ -16,6 +16,11 @@
       "dependsOn": ["build"],
       "cache": false
     },
+    "test:ui:coverage": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
+    },
     "test:e2e": {
       "dependsOn": ["build"],
       "cache": false,
