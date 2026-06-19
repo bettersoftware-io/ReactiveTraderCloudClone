@@ -16,6 +16,10 @@
       "dependsOn": ["build"],
       "cache": false
     },
+    "test:ui:contract": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
     "test:ui:coverage": {
       "dependsOn": ["^build"],
       "cache": false,
