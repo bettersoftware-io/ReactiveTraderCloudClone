@@ -1,11 +1,22 @@
-// Runs every implemented visual runner concurrently and prints a pass/fail
-// summary. `tsx tests/ui/visual/run-all.ts` runs all frameworks;
+// Runs every implemented visual runner and prints a pass/fail summary.
+// `tsx tests/ui/visual/run-all.ts` runs all frameworks;
 // `tsx tests/ui/visual/run-all.ts react` runs only react runners. Today only
 // :react exists, so both are the same; when :solid lands it is discovered
 // automatically (no edit here).
 //
-// Perf caveat: concurrent runs contend for CPU/GPU — wall-clock here is NOT a
-// fair per-runner benchmark. Run a single runner in isolation to measure speed.
+// Concurrency: each runner is a full browser stack (Chromium + a Vite dev
+// server). Running all three at once oversubscribes a constrained host — on a
+// virtualized box (e.g. the local arm64 Docker Desktop VM, which reports the
+// host's core count but delivers a fraction of it) three stacks on too few real
+// cores thrash, and the screenshot assertions fail as "Timeout exceeded" even
+// though every runner passes in seconds on its own. Raising the timeouts only
+// makes the thrash last longer; the fix is to stop oversubscribing. So the
+// default is SERIAL locally and fully concurrent under CI (an x86 runner that
+// copes). os.availableParallelism() can't pick this for us (it lies under
+// virtualization), so override explicitly with RTC_VISUAL_MAX_PARALLEL=N.
+//
+// Perf caveat: when runners DO overlap they contend for CPU/GPU — wall-clock is
+// NOT a fair per-runner benchmark. Run a single runner in isolation to measure.
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -34,7 +45,21 @@ if (runners.length === 0) {
   process.exit(1);
 }
 
-console.log(`Running ${runners.length} visual runner(s) concurrently:`);
+// Default: concurrent under CI, serial locally. RTC_VISUAL_MAX_PARALLEL=N
+// overrides (clamped to [1, runners.length]); a non-positive/NaN value falls
+// back to the default.
+const envMax = Number(process.env.RTC_VISUAL_MAX_PARALLEL);
+const defaultMax = process.env.CI ? runners.length : 1;
+const maxParallel =
+  Number.isInteger(envMax) && envMax > 0
+    ? Math.min(envMax, runners.length)
+    : defaultMax;
+
+console.log(
+  `Running ${runners.length} visual runner(s) ${
+    maxParallel === 1 ? "serially" : `with up to ${maxParallel} in parallel`
+  }:`,
+);
 runners.forEach((r) => console.log(`  • ${r}`));
 
 const run = (script: string) =>
@@ -54,7 +79,20 @@ const run = (script: string) =>
     child.on("exit", (code) => finish(code ?? 1));
   });
 
-const results = await Promise.all(runners.map(run));
+// Bounded worker pool: at most `maxParallel` runners execute at once. Results
+// are written back by index so the printed order always matches `runners`,
+// regardless of which finishes first.
+const results: { script: string; code: number; output: string }[] = new Array(
+  runners.length,
+);
+let nextIndex = 0;
+const worker = async () => {
+  while (nextIndex < runners.length) {
+    const i = nextIndex++;
+    results[i] = await run(runners[i]);
+  }
+};
+await Promise.all(Array.from({ length: maxParallel }, worker));
 
 for (const r of results) {
   console.log(`\n${"=".repeat(72)}\n${r.script} ${r.code === 0 ? "✅" : "❌"}\n${"=".repeat(72)}`);
