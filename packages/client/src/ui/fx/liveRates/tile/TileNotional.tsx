@@ -86,7 +86,7 @@ export function TileNotional({
             lineHeight: 1,
           }}
         >
-          \u21BA
+          {"\u21BA"}
         </button>
       )}
       {notional.state.error && (

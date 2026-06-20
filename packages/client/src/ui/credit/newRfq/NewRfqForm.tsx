@@ -107,6 +107,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
           {[Direction.Buy, Direction.Sell].map((dir) => (
             <button
               key={dir}
+              data-testid={`rfq-direction-${dir}`}
               onClick={() => setDirection(dir)}
               style={{
                 flex: 1,

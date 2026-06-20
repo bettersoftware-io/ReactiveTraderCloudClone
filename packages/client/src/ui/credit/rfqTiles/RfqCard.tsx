@@ -85,7 +85,7 @@ export function RfqCard({ rfq, quotes, instrument, dealers, onAccept, onDismiss 
                 padding: 0,
               }}
             >
-              \u2715
+              {"\u2715"}
             </button>
           )}
         </div>

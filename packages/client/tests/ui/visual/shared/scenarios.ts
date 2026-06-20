@@ -97,6 +97,16 @@ export const scenarios: Record<string, Scenario> = {
   "admin/panel-loading": { componentKey: "AdminPanel", fixtureKey: "admin-loading" },
   "credit/new-rfq-submitting": { componentKey: "NewRfqForm", fixtureKey: "credit-new-rfq-submitting" },
   "credit/new-rfq-confirmed": { componentKey: "NewRfqForm", fixtureKey: "credit-new-rfq-confirmed" },
+  // AdminPanel throughput banner arms (the `{message && …}` block): the
+  // confirmation (accent-primary) and error (status-error) colour arms.
+  "admin/panel-message": { componentKey: "AdminPanel", fixtureKey: "admin-message" },
+  "admin/panel-message-error": { componentKey: "AdminPanel", fixtureKey: "admin-message-error" },
+  // TileConfirmation "You Sold" verb arm (a Done execution with a Sell trade).
+  "tile/execution-done-sell": { componentKey: "Tile", fixtureKey: "tile-exec-done-sell" },
+  // TileNotional invalid-notional arm (accent-negative underline + error span).
+  "tile/notional-error": { componentKey: "Tile", fixtureKey: "tile-notional-error" },
+  // TileRfq "init" arm: the "Initiate RFQ" button (RFQ layout, no rfqTile entry).
+  "tile/rfq-init": { componentKey: "Tile", fixtureKey: "tile-rfq-init" },
 
   // --- Phase V testid-gated interaction scenarios (see scenarioActions.ts) ---
   // FX blotter sort + filter + popovers (drive BlotterHeader / *Filter).
@@ -106,6 +116,19 @@ export const scenarios: Record<string, Scenario> = {
   "fx-blotter/filter-date": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
   "fx-blotter/filter-number": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
   "fx-blotter/filter-set": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  // Blotter: a text column (currencyPair) sorts ascending on the first click →
+  // the BlotterHeader `sort.direction === "asc"` (▲) arm.
+  "fx-blotter/sorted-asc": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  // Blotter date filter: select the "In range" comparator + fill value/valueTo +
+  // apply → the DateFilter inRange (valueTo) input + the non-empty onApply path.
+  "fx-blotter/filter-date-range": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  // Blotter number filter: same as above for NumberFilter (inRange + valueTo).
+  "fx-blotter/filter-number-range": { componentKey: "FxBlotter", fixtureKey: "fx-trades" },
+  // NewRfqForm: select the Sell direction → the `var(--accent-negative)` button arm.
+  "credit/new-rfq-sell": { componentKey: "NewRfqForm", fixtureKey: "credit-populated" },
+  // SellSidePanel active ticket: type a price → the enabled-Submit truthy arms
+  // (cursor "pointer" / opacity 1).
+  "credit/sell-side-price-entered": { componentKey: "SellSidePanel", fixtureKey: "sell-side-active" },
   // Credit RFQ "All" filter tab (RfqFilterTabs).
   "credit/rfq-tiles-all": { componentKey: "RfqTilesPanel", fixtureKey: "credit-populated" },
   // Credit new-RFQ form states (InstrumentSearch / QuantityInput / submit gate).

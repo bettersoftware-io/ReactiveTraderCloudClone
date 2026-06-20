@@ -57,7 +57,7 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
     // Apply/Reset buttons appear only once a panel is open.
     const toggle = within(cell)
       .getAllByRole("button")
-      .find((b) => (b.textContent ?? "").includes("\\u25BD"));
+      .find((b) => (b.textContent ?? "").includes("▽"));
     if (!toggle) throw new Error(`No filter toggle for ${label}`);
     await this.user.click(toggle);
   }
@@ -81,6 +81,6 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
   /** True when the column shows the active-filter marker. */
   hasActiveFilterDot(label: string): boolean {
     // The marker is the literal text "●" rendered next to the label.
-    return (this.cellFor(label).querySelector("span")?.textContent ?? "").includes("\\u25CF");
+    return (this.cellFor(label).querySelector("span")?.textContent ?? "").includes("●");
   }
 }

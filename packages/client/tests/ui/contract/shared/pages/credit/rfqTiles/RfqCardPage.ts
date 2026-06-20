@@ -46,14 +46,14 @@ export class RfqCardPage extends MountedComponent<RfqCardProps> {
   /** Whether a dismiss (✕) control is present. */
   canDismiss(): boolean {
     return [...this.root.querySelectorAll("button")].some(
-      (b) => (b.textContent ?? "").includes("\\u2715"),
+      (b) => (b.textContent ?? "").includes("✕"),
     );
   }
 
   /** Click the dismiss control. */
   async dismiss(): Promise<void> {
     const btn = [...this.root.querySelectorAll("button")].find((b) =>
-      (b.textContent ?? "").includes("\\u2715"),
+      (b.textContent ?? "").includes("✕"),
     );
     if (!btn) throw new Error("No dismiss control present");
     await this.user.click(btn);

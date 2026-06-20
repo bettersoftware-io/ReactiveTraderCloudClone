@@ -50,6 +50,7 @@ export function NumberFilter({ column, currentFilter, onApply }: NumberFilterPro
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: 8 }}>
       <select
+        data-testid="number-filter-comparator"
         value={comparator}
         onChange={(e) => setComparator(e.target.value as Comparator)}
         style={{ fontSize: 11, padding: 2, color: "var(--text-primary)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)" }}
@@ -69,6 +70,7 @@ export function NumberFilter({ column, currentFilter, onApply }: NumberFilterPro
       {comparator === "inRange" && (
         <input
           type="number"
+          data-testid="number-filter-value-to"
           value={valueTo}
           onChange={(e) => setValueTo(e.target.value)}
           placeholder="To"

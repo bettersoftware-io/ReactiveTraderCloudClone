@@ -79,7 +79,25 @@ test("tile/execution-finished-timeout", async ({ mount }) => {
   await expect(c).toHaveScreenshot("execution-finished-timeout.png", { animations: "disabled" });
 });
 
+test("tile/execution-done-sell", async ({ mount }) => {
+  // Done execution with a Sell trade → the TileConfirmation "You Sold" verb arm.
+  const c = await mount(<VisualScenario name="tile/execution-done-sell" />);
+  await expect(c).toHaveScreenshot("execution-done-sell.png", { animations: "disabled" });
+});
+
+// TileNotional invalid-notional arm (accent-negative underline + error span).
+test("tile/notional-error", async ({ mount }) => {
+  const c = await mount(<VisualScenario name="tile/notional-error" />);
+  await expect(c).toHaveScreenshot("notional-error.png", { animations: "disabled" });
+});
+
 // --- Phase 9: RFQ tile body arms (RfqCountdown green vs amber low-time) ---
+test("tile/rfq-init", async ({ mount }) => {
+  // No rfqTile entry (defaults to "init") + RFQ notional → the "Initiate RFQ" button.
+  const c = await mount(<VisualScenario name="tile/rfq-init" />);
+  await expect(c).toHaveScreenshot("rfq-init.png", { animations: "disabled" });
+});
+
 test("tile/rfq-requested", async ({ mount }) => {
   const c = await mount(<VisualScenario name="tile/rfq-requested" />);
   await expect(c).toHaveScreenshot("rfq-requested.png", { animations: "disabled" });

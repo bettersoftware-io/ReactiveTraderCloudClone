@@ -59,3 +59,32 @@ test("fx-blotter/filter-set", async ({ mount, page }) => {
   await page.getByTestId("blotter-filter-toggle-status").click();
   await expect(c).toHaveScreenshot("filter-set.png", { animations: "disabled" });
 });
+
+test("fx-blotter/sorted-asc", async ({ mount, page }) => {
+  // A text column (CCYCCY) sorts ascending on the first click → the ▲ arm.
+  const c = await mount(<VisualScenario name="fx-blotter/sorted-asc" />);
+  await page.getByTestId("blotter-sort-currencyPair").click();
+  await expect(c).toHaveScreenshot("sorted-asc.png", { animations: "disabled" });
+});
+
+test("fx-blotter/filter-date-range", async ({ mount, page }) => {
+  const c = await mount(<VisualScenario name="fx-blotter/filter-date-range" />);
+  await page.getByTestId("blotter-filter-toggle-tradeDate").click();
+  await page.getByTestId("date-filter-comparator").selectOption("inRange");
+  await page.getByTestId("date-filter-value").fill("2026-06-01");
+  await page.getByTestId("date-filter-value-to").fill("2026-06-30");
+  await page.getByTestId("date-filter-apply").click();
+  await expect(page.getByText("Filtered: Trade Date")).toBeVisible();
+  await expect(c).toHaveScreenshot("filter-date-range.png", { animations: "disabled" });
+});
+
+test("fx-blotter/filter-number-range", async ({ mount, page }) => {
+  const c = await mount(<VisualScenario name="fx-blotter/filter-number-range" />);
+  await page.getByTestId("blotter-filter-toggle-notional").click();
+  await page.getByTestId("number-filter-comparator").selectOption("inRange");
+  await page.getByTestId("number-filter-value").fill("1000000");
+  await page.getByTestId("number-filter-value-to").fill("6000000");
+  await page.getByTestId("number-filter-apply").click();
+  await expect(page.getByText("Filtered: Notional")).toBeVisible();
+  await expect(c).toHaveScreenshot("filter-number-range.png", { animations: "disabled" });
+});

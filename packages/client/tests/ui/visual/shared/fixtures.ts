@@ -275,6 +275,22 @@ const eurusdDoneTrade: Trade = {
   spotRate: 1.09227, status: TradeStatus.Done,
   tradeDate: "2026-06-08", valueDate: "2026-06-10",
 };
+// A Sell-direction completed Trade → the TileConfirmation "You Sold" verb arm
+// (the Buy trade above renders "You Bought").
+const eurusdDoneTradeSell: Trade = {
+  ...eurusdDoneTrade, tradeId: 4243, tradeName: "Trade 4243",
+  direction: Direction.Sell, dealtCurrency: "USD",
+};
+
+// TileNotional error arm: an invalid notional draft drives the
+// `state.error ? "var(--accent-negative)"` underline + the error <span>.
+const erroredNotional = {
+  displayValue: "abc",
+  numericValue: NaN,
+  error: "Invalid notional",
+  isRfq: false,
+  isDefault: false,
+};
 
 // RFQ-active layout: a notional at/above RFQ_THRESHOLD flips the tile to the
 // TileRfq body (Tile only renders TileRfq when notional.state.isRfq is true).
@@ -372,6 +388,14 @@ export const fixtures: Record<string, AppData> = {
   "admin-loading": makeAppData({
     throughput: { value: 0, loading: true, message: null },
   }),
+  // AdminPanel message banner arms (the `{message && …}` block): a confirmation
+  // (isError:false → accent-primary bg) and an error (isError:true → status-error).
+  "admin-message": makeAppData({
+    throughput: { value: 250, loading: false, message: { text: "Throughput updated", isError: false } },
+  }),
+  "admin-message-error": makeAppData({
+    throughput: { value: 250, loading: false, message: { text: "Failed to update throughput", isError: true } },
+  }),
   // FX tile colour / chart arms.
   "tile-eurusd-down": makeAppData({ currencyPairs: [eurusd], prices: { EURUSD: eurusdPriceDown } }),
   "tile-eurusd-flat": makeAppData({ currencyPairs: [eurusd], prices: { EURUSD: eurusdPriceFlat } }),
@@ -434,11 +458,19 @@ export const fixtures: Record<string, AppData> = {
   "tile-exec-too-long": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "tooLong" } } }),
   "tile-exec-timeout": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "timeout" } } }),
   "tile-exec-done": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "finished", executionStatus: ExecutionStatus.Done, trade: eurusdDoneTrade } } }),
+  // Done with a Sell trade → the TileConfirmation "You Sold" verb arm.
+  "tile-exec-done-sell": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "finished", executionStatus: ExecutionStatus.Done, trade: eurusdDoneTradeSell } } }),
   "tile-exec-rejected": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "finished", executionStatus: ExecutionStatus.Rejected } } }),
   "tile-exec-credit-exceeded": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "finished", executionStatus: ExecutionStatus.CreditExceeded } } }),
   "tile-exec-finished-timeout": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "finished", executionStatus: ExecutionStatus.Timeout } } }),
 
+  // TileNotional error arm (invalid notional draft): the accent-negative
+  // underline + the error <span>.
+  "tile-notional-error": makeAppData({ ...eurusdTileBase, notional: erroredNotional }),
+
   // --- Phase 9: RFQ tile arms (TileRfq body; notional flipped to RFQ layout) ---
+  // init arm (no rfqTile entry → defaults to "init"): the "Initiate RFQ" button.
+  "tile-rfq-init": makeAppData({ ...eurusdTileBase, notional: rfqNotional }),
   "tile-rfq-requested": makeAppData({ ...eurusdTileBase, notional: rfqNotional, rfqTile: { EURUSD: { status: "requested", quote: null, remainingMs: 0 } } }),
   // received with ~70% remaining: countdown bar is in the green (fraction > 0.3) arm.
   "tile-rfq-received": makeAppData({ ...eurusdTileBase, notional: rfqNotional, rfqTile: { EURUSD: { status: "received", quote: eurusdQuote, remainingMs: 7000 } } }),

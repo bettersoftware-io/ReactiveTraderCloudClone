@@ -62,6 +62,7 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
           <input
             type="number"
+            data-testid="trade-ticket-price"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder="Price"

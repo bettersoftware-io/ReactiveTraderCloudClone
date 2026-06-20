@@ -136,4 +136,40 @@ export const scenarioActions: Record<string, ScenarioAction> = {
     ],
     waitForText: "Max quantity exceeded",
   },
+  // Blotter: click a TEXT column (CCYCCY/currencyPair) once -> first click is
+  // ascending (BlotterHeader's ▲ arm). No waitForText (synchronous, label non-unique).
+  "fx-blotter/sorted-asc": { click: "blotter-sort-currencyPair" },
+  // Blotter date filter: open the tradeDate popover, switch to "In range" (reveals
+  // the valueTo input), fill both dates, apply -> the DateFilter inRange + the
+  // non-empty onApply (value/valueTo) path.
+  "fx-blotter/filter-date-range": {
+    steps: [
+      { click: "blotter-filter-toggle-tradeDate" },
+      { select: "date-filter-comparator", value: "inRange" },
+      { type: "date-filter-value", text: "2026-06-01" },
+      { type: "date-filter-value-to", text: "2026-06-30" },
+      { click: "date-filter-apply" },
+    ],
+    waitForText: "Filtered: Trade Date",
+  },
+  // Blotter number filter: open the notional popover, switch to "In range", fill
+  // both bounds, apply -> the NumberFilter inRange + valueTo onApply path.
+  "fx-blotter/filter-number-range": {
+    steps: [
+      { click: "blotter-filter-toggle-notional" },
+      { select: "number-filter-comparator", value: "inRange" },
+      { type: "number-filter-value", text: "1000000" },
+      { type: "number-filter-value-to", text: "6000000" },
+      { click: "number-filter-apply" },
+    ],
+    waitForText: "Filtered: Notional",
+  },
+  // NewRfqForm: click the Sell direction button -> the selected Sell button's
+  // var(--accent-negative) background arm.
+  "credit/new-rfq-sell": { click: "rfq-direction-Sell" },
+  // SellSidePanel active ticket: type a price into the price input -> the
+  // enabled-Submit truthy arms (cursor "pointer" / opacity 1).
+  "credit/sell-side-price-entered": {
+    steps: [{ type: "trade-ticket-price", text: "98.5" }],
+  },
 };

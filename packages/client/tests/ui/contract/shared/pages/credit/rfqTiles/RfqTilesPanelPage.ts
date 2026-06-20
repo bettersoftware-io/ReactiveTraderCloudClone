@@ -35,7 +35,7 @@ export class RfqTilesPanelPage extends MountedComponent<Record<string, never>> {
   /** Dismiss the first card via its ✕ control. */
   async dismissFirst(): Promise<void> {
     const btn = [...this.root.querySelectorAll("button")].find((b) =>
-      (b.textContent ?? "").includes("\\u2715"),
+      (b.textContent ?? "").includes("✕"),
     );
     if (!btn) throw new Error("No dismissable card present");
     await this.user.click(btn);

@@ -46,6 +46,7 @@ export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: 8 }}>
       <select
+        data-testid="date-filter-comparator"
         value={comparator}
         onChange={(e) => setComparator(e.target.value as Comparator)}
         style={{ fontSize: 11, padding: 2, color: "var(--text-primary)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)" }}
@@ -56,6 +57,7 @@ export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) 
       </select>
       <input
         type="date"
+        data-testid="date-filter-value"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         style={{ fontSize: 11, padding: 2, color: "var(--text-primary)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)" }}
@@ -63,6 +65,7 @@ export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) 
       {comparator === "inRange" && (
         <input
           type="date"
+          data-testid="date-filter-value-to"
           value={valueTo}
           onChange={(e) => setValueTo(e.target.value)}
           style={{ fontSize: 11, padding: 2, color: "var(--text-primary)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)" }}
@@ -70,6 +73,7 @@ export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) 
       )}
       <div style={{ display: "flex", gap: 4 }}>
         <button
+          data-testid="date-filter-apply"
           onClick={handleApply}
           style={{ flex: 1, padding: "4px 8px", fontSize: 11, border: "1px solid var(--border-primary)", borderRadius: 3, backgroundColor: "var(--accent-primary)", color: "#fff", cursor: "pointer" }}
         >

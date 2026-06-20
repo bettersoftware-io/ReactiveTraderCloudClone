@@ -101,7 +101,7 @@ export function BlotterHeader({
             {col.label}
             <SortIndicator column={col.key} sort={sort} />
             {filters.has(col.key) && (
-              <span style={{ color: "var(--accent-primary)", marginLeft: 2 }}>\u25CF</span>
+              <span style={{ color: "var(--accent-primary)", marginLeft: 2 }}>{"\u25CF"}</span>
             )}
           </span>
           <button
@@ -120,7 +120,7 @@ export function BlotterHeader({
               padding: 0,
             }}
           >
-            \u25BD
+            {"\u25BD"}
           </button>
           {openFilter === col.key && (
             <FilterPanel

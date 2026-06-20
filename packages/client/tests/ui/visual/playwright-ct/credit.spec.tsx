@@ -190,3 +190,18 @@ test("credit/new-rfq-invalid", async ({ mount, page }) => {
   await expect(page.getByText("Max quantity exceeded")).toBeVisible();
   await expect(c).toHaveScreenshot("new-rfq-invalid.png", { animations: "disabled" });
 });
+
+test("credit/new-rfq-sell", async ({ mount, page }) => {
+  // Click the Sell direction button → the selected-Sell var(--accent-negative) arm.
+  const c = await mount(<VisualScenario name="credit/new-rfq-sell" />);
+  await page.getByTestId("rfq-direction-Sell").click();
+  await expect(c).toHaveScreenshot("new-rfq-sell.png", { animations: "disabled" });
+});
+
+test("credit/sell-side-price-entered", async ({ mount, page }) => {
+  // Type a price into the active ticket → the enabled-Submit truthy arms
+  // (cursor "pointer" / opacity 1).
+  const c = await mount(<VisualScenario name="credit/sell-side-price-entered" />);
+  await page.getByTestId("trade-ticket-price").fill("98.5");
+  await expect(c).toHaveScreenshot("sell-side-price-entered.png", { animations: "disabled" });
+});
