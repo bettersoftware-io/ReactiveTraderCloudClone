@@ -49,6 +49,21 @@ describe("NewRfqForm", () => {
     await form.shouldShowConfirmation();
   });
 
+  it("shows a disabled in-flight state while the create-RFQ command is pending", async () => {
+    // Omit the createRfq result so the submission stays in flight (the real
+    // machine emits "submitting" synchronously, then "confirmed" only after the
+    // async RPC resolves). This exposes the transient in-flight render.
+    const form = mount(NewRfqForm, {
+      props: { onCreated: () => {} },
+      hooks: { useInstruments: instruments, useDealers: dealers },
+    });
+    await form.chooseInstrument("Apple Inc 2030");
+    await form.setQuantity(5);
+    await form.submit();
+    expect(form.isSubmitting()).toBe(true);
+    expect(form.isSubmittingDisabled()).toBe(true);
+  });
+
   it("blocks submission when the quantity exceeds the maximum", async () => {
     const form = ready();
     await form.chooseInstrument("Apple Inc 2030");

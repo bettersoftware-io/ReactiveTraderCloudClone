@@ -139,7 +139,13 @@ export function reactHooks(world: World): AppHooks {
         (input: CreateRfqInput, onRedirect: (rfqId: number) => void) => {
           world.commands.createRfq.push(input);
           setSubmissionState({ status: "submitting" });
-          const rfqId = world.results.createRfq ?? 0;
+          // Mirror the real machine, where submitting is emitted synchronously
+          // and confirmed only arrives after the async create-RFQ RPC resolves.
+          // With no seeded result the submission stays in flight, so a spec can
+          // observe the transient "Submitting…" render; when a result IS seeded
+          // the fake confirms in the same tick (editing→confirmed) as before.
+          const rfqId = world.results.createRfq;
+          if (rfqId === undefined) return;
           setSubmissionState({ status: "confirmed", rfqId });
           setTimeout(() => onRedirect(rfqId), REDIRECT_DELAY_MS);
         },

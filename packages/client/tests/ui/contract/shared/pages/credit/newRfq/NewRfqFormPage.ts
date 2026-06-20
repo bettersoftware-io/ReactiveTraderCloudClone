@@ -85,6 +85,19 @@ export class NewRfqFormPage extends MountedComponent<NewRfqFormProps> {
     return btn.disabled;
   }
 
+  /** True while a submission is in flight — the submit button reads "Submitting…". */
+  isSubmitting(): boolean {
+    return this.q().queryByRole("button", { name: /submitting/i }) !== null;
+  }
+
+  /** Whether the in-flight ("Submitting…") submit button is disabled. */
+  isSubmittingDisabled(): boolean {
+    const btn = this.q().getByRole("button", {
+      name: /submitting/i,
+    }) as HTMLButtonElement;
+    return btn.disabled;
+  }
+
   hasQuantityError(): boolean {
     // Error text: "Max quantity exceeded" — matches /max quantity exceeded/i
     return this.q().queryByText(/max quantity exceeded/i) !== null;
