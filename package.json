@@ -15,7 +15,7 @@
     "lint": "turbo run lint",
     "dev": "turbo run dev",
     "clean": "turbo run clean && rm -rf .turbo",
-    "clean:deep": "turbo run clean:deep && rm -rf node_modules .pnpm-store .turbo"
+    "clean:deep": "turbo run clean:deep && rm -rf node_modules .pnpm-store .turbo && find . -name .DS_Store -type f -delete"
   },
   "devDependencies": {
     "turbo": "^2.4",
