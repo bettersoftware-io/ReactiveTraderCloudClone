@@ -38,7 +38,7 @@ jobs:
           node-version: 26
 
       - name: Enable Corepack (pins pnpm 11.5.2 from the packageManager field)
-        run: corepack enable
+        run: npm install -g corepack@0.35.0 && corepack enable
 
       - name: Resolve pnpm store path
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
