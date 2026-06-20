@@ -51,6 +51,17 @@ export default defineConfig({
       // Arch lives in <baseline>, so the filename needs no platform suffix.
       expect: {
         toMatchScreenshot: {
+          // Anti-aliasing parity with the Playwright tiers. Playwright's
+          // toHaveScreenshot tolerates sub-pixel AA noise by default (per-pixel
+          // threshold 0.2); vitest's toMatchScreenshot defaults to ZERO
+          // tolerance, so interaction scenarios that re-layout (e.g. the blotter
+          // after a filter applies) flake on a handful of AA pixels that never
+          // stabilise ("matcher did not succeed in time"). Allow a tiny absolute
+          // cushion — far below any real component change (hundreds+ of px), so
+          // genuine regressions still fail. The Playwright tiers remain the
+          // strict pixel contract.
+          comparatorName: "pixelmatch",
+          comparatorOptions: { allowedMismatchedPixels: 100 },
           resolveScreenshotPath: ({
             root,
             testFileDirectory,
