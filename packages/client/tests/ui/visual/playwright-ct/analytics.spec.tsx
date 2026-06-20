@@ -25,3 +25,10 @@ test("analytics/flat-positions", async ({ mount }) => {
   const c = await mount(<VisualScenario name="analytics/flat-positions" />);
   await expect(c).toHaveScreenshot("flat-positions.png", { animations: "disabled" });
 });
+
+test("analytics/millions", async ({ mount }) => {
+  // Million-scale all-positive PnL → PnlValue/PairPnlBars "m" labels and a
+  // PnlChart with no dashed zero line (all history values > 0).
+  const c = await mount(<VisualScenario name="analytics/millions" />);
+  await expect(c).toHaveScreenshot("millions.png", { animations: "disabled" });
+});

@@ -71,6 +71,20 @@ const eurusdHistoryDown: readonly PriceTick[] = [
 const eurusdHistoryEmpty: readonly PriceTick[] = [
   { symbol: "EURUSD", bid: 1.0921, ask: 1.0923, mid: 1.0922, valueDate: "2026-06-08", creationTimestamp: 1_750_000_000_000 },
 ];
+// Ascending series: last mid > prev mid → the green (isUp true) sparkline arm.
+const eurusdHistoryUp: readonly PriceTick[] = [
+  { symbol: "EURUSD", bid: 1.0921, ask: 1.0923, mid: 1.0922, valueDate: "2026-06-08", creationTimestamp: 1_750_000_000_000 },
+  { symbol: "EURUSD", bid: 1.0925, ask: 1.0927, mid: 1.0926, valueDate: "2026-06-08", creationTimestamp: 1_750_000_001_000 },
+  { symbol: "EURUSD", bid: 1.0930, ask: 1.0932, mid: 1.0931, valueDate: "2026-06-08", creationTimestamp: 1_750_000_002_000 },
+  { symbol: "EURUSD", bid: 1.0936, ask: 1.0938, mid: 1.0937, valueDate: "2026-06-08", creationTimestamp: 1_750_000_003_000 },
+];
+// All-equal mids (>=2 points): range collapses to 0 → the `max - min || 1`
+// fallback arm; renders a flat horizontal sparkline.
+const eurusdHistoryFlat: readonly PriceTick[] = [
+  { symbol: "EURUSD", bid: 1.0921, ask: 1.0923, mid: 1.0922, valueDate: "2026-06-08", creationTimestamp: 1_750_000_000_000 },
+  { symbol: "EURUSD", bid: 1.0921, ask: 1.0923, mid: 1.0922, valueDate: "2026-06-08", creationTimestamp: 1_750_000_001_000 },
+  { symbol: "EURUSD", bid: 1.0921, ask: 1.0923, mid: 1.0922, valueDate: "2026-06-08", creationTimestamp: 1_750_000_002_000 },
+];
 
 // Analytics arms: negative latest PnL + a negative current position (PnlValue /
 // PnlChart negative colour arms); an empty panel (no positions, no history);
@@ -88,6 +102,22 @@ const analyticsNegative: PositionUpdates = {
   ],
 };
 const analyticsEmpty: PositionUpdates = { currentPositions: [], history: [] };
+// Million-scale, all-positive analytics: the last history point >= 1m drives the
+// PnlValue "m" format arm ("+1.25m"); a position basePnl >= 1m drives the
+// PairPnlBars "m" label arm; and because every history value is > 0 (no zero
+// crossing) PnlChart's zero-line is suppressed (the `min > 0` return-null arm).
+const analyticsMillions: PositionUpdates = {
+  currentPositions: [
+    { symbol: "EURUSD", basePnl: 1_450_000, baseTradedAmount: 90_000_000, counterTradedAmount: -98_000_000 },
+    { symbol: "USDJPY", basePnl: 320_000, baseTradedAmount: 40_000_000, counterTradedAmount: 6_000_000_000 },
+  ],
+  history: [
+    { timestamp: "2026-06-06T09:00:00Z", usdPnl: 200_000 },
+    { timestamp: "2026-06-06T10:00:00Z", usdPnl: 640_000 },
+    { timestamp: "2026-06-06T11:00:00Z", usdPnl: 980_000 },
+    { timestamp: "2026-06-06T12:00:00Z", usdPnl: 1_250_000 },
+  ],
+};
 const analyticsFlat: PositionUpdates = {
   currentPositions: [
     { symbol: "EURUSD", basePnl: 0, baseTradedAmount: 0, counterTradedAmount: 0 },
@@ -136,6 +166,12 @@ const creditQuotes102: readonly Quote[] = [
 const creditAllQuotes: ReadonlyMap<number, Quote> = new Map(
   [...creditQuotes101, ...creditQuotes102].map((q) => [q.id, q]),
 );
+
+// CreditBlotter degraded-data row: a Closed rfq with an accepted quote whose
+// instrumentId (777) and dealerId (888) resolve to nothing in the maps, so the
+// row renders the `?? "Dealer 888"` / `?? ""` (empty CUSIP/Security) fallbacks.
+const creditBlotterUnresolvedRfq: Rfq = { id: 401, instrumentId: 777, quantity: 2_000_000, direction: Direction.Sell, state: RfqState.Closed, expirySecs: 120, creationTimestamp: 1_750_000_200_000 };
+const creditBlotterUnresolvedQuote: Quote = { id: 5001, rfqId: 401, dealerId: 888, state: { type: "accepted", price: 100.5 } };
 
 // Single-RFQ-per-card fixtures for the prop-driven RfqCard key. Each pairs one
 // Rfq (in a terminal/badge state) with quotes that exercise a QuoteCard arm.
@@ -186,6 +222,43 @@ const sellSideRespondedRfq: Rfq = { id: 302, instrumentId: 2, quantity: 2_000_00
 const sellSideRespondedQuotes: readonly Quote[] = [
   { id: 4101, rfqId: 302, dealerId: 1, state: { type: "pendingWithPrice", price: 101.25 } },
 ];
+
+// One Adaptive-Bank ticket per fixture for the remaining TradeTicket render
+// arms. Each pairs an Rfq (whose state drives the opacity + the else-arm /
+// "RFQ …" labels) with the AB dealer's (id 1) quote (whose state.type drives
+// the responded-view ternary). Helper builds the AppData the SellSidePanel
+// reads (rfqs + the per-rfq quote map + allQuotes).
+function sellSideTicketFixture(
+  rfq: Rfq,
+  quoteState: Quote["state"],
+  instruments: readonly Instrument[] = creditInstruments,
+): AppData {
+  const quote: Quote = { id: rfq.id * 10 + 1, rfqId: rfq.id, dealerId: 1, state: quoteState };
+  return makeAppData({
+    instruments,
+    dealers: creditDealers,
+    rfqs: [rfq],
+    quotesForRfq: { [rfq.id]: [quote] },
+    allQuotes: new Map([[quote.id, quote]]),
+  });
+}
+// Responded-view ternary arms (rendered when the AB quote has responded):
+//   passed quote (Open rfq) → "Passed"
+const sellSidePassedRfq: Rfq = { id: 311, instrumentId: 1, quantity: 5_000_000, direction: Direction.Buy, state: RfqState.Open, expirySecs: 120, creationTimestamp: 1_750_000_300_000 };
+//   responded quote on a Cancelled rfq → "RFQ Cancelled" (also opacity 0.6)
+const sellSideRfqCancelledRfq: Rfq = { id: 312, instrumentId: 2, quantity: 2_000_000, direction: Direction.Sell, state: RfqState.Cancelled, expirySecs: 120, creationTimestamp: 1_750_000_300_000 };
+//   responded quote on an Expired rfq → "RFQ Expired"
+const sellSideRfqExpiredRfq: Rfq = { id: 313, instrumentId: 1, quantity: 3_000_000, direction: Direction.Buy, state: RfqState.Expired, expirySecs: 120, creationTimestamp: 1_750_000_300_000 };
+//   responded (accepted) quote on an Open rfq → the "Responded" fallback
+const sellSideRespondedFallbackRfq: Rfq = { id: 314, instrumentId: 2, quantity: 4_000_000, direction: Direction.Sell, state: RfqState.Open, expirySecs: 120, creationTimestamp: 1_750_000_300_000 };
+// Else-arm labels (AB quote still pendingWithoutPrice, rfq no longer Open):
+//   Closed / Cancelled / Expired rfq → "Closed" / "Cancelled" / "Expired"
+const sellSideClosedRfq: Rfq = { id: 315, instrumentId: 1, quantity: 5_000_000, direction: Direction.Buy, state: RfqState.Closed, expirySecs: 120, creationTimestamp: 1_750_000_300_000 };
+const sellSideCancelledPendingRfq: Rfq = { id: 316, instrumentId: 2, quantity: 2_000_000, direction: Direction.Sell, state: RfqState.Cancelled, expirySecs: 120, creationTimestamp: 1_750_000_300_000 };
+const sellSideExpiredPendingRfq: Rfq = { id: 317, instrumentId: 1, quantity: 1_500_000, direction: Direction.Buy, state: RfqState.Expired, expirySecs: 120, creationTimestamp: 1_750_000_300_000 };
+// Instrument-name fallback: instrumentId 999 has no matching instrument →
+// the "Instrument #999" branch (rendered with an active price-entry ticket).
+const sellSideNoInstrumentRfq: Rfq = { id: 318, instrumentId: 999, quantity: 6_000_000, direction: Direction.Buy, state: RfqState.Open, expirySecs: 120, creationTimestamp: 1_750_000_300_000 };
 
 // --- Phase 9: tile execution / RFQ / stale states injected per-symbol ---
 // Previously timer-driven and excluded; now the app-layer machine state is
@@ -304,10 +377,16 @@ export const fixtures: Record<string, AppData> = {
   "tile-eurusd-flat": makeAppData({ currencyPairs: [eurusd], prices: { EURUSD: eurusdPriceFlat } }),
   "tile-chart-down": makeAppData({ currencyPairs: [eurusd], prices: { EURUSD: eurusdPrice }, priceHistory: { EURUSD: eurusdHistoryDown } }),
   "tile-chart-empty": makeAppData({ currencyPairs: [eurusd], prices: { EURUSD: eurusdPrice }, priceHistory: { EURUSD: eurusdHistoryEmpty } }),
+  // TileChart up (green isUp arm) and flat (range `|| 1` fallback) arms.
+  "tile-chart-up": makeAppData({ currencyPairs: [eurusd], prices: { EURUSD: eurusdPrice }, priceHistory: { EURUSD: eurusdHistoryUp } }),
+  "tile-chart-flat": makeAppData({ currencyPairs: [eurusd], prices: { EURUSD: eurusdPrice }, priceHistory: { EURUSD: eurusdHistoryFlat } }),
   // FX analytics arms.
   "analytics-negative": makeAppData({ analytics: analyticsNegative }),
   "analytics-empty": makeAppData({ analytics: analyticsEmpty }),
   "analytics-flat": makeAppData({ analytics: analyticsFlat }),
+  // Million-scale, all-positive analytics: PnlValue/PairPnlBars "m" labels +
+  // PnlChart no-zero-line arm.
+  "analytics-millions": makeAppData({ analytics: analyticsMillions }),
   // Credit RFQ-card terminal states (prop-driven RfqCard key).
   "rfq-done": rfqCardFixture(rfqDone, rfqDoneQuotes),
   "rfq-expired": rfqCardFixture(rfqExpired, rfqExpiredQuotes),
@@ -329,8 +408,26 @@ export const fixtures: Record<string, AppData> = {
   }),
   // SellSidePanel empty arm: no rfqs => "No RFQs for Adaptive Bank".
   "sell-side-empty": makeAppData({ instruments: creditInstruments, dealers: creditDealers, rfqs: [] }),
+  // TradeTicket remaining render arms (one Adaptive-Bank ticket each).
+  "sell-side-passed": sellSideTicketFixture(sellSidePassedRfq, { type: "passed" }),
+  "sell-side-rfq-cancelled": sellSideTicketFixture(sellSideRfqCancelledRfq, { type: "rejectedWithoutPrice" }),
+  "sell-side-rfq-expired": sellSideTicketFixture(sellSideRfqExpiredRfq, { type: "rejectedWithPrice", price: 99.4 }),
+  "sell-side-responded-fallback": sellSideTicketFixture(sellSideRespondedFallbackRfq, { type: "accepted", price: 100.2 }),
+  "sell-side-closed": sellSideTicketFixture(sellSideClosedRfq, { type: "pendingWithoutPrice" }),
+  "sell-side-cancelled-pending": sellSideTicketFixture(sellSideCancelledPendingRfq, { type: "pendingWithoutPrice" }),
+  "sell-side-expired-pending": sellSideTicketFixture(sellSideExpiredPendingRfq, { type: "pendingWithoutPrice" }),
+  // Instrument-name fallback (no instrument matches rfq.instrumentId 999).
+  "sell-side-no-instrument": sellSideTicketFixture(sellSideNoInstrumentRfq, { type: "pendingWithoutPrice" }, []),
   // CreditBlotter empty arm: no Closed-with-accepted rfqs => "No credit trades yet".
   "credit-blotter-empty": makeAppData({ instruments: creditInstruments, dealers: creditDealers, rfqs: [] }),
+  // CreditBlotter degraded row: accepted quote with unresolved dealer/instrument.
+  "credit-blotter-unresolved": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [creditBlotterUnresolvedRfq],
+    quotesForRfq: { 401: [creditBlotterUnresolvedQuote] },
+    allQuotes: new Map([[creditBlotterUnresolvedQuote.id, creditBlotterUnresolvedQuote]]),
+  }),
 
   // --- Phase 9: tile execution confirmation arms (TileConfirmation overlay) ---
   "tile-exec-started": makeAppData({ ...eurusdTileBase, tileExecution: { EURUSD: { status: "started" } } }),

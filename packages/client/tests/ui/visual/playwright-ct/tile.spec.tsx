@@ -31,6 +31,18 @@ test("tile/chart-empty", async ({ mount }) => {
   await expect(c).toHaveScreenshot("chart-empty.png", { animations: "disabled" });
 });
 
+test("tile/chart-up", async ({ mount }) => {
+  // Ascending series → the green (isUp) sparkline arm.
+  const c = await mount(<VisualScenario name="tile/chart-up" />);
+  await expect(c).toHaveScreenshot("chart-up.png", { animations: "disabled" });
+});
+
+test("tile/chart-flat", async ({ mount }) => {
+  // All-equal mids → the `max - min || 1` range fallback (flat horizontal line).
+  const c = await mount(<VisualScenario name="tile/chart-flat" />);
+  await expect(c).toHaveScreenshot("chart-flat.png", { animations: "disabled" });
+});
+
 // --- Phase 9: tile execution confirmation arms (TileConfirmation overlay) ---
 test("tile/execution-started", async ({ mount }) => {
   const c = await mount(<VisualScenario name="tile/execution-started" />);

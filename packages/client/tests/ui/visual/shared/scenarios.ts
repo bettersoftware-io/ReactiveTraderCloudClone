@@ -48,12 +48,17 @@ export const scenarios: Record<string, Scenario> = {
   "tile/eurusd-flat": { componentKey: "Tile", fixtureKey: "tile-eurusd-flat" },
   "tile/chart-down": { componentKey: "TileChart", fixtureKey: "tile-chart-down" },
   "tile/chart-empty": { componentKey: "TileChart", fixtureKey: "tile-chart-empty" },
+  // TileChart green (isUp) sparkline arm + the all-equal-mids flat (range `|| 1`) arm.
+  "tile/chart-up": { componentKey: "TileChart", fixtureKey: "tile-chart-up" },
+  "tile/chart-flat": { componentKey: "TileChart", fixtureKey: "tile-chart-flat" },
   // FX live-rates: price view seeded through the seam (ViewToggle "Chart" label / price-mode arm).
   "live-rates/price-view": { componentKey: "LiveRatesPanel", fixtureKey: "live-rates-price" },
   // FX analytics: negative / empty / all-flat arms.
   "analytics/negative-pnl": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-negative" },
   "analytics/empty": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-empty" },
   "analytics/flat-positions": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-flat" },
+  // Million-scale all-positive: PnlValue/PairPnlBars "m" labels + PnlChart no-zero-line.
+  "analytics/millions": { componentKey: "AnalyticsPanel", fixtureKey: "analytics-millions" },
   // Credit RFQ cards: terminal-state badges + accepted/passed quote colours.
   "credit/rfq-tiles-done": { componentKey: "RfqCard", fixtureKey: "rfq-done" },
   "credit/rfq-tiles-expired": { componentKey: "RfqCard", fixtureKey: "rfq-expired" },
@@ -65,7 +70,22 @@ export const scenarios: Record<string, Scenario> = {
   "credit/sell-side-active": { componentKey: "SellSidePanel", fixtureKey: "sell-side-active" },
   "credit/sell-side-responded": { componentKey: "SellSidePanel", fixtureKey: "sell-side-responded" },
   "credit/sell-side-empty": { componentKey: "SellSidePanel", fixtureKey: "sell-side-empty" },
+  // TradeTicket render arms: the responded-view ternary (Passed / RFQ Cancelled /
+  // RFQ Expired / Responded fallback), the else-arm labels (Closed / Cancelled /
+  // Expired for a still-pending ticket on a non-Open rfq), and the instrument-name
+  // fallback. State is seeded through the seam (no interaction).
+  "credit/sell-side-passed": { componentKey: "SellSidePanel", fixtureKey: "sell-side-passed" },
+  "credit/sell-side-rfq-cancelled": { componentKey: "SellSidePanel", fixtureKey: "sell-side-rfq-cancelled" },
+  "credit/sell-side-rfq-expired": { componentKey: "SellSidePanel", fixtureKey: "sell-side-rfq-expired" },
+  "credit/sell-side-responded-fallback": { componentKey: "SellSidePanel", fixtureKey: "sell-side-responded-fallback" },
+  "credit/sell-side-closed": { componentKey: "SellSidePanel", fixtureKey: "sell-side-closed" },
+  "credit/sell-side-cancelled-pending": { componentKey: "SellSidePanel", fixtureKey: "sell-side-cancelled-pending" },
+  "credit/sell-side-expired-pending": { componentKey: "SellSidePanel", fixtureKey: "sell-side-expired-pending" },
+  "credit/sell-side-no-instrument": { componentKey: "SellSidePanel", fixtureKey: "sell-side-no-instrument" },
   "credit/blotter-empty": { componentKey: "CreditBlotter", fixtureKey: "credit-blotter-empty" },
+  // CreditBlotter degraded row: accepted quote with an unresolved dealer/instrument
+  // → the `?? "Dealer N"` counterparty + empty CUSIP/Security (`?? ""`) fallbacks.
+  "credit/blotter-unresolved": { componentKey: "CreditBlotter", fixtureKey: "credit-blotter-unresolved" },
   // Credit workspace sub-views (click the credit-tab-* control).
   "credit/workspace-new-rfq": { componentKey: "CreditWorkspace", fixtureKey: "credit-populated" },
   "credit/workspace-sell-side": { componentKey: "CreditWorkspace", fixtureKey: "credit-populated" },
