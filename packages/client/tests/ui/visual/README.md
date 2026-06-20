@@ -118,6 +118,107 @@ CI reads/writes `react/`. An intentional UI change therefore means updating
 
 ## The three implemented runners
 
+### Do the three runners share the same tests?
+
+**Partly — and knowing _which_ layer is shared is the whole mental model.** There
+are three layers, and "sharing" happens at one of them but not the others:
+
+| Layer | Shared across all 3? | What it is |
+|---|---|---|
+| **Scenario manifest** (`shared/scenarios.ts` + `scenarioActions.ts`) | ✅ **Yes** — one source of truth | "What to render and what to click" — the named scenarios, with zero React/runner code |
+| **Test bodies** (the `*.spec` files) | ⚠️ **Two of three** | Tier 2 + Tier 3 _auto-derive_ their tests by looping over the manifest. Tier 1 is _hand-written_ |
+| **Goldens** (`__screenshots__/`) | ❌ **No — each tier owns its own set** | Three separate PNG directories, one per runner |
+
+So when we say the runners "share tests," what's actually shared is the
+**scenario list and the interaction steps** — not the spec files, and not the
+golden images:
+
+- **Tier 2 & 3 are data-driven.** Each spec is a ~50-line
+  `for (const name of Object.keys(scenarios))` loop that also reads
+  `scenarioActions[name]`. Add a scenario to the manifest → both tiers get the
+  test for free, in lock-step.
+- **Tier 1 is hand-written.** `tile.spec.tsx` et al. each call
+  `mount(<VisualScenario name="…"/>)` literally, one `test()` per scenario. It
+  uses the _same scenario names_ but nothing forces it to stay complete — a new
+  manifest entry does **not** automatically get a CT test. That is the drift risk
+  Tier 1 carries and the data-driven tiers don't.
+- **Goldens are physically separate per tier** because each runner rasterizes
+  differently (CT mounts the component in isolation; Tier 2 navigates a URL and
+  shoots `scenario-root`; Tier 3 renders via `vitest-browser-react`). They encode
+  the _same intent_ but are not byte-identical, so each tier diffs against its own
+  `__screenshots__/react/` (+ `react-local/<arch>/`) set.
+
+### Architecture at a glance
+
+```mermaid
+flowchart TB
+    subgraph CORE["shared/ — framework-neutral, zero React imports"]
+        SC["scenarios.ts<br/>name → componentKey + fixtureKey"]
+        SA["scenarioActions.ts<br/>name → click / type / select steps"]
+        FX["fixtures.ts + appData.ts<br/>the injectable data contract"]
+    end
+
+    subgraph REACT["react/ — the @ui-visual seam (swap this for SolidJS)"]
+        REG["registry.tsx<br/>componentKey → React element"]
+        VS["VisualScenario.tsx<br/>theme + HooksProvider + backdrop"]
+    end
+
+    CORE --> REACT
+
+    subgraph T1["Tier 1 · playwright-ct"]
+        T1S["HAND-WRITTEN specs<br/>mount(VisualScenario)"]
+        T1G["__screenshots__/react/<br/>(own goldens)"]
+    end
+    subgraph T2["Tier 2 · playwright"]
+        T2S["DATA-DRIVEN visual.spec.ts<br/>loops scenarios, nav ?scenario=…"]
+        T2G["__screenshots__/react/<br/>(own goldens)"]
+    end
+    subgraph T3["Tier 3 · vitest-browser"]
+        T3S["DATA-DRIVEN visual.spec.tsx<br/>loops scenarios, render()"]
+        T3G["__screenshots__/react/<br/>(own goldens)"]
+    end
+
+    REACT --> T1S
+    REACT --> T2S
+    REACT --> T3S
+    SA -. shared by .-> T2S
+    SA -. shared by .-> T3S
+
+    T1S -->|toHaveScreenshot| OUT["Real Chromium · pixel diff"]
+    T2S -->|toHaveScreenshot| OUT
+    T3S -->|toMatchScreenshot| OUT
+```
+
+### How they differ, and the trade-offs
+
+| | **Tier 1 — playwright-ct** | **Tier 2 — playwright (URL host)** | **Tier 3 — vitest-browser** |
+|---|---|---|---|
+| **How it mounts** | Playwright CT adapter mounts the component directly | Vite app serves `/?scenario=x`; Playwright navigates to it | `vitest-browser-react`'s `render()` |
+| **Test source** | Hand-written, one `test()` per scenario | Auto-derived from the manifest | Auto-derived from the manifest |
+| **Matcher** | `toHaveScreenshot` (AA-tolerant) | `toHaveScreenshot` (AA-tolerant) | `toMatchScreenshot` (Vitest 4; needs the AA cushion set in its config) |
+| **Framework coupling** | High — needs a CT adapter that tracks Playwright versions | **Lowest** — the spec only knows URLs; the host is the only React bit | Medium — needs a render shim, but no lagging adapter to track |
+| **Strength** | Closest to "mount one component in isolation"; explicit and readable | Most portable; production-like (real navigation, routing, `page.route` stubs) | Runs under Vitest → produces the **istanbul coverage report** (the gap-finder); shares Tier 2's actions for free |
+| **Weakness** | Can silently drift from the manifest; CT-adapter lag is the documented Solid-port blocker | Needs a Vite host app to maintain | Newest matcher (experimental); zero-tolerance by default (hence the AA cushion) |
+| **Best for** | Component-level intent on today's React | The framework-swap contract | Coverage + behavioural lock-step with Tier 2 |
+
+### Why keep all three
+
+They are a defence-in-depth triangle, not redundancy:
+
+- **Tier 2** is the _portability contract_ — it proves the goldens can be
+  reproduced by something that knows nothing about React, so a SolidJS port reuses
+  its URL spec verbatim.
+- **Tier 3** is the _coverage instrument_ — only it runs under Vitest, so it is
+  what produces `reports/ui/visual/coverage/` and reveals which component states
+  still lack a golden.
+- **Tier 1** is the _isolation / readability_ check and a hedge: if a stable CT
+  adapter becomes the cleanest mount path, it is already wired, and its explicit
+  specs are the easiest to read when debugging a single component.
+
+The cost of the triangle: an intentional UI change means regenerating up to three
+golden sets × two arch sets (`react/` on CI + `react-local/<arch>/` locally) — the
+dual-golden dance described above.
+
 ### Tier 1 — Playwright Component Testing (`playwright-ct/`)
 
 Config: `playwright-ct/playwright-ct.config.ts`. Uses `@playwright/experimental-ct-react`
