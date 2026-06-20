@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "clean": "rm -rf .turbo reports",
-    "clean:deep": "pnpm run clean && rm -rf node_modules",
+    "clean": "rm -rf .turbo reports 2>/dev/null || true",
+    "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)",
     "gates": "tsx scripts/grep-gates.ts",
     "port:free": "tsx scripts/free-port.ts",
     "test:browser:cypress": "tsx scripts/with-server.ts cypress run --headless --config-file browser/cypress/cypress.config.ts",

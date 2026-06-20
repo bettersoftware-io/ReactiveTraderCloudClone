@@ -20,8 +20,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev": "tsc --build --watch",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo reports",
-    "clean:deep": "pnpm run clean && rm -rf node_modules"
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports 2>/dev/null || true",
+    "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
     "@rtc/domain": "workspace:*"
