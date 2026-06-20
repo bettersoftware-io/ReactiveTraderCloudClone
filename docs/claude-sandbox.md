@@ -79,36 +79,47 @@ done
 
 ---
 
-## The change: extend volume isolation to the whole workspace
+## The change: a repo-versioned isolation config
 
-Add this to the sandbox launcher (on the Mac) before its `docker run`. Use
-**named** volumes so they persist across launches (no reinstall every time) —
-same style as the existing global-npm volume:
+The isolation is **declared in this repo**, not hard-coded in the launcher — so
+the reusable `claude-sandbox` launcher stays generic across all projects. The
+launcher owns the *mechanism* (turn a list of paths into project-keyed Docker
+volumes); each repo owns the *policy* (which paths it needs isolated), via an
+optional `.claude-sandbox.json` at its root.
 
-```bash
-REPO=/Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone
+This repo ships [`.claude-sandbox.json`](../.claude-sandbox.json):
 
-# Container-only volumes: Linux deps/builds never touch the Mac's copies.
-RTC_VOLS=(
-  "rtc-nm-root:$REPO/node_modules"                  # may already exist
-  "rtc-nm-domain:$REPO/packages/domain/node_modules"
-  "rtc-nm-shared:$REPO/packages/shared/node_modules"
-  "rtc-nm-client:$REPO/packages/client/node_modules"
-  "rtc-nm-server:$REPO/packages/server/node_modules"
-  "rtc-dist-domain:$REPO/packages/domain/dist"
-  "rtc-dist-shared:$REPO/packages/shared/dist"
-  "rtc-dist-client:$REPO/packages/client/dist"
-  "rtc-dist-server:$REPO/packages/server/dist"
-  "rtc-turbo:$REPO/.turbo"
-)
-VOL_ARGS=()
-for v in "${RTC_VOLS[@]}"; do VOL_ARGS+=( -v "$v" ); done
-
-# then: docker run ... "${VOL_ARGS[@]}" ...
+```json
+{
+  "isolate": [
+    "packages/domain/node_modules",
+    "packages/shared/node_modules",
+    "packages/client/node_modules",
+    "packages/server/node_modules",
+    "packages/domain/dist",
+    "packages/shared/dist",
+    "packages/client/dist",
+    "packages/server/dist",
+    ".turbo"
+  ]
+}
 ```
 
-When a new package is added (e.g. `packages/mobile`), add two lines — its
-`node_modules` and `dist`.
+On launch, for each listed (project-relative) path the launcher creates a Docker
+volume keyed to `project-path + sub-path` and mounts it there, shadowing the bind
+mount **inside the container only**. Paths are sanitised: leading slashes are
+stripped, `..` traversal is rejected, and the root `node_modules` is ignored (the
+launcher already isolates it + the pnpm store automatically). Repos **without**
+the file behave exactly as before — root `node_modules`/pnpm store isolation only.
+
+**When a new package is added** (e.g. `packages/mobile`), add its `node_modules`
+and `dist` entries to `.claude-sandbox.json` — no launcher edit, no host-side
+change. That's the whole point of keeping the policy in the repo.
+
+> Requires a launcher new enough to read `.claude-sandbox.json` (it parses the
+> file with `python3` right after the built-in root-`node_modules` isolation). On
+> an older launcher the file is simply ignored — harmless, but per-package dirs
+> stay shared until the launcher is updated.
 
 ### One-time setup after wiring it
 

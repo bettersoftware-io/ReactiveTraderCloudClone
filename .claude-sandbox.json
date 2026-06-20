@@ -1,0 +1,14 @@
+{
+  "_readme": "Consumed by the reusable `claude-sandbox` launcher. Each listed path is shadowed by a project-keyed Docker volume so the Linux container's installs/builds stay container-only and never clobber the macOS host's copies (and vice-versa), while the source tree stays bind-mounted and live. Root node_modules + the pnpm store are isolated by the launcher automatically; this list adds this monorepo's per-package dirs. See docs/claude-sandbox.md.",
+  "isolate": [
+    "packages/domain/node_modules",
+    "packages/shared/node_modules",
+    "packages/client/node_modules",
+    "packages/server/node_modules",
+    "packages/domain/dist",
+    "packages/shared/dist",
+    "packages/client/dist",
+    "packages/server/dist",
+    ".turbo"
+  ]
+}
