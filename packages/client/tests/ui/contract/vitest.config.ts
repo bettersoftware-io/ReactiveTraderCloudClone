@@ -15,7 +15,10 @@ export default defineConfig({
     root: fileURLToPath(new URL("../../..", import.meta.url)),
     environment: "jsdom",
     include: ["tests/ui/contract/specs/**/*.contract.spec.ts"],
-    setupFiles: ["./tests/ui/contract/react/setup.ts"],
+    setupFiles: [
+      "./tests/setup/jsdom-storage.ts",
+      "./tests/ui/contract/react/setup.ts",
+    ],
     passWithNoTests: false,
     reporters: ["default", "html"],
     outputFile: { html: "reports/ui/contract/report/index.html" },

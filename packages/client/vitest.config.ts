@@ -18,7 +18,10 @@ export default defineConfig({
       "src/**/*.test.tsx",
       "tests/ui/contract/specs/**/*.contract.spec.ts",
     ],
-    setupFiles: ["./tests/ui/contract/react/setup.ts"],
+    setupFiles: [
+      "./tests/setup/jsdom-storage.ts",
+      "./tests/ui/contract/react/setup.ts",
+    ],
     passWithNoTests: true,
     reporters: ["default", "html"],
     outputFile: { html: "reports/unit/report/index.html" },
