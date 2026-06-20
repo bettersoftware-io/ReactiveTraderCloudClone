@@ -34,7 +34,7 @@
     "test:ui:visual:vitest-browser:react:update": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts --update",
     "test:ui:visual:vitest-browser:react:coverage": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.coverage.config.ts --coverage",
     "dev": "vite",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo reports .vitest-attachments tests/ui/visual/playwright-ct/host/.cache",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports .vitest-attachments tests/ui/visual/playwright-ct/host/.cache && find tests/ui/visual -type f -path '*/__screenshots__/*' \\( -name '*-actual.png' -o -name '*-diff.png' \\) -delete",
     "clean:deep": "pnpm run clean && rm -rf node_modules"
   },
   "dependencies": {
