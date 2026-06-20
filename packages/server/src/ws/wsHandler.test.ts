@@ -725,6 +725,63 @@ describe("wsHandler workflow quote-event transforms", () => {
   }
 });
 
+describe("wsHandler workflow rfq-event transforms", () => {
+  const workflowEmitting = (event: RfqEvent): ServiceContainer["workflow"] => ({
+    events: (): Observable<RfqEvent> => of(event),
+    createRfq: () => of(1), cancelRfq: () => of(undefined), quote: () => of(undefined), pass: () => of(undefined), accept: () => of(undefined),
+  } as unknown as ServiceContainer["workflow"]);
+
+  const rfqEvent = (type: "rfqCreated" | "rfqClosed"): RfqEvent => ({
+    type,
+    payload: {
+      id: 9,
+      instrumentId: 4,
+      quantity: 2_500_000,
+      direction: Direction.Sell,
+      state: "Open",
+      expirySecs: 90,
+      creationTimestamp: 1_700_000_000,
+    },
+  } as unknown as RfqEvent);
+
+  for (const type of ["rfqCreated", "rfqClosed"] as const) {
+    it(`maps a ${type} RfqEvent to a stream.workflowEvent RfqBodyDto frame`, async () => {
+      const ws = connect(fakeServices({ workflow: workflowEmitting(rfqEvent(type)) }));
+      ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+      await wait();
+
+      const [frame] = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT);
+      // Shape matches the @rtc/shared WorkflowEvent (rfqCreated) wire contract.
+      expectFrameShape(frame, SERVER_MSG.WORKFLOW_EVENT, workflowEventCreated(9));
+      const body = frame!.payload as { type: string; payload: Record<string, unknown> };
+      expect(body.type).toBe(type);
+      expect(body.payload).toEqual({
+        id: 9,
+        instrumentId: 4,
+        quantity: 2_500_000,
+        direction: Direction.Sell,
+        state: "Open",
+        expirySecs: 90,
+        creationTimestamp: 1_700_000_000,
+      });
+    });
+  }
+
+  for (const type of ["startOfStateOfTheWorld", "endOfStateOfTheWorld"] as const) {
+    it(`maps a ${type} RfqEvent to a bare stream.workflowEvent marker frame`, async () => {
+      const ws = connect(fakeServices({ workflow: workflowEmitting({ type } as RfqEvent) }));
+      ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+      await wait();
+
+      const [frame] = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT);
+      expect(frame).toBeDefined();
+      expect(frame!.type).toBe(SERVER_MSG.WORKFLOW_EVENT);
+      // SoW markers carry only a `type` discriminator — no payload on the wire.
+      expect(frame!.payload).toEqual({ type });
+    });
+  }
+});
+
 describe("wsHandler RPC synchronous-throw handling", () => {
   it("nacks rpc.executeTrade when execution throws synchronously", async () => {
     const ws = connect(fakeServices({ execution: { executeTrade: () => { throw new Error("boom"); } } as unknown as ServiceContainer["execution"] }));

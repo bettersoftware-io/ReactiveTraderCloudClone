@@ -16,6 +16,7 @@ export class FakeWsAdapter implements IWsAdapter {
   private pendingRpcs: Array<{
     type: string;
     resolve: (r: unknown) => void;
+    reject: (e: unknown) => void;
   }> = [];
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
@@ -33,8 +34,8 @@ export class FakeWsAdapter implements IWsAdapter {
 
   rpc(type: string, payload?: unknown): Promise<unknown> {
     this.sent.push({ type, payload });
-    return new Promise((resolve) => {
-      this.pendingRpcs.push({ type, resolve });
+    return new Promise((resolve, reject) => {
+      this.pendingRpcs.push({ type, resolve, reject });
     });
   }
 
@@ -64,6 +65,18 @@ export class FakeWsAdapter implements IWsAdapter {
     }
     const [pending] = this.pendingRpcs.splice(idx, 1);
     pending!.resolve(response);
+  }
+
+  /** Reject the next pending RPC of `type` with `error` (transport-level
+   * failure — e.g. the socket dropped — as opposed to an application nack).
+   * Drives the `catch (e) { subscriber.error(e) }` propagation arms. */
+  rejectPendingRpc(type: string, error: unknown): void {
+    const idx = this.pendingRpcs.findIndex((r) => r.type === type);
+    if (idx < 0) {
+      throw new Error(`FakeWsAdapter: no pending RPC of type "${type}"`);
+    }
+    const [pending] = this.pendingRpcs.splice(idx, 1);
+    pending!.reject(error);
   }
 
   /** Inspect every send() / rpc() the port has made so far. */

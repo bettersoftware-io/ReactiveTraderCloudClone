@@ -49,6 +49,18 @@ describe("BrowserConnectionEventsAdapter", () => {
     sub.unsubscribe();
   });
 
+  it("clears the idle timer on teardown so no idleTimeout fires after unsubscribe", () => {
+    const adapter = new BrowserConnectionEventsAdapter();
+    const events: ConnectionEvent[] = [];
+    const sub = adapter.events().subscribe((e) => events.push(e));
+
+    // Tear down before the idle window elapses, then advance well past it.
+    sub.unsubscribe();
+    vi.advanceTimersByTime(IDLE_TIMEOUT_MS * 2);
+
+    expect(events.some((e) => e.type === "idleTimeout")).toBe(false);
+  });
+
   it("removes listeners on unsubscribe", () => {
     const adapter = new BrowserConnectionEventsAdapter();
     const eventsA: ConnectionEvent[] = [];

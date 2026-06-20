@@ -68,6 +68,25 @@ describe("AnalyticsSimulator", () => {
     expect(new Date(last2.timestamp).getTime()).toBeGreaterThanOrEqual(new Date(last1.timestamp).getTime());
   });
 
+  it("history stays bounded at 90 entries after many update intervals", async () => {
+    vi.useFakeTimers();
+    const engine = new AnalyticsSimulator();
+    // Take well past HISTORY_SIZE updates so the cap (shift) is exercised on every tick.
+    const ticks = 95;
+    const promise = firstValueFrom(
+      engine.getAnalytics("USD").pipe(take(ticks + 1), toArray()),
+    );
+    await vi.advanceTimersByTimeAsync(10_000 * (ticks + 1));
+    const snapshots: PositionUpdates[] = await promise;
+
+    // Every emitted snapshot — initial and all post-cap updates — stays at the cap.
+    for (const snapshot of snapshots) {
+      expect(snapshot.history).toHaveLength(90);
+    }
+    // The buffer did not grow unbounded across many more intervals than its size.
+    expect(snapshots[snapshots.length - 1].history).toHaveLength(90);
+  });
+
   it("random walk produces values within reasonable per-step bound", async () => {
     vi.useFakeTimers();
     const engine = new AnalyticsSimulator();

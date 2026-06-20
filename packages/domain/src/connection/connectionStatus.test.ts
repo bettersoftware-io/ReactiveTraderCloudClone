@@ -86,6 +86,26 @@ describe("nextConnectionStatus", () => {
       nextConnectionStatus(ConnectionStatus.OFFLINE_DISCONNECTED, { type: "userActivity" }),
     ).toBe(ConnectionStatus.OFFLINE_DISCONNECTED);
   });
+
+  it("DISCONNECTED ignores events it has no transition for (stays DISCONNECTED)", () => {
+    // DISCONNECTED only reacts to reconnectAttempt / gatewayConnected / browserOffline.
+    // Any other event must leave the status unchanged.
+    expect(
+      nextConnectionStatus(ConnectionStatus.DISCONNECTED, { type: "idleTimeout" }),
+    ).toBe(ConnectionStatus.DISCONNECTED);
+    expect(
+      nextConnectionStatus(ConnectionStatus.DISCONNECTED, { type: "userActivity" }),
+    ).toBe(ConnectionStatus.DISCONNECTED);
+    expect(
+      nextConnectionStatus(ConnectionStatus.DISCONNECTED, { type: "gatewayDisconnected" }),
+    ).toBe(ConnectionStatus.DISCONNECTED);
+  });
+
+  it("IDLE_DISCONNECTED -> OFFLINE_DISCONNECTED on browserOffline (offline wins over idle)", () => {
+    expect(
+      nextConnectionStatus(ConnectionStatus.IDLE_DISCONNECTED, { type: "browserOffline" }),
+    ).toBe(ConnectionStatus.OFFLINE_DISCONNECTED);
+  });
 });
 
 describe("mapGatewayStatus", () => {

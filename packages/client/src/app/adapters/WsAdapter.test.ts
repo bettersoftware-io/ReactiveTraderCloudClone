@@ -221,4 +221,31 @@ describe("WsAdapter.rpc() + message routing", () => {
     await expect(waited).resolves.toBeUndefined();
     adapter.dispose();
   });
+  it("on() disposer stops the handler from receiving further messages of that type", () => {
+    const adapter = new WsAdapter("ws://test");
+    const received: unknown[] = [];
+    const dispose = adapter.on("stream.priceTick", (p) => received.push(p));
+    open(adapter);
+
+    const frame = (symbol: string) =>
+      new MessageEvent("message", {
+        data: JSON.stringify({ type: "stream.priceTick", payload: { symbol } }),
+      });
+
+    lastMock.onmessage?.(frame("EURUSD"));
+    expect(received).toEqual([{ symbol: "EURUSD" }]);
+
+    dispose();
+    lastMock.onmessage?.(frame("GBPUSD"));
+    // No further delivery after the disposer removes the handler.
+    expect(received).toEqual([{ symbol: "EURUSD" }]);
+
+    // Disposing twice is safe (the `?.delete` optional-chain branch) and does
+    // not throw or resurrect delivery.
+    expect(() => dispose()).not.toThrow();
+    lastMock.onmessage?.(frame("USDJPY"));
+    expect(received).toEqual([{ symbol: "EURUSD" }]);
+
+    adapter.dispose();
+  });
 });

@@ -92,6 +92,28 @@ describe("RfqsPresenter.createTicketSubmission", () => {
     });
   });
 
+  it("stays not-submitted (retryable) when the command errors, vs submitted on success", () => {
+    const ts = scheduler();
+    ts.run(({ cold, flush }) => {
+      const rec: Recorder = { quote: [], pass: [] };
+      // First submitPrice fails; the user must be able to retry, so submission
+      // must remain not-submitted rather than latching submitted:true.
+      const machine = new RfqsPresenter(
+        port(rec, cold("10ms #")),
+      ).createTicketSubmission();
+      const states: TicketSubmissionState[] = [];
+      const sub = machine.state$.subscribe((s) => states.push(s));
+
+      machine.intents.submitPrice(100, 101.5);
+      flush();
+
+      expect(states).toEqual([{ submitted: false }, { submitted: false }]);
+
+      sub.unsubscribe();
+      machine.dispose();
+    });
+  });
+
   it("dispose tears down without emitting after teardown", () => {
     const rec: Recorder = { quote: [], pass: [] };
     const machine = new RfqsPresenter(port(rec)).createTicketSubmission();

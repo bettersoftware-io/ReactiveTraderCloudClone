@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { firstValueFrom } from "rxjs";
-import { filter, take } from "rxjs/operators";
+import { filter, take, toArray } from "rxjs/operators";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
 import type { RfqEvent } from "../ports/workflowPort.js";
@@ -125,6 +125,108 @@ describe("CreditRfqSimulator", () => {
     const closed = events.find((e) => e.type === "rfqClosed");
     expect(closed).toBeDefined();
     expect((closed as Extract<RfqEvent, { type: "rfqClosed" }>).payload.state).toBe("Closed");
+  });
+
+  it("accepting one quote implicitly rejects a competing priced quote (rejectedWithPrice)", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0); // scheduled dealers do NOT participate
+    const sim = new CreditRfqSimulator(DEALERS_CATALOG);
+    const bothQuotesCreated = firstValueFrom(
+      sim.events().pipe(filter((e: RfqEvent) => e.type === "quoteCreated"), take(2), toArray()),
+    );
+    await firstValueFrom(
+      sim.createRfq({
+        instrumentId: 1,
+        dealerIds: [DEALERS_CATALOG[0]!.id, DEALERS_CATALOG[1]!.id],
+        quantity: 1000,
+        direction: "Buy" as never,
+        expirySecs: 60,
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    const created = (await bothQuotesCreated) as Extract<RfqEvent, { type: "quoteCreated" }>[];
+    const winningQuoteId = created[0]!.payload.id;
+    const losingQuoteId = created[1]!.payload.id;
+
+    // Price BOTH quotes so the loser is pendingWithPrice when the winner is accepted.
+    await firstValueFrom(sim.quote({ quoteId: winningQuoteId, price: 100 }));
+    await firstValueFrom(sim.quote({ quoteId: losingQuoteId, price: 105 }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    await firstValueFrom(sim.accept(winningQuoteId));
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Rejected quotes carry no live event — observe via a fresh state-of-the-world snapshot.
+    const { events, stop } = collectEvents(sim);
+    stop();
+    const loser = events.find(
+      (e) => e.type === "quoteCreated" && e.payload.id === losingQuoteId,
+    ) as Extract<RfqEvent, { type: "quoteCreated" }> | undefined;
+    expect(loser).toBeDefined();
+    expect(loser!.payload.state).toEqual({ type: "rejectedWithPrice", price: 105 });
+  });
+
+  it("accepting one quote implicitly rejects a competing unpriced quote (rejectedWithoutPrice)", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0); // scheduled dealers do NOT participate
+    const sim = new CreditRfqSimulator(DEALERS_CATALOG);
+    const bothQuotesCreated = firstValueFrom(
+      sim.events().pipe(filter((e: RfqEvent) => e.type === "quoteCreated"), take(2), toArray()),
+    );
+    await firstValueFrom(
+      sim.createRfq({
+        instrumentId: 1,
+        dealerIds: [DEALERS_CATALOG[0]!.id, DEALERS_CATALOG[1]!.id],
+        quantity: 1000,
+        direction: "Buy" as never,
+        expirySecs: 60,
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    const created = (await bothQuotesCreated) as Extract<RfqEvent, { type: "quoteCreated" }>[];
+    const winningQuoteId = created[0]!.payload.id;
+    const losingQuoteId = created[1]!.payload.id; // stays pendingWithoutPrice
+
+    // Only price the winner; the loser remains pendingWithoutPrice.
+    await firstValueFrom(sim.quote({ quoteId: winningQuoteId, price: 100 }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    await firstValueFrom(sim.accept(winningQuoteId));
+    await vi.advanceTimersByTimeAsync(0);
+
+    const { events, stop } = collectEvents(sim);
+    stop();
+    const loser = events.find(
+      (e) => e.type === "quoteCreated" && e.payload.id === losingQuoteId,
+    ) as Extract<RfqEvent, { type: "quoteCreated" }> | undefined;
+    expect(loser).toBeDefined();
+    expect(loser!.payload.state).toEqual({ type: "rejectedWithoutPrice" });
+  });
+
+  it("dispose cancels a scheduled dealer response before it fires (no quoteQuoted)", async () => {
+    vi.useFakeTimers();
+    // 0.5 => participates; responseDelay = 0.5 * 30_000 = 15_000ms.
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const sim = new CreditRfqSimulator(DEALERS_CATALOG);
+    const { events, stop } = collectEvents(sim);
+    await firstValueFrom(
+      sim.createRfq({
+        instrumentId: 1,
+        dealerIds: [DEALERS_CATALOG[0]!.id],
+        quantity: 1000,
+        direction: "Buy" as never,
+        expirySecs: 60,
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Dispose before the 15s response delay elapses, then advance well past it.
+    sim.dispose();
+    await vi.advanceTimersByTimeAsync(30_000);
+    stop();
+
+    // The scheduled response was cancelled — no quote was ever priced.
+    expect(events.some((e) => e.type === "quoteQuoted")).toBe(false);
   });
 
   it("accept on a quote without a price is a no-op", async () => {
