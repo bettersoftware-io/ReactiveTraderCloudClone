@@ -350,6 +350,61 @@ The `@ui-visual` alias is declared in each runner's Vite config and in
 the only structural change. The plain-Playwright `visual.spec.ts` needs **no
 change at all** — it only navigates URLs.
 
+### Per-tier porting effort
+
+Building the `<framework>/` seam above is a one-time cost that **all three tiers
+consume** — it is not per-tier. On top of it, each tier needs a different amount
+of glue, and they rank clearly. **Tier 2 is the easiest, Tier 3 a close second,
+Tier 1 materially more work _and_ subject to an external blocker.**
+
+**Tier 2 — plain Playwright (smallest):**
+
+- `visual.spec.ts`: **zero changes** — it only navigates `/?scenario=…` and
+  screenshots, so the framework lives entirely behind the host boundary. This is
+  the only spec that is genuinely framework-agnostic.
+- `playwright/host/main.tsx`: swap React's
+  `createRoot(...).render(<VisualScenario/>)` for the framework's mount (e.g.
+  Solid's `render(() => <VisualScenario name={name}/>, root)`) — ~10 lines.
+- `playwright/host/vite.config.ts`: swap `@vitejs/plugin-react` for the
+  framework's Vite plugin and re-point the `@ui-visual` alias.
+- Add the `test:ui:visual:playwright:<framework>` script; regenerate goldens.
+
+**Tier 3 — vitest-browser (low; one extra spec edit vs Tier 2):**
+
+- `visual.spec.tsx`: swap the render shim import (`vitest-browser-react` → the
+  framework's `render`). The JSX and the scenario/`scenarioActions` loop body are
+  unchanged (the framework's Vite plugin compiles the JSX).
+- `vitest-browser.config.ts`: plugin swap + alias + golden routing.
+- Add the script; regenerate goldens.
+- **No version-tracking adapter** — this is why it is the recommended driver for a
+  new framework.
+
+**Tier 1 — playwright-ct (high, two parts + a hard dependency):**
+
+- _Structural:_ swap `@playwright/experimental-ct-<framework>` in the config
+  **and in every spec file** (each spec imports `test`/`expect` from the CT
+  adapter), swap the Vite plugin + alias in `ctViteConfig`, add scripts.
+- _Hand-written test bodies:_ unlike Tiers 2/3, the CT specs do **not** read
+  `scenarios.ts`/`scenarioActions.ts` — every test and every interaction is typed
+  out by hand. Today that is ~10 spec files, ~88 `test()` blocks, and ~38 manual
+  interaction calls (e.g. `fxBlotter.spec.tsx` alone hand-codes the
+  filter/sort click-fill-apply sequences). Porting Tier 1 means re-authoring all
+  of them against the new component tree.
+- _Hard blocker:_ Tier 1 needs a stable CT adapter that **matches the Playwright
+  version**. The official Solid CT adapter lags core Playwright (see ADR-001), so
+  Tier 1 may be **unportable without forking/pinning the adapter** — whereas
+  Tiers 2/3 depend only on a (mature) Vite plugin for the framework.
+
+| Tier | Spec changes | Glue changes | External risk | Effort |
+|---|---|---|---|---|
+| **Tier 2** (playwright) | none | host main (~10 lines) + vite config + script | none | **lowest** |
+| **Tier 3** (vitest-browser) | 1-line render-shim swap | config + script | none | **low** |
+| **Tier 1** (playwright-ct) | rewrite ~88 tests (~38 interactions) across ~10 files | CT adapter + config + scripts | **CT adapter must exist & version-match** | **high / may be blocked** |
+
+**Recommended port order:** do **Tier 2 first** (proves the goldens reproduce
+with zero spec changes), **add Tier 3** for the coverage report, and treat
+**Tier 1 as optional** — bring it along only once a compatible CT adapter exists.
+
 For the full rationale, the adapter-status table, and guidance on choosing a
 driver per target (CT adapter vs. vitest-browser vs. plain Playwright), see
 [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md).
