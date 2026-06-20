@@ -87,7 +87,11 @@ launcher owns the *mechanism* (turn a list of paths into project-keyed Docker
 volumes); each repo owns the *policy* (which paths it needs isolated), via an
 optional `.claude-sandbox.json` at its root.
 
-This repo ships [`.claude-sandbox.json`](../.claude-sandbox.json):
+This repo ships [`.claude-sandbox.json`](../.claude-sandbox.json) — every
+**directory** a container `pnpm install` / build / test would otherwise write onto
+the bind mount: each workspace package's `node_modules` (including the top-level
+`tests` package) and `dist`, the per-package and root `.turbo` caches, pnpm's
+project-local `.pnpm-store` fallback, and the playwright-ct vite bundle cache:
 
 ```json
 {
@@ -96,11 +100,19 @@ This repo ships [`.claude-sandbox.json`](../.claude-sandbox.json):
     "packages/shared/node_modules",
     "packages/client/node_modules",
     "packages/server/node_modules",
+    "tests/node_modules",
     "packages/domain/dist",
     "packages/shared/dist",
     "packages/client/dist",
     "packages/server/dist",
-    ".turbo"
+    ".pnpm-store",
+    ".turbo",
+    "packages/domain/.turbo",
+    "packages/shared/.turbo",
+    "packages/client/.turbo",
+    "packages/server/.turbo",
+    "tests/.turbo",
+    "packages/client/tests/ui/visual/playwright-ct/host/.cache"
   ]
 }
 ```
@@ -111,6 +123,14 @@ mount **inside the container only**. Paths are sanitised: leading slashes are
 stripped, `..` traversal is rejected, and the root `node_modules` is ignored (the
 launcher already isolates it + the pnpm store automatically). Repos **without**
 the file behave exactly as before — root `node_modules`/pnpm store isolation only.
+
+**Only directories can be isolated** — a Docker volume is a directory, so a single
+file (e.g. `packages/*/tsconfig.tsbuildinfo`, the `tsc --build` incremental cache)
+cannot be mounted; mounting a volume at a file path makes `tsc` see a directory
+and breaks the build. Those files are arch-independent and gitignored, so they're
+harmless if left; to stop them appearing on the host too, **relocate** them into
+the already-isolated `dist/` via `"tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"`
+in `tsconfig.base.json` rather than trying to isolate them here.
 
 **When a new package is added** (e.g. `packages/mobile`), add its `node_modules`
 and `dist` entries to `.claude-sandbox.json` — no launcher edit, no host-side
