@@ -49,6 +49,7 @@ For the full picture, see:
 - [`docs/implementation-plan.md`](docs/implementation-plan.md) — the phased plan the build followed.
 - [`docs/superpowers/STATUS.md`](docs/superpowers/STATUS.md) — authoritative status of each phase, including the current test topology.
 - [`docs/superpowers/`](docs/superpowers/) — the per-phase specs and plans, including the design of the multi-runner verification stack (phases 5a–5e).
+- [`docs/claude-sandbox.md`](docs/claude-sandbox.md) — running this repo from macOS WebStorm + the Linux claude-sandbox container at once: volume-isolating `node_modules`/`dist` so both work without interfering, and fixing WebStorm module resolution.
 
 ## Prerequisites
 
