@@ -71,6 +71,12 @@ export const scenarios: Record<string, Scenario> = {
   "credit/workspace-sell-side": { componentKey: "CreditWorkspace", fixtureKey: "credit-populated" },
   // Admin panel loaded (slider) state — throughput fetch stubbed.
   "admin/panel-loaded": { componentKey: "AdminPanel", fixtureKey: "app-fx" },
+  // Seeded render-state arms with no interaction (the states are only transiently
+  // reachable at runtime, so they are seeded through the seam for a stable golden):
+  // AdminPanel loading, and the NewRfqForm submission in-flight / success views.
+  "admin/panel-loading": { componentKey: "AdminPanel", fixtureKey: "admin-loading" },
+  "credit/new-rfq-submitting": { componentKey: "NewRfqForm", fixtureKey: "credit-new-rfq-submitting" },
+  "credit/new-rfq-confirmed": { componentKey: "NewRfqForm", fixtureKey: "credit-new-rfq-confirmed" },
 
   // --- Phase V testid-gated interaction scenarios (see scenarioActions.ts) ---
   // FX blotter sort + filter + popovers (drive BlotterHeader / *Filter).

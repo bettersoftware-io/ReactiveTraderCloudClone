@@ -11,6 +11,18 @@ test("credit/new-rfq", async ({ mount }) => {
   await expect(c).toHaveScreenshot("new-rfq.png", { animations: "disabled" });
 });
 
+test("credit/new-rfq-submitting", async ({ mount }) => {
+  // Submission in flight (seeded status:"submitting") → "Submitting…" disabled form.
+  const c = await mount(<VisualScenario name="credit/new-rfq-submitting" />);
+  await expect(c).toHaveScreenshot("new-rfq-submitting.png", { animations: "disabled" });
+});
+
+test("credit/new-rfq-confirmed", async ({ mount }) => {
+  // Submission confirmed (seeded status:"confirmed") → the "RFQ Created" success view.
+  const c = await mount(<VisualScenario name="credit/new-rfq-confirmed" />);
+  await expect(c).toHaveScreenshot("new-rfq-confirmed.png", { animations: "disabled" });
+});
+
 test("credit/blotter", async ({ mount }) => {
   const c = await mount(<VisualScenario name="credit/blotter" />);
   await expect(c).toHaveScreenshot("blotter.png", { animations: "disabled" });

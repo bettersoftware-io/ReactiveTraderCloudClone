@@ -283,6 +283,22 @@ export const fixtures: Record<string, AppData> = {
     quotesForRfq: { 101: creditQuotes101, 102: creditQuotes102 },
     allQuotes: creditAllQuotes,
   }),
+  // NewRfqForm submission lifecycle render arms (seeded via the submission seam,
+  // since these states are only transiently reachable through interaction).
+  "credit-new-rfq-submitting": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqSubmission: { status: "submitting" },
+  }),
+  "credit-new-rfq-confirmed": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqSubmission: { status: "confirmed", rfqId: 12345 },
+  }),
+  // AdminPanel loading arm: throughput not yet loaded → "Loading throughput…".
+  "admin-loading": makeAppData({
+    throughput: { value: 0, loading: true, message: null },
+  }),
   // FX tile colour / chart arms.
   "tile-eurusd-down": makeAppData({ currencyPairs: [eurusd], prices: { EURUSD: eurusdPriceDown } }),
   "tile-eurusd-flat": makeAppData({ currencyPairs: [eurusd], prices: { EURUSD: eurusdPriceFlat } }),
