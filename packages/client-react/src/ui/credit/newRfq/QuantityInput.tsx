@@ -9,7 +9,7 @@ interface QuantityInputProps {
 
 export function QuantityInput({ value, onChange, error }: QuantityInputProps) {
   return (
-    <div className={styles.section}>
+    <div>
       <label className={styles.label}>
         Quantity (x{CREDIT_QUANTITY_MULTIPLIER.toLocaleString()})
       </label>

@@ -20,7 +20,7 @@ export function DealerSelection({ dealers, selectedIds, onChange }: DealerSelect
   );
 
   return (
-    <div className={styles.section}>
+    <div>
       <label className={styles.label}>
         Dealers
       </label>
