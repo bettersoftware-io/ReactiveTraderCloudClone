@@ -11,18 +11,20 @@ export class RfqCountdownPage extends MountedComponent<RfqCountdownProps> {
     return this.root.querySelector("span")?.textContent?.trim() ?? "";
   }
 
-  /** The progress-bar fill width, e.g. "50%". */
-  fillWidth(): string {
-    const bars = this.root.querySelectorAll<HTMLDivElement>("div");
-    // Structure: outer wrapper > track div > fill div. The fill carries width %.
-    const fill = [...bars].find((d) => d.style.width.endsWith("%"));
-    return fill?.style.width ?? "";
+  private fill(): HTMLDivElement | null {
+    return this.root.querySelector<HTMLDivElement>(
+      '[data-testid="rfq-countdown-fill"]',
+    );
   }
 
-  /** The fill colour (switches when fraction drops below the warn threshold). */
+  /** The progress-bar fill width, e.g. "50%". */
+  fillWidth(): string {
+    return this.fill()?.style.getPropertyValue("--rfq-fill").trim() ?? "";
+  }
+
+  /** The fill colour token (switches when fraction drops below the warn threshold). */
   fillColor(): string {
-    const bars = this.root.querySelectorAll<HTMLDivElement>("div");
-    const fill = [...bars].find((d) => d.style.width.endsWith("%"));
-    return fill?.style.backgroundColor ?? "";
+    const warn = this.fill()?.dataset.warn === "true";
+    return warn ? "var(--accent-aware)" : "var(--accent-primary)";
   }
 }

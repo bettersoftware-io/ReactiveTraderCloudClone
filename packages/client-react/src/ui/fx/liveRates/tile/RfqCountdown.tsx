@@ -1,3 +1,5 @@
+import styles from "./RfqCountdown.module.css";
+
 interface RfqCountdownProps {
   remainingMs: number;
   totalMs: number;
@@ -8,37 +10,16 @@ export function RfqCountdown({ remainingMs, totalMs }: RfqCountdownProps) {
   const seconds = Math.ceil(remainingMs / 1000);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div
-        style={{
-          height: 4,
-          borderRadius: 2,
-          backgroundColor: "var(--border-primary)",
-          overflow: "hidden",
-        }}
-      >
+    <div className={styles.wrapper}>
+      <div className={styles.track}>
         <div
-          style={{
-            height: "100%",
-            width: `${fraction * 100}%`,
-            backgroundColor:
-              fraction > 0.3
-                ? "var(--accent-primary)"
-                : "var(--accent-aware)",
-            transition: "width 0.1s linear",
-            borderRadius: 2,
-          }}
+          data-testid="rfq-countdown-fill"
+          data-warn={fraction <= 0.3 ? "true" : "false"}
+          className={styles.fill}
+          style={{ "--rfq-fill": `${fraction * 100}%` } as React.CSSProperties}
         />
       </div>
-      <span
-        style={{
-          fontSize: 10,
-          color: "var(--text-muted)",
-          textAlign: "center",
-        }}
-      >
-        {seconds}s remaining
-      </span>
+      <span className={styles.caption}>{seconds}s remaining</span>
     </div>
   );
 }
