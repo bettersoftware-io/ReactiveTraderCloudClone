@@ -35,7 +35,6 @@
       "cache": false,
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
     },
-    "lint": {},
     "dev": {
       "cache": false,
       "persistent": true

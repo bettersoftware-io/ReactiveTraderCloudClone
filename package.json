@@ -12,12 +12,16 @@
     "test:e2e": "turbo run test:e2e",
     "test:e2e:no-cypress": "RTC_E2E_SKIP_CYPRESS=1 turbo run test:e2e",
     "test:ui:visual": "turbo run test:ui:visual",
-    "lint": "turbo run lint",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "dev": "turbo run dev",
     "clean": "turbo run clean && (rm -rf .turbo 2>/dev/null || true)",
     "clean:deep": "turbo run clean:deep && (rm -rf node_modules .pnpm-store .turbo 2>/dev/null || true) && find . -name .DS_Store -type f -delete"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.0",
     "turbo": "^2.4",
     "typescript": "^6"
   }
