@@ -305,6 +305,36 @@ with no edit to `run-all.ts`.
 Concurrent runs contend for CPU/GPU, so the wall-clock time is NOT a fair
 per-runner benchmark. Run a single runner in isolation to measure actual speed.
 
+### Measured durations (isolated, local)
+
+Per the caveat above, these were measured by running **each runner on its own**,
+sequentially — not via the concurrent `test:ui:visual` orchestrator — so they are
+fair per-tier figures. All three render the **same 88 scenarios** and diff
+against the local `react-local/darwin-arm64/` golden set.
+
+> **Bench box:** Apple M2 Max (12 cores), macOS (Darwin 25.5.0), Node 26.0.0,
+> pnpm 11.7.0 · single run each · **2026-06-21** · all tiers PASS. Wall-clock
+> includes runner/host boot; treat as indicative (±a second or two of variance),
+> not a micro-benchmark.
+
+| Tier | Runner | Scenarios | Duration |
+|---|---|---:|---:|
+| **Tier 1** | `playwright-ct` (CT mount) | 88 | **4.9s** |
+| **Tier 2** | `playwright` (URL host) | 88 | **11.6s** |
+| **Tier 3** | `vitest-browser` | 88 | **11.7s** |
+
+Tier 1 is fastest here because the CT runner mounts components directly, while
+Tiers 2 and 3 each stand up a real host/provider (a Vite host server; the
+`@vitest/browser-playwright` provider) before the first shot. For context, these
+visual tiers are far cheaper than the **behavioural** browser e2e suites
+(~50–107s for 48 scenarios — see the e2e
+[`STRATEGY.md`](../../../../../tests/STRATEGY.md) → §5.5): a visual shot renders
+one injected-data scenario and diffs a PNG; an e2e scenario drives a live app
+through multi-step interactions.
+
+To reproduce: `pnpm --filter @rtc/client test:ui:visual:<runner>:react` for any
+single runner and time it.
+
 ## Type-checking
 
 The harness is type-checked by `pnpm typecheck` via `tsconfig.ui-visual.json`.

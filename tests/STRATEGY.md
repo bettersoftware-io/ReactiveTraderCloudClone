@@ -279,6 +279,57 @@ redundancy:
 The cost of keeping all ten is the per-driver/per-runner glue and the Cypress
 maintenance hazard — which is exactly why a **product** picks one lane ([§7](#7-decision-guide-picking-one-for-production)).
 
+### 5.5 Measured durations (isolated, local)
+
+The tables above rank suites qualitatively; here are real numbers. **Each suite
+was run on its own, sequentially** (never in the `test:e2e` parallel fan-out — a
+concurrent wall-clock is not a fair per-suite figure), so these are clean
+isolated timings.
+
+> **Bench box:** Apple M2 Max (12 cores), macOS (Darwin 25.5.0), Node 26.0.0,
+> pnpm 11.7.0 · single run each · **2026-06-21** · all suites PASS. Wall-clock
+> **includes** the per-suite dev-server / browser boot (a roughly fixed cost
+> shared by every browser suite), so treat these as *indicative*, not a
+> micro-benchmark — expect ±several seconds of run-to-run variance. Unlike the
+> arm64 dev container, **Cypress runs fine here** (see `README.md` → "Known
+> issue"), so all ten are measurable on this box.
+
+| Suite | Scenarios | Duration | Notes |
+|---|---:|---:|---|
+| **Presenter** `vitest-fake-timers` | 20 | **1.3s** | fastest — plain Vitest, virtual time, no browser |
+| **Presenter** `cucumber-fake-timers` | 20 | **1.5s** | virtual time under cucumber-js |
+| **Presenter** `vitest-quickpickle-fake-timers` | 20 | **1.7s** | virtual time, Gherkin under Vitest |
+| **Full-stack** `node` | 1 path | **3.1s** | boots the real server; raw WebSocket, no browser |
+| **Full-stack** `browser` | 1 | **5.3s** | real server + Vite client + Playwright |
+| **Presenter** `cucumber` (real timers) | 20 | **21.0s** | the reference — wall-clock waits are genuine |
+| **Browser** `playwright-cucumber` | 48 | **50.7s** | real browser + dev server |
+| **Browser** `playwright` (native) | 48 | **75.7s** | real browser + dev server |
+| **Browser** `cypress` (native) | 48 | **91.3s** | real browser + dev server |
+| **Browser** `cypress-cucumber` | 48 | **107.4s** | real browser + dev server |
+
+What the numbers confirm:
+
+- **Virtual time is the headline win.** The presenter behaviour set runs in
+  **~1.5s** under fake timers vs **21.0s** with real timers — **~14× faster**
+  for the *same 20 scenarios* (the doc elsewhere cites ~19× on another box; the
+  ratio is machine-dependent, the order of magnitude is not). This is why the
+  fast presenter peer is the recommended TDD inner loop.
+- **Depth beats driver.** Any in-process **presenter** suite (1–21s) is one to
+  two orders of magnitude faster than any **browser** suite (51–107s), because
+  the dominant cost is booting a real browser + dev server, not the test logic.
+- **Playwright < Cypress here** (51–76s vs 91–107s for the same 48 scenarios) —
+  and Cypress additionally carries the arm64/Electron hazard. A second reason the
+  decision guide defaults to Playwright.
+- These are **single-run** figures: on this run `playwright-cucumber` came in
+  *below* native Playwright despite identical coverage. Don't read fine-grained
+  rankings into a few seconds of difference — the families separate cleanly, the
+  members within a family don't.
+
+To reproduce, run any single script from `README.md` → "Scripts" in isolation
+(e.g. `pnpm --filter @rtc/tests test:browser:playwright`) and time it; the
+visual tier has its own isolated table in
+[`packages/client/tests/ui/visual/README.md`](../packages/client/tests/ui/visual/README.md).
+
 ---
 
 ## 6. Migration: the two axes you asked about
