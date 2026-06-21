@@ -14,12 +14,18 @@
   cursor: pointer;
 }
 
-.overlay[data-bg="transparent"] { background-color: transparent; }
-.overlay[data-bg="var(--accent-aware)"] { background-color: var(--accent-aware); }
-.overlay[data-bg="var(--accent-positive)"] { background-color: var(--accent-positive); }
-.overlay[data-bg="var(--accent-negative)"] { background-color: var(--accent-negative); }
-
-.overlay[data-cursor="default"] { cursor: default; }
+.overlay[data-status="started"] {
+  background-color: transparent;
+  cursor: default;
+}
+.overlay[data-status="done"] { background-color: var(--accent-positive); }
+.overlay[data-status="rejected"] { background-color: var(--accent-negative); }
+.overlay[data-status="tooLong"],
+.overlay[data-status="timeout"],
+.overlay[data-status="timedOut"],
+.overlay[data-status="creditExceeded"] {
+  background-color: var(--accent-aware);
+}
 
 .tradeDetails {
   display: flex;

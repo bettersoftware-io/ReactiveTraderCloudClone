@@ -7,16 +7,6 @@ interface TileConfirmationProps {
   onDismiss: () => void;
 }
 
-const bgByStatus: Record<string, string> = {
-  started: "transparent",
-  tooLong: "var(--accent-aware)",
-  timeout: "var(--accent-aware)",
-  [ExecutionStatus.Done]: "var(--accent-positive)",
-  [ExecutionStatus.Rejected]: "var(--accent-negative)",
-  [ExecutionStatus.Timeout]: "var(--accent-aware)",
-  [ExecutionStatus.CreditExceeded]: "var(--accent-aware)",
-};
-
 function formatNotional(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
@@ -72,24 +62,47 @@ function ConfirmationContent({ state }: { state: TileExecutionState }) {
   return null;
 }
 
-function resolveBg(state: TileExecutionState): string {
+type ConfirmationStatus =
+  | "started"
+  | "tooLong"
+  | "timeout"
+  | "done"
+  | "rejected"
+  | "timedOut"
+  | "creditExceeded"
+  | "unknown";
+
+// Semantic state name for the overlay. The stylesheet owns the appearance
+// (background colour per status, cursor); the contract Page Object maps this
+// status back to the colour token it asserts. Keeping the data-* hook semantic
+// (not a colour string) is what lets the markup + CSS port verbatim to another
+// View framework.
+function statusKey(state: TileExecutionState): ConfirmationStatus {
   if (state.status === "finished") {
-    return bgByStatus[state.executionStatus] ?? "var(--bg-overlay)";
+    switch (state.executionStatus) {
+      case ExecutionStatus.Done:
+        return "done";
+      case ExecutionStatus.Rejected:
+        return "rejected";
+      case ExecutionStatus.Timeout:
+        return "timedOut";
+      case ExecutionStatus.CreditExceeded:
+        return "creditExceeded";
+      default:
+        return "unknown";
+    }
   }
-  return bgByStatus[state.status] ?? "var(--bg-overlay)";
+  if (state.status === "ready") return "unknown";
+  return state.status; // "started" | "tooLong" | "timeout"
 }
 
 export function TileConfirmation({ state, onDismiss }: TileConfirmationProps) {
   if (state.status === "ready") return null;
 
-  const bg = resolveBg(state);
-  const cursorValue = state.status === "started" ? "default" : "pointer";
-
   return (
     <div
       data-testid="trade-confirmation"
-      data-bg={bg}
-      data-cursor={cursorValue}
+      data-status={statusKey(state)}
       onClick={state.status !== "started" ? onDismiss : undefined}
       className={styles.overlay}
     >

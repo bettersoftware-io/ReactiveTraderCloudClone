@@ -28,11 +28,31 @@ export class TileConfirmationPage extends MountedComponent<TileConfirmationProps
   }
 
   backgroundColor(): string {
-    return this.overlay()?.dataset.bg ?? "";
+    // The overlay exposes a semantic data-status; map it back to the colour
+    // token the component used to render (and that the contract spec asserts).
+    switch (this.overlay()?.dataset.status) {
+      case "done":
+        return "var(--accent-positive)";
+      case "rejected":
+        return "var(--accent-negative)";
+      case "tooLong":
+      case "timeout":
+      case "timedOut":
+      case "creditExceeded":
+        return "var(--accent-aware)";
+      case "started":
+        return "transparent";
+      case undefined:
+        return "";
+      default:
+        return "var(--bg-overlay)";
+    }
   }
 
   cursor(): string {
-    return this.overlay()?.dataset.cursor ?? "";
+    const status = this.overlay()?.dataset.status;
+    if (status === undefined) return "";
+    return status === "started" ? "default" : "pointer";
   }
 
   async clickOverlay(): Promise<void> {
