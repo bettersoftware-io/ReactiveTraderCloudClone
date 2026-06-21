@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mount, cleanupMounted } from "@ui-contract/mount";
 import { ThemeToggle } from "@ui-contract/components";
+import { cleanupMounted, mount } from "@ui-contract/mount";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 beforeEach(() => {
   // The ThemeProvider reads the theme through the seam (a fresh World per mount,

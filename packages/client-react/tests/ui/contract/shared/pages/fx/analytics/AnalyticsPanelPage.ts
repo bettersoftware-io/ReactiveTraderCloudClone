@@ -5,7 +5,9 @@ import { MountedComponent } from "../../../harness/component";
  * Page object for the AnalyticsPanel feature root. It is hook-driven (reads
  * `useAnalytics`), so it carries no props.
  */
-export class AnalyticsPanelPage extends MountedComponent<Record<string, never>> {
+export class AnalyticsPanelPage extends MountedComponent<
+  Record<string, never>
+> {
   /** True once the panel (rather than the loading placeholder) is showing. */
   isLoaded(): boolean {
     return within(this.root).queryByTestId("analytics-panel") !== null;

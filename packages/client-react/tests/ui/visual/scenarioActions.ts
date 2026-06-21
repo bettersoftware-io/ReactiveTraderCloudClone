@@ -65,8 +65,14 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   // proving the price-mode arm rendered.
   "live-rates/price-view": { waitForText: "Chart" },
   // Credit workspace sub-views: click the tab, wait for that view's heading.
-  "credit/workspace-new-rfq": { click: "credit-tab-new-rfq", waitForText: "Submit RFQ" },
-  "credit/workspace-sell-side": { click: "credit-tab-sell-side", waitForText: "Sell Side (Adaptive Bank)" },
+  "credit/workspace-new-rfq": {
+    click: "credit-tab-new-rfq",
+    waitForText: "Submit RFQ",
+  },
+  "credit/workspace-sell-side": {
+    click: "credit-tab-sell-side",
+    waitForText: "Sell Side (Adaptive Bank)",
+  },
   // Admin panel loaded state: the seam fake provides a loaded value (250).
   "admin/panel-loaded": { waitForText: "Throughput Control" },
 
@@ -96,9 +102,18 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   // Blotter: open each filter-type popover (no apply) to snapshot the controls.
   // Number/date popovers carry a unique "Reset" button; the set popover has
   // only "Apply" (no comparator <select>, so its options can't shadow it).
-  "fx-blotter/filter-date": { click: "blotter-filter-toggle-tradeDate", waitForText: "Reset" },
-  "fx-blotter/filter-number": { click: "blotter-filter-toggle-notional", waitForText: "Reset" },
-  "fx-blotter/filter-set": { click: "blotter-filter-toggle-status", waitForText: "Apply" },
+  "fx-blotter/filter-date": {
+    click: "blotter-filter-toggle-tradeDate",
+    waitForText: "Reset",
+  },
+  "fx-blotter/filter-number": {
+    click: "blotter-filter-toggle-notional",
+    waitForText: "Reset",
+  },
+  "fx-blotter/filter-set": {
+    click: "blotter-filter-toggle-status",
+    waitForText: "Apply",
+  },
 
   // Credit RFQ filter: click the "All" tab (shows Live + terminal RFQs). No
   // waitForText: the click is synchronous and "All" is a non-unique substring.

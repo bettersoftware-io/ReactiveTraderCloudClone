@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { TestScheduler } from "rxjs/testing";
-import { type Observable } from "rxjs";
 import type { AdminPort } from "@rtc/domain";
+import type { Observable } from "rxjs";
+import { TestScheduler } from "rxjs/testing";
+import { describe, expect, it } from "vitest";
 import {
-  ThroughputPresenter,
   DEBOUNCE_MS,
   MESSAGE_DISMISS_MS,
+  ThroughputPresenter,
   type ThroughputView,
 } from "../ThroughputPresenter";
 
@@ -116,7 +116,9 @@ describe("ThroughputPresenter", () => {
     const events: { time: number; message: ThroughputView["message"] }[] = [];
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const built = fakeAdmin(ts, { get: { marble: "(a|)", values: { a: 100 } } });
+      const built = fakeAdmin(ts, {
+        get: { marble: "(a|)", values: { a: 100 } },
+      });
       const presenter = new ThroughputPresenter(built.port);
       const sub = presenter.state$.subscribe((s) =>
         events.push({ time: ts.now(), message: s.message }),
@@ -180,7 +182,9 @@ describe("ThroughputPresenter", () => {
     const events: { time: number; message: ThroughputView["message"] }[] = [];
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const built = fakeAdmin(ts, { get: { marble: "(a|)", values: { a: 100 } } });
+      const built = fakeAdmin(ts, {
+        get: { marble: "(a|)", values: { a: 100 } },
+      });
       const presenter = new ThroughputPresenter(built.port);
       const sub = presenter.state$.subscribe((s) =>
         events.push({ time: ts.now(), message: s.message }),
@@ -221,6 +225,8 @@ describe("ThroughputPresenter", () => {
     // A's original dismiss (would have fired at t=1+DEBOUNCE_MS+MESSAGE_DISMISS_MS=3301)
     // must NOT appear as an event — switchMap cancelled it when setValue(999) debounced.
     const aDismissTime = 1 + DEBOUNCE_MS + MESSAGE_DISMISS_MS;
-    expect(events.some((e) => e.time === aDismissTime && e.message === null)).toBe(false);
+    expect(
+      events.some((e) => e.time === aDismissTime && e.message === null),
+    ).toBe(false);
   });
 });

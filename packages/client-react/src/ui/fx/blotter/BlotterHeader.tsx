@@ -1,12 +1,12 @@
-import { useCallback, useState } from "react";
 import type { Trade } from "@rtc/domain";
-import { COLUMNS, type ColumnDef } from "./blotterColumns";
-import type { SortState } from "./columnSort";
-import type { ColumnFilter } from "./columnFilter/filterState";
-import { SetFilter } from "./columnFilter/SetFilter";
-import { NumberFilter } from "./columnFilter/NumberFilter";
-import { DateFilter } from "./columnFilter/DateFilter";
+import { useCallback, useState } from "react";
 import styles from "./BlotterHeader.module.css";
+import { COLUMNS, type ColumnDef } from "./blotterColumns";
+import { DateFilter } from "./columnFilter/DateFilter";
+import type { ColumnFilter } from "./columnFilter/filterState";
+import { NumberFilter } from "./columnFilter/NumberFilter";
+import { SetFilter } from "./columnFilter/SetFilter";
+import type { SortState } from "./columnSort";
 
 interface BlotterHeaderProps {
   sort: SortState;
@@ -16,9 +16,19 @@ interface BlotterHeaderProps {
   trades: readonly Trade[];
 }
 
-function SortIndicator({ column, sort }: { column: keyof Trade; sort: SortState }) {
+function SortIndicator({
+  column,
+  sort,
+}: {
+  column: keyof Trade;
+  sort: SortState;
+}) {
   if (sort.column !== column || !sort.direction) return null;
-  return <span className={styles.sortIndicator}>{sort.direction === "asc" ? "▲" : "▼"}</span>;
+  return (
+    <span className={styles.sortIndicator}>
+      {sort.direction === "asc" ? "▲" : "▼"}
+    </span>
+  );
 }
 
 function FilterPanel({
@@ -45,13 +55,26 @@ function FilterPanel({
   return (
     <div className={styles.filterPanel}>
       {col.filterType === "set" && (
-        <SetFilter column={col.key} trades={trades} currentFilter={currentFilter} onApply={handleApply} />
+        <SetFilter
+          column={col.key}
+          trades={trades}
+          currentFilter={currentFilter}
+          onApply={handleApply}
+        />
       )}
       {col.filterType === "number" && (
-        <NumberFilter column={col.key} currentFilter={currentFilter} onApply={handleApply} />
+        <NumberFilter
+          column={col.key}
+          currentFilter={currentFilter}
+          onApply={handleApply}
+        />
       )}
       {col.filterType === "date" && (
-        <DateFilter column={col.key} currentFilter={currentFilter} onApply={handleApply} />
+        <DateFilter
+          column={col.key}
+          currentFilter={currentFilter}
+          onApply={handleApply}
+        />
       )}
     </div>
   );

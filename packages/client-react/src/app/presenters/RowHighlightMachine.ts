@@ -1,6 +1,6 @@
+import { type StateObservable, state } from "@rx-state/core";
 import { EMPTY, timer } from "rxjs";
-import { map, startWith, distinctUntilChanged } from "rxjs/operators";
-import { state, type StateObservable } from "@rx-state/core";
+import { distinctUntilChanged, map, startWith } from "rxjs/operators";
 import type { ReadOnlyMachine } from "./machine";
 
 /** How long a newly-arrived blotter row stays highlighted, relocated verbatim
@@ -25,7 +25,9 @@ export function createRowHighlightMachine(
   // For a new row: emit `false` once HIGHLIGHT_MS has elapsed. The synchronous
   // `true` seed is supplied by startWith below. For a non-new row: nothing ever
   // emits after the seed, so it stays `false` forever.
-  const stream$ = (isNew ? timer(HIGHLIGHT_MS).pipe(map(() => false)) : EMPTY).pipe(
+  const stream$ = (
+    isNew ? timer(HIGHLIGHT_MS).pipe(map(() => false)) : EMPTY
+  ).pipe(
     // Seed the synchronous initial value here (not as state()'s separate default)
     // so state() doesn't replay its default AND the stream's first value. Same
     // idiom and precondition as StaleFlagMachine: needed because the default can

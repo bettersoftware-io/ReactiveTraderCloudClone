@@ -1,8 +1,8 @@
+import { type Trade, TradeStatus } from "@rtc/domain";
 import { useState } from "react";
-import { TradeStatus, type Trade } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
-import { COLUMNS, formatCellValue } from "./blotterColumns";
 import styles from "./BlotterRow.module.css";
+import { COLUMNS, formatCellValue } from "./blotterColumns";
 
 interface BlotterRowProps {
   trade: Trade;
@@ -27,10 +27,7 @@ export function BlotterRow({ trade, isNew }: BlotterRowProps) {
       className={styles.row}
     >
       {COLUMNS.map((col) => (
-        <td
-          key={col.key}
-          className={styles.cell}
-        >
+        <td key={col.key} className={styles.cell}>
           {formatCellValue(trade, col)}
         </td>
       ))}

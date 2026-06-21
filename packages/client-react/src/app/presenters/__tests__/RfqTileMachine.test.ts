@@ -1,27 +1,37 @@
-import { describe, it, expect } from "vitest";
-import { TestScheduler } from "rxjs/testing";
-import { type Observable } from "rxjs";
 import {
-  KNOWN_CURRENCY_PAIRS,
-  RFQ_TIMEOUT_MS,
-  REJECTED_DISPLAY_MS,
   type CurrencyPair,
+  KNOWN_CURRENCY_PAIRS,
+  REJECTED_DISPLAY_MS,
+  RFQ_TIMEOUT_MS,
   type RfqQuoteResult,
 } from "@rtc/domain";
+import type { Observable } from "rxjs";
+import { TestScheduler } from "rxjs/testing";
+import { describe, expect, it } from "vitest";
 import { createRfqTileMachine, type RfqState } from "../RfqTileMachine";
 
-const pair: CurrencyPair = KNOWN_CURRENCY_PAIRS.find((p) => p.symbol === "EURUSD")!;
+const pair: CurrencyPair = KNOWN_CURRENCY_PAIRS.find(
+  (p) => p.symbol === "EURUSD",
+)!;
 
 const quoteResult: RfqQuoteResult = { bid: 1.0921, ask: 1.0925, mid: 1.0923 };
 
 const INIT: RfqState = { status: "init", quote: null, remainingMs: 0 };
-const REQUESTED: RfqState = { status: "requested", quote: null, remainingMs: 0 };
+const REQUESTED: RfqState = {
+  status: "requested",
+  quote: null,
+  remainingMs: 0,
+};
 const REJECTED: RfqState = { status: "rejected", quote: null, remainingMs: 0 };
 
 function received(remainingMs: number): RfqState {
   return {
     status: "received",
-    quote: { bid: quoteResult.bid, ask: quoteResult.ask, timeoutMs: RFQ_TIMEOUT_MS },
+    quote: {
+      bid: quoteResult.bid,
+      ask: quoteResult.ask,
+      timeoutMs: RFQ_TIMEOUT_MS,
+    },
     remainingMs,
   };
 }
@@ -45,7 +55,9 @@ function run(
   const states: RfqState[] = [];
   const ts = scheduler();
   ts.run(({ flush }) => {
-    const machine = createRfqTileMachine(pair, { requestQuote: buildRequestQuote(ts) });
+    const machine = createRfqTileMachine(pair, {
+      requestQuote: buildRequestQuote(ts),
+    });
     const sub = machine.state$.subscribe((s) => states.push(s));
     drive({ machine, ts });
     flush();
@@ -64,7 +76,9 @@ describe("createRfqTileMachine", () => {
   it("starts in the init state (synchronous default)", () => {
     const ts = scheduler();
     ts.run(() => {
-      const machine = createRfqTileMachine(pair, { requestQuote: () => never(ts) });
+      const machine = createRfqTileMachine(pair, {
+        requestQuote: () => never(ts),
+      });
       let current: RfqState | undefined;
       const sub = machine.state$.subscribe((s) => (current = s));
       expect(current).toEqual(INIT);
@@ -96,24 +110,38 @@ describe("createRfqTileMachine", () => {
         ts.schedule(() => machine.intents.requestQuote(), 1);
       },
     );
-    expect(calls).toEqual([{ symbol: pair.symbol, pipsPosition: pair.pipsPosition }]);
+    expect(calls).toEqual([
+      { symbol: pair.symbol, pipsPosition: pair.pipsPosition },
+    ]);
   });
 
   it("requested → received when the quote resolves", () => {
     const states = run(
-      (ts) => () => ts.createColdObservable<RfqQuoteResult>("10ms (a|)", { a: quoteResult }),
+      (ts) => () =>
+        ts.createColdObservable<RfqQuoteResult>("10ms (a|)", {
+          a: quoteResult,
+        }),
       ({ machine, ts }) => {
         ts.schedule(() => machine.intents.requestQuote(), 1);
         // Stop observing just after the quote arrives so we only see the first tick.
         ts.schedule(() => {}, 12);
       },
     );
-    expect(states.slice(0, 3)).toEqual([INIT, REQUESTED, received(RFQ_TIMEOUT_MS)]);
+    expect(states.slice(0, 3)).toEqual([
+      INIT,
+      REQUESTED,
+      received(RFQ_TIMEOUT_MS),
+    ]);
   });
 
   it("requested → rejected when the quote request errors, then holds then init", () => {
     const states = run(
-      (ts) => () => ts.createColdObservable<RfqQuoteResult>("10ms #", {}, new Error("no quote")),
+      (ts) => () =>
+        ts.createColdObservable<RfqQuoteResult>(
+          "10ms #",
+          {},
+          new Error("no quote"),
+        ),
       ({ machine, ts }) => {
         ts.schedule(() => machine.intents.requestQuote(), 1);
       },
@@ -123,7 +151,8 @@ describe("createRfqTileMachine", () => {
 
   it("decrements remainingMs every COUNTDOWN_INTERVAL_MS while received", () => {
     const states = run(
-      (ts) => () => ts.createColdObservable<RfqQuoteResult>("(a|)", { a: quoteResult }),
+      (ts) => () =>
+        ts.createColdObservable<RfqQuoteResult>("(a|)", { a: quoteResult }),
       ({ machine, ts }) => {
         ts.schedule(() => machine.intents.requestQuote(), 1);
       },
@@ -142,7 +171,8 @@ describe("createRfqTileMachine", () => {
 
   it("auto-rejects when the countdown reaches zero, then returns to init", () => {
     const states = run(
-      (ts) => () => ts.createColdObservable<RfqQuoteResult>("(a|)", { a: quoteResult }),
+      (ts) => () =>
+        ts.createColdObservable<RfqQuoteResult>("(a|)", { a: quoteResult }),
       ({ machine, ts }) => {
         ts.schedule(() => machine.intents.requestQuote(), 1);
       },
@@ -151,7 +181,9 @@ describe("createRfqTileMachine", () => {
     expect(states[states.length - 3]).toEqual(received(100));
     expect(states[states.length - 2]).toEqual(REJECTED);
     expect(states[states.length - 1]).toEqual(INIT);
-    expect(states.some((s) => s.status === "received" && s.remainingMs <= 0)).toBe(false);
+    expect(
+      states.some((s) => s.status === "received" && s.remainingMs <= 0),
+    ).toBe(false);
   });
 
   it("rejected holds for REJECTED_DISPLAY_MS before returning to init", () => {
@@ -174,7 +206,9 @@ describe("createRfqTileMachine", () => {
       machine.dispose();
     });
     expect(seen.map((e) => e.state)).toEqual([INIT, REQUESTED, REJECTED, INIT]);
-    const rejectedFrame = seen.find((e) => e.state.status === "rejected")!.frame;
+    const rejectedFrame = seen.find(
+      (e) => e.state.status === "rejected",
+    )!.frame;
     const initAfterHold = seen[seen.length - 1];
     expect(initAfterHold.state).toEqual(INIT);
     expect(initAfterHold.frame - rejectedFrame).toBe(REJECTED_DISPLAY_MS);
@@ -197,7 +231,8 @@ describe("createRfqTileMachine", () => {
 
   it("reject() moves to rejected only from the received state", () => {
     const states = run(
-      (ts) => () => ts.createColdObservable<RfqQuoteResult>("5ms (a|)", { a: quoteResult }),
+      (ts) => () =>
+        ts.createColdObservable<RfqQuoteResult>("5ms (a|)", { a: quoteResult }),
       ({ machine, ts }) => {
         // reject from init: no-op.
         ts.schedule(() => machine.intents.reject(), 1);
@@ -206,12 +241,19 @@ describe("createRfqTileMachine", () => {
         ts.schedule(() => machine.intents.reject(), 10);
       },
     );
-    expect(states).toEqual([INIT, REQUESTED, received(RFQ_TIMEOUT_MS), REJECTED, INIT]);
+    expect(states).toEqual([
+      INIT,
+      REQUESTED,
+      received(RFQ_TIMEOUT_MS),
+      REJECTED,
+      INIT,
+    ]);
   });
 
   it("accept() returns to init only from the received state (no synchronous return)", () => {
     const states = run(
-      (ts) => () => ts.createColdObservable<RfqQuoteResult>("5ms (a|)", { a: quoteResult }),
+      (ts) => () =>
+        ts.createColdObservable<RfqQuoteResult>("5ms (a|)", { a: quoteResult }),
       ({ machine, ts }) => {
         // accept from init: no-op.
         ts.schedule(() => machine.intents.accept(), 1);
@@ -226,7 +268,10 @@ describe("createRfqTileMachine", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
       const machine = createRfqTileMachine(pair, {
-        requestQuote: () => ts.createColdObservable<RfqQuoteResult>("5ms (a|)", { a: quoteResult }),
+        requestQuote: () =>
+          ts.createColdObservable<RfqQuoteResult>("5ms (a|)", {
+            a: quoteResult,
+          }),
       });
       const sub = machine.state$.subscribe();
       let returned: unknown = "sentinel";
@@ -244,7 +289,9 @@ describe("createRfqTileMachine", () => {
   it("dispose() tears the machine down: intents become no-ops afterwards", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const machine = createRfqTileMachine(pair, { requestQuote: () => never(ts) });
+      const machine = createRfqTileMachine(pair, {
+        requestQuote: () => never(ts),
+      });
       const seen: RfqState[] = [];
       const sub = machine.state$.subscribe((s) => seen.push(s));
       machine.dispose();

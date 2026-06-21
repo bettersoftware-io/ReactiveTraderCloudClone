@@ -6,7 +6,9 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
   constructor(private readonly page: Page) {}
 
   private allTiles() {
-    return this.page.locator(`[data-testid^='${TESTIDS.liveRates.tilePrefix}']`);
+    return this.page.locator(
+      `[data-testid^='${TESTIDS.liveRates.tilePrefix}']`,
+    );
   }
   private firstTile() {
     return this.allTiles().first();
@@ -28,17 +30,27 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
     await this.page.getByTestId(TESTIDS.liveRates.viewToggle).click();
   }
   async viewToggleLabel(): Promise<string> {
-    return (await this.page.getByTestId(TESTIDS.liveRates.viewToggle).textContent()) ?? "";
+    return (
+      (await this.page
+        .getByTestId(TESTIDS.liveRates.viewToggle)
+        .textContent()) ?? ""
+    );
   }
 
   async firstTileBuyVisible(): Promise<boolean> {
-    return await this.firstTile().getByTestId(TESTIDS.liveRates.buyBtn).isVisible();
+    return await this.firstTile()
+      .getByTestId(TESTIDS.liveRates.buyBtn)
+      .isVisible();
   }
   async firstTileSellVisible(): Promise<boolean> {
-    return await this.firstTile().getByTestId(TESTIDS.liveRates.sellBtn).isVisible();
+    return await this.firstTile()
+      .getByTestId(TESTIDS.liveRates.sellBtn)
+      .isVisible();
   }
   async viewToggleVisible(): Promise<boolean> {
-    return await this.page.getByTestId(TESTIDS.liveRates.viewToggle).isVisible();
+    return await this.page
+      .getByTestId(TESTIDS.liveRates.viewToggle)
+      .isVisible();
   }
 
   async clickBuyOnFirst(): Promise<void> {
@@ -48,21 +60,30 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
     await this.firstTile().getByTestId(TESTIDS.liveRates.sellBtn).click();
   }
   async clickBuyOnPair(symbol: string): Promise<void> {
-    await this.page.getByTestId(TESTIDS.liveRates.tile(symbol))
-      .getByTestId(TESTIDS.liveRates.buyBtn).click();
+    await this.page
+      .getByTestId(TESTIDS.liveRates.tile(symbol))
+      .getByTestId(TESTIDS.liveRates.buyBtn)
+      .click();
   }
   async waitForConfirmation(timeoutMs: number): Promise<void> {
     await expect(
       this.firstTile().getByTestId(TESTIDS.liveRates.tradeConfirmation),
     ).toBeVisible({ timeout: timeoutMs });
   }
-  async confirmationContainsAny(patterns: readonly RegExp[], timeoutMs: number): Promise<void> {
-    const confirmation = this.firstTile().getByTestId(TESTIDS.liveRates.tradeConfirmation);
+  async confirmationContainsAny(
+    patterns: readonly RegExp[],
+    timeoutMs: number,
+  ): Promise<void> {
+    const confirmation = this.firstTile().getByTestId(
+      TESTIDS.liveRates.tradeConfirmation,
+    );
     const combined = new RegExp(patterns.map((p) => p.source).join("|"), "i");
     await expect(confirmation).toContainText(combined, { timeout: timeoutMs });
   }
   async dismissConfirmation(): Promise<void> {
-    await this.firstTile().getByTestId(TESTIDS.liveRates.tradeConfirmation).click();
+    await this.firstTile()
+      .getByTestId(TESTIDS.liveRates.tradeConfirmation)
+      .click();
   }
   async confirmationHidden(timeoutMs: number): Promise<void> {
     await expect(
@@ -70,7 +91,9 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
     ).toBeHidden({ timeout: timeoutMs });
   }
   async isConfirmationVisible(): Promise<boolean> {
-    return await this.firstTile().getByTestId(TESTIDS.liveRates.tradeConfirmation).isVisible();
+    return await this.firstTile()
+      .getByTestId(TESTIDS.liveRates.tradeConfirmation)
+      .isVisible();
   }
   async fillFirstTileNotional(value: string): Promise<void> {
     const input = this.firstTile().locator("input");

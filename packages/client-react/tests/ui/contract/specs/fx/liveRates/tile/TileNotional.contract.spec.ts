@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { mount } from "@ui-contract/mount";
 import { TileNotional } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
 import type { NotionalLike } from "@ui-contract/pages/fx/liveRates/tile/TileNotionalPage";
+import { describe, expect, it } from "vitest";
 
 const notional = (
   stateOver: Partial<NotionalLike["state"]> = {},
@@ -70,7 +70,11 @@ describe("TileNotional", () => {
   it("renders the error message and red underline when in error", () => {
     const n = mount(TileNotional, {
       props: {
-        notional: notional({ error: "Invalid input", displayValue: "abc", isDefault: false }),
+        notional: notional({
+          error: "Invalid input",
+          displayValue: "abc",
+          isDefault: false,
+        }),
         baseCurrency: "EUR",
       },
     });
@@ -111,7 +115,9 @@ describe("TileNotional", () => {
     const n = mount(TileNotional, {
       props: { notional: notional(), baseCurrency: "EUR" },
     });
-    n.setProps({ notional: notional({ displayValue: "5,000,000", isDefault: false }) });
+    n.setProps({
+      notional: notional({ displayValue: "5,000,000", isDefault: false }),
+    });
     expect(n.value()).toBe("5,000,000");
     expect(n.hasResetButton()).toBe(true);
   });

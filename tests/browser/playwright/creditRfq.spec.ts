@@ -1,7 +1,7 @@
-import { test } from "./_context";
-import { withCreditWorkspaceOpen } from "./_openWorkspace";
 import * as creditRfq from "../scenarios/creditRfq";
 import * as theme from "../scenarios/theme";
+import { test } from "./_context";
+import { withCreditWorkspaceOpen } from "./_openWorkspace";
 
 test.describe("Credit RFQ", () => {
   withCreditWorkspaceOpen();
@@ -48,7 +48,9 @@ test.describe("Credit RFQ", () => {
     await creditRfq.expectSellSideHeadingWithin(ctx, 3);
   });
 
-  test("credit RFQ list is empty when no RFQs have been created", async ({ ctx }) => {
+  test("credit RFQ list is empty when no RFQs have been created", async ({
+    ctx,
+  }) => {
     await creditRfq.expectMessageWithin(ctx, "No RFQs to display", 3);
   });
 });

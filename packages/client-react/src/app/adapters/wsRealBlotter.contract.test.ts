@@ -1,10 +1,7 @@
 import { describeBlotterPortContract } from "@rtc/domain/ports/__contracts__/BlotterPortContract";
-import {
-  blotterFrame,
-  tradeFrame,
-} from "@rtc/shared/__fixtures__/wireFrames";
-import { createWsRealPorts } from "./portFactory";
+import { blotterFrame, tradeFrame } from "@rtc/shared/__fixtures__/wireFrames";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { createWsRealPorts } from "./portFactory";
 
 describeBlotterPortContract("wsRealBlotter", () => {
   const ws = new FakeWsAdapter();

@@ -1,5 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { parseNotional, isRfqRequired, validateNotional, MAX_NOTIONAL, RFQ_THRESHOLD } from "./notional.js";
+import { describe, expect, it } from "vitest";
+import {
+  isRfqRequired,
+  MAX_NOTIONAL,
+  parseNotional,
+  RFQ_THRESHOLD,
+  validateNotional,
+} from "./notional.js";
 
 describe("parseNotional", () => {
   it("parses plain numbers", () => {
@@ -27,7 +33,10 @@ describe("parseNotional", () => {
   });
 
   it("returns Invalid input for non-numeric", () => {
-    expect(parseNotional("abc")).toEqual({ value: null, error: "Invalid input" });
+    expect(parseNotional("abc")).toEqual({
+      value: null,
+      error: "Invalid input",
+    });
   });
 });
 

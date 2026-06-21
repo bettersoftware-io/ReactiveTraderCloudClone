@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { toArray } from "rxjs/operators";
+import { describe, expect, it, vi } from "vitest";
 import { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";
 
 describe("ReferenceDataSimulator", () => {
@@ -8,7 +8,9 @@ describe("ReferenceDataSimulator", () => {
     vi.useFakeTimers();
     try {
       const service = new ReferenceDataSimulator();
-      const promise = firstValueFrom(service.getCurrencyPairs().pipe(toArray()));
+      const promise = firstValueFrom(
+        service.getCurrencyPairs().pipe(toArray()),
+      );
       await vi.advanceTimersByTimeAsync(1_000);
       const emissions = await promise;
 

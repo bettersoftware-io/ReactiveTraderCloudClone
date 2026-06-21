@@ -1,5 +1,11 @@
+import {
+  type Dealer,
+  type Instrument,
+  type Quote,
+  type Rfq,
+  RfqState,
+} from "@rtc/domain";
 import { useCallback, useMemo } from "react";
-import { type Rfq, type Quote, type Instrument, type Dealer, RfqState } from "@rtc/domain";
 import { QuoteCard } from "./QuoteCard";
 import styles from "./RfqCard.module.css";
 
@@ -14,14 +20,25 @@ interface RfqCardProps {
 
 function stateLabel(state: RfqState): string {
   switch (state) {
-    case RfqState.Open: return "Live";
-    case RfqState.Closed: return "Done";
-    case RfqState.Expired: return "Expired";
-    case RfqState.Cancelled: return "Cancelled";
+    case RfqState.Open:
+      return "Live";
+    case RfqState.Closed:
+      return "Done";
+    case RfqState.Expired:
+      return "Expired";
+    case RfqState.Cancelled:
+      return "Cancelled";
   }
 }
 
-export function RfqCard({ rfq, quotes, instrument, dealers, onAccept, onDismiss }: RfqCardProps) {
+export function RfqCard({
+  rfq,
+  quotes,
+  instrument,
+  dealers,
+  onAccept,
+  onDismiss,
+}: RfqCardProps) {
   const dealerMap = useMemo(() => {
     const m = new Map<number, Dealer>();
     for (const d of dealers) m.set(d.id, d);
@@ -46,17 +63,11 @@ export function RfqCard({ rfq, quotes, instrument, dealers, onAccept, onDismiss 
           </div>
         </div>
         <div className={styles.headerRight}>
-          <span
-            className={styles.badge}
-            data-state={rfq.state}
-          >
+          <span className={styles.badge} data-state={rfq.state}>
             {stateLabel(rfq.state)}
           </span>
           {canDismiss && onDismiss && (
-            <button
-              onClick={handleDismiss}
-              className={styles.dismissBtn}
-            >
+            <button onClick={handleDismiss} className={styles.dismissBtn}>
               {"✕"}
             </button>
           )}

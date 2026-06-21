@@ -6,11 +6,16 @@
  * Vite dev server with VITE_SERVER_URL pointed at the server so the client's
  * composition root wires its WsReal adapters instead of the simulators.
  */
-import { spawn, type ChildProcess } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-export const MONOREPO_ROOT = join(fileURLToPath(import.meta.url), "..", "..", "..");
+export const MONOREPO_ROOT = join(
+  fileURLToPath(import.meta.url),
+  "..",
+  "..",
+  "..",
+);
 
 export const sleep = (ms: number): Promise<void> =>
   new Promise((r) => setTimeout(r, ms));
@@ -26,7 +31,12 @@ export function startServer(port: number, host = "127.0.0.1"): ChildProcess {
       // Detached so stopProcess can kill the whole group (the real server runs as
       // a grandchild of this `pnpm` wrapper, which doesn't forward signals).
       detached: true,
-      env: { ...process.env, PORT: String(port), HOSTNAME: host, NODE_OPTIONS: "" },
+      env: {
+        ...process.env,
+        PORT: String(port),
+        HOSTNAME: host,
+        NODE_OPTIONS: "",
+      },
     },
   );
 }
@@ -39,28 +49,27 @@ export function startClient(
   clientPort: number,
   serverUrl: string,
 ): ChildProcess {
-  return spawn(
-    "pnpm",
-    ["--filter", "@rtc/client-react", "dev"],
-    {
-      cwd: MONOREPO_ROOT,
-      stdio: "ignore",
-      // Detached so stopProcess can kill the whole group (Vite is a grandchild of
-      // this `pnpm` wrapper, which doesn't forward signals).
-      detached: true,
-      env: {
-        ...process.env,
-        PORT: String(clientPort),
-        VITE_SERVER_URL: serverUrl,
-        // Don't leak the parent tsx loader into the Vite child.
-        NODE_OPTIONS: "",
-      },
+  return spawn("pnpm", ["--filter", "@rtc/client-react", "dev"], {
+    cwd: MONOREPO_ROOT,
+    stdio: "ignore",
+    // Detached so stopProcess can kill the whole group (Vite is a grandchild of
+    // this `pnpm` wrapper, which doesn't forward signals).
+    detached: true,
+    env: {
+      ...process.env,
+      PORT: String(clientPort),
+      VITE_SERVER_URL: serverUrl,
+      // Don't leak the parent tsx loader into the Vite child.
+      NODE_OPTIONS: "",
     },
-  );
+  });
 }
 
 /** Poll an HTTP URL until it responds < 500, or throw after timeout. */
-export async function waitForHttp(url: string, timeoutMs: number): Promise<void> {
+export async function waitForHttp(
+  url: string,
+  timeoutMs: number,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
@@ -78,7 +87,8 @@ export async function waitForHttp(url: string, timeoutMs: number): Promise<void>
 export function stopProcess(child: ChildProcess | undefined): Promise<void> {
   return new Promise((resolve) => {
     const pid = child?.pid;
-    if (!child || child.exitCode !== null || pid === undefined) return resolve();
+    if (!child || child.exitCode !== null || pid === undefined)
+      return resolve();
     // Kill the process group (negative pid) so the real server/Vite grandchild
     // dies with its `pnpm` wrapper instead of orphaning on its port.
     const killGroup = (signal: NodeJS.Signals) => {

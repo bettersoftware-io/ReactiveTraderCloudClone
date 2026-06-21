@@ -1,4 +1,4 @@
-import { ExecutionStatus, Direction, type Trade } from "@rtc/domain";
+import { Direction, ExecutionStatus, type Trade } from "@rtc/domain";
 import type { TileExecutionState } from "../../../../app/presenters/TileExecutionMachine";
 import styles from "./TileConfirmation.module.css";
 

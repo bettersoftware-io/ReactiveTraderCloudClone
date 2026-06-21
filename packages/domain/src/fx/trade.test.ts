@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { deriveDealtCurrency, Direction } from "./trade.js";
+import { describe, expect, it } from "vitest";
+import { Direction, deriveDealtCurrency } from "./trade.js";
 
 describe("deriveDealtCurrency", () => {
   it("Buy EURUSD => dealt EUR (base)", () => {

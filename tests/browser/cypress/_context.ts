@@ -1,9 +1,9 @@
 // tests/browser/cypress/_context.ts
 // Body shape: sync, fire-and-forget; scenarios forked under tests/browser/cypress/scenarios/ — see Phase 5A.4 spec §3.3.
 import "cypress-mochawesome-reporter/register";
+import { buildCypressPageObjects } from "../page-objects/cypress/factory";
 import type { TestContext } from "../testContext";
 import { Scratchpad } from "../testContext";
-import { buildCypressPageObjects } from "../page-objects/cypress/factory";
 
 let currentCtx: TestContext | null = null;
 

@@ -1,27 +1,29 @@
-import { describe, it, expect } from "vitest";
-import { TestScheduler } from "rxjs/testing";
-import { type Observable } from "rxjs";
 import {
-  Direction,
-  ExecutionStatus,
-  TradeStatus,
-  TOO_LONG_THRESHOLD_MS,
-  EXECUTION_TIMEOUT_MS,
   CONFIRMATION_DISMISS_MS,
-  KNOWN_CURRENCY_PAIRS,
-  PriceMovementType,
   type CurrencyPair,
-  type Price,
-  type Trade,
+  Direction,
+  EXECUTION_TIMEOUT_MS,
   type ExecuteTradeInput,
   type ExecuteTradeResult,
+  ExecutionStatus,
+  KNOWN_CURRENCY_PAIRS,
+  type Price,
+  PriceMovementType,
+  TOO_LONG_THRESHOLD_MS,
+  type Trade,
+  TradeStatus,
 } from "@rtc/domain";
+import type { Observable } from "rxjs";
+import { TestScheduler } from "rxjs/testing";
+import { describe, expect, it } from "vitest";
 import {
   createTileExecutionMachine,
   type TileExecutionState,
 } from "../TileExecutionMachine";
 
-const pair: CurrencyPair = KNOWN_CURRENCY_PAIRS.find((p) => p.symbol === "EURUSD")!;
+const pair: CurrencyPair = KNOWN_CURRENCY_PAIRS.find(
+  (p) => p.symbol === "EURUSD",
+)!;
 
 const price: Price = {
   symbol: "EURUSD",
@@ -62,7 +64,9 @@ function scheduler() {
 
 /** Collect every emission of a machine's state$ as it runs, marble-driven. */
 function run(
-  buildExecute: (ts: TestScheduler) => (input: ExecuteTradeInput) => Observable<ExecuteTradeResult>,
+  buildExecute: (
+    ts: TestScheduler,
+  ) => (input: ExecuteTradeInput) => Observable<ExecuteTradeResult>,
   drive: (ctx: {
     machine: ReturnType<typeof createTileExecutionMachine>;
     ts: TestScheduler;
@@ -71,7 +75,9 @@ function run(
   const states: TileExecutionState[] = [];
   const ts = scheduler();
   ts.run(({ flush }) => {
-    const machine = createTileExecutionMachine(pair, { execute: buildExecute(ts) });
+    const machine = createTileExecutionMachine(pair, {
+      execute: buildExecute(ts),
+    });
     const sub = machine.state$.subscribe((s) => states.push(s));
     drive({ machine, ts });
     flush();
@@ -85,7 +91,9 @@ describe("createTileExecutionMachine", () => {
   it("starts in the ready state (synchronous default)", () => {
     const ts = scheduler();
     ts.run(() => {
-      const machine = createTileExecutionMachine(pair, { execute: () => never(ts) });
+      const machine = createTileExecutionMachine(pair, {
+        execute: () => never(ts),
+      });
       let current: TileExecutionState | undefined;
       const sub = machine.state$.subscribe((s) => (current = s));
       expect(current).toEqual(READY);
@@ -96,9 +104,15 @@ describe("createTileExecutionMachine", () => {
 
   it("execute() → started, then finished with the result status and trade", () => {
     const states = run(
-      (ts) => () => ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", { a: doneResult }),
+      (ts) => () =>
+        ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", {
+          a: doneResult,
+        }),
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.execute(Direction.Buy, price, 1_000_000), 1);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Buy, price, 1_000_000),
+          1,
+        );
       },
     );
     expect(states).toEqual([
@@ -115,9 +129,15 @@ describe("createTileExecutionMachine", () => {
       trade: { ...trade, status: TradeStatus.Rejected },
     };
     const states = run(
-      (ts) => () => ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", { a: rejected }),
+      (ts) => () =>
+        ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", {
+          a: rejected,
+        }),
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.execute(Direction.Sell, price, 500_000), 1);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Sell, price, 500_000),
+          1,
+        );
       },
     );
     expect(states.map((s) => s.status)).toEqual([
@@ -126,14 +146,24 @@ describe("createTileExecutionMachine", () => {
       "finished",
       "ready",
     ]);
-    expect(states[2]).toMatchObject({ executionStatus: ExecutionStatus.Rejected });
+    expect(states[2]).toMatchObject({
+      executionStatus: ExecutionStatus.Rejected,
+    });
   });
 
   it("execute() that errors → finished{Timeout} (not the timeout state)", () => {
     const states = run(
-      (ts) => () => ts.createColdObservable<ExecuteTradeResult>("10ms #", {}, new Error("boom")),
+      (ts) => () =>
+        ts.createColdObservable<ExecuteTradeResult>(
+          "10ms #",
+          {},
+          new Error("boom"),
+        ),
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.execute(Direction.Buy, price, 1_000_000), 1);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Buy, price, 1_000_000),
+          1,
+        );
       },
     );
     expect(states).toEqual([
@@ -148,7 +178,10 @@ describe("createTileExecutionMachine", () => {
     const states = run(
       (ts) => () => never(ts),
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.execute(Direction.Buy, price, 1_000_000), 1);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Buy, price, 1_000_000),
+          1,
+        );
         // stop observing before the 30s timeout so we only see started→tooLong
         ts.schedule(() => {}, TOO_LONG_THRESHOLD_MS + 5);
       },
@@ -162,7 +195,10 @@ describe("createTileExecutionMachine", () => {
     const states = run(
       (ts) => () => never(ts),
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.execute(Direction.Buy, price, 1_000_000), 1);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Buy, price, 1_000_000),
+          1,
+        );
       },
     );
     expect(states).toEqual([READY, STARTED, TOO_LONG, TIMEOUT, READY]);
@@ -177,7 +213,10 @@ describe("createTileExecutionMachine", () => {
           { a: doneResult },
         ),
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.execute(Direction.Buy, price, 1_000_000), 1);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Buy, price, 1_000_000),
+          1,
+        );
       },
     );
     // never reaches "finished"; stays timeout then dismisses to ready.
@@ -187,9 +226,15 @@ describe("createTileExecutionMachine", () => {
   it("does not flip to tooLong once a terminal state has been reached", () => {
     // Result resolves at 5ms, well before the 2000ms tooLong threshold.
     const states = run(
-      (ts) => () => ts.createColdObservable<ExecuteTradeResult>("5ms (a|)", { a: doneResult }),
+      (ts) => () =>
+        ts.createColdObservable<ExecuteTradeResult>("5ms (a|)", {
+          a: doneResult,
+        }),
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.execute(Direction.Buy, price, 1_000_000), 1);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Buy, price, 1_000_000),
+          1,
+        );
       },
     );
     expect(states.some((s) => s.status === "tooLong")).toBe(false);
@@ -205,7 +250,10 @@ describe("createTileExecutionMachine", () => {
     const states = run(
       (ts) => () => never(ts),
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.execute(Direction.Buy, price, 1_000_000), 1);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Buy, price, 1_000_000),
+          1,
+        );
         ts.schedule(() => machine.intents.dismiss(), 100);
       },
     );
@@ -214,11 +262,20 @@ describe("createTileExecutionMachine", () => {
 
   it("supports a fresh run after a dismiss (takeUntil only tears down the active run)", () => {
     const states = run(
-      (ts) => () => ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", { a: doneResult }),
+      (ts) => () =>
+        ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", {
+          a: doneResult,
+        }),
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.execute(Direction.Buy, price, 1_000_000), 1);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Buy, price, 1_000_000),
+          1,
+        );
         ts.schedule(() => machine.intents.dismiss(), 5);
-        ts.schedule(() => machine.intents.execute(Direction.Sell, price, 500_000), 7);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Sell, price, 500_000),
+          7,
+        );
       },
     );
     // 1st: ready→started→ready(dismiss). 2nd: started→finished→ready.
@@ -234,9 +291,15 @@ describe("createTileExecutionMachine", () => {
 
   it("finishing cancels the tooLong/timeout escalation", () => {
     const states = run(
-      (ts) => () => ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", { a: doneResult }),
+      (ts) => () =>
+        ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", {
+          a: doneResult,
+        }),
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.execute(Direction.Buy, price, 1_000_000), 1);
+        ts.schedule(
+          () => machine.intents.execute(Direction.Buy, price, 1_000_000),
+          1,
+        );
       },
     );
     expect(states.some((s) => s.status === "tooLong")).toBe(false);
@@ -252,7 +315,9 @@ describe("createTileExecutionMachine", () => {
     // nothing further on state$.
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const machine = createTileExecutionMachine(pair, { execute: () => never(ts) });
+      const machine = createTileExecutionMachine(pair, {
+        execute: () => never(ts),
+      });
       const seen: TileExecutionState[] = [];
       const sub = machine.state$.subscribe((s) => seen.push(s));
       machine.dispose();

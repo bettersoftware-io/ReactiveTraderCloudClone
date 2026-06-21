@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { spawnSync } from "node:child_process";
-import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 interface Gate {
@@ -17,8 +17,13 @@ interface Gate {
 }
 
 const FEATURE_NAMES = [
-  "connection", "fxLiveRates", "fxTrading", "analytics",
-  "blotter", "fxRfq", "creditRfq",
+  "connection",
+  "fxLiveRates",
+  "fxTrading",
+  "analytics",
+  "blotter",
+  "fxRfq",
+  "creditRfq",
 ];
 
 function checkPresenterScenarioCounts(): string[] {
@@ -30,7 +35,9 @@ function checkPresenterScenarioCounts(): string[] {
       continue;
     }
     const featureSrc = readFileSync(featurePath, "utf8");
-    const presenterScenarios = (featureSrc.match(/@presenter\s*\n\s*Scenario:/g) ?? []).length;
+    const presenterScenarios = (
+      featureSrc.match(/@presenter\s*\n\s*Scenario:/g) ?? []
+    ).length;
 
     const testPath = `presenter/vitest-fake-timers/${feat}.test.ts`;
     if (presenterScenarios === 0 && !existsSync(testPath)) continue;
@@ -39,7 +46,9 @@ function checkPresenterScenarioCounts(): string[] {
       continue;
     }
     if (!existsSync(testPath)) {
-      failures.push(`${feat}: ${presenterScenarios} @presenter scenarios but ${testPath} missing`);
+      failures.push(
+        `${feat}: ${presenterScenarios} @presenter scenarios but ${testPath} missing`,
+      );
       continue;
     }
     const testSrc = readFileSync(testPath, "utf8");
@@ -48,7 +57,7 @@ function checkPresenterScenarioCounts(): string[] {
     if (itBlocks !== presenterScenarios) {
       failures.push(
         `${feat}: ${presenterScenarios} @presenter scenarios in ${featurePath} ` +
-        `but ${itBlocks} it() blocks in ${testPath}`,
+          `but ${itBlocks} it() blocks in ${testPath}`,
       );
     }
   }
@@ -61,7 +70,9 @@ function checkPresenterDescribePrefix(): string[] {
     const testPath = `presenter/vitest-fake-timers/${feat}.test.ts`;
     if (!existsSync(testPath)) continue;
     const testSrc = readFileSync(testPath, "utf8");
-    const titles = [...testSrc.matchAll(/^\s*describe\(\s*"([^"]+)"/gm)].map((m) => m[1]!);
+    const titles = [...testSrc.matchAll(/^\s*describe\(\s*"([^"]+)"/gm)].map(
+      (m) => m[1]!,
+    );
     for (const title of titles) {
       if (!title.startsWith("@presenter Feature: ")) {
         failures.push(
@@ -78,7 +89,9 @@ function checkQuickpickleBarrelCompleteness(): string[] {
   const stepsDir = "presenter/vitest-quickpickle-fake-timers/steps";
   const setupPath = "presenter/vitest-quickpickle-fake-timers/setup.ts";
   if (!existsSync(stepsDir) || !existsSync(setupPath)) return failures;
-  const stepFiles = readdirSync(stepsDir).filter((f) => f.endsWith(".steps.ts"));
+  const stepFiles = readdirSync(stepsDir).filter((f) =>
+    f.endsWith(".steps.ts"),
+  );
   const setupSrc = readFileSync(setupPath, "utf8");
   for (const f of stepFiles) {
     const stem = f.replace(/\.ts$/, "");
@@ -157,18 +170,18 @@ const GATES: Gate[] = [
   },
   {
     name: "2. No driver imports in contracts",
-    pattern: '@playwright/test|cypress|@badeball',
+    pattern: "@playwright/test|cypress|@badeball",
     paths: ["browser/page-objects/contracts/"],
     excludes: ["/node_modules/"],
   },
   {
     name: "3. No driver names in features",
-    pattern: 'data-testid|playwright|cy\\.',
+    pattern: "data-testid|playwright|cy\\.",
     paths: ["specs/"],
     excludes: ["/node_modules/"],
   },
   {
-    name: "4. No raw getByTestId(\"...\") in PO impls",
+    name: '4. No raw getByTestId("...") in PO impls',
     pattern: 'getByTestId\\("',
     paths: ["browser/page-objects/"],
     excludes: ["/node_modules/"],
@@ -176,13 +189,21 @@ const GATES: Gate[] = [
   {
     name: "5. No driver imports in scenarios layer",
     pattern: '@playwright/test|"cypress"|@badeball',
-    paths: ["browser/scenarios/", "browser/cypress/scenarios/", "presenter/scenarios/"],
+    paths: [
+      "browser/scenarios/",
+      "browser/cypress/scenarios/",
+      "presenter/scenarios/",
+    ],
     excludes: ["/node_modules/"],
   },
   {
     name: "6. No @playwright/test expect in step files",
     pattern: 'from "@playwright/test"',
-    paths: ["browser/steps/", "presenter/steps/", "presenter/vitest-quickpickle-fake-timers/steps/"],
+    paths: [
+      "browser/steps/",
+      "presenter/steps/",
+      "presenter/vitest-quickpickle-fake-timers/steps/",
+    ],
     excludes: ["/node_modules/"],
   },
   {
@@ -193,8 +214,12 @@ const GATES: Gate[] = [
   },
   {
     name: "8. No this.page.* in step files",
-    pattern: 'this\\.page\\.',
-    paths: ["browser/steps/", "presenter/steps/", "presenter/vitest-quickpickle-fake-timers/steps/"],
+    pattern: "this\\.page\\.",
+    paths: [
+      "browser/steps/",
+      "presenter/steps/",
+      "presenter/vitest-quickpickle-fake-timers/steps/",
+    ],
     excludes: ["/node_modules/"],
   },
   {
@@ -209,13 +234,13 @@ const GATES: Gate[] = [
   },
   {
     name: "10. No direct ctx.po.* access in native Playwright test bodies",
-    pattern: 'ctx\\.po\\.',
+    pattern: "ctx\\.po\\.",
     paths: ["browser/playwright/"],
     excludes: ["/node_modules/", "browser/playwright/_context.ts"],
   },
   {
     name: "11. No direct page.* calls in native Playwright test bodies",
-    pattern: '\\bpage\\.',
+    pattern: "\\bpage\\.",
     paths: ["browser/playwright/"],
     excludes: ["/node_modules/", "browser/playwright/_context.ts"],
   },
@@ -232,7 +257,7 @@ const GATES: Gate[] = [
   },
   {
     name: "13. No direct ctx.po.* access in native Cypress test bodies",
-    pattern: 'ctx\\.po\\.',
+    pattern: "ctx\\.po\\.",
     paths: ["browser/cypress/"],
     excludes: [
       "/node_modules/",
@@ -242,7 +267,7 @@ const GATES: Gate[] = [
   },
   {
     name: "14. No direct cy.* calls in native Cypress test bodies",
-    pattern: '\\bcy\\.',
+    pattern: "\\bcy\\.",
     paths: ["browser/cypress/"],
     excludes: [
       "/node_modules/",
@@ -253,24 +278,40 @@ const GATES: Gate[] = [
   {
     name: "15. No driver imports in presenter step/scenario/support files",
     pattern: '"cypress"|@badeball|@playwright/test|"quickpickle"',
-    paths: ["presenter/steps/", "presenter/scenarios/", "presenter/cucumber/", "presenter/cucumber-fake-timers/"],
+    paths: [
+      "presenter/steps/",
+      "presenter/scenarios/",
+      "presenter/cucumber/",
+      "presenter/cucumber-fake-timers/",
+    ],
     excludes: ["/node_modules/"],
   },
   {
     name: "16. No DOM/page references in presenter step/scenario files",
-    pattern: 'getByTestId|page\\.|cy\\.',
-    paths: ["presenter/steps/", "presenter/vitest-quickpickle-fake-timers/steps/", "presenter/scenarios/"],
+    pattern: "getByTestId|page\\.|cy\\.",
+    paths: [
+      "presenter/steps/",
+      "presenter/vitest-quickpickle-fake-timers/steps/",
+      "presenter/scenarios/",
+    ],
     excludes: ["/node_modules/"],
   },
   {
     name: "17. No createApp/createSimulatorPorts outside _buildApp.ts",
-    pattern: 'createApp|createSimulatorPorts',
-    paths: ["presenter/steps/", "presenter/scenarios/", "presenter/cucumber/", "presenter/cucumber-fake-timers/", "presenter/vitest-fake-timers/", "presenter/vitest-quickpickle-fake-timers/"],
+    pattern: "createApp|createSimulatorPorts",
+    paths: [
+      "presenter/steps/",
+      "presenter/scenarios/",
+      "presenter/cucumber/",
+      "presenter/cucumber-fake-timers/",
+      "presenter/vitest-fake-timers/",
+      "presenter/vitest-quickpickle-fake-timers/",
+    ],
     excludes: ["/node_modules/", "presenter/scenarios/_buildApp.ts"],
   },
   {
     name: "18. No rxjs 'timeout' keyword in presenter scenarios (use w.awaitFirstWithin)",
-    pattern: '\\btimeout\\b',
+    pattern: "\\btimeout\\b",
     paths: ["presenter/scenarios/_shared/"],
     excludes: ["/node_modules/"],
   },
@@ -298,14 +339,15 @@ const GATES: Gate[] = [
     customCheck: checkPresenterScenarioCounts,
   },
   {
-    name: "22. plain vitest describe titles start with \"@presenter Feature: \"",
+    name: '22. plain vitest describe titles start with "@presenter Feature: "',
     pattern: "",
     paths: [],
     customCheck: checkPresenterDescribePrefix,
   },
   {
     name: "23. Contract describers stay pure (no impl imports)",
-    pattern: 'from "(\\.\\./)+simulators|from "@rtc/(client|shared/__fixtures__)',
+    pattern:
+      'from "(\\.\\./)+simulators|from "@rtc/(client|shared/__fixtures__)',
     paths: ["../packages/domain/src/ports/__contracts__/"],
     excludes: ["/node_modules/"],
   },
@@ -325,34 +367,19 @@ const GATES: Gate[] = [
     name: "26. No rxjs/react-rxjs imports in src/ui (only src/ui/hooks bridge may)",
     pattern: 'from "rxjs"|@react-rxjs|@rx-state',
     paths: ["../packages/client-react/src/ui/"],
-    excludes: [
-      "/node_modules/",
-      "/src/ui/hooks/",
-      ".test.",
-      ".spec.",
-    ],
+    excludes: ["/node_modules/", "/src/ui/hooks/", ".test.", ".spec."],
   },
   {
     name: "27. No localStorage in src/ui (persistence belongs in app-layer ports)",
-    pattern: 'localStorage',
+    pattern: "localStorage",
     paths: ["../packages/client-react/src/ui/"],
-    excludes: [
-      "/node_modules/",
-      "/src/ui/hooks/",
-      ".test.",
-      ".spec.",
-    ],
+    excludes: ["/node_modules/", "/src/ui/hooks/", ".test.", ".spec."],
   },
   {
     name: "28. No fetch/import.meta.env in src/ui (transport/config belongs in app-layer)",
-    pattern: 'fetch\\(|import\\.meta\\.env',
+    pattern: "fetch\\(|import\\.meta\\.env",
     paths: ["../packages/client-react/src/ui/"],
-    excludes: [
-      "/node_modules/",
-      "/src/ui/hooks/",
-      ".test.",
-      ".spec.",
-    ],
+    excludes: ["/node_modules/", "/src/ui/hooks/", ".test.", ".spec."],
   },
   {
     name: "29. No setTimeout/setInterval anywhere in src/ui",

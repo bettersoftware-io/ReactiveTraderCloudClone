@@ -1,38 +1,46 @@
-import type { WebSocket } from "ws";
-import type { ServiceContainer } from "../services/serviceContainer.js";
+import type { RfqEvent } from "@rtc/domain";
 import type {
-  CurrencyPairUpdateDto,
-  ReferenceDataMessage,
-  PriceTickDto,
-  TradeDto,
-  BlotterMessage,
+  AcceptRequestDto,
   AnalyticsDto,
+  BlotterMessage,
+  CancelRfqRequestDto,
+  CreateRfqRequestDto,
+  CurrencyPairUpdateDto,
+  DealerDto,
+  DealerEvent,
   ExecutionRequestDto,
   ExecutionResponseDto,
   InstrumentDto,
   InstrumentEvent,
-  DealerDto,
-  DealerEvent,
-  WorkflowEvent as WorkflowEventDto,
-  CreateRfqRequestDto,
-  QuoteRequestDto,
   PassRequestDto,
-  AcceptRequestDto,
-  CancelRfqRequestDto,
+  PriceTickDto,
+  QuoteRequestDto,
+  ReferenceDataMessage,
+  TradeDto,
+  WorkflowEvent as WorkflowEventDto,
 } from "@rtc/shared";
-import type { RfqEvent } from "@rtc/domain";
 import { firstValueFrom } from "rxjs";
+import type { WebSocket } from "ws";
+import type { ServiceContainer } from "../services/serviceContainer.js";
 import { CLIENT_MSG, SERVER_MSG, type WsMessage } from "./protocol.js";
 
 type AbortSet = Set<AbortController>;
 
-function send(ws: WebSocket, type: string, payload: unknown, correlationId?: string): void {
+function send(
+  ws: WebSocket,
+  type: string,
+  payload: unknown,
+  correlationId?: string,
+): void {
   if (ws.readyState !== ws.OPEN) return;
   const msg: WsMessage = { type, payload, correlationId };
   ws.send(JSON.stringify(msg));
 }
 
-export function handleConnection(ws: WebSocket, services: ServiceContainer): void {
+export function handleConnection(
+  ws: WebSocket,
+  services: ServiceContainer,
+): void {
   const subscriptions: AbortSet = new Set();
 
   ws.on("message", (data) => {
@@ -121,10 +129,15 @@ function handleMessage(
 
     // ── Admin ─────────────────────────────────────────────
     case CLIENT_MSG.GET_THROUGHPUT:
-      send(ws, SERVER_MSG.THROUGHPUT_RESPONSE, {
-        type: "ack",
-        payload: svc.throughput.getThroughput(),
-      }, msg.correlationId);
+      send(
+        ws,
+        SERVER_MSG.THROUGHPUT_RESPONSE,
+        {
+          type: "ack",
+          payload: svc.throughput.getThroughput(),
+        },
+        msg.correlationId,
+      );
       break;
 
     case CLIENT_MSG.SET_THROUGHPUT:
@@ -143,7 +156,11 @@ function createSubscription(subs: AbortSet): AbortController {
 
 // ── FX Streams ──────────────────────────────────────────────────
 
-function streamReferenceData(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
+function streamReferenceData(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  subs: AbortSet,
+): void {
   const ac = createSubscription(subs);
   let isFirst = true;
   const sub = svc.referenceData.getCurrencyPairs().subscribe({
@@ -170,10 +187,22 @@ function streamReferenceData(ws: WebSocket, svc: ServiceContainer, subs: AbortSe
       subs.delete(ac);
     },
   });
-  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
+  ac.signal.addEventListener(
+    "abort",
+    () => {
+      sub.unsubscribe();
+      subs.delete(ac);
+    },
+    { once: true },
+  );
 }
 
-function streamPricing(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, payload: { symbol: string }): void {
+function streamPricing(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  subs: AbortSet,
+  payload: { symbol: string },
+): void {
   const ac = createSubscription(subs);
   const sub = svc.pricing.getPriceUpdates(payload.symbol).subscribe({
     next: (tick) => {
@@ -196,10 +225,21 @@ function streamPricing(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, pay
       subs.delete(ac);
     },
   });
-  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
+  ac.signal.addEventListener(
+    "abort",
+    () => {
+      sub.unsubscribe();
+      subs.delete(ac);
+    },
+    { once: true },
+  );
 }
 
-function streamBlotter(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
+function streamBlotter(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  subs: AbortSet,
+): void {
   const ac = createSubscription(subs);
   let isFirst = true;
   const sub = svc.blotter.getTradeStream().subscribe({
@@ -233,10 +273,22 @@ function streamBlotter(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): vo
       subs.delete(ac);
     },
   });
-  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
+  ac.signal.addEventListener(
+    "abort",
+    () => {
+      sub.unsubscribe();
+      subs.delete(ac);
+    },
+    { once: true },
+  );
 }
 
-function streamAnalytics(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, payload: { currency: string }): void {
+function streamAnalytics(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  subs: AbortSet,
+  payload: { currency: string },
+): void {
   const ac = createSubscription(subs);
   const sub = svc.analytics.getAnalytics(payload.currency).subscribe({
     next: (pos) => {
@@ -263,16 +315,29 @@ function streamAnalytics(ws: WebSocket, svc: ServiceContainer, subs: AbortSet, p
       subs.delete(ac);
     },
   });
-  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
+  ac.signal.addEventListener(
+    "abort",
+    () => {
+      sub.unsubscribe();
+      subs.delete(ac);
+    },
+    { once: true },
+  );
 }
 
 // ── Credit Streams ──────────────────────────────────────────────
 
-function streamInstruments(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
+function streamInstruments(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  subs: AbortSet,
+): void {
   const ac = createSubscription(subs);
 
   // Send SoW markers
-  send(ws, SERVER_MSG.INSTRUMENT_EVENT, { type: "startOfStateOfTheWorld" } satisfies InstrumentEvent);
+  send(ws, SERVER_MSG.INSTRUMENT_EVENT, {
+    type: "startOfStateOfTheWorld",
+  } satisfies InstrumentEvent);
 
   let isFirst = true;
   const sub = svc.instruments.getInstruments().subscribe({
@@ -288,10 +353,15 @@ function streamInstruments(ws: WebSocket, svc: ServiceContainer, subs: AbortSet)
           interestRate: inst.interestRate,
           benchmark: inst.benchmark,
         };
-        send(ws, SERVER_MSG.INSTRUMENT_EVENT, { type: "added", payload: dto } satisfies InstrumentEvent);
+        send(ws, SERVER_MSG.INSTRUMENT_EVENT, {
+          type: "added",
+          payload: dto,
+        } satisfies InstrumentEvent);
       }
       if (isFirst) {
-        send(ws, SERVER_MSG.INSTRUMENT_EVENT, { type: "endOfStateOfTheWorld" } satisfies InstrumentEvent);
+        send(ws, SERVER_MSG.INSTRUMENT_EVENT, {
+          type: "endOfStateOfTheWorld",
+        } satisfies InstrumentEvent);
         isFirst = false;
       }
     },
@@ -303,13 +373,26 @@ function streamInstruments(ws: WebSocket, svc: ServiceContainer, subs: AbortSet)
       subs.delete(ac);
     },
   });
-  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
+  ac.signal.addEventListener(
+    "abort",
+    () => {
+      sub.unsubscribe();
+      subs.delete(ac);
+    },
+    { once: true },
+  );
 }
 
-function streamDealers(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
+function streamDealers(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  subs: AbortSet,
+): void {
   const ac = createSubscription(subs);
 
-  send(ws, SERVER_MSG.DEALER_EVENT, { type: "startOfStateOfTheWorld" } satisfies DealerEvent);
+  send(ws, SERVER_MSG.DEALER_EVENT, {
+    type: "startOfStateOfTheWorld",
+  } satisfies DealerEvent);
 
   let isFirst = true;
   const sub = svc.dealers.getDealers().subscribe({
@@ -317,10 +400,15 @@ function streamDealers(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): vo
       if (ac.signal.aborted) return;
       for (const dealer of dealers) {
         const dto: DealerDto = { id: dealer.id, name: dealer.name };
-        send(ws, SERVER_MSG.DEALER_EVENT, { type: "added", payload: dto } satisfies DealerEvent);
+        send(ws, SERVER_MSG.DEALER_EVENT, {
+          type: "added",
+          payload: dto,
+        } satisfies DealerEvent);
       }
       if (isFirst) {
-        send(ws, SERVER_MSG.DEALER_EVENT, { type: "endOfStateOfTheWorld" } satisfies DealerEvent);
+        send(ws, SERVER_MSG.DEALER_EVENT, {
+          type: "endOfStateOfTheWorld",
+        } satisfies DealerEvent);
         isFirst = false;
       }
     },
@@ -332,10 +420,21 @@ function streamDealers(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): vo
       subs.delete(ac);
     },
   });
-  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
+  ac.signal.addEventListener(
+    "abort",
+    () => {
+      sub.unsubscribe();
+      subs.delete(ac);
+    },
+    { once: true },
+  );
 }
 
-function streamWorkflow(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): void {
+function streamWorkflow(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  subs: AbortSet,
+): void {
   const ac = createSubscription(subs);
   const transform = (event: RfqEvent): WorkflowEventDto => {
     switch (event.type) {
@@ -384,21 +483,34 @@ function streamWorkflow(ws: WebSocket, svc: ServiceContainer, subs: AbortSet): v
       subs.delete(ac);
     },
   });
-  ac.signal.addEventListener("abort", () => { sub.unsubscribe(); subs.delete(ac); }, { once: true });
+  ac.signal.addEventListener(
+    "abort",
+    () => {
+      sub.unsubscribe();
+      subs.delete(ac);
+    },
+    { once: true },
+  );
 }
 
 // ── RPC Handlers ────────────────────────────────────────────────
 
-async function handleExecuteTrade(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
+async function handleExecuteTrade(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  msg: WsMessage,
+): Promise<void> {
   try {
     const req = msg.payload as ExecutionRequestDto;
-    const trade = await firstValueFrom(svc.execution.executeTrade({
-      currencyPair: req.currencyPair,
-      spotRate: req.spotRate,
-      direction: req.direction,
-      notional: req.notional,
-      dealtCurrency: req.dealtCurrency,
-    }));
+    const trade = await firstValueFrom(
+      svc.execution.executeTrade({
+        currencyPair: req.currencyPair,
+        spotRate: req.spotRate,
+        direction: req.direction,
+        notional: req.notional,
+        dealtCurrency: req.dealtCurrency,
+      }),
+    );
     const response: ExecutionResponseDto = {
       tradeId: trade.tradeId,
       tradeName: trade.tradeName,
@@ -411,59 +523,119 @@ async function handleExecuteTrade(ws: WebSocket, svc: ServiceContainer, msg: WsM
       tradeDate: trade.tradeDate,
       valueDate: trade.valueDate,
     };
-    send(ws, SERVER_MSG.EXECUTION_RESPONSE, { type: "ack", payload: response }, msg.correlationId);
+    send(
+      ws,
+      SERVER_MSG.EXECUTION_RESPONSE,
+      { type: "ack", payload: response },
+      msg.correlationId,
+    );
   } catch {
-    send(ws, SERVER_MSG.EXECUTION_RESPONSE, { type: "nack" }, msg.correlationId);
+    send(
+      ws,
+      SERVER_MSG.EXECUTION_RESPONSE,
+      { type: "nack" },
+      msg.correlationId,
+    );
   }
 }
 
-async function handleGetPriceHistory(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
+async function handleGetPriceHistory(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  msg: WsMessage,
+): Promise<void> {
   try {
     const { symbol } = msg.payload as { symbol: string };
     const prices = await firstValueFrom(svc.pricing.getPriceHistory(symbol));
-    send(ws, SERVER_MSG.PRICE_HISTORY_RESPONSE, {
-      type: "ack",
-      payload: { prices: prices.map((p) => ({
-        symbol: p.symbol,
-        bid: p.bid,
-        ask: p.ask,
-        mid: p.mid,
-        valueDate: p.valueDate,
-        creationTimestamp: p.creationTimestamp,
-      })) },
-    }, msg.correlationId);
+    send(
+      ws,
+      SERVER_MSG.PRICE_HISTORY_RESPONSE,
+      {
+        type: "ack",
+        payload: {
+          prices: prices.map((p) => ({
+            symbol: p.symbol,
+            bid: p.bid,
+            ask: p.ask,
+            mid: p.mid,
+            valueDate: p.valueDate,
+            creationTimestamp: p.creationTimestamp,
+          })),
+        },
+      },
+      msg.correlationId,
+    );
   } catch {
-    send(ws, SERVER_MSG.PRICE_HISTORY_RESPONSE, { type: "nack" }, msg.correlationId);
+    send(
+      ws,
+      SERVER_MSG.PRICE_HISTORY_RESPONSE,
+      { type: "nack" },
+      msg.correlationId,
+    );
   }
 }
 
-async function handleCreateRfq(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
+async function handleCreateRfq(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  msg: WsMessage,
+): Promise<void> {
   try {
     const req = msg.payload as CreateRfqRequestDto;
-    const rfqId = await firstValueFrom(svc.workflow.createRfq({
-      instrumentId: req.instrumentId,
-      dealerIds: [...req.dealerIds],
-      quantity: req.quantity,
-      direction: req.direction,
-      expirySecs: req.expirySecs,
-    }));
-    send(ws, SERVER_MSG.CREATE_RFQ_RESPONSE, { type: "ack", payload: rfqId }, msg.correlationId);
+    const rfqId = await firstValueFrom(
+      svc.workflow.createRfq({
+        instrumentId: req.instrumentId,
+        dealerIds: [...req.dealerIds],
+        quantity: req.quantity,
+        direction: req.direction,
+        expirySecs: req.expirySecs,
+      }),
+    );
+    send(
+      ws,
+      SERVER_MSG.CREATE_RFQ_RESPONSE,
+      { type: "ack", payload: rfqId },
+      msg.correlationId,
+    );
   } catch {
-    send(ws, SERVER_MSG.CREATE_RFQ_RESPONSE, { type: "nack" }, msg.correlationId);
+    send(
+      ws,
+      SERVER_MSG.CREATE_RFQ_RESPONSE,
+      { type: "nack" },
+      msg.correlationId,
+    );
   }
 }
 
-async function handleCancelRfq(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
+async function handleCancelRfq(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  msg: WsMessage,
+): Promise<void> {
   try {
     const { rfqId } = msg.payload as CancelRfqRequestDto;
     await firstValueFrom(svc.workflow.cancelRfq(rfqId));
-    send(ws, SERVER_MSG.CANCEL_RFQ_RESPONSE, { type: "ack" }, msg.correlationId);
+    send(
+      ws,
+      SERVER_MSG.CANCEL_RFQ_RESPONSE,
+      { type: "ack" },
+      msg.correlationId,
+    );
   } catch {
-    send(ws, SERVER_MSG.CANCEL_RFQ_RESPONSE, { type: "nack" }, msg.correlationId);
+    send(
+      ws,
+      SERVER_MSG.CANCEL_RFQ_RESPONSE,
+      { type: "nack" },
+      msg.correlationId,
+    );
   }
 }
 
-async function handleQuote(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
+async function handleQuote(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  msg: WsMessage,
+): Promise<void> {
   try {
     const req = msg.payload as QuoteRequestDto;
     await firstValueFrom(svc.workflow.quote(req));
@@ -473,7 +645,11 @@ async function handleQuote(ws: WebSocket, svc: ServiceContainer, msg: WsMessage)
   }
 }
 
-async function handlePass(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
+async function handlePass(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  msg: WsMessage,
+): Promise<void> {
   try {
     const { quoteId } = msg.payload as PassRequestDto;
     await firstValueFrom(svc.workflow.pass(quoteId));
@@ -483,7 +659,11 @@ async function handlePass(ws: WebSocket, svc: ServiceContainer, msg: WsMessage):
   }
 }
 
-async function handleAccept(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): Promise<void> {
+async function handleAccept(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  msg: WsMessage,
+): Promise<void> {
   try {
     const { quoteId } = msg.payload as AcceptRequestDto;
     await firstValueFrom(svc.workflow.accept(quoteId));
@@ -493,12 +673,26 @@ async function handleAccept(ws: WebSocket, svc: ServiceContainer, msg: WsMessage
   }
 }
 
-function handleSetThroughput(ws: WebSocket, svc: ServiceContainer, msg: WsMessage): void {
+function handleSetThroughput(
+  ws: WebSocket,
+  svc: ServiceContainer,
+  msg: WsMessage,
+): void {
   try {
     const { value } = msg.payload as { value: number };
     svc.throughput.setThroughput(value);
-    send(ws, SERVER_MSG.SET_THROUGHPUT_RESPONSE, { type: "ack" }, msg.correlationId);
+    send(
+      ws,
+      SERVER_MSG.SET_THROUGHPUT_RESPONSE,
+      { type: "ack" },
+      msg.correlationId,
+    );
   } catch {
-    send(ws, SERVER_MSG.SET_THROUGHPUT_RESPONSE, { type: "nack" }, msg.correlationId);
+    send(
+      ws,
+      SERVER_MSG.SET_THROUGHPUT_RESPONSE,
+      { type: "nack" },
+      msg.correlationId,
+    );
   }
 }

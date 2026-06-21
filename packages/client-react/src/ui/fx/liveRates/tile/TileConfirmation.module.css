@@ -18,8 +18,12 @@
   background-color: transparent;
   cursor: default;
 }
-.overlay[data-status="done"] { background-color: var(--accent-positive); }
-.overlay[data-status="rejected"] { background-color: var(--accent-negative); }
+.overlay[data-status="done"] {
+  background-color: var(--accent-positive);
+}
+.overlay[data-status="rejected"] {
+  background-color: var(--accent-negative);
+}
 .overlay[data-status="tooLong"],
 .overlay[data-status="timeout"],
 .overlay[data-status="timedOut"],

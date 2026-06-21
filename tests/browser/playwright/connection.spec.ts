@@ -1,6 +1,6 @@
+import * as connection from "../scenarios/connection";
 import { test } from "./_context";
 import { withWorkspaceOpen } from "./_openWorkspace";
-import * as connection from "../scenarios/connection";
 
 // The @presenter "gateway disconnect ... reconnecting" scenario in
 // specs/connection.feature is intentionally NOT mirrored here: a gateway
@@ -19,7 +19,9 @@ test.describe("Connection status", () => {
     await connection.expectConnectionOverlayHidden(ctx);
   });
 
-  test("going offline shows the overlay with an offline message", async ({ ctx }) => {
+  test("going offline shows the overlay with an offline message", async ({
+    ctx,
+  }) => {
     await connection.setBrowserOffline(ctx, true);
     await connection.expectConnectionOverlayVisibleWithin(ctx, 3);
     await connection.expectConnectionOverlayTextMatches(ctx, "/offline/i");

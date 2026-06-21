@@ -1,6 +1,6 @@
-import { spawn, type ChildProcess } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface DevServerHandle {
   /** The port the dev server actually bound (may differ from the preferred one). */
@@ -33,7 +33,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // first, while Node's fetch defaults to IPv4.
 async function pingPort(port: number): Promise<boolean> {
   try {
-    const response = await fetch(`http://127.0.0.1:${port}`, { method: "HEAD" });
+    const response = await fetch(`http://127.0.0.1:${port}`, {
+      method: "HEAD",
+    });
     return response.status < 500;
   } catch {
     return false;
@@ -111,7 +113,10 @@ function makeStop(child: ChildProcess): () => Promise<void> {
 // pre-probing a free port ourselves) is race-free: Vite's bind is atomic and
 // authoritative, so parallel runners can never collide on or adopt each other's
 // server.
-async function awaitReady(server: SpawnedServer, timeoutMs: number): Promise<number> {
+async function awaitReady(
+  server: SpawnedServer,
+  timeoutMs: number,
+): Promise<number> {
   let exitMsg: string | null = null;
   server.child.once("exit", (code, signal) => {
     exitMsg = `dev server process exited early (code=${code}, signal=${signal})`;
@@ -119,7 +124,9 @@ async function awaitReady(server: SpawnedServer, timeoutMs: number): Promise<num
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (exitMsg) {
-      throw new Error(`${exitMsg}\n--- dev server output ---\n${server.getLog()}`);
+      throw new Error(
+        `${exitMsg}\n--- dev server output ---\n${server.getLog()}`,
+      );
     }
     const port = parseBoundPort(server.getLog());
     if (port !== null && (await pingPort(port))) return port;
@@ -135,7 +142,10 @@ export async function startDevServer(): Promise<DevServerHandle> {
   // Reuse path: the orchestrating runner (with-server.ts) already started one
   // server and flagged sharing as intentional, passing its actual port down as
   // RTC_DEV_PORT. Cucumber's per-worker hooks land here — adopt that server.
-  if (process.env[SHARED_DEV_SERVER_ENV] === "1" && (await pingPort(DEV_PORT))) {
+  if (
+    process.env[SHARED_DEV_SERVER_ENV] === "1" &&
+    (await pingPort(DEV_PORT))
+  ) {
     return { port: DEV_PORT, stop: async () => {} };
   }
 

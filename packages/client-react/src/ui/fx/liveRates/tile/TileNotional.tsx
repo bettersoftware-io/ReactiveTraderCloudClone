@@ -1,5 +1,13 @@
-import { useCallback, useRef, type ChangeEvent, type KeyboardEvent } from "react";
-import type { NotionalView, NotionalIntents } from "../../../../app/presenters/NotionalMachine";
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  useCallback,
+  useRef,
+} from "react";
+import type {
+  NotionalIntents,
+  NotionalView,
+} from "../../../../app/presenters/NotionalMachine";
 import styles from "./TileNotional.module.css";
 
 interface TileNotionalProps {
@@ -22,14 +30,11 @@ export function TileNotional({
     [notional],
   );
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        inputRef.current?.blur();
-      }
-    },
-    [],
-  );
+  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      inputRef.current?.blur();
+    }
+  }, []);
 
   const handleFocus = useCallback(() => {
     inputRef.current?.select();
@@ -39,9 +44,7 @@ export function TileNotional({
 
   return (
     <div className={styles.wrapper}>
-      <span className={styles.currencyLabel}>
-        {baseCurrency}
-      </span>
+      <span className={styles.currencyLabel}>{baseCurrency}</span>
       <input
         ref={inputRef}
         value={notional.state.displayValue}
@@ -62,10 +65,7 @@ export function TileNotional({
         </button>
       )}
       {hasError && (
-        <span
-          data-testid="notional-error"
-          className={styles.errorMessage}
-        >
+        <span data-testid="notional-error" className={styles.errorMessage}>
           {notional.state.error}
         </span>
       )}

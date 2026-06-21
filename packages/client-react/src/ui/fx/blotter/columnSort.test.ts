@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { Direction, TradeStatus, type Trade } from "@rtc/domain";
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
+import { describe, expect, it } from "vitest";
 import {
-  nextSortDirection,
   applySortToTrades,
+  nextSortDirection,
   type SortState,
 } from "./columnSort";
 
@@ -23,44 +23,69 @@ const trade = (over: Partial<Trade> = {}): Trade => ({
 describe("nextSortDirection", () => {
   it("starts a numeric/date column descending on first click", () => {
     const none: SortState = { column: null, direction: null };
-    expect(nextSortDirection("notional", none)).toEqual({ column: "notional", direction: "desc" });
-    expect(nextSortDirection("tradeDate", none)).toEqual({ column: "tradeDate", direction: "desc" });
+    expect(nextSortDirection("notional", none)).toEqual({
+      column: "notional",
+      direction: "desc",
+    });
+    expect(nextSortDirection("tradeDate", none)).toEqual({
+      column: "tradeDate",
+      direction: "desc",
+    });
   });
 
   it("starts a text column ascending on first click", () => {
     const none: SortState = { column: null, direction: null };
-    expect(nextSortDirection("tradeName", none)).toEqual({ column: "tradeName", direction: "asc" });
+    expect(nextSortDirection("tradeName", none)).toEqual({
+      column: "tradeName",
+      direction: "asc",
+    });
   });
 
   it("cycles desc -> asc -> none on the same column", () => {
     const desc: SortState = { column: "notional", direction: "desc" };
     const asc = nextSortDirection("notional", desc);
     expect(asc).toEqual({ column: "notional", direction: "asc" });
-    expect(nextSortDirection("notional", asc)).toEqual({ column: null, direction: null });
+    expect(nextSortDirection("notional", asc)).toEqual({
+      column: null,
+      direction: null,
+    });
   });
 
   it("re-initialises direction when the same column had a null direction", () => {
     const nulled: SortState = { column: "notional", direction: null };
-    expect(nextSortDirection("notional", nulled)).toEqual({ column: "notional", direction: "desc" });
+    expect(nextSortDirection("notional", nulled)).toEqual({
+      column: "notional",
+      direction: "desc",
+    });
     const nulledText: SortState = { column: "tradeName", direction: null };
-    expect(nextSortDirection("tradeName", nulledText)).toEqual({ column: "tradeName", direction: "asc" });
+    expect(nextSortDirection("tradeName", nulledText)).toEqual({
+      column: "tradeName",
+      direction: "asc",
+    });
   });
 
   it("switches to a fresh column when a different one was active", () => {
     const active: SortState = { column: "notional", direction: "asc" };
-    expect(nextSortDirection("tradeName", active)).toEqual({ column: "tradeName", direction: "asc" });
+    expect(nextSortDirection("tradeName", active)).toEqual({
+      column: "tradeName",
+      direction: "asc",
+    });
   });
 });
 
 describe("applySortToTrades", () => {
   it("returns the input untouched when no column is selected", () => {
     const trades = [trade({ tradeId: 2 }), trade({ tradeId: 1 })];
-    expect(applySortToTrades(trades, { column: null, direction: null })).toBe(trades);
+    expect(applySortToTrades(trades, { column: null, direction: null })).toBe(
+      trades,
+    );
   });
 
   it("returns the input untouched when direction is null", () => {
     const trades = [trade({ tradeId: 2 }), trade({ tradeId: 1 })];
-    expect(applySortToTrades(trades, { column: "tradeId", direction: null })).toBe(trades);
+    expect(
+      applySortToTrades(trades, { column: "tradeId", direction: null }),
+    ).toBe(trades);
   });
 
   it("sorts numbers ascending and descending", () => {
@@ -69,9 +94,15 @@ describe("applySortToTrades", () => {
       trade({ tradeId: 1, notional: 100 }),
       trade({ tradeId: 2, notional: 200 }),
     ];
-    const asc = applySortToTrades(trades, { column: "notional", direction: "asc" });
+    const asc = applySortToTrades(trades, {
+      column: "notional",
+      direction: "asc",
+    });
     expect(asc.map((t) => t.notional)).toEqual([100, 200, 300]);
-    const desc = applySortToTrades(trades, { column: "notional", direction: "desc" });
+    const desc = applySortToTrades(trades, {
+      column: "notional",
+      direction: "desc",
+    });
     expect(desc.map((t) => t.notional)).toEqual([300, 200, 100]);
   });
 
@@ -81,9 +112,15 @@ describe("applySortToTrades", () => {
       trade({ tradeName: "Alice" }),
       trade({ tradeName: "bob" }),
     ];
-    const asc = applySortToTrades(trades, { column: "tradeName", direction: "asc" });
+    const asc = applySortToTrades(trades, {
+      column: "tradeName",
+      direction: "asc",
+    });
     expect(asc.map((t) => t.tradeName)).toEqual(["Alice", "bob", "charlie"]);
-    const desc = applySortToTrades(trades, { column: "tradeName", direction: "desc" });
+    const desc = applySortToTrades(trades, {
+      column: "tradeName",
+      direction: "desc",
+    });
     expect(desc.map((t) => t.tradeName)).toEqual(["charlie", "bob", "Alice"]);
   });
 
@@ -93,8 +130,15 @@ describe("applySortToTrades", () => {
       trade({ tradeId: 2, tradeDate: "2026-01-01" }),
       trade({ tradeId: 3, tradeDate: "2026-02-01" }),
     ];
-    const asc = applySortToTrades(trades, { column: "tradeDate", direction: "asc" });
-    expect(asc.map((t) => t.tradeDate)).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
+    const asc = applySortToTrades(trades, {
+      column: "tradeDate",
+      direction: "asc",
+    });
+    expect(asc.map((t) => t.tradeDate)).toEqual([
+      "2026-01-01",
+      "2026-02-01",
+      "2026-03-01",
+    ]);
   });
 
   it("does not mutate the original array", () => {

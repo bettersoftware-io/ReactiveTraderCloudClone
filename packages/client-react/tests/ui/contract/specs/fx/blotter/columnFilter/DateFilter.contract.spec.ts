@@ -1,12 +1,16 @@
-import { describe, it, expect } from "vitest";
-import { mount } from "@ui-contract/mount";
 import { DateFilter } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 import type { ColumnFilter } from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
 
 describe("DateFilter", () => {
   it("defaults to equals with one date input", () => {
     const filter = mount(DateFilter, {
-      props: { column: "tradeDate", currentFilter: undefined, onApply: () => {} },
+      props: {
+        column: "tradeDate",
+        currentFilter: undefined,
+        onApply: () => {},
+      },
     });
     expect(filter.comparator()).toBe("eq");
     expect(filter.dateInputCount()).toBe(1);

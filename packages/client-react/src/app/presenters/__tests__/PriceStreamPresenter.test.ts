@@ -1,15 +1,23 @@
+import type { CurrencyPair, PriceTick, PricingPort } from "@rtc/domain";
 import { firstValueFrom, of, take } from "rxjs";
 import { describe, expect, it } from "vitest";
-import type { CurrencyPair, PricingPort, PriceTick } from "@rtc/domain";
 import { PriceStreamPresenter } from "../PriceStreamPresenter";
 
 const EURUSD: CurrencyPair = {
-  symbol: "EURUSD", base: "EUR", terms: "USD",
-  ratePrecision: 5, pipsPosition: 4, defaultNotional: 1_000_000,
+  symbol: "EURUSD",
+  base: "EUR",
+  terms: "USD",
+  ratePrecision: 5,
+  pipsPosition: 4,
+  defaultNotional: 1_000_000,
 };
 const tick = (mid: number): PriceTick => ({
-  symbol: "EURUSD", mid, ask: mid + 0.0001, bid: mid - 0.0001,
-  valueDate: "2026-05-05", creationTimestamp: 1,
+  symbol: "EURUSD",
+  mid,
+  ask: mid + 0.0001,
+  bid: mid - 0.0001,
+  valueDate: "2026-05-05",
+  creationTimestamp: 1,
 });
 
 describe("PriceStreamPresenter", () => {

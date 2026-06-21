@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/experimental-ct-react";
+import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
 
 test("connection-status/connected", async ({ mount }) => {
@@ -7,6 +7,10 @@ test("connection-status/connected", async ({ mount }) => {
 });
 
 test("connection-status/disconnected", async ({ mount }) => {
-  const c = await mount(<VisualScenario name="connection-status/disconnected" />);
-  await expect(c).toHaveScreenshot("disconnected.png", { animations: "disabled" });
+  const c = await mount(
+    <VisualScenario name="connection-status/disconnected" />,
+  );
+  await expect(c).toHaveScreenshot("disconnected.png", {
+    animations: "disabled",
+  });
 });

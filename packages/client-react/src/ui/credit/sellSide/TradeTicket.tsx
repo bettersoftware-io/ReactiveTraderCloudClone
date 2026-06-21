@@ -1,5 +1,5 @@
+import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
 import { useCallback, useState } from "react";
-import { type Rfq, type Quote, type Instrument, RfqState } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import styles from "./TradeTicket.module.css";
 
@@ -18,7 +18,8 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
   const [price, setPrice] = useState("");
   const submitted = ticket.state.submitted;
 
-  const isActive = rfq.state === RfqState.Open && quote.state.type === "pendingWithoutPrice";
+  const isActive =
+    rfq.state === RfqState.Open && quote.state.type === "pendingWithoutPrice";
   const hasResponded = quote.state.type !== "pendingWithoutPrice";
 
   const handleSubmit = useCallback(() => {
@@ -41,17 +42,22 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
           {instrument?.name ?? `Instrument #${rfq.instrumentId}`}
         </div>
         <div className={styles.instrumentMeta}>
-          {instrument?.cusip} | {rfq.direction} | Qty: {rfq.quantity.toLocaleString()}
+          {instrument?.cusip} | {rfq.direction} | Qty:{" "}
+          {rfq.quantity.toLocaleString()}
         </div>
       </div>
 
       {hasResponded || submitted ? (
         <div className={styles.respondedText}>
-          {quote.state.type === "passed" ? "Passed" :
-           quote.state.type === "pendingWithPrice" ? `Quoted: $${quote.state.price}` :
-           rfq.state === RfqState.Cancelled ? "RFQ Cancelled" :
-           rfq.state === RfqState.Expired ? "RFQ Expired" :
-           "Responded"}
+          {quote.state.type === "passed"
+            ? "Passed"
+            : quote.state.type === "pendingWithPrice"
+              ? `Quoted: $${quote.state.price}`
+              : rfq.state === RfqState.Cancelled
+                ? "RFQ Cancelled"
+                : rfq.state === RfqState.Expired
+                  ? "RFQ Expired"
+                  : "Responded"}
         </div>
       ) : isActive ? (
         <div className={styles.inputRow}>
@@ -66,21 +72,22 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
           <button
             onClick={handleSubmit}
             disabled={!price}
-            data-can-submit={!!price ? "true" : "false"}
+            data-can-submit={price ? "true" : "false"}
             className={styles.submitBtn}
           >
             Submit
           </button>
-          <button
-            onClick={handlePass}
-            className={styles.passBtn}
-          >
+          <button onClick={handlePass} className={styles.passBtn}>
             Pass
           </button>
         </div>
       ) : (
         <div className={styles.closedText}>
-          {rfq.state === RfqState.Cancelled ? "Cancelled" : rfq.state === RfqState.Expired ? "Expired" : "Closed"}
+          {rfq.state === RfqState.Cancelled
+            ? "Cancelled"
+            : rfq.state === RfqState.Expired
+              ? "Expired"
+              : "Closed"}
         </div>
       )}
     </div>

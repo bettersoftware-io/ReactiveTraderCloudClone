@@ -1,6 +1,6 @@
+import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 import type {
   RfqState,
   RfqTileIntents,
@@ -46,6 +46,10 @@ export class TileRfqPage extends MountedComponent<TileRfqProps> {
 
   /** The countdown caption, when a quote is shown. */
   countdownCaption(): string | null {
-    return this.q().queryByText(/remaining/i)?.textContent?.trim() ?? null;
+    return (
+      this.q()
+        .queryByText(/remaining/i)
+        ?.textContent?.trim() ?? null
+    );
   }
 }

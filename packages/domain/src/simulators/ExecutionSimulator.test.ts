@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
 import { firstValueFrom } from "rxjs";
-import { ExecutionSimulator } from "./ExecutionSimulator.js";
-import { Direction, TradeStatus } from "../fx/trade.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ExecutionRequest, Trade } from "../fx/trade.js";
+import { Direction, TradeStatus } from "../fx/trade.js";
+import { ExecutionSimulator } from "./ExecutionSimulator.js";
 
 // Same constants as in ExecutionSimulator
 const DELAYED_PAIR_MS = 4_000;

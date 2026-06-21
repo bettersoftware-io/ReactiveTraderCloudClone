@@ -1,6 +1,6 @@
+import type { Trade } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import type { Trade } from "@rtc/domain";
 import type { ColumnFilter } from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
 import { MountedComponent } from "../../../harness/component";
 
@@ -27,7 +27,9 @@ export class SetFilterPage extends MountedComponent<SetFilterProps> {
 
   /** Whether the checkbox with the given label is checked. */
   isChecked(label: string): boolean {
-    const cb = this.q().getByRole("checkbox", { name: label }) as HTMLInputElement;
+    const cb = this.q().getByRole("checkbox", {
+      name: label,
+    }) as HTMLInputElement;
     return cb.checked;
   }
 

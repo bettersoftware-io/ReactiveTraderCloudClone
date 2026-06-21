@@ -1,6 +1,6 @@
-import { within, fireEvent } from "@testing-library/dom";
-import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { CurrencyPair, ExecuteTradeInput } from "@rtc/domain";
+import { fireEvent, within } from "@testing-library/dom";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "../../../../harness/component";
 
 export interface TileProps {
@@ -108,7 +108,9 @@ export class TilePage extends MountedComponent<TileProps> {
     return this.q().queryByRole("button", { name: /initiate rfq/i }) !== null;
   }
   async clickInitiateRfq(): Promise<void> {
-    await this.user.click(this.q().getByRole("button", { name: /initiate rfq/i }));
+    await this.user.click(
+      this.q().getByRole("button", { name: /initiate rfq/i }),
+    );
   }
   rfqText(): string {
     return this.root.textContent ?? "";
@@ -135,7 +137,9 @@ export class TilePage extends MountedComponent<TileProps> {
     return this.q().queryByTestId("trade-confirmation") !== null;
   }
   confirmationText(): string {
-    return this.q().queryByTestId("trade-confirmation")?.textContent?.trim() ?? "";
+    return (
+      this.q().queryByTestId("trade-confirmation")?.textContent?.trim() ?? ""
+    );
   }
   async clickConfirmation(): Promise<void> {
     await this.user.click(this.q().getByTestId("trade-confirmation"));

@@ -1,7 +1,7 @@
 import os from "node:os";
+import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/experimental-ct-react";
 import react from "@vitejs/plugin-react";
-import { fileURLToPath } from "node:url";
 
 const uiVisual = fileURLToPath(new URL("../react", import.meta.url));
 
@@ -13,7 +13,9 @@ const uiVisual = fileURLToPath(new URL("../react", import.meta.url));
 // because font rasterization differs by OS/arch and never matches the x86 set.
 // See ../playwright/playwright.config.ts and ../ADR-001-visual-diff-tooling.md
 // for the full rationale.
-const baseline = process.env.CI ? "react" : `react-local/${os.platform()}-${os.arch()}`;
+const baseline = process.env.CI
+  ? "react"
+  : `react-local/${os.platform()}-${os.arch()}`;
 
 export default defineConfig({
   testDir: ".",
@@ -27,7 +29,14 @@ export default defineConfig({
   // siblings (the html reporter wipes its own folder). ../../../../ = packages/client-react.
   reporter: [
     [process.env.CI ? "line" : "list"],
-    ["html", { outputFolder: "../../../../reports/ui/visual/playwright-ct/react/report", open: "never" }],
+    [
+      "html",
+      {
+        outputFolder:
+          "../../../../reports/ui/visual/playwright-ct/react/report",
+        open: "never",
+      },
+    ],
   ],
   outputDir: "../../../../reports/ui/visual/playwright-ct/react/artifacts",
   use: {

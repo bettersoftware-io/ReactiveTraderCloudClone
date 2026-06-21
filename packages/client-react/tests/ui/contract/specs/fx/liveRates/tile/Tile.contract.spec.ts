@@ -1,24 +1,28 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   ConnectionStatus,
-  Direction,
-  ExecutionStatus,
-  PriceMovementType,
-  TradeStatus,
-  KNOWN_CURRENCY_PAIRS,
   type CurrencyPair,
-  type Price,
-  type PriceTick,
-  type Trade,
+  Direction,
   type ExecuteTradeResult,
+  ExecutionStatus,
+  KNOWN_CURRENCY_PAIRS,
+  type Price,
+  PriceMovementType,
+  type PriceTick,
   type RfqQuoteResult,
+  type Trade,
+  TradeStatus,
 } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
 import { Tile } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS.find((p) => p.symbol === "EURUSD")!;
+const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS.find(
+  (p) => p.symbol === "EURUSD",
+)!;
 // NZDUSD's defaultNotional is 10,000,000 (>= RFQ threshold) → starts in RFQ mode.
-const nzdusd: CurrencyPair = KNOWN_CURRENCY_PAIRS.find((p) => p.symbol === "NZDUSD")!;
+const nzdusd: CurrencyPair = KNOWN_CURRENCY_PAIRS.find(
+  (p) => p.symbol === "NZDUSD",
+)!;
 
 const price = (over: Partial<Price> = {}): Price => ({
   symbol: "EURUSD",
@@ -33,8 +37,22 @@ const price = (over: Partial<Price> = {}): Price => ({
 });
 
 const history: readonly PriceTick[] = [
-  { symbol: "EURUSD", bid: 1.09, ask: 1.091, mid: 1.0905, valueDate: "2026-06-15", creationTimestamp: 1 },
-  { symbol: "EURUSD", bid: 1.092, ask: 1.093, mid: 1.0925, valueDate: "2026-06-15", creationTimestamp: 2 },
+  {
+    symbol: "EURUSD",
+    bid: 1.09,
+    ask: 1.091,
+    mid: 1.0905,
+    valueDate: "2026-06-15",
+    creationTimestamp: 1,
+  },
+  {
+    symbol: "EURUSD",
+    bid: 1.092,
+    ask: 1.093,
+    mid: 1.0925,
+    valueDate: "2026-06-15",
+    creationTimestamp: 2,
+  },
 ];
 
 const tradeResult = (over: Partial<Trade> = {}): ExecuteTradeResult => ({
@@ -81,13 +99,19 @@ describe("Tile", () => {
   it("renders a chart only in chart view", () => {
     const charted = mount(Tile, {
       props: { pair: eurusd, showChart: true },
-      parametric: { prices: { EURUSD: price() }, histories: { EURUSD: history } },
+      parametric: {
+        prices: { EURUSD: price() },
+        histories: { EURUSD: history },
+      },
     });
     expect(charted.hasChart()).toBe(true);
 
     const flat = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() }, histories: { EURUSD: history } },
+      parametric: {
+        prices: { EURUSD: price() },
+        histories: { EURUSD: history },
+      },
     });
     expect(flat.hasChart()).toBe(false);
   });
@@ -184,7 +208,11 @@ describe("Tile", () => {
   });
 
   it("requests an RFQ quote and renders the two-sided quote", async () => {
-    const quoteResult: RfqQuoteResult = { bid: 1.0921, ask: 1.0925, mid: 1.0923 };
+    const quoteResult: RfqQuoteResult = {
+      bid: 1.0921,
+      ask: 1.0925,
+      mid: 1.0923,
+    };
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
       parametric: { prices: { EURUSD: price() } },
@@ -201,7 +229,11 @@ describe("Tile", () => {
   it("accepts an RFQ quote and executes at the quoted price", async () => {
     // Quote prices differ from the live price so we can prove the SYNTHETIC
     // quote price (priceVal) — not the live stream price — reaches execution.
-    const quoteResult: RfqQuoteResult = { bid: 1.2001, ask: 1.2005, mid: 1.2003 };
+    const quoteResult: RfqQuoteResult = {
+      bid: 1.2001,
+      ask: 1.2005,
+      mid: 1.2003,
+    };
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
       parametric: { prices: { EURUSD: price() } },

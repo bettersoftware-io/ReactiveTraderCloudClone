@@ -1,7 +1,7 @@
-import { Subject, merge } from "rxjs";
+import { isRfqRequired, parseNotional } from "@rtc/domain";
+import { type DefaultedStateObservable, state } from "@rx-state/core";
+import { merge, Subject } from "rxjs";
 import { map } from "rxjs/operators";
-import { state, type DefaultedStateObservable } from "@rx-state/core";
-import { parseNotional, isRfqRequired } from "@rtc/domain";
 import type { Machine } from "./machine";
 
 function formatWithCommas(value: number): string {
@@ -25,9 +25,7 @@ export interface NotionalIntents {
   reset: () => void;
 }
 
-type NotionalEvent =
-  | { type: "change"; input: string }
-  | { type: "reset" };
+type NotionalEvent = { type: "change"; input: string } | { type: "reset" };
 
 function makeInitialView(defaultNotional: number): NotionalView {
   return {
@@ -75,7 +73,10 @@ export function createNotionalMachine(
     }),
   );
 
-  const state$: DefaultedStateObservable<NotionalView> = state(stream$, initial);
+  const state$: DefaultedStateObservable<NotionalView> = state(
+    stream$,
+    initial,
+  );
 
   // Keep state$ warm so it carries its default before useMachine first renders.
   const warm = state$.subscribe();

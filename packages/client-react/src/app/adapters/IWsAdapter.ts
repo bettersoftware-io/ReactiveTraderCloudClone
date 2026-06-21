@@ -1,6 +1,7 @@
 // packages/client-react/src/app/adapters/IWsAdapter.ts
-import type { Observable } from "rxjs";
+
 import type { ConnectionEvent } from "@rtc/domain";
+import type { Observable } from "rxjs";
 
 /**
  * Common surface for the real WsAdapter and the test-only FakeWsAdapter.

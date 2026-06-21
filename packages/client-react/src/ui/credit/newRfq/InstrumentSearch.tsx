@@ -1,5 +1,5 @@
-import { useMemo, useState, useCallback } from "react";
 import type { Instrument } from "@rtc/domain";
+import { useCallback, useMemo, useState } from "react";
 import styles from "./InstrumentSearch.module.css";
 
 interface InstrumentSearchProps {
@@ -8,7 +8,11 @@ interface InstrumentSearchProps {
   onSelect: (instrument: Instrument) => void;
 }
 
-export function InstrumentSearch({ instruments, selected, onSelect }: InstrumentSearchProps) {
+export function InstrumentSearch({
+  instruments,
+  selected,
+  onSelect,
+}: InstrumentSearchProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -34,19 +38,18 @@ export function InstrumentSearch({ instruments, selected, onSelect }: Instrument
 
   return (
     <div className={styles.wrapper}>
-      <label className={styles.label}>
-        Instrument
-      </label>
+      <label className={styles.label}>Instrument</label>
       {selected ? (
         <div className={styles.selectedInfo}>
-          <span className={styles.selectedName}>
-            {selected.name}
-          </span>
+          <span className={styles.selectedName}>{selected.name}</span>
           <span className={styles.selectedMeta}>
             CUSIP: {selected.cusip} | Coupon: {selected.interestRate}%
           </span>
           <button
-            onClick={() => { onSelect(null!); setQuery(""); }}
+            onClick={() => {
+              onSelect(null!);
+              setQuery("");
+            }}
             className={styles.changeBtn}
           >
             Change
@@ -57,7 +60,10 @@ export function InstrumentSearch({ instruments, selected, onSelect }: Instrument
           <input
             data-testid="instrument-search-input"
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setOpen(true);
+            }}
             onFocus={() => setOpen(true)}
             placeholder="Search by ticker, name, or CUSIP..."
             className={styles.searchInput}
@@ -72,9 +78,7 @@ export function InstrumentSearch({ instruments, selected, onSelect }: Instrument
                   className={styles.resultItem}
                 >
                   <div>{inst.name}</div>
-                  <div className={styles.resultCusip}>
-                    CUSIP: {inst.cusip}
-                  </div>
+                  <div className={styles.resultCusip}>CUSIP: {inst.cusip}</div>
                 </div>
               ))}
             </div>

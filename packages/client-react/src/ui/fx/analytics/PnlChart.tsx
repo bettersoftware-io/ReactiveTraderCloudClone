@@ -71,7 +71,9 @@ export function PnlChart({ history }: PnlChartProps) {
         <path
           d={path}
           fill="none"
-          stroke={isPositive ? "var(--accent-positive)" : "var(--accent-negative)"}
+          stroke={
+            isPositive ? "var(--accent-positive)" : "var(--accent-negative)"
+          }
           strokeWidth={1.5}
           strokeLinejoin="round"
           strokeLinecap="round"

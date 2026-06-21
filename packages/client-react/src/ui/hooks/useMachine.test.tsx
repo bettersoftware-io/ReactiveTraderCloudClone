@@ -1,10 +1,10 @@
-import React from "react";
-import { describe, it, expect, vi } from "vitest";
-import { act, render, renderHook } from "@testing-library/react";
 import { state } from "@rx-state/core";
+import { act, render, renderHook } from "@testing-library/react";
+import React from "react";
 import { BehaviorSubject, Subject } from "rxjs";
-import { useMachine } from "./useMachine";
+import { describe, expect, it, vi } from "vitest";
 import type { Machine } from "../../app/presenters/machine";
+import { useMachine } from "./useMachine";
 
 /** Build a minimal test machine from a BehaviorSubject.
  * We subscribe immediately so the StateObservable stays warm
@@ -28,7 +28,9 @@ function makeTestMachine<S>(subject: BehaviorSubject<S>) {
 
 describe("useMachine", () => {
   it("calls the factory exactly once across re-renders", () => {
-    const factory = vi.fn(() => makeTestMachine(new BehaviorSubject(0)).machine);
+    const factory = vi.fn(
+      () => makeTestMachine(new BehaviorSubject(0)).machine,
+    );
     const { rerender } = renderHook(() => useMachine(factory));
     rerender();
     rerender();
@@ -76,7 +78,9 @@ describe("useMachine", () => {
   });
 
   it("calls the factory exactly once even inside React.StrictMode (StrictMode-safe lazy ref)", () => {
-    const factory = vi.fn(() => makeTestMachine(new BehaviorSubject(0)).machine);
+    const factory = vi.fn(
+      () => makeTestMachine(new BehaviorSubject(0)).machine,
+    );
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <React.StrictMode>{children}</React.StrictMode>
     );

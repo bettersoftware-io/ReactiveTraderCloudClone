@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom, type Observable } from "rxjs";
 import { filter, take } from "rxjs/operators";
-import type { WorkflowPort, RfqEvent } from "../workflowPort.js";
+import { describe, expect, it } from "vitest";
+import type { RfqEvent, WorkflowPort } from "../workflowPort.js";
 
 export interface WorkflowDriver {
   ackCreateRfq(rfqId: number): Promise<void>;

@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { Direction, TradeStatus, type Trade } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 import { SetFilter } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 import type { ColumnFilter } from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
 
 const trade = (over: Partial<Trade> = {}): Trade => ({
@@ -27,7 +27,12 @@ const trades = [
 describe("SetFilter", () => {
   it("lists every distinct value, sorted, all checked by default", () => {
     const filter = mount(SetFilter, {
-      props: { column: "currencyPair", trades, currentFilter: undefined, onApply: () => {} },
+      props: {
+        column: "currencyPair",
+        trades,
+        currentFilter: undefined,
+        onApply: () => {},
+      },
     });
     expect(filter.options()).toEqual(["EURUSD", "GBPUSD", "USDJPY"]);
     expect(filter.isChecked("EURUSD")).toBe(true);
@@ -35,9 +40,18 @@ describe("SetFilter", () => {
   });
 
   it("pre-selects only the values from an existing filter", () => {
-    const current: ColumnFilter = { type: "set", column: "currencyPair", values: new Set(["USDJPY"]) };
+    const current: ColumnFilter = {
+      type: "set",
+      column: "currencyPair",
+      values: new Set(["USDJPY"]),
+    };
     const filter = mount(SetFilter, {
-      props: { column: "currencyPair", trades, currentFilter: current, onApply: () => {} },
+      props: {
+        column: "currencyPair",
+        trades,
+        currentFilter: current,
+        onApply: () => {},
+      },
     });
     expect(filter.isChecked("USDJPY")).toBe(true);
     expect(filter.isChecked("EURUSD")).toBe(false);
@@ -58,8 +72,12 @@ describe("SetFilter", () => {
     await filter.toggle("EURUSD"); // deselect one
     await filter.apply();
     expect(applied).toMatchObject({ type: "set", column: "currencyPair" });
-    expect((applied as Extract<ColumnFilter, { type: "set" }>).values.has("EURUSD")).toBe(false);
-    expect((applied as Extract<ColumnFilter, { type: "set" }>).values.has("USDJPY")).toBe(true);
+    expect(
+      (applied as Extract<ColumnFilter, { type: "set" }>).values.has("EURUSD"),
+    ).toBe(false);
+    expect(
+      (applied as Extract<ColumnFilter, { type: "set" }>).values.has("USDJPY"),
+    ).toBe(true);
   });
 
   it("clears the filter (null) when all values are selected on apply", async () => {
@@ -83,7 +101,12 @@ describe("SetFilter", () => {
 
   it("re-checks a value after toggling it off and on", async () => {
     const filter = mount(SetFilter, {
-      props: { column: "currencyPair", trades, currentFilter: undefined, onApply: () => {} },
+      props: {
+        column: "currencyPair",
+        trades,
+        currentFilter: undefined,
+        onApply: () => {},
+      },
     });
     await filter.toggle("EURUSD");
     expect(filter.isChecked("EURUSD")).toBe(false);

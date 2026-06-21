@@ -1,11 +1,19 @@
-import { describe, beforeEach, afterEach, it } from "vitest";
-import { buildWorld, teardownWorld, type VitestPlainPresenterWorld } from "./_world";
+import { afterEach, beforeEach, describe, it } from "vitest";
 import * as fx from "../scenarios/_shared/fxLiveRates";
+import {
+  buildWorld,
+  teardownWorld,
+  type VitestPlainPresenterWorld,
+} from "./_world";
 
 describe("@presenter Feature: FX live rates", () => {
   let w: VitestPlainPresenterWorld;
-  beforeEach(() => { w = buildWorld(); });
-  afterEach(() => { teardownWorld(w); });
+  beforeEach(() => {
+    w = buildWorld();
+  });
+  afterEach(() => {
+    teardownWorld(w);
+  });
 
   it("tile grid renders streaming prices", async () => {
     await fx.expectPriceTileVisibleWithin(w, 5);

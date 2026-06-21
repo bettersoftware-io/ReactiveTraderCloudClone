@@ -1,11 +1,34 @@
-import { describe, it, expect } from "vitest";
-import { Direction, RfqState, type Rfq, type Quote, type Instrument, type Dealer } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import {
+  type Dealer,
+  Direction,
+  type Instrument,
+  type Quote,
+  type Rfq,
+  RfqState,
+} from "@rtc/domain";
 import { RfqTilesPanel } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 
 const instruments: readonly Instrument[] = [
-  { id: 1, name: "US Treasury 10Y", cusip: "912828ZQ6", ticker: "T 1.5 02/34", maturity: "2034-02-15", interestRate: 1.5, benchmark: "10Y" },
-  { id: 2, name: "Apple Inc 2030", cusip: "037833EK8", ticker: "AAPL 2.4 30", maturity: "2030-05-11", interestRate: 2.4, benchmark: "7Y" },
+  {
+    id: 1,
+    name: "US Treasury 10Y",
+    cusip: "912828ZQ6",
+    ticker: "T 1.5 02/34",
+    maturity: "2034-02-15",
+    interestRate: 1.5,
+    benchmark: "10Y",
+  },
+  {
+    id: 2,
+    name: "Apple Inc 2030",
+    cusip: "037833EK8",
+    ticker: "AAPL 2.4 30",
+    maturity: "2030-05-11",
+    interestRate: 2.4,
+    benchmark: "7Y",
+  },
 ];
 const dealers: readonly Dealer[] = [
   { id: 1, name: "Adaptive Bank" },
@@ -25,7 +48,9 @@ const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => ({
 
 describe("RfqTilesPanel", () => {
   it("shows the empty state when there are no RFQs", () => {
-    const panel = mount(RfqTilesPanel, { hooks: { useInstruments: instruments, useDealers: dealers } });
+    const panel = mount(RfqTilesPanel, {
+      hooks: { useInstruments: instruments, useDealers: dealers },
+    });
     expect(panel.emptyMessage()).toMatch(/no rfqs to display/i);
     expect(panel.cardCount()).toBe(0);
   });
@@ -35,7 +60,10 @@ describe("RfqTilesPanel", () => {
       hooks: {
         useInstruments: instruments,
         useDealers: dealers,
-        useRfqs: [rfq(1, { state: RfqState.Open }), rfq(2, { state: RfqState.Closed })],
+        useRfqs: [
+          rfq(1, { state: RfqState.Open }),
+          rfq(2, { state: RfqState.Closed }),
+        ],
       },
     });
     expect(panel.cardCount()).toBe(1);
@@ -97,7 +125,12 @@ describe("RfqTilesPanel", () => {
   });
 
   it("accepts a quote through the panel, recording the quote id", async () => {
-    const acceptedQuote: Quote = { id: 555, rfqId: 1, dealerId: 2, state: { type: "pendingWithPrice", price: 99 } };
+    const acceptedQuote: Quote = {
+      id: 555,
+      rfqId: 1,
+      dealerId: 2,
+      state: { type: "pendingWithPrice", price: 99 },
+    };
     const panel = mount(RfqTilesPanel, {
       hooks: {
         useInstruments: instruments,
@@ -119,7 +152,12 @@ describe("RfqTilesPanel", () => {
       },
     });
     expect(panel.cardCount()).toBe(1);
-    panel.emit({ useRfqs: [rfq(1, { state: RfqState.Open }), rfq(2, { state: RfqState.Open })] });
+    panel.emit({
+      useRfqs: [
+        rfq(1, { state: RfqState.Open }),
+        rfq(2, { state: RfqState.Open }),
+      ],
+    });
     expect(panel.cardCount()).toBe(2);
   });
 
@@ -132,7 +170,14 @@ describe("RfqTilesPanel", () => {
       },
     });
     expect(panel.hasText("$77")).toBe(false);
-    panel.setQuotesForRfq(1, [{ id: 1, rfqId: 1, dealerId: 2, state: { type: "pendingWithPrice", price: 77 } }]);
+    panel.setQuotesForRfq(1, [
+      {
+        id: 1,
+        rfqId: 1,
+        dealerId: 2,
+        state: { type: "pendingWithPrice", price: 77 },
+      },
+    ]);
     expect(panel.hasText("$77")).toBe(true);
   });
 });

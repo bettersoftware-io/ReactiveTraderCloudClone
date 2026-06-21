@@ -1,21 +1,18 @@
-import { BehaviorSubject } from "rxjs";
 import type { Theme, ViewMode } from "@rtc/domain";
+import { BehaviorSubject } from "rxjs";
 import type { ThroughputView } from "../../../../src/app/presenters/ThroughputPresenter";
-import {
-  createWorld,
-  type HookValues,
-  type CommandResults,
-  type ParametricSeed,
-} from "./harness/world";
-import {
-  getDriver,
-  type MountedRoot,
-} from "./harness/activeDriver";
+import { getDriver, type MountedRoot } from "./harness/activeDriver";
 import type {
   ComponentToken,
   MountedComponent,
   PageContext,
 } from "./harness/component";
+import {
+  type CommandResults,
+  createWorld,
+  type HookValues,
+  type ParametricSeed,
+} from "./harness/world";
 
 export interface MountOptions<P> {
   props?: P;
@@ -61,7 +58,8 @@ export function mount<P, Page extends MountedComponent<P>>(
     emit: (patch) => flush(() => world.push(patch)),
     setPrice: (symbol, value) => flush(() => world.setPrice(symbol, value)),
     setHistory: (symbol, value) => flush(() => world.setHistory(symbol, value)),
-    setQuotesForRfq: (rfqId, value) => flush(() => world.setQuotesForRfq(rfqId, value)),
+    setQuotesForRfq: (rfqId, value) =>
+      flush(() => world.setQuotesForRfq(rfqId, value)),
     setThroughputView: (patch) => flush(() => world.setThroughputView(patch)),
     throughputSets: world.throughputSets,
     commands: world.commands,

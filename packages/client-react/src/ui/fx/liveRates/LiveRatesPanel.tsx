@@ -1,10 +1,10 @@
+import { type CurrencyCategory, matchesCurrencyFilter } from "@rtc/domain";
 import { useMemo, useState } from "react";
-import { matchesCurrencyFilter, type CurrencyCategory } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import { CurrencyFilter } from "./CurrencyFilter";
-import { ViewToggle } from "./ViewToggle";
-import { Tile } from "./tile/Tile";
 import styles from "./LiveRatesPanel.module.css";
+import { Tile } from "./tile/Tile";
+import { ViewToggle } from "./ViewToggle";
 
 export function LiveRatesPanel() {
   const hooks = useHooks();
@@ -27,9 +27,7 @@ export function LiveRatesPanel() {
       </div>
 
       {pairs.length === 0 ? (
-        <div className={styles.empty}>
-          Loading currency pairs...
-        </div>
+        <div className={styles.empty}>Loading currency pairs...</div>
       ) : (
         <div className={styles.grid}>
           {filteredPairs.map((pair) => (

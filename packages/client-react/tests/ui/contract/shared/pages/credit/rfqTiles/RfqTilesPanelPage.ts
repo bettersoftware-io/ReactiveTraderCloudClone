@@ -43,7 +43,9 @@ export class RfqTilesPanelPage extends MountedComponent<Record<string, never>> {
 
   /** Accept the first acceptable quote. */
   async acceptFirstQuote(): Promise<void> {
-    await this.user.click(this.q().getAllByRole("button", { name: /accept/i })[0]);
+    await this.user.click(
+      this.q().getAllByRole("button", { name: /accept/i })[0],
+    );
   }
 
   /** Quote ids recorded by the faked accept-quote command. */

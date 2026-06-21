@@ -6,7 +6,9 @@ export class PlaywrightCreditRfqForm implements CreditRfqFormPO {
   constructor(private readonly page: Page) {}
 
   async waitForSubmitButton(timeoutMs: number): Promise<void> {
-    await expect(this.page.getByText(STRINGS.creditRfq.submitButton)).toBeVisible({ timeout: timeoutMs });
+    await expect(
+      this.page.getByText(STRINGS.creditRfq.submitButton),
+    ).toBeVisible({ timeout: timeoutMs });
   }
   async hasBuyAndSellButtons(): Promise<boolean> {
     const buyVisible = await this.page

@@ -1,26 +1,26 @@
-import { useCallback, useState, useSyncExternalStore } from "react";
-import { EMPTY, of, throwError, type Observable } from "rxjs";
-import type { BehaviorSubject } from "rxjs";
 import type {
-  CurrencyPair,
   CreateRfqInput,
+  CurrencyPair,
   ExecuteTradeInput,
   ExecuteTradeResult,
   RfqQuoteResult,
   Theme,
   ViewMode,
 } from "@rtc/domain";
+import { useCallback, useState, useSyncExternalStore } from "react";
+import type { BehaviorSubject } from "rxjs";
+import { EMPTY, type Observable, of, throwError } from "rxjs";
+import { createNotionalMachine } from "../../../../src/app/presenters/NotionalMachine";
 import type {
   RfqSubmissionState,
   TicketSubmissionState,
 } from "../../../../src/app/presenters/RfqsPresenter";
+import { createRfqTileMachine } from "../../../../src/app/presenters/RfqTileMachine";
+import { createRowHighlightMachine } from "../../../../src/app/presenters/RowHighlightMachine";
+import { createStaleFlagMachine } from "../../../../src/app/presenters/StaleFlagMachine";
+import { createTileExecutionMachine } from "../../../../src/app/presenters/TileExecutionMachine";
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import { useMachine } from "../../../../src/ui/hooks/useMachine";
-import { createTileExecutionMachine } from "../../../../src/app/presenters/TileExecutionMachine";
-import { createRfqTileMachine } from "../../../../src/app/presenters/RfqTileMachine";
-import { createStaleFlagMachine } from "../../../../src/app/presenters/StaleFlagMachine";
-import { createRowHighlightMachine } from "../../../../src/app/presenters/RowHighlightMachine";
-import { createNotionalMachine } from "../../../../src/app/presenters/NotionalMachine";
 import type { World } from "../shared/harness/world";
 
 /** Mirror of RfqsPresenter's presenter-local redirect delay. The contract spec
@@ -75,10 +75,14 @@ export function reactHooks(world: World): AppHooks {
           execute: (input: ExecuteTradeInput) => {
             world.commands.executeTrade.push(input);
             if (world.results.executeTradeThrows) {
-              return throwError(() => new Error("execute failed")) as Observable<ExecuteTradeResult>;
+              return throwError(
+                () => new Error("execute failed"),
+              ) as Observable<ExecuteTradeResult>;
             }
             const result = world.results.executeTrade;
-            return result ? of(result) : (EMPTY as Observable<ExecuteTradeResult>);
+            return result
+              ? of(result)
+              : (EMPTY as Observable<ExecuteTradeResult>);
           },
         }),
       ),
@@ -92,7 +96,9 @@ export function reactHooks(world: World): AppHooks {
           requestQuote: (symbol: string, pipsPosition: number) => {
             world.commands.requestRfqQuote.push({ symbol, pipsPosition });
             if (world.results.requestRfqQuoteThrows) {
-              return throwError(() => new Error("rfq failed")) as Observable<RfqQuoteResult>;
+              return throwError(
+                () => new Error("rfq failed"),
+              ) as Observable<RfqQuoteResult>;
             }
             const result = world.results.requestRfqQuote;
             return result ? of(result) : (EMPTY as Observable<RfqQuoteResult>);
@@ -132,9 +138,10 @@ export function reactHooks(world: World): AppHooks {
     // onRedirect via a REAL setTimeout(REDIRECT_DELAY_MS) so the spec's fake-timer
     // advance drives the redirect with the same timing as the real RxJS timer.
     useRfqSubmission: () => {
-      const [submissionState, setSubmissionState] = useState<RfqSubmissionState>({
-        status: "editing",
-      });
+      const [submissionState, setSubmissionState] =
+        useState<RfqSubmissionState>({
+          status: "editing",
+        });
       const submit = useCallback(
         (input: CreateRfqInput, onRedirect: (rfqId: number) => void) => {
           world.commands.createRfq.push(input);

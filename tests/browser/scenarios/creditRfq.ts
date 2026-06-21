@@ -3,18 +3,30 @@ import { assertTrue } from "./assert";
 
 const VALID_CREDIT_TABS = new Set(["tiles", "new-rfq", "sell-side"]);
 
-function ensureCreditTab(tab: string): asserts tab is "tiles" | "new-rfq" | "sell-side" {
-  if (!VALID_CREDIT_TABS.has(tab)) throw new Error(`unsupported credit tab: ${tab}`);
+function ensureCreditTab(
+  tab: string,
+): asserts tab is "tiles" | "new-rfq" | "sell-side" {
+  if (!VALID_CREDIT_TABS.has(tab))
+    throw new Error(`unsupported credit tab: ${tab}`);
 }
 
-export async function clickCreditTab(ctx: TestContext, tab: string): Promise<void> {
+export async function clickCreditTab(
+  ctx: TestContext,
+  tab: string,
+): Promise<void> {
   ensureCreditTab(tab);
   await ctx.po.creditRfqPanel.clickTab(tab);
 }
 
-export async function expectCreditTabVisible(ctx: TestContext, tab: string): Promise<void> {
+export async function expectCreditTabVisible(
+  ctx: TestContext,
+  tab: string,
+): Promise<void> {
   ensureCreditTab(tab);
-  assertTrue(await ctx.po.creditRfqPanel.tabIsVisible(tab), `credit tab not visible: ${tab}`);
+  assertTrue(
+    await ctx.po.creditRfqPanel.tabIsVisible(tab),
+    `credit tab not visible: ${tab}`,
+  );
 }
 
 export async function expectMessageWithin(
@@ -36,12 +48,22 @@ export async function expectCreditRfqSubmitButtonWithin(
   await ctx.po.creditRfqForm.waitForSubmitButton(seconds * 1_000);
 }
 
-export async function expectCreditRfqHasBuySellButtons(ctx: TestContext): Promise<void> {
-  assertTrue(await ctx.po.creditRfqForm.hasBuyAndSellButtons(), "credit RFQ form missing Buy/Sell buttons");
+export async function expectCreditRfqHasBuySellButtons(
+  ctx: TestContext,
+): Promise<void> {
+  assertTrue(
+    await ctx.po.creditRfqForm.hasBuyAndSellButtons(),
+    "credit RFQ form missing Buy/Sell buttons",
+  );
 }
 
-export async function expectCreditRfqHasDirectionLabel(ctx: TestContext): Promise<void> {
-  assertTrue(await ctx.po.creditRfqForm.hasDirectionLabel(), "credit RFQ form missing Direction label");
+export async function expectCreditRfqHasDirectionLabel(
+  ctx: TestContext,
+): Promise<void> {
+  assertTrue(
+    await ctx.po.creditRfqForm.hasDirectionLabel(),
+    "credit RFQ form missing Direction label",
+  );
 }
 
 export async function expectSellSideHeadingWithin(

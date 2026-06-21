@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { firstValueFrom } from "rxjs";
 import { PreferencesSimulator, type ViewMode } from "@rtc/domain";
+import { firstValueFrom } from "rxjs";
+import { describe, expect, it } from "vitest";
 import { ViewModePreferencePresenter } from "../ViewModePreferencePresenter";
 
 describe("ViewModePreferencePresenter", () => {
@@ -12,7 +12,9 @@ describe("ViewModePreferencePresenter", () => {
   });
 
   it("setViewMode pushes to existing subscribers", () => {
-    const presenter = new ViewModePreferencePresenter(new PreferencesSimulator());
+    const presenter = new ViewModePreferencePresenter(
+      new PreferencesSimulator(),
+    );
     const seen: ViewMode[] = [];
     const sub = presenter.viewMode$.subscribe((v) => seen.push(v));
     presenter.setViewMode("price");

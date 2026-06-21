@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
 import type { CurrencyPairPosition } from "@rtc/domain";
+import type { CSSProperties } from "react";
 import styles from "./PairPnlBars.module.css";
 
 interface PairPnlBarsProps {
@@ -36,10 +36,7 @@ export function PairPnlBars({ positions }: PairPnlBarsProps) {
                 style={{ "--bar-width": barWidth } as CSSProperties}
               />
             </div>
-            <span
-              data-sign={sign}
-              className={styles.pnlLabel}
-            >
+            <span data-sign={sign} className={styles.pnlLabel}>
               {formatPnl(pos.basePnl)}
             </span>
           </div>

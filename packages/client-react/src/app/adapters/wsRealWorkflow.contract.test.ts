@@ -1,12 +1,12 @@
 import { describeWorkflowPortContract } from "@rtc/domain/ports/__contracts__/WorkflowPortContract";
 import {
-  workflowEventCreated,
-  workflowEventAccepted,
   rpcAck,
+  workflowEventAccepted,
+  workflowEventCreated,
 } from "@rtc/shared/__fixtures__/wireFrames";
-import { createWsRealPorts } from "./portFactory";
-import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
+import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { createWsRealPorts } from "./portFactory";
 
 describeWorkflowPortContract("wsRealWorkflow", () => {
   const ws = new FakeWsAdapter();

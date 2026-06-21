@@ -1,5 +1,5 @@
+import type { Dealer, Quote } from "@rtc/domain";
 import { useCallback } from "react";
-import type { Quote, Dealer } from "@rtc/domain";
 import styles from "./QuoteCard.module.css";
 
 interface QuoteCardProps {
@@ -30,23 +30,15 @@ export function QuoteCard({ quote, dealer, onAccept }: QuoteCardProps) {
   }, [canAccept, onAccept, quote.id]);
 
   return (
-    <div
-      className={styles.quoteCard}
-      data-state={quote.state.type}
-    >
+    <div className={styles.quoteCard} data-state={quote.state.type}>
       <div className={styles.info}>
         <span className={styles.dealerName}>
           {dealer?.name ?? `Dealer ${quote.dealerId}`}
         </span>
-        <span className={styles.priceText}>
-          {displayText(quote.state)}
-        </span>
+        <span className={styles.priceText}>{displayText(quote.state)}</span>
       </div>
       {canAccept && (
-        <button
-          onClick={handleAccept}
-          className={styles.acceptBtn}
-        >
+        <button onClick={handleAccept} className={styles.acceptBtn}>
           Accept
         </button>
       )}

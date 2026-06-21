@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { Direction, TradeStatus, type Trade } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 import { BlotterHeader } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 import type { ColumnFilter } from "../../../../../../src/ui/fx/blotter/columnFilter/filterState";
 
 const trade = (over: Partial<Trade> = {}): Trade => ({
@@ -23,7 +23,13 @@ const noSort = { column: null, direction: null } as const;
 describe("BlotterHeader", () => {
   it("renders every column label", () => {
     const header = mount(BlotterHeader, {
-      props: { sort: noSort, onSort: () => {}, filters: new Map(), onFilter: () => {}, trades: [] },
+      props: {
+        sort: noSort,
+        onSort: () => {},
+        filters: new Map(),
+        onFilter: () => {},
+        trades: [],
+      },
     });
     expect(header.labels()).toEqual([
       "Trade ID",
@@ -88,7 +94,10 @@ describe("BlotterHeader", () => {
         onSort: () => {},
         filters: new Map(),
         onFilter: () => {},
-        trades: [trade({ currencyPair: "EURUSD" }), trade({ currencyPair: "USDJPY" })],
+        trades: [
+          trade({ currencyPair: "EURUSD" }),
+          trade({ currencyPair: "USDJPY" }),
+        ],
       },
     });
     expect(header.filterPanelOpen("CCYCCY")).toBe(false);
@@ -160,10 +169,19 @@ describe("BlotterHeader", () => {
 
   it("marks a column that has an active filter", () => {
     const filters = new Map<keyof Trade, ColumnFilter>([
-      ["currencyPair", { type: "set", column: "currencyPair", values: new Set(["EURUSD"]) }],
+      [
+        "currencyPair",
+        { type: "set", column: "currencyPair", values: new Set(["EURUSD"]) },
+      ],
     ]);
     const header = mount(BlotterHeader, {
-      props: { sort: noSort, onSort: () => {}, filters, onFilter: () => {}, trades: [trade()] },
+      props: {
+        sort: noSort,
+        onSort: () => {},
+        filters,
+        onFilter: () => {},
+        trades: [trade()],
+      },
     });
     expect(header.hasActiveFilterDot("CCYCCY")).toBe(true);
     expect(header.hasActiveFilterDot("Notional")).toBe(false);

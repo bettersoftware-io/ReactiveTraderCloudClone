@@ -1,6 +1,6 @@
+import type { CurrencyCategory } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import type { CurrencyCategory } from "@rtc/domain";
 import { MountedComponent } from "../../../harness/component";
 
 export interface CurrencyFilterProps {
@@ -17,14 +17,20 @@ export class CurrencyFilterPage extends MountedComponent<CurrencyFilterProps> {
 
   /** The text label on every category button, in render order. */
   categories(): string[] {
-    return [...this.root.querySelectorAll<HTMLButtonElement>("[data-testid^='filter-']")].map(
-      (b) => b.textContent?.trim() ?? "",
-    );
+    return [
+      ...this.root.querySelectorAll<HTMLButtonElement>(
+        "[data-testid^='filter-']",
+      ),
+    ].map((b) => b.textContent?.trim() ?? "");
   }
 
   /** The category whose button is rendered as selected (data-active="true"). */
   selectedCategory(): string | null {
-    const buttons = [...this.root.querySelectorAll<HTMLButtonElement>("[data-testid^='filter-']")];
+    const buttons = [
+      ...this.root.querySelectorAll<HTMLButtonElement>(
+        "[data-testid^='filter-']",
+      ),
+    ];
     const active = buttons.find((b) => b.dataset.active === "true");
     return active?.textContent?.trim() ?? null;
   }

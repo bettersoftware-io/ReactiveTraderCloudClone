@@ -1,15 +1,15 @@
-export const enum Direction {
+export enum Direction {
   Buy = "Buy",
   Sell = "Sell",
 }
 
-export const enum TradeStatus {
+export enum TradeStatus {
   Pending = "Pending",
   Done = "Done",
   Rejected = "Rejected",
 }
 
-export const enum ExecutionStatus {
+export enum ExecutionStatus {
   Done = "Done",
   Rejected = "Rejected",
   Timeout = "Timeout",
@@ -40,7 +40,10 @@ export interface Trade {
 /**
  * Buy = base currency (first 3 chars), Sell = terms currency (last 3 chars).
  */
-export function deriveDealtCurrency(symbol: string, direction: Direction): string {
+export function deriveDealtCurrency(
+  symbol: string,
+  direction: Direction,
+): string {
   return direction === Direction.Buy ? symbol.slice(0, 3) : symbol.slice(3, 6);
 }
 

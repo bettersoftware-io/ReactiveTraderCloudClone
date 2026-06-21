@@ -1,26 +1,19 @@
 import {
-  Subject,
-  merge,
-  of,
-  timer,
-  concat,
-  type Observable,
-} from "rxjs";
+  type CurrencyPair,
+  REJECTED_DISPLAY_MS,
+  RFQ_TIMEOUT_MS,
+  type RfqQuoteResult,
+} from "@rtc/domain";
+import { type DefaultedStateObservable, state } from "@rx-state/core";
+import { concat, merge, type Observable, of, Subject, timer } from "rxjs";
 import {
   catchError,
   map,
   switchMap,
-  takeWhile,
-  takeUntil,
   take,
+  takeUntil,
+  takeWhile,
 } from "rxjs/operators";
-import { state, type DefaultedStateObservable } from "@rx-state/core";
-import {
-  type CurrencyPair,
-  type RfqQuoteResult,
-  RFQ_TIMEOUT_MS,
-  REJECTED_DISPLAY_MS,
-} from "@rtc/domain";
 import type { Machine } from "./machine";
 
 /** The RFQ quote lifecycle of a single tile, relocated out of the old
@@ -60,7 +53,11 @@ export interface RfqTileIntents {
 const COUNTDOWN_INTERVAL_MS = 100;
 
 const INIT: RfqState = { status: "init", quote: null, remainingMs: 0 };
-const REQUESTED: RfqState = { status: "requested", quote: null, remainingMs: 0 };
+const REQUESTED: RfqState = {
+  status: "requested",
+  quote: null,
+  remainingMs: 0,
+};
 const REJECTED: RfqState = { status: "rejected", quote: null, remainingMs: 0 };
 
 export function createRfqTileMachine(
@@ -74,21 +71,20 @@ export function createRfqTileMachine(
 
   // rejected → hold REJECTED_DISPLAY_MS → init.
   const rejectedRun = (): Observable<RfqState> =>
-    concat(
-      of(REJECTED),
-      timer(REJECTED_DISPLAY_MS).pipe(map(() => INIT)),
-    );
+    concat(of(REJECTED), timer(REJECTED_DISPLAY_MS).pipe(map(() => INIT)));
 
   // received → countdown ticking every COUNTDOWN_INTERVAL_MS; when it reaches
   // zero, fall through to rejectedRun. Deterministic under TestScheduler because
   // remaining is derived from the timer index, not Date.now().
   const receivedFlow = (quote: RfqQuote): Observable<RfqState> => {
     const ticks$ = timer(0, COUNTDOWN_INTERVAL_MS).pipe(
-      map((i): RfqState => ({
-        status: "received",
-        quote,
-        remainingMs: RFQ_TIMEOUT_MS - i * COUNTDOWN_INTERVAL_MS,
-      })),
+      map(
+        (i): RfqState => ({
+          status: "received",
+          quote,
+          remainingMs: RFQ_TIMEOUT_MS - i * COUNTDOWN_INTERVAL_MS,
+        }),
+      ),
       // Emit each received tick while time remains; stop (exclusive) at <= 0.
       takeWhile((s) => s.remainingMs > 0, false),
     );
@@ -101,14 +97,12 @@ export function createRfqTileMachine(
   // takeUntil tears the active flow down the moment any of them fires.
   const runs$ = requestQuote$.pipe(
     switchMap(() => {
-      const quoteFlow$ = deps
-        .requestQuote(pair.symbol, pair.pipsPosition)
-        .pipe(
-          switchMap((r) =>
-            receivedFlow({ bid: r.bid, ask: r.ask, timeoutMs: RFQ_TIMEOUT_MS }),
-          ),
-          catchError(() => rejectedRun()),
-        );
+      const quoteFlow$ = deps.requestQuote(pair.symbol, pair.pipsPosition).pipe(
+        switchMap((r) =>
+          receivedFlow({ bid: r.bid, ask: r.ask, timeoutMs: RFQ_TIMEOUT_MS }),
+        ),
+        catchError(() => rejectedRun()),
+      );
 
       const active$ = concat(of(REQUESTED), quoteFlow$);
 

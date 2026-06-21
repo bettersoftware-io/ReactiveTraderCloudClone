@@ -1,10 +1,14 @@
+import {
+  CREDIT_MAX_QUANTITY_INPUT,
+  Direction,
+  type Instrument,
+} from "@rtc/domain";
 import { useCallback, useMemo, useState } from "react";
-import { Direction, CREDIT_MAX_QUANTITY_INPUT, type Instrument } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
-import { InstrumentSearch } from "./InstrumentSearch";
 import { DealerSelection } from "./DealerSelection";
-import { QuantityInput } from "./QuantityInput";
+import { InstrumentSearch } from "./InstrumentSearch";
 import styles from "./NewRfqForm.module.css";
+import { QuantityInput } from "./QuantityInput";
 
 interface NewRfqFormProps {
   onCreated: (rfqId: number) => void;
@@ -23,7 +27,9 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
   const [instrument, setInstrument] = useState<Instrument | null>(null);
   const [direction, setDirection] = useState<Direction>(Direction.Buy);
   const [quantity, setQuantity] = useState("");
-  const [selectedDealerIds, setSelectedDealerIds] = useState<Set<number>>(new Set());
+  const [selectedDealerIds, setSelectedDealerIds] = useState<Set<number>>(
+    new Set(),
+  );
 
   const submitting = submission.state.status === "submitting";
 
@@ -59,7 +65,15 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
       },
       onCreated,
     );
-  }, [canSubmit, instrument, submit, selectedDealerIds, quantityNum, direction, onCreated]);
+  }, [
+    canSubmit,
+    instrument,
+    submit,
+    selectedDealerIds,
+    quantityNum,
+    direction,
+    onCreated,
+  ]);
 
   if (submission.state.status === "confirmed") {
     return (
@@ -74,9 +88,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
 
   return (
     <div className={styles.form}>
-      <span className={styles.formTitle}>
-        New RFQ
-      </span>
+      <span className={styles.formTitle}>New RFQ</span>
 
       <InstrumentSearch
         instruments={instruments}
@@ -85,9 +97,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
       />
 
       <div>
-        <label className={styles.fieldLabel}>
-          Direction
-        </label>
+        <label className={styles.fieldLabel}>Direction</label>
         <div className={styles.directionRow}>
           {[Direction.Buy, Direction.Sell].map((dir) => (
             <button
@@ -104,7 +114,11 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
         </div>
       </div>
 
-      <QuantityInput value={quantity} onChange={setQuantity} error={quantityError} />
+      <QuantityInput
+        value={quantity}
+        onChange={setQuantity}
+        error={quantityError}
+      />
 
       <DealerSelection
         dealers={dealers}

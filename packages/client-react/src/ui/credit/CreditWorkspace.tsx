@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
+import { CreditBlotter } from "./blotter/CreditBlotter";
+import styles from "./CreditWorkspace.module.css";
 import { NewRfqForm } from "./newRfq/NewRfqForm";
 import { RfqTilesPanel } from "./rfqTiles/RfqTilesPanel";
-import { CreditBlotter } from "./blotter/CreditBlotter";
 import { SellSidePanel } from "./sellSide/SellSidePanel";
-import styles from "./CreditWorkspace.module.css";
 
 type CreditView = "tiles" | "new-rfq" | "sell-side";
 
@@ -25,7 +25,11 @@ export function CreditWorkspace() {
             onClick={() => setView(v)}
             className={styles.tab}
           >
-            {v === "tiles" ? "RFQ Tiles" : v === "new-rfq" ? "New RFQ" : "Sell Side"}
+            {v === "tiles"
+              ? "RFQ Tiles"
+              : v === "new-rfq"
+                ? "New RFQ"
+                : "Sell Side"}
           </button>
         ))}
       </div>

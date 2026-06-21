@@ -1,13 +1,19 @@
 // tests/presenter/vitest-quickpickle-fake-timers/steps/fxTrading.steps.ts
 import { Then, When } from "quickpickle";
-import type { VitestFakePresenterWorld } from "../world";
 import * as trading from "../../scenarios/_shared/fxTrading";
+import type { VitestFakePresenterWorld } from "../world";
 
-When("the trader clicks buy on the first tile", async (state: VitestFakePresenterWorld) =>
-  trading.executeBuyOnFirstTile(state));
+When(
+  "the trader clicks buy on the first tile",
+  async (state: VitestFakePresenterWorld) =>
+    trading.executeBuyOnFirstTile(state),
+);
 
-When("the trader clicks sell on the first tile", async (state: VitestFakePresenterWorld) =>
-  trading.executeSellOnFirstTile(state));
+When(
+  "the trader clicks sell on the first tile",
+  async (state: VitestFakePresenterWorld) =>
+    trading.executeSellOnFirstTile(state),
+);
 
 When(
   "the trader executes a buy for {string} on the first tile",
@@ -21,8 +27,11 @@ When(
     trading.buyNTimesWithDismissals(state, n),
 );
 
-When("the trader dismisses the trade confirmation", async (state: VitestFakePresenterWorld) =>
-  trading.dismissTradeConfirmation(state));
+When(
+  "the trader dismisses the trade confirmation",
+  async (state: VitestFakePresenterWorld) =>
+    trading.dismissTradeConfirmation(state),
+);
 
 Then(
   "the trade confirmation appears within {int} seconds",

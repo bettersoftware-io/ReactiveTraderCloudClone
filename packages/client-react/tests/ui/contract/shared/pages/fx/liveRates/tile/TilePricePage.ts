@@ -21,8 +21,8 @@ export class TilePricePage extends MountedComponent<TilePriceProps> {
 
   /** The concatenated digit text rendered on one side (prefix+pips+fractional). */
   digits(side: "SELL" | "BUY"): string {
-    const btn = this.buttons().find((b) =>
-      (b.querySelector("span")?.textContent ?? "").trim() === side,
+    const btn = this.buttons().find(
+      (b) => (b.querySelector("span")?.textContent ?? "").trim() === side,
     );
     if (!btn) throw new Error(`No ${side} button`);
     // The numeric value lives in the second top-level <span> (after the label).
@@ -32,11 +32,13 @@ export class TilePricePage extends MountedComponent<TilePriceProps> {
 
   /** The colour of the big "pips" segment on one side (movement-driven). */
   pipsColor(side: "SELL" | "BUY"): string {
-    const btn = this.buttons().find((b) =>
-      (b.querySelector("span")?.textContent ?? "").trim() === side,
+    const btn = this.buttons().find(
+      (b) => (b.querySelector("span")?.textContent ?? "").trim() === side,
     );
     if (!btn) throw new Error(`No ${side} button`);
-    const pips = btn.querySelector<HTMLSpanElement>('[data-testid="tile-pips"]');
+    const pips = btn.querySelector<HTMLSpanElement>(
+      '[data-testid="tile-pips"]',
+    );
     const movement = pips?.dataset.movement;
     if (movement === "up") return "var(--accent-positive)";
     if (movement === "down") return "var(--accent-negative)";

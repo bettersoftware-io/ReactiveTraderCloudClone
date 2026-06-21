@@ -1,5 +1,5 @@
-import type { WorkspacePO } from "../contracts/Workspace";
 import { TESTIDS } from "../contracts/testids";
+import type { WorkspacePO } from "../contracts/Workspace";
 
 /**
  * Cypress impl of WorkspacePO. Methods return Promise<T> by chaining `.then`
@@ -12,18 +12,26 @@ export class CypressWorkspace implements WorkspacePO {
   }
   openFx(): Promise<void> {
     cy.visit("/");
-    return cy.get(`[data-testid="${TESTIDS.shell.tab("fx")}"]`).click() as unknown as Promise<void>;
+    return cy
+      .get(`[data-testid="${TESTIDS.shell.tab("fx")}"]`)
+      .click() as unknown as Promise<void>;
   }
   openCredit(): Promise<void> {
     cy.visit("/");
-    return cy.get(`[data-testid="${TESTIDS.shell.tab("credit")}"]`).click() as unknown as Promise<void>;
+    return cy
+      .get(`[data-testid="${TESTIDS.shell.tab("credit")}"]`)
+      .click() as unknown as Promise<void>;
   }
   openAdmin(): Promise<void> {
     cy.visit("/");
-    return cy.get(`[data-testid="${TESTIDS.shell.tab("admin")}"]`).click() as unknown as Promise<void>;
+    return cy
+      .get(`[data-testid="${TESTIDS.shell.tab("admin")}"]`)
+      .click() as unknown as Promise<void>;
   }
   clickTab(tab: "fx" | "credit" | "admin"): Promise<void> {
-    return cy.get(`[data-testid="${TESTIDS.shell.tab(tab)}"]`).click() as unknown as Promise<void>;
+    return cy
+      .get(`[data-testid="${TESTIDS.shell.tab(tab)}"]`)
+      .click() as unknown as Promise<void>;
   }
   reload(): Promise<void> {
     return cy.reload() as unknown as Promise<void>;
@@ -39,9 +47,11 @@ export class CypressWorkspace implements WorkspacePO {
     }) as unknown as Promise<void>;
   }
   rootBackgroundColor(): Promise<string> {
-    return cy.get("#root > div").then(($el) =>
-      getComputedStyle($el[0]).backgroundColor
-    ) as unknown as Promise<string>;
+    return cy
+      .get("#root > div")
+      .then(
+        ($el) => getComputedStyle($el[0]).backgroundColor,
+      ) as unknown as Promise<string>;
   }
   wait(ms: number): Promise<void> {
     return cy.wait(ms) as unknown as Promise<void>;

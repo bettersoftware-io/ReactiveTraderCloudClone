@@ -1,6 +1,6 @@
+import type { Instrument, Quote, QuoteRequest, Rfq } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import type { Rfq, Quote, Instrument, QuoteRequest } from "@rtc/domain";
 import { MountedComponent } from "../../../harness/component";
 
 export interface TradeTicketProps {
@@ -19,7 +19,11 @@ export class TradeTicketPage extends MountedComponent<TradeTicketProps> {
   /** The instrument title (or fallback) line. */
   title(): string {
     // outer ticket → title block → name div (first leaf).
-    return this.root.querySelector(":scope > div > div > div")?.textContent?.trim() ?? "";
+    return (
+      this.root
+        .querySelector(":scope > div > div > div")
+        ?.textContent?.trim() ?? ""
+    );
   }
 
   /** Whether the price input + Submit/Pass actions are shown (active ticket). */
@@ -41,7 +45,9 @@ export class TradeTicketPage extends MountedComponent<TradeTicketProps> {
 
   /** Whether the Submit button is disabled. */
   isSubmitDisabled(): boolean {
-    return (this.q().getByRole("button", { name: /^submit$/i }) as HTMLButtonElement).disabled;
+    return (
+      this.q().getByRole("button", { name: /^submit$/i }) as HTMLButtonElement
+    ).disabled;
   }
 
   /** Click Submit to send the quote price. */

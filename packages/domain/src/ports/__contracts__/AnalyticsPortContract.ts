@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom } from "rxjs";
+import { describe, expect, it } from "vitest";
 import type { AnalyticsPort } from "../analyticsPort.js";
 
 export interface AnalyticsDriver {

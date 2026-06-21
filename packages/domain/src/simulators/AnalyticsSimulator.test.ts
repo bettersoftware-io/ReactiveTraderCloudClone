@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
-import { AnalyticsSimulator } from "./AnalyticsSimulator.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PositionUpdates } from "../analytics/position.js";
+import { AnalyticsSimulator } from "./AnalyticsSimulator.js";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -49,7 +49,9 @@ describe("AnalyticsSimulator", () => {
   it("emits initial snapshot then updates every 10s, capped at 90 entries", async () => {
     vi.useFakeTimers();
     const engine = new AnalyticsSimulator();
-    const promise = firstValueFrom(engine.getAnalytics("USD").pipe(take(3), toArray()));
+    const promise = firstValueFrom(
+      engine.getAnalytics("USD").pipe(take(3), toArray()),
+    );
     await vi.advanceTimersByTimeAsync(20_000);
     const snapshots: PositionUpdates[] = await promise;
 
@@ -64,8 +66,12 @@ describe("AnalyticsSimulator", () => {
     const last0 = snapshots[0].history[snapshots[0].history.length - 1];
     const last1 = snapshots[1].history[snapshots[1].history.length - 1];
     const last2 = snapshots[2].history[snapshots[2].history.length - 1];
-    expect(new Date(last1.timestamp).getTime()).toBeGreaterThanOrEqual(new Date(last0.timestamp).getTime());
-    expect(new Date(last2.timestamp).getTime()).toBeGreaterThanOrEqual(new Date(last1.timestamp).getTime());
+    expect(new Date(last1.timestamp).getTime()).toBeGreaterThanOrEqual(
+      new Date(last0.timestamp).getTime(),
+    );
+    expect(new Date(last2.timestamp).getTime()).toBeGreaterThanOrEqual(
+      new Date(last1.timestamp).getTime(),
+    );
   });
 
   it("history stays bounded at 90 entries after many update intervals", async () => {
@@ -90,13 +96,17 @@ describe("AnalyticsSimulator", () => {
   it("random walk produces values within reasonable per-step bound", async () => {
     vi.useFakeTimers();
     const engine = new AnalyticsSimulator();
-    const promise = firstValueFrom(engine.getAnalytics("USD").pipe(take(2), toArray()));
+    const promise = firstValueFrom(
+      engine.getAnalytics("USD").pipe(take(2), toArray()),
+    );
     await vi.advanceTimersByTimeAsync(10_000);
     const snapshots: PositionUpdates[] = await promise;
 
     const before = snapshots[0].history[snapshots[0].history.length - 1].usdPnl;
     const after = snapshots[1].history[snapshots[1].history.length - 1].usdPnl;
     // randomWalkStep multiplies by (1 + (rand - 0.5) / 100) → max |pct change| ≤ 0.5%
-    expect(Math.abs(after - before)).toBeLessThanOrEqual(Math.abs(before) * 0.005 + 1e-9);
+    expect(Math.abs(after - before)).toBeLessThanOrEqual(
+      Math.abs(before) * 0.005 + 1e-9,
+    );
   });
 });

@@ -1,15 +1,29 @@
 import {
-  distinctUntilChanged, map, type Observable, shareReplay,
-  Subject, merge, of, timer, concat,
-  catchError, switchMap, tap, ignoreElements,
-} from "rxjs";
-import { state, type DefaultedStateObservable } from "@rx-state/core";
-import {
-  type Quote, type Rfq, type RfqStreamState,
+  type CreateRfqInput,
+  CreateRfqUseCase,
+  type Quote,
+  type QuoteRequest,
+  type Rfq,
+  type RfqStreamState,
   WorkflowEventStreamUseCase,
-  CreateRfqUseCase, type CreateRfqInput,
-  type WorkflowPort, type QuoteRequest,
+  type WorkflowPort,
 } from "@rtc/domain";
+import { type DefaultedStateObservable, state } from "@rx-state/core";
+import {
+  catchError,
+  concat,
+  distinctUntilChanged,
+  ignoreElements,
+  map,
+  merge,
+  type Observable,
+  of,
+  Subject,
+  shareReplay,
+  switchMap,
+  tap,
+  timer,
+} from "rxjs";
 import type { Machine } from "./machine";
 
 /** Delay between confirming a freshly-created RFQ and redirecting the user back
@@ -54,12 +68,15 @@ export class RfqsPresenter {
   private readonly state$: Observable<RfqStreamState>;
   readonly rfqs$: Observable<readonly Rfq[]>;
   readonly allQuotes$: Observable<ReadonlyMap<number, Quote>>;
-  private readonly quotesByRfqCache = new Map<number, Observable<readonly Quote[]>>();
+  private readonly quotesByRfqCache = new Map<
+    number,
+    Observable<readonly Quote[]>
+  >();
 
   constructor(private readonly workflow: WorkflowPort) {
-    this.state$ = new WorkflowEventStreamUseCase(workflow).execute().pipe(
-      shareReplay({ bufferSize: 1, refCount: true }),
-    );
+    this.state$ = new WorkflowEventStreamUseCase(workflow)
+      .execute()
+      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
     this.rfqs$ = this.state$.pipe(
       map((s) => Array.from(s.rfqs.values())),
       distinctUntilChanged(shallowArrayEquals),
@@ -76,7 +93,9 @@ export class RfqsPresenter {
     const cached = this.quotesByRfqCache.get(rfqId);
     if (cached) return cached;
     const stream = this.state$.pipe(
-      map((s) => Array.from(s.quotes.values()).filter((q) => q.rfqId === rfqId)),
+      map((s) =>
+        Array.from(s.quotes.values()).filter((q) => q.rfqId === rfqId),
+      ),
       distinctUntilChanged(shallowArrayEquals),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
@@ -139,7 +158,10 @@ export class RfqsPresenter {
       ),
     );
 
-    const state$: DefaultedStateObservable<RfqSubmissionState> = state(runs$, EDITING);
+    const state$: DefaultedStateObservable<RfqSubmissionState> = state(
+      runs$,
+      EDITING,
+    );
     const warm = state$.subscribe();
 
     return {

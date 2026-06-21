@@ -1,7 +1,7 @@
-import { merge, type Observable } from "rxjs";
-import { map, scan, distinctUntilChanged, startWith } from "rxjs/operators";
-import { state, type StateObservable } from "@rx-state/core";
 import { ConnectionStatus } from "@rtc/domain";
+import { type StateObservable, state } from "@rx-state/core";
+import { merge, type Observable } from "rxjs";
+import { distinctUntilChanged, map, scan, startWith } from "rxjs/operators";
 import type { ReadOnlyMachine } from "./machine";
 
 /** Generic stale-detection derived flag, relocated out of the old
@@ -43,9 +43,7 @@ export function createStaleFlagMachine<T>(
   deps: StaleFlagDeps<T>,
 ): ReadOnlyMachine<boolean> {
   const events$ = merge(
-    deps.status$.pipe(
-      map((status): Event<T> => ({ kind: "status", status })),
-    ),
+    deps.status$.pipe(map((status): Event<T> => ({ kind: "status", status }))),
     deps.value$.pipe(map((value): Event<T> => ({ kind: "value", value }))),
   );
 

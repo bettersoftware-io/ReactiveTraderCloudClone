@@ -1,12 +1,20 @@
 import type { TestContext } from "../testContext";
 import { assertTrue } from "./assert";
 
-export async function setBrowserOffline(ctx: TestContext, offline: boolean): Promise<void> {
+export async function setBrowserOffline(
+  ctx: TestContext,
+  offline: boolean,
+): Promise<void> {
   await ctx.po.workspace.setOffline(offline);
 }
 
-export async function expectConnectionStatusFooterVisible(ctx: TestContext): Promise<void> {
-  assertTrue(await ctx.po.footer.isStatusVisible(), "connection status footer not visible");
+export async function expectConnectionStatusFooterVisible(
+  ctx: TestContext,
+): Promise<void> {
+  assertTrue(
+    await ctx.po.footer.isStatusVisible(),
+    "connection status footer not visible",
+  );
 }
 
 export async function expectConnectionStatusFooterShows(
@@ -22,11 +30,18 @@ export async function expectConnectionStatusFooterShows(
     if (last.includes(expected)) return;
     await ctx.po.workspace.wait(100);
   }
-  throw new Error(`expected footer to contain ${JSON.stringify(expected)} within 5s; last seen: ${JSON.stringify(last)}`);
+  throw new Error(
+    `expected footer to contain ${JSON.stringify(expected)} within 5s; last seen: ${JSON.stringify(last)}`,
+  );
 }
 
-export async function expectConnectionOverlayHidden(ctx: TestContext): Promise<void> {
-  assertTrue(await ctx.po.connectionOverlay.isHidden(), "connection overlay not hidden");
+export async function expectConnectionOverlayHidden(
+  ctx: TestContext,
+): Promise<void> {
+  assertTrue(
+    await ctx.po.connectionOverlay.isHidden(),
+    "connection overlay not hidden",
+  );
 }
 
 export async function expectConnectionOverlayVisibleWithin(

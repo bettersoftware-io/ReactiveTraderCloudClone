@@ -1,9 +1,11 @@
+import type { CurrencyCategory } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import type { CurrencyCategory } from "@rtc/domain";
 import { MountedComponent } from "../../../harness/component";
 
-export class LiveRatesPanelPage extends MountedComponent<Record<string, never>> {
+export class LiveRatesPanelPage extends MountedComponent<
+  Record<string, never>
+> {
   private readonly user: UserEvent = userEvent.setup();
 
   private q() {
@@ -12,9 +14,9 @@ export class LiveRatesPanelPage extends MountedComponent<Record<string, never>> 
 
   /** The symbols of every rendered tile, in order. */
   tileSymbols(): string[] {
-    return [...this.root.querySelectorAll<HTMLElement>("[data-testid^='tile-']")].map(
-      (el) => el.getAttribute("data-testid")!.replace("tile-", ""),
-    );
+    return [
+      ...this.root.querySelectorAll<HTMLElement>("[data-testid^='tile-']"),
+    ].map((el) => el.getAttribute("data-testid")!.replace("tile-", ""));
   }
 
   tileCount(): number {
@@ -27,7 +29,11 @@ export class LiveRatesPanelPage extends MountedComponent<Record<string, never>> 
 
   /** The loading placeholder text, when no pairs have loaded. */
   loadingMessage(): string | null {
-    return this.q().queryByText(/loading currency pairs/i)?.textContent?.trim() ?? null;
+    return (
+      this.q()
+        .queryByText(/loading currency pairs/i)
+        ?.textContent?.trim() ?? null
+    );
   }
 
   async chooseFilter(category: CurrencyCategory): Promise<void> {

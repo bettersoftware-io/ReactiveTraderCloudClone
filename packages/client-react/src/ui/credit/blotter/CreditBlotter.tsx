@@ -1,14 +1,42 @@
+import {
+  type CreditTrade,
+  type Dealer,
+  type Instrument,
+  type Quote,
+  type Rfq,
+  RfqState,
+} from "@rtc/domain";
 import { useMemo } from "react";
-import { type Rfq, type Quote, type Instrument, type Dealer, type CreditTrade, RfqState } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import styles from "./CreditBlotter.module.css";
 
 const COLUMNS = [
-  "Trade ID", "Status", "Trade Date", "Direction", "Counterparty",
-  "CUSIP", "Security", "Quantity", "Order Type", "Unit Price",
+  "Trade ID",
+  "Status",
+  "Trade Date",
+  "Direction",
+  "Counterparty",
+  "CUSIP",
+  "Security",
+  "Quantity",
+  "Order Type",
+  "Unit Price",
 ] as const;
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 function formatDate(timestamp: number): string {
   const d = new Date(timestamp);
@@ -79,9 +107,7 @@ export function CreditBlotter() {
 
   return (
     <div className={styles.blotter}>
-      <span className={styles.title}>
-        Credit Trades
-      </span>
+      <span className={styles.title}>Credit Trades</span>
 
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
@@ -104,7 +130,9 @@ export function CreditBlotter() {
                 <td className={styles.cell}>{trade.counterParty}</td>
                 <td className={styles.cell}>{trade.cusip}</td>
                 <td className={styles.cell}>{trade.security}</td>
-                <td className={styles.cell}>{trade.quantity.toLocaleString()}</td>
+                <td className={styles.cell}>
+                  {trade.quantity.toLocaleString()}
+                </td>
                 <td className={styles.cell}>{trade.orderType}</td>
                 <td className={styles.cell}>${trade.unitPrice}</td>
               </tr>

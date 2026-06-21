@@ -37,7 +37,10 @@ export class PlaywrightBlotterTable implements BlotterTablePO {
     return await this.page.getByTestId(TESTIDS.blotter.exportCsv).isVisible();
   }
   async exportCsvText(): Promise<string> {
-    return (await this.page.getByTestId(TESTIDS.blotter.exportCsv).textContent()) ?? "";
+    return (
+      (await this.page.getByTestId(TESTIDS.blotter.exportCsv).textContent()) ??
+      ""
+    );
   }
   async hoverFirstRow(): Promise<void> {
     await this.firstRow().hover();

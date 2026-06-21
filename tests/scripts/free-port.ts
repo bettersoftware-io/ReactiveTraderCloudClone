@@ -21,10 +21,15 @@ if (!Number.isInteger(port) || port <= 0 || port > 65535) {
 // that simply finds nothing returns [].
 type Finder = { name: string; run: () => number[] | null };
 
-function tryTool(bin: string, args: string[], parse: (stdout: string) => number[]): number[] | null {
+function tryTool(
+  bin: string,
+  args: string[],
+  parse: (stdout: string) => number[],
+): number[] | null {
   const result = spawnSync(bin, args, { encoding: "utf8" });
   // ENOENT => tool not installed; fall through to the next finder.
-  if (result.error && (result.error as NodeJS.ErrnoException).code === "ENOENT") return null;
+  if (result.error && (result.error as NodeJS.ErrnoException).code === "ENOENT")
+    return null;
   return parse(result.stdout ?? "");
 }
 
@@ -36,7 +41,10 @@ const pidLines = (stdout: string): number[] =>
 
 const finders: Finder[] = [
   // macOS + Linux-with-lsof: -t prints bare PIDs, one per line.
-  { name: "lsof", run: () => tryTool("lsof", [`-tiTCP:${port}`, "-sTCP:LISTEN"], pidLines) },
+  {
+    name: "lsof",
+    run: () => tryTool("lsof", [`-tiTCP:${port}`, "-sTCP:LISTEN"], pidLines),
+  },
   // Linux: ss embeds the owner as users:(("name",pid=737,fd=22)).
   {
     name: "ss",
@@ -70,14 +78,18 @@ if (pids === null) {
 
 const unique = [...new Set(pids)].filter((pid) => pid !== process.pid);
 if (unique.length === 0) {
-  console.log(`free-port: nothing is listening on :${port} (checked via ${used}).`);
+  console.log(
+    `free-port: nothing is listening on :${port} (checked via ${used}).`,
+  );
   process.exit(0);
 }
 
 for (const pid of unique) {
   try {
     process.kill(pid, "SIGTERM");
-    console.log(`free-port: sent SIGTERM to pid ${pid} on :${port} (via ${used}).`);
+    console.log(
+      `free-port: sent SIGTERM to pid ${pid} on :${port} (via ${used}).`,
+    );
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code === "ESRCH") continue; // already gone

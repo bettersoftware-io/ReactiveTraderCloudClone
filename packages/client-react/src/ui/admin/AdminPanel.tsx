@@ -5,18 +5,12 @@ export function AdminPanel() {
   const { value, loading, message, setValue } = useHooks().useThroughput();
 
   if (loading) {
-    return (
-      <div className={styles.loading}>
-        Loading throughput...
-      </div>
-    );
+    return <div className={styles.loading}>Loading throughput...</div>;
   }
 
   return (
     <div className={styles.panel}>
-      <h2 className={styles.heading}>
-        Throughput Control
-      </h2>
+      <h2 className={styles.heading}>Throughput Control</h2>
 
       <div className={styles.row}>
         <input
@@ -44,9 +38,7 @@ export function AdminPanel() {
             }}
             className={styles.numberInput}
           />
-          <span className={styles.unit}>
-            Updates/sec
-          </span>
+          <span className={styles.unit}>Updates/sec</span>
         </div>
       </div>
 

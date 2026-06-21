@@ -1,11 +1,14 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom, from, lastValueFrom, of } from "rxjs";
 import { toArray } from "rxjs/operators";
-import { AnalyticsUseCase } from "./AnalyticsUseCase.js";
-import type { AnalyticsPort } from "../ports/analyticsPort.js";
+import { describe, expect, it } from "vitest";
 import type { PositionUpdates } from "../analytics/position.js";
+import type { AnalyticsPort } from "../ports/analyticsPort.js";
+import { AnalyticsUseCase } from "./AnalyticsUseCase.js";
 
-function stubAnalytics(updates: PositionUpdates[]): { port: AnalyticsPort; lastCurrency: { current: string | null } } {
+function stubAnalytics(updates: PositionUpdates[]): {
+  port: AnalyticsPort;
+  lastCurrency: { current: string | null };
+} {
   const lastCurrency = { current: null as string | null };
   const port: AnalyticsPort = {
     getAnalytics(currency: string) {

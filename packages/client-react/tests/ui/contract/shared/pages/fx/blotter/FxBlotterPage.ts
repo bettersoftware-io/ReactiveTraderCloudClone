@@ -39,7 +39,9 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
   columnValues(label: string): string[] {
     const headers = within(this.table()).getAllByRole("columnheader");
     const idx = headers.findIndex((h) =>
-      (h.querySelector("span")?.firstChild?.textContent ?? "").trim().startsWith(label),
+      (h.querySelector("span")?.firstChild?.textContent ?? "")
+        .trim()
+        .startsWith(label),
     );
     if (idx < 0) throw new Error(`No column header for ${label}`);
     const rows = [...this.table().querySelectorAll("tbody tr")];
@@ -54,7 +56,9 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
   private headerCell(label: string): HTMLTableCellElement {
     const cell = within(this.table())
       .getAllByRole("columnheader")
-      .find((th) => (th.querySelector("span")?.textContent ?? "").includes(label));
+      .find((th) =>
+        (th.querySelector("span")?.textContent ?? "").includes(label),
+      );
     if (!cell) throw new Error(`No header cell with label ${label}`);
     return cell as HTMLTableCellElement;
   }
@@ -95,17 +99,23 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
 
   /** In an open set-filter panel, toggle one of its checkbox options. */
   async toggleSetOption(label: string): Promise<void> {
-    await this.user.click(within(this.root).getByRole("checkbox", { name: label }));
+    await this.user.click(
+      within(this.root).getByRole("checkbox", { name: label }),
+    );
   }
 
   /** Click Apply in whichever filter panel is currently open. */
   async applyOpenFilter(): Promise<void> {
-    await this.user.click(within(this.root).getByRole("button", { name: /^apply$/i }));
+    await this.user.click(
+      within(this.root).getByRole("button", { name: /^apply$/i }),
+    );
   }
 
   /** Click Reset in whichever number/date filter panel is currently open. */
   async resetOpenFilter(): Promise<void> {
-    await this.user.click(within(this.root).getByRole("button", { name: /^reset$/i }));
+    await this.user.click(
+      within(this.root).getByRole("button", { name: /^reset$/i }),
+    );
   }
 
   /** Choose a comparator and value in an open number-filter panel, then apply. */

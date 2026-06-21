@@ -1,4 +1,4 @@
-import { within, fireEvent } from "@testing-library/dom";
+import { fireEvent, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "../../../../harness/component";
 
@@ -51,7 +51,7 @@ export class TileNotionalPage extends MountedComponent<TileNotionalProps> {
     const spans = [...this.root.querySelectorAll("span")];
     const last = spans[spans.length - 1];
     return last && last !== this.root.querySelector("span")
-      ? last.textContent?.trim() ?? null
+      ? (last.textContent?.trim() ?? null)
       : null;
   }
 

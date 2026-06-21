@@ -1,6 +1,6 @@
 import type { BehaviorSubject } from "rxjs";
-import type { World } from "./world";
 import type { ComponentToken, MountedComponent } from "./component";
+import type { World } from "./world";
 
 export interface RenderInputs<P> {
   /** Reactive props source; the driver renders the component from its latest value. */

@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
-import type { WorkspacePO } from "../contracts/Workspace";
 import { TESTIDS } from "../contracts/testids";
+import type { WorkspacePO } from "../contracts/Workspace";
 
 export class PlaywrightWorkspace implements WorkspacePO {
   constructor(private readonly page: Page) {}
@@ -30,9 +30,9 @@ export class PlaywrightWorkspace implements WorkspacePO {
     await this.page.context().setOffline(offline);
   }
   async rootBackgroundColor(): Promise<string> {
-    return await this.page.locator("#root > div").evaluate(
-      (el) => getComputedStyle(el as HTMLElement).backgroundColor,
-    );
+    return await this.page
+      .locator("#root > div")
+      .evaluate((el) => getComputedStyle(el as HTMLElement).backgroundColor);
   }
   async wait(ms: number): Promise<void> {
     await this.page.waitForTimeout(ms);

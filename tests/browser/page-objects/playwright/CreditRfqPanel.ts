@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import type { CreditRfqPanelPO } from "../contracts/CreditRfqPanel";
-import { TESTIDS } from "../contracts/testids";
 import { STRINGS } from "../contracts/strings";
+import { TESTIDS } from "../contracts/testids";
 
 export class PlaywrightCreditRfqPanel implements CreditRfqPanelPO {
   constructor(private readonly page: Page) {}
@@ -16,12 +16,20 @@ export class PlaywrightCreditRfqPanel implements CreditRfqPanelPO {
     await this.page.getByTestId(TESTIDS.credit.tab(tab)).click();
   }
   async waitForNoRfqsMessage(timeoutMs: number): Promise<void> {
-    await expect(this.page.getByText(STRINGS.creditRfq.noRfqsMessage)).toBeVisible({ timeout: timeoutMs });
+    await expect(
+      this.page.getByText(STRINGS.creditRfq.noRfqsMessage),
+    ).toBeVisible({ timeout: timeoutMs });
   }
   async waitForSellSideHeading(timeoutMs: number): Promise<void> {
-    await expect(this.page.getByText(STRINGS.creditRfq.sellSideHeading)).toBeVisible({ timeout: timeoutMs });
+    await expect(
+      this.page.getByText(STRINGS.creditRfq.sellSideHeading),
+    ).toBeVisible({ timeout: timeoutMs });
   }
   async waitForCreditTradesHeading(timeoutMs: number): Promise<void> {
-    await expect(this.page.getByText(STRINGS.creditRfq.creditTradesHeading, { exact: true })).toBeVisible({ timeout: timeoutMs });
+    await expect(
+      this.page.getByText(STRINGS.creditRfq.creditTradesHeading, {
+        exact: true,
+      }),
+    ).toBeVisible({ timeout: timeoutMs });
   }
 }

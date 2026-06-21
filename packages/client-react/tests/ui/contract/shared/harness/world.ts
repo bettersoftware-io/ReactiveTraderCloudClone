@@ -1,25 +1,25 @@
-import { BehaviorSubject } from "rxjs";
 import {
   ConnectionStatus,
+  type CreateRfqInput,
+  type CurrencyPair,
   DEFAULT_THEME,
   DEFAULT_VIEW_MODE,
-  type Trade,
-  type Instrument,
   type Dealer,
-  type Rfq,
-  type Quote,
-  type CurrencyPair,
-  type Price,
-  type PriceTick,
-  type PositionUpdates,
-  type CreateRfqInput,
   type ExecuteTradeInput,
   type ExecuteTradeResult,
-  type RfqQuoteResult,
+  type Instrument,
+  type PositionUpdates,
+  type Price,
+  type PriceTick,
+  type Quote,
   type QuoteRequest,
+  type Rfq,
+  type RfqQuoteResult,
   type Theme,
+  type Trade,
   type ViewMode,
 } from "@rtc/domain";
+import { BehaviorSubject } from "rxjs";
 import type { ThroughputView } from "../../../../../src/app/presenters/ThroughputPresenter";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
@@ -131,10 +131,14 @@ export function createWorld(
   viewModeSeed?: ViewMode,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
-  const sources = {} as { [K in keyof HookValues]: BehaviorSubject<HookValues[K]> };
+  const sources = {} as {
+    [K in keyof HookValues]: BehaviorSubject<HookValues[K]>;
+  };
   for (const key of Object.keys(merged) as (keyof HookValues)[]) {
     // Each subject is typed by its own key; the cast bridges the per-key union.
-    (sources[key] as BehaviorSubject<unknown>) = new BehaviorSubject<unknown>(merged[key]);
+    (sources[key] as BehaviorSubject<unknown>) = new BehaviorSubject<unknown>(
+      merged[key],
+    );
   }
 
   const prices = new Map<string, BehaviorSubject<Price | null>>();
@@ -149,7 +153,9 @@ export function createWorld(
     }
     return subject;
   };
-  const historyFor = (symbol: string): BehaviorSubject<readonly PriceTick[]> => {
+  const historyFor = (
+    symbol: string,
+  ): BehaviorSubject<readonly PriceTick[]> => {
     let subject = histories.get(symbol);
     if (!subject) {
       subject = new BehaviorSubject<readonly PriceTick[]>([]);
@@ -187,7 +193,9 @@ export function createWorld(
   // a click through the seam re-renders the consuming component (ThemeProvider /
   // LiveRatesPanel), mirroring the PreferencesPort's replay-current streams.
   const theme = new BehaviorSubject<Theme>(themeSeed ?? DEFAULT_THEME);
-  const viewMode = new BehaviorSubject<ViewMode>(viewModeSeed ?? DEFAULT_VIEW_MODE);
+  const viewMode = new BehaviorSubject<ViewMode>(
+    viewModeSeed ?? DEFAULT_VIEW_MODE,
+  );
 
   return {
     sources,

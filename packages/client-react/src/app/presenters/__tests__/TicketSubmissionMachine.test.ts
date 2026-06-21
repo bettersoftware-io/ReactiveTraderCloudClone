@@ -1,15 +1,8 @@
-import { describe, it, expect } from "vitest";
+import type { QuoteRequest, RfqEvent, WorkflowPort } from "@rtc/domain";
+import { type Observable, of } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
-import { of, type Observable } from "rxjs";
-import type {
-  RfqEvent,
-  WorkflowPort,
-  QuoteRequest,
-} from "@rtc/domain";
-import {
-  RfqsPresenter,
-  type TicketSubmissionState,
-} from "../RfqsPresenter";
+import { describe, expect, it } from "vitest";
+import { RfqsPresenter, type TicketSubmissionState } from "../RfqsPresenter";
 
 interface Recorder {
   quote: QuoteRequest[];

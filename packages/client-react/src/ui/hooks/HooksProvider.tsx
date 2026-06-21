@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import type { AppHooks } from "./createAppHooks";
 
 const HooksContext = createContext<AppHooks | null>(null);
@@ -10,7 +10,9 @@ export function HooksProvider({
   hooks: AppHooks;
   children: ReactNode;
 }) {
-  return <HooksContext.Provider value={hooks}>{children}</HooksContext.Provider>;
+  return (
+    <HooksContext.Provider value={hooks}>{children}</HooksContext.Provider>
+  );
 }
 
 export function useHooks(): AppHooks {

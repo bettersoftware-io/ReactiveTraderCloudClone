@@ -1,6 +1,6 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 // Root is this host dir; @ui-visual resolves to the React render target two
 // levels up. A Solid host would point the alias at ../../solid instead.

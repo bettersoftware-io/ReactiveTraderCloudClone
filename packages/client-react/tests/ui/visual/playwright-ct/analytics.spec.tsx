@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/experimental-ct-react";
+import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
 
 test("analytics/populated", async ({ mount }) => {
@@ -13,7 +13,9 @@ test("analytics/loading", async ({ mount }) => {
 
 test("analytics/negative-pnl", async ({ mount }) => {
   const c = await mount(<VisualScenario name="analytics/negative-pnl" />);
-  await expect(c).toHaveScreenshot("negative-pnl.png", { animations: "disabled" });
+  await expect(c).toHaveScreenshot("negative-pnl.png", {
+    animations: "disabled",
+  });
 });
 
 test("analytics/empty", async ({ mount }) => {
@@ -23,7 +25,9 @@ test("analytics/empty", async ({ mount }) => {
 
 test("analytics/flat-positions", async ({ mount }) => {
   const c = await mount(<VisualScenario name="analytics/flat-positions" />);
-  await expect(c).toHaveScreenshot("flat-positions.png", { animations: "disabled" });
+  await expect(c).toHaveScreenshot("flat-positions.png", {
+    animations: "disabled",
+  });
 });
 
 test("analytics/millions", async ({ mount }) => {

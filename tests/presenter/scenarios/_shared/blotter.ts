@@ -11,8 +11,13 @@ export async function expectBlotterHasAtLeastNRows(
   w: PresenterWorld,
   n: number,
 ): Promise<void> {
-  const trades = await w.awaitFirstWithin(w.ctx.app.presenters.blotter.trades$, 3000);
+  const trades = await w.awaitFirstWithin(
+    w.ctx.app.presenters.blotter.trades$,
+    3000,
+  );
   if (trades.length < n) {
-    throw new Error(`blotter has ${trades.length} rows, expected at least ${n}`);
+    throw new Error(
+      `blotter has ${trades.length} rows, expected at least ${n}`,
+    );
   }
 }

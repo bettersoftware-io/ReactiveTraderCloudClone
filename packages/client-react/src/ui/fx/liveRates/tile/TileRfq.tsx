@@ -1,10 +1,10 @@
-import { useCallback } from "react";
 import {
   type CurrencyPair,
   Direction,
   type Price,
   PriceMovementType,
 } from "@rtc/domain";
+import { useCallback } from "react";
 import type {
   RfqState,
   RfqTileIntents,
@@ -61,10 +61,7 @@ export function TileRfq({
 
   if (state.status === "init") {
     return (
-      <button
-        onClick={onRequestQuote}
-        className={styles.initiateButton}
-      >
+      <button onClick={onRequestQuote} className={styles.initiateButton}>
         Initiate RFQ
       </button>
     );
@@ -73,13 +70,8 @@ export function TileRfq({
   if (state.status === "requested") {
     return (
       <div className={styles.requestedWrapper}>
-        <div className={styles.awaitingText}>
-          Awaiting Price...
-        </div>
-        <button
-          onClick={rfqState.cancel}
-          className={styles.cancelButton}
-        >
+        <div className={styles.awaitingText}>Awaiting Price...</div>
+        <button onClick={rfqState.cancel} className={styles.cancelButton}>
           Cancel RFQ
         </button>
       </div>
@@ -107,10 +99,7 @@ export function TileRfq({
           remainingMs={state.remainingMs}
           totalMs={state.quote.timeoutMs}
         />
-        <button
-          onClick={rfqState.reject}
-          className={styles.rejectButton}
-        >
+        <button onClick={rfqState.reject} className={styles.rejectButton}>
           Reject
         </button>
       </div>
@@ -118,11 +107,7 @@ export function TileRfq({
   }
 
   if (state.status === "rejected") {
-    return (
-      <div className={styles.rejectedText}>
-        Quote expired
-      </div>
-    );
+    return <div className={styles.rejectedText}>Quote expired</div>;
   }
 
   return null;

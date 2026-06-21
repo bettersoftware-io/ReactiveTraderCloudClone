@@ -1,4 +1,4 @@
-import { BehaviorSubject, type Observable, distinctUntilChanged } from "rxjs";
+import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 import type { PreferencesPort } from "../ports/preferencesPort.js";
 import {
   DEFAULT_THEME,
@@ -23,7 +23,9 @@ export class PreferencesSimulator implements PreferencesPort {
 
   constructor(seed: PreferencesSeed = {}) {
     this.theme = new BehaviorSubject<Theme>(seed.theme ?? DEFAULT_THEME);
-    this.viewMode = new BehaviorSubject<ViewMode>(seed.viewMode ?? DEFAULT_VIEW_MODE);
+    this.viewMode = new BehaviorSubject<ViewMode>(
+      seed.viewMode ?? DEFAULT_VIEW_MODE,
+    );
   }
 
   theme$(): Observable<Theme> {

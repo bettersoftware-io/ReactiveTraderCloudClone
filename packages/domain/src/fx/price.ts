@@ -7,7 +7,7 @@ export interface PriceTick {
   readonly creationTimestamp: number;
 }
 
-export const enum PriceMovementType {
+export enum PriceMovementType {
   NONE = "NONE",
   UP = "UP",
   DOWN = "DOWN",
@@ -27,7 +27,7 @@ export function calculateSpread(
   pipsPosition: number,
   ratePrecision: number,
 ): string {
-  const raw = (ask - bid) * Math.pow(10, pipsPosition);
+  const raw = (ask - bid) * 10 ** pipsPosition;
   const decimalPlaces = ratePrecision - pipsPosition;
   return raw.toFixed(decimalPlaces);
 }
@@ -40,7 +40,9 @@ export function detectMovement(
   previousMid: number | undefined,
 ): PriceMovementType {
   if (previousMid === undefined) return PriceMovementType.NONE;
-  return currentMid > previousMid ? PriceMovementType.UP : PriceMovementType.DOWN;
+  return currentMid > previousMid
+    ? PriceMovementType.UP
+    : PriceMovementType.DOWN;
 }
 
 export const PRICE_HISTORY_SIZE = 50;

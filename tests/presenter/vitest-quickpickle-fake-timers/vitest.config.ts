@@ -1,7 +1,7 @@
 // tests/presenter/vitest-quickpickle-fake-timers/vitest.config.ts
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
 import quickpickle from "quickpickle";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   // The config lives two levels below the package root; pin `root` back to
@@ -21,7 +21,9 @@ export default defineConfig({
     // HTML report (additive): test:presenter:vitest-quickpickle-fake-timers =>
     // reports/presenter/vitest-quickpickle-fake-timers/. Root-relative (tests/).
     reporters: ["default", "html"],
-    outputFile: { html: "reports/presenter/vitest-quickpickle-fake-timers/report/index.html" },
+    outputFile: {
+      html: "reports/presenter/vitest-quickpickle-fake-timers/report/index.html",
+    },
     pool: "threads",
   },
 });

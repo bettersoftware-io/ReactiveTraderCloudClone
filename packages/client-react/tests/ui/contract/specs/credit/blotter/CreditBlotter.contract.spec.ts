@@ -1,11 +1,34 @@
-import { describe, it, expect } from "vitest";
-import { Direction, RfqState, type Rfq, type Quote, type Instrument, type Dealer } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import {
+  type Dealer,
+  Direction,
+  type Instrument,
+  type Quote,
+  type Rfq,
+  RfqState,
+} from "@rtc/domain";
 import { CreditBlotter } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 
 const instruments: readonly Instrument[] = [
-  { id: 1, name: "US Treasury 10Y", cusip: "912828ZQ6", ticker: "T 1.5 02/34", maturity: "2034-02-15", interestRate: 1.5, benchmark: "10Y" },
-  { id: 2, name: "Apple Inc 2030", cusip: "037833EK8", ticker: "AAPL 2.4 30", maturity: "2030-05-11", interestRate: 2.4, benchmark: "7Y" },
+  {
+    id: 1,
+    name: "US Treasury 10Y",
+    cusip: "912828ZQ6",
+    ticker: "T 1.5 02/34",
+    maturity: "2034-02-15",
+    interestRate: 1.5,
+    benchmark: "10Y",
+  },
+  {
+    id: 2,
+    name: "Apple Inc 2030",
+    cusip: "037833EK8",
+    ticker: "AAPL 2.4 30",
+    maturity: "2030-05-11",
+    interestRate: 2.4,
+    benchmark: "7Y",
+  },
 ];
 const dealers: readonly Dealer[] = [
   { id: 1, name: "Adaptive Bank" },
@@ -26,7 +49,11 @@ const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => ({
   ...over,
 });
 
-const acceptedQuote = (id: number, rfqId: number, over: Partial<Quote> = {}): Quote => ({
+const acceptedQuote = (
+  id: number,
+  rfqId: number,
+  over: Partial<Quote> = {},
+): Quote => ({
   id,
   rfqId,
   dealerId: 2,
@@ -39,7 +66,9 @@ const quoteMap = (...quotes: Quote[]): ReadonlyMap<number, Quote> =>
 
 describe("CreditBlotter", () => {
   it("shows the column headers", () => {
-    const blotter = mount(CreditBlotter, { hooks: { useInstruments: instruments, useDealers: dealers } });
+    const blotter = mount(CreditBlotter, {
+      hooks: { useInstruments: instruments, useDealers: dealers },
+    });
     const headers = blotter.columnHeaders();
     expect(headers).toContain("Trade ID");
     expect(headers).toContain("Counterparty");
@@ -47,7 +76,9 @@ describe("CreditBlotter", () => {
   });
 
   it("shows the empty state when there are no closed-and-accepted RFQs", () => {
-    const blotter = mount(CreditBlotter, { hooks: { useInstruments: instruments, useDealers: dealers } });
+    const blotter = mount(CreditBlotter, {
+      hooks: { useInstruments: instruments, useDealers: dealers },
+    });
     expect(blotter.tradeRowCount()).toBe(0);
     expect(blotter.emptyMessage()).toMatch(/no credit trades yet/i);
   });
@@ -89,7 +120,11 @@ describe("CreditBlotter", () => {
         useInstruments: instruments,
         useDealers: dealers,
         useRfqs: [rfq(1)],
-        useAllQuotes: quoteMap(acceptedQuote(900, 1, { state: { type: "rejectedWithPrice", price: 99 } })),
+        useAllQuotes: quoteMap(
+          acceptedQuote(900, 1, {
+            state: { type: "rejectedWithPrice", price: 99 },
+          }),
+        ),
       },
     });
     expect(blotter.tradeRowCount()).toBe(0);
@@ -127,7 +162,10 @@ describe("CreditBlotter", () => {
       hooks: { useInstruments: instruments, useDealers: dealers },
     });
     expect(blotter.tradeRowCount()).toBe(0);
-    blotter.emit({ useRfqs: [rfq(1)], useAllQuotes: quoteMap(acceptedQuote(900, 1)) });
+    blotter.emit({
+      useRfqs: [rfq(1)],
+      useAllQuotes: quoteMap(acceptedQuote(900, 1)),
+    });
     expect(blotter.tradeRowCount()).toBe(1);
   });
 });

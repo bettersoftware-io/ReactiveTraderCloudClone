@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/experimental-ct-react";
+import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
 
 // Phase 9: the StaleIndicator "Reconnecting…" overlay arm. The stale flag is now

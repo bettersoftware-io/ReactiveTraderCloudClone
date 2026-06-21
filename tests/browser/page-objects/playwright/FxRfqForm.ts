@@ -6,7 +6,9 @@ export class PlaywrightFxRfqForm implements FxRfqFormPO {
   constructor(private readonly page: Page) {}
 
   private firstTile() {
-    return this.page.locator(`[data-testid^='${TESTIDS.liveRates.tilePrefix}']`).first();
+    return this.page
+      .locator(`[data-testid^='${TESTIDS.liveRates.tilePrefix}']`)
+      .first();
   }
   private rfqButton() {
     return this.firstTile().getByText(/initiate rfq|request quote/i);

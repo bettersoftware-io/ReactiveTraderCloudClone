@@ -1,6 +1,6 @@
-import { type Observable } from "rxjs";
-import type { AnalyticsPort } from "../ports/analyticsPort.js";
+import type { Observable } from "rxjs";
 import type { PositionUpdates } from "../analytics/position.js";
+import type { AnalyticsPort } from "../ports/analyticsPort.js";
 
 const DEFAULT_BASE_CURRENCY = "USD";
 

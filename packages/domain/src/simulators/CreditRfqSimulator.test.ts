@@ -1,24 +1,32 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { filter, take, toArray } from "rxjs/operators";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
-import type { RfqEvent } from "../ports/workflowPort.js";
 
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
-function collectEvents(sim: CreditRfqSimulator): { events: RfqEvent[]; stop: () => void } {
+function collectEvents(sim: CreditRfqSimulator): {
+  events: RfqEvent[];
+  stop: () => void;
+} {
   const events: RfqEvent[] = [];
   const sub = sim.events().subscribe((e) => events.push(e));
   return { events, stop: () => sub.unsubscribe() };
 }
 
-async function createRfqAndQuoteId(sim: CreditRfqSimulator): Promise<{ rfqId: number; quoteId: number }> {
+async function createRfqAndQuoteId(
+  sim: CreditRfqSimulator,
+): Promise<{ rfqId: number; quoteId: number }> {
   const quoteCreated = firstValueFrom(
-    sim.events().pipe(filter((e: RfqEvent) => e.type === "quoteCreated"), take(1)),
+    sim.events().pipe(
+      filter((e: RfqEvent) => e.type === "quoteCreated"),
+      take(1),
+    ),
   );
   const rfqId = await firstValueFrom(
     sim.createRfq({
@@ -45,7 +53,8 @@ describe("CreditRfqSimulator", () => {
     stop();
     const closed = events.find((e) => e.type === "rfqClosed");
     expect(closed).toBeDefined();
-    const payload = (closed as Extract<RfqEvent, { type: "rfqClosed" }>).payload;
+    const payload = (closed as Extract<RfqEvent, { type: "rfqClosed" }>)
+      .payload;
     expect(payload.id).toBe(rfqId);
     expect(payload.state).toBe("Cancelled");
   });
@@ -73,7 +82,8 @@ describe("CreditRfqSimulator", () => {
     stop();
     const passed = events.find((e) => e.type === "quotePassed");
     expect(passed).toBeDefined();
-    const payload = (passed as Extract<RfqEvent, { type: "quotePassed" }>).payload;
+    const payload = (passed as Extract<RfqEvent, { type: "quotePassed" }>)
+      .payload;
     expect(payload.id).toBe(quoteId);
     expect(payload.state.type).toBe("passed");
   });
@@ -94,10 +104,16 @@ describe("CreditRfqSimulator", () => {
     vi.spyOn(Math, "random").mockReturnValue(0); // force scheduled dealers to NOT participate
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
     const quoteCreatedTwice = firstValueFrom(
-      sim.events().pipe(filter((e: RfqEvent) => e.type === "quoteCreated"), take(2)),
+      sim.events().pipe(
+        filter((e: RfqEvent) => e.type === "quoteCreated"),
+        take(2),
+      ),
     );
     const firstQuotePromise = firstValueFrom(
-      sim.events().pipe(filter((e: RfqEvent) => e.type === "quoteCreated"), take(1)),
+      sim.events().pipe(
+        filter((e: RfqEvent) => e.type === "quoteCreated"),
+        take(1),
+      ),
     );
     await firstValueFrom(
       sim.createRfq({
@@ -110,7 +126,9 @@ describe("CreditRfqSimulator", () => {
     );
     await vi.advanceTimersByTimeAsync(0);
     await quoteCreatedTwice;
-    const winningQuoteId = ((await firstQuotePromise) as Extract<RfqEvent, { type: "quoteCreated" }>).payload.id;
+    const winningQuoteId = (
+      (await firstQuotePromise) as Extract<RfqEvent, { type: "quoteCreated" }>
+    ).payload.id;
     await firstValueFrom(sim.quote({ quoteId: winningQuoteId, price: 100 }));
     await vi.advanceTimersByTimeAsync(0);
     const { events, stop } = collectEvents(sim);
@@ -119,12 +137,16 @@ describe("CreditRfqSimulator", () => {
     stop();
     const accepted = events.find((e) => e.type === "quoteAccepted");
     expect(accepted).toBeDefined();
-    const acceptedPayload = (accepted as Extract<RfqEvent, { type: "quoteAccepted" }>).payload;
+    const acceptedPayload = (
+      accepted as Extract<RfqEvent, { type: "quoteAccepted" }>
+    ).payload;
     expect(acceptedPayload.id).toBe(winningQuoteId);
     expect(acceptedPayload.state).toEqual({ type: "accepted", price: 100 });
     const closed = events.find((e) => e.type === "rfqClosed");
     expect(closed).toBeDefined();
-    expect((closed as Extract<RfqEvent, { type: "rfqClosed" }>).payload.state).toBe("Closed");
+    expect(
+      (closed as Extract<RfqEvent, { type: "rfqClosed" }>).payload.state,
+    ).toBe("Closed");
   });
 
   it("accepting one quote implicitly rejects a competing priced quote (rejectedWithPrice)", async () => {
@@ -132,7 +154,11 @@ describe("CreditRfqSimulator", () => {
     vi.spyOn(Math, "random").mockReturnValue(0); // scheduled dealers do NOT participate
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
     const bothQuotesCreated = firstValueFrom(
-      sim.events().pipe(filter((e: RfqEvent) => e.type === "quoteCreated"), take(2), toArray()),
+      sim.events().pipe(
+        filter((e: RfqEvent) => e.type === "quoteCreated"),
+        take(2),
+        toArray(),
+      ),
     );
     await firstValueFrom(
       sim.createRfq({
@@ -144,7 +170,10 @@ describe("CreditRfqSimulator", () => {
       }),
     );
     await vi.advanceTimersByTimeAsync(0);
-    const created = (await bothQuotesCreated) as Extract<RfqEvent, { type: "quoteCreated" }>[];
+    const created = (await bothQuotesCreated) as Extract<
+      RfqEvent,
+      { type: "quoteCreated" }
+    >[];
     const winningQuoteId = created[0]!.payload.id;
     const losingQuoteId = created[1]!.payload.id;
 
@@ -163,7 +192,10 @@ describe("CreditRfqSimulator", () => {
       (e) => e.type === "quoteCreated" && e.payload.id === losingQuoteId,
     ) as Extract<RfqEvent, { type: "quoteCreated" }> | undefined;
     expect(loser).toBeDefined();
-    expect(loser!.payload.state).toEqual({ type: "rejectedWithPrice", price: 105 });
+    expect(loser!.payload.state).toEqual({
+      type: "rejectedWithPrice",
+      price: 105,
+    });
   });
 
   it("accepting one quote implicitly rejects a competing unpriced quote (rejectedWithoutPrice)", async () => {
@@ -171,7 +203,11 @@ describe("CreditRfqSimulator", () => {
     vi.spyOn(Math, "random").mockReturnValue(0); // scheduled dealers do NOT participate
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
     const bothQuotesCreated = firstValueFrom(
-      sim.events().pipe(filter((e: RfqEvent) => e.type === "quoteCreated"), take(2), toArray()),
+      sim.events().pipe(
+        filter((e: RfqEvent) => e.type === "quoteCreated"),
+        take(2),
+        toArray(),
+      ),
     );
     await firstValueFrom(
       sim.createRfq({
@@ -183,7 +219,10 @@ describe("CreditRfqSimulator", () => {
       }),
     );
     await vi.advanceTimersByTimeAsync(0);
-    const created = (await bothQuotesCreated) as Extract<RfqEvent, { type: "quoteCreated" }>[];
+    const created = (await bothQuotesCreated) as Extract<
+      RfqEvent,
+      { type: "quoteCreated" }
+    >[];
     const winningQuoteId = created[0]!.payload.id;
     const losingQuoteId = created[1]!.payload.id; // stays pendingWithoutPrice
 
@@ -246,7 +285,10 @@ describe("CreditRfqSimulator", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.5); // participates; delay 15s; price 100 + 5*-1 = 95
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
     const quoted = firstValueFrom(
-      sim.events().pipe(filter((e: RfqEvent) => e.type === "quoteQuoted"), take(1)),
+      sim.events().pipe(
+        filter((e: RfqEvent) => e.type === "quoteQuoted"),
+        take(1),
+      ),
     );
     await firstValueFrom(
       sim.createRfq({

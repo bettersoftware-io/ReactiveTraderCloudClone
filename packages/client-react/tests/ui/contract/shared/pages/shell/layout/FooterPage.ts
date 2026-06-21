@@ -13,6 +13,9 @@ export class FooterPage extends MountedComponent<Record<string, never>> {
 
   /** The connection-status label shown inside the footer. */
   statusText(): string {
-    return within(this.root).getByTestId("connection-status").textContent?.trim() ?? "";
+    return (
+      within(this.root).getByTestId("connection-status").textContent?.trim() ??
+      ""
+    );
   }
 }

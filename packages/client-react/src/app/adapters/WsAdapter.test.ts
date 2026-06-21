@@ -1,6 +1,7 @@
 // packages/client-react/src/app/adapters/WsAdapter.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
 import type { ConnectionEvent } from "@rtc/domain";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WsAdapter } from "./WsAdapter";
 
 let lastMock: MockWebSocket;
@@ -123,7 +124,10 @@ describe("WsAdapter.connectionEvents()", () => {
 
     expect(lastMock.send).toHaveBeenCalledTimes(1);
     expect(lastMock.send).toHaveBeenCalledWith(
-      JSON.stringify({ type: "subscribe.pricing", payload: { symbol: "EURUSD" } }),
+      JSON.stringify({
+        type: "subscribe.pricing",
+        payload: { symbol: "EURUSD" },
+      }),
     );
     adapter.dispose();
   });
@@ -172,7 +176,9 @@ describe("WsAdapter.rpc() + message routing", () => {
     const received: unknown[] = [];
     adapter.on("stream.priceTick", (p) => received.push(p));
     open(adapter);
-    expect(() => lastMock.onmessage?.(new MessageEvent("message", { data: "not json{" }))).not.toThrow();
+    expect(() =>
+      lastMock.onmessage?.(new MessageEvent("message", { data: "not json{" })),
+    ).not.toThrow();
     expect(received).toEqual([]);
     adapter.dispose();
   });
@@ -181,13 +187,23 @@ describe("WsAdapter.rpc() + message routing", () => {
     const received: unknown[] = [];
     adapter.on("stream.priceTick", (p) => received.push(p));
     open(adapter);
-    lastMock.onmessage?.(new MessageEvent("message", { data: JSON.stringify({ type: "stream.priceTick", payload: { symbol: "EURUSD" }, correlationId: "999" }) }));
+    lastMock.onmessage?.(
+      new MessageEvent("message", {
+        data: JSON.stringify({
+          type: "stream.priceTick",
+          payload: { symbol: "EURUSD" },
+          correlationId: "999",
+        }),
+      }),
+    );
     expect(received).toEqual([{ symbol: "EURUSD" }]);
     adapter.dispose();
   });
   it("rejects rpc() when the socket is not open", async () => {
     const adapter = new WsAdapter("ws://test");
-    await expect(adapter.rpc("rpc.executeTrade", { foo: 1 })).rejects.toThrow(/WebSocket not connected/);
+    await expect(adapter.rpc("rpc.executeTrade", { foo: 1 })).rejects.toThrow(
+      /WebSocket not connected/,
+    );
     expect(lastMock.send).not.toHaveBeenCalled();
     adapter.dispose();
   });
@@ -195,7 +211,15 @@ describe("WsAdapter.rpc() + message routing", () => {
     const adapter = new WsAdapter("ws://test");
     open(adapter);
     const promise = adapter.rpc("rpc.executeTrade", { foo: 1 });
-    lastMock.onmessage?.(new MessageEvent("message", { data: JSON.stringify({ type: "rpc.executeTrade.response", payload: { tradeId: 7 }, correlationId: "1" }) }));
+    lastMock.onmessage?.(
+      new MessageEvent("message", {
+        data: JSON.stringify({
+          type: "rpc.executeTrade.response",
+          payload: { tradeId: 7 },
+          correlationId: "1",
+        }),
+      }),
+    );
     await expect(promise).resolves.toEqual({ tradeId: 7 });
     adapter.dispose();
   });

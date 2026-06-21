@@ -1,8 +1,8 @@
+import * as common from "../scenarios/common";
+import * as fxLiveRates from "../scenarios/fxLiveRates";
+import * as fxTrading from "../scenarios/fxTrading";
 import { test } from "./_context";
 import { withFxWorkspaceOpen } from "./_openWorkspace";
-import * as fxTrading from "../scenarios/fxTrading";
-import * as fxLiveRates from "../scenarios/fxLiveRates";
-import * as common from "../scenarios/common";
 
 test.describe("FX trading", () => {
   withFxWorkspaceOpen();
@@ -60,7 +60,9 @@ test.describe("FX trading", () => {
     await fxTrading.expectBlotterContainsText(ctx, "1000000");
   });
 
-  test("rejected trades occur with non-zero probability across multiple attempts", async ({ ctx }) => {
+  test("rejected trades occur with non-zero probability across multiple attempts", async ({
+    ctx,
+  }) => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await fxTrading.clickBuyOnGbpjpy(ctx);
     await fxTrading.expectAtLeastOneRejectionInBlotter(ctx);

@@ -1,8 +1,9 @@
 // packages/client-react/src/app/adapters/__tests__/FakeWsAdapter.ts
-import { ReplaySubject, type Observable } from "rxjs";
+
 import type { ConnectionEvent } from "@rtc/domain";
-import type { IWsAdapter, MessageHandler } from "../IWsAdapter";
 import type { RpcResponse } from "@rtc/shared";
+import { type Observable, ReplaySubject } from "rxjs";
+import type { IWsAdapter, MessageHandler } from "../IWsAdapter";
 
 /**
  * In-memory IWsAdapter for contract + nack tests.

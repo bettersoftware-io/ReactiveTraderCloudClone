@@ -1,11 +1,23 @@
-import { describe, it, expect } from "vitest";
-import { Direction, RfqState, type Rfq, type Quote, type Instrument, type Dealer } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import {
+  type Dealer,
+  Direction,
+  type Instrument,
+  type Quote,
+  type Rfq,
+  RfqState,
+} from "@rtc/domain";
 import { RfqCard } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 
 const instrument: Instrument = {
-  id: 2, name: "Apple Inc 2030", cusip: "037833EK8", ticker: "AAPL 2.4 30",
-  maturity: "2030-05-11", interestRate: 2.4, benchmark: "7Y",
+  id: 2,
+  name: "Apple Inc 2030",
+  cusip: "037833EK8",
+  ticker: "AAPL 2.4 30",
+  maturity: "2030-05-11",
+  interestRate: 2.4,
+  benchmark: "7Y",
 };
 const dealers: readonly Dealer[] = [
   { id: 1, name: "Adaptive Bank" },
@@ -34,7 +46,13 @@ const quote = (over: Partial<Quote> = {}): Quote => ({
 describe("RfqCard", () => {
   it("shows the instrument name, direction and quantity", () => {
     const card = mount(RfqCard, {
-      props: { rfq: rfq(), quotes: [], instrument, dealers, onAccept: () => {} },
+      props: {
+        rfq: rfq(),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+      },
     });
     expect(card.title()).toBe("Apple Inc 2030");
     expect(card.hasText(/Buy/)).toBe(true);
@@ -43,38 +61,78 @@ describe("RfqCard", () => {
 
   it("falls back to an instrument-id label when the instrument is unknown", () => {
     const card = mount(RfqCard, {
-      props: { rfq: rfq(), quotes: [], instrument: undefined, dealers, onAccept: () => {} },
+      props: {
+        rfq: rfq(),
+        quotes: [],
+        instrument: undefined,
+        dealers,
+        onAccept: () => {},
+      },
     });
     expect(card.title()).toBe("Instrument #2");
   });
 
   it("labels each RFQ state and only allows dismiss when not open", () => {
     const live = mount(RfqCard, {
-      props: { rfq: rfq({ state: RfqState.Open }), quotes: [], instrument, dealers, onAccept: () => {}, onDismiss: () => {} },
+      props: {
+        rfq: rfq({ state: RfqState.Open }),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+        onDismiss: () => {},
+      },
     });
     expect(live.stateBadge()).toBe("Live");
     expect(live.canDismiss()).toBe(false);
 
     const done = mount(RfqCard, {
-      props: { rfq: rfq({ state: RfqState.Closed }), quotes: [], instrument, dealers, onAccept: () => {}, onDismiss: () => {} },
+      props: {
+        rfq: rfq({ state: RfqState.Closed }),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+        onDismiss: () => {},
+      },
     });
     expect(done.stateBadge()).toBe("Done");
     expect(done.canDismiss()).toBe(true);
 
     const expired = mount(RfqCard, {
-      props: { rfq: rfq({ state: RfqState.Expired }), quotes: [], instrument, dealers, onAccept: () => {}, onDismiss: () => {} },
+      props: {
+        rfq: rfq({ state: RfqState.Expired }),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+        onDismiss: () => {},
+      },
     });
     expect(expired.stateBadge()).toBe("Expired");
 
     const cancelled = mount(RfqCard, {
-      props: { rfq: rfq({ state: RfqState.Cancelled }), quotes: [], instrument, dealers, onAccept: () => {}, onDismiss: () => {} },
+      props: {
+        rfq: rfq({ state: RfqState.Cancelled }),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+        onDismiss: () => {},
+      },
     });
     expect(cancelled.stateBadge()).toBe("Cancelled");
   });
 
   it("hides the dismiss control on a closed RFQ when no onDismiss handler is given", () => {
     const card = mount(RfqCard, {
-      props: { rfq: rfq({ state: RfqState.Closed }), quotes: [], instrument, dealers, onAccept: () => {} },
+      props: {
+        rfq: rfq({ state: RfqState.Closed }),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+      },
     });
     expect(card.canDismiss()).toBe(false);
   });
@@ -82,7 +140,14 @@ describe("RfqCard", () => {
   it("fires onDismiss with the rfq id when the dismiss control is clicked", async () => {
     const dismissed: number[] = [];
     const card = mount(RfqCard, {
-      props: { rfq: rfq({ id: 77, state: RfqState.Closed }), quotes: [], instrument, dealers, onAccept: () => {}, onDismiss: (id) => dismissed.push(id) },
+      props: {
+        rfq: rfq({ id: 77, state: RfqState.Closed }),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+        onDismiss: (id) => dismissed.push(id),
+      },
     });
     await card.dismiss();
     expect(dismissed).toEqual([77]);
@@ -120,7 +185,13 @@ describe("RfqCard", () => {
 
   it("re-renders when new quotes arrive via props", () => {
     const card = mount(RfqCard, {
-      props: { rfq: rfq(), quotes: [], instrument, dealers, onAccept: () => {} },
+      props: {
+        rfq: rfq(),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+      },
     });
     expect(card.hasText("$99")).toBe(false);
     card.setProps({ quotes: [quote()] });

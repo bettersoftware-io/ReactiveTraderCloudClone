@@ -1,16 +1,26 @@
-import { describe, it, expect } from "vitest";
-import { mount } from "@ui-contract/mount";
-import { RfqFilterTabs } from "@ui-contract/components";
 import type { RfqFilter } from "@ui-contract/components";
+import { RfqFilterTabs } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 
 describe("RfqFilterTabs", () => {
   it("renders the five filter tabs", () => {
-    const tabs = mount(RfqFilterTabs, { props: { selected: "Live", onChange: () => {} } });
-    expect(tabs.tabLabels()).toEqual(["Live", "All", "Done", "Expired", "Cancelled"]);
+    const tabs = mount(RfqFilterTabs, {
+      props: { selected: "Live", onChange: () => {} },
+    });
+    expect(tabs.tabLabels()).toEqual([
+      "Live",
+      "All",
+      "Done",
+      "Expired",
+      "Cancelled",
+    ]);
   });
 
   it("highlights the selected tab", () => {
-    const tabs = mount(RfqFilterTabs, { props: { selected: "Done", onChange: () => {} } });
+    const tabs = mount(RfqFilterTabs, {
+      props: { selected: "Done", onChange: () => {} },
+    });
     expect(tabs.isActive("Done")).toBe(true);
     expect(tabs.isActive("Live")).toBe(false);
   });
@@ -26,7 +36,9 @@ describe("RfqFilterTabs", () => {
   });
 
   it("moves the highlight when the selected prop changes", () => {
-    const tabs = mount(RfqFilterTabs, { props: { selected: "Live", onChange: () => {} } });
+    const tabs = mount(RfqFilterTabs, {
+      props: { selected: "Live", onChange: () => {} },
+    });
     expect(tabs.isActive("Live")).toBe(true);
     tabs.setProps({ selected: "Cancelled" });
     expect(tabs.isActive("Cancelled")).toBe(true);

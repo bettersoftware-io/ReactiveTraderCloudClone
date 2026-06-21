@@ -7,7 +7,14 @@ import { CurrencyPairsUseCase } from "./CurrencyPairsUseCase.js";
 describe("CurrencyPairsUseCase", () => {
   it("delegates to ReferenceDataPort.getCurrencyPairs", async () => {
     const pairs: readonly CurrencyPair[] = [
-      { symbol: "EURUSD", base: "EUR", terms: "USD", ratePrecision: 5, pipsPosition: 4, defaultNotional: 1_000_000 },
+      {
+        symbol: "EURUSD",
+        base: "EUR",
+        terms: "USD",
+        ratePrecision: 5,
+        pipsPosition: 4,
+        defaultNotional: 1_000_000,
+      },
     ];
     const port: ReferenceDataPort = {
       getCurrencyPairs: () => of(pairs),

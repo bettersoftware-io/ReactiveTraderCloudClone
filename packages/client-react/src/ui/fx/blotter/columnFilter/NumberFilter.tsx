@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
 import type { Trade } from "@rtc/domain";
+import { useCallback, useState } from "react";
 import type { ColumnFilter, Comparator } from "./filterState";
 import styles from "./NumberFilter.module.css";
 
@@ -19,7 +19,11 @@ const comparators: { value: Comparator; label: string }[] = [
   { value: "inRange", label: "In range" },
 ];
 
-export function NumberFilter({ column, currentFilter, onApply }: NumberFilterProps) {
+export function NumberFilter({
+  column,
+  currentFilter,
+  onApply,
+}: NumberFilterProps) {
   const [comparator, setComparator] = useState<Comparator>(
     currentFilter?.type === "number" ? currentFilter.comparator : "eq",
   );
@@ -57,7 +61,9 @@ export function NumberFilter({ column, currentFilter, onApply }: NumberFilterPro
         className={styles.select}
       >
         {comparators.map((c) => (
-          <option key={c.value} value={c.value}>{c.label}</option>
+          <option key={c.value} value={c.value}>
+            {c.label}
+          </option>
         ))}
       </select>
       <input
@@ -86,10 +92,7 @@ export function NumberFilter({ column, currentFilter, onApply }: NumberFilterPro
         >
           Apply
         </button>
-        <button
-          onClick={() => onApply(null)}
-          className={styles.resetBtn}
-        >
+        <button onClick={() => onApply(null)} className={styles.resetBtn}>
           Reset
         </button>
       </div>

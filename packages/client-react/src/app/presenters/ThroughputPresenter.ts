@@ -1,21 +1,14 @@
-import {
-  Subject,
-  merge,
-  of,
-  timer,
-  concat,
-  type Observable,
-} from "rxjs";
+import type { AdminPort } from "@rtc/domain";
+import { type StateObservable, state } from "@rx-state/core";
+import { concat, merge, type Observable, of, Subject, timer } from "rxjs";
 import {
   catchError,
+  debounceTime,
   map,
   scan,
   startWith,
   switchMap,
-  debounceTime,
 } from "rxjs/operators";
-import { state, type StateObservable } from "@rx-state/core";
-import type { AdminPort } from "@rtc/domain";
 
 /** UI cadence constants relocated out of the old useThroughput React hook.
  *  These are presentation timings (debounce the write, auto-dismiss the
@@ -90,10 +83,12 @@ export class ThroughputPresenter {
       debounceTime(DEBOUNCE_MS),
       switchMap((value) =>
         admin.setThroughput(value).pipe(
-          map((): ThroughputMessage => ({
-            text: `Throughput has been set to ${value}`,
-            isError: false,
-          })),
+          map(
+            (): ThroughputMessage => ({
+              text: `Throughput has been set to ${value}`,
+              isError: false,
+            }),
+          ),
           catchError(() =>
             of<ThroughputMessage>({
               text: "Error setting throughput",
@@ -104,7 +99,9 @@ export class ThroughputPresenter {
             // Show the banner, then dismiss it after MESSAGE_DISMISS_MS.
             concat(
               of<Patch>({ message }),
-              timer(MESSAGE_DISMISS_MS).pipe(map((): Patch => ({ message: null }))),
+              timer(MESSAGE_DISMISS_MS).pipe(
+                map((): Patch => ({ message: null })),
+              ),
             ),
           ),
         ),

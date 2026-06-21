@@ -1,26 +1,28 @@
-import { useCallback, useMemo, useRef, useState } from "react";
 import type { Trade } from "@rtc/domain";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useHooks } from "../../hooks/HooksProvider";
-import { COLUMNS } from "./blotterColumns";
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";
-import { QuickFilter } from "./QuickFilter";
-import { exportToCsv } from "./csvExport";
+import { COLUMNS } from "./blotterColumns";
+import { applyFilters, type ColumnFilter } from "./columnFilter/filterState";
 import {
-  type SortState,
-  nextSortDirection,
   applySortToTrades,
+  nextSortDirection,
+  type SortState,
 } from "./columnSort";
-import {
-  type ColumnFilter,
-  applyFilters,
-} from "./columnFilter/filterState";
+import { exportToCsv } from "./csvExport";
 import styles from "./FxBlotter.module.css";
+import { QuickFilter } from "./QuickFilter";
 
 export function FxBlotter() {
   const trades = useHooks().useTrades();
-  const [sort, setSort] = useState<SortState>({ column: null, direction: null });
-  const [filters, setFilters] = useState<Map<keyof Trade, ColumnFilter>>(new Map());
+  const [sort, setSort] = useState<SortState>({
+    column: null,
+    direction: null,
+  });
+  const [filters, setFilters] = useState<Map<keyof Trade, ColumnFilter>>(
+    new Map(),
+  );
   const [quickFilter, setQuickFilter] = useState("");
   const seenTradeIds = useRef(new Set<number>());
 
@@ -39,12 +41,9 @@ export function FxBlotter() {
     return newIds;
   }, [trades]);
 
-  const handleSort = useCallback(
-    (column: keyof Trade) => {
-      setSort((prev) => nextSortDirection(column, prev));
-    },
-    [],
-  );
+  const handleSort = useCallback((column: keyof Trade) => {
+    setSort((prev) => nextSortDirection(column, prev));
+  }, []);
 
   const handleFilter = useCallback(
     (column: keyof Trade, filter: ColumnFilter | null) => {
@@ -95,10 +94,7 @@ export function FxBlotter() {
       </div>
 
       <div className={styles.tableWrapper}>
-        <table
-          data-testid="blotter-table"
-          className={styles.table}
-        >
+        <table data-testid="blotter-table" className={styles.table}>
           <thead>
             <BlotterHeader
               sort={sort}
@@ -118,10 +114,7 @@ export function FxBlotter() {
             ))}
             {processedTrades.length === 0 && (
               <tr>
-                <td
-                  colSpan={COLUMNS.length}
-                  className={styles.emptyCell}
-                >
+                <td colSpan={COLUMNS.length} className={styles.emptyCell}>
                   {trades.length === 0
                     ? "No trades yet"
                     : "No trades match the current filters"}

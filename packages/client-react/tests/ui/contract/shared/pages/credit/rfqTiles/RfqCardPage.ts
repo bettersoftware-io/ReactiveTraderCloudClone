@@ -1,6 +1,6 @@
+import type { Dealer, Instrument, Quote, Rfq } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import type { Rfq, Quote, Instrument, Dealer } from "@rtc/domain";
 import { MountedComponent } from "../../../harness/component";
 
 export interface RfqCardProps {
@@ -22,7 +22,11 @@ export class RfqCardPage extends MountedComponent<RfqCardProps> {
   /** The instrument title (or fallback) shown at the top of the card. */
   title(): string {
     // outer card → header row → left block → name div (first leaf).
-    return this.root.querySelector(":scope > div > div > div > div")?.textContent?.trim() ?? "";
+    return (
+      this.root
+        .querySelector(":scope > div > div > div > div")
+        ?.textContent?.trim() ?? ""
+    );
   }
 
   /** The state badge label (Live / Done / Expired / Cancelled). */
@@ -45,8 +49,8 @@ export class RfqCardPage extends MountedComponent<RfqCardProps> {
 
   /** Whether a dismiss (✕) control is present. */
   canDismiss(): boolean {
-    return [...this.root.querySelectorAll("button")].some(
-      (b) => (b.textContent ?? "").includes("✕"),
+    return [...this.root.querySelectorAll("button")].some((b) =>
+      (b.textContent ?? "").includes("✕"),
     );
   }
 
@@ -61,6 +65,8 @@ export class RfqCardPage extends MountedComponent<RfqCardProps> {
 
   /** Click the first Accept button. */
   async acceptFirst(): Promise<void> {
-    await this.user.click(this.q().getAllByRole("button", { name: /accept/i })[0]);
+    await this.user.click(
+      this.q().getAllByRole("button", { name: /accept/i })[0],
+    );
   }
 }

@@ -1,10 +1,10 @@
-import { afterEach, vi } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { filter, take } from "rxjs/operators";
+import { afterEach, vi } from "vitest";
 import { describeWorkflowPortContract } from "../ports/__contracts__/WorkflowPortContract.js";
+import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
-import type { RfqEvent } from "../ports/workflowPort.js";
 
 afterEach(() => vi.useRealTimers());
 
@@ -38,7 +38,8 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     const event = await quoteCreatedPromise;
-    return (event as { type: "quoteCreated"; payload: { id: number } }).payload.id;
+    return (event as { type: "quoteCreated"; payload: { id: number } }).payload
+      .id;
   };
 
   return {

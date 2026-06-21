@@ -1,11 +1,11 @@
 import { describeInstrumentPortContract } from "@rtc/domain/ports/__contracts__/InstrumentPortContract";
 import {
-  instrumentStartOfSoW,
-  instrumentEndOfSoW,
   instrumentAdded,
+  instrumentEndOfSoW,
+  instrumentStartOfSoW,
 } from "@rtc/shared/__fixtures__/wireFrames";
-import { createWsRealPorts } from "./portFactory";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { createWsRealPorts } from "./portFactory";
 
 describeInstrumentPortContract("wsRealInstrument", () => {
   const ws = new FakeWsAdapter();

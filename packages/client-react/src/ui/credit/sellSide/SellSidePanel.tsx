@@ -1,8 +1,8 @@
-import { useMemo } from "react";
 import { ADAPTIVE_BANK_NAME, type Instrument, type Rfq } from "@rtc/domain";
+import { useMemo } from "react";
 import { useHooks } from "../../hooks/HooksProvider";
-import { TradeTicket } from "./TradeTicket";
 import styles from "./SellSidePanel.module.css";
+import { TradeTicket } from "./TradeTicket";
 
 interface SellSideRfqRowProps {
   rfq: Rfq;
@@ -10,7 +10,11 @@ interface SellSideRfqRowProps {
   instrumentMap: Map<number, Instrument>;
 }
 
-function SellSideRfqRow({ rfq, adaptiveBankId, instrumentMap }: SellSideRfqRowProps) {
+function SellSideRfqRow({
+  rfq,
+  adaptiveBankId,
+  instrumentMap,
+}: SellSideRfqRowProps) {
   const quotes = useHooks().useQuotesForRfq(rfq.id);
   const abQuote = quotes.find((q) => q.dealerId === adaptiveBankId);
   if (!abQuote) return null;
@@ -42,14 +46,10 @@ export function SellSidePanel() {
 
   return (
     <div className={styles.panel}>
-      <span className={styles.title}>
-        Sell Side (Adaptive Bank)
-      </span>
+      <span className={styles.title}>Sell Side (Adaptive Bank)</span>
 
       {adaptiveBankId === undefined || rfqs.length === 0 ? (
-        <div className={styles.empty}>
-          No RFQs for Adaptive Bank
-        </div>
+        <div className={styles.empty}>No RFQs for Adaptive Bank</div>
       ) : (
         rfqs.map((rfq) => (
           <SellSideRfqRow

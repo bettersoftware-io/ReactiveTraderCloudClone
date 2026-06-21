@@ -1,10 +1,11 @@
 import {
-  DEFAULT_THEME, DEFAULT_VIEW_MODE,
   type CurrencyPair,
+  DEFAULT_THEME,
+  DEFAULT_VIEW_MODE,
 } from "@rtc/domain";
+import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import type { AppData } from "../shared/appData";
-import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
 
 const noop = (): void => {};
 
@@ -32,8 +33,11 @@ export function buildFakeHooks(data: AppData): AppHooks {
       dismiss: noop,
     }),
     useRfqTile: (pair: CurrencyPair) => ({
-      state:
-        data.rfqTile[pair.symbol] ?? { status: "init", quote: null, remainingMs: 0 },
+      state: data.rfqTile[pair.symbol] ?? {
+        status: "init",
+        quote: null,
+        remainingMs: 0,
+      },
       requestQuote: noop,
       cancel: noop,
       reject: noop,
@@ -58,8 +62,12 @@ export function buildFakeHooks(data: AppData): AppHooks {
     // Machine: static snapshot for screenshots; intents are no-ops.
     useNotional: (defaultNotional: number) => {
       const override = data.notional as NotionalView | undefined;
-      const displayValue = override?.displayValue ??
-        defaultNotional.toLocaleString("en-US", { maximumFractionDigits: 0, useGrouping: true });
+      const displayValue =
+        override?.displayValue ??
+        defaultNotional.toLocaleString("en-US", {
+          maximumFractionDigits: 0,
+          useGrouping: true,
+        });
       return {
         state: {
           displayValue,

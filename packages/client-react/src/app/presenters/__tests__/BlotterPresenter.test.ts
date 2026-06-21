@@ -1,6 +1,6 @@
+import type { BlotterPort, Trade } from "@rtc/domain";
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
-import type { BlotterPort, Trade } from "@rtc/domain";
 import { BlotterPresenter } from "../BlotterPresenter";
 
 describe("BlotterPresenter", () => {

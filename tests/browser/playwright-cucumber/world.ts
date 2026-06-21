@@ -1,8 +1,12 @@
-import { setWorldConstructor, World, type IWorldOptions } from "@cucumber/cucumber";
+import {
+  type IWorldOptions,
+  setWorldConstructor,
+  World,
+} from "@cucumber/cucumber";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
+import { buildPlaywrightPageObjects } from "../page-objects/playwright/factory";
 import type { TestContext } from "../testContext";
 import { Scratchpad } from "../testContext";
-import { buildPlaywrightPageObjects } from "../page-objects/playwright/factory";
 
 export class PlaywrightWorld extends World {
   context!: BrowserContext;

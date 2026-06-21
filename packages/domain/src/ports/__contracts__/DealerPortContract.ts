@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
+import { describe, expect, it } from "vitest";
 import type { DealerPort } from "../dealerPort.js";
 
 export interface DealerDriver {

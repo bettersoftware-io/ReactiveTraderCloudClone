@@ -1,9 +1,9 @@
-import { type Observable, shareReplay } from "rxjs";
 import {
+  type ConnectionEventsPort,
   ConnectionStatus,
   ConnectionStatusUseCase,
-  type ConnectionEventsPort,
 } from "@rtc/domain";
+import { type Observable, shareReplay } from "rxjs";
 
 export class ConnectionStatusPresenter {
   readonly status$: Observable<ConnectionStatus>;
@@ -11,8 +11,8 @@ export class ConnectionStatusPresenter {
     events: ConnectionEventsPort,
     initial: ConnectionStatus = ConnectionStatus.CONNECTING,
   ) {
-    this.status$ = new ConnectionStatusUseCase(events, initial).execute().pipe(
-      shareReplay({ bufferSize: 1, refCount: true }),
-    );
+    this.status$ = new ConnectionStatusUseCase(events, initial)
+      .execute()
+      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
   }
 }

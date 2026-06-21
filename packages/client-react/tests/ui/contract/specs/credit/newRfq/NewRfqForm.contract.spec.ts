@@ -1,11 +1,32 @@
-import { describe, it, expect, vi } from "vitest";
-import { Direction, type Instrument, type Dealer, ADAPTIVE_BANK_NAME } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import {
+  ADAPTIVE_BANK_NAME,
+  type Dealer,
+  Direction,
+  type Instrument,
+} from "@rtc/domain";
 import { NewRfqForm } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it, vi } from "vitest";
 
 const instruments: readonly Instrument[] = [
-  { id: 1, name: "US Treasury 10Y", cusip: "912828ZQ6", ticker: "T 1.5 02/34", maturity: "2034-02-15", interestRate: 1.5, benchmark: "10Y" },
-  { id: 2, name: "Apple Inc 2030", cusip: "037833EK8", ticker: "AAPL 2.4 30", maturity: "2030-05-11", interestRate: 2.4, benchmark: "7Y" },
+  {
+    id: 1,
+    name: "US Treasury 10Y",
+    cusip: "912828ZQ6",
+    ticker: "T 1.5 02/34",
+    maturity: "2034-02-15",
+    interestRate: 1.5,
+    benchmark: "10Y",
+  },
+  {
+    id: 2,
+    name: "Apple Inc 2030",
+    cusip: "037833EK8",
+    ticker: "AAPL 2.4 30",
+    maturity: "2030-05-11",
+    interestRate: 2.4,
+    benchmark: "7Y",
+  },
 ];
 const dealers: readonly Dealer[] = [
   { id: 1, name: ADAPTIVE_BANK_NAME },

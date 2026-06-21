@@ -34,7 +34,8 @@ const frameworkFilter = process.argv[2]; // e.g. "react" | undefined
 const runners = Object.keys(pkg.scripts).filter((name) => {
   const parts = name.split(":");
   if (parts.length !== 5) return false;
-  if (parts[0] !== "test" || parts[1] !== "ui" || parts[2] !== "visual") return false;
+  if (parts[0] !== "test" || parts[1] !== "ui" || parts[2] !== "visual")
+    return false;
   return frameworkFilter ? parts[4] === frameworkFilter : true;
 });
 
@@ -95,7 +96,9 @@ const worker = async () => {
 await Promise.all(Array.from({ length: maxParallel }, worker));
 
 for (const r of results) {
-  console.log(`\n${"=".repeat(72)}\n${r.script} ${r.code === 0 ? "✅" : "❌"}\n${"=".repeat(72)}`);
+  console.log(
+    `\n${"=".repeat(72)}\n${r.script} ${r.code === 0 ? "✅" : "❌"}\n${"=".repeat(72)}`,
+  );
   console.log(r.output.trimEnd());
 }
 

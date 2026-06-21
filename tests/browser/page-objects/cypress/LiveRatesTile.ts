@@ -11,52 +11,57 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
   }
 
   waitForFirstTile(timeoutMs: number): Promise<void> {
-    return cy.get(TILE_PREFIX_SELECTOR, { timeout: timeoutMs })
+    return cy
+      .get(TILE_PREFIX_SELECTOR, { timeout: timeoutMs })
       .first()
       .should("be.visible") as unknown as Promise<void>;
   }
 
   count(): Promise<number> {
-    return cy.get(TILE_PREFIX_SELECTOR)
+    return cy
+      .get(TILE_PREFIX_SELECTOR)
       .then(($tiles) => $tiles.length) as unknown as Promise<number>;
   }
 
   firstTileText(): Promise<string> {
-    return this.firstTile()
-      .then(($el) => $el.text()) as unknown as Promise<string>;
+    return this.firstTile().then(($el) =>
+      $el.text(),
+    ) as unknown as Promise<string>;
   }
 
   clickFilter(category: string): Promise<void> {
-    return cy.get(`[data-testid="${TESTIDS.liveRates.filter(category)}"]`)
+    return cy
+      .get(`[data-testid="${TESTIDS.liveRates.filter(category)}"]`)
       .click() as unknown as Promise<void>;
   }
 
   clickViewToggle(): Promise<void> {
-    return cy.get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
+    return cy
+      .get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
       .click() as unknown as Promise<void>;
   }
 
   viewToggleLabel(): Promise<string> {
-    return cy.get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
+    return cy
+      .get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
       .then(($el) => $el.text()) as unknown as Promise<string>;
   }
 
   firstTileBuyVisible(): Promise<boolean> {
-    return this.firstTile()
-      .then(($tile) =>
-        $tile.find(`[data-testid="${TESTIDS.liveRates.buyBtn}"]`).is(":visible"),
-      ) as unknown as Promise<boolean>;
+    return this.firstTile().then(($tile) =>
+      $tile.find(`[data-testid="${TESTIDS.liveRates.buyBtn}"]`).is(":visible"),
+    ) as unknown as Promise<boolean>;
   }
 
   firstTileSellVisible(): Promise<boolean> {
-    return this.firstTile()
-      .then(($tile) =>
-        $tile.find(`[data-testid="${TESTIDS.liveRates.sellBtn}"]`).is(":visible"),
-      ) as unknown as Promise<boolean>;
+    return this.firstTile().then(($tile) =>
+      $tile.find(`[data-testid="${TESTIDS.liveRates.sellBtn}"]`).is(":visible"),
+    ) as unknown as Promise<boolean>;
   }
 
   viewToggleVisible(): Promise<boolean> {
-    return cy.get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
+    return cy
+      .get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
       .then(($el) => $el.is(":visible")) as unknown as Promise<boolean>;
   }
 
@@ -73,30 +78,38 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
   }
 
   clickBuyOnPair(symbol: string): Promise<void> {
-    return cy.get(`[data-testid="${TESTIDS.liveRates.tile(symbol)}"]`)
+    return cy
+      .get(`[data-testid="${TESTIDS.liveRates.tile(symbol)}"]`)
       .find(`[data-testid="${TESTIDS.liveRates.buyBtn}"]`)
       .click() as unknown as Promise<void>;
   }
 
   waitForConfirmation(timeoutMs: number): Promise<void> {
-    return cy.get(TILE_CONFIRMATION_SELECTOR, { timeout: timeoutMs })
+    return cy
+      .get(TILE_CONFIRMATION_SELECTOR, { timeout: timeoutMs })
       .should("be.visible") as unknown as Promise<void>;
   }
 
-  confirmationContainsAny(patterns: readonly RegExp[], timeoutMs: number): Promise<void> {
+  confirmationContainsAny(
+    patterns: readonly RegExp[],
+    timeoutMs: number,
+  ): Promise<void> {
     const combined = new RegExp(patterns.map((p) => p.source).join("|"), "i");
-    return cy.get(TILE_CONFIRMATION_SELECTOR, { timeout: timeoutMs })
+    return cy
+      .get(TILE_CONFIRMATION_SELECTOR, { timeout: timeoutMs })
       .contains(combined) as unknown as Promise<void>;
   }
 
   dismissConfirmation(): Promise<void> {
-    return cy.get(TILE_CONFIRMATION_SELECTOR)
+    return cy
+      .get(TILE_CONFIRMATION_SELECTOR)
       .first()
       .click() as unknown as Promise<void>;
   }
 
   confirmationHidden(timeoutMs: number): Promise<void> {
-    return cy.get(TILE_CONFIRMATION_SELECTOR, { timeout: timeoutMs })
+    return cy
+      .get(TILE_CONFIRMATION_SELECTOR, { timeout: timeoutMs })
       .should("not.exist") as unknown as Promise<void>;
   }
 
@@ -125,8 +138,9 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
   }
 
   isNotionalInputVisible(): Promise<boolean> {
-    return this.firstTile()
-      .then(($tile) => $tile.find("input").is(":visible")) as unknown as Promise<boolean>;
+    return this.firstTile().then(($tile) =>
+      $tile.find("input").is(":visible"),
+    ) as unknown as Promise<boolean>;
   }
 
   buyNTimesWithDismissals(n: number): Promise<void> {

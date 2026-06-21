@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { firstValueFrom } from "rxjs";
-import { describePreferencesPortContract } from "@rtc/domain/ports/__contracts__/PreferencesPortContract";
 import { DEFAULT_THEME, DEFAULT_VIEW_MODE } from "@rtc/domain";
+import { describePreferencesPortContract } from "@rtc/domain/ports/__contracts__/PreferencesPortContract";
+import { firstValueFrom } from "rxjs";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   LocalStoragePreferencesAdapter,
   THEME_STORAGE_KEY,
@@ -26,7 +26,8 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     (seed) => {
       clearStorage();
       if (seed.theme) localStorage.setItem(THEME_STORAGE_KEY, seed.theme);
-      if (seed.viewMode) localStorage.setItem(VIEW_MODE_STORAGE_KEY, seed.viewMode);
+      if (seed.viewMode)
+        localStorage.setItem(VIEW_MODE_STORAGE_KEY, seed.viewMode);
       return new LocalStoragePreferencesAdapter();
     },
   );

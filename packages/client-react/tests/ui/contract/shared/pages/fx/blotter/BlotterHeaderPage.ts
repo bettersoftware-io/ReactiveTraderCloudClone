@@ -1,8 +1,8 @@
+import type { Trade } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import type { Trade } from "@rtc/domain";
-import type { SortState } from "../../../../../../../src/ui/fx/blotter/columnSort";
 import type { ColumnFilter } from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
+import type { SortState } from "../../../../../../../src/ui/fx/blotter/columnSort";
 import { MountedComponent } from "../../../harness/component";
 
 export interface BlotterHeaderProps {
@@ -17,7 +17,9 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
   private readonly user: UserEvent = userEvent.setup();
 
   private headerCells(): HTMLTableCellElement[] {
-    return within(this.root).getAllByRole("columnheader") as HTMLTableCellElement[];
+    return within(this.root).getAllByRole(
+      "columnheader",
+    ) as HTMLTableCellElement[];
   }
 
   private cellFor(label: string): HTMLTableCellElement {
@@ -64,23 +66,35 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
 
   /** True when a filter panel is open for the given column (its Apply button shows). */
   filterPanelOpen(label: string): boolean {
-    return within(this.cellFor(label)).queryByRole("button", { name: /^apply$/i }) !== null;
+    return (
+      within(this.cellFor(label)).queryByRole("button", {
+        name: /^apply$/i,
+      }) !== null
+    );
   }
 
   /** Choose a comparator + value in an open number-filter panel and apply it. */
-  async applyNumberFilter(label: string, comparator: string, value: string): Promise<void> {
+  async applyNumberFilter(
+    label: string,
+    comparator: string,
+    value: string,
+  ): Promise<void> {
     const cell = this.cellFor(label);
     const select = within(cell).getByRole("combobox") as HTMLSelectElement;
     await this.user.selectOptions(select, comparator);
     const valueInput = within(cell).getByPlaceholderText("Value");
     await this.user.clear(valueInput);
     await this.user.type(valueInput, value);
-    await this.user.click(within(cell).getByRole("button", { name: /^apply$/i }));
+    await this.user.click(
+      within(cell).getByRole("button", { name: /^apply$/i }),
+    );
   }
 
   /** True when the column shows the active-filter marker. */
   hasActiveFilterDot(label: string): boolean {
     // The marker is the literal text "●" rendered next to the label.
-    return (this.cellFor(label).querySelector("span")?.textContent ?? "").includes("●");
+    return (
+      this.cellFor(label).querySelector("span")?.textContent ?? ""
+    ).includes("●");
   }
 }

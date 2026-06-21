@@ -1,8 +1,8 @@
-import { type Observable } from "rxjs";
+import type { Observable } from "rxjs";
 import { scan } from "rxjs/operators";
-import type { WorkflowPort, RfqEvent } from "../ports/workflowPort.js";
-import type { Rfq } from "../credit/rfq.js";
 import type { Quote } from "../credit/quote.js";
+import type { Rfq } from "../credit/rfq.js";
+import type { RfqEvent, WorkflowPort } from "../ports/workflowPort.js";
 
 export interface RfqStreamState {
   readonly rfqs: ReadonlyMap<number, Rfq>;
@@ -13,7 +13,10 @@ function emptyState(): RfqStreamState {
   return { rfqs: new Map(), quotes: new Map() };
 }
 
-export function reduceRfqEvent(state: RfqStreamState, event: RfqEvent): RfqStreamState {
+export function reduceRfqEvent(
+  state: RfqStreamState,
+  event: RfqEvent,
+): RfqStreamState {
   switch (event.type) {
     case "startOfStateOfTheWorld":
       return emptyState();

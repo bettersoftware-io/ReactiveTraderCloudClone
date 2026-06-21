@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom } from "rxjs";
-import type { PreferencesPort } from "../preferencesPort.js";
+import { describe, expect, it } from "vitest";
 import {
   DEFAULT_THEME,
   DEFAULT_VIEW_MODE,
   type Theme,
   type ViewMode,
 } from "../../preferences/preferences.js";
+import type { PreferencesPort } from "../preferencesPort.js";
 
 /** A pre-seeded preferences store. Partial — omitted keys fall back to defaults. */
 export interface PreferencesSeed {
@@ -42,8 +42,14 @@ export function describePreferencesPortContract(
 
       let theme: Theme | undefined;
       let viewMode: ViewMode | undefined;
-      port.theme$().subscribe((t) => (theme = t)).unsubscribe();
-      port.viewMode$().subscribe((v) => (viewMode = v)).unsubscribe();
+      port
+        .theme$()
+        .subscribe((t) => (theme = t))
+        .unsubscribe();
+      port
+        .viewMode$()
+        .subscribe((v) => (viewMode = v))
+        .unsubscribe();
 
       // Synchronous: values are set by the time .subscribe() returns.
       expect(theme).toBe("light");

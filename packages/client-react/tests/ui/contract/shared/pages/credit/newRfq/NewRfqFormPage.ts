@@ -1,6 +1,6 @@
+import type { CreateRfqInput, Direction } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { type Direction, type CreateRfqInput } from "@rtc/domain";
 import { MountedComponent } from "../../../harness/component";
 
 export interface NewRfqFormProps {
@@ -60,7 +60,8 @@ export class NewRfqFormPage extends MountedComponent<NewRfqFormProps> {
 
   /** Whether the dealer with the given name is currently checked. */
   isDealerSelected(name: string): boolean {
-    return (this.q().getByRole("checkbox", { name }) as HTMLInputElement).checked;
+    return (this.q().getByRole("checkbox", { name }) as HTMLInputElement)
+      .checked;
   }
 
   /** Toggle the dealer checkbox with the given name. */
@@ -75,7 +76,9 @@ export class NewRfqFormPage extends MountedComponent<NewRfqFormProps> {
 
   async submit(): Promise<void> {
     // Submit button text: "Submit RFQ" — matches /submit rfq/i
-    await this.user.click(this.q().getByRole("button", { name: /submit rfq/i }));
+    await this.user.click(
+      this.q().getByRole("button", { name: /submit rfq/i }),
+    );
   }
 
   isSubmitDisabled(): boolean {

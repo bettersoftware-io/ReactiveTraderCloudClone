@@ -1,15 +1,15 @@
-import { describe, it, expect } from "vitest";
-import { Subject, of } from "rxjs";
-import {
-  WorkflowEventStreamUseCase,
-  reduceRfqEvent,
-  type RfqStreamState,
-} from "./WorkflowEventStreamUseCase.js";
-import type { WorkflowPort, RfqEvent } from "../ports/workflowPort.js";
+import { of, Subject } from "rxjs";
+import { describe, expect, it } from "vitest";
+import type { Quote } from "../credit/quote.js";
 import type { Rfq } from "../credit/rfq.js";
 import { RfqState } from "../credit/rfq.js";
 import { Direction } from "../fx/trade.js";
-import type { Quote } from "../credit/quote.js";
+import type { RfqEvent, WorkflowPort } from "../ports/workflowPort.js";
+import {
+  type RfqStreamState,
+  reduceRfqEvent,
+  WorkflowEventStreamUseCase,
+} from "./WorkflowEventStreamUseCase.js";
 
 function stubWorkflow(events$: Subject<RfqEvent>): WorkflowPort {
   return {
@@ -65,7 +65,10 @@ describe("reduceRfqEvent", () => {
 
   it("rfqCreated upserts the rfq into rfqs", () => {
     const rfq = buildRfq(7);
-    const next = reduceRfqEvent(emptyState(), { type: "rfqCreated", payload: rfq });
+    const next = reduceRfqEvent(emptyState(), {
+      type: "rfqCreated",
+      payload: rfq,
+    });
     expect(next.rfqs.get(7)).toEqual(rfq);
     expect(next.quotes.size).toBe(0);
   });
@@ -83,31 +86,59 @@ describe("reduceRfqEvent", () => {
 
   it("quoteCreated upserts the quote into quotes", () => {
     const quote = buildQuote(5, 7);
-    const next = reduceRfqEvent(emptyState(), { type: "quoteCreated", payload: quote });
+    const next = reduceRfqEvent(emptyState(), {
+      type: "quoteCreated",
+      payload: quote,
+    });
     expect(next.quotes.get(5)).toEqual(quote);
     expect(next.rfqs.size).toBe(0);
   });
 
   it("quoteQuoted upserts the priced quote, replacing the previous version", () => {
     const pending = buildQuote(5, 7);
-    const priced: Quote = { ...pending, state: { type: "pendingWithPrice", price: 100 } };
+    const priced: Quote = {
+      ...pending,
+      state: { type: "pendingWithPrice", price: 100 },
+    };
     const start: RfqStreamState = {
       rfqs: new Map(),
       quotes: new Map([[5, pending]]),
     };
-    const next = reduceRfqEvent(start, { type: "quoteQuoted", payload: priced });
-    expect(next.quotes.get(5)?.state).toEqual({ type: "pendingWithPrice", price: 100 });
+    const next = reduceRfqEvent(start, {
+      type: "quoteQuoted",
+      payload: priced,
+    });
+    expect(next.quotes.get(5)?.state).toEqual({
+      type: "pendingWithPrice",
+      price: 100,
+    });
   });
 
   it("quotePassed upserts the passed quote", () => {
-    const passed: Quote = { id: 5, rfqId: 7, dealerId: 1, state: { type: "passed" } };
-    const next = reduceRfqEvent(emptyState(), { type: "quotePassed", payload: passed });
+    const passed: Quote = {
+      id: 5,
+      rfqId: 7,
+      dealerId: 1,
+      state: { type: "passed" },
+    };
+    const next = reduceRfqEvent(emptyState(), {
+      type: "quotePassed",
+      payload: passed,
+    });
     expect(next.quotes.get(5)?.state).toEqual({ type: "passed" });
   });
 
   it("quoteAccepted upserts the accepted quote", () => {
-    const accepted: Quote = { id: 5, rfqId: 7, dealerId: 1, state: { type: "accepted", price: 100 } };
-    const next = reduceRfqEvent(emptyState(), { type: "quoteAccepted", payload: accepted });
+    const accepted: Quote = {
+      id: 5,
+      rfqId: 7,
+      dealerId: 1,
+      state: { type: "accepted", price: 100 },
+    };
+    const next = reduceRfqEvent(emptyState(), {
+      type: "quoteAccepted",
+      payload: accepted,
+    });
     expect(next.quotes.get(5)?.state).toEqual({ type: "accepted", price: 100 });
   });
 });

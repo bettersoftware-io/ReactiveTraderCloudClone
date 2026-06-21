@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { TestScheduler } from "rxjs/testing";
-import { type Observable } from "rxjs";
 import { ConnectionStatus } from "@rtc/domain";
+import type { Observable } from "rxjs";
+import { TestScheduler } from "rxjs/testing";
+import { describe, expect, it } from "vitest";
 import { createStaleFlagMachine } from "../StaleFlagMachine";
 
 function scheduler() {
@@ -20,7 +20,10 @@ function run(
   const flags: boolean[] = [];
   const ts = scheduler();
   ts.run(({ cold, flush }) => {
-    const status$ = cold(statusMarble, statusValues) as Observable<ConnectionStatus>;
+    const status$ = cold(
+      statusMarble,
+      statusValues,
+    ) as Observable<ConnectionStatus>;
     const value$ = cold(valueMarble, valueValues) as Observable<unknown>;
     const machine = createStaleFlagMachine({ status$, value$ });
     const sub = machine.state$.subscribe((s) => flags.push(s));
@@ -53,12 +56,11 @@ describe("createStaleFlagMachine", () => {
   it("stays false while connected throughout, even as values change", () => {
     // status connected the whole time; values arrive but no disconnect ever
     // latched, so the flag is never stale (distinctUntilChanged → single false).
-    const flags = run(
-      "c---------",
-      { c: C },
-      "a--b--c---",
-      { a: { v: 1 }, b: { v: 2 }, c: { v: 3 } },
-    );
+    const flags = run("c---------", { c: C }, "a--b--c---", {
+      a: { v: 1 },
+      b: { v: 2 },
+      c: { v: 3 },
+    });
     expect(flags).toEqual([false]);
   });
 
@@ -66,24 +68,17 @@ describe("createStaleFlagMachine", () => {
     // a connected, then disconnect, then reconnect; the value reference never
     // changes after reconnect → stale.
     const v = { v: 1 };
-    const flags = run(
-      "c--d--c---",
-      { c: C, d: D },
-      "a---------",
-      { a: v },
-    );
+    const flags = run("c--d--c---", { c: C, d: D }, "a---------", { a: v });
     expect(flags).toEqual([false, true]);
   });
 
   it("clears when a new value reference arrives after reconnect", () => {
     const first = { v: 1 };
     const second = { v: 2 };
-    const flags = run(
-      "c--d--c------",
-      { c: C, d: D },
-      "a--------b---",
-      { a: first, b: second },
-    );
+    const flags = run("c--d--c------", { c: C, d: D }, "a--------b---", {
+      a: first,
+      b: second,
+    });
     // false (init/connected) → true (reconnect, same ref) → false (new ref).
     expect(flags).toEqual([false, true, false]);
   });
@@ -92,12 +87,9 @@ describe("createStaleFlagMachine", () => {
     const v = { v: 1 };
     // The same reference is re-emitted after reconnect; reference equality means
     // it is NOT new data → stays stale (no flip back to false).
-    const flags = run(
-      "c--d--c------",
-      { c: C, d: D },
-      "a--------a---",
-      { a: v },
-    );
+    const flags = run("c--d--c------", { c: C, d: D }, "a--------a---", {
+      a: v,
+    });
     expect(flags).toEqual([false, true]);
   });
 
@@ -117,19 +109,17 @@ describe("createStaleFlagMachine", () => {
 
   it("treats an idle disconnect as a connection loss", () => {
     const v = { v: 1 };
-    const flags = run(
-      "c--i--c---",
-      { c: C, i: I },
-      "a---------",
-      { a: v },
-    );
+    const flags = run("c--i--c---", { c: C, i: I }, "a---------", { a: v });
     expect(flags).toEqual([false, true]);
   });
 
   it("dispose() + unsubscribe tears the machine down (no further emissions)", () => {
     const ts = scheduler();
     ts.run(({ cold, flush }) => {
-      const status$ = cold("c--d--c", { c: C, d: D }) as Observable<ConnectionStatus>;
+      const status$ = cold("c--d--c", {
+        c: C,
+        d: D,
+      }) as Observable<ConnectionStatus>;
       const value$ = cold("a", { a: { v: 1 } }) as Observable<unknown>;
       const machine = createStaleFlagMachine({ status$, value$ });
       const seen: boolean[] = [];

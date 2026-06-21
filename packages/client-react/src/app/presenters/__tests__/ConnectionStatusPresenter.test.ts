@@ -1,10 +1,10 @@
-import { firstValueFrom, of, toArray, Subject } from "rxjs";
-import { describe, expect, it } from "vitest";
 import {
-  ConnectionStatus,
   type ConnectionEvent,
   type ConnectionEventsPort,
+  ConnectionStatus,
 } from "@rtc/domain";
+import { firstValueFrom, of, Subject, toArray } from "rxjs";
+import { describe, expect, it } from "vitest";
 import { ConnectionStatusPresenter } from "../ConnectionStatusPresenter";
 
 describe("ConnectionStatusPresenter", () => {
@@ -15,7 +15,10 @@ describe("ConnectionStatusPresenter", () => {
     const all = await firstValueFrom(
       new ConnectionStatusPresenter(port).status$.pipe(toArray()),
     );
-    expect(all).toEqual([ConnectionStatus.CONNECTING, ConnectionStatus.CONNECTED]);
+    expect(all).toEqual([
+      ConnectionStatus.CONNECTING,
+      ConnectionStatus.CONNECTED,
+    ]);
   });
 
   it("multicasts the same value to multiple subscribers", () => {
@@ -32,6 +35,9 @@ describe("ConnectionStatusPresenter", () => {
     subA.unsubscribe();
     subB.unsubscribe();
     expect(a).toEqual(b);
-    expect(a).toEqual([ConnectionStatus.CONNECTED, ConnectionStatus.DISCONNECTED]);
+    expect(a).toEqual([
+      ConnectionStatus.CONNECTED,
+      ConnectionStatus.DISCONNECTED,
+    ]);
   });
 });

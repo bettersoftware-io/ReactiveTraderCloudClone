@@ -1,17 +1,17 @@
-import { describe, it, expect } from "vitest";
-import type { Instrument, Dealer } from "@rtc/domain";
+import type { Dealer, Instrument } from "@rtc/domain";
 import {
-  instrumentStartOfSoW,
-  instrumentEndOfSoW,
-  instrumentAdded,
-  instrumentRemoved,
-  dealerStartOfSoW,
-  dealerEndOfSoW,
   dealerAdded,
+  dealerEndOfSoW,
   dealerRemoved,
+  dealerStartOfSoW,
+  instrumentAdded,
+  instrumentEndOfSoW,
+  instrumentRemoved,
+  instrumentStartOfSoW,
 } from "@rtc/shared/__fixtures__/wireFrames";
-import { createWsRealPorts } from "./portFactory";
+import { describe, expect, it } from "vitest";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { createWsRealPorts } from "./portFactory";
 
 /**
  * The reference-data ports keep an internal roster and re-emit the full list
@@ -25,13 +25,20 @@ describe("wsReal reference data :: removed event drops the entry", () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws);
     const emissions: (readonly Instrument[])[] = [];
-    const sub = ports.instruments.getInstruments().subscribe((list) => emissions.push(list));
+    const sub = ports.instruments
+      .getInstruments()
+      .subscribe((list) => emissions.push(list));
 
     ws.emit("stream.instrumentEvent", instrumentStartOfSoW());
     ws.emit("stream.instrumentEvent", instrumentAdded({ id: 100 }));
     ws.emit("stream.instrumentEvent", instrumentAdded({ id: 101 }));
     ws.emit("stream.instrumentEvent", instrumentEndOfSoW());
-    expect(emissions.at(-1)?.map((i) => i.id).sort()).toEqual([100, 101]);
+    expect(
+      emissions
+        .at(-1)
+        ?.map((i) => i.id)
+        .sort(),
+    ).toEqual([100, 101]);
 
     ws.emit("stream.instrumentEvent", instrumentRemoved(100));
 
@@ -44,7 +51,9 @@ describe("wsReal reference data :: removed event drops the entry", () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws);
     const emissions: (readonly Instrument[])[] = [];
-    const sub = ports.instruments.getInstruments().subscribe((list) => emissions.push(list));
+    const sub = ports.instruments
+      .getInstruments()
+      .subscribe((list) => emissions.push(list));
 
     ws.emit("stream.instrumentEvent", instrumentStartOfSoW());
     ws.emit("stream.instrumentEvent", instrumentAdded({ id: 100 }));
@@ -61,13 +70,20 @@ describe("wsReal reference data :: removed event drops the entry", () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws);
     const emissions: (readonly Dealer[])[] = [];
-    const sub = ports.dealers.getDealers().subscribe((list) => emissions.push(list));
+    const sub = ports.dealers
+      .getDealers()
+      .subscribe((list) => emissions.push(list));
 
     ws.emit("stream.dealerEvent", dealerStartOfSoW());
     ws.emit("stream.dealerEvent", dealerAdded({ id: 100 }));
     ws.emit("stream.dealerEvent", dealerAdded({ id: 101 }));
     ws.emit("stream.dealerEvent", dealerEndOfSoW());
-    expect(emissions.at(-1)?.map((d) => d.id).sort()).toEqual([100, 101]);
+    expect(
+      emissions
+        .at(-1)
+        ?.map((d) => d.id)
+        .sort(),
+    ).toEqual([100, 101]);
 
     ws.emit("stream.dealerEvent", dealerRemoved(101));
 

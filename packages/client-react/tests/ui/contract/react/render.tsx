@@ -1,8 +1,8 @@
-import { render as rtlRender, act } from "@testing-library/react";
-import { useSyncExternalStore, type ReactElement } from "react";
+import { act, render as rtlRender } from "@testing-library/react";
+import { type ReactElement, useSyncExternalStore } from "react";
 import type { BehaviorSubject } from "rxjs";
-import { ThemeProvider } from "../../../../src/ui/shell/theme/ThemeProvider";
 import { HooksProvider } from "../../../../src/ui/hooks/HooksProvider";
+import { ThemeProvider } from "../../../../src/ui/shell/theme/ThemeProvider";
 import type { UiContractDriver } from "../shared/harness/activeDriver";
 import { reactHooks } from "./hooksFromWorld";
 import { registry } from "./registry";

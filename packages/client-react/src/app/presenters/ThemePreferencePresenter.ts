@@ -1,5 +1,5 @@
-import { type Observable, shareReplay } from "rxjs";
 import type { PreferencesPort, Theme } from "@rtc/domain";
+import { type Observable, shareReplay } from "rxjs";
 
 /**
  * App-layer presenter for the theme preference. Exposes the replay-current
@@ -10,9 +10,9 @@ export class ThemePreferencePresenter {
   readonly theme$: Observable<Theme>;
 
   constructor(private readonly preferences: PreferencesPort) {
-    this.theme$ = preferences.theme$().pipe(
-      shareReplay({ bufferSize: 1, refCount: true }),
-    );
+    this.theme$ = preferences
+      .theme$()
+      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
   }
 
   setTheme(theme: Theme): void {

@@ -1,6 +1,6 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { mount, cleanupMounted } from "@ui-contract/mount";
 import { AdminPanel } from "@ui-contract/components";
+import { cleanupMounted, mount } from "@ui-contract/mount";
+import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(() => {
   cleanupMounted();
@@ -13,7 +13,9 @@ describe("AdminPanel", () => {
   });
 
   it("renders the throughput control seeded from the loaded view", async () => {
-    const panel = mount(AdminPanel, { throughput: { value: 250, loading: false } });
+    const panel = mount(AdminPanel, {
+      throughput: { value: 250, loading: false },
+    });
     await panel.waitUntilLoaded();
     expect(panel.heading()).toBe("Throughput Control");
     expect(panel.value()).toBe(250);
@@ -22,7 +24,9 @@ describe("AdminPanel", () => {
   });
 
   it("records an edited value and reflects it optimistically", async () => {
-    const panel = mount(AdminPanel, { throughput: { value: 100, loading: false } });
+    const panel = mount(AdminPanel, {
+      throughput: { value: 100, loading: false },
+    });
     await panel.waitUntilLoaded();
 
     await panel.setValue(420);
@@ -33,7 +37,9 @@ describe("AdminPanel", () => {
   });
 
   it("confirms a persisted value through a server-pushed status banner", async () => {
-    const panel = mount(AdminPanel, { throughput: { value: 100, loading: false } });
+    const panel = mount(AdminPanel, {
+      throughput: { value: 100, loading: false },
+    });
     await panel.waitUntilLoaded();
 
     await panel.setValue(420);
@@ -46,7 +52,9 @@ describe("AdminPanel", () => {
   });
 
   it("mirrors a slider move into the numeric input and records it", async () => {
-    const panel = mount(AdminPanel, { throughput: { value: 100, loading: false } });
+    const panel = mount(AdminPanel, {
+      throughput: { value: 100, loading: false },
+    });
     await panel.waitUntilLoaded();
 
     panel.dragSlider(600);
@@ -56,7 +64,9 @@ describe("AdminPanel", () => {
   });
 
   it("rejects an out-of-range numeric entry", async () => {
-    const panel = mount(AdminPanel, { throughput: { value: 100, loading: false } });
+    const panel = mount(AdminPanel, {
+      throughput: { value: 100, loading: false },
+    });
     await panel.waitUntilLoaded();
 
     // 2000 exceeds the 0..1000 range; the last in-range keystroke (200) sticks.
@@ -65,7 +75,9 @@ describe("AdminPanel", () => {
   });
 
   it("renders a server-pushed error banner", async () => {
-    const panel = mount(AdminPanel, { throughput: { value: 100, loading: false } });
+    const panel = mount(AdminPanel, {
+      throughput: { value: 100, loading: false },
+    });
     await panel.waitUntilLoaded();
 
     panel.dragSlider(800);

@@ -1,39 +1,37 @@
-import { merge, mergeMap, of } from "rxjs";
 import {
-  ConnectionEventsSimulator,
   type ConnectionEvent,
   type ConnectionEventsPort,
+  ConnectionEventsSimulator,
 } from "@rtc/domain";
-
-import { PriceStreamPresenter } from "./presenters/PriceStreamPresenter";
-import { PriceHistoryPresenter } from "./presenters/PriceHistoryPresenter";
-import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
-import { BlotterPresenter } from "./presenters/BlotterPresenter";
-import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
-import { RfqsPresenter } from "./presenters/RfqsPresenter";
-import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
-import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
-import { DealersPresenter } from "./presenters/DealersPresenter";
-import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
-import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
-import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
-import { ThemePreferencePresenter } from "./presenters/ThemePreferencePresenter";
-import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
-import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
-import { createRfqTileMachine } from "./presenters/RfqTileMachine";
-import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
-import { createRowHighlightMachine } from "./presenters/RowHighlightMachine";
-import { createNotionalMachine } from "./presenters/NotionalMachine";
-import type { MachineFactories } from "./presenters/machine";
-
-import { WsAdapter } from "./adapters/WsAdapter";
+import { merge, mergeMap, of } from "rxjs";
 import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
-import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
 import {
+  type AppPorts,
   createSimulatorPorts,
   createWsRealPorts,
-  type AppPorts,
 } from "./adapters/portFactory";
+import { WsAdapter } from "./adapters/WsAdapter";
+import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
+import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
+import { BlotterPresenter } from "./presenters/BlotterPresenter";
+import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
+import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
+import { DealersPresenter } from "./presenters/DealersPresenter";
+import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
+import type { MachineFactories } from "./presenters/machine";
+import { createNotionalMachine } from "./presenters/NotionalMachine";
+import { PriceHistoryPresenter } from "./presenters/PriceHistoryPresenter";
+import { PriceStreamPresenter } from "./presenters/PriceStreamPresenter";
+import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
+import { RfqsPresenter } from "./presenters/RfqsPresenter";
+import { createRfqTileMachine } from "./presenters/RfqTileMachine";
+import { createRowHighlightMachine } from "./presenters/RowHighlightMachine";
+import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
+import { ThemePreferencePresenter } from "./presenters/ThemePreferencePresenter";
+import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
+import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
+import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
+import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
 
 export type { AppPorts };
 
@@ -75,13 +73,15 @@ export function buildDefaultPorts(): AppPorts {
     events: () =>
       merge(
         gateway.events(),
-        browser.events().pipe(
-          mergeMap((e) =>
-            e.type === "browserOnline" || e.type === "userActivity"
-              ? of(e, { type: "gatewayConnected" as const })
-              : of(e),
+        browser
+          .events()
+          .pipe(
+            mergeMap((e) =>
+              e.type === "browserOnline" || e.type === "userActivity"
+                ? of(e, { type: "gatewayConnected" as const })
+                : of(e),
+            ),
           ),
-        ),
       ),
   };
   return { ...createSimulatorPorts(), connectionEvents };
@@ -109,7 +109,9 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
 
 /** Build the app-layer machine factories the hooks seam injects. Each factory
  * spins up a fresh machine per component mount, wired to the presenters. */
-export function createMachineFactories(presenters: Presenters): MachineFactories {
+export function createMachineFactories(
+  presenters: Presenters,
+): MachineFactories {
   return {
     tileExecution: (pair) =>
       createTileExecutionMachine(pair, {

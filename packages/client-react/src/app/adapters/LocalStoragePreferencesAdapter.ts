@@ -1,4 +1,3 @@
-import { BehaviorSubject, type Observable, distinctUntilChanged } from "rxjs";
 import {
   DEFAULT_THEME,
   DEFAULT_VIEW_MODE,
@@ -6,6 +5,7 @@ import {
   type Theme,
   type ViewMode,
 } from "@rtc/domain";
+import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
 export const THEME_STORAGE_KEY = "rtc-theme";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";

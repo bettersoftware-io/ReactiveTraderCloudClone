@@ -13,7 +13,9 @@ const PORT = 3200;
 // enforced by the CI visual job (no CI runner reproduces a dev arch). So an
 // intentional UI change means updating BOTH: `:update` locally for the arm64 set
 // AND the update-visual-goldens workflow for the x86 set. See ../ADR-001-visual-diff-tooling.md.
-const baseline = process.env.CI ? "react" : `react-local/${os.platform()}-${os.arch()}`;
+const baseline = process.env.CI
+  ? "react"
+  : `react-local/${os.platform()}-${os.arch()}`;
 
 export default defineConfig({
   testDir: ".",
@@ -27,7 +29,13 @@ export default defineConfig({
   // siblings (the html reporter wipes its own folder). ../../../../ = packages/client-react.
   reporter: [
     [process.env.CI ? "line" : "list"],
-    ["html", { outputFolder: "../../../../reports/ui/visual/playwright/react/report", open: "never" }],
+    [
+      "html",
+      {
+        outputFolder: "../../../../reports/ui/visual/playwright/react/report",
+        open: "never",
+      },
+    ],
   ],
   outputDir: "../../../../reports/ui/visual/playwright/react/artifacts",
   use: {

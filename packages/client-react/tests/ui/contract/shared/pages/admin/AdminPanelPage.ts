@@ -1,4 +1,4 @@
-import { within, waitFor, fireEvent } from "@testing-library/dom";
+import { fireEvent, waitFor, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { ThroughputView } from "../../../../../../src/app/presenters/ThroughputPresenter";
 import { MountedComponent } from "../../harness/component";
@@ -38,9 +38,11 @@ export class AdminPanelPage extends MountedComponent<Record<string, never>> {
 
   /** The panel heading text. */
   heading(): string {
-    return within(this.root)
-      .getByRole("heading", { name: /throughput control/i })
-      .textContent?.trim() ?? "";
+    return (
+      within(this.root)
+        .getByRole("heading", { name: /throughput control/i })
+        .textContent?.trim() ?? ""
+    );
   }
 
   private numberInput(): HTMLInputElement {

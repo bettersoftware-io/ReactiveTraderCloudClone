@@ -1,28 +1,28 @@
-import type { WorkspacePO } from "./Workspace";
-import type { ThemeTogglePO } from "./ThemeToggle";
-import type { FooterPO } from "./Footer";
-import type { ConnectionOverlayPO } from "./ConnectionOverlay";
-import type { LiveRatesTilePO } from "./LiveRatesTile";
-import type { FxRfqFormPO } from "./FxRfqForm";
 import type { AnalyticsDashboardPO } from "./AnalyticsDashboard";
+import type { BlotterTablePO } from "./BlotterTable";
+import type { ConnectionOverlayPO } from "./ConnectionOverlay";
 import type { CreditRfqFormPO } from "./CreditRfqForm";
 import type { CreditRfqPanelPO } from "./CreditRfqPanel";
-import type { BlotterTablePO } from "./BlotterTable";
+import type { FooterPO } from "./Footer";
+import type { FxRfqFormPO } from "./FxRfqForm";
+import type { LiveRatesTilePO } from "./LiveRatesTile";
+import type { ThemeTogglePO } from "./ThemeToggle";
+import type { WorkspacePO } from "./Workspace";
 
+export { STRINGS } from "./strings";
+export { TESTIDS } from "./testids";
 export type {
-  WorkspacePO,
-  ThemeTogglePO,
-  FooterPO,
-  ConnectionOverlayPO,
-  LiveRatesTilePO,
-  FxRfqFormPO,
   AnalyticsDashboardPO,
+  BlotterTablePO,
+  ConnectionOverlayPO,
   CreditRfqFormPO,
   CreditRfqPanelPO,
-  BlotterTablePO,
+  FooterPO,
+  FxRfqFormPO,
+  LiveRatesTilePO,
+  ThemeTogglePO,
+  WorkspacePO,
 };
-export { TESTIDS } from "./testids";
-export { STRINGS } from "./strings";
 
 export interface PageObjects {
   workspace: WorkspacePO;

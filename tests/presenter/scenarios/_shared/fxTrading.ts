@@ -4,8 +4,9 @@
 // With verbatimModuleSyntax + isolatedModules, ambient const enums cannot be
 // accessed as values from a different package. We import them as types only
 // and cast their string literals to the correct type via `as unknown as`.
-import { firstValueFrom } from "rxjs";
+
 import type { Direction, ExecutionStatus } from "@rtc/domain";
+import { firstValueFrom } from "rxjs";
 import type { PresenterWorld } from "../_world";
 
 const DIR_BUY = "Buy" as unknown as Direction;
@@ -23,13 +24,20 @@ async function executeOnFirstPair(
 ): Promise<{ status: ExecutionStatus; notional: number }> {
   const pair =
     w.scratch.firstPair ??
-    (await w.awaitFirstWithin(w.ctx.app.presenters.currencyPairs.pairs$, 5000))[0]!;
+    (
+      await w.awaitFirstWithin(w.ctx.app.presenters.currencyPairs.pairs$, 5000)
+    )[0]!;
   w.scratch.firstPair = pair;
   const price = await firstValueFrom(
     w.ctx.app.presenters.priceStream.price$(pair),
   );
   const result = await w.awaitFirstWithin(
-    w.ctx.app.presenters.execution.execute({ pair, direction, price, notional }),
+    w.ctx.app.presenters.execution.execute({
+      pair,
+      direction,
+      price,
+      notional,
+    }),
     5000,
   );
   return { status: result.status, notional: result.trade.notional };
@@ -114,7 +122,12 @@ export async function buyNTimesWithDismissals(
       w.ctx.app.presenters.priceStream.price$(gbpjpy),
     );
     const result = await w.awaitFirstWithin(
-      w.ctx.app.presenters.execution.execute({ pair: gbpjpy, direction: DIR_BUY, price, notional: 1_000_000 }),
+      w.ctx.app.presenters.execution.execute({
+        pair: gbpjpy,
+        direction: DIR_BUY,
+        price,
+        notional: 1_000_000,
+      }),
       5000,
     );
     if ((result.status as unknown as string) === "Rejected") {
@@ -146,7 +159,7 @@ export async function expectTradeConfirmationHides(
 export async function expectTradeNotionalEquals(
   w: PresenterWorld,
   expected: number,
-  ): Promise<void> {
+): Promise<void> {
   if (w.scratch.lastTradeNotional !== expected) {
     throw new Error(
       `trade notional ${w.scratch.lastTradeNotional} != expected ${expected}`,

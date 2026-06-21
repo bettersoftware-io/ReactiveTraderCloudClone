@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { firstValueFrom } from "rxjs";
-import { createSimulatorPorts, createWsRealPorts } from "./portFactory";
-import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
-import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
 import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
+import { firstValueFrom } from "rxjs";
+import { describe, expect, it } from "vitest";
+import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
+import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { createSimulatorPorts, createWsRealPorts } from "./portFactory";
 
 describe("createSimulatorPorts", () => {
   it("wires all nine transport ports with their port methods", () => {
@@ -29,7 +29,9 @@ describe("wsReal workflow :: quote/pass error paths", () => {
   it("rejects quote on nack", async () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws);
-    const promise = firstValueFrom(ports.workflow.quote({ quoteId: 1, price: 100 }));
+    const promise = firstValueFrom(
+      ports.workflow.quote({ quoteId: 1, price: 100 }),
+    );
     await awaitPendingRpc(ws, "rpc.quote");
     ws.nextRpcResponse("rpc.quote", rpcNack());
     await expect(promise).rejects.toThrow(/Failed to submit quote/);

@@ -1,7 +1,7 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { mount, cleanupMounted } from "@ui-contract/mount";
-import { Footer } from "@ui-contract/components";
 import { ConnectionStatus } from "@rtc/domain";
+import { Footer } from "@ui-contract/components";
+import { cleanupMounted, mount } from "@ui-contract/mount";
+import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(() => cleanupMounted());
 

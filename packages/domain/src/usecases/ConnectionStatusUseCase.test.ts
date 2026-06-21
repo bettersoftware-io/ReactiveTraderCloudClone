@@ -1,8 +1,8 @@
 import { firstValueFrom, of, Subject, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
 import {
-  ConnectionStatus,
   type ConnectionEvent,
+  ConnectionStatus,
 } from "../connection/connectionStatus.js";
 import type { ConnectionEventsPort } from "../ports/connectionEventsPort.js";
 import { ConnectionStatusUseCase } from "./ConnectionStatusUseCase.js";
@@ -37,7 +37,10 @@ describe("ConnectionStatusUseCase", () => {
 
   it("uses the explicit initial status when provided", async () => {
     const port: ConnectionEventsPort = { events: () => of() };
-    const useCase = new ConnectionStatusUseCase(port, ConnectionStatus.CONNECTED);
+    const useCase = new ConnectionStatusUseCase(
+      port,
+      ConnectionStatus.CONNECTED,
+    );
     const first = await firstValueFrom(useCase.execute());
     expect(first).toBe(ConnectionStatus.CONNECTED);
   });
@@ -45,7 +48,10 @@ describe("ConnectionStatusUseCase", () => {
   it("emits live updates from a hot event stream", () => {
     const subject = new Subject<ConnectionEvent>();
     const port: ConnectionEventsPort = { events: () => subject.asObservable() };
-    const useCase = new ConnectionStatusUseCase(port, ConnectionStatus.CONNECTED);
+    const useCase = new ConnectionStatusUseCase(
+      port,
+      ConnectionStatus.CONNECTED,
+    );
     const seen: ConnectionStatus[] = [];
     const sub = useCase.execute().subscribe((s) => seen.push(s));
     subject.next({ type: "gatewayDisconnected" });

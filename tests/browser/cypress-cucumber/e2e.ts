@@ -1,6 +1,6 @@
 import { buildCypressContext } from "./world";
 
-beforeEach(function() {
+beforeEach(function () {
   this.ctx = buildCypressContext();
   cy.visit("/");
 });

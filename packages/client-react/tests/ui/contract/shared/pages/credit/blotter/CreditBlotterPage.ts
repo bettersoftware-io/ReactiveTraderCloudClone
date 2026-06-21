@@ -32,7 +32,9 @@ export class CreditBlotterPage extends MountedComponent<Record<string, never>> {
   /** Ordered cell text for a given column across all visible trade rows. */
   columnValues(label: string): string[] {
     const headers = within(this.table()).getAllByRole("columnheader");
-    const idx = headers.findIndex((h) => (h.textContent?.trim() ?? "") === label);
+    const idx = headers.findIndex(
+      (h) => (h.textContent?.trim() ?? "") === label,
+    );
     if (idx < 0) throw new Error(`No column header for ${label}`);
     const rows = [...this.table().querySelectorAll("tbody tr")];
     return rows

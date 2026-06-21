@@ -1,18 +1,29 @@
+import {
+  Direction,
+  type Quote,
+  type Rfq,
+  type RfqEvent,
+  RfqState,
+  type WorkflowPort,
+} from "@rtc/domain";
 import { firstValueFrom, lastValueFrom, of, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
-import {
-  Direction, RfqState,
-  type RfqEvent, type WorkflowPort, type Quote, type Rfq,
-} from "@rtc/domain";
 import { RfqsPresenter } from "../RfqsPresenter";
 
 const rfq = (id: number): Rfq => ({
-  id, instrumentId: 1, quantity: 1_000_000,
-  direction: Direction.Buy, state: RfqState.Open, expirySecs: 120,
+  id,
+  instrumentId: 1,
+  quantity: 1_000_000,
+  direction: Direction.Buy,
+  state: RfqState.Open,
+  expirySecs: 120,
   creationTimestamp: Date.now(),
 });
 const quote = (id: number, rfqId: number): Quote => ({
-  id, rfqId, dealerId: 1, state: { type: "pendingWithoutPrice" },
+  id,
+  rfqId,
+  dealerId: 1,
+  state: { type: "pendingWithoutPrice" },
 });
 
 function port(events: readonly RfqEvent[]): WorkflowPort {
@@ -47,8 +58,15 @@ describe("RfqsPresenter", () => {
       { type: "quoteCreated", payload: quote(12, 1) },
     ];
     const presenter = new RfqsPresenter(port(events));
-    const last = await firstValueFrom(presenter.quotesForRfq$(1).pipe(toArray()));
-    expect(last.at(-1)?.map((q) => q.id).sort()).toEqual([10, 12]);
+    const last = await firstValueFrom(
+      presenter.quotesForRfq$(1).pipe(toArray()),
+    );
+    expect(
+      last
+        .at(-1)
+        ?.map((q) => q.id)
+        .sort(),
+    ).toEqual([10, 12]);
   });
 
   it("createRfq delegates to WorkflowPort.createRfq", async () => {
@@ -64,7 +82,11 @@ describe("RfqsPresenter", () => {
     expect(
       await firstValueFrom(
         presenter.createRfq({
-          instrumentId: 1, dealerIds: [1], quantity: 1, direction: Direction.Buy, expirySecs: 120,
+          instrumentId: 1,
+          dealerIds: [1],
+          quantity: 1,
+          direction: Direction.Buy,
+          expirySecs: 120,
         }),
       ),
     ).toBe(42);
@@ -131,7 +153,9 @@ describe("RfqsPresenter", () => {
       { type: "quoteQuoted", payload: quote(20, 5) },
     ];
     const presenter = new RfqsPresenter(port(events));
-    const emissions = await firstValueFrom(presenter.quotesForRfq$(5).pipe(toArray()));
+    const emissions = await firstValueFrom(
+      presenter.quotesForRfq$(5).pipe(toArray()),
+    );
     const lenOne = emissions.filter((e) => e.length === 1);
     expect(lenOne.length).toBeGreaterThanOrEqual(2);
   });

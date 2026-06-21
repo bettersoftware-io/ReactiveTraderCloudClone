@@ -1,5 +1,5 @@
-import { useCallback } from "react";
 import type { Dealer } from "@rtc/domain";
+import { useCallback } from "react";
 import styles from "./DealerSelection.module.css";
 
 interface DealerSelectionProps {
@@ -8,7 +8,11 @@ interface DealerSelectionProps {
   onChange: (ids: Set<number>) => void;
 }
 
-export function DealerSelection({ dealers, selectedIds, onChange }: DealerSelectionProps) {
+export function DealerSelection({
+  dealers,
+  selectedIds,
+  onChange,
+}: DealerSelectionProps) {
   const toggle = useCallback(
     (id: number) => {
       const next = new Set(selectedIds);
@@ -21,15 +25,10 @@ export function DealerSelection({ dealers, selectedIds, onChange }: DealerSelect
 
   return (
     <div>
-      <label className={styles.label}>
-        Dealers
-      </label>
+      <label className={styles.label}>Dealers</label>
       <div className={styles.list}>
         {dealers.map((dealer) => (
-          <label
-            key={dealer.id}
-            className={styles.dealerLabel}
-          >
+          <label key={dealer.id} className={styles.dealerLabel}>
             <input
               type="checkbox"
               checked={selectedIds.has(dealer.id)}

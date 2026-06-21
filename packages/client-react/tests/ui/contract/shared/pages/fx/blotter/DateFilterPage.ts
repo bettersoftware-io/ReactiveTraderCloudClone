@@ -1,6 +1,6 @@
-import { within, fireEvent } from "@testing-library/dom";
-import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { Trade } from "@rtc/domain";
+import { fireEvent, within } from "@testing-library/dom";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type {
   ColumnFilter,
   Comparator,
@@ -25,7 +25,9 @@ export class DateFilterPage extends MountedComponent<DateFilterProps> {
   }
 
   private dateInputs(): HTMLInputElement[] {
-    return [...this.root.querySelectorAll('input[type="date"]')] as HTMLInputElement[];
+    return [
+      ...this.root.querySelectorAll('input[type="date"]'),
+    ] as HTMLInputElement[];
   }
 
   comparator(): Comparator {

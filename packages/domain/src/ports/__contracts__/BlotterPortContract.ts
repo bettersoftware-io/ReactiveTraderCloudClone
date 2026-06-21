@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
+import { describe, expect, it } from "vitest";
 import type { BlotterPort } from "../blotterPort.js";
 
 export interface BlotterDriver {
@@ -41,7 +41,9 @@ export function describeBlotterPortContract(
         await driver.appendTrade();
         const emissions = await promise;
         expect(emissions).toHaveLength(2);
-        expect(emissions[1]!.length).toBeGreaterThanOrEqual(emissions[0]!.length);
+        expect(emissions[1]!.length).toBeGreaterThanOrEqual(
+          emissions[0]!.length,
+        );
       } finally {
         teardown();
       }

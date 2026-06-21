@@ -12,5 +12,8 @@ export async function expectAnalyticsHasSection(
   ctx: TestContext,
   name: string,
 ): Promise<void> {
-  assertTrue(await ctx.po.analyticsDashboard.hasSection(name), `analytics section not found: ${name}`);
+  assertTrue(
+    await ctx.po.analyticsDashboard.hasSection(name),
+    `analytics section not found: ${name}`,
+  );
 }

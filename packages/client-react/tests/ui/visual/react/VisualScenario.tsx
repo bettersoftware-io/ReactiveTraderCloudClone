@@ -1,7 +1,7 @@
-import { ThemeProvider } from "../../../../src/ui/shell/theme/ThemeProvider";
 import { HooksProvider } from "../../../../src/ui/hooks/HooksProvider";
-import { scenarios } from "../shared/scenarios";
+import { ThemeProvider } from "../../../../src/ui/shell/theme/ThemeProvider";
 import { fixtures } from "../shared/fixtures";
+import { scenarios } from "../shared/scenarios";
 import { buildFakeHooks } from "./buildFakeHooks";
 import { registry } from "./registry";
 
@@ -20,9 +20,7 @@ export function VisualScenario({ name }: { name: string }) {
   if (FULL_BLEED.has(scenario.componentKey)) {
     return (
       <HooksProvider hooks={buildFakeHooks(data)}>
-        <ThemeProvider>
-          {render(scenario.fixtureKey)}
-        </ThemeProvider>
+        <ThemeProvider>{render(scenario.fixtureKey)}</ThemeProvider>
       </HooksProvider>
     );
   }

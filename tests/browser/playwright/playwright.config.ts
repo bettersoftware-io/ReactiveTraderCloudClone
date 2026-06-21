@@ -12,7 +12,13 @@ export default defineConfig({
   // config-file-relative (../../ = tests/).
   reporter: [
     ["list"],
-    ["html", { outputFolder: "../../reports/browser/playwright/report", open: "never" }],
+    [
+      "html",
+      {
+        outputFolder: "../../reports/browser/playwright/report",
+        open: "never",
+      },
+    ],
   ],
   outputDir: "../../reports/browser/playwright/artifacts",
   timeout: 30_000,
@@ -22,7 +28,5 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-  ],
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

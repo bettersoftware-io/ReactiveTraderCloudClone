@@ -1,9 +1,9 @@
 // tests/browser/cypress/fxTrading.spec.ts
 import { getCtx } from "./_context";
 import { withFxWorkspaceOpen } from "./_openWorkspace";
-import * as fxTrading from "./scenarios/fxTrading";
-import * as fxLiveRates from "./scenarios/fxLiveRates";
 import * as common from "./scenarios/common";
+import * as fxLiveRates from "./scenarios/fxLiveRates";
+import * as fxTrading from "./scenarios/fxTrading";
 
 describe("FX trading", () => {
   withFxWorkspaceOpen();

@@ -1,15 +1,13 @@
 // tests/presenter/scenarios/_buildApp.ts
-import { merge, Subject } from "rxjs";
+
 import {
-  ConnectionEventsSimulator,
-  type ConnectionEvent,
-} from "@rtc/domain";
-import {
-  createApp,
-  createSimulatorPorts,
   type App,
   type AppPorts,
+  createApp,
+  createSimulatorPorts,
 } from "@rtc/client-react";
+import { type ConnectionEvent, ConnectionEventsSimulator } from "@rtc/domain";
+import { merge, Subject } from "rxjs";
 
 export interface PresenterCtx {
   app: App;

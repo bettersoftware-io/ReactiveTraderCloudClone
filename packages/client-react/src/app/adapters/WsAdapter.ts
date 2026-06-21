@@ -3,8 +3,8 @@
  * Manages connection lifecycle and message routing between client and server.
  */
 
-import { ReplaySubject, type Observable } from "rxjs";
 import type { ConnectionEvent } from "@rtc/domain";
+import { type Observable, ReplaySubject } from "rxjs";
 import type { IWsAdapter, MessageHandler } from "./IWsAdapter";
 
 interface WsMessage {
@@ -24,7 +24,10 @@ export class WsAdapter implements IWsAdapter {
   private readonly url: string;
   private readonly reconnectDelayMs: number;
   private readonly handlers = new Map<string, Set<MessageHandler>>();
-  private readonly pendingRpcs = new Map<string, { resolve: (p: unknown) => void; reject: (e: Error) => void }>();
+  private readonly pendingRpcs = new Map<
+    string,
+    { resolve: (p: unknown) => void; reject: (e: Error) => void }
+  >();
   // Messages issued before the socket reaches OPEN, held until onopen flushes
   // them. Without this, a subscription sent in the same tick as construction
   // (before the handshake completes) would be silently dropped and the stream
@@ -37,7 +40,8 @@ export class WsAdapter implements IWsAdapter {
 
   constructor(url: string, options: WsAdapterOptions = {}) {
     this.url = url;
-    this.reconnectDelayMs = options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
+    this.reconnectDelayMs =
+      options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
     this.connect();
   }
 
@@ -80,7 +84,11 @@ export class WsAdapter implements IWsAdapter {
     this.ws.onclose = () => {
       if (this.disposed) return;
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
-      console.log("[WsAdapter] Disconnected, reconnecting in", this.reconnectDelayMs, "ms");
+      console.log(
+        "[WsAdapter] Disconnected, reconnecting in",
+        this.reconnectDelayMs,
+        "ms",
+      );
       this.scheduleReconnect();
     };
 

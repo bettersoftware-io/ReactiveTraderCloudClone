@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import type { Quote, QuoteState, Dealer } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import type { Dealer, Quote, QuoteState } from "@rtc/domain";
 import { QuoteCard } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 
 const dealer: Dealer = { id: 7, name: "Citi" };
 
@@ -25,7 +25,10 @@ describe("QuoteCard", () => {
 
   it("falls back to a generic dealer label when no dealer is supplied", () => {
     const card = mount(QuoteCard, {
-      props: { quote: quote({ type: "rejectedWithoutPrice" }), dealer: undefined },
+      props: {
+        quote: quote({ type: "rejectedWithoutPrice" }),
+        dealer: undefined,
+      },
     });
     expect(card.dealerLabel()).toBe("Dealer 7");
     expect(card.valueText()).toMatch(/awaiting response/i);
@@ -65,7 +68,11 @@ describe("QuoteCard", () => {
 
   it("shows the accepted price without an Accept button", () => {
     const card = mount(QuoteCard, {
-      props: { quote: quote({ type: "accepted", price: 101 }), dealer, onAccept: () => {} },
+      props: {
+        quote: quote({ type: "accepted", price: 101 }),
+        dealer,
+        onAccept: () => {},
+      },
     });
     expect(card.valueText()).toBe("$101");
     expect(card.canAccept()).toBe(false);
@@ -87,7 +94,11 @@ describe("QuoteCard", () => {
 
   it("updates the displayed state when the quote prop changes", () => {
     const card = mount(QuoteCard, {
-      props: { quote: quote({ type: "pendingWithoutPrice" }), dealer, onAccept: () => {} },
+      props: {
+        quote: quote({ type: "pendingWithoutPrice" }),
+        dealer,
+        onAccept: () => {},
+      },
     });
     expect(card.valueText()).toMatch(/awaiting response/i);
     card.setProps({ quote: quote({ type: "pendingWithPrice", price: 95 }) });

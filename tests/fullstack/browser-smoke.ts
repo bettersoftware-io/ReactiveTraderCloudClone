@@ -14,8 +14,8 @@
 import { spawn } from "node:child_process";
 import {
   MONOREPO_ROOT,
-  startServer,
   startClient,
+  startServer,
   stopProcess,
   waitForHttp,
 } from "./_orchestration.js";
@@ -38,19 +38,15 @@ function runPlaywright(): Promise<number> {
     // FULLSTACK_HEADED (set by the :headed script) runs the real browser
     // visibly against the real backend, so the full stack can be watched live.
     if (process.env.FULLSTACK_HEADED) args.push("--headed");
-    const child = spawn(
-      "pnpm",
-      args,
-      {
-        cwd: MONOREPO_ROOT,
-        stdio: "inherit",
-        env: {
-          ...process.env,
-          FULLSTACK_CLIENT_PORT: String(CLIENT_PORT),
-          NODE_OPTIONS: "",
-        },
+    const child = spawn("pnpm", args, {
+      cwd: MONOREPO_ROOT,
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        FULLSTACK_CLIENT_PORT: String(CLIENT_PORT),
+        NODE_OPTIONS: "",
       },
-    );
+    });
     child.on("exit", (code) => resolve(code ?? 1));
   });
 }

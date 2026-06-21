@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { mount } from "@ui-contract/mount";
 import { PnlValue } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 
 describe("PnlValue", () => {
   it("shows a positive value with a + sign", () => {
@@ -21,7 +21,9 @@ describe("PnlValue", () => {
   });
 
   it("abbreviates millions with two decimals and an m suffix", () => {
-    expect(mount(PnlValue, { props: { value: 1_500_000 } }).text()).toBe("+1.50m");
+    expect(mount(PnlValue, { props: { value: 1_500_000 } }).text()).toBe(
+      "+1.50m",
+    );
   });
 
   it("re-renders when its value prop changes", () => {

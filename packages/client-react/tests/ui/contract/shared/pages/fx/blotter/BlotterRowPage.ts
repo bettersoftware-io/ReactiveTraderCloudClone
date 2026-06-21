@@ -1,5 +1,5 @@
-import { within, fireEvent } from "@testing-library/dom";
 import type { Trade } from "@rtc/domain";
+import { fireEvent, within } from "@testing-library/dom";
 import { MountedComponent } from "../../../harness/component";
 
 export interface BlotterRowProps {
@@ -16,7 +16,9 @@ export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
 
   /** Ordered text of each cell in the row. */
   cellText(): string[] {
-    return [...this.row().querySelectorAll("td")].map((td) => td.textContent?.trim() ?? "");
+    return [...this.row().querySelectorAll("td")].map(
+      (td) => td.textContent?.trim() ?? "",
+    );
   }
 
   /** True when a cell with the given text is present. */

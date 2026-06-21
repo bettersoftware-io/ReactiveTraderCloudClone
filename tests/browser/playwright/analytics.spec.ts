@@ -1,7 +1,7 @@
-import { test } from "./_context";
-import { withFxWorkspaceOpen } from "./_openWorkspace";
 import * as analytics from "../scenarios/analytics";
 import * as theme from "../scenarios/theme";
+import { test } from "./_context";
+import { withFxWorkspaceOpen } from "./_openWorkspace";
 
 test.describe("Analytics panel", () => {
   withFxWorkspaceOpen();

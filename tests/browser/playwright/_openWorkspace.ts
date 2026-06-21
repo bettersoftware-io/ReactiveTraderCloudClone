@@ -1,5 +1,5 @@
-import { test } from "./_context";
 import * as common from "../scenarios/common";
+import { test } from "./_context";
 
 export const withWorkspaceOpen = (): void => {
   test.beforeEach(({ ctx }) => common.openWorkspace(ctx));

@@ -21,9 +21,7 @@
 
 export * from "@badeball/cypress-cucumber-preprocessor";
 
-import {
-  defineStep as _defineStep,
-} from "@badeball/cypress-cucumber-preprocessor";
+import { defineStep as _defineStep } from "@badeball/cypress-cucumber-preprocessor";
 
 type StepFn = (...args: unknown[]) => unknown;
 type DefineStep = (pattern: string | RegExp, fn: StepFn) => void;
@@ -52,10 +50,13 @@ function wrapStepFn(fn: StepFn): StepFn {
 }
 
 function makeStep(impl: DefineStep): DefineStep {
-  return (pattern: string | RegExp, fn: StepFn) => impl(pattern, wrapStepFn(fn));
+  return (pattern: string | RegExp, fn: StepFn) =>
+    impl(pattern, wrapStepFn(fn));
 }
 
-export const defineStep: DefineStep = makeStep(_defineStep as unknown as DefineStep);
+export const defineStep: DefineStep = makeStep(
+  _defineStep as unknown as DefineStep,
+);
 export const Given: DefineStep = makeStep(_defineStep as unknown as DefineStep);
 export const When: DefineStep = makeStep(_defineStep as unknown as DefineStep);
 export const Then: DefineStep = makeStep(_defineStep as unknown as DefineStep);

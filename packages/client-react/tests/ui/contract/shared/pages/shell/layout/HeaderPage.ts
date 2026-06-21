@@ -15,13 +15,18 @@ export class HeaderPage extends MountedComponent<HeaderProps> {
 
   /** The application title shown in the header. */
   title(): string {
-    return within(this.root).getByText(/reactive trader/i).textContent?.trim() ?? "";
+    return (
+      within(this.root)
+        .getByText(/reactive trader/i)
+        .textContent?.trim() ?? ""
+    );
   }
 
   /** The visible label for each tab button, in order. */
   tabLabels(): string[] {
     return (["fx", "credit", "admin"] as const).map(
-      (tab) => within(this.root).getByTestId(`tab-${tab}`).textContent?.trim() ?? "",
+      (tab) =>
+        within(this.root).getByTestId(`tab-${tab}`).textContent?.trim() ?? "",
     );
   }
 

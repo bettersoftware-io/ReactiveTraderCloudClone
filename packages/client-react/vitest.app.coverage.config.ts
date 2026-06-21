@@ -1,4 +1,4 @@
-import { mergeConfig, defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
 import base from "./vitest.config";
 
 // Report-only v8 coverage for the app tier (src/app: presenters + WS adapters).

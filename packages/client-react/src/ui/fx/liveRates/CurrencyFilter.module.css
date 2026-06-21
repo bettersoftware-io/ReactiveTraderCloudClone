@@ -12,7 +12,9 @@
   font-weight: 400;
   background-color: transparent;
   color: var(--text-secondary);
-  transition: background-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
 }
 
 .filter[data-active="true"] {

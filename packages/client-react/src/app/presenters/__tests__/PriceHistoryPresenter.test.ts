@@ -1,11 +1,15 @@
+import type { PriceTick, PricingPort } from "@rtc/domain";
 import { lastValueFrom, of, take, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
-import type { PricingPort, PriceTick } from "@rtc/domain";
 import { PriceHistoryPresenter } from "../PriceHistoryPresenter";
 
 const tick = (mid: number, ts: number): PriceTick => ({
-  symbol: "EURUSD", mid, ask: mid + 0.0001, bid: mid - 0.0001,
-  valueDate: "2026-05-05", creationTimestamp: ts,
+  symbol: "EURUSD",
+  mid,
+  ask: mid + 0.0001,
+  bid: mid - 0.0001,
+  valueDate: "2026-05-05",
+  creationTimestamp: ts,
 });
 
 describe("PriceHistoryPresenter", () => {
@@ -19,7 +23,9 @@ describe("PriceHistoryPresenter", () => {
     };
     const presenter = new PriceHistoryPresenter(port);
     // The use case emits incrementally: [t1] then [t1, t2]. take(2) + toArray collects both.
-    const emissions = await lastValueFrom(presenter.history$("EURUSD").pipe(take(2), toArray()));
+    const emissions = await lastValueFrom(
+      presenter.history$("EURUSD").pipe(take(2), toArray()),
+    );
     expect(emissions).toEqual([[t1], [t1, t2]]);
   });
 

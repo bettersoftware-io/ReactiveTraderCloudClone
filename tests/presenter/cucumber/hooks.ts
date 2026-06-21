@@ -1,11 +1,11 @@
 // tests/presenter/cucumber/hooks.ts
-import { Before, After } from "@cucumber/cucumber";
+import { After, Before } from "@cucumber/cucumber";
 import { Subscription } from "rxjs";
 import { buildPresenterApp } from "../scenarios/_buildApp";
 import { newScratchpad } from "../scenarios/_shared/common";
 import type { PresenterWorld } from "./world";
 
-Before(function(this: PresenterWorld) {
+Before(function (this: PresenterWorld) {
   this.ctx = buildPresenterApp();
   this.scratch = newScratchpad();
   // Keep status$ subscribed for the entire scenario lifetime so that
@@ -13,6 +13,6 @@ Before(function(this: PresenterWorld) {
   this._statusSub = this.ctx.app.presenters.connection.status$.subscribe();
 });
 
-After(function(this: PresenterWorld) {
+After(function (this: PresenterWorld) {
   this._statusSub?.unsubscribe();
 });

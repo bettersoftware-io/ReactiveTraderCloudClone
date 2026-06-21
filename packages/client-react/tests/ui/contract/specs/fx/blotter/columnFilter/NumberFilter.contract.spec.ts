@@ -1,12 +1,16 @@
-import { describe, it, expect } from "vitest";
-import { mount } from "@ui-contract/mount";
 import { NumberFilter } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 import type { ColumnFilter } from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
 
 describe("NumberFilter", () => {
   it("defaults to the equals comparator with an empty value", () => {
     const filter = mount(NumberFilter, {
-      props: { column: "notional", currentFilter: undefined, onApply: () => {} },
+      props: {
+        column: "notional",
+        currentFilter: undefined,
+        onApply: () => {},
+      },
     });
     expect(filter.comparator()).toBe("eq");
     expect(filter.value()).toBe("");
@@ -102,8 +106,14 @@ describe("NumberFilter", () => {
     await filter.setValue("100");
     // leave the "to" input blank → parseFloat("") is NaN → valueTo undefined
     await filter.apply();
-    expect(applied).toMatchObject({ type: "number", comparator: "inRange", value: 100 });
-    expect((applied as Extract<ColumnFilter, { type: "number" }>).valueTo).toBeUndefined();
+    expect(applied).toMatchObject({
+      type: "number",
+      comparator: "inRange",
+      value: 100,
+    });
+    expect(
+      (applied as Extract<ColumnFilter, { type: "number" }>).valueTo,
+    ).toBeUndefined();
   });
 
   it("clears the filter (null) when the value is not a number", async () => {

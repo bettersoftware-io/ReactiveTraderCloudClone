@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { Direction, TradeStatus, type Trade } from "@rtc/domain";
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportToCsv } from "./csvExport";
 
 const trade = (over: Partial<Trade> = {}): Trade => ({

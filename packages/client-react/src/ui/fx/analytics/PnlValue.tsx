@@ -21,10 +21,7 @@ export function PnlValue({ value }: PnlValueProps) {
   const sign = value >= 0 ? "pos" : "neg";
 
   return (
-    <div
-      data-sign={sign}
-      className={styles.value}
-    >
+    <div data-sign={sign} className={styles.value}>
       {formatPnl(value)}
     </div>
   );

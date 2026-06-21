@@ -1,9 +1,9 @@
 import { getCtx } from "./_context";
 import { withFxWorkspaceOpen } from "./_openWorkspace";
 import * as blotter from "./scenarios/blotter";
+import * as common from "./scenarios/common";
 import * as fxLiveRates from "./scenarios/fxLiveRates";
 import * as fxTrading from "./scenarios/fxTrading";
-import * as common from "./scenarios/common";
 
 describe("FX trade blotter", () => {
   withFxWorkspaceOpen();

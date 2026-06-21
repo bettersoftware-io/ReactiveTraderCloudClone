@@ -1,17 +1,22 @@
+import { type Dealer, type Instrument, type Rfq, RfqState } from "@rtc/domain";
 import { useCallback, useMemo, useState } from "react";
-import { RfqState, type Instrument, type Dealer, type Rfq } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import { RfqCard } from "./RfqCard";
-import { RfqFilterTabs, type RfqFilter } from "./RfqFilterTabs";
+import { type RfqFilter, RfqFilterTabs } from "./RfqFilterTabs";
 import styles from "./RfqTilesPanel.module.css";
 
 function filterMatches(state: string, filter: RfqFilter): boolean {
   switch (filter) {
-    case "All": return true;
-    case "Live": return state === RfqState.Open;
-    case "Done": return state === RfqState.Closed;
-    case "Expired": return state === RfqState.Expired;
-    case "Cancelled": return state === RfqState.Cancelled;
+    case "All":
+      return true;
+    case "Live":
+      return state === RfqState.Open;
+    case "Done":
+      return state === RfqState.Closed;
+    case "Expired":
+      return state === RfqState.Expired;
+    case "Cancelled":
+      return state === RfqState.Cancelled;
   }
 }
 
@@ -23,7 +28,13 @@ interface RfqTileRowProps {
   onDismiss: (rfqId: number) => void;
 }
 
-function RfqTileRow({ rfq, instrumentMap, dealers, onAccept, onDismiss }: RfqTileRowProps) {
+function RfqTileRow({
+  rfq,
+  instrumentMap,
+  dealers,
+  onAccept,
+  onDismiss,
+}: RfqTileRowProps) {
   const quotes = useHooks().useQuotesForRfq(rfq.id);
   return (
     <RfqCard
@@ -53,9 +64,10 @@ export function RfqTilesPanel() {
   }, [instruments]);
 
   const filteredRfqs = useMemo(
-    () => rfqs
-      .filter((r) => filterMatches(r.state, filter) && !dismissed.has(r.id))
-      .sort((a, b) => b.creationTimestamp - a.creationTimestamp),
+    () =>
+      rfqs
+        .filter((r) => filterMatches(r.state, filter) && !dismissed.has(r.id))
+        .sort((a, b) => b.creationTimestamp - a.creationTimestamp),
     [rfqs, filter, dismissed],
   );
 
@@ -75,9 +87,7 @@ export function RfqTilesPanel() {
       <RfqFilterTabs selected={filter} onChange={setFilter} />
 
       {filteredRfqs.length === 0 ? (
-        <div className={styles.empty}>
-          No RFQs to display
-        </div>
+        <div className={styles.empty}>No RFQs to display</div>
       ) : (
         <div className={styles.grid}>
           {filteredRfqs.map((rfq) => (

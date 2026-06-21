@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/experimental-ct-react";
+import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
 
 test("fx-blotter/populated", async ({ mount }) => {
@@ -8,11 +8,15 @@ test("fx-blotter/populated", async ({ mount }) => {
 
 test("fx-blotter/highlighted-row", async ({ mount }) => {
   const c = await mount(<VisualScenario name="fx-blotter/highlighted-row" />);
-  await expect(c).toHaveScreenshot("highlighted-row.png", { animations: "disabled" });
+  await expect(c).toHaveScreenshot("highlighted-row.png", {
+    animations: "disabled",
+  });
 });
 
 test("fx-blotter/non-highlighted-row", async ({ mount }) => {
-  const c = await mount(<VisualScenario name="fx-blotter/non-highlighted-row" />);
+  const c = await mount(
+    <VisualScenario name="fx-blotter/non-highlighted-row" />,
+  );
   await expect(c).toHaveScreenshot("non-highlighted-row.png", {
     animations: "disabled",
   });
@@ -38,33 +42,43 @@ test("fx-blotter/no-match", async ({ mount, page }) => {
   await page.getByTestId("blotter-filter-toggle-notional").click();
   await page.getByTestId("number-filter-value").fill("1");
   await page.getByTestId("number-filter-apply").click();
-  await expect(page.getByText("No trades match the current filters")).toBeVisible();
+  await expect(
+    page.getByText("No trades match the current filters"),
+  ).toBeVisible();
   await expect(c).toHaveScreenshot("no-match.png", { animations: "disabled" });
 });
 
 test("fx-blotter/filter-date", async ({ mount, page }) => {
   const c = await mount(<VisualScenario name="fx-blotter/filter-date" />);
   await page.getByTestId("blotter-filter-toggle-tradeDate").click();
-  await expect(c).toHaveScreenshot("filter-date.png", { animations: "disabled" });
+  await expect(c).toHaveScreenshot("filter-date.png", {
+    animations: "disabled",
+  });
 });
 
 test("fx-blotter/filter-number", async ({ mount, page }) => {
   const c = await mount(<VisualScenario name="fx-blotter/filter-number" />);
   await page.getByTestId("blotter-filter-toggle-notional").click();
-  await expect(c).toHaveScreenshot("filter-number.png", { animations: "disabled" });
+  await expect(c).toHaveScreenshot("filter-number.png", {
+    animations: "disabled",
+  });
 });
 
 test("fx-blotter/filter-set", async ({ mount, page }) => {
   const c = await mount(<VisualScenario name="fx-blotter/filter-set" />);
   await page.getByTestId("blotter-filter-toggle-status").click();
-  await expect(c).toHaveScreenshot("filter-set.png", { animations: "disabled" });
+  await expect(c).toHaveScreenshot("filter-set.png", {
+    animations: "disabled",
+  });
 });
 
 test("fx-blotter/sorted-asc", async ({ mount, page }) => {
   // A text column (CCYCCY) sorts ascending on the first click → the ▲ arm.
   const c = await mount(<VisualScenario name="fx-blotter/sorted-asc" />);
   await page.getByTestId("blotter-sort-currencyPair").click();
-  await expect(c).toHaveScreenshot("sorted-asc.png", { animations: "disabled" });
+  await expect(c).toHaveScreenshot("sorted-asc.png", {
+    animations: "disabled",
+  });
 });
 
 test("fx-blotter/filter-date-range", async ({ mount, page }) => {
@@ -75,16 +89,22 @@ test("fx-blotter/filter-date-range", async ({ mount, page }) => {
   await page.getByTestId("date-filter-value-to").fill("2026-06-30");
   await page.getByTestId("date-filter-apply").click();
   await expect(page.getByText("Filtered: Trade Date")).toBeVisible();
-  await expect(c).toHaveScreenshot("filter-date-range.png", { animations: "disabled" });
+  await expect(c).toHaveScreenshot("filter-date-range.png", {
+    animations: "disabled",
+  });
 });
 
 test("fx-blotter/filter-number-range", async ({ mount, page }) => {
-  const c = await mount(<VisualScenario name="fx-blotter/filter-number-range" />);
+  const c = await mount(
+    <VisualScenario name="fx-blotter/filter-number-range" />,
+  );
   await page.getByTestId("blotter-filter-toggle-notional").click();
   await page.getByTestId("number-filter-comparator").selectOption("inRange");
   await page.getByTestId("number-filter-value").fill("1000000");
   await page.getByTestId("number-filter-value-to").fill("6000000");
   await page.getByTestId("number-filter-apply").click();
   await expect(page.getByText("Filtered: Notional")).toBeVisible();
-  await expect(c).toHaveScreenshot("filter-number-range.png", { animations: "disabled" });
+  await expect(c).toHaveScreenshot("filter-number-range.png", {
+    animations: "disabled",
+  });
 });

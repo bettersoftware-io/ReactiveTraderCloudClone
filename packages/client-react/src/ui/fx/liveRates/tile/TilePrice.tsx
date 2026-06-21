@@ -1,4 +1,4 @@
-import { PriceMovementType, type Price } from "@rtc/domain";
+import { type Price, PriceMovementType } from "@rtc/domain";
 import styles from "./TilePrice.module.css";
 
 interface TilePriceProps {
@@ -74,7 +74,11 @@ function PriceButton({
   );
 }
 
-export function TilePrice({ price, ratePrecision, pipsPosition }: TilePriceProps) {
+export function TilePrice({
+  price,
+  ratePrecision,
+  pipsPosition,
+}: TilePriceProps) {
   return (
     <div className={styles.row}>
       <PriceButton

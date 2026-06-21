@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { mount } from "@ui-contract/mount";
 import { TileHeader } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 
 describe("TileHeader", () => {
   it("renders the base and terms currencies separated by a slash", () => {

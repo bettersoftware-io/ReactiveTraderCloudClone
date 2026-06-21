@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom, of, throwError } from "rxjs";
-import { ExecuteTradeUseCase } from "./ExecuteTradeUseCase.js";
-import type { ExecutionPort } from "../ports/executionPort.js";
+import { describe, expect, it } from "vitest";
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { Price } from "../fx/price.js";
 import { PriceMovementType } from "../fx/price.js";
-import type { Trade, ExecutionRequest } from "../fx/trade.js";
-import { Direction, TradeStatus, ExecutionStatus } from "../fx/trade.js";
+import type { ExecutionRequest, Trade } from "../fx/trade.js";
+import { Direction, ExecutionStatus, TradeStatus } from "../fx/trade.js";
+import type { ExecutionPort } from "../ports/executionPort.js";
+import { ExecuteTradeUseCase } from "./ExecuteTradeUseCase.js";
 
 const EURUSD: CurrencyPair = {
   symbol: "EURUSD",
@@ -19,16 +19,19 @@ const EURUSD: CurrencyPair = {
 
 const PRICE: Price = {
   symbol: "EURUSD",
-  bid: 1.10000,
-  ask: 1.10020,
-  mid: 1.10010,
+  bid: 1.1,
+  ask: 1.1002,
+  mid: 1.1001,
   valueDate: "2024-01-02",
   creationTimestamp: 1,
   movementType: PriceMovementType.UP,
   spread: "2.0",
 };
 
-function stubExecution(trade: Trade): { port: ExecutionPort; lastRequest: { current: ExecutionRequest | null } } {
+function stubExecution(trade: Trade): {
+  port: ExecutionPort;
+  lastRequest: { current: ExecutionRequest | null };
+} {
   const lastRequest = { current: null as ExecutionRequest | null };
   const port: ExecutionPort = {
     executeTrade(request) {
@@ -47,7 +50,7 @@ function buildTrade(status: TradeStatus): Trade {
     notional: 1_000_000,
     dealtCurrency: "EUR",
     direction: Direction.Buy,
-    spotRate: 1.10020,
+    spotRate: 1.1002,
     status,
     valueDate: "2024-01-02",
     tradeDate: "2024-01-02",
@@ -70,7 +73,7 @@ describe("ExecuteTradeUseCase", () => {
 
     expect(lastRequest.current).toEqual({
       currencyPair: "EURUSD",
-      spotRate: 1.10020,
+      spotRate: 1.1002,
       direction: Direction.Buy,
       notional: 1_000_000,
       dealtCurrency: "EUR",
@@ -92,7 +95,7 @@ describe("ExecuteTradeUseCase", () => {
       }),
     );
 
-    expect(lastRequest.current?.spotRate).toBe(1.10000);
+    expect(lastRequest.current?.spotRate).toBe(1.1);
     expect(lastRequest.current?.dealtCurrency).toBe("USD");
     expect(lastRequest.current?.direction).toBe(Direction.Sell);
   });
@@ -124,7 +127,12 @@ describe("ExecuteTradeUseCase", () => {
 
     await expect(
       firstValueFrom(
-        useCase.execute({ pair: EURUSD, direction: Direction.Buy, price: PRICE, notional: 1_000_000 }),
+        useCase.execute({
+          pair: EURUSD,
+          direction: Direction.Buy,
+          price: PRICE,
+          notional: 1_000_000,
+        }),
       ),
     ).rejects.toThrow("timeout");
   });

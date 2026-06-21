@@ -1,15 +1,15 @@
-import { type Observable } from "rxjs";
+import type { Observable } from "rxjs";
 import { map } from "rxjs/operators";
-import type { ExecutionPort } from "../ports/executionPort.js";
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { Price } from "../fx/price.js";
-import type { Trade, ExecutionRequest } from "../fx/trade.js";
+import type { ExecutionRequest, Trade } from "../fx/trade.js";
 import {
   Direction,
-  TradeStatus,
-  ExecutionStatus,
   deriveDealtCurrency,
+  ExecutionStatus,
+  TradeStatus,
 } from "../fx/trade.js";
+import type { ExecutionPort } from "../ports/executionPort.js";
 
 export interface ExecuteTradeInput {
   readonly pair: CurrencyPair;
@@ -29,7 +29,10 @@ export class ExecuteTradeUseCase {
   execute(input: ExecuteTradeInput): Observable<ExecuteTradeResult> {
     const spotRate =
       input.direction === Direction.Buy ? input.price.ask : input.price.bid;
-    const dealtCurrency = deriveDealtCurrency(input.pair.symbol, input.direction);
+    const dealtCurrency = deriveDealtCurrency(
+      input.pair.symbol,
+      input.direction,
+    );
     const request: ExecutionRequest = {
       currencyPair: input.pair.symbol,
       spotRate,

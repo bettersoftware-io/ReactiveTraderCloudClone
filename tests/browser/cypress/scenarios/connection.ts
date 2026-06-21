@@ -1,8 +1,9 @@
 // tests/browser/cypress/scenarios/connection.ts
 // Cypress fork of tests/browser/scenarios/connection.ts — synchronous bodies, queue-aware.
 // See Phase 5A.4 spec §3.3.
-import type { TestContext } from "../../testContext";
+
 import { assertTrue } from "../../scenarios/assert";
+import type { TestContext } from "../../testContext";
 import { chainable } from "./_chainable";
 
 export function setBrowserOffline(ctx: TestContext, offline: boolean): void {
@@ -20,59 +21,70 @@ export function setBrowserOffline(ctx: TestContext, offline: boolean): void {
   // pair of cucumber steps; raw it()-bodies queue commands back-to-back with
   // no such buffer.
   if (offline) {
-    chainable(ctx.po.footer.connectionLabel())
-      .should((text) => {
-        if (!text.includes("Connected")) {
-          throw new Error(
-            `expected footer to show "Connected" before dispatching offline; last seen: ${JSON.stringify(text)}`,
-          );
-        }
-      });
+    chainable(ctx.po.footer.connectionLabel()).should((text) => {
+      if (!text.includes("Connected")) {
+        throw new Error(
+          `expected footer to show "Connected" before dispatching offline; last seen: ${JSON.stringify(text)}`,
+        );
+      }
+    });
   }
   void ctx.po.workspace.setOffline(offline);
 }
 
 export function expectConnectionStatusFooterVisible(ctx: TestContext): void {
-  chainable(ctx.po.footer.isStatusVisible())
-    .then((v) => assertTrue(v, "connection status footer not visible"));
+  chainable(ctx.po.footer.isStatusVisible()).then((v) =>
+    assertTrue(v, "connection status footer not visible"),
+  );
 }
 
-export function expectConnectionStatusFooterShows(ctx: TestContext, expected: string): void {
+export function expectConnectionStatusFooterShows(
+  ctx: TestContext,
+  expected: string,
+): void {
   // Cypress retries the chain (cy.get + .then + .should) when the .should
   // callback throws. Default timeout is 10s (defaultCommandTimeout in
   // cypress.config.ts). The retry replaces the shared layer's hand-rolled
   // 5s poll loop.
-  chainable(ctx.po.footer.connectionLabel())
-    .should((text) => {
-      if (!text.includes(expected)) {
-        throw new Error(
-          `expected footer to contain ${JSON.stringify(expected)}; last seen: ${JSON.stringify(text)}`,
-        );
-      }
-    });
+  chainable(ctx.po.footer.connectionLabel()).should((text) => {
+    if (!text.includes(expected)) {
+      throw new Error(
+        `expected footer to contain ${JSON.stringify(expected)}; last seen: ${JSON.stringify(text)}`,
+      );
+    }
+  });
 }
 
 export function expectConnectionOverlayHidden(ctx: TestContext): void {
-  chainable(ctx.po.connectionOverlay.isHidden())
-    .then((v) => assertTrue(v, "connection overlay not hidden"));
+  chainable(ctx.po.connectionOverlay.isHidden()).then((v) =>
+    assertTrue(v, "connection overlay not hidden"),
+  );
 }
 
-export function expectConnectionOverlayVisibleWithin(ctx: TestContext, seconds: number): void {
+export function expectConnectionOverlayVisibleWithin(
+  ctx: TestContext,
+  seconds: number,
+): void {
   void ctx.po.connectionOverlay.waitVisible(seconds * 1_000);
 }
 
-export function expectConnectionOverlayHiddenWithin(ctx: TestContext, seconds: number): void {
+export function expectConnectionOverlayHiddenWithin(
+  ctx: TestContext,
+  seconds: number,
+): void {
   void ctx.po.connectionOverlay.waitHidden(seconds * 1_000);
 }
 
-export function expectConnectionOverlayTextMatches(ctx: TestContext, rawRegex: string): void {
+export function expectConnectionOverlayTextMatches(
+  ctx: TestContext,
+  rawRegex: string,
+): void {
   const match = rawRegex.match(/^\/(.+)\/([gimsuy]*)$/);
   if (!match) throw new Error(`bad regex literal: ${rawRegex}`);
   const re = new RegExp(match[1], match[2]);
-  chainable(ctx.po.connectionOverlay.text())
-    .then((text) => {
-      if (!re.test(text)) {
-        throw new Error(`expected ${JSON.stringify(text)} to match ${rawRegex}`);
-      }
-    });
+  chainable(ctx.po.connectionOverlay.text()).then((text) => {
+    if (!re.test(text)) {
+      throw new Error(`expected ${JSON.stringify(text)} to match ${rawRegex}`);
+    }
+  });
 }

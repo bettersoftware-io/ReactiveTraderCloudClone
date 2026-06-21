@@ -1,32 +1,25 @@
 import {
-  Subject,
-  merge,
-  of,
-  timer,
-  concat,
-  type Observable,
-} from "rxjs";
-import {
-  catchError,
-  map,
-  switchMap,
-  scan,
-  distinctUntilChanged,
-  takeUntil,
-} from "rxjs/operators";
-import { state, type StateObservable } from "@rx-state/core";
-import {
+  CONFIRMATION_DISMISS_MS,
   type CurrencyPair,
-  type Price,
   type Direction,
-  type Trade,
+  EXECUTION_TIMEOUT_MS,
   type ExecuteTradeInput,
   type ExecuteTradeResult,
   ExecutionStatus,
+  type Price,
   TOO_LONG_THRESHOLD_MS,
-  EXECUTION_TIMEOUT_MS,
-  CONFIRMATION_DISMISS_MS,
+  type Trade,
 } from "@rtc/domain";
+import { type StateObservable, state } from "@rx-state/core";
+import { concat, merge, type Observable, of, Subject, timer } from "rxjs";
+import {
+  catchError,
+  distinctUntilChanged,
+  map,
+  scan,
+  switchMap,
+  takeUntil,
+} from "rxjs/operators";
 import type { Machine } from "./machine";
 
 /** The execution lifecycle of a single tile, relocated out of the old
@@ -93,24 +86,27 @@ export function createTileExecutionMachine(
         ),
       );
 
-      const tooLong$: Observable<TileExecutionState> = timer(TOO_LONG_THRESHOLD_MS).pipe(
-        map((): TileExecutionState => ({ status: "tooLong" })),
-      );
+      const tooLong$: Observable<TileExecutionState> = timer(
+        TOO_LONG_THRESHOLD_MS,
+      ).pipe(map((): TileExecutionState => ({ status: "tooLong" })));
 
-      const timeout$: Observable<TileExecutionState> = timer(EXECUTION_TIMEOUT_MS).pipe(
-        map((): TileExecutionState => ({ status: "timeout" })),
-      );
+      const timeout$: Observable<TileExecutionState> = timer(
+        EXECUTION_TIMEOUT_MS,
+      ).pipe(map((): TileExecutionState => ({ status: "timeout" })));
 
       // started first, then the three racing escalations, collapsed.
       const lifecycle$ = concat(
         of<TileExecutionState>({ status: "started" }),
         merge(result$, tooLong$, timeout$).pipe(
-          scan((acc: TileExecutionState, next: TileExecutionState) => {
-            // Once terminal, ignore everything that follows (late result, or a
-            // tooLong that fires after the run already settled).
-            if (isTerminal(acc)) return acc;
-            return next;
-          }, { status: "started" } as TileExecutionState),
+          scan(
+            (acc: TileExecutionState, next: TileExecutionState) => {
+              // Once terminal, ignore everything that follows (late result, or a
+              // tooLong that fires after the run already settled).
+              if (isTerminal(acc)) return acc;
+              return next;
+            },
+            { status: "started" } as TileExecutionState,
+          ),
           distinctUntilChanged(),
         ),
       );
@@ -121,7 +117,10 @@ export function createTileExecutionMachine(
       return lifecycle$.pipe(
         switchMap((s) =>
           isTerminal(s)
-            ? concat(of(s), timer(CONFIRMATION_DISMISS_MS).pipe(map(() => READY)))
+            ? concat(
+                of(s),
+                timer(CONFIRMATION_DISMISS_MS).pipe(map(() => READY)),
+              )
             : of(s),
         ),
         takeUntil(dismiss$),
@@ -129,10 +128,7 @@ export function createTileExecutionMachine(
     }),
   );
 
-  const stream$ = merge(
-    runs$,
-    dismiss$.pipe(map(() => READY)),
-  );
+  const stream$ = merge(runs$, dismiss$.pipe(map(() => READY)));
 
   const state$: StateObservable<TileExecutionState> = state(stream$, READY);
 

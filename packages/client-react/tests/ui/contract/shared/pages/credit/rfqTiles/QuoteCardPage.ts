@@ -1,6 +1,6 @@
+import type { Dealer, Quote } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import type { Quote, Dealer } from "@rtc/domain";
 import { MountedComponent } from "../../../harness/component";
 
 export interface QuoteCardProps {

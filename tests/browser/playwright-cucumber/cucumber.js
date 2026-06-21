@@ -21,7 +21,11 @@ export default {
     "browser/playwright-cucumber/*.ts",
     "browser/steps/*.steps.ts",
   ],
-  format: ["progress-bar", "html:reports/browser/playwright-cucumber/report/index.html", "summary"],
+  format: [
+    "progress-bar",
+    "html:reports/browser/playwright-cucumber/report/index.html",
+    "summary",
+  ],
   // PWCUCUMBER_HEADED (the :headed script) forces a single worker so the run
   // is one followable window — otherwise each cucumber worker launches its own
   // visible browser. CI already pins 1; both are the "watchable run" path.

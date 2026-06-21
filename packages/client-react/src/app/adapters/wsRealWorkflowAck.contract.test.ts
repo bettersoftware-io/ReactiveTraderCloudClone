@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { firstValueFrom } from "rxjs";
-import { createWsRealPorts } from "./portFactory";
-import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
-import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
 import { rpcAck } from "@rtc/shared/__fixtures__/wireFrames";
+import { firstValueFrom } from "rxjs";
+import { describe, expect, it } from "vitest";
+import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
+import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { createWsRealPorts } from "./portFactory";
 
 /**
  * Success (ack) outcomes for the void-returning workflow/admin RPC ports: an
@@ -13,7 +13,9 @@ import { rpcAck } from "@rtc/shared/__fixtures__/wireFrames";
  */
 describe("wsReal void RPC ports :: ack emits undefined and completes", () => {
   async function expectAckCompletes(
-    subscribe: (ports: ReturnType<typeof createWsRealPorts>) => Promise<unknown>,
+    subscribe: (
+      ports: ReturnType<typeof createWsRealPorts>,
+    ) => Promise<unknown>,
     rpcType: string,
   ): Promise<void> {
     const ws = new FakeWsAdapter();
@@ -26,7 +28,10 @@ describe("wsReal void RPC ports :: ack emits undefined and completes", () => {
   }
 
   it("workflow.cancelRfq completes on ack", () =>
-    expectAckCompletes((p) => firstValueFrom(p.workflow.cancelRfq(1)), "rpc.cancelRfq"));
+    expectAckCompletes(
+      (p) => firstValueFrom(p.workflow.cancelRfq(1)),
+      "rpc.cancelRfq",
+    ));
 
   it("workflow.quote completes on ack", () =>
     expectAckCompletes(
@@ -38,7 +43,10 @@ describe("wsReal void RPC ports :: ack emits undefined and completes", () => {
     expectAckCompletes((p) => firstValueFrom(p.workflow.pass(1)), "rpc.pass"));
 
   it("workflow.accept completes on ack", () =>
-    expectAckCompletes((p) => firstValueFrom(p.workflow.accept(1)), "rpc.accept"));
+    expectAckCompletes(
+      (p) => firstValueFrom(p.workflow.accept(1)),
+      "rpc.accept",
+    ));
 
   it("admin.setThroughput completes on ack", () =>
     expectAckCompletes(

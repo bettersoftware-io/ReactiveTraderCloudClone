@@ -1,5 +1,5 @@
 // tests/presenter/scenarios/_await.ts
-import { firstValueFrom, timeout, type Observable } from "rxjs";
+import { firstValueFrom, type Observable, timeout } from "rxjs";
 
 export interface AwaitHelpers {
   /** Resolves to first emission within timeoutMs; rejects with TimeoutError otherwise. */

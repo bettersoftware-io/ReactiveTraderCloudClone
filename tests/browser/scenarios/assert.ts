@@ -4,7 +4,10 @@ function fail(msg: string): never {
 
 export function assertEquals<T>(actual: T, expected: T, msg?: string): void {
   if (!Object.is(actual, expected)) {
-    fail(msg ?? `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+    fail(
+      msg ??
+        `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
+    );
   }
 }
 
@@ -14,19 +17,34 @@ export function assertNotEqual<T>(actual: T, expected: T, msg?: string): void {
   }
 }
 
-export function assertContains(actual: string, expected: string, msg?: string): void {
+export function assertContains(
+  actual: string,
+  expected: string,
+  msg?: string,
+): void {
   if (!actual.includes(expected)) {
-    fail(msg ?? `expected ${JSON.stringify(actual)} to contain ${JSON.stringify(expected)}`);
+    fail(
+      msg ??
+        `expected ${JSON.stringify(actual)} to contain ${JSON.stringify(expected)}`,
+    );
   }
 }
 
-export function assertGte(actual: number, expected: number, msg?: string): void {
+export function assertGte(
+  actual: number,
+  expected: number,
+  msg?: string,
+): void {
   if (!(actual >= expected)) {
     fail(msg ?? `expected ${actual} to be >= ${expected}`);
   }
 }
 
-export function assertLte(actual: number, expected: number, msg?: string): void {
+export function assertLte(
+  actual: number,
+  expected: number,
+  msg?: string,
+): void {
   if (!(actual <= expected)) {
     fail(msg ?? `expected ${actual} to be <= ${expected}`);
   }

@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
 import type { Trade } from "@rtc/domain";
-import type { ColumnFilter, Comparator } from "./filterState";
+import { useCallback, useState } from "react";
 import styles from "./DateFilter.module.css";
+import type { ColumnFilter, Comparator } from "./filterState";
 
 interface DateFilterProps {
   column: keyof Trade;
@@ -19,7 +19,11 @@ const comparators: { value: Comparator; label: string }[] = [
   { value: "inRange", label: "In range" },
 ];
 
-export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) {
+export function DateFilter({
+  column,
+  currentFilter,
+  onApply,
+}: DateFilterProps) {
   const [comparator, setComparator] = useState<Comparator>(
     currentFilter?.type === "date" ? currentFilter.comparator : "eq",
   );
@@ -27,7 +31,9 @@ export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) 
     currentFilter?.type === "date" ? currentFilter.value : "",
   );
   const [valueTo, setValueTo] = useState(
-    currentFilter?.type === "date" && currentFilter.valueTo ? currentFilter.valueTo : "",
+    currentFilter?.type === "date" && currentFilter.valueTo
+      ? currentFilter.valueTo
+      : "",
   );
 
   const handleApply = useCallback(() => {
@@ -53,7 +59,9 @@ export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) 
         className={styles.select}
       >
         {comparators.map((c) => (
-          <option key={c.value} value={c.value}>{c.label}</option>
+          <option key={c.value} value={c.value}>
+            {c.label}
+          </option>
         ))}
       </select>
       <input
@@ -80,10 +88,7 @@ export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) 
         >
           Apply
         </button>
-        <button
-          onClick={() => onApply(null)}
-          className={styles.resetBtn}
-        >
+        <button onClick={() => onApply(null)} className={styles.resetBtn}>
           Reset
         </button>
       </div>

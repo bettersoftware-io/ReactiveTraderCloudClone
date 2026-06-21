@@ -1,4 +1,7 @@
-import { CREDIT_MAX_QUANTITY_INPUT, CREDIT_QUANTITY_MULTIPLIER } from "@rtc/domain";
+import {
+  CREDIT_MAX_QUANTITY_INPUT,
+  CREDIT_QUANTITY_MULTIPLIER,
+} from "@rtc/domain";
 import styles from "./QuantityInput.module.css";
 
 interface QuantityInputProps {
@@ -23,9 +26,7 @@ export function QuantityInput({ value, onChange, error }: QuantityInputProps) {
         placeholder="Enter quantity..."
         className={styles.input}
       />
-      {error && (
-        <span className={styles.errorMsg}>{error}</span>
-      )}
+      {error && <span className={styles.errorMsg}>{error}</span>}
     </div>
   );
 }

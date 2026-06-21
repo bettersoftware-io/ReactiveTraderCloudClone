@@ -1,4 +1,4 @@
-import { mergeConfig, defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
 import base from "./vitest.config";
 
 // The coverage gate over the whole src/ui surface. It runs BOTH the neutral

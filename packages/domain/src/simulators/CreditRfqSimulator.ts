@@ -1,10 +1,15 @@
-import { type Observable, Subject, defer, concat, from, of } from "rxjs";
-import type { Rfq } from "../credit/rfq.js";
-import type { Quote, QuoteState } from "../credit/quote.js";
-import type { WorkflowPort, RfqEvent, CreateRfqRequest, QuoteRequest } from "../ports/workflowPort.js";
-import { RfqState } from "../credit/rfq.js";
-import { ADAPTIVE_BANK_NAME } from "../credit/dealer.js";
+import { concat, defer, from, type Observable, of, Subject } from "rxjs";
 import type { Dealer } from "../credit/dealer.js";
+import { ADAPTIVE_BANK_NAME } from "../credit/dealer.js";
+import type { Quote, QuoteState } from "../credit/quote.js";
+import type { Rfq } from "../credit/rfq.js";
+import { RfqState } from "../credit/rfq.js";
+import type {
+  CreateRfqRequest,
+  QuoteRequest,
+  RfqEvent,
+  WorkflowPort,
+} from "../ports/workflowPort.js";
 
 const PARTICIPATION_THRESHOLD = 0.3; // 70% chance of responding
 const DEALER_RESPONSE_WINDOW_MS = 30_000;
@@ -86,7 +91,11 @@ export class CreditRfqSimulator implements WorkflowPort {
     });
   }
 
-  private scheduleDealerResponse(rfqId: number, quoteId: number, _dealer: Dealer): void {
+  private scheduleDealerResponse(
+    rfqId: number,
+    quoteId: number,
+    _dealer: Dealer,
+  ): void {
     // 70% participation rate
     if (Math.random() <= PARTICIPATION_THRESHOLD) return;
 
@@ -159,7 +168,8 @@ export class CreditRfqSimulator implements WorkflowPort {
   accept(quoteId: number): Observable<void> {
     return defer(() => {
       const quote = this.quotes.get(quoteId);
-      if (!quote || quote.state.type !== "pendingWithPrice") return of(undefined);
+      if (!quote || quote.state.type !== "pendingWithPrice")
+        return of(undefined);
 
       const price = quote.state.price;
 
@@ -180,7 +190,10 @@ export class CreditRfqSimulator implements WorkflowPort {
 
         let rejectedState: QuoteState | null = null;
         if (other.state.type === "pendingWithPrice") {
-          rejectedState = { type: "rejectedWithPrice", price: other.state.price };
+          rejectedState = {
+            type: "rejectedWithPrice",
+            price: other.state.price,
+          };
         } else if (other.state.type === "pendingWithoutPrice") {
           rejectedState = { type: "rejectedWithoutPrice" };
         }

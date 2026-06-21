@@ -1,7 +1,12 @@
-import { describe, it, expect } from "vitest";
-import { ExecutionStatus, Direction, TradeStatus, type Trade } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import {
+  Direction,
+  ExecutionStatus,
+  type Trade,
+  TradeStatus,
+} from "@rtc/domain";
 import { TileConfirmation } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 import type { TileExecutionState as TileState } from "../../../../../../../src/app/presenters/TileExecutionMachine";
 
 const doneTrade: Trade = {
@@ -71,7 +76,11 @@ describe("TileConfirmation", () => {
         state: {
           status: "finished",
           executionStatus: ExecutionStatus.Done,
-          trade: { ...doneTrade, direction: Direction.Sell, dealtCurrency: "USD" },
+          trade: {
+            ...doneTrade,
+            direction: Direction.Sell,
+            dealtCurrency: "USD",
+          },
         } as TileState,
         onDismiss: () => {},
       },
@@ -82,7 +91,10 @@ describe("TileConfirmation", () => {
   it("reports a rejected trade", () => {
     const c = mount(TileConfirmation, {
       props: {
-        state: { status: "finished", executionStatus: ExecutionStatus.Rejected } as TileState,
+        state: {
+          status: "finished",
+          executionStatus: ExecutionStatus.Rejected,
+        } as TileState,
         onDismiss: () => {},
       },
     });
@@ -93,7 +105,10 @@ describe("TileConfirmation", () => {
   it("reports a finished-with-timeout status", () => {
     const c = mount(TileConfirmation, {
       props: {
-        state: { status: "finished", executionStatus: ExecutionStatus.Timeout } as TileState,
+        state: {
+          status: "finished",
+          executionStatus: ExecutionStatus.Timeout,
+        } as TileState,
         onDismiss: () => {},
       },
     });
@@ -103,7 +118,10 @@ describe("TileConfirmation", () => {
   it("reports a credit-exceeded status", () => {
     const c = mount(TileConfirmation, {
       props: {
-        state: { status: "finished", executionStatus: ExecutionStatus.CreditExceeded } as TileState,
+        state: {
+          status: "finished",
+          executionStatus: ExecutionStatus.CreditExceeded,
+        } as TileState,
         onDismiss: () => {},
       },
     });
@@ -114,7 +132,10 @@ describe("TileConfirmation", () => {
   it("renders an empty overlay when a Done status carries no trade", () => {
     const c = mount(TileConfirmation, {
       props: {
-        state: { status: "finished", executionStatus: ExecutionStatus.Done } as TileState,
+        state: {
+          status: "finished",
+          executionStatus: ExecutionStatus.Done,
+        } as TileState,
         onDismiss: () => {},
       },
     });

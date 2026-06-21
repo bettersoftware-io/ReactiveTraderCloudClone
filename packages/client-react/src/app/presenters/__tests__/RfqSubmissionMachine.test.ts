@@ -1,16 +1,13 @@
-import { describe, it, expect } from "vitest";
-import { TestScheduler } from "rxjs/testing";
-import { of, type Observable } from "rxjs";
 import {
-  Direction,
   type CreateRfqInput,
+  Direction,
   type RfqEvent,
   type WorkflowPort,
 } from "@rtc/domain";
-import {
-  RfqsPresenter,
-  type RfqSubmissionState,
-} from "../RfqsPresenter";
+import { type Observable, of } from "rxjs";
+import { TestScheduler } from "rxjs/testing";
+import { describe, expect, it } from "vitest";
+import { type RfqSubmissionState, RfqsPresenter } from "../RfqsPresenter";
 
 // REDIRECT_DELAY_MS is presenter-local (1500). The marble test pins the timing.
 const REDIRECT_DELAY_MS = 1500;
@@ -56,14 +53,20 @@ describe("RfqsPresenter.createSubmission", () => {
       machine.intents.submit(input, (rfqId) => redirects.push(rfqId));
 
       // 1ms before the redirect-timer deadline (confirmation at t=10): not yet.
-      ts.schedule(() => {
-        expect(redirects).toEqual([]);
-      }, 10 + REDIRECT_DELAY_MS - 1);
+      ts.schedule(
+        () => {
+          expect(redirects).toEqual([]);
+        },
+        10 + REDIRECT_DELAY_MS - 1,
+      );
       // Just past the deadline: fired exactly once. (Same-virtual-time actions
       // have undefined ordering vs. the timer, so we check at deadline + 1.)
-      ts.schedule(() => {
-        expect(redirects).toEqual([555]);
-      }, 10 + REDIRECT_DELAY_MS + 1);
+      ts.schedule(
+        () => {
+          expect(redirects).toEqual([555]);
+        },
+        10 + REDIRECT_DELAY_MS + 1,
+      );
 
       flush();
       sub.unsubscribe();

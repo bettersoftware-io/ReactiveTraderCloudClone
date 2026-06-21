@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/experimental-ct-react";
+import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
 
 test("live-rates/populated", async ({ mount }) => {
@@ -11,5 +11,7 @@ test("live-rates/price-view", async ({ mount, page }) => {
   // button offers switching back ("Chart" label) before screenshotting.
   const c = await mount(<VisualScenario name="live-rates/price-view" />);
   await expect(page.getByText("Chart")).toBeVisible();
-  await expect(c).toHaveScreenshot("price-view.png", { animations: "disabled" });
+  await expect(c).toHaveScreenshot("price-view.png", {
+    animations: "disabled",
+  });
 });

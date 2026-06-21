@@ -1,8 +1,8 @@
-import { type Observable, defer } from "rxjs";
+import { defer, type Observable } from "rxjs";
 import { map } from "rxjs/operators";
-import type { PricingPort } from "../ports/pricingPort.js";
 import type { PriceTick } from "../fx/price.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
+import type { PricingPort } from "../ports/pricingPort.js";
 
 export class PriceHistoryUseCase {
   constructor(private readonly pricing: PricingPort) {}

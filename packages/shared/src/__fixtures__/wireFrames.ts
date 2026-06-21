@@ -9,21 +9,21 @@
  */
 import { Direction, TradeStatus } from "@rtc/domain";
 import type {
-  ReferenceDataMessage,
-  PriceTickDto,
-  PriceHistoryDto,
-  BlotterMessage,
-  TradeDto,
   AnalyticsDto,
-  ExecutionResponseDto,
-  InstrumentEvent,
-  InstrumentDto,
-  DealerEvent,
+  BlotterMessage,
   DealerDto,
-  WorkflowEvent,
-  RpcResponse,
-  RfqBodyDto,
+  DealerEvent,
+  ExecutionResponseDto,
+  InstrumentDto,
+  InstrumentEvent,
+  PriceHistoryDto,
+  PriceTickDto,
   QuoteBodyDto,
+  ReferenceDataMessage,
+  RfqBodyDto,
+  RpcResponse,
+  TradeDto,
+  WorkflowEvent,
 } from "../index.js";
 
 // ── Reference data ─────────────────────────────────────────────
@@ -124,11 +124,14 @@ export const blotterFrame = (trades: TradeDto[]): BlotterMessage => ({
 
 // ── Analytics ──────────────────────────────────────────────────
 
-export const analyticsFrame = (
-  opts?: Partial<AnalyticsDto>,
-): AnalyticsDto => ({
+export const analyticsFrame = (opts?: Partial<AnalyticsDto>): AnalyticsDto => ({
   currentPositions: [
-    { symbol: "EURUSD", basePnl: 0, baseTradedAmount: 0, counterTradedAmount: 0 },
+    {
+      symbol: "EURUSD",
+      basePnl: 0,
+      baseTradedAmount: 0,
+      counterTradedAmount: 0,
+    },
   ],
   history: [
     { timestamp: new Date(Date.now() - 1000).toISOString(), usdPnl: 0 },
@@ -162,7 +165,9 @@ export const instrumentEndOfSoW = (): InstrumentEvent => ({
   type: "endOfStateOfTheWorld",
 });
 
-export const instrumentAdded = (inst?: Partial<InstrumentDto>): InstrumentEvent => ({
+export const instrumentAdded = (
+  inst?: Partial<InstrumentDto>,
+): InstrumentEvent => ({
   type: "added",
   payload: instrumentDto(inst),
 });

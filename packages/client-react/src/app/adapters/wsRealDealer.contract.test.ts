@@ -1,11 +1,11 @@
 import { describeDealerPortContract } from "@rtc/domain/ports/__contracts__/DealerPortContract";
 import {
-  dealerStartOfSoW,
-  dealerEndOfSoW,
   dealerAdded,
+  dealerEndOfSoW,
+  dealerStartOfSoW,
 } from "@rtc/shared/__fixtures__/wireFrames";
-import { createWsRealPorts } from "./portFactory";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { createWsRealPorts } from "./portFactory";
 
 describeDealerPortContract("wsRealDealer", () => {
   const ws = new FakeWsAdapter();

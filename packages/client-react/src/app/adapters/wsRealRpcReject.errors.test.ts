@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { firstValueFrom } from "rxjs";
-import { createWsRealPorts } from "./portFactory";
-import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
-import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
 import { Direction } from "@rtc/domain";
+import { firstValueFrom } from "rxjs";
+import { describe, expect, it } from "vitest";
+import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
+import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { createWsRealPorts } from "./portFactory";
 
 /**
  * Transport-level RPC FAILURE (the underlying `ws.rpc()` Promise rejects —
@@ -17,7 +17,9 @@ describe("wsReal RPC ports :: transport reject propagates to subscriber", () => 
   const boom = new Error("socket dropped");
 
   async function expectPropagates(
-    subscribe: (ports: ReturnType<typeof createWsRealPorts>) => Promise<unknown>,
+    subscribe: (
+      ports: ReturnType<typeof createWsRealPorts>,
+    ) => Promise<unknown>,
     rpcType: string,
   ): Promise<void> {
     const ws = new FakeWsAdapter();
@@ -84,10 +86,7 @@ describe("wsReal RPC ports :: transport reject propagates to subscriber", () => 
     ));
 
   it("workflow.pass propagates a transport reject", () =>
-    expectPropagates(
-      (p) => firstValueFrom(p.workflow.pass(1)),
-      "rpc.pass",
-    ));
+    expectPropagates((p) => firstValueFrom(p.workflow.pass(1)), "rpc.pass"));
 
   it("workflow.accept propagates a transport reject", () =>
     expectPropagates(

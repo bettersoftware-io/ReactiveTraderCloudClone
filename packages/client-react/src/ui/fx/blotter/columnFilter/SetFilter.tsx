@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
 import type { Trade } from "@rtc/domain";
+import { useCallback, useMemo, useState } from "react";
 import type { ColumnFilter } from "./filterState";
 import styles from "./SetFilter.module.css";
 
@@ -10,7 +10,12 @@ interface SetFilterProps {
   onApply: (filter: ColumnFilter | null) => void;
 }
 
-export function SetFilter({ column, trades, currentFilter, onApply }: SetFilterProps) {
+export function SetFilter({
+  column,
+  trades,
+  currentFilter,
+  onApply,
+}: SetFilterProps) {
   const allValues = useMemo(() => {
     const vals = new Set<string>();
     for (const trade of trades) vals.add(String(trade[column]));

@@ -1,6 +1,9 @@
-import { describe, it, expect } from "vitest";
 import { TestScheduler } from "rxjs/testing";
-import { createRowHighlightMachine, HIGHLIGHT_MS } from "../RowHighlightMachine";
+import { describe, expect, it } from "vitest";
+import {
+  createRowHighlightMachine,
+  HIGHLIGHT_MS,
+} from "../RowHighlightMachine";
 
 function scheduler() {
   return new TestScheduler((actual, expected) => {

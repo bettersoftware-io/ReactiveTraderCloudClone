@@ -1,7 +1,7 @@
+import * as common from "../scenarios/common";
+import * as theme from "../scenarios/theme";
 import { test } from "./_context";
 import { withWorkspaceOpen } from "./_openWorkspace";
-import * as theme from "../scenarios/theme";
-import * as common from "../scenarios/common";
 
 test.describe("Theme", () => {
   withWorkspaceOpen();
@@ -21,7 +21,9 @@ test.describe("Theme", () => {
     await theme.expectBackgroundMatchesToggled(ctx);
   });
 
-  test("toggle button shows correct icon for current theme", async ({ ctx }) => {
+  test("toggle button shows correct icon for current theme", async ({
+    ctx,
+  }) => {
     await theme.expectThemeToggleAriaLabelMentions(ctx, "light");
     await theme.toggleAndCaptureBackgrounds(ctx);
     await theme.expectThemeToggleAriaLabelMentions(ctx, "dark");

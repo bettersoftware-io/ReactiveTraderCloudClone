@@ -1,9 +1,9 @@
-import { afterEach, vi } from "vitest";
-import { describeBlotterPortContract } from "../ports/__contracts__/BlotterPortContract.js";
-import { TradeStoreSimulator } from "./TradeStoreSimulator.js";
-import { ExecutionSimulator } from "./ExecutionSimulator.js";
-import { Direction } from "../fx/trade.js";
 import { firstValueFrom } from "rxjs";
+import { afterEach, vi } from "vitest";
+import { Direction } from "../fx/trade.js";
+import { describeBlotterPortContract } from "../ports/__contracts__/BlotterPortContract.js";
+import { ExecutionSimulator } from "./ExecutionSimulator.js";
+import { TradeStoreSimulator } from "./TradeStoreSimulator.js";
 
 const NORMAL_MAX_DELAY_MS = 2_000;
 

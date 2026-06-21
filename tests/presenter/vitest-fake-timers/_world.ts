@@ -1,8 +1,16 @@
-import { firstValueFrom, timeout, type Observable, type Subscription } from "rxjs";
+import {
+  firstValueFrom,
+  type Observable,
+  type Subscription,
+  timeout,
+} from "rxjs";
 import { vi } from "vitest";
-import { buildPresenterApp, type PresenterCtx } from "../scenarios/_buildApp";
-import { newScratchpad, type PresenterScratchpad } from "../scenarios/_shared/common";
 import type { AwaitHelpers } from "../scenarios/_await";
+import { buildPresenterApp, type PresenterCtx } from "../scenarios/_buildApp";
+import {
+  newScratchpad,
+  type PresenterScratchpad,
+} from "../scenarios/_shared/common";
 
 export interface VitestPlainPresenterWorld extends AwaitHelpers {
   ctx: PresenterCtx;
@@ -21,7 +29,10 @@ export function buildWorld(): VitestPlainPresenterWorld {
     ctx,
     scratch: newScratchpad(),
     _statusSub: ctx.app.presenters.connection.status$.subscribe(),
-    async awaitFirstWithin<T>(source$: Observable<T>, timeoutMs: number): Promise<T> {
+    async awaitFirstWithin<T>(
+      source$: Observable<T>,
+      timeoutMs: number,
+    ): Promise<T> {
       const p = firstValueFrom(source$.pipe(timeout(timeoutMs)));
       await vi.advanceTimersByTimeAsync(timeoutMs);
       return p;

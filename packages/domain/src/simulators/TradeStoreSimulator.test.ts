@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
 import { firstValueFrom } from "rxjs";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Trade } from "../fx/trade.js";
+import { Direction, TradeStatus } from "../fx/trade.js";
 import { ExecutionSimulator } from "./ExecutionSimulator.js";
 import { TradeStoreSimulator } from "./TradeStoreSimulator.js";
-import { Direction, TradeStatus } from "../fx/trade.js";
-import type { Trade } from "../fx/trade.js";
 
 const NORMAL_MAX_DELAY_MS = 2_000;
 

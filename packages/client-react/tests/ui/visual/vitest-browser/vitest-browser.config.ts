@@ -1,9 +1,9 @@
 import os from "node:os";
 import { resolve } from "node:path";
-import { defineConfig } from "vitest/config";
-import { playwright } from "@vitest/browser-playwright";
-import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
+import react from "@vitejs/plugin-react";
+import { playwright } from "@vitest/browser-playwright";
+import { defineConfig } from "vitest/config";
 
 // Tier 3: Vitest browser mode (`@vitest/browser` + `vitest-browser-react`) using
 // the experimental `toMatchScreenshot` matcher (Vitest 4). Mounts the React
@@ -15,7 +15,9 @@ import { fileURLToPath } from "node:url";
 // canonical `react/` set; a local dev machine writes its own committed
 // `react-local/<plat>-<arch>/` set, because font rasterization differs by
 // OS/arch. See ../ADR-001-visual-diff-tooling.md.
-const baseline = process.env.CI ? "react" : `react-local/${os.platform()}-${os.arch()}`;
+const baseline = process.env.CI
+  ? "react"
+  : `react-local/${os.platform()}-${os.arch()}`;
 
 export default defineConfig({
   plugins: [react()],
@@ -36,7 +38,9 @@ export default defineConfig({
     // self-contained; the on-disk failure PNGs are routed next to the goldens
     // by `resolveDiffPath` below.
     reporters: ["default", "html"],
-    outputFile: { html: "reports/ui/visual/vitest-browser/react/report/index.html" },
+    outputFile: {
+      html: "reports/ui/visual/vitest-browser/react/report/index.html",
+    },
     browser: {
       enabled: true,
       provider: playwright(),

@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { KNOWN_CURRENCY_PAIRS, type CurrencyPair } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import { type CurrencyPair, KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 import { LiveRatesPanel } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 
 const pairs = KNOWN_CURRENCY_PAIRS;
 const eurusd = pairs.find((p) => p.symbol === "EURUSD")!;
@@ -24,7 +24,9 @@ describe("LiveRatesPanel", () => {
 
   it("filters tiles to the selected currency category", async () => {
     const subset: readonly CurrencyPair[] = [eurusd, usdjpy, gbpjpy];
-    const panel = mount(LiveRatesPanel, { hooks: { useCurrencyPairs: subset } });
+    const panel = mount(LiveRatesPanel, {
+      hooks: { useCurrencyPairs: subset },
+    });
     expect(panel.tileCount()).toBe(3);
     await panel.chooseFilter("JPY");
     // Only pairs whose symbol contains "JPY" remain.
@@ -33,7 +35,9 @@ describe("LiveRatesPanel", () => {
 
   it("returns to all tiles when the All filter is reselected", async () => {
     const subset: readonly CurrencyPair[] = [eurusd, usdjpy, gbpjpy];
-    const panel = mount(LiveRatesPanel, { hooks: { useCurrencyPairs: subset } });
+    const panel = mount(LiveRatesPanel, {
+      hooks: { useCurrencyPairs: subset },
+    });
     await panel.chooseFilter("JPY");
     expect(panel.tileCount()).toBe(2);
     await panel.chooseFilter("All");
@@ -41,7 +45,9 @@ describe("LiveRatesPanel", () => {
   });
 
   it("appends a tile when a new pair streams in", () => {
-    const panel = mount(LiveRatesPanel, { hooks: { useCurrencyPairs: [eurusd] } });
+    const panel = mount(LiveRatesPanel, {
+      hooks: { useCurrencyPairs: [eurusd] },
+    });
     expect(panel.tileCount()).toBe(1);
     panel.emit({ useCurrencyPairs: [eurusd, usdjpy] });
     expect(panel.tileCount()).toBe(2);
@@ -49,13 +55,17 @@ describe("LiveRatesPanel", () => {
   });
 
   it("defaults to chart view and renders sparklines", () => {
-    const panel = mount(LiveRatesPanel, { hooks: { useCurrencyPairs: [eurusd] } });
+    const panel = mount(LiveRatesPanel, {
+      hooks: { useCurrencyPairs: [eurusd] },
+    });
     expect(panel.hasAnyChart()).toBe(true);
     expect(panel.viewToggleLabel()).toMatch(/price/i);
   });
 
   it("toggles to price view, hiding the charts", async () => {
-    const panel = mount(LiveRatesPanel, { hooks: { useCurrencyPairs: [eurusd] } });
+    const panel = mount(LiveRatesPanel, {
+      hooks: { useCurrencyPairs: [eurusd] },
+    });
     expect(panel.hasAnyChart()).toBe(true);
     await panel.toggleView();
     // The toggle routes through the seam (useViewModePreference); the panel

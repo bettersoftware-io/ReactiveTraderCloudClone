@@ -1,6 +1,7 @@
 // packages/domain/src/simulators/ConnectionEventsSimulator.test.ts
-import { describe, it, expect } from "vitest";
-import { toArray, lastValueFrom } from "rxjs";
+
+import { lastValueFrom, toArray } from "rxjs";
+import { describe, expect, it } from "vitest";
 import type { ConnectionEvent } from "../connection/connectionStatus.js";
 import { ConnectionEventsSimulator } from "./ConnectionEventsSimulator.js";
 

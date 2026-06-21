@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { Direction, TradeStatus, type Trade } from "@rtc/domain";
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
+import { describe, expect, it } from "vitest";
 import { applyFilters, type ColumnFilter } from "./filterState";
 
 const trade = (over: Partial<Trade> = {}): Trade => ({
@@ -38,7 +38,11 @@ describe("applyFilters — set filter", () => {
       trade({ tradeId: 2, currencyPair: "USDJPY" }),
       trade({ tradeId: 3, currencyPair: "GBPUSD" }),
     ];
-    const f = filters({ type: "set", column: "currencyPair", values: new Set(["EURUSD", "GBPUSD"]) });
+    const f = filters({
+      type: "set",
+      column: "currencyPair",
+      values: new Set(["EURUSD", "GBPUSD"]),
+    });
     expect(applyFilters(trades, f, "").map((t) => t.tradeId)).toEqual([1, 3]);
   });
 });
@@ -49,24 +53,80 @@ describe("applyFilters — number filter comparators", () => {
     trade({ tradeId: 2, notional: 200 }),
     trade({ tradeId: 3, notional: 300 }),
   ];
-  const run = (filter: ColumnFilter) => applyFilters(trades, filters(filter), "").map((t) => t.tradeId);
+  const run = (filter: ColumnFilter) =>
+    applyFilters(trades, filters(filter), "").map((t) => t.tradeId);
 
-  it("eq", () => expect(run({ type: "number", column: "notional", comparator: "eq", value: 200 })).toEqual([2]));
-  it("neq", () => expect(run({ type: "number", column: "notional", comparator: "neq", value: 200 })).toEqual([1, 3]));
-  it("lt", () => expect(run({ type: "number", column: "notional", comparator: "lt", value: 200 })).toEqual([1]));
-  it("lte", () => expect(run({ type: "number", column: "notional", comparator: "lte", value: 200 })).toEqual([1, 2]));
-  it("gt", () => expect(run({ type: "number", column: "notional", comparator: "gt", value: 200 })).toEqual([3]));
-  it("gte", () => expect(run({ type: "number", column: "notional", comparator: "gte", value: 200 })).toEqual([2, 3]));
+  it("eq", () =>
+    expect(
+      run({ type: "number", column: "notional", comparator: "eq", value: 200 }),
+    ).toEqual([2]));
+  it("neq", () =>
+    expect(
+      run({
+        type: "number",
+        column: "notional",
+        comparator: "neq",
+        value: 200,
+      }),
+    ).toEqual([1, 3]));
+  it("lt", () =>
+    expect(
+      run({ type: "number", column: "notional", comparator: "lt", value: 200 }),
+    ).toEqual([1]));
+  it("lte", () =>
+    expect(
+      run({
+        type: "number",
+        column: "notional",
+        comparator: "lte",
+        value: 200,
+      }),
+    ).toEqual([1, 2]));
+  it("gt", () =>
+    expect(
+      run({ type: "number", column: "notional", comparator: "gt", value: 200 }),
+    ).toEqual([3]));
+  it("gte", () =>
+    expect(
+      run({
+        type: "number",
+        column: "notional",
+        comparator: "gte",
+        value: 200,
+      }),
+    ).toEqual([2, 3]));
   it("inRange with valueTo", () =>
-    expect(run({ type: "number", column: "notional", comparator: "inRange", value: 150, valueTo: 250 })).toEqual([2]));
+    expect(
+      run({
+        type: "number",
+        column: "notional",
+        comparator: "inRange",
+        value: 150,
+        valueTo: 250,
+      }),
+    ).toEqual([2]));
   it("inRange falls back to value when valueTo is absent", () =>
-    expect(run({ type: "number", column: "notional", comparator: "inRange", value: 200 })).toEqual([2]));
+    expect(
+      run({
+        type: "number",
+        column: "notional",
+        comparator: "inRange",
+        value: 200,
+      }),
+    ).toEqual([2]));
 
   it("passes through trades whose target field is not numeric", () => {
     // currencyPair is a string; a number filter on it cannot apply, so all pass.
     const strTrades = [trade({ tradeId: 1 }), trade({ tradeId: 2 })];
-    const f = filters({ type: "number", column: "currencyPair", comparator: "eq", value: 5 });
-    expect(applyFilters(strTrades, f, "").map((t) => t.tradeId)).toEqual([1, 2]);
+    const f = filters({
+      type: "number",
+      column: "currencyPair",
+      comparator: "eq",
+      value: 5,
+    });
+    expect(applyFilters(strTrades, f, "").map((t) => t.tradeId)).toEqual([
+      1, 2,
+    ]);
   });
 });
 
@@ -76,18 +136,82 @@ describe("applyFilters — date filter comparators", () => {
     trade({ tradeId: 2, tradeDate: "2026-02-01" }),
     trade({ tradeId: 3, tradeDate: "2026-03-01" }),
   ];
-  const run = (filter: ColumnFilter) => applyFilters(trades, filters(filter), "").map((t) => t.tradeId);
+  const run = (filter: ColumnFilter) =>
+    applyFilters(trades, filters(filter), "").map((t) => t.tradeId);
 
-  it("eq", () => expect(run({ type: "date", column: "tradeDate", comparator: "eq", value: "2026-02-01" })).toEqual([2]));
-  it("neq", () => expect(run({ type: "date", column: "tradeDate", comparator: "neq", value: "2026-02-01" })).toEqual([1, 3]));
-  it("lt", () => expect(run({ type: "date", column: "tradeDate", comparator: "lt", value: "2026-02-01" })).toEqual([1]));
-  it("lte", () => expect(run({ type: "date", column: "tradeDate", comparator: "lte", value: "2026-02-01" })).toEqual([1, 2]));
-  it("gt", () => expect(run({ type: "date", column: "tradeDate", comparator: "gt", value: "2026-02-01" })).toEqual([3]));
-  it("gte", () => expect(run({ type: "date", column: "tradeDate", comparator: "gte", value: "2026-02-01" })).toEqual([2, 3]));
+  it("eq", () =>
+    expect(
+      run({
+        type: "date",
+        column: "tradeDate",
+        comparator: "eq",
+        value: "2026-02-01",
+      }),
+    ).toEqual([2]));
+  it("neq", () =>
+    expect(
+      run({
+        type: "date",
+        column: "tradeDate",
+        comparator: "neq",
+        value: "2026-02-01",
+      }),
+    ).toEqual([1, 3]));
+  it("lt", () =>
+    expect(
+      run({
+        type: "date",
+        column: "tradeDate",
+        comparator: "lt",
+        value: "2026-02-01",
+      }),
+    ).toEqual([1]));
+  it("lte", () =>
+    expect(
+      run({
+        type: "date",
+        column: "tradeDate",
+        comparator: "lte",
+        value: "2026-02-01",
+      }),
+    ).toEqual([1, 2]));
+  it("gt", () =>
+    expect(
+      run({
+        type: "date",
+        column: "tradeDate",
+        comparator: "gt",
+        value: "2026-02-01",
+      }),
+    ).toEqual([3]));
+  it("gte", () =>
+    expect(
+      run({
+        type: "date",
+        column: "tradeDate",
+        comparator: "gte",
+        value: "2026-02-01",
+      }),
+    ).toEqual([2, 3]));
   it("inRange with valueTo", () =>
-    expect(run({ type: "date", column: "tradeDate", comparator: "inRange", value: "2026-01-15", valueTo: "2026-02-15" })).toEqual([2]));
+    expect(
+      run({
+        type: "date",
+        column: "tradeDate",
+        comparator: "inRange",
+        value: "2026-01-15",
+        valueTo: "2026-02-15",
+      }),
+    ).toEqual([2]));
   it("inRange falls back to value when valueTo is absent", () =>
-    expect(run({ type: "date", column: "tradeDate", comparator: "inRange", value: "2026-02-01" })).toEqual([2]));
+    expect(
+      run({
+        type: "date",
+        column: "tradeDate",
+        comparator: "inRange",
+        value: "2026-02-01",
+      }),
+    ).toEqual([2]));
 });
 
 describe("applyFilters — multiple column filters (AND)", () => {
@@ -111,7 +235,9 @@ describe("applyFilters — quick filter", () => {
       trade({ tradeId: 1, currencyPair: "EURUSD" }),
       trade({ tradeId: 2, currencyPair: "USDJPY" }),
     ];
-    expect(applyFilters(trades, new Map(), "jpy").map((t) => t.tradeId)).toEqual([2]);
+    expect(
+      applyFilters(trades, new Map(), "jpy").map((t) => t.tradeId),
+    ).toEqual([2]);
   });
 
   it("requires ALL space-separated terms to match (AND)", () => {
@@ -119,7 +245,9 @@ describe("applyFilters — quick filter", () => {
       trade({ tradeId: 1, currencyPair: "EURUSD", tradeName: "Alice" }),
       trade({ tradeId: 2, currencyPair: "EURUSD", tradeName: "Bob" }),
     ];
-    expect(applyFilters(trades, new Map(), "eurusd alice").map((t) => t.tradeId)).toEqual([1]);
+    expect(
+      applyFilters(trades, new Map(), "eurusd alice").map((t) => t.tradeId),
+    ).toEqual([1]);
   });
 
   it("combines column filters and quick filter", () => {
@@ -127,7 +255,11 @@ describe("applyFilters — quick filter", () => {
       trade({ tradeId: 1, currencyPair: "EURUSD", tradeName: "Alice" }),
       trade({ tradeId: 2, currencyPair: "USDJPY", tradeName: "Alice" }),
     ];
-    const f = filters({ type: "set", column: "currencyPair", values: new Set(["EURUSD"]) });
+    const f = filters({
+      type: "set",
+      column: "currencyPair",
+      values: new Set(["EURUSD"]),
+    });
     expect(applyFilters(trades, f, "alice").map((t) => t.tradeId)).toEqual([1]);
   });
 });

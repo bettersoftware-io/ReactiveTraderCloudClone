@@ -1,13 +1,6 @@
 import type { Trade } from "@rtc/domain";
 
-export type Comparator =
-  | "eq"
-  | "neq"
-  | "lt"
-  | "lte"
-  | "gt"
-  | "gte"
-  | "inRange";
+export type Comparator = "eq" | "neq" | "lt" | "lte" | "gt" | "gte" | "inRange";
 
 export type ColumnFilter =
   | { type: "set"; column: keyof Trade; values: Set<string> }
@@ -110,10 +103,7 @@ export function applyFilters(
 
   // Quick filter: space-separated terms, all must match (AND)
   if (quickFilter.trim()) {
-    const terms = quickFilter
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean);
+    const terms = quickFilter.toLowerCase().split(/\s+/).filter(Boolean);
     result = result.filter((trade) => {
       const rowText = Object.values(trade).join(" ").toLowerCase();
       return terms.every((term) => rowText.includes(term));

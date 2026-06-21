@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { Direction, TradeStatus, type Trade } from "@rtc/domain";
-import { COLUMNS, formatCellValue, type ColumnDef } from "./blotterColumns";
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
+import { describe, expect, it } from "vitest";
+import { COLUMNS, type ColumnDef, formatCellValue } from "./blotterColumns";
 
 const trade = (over: Partial<Trade> = {}): Trade => ({
   tradeId: 4001,
@@ -73,27 +73,56 @@ describe("COLUMNS metadata", () => {
 
 describe("formatCellValue", () => {
   it("formats ISO dates as DD-Mon-YYYY", () => {
-    expect(formatCellValue(trade({ tradeDate: "2026-03-30" }), colFor("tradeDate"))).toBe("30-Mar-2026");
-    expect(formatCellValue(trade({ valueDate: "2026-01-05" }), colFor("valueDate"))).toBe("05-Jan-2026");
+    expect(
+      formatCellValue(trade({ tradeDate: "2026-03-30" }), colFor("tradeDate")),
+    ).toBe("30-Mar-2026");
+    expect(
+      formatCellValue(trade({ valueDate: "2026-01-05" }), colFor("valueDate")),
+    ).toBe("05-Jan-2026");
   });
 
   it("returns the raw string for an unparseable date", () => {
-    expect(formatCellValue(trade({ tradeDate: "not-a-date" }), colFor("tradeDate"))).toBe("not-a-date");
+    expect(
+      formatCellValue(trade({ tradeDate: "not-a-date" }), colFor("tradeDate")),
+    ).toBe("not-a-date");
   });
 
   it("formats notional with thousands separators and no decimals", () => {
-    expect(formatCellValue(trade({ notional: 2_500_000 }), colFor("notional"))).toBe("2,500,000");
+    expect(
+      formatCellValue(trade({ notional: 2_500_000 }), colFor("notional")),
+    ).toBe("2,500,000");
   });
 
   it("formats the spot rate to 6 significant digits", () => {
-    expect(formatCellValue(trade({ spotRate: 1.09221 }), colFor("spotRate"))).toBe("1.09221");
+    expect(
+      formatCellValue(trade({ spotRate: 1.09221 }), colFor("spotRate")),
+    ).toBe("1.09221");
   });
 
   it("stringifies other columns directly", () => {
-    expect(formatCellValue(trade({ tradeId: 4001 }), colFor("tradeId"))).toBe("4001");
-    expect(formatCellValue(trade({ status: TradeStatus.Rejected }), colFor("status"))).toBe("Rejected");
-    expect(formatCellValue(trade({ direction: Direction.Sell }), colFor("direction"))).toBe("Sell");
-    expect(formatCellValue(trade({ currencyPair: "USDJPY" }), colFor("currencyPair"))).toBe("USDJPY");
-    expect(formatCellValue(trade({ tradeName: "Bob" }), colFor("tradeName"))).toBe("Bob");
+    expect(formatCellValue(trade({ tradeId: 4001 }), colFor("tradeId"))).toBe(
+      "4001",
+    );
+    expect(
+      formatCellValue(
+        trade({ status: TradeStatus.Rejected }),
+        colFor("status"),
+      ),
+    ).toBe("Rejected");
+    expect(
+      formatCellValue(
+        trade({ direction: Direction.Sell }),
+        colFor("direction"),
+      ),
+    ).toBe("Sell");
+    expect(
+      formatCellValue(
+        trade({ currencyPair: "USDJPY" }),
+        colFor("currencyPair"),
+      ),
+    ).toBe("USDJPY");
+    expect(
+      formatCellValue(trade({ tradeName: "Bob" }), colFor("tradeName")),
+    ).toBe("Bob");
   });
 });

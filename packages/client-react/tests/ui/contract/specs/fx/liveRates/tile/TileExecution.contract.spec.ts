@@ -1,11 +1,13 @@
-import { describe, it, expect } from "vitest";
 import { Direction } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
 import { TileExecution } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
 
 describe("TileExecution", () => {
   it("renders Sell and Buy buttons", () => {
-    const ex = mount(TileExecution, { props: { onExecute: () => {}, disabled: false } });
+    const ex = mount(TileExecution, {
+      props: { onExecute: () => {}, disabled: false },
+    });
     expect(ex.sellLabel()).toBe("Sell");
     expect(ex.buyLabel()).toBe("Buy");
   });
@@ -29,13 +31,17 @@ describe("TileExecution", () => {
   });
 
   it("disables both buttons when disabled", () => {
-    const ex = mount(TileExecution, { props: { onExecute: () => {}, disabled: true } });
+    const ex = mount(TileExecution, {
+      props: { onExecute: () => {}, disabled: true },
+    });
     expect(ex.isSellDisabled()).toBe(true);
     expect(ex.isBuyDisabled()).toBe(true);
   });
 
   it("re-enables the buttons when the disabled prop clears", () => {
-    const ex = mount(TileExecution, { props: { onExecute: () => {}, disabled: true } });
+    const ex = mount(TileExecution, {
+      props: { onExecute: () => {}, disabled: true },
+    });
     expect(ex.isSellDisabled()).toBe(true);
     ex.setProps({ disabled: false });
     expect(ex.isSellDisabled()).toBe(false);

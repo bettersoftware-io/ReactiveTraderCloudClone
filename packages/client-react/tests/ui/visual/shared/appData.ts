@@ -3,19 +3,26 @@
 // portable core shared by every UI implementation.
 import {
   ConnectionStatus,
-  type CurrencyPair, type Price, type PriceTick, type Trade,
-  type Rfq, type Quote, type PositionUpdates,
-  type Instrument, type Dealer,
-  type Theme, type ViewMode,
+  type CurrencyPair,
+  type Dealer,
+  type Instrument,
+  type PositionUpdates,
+  type Price,
+  type PriceTick,
+  type Quote,
+  type Rfq,
+  type Theme,
+  type Trade,
+  type ViewMode,
 } from "@rtc/domain";
-import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
-import type { RfqState } from "../../../../src/app/presenters/RfqTileMachine";
 import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
 import type {
   RfqSubmissionState,
   TicketSubmissionState,
 } from "../../../../src/app/presenters/RfqsPresenter";
+import type { RfqState } from "../../../../src/app/presenters/RfqTileMachine";
 import type { ThroughputView } from "../../../../src/app/presenters/ThroughputPresenter";
+import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
 
 export interface AppData {
   prices: Record<string, Price | null>;

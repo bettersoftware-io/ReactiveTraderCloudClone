@@ -7,7 +7,9 @@ export async function expectRfqInitiationButtonWithin(
   await ctx.po.fxRfqForm.waitForRfqButton(seconds * 1_000);
 }
 
-export async function clickRfqInitiationButton(ctx: TestContext): Promise<void> {
+export async function clickRfqInitiationButton(
+  ctx: TestContext,
+): Promise<void> {
   await ctx.po.fxRfqForm.clickInitiateRfq();
 }
 

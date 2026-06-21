@@ -1,13 +1,16 @@
-import { describe, it, expect } from "vitest";
-import { Direction, KNOWN_CURRENCY_PAIRS, type CurrencyPair, type Price } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import {
+  type CurrencyPair,
+  Direction,
+  KNOWN_CURRENCY_PAIRS,
+  type Price,
+} from "@rtc/domain";
 import { TileRfq } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import type { RfqStateLike } from "@ui-contract/pages/fx/liveRates/tile/TileRfqPage";
+import { describe, expect, it } from "vitest";
 import type {
-  RfqStateLike,
-} from "@ui-contract/pages/fx/liveRates/tile/TileRfqPage";
-import type {
-  RfqState,
   RfqQuote,
+  RfqState,
 } from "../../../../../../../src/app/presenters/RfqTileMachine";
 
 const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS[0];
@@ -89,7 +92,8 @@ describe("TileRfq", () => {
           { accept: () => (accepted += 1) },
         ),
         onRequestQuote: () => {},
-        onExecute: (dir, price, notional) => executed.push({ dir, price, notional }),
+        onExecute: (dir, price, notional) =>
+          executed.push({ dir, price, notional }),
         notional: 2_000_000,
       },
     });

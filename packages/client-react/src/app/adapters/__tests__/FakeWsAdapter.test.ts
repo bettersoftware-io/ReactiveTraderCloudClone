@@ -1,5 +1,5 @@
 // packages/client-react/src/app/adapters/__tests__/FakeWsAdapter.test.ts
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { FakeWsAdapter } from "./FakeWsAdapter";
 
 describe("FakeWsAdapter", () => {
@@ -83,7 +83,11 @@ describe("FakeWsAdapter", () => {
   it("dispose() completes the connection-events subject", () => {
     const ws = new FakeWsAdapter();
     let completed = false;
-    ws.connectionEvents().subscribe({ complete: () => { completed = true; } });
+    ws.connectionEvents().subscribe({
+      complete: () => {
+        completed = true;
+      },
+    });
     ws.dispose();
     expect(completed).toBe(true);
   });

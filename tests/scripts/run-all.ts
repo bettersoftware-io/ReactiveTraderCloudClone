@@ -36,7 +36,8 @@ interface Suite {
 // instead of grabbing :99. Only needed/available on Linux.
 const hasXvfbRun =
   process.platform === "linux" &&
-  spawnSync("sh", ["-c", "command -v xvfb-run"], { stdio: "ignore" }).status === 0;
+  spawnSync("sh", ["-c", "command -v xvfb-run"], { stdio: "ignore" }).status ===
+    0;
 
 // Browser suites: one dev server each, on consecutive ports from here.
 const BROWSER_BASE_PORT = 3001;
@@ -94,7 +95,9 @@ const activeSuites = skipCypress
 // in small batches — slower wall-clock, but reliable.
 const envCap = Number(process.env.RTC_E2E_MAX_PARALLEL);
 const MAX_PARALLEL =
-  Number.isFinite(envCap) && envCap > 0 ? Math.floor(envCap) : activeSuites.length;
+  Number.isFinite(envCap) && envCap > 0
+    ? Math.floor(envCap)
+    : activeSuites.length;
 
 // Run `fn` over `items` with at most `limit` in flight at once. Results are kept
 // in input order; each item's own completion logging still fires as it finishes.
@@ -111,7 +114,9 @@ async function mapWithLimit<T, R>(
       results[index] = await fn(items[index]!);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker),
+  );
   return results;
 }
 
@@ -168,7 +173,11 @@ if (skipCypress) {
   );
 }
 
-if (process.platform === "linux" && !hasXvfbRun && activeSuites.some((s) => s.isolateDisplay)) {
+if (
+  process.platform === "linux" &&
+  !hasXvfbRun &&
+  activeSuites.some((s) => s.isolateDisplay)
+) {
   console.log(
     "⚠ xvfb-run not found — the parallel Cypress suites may collide on X display :99. " +
       "Install xvfb (provides xvfb-run) for reliable parallel Cypress runs.",
@@ -177,7 +186,9 @@ if (process.platform === "linux" && !hasXvfbRun && activeSuites.some((s) => s.is
 
 const overallStart = Date.now();
 if (MAX_PARALLEL < activeSuites.length) {
-  console.log(`(running at most ${MAX_PARALLEL} suite(s) at a time — RTC_E2E_MAX_PARALLEL)`);
+  console.log(
+    `(running at most ${MAX_PARALLEL} suite(s) at a time — RTC_E2E_MAX_PARALLEL)`,
+  );
 }
 
 // Resolve as each suite finishes so logs flush in completion order, not in a
@@ -195,14 +206,20 @@ const results = await mapWithLimit(activeSuites, MAX_PARALLEL, (s) =>
 
 const failures = results.filter((r) => r.code !== 0);
 console.log(`\n${rule("─")}`);
-console.log(`SUMMARY — wall clock ${((Date.now() - overallStart) / 1000).toFixed(1)}s`);
+console.log(
+  `SUMMARY — wall clock ${((Date.now() - overallStart) / 1000).toFixed(1)}s`,
+);
 console.log(rule("─"));
 for (const r of results) {
   const status = r.code === 0 ? "✓ PASS" : "✗ FAIL";
-  console.log(`  ${status}  ${r.script.padEnd(32)} ${r.seconds.toFixed(1).padStart(6)}s`);
+  console.log(
+    `  ${status}  ${r.script.padEnd(32)} ${r.seconds.toFixed(1).padStart(6)}s`,
+  );
 }
 console.log("");
 if (failures.length > 0) {
-  console.log(`${failures.length} suite(s) failed: ${failures.map((f) => f.script).join(", ")}`);
+  console.log(
+    `${failures.length} suite(s) failed: ${failures.map((f) => f.script).join(", ")}`,
+  );
 }
 process.exit(failures.length > 0 ? 1 : 0);

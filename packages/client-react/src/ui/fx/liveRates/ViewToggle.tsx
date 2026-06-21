@@ -1,4 +1,4 @@
-import { type ViewMode } from "@rtc/domain";
+import type { ViewMode } from "@rtc/domain";
 import styles from "./ViewToggle.module.css";
 
 interface ViewToggleProps {

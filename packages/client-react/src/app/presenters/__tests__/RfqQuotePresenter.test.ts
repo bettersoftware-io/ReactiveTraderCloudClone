@@ -1,6 +1,6 @@
+import type { PricingPort, RfqQuoteResult } from "@rtc/domain";
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
-import type { PricingPort, RfqQuoteResult } from "@rtc/domain";
 import { RfqQuotePresenter } from "../RfqQuotePresenter";
 
 describe("RfqQuotePresenter", () => {
@@ -16,7 +16,9 @@ describe("RfqQuotePresenter", () => {
       },
     };
     const presenter = new RfqQuotePresenter(port);
-    expect(await firstValueFrom(presenter.requestQuote("EURUSD", 4))).toBe(result);
+    expect(await firstValueFrom(presenter.requestQuote("EURUSD", 4))).toBe(
+      result,
+    );
     expect(calledWith).toEqual({ symbol: "EURUSD", pipsPosition: 4 });
   });
 });

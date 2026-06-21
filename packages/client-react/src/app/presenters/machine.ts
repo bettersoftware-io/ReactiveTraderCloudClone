@@ -1,17 +1,17 @@
-import type { StateObservable } from "@rx-state/core";
 import type { CurrencyPair } from "@rtc/domain";
+import type { StateObservable } from "@rx-state/core";
+import type { NotionalIntents, NotionalView } from "./NotionalMachine";
 import type {
-  TileExecutionState,
-  TileExecutionIntents,
-} from "./TileExecutionMachine";
-import type { RfqState, RfqTileIntents } from "./RfqTileMachine";
-import type { NotionalView, NotionalIntents } from "./NotionalMachine";
-import type {
-  RfqSubmissionState,
   RfqSubmissionIntents,
-  TicketSubmissionState,
+  RfqSubmissionState,
   TicketSubmissionIntents,
+  TicketSubmissionState,
 } from "./RfqsPresenter";
+import type { RfqState, RfqTileIntents } from "./RfqTileMachine";
+import type {
+  TileExecutionIntents,
+  TileExecutionState,
+} from "./TileExecutionMachine";
 
 /** Every app-layer machine factory returns this: a framework-agnostic
  * StateObservable carrying current state, plain intent methods, and dispose()

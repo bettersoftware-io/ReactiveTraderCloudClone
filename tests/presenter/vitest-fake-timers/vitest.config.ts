@@ -11,7 +11,9 @@ export default defineConfig({
     // HTML report (additive): test:presenter:vitest-fake-timers =>
     // reports/presenter/vitest-fake-timers/. outputFile is root-relative (tests/).
     reporters: ["default", "html"],
-    outputFile: { html: "reports/presenter/vitest-fake-timers/report/index.html" },
+    outputFile: {
+      html: "reports/presenter/vitest-fake-timers/report/index.html",
+    },
     pool: "threads",
   },
 });

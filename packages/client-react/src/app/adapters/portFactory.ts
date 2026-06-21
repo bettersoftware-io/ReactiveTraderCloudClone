@@ -1,54 +1,54 @@
 import {
-  ReferenceDataSimulator,
-  PricingSimulator,
-  ExecutionSimulator,
-  TradeStoreSimulator,
-  AnalyticsSimulator,
-  InstrumentSimulator,
-  DealerSimulator,
-  CreditRfqSimulator,
-  ThroughputSimulator,
-  DEALERS_CATALOG,
-  type ReferenceDataPort,
-  type PricingPort,
-  type ExecutionPort,
-  type BlotterPort,
-  type AnalyticsPort,
-  type InstrumentPort,
-  type DealerPort,
-  type WorkflowPort,
-  type ConnectionEventsPort,
   type AdminPort,
-  type PreferencesPort,
-  type RfqQuoteResult,
-  type CurrencyPair,
-  type PriceTick,
-  type Trade,
-  type PositionUpdates,
-  type Instrument,
-  type Dealer,
-  type RfqEvent,
+  type AnalyticsPort,
+  AnalyticsSimulator,
+  type BlotterPort,
+  type ConnectionEventsPort,
   type CreateRfqRequest,
-  type QuoteRequest,
+  CreditRfqSimulator,
+  type CurrencyPair,
+  DEALERS_CATALOG,
+  type Dealer,
+  type DealerPort,
+  DealerSimulator,
   deriveBaseTerm,
+  type ExecutionPort,
+  ExecutionSimulator,
+  type Instrument,
+  type InstrumentPort,
+  InstrumentSimulator,
+  type PositionUpdates,
+  type PreferencesPort,
+  type PriceTick,
+  type PricingPort,
+  PricingSimulator,
+  type QuoteRequest,
+  type ReferenceDataPort,
+  ReferenceDataSimulator,
+  type RfqEvent,
+  type RfqQuoteResult,
+  ThroughputSimulator,
+  type Trade,
+  TradeStoreSimulator,
+  type WorkflowPort,
 } from "@rtc/domain";
-import { Observable } from "rxjs";
 import type {
-  ReferenceDataMessage,
-  PriceTickDto,
-  BlotterMessage,
   AnalyticsDto,
+  BlotterMessage,
+  DealerEvent,
   ExecutionRequestDto,
   ExecutionResponseDto,
   InstrumentEvent,
-  DealerEvent,
-  WorkflowEvent,
-  RpcResponse,
   PriceHistoryDto,
+  PriceTickDto,
+  ReferenceDataMessage,
+  RpcResponse,
+  WorkflowEvent,
 } from "@rtc/shared";
-import { WsAdapter } from "./WsAdapter";
+import { Observable } from "rxjs";
 import type { IWsAdapter } from "./IWsAdapter";
 import { LocalStoragePreferencesAdapter } from "./LocalStoragePreferencesAdapter";
+import { WsAdapter } from "./WsAdapter";
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
@@ -172,7 +172,9 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
         let cancelled = false;
         (async () => {
           try {
-            const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, { symbol })) as RpcResponse<PriceHistoryDto>;
+            const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, {
+              symbol,
+            })) as RpcResponse<PriceHistoryDto>;
             if (cancelled) return;
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to get price history"));
@@ -190,20 +192,29 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
       });
     },
 
-    getRfqQuote(symbol: string, pipsPosition: number): Observable<RfqQuoteResult> {
+    getRfqQuote(
+      symbol: string,
+      pipsPosition: number,
+    ): Observable<RfqQuoteResult> {
       // No dedicated wire RPC for FX RFQ quotes; derive from the latest price-history tick.
       return new Observable<RfqQuoteResult>((subscriber) => {
         let cancelled = false;
         (async () => {
           try {
-            const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, { symbol })) as RpcResponse<PriceHistoryDto>;
+            const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, {
+              symbol,
+            })) as RpcResponse<PriceHistoryDto>;
             if (cancelled) return;
-            if (resp.type === "nack" || !resp.payload || resp.payload.prices.length === 0) {
+            if (
+              resp.type === "nack" ||
+              !resp.payload ||
+              resp.payload.prices.length === 0
+            ) {
               subscriber.error(new Error(`No price available for ${symbol}`));
               return;
             }
             const last = resp.payload.prices[resp.payload.prices.length - 1];
-            const priceChange = 0.3 / Math.pow(10, pipsPosition);
+            const priceChange = 0.3 / 10 ** pipsPosition;
             subscriber.next({
               ask: last.ask + priceChange,
               bid: last.bid - priceChange,
@@ -237,7 +248,10 @@ function createExecutionPort(ws: IWsAdapter): ExecutionPort {
         };
         (async () => {
           try {
-            const resp = (await ws.rpc(CLIENT_MSG.EXECUTE_TRADE, dto)) as RpcResponse<ExecutionResponseDto>;
+            const resp = (await ws.rpc(
+              CLIENT_MSG.EXECUTE_TRADE,
+              dto,
+            )) as RpcResponse<ExecutionResponseDto>;
             if (cancelled) return;
             if (resp.type === "nack") {
               subscriber.error(new Error("Trade execution failed"));
@@ -432,7 +446,9 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
         let cancelled = false;
         (async () => {
           try {
-            const resp = (await ws.rpc(CLIENT_MSG.CANCEL_RFQ, { rfqId })) as RpcResponse;
+            const resp = (await ws.rpc(CLIENT_MSG.CANCEL_RFQ, {
+              rfqId,
+            })) as RpcResponse;
             if (cancelled) return;
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to cancel RFQ"));
@@ -455,7 +471,10 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
         let cancelled = false;
         (async () => {
           try {
-            const resp = (await ws.rpc(CLIENT_MSG.QUOTE, request)) as RpcResponse;
+            const resp = (await ws.rpc(
+              CLIENT_MSG.QUOTE,
+              request,
+            )) as RpcResponse;
             if (cancelled) return;
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to submit quote"));
@@ -478,7 +497,9 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
         let cancelled = false;
         (async () => {
           try {
-            const resp = (await ws.rpc(CLIENT_MSG.PASS, { quoteId })) as RpcResponse;
+            const resp = (await ws.rpc(CLIENT_MSG.PASS, {
+              quoteId,
+            })) as RpcResponse;
             if (cancelled) return;
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to pass on quote"));
@@ -501,7 +522,9 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
         let cancelled = false;
         (async () => {
           try {
-            const resp = (await ws.rpc(CLIENT_MSG.ACCEPT, { quoteId })) as RpcResponse;
+            const resp = (await ws.rpc(CLIENT_MSG.ACCEPT, {
+              quoteId,
+            })) as RpcResponse;
             if (cancelled) return;
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to accept quote"));
@@ -528,7 +551,9 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
         let cancelled = false;
         (async () => {
           try {
-            const resp = (await ws.rpc(CLIENT_MSG.GET_THROUGHPUT)) as RpcResponse<number>;
+            const resp = (await ws.rpc(
+              CLIENT_MSG.GET_THROUGHPUT,
+            )) as RpcResponse<number>;
             if (cancelled) return;
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to get throughput"));
@@ -551,7 +576,9 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
         let cancelled = false;
         (async () => {
           try {
-            const resp = (await ws.rpc(CLIENT_MSG.SET_THROUGHPUT, { value })) as RpcResponse;
+            const resp = (await ws.rpc(CLIENT_MSG.SET_THROUGHPUT, {
+              value,
+            })) as RpcResponse;
             if (cancelled) return;
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to set throughput"));

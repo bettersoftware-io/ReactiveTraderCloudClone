@@ -1,8 +1,8 @@
 // tests/browser/cypress/theme.spec.ts
 import { getCtx } from "./_context";
 import { withWorkspaceOpen } from "./_openWorkspace";
-import * as theme from "./scenarios/theme";
 import * as common from "./scenarios/common";
+import * as theme from "./scenarios/theme";
 
 describe("Theme", () => {
   withWorkspaceOpen();

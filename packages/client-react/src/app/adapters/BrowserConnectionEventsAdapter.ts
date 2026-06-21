@@ -1,11 +1,16 @@
-import { Observable } from "rxjs";
 import {
-  IDLE_TIMEOUT_MS,
   type ConnectionEvent,
   type ConnectionEventsPort,
+  IDLE_TIMEOUT_MS,
 } from "@rtc/domain";
+import { Observable } from "rxjs";
 
-const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart"] as const;
+const ACTIVITY_EVENTS = [
+  "mousemove",
+  "mousedown",
+  "keydown",
+  "touchstart",
+] as const;
 
 export class BrowserConnectionEventsAdapter implements ConnectionEventsPort {
   events(): Observable<ConnectionEvent> {

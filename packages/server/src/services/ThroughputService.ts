@@ -14,7 +14,9 @@ export class ThroughputService {
       throw new Error("Throughput must be a finite number");
     }
     if (value < MIN_THROUGHPUT || value > MAX_THROUGHPUT) {
-      throw new Error(`Throughput must be between ${MIN_THROUGHPUT} and ${MAX_THROUGHPUT}`);
+      throw new Error(
+        `Throughput must be between ${MIN_THROUGHPUT} and ${MAX_THROUGHPUT}`,
+      );
     }
     this.value = value;
   }

@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { Direction, TradeStatus, type Trade } from "@rtc/domain";
-import { mount } from "@ui-contract/mount";
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 import { FxBlotter } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const trade = (tradeId: number, over: Partial<Trade> = {}): Trade => ({
   tradeId,
@@ -18,11 +18,17 @@ const trade = (tradeId: number, over: Partial<Trade> = {}): Trade => ({
 });
 
 const t1 = trade(4001, { currencyPair: "EURUSD" });
-const t2 = trade(4002, { currencyPair: "USDJPY", notional: 5_000_000, status: TradeStatus.Rejected });
+const t2 = trade(4002, {
+  currencyPair: "USDJPY",
+  notional: 5_000_000,
+  status: TradeStatus.Rejected,
+});
 
 describe("FxBlotter", () => {
   it("renders one row per trade", () => {
-    expect(mount(FxBlotter, { hooks: { useTrades: [t1, t2] } }).tradeRowCount()).toBe(2);
+    expect(
+      mount(FxBlotter, { hooks: { useTrades: [t1, t2] } }).tradeRowCount(),
+    ).toBe(2);
   });
 
   it("shows each trade's key cells, including rejected trades", () => {
@@ -34,7 +40,9 @@ describe("FxBlotter", () => {
   });
 
   it("exposes the trade columns", () => {
-    const headers = mount(FxBlotter, { hooks: { useTrades: [t1] } }).columnHeaders();
+    const headers = mount(FxBlotter, {
+      hooks: { useTrades: [t1] },
+    }).columnHeaders();
     expect(headers.some((h) => h.includes("Trade ID"))).toBe(true);
     expect(headers.some((h) => h.includes("Status"))).toBe(true);
   });
@@ -48,7 +56,9 @@ describe("FxBlotter", () => {
   it("appends a newly streamed trade to the same blotter", () => {
     const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
     expect(blotter.tradeRowCount()).toBe(2);
-    blotter.emit({ useTrades: [t1, t2, trade(4003, { currencyPair: "GBPUSD" })] });
+    blotter.emit({
+      useTrades: [t1, t2, trade(4003, { currencyPair: "GBPUSD" })],
+    });
     expect(blotter.tradeRowCount()).toBe(3);
     expect(blotter.hasCell("GBPUSD")).toBe(true);
   });
@@ -62,7 +72,11 @@ describe("FxBlotter", () => {
       const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
       await blotter.clickColumnHeader("Notional");
       expect(blotter.sortIndicatorFor("Notional")).toBe("desc");
-      expect(blotter.columnValues("Notional")).toEqual(["3,000,000", "2,000,000", "1,000,000"]);
+      expect(blotter.columnValues("Notional")).toEqual([
+        "3,000,000",
+        "2,000,000",
+        "1,000,000",
+      ]);
     });
 
     it("toggles a numeric column to ascending on the second click", async () => {
@@ -70,7 +84,11 @@ describe("FxBlotter", () => {
       await blotter.clickColumnHeader("Notional");
       await blotter.clickColumnHeader("Notional");
       expect(blotter.sortIndicatorFor("Notional")).toBe("asc");
-      expect(blotter.columnValues("Notional")).toEqual(["1,000,000", "2,000,000", "3,000,000"]);
+      expect(blotter.columnValues("Notional")).toEqual([
+        "1,000,000",
+        "2,000,000",
+        "3,000,000",
+      ]);
     });
 
     it("clears the sort on the third click", async () => {
@@ -80,14 +98,22 @@ describe("FxBlotter", () => {
       await blotter.clickColumnHeader("Notional");
       expect(blotter.sortIndicatorFor("Notional")).toBe(null);
       // Back to insertion order.
-      expect(blotter.columnValues("Notional")).toEqual(["3,000,000", "1,000,000", "2,000,000"]);
+      expect(blotter.columnValues("Notional")).toEqual([
+        "3,000,000",
+        "1,000,000",
+        "2,000,000",
+      ]);
     });
 
     it("sorts a text column ascending on first click", async () => {
       const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
       await blotter.clickColumnHeader("CCYCCY");
       expect(blotter.sortIndicatorFor("CCYCCY")).toBe("asc");
-      expect(blotter.columnValues("CCYCCY")).toEqual(["EURUSD", "GBPUSD", "USDJPY"]);
+      expect(blotter.columnValues("CCYCCY")).toEqual([
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+      ]);
     });
   });
 
@@ -162,7 +188,9 @@ describe("FxBlotter", () => {
       vi.stubGlobal("Blob", RecordingBlob);
       vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock");
       vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+        () => {},
+      );
 
       const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
       await blotter.clickExport();

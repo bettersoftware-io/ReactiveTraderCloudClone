@@ -1,6 +1,6 @@
-import { test, expect } from "@playwright/test";
-import { scenarios } from "../shared/scenarios";
+import { expect, test } from "@playwright/test";
 import { scenarioActions } from "../scenarioActions";
+import { scenarios } from "../shared/scenarios";
 
 // Golden filename: scenario name with "/" → "-" (path-safe, stable).
 const goldenName = (scenario: string) => `${scenario.replace(/\//g, "-")}.png`;
