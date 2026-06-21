@@ -3,6 +3,11 @@
 Browser e2e, presenter integration, and full-stack smoke suites. Unit tests and
 visual tests live inside each package (see `packages/client/README.md`).
 
+> This README is the **operational** reference (how to run, reports,
+> orchestration). For the **decision & migration** view — what the suites share,
+> a diagram, pros/cons, and how to migrate the UI library or the test framework
+> — see [`STRATEGY.md`](./STRATEGY.md).
+
 ## Naming convention
 
 **Name the deviation, leave the default bare.**
