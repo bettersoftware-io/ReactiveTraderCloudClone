@@ -1,4 +1,5 @@
 import type { HistoricPosition } from "@rtc/domain";
+import styles from "./PnlChart.module.css";
 
 interface PnlChartProps {
   history: readonly HistoricPosition[];
@@ -53,7 +54,7 @@ export function PnlChart({ history }: PnlChartProps) {
       height={CHART_HEIGHT}
       viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
       preserveAspectRatio="none"
-      style={{ display: "block" }}
+      className={styles.chart}
     >
       {zeroY !== null && (
         <line

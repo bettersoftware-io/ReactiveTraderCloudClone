@@ -1,3 +1,5 @@
+import styles from "./PnlValue.module.css";
+
 interface PnlValueProps {
   value: number;
 }
@@ -16,19 +18,12 @@ function formatPnl(value: number): string {
 }
 
 export function PnlValue({ value }: PnlValueProps) {
-  const isPositive = value >= 0;
+  const sign = value >= 0 ? "pos" : "neg";
 
   return (
     <div
-      style={{
-        fontSize: 20,
-        fontWeight: 700,
-        color: isPositive
-          ? "var(--accent-positive)"
-          : "var(--accent-negative)",
-        textAlign: "center",
-        padding: "4px 0",
-      }}
+      data-sign={sign}
+      className={styles.value}
     >
       {formatPnl(value)}
     </div>

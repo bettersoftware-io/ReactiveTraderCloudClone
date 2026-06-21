@@ -1,4 +1,5 @@
 import type { CurrencyPairPosition } from "@rtc/domain";
+import styles from "./PairPnlBars.module.css";
 
 interface PairPnlBarsProps {
   positions: readonly CurrencyPairPosition[];
@@ -15,86 +16,28 @@ export function PairPnlBars({ positions }: PairPnlBarsProps) {
   const maxAbsPnl = Math.max(...positions.map((p) => Math.abs(p.basePnl)), 1);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 3,
-        fontSize: 11,
-      }}
-    >
+    <div className={styles.container}>
       {positions.map((pos) => {
         const fraction = pos.basePnl / maxAbsPnl;
-        const isPositive = pos.basePnl >= 0;
+        const sign = pos.basePnl >= 0 ? "pos" : "neg";
         const barWidth = `${Math.abs(fraction) * 50}%`;
 
         return (
-          <div
-            key={pos.symbol}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              height: 18,
-            }}
-          >
-            <span
-              style={{
-                width: 55,
-                textAlign: "right",
-                color: "var(--text-muted)",
-                fontSize: 10,
-                flexShrink: 0,
-              }}
-            >
-              {pos.symbol}
-            </span>
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                position: "relative",
-                height: 12,
-              }}
-            >
+          <div key={pos.symbol} className={styles.row}>
+            <span className={styles.symbol}>{pos.symbol}</span>
+            <div className={styles.barContainer}>
               {/* Center line */}
+              <div className={styles.centerLine} />
+              {/* Bar: continuous width via custom property; side via data-sign */}
               <div
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: 0,
-                  bottom: 0,
-                  width: 1,
-                  backgroundColor: "var(--border-primary)",
-                }}
-              />
-              {/* Bar */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: 1,
-                  bottom: 1,
-                  ...(isPositive
-                    ? { left: "50%", width: barWidth }
-                    : { right: "50%", width: barWidth }),
-                  backgroundColor: isPositive
-                    ? "var(--accent-positive)"
-                    : "var(--accent-negative)",
-                  borderRadius: 2,
-                  opacity: 0.7,
-                }}
+                data-sign={sign}
+                className={styles.bar}
+                style={{ "--bar-width": barWidth } as React.CSSProperties}
               />
             </div>
             <span
-              style={{
-                width: 45,
-                textAlign: "left",
-                color: isPositive
-                  ? "var(--accent-positive)"
-                  : "var(--accent-negative)",
-                fontSize: 10,
-                flexShrink: 0,
-              }}
+              data-sign={sign}
+              className={styles.pnlLabel}
             >
               {formatPnl(pos.basePnl)}
             </span>

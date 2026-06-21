@@ -4,6 +4,7 @@ import { PnlValue } from "./PnlValue";
 import { PositionBubbles } from "./PositionBubbles";
 import { PairPnlBars } from "./PairPnlBars";
 import { StaleIndicator } from "../../shell/stale/StaleIndicator";
+import styles from "./AnalyticsPanel.module.css";
 
 export function AnalyticsPanel() {
   const data = useHooks().useAnalytics();
@@ -11,17 +12,7 @@ export function AnalyticsPanel() {
 
   if (!data) {
     return (
-      <div
-        style={{
-          backgroundColor: "var(--bg-tile)",
-          border: "1px solid var(--border-primary)",
-          borderRadius: 6,
-          padding: 16,
-          color: "var(--text-muted)",
-          fontSize: 12,
-          textAlign: "center",
-        }}
-      >
+      <div className={styles.loading}>
         Loading analytics...
       </div>
     );
@@ -36,29 +27,14 @@ export function AnalyticsPanel() {
     <StaleIndicator stale={stale}>
     <div
       data-testid="analytics-panel"
-      style={{
-        backgroundColor: "var(--bg-tile)",
-        border: "1px solid var(--border-primary)",
-        borderRadius: 6,
-        padding: 12,
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        minWidth: 280,
-      }}
+      className={styles.panel}
     >
-      <span
-        style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: "var(--text-primary)",
-        }}
-      >
+      <span className={styles.title}>
         Analytics
       </span>
 
       <div>
-        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+        <span className={styles.sectionLabel}>
           Profit &amp; Loss
         </span>
         <PnlValue value={latestPnl} />
@@ -66,14 +42,14 @@ export function AnalyticsPanel() {
       </div>
 
       <div>
-        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+        <span className={styles.sectionLabel}>
           Positions
         </span>
         <PositionBubbles positions={data.currentPositions} />
       </div>
 
       <div>
-        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+        <span className={styles.sectionLabel}>
           PnL per Currency Pair
         </span>
         <PairPnlBars positions={data.currentPositions} />

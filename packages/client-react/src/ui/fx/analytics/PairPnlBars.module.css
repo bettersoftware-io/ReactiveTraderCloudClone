@@ -1,0 +1,72 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+}
+
+.symbol {
+  width: 55px;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.barContainer {
+  flex: 1;
+  display: flex;
+  position: relative;
+  height: 12px;
+}
+
+.centerLine {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--border-primary);
+}
+
+/* Bar: positioned by data-sign; width driven by --bar-width custom property */
+.bar {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: var(--bar-width);
+  border-radius: 2px;
+  opacity: 0.7;
+}
+
+.bar[data-sign="pos"] {
+  left: 50%;
+  background-color: var(--accent-positive);
+}
+
+.bar[data-sign="neg"] {
+  right: 50%;
+  background-color: var(--accent-negative);
+}
+
+.pnlLabel {
+  width: 45px;
+  text-align: left;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.pnlLabel[data-sign="pos"] {
+  color: var(--accent-positive);
+}
+
+.pnlLabel[data-sign="neg"] {
+  color: var(--accent-negative);
+}

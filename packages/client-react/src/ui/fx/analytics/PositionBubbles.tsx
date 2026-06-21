@@ -1,4 +1,5 @@
 import type { CurrencyPairPosition } from "@rtc/domain";
+import styles from "./PositionBubbles.module.css";
 
 interface PositionBubblesProps {
   positions: readonly CurrencyPairPosition[];
@@ -23,42 +24,18 @@ export function PositionBubbles({ positions }: PositionBubblesProps) {
   );
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 8,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "8px 0",
-      }}
-    >
+    <div className={styles.container}>
       {positions.map((pos) => {
         const radius = computeRadius(pos.basePnl, maxAbsPnl);
-        const isPositive = pos.basePnl >= 0;
+        const sign = pos.basePnl >= 0 ? "pos" : "neg";
         const symbol = pos.symbol.slice(0, 3);
 
         return (
           <div
             key={pos.symbol}
-            style={{
-              width: radius * 2,
-              height: radius * 2,
-              borderRadius: "50%",
-              backgroundColor: isPositive
-                ? "rgba(34, 197, 94, 0.2)"
-                : "rgba(239, 68, 68, 0.2)",
-              border: `1px solid ${isPositive ? "var(--accent-positive)" : "var(--accent-negative)"}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: Math.max(9, radius / 3),
-              fontWeight: 600,
-              color: isPositive
-                ? "var(--accent-positive)"
-                : "var(--accent-negative)",
-              flexShrink: 0,
-            }}
+            data-sign={sign}
+            className={styles.bubble}
+            style={{ "--bubble-size": `${radius * 2}px`, "--bubble-font-size": `${Math.max(9, radius / 3)}px` } as React.CSSProperties}
           >
             {symbol}
           </div>
