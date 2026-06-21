@@ -9,7 +9,7 @@ import {
   createSimulatorPorts,
   type App,
   type AppPorts,
-} from "@rtc/client";
+} from "@rtc/client-react";
 
 export interface PresenterCtx {
   app: App;

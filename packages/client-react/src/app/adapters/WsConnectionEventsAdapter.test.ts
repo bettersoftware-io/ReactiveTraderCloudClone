@@ -1,4 +1,4 @@
-// packages/client/src/app/adapters/WsConnectionEventsAdapter.test.ts
+// packages/client-react/src/app/adapters/WsConnectionEventsAdapter.test.ts
 import { describe, it, expect } from "vitest";
 import type { ConnectionEvent } from "@rtc/domain";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";

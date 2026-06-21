@@ -1,4 +1,4 @@
-# @rtc/client — React UI
+# @rtc/client-react — React UI
 
 React + RxJS + Vite client. Clean-architecture seam: components read ALL data
 through `useHooks()` (`AppHooks` interface); production wires presenters via
@@ -34,7 +34,7 @@ Caching: from the repo root, `pnpm test` runs through Turborepo and is
 **cached** — an instant `>>> FULL TURBO` pass is a log replay because no input
 changed; `pnpm test --force` re-runs for real. `pnpm test:ui:visual` is never
 cached (`cache: false` in `turbo.json`). Invoked directly
-(`pnpm --filter @rtc/client test`), scripts bypass turbo — always fresh, but
+(`pnpm --filter @rtc/client-react test`), scripts bypass turbo — always fresh, but
 workspace deps (`@rtc/domain`, `@rtc/shared`) are not auto-built; run
 `pnpm build` at the root first on a fresh checkout. See "Caching" in the root
 README. The unit report under `reports/unit/` is a declared turbo output, so a cached

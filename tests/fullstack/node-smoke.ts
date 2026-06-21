@@ -13,7 +13,7 @@
  * receive an ack. Exits non-zero on any failure.
  */
 import { firstValueFrom, timeout } from "rxjs";
-import { WsAdapter, createWsRealPorts } from "@rtc/client";
+import { WsAdapter, createWsRealPorts } from "@rtc/client-react";
 import type { Direction } from "@rtc/domain";
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.js";
 

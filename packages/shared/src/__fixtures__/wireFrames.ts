@@ -1,6 +1,6 @@
 /**
  * Canonical server-frame factories for the Phase 5C contract suite.
- * Both FakeWsAdapter (in @rtc/client tests) and any future server-side
+ * Both FakeWsAdapter (in @rtc/client-react tests) and any future server-side
  * contract tests consume these so the fake-WS protocol can't silently
  * drift from the real wire shapes.
  *

@@ -58,7 +58,7 @@ interface SpawnedServer {
 }
 
 function spawnDevServer(preferredPort: number): SpawnedServer {
-  const child = spawn("pnpm", ["--filter", "@rtc/client", "dev"], {
+  const child = spawn("pnpm", ["--filter", "@rtc/client-react", "dev"], {
     // Capture output so we can read the actual bound port from Vite's banner and
     // surface startup failures in the thrown message (not a blind timeout).
     stdio: ["ignore", "pipe", "pipe"],

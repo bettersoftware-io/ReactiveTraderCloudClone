@@ -3,7 +3,7 @@
 One-time inventory of `src/ui` components and conditional branches the **visual**
 tier does not render, i.e. that have **no golden snapshot**. Produced by reading
 the istanbul report from
-`pnpm --filter @rtc/client test:ui:visual:vitest-browser:react:coverage`
+`pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:coverage`
 (report: `reports/ui/visual/coverage/index.html`).
 
 **This is a point-in-time snapshot, not a live document.** It was refreshed after
@@ -31,7 +31,7 @@ transient state is a deterministic static shot. They were un-excluded from the
 coverage denominator (`vitest-browser.coverage.config.ts`) and now carry goldens.
 
 Current headline (2026-06-17, `src/ui/**/*.tsx`): re-run
-`pnpm --filter @rtc/client test:ui:visual:vitest-browser:react:coverage` to
+`pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:coverage` to
 refresh the exact figures; the Phase 9 batch lifts the tile execution / RFQ /
 stale branches into "covered". The residual gap is now the genuinely
 interaction-only handlers and the runtime media-query theme arm (below), which a

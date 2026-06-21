@@ -3,20 +3,20 @@
   "isolate": [
     "packages/domain/node_modules",
     "packages/shared/node_modules",
-    "packages/client/node_modules",
+    "packages/client-react/node_modules",
     "packages/server/node_modules",
     "tests/node_modules",
     "packages/domain/dist",
     "packages/shared/dist",
-    "packages/client/dist",
+    "packages/client-react/dist",
     "packages/server/dist",
     ".pnpm-store",
     ".turbo",
     "packages/domain/.turbo",
     "packages/shared/.turbo",
-    "packages/client/.turbo",
+    "packages/client-react/.turbo",
     "packages/server/.turbo",
     "tests/.turbo",
-    "packages/client/tests/ui/visual/playwright-ct/host/.cache"
+    "packages/client-react/tests/ui/visual/playwright-ct/host/.cache"
   ]
 }

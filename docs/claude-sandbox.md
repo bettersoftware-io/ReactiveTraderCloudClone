@@ -29,7 +29,7 @@ different places:
 
 | Path | macOS (WebStorm) sees | Container sees |
 |---|---|---|
-| `packages/client/node_modules` | the real host-FS dir (darwin install) | its own ext4 Docker volume (linux install) |
+| `packages/client-react/node_modules` | the real host-FS dir (darwin install) | its own ext4 Docker volume (linux install) |
 | `src/**/*.ts`, configs (no volume) | shared host file | the same shared host file |
 
 Neither side can observe or clobber the other's `node_modules`/`dist`, while
@@ -98,21 +98,21 @@ project-local `.pnpm-store` fallback, and the playwright-ct vite bundle cache:
   "isolate": [
     "packages/domain/node_modules",
     "packages/shared/node_modules",
-    "packages/client/node_modules",
+    "packages/client-react/node_modules",
     "packages/server/node_modules",
     "tests/node_modules",
     "packages/domain/dist",
     "packages/shared/dist",
-    "packages/client/dist",
+    "packages/client-react/dist",
     "packages/server/dist",
     ".pnpm-store",
     ".turbo",
     "packages/domain/.turbo",
     "packages/shared/.turbo",
-    "packages/client/.turbo",
+    "packages/client-react/.turbo",
     "packages/server/.turbo",
     "tests/.turbo",
-    "packages/client/tests/ui/visual/playwright-ct/host/.cache"
+    "packages/client-react/tests/ui/visual/playwright-ct/host/.cache"
   ]
 }
 ```
@@ -212,8 +212,8 @@ because Cypress busy-spins on aarch64 — Playwright is the local driver), also 
 volumes for the browser caches:
 
 ```
-rtc-pwct-cache:$REPO/packages/client/tests/ui/visual/playwright-ct/host/.cache
-rtc-reports:$REPO/packages/client/reports
+rtc-pwct-cache:$REPO/packages/client-react/tests/ui/visual/playwright-ct/host/.cache
+rtc-reports:$REPO/packages/client-react/reports
 ```
 
 ## Desktop notifications from inside the container

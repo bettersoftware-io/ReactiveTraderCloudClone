@@ -71,7 +71,7 @@ jobs:
       # runs the neutral sociable contract specs AND the co-located src/ui unit
       # tests, so the percentage reflects their true combined coverage.
       - name: UI contract coverage gate (≥95%)
-        run: pnpm --filter @rtc/client test:ui:contract:coverage
+        run: pnpm --filter @rtc/client-react test:ui:contract:coverage
 
       - name: Build
         run: pnpm build
@@ -89,7 +89,7 @@ jobs:
     # framework swap. Browsers are preinstalled in the image (PLAYWRIGHT_BROWSERS_PATH
     # is set by it), so no `playwright install` step is needed. The goldens are
     # regenerated in this SAME image via .github/workflows/update-visual-goldens.yml.
-    # Tag must track the @playwright/test version in packages/client.
+    # Tag must track the @playwright/test version in packages/client-react.
     container: mcr.microsoft.com/playwright:v1.61.0-noble
     env:
       CYPRESS_INSTALL_BINARY: "0"
@@ -132,10 +132,10 @@ jobs:
         with:
           name: ui-visual-report
           path: |
-            packages/client/reports/
-            packages/client/tests/ui/visual/**/__screenshots__/**/*-actual.png
-            packages/client/tests/ui/visual/**/__screenshots__/**/*-diff.png
-            packages/client/tests/ui/visual/**/__screenshots__/**/*-reference.png
+            packages/client-react/reports/
+            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-actual.png
+            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-diff.png
+            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-reference.png
           if-no-files-found: ignore
           retention-days: 7
 

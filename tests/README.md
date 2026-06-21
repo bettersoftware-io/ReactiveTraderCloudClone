@@ -1,7 +1,7 @@
 # @rtc/tests — cross-package test suites
 
 Browser e2e, presenter integration, and full-stack smoke suites. Unit tests and
-visual tests live inside each package (see `packages/client/README.md`).
+visual tests live inside each package (see `packages/client-react/README.md`).
 
 > This README is the **operational** reference (how to run, reports,
 > orchestration). For the **decision & migration** view — what the suites share,
@@ -109,7 +109,7 @@ terminal output only). `reports/` is gitignored and removed by `pnpm clean`.
 These suites measure **behaviour, not coverage** — they drive the app in a
 separate process from the test runner, so there are no coverage reports here.
 Code-coverage lives in the in-process tiers (`@rtc/domain` / `@rtc/server`
-`test:coverage`, and `@rtc/client` `test:app:coverage` /
+`test:coverage`, and `@rtc/client-react` `test:app:coverage` /
 `test:ui:contract:coverage` / `test:ui:visual:vitest-browser:react:coverage`);
 see the root README's report map.
 

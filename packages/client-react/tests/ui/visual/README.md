@@ -332,7 +332,7 @@ visual tiers are far cheaper than the **behavioural** browser e2e suites
 one injected-data scenario and diffs a PNG; an e2e scenario drives a live app
 through multi-step interactions.
 
-To reproduce: `pnpm --filter @rtc/client test:ui:visual:<runner>:react` for any
+To reproduce: `pnpm --filter @rtc/client-react test:ui:visual:<runner>:react` for any
 single runner and time it.
 
 ## Type-checking

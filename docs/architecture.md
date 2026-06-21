@@ -69,7 +69,7 @@ Two terms commonly conflated -- "client" and "UI" -- mean different things here.
 | **Domain** | Pure-TypeScript entities, value objects, ports, and use cases. Lives in `@rtc/domain`. RxJS is the single permitted runtime dependency (used as the boundary stream type). Knows nothing about UI or transport. |
 | **Server** | Process that hosts adapters around domain ports and serves data to clients over WebSocket. |
 | **Client** | Everything that runs in the browser -- the entire JavaScript bundle. **Includes** use cases, presenters, *and* the UI layer. |
-| **Application Layer (client)** | Use cases (vanilla TS + RxJS, shared with domain) + Presenters (RxJS streams). Lives inside `@rtc/client` but contains zero React. Could be promoted to `@rtc/client-app` later if useful. |
+| **Application Layer (client)** | Use cases (vanilla TS + RxJS, shared with domain) + Presenters (RxJS streams). Lives inside `@rtc/client-react` but contains zero React. Could be promoted to `@rtc/client-react-app` later if useful. |
 | **UI Layer (client)** | React components + react-rxjs-bound hooks. Consumes the Application Layer through hook contracts only. Never imports `rxjs`. |
 
 Note: **"no RxJS on the UI side" is not the same as "no RxJS on the client side"**. RxJS is the boundary stream type for ports and use cases (in `@rtc/domain`) and is also the implementation language of the client's presenter layer. It is forbidden in the UI Layer.
@@ -573,7 +573,7 @@ classDiagram
     ConnectionEventsPort <|.. BrowserConnectionEventsAdapter : implements
 ```
 
-> **`WsReal*` adapters are factory functions, not classes.** The boxes above (`WsRealPricingAdapter`, `WsRealExecutionAdapter`, ...) are drawn as classes for diagram symmetry, but the real-mode port implementations are produced by factory functions (`createPricingPort`, `createExecutionPort`, ...) in `packages/client/src/app/adapters/portFactory.ts`, each closing over a shared `WsAdapter`. There are nine port interfaces in total: the eight transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](#96-port-contract-test-layer)).
+> **`WsReal*` adapters are factory functions, not classes.** The boxes above (`WsRealPricingAdapter`, `WsRealExecutionAdapter`, ...) are drawn as classes for diagram symmetry, but the real-mode port implementations are produced by factory functions (`createPricingPort`, `createExecutionPort`, ...) in `packages/client-react/src/app/adapters/portFactory.ts`, each closing over a shared `WsAdapter`. There are nine port interfaces in total: the eight transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](#96-port-contract-test-layer)).
 
 **Adapter selection** is performed at the **Composition Root** (single startup point), not at render time. `VITE_SERVER_URL` controls the choice:
 - **Unset** -- Composition Root constructs simulators directly (in-process, no transport).
@@ -664,7 +664,7 @@ execute(pair: CurrencyPair): Observable<Price> {
 
 Presenters are the client-side glue between use cases (which already emit `Observable<T>`) and the UI (which consumes hooks). The presenter layer is where multicasting and UI-shaping happen -- `share`/`shareReplay` so the underlying port subscription is started once per symbol, `combineLatest` to fan in derived state, `scan` for accumulators that the UI snapshots.
 
-RxJS appears in three layers: **port signatures** (`@rtc/domain` ports), **use cases** (`@rtc/domain` use cases), and **presenters** (`@rtc/client`). It does **not** appear in:
+RxJS appears in three layers: **port signatures** (`@rtc/domain` ports), **use cases** (`@rtc/domain` use cases), and **presenters** (`@rtc/client-react`). It does **not** appear in:
 - React components or hook call sites (use react-rxjs hooks; never import `rxjs`)
 
 Because use cases already return `Observable<T>`, presenters are usually a thin `pipe(...)` over a use-case output rather than an `AsyncIterable -> Observable` conversion. Presenters expose the resulting stream to react-rxjs which auto-generates a hook.
@@ -721,7 +721,7 @@ classDiagram
     ReactRxJsHooks ..> ConnectionStatusPresenter : binds
 ```
 
-The diagram shows the representative presenters. The full set in `packages/client/src/app/presenters/` also includes `PriceHistoryPresenter`, `CurrencyPairsPresenter`, `InstrumentsPresenter`, `DealersPresenter`, `TradeExecutionPresenter`, and `RfqQuotePresenter`. **Command methods return `Observable<T>`, not `Promise<T>`** — they are one-shot streams; UI call sites apply `firstValueFrom(...)` when they need to `await` (e.g. `NewRfqForm`, `RfqTilesPanel`). This keeps the command return type uniform with the streaming surface; `firstValueFrom` is the only RxJS symbol the UI layer imports.
+The diagram shows the representative presenters. The full set in `packages/client-react/src/app/presenters/` also includes `PriceHistoryPresenter`, `CurrencyPairsPresenter`, `InstrumentsPresenter`, `DealersPresenter`, `TradeExecutionPresenter`, and `RfqQuotePresenter`. **Command methods return `Observable<T>`, not `Promise<T>`** — they are one-shot streams; UI call sites apply `firstValueFrom(...)` when they need to `await` (e.g. `NewRfqForm`, `RfqTilesPanel`). This keeps the command return type uniform with the streaming surface; `firstValueFrom` is the only RxJS symbol the UI layer imports.
 
 **Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)) that maps an `Observable<T>` to a React hook with Suspense semantics. To swap React -> SolidJS, write a tiny `solid-rxjs` analogue that maps an `Observable<T>` to a Solid signal. Presenters and below are unchanged. UI components are rewritten -- but their contracts (the hook signatures) are mirrored 1:1, and the behavioural spec suite verifies the rewrite.
 
@@ -1004,7 +1004,7 @@ graph TB
     subgraph Monorepo
         domain["@rtc/domain\nPure TypeScript + RxJS\n(entities, ports, use cases)"]
         shared["@rtc/shared\nDTOs and Protocol\nWire-format contracts"]
-        client["@rtc/client\nApplication Layer + UI Layer\n(currently React 19 + Vite + RxJS)"]
+        client["@rtc/client-react\nApplication Layer + UI Layer\n(currently React 19 + Vite + RxJS)"]
         server["@rtc/server\nNode.js\nWebSocket Server"]
         mobile["@rtc/mobile\nReact Native\nPlanned"]
     end
@@ -1031,7 +1031,7 @@ graph TB
 
 **Build order** (Turborepo topological): `domain` -> `shared` -> `client` | `server` | `mobile`.
 
-> The Application Layer and UI Layer currently coexist inside `@rtc/client`. If the size or rate of change justifies it later, the Application Layer can be promoted to its own package (`@rtc/client-app`) without breaking any consumer, because UI components only ever import the hook bridge -- not RxJS or use cases.
+> The Application Layer and UI Layer currently coexist inside `@rtc/client-react`. If the size or rate of change justifies it later, the Application Layer can be promoted to its own package (`@rtc/client-react-app`) without breaking any consumer, because UI components only ever import the hook bridge -- not RxJS or use cases.
 
 ---
 
@@ -1122,7 +1122,7 @@ This is the load-bearing section: the architecture's value comes from the cost-o
 | **Port adapters (transport)** | WebSocket-backed | ~1 dev-week per adapter family | Implements port interface | Contract tests parameterised over adapter |
 | **Server framework** | Node.js + native WS | ~1 dev-week | Adapter-side: implements port. Wire format: DTOs in `@rtc/shared`. | Server integration tests against DTOs |
 | **Wire format** | JSON over WS | High (both ends change together) | DTOs in `@rtc/shared` + protocol type enums | DTO round-trip tests + e2e |
-| **Build tooling** | Vite | ~1 dev-day | Bundles `@rtc/client`, serves dev | -- |
+| **Build tooling** | Vite | ~1 dev-day | Bundles `@rtc/client-react`, serves dev | -- |
 | **Unit test runner** | Vitest | ~1 dev-day | Same test files runnable | The tests themselves |
 | **E2E driver** | Playwright + Cypress | ~3 dev-days per new driver | Page Object interfaces unchanged; only implementations are added | Behavioural specs (Gherkin) drive all drivers via one shared step tree |
 | **Behavioural spec language** | Gherkin | High (rewrite specs) | -- | -- |
@@ -1245,7 +1245,7 @@ identity. Each describer is parameterised by a `makeHarness()` factory
 returning `{port, driver, teardown}`, so the same assertions run twice:
 once against the simulator implementation in `packages/domain/src/simulators/`
 and once against the WsReal implementation in
-`packages/client/src/app/adapters/portFactory.ts` driven by an in-memory
+`packages/client-react/src/app/adapters/portFactory.ts` driven by an in-memory
 `FakeWsAdapter` that scripts canonical wire frames from
 `packages/shared/src/__fixtures__/wireFrames.ts`.
 
@@ -1289,12 +1289,12 @@ via `makeHarness`, they don't reach into either implementation.
 | **Simulators** | `packages/domain/src/simulators/*.ts` | In-memory port impls |
 | **Shared DTOs** | `packages/shared/src/fx/*.ts`, `credit/*.ts` | Wire-format contracts |
 | **Protocol** | `packages/shared/src/protocol/*.ts` | RPC and SoW envelopes |
-| **Composition Root** | `packages/client/src/app/composition.ts` | React-free factory; returns `{ presenters, ports }` from wired-up adapters |
-| **Presenters** | `packages/client/src/app/presenters/*.ts` | RxJS streams, one file per area |
-| **Port Adapters** | `packages/client/src/app/adapters/*.ts` | WsAdapter, BrowserConnectionEventsAdapter, simulator/real port factory |
-| **react-rxjs Hooks Bridge** | `packages/client/src/ui/hooks/createAppHooks.ts` | `bind()` calls + `AppHooks` type; only file importing `@react-rxjs/core` |
-| **Hooks Provider** | `packages/client/src/ui/hooks/HooksProvider.tsx` | React Context distributing `AppHooks` |
-| **Client UI Components** | `packages/client/src/ui/{fx,credit,shell,admin}/**/*.tsx` | React components grouped by trading domain |
+| **Composition Root** | `packages/client-react/src/app/composition.ts` | React-free factory; returns `{ presenters, ports }` from wired-up adapters |
+| **Presenters** | `packages/client-react/src/app/presenters/*.ts` | RxJS streams, one file per area |
+| **Port Adapters** | `packages/client-react/src/app/adapters/*.ts` | WsAdapter, BrowserConnectionEventsAdapter, simulator/real port factory |
+| **react-rxjs Hooks Bridge** | `packages/client-react/src/ui/hooks/createAppHooks.ts` | `bind()` calls + `AppHooks` type; only file importing `@react-rxjs/core` |
+| **Hooks Provider** | `packages/client-react/src/ui/hooks/HooksProvider.tsx` | React Context distributing `AppHooks` |
+| **Client UI Components** | `packages/client-react/src/ui/{fx,credit,shell,admin}/**/*.tsx` | React components grouped by trading domain |
 | **Server Entry** | `packages/server/src/index.ts` | HTTP + WebSocket setup |
 | **Server WS Handler** | `packages/server/src/ws/ws-handler.ts` | Subscription & RPC routing |
 | **Server Protocol** | `packages/server/src/ws/protocol.ts` | Message type constants |
@@ -1343,6 +1343,6 @@ via `makeHarness`, they don't reach into either implementation.
 | 20 | No Gherkin loader imports (`quickpickle`, `@cucumber/cucumber`) inside `tests/presenter/vitest-fake-timers/` |
 | 21 | `@presenter` scenario count per `.feature` file must equal `it()` block count in the matching `vitest-fake-timers/*.test.ts` file (custom check) |
 | 22 | Every `describe(...)` title in `tests/presenter/vitest-fake-timers/` must begin with `"@presenter Feature: "` |
-| 23 | Contract describers in `packages/domain/src/ports/__contracts__/` may not import from `simulators/`, `@rtc/client`, or `@rtc/shared/__fixtures__/` |
+| 23 | Contract describers in `packages/domain/src/ports/__contracts__/` may not import from `simulators/`, `@rtc/client-react`, or `@rtc/shared/__fixtures__/` |
 | 24 | `vitest-quickpickle-fake-timers/setup.ts` must import every step file in `tests/presenter/vitest-quickpickle-fake-timers/steps/` (barrel completeness) |
 | 25 | No high/critical advisories in production dependencies (`pnpm audit --prod`, non-blocking when the audit cannot run) |

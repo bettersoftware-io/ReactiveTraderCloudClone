@@ -24,7 +24,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 0,
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
-  // siblings (the html reporter wipes its own folder). ../../../../ = packages/client.
+  // siblings (the html reporter wipes its own folder). ../../../../ = packages/client-react.
   reporter: [
     [process.env.CI ? "line" : "list"],
     ["html", { outputFolder: "../../../../reports/ui/visual/playwright-ct/react/report", open: "never" }],

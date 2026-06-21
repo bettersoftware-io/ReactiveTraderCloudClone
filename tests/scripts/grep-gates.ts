@@ -137,7 +137,7 @@ function checkProductionAudit(): string[] {
 function checkNoUiTimer(): string[] {
   const result = spawnSync(
     "grep",
-    ["-rnE", "setTimeout|setInterval", "../packages/client/src/ui/"],
+    ["-rnE", "setTimeout|setInterval", "../packages/client-react/src/ui/"],
     { encoding: "utf8" },
   );
   const out = result.stdout ?? "";
@@ -324,7 +324,7 @@ const GATES: Gate[] = [
   {
     name: "26. No rxjs/react-rxjs imports in src/ui (only src/ui/hooks bridge may)",
     pattern: 'from "rxjs"|@react-rxjs|@rx-state',
-    paths: ["../packages/client/src/ui/"],
+    paths: ["../packages/client-react/src/ui/"],
     excludes: [
       "/node_modules/",
       "/src/ui/hooks/",
@@ -335,7 +335,7 @@ const GATES: Gate[] = [
   {
     name: "27. No localStorage in src/ui (persistence belongs in app-layer ports)",
     pattern: 'localStorage',
-    paths: ["../packages/client/src/ui/"],
+    paths: ["../packages/client-react/src/ui/"],
     excludes: [
       "/node_modules/",
       "/src/ui/hooks/",
@@ -346,7 +346,7 @@ const GATES: Gate[] = [
   {
     name: "28. No fetch/import.meta.env in src/ui (transport/config belongs in app-layer)",
     pattern: 'fetch\\(|import\\.meta\\.env',
-    paths: ["../packages/client/src/ui/"],
+    paths: ["../packages/client-react/src/ui/"],
     excludes: [
       "/node_modules/",
       "/src/ui/hooks/",

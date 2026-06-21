@@ -5,7 +5,7 @@ plan; this records the rationale and the framework-migration guidance).
 
 ## Context
 
-We want a deterministic visual-regression tier that screenshots `@rtc/client`
+We want a deterministic visual-regression tier that screenshots `@rtc/client-react`
 UI rendered against injected fake data (`AppHooks`), with one explicit goal
 beyond catching CSS regressions: the **same baselines must later gate a
 reimplementation of the UI layer in another framework** (SolidJS is the stated

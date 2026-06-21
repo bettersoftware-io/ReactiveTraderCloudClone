@@ -10,9 +10,9 @@
       "Bash(pnpm -w typecheck)",
       "Bash(pnpm --filter @rtc/tests test:e2e)",
       "Bash(pnpm --filter @rtc/tests typecheck)",
-      "Bash(pnpm --filter @rtc/client test)",
-      "Bash(pnpm --filter @rtc/client test:e2e)",
-      "Bash(pnpm --filter @rtc/client typecheck)"
+      "Bash(pnpm --filter @rtc/client-react test)",
+      "Bash(pnpm --filter @rtc/client-react test:e2e)",
+      "Bash(pnpm --filter @rtc/client-react typecheck)"
     ]
   }
 }

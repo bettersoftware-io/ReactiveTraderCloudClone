@@ -8,7 +8,7 @@ becomes a real production project, and how to migrate when the UI library or the
 test framework is replaced.**
 
 It is the e2e analogue of
-[`packages/client/tests/ui/visual/README.md`](../packages/client/tests/ui/visual/README.md):
+[`packages/client-react/tests/ui/visual/README.md`](../packages/client-react/tests/ui/visual/README.md):
 same shape (diagram, sharing table, pros/cons, porting guide), but the e2e world
 has **two migration axes** instead of one, so the porting section is the centre
 of gravity here.
@@ -328,7 +328,7 @@ What the numbers confirm:
 To reproduce, run any single script from `README.md` → "Scripts" in isolation
 (e.g. `pnpm --filter @rtc/tests test:browser:playwright`) and time it; the
 visual tier has its own isolated table in
-[`packages/client/tests/ui/visual/README.md`](../packages/client/tests/ui/visual/README.md).
+[`packages/client-react/tests/ui/visual/README.md`](../packages/client-react/tests/ui/visual/README.md).
 
 ---
 
@@ -478,5 +478,5 @@ distinct jobs, no overlap.
 - [`../docs/architecture.md`](../docs/architecture.md) §9 "Test Strategy" — the
   authoritative layer model, the eight-runner stack, the bundler-alias seam, and
   the port-contract test layer.
-- [`packages/client/tests/ui/visual/README.md`](../packages/client/tests/ui/visual/README.md)
+- [`packages/client-react/tests/ui/visual/README.md`](../packages/client-react/tests/ui/visual/README.md)
   — the visual-tier sibling of this document (one axis; pixel goldens).

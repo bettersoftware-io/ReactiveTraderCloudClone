@@ -25,11 +25,11 @@ pnpm clean       # Remove dist/ in all packages
 
 ```
 packages/
-  domain/    @rtc/domain   — Pure TS, depends only on rxjs at runtime. Entities, use cases, port interfaces, simulators.
-  shared/    @rtc/shared   — DTOs, wire-format contracts. Depends on domain.
-  client/    @rtc/client   — React + RxJS + Vite. Depends on domain, shared.
-  mobile/    @rtc/mobile   — React Native (planned). Depends on domain, shared.
-  server/    @rtc/server   — Marble.js + RxJS. Depends on domain, shared.
+  domain/        @rtc/domain         — Pure TS, depends only on rxjs at runtime. Entities, use cases, port interfaces, simulators.
+  shared/        @rtc/shared         — DTOs, wire-format contracts. Depends on domain.
+  client-react/  @rtc/client-react   — React + RxJS + Vite. Depends on domain, shared.
+  mobile/        @rtc/mobile         — React Native (planned). Depends on domain, shared.
+  server/        @rtc/server         — Marble.js + RxJS. Depends on domain, shared.
 ```
 
 **Dependency rule:** dependencies flow inward only. `domain` has only `rxjs` as a runtime dep. `shared` depends only on `domain`. `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other.

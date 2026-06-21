@@ -1,5 +1,5 @@
 {
-  "name": "@rtc/client",
+  "name": "@rtc/client-react",
   "version": "0.0.0",
   "private": true,
   "type": "module",

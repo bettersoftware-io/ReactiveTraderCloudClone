@@ -1,4 +1,4 @@
-// packages/client/src/app/adapters/__tests__/FakeWsAdapter.ts
+// packages/client-react/src/app/adapters/__tests__/FakeWsAdapter.ts
 import { ReplaySubject, type Observable } from "rxjs";
 import type { ConnectionEvent } from "@rtc/domain";
 import type { IWsAdapter, MessageHandler } from "../IWsAdapter";

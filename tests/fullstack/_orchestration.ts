@@ -41,7 +41,7 @@ export function startClient(
 ): ChildProcess {
   return spawn(
     "pnpm",
-    ["--filter", "@rtc/client", "dev"],
+    ["--filter", "@rtc/client-react", "dev"],
     {
       cwd: MONOREPO_ROOT,
       stdio: "ignore",
