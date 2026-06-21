@@ -125,12 +125,22 @@ launcher already isolates it + the pnpm store automatically). Repos **without**
 the file behave exactly as before — root `node_modules`/pnpm store isolation only.
 
 **Only directories can be isolated** — a Docker volume is a directory, so a single
-file (e.g. `packages/*/tsconfig.tsbuildinfo`, the `tsc --build` incremental cache)
-cannot be mounted; mounting a volume at a file path makes `tsc` see a directory
-and breaks the build. Those files are arch-independent and gitignored, so they're
-harmless if left; to stop them appearing on the host too, **relocate** them into
-the already-isolated `dist/` via `"tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"`
-in `tsconfig.base.json` rather than trying to isolate them here.
+file (e.g. the `tsc --build` incremental cache) cannot be mounted; mounting a
+volume at a file path makes `tsc` see a directory and breaks the build. This
+matters for `tsconfig.tsbuildinfo`: by default it sits at the **package root**
+(shared bind mount) while `dist/` is **isolated**. A build in one environment
+then writes a `tsbuildinfo` claiming "up to date" that the *other* environment's
+`tsc --build` reads — so it skips emit and leaves an **empty `dist/`** (which
+breaks the client's vite/rolldown build with `failed to resolve "@rtc/domain"`).
+
+This is fixed by relocating the incremental cache **into** the already-isolated
+`dist/`, so it travels with the outputs it describes and each environment keeps
+its own: each of `packages/{domain,shared,server}/tsconfig.json` sets
+`"tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"`. (Set per-package, not in
+`tsconfig.base.json`, to avoid two composite configs in one package — e.g. the
+client's `tsconfig.json` + `tsconfig.types.json` — colliding on one path.) If you
+ever hit an empty `dist/` after switching environments, `turbo run build --force`
+re-emits.
 
 **When a new package is added** (e.g. `packages/mobile`), add its `node_modules`
 and `dist` entries to `.claude-sandbox.json` — no launcher edit, no host-side
