@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { CurrencyPairPosition } from "@rtc/domain";
 import styles from "./PositionBubbles.module.css";
 
@@ -35,7 +36,7 @@ export function PositionBubbles({ positions }: PositionBubblesProps) {
             key={pos.symbol}
             data-sign={sign}
             className={styles.bubble}
-            style={{ "--bubble-size": `${radius * 2}px`, "--bubble-font-size": `${Math.max(9, radius / 3)}px` } as React.CSSProperties}
+            style={{ "--bubble-size": `${radius * 2}px`, "--bubble-font-size": `${Math.max(9, radius / 3)}px` } as CSSProperties}
           >
             {symbol}
           </div>

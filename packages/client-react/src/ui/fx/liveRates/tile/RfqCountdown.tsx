@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import styles from "./RfqCountdown.module.css";
 
 interface RfqCountdownProps {
@@ -16,7 +17,7 @@ export function RfqCountdown({ remainingMs, totalMs }: RfqCountdownProps) {
           data-testid="rfq-countdown-fill"
           data-warn={fraction <= 0.3 ? "true" : "false"}
           className={styles.fill}
-          style={{ "--rfq-fill": `${fraction * 100}%` } as React.CSSProperties}
+          style={{ "--rfq-fill": `${fraction * 100}%` } as CSSProperties}
         />
       </div>
       <span className={styles.caption}>{seconds}s remaining</span>
