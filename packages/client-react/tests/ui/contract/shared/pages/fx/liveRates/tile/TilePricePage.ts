@@ -36,9 +36,10 @@ export class TilePricePage extends MountedComponent<TilePriceProps> {
       (b.querySelector("span")?.textContent ?? "").trim() === side,
     );
     if (!btn) throw new Error(`No ${side} button`);
-    // Big pips span uses fontWeight 700.
-    const spans = [...btn.querySelectorAll<HTMLSpanElement>("span")];
-    const big = spans.find((s) => s.style.fontWeight === "700");
-    return big?.style.color ?? "";
+    const pips = btn.querySelector<HTMLSpanElement>('[data-testid="tile-pips"]');
+    const movement = pips?.dataset.movement;
+    if (movement === "up") return "var(--accent-positive)";
+    if (movement === "down") return "var(--accent-negative)";
+    return "var(--text-primary)";
   }
 }

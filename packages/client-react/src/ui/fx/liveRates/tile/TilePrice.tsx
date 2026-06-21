@@ -1,4 +1,5 @@
 import { PriceMovementType, type Price } from "@rtc/domain";
+import styles from "./TilePrice.module.css";
 
 interface TilePriceProps {
   price: Price;
@@ -28,6 +29,12 @@ function splitPrice(
   };
 }
 
+function movementKey(movement: PriceMovementType): "up" | "down" | "flat" {
+  if (movement === PriceMovementType.UP) return "up";
+  if (movement === PriceMovementType.DOWN) return "down";
+  return "flat";
+}
+
 function PriceButton({
   label,
   value,
@@ -49,57 +56,19 @@ function PriceButton({
     pipsPosition,
   );
 
-  const movementColor =
-    movement === PriceMovementType.UP
-      ? "var(--accent-positive)"
-      : movement === PriceMovementType.DOWN
-        ? "var(--accent-negative)"
-        : undefined;
-
   return (
-    <button
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: side === "bid" ? "flex-start" : "flex-end",
-        padding: "6px 8px",
-        background: "none",
-        border: "1px solid var(--border-primary)",
-        borderRadius: 4,
-        cursor: "pointer",
-        color: "var(--text-primary)",
-        transition: "border-color 0.15s",
-      }}
-    >
-      <span
-        style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}
-      >
-        {label}
-      </span>
-      <span style={{ display: "flex", alignItems: "baseline" }}>
-        <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-          {prefix}
-        </span>
+    <button className={styles.button} data-side={side}>
+      <span className={styles.label}>{label}</span>
+      <span className={styles.value}>
+        <span className={styles.prefix}>{prefix}</span>
         <span
-          style={{
-            fontSize: 22,
-            fontWeight: 700,
-            color: movementColor ?? "var(--text-primary)",
-          }}
+          data-testid="tile-pips"
+          data-movement={movementKey(movement)}
+          className={styles.pips}
         >
           {pips}
         </span>
-        <span
-          style={{
-            fontSize: 13,
-            color: "var(--text-secondary)",
-            position: "relative",
-            top: -4,
-          }}
-        >
-          {fractional}
-        </span>
+        <span className={styles.fractional}>{fractional}</span>
       </span>
     </button>
   );
@@ -107,7 +76,7 @@ function PriceButton({
 
 export function TilePrice({ price, ratePrecision, pipsPosition }: TilePriceProps) {
   return (
-    <div style={{ display: "flex", gap: 4 }}>
+    <div className={styles.row}>
       <PriceButton
         label="SELL"
         value={price.bid}
@@ -129,16 +98,5 @@ export function TilePrice({ price, ratePrecision, pipsPosition }: TilePriceProps
 }
 
 export function SpreadDisplay({ spread }: { spread: string }) {
-  return (
-    <div
-      style={{
-        textAlign: "center",
-        fontSize: 11,
-        color: "var(--text-muted)",
-        padding: "2px 0",
-      }}
-    >
-      {spread}
-    </div>
-  );
+  return <div className={styles.spread}>{spread}</div>;
 }
