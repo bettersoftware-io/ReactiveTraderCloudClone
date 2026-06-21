@@ -26,8 +26,7 @@ export class RfqFilterTabsPage extends MountedComponent<RfqFilterTabsProps> {
   /** Whether the tab with the given label is rendered as the active one. */
   isActive(label: string): boolean {
     const btn = this.q().getByRole("button", { name: label });
-    // Active tab is bold (fontWeight 600).
-    return btn.style.fontWeight === "600";
+    return btn.dataset.active === "true";
   }
 
   /** Click the tab with the given label. */

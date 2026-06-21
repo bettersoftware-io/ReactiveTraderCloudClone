@@ -3,6 +3,7 @@ import { RfqState, type Instrument, type Dealer, type Rfq } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import { RfqCard } from "./RfqCard";
 import { RfqFilterTabs, type RfqFilter } from "./RfqFilterTabs";
+import styles from "./RfqTilesPanel.module.css";
 
 function filterMatches(state: string, filter: RfqFilter): boolean {
   switch (filter) {
@@ -70,24 +71,15 @@ export function RfqTilesPanel() {
   }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className={styles.panel}>
       <RfqFilterTabs selected={filter} onChange={setFilter} />
 
       {filteredRfqs.length === 0 ? (
-        <div style={{
-          padding: 24,
-          textAlign: "center",
-          color: "var(--text-muted)",
-          fontSize: 12,
-        }}>
+        <div className={styles.empty}>
           No RFQs to display
         </div>
       ) : (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-          gap: 8,
-        }}>
+        <div className={styles.grid}>
           {filteredRfqs.map((rfq) => (
             <RfqTileRow
               key={rfq.id}

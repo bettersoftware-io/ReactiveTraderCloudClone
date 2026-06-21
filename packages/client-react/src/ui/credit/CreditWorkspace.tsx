@@ -3,6 +3,7 @@ import { NewRfqForm } from "./newRfq/NewRfqForm";
 import { RfqTilesPanel } from "./rfqTiles/RfqTilesPanel";
 import { CreditBlotter } from "./blotter/CreditBlotter";
 import { SellSidePanel } from "./sellSide/SellSidePanel";
+import styles from "./CreditWorkspace.module.css";
 
 type CreditView = "tiles" | "new-rfq" | "sell-side";
 
@@ -14,23 +15,15 @@ export function CreditWorkspace() {
   }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-      <div data-testid="credit-nav" style={{ display: "flex", gap: 4 }}>
+    <div className={styles.workspace}>
+      <div data-testid="credit-nav" className={styles.nav}>
         {(["tiles", "new-rfq", "sell-side"] as const).map((v) => (
           <button
             key={v}
             data-testid={`credit-tab-${v}`}
+            data-active={view === v ? "true" : "false"}
             onClick={() => setView(v)}
-            style={{
-              padding: "4px 12px",
-              fontSize: 12,
-              border: "none",
-              borderRadius: 3,
-              cursor: "pointer",
-              fontWeight: view === v ? 600 : 400,
-              backgroundColor: view === v ? "var(--accent-primary)" : "transparent",
-              color: view === v ? "#fff" : "var(--text-secondary)",
-            }}
+            className={styles.tab}
           >
             {v === "tiles" ? "RFQ Tiles" : v === "new-rfq" ? "New RFQ" : "Sell Side"}
           </button>

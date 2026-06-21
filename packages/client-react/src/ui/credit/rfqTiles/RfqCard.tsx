@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { type Rfq, type Quote, type Instrument, type Dealer, RfqState } from "@rtc/domain";
 import { QuoteCard } from "./QuoteCard";
+import styles from "./RfqCard.module.css";
 
 interface RfqCardProps {
   rfq: Rfq;
@@ -20,15 +21,6 @@ function stateLabel(state: RfqState): string {
   }
 }
 
-function stateBadgeColor(state: RfqState): string {
-  switch (state) {
-    case RfqState.Open: return "var(--accent-positive)";
-    case RfqState.Closed: return "var(--accent-primary)";
-    case RfqState.Expired: return "var(--accent-aware)";
-    case RfqState.Cancelled: return "var(--text-muted)";
-  }
-}
-
 export function RfqCard({ rfq, quotes, instrument, dealers, onAccept, onDismiss }: RfqCardProps) {
   const dealerMap = useMemo(() => {
     const m = new Map<number, Dealer>();
@@ -43,55 +35,35 @@ export function RfqCard({ rfq, quotes, instrument, dealers, onAccept, onDismiss 
   }, [onDismiss, rfq.id]);
 
   return (
-    <div style={{
-      backgroundColor: "var(--bg-tile)",
-      border: "1px solid var(--border-primary)",
-      borderRadius: 6,
-      padding: 12,
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-      minWidth: 280,
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div className={styles.card}>
+      <div className={styles.header}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+          <div className={styles.instrumentName}>
             {instrument?.name ?? `Instrument #${rfq.instrumentId}`}
           </div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+          <div className={styles.instrumentMeta}>
             {rfq.direction} | Qty: {rfq.quantity.toLocaleString()}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{
-            fontSize: 10,
-            fontWeight: 600,
-            padding: "2px 6px",
-            borderRadius: 3,
-            backgroundColor: stateBadgeColor(rfq.state),
-            color: "#fff",
-          }}>
+        <div className={styles.headerRight}>
+          <span
+            className={styles.badge}
+            data-state={rfq.state}
+          >
             {stateLabel(rfq.state)}
           </span>
           {canDismiss && onDismiss && (
             <button
               onClick={handleDismiss}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--text-muted)",
-                cursor: "pointer",
-                fontSize: 14,
-                padding: 0,
-              }}
+              className={styles.dismissBtn}
             >
-              {"\u2715"}
+              {"✕"}
             </button>
           )}
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div className={styles.quoteList}>
         {quotes.map((quote) => (
           <QuoteCard
             key={quote.id}

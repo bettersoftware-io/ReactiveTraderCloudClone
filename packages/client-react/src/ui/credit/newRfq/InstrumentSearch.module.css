@@ -1,0 +1,75 @@
+.wrapper {
+  position: relative;
+}
+
+.label {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.selectedInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.selectedName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.selectedMeta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.changeBtn {
+  align-self: flex-start;
+  font-size: 10px;
+  color: var(--accent-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  max-height: 200px;
+  overflow: auto;
+}
+
+.resultItem {
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.resultCusip {
+  font-size: 10px;
+  color: var(--text-muted);
+}

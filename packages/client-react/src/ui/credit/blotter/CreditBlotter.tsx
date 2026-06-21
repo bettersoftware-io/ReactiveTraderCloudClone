@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { type Rfq, type Quote, type Instrument, type Dealer, type CreditTrade, RfqState } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
+import styles from "./CreditBlotter.module.css";
 
 const COLUMNS = [
   "Trade ID", "Status", "Trade Date", "Direction", "Counterparty",
@@ -77,33 +78,17 @@ export function CreditBlotter() {
   );
 
   return (
-    <div style={{
-      backgroundColor: "var(--bg-tile)",
-      border: "1px solid var(--border-primary)",
-      borderRadius: 6,
-      padding: 12,
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-    }}>
-      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+    <div className={styles.blotter}>
+      <span className={styles.title}>
         Credit Trades
       </span>
 
-      <div style={{ overflow: "auto", maxHeight: 250 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
           <thead>
             <tr>
               {COLUMNS.map((col) => (
-                <th key={col} style={{
-                  padding: "6px 8px",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  textAlign: "left",
-                  borderBottom: "1px solid var(--border-primary)",
-                  whiteSpace: "nowrap",
-                }}>
+                <th key={col} className={styles.headerCell}>
                   {col}
                 </th>
               ))}
@@ -112,21 +97,21 @@ export function CreditBlotter() {
           <tbody>
             {trades.map((trade) => (
               <tr key={trade.tradeId}>
-                <td style={cellStyle}>{trade.tradeId}</td>
-                <td style={cellStyle}>Accepted</td>
-                <td style={cellStyle}>{trade.tradeDate}</td>
-                <td style={cellStyle}>{trade.direction}</td>
-                <td style={cellStyle}>{trade.counterParty}</td>
-                <td style={cellStyle}>{trade.cusip}</td>
-                <td style={cellStyle}>{trade.security}</td>
-                <td style={cellStyle}>{trade.quantity.toLocaleString()}</td>
-                <td style={cellStyle}>{trade.orderType}</td>
-                <td style={cellStyle}>${trade.unitPrice}</td>
+                <td className={styles.cell}>{trade.tradeId}</td>
+                <td className={styles.cell}>Accepted</td>
+                <td className={styles.cell}>{trade.tradeDate}</td>
+                <td className={styles.cell}>{trade.direction}</td>
+                <td className={styles.cell}>{trade.counterParty}</td>
+                <td className={styles.cell}>{trade.cusip}</td>
+                <td className={styles.cell}>{trade.security}</td>
+                <td className={styles.cell}>{trade.quantity.toLocaleString()}</td>
+                <td className={styles.cell}>{trade.orderType}</td>
+                <td className={styles.cell}>${trade.unitPrice}</td>
               </tr>
             ))}
             {trades.length === 0 && (
               <tr>
-                <td colSpan={10} style={{ padding: 16, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
+                <td colSpan={10} className={styles.emptyCell}>
                   No credit trades yet
                 </td>
               </tr>
@@ -137,10 +122,3 @@ export function CreditBlotter() {
     </div>
   );
 }
-
-const cellStyle: React.CSSProperties = {
-  padding: "4px 8px",
-  borderBottom: "1px solid var(--border-subtle)",
-  whiteSpace: "nowrap",
-  color: "var(--text-primary)",
-};

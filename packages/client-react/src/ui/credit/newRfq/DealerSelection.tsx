@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { Dealer } from "@rtc/domain";
+import styles from "./DealerSelection.module.css";
 
 interface DealerSelectionProps {
   dealers: readonly Dealer[];
@@ -19,15 +20,15 @@ export function DealerSelection({ dealers, selectedIds, onChange }: DealerSelect
   );
 
   return (
-    <div>
-      <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
+    <div className={styles.section}>
+      <label className={styles.label}>
         Dealers
       </label>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, maxHeight: 150, overflow: "auto" }}>
+      <div className={styles.list}>
         {dealers.map((dealer) => (
           <label
             key={dealer.id}
-            style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-primary)", cursor: "pointer" }}
+            className={styles.dealerLabel}
           >
             <input
               type="checkbox"

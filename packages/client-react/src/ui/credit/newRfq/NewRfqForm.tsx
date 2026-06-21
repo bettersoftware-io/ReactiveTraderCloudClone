@@ -4,6 +4,7 @@ import { useHooks } from "../../hooks/HooksProvider";
 import { InstrumentSearch } from "./InstrumentSearch";
 import { DealerSelection } from "./DealerSelection";
 import { QuantityInput } from "./QuantityInput";
+import styles from "./NewRfqForm.module.css";
 
 interface NewRfqFormProps {
   onCreated: (rfqId: number) => void;
@@ -62,16 +63,9 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
 
   if (submission.state.status === "confirmed") {
     return (
-      <div style={{
-        backgroundColor: "var(--bg-tile)",
-        border: "1px solid var(--border-primary)",
-        borderRadius: 6,
-        padding: 24,
-        textAlign: "center",
-        color: "var(--text-primary)",
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>RFQ Created</div>
-        <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+      <div className={styles.confirmedCard}>
+        <div className={styles.confirmedTitle}>RFQ Created</div>
+        <div className={styles.confirmedDetail}>
           {instrument?.name} | {direction} | RFQ ID: {submission.state.rfqId}
         </div>
       </div>
@@ -79,17 +73,8 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
   }
 
   return (
-    <div style={{
-      backgroundColor: "var(--bg-tile)",
-      border: "1px solid var(--border-primary)",
-      borderRadius: 6,
-      padding: 16,
-      display: "flex",
-      flexDirection: "column",
-      gap: 12,
-      maxWidth: 400,
-    }}>
-      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+    <div className={styles.form}>
+      <span className={styles.formTitle}>
         New RFQ
       </span>
 
@@ -100,26 +85,18 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
       />
 
       <div>
-        <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>
+        <label className={styles.fieldLabel}>
           Direction
         </label>
-        <div style={{ display: "flex", gap: 4 }}>
+        <div className={styles.directionRow}>
           {[Direction.Buy, Direction.Sell].map((dir) => (
             <button
               key={dir}
               data-testid={`rfq-direction-${dir}`}
+              data-direction={dir}
+              data-selected={direction === dir ? "true" : "false"}
               onClick={() => setDirection(dir)}
-              style={{
-                flex: 1,
-                padding: "6px 0",
-                fontSize: 12,
-                fontWeight: 600,
-                border: "1px solid var(--border-primary)",
-                borderRadius: 3,
-                cursor: "pointer",
-                backgroundColor: direction === dir ? (dir === Direction.Buy ? "var(--accent-positive)" : "var(--accent-negative)") : "transparent",
-                color: direction === dir ? "#fff" : "var(--text-secondary)",
-              }}
+              className={styles.directionBtn}
             >
               {dir}
             </button>
@@ -138,17 +115,8 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
       <button
         onClick={handleSubmit}
         disabled={!canSubmit}
-        style={{
-          padding: "8px 0",
-          fontSize: 13,
-          fontWeight: 600,
-          border: "none",
-          borderRadius: 4,
-          cursor: canSubmit ? "pointer" : "not-allowed",
-          backgroundColor: canSubmit ? "var(--accent-primary)" : "var(--border-primary)",
-          color: "#fff",
-          opacity: canSubmit ? 1 : 0.5,
-        }}
+        data-can-submit={canSubmit ? "true" : "false"}
+        className={styles.submitBtn}
       >
         {submitting ? "Submitting..." : "Submit RFQ"}
       </button>

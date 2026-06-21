@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { ADAPTIVE_BANK_NAME, type Instrument, type Rfq } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import { TradeTicket } from "./TradeTicket";
+import styles from "./SellSidePanel.module.css";
 
 interface SellSideRfqRowProps {
   rfq: Rfq;
@@ -40,17 +41,13 @@ export function SellSidePanel() {
   }, [instruments]);
 
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-    }}>
-      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+    <div className={styles.panel}>
+      <span className={styles.title}>
         Sell Side (Adaptive Bank)
       </span>
 
       {adaptiveBankId === undefined || rfqs.length === 0 ? (
-        <div style={{ padding: 16, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
+        <div className={styles.empty}>
           No RFQs for Adaptive Bank
         </div>
       ) : (

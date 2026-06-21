@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { type Rfq, type Quote, type Instrument, RfqState } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
+import styles from "./TradeTicket.module.css";
 
 interface TradeTicketProps {
   rfq: Rfq;
@@ -31,27 +32,21 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
   }, [pass, quote.id]);
 
   return (
-    <div style={{
-      backgroundColor: "var(--bg-tile)",
-      border: "1px solid var(--border-primary)",
-      borderRadius: 6,
-      padding: 12,
-      display: "flex",
-      flexDirection: "column",
-      gap: 6,
-      opacity: rfq.state !== RfqState.Open ? 0.6 : 1,
-    }}>
+    <div
+      className={styles.ticket}
+      data-active={rfq.state === RfqState.Open ? "true" : "false"}
+    >
       <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+        <div className={styles.instrumentName}>
           {instrument?.name ?? `Instrument #${rfq.instrumentId}`}
         </div>
-        <div style={{ fontSize: 10, color: "var(--text-muted)" }}>
+        <div className={styles.instrumentMeta}>
           {instrument?.cusip} | {rfq.direction} | Qty: {rfq.quantity.toLocaleString()}
         </div>
       </div>
 
       {hasResponded || submitted ? (
-        <div style={{ fontSize: 12, color: "var(--text-secondary)", padding: "4px 0" }}>
+        <div className={styles.respondedText}>
           {quote.state.type === "passed" ? "Passed" :
            quote.state.type === "pendingWithPrice" ? `Quoted: $${quote.state.price}` :
            rfq.state === RfqState.Cancelled ? "RFQ Cancelled" :
@@ -59,58 +54,32 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
            "Responded"}
         </div>
       ) : isActive ? (
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+        <div className={styles.inputRow}>
           <input
             type="number"
             data-testid="trade-ticket-price"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder="Price"
-            style={{
-              flex: 1,
-              padding: "4px 6px",
-              fontSize: 12,
-              border: "1px solid var(--border-primary)",
-              borderRadius: 3,
-              backgroundColor: "transparent",
-              color: "var(--text-primary)",
-              outline: "none",
-            }}
+            className={styles.priceInput}
           />
           <button
             onClick={handleSubmit}
             disabled={!price}
-            style={{
-              padding: "4px 10px",
-              fontSize: 11,
-              fontWeight: 600,
-              border: "none",
-              borderRadius: 3,
-              backgroundColor: "var(--accent-positive)",
-              color: "#fff",
-              cursor: price ? "pointer" : "not-allowed",
-              opacity: price ? 1 : 0.5,
-            }}
+            data-can-submit={!!price ? "true" : "false"}
+            className={styles.submitBtn}
           >
             Submit
           </button>
           <button
             onClick={handlePass}
-            style={{
-              padding: "4px 10px",
-              fontSize: 11,
-              border: "1px solid var(--border-primary)",
-              borderRadius: 3,
-              backgroundColor: "transparent",
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-            }}
+            className={styles.passBtn}
           >
             Pass
           </button>
         </div>
       ) : (
-        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+        <div className={styles.closedText}>
           {rfq.state === RfqState.Cancelled ? "Cancelled" : rfq.state === RfqState.Expired ? "Expired" : "Closed"}
         </div>
       )}

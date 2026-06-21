@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import type { Instrument } from "@rtc/domain";
+import styles from "./InstrumentSearch.module.css";
 
 interface InstrumentSearchProps {
   instruments: readonly Instrument[];
@@ -32,21 +33,21 @@ export function InstrumentSearch({ instruments, selected, onSelect }: Instrument
   );
 
   return (
-    <div style={{ position: "relative" }}>
-      <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 2 }}>
+    <div className={styles.wrapper}>
+      <label className={styles.label}>
         Instrument
       </label>
       {selected ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "4px 0" }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+        <div className={styles.selectedInfo}>
+          <span className={styles.selectedName}>
             {selected.name}
           </span>
-          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+          <span className={styles.selectedMeta}>
             CUSIP: {selected.cusip} | Coupon: {selected.interestRate}%
           </span>
           <button
             onClick={() => { onSelect(null!); setQuery(""); }}
-            style={{ alignSelf: "flex-start", fontSize: 10, color: "var(--accent-primary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            className={styles.changeBtn}
           >
             Change
           </button>
@@ -59,45 +60,19 @@ export function InstrumentSearch({ instruments, selected, onSelect }: Instrument
             onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
             placeholder="Search by ticker, name, or CUSIP..."
-            style={{
-              width: "100%",
-              padding: "6px 8px",
-              fontSize: 12,
-              border: "1px solid var(--border-primary)",
-              borderRadius: 3,
-              backgroundColor: "transparent",
-              color: "var(--text-primary)",
-              outline: "none",
-            }}
+            className={styles.searchInput}
           />
           {open && results.length > 0 && (
-            <div style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              zIndex: 10,
-              backgroundColor: "var(--bg-secondary)",
-              border: "1px solid var(--border-primary)",
-              borderRadius: 4,
-              maxHeight: 200,
-              overflow: "auto",
-            }}>
+            <div className={styles.dropdown}>
               {results.map((inst) => (
                 <div
                   key={inst.id}
                   data-testid={`instrument-result-${inst.id}`}
                   onClick={() => handleSelect(inst)}
-                  style={{
-                    padding: "6px 8px",
-                    fontSize: 12,
-                    cursor: "pointer",
-                    color: "var(--text-primary)",
-                    borderBottom: "1px solid var(--border-subtle)",
-                  }}
+                  className={styles.resultItem}
                 >
                   <div>{inst.name}</div>
-                  <div style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                  <div className={styles.resultCusip}>
                     CUSIP: {inst.cusip}
                   </div>
                 </div>

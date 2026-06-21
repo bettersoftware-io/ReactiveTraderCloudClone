@@ -1,0 +1,29 @@
+.section {
+}
+
+.label {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.input {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.input[data-error="true"] {
+  border-color: var(--accent-negative);
+}
+
+.errorMsg {
+  font-size: 10px;
+  color: var(--accent-negative);
+}
