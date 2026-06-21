@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import type { CreditRfqFormPO } from "../contracts/CreditRfqForm";
 import { STRINGS } from "../contracts/strings";
+import { TESTIDS } from "../contracts/testids";
 
 export class PlaywrightCreditRfqForm implements CreditRfqFormPO {
   constructor(private readonly page: Page) {}
@@ -21,8 +22,7 @@ export class PlaywrightCreditRfqForm implements CreditRfqFormPO {
   }
   async hasDirectionLabel(): Promise<boolean> {
     return await this.page
-      .locator("label")
-      .filter({ hasText: STRINGS.creditRfq.directionLabel })
+      .getByTestId(TESTIDS.credit.directionLabel)
       .isVisible();
   }
 }

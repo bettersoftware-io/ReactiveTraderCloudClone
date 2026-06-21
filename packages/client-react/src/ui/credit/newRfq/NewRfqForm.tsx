@@ -99,7 +99,9 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
       />
 
       <div>
-        <span className={styles.fieldLabel}>Direction</span>
+        <span className={styles.fieldLabel} data-testid="rfq-direction-label">
+          Direction
+        </span>
         <div className={styles.directionRow}>
           {[Direction.Buy, Direction.Sell].map((dir) => (
             <button

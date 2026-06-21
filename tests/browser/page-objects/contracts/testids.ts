@@ -29,5 +29,6 @@ export const TESTIDS = {
   credit: {
     nav: "credit-nav",
     tab: (v: "tiles" | "new-rfq" | "sell-side") => `credit-tab-${v}`,
+    directionLabel: "rfq-direction-label",
   },
 } as const;

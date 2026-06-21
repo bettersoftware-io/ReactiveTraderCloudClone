@@ -1,5 +1,6 @@
 import type { CreditRfqFormPO } from "../contracts/CreditRfqForm";
 import { STRINGS } from "../contracts/strings";
+import { TESTIDS } from "../contracts/testids";
 
 export class CypressCreditRfqForm implements CreditRfqFormPO {
   waitForSubmitButton(timeoutMs: number): Promise<void> {
@@ -31,11 +32,10 @@ export class CypressCreditRfqForm implements CreditRfqFormPO {
 
   hasDirectionLabel(): Promise<boolean> {
     return cy.get("body").then(($body) => {
-      const $labels = $body.find("label").filter((_, el) => {
-        const text = el.textContent ?? "";
-        return text.includes(STRINGS.creditRfq.directionLabel);
-      });
-      return $labels.length > 0 && $labels.is(":visible");
+      const $label = $body.find(
+        `[data-testid="${TESTIDS.credit.directionLabel}"]`,
+      );
+      return $label.length > 0 && $label.is(":visible");
     }) as unknown as Promise<boolean>;
   }
 }
