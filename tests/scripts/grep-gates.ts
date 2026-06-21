@@ -71,7 +71,13 @@ function checkPresenterDescribePrefix(): string[] {
     if (!existsSync(testPath)) continue;
     const testSrc = readFileSync(testPath, "utf8");
     const titles = [...testSrc.matchAll(/^\s*describe\(\s*"([^"]+)"/gm)].map(
-      ([, title]) => title ?? "",
+      ([, title]) => {
+        if (title === undefined)
+          throw new Error(
+            "grep-gates: regex matched but capture group (title) is undefined",
+          );
+        return title;
+      },
     );
     for (const title of titles) {
       if (!title.startsWith("@presenter Feature: ")) {
