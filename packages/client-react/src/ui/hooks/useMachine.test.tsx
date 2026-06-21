@@ -127,7 +127,7 @@ describe("useMachine", () => {
   }) {
     const { state, bump } = useMachine(() => machine);
     return (
-      <button data-testid="probe" onClick={() => bump()}>
+      <button type="button" data-testid="probe" onClick={() => bump()}>
         {state}
       </button>
     );

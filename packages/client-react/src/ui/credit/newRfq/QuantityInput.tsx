@@ -13,11 +13,12 @@ interface QuantityInputProps {
 export function QuantityInput({ value, onChange, error }: QuantityInputProps) {
   return (
     <div>
-      <label className={styles.label}>
+      <label htmlFor="quantity-input" className={styles.label}>
         Quantity (x{CREDIT_QUANTITY_MULTIPLIER.toLocaleString()})
       </label>
       <input
         type="number"
+        id="quantity-input"
         data-testid="quantity-input"
         data-error={error ? "true" : "false"}
         value={value}

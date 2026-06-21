@@ -55,7 +55,7 @@ export class FakeWsAdapter implements IWsAdapter {
 
   /** Drive a fake server frame to all subscribers of `type`. */
   emit(type: string, payload: unknown): void {
-    this.listeners.get(type)?.forEach((handler) => handler(payload));
+    for (const handler of this.listeners.get(type) ?? []) handler(payload);
   }
 
   /** Resolve the next pending RPC of `type` with `response`. */

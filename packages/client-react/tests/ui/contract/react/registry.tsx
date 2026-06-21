@@ -5,7 +5,6 @@ import type {
   Direction,
   Instrument,
   Price,
-  PriceTick,
   Quote,
   Rfq,
   Trade,
@@ -111,10 +110,8 @@ import type {
 
 const noopFilter = (_f: ColumnFilter | null): void => {};
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyToken = ComponentToken<any, MountedComponent<any>>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ElementFor = (props: Record<string, any>) => ReactElement;
+type AnyToken = ComponentToken<unknown, MountedComponent<unknown>>;
+type ElementFor = (props: Record<string, unknown>) => ReactElement;
 
 /** token → React element factory. Identity-keyed; no string keys. */
 export const registry = new Map<AnyToken, ElementFor>([
@@ -341,8 +338,13 @@ export const registry = new Map<AnyToken, ElementFor>([
         pair={p.pair as CurrencyPair}
         rfqState={p.rfqState as TileRfqState}
         onRequestQuote={(p.onRequestQuote as () => void) ?? (() => {})}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onExecute={(p.onExecute as any) ?? (() => {})}
+        onExecute={
+          (p.onExecute as (
+            direction: Direction,
+            price: Price,
+            notional: number,
+          ) => void) ?? (() => {})
+        }
         notional={(p.notional as number) ?? 0}
       />
     ),

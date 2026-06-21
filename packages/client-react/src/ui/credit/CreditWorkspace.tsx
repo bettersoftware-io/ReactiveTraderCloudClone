@@ -20,6 +20,7 @@ export function CreditWorkspace() {
         {(["tiles", "new-rfq", "sell-side"] as const).map((v) => (
           <button
             key={v}
+            type="button"
             data-testid={`credit-tab-${v}`}
             data-active={view === v ? "true" : "false"}
             onClick={() => setView(v)}

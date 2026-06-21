@@ -61,7 +61,7 @@ console.log(
     maxParallel === 1 ? "serially" : `with up to ${maxParallel} in parallel`
   }:`,
 );
-runners.forEach((r) => console.log(`  • ${r}`));
+for (const r of runners) console.log(`  • ${r}`);
 
 const run = (script: string) =>
   new Promise<{ script: string; code: number; output: string }>((resolve) => {

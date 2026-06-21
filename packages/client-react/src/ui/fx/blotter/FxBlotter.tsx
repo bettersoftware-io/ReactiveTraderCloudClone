@@ -85,6 +85,7 @@ export function FxBlotter() {
           )}
         </div>
         <button
+          type="button"
           data-testid="export-csv"
           onClick={() => exportToCsv(processedTrades)}
           className={styles.exportBtn}

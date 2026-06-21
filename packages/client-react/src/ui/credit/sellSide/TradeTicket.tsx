@@ -24,7 +24,7 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
 
   const handleSubmit = useCallback(() => {
     const num = parseFloat(price);
-    if (isNaN(num) || num <= 0) return;
+    if (Number.isNaN(num) || num <= 0) return;
     submitPrice(quote.id, num);
   }, [submitPrice, quote.id, price]);
 
@@ -70,6 +70,7 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
             className={styles.priceInput}
           />
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={!price}
             data-can-submit={price ? "true" : "false"}
@@ -77,7 +78,7 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
           >
             Submit
           </button>
-          <button onClick={handlePass} className={styles.passBtn}>
+          <button type="button" onClick={handlePass} className={styles.passBtn}>
             Pass
           </button>
         </div>

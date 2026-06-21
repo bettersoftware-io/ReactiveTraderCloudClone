@@ -12,6 +12,7 @@ export function CurrencyFilter({ selected, onChange }: CurrencyFilterProps) {
       {CURRENCY_CATEGORIES.map((cat) => (
         <button
           key={cat}
+          type="button"
           data-testid={`filter-${cat}`}
           data-active={selected === cat ? "true" : "false"}
           onClick={() => onChange(cat)}

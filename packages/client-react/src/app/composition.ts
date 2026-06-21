@@ -1,5 +1,4 @@
 import {
-  type ConnectionEvent,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
 } from "@rtc/domain";

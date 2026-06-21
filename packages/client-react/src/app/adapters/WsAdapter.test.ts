@@ -166,7 +166,7 @@ describe("WsAdapter.connectionEvents()", () => {
 });
 
 describe("WsAdapter.rpc() + message routing", () => {
-  function open(adapter: WsAdapter): MockWebSocket {
+  function open(_adapter: WsAdapter): MockWebSocket {
     lastMock.readyState = MockWebSocket.OPEN;
     lastMock.onopen?.(new Event("open"));
     return lastMock;

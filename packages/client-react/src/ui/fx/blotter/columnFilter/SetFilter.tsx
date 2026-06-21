@@ -56,7 +56,7 @@ export function SetFilter({
           {val}
         </label>
       ))}
-      <button onClick={handleApply} className={styles.applyBtn}>
+      <button type="button" onClick={handleApply} className={styles.applyBtn}>
         Apply
       </button>
     </div>

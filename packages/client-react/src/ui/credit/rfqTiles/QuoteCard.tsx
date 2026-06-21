@@ -38,7 +38,11 @@ export function QuoteCard({ quote, dealer, onAccept }: QuoteCardProps) {
         <span className={styles.priceText}>{displayText(quote.state)}</span>
       </div>
       {canAccept && (
-        <button onClick={handleAccept} className={styles.acceptBtn}>
+        <button
+          type="button"
+          onClick={handleAccept}
+          className={styles.acceptBtn}
+        >
           Accept
         </button>
       )}

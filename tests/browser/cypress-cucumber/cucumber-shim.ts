@@ -32,7 +32,7 @@ function wrapStepFn(fn: StepFn): StepFn {
     // cy.* are already in the Cypress queue regardless of whether the handler
     // is async. We discard the native Promise return value (if any) and let
     // the Cypress command queue handle ordering.
-    const result = (fn as Function).apply(this, args);
+    const result = (fn as (...a: unknown[]) => unknown).apply(this, args);
     // If the step handler returned a Cypress Chainable, return it directly so
     // the preprocessor can chain off it. Otherwise return cy.wrap(undefined)
     // as a safe no-op anchor. Either way the preprocessor never sees a native

@@ -57,7 +57,7 @@ function PriceButton({
   );
 
   return (
-    <button className={styles.button} data-side={side}>
+    <button type="button" className={styles.button} data-side={side}>
       <span className={styles.label}>{label}</span>
       <span className={styles.value}>
         <span className={styles.prefix}>{prefix}</span>

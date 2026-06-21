@@ -17,7 +17,7 @@ export class NewRfqFormPage extends MountedComponent<NewRfqFormProps> {
    * this, userEvent's internal delays wait on real timers and never resolve
    * once fake timers are installed.
    */
-  useFakeTimerAdvance(advanceTimers: (ms: number) => void): void {
+  setFakeTimerAdvance(advanceTimers: (ms: number) => void): void {
     this.user = userEvent.setup({ advanceTimers });
   }
 

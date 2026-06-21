@@ -1,4 +1,4 @@
-import { Direction, ExecutionStatus, type Trade } from "@rtc/domain";
+import { Direction, ExecutionStatus } from "@rtc/domain";
 import type { TileExecutionState } from "../../../../app/presenters/TileExecutionMachine";
 import styles from "./TileConfirmation.module.css";
 
@@ -99,14 +99,27 @@ function statusKey(state: TileExecutionState): ConfirmationStatus {
 export function TileConfirmation({ state, onDismiss }: TileConfirmationProps) {
   if (state.status === "ready") return null;
 
+  if (state.status === "started") {
+    return (
+      <div
+        data-testid="trade-confirmation"
+        data-status={statusKey(state)}
+        className={styles.overlay}
+      >
+        <ConfirmationContent state={state} />
+      </div>
+    );
+  }
+
   return (
-    <div
+    <button
+      type="button"
       data-testid="trade-confirmation"
       data-status={statusKey(state)}
-      onClick={state.status !== "started" ? onDismiss : undefined}
+      onClick={onDismiss}
       className={styles.overlay}
     >
       <ConfirmationContent state={state} />
-    </div>
+    </button>
   );
 }

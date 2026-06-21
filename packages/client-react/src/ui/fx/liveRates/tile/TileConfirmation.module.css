@@ -1,4 +1,8 @@
 .overlay {
+  /* Reset button defaults so the overlay renders identically to a <div> */
+  appearance: none;
+  border: none;
+  font-family: inherit;
   position: absolute;
   inset: 0;
   border-radius: 6px;

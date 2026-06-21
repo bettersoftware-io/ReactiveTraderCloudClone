@@ -1,6 +1,5 @@
 // tests/presenter/cucumber/hooks.ts
 import { After, Before } from "@cucumber/cucumber";
-import { Subscription } from "rxjs";
 import { buildPresenterApp } from "../scenarios/_buildApp";
 import { newScratchpad } from "../scenarios/_shared/common";
 import type { PresenterWorld } from "./world";

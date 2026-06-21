@@ -67,7 +67,11 @@ export function RfqCard({
             {stateLabel(rfq.state)}
           </span>
           {canDismiss && onDismiss && (
-            <button onClick={handleDismiss} className={styles.dismissBtn}>
+            <button
+              type="button"
+              onClick={handleDismiss}
+              className={styles.dismissBtn}
+            >
               {"✕"}
             </button>
           )}

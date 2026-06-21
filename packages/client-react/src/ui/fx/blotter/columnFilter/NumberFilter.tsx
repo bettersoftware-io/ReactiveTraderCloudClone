@@ -38,7 +38,7 @@ export function NumberFilter({
 
   const handleApply = useCallback(() => {
     const num = parseFloat(value);
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       onApply(null);
       return;
     }
@@ -48,7 +48,7 @@ export function NumberFilter({
       column,
       comparator,
       value: num,
-      valueTo: numTo !== undefined && !isNaN(numTo) ? numTo : undefined,
+      valueTo: numTo !== undefined && !Number.isNaN(numTo) ? numTo : undefined,
     });
   }, [column, comparator, value, valueTo, onApply]);
 
@@ -86,13 +86,18 @@ export function NumberFilter({
       )}
       <div className={styles.buttons}>
         <button
+          type="button"
           data-testid="number-filter-apply"
           onClick={handleApply}
           className={styles.applyBtn}
         >
           Apply
         </button>
-        <button onClick={() => onApply(null)} className={styles.resetBtn}>
+        <button
+          type="button"
+          onClick={() => onApply(null)}
+          className={styles.resetBtn}
+        >
           Reset
         </button>
       </div>

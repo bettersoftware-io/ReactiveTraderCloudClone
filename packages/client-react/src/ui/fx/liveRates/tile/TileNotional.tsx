@@ -57,6 +57,7 @@ export function TileNotional({
       />
       {!notional.state.isDefault && (
         <button
+          type="button"
           onClick={notional.reset}
           title="Reset to default"
           className={styles.resetButton}

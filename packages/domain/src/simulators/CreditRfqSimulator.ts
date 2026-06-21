@@ -168,8 +168,7 @@ export class CreditRfqSimulator implements WorkflowPort {
   accept(quoteId: number): Observable<void> {
     return defer(() => {
       const quote = this.quotes.get(quoteId);
-      if (!quote || quote.state.type !== "pendingWithPrice")
-        return of(undefined);
+      if (quote?.state.type !== "pendingWithPrice") return of(undefined);
 
       const price = quote.state.price;
 

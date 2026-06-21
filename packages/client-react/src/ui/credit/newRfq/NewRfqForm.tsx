@@ -42,13 +42,15 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
 
   const quantityNum = parseFloat(quantity);
   const quantityError =
-    quantity && !isNaN(quantityNum) && quantityNum > CREDIT_MAX_QUANTITY_INPUT
+    quantity &&
+    !Number.isNaN(quantityNum) &&
+    quantityNum > CREDIT_MAX_QUANTITY_INPUT
       ? "Max quantity exceeded"
       : null;
 
   const canSubmit =
     instrument !== null &&
-    !isNaN(quantityNum) &&
+    !Number.isNaN(quantityNum) &&
     quantityNum > 0 &&
     !quantityError &&
     selectedDealerIds.size > 0 &&
@@ -97,11 +99,12 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
       />
 
       <div>
-        <label className={styles.fieldLabel}>Direction</label>
+        <span className={styles.fieldLabel}>Direction</span>
         <div className={styles.directionRow}>
           {[Direction.Buy, Direction.Sell].map((dir) => (
             <button
               key={dir}
+              type="button"
               data-testid={`rfq-direction-${dir}`}
               data-direction={dir}
               data-selected={direction === dir ? "true" : "false"}
@@ -127,6 +130,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
       />
 
       <button
+        type="button"
         onClick={handleSubmit}
         disabled={!canSubmit}
         data-can-submit={canSubmit ? "true" : "false"}

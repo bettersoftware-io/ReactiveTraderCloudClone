@@ -38,7 +38,7 @@ export function InstrumentSearch({
 
   return (
     <div className={styles.wrapper}>
-      <label className={styles.label}>Instrument</label>
+      <span className={styles.label}>Instrument</span>
       {selected ? (
         <div className={styles.selectedInfo}>
           <span className={styles.selectedName}>{selected.name}</span>
@@ -46,6 +46,7 @@ export function InstrumentSearch({
             CUSIP: {selected.cusip} | Coupon: {selected.interestRate}%
           </span>
           <button
+            type="button"
             onClick={() => {
               onSelect(null!);
               setQuery("");
@@ -71,15 +72,16 @@ export function InstrumentSearch({
           {open && results.length > 0 && (
             <div className={styles.dropdown}>
               {results.map((inst) => (
-                <div
+                <button
                   key={inst.id}
+                  type="button"
                   data-testid={`instrument-result-${inst.id}`}
                   onClick={() => handleSelect(inst)}
                   className={styles.resultItem}
                 >
                   <div>{inst.name}</div>
                   <div className={styles.resultCusip}>CUSIP: {inst.cusip}</div>
-                </div>
+                </button>
               ))}
             </div>
           )}

@@ -82,13 +82,18 @@ export function DateFilter({
       )}
       <div className={styles.buttons}>
         <button
+          type="button"
           data-testid="date-filter-apply"
           onClick={handleApply}
           className={styles.applyBtn}
         >
           Apply
         </button>
-        <button onClick={() => onApply(null)} className={styles.resetBtn}>
+        <button
+          type="button"
+          onClick={() => onApply(null)}
+          className={styles.resetBtn}
+        >
           Reset
         </button>
       </div>

@@ -1,5 +1,4 @@
 import {
-  CONFIRMATION_DISMISS_MS,
   type CurrencyPair,
   Direction,
   EXECUTION_TIMEOUT_MS,

@@ -8,8 +8,8 @@ interface PairPnlBarsProps {
 
 function formatPnl(value: number): string {
   const abs = Math.abs(value);
-  if (abs >= 1_000_000) return (value / 1_000_000).toFixed(1) + "m";
-  if (abs >= 1_000) return (value / 1_000).toFixed(0) + "k";
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}m`;
+  if (abs >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
   return value.toFixed(0);
 }
 

@@ -15,6 +15,7 @@ export function RfqFilterTabs({ selected, onChange }: RfqFilterTabsProps) {
       {FILTERS.map((f) => (
         <button
           key={f}
+          type="button"
           data-testid={`rfq-filter-${f}`}
           data-active={selected === f ? "true" : "false"}
           onClick={() => onChange(f)}

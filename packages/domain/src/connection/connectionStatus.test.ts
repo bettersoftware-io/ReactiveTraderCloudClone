@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ConnectionEvent } from "./connectionStatus.js";
 import {
   ConnectionStatus,
   mapGatewayStatus,

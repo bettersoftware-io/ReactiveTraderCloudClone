@@ -61,7 +61,11 @@ export function TileRfq({
 
   if (state.status === "init") {
     return (
-      <button onClick={onRequestQuote} className={styles.initiateButton}>
+      <button
+        type="button"
+        onClick={onRequestQuote}
+        className={styles.initiateButton}
+      >
         Initiate RFQ
       </button>
     );
@@ -71,7 +75,11 @@ export function TileRfq({
     return (
       <div className={styles.requestedWrapper}>
         <div className={styles.awaitingText}>Awaiting Price...</div>
-        <button onClick={rfqState.cancel} className={styles.cancelButton}>
+        <button
+          type="button"
+          onClick={rfqState.cancel}
+          className={styles.cancelButton}
+        >
           Cancel RFQ
         </button>
       </div>
@@ -83,12 +91,14 @@ export function TileRfq({
       <div className={styles.receivedWrapper}>
         <div className={styles.quoteRow}>
           <button
+            type="button"
             onClick={() => handleAccept(Direction.Sell)}
             className={styles.sellQuoteButton}
           >
             Sell {formatPrice(state.quote.bid, pair.ratePrecision)}
           </button>
           <button
+            type="button"
             onClick={() => handleAccept(Direction.Buy)}
             className={styles.buyQuoteButton}
           >
@@ -99,7 +109,11 @@ export function TileRfq({
           remainingMs={state.remainingMs}
           totalMs={state.quote.timeoutMs}
         />
-        <button onClick={rfqState.reject} className={styles.rejectButton}>
+        <button
+          type="button"
+          onClick={rfqState.reject}
+          className={styles.rejectButton}
+        >
           Reject
         </button>
       </div>

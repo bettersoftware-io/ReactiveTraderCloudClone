@@ -106,6 +106,7 @@ export function BlotterHeader({
             )}
           </span>
           <button
+            type="button"
             data-testid={`blotter-filter-toggle-${col.key}`}
             onClick={(e) => {
               e.stopPropagation();

@@ -62,11 +62,20 @@
 }
 
 .resultItem {
+  /* Reset button defaults so the item renders identically to a <div> */
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  width: 100%;
+  text-align: left;
+  display: block;
+  box-sizing: border-box;
   padding: 6px 8px;
   font-size: 12px;
+  font-family: inherit;
   cursor: pointer;
   color: var(--text-primary);
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 .resultCusip {

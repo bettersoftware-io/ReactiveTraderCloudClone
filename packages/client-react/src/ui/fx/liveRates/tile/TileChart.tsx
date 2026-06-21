@@ -44,6 +44,7 @@ export function TileChart({ history }: TileChartProps) {
       preserveAspectRatio="none"
       className={styles.chartWrapper}
     >
+      <title>Price history chart</title>
       {path && (
         <path
           d={path}

@@ -25,7 +25,7 @@ export function DealerSelection({
 
   return (
     <div>
-      <label className={styles.label}>Dealers</label>
+      <span className={styles.label}>Dealers</span>
       <div className={styles.list}>
         {dealers.map((dealer) => (
           <label key={dealer.id} className={styles.dealerLabel}>

@@ -56,6 +56,7 @@ export function PnlChart({ history }: PnlChartProps) {
       preserveAspectRatio="none"
       className={styles.chart}
     >
+      <title>P&amp;L chart</title>
       {zeroY !== null && (
         <line
           x1={PADDING}

@@ -17,6 +17,7 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
           {(["fx", "credit", "admin"] as const).map((tab) => (
             <button
               key={tab}
+              type="button"
               data-testid={`tab-${tab}`}
               data-active={activeTab === tab ? "true" : "false"}
               onClick={() => onTabChange(tab)}

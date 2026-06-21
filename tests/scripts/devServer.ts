@@ -45,8 +45,13 @@ async function pingPort(port: number): Promise<boolean> {
 // Pull the actual bound port out of Vite's startup banner, e.g.
 //   ➜  Local:   http://127.0.0.1:3002/
 // Strip ANSI colour codes first. Returns null until the line has been printed.
+// ESC (U+001B) used to strip ANSI colour sequences; defined as a string constant
+// to avoid a literal control character inside a regex (biome noControlCharactersInRegex).
+const ESC = String.fromCharCode(0x1b);
+const ANSI_RE = new RegExp(`${ESC}\\[[0-9;]*m`, "g");
+
 function parseBoundPort(log: string): number | null {
-  const clean = log.replace(/\[[0-9;]*m/g, "");
+  const clean = log.replace(ANSI_RE, "");
   const match =
     clean.match(/Local:\s*https?:\/\/[\d.]+:(\d+)/) ??
     clean.match(/https?:\/\/127\.0\.0\.1:(\d+)/);

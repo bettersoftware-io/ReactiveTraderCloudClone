@@ -10,6 +10,7 @@ export function TileExecution({ onExecute, disabled }: TileExecutionProps) {
   return (
     <div className={styles.row}>
       <button
+        type="button"
         data-testid="sell-btn"
         data-side="sell"
         onClick={() => onExecute(Direction.Sell)}
@@ -19,6 +20,7 @@ export function TileExecution({ onExecute, disabled }: TileExecutionProps) {
         Sell
       </button>
       <button
+        type="button"
         data-testid="buy-btn"
         data-side="buy"
         onClick={() => onExecute(Direction.Buy)}

@@ -127,7 +127,7 @@ describe("NewRfqForm", () => {
       });
       // userEvent waits on real timers by default; route its delays through the
       // installed fake clock so interactions still resolve under fake timers.
-      form.useFakeTimerAdvance(vi.advanceTimersByTime);
+      form.setFakeTimerAdvance(vi.advanceTimersByTime);
       await form.chooseInstrument("Apple Inc 2030");
       await form.setQuantity(5);
       await form.submit();
