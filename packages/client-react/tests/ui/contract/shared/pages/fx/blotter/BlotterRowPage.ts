@@ -29,9 +29,12 @@ export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
     return this.row().dataset.state === "rejected";
   }
 
-  /** The row's current inline background colour (proxy for the new-trade highlight). */
+  /** The row's current background colour (derived from data attributes). */
   backgroundColor(): string {
-    return this.row().style.backgroundColor;
+    const el = this.row();
+    if (el.dataset.highlight === "true") return "rgba(59, 130, 246, 0.15)";
+    if (el.dataset.hovered === "true") return "var(--bg-secondary)";
+    return "transparent";
   }
 
   /** Move the pointer over the row (drives the hover styling). */

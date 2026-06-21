@@ -17,19 +17,14 @@ export function BlotterRow({ trade, isNew }: BlotterRowProps) {
   const [hovered, setHovered] = useState(false);
   const isRejected = trade.status === TradeStatus.Rejected;
 
-  const backgroundColor = highlight
-    ? "rgba(59, 130, 246, 0.15)"
-    : hovered
-      ? "var(--bg-secondary)"
-      : "transparent";
-
   return (
     <tr
       data-state={isRejected ? "rejected" : "live"}
+      data-highlight={highlight ? "true" : undefined}
+      data-hovered={hovered ? "true" : undefined}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={styles.row}
-      style={{ backgroundColor }}
     >
       {COLUMNS.map((col) => (
         <td

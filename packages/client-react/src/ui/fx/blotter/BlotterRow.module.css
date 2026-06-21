@@ -1,6 +1,15 @@
 .row {
+  background-color: transparent;
   transition: background-color 1s ease-in-out;
   color: var(--text-primary);
+}
+
+.row[data-hovered="true"] {
+  background-color: var(--bg-secondary);
+}
+
+.row[data-highlight="true"] {
+  background-color: rgba(59, 130, 246, 0.15);
 }
 
 .row[data-state="rejected"] {
