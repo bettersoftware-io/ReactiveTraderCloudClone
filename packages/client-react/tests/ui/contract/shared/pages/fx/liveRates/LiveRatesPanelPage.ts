@@ -16,7 +16,12 @@ export class LiveRatesPanelPage extends MountedComponent<
   tileSymbols(): string[] {
     return [
       ...this.root.querySelectorAll<HTMLElement>("[data-testid^='tile-']"),
-    ].map((el) => el.getAttribute("data-testid")!.replace("tile-", ""));
+    ].map((el) => {
+      const testid = el.getAttribute("data-testid");
+      if (!testid)
+        throw new Error("tile element missing data-testid attribute");
+      return testid.replace("tile-", "");
+    });
   }
 
   tileCount(): number {

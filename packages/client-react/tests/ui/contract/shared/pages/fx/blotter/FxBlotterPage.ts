@@ -65,7 +65,9 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
 
   /** Click a column header to toggle its sort. */
   async clickColumnHeader(label: string): Promise<void> {
-    await this.user.click(this.headerCell(label).querySelector("span")!);
+    const span = this.headerCell(label).querySelector("span");
+    if (!span) throw new Error(`No <span> found in column header "${label}"`);
+    await this.user.click(span);
   }
 
   sortIndicatorFor(label: string): "asc" | "desc" | null {

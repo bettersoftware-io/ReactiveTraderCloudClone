@@ -10,9 +10,9 @@ import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 import { createRfqTileMachine, type RfqState } from "../RfqTileMachine";
 
-const pair: CurrencyPair = KNOWN_CURRENCY_PAIRS.find(
-  (p) => p.symbol === "EURUSD",
-)!;
+const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => p.symbol === "EURUSD");
+if (!_pairOrUndef) throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
+const pair: CurrencyPair = _pairOrUndef;
 
 const quoteResult: RfqQuoteResult = { bid: 1.0921, ask: 1.0925, mid: 1.0923 };
 
@@ -206,9 +206,9 @@ describe("createRfqTileMachine", () => {
       machine.dispose();
     });
     expect(seen.map((e) => e.state)).toEqual([INIT, REQUESTED, REJECTED, INIT]);
-    const rejectedFrame = seen.find(
-      (e) => e.state.status === "rejected",
-    )!.frame;
+    const rejectedEntry = seen.find((e) => e.state.status === "rejected");
+    if (!rejectedEntry) throw new Error("No 'rejected' state was emitted");
+    const rejectedFrame = rejectedEntry.frame;
     const initAfterHold = seen[seen.length - 1];
     expect(initAfterHold.state).toEqual(INIT);
     expect(initAfterHold.frame - rejectedFrame).toBe(REJECTED_DISPLAY_MS);

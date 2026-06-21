@@ -127,11 +127,20 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
       .then(($input) => {
         // React controlled inputs require using the native setter so that React's
         // internal value tracker sees the change and fires synthetic onChange.
-        const nativeSet = Object.getOwnPropertyDescriptor(
+        const descriptor = Object.getOwnPropertyDescriptor(
           window.HTMLInputElement.prototype,
           "value",
-        )!.set;
-        nativeSet!.call($input[0], value);
+        );
+        if (!descriptor)
+          throw new Error(
+            "HTMLInputElement.prototype has no 'value' property descriptor",
+          );
+        const nativeSet = descriptor.set;
+        if (!nativeSet)
+          throw new Error(
+            "HTMLInputElement.prototype 'value' descriptor has no setter",
+          );
+        nativeSet.call($input[0], value);
         $input[0].dispatchEvent(new Event("input", { bubbles: true }));
       })
       .type("{enter}") as unknown as Promise<void>;

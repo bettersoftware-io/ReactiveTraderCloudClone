@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { defined } from "../__testUtils__/defined.js";
 import type { PositionUpdates } from "../analytics/position.js";
 import { AnalyticsSimulator } from "./AnalyticsSimulator.js";
 
@@ -32,18 +33,18 @@ describe("AnalyticsSimulator", () => {
 
     const eurusd = update.currentPositions.find((p) => p.symbol === "EURUSD");
     expect(eurusd).toBeDefined();
-    expect(eurusd!.basePnl).toBe(564.97);
+    expect(defined(eurusd).basePnl).toBe(564.97);
 
     const usdjpy = update.currentPositions.find((p) => p.symbol === "USDJPY");
-    expect(usdjpy!.basePnl).toBe(1382.31);
+    expect(defined(usdjpy).basePnl).toBe(1382.31);
 
     const gbpusd = update.currentPositions.find((p) => p.symbol === "GBPUSD");
-    expect(gbpusd!.basePnl).toBe(-1656.82);
+    expect(defined(gbpusd).basePnl).toBe(-1656.82);
 
     // Zero positions
     const gbpjpy = update.currentPositions.find((p) => p.symbol === "GBPJPY");
-    expect(gbpjpy!.basePnl).toBe(0);
-    expect(gbpjpy!.baseTradedAmount).toBe(0);
+    expect(defined(gbpjpy).basePnl).toBe(0);
+    expect(defined(gbpjpy).baseTradedAmount).toBe(0);
   });
 
   it("emits initial snapshot then updates every 10s, capped at 90 entries", async () => {

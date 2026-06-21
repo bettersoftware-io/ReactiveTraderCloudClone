@@ -39,7 +39,9 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
 
   /** Click a column header to drive the sort callback. */
   async clickHeader(label: string): Promise<void> {
-    await this.user.click(this.cellFor(label).querySelector("span")!);
+    const span = this.cellFor(label).querySelector("span");
+    if (!span) throw new Error(`No <span> found in header cell "${label}"`);
+    await this.user.click(span);
   }
 
   /** True when the given header shows the ascending arrow. */

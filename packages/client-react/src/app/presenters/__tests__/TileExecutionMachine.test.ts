@@ -20,9 +20,9 @@ import {
   type TileExecutionState,
 } from "../TileExecutionMachine";
 
-const pair: CurrencyPair = KNOWN_CURRENCY_PAIRS.find(
-  (p) => p.symbol === "EURUSD",
-)!;
+const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => p.symbol === "EURUSD");
+if (!_pairOrUndef) throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
+const pair: CurrencyPair = _pairOrUndef;
 
 const price: Price = {
   symbol: "EURUSD",

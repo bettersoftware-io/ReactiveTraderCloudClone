@@ -78,7 +78,10 @@ export class CreditRfqSimulator implements WorkflowPort {
         };
 
         this.quotes.set(quoteId, quote);
-        this.rfqQuotes.get(rfqId)!.push(quoteId);
+        const rfqQuoteList = this.rfqQuotes.get(rfqId);
+        if (!rfqQuoteList)
+          throw new Error(`Internal: no quote list for rfqId ${rfqId}`);
+        rfqQuoteList.push(quoteId);
         this.events$.next({ type: "quoteCreated", payload: quote });
 
         // Schedule simulated dealer response (skip Adaptive Bank)

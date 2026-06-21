@@ -23,7 +23,7 @@ export class FakeWsAdapter implements IWsAdapter {
 
   on(type: string, handler: MessageHandler): () => void {
     if (!this.listeners.has(type)) this.listeners.set(type, new Set());
-    this.listeners.get(type)!.add(handler);
+    (this.listeners.get(type) as Set<MessageHandler>).add(handler);
     return () => {
       this.listeners.get(type)?.delete(handler);
     };
@@ -64,8 +64,12 @@ export class FakeWsAdapter implements IWsAdapter {
     if (idx < 0) {
       throw new Error(`FakeWsAdapter: no pending RPC of type "${type}"`);
     }
-    const [pending] = this.pendingRpcs.splice(idx, 1);
-    pending!.resolve(response);
+    const removed = this.pendingRpcs.splice(idx, 1)[0];
+    if (!removed)
+      throw new Error(
+        `FakeWsAdapter: splice returned no element for type "${type}"`,
+      );
+    removed.resolve(response);
   }
 
   /** Reject the next pending RPC of `type` with `error` (transport-level
@@ -76,8 +80,12 @@ export class FakeWsAdapter implements IWsAdapter {
     if (idx < 0) {
       throw new Error(`FakeWsAdapter: no pending RPC of type "${type}"`);
     }
-    const [pending] = this.pendingRpcs.splice(idx, 1);
-    pending!.reject(error);
+    const removed = this.pendingRpcs.splice(idx, 1)[0];
+    if (!removed)
+      throw new Error(
+        `FakeWsAdapter: splice returned no element for type "${type}"`,
+      );
+    removed.reject(error);
   }
 
   /** Inspect every send() / rpc() the port has made so far. */

@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
+import { defined } from "../../__testUtils__/defined.js";
 import type { InstrumentPort } from "../instrumentPort.js";
 
 export interface InstrumentDriver {
@@ -55,7 +56,9 @@ export function describeInstrumentPortContract(
         await driver.addInstrumentAfterSoW();
         const emissions = await promise;
         expect(emissions).toHaveLength(2);
-        expect(emissions[1]!.length).toBeGreaterThan(emissions[0]!.length);
+        expect(defined(emissions[1]).length).toBeGreaterThan(
+          defined(emissions[0]).length,
+        );
       } finally {
         teardown();
       }

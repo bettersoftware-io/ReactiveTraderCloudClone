@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { filter, take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { defined } from "../__testUtils__/defined.js";
 import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
@@ -31,7 +32,7 @@ async function createRfqAndQuoteId(
   const rfqId = await firstValueFrom(
     sim.createRfq({
       instrumentId: 1,
-      dealerIds: [DEALERS_CATALOG[0]!.id],
+      dealerIds: [defined(DEALERS_CATALOG[0]).id],
       quantity: 1000,
       direction: "Buy" as never,
       expirySecs: 60,
@@ -118,7 +119,10 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(
       sim.createRfq({
         instrumentId: 1,
-        dealerIds: [DEALERS_CATALOG[0]!.id, DEALERS_CATALOG[1]!.id],
+        dealerIds: [
+          defined(DEALERS_CATALOG[0]).id,
+          defined(DEALERS_CATALOG[1]).id,
+        ],
         quantity: 1000,
         direction: "Buy" as never,
         expirySecs: 60,
@@ -163,7 +167,10 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(
       sim.createRfq({
         instrumentId: 1,
-        dealerIds: [DEALERS_CATALOG[0]!.id, DEALERS_CATALOG[1]!.id],
+        dealerIds: [
+          defined(DEALERS_CATALOG[0]).id,
+          defined(DEALERS_CATALOG[1]).id,
+        ],
         quantity: 1000,
         direction: "Buy" as never,
         expirySecs: 60,
@@ -174,8 +181,8 @@ describe("CreditRfqSimulator", () => {
       RfqEvent,
       { type: "quoteCreated" }
     >[];
-    const winningQuoteId = created[0]!.payload.id;
-    const losingQuoteId = created[1]!.payload.id;
+    const winningQuoteId = defined(created[0]).payload.id;
+    const losingQuoteId = defined(created[1]).payload.id;
 
     // Price BOTH quotes so the loser is pendingWithPrice when the winner is accepted.
     await firstValueFrom(sim.quote({ quoteId: winningQuoteId, price: 100 }));
@@ -192,7 +199,7 @@ describe("CreditRfqSimulator", () => {
       (e) => e.type === "quoteCreated" && e.payload.id === losingQuoteId,
     ) as Extract<RfqEvent, { type: "quoteCreated" }> | undefined;
     expect(loser).toBeDefined();
-    expect(loser!.payload.state).toEqual({
+    expect(defined(loser).payload.state).toEqual({
       type: "rejectedWithPrice",
       price: 105,
     });
@@ -212,7 +219,10 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(
       sim.createRfq({
         instrumentId: 1,
-        dealerIds: [DEALERS_CATALOG[0]!.id, DEALERS_CATALOG[1]!.id],
+        dealerIds: [
+          defined(DEALERS_CATALOG[0]).id,
+          defined(DEALERS_CATALOG[1]).id,
+        ],
         quantity: 1000,
         direction: "Buy" as never,
         expirySecs: 60,
@@ -223,8 +233,8 @@ describe("CreditRfqSimulator", () => {
       RfqEvent,
       { type: "quoteCreated" }
     >[];
-    const winningQuoteId = created[0]!.payload.id;
-    const losingQuoteId = created[1]!.payload.id; // stays pendingWithoutPrice
+    const winningQuoteId = defined(created[0]).payload.id;
+    const losingQuoteId = defined(created[1]).payload.id; // stays pendingWithoutPrice
 
     // Only price the winner; the loser remains pendingWithoutPrice.
     await firstValueFrom(sim.quote({ quoteId: winningQuoteId, price: 100 }));
@@ -239,7 +249,9 @@ describe("CreditRfqSimulator", () => {
       (e) => e.type === "quoteCreated" && e.payload.id === losingQuoteId,
     ) as Extract<RfqEvent, { type: "quoteCreated" }> | undefined;
     expect(loser).toBeDefined();
-    expect(loser!.payload.state).toEqual({ type: "rejectedWithoutPrice" });
+    expect(defined(loser).payload.state).toEqual({
+      type: "rejectedWithoutPrice",
+    });
   });
 
   it("dispose cancels a scheduled dealer response before it fires (no quoteQuoted)", async () => {
@@ -251,7 +263,7 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(
       sim.createRfq({
         instrumentId: 1,
-        dealerIds: [DEALERS_CATALOG[0]!.id],
+        dealerIds: [defined(DEALERS_CATALOG[0]).id],
         quantity: 1000,
         direction: "Buy" as never,
         expirySecs: 60,
@@ -293,7 +305,7 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(
       sim.createRfq({
         instrumentId: 1,
-        dealerIds: [DEALERS_CATALOG[0]!.id],
+        dealerIds: [defined(DEALERS_CATALOG[0]).id],
         quantity: 1000,
         direction: "Buy" as never,
         expirySecs: 60,

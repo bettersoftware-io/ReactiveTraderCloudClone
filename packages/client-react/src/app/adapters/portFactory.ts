@@ -180,7 +180,9 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
               subscriber.error(new Error("Failed to get price history"));
               return;
             }
-            subscriber.next(resp.payload!.prices);
+            const prices = resp.payload;
+            if (!prices) throw new Error("ack response missing payload");
+            subscriber.next(prices.prices);
             subscriber.complete();
           } catch (e) {
             if (!cancelled) subscriber.error(e);
@@ -257,7 +259,8 @@ function createExecutionPort(ws: IWsAdapter): ExecutionPort {
               subscriber.error(new Error("Trade execution failed"));
               return;
             }
-            const r = resp.payload!;
+            const r = resp.payload;
+            if (!r) throw new Error("ack response missing payload");
             subscriber.next({
               tradeId: r.tradeId,
               tradeName: r.tradeName,
@@ -429,7 +432,10 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
               subscriber.error(new Error("Failed to create RFQ"));
               return;
             }
-            subscriber.next(resp.payload!);
+            const rfqId = resp.payload;
+            if (rfqId === undefined || rfqId === null)
+              throw new Error("ack response missing payload");
+            subscriber.next(rfqId);
             subscriber.complete();
           } catch (e) {
             if (!cancelled) subscriber.error(e);
@@ -559,7 +565,10 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
               subscriber.error(new Error("Failed to get throughput"));
               return;
             }
-            subscriber.next(resp.payload!);
+            const value = resp.payload;
+            if (value === undefined || value === null)
+              throw new Error("ack response missing payload");
+            subscriber.next(value);
             subscriber.complete();
           } catch (e) {
             if (!cancelled) subscriber.error(e);

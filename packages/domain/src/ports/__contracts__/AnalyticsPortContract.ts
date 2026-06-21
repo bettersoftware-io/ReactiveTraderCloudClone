@@ -1,5 +1,6 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
+import { defined } from "../../__testUtils__/defined.js";
 import type { AnalyticsPort } from "../analyticsPort.js";
 
 export interface AnalyticsDriver {
@@ -39,8 +40,10 @@ export function describeAnalyticsPortContract(
         const update = await promise;
         if (update.history.length < 2) return;
         for (let i = 1; i < update.history.length; i++) {
-          const prev = new Date(update.history[i - 1]!.timestamp).getTime();
-          const curr = new Date(update.history[i]!.timestamp).getTime();
+          const prev = new Date(
+            defined(update.history[i - 1]).timestamp,
+          ).getTime();
+          const curr = new Date(defined(update.history[i]).timestamp).getTime();
           expect(curr).toBeGreaterThanOrEqual(prev);
         }
       } finally {

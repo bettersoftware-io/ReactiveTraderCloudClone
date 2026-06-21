@@ -88,6 +88,7 @@ function parseRegexList(raw: string): RegExp[] {
     .map((s) => {
       const m = s.match(/^\/(.+)\/([a-z]*)$/);
       if (!m) throw new Error(`bad regex literal in: ${s}`);
-      return new RegExp(m[1]!, m[2]!);
+      const [, pattern, flags] = m;
+      return new RegExp(pattern, flags);
     });
 }

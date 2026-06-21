@@ -136,8 +136,11 @@ describe("ThroughputPresenter", () => {
       isError: false,
     });
     // Banner appears after the debounce (~301ms) and dismisses 3000ms later.
-    expect(banner!.time).toBe(1 + DEBOUNCE_MS);
-    expect(dismissed!.time).toBe(1 + DEBOUNCE_MS + MESSAGE_DISMISS_MS);
+    if (!banner) throw new Error("Expected a success banner event");
+    if (!dismissed)
+      throw new Error("Expected a dismiss event after the banner");
+    expect(banner.time).toBe(1 + DEBOUNCE_MS);
+    expect(dismissed.time).toBe(1 + DEBOUNCE_MS + MESSAGE_DISMISS_MS);
   });
 
   it("shows an error banner when the write fails", () => {
@@ -214,13 +217,17 @@ describe("ThroughputPresenter", () => {
       text: "Throughput has been set to 999",
       isError: false,
     });
-    expect(bannerA!.time).toBeLessThan(bannerB!.time);
+    if (!bannerA) throw new Error("Expected banner A (420) to be emitted");
+    if (!bannerB) throw new Error("Expected banner B (999) to be emitted");
+    if (!finalDismiss)
+      throw new Error("Expected a final dismiss event after banner B");
+    expect(bannerA.time).toBeLessThan(bannerB.time);
 
     // B's banner is anchored to its own debounce (t=1000+DEBOUNCE_MS=1300).
-    expect(bannerB!.time).toBe(1000 + DEBOUNCE_MS);
+    expect(bannerB.time).toBe(1000 + DEBOUNCE_MS);
 
     // The final dismiss fires MESSAGE_DISMISS_MS after B's banner — not after A's.
-    expect(finalDismiss!.time).toBe(1000 + DEBOUNCE_MS + MESSAGE_DISMISS_MS);
+    expect(finalDismiss.time).toBe(1000 + DEBOUNCE_MS + MESSAGE_DISMISS_MS);
 
     // A's original dismiss (would have fired at t=1+DEBOUNCE_MS+MESSAGE_DISMISS_MS=3301)
     // must NOT appear as an event — switchMap cancelled it when setValue(999) debounced.

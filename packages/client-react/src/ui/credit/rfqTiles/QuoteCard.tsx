@@ -26,8 +26,8 @@ export function QuoteCard({ quote, dealer, onAccept }: QuoteCardProps) {
   const canAccept = quote.state.type === "pendingWithPrice" && onAccept;
 
   const handleAccept = useCallback(() => {
-    if (canAccept) onAccept!(quote.id);
-  }, [canAccept, onAccept, quote.id]);
+    if (quote.state.type === "pendingWithPrice" && onAccept) onAccept(quote.id);
+  }, [onAccept, quote.id, quote.state.type]);
 
   return (
     <div className={styles.quoteCard} data-state={quote.state.type}>

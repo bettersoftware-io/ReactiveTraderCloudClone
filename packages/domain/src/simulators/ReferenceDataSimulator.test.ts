@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { toArray } from "rxjs/operators";
 import { describe, expect, it, vi } from "vitest";
+import { defined } from "../__testUtils__/defined.js";
 import { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";
 
 describe("ReferenceDataSimulator", () => {
@@ -36,7 +37,7 @@ describe("ReferenceDataSimulator", () => {
 
       const nzd = batch.find((p) => p.symbol === "NZDUSD");
       expect(nzd).toBeDefined();
-      expect(nzd!.defaultNotional).toBe(10_000_000);
+      expect(defined(nzd).defaultNotional).toBe(10_000_000);
     } finally {
       vi.useRealTimers();
     }

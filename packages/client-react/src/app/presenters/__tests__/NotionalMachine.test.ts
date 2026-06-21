@@ -10,7 +10,9 @@ describe("createNotionalMachine", () => {
     let view: NotionalView | undefined;
     const sub = machine.state$.subscribe((s) => (view = s));
     sub.unsubscribe();
-    return view!;
+    if (!view)
+      throw new Error("NotionalMachine state$ did not emit synchronously");
+    return view;
   }
 
   it("initialises from the default notional, formatted with commas", () => {

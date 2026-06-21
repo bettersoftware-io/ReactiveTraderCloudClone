@@ -11,7 +11,9 @@ export async function expectPriceTileVisibleWithin(
     seconds * 1000,
   );
   if (pairs.length === 0) throw new Error("no currency pairs available");
-  const pair = pairs[0]!;
+  const pair = pairs[0];
+  if (!pair) throw new Error("no currency pairs available");
+
   await w.awaitFirstWithin(
     w.ctx.app.presenters.priceStream.price$(pair),
     seconds * 1000,

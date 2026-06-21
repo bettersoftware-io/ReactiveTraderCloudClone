@@ -69,5 +69,8 @@ export function mount<P, Page extends MountedComponent<P>>(
 
 /** Unmount everything mounted since the last cleanup (call in afterEach). */
 export function cleanupMounted(): void {
-  while (mounted.length > 0) mounted.pop()!.unmount();
+  while (mounted.length > 0) {
+    const entry = mounted.pop();
+    if (entry) entry.unmount();
+  }
 }

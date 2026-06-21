@@ -5,7 +5,7 @@ import styles from "./InstrumentSearch.module.css";
 interface InstrumentSearchProps {
   instruments: readonly Instrument[];
   selected: Instrument | null;
-  onSelect: (instrument: Instrument) => void;
+  onSelect: (instrument: Instrument | null) => void;
 }
 
 export function InstrumentSearch({
@@ -48,7 +48,7 @@ export function InstrumentSearch({
           <button
             type="button"
             onClick={() => {
-              onSelect(null!);
+              onSelect(null);
               setQuery("");
             }}
             className={styles.changeBtn}

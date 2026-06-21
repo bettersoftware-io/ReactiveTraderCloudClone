@@ -1,6 +1,7 @@
 import { firstValueFrom, lastValueFrom, type Subscription } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { defined } from "../__testUtils__/defined.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
 import type { RfqQuoteResult } from "../ports/pricingPort.js";
 import { PricingSimulator } from "./PricingSimulator.js";
@@ -97,7 +98,7 @@ describe("PricingSimulator", () => {
       // Past the 2000ms ceiling — must have emitted exactly once by now.
       await vi.advanceTimersByTimeAsync(1501);
       expect(received).toBeDefined();
-      expect(received!.bid).toBeLessThan(received!.ask);
+      expect(defined(received).bid).toBeLessThan(defined(received).ask);
       sub.unsubscribe();
     } finally {
       vi.useRealTimers();

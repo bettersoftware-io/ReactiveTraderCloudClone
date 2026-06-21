@@ -46,10 +46,19 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/** Return `captured` after asserting it is non-null (set by RecordingBlob). */
+function capturedContent(): string {
+  if (captured === null)
+    throw new Error(
+      "RecordingBlob was not invoked — exportToCsv did not create a Blob",
+    );
+  return captured;
+}
+
 describe("exportToCsv", () => {
   it("writes a header row with all column labels", () => {
     exportToCsv([trade()]);
-    const [header] = captured!.split("\n");
+    const [header] = capturedContent().split("\n");
     expect(header).toBe(
       "Trade ID,Status,Trade Date,Direction,CCYCCY,Deal CCY,Notional,Rate,Value Date,Trader",
     );
@@ -60,7 +69,7 @@ describe("exportToCsv", () => {
       trade({ tradeId: 11, notional: 2_500_000, tradeName: "Bob" }),
       trade({ tradeId: 12, notional: 7_000_000, tradeName: "Carol" }),
     ]);
-    const lines = captured!.split("\n");
+    const lines = capturedContent().split("\n");
     expect(lines).toHaveLength(3); // header + 2 rows
     // Notional is the raw integer (no thousands separators) in the CSV.
     expect(lines[1]).toContain("2500000");
@@ -72,13 +81,13 @@ describe("exportToCsv", () => {
   it("quotes cells that contain a comma", () => {
     // A trader name with a comma must be wrapped in double quotes.
     exportToCsv([trade({ tradeName: "Smith, John" })]);
-    const row = captured!.split("\n")[1];
+    const row = capturedContent().split("\n")[1];
     expect(row).toContain('"Smith, John"');
   });
 
   it("leaves comma-free cells unquoted", () => {
     exportToCsv([trade({ tradeName: "Alice" })]);
-    const row = captured!.split("\n")[1];
+    const row = capturedContent().split("\n")[1];
     expect(row).not.toContain('"Alice"');
     expect(row).toContain("Alice");
   });

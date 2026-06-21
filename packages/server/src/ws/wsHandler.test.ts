@@ -19,6 +19,18 @@ import { CLIENT_MSG, SERVER_MSG, type WsMessage } from "./protocol.js";
 import { handleConnection } from "./wsHandler.js";
 
 /**
+ * Runtime-safe non-null assertion for use in tests.
+ * Throws with a clear message instead of silently compiling away like `!`.
+ */
+function defined<T>(
+  value: T | null | undefined,
+  message = "Expected value to be defined",
+): NonNullable<T> {
+  if (value === null || value === undefined) throw new Error(message);
+  return value as NonNullable<T>;
+}
+
+/**
  * Protocol-level tests for the WebSocket translation layer (wsHandler).
  *
  * These exercise the real handler — the ~500-line layer that routes client
@@ -111,8 +123,9 @@ function expectFrameShape(
   canonicalPayload: unknown,
 ): void {
   expect(frame, `expected a ${type} frame`).toBeDefined();
-  expect(frame!.type).toBe(type);
-  expectShape(frame!.payload, canonicalPayload, "payload");
+  const definedFrame = defined(frame, `expected a ${type} frame`);
+  expect(definedFrame.type).toBe(type);
+  expectShape(definedFrame.payload, canonicalPayload, "payload");
 }
 
 // ── Fake domain services ─────────────────────────────────────────
@@ -276,7 +289,7 @@ describe("wsHandler protocol", () => {
 
     const ticks = ws.framesOfType(SERVER_MSG.PRICE_TICK);
     expect(ticks.length).toBeGreaterThan(0);
-    expect(ticks[0]!.payload).toMatchObject({
+    expect(defined(ticks[0]).payload).toMatchObject({
       symbol: "EURUSD",
       bid: expect.any(Number),
       ask: expect.any(Number),
@@ -293,7 +306,7 @@ describe("wsHandler protocol", () => {
 
     const [first] = ws.framesOfType(SERVER_MSG.REFERENCE_DATA);
     expect(first).toBeDefined();
-    const payload = first!.payload as {
+    const payload = defined(first).payload as {
       updates: {
         symbol: string;
         ratePrecision: number;
@@ -336,7 +349,8 @@ describe("wsHandler protocol", () => {
     const [frame] = ws.framesOfType(SERVER_MSG.BLOTTER);
     expectFrameShape(frame, SERVER_MSG.BLOTTER, blotterFrame([tradeFrame()]));
     expect(
-      (frame!.payload as { isStateOfTheWorld: boolean }).isStateOfTheWorld,
+      (defined(frame).payload as { isStateOfTheWorld: boolean })
+        .isStateOfTheWorld,
     ).toBe(true);
   });
 
@@ -397,8 +411,8 @@ describe("wsHandler protocol", () => {
 
     const [resp] = ws.framesOfType(SERVER_MSG.EXECUTION_RESPONSE);
     expect(resp).toBeDefined();
-    expect(resp!.correlationId).toBe("abc-123");
-    const body = resp!.payload as {
+    expect(defined(resp).correlationId).toBe("abc-123");
+    const body = defined(resp).payload as {
       type: string;
       payload: Record<string, unknown>;
     };
@@ -431,8 +445,8 @@ describe("wsHandler protocol", () => {
 
     const [resp] = ws.framesOfType(SERVER_MSG.EXECUTION_RESPONSE);
     expect(resp).toBeDefined();
-    expect(resp!.correlationId).toBe("fail-1");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("fail-1");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("answers rpc.getPriceHistory with an ack echoing correlationId and a prices payload", async () => {
@@ -445,7 +459,7 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.PRICE_HISTORY_RESPONSE);
-    expect(resp!.correlationId).toBe("ph-1");
+    expect(defined(resp).correlationId).toBe("ph-1");
     expectFrameShape(
       resp,
       SERVER_MSG.PRICE_HISTORY_RESPONSE,
@@ -467,7 +481,7 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.PRICE_HISTORY_RESPONSE);
-    expect(resp!.correlationId).toBe("ph-2");
+    expect(defined(resp).correlationId).toBe("ph-2");
     expectFrameShape(resp, SERVER_MSG.PRICE_HISTORY_RESPONSE, rpcNack());
   });
 
@@ -487,7 +501,7 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.CREATE_RFQ_RESPONSE);
-    expect(resp!.correlationId).toBe("rfq-1");
+    expect(defined(resp).correlationId).toBe("rfq-1");
     expectFrameShape(resp, SERVER_MSG.CREATE_RFQ_RESPONSE, rpcAck(1));
   });
 
@@ -511,7 +525,7 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.CREATE_RFQ_RESPONSE);
-    expect(resp!.correlationId).toBe("rfq-2");
+    expect(defined(resp).correlationId).toBe("rfq-2");
     expectFrameShape(resp, SERVER_MSG.CREATE_RFQ_RESPONSE, rpcNack());
   });
 
@@ -525,8 +539,8 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.CANCEL_RFQ_RESPONSE);
-    expect(resp!.correlationId).toBe("cx-1");
-    expect((resp!.payload as { type: string }).type).toBe("ack");
+    expect(defined(resp).correlationId).toBe("cx-1");
+    expect((defined(resp).payload as { type: string }).type).toBe("ack");
   });
 
   it("answers rpc.cancelRfq with a nack when the workflow fails", async () => {
@@ -543,8 +557,8 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.CANCEL_RFQ_RESPONSE);
-    expect(resp!.correlationId).toBe("cx-2");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("cx-2");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("answers rpc.quote with an ack echoing correlationId", async () => {
@@ -557,8 +571,8 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.QUOTE_RESPONSE);
-    expect(resp!.correlationId).toBe("q-1");
-    expect((resp!.payload as { type: string }).type).toBe("ack");
+    expect(defined(resp).correlationId).toBe("q-1");
+    expect((defined(resp).payload as { type: string }).type).toBe("ack");
   });
 
   it("answers rpc.quote with a nack when the workflow fails", async () => {
@@ -575,8 +589,8 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.QUOTE_RESPONSE);
-    expect(resp!.correlationId).toBe("q-2");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("q-2");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("answers rpc.pass with an ack echoing correlationId", async () => {
@@ -589,8 +603,8 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.PASS_RESPONSE);
-    expect(resp!.correlationId).toBe("p-1");
-    expect((resp!.payload as { type: string }).type).toBe("ack");
+    expect(defined(resp).correlationId).toBe("p-1");
+    expect((defined(resp).payload as { type: string }).type).toBe("ack");
   });
 
   it("answers rpc.pass with a nack when the workflow fails", async () => {
@@ -607,8 +621,8 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.PASS_RESPONSE);
-    expect(resp!.correlationId).toBe("p-2");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("p-2");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("answers rpc.accept with an ack echoing correlationId", async () => {
@@ -621,8 +635,8 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.ACCEPT_RESPONSE);
-    expect(resp!.correlationId).toBe("a-1");
-    expect((resp!.payload as { type: string }).type).toBe("ack");
+    expect(defined(resp).correlationId).toBe("a-1");
+    expect((defined(resp).payload as { type: string }).type).toBe("ack");
   });
 
   it("answers rpc.accept with a nack when the workflow fails", async () => {
@@ -639,8 +653,8 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.ACCEPT_RESPONSE);
-    expect(resp!.correlationId).toBe("a-2");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("a-2");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("answers admin.getThroughput with an ack carrying a numeric value and correlationId", async () => {
@@ -649,8 +663,8 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [resp] = ws.framesOfType(SERVER_MSG.THROUGHPUT_RESPONSE);
-    expect(resp!.correlationId).toBe("tp-1");
-    const body = resp!.payload as { type: string; payload: number };
+    expect(defined(resp).correlationId).toBe("tp-1");
+    const body = defined(resp).payload as { type: string; payload: number };
     expect(body.type).toBe("ack");
     expect(typeof body.payload).toBe("number");
   });
@@ -665,14 +679,14 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const [setResp] = ws.framesOfType(SERVER_MSG.SET_THROUGHPUT_RESPONSE);
-    expect(setResp!.correlationId).toBe("tp-2");
-    expect((setResp!.payload as { type: string }).type).toBe("ack");
+    expect(defined(setResp).correlationId).toBe("tp-2");
+    expect((defined(setResp).payload as { type: string }).type).toBe("ack");
 
     ws.receive({ type: CLIENT_MSG.GET_THROUGHPUT, correlationId: "tp-3" });
     await wait();
     const [getResp] = ws.framesOfType(SERVER_MSG.THROUGHPUT_RESPONSE);
     expect(
-      (getResp!.payload as { type: string; payload: number }).payload,
+      (defined(getResp).payload as { type: string; payload: number }).payload,
     ).toBe(42);
   });
 
@@ -902,8 +916,8 @@ describe("wsHandler workflow quote-event transforms", () => {
       await wait();
       const [frame] = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT);
       expect(frame).toBeDefined();
-      expect(frame!.type).toBe(SERVER_MSG.WORKFLOW_EVENT);
-      const body = frame!.payload as {
+      expect(defined(frame).type).toBe(SERVER_MSG.WORKFLOW_EVENT);
+      const body = defined(frame).payload as {
         type: string;
         payload: {
           id: number;
@@ -963,7 +977,7 @@ describe("wsHandler workflow rfq-event transforms", () => {
         SERVER_MSG.WORKFLOW_EVENT,
         workflowEventCreated(9),
       );
-      const body = frame!.payload as {
+      const body = defined(frame).payload as {
         type: string;
         payload: Record<string, unknown>;
       };
@@ -993,9 +1007,9 @@ describe("wsHandler workflow rfq-event transforms", () => {
 
       const [frame] = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT);
       expect(frame).toBeDefined();
-      expect(frame!.type).toBe(SERVER_MSG.WORKFLOW_EVENT);
+      expect(defined(frame).type).toBe(SERVER_MSG.WORKFLOW_EVENT);
       // SoW markers carry only a `type` discriminator — no payload on the wire.
-      expect(frame!.payload).toEqual({ type });
+      expect(defined(frame).payload).toEqual({ type });
     });
   }
 });
@@ -1024,8 +1038,8 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     });
     await wait();
     const [resp] = ws.framesOfType(SERVER_MSG.EXECUTION_RESPONSE);
-    expect(resp!.correlationId).toBe("sync-exec");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("sync-exec");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("nacks rpc.getPriceHistory when pricing throws synchronously", async () => {
@@ -1046,8 +1060,8 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     });
     await wait();
     const [resp] = ws.framesOfType(SERVER_MSG.PRICE_HISTORY_RESPONSE);
-    expect(resp!.correlationId).toBe("sync-ph");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("sync-ph");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("nacks rpc.createRfq when the workflow throws synchronously", async () => {
@@ -1078,8 +1092,8 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     });
     await wait();
     const [resp] = ws.framesOfType(SERVER_MSG.CREATE_RFQ_RESPONSE);
-    expect(resp!.correlationId).toBe("sync-rfq");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("sync-rfq");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("nacks rpc.cancelRfq when the workflow throws synchronously", async () => {
@@ -1104,8 +1118,8 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     });
     await wait();
     const [resp] = ws.framesOfType(SERVER_MSG.CANCEL_RFQ_RESPONSE);
-    expect(resp!.correlationId).toBe("sync-cancel");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("sync-cancel");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("nacks rpc.quote when the workflow throws synchronously", async () => {
@@ -1130,8 +1144,8 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     });
     await wait();
     const [resp] = ws.framesOfType(SERVER_MSG.QUOTE_RESPONSE);
-    expect(resp!.correlationId).toBe("sync-quote");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("sync-quote");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("nacks rpc.pass when the workflow throws synchronously", async () => {
@@ -1156,8 +1170,8 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     });
     await wait();
     const [resp] = ws.framesOfType(SERVER_MSG.PASS_RESPONSE);
-    expect(resp!.correlationId).toBe("sync-pass");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("sync-pass");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("nacks rpc.accept when the workflow throws synchronously", async () => {
@@ -1182,8 +1196,8 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     });
     await wait();
     const [resp] = ws.framesOfType(SERVER_MSG.ACCEPT_RESPONSE);
-    expect(resp!.correlationId).toBe("sync-accept");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("sync-accept");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 
   it("nacks admin.setThroughput when the throughput service throws synchronously", async () => {
@@ -1204,8 +1218,8 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     });
     await wait();
     const [resp] = ws.framesOfType(SERVER_MSG.SET_THROUGHPUT_RESPONSE);
-    expect(resp!.correlationId).toBe("sync-tp");
-    expect((resp!.payload as { type: string }).type).toBe("nack");
+    expect(defined(resp).correlationId).toBe("sync-tp");
+    expect((defined(resp).payload as { type: string }).type).toBe("nack");
   });
 });
 

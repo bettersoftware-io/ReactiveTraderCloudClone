@@ -91,9 +91,10 @@ Then(
   function (this: StepContext, regexAsString: string) {
     const m = regexAsString.match(/^\/(.+)\/([a-z]*)$/);
     if (!m) throw new Error(`bad regex literal in: ${regexAsString}`);
+    const [, pattern, flags] = m;
     return fxLiveRates.expectFirstTileTextMatches(
       this.ctx,
-      new RegExp(m[1]!, m[2]!),
+      new RegExp(pattern, flags),
     );
   },
 );

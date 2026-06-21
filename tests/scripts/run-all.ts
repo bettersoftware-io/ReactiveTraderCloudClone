@@ -111,7 +111,9 @@ async function mapWithLimit<T, R>(
   const worker = async (): Promise<void> => {
     while (cursor < items.length) {
       const index = cursor++;
-      results[index] = await fn(items[index]!);
+      const item = items[index];
+      if (item === undefined) break; // cursor < items.length guarantees this, but satisfies the type checker
+      results[index] = await fn(item);
     }
   };
   await Promise.all(

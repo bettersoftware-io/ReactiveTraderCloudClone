@@ -66,10 +66,12 @@ export class WsAdapter implements IWsAdapter {
 
       // Handle RPC responses
       if (msg.correlationId && this.pendingRpcs.has(msg.correlationId)) {
-        const rpc = this.pendingRpcs.get(msg.correlationId)!;
-        this.pendingRpcs.delete(msg.correlationId);
-        rpc.resolve(msg.payload);
-        return;
+        const rpc = this.pendingRpcs.get(msg.correlationId);
+        if (rpc) {
+          this.pendingRpcs.delete(msg.correlationId);
+          rpc.resolve(msg.payload);
+          return;
+        }
       }
 
       // Route to stream handlers
@@ -146,7 +148,8 @@ export class WsAdapter implements IWsAdapter {
     if (!this.handlers.has(type)) {
       this.handlers.set(type, new Set());
     }
-    this.handlers.get(type)!.add(handler);
+    const handlerSet = this.handlers.get(type) as Set<MessageHandler>;
+    handlerSet.add(handler);
     return () => {
       this.handlers.get(type)?.delete(handler);
     };

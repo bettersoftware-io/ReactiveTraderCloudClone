@@ -71,7 +71,7 @@ function checkPresenterDescribePrefix(): string[] {
     if (!existsSync(testPath)) continue;
     const testSrc = readFileSync(testPath, "utf8");
     const titles = [...testSrc.matchAll(/^\s*describe\(\s*"([^"]+)"/gm)].map(
-      (m) => m[1]!,
+      ([, title]) => title ?? "",
     );
     for (const title of titles) {
       if (!title.startsWith("@presenter Feature: ")) {

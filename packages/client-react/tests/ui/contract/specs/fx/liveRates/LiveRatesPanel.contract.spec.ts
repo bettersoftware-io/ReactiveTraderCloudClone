@@ -4,9 +4,15 @@ import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
 
 const pairs = KNOWN_CURRENCY_PAIRS;
-const eurusd = pairs.find((p) => p.symbol === "EURUSD")!;
-const usdjpy = pairs.find((p) => p.symbol === "USDJPY")!;
-const gbpjpy = pairs.find((p) => p.symbol === "GBPJPY")!;
+const _eurusd = pairs.find((p) => p.symbol === "EURUSD");
+if (!_eurusd) throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
+const eurusd = _eurusd;
+const _usdjpy = pairs.find((p) => p.symbol === "USDJPY");
+if (!_usdjpy) throw new Error("USDJPY not found in KNOWN_CURRENCY_PAIRS");
+const usdjpy = _usdjpy;
+const _gbpjpy = pairs.find((p) => p.symbol === "GBPJPY");
+if (!_gbpjpy) throw new Error("GBPJPY not found in KNOWN_CURRENCY_PAIRS");
+const gbpjpy = _gbpjpy;
 
 describe("LiveRatesPanel", () => {
   it("shows a loading placeholder until currency pairs arrive", () => {

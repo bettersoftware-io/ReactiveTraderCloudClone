@@ -42,7 +42,7 @@ class MemoryStorage implements Storage {
   }
 
   getItem(key: string): string | null {
-    return this.map.has(key) ? this.map.get(key)! : null;
+    return this.map.has(key) ? (this.map.get(key) as string) : null;
   }
 
   key(index: number): string | null {

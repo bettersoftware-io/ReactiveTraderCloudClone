@@ -22,11 +22,16 @@ async function executeOnFirstPair(
   direction: Direction,
   notional: number,
 ): Promise<{ status: ExecutionStatus; notional: number }> {
-  const pair =
-    w.scratch.firstPair ??
-    (
-      await w.awaitFirstWithin(w.ctx.app.presenters.currencyPairs.pairs$, 5000)
-    )[0]!;
+  let pair = w.scratch.firstPair;
+  if (!pair) {
+    const fetchedPairs = await w.awaitFirstWithin(
+      w.ctx.app.presenters.currencyPairs.pairs$,
+      5000,
+    );
+    const first = fetchedPairs[0];
+    if (!first) throw new Error("no currency pairs available");
+    pair = first;
+  }
   w.scratch.firstPair = pair;
   const price = await firstValueFrom(
     w.ctx.app.presenters.priceStream.price$(pair),
@@ -115,7 +120,10 @@ export async function buyNTimesWithDismissals(
     w.ctx.app.presenters.currencyPairs.pairs$,
     5000,
   );
-  const gbpjpy = pairs.find((p) => p.symbol === "GBPJPY") ?? pairs[0]!;
+  const gbpjpyOrFirst = pairs.find((p) => p.symbol === "GBPJPY") ?? pairs[0];
+  if (!gbpjpyOrFirst)
+    throw new Error("no currency pairs available for buyNTimesWithDismissals");
+  const gbpjpy = gbpjpyOrFirst;
 
   for (let i = 0; i < n; i++) {
     const price = await firstValueFrom(

@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { filter, take } from "rxjs/operators";
 import { afterEach, vi } from "vitest";
+import { defined } from "../__testUtils__/defined.js";
 import { describeWorkflowPortContract } from "../ports/__contracts__/WorkflowPortContract.js";
 import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
@@ -29,7 +30,7 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
     await firstValueFrom(
       port.createRfq({
         instrumentId: 1,
-        dealerIds: [DEALERS_CATALOG[0]!.id],
+        dealerIds: [defined(DEALERS_CATALOG[0]).id],
         quantity: 1000,
         direction: "Buy" as never,
         expirySecs: 60,
@@ -56,7 +57,7 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
         void port
           .createRfq({
             instrumentId: 1,
-            dealerIds: [DEALERS_CATALOG[0]!.id],
+            dealerIds: [defined(DEALERS_CATALOG[0]).id],
             quantity: 1000,
             direction: "Buy" as never,
             expirySecs: 60,

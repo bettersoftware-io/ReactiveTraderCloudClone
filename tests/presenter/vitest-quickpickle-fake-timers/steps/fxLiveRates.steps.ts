@@ -41,6 +41,7 @@ Then(
   async (state: VitestFakePresenterWorld, regexAsString: string) => {
     const m = regexAsString.match(/^\/(.+)\/([a-z]*)$/);
     if (!m) throw new Error(`bad regex literal in: ${regexAsString}`);
-    return fx.expectFirstTileTextMatches(state, new RegExp(m[1]!, m[2]!));
+    const [, pattern, flags] = m;
+    return fx.expectFirstTileTextMatches(state, new RegExp(pattern, flags));
   },
 );
