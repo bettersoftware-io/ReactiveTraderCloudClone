@@ -92,7 +92,6 @@ export function TileConfirmation({ state, onDismiss }: TileConfirmationProps) {
       data-cursor={cursorValue}
       onClick={state.status !== "started" ? onDismiss : undefined}
       className={styles.overlay}
-      style={{ backgroundColor: bg, cursor: cursorValue }}
     >
       <ConfirmationContent state={state} />
     </div>

@@ -10,7 +10,16 @@
   text-align: center;
   padding: 12px;
   z-index: 1;
+  background-color: var(--bg-overlay);
+  cursor: pointer;
 }
+
+.overlay[data-bg="transparent"] { background-color: transparent; }
+.overlay[data-bg="var(--accent-aware)"] { background-color: var(--accent-aware); }
+.overlay[data-bg="var(--accent-positive)"] { background-color: var(--accent-positive); }
+.overlay[data-bg="var(--accent-negative)"] { background-color: var(--accent-negative); }
+
+.overlay[data-cursor="default"] { cursor: default; }
 
 .tradeDetails {
   display: flex;
