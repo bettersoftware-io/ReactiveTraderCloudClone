@@ -1,0 +1,29 @@
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  background-color: var(--status-disconnected);
+}
+
+.dot[data-status="CONNECTING"] {
+  background-color: var(--status-connecting);
+}
+
+.dot[data-status="CONNECTED"] {
+  background-color: var(--status-connected);
+}
+
+.dot[data-status="DISCONNECTED"],
+.dot[data-status="IDLE_DISCONNECTED"],
+.dot[data-status="OFFLINE_DISCONNECTED"] {
+  background-color: var(--status-disconnected);
+}

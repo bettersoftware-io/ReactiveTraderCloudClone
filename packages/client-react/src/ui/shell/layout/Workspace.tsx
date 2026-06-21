@@ -4,6 +4,7 @@ import { AnalyticsPanel } from "../../fx/analytics/AnalyticsPanel";
 import { CreditWorkspace } from "../../credit/CreditWorkspace";
 import { AdminPanel } from "../../admin/AdminPanel";
 import type { WorkspaceTab } from "./Header";
+import styles from "./Workspace.module.css";
 
 interface WorkspaceProps {
   activeTab: WorkspaceTab;
@@ -12,11 +13,11 @@ interface WorkspaceProps {
 function FxWorkspace() {
   return (
     <>
-      <div style={{ display: "flex", gap: 16 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
+      <div className={styles.fxSplitRow}>
+        <div className={styles.fxMain}>
           <LiveRatesPanel />
         </div>
-        <div style={{ width: 320, flexShrink: 0 }}>
+        <div className={styles.fxSide}>
           <AnalyticsPanel />
         </div>
       </div>
@@ -27,17 +28,7 @@ function FxWorkspace() {
 
 export function Workspace({ activeTab }: WorkspaceProps) {
   return (
-    <main
-      style={{
-        flex: 1,
-        overflow: "auto",
-        backgroundColor: "var(--bg-primary)",
-        padding: 16,
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-      }}
-    >
+    <main className={styles.workspace}>
       {activeTab === "fx" ? <FxWorkspace /> : activeTab === "credit" ? <CreditWorkspace /> : <AdminPanel />}
     </main>
   );

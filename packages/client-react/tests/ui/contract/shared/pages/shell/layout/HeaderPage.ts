@@ -28,7 +28,7 @@ export class HeaderPage extends MountedComponent<HeaderProps> {
   /** True when the given tab is the active (highlighted) one. */
   isActive(tab: WorkspaceTab): boolean {
     const button = within(this.root).getByTestId(`tab-${tab}`);
-    return button.style.fontWeight === "600";
+    return button.dataset.active === "true";
   }
 
   /** Click one of the workspace tabs (fires onTabChange). */

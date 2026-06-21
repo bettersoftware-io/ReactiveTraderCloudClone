@@ -1,5 +1,6 @@
 import { ConnectionStatus } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
+import styles from "./ConnectionOverlay.module.css";
 
 const overlayMessages: Partial<Record<ConnectionStatus, string>> = {
   [ConnectionStatus.DISCONNECTED]: "Disconnected. Reconnecting...",
@@ -17,30 +18,9 @@ export function ConnectionOverlay() {
   if (!message) return null;
 
   return (
-    <div
-      data-testid="connection-overlay"
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "var(--bg-overlay)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: "var(--bg-secondary)",
-          border: "1px solid var(--border-primary)",
-          borderRadius: 8,
-          padding: "32px 48px",
-          textAlign: "center",
-          color: "var(--text-primary)",
-          maxWidth: 400,
-        }}
-      >
-        <p style={{ margin: 0, fontSize: 16, lineHeight: 1.5 }}>{message}</p>
+    <div data-testid="connection-overlay" className={styles.overlay}>
+      <div className={styles.card}>
+        <p className={styles.message}>{message}</p>
       </div>
     </div>
   );

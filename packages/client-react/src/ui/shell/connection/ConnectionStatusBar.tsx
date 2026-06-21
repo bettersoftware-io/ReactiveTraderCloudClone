@@ -1,5 +1,6 @@
 import { ConnectionStatus } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
+import styles from "./ConnectionStatusBar.module.css";
 
 const statusLabel: Record<ConnectionStatus, string> = {
   [ConnectionStatus.CONNECTING]: "Connecting...",
@@ -9,38 +10,13 @@ const statusLabel: Record<ConnectionStatus, string> = {
   [ConnectionStatus.OFFLINE_DISCONNECTED]: "Offline",
 };
 
-const statusColor: Record<ConnectionStatus, string> = {
-  [ConnectionStatus.CONNECTING]: "var(--status-connecting)",
-  [ConnectionStatus.CONNECTED]: "var(--status-connected)",
-  [ConnectionStatus.DISCONNECTED]: "var(--status-disconnected)",
-  [ConnectionStatus.IDLE_DISCONNECTED]: "var(--status-disconnected)",
-  [ConnectionStatus.OFFLINE_DISCONNECTED]: "var(--status-disconnected)",
-};
-
 export function ConnectionStatusBar() {
   const { useConnectionStatus } = useHooks();
   const status = useConnectionStatus();
 
   return (
-    <div
-      data-testid="connection-status"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        fontSize: 12,
-        color: "var(--text-secondary)",
-      }}
-    >
-      <span
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          backgroundColor: statusColor[status],
-          display: "inline-block",
-        }}
-      />
+    <div data-testid="connection-status" className={styles.statusBar}>
+      <span data-status={status} className={styles.dot} />
       <span>{statusLabel[status]}</span>
     </div>
   );
