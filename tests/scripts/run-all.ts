@@ -126,7 +126,9 @@ function runSuite(suite: Suite): Promise<Result> {
   const start = Date.now();
   const chunks: Buffer[] = [];
   const port = suite.env?.RTC_DEV_PORT;
-  console.log(`▶ ${suite.script}${port ? `  (:${port})` : ""}`);
+  // RTC_DEV_PORT is the PREFERRED port; the suite bumps to the next free one if
+  // it's taken (see devServer.ts) and logs the actual port via with-server.
+  console.log(`▶ ${suite.script}${port ? `  (prefers :${port})` : ""}`);
 
   // Give Cypress suites a private X display on Linux so two can't fight over :99.
   const [cmd, args] =
