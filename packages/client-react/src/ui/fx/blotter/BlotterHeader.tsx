@@ -6,6 +6,7 @@ import type { ColumnFilter } from "./columnFilter/filterState";
 import { SetFilter } from "./columnFilter/SetFilter";
 import { NumberFilter } from "./columnFilter/NumberFilter";
 import { DateFilter } from "./columnFilter/DateFilter";
+import styles from "./BlotterHeader.module.css";
 
 interface BlotterHeaderProps {
   sort: SortState;
@@ -17,7 +18,7 @@ interface BlotterHeaderProps {
 
 function SortIndicator({ column, sort }: { column: keyof Trade; sort: SortState }) {
   if (sort.column !== column || !sort.direction) return null;
-  return <span style={{ marginLeft: 2 }}>{sort.direction === "asc" ? "\u25B2" : "\u25BC"}</span>;
+  return <span className={styles.sortIndicator}>{sort.direction === "asc" ? "▲" : "▼"}</span>;
 }
 
 function FilterPanel({
@@ -42,19 +43,7 @@ function FilterPanel({
   );
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: "100%",
-        left: 0,
-        zIndex: 10,
-        backgroundColor: "var(--bg-secondary)",
-        border: "1px solid var(--border-primary)",
-        borderRadius: 4,
-        minWidth: 160,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-      }}
-    >
+    <div className={styles.filterPanel}>
       {col.filterType === "set" && (
         <SetFilter column={col.key} trades={trades} currentFilter={currentFilter} onApply={handleApply} />
       )}
@@ -83,25 +72,14 @@ export function BlotterHeader({
         <th
           key={col.key}
           data-testid={`blotter-sort-${col.key}`}
-          style={{
-            padding: "6px 8px",
-            fontSize: 11,
-            fontWeight: 600,
-            color: "var(--text-secondary)",
-            textAlign: "left",
-            borderBottom: "1px solid var(--border-primary)",
-            whiteSpace: "nowrap",
-            position: "relative",
-            cursor: "pointer",
-            userSelect: "none",
-          }}
+          className={styles.headerCell}
           onClick={() => onSort(col.key)}
         >
           <span>
             {col.label}
             <SortIndicator column={col.key} sort={sort} />
             {filters.has(col.key) && (
-              <span style={{ color: "var(--accent-primary)", marginLeft: 2 }}>{"\u25CF"}</span>
+              <span className={styles.filterDot}>{"●"}</span>
             )}
           </span>
           <button
@@ -110,17 +88,9 @@ export function BlotterHeader({
               e.stopPropagation();
               setOpenFilter(openFilter === col.key ? null : col.key);
             }}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              fontSize: 10,
-              marginLeft: 4,
-              padding: 0,
-            }}
+            className={styles.filterToggle}
           >
-            {"\u25BD"}
+            {"▽"}
           </button>
           {openFilter === col.key && (
             <FilterPanel

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Trade } from "@rtc/domain";
 import type { ColumnFilter } from "./filterState";
+import styles from "./SetFilter.module.css";
 
 interface SetFilterProps {
   column: keyof Trade;
@@ -39,9 +40,9 @@ export function SetFilter({ column, trades, currentFilter, onApply }: SetFilterP
   }, [selected, allValues.length, onApply, column]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: 8 }}>
+    <div className={styles.container}>
       {allValues.map((val) => (
-        <label key={val} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--text-primary)", cursor: "pointer" }}>
+        <label key={val} className={styles.option}>
           <input
             type="checkbox"
             checked={selected.has(val)}
@@ -50,19 +51,7 @@ export function SetFilter({ column, trades, currentFilter, onApply }: SetFilterP
           {val}
         </label>
       ))}
-      <button
-        onClick={handleApply}
-        style={{
-          marginTop: 4,
-          padding: "4px 8px",
-          fontSize: 11,
-          border: "1px solid var(--border-primary)",
-          borderRadius: 3,
-          backgroundColor: "var(--accent-primary)",
-          color: "#fff",
-          cursor: "pointer",
-        }}
-      >
+      <button onClick={handleApply} className={styles.applyBtn}>
         Apply
       </button>
     </div>

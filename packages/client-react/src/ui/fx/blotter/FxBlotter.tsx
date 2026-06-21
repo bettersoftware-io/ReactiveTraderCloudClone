@@ -15,6 +15,7 @@ import {
   type ColumnFilter,
   applyFilters,
 } from "./columnFilter/filterState";
+import styles from "./FxBlotter.module.css";
 
 export function FxBlotter() {
   const trades = useHooks().useTrades();
@@ -73,39 +74,13 @@ export function FxBlotter() {
   }, [filters]);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        backgroundColor: "var(--bg-tile)",
-        border: "1px solid var(--border-primary)",
-        borderRadius: 6,
-        padding: 12,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--text-primary)",
-            }}
-          >
-            Trades
-          </span>
+    <div className={styles.container}>
+      <div className={styles.toolbar}>
+        <div className={styles.toolbarLeft}>
+          <span className={styles.title}>Trades</span>
           <QuickFilter value={quickFilter} onChange={setQuickFilter} />
           {activeFilterLabels.length > 0 && (
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+            <span className={styles.filterLabel}>
               Filtered: {activeFilterLabels.join(", ")}
             </span>
           )}
@@ -113,28 +88,16 @@ export function FxBlotter() {
         <button
           data-testid="export-csv"
           onClick={() => exportToCsv(processedTrades)}
-          style={{
-            padding: "4px 10px",
-            fontSize: 11,
-            border: "1px solid var(--border-primary)",
-            borderRadius: 3,
-            backgroundColor: "transparent",
-            color: "var(--text-secondary)",
-            cursor: "pointer",
-          }}
+          className={styles.exportBtn}
         >
           Export CSV
         </button>
       </div>
 
-      <div style={{ overflow: "auto", maxHeight: 300 }}>
+      <div className={styles.tableWrapper}>
         <table
           data-testid="blotter-table"
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: 12,
-          }}
+          className={styles.table}
         >
           <thead>
             <BlotterHeader
@@ -157,12 +120,7 @@ export function FxBlotter() {
               <tr>
                 <td
                   colSpan={COLUMNS.length}
-                  style={{
-                    padding: 16,
-                    textAlign: "center",
-                    color: "var(--text-muted)",
-                    fontSize: 12,
-                  }}
+                  className={styles.emptyCell}
                 >
                   {trades.length === 0
                     ? "No trades yet"

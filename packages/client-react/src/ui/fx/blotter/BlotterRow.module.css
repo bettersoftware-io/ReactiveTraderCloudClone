@@ -1,0 +1,16 @@
+.row {
+  transition: background-color 1s ease-in-out;
+  color: var(--text-primary);
+}
+
+.row[data-state="rejected"] {
+  text-decoration: line-through;
+  color: var(--accent-negative);
+}
+
+.cell {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { TradeStatus, type Trade } from "@rtc/domain";
 import { useHooks } from "../../hooks/HooksProvider";
 import { COLUMNS, formatCellValue } from "./blotterColumns";
+import styles from "./BlotterRow.module.css";
 
 interface BlotterRowProps {
   trade: Trade;
@@ -16,30 +17,24 @@ export function BlotterRow({ trade, isNew }: BlotterRowProps) {
   const [hovered, setHovered] = useState(false);
   const isRejected = trade.status === TradeStatus.Rejected;
 
+  const backgroundColor = highlight
+    ? "rgba(59, 130, 246, 0.15)"
+    : hovered
+      ? "var(--bg-secondary)"
+      : "transparent";
+
   return (
     <tr
+      data-state={isRejected ? "rejected" : "live"}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{
-        backgroundColor: highlight
-          ? "rgba(59, 130, 246, 0.15)"
-          : hovered
-            ? "var(--bg-secondary)"
-            : "transparent",
-        transition: "background-color 1s ease-in-out",
-        textDecoration: isRejected ? "line-through" : "none",
-        color: isRejected ? "var(--accent-negative)" : "var(--text-primary)",
-      }}
+      className={styles.row}
+      style={{ backgroundColor }}
     >
       {COLUMNS.map((col) => (
         <td
           key={col.key}
-          style={{
-            padding: "4px 8px",
-            fontSize: 12,
-            borderBottom: "1px solid var(--border-subtle)",
-            whiteSpace: "nowrap",
-          }}
+          className={styles.cell}
         >
           {formatCellValue(trade, col)}
         </td>

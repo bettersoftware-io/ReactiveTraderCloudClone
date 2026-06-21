@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import type { Trade } from "@rtc/domain";
 import type { ColumnFilter, Comparator } from "./filterState";
+import styles from "./DateFilter.module.css";
 
 interface DateFilterProps {
   column: keyof Trade;
@@ -44,12 +45,12 @@ export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) 
   }, [column, comparator, value, valueTo, onApply]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: 8 }}>
+    <div className={styles.container}>
       <select
         data-testid="date-filter-comparator"
         value={comparator}
         onChange={(e) => setComparator(e.target.value as Comparator)}
-        style={{ fontSize: 11, padding: 2, color: "var(--text-primary)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)" }}
+        className={styles.select}
       >
         {comparators.map((c) => (
           <option key={c.value} value={c.value}>{c.label}</option>
@@ -60,7 +61,7 @@ export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) 
         data-testid="date-filter-value"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        style={{ fontSize: 11, padding: 2, color: "var(--text-primary)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)" }}
+        className={styles.input}
       />
       {comparator === "inRange" && (
         <input
@@ -68,20 +69,20 @@ export function DateFilter({ column, currentFilter, onApply }: DateFilterProps) 
           data-testid="date-filter-value-to"
           value={valueTo}
           onChange={(e) => setValueTo(e.target.value)}
-          style={{ fontSize: 11, padding: 2, color: "var(--text-primary)", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)" }}
+          className={styles.input}
         />
       )}
-      <div style={{ display: "flex", gap: 4 }}>
+      <div className={styles.buttons}>
         <button
           data-testid="date-filter-apply"
           onClick={handleApply}
-          style={{ flex: 1, padding: "4px 8px", fontSize: 11, border: "1px solid var(--border-primary)", borderRadius: 3, backgroundColor: "var(--accent-primary)", color: "#fff", cursor: "pointer" }}
+          className={styles.applyBtn}
         >
           Apply
         </button>
         <button
           onClick={() => onApply(null)}
-          style={{ flex: 1, padding: "4px 8px", fontSize: 11, border: "1px solid var(--border-primary)", borderRadius: 3, backgroundColor: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
+          className={styles.resetBtn}
         >
           Reset
         </button>

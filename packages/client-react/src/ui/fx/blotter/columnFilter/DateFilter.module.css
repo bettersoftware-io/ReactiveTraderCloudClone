@@ -1,0 +1,49 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+}
+
+.select {
+  font-size: 11px;
+  padding: 2px;
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+}
+
+.input {
+  font-size: 11px;
+  padding: 2px;
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+}
+
+.buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.applyBtn {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  background-color: var(--accent-primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+.resetBtn {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}

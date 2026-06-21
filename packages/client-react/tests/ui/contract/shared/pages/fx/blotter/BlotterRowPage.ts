@@ -26,7 +26,7 @@ export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
 
   /** True when the row renders with the rejected (struck-through) styling. */
   isRejected(): boolean {
-    return this.row().style.textDecoration === "line-through";
+    return this.row().dataset.state === "rejected";
   }
 
   /** The row's current inline background colour (proxy for the new-trade highlight). */
