@@ -99,8 +99,7 @@ export class TilePage extends MountedComponent<TileProps> {
     await this.user.click(this.q().getByTitle(/reset to default/i));
   }
   notionalError(): string | null {
-    const spans = [...this.root.querySelectorAll("span")];
-    const err = spans.find((s) => s.style.position === "absolute");
+    const err = this.root.querySelector("[data-testid='notional-error']");
     return err?.textContent?.trim() ?? null;
   }
 

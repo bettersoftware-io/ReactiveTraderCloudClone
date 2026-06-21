@@ -1,12 +1,13 @@
 import { ExecutionStatus, Direction, type Trade } from "@rtc/domain";
 import type { TileExecutionState } from "../../../../app/presenters/TileExecutionMachine";
+import styles from "./TileConfirmation.module.css";
 
 interface TileConfirmationProps {
   state: TileExecutionState;
   onDismiss: () => void;
 }
 
-const bgColors: Record<string, string> = {
+const bgByStatus: Record<string, string> = {
   started: "transparent",
   tooLong: "var(--accent-aware)",
   timeout: "var(--accent-aware)",
@@ -52,15 +53,15 @@ function ConfirmationContent({ state }: { state: TileExecutionState }) {
       const verb =
         trade.direction === Direction.Buy ? "You Bought" : "You Sold";
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
-          <span style={{ fontWeight: 600 }}>{verb}</span>
+        <div className={styles.tradeDetails}>
+          <span className={styles.tradeVerb}>{verb}</span>
           <span>
             {trade.dealtCurrency} {formatNotional(trade.notional)}
           </span>
-          <span style={{ fontSize: 11 }}>
+          <span className={styles.tradeMeta}>
             {trade.currencyPair} @ {trade.spotRate}
           </span>
-          <span style={{ fontSize: 10, opacity: 0.8 }}>
+          <span className={styles.tradeId}>
             Trade ID: {trade.tradeId} | {trade.valueDate}
           </span>
         </div>
@@ -71,34 +72,27 @@ function ConfirmationContent({ state }: { state: TileExecutionState }) {
   return null;
 }
 
+function resolveBg(state: TileExecutionState): string {
+  if (state.status === "finished") {
+    return bgByStatus[state.executionStatus] ?? "var(--bg-overlay)";
+  }
+  return bgByStatus[state.status] ?? "var(--bg-overlay)";
+}
+
 export function TileConfirmation({ state, onDismiss }: TileConfirmationProps) {
   if (state.status === "ready") return null;
 
-  const bg =
-    state.status === "finished"
-      ? bgColors[state.executionStatus] ?? "var(--bg-overlay)"
-      : bgColors[state.status] ?? "var(--bg-overlay)";
+  const bg = resolveBg(state);
+  const cursorValue = state.status === "started" ? "default" : "pointer";
 
   return (
     <div
       data-testid="trade-confirmation"
+      data-bg={bg}
+      data-cursor={cursorValue}
       onClick={state.status !== "started" ? onDismiss : undefined}
-      style={{
-        position: "absolute",
-        inset: 0,
-        borderRadius: 6,
-        backgroundColor: bg,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#fff",
-        fontSize: 13,
-        textAlign: "center",
-        padding: 12,
-        cursor:
-          state.status === "started" ? "default" : "pointer",
-        zIndex: 1,
-      }}
+      className={styles.overlay}
+      style={{ backgroundColor: bg, cursor: cursorValue }}
     >
       <ConfirmationContent state={state} />
     </div>

@@ -1,0 +1,84 @@
+.initiateButton {
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--accent-primary);
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.requestedWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.awaitingText {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.cancelButton {
+  padding: 6px 0;
+  font-size: 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.receivedWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.quoteRow {
+  display: flex;
+  gap: 4px;
+}
+
+.sellQuoteButton {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--accent-negative);
+  cursor: pointer;
+}
+
+.buyQuoteButton {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--accent-positive);
+  cursor: pointer;
+}
+
+.rejectButton {
+  padding: 4px 0;
+  font-size: 11px;
+  border: none;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.rejectedText {
+  text-align: center;
+  font-size: 12px;
+  color: var(--accent-negative);
+  padding: 8px 0;
+}

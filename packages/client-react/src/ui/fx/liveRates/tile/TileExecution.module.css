@@ -1,0 +1,32 @@
+.row {
+  display: flex;
+  gap: 4px;
+}
+
+.button {
+  flex: 1;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: transparent;
+  color: var(--accent-negative);
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+
+.button:disabled {
+  cursor: default;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.button[data-side="buy"] {
+  color: var(--accent-positive);
+}
+
+.button[data-side="buy"]:disabled {
+  color: var(--text-muted);
+}

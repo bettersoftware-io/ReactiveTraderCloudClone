@@ -1,4 +1,5 @@
 import type { PriceTick } from "@rtc/domain";
+import styles from "./TileChart.module.css";
 
 interface TileChartProps {
   history: readonly PriceTick[];
@@ -41,7 +42,7 @@ export function TileChart({ history }: TileChartProps) {
       height={CHART_HEIGHT}
       viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
       preserveAspectRatio="none"
-      style={{ display: "block" }}
+      className={styles.chartWrapper}
     >
       {path && (
         <path

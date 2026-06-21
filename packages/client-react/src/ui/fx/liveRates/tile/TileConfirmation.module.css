@@ -1,0 +1,33 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+  z-index: 1;
+}
+
+.tradeDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.tradeVerb {
+  font-weight: 600;
+}
+
+.tradeMeta {
+  font-size: 11px;
+}
+
+.tradeId {
+  font-size: 10px;
+  opacity: 0.8;
+}

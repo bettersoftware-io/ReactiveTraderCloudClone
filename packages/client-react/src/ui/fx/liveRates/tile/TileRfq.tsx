@@ -10,6 +10,7 @@ import type {
   RfqTileIntents,
 } from "../../../../app/presenters/RfqTileMachine";
 import { RfqCountdown } from "./RfqCountdown";
+import styles from "./TileRfq.module.css";
 
 /** The machine result the tile passes down: current state plus the RFQ intents. */
 export type TileRfqState = { state: RfqState } & RfqTileIntents;
@@ -62,16 +63,7 @@ export function TileRfq({
     return (
       <button
         onClick={onRequestQuote}
-        style={{
-          padding: "8px 0",
-          fontSize: 13,
-          fontWeight: 600,
-          border: "1px solid var(--accent-primary)",
-          borderRadius: 4,
-          backgroundColor: "transparent",
-          color: "var(--accent-primary)",
-          cursor: "pointer",
-        }}
+        className={styles.initiateButton}
       >
         Initiate RFQ
       </button>
@@ -80,28 +72,13 @@ export function TileRfq({
 
   if (state.status === "requested") {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div
-          style={{
-            textAlign: "center",
-            fontSize: 12,
-            color: "var(--text-muted)",
-            padding: "4px 0",
-          }}
-        >
+      <div className={styles.requestedWrapper}>
+        <div className={styles.awaitingText}>
           Awaiting Price...
         </div>
         <button
           onClick={rfqState.cancel}
-          style={{
-            padding: "6px 0",
-            fontSize: 12,
-            border: "1px solid var(--border-primary)",
-            borderRadius: 4,
-            backgroundColor: "transparent",
-            color: "var(--text-secondary)",
-            cursor: "pointer",
-          }}
+          className={styles.cancelButton}
         >
           Cancel RFQ
         </button>
@@ -111,37 +88,17 @@ export function TileRfq({
 
   if (state.status === "received" && state.quote) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ display: "flex", gap: 4 }}>
+      <div className={styles.receivedWrapper}>
+        <div className={styles.quoteRow}>
           <button
             onClick={() => handleAccept(Direction.Sell)}
-            style={{
-              flex: 1,
-              padding: "6px 4px",
-              fontSize: 12,
-              fontWeight: 600,
-              border: "1px solid var(--border-primary)",
-              borderRadius: 4,
-              backgroundColor: "transparent",
-              color: "var(--accent-negative)",
-              cursor: "pointer",
-            }}
+            className={styles.sellQuoteButton}
           >
             Sell {formatPrice(state.quote.bid, pair.ratePrecision)}
           </button>
           <button
             onClick={() => handleAccept(Direction.Buy)}
-            style={{
-              flex: 1,
-              padding: "6px 4px",
-              fontSize: 12,
-              fontWeight: 600,
-              border: "1px solid var(--border-primary)",
-              borderRadius: 4,
-              backgroundColor: "transparent",
-              color: "var(--accent-positive)",
-              cursor: "pointer",
-            }}
+            className={styles.buyQuoteButton}
           >
             Buy {formatPrice(state.quote.ask, pair.ratePrecision)}
           </button>
@@ -152,14 +109,7 @@ export function TileRfq({
         />
         <button
           onClick={rfqState.reject}
-          style={{
-            padding: "4px 0",
-            fontSize: 11,
-            border: "none",
-            backgroundColor: "transparent",
-            color: "var(--text-muted)",
-            cursor: "pointer",
-          }}
+          className={styles.rejectButton}
         >
           Reject
         </button>
@@ -169,14 +119,7 @@ export function TileRfq({
 
   if (state.status === "rejected") {
     return (
-      <div
-        style={{
-          textAlign: "center",
-          fontSize: 12,
-          color: "var(--accent-negative)",
-          padding: "8px 0",
-        }}
-      >
+      <div className={styles.rejectedText}>
         Quote expired
       </div>
     );

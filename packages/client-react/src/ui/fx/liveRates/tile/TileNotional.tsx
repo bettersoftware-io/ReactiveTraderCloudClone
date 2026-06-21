@@ -1,5 +1,6 @@
 import { useCallback, useRef, type ChangeEvent, type KeyboardEvent } from "react";
 import type { NotionalView, NotionalIntents } from "../../../../app/presenters/NotionalMachine";
+import styles from "./TileNotional.module.css";
 
 interface TileNotionalProps {
   notional: { state: NotionalView } & NotionalIntents;
@@ -34,22 +35,11 @@ export function TileNotional({
     inputRef.current?.select();
   }, []);
 
+  const hasError = !!notional.state.error;
+
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        position: "relative",
-      }}
-    >
-      <span
-        style={{
-          fontSize: 11,
-          color: "var(--text-muted)",
-          minWidth: 28,
-        }}
-      >
+    <div className={styles.wrapper}>
+      <span className={styles.currencyLabel}>
         {baseCurrency}
       </span>
       <input
@@ -59,45 +49,22 @@ export function TileNotional({
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         disabled={disabled}
-        style={{
-          flex: 1,
-          background: "none",
-          border: "none",
-          borderBottom: `1px solid ${notional.state.error ? "var(--accent-negative)" : "var(--border-primary)"}`,
-          color: "var(--text-primary)",
-          fontSize: 13,
-          padding: "2px 0",
-          outline: "none",
-          textAlign: "right",
-          fontFamily: "inherit",
-        }}
+        data-error={hasError ? "true" : "false"}
+        className={styles.input}
       />
       {!notional.state.isDefault && (
         <button
           onClick={notional.reset}
           title="Reset to default"
-          style={{
-            background: "none",
-            border: "none",
-            color: "var(--text-muted)",
-            cursor: "pointer",
-            fontSize: 12,
-            padding: "0 2px",
-            lineHeight: 1,
-          }}
+          className={styles.resetButton}
         >
-          {"\u21BA"}
+          {"↺"}
         </button>
       )}
-      {notional.state.error && (
+      {hasError && (
         <span
-          style={{
-            position: "absolute",
-            bottom: -14,
-            right: 0,
-            fontSize: 10,
-            color: "var(--accent-negative)",
-          }}
+          data-testid="notional-error"
+          className={styles.errorMessage}
         >
           {notional.state.error}
         </span>

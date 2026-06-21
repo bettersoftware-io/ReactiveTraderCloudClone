@@ -28,11 +28,11 @@ export class TileConfirmationPage extends MountedComponent<TileConfirmationProps
   }
 
   backgroundColor(): string {
-    return this.overlay()?.style.backgroundColor ?? "";
+    return this.overlay()?.dataset.bg ?? "";
   }
 
   cursor(): string {
-    return this.overlay()?.style.cursor ?? "";
+    return this.overlay()?.dataset.cursor ?? "";
   }
 
   async clickOverlay(): Promise<void> {

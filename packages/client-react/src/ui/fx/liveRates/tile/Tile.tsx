@@ -9,6 +9,7 @@ import { TileExecution } from "./TileExecution";
 import { TileConfirmation } from "./TileConfirmation";
 import { TileRfq } from "./TileRfq";
 import { StaleIndicator } from "../../../shell/stale/StaleIndicator";
+import styles from "./Tile.module.css";
 
 interface TileProps {
   pair: CurrencyPair;
@@ -44,19 +45,8 @@ export function Tile({ pair, showChart }: TileProps) {
     <StaleIndicator stale={stale}>
     <div
       data-testid={`tile-${pair.symbol}`}
-      style={{
-        backgroundColor: "var(--bg-tile)",
-        border: "1px solid var(--border-primary)",
-        borderRadius: 6,
-        padding: 12,
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        opacity: isLoading ? 0.5 : 1,
-        transition: "opacity 0.3s",
-        minWidth: 280,
-        position: "relative",
-      }}
+      data-loading={isLoading ? "true" : "false"}
+      className={styles.tile}
     >
       <TileHeader base={pair.base} terms={pair.terms} />
 
@@ -72,16 +62,7 @@ export function Tile({ pair, showChart }: TileProps) {
           <SpreadDisplay spread={price.spread} />
         </>
       ) : (
-        <div
-          style={{
-            height: 60,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--text-muted)",
-            fontSize: 12,
-          }}
-        >
+        <div className={styles.loadingPlaceholder}>
           Loading...
         </div>
       )}

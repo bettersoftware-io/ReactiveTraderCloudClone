@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import styles from "./StaleIndicator.module.css";
 
 interface StaleIndicatorProps {
   stale: boolean;
@@ -13,31 +14,15 @@ export function StaleIndicator({ stale, children, style }: StaleIndicatorProps) 
   return (
     <div
       data-stale={stale || undefined}
-      style={{
-        position: "relative",
-        ...style,
-      }}
+      className={styles.wrapper}
+      style={style}
     >
       {children}
       {stale && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.4)",
-            borderRadius: "inherit",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 10,
-          }}
-        >
+        <div className={styles.overlay}>
           <span
-            style={{
-              fontSize: 11,
-              color: "rgba(255, 255, 255, 0.8)",
-              fontWeight: 500,
-            }}
+            data-testid="stale-message"
+            className={styles.message}
           >
             Reconnecting...
           </span>

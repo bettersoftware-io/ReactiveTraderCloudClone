@@ -96,6 +96,7 @@ export class TileNotionalPage extends MountedComponent<TileNotionalProps> {
 
   /** Border colour of the input's bottom edge (red when in error). */
   borderBottomColor(): string {
-    return this.input().style.borderBottom;
+    const inError = this.input().dataset.error === "true";
+    return inError ? "var(--accent-negative)" : "var(--border-primary)";
   }
 }
