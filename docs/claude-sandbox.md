@@ -215,3 +215,40 @@ volumes for the browser caches:
 rtc-pwct-cache:$REPO/packages/client/tests/ui/visual/playwright-ct/host/.cache
 rtc-reports:$REPO/packages/client/reports
 ```
+
+## Desktop notifications from inside the container
+
+Claude Code's `Notification` hook (in `~/.claude/settings.json`) pops a macOS
+notification when Claude needs your attention. On the **host** it shells out to
+`osascript`; **inside the container** `osascript` doesn't exist, so the hook
+falls back to emitting a terminal **OSC escape** that the terminal turns into a
+desktop notification.
+
+Two things make that fall-back actually reach Ghostty:
+
+1. **It runs under host tmux.** You launch `claude-sandbox` from a tmux pane, and
+   tmux *swallows* bare OSC sequences. `set -g allow-passthrough on`
+   (in `~/dotfiles/tmux/.tmux.conf`) is necessary **but not sufficient** — it only
+   enables the *explicit* passthrough envelope. The sequence must be **wrapped**:
+   `\ePtmux;<payload with every ESC doubled>\e\\`. The hook emits both a raw and a
+   wrapped OSC 777 so it works in a plain Ghostty tab *and* through tmux.
+
+2. **The hook runs detached** (no controlling terminal → `/dev/tty` gives ENXIO).
+   It targets the real session pty via
+   `$(readlink /proc/1/fd/0 2>/dev/null || echo /dev/tty)`.
+
+Gotchas:
+
+- **Ghostty only shows a banner when it's *unfocused*** (another app frontmost).
+  When focused, the notification goes silently to Notification Center — don't
+  mistake that for "broken."
+- **`settings.json` is bind-mounted read-only and can go stale.** The host path is
+  a symlink into `~/dotfiles`, and editing it atomic-replaces the inode; a running
+  container keeps the old one. **Relaunch `claude-sandbox`** after changing the
+  hook for it to take effect.
+
+Quick manual test from a tmux pane (unfocus Ghostty first):
+
+```sh
+printf '\033Ptmux;\033\033]777;notify;Test;hi\007\033\\' > "$(tmux display -p '#{pane_tty}')"
+```
