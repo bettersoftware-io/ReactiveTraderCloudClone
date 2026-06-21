@@ -4,6 +4,7 @@ import { useHooks } from "../../hooks/HooksProvider";
 import { CurrencyFilter } from "./CurrencyFilter";
 import { ViewToggle } from "./ViewToggle";
 import { Tile } from "./tile/Tile";
+import styles from "./LiveRatesPanel.module.css";
 
 export function LiveRatesPanel() {
   const hooks = useHooks();
@@ -19,41 +20,18 @@ export function LiveRatesPanel() {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 8,
-        }}
-      >
+    <div className={styles.panel}>
+      <div className={styles.controls}>
         <CurrencyFilter selected={filter} onChange={setFilter} />
         <ViewToggle mode={viewMode} onChange={setViewMode} />
       </div>
 
       {pairs.length === 0 ? (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: 1,
-            color: "var(--text-muted)",
-            fontSize: 13,
-          }}
-        >
+        <div className={styles.empty}>
           Loading currency pairs...
         </div>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 8,
-          }}
-        >
+        <div className={styles.grid}>
           {filteredPairs.map((pair) => (
             <Tile
               key={pair.symbol}

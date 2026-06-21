@@ -1,4 +1,5 @@
 import { CURRENCY_CATEGORIES, type CurrencyCategory } from "@rtc/domain";
+import styles from "./CurrencyFilter.module.css";
 
 interface CurrencyFilterProps {
   selected: CurrencyCategory;
@@ -7,29 +8,14 @@ interface CurrencyFilterProps {
 
 export function CurrencyFilter({ selected, onChange }: CurrencyFilterProps) {
   return (
-    <div data-testid="currency-filter" style={{ display: "flex", gap: 2 }}>
+    <div data-testid="currency-filter" className={styles.filterBar}>
       {CURRENCY_CATEGORIES.map((cat) => (
         <button
           key={cat}
           data-testid={`filter-${cat}`}
+          data-active={selected === cat ? "true" : "false"}
           onClick={() => onChange(cat)}
-          style={{
-            padding: "4px 10px",
-            fontSize: 12,
-            border: "none",
-            borderRadius: 3,
-            cursor: "pointer",
-            fontWeight: selected === cat ? 600 : 400,
-            backgroundColor:
-              selected === cat
-                ? "var(--accent-primary)"
-                : "transparent",
-            color:
-              selected === cat
-                ? "#fff"
-                : "var(--text-secondary)",
-            transition: "background-color 0.15s, color 0.15s",
-          }}
+          className={styles.filter}
         >
           {cat}
         </button>

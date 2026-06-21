@@ -22,10 +22,10 @@ export class CurrencyFilterPage extends MountedComponent<CurrencyFilterProps> {
     );
   }
 
-  /** The category whose button is rendered as selected (bold weight). */
+  /** The category whose button is rendered as selected (data-active="true"). */
   selectedCategory(): string | null {
     const buttons = [...this.root.querySelectorAll<HTMLButtonElement>("[data-testid^='filter-']")];
-    const active = buttons.find((b) => b.style.fontWeight === "600");
+    const active = buttons.find((b) => b.dataset.active === "true");
     return active?.textContent?.trim() ?? null;
   }
 
