@@ -2,11 +2,14 @@
   "name": "@rtc/server",
   "version": "0.0.0",
   "private": true,
+  "imports": {
+    "#/*": "./src/*"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && tsc-alias -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -28,6 +31,7 @@
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.8",
     "@vitest/ui": "^4.1.8",
+    "tsc-alias": "1.8.17",
     "tsx": "^4",
     "vitest": "^4"
   }
