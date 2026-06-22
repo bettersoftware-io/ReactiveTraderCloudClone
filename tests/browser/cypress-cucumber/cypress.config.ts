@@ -1,7 +1,10 @@
 import path from "node:path";
 
 import { addCucumberPreprocessorPlugin } from "@badeball/cypress-cucumber-preprocessor";
-import createEsbuildPlugin from "@badeball/cypress-cucumber-preprocessor/esbuild";
+// Named import: the /esbuild entry exports `createEsbuildPlugin` as a named
+// export (no default). A default import only worked under older Cypress by
+// CJS/ESM interop luck; Cypress 15.17 changed config transpilation and broke it.
+import { createEsbuildPlugin } from "@badeball/cypress-cucumber-preprocessor/esbuild";
 import createBundler from "@bahmutov/cypress-esbuild-preprocessor";
 import { defineConfig } from "cypress";
 
