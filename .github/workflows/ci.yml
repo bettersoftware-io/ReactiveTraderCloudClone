@@ -88,6 +88,9 @@ jobs:
       - name: Dead code (knip)
         run: pnpm lint:dead
 
+      - name: Dependency graph (cycles + layering)
+        run: pnpm check:deps
+
       - name: Architecture + supply-chain gates (grep gates + pnpm audit --prod)
         run: pnpm --filter @rtc/tests gates
 
