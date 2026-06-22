@@ -1,4 +1,5 @@
 import { afterEach, vi } from "vitest";
+
 import { describePricingPortContract } from "../ports/__contracts__/PricingPortContract.js";
 import { PricingSimulator } from "./PricingSimulator.js";
 

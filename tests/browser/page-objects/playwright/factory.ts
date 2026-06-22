@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+
 import type { PageObjects } from "../contracts";
 import { PlaywrightAnalyticsDashboard } from "./AnalyticsDashboard";
 import { PlaywrightBlotterTable } from "./BlotterTable";

@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+
 import type { FooterPO } from "../contracts/Footer";
 import { TESTIDS } from "../contracts/testids";
 

@@ -34,15 +34,25 @@
           "options": {
             // Sort bare/side-effect imports (e.g. `import "./index.css"`) too.
             "sortBareImports": true,
-            // First-match-wins groups, in output order. :STYLE: is placed
-            // before :PATH: so global CSS (index.css) sorts ahead of relative
-            // JS — preserving cascade order rather than dropping to the end.
+            // Groups match in array order — earlier matchers win. Negations
+            // (`!`) carve overlaps out of predefined groups: `:PACKAGE:` minus
+            // `@rtc/**` keeps workspace packages out of third-party (so react
+            // sorts before @rtc/*, which gets its own group); `:PATH:` minus
+            // `:STYLE:` lets CSS fall through to a real, last :STYLE: group.
+            // :BLANK_LINE: inserts a blank line. Within :PATH:, imports sort by
+            // distance (more `../` first, `./` last), then natural order.
             "groups": [
               ":NODE:",
-              ":PACKAGE:",
+              ":BLANK_LINE:",
+              [":PACKAGE:", "!@rtc/**"],
+              ":BLANK_LINE:",
               "@rtc/**",
-              ":STYLE:",
-              [":PATH:", ":ALIAS:"]
+              ":BLANK_LINE:",
+              ":ALIAS:",
+              ":BLANK_LINE:",
+              [":PATH:", "!:STYLE:"],
+              ":BLANK_LINE:",
+              ":STYLE:"
             ]
           }
         }

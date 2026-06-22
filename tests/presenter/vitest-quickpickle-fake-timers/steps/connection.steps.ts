@@ -6,8 +6,10 @@
 // directly (safe because all members are string-valued) and cast via
 // `import type { ConnectionStatus }` for the type annotation only.
 
-import type { ConnectionStatus } from "@rtc/domain";
 import { Then, When } from "quickpickle";
+
+import type { ConnectionStatus } from "@rtc/domain";
+
 import * as conn from "../../scenarios/_shared/connection";
 import type { VitestFakePresenterWorld } from "../world";
 

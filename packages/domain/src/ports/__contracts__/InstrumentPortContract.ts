@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
+
 import { defined } from "../../__testUtils__/defined.js";
 import type { InstrumentPort } from "../instrumentPort.js";
 

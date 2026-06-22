@@ -1,12 +1,13 @@
+import { AnalyticsPanel } from "@ui-contract/components";
+import { cleanupMounted, mount } from "@ui-contract/mount";
+import { afterEach, describe, expect, it } from "vitest";
+
 import {
   ConnectionStatus,
   type CurrencyPairPosition,
   type HistoricPosition,
   type PositionUpdates,
 } from "@rtc/domain";
-import { AnalyticsPanel } from "@ui-contract/components";
-import { cleanupMounted, mount } from "@ui-contract/mount";
-import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(() => cleanupMounted());
 

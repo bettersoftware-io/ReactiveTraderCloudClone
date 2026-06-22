@@ -15,6 +15,7 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
+
 import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
 import type {
   RfqSubmissionState,

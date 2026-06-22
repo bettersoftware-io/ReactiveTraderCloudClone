@@ -1,4 +1,5 @@
 import type { Observable } from "rxjs";
+
 import type { Trade } from "../fx/trade.js";
 import type { BlotterPort } from "../ports/blotterPort.js";
 

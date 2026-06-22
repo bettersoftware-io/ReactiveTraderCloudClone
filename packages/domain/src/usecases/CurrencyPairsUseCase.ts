@@ -1,4 +1,5 @@
 import type { Observable } from "rxjs";
+
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { ReferenceDataPort } from "../ports/referenceDataPort.js";
 

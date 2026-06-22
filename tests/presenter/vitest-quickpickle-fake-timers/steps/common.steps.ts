@@ -1,5 +1,6 @@
 // tests/presenter/vitest-quickpickle-fake-timers/steps/common.steps.ts
 import { Given, When } from "quickpickle";
+
 import * as common from "../../scenarios/_shared/common";
 import type { VitestFakePresenterWorld } from "../world";
 

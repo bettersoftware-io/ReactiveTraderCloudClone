@@ -1,3 +1,7 @@
+import { TradeTicket } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
+
 import {
   Direction,
   type Instrument,
@@ -6,9 +10,6 @@ import {
   type Rfq,
   RfqState,
 } from "@rtc/domain";
-import { TradeTicket } from "@ui-contract/components";
-import { mount } from "@ui-contract/mount";
-import { describe, expect, it } from "vitest";
 
 const instrument: Instrument = {
   id: 1,

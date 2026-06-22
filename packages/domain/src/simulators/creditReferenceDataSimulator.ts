@@ -1,4 +1,5 @@
 import { type Observable, of } from "rxjs";
+
 import type { Dealer } from "../credit/dealer.js";
 import type { Instrument } from "../credit/instrument.js";
 import type { DealerPort } from "../ports/dealerPort.js";

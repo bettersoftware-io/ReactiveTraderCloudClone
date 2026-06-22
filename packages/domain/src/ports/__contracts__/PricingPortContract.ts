@@ -1,5 +1,6 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import type { PricingPort } from "../pricingPort.js";
 
 export interface PricingDriver {

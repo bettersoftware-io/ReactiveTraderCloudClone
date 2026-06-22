@@ -1,7 +1,9 @@
-import { ConnectionStatus } from "@rtc/domain";
 import type { Observable } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
+
+import { ConnectionStatus } from "@rtc/domain";
+
 import { createStaleFlagMachine } from "../StaleFlagMachine";
 
 function scheduler() {

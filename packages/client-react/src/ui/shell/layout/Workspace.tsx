@@ -1,10 +1,11 @@
-import styles from "./Workspace.module.css";
 import { AdminPanel } from "../../admin/AdminPanel";
 import { CreditWorkspace } from "../../credit/CreditWorkspace";
 import { AnalyticsPanel } from "../../fx/analytics/AnalyticsPanel";
 import { FxBlotter } from "../../fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "../../fx/liveRates/LiveRatesPanel";
 import type { WorkspaceTab } from "./Header";
+
+import styles from "./Workspace.module.css";
 
 interface WorkspaceProps {
   activeTab: WorkspaceTab;

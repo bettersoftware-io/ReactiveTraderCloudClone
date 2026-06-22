@@ -1,3 +1,5 @@
+import { useCallback, useMemo } from "react";
+
 import {
   type Dealer,
   type Instrument,
@@ -5,9 +7,10 @@ import {
   type Rfq,
   RfqState,
 } from "@rtc/domain";
-import { useCallback, useMemo } from "react";
-import styles from "./RfqCard.module.css";
+
 import { QuoteCard } from "./QuoteCard";
+
+import styles from "./RfqCard.module.css";
 
 interface RfqCardProps {
   rfq: Rfq;

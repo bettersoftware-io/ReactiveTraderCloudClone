@@ -1,5 +1,7 @@
-import type { Dealer, Quote } from "@rtc/domain";
 import { useCallback } from "react";
+
+import type { Dealer, Quote } from "@rtc/domain";
+
 import styles from "./QuoteCard.module.css";
 
 interface QuoteCardProps {

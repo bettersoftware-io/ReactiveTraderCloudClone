@@ -1,6 +1,8 @@
-import type { AnalyticsPort, PositionUpdates } from "@rtc/domain";
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
+
+import type { AnalyticsPort, PositionUpdates } from "@rtc/domain";
+
 import { AnalyticsPresenter } from "../AnalyticsPresenter";
 
 describe("AnalyticsPresenter", () => {

@@ -1,5 +1,6 @@
-import type { PreferencesPort, ViewMode } from "@rtc/domain";
 import { type Observable, shareReplay } from "rxjs";
+
+import type { PreferencesPort, ViewMode } from "@rtc/domain";
 
 /**
  * App-layer presenter for the live-rates view-mode preference. Exposes the

@@ -1,3 +1,7 @@
+import { SellSidePanel } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
+
 import {
   ADAPTIVE_BANK_NAME,
   type Dealer,
@@ -7,9 +11,6 @@ import {
   type Rfq,
   RfqState,
 } from "@rtc/domain";
-import { SellSidePanel } from "@ui-contract/components";
-import { mount } from "@ui-contract/mount";
-import { describe, expect, it } from "vitest";
 
 const instruments: readonly Instrument[] = [
   {

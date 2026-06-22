@@ -1,4 +1,5 @@
 import { createContext } from "react";
+
 import type { AppHooks } from "./createAppHooks";
 
 /** The DI seam's context: holds the business-logic hooks bundle (or null until a

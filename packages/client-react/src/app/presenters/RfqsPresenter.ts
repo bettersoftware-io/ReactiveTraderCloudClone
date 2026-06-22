@@ -1,13 +1,3 @@
-import {
-  type CreateRfqInput,
-  CreateRfqUseCase,
-  type Quote,
-  type QuoteRequest,
-  type Rfq,
-  type RfqStreamState,
-  WorkflowEventStreamUseCase,
-  type WorkflowPort,
-} from "@rtc/domain";
 import { type DefaultedStateObservable, state } from "@rx-state/core";
 import {
   catchError,
@@ -24,6 +14,18 @@ import {
   tap,
   timer,
 } from "rxjs";
+
+import {
+  type CreateRfqInput,
+  CreateRfqUseCase,
+  type Quote,
+  type QuoteRequest,
+  type Rfq,
+  type RfqStreamState,
+  WorkflowEventStreamUseCase,
+  type WorkflowPort,
+} from "@rtc/domain";
+
 import type { Machine } from "./machine";
 
 /** Delay between confirming a freshly-created RFQ and redirecting the user back

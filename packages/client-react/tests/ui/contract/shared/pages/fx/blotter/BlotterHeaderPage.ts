@@ -1,6 +1,8 @@
-import type { Trade } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
+
+import type { Trade } from "@rtc/domain";
+
 import type { ColumnFilter } from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
 import type { SortState } from "../../../../../../../src/ui/fx/blotter/columnSort";
 import { MountedComponent } from "../../../harness/component";

@@ -1,12 +1,14 @@
+import { type Observable, of } from "rxjs";
+import { TestScheduler } from "rxjs/testing";
+import { describe, expect, it } from "vitest";
+
 import {
   type CreateRfqInput,
   Direction,
   type RfqEvent,
   type WorkflowPort,
 } from "@rtc/domain";
-import { type Observable, of } from "rxjs";
-import { TestScheduler } from "rxjs/testing";
-import { describe, expect, it } from "vitest";
+
 import { type RfqSubmissionState, RfqsPresenter } from "../RfqsPresenter";
 
 // REDIRECT_DELAY_MS is presenter-local (1500). The marble test pins the timing.

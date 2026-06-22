@@ -1,5 +1,6 @@
 // packages/domain/src/simulators/ConnectionEventsSimulator.ts
 import { type Observable, of } from "rxjs";
+
 import type { ConnectionEvent } from "../connection/connectionStatus.js";
 import type { ConnectionEventsPort } from "../ports/connectionEventsPort.js";
 

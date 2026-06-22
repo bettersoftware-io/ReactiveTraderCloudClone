@@ -1,5 +1,6 @@
 import { firstValueFrom, of, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { Price } from "../fx/price.js";
 import { PriceMovementType } from "../fx/price.js";

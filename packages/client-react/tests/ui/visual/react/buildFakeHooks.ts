@@ -3,6 +3,7 @@ import {
   DEFAULT_THEME,
   DEFAULT_VIEW_MODE,
 } from "@rtc/domain";
+
 import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
 import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
 import type { AppData } from "../shared/appData";

@@ -1,4 +1,5 @@
 import { concat, defer, from, type Observable, of, Subject } from "rxjs";
+
 import type { Dealer } from "../credit/dealer.js";
 import { ADAPTIVE_BANK_NAME } from "../credit/dealer.js";
 import type { Quote, QuoteState } from "../credit/quote.js";

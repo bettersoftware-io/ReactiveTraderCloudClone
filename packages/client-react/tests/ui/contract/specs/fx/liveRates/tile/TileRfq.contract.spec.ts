@@ -1,13 +1,15 @@
+import { TileRfq } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import type { RfqStateLike } from "@ui-contract/pages/fx/liveRates/tile/TileRfqPage";
+import { describe, expect, it } from "vitest";
+
 import {
   type CurrencyPair,
   Direction,
   KNOWN_CURRENCY_PAIRS,
   type Price,
 } from "@rtc/domain";
-import { TileRfq } from "@ui-contract/components";
-import { mount } from "@ui-contract/mount";
-import type { RfqStateLike } from "@ui-contract/pages/fx/liveRates/tile/TileRfqPage";
-import { describe, expect, it } from "vitest";
+
 import type {
   RfqQuote,
   RfqState,

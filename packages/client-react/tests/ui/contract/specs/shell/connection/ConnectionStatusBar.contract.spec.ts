@@ -1,7 +1,8 @@
-import { ConnectionStatus } from "@rtc/domain";
 import { ConnectionStatusBar } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
+
+import { ConnectionStatus } from "@rtc/domain";
 
 describe("ConnectionStatusBar", () => {
   it("labels a connecting session", () => {

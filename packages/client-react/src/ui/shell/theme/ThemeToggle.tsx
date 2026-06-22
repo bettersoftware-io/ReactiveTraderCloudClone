@@ -1,5 +1,6 @@
-import styles from "./ThemeToggle.module.css";
 import { useTheme } from "./useTheme";
+
+import styles from "./ThemeToggle.module.css";
 
 export function ThemeToggle() {
   const { theme, toggle } = useTheme();

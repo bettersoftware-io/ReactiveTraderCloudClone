@@ -1,10 +1,12 @@
+import { firstValueFrom, of, Subject, toArray } from "rxjs";
+import { describe, expect, it } from "vitest";
+
 import {
   type ConnectionEvent,
   type ConnectionEventsPort,
   ConnectionStatus,
 } from "@rtc/domain";
-import { firstValueFrom, of, Subject, toArray } from "rxjs";
-import { describe, expect, it } from "vitest";
+
 import { ConnectionStatusPresenter } from "../ConnectionStatusPresenter";
 
 describe("ConnectionStatusPresenter", () => {

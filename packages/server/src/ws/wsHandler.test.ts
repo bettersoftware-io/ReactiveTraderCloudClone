@@ -1,4 +1,9 @@
 import { EventEmitter } from "node:events";
+
+import { interval, map, type Observable, of, throwError } from "rxjs";
+import { describe, expect, it, vi } from "vitest";
+import type { WebSocket } from "ws";
+
 import { Direction, type RfqEvent, TradeStatus } from "@rtc/domain";
 import {
   analyticsFrame,
@@ -10,9 +15,7 @@ import {
   tradeFrame,
   workflowEventCreated,
 } from "@rtc/shared/__fixtures__/wireFrames";
-import { interval, map, type Observable, of, throwError } from "rxjs";
-import { describe, expect, it, vi } from "vitest";
-import type { WebSocket } from "ws";
+
 import type { ServiceContainer } from "../services/serviceContainer.js";
 import { ThroughputService } from "../services/ThroughputService.js";
 import { CLIENT_MSG, SERVER_MSG, type WsMessage } from "./protocol.js";

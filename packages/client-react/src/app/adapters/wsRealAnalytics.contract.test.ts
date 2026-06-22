@@ -1,5 +1,6 @@
 import { describeAnalyticsPortContract } from "@rtc/domain/ports/__contracts__/AnalyticsPortContract";
 import { analyticsFrame } from "@rtc/shared/__fixtures__/wireFrames";
+
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { createWsRealPorts } from "./portFactory";
 

@@ -1,7 +1,8 @@
-import { type Price, PriceMovementType } from "@rtc/domain";
 import { SpreadDisplay, TilePrice } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
+
+import { type Price, PriceMovementType } from "@rtc/domain";
 
 const price = (over: Partial<Price> = {}): Price => ({
   symbol: "EURUSD",

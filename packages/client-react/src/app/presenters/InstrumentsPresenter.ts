@@ -1,9 +1,10 @@
+import { type Observable, shareReplay } from "rxjs";
+
 import {
   type Instrument,
   type InstrumentPort,
   InstrumentsUseCase,
 } from "@rtc/domain";
-import { type Observable, shareReplay } from "rxjs";
 
 export class InstrumentsPresenter {
   readonly list$: Observable<readonly Instrument[]>;

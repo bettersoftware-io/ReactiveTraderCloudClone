@@ -1,12 +1,14 @@
+import { TileConfirmation } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
+
 import {
   Direction,
   ExecutionStatus,
   type Trade,
   TradeStatus,
 } from "@rtc/domain";
-import { TileConfirmation } from "@ui-contract/components";
-import { mount } from "@ui-contract/mount";
-import { describe, expect, it } from "vitest";
+
 import type { TileExecutionState as TileState } from "../../../../../../../src/app/presenters/TileExecutionMachine";
 
 const doneTrade: Trade = {

@@ -1,6 +1,8 @@
-import type { CurrencyPair, ExecuteTradeInput } from "@rtc/domain";
 import { fireEvent, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
+
+import type { CurrencyPair, ExecuteTradeInput } from "@rtc/domain";
+
 import { MountedComponent } from "../../../../harness/component";
 
 export interface TileProps {

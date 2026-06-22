@@ -1,3 +1,6 @@
+import { firstValueFrom } from "rxjs";
+import type { WebSocket } from "ws";
+
 import type { RfqEvent } from "@rtc/domain";
 import type {
   AcceptRequestDto,
@@ -19,8 +22,7 @@ import type {
   TradeDto,
   WorkflowEvent as WorkflowEventDto,
 } from "@rtc/shared";
-import { firstValueFrom } from "rxjs";
-import type { WebSocket } from "ws";
+
 import type { ServiceContainer } from "../services/serviceContainer.js";
 import { CLIENT_MSG, SERVER_MSG, type WsMessage } from "./protocol.js";
 

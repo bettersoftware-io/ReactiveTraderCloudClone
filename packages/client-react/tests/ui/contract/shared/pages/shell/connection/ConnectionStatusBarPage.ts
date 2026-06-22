@@ -1,4 +1,5 @@
 import { within } from "@testing-library/dom";
+
 import { MountedComponent } from "../../../harness/component";
 
 export class ConnectionStatusBarPage extends MountedComponent<

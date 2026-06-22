@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+
 import type { BlotterTablePO } from "../contracts/BlotterTable";
 import { TESTIDS } from "../contracts/testids";
 

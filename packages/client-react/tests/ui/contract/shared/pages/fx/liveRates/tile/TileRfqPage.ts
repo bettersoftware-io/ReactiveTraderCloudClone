@@ -1,6 +1,8 @@
-import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
+
+import type { CurrencyPair, Direction, Price } from "@rtc/domain";
+
 import type {
   RfqState,
   RfqTileIntents,

@@ -1,5 +1,6 @@
 // tests/presenter/vitest-fake-timers/vitest.config.ts
 import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({

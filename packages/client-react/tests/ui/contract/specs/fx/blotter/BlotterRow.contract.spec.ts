@@ -1,7 +1,8 @@
-import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 import { BlotterRow } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 const trade = (over: Partial<Trade> = {}): Trade => ({
   tradeId: 7001,

@@ -1,5 +1,6 @@
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+
 import { defineConfig, devices } from "@playwright/experimental-ct-react";
 import react from "@vitejs/plugin-react";
 

@@ -9,6 +9,7 @@ import {
   ReferenceDataSimulator,
   TradeStoreSimulator,
 } from "@rtc/domain";
+
 import { ThroughputService } from "./ThroughputService.js";
 
 export interface ServiceContainer {

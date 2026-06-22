@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+
 import type { ConnectionOverlayPO } from "../contracts/ConnectionOverlay";
 import { TESTIDS } from "../contracts/testids";
 

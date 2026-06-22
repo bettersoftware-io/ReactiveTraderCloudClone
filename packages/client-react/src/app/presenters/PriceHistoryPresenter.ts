@@ -1,9 +1,10 @@
+import { type Observable, shareReplay } from "rxjs";
+
 import {
   PriceHistoryUseCase,
   type PriceTick,
   type PricingPort,
 } from "@rtc/domain";
-import { type Observable, shareReplay } from "rxjs";
 
 export class PriceHistoryPresenter {
   private readonly cache = new Map<string, Observable<readonly PriceTick[]>>();

@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+
 import type { ThemeTogglePO } from "../contracts/ThemeToggle";
 import { TESTIDS } from "../contracts/testids";
 

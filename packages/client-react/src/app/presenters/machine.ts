@@ -1,5 +1,7 @@
-import type { CurrencyPair } from "@rtc/domain";
 import type { StateObservable } from "@rx-state/core";
+
+import type { CurrencyPair } from "@rtc/domain";
+
 import type { NotionalIntents, NotionalView } from "./NotionalMachine";
 import type {
   RfqSubmissionIntents,

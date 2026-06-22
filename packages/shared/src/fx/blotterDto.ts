@@ -1,4 +1,5 @@
 import type { Direction, TradeStatus } from "@rtc/domain";
+
 import type { BulkSoWMessage } from "../protocol/sow.js";
 
 export interface TradeDto {

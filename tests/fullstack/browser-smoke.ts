@@ -12,6 +12,7 @@
  * Exits non-zero if the server, client, or Playwright run fails.
  */
 import { spawn } from "node:child_process";
+
 import {
   MONOREPO_ROOT,
   startClient,

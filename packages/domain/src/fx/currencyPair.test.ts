@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { deriveBaseTerm, KNOWN_CURRENCY_PAIRS } from "./currencyPair.js";
 
 describe("deriveBaseTerm", () => {

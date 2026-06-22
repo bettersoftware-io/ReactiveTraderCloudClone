@@ -1,6 +1,8 @@
-import { PreferencesSimulator, type ViewMode } from "@rtc/domain";
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
+
+import { PreferencesSimulator, type ViewMode } from "@rtc/domain";
+
 import { ViewModePreferencePresenter } from "../ViewModePreferencePresenter";
 
 describe("ViewModePreferencePresenter", () => {

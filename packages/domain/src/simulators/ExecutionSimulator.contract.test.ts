@@ -1,4 +1,5 @@
 import { afterEach, vi } from "vitest";
+
 import { describeExecutionPortContract } from "../ports/__contracts__/ExecutionPortContract.js";
 import { ExecutionSimulator } from "./ExecutionSimulator.js";
 

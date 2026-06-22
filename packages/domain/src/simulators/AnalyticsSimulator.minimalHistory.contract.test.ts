@@ -1,4 +1,5 @@
 import { type Observable, of } from "rxjs";
+
 import type { PositionUpdates } from "../analytics/position.js";
 import { describeAnalyticsPortContract } from "../ports/__contracts__/AnalyticsPortContract.js";
 import type { AnalyticsPort } from "../ports/analyticsPort.js";

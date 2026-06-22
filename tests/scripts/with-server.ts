@@ -1,5 +1,6 @@
 #!/usr/bin/env tsx
 import { spawn } from "node:child_process";
+
 import { SHARED_DEV_SERVER_ENV, startDevServer } from "./devServer";
 
 const [cmd, ...args] = process.argv.slice(2);

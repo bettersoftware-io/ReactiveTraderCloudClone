@@ -1,7 +1,10 @@
-import type { Trade } from "@rtc/domain";
 import { useCallback, useState } from "react";
-import styles from "./DateFilter.module.css";
+
+import type { Trade } from "@rtc/domain";
+
 import type { ColumnFilter, Comparator } from "./filterState";
+
+import styles from "./DateFilter.module.css";
 
 interface DateFilterProps {
   column: keyof Trade;

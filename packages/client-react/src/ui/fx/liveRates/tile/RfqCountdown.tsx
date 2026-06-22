@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+
 import styles from "./RfqCountdown.module.css";
 
 interface RfqCountdownProps {

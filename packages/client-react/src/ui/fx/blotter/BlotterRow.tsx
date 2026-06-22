@@ -1,8 +1,11 @@
-import { type Trade, TradeStatus } from "@rtc/domain";
 import { useState } from "react";
-import styles from "./BlotterRow.module.css";
+
+import { type Trade, TradeStatus } from "@rtc/domain";
+
 import { useHooks } from "../../hooks/useHooks";
 import { COLUMNS, formatCellValue } from "./blotterColumns";
+
+import styles from "./BlotterRow.module.css";
 
 interface BlotterRowProps {
   trade: Trade;

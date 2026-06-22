@@ -1,5 +1,6 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import type { ReferenceDataPort } from "../referenceDataPort.js";
 
 export interface ReferenceDataDriver {

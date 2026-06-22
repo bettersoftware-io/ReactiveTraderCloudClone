@@ -1,4 +1,5 @@
 import type { Price } from "@rtc/domain";
+
 import { MountedComponent } from "../../../../harness/component";
 
 export interface TilePriceProps {

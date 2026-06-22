@@ -1,5 +1,6 @@
 // packages/client-react/src/app/adapters/__tests__/FakeWsAdapter.test.ts
 import { describe, expect, it } from "vitest";
+
 import { FakeWsAdapter } from "./FakeWsAdapter";
 
 describe("FakeWsAdapter", () => {

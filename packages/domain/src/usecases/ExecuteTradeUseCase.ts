@@ -1,5 +1,6 @@
 import type { Observable } from "rxjs";
 import { map } from "rxjs/operators";
+
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { Price } from "../fx/price.js";
 import type { ExecutionRequest, Trade } from "../fx/trade.js";

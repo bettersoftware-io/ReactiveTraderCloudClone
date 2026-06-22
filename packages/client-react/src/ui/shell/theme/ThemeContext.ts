@@ -1,5 +1,6 @@
-import type { Theme } from "@rtc/domain";
 import { createContext } from "react";
+
+import type { Theme } from "@rtc/domain";
 
 export interface ThemeContextValue {
   theme: Theme;

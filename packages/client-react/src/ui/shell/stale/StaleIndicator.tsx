@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+
 import styles from "./StaleIndicator.module.css";
 
 interface StaleIndicatorProps {

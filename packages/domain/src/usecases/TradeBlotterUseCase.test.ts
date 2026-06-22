@@ -1,5 +1,6 @@
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import type { Trade } from "../fx/trade.js";
 import type { BlotterPort } from "../ports/blotterPort.js";
 import { TradeBlotterUseCase } from "./TradeBlotterUseCase.js";

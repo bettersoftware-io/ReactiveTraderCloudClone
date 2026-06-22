@@ -1,5 +1,7 @@
-import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 import { describe, expect, it } from "vitest";
+
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
+
 import { COLUMNS, type ColumnDef, formatCellValue } from "./blotterColumns";
 
 const trade = (over: Partial<Trade> = {}): Trade => ({

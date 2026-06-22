@@ -1,5 +1,6 @@
 // tests/presenter/vitest-quickpickle-fake-timers/vitest.config.ts
 import { fileURLToPath } from "node:url";
+
 import quickpickle from "quickpickle";
 import { defineConfig } from "vitest/config";
 

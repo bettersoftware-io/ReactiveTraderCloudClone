@@ -1,6 +1,8 @@
-import type { CurrencyPair, PriceTick, PricingPort } from "@rtc/domain";
 import { firstValueFrom, of, take } from "rxjs";
 import { describe, expect, it } from "vitest";
+
+import type { CurrencyPair, PriceTick, PricingPort } from "@rtc/domain";
+
 import { PriceStreamPresenter } from "../PriceStreamPresenter";
 
 const EURUSD: CurrencyPair = {

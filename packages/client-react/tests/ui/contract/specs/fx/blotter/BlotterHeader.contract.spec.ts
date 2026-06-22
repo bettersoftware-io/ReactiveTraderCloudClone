@@ -1,7 +1,9 @@
-import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 import { BlotterHeader } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
+
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
+
 import type { ColumnFilter } from "../../../../../../src/ui/fx/blotter/columnFilter/filterState";
 
 const trade = (over: Partial<Trade> = {}): Trade => ({

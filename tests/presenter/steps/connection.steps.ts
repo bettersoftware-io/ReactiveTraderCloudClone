@@ -6,7 +6,9 @@
 // directly (safe because all members are string-valued) and cast via
 // `import type { ConnectionStatus }` for the type annotation only.
 import { Then, When } from "@cucumber/cucumber";
+
 import type { ConnectionStatus } from "@rtc/domain";
+
 import type { PresenterWorld } from "../cucumber/world";
 import * as conn from "../scenarios/_shared/connection";
 

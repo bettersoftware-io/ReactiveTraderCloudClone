@@ -1,12 +1,13 @@
+import { NewRfqForm } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it, vi } from "vitest";
+
 import {
   ADAPTIVE_BANK_NAME,
   type Dealer,
   Direction,
   type Instrument,
 } from "@rtc/domain";
-import { NewRfqForm } from "@ui-contract/components";
-import { mount } from "@ui-contract/mount";
-import { describe, expect, it, vi } from "vitest";
 
 const instruments: readonly Instrument[] = [
   {

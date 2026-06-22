@@ -1,5 +1,6 @@
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import type { PricingPort, RfqQuoteResult } from "../ports/pricingPort.js";
 import { RfqQuoteUseCase } from "./RfqQuoteUseCase.js";
 

@@ -1,3 +1,5 @@
+import { BehaviorSubject } from "rxjs";
+
 import {
   ConnectionStatus,
   type CreateRfqInput,
@@ -19,7 +21,7 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-import { BehaviorSubject } from "rxjs";
+
 import type { ThroughputView } from "../../../../../src/app/presenters/ThroughputPresenter";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)

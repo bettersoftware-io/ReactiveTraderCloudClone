@@ -1,5 +1,6 @@
-import styles from "./AdminPanel.module.css";
 import { useHooks } from "../hooks/useHooks";
+
+import styles from "./AdminPanel.module.css";
 
 export function AdminPanel() {
   const { value, loading, message, setValue } = useHooks().useThroughput();

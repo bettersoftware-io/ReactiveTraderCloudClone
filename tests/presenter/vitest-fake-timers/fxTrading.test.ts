@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, it } from "vitest";
+
 import * as blotter from "../scenarios/_shared/blotter";
 import * as fx from "../scenarios/_shared/fxLiveRates";
 import * as trading from "../scenarios/_shared/fxTrading";

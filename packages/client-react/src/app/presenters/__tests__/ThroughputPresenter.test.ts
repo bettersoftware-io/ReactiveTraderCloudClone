@@ -1,7 +1,9 @@
-import type { AdminPort } from "@rtc/domain";
 import type { Observable } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
+
+import type { AdminPort } from "@rtc/domain";
+
 import {
   DEBOUNCE_MS,
   MESSAGE_DISMISS_MS,

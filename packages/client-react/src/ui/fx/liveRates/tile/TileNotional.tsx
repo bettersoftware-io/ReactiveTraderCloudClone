@@ -4,11 +4,13 @@ import {
   useCallback,
   useRef,
 } from "react";
-import styles from "./TileNotional.module.css";
+
 import type {
   NotionalIntents,
   NotionalView,
 } from "../../../../app/presenters/NotionalMachine";
+
+import styles from "./TileNotional.module.css";
 
 interface TileNotionalProps {
   notional: { state: NotionalView } & NotionalIntents;

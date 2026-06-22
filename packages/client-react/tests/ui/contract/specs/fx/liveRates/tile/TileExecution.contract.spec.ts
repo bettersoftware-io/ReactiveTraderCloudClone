@@ -1,7 +1,8 @@
-import { Direction } from "@rtc/domain";
 import { TileExecution } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
+
+import { Direction } from "@rtc/domain";
 
 describe("TileExecution", () => {
   it("renders Sell and Buy buttons", () => {

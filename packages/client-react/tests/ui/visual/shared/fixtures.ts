@@ -18,6 +18,7 @@ import {
   type Trade,
   TradeStatus,
 } from "@rtc/domain";
+
 import { type AppData, makeAppData } from "./appData";
 
 const eurusd: CurrencyPair = {

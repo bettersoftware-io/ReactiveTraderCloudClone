@@ -1,6 +1,7 @@
 // tests/presenter/cucumber-fake-timers/hooks.ts
 import { After, Before } from "@cucumber/cucumber";
 import FakeTimers from "@sinonjs/fake-timers";
+
 import { buildPresenterApp } from "../scenarios/_buildApp";
 import { newScratchpad } from "../scenarios/_shared/common";
 import type { FakePresenterWorld } from "./world";

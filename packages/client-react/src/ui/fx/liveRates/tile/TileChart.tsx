@@ -1,4 +1,5 @@
 import type { PriceTick } from "@rtc/domain";
+
 import styles from "./TileChart.module.css";
 
 interface TileChartProps {

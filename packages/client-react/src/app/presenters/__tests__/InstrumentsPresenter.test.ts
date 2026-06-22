@@ -1,6 +1,8 @@
-import type { Instrument, InstrumentPort } from "@rtc/domain";
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
+
+import type { Instrument, InstrumentPort } from "@rtc/domain";
+
 import { InstrumentsPresenter } from "../InstrumentsPresenter";
 
 describe("InstrumentsPresenter", () => {

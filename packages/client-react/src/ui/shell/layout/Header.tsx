@@ -1,5 +1,6 @@
-import styles from "./Header.module.css";
 import { ThemeToggle } from "../theme/ThemeToggle";
+
+import styles from "./Header.module.css";
 
 export type WorkspaceTab = "fx" | "credit" | "admin";
 

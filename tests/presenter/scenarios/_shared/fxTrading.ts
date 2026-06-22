@@ -5,8 +5,10 @@
 // accessed as values from a different package. We import them as types only
 // and cast their string literals to the correct type via `as unknown as`.
 
-import type { Direction, ExecutionStatus } from "@rtc/domain";
 import { firstValueFrom } from "rxjs";
+
+import type { Direction, ExecutionStatus } from "@rtc/domain";
+
 import type { PresenterWorld } from "../_world";
 
 const DIR_BUY = "Buy" as unknown as Direction;

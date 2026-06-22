@@ -3,8 +3,10 @@
  * Manages connection lifecycle and message routing between client and server.
  */
 
-import type { ConnectionEvent } from "@rtc/domain";
 import { type Observable, ReplaySubject } from "rxjs";
+
+import type { ConnectionEvent } from "@rtc/domain";
+
 import type { IWsAdapter, MessageHandler } from "./IWsAdapter";
 
 interface WsMessage {

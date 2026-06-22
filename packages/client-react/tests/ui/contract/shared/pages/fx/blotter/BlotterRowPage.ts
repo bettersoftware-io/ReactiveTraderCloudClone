@@ -1,5 +1,7 @@
-import type { Trade } from "@rtc/domain";
 import { fireEvent, within } from "@testing-library/dom";
+
+import type { Trade } from "@rtc/domain";
+
 import { MountedComponent } from "../../../harness/component";
 
 export interface BlotterRowProps {

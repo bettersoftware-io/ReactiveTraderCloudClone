@@ -1,4 +1,5 @@
 import { Then, When } from "@cucumber/cucumber";
+
 import * as fxTrading from "../scenarios/fxTrading";
 import type { StepContext } from "../testContext";
 

@@ -1,3 +1,5 @@
+import { describe, expect, it } from "vitest";
+
 import type { Dealer, Instrument } from "@rtc/domain";
 import {
   dealerAdded,
@@ -9,7 +11,7 @@ import {
   instrumentRemoved,
   instrumentStartOfSoW,
 } from "@rtc/shared/__fixtures__/wireFrames";
-import { describe, expect, it } from "vitest";
+
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { createWsRealPorts } from "./portFactory";
 

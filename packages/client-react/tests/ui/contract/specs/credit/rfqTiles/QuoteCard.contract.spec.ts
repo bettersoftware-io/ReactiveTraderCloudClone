@@ -1,7 +1,8 @@
-import type { Dealer, Quote, QuoteState } from "@rtc/domain";
 import { QuoteCard } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
+
+import type { Dealer, Quote, QuoteState } from "@rtc/domain";
 
 const dealer: Dealer = { id: 7, name: "Citi" };
 

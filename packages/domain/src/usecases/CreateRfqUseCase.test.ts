@@ -1,5 +1,6 @@
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import { CREDIT_QUANTITY_MULTIPLIER } from "../credit/rfq.js";
 import { Direction } from "../fx/trade.js";
 import type { CreateRfqRequest, WorkflowPort } from "../ports/workflowPort.js";

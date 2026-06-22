@@ -1,3 +1,7 @@
+import { Tile } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
 import {
   ConnectionStatus,
   type CurrencyPair,
@@ -12,9 +16,6 @@ import {
   type Trade,
   TradeStatus,
 } from "@rtc/domain";
-import { Tile } from "@ui-contract/components";
-import { mount } from "@ui-contract/mount";
-import { afterEach, describe, expect, it, vi } from "vitest";
 
 const _eurusd = KNOWN_CURRENCY_PAIRS.find((p) => p.symbol === "EURUSD");
 if (!_eurusd) throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");

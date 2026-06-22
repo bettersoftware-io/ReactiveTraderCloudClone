@@ -1,6 +1,8 @@
-import type { Dealer, Instrument, Quote, Rfq } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
+
+import type { Dealer, Instrument, Quote, Rfq } from "@rtc/domain";
+
 import { MountedComponent } from "../../../harness/component";
 
 export interface RfqCardProps {

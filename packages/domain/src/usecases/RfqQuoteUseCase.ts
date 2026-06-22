@@ -1,4 +1,5 @@
 import type { Observable } from "rxjs";
+
 import type { PricingPort, RfqQuoteResult } from "../ports/pricingPort.js";
 
 export class RfqQuoteUseCase {

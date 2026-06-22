@@ -1,4 +1,5 @@
 import { type Observable, of } from "rxjs";
+
 import type { AdminPort } from "../ports/adminPort.js";
 
 const DEFAULT_THROUGHPUT = 100;

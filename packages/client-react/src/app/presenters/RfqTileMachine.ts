@@ -1,9 +1,3 @@
-import {
-  type CurrencyPair,
-  REJECTED_DISPLAY_MS,
-  RFQ_TIMEOUT_MS,
-  type RfqQuoteResult,
-} from "@rtc/domain";
 import { type DefaultedStateObservable, state } from "@rx-state/core";
 import { concat, merge, type Observable, of, Subject, timer } from "rxjs";
 import {
@@ -14,6 +8,14 @@ import {
   takeUntil,
   takeWhile,
 } from "rxjs/operators";
+
+import {
+  type CurrencyPair,
+  REJECTED_DISPLAY_MS,
+  RFQ_TIMEOUT_MS,
+  type RfqQuoteResult,
+} from "@rtc/domain";
+
 import type { Machine } from "./machine";
 
 /** The RFQ quote lifecycle of a single tile, relocated out of the old

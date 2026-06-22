@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+
 import type { CreditRfqFormPO } from "../contracts/CreditRfqForm";
 import { STRINGS } from "../contracts/strings";
 import { TESTIDS } from "../contracts/testids";

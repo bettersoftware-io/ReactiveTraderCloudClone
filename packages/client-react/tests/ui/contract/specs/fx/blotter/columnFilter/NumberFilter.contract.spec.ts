@@ -1,6 +1,7 @@
 import { NumberFilter } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
+
 import type { ColumnFilter } from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
 
 describe("NumberFilter", () => {

@@ -1,4 +1,5 @@
 import { afterEach, vi } from "vitest";
+
 import { describeAnalyticsPortContract } from "../ports/__contracts__/AnalyticsPortContract.js";
 import { AnalyticsSimulator } from "./AnalyticsSimulator.js";
 

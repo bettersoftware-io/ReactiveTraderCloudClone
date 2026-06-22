@@ -1,6 +1,8 @@
 import { Direction, ExecutionStatus } from "@rtc/domain";
-import styles from "./TileConfirmation.module.css";
+
 import type { TileExecutionState } from "../../../../app/presenters/TileExecutionMachine";
+
+import styles from "./TileConfirmation.module.css";
 
 interface TileConfirmationProps {
   state: TileExecutionState;

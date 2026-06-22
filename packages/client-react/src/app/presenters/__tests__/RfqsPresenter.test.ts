@@ -1,3 +1,6 @@
+import { firstValueFrom, lastValueFrom, of, toArray } from "rxjs";
+import { describe, expect, it } from "vitest";
+
 import {
   Direction,
   type Quote,
@@ -6,8 +9,7 @@ import {
   RfqState,
   type WorkflowPort,
 } from "@rtc/domain";
-import { firstValueFrom, lastValueFrom, of, toArray } from "rxjs";
-import { describe, expect, it } from "vitest";
+
 import { RfqsPresenter } from "../RfqsPresenter";
 
 const rfq = (id: number): Rfq => ({

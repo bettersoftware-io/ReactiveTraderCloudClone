@@ -3,6 +3,7 @@ import { act, render, renderHook } from "@testing-library/react";
 import React from "react";
 import { BehaviorSubject, Subject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
+
 import type { Machine } from "../../app/presenters/machine";
 import { useMachine } from "./useMachine";
 

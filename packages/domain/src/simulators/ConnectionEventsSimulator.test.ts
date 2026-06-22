@@ -2,6 +2,7 @@
 
 import { lastValueFrom, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import type { ConnectionEvent } from "../connection/connectionStatus.js";
 import { ConnectionEventsSimulator } from "./ConnectionEventsSimulator.js";
 

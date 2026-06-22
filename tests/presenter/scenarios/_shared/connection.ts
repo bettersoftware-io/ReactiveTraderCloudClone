@@ -1,7 +1,9 @@
 // tests/presenter/scenarios/_shared/connection.ts
 
-import type { ConnectionStatus } from "@rtc/domain";
 import { filter } from "rxjs";
+
+import type { ConnectionStatus } from "@rtc/domain";
+
 import type { PresenterWorld } from "../_world";
 
 export async function browserGoesOffline(w: PresenterWorld): Promise<void> {

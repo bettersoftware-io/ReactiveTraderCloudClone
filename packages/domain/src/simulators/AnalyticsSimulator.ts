@@ -1,5 +1,6 @@
 import { concat, defer, interval, type Observable, of } from "rxjs";
 import { map } from "rxjs/operators";
+
 import type {
   CurrencyPairPosition,
   HistoricPosition,

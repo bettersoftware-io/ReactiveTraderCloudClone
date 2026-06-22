@@ -1,5 +1,6 @@
-import type { PreferencesPort, Theme } from "@rtc/domain";
 import { type Observable, shareReplay } from "rxjs";
+
+import type { PreferencesPort, Theme } from "@rtc/domain";
 
 /**
  * App-layer presenter for the theme preference. Exposes the replay-current

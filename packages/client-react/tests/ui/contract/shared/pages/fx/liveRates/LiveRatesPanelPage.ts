@@ -1,6 +1,8 @@
-import type { CurrencyCategory } from "@rtc/domain";
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
+
+import type { CurrencyCategory } from "@rtc/domain";
+
 import { MountedComponent } from "../../../harness/component";
 
 export class LiveRatesPanelPage extends MountedComponent<

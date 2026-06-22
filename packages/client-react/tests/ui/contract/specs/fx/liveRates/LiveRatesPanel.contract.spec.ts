@@ -1,7 +1,8 @@
-import { type CurrencyPair, KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 import { LiveRatesPanel } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
+
+import { type CurrencyPair, KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 
 const pairs = KNOWN_CURRENCY_PAIRS;
 const _eurusd = pairs.find((p) => p.symbol === "EURUSD");

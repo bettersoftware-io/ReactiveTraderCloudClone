@@ -1,5 +1,6 @@
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { ReferenceDataPort } from "../ports/referenceDataPort.js";
 import { CurrencyPairsUseCase } from "./CurrencyPairsUseCase.js";

@@ -8,6 +8,7 @@ import {
   throwError,
   timer,
 } from "rxjs";
+
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import { KNOWN_CURRENCY_PAIRS } from "../fx/currencyPair.js";
 import type { PriceTick } from "../fx/price.js";

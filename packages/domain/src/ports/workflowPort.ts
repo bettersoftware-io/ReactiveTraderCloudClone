@@ -1,4 +1,5 @@
 import type { Observable } from "rxjs";
+
 import type { Quote } from "../credit/quote.js";
 import type { Rfq } from "../credit/rfq.js";
 import type { Direction } from "../fx/trade.js";

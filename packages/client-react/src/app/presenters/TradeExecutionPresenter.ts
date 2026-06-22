@@ -1,10 +1,11 @@
+import type { Observable } from "rxjs";
+
 import {
   type ExecuteTradeInput,
   type ExecuteTradeResult,
   ExecuteTradeUseCase,
   type ExecutionPort,
 } from "@rtc/domain";
-import type { Observable } from "rxjs";
 
 export class TradeExecutionPresenter {
   constructor(private readonly execution: ExecutionPort) {}

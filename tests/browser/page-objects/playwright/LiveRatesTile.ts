@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+
 import type { LiveRatesTilePO } from "../contracts/LiveRatesTile";
 import { TESTIDS } from "../contracts/testids";
 

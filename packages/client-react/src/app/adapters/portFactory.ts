@@ -1,3 +1,5 @@
+import { Observable } from "rxjs";
+
 import {
   type AdminPort,
   type AnalyticsPort,
@@ -45,7 +47,7 @@ import type {
   RpcResponse,
   WorkflowEvent,
 } from "@rtc/shared";
-import { Observable } from "rxjs";
+
 import type { IWsAdapter } from "./IWsAdapter";
 import { LocalStoragePreferencesAdapter } from "./LocalStoragePreferencesAdapter";
 import { WsAdapter } from "./WsAdapter";

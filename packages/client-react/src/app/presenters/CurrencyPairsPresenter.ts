@@ -1,9 +1,10 @@
+import { type Observable, shareReplay } from "rxjs";
+
 import {
   type CurrencyPair,
   CurrencyPairsUseCase,
   type ReferenceDataPort,
 } from "@rtc/domain";
-import { type Observable, shareReplay } from "rxjs";
 
 export class CurrencyPairsPresenter {
   readonly pairs$: Observable<readonly CurrencyPair[]>;

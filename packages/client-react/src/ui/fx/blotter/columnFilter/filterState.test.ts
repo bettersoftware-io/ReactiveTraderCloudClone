@@ -1,5 +1,7 @@
-import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 import { describe, expect, it } from "vitest";
+
+import { Direction, type Trade, TradeStatus } from "@rtc/domain";
+
 import { applyFilters, type ColumnFilter } from "./filterState";
 
 const trade = (over: Partial<Trade> = {}): Trade => ({

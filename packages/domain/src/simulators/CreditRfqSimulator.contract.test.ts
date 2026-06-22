@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { filter, take } from "rxjs/operators";
 import { afterEach, vi } from "vitest";
+
 import { defined } from "../__testUtils__/defined.js";
 import { describeWorkflowPortContract } from "../ports/__contracts__/WorkflowPortContract.js";
 import type { RfqEvent } from "../ports/workflowPort.js";

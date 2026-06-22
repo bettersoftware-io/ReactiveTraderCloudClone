@@ -1,5 +1,6 @@
-import { type Dealer, type DealerPort, DealersUseCase } from "@rtc/domain";
 import { type Observable, shareReplay } from "rxjs";
+
+import { type Dealer, type DealerPort, DealersUseCase } from "@rtc/domain";
 
 export class DealersPresenter {
   readonly list$: Observable<readonly Dealer[]>;

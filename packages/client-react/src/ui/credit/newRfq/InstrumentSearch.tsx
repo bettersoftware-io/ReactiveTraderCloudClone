@@ -1,5 +1,7 @@
-import type { Instrument } from "@rtc/domain";
 import { useCallback, useMemo, useState } from "react";
+
+import type { Instrument } from "@rtc/domain";
+
 import styles from "./InstrumentSearch.module.css";
 
 interface InstrumentSearchProps {

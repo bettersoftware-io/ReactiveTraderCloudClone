@@ -1,5 +1,7 @@
-import type { CurrencyPairPosition } from "@rtc/domain";
 import type { CSSProperties } from "react";
+
+import type { CurrencyPairPosition } from "@rtc/domain";
+
 import styles from "./PositionBubbles.module.css";
 
 interface PositionBubblesProps {

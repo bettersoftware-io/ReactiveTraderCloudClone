@@ -1,5 +1,6 @@
 import { describeReferenceDataPortContract } from "@rtc/domain/ports/__contracts__/ReferenceDataPortContract";
 import { referenceDataFrame } from "@rtc/shared/__fixtures__/wireFrames";
+
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { createWsRealPorts } from "./portFactory";
 

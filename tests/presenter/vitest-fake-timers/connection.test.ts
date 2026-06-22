@@ -1,5 +1,7 @@
-import type { ConnectionStatus } from "@rtc/domain";
 import { afterEach, beforeEach, describe, it } from "vitest";
+
+import type { ConnectionStatus } from "@rtc/domain";
+
 import * as conn from "../scenarios/_shared/connection";
 import {
   buildWorld,

@@ -1,5 +1,6 @@
 import type { Observable } from "rxjs";
 import { scan } from "rxjs/operators";
+
 import type { Quote } from "../credit/quote.js";
 import type { Rfq } from "../credit/rfq.js";
 import type { RfqEvent, WorkflowPort } from "../ports/workflowPort.js";

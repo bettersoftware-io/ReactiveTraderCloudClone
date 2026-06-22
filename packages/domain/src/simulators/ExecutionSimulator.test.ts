@@ -1,5 +1,6 @@
 import { firstValueFrom } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import type { ExecutionRequest, Trade } from "../fx/trade.js";
 import { Direction, TradeStatus } from "../fx/trade.js";
 import { ExecutionSimulator } from "./ExecutionSimulator.js";

@@ -1,3 +1,7 @@
+import { useCallback, useState, useSyncExternalStore } from "react";
+import type { BehaviorSubject } from "rxjs";
+import { EMPTY, type Observable, of, throwError } from "rxjs";
+
 import type {
   CreateRfqInput,
   CurrencyPair,
@@ -7,9 +11,7 @@ import type {
   Theme,
   ViewMode,
 } from "@rtc/domain";
-import { useCallback, useState, useSyncExternalStore } from "react";
-import type { BehaviorSubject } from "rxjs";
-import { EMPTY, type Observable, of, throwError } from "rxjs";
+
 import { createNotionalMachine } from "../../../../src/app/presenters/NotionalMachine";
 import type {
   RfqSubmissionState,

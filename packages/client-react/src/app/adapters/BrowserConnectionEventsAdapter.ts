@@ -1,9 +1,10 @@
+import { Observable } from "rxjs";
+
 import {
   type ConnectionEvent,
   type ConnectionEventsPort,
   IDLE_TIMEOUT_MS,
 } from "@rtc/domain";
-import { Observable } from "rxjs";
 
 const ACTIVITY_EVENTS = [
   "mousemove",

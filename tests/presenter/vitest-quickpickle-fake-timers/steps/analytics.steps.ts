@@ -1,5 +1,6 @@
 // tests/presenter/vitest-quickpickle-fake-timers/steps/analytics.steps.ts
 import { Then } from "quickpickle";
+
 import * as analytics from "../../scenarios/_shared/analytics";
 import type { VitestFakePresenterWorld } from "../world";
 

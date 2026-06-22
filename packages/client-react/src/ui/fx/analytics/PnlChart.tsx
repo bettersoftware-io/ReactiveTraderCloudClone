@@ -1,4 +1,5 @@
 import type { HistoricPosition } from "@rtc/domain";
+
 import styles from "./PnlChart.module.css";
 
 interface PnlChartProps {

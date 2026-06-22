@@ -1,4 +1,5 @@
 import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
+
 import type { PreferencesPort } from "../ports/preferencesPort.js";
 import {
   DEFAULT_THEME,

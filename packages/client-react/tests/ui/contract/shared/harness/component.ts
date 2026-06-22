@@ -1,4 +1,5 @@
 import type { Price, PriceTick, Quote } from "@rtc/domain";
+
 import type { ThroughputView } from "../../../../../src/app/presenters/ThroughputPresenter";
 import type { CommandLog, HookValues } from "./world";
 

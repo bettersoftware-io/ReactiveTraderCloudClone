@@ -1,4 +1,5 @@
 import { defineConfig, mergeConfig } from "vitest/config";
+
 import base from "./vitest-browser.config";
 
 // Visual gap-finder: instruments src/ui while the vitest-browser tier renders

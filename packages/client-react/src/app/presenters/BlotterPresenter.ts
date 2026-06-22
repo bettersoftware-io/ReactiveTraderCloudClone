@@ -1,5 +1,6 @@
-import { type BlotterPort, type Trade, TradeBlotterUseCase } from "@rtc/domain";
 import { type Observable, shareReplay } from "rxjs";
+
+import { type BlotterPort, type Trade, TradeBlotterUseCase } from "@rtc/domain";
 
 export class BlotterPresenter {
   readonly trades$: Observable<readonly Trade[]>;

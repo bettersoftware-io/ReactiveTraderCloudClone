@@ -1,5 +1,6 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import { defined } from "../../__testUtils__/defined.js";
 import type { AnalyticsPort } from "../analyticsPort.js";
 

@@ -1,7 +1,9 @@
-import type { QuoteRequest, RfqEvent, WorkflowPort } from "@rtc/domain";
 import { type Observable, of } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
+
+import type { QuoteRequest, RfqEvent, WorkflowPort } from "@rtc/domain";
+
 import { RfqsPresenter, type TicketSubmissionState } from "../RfqsPresenter";
 
 interface Recorder {

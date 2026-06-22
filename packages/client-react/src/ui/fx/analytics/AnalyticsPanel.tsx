@@ -1,10 +1,11 @@
-import styles from "./AnalyticsPanel.module.css";
 import { useHooks } from "../../hooks/useHooks";
 import { StaleIndicator } from "../../shell/stale/StaleIndicator";
 import { PairPnlBars } from "./PairPnlBars";
 import { PnlChart } from "./PnlChart";
 import { PnlValue } from "./PnlValue";
 import { PositionBubbles } from "./PositionBubbles";
+
+import styles from "./AnalyticsPanel.module.css";
 
 export function AnalyticsPanel() {
   const data = useHooks().useAnalytics();

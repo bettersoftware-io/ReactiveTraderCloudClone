@@ -1,3 +1,14 @@
+import { type StateObservable, state } from "@rx-state/core";
+import { concat, merge, type Observable, of, Subject, timer } from "rxjs";
+import {
+  catchError,
+  distinctUntilChanged,
+  map,
+  scan,
+  switchMap,
+  takeUntil,
+} from "rxjs/operators";
+
 import {
   CONFIRMATION_DISMISS_MS,
   type CurrencyPair,
@@ -10,16 +21,7 @@ import {
   TOO_LONG_THRESHOLD_MS,
   type Trade,
 } from "@rtc/domain";
-import { type StateObservable, state } from "@rx-state/core";
-import { concat, merge, type Observable, of, Subject, timer } from "rxjs";
-import {
-  catchError,
-  distinctUntilChanged,
-  map,
-  scan,
-  switchMap,
-  takeUntil,
-} from "rxjs/operators";
+
 import type { Machine } from "./machine";
 
 /** The execution lifecycle of a single tile, relocated out of the old

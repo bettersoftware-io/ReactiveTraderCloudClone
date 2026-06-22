@@ -8,6 +8,7 @@
  * fixture compile fails before any test runs.
  */
 import { Direction, TradeStatus } from "@rtc/domain";
+
 import type {
   AnalyticsDto,
   BlotterMessage,

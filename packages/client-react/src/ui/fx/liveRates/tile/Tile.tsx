@@ -1,6 +1,7 @@
-import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 import { useCallback } from "react";
-import styles from "./Tile.module.css";
+
+import type { CurrencyPair, Direction, Price } from "@rtc/domain";
+
 import { useHooks } from "../../../hooks/useHooks";
 import { StaleIndicator } from "../../../shell/stale/StaleIndicator";
 import { TileChart } from "./TileChart";
@@ -10,6 +11,8 @@ import { TileHeader } from "./TileHeader";
 import { TileNotional } from "./TileNotional";
 import { SpreadDisplay, TilePrice } from "./TilePrice";
 import { TileRfq } from "./TileRfq";
+
+import styles from "./Tile.module.css";
 
 interface TileProps {
   pair: CurrencyPair;

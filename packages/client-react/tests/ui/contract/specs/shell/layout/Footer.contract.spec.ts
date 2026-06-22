@@ -1,7 +1,8 @@
-import { ConnectionStatus } from "@rtc/domain";
 import { Footer } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
+
+import { ConnectionStatus } from "@rtc/domain";
 
 afterEach(() => cleanupMounted());
 

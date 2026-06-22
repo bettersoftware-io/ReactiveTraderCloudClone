@@ -1,7 +1,9 @@
-import { ConnectionStatus } from "@rtc/domain";
 import { type StateObservable, state } from "@rx-state/core";
 import { merge, type Observable } from "rxjs";
 import { distinctUntilChanged, map, scan, startWith } from "rxjs/operators";
+
+import { ConnectionStatus } from "@rtc/domain";
+
 import type { ReadOnlyMachine } from "./machine";
 
 /** Generic stale-detection derived flag, relocated out of the old

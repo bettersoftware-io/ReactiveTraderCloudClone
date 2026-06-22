@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { defined } from "../__testUtils__/defined.js";
 import type { PositionUpdates } from "../analytics/position.js";
 import { AnalyticsSimulator } from "./AnalyticsSimulator.js";

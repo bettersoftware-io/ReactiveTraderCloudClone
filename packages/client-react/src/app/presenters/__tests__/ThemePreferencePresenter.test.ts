@@ -1,6 +1,8 @@
-import { PreferencesSimulator, type Theme } from "@rtc/domain";
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
+
+import { PreferencesSimulator, type Theme } from "@rtc/domain";
+
 import { ThemePreferencePresenter } from "../ThemePreferencePresenter";
 
 describe("ThemePreferencePresenter", () => {

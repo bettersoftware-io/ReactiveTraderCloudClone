@@ -1,6 +1,7 @@
 import { firstValueFrom, type Observable } from "rxjs";
 import { filter, take } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
+
 import type { RfqEvent, WorkflowPort } from "../workflowPort.js";
 
 export interface WorkflowDriver {

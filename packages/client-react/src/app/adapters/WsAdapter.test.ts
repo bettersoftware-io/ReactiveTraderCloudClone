@@ -1,7 +1,9 @@
 // packages/client-react/src/app/adapters/WsAdapter.test.ts
 
-import type { ConnectionEvent } from "@rtc/domain";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { ConnectionEvent } from "@rtc/domain";
+
 import { WsAdapter } from "./WsAdapter";
 
 let lastMock: MockWebSocket;

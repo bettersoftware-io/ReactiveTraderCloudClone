@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { filter, take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { defined } from "../__testUtils__/defined.js";
 import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";

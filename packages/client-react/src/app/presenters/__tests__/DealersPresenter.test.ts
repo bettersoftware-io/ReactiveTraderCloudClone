@@ -1,6 +1,8 @@
-import type { Dealer, DealerPort } from "@rtc/domain";
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
+
+import type { Dealer, DealerPort } from "@rtc/domain";
+
 import { DealersPresenter } from "../DealersPresenter";
 
 describe("DealersPresenter", () => {

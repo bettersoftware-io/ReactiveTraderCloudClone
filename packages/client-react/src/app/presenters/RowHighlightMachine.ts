@@ -1,6 +1,7 @@
 import { type StateObservable, state } from "@rx-state/core";
 import { EMPTY, timer } from "rxjs";
 import { distinctUntilChanged, map, startWith } from "rxjs/operators";
+
 import type { ReadOnlyMachine } from "./machine";
 
 /** How long a newly-arrived blotter row stays highlighted, relocated verbatim

@@ -1,4 +1,5 @@
 import type { Observable } from "rxjs";
+
 import type { PriceTick } from "../fx/price.js";
 
 export interface RfqQuoteResult {

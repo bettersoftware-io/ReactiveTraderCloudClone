@@ -1,5 +1,7 @@
-import type { Theme, ViewMode } from "@rtc/domain";
 import { BehaviorSubject } from "rxjs";
+
+import type { Theme, ViewMode } from "@rtc/domain";
+
 import type { ThroughputView } from "../../../../src/app/presenters/ThroughputPresenter";
 import { getDriver, type MountedRoot } from "./harness/activeDriver";
 import type {

@@ -1,10 +1,11 @@
+import { type Observable, shareReplay } from "rxjs";
+
 import {
   type CurrencyPair,
   type Price,
   PriceStreamUseCase,
   type PricingPort,
 } from "@rtc/domain";
-import { type Observable, shareReplay } from "rxjs";
 
 export class PriceStreamPresenter {
   private readonly cache = new Map<string, Observable<Price>>();

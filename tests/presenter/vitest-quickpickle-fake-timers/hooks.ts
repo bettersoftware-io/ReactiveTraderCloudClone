@@ -1,6 +1,7 @@
 // tests/presenter/vitest-quickpickle-fake-timers/hooks.ts
 import { After, Before } from "quickpickle";
 import { vi } from "vitest";
+
 import { buildPresenterApp } from "../scenarios/_buildApp";
 import { newScratchpad } from "../scenarios/_shared/common";
 import type { VitestFakePresenterWorld } from "./world";

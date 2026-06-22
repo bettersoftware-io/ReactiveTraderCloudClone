@@ -1,4 +1,3 @@
-import type { AdminPort } from "@rtc/domain";
 import { type StateObservable, state } from "@rx-state/core";
 import { concat, merge, type Observable, of, Subject, timer } from "rxjs";
 import {
@@ -9,6 +8,8 @@ import {
   startWith,
   switchMap,
 } from "rxjs/operators";
+
+import type { AdminPort } from "@rtc/domain";
 
 /** UI cadence constants relocated out of the old useThroughput React hook.
  *  These are presentation timings (debounce the write, auto-dismiss the

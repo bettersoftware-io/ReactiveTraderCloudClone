@@ -8,6 +8,7 @@
 //
 // Usage: tsx scripts/free-port.ts [port]   (defaults to the dev-server port)
 import { spawnSync } from "node:child_process";
+
 import { DEV_PORT } from "./devServer";
 
 const port = Number(process.argv[2] ?? DEV_PORT);

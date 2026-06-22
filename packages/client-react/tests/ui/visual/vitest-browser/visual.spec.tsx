@@ -2,6 +2,7 @@ import { VisualScenario } from "@ui-visual";
 import { expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
+
 import { scenarioActions } from "../scenarioActions";
 import { scenarios } from "../shared/scenarios";
 

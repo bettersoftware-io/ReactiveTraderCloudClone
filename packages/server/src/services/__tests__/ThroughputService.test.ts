@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { ThroughputService } from "../ThroughputService.js";
 
 describe("ThroughputService", () => {

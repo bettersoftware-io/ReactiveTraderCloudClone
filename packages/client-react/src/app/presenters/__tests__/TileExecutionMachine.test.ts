@@ -1,3 +1,7 @@
+import type { Observable } from "rxjs";
+import { TestScheduler } from "rxjs/testing";
+import { describe, expect, it } from "vitest";
+
 import {
   type CurrencyPair,
   Direction,
@@ -12,9 +16,7 @@ import {
   type Trade,
   TradeStatus,
 } from "@rtc/domain";
-import type { Observable } from "rxjs";
-import { TestScheduler } from "rxjs/testing";
-import { describe, expect, it } from "vitest";
+
 import {
   createTileExecutionMachine,
   type TileExecutionState,

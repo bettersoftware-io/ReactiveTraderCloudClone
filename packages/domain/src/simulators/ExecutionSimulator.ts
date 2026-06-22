@@ -1,5 +1,6 @@
 import { defer, type Observable, timer } from "rxjs";
 import { map, tap } from "rxjs/operators";
+
 import type { ExecutionRequest, Trade } from "../fx/trade.js";
 import { TradeStatus } from "../fx/trade.js";
 import type { ExecutionPort } from "../ports/executionPort.js";

@@ -1,6 +1,8 @@
-import type { PriceTick, PricingPort } from "@rtc/domain";
 import { lastValueFrom, of, take, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
+
+import type { PriceTick, PricingPort } from "@rtc/domain";
+
 import { PriceHistoryPresenter } from "../PriceHistoryPresenter";
 
 const tick = (mid: number, ts: number): PriceTick => ({

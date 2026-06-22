@@ -1,6 +1,7 @@
 import { Header } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
+
 import type { WorkspaceTab } from "../../../shared/pages/shell/layout/HeaderPage";
 
 afterEach(() => cleanupMounted());

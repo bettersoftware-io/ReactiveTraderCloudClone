@@ -1,8 +1,10 @@
+import { merge, mergeMap, of } from "rxjs";
+
 import {
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
 } from "@rtc/domain";
-import { merge, mergeMap, of } from "rxjs";
+
 import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
 import {
   type AppPorts,

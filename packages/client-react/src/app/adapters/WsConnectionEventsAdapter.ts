@@ -1,7 +1,9 @@
 // packages/client-react/src/app/adapters/WsConnectionEventsAdapter.ts
 
-import type { ConnectionEvent, ConnectionEventsPort } from "@rtc/domain";
 import type { Observable } from "rxjs";
+
+import type { ConnectionEvent, ConnectionEventsPort } from "@rtc/domain";
+
 import type { IWsAdapter } from "./IWsAdapter";
 
 /**

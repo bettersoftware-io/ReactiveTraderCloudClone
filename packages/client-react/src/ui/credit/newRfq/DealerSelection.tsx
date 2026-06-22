@@ -1,5 +1,7 @@
-import type { Dealer } from "@rtc/domain";
 import { useCallback } from "react";
+
+import type { Dealer } from "@rtc/domain";
+
 import styles from "./DealerSelection.module.css";
 
 interface DealerSelectionProps {

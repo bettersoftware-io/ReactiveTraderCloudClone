@@ -1,4 +1,5 @@
 import type { BehaviorSubject } from "rxjs";
+
 import type { ComponentToken, MountedComponent } from "./component";
 import type { World } from "./world";
 

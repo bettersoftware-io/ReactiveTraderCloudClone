@@ -1,9 +1,10 @@
+import type { Observable } from "rxjs";
+
 import {
   type PricingPort,
   type RfqQuoteResult,
   RfqQuoteUseCase,
 } from "@rtc/domain";
-import type { Observable } from "rxjs";
 
 export class RfqQuotePresenter {
   private readonly useCase: RfqQuoteUseCase;

@@ -1,4 +1,5 @@
 import { type Price, PriceMovementType } from "@rtc/domain";
+
 import styles from "./TilePrice.module.css";
 
 interface TilePriceProps {

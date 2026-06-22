@@ -4,6 +4,7 @@ import {
   dealerEndOfSoW,
   dealerStartOfSoW,
 } from "@rtc/shared/__fixtures__/wireFrames";
+
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { createWsRealPorts } from "./portFactory";
 

@@ -1,6 +1,4 @@
 #!/usr/bin/env tsx
-import { createWsRealPorts, WsAdapter } from "@rtc/client-react";
-import type { Direction } from "@rtc/domain";
 /**
  * Full-stack smoke test (Node socket).
  *
@@ -15,6 +13,10 @@ import type { Direction } from "@rtc/domain";
  * receive an ack. Exits non-zero on any failure.
  */
 import { firstValueFrom, timeout } from "rxjs";
+
+import { createWsRealPorts, WsAdapter } from "@rtc/client-react";
+import type { Direction } from "@rtc/domain";
+
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.js";
 
 // Direction is a `const enum` in @rtc/domain, inaccessible under

@@ -1,7 +1,8 @@
-import type { CurrencyCategory } from "@rtc/domain";
 import { CurrencyFilter } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
+
+import type { CurrencyCategory } from "@rtc/domain";
 
 describe("CurrencyFilter", () => {
   it("renders a button for every currency category", () => {

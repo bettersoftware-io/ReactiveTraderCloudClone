@@ -1,3 +1,7 @@
+import { CreditBlotter } from "@ui-contract/components";
+import { mount } from "@ui-contract/mount";
+import { describe, expect, it } from "vitest";
+
 import {
   type Dealer,
   Direction,
@@ -6,9 +10,6 @@ import {
   type Rfq,
   RfqState,
 } from "@rtc/domain";
-import { CreditBlotter } from "@ui-contract/components";
-import { mount } from "@ui-contract/mount";
-import { describe, expect, it } from "vitest";
 
 const instruments: readonly Instrument[] = [
   {

@@ -1,8 +1,10 @@
+import { useId } from "react";
+
 import {
   CREDIT_MAX_QUANTITY_INPUT,
   CREDIT_QUANTITY_MULTIPLIER,
 } from "@rtc/domain";
-import { useId } from "react";
+
 import styles from "./QuantityInput.module.css";
 
 interface QuantityInputProps {

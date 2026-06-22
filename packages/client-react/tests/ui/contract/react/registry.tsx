@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import type {
   CurrencyCategory,
   CurrencyPair,
@@ -10,7 +12,7 @@ import type {
   Trade,
   ViewMode,
 } from "@rtc/domain";
-import type { ReactElement } from "react";
+
 import type {
   NotionalIntents,
   NotionalView,

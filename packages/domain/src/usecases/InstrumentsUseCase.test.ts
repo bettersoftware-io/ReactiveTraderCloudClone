@@ -1,5 +1,6 @@
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import type { Instrument } from "../credit/instrument.js";
 import type { InstrumentPort } from "../ports/instrumentPort.js";
 import { InstrumentsUseCase } from "./InstrumentsUseCase.js";

@@ -1,7 +1,9 @@
-import { isRfqRequired, parseNotional } from "@rtc/domain";
 import { type DefaultedStateObservable, state } from "@rx-state/core";
 import { merge, Subject } from "rxjs";
 import { map } from "rxjs/operators";
+
+import { isRfqRequired, parseNotional } from "@rtc/domain";
+
 import type { Machine } from "./machine";
 
 function formatWithCommas(value: number): string {

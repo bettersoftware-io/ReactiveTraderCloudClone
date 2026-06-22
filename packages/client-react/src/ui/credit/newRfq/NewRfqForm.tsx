@@ -1,14 +1,17 @@
+import { useCallback, useMemo, useState } from "react";
+
 import {
   CREDIT_MAX_QUANTITY_INPUT,
   Direction,
   type Instrument,
 } from "@rtc/domain";
-import { useCallback, useMemo, useState } from "react";
-import styles from "./NewRfqForm.module.css";
+
 import { useHooks } from "../../hooks/useHooks";
 import { DealerSelection } from "./DealerSelection";
 import { InstrumentSearch } from "./InstrumentSearch";
 import { QuantityInput } from "./QuantityInput";
+
+import styles from "./NewRfqForm.module.css";
 
 interface NewRfqFormProps {
   onCreated: (rfqId: number) => void;

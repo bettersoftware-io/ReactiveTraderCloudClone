@@ -1,6 +1,7 @@
 import { firstValueFrom, from, lastValueFrom, of } from "rxjs";
 import { toArray } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
+
 import type { PositionUpdates } from "../analytics/position.js";
 import type { AnalyticsPort } from "../ports/analyticsPort.js";
 import { AnalyticsUseCase } from "./AnalyticsUseCase.js";

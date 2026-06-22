@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import {
   type CreditTrade,
   type Dealer,
@@ -6,9 +8,10 @@ import {
   type Rfq,
   RfqState,
 } from "@rtc/domain";
-import { useMemo } from "react";
-import styles from "./CreditBlotter.module.css";
+
 import { useHooks } from "../../hooks/useHooks";
+
+import styles from "./CreditBlotter.module.css";
 
 const COLUMNS = [
   "Trade ID",

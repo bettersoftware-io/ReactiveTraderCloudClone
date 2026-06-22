@@ -1,4 +1,5 @@
 import { CURRENCY_CATEGORIES, type CurrencyCategory } from "@rtc/domain";
+
 import styles from "./CurrencyFilter.module.css";
 
 interface CurrencyFilterProps {

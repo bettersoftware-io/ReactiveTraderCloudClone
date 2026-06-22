@@ -1,9 +1,12 @@
-import { type Dealer, type Instrument, type Rfq, RfqState } from "@rtc/domain";
 import { useCallback, useMemo, useState } from "react";
-import styles from "./RfqTilesPanel.module.css";
+
+import { type Dealer, type Instrument, type Rfq, RfqState } from "@rtc/domain";
+
 import { useHooks } from "../../hooks/useHooks";
 import { RfqCard } from "./RfqCard";
 import { type RfqFilter, RfqFilterTabs } from "./RfqFilterTabs";
+
+import styles from "./RfqTilesPanel.module.css";
 
 function filterMatches(state: string, filter: RfqFilter): boolean {
   switch (filter) {

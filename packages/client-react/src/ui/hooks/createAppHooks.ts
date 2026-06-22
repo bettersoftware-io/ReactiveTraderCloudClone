@@ -1,4 +1,6 @@
 import { bind } from "@react-rxjs/core";
+import { firstValueFrom } from "rxjs";
+
 import {
   ConnectionStatus,
   type CurrencyPair,
@@ -15,7 +17,7 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-import { firstValueFrom } from "rxjs";
+
 import type { Presenters } from "../../app/composition";
 import type { MachineFactories } from "../../app/presenters/machine";
 import type {

@@ -1,5 +1,6 @@
 import { firstValueFrom, of, Subject, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import {
   type ConnectionEvent,
   ConnectionStatus,

@@ -1,7 +1,9 @@
-import { DEFAULT_THEME, DEFAULT_VIEW_MODE } from "@rtc/domain";
-import { describePreferencesPortContract } from "@rtc/domain/ports/__contracts__/PreferencesPortContract";
 import { firstValueFrom } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { DEFAULT_THEME, DEFAULT_VIEW_MODE } from "@rtc/domain";
+import { describePreferencesPortContract } from "@rtc/domain/ports/__contracts__/PreferencesPortContract";
+
 import {
   LocalStoragePreferencesAdapter,
   THEME_STORAGE_KEY,

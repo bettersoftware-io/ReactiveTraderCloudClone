@@ -1,6 +1,7 @@
 import { firstValueFrom, from, of } from "rxjs";
 import { toArray } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
+
 import type { PriceTick } from "../fx/price.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
 import type { PricingPort } from "../ports/pricingPort.js";

@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { toArray } from "rxjs/operators";
 import { describe, expect, it, vi } from "vitest";
+
 import { defined } from "../__testUtils__/defined.js";
 import { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";
 

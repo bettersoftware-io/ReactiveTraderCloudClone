@@ -1,4 +1,5 @@
 import { type Observable, scan, startWith } from "rxjs";
+
 import {
   type ConnectionEvent,
   ConnectionStatus,

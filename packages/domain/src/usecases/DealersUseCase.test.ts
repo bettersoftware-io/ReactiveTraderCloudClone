@@ -1,5 +1,6 @@
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import type { Dealer } from "../credit/dealer.js";
 import type { DealerPort } from "../ports/dealerPort.js";
 import { DealersUseCase } from "./DealersUseCase.js";

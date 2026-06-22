@@ -1,5 +1,6 @@
 import { fireEvent, waitFor, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
+
 import type { ThroughputView } from "../../../../../../src/app/presenters/ThroughputPresenter";
 import { MountedComponent } from "../../harness/component";
 

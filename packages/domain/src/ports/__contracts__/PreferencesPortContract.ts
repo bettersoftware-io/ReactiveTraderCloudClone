@@ -1,5 +1,6 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import {
   DEFAULT_THEME,
   DEFAULT_VIEW_MODE,

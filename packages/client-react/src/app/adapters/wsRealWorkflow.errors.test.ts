@@ -1,7 +1,9 @@
-import { Direction } from "@rtc/domain";
-import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
+
+import { Direction } from "@rtc/domain";
+import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
+
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { createWsRealPorts } from "./portFactory";

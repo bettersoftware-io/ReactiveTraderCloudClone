@@ -1,7 +1,9 @@
 // packages/client-react/src/app/adapters/WsConnectionEventsAdapter.test.ts
 
-import type { ConnectionEvent } from "@rtc/domain";
 import { describe, expect, it } from "vitest";
+
+import type { ConnectionEvent } from "@rtc/domain";
+
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { WsConnectionEventsAdapter } from "./WsConnectionEventsAdapter";
 
