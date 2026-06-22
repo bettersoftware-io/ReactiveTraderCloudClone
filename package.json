@@ -18,7 +18,8 @@
     "check:fix": "biome check --write .",
     "dev": "turbo run dev",
     "clean": "turbo run clean && (rm -rf .turbo 2>/dev/null || true)",
-    "clean:deep": "turbo run clean:deep && (rm -rf node_modules .pnpm-store .turbo 2>/dev/null || true) && find . -name .DS_Store -type f -delete"
+    "clean:deep": "turbo run clean:deep && (rm -rf node_modules .pnpm-store .turbo 2>/dev/null || true) && find . -name .DS_Store -type f -delete",
+    "lint:actions": "scripts/install-actionlint.sh && .tooling/actionlint -color"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
