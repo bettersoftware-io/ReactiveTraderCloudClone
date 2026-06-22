@@ -17,5 +17,5 @@
 .tab[data-active="true"] {
   font-weight: 600;
   background-color: var(--accent-primary);
-  color: #fff;
+  color: var(--text-on-accent);
 }

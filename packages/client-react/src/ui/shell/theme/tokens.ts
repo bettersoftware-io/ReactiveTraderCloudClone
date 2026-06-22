@@ -16,6 +16,8 @@ export interface ThemeTokens {
   "--text-primary": string;
   "--text-secondary": string;
   "--text-muted": string;
+  // Text painted on a coloured accent/status fill — stays light in both themes.
+  "--text-on-accent": string;
 
   // Accents
   "--accent-positive": string;
@@ -31,6 +33,10 @@ export interface ThemeTokens {
   "--status-connected": string;
   "--status-connecting": string;
   "--status-disconnected": string;
+  // Error-message fill. Kept theme-independent to preserve the exact prior
+  // rendering (was a hardcoded #d32f2f fallback on an undefined token); unify
+  // with --accent-negative later if a theme-aware error colour is wanted.
+  "--status-error": string;
 }
 
 export const darkTokens: ThemeTokens = {
@@ -44,6 +50,7 @@ export const darkTokens: ThemeTokens = {
   "--text-primary": "#f1f5f9",
   "--text-secondary": "#94a3b8",
   "--text-muted": "#64748b",
+  "--text-on-accent": "#fff",
 
   "--accent-positive": "#22c55e",
   "--accent-negative": "#ef4444",
@@ -56,6 +63,7 @@ export const darkTokens: ThemeTokens = {
   "--status-connected": "#22c55e",
   "--status-connecting": "#f59e0b",
   "--status-disconnected": "#ef4444",
+  "--status-error": "#d32f2f",
 };
 
 export const lightTokens: ThemeTokens = {
@@ -69,6 +77,7 @@ export const lightTokens: ThemeTokens = {
   "--text-primary": "#0f172a",
   "--text-secondary": "#475569",
   "--text-muted": "#94a3b8",
+  "--text-on-accent": "#fff",
 
   "--accent-positive": "#16a34a",
   "--accent-negative": "#dc2626",
@@ -81,4 +90,5 @@ export const lightTokens: ThemeTokens = {
   "--status-connected": "#16a34a",
   "--status-connecting": "#d97706",
   "--status-disconnected": "#dc2626",
+  "--status-error": "#d32f2f",
 };

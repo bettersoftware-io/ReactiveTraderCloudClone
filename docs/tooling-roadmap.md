@@ -46,7 +46,7 @@ These constraints drove every recommendation — re-read before adopting anythin
 | 4 | **dependency-cruiser** | Circular deps + transitive architecture rules | partial w/ Biome `noRestrictedImports` | medium | **Adopt** (top cycle pick) | ✅ |
 | 5 | **manypkg** *or* **syncpack** | Monorepo dep-version consistency | each other (pick one) | low | **Adopt one** (report-only) | ✅ |
 | 6 | **Scoped ESLint** (lint-only, runs local + CI) | Rules GritQL can't do (decl-vs-expr, autofix, type-aware) | by construction: none w/ Biome | medium | **Conditional** — adopt if rule wishlist grows or type-aware rules wanted | ✅ |
-| 7 | **Stylelint** | CSS naming/token/policy conventions | real w/ Biome CSS | medium | **Hold** — dormant value (CSS is frozen goldens) | 🟡 Hold |
+| 7 | **Stylelint** | CSS naming/token/policy conventions | real w/ Biome CSS | medium | **Adopt** (scoped: validity-delta + naming + text-colour tokens) | ✅ |
 | 8 | **husky (+ lint-staged)** | Local pre-commit hooks | duplicates CI gate | low | **Reject** — friction for sandboxed auto-commits | ❌ |
 | 9 | **markdownlint / commitlint** | MD style / commit-msg format | — | low | **Reject** — cosmetic for this repo | ❌ |
 
@@ -326,7 +326,7 @@ only when the threshold above is crossed.
 
 ---
 
-## 7. Stylelint 🟡  (hold)
+## 7. Stylelint ✅  (adopted — scoped non-overlap with Biome)
 
 **What Stylelint does that Biome's CSS linter cannot** (Biome covers validity:
 unknown props, duplicates, empty blocks; Stylelint adds *policy*):
@@ -339,12 +339,34 @@ unknown props, duplicates, empty blocks; Stylelint adds *policy*):
 - enforced property ordering (`stylelint-order`)
 - browserslist-aware unsupported-feature checks; logical-property (RTL) enforcement
 
-**Why hold:** our 45 CSS Modules are **frozen golden contracts** that port
-verbatim to SolidJS; Biome already lints+formats them. The cosmetic rules fight
-"goldens are the oracle." The two with real value (class-name convention, design
-tokens) matter mostly when *authoring new* CSS. Dormant for now.
+**Why initially held:** our 45 CSS Modules are **frozen golden contracts** that
+port verbatim to SolidJS; Biome already lints+formats them. The cosmetic rules
+fight "goldens are the oracle."
 
-**Recommendation:** **Hold** until significant new CSS authoring.
+**What changed (adopted 2026-06-22):** the visual goldens (dual-set, 3 tiers,
+including light-theme) are a strong-enough oracle that any rendering change is
+caught — so "frozen" stopped being a blocker. Adopted as `stylelint.config.mjs`,
+deliberately **not** extending `stylelint-config-standard` (that re-introduces
+formatting + validity rules that fight Biome). Three scoped groups, all running
+**blocking, local + CI** (`pnpm lint:css`):
+1. **Validity Biome lacks** — `color-no-invalid-hex`, `no-duplicate-selectors`,
+   `no-invalid-double-slash-comments`, `no-irregular-whitespace`,
+   `declaration-block-no-duplicate-custom-properties`,
+   `font-family-no-missing-generic-family-keyword`,
+   `function-linear-gradient-no-nonstandard-direction`, `string-no-newline`.
+2. **Naming policy** — `selector-class-pattern` (camelCase, CSS-Module classes
+   become JS identifiers) + `custom-property-pattern` (kebab tokens). 0 existing
+   violations.
+3. **Design-token enforcement** — `declaration-strict-value` on
+   `color`/`fill`/`stroke` only. Fixed the 15 raw `color: #fff` literals by
+   adding a theme-independent `--text-on-accent` token. Scoped to text colour
+   on purpose: tokenizing the `background-color` `rgba()` tints would make
+   currently theme-independent tints theme-aware — a rendering change, not a
+   lint fix — so they stay literal (and `rgba()` is a function, which
+   strict-value already accepts).
+
+Verified: stylelint 0, Biome clean, typecheck 9/9, **visual goldens unchanged
+(no `--update`, 0 PNG diffs)**.
 
 > Note: Stylelint is **CSS-only** — it can never enforce blank lines / inline
 > types / function style in `.ts` files. That's GritQL/ESLint territory.

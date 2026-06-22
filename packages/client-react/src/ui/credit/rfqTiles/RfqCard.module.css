@@ -37,7 +37,7 @@
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 3px;
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .badge[data-state="Open"] {

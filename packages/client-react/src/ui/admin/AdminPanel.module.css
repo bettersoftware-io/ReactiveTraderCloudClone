@@ -53,7 +53,7 @@
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 13px;
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .message[data-error="false"] {
@@ -61,5 +61,5 @@
 }
 
 .message[data-error="true"] {
-  background-color: var(--status-error, #d32f2f);
+  background-color: var(--status-error);
 }

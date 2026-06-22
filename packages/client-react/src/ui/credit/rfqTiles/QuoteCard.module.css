@@ -56,6 +56,6 @@
   border: none;
   border-radius: 3px;
   background-color: var(--accent-positive);
-  color: #fff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }

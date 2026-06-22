@@ -67,6 +67,9 @@ jobs:
       - name: ESLint (AST rules)
         run: pnpm lint:eslint
 
+      - name: CSS lint (stylelint)
+        run: pnpm lint:css
+
       - name: Workflow lint (actionlint)
         run: pnpm lint:actions
 

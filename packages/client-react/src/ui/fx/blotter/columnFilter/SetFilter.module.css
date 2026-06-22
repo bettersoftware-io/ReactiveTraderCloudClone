@@ -21,6 +21,6 @@
   border: 1px solid var(--border-primary);
   border-radius: 3px;
   background-color: var(--accent-primary);
-  color: #fff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
