@@ -21,7 +21,7 @@
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
     "rxjs": "^7.8",
-    "ws": "^8.20.0"
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",
