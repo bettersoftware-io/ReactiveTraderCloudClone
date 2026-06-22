@@ -1,6 +1,6 @@
 import tseslint from "typescript-eslint";
 
-import base from "./eslint.config.js";
+import base from "./eslint.config.mjs";
 
 export default tseslint.config(
   // Files that are NOT covered by a standard tsconfig.json discoverable by projectService:
@@ -11,7 +11,7 @@ export default tseslint.config(
   //   - vitest.config.ts / vite.config.ts files live under tsconfig.node.json.
   // root tests/ IS covered: tests/tsconfig.json exists and is named tsconfig.json, so
   // projectService auto-discovers it and includes browser/, presenter/, fullstack/, scripts/.
-  // The AST tier (eslint.config.js) still covers ALL files including the ignored ones above.
+  // The AST tier (eslint.config.mjs) still covers ALL files including the ignored ones above.
   {
     ignores: [
       ".remember/**",

@@ -24,7 +24,7 @@
     "lint:dead": "knip",
     "check:deps": "depcruise --config .dependency-cruiser.cjs packages tests",
     "lint:eslint": "eslint .",
-    "lint:eslint:types": "eslint . --config eslint.config.typed.js"
+    "lint:eslint:types": "eslint . --config eslint.config.typed.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
