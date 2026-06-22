@@ -2,6 +2,7 @@ import {
   CREDIT_MAX_QUANTITY_INPUT,
   CREDIT_QUANTITY_MULTIPLIER,
 } from "@rtc/domain";
+import { useId } from "react";
 import styles from "./QuantityInput.module.css";
 
 interface QuantityInputProps {
@@ -11,14 +12,15 @@ interface QuantityInputProps {
 }
 
 export function QuantityInput({ value, onChange, error }: QuantityInputProps) {
+  const inputId = useId();
   return (
     <div>
-      <label htmlFor="quantity-input" className={styles.label}>
+      <label htmlFor={inputId} className={styles.label}>
         Quantity (x{CREDIT_QUANTITY_MULTIPLIER.toLocaleString()})
       </label>
       <input
         type="number"
-        id="quantity-input"
+        id={inputId}
         data-testid="quantity-input"
         data-error={error ? "true" : "false"}
         value={value}
@@ -27,7 +29,7 @@ export function QuantityInput({ value, onChange, error }: QuantityInputProps) {
         placeholder="Enter quantity..."
         className={styles.input}
       />
-      {error && <span className={styles.errorMsg}>{error}</span>}
+      {error ? <span className={styles.errorMsg}>{error}</span> : null}
     </div>
   );
 }

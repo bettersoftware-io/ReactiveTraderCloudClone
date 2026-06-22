@@ -1,8 +1,10 @@
-import { createContext, type ReactNode, useContext } from "react";
+import type { ReactNode } from "react";
 import type { AppHooks } from "./createAppHooks";
+import { HooksContext } from "./HooksContext";
 
-const HooksContext = createContext<AppHooks | null>(null);
-
+/** Composition-root component: supplies the concrete business-logic hooks to the
+ * tree. Only the app entrypoint (and test harnesses) import this; UI components
+ * read the seam via `useHooks` so they never depend on the wiring. */
 export function HooksProvider({
   hooks,
   children,
@@ -13,10 +15,4 @@ export function HooksProvider({
   return (
     <HooksContext.Provider value={hooks}>{children}</HooksContext.Provider>
   );
-}
-
-export function useHooks(): AppHooks {
-  const ctx = useContext(HooksContext);
-  if (!ctx) throw new Error("useHooks must be used within HooksProvider");
-  return ctx;
 }

@@ -22,7 +22,7 @@ export function StaleIndicator({
       style={style}
     >
       {children}
-      {stale && (
+      {!!stale && (
         <div className={styles.overlay}>
           <span data-testid="stale-message" className={styles.message}>
             Reconnecting...

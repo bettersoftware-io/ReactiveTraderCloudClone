@@ -1,6 +1,6 @@
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 import { useCallback } from "react";
-import { useHooks } from "../../../hooks/HooksProvider";
+import { useHooks } from "../../../hooks/useHooks";
 import { StaleIndicator } from "../../../shell/stale/StaleIndicator";
 import styles from "./Tile.module.css";
 import { TileChart } from "./TileChart";
@@ -50,7 +50,7 @@ export function Tile({ pair, showChart }: TileProps) {
       >
         <TileHeader base={pair.base} terms={pair.terms} />
 
-        {showChart && <TileChart history={history} />}
+        {showChart ? <TileChart history={history} /> : null}
 
         {price ? (
           <>

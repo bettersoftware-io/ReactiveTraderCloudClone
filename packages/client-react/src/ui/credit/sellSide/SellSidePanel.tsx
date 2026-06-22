@@ -1,6 +1,6 @@
 import { ADAPTIVE_BANK_NAME, type Instrument, type Rfq } from "@rtc/domain";
 import { useMemo } from "react";
-import { useHooks } from "../../hooks/HooksProvider";
+import { useHooks } from "../../hooks/useHooks";
 import styles from "./SellSidePanel.module.css";
 import { TradeTicket } from "./TradeTicket";
 

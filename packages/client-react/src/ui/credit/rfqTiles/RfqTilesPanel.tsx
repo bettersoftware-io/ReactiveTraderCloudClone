@@ -1,6 +1,6 @@
 import { type Dealer, type Instrument, type Rfq, RfqState } from "@rtc/domain";
 import { useCallback, useMemo, useState } from "react";
-import { useHooks } from "../../hooks/HooksProvider";
+import { useHooks } from "../../hooks/useHooks";
 import { RfqCard } from "./RfqCard";
 import { type RfqFilter, RfqFilterTabs } from "./RfqFilterTabs";
 import styles from "./RfqTilesPanel.module.css";

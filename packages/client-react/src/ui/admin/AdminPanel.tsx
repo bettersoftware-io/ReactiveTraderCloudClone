@@ -1,4 +1,4 @@
-import { useHooks } from "../hooks/HooksProvider";
+import { useHooks } from "../hooks/useHooks";
 import styles from "./AdminPanel.module.css";
 
 export function AdminPanel() {
@@ -42,7 +42,7 @@ export function AdminPanel() {
         </div>
       </div>
 
-      {message && (
+      {!!message && (
         <div
           data-error={message.isError ? "true" : "false"}
           className={styles.message}

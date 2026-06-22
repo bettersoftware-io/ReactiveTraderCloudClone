@@ -7,7 +7,7 @@ import {
   RfqState,
 } from "@rtc/domain";
 import { useMemo } from "react";
-import { useHooks } from "../../hooks/HooksProvider";
+import { useHooks } from "../../hooks/useHooks";
 import styles from "./CreditBlotter.module.css";
 
 const COLUMNS = [

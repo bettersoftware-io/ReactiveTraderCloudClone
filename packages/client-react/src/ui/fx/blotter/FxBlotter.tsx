@@ -1,6 +1,6 @@
 import type { Trade } from "@rtc/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useHooks } from "../../hooks/HooksProvider";
+import { useHooks } from "../../hooks/useHooks";
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";
 import { COLUMNS } from "./blotterColumns";

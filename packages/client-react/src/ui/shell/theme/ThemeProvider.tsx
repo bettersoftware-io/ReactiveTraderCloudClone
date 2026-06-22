@@ -1,19 +1,7 @@
-import type { Theme } from "@rtc/domain";
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useLayoutEffect,
-} from "react";
-import { useHooks } from "../../hooks/HooksProvider";
+import { type ReactNode, useLayoutEffect } from "react";
+import { useHooks } from "../../hooks/useHooks";
+import { ThemeContext } from "./ThemeContext";
 import { darkTokens, lightTokens, type ThemeTokens } from "./tokens";
-
-interface ThemeContextValue {
-  theme: Theme;
-  toggle: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function applyTokens(tokens: ThemeTokens) {
   const root = document.documentElement;
@@ -48,10 +36,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       {children}
     </ThemeContext.Provider>
   );
-}
-
-export function useTheme(): ThemeContextValue {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
-  return ctx;
 }

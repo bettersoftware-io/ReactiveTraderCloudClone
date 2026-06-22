@@ -1,29 +1,10 @@
 import { act, render as rtlRender } from "@testing-library/react";
-import { type ReactElement, useSyncExternalStore } from "react";
-import type { BehaviorSubject } from "rxjs";
 import { HooksProvider } from "../../../../src/ui/hooks/HooksProvider";
 import { ThemeProvider } from "../../../../src/ui/shell/theme/ThemeProvider";
 import type { UiContractDriver } from "../shared/harness/activeDriver";
 import { reactHooks } from "./hooksFromWorld";
+import { PropsHost } from "./PropsHost";
 import { registry } from "./registry";
-
-/** Renders the component from the latest props on the subject; re-renders on push. */
-function PropsHost<P>({
-  subject,
-  build,
-}: {
-  subject: BehaviorSubject<Partial<P>>;
-  build: (props: Partial<P>) => ReactElement;
-}) {
-  const props = useSyncExternalStore(
-    (onChange) => {
-      const sub = subject.subscribe(onChange);
-      return () => sub.unsubscribe();
-    },
-    () => subject.getValue(),
-  );
-  return build(props);
-}
 
 export const reactDriver: UiContractDriver = {
   render(token, { propsSubject, world }) {

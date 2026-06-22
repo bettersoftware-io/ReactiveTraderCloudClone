@@ -1,5 +1,5 @@
 import { ConnectionStatus } from "@rtc/domain";
-import { useHooks } from "../../hooks/HooksProvider";
+import { useHooks } from "../../hooks/useHooks";
 import styles from "./ConnectionStatusBar.module.css";
 
 const statusLabel: Record<ConnectionStatus, string> = {

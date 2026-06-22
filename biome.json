@@ -35,8 +35,21 @@
   },
   "linter": {
     "enabled": true,
+    "domains": {
+      "turborepo": "recommended"
+    },
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "correctness": {
+        "useUniqueElementIds": "error"
+      },
+      "style": {
+        "useComponentExportOnlyModules": "error"
+      },
+      "suspicious": {
+        "noLeakedRender": "error",
+        "noUndeclaredEnvVars": "error"
+      }
     }
   },
   "javascript": {

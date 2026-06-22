@@ -1,4 +1,4 @@
-import { useHooks } from "../../hooks/HooksProvider";
+import { useHooks } from "../../hooks/useHooks";
 import { StaleIndicator } from "../../shell/stale/StaleIndicator";
 import styles from "./AnalyticsPanel.module.css";
 import { PairPnlBars } from "./PairPnlBars";

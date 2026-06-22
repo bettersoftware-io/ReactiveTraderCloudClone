@@ -1,5 +1,5 @@
 import { ConnectionStatus } from "@rtc/domain";
-import { useHooks } from "../../hooks/HooksProvider";
+import { useHooks } from "../../hooks/useHooks";
 import styles from "./ConnectionOverlay.module.css";
 
 const overlayMessages: Partial<Record<ConnectionStatus, string>> = {

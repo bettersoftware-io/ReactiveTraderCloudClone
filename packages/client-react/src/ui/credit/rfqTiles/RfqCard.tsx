@@ -66,7 +66,7 @@ export function RfqCard({
           <span className={styles.badge} data-state={rfq.state}>
             {stateLabel(rfq.state)}
           </span>
-          {canDismiss && onDismiss && (
+          {!!(canDismiss && onDismiss) && (
             <button
               type="button"
               onClick={handleDismiss}
