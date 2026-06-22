@@ -36,7 +36,12 @@
   "linter": {
     "enabled": true,
     "domains": {
-      "turborepo": "recommended"
+      "react": "recommended",
+      "test": "recommended",
+      "playwright": "recommended",
+      "project": "recommended",
+      "turborepo": "recommended",
+      "types": "recommended"
     },
     "rules": {
       "preset": "recommended",
