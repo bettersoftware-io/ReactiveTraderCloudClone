@@ -22,15 +22,19 @@
     "lint:actions": "scripts/install-actionlint.sh && .tooling/actionlint -color",
     "check:versions": "manypkg check && syncpack lint",
     "lint:dead": "knip",
-    "check:deps": "depcruise --config .dependency-cruiser.cjs packages tests"
+    "check:deps": "depcruise --config .dependency-cruiser.cjs packages tests",
+    "lint:eslint": "eslint ."
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@manypkg/cli": "^0.25.1",
     "dependency-cruiser": "^17.4.3",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
     "knip": "^6.17.1",
     "syncpack": "^15.3.2",
     "turbo": "^2.4",
-    "typescript": "^6"
+    "typescript": "^6",
+    "typescript-eslint": "^8.61.1"
   }
 }
