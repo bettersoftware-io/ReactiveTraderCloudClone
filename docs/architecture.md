@@ -1031,6 +1031,8 @@ graph TB
 
 **Build order** (Turborepo topological): `domain` -> `shared` -> `client` | `server` | `mobile`.
 
+> This inward-only rule is machine-enforced by dependency-cruiser as a blocking CI gate. See [dependency-cruiser.md](./dependency-cruiser.md) for the rule-by-rule breakdown and a diagram of the allowed/forbidden edges.
+
 > The Application Layer and UI Layer currently coexist inside `@rtc/client-react`. If the size or rate of change justifies it later, the Application Layer can be promoted to its own package (`@rtc/client-react-app`) without breaking any consumer, because UI components only ever import the hook bridge -- not RxJS or use cases.
 
 ---
