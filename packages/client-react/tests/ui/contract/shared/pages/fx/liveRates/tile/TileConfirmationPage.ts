@@ -1,8 +1,8 @@
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
-import type { TileExecutionState as TileState } from "../../../../../../../../src/app/presenters/TileExecutionMachine";
-import { MountedComponent } from "../../../../harness/component";
+import type { TileExecutionState as TileState } from "#/app/presenters/TileExecutionMachine";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export interface TileConfirmationProps {
   state: TileState;

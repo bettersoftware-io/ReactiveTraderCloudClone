@@ -2,7 +2,8 @@ import { useState } from "react";
 
 import { type Trade, TradeStatus } from "@rtc/domain";
 
-import { useHooks } from "../../hooks/useHooks";
+import { useHooks } from "#/ui/hooks/useHooks";
+
 import { COLUMNS, formatCellValue } from "./blotterColumns";
 
 import styles from "./BlotterRow.module.css";

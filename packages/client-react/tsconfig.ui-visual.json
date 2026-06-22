@@ -18,7 +18,9 @@
     // the previous `baseUrl: "."` since these mappings were already relative.
     "paths": {
       "@ui-visual": ["./tests/ui/visual/react"],
-      "@ui-visual/*": ["./tests/ui/visual/react/*"]
+      "@ui-visual/*": ["./tests/ui/visual/react/*"],
+      "#/*": ["./src/*"],
+      "#tests/*": ["./tests/*"]
     }
   },
   "include": ["src", "tests"],

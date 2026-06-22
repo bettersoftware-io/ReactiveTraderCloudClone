@@ -6,7 +6,8 @@ import {
   type Instrument,
 } from "@rtc/domain";
 
-import { useHooks } from "../../hooks/useHooks";
+import { useHooks } from "#/ui/hooks/useHooks";
+
 import { DealerSelection } from "./DealerSelection";
 import { InstrumentSearch } from "./InstrumentSearch";
 import { QuantityInput } from "./QuantityInput";

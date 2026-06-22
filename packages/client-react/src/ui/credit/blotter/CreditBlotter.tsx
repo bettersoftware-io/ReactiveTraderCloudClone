@@ -9,7 +9,7 @@ import {
   RfqState,
 } from "@rtc/domain";
 
-import { useHooks } from "../../hooks/useHooks";
+import { useHooks } from "#/ui/hooks/useHooks";
 
 import styles from "./CreditBlotter.module.css";
 

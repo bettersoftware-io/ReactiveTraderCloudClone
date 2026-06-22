@@ -9,7 +9,7 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-import type { TileExecutionState as TileState } from "../../../../../../../src/app/presenters/TileExecutionMachine";
+import type { TileExecutionState as TileState } from "#/app/presenters/TileExecutionMachine";
 
 const doneTrade: Trade = {
   tradeId: 9001,

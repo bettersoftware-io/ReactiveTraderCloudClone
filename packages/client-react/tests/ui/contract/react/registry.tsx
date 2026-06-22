@@ -16,57 +16,58 @@ import type {
 import type {
   NotionalIntents,
   NotionalView,
-} from "../../../../src/app/presenters/NotionalMachine";
-import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
-import { AdminPanel as AdminPanelComponent } from "../../../../src/ui/admin/AdminPanel";
-import { CreditBlotter as CreditBlotterComponent } from "../../../../src/ui/credit/blotter/CreditBlotter";
-import { NewRfqForm as NewRfqFormComponent } from "../../../../src/ui/credit/newRfq/NewRfqForm";
-import { QuoteCard as QuoteCardComponent } from "../../../../src/ui/credit/rfqTiles/QuoteCard";
-import { RfqCard as RfqCardComponent } from "../../../../src/ui/credit/rfqTiles/RfqCard";
+} from "#/app/presenters/NotionalMachine";
+import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
+import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
+import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
+import { NewRfqForm as NewRfqFormComponent } from "#/ui/credit/newRfq/NewRfqForm";
+import { QuoteCard as QuoteCardComponent } from "#/ui/credit/rfqTiles/QuoteCard";
+import { RfqCard as RfqCardComponent } from "#/ui/credit/rfqTiles/RfqCard";
 import {
   type RfqFilter,
   RfqFilterTabs as RfqFilterTabsComponent,
-} from "../../../../src/ui/credit/rfqTiles/RfqFilterTabs";
-import { RfqTilesPanel as RfqTilesPanelComponent } from "../../../../src/ui/credit/rfqTiles/RfqTilesPanel";
-import { SellSidePanel as SellSidePanelComponent } from "../../../../src/ui/credit/sellSide/SellSidePanel";
-import { TradeTicket as TradeTicketComponent } from "../../../../src/ui/credit/sellSide/TradeTicket";
-import { AnalyticsPanel as AnalyticsPanelComponent } from "../../../../src/ui/fx/analytics/AnalyticsPanel";
-import { PnlValue as PnlValueComponent } from "../../../../src/ui/fx/analytics/PnlValue";
-import { BlotterHeader as BlotterHeaderComponent } from "../../../../src/ui/fx/blotter/BlotterHeader";
-import { BlotterRow as BlotterRowComponent } from "../../../../src/ui/fx/blotter/BlotterRow";
-import { DateFilter as DateFilterComponent } from "../../../../src/ui/fx/blotter/columnFilter/DateFilter";
-import type { ColumnFilter } from "../../../../src/ui/fx/blotter/columnFilter/filterState";
-import { NumberFilter as NumberFilterComponent } from "../../../../src/ui/fx/blotter/columnFilter/NumberFilter";
-import { SetFilter as SetFilterComponent } from "../../../../src/ui/fx/blotter/columnFilter/SetFilter";
-import type { SortState } from "../../../../src/ui/fx/blotter/columnSort";
-import { FxBlotter as FxBlotterComponent } from "../../../../src/ui/fx/blotter/FxBlotter";
-import { QuickFilter as QuickFilterComponent } from "../../../../src/ui/fx/blotter/QuickFilter";
-import { CurrencyFilter as CurrencyFilterComponent } from "../../../../src/ui/fx/liveRates/CurrencyFilter";
-import { LiveRatesPanel as LiveRatesPanelComponent } from "../../../../src/ui/fx/liveRates/LiveRatesPanel";
-import { RfqCountdown as RfqCountdownComponent } from "../../../../src/ui/fx/liveRates/tile/RfqCountdown";
-import { Tile as TileComponent } from "../../../../src/ui/fx/liveRates/tile/Tile";
-import { TileConfirmation as TileConfirmationComponent } from "../../../../src/ui/fx/liveRates/tile/TileConfirmation";
-import { TileExecution as TileExecutionComponent } from "../../../../src/ui/fx/liveRates/tile/TileExecution";
-import { TileHeader as TileHeaderComponent } from "../../../../src/ui/fx/liveRates/tile/TileHeader";
-import { TileNotional as TileNotionalComponent } from "../../../../src/ui/fx/liveRates/tile/TileNotional";
+} from "#/ui/credit/rfqTiles/RfqFilterTabs";
+import { RfqTilesPanel as RfqTilesPanelComponent } from "#/ui/credit/rfqTiles/RfqTilesPanel";
+import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
+import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
+import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
+import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
+import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/BlotterHeader";
+import { BlotterRow as BlotterRowComponent } from "#/ui/fx/blotter/BlotterRow";
+import { DateFilter as DateFilterComponent } from "#/ui/fx/blotter/columnFilter/DateFilter";
+import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
+import { NumberFilter as NumberFilterComponent } from "#/ui/fx/blotter/columnFilter/NumberFilter";
+import { SetFilter as SetFilterComponent } from "#/ui/fx/blotter/columnFilter/SetFilter";
+import type { SortState } from "#/ui/fx/blotter/columnSort";
+import { FxBlotter as FxBlotterComponent } from "#/ui/fx/blotter/FxBlotter";
+import { QuickFilter as QuickFilterComponent } from "#/ui/fx/blotter/QuickFilter";
+import { CurrencyFilter as CurrencyFilterComponent } from "#/ui/fx/liveRates/CurrencyFilter";
+import { LiveRatesPanel as LiveRatesPanelComponent } from "#/ui/fx/liveRates/LiveRatesPanel";
+import { RfqCountdown as RfqCountdownComponent } from "#/ui/fx/liveRates/tile/RfqCountdown";
+import { Tile as TileComponent } from "#/ui/fx/liveRates/tile/Tile";
+import { TileConfirmation as TileConfirmationComponent } from "#/ui/fx/liveRates/tile/TileConfirmation";
+import { TileExecution as TileExecutionComponent } from "#/ui/fx/liveRates/tile/TileExecution";
+import { TileHeader as TileHeaderComponent } from "#/ui/fx/liveRates/tile/TileHeader";
+import { TileNotional as TileNotionalComponent } from "#/ui/fx/liveRates/tile/TileNotional";
 import {
   SpreadDisplay as SpreadDisplayComponent,
   TilePrice as TilePriceComponent,
-} from "../../../../src/ui/fx/liveRates/tile/TilePrice";
+} from "#/ui/fx/liveRates/tile/TilePrice";
 import {
   TileRfq as TileRfqComponent,
   type TileRfqState,
-} from "../../../../src/ui/fx/liveRates/tile/TileRfq";
-import { ViewToggle as ViewToggleComponent } from "../../../../src/ui/fx/liveRates/ViewToggle";
-import { ConnectionOverlay as ConnectionOverlayComponent } from "../../../../src/ui/shell/connection/ConnectionOverlay";
-import { ConnectionStatusBar as ConnectionStatusBarComponent } from "../../../../src/ui/shell/connection/ConnectionStatusBar";
-import { Footer as FooterComponent } from "../../../../src/ui/shell/layout/Footer";
+} from "#/ui/fx/liveRates/tile/TileRfq";
+import { ViewToggle as ViewToggleComponent } from "#/ui/fx/liveRates/ViewToggle";
+import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
+import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
+import { Footer as FooterComponent } from "#/ui/shell/layout/Footer";
 import {
   Header as HeaderComponent,
   type WorkspaceTab,
-} from "../../../../src/ui/shell/layout/Header";
-import { StaleIndicator as StaleIndicatorComponent } from "../../../../src/ui/shell/stale/StaleIndicator";
-import { ThemeToggle as ThemeToggleComponent } from "../../../../src/ui/shell/theme/ThemeToggle";
+} from "#/ui/shell/layout/Header";
+import { StaleIndicator as StaleIndicatorComponent } from "#/ui/shell/stale/StaleIndicator";
+import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggle";
+
 import {
   AdminPanel,
   AnalyticsPanel,

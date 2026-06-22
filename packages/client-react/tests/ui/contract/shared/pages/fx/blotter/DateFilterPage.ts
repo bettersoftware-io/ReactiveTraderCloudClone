@@ -6,8 +6,8 @@ import type { Trade } from "@rtc/domain";
 import type {
   ColumnFilter,
   Comparator,
-} from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
-import { MountedComponent } from "../../../harness/component";
+} from "#/ui/fx/blotter/columnFilter/filterState";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export interface DateFilterProps {
   column: keyof Trade;

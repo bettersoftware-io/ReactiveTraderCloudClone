@@ -3,7 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import type { Instrument, Quote, QuoteRequest, Rfq } from "@rtc/domain";
 
-import { MountedComponent } from "../../../harness/component";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export interface TradeTicketProps {
   rfq: Rfq;

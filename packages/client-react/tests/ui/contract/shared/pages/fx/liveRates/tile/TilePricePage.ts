@@ -1,6 +1,6 @@
 import type { Price } from "@rtc/domain";
 
-import { MountedComponent } from "../../../../harness/component";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export interface TilePriceProps {
   price: Price;

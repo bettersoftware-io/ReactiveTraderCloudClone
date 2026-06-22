@@ -12,17 +12,18 @@ import type {
   ViewMode,
 } from "@rtc/domain";
 
-import { createNotionalMachine } from "../../../../src/app/presenters/NotionalMachine";
+import { createNotionalMachine } from "#/app/presenters/NotionalMachine";
 import type {
   RfqSubmissionState,
   TicketSubmissionState,
-} from "../../../../src/app/presenters/RfqsPresenter";
-import { createRfqTileMachine } from "../../../../src/app/presenters/RfqTileMachine";
-import { createRowHighlightMachine } from "../../../../src/app/presenters/RowHighlightMachine";
-import { createStaleFlagMachine } from "../../../../src/app/presenters/StaleFlagMachine";
-import { createTileExecutionMachine } from "../../../../src/app/presenters/TileExecutionMachine";
-import type { AppHooks } from "../../../../src/ui/hooks/createAppHooks";
-import { useMachine } from "../../../../src/ui/hooks/useMachine";
+} from "#/app/presenters/RfqsPresenter";
+import { createRfqTileMachine } from "#/app/presenters/RfqTileMachine";
+import { createRowHighlightMachine } from "#/app/presenters/RowHighlightMachine";
+import { createStaleFlagMachine } from "#/app/presenters/StaleFlagMachine";
+import { createTileExecutionMachine } from "#/app/presenters/TileExecutionMachine";
+import type { AppHooks } from "#/ui/hooks/createAppHooks";
+import { useMachine } from "#/ui/hooks/useMachine";
+
 import type { World } from "../shared/harness/world";
 
 /** Mirror of RfqsPresenter's presenter-local redirect delay. The contract spec

@@ -1,4 +1,4 @@
-import { MountedComponent } from "../../../../harness/component";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export interface SpreadDisplayProps {
   spread: string;

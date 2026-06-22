@@ -1,20 +1,21 @@
 import type { ReactElement } from "react";
 
-import { App } from "../../../../src/ui/App";
-import { AdminPanel } from "../../../../src/ui/admin/AdminPanel";
-import { CreditBlotter } from "../../../../src/ui/credit/blotter/CreditBlotter";
-import { CreditWorkspace } from "../../../../src/ui/credit/CreditWorkspace";
-import { NewRfqForm } from "../../../../src/ui/credit/newRfq/NewRfqForm";
-import { RfqCard } from "../../../../src/ui/credit/rfqTiles/RfqCard";
-import { RfqTilesPanel } from "../../../../src/ui/credit/rfqTiles/RfqTilesPanel";
-import { SellSidePanel } from "../../../../src/ui/credit/sellSide/SellSidePanel";
-import { AnalyticsPanel } from "../../../../src/ui/fx/analytics/AnalyticsPanel";
-import { BlotterRow } from "../../../../src/ui/fx/blotter/BlotterRow";
-import { FxBlotter } from "../../../../src/ui/fx/blotter/FxBlotter";
-import { LiveRatesPanel } from "../../../../src/ui/fx/liveRates/LiveRatesPanel";
-import { Tile } from "../../../../src/ui/fx/liveRates/tile/Tile";
-import { ConnectionOverlay } from "../../../../src/ui/shell/connection/ConnectionOverlay";
-import { ConnectionStatusBar } from "../../../../src/ui/shell/connection/ConnectionStatusBar";
+import { App } from "#/ui/App";
+import { AdminPanel } from "#/ui/admin/AdminPanel";
+import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
+import { CreditWorkspace } from "#/ui/credit/CreditWorkspace";
+import { NewRfqForm } from "#/ui/credit/newRfq/NewRfqForm";
+import { RfqCard } from "#/ui/credit/rfqTiles/RfqCard";
+import { RfqTilesPanel } from "#/ui/credit/rfqTiles/RfqTilesPanel";
+import { SellSidePanel } from "#/ui/credit/sellSide/SellSidePanel";
+import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
+import { BlotterRow } from "#/ui/fx/blotter/BlotterRow";
+import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
+import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
+import { Tile } from "#/ui/fx/liveRates/tile/Tile";
+import { ConnectionOverlay } from "#/ui/shell/connection/ConnectionOverlay";
+import { ConnectionStatusBar } from "#/ui/shell/connection/ConnectionStatusBar";
+
 import { fixtures } from "../shared/fixtures";
 
 // Maps a neutral componentKey to a concrete React element, given the scenario's

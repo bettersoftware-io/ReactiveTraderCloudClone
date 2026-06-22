@@ -10,10 +10,7 @@ import {
   type Price,
 } from "@rtc/domain";
 
-import type {
-  RfqQuote,
-  RfqState,
-} from "../../../../../../../src/app/presenters/RfqTileMachine";
+import type { RfqQuote, RfqState } from "#/app/presenters/RfqTileMachine";
 
 const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS[0];
 

@@ -2,7 +2,8 @@ import { useMemo } from "react";
 
 import { ADAPTIVE_BANK_NAME, type Instrument, type Rfq } from "@rtc/domain";
 
-import { useHooks } from "../../hooks/useHooks";
+import { useHooks } from "#/ui/hooks/useHooks";
+
 import { TradeTicket } from "./TradeTicket";
 
 import styles from "./SellSidePanel.module.css";

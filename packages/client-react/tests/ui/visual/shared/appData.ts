@@ -16,14 +16,14 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
-import type { NotionalView } from "../../../../src/app/presenters/NotionalMachine";
+import type { NotionalView } from "#/app/presenters/NotionalMachine";
 import type {
   RfqSubmissionState,
   TicketSubmissionState,
-} from "../../../../src/app/presenters/RfqsPresenter";
-import type { RfqState } from "../../../../src/app/presenters/RfqTileMachine";
-import type { ThroughputView } from "../../../../src/app/presenters/ThroughputPresenter";
-import type { TileExecutionState } from "../../../../src/app/presenters/TileExecutionMachine";
+} from "#/app/presenters/RfqsPresenter";
+import type { RfqState } from "#/app/presenters/RfqTileMachine";
+import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
+import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
 
 export interface AppData {
   prices: Record<string, Price | null>;

@@ -1,5 +1,6 @@
-import { HooksProvider } from "../../../../src/ui/hooks/HooksProvider";
-import { ThemeProvider } from "../../../../src/ui/shell/theme/ThemeProvider";
+import { HooksProvider } from "#/ui/hooks/HooksProvider";
+import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
+
 import { fixtures } from "../shared/fixtures";
 import { scenarios } from "../shared/scenarios";
 import { buildFakeHooks } from "./buildFakeHooks";

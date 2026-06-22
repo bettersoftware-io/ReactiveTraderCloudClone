@@ -1,7 +1,7 @@
 import { fireEvent, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
-import { MountedComponent } from "../../../../harness/component";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 /** Shape of the notional hook result the component consumes. */
 export interface NotionalLike {

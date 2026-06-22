@@ -3,7 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import type { Dealer, Quote } from "@rtc/domain";
 
-import { MountedComponent } from "../../../harness/component";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export interface QuoteCardProps {
   quote: Quote;

@@ -4,7 +4,8 @@ import React from "react";
 import { BehaviorSubject, Subject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Machine } from "../../app/presenters/machine";
+import type { Machine } from "#/app/presenters/machine";
+
 import { useMachine } from "./useMachine";
 
 /** Build a minimal test machine from a BehaviorSubject.

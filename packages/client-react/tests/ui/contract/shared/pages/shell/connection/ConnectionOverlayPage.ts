@@ -1,6 +1,6 @@
 import { within } from "@testing-library/dom";
 
-import { MountedComponent } from "../../../harness/component";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 /**
  * Page object for ConnectionOverlay. It is hook-driven (reads

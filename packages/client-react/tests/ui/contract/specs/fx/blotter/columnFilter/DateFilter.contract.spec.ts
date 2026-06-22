@@ -2,7 +2,7 @@ import { DateFilter } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
 
-import type { ColumnFilter } from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
+import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 
 describe("DateFilter", () => {
   it("defaults to equals with one date input", () => {

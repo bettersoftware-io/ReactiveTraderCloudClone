@@ -1,8 +1,9 @@
-import { AdminPanel } from "../../admin/AdminPanel";
-import { CreditWorkspace } from "../../credit/CreditWorkspace";
-import { AnalyticsPanel } from "../../fx/analytics/AnalyticsPanel";
-import { FxBlotter } from "../../fx/blotter/FxBlotter";
-import { LiveRatesPanel } from "../../fx/liveRates/LiveRatesPanel";
+import { AdminPanel } from "#/ui/admin/AdminPanel";
+import { CreditWorkspace } from "#/ui/credit/CreditWorkspace";
+import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
+import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
+import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
+
 import type { WorkspaceTab } from "./Header";
 
 import styles from "./Workspace.module.css";

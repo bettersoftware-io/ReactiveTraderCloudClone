@@ -10,7 +10,9 @@
     "types": ["node"],
     "paths": {
       "@ui-contract": ["./tests/ui/contract/shared"],
-      "@ui-contract/*": ["./tests/ui/contract/shared/*"]
+      "@ui-contract/*": ["./tests/ui/contract/shared/*"],
+      "#/*": ["./src/*"],
+      "#tests/*": ["./tests/*"]
     }
   },
   "include": ["src", "tests/ui/contract"],

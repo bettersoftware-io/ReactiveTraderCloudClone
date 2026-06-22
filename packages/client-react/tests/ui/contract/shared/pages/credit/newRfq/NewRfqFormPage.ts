@@ -3,7 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import type { CreateRfqInput, Direction } from "@rtc/domain";
 
-import { MountedComponent } from "../../../harness/component";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export interface NewRfqFormProps {
   onCreated: (rfqId: number) => void;

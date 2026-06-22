@@ -1,5 +1,6 @@
-import { useHooks } from "../../hooks/useHooks";
-import { StaleIndicator } from "../../shell/stale/StaleIndicator";
+import { useHooks } from "#/ui/hooks/useHooks";
+import { StaleIndicator } from "#/ui/shell/stale/StaleIndicator";
+
 import { PairPnlBars } from "./PairPnlBars";
 import { PnlChart } from "./PnlChart";
 import { PnlValue } from "./PnlValue";

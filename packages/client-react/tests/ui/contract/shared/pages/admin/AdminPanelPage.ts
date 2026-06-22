@@ -1,8 +1,8 @@
 import { fireEvent, waitFor, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
-import type { ThroughputView } from "../../../../../../src/app/presenters/ThroughputPresenter";
-import { MountedComponent } from "../../harness/component";
+import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 /**
  * Page object for the AdminPanel throughput control. The panel is dumb: it reads

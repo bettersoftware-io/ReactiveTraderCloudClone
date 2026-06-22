@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 
 import { type CurrencyCategory, matchesCurrencyFilter } from "@rtc/domain";
 
-import { useHooks } from "../../hooks/useHooks";
+import { useHooks } from "#/ui/hooks/useHooks";
+
 import { CurrencyFilter } from "./CurrencyFilter";
 import { Tile } from "./tile/Tile";
 import { ViewToggle } from "./ViewToggle";

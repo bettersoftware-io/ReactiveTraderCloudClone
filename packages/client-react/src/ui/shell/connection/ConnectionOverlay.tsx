@@ -1,6 +1,6 @@
 import { ConnectionStatus } from "@rtc/domain";
 
-import { useHooks } from "../../hooks/useHooks";
+import { useHooks } from "#/ui/hooks/useHooks";
 
 import styles from "./ConnectionOverlay.module.css";
 

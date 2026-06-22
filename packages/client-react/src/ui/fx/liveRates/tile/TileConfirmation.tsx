@@ -1,6 +1,6 @@
 import { Direction, ExecutionStatus } from "@rtc/domain";
 
-import type { TileExecutionState } from "../../../../app/presenters/TileExecutionMachine";
+import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
 
 import styles from "./TileConfirmation.module.css";
 

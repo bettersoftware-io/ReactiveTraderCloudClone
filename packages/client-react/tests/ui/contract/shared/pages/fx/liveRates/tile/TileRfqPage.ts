@@ -3,11 +3,8 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 
-import type {
-  RfqState,
-  RfqTileIntents,
-} from "../../../../../../../../src/app/presenters/RfqTileMachine";
-import { MountedComponent } from "../../../../harness/component";
+import type { RfqState, RfqTileIntents } from "#/app/presenters/RfqTileMachine";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 /** Controllable double for the rfq machine result the component consumes:
  * current state plus the RFQ intents (accept returns void — the quote is

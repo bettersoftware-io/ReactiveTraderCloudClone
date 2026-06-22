@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-import type { ColumnFilter } from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
+import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 
 const trade = (over: Partial<Trade> = {}): Trade => ({
   tradeId: 1,

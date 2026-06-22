@@ -2,8 +2,9 @@ import { useCallback } from "react";
 
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 
-import { useHooks } from "../../../hooks/useHooks";
-import { StaleIndicator } from "../../../shell/stale/StaleIndicator";
+import { useHooks } from "#/ui/hooks/useHooks";
+import { StaleIndicator } from "#/ui/shell/stale/StaleIndicator";
+
 import { TileChart } from "./TileChart";
 import { TileConfirmation } from "./TileConfirmation";
 import { TileExecution } from "./TileExecution";

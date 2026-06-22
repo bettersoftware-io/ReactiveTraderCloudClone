@@ -3,9 +3,9 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import type { Trade } from "@rtc/domain";
 
-import type { ColumnFilter } from "../../../../../../../src/ui/fx/blotter/columnFilter/filterState";
-import type { SortState } from "../../../../../../../src/ui/fx/blotter/columnSort";
-import { MountedComponent } from "../../../harness/component";
+import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
+import type { SortState } from "#/ui/fx/blotter/columnSort";
+import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export interface BlotterHeaderProps {
   sort: SortState;

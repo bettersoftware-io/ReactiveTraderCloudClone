@@ -8,7 +8,7 @@ import {
 import type {
   NotionalIntents,
   NotionalView,
-} from "../../../../app/presenters/NotionalMachine";
+} from "#/app/presenters/NotionalMachine";
 
 import styles from "./TileNotional.module.css";
 

@@ -22,7 +22,7 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
-import type { ThroughputView } from "../../../../../src/app/presenters/ThroughputPresenter";
+import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
  *  are modelled by the per-key subject maps below, not by this map. */

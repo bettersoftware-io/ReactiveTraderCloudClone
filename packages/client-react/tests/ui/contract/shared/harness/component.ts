@@ -1,6 +1,7 @@
 import type { Price, PriceTick, Quote } from "@rtc/domain";
 
-import type { ThroughputView } from "../../../../../src/app/presenters/ThroughputPresenter";
+import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
+
 import type { CommandLog, HookValues } from "./world";
 
 /** Everything a page object needs: the rendered root + update drivers + command log. */

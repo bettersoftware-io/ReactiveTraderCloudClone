@@ -18,27 +18,25 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
-import type { Presenters } from "../../app/composition";
-import type { MachineFactories } from "../../app/presenters/machine";
+import type { Presenters } from "#/app/composition";
+import type { MachineFactories } from "#/app/presenters/machine";
 import type {
   NotionalIntents,
   NotionalView,
-} from "../../app/presenters/NotionalMachine";
+} from "#/app/presenters/NotionalMachine";
 import type {
   RfqSubmissionIntents,
   RfqSubmissionState,
   TicketSubmissionIntents,
   TicketSubmissionState,
-} from "../../app/presenters/RfqsPresenter";
-import type {
-  RfqState,
-  RfqTileIntents,
-} from "../../app/presenters/RfqTileMachine";
-import type { ThroughputView } from "../../app/presenters/ThroughputPresenter";
+} from "#/app/presenters/RfqsPresenter";
+import type { RfqState, RfqTileIntents } from "#/app/presenters/RfqTileMachine";
+import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 import type {
   TileExecutionIntents,
   TileExecutionState,
-} from "../../app/presenters/TileExecutionMachine";
+} from "#/app/presenters/TileExecutionMachine";
+
 import { useMachine } from "./useMachine";
 
 export interface AppHooks {

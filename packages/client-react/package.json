@@ -11,8 +11,12 @@
       "default": "./src/index.ts"
     }
   },
+  "imports": {
+    "#/*": "./src/*",
+    "#tests/*": "./tests/*"
+  },
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.types.json --noCheck",
+    "build": "vite build && tsc -p tsconfig.types.json --noCheck && tsc-alias -p tsconfig.types.json",
     "build-types": "tsc -p tsconfig.types.json --noCheck",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.ui-visual.json && tsc --noEmit -p tsconfig.ui-contract.json",
     "test": "vitest run",
@@ -39,9 +43,9 @@
   },
   "dependencies": {
     "@react-rxjs/core": "^0.10.7",
-    "@rx-state/core": "^0.1.4",
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
+    "@rx-state/core": "^0.1.4",
     "react": "^19",
     "react-dom": "^19",
     "rxjs": "^7.8"
@@ -63,6 +67,7 @@
     "@vitest/ui": "^4.1.8",
     "jsdom": "^29",
     "playwright": "^1.60.0",
+    "tsc-alias": "1.8.17",
     "tsx": "^4",
     "vite": "^8",
     "vitest": "^4",

@@ -1,7 +1,7 @@
 import { useStateObservable } from "@react-rxjs/core";
 import { useEffect, useRef } from "react";
 
-import type { Machine } from "../../app/presenters/machine";
+import type { Machine } from "#/app/presenters/machine";
 
 /** Logic-free bridge: instantiates the factory once per mount (lazy useRef so
  * StrictMode double-render can't double-instantiate), reads state$ via
