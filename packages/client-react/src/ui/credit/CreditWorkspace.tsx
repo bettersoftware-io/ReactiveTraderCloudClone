@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import { CreditBlotter } from "./blotter/CreditBlotter";
 import styles from "./CreditWorkspace.module.css";
+import { CreditBlotter } from "./blotter/CreditBlotter";
 import { NewRfqForm } from "./newRfq/NewRfqForm";
 import { RfqTilesPanel } from "./rfqTiles/RfqTilesPanel";
 import { SellSidePanel } from "./sellSide/SellSidePanel";

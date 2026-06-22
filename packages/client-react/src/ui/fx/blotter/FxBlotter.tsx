@@ -1,5 +1,6 @@
 import type { Trade } from "@rtc/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
+import styles from "./FxBlotter.module.css";
 import { useHooks } from "../../hooks/useHooks";
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";
@@ -11,7 +12,6 @@ import {
   type SortState,
 } from "./columnSort";
 import { exportToCsv } from "./csvExport";
-import styles from "./FxBlotter.module.css";
 import { QuickFilter } from "./QuickFilter";
 
 export function FxBlotter() {

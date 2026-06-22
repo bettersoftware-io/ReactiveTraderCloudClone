@@ -6,8 +6,8 @@ import {
   RfqState,
 } from "@rtc/domain";
 import { useCallback, useMemo } from "react";
-import { QuoteCard } from "./QuoteCard";
 import styles from "./RfqCard.module.css";
+import { QuoteCard } from "./QuoteCard";
 
 interface RfqCardProps {
   rfq: Rfq;

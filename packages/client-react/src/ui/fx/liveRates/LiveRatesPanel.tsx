@@ -1,8 +1,8 @@
 import { type CurrencyCategory, matchesCurrencyFilter } from "@rtc/domain";
 import { useMemo, useState } from "react";
+import styles from "./LiveRatesPanel.module.css";
 import { useHooks } from "../../hooks/useHooks";
 import { CurrencyFilter } from "./CurrencyFilter";
-import styles from "./LiveRatesPanel.module.css";
 import { Tile } from "./tile/Tile";
 import { ViewToggle } from "./ViewToggle";
 

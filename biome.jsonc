@@ -29,7 +29,27 @@
     "enabled": true,
     "actions": {
       "source": {
-        "organizeImports": "on"
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            // Sort bare/side-effect imports (e.g. `import "./index.css"`) too.
+            "sortBareImports": true,
+            // First-match-wins groups, in output order. :STYLE: is placed
+            // before :PATH: so global CSS (index.css) sorts ahead of relative
+            // JS — preserving cascade order rather than dropping to the end.
+            "groups": [
+              ":NODE:",
+              ":PACKAGE:",
+              "@rtc/**",
+              ":STYLE:",
+              [":PATH:", ":ALIAS:"]
+            ]
+          }
+        }
+        // Sorters triaged 2026-06-22 — deferred, decide & address later:
+        // "useSortedKeys": "on"        // ~1116 hits, mostly fixtures + *.contract.spec.ts (conflicts with "specs MUST NOT change")
+        // "useSortedAttributes": "on"  // ~128 JSX attribute reorders
+        // "useSortedProperties": "on"  // ~134 CSS property reorders (cascade risk; visual goldens are the oracle)
       }
     }
   },

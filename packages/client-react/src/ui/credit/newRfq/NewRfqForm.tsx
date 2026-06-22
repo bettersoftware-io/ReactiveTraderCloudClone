@@ -4,10 +4,10 @@ import {
   type Instrument,
 } from "@rtc/domain";
 import { useCallback, useMemo, useState } from "react";
+import styles from "./NewRfqForm.module.css";
 import { useHooks } from "../../hooks/useHooks";
 import { DealerSelection } from "./DealerSelection";
 import { InstrumentSearch } from "./InstrumentSearch";
-import styles from "./NewRfqForm.module.css";
 import { QuantityInput } from "./QuantityInput";
 
 interface NewRfqFormProps {

@@ -1,6 +1,6 @@
+import styles from "./AnalyticsPanel.module.css";
 import { useHooks } from "../../hooks/useHooks";
 import { StaleIndicator } from "../../shell/stale/StaleIndicator";
-import styles from "./AnalyticsPanel.module.css";
 import { PairPnlBars } from "./PairPnlBars";
 import { PnlChart } from "./PnlChart";
 import { PnlValue } from "./PnlValue";

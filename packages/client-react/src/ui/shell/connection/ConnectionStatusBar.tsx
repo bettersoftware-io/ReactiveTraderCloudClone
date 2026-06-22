@@ -1,6 +1,6 @@
 import { ConnectionStatus } from "@rtc/domain";
-import { useHooks } from "../../hooks/useHooks";
 import styles from "./ConnectionStatusBar.module.css";
+import { useHooks } from "../../hooks/useHooks";
 
 const statusLabel: Record<ConnectionStatus, string> = {
   [ConnectionStatus.CONNECTING]: "Connecting...",

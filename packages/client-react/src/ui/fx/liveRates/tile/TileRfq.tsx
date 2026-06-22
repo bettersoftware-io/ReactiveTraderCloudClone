@@ -5,12 +5,12 @@ import {
   PriceMovementType,
 } from "@rtc/domain";
 import { useCallback } from "react";
+import styles from "./TileRfq.module.css";
 import type {
   RfqState,
   RfqTileIntents,
 } from "../../../../app/presenters/RfqTileMachine";
 import { RfqCountdown } from "./RfqCountdown";
-import styles from "./TileRfq.module.css";
 
 /** The machine result the tile passes down: current state plus the RFQ intents. */
 export type TileRfqState = { state: RfqState } & RfqTileIntents;

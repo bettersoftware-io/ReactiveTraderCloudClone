@@ -1,5 +1,5 @@
-import { ConnectionStatusBar } from "../connection/ConnectionStatusBar";
 import styles from "./Footer.module.css";
+import { ConnectionStatusBar } from "../connection/ConnectionStatusBar";
 
 export function Footer() {
   return (

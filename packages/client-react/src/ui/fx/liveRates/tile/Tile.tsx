@@ -1,8 +1,8 @@
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 import { useCallback } from "react";
+import styles from "./Tile.module.css";
 import { useHooks } from "../../../hooks/useHooks";
 import { StaleIndicator } from "../../../shell/stale/StaleIndicator";
-import styles from "./Tile.module.css";
 import { TileChart } from "./TileChart";
 import { TileConfirmation } from "./TileConfirmation";
 import { TileExecution } from "./TileExecution";

@@ -1,7 +1,7 @@
 import type { Trade } from "@rtc/domain";
 import { useCallback, useState } from "react";
-import type { ColumnFilter, Comparator } from "./filterState";
 import styles from "./NumberFilter.module.css";
+import type { ColumnFilter, Comparator } from "./filterState";
 
 interface NumberFilterProps {
   column: keyof Trade;
