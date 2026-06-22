@@ -14,10 +14,15 @@ These constraints drove every recommendation — re-read before adopting anythin
 
 1. **Biome is the sole formatter+linter.** Policy is *zero findings, no
    disables* (`biome.jsonc`, `preset: "recommended"`). Green = truly clean.
-2. **Avoid dual-linter refereeing.** The pain we walked away from was (a)
-   formatter/whitespace turf wars and (b) the editor (WebStorm "React Buddy")
-   showing findings Biome doesn't. Any second tool must avoid *both* — ideally
-   CI-only and formatting-free.
+2. **Separate concerns, don't restrict location.** The pain we walked away from
+   was (a) two tools owning the *same* concern — two *formatters* fighting over
+   whitespace, and (b) **React Buddy**, an editor *hook-deps plugin* (not ESLint)
+   showing live findings CI didn't. The fix is **concern separation**, not
+   "CI-only": Biome owns all formatting + correctness; any second tool enables
+   only non-overlapping rules (`eslint-config-prettier` kills layout overlap).
+   With that separation a second linter can run **anywhere — local CLI + CI**
+   (same config → identical results). The only editor caveat: keep it
+   *lint-only* (Biome stays the sole formatter); disable React Buddy separately.
 3. **Prefer reporters over gates initially.** Adopt new tools report-only first
    (matches the coverage-reports pattern); promote to blocking only once the
    baseline is clean.
@@ -40,7 +45,7 @@ These constraints drove every recommendation — re-read before adopting anythin
 | 3 | **actionlint** | GitHub Actions / YAML correctness | none | trivial | **Adopt** | ⬜ |
 | 4 | **dependency-cruiser** | Circular deps + transitive architecture rules | partial w/ Biome `noRestrictedImports` | medium | **Adopt** (top cycle pick) | ⬜ |
 | 5 | **manypkg** *or* **syncpack** | Monorepo dep-version consistency | each other (pick one) | low | **Adopt one** (report-only) | ⬜ |
-| 6 | **Scoped CI-only ESLint** | Rules GritQL can't do (decl-vs-expr, autofix, type-aware) | by construction: none w/ Biome | medium | **Conditional** — adopt if rule wishlist grows or type-aware rules wanted | ⬜ |
+| 6 | **Scoped ESLint** (lint-only, runs local + CI) | Rules GritQL can't do (decl-vs-expr, autofix, type-aware) | by construction: none w/ Biome | medium | **Conditional** — adopt if rule wishlist grows or type-aware rules wanted | ⬜ |
 | 7 | **Stylelint** | CSS naming/token/policy conventions | real w/ Biome CSS | medium | **Hold** — dormant value (CSS is frozen goldens) | ⬜ |
 | 8 | **husky (+ lint-staged)** | Local pre-commit hooks | duplicates CI gate | low | **Reject** — friction for sandboxed auto-commits | ⬜ |
 | 9 | **markdownlint / commitlint** | MD style / commit-msg format | — | low | **Reject** — cosmetic for this repo | ⬜ |
@@ -267,11 +272,16 @@ clean signal. Pick one.
 
 ---
 
-## 6. Scoped CI-only ESLint ⬜  (conditional)
+## 6. Scoped ESLint (lint-only, runs local + CI) ⬜  (conditional)
 
 **What:** a *minimal* ESLint that runs **only** opinionated AST rules GritQL
-can't express, with **all formatting deferred to Biome** and **not run in the
-editor** — which sidesteps the exact dual-linter pain we fled.
+can't express, with **all formatting deferred to Biome**. Run it **wherever you
+want — local CLI (`pnpm lint:eslint`) and CI** — off one shared config, so
+results are identical and there's no divergence. With formatting fully deferred
+there is nothing for it to fight Biome over. (Earlier drafts said "CI-only";
+that was over-cautious — the pain we fled was two tools owning the *same*
+concern + an editor hook-deps plugin, not "ESLint runs locally." See
+principle 2.)
 
 **When to adopt — threshold rule:** our house-style wishlist is converging on the
 typescript-eslint stylistic set. At 1–2 rules, GritQL hacks suffice. Adopt ESLint
@@ -299,10 +309,14 @@ no Biome lint equivalent. ESLint owns the "require a separator" half.
 to a custom ESLint rule** — structural `TSTypeLiteral` matching beats the regex
 heuristic, and the tool's already paid for.
 
-**Setup contract (to avoid the old pain):** CI-only; `eslint-config-prettier` (or
-simply don't enable layout rules) so zero formatting overlap with Biome; flat
-config; AST-only rules need no type info (fast), type-aware rules build the TS
-program (slower — gate them separately).
+**Setup contract (to avoid the old pain):** `eslint-config-prettier` (or simply
+don't enable layout rules) so zero formatting overlap with Biome; flat config;
+one shared config used by both `pnpm lint:eslint` (local) and CI. **Speed-tier:**
+AST-only rules need no type info (fast) — keep them in the default script;
+type-aware rules build the TS program (slower) — put them in a separate opt-in
+script so everyday local lint stays fast. **Editor (optional):** enable ESLint
+as a *linter only* — Biome remains the sole formatter / format-on-save; React
+Buddy's hook-deps inspection is a separate plugin, disable it independently.
 
 **Recommendation:** **Hold.** Keep GritQL while Biome is the sole linter. Adopt
 only when the threshold above is crossed.
