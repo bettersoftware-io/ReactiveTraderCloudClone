@@ -1,8 +1,9 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { ExecutionRequest } from "../../fx/trade.js";
-import { Direction, TradeStatus } from "../../fx/trade.js";
+import type { ExecutionRequest } from "#/fx/trade.js";
+import { Direction, TradeStatus } from "#/fx/trade.js";
+
 import type { ExecutionPort } from "../executionPort.js";
 
 const VALID_STATUSES = [

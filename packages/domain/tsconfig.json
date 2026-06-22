@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
+    "paths": { "#/*": ["./src/*"] },
     // Keep the incremental cache inside dist/ so it travels with the outputs it
     // describes. In the claude-sandbox dev setup dist/ is an isolated per-env
     // volume while the package root is a shared bind mount — a root-level

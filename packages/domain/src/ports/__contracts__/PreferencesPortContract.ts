@@ -6,7 +6,8 @@ import {
   DEFAULT_VIEW_MODE,
   type Theme,
   type ViewMode,
-} from "../../preferences/preferences.js";
+} from "#/preferences/preferences.js";
+
 import type { PreferencesPort } from "../preferencesPort.js";
 
 /** A pre-seeded preferences store. Partial — omitted keys fall back to defaults. */

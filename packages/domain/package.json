@@ -15,12 +15,15 @@
       "import": "./dist/ports/__contracts__/*.js"
     }
   },
+  "imports": {
+    "#/*": "./src/*"
+  },
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && tsc-alias -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "dev": "tsc --build --watch",
+    "dev": "tsc-alias -w -p tsconfig.json & tsc --build --watch",
     "clean": "rm -rf dist .turbo *.tsbuildinfo reports 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
@@ -30,6 +33,7 @@
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.8",
     "@vitest/ui": "^4.1.8",
+    "tsc-alias": "1.8.17",
     "vitest": "^4"
   }
 }
