@@ -1,6 +1,6 @@
 import type { Trade } from "@rtc/domain";
 
-export type SortDirection = "asc" | "desc" | null;
+type SortDirection = "asc" | "desc" | null;
 
 export interface SortState {
   column: keyof Trade | null;

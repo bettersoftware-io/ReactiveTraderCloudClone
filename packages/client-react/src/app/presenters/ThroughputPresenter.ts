@@ -22,7 +22,7 @@ export const MESSAGE_DISMISS_MS = 3_000;
 const DEFAULT_VALUE = 100;
 
 /** The status banner the AdminPanel renders. Shape matches the old hook. */
-export interface ThroughputMessage {
+interface ThroughputMessage {
   text: string;
   isError: boolean;
 }

@@ -50,7 +50,6 @@ import type {
 
 import type { IWsAdapter } from "./IWsAdapter";
 import { LocalStoragePreferencesAdapter } from "./LocalStoragePreferencesAdapter";
-import { WsAdapter } from "./WsAdapter";
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
@@ -626,5 +625,3 @@ export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
     preferences: new LocalStoragePreferencesAdapter(),
   };
 }
-
-export { WsAdapter };

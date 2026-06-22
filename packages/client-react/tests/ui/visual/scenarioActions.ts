@@ -6,7 +6,7 @@
 // A single ordered interaction step for multi-step scenarios (form fill, open a
 // filter popover then apply it). Runner-neutral: keyed on testids + literal
 // text/values so plain-Playwright and vitest-browser drive them identically.
-export type ScenarioStep =
+type ScenarioStep =
   /** Click the element with this testid. */
   | { readonly click: string }
   /** Type `text` into the input with this testid (clears first). */

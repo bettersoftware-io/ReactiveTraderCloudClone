@@ -3,7 +3,7 @@ import type { BehaviorSubject } from "rxjs";
 import type { ComponentToken, MountedComponent } from "./component";
 import type { World } from "./world";
 
-export interface RenderInputs<P> {
+interface RenderInputs<P> {
   /** Reactive props source; the driver renders the component from its latest value. */
   readonly propsSubject: BehaviorSubject<Partial<P>>;
   /** The controllable hook world; the driver turns it into reactive AppHooks. */

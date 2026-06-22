@@ -3,7 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
-export type ViewMode = "chart" | "price";
+type ViewMode = "chart" | "price";
 
 export interface ViewToggleProps {
   mode: ViewMode;

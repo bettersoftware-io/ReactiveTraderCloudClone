@@ -34,7 +34,8 @@
     "@rtc/client-react": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/server": "workspace:*",
-    "rxjs": "^7.8"
+    "rxjs": "^7.8",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@badeball/cypress-cucumber-preprocessor": "24.0.1",

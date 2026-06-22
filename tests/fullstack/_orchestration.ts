@@ -17,7 +17,7 @@ export const MONOREPO_ROOT = join(
   "..",
 );
 
-export const sleep = (ms: number): Promise<void> =>
+const sleep = (ms: number): Promise<void> =>
   new Promise((r) => setTimeout(r, ms));
 
 /** Start the real backend (from source via the server's own tsx). */

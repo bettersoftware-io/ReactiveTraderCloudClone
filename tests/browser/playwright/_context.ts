@@ -13,5 +13,3 @@ export const test = base.extend<{ ctx: TestContext }>({
     await use(ctx);
   },
 });
-
-export { expect } from "@playwright/test";

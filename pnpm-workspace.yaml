@@ -15,14 +15,7 @@ allowBuilds:
 # the default. Add packages to `minimumReleaseAgeExclude` to bypass per-package.
 minimumReleaseAge: 1440
 
-# Force the vulnerable transitive ws (7.4.6, pulled in by @marblejs/websockets,
-# which declares `ws: ~7.4.6`) up to the patched 7.5.10 — fixes GHSA-3h5v-q93c-6h6q
-# (DoS) while keeping marblejs on its DECLARED ws 7.x major, without disturbing the
-# server's direct ws@8. (pnpm 11 reads overrides here, not from package.json.)
-# NOTE: do not let Renovate bump this to ^8 — that forces marblejs onto an
-# undeclared ws major. A packageRule in .github/renovate.json5 pins this override.
 overrides:
-  ws@7: ^7.5.10
   # Force the dev-only transitive uuid 11.0.x (11.0.5 -> 11.1.1, medium alert).
   # Verified REQUIRED: removing this override re-resolves uuid back to the
   # vulnerable 11.0.5 (its declaring dep pins the 11.0.x line, so 11.1.1 is not

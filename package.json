@@ -20,11 +20,13 @@
     "clean": "turbo run clean && (rm -rf .turbo 2>/dev/null || true)",
     "clean:deep": "turbo run clean:deep && (rm -rf node_modules .pnpm-store .turbo 2>/dev/null || true) && find . -name .DS_Store -type f -delete",
     "lint:actions": "scripts/install-actionlint.sh && .tooling/actionlint -color",
-    "check:versions": "manypkg check && syncpack lint"
+    "check:versions": "manypkg check && syncpack lint",
+    "lint:dead": "knip"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@manypkg/cli": "^0.25.1",
+    "knip": "^6.17.1",
     "syncpack": "^15.3.2",
     "turbo": "^2.4",
     "typescript": "^6"
