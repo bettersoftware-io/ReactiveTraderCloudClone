@@ -9,22 +9,6 @@ import type { LiveRatesTilePO } from "./LiveRatesTile";
 import type { ThemeTogglePO } from "./ThemeToggle";
 import type { WorkspacePO } from "./Workspace";
 
-export { STRINGS } from "./strings";
-export { TESTIDS } from "./testids";
-
-export type {
-  AnalyticsDashboardPO,
-  BlotterTablePO,
-  ConnectionOverlayPO,
-  CreditRfqFormPO,
-  CreditRfqPanelPO,
-  FooterPO,
-  FxRfqFormPO,
-  LiveRatesTilePO,
-  ThemeTogglePO,
-  WorkspacePO,
-};
-
 export interface PageObjects {
   workspace: WorkspacePO;
   themeToggle: ThemeTogglePO;

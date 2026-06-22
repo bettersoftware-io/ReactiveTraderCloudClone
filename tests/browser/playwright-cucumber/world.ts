@@ -7,7 +7,9 @@ import { Scratchpad } from "../testContext";
 
 export class PlaywrightWorld extends World {
   context!: BrowserContext;
+
   page!: Page;
+
   ctx!: TestContext;
 
   async open(browser: Browser): Promise<void> {

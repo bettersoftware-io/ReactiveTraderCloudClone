@@ -25,12 +25,24 @@ const input: CreateRfqInput = {
  * else is an inert stub (the submission machine only touches createRfq). */
 function port(createRfq$: Observable<number>): WorkflowPort {
   return {
-    events: () => of<RfqEvent>(),
-    createRfq: () => createRfq$,
-    cancelRfq: () => of(undefined),
-    quote: () => of(undefined),
-    pass: () => of(undefined),
-    accept: () => of(undefined),
+    events: () => {
+      return of<RfqEvent>();
+    },
+    createRfq: () => {
+      return createRfq$;
+    },
+    cancelRfq: () => {
+      return of(undefined);
+    },
+    quote: () => {
+      return of(undefined);
+    },
+    pass: () => {
+      return of(undefined);
+    },
+    accept: () => {
+      return of(undefined);
+    },
   };
 }
 
@@ -50,9 +62,13 @@ describe("RfqsPresenter.createSubmission", () => {
 
       const states: RfqSubmissionState[] = [];
       const redirects: number[] = [];
-      const sub = machine.state$.subscribe((s) => states.push(s));
+      const sub = machine.state$.subscribe((s) => {
+        return states.push(s);
+      });
 
-      machine.intents.submit(input, (rfqId) => redirects.push(rfqId));
+      machine.intents.submit(input, (rfqId) => {
+        return redirects.push(rfqId);
+      });
 
       // 1ms before the redirect-timer deadline (confirmation at t=10): not yet.
       ts.schedule(
@@ -90,7 +106,9 @@ describe("RfqsPresenter.createSubmission", () => {
 
       const redirects: number[] = [];
       const sub = machine.state$.subscribe();
-      machine.intents.submit(input, (rfqId) => redirects.push(rfqId));
+      machine.intents.submit(input, (rfqId) => {
+        return redirects.push(rfqId);
+      });
 
       // Dispose midway through the redirect window (well before t=10+1500).
       ts.schedule(() => {
@@ -111,8 +129,12 @@ describe("RfqsPresenter.createSubmission", () => {
 
       const states: RfqSubmissionState[] = [];
       const redirects: number[] = [];
-      const sub = machine.state$.subscribe((s) => states.push(s));
-      machine.intents.submit(input, (rfqId) => redirects.push(rfqId));
+      const sub = machine.state$.subscribe((s) => {
+        return states.push(s);
+      });
+      machine.intents.submit(input, (rfqId) => {
+        return redirects.push(rfqId);
+      });
 
       flush();
       sub.unsubscribe();

@@ -23,6 +23,7 @@ export function describeAnalyticsPortContract(
   describe(`${label} :: AnalyticsPort contract`, () => {
     it("emits PositionUpdates with currentPositions[] and history[]", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getAnalytics("USD"));
         await driver.emitAnalytics("USD");
@@ -36,11 +37,13 @@ export function describeAnalyticsPortContract(
 
     it("history is time-ordered ascending", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getAnalytics("USD"));
         await driver.emitAnalytics("USD");
         const update = await promise;
         if (update.history.length < 2) return;
+
         for (let i = 1; i < update.history.length; i++) {
           const prev = new Date(
             defined(update.history[i - 1]).timestamp,

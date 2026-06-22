@@ -74,7 +74,9 @@ export class PricingSimulator implements PricingPort {
     return defer(() => {
       const state = this.pairs.get(symbol);
       if (!state)
-        return throwError(() => new Error(`Unknown symbol: ${symbol}`));
+        return throwError(() => {
+          return new Error(`Unknown symbol: ${symbol}`);
+        });
       return of([...state.history] as readonly PriceTick[]);
     });
   }
@@ -83,22 +85,30 @@ export class PricingSimulator implements PricingPort {
     return defer(() => {
       const state = this.pairs.get(symbol);
       if (!state)
-        return throwError(() => new Error(`Unknown symbol: ${symbol}`));
+        return throwError(() => {
+          return new Error(`Unknown symbol: ${symbol}`);
+        });
+      const pairState = state;
       const live$ = new Observable<PriceTick>((subscriber) => {
         let timeoutId: ReturnType<typeof setTimeout>;
-        const scheduleNext = () => {
+
+        function scheduleNext() {
           timeoutId = setTimeout(() => {
-            state.mid = applyRandomWalk(state.mid);
-            const tick = createTick(symbol, state.mid, Date.now());
-            state.history.push(tick);
-            if (state.history.length > PRICE_HISTORY_SIZE)
-              state.history.shift();
+            pairState.mid = applyRandomWalk(pairState.mid);
+            const tick = createTick(symbol, pairState.mid, Date.now());
+            pairState.history.push(tick);
+            if (pairState.history.length > PRICE_HISTORY_SIZE)
+              pairState.history.shift();
             subscriber.next(tick);
             scheduleNext();
           }, tickInterval());
-        };
+        }
+
         scheduleNext();
-        return () => clearTimeout(timeoutId);
+
+        return () => {
+          return clearTimeout(timeoutId);
+        };
       });
       return concat(from(state.history), live$);
     });
@@ -116,7 +126,9 @@ export class PricingSimulator implements PricingPort {
     return defer(() => {
       const state = this.pairs.get(symbol);
       if (!state)
-        return throwError(() => new Error(`Unknown symbol: ${symbol}`));
+        return throwError(() => {
+          return new Error(`Unknown symbol: ${symbol}`);
+        });
       const priceChange = 0.3 / 10 ** pipsPosition;
       const delayMs = 500 + Math.floor(Math.random() * 1500);
       const result: RfqQuoteResult = {
@@ -124,7 +136,11 @@ export class PricingSimulator implements PricingPort {
         bid: state.mid - HALF_SPREAD - priceChange,
         mid: state.mid,
       };
-      return timer(delayMs).pipe(map(() => result));
+      return timer(delayMs).pipe(
+        map(() => {
+          return result;
+        }),
+      );
     });
   }
 }

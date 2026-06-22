@@ -49,16 +49,20 @@ export function SetFilter({
 
   return (
     <div className={styles.container}>
-      {allValues.map((val) => (
-        <label key={val} className={styles.option}>
-          <input
-            type="checkbox"
-            checked={selected.has(val)}
-            onChange={() => toggleValue(val)}
-          />
-          {val}
-        </label>
-      ))}
+      {allValues.map((val) => {
+        return (
+          <label key={val} className={styles.option}>
+            <input
+              type="checkbox"
+              checked={selected.has(val)}
+              onChange={() => {
+                return toggleValue(val);
+              }}
+            />
+            {val}
+          </label>
+        );
+      })}
       <button type="button" onClick={handleApply} className={styles.applyBtn}>
         Apply
       </button>

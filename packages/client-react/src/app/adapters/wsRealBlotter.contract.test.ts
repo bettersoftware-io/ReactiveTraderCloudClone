@@ -20,6 +20,8 @@ describeBlotterPortContract("wsRealBlotter", () => {
         ws.emit("stream.blotter", blotterFrame(trades));
       },
     },
-    teardown: () => ws.dispose(),
+    teardown: () => {
+      return ws.dispose();
+    },
   };
 });

@@ -6,19 +6,21 @@ import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 
-const trade = (over: Partial<Trade> = {}): Trade => ({
-  tradeId: 1,
-  tradeName: "Alice",
-  currencyPair: "EURUSD",
-  notional: 1_000_000,
-  dealtCurrency: "EUR",
-  direction: Direction.Buy,
-  spotRate: 1.1,
-  status: TradeStatus.Done,
-  tradeDate: "2026-01-01",
-  valueDate: "2026-01-03",
-  ...over,
-});
+const trade = (over: Partial<Trade> = {}): Trade => {
+  return {
+    tradeId: 1,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.1,
+    status: TradeStatus.Done,
+    tradeDate: "2026-01-01",
+    valueDate: "2026-01-03",
+    ...over,
+  };
+};
 
 const noSort = { column: null, direction: null } as const;
 
@@ -52,7 +54,9 @@ describe("BlotterHeader", () => {
     const header = mount(BlotterHeader, {
       props: {
         sort: noSort,
-        onSort: (c) => sorted.push(c),
+        onSort: (c) => {
+          return sorted.push(c);
+        },
         filters: new Map(),
         onFilter: () => {},
         trades: [],
@@ -158,7 +162,9 @@ describe("BlotterHeader", () => {
         sort: noSort,
         onSort: () => {},
         filters: new Map(),
-        onFilter: (column, filter) => applied.push({ column, filter }),
+        onFilter: (column, filter) => {
+          return applied.push({ column, filter });
+        },
         trades: [trade()],
       },
     });

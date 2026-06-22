@@ -13,7 +13,9 @@ const PADDING = 2;
 function buildPath(history: readonly PriceTick[]): string {
   if (history.length < 2) return "";
 
-  const mids = history.map((t) => t.mid);
+  const mids = history.map((t) => {
+    return t.mid;
+  });
   const min = Math.min(...mids);
   const max = Math.max(...mids);
   const range = max - min || 1;

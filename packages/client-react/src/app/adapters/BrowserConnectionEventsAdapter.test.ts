@@ -16,7 +16,9 @@ describe("BrowserConnectionEventsAdapter", () => {
   it("emits userActivity on mousemove and resets the idle timer", () => {
     const adapter = new BrowserConnectionEventsAdapter();
     const events: ConnectionEvent[] = [];
-    const sub: Subscription = adapter.events().subscribe((e) => events.push(e));
+    const sub: Subscription = adapter.events().subscribe((e) => {
+      return events.push(e);
+    });
 
     window.dispatchEvent(new Event("mousemove"));
     expect(events.at(-1)).toEqual({ type: "userActivity" });
@@ -25,7 +27,11 @@ describe("BrowserConnectionEventsAdapter", () => {
     vi.advanceTimersByTime(IDLE_TIMEOUT_MS - 1);
     window.dispatchEvent(new Event("mousemove"));
     vi.advanceTimersByTime(IDLE_TIMEOUT_MS - 1);
-    expect(events.some((e) => e.type === "idleTimeout")).toBe(false);
+    expect(
+      events.some((e) => {
+        return e.type === "idleTimeout";
+      }),
+    ).toBe(false);
 
     sub.unsubscribe();
   });
@@ -33,42 +39,62 @@ describe("BrowserConnectionEventsAdapter", () => {
   it("emits idleTimeout when there is no activity for IDLE_TIMEOUT_MS", () => {
     const adapter = new BrowserConnectionEventsAdapter();
     const events: ConnectionEvent[] = [];
-    const sub = adapter.events().subscribe((e) => events.push(e));
+    const sub = adapter.events().subscribe((e) => {
+      return events.push(e);
+    });
     vi.advanceTimersByTime(IDLE_TIMEOUT_MS);
-    expect(events.some((e) => e.type === "idleTimeout")).toBe(true);
+    expect(
+      events.some((e) => {
+        return e.type === "idleTimeout";
+      }),
+    ).toBe(true);
     sub.unsubscribe();
   });
 
   it("emits browserOffline / browserOnline on window events", () => {
     const adapter = new BrowserConnectionEventsAdapter();
     const events: ConnectionEvent[] = [];
-    const sub = adapter.events().subscribe((e) => events.push(e));
+    const sub = adapter.events().subscribe((e) => {
+      return events.push(e);
+    });
     window.dispatchEvent(new Event("offline"));
     window.dispatchEvent(new Event("online"));
-    expect(events.map((e) => e.type)).toEqual(
-      expect.arrayContaining(["browserOffline", "browserOnline"]),
-    );
+    expect(
+      events.map((e) => {
+        return e.type;
+      }),
+    ).toEqual(expect.arrayContaining(["browserOffline", "browserOnline"]));
     sub.unsubscribe();
   });
 
   it("clears the idle timer on teardown so no idleTimeout fires after unsubscribe", () => {
     const adapter = new BrowserConnectionEventsAdapter();
     const events: ConnectionEvent[] = [];
-    const sub = adapter.events().subscribe((e) => events.push(e));
+    const sub = adapter.events().subscribe((e) => {
+      return events.push(e);
+    });
 
     // Tear down before the idle window elapses, then advance well past it.
     sub.unsubscribe();
     vi.advanceTimersByTime(IDLE_TIMEOUT_MS * 2);
 
-    expect(events.some((e) => e.type === "idleTimeout")).toBe(false);
+    expect(
+      events.some((e) => {
+        return e.type === "idleTimeout";
+      }),
+    ).toBe(false);
   });
 
   it("removes listeners on unsubscribe", () => {
     const adapter = new BrowserConnectionEventsAdapter();
     const eventsA: ConnectionEvent[] = [];
     const eventsB: ConnectionEvent[] = [];
-    const subA = adapter.events().subscribe((e) => eventsA.push(e));
-    const subB = adapter.events().subscribe((e) => eventsB.push(e));
+    const subA = adapter.events().subscribe((e) => {
+      return eventsA.push(e);
+    });
+    const subB = adapter.events().subscribe((e) => {
+      return eventsB.push(e);
+    });
     subA.unsubscribe();
     window.dispatchEvent(new Event("mousemove"));
     expect(eventsA.length).toBe(0); // unsubscribed before event fired

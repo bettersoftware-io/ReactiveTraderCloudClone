@@ -21,13 +21,20 @@ interface TileProps {
 }
 
 export function Tile({ pair, showChart }: TileProps) {
-  const hooks = useHooks();
-  const price = hooks.usePrice(pair);
-  const stale = hooks.useStaleFlag(pair);
-  const history = hooks.usePriceHistory(pair.symbol);
-  const notional = hooks.useNotional(pair.defaultNotional);
-  const tileExecution = hooks.useTileExecution(pair);
-  const rfqState = hooks.useRfqTile(pair);
+  const {
+    usePrice,
+    useStaleFlag,
+    usePriceHistory,
+    useNotional,
+    useTileExecution,
+    useRfqTile,
+  } = useHooks();
+  const price = usePrice(pair);
+  const stale = useStaleFlag(pair);
+  const history = usePriceHistory(pair.symbol);
+  const notional = useNotional(pair.defaultNotional);
+  const tileExecution = useTileExecution(pair);
+  const rfqState = useRfqTile(pair);
 
   const isLoading = !price;
   const isBusy = tileExecution.state.status !== "ready";
@@ -81,7 +88,9 @@ export function Tile({ pair, showChart }: TileProps) {
           )
         ) : (
           <TileExecution
-            onExecute={(dir) => handleExecute(dir)}
+            onExecute={(dir) => {
+              return handleExecute(dir);
+            }}
             disabled={isLoading || isBusy || hasError}
           />
         )}

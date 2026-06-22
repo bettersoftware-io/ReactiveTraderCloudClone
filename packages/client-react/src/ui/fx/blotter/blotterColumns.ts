@@ -1,6 +1,6 @@
 import type { Trade } from "@rtc/domain";
 
-export type FilterType = "set" | "number" | "date";
+type FilterType = "set" | "number" | "date";
 
 export interface ColumnDef {
   key: keyof Trade;
@@ -57,6 +57,7 @@ function formatRate(rate: number): string {
 
 export function formatCellValue(trade: Trade, col: ColumnDef): string {
   const value = trade[col.key];
+
   switch (col.key) {
     case "tradeDate":
     case "valueDate":

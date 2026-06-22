@@ -12,30 +12,47 @@ import {
 
 import { RfqsPresenter } from "../RfqsPresenter";
 
-const rfq = (id: number): Rfq => ({
-  id,
-  instrumentId: 1,
-  quantity: 1_000_000,
-  direction: Direction.Buy,
-  state: RfqState.Open,
-  expirySecs: 120,
-  creationTimestamp: Date.now(),
-});
-const quote = (id: number, rfqId: number): Quote => ({
-  id,
-  rfqId,
-  dealerId: 1,
-  state: { type: "pendingWithoutPrice" },
-});
+function rfq(id: number): Rfq {
+  return {
+    id,
+    instrumentId: 1,
+    quantity: 1_000_000,
+    direction: Direction.Buy,
+    state: RfqState.Open,
+    expirySecs: 120,
+    creationTimestamp: Date.now(),
+  };
+}
+
+function quote(id: number, rfqId: number): Quote {
+  return {
+    id,
+    rfqId,
+    dealerId: 1,
+    state: { type: "pendingWithoutPrice" },
+  };
+}
 
 function port(events: readonly RfqEvent[]): WorkflowPort {
   return {
-    events: () => of(...events),
-    createRfq: () => of(0),
-    cancelRfq: () => of(undefined),
-    quote: () => of(undefined),
-    pass: () => of(undefined),
-    accept: () => of(undefined),
+    events: () => {
+      return of(...events);
+    },
+    createRfq: () => {
+      return of(0);
+    },
+    cancelRfq: () => {
+      return of(undefined);
+    },
+    quote: () => {
+      return of(undefined);
+    },
+    pass: () => {
+      return of(undefined);
+    },
+    accept: () => {
+      return of(undefined);
+    },
   };
 }
 
@@ -49,7 +66,11 @@ describe("RfqsPresenter", () => {
     ];
     const presenter = new RfqsPresenter(port(events));
     const last = await firstValueFrom(presenter.rfqs$.pipe(toArray()));
-    expect(last.at(-1)?.map((r) => r.id)).toEqual([1, 2]);
+    expect(
+      last.at(-1)?.map((r) => {
+        return r.id;
+      }),
+    ).toEqual([1, 2]);
   });
 
   it("filters quotes per rfqId via quotesForRfq$", async () => {
@@ -66,7 +87,9 @@ describe("RfqsPresenter", () => {
     expect(
       last
         .at(-1)
-        ?.map((q) => q.id)
+        ?.map((q) => {
+          return q.id;
+        })
         .sort(),
     ).toEqual([10, 12]);
   });
@@ -139,7 +162,9 @@ describe("RfqsPresenter", () => {
     ];
     const presenter = new RfqsPresenter(port(events));
     const emissions = await firstValueFrom(presenter.rfqs$.pipe(toArray()));
-    const lengths = emissions.map((e) => e.length);
+    const lengths = emissions.map((e) => {
+      return e.length;
+    });
     expect(lengths).toContain(1);
     expect(lengths).toContain(2);
   });
@@ -158,7 +183,9 @@ describe("RfqsPresenter", () => {
     const emissions = await firstValueFrom(
       presenter.quotesForRfq$(5).pipe(toArray()),
     );
-    const lenOne = emissions.filter((e) => e.length === 1);
+    const lenOne = emissions.filter((e) => {
+      return e.length === 1;
+    });
     expect(lenOne.length).toBeGreaterThanOrEqual(2);
   });
 

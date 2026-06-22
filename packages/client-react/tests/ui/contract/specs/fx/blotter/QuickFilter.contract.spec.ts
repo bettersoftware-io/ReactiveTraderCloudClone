@@ -14,7 +14,12 @@ describe("QuickFilter", () => {
   it("reports each keystroke to onChange", async () => {
     const seen: string[] = [];
     const filter = mount(QuickFilter, {
-      props: { value: "", onChange: (v) => seen.push(v) },
+      props: {
+        value: "",
+        onChange: (v) => {
+          return seen.push(v);
+        },
+      },
     });
     await filter.type("ab");
     // Controlled input stays empty (value prop never changes), so each keystroke

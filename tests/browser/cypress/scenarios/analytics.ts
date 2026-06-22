@@ -18,7 +18,7 @@ export function expectAnalyticsHasSection(
   ctx: TestContext,
   name: string,
 ): void {
-  chainable(ctx.po.analyticsDashboard.hasSection(name)).then((v) =>
-    assertTrue(v, `analytics section not found: ${name}`),
-  );
+  chainable(ctx.po.analyticsDashboard.hasSection(name)).then((v) => {
+    return assertTrue(v, `analytics section not found: ${name}`);
+  });
 }

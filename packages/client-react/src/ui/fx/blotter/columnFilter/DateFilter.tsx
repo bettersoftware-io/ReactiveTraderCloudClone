@@ -44,6 +44,7 @@ export function DateFilter({
       onApply(null);
       return;
     }
+
     onApply({
       type: "date",
       column,
@@ -58,20 +59,26 @@ export function DateFilter({
       <select
         data-testid="date-filter-comparator"
         value={comparator}
-        onChange={(e) => setComparator(e.target.value as Comparator)}
+        onChange={(e) => {
+          return setComparator(e.target.value as Comparator);
+        }}
         className={styles.select}
       >
-        {comparators.map((c) => (
-          <option key={c.value} value={c.value}>
-            {c.label}
-          </option>
-        ))}
+        {comparators.map((c) => {
+          return (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          );
+        })}
       </select>
       <input
         type="date"
         data-testid="date-filter-value"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          return setValue(e.target.value);
+        }}
         className={styles.input}
       />
       {comparator === "inRange" && (
@@ -79,7 +86,9 @@ export function DateFilter({
           type="date"
           data-testid="date-filter-value-to"
           value={valueTo}
-          onChange={(e) => setValueTo(e.target.value)}
+          onChange={(e) => {
+            return setValueTo(e.target.value);
+          }}
           className={styles.input}
         />
       )}
@@ -94,7 +103,9 @@ export function DateFilter({
         </button>
         <button
           type="button"
-          onClick={() => onApply(null)}
+          onClick={() => {
+            return onApply(null);
+          }}
           className={styles.resetBtn}
         >
           Reset

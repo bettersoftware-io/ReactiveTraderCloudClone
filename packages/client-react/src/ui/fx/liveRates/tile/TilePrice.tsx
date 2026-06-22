@@ -8,6 +8,12 @@ interface TilePriceProps {
   pipsPosition: number;
 }
 
+interface PriceParts {
+  prefix: string;
+  pips: string;
+  fractional: string;
+}
+
 /**
  * Splits a formatted price into parts for big/pip/fractional display.
  * For EURUSD 1.53816 (pipsPosition=4, ratePrecision=5):
@@ -17,7 +23,7 @@ function splitPrice(
   value: number,
   ratePrecision: number,
   pipsPosition: number,
-): { prefix: string; pips: string; fractional: string } {
+): PriceParts {
   const formatted = value.toFixed(ratePrecision);
   const fractionalDigits = ratePrecision - pipsPosition;
   const pipEnd = formatted.length - fractionalDigits;

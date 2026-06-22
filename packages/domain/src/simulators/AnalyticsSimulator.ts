@@ -45,6 +45,7 @@ function randomWalkStep(value: number): number {
 
 export class AnalyticsSimulator implements AnalyticsPort {
   private history: HistoricPosition[] = [];
+
   private currentPrice: number;
 
   constructor() {
@@ -52,6 +53,7 @@ export class AnalyticsSimulator implements AnalyticsPort {
     this.currentPrice = (Math.random() - 0.5) * 10_000;
 
     const now = Date.now();
+
     // Generate 90 points in chronological order (oldest first)
     for (let i = HISTORY_SIZE - 1; i >= 0; i--) {
       this.currentPrice = randomWalkStep(this.currentPrice);
@@ -75,9 +77,11 @@ export class AnalyticsSimulator implements AnalyticsPort {
             timestamp: new Date().toISOString(),
             usdPnl: this.currentPrice,
           });
+
           if (this.history.length > HISTORY_SIZE) {
             this.history.shift();
           }
+
           return {
             currentPositions: STATIC_POSITIONS,
             history: [...this.history],

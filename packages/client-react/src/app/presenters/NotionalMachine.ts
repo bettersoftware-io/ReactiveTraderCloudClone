@@ -48,14 +48,23 @@ export function createNotionalMachine(
   const initial = makeInitialView(defaultNotional);
 
   const events$ = merge(
-    change$.pipe(map((input): NotionalEvent => ({ type: "change", input }))),
-    reset$.pipe(map((): NotionalEvent => ({ type: "reset" }))),
+    change$.pipe(
+      map((input): NotionalEvent => {
+        return { type: "change", input };
+      }),
+    ),
+    reset$.pipe(
+      map((): NotionalEvent => {
+        return { type: "reset" };
+      }),
+    ),
   );
 
   const stream$ = events$.pipe(
     map((event): NotionalView => {
       if (event.type === "reset") return initial;
       const result = parseNotional(event.input);
+
       if (result.value === null) {
         return {
           displayValue: event.input,
@@ -65,6 +74,7 @@ export function createNotionalMachine(
           isDefault: false,
         };
       }
+
       return {
         displayValue: formatWithCommas(result.value),
         numericValue: result.value,
@@ -86,8 +96,12 @@ export function createNotionalMachine(
   return {
     state$,
     intents: {
-      change: (input: string) => change$.next(input),
-      reset: () => reset$.next(),
+      change: (input: string) => {
+        return change$.next(input);
+      },
+      reset: () => {
+        return reset$.next();
+      },
     },
     dispose: () => {
       change$.complete();

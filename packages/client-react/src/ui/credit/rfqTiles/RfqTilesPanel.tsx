@@ -53,11 +53,11 @@ function RfqTileRow({
 }
 
 export function RfqTilesPanel() {
-  const hooks = useHooks();
-  const rfqs = hooks.useRfqs();
-  const instruments = hooks.useInstruments();
-  const dealers = hooks.useDealers();
-  const acceptQuote = hooks.useAcceptQuote();
+  const { useRfqs, useInstruments, useDealers, useAcceptQuote } = useHooks();
+  const rfqs = useRfqs();
+  const instruments = useInstruments();
+  const dealers = useDealers();
+  const acceptQuote = useAcceptQuote();
   const [filter, setFilter] = useState<RfqFilter>("Live");
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
 
@@ -67,13 +67,15 @@ export function RfqTilesPanel() {
     return m;
   }, [instruments]);
 
-  const filteredRfqs = useMemo(
-    () =>
-      rfqs
-        .filter((r) => filterMatches(r.state, filter) && !dismissed.has(r.id))
-        .sort((a, b) => b.creationTimestamp - a.creationTimestamp),
-    [rfqs, filter, dismissed],
-  );
+  const filteredRfqs = useMemo(() => {
+    return rfqs
+      .filter((r) => {
+        return filterMatches(r.state, filter) && !dismissed.has(r.id);
+      })
+      .sort((a, b) => {
+        return b.creationTimestamp - a.creationTimestamp;
+      });
+  }, [rfqs, filter, dismissed]);
 
   const handleAccept = useCallback(
     async (quoteId: number) => {
@@ -83,7 +85,9 @@ export function RfqTilesPanel() {
   );
 
   const handleDismiss = useCallback((rfqId: number) => {
-    setDismissed((prev) => new Set(prev).add(rfqId));
+    setDismissed((prev) => {
+      return new Set(prev).add(rfqId);
+    });
   }, []);
 
   return (
@@ -94,16 +98,18 @@ export function RfqTilesPanel() {
         <div className={styles.empty}>No RFQs to display</div>
       ) : (
         <div className={styles.grid}>
-          {filteredRfqs.map((rfq) => (
-            <RfqTileRow
-              key={rfq.id}
-              rfq={rfq}
-              instrumentMap={instrumentMap}
-              dealers={dealers}
-              onAccept={handleAccept}
-              onDismiss={handleDismiss}
-            />
-          ))}
+          {filteredRfqs.map((rfq) => {
+            return (
+              <RfqTileRow
+                key={rfq.id}
+                rfq={rfq}
+                instrumentMap={instrumentMap}
+                dealers={dealers}
+                onAccept={handleAccept}
+                onDismiss={handleDismiss}
+              />
+            );
+          })}
         </div>
       )}
     </div>

@@ -29,34 +29,43 @@ const FOOTER_LABEL_TO_STATUS: Record<string, ConnectionStatus> = {
   Idle: CS_IDLE,
 };
 
-When("the browser goes offline", async (state: VitestFakePresenterWorld) =>
-  conn.browserGoesOffline(state),
+When("the browser goes offline", async (state: VitestFakePresenterWorld) => {
+  return conn.browserGoesOffline(state);
+});
+
+When(
+  "the browser comes back online",
+  async (state: VitestFakePresenterWorld) => {
+    return conn.browserComesBackOnline(state);
+  },
 );
 
-When("the browser comes back online", async (state: VitestFakePresenterWorld) =>
-  conn.browserComesBackOnline(state),
-);
-
-When("the gateway connection drops", async (state: VitestFakePresenterWorld) =>
-  conn.gatewayDrops(state),
+When(
+  "the gateway connection drops",
+  async (state: VitestFakePresenterWorld) => {
+    return conn.gatewayDrops(state);
+  },
 );
 
 When(
   "the gateway attempts to reconnect",
-  async (state: VitestFakePresenterWorld) =>
-    conn.gatewayAttemptsReconnect(state),
+  async (state: VitestFakePresenterWorld) => {
+    return conn.gatewayAttemptsReconnect(state);
+  },
 );
 
 When(
   "the gateway connection is restored",
-  async (state: VitestFakePresenterWorld) =>
-    conn.gatewayConnectionRestored(state),
+  async (state: VitestFakePresenterWorld) => {
+    return conn.gatewayConnectionRestored(state);
+  },
 );
 
 Then(
   "the connection status footer is visible",
-  async (state: VitestFakePresenterWorld) =>
-    conn.noopAssertConnectionUiPresent(state),
+  async (state: VitestFakePresenterWorld) => {
+    return conn.noopAssertConnectionUiPresent(state);
+  },
 );
 
 Then(
@@ -69,25 +78,30 @@ Then(
 
 Then(
   "the connection overlay is hidden",
-  async (state: VitestFakePresenterWorld) =>
-    conn.expectStatusEqualsWithin(state, CS_CONNECTED, 1),
+  async (state: VitestFakePresenterWorld) => {
+    return conn.expectStatusEqualsWithin(state, CS_CONNECTED, 1);
+  },
 );
 
 Then(
   "the connection overlay is hidden within {int} seconds",
-  async (state: VitestFakePresenterWorld, n: number) =>
-    conn.expectStatusEqualsWithin(state, CS_CONNECTED, n),
+  async (state: VitestFakePresenterWorld, n: number) => {
+    return conn.expectStatusEqualsWithin(state, CS_CONNECTED, n);
+  },
 );
 
 Then(
   "the connection overlay becomes visible within {int} seconds",
   async (state: VitestFakePresenterWorld, n: number) =>
     // "overlay visible" = status has left CONNECTED (reached a disconnected state)
-    conn.expectStatusEqualsWithin(state, CS_OFFLINE, n),
+    {
+      return conn.expectStatusEqualsWithin(state, CS_OFFLINE, n);
+    },
 );
 
 Then(
   "the connection overlay text matches \\/offline\\/i",
-  async (state: VitestFakePresenterWorld) =>
-    conn.noopAssertConnectionUiPresent(state),
+  async (state: VitestFakePresenterWorld) => {
+    return conn.noopAssertConnectionUiPresent(state);
+  },
 );

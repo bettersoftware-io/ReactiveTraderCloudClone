@@ -21,12 +21,13 @@ export function InstrumentSearch({
   const results = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return instruments.filter(
-      (i) =>
+    return instruments.filter((i) => {
+      return (
         i.name.toLowerCase().includes(q) ||
         i.ticker.toLowerCase().includes(q) ||
-        i.cusip.toLowerCase().includes(q),
-    );
+        i.cusip.toLowerCase().includes(q)
+      );
+    });
   }, [instruments, query]);
 
   const handleSelect = useCallback(
@@ -67,24 +68,32 @@ export function InstrumentSearch({
               setQuery(e.target.value);
               setOpen(true);
             }}
-            onFocus={() => setOpen(true)}
+            onFocus={() => {
+              return setOpen(true);
+            }}
             placeholder="Search by ticker, name, or CUSIP..."
             className={styles.searchInput}
           />
           {open && results.length > 0 && (
             <div className={styles.dropdown}>
-              {results.map((inst) => (
-                <button
-                  key={inst.id}
-                  type="button"
-                  data-testid={`instrument-result-${inst.id}`}
-                  onClick={() => handleSelect(inst)}
-                  className={styles.resultItem}
-                >
-                  <div>{inst.name}</div>
-                  <div className={styles.resultCusip}>CUSIP: {inst.cusip}</div>
-                </button>
-              ))}
+              {results.map((inst) => {
+                return (
+                  <button
+                    key={inst.id}
+                    type="button"
+                    data-testid={`instrument-result-${inst.id}`}
+                    onClick={() => {
+                      return handleSelect(inst);
+                    }}
+                    className={styles.resultItem}
+                  >
+                    <div>{inst.name}</div>
+                    <div className={styles.resultCusip}>
+                      CUSIP: {inst.cusip}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </>

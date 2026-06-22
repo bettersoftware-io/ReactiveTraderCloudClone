@@ -23,9 +23,9 @@ export function toggleAndCaptureBackgrounds(ctx: TestContext): void {
 }
 
 export function expectThemeToggleVisible(ctx: TestContext): void {
-  chainable(ctx.po.themeToggle.isVisible()).then((v) =>
-    assertTrue(v, "theme toggle not visible"),
-  );
+  chainable(ctx.po.themeToggle.isVisible()).then((v) => {
+    return assertTrue(v, "theme toggle not visible");
+  });
 }
 
 export function expectBackgroundChanged(ctx: TestContext): void {
@@ -52,9 +52,9 @@ export function expectThemeToggleAriaLabelMentions(
   ctx: TestContext,
   term: string,
 ): void {
-  chainable(ctx.po.themeToggle.ariaLabel()).then((label) =>
-    assertContains(label, term),
-  );
+  chainable(ctx.po.themeToggle.ariaLabel()).then((label) => {
+    return assertContains(label, term);
+  });
 }
 
 export function expectFirstPriceTileVisible(
@@ -65,7 +65,7 @@ export function expectFirstPriceTileVisible(
 }
 
 export function expectCreditNavVisible(ctx: TestContext): void {
-  chainable(ctx.po.creditRfqPanel.navIsVisible()).then((v) =>
-    assertTrue(v, "credit nav not visible"),
-  );
+  chainable(ctx.po.creditRfqPanel.navIsVisible()).then((v) => {
+    return assertTrue(v, "credit nav not visible");
+  });
 }

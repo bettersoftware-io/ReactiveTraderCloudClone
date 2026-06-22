@@ -37,9 +37,14 @@ function useSubject<T>(subject: BehaviorSubject<T>): T {
   return useSyncExternalStore(
     (onChange) => {
       const sub = subject.subscribe(onChange);
-      return () => sub.unsubscribe();
+
+      return () => {
+        return sub.unsubscribe();
+      };
     },
-    () => subject.getValue(),
+    () => {
+      return subject.getValue();
+    },
   );
 }
 
@@ -51,91 +56,129 @@ export function reactHooks(world: World): AppHooks {
     // subject, so a tile reading usePrice("EURUSD") re-renders only when that
     // symbol is pushed — faithfully mirroring @react-rxjs `bind`'s per-argument
     // streams (presenters.priceStream.price$(pair), priceHistory.history$(sym)).
-    usePrice: (pair: CurrencyPair) => useSubject(world.priceFor(pair.symbol)),
-    usePriceHistory: (symbol: string) => useSubject(world.historyFor(symbol)),
-    useQuotesForRfq: (rfqId: number) => useSubject(world.quotesForRfq(rfqId)),
+    usePrice: (pair: CurrencyPair) => {
+      return useSubject(world.priceFor(pair.symbol));
+    },
+    usePriceHistory: (symbol: string) => {
+      return useSubject(world.historyFor(symbol));
+    },
+    useQuotesForRfq: (rfqId: number) => {
+      return useSubject(world.quotesForRfq(rfqId));
+    },
     // Nullary query hooks: reactive, re-render on push.
-    useTrades: () => useSubject(s.useTrades),
-    useAnalytics: () => useSubject(s.useAnalytics),
-    useRfqs: () => useSubject(s.useRfqs),
-    useAllQuotes: () => useSubject(s.useAllQuotes),
-    useCurrencyPairs: () => useSubject(s.useCurrencyPairs),
-    useInstruments: () => useSubject(s.useInstruments),
-    useDealers: () => useSubject(s.useDealers),
-    useConnectionStatus: () => useSubject(s.useConnectionStatus),
+    useTrades: () => {
+      return useSubject(s.useTrades);
+    },
+    useAnalytics: () => {
+      return useSubject(s.useAnalytics);
+    },
+    useRfqs: () => {
+      return useSubject(s.useRfqs);
+    },
+    useAllQuotes: () => {
+      return useSubject(s.useAllQuotes);
+    },
+    useCurrencyPairs: () => {
+      return useSubject(s.useCurrencyPairs);
+    },
+    useInstruments: () => {
+      return useSubject(s.useInstruments);
+    },
+    useDealers: () => {
+      return useSubject(s.useDealers);
+    },
+    useConnectionStatus: () => {
+      return useSubject(s.useConnectionStatus);
+    },
     // Command: record input and resolve undefined so the consuming component's
     // `await` proceeds to its post-await state transition.
-    useAcceptQuote: () => async (quoteId: number) => {
-      world.commands.acceptQuote.push(quoteId);
+    useAcceptQuote: () => {
+      return async (quoteId: number) => {
+        world.commands.acceptQuote.push(quoteId);
+      };
     },
     // Machine: the REAL createTileExecutionMachine, driven by a World-backed
     // execute command that records inputs and emits the canned result (or errors
     // to drive the timeout-confirmation path), faithfully exercising the
     // relocated lifecycle through the same useMachine bridge the app uses.
-    useTileExecution: (pair: CurrencyPair) =>
-      useMachine(() =>
-        createTileExecutionMachine(pair, {
+    useTileExecution: (pair: CurrencyPair) => {
+      return useMachine(() => {
+        return createTileExecutionMachine(pair, {
           execute: (input: ExecuteTradeInput) => {
             world.commands.executeTrade.push(input);
+
             if (world.results.executeTradeThrows) {
-              return throwError(
-                () => new Error("execute failed"),
-              ) as Observable<ExecuteTradeResult>;
+              return throwError(() => {
+                return new Error("execute failed");
+              }) as Observable<ExecuteTradeResult>;
             }
+
             const result = world.results.executeTrade;
             return result
               ? of(result)
               : (EMPTY as Observable<ExecuteTradeResult>);
           },
-        }),
-      ),
+        });
+      });
+    },
     // Machine: the REAL createRfqTileMachine, driven by a World-backed
     // request-quote command that records inputs and emits the canned result (or
     // errors to drive the rejected path), exercising the relocated RFQ lifecycle
     // through the same useMachine bridge the app uses.
-    useRfqTile: (pair: CurrencyPair) =>
-      useMachine(() =>
-        createRfqTileMachine(pair, {
+    useRfqTile: (pair: CurrencyPair) => {
+      return useMachine(() => {
+        return createRfqTileMachine(pair, {
           requestQuote: (symbol: string, pipsPosition: number) => {
             world.commands.requestRfqQuote.push({ symbol, pipsPosition });
+
             if (world.results.requestRfqQuoteThrows) {
-              return throwError(
-                () => new Error("rfq failed"),
-              ) as Observable<RfqQuoteResult>;
+              return throwError(() => {
+                return new Error("rfq failed");
+              }) as Observable<RfqQuoteResult>;
             }
+
             const result = world.results.requestRfqQuote;
             return result ? of(result) : (EMPTY as Observable<RfqQuoteResult>);
           },
-        }),
-      ),
+        });
+      });
+    },
     // Intent-free derived flags: the REAL createStaleFlagMachine, sourced from
     // the World's connection-status subject and the per-key price / analytics
     // subjects — so disconnect/reconnect/new-value pushed onto the World drives
     // the relocated stale logic through the same useMachine bridge the app uses.
-    useStaleFlag: (pair: CurrencyPair) =>
-      useMachine(() =>
-        createStaleFlagMachine({
+    useStaleFlag: (pair: CurrencyPair) => {
+      return useMachine(() => {
+        return createStaleFlagMachine({
           status$: s.useConnectionStatus,
           value$: world.priceFor(pair.symbol),
-        }),
-      ).state,
-    useAnalyticsStaleFlag: () =>
-      useMachine(() =>
-        createStaleFlagMachine({
+        });
+      }).state;
+    },
+    useAnalyticsStaleFlag: () => {
+      return useMachine(() => {
+        return createStaleFlagMachine({
           status$: s.useConnectionStatus,
           value$: s.useAnalytics,
-        }),
-      ).state,
+        });
+      }).state;
+    },
     // Intent-free derived flag: the REAL createRowHighlightMachine. The contract
     // spec drives the 3s fade with fake timers, so the real RxJS timer(HIGHLIGHT_MS)
     // is driven by the spec's advanceTimersByTime through the same useMachine bridge
     // the app uses — preserving the exact fade timing.
-    useRowHighlight: (isNew: boolean) =>
-      useMachine(() => createRowHighlightMachine(isNew)).state,
+    useRowHighlight: (isNew: boolean) => {
+      return useMachine(() => {
+        return createRowHighlightMachine(isNew);
+      }).state;
+    },
     // Machine: the REAL createNotionalMachine, exercising the relocated notional
     // logic through the same useMachine bridge the app uses.
-    useNotional: (defaultNotional: number) =>
-      useMachine(() => createNotionalMachine(defaultNotional)),
+    useNotional: (defaultNotional: number) => {
+      return useMachine(() => {
+        return createNotionalMachine(defaultNotional);
+      });
+    },
     // Submission machine fake: stateful per-mount store that records the RFQ to
     // world.commands.createRfq, flips editing→submitting→confirmed, and schedules
     // onRedirect via a REAL setTimeout(REDIRECT_DELAY_MS) so the spec's fake-timer
@@ -157,7 +200,9 @@ export function reactHooks(world: World): AppHooks {
           const rfqId = world.results.createRfq;
           if (rfqId === undefined) return;
           setSubmissionState({ status: "confirmed", rfqId });
-          setTimeout(() => onRedirect(rfqId), REDIRECT_DELAY_MS);
+          setTimeout(() => {
+            return onRedirect(rfqId);
+          }, REDIRECT_DELAY_MS);
         },
         [],
       );
@@ -200,8 +245,12 @@ export function reactHooks(world: World): AppHooks {
       const theme = useSubject(world.theme);
       return {
         theme,
-        setTheme: (next: Theme) => world.theme.next(next),
-        toggle: () => world.theme.next(theme === "dark" ? "light" : "dark"),
+        setTheme: (next: Theme) => {
+          return world.theme.next(next);
+        },
+        toggle: () => {
+          return world.theme.next(theme === "dark" ? "light" : "dark");
+        },
       };
     },
     // Global view-mode: reactive view backed by the World subject; setViewMode
@@ -210,7 +259,9 @@ export function reactHooks(world: World): AppHooks {
       const viewMode = useSubject(world.viewMode);
       return {
         viewMode,
-        setViewMode: (next: ViewMode) => world.viewMode.next(next),
+        setViewMode: (next: ViewMode) => {
+          return world.viewMode.next(next);
+        },
       };
     },
   };

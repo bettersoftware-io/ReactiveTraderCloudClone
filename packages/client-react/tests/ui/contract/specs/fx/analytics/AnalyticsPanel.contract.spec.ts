@@ -9,28 +9,36 @@ import {
   type PositionUpdates,
 } from "@rtc/domain";
 
-afterEach(() => cleanupMounted());
+afterEach(() => {
+  return cleanupMounted();
+});
 
 const historic = (
   usdPnl: number,
   timestamp = "2026-06-13T00:00:00Z",
-): HistoricPosition => ({
-  timestamp,
-  usdPnl,
-});
+): HistoricPosition => {
+  return {
+    timestamp,
+    usdPnl,
+  };
+};
 
-const position = (symbol: string, basePnl: number): CurrencyPairPosition => ({
-  symbol,
-  basePnl,
-  baseTradedAmount: 1_000_000,
-  counterTradedAmount: 1_090_000,
-});
+const position = (symbol: string, basePnl: number): CurrencyPairPosition => {
+  return {
+    symbol,
+    basePnl,
+    baseTradedAmount: 1_000_000,
+    counterTradedAmount: 1_090_000,
+  };
+};
 
-const updates = (over: Partial<PositionUpdates> = {}): PositionUpdates => ({
-  currentPositions: [position("EURUSD", 12_500)],
-  history: [historic(0, "2026-06-13T00:00:00Z"), historic(12_500)],
-  ...over,
-});
+const updates = (over: Partial<PositionUpdates> = {}): PositionUpdates => {
+  return {
+    currentPositions: [position("EURUSD", 12_500)],
+    history: [historic(0, "2026-06-13T00:00:00Z"), historic(12_500)],
+    ...over,
+  };
+};
 
 describe("AnalyticsPanel", () => {
   it("shows a loading placeholder until analytics data arrives", () => {

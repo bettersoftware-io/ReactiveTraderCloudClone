@@ -1,0 +1,49 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [".remember/**"],
+  "ignoreBinaries": ["scripts/install-actionlint.sh"],
+  "workspaces": {
+    "packages/domain": {
+      "entry": ["src/index.ts", "src/ports/__contracts__/*.ts"],
+      "project": "src/**/*.ts"
+    },
+    "packages/shared": {
+      "entry": ["src/index.ts", "src/__fixtures__/wireFrames.ts"],
+      "project": "src/**/*.ts"
+    },
+    "packages/server": {
+      "entry": ["src/index.ts"],
+      "project": "src/**/*.ts"
+    },
+    "packages/client-react": {
+      "entry": [
+        "src/main.tsx",
+        "src/index.ts",
+        "index.html",
+        "vite.config.ts",
+        "tests/ui/visual/playwright-ct/host/index.tsx",
+        "tests/ui/visual/playwright/host/main.tsx",
+        "tests/ui/visual/playwright/host/vite.config.ts"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+    },
+    "tests": {
+      "entry": [
+        "**/*.spec.{ts,tsx}",
+        "**/*.steps.ts",
+        "scripts/*.ts",
+        "**/*.config.{ts,js}",
+        "browser/cypress-cucumber/cucumber-shim.ts",
+        "browser/cypress-cucumber/e2e.ts",
+        "browser/cypress-cucumber/world.ts",
+        "browser/playwright-cucumber/hooks.ts",
+        "browser/playwright-cucumber/world.ts",
+        "presenter/cucumber-fake-timers/hooks.ts",
+        "presenter/cucumber-fake-timers/world.ts",
+        "presenter/cucumber/hooks.ts"
+      ],
+      "project": "**/*.{ts,tsx}",
+      "ignoreDependencies": ["@rtc/server"]
+    }
+  }
+}

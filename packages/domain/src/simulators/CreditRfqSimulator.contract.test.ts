@@ -8,7 +8,9 @@ import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describeWorkflowPortContract("CreditRfqSimulator", () => {
   // makeHarness() is called once per it() — fresh simulator and fake timers each time.
@@ -19,11 +21,13 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
    * Creates an RFQ using dealerId=0 (J.P. Morgan) and returns the
    * auto-generated rfqId plus the first quoteId emitted by the simulator.
    */
-  const createRfqAndGetQuoteId = async (): Promise<number> => {
+  async function createRfqAndGetQuoteId(): Promise<number> {
     const events$ = port.events();
     const quoteCreatedPromise = firstValueFrom(
       events$.pipe(
-        filter((e: RfqEvent) => e.type === "quoteCreated"),
+        filter((e: RfqEvent) => {
+          return e.type === "quoteCreated";
+        }),
         take(1),
       ),
     );
@@ -42,7 +46,7 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
     const event = await quoteCreatedPromise;
     return (event as { type: "quoteCreated"; payload: { id: number } }).payload
       .id;
-  };
+  }
 
   return {
     port,
@@ -83,6 +87,8 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
         await vi.advanceTimersByTimeAsync(0);
       },
     },
-    teardown: () => vi.useRealTimers(),
+    teardown: () => {
+      return vi.useRealTimers();
+    },
   };
 });

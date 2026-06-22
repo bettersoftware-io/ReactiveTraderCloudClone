@@ -86,6 +86,7 @@ describe("PricingSimulator", () => {
 
   it("emits the RFQ quote after a 500–2000 ms delay", async () => {
     vi.useFakeTimers();
+
     try {
       const sim = new PricingSimulator();
       const symbol = "EURUSD";

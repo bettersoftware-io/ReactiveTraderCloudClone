@@ -15,6 +15,8 @@ describeAnalyticsPortContract("wsRealAnalytics", () => {
         ws.emit("stream.analytics", analyticsFrame());
       },
     },
-    teardown: () => ws.dispose(),
+    teardown: () => {
+      return ws.dispose();
+    },
   };
 });

@@ -31,7 +31,12 @@ describe("CurrencyFilter", () => {
   it("reports the chosen category to onChange", async () => {
     const chosen: CurrencyCategory[] = [];
     const filter = mount(CurrencyFilter, {
-      props: { selected: "All", onChange: (c) => chosen.push(c) },
+      props: {
+        selected: "All",
+        onChange: (c) => {
+          return chosen.push(c);
+        },
+      },
     });
     await filter.choose("JPY");
     expect(chosen).toEqual(["JPY"]);

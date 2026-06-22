@@ -27,9 +27,9 @@ describe("wsReal reference data :: removed event drops the entry", () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws);
     const emissions: (readonly Instrument[])[] = [];
-    const sub = ports.instruments
-      .getInstruments()
-      .subscribe((list) => emissions.push(list));
+    const sub = ports.instruments.getInstruments().subscribe((list) => {
+      return emissions.push(list);
+    });
 
     ws.emit("stream.instrumentEvent", instrumentStartOfSoW());
     ws.emit("stream.instrumentEvent", instrumentAdded({ id: 100 }));
@@ -38,13 +38,19 @@ describe("wsReal reference data :: removed event drops the entry", () => {
     expect(
       emissions
         .at(-1)
-        ?.map((i) => i.id)
+        ?.map((i) => {
+          return i.id;
+        })
         .sort(),
     ).toEqual([100, 101]);
 
     ws.emit("stream.instrumentEvent", instrumentRemoved(100));
 
-    expect(emissions.at(-1)?.map((i) => i.id)).toEqual([101]);
+    expect(
+      emissions.at(-1)?.map((i) => {
+        return i.id;
+      }),
+    ).toEqual([101]);
     sub.unsubscribe();
     ws.dispose();
   });
@@ -53,9 +59,9 @@ describe("wsReal reference data :: removed event drops the entry", () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws);
     const emissions: (readonly Instrument[])[] = [];
-    const sub = ports.instruments
-      .getInstruments()
-      .subscribe((list) => emissions.push(list));
+    const sub = ports.instruments.getInstruments().subscribe((list) => {
+      return emissions.push(list);
+    });
 
     ws.emit("stream.instrumentEvent", instrumentStartOfSoW());
     ws.emit("stream.instrumentEvent", instrumentAdded({ id: 100 }));
@@ -63,7 +69,11 @@ describe("wsReal reference data :: removed event drops the entry", () => {
 
     ws.emit("stream.instrumentEvent", instrumentRemoved(999));
 
-    expect(emissions.at(-1)?.map((i) => i.id)).toEqual([100]);
+    expect(
+      emissions.at(-1)?.map((i) => {
+        return i.id;
+      }),
+    ).toEqual([100]);
     sub.unsubscribe();
     ws.dispose();
   });
@@ -72,9 +82,9 @@ describe("wsReal reference data :: removed event drops the entry", () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws);
     const emissions: (readonly Dealer[])[] = [];
-    const sub = ports.dealers
-      .getDealers()
-      .subscribe((list) => emissions.push(list));
+    const sub = ports.dealers.getDealers().subscribe((list) => {
+      return emissions.push(list);
+    });
 
     ws.emit("stream.dealerEvent", dealerStartOfSoW());
     ws.emit("stream.dealerEvent", dealerAdded({ id: 100 }));
@@ -83,13 +93,19 @@ describe("wsReal reference data :: removed event drops the entry", () => {
     expect(
       emissions
         .at(-1)
-        ?.map((d) => d.id)
+        ?.map((d) => {
+          return d.id;
+        })
         .sort(),
     ).toEqual([100, 101]);
 
     ws.emit("stream.dealerEvent", dealerRemoved(101));
 
-    expect(emissions.at(-1)?.map((d) => d.id)).toEqual([100]);
+    expect(
+      emissions.at(-1)?.map((d) => {
+        return d.id;
+      }),
+    ).toEqual([100]);
     sub.unsubscribe();
     ws.dispose();
   });

@@ -41,12 +41,16 @@ describe("DealerSimulator", () => {
   });
 
   it("does not include Adaptive Bank", () => {
-    const names = DEALERS_CATALOG.map((d) => d.name);
+    const names = DEALERS_CATALOG.map((d) => {
+      return d.name;
+    });
     expect(names).not.toContain("Adaptive Bank");
   });
 
   it("includes expected dealers", () => {
-    const names = DEALERS_CATALOG.map((d) => d.name);
+    const names = DEALERS_CATALOG.map((d) => {
+      return d.name;
+    });
     expect(names).toContain("J.P. Morgan");
     expect(names).toContain("Goldman Sachs");
     expect(names).toContain("Capital One");

@@ -34,7 +34,8 @@
     "@rtc/client-react": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/server": "workspace:*",
-    "rxjs": "^7.8"
+    "rxjs": "^7.8",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@badeball/cypress-cucumber-preprocessor": "24.0.1",
@@ -49,7 +50,7 @@
     "cypress-mochawesome-reporter": "^4.0.2",
     "esbuild": "0.28.1",
     "quickpickle": "^1.11",
-    "tsx": "^4.19.0",
+    "tsx": "^4",
     "typescript": "^6",
     "vitest": "^4"
   }

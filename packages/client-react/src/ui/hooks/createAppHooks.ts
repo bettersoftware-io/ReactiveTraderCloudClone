@@ -93,12 +93,13 @@ export function createAppHooks(
   presenters: Presenters,
   machines: MachineFactories,
 ): AppHooks {
-  const [usePrice] = bind(
-    (pair: CurrencyPair) => presenters.priceStream.price$(pair),
-    null,
-  );
+  const [usePrice] = bind((pair: CurrencyPair) => {
+    return presenters.priceStream.price$(pair);
+  }, null);
   const [usePriceHistory] = bind(
-    (symbol: string) => presenters.priceHistory.history$(symbol),
+    (symbol: string) => {
+      return presenters.priceHistory.history$(symbol);
+    },
     [] as readonly PriceTick[],
   );
   const [useTrades] = bind(presenters.blotter.trades$, [] as readonly Trade[]);
@@ -108,7 +109,9 @@ export function createAppHooks(
   );
   const [useRfqs] = bind(presenters.rfqs.rfqs$, [] as readonly Rfq[]);
   const [useQuotesForRfq] = bind(
-    (rfqId: number) => presenters.rfqs.quotesForRfq$(rfqId),
+    (rfqId: number) => {
+      return presenters.rfqs.quotesForRfq$(rfqId);
+    },
     [] as readonly Quote[],
   );
   const [useAllQuotes] = bind(
@@ -134,29 +137,38 @@ export function createAppHooks(
     loading: true,
     message: null,
   } as ThroughputView);
-  const setThroughput = (value: number) =>
-    presenters.throughput.setValue(value);
+
+  function setThroughput(value: number) {
+    return presenters.throughput.setValue(value);
+  }
 
   // Global/shared display preferences → plain binds (not per-mount machines).
   const [useThemeValue] = bind(
     presenters.themePreference.theme$,
     DEFAULT_THEME,
   );
-  const setTheme = (theme: Theme) => presenters.themePreference.setTheme(theme);
+
+  function setTheme(theme: Theme) {
+    return presenters.themePreference.setTheme(theme);
+  }
+
   const [useViewModeValue] = bind(
     presenters.viewModePreference.viewMode$,
     DEFAULT_VIEW_MODE,
   );
-  const setViewMode = (viewMode: ViewMode) =>
-    presenters.viewModePreference.setViewMode(viewMode);
+
+  function setViewMode(viewMode: ViewMode) {
+    return presenters.viewModePreference.setViewMode(viewMode);
+  }
 
   // Pre-bound command callbacks. Stable references across calls so React
   // memo/effect dep arrays remain stable. The bridge converts each one-shot
   // presenter Observable to a Promise via firstValueFrom — the void commands'
   // presenters emit `undefined` before completing, so firstValueFrom resolves
   // (rather than rejecting with EmptyError) without needing a defaultValue.
-  const acceptQuote = (quoteId: number) =>
-    firstValueFrom(presenters.rfqs.acceptQuote(quoteId));
+  function acceptQuote(quoteId: number) {
+    return firstValueFrom(presenters.rfqs.acceptQuote(quoteId));
+  }
 
   return {
     usePrice,
@@ -170,22 +182,52 @@ export function createAppHooks(
     useInstruments,
     useDealers,
     useConnectionStatus,
-    useAcceptQuote: () => acceptQuote,
-    useTileExecution: (pair: CurrencyPair) =>
-      useMachine(() => machines.tileExecution(pair)),
-    useRfqTile: (pair: CurrencyPair) =>
-      useMachine(() => machines.rfqTile(pair)),
-    useStaleFlag: (pair: CurrencyPair) =>
-      useMachine(() => machines.staleFlag(pair)).state,
-    useAnalyticsStaleFlag: () =>
-      useMachine(() => machines.analyticsStaleFlag()).state,
-    useRowHighlight: (isNew: boolean) =>
-      useMachine(() => machines.rowHighlight(isNew)).state,
-    useNotional: (defaultNotional: number) =>
-      useMachine(() => machines.notional(defaultNotional)),
-    useRfqSubmission: () => useMachine(() => machines.rfqSubmission()),
-    useTicketSubmission: () => useMachine(() => machines.ticketSubmission()),
-    useThroughput: () => ({ ...useThroughputState(), setValue: setThroughput }),
+    useAcceptQuote: () => {
+      return acceptQuote;
+    },
+    useTileExecution: (pair: CurrencyPair) => {
+      return useMachine(() => {
+        return machines.tileExecution(pair);
+      });
+    },
+    useRfqTile: (pair: CurrencyPair) => {
+      return useMachine(() => {
+        return machines.rfqTile(pair);
+      });
+    },
+    useStaleFlag: (pair: CurrencyPair) => {
+      return useMachine(() => {
+        return machines.staleFlag(pair);
+      }).state;
+    },
+    useAnalyticsStaleFlag: () => {
+      return useMachine(() => {
+        return machines.analyticsStaleFlag();
+      }).state;
+    },
+    useRowHighlight: (isNew: boolean) => {
+      return useMachine(() => {
+        return machines.rowHighlight(isNew);
+      }).state;
+    },
+    useNotional: (defaultNotional: number) => {
+      return useMachine(() => {
+        return machines.notional(defaultNotional);
+      });
+    },
+    useRfqSubmission: () => {
+      return useMachine(() => {
+        return machines.rfqSubmission();
+      });
+    },
+    useTicketSubmission: () => {
+      return useMachine(() => {
+        return machines.ticketSubmission();
+      });
+    },
+    useThroughput: () => {
+      return { ...useThroughputState(), setValue: setThroughput };
+    },
     // Global theme: read the currently-bound theme in the hook body so the
     // component calls a zero-arg toggle() that flips relative to the live value.
     useThemePreference: () => {
@@ -193,12 +235,16 @@ export function createAppHooks(
       return {
         theme,
         setTheme,
-        toggle: () => presenters.themePreference.toggle(theme),
+        toggle: () => {
+          return presenters.themePreference.toggle(theme);
+        },
       };
     },
-    useViewModePreference: () => ({
-      viewMode: useViewModeValue(),
-      setViewMode,
-    }),
+    useViewModePreference: () => {
+      return {
+        viewMode: useViewModeValue(),
+        setViewMode,
+      };
+    },
   };
 }

@@ -25,24 +25,28 @@ const dealers: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-const rfq = (over: Partial<Rfq> = {}): Rfq => ({
-  id: 50,
-  instrumentId: 2,
-  quantity: 5000,
-  direction: Direction.Buy,
-  state: RfqState.Open,
-  expirySecs: 120,
-  creationTimestamp: 1_700_000_000_000,
-  ...over,
-});
+const rfq = (over: Partial<Rfq> = {}): Rfq => {
+  return {
+    id: 50,
+    instrumentId: 2,
+    quantity: 5000,
+    direction: Direction.Buy,
+    state: RfqState.Open,
+    expirySecs: 120,
+    creationTimestamp: 1_700_000_000_000,
+    ...over,
+  };
+};
 
-const quote = (over: Partial<Quote> = {}): Quote => ({
-  id: 900,
-  rfqId: 50,
-  dealerId: 2,
-  state: { type: "pendingWithPrice", price: 99 },
-  ...over,
-});
+const quote = (over: Partial<Quote> = {}): Quote => {
+  return {
+    id: 900,
+    rfqId: 50,
+    dealerId: 2,
+    state: { type: "pendingWithPrice", price: 99 },
+    ...over,
+  };
+};
 
 describe("RfqCard", () => {
   it("shows the instrument name, direction and quantity", () => {
@@ -147,7 +151,9 @@ describe("RfqCard", () => {
         instrument,
         dealers,
         onAccept: () => {},
-        onDismiss: (id) => dismissed.push(id),
+        onDismiss: (id) => {
+          return dismissed.push(id);
+        },
       },
     });
     await card.dismiss();
@@ -162,7 +168,9 @@ describe("RfqCard", () => {
         quotes: [quote({ id: 901, dealerId: 2 })],
         instrument,
         dealers,
-        onAccept: (id) => accepted.push(id),
+        onAccept: (id) => {
+          return accepted.push(id);
+        },
       },
     });
     expect(card.hasText("Citi")).toBe(true);

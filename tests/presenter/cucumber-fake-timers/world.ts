@@ -19,8 +19,11 @@ import {
 
 export class FakePresenterWorld extends World implements AwaitHelpers {
   ctx!: PresenterCtx;
+
   scratch: PresenterScratchpad = newScratchpad();
+
   clock!: Clock;
+
   /** Held for the entire scenario to keep shareReplay streams warm. */
   _statusSub?: Subscription;
 
@@ -32,6 +35,7 @@ export class FakePresenterWorld extends World implements AwaitHelpers {
     await this.clock.tickAsync(timeoutMs);
     return p;
   }
+
   async waitSeconds(n: number): Promise<void> {
     await this.clock.tickAsync(n * 1000);
   }

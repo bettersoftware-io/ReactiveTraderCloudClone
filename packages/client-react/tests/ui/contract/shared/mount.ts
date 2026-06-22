@@ -52,18 +52,44 @@ export function mount<P, Page extends MountedComponent<P>>(
   // Use the driver's flush hook (e.g. React `act`) if provided so that
   // synchronous BehaviorSubject mutations flush pending re-renders before
   // the caller's next assertion.
-  const flush = rendered.flushSync ?? ((fn: () => void) => fn());
+  const flush =
+    rendered.flushSync ??
+    ((fn: () => void) => {
+      return fn();
+    });
 
   const ctx: PageContext<P> = {
     root: rendered.root,
-    setProps: (next) =>
-      flush(() => propsSubject.next({ ...propsSubject.getValue(), ...next })),
-    emit: (patch) => flush(() => world.push(patch)),
-    setPrice: (symbol, value) => flush(() => world.setPrice(symbol, value)),
-    setHistory: (symbol, value) => flush(() => world.setHistory(symbol, value)),
-    setQuotesForRfq: (rfqId, value) =>
-      flush(() => world.setQuotesForRfq(rfqId, value)),
-    setThroughputView: (patch) => flush(() => world.setThroughputView(patch)),
+    setProps: (next) => {
+      return flush(() => {
+        return propsSubject.next({ ...propsSubject.getValue(), ...next });
+      });
+    },
+    emit: (patch) => {
+      return flush(() => {
+        return world.push(patch);
+      });
+    },
+    setPrice: (symbol, value) => {
+      return flush(() => {
+        return world.setPrice(symbol, value);
+      });
+    },
+    setHistory: (symbol, value) => {
+      return flush(() => {
+        return world.setHistory(symbol, value);
+      });
+    },
+    setQuotesForRfq: (rfqId, value) => {
+      return flush(() => {
+        return world.setQuotesForRfq(rfqId, value);
+      });
+    },
+    setThroughputView: (patch) => {
+      return flush(() => {
+        return world.setThroughputView(patch);
+      });
+    },
     throughputSets: world.throughputSets,
     commands: world.commands,
   };

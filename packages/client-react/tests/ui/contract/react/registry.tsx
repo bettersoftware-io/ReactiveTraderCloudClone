@@ -111,266 +111,387 @@ import type {
   MountedComponent,
 } from "../shared/harness/component";
 
-const noopFilter = (_f: ColumnFilter | null): void => {};
+function noopFilter(_f: ColumnFilter | null): void {}
 
 type AnyToken = ComponentToken<unknown, MountedComponent<unknown>>;
 type ElementFor = (props: Record<string, unknown>) => ReactElement;
 
 /** token → React element factory. Identity-keyed; no string keys. */
 export const registry = new Map<AnyToken, ElementFor>([
-  [AnalyticsPanel, () => <AnalyticsPanelComponent />],
-  [PnlValue, (p) => <PnlValueComponent value={p.value as number} />],
-  [ConnectionStatusBar, () => <ConnectionStatusBarComponent />],
-  [FxBlotter, () => <FxBlotterComponent />],
+  [
+    AnalyticsPanel,
+    () => {
+      return <AnalyticsPanelComponent />;
+    },
+  ],
+  [
+    PnlValue,
+    (p) => {
+      return <PnlValueComponent value={p.value as number} />;
+    },
+  ],
+  [
+    ConnectionStatusBar,
+    () => {
+      return <ConnectionStatusBarComponent />;
+    },
+  ],
+  [
+    FxBlotter,
+    () => {
+      return <FxBlotterComponent />;
+    },
+  ],
   [
     QuickFilter,
-    (p) => (
-      <QuickFilterComponent
-        value={(p.value as string) ?? ""}
-        onChange={(p.onChange as (v: string) => void) ?? (() => {})}
-      />
-    ),
+    (p) => {
+      return (
+        <QuickFilterComponent
+          value={(p.value as string) ?? ""}
+          onChange={(p.onChange as (v: string) => void) ?? (() => {})}
+        />
+      );
+    },
   ],
   [
     BlotterRow,
-    (p) => (
-      <table>
-        <tbody>
-          <BlotterRowComponent
-            trade={p.trade as Trade}
-            isNew={(p.isNew as boolean) ?? false}
-          />
-        </tbody>
-      </table>
-    ),
+    (p) => {
+      return (
+        <table>
+          <tbody>
+            <BlotterRowComponent
+              trade={p.trade as Trade}
+              isNew={(p.isNew as boolean) ?? false}
+            />
+          </tbody>
+        </table>
+      );
+    },
   ],
   [
     BlotterHeader,
-    (p) => (
-      <table>
-        <thead>
-          <BlotterHeaderComponent
-            sort={(p.sort as SortState) ?? { column: null, direction: null }}
-            onSort={(p.onSort as (c: keyof Trade) => void) ?? (() => {})}
-            filters={(p.filters as Map<keyof Trade, ColumnFilter>) ?? new Map()}
-            onFilter={
-              (p.onFilter as (
-                c: keyof Trade,
-                f: ColumnFilter | null,
-              ) => void) ?? (() => {})
-            }
-            trades={(p.trades as readonly Trade[]) ?? []}
-          />
-        </thead>
-      </table>
-    ),
+    (p) => {
+      return (
+        <table>
+          <thead>
+            <BlotterHeaderComponent
+              sort={(p.sort as SortState) ?? { column: null, direction: null }}
+              onSort={(p.onSort as (c: keyof Trade) => void) ?? (() => {})}
+              filters={
+                (p.filters as Map<keyof Trade, ColumnFilter>) ?? new Map()
+              }
+              onFilter={
+                (p.onFilter as (
+                  c: keyof Trade,
+                  f: ColumnFilter | null,
+                ) => void) ?? (() => {})
+              }
+              trades={(p.trades as readonly Trade[]) ?? []}
+            />
+          </thead>
+        </table>
+      );
+    },
   ],
   [
     SetFilter,
-    (p) => (
-      <SetFilterComponent
-        column={(p.column as keyof Trade) ?? "currencyPair"}
-        trades={(p.trades as readonly Trade[]) ?? []}
-        currentFilter={p.currentFilter as ColumnFilter | undefined}
-        onApply={(p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter}
-      />
-    ),
+    (p) => {
+      return (
+        <SetFilterComponent
+          column={(p.column as keyof Trade) ?? "currencyPair"}
+          trades={(p.trades as readonly Trade[]) ?? []}
+          currentFilter={p.currentFilter as ColumnFilter | undefined}
+          onApply={
+            (p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter
+          }
+        />
+      );
+    },
   ],
   [
     NumberFilter,
-    (p) => (
-      <NumberFilterComponent
-        column={(p.column as keyof Trade) ?? "notional"}
-        currentFilter={p.currentFilter as ColumnFilter | undefined}
-        onApply={(p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter}
-      />
-    ),
+    (p) => {
+      return (
+        <NumberFilterComponent
+          column={(p.column as keyof Trade) ?? "notional"}
+          currentFilter={p.currentFilter as ColumnFilter | undefined}
+          onApply={
+            (p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter
+          }
+        />
+      );
+    },
   ],
   [
     DateFilter,
-    (p) => (
-      <DateFilterComponent
-        column={(p.column as keyof Trade) ?? "tradeDate"}
-        currentFilter={p.currentFilter as ColumnFilter | undefined}
-        onApply={(p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter}
-      />
-    ),
+    (p) => {
+      return (
+        <DateFilterComponent
+          column={(p.column as keyof Trade) ?? "tradeDate"}
+          currentFilter={p.currentFilter as ColumnFilter | undefined}
+          onApply={
+            (p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter
+          }
+        />
+      );
+    },
   ],
   [
     NewRfqForm,
-    (p) => (
-      <NewRfqFormComponent
-        onCreated={(p.onCreated as (id: number) => void) ?? (() => {})}
-      />
-    ),
+    (p) => {
+      return (
+        <NewRfqFormComponent
+          onCreated={(p.onCreated as (id: number) => void) ?? (() => {})}
+        />
+      );
+    },
   ],
   [
     RfqFilterTabs,
-    (p) => (
-      <RfqFilterTabsComponent
-        selected={(p.selected as RfqFilter) ?? "Live"}
-        onChange={(p.onChange as (f: RfqFilter) => void) ?? (() => {})}
-      />
-    ),
+    (p) => {
+      return (
+        <RfqFilterTabsComponent
+          selected={(p.selected as RfqFilter) ?? "Live"}
+          onChange={(p.onChange as (f: RfqFilter) => void) ?? (() => {})}
+        />
+      );
+    },
   ],
   [
     QuoteCard,
-    (p) => (
-      <QuoteCardComponent
-        quote={p.quote as Quote}
-        dealer={p.dealer as Dealer | undefined}
-        onAccept={p.onAccept as ((id: number) => void) | undefined}
-      />
-    ),
+    (p) => {
+      return (
+        <QuoteCardComponent
+          quote={p.quote as Quote}
+          dealer={p.dealer as Dealer | undefined}
+          onAccept={p.onAccept as ((id: number) => void) | undefined}
+        />
+      );
+    },
   ],
   [
     RfqCard,
-    (p) => (
-      <RfqCardComponent
-        rfq={p.rfq as Rfq}
-        quotes={(p.quotes as readonly Quote[]) ?? []}
-        instrument={p.instrument as Instrument | undefined}
-        dealers={(p.dealers as readonly Dealer[]) ?? []}
-        onAccept={(p.onAccept as (id: number) => void) ?? (() => {})}
-        onDismiss={p.onDismiss as ((id: number) => void) | undefined}
-      />
-    ),
+    (p) => {
+      return (
+        <RfqCardComponent
+          rfq={p.rfq as Rfq}
+          quotes={(p.quotes as readonly Quote[]) ?? []}
+          instrument={p.instrument as Instrument | undefined}
+          dealers={(p.dealers as readonly Dealer[]) ?? []}
+          onAccept={(p.onAccept as (id: number) => void) ?? (() => {})}
+          onDismiss={p.onDismiss as ((id: number) => void) | undefined}
+        />
+      );
+    },
   ],
-  [RfqTilesPanel, () => <RfqTilesPanelComponent />],
-  [SellSidePanel, () => <SellSidePanelComponent />],
+  [
+    RfqTilesPanel,
+    () => {
+      return <RfqTilesPanelComponent />;
+    },
+  ],
+  [
+    SellSidePanel,
+    () => {
+      return <SellSidePanelComponent />;
+    },
+  ],
   [
     TradeTicket,
-    (p) => (
-      <TradeTicketComponent
-        rfq={p.rfq as Rfq}
-        quote={p.quote as Quote}
-        instrument={p.instrument as Instrument | undefined}
-      />
-    ),
+    (p) => {
+      return (
+        <TradeTicketComponent
+          rfq={p.rfq as Rfq}
+          quote={p.quote as Quote}
+          instrument={p.instrument as Instrument | undefined}
+        />
+      );
+    },
   ],
-  [CreditBlotter, () => <CreditBlotterComponent />],
-  [LiveRatesPanel, () => <LiveRatesPanelComponent />],
+  [
+    CreditBlotter,
+    () => {
+      return <CreditBlotterComponent />;
+    },
+  ],
+  [
+    LiveRatesPanel,
+    () => {
+      return <LiveRatesPanelComponent />;
+    },
+  ],
   [
     CurrencyFilter,
-    (p) => (
-      <CurrencyFilterComponent
-        selected={(p.selected as CurrencyCategory) ?? "All"}
-        onChange={(p.onChange as (c: CurrencyCategory) => void) ?? (() => {})}
-      />
-    ),
+    (p) => {
+      return (
+        <CurrencyFilterComponent
+          selected={(p.selected as CurrencyCategory) ?? "All"}
+          onChange={(p.onChange as (c: CurrencyCategory) => void) ?? (() => {})}
+        />
+      );
+    },
   ],
   [
     ViewToggle,
-    (p) => (
-      <ViewToggleComponent
-        mode={(p.mode as ViewMode) ?? "chart"}
-        onChange={(p.onChange as (m: ViewMode) => void) ?? (() => {})}
-      />
-    ),
+    (p) => {
+      return (
+        <ViewToggleComponent
+          mode={(p.mode as ViewMode) ?? "chart"}
+          onChange={(p.onChange as (m: ViewMode) => void) ?? (() => {})}
+        />
+      );
+    },
   ],
   [
     Tile,
-    (p) => (
-      <TileComponent
-        pair={p.pair as CurrencyPair}
-        showChart={(p.showChart as boolean) ?? false}
-      />
-    ),
+    (p) => {
+      return (
+        <TileComponent
+          pair={p.pair as CurrencyPair}
+          showChart={(p.showChart as boolean) ?? false}
+        />
+      );
+    },
   ],
   [
     TileHeader,
-    (p) => (
-      <TileHeaderComponent base={p.base as string} terms={p.terms as string} />
-    ),
+    (p) => {
+      return (
+        <TileHeaderComponent
+          base={p.base as string}
+          terms={p.terms as string}
+        />
+      );
+    },
   ],
   [
     TilePrice,
-    (p) => (
-      <TilePriceComponent
-        price={p.price as Price}
-        ratePrecision={p.ratePrecision as number}
-        pipsPosition={p.pipsPosition as number}
-      />
-    ),
+    (p) => {
+      return (
+        <TilePriceComponent
+          price={p.price as Price}
+          ratePrecision={p.ratePrecision as number}
+          pipsPosition={p.pipsPosition as number}
+        />
+      );
+    },
   ],
   [
     SpreadDisplay,
-    (p) => <SpreadDisplayComponent spread={p.spread as string} />,
+    (p) => {
+      return <SpreadDisplayComponent spread={p.spread as string} />;
+    },
   ],
   [
     TileExecution,
-    (p) => (
-      <TileExecutionComponent
-        onExecute={(p.onExecute as (d: Direction) => void) ?? (() => {})}
-        disabled={(p.disabled as boolean) ?? false}
-      />
-    ),
+    (p) => {
+      return (
+        <TileExecutionComponent
+          onExecute={(p.onExecute as (d: Direction) => void) ?? (() => {})}
+          disabled={(p.disabled as boolean) ?? false}
+        />
+      );
+    },
   ],
   [
     TileNotional,
-    (p) => (
-      <TileNotionalComponent
-        notional={p.notional as { state: NotionalView } & NotionalIntents}
-        baseCurrency={p.baseCurrency as string}
-        disabled={p.disabled as boolean | undefined}
-      />
-    ),
+    (p) => {
+      return (
+        <TileNotionalComponent
+          notional={p.notional as { state: NotionalView } & NotionalIntents}
+          baseCurrency={p.baseCurrency as string}
+          disabled={p.disabled as boolean | undefined}
+        />
+      );
+    },
   ],
   [
     TileConfirmation,
-    (p) => (
-      <TileConfirmationComponent
-        state={p.state as TileExecutionState}
-        onDismiss={(p.onDismiss as () => void) ?? (() => {})}
-      />
-    ),
+    (p) => {
+      return (
+        <TileConfirmationComponent
+          state={p.state as TileExecutionState}
+          onDismiss={(p.onDismiss as () => void) ?? (() => {})}
+        />
+      );
+    },
   ],
   [
     RfqCountdown,
-    (p) => (
-      <RfqCountdownComponent
-        remainingMs={p.remainingMs as number}
-        totalMs={p.totalMs as number}
-      />
-    ),
+    (p) => {
+      return (
+        <RfqCountdownComponent
+          remainingMs={p.remainingMs as number}
+          totalMs={p.totalMs as number}
+        />
+      );
+    },
   ],
   [
     TileRfq,
-    (p) => (
-      <TileRfqComponent
-        pair={p.pair as CurrencyPair}
-        rfqState={p.rfqState as TileRfqState}
-        onRequestQuote={(p.onRequestQuote as () => void) ?? (() => {})}
-        onExecute={
-          (p.onExecute as (
-            direction: Direction,
-            price: Price,
-            notional: number,
-          ) => void) ?? (() => {})
-        }
-        notional={(p.notional as number) ?? 0}
-      />
-    ),
+    (p) => {
+      return (
+        <TileRfqComponent
+          pair={p.pair as CurrencyPair}
+          rfqState={p.rfqState as TileRfqState}
+          onRequestQuote={(p.onRequestQuote as () => void) ?? (() => {})}
+          onExecute={
+            (p.onExecute as (
+              direction: Direction,
+              price: Price,
+              notional: number,
+            ) => void) ?? (() => {})
+          }
+          notional={(p.notional as number) ?? 0}
+        />
+      );
+    },
   ],
-  [ConnectionOverlay, () => <ConnectionOverlayComponent />],
-  [Footer, () => <FooterComponent />],
+  [
+    ConnectionOverlay,
+    () => {
+      return <ConnectionOverlayComponent />;
+    },
+  ],
+  [
+    Footer,
+    () => {
+      return <FooterComponent />;
+    },
+  ],
   [
     Header,
-    (p) => (
-      <HeaderComponent
-        activeTab={(p.activeTab as WorkspaceTab) ?? "fx"}
-        onTabChange={(p.onTabChange as (t: WorkspaceTab) => void) ?? (() => {})}
-      />
-    ),
+    (p) => {
+      return (
+        <HeaderComponent
+          activeTab={(p.activeTab as WorkspaceTab) ?? "fx"}
+          onTabChange={
+            (p.onTabChange as (t: WorkspaceTab) => void) ?? (() => {})
+          }
+        />
+      );
+    },
   ],
   [
     StaleIndicator,
-    (p) => (
-      <StaleIndicatorComponent stale={(p.stale as boolean) ?? false}>
-        <span>{(p.childLabel as string) ?? "content"}</span>
-      </StaleIndicatorComponent>
-    ),
+    (p) => {
+      return (
+        <StaleIndicatorComponent stale={(p.stale as boolean) ?? false}>
+          <span>{(p.childLabel as string) ?? "content"}</span>
+        </StaleIndicatorComponent>
+      );
+    },
   ],
-  [ThemeToggle, () => <ThemeToggleComponent />],
-  [AdminPanel, () => <AdminPanelComponent />],
+  [
+    ThemeToggle,
+    () => {
+      return <ThemeToggleComponent />;
+    },
+  ],
+  [
+    AdminPanel,
+    () => {
+      return <AdminPanelComponent />;
+    },
+  ],
 ]);

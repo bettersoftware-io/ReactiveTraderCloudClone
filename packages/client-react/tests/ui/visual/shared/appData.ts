@@ -60,7 +60,7 @@ export interface AppData {
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */
-export const defaultAppData: AppData = {
+const defaultAppData: AppData = {
   prices: {},
   priceHistory: {},
   trades: [],

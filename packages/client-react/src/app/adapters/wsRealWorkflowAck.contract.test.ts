@@ -29,30 +29,33 @@ describe("wsReal void RPC ports :: ack emits undefined and completes", () => {
     ws.dispose();
   }
 
-  it("workflow.cancelRfq completes on ack", () =>
-    expectAckCompletes(
-      (p) => firstValueFrom(p.workflow.cancelRfq(1)),
-      "rpc.cancelRfq",
-    ));
+  it("workflow.cancelRfq completes on ack", () => {
+    return expectAckCompletes((p) => {
+      return firstValueFrom(p.workflow.cancelRfq(1));
+    }, "rpc.cancelRfq");
+  });
 
-  it("workflow.quote completes on ack", () =>
-    expectAckCompletes(
-      (p) => firstValueFrom(p.workflow.quote({ quoteId: 1, price: 100 })),
-      "rpc.quote",
-    ));
+  it("workflow.quote completes on ack", () => {
+    return expectAckCompletes((p) => {
+      return firstValueFrom(p.workflow.quote({ quoteId: 1, price: 100 }));
+    }, "rpc.quote");
+  });
 
-  it("workflow.pass completes on ack", () =>
-    expectAckCompletes((p) => firstValueFrom(p.workflow.pass(1)), "rpc.pass"));
+  it("workflow.pass completes on ack", () => {
+    return expectAckCompletes((p) => {
+      return firstValueFrom(p.workflow.pass(1));
+    }, "rpc.pass");
+  });
 
-  it("workflow.accept completes on ack", () =>
-    expectAckCompletes(
-      (p) => firstValueFrom(p.workflow.accept(1)),
-      "rpc.accept",
-    ));
+  it("workflow.accept completes on ack", () => {
+    return expectAckCompletes((p) => {
+      return firstValueFrom(p.workflow.accept(1));
+    }, "rpc.accept");
+  });
 
-  it("admin.setThroughput completes on ack", () =>
-    expectAckCompletes(
-      (p) => firstValueFrom(p.admin.setThroughput(500)),
-      "admin.setThroughput",
-    ));
+  it("admin.setThroughput completes on ack", () => {
+    return expectAckCompletes((p) => {
+      return firstValueFrom(p.admin.setThroughput(500));
+    }, "admin.setThroughput");
+  });
 });

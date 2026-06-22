@@ -30,13 +30,14 @@ export function setBrowserOffline(ctx: TestContext, offline: boolean): void {
       }
     });
   }
+
   void ctx.po.workspace.setOffline(offline);
 }
 
 export function expectConnectionStatusFooterVisible(ctx: TestContext): void {
-  chainable(ctx.po.footer.isStatusVisible()).then((v) =>
-    assertTrue(v, "connection status footer not visible"),
-  );
+  chainable(ctx.po.footer.isStatusVisible()).then((v) => {
+    return assertTrue(v, "connection status footer not visible");
+  });
 }
 
 export function expectConnectionStatusFooterShows(
@@ -57,9 +58,9 @@ export function expectConnectionStatusFooterShows(
 }
 
 export function expectConnectionOverlayHidden(ctx: TestContext): void {
-  chainable(ctx.po.connectionOverlay.isHidden()).then((v) =>
-    assertTrue(v, "connection overlay not hidden"),
-  );
+  chainable(ctx.po.connectionOverlay.isHidden()).then((v) => {
+    return assertTrue(v, "connection overlay not hidden");
+  });
 }
 
 export function expectConnectionOverlayVisibleWithin(

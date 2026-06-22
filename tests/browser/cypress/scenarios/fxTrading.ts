@@ -29,7 +29,9 @@ export function expectTradeConfirmationMatchesOneOf(
 ): void {
   const patterns = rawRegex
     .split(",")
-    .map((s) => s.trim())
+    .map((s) => {
+      return s.trim();
+    })
     .filter(Boolean)
     .map((token) => {
       const m = token.match(/^\/(.+)\/([gimsuy]*)$/);
@@ -58,24 +60,24 @@ export function expectBlotterVisible(ctx: TestContext): void {
   // rather than Cypress's viewport-based :visible. The blotter sits below the
   // fold so waitVisible()/.should("be.visible") would fail even when fully
   // rendered. See BlotterTable.ts comment on isVisible() for the same rationale.
-  chainable(ctx.po.blotterTable.isVisible()).then((v) =>
-    assertTrue(v, "blotter table not visible"),
-  );
+  chainable(ctx.po.blotterTable.isVisible()).then((v) => {
+    return assertTrue(v, "blotter table not visible");
+  });
 }
 
 export function expectBlotterHasAtLeastNRows(
   ctx: TestContext,
   n: number,
 ): void {
-  chainable(ctx.po.blotterTable.rowCount()).then((count) =>
-    assertGte(count, n),
-  );
+  chainable(ctx.po.blotterTable.rowCount()).then((count) => {
+    return assertGte(count, n);
+  });
 }
 
 export function expectFirstTileNotionalInputVisible(ctx: TestContext): void {
-  chainable(ctx.po.liveRatesTile.isNotionalInputVisible()).then((v) =>
-    assertTrue(v, "first-tile notional input not visible"),
-  );
+  chainable(ctx.po.liveRatesTile.isNotionalInputVisible()).then((v) => {
+    return assertTrue(v, "first-tile notional input not visible");
+  });
 }
 
 export function setFirstTileNotional(ctx: TestContext, value: string): void {

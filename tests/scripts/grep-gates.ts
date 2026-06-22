@@ -28,12 +28,15 @@ const FEATURE_NAMES = [
 
 function checkPresenterScenarioCounts(): string[] {
   const failures: string[] = [];
+
   for (const feat of FEATURE_NAMES) {
     const featurePath = `specs/${feat}.feature`;
+
     if (!existsSync(featurePath)) {
       failures.push(`${feat}: feature file missing at ${featurePath}`);
       continue;
     }
+
     const featureSrc = readFileSync(featurePath, "utf8");
     const presenterScenarios = (
       featureSrc.match(/@presenter\s*\n\s*Scenario:/g) ?? []
@@ -41,19 +44,23 @@ function checkPresenterScenarioCounts(): string[] {
 
     const testPath = `presenter/vitest-fake-timers/${feat}.test.ts`;
     if (presenterScenarios === 0 && !existsSync(testPath)) continue;
+
     if (presenterScenarios === 0 && existsSync(testPath)) {
       failures.push(`${feat}: 0 @presenter scenarios but ${testPath} exists`);
       continue;
     }
+
     if (!existsSync(testPath)) {
       failures.push(
         `${feat}: ${presenterScenarios} @presenter scenarios but ${testPath} missing`,
       );
       continue;
     }
+
     const testSrc = readFileSync(testPath, "utf8");
     // Count it("...") and it.skip("...") at line start (after indent) — NOT describe(.
     const itBlocks = (testSrc.match(/^\s*it(?:\.skip)?\(/gm) ?? []).length;
+
     if (itBlocks !== presenterScenarios) {
       failures.push(
         `${feat}: ${presenterScenarios} @presenter scenarios in ${featurePath} ` +
@@ -61,11 +68,13 @@ function checkPresenterScenarioCounts(): string[] {
       );
     }
   }
+
   return failures;
 }
 
 function checkPresenterDescribePrefix(): string[] {
   const failures: string[] = [];
+
   for (const feat of FEATURE_NAMES) {
     const testPath = `presenter/vitest-fake-timers/${feat}.test.ts`;
     if (!existsSync(testPath)) continue;
@@ -79,6 +88,7 @@ function checkPresenterDescribePrefix(): string[] {
         return title;
       },
     );
+
     for (const title of titles) {
       if (!title.startsWith("@presenter Feature: ")) {
         failures.push(
@@ -87,6 +97,7 @@ function checkPresenterDescribePrefix(): string[] {
       }
     }
   }
+
   return failures;
 }
 
@@ -95,19 +106,22 @@ function checkQuickpickleBarrelCompleteness(): string[] {
   const stepsDir = "presenter/vitest-quickpickle-fake-timers/steps";
   const setupPath = "presenter/vitest-quickpickle-fake-timers/setup.ts";
   if (!existsSync(stepsDir) || !existsSync(setupPath)) return failures;
-  const stepFiles = readdirSync(stepsDir).filter((f) =>
-    f.endsWith(".steps.ts"),
-  );
+  const stepFiles = readdirSync(stepsDir).filter((f) => {
+    return f.endsWith(".steps.ts");
+  });
   const setupSrc = readFileSync(setupPath, "utf8");
+
   for (const f of stepFiles) {
     const stem = f.replace(/\.ts$/, "");
     const importMarker = `./steps/${stem}`;
+
     if (!setupSrc.includes(importMarker)) {
       failures.push(
         `${setupPath}: missing import for ${stepsDir}/${f} (expected literal containing ${JSON.stringify(importMarker)})`,
       );
     }
   }
+
   return failures;
 }
 
@@ -127,18 +141,24 @@ function checkProductionAudit(): string[] {
   );
   if (result.status === 0) return [];
   const out = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+
   // Distinguish real advisories from an audit that couldn't run (network/registry).
   if (/vulnerabilit(?:y|ies)\s+found/i.test(out)) {
     const summary = out
       .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => /^Severity:/i.test(l) || /vulnerabilit/i.test(l));
+      .map((l) => {
+        return l.trim();
+      })
+      .filter((l) => {
+        return /^Severity:/i.test(l) || /vulnerabilit/i.test(l);
+      });
     return [
       "high/critical advisory in production dependencies:",
       ...summary,
       'remediate by bumping the package or adding a pnpm-workspace.yaml override; run "pnpm audit --prod" for details.',
     ];
   }
+
   console.warn(
     `WARN gate "pnpm audit --prod": audit did not complete; treating as non-blocking.\n${out.trim().slice(0, 400)}`,
   );
@@ -163,8 +183,12 @@ function checkNoUiTimer(): string[] {
   return out
     .split("\n")
     .filter(Boolean)
-    .filter((line) => !line.includes("/node_modules/"))
-    .filter((line) => !line.includes(".test.") && !line.includes(".spec."));
+    .filter((line) => {
+      return !line.includes("/node_modules/");
+    })
+    .filter((line) => {
+      return !line.includes(".test.") && !line.includes(".spec.");
+    });
 }
 
 const GATES: Gate[] = [
@@ -405,16 +429,22 @@ for (const gate of GATES) {
   } else {
     const args = ["-rE", gate.pattern, ...gate.paths];
     const result = spawnSync("grep", args, { encoding: "utf8" });
+
     if (result.status === 2) {
       console.error(`ERROR running gate "${gate.name}":`, result.stderr);
       failed++;
       continue;
     }
+
     const out = result.stdout ?? "";
     lines = out
       .split("\n")
       .filter(Boolean)
-      .filter((line) => !(gate.excludes ?? []).some((e) => line.includes(e)));
+      .filter((line) => {
+        return !(gate.excludes ?? []).some((e) => {
+          return line.includes(e);
+        });
+      });
   }
 
   if (lines.length > 0) {
@@ -430,4 +460,5 @@ if (failed > 0) {
   console.error(`\n${failed} gate(s) failed.`);
   process.exit(1);
 }
+
 console.log("\nall gates passed.");

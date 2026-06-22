@@ -68,8 +68,11 @@ function shallowArrayEquals<T>(a: readonly T[], b: readonly T[]): boolean {
 
 export class RfqsPresenter {
   private readonly state$: Observable<RfqStreamState>;
+
   readonly rfqs$: Observable<readonly Rfq[]>;
+
   readonly allQuotes$: Observable<ReadonlyMap<number, Quote>>;
+
   private readonly quotesByRfqCache = new Map<
     number,
     Observable<readonly Quote[]>
@@ -80,12 +83,16 @@ export class RfqsPresenter {
       .execute()
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));
     this.rfqs$ = this.state$.pipe(
-      map((s) => Array.from(s.rfqs.values())),
+      map((s) => {
+        return Array.from(s.rfqs.values());
+      }),
       distinctUntilChanged(shallowArrayEquals),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
     this.allQuotes$ = this.state$.pipe(
-      map((s) => s.quotes),
+      map((s) => {
+        return s.quotes;
+      }),
       distinctUntilChanged(),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
@@ -95,9 +102,11 @@ export class RfqsPresenter {
     const cached = this.quotesByRfqCache.get(rfqId);
     if (cached) return cached;
     const stream = this.state$.pipe(
-      map((s) =>
-        Array.from(s.quotes.values()).filter((q) => q.rfqId === rfqId),
-      ),
+      map((s) => {
+        return Array.from(s.quotes.values()).filter((q) => {
+          return q.rfqId === rfqId;
+        });
+      }),
       distinctUntilChanged(shallowArrayEquals),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
@@ -108,15 +117,19 @@ export class RfqsPresenter {
   createRfq(input: CreateRfqInput): Observable<number> {
     return new CreateRfqUseCase(this.workflow).execute(input);
   }
+
   acceptQuote(quoteId: number): Observable<void> {
     return this.workflow.accept(quoteId);
   }
+
   cancelRfq(rfqId: number): Observable<void> {
     return this.workflow.cancelRfq(rfqId);
   }
+
   passQuote(quoteId: number): Observable<void> {
     return this.workflow.pass(quoteId);
   }
+
   quoteRfq(request: QuoteRequest): Observable<void> {
     return this.workflow.quote(request);
   }
@@ -135,12 +148,12 @@ export class RfqsPresenter {
     const SUBMITTING: RfqSubmissionState = { status: "submitting" };
 
     const runs$ = submit$.pipe(
-      switchMap(({ input, onRedirect }) =>
-        concat(
+      switchMap(({ input, onRedirect }) => {
+        return concat(
           of(SUBMITTING),
           this.createRfq(input).pipe(
-            switchMap((rfqId) =>
-              merge(
+            switchMap((rfqId) => {
+              return merge(
                 of<RfqSubmissionState>({ status: "confirmed", rfqId }),
                 // Redirect after the delay. The redirect timer is cancelled when
                 // warm.unsubscribe() (in dispose()) tears down the subscription
@@ -148,16 +161,20 @@ export class RfqsPresenter {
                 // unsubscribe its current inner observable when the source
                 // completes.
                 timer(REDIRECT_DELAY_MS).pipe(
-                  tap(() => onRedirect(rfqId)),
+                  tap(() => {
+                    return onRedirect(rfqId);
+                  }),
                   ignoreElements(),
                 ),
-              ),
-            ),
+              );
+            }),
             // A failed create returns to editing so the user can retry.
-            catchError(() => of(EDITING)),
+            catchError(() => {
+              return of(EDITING);
+            }),
           ),
-        ),
-      ),
+        );
+      }),
     );
 
     const state$: DefaultedStateObservable<RfqSubmissionState> = state(
@@ -169,7 +186,9 @@ export class RfqsPresenter {
     return {
       state$,
       intents: {
-        submit: (input, onRedirect) => submit$.next({ input, onRedirect }),
+        submit: (input, onRedirect) => {
+          return submit$.next({ input, onRedirect });
+        },
       },
       dispose: () => {
         submit$.complete();
@@ -196,12 +215,16 @@ export class RfqsPresenter {
     // submitted:false so the user can retry (matching the component, which only
     // set submitted after a resolved await).
     const runs$ = action$.pipe(
-      switchMap((command$) =>
-        command$.pipe(
-          map((): TicketSubmissionState => SUBMITTED),
-          catchError(() => of(NOT_SUBMITTED)),
-        ),
-      ),
+      switchMap((command$) => {
+        return command$.pipe(
+          map((): TicketSubmissionState => {
+            return SUBMITTED;
+          }),
+          catchError(() => {
+            return of(NOT_SUBMITTED);
+          }),
+        );
+      }),
     );
 
     const state$: DefaultedStateObservable<TicketSubmissionState> = state(
@@ -213,9 +236,12 @@ export class RfqsPresenter {
     return {
       state$,
       intents: {
-        submitPrice: (quoteId, price) =>
-          action$.next(this.quoteRfq({ quoteId, price })),
-        pass: (quoteId) => action$.next(this.passQuote(quoteId)),
+        submitPrice: (quoteId, price) => {
+          return action$.next(this.quoteRfq({ quoteId, price }));
+        },
+        pass: (quoteId) => {
+          return action$.next(this.passQuote(quoteId));
+        },
       },
       dispose: () => {
         action$.complete();

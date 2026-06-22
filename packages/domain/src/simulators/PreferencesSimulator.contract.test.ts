@@ -3,6 +3,10 @@ import { PreferencesSimulator } from "./PreferencesSimulator.js";
 
 describePreferencesPortContract(
   "PreferencesSimulator",
-  () => new PreferencesSimulator(),
-  (seed) => new PreferencesSimulator(seed),
+  () => {
+    return new PreferencesSimulator();
+  },
+  (seed) => {
+    return new PreferencesSimulator(seed);
+  },
 );

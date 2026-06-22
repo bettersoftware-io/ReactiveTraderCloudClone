@@ -19,22 +19,26 @@ export function CreditWorkspace() {
   return (
     <div className={styles.workspace}>
       <div data-testid="credit-nav" className={styles.nav}>
-        {(["tiles", "new-rfq", "sell-side"] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            data-testid={`credit-tab-${v}`}
-            data-active={view === v ? "true" : "false"}
-            onClick={() => setView(v)}
-            className={styles.tab}
-          >
-            {v === "tiles"
-              ? "RFQ Tiles"
-              : v === "new-rfq"
-                ? "New RFQ"
-                : "Sell Side"}
-          </button>
-        ))}
+        {(["tiles", "new-rfq", "sell-side"] as const).map((v) => {
+          return (
+            <button
+              key={v}
+              type="button"
+              data-testid={`credit-tab-${v}`}
+              data-active={view === v ? "true" : "false"}
+              onClick={() => {
+                return setView(v);
+              }}
+              className={styles.tab}
+            >
+              {v === "tiles"
+                ? "RFQ Tiles"
+                : v === "new-rfq"
+                  ? "New RFQ"
+                  : "Sell Side"}
+            </button>
+          );
+        })}
       </div>
 
       {view === "new-rfq" && <NewRfqForm onCreated={handleRfqCreated} />}

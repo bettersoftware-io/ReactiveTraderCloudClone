@@ -7,7 +7,7 @@ import styles from "./QuoteCard.module.css";
 interface QuoteCardProps {
   quote: Quote;
   dealer: Dealer | undefined;
-  onAccept?: (quoteId: number) => void;
+  onAccept?: (quoteId: number) => void | Promise<void>;
 }
 
 function displayText(state: Quote["state"]): string {
@@ -28,7 +28,8 @@ export function QuoteCard({ quote, dealer, onAccept }: QuoteCardProps) {
   const canAccept = quote.state.type === "pendingWithPrice" && onAccept;
 
   const handleAccept = useCallback(() => {
-    if (quote.state.type === "pendingWithPrice" && onAccept) onAccept(quote.id);
+    if (quote.state.type === "pendingWithPrice" && onAccept)
+      void onAccept(quote.id);
   }, [onAccept, quote.id, quote.state.type]);
 
   return (

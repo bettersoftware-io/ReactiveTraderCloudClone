@@ -15,16 +15,16 @@ export class TilePricePage extends MountedComponent<TilePriceProps> {
 
   /** The two price-side labels in order: ["SELL", "BUY"]. */
   labels(): string[] {
-    return this.buttons().map((b) =>
-      (b.querySelector("span")?.textContent ?? "").trim(),
-    );
+    return this.buttons().map((b) => {
+      return (b.querySelector("span")?.textContent ?? "").trim();
+    });
   }
 
   /** The concatenated digit text rendered on one side (prefix+pips+fractional). */
   digits(side: "SELL" | "BUY"): string {
-    const btn = this.buttons().find(
-      (b) => (b.querySelector("span")?.textContent ?? "").trim() === side,
-    );
+    const btn = this.buttons().find((b) => {
+      return (b.querySelector("span")?.textContent ?? "").trim() === side;
+    });
     if (!btn) throw new Error(`No ${side} button`);
     // The numeric value lives in the second top-level <span> (after the label).
     const valueSpan = btn.querySelectorAll(":scope > span")[1];
@@ -33,9 +33,9 @@ export class TilePricePage extends MountedComponent<TilePriceProps> {
 
   /** The colour of the big "pips" segment on one side (movement-driven). */
   pipsColor(side: "SELL" | "BUY"): string {
-    const btn = this.buttons().find(
-      (b) => (b.querySelector("span")?.textContent ?? "").trim() === side,
-    );
+    const btn = this.buttons().find((b) => {
+      return (b.querySelector("span")?.textContent ?? "").trim() === side;
+    });
     if (!btn) throw new Error(`No ${side} button`);
     const pips = btn.querySelector<HTMLSpanElement>(
       '[data-testid="tile-pips"]',

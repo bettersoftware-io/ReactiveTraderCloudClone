@@ -2,7 +2,9 @@ import { StaleIndicator } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-afterEach(() => cleanupMounted());
+afterEach(() => {
+  return cleanupMounted();
+});
 
 describe("StaleIndicator", () => {
   it("renders children without an overlay when fresh", () => {

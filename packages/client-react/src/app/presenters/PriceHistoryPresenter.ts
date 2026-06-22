@@ -8,6 +8,7 @@ import {
 
 export class PriceHistoryPresenter {
   private readonly cache = new Map<string, Observable<readonly PriceTick[]>>();
+
   constructor(private readonly pricing: PricingPort) {}
 
   history$(symbol: string): Observable<readonly PriceTick[]> {

@@ -4,29 +4,37 @@ import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import { COLUMNS, type ColumnDef, formatCellValue } from "./blotterColumns";
 
-const trade = (over: Partial<Trade> = {}): Trade => ({
-  tradeId: 4001,
-  tradeName: "Alice",
-  currencyPair: "EURUSD",
-  notional: 1_000_000,
-  dealtCurrency: "EUR",
-  direction: Direction.Buy,
-  spotRate: 1.09221,
-  status: TradeStatus.Done,
-  tradeDate: "2026-03-30",
-  valueDate: "2026-04-01",
-  ...over,
-});
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 4001,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-03-30",
+    valueDate: "2026-04-01",
+    ...over,
+  };
+}
 
-const colFor = (key: keyof Trade): ColumnDef => {
-  const c = COLUMNS.find((c) => c.key === key);
+function colFor(key: keyof Trade): ColumnDef {
+  const c = COLUMNS.find((c) => {
+    return c.key === key;
+  });
   if (!c) throw new Error(`no column for ${String(key)}`);
   return c;
-};
+}
 
 describe("COLUMNS metadata", () => {
   it("exposes the expected ordered column keys", () => {
-    expect(COLUMNS.map((c) => c.key)).toEqual([
+    expect(
+      COLUMNS.map((c) => {
+        return c.key;
+      }),
+    ).toEqual([
       "tradeId",
       "status",
       "tradeDate",
@@ -41,7 +49,11 @@ describe("COLUMNS metadata", () => {
   });
 
   it("pairs each key with its display label", () => {
-    const labels = Object.fromEntries(COLUMNS.map((c) => [c.key, c.label]));
+    const labels = Object.fromEntries(
+      COLUMNS.map((c) => {
+        return [c.key, c.label];
+      }),
+    );
     expect(labels).toMatchObject({
       tradeId: "Trade ID",
       status: "Status",
@@ -57,7 +69,11 @@ describe("COLUMNS metadata", () => {
   });
 
   it("assigns the right filter type to each column", () => {
-    const types = Object.fromEntries(COLUMNS.map((c) => [c.key, c.filterType]));
+    const types = Object.fromEntries(
+      COLUMNS.map((c) => {
+        return [c.key, c.filterType];
+      }),
+    );
     expect(types).toMatchObject({
       tradeId: "number",
       notional: "number",

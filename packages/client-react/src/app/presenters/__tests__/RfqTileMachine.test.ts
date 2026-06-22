@@ -12,7 +12,9 @@ import {
 
 import { createRfqTileMachine, type RfqState } from "../RfqTileMachine";
 
-const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => p.symbol === "EURUSD");
+const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => {
+  return p.symbol === "EURUSD";
+});
 if (!_pairOrUndef) throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
 const pair: CurrencyPair = _pairOrUndef;
 
@@ -60,7 +62,9 @@ function run(
     const machine = createRfqTileMachine(pair, {
       requestQuote: buildRequestQuote(ts),
     });
-    const sub = machine.state$.subscribe((s) => states.push(s));
+    const sub = machine.state$.subscribe((s) => {
+      return states.push(s);
+    });
     drive({ machine, ts });
     flush();
     sub.unsubscribe();
@@ -79,10 +83,14 @@ describe("createRfqTileMachine", () => {
     const ts = scheduler();
     ts.run(() => {
       const machine = createRfqTileMachine(pair, {
-        requestQuote: () => never(ts),
+        requestQuote: () => {
+          return never(ts);
+        },
       });
       let current: RfqState | undefined;
-      const sub = machine.state$.subscribe((s) => (current = s));
+      const sub = machine.state$.subscribe((s) => {
+        current = s;
+      });
       expect(current).toEqual(INIT);
       sub.unsubscribe();
       machine.dispose();
@@ -91,11 +99,19 @@ describe("createRfqTileMachine", () => {
 
   it("requestQuote() is a no-op unless in the init state", () => {
     const states = run(
-      (ts) => () => never(ts),
+      (ts) => {
+        return () => {
+          return never(ts);
+        };
+      },
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.requestQuote(), 1);
+        ts.schedule(() => {
+          return machine.intents.requestQuote();
+        }, 1);
         // A second requestQuote while already requested is ignored.
-        ts.schedule(() => machine.intents.requestQuote(), 3);
+        ts.schedule(() => {
+          return machine.intents.requestQuote();
+        }, 3);
       },
     );
     expect(states).toEqual([INIT, REQUESTED]);
@@ -104,12 +120,16 @@ describe("createRfqTileMachine", () => {
   it("requestQuote() requests for the pair's symbol and pipsPosition", () => {
     const calls: { symbol: string; pipsPosition: number }[] = [];
     run(
-      (ts) => (symbol, pipsPosition) => {
-        calls.push({ symbol, pipsPosition });
-        return never(ts);
+      (ts) => {
+        return (symbol, pipsPosition) => {
+          calls.push({ symbol, pipsPosition });
+          return never(ts);
+        };
       },
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.requestQuote(), 1);
+        ts.schedule(() => {
+          return machine.intents.requestQuote();
+        }, 1);
       },
     );
     expect(calls).toEqual([
@@ -119,12 +139,17 @@ describe("createRfqTileMachine", () => {
 
   it("requested → received when the quote resolves", () => {
     const states = run(
-      (ts) => () =>
-        ts.createColdObservable<RfqQuoteResult>("10ms (a|)", {
-          a: quoteResult,
-        }),
+      (ts) => {
+        return () => {
+          return ts.createColdObservable<RfqQuoteResult>("10ms (a|)", {
+            a: quoteResult,
+          });
+        };
+      },
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.requestQuote(), 1);
+        ts.schedule(() => {
+          return machine.intents.requestQuote();
+        }, 1);
         // Stop observing just after the quote arrives so we only see the first tick.
         ts.schedule(() => {}, 12);
       },
@@ -138,14 +163,19 @@ describe("createRfqTileMachine", () => {
 
   it("requested → rejected when the quote request errors, then holds then init", () => {
     const states = run(
-      (ts) => () =>
-        ts.createColdObservable<RfqQuoteResult>(
-          "10ms #",
-          {},
-          new Error("no quote"),
-        ),
+      (ts) => {
+        return () => {
+          return ts.createColdObservable<RfqQuoteResult>(
+            "10ms #",
+            {},
+            new Error("no quote"),
+          );
+        };
+      },
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.requestQuote(), 1);
+        ts.schedule(() => {
+          return machine.intents.requestQuote();
+        }, 1);
       },
     );
     expect(states).toEqual([INIT, REQUESTED, REJECTED, INIT]);
@@ -153,10 +183,17 @@ describe("createRfqTileMachine", () => {
 
   it("decrements remainingMs every COUNTDOWN_INTERVAL_MS while received", () => {
     const states = run(
-      (ts) => () =>
-        ts.createColdObservable<RfqQuoteResult>("(a|)", { a: quoteResult }),
+      (ts) => {
+        return () => {
+          return ts.createColdObservable<RfqQuoteResult>("(a|)", {
+            a: quoteResult,
+          });
+        };
+      },
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.requestQuote(), 1);
+        ts.schedule(() => {
+          return machine.intents.requestQuote();
+        }, 1);
       },
     );
     // INIT, REQUESTED, then received at remaining 10000, 9900, 9800, 9700
@@ -173,10 +210,17 @@ describe("createRfqTileMachine", () => {
 
   it("auto-rejects when the countdown reaches zero, then returns to init", () => {
     const states = run(
-      (ts) => () =>
-        ts.createColdObservable<RfqQuoteResult>("(a|)", { a: quoteResult }),
+      (ts) => {
+        return () => {
+          return ts.createColdObservable<RfqQuoteResult>("(a|)", {
+            a: quoteResult,
+          });
+        };
+      },
       ({ machine, ts }) => {
-        ts.schedule(() => machine.intents.requestQuote(), 1);
+        ts.schedule(() => {
+          return machine.intents.requestQuote();
+        }, 1);
       },
     );
     // Last received tick is at remaining 100 (t=9900); at t=10000 → rejected; +2000 → init.
@@ -184,7 +228,9 @@ describe("createRfqTileMachine", () => {
     expect(states[states.length - 2]).toEqual(REJECTED);
     expect(states[states.length - 1]).toEqual(INIT);
     expect(
-      states.some((s) => s.status === "received" && s.remainingMs <= 0),
+      states.some((s) => {
+        return s.status === "received" && s.remainingMs <= 0;
+      }),
     ).toBe(false);
   });
 
@@ -196,19 +242,32 @@ describe("createRfqTileMachine", () => {
     const seen: { frame: number; state: RfqState }[] = [];
     ts.run(({ flush }) => {
       const machine = createRfqTileMachine(pair, {
-        requestQuote: () =>
-          ts.createColdObservable<RfqQuoteResult>("10ms #", {}, new Error("x")),
+        requestQuote: () => {
+          return ts.createColdObservable<RfqQuoteResult>(
+            "10ms #",
+            {},
+            new Error("x"),
+          );
+        },
       });
-      const sub = machine.state$.subscribe((state) =>
-        seen.push({ frame: ts.now(), state }),
-      );
-      ts.schedule(() => machine.intents.requestQuote(), 1);
+      const sub = machine.state$.subscribe((state) => {
+        return seen.push({ frame: ts.now(), state });
+      });
+      ts.schedule(() => {
+        return machine.intents.requestQuote();
+      }, 1);
       flush();
       sub.unsubscribe();
       machine.dispose();
     });
-    expect(seen.map((e) => e.state)).toEqual([INIT, REQUESTED, REJECTED, INIT]);
-    const rejectedEntry = seen.find((e) => e.state.status === "rejected");
+    expect(
+      seen.map((e) => {
+        return e.state;
+      }),
+    ).toEqual([INIT, REQUESTED, REJECTED, INIT]);
+    const rejectedEntry = seen.find((e) => {
+      return e.state.status === "rejected";
+    });
     if (!rejectedEntry) throw new Error("No 'rejected' state was emitted");
     const rejectedFrame = rejectedEntry.frame;
     const initAfterHold = seen[seen.length - 1];
@@ -218,14 +277,26 @@ describe("createRfqTileMachine", () => {
 
   it("cancel() returns to init only from the requested state", () => {
     const states = run(
-      (ts) => () => never(ts),
+      (ts) => {
+        return () => {
+          return never(ts);
+        };
+      },
       ({ machine, ts }) => {
         // cancel from init: no-op.
-        ts.schedule(() => machine.intents.cancel(), 1);
-        ts.schedule(() => machine.intents.requestQuote(), 2);
-        ts.schedule(() => machine.intents.cancel(), 3);
+        ts.schedule(() => {
+          return machine.intents.cancel();
+        }, 1);
+        ts.schedule(() => {
+          return machine.intents.requestQuote();
+        }, 2);
+        ts.schedule(() => {
+          return machine.intents.cancel();
+        }, 3);
         // cancel again from init: no-op.
-        ts.schedule(() => machine.intents.cancel(), 4);
+        ts.schedule(() => {
+          return machine.intents.cancel();
+        }, 4);
       },
     );
     expect(states).toEqual([INIT, REQUESTED, INIT]);
@@ -233,14 +304,25 @@ describe("createRfqTileMachine", () => {
 
   it("reject() moves to rejected only from the received state", () => {
     const states = run(
-      (ts) => () =>
-        ts.createColdObservable<RfqQuoteResult>("5ms (a|)", { a: quoteResult }),
+      (ts) => {
+        return () => {
+          return ts.createColdObservable<RfqQuoteResult>("5ms (a|)", {
+            a: quoteResult,
+          });
+        };
+      },
       ({ machine, ts }) => {
         // reject from init: no-op.
-        ts.schedule(() => machine.intents.reject(), 1);
-        ts.schedule(() => machine.intents.requestQuote(), 2);
+        ts.schedule(() => {
+          return machine.intents.reject();
+        }, 1);
+        ts.schedule(() => {
+          return machine.intents.requestQuote();
+        }, 2);
         // reject from received → rejected, then holds REJECTED_DISPLAY_MS → init.
-        ts.schedule(() => machine.intents.reject(), 10);
+        ts.schedule(() => {
+          return machine.intents.reject();
+        }, 10);
       },
     );
     expect(states).toEqual([
@@ -254,13 +336,24 @@ describe("createRfqTileMachine", () => {
 
   it("accept() returns to init only from the received state (no synchronous return)", () => {
     const states = run(
-      (ts) => () =>
-        ts.createColdObservable<RfqQuoteResult>("5ms (a|)", { a: quoteResult }),
+      (ts) => {
+        return () => {
+          return ts.createColdObservable<RfqQuoteResult>("5ms (a|)", {
+            a: quoteResult,
+          });
+        };
+      },
       ({ machine, ts }) => {
         // accept from init: no-op.
-        ts.schedule(() => machine.intents.accept(), 1);
-        ts.schedule(() => machine.intents.requestQuote(), 2);
-        ts.schedule(() => machine.intents.accept(), 10);
+        ts.schedule(() => {
+          return machine.intents.accept();
+        }, 1);
+        ts.schedule(() => {
+          return machine.intents.requestQuote();
+        }, 2);
+        ts.schedule(() => {
+          return machine.intents.accept();
+        }, 10);
       },
     );
     expect(states).toEqual([INIT, REQUESTED, received(RFQ_TIMEOUT_MS), INIT]);
@@ -270,14 +363,17 @@ describe("createRfqTileMachine", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
       const machine = createRfqTileMachine(pair, {
-        requestQuote: () =>
-          ts.createColdObservable<RfqQuoteResult>("5ms (a|)", {
+        requestQuote: () => {
+          return ts.createColdObservable<RfqQuoteResult>("5ms (a|)", {
             a: quoteResult,
-          }),
+          });
+        },
       });
       const sub = machine.state$.subscribe();
       let returned: unknown = "sentinel";
-      ts.schedule(() => machine.intents.requestQuote(), 2);
+      ts.schedule(() => {
+        return machine.intents.requestQuote();
+      }, 2);
       ts.schedule(() => {
         returned = (machine.intents.accept as () => unknown)();
       }, 10);
@@ -292,10 +388,14 @@ describe("createRfqTileMachine", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
       const machine = createRfqTileMachine(pair, {
-        requestQuote: () => never(ts),
+        requestQuote: () => {
+          return never(ts);
+        },
       });
       const seen: RfqState[] = [];
-      const sub = machine.state$.subscribe((s) => seen.push(s));
+      const sub = machine.state$.subscribe((s) => {
+        return seen.push(s);
+      });
       machine.dispose();
       machine.intents.requestQuote();
       machine.intents.cancel();

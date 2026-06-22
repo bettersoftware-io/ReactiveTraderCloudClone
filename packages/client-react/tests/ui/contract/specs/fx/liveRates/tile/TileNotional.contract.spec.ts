@@ -6,19 +6,21 @@ import { describe, expect, it } from "vitest";
 const notional = (
   stateOver: Partial<NotionalLike["state"]> = {},
   intentsOver: Partial<Omit<NotionalLike, "state">> = {},
-): NotionalLike => ({
-  state: {
-    displayValue: "1,000,000",
-    numericValue: 1_000_000,
-    error: null,
-    isRfq: false,
-    isDefault: true,
-    ...stateOver,
-  },
-  change: () => {},
-  reset: () => {},
-  ...intentsOver,
-});
+): NotionalLike => {
+  return {
+    state: {
+      displayValue: "1,000,000",
+      numericValue: 1_000_000,
+      error: null,
+      isRfq: false,
+      isDefault: true,
+      ...stateOver,
+    },
+    change: () => {},
+    reset: () => {},
+    ...intentsOver,
+  };
+};
 
 describe("TileNotional", () => {
   it("shows the base currency label and the formatted value", () => {
@@ -47,7 +49,14 @@ describe("TileNotional", () => {
     const edits: string[] = [];
     const n = mount(TileNotional, {
       props: {
-        notional: notional({}, { change: (v) => edits.push(v) }),
+        notional: notional(
+          {},
+          {
+            change: (v) => {
+              return edits.push(v);
+            },
+          },
+        ),
         baseCurrency: "EUR",
       },
     });
@@ -59,7 +68,14 @@ describe("TileNotional", () => {
     let reset = 0;
     const n = mount(TileNotional, {
       props: {
-        notional: notional({ isDefault: false }, { reset: () => (reset += 1) }),
+        notional: notional(
+          { isDefault: false },
+          {
+            reset: () => {
+              reset += 1;
+            },
+          },
+        ),
         baseCurrency: "EUR",
       },
     });

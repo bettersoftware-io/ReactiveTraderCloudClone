@@ -13,7 +13,9 @@ const PADDING = 8;
 function buildPath(history: readonly HistoricPosition[]): string {
   if (history.length < 2) return "";
 
-  const values = history.map((h) => h.usdPnl);
+  const values = history.map((h) => {
+    return h.usdPnl;
+  });
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
@@ -33,7 +35,9 @@ function buildPath(history: readonly HistoricPosition[]): string {
 
 function buildZeroLine(history: readonly HistoricPosition[]): number | null {
   if (history.length < 2) return null;
-  const values = history.map((h) => h.usdPnl);
+  const values = history.map((h) => {
+    return h.usdPnl;
+  });
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;

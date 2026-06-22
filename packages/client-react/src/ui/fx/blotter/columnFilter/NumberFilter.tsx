@@ -41,10 +41,12 @@ export function NumberFilter({
 
   const handleApply = useCallback(() => {
     const num = parseFloat(value);
+
     if (Number.isNaN(num)) {
       onApply(null);
       return;
     }
+
     const numTo = comparator === "inRange" ? parseFloat(valueTo) : undefined;
     onApply({
       type: "number",
@@ -60,20 +62,26 @@ export function NumberFilter({
       <select
         data-testid="number-filter-comparator"
         value={comparator}
-        onChange={(e) => setComparator(e.target.value as Comparator)}
+        onChange={(e) => {
+          return setComparator(e.target.value as Comparator);
+        }}
         className={styles.select}
       >
-        {comparators.map((c) => (
-          <option key={c.value} value={c.value}>
-            {c.label}
-          </option>
-        ))}
+        {comparators.map((c) => {
+          return (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          );
+        })}
       </select>
       <input
         type="number"
         data-testid="number-filter-value"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          return setValue(e.target.value);
+        }}
         placeholder="Value"
         className={styles.input}
       />
@@ -82,7 +90,9 @@ export function NumberFilter({
           type="number"
           data-testid="number-filter-value-to"
           value={valueTo}
-          onChange={(e) => setValueTo(e.target.value)}
+          onChange={(e) => {
+            return setValueTo(e.target.value);
+          }}
           placeholder="To"
           className={styles.input}
         />
@@ -98,7 +108,9 @@ export function NumberFilter({
         </button>
         <button
           type="button"
-          onClick={() => onApply(null)}
+          onClick={() => {
+            return onApply(null);
+          }}
           className={styles.resetBtn}
         >
           Reset

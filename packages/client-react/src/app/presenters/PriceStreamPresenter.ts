@@ -9,6 +9,7 @@ import {
 
 export class PriceStreamPresenter {
   private readonly cache = new Map<string, Observable<Price>>();
+
   constructor(private readonly pricing: PricingPort) {}
 
   price$(pair: CurrencyPair): Observable<Price> {

@@ -18,23 +18,30 @@ export class BrowserConnectionEventsAdapter implements ConnectionEventsPort {
     return new Observable<ConnectionEvent>((subscriber) => {
       let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
-      const armIdleTimer = () => {
+      function armIdleTimer() {
         if (idleTimer) clearTimeout(idleTimer);
         idleTimer = setTimeout(() => {
           subscriber.next({ type: "idleTimeout" });
         }, IDLE_TIMEOUT_MS);
-      };
+      }
 
-      const onActivity = () => {
+      function onActivity() {
         subscriber.next({ type: "userActivity" });
         armIdleTimer();
-      };
-      const onOnline = () => subscriber.next({ type: "browserOnline" });
-      const onOffline = () => subscriber.next({ type: "browserOffline" });
+      }
+
+      function onOnline() {
+        return subscriber.next({ type: "browserOnline" });
+      }
+
+      function onOffline() {
+        return subscriber.next({ type: "browserOffline" });
+      }
 
       for (const eventName of ACTIVITY_EVENTS) {
         window.addEventListener(eventName, onActivity, { passive: true });
       }
+
       window.addEventListener("online", onOnline);
       window.addEventListener("offline", onOffline);
       armIdleTimer();
@@ -43,6 +50,7 @@ export class BrowserConnectionEventsAdapter implements ConnectionEventsPort {
         for (const eventName of ACTIVITY_EVENTS) {
           window.removeEventListener(eventName, onActivity);
         }
+
         window.removeEventListener("online", onOnline);
         window.removeEventListener("offline", onOffline);
         if (idleTimer) clearTimeout(idleTimer);

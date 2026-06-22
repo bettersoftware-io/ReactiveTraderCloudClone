@@ -14,5 +14,6 @@
 // sites in connection.ts for why this matters.
 //
 // See Phase 5A.4 spec §3.3 for the fork rationale.
-export const chainable = <T>(p: Promise<T>): Cypress.Chainable<T> =>
-  p as unknown as Cypress.Chainable<T>;
+export function chainable<T>(p: Promise<T>): Cypress.Chainable<T> {
+  return p as unknown as Cypress.Chainable<T>;
+}

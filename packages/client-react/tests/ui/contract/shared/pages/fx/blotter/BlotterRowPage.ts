@@ -18,9 +18,9 @@ export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
 
   /** Ordered text of each cell in the row. */
   cellText(): string[] {
-    return [...this.row().querySelectorAll("td")].map(
-      (td) => td.textContent?.trim() ?? "",
-    );
+    return [...this.row().querySelectorAll("td")].map((td) => {
+      return td.textContent?.trim() ?? "";
+    });
   }
 
   /** True when a cell with the given text is present. */

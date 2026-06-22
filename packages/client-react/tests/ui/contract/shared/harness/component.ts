@@ -25,6 +25,7 @@ export interface PageContext<P> {
 /** Base class for all page objects. Provides the neutral update drivers. */
 export abstract class MountedComponent<P> {
   protected readonly root: HTMLElement;
+
   private readonly ctx: PageContext<P>;
 
   constructor(ctx: PageContext<P>) {

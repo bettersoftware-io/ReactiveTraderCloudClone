@@ -18,7 +18,9 @@ function makeTestMachine<S>(subject: BehaviorSubject<S>) {
   const sub = state$.subscribe();
 
   const intent = vi.fn();
-  const dispose = vi.fn(() => sub.unsubscribe());
+  const dispose = vi.fn(() => {
+    return sub.unsubscribe();
+  });
 
   const machine: Machine<S, { intent: () => void }> = {
     state$,
@@ -30,10 +32,12 @@ function makeTestMachine<S>(subject: BehaviorSubject<S>) {
 
 describe("useMachine", () => {
   it("calls the factory exactly once across re-renders", () => {
-    const factory = vi.fn(
-      () => makeTestMachine(new BehaviorSubject(0)).machine,
-    );
-    const { rerender } = renderHook(() => useMachine(factory));
+    const factory = vi.fn(() => {
+      return makeTestMachine(new BehaviorSubject(0)).machine;
+    });
+    const { rerender } = renderHook(() => {
+      return useMachine(factory);
+    });
     rerender();
     rerender();
     expect(factory).toHaveBeenCalledTimes(1);
@@ -42,21 +46,31 @@ describe("useMachine", () => {
   it("returns the current state$ value and re-renders when it emits", () => {
     const subject = new BehaviorSubject(42);
     const { machine } = makeTestMachine(subject);
-    const factory = vi.fn(() => machine);
+    const factory = vi.fn(() => {
+      return machine;
+    });
 
-    const { result } = renderHook(() => useMachine(factory));
+    const { result } = renderHook(() => {
+      return useMachine(factory);
+    });
     expect(result.current.state).toBe(42);
 
-    act(() => subject.next(99));
+    act(() => {
+      return subject.next(99);
+    });
     expect(result.current.state).toBe(99);
   });
 
   it("passes intent methods through and keeps stable references across re-renders", () => {
     const subject = new BehaviorSubject(0);
     const { machine } = makeTestMachine(subject);
-    const factory = vi.fn(() => machine);
+    const factory = vi.fn(() => {
+      return machine;
+    });
 
-    const { result, rerender } = renderHook(() => useMachine(factory));
+    const { result, rerender } = renderHook(() => {
+      return useMachine(factory);
+    });
     const intentRef = result.current.intent;
 
     rerender();
@@ -66,9 +80,13 @@ describe("useMachine", () => {
   it("calls dispose() exactly once on unmount and NOT on re-render", async () => {
     const subject = new BehaviorSubject(0);
     const { machine, dispose } = makeTestMachine(subject);
-    const factory = vi.fn(() => machine);
+    const factory = vi.fn(() => {
+      return machine;
+    });
 
-    const { rerender, unmount } = renderHook(() => useMachine(factory));
+    const { rerender, unmount } = renderHook(() => {
+      return useMachine(factory);
+    });
     rerender();
     rerender();
     expect(dispose).not.toHaveBeenCalled();
@@ -80,13 +98,20 @@ describe("useMachine", () => {
   });
 
   it("calls the factory exactly once even inside React.StrictMode (StrictMode-safe lazy ref)", () => {
-    const factory = vi.fn(
-      () => makeTestMachine(new BehaviorSubject(0)).machine,
+    const factory = vi.fn(() => {
+      return makeTestMachine(new BehaviorSubject(0)).machine;
+    });
+
+    function wrapper({ children }: { children: React.ReactNode }) {
+      return <React.StrictMode>{children}</React.StrictMode>;
+    }
+
+    renderHook(
+      () => {
+        return useMachine(factory);
+      },
+      { wrapper },
     );
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <React.StrictMode>{children}</React.StrictMode>
-    );
-    renderHook(() => useMachine(factory), { wrapper });
     expect(factory).toHaveBeenCalledTimes(1);
   });
 
@@ -109,7 +134,11 @@ describe("useMachine", () => {
 
     const machine: Machine<number, { bump: () => void }> = {
       state$,
-      intents: { bump: () => source$.next(++count) },
+      intents: {
+        bump: () => {
+          return source$.next(++count);
+        },
+      },
       dispose,
     };
     return { machine, dispose };
@@ -127,9 +156,17 @@ describe("useMachine", () => {
   }: {
     machine: Machine<number, { bump: () => void }>;
   }) {
-    const { state, bump } = useMachine(() => machine);
+    const { state, bump } = useMachine(() => {
+      return machine;
+    });
     return (
-      <button type="button" data-testid="probe" onClick={() => bump()}>
+      <button
+        type="button"
+        data-testid="probe"
+        onClick={() => {
+          return bump();
+        }}
+      >
         {state}
       </button>
     );

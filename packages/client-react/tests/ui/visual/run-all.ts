@@ -63,22 +63,36 @@ console.log(
 );
 for (const r of runners) console.log(`  • ${r}`);
 
-const run = (script: string) =>
-  new Promise<{ script: string; code: number; output: string }>((resolve) => {
-    const chunks: Buffer[] = [];
-    const child = spawn("pnpm", ["run", script], { shell: false });
-    child.stdout.on("data", (d: Buffer) => chunks.push(d));
-    child.stderr.on("data", (d: Buffer) => chunks.push(d));
+function run(script: string) {
+  return new Promise<{ script: string; code: number; output: string }>(
+    (resolve) => {
+      const chunks: Buffer[] = [];
+      const child = spawn("pnpm", ["run", script], { shell: false });
+      child.stdout.on("data", (d: Buffer) => {
+        return chunks.push(d);
+      });
+      child.stderr.on("data", (d: Buffer) => {
+        return chunks.push(d);
+      });
 
-    const finish = (code: number) =>
-      resolve({ script, code, output: Buffer.concat(chunks).toString("utf8") });
+      function finish(code: number) {
+        return resolve({
+          script,
+          code,
+          output: Buffer.concat(chunks).toString("utf8"),
+        });
+      }
 
-    child.on("error", (err) => {
-      chunks.push(Buffer.from(`failed to spawn: ${String(err)}\n`));
-      finish(1);
-    });
-    child.on("exit", (code) => finish(code ?? 1));
-  });
+      child.on("error", (err) => {
+        chunks.push(Buffer.from(`failed to spawn: ${String(err)}\n`));
+        finish(1);
+      });
+      child.on("exit", (code) => {
+        return finish(code ?? 1);
+      });
+    },
+  );
+}
 
 // Bounded worker pool: at most `maxParallel` runners execute at once. Results
 // are written back by index so the printed order always matches `runners`,
@@ -87,12 +101,14 @@ const results: { script: string; code: number; output: string }[] = new Array(
   runners.length,
 );
 let nextIndex = 0;
-const worker = async () => {
+
+async function worker() {
   while (nextIndex < runners.length) {
     const i = nextIndex++;
     results[i] = await run(runners[i]);
   }
-};
+}
+
 await Promise.all(Array.from({ length: maxParallel }, worker));
 
 for (const r of results) {
@@ -102,7 +118,9 @@ for (const r of results) {
   console.log(r.output.trimEnd());
 }
 
-const failed = results.filter((r) => r.code !== 0);
+const failed = results.filter((r) => {
+  return r.code !== 0;
+});
 console.log(
   `\nVisual summary: ${results.length - failed.length}/${results.length} runner(s) passed.`,
 );

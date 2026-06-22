@@ -34,12 +34,12 @@ AfterAll(async () => {
   await dev?.stop();
 });
 
-Before(async function (this: PlaywrightWorld) {
+Before(async function openWorld(this: PlaywrightWorld) {
   if (!browser) throw new Error("browser not initialised in BeforeAll");
   await this.open(browser);
 });
 
-After(async function (this: PlaywrightWorld, { result }) {
+After(async function closeWorld(this: PlaywrightWorld, { result }) {
   // On failure, embed a screenshot into the cucumber HTML report (image/png
   // attachments render inline under the failed scenario) before the page closes.
   if (result?.status === Status.FAILED && this.page) {
@@ -53,5 +53,6 @@ After(async function (this: PlaywrightWorld, { result }) {
       // skip the attach so the original failure stays visible and close() runs.
     }
   }
+
   await this.close();
 });

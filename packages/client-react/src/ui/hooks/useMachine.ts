@@ -3,6 +3,8 @@ import { useEffect, useRef } from "react";
 
 import type { Machine } from "#/app/presenters/machine";
 
+type MachineView<TState, TIntents> = { state: TState } & TIntents;
+
 /** Logic-free bridge: instantiates the factory once per mount (lazy useRef so
  * StrictMode double-render can't double-instantiate), reads state$ via
  * useStateObservable, returns { state, ...intents } (stable intent refs), and
@@ -34,13 +36,14 @@ import type { Machine } from "#/app/presenters/machine";
  * within the commit, so it always runs before the scheduled microtask. */
 export function useMachine<TState, TIntents extends object & { state?: never }>(
   factory: () => Machine<TState, TIntents>,
-): { state: TState } & TIntents {
+): MachineView<TState, TIntents> {
   const ref = useRef<Machine<TState, TIntents> | null>(null);
   if (ref.current === null) ref.current = factory();
   const machine = ref.current;
   const keepAlive = useRef(true);
   useEffect(() => {
     keepAlive.current = true; // a re-setup (StrictMode remount) cancels a pending disposal
+
     return () => {
       keepAlive.current = false;
       queueMicrotask(() => {

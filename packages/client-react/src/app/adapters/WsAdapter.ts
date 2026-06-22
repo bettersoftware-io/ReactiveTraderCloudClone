@@ -23,21 +23,30 @@ export interface WsAdapterOptions {
 
 export class WsAdapter implements IWsAdapter {
   private ws: WebSocket | null = null;
+
   private readonly url: string;
+
   private readonly reconnectDelayMs: number;
+
   private readonly handlers = new Map<string, Set<MessageHandler>>();
+
   private readonly pendingRpcs = new Map<
     string,
     { resolve: (p: unknown) => void; reject: (e: Error) => void }
   >();
+
   // Messages issued before the socket reaches OPEN, held until onopen flushes
   // them. Without this, a subscription sent in the same tick as construction
   // (before the handshake completes) would be silently dropped and the stream
   // would never start.
   private readonly sendQueue: string[] = [];
+
   private nextCorrelationId = 1;
+
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
   private disposed = false;
+
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
   constructor(url: string, options: WsAdapterOptions = {}) {
@@ -60,6 +69,7 @@ export class WsAdapter implements IWsAdapter {
 
     this.ws.onmessage = (event) => {
       let msg: WsMessage;
+
       try {
         msg = JSON.parse(String(event.data));
       } catch {
@@ -69,6 +79,7 @@ export class WsAdapter implements IWsAdapter {
       // Handle RPC responses
       if (msg.correlationId && this.pendingRpcs.has(msg.correlationId)) {
         const rpc = this.pendingRpcs.get(msg.correlationId);
+
         if (rpc) {
           this.pendingRpcs.delete(msg.correlationId);
           rpc.resolve(msg.payload);
@@ -78,6 +89,7 @@ export class WsAdapter implements IWsAdapter {
 
       // Route to stream handlers
       const handlers = this.handlers.get(msg.type);
+
       if (handlers) {
         for (const handler of handlers) {
           handler(msg.payload);
@@ -116,6 +128,7 @@ export class WsAdapter implements IWsAdapter {
     if (this.disposed) return;
     const msg: WsMessage = { type, payload };
     const serialized = JSON.stringify(msg);
+
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(serialized);
     } else {
@@ -126,9 +139,11 @@ export class WsAdapter implements IWsAdapter {
 
   private flushSendQueue(): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return;
+
     for (const serialized of this.sendQueue) {
       this.ws.send(serialized);
     }
+
     this.sendQueue.length = 0;
   }
 
@@ -136,11 +151,13 @@ export class WsAdapter implements IWsAdapter {
     return new Promise((resolve, reject) => {
       const correlationId = String(this.nextCorrelationId++);
       this.pendingRpcs.set(correlationId, { resolve, reject });
+
       if (this.ws?.readyState !== WebSocket.OPEN) {
         this.pendingRpcs.delete(correlationId);
         reject(new Error("WebSocket not connected"));
         return;
       }
+
       const msg: WsMessage = { type, payload, correlationId };
       this.ws.send(JSON.stringify(msg));
     });
@@ -150,8 +167,10 @@ export class WsAdapter implements IWsAdapter {
     if (!this.handlers.has(type)) {
       this.handlers.set(type, new Set());
     }
+
     const handlerSet = this.handlers.get(type) as Set<MessageHandler>;
     handlerSet.add(handler);
+
     return () => {
       this.handlers.get(type)?.delete(handler);
     };
@@ -168,6 +187,7 @@ export class WsAdapter implements IWsAdapter {
           setTimeout(check, 100);
         }
       };
+
       check();
     });
   }
@@ -183,9 +203,11 @@ export class WsAdapter implements IWsAdapter {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.ws?.close();
     this.handlers.clear();
+
     for (const rpc of this.pendingRpcs.values()) {
       rpc.reject(new Error("WsAdapter disposed"));
     }
+
     this.pendingRpcs.clear();
   }
 }

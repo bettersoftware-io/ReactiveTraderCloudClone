@@ -13,21 +13,30 @@ const EURUSD: CurrencyPair = {
   pipsPosition: 4,
   defaultNotional: 1_000_000,
 };
-const tick = (mid: number): PriceTick => ({
-  symbol: "EURUSD",
-  mid,
-  ask: mid + 0.0001,
-  bid: mid - 0.0001,
-  valueDate: "2026-05-05",
-  creationTimestamp: 1,
-});
+
+function tick(mid: number): PriceTick {
+  return {
+    symbol: "EURUSD",
+    mid,
+    ask: mid + 0.0001,
+    bid: mid - 0.0001,
+    valueDate: "2026-05-05",
+    creationTimestamp: 1,
+  };
+}
 
 describe("PriceStreamPresenter", () => {
   it("emits a Price (enriched tick) for the given pair", async () => {
     const port: PricingPort = {
-      getPriceUpdates: () => of(tick(1.1), tick(1.1001)),
-      getPriceHistory: () => of([]),
-      getRfqQuote: () => of({ bid: 0, ask: 0, mid: 0 }),
+      getPriceUpdates: () => {
+        return of(tick(1.1), tick(1.1001));
+      },
+      getPriceHistory: () => {
+        return of([]);
+      },
+      getRfqQuote: () => {
+        return of({ bid: 0, ask: 0, mid: 0 });
+      },
     };
     const presenter = new PriceStreamPresenter(port);
     const first = await firstValueFrom(presenter.price$(EURUSD).pipe(take(1)));
@@ -37,9 +46,15 @@ describe("PriceStreamPresenter", () => {
 
   it("returns the same Observable instance for the same symbol (cached)", () => {
     const port: PricingPort = {
-      getPriceUpdates: () => of(tick(1.1)),
-      getPriceHistory: () => of([]),
-      getRfqQuote: () => of({ bid: 0, ask: 0, mid: 0 }),
+      getPriceUpdates: () => {
+        return of(tick(1.1));
+      },
+      getPriceHistory: () => {
+        return of([]);
+      },
+      getRfqQuote: () => {
+        return of({ bid: 0, ask: 0, mid: 0 });
+      },
     };
     const presenter = new PriceStreamPresenter(port);
     expect(presenter.price$(EURUSD)).toBe(presenter.price$(EURUSD));

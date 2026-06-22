@@ -15,6 +15,7 @@ export type TradeListener = (trade: Trade) => void;
 
 export class ExecutionSimulator implements ExecutionPort {
   private nextId = 1;
+
   private readonly listeners: TradeListener[] = [];
 
   onTrade(listener: TradeListener): void {
@@ -34,18 +35,20 @@ export class ExecutionSimulator implements ExecutionPort {
           ? DELAYED_PAIR_MS
           : Math.random() * NORMAL_MAX_DELAY_MS;
       return timer(delayMs).pipe(
-        map<number, Trade>(() => ({
-          tradeId,
-          tradeName: DEFAULT_TRADER_NAME,
-          currencyPair: request.currencyPair,
-          notional: request.notional,
-          dealtCurrency: request.dealtCurrency,
-          direction: request.direction,
-          spotRate: request.spotRate,
-          status,
-          tradeDate: now,
-          valueDate: now,
-        })),
+        map<number, Trade>(() => {
+          return {
+            tradeId,
+            tradeName: DEFAULT_TRADER_NAME,
+            currencyPair: request.currencyPair,
+            notional: request.notional,
+            dealtCurrency: request.dealtCurrency,
+            direction: request.direction,
+            spotRate: request.spotRate,
+            status,
+            tradeDate: now,
+            valueDate: now,
+          };
+        }),
         tap((trade) => {
           for (const listener of this.listeners) listener(trade);
         }),

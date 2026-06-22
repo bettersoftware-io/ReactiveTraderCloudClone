@@ -14,6 +14,7 @@ export async function awaitPendingRpc(
     if (ws.hasPendingRpc(name)) return;
     await Promise.resolve();
   }
+
   throw new Error(
     `Expected pending RPC "${name}" but none registered after ${maxIterations} microtask yields`,
   );

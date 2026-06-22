@@ -22,9 +22,11 @@ export class AdminPanelPage extends MountedComponent<Record<string, never>> {
 
   /** Wait for the panel (past its loading placeholder) to render. */
   async waitUntilLoaded(): Promise<void> {
-    await waitFor(() =>
-      within(this.root).getByRole("heading", { name: /throughput control/i }),
-    );
+    await waitFor(() => {
+      return within(this.root).getByRole("heading", {
+        name: /throughput control/i,
+      });
+    });
   }
 
   /** The values the panel asked to persist, in order (old PUT-body equivalent). */

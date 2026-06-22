@@ -12,9 +12,14 @@ export function PropsHost<P>({
   const props = useSyncExternalStore(
     (onChange) => {
       const sub = subject.subscribe(onChange);
-      return () => sub.unsubscribe();
+
+      return () => {
+        return sub.unsubscribe();
+      };
     },
-    () => subject.getValue(),
+    () => {
+      return subject.getValue();
+    },
   );
   return build(props);
 }

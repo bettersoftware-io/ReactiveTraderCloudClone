@@ -60,35 +60,35 @@ export function expectBlotterRowCountEquals(
 }
 
 export function expectExportCsvVisible(ctx: TestContext): void {
-  chainable(ctx.po.blotterTable.isExportCsvVisible()).then((v) =>
-    assertTrue(v, "export CSV button not visible"),
-  );
+  chainable(ctx.po.blotterTable.isExportCsvVisible()).then((v) => {
+    return assertTrue(v, "export CSV button not visible");
+  });
 }
 
 export function expectExportCsvTextContains(
   ctx: TestContext,
   expected: string,
 ): void {
-  chainable(ctx.po.blotterTable.exportCsvText()).then((text) =>
-    assertContains(text, expected),
-  );
+  chainable(ctx.po.blotterTable.exportCsvText()).then((text) => {
+    return assertContains(text, expected);
+  });
 }
 
 export function expectFirstBlotterRowVisible(ctx: TestContext): void {
-  chainable(ctx.po.blotterTable.isFirstRowVisible()).then((v) =>
-    assertTrue(v, "first blotter row not visible"),
-  );
+  chainable(ctx.po.blotterTable.isFirstRowVisible()).then((v) => {
+    return assertTrue(v, "first blotter row not visible");
+  });
 }
 
 export function expectFirstBlotterRowBackgroundNonEmpty(
   ctx: TestContext,
 ): void {
-  chainable(ctx.po.blotterTable.firstRowBackgroundColor()).then((color) =>
-    assertGreaterThanZero(
+  chainable(ctx.po.blotterTable.firstRowBackgroundColor()).then((color) => {
+    return assertGreaterThanZero(
       color.length,
       "first blotter row background color is empty",
-    ),
-  );
+    );
+  });
 }
 
 export function hoverFirstBlotterRow(ctx: TestContext): void {

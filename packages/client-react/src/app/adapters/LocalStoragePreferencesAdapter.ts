@@ -30,6 +30,7 @@ function readStored<T extends string>(
   } catch {
     // localStorage may be unavailable (private mode, disabled cookies, etc.)
   }
+
   return fallback;
 }
 
@@ -51,6 +52,7 @@ function writeStored(key: string, value: string): void {
  */
 export class LocalStoragePreferencesAdapter implements PreferencesPort {
   private readonly theme: BehaviorSubject<Theme>;
+
   private readonly viewMode: BehaviorSubject<ViewMode>;
 
   constructor() {

@@ -29,6 +29,7 @@ export function describeDealerPortContract(
   describe(`${label} :: DealerPort contract`, () => {
     it("first emission contains the SoW set as a full snapshot", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getDealers());
         await driver.emitInitialSoW();
@@ -43,10 +44,12 @@ export function describeDealerPortContract(
     it("subsequent emissions are full snapshots, not deltas", async () => {
       const harness = makeHarness();
       const { port, driver, teardown, supportsLiveAdd = true } = harness;
+
       if (!supportsLiveAdd) {
         teardown();
         return;
       }
+
       try {
         const promise = firstValueFrom(
           port.getDealers().pipe(take(2), toArray()),

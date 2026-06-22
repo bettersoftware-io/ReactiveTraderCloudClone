@@ -6,10 +6,16 @@ import type { PositionUpdates } from "../analytics/position.js";
 import type { AnalyticsPort } from "../ports/analyticsPort.js";
 import { AnalyticsUseCase } from "./AnalyticsUseCase.js";
 
-function stubAnalytics(updates: PositionUpdates[]): {
+interface LastCurrencyRef {
+  current: string | null;
+}
+
+interface StubAnalytics {
   port: AnalyticsPort;
-  lastCurrency: { current: string | null };
-} {
+  lastCurrency: LastCurrencyRef;
+}
+
+function stubAnalytics(updates: PositionUpdates[]): StubAnalytics {
   const lastCurrency = { current: null as string | null };
   const port: AnalyticsPort = {
     getAnalytics(currency: string) {
@@ -59,7 +65,9 @@ describe("AnalyticsUseCase", () => {
   it("supports a single emission via of()", async () => {
     const update = buildUpdate();
     const port: AnalyticsPort = {
-      getAnalytics: () => of(update),
+      getAnalytics: () => {
+        return of(update);
+      },
     };
     const useCase = new AnalyticsUseCase(port);
 

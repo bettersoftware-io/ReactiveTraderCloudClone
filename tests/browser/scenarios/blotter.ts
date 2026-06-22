@@ -97,7 +97,10 @@ export async function buyNTimesWithDismissals(
   // at least one Rejected trade (ExecutionSimulator always rejects GBPJPY).
   if (n > 1) await ctx.po.liveRatesTile.buyNTimesWithDismissals(n - 1);
   await ctx.po.liveRatesTile.clickBuyOnPair("GBPJPY");
-  await new Promise((r) => setTimeout(r, 1_500));
+  await new Promise((r) => {
+    return setTimeout(r, 1_500);
+  });
+
   if (await ctx.po.liveRatesTile.isConfirmationVisible()) {
     await ctx.po.liveRatesTile.dismissConfirmation();
   }

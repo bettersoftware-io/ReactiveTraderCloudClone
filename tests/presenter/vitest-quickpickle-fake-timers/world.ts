@@ -20,7 +20,9 @@ export class VitestFakePresenterWorld
   implements AwaitHelpers
 {
   ctx!: PresenterCtx;
+
   scratch: PresenterScratchpad = newScratchpad();
+
   /** Held for the entire scenario to keep shareReplay streams warm. */
   _statusSub?: Subscription;
 
@@ -32,6 +34,7 @@ export class VitestFakePresenterWorld
     await vi.advanceTimersByTimeAsync(timeoutMs);
     return p;
   }
+
   async waitSeconds(n: number): Promise<void> {
     await vi.advanceTimersByTimeAsync(n * 1000);
   }

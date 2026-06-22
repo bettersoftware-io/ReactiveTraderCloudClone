@@ -20,7 +20,9 @@ function SellSideRfqRow({
   instrumentMap,
 }: SellSideRfqRowProps) {
   const quotes = useHooks().useQuotesForRfq(rfq.id);
-  const abQuote = quotes.find((q) => q.dealerId === adaptiveBankId);
+  const abQuote = quotes.find((q) => {
+    return q.dealerId === adaptiveBankId;
+  });
   if (!abQuote) return null;
   return (
     <TradeTicket
@@ -32,15 +34,16 @@ function SellSideRfqRow({
 }
 
 export function SellSidePanel() {
-  const hooks = useHooks();
-  const rfqs = hooks.useRfqs();
-  const instruments = hooks.useInstruments();
-  const dealers = hooks.useDealers();
+  const { useRfqs, useInstruments, useDealers } = useHooks();
+  const rfqs = useRfqs();
+  const instruments = useInstruments();
+  const dealers = useDealers();
 
-  const adaptiveBankId = useMemo(
-    () => dealers.find((d) => d.name === ADAPTIVE_BANK_NAME)?.id,
-    [dealers],
-  );
+  const adaptiveBankId = useMemo(() => {
+    return dealers.find((d) => {
+      return d.name === ADAPTIVE_BANK_NAME;
+    })?.id;
+  }, [dealers]);
 
   const instrumentMap = useMemo(() => {
     const m = new Map<number, Instrument>();
@@ -55,14 +58,16 @@ export function SellSidePanel() {
       {adaptiveBankId === undefined || rfqs.length === 0 ? (
         <div className={styles.empty}>No RFQs for Adaptive Bank</div>
       ) : (
-        rfqs.map((rfq) => (
-          <SellSideRfqRow
-            key={rfq.id}
-            rfq={rfq}
-            adaptiveBankId={adaptiveBankId}
-            instrumentMap={instrumentMap}
-          />
-        ))
+        rfqs.map((rfq) => {
+          return (
+            <SellSideRfqRow
+              key={rfq.id}
+              rfq={rfq}
+              adaptiveBankId={adaptiveBankId}
+              instrumentMap={instrumentMap}
+            />
+          );
+        })
       )}
     </div>
   );

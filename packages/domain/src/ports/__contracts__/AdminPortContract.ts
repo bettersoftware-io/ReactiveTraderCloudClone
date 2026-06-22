@@ -25,6 +25,7 @@ export function describeAdminPortContract(
   describe(`${label} :: AdminPort contract`, () => {
     it("getThroughput emits the current value then completes", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         driver.primeGet(250);
         const promise = firstValueFrom(port.getThroughput());
@@ -37,6 +38,7 @@ export function describeAdminPortContract(
 
     it("setThroughput completes with no value", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.setThroughput(500));
         await driver.ackSet();

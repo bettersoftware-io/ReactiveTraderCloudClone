@@ -12,9 +12,11 @@ export class RfqTilesPanelPage extends MountedComponent<Record<string, never>> {
 
   /** Number of RFQ cards currently rendered (each has a state badge). */
   cardCount(): number {
-    return [...this.root.querySelectorAll("span")].filter((s) =>
-      /^(Live|Done|Expired|Cancelled)$/.test(s.textContent?.trim() ?? ""),
-    ).length;
+    return [...this.root.querySelectorAll("span")].filter((s) => {
+      return /^(Live|Done|Expired|Cancelled)$/.test(
+        s.textContent?.trim() ?? "",
+      );
+    }).length;
   }
 
   /** The empty-state message, or null when cards are present. */
@@ -35,9 +37,9 @@ export class RfqTilesPanelPage extends MountedComponent<Record<string, never>> {
 
   /** Dismiss the first card via its ✕ control. */
   async dismissFirst(): Promise<void> {
-    const btn = [...this.root.querySelectorAll("button")].find((b) =>
-      (b.textContent ?? "").includes("✕"),
-    );
+    const btn = [...this.root.querySelectorAll("button")].find((b) => {
+      return (b.textContent ?? "").includes("✕");
+    });
     if (!btn) throw new Error("No dismissable card present");
     await this.user.click(btn);
   }

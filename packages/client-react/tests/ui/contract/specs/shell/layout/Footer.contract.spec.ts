@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { ConnectionStatus } from "@rtc/domain";
 
-afterEach(() => cleanupMounted());
+afterEach(() => {
+  return cleanupMounted();
+});
 
 describe("Footer", () => {
   it("renders the footer landmark", () => {

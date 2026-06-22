@@ -74,15 +74,16 @@ export default defineConfig({
             arg,
             browserName,
             ext,
-          }) =>
-            resolve(
+          }) => {
+            return resolve(
               root,
               testFileDirectory,
               "__screenshots__",
               baseline,
               testFileName,
               `${arg}-${browserName}${ext}`,
-            ),
+            );
+          },
           // Vitest's default `resolveDiffPath` drops failure artifacts into
           // `.vitest-attachments/…/<arg>-{actual,diff}-<browser>-<platform>.png`,
           // which the committed gitignore + CI failure-upload globs
@@ -102,15 +103,16 @@ export default defineConfig({
             arg,
             browserName,
             ext,
-          }) =>
-            resolve(
+          }) => {
+            return resolve(
               root,
               testFileDirectory,
               "__screenshots__",
               baseline,
               testFileName,
               `${arg.replace(/-(reference|actual|diff)$/, `-${browserName}-$1`)}${ext}`,
-            ),
+            );
+          },
         },
       },
     },

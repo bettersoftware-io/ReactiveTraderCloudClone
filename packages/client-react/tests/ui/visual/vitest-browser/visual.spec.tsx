@@ -13,7 +13,9 @@ import { scenarios } from "../shared/scenarios";
 //
 // Golden basename: scenario name with "/" → "-". The matcher appends the browser
 // name (e.g. `app-fx-chromium.png`); see the config's resolveScreenshotPath.
-const goldenName = (scenario: string) => scenario.replace(/\//g, "-");
+function goldenName(scenario: string) {
+  return scenario.replace(/\//g, "-");
+}
 
 for (const name of Object.keys(scenarios)) {
   const action = scenarioActions[name] ?? {};
@@ -29,6 +31,7 @@ for (const name of Object.keys(scenarios)) {
     if (action.click) {
       await userEvent.click(screen.getByTestId(action.click).element());
     }
+
     for (const step of action.steps ?? []) {
       if ("click" in step) {
         await userEvent.click(screen.getByTestId(step.click).element());
@@ -43,9 +46,11 @@ for (const name of Object.keys(scenarios)) {
         );
       }
     }
+
     if (action.waitForText) {
       await expect.element(screen.getByText(action.waitForText)).toBeVisible();
     }
+
     if (action.assertAriaLabelOf !== undefined) {
       await expect
         .element(screen.getByTestId(action.assertAriaLabelOf))

@@ -2,18 +2,20 @@
 import { getCtx } from "./_context";
 import * as common from "./scenarios/common";
 
-export const withWorkspaceOpen = (): void => {
+export function withWorkspaceOpen(): void {
   beforeEach(() => {
     common.openWorkspace(getCtx());
   });
-};
-export const withFxWorkspaceOpen = (): void => {
+}
+
+export function withFxWorkspaceOpen(): void {
   beforeEach(() => {
     common.openFxWorkspace(getCtx());
   });
-};
-export const withCreditWorkspaceOpen = (): void => {
+}
+
+export function withCreditWorkspaceOpen(): void {
   beforeEach(() => {
     common.openCreditWorkspace(getCtx());
   });
-};
+}

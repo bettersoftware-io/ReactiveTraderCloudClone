@@ -12,7 +12,9 @@ export function ViewToggle({ mode, onChange }: ViewToggleProps) {
     <button
       type="button"
       data-testid="view-toggle"
-      onClick={() => onChange(mode === "chart" ? "price" : "chart")}
+      onClick={() => {
+        return onChange(mode === "chart" ? "price" : "chart");
+      }}
       title={`Switch to ${mode === "chart" ? "price" : "chart"} view`}
       className={styles.toggle}
     >

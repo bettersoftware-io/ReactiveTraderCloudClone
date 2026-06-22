@@ -26,7 +26,9 @@ export function QuantityInput({ value, onChange, error }: QuantityInputProps) {
         data-testid="quantity-input"
         data-error={error ? "true" : "false"}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          return onChange(e.target.value);
+        }}
         max={CREDIT_MAX_QUANTITY_INPUT}
         placeholder="Enter quantity..."
         className={styles.input}

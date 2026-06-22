@@ -33,20 +33,25 @@ export function FxBlotter() {
   // Track which trades are "new" (appeared after initial load)
   const newTradeIds = useMemo(() => {
     const newIds = new Set<number>();
+
     for (const trade of trades) {
       if (!seenTradeIds.current.has(trade.tradeId)) {
         // Only mark as new if we've seen at least one snapshot
         if (seenTradeIds.current.size > 0) {
           newIds.add(trade.tradeId);
         }
+
         seenTradeIds.current.add(trade.tradeId);
       }
     }
+
     return newIds;
   }, [trades]);
 
   const handleSort = useCallback((column: keyof Trade) => {
-    setSort((prev) => nextSortDirection(column, prev));
+    setSort((prev) => {
+      return nextSortDirection(column, prev);
+    });
   }, []);
 
   const handleFilter = useCallback(
@@ -68,11 +73,15 @@ export function FxBlotter() {
 
   const activeFilterLabels = useMemo(() => {
     const labels: string[] = [];
+
     for (const [key, filter] of filters) {
-      const col = COLUMNS.find((c) => c.key === key);
+      const col = COLUMNS.find((c) => {
+        return c.key === key;
+      });
       if (col) labels.push(col.label);
       void filter;
     }
+
     return labels;
   }, [filters]);
 
@@ -91,7 +100,9 @@ export function FxBlotter() {
         <button
           type="button"
           data-testid="export-csv"
-          onClick={() => exportToCsv(processedTrades)}
+          onClick={() => {
+            return exportToCsv(processedTrades);
+          }}
           className={styles.exportBtn}
         >
           Export CSV
@@ -110,13 +121,15 @@ export function FxBlotter() {
             />
           </thead>
           <tbody>
-            {processedTrades.map((trade) => (
-              <BlotterRow
-                key={trade.tradeId}
-                trade={trade}
-                isNew={newTradeIds.has(trade.tradeId)}
-              />
-            ))}
+            {processedTrades.map((trade) => {
+              return (
+                <BlotterRow
+                  key={trade.tradeId}
+                  trade={trade}
+                  isNew={newTradeIds.has(trade.tradeId)}
+                />
+              );
+            })}
             {processedTrades.length === 0 && (
               <tr>
                 <td colSpan={COLUMNS.length} className={styles.emptyCell}>

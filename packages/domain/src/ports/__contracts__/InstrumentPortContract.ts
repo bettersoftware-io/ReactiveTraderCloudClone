@@ -32,6 +32,7 @@ export function describeInstrumentPortContract(
   describe(`${label} :: InstrumentPort contract`, () => {
     it("first emission contains the SoW set as a full snapshot", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getInstruments());
         await driver.emitInitialSoW();
@@ -46,10 +47,12 @@ export function describeInstrumentPortContract(
     it("subsequent emissions are full snapshots, not deltas", async () => {
       const harness = makeHarness();
       const { port, driver, teardown, supportsLiveAdd = true } = harness;
+
       if (!supportsLiveAdd) {
         teardown();
         return;
       }
+
       try {
         const promise = firstValueFrom(
           port.getInstruments().pipe(take(2), toArray()),

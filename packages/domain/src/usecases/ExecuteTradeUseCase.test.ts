@@ -29,10 +29,16 @@ const PRICE: Price = {
   spread: "2.0",
 };
 
-function stubExecution(trade: Trade): {
+interface LastRequestRef {
+  current: ExecutionRequest | null;
+}
+
+interface StubExecution {
   port: ExecutionPort;
-  lastRequest: { current: ExecutionRequest | null };
-} {
+  lastRequest: LastRequestRef;
+}
+
+function stubExecution(trade: Trade): StubExecution {
   const lastRequest = { current: null as ExecutionRequest | null };
   const port: ExecutionPort = {
     executeTrade(request) {
@@ -121,7 +127,9 @@ describe("ExecuteTradeUseCase", () => {
   it("propagates errors from the port (timeout handling stays in the hook)", async () => {
     const port: ExecutionPort = {
       executeTrade() {
-        return throwError(() => new Error("timeout"));
+        return throwError(() => {
+          return new Error("timeout");
+        });
       },
     };
     const useCase = new ExecuteTradeUseCase(port);

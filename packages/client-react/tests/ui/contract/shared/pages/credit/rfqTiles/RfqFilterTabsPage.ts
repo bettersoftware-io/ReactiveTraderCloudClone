@@ -21,7 +21,9 @@ export class RfqFilterTabsPage extends MountedComponent<RfqFilterTabsProps> {
   tabLabels(): string[] {
     return this.q()
       .getAllByRole("button")
-      .map((b) => b.textContent?.trim() ?? "");
+      .map((b) => {
+        return b.textContent?.trim() ?? "";
+      });
   }
 
   /** Whether the tab with the given label is rendered as the active one. */

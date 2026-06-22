@@ -13,10 +13,10 @@ interface TradeTicketProps {
 }
 
 export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
-  const hooks = useHooks();
+  const { useTicketSubmission } = useHooks();
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
-  const ticket = hooks.useTicketSubmission();
+  const ticket = useTicketSubmission();
   const { submitPrice, pass } = ticket;
   const [price, setPrice] = useState("");
   const submitted = ticket.state.submitted;
@@ -68,7 +68,9 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
             type="number"
             data-testid="trade-ticket-price"
             value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            onChange={(e) => {
+              return setPrice(e.target.value);
+            }}
             placeholder="Price"
             className={styles.priceInput}
           />

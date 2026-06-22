@@ -5,9 +5,11 @@ export class CypressBlotterTable implements BlotterTablePO {
   private tableEl() {
     return cy.get(`[data-testid="${TESTIDS.blotter.table}"]`);
   }
+
   private rows() {
     return this.tableEl().find("tbody tr");
   }
+
   private firstRow() {
     return this.rows().first();
   }
@@ -32,9 +34,9 @@ export class CypressBlotterTable implements BlotterTablePO {
   }
 
   rowCount(): Promise<number> {
-    return this.rows().then(
-      ($rows) => $rows.length,
-    ) as unknown as Promise<number>;
+    return this.rows().then(($rows) => {
+      return $rows.length;
+    }) as unknown as Promise<number>;
   }
 
   clickFirstHeader(): Promise<void> {
@@ -73,7 +75,9 @@ export class CypressBlotterTable implements BlotterTablePO {
   exportCsvText(): Promise<string> {
     return cy
       .get(`[data-testid="${TESTIDS.blotter.exportCsv}"]`)
-      .then(($el) => $el.text()) as unknown as Promise<string>;
+      .then(($el) => {
+        return $el.text();
+      }) as unknown as Promise<string>;
   }
 
   hoverFirstRow(): Promise<void> {
@@ -81,9 +85,9 @@ export class CypressBlotterTable implements BlotterTablePO {
   }
 
   firstRowBackgroundColor(): Promise<string> {
-    return this.firstRow().then(
-      ($el) => getComputedStyle($el[0]).backgroundColor,
-    ) as unknown as Promise<string>;
+    return this.firstRow().then(($el) => {
+      return getComputedStyle($el[0]).backgroundColor;
+    }) as unknown as Promise<string>;
   }
 
   isFirstRowVisible(): Promise<boolean> {

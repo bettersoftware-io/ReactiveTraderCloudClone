@@ -45,8 +45,16 @@ export function createStaleFlagMachine<T>(
   deps: StaleFlagDeps<T>,
 ): ReadOnlyMachine<boolean> {
   const events$ = merge(
-    deps.status$.pipe(map((status): Event<T> => ({ kind: "status", status }))),
-    deps.value$.pipe(map((value): Event<T> => ({ kind: "value", value }))),
+    deps.status$.pipe(
+      map((status): Event<T> => {
+        return { kind: "status", status };
+      }),
+    ),
+    deps.value$.pipe(
+      map((value): Event<T> => {
+        return { kind: "value", value };
+      }),
+    ),
   );
 
   const initial: Acc<T> = {
@@ -64,6 +72,7 @@ export function createStaleFlagMachine<T>(
           // Mirrors effect 1's `wasDisconnectedRef.current = true` branch.
           return { ...acc, wasDisconnected: true };
         }
+
         // CONNECTED: if we had previously disconnected, this is the reconnect —
         // snapshot the current value reference and go stale.
         if (acc.wasDisconnected) {
@@ -74,8 +83,10 @@ export function createStaleFlagMachine<T>(
             stale: true,
           };
         }
+
         return acc;
       }
+
       // value event: record the new reference; if stale and the reference
       // differs from the one captured at reconnect, fresh data has arrived —
       // clear the flag (mirrors effect 2).
@@ -84,12 +95,16 @@ export function createStaleFlagMachine<T>(
         current: event.value,
         hasValue: true,
       };
+
       if (acc.stale && event.value !== acc.valueAtReconnect) {
         next.stale = false;
       }
+
       return next;
     }, initial),
-    map((acc) => acc.stale),
+    map((acc) => {
+      return acc.stale;
+    }),
     // Seed the default `false` here (not as state()'s separate default) so the
     // scan's own identical first `false` is collapsed by distinctUntilChanged —
     // otherwise state() would replay its default AND the stream's first false.

@@ -19,13 +19,13 @@ interface NewRfqFormProps {
 }
 
 export function NewRfqForm({ onCreated }: NewRfqFormProps) {
-  const hooks = useHooks();
-  const instruments = hooks.useInstruments();
-  const dealers = hooks.useDealers();
+  const { useInstruments, useDealers, useRfqSubmission } = useHooks();
+  const instruments = useInstruments();
+  const dealers = useDealers();
   // App-layer machine: create→confirmation→redirect lifecycle. The component
   // keeps only draft input state below; orchestration (incl. the redirect
   // delay) lives in RfqsPresenter.createSubmission().
-  const submission = hooks.useRfqSubmission();
+  const submission = useRfqSubmission();
   const { submit } = submission;
 
   const [instrument, setInstrument] = useState<Instrument | null>(null);
@@ -40,7 +40,13 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
   // Default all dealers selected
   useMemo(() => {
     if (dealers.length > 0 && selectedDealerIds.size === 0) {
-      setSelectedDealerIds(new Set(dealers.map((d) => d.id)));
+      setSelectedDealerIds(
+        new Set(
+          dealers.map((d) => {
+            return d.id;
+          }),
+        ),
+      );
     }
   }, [dealers, selectedDealerIds.size]);
 
@@ -107,19 +113,23 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps) {
           Direction
         </span>
         <div className={styles.directionRow}>
-          {[Direction.Buy, Direction.Sell].map((dir) => (
-            <button
-              key={dir}
-              type="button"
-              data-testid={`rfq-direction-${dir}`}
-              data-direction={dir}
-              data-selected={direction === dir ? "true" : "false"}
-              onClick={() => setDirection(dir)}
-              className={styles.directionBtn}
-            >
-              {dir}
-            </button>
-          ))}
+          {[Direction.Buy, Direction.Sell].map((dir) => {
+            return (
+              <button
+                key={dir}
+                type="button"
+                data-testid={`rfq-direction-${dir}`}
+                data-direction={dir}
+                data-selected={direction === dir ? "true" : "false"}
+                onClick={() => {
+                  return setDirection(dir);
+                }}
+                className={styles.directionBtn}
+              >
+                {dir}
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -3,7 +3,9 @@ import { afterEach, vi } from "vitest";
 import { describeExecutionPortContract } from "../ports/__contracts__/ExecutionPortContract.js";
 import { ExecutionSimulator } from "./ExecutionSimulator.js";
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describeExecutionPortContract("ExecutionSimulator", () => {
   vi.useFakeTimers();
@@ -17,6 +19,8 @@ describeExecutionPortContract("ExecutionSimulator", () => {
         await vi.advanceTimersByTimeAsync(5_000);
       },
     },
-    teardown: () => vi.useRealTimers(),
+    teardown: () => {
+      return vi.useRealTimers();
+    },
   };
 });

@@ -15,14 +15,18 @@ export interface PresenterScratchpad {
   rfqQuote?: RfqQuoteResult;
 }
 
-export const newScratchpad = (): PresenterScratchpad => ({});
+export function newScratchpad(): PresenterScratchpad {
+  return {};
+}
 
 export async function openWorkspace(_w: PresenterWorld): Promise<void> {
   /* no-op: workspaces are UI-only */
 }
+
 export async function openFxWorkspace(_w: PresenterWorld): Promise<void> {
   /* no-op: workspaces are UI-only */
 }
+
 export async function openCreditWorkspace(_w: PresenterWorld): Promise<void> {
   /* no-op: workspaces are UI-only */
 }

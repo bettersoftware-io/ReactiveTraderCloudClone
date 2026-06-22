@@ -4,6 +4,7 @@ import { type BlotterPort, type Trade, TradeBlotterUseCase } from "@rtc/domain";
 
 export class BlotterPresenter {
   readonly trades$: Observable<readonly Trade[]>;
+
   constructor(blotter: BlotterPort) {
     this.trades$ = new TradeBlotterUseCase(blotter)
       .execute()

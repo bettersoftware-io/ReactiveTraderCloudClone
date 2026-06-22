@@ -8,7 +8,11 @@ import { DealersPresenter } from "../DealersPresenter";
 describe("DealersPresenter", () => {
   it("exposes dealers", async () => {
     const dealers: readonly Dealer[] = [];
-    const port: DealerPort = { getDealers: () => of(dealers) };
+    const port: DealerPort = {
+      getDealers: () => {
+        return of(dealers);
+      },
+    };
     expect(await firstValueFrom(new DealersPresenter(port).list$)).toBe(
       dealers,
     );

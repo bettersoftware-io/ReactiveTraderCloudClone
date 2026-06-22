@@ -7,16 +7,20 @@ export class CypressThemeToggle implements ThemeTogglePO {
       .get(`[data-testid="${TESTIDS.shell.themeToggle}"]`)
       .click() as unknown as Promise<void>;
   }
+
   isVisible(): Promise<boolean> {
     return cy
       .get(`[data-testid="${TESTIDS.shell.themeToggle}"]`)
-      .then(($el) => $el.is(":visible")) as unknown as Promise<boolean>;
+      .then(($el) => {
+        return $el.is(":visible");
+      }) as unknown as Promise<boolean>;
   }
+
   ariaLabel(): Promise<string> {
     return cy
       .get(`[data-testid="${TESTIDS.shell.themeToggle}"]`)
-      .then(
-        ($el) => $el.attr("aria-label") ?? "",
-      ) as unknown as Promise<string>;
+      .then(($el) => {
+        return $el.attr("aria-label") ?? "";
+      }) as unknown as Promise<string>;
   }
 }

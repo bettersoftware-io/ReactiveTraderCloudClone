@@ -17,25 +17,31 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-const _eurusd = KNOWN_CURRENCY_PAIRS.find((p) => p.symbol === "EURUSD");
+const _eurusd = KNOWN_CURRENCY_PAIRS.find((p) => {
+  return p.symbol === "EURUSD";
+});
 if (!_eurusd) throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
 const eurusd: CurrencyPair = _eurusd;
 // NZDUSD's defaultNotional is 10,000,000 (>= RFQ threshold) → starts in RFQ mode.
-const _nzdusd = KNOWN_CURRENCY_PAIRS.find((p) => p.symbol === "NZDUSD");
+const _nzdusd = KNOWN_CURRENCY_PAIRS.find((p) => {
+  return p.symbol === "NZDUSD";
+});
 if (!_nzdusd) throw new Error("NZDUSD not found in KNOWN_CURRENCY_PAIRS");
 const nzdusd: CurrencyPair = _nzdusd;
 
-const price = (over: Partial<Price> = {}): Price => ({
-  symbol: "EURUSD",
-  bid: 1.0921,
-  ask: 1.0925,
-  mid: 1.0923,
-  valueDate: "2026-06-15",
-  creationTimestamp: 1_700_000_000_000,
-  movementType: PriceMovementType.NONE,
-  spread: "4.0",
-  ...over,
-});
+const price = (over: Partial<Price> = {}): Price => {
+  return {
+    symbol: "EURUSD",
+    bid: 1.0921,
+    ask: 1.0925,
+    mid: 1.0923,
+    valueDate: "2026-06-15",
+    creationTimestamp: 1_700_000_000_000,
+    movementType: PriceMovementType.NONE,
+    spread: "4.0",
+    ...over,
+  };
+};
 
 const history: readonly PriceTick[] = [
   {
@@ -56,22 +62,24 @@ const history: readonly PriceTick[] = [
   },
 ];
 
-const tradeResult = (over: Partial<Trade> = {}): ExecuteTradeResult => ({
-  status: ExecutionStatus.Done,
-  trade: {
-    tradeId: 5001,
-    tradeName: "Trader",
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.0925,
-    status: TradeStatus.Done,
-    tradeDate: "2026-06-13",
-    valueDate: "2026-06-15",
-    ...over,
-  },
-});
+const tradeResult = (over: Partial<Trade> = {}): ExecuteTradeResult => {
+  return {
+    status: ExecutionStatus.Done,
+    trade: {
+      tradeId: 5001,
+      tradeName: "Trader",
+      currencyPair: "EURUSD",
+      notional: 1_000_000,
+      dealtCurrency: "EUR",
+      direction: Direction.Buy,
+      spotRate: 1.0925,
+      status: TradeStatus.Done,
+      tradeDate: "2026-06-13",
+      valueDate: "2026-06-15",
+      ...over,
+    },
+  };
+};
 
 afterEach(() => {
   vi.useRealTimers();

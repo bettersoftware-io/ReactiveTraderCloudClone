@@ -46,11 +46,15 @@ export function describePreferencesPortContract(
       let viewMode: ViewMode | undefined;
       port
         .theme$()
-        .subscribe((t) => (theme = t))
+        .subscribe((t) => {
+          theme = t;
+        })
         .unsubscribe();
       port
         .viewMode$()
-        .subscribe((v) => (viewMode = v))
+        .subscribe((v) => {
+          viewMode = v;
+        })
         .unsubscribe();
 
       // Synchronous: values are set by the time .subscribe() returns.
@@ -61,7 +65,9 @@ export function describePreferencesPortContract(
     it("setTheme persists and pushes to existing subscribers", () => {
       const port = makeEmpty();
       const seen: Theme[] = [];
-      const sub = port.theme$().subscribe((t) => seen.push(t));
+      const sub = port.theme$().subscribe((t) => {
+        return seen.push(t);
+      });
 
       port.setTheme("light");
 
@@ -72,7 +78,9 @@ export function describePreferencesPortContract(
     it("setViewMode persists and pushes to existing subscribers", () => {
       const port = makeEmpty();
       const seen: ViewMode[] = [];
-      const sub = port.viewMode$().subscribe((v) => seen.push(v));
+      const sub = port.viewMode$().subscribe((v) => {
+        return seen.push(v);
+      });
 
       port.setViewMode("price");
 

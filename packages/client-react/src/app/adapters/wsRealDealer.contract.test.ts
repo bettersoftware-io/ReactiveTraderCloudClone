@@ -25,6 +25,8 @@ describeDealerPortContract("wsRealDealer", () => {
         ws.emit("stream.dealerEvent", dealerAdded({ id: 102 }));
       },
     },
-    teardown: () => ws.dispose(),
+    teardown: () => {
+      return ws.dispose();
+    },
   };
 });

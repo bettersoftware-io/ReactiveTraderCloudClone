@@ -12,6 +12,7 @@ export class PlaywrightCreditRfqForm implements CreditRfqFormPO {
       this.page.getByText(STRINGS.creditRfq.submitButton),
     ).toBeVisible({ timeout: timeoutMs });
   }
+
   async hasBuyAndSellButtons(): Promise<boolean> {
     const buyVisible = await this.page
       .getByRole("button", { name: STRINGS.creditRfq.buyButton, exact: true })
@@ -21,6 +22,7 @@ export class PlaywrightCreditRfqForm implements CreditRfqFormPO {
       .isVisible();
     return buyVisible && sellVisible;
   }
+
   async hasDirectionLabel(): Promise<boolean> {
     return await this.page
       .getByTestId(TESTIDS.credit.directionLabel)

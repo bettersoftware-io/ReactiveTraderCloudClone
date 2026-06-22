@@ -8,6 +8,7 @@ import {
 
 export class CurrencyPairsPresenter {
   readonly pairs$: Observable<readonly CurrencyPair[]>;
+
   constructor(referenceData: ReferenceDataPort) {
     this.pairs$ = new CurrencyPairsUseCase(referenceData)
       .execute()

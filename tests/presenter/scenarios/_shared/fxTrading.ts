@@ -19,12 +19,18 @@ const ES_REJECTED = "Rejected" as unknown as ExecutionStatus;
 const ES_CREDIT_EXCEEDED = "CreditExceeded" as unknown as ExecutionStatus;
 const ES_TIMEOUT = "Timeout" as unknown as ExecutionStatus;
 
+interface ExecuteOnFirstPairResult {
+  status: ExecutionStatus;
+  notional: number;
+}
+
 async function executeOnFirstPair(
   w: PresenterWorld,
   direction: Direction,
   notional: number,
-): Promise<{ status: ExecutionStatus; notional: number }> {
+): Promise<ExecuteOnFirstPairResult> {
   let pair = w.scratch.firstPair;
+
   if (!pair) {
     const fetchedPairs = await w.awaitFirstWithin(
       w.ctx.app.presenters.currencyPairs.pairs$,
@@ -34,6 +40,7 @@ async function executeOnFirstPair(
     if (!first) throw new Error("no currency pairs available");
     pair = first;
   }
+
   w.scratch.firstPair = pair;
   const price = await firstValueFrom(
     w.ctx.app.presenters.priceStream.price$(pair),
@@ -76,19 +83,27 @@ const UI_PATTERN_TO_STATUSES: Array<{
   statuses: ExecutionStatus[];
 }> = [
   {
-    test: (p) => /Executing|You Bought|You Sold|Bought|Sold/i.test(p.source),
+    test: (p) => {
+      return /Executing|You Bought|You Sold|Bought|Sold/i.test(p.source);
+    },
     statuses: [ES_DONE],
   },
   {
-    test: (p) => /rejected/i.test(p.source),
+    test: (p) => {
+      return /rejected/i.test(p.source);
+    },
     statuses: [ES_REJECTED],
   },
   {
-    test: (p) => /Credit limit/i.test(p.source),
+    test: (p) => {
+      return /Credit limit/i.test(p.source);
+    },
     statuses: [ES_CREDIT_EXCEEDED],
   },
   {
-    test: (p) => /timed out/i.test(p.source),
+    test: (p) => {
+      return /timed out/i.test(p.source);
+    },
     statuses: [ES_TIMEOUT],
   },
 ];
@@ -100,15 +115,24 @@ export async function expectTradeConfirmationMatchesOneOf(
   const status = w.scratch.lastTradeStatus;
   if (!status) throw new Error("no trade status captured");
   const accepted = new Set<ExecutionStatus>();
+
   for (const p of patterns) {
     for (const rule of UI_PATTERN_TO_STATUSES) {
       if (rule.test(p)) for (const s of rule.statuses) accepted.add(s);
     }
+
     if (p.test(status as unknown as string)) accepted.add(status);
   }
+
   if (!accepted.has(status)) {
     throw new Error(
-      `presenter status "${status as unknown as string}" not in accepted set [${[...accepted].map((s) => s as unknown as string).join(", ")}] ` +
+      `presenter status "${status as unknown as string}" not in accepted set [${[
+        ...accepted,
+      ]
+        .map((s) => {
+          return s as unknown as string;
+        })
+        .join(", ")}] ` +
         `(from UI patterns ${patterns.map(String).join(", ")})`,
     );
   }
@@ -122,7 +146,10 @@ export async function buyNTimesWithDismissals(
     w.ctx.app.presenters.currencyPairs.pairs$,
     5000,
   );
-  const gbpjpyOrFirst = pairs.find((p) => p.symbol === "GBPJPY") ?? pairs[0];
+  const gbpjpyOrFirst =
+    pairs.find((p) => {
+      return p.symbol === "GBPJPY";
+    }) ?? pairs[0];
   if (!gbpjpyOrFirst)
     throw new Error("no currency pairs available for buyNTimesWithDismissals");
   const gbpjpy = gbpjpyOrFirst;
@@ -140,6 +167,7 @@ export async function buyNTimesWithDismissals(
       }),
       5000,
     );
+
     if ((result.status as unknown as string) === "Rejected") {
       w.scratch.rejectedSeen = true;
     }

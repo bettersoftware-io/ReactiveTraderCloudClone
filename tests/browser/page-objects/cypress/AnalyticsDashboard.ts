@@ -7,11 +7,13 @@ export class CypressAnalyticsDashboard implements AnalyticsDashboardPO {
       .get(`[data-testid="${TESTIDS.analytics.panel}"]`, { timeout: timeoutMs })
       .should("be.visible") as unknown as Promise<void>;
   }
+
   isVisible(): Promise<boolean> {
-    return cy
-      .get(`[data-testid="${TESTIDS.analytics.panel}"]`)
-      .then(($el) => $el.is(":visible")) as unknown as Promise<boolean>;
+    return cy.get(`[data-testid="${TESTIDS.analytics.panel}"]`).then(($el) => {
+      return $el.is(":visible");
+    }) as unknown as Promise<boolean>;
   }
+
   hasSection(name: string): Promise<boolean> {
     return cy.get("body").then(($body) => {
       const $panel = $body.find(`[data-testid="${TESTIDS.analytics.panel}"]`);

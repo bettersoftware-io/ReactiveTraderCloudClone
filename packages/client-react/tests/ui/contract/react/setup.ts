@@ -5,4 +5,6 @@ import { cleanupMounted } from "../shared/mount";
 import { reactDriver } from "./render";
 
 setDriver(reactDriver);
-afterEach(() => cleanupMounted());
+afterEach(() => {
+  return cleanupMounted();
+});

@@ -13,9 +13,9 @@ describeExecutionPortContract("wsRealExecution", () => {
     driver: {
       ackExecute: async () => {
         await awaitPendingRpc(ws, "rpc.executeTrade");
-        const sent = ws
-          .sentMessages()
-          .find((m) => m.type === "rpc.executeTrade");
+        const sent = ws.sentMessages().find((m) => {
+          return m.type === "rpc.executeTrade";
+        });
         const req = sent?.payload as {
           currencyPair: string;
           notional: number;
@@ -35,6 +35,8 @@ describeExecutionPortContract("wsRealExecution", () => {
         );
       },
     },
-    teardown: () => ws.dispose(),
+    teardown: () => {
+      return ws.dispose();
+    },
   };
 });

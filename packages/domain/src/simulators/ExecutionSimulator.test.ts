@@ -68,7 +68,9 @@ describe("ExecutionSimulator", () => {
     vi.useFakeTimers();
     const engine = new ExecutionSimulator();
     const trades: Trade[] = [];
-    engine.onTrade((t) => trades.push(t));
+    engine.onTrade((t) => {
+      return trades.push(t);
+    });
 
     const promise = firstValueFrom(engine.executeTrade(makeRequest("EURUSD")));
     await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);

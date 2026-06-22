@@ -20,6 +20,7 @@ describe("AnalyticsSimulator", () => {
   it("history is in chronological order", async () => {
     const engine = new AnalyticsSimulator();
     const update = await firstValueFrom(engine.getAnalytics("USD"));
+
     for (let i = 1; i < update.history.length; i++) {
       const prev = new Date(update.history[i - 1].timestamp).getTime();
       const curr = new Date(update.history[i].timestamp).getTime();
@@ -32,18 +33,26 @@ describe("AnalyticsSimulator", () => {
     const update = await firstValueFrom(engine.getAnalytics("USD"));
     expect(update.currentPositions).toHaveLength(9);
 
-    const eurusd = update.currentPositions.find((p) => p.symbol === "EURUSD");
+    const eurusd = update.currentPositions.find((p) => {
+      return p.symbol === "EURUSD";
+    });
     expect(eurusd).toBeDefined();
     expect(defined(eurusd).basePnl).toBe(564.97);
 
-    const usdjpy = update.currentPositions.find((p) => p.symbol === "USDJPY");
+    const usdjpy = update.currentPositions.find((p) => {
+      return p.symbol === "USDJPY";
+    });
     expect(defined(usdjpy).basePnl).toBe(1382.31);
 
-    const gbpusd = update.currentPositions.find((p) => p.symbol === "GBPUSD");
+    const gbpusd = update.currentPositions.find((p) => {
+      return p.symbol === "GBPUSD";
+    });
     expect(defined(gbpusd).basePnl).toBe(-1656.82);
 
     // Zero positions
-    const gbpjpy = update.currentPositions.find((p) => p.symbol === "GBPJPY");
+    const gbpjpy = update.currentPositions.find((p) => {
+      return p.symbol === "GBPJPY";
+    });
     expect(defined(gbpjpy).basePnl).toBe(0);
     expect(defined(gbpjpy).baseTradedAmount).toBe(0);
   });
@@ -91,6 +100,7 @@ describe("AnalyticsSimulator", () => {
     for (const snapshot of snapshots) {
       expect(snapshot.history).toHaveLength(90);
     }
+
     // The buffer did not grow unbounded across many more intervals than its size.
     expect(snapshots[snapshots.length - 1].history).toHaveLength(90);
   });

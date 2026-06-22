@@ -11,16 +11,12 @@ export class CypressCreditRfqForm implements CreditRfqFormPO {
 
   hasBuyAndSellButtons(): Promise<boolean> {
     return cy.get("body").then(($body) => {
-      const buyBtn = $body
-        .find("button")
-        .filter(
-          (_, el) => el.textContent?.trim() === STRINGS.creditRfq.buyButton,
-        );
-      const sellBtn = $body
-        .find("button")
-        .filter(
-          (_, el) => el.textContent?.trim() === STRINGS.creditRfq.sellButton,
-        );
+      const buyBtn = $body.find("button").filter((_, el) => {
+        return el.textContent?.trim() === STRINGS.creditRfq.buyButton;
+      });
+      const sellBtn = $body.find("button").filter((_, el) => {
+        return el.textContent?.trim() === STRINGS.creditRfq.sellButton;
+      });
       return (
         buyBtn.length > 0 &&
         buyBtn.is(":visible") &&

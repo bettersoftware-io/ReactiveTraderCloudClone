@@ -94,42 +94,50 @@ export function BlotterHeader({
 
   return (
     <tr>
-      {COLUMNS.map((col) => (
-        <th
-          key={col.key}
-          data-testid={`blotter-sort-${col.key}`}
-          className={styles.headerCell}
-          onClick={() => onSort(col.key)}
-        >
-          <span>
-            {col.label}
-            <SortIndicator column={col.key} sort={sort} />
-            {filters.has(col.key) && (
-              <span className={styles.filterDot}>{"●"}</span>
-            )}
-          </span>
-          <button
-            type="button"
-            data-testid={`blotter-filter-toggle-${col.key}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpenFilter(openFilter === col.key ? null : col.key);
+      {COLUMNS.map((col) => {
+        return (
+          <th
+            key={col.key}
+            data-testid={`blotter-sort-${col.key}`}
+            className={styles.headerCell}
+            onClick={() => {
+              return onSort(col.key);
             }}
-            className={styles.filterToggle}
           >
-            {"▽"}
-          </button>
-          {openFilter === col.key && (
-            <FilterPanel
-              col={col}
-              trades={trades}
-              currentFilter={filters.get(col.key)}
-              onApply={(f) => onFilter(col.key, f)}
-              onClose={() => setOpenFilter(null)}
-            />
-          )}
-        </th>
-      ))}
+            <span>
+              {col.label}
+              <SortIndicator column={col.key} sort={sort} />
+              {filters.has(col.key) && (
+                <span className={styles.filterDot}>{"●"}</span>
+              )}
+            </span>
+            <button
+              type="button"
+              data-testid={`blotter-filter-toggle-${col.key}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenFilter(openFilter === col.key ? null : col.key);
+              }}
+              className={styles.filterToggle}
+            >
+              {"▽"}
+            </button>
+            {openFilter === col.key && (
+              <FilterPanel
+                col={col}
+                trades={trades}
+                currentFilter={filters.get(col.key)}
+                onApply={(f) => {
+                  return onFilter(col.key, f);
+                }}
+                onClose={() => {
+                  return setOpenFilter(null);
+                }}
+              />
+            )}
+          </th>
+        );
+      })}
     </tr>
   );
 }

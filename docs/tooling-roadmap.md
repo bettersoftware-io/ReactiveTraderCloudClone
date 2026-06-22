@@ -40,25 +40,25 @@ These constraints drove every recommendation — re-read before adopting anythin
 
 | # | Tool / capability | Fills gap Biome can't | Overlap | Effort | Recommendation | Status |
 |---|---|---|---|---|---|---|
-| 1 | **Custom Biome GritQL rules** | House-style shape bans (no second tool) | none | low | **Adopt** — 4 rules already validated | ⬜ |
-| 2 | **knip** | Cross-file unused exports/files/deps | none | low | **Adopt** (report-only) | ⬜ |
-| 3 | **actionlint** | GitHub Actions / YAML correctness | none | trivial | **Adopt** | ⬜ |
-| 4 | **dependency-cruiser** | Circular deps + transitive architecture rules | partial w/ Biome `noRestrictedImports` | medium | **Adopt** (top cycle pick) | ⬜ |
-| 5 | **manypkg** *or* **syncpack** | Monorepo dep-version consistency | each other (pick one) | low | **Adopt one** (report-only) | ⬜ |
-| 6 | **Scoped ESLint** (lint-only, runs local + CI) | Rules GritQL can't do (decl-vs-expr, autofix, type-aware) | by construction: none w/ Biome | medium | **Conditional** — adopt if rule wishlist grows or type-aware rules wanted | ⬜ |
-| 7 | **Stylelint** | CSS naming/token/policy conventions | real w/ Biome CSS | medium | **Hold** — dormant value (CSS is frozen goldens) | ⬜ |
-| 8 | **husky (+ lint-staged)** | Local pre-commit hooks | duplicates CI gate | low | **Reject** — friction for sandboxed auto-commits | ⬜ |
-| 9 | **markdownlint / commitlint** | MD style / commit-msg format | — | low | **Reject** — cosmetic for this repo | ⬜ |
+| 1 | **Custom Biome GritQL rules** | House-style shape bans (no second tool) | none | low | **Adopt** — 4 rules already validated | ✅ |
+| 2 | **knip** | Cross-file unused exports/files/deps | none | low | **Adopt** (report-only) | ✅ |
+| 3 | **actionlint** | GitHub Actions / YAML correctness | none | trivial | **Adopt** | ✅ |
+| 4 | **dependency-cruiser** | Circular deps + transitive architecture rules | partial w/ Biome `noRestrictedImports` | medium | **Adopt** (top cycle pick) | ✅ |
+| 5 | **manypkg** *or* **syncpack** | Monorepo dep-version consistency | each other (pick one) | low | **Adopt one** (report-only) | ✅ |
+| 6 | **Scoped ESLint** (lint-only, runs local + CI) | Rules GritQL can't do (decl-vs-expr, autofix, type-aware) | by construction: none w/ Biome | medium | **Conditional** — adopt if rule wishlist grows or type-aware rules wanted | ✅ |
+| 7 | **Stylelint** | CSS naming/token/policy conventions | real w/ Biome CSS | medium | **Hold** — dormant value (CSS is frozen goldens) | 🟡 Hold |
+| 8 | **husky (+ lint-staged)** | Local pre-commit hooks | duplicates CI gate | low | **Reject** — friction for sandboxed auto-commits | ❌ |
+| 9 | **markdownlint / commitlint** | MD style / commit-msg format | — | low | **Reject** — cosmetic for this repo | ❌ |
 
 ### Quick win (independent of any adoption)
 
-- [ ] Fix dependency drift: `@rtc/tests` pins `tsx@^4.19.0`; repo norm is `^4`.
+- [x] Fix dependency drift: `@rtc/tests` pins `tsx@^4.19.0`; repo norm is `^4`.
       Align `tests/package.json` → `tsx@^4`. (Surfaced by both manypkg and
       syncpack; trivial, do anytime.)
 
 ---
 
-## 1. Custom Biome GritQL rules ⬜
+## 1. Custom Biome GritQL rules ✅
 
 **What:** Biome 2.0+ supports user-authored lint rules as GritQL `.grit` files —
 declarative *code-shape* patterns, referenced from `biome.jsonc` `"plugins"`.
@@ -79,12 +79,15 @@ anything needing logic/types/autofix it can't compete (see item 6).
   identical; node-kind only).
 - ❌ **No autofix** in plugins (diagnostic-only as of 2.5).
 
+**Status note:** Implemented as ESLint rules (item 6); GritQL plugins not built
+— see spec docs/superpowers/specs/2026-06-22-dev-tooling-adoption-design.md.
+
 **Adoption plan:** create `biome-plugins/` (does not exist yet), add `.grit`
 files, then `"plugins": ["./biome-plugins/<rule>.grit", …]` in `biome.jsonc`.
 
 ### Validated rules ready to drop in
 
-- [ ] **no-inline-return-type** — forbid inline object types in function return
+- [x] **no-inline-return-type** — forbid inline object types in function return
       position (the "PropsHost return type" annoyance). *Validated: flags
       single- & multi-line inline returns; leaves named types, generic args
       (`Promise<{…}>`), and inferred returns clean.* Covers `function` decls
@@ -103,7 +106,7 @@ language js
 }
 ```
 
-- [ ] **no-arrow-implicit-return** — require block bodies on arrows (no implicit
+- [x] **no-arrow-implicit-return** — require block bodies on arrows (no implicit
       returns). *Validated: flags `() => x`, leaves `() => { return x }`.*
 
 ```grit
@@ -116,7 +119,7 @@ language js
 }
 ```
 
-- [ ] **destructure-use-hooks** — forbid binding the whole `useHooks()` object;
+- [x] **destructure-use-hooks** — forbid binding the whole `useHooks()` object;
       force `const { useX } = useHooks()`. *Validated: flags
       `const hooks = useHooks()` (any name), leaves destructured form clean.*
       Root-cause rule — makes the `hooks.useX()` member-call form impossible.
@@ -134,7 +137,7 @@ language js
 }
 ```
 
-- [ ] **no-anonymous-function-expression** — flag nameless `function (){}`.
+- [x] **no-anonymous-function-expression** — flag nameless `function (){}`.
       *Validated partial: catches anonymous `function` expressions; cannot
       cover arrows (always nameless, name-inferred). Lower priority.*
 
@@ -149,7 +152,7 @@ per hit count.
 
 ---
 
-## 2. knip ⬜
+## 2. knip ✅
 
 **What:** finds unused **files, exports, and dependencies** across the monorepo.
 
@@ -165,7 +168,7 @@ CI step). Check baseline noise before deciding on a gate.
 
 ---
 
-## 3. actionlint ⬜
+## 3. actionlint ✅
 
 **What:** static validation of GitHub Actions workflows — YAML syntax, shell in
 `run:` blocks, expression typos.
@@ -180,7 +183,7 @@ Biome gate, parallel e2e).
 
 ---
 
-## 4. dependency-cruiser ⬜  (circular deps + architecture)
+## 4. dependency-cruiser ✅  (circular deps + architecture)
 
 **What:** whole-graph dependency analysis — circular detection **and** an
 architecture rule engine (forbid layer violations, orphans).
@@ -241,7 +244,7 @@ type-aware `no-circular` + the inward-only layering rules.
 
 ---
 
-## 5. manypkg OR syncpack ⬜  (pick ONE)
+## 5. manypkg OR syncpack ✅  (pick ONE)
 
 **What:** keep dependency versions consistent across the 5 packages' package.json.
 
@@ -272,7 +275,7 @@ clean signal. Pick one.
 
 ---
 
-## 6. Scoped ESLint (lint-only, runs local + CI) ⬜  (conditional)
+## 6. Scoped ESLint (lint-only, runs local + CI) ✅  (conditional)
 
 **What:** a *minimal* ESLint that runs **only** opinionated AST rules GritQL
 can't express, with **all formatting deferred to Biome**. Run it **wherever you
@@ -323,7 +326,7 @@ only when the threshold above is crossed.
 
 ---
 
-## 7. Stylelint ⬜  (hold)
+## 7. Stylelint 🟡  (hold)
 
 **What Stylelint does that Biome's CSS linter cannot** (Biome covers validity:
 unknown props, duplicates, empty blocks; Stylelint adds *policy*):
@@ -348,7 +351,7 @@ tokens) matter mostly when *authoring new* CSS. Dormant for now.
 
 ---
 
-## 8. husky (+ lint-staged) ❌-leaning ⬜
+## 8. husky (+ lint-staged) ❌
 
 **What:** Git hooks manager — runs scripts on `pre-commit`/`commit-msg`/`pre-push`.
 
@@ -362,7 +365,7 @@ duplicate CI while slowing the inner loop.
 
 ---
 
-## 9. markdownlint / commitlint ❌-leaning ⬜
+## 9. markdownlint / commitlint ❌
 
 - **markdownlint** — 127 `.md` files, but they're docs/specs/scratch, not shipped
   artifacts. Cosmetic.

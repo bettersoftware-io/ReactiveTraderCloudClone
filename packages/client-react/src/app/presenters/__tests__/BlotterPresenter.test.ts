@@ -8,7 +8,11 @@ import { BlotterPresenter } from "../BlotterPresenter";
 describe("BlotterPresenter", () => {
   it("exposes the trade stream", async () => {
     const trades: readonly Trade[] = [];
-    const port: BlotterPort = { getTradeStream: () => of(trades) };
+    const port: BlotterPort = {
+      getTradeStream: () => {
+        return of(trades);
+      },
+    };
     const presenter = new BlotterPresenter(port);
     expect(await firstValueFrom(presenter.trades$)).toBe(trades);
   });

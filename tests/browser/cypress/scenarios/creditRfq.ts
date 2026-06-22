@@ -23,9 +23,9 @@ export function clickCreditTab(ctx: TestContext, tab: string): void {
 
 export function expectCreditTabVisible(ctx: TestContext, tab: string): void {
   ensureCreditTab(tab);
-  chainable(ctx.po.creditRfqPanel.tabIsVisible(tab)).then((v) =>
-    assertTrue(v, `credit tab not visible: ${tab}`),
-  );
+  chainable(ctx.po.creditRfqPanel.tabIsVisible(tab)).then((v) => {
+    return assertTrue(v, `credit tab not visible: ${tab}`);
+  });
 }
 
 export function expectMessageWithin(
@@ -37,6 +37,7 @@ export function expectMessageWithin(
     void ctx.po.creditRfqPanel.waitForNoRfqsMessage(seconds * 1_000);
     return;
   }
+
   throw new Error(`message "${message}" has no PO method; add one if needed`);
 }
 
@@ -48,15 +49,15 @@ export function expectCreditRfqSubmitButtonWithin(
 }
 
 export function expectCreditRfqHasBuySellButtons(ctx: TestContext): void {
-  chainable(ctx.po.creditRfqForm.hasBuyAndSellButtons()).then((v) =>
-    assertTrue(v, "credit RFQ form missing Buy/Sell buttons"),
-  );
+  chainable(ctx.po.creditRfqForm.hasBuyAndSellButtons()).then((v) => {
+    return assertTrue(v, "credit RFQ form missing Buy/Sell buttons");
+  });
 }
 
 export function expectCreditRfqHasDirectionLabel(ctx: TestContext): void {
-  chainable(ctx.po.creditRfqForm.hasDirectionLabel()).then((v) =>
-    assertTrue(v, "credit RFQ form missing Direction label"),
-  );
+  chainable(ctx.po.creditRfqForm.hasDirectionLabel()).then((v) => {
+    return assertTrue(v, "credit RFQ form missing Direction label");
+  });
 }
 
 export function expectSellSideHeadingWithin(

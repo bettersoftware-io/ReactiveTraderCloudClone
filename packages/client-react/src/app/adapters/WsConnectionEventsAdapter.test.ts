@@ -12,7 +12,9 @@ describe("WsConnectionEventsAdapter", () => {
     const ws = new FakeWsAdapter();
     const adapter = new WsConnectionEventsAdapter(ws);
     const received: ConnectionEvent[] = [];
-    adapter.events().subscribe((e) => received.push(e));
+    adapter.events().subscribe((e) => {
+      return received.push(e);
+    });
 
     ws.emitConnectionEvent("gatewayConnected");
     ws.emitConnectionEvent("gatewayDisconnected");
@@ -29,7 +31,9 @@ describe("WsConnectionEventsAdapter", () => {
     ws.emitConnectionEvent("gatewayConnected");
 
     const late: ConnectionEvent[] = [];
-    adapter.events().subscribe((e) => late.push(e));
+    adapter.events().subscribe((e) => {
+      return late.push(e);
+    });
 
     expect(late).toEqual([{ type: "gatewayConnected" }]);
   });

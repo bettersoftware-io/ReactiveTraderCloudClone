@@ -11,7 +11,9 @@ export function QuickFilter({ value, onChange }: QuickFilterProps) {
       data-testid="quick-filter"
       type="text"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => {
+        return onChange(e.target.value);
+      }}
       placeholder="Quick filter..."
       className={styles.input}
     />

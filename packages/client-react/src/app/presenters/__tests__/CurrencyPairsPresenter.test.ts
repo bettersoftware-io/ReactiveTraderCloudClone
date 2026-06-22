@@ -8,7 +8,11 @@ import { CurrencyPairsPresenter } from "../CurrencyPairsPresenter";
 describe("CurrencyPairsPresenter", () => {
   it("exposes currency pairs", async () => {
     const pairs: readonly CurrencyPair[] = [];
-    const port: ReferenceDataPort = { getCurrencyPairs: () => of(pairs) };
+    const port: ReferenceDataPort = {
+      getCurrencyPairs: () => {
+        return of(pairs);
+      },
+    };
     expect(await firstValueFrom(new CurrencyPairsPresenter(port).pairs$)).toBe(
       pairs,
     );

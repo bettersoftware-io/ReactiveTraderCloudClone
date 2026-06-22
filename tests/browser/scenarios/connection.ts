@@ -25,11 +25,13 @@ export async function expectConnectionStatusFooterShows(
   // role is filled by a hand-rolled loop here so scenarios stay driver-free.
   const deadline = Date.now() + 5_000;
   let last = "";
+
   while (Date.now() < deadline) {
     last = await ctx.po.footer.connectionLabel();
     if (last.includes(expected)) return;
     await ctx.po.workspace.wait(100);
   }
+
   throw new Error(
     `expected footer to contain ${JSON.stringify(expected)} within 5s; last seen: ${JSON.stringify(last)}`,
   );
@@ -66,6 +68,7 @@ export async function expectConnectionOverlayTextMatches(
   if (!match) throw new Error(`bad regex literal: ${rawRegex}`);
   const re = new RegExp(match[1], match[2]);
   const text = await ctx.po.connectionOverlay.text();
+
   if (!re.test(text)) {
     throw new Error(`expected ${JSON.stringify(text)} to match ${rawRegex}`);
   }

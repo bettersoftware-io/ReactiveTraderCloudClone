@@ -20,7 +20,9 @@ export function AdminPanel() {
           max={1000}
           step={10}
           value={value}
-          onChange={(e) => setValue(Number(e.target.value))}
+          onChange={(e) => {
+            return setValue(Number(e.target.value));
+          }}
           className={styles.slider}
         />
 
@@ -33,6 +35,7 @@ export function AdminPanel() {
             value={value}
             onChange={(e) => {
               const n = Number(e.target.value);
+
               if (Number.isFinite(n) && n >= 0 && n <= 1000) {
                 setValue(n);
               }

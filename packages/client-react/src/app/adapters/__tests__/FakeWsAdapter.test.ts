@@ -7,8 +7,12 @@ describe("FakeWsAdapter", () => {
   it("routes emit(type, payload) to all on(type) subscribers", () => {
     const ws = new FakeWsAdapter();
     const received: unknown[] = [];
-    ws.on("stream.test", (p) => received.push(p));
-    ws.on("stream.test", (p) => received.push(p));
+    ws.on("stream.test", (p) => {
+      return received.push(p);
+    });
+    ws.on("stream.test", (p) => {
+      return received.push(p);
+    });
     ws.emit("stream.test", { hello: "world" });
     expect(received).toEqual([{ hello: "world" }, { hello: "world" }]);
   });
@@ -16,7 +20,9 @@ describe("FakeWsAdapter", () => {
   it("on() returns an unsubscribe function", () => {
     const ws = new FakeWsAdapter();
     const received: unknown[] = [];
-    const unsub = ws.on("stream.test", (p) => received.push(p));
+    const unsub = ws.on("stream.test", (p) => {
+      return received.push(p);
+    });
     ws.emit("stream.test", 1);
     unsub();
     ws.emit("stream.test", 2);
@@ -43,9 +49,9 @@ describe("FakeWsAdapter", () => {
 
   it("nextRpcResponse() throws when no pending RPC matches", () => {
     const ws = new FakeWsAdapter();
-    expect(() =>
-      ws.nextRpcResponse("rpc.executeTrade", { type: "ack" }),
-    ).toThrow(/no pending RPC/);
+    expect(() => {
+      return ws.nextRpcResponse("rpc.executeTrade", { type: "ack" });
+    }).toThrow(/no pending RPC/);
   });
 
   it("dispose() clears listeners and pending RPCs", () => {
@@ -60,7 +66,9 @@ describe("FakeWsAdapter", () => {
   it("emitConnectionEvent('gatewayConnected') reaches connectionEvents() subscribers", () => {
     const ws = new FakeWsAdapter();
     const events: { type: string }[] = [];
-    ws.connectionEvents().subscribe((e) => events.push(e));
+    ws.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
     ws.emitConnectionEvent("gatewayConnected");
     expect(events).toEqual([{ type: "gatewayConnected" }]);
   });
@@ -68,7 +76,9 @@ describe("FakeWsAdapter", () => {
   it("emitConnectionEvent('gatewayDisconnected') reaches subscribers", () => {
     const ws = new FakeWsAdapter();
     const events: { type: string }[] = [];
-    ws.connectionEvents().subscribe((e) => events.push(e));
+    ws.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
     ws.emitConnectionEvent("gatewayDisconnected");
     expect(events).toEqual([{ type: "gatewayDisconnected" }]);
   });
@@ -77,7 +87,9 @@ describe("FakeWsAdapter", () => {
     const ws = new FakeWsAdapter();
     ws.emitConnectionEvent("gatewayConnected");
     const lateEvents: { type: string }[] = [];
-    ws.connectionEvents().subscribe((e) => lateEvents.push(e));
+    ws.connectionEvents().subscribe((e) => {
+      return lateEvents.push(e);
+    });
     expect(lateEvents).toEqual([{ type: "gatewayConnected" }]);
   });
 

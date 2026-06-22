@@ -50,7 +50,6 @@ import type {
 
 import type { IWsAdapter } from "./IWsAdapter";
 import { LocalStoragePreferencesAdapter } from "./LocalStoragePreferencesAdapter";
-import { WsAdapter } from "./WsAdapter";
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
@@ -134,16 +133,19 @@ function createReferenceDataPort(ws: IWsAdapter): ReferenceDataPort {
       return new Observable<readonly CurrencyPair[]>((subscriber) => {
         const unsub = ws.on(SERVER_MSG.REFERENCE_DATA, (payload) => {
           const msg = payload as ReferenceDataMessage;
-          const pairs: CurrencyPair[] = msg.updates.map((dto) => ({
-            ...deriveBaseTerm(dto.symbol),
-            symbol: dto.symbol,
-            ratePrecision: dto.ratePrecision,
-            pipsPosition: dto.pipsPosition,
-            defaultNotional: dto.symbol === "NZDUSD" ? 10_000_000 : 1_000_000,
-          }));
+          const pairs: CurrencyPair[] = msg.updates.map((dto) => {
+            return {
+              ...deriveBaseTerm(dto.symbol),
+              symbol: dto.symbol,
+              ratePrecision: dto.ratePrecision,
+              pipsPosition: dto.pipsPosition,
+              defaultNotional: dto.symbol === "NZDUSD" ? 10_000_000 : 1_000_000,
+            };
+          });
           subscriber.next(pairs);
         });
         ws.send(CLIENT_MSG.SUBSCRIBE_REFERENCE_DATA);
+
         return () => {
           unsub();
         };
@@ -158,11 +160,13 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
       return new Observable<PriceTick>((subscriber) => {
         const unsub = ws.on(SERVER_MSG.PRICE_TICK, (payload) => {
           const dto = payload as PriceTickDto;
+
           if (dto.symbol === symbol) {
             subscriber.next(dto);
           }
         });
         ws.send(CLIENT_MSG.SUBSCRIBE_PRICING, { symbol });
+
         return () => {
           unsub();
         };
@@ -172,16 +176,19 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
     getPriceHistory(symbol: string): Observable<readonly PriceTick[]> {
       return new Observable<readonly PriceTick[]>((subscriber) => {
         let cancelled = false;
-        (async () => {
+
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, {
               symbol,
             })) as RpcResponse<PriceHistoryDto>;
             if (cancelled) return;
+
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to get price history"));
               return;
             }
+
             const prices = resp.payload;
             if (!prices) throw new Error("ack response missing payload");
             subscriber.next(prices.prices);
@@ -190,6 +197,7 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
             if (!cancelled) subscriber.error(e);
           }
         })();
+
         return () => {
           cancelled = true;
         };
@@ -203,12 +211,14 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
       // No dedicated wire RPC for FX RFQ quotes; derive from the latest price-history tick.
       return new Observable<RfqQuoteResult>((subscriber) => {
         let cancelled = false;
-        (async () => {
+
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, {
               symbol,
             })) as RpcResponse<PriceHistoryDto>;
             if (cancelled) return;
+
             if (
               resp.type === "nack" ||
               !resp.payload ||
@@ -217,6 +227,7 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
               subscriber.error(new Error(`No price available for ${symbol}`));
               return;
             }
+
             const last = resp.payload.prices[resp.payload.prices.length - 1];
             const priceChange = 0.3 / 10 ** pipsPosition;
             subscriber.next({
@@ -229,6 +240,7 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
             if (!cancelled) subscriber.error(e);
           }
         })();
+
         return () => {
           cancelled = true;
         };
@@ -250,17 +262,20 @@ function createExecutionPort(ws: IWsAdapter): ExecutionPort {
           notional: request.notional,
           dealtCurrency: request.dealtCurrency,
         };
-        (async () => {
+
+        void (async () => {
           try {
             const resp = (await ws.rpc(
               CLIENT_MSG.EXECUTE_TRADE,
               dto,
             )) as RpcResponse<ExecutionResponseDto>;
             if (cancelled) return;
+
             if (resp.type === "nack") {
               subscriber.error(new Error("Trade execution failed"));
               return;
             }
+
             const r = resp.payload;
             if (!r) throw new Error("ack response missing payload");
             subscriber.next({
@@ -280,6 +295,7 @@ function createExecutionPort(ws: IWsAdapter): ExecutionPort {
             if (!cancelled) subscriber.error(e);
           }
         })();
+
         return () => {
           cancelled = true;
         };
@@ -297,6 +313,7 @@ function createBlotterPort(ws: IWsAdapter): BlotterPort {
           subscriber.next(msg.updates);
         });
         ws.send(CLIENT_MSG.SUBSCRIBE_BLOTTER);
+
         return () => {
           unsub();
         };
@@ -317,6 +334,7 @@ function createAnalyticsPort(ws: IWsAdapter): AnalyticsPort {
           });
         });
         ws.send(CLIENT_MSG.SUBSCRIBE_ANALYTICS, { currency });
+
         return () => {
           unsub();
         };
@@ -334,6 +352,7 @@ function createInstrumentPort(ws: IWsAdapter): InstrumentPort {
 
         const unsub = ws.on(SERVER_MSG.INSTRUMENT_EVENT, (payload) => {
           const event = payload as InstrumentEvent;
+
           switch (event.type) {
             case "startOfStateOfTheWorld":
               instruments.length = 0;
@@ -347,8 +366,11 @@ function createInstrumentPort(ws: IWsAdapter): InstrumentPort {
               instruments.push(event.payload);
               if (!inSoW) subscriber.next([...instruments]);
               break;
+
             case "removed": {
-              const idx = instruments.findIndex((i) => i.id === event.payload);
+              const idx = instruments.findIndex((i) => {
+                return i.id === event.payload;
+              });
               if (idx >= 0) instruments.splice(idx, 1);
               if (!inSoW) subscriber.next([...instruments]);
               break;
@@ -356,6 +378,7 @@ function createInstrumentPort(ws: IWsAdapter): InstrumentPort {
           }
         });
         ws.send(CLIENT_MSG.SUBSCRIBE_INSTRUMENTS);
+
         return () => {
           unsub();
         };
@@ -373,6 +396,7 @@ function createDealerPort(ws: IWsAdapter): DealerPort {
 
         const unsub = ws.on(SERVER_MSG.DEALER_EVENT, (payload) => {
           const event = payload as DealerEvent;
+
           switch (event.type) {
             case "startOfStateOfTheWorld":
               dealers.length = 0;
@@ -386,8 +410,11 @@ function createDealerPort(ws: IWsAdapter): DealerPort {
               dealers.push(event.payload);
               if (!inSoW) subscriber.next([...dealers]);
               break;
+
             case "removed": {
-              const idx = dealers.findIndex((d) => d.id === event.payload);
+              const idx = dealers.findIndex((d) => {
+                return d.id === event.payload;
+              });
               if (idx >= 0) dealers.splice(idx, 1);
               if (!inSoW) subscriber.next([...dealers]);
               break;
@@ -395,6 +422,7 @@ function createDealerPort(ws: IWsAdapter): DealerPort {
           }
         });
         ws.send(CLIENT_MSG.SUBSCRIBE_DEALERS);
+
         return () => {
           unsub();
         };
@@ -411,6 +439,7 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
           subscriber.next(payload as WorkflowEvent as RfqEvent);
         });
         ws.send(CLIENT_MSG.SUBSCRIBE_WORKFLOW);
+
         return () => {
           unsub();
         };
@@ -420,7 +449,8 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
     createRfq(request: CreateRfqRequest): Observable<number> {
       return new Observable<number>((subscriber) => {
         let cancelled = false;
-        (async () => {
+
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.CREATE_RFQ, {
               instrumentId: request.instrumentId,
@@ -430,10 +460,12 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
               expirySecs: request.expirySecs,
             })) as RpcResponse<number>;
             if (cancelled) return;
+
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to create RFQ"));
               return;
             }
+
             const rfqId = resp.payload;
             if (rfqId === undefined || rfqId === null)
               throw new Error("ack response missing payload");
@@ -443,6 +475,7 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
             if (!cancelled) subscriber.error(e);
           }
         })();
+
         return () => {
           cancelled = true;
         };
@@ -452,22 +485,26 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
     cancelRfq(rfqId: number): Observable<void> {
       return new Observable<void>((subscriber) => {
         let cancelled = false;
-        (async () => {
+
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.CANCEL_RFQ, {
               rfqId,
             })) as RpcResponse;
             if (cancelled) return;
+
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to cancel RFQ"));
               return;
             }
+
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
             if (!cancelled) subscriber.error(e);
           }
         })();
+
         return () => {
           cancelled = true;
         };
@@ -477,23 +514,27 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
     quote(request: QuoteRequest): Observable<void> {
       return new Observable<void>((subscriber) => {
         let cancelled = false;
-        (async () => {
+
+        void (async () => {
           try {
             const resp = (await ws.rpc(
               CLIENT_MSG.QUOTE,
               request,
             )) as RpcResponse;
             if (cancelled) return;
+
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to submit quote"));
               return;
             }
+
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
             if (!cancelled) subscriber.error(e);
           }
         })();
+
         return () => {
           cancelled = true;
         };
@@ -503,22 +544,26 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
     pass(quoteId: number): Observable<void> {
       return new Observable<void>((subscriber) => {
         let cancelled = false;
-        (async () => {
+
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.PASS, {
               quoteId,
             })) as RpcResponse;
             if (cancelled) return;
+
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to pass on quote"));
               return;
             }
+
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
             if (!cancelled) subscriber.error(e);
           }
         })();
+
         return () => {
           cancelled = true;
         };
@@ -528,22 +573,26 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
     accept(quoteId: number): Observable<void> {
       return new Observable<void>((subscriber) => {
         let cancelled = false;
-        (async () => {
+
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.ACCEPT, {
               quoteId,
             })) as RpcResponse;
             if (cancelled) return;
+
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to accept quote"));
               return;
             }
+
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
             if (!cancelled) subscriber.error(e);
           }
         })();
+
         return () => {
           cancelled = true;
         };
@@ -557,16 +606,19 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
     getThroughput(): Observable<number> {
       return new Observable<number>((subscriber) => {
         let cancelled = false;
-        (async () => {
+
+        void (async () => {
           try {
             const resp = (await ws.rpc(
               CLIENT_MSG.GET_THROUGHPUT,
             )) as RpcResponse<number>;
             if (cancelled) return;
+
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to get throughput"));
               return;
             }
+
             const value = resp.payload;
             if (value === undefined || value === null)
               throw new Error("ack response missing payload");
@@ -576,6 +628,7 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
             if (!cancelled) subscriber.error(e);
           }
         })();
+
         return () => {
           cancelled = true;
         };
@@ -585,22 +638,26 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
     setThroughput(value: number): Observable<void> {
       return new Observable<void>((subscriber) => {
         let cancelled = false;
-        (async () => {
+
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.SET_THROUGHPUT, {
               value,
             })) as RpcResponse;
             if (cancelled) return;
+
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to set throughput"));
               return;
             }
+
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
             if (!cancelled) subscriber.error(e);
           }
         })();
+
         return () => {
           cancelled = true;
         };
@@ -626,5 +683,3 @@ export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
     preferences: new LocalStoragePreferencesAdapter(),
   };
 }
-
-export { WsAdapter };

@@ -9,7 +9,9 @@ beforeEach(() => {
   delete document.documentElement.dataset.theme;
 });
 
-afterEach(() => cleanupMounted());
+afterEach(() => {
+  return cleanupMounted();
+});
 
 describe("ThemeToggle", () => {
   it("starts on the default (dark) theme and announces the inverse", () => {
