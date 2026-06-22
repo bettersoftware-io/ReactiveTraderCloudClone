@@ -102,32 +102,32 @@ function handleMessage(
 
     // ── FX RPCs ───────────────────────────────────────────
     case CLIENT_MSG.EXECUTE_TRADE:
-      handleExecuteTrade(ws, svc, msg);
+      void handleExecuteTrade(ws, svc, msg);
       break;
 
     case CLIENT_MSG.GET_PRICE_HISTORY:
-      handleGetPriceHistory(ws, svc, msg);
+      void handleGetPriceHistory(ws, svc, msg);
       break;
 
     // ── Credit RPCs ───────────────────────────────────────
     case CLIENT_MSG.CREATE_RFQ:
-      handleCreateRfq(ws, svc, msg);
+      void handleCreateRfq(ws, svc, msg);
       break;
 
     case CLIENT_MSG.CANCEL_RFQ:
-      handleCancelRfq(ws, svc, msg);
+      void handleCancelRfq(ws, svc, msg);
       break;
 
     case CLIENT_MSG.QUOTE:
-      handleQuote(ws, svc, msg);
+      void handleQuote(ws, svc, msg);
       break;
 
     case CLIENT_MSG.PASS:
-      handlePass(ws, svc, msg);
+      void handlePass(ws, svc, msg);
       break;
 
     case CLIENT_MSG.ACCEPT:
-      handleAccept(ws, svc, msg);
+      void handleAccept(ws, svc, msg);
       break;
 
     // ── Admin ─────────────────────────────────────────────

@@ -17,7 +17,7 @@ interface RfqCardProps {
   quotes: readonly Quote[];
   instrument: Instrument | undefined;
   dealers: readonly Dealer[];
-  onAccept: (quoteId: number) => void;
+  onAccept: (quoteId: number) => void | Promise<void>;
   onDismiss?: (rfqId: number) => void;
 }
 

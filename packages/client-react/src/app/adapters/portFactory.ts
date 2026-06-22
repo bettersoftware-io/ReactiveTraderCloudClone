@@ -177,7 +177,7 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
       return new Observable<readonly PriceTick[]>((subscriber) => {
         let cancelled = false;
 
-        (async () => {
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, {
               symbol,
@@ -212,7 +212,7 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
       return new Observable<RfqQuoteResult>((subscriber) => {
         let cancelled = false;
 
-        (async () => {
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, {
               symbol,
@@ -263,7 +263,7 @@ function createExecutionPort(ws: IWsAdapter): ExecutionPort {
           dealtCurrency: request.dealtCurrency,
         };
 
-        (async () => {
+        void (async () => {
           try {
             const resp = (await ws.rpc(
               CLIENT_MSG.EXECUTE_TRADE,
@@ -450,7 +450,7 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
       return new Observable<number>((subscriber) => {
         let cancelled = false;
 
-        (async () => {
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.CREATE_RFQ, {
               instrumentId: request.instrumentId,
@@ -486,7 +486,7 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
       return new Observable<void>((subscriber) => {
         let cancelled = false;
 
-        (async () => {
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.CANCEL_RFQ, {
               rfqId,
@@ -515,7 +515,7 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
       return new Observable<void>((subscriber) => {
         let cancelled = false;
 
-        (async () => {
+        void (async () => {
           try {
             const resp = (await ws.rpc(
               CLIENT_MSG.QUOTE,
@@ -545,7 +545,7 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
       return new Observable<void>((subscriber) => {
         let cancelled = false;
 
-        (async () => {
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.PASS, {
               quoteId,
@@ -574,7 +574,7 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
       return new Observable<void>((subscriber) => {
         let cancelled = false;
 
-        (async () => {
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.ACCEPT, {
               quoteId,
@@ -607,7 +607,7 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
       return new Observable<number>((subscriber) => {
         let cancelled = false;
 
-        (async () => {
+        void (async () => {
           try {
             const resp = (await ws.rpc(
               CLIENT_MSG.GET_THROUGHPUT,
@@ -639,7 +639,7 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
       return new Observable<void>((subscriber) => {
         let cancelled = false;
 
-        (async () => {
+        void (async () => {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.SET_THROUGHPUT, {
               value,

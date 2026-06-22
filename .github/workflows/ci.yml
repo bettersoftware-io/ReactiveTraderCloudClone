@@ -94,6 +94,9 @@ jobs:
       - name: Dependency graph (cycles + layering)
         run: pnpm check:deps
 
+      - name: ESLint (type-aware rules)
+        run: pnpm lint:eslint:types
+
       - name: Architecture + supply-chain gates (grep gates + pnpm audit --prod)
         run: pnpm --filter @rtc/tests gates
 
