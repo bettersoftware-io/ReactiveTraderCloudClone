@@ -287,8 +287,13 @@ once **either**:
 | Forbid function expressions, prefer declarations | `func-style: ["error","declaration"]` |
 | Forbid implicit-return arrows | `arrow-body-style: ["error","always"]` |
 | Forbid anonymous function expressions | `func-names: ["error","always"]` |
+| **Exactly one blank line between blocks** (fns/types/`describe`/`it`) | `padding-line-between-statements` + `lines-between-class-members` |
 | Inline-type ban (structural, + autofix) | custom rule / `no-restricted-syntax` w/ `TSTypeLiteral` selector |
 | Floating promises etc. (type-aware) | `@typescript-eslint/no-floating-promises` |
+
+The blank-line rule is the clearest "Biome can't, ESLint can" case: Biome's
+formatter *caps* consecutive blanks at 1 but never *requires* one, and there is
+no Biome lint equivalent. ESLint owns the "require a separator" half.
 
 **Coupling note:** if this lands, **migrate the inline-type GritQL rule (item 1)
 to a custom ESLint rule** — structural `TSTypeLiteral` matching beats the regex
@@ -354,6 +359,16 @@ duplicate CI while slowing the inner loop.
 
 ---
 
+## 10. Considered & dismissed (no tracking needed) ❌
+
+- **publint / are-the-types-wrong (`attw`)** — validate package publishing
+  correctness (exports maps, types resolution). We don't publish to npm, so
+  N/A. Revisit only if any `@rtc/*` package is ever published.
+- **depcheck** — unused-dependency finder, superseded by **knip** (item 2),
+  which covers unused deps *and* files *and* exports. Don't add both.
+
+---
+
 ## Appendix — what Biome already covers (so we don't re-add it)
 
 - JS/TS/JSX/TSX lint + format; JSON; **CSS lint + format** (property-sorting
@@ -362,4 +377,5 @@ duplicate CI while slowing the inner loop.
   *not* transitive (item 4 supersedes for graph rules).
 - Blank lines: the **formatter caps** consecutive blanks at 1, but does **not
   require** one (no `padding-line-between-statements` equivalent). The "exactly
-  one blank line between blocks" rule is **not achievable in Biome** for TS.
+  one blank line between blocks" rule is **not achievable in Biome** for TS —
+  see item 6 for the ESLint solution.
