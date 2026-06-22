@@ -79,7 +79,18 @@
         "useUniqueElementIds": "error"
       },
       "style": {
-        "useComponentExportOnlyModules": "error"
+        "useComponentExportOnlyModules": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["../../**"],
+                "message": "Imports may go at most one level up (\"../\"). For anything deeper use the #/ alias (or #tests/ in client-react tests). Built libs rewrite #/ to relative at build time via tsc-alias."
+              }
+            ]
+          }
+        }
       },
       "suspicious": {
         "noLeakedRender": "error",
