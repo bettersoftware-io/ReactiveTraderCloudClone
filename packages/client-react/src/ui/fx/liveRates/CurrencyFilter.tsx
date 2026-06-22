@@ -10,18 +10,22 @@ interface CurrencyFilterProps {
 export function CurrencyFilter({ selected, onChange }: CurrencyFilterProps) {
   return (
     <div data-testid="currency-filter" className={styles.filterBar}>
-      {CURRENCY_CATEGORIES.map((cat) => (
-        <button
-          key={cat}
-          type="button"
-          data-testid={`filter-${cat}`}
-          data-active={selected === cat ? "true" : "false"}
-          onClick={() => onChange(cat)}
-          className={styles.filter}
-        >
-          {cat}
-        </button>
-      ))}
+      {CURRENCY_CATEGORIES.map((cat) => {
+        return (
+          <button
+            key={cat}
+            type="button"
+            data-testid={`filter-${cat}`}
+            data-active={selected === cat ? "true" : "false"}
+            onClick={() => {
+              return onChange(cat);
+            }}
+            className={styles.filter}
+          >
+            {cat}
+          </button>
+        );
+      })}
     </div>
   );
 }

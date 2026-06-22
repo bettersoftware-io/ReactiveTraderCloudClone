@@ -19,9 +19,15 @@ function port(
   pass$: Observable<void> = of(undefined),
 ): WorkflowPort {
   return {
-    events: () => of<RfqEvent>(),
-    createRfq: () => of(0),
-    cancelRfq: () => of(undefined),
+    events: () => {
+      return of<RfqEvent>();
+    },
+    createRfq: () => {
+      return of(0);
+    },
+    cancelRfq: () => {
+      return of(undefined);
+    },
     quote: (req) => {
       rec.quote.push(req);
       return quote$;
@@ -30,7 +36,9 @@ function port(
       rec.pass.push(quoteId);
       return pass$;
     },
-    accept: () => of(undefined),
+    accept: () => {
+      return of(undefined);
+    },
   };
 }
 
@@ -45,7 +53,9 @@ describe("RfqsPresenter.createTicketSubmission", () => {
     const rec: Recorder = { quote: [], pass: [] };
     const machine = new RfqsPresenter(port(rec)).createTicketSubmission();
     let current: TicketSubmissionState | undefined;
-    const sub = machine.state$.subscribe((s) => (current = s));
+    const sub = machine.state$.subscribe((s) => {
+      current = s;
+    });
     expect(current).toEqual({ submitted: false });
     sub.unsubscribe();
     machine.dispose();
@@ -57,7 +67,9 @@ describe("RfqsPresenter.createTicketSubmission", () => {
       const rec: Recorder = { quote: [], pass: [] };
       const machine = new RfqsPresenter(port(rec)).createTicketSubmission();
       const states: TicketSubmissionState[] = [];
-      const sub = machine.state$.subscribe((s) => states.push(s));
+      const sub = machine.state$.subscribe((s) => {
+        return states.push(s);
+      });
 
       machine.intents.submitPrice(100, 101.5);
       flush();
@@ -75,7 +87,9 @@ describe("RfqsPresenter.createTicketSubmission", () => {
       const rec: Recorder = { quote: [], pass: [] };
       const machine = new RfqsPresenter(port(rec)).createTicketSubmission();
       const states: TicketSubmissionState[] = [];
-      const sub = machine.state$.subscribe((s) => states.push(s));
+      const sub = machine.state$.subscribe((s) => {
+        return states.push(s);
+      });
 
       machine.intents.pass(100);
       flush();
@@ -97,7 +111,9 @@ describe("RfqsPresenter.createTicketSubmission", () => {
         port(rec, cold("10ms #")),
       ).createTicketSubmission();
       const states: TicketSubmissionState[] = [];
-      const sub = machine.state$.subscribe((s) => states.push(s));
+      const sub = machine.state$.subscribe((s) => {
+        return states.push(s);
+      });
 
       machine.intents.submitPrice(100, 101.5);
       flush();
@@ -113,7 +129,9 @@ describe("RfqsPresenter.createTicketSubmission", () => {
     const rec: Recorder = { quote: [], pass: [] };
     const machine = new RfqsPresenter(port(rec)).createTicketSubmission();
     const states: TicketSubmissionState[] = [];
-    const sub = machine.state$.subscribe((s) => states.push(s));
+    const sub = machine.state$.subscribe((s) => {
+      return states.push(s);
+    });
     machine.dispose();
     // After dispose the source Subject is completed: pushing an action no longer
     // drives the stream, so no further state is emitted.

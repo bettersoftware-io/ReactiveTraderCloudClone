@@ -36,6 +36,8 @@ describePricingPortContract("wsRealPricing", () => {
         );
       },
     },
-    teardown: () => ws.dispose(),
+    teardown: () => {
+      return ws.dispose();
+    },
   };
 });

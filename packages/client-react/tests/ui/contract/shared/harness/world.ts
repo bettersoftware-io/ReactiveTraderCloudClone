@@ -136,6 +136,7 @@ export function createWorld(
   const sources = {} as {
     [K in keyof HookValues]: BehaviorSubject<HookValues[K]>;
   };
+
   for (const key of Object.keys(merged) as (keyof HookValues)[]) {
     // Each subject is typed by its own key; the cast bridges the per-key union.
     (sources[key] as BehaviorSubject<unknown>) = new BehaviorSubject<unknown>(
@@ -147,40 +148,47 @@ export function createWorld(
   const histories = new Map<string, BehaviorSubject<readonly PriceTick[]>>();
   const quotes = new Map<number, BehaviorSubject<readonly Quote[]>>();
 
-  const priceFor = (symbol: string): BehaviorSubject<Price | null> => {
+  function priceFor(symbol: string): BehaviorSubject<Price | null> {
     let subject = prices.get(symbol);
+
     if (!subject) {
       subject = new BehaviorSubject<Price | null>(null);
       prices.set(symbol, subject);
     }
+
     return subject;
-  };
-  const historyFor = (
-    symbol: string,
-  ): BehaviorSubject<readonly PriceTick[]> => {
+  }
+
+  function historyFor(symbol: string): BehaviorSubject<readonly PriceTick[]> {
     let subject = histories.get(symbol);
+
     if (!subject) {
       subject = new BehaviorSubject<readonly PriceTick[]>([]);
       histories.set(symbol, subject);
     }
-    return subject;
-  };
 
-  const quotesForRfq = (rfqId: number): BehaviorSubject<readonly Quote[]> => {
+    return subject;
+  }
+
+  function quotesForRfq(rfqId: number): BehaviorSubject<readonly Quote[]> {
     let subject = quotes.get(rfqId);
+
     if (!subject) {
       subject = new BehaviorSubject<readonly Quote[]>([]);
       quotes.set(rfqId, subject);
     }
+
     return subject;
-  };
+  }
 
   for (const [symbol, value] of Object.entries(parametric.prices ?? {})) {
     priceFor(symbol).next(value);
   }
+
   for (const [symbol, value] of Object.entries(parametric.histories ?? {})) {
     historyFor(symbol).next(value);
   }
+
   for (const [rfqId, value] of Object.entries(parametric.quotesForRfq ?? {})) {
     quotesForRfq(Number(rfqId)).next(value);
   }
@@ -203,16 +211,23 @@ export function createWorld(
     sources,
     throughput,
     throughputSets,
-    setThroughputView: (patch) =>
-      throughput.next({ ...throughput.getValue(), ...patch }),
+    setThroughputView: (patch) => {
+      return throughput.next({ ...throughput.getValue(), ...patch });
+    },
     theme,
     viewMode,
     priceFor,
     historyFor,
     quotesForRfq,
-    setPrice: (symbol, value) => priceFor(symbol).next(value),
-    setHistory: (symbol, value) => historyFor(symbol).next(value),
-    setQuotesForRfq: (rfqId, value) => quotesForRfq(rfqId).next(value),
+    setPrice: (symbol, value) => {
+      return priceFor(symbol).next(value);
+    },
+    setHistory: (symbol, value) => {
+      return historyFor(symbol).next(value);
+    },
+    setQuotesForRfq: (rfqId, value) => {
+      return quotesForRfq(rfqId).next(value);
+    },
     results,
     commands: {
       createRfq: [],

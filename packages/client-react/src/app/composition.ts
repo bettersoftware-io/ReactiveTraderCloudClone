@@ -61,29 +61,32 @@ export interface App {
 export function buildDefaultPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
   const browser = new BrowserConnectionEventsAdapter();
+
   if (url) {
     const ws = new WsAdapter(url);
     const gateway = new WsConnectionEventsAdapter(ws);
     const connectionEvents: ConnectionEventsPort = {
-      events: () => merge(gateway.events(), browser.events()),
+      events: () => {
+        return merge(gateway.events(), browser.events());
+      },
     };
     return { ...createWsRealPorts(ws), connectionEvents };
   }
+
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
-    events: () =>
-      merge(
+    events: () => {
+      return merge(
         gateway.events(),
-        browser
-          .events()
-          .pipe(
-            mergeMap((e) =>
-              e.type === "browserOnline" || e.type === "userActivity"
-                ? of(e, { type: "gatewayConnected" as const })
-                : of(e),
-            ),
-          ),
-      ),
+        browser.events().pipe(
+          mergeMap((e) => {
+            return e.type === "browserOnline" || e.type === "userActivity"
+              ? of(e, { type: "gatewayConnected" as const })
+              : of(e);
+          }),
+        ),
+      );
+    },
   };
   return { ...createSimulatorPorts(), connectionEvents };
 }
@@ -114,28 +117,43 @@ export function createMachineFactories(
   presenters: Presenters,
 ): MachineFactories {
   return {
-    tileExecution: (pair) =>
-      createTileExecutionMachine(pair, {
-        execute: (input) => presenters.execution.execute(input),
-      }),
-    rfqTile: (pair) =>
-      createRfqTileMachine(pair, {
-        requestQuote: (symbol, pipsPosition) =>
-          presenters.rfqQuote.requestQuote(symbol, pipsPosition),
-      }),
-    staleFlag: (pair) =>
-      createStaleFlagMachine({
+    tileExecution: (pair) => {
+      return createTileExecutionMachine(pair, {
+        execute: (input) => {
+          return presenters.execution.execute(input);
+        },
+      });
+    },
+    rfqTile: (pair) => {
+      return createRfqTileMachine(pair, {
+        requestQuote: (symbol, pipsPosition) => {
+          return presenters.rfqQuote.requestQuote(symbol, pipsPosition);
+        },
+      });
+    },
+    staleFlag: (pair) => {
+      return createStaleFlagMachine({
         status$: presenters.connection.status$,
         value$: presenters.priceStream.price$(pair),
-      }),
-    analyticsStaleFlag: () =>
-      createStaleFlagMachine({
+      });
+    },
+    analyticsStaleFlag: () => {
+      return createStaleFlagMachine({
         status$: presenters.connection.status$,
         value$: presenters.analytics.position$,
-      }),
-    rowHighlight: (isNew) => createRowHighlightMachine(isNew),
-    notional: (defaultNotional) => createNotionalMachine(defaultNotional),
-    rfqSubmission: () => presenters.rfqs.createSubmission(),
-    ticketSubmission: () => presenters.rfqs.createTicketSubmission(),
+      });
+    },
+    rowHighlight: (isNew) => {
+      return createRowHighlightMachine(isNew);
+    },
+    notional: (defaultNotional) => {
+      return createNotionalMachine(defaultNotional);
+    },
+    rfqSubmission: () => {
+      return presenters.rfqs.createSubmission();
+    },
+    ticketSubmission: () => {
+      return presenters.rfqs.createTicketSubmission();
+    },
   };
 }

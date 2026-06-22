@@ -11,17 +11,18 @@ import { ViewToggle } from "./ViewToggle";
 import styles from "./LiveRatesPanel.module.css";
 
 export function LiveRatesPanel() {
-  const hooks = useHooks();
-  const pairs = hooks.useCurrencyPairs();
+  const { useCurrencyPairs, useViewModePreference } = useHooks();
+  const pairs = useCurrencyPairs();
   // ViewMode persistence lives behind the seam (PreferencesPort). The category
   // filter stays local — it's transient view state, not a persisted preference.
-  const { viewMode, setViewMode } = hooks.useViewModePreference();
+  const { viewMode, setViewMode } = useViewModePreference();
   const [filter, setFilter] = useState<CurrencyCategory>("All");
 
-  const filteredPairs = useMemo(
-    () => pairs.filter((p) => matchesCurrencyFilter(p.symbol, filter)),
-    [pairs, filter],
-  );
+  const filteredPairs = useMemo(() => {
+    return pairs.filter((p) => {
+      return matchesCurrencyFilter(p.symbol, filter);
+    });
+  }, [pairs, filter]);
 
   return (
     <div className={styles.panel}>
@@ -34,13 +35,15 @@ export function LiveRatesPanel() {
         <div className={styles.empty}>Loading currency pairs...</div>
       ) : (
         <div className={styles.grid}>
-          {filteredPairs.map((pair) => (
-            <Tile
-              key={pair.symbol}
-              pair={pair}
-              showChart={viewMode === "chart"}
-            />
-          ))}
+          {filteredPairs.map((pair) => {
+            return (
+              <Tile
+                key={pair.symbol}
+                pair={pair}
+                showChart={viewMode === "chart"}
+              />
+            );
+          })}
         </div>
       )}
     </div>

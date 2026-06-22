@@ -8,7 +8,11 @@ import { InstrumentsPresenter } from "../InstrumentsPresenter";
 describe("InstrumentsPresenter", () => {
   it("exposes instruments", async () => {
     const instruments: readonly Instrument[] = [];
-    const port: InstrumentPort = { getInstruments: () => of(instruments) };
+    const port: InstrumentPort = {
+      getInstruments: () => {
+        return of(instruments);
+      },
+    };
     expect(await firstValueFrom(new InstrumentsPresenter(port).list$)).toBe(
       instruments,
     );

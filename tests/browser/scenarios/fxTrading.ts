@@ -4,7 +4,9 @@ import { assertGte, assertTrue } from "./assert";
 function parseRegexList(raw: string): RegExp[] {
   return raw
     .split(",")
-    .map((s) => s.trim())
+    .map((s) => {
+      return s.trim();
+    })
     .map((literal) => {
       const m = literal.match(/^\/(.+)\/([gimsuy]*)$/);
       if (!m) throw new Error(`bad regex literal: ${literal}`);

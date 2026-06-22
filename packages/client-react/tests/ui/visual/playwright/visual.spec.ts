@@ -4,7 +4,9 @@ import { scenarioActions } from "../scenarioActions";
 import { scenarios } from "../shared/scenarios";
 
 // Golden filename: scenario name with "/" → "-" (path-safe, stable).
-const goldenName = (scenario: string) => `${scenario.replace(/\//g, "-")}.png`;
+function goldenName(scenario: string) {
+  return `${scenario.replace(/\//g, "-")}.png`;
+}
 
 for (const name of Object.keys(scenarios)) {
   const action = scenarioActions[name] ?? {};
@@ -18,6 +20,7 @@ for (const name of Object.keys(scenarios)) {
     if (action.click) {
       await page.getByTestId(action.click).click();
     }
+
     for (const step of action.steps ?? []) {
       if ("click" in step) {
         await page.getByTestId(step.click).click();
@@ -27,9 +30,11 @@ for (const name of Object.keys(scenarios)) {
         await page.getByTestId(step.select).selectOption(step.value);
       }
     }
+
     if (action.waitForText) {
       await expect(page.getByText(action.waitForText)).toBeVisible();
     }
+
     if (action.assertAriaLabelOf !== undefined) {
       await expect(page.getByTestId(action.assertAriaLabelOf)).toHaveAttribute(
         "aria-label",
@@ -38,6 +43,7 @@ for (const name of Object.keys(scenarios)) {
     }
 
     const shot = goldenName(name);
+
     if (action.fullPage) {
       await expect(page).toHaveScreenshot(shot, {
         animations: "disabled",

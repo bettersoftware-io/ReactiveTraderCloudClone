@@ -14,7 +14,9 @@ export function TileExecution({ onExecute, disabled }: TileExecutionProps) {
         type="button"
         data-testid="sell-btn"
         data-side="sell"
-        onClick={() => onExecute(Direction.Sell)}
+        onClick={() => {
+          return onExecute(Direction.Sell);
+        }}
         disabled={disabled}
         className={styles.button}
       >
@@ -24,7 +26,9 @@ export function TileExecution({ onExecute, disabled }: TileExecutionProps) {
         type="button"
         data-testid="buy-btn"
         data-side="buy"
-        onClick={() => onExecute(Direction.Buy)}
+        onClick={() => {
+          return onExecute(Direction.Buy);
+        }}
         disabled={disabled}
         className={styles.button}
       >

@@ -4,19 +4,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-const trade = (tradeId: number, over: Partial<Trade> = {}): Trade => ({
-  tradeId,
-  tradeName: `Trade ${tradeId}`,
-  currencyPair: "EURUSD",
-  notional: 1_000_000,
-  dealtCurrency: "EUR",
-  direction: Direction.Buy,
-  spotRate: 1.09221,
-  status: TradeStatus.Done,
-  tradeDate: "2026-06-06",
-  valueDate: "2026-06-08",
-  ...over,
-});
+const trade = (tradeId: number, over: Partial<Trade> = {}): Trade => {
+  return {
+    tradeId,
+    tradeName: `Trade ${tradeId}`,
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-06-06",
+    valueDate: "2026-06-08",
+    ...over,
+  };
+};
 
 const t1 = trade(4001, { currencyPair: "EURUSD" });
 const t2 = trade(4002, {
@@ -44,8 +46,16 @@ describe("FxBlotter", () => {
     const headers = mount(FxBlotter, {
       hooks: { useTrades: [t1] },
     }).columnHeaders();
-    expect(headers.some((h) => h.includes("Trade ID"))).toBe(true);
-    expect(headers.some((h) => h.includes("Status"))).toBe(true);
+    expect(
+      headers.some((h) => {
+        return h.includes("Trade ID");
+      }),
+    ).toBe(true);
+    expect(
+      headers.some((h) => {
+        return h.includes("Status");
+      }),
+    ).toBe(true);
   });
 
   it("shows an empty-state message when there are no trades", () => {
@@ -183,7 +193,11 @@ describe("FxBlotter", () => {
       class RecordingBlob extends RealBlob {
         constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
           super(parts, options);
-          captured = (parts ?? []).map((p) => String(p)).join("");
+          captured = (parts ?? [])
+            .map((p) => {
+              return String(p);
+            })
+            .join("");
         }
       }
       vi.stubGlobal("Blob", RecordingBlob);

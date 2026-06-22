@@ -29,16 +29,20 @@ export function DealerSelection({
     <div>
       <span className={styles.label}>Dealers</span>
       <div className={styles.list}>
-        {dealers.map((dealer) => (
-          <label key={dealer.id} className={styles.dealerLabel}>
-            <input
-              type="checkbox"
-              checked={selectedIds.has(dealer.id)}
-              onChange={() => toggle(dealer.id)}
-            />
-            {dealer.name}
-          </label>
-        ))}
+        {dealers.map((dealer) => {
+          return (
+            <label key={dealer.id} className={styles.dealerLabel}>
+              <input
+                type="checkbox"
+                checked={selectedIds.has(dealer.id)}
+                onChange={() => {
+                  return toggle(dealer.id);
+                }}
+              />
+              {dealer.name}
+            </label>
+          );
+        })}
       </div>
     </div>
   );

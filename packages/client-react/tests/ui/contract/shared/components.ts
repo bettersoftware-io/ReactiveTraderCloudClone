@@ -112,151 +112,197 @@ import { ThemeTogglePage } from "./pages/shell/theme/ThemeTogglePage";
 export const AnalyticsPanel = component<
   Record<string, never>,
   AnalyticsPanelPage
->((ctx) => new AnalyticsPanelPage(ctx));
+>((ctx) => {
+  return new AnalyticsPanelPage(ctx);
+});
 
-export const PnlValue = component<PnlValueProps, PnlValuePage>(
-  (ctx) => new PnlValuePage(ctx),
-);
+export const PnlValue = component<PnlValueProps, PnlValuePage>((ctx) => {
+  return new PnlValuePage(ctx);
+});
 
 export const ConnectionStatusBar = component<
   Record<string, never>,
   ConnectionStatusBarPage
->((ctx) => new ConnectionStatusBarPage(ctx));
+>((ctx) => {
+  return new ConnectionStatusBarPage(ctx);
+});
 
 export const FxBlotter = component<Record<string, never>, FxBlotterPage>(
-  (ctx) => new FxBlotterPage(ctx),
+  (ctx) => {
+    return new FxBlotterPage(ctx);
+  },
 );
 
 export const QuickFilter = component<QuickFilterProps, QuickFilterPage>(
-  (ctx) => new QuickFilterPage(ctx),
+  (ctx) => {
+    return new QuickFilterPage(ctx);
+  },
 );
 
-export const BlotterRow = component<BlotterRowProps, BlotterRowPage>(
-  (ctx) => new BlotterRowPage(ctx),
-);
+export const BlotterRow = component<BlotterRowProps, BlotterRowPage>((ctx) => {
+  return new BlotterRowPage(ctx);
+});
 
 export const BlotterHeader = component<BlotterHeaderProps, BlotterHeaderPage>(
-  (ctx) => new BlotterHeaderPage(ctx),
+  (ctx) => {
+    return new BlotterHeaderPage(ctx);
+  },
 );
 
-export const SetFilter = component<SetFilterProps, SetFilterPage>(
-  (ctx) => new SetFilterPage(ctx),
-);
+export const SetFilter = component<SetFilterProps, SetFilterPage>((ctx) => {
+  return new SetFilterPage(ctx);
+});
 
 export const NumberFilter = component<NumberFilterProps, NumberFilterPage>(
-  (ctx) => new NumberFilterPage(ctx),
+  (ctx) => {
+    return new NumberFilterPage(ctx);
+  },
 );
 
-export const DateFilter = component<DateFilterProps, DateFilterPage>(
-  (ctx) => new DateFilterPage(ctx),
-);
+export const DateFilter = component<DateFilterProps, DateFilterPage>((ctx) => {
+  return new DateFilterPage(ctx);
+});
 
-export const NewRfqForm = component<NewRfqFormProps, NewRfqFormPage>(
-  (ctx) => new NewRfqFormPage(ctx),
-);
+export const NewRfqForm = component<NewRfqFormProps, NewRfqFormPage>((ctx) => {
+  return new NewRfqFormPage(ctx);
+});
 
 export const RfqFilterTabs = component<RfqFilterTabsProps, RfqFilterTabsPage>(
-  (ctx) => new RfqFilterTabsPage(ctx),
+  (ctx) => {
+    return new RfqFilterTabsPage(ctx);
+  },
 );
 
-export const QuoteCard = component<QuoteCardProps, QuoteCardPage>(
-  (ctx) => new QuoteCardPage(ctx),
-);
+export const QuoteCard = component<QuoteCardProps, QuoteCardPage>((ctx) => {
+  return new QuoteCardPage(ctx);
+});
 
-export const RfqCard = component<RfqCardProps, RfqCardPage>(
-  (ctx) => new RfqCardPage(ctx),
-);
+export const RfqCard = component<RfqCardProps, RfqCardPage>((ctx) => {
+  return new RfqCardPage(ctx);
+});
 
 export const RfqTilesPanel = component<
   Record<string, never>,
   RfqTilesPanelPage
->((ctx) => new RfqTilesPanelPage(ctx));
+>((ctx) => {
+  return new RfqTilesPanelPage(ctx);
+});
 
 export const SellSidePanel = component<
   Record<string, never>,
   SellSidePanelPage
->((ctx) => new SellSidePanelPage(ctx));
+>((ctx) => {
+  return new SellSidePanelPage(ctx);
+});
 
 export const TradeTicket = component<TradeTicketProps, TradeTicketPage>(
-  (ctx) => new TradeTicketPage(ctx),
+  (ctx) => {
+    return new TradeTicketPage(ctx);
+  },
 );
 
 export const CreditBlotter = component<
   Record<string, never>,
   CreditBlotterPage
->((ctx) => new CreditBlotterPage(ctx));
+>((ctx) => {
+  return new CreditBlotterPage(ctx);
+});
 
 export const LiveRatesPanel = component<
   Record<string, never>,
   LiveRatesPanelPage
->((ctx) => new LiveRatesPanelPage(ctx));
+>((ctx) => {
+  return new LiveRatesPanelPage(ctx);
+});
 
 export const CurrencyFilter = component<
   CurrencyFilterProps,
   CurrencyFilterPage
->((ctx) => new CurrencyFilterPage(ctx));
+>((ctx) => {
+  return new CurrencyFilterPage(ctx);
+});
 
-export const ViewToggle = component<ViewToggleProps, ViewTogglePage>(
-  (ctx) => new ViewTogglePage(ctx),
-);
+export const ViewToggle = component<ViewToggleProps, ViewTogglePage>((ctx) => {
+  return new ViewTogglePage(ctx);
+});
 
-export const Tile = component<TileProps, TilePage>((ctx) => new TilePage(ctx));
+export const Tile = component<TileProps, TilePage>((ctx) => {
+  return new TilePage(ctx);
+});
 
-export const TileHeader = component<TileHeaderProps, TileHeaderPage>(
-  (ctx) => new TileHeaderPage(ctx),
-);
+export const TileHeader = component<TileHeaderProps, TileHeaderPage>((ctx) => {
+  return new TileHeaderPage(ctx);
+});
 
-export const TilePrice = component<TilePriceProps, TilePricePage>(
-  (ctx) => new TilePricePage(ctx),
-);
+export const TilePrice = component<TilePriceProps, TilePricePage>((ctx) => {
+  return new TilePricePage(ctx);
+});
 
 export const SpreadDisplay = component<SpreadDisplayProps, SpreadDisplayPage>(
-  (ctx) => new SpreadDisplayPage(ctx),
+  (ctx) => {
+    return new SpreadDisplayPage(ctx);
+  },
 );
 
 export const TileExecution = component<TileExecutionProps, TileExecutionPage>(
-  (ctx) => new TileExecutionPage(ctx),
+  (ctx) => {
+    return new TileExecutionPage(ctx);
+  },
 );
 
 export const TileNotional = component<TileNotionalProps, TileNotionalPage>(
-  (ctx) => new TileNotionalPage(ctx),
+  (ctx) => {
+    return new TileNotionalPage(ctx);
+  },
 );
 
 export const TileConfirmation = component<
   TileConfirmationProps,
   TileConfirmationPage
->((ctx) => new TileConfirmationPage(ctx));
+>((ctx) => {
+  return new TileConfirmationPage(ctx);
+});
 
 export const RfqCountdown = component<RfqCountdownProps, RfqCountdownPage>(
-  (ctx) => new RfqCountdownPage(ctx),
+  (ctx) => {
+    return new RfqCountdownPage(ctx);
+  },
 );
 
-export const TileRfq = component<TileRfqProps, TileRfqPage>(
-  (ctx) => new TileRfqPage(ctx),
-);
+export const TileRfq = component<TileRfqProps, TileRfqPage>((ctx) => {
+  return new TileRfqPage(ctx);
+});
 
 export const ConnectionOverlay = component<
   Record<string, never>,
   ConnectionOverlayPage
->((ctx) => new ConnectionOverlayPage(ctx));
+>((ctx) => {
+  return new ConnectionOverlayPage(ctx);
+});
 
-export const Footer = component<Record<string, never>, FooterPage>(
-  (ctx) => new FooterPage(ctx),
-);
+export const Footer = component<Record<string, never>, FooterPage>((ctx) => {
+  return new FooterPage(ctx);
+});
 
-export const Header = component<HeaderProps, HeaderPage>(
-  (ctx) => new HeaderPage(ctx),
-);
+export const Header = component<HeaderProps, HeaderPage>((ctx) => {
+  return new HeaderPage(ctx);
+});
 
 export const StaleIndicator = component<
   StaleIndicatorProps,
   StaleIndicatorPage
->((ctx) => new StaleIndicatorPage(ctx));
+>((ctx) => {
+  return new StaleIndicatorPage(ctx);
+});
 
 export const ThemeToggle = component<Record<string, never>, ThemeTogglePage>(
-  (ctx) => new ThemeTogglePage(ctx),
+  (ctx) => {
+    return new ThemeTogglePage(ctx);
+  },
 );
 
 export const AdminPanel = component<Record<string, never>, AdminPanelPage>(
-  (ctx) => new AdminPanelPage(ctx),
+  (ctx) => {
+    return new AdminPanelPage(ctx);
+  },
 );

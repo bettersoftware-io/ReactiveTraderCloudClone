@@ -18,7 +18,9 @@ describe("ViewModePreferencePresenter", () => {
       new PreferencesSimulator(),
     );
     const seen: ViewMode[] = [];
-    const sub = presenter.viewMode$.subscribe((v) => seen.push(v));
+    const sub = presenter.viewMode$.subscribe((v) => {
+      return seen.push(v);
+    });
     presenter.setViewMode("price");
     sub.unsubscribe();
     expect(seen).toEqual(["chart", "price"]);

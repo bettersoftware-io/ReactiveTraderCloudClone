@@ -15,6 +15,7 @@ export async function expectBlotterHasAtLeastNRows(
     w.ctx.app.presenters.blotter.trades$,
     3000,
   );
+
   if (trades.length < n) {
     throw new Error(
       `blotter has ${trades.length} rows, expected at least ${n}`,

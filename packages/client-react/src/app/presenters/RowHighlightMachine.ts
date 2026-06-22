@@ -27,7 +27,13 @@ export function createRowHighlightMachine(
   // `true` seed is supplied by startWith below. For a non-new row: nothing ever
   // emits after the seed, so it stays `false` forever.
   const stream$ = (
-    isNew ? timer(HIGHLIGHT_MS).pipe(map(() => false)) : EMPTY
+    isNew
+      ? timer(HIGHLIGHT_MS).pipe(
+          map(() => {
+            return false;
+          }),
+        )
+      : EMPTY
   ).pipe(
     // Seed the synchronous initial value here (not as state()'s separate default)
     // so state() doesn't replay its default AND the stream's first value. Same

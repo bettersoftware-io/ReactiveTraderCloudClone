@@ -2,7 +2,9 @@ import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
 
 test("app/fx", async ({ mount, page }) => {
-  await page.addInitScript(() => window.localStorage.clear());
+  await page.addInitScript(() => {
+    return window.localStorage.clear();
+  });
   await mount(<VisualScenario name="app/fx" />);
   await expect(page).toHaveScreenshot("fx.png", {
     animations: "disabled",
@@ -11,7 +13,9 @@ test("app/fx", async ({ mount, page }) => {
 });
 
 test("app/credit", async ({ mount, page }) => {
-  await page.addInitScript(() => window.localStorage.clear());
+  await page.addInitScript(() => {
+    return window.localStorage.clear();
+  });
   await mount(<VisualScenario name="app/credit" />);
   await page.getByTestId("tab-credit").click();
   await expect(page.getByText("Credit Trades")).toBeVisible();
@@ -22,12 +26,14 @@ test("app/credit", async ({ mount, page }) => {
 });
 
 test("app/admin", async ({ mount, page }) => {
-  await page.addInitScript(() => window.localStorage.clear());
+  await page.addInitScript(() => {
+    return window.localStorage.clear();
+  });
   // AdminPanel fetches throughput on mount; stub it so the loaded state is
   // deterministic instead of racing a (failing) request to a missing server.
-  await page.route("**/throughput", (route) =>
-    route.fulfill({ json: { value: 250 } }),
-  );
+  await page.route("**/throughput", (route) => {
+    return route.fulfill({ json: { value: 250 } });
+  });
   await mount(<VisualScenario name="app/admin" />);
   await page.getByTestId("tab-admin").click();
   await expect(page.getByText("Throughput Control")).toBeVisible();

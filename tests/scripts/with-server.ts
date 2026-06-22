@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { SHARED_DEV_SERVER_ENV, startDevServer } from "./devServer";
 
 const [cmd, ...args] = process.argv.slice(2);
+
 if (!cmd) {
   console.error("usage: with-server <cmd> [args...]");
   process.exit(2);
@@ -19,6 +20,7 @@ const dev = await startDevServer();
 console.log(`[with-server] dev server ready on :${dev.port}`);
 
 let code = 1;
+
 try {
   code = await new Promise<number>((resolve) => {
     const child = spawn(cmd, args, {
@@ -29,12 +31,17 @@ try {
         [SHARED_DEV_SERVER_ENV]: "1",
       },
     });
-    child.on("exit", (c) => resolve(c ?? 1));
-    child.on("error", () => resolve(1));
+    child.on("exit", (c) => {
+      return resolve(c ?? 1);
+    });
+    child.on("error", () => {
+      return resolve(1);
+    });
   });
 } finally {
   // Always tear the dev server down — even if the child throws/exits abnormally
   // — so a failed suite never leaves an orphaned Vite holding the port.
   await dev.stop();
 }
+
 process.exit(code);

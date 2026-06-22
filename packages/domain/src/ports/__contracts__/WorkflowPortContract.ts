@@ -26,11 +26,17 @@ export interface WorkflowHarness {
 // verify the event TYPE is correct; specific ID round-trips are
 // tested in use-case unit tests.
 
-const isRfqCreated = (_rfqId: number) => (e: RfqEvent) =>
-  e.type === "rfqCreated";
+function isRfqCreated(_rfqId: number) {
+  return (e: RfqEvent) => {
+    return e.type === "rfqCreated";
+  };
+}
 
-const isAccepted = (_rfqId: number, _quoteId: number) => (e: RfqEvent) =>
-  e.type === "quoteAccepted";
+function isAccepted(_rfqId: number, _quoteId: number) {
+  return (e: RfqEvent) => {
+    return e.type === "quoteAccepted";
+  };
+}
 
 export function describeWorkflowPortContract(
   label: string,
@@ -39,6 +45,7 @@ export function describeWorkflowPortContract(
   describe(`${label} :: WorkflowPort contract`, () => {
     it("createRfq emits one rfqId then completes", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(
           port.createRfq({
@@ -59,6 +66,7 @@ export function describeWorkflowPortContract(
 
     it("events() emits an rfqCreated event after createRfq", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const events$: Observable<RfqEvent> = port.events();
         const eventPromise = firstValueFrom(
@@ -75,6 +83,7 @@ export function describeWorkflowPortContract(
 
     it("events() emits a quoteAccepted event after accept", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const events$ = port.events();
         const eventPromise = firstValueFrom(

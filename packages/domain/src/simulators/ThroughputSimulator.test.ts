@@ -25,14 +25,22 @@ describe("ThroughputSimulator", () => {
 
   it("rejects values out of range (matches server: throws)", () => {
     const sim = new ThroughputSimulator();
-    expect(() => sim.setThroughput(-1)).toThrow();
-    expect(() => sim.setThroughput(1001)).toThrow();
+    expect(() => {
+      return sim.setThroughput(-1);
+    }).toThrow();
+    expect(() => {
+      return sim.setThroughput(1001);
+    }).toThrow();
   });
 
   it("rejects non-finite values (matches server: throws)", () => {
     const sim = new ThroughputSimulator();
-    expect(() => sim.setThroughput(NaN)).toThrow();
-    expect(() => sim.setThroughput(Infinity)).toThrow();
+    expect(() => {
+      return sim.setThroughput(NaN);
+    }).toThrow();
+    expect(() => {
+      return sim.setThroughput(Infinity);
+    }).toThrow();
   });
 
   it("setThroughput emits undefined then completes", async () => {

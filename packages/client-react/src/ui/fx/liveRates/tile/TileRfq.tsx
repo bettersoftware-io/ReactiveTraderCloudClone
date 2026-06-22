@@ -93,14 +93,18 @@ export function TileRfq({
         <div className={styles.quoteRow}>
           <button
             type="button"
-            onClick={() => handleAccept(Direction.Sell)}
+            onClick={() => {
+              return handleAccept(Direction.Sell);
+            }}
             className={styles.sellQuoteButton}
           >
             Sell {formatPrice(state.quote.bid, pair.ratePrecision)}
           </button>
           <button
             type="button"
-            onClick={() => handleAccept(Direction.Buy)}
+            onClick={() => {
+              return handleAccept(Direction.Buy);
+            }}
             className={styles.buyQuoteButton}
           >
             Buy {formatPrice(state.quote.ask, pair.ratePrecision)}

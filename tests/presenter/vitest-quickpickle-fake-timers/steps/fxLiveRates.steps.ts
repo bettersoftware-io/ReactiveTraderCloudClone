@@ -7,35 +7,41 @@ import type { VitestFakePresenterWorld } from "../world";
 
 Then(
   "a price tile is visible within {int} seconds",
-  async (state: VitestFakePresenterWorld, n: number) =>
-    fx.expectPriceTileVisibleWithin(state, n),
+  async (state: VitestFakePresenterWorld, n: number) => {
+    return fx.expectPriceTileVisibleWithin(state, n);
+  },
 );
 
-Then("a price tile is visible", async (state: VitestFakePresenterWorld) =>
-  fx.expectPriceTileVisibleWithin(state, 5),
-);
+Then("a price tile is visible", async (state: VitestFakePresenterWorld) => {
+  return fx.expectPriceTileVisibleWithin(state, 5);
+});
 
 Then(
   "there is at least 1 visible tile",
-  async (state: VitestFakePresenterWorld) =>
-    fx.expectAtLeastNVisibleTilesWithin(state, 1, 5),
+  async (state: VitestFakePresenterWorld) => {
+    return fx.expectAtLeastNVisibleTilesWithin(state, 1, 5);
+  },
 );
 
 Then(
   "there are at least {int} visible tiles within {int} seconds",
-  async (state: VitestFakePresenterWorld, n: number, s: number) =>
-    fx.expectAtLeastNVisibleTilesWithin(state, n, s),
+  async (state: VitestFakePresenterWorld, n: number, s: number) => {
+    return fx.expectAtLeastNVisibleTilesWithin(state, n, s);
+  },
 );
 
 When(
   "the trader records the first tile text",
-  async (state: VitestFakePresenterWorld) => fx.recordFirstTileText(state),
+  async (state: VitestFakePresenterWorld) => {
+    return fx.recordFirstTileText(state);
+  },
 );
 
 Then(
   "the first tile text is non-empty",
-  async (state: VitestFakePresenterWorld) =>
-    fx.expectFirstTileTextNonEmpty(state),
+  async (state: VitestFakePresenterWorld) => {
+    return fx.expectFirstTileTextNonEmpty(state);
+  },
 );
 
 Then(

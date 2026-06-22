@@ -25,7 +25,9 @@ export const reactDriver: UiContractDriver = {
       unmount,
       // Wrap mutations in `act` so React flushes re-renders synchronously
       // before the caller's next assertion.
-      flushSync: (fn) => act(fn),
+      flushSync: (fn) => {
+        return act(fn);
+      },
     };
   },
 };

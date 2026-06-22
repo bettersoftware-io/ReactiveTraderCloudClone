@@ -42,13 +42,15 @@ export class ExecuteTradeUseCase {
       dealtCurrency,
     };
     return this.execution.executeTrade(request).pipe(
-      map((trade) => ({
-        trade,
-        status:
-          trade.status === TradeStatus.Rejected
-            ? ExecutionStatus.Rejected
-            : ExecutionStatus.Done,
-      })),
+      map((trade) => {
+        return {
+          trade,
+          status:
+            trade.status === TradeStatus.Rejected
+              ? ExecutionStatus.Rejected
+              : ExecutionStatus.Done,
+        };
+      }),
     );
   }
 }

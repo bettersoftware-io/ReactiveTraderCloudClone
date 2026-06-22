@@ -16,6 +16,8 @@ describeReferenceDataPortContract("wsRealReferenceData", () => {
         ws.emit("stream.referenceData", referenceDataFrame());
       },
     },
-    teardown: () => ws.dispose(),
+    teardown: () => {
+      return ws.dispose();
+    },
   };
 });

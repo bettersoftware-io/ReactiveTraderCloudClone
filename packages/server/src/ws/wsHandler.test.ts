@@ -50,7 +50,9 @@ function defined<T>(
 /** Minimal stand-in for the `ws` WebSocket the handler talks to. */
 class FakeWs extends EventEmitter {
   readonly OPEN = 1;
+
   readyState = 1;
+
   readonly outbound: WsMessage[] = [];
 
   send(data: string): void {
@@ -69,11 +71,17 @@ class FakeWs extends EventEmitter {
   }
 
   framesOfType(type: string): WsMessage[] {
-    return this.outbound.filter((m) => m.type === type);
+    return this.outbound.filter((m) => {
+      return m.type === type;
+    });
   }
 }
 
-const wait = (ms = 5): Promise<void> => new Promise((r) => setTimeout(r, ms));
+function wait(ms = 5): Promise<void> {
+  return new Promise((r) => {
+    return setTimeout(r, ms);
+  });
+}
 
 // ── Wire-shape contract helper ───────────────────────────────────
 
@@ -92,20 +100,24 @@ function expectShape(
   if (Array.isArray(canonical)) {
     expect(Array.isArray(actual), `${path} should be an array`).toBe(true);
     const arr = actual as unknown[];
+
     // Element shape is checked against the first element only. Empty arrays on
     // either side are NOT shape-checked — keep the fakes emitting ≥1 element so
     // array assertions don't silently become vacuous.
     if (canonical.length > 0 && arr.length > 0) {
       expectShape(arr[0], canonical[0], `${path}[0]`);
     }
+
     return;
   }
+
   if (canonical !== null && typeof canonical === "object") {
     expect(
       actual !== null && typeof actual === "object",
       `${path} should be an object`,
     ).toBe(true);
     const obj = actual as Record<string, unknown>;
+
     for (const key of Object.keys(canonical as Record<string, unknown>)) {
       expect(obj, `${path} missing key "${key}"`).toHaveProperty(key);
       expectShape(
@@ -114,8 +126,10 @@ function expectShape(
         `${path}.${key}`,
       );
     }
+
     return;
   }
+
   expect(typeof actual, `${path} type`).toBe(typeof canonical);
 }
 
@@ -145,8 +159,8 @@ function fakeServices(
 ): ServiceContainer {
   const base = {
     referenceData: {
-      getCurrencyPairs: () =>
-        of([
+      getCurrencyPairs: () => {
+        return of([
           {
             base: "EUR",
             term: "USD",
@@ -155,22 +169,26 @@ function fakeServices(
             pipsPosition: 4,
             defaultNotional: 1_000_000,
           },
-        ]),
+        ]);
+      },
     },
     pricing: {
-      getPriceUpdates: (symbol: string): Observable<unknown> =>
-        interval(PRICE_TICK_MS).pipe(
-          map(() => ({
-            symbol,
-            bid: 1.0998,
-            ask: 1.1002,
-            mid: 1.1,
-            valueDate: "2026-01-01",
-            creationTimestamp: 1,
-          })),
-        ),
-      getPriceHistory: () =>
-        of([
+      getPriceUpdates: (symbol: string): Observable<unknown> => {
+        return interval(PRICE_TICK_MS).pipe(
+          map(() => {
+            return {
+              symbol,
+              bid: 1.0998,
+              ask: 1.1002,
+              mid: 1.1,
+              valueDate: "2026-01-01",
+              creationTimestamp: 1,
+            };
+          }),
+        );
+      },
+      getPriceHistory: () => {
+        return of([
           {
             symbol: "EURUSD",
             bid: 1.0998,
@@ -179,7 +197,8 @@ function fakeServices(
             valueDate: "2026-01-01",
             creationTimestamp: 1,
           },
-        ]),
+        ]);
+      },
     },
     execution: {
       executeTrade: (req: {
@@ -188,8 +207,8 @@ function fakeServices(
         dealtCurrency: string;
         direction: Direction;
         spotRate: number;
-      }) =>
-        of({
+      }) => {
+        return of({
           tradeId: 1,
           tradeName: "RTC",
           currencyPair: req.currencyPair,
@@ -200,11 +219,12 @@ function fakeServices(
           status: TradeStatus.Done,
           tradeDate: "2026-01-01",
           valueDate: "2026-01-01",
-        }),
+        });
+      },
     },
     blotter: {
-      getTradeStream: () =>
-        of([
+      getTradeStream: () => {
+        return of([
           {
             tradeId: 1,
             tradeName: "RTC",
@@ -217,11 +237,12 @@ function fakeServices(
             tradeDate: "2026-01-01",
             valueDate: "2026-01-01",
           },
-        ]),
+        ]);
+      },
     },
     analytics: {
-      getAnalytics: () =>
-        of({
+      getAnalytics: () => {
+        return of({
           currentPositions: [
             {
               symbol: "EURUSD",
@@ -231,11 +252,12 @@ function fakeServices(
             },
           ],
           history: [{ timestamp: "2026-01-01T00:00:00.000Z", usdPnl: 4 }],
-        }),
+        });
+      },
     },
     instruments: {
-      getInstruments: () =>
-        of([
+      getInstruments: () => {
+        return of([
           {
             id: 1,
             name: "US Treasury 10Y",
@@ -245,14 +267,17 @@ function fakeServices(
             interestRate: 0.04,
             benchmark: "T",
           },
-        ]),
+        ]);
+      },
     },
     dealers: {
-      getDealers: () => of([{ id: 1, name: "Acme Bank" }]),
+      getDealers: () => {
+        return of([{ id: 1, name: "Acme Bank" }]);
+      },
     },
     workflow: {
-      events: (): Observable<RfqEvent> =>
-        of({
+      events: (): Observable<RfqEvent> => {
+        return of({
           type: "rfqCreated",
           payload: {
             id: 1,
@@ -263,12 +288,23 @@ function fakeServices(
             expirySecs: 120,
             creationTimestamp: 1,
           },
-        } as unknown as RfqEvent),
-      createRfq: () => of(1),
-      cancelRfq: () => of(undefined),
-      quote: () => of(undefined),
-      pass: () => of(undefined),
-      accept: () => of(undefined),
+        } as unknown as RfqEvent);
+      },
+      createRfq: () => {
+        return of(1);
+      },
+      cancelRfq: () => {
+        return of(undefined);
+      },
+      quote: () => {
+        return of(undefined);
+      },
+      pass: () => {
+        return of(undefined);
+      },
+      accept: () => {
+        return of(undefined);
+      },
     },
     throughput: new ThroughputService(),
   };
@@ -333,9 +369,9 @@ describe("wsHandler protocol", () => {
     ws.receive({ type: CLIENT_MSG.SUBSCRIBE_INSTRUMENTS });
     await wait();
 
-    const events = ws
-      .framesOfType(SERVER_MSG.INSTRUMENT_EVENT)
-      .map((m) => (m.payload as { type: string }).type);
+    const events = ws.framesOfType(SERVER_MSG.INSTRUMENT_EVENT).map((m) => {
+      return (m.payload as { type: string }).type;
+    });
     expect(events[0]).toBe("startOfStateOfTheWorld");
     expect(events).toContain("added");
     expect(events).toContain("endOfStateOfTheWorld");
@@ -375,16 +411,18 @@ describe("wsHandler protocol", () => {
     await wait();
 
     const frames = ws.framesOfType(SERVER_MSG.DEALER_EVENT);
-    const types = frames.map((m) => (m.payload as { type: string }).type);
+    const types = frames.map((m) => {
+      return (m.payload as { type: string }).type;
+    });
     expect(types[0]).toBe("startOfStateOfTheWorld");
     expect(types).toContain("added");
     expect(types).toContain("endOfStateOfTheWorld");
     expect(types.indexOf("startOfStateOfTheWorld")).toBeLessThan(
       types.indexOf("endOfStateOfTheWorld"),
     );
-    const added = frames.find(
-      (m) => (m.payload as { type: string }).type === "added",
-    );
+    const added = frames.find((m) => {
+      return (m.payload as { type: string }).type === "added";
+    });
     expectFrameShape(added, SERVER_MSG.DEALER_EVENT, dealerAdded());
   });
 
@@ -430,7 +468,11 @@ describe("wsHandler protocol", () => {
 
   it("answers rpc.executeTrade with a nack when execution fails", async () => {
     const failing = {
-      executeTrade: () => throwError(() => new Error("boom")),
+      executeTrade: () => {
+        return throwError(() => {
+          return new Error("boom");
+        });
+      },
     } as unknown as ServiceContainer["execution"];
     const ws = connect(fakeServices({ execution: failing }));
     ws.receive({
@@ -472,8 +514,14 @@ describe("wsHandler protocol", () => {
 
   it("answers rpc.getPriceHistory with a nack when the service fails", async () => {
     const failing = {
-      getPriceUpdates: () => of(),
-      getPriceHistory: () => throwError(() => new Error("boom")),
+      getPriceUpdates: () => {
+        return of();
+      },
+      getPriceHistory: () => {
+        return throwError(() => {
+          return new Error("boom");
+        });
+      },
     } as unknown as ServiceContainer["pricing"];
     const ws = connect(fakeServices({ pricing: failing }));
     ws.receive({
@@ -510,8 +558,14 @@ describe("wsHandler protocol", () => {
 
   it("answers rpc.createRfq with a nack when the workflow fails", async () => {
     const failing = {
-      events: () => of(),
-      createRfq: () => throwError(() => new Error("boom")),
+      events: () => {
+        return of();
+      },
+      createRfq: () => {
+        return throwError(() => {
+          return new Error("boom");
+        });
+      },
     } as unknown as ServiceContainer["workflow"];
     const ws = connect(fakeServices({ workflow: failing }));
     ws.receive({
@@ -548,8 +602,14 @@ describe("wsHandler protocol", () => {
 
   it("answers rpc.cancelRfq with a nack when the workflow fails", async () => {
     const failing = {
-      events: () => of(),
-      cancelRfq: () => throwError(() => new Error("boom")),
+      events: () => {
+        return of();
+      },
+      cancelRfq: () => {
+        return throwError(() => {
+          return new Error("boom");
+        });
+      },
     } as unknown as ServiceContainer["workflow"];
     const ws = connect(fakeServices({ workflow: failing }));
     ws.receive({
@@ -580,8 +640,14 @@ describe("wsHandler protocol", () => {
 
   it("answers rpc.quote with a nack when the workflow fails", async () => {
     const failing = {
-      events: () => of(),
-      quote: () => throwError(() => new Error("boom")),
+      events: () => {
+        return of();
+      },
+      quote: () => {
+        return throwError(() => {
+          return new Error("boom");
+        });
+      },
     } as unknown as ServiceContainer["workflow"];
     const ws = connect(fakeServices({ workflow: failing }));
     ws.receive({
@@ -612,8 +678,14 @@ describe("wsHandler protocol", () => {
 
   it("answers rpc.pass with a nack when the workflow fails", async () => {
     const failing = {
-      events: () => of(),
-      pass: () => throwError(() => new Error("boom")),
+      events: () => {
+        return of();
+      },
+      pass: () => {
+        return throwError(() => {
+          return new Error("boom");
+        });
+      },
     } as unknown as ServiceContainer["workflow"];
     const ws = connect(fakeServices({ workflow: failing }));
     ws.receive({
@@ -644,8 +716,14 @@ describe("wsHandler protocol", () => {
 
   it("answers rpc.accept with a nack when the workflow fails", async () => {
     const failing = {
-      events: () => of(),
-      accept: () => throwError(() => new Error("boom")),
+      events: () => {
+        return of();
+      },
+      accept: () => {
+        return throwError(() => {
+          return new Error("boom");
+        });
+      },
     } as unknown as ServiceContainer["workflow"];
     const ws = connect(fakeServices({ workflow: failing }));
     ws.receive({
@@ -695,16 +773,18 @@ describe("wsHandler protocol", () => {
 
   it("ignores unknown message types without sending or throwing", async () => {
     const ws = connect(fakeServices());
-    expect(() =>
-      ws.receive({ type: "totally.unknown", payload: {} }),
-    ).not.toThrow();
+    expect(() => {
+      return ws.receive({ type: "totally.unknown", payload: {} });
+    }).not.toThrow();
     await wait();
     expect(ws.outbound).toHaveLength(0);
   });
 
   it("ignores malformed (non-JSON) frames", async () => {
     const ws = connect(fakeServices());
-    expect(() => ws.emit("message", "{not json")).not.toThrow();
+    expect(() => {
+      return ws.emit("message", "{not json");
+    }).not.toThrow();
     await wait();
     expect(ws.outbound).toHaveLength(0);
   });
@@ -734,7 +814,11 @@ describe("wsHandler stream-error callbacks", () => {
     const ws = connect(
       fakeServices({
         referenceData: {
-          getCurrencyPairs: () => throwError(() => new Error("boom")),
+          getCurrencyPairs: () => {
+            return throwError(() => {
+              return new Error("boom");
+            });
+          },
         } as unknown as ServiceContainer["referenceData"],
       }),
     );
@@ -753,8 +837,16 @@ describe("wsHandler stream-error callbacks", () => {
     const ws = connect(
       fakeServices({
         pricing: {
-          getPriceUpdates: () => throwError(() => new Error("boom")),
-          getPriceHistory: () => throwError(() => new Error("boom")),
+          getPriceUpdates: () => {
+            return throwError(() => {
+              return new Error("boom");
+            });
+          },
+          getPriceHistory: () => {
+            return throwError(() => {
+              return new Error("boom");
+            });
+          },
         } as unknown as ServiceContainer["pricing"],
       }),
     );
@@ -776,7 +868,11 @@ describe("wsHandler stream-error callbacks", () => {
     const ws = connect(
       fakeServices({
         blotter: {
-          getTradeStream: () => throwError(() => new Error("boom")),
+          getTradeStream: () => {
+            return throwError(() => {
+              return new Error("boom");
+            });
+          },
         } as unknown as ServiceContainer["blotter"],
       }),
     );
@@ -795,7 +891,11 @@ describe("wsHandler stream-error callbacks", () => {
     const ws = connect(
       fakeServices({
         analytics: {
-          getAnalytics: () => throwError(() => new Error("boom")),
+          getAnalytics: () => {
+            return throwError(() => {
+              return new Error("boom");
+            });
+          },
         } as unknown as ServiceContainer["analytics"],
       }),
     );
@@ -817,7 +917,11 @@ describe("wsHandler stream-error callbacks", () => {
     const ws = connect(
       fakeServices({
         instruments: {
-          getInstruments: () => throwError(() => new Error("boom")),
+          getInstruments: () => {
+            return throwError(() => {
+              return new Error("boom");
+            });
+          },
         } as unknown as ServiceContainer["instruments"],
       }),
     );
@@ -827,9 +931,9 @@ describe("wsHandler stream-error callbacks", () => {
       "Instruments stream error:",
       expect.any(Error),
     );
-    const types = ws
-      .framesOfType(SERVER_MSG.INSTRUMENT_EVENT)
-      .map((m) => (m.payload as { type: string }).type);
+    const types = ws.framesOfType(SERVER_MSG.INSTRUMENT_EVENT).map((m) => {
+      return (m.payload as { type: string }).type;
+    });
     expect(types).not.toContain("added");
     expect(types).not.toContain("endOfStateOfTheWorld");
     spy.mockRestore();
@@ -840,7 +944,11 @@ describe("wsHandler stream-error callbacks", () => {
     const ws = connect(
       fakeServices({
         dealers: {
-          getDealers: () => throwError(() => new Error("boom")),
+          getDealers: () => {
+            return throwError(() => {
+              return new Error("boom");
+            });
+          },
         } as unknown as ServiceContainer["dealers"],
       }),
     );
@@ -850,9 +958,9 @@ describe("wsHandler stream-error callbacks", () => {
       "Dealers stream error:",
       expect.any(Error),
     );
-    const types = ws
-      .framesOfType(SERVER_MSG.DEALER_EVENT)
-      .map((m) => (m.payload as { type: string }).type);
+    const types = ws.framesOfType(SERVER_MSG.DEALER_EVENT).map((m) => {
+      return (m.payload as { type: string }).type;
+    });
     expect(types).not.toContain("added");
     expect(types).not.toContain("endOfStateOfTheWorld");
     spy.mockRestore();
@@ -863,12 +971,26 @@ describe("wsHandler stream-error callbacks", () => {
     const ws = connect(
       fakeServices({
         workflow: {
-          events: () => throwError(() => new Error("boom")),
-          createRfq: () => of(1),
-          cancelRfq: () => of(undefined),
-          quote: () => of(undefined),
-          pass: () => of(undefined),
-          accept: () => of(undefined),
+          events: () => {
+            return throwError(() => {
+              return new Error("boom");
+            });
+          },
+          createRfq: () => {
+            return of(1);
+          },
+          cancelRfq: () => {
+            return of(undefined);
+          },
+          quote: () => {
+            return of(undefined);
+          },
+          pass: () => {
+            return of(undefined);
+          },
+          accept: () => {
+            return of(undefined);
+          },
         } as unknown as ServiceContainer["workflow"],
       }),
     );
@@ -884,18 +1006,31 @@ describe("wsHandler stream-error callbacks", () => {
 });
 
 describe("wsHandler workflow quote-event transforms", () => {
-  const workflowEmitting = (event: RfqEvent): ServiceContainer["workflow"] =>
-    ({
-      events: (): Observable<RfqEvent> => of(event),
-      createRfq: () => of(1),
-      cancelRfq: () => of(undefined),
-      quote: () => of(undefined),
-      pass: () => of(undefined),
-      accept: () => of(undefined),
-    }) as unknown as ServiceContainer["workflow"];
+  function workflowEmitting(event: RfqEvent): ServiceContainer["workflow"] {
+    return {
+      events: (): Observable<RfqEvent> => {
+        return of(event);
+      },
+      createRfq: () => {
+        return of(1);
+      },
+      cancelRfq: () => {
+        return of(undefined);
+      },
+      quote: () => {
+        return of(undefined);
+      },
+      pass: () => {
+        return of(undefined);
+      },
+      accept: () => {
+        return of(undefined);
+      },
+    } as unknown as ServiceContainer["workflow"];
+  }
 
-  const quoteEvent = (type: RfqEvent["type"]): RfqEvent =>
-    ({
+  function quoteEvent(type: RfqEvent["type"]): RfqEvent {
+    return {
       type,
       payload: {
         id: 7,
@@ -903,7 +1038,8 @@ describe("wsHandler workflow quote-event transforms", () => {
         dealerId: 2,
         state: { type: "pendingWithoutPrice" },
       },
-    }) as unknown as RfqEvent;
+    } as unknown as RfqEvent;
+  }
 
   for (const type of [
     "quoteCreated",
@@ -941,18 +1077,31 @@ describe("wsHandler workflow quote-event transforms", () => {
 });
 
 describe("wsHandler workflow rfq-event transforms", () => {
-  const workflowEmitting = (event: RfqEvent): ServiceContainer["workflow"] =>
-    ({
-      events: (): Observable<RfqEvent> => of(event),
-      createRfq: () => of(1),
-      cancelRfq: () => of(undefined),
-      quote: () => of(undefined),
-      pass: () => of(undefined),
-      accept: () => of(undefined),
-    }) as unknown as ServiceContainer["workflow"];
+  function workflowEmitting(event: RfqEvent): ServiceContainer["workflow"] {
+    return {
+      events: (): Observable<RfqEvent> => {
+        return of(event);
+      },
+      createRfq: () => {
+        return of(1);
+      },
+      cancelRfq: () => {
+        return of(undefined);
+      },
+      quote: () => {
+        return of(undefined);
+      },
+      pass: () => {
+        return of(undefined);
+      },
+      accept: () => {
+        return of(undefined);
+      },
+    } as unknown as ServiceContainer["workflow"];
+  }
 
-  const rfqEvent = (type: "rfqCreated" | "rfqClosed"): RfqEvent =>
-    ({
+  function rfqEvent(type: "rfqCreated" | "rfqClosed"): RfqEvent {
+    return {
       type,
       payload: {
         id: 9,
@@ -963,7 +1112,8 @@ describe("wsHandler workflow rfq-event transforms", () => {
         expirySecs: 90,
         creationTimestamp: 1_700_000_000,
       },
-    }) as unknown as RfqEvent;
+    } as unknown as RfqEvent;
+  }
 
   for (const type of ["rfqCreated", "rfqClosed"] as const) {
     it(`maps a ${type} RfqEvent to a stream.workflowEvent RfqBodyDto frame`, async () => {
@@ -1049,7 +1199,9 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     const ws = connect(
       fakeServices({
         pricing: {
-          getPriceUpdates: () => of(),
+          getPriceUpdates: () => {
+            return of();
+          },
           getPriceHistory: () => {
             throw new Error("boom");
           },
@@ -1071,14 +1223,24 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     const ws = connect(
       fakeServices({
         workflow: {
-          events: () => of(),
+          events: () => {
+            return of();
+          },
           createRfq: () => {
             throw new Error("boom");
           },
-          cancelRfq: () => of(undefined),
-          quote: () => of(undefined),
-          pass: () => of(undefined),
-          accept: () => of(undefined),
+          cancelRfq: () => {
+            return of(undefined);
+          },
+          quote: () => {
+            return of(undefined);
+          },
+          pass: () => {
+            return of(undefined);
+          },
+          accept: () => {
+            return of(undefined);
+          },
         } as unknown as ServiceContainer["workflow"],
       }),
     );
@@ -1103,14 +1265,24 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     const ws = connect(
       fakeServices({
         workflow: {
-          events: () => of(),
-          createRfq: () => of(1),
+          events: () => {
+            return of();
+          },
+          createRfq: () => {
+            return of(1);
+          },
           cancelRfq: () => {
             throw new Error("boom");
           },
-          quote: () => of(undefined),
-          pass: () => of(undefined),
-          accept: () => of(undefined),
+          quote: () => {
+            return of(undefined);
+          },
+          pass: () => {
+            return of(undefined);
+          },
+          accept: () => {
+            return of(undefined);
+          },
         } as unknown as ServiceContainer["workflow"],
       }),
     );
@@ -1129,14 +1301,24 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     const ws = connect(
       fakeServices({
         workflow: {
-          events: () => of(),
-          createRfq: () => of(1),
-          cancelRfq: () => of(undefined),
+          events: () => {
+            return of();
+          },
+          createRfq: () => {
+            return of(1);
+          },
+          cancelRfq: () => {
+            return of(undefined);
+          },
           quote: () => {
             throw new Error("boom");
           },
-          pass: () => of(undefined),
-          accept: () => of(undefined),
+          pass: () => {
+            return of(undefined);
+          },
+          accept: () => {
+            return of(undefined);
+          },
         } as unknown as ServiceContainer["workflow"],
       }),
     );
@@ -1155,14 +1337,24 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     const ws = connect(
       fakeServices({
         workflow: {
-          events: () => of(),
-          createRfq: () => of(1),
-          cancelRfq: () => of(undefined),
-          quote: () => of(undefined),
+          events: () => {
+            return of();
+          },
+          createRfq: () => {
+            return of(1);
+          },
+          cancelRfq: () => {
+            return of(undefined);
+          },
+          quote: () => {
+            return of(undefined);
+          },
           pass: () => {
             throw new Error("boom");
           },
-          accept: () => of(undefined),
+          accept: () => {
+            return of(undefined);
+          },
         } as unknown as ServiceContainer["workflow"],
       }),
     );
@@ -1181,11 +1373,21 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     const ws = connect(
       fakeServices({
         workflow: {
-          events: () => of(),
-          createRfq: () => of(1),
-          cancelRfq: () => of(undefined),
-          quote: () => of(undefined),
-          pass: () => of(undefined),
+          events: () => {
+            return of();
+          },
+          createRfq: () => {
+            return of(1);
+          },
+          cancelRfq: () => {
+            return of(undefined);
+          },
+          quote: () => {
+            return of(undefined);
+          },
+          pass: () => {
+            return of(undefined);
+          },
           accept: () => {
             throw new Error("boom");
           },
@@ -1207,7 +1409,9 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     const ws = connect(
       fakeServices({
         throughput: {
-          getThroughput: () => 0,
+          getThroughput: () => {
+            return 0;
+          },
           setThroughput: () => {
             throw new Error("boom");
           },
@@ -1228,19 +1432,23 @@ describe("wsHandler RPC synchronous-throw handling", () => {
 
 describe("expectShape helper", () => {
   it("passes when shapes match regardless of values", () => {
-    expect(() =>
-      expectShape({ a: 1, b: "x" }, { a: 99, b: "y" }),
-    ).not.toThrow();
+    expect(() => {
+      return expectShape({ a: 1, b: "x" }, { a: 99, b: "y" });
+    }).not.toThrow();
   });
   it("passes for nested objects and arrays by element shape", () => {
-    expect(() =>
-      expectShape({ xs: [{ n: 5 }] }, { xs: [{ n: 0 }] }),
-    ).not.toThrow();
+    expect(() => {
+      return expectShape({ xs: [{ n: 5 }] }, { xs: [{ n: 0 }] });
+    }).not.toThrow();
   });
   it("fails when a key is missing", () => {
-    expect(() => expectShape({ a: 1 }, { a: 1, b: 2 })).toThrow();
+    expect(() => {
+      return expectShape({ a: 1 }, { a: 1, b: 2 });
+    }).toThrow();
   });
   it("fails when a value type differs", () => {
-    expect(() => expectShape({ a: "1" }, { a: 1 })).toThrow();
+    expect(() => {
+      return expectShape({ a: "1" }, { a: 1 });
+    }).toThrow();
   });
 });

@@ -47,6 +47,7 @@ export function handleConnection(
 
   ws.on("message", (data) => {
     let msg: WsMessage;
+
     try {
       msg = JSON.parse(String(data));
     } catch {
@@ -168,11 +169,13 @@ function streamReferenceData(
   const sub = svc.referenceData.getCurrencyPairs().subscribe({
     next: (pairs) => {
       if (ac.signal.aborted) return;
-      const updates: CurrencyPairUpdateDto[] = pairs.map((p) => ({
-        symbol: p.symbol,
-        ratePrecision: p.ratePrecision,
-        pipsPosition: p.pipsPosition,
-      }));
+      const updates: CurrencyPairUpdateDto[] = pairs.map((p) => {
+        return {
+          symbol: p.symbol,
+          ratePrecision: p.ratePrecision,
+          pipsPosition: p.pipsPosition,
+        };
+      });
       const message: ReferenceDataMessage = {
         updates,
         isStateOfTheWorld: isFirst,
@@ -247,18 +250,20 @@ function streamBlotter(
   const sub = svc.blotter.getTradeStream().subscribe({
     next: (trades) => {
       if (ac.signal.aborted) return;
-      const updates: TradeDto[] = trades.map((t) => ({
-        tradeId: t.tradeId,
-        tradeName: t.tradeName,
-        currencyPair: t.currencyPair,
-        notional: t.notional,
-        dealtCurrency: t.dealtCurrency,
-        direction: t.direction,
-        spotRate: t.spotRate,
-        status: t.status,
-        tradeDate: t.tradeDate,
-        valueDate: t.valueDate,
-      }));
+      const updates: TradeDto[] = trades.map((t) => {
+        return {
+          tradeId: t.tradeId,
+          tradeName: t.tradeName,
+          currencyPair: t.currencyPair,
+          notional: t.notional,
+          dealtCurrency: t.dealtCurrency,
+          direction: t.direction,
+          spotRate: t.spotRate,
+          status: t.status,
+          tradeDate: t.tradeDate,
+          valueDate: t.valueDate,
+        };
+      });
       const message: BlotterMessage = {
         updates,
         isStateOfTheWorld: isFirst,
@@ -296,16 +301,20 @@ function streamAnalytics(
     next: (pos) => {
       if (ac.signal.aborted) return;
       const dto: AnalyticsDto = {
-        currentPositions: pos.currentPositions.map((p) => ({
-          symbol: p.symbol,
-          basePnl: p.basePnl,
-          baseTradedAmount: p.baseTradedAmount,
-          counterTradedAmount: p.counterTradedAmount,
-        })),
-        history: pos.history.map((h) => ({
-          timestamp: h.timestamp,
-          usdPnl: h.usdPnl,
-        })),
+        currentPositions: pos.currentPositions.map((p) => {
+          return {
+            symbol: p.symbol,
+            basePnl: p.basePnl,
+            baseTradedAmount: p.baseTradedAmount,
+            counterTradedAmount: p.counterTradedAmount,
+          };
+        }),
+        history: pos.history.map((h) => {
+          return {
+            timestamp: h.timestamp,
+            usdPnl: h.usdPnl,
+          };
+        }),
       };
       send(ws, SERVER_MSG.ANALYTICS, dto);
     },
@@ -345,6 +354,7 @@ function streamInstruments(
   const sub = svc.instruments.getInstruments().subscribe({
     next: (instruments) => {
       if (ac.signal.aborted) return;
+
       for (const inst of instruments) {
         const dto: InstrumentDto = {
           id: inst.id,
@@ -360,6 +370,7 @@ function streamInstruments(
           payload: dto,
         } satisfies InstrumentEvent);
       }
+
       if (isFirst) {
         send(ws, SERVER_MSG.INSTRUMENT_EVENT, {
           type: "endOfStateOfTheWorld",
@@ -400,6 +411,7 @@ function streamDealers(
   const sub = svc.dealers.getDealers().subscribe({
     next: (dealers) => {
       if (ac.signal.aborted) return;
+
       for (const dealer of dealers) {
         const dto: DealerDto = { id: dealer.id, name: dealer.name };
         send(ws, SERVER_MSG.DEALER_EVENT, {
@@ -407,6 +419,7 @@ function streamDealers(
           payload: dto,
         } satisfies DealerEvent);
       }
+
       if (isFirst) {
         send(ws, SERVER_MSG.DEALER_EVENT, {
           type: "endOfStateOfTheWorld",
@@ -438,7 +451,8 @@ function streamWorkflow(
   subs: AbortSet,
 ): void {
   const ac = createSubscription(subs);
-  const transform = (event: RfqEvent): WorkflowEventDto => {
+
+  function transform(event: RfqEvent): WorkflowEventDto {
     switch (event.type) {
       case "startOfStateOfTheWorld":
       case "endOfStateOfTheWorld":
@@ -471,7 +485,8 @@ function streamWorkflow(
           },
         };
     }
-  };
+  }
+
   const sub = svc.workflow.events().subscribe({
     next: (event) => {
       if (ac.signal.aborted) return;
@@ -555,14 +570,16 @@ async function handleGetPriceHistory(
       {
         type: "ack",
         payload: {
-          prices: prices.map((p) => ({
-            symbol: p.symbol,
-            bid: p.bid,
-            ask: p.ask,
-            mid: p.mid,
-            valueDate: p.valueDate,
-            creationTimestamp: p.creationTimestamp,
-          })),
+          prices: prices.map((p) => {
+            return {
+              symbol: p.symbol,
+              bid: p.bid,
+              ask: p.ask,
+              mid: p.mid,
+              valueDate: p.valueDate,
+              creationTimestamp: p.creationTimestamp,
+            };
+          }),
         },
       },
       msg.correlationId,

@@ -44,6 +44,7 @@ function assert(cond: unknown, message: string): asserts cond {
 async function runChecks(): Promise<void> {
   const ws = new WsAdapter(`ws://${HOST}:${PORT}`);
   const ports = createWsRealPorts(ws);
+
   try {
     // 1. Pricing stream: subscribe → receive a live tick from the real server.
     const tick = await firstValueFrom(
@@ -121,6 +122,7 @@ console.log(
 );
 const server = startServer(PORT, HOST);
 let failed = false;
+
 try {
   await waitForHttp(`http://${HOST}:${PORT}/health`, 30_000);
   await runChecks();
@@ -132,4 +134,5 @@ try {
 } finally {
   await stopProcess(server);
 }
+
 process.exit(failed ? 1 : 0);

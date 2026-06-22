@@ -4,22 +4,29 @@ import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import { applyFilters, type ColumnFilter } from "./filterState";
 
-const trade = (over: Partial<Trade> = {}): Trade => ({
-  tradeId: 1,
-  tradeName: "Alice",
-  currencyPair: "EURUSD",
-  notional: 1_000_000,
-  dealtCurrency: "EUR",
-  direction: Direction.Buy,
-  spotRate: 1.1,
-  status: TradeStatus.Done,
-  tradeDate: "2026-01-01",
-  valueDate: "2026-01-03",
-  ...over,
-});
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 1,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.1,
+    status: TradeStatus.Done,
+    tradeDate: "2026-01-01",
+    valueDate: "2026-01-03",
+    ...over,
+  };
+}
 
-const filters = (...entries: ColumnFilter[]): Map<keyof Trade, ColumnFilter> =>
-  new Map(entries.map((f) => [f.column, f]));
+function filters(...entries: ColumnFilter[]): Map<keyof Trade, ColumnFilter> {
+  return new Map(
+    entries.map((f) => {
+      return [f.column, f];
+    }),
+  );
+}
 
 describe("applyFilters — no filters", () => {
   it("returns all trades when no column filter and empty quick filter", () => {
@@ -45,7 +52,11 @@ describe("applyFilters — set filter", () => {
       column: "currencyPair",
       values: new Set(["EURUSD", "GBPUSD"]),
     });
-    expect(applyFilters(trades, f, "").map((t) => t.tradeId)).toEqual([1, 3]);
+    expect(
+      applyFilters(trades, f, "").map((t) => {
+        return t.tradeId;
+      }),
+    ).toEqual([1, 3]);
   });
 });
 
@@ -55,50 +66,60 @@ describe("applyFilters — number filter comparators", () => {
     trade({ tradeId: 2, notional: 200 }),
     trade({ tradeId: 3, notional: 300 }),
   ];
-  const run = (filter: ColumnFilter) =>
-    applyFilters(trades, filters(filter), "").map((t) => t.tradeId);
 
-  it("eq", () =>
-    expect(
+  function run(filter: ColumnFilter) {
+    return applyFilters(trades, filters(filter), "").map((t) => {
+      return t.tradeId;
+    });
+  }
+
+  it("eq", () => {
+    return expect(
       run({ type: "number", column: "notional", comparator: "eq", value: 200 }),
-    ).toEqual([2]));
-  it("neq", () =>
-    expect(
+    ).toEqual([2]);
+  });
+  it("neq", () => {
+    return expect(
       run({
         type: "number",
         column: "notional",
         comparator: "neq",
         value: 200,
       }),
-    ).toEqual([1, 3]));
-  it("lt", () =>
-    expect(
+    ).toEqual([1, 3]);
+  });
+  it("lt", () => {
+    return expect(
       run({ type: "number", column: "notional", comparator: "lt", value: 200 }),
-    ).toEqual([1]));
-  it("lte", () =>
-    expect(
+    ).toEqual([1]);
+  });
+  it("lte", () => {
+    return expect(
       run({
         type: "number",
         column: "notional",
         comparator: "lte",
         value: 200,
       }),
-    ).toEqual([1, 2]));
-  it("gt", () =>
-    expect(
+    ).toEqual([1, 2]);
+  });
+  it("gt", () => {
+    return expect(
       run({ type: "number", column: "notional", comparator: "gt", value: 200 }),
-    ).toEqual([3]));
-  it("gte", () =>
-    expect(
+    ).toEqual([3]);
+  });
+  it("gte", () => {
+    return expect(
       run({
         type: "number",
         column: "notional",
         comparator: "gte",
         value: 200,
       }),
-    ).toEqual([2, 3]));
-  it("inRange with valueTo", () =>
-    expect(
+    ).toEqual([2, 3]);
+  });
+  it("inRange with valueTo", () => {
+    return expect(
       run({
         type: "number",
         column: "notional",
@@ -106,16 +127,18 @@ describe("applyFilters — number filter comparators", () => {
         value: 150,
         valueTo: 250,
       }),
-    ).toEqual([2]));
-  it("inRange falls back to value when valueTo is absent", () =>
-    expect(
+    ).toEqual([2]);
+  });
+  it("inRange falls back to value when valueTo is absent", () => {
+    return expect(
       run({
         type: "number",
         column: "notional",
         comparator: "inRange",
         value: 200,
       }),
-    ).toEqual([2]));
+    ).toEqual([2]);
+  });
 
   it("passes through trades whose target field is not numeric", () => {
     // currencyPair is a string; a number filter on it cannot apply, so all pass.
@@ -126,9 +149,11 @@ describe("applyFilters — number filter comparators", () => {
       comparator: "eq",
       value: 5,
     });
-    expect(applyFilters(strTrades, f, "").map((t) => t.tradeId)).toEqual([
-      1, 2,
-    ]);
+    expect(
+      applyFilters(strTrades, f, "").map((t) => {
+        return t.tradeId;
+      }),
+    ).toEqual([1, 2]);
   });
 });
 
@@ -138,65 +163,75 @@ describe("applyFilters — date filter comparators", () => {
     trade({ tradeId: 2, tradeDate: "2026-02-01" }),
     trade({ tradeId: 3, tradeDate: "2026-03-01" }),
   ];
-  const run = (filter: ColumnFilter) =>
-    applyFilters(trades, filters(filter), "").map((t) => t.tradeId);
 
-  it("eq", () =>
-    expect(
+  function run(filter: ColumnFilter) {
+    return applyFilters(trades, filters(filter), "").map((t) => {
+      return t.tradeId;
+    });
+  }
+
+  it("eq", () => {
+    return expect(
       run({
         type: "date",
         column: "tradeDate",
         comparator: "eq",
         value: "2026-02-01",
       }),
-    ).toEqual([2]));
-  it("neq", () =>
-    expect(
+    ).toEqual([2]);
+  });
+  it("neq", () => {
+    return expect(
       run({
         type: "date",
         column: "tradeDate",
         comparator: "neq",
         value: "2026-02-01",
       }),
-    ).toEqual([1, 3]));
-  it("lt", () =>
-    expect(
+    ).toEqual([1, 3]);
+  });
+  it("lt", () => {
+    return expect(
       run({
         type: "date",
         column: "tradeDate",
         comparator: "lt",
         value: "2026-02-01",
       }),
-    ).toEqual([1]));
-  it("lte", () =>
-    expect(
+    ).toEqual([1]);
+  });
+  it("lte", () => {
+    return expect(
       run({
         type: "date",
         column: "tradeDate",
         comparator: "lte",
         value: "2026-02-01",
       }),
-    ).toEqual([1, 2]));
-  it("gt", () =>
-    expect(
+    ).toEqual([1, 2]);
+  });
+  it("gt", () => {
+    return expect(
       run({
         type: "date",
         column: "tradeDate",
         comparator: "gt",
         value: "2026-02-01",
       }),
-    ).toEqual([3]));
-  it("gte", () =>
-    expect(
+    ).toEqual([3]);
+  });
+  it("gte", () => {
+    return expect(
       run({
         type: "date",
         column: "tradeDate",
         comparator: "gte",
         value: "2026-02-01",
       }),
-    ).toEqual([2, 3]));
-  it("inRange with valueTo", () =>
-    expect(
+    ).toEqual([2, 3]);
+  });
+  it("inRange with valueTo", () => {
+    return expect(
       run({
         type: "date",
         column: "tradeDate",
@@ -204,16 +239,18 @@ describe("applyFilters — date filter comparators", () => {
         value: "2026-01-15",
         valueTo: "2026-02-15",
       }),
-    ).toEqual([2]));
-  it("inRange falls back to value when valueTo is absent", () =>
-    expect(
+    ).toEqual([2]);
+  });
+  it("inRange falls back to value when valueTo is absent", () => {
+    return expect(
       run({
         type: "date",
         column: "tradeDate",
         comparator: "inRange",
         value: "2026-02-01",
       }),
-    ).toEqual([2]));
+    ).toEqual([2]);
+  });
 });
 
 describe("applyFilters — multiple column filters (AND)", () => {
@@ -227,7 +264,11 @@ describe("applyFilters — multiple column filters (AND)", () => {
       { type: "set", column: "currencyPair", values: new Set(["EURUSD"]) },
       { type: "number", column: "notional", comparator: "lt", value: 200 },
     );
-    expect(applyFilters(trades, f, "").map((t) => t.tradeId)).toEqual([1]);
+    expect(
+      applyFilters(trades, f, "").map((t) => {
+        return t.tradeId;
+      }),
+    ).toEqual([1]);
   });
 });
 
@@ -238,7 +279,9 @@ describe("applyFilters — quick filter", () => {
       trade({ tradeId: 2, currencyPair: "USDJPY" }),
     ];
     expect(
-      applyFilters(trades, new Map(), "jpy").map((t) => t.tradeId),
+      applyFilters(trades, new Map(), "jpy").map((t) => {
+        return t.tradeId;
+      }),
     ).toEqual([2]);
   });
 
@@ -248,7 +291,9 @@ describe("applyFilters — quick filter", () => {
       trade({ tradeId: 2, currencyPair: "EURUSD", tradeName: "Bob" }),
     ];
     expect(
-      applyFilters(trades, new Map(), "eurusd alice").map((t) => t.tradeId),
+      applyFilters(trades, new Map(), "eurusd alice").map((t) => {
+        return t.tradeId;
+      }),
     ).toEqual([1]);
   });
 
@@ -262,6 +307,10 @@ describe("applyFilters — quick filter", () => {
       column: "currencyPair",
       values: new Set(["EURUSD"]),
     });
-    expect(applyFilters(trades, f, "alice").map((t) => t.tradeId)).toEqual([1]);
+    expect(
+      applyFilters(trades, f, "alice").map((t) => {
+        return t.tradeId;
+      }),
+    ).toEqual([1]);
   });
 });

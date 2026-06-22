@@ -21,12 +21,15 @@ export function describeReferenceDataPortContract(
   describe(`${label} :: ReferenceDataPort contract`, () => {
     it("emits at least one snapshot containing the canonical pairs", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getCurrencyPairs());
         await driver.snapshotPairs();
         const pairs = await promise;
         expect(pairs.length).toBeGreaterThan(0);
-        const symbols = pairs.map((p) => p.symbol);
+        const symbols = pairs.map((p) => {
+          return p.symbol;
+        });
         expect(symbols).toContain("EURUSD");
         expect(symbols).toContain("GBPUSD");
         expect(symbols).toContain("NZDUSD");
@@ -37,10 +40,12 @@ export function describeReferenceDataPortContract(
 
     it("each pair has full shape", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getCurrencyPairs());
         await driver.snapshotPairs();
         const pairs = await promise;
+
         for (const pair of pairs) {
           expect(typeof pair.symbol).toBe("string");
           expect(typeof pair.base).toBe("string");
@@ -56,11 +61,14 @@ export function describeReferenceDataPortContract(
 
     it("NZDUSD.defaultNotional === 10_000_000 (the divergent rule)", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getCurrencyPairs());
         await driver.snapshotPairs();
         const pairs = await promise;
-        const nzdusd = pairs.find((p) => p.symbol === "NZDUSD");
+        const nzdusd = pairs.find((p) => {
+          return p.symbol === "NZDUSD";
+        });
         expect(nzdusd?.defaultNotional).toBe(10_000_000);
       } finally {
         teardown();

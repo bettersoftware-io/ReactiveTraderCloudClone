@@ -57,6 +57,7 @@ function formatRate(rate: number): string {
 
 export function formatCellValue(trade: Trade, col: ColumnDef): string {
   const value = trade[col.key];
+
   switch (col.key) {
     case "tradeDate":
     case "valueDate":

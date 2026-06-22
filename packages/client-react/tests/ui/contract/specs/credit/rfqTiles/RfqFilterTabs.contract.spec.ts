@@ -28,7 +28,12 @@ describe("RfqFilterTabs", () => {
   it("fires onChange with the clicked filter", async () => {
     const picks: RfqFilter[] = [];
     const tabs = mount(RfqFilterTabs, {
-      props: { selected: "Live", onChange: (f) => picks.push(f) },
+      props: {
+        selected: "Live",
+        onChange: (f) => {
+          return picks.push(f);
+        },
+      },
     });
     await tabs.clickTab("Expired");
     await tabs.clickTab("All");

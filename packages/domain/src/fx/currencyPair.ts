@@ -7,10 +7,12 @@ export interface CurrencyPair {
   readonly defaultNotional: number;
 }
 
-export function deriveBaseTerm(symbol: string): {
+export interface BaseTerm {
   base: string;
   terms: string;
-} {
+}
+
+export function deriveBaseTerm(symbol: string): BaseTerm {
   return {
     base: symbol.slice(0, 3),
     terms: symbol.slice(3, 6),

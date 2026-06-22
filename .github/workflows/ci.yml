@@ -64,6 +64,9 @@ jobs:
       - name: Lint + format (Biome)
         run: pnpm exec biome ci .
 
+      - name: ESLint (AST rules)
+        run: pnpm lint:eslint
+
       - name: Workflow lint (actionlint)
         run: pnpm lint:actions
 

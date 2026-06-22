@@ -22,16 +22,16 @@ export interface ExecutionHarness {
   teardown: () => void;
 }
 
-const makeRequest = (
-  overrides?: Partial<ExecutionRequest>,
-): ExecutionRequest => ({
-  currencyPair: "EURUSD",
-  spotRate: 1.1,
-  direction: Direction.Buy,
-  notional: 1_000_000,
-  dealtCurrency: "EUR",
-  ...overrides,
-});
+function makeRequest(overrides?: Partial<ExecutionRequest>): ExecutionRequest {
+  return {
+    currencyPair: "EURUSD",
+    spotRate: 1.1,
+    direction: Direction.Buy,
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    ...overrides,
+  };
+}
 
 export function describeExecutionPortContract(
   label: string,
@@ -40,6 +40,7 @@ export function describeExecutionPortContract(
   describe(`${label} :: ExecutionPort contract`, () => {
     it("emits exactly one Trade then completes", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.executeTrade(makeRequest()));
         await driver.ackExecute();
@@ -52,6 +53,7 @@ export function describeExecutionPortContract(
 
     it("preserves request fields in the returned Trade", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const req = makeRequest({
           currencyPair: "GBPUSD",
@@ -70,6 +72,7 @@ export function describeExecutionPortContract(
 
     it("status is in the valid enum", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.executeTrade(makeRequest()));
         await driver.ackExecute();

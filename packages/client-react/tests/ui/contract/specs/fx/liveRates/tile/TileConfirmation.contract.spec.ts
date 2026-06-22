@@ -155,7 +155,9 @@ describe("TileConfirmation", () => {
           executionStatus: ExecutionStatus.Done,
           trade: doneTrade,
         } as TileState,
-        onDismiss: () => (dismissed += 1),
+        onDismiss: () => {
+          dismissed += 1;
+        },
       },
     });
     await c.clickOverlay();
@@ -167,7 +169,9 @@ describe("TileConfirmation", () => {
     const c = mount(TileConfirmation, {
       props: {
         state: { status: "started" } as TileState,
-        onDismiss: () => (dismissed += 1),
+        onDismiss: () => {
+          dismissed += 1;
+        },
       },
     });
     await c.clickOverlay();

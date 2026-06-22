@@ -18,15 +18,15 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
   }
 
   count(): Promise<number> {
-    return cy
-      .get(TILE_PREFIX_SELECTOR)
-      .then(($tiles) => $tiles.length) as unknown as Promise<number>;
+    return cy.get(TILE_PREFIX_SELECTOR).then(($tiles) => {
+      return $tiles.length;
+    }) as unknown as Promise<number>;
   }
 
   firstTileText(): Promise<string> {
-    return this.firstTile().then(($el) =>
-      $el.text(),
-    ) as unknown as Promise<string>;
+    return this.firstTile().then(($el) => {
+      return $el.text();
+    }) as unknown as Promise<string>;
   }
 
   clickFilter(category: string): Promise<void> {
@@ -44,25 +44,33 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
   viewToggleLabel(): Promise<string> {
     return cy
       .get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
-      .then(($el) => $el.text()) as unknown as Promise<string>;
+      .then(($el) => {
+        return $el.text();
+      }) as unknown as Promise<string>;
   }
 
   firstTileBuyVisible(): Promise<boolean> {
-    return this.firstTile().then(($tile) =>
-      $tile.find(`[data-testid="${TESTIDS.liveRates.buyBtn}"]`).is(":visible"),
-    ) as unknown as Promise<boolean>;
+    return this.firstTile().then(($tile) => {
+      return $tile
+        .find(`[data-testid="${TESTIDS.liveRates.buyBtn}"]`)
+        .is(":visible");
+    }) as unknown as Promise<boolean>;
   }
 
   firstTileSellVisible(): Promise<boolean> {
-    return this.firstTile().then(($tile) =>
-      $tile.find(`[data-testid="${TESTIDS.liveRates.sellBtn}"]`).is(":visible"),
-    ) as unknown as Promise<boolean>;
+    return this.firstTile().then(($tile) => {
+      return $tile
+        .find(`[data-testid="${TESTIDS.liveRates.sellBtn}"]`)
+        .is(":visible");
+    }) as unknown as Promise<boolean>;
   }
 
   viewToggleVisible(): Promise<boolean> {
     return cy
       .get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
-      .then(($el) => $el.is(":visible")) as unknown as Promise<boolean>;
+      .then(($el) => {
+        return $el.is(":visible");
+      }) as unknown as Promise<boolean>;
   }
 
   clickBuyOnFirst(): Promise<void> {
@@ -94,7 +102,14 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
     patterns: readonly RegExp[],
     timeoutMs: number,
   ): Promise<void> {
-    const combined = new RegExp(patterns.map((p) => p.source).join("|"), "i");
+    const combined = new RegExp(
+      patterns
+        .map((p) => {
+          return p.source;
+        })
+        .join("|"),
+      "i",
+    );
     return cy
       .get(TILE_CONFIRMATION_SELECTOR, { timeout: timeoutMs })
       .contains(combined) as unknown as Promise<void>;
@@ -147,9 +162,9 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
   }
 
   isNotionalInputVisible(): Promise<boolean> {
-    return this.firstTile().then(($tile) =>
-      $tile.find("input").is(":visible"),
-    ) as unknown as Promise<boolean>;
+    return this.firstTile().then(($tile) => {
+      return $tile.find("input").is(":visible");
+    }) as unknown as Promise<boolean>;
   }
 
   buyNTimesWithDismissals(n: number): Promise<void> {
@@ -164,13 +179,17 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
       cy.wait(1_500);
       cy.get("body").then(($body) => {
         const found = $body.find(TILE_CONFIRMATION_SELECTOR);
+
         if (found.length > 0 && found.css("display") !== "none") {
           cy.get(TILE_CONFIRMATION_SELECTOR).first().click();
           cy.wait(500);
         }
       });
-      cy.wrap(null).then(() => loop(remaining - 1));
+      cy.wrap(null).then(() => {
+        return loop(remaining - 1);
+      });
     };
+
     loop(n);
     return cy.wrap(undefined) as unknown as Promise<void>;
   }

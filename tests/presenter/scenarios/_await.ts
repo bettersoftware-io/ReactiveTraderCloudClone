@@ -12,7 +12,10 @@ export class RealAwaitHelpers implements AwaitHelpers {
   awaitFirstWithin<T>(source$: Observable<T>, timeoutMs: number): Promise<T> {
     return firstValueFrom(source$.pipe(timeout(timeoutMs)));
   }
+
   waitSeconds(n: number): Promise<void> {
-    return new Promise((r) => setTimeout(r, n * 1000));
+    return new Promise((r) => {
+      return setTimeout(r, n * 1000);
+    });
   }
 }

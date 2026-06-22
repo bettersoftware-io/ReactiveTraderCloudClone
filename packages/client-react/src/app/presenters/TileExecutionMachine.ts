@@ -73,28 +73,36 @@ export function createTileExecutionMachine(
       const input: ExecuteTradeInput = { pair, direction, price, notional };
 
       const result$: Observable<TileExecutionState> = deps.execute(input).pipe(
-        map(
-          (r): TileExecutionState => ({
+        map((r): TileExecutionState => {
+          return {
             status: "finished",
             executionStatus: r.status,
             trade: r.trade,
-          }),
-        ),
-        catchError(() =>
-          of<TileExecutionState>({
+          };
+        }),
+        catchError(() => {
+          return of<TileExecutionState>({
             status: "finished",
             executionStatus: ExecutionStatus.Timeout,
-          }),
-        ),
+          });
+        }),
       );
 
       const tooLong$: Observable<TileExecutionState> = timer(
         TOO_LONG_THRESHOLD_MS,
-      ).pipe(map((): TileExecutionState => ({ status: "tooLong" })));
+      ).pipe(
+        map((): TileExecutionState => {
+          return { status: "tooLong" };
+        }),
+      );
 
       const timeout$: Observable<TileExecutionState> = timer(
         EXECUTION_TIMEOUT_MS,
-      ).pipe(map((): TileExecutionState => ({ status: "timeout" })));
+      ).pipe(
+        map((): TileExecutionState => {
+          return { status: "timeout" };
+        }),
+      );
 
       // started first, then the three racing escalations, collapsed.
       const lifecycle$ = concat(
@@ -117,20 +125,31 @@ export function createTileExecutionMachine(
       // takeUntil(dismiss$) tears the whole run (and its timers) down the moment
       // the user dismisses — mirroring the old hook's clearTimers() on dismiss().
       return lifecycle$.pipe(
-        switchMap((s) =>
-          isTerminal(s)
+        switchMap((s) => {
+          return isTerminal(s)
             ? concat(
                 of(s),
-                timer(CONFIRMATION_DISMISS_MS).pipe(map(() => READY)),
+                timer(CONFIRMATION_DISMISS_MS).pipe(
+                  map(() => {
+                    return READY;
+                  }),
+                ),
               )
-            : of(s),
-        ),
+            : of(s);
+        }),
         takeUntil(dismiss$),
       );
     }),
   );
 
-  const stream$ = merge(runs$, dismiss$.pipe(map(() => READY)));
+  const stream$ = merge(
+    runs$,
+    dismiss$.pipe(
+      map(() => {
+        return READY;
+      }),
+    ),
+  );
 
   const state$: StateObservable<TileExecutionState> = state(stream$, READY);
 
@@ -140,9 +159,12 @@ export function createTileExecutionMachine(
   return {
     state$,
     intents: {
-      execute: (direction, price, notional) =>
-        execute$.next({ direction, price, notional }),
-      dismiss: () => dismiss$.next(),
+      execute: (direction, price, notional) => {
+        return execute$.next({ direction, price, notional });
+      },
+      dismiss: () => {
+        return dismiss$.next();
+      },
     },
     dispose: () => {
       // Complete the source Subjects first so the merged stream — and the

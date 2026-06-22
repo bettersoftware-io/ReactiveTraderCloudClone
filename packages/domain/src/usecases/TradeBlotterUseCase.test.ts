@@ -8,7 +8,11 @@ import { TradeBlotterUseCase } from "./TradeBlotterUseCase.js";
 describe("TradeBlotterUseCase", () => {
   it("delegates to BlotterPort.getTradeStream", async () => {
     const trades: readonly Trade[] = [];
-    const port: BlotterPort = { getTradeStream: () => of(trades) };
+    const port: BlotterPort = {
+      getTradeStream: () => {
+        return of(trades);
+      },
+    };
     const useCase = new TradeBlotterUseCase(port);
     expect(await firstValueFrom(useCase.execute())).toBe(trades);
   });

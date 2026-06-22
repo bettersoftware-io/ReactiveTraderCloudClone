@@ -26,15 +26,21 @@ export function BlotterRow({ trade, isNew }: BlotterRowProps) {
       data-state={isRejected ? "rejected" : "live"}
       data-highlight={highlight ? "true" : undefined}
       data-hovered={hovered ? "true" : undefined}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => {
+        return setHovered(true);
+      }}
+      onMouseLeave={() => {
+        return setHovered(false);
+      }}
       className={styles.row}
     >
-      {COLUMNS.map((col) => (
-        <td key={col.key} className={styles.cell}>
-          {formatCellValue(trade, col)}
-        </td>
-      ))}
+      {COLUMNS.map((col) => {
+        return (
+          <td key={col.key} className={styles.cell}>
+            {formatCellValue(trade, col)}
+          </td>
+        );
+      })}
     </tr>
   );
 }

@@ -16,6 +16,7 @@ export async function clickTab(ctx: TestContext, tab: string): Promise<void> {
   if (tab !== "fx" && tab !== "credit" && tab !== "admin") {
     throw new Error(`unsupported tab: ${tab}`);
   }
+
   await ctx.po.workspace.clickTab(tab);
 }
 

@@ -7,10 +7,12 @@ import type { PageObjects } from "./page-objects/contracts";
  */
 export class Scratchpad {
   blotter = { recordedRowCounts: new Map<string, number>() };
+
   fxLiveRates = {
     recordedCounts: new Map<string, number>(),
     firstTileTextSnapshot: undefined as string | undefined,
   };
+
   theme = {
     backgroundBefore: undefined as string | undefined,
     backgroundAfter: undefined as string | undefined,

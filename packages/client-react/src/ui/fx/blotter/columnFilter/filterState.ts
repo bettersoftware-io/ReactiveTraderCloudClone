@@ -72,15 +72,18 @@ function matchesFilter(trade: Trade, filter: ColumnFilter): boolean {
   if (filter.type === "set") {
     return filter.values.has(String(trade[filter.column]));
   }
+
   if (filter.type === "number") {
     const val = trade[filter.column];
     if (typeof val !== "number") return true;
     return matchesNumber(val, filter.comparator, filter.value, filter.valueTo);
   }
+
   if (filter.type === "date") {
     const val = String(trade[filter.column]);
     return matchesDate(val, filter.comparator, filter.value, filter.valueTo);
   }
+
   return true;
 }
 
@@ -97,6 +100,7 @@ export function applyFilters(
       for (const filter of filters.values()) {
         if (!matchesFilter(trade, filter)) return false;
       }
+
       return true;
     });
   }
@@ -106,7 +110,9 @@ export function applyFilters(
     const terms = quickFilter.toLowerCase().split(/\s+/).filter(Boolean);
     result = result.filter((trade) => {
       const rowText = Object.values(trade).join(" ").toLowerCase();
-      return terms.every((term) => rowText.includes(term));
+      return terms.every((term) => {
+        return rowText.includes(term);
+      });
     });
   }
 

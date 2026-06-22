@@ -15,6 +15,15 @@ export default tseslint.config(
     ],
   },
   {
+    // Behavior-frozen contract specs are the framework-swap portability pillar:
+    // they are pinned verbatim, so the definitional AST style rules (func-style
+    // etc.) must not force edits to them. Whitespace/brace formatting is still
+    // owned by Biome; only the AST tier is scoped out for these files.
+    ignores: [
+      "packages/client-react/tests/ui/contract/specs/**/*.contract.spec.ts",
+    ],
+  },
+  {
     files: ["**/*.{ts,tsx}"],
     languageOptions: { parser: tseslint.parser },
     rules: {

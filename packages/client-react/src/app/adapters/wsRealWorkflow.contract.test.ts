@@ -32,6 +32,8 @@ describeWorkflowPortContract("wsRealWorkflow", () => {
         ws.nextRpcResponse("rpc.accept", rpcAck(undefined));
       },
     },
-    teardown: () => ws.dispose(),
+    teardown: () => {
+      return ws.dispose();
+    },
   };
 });

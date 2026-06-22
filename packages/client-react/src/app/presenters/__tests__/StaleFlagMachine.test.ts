@@ -28,7 +28,9 @@ function run(
     ) as Observable<ConnectionStatus>;
     const value$ = cold(valueMarble, valueValues) as Observable<unknown>;
     const machine = createStaleFlagMachine({ status$, value$ });
-    const sub = machine.state$.subscribe((s) => flags.push(s));
+    const sub = machine.state$.subscribe((s) => {
+      return flags.push(s);
+    });
     flush();
     sub.unsubscribe();
     machine.dispose();
@@ -48,7 +50,9 @@ describe("createStaleFlagMachine", () => {
       const value$ = cold("-", {}) as Observable<unknown>;
       const machine = createStaleFlagMachine({ status$, value$ });
       let current: boolean | undefined;
-      const sub = machine.state$.subscribe((s) => (current = s));
+      const sub = machine.state$.subscribe((s) => {
+        current = s;
+      });
       expect(current).toBe(false);
       sub.unsubscribe();
       machine.dispose();
@@ -125,7 +129,9 @@ describe("createStaleFlagMachine", () => {
       const value$ = cold("a", { a: { v: 1 } }) as Observable<unknown>;
       const machine = createStaleFlagMachine({ status$, value$ });
       const seen: boolean[] = [];
-      const sub = machine.state$.subscribe((s) => seen.push(s));
+      const sub = machine.state$.subscribe((s) => {
+        return seen.push(s);
+      });
       // Mirror unmount: useMachine unsubscribes from state$ and dispose()
       // releases the warm subscription; with no subscribers the refCounted
       // stream tears down and the (not-yet-played) disconnect/reconnect never

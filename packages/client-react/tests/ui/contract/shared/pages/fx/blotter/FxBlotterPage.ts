@@ -33,23 +33,31 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
   columnHeaders(): string[] {
     return within(this.table())
       .getAllByRole("columnheader")
-      .map((h) => h.textContent?.trim() ?? "");
+      .map((h) => {
+        return h.textContent?.trim() ?? "";
+      });
   }
 
   /** Ordered cell text for a given column across all visible rows. */
   columnValues(label: string): string[] {
     const headers = within(this.table()).getAllByRole("columnheader");
-    const idx = headers.findIndex((h) =>
-      (h.querySelector("span")?.firstChild?.textContent ?? "")
+    const idx = headers.findIndex((h) => {
+      return (h.querySelector("span")?.firstChild?.textContent ?? "")
         .trim()
-        .startsWith(label),
-    );
+        .startsWith(label);
+    });
     if (idx < 0) throw new Error(`No column header for ${label}`);
     const rows = [...this.table().querySelectorAll("tbody tr")];
     return rows
-      .map((r) => r.querySelectorAll("td"))
-      .filter((cells) => cells.length > idx && cells.length > 1) // skip empty-state row (single colspan cell)
-      .map((cells) => cells[idx]?.textContent?.trim() ?? "");
+      .map((r) => {
+        return r.querySelectorAll("td");
+      })
+      .filter((cells) => {
+        return cells.length > idx && cells.length > 1;
+      }) // skip empty-state row (single colspan cell)
+      .map((cells) => {
+        return cells[idx]?.textContent?.trim() ?? "";
+      });
   }
 
   // --- sorting -------------------------------------------------------------
@@ -57,9 +65,9 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
   private headerCell(label: string): HTMLTableCellElement {
     const cell = within(this.table())
       .getAllByRole("columnheader")
-      .find((th) =>
-        (th.querySelector("span")?.textContent ?? "").includes(label),
-      );
+      .find((th) => {
+        return (th.querySelector("span")?.textContent ?? "").includes(label);
+      });
     if (!cell) throw new Error(`No header cell with label ${label}`);
     return cell as HTMLTableCellElement;
   }

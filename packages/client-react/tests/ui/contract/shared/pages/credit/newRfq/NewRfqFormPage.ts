@@ -57,7 +57,9 @@ export class NewRfqFormPage extends MountedComponent<NewRfqFormProps> {
   dealerNames(): string[] {
     return this.q()
       .getAllByRole("checkbox")
-      .map((c) => c.closest("label")?.textContent?.trim() ?? "");
+      .map((c) => {
+        return c.closest("label")?.textContent?.trim() ?? "";
+      });
   }
 
   /** Whether the dealer with the given name is currently checked. */

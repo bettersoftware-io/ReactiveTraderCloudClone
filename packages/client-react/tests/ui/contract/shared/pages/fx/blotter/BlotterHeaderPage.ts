@@ -25,18 +25,18 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
   }
 
   private cellFor(label: string): HTMLTableCellElement {
-    const cell = this.headerCells().find((th) =>
-      (th.querySelector("span")?.textContent ?? "").includes(label),
-    );
+    const cell = this.headerCells().find((th) => {
+      return (th.querySelector("span")?.textContent ?? "").includes(label);
+    });
     if (!cell) throw new Error(`No header cell with label ${label}`);
     return cell;
   }
 
   /** Header labels in order (without sort/filter indicators). */
   labels(): string[] {
-    return this.headerCells().map(
-      (th) => th.querySelector("span")?.firstChild?.textContent?.trim() ?? "",
-    );
+    return this.headerCells().map((th) => {
+      return th.querySelector("span")?.firstChild?.textContent?.trim() ?? "";
+    });
   }
 
   /** Click a column header to drive the sort callback. */
@@ -63,7 +63,9 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
     // Apply/Reset buttons appear only once a panel is open.
     const toggle = within(cell)
       .getAllByRole("button")
-      .find((b) => (b.textContent ?? "").includes("▽"));
+      .find((b) => {
+        return (b.textContent ?? "").includes("▽");
+      });
     if (!toggle) throw new Error(`No filter toggle for ${label}`);
     await this.user.click(toggle);
   }

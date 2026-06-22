@@ -15,11 +15,9 @@ export class ConnectionStatusUseCase {
 
   execute(): Observable<ConnectionStatus> {
     return this.events.events().pipe(
-      scan(
-        (state: ConnectionStatus, event: ConnectionEvent) =>
-          nextConnectionStatus(state, event),
-        this.initial,
-      ),
+      scan((state: ConnectionStatus, event: ConnectionEvent) => {
+        return nextConnectionStatus(state, event);
+      }, this.initial),
       startWith(this.initial),
     );
   }

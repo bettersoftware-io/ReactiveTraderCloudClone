@@ -24,6 +24,7 @@ export function describeBlotterPortContract(
   describe(`${label} :: BlotterPort contract`, () => {
     it("emits an initial snapshot (possibly empty)", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getTradeStream());
         await driver.emitInitialBlotter();
@@ -36,6 +37,7 @@ export function describeBlotterPortContract(
 
     it("each new trade produces a cumulative snapshot containing prior trades", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(
           port.getTradeStream().pipe(take(2), toArray()),

@@ -16,7 +16,9 @@ describe("ThemePreferencePresenter", () => {
   it("setTheme pushes to existing subscribers", () => {
     const presenter = new ThemePreferencePresenter(new PreferencesSimulator());
     const seen: Theme[] = [];
-    const sub = presenter.theme$.subscribe((t) => seen.push(t));
+    const sub = presenter.theme$.subscribe((t) => {
+      return seen.push(t);
+    });
     presenter.setTheme("light");
     sub.unsubscribe();
     expect(seen).toEqual(["dark", "light"]);
@@ -25,7 +27,9 @@ describe("ThemePreferencePresenter", () => {
   it("toggle flips light↔dark", () => {
     const presenter = new ThemePreferencePresenter(new PreferencesSimulator());
     const seen: Theme[] = [];
-    const sub = presenter.theme$.subscribe((t) => seen.push(t));
+    const sub = presenter.theme$.subscribe((t) => {
+      return seen.push(t);
+    });
     presenter.toggle("dark");
     presenter.toggle("light");
     sub.unsubscribe();

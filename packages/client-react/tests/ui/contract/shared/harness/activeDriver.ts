@@ -42,5 +42,6 @@ export function getDriver(): UiContractDriver {
         "(tests/ui/contract/react/setup.ts) ran before the spec.",
     );
   }
+
   return active;
 }

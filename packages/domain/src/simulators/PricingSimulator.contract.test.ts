@@ -3,7 +3,9 @@ import { afterEach, vi } from "vitest";
 import { describePricingPortContract } from "../ports/__contracts__/PricingPortContract.js";
 import { PricingSimulator } from "./PricingSimulator.js";
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describePricingPortContract("PricingSimulator", () => {
   vi.useFakeTimers();
@@ -25,6 +27,8 @@ describePricingPortContract("PricingSimulator", () => {
         await vi.advanceTimersByTimeAsync(2_000);
       },
     },
-    teardown: () => vi.useRealTimers(),
+    teardown: () => {
+      return vi.useRealTimers();
+    },
   };
 });

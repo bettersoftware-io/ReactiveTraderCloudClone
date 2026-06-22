@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import type { WorkspaceTab } from "#tests/ui/contract/shared/pages/shell/layout/HeaderPage";
 
-afterEach(() => cleanupMounted());
+afterEach(() => {
+  return cleanupMounted();
+});
 
 describe("Header", () => {
   it("renders the title and the three workspace tabs", () => {
@@ -27,7 +29,12 @@ describe("Header", () => {
   it("reports the clicked tab through onTabChange", async () => {
     const changes: WorkspaceTab[] = [];
     const header = mount(Header, {
-      props: { activeTab: "fx", onTabChange: (tab) => changes.push(tab) },
+      props: {
+        activeTab: "fx",
+        onTabChange: (tab) => {
+          return changes.push(tab);
+        },
+      },
     });
     await header.clickTab("credit");
     await header.clickTab("admin");

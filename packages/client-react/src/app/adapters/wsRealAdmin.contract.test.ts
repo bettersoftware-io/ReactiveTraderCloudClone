@@ -24,6 +24,8 @@ describeAdminPortContract("createAdminPort (WsReal)", () => {
         ws.nextRpcResponse("admin.setThroughput", rpcAck(undefined));
       },
     },
-    teardown: () => ws.dispose(),
+    teardown: () => {
+      return ws.dispose();
+    },
   };
 });

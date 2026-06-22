@@ -22,16 +22,18 @@ export function expectFirstPriceTileVisibleWithin(
 }
 
 export function expectAtLeastNTilesVisible(ctx: TestContext, n: number): void {
-  chainable(ctx.po.liveRatesTile.count()).then((c) => assertGte(c, n));
+  chainable(ctx.po.liveRatesTile.count()).then((c) => {
+    return assertGte(c, n);
+  });
 }
 
 export function expectFirstTileHasBuyAndSellButtons(ctx: TestContext): void {
-  chainable(ctx.po.liveRatesTile.firstTileSellVisible()).then((v) =>
-    assertTrue(v, "first tile sell button not visible"),
-  );
-  chainable(ctx.po.liveRatesTile.firstTileBuyVisible()).then((v) =>
-    assertTrue(v, "first tile buy button not visible"),
-  );
+  chainable(ctx.po.liveRatesTile.firstTileSellVisible()).then((v) => {
+    return assertTrue(v, "first tile sell button not visible");
+  });
+  chainable(ctx.po.liveRatesTile.firstTileBuyVisible()).then((v) => {
+    return assertTrue(v, "first tile buy button not visible");
+  });
 }
 
 export function recordVisibleTileCount(ctx: TestContext, key: string): void {
@@ -71,18 +73,18 @@ export function expectVisibleTileCountEquals(
 }
 
 export function expectViewToggleVisible(ctx: TestContext): void {
-  chainable(ctx.po.liveRatesTile.viewToggleVisible()).then((v) =>
-    assertTrue(v, "view toggle not visible"),
-  );
+  chainable(ctx.po.liveRatesTile.viewToggleVisible()).then((v) => {
+    return assertTrue(v, "view toggle not visible");
+  });
 }
 
 export function expectViewToggleShows(
   ctx: TestContext,
   expected: string,
 ): void {
-  chainable(ctx.po.liveRatesTile.viewToggleLabel()).then((label) =>
-    assertContains(label, expected),
-  );
+  chainable(ctx.po.liveRatesTile.viewToggleLabel()).then((label) => {
+    return assertContains(label, expected);
+  });
 }
 
 export function clickViewToggle(ctx: TestContext): void {
@@ -116,17 +118,19 @@ export function expectAtLeastNTilesVisibleWithin(
   seconds: number,
 ): void {
   void ctx.po.liveRatesTile.waitForFirstTile(seconds * 1_000);
-  chainable(ctx.po.liveRatesTile.count()).then((c) => assertGte(c, n));
+  chainable(ctx.po.liveRatesTile.count()).then((c) => {
+    return assertGte(c, n);
+  });
 }
 
 export function expectFirstTileTextMatches(
   ctx: TestContext,
   pattern: RegExp,
 ): void {
-  chainable(ctx.po.liveRatesTile.firstTileText()).then((text) =>
-    assertTrue(
+  chainable(ctx.po.liveRatesTile.firstTileText()).then((text) => {
+    return assertTrue(
       pattern.test(text),
       `first tile text "${text}" did not match ${pattern}`,
-    ),
-  );
+    );
+  });
 }

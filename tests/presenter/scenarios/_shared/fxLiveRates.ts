@@ -50,6 +50,7 @@ export async function expectFirstTileTextNonEmpty(
     w.ctx.app.presenters.priceStream.price$(pair),
     2000,
   );
+
   if (!Number.isFinite(current.mid)) {
     throw new Error(
       `first tile mid is not a finite number, got: ${current.mid}`,

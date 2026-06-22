@@ -22,6 +22,7 @@ export function describePricingPortContract(
   describe(`${label} :: PricingPort contract`, () => {
     it("getPriceUpdates emits a tick with bid < mid < ask", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getPriceUpdates("EURUSD"));
         await driver.tickPrice("EURUSD");
@@ -36,12 +37,14 @@ export function describePricingPortContract(
 
     it("getPriceHistory returns an array of ticks then completes", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getPriceHistory("EURUSD"));
         await driver.ackHistory("EURUSD");
         const history = await promise;
         expect(Array.isArray(history)).toBe(true);
         expect(history.length).toBeGreaterThan(0);
+
         for (const tick of history) {
           expect(tick.symbol).toBe("EURUSD");
         }
@@ -52,6 +55,7 @@ export function describePricingPortContract(
 
     it("getRfqQuote emits one quote with bid < mid < ask then completes", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getRfqQuote("EURUSD", 4));
         await driver.ackRfqQuote("EURUSD");

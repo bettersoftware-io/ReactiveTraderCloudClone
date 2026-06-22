@@ -19,14 +19,16 @@ const quote: RfqQuote = { bid: 1.0921, ask: 1.0925, timeoutMs: 10_000 };
 const rfqState = (
   state: RfqState,
   over: Partial<RfqStateLike> = {},
-): RfqStateLike => ({
-  state,
-  requestQuote: () => {},
-  cancel: () => {},
-  reject: () => {},
-  accept: () => {},
-  ...over,
-});
+): RfqStateLike => {
+  return {
+    state,
+    requestQuote: () => {},
+    cancel: () => {},
+    reject: () => {},
+    accept: () => {},
+    ...over,
+  };
+};
 
 describe("TileRfq", () => {
   it("offers an Initiate RFQ button in the init state", async () => {
@@ -35,7 +37,9 @@ describe("TileRfq", () => {
       props: {
         pair: eurusd,
         rfqState: rfqState({ status: "init", quote: null, remainingMs: 0 }),
-        onRequestQuote: () => (requested += 1),
+        onRequestQuote: () => {
+          requested += 1;
+        },
         onExecute: () => {},
         notional: 1_000_000,
       },
@@ -52,7 +56,11 @@ describe("TileRfq", () => {
         pair: eurusd,
         rfqState: rfqState(
           { status: "requested", quote: null, remainingMs: 0 },
-          { cancel: () => (cancelled += 1) },
+          {
+            cancel: () => {
+              cancelled += 1;
+            },
+          },
         ),
         onRequestQuote: () => {},
         onExecute: () => {},
@@ -88,11 +96,16 @@ describe("TileRfq", () => {
         pair: eurusd,
         rfqState: rfqState(
           { status: "received", quote, remainingMs: 6_000 },
-          { accept: () => (accepted += 1) },
+          {
+            accept: () => {
+              accepted += 1;
+            },
+          },
         ),
         onRequestQuote: () => {},
-        onExecute: (dir, price, notional) =>
-          executed.push({ dir, price, notional }),
+        onExecute: (dir, price, notional) => {
+          return executed.push({ dir, price, notional });
+        },
         notional: 2_000_000,
       },
     });
@@ -115,7 +128,11 @@ describe("TileRfq", () => {
         pair: eurusd,
         rfqState: rfqState(
           { status: "received", quote, remainingMs: 6_000 },
-          { reject: () => (rejected += 1) },
+          {
+            reject: () => {
+              rejected += 1;
+            },
+          },
         ),
         onRequestQuote: () => {},
         onExecute: () => {},

@@ -72,26 +72,36 @@ export function createRfqTileMachine(
   const accept$ = new Subject<void>();
 
   // rejected → hold REJECTED_DISPLAY_MS → init.
-  const rejectedRun = (): Observable<RfqState> =>
-    concat(of(REJECTED), timer(REJECTED_DISPLAY_MS).pipe(map(() => INIT)));
+  function rejectedRun(): Observable<RfqState> {
+    return concat(
+      of(REJECTED),
+      timer(REJECTED_DISPLAY_MS).pipe(
+        map(() => {
+          return INIT;
+        }),
+      ),
+    );
+  }
 
   // received → countdown ticking every COUNTDOWN_INTERVAL_MS; when it reaches
   // zero, fall through to rejectedRun. Deterministic under TestScheduler because
   // remaining is derived from the timer index, not Date.now().
-  const receivedFlow = (quote: RfqQuote): Observable<RfqState> => {
+  function receivedFlow(quote: RfqQuote): Observable<RfqState> {
     const ticks$ = timer(0, COUNTDOWN_INTERVAL_MS).pipe(
-      map(
-        (i): RfqState => ({
+      map((i): RfqState => {
+        return {
           status: "received",
           quote,
           remainingMs: RFQ_TIMEOUT_MS - i * COUNTDOWN_INTERVAL_MS,
-        }),
-      ),
+        };
+      }),
       // Emit each received tick while time remains; stop (exclusive) at <= 0.
-      takeWhile((s) => s.remainingMs > 0, false),
+      takeWhile((s) => {
+        return s.remainingMs > 0;
+      }, false),
     );
     return concat(ticks$, rejectedRun());
-  };
+  }
 
   // One RFQ run: requested → (received-countdown | rejected) with the user
   // intents (cancel/accept/reject) able to interrupt. Each intent is guarded at
@@ -100,10 +110,16 @@ export function createRfqTileMachine(
   const runs$ = requestQuote$.pipe(
     switchMap(() => {
       const quoteFlow$ = deps.requestQuote(pair.symbol, pair.pipsPosition).pipe(
-        switchMap((r) =>
-          receivedFlow({ bid: r.bid, ask: r.ask, timeoutMs: RFQ_TIMEOUT_MS }),
-        ),
-        catchError(() => rejectedRun()),
+        switchMap((r) => {
+          return receivedFlow({
+            bid: r.bid,
+            ask: r.ask,
+            timeoutMs: RFQ_TIMEOUT_MS,
+          });
+        }),
+        catchError(() => {
+          return rejectedRun();
+        }),
       );
 
       const active$ = concat(of(REQUESTED), quoteFlow$);
@@ -113,22 +129,29 @@ export function createRfqTileMachine(
         // cancel (from requested) and accept (from received) both reset to init.
         merge(cancel$, accept$).pipe(
           take(1),
-          map(() => INIT),
+          map(() => {
+            return INIT;
+          }),
         ),
         // reject (from received) shows the rejected hold, then resets to init.
         reject$.pipe(
           take(1),
-          switchMap(() => rejectedRun()),
+          switchMap(() => {
+            return rejectedRun();
+          }),
         ),
       );
     }),
   );
 
   const state$: DefaultedStateObservable<RfqState> = state(runs$, INIT);
+
   // state(obs, default) yields a DefaultedStateObservable whose getValue() is
   // synchronous and returns RfqState directly — used below to guard intents on
   // the current status.
-  const current = (): RfqState => state$.getValue();
+  function current(): RfqState {
+    return state$.getValue();
+  }
 
   // Keep state$ warm so it carries its default before useMachine first renders.
   const warm = state$.subscribe();

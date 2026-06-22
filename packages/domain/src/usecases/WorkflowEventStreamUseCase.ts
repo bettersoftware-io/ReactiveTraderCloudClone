@@ -24,14 +24,17 @@ export function reduceRfqEvent(
     case "endOfStateOfTheWorld":
       return state;
     case "rfqCreated":
+
     case "rfqClosed": {
       const next = new Map(state.rfqs);
       next.set(event.payload.id, event.payload);
       return { ...state, rfqs: next };
     }
+
     case "quoteCreated":
     case "quoteQuoted":
     case "quotePassed":
+
     case "quoteAccepted": {
       const next = new Map(state.quotes);
       next.set(event.payload.id, event.payload);

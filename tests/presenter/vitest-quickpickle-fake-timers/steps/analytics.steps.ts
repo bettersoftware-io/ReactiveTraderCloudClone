@@ -7,12 +7,14 @@ import type { VitestFakePresenterWorld } from "../world";
 
 Then(
   "the analytics panel is visible within {int} seconds",
-  async (state: VitestFakePresenterWorld, n: number) =>
-    analytics.expectAnalyticsVisibleWithin(state, n),
+  async (state: VitestFakePresenterWorld, n: number) => {
+    return analytics.expectAnalyticsVisibleWithin(state, n);
+  },
 );
 
 Then(
   "the analytics presenter emits within {int} seconds",
-  async (state: VitestFakePresenterWorld, n: number) =>
-    analytics.expectAnalyticsEmits(state, n),
+  async (state: VitestFakePresenterWorld, n: number) => {
+    return analytics.expectAnalyticsEmits(state, n);
+  },
 );

@@ -18,7 +18,12 @@ function computeRadius(basePnl: number, maxAbsPnl: number): number {
 }
 
 export function PositionBubbles({ positions }: PositionBubblesProps) {
-  const maxAbsPnl = Math.max(...positions.map((p) => Math.abs(p.basePnl)), 1);
+  const maxAbsPnl = Math.max(
+    ...positions.map((p) => {
+      return Math.abs(p.basePnl);
+    }),
+    1,
+  );
 
   return (
     <div className={styles.container}>

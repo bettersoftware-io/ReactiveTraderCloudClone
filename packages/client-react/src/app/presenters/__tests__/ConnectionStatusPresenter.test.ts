@@ -12,7 +12,9 @@ import { ConnectionStatusPresenter } from "../ConnectionStatusPresenter";
 describe("ConnectionStatusPresenter", () => {
   it("exposes the connection status stream", async () => {
     const port: ConnectionEventsPort = {
-      events: () => of<ConnectionEvent>({ type: "gatewayConnected" }),
+      events: () => {
+        return of<ConnectionEvent>({ type: "gatewayConnected" });
+      },
     };
     const all = await firstValueFrom(
       new ConnectionStatusPresenter(port).status$.pipe(toArray()),
@@ -26,13 +28,21 @@ describe("ConnectionStatusPresenter", () => {
   it("multicasts the same value to multiple subscribers", () => {
     const subject = new Subject<ConnectionEvent>();
     const presenter = new ConnectionStatusPresenter(
-      { events: () => subject.asObservable() },
+      {
+        events: () => {
+          return subject.asObservable();
+        },
+      },
       ConnectionStatus.CONNECTED,
     );
     const a: ConnectionStatus[] = [];
     const b: ConnectionStatus[] = [];
-    const subA = presenter.status$.subscribe((s) => a.push(s));
-    const subB = presenter.status$.subscribe((s) => b.push(s));
+    const subA = presenter.status$.subscribe((s) => {
+      return a.push(s);
+    });
+    const subB = presenter.status$.subscribe((s) => {
+      return b.push(s);
+    });
     subject.next({ type: "gatewayDisconnected" });
     subA.unsubscribe();
     subB.unsubscribe();

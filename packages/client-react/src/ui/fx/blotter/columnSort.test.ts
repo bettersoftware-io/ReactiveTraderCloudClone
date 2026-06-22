@@ -8,19 +8,21 @@ import {
   type SortState,
 } from "./columnSort";
 
-const trade = (over: Partial<Trade> = {}): Trade => ({
-  tradeId: 1,
-  tradeName: "Alice",
-  currencyPair: "EURUSD",
-  notional: 1_000_000,
-  dealtCurrency: "EUR",
-  direction: Direction.Buy,
-  spotRate: 1.1,
-  status: TradeStatus.Done,
-  tradeDate: "2026-01-01",
-  valueDate: "2026-01-03",
-  ...over,
-});
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 1,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.1,
+    status: TradeStatus.Done,
+    tradeDate: "2026-01-01",
+    valueDate: "2026-01-03",
+    ...over,
+  };
+}
 
 describe("nextSortDirection", () => {
   it("starts a numeric/date column descending on first click", () => {
@@ -100,12 +102,20 @@ describe("applySortToTrades", () => {
       column: "notional",
       direction: "asc",
     });
-    expect(asc.map((t) => t.notional)).toEqual([100, 200, 300]);
+    expect(
+      asc.map((t) => {
+        return t.notional;
+      }),
+    ).toEqual([100, 200, 300]);
     const desc = applySortToTrades(trades, {
       column: "notional",
       direction: "desc",
     });
-    expect(desc.map((t) => t.notional)).toEqual([300, 200, 100]);
+    expect(
+      desc.map((t) => {
+        return t.notional;
+      }),
+    ).toEqual([300, 200, 100]);
   });
 
   it("sorts strings case-insensitively ascending and descending", () => {
@@ -118,12 +128,20 @@ describe("applySortToTrades", () => {
       column: "tradeName",
       direction: "asc",
     });
-    expect(asc.map((t) => t.tradeName)).toEqual(["Alice", "bob", "charlie"]);
+    expect(
+      asc.map((t) => {
+        return t.tradeName;
+      }),
+    ).toEqual(["Alice", "bob", "charlie"]);
     const desc = applySortToTrades(trades, {
       column: "tradeName",
       direction: "desc",
     });
-    expect(desc.map((t) => t.tradeName)).toEqual(["charlie", "bob", "Alice"]);
+    expect(
+      desc.map((t) => {
+        return t.tradeName;
+      }),
+    ).toEqual(["charlie", "bob", "Alice"]);
   });
 
   it("sorts ISO date strings lexicographically", () => {
@@ -136,11 +154,11 @@ describe("applySortToTrades", () => {
       column: "tradeDate",
       direction: "asc",
     });
-    expect(asc.map((t) => t.tradeDate)).toEqual([
-      "2026-01-01",
-      "2026-02-01",
-      "2026-03-01",
-    ]);
+    expect(
+      asc.map((t) => {
+        return t.tradeDate;
+      }),
+    ).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
   });
 
   it("does not mutate the original array", () => {

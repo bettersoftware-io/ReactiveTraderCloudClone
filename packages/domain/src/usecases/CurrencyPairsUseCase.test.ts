@@ -18,7 +18,9 @@ describe("CurrencyPairsUseCase", () => {
       },
     ];
     const port: ReferenceDataPort = {
-      getCurrencyPairs: () => of(pairs),
+      getCurrencyPairs: () => {
+        return of(pairs);
+      },
     };
     const useCase = new CurrencyPairsUseCase(port);
     expect(await firstValueFrom(useCase.execute())).toBe(pairs);

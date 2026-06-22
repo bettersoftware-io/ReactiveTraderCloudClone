@@ -422,7 +422,9 @@ const creditQuotes102: readonly Quote[] = [
   },
 ];
 const creditAllQuotes: ReadonlyMap<number, Quote> = new Map(
-  [...creditQuotes101, ...creditQuotes102].map((q) => [q.id, q]),
+  [...creditQuotes101, ...creditQuotes102].map((q) => {
+    return [q.id, q];
+  }),
 );
 
 // CreditBlotter degraded-data row: a Closed rfq with an accepted quote whose
@@ -548,7 +550,11 @@ function rfqCardFixture(rfq: Rfq, quotes: readonly Quote[]): AppData {
     dealers: creditDealers,
     rfqs: [rfq],
     quotesForRfq: { [rfq.id]: quotes },
-    allQuotes: new Map(quotes.map((q) => [q.id, q])),
+    allQuotes: new Map(
+      quotes.map((q) => {
+        return [q.id, q];
+      }),
+    ),
   });
 }
 
@@ -609,6 +615,7 @@ function sellSideTicketFixture(
     allQuotes: new Map([[quote.id, quote]]),
   });
 }
+
 // Responded-view ternary arms (rendered when the AB quote has responded):
 //   passed quote (Open rfq) → "Passed"
 const sellSidePassedRfq: Rfq = {
@@ -906,14 +913,22 @@ export const fixtures: Record<string, AppData> = {
     dealers: creditDealers,
     rfqs: [sellSideActiveRfq],
     quotesForRfq: { 301: sellSideActiveQuotes },
-    allQuotes: new Map(sellSideActiveQuotes.map((q) => [q.id, q])),
+    allQuotes: new Map(
+      sellSideActiveQuotes.map((q) => {
+        return [q.id, q];
+      }),
+    ),
   }),
   "sell-side-responded": makeAppData({
     instruments: creditInstruments,
     dealers: creditDealers,
     rfqs: [sellSideRespondedRfq],
     quotesForRfq: { 302: sellSideRespondedQuotes },
-    allQuotes: new Map(sellSideRespondedQuotes.map((q) => [q.id, q])),
+    allQuotes: new Map(
+      sellSideRespondedQuotes.map((q) => {
+        return [q.id, q];
+      }),
+    ),
   }),
   // SellSidePanel empty arm: no rfqs => "No RFQs for Adaptive Bank".
   "sell-side-empty": makeAppData({

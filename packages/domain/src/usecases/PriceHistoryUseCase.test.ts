@@ -9,9 +9,15 @@ import { PriceHistoryUseCase } from "./PriceHistoryUseCase.js";
 
 function stubPricing(ticks: PriceTick[]): PricingPort {
   return {
-    getPriceUpdates: () => from(ticks),
-    getPriceHistory: () => of([] as readonly PriceTick[]),
-    getRfqQuote: () => of({ bid: 0, ask: 0, mid: 0 }),
+    getPriceUpdates: () => {
+      return from(ticks);
+    },
+    getPriceHistory: () => {
+      return of([] as readonly PriceTick[]);
+    },
+    getRfqQuote: () => {
+      return of({ bid: 0, ask: 0, mid: 0 });
+    },
   };
 }
 
@@ -42,9 +48,9 @@ describe("PriceHistoryUseCase", () => {
   });
 
   it("caps the window at PRICE_HISTORY_SIZE, dropping the oldest tick", async () => {
-    const allTicks = Array.from({ length: PRICE_HISTORY_SIZE + 3 }, (_, i) =>
-      tick(i, i),
-    );
+    const allTicks = Array.from({ length: PRICE_HISTORY_SIZE + 3 }, (_, i) => {
+      return tick(i, i);
+    });
     const useCase = new PriceHistoryUseCase(stubPricing(allTicks));
 
     const windows = await firstValueFrom(

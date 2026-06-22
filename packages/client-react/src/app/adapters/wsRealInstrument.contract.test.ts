@@ -25,6 +25,8 @@ describeInstrumentPortContract("wsRealInstrument", () => {
         ws.emit("stream.instrumentEvent", instrumentAdded({ id: 102 }));
       },
     },
-    teardown: () => ws.dispose(),
+    teardown: () => {
+      return ws.dispose();
+    },
   };
 });

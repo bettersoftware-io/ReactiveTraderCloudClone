@@ -8,6 +8,7 @@ import {
 
 export class ConnectionStatusPresenter {
   readonly status$: Observable<ConnectionStatus>;
+
   constructor(
     events: ConnectionEventsPort,
     initial: ConnectionStatus = ConnectionStatus.CONNECTING,

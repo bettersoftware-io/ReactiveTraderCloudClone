@@ -21,11 +21,13 @@ export class ThroughputSimulator implements AdminPort {
     if (typeof value !== "number" || !Number.isFinite(value)) {
       throw new Error("Throughput must be a finite number");
     }
+
     if (value < MIN_THROUGHPUT || value > MAX_THROUGHPUT) {
       throw new Error(
         `Throughput must be between ${MIN_THROUGHPUT} and ${MAX_THROUGHPUT}`,
       );
     }
+
     this.value = value;
     return of(undefined);
   }

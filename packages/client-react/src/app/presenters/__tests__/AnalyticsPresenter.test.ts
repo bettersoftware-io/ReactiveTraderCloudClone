@@ -8,7 +8,11 @@ import { AnalyticsPresenter } from "../AnalyticsPresenter";
 describe("AnalyticsPresenter", () => {
   it("exposes analytics for the configured base currency", async () => {
     const updates: PositionUpdates = { currentPositions: [], history: [] };
-    const port: AnalyticsPort = { getAnalytics: () => of(updates) };
+    const port: AnalyticsPort = {
+      getAnalytics: () => {
+        return of(updates);
+      },
+    };
     const presenter = new AnalyticsPresenter(port);
     expect(await firstValueFrom(presenter.position$)).toBe(updates);
   });

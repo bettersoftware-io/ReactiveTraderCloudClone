@@ -12,6 +12,7 @@ import { spawnSync } from "node:child_process";
 import { DEV_PORT } from "./devServer";
 
 const port = Number(process.argv[2] ?? DEV_PORT);
+
 if (!Number.isInteger(port) || port <= 0 || port > 65535) {
   console.error(`free-port: invalid port "${process.argv[2]}"`);
   process.exit(2);
@@ -34,34 +35,51 @@ function tryTool(
   return parse(result.stdout ?? "");
 }
 
-const pidLines = (stdout: string): number[] =>
-  stdout
+function pidLines(stdout: string): number[] {
+  return stdout
     .split(/\s+/)
-    .map((t) => Number(t.trim()))
-    .filter((n) => Number.isInteger(n) && n > 0);
+    .map((t) => {
+      return Number(t.trim());
+    })
+    .filter((n) => {
+      return Number.isInteger(n) && n > 0;
+    });
+}
 
 const finders: Finder[] = [
   // macOS + Linux-with-lsof: -t prints bare PIDs, one per line.
   {
     name: "lsof",
-    run: () => tryTool("lsof", [`-tiTCP:${port}`, "-sTCP:LISTEN"], pidLines),
+    run: () => {
+      return tryTool("lsof", [`-tiTCP:${port}`, "-sTCP:LISTEN"], pidLines);
+    },
   },
   // Linux: ss embeds the owner as users:(("name",pid=737,fd=22)).
   {
     name: "ss",
-    run: () =>
-      tryTool("ss", ["-ltnpH", `sport = :${port}`], (out) =>
-        [...out.matchAll(/pid=(\d+)/g)].map((m) => Number(m[1])),
-      ),
+    run: () => {
+      return tryTool("ss", ["-ltnpH", `sport = :${port}`], (out) => {
+        return [...out.matchAll(/pid=(\d+)/g)].map((m) => {
+          return Number(m[1]);
+        });
+      });
+    },
   },
   // Linux fallback: fuser prints the owning PIDs (to stdout on modern util-linux).
-  { name: "fuser", run: () => tryTool("fuser", [`${port}/tcp`], pidLines) },
+  {
+    name: "fuser",
+    run: () => {
+      return tryTool("fuser", [`${port}/tcp`], pidLines);
+    },
+  },
 ];
 
 let pids: number[] | null = null;
 let used = "";
+
 for (const finder of finders) {
   const found = finder.run();
+
   if (found !== null) {
     pids = found;
     used = finder.name;
@@ -77,7 +95,10 @@ if (pids === null) {
   process.exit(1);
 }
 
-const unique = [...new Set(pids)].filter((pid) => pid !== process.pid);
+const unique = [...new Set(pids)].filter((pid) => {
+  return pid !== process.pid;
+});
+
 if (unique.length === 0) {
   console.log(
     `free-port: nothing is listening on :${port} (checked via ${used}).`,
@@ -99,7 +120,10 @@ for (const pid of unique) {
 }
 
 // Give graceful shutdown a moment, then SIGKILL anything that ignored SIGTERM.
-await new Promise((r) => setTimeout(r, 1_000));
+await new Promise((r) => {
+  return setTimeout(r, 1_000);
+});
+
 for (const pid of unique) {
   try {
     process.kill(pid, 0); // probe: throws ESRCH once the process is gone

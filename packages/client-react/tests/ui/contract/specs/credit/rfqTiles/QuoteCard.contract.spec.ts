@@ -6,13 +6,15 @@ import type { Dealer, Quote, QuoteState } from "@rtc/domain";
 
 const dealer: Dealer = { id: 7, name: "Citi" };
 
-const quote = (state: QuoteState, over: Partial<Quote> = {}): Quote => ({
-  id: 100,
-  rfqId: 1,
-  dealerId: 7,
-  state,
-  ...over,
-});
+const quote = (state: QuoteState, over: Partial<Quote> = {}): Quote => {
+  return {
+    id: 100,
+    rfqId: 1,
+    dealerId: 7,
+    state,
+    ...over,
+  };
+};
 
 describe("QuoteCard", () => {
   it("shows the dealer name and awaiting text before a price arrives", () => {
@@ -60,7 +62,9 @@ describe("QuoteCard", () => {
       props: {
         quote: quote({ type: "pendingWithPrice", price: 99 }, { id: 321 }),
         dealer,
-        onAccept: (id) => accepted.push(id),
+        onAccept: (id) => {
+          return accepted.push(id);
+        },
       },
     });
     await card.accept();

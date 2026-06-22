@@ -47,7 +47,11 @@ describe("TradeExecutionPresenter", () => {
       movementType: PriceMovementType.NONE,
       spread: "1.0",
     };
-    const port: ExecutionPort = { executeTrade: () => of(trade) };
+    const port: ExecutionPort = {
+      executeTrade: () => {
+        return of(trade);
+      },
+    };
     const presenter = new TradeExecutionPresenter(port);
     const result = await firstValueFrom(
       presenter.execute({

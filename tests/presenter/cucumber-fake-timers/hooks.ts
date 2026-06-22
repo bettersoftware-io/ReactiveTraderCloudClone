@@ -6,7 +6,7 @@ import { buildPresenterApp } from "../scenarios/_buildApp";
 import { newScratchpad } from "../scenarios/_shared/common";
 import type { FakePresenterWorld } from "./world";
 
-Before(function (this: FakePresenterWorld) {
+Before(function installFakeClockBefore(this: FakePresenterWorld) {
   // Install clock BEFORE buildPresenterApp so simulators capture patched setTimeout/setInterval.
   // Seed virtual now() with real Date.now() to keep simulator historical timestamps sensible.
   this.clock = FakeTimers.install({
@@ -18,7 +18,7 @@ Before(function (this: FakePresenterWorld) {
   this._statusSub = this.ctx.app.presenters.connection.status$.subscribe();
 });
 
-After(function (this: FakePresenterWorld) {
+After(function uninstallFakeClockAfter(this: FakePresenterWorld) {
   this._statusSub?.unsubscribe();
   this.clock.uninstall();
 });

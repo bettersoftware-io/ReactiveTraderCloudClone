@@ -38,6 +38,7 @@ export async function expectMessageWithin(
     await ctx.po.creditRfqPanel.waitForNoRfqsMessage(seconds * 1_000);
     return;
   }
+
   throw new Error(`message "${message}" has no PO method; add one if needed`);
 }
 

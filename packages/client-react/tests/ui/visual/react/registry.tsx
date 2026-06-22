@@ -22,7 +22,9 @@ import { fixtures } from "../shared/fixtures";
 // fixture key so prop-bearing components can pull their props from the data.
 // The SolidJS port supplies its own registry with the same keys.
 export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
-  ConnectionStatusBar: () => <ConnectionStatusBar />,
+  ConnectionStatusBar: () => {
+    return <ConnectionStatusBar />;
+  },
   Tile: (fixtureKey) => {
     const pair = fixtures[fixtureKey].currencyPairs[0];
     return <Tile pair={pair} showChart={false} />;
@@ -32,10 +34,18 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     const pair = fixtures[fixtureKey].currencyPairs[0];
     return <Tile pair={pair} showChart={true} />;
   },
-  AnalyticsPanel: () => <AnalyticsPanel />,
-  ConnectionOverlay: () => <ConnectionOverlay />,
-  LiveRatesPanel: () => <LiveRatesPanel />,
-  FxBlotter: () => <FxBlotter />,
+  AnalyticsPanel: () => {
+    return <AnalyticsPanel />;
+  },
+  ConnectionOverlay: () => {
+    return <ConnectionOverlay />;
+  },
+  LiveRatesPanel: () => {
+    return <LiveRatesPanel />;
+  },
+  FxBlotter: () => {
+    return <FxBlotter />;
+  },
   // Prop-driven single highlighted (isNew) row, wrapped in a table so the <tr>
   // renders. The fake's useRowHighlight(isNew) returns isNew, so this snapshots
   // the blue-highlight branch deterministically (no timer / no waiting).
@@ -62,16 +72,26 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
       </table>
     );
   },
-  RfqTilesPanel: () => <RfqTilesPanel />,
-  NewRfqForm: () => <NewRfqForm onCreated={() => {}} />,
-  CreditBlotter: () => <CreditBlotter />,
-  SellSidePanel: () => <SellSidePanel />,
+  RfqTilesPanel: () => {
+    return <RfqTilesPanel />;
+  },
+  NewRfqForm: () => {
+    return <NewRfqForm onCreated={() => {}} />;
+  },
+  CreditBlotter: () => {
+    return <CreditBlotter />;
+  },
+  SellSidePanel: () => {
+    return <SellSidePanel />;
+  },
   // Prop-driven single RFQ card: pull the fixture's lone rfq + its quotes.
   RfqCard: (fixtureKey) => {
     const data = fixtures[fixtureKey];
     const rfq = data.rfqs[0];
     const quotes = data.quotesForRfq[rfq.id] ?? [];
-    const instrument = data.instruments.find((i) => i.id === rfq.instrumentId);
+    const instrument = data.instruments.find((i) => {
+      return i.id === rfq.instrumentId;
+    });
     return (
       <RfqCard
         rfq={rfq}
@@ -83,7 +103,13 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
       />
     );
   },
-  CreditWorkspace: () => <CreditWorkspace />,
-  AdminPanel: () => <AdminPanel />,
-  App: () => <App />,
+  CreditWorkspace: () => {
+    return <CreditWorkspace />;
+  },
+  AdminPanel: () => {
+    return <AdminPanel />;
+  },
+  App: () => {
+    return <App />;
+  },
 };

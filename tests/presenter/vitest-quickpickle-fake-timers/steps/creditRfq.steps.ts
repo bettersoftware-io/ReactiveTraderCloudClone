@@ -7,6 +7,7 @@ import type { VitestFakePresenterWorld } from "../world";
 
 Then(
   "the credit RFQ list is empty within {int} seconds",
-  async (state: VitestFakePresenterWorld, n: number) =>
-    credit.expectRfqListEmptyWithin(state, n),
+  async (state: VitestFakePresenterWorld, n: number) => {
+    return credit.expectRfqListEmptyWithin(state, n);
+  },
 );

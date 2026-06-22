@@ -20,6 +20,7 @@ export class TileExecutionPage extends MountedComponent<TileExecutionProps> {
   private sell(): HTMLButtonElement {
     return this.q().getByTestId("sell-btn") as HTMLButtonElement;
   }
+
   private buy(): HTMLButtonElement {
     return this.q().getByTestId("buy-btn") as HTMLButtonElement;
   }
@@ -27,6 +28,7 @@ export class TileExecutionPage extends MountedComponent<TileExecutionProps> {
   sellLabel(): string {
     return this.sell().textContent?.trim() ?? "";
   }
+
   buyLabel(): string {
     return this.buy().textContent?.trim() ?? "";
   }
@@ -34,6 +36,7 @@ export class TileExecutionPage extends MountedComponent<TileExecutionProps> {
   isSellDisabled(): boolean {
     return this.sell().disabled;
   }
+
   isBuyDisabled(): boolean {
     return this.buy().disabled;
   }
@@ -41,6 +44,7 @@ export class TileExecutionPage extends MountedComponent<TileExecutionProps> {
   async clickSell(): Promise<void> {
     await this.user.click(this.sell());
   }
+
   async clickBuy(): Promise<void> {
     await this.user.click(this.buy());
   }

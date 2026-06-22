@@ -7,32 +7,37 @@ import type { VitestFakePresenterWorld } from "../world";
 
 When(
   "the trader clicks buy on the first tile",
-  async (state: VitestFakePresenterWorld) =>
-    trading.executeBuyOnFirstTile(state),
+  async (state: VitestFakePresenterWorld) => {
+    return trading.executeBuyOnFirstTile(state);
+  },
 );
 
 When(
   "the trader clicks sell on the first tile",
-  async (state: VitestFakePresenterWorld) =>
-    trading.executeSellOnFirstTile(state),
+  async (state: VitestFakePresenterWorld) => {
+    return trading.executeSellOnFirstTile(state);
+  },
 );
 
 When(
   "the trader executes a buy for {string} on the first tile",
-  async (state: VitestFakePresenterWorld, notional: string) =>
-    trading.executeBuyWithNotional(state, Number(notional)),
+  async (state: VitestFakePresenterWorld, notional: string) => {
+    return trading.executeBuyWithNotional(state, Number(notional));
+  },
 );
 
 When(
   "the trader buys {int} times with confirmation dismissals",
-  async (state: VitestFakePresenterWorld, n: number) =>
-    trading.buyNTimesWithDismissals(state, n),
+  async (state: VitestFakePresenterWorld, n: number) => {
+    return trading.buyNTimesWithDismissals(state, n);
+  },
 );
 
 When(
   "the trader dismisses the trade confirmation",
-  async (state: VitestFakePresenterWorld) =>
-    trading.dismissTradeConfirmation(state),
+  async (state: VitestFakePresenterWorld) => {
+    return trading.dismissTradeConfirmation(state);
+  },
 );
 
 Then(
@@ -60,27 +65,32 @@ Then(
 
 Then(
   "the trade confirmation hides within {int} seconds",
-  async (state: VitestFakePresenterWorld, _n: number) =>
-    trading.expectTradeConfirmationHides(state),
+  async (state: VitestFakePresenterWorld, _n: number) => {
+    return trading.expectTradeConfirmationHides(state);
+  },
 );
 
 Then(
   "at least one trade was rejected",
-  async (state: VitestFakePresenterWorld) =>
-    trading.expectAtLeastOneRejection(state),
+  async (state: VitestFakePresenterWorld) => {
+    return trading.expectAtLeastOneRejection(state);
+  },
 );
 
 Then(
   "the executed trade carries notional {string}",
-  async (state: VitestFakePresenterWorld, value: string) =>
-    trading.expectTradeNotionalEquals(state, Number(value)),
+  async (state: VitestFakePresenterWorld, value: string) => {
+    return trading.expectTradeNotionalEquals(state, Number(value));
+  },
 );
 
 function parseRegexList(raw: string): RegExp[] {
   // Splits "/A/i, /B/i, /C/i" into [/A/i, /B/i, /C/i]
   return raw
     .split(",")
-    .map((s) => s.trim())
+    .map((s) => {
+      return s.trim();
+    })
     .map((s) => {
       const m = s.match(/^\/(.+)\/([a-z]*)$/);
       if (!m) throw new Error(`bad regex literal in: ${s}`);

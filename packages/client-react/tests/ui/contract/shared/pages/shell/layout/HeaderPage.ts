@@ -25,10 +25,11 @@ export class HeaderPage extends MountedComponent<HeaderProps> {
 
   /** The visible label for each tab button, in order. */
   tabLabels(): string[] {
-    return (["fx", "credit", "admin"] as const).map(
-      (tab) =>
-        within(this.root).getByTestId(`tab-${tab}`).textContent?.trim() ?? "",
-    );
+    return (["fx", "credit", "admin"] as const).map((tab) => {
+      return (
+        within(this.root).getByTestId(`tab-${tab}`).textContent?.trim() ?? ""
+      );
+    });
   }
 
   /** True when the given tab is the active (highlighted) one. */

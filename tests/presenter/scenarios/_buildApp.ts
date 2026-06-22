@@ -21,7 +21,9 @@ export function buildPresenterApp(): PresenterCtx {
   const ports: AppPorts = {
     ...createSimulatorPorts(),
     connectionEvents: {
-      events: () => merge(gateway.events(), connectionEvents$.asObservable()),
+      events: () => {
+        return merge(gateway.events(), connectionEvents$.asObservable());
+      },
     },
   };
   return { app: createApp(ports), connectionEvents$ };

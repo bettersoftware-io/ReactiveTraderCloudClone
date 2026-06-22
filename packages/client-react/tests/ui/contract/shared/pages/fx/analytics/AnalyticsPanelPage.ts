@@ -24,8 +24,12 @@ export class AnalyticsPanelPage extends MountedComponent<
   /** The section labels shown down the panel, in order. */
   sectionLabels(): string[] {
     return [/profit & loss/i, /^positions$/i, /pnl per currency pair/i]
-      .map((re) => within(this.root).queryByText(re)?.textContent?.trim() ?? "")
-      .filter((t) => t.length > 0);
+      .map((re) => {
+        return within(this.root).queryByText(re)?.textContent?.trim() ?? "";
+      })
+      .filter((t) => {
+        return t.length > 0;
+      });
   }
 
   /** The formatted latest-P&L figure the panel summarises, e.g. "+12.5k". */

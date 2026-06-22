@@ -8,9 +8,11 @@ import {
 
 export class RfqQuotePresenter {
   private readonly useCase: RfqQuoteUseCase;
+
   constructor(pricing: PricingPort) {
     this.useCase = new RfqQuoteUseCase(pricing);
   }
+
   requestQuote(
     symbol: string,
     pipsPosition: number,

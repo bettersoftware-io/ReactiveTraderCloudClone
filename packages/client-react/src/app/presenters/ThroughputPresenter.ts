@@ -66,15 +66,21 @@ export class ThroughputPresenter {
   constructor(admin: AdminPort) {
     // Initial load: loading until getThroughput resolves; default on error.
     const load$: Observable<Patch> = admin.getThroughput().pipe(
-      map((value): Patch => ({ value, loading: false })),
+      map((value): Patch => {
+        return { value, loading: false };
+      }),
       startWith({ loading: true } as Patch),
-      catchError(() => of<Patch>({ value: DEFAULT_VALUE, loading: false })),
+      catchError(() => {
+        return of<Patch>({ value: DEFAULT_VALUE, loading: false });
+      }),
     );
 
     // Optimistic echo: reflect every requested value immediately, before the
     // debounced write fires (mirrors the old hook's setLocalValue on input).
     const optimistic$: Observable<Patch> = this.setValue$.pipe(
-      map((value): Patch => ({ value })),
+      map((value): Patch => {
+        return { value };
+      }),
     );
 
     // Debounced write: coalesce rapid edits, persist the last one, then show a
@@ -82,35 +88,41 @@ export class ThroughputPresenter {
     // when a newer debounced value arrives.
     const write$: Observable<Patch> = this.setValue$.pipe(
       debounceTime(DEBOUNCE_MS),
-      switchMap((value) =>
-        admin.setThroughput(value).pipe(
-          map(
-            (): ThroughputMessage => ({
+      switchMap((value) => {
+        return admin.setThroughput(value).pipe(
+          map((): ThroughputMessage => {
+            return {
               text: `Throughput has been set to ${value}`,
               isError: false,
-            }),
-          ),
-          catchError(() =>
-            of<ThroughputMessage>({
+            };
+          }),
+          catchError(() => {
+            return of<ThroughputMessage>({
               text: "Error setting throughput",
               isError: true,
-            }),
-          ),
+            });
+          }),
           switchMap((message) =>
             // Show the banner, then dismiss it after MESSAGE_DISMISS_MS.
-            concat(
-              of<Patch>({ message }),
-              timer(MESSAGE_DISMISS_MS).pipe(
-                map((): Patch => ({ message: null })),
-              ),
-            ),
+            {
+              return concat(
+                of<Patch>({ message }),
+                timer(MESSAGE_DISMISS_MS).pipe(
+                  map((): Patch => {
+                    return { message: null };
+                  }),
+                ),
+              );
+            },
           ),
-        ),
-      ),
+        );
+      }),
     );
 
     const stream$ = merge(load$, optimistic$, write$).pipe(
-      scan((view, patch) => ({ ...view, ...patch }), INITIAL),
+      scan((view, patch) => {
+        return { ...view, ...patch };
+      }, INITIAL),
     );
 
     this.state$ = state(stream$, INITIAL);

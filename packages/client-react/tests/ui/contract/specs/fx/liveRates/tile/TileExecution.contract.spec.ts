@@ -16,7 +16,12 @@ describe("TileExecution", () => {
   it("fires onExecute with Sell when the sell button is clicked", async () => {
     const calls: Direction[] = [];
     const ex = mount(TileExecution, {
-      props: { onExecute: (d) => calls.push(d), disabled: false },
+      props: {
+        onExecute: (d) => {
+          return calls.push(d);
+        },
+        disabled: false,
+      },
     });
     await ex.clickSell();
     expect(calls).toEqual([Direction.Sell]);
@@ -25,7 +30,12 @@ describe("TileExecution", () => {
   it("fires onExecute with Buy when the buy button is clicked", async () => {
     const calls: Direction[] = [];
     const ex = mount(TileExecution, {
-      props: { onExecute: (d) => calls.push(d), disabled: false },
+      props: {
+        onExecute: (d) => {
+          return calls.push(d);
+        },
+        disabled: false,
+      },
     });
     await ex.clickBuy();
     expect(calls).toEqual([Direction.Buy]);

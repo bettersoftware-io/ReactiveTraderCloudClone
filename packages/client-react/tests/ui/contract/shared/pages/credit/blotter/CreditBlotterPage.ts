@@ -15,7 +15,9 @@ export class CreditBlotterPage extends MountedComponent<Record<string, never>> {
   columnHeaders(): string[] {
     return within(this.table())
       .getAllByRole("columnheader")
-      .map((h) => h.textContent?.trim() ?? "");
+      .map((h) => {
+        return h.textContent?.trim() ?? "";
+      });
   }
 
   /** Number of trade rows (0 when only the empty-state row is showing). */
@@ -33,15 +35,21 @@ export class CreditBlotterPage extends MountedComponent<Record<string, never>> {
   /** Ordered cell text for a given column across all visible trade rows. */
   columnValues(label: string): string[] {
     const headers = within(this.table()).getAllByRole("columnheader");
-    const idx = headers.findIndex(
-      (h) => (h.textContent?.trim() ?? "") === label,
-    );
+    const idx = headers.findIndex((h) => {
+      return (h.textContent?.trim() ?? "") === label;
+    });
     if (idx < 0) throw new Error(`No column header for ${label}`);
     const rows = [...this.table().querySelectorAll("tbody tr")];
     return rows
-      .map((r) => r.querySelectorAll("td"))
-      .filter((cells) => cells.length > 1) // skip the single-cell empty-state row
-      .map((cells) => cells[idx]?.textContent?.trim() ?? "");
+      .map((r) => {
+        return r.querySelectorAll("td");
+      })
+      .filter((cells) => {
+        return cells.length > 1;
+      }) // skip the single-cell empty-state row
+      .map((cells) => {
+        return cells[idx]?.textContent?.trim() ?? "";
+      });
   }
 
   /** True when a body cell with the given exact text is present. */

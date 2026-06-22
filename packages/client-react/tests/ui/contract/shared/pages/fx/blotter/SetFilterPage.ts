@@ -24,7 +24,9 @@ export class SetFilterPage extends MountedComponent<SetFilterProps> {
   options(): string[] {
     return this.q()
       .getAllByRole("checkbox")
-      .map((cb) => cb.closest("label")?.textContent?.trim() ?? "");
+      .map((cb) => {
+        return cb.closest("label")?.textContent?.trim() ?? "";
+      });
   }
 
   /** Whether the checkbox with the given label is checked. */

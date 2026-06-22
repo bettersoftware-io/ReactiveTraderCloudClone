@@ -14,12 +14,24 @@ import {
 
 function stubWorkflow(events$: Subject<RfqEvent>): WorkflowPort {
   return {
-    events: () => events$.asObservable(),
-    createRfq: () => of(0),
-    cancelRfq: () => of(undefined),
-    quote: () => of(undefined),
-    pass: () => of(undefined),
-    accept: () => of(undefined),
+    events: () => {
+      return events$.asObservable();
+    },
+    createRfq: () => {
+      return of(0);
+    },
+    cancelRfq: () => {
+      return of(undefined);
+    },
+    quote: () => {
+      return of(undefined);
+    },
+    pass: () => {
+      return of(undefined);
+    },
+    accept: () => {
+      return of(undefined);
+    },
   };
 }
 
@@ -153,7 +165,9 @@ describe("WorkflowEventStreamUseCase", () => {
     const useCase = new WorkflowEventStreamUseCase(stubWorkflow(events$));
 
     const snapshots: RfqStreamState[] = [];
-    const sub = useCase.execute().subscribe((s) => snapshots.push(s));
+    const sub = useCase.execute().subscribe((s) => {
+      return snapshots.push(s);
+    });
 
     events$.next({ type: "startOfStateOfTheWorld" });
     events$.next({ type: "rfqCreated", payload: rfq1 });

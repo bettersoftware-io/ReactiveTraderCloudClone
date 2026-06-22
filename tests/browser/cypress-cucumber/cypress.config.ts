@@ -23,12 +23,14 @@ const isCI = !!process.env.CI;
 const aliasCucumber: import("esbuild").Plugin = {
   name: "alias-cucumber",
   setup(build) {
-    build.onResolve({ filter: /^@cucumber\/cucumber$/ }, () => ({
-      path: path.resolve(
-        new URL(".", import.meta.url).pathname,
-        "cucumber-shim.ts",
-      ),
-    }));
+    build.onResolve({ filter: /^@cucumber\/cucumber$/ }, () => {
+      return {
+        path: path.resolve(
+          new URL(".", import.meta.url).pathname,
+          "cucumber-shim.ts",
+        ),
+      };
+    });
   },
 };
 

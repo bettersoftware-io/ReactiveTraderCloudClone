@@ -33,7 +33,9 @@ export class TilePage extends MountedComponent<TileProps> {
     const spans = [...this.root.querySelectorAll("span")];
     return spans
       .slice(0, 3)
-      .map((s) => s.textContent?.trim() ?? "")
+      .map((s) => {
+        return s.textContent?.trim() ?? "";
+      })
       .join("");
   }
 
@@ -50,11 +52,12 @@ export class TilePage extends MountedComponent<TileProps> {
     // so locate via the price area: the spread sits between price buttons and
     // the execution controls. Expose the raw price.spread by data: read the
     // text node that matches a decimal.
-    const candidate = [...this.root.querySelectorAll("div")].find(
-      (d) =>
+    const candidate = [...this.root.querySelectorAll("div")].find((d) => {
+      return (
         d.children.length === 0 &&
-        /^\d+(\.\d+)?$/.test(d.textContent?.trim() ?? ""),
-    );
+        /^\d+(\.\d+)?$/.test(d.textContent?.trim() ?? "")
+      );
+    });
     return candidate?.textContent?.trim() ?? null;
   }
 
@@ -62,15 +65,19 @@ export class TilePage extends MountedComponent<TileProps> {
   hasExecutionButtons(): boolean {
     return this.q().queryByTestId("sell-btn") !== null;
   }
+
   isSellDisabled(): boolean {
     return (this.q().getByTestId("sell-btn") as HTMLButtonElement).disabled;
   }
+
   isBuyDisabled(): boolean {
     return (this.q().getByTestId("buy-btn") as HTMLButtonElement).disabled;
   }
+
   async clickSell(): Promise<void> {
     await this.user.click(this.q().getByTestId("sell-btn"));
   }
+
   async clickBuy(): Promise<void> {
     await this.user.click(this.q().getByTestId("buy-btn"));
   }
@@ -79,27 +86,34 @@ export class TilePage extends MountedComponent<TileProps> {
   notionalInput(): HTMLInputElement {
     return this.root.querySelector("input") as HTMLInputElement;
   }
+
   notionalValue(): string {
     return this.notionalInput().value;
   }
+
   isNotionalDisabled(): boolean {
     return this.notionalInput().disabled;
   }
+
   /** Replace the notional input contents with a literal value. */
   setNotional(value: string): void {
     const input = this.notionalInput();
     fireEvent.change(input, { target: { value } });
   }
+
   async typeNotional(text: string): Promise<void> {
     await this.user.clear(this.notionalInput());
     await this.user.type(this.notionalInput(), text);
   }
+
   hasNotionalReset(): boolean {
     return this.q().queryByTitle(/reset to default/i) !== null;
   }
+
   async resetNotional(): Promise<void> {
     await this.user.click(this.q().getByTitle(/reset to default/i));
   }
+
   notionalError(): string | null {
     const err = this.root.querySelector("[data-testid='notional-error']");
     return err?.textContent?.trim() ?? null;
@@ -109,27 +123,32 @@ export class TilePage extends MountedComponent<TileProps> {
   hasInitiateRfq(): boolean {
     return this.q().queryByRole("button", { name: /initiate rfq/i }) !== null;
   }
+
   async clickInitiateRfq(): Promise<void> {
     await this.user.click(
       this.q().getByRole("button", { name: /initiate rfq/i }),
     );
   }
+
   rfqText(): string {
     return this.root.textContent ?? "";
   }
+
   /** Find an RFQ quote button by its exact label text (e.g. "Buy 1.09250"). */
   private rfqButton(label: string): HTMLButtonElement | null {
     return (
-      [...this.root.querySelectorAll("button")].find(
-        (b) => (b.textContent ?? "").trim() === label,
-      ) ?? null
+      [...this.root.querySelectorAll("button")].find((b) => {
+        return (b.textContent ?? "").trim() === label;
+      }) ?? null
     );
   }
+
   async clickRfqButton(label: string): Promise<void> {
     const btn = this.rfqButton(label);
     if (!btn) throw new Error(`No RFQ button labelled "${label}"`);
     await this.user.click(btn);
   }
+
   hasRfqButton(label: string): boolean {
     return this.rfqButton(label) !== null;
   }
@@ -138,11 +157,13 @@ export class TilePage extends MountedComponent<TileProps> {
   hasConfirmation(): boolean {
     return this.q().queryByTestId("trade-confirmation") !== null;
   }
+
   confirmationText(): string {
     return (
       this.q().queryByTestId("trade-confirmation")?.textContent?.trim() ?? ""
     );
   }
+
   async clickConfirmation(): Promise<void> {
     await this.user.click(this.q().getByTestId("trade-confirmation"));
   }
@@ -157,8 +178,14 @@ export class TilePage extends MountedComponent<TileProps> {
   executedTrades(): readonly ExecuteTradeInput[] {
     return this.commandLog().executeTrade;
   }
+
   /** Inputs captured by the faked request-RFQ-quote command. */
-  requestedQuotes(): readonly { symbol: string; pipsPosition: number }[] {
+  requestedQuotes(): readonly RequestedQuoteInput[] {
     return this.commandLog().requestRfqQuote;
   }
+}
+
+interface RequestedQuoteInput {
+  symbol: string;
+  pipsPosition: number;
 }

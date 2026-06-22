@@ -6,14 +6,14 @@ import * as analytics from "../scenarios/_shared/analytics";
 
 Then(
   "the analytics panel is visible within {int} seconds",
-  function (this: PresenterWorld, n: number) {
+  function analyticsPanelVisibleWithin(this: PresenterWorld, n: number) {
     return analytics.expectAnalyticsVisibleWithin(this, n);
   },
 );
 
 Then(
   "the analytics presenter emits within {int} seconds",
-  function (this: PresenterWorld, n: number) {
+  function analyticsPresenterEmitsWithin(this: PresenterWorld, n: number) {
     return analytics.expectAnalyticsEmits(this, n);
   },
 );

@@ -19,9 +19,15 @@ const EURUSD: CurrencyPair = {
 
 function stubPricing(ticks: PriceTick[]): PricingPort {
   return {
-    getPriceUpdates: () => from(ticks),
-    getPriceHistory: () => of([] as readonly PriceTick[]),
-    getRfqQuote: () => of({ bid: 0, ask: 0, mid: 0 }),
+    getPriceUpdates: () => {
+      return from(ticks);
+    },
+    getPriceHistory: () => {
+      return of([] as readonly PriceTick[]);
+    },
+    getRfqQuote: () => {
+      return of({ bid: 0, ask: 0, mid: 0 });
+    },
   };
 }
 

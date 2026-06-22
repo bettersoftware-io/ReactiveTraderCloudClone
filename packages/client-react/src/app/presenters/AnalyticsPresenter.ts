@@ -8,6 +8,7 @@ import {
 
 export class AnalyticsPresenter {
   readonly position$: Observable<PositionUpdates>;
+
   constructor(analytics: AnalyticsPort) {
     this.position$ = new AnalyticsUseCase(analytics)
       .execute()

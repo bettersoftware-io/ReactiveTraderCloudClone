@@ -94,6 +94,7 @@ function statusKey(state: TileExecutionState): ConfirmationStatus {
         return "unknown";
     }
   }
+
   if (state.status === "ready") return "unknown";
   return state.status; // "started" | "tooLong" | "timeout"
 }

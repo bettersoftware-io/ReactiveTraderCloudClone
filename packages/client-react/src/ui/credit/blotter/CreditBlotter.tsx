@@ -81,15 +81,17 @@ function deriveTrades(
     }
   }
 
-  return trades.sort((a, b) => b.tradeId - a.tradeId);
+  return trades.sort((a, b) => {
+    return b.tradeId - a.tradeId;
+  });
 }
 
 export function CreditBlotter() {
-  const hooks = useHooks();
-  const rfqs = hooks.useRfqs();
-  const allQuotes = hooks.useAllQuotes();
-  const instruments = hooks.useInstruments();
-  const dealers = hooks.useDealers();
+  const { useRfqs, useAllQuotes, useInstruments, useDealers } = useHooks();
+  const rfqs = useRfqs();
+  const allQuotes = useAllQuotes();
+  const instruments = useInstruments();
+  const dealers = useDealers();
 
   const instrumentMap = useMemo(() => {
     const m = new Map<number, Instrument>();
@@ -103,10 +105,9 @@ export function CreditBlotter() {
     return m;
   }, [dealers]);
 
-  const trades = useMemo(
-    () => deriveTrades(rfqs, allQuotes, instrumentMap, dealerMap),
-    [rfqs, allQuotes, instrumentMap, dealerMap],
-  );
+  const trades = useMemo(() => {
+    return deriveTrades(rfqs, allQuotes, instrumentMap, dealerMap);
+  }, [rfqs, allQuotes, instrumentMap, dealerMap]);
 
   return (
     <div className={styles.blotter}>
@@ -116,30 +117,34 @@ export function CreditBlotter() {
         <table className={styles.table}>
           <thead>
             <tr>
-              {COLUMNS.map((col) => (
-                <th key={col} className={styles.headerCell}>
-                  {col}
-                </th>
-              ))}
+              {COLUMNS.map((col) => {
+                return (
+                  <th key={col} className={styles.headerCell}>
+                    {col}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {trades.map((trade) => (
-              <tr key={trade.tradeId}>
-                <td className={styles.cell}>{trade.tradeId}</td>
-                <td className={styles.cell}>Accepted</td>
-                <td className={styles.cell}>{trade.tradeDate}</td>
-                <td className={styles.cell}>{trade.direction}</td>
-                <td className={styles.cell}>{trade.counterParty}</td>
-                <td className={styles.cell}>{trade.cusip}</td>
-                <td className={styles.cell}>{trade.security}</td>
-                <td className={styles.cell}>
-                  {trade.quantity.toLocaleString()}
-                </td>
-                <td className={styles.cell}>{trade.orderType}</td>
-                <td className={styles.cell}>${trade.unitPrice}</td>
-              </tr>
-            ))}
+            {trades.map((trade) => {
+              return (
+                <tr key={trade.tradeId}>
+                  <td className={styles.cell}>{trade.tradeId}</td>
+                  <td className={styles.cell}>Accepted</td>
+                  <td className={styles.cell}>{trade.tradeDate}</td>
+                  <td className={styles.cell}>{trade.direction}</td>
+                  <td className={styles.cell}>{trade.counterParty}</td>
+                  <td className={styles.cell}>{trade.cusip}</td>
+                  <td className={styles.cell}>{trade.security}</td>
+                  <td className={styles.cell}>
+                    {trade.quantity.toLocaleString()}
+                  </td>
+                  <td className={styles.cell}>{trade.orderType}</td>
+                  <td className={styles.cell}>${trade.unitPrice}</td>
+                </tr>
+              );
+            })}
             {trades.length === 0 && (
               <tr>
                 <td colSpan={10} className={styles.emptyCell}>

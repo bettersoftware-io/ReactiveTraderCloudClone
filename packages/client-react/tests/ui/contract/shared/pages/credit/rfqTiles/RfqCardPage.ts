@@ -33,9 +33,11 @@ export class RfqCardPage extends MountedComponent<RfqCardProps> {
 
   /** The state badge label (Live / Done / Expired / Cancelled). */
   stateBadge(): string {
-    const badge = [...this.root.querySelectorAll("span")].find((s) =>
-      /^(Live|Done|Expired|Cancelled)$/.test(s.textContent?.trim() ?? ""),
-    );
+    const badge = [...this.root.querySelectorAll("span")].find((s) => {
+      return /^(Live|Done|Expired|Cancelled)$/.test(
+        s.textContent?.trim() ?? "",
+      );
+    });
     return badge?.textContent?.trim() ?? "";
   }
 
@@ -51,16 +53,16 @@ export class RfqCardPage extends MountedComponent<RfqCardProps> {
 
   /** Whether a dismiss (✕) control is present. */
   canDismiss(): boolean {
-    return [...this.root.querySelectorAll("button")].some((b) =>
-      (b.textContent ?? "").includes("✕"),
-    );
+    return [...this.root.querySelectorAll("button")].some((b) => {
+      return (b.textContent ?? "").includes("✕");
+    });
   }
 
   /** Click the dismiss control. */
   async dismiss(): Promise<void> {
-    const btn = [...this.root.querySelectorAll("button")].find((b) =>
-      (b.textContent ?? "").includes("✕"),
-    );
+    const btn = [...this.root.querySelectorAll("button")].find((b) => {
+      return (b.textContent ?? "").includes("✕");
+    });
     if (!btn) throw new Error("No dismiss control present");
     await this.user.click(btn);
   }

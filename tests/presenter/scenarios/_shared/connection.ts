@@ -40,7 +40,11 @@ export async function expectStatusEqualsWithin(
   seconds: number,
 ): Promise<void> {
   await w.awaitFirstWithin(
-    w.ctx.app.presenters.connection.status$.pipe(filter((s) => s === status)),
+    w.ctx.app.presenters.connection.status$.pipe(
+      filter((s) => {
+        return s === status;
+      }),
+    ),
     seconds * 1000,
   );
 }

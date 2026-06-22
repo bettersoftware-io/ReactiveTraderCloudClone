@@ -7,6 +7,7 @@ import { darkTokens, lightTokens, type ThemeTokens } from "./tokens";
 
 function applyTokens(tokens: ThemeTokens) {
   const root = document.documentElement;
+
   for (const [prop, value] of Object.entries(tokens)) {
     root.style.setProperty(prop, value);
   }

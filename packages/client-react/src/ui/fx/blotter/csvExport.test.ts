@@ -4,19 +4,21 @@ import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import { exportToCsv } from "./csvExport";
 
-const trade = (over: Partial<Trade> = {}): Trade => ({
-  tradeId: 1,
-  tradeName: "Alice",
-  currencyPair: "EURUSD",
-  notional: 1_000_000,
-  dealtCurrency: "EUR",
-  direction: Direction.Buy,
-  spotRate: 1.09221,
-  status: TradeStatus.Done,
-  tradeDate: "2026-01-01",
-  valueDate: "2026-01-03",
-  ...over,
-});
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 1,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-01-01",
+    valueDate: "2026-01-03",
+    ...over,
+  };
+}
 
 /**
  * exportToCsv writes to a Blob and triggers a download via an anchor element.
@@ -30,7 +32,11 @@ const RealBlob = globalThis.Blob;
 class RecordingBlob extends RealBlob {
   constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
     super(parts, options);
-    captured = (parts ?? []).map((p) => String(p)).join("");
+    captured = (parts ?? [])
+      .map((p) => {
+        return String(p);
+      })
+      .join("");
   }
 }
 

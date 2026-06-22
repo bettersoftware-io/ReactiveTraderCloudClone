@@ -9,7 +9,9 @@ describe("createNotionalMachine", () => {
 
   function current(machine: ReturnType<typeof make>): NotionalView {
     let view: NotionalView | undefined;
-    const sub = machine.state$.subscribe((s) => (view = s));
+    const sub = machine.state$.subscribe((s) => {
+      view = s;
+    });
     sub.unsubscribe();
     if (!view)
       throw new Error("NotionalMachine state$ did not emit synchronously");
@@ -109,6 +111,8 @@ describe("createNotionalMachine", () => {
 
   it("dispose() completes the machine without error", () => {
     const m = make(1_000_000);
-    expect(() => m.dispose()).not.toThrow();
+    expect(() => {
+      return m.dispose();
+    }).not.toThrow();
   });
 });

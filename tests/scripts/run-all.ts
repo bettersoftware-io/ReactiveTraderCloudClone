@@ -65,11 +65,13 @@ const suites: Suite[] = [
   { script: "test:presenter:vitest-fake-timers" },
   { script: "test:presenter:vitest-quickpickle-fake-timers" },
   // Heavy browser suites — one dev server + browser each.
-  ...browserScripts.map((script, i) => ({
-    script,
-    env: { RTC_DEV_PORT: String(BROWSER_BASE_PORT + i) },
-    isolateDisplay: script.includes("cypress"),
-  })),
+  ...browserScripts.map((script, i) => {
+    return {
+      script,
+      env: { RTC_DEV_PORT: String(BROWSER_BASE_PORT + i) },
+      isolateDisplay: script.includes("cypress"),
+    };
+  }),
 ];
 
 // Optionally drop the Cypress suites. Cypress's bundled Electron busy-spins at
@@ -83,10 +85,18 @@ const skipCypress = ["1", "true"].includes(
   (process.env.RTC_E2E_SKIP_CYPRESS ?? "").toLowerCase(),
 );
 const droppedCypress = skipCypress
-  ? suites.filter((s) => s.script.includes("cypress")).map((s) => s.script)
+  ? suites
+      .filter((s) => {
+        return s.script.includes("cypress");
+      })
+      .map((s) => {
+        return s.script;
+      })
   : [];
 const activeSuites = skipCypress
-  ? suites.filter((s) => !s.script.includes("cypress"))
+  ? suites.filter((s) => {
+      return !s.script.includes("cypress");
+    })
   : suites;
 
 // Concurrency cap. Unset/invalid → run every suite at once (the default; ideal on
@@ -108,14 +118,16 @@ async function mapWithLimit<T, R>(
 ): Promise<R[]> {
   const results = new Array<R>(items.length);
   let cursor = 0;
-  const worker = async (): Promise<void> => {
+
+  async function worker(): Promise<void> {
     while (cursor < items.length) {
       const index = cursor++;
       const item = items[index];
       if (item === undefined) break; // cursor < items.length guarantees this, but satisfies the type checker
       results[index] = await fn(item);
     }
-  };
+  }
+
   await Promise.all(
     Array.from({ length: Math.min(limit, items.length) }, worker),
   );
@@ -148,26 +160,35 @@ function runSuite(suite: Suite): Promise<Result> {
       stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env, ...suite.env },
     });
-    child.stdout.on("data", (d: Buffer) => chunks.push(d));
-    child.stderr.on("data", (d: Buffer) => chunks.push(d));
+    child.stdout.on("data", (d: Buffer) => {
+      return chunks.push(d);
+    });
+    child.stderr.on("data", (d: Buffer) => {
+      return chunks.push(d);
+    });
 
-    const finish = (code: number) =>
-      resolve({
+    function finish(code: number) {
+      return resolve({
         script: suite.script,
         code,
         output: Buffer.concat(chunks).toString("utf8"),
         seconds: (Date.now() - start) / 1000,
       });
+    }
 
     child.on("error", (err) => {
       chunks.push(Buffer.from(`failed to spawn: ${String(err)}\n`));
       finish(1);
     });
-    child.on("exit", (code) => finish(code ?? 1));
+    child.on("exit", (code) => {
+      return finish(code ?? 1);
+    });
   });
 }
 
-const rule = (ch: string) => ch.repeat(72);
+function rule(ch: string) {
+  return ch.repeat(72);
+}
 
 if (skipCypress) {
   console.log(
@@ -178,7 +199,9 @@ if (skipCypress) {
 if (
   process.platform === "linux" &&
   !hasXvfbRun &&
-  activeSuites.some((s) => s.isolateDisplay)
+  activeSuites.some((s) => {
+    return s.isolateDisplay;
+  })
 ) {
   console.log(
     "⚠ xvfb-run not found — the parallel Cypress suites may collide on X display :99. " +
@@ -187,6 +210,7 @@ if (
 }
 
 const overallStart = Date.now();
+
 if (MAX_PARALLEL < activeSuites.length) {
   console.log(
     `(running at most ${MAX_PARALLEL} suite(s) at a time — RTC_E2E_MAX_PARALLEL)`,
@@ -195,33 +219,43 @@ if (MAX_PARALLEL < activeSuites.length) {
 
 // Resolve as each suite finishes so logs flush in completion order, not in a
 // final batch — keeps a long run feeling responsive without interleaving.
-const results = await mapWithLimit(activeSuites, MAX_PARALLEL, (s) =>
-  runSuite(s).then((r) => {
+const results = await mapWithLimit(activeSuites, MAX_PARALLEL, (s) => {
+  return runSuite(s).then((r) => {
     const status = r.code === 0 ? "PASS" : "FAIL";
     console.log(
       `\n${rule("=")}\n${status}  ${r.script}  (${r.seconds.toFixed(1)}s)\n${rule("=")}`,
     );
     process.stdout.write(r.output.endsWith("\n") ? r.output : `${r.output}\n`);
     return r;
-  }),
-);
+  });
+});
 
-const failures = results.filter((r) => r.code !== 0);
+const failures = results.filter((r) => {
+  return r.code !== 0;
+});
 console.log(`\n${rule("─")}`);
 console.log(
   `SUMMARY — wall clock ${((Date.now() - overallStart) / 1000).toFixed(1)}s`,
 );
 console.log(rule("─"));
+
 for (const r of results) {
   const status = r.code === 0 ? "✓ PASS" : "✗ FAIL";
   console.log(
     `  ${status}  ${r.script.padEnd(32)} ${r.seconds.toFixed(1).padStart(6)}s`,
   );
 }
+
 console.log("");
+
 if (failures.length > 0) {
   console.log(
-    `${failures.length} suite(s) failed: ${failures.map((f) => f.script).join(", ")}`,
+    `${failures.length} suite(s) failed: ${failures
+      .map((f) => {
+        return f.script;
+      })
+      .join(", ")}`,
   );
 }
+
 process.exit(failures.length > 0 ? 1 : 0);

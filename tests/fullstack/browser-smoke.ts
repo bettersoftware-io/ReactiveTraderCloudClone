@@ -48,7 +48,9 @@ function runPlaywright(): Promise<number> {
         NODE_OPTIONS: "",
       },
     });
-    child.on("exit", (code) => resolve(code ?? 1));
+    child.on("exit", (code) => {
+      return resolve(code ?? 1);
+    });
   });
 }
 
@@ -58,6 +60,7 @@ console.log(
 const server = startServer(SERVER_PORT, HOST);
 const client = startClient(CLIENT_PORT, `ws://${HOST}:${SERVER_PORT}`);
 let exitCode = 0;
+
 try {
   await waitForHttp(`http://${HOST}:${SERVER_PORT}/health`, 30_000);
   await waitForHttp(`http://${HOST}:${CLIENT_PORT}`, 60_000);
@@ -74,4 +77,5 @@ try {
 } finally {
   await Promise.all([stopProcess(client), stopProcess(server)]);
 }
+
 process.exit(exitCode);

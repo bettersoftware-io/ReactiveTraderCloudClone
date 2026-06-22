@@ -34,12 +34,13 @@ const dealers: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-const ready = () =>
-  mount(NewRfqForm, {
+const ready = () => {
+  return mount(NewRfqForm, {
     props: { onCreated: () => {} },
     hooks: { useInstruments: instruments, useDealers: dealers },
     commands: { createRfq: 555 },
   });
+};
 
 describe("NewRfqForm", () => {
   it("keeps submit disabled until an instrument and quantity are provided", async () => {
@@ -119,6 +120,7 @@ describe("NewRfqForm", () => {
     // and findBy's internal polling still resolves; we retain manual control of
     // the component's 1.5s onCreated setTimeout via advanceTimersByTimeAsync.
     vi.useFakeTimers({ shouldAdvanceTime: true });
+
     try {
       const onCreated = vi.fn();
       const form = mount(NewRfqForm, {

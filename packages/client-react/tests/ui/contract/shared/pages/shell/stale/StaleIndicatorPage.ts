@@ -12,9 +12,11 @@ export class StaleIndicatorPage extends MountedComponent<StaleIndicatorProps> {
   /** The relatively-positioned wrapper div the component renders. */
   private wrapper(): HTMLElement {
     const el = this.root.firstElementChild;
+
     if (!(el instanceof HTMLElement)) {
       throw new Error("StaleIndicator wrapper not found");
     }
+
     return el;
   }
 

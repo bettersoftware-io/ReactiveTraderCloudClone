@@ -82,14 +82,16 @@ export function RfqCard({
       </div>
 
       <div className={styles.quoteList}>
-        {quotes.map((quote) => (
-          <QuoteCard
-            key={quote.id}
-            quote={quote}
-            dealer={dealerMap.get(quote.dealerId)}
-            onAccept={rfq.state === RfqState.Open ? onAccept : undefined}
-          />
-        ))}
+        {quotes.map((quote) => {
+          return (
+            <QuoteCard
+              key={quote.id}
+              quote={quote}
+              dealer={dealerMap.get(quote.dealerId)}
+              onAccept={rfq.state === RfqState.Open ? onAccept : undefined}
+            />
+          );
+        })}
       </div>
     </div>
   );

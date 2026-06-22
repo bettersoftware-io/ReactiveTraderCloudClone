@@ -8,7 +8,9 @@ import { TradeStoreSimulator } from "./TradeStoreSimulator.js";
 
 const NORMAL_MAX_DELAY_MS = 2_000;
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describeBlotterPortContract("TradeStoreSimulator", () => {
   vi.useFakeTimers();
@@ -37,6 +39,8 @@ describeBlotterPortContract("TradeStoreSimulator", () => {
         await tradePromise;
       },
     },
-    teardown: () => vi.useRealTimers(),
+    teardown: () => {
+      return vi.useRealTimers();
+    },
   };
 });

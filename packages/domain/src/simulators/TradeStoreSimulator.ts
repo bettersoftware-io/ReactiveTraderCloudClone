@@ -11,6 +11,7 @@ import type { ExecutionSimulator } from "./ExecutionSimulator.js";
  */
 export class TradeStoreSimulator implements BlotterPort {
   private readonly trades = new Map<number, Trade>();
+
   private readonly snapshots$ = new Subject<readonly Trade[]>();
 
   constructor(executionEngine: ExecutionSimulator) {
@@ -21,9 +22,9 @@ export class TradeStoreSimulator implements BlotterPort {
   }
 
   getTradeStream(): Observable<readonly Trade[]> {
-    return defer(() =>
-      concat(of(this.snapshot()), this.snapshots$.asObservable()),
-    );
+    return defer(() => {
+      return concat(of(this.snapshot()), this.snapshots$.asObservable());
+    });
   }
 
   private snapshot(): readonly Trade[] {

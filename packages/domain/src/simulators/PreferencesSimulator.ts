@@ -20,6 +20,7 @@ export interface PreferencesSeed {
  */
 export class PreferencesSimulator implements PreferencesPort {
   private readonly theme: BehaviorSubject<Theme>;
+
   private readonly viewMode: BehaviorSubject<ViewMode>;
 
   constructor(seed: PreferencesSeed = {}) {

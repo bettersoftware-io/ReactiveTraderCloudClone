@@ -20,6 +20,7 @@ export function clickTab(ctx: TestContext, tab: string): void {
   if (tab !== "fx" && tab !== "credit" && tab !== "admin") {
     throw new Error(`unsupported tab: ${tab}`);
   }
+
   void ctx.po.workspace.clickTab(tab);
 }
 

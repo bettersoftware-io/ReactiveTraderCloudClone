@@ -5,23 +5,31 @@ import type { PriceTick, PricingPort } from "@rtc/domain";
 
 import { PriceHistoryPresenter } from "../PriceHistoryPresenter";
 
-const tick = (mid: number, ts: number): PriceTick => ({
-  symbol: "EURUSD",
-  mid,
-  ask: mid + 0.0001,
-  bid: mid - 0.0001,
-  valueDate: "2026-05-05",
-  creationTimestamp: ts,
-});
+function tick(mid: number, ts: number): PriceTick {
+  return {
+    symbol: "EURUSD",
+    mid,
+    ask: mid + 0.0001,
+    bid: mid - 0.0001,
+    valueDate: "2026-05-05",
+    creationTimestamp: ts,
+  };
+}
 
 describe("PriceHistoryPresenter", () => {
   it("accumulates live ticks into a rolling buffer", async () => {
     const t1 = tick(1.1, 1);
     const t2 = tick(1.1001, 2);
     const port: PricingPort = {
-      getPriceUpdates: () => of(t1, t2),
-      getPriceHistory: () => of([]),
-      getRfqQuote: () => of({ bid: 0, ask: 0, mid: 0 }),
+      getPriceUpdates: () => {
+        return of(t1, t2);
+      },
+      getPriceHistory: () => {
+        return of([]);
+      },
+      getRfqQuote: () => {
+        return of({ bid: 0, ask: 0, mid: 0 });
+      },
     };
     const presenter = new PriceHistoryPresenter(port);
     // The use case emits incrementally: [t1] then [t1, t2]. take(2) + toArray collects both.
@@ -33,9 +41,15 @@ describe("PriceHistoryPresenter", () => {
 
   it("caches by symbol", () => {
     const port: PricingPort = {
-      getPriceUpdates: () => of(),
-      getPriceHistory: () => of([]),
-      getRfqQuote: () => of({ bid: 0, ask: 0, mid: 0 }),
+      getPriceUpdates: () => {
+        return of();
+      },
+      getPriceHistory: () => {
+        return of([]);
+      },
+      getRfqQuote: () => {
+        return of({ bid: 0, ask: 0, mid: 0 });
+      },
     };
     const presenter = new PriceHistoryPresenter(port);
     expect(presenter.history$("EURUSD")).toBe(presenter.history$("EURUSD"));

@@ -8,6 +8,7 @@ import {
 
 export class InstrumentsPresenter {
   readonly list$: Observable<readonly Instrument[]>;
+
   constructor(instruments: InstrumentPort) {
     this.list$ = new InstrumentsUseCase(instruments)
       .execute()

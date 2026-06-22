@@ -4,17 +4,19 @@ import { describe, expect, it } from "vitest";
 
 import { type Price, PriceMovementType } from "@rtc/domain";
 
-const price = (over: Partial<Price> = {}): Price => ({
-  symbol: "EURUSD",
-  bid: 1.53816,
-  ask: 1.53834,
-  mid: 1.53825,
-  valueDate: "2026-06-15",
-  creationTimestamp: 1_700_000_000_000,
-  movementType: PriceMovementType.NONE,
-  spread: "1.8",
-  ...over,
-});
+const price = (over: Partial<Price> = {}): Price => {
+  return {
+    symbol: "EURUSD",
+    bid: 1.53816,
+    ask: 1.53834,
+    mid: 1.53825,
+    valueDate: "2026-06-15",
+    creationTimestamp: 1_700_000_000_000,
+    movementType: PriceMovementType.NONE,
+    spread: "1.8",
+    ...over,
+  };
+};
 
 describe("TilePrice", () => {
   it("labels the two sides SELL (bid) and BUY (ask)", () => {

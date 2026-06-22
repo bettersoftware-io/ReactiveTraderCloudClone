@@ -3,7 +3,9 @@ import { afterEach, vi } from "vitest";
 import { describeDealerPortContract } from "../ports/__contracts__/DealerPortContract.js";
 import { DealerSimulator } from "./creditReferenceDataSimulator.js";
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describeDealerPortContract("DealerSimulator", () => {
   vi.useFakeTimers();
@@ -28,6 +30,8 @@ describeDealerPortContract("DealerSimulator", () => {
         // contract describer.
       },
     },
-    teardown: () => vi.useRealTimers(),
+    teardown: () => {
+      return vi.useRealTimers();
+    },
   };
 });

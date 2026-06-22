@@ -24,7 +24,12 @@ describe("ViewToggle", () => {
   it("requests the opposite mode when clicked from chart", async () => {
     const modes: ViewMode[] = [];
     const toggle = mount(ViewToggle, {
-      props: { mode: "chart", onChange: (m) => modes.push(m) },
+      props: {
+        mode: "chart",
+        onChange: (m) => {
+          return modes.push(m);
+        },
+      },
     });
     await toggle.toggle();
     expect(modes).toEqual(["price"]);
@@ -33,7 +38,12 @@ describe("ViewToggle", () => {
   it("requests the opposite mode when clicked from price", async () => {
     const modes: ViewMode[] = [];
     const toggle = mount(ViewToggle, {
-      props: { mode: "price", onChange: (m) => modes.push(m) },
+      props: {
+        mode: "price",
+        onChange: (m) => {
+          return modes.push(m);
+        },
+      },
     });
     await toggle.toggle();
     expect(modes).toEqual(["chart"]);

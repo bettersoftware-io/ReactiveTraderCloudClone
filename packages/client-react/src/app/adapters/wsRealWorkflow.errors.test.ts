@@ -9,13 +9,15 @@ import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { createWsRealPorts } from "./portFactory";
 
 describe("wsRealWorkflow :: error paths", () => {
-  const makeReq = () => ({
-    instrumentId: 1,
-    dealerIds: [0],
-    quantity: 1000,
-    direction: Direction.Buy,
-    expirySecs: 60,
-  });
+  function makeReq() {
+    return {
+      instrumentId: 1,
+      dealerIds: [0],
+      quantity: 1000,
+      direction: Direction.Buy,
+      expirySecs: 60,
+    };
+  }
 
   it("rejects createRfq on nack", async () => {
     const ws = new FakeWsAdapter();

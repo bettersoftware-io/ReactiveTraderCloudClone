@@ -10,14 +10,23 @@ let lastMock: MockWebSocket;
 
 class MockWebSocket {
   static OPEN = 1;
+
   static constructed = 0;
+
   readyState = 0;
+
   onopen: ((ev: Event) => void) | null = null;
+
   onclose: ((ev: CloseEvent) => void) | null = null;
+
   onmessage: ((ev: MessageEvent) => void) | null = null;
+
   onerror: ((ev: Event) => void) | null = null;
+
   send = vi.fn();
+
   close = vi.fn();
+
   constructor() {
     MockWebSocket.constructed++;
     // Capture the most recently constructed socket so tests can drive its
@@ -44,7 +53,9 @@ describe("WsAdapter.connectionEvents()", () => {
   it("emits gatewayConnected when the WebSocket opens", () => {
     const adapter = new WsAdapter("ws://test");
     const events: ConnectionEvent[] = [];
-    adapter.connectionEvents().subscribe((e) => events.push(e));
+    adapter.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
 
     lastMock.onopen?.(new Event("open"));
 
@@ -55,7 +66,9 @@ describe("WsAdapter.connectionEvents()", () => {
   it("emits gatewayDisconnected when the WebSocket closes", () => {
     const adapter = new WsAdapter("ws://test");
     const events: ConnectionEvent[] = [];
-    adapter.connectionEvents().subscribe((e) => events.push(e));
+    adapter.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
 
     lastMock.onclose?.(new CloseEvent("close"));
 
@@ -68,7 +81,9 @@ describe("WsAdapter.connectionEvents()", () => {
     lastMock.onopen?.(new Event("open"));
 
     const lateEvents: ConnectionEvent[] = [];
-    adapter.connectionEvents().subscribe((e) => lateEvents.push(e));
+    adapter.connectionEvents().subscribe((e) => {
+      return lateEvents.push(e);
+    });
 
     expect(lateEvents).toEqual([{ type: "gatewayConnected" }]);
     adapter.dispose();
@@ -89,7 +104,9 @@ describe("WsAdapter.connectionEvents()", () => {
   it("does not emit gatewayDisconnected when onclose fires after dispose", () => {
     const adapter = new WsAdapter("ws://test");
     const events: ConnectionEvent[] = [];
-    adapter.connectionEvents().subscribe((e) => events.push(e));
+    adapter.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
     adapter.dispose();
     lastMock.onclose?.(new CloseEvent("close"));
     expect(events).toEqual([]);
@@ -98,7 +115,9 @@ describe("WsAdapter.connectionEvents()", () => {
   it("emits reconnectAttempt when the reconnect timer fires", () => {
     const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
     const events: ConnectionEvent[] = [];
-    adapter.connectionEvents().subscribe((e) => events.push(e));
+    adapter.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
 
     lastMock.onopen?.(new Event("open"));
     lastMock.onclose?.(new CloseEvent("close"));
@@ -173,21 +192,28 @@ describe("WsAdapter.rpc() + message routing", () => {
     lastMock.onopen?.(new Event("open"));
     return lastMock;
   }
+
   it("ignores a malformed (non-JSON) inbound frame without throwing", () => {
     const adapter = new WsAdapter("ws://test");
     const received: unknown[] = [];
-    adapter.on("stream.priceTick", (p) => received.push(p));
+    adapter.on("stream.priceTick", (p) => {
+      return received.push(p);
+    });
     open(adapter);
-    expect(() =>
-      lastMock.onmessage?.(new MessageEvent("message", { data: "not json{" })),
-    ).not.toThrow();
+    expect(() => {
+      return lastMock.onmessage?.(
+        new MessageEvent("message", { data: "not json{" }),
+      );
+    }).not.toThrow();
     expect(received).toEqual([]);
     adapter.dispose();
   });
   it("routes a response with an unknown correlationId to the stream handler", () => {
     const adapter = new WsAdapter("ws://test");
     const received: unknown[] = [];
-    adapter.on("stream.priceTick", (p) => received.push(p));
+    adapter.on("stream.priceTick", (p) => {
+      return received.push(p);
+    });
     open(adapter);
     lastMock.onmessage?.(
       new MessageEvent("message", {
@@ -250,13 +276,16 @@ describe("WsAdapter.rpc() + message routing", () => {
   it("on() disposer stops the handler from receiving further messages of that type", () => {
     const adapter = new WsAdapter("ws://test");
     const received: unknown[] = [];
-    const dispose = adapter.on("stream.priceTick", (p) => received.push(p));
+    const dispose = adapter.on("stream.priceTick", (p) => {
+      return received.push(p);
+    });
     open(adapter);
 
-    const frame = (symbol: string) =>
-      new MessageEvent("message", {
+    function frame(symbol: string) {
+      return new MessageEvent("message", {
         data: JSON.stringify({ type: "stream.priceTick", payload: { symbol } }),
       });
+    }
 
     lastMock.onmessage?.(frame("EURUSD"));
     expect(received).toEqual([{ symbol: "EURUSD" }]);
@@ -268,7 +297,9 @@ describe("WsAdapter.rpc() + message routing", () => {
 
     // Disposing twice is safe (the `?.delete` optional-chain branch) and does
     // not throw or resurrect delivery.
-    expect(() => dispose()).not.toThrow();
+    expect(() => {
+      return dispose();
+    }).not.toThrow();
     lastMock.onmessage?.(frame("USDJPY"));
     expect(received).toEqual([{ symbol: "EURUSD" }]);
 

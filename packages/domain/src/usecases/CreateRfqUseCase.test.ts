@@ -9,10 +9,16 @@ import {
   RFQ_DEFAULT_EXPIRY_SECS,
 } from "./CreateRfqUseCase.js";
 
-function stubWorkflow(): {
+interface LastRequestRef {
+  current: CreateRfqRequest | null;
+}
+
+interface StubWorkflow {
   port: WorkflowPort;
-  lastRequest: { current: CreateRfqRequest | null };
-} {
+  lastRequest: LastRequestRef;
+}
+
+function stubWorkflow(): StubWorkflow {
   const lastRequest = { current: null as CreateRfqRequest | null };
   const port: WorkflowPort = {
     events: () => {
@@ -22,10 +28,18 @@ function stubWorkflow(): {
       lastRequest.current = request;
       return of(42);
     },
-    cancelRfq: () => of(undefined),
-    quote: () => of(undefined),
-    pass: () => of(undefined),
-    accept: () => of(undefined),
+    cancelRfq: () => {
+      return of(undefined);
+    },
+    quote: () => {
+      return of(undefined);
+    },
+    pass: () => {
+      return of(undefined);
+    },
+    accept: () => {
+      return of(undefined);
+    },
   };
   return { port, lastRequest };
 }

@@ -39,31 +39,40 @@ const dealers: readonly Dealer[] = [
 // 2024-03-05 in UTC (avoid TZ flakiness by asserting the day/month/year parts).
 const TS = Date.UTC(2024, 2, 5, 12, 0, 0);
 
-const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => ({
-  id,
-  instrumentId: 1,
-  quantity: 5000,
-  direction: Direction.Buy,
-  state: RfqState.Closed,
-  expirySecs: 120,
-  creationTimestamp: TS,
-  ...over,
-});
+const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => {
+  return {
+    id,
+    instrumentId: 1,
+    quantity: 5000,
+    direction: Direction.Buy,
+    state: RfqState.Closed,
+    expirySecs: 120,
+    creationTimestamp: TS,
+    ...over,
+  };
+};
 
 const acceptedQuote = (
   id: number,
   rfqId: number,
   over: Partial<Quote> = {},
-): Quote => ({
-  id,
-  rfqId,
-  dealerId: 2,
-  state: { type: "accepted", price: 99 },
-  ...over,
-});
+): Quote => {
+  return {
+    id,
+    rfqId,
+    dealerId: 2,
+    state: { type: "accepted", price: 99 },
+    ...over,
+  };
+};
 
-const quoteMap = (...quotes: Quote[]): ReadonlyMap<number, Quote> =>
-  new Map(quotes.map((q) => [q.id, q]));
+const quoteMap = (...quotes: Quote[]): ReadonlyMap<number, Quote> => {
+  return new Map(
+    quotes.map((q) => {
+      return [q.id, q];
+    }),
+  );
+};
 
 describe("CreditBlotter", () => {
   it("shows the column headers", () => {
