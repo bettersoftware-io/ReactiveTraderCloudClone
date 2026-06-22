@@ -10,7 +10,8 @@ import { Then, When } from "quickpickle";
 
 import type { ConnectionStatus } from "@rtc/domain";
 
-import * as conn from "../../scenarios/_shared/connection";
+import * as conn from "#/presenter/scenarios/_shared/connection";
+
 import type { VitestFakePresenterWorld } from "../world";
 
 // String-literal stand-ins for ConnectionStatus const enum values.

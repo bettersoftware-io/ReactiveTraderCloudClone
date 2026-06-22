@@ -1,7 +1,8 @@
 // tests/presenter/vitest-quickpickle-fake-timers/steps/creditRfq.steps.ts
 import { Then } from "quickpickle";
 
-import * as credit from "../../scenarios/_shared/creditRfq";
+import * as credit from "#/presenter/scenarios/_shared/creditRfq";
+
 import type { VitestFakePresenterWorld } from "../world";
 
 Then(

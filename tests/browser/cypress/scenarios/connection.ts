@@ -2,8 +2,9 @@
 // Cypress fork of tests/browser/scenarios/connection.ts — synchronous bodies, queue-aware.
 // See Phase 5A.4 spec §3.3.
 
-import { assertTrue } from "../../scenarios/assert";
-import type { TestContext } from "../../testContext";
+import { assertTrue } from "#/browser/scenarios/assert";
+import type { TestContext } from "#/browser/testContext";
+
 import { chainable } from "./_chainable";
 
 export function setBrowserOffline(ctx: TestContext, offline: boolean): void {

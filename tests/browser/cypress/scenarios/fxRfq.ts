@@ -1,7 +1,7 @@
 // tests/browser/cypress/scenarios/fxRfq.ts
 // Cypress fork of tests/browser/scenarios/fxRfq.ts — synchronous bodies, queue-aware.
 // See Phase 5A.4 spec §3.3.
-import type { TestContext } from "../../testContext";
+import type { TestContext } from "#/browser/testContext";
 
 export function expectRfqInitiationButtonWithin(
   ctx: TestContext,

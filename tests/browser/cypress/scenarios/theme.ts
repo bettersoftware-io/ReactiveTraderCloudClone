@@ -7,8 +7,9 @@ import {
   assertEquals,
   assertNotEqual,
   assertTrue,
-} from "../../scenarios/assert";
-import type { TestContext } from "../../testContext";
+} from "#/browser/scenarios/assert";
+import type { TestContext } from "#/browser/testContext";
+
 import { chainable } from "./_chainable";
 
 export function toggleAndCaptureBackgrounds(ctx: TestContext): void {

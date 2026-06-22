@@ -1,7 +1,7 @@
 // tests/browser/cypress/scenarios/common.ts
 // Cypress fork of tests/browser/scenarios/common.ts — synchronous bodies, queue-aware.
 // See Phase 5A.4 spec §3.3.
-import type { TestContext } from "../../testContext";
+import type { TestContext } from "#/browser/testContext";
 
 export function openWorkspace(ctx: TestContext): void {
   // PO method queues cy.visit. Discard the returned chainable; cy queue handles ordering.

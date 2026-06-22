@@ -8,7 +8,8 @@ import {
 } from "@cucumber/cucumber";
 import { type Browser, chromium } from "@playwright/test";
 
-import { type DevServerHandle, startDevServer } from "../../scripts/devServer";
+import { type DevServerHandle, startDevServer } from "#/scripts/devServer";
+
 import type { PlaywrightWorld } from "./world";
 
 // Extend the step timeout to 30 s so that multi-step scenarios (e.g. buy

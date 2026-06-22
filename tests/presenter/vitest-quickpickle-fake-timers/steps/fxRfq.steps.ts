@@ -1,7 +1,8 @@
 // tests/presenter/vitest-quickpickle-fake-timers/steps/fxRfq.steps.ts
 import { Then, When } from "quickpickle";
 
-import * as rfq from "../../scenarios/_shared/fxRfq";
+import * as rfq from "#/presenter/scenarios/_shared/fxRfq";
+
 import type { VitestFakePresenterWorld } from "../world";
 
 When(

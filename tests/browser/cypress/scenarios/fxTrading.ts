@@ -2,8 +2,9 @@
 // Cypress fork of tests/browser/scenarios/fxTrading.ts — synchronous bodies, queue-aware.
 // See Phase 5A.4 spec §3.3.
 
-import { assertGte, assertTrue } from "../../scenarios/assert";
-import type { TestContext } from "../../testContext";
+import { assertGte, assertTrue } from "#/browser/scenarios/assert";
+import type { TestContext } from "#/browser/testContext";
+
 import { chainable } from "./_chainable";
 
 export function clickBuyOnFirstTile(ctx: TestContext): void {

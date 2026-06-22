@@ -1,7 +1,8 @@
 // tests/presenter/vitest-quickpickle-fake-timers/steps/fxLiveRates.steps.ts
 import { Then, When } from "quickpickle";
 
-import * as fx from "../../scenarios/_shared/fxLiveRates";
+import * as fx from "#/presenter/scenarios/_shared/fxLiveRates";
+
 import type { VitestFakePresenterWorld } from "../world";
 
 Then(
