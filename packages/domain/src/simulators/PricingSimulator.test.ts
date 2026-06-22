@@ -1,9 +1,11 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { firstValueFrom, lastValueFrom, Subscription } from "rxjs";
+import { firstValueFrom, lastValueFrom, type Subscription } from "rxjs";
 import { take, toArray } from "rxjs/operators";
-import { PricingSimulator } from "./PricingSimulator.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { defined } from "../__testUtils__/defined.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
 import type { RfqQuoteResult } from "../ports/pricingPort.js";
+import { PricingSimulator } from "./PricingSimulator.js";
 
 const MAX_TICK_INTERVAL_MS = 1_000;
 
@@ -46,7 +48,9 @@ describe("PricingSimulator", () => {
     const history = await firstValueFrom(engine.getPriceHistory("EURUSD"));
 
     for (let i = 1; i < history.length; i++) {
-      expect(history[i].creationTimestamp).toBeGreaterThanOrEqual(history[i - 1].creationTimestamp);
+      expect(history[i].creationTimestamp).toBeGreaterThanOrEqual(
+        history[i - 1].creationTimestamp,
+      );
     }
   });
 
@@ -54,7 +58,9 @@ describe("PricingSimulator", () => {
     vi.useFakeTimers();
     const engine = new PricingSimulator();
     const promise = lastValueFrom(
-      engine.getPriceUpdates("EURUSD").pipe(take(PRICE_HISTORY_SIZE + 2), toArray()),
+      engine
+        .getPriceUpdates("EURUSD")
+        .pipe(take(PRICE_HISTORY_SIZE + 2), toArray()),
     );
     // Drive the live tick scheduler — random interval is bounded by MAX_TICK_INTERVAL_MS.
     await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 4);
@@ -80,6 +86,7 @@ describe("PricingSimulator", () => {
 
   it("emits the RFQ quote after a 500–2000 ms delay", async () => {
     vi.useFakeTimers();
+
     try {
       const sim = new PricingSimulator();
       const symbol = "EURUSD";
@@ -93,7 +100,7 @@ describe("PricingSimulator", () => {
       // Past the 2000ms ceiling — must have emitted exactly once by now.
       await vi.advanceTimersByTimeAsync(1501);
       expect(received).toBeDefined();
-      expect(received!.bid).toBeLessThan(received!.ask);
+      expect(defined(received).bid).toBeLessThan(defined(received).ask);
       sub.unsubscribe();
     } finally {
       vi.useRealTimers();
@@ -102,24 +109,32 @@ describe("PricingSimulator", () => {
 
   it("throws for unknown symbol", async () => {
     const engine = new PricingSimulator();
-    await expect(firstValueFrom(engine.getPriceHistory("INVALID"))).rejects.toThrow("Unknown symbol");
+    await expect(
+      firstValueFrom(engine.getPriceHistory("INVALID")),
+    ).rejects.toThrow("Unknown symbol");
   });
 
   it("getPriceUpdates throws for unknown symbol", async () => {
     const engine = new PricingSimulator();
-    await expect(firstValueFrom(engine.getPriceUpdates("INVALID"))).rejects.toThrow("Unknown symbol");
+    await expect(
+      firstValueFrom(engine.getPriceUpdates("INVALID")),
+    ).rejects.toThrow("Unknown symbol");
   });
 
   it("getRfqQuote throws for unknown symbol", async () => {
     const engine = new PricingSimulator();
-    await expect(firstValueFrom(engine.getRfqQuote("INVALID", 4))).rejects.toThrow("Unknown symbol");
+    await expect(
+      firstValueFrom(engine.getRfqQuote("INVALID", 4)),
+    ).rejects.toThrow("Unknown symbol");
   });
 
   it("live ticks keep the price history capped at PRICE_HISTORY_SIZE", async () => {
     vi.useFakeTimers();
     const engine = new PricingSimulator();
     const consumed = lastValueFrom(
-      engine.getPriceUpdates("EURUSD").pipe(take(PRICE_HISTORY_SIZE + 10), toArray()),
+      engine
+        .getPriceUpdates("EURUSD")
+        .pipe(take(PRICE_HISTORY_SIZE + 10), toArray()),
     );
     await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 12);
     await consumed;

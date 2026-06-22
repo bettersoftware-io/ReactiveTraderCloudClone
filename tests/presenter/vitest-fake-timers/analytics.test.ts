@@ -1,12 +1,21 @@
-import { describe, beforeEach, afterEach, it } from "vitest";
-import { buildWorld, teardownWorld, type VitestPlainPresenterWorld } from "./_world";
-import * as fx from "../scenarios/_shared/fxLiveRates";
+import { afterEach, beforeEach, describe, it } from "vitest";
+
 import * as analytics from "../scenarios/_shared/analytics";
+import * as fx from "../scenarios/_shared/fxLiveRates";
+import {
+  buildWorld,
+  teardownWorld,
+  type VitestPlainPresenterWorld,
+} from "./_world";
 
 describe("@presenter Feature: Analytics panel", () => {
   let w: VitestPlainPresenterWorld;
-  beforeEach(() => { w = buildWorld(); });
-  afterEach(() => { teardownWorld(w); });
+  beforeEach(() => {
+    w = buildWorld();
+  });
+  afterEach(() => {
+    teardownWorld(w);
+  });
 
   it("analytics panel shows alongside live rates", async () => {
     await fx.expectPriceTileVisibleWithin(w, 5);

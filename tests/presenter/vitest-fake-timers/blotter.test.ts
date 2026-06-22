@@ -1,13 +1,22 @@
-import { describe, beforeEach, afterEach, it } from "vitest";
-import { buildWorld, teardownWorld, type VitestPlainPresenterWorld } from "./_world";
+import { afterEach, beforeEach, describe, it } from "vitest";
+
+import * as blotter from "../scenarios/_shared/blotter";
 import * as fx from "../scenarios/_shared/fxLiveRates";
 import * as trading from "../scenarios/_shared/fxTrading";
-import * as blotter from "../scenarios/_shared/blotter";
+import {
+  buildWorld,
+  teardownWorld,
+  type VitestPlainPresenterWorld,
+} from "./_world";
 
 describe("@presenter Feature: FX trade blotter", () => {
   let w: VitestPlainPresenterWorld;
-  beforeEach(() => { w = buildWorld(); });
-  afterEach(() => { teardownWorld(w); });
+  beforeEach(() => {
+    w = buildWorld();
+  });
+  afterEach(() => {
+    teardownWorld(w);
+  });
 
   it("rejected trade flow does not error after multiple buys", async () => {
     await fx.expectPriceTileVisibleWithin(w, 5);

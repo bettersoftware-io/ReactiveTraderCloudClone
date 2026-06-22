@@ -1,15 +1,14 @@
 // tests/presenter/scenarios/_buildApp.ts
+
 import { merge, Subject } from "rxjs";
+
 import {
-  ConnectionEventsSimulator,
-  type ConnectionEvent,
-} from "@rtc/domain";
-import {
-  createApp,
-  createSimulatorPorts,
   type App,
   type AppPorts,
-} from "@rtc/client";
+  createApp,
+  createSimulatorPorts,
+} from "@rtc/client-react";
+import { type ConnectionEvent, ConnectionEventsSimulator } from "@rtc/domain";
 
 export interface PresenterCtx {
   app: App;
@@ -22,7 +21,9 @@ export function buildPresenterApp(): PresenterCtx {
   const ports: AppPorts = {
     ...createSimulatorPorts(),
     connectionEvents: {
-      events: () => merge(gateway.events(), connectionEvents$.asObservable()),
+      events: () => {
+        return merge(gateway.events(), connectionEvents$.asObservable());
+      },
     },
   };
   return { app: createApp(ports), connectionEvents$ };

@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { calculateSpread, detectMovement, PriceMovementType } from "./price.js";
 
 describe("calculateSpread", () => {
@@ -26,14 +27,14 @@ describe("detectMovement", () => {
   });
 
   it("returns UP when mid increases", () => {
-    expect(detectMovement(1.51, 1.50)).toBe(PriceMovementType.UP);
+    expect(detectMovement(1.51, 1.5)).toBe(PriceMovementType.UP);
   });
 
   it("returns DOWN when mid decreases", () => {
-    expect(detectMovement(1.49, 1.50)).toBe(PriceMovementType.DOWN);
+    expect(detectMovement(1.49, 1.5)).toBe(PriceMovementType.DOWN);
   });
 
   it("returns DOWN when mid equals previous (equal defaults to DOWN)", () => {
-    expect(detectMovement(1.50, 1.50)).toBe(PriceMovementType.DOWN);
+    expect(detectMovement(1.5, 1.5)).toBe(PriceMovementType.DOWN);
   });
 });

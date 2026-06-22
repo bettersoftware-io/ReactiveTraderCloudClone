@@ -1,5 +1,6 @@
 // tests/presenter/vitest-fake-timers/vitest.config.ts
 import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -11,7 +12,9 @@ export default defineConfig({
     // HTML report (additive): test:presenter:vitest-fake-timers =>
     // reports/presenter/vitest-fake-timers/. outputFile is root-relative (tests/).
     reporters: ["default", "html"],
-    outputFile: { html: "reports/presenter/vitest-fake-timers/report/index.html" },
+    outputFile: {
+      html: "reports/presenter/vitest-fake-timers/report/index.html",
+    },
     pool: "threads",
   },
 });

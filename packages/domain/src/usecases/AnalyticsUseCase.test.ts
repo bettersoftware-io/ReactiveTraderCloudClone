@@ -1,11 +1,21 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom, from, lastValueFrom, of } from "rxjs";
 import { toArray } from "rxjs/operators";
-import { AnalyticsUseCase } from "./AnalyticsUseCase.js";
-import type { AnalyticsPort } from "../ports/analyticsPort.js";
-import type { PositionUpdates } from "../analytics/position.js";
+import { describe, expect, it } from "vitest";
 
-function stubAnalytics(updates: PositionUpdates[]): { port: AnalyticsPort; lastCurrency: { current: string | null } } {
+import type { PositionUpdates } from "../analytics/position.js";
+import type { AnalyticsPort } from "../ports/analyticsPort.js";
+import { AnalyticsUseCase } from "./AnalyticsUseCase.js";
+
+interface LastCurrencyRef {
+  current: string | null;
+}
+
+interface StubAnalytics {
+  port: AnalyticsPort;
+  lastCurrency: LastCurrencyRef;
+}
+
+function stubAnalytics(updates: PositionUpdates[]): StubAnalytics {
   const lastCurrency = { current: null as string | null };
   const port: AnalyticsPort = {
     getAnalytics(currency: string) {
@@ -55,7 +65,9 @@ describe("AnalyticsUseCase", () => {
   it("supports a single emission via of()", async () => {
     const update = buildUpdate();
     const port: AnalyticsPort = {
-      getAnalytics: () => of(update),
+      getAnalytics: () => {
+        return of(update);
+      },
     };
     const useCase = new AnalyticsUseCase(port);
 

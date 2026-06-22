@@ -1,14 +1,15 @@
 import {
-  ReferenceDataSimulator,
-  PricingSimulator,
-  ExecutionSimulator,
-  TradeStoreSimulator,
   AnalyticsSimulator,
-  InstrumentSimulator,
-  DealerSimulator,
   CreditRfqSimulator,
   DEALERS_CATALOG,
+  DealerSimulator,
+  ExecutionSimulator,
+  InstrumentSimulator,
+  PricingSimulator,
+  ReferenceDataSimulator,
+  TradeStoreSimulator,
 } from "@rtc/domain";
+
 import { ThroughputService } from "./ThroughputService.js";
 
 export interface ServiceContainer {

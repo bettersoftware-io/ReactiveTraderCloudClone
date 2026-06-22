@@ -1,7 +1,8 @@
-import { type Observable } from "rxjs";
-import type { WorkflowPort, CreateRfqRequest } from "../ports/workflowPort.js";
-import type { Direction } from "../fx/trade.js";
+import type { Observable } from "rxjs";
+
 import { CREDIT_QUANTITY_MULTIPLIER } from "../credit/rfq.js";
+import type { Direction } from "../fx/trade.js";
+import type { CreateRfqRequest, WorkflowPort } from "../ports/workflowPort.js";
 
 export const RFQ_DEFAULT_EXPIRY_SECS = 120;
 

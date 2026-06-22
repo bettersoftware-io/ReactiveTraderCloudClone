@@ -1,9 +1,9 @@
-import { test } from "./_context";
-import { withFxWorkspaceOpen } from "./_openWorkspace";
 import * as blotter from "../scenarios/blotter";
+import * as common from "../scenarios/common";
 import * as fxLiveRates from "../scenarios/fxLiveRates";
 import * as fxTrading from "../scenarios/fxTrading";
-import * as common from "../scenarios/common";
+import { test } from "./_context";
+import { withFxWorkspaceOpen } from "./_openWorkspace";
 
 test.describe("FX trade blotter", () => {
   withFxWorkspaceOpen();
@@ -47,7 +47,9 @@ test.describe("FX trade blotter", () => {
     await blotter.expectFirstBlotterRowBackgroundNonEmpty(ctx);
   });
 
-  test("rejected trade flow does not error after multiple buys", async ({ ctx }) => {
+  test("rejected trade flow does not error after multiple buys", async ({
+    ctx,
+  }) => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await blotter.buyNTimesWithDismissals(ctx, 3);
     await fxTrading.expectBlotterVisible(ctx);

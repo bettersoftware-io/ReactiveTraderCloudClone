@@ -1,0 +1,13 @@
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.separator {
+  color: var(--text-muted);
+  font-weight: 400;
+}

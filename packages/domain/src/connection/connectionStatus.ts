@@ -1,4 +1,4 @@
-export const enum ConnectionStatus {
+export enum ConnectionStatus {
   CONNECTING = "CONNECTING",
   CONNECTED = "CONNECTED",
   DISCONNECTED = "DISCONNECTED",
@@ -87,9 +87,19 @@ export function nextConnectionStatus(
   }
 }
 
-export type GatewayStatus = "CONNECTING" | "RECONNECTING" | "CONNECTED" | "DISCONNECTED" | "ERROR";
+export type GatewayStatus =
+  | "CONNECTING"
+  | "RECONNECTING"
+  | "CONNECTED"
+  | "DISCONNECTED"
+  | "ERROR";
 
-export function mapGatewayStatus(gateway: GatewayStatus): ConnectionStatus.CONNECTING | ConnectionStatus.CONNECTED | ConnectionStatus.DISCONNECTED {
+export function mapGatewayStatus(
+  gateway: GatewayStatus,
+):
+  | ConnectionStatus.CONNECTING
+  | ConnectionStatus.CONNECTED
+  | ConnectionStatus.DISCONNECTED {
   switch (gateway) {
     case "CONNECTING":
     case "RECONNECTING":

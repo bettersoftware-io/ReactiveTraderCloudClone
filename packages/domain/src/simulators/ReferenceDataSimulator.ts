@@ -1,8 +1,9 @@
 import { type Observable, of } from "rxjs";
 import { delay } from "rxjs/operators";
+
 import type { CurrencyPair } from "../fx/currencyPair.js";
-import type { ReferenceDataPort } from "../ports/referenceDataPort.js";
 import { KNOWN_CURRENCY_PAIRS } from "../fx/currencyPair.js";
+import type { ReferenceDataPort } from "../ports/referenceDataPort.js";
 
 const INITIAL_DELAY_MS = 1_000;
 

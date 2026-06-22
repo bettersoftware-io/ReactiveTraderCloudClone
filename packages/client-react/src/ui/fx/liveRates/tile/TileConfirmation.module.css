@@ -1,0 +1,56 @@
+.overlay {
+  /* Reset button defaults so the overlay renders identically to a <div> */
+  appearance: none;
+  border: none;
+  font-family: inherit;
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-on-accent);
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+  z-index: 1;
+  background-color: var(--bg-overlay);
+  cursor: pointer;
+}
+
+.overlay[data-status="started"] {
+  background-color: transparent;
+  cursor: default;
+}
+.overlay[data-status="done"] {
+  background-color: var(--accent-positive);
+}
+.overlay[data-status="rejected"] {
+  background-color: var(--accent-negative);
+}
+.overlay[data-status="tooLong"],
+.overlay[data-status="timeout"],
+.overlay[data-status="timedOut"],
+.overlay[data-status="creditExceeded"] {
+  background-color: var(--accent-aware);
+}
+
+.tradeDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.tradeVerb {
+  font-weight: 600;
+}
+
+.tradeMeta {
+  font-size: 11px;
+}
+
+.tradeId {
+  font-size: 10px;
+  opacity: 0.8;
+}

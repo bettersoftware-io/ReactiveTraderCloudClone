@@ -1,8 +1,8 @@
 // tests/browser/cypress/fxLiveRates.spec.ts
 import { getCtx } from "./_context";
 import { withFxWorkspaceOpen } from "./_openWorkspace";
-import * as fxLiveRates from "./scenarios/fxLiveRates";
 import * as common from "./scenarios/common";
+import * as fxLiveRates from "./scenarios/fxLiveRates";
 
 describe("FX live rates", () => {
   withFxWorkspaceOpen();

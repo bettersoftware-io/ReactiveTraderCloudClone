@@ -1,7 +1,7 @@
+import * as common from "../scenarios/common";
+import * as fxLiveRates from "../scenarios/fxLiveRates";
 import { test } from "./_context";
 import { withFxWorkspaceOpen } from "./_openWorkspace";
-import * as fxLiveRates from "../scenarios/fxLiveRates";
-import * as common from "../scenarios/common";
 
 test.describe("FX live rates", () => {
   withFxWorkspaceOpen();

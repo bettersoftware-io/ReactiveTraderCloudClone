@@ -1,0 +1,47 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.currencyLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 28px;
+}
+
+.input {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 2px 0;
+  outline: none;
+  text-align: right;
+  font-family: inherit;
+}
+
+.input[data-error="true"] {
+  border-bottom-color: var(--accent-negative);
+}
+
+.resetButton {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.errorMessage {
+  position: absolute;
+  bottom: -14px;
+  right: 0;
+  font-size: 10px;
+  color: var(--accent-negative);
+}

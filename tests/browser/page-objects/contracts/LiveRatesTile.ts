@@ -28,7 +28,10 @@ export interface LiveRatesTilePO {
 
   /** Trade confirmation overlay. */
   waitForConfirmation(timeoutMs: number): Promise<void>;
-  confirmationContainsAny(patterns: readonly RegExp[], timeoutMs: number): Promise<void>;
+  confirmationContainsAny(
+    patterns: readonly RegExp[],
+    timeoutMs: number,
+  ): Promise<void>;
   dismissConfirmation(): Promise<void>;
   confirmationHidden(timeoutMs: number): Promise<void>;
   isConfirmationVisible(): Promise<boolean>;

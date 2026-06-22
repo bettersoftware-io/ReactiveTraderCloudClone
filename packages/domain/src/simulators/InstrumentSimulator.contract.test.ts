@@ -1,8 +1,11 @@
 import { afterEach, vi } from "vitest";
+
 import { describeInstrumentPortContract } from "../ports/__contracts__/InstrumentPortContract.js";
 import { InstrumentSimulator } from "./creditReferenceDataSimulator.js";
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describeInstrumentPortContract("InstrumentSimulator", () => {
   vi.useFakeTimers();
@@ -27,6 +30,8 @@ describeInstrumentPortContract("InstrumentSimulator", () => {
         // contract describer.
       },
     },
-    teardown: () => vi.useRealTimers(),
+    teardown: () => {
+      return vi.useRealTimers();
+    },
   };
 });

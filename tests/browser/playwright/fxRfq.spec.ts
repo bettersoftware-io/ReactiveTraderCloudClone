@@ -1,13 +1,15 @@
-import { test } from "./_context";
-import { withFxWorkspaceOpen } from "./_openWorkspace";
+import * as fxLiveRates from "../scenarios/fxLiveRates";
 import * as fxRfq from "../scenarios/fxRfq";
 import * as fxTrading from "../scenarios/fxTrading";
-import * as fxLiveRates from "../scenarios/fxLiveRates";
+import { test } from "./_context";
+import { withFxWorkspaceOpen } from "./_openWorkspace";
 
 test.describe("FX RFQ flow", () => {
   withFxWorkspaceOpen();
 
-  test("entering large notional triggers RFQ mode on the tile", async ({ ctx }) => {
+  test("entering large notional triggers RFQ mode on the tile", async ({
+    ctx,
+  }) => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await fxTrading.setFirstTileNotional(ctx, "10000000");
     await fxRfq.expectRfqInitiationButtonWithin(ctx, 3);
@@ -21,7 +23,9 @@ test.describe("FX RFQ flow", () => {
     await fxRfq.expectCountdownOrQuoteWithin(ctx, 5);
   });
 
-  test("large notional triggers an RFQ flow on the first tile", async ({ ctx }) => {
+  test("large notional triggers an RFQ flow on the first tile", async ({
+    ctx,
+  }) => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await fxTrading.setFirstTileNotional(ctx, "10000000");
     await fxRfq.expectRfqInitiationButtonWithin(ctx, 3);

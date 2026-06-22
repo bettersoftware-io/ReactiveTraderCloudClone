@@ -1,7 +1,8 @@
 import type { Observable } from "rxjs";
-import type { Direction } from "../fx/trade.js";
-import type { Rfq } from "../credit/rfq.js";
+
 import type { Quote } from "../credit/quote.js";
+import type { Rfq } from "../credit/rfq.js";
+import type { Direction } from "../fx/trade.js";
 
 export type RfqEvent =
   | { readonly type: "startOfStateOfTheWorld" }

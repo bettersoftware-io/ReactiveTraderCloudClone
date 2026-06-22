@@ -1,7 +1,13 @@
-import { describe, beforeEach, afterEach, it } from "vitest";
-import { buildWorld, teardownWorld, type VitestPlainPresenterWorld } from "./_world";
-import * as conn from "../scenarios/_shared/connection";
+import { afterEach, beforeEach, describe, it } from "vitest";
+
 import type { ConnectionStatus } from "@rtc/domain";
+
+import * as conn from "../scenarios/_shared/connection";
+import {
+  buildWorld,
+  teardownWorld,
+  type VitestPlainPresenterWorld,
+} from "./_world";
 
 // String-literal stand-ins for the ConnectionStatus const enum. Same trick as
 // presenter/vitest-quickpickle-fake-timers/steps/connection.steps.ts — verbatimModuleSyntax +
@@ -14,8 +20,12 @@ const CS_CONNECTING = "CONNECTING" as unknown as ConnectionStatus;
 
 describe("@presenter Feature: Connection status", () => {
   let w: VitestPlainPresenterWorld;
-  beforeEach(() => { w = buildWorld(); });
-  afterEach(() => { teardownWorld(w); });
+  beforeEach(() => {
+    w = buildWorld();
+  });
+  afterEach(() => {
+    teardownWorld(w);
+  });
 
   it("connected status is shown in the footer", async () => {
     await conn.noopAssertConnectionUiPresent(w);

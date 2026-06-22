@@ -1,4 +1,5 @@
 import { afterEach, vi } from "vitest";
+
 import { describeReferenceDataPortContract } from "../ports/__contracts__/ReferenceDataPortContract.js";
 import { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";
 

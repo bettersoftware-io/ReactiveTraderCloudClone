@@ -1,14 +1,14 @@
 import type { PageObjects } from "../contracts";
-import { CypressWorkspace } from "./Workspace";
-import { CypressThemeToggle } from "./ThemeToggle";
-import { CypressFooter } from "./Footer";
-import { CypressConnectionOverlay } from "./ConnectionOverlay";
-import { CypressLiveRatesTile } from "./LiveRatesTile";
-import { CypressFxRfqForm } from "./FxRfqForm";
 import { CypressAnalyticsDashboard } from "./AnalyticsDashboard";
+import { CypressBlotterTable } from "./BlotterTable";
+import { CypressConnectionOverlay } from "./ConnectionOverlay";
 import { CypressCreditRfqForm } from "./CreditRfqForm";
 import { CypressCreditRfqPanel } from "./CreditRfqPanel";
-import { CypressBlotterTable } from "./BlotterTable";
+import { CypressFooter } from "./Footer";
+import { CypressFxRfqForm } from "./FxRfqForm";
+import { CypressLiveRatesTile } from "./LiveRatesTile";
+import { CypressThemeToggle } from "./ThemeToggle";
+import { CypressWorkspace } from "./Workspace";
 
 export function buildCypressPageObjects(): PageObjects {
   return {

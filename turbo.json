@@ -1,5 +1,15 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "PORT",
+    "HOSTNAME",
+    "RTC_DEV_PORT",
+    "RTC_VISUAL_MAX_PARALLEL",
+    "PWCUCUMBER_HEADED",
+    "FULLSTACK_PORT",
+    "FULLSTACK_CLIENT_PORT",
+    "FULLSTACK_HEADED"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -12,17 +22,33 @@
       "dependsOn": ["build"],
       "outputs": ["reports/**"]
     },
+    "test:coverage": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "test:ui:contract": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test:ui:coverage": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
+    },
     "test:e2e": {
       "dependsOn": ["build"],
       "cache": false,
-      "passThroughEnv": ["RTC_E2E_MAX_PARALLEL", "RTC_E2E_SKIP_CYPRESS", "PLAYWRIGHT_BROWSERS_PATH"]
+      "passThroughEnv": [
+        "RTC_E2E_MAX_PARALLEL",
+        "RTC_E2E_SKIP_CYPRESS",
+        "PLAYWRIGHT_BROWSERS_PATH"
+      ]
     },
     "test:ui:visual": {
       "dependsOn": ["^build"],
       "cache": false,
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
     },
-    "lint": {},
     "dev": {
       "cache": false,
       "persistent": true

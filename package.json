@@ -6,16 +6,39 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "test:ui:contract": "turbo run test:ui:contract",
+    "test:ui:coverage": "turbo run test:ui:coverage",
     "test:e2e": "turbo run test:e2e",
     "test:e2e:no-cypress": "RTC_E2E_SKIP_CYPRESS=1 turbo run test:e2e",
     "test:ui:visual": "turbo run test:ui:visual",
-    "lint": "turbo run lint",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "dev": "turbo run dev",
-    "clean": "turbo run clean && rm -rf .turbo",
-    "clean:deep": "turbo run clean:deep && rm -rf node_modules .pnpm-store .turbo"
+    "clean": "turbo run clean && (rm -rf .turbo 2>/dev/null || true)",
+    "clean:deep": "turbo run clean:deep && (rm -rf node_modules .pnpm-store .turbo 2>/dev/null || true) && find . -name .DS_Store -type f -delete",
+    "lint:actions": "scripts/install-actionlint.sh && .tooling/actionlint -color",
+    "check:versions": "manypkg check && syncpack lint",
+    "lint:dead": "knip",
+    "check:deps": "depcruise --config .dependency-cruiser.cjs packages tests",
+    "lint:eslint": "eslint .",
+    "lint:eslint:types": "eslint . --config eslint.config.typed.mjs",
+    "lint:css": "stylelint \"packages/*/src/**/*.css\""
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.0",
+    "@manypkg/cli": "^0.25.1",
+    "dependency-cruiser": "^17.4.3",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
+    "knip": "^6.17.1",
+    "stylelint": "^17.13.0",
+    "stylelint-declaration-strict-value": "^1.11.1",
+    "syncpack": "^15.3.2",
     "turbo": "^2.4",
-    "typescript": "^6"
+    "typescript": "^6",
+    "typescript-eslint": "^8.61.1"
   }
 }

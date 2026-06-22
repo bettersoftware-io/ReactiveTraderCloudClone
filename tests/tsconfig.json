@@ -6,6 +6,7 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
+    "paths": { "#/*": ["./*"] },
     "types": ["node", "cypress"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },

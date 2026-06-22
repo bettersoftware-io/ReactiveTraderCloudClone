@@ -1,4 +1,5 @@
 import type { Observable } from "rxjs";
+
 import type { Theme, ViewMode } from "../preferences/preferences.js";
 
 /**

@@ -2,32 +2,32 @@
   "name": "@rtc/server",
   "version": "0.0.0",
   "private": true,
+  "imports": {
+    "#/*": "./src/*"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && tsc-alias -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "dev": "tsx watch src/index.ts",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo reports",
-    "clean:deep": "pnpm run clean && rm -rf node_modules"
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports 2>/dev/null || true",
+    "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
-    "@marblejs/core": "^4",
-    "@marblejs/http": "^4",
-    "@marblejs/websockets": "^4",
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
-    "fp-ts": "^2.16",
     "rxjs": "^7.8",
-    "ws": "^8.20.0"
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.8",
     "@vitest/ui": "^4.1.8",
+    "tsc-alias": "1.8.17",
     "tsx": "^4",
     "vitest": "^4"
   }

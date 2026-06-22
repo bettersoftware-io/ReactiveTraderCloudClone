@@ -1,11 +1,9 @@
-import { defineConfig } from "cypress";
-import { createRequire } from "node:module";
 import path from "node:path";
-import createBundler from "@bahmutov/cypress-esbuild-preprocessor";
+
 import { addCucumberPreprocessorPlugin } from "@badeball/cypress-cucumber-preprocessor";
 import createEsbuildPlugin from "@badeball/cypress-cucumber-preprocessor/esbuild";
-
-const require = createRequire(import.meta.url);
+import createBundler from "@bahmutov/cypress-esbuild-preprocessor";
+import { defineConfig } from "cypress";
 
 // Slow CI runners need more headroom for the app's connection to settle
 // (Connecting → Connected) before timing-sensitive `.should()` assertions, and
@@ -25,12 +23,14 @@ const isCI = !!process.env.CI;
 const aliasCucumber: import("esbuild").Plugin = {
   name: "alias-cucumber",
   setup(build) {
-    build.onResolve({ filter: /^@cucumber\/cucumber$/ }, () => ({
-      path: path.resolve(
-        new URL(".", import.meta.url).pathname,
-        "cucumber-shim.ts"
-      ),
-    }));
+    build.onResolve({ filter: /^@cucumber\/cucumber$/ }, () => {
+      return {
+        path: path.resolve(
+          new URL(".", import.meta.url).pathname,
+          "cucumber-shim.ts",
+        ),
+      };
+    });
   },
 };
 
@@ -50,7 +50,9 @@ export default defineConfig({
       await addCucumberPreprocessorPlugin(on, config);
       on(
         "file:preprocessor",
-        createBundler({ plugins: [aliasCucumber, createEsbuildPlugin(config)] }),
+        createBundler({
+          plugins: [aliasCucumber, createEsbuildPlugin(config)],
+        }),
       );
       return config;
     },

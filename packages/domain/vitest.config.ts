@@ -13,6 +13,13 @@ export default defineConfig({
       // Count every src file (even ones no test imports) so wholly-untested
       // modules surface at 0% rather than vanishing from the denominator.
       include: ["src/**"],
+      // src/ports/__contracts__/*PortContract.ts are reusable test SUITES (they
+      // import describe/it/expect and are run by the *.contract.test.ts files),
+      // not production source. vitest only auto-excludes executed *.test.ts
+      // files, and v4's default exclude is empty, so exclude the __contracts__
+      // convention explicitly — otherwise the broad src/** include counts these
+      // test suites as covered source.
+      exclude: ["**/__contracts__/**"],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/unit/coverage",
     },

@@ -13,8 +13,10 @@
  * receive an ack. Exits non-zero on any failure.
  */
 import { firstValueFrom, timeout } from "rxjs";
-import { WsAdapter, createWsRealPorts } from "@rtc/client";
+
+import { createWsRealPorts, WsAdapter } from "@rtc/client-react";
 import type { Direction } from "@rtc/domain";
+
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.js";
 
 // Direction is a `const enum` in @rtc/domain, inaccessible under
@@ -42,16 +44,24 @@ function assert(cond: unknown, message: string): asserts cond {
 async function runChecks(): Promise<void> {
   const ws = new WsAdapter(`ws://${HOST}:${PORT}`);
   const ports = createWsRealPorts(ws);
+
   try {
     // 1. Pricing stream: subscribe → receive a live tick from the real server.
     const tick = await firstValueFrom(
-      ports.pricing.getPriceUpdates("EURUSD").pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
+      ports.pricing
+        .getPriceUpdates("EURUSD")
+        .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
     );
-    assert(tick.symbol === "EURUSD", `pricing tick symbol (got ${tick.symbol})`);
+    assert(
+      tick.symbol === "EURUSD",
+      `pricing tick symbol (got ${tick.symbol})`,
+    );
     assert(typeof tick.bid === "number", "pricing tick bid is a number");
     assert(typeof tick.ask === "number", "pricing tick ask is a number");
     assert(typeof tick.mid === "number", "pricing tick mid is a number");
-    console.log(`  ✓ pricing: received tick for ${tick.symbol} (mid=${tick.mid})`);
+    console.log(
+      `  ✓ pricing: received tick for ${tick.symbol} (mid=${tick.mid})`,
+    );
 
     // 2. Trade execution RPC: request → ack with a real trade.
     const trade = await firstValueFrom(
@@ -68,22 +78,38 @@ async function runChecks(): Promise<void> {
     assert(typeof trade.tradeId === "number", "trade has a numeric tradeId");
     assert(trade.currencyPair === "EURUSD", "trade currencyPair echoed");
     assert(trade.direction === DIR_BUY, "trade direction echoed");
-    console.log(`  ✓ execution: trade ${trade.tradeId} ${trade.status} for ${trade.currencyPair}`);
+    console.log(
+      `  ✓ execution: trade ${trade.tradeId} ${trade.status} for ${trade.currencyPair}`,
+    );
 
     // 3. Admin throughput RPC round-trip (the WS path that replaced the old
     //    HTTP /throughput route): get → set 250 → get reflects the new value.
     const initialThroughput = await firstValueFrom(
-      ports.admin.getThroughput().pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
+      ports.admin
+        .getThroughput()
+        .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
     );
-    assert(typeof initialThroughput === "number", "initial throughput is a number");
+    assert(
+      typeof initialThroughput === "number",
+      "initial throughput is a number",
+    );
     await firstValueFrom(
-      ports.admin.setThroughput(250).pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
+      ports.admin
+        .setThroughput(250)
+        .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
     );
     const updatedThroughput = await firstValueFrom(
-      ports.admin.getThroughput().pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
+      ports.admin
+        .getThroughput()
+        .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
     );
-    assert(updatedThroughput === 250, `throughput round-trip (got ${updatedThroughput})`);
-    console.log(`  ✓ admin: throughput ${initialThroughput} → set 250 → ${updatedThroughput}`);
+    assert(
+      updatedThroughput === 250,
+      `throughput round-trip (got ${updatedThroughput})`,
+    );
+    console.log(
+      `  ✓ admin: throughput ${initialThroughput} → set 250 → ${updatedThroughput}`,
+    );
   } finally {
     ws.dispose();
   }
@@ -91,9 +117,12 @@ async function runChecks(): Promise<void> {
 
 // ── Main ─────────────────────────────────────────────────────────
 
-console.log(`full-stack smoke (node socket): starting server on ${HOST}:${PORT}`);
+console.log(
+  `full-stack smoke (node socket): starting server on ${HOST}:${PORT}`,
+);
 const server = startServer(PORT, HOST);
 let failed = false;
+
 try {
   await waitForHttp(`http://${HOST}:${PORT}/health`, 30_000);
   await runChecks();
@@ -105,4 +134,5 @@ try {
 } finally {
   await stopProcess(server);
 }
+
 process.exit(failed ? 1 : 0);

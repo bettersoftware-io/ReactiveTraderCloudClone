@@ -1,0 +1,43 @@
+.headerCell {
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  border-bottom: 1px solid var(--border-primary);
+  white-space: nowrap;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortIndicator {
+  margin-left: 2px;
+}
+
+.filterDot {
+  color: var(--accent-primary);
+  margin-left: 2px;
+}
+
+.filterToggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  margin-left: 4px;
+  padding: 0;
+}
+
+.filterPanel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  min-width: 160px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

@@ -1,17 +1,16 @@
-import { setWorldConstructor, World, type IWorldOptions } from "@cucumber/cucumber";
+import { setWorldConstructor, World } from "@cucumber/cucumber";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
+
+import { buildPlaywrightPageObjects } from "../page-objects/playwright/factory";
 import type { TestContext } from "../testContext";
 import { Scratchpad } from "../testContext";
-import { buildPlaywrightPageObjects } from "../page-objects/playwright/factory";
 
 export class PlaywrightWorld extends World {
   context!: BrowserContext;
-  page!: Page;
-  ctx!: TestContext;
 
-  constructor(options: IWorldOptions) {
-    super(options);
-  }
+  page!: Page;
+
+  ctx!: TestContext;
 
   async open(browser: Browser): Promise<void> {
     // Per-suite port via RTC_DEV_PORT (parallel runners); defaults to 3000.

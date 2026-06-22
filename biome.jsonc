@@ -1,0 +1,132 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/reports",
+      "!**/coverage",
+      "!**/__screenshots__",
+      "!**/*.png",
+      "!**/.turbo",
+      "!**/*.json5",
+      "!pnpm-lock.yaml"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80,
+    "lineEnding": "lf"
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            // Sort bare/side-effect imports (e.g. `import "./index.css"`) too.
+            "sortBareImports": true,
+            // Groups match in array order — earlier matchers win. Negations
+            // (`!`) carve overlaps out of predefined groups: `:PACKAGE:` minus
+            // `@rtc/**` keeps workspace packages out of third-party (so react
+            // sorts before @rtc/*, which gets its own group); `:PATH:` minus
+            // `:STYLE:` lets CSS fall through to a real, last :STYLE: group.
+            // :BLANK_LINE: inserts a blank line. Within :PATH:, imports sort by
+            // distance (more `../` first, `./` last), then natural order.
+            "groups": [
+              ":NODE:",
+              ":BLANK_LINE:",
+              [":PACKAGE:", "!@rtc/**"],
+              ":BLANK_LINE:",
+              "@rtc/**",
+              ":BLANK_LINE:",
+              ":ALIAS:",
+              ":BLANK_LINE:",
+              [":PATH:", "!:STYLE:"],
+              ":BLANK_LINE:",
+              ":STYLE:"
+            ]
+          }
+        }
+        // Sorters triaged 2026-06-22 — deferred, decide & address later:
+        // "useSortedKeys": "on"        // ~1116 hits, mostly fixtures + *.contract.spec.ts (conflicts with "specs MUST NOT change")
+        // "useSortedAttributes": "on"  // ~128 JSX attribute reorders
+        // "useSortedProperties": "on"  // ~134 CSS property reorders (cascade risk; visual goldens are the oracle)
+      }
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "domains": {
+      "react": "recommended",
+      "test": "recommended",
+      "playwright": "recommended",
+      "project": "recommended",
+      "turborepo": "recommended",
+      "types": "recommended"
+    },
+    "rules": {
+      "preset": "recommended",
+      "correctness": {
+        "useUniqueElementIds": "error"
+      },
+      "style": {
+        "useComponentExportOnlyModules": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["../../**"],
+                "message": "Imports may go at most one level up (\"../\"). For anything deeper use the #/ alias (or #tests/ in client-react tests). Built libs rewrite #/ to relative at build time via tsc-alias."
+              }
+            ]
+          }
+        }
+      },
+      "suspicious": {
+        "noLeakedRender": "error",
+        "noUndeclaredEnvVars": "error"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "json": {
+    "formatter": {
+      "enabled": true
+    }
+  },
+  "css": {
+    "formatter": {
+      "enabled": true
+    },
+    "linter": {
+      "enabled": true
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/tsconfig*.json"],
+      "json": {
+        "parser": {
+          "allowComments": true,
+          "allowTrailingCommas": true
+        }
+      }
+    }
+  ]
+}

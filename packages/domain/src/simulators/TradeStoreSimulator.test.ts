@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
 import { firstValueFrom } from "rxjs";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import type { Trade } from "../fx/trade.js";
+import { Direction, TradeStatus } from "../fx/trade.js";
 import { ExecutionSimulator } from "./ExecutionSimulator.js";
 import { TradeStoreSimulator } from "./TradeStoreSimulator.js";
-import { Direction, TradeStatus } from "../fx/trade.js";
-import type { Trade } from "../fx/trade.js";
 
 const NORMAL_MAX_DELAY_MS = 2_000;
 
@@ -17,7 +18,9 @@ describe("TradeStoreSimulator", () => {
     const store = new TradeStoreSimulator(engine);
     const snapshots: (readonly Trade[])[] = [];
 
-    const sub = store.getTradeStream().subscribe((s) => snapshots.push(s));
+    const sub = store.getTradeStream().subscribe((s) => {
+      return snapshots.push(s);
+    });
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0]).toHaveLength(0);
     sub.unsubscribe();
@@ -29,7 +32,9 @@ describe("TradeStoreSimulator", () => {
     const store = new TradeStoreSimulator(engine);
     const snapshots: (readonly Trade[])[] = [];
 
-    const sub = store.getTradeStream().subscribe((s) => snapshots.push(s));
+    const sub = store.getTradeStream().subscribe((s) => {
+      return snapshots.push(s);
+    });
 
     // initial empty snapshot
     expect(snapshots).toHaveLength(1);
@@ -61,7 +66,9 @@ describe("TradeStoreSimulator", () => {
     const store = new TradeStoreSimulator(engine);
     const snapshots: (readonly Trade[])[] = [];
 
-    const sub = store.getTradeStream().subscribe((s) => snapshots.push(s));
+    const sub = store.getTradeStream().subscribe((s) => {
+      return snapshots.push(s);
+    });
 
     const tradePromise = firstValueFrom(
       engine.executeTrade({
@@ -90,7 +97,9 @@ describe("TradeStoreSimulator", () => {
     const store = new TradeStoreSimulator(engine);
     const snapshots: (readonly Trade[])[] = [];
 
-    const sub = store.getTradeStream().subscribe((s) => snapshots.push(s));
+    const sub = store.getTradeStream().subscribe((s) => {
+      return snapshots.push(s);
+    });
 
     // Execute first trade
     const t1Promise = firstValueFrom(

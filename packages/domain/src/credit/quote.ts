@@ -16,7 +16,9 @@ export interface Quote {
 /**
  * Returns the set of valid next state types for a given quote state.
  */
-export function validQuoteTransitions(current: QuoteState["type"]): readonly QuoteState["type"][] {
+export function validQuoteTransitions(
+  current: QuoteState["type"],
+): readonly QuoteState["type"][] {
   switch (current) {
     case "pendingWithoutPrice":
       return ["pendingWithPrice", "passed", "rejectedWithoutPrice"];

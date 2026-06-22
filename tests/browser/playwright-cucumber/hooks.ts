@@ -1,7 +1,16 @@
-import { After, AfterAll, Before, BeforeAll, Status, setDefaultTimeout } from "@cucumber/cucumber";
-import { chromium, type Browser } from "@playwright/test";
-import { startDevServer, type DevServerHandle } from "../../scripts/devServer";
-import { PlaywrightWorld } from "./world";
+import {
+  After,
+  AfterAll,
+  Before,
+  BeforeAll,
+  Status,
+  setDefaultTimeout,
+} from "@cucumber/cucumber";
+import { type Browser, chromium } from "@playwright/test";
+
+import { type DevServerHandle, startDevServer } from "#/scripts/devServer";
+
+import type { PlaywrightWorld } from "./world";
 
 // Extend the step timeout to 30 s so that multi-step scenarios (e.g. buy
 // N times with confirmation dismissals) have room to finish under Playwright.
@@ -25,12 +34,12 @@ AfterAll(async () => {
   await dev?.stop();
 });
 
-Before(async function (this: PlaywrightWorld) {
+Before(async function openWorld(this: PlaywrightWorld) {
   if (!browser) throw new Error("browser not initialised in BeforeAll");
   await this.open(browser);
 });
 
-After(async function (this: PlaywrightWorld, { result }) {
+After(async function closeWorld(this: PlaywrightWorld, { result }) {
   // On failure, embed a screenshot into the cucumber HTML report (image/png
   // attachments render inline under the failed scenario) before the page closes.
   if (result?.status === Status.FAILED && this.page) {
@@ -44,5 +53,6 @@ After(async function (this: PlaywrightWorld, { result }) {
       // skip the attach so the original failure stays visible and close() runs.
     }
   }
+
   await this.close();
 });

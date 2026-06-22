@@ -1,13 +1,24 @@
 import type { TestContext } from "../testContext";
-import { assertContains, assertEquals, assertNotEqual, assertTrue } from "./assert";
+import {
+  assertContains,
+  assertEquals,
+  assertNotEqual,
+  assertTrue,
+} from "./assert";
 
-export async function toggleAndCaptureBackgrounds(ctx: TestContext): Promise<void> {
-  ctx.scratch.theme.backgroundBefore = await ctx.po.workspace.rootBackgroundColor();
+export async function toggleAndCaptureBackgrounds(
+  ctx: TestContext,
+): Promise<void> {
+  ctx.scratch.theme.backgroundBefore =
+    await ctx.po.workspace.rootBackgroundColor();
   await ctx.po.themeToggle.click();
-  ctx.scratch.theme.backgroundAfter = await ctx.po.workspace.rootBackgroundColor();
+  ctx.scratch.theme.backgroundAfter =
+    await ctx.po.workspace.rootBackgroundColor();
 }
 
-export async function expectThemeToggleVisible(ctx: TestContext): Promise<void> {
+export async function expectThemeToggleVisible(
+  ctx: TestContext,
+): Promise<void> {
   assertTrue(await ctx.po.themeToggle.isVisible(), "theme toggle not visible");
 }
 
@@ -19,7 +30,9 @@ export async function expectBackgroundChanged(ctx: TestContext): Promise<void> {
   );
 }
 
-export async function expectBackgroundMatchesToggled(ctx: TestContext): Promise<void> {
+export async function expectBackgroundMatchesToggled(
+  ctx: TestContext,
+): Promise<void> {
   const current = await ctx.po.workspace.rootBackgroundColor();
   assertEquals(
     current,
@@ -36,10 +49,16 @@ export async function expectThemeToggleAriaLabelMentions(
   assertContains(label, term);
 }
 
-export async function expectFirstPriceTileVisible(ctx: TestContext, timeoutMs: number): Promise<void> {
+export async function expectFirstPriceTileVisible(
+  ctx: TestContext,
+  timeoutMs: number,
+): Promise<void> {
   await ctx.po.liveRatesTile.waitForFirstTile(timeoutMs);
 }
 
 export async function expectCreditNavVisible(ctx: TestContext): Promise<void> {
-  assertTrue(await ctx.po.creditRfqPanel.navIsVisible(), "credit nav not visible");
+  assertTrue(
+    await ctx.po.creditRfqPanel.navIsVisible(),
+    "credit nav not visible",
+  );
 }

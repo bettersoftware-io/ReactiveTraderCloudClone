@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { ThroughputService } from "../ThroughputService.js";
 
 describe("ThroughputService", () => {
@@ -23,13 +24,21 @@ describe("ThroughputService", () => {
 
   it("rejects values out of range", () => {
     const svc = new ThroughputService();
-    expect(() => svc.setThroughput(-1)).toThrow();
-    expect(() => svc.setThroughput(1001)).toThrow();
+    expect(() => {
+      return svc.setThroughput(-1);
+    }).toThrow();
+    expect(() => {
+      return svc.setThroughput(1001);
+    }).toThrow();
   });
 
   it("rejects non-finite values", () => {
     const svc = new ThroughputService();
-    expect(() => svc.setThroughput(NaN)).toThrow();
-    expect(() => svc.setThroughput(Infinity)).toThrow();
+    expect(() => {
+      return svc.setThroughput(NaN);
+    }).toThrow();
+    expect(() => {
+      return svc.setThroughput(Infinity);
+    }).toThrow();
   });
 });

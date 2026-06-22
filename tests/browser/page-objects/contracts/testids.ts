@@ -2,7 +2,9 @@ export const TESTIDS = {
   shell: {
     header: "header",
     themeToggle: "theme-toggle",
-    tab: (tab: "fx" | "credit" | "admin") => `tab-${tab}`,
+    tab: (tab: "fx" | "credit" | "admin") => {
+      return `tab-${tab}`;
+    },
   },
   connection: {
     status: "connection-status",
@@ -10,12 +12,16 @@ export const TESTIDS = {
   },
   liveRates: {
     tilePrefix: "tile-",
-    tile: (pair: string) => `tile-${pair}`,
+    tile: (pair: string) => {
+      return `tile-${pair}`;
+    },
     sellBtn: "sell-btn",
     buyBtn: "buy-btn",
     tradeConfirmation: "trade-confirmation",
     currencyFilter: "currency-filter",
-    filter: (category: string) => `filter-${category}`,
+    filter: (category: string) => {
+      return `filter-${category}`;
+    },
     viewToggle: "view-toggle",
   },
   blotter: {
@@ -28,6 +34,9 @@ export const TESTIDS = {
   },
   credit: {
     nav: "credit-nav",
-    tab: (v: "tiles" | "new-rfq" | "sell-side") => `credit-tab-${v}`,
+    tab: (v: "tiles" | "new-rfq" | "sell-side") => {
+      return `credit-tab-${v}`;
+    },
+    directionLabel: "rfq-direction-label",
   },
 } as const;

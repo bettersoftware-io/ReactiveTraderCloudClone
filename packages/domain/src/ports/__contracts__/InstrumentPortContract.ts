@@ -1,6 +1,9 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
+import { describe, expect, it } from "vitest";
+
+import { defined } from "#/__testUtils__/defined.js";
+
 import type { InstrumentPort } from "../instrumentPort.js";
 
 export interface InstrumentDriver {
@@ -29,6 +32,7 @@ export function describeInstrumentPortContract(
   describe(`${label} :: InstrumentPort contract`, () => {
     it("first emission contains the SoW set as a full snapshot", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getInstruments());
         await driver.emitInitialSoW();
@@ -43,10 +47,12 @@ export function describeInstrumentPortContract(
     it("subsequent emissions are full snapshots, not deltas", async () => {
       const harness = makeHarness();
       const { port, driver, teardown, supportsLiveAdd = true } = harness;
+
       if (!supportsLiveAdd) {
         teardown();
         return;
       }
+
       try {
         const promise = firstValueFrom(
           port.getInstruments().pipe(take(2), toArray()),
@@ -55,7 +61,9 @@ export function describeInstrumentPortContract(
         await driver.addInstrumentAfterSoW();
         const emissions = await promise;
         expect(emissions).toHaveLength(2);
-        expect(emissions[1]!.length).toBeGreaterThan(emissions[0]!.length);
+        expect(defined(emissions[1]).length).toBeGreaterThan(
+          defined(emissions[0]).length,
+        );
       } finally {
         teardown();
       }

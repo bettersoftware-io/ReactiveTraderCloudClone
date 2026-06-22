@@ -1,6 +1,6 @@
 import type { Direction } from "../fx/trade.js";
 
-export const enum RfqState {
+export enum RfqState {
   Open = "Open",
   Expired = "Expired",
   Cancelled = "Cancelled",

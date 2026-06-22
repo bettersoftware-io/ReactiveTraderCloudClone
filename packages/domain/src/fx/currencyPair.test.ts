@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { deriveBaseTerm, KNOWN_CURRENCY_PAIRS } from "./currencyPair.js";
 
 describe("deriveBaseTerm", () => {
@@ -12,7 +13,10 @@ describe("KNOWN_CURRENCY_PAIRS", () => {
   it("every pair's symbol is the concatenation of its base and terms", () => {
     for (const pair of KNOWN_CURRENCY_PAIRS) {
       expect(pair.symbol).toBe(`${pair.base}${pair.terms}`);
-      expect(deriveBaseTerm(pair.symbol)).toEqual({ base: pair.base, terms: pair.terms });
+      expect(deriveBaseTerm(pair.symbol)).toEqual({
+        base: pair.base,
+        terms: pair.terms,
+      });
     }
   });
 

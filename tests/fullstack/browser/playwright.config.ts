@@ -18,7 +18,10 @@ export default defineConfig({
   // siblings (the html reporter wipes its own folder). Config-file-relative.
   reporter: [
     ["list"],
-    ["html", { outputFolder: "../../reports/fullstack/browser/report", open: "never" }],
+    [
+      "html",
+      { outputFolder: "../../reports/fullstack/browser/report", open: "never" },
+    ],
   ],
   outputDir: "../../reports/fullstack/browser/artifacts",
   timeout: 30_000,

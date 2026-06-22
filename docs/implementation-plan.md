@@ -137,7 +137,7 @@ All ports use native JS abstractions (`AsyncIterable<T>`, `Promise<T>`) — neve
 
 ## Phase 3: Client Shell — Connection, Theme, Layout
 
-**Package:** `@rtc/client`
+**Package:** `@rtc/client-react`
 
 **Specs:**
 - `specs/features/shared/connection.feature`
@@ -147,7 +147,7 @@ All ports use native JS abstractions (`AsyncIterable<T>`, `Promise<T>`) — neve
 ### Files to create:
 
 ```
-packages/client/src/
+packages/client-react/src/
   main.tsx                          (update: app providers)
   App.tsx                           (layout: header, workspace, footer)
   theme/
@@ -180,7 +180,7 @@ packages/client/src/
 
 ## Phase 4: FX Live Rates — Tile Grid with Streaming Prices
 
-**Package:** `@rtc/client`
+**Package:** `@rtc/client-react`
 
 **Specs:**
 - `specs/features/fx/live-rates.feature`
@@ -191,7 +191,7 @@ packages/client/src/
 ### Files to create:
 
 ```
-packages/client/src/
+packages/client-react/src/
   fx/
     live-rates/
       live-rates-panel.tsx          (grid container with filter tabs and view toggle)
@@ -224,7 +224,7 @@ packages/client/src/
 
 ## Phase 5: FX Trade Execution + Blotter
 
-**Package:** `@rtc/client`
+**Package:** `@rtc/client-react`
 
 **Specs:**
 - `specs/features/fx/spot-trading.feature`
@@ -236,7 +236,7 @@ packages/client/src/
 ### Files to create:
 
 ```
-packages/client/src/
+packages/client-react/src/
   fx/
     tile/
       tile-execution.tsx            (Buy/Sell buttons)
@@ -277,7 +277,7 @@ packages/client/src/
 
 ## Phase 6: FX RFQ Flow
 
-**Package:** `@rtc/client`
+**Package:** `@rtc/client-react`
 
 **Specs:**
 - `specs/features/fx/rfq.feature`
@@ -286,7 +286,7 @@ packages/client/src/
 ### Files to create:
 
 ```
-packages/client/src/
+packages/client-react/src/
   fx/
     tile/
       tile-rfq.tsx                  (RFQ overlay: Initiate/Cancel/countdown/accept/reject)
@@ -311,7 +311,7 @@ packages/client/src/
 
 ## Phase 7: Analytics Panel
 
-**Package:** `@rtc/client`
+**Package:** `@rtc/client-react`
 
 **Specs:**
 - `specs/features/analytics/profit-and-loss.feature`
@@ -320,7 +320,7 @@ packages/client/src/
 ### Files to create:
 
 ```
-packages/client/src/
+packages/client-react/src/
   analytics/
     analytics-panel.tsx             (container)
     pnl-chart.tsx                   (line chart: 90 points, 10s refresh)
@@ -345,7 +345,7 @@ packages/client/src/
 
 ## Phase 8: Credit Reference Data + RFQ Creation
 
-**Packages:** `@rtc/domain`, `@rtc/client`
+**Packages:** `@rtc/domain`, `@rtc/client-react`
 
 **Specs:**
 - `specs/mock-backend/credit-reference-data.md`
@@ -356,7 +356,7 @@ packages/client/src/
 ### Files to create:
 
 ```
-packages/client/src/
+packages/client-react/src/
   credit/
     new-rfq/
       new-rfq-form.tsx              (instrument search, direction toggle, quantity, dealer list)
@@ -383,7 +383,7 @@ packages/client/src/
 
 ## Phase 9: Credit RFQ Tiles + Blotter + Sell-Side
 
-**Package:** `@rtc/client`
+**Package:** `@rtc/client-react`
 
 **Specs:**
 - `specs/features/credit/rfq-tiles.feature`
@@ -394,7 +394,7 @@ packages/client/src/
 ### Files to create:
 
 ```
-packages/client/src/
+packages/client-react/src/
   credit/
     rfq-tiles/
       rfq-tiles-panel.tsx           (card grid with filter tabs)
@@ -428,7 +428,7 @@ packages/client/src/
 
 ## Phase 10: Server (Marble.js WebSocket) + Admin
 
-**Packages:** `@rtc/server`, `@rtc/client`
+**Packages:** `@rtc/server`, `@rtc/client-react`
 
 **Specs:**
 - `specs/services/protocol.md`
@@ -453,7 +453,7 @@ packages/server/src/
     workflow-service.ts
     throughput-service.ts
 
-packages/client/src/
+packages/client-react/src/
   services/
     ws-adapter.ts                   (WebSocket client)
     real-service-factory.ts         (creates real adapters using WS transport)
@@ -475,19 +475,19 @@ packages/client/src/
 
 ## Phase 11: E2E Tests + Polish
 
-**Package:** `@rtc/client`
+**Package:** `@rtc/client-react`
 
 **Specs:** Cross-cutting visual behaviors from all feature specs.
 
 ### Files to create:
 
 ```
-packages/client/src/
+packages/client-react/src/
   stale/
     stale-indicator.tsx             (generic stale overlay)
     use-stale-detection.ts          (per-stream stale flag)
 
-packages/client/e2e/
+packages/client-react/e2e/
   fx-live-rates.spec.ts
   fx-trading.spec.ts
   fx-rfq.spec.ts

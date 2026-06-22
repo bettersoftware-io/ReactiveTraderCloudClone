@@ -1,6 +1,9 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
+import { describe, expect, it } from "vitest";
+
+import { defined } from "#/__testUtils__/defined.js";
+
 import type { DealerPort } from "../dealerPort.js";
 
 export interface DealerDriver {
@@ -26,6 +29,7 @@ export function describeDealerPortContract(
   describe(`${label} :: DealerPort contract`, () => {
     it("first emission contains the SoW set as a full snapshot", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getDealers());
         await driver.emitInitialSoW();
@@ -40,10 +44,12 @@ export function describeDealerPortContract(
     it("subsequent emissions are full snapshots, not deltas", async () => {
       const harness = makeHarness();
       const { port, driver, teardown, supportsLiveAdd = true } = harness;
+
       if (!supportsLiveAdd) {
         teardown();
         return;
       }
+
       try {
         const promise = firstValueFrom(
           port.getDealers().pipe(take(2), toArray()),
@@ -52,7 +58,9 @@ export function describeDealerPortContract(
         await driver.addDealerAfterSoW();
         const emissions = await promise;
         expect(emissions).toHaveLength(2);
-        expect(emissions[1]!.length).toBeGreaterThan(emissions[0]!.length);
+        expect(defined(emissions[1]).length).toBeGreaterThan(
+          defined(emissions[0]).length,
+        );
       } finally {
         teardown();
       }

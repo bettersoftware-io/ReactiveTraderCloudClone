@@ -1,7 +1,8 @@
 import { test as base } from "@playwright/test";
+
+import { buildPlaywrightPageObjects } from "../page-objects/playwright/factory";
 import type { TestContext } from "../testContext";
 import { Scratchpad } from "../testContext";
-import { buildPlaywrightPageObjects } from "../page-objects/playwright/factory";
 
 export const test = base.extend<{ ctx: TestContext }>({
   ctx: async ({ page }, use) => {
@@ -12,5 +13,3 @@ export const test = base.extend<{ ctx: TestContext }>({
     await use(ctx);
   },
 });
-
-export { expect } from "@playwright/test";

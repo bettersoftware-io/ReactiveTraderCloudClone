@@ -1,23 +1,33 @@
-import { describe, it, expect } from "vitest";
-import { ConnectionStatus, nextConnectionStatus, mapGatewayStatus } from "./connectionStatus.js";
-import type { ConnectionEvent } from "./connectionStatus.js";
+import { describe, expect, it } from "vitest";
+
+import {
+  ConnectionStatus,
+  mapGatewayStatus,
+  nextConnectionStatus,
+} from "./connectionStatus.js";
 
 describe("nextConnectionStatus", () => {
   it("CONNECTING -> CONNECTED on gatewayConnected", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.CONNECTING, { type: "gatewayConnected" }),
+      nextConnectionStatus(ConnectionStatus.CONNECTING, {
+        type: "gatewayConnected",
+      }),
     ).toBe(ConnectionStatus.CONNECTED);
   });
 
   it("CONNECTING -> DISCONNECTED on gatewayDisconnected (boot-time server-down)", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.CONNECTING, { type: "gatewayDisconnected" }),
+      nextConnectionStatus(ConnectionStatus.CONNECTING, {
+        type: "gatewayDisconnected",
+      }),
     ).toBe(ConnectionStatus.DISCONNECTED);
   });
 
   it("CONNECTED -> DISCONNECTED on gatewayDisconnected", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.CONNECTED, { type: "gatewayDisconnected" }),
+      nextConnectionStatus(ConnectionStatus.CONNECTED, {
+        type: "gatewayDisconnected",
+      }),
     ).toBe(ConnectionStatus.DISCONNECTED);
   });
 
@@ -29,61 +39,111 @@ describe("nextConnectionStatus", () => {
 
   it("CONNECTED -> OFFLINE_DISCONNECTED on browserOffline", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.CONNECTED, { type: "browserOffline" }),
+      nextConnectionStatus(ConnectionStatus.CONNECTED, {
+        type: "browserOffline",
+      }),
     ).toBe(ConnectionStatus.OFFLINE_DISCONNECTED);
   });
 
   it("CONNECTING -> OFFLINE_DISCONNECTED on browserOffline", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.CONNECTING, { type: "browserOffline" }),
+      nextConnectionStatus(ConnectionStatus.CONNECTING, {
+        type: "browserOffline",
+      }),
     ).toBe(ConnectionStatus.OFFLINE_DISCONNECTED);
   });
 
   it("IDLE_DISCONNECTED ignores gatewayDisconnected (idle takes precedence)", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.IDLE_DISCONNECTED, { type: "gatewayDisconnected" }),
+      nextConnectionStatus(ConnectionStatus.IDLE_DISCONNECTED, {
+        type: "gatewayDisconnected",
+      }),
     ).toBe(ConnectionStatus.IDLE_DISCONNECTED);
   });
 
   it("IDLE_DISCONNECTED -> CONNECTING on userActivity", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.IDLE_DISCONNECTED, { type: "userActivity" }),
+      nextConnectionStatus(ConnectionStatus.IDLE_DISCONNECTED, {
+        type: "userActivity",
+      }),
     ).toBe(ConnectionStatus.CONNECTING);
   });
 
   it("OFFLINE_DISCONNECTED -> CONNECTING on browserOnline", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.OFFLINE_DISCONNECTED, { type: "browserOnline" }),
+      nextConnectionStatus(ConnectionStatus.OFFLINE_DISCONNECTED, {
+        type: "browserOnline",
+      }),
     ).toBe(ConnectionStatus.CONNECTING);
   });
 
   it("DISCONNECTED -> CONNECTED on gatewayConnected (reconnect)", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.DISCONNECTED, { type: "gatewayConnected" }),
+      nextConnectionStatus(ConnectionStatus.DISCONNECTED, {
+        type: "gatewayConnected",
+      }),
     ).toBe(ConnectionStatus.CONNECTED);
   });
 
   it("DISCONNECTED -> CONNECTING on reconnectAttempt", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.DISCONNECTED, { type: "reconnectAttempt" }),
+      nextConnectionStatus(ConnectionStatus.DISCONNECTED, {
+        type: "reconnectAttempt",
+      }),
     ).toBe(ConnectionStatus.CONNECTING);
   });
 
   it("ignores reconnectAttempt outside DISCONNECTED", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.CONNECTED, { type: "reconnectAttempt" }),
+      nextConnectionStatus(ConnectionStatus.CONNECTED, {
+        type: "reconnectAttempt",
+      }),
     ).toBe(ConnectionStatus.CONNECTED);
     expect(
-      nextConnectionStatus(ConnectionStatus.OFFLINE_DISCONNECTED, { type: "reconnectAttempt" }),
+      nextConnectionStatus(ConnectionStatus.OFFLINE_DISCONNECTED, {
+        type: "reconnectAttempt",
+      }),
     ).toBe(ConnectionStatus.OFFLINE_DISCONNECTED);
   });
 
   it("ignores irrelevant events", () => {
     expect(
-      nextConnectionStatus(ConnectionStatus.CONNECTING, { type: "idleTimeout" }),
+      nextConnectionStatus(ConnectionStatus.CONNECTING, {
+        type: "idleTimeout",
+      }),
     ).toBe(ConnectionStatus.CONNECTING);
     expect(
-      nextConnectionStatus(ConnectionStatus.OFFLINE_DISCONNECTED, { type: "userActivity" }),
+      nextConnectionStatus(ConnectionStatus.OFFLINE_DISCONNECTED, {
+        type: "userActivity",
+      }),
+    ).toBe(ConnectionStatus.OFFLINE_DISCONNECTED);
+  });
+
+  it("DISCONNECTED ignores events it has no transition for (stays DISCONNECTED)", () => {
+    // DISCONNECTED only reacts to reconnectAttempt / gatewayConnected / browserOffline.
+    // Any other event must leave the status unchanged.
+    expect(
+      nextConnectionStatus(ConnectionStatus.DISCONNECTED, {
+        type: "idleTimeout",
+      }),
+    ).toBe(ConnectionStatus.DISCONNECTED);
+    expect(
+      nextConnectionStatus(ConnectionStatus.DISCONNECTED, {
+        type: "userActivity",
+      }),
+    ).toBe(ConnectionStatus.DISCONNECTED);
+    expect(
+      nextConnectionStatus(ConnectionStatus.DISCONNECTED, {
+        type: "gatewayDisconnected",
+      }),
+    ).toBe(ConnectionStatus.DISCONNECTED);
+  });
+
+  it("IDLE_DISCONNECTED -> OFFLINE_DISCONNECTED on browserOffline (offline wins over idle)", () => {
+    expect(
+      nextConnectionStatus(ConnectionStatus.IDLE_DISCONNECTED, {
+        type: "browserOffline",
+      }),
     ).toBe(ConnectionStatus.OFFLINE_DISCONNECTED);
   });
 });
@@ -102,7 +162,9 @@ describe("mapGatewayStatus", () => {
   });
 
   it("maps DISCONNECTED to DISCONNECTED", () => {
-    expect(mapGatewayStatus("DISCONNECTED")).toBe(ConnectionStatus.DISCONNECTED);
+    expect(mapGatewayStatus("DISCONNECTED")).toBe(
+      ConnectionStatus.DISCONNECTED,
+    );
   });
 
   it("maps ERROR to DISCONNECTED", () => {

@@ -4,8 +4,11 @@
 // With verbatimModuleSyntax + isolatedModules, ambient const enums cannot be
 // accessed as values from a different package. We import them as types only
 // and cast their string literals to the correct type via `as unknown as`.
+
 import { firstValueFrom } from "rxjs";
+
 import type { Direction, ExecutionStatus } from "@rtc/domain";
+
 import type { PresenterWorld } from "../_world";
 
 const DIR_BUY = "Buy" as unknown as Direction;
@@ -16,20 +19,39 @@ const ES_REJECTED = "Rejected" as unknown as ExecutionStatus;
 const ES_CREDIT_EXCEEDED = "CreditExceeded" as unknown as ExecutionStatus;
 const ES_TIMEOUT = "Timeout" as unknown as ExecutionStatus;
 
+interface ExecuteOnFirstPairResult {
+  status: ExecutionStatus;
+  notional: number;
+}
+
 async function executeOnFirstPair(
   w: PresenterWorld,
   direction: Direction,
   notional: number,
-): Promise<{ status: ExecutionStatus; notional: number }> {
-  const pair =
-    w.scratch.firstPair ??
-    (await w.awaitFirstWithin(w.ctx.app.presenters.currencyPairs.pairs$, 5000))[0]!;
+): Promise<ExecuteOnFirstPairResult> {
+  let pair = w.scratch.firstPair;
+
+  if (!pair) {
+    const fetchedPairs = await w.awaitFirstWithin(
+      w.ctx.app.presenters.currencyPairs.pairs$,
+      5000,
+    );
+    const first = fetchedPairs[0];
+    if (!first) throw new Error("no currency pairs available");
+    pair = first;
+  }
+
   w.scratch.firstPair = pair;
   const price = await firstValueFrom(
     w.ctx.app.presenters.priceStream.price$(pair),
   );
   const result = await w.awaitFirstWithin(
-    w.ctx.app.presenters.execution.execute({ pair, direction, price, notional }),
+    w.ctx.app.presenters.execution.execute({
+      pair,
+      direction,
+      price,
+      notional,
+    }),
     5000,
   );
   return { status: result.status, notional: result.trade.notional };
@@ -61,19 +83,27 @@ const UI_PATTERN_TO_STATUSES: Array<{
   statuses: ExecutionStatus[];
 }> = [
   {
-    test: (p) => /Executing|You Bought|You Sold|Bought|Sold/i.test(p.source),
+    test: (p) => {
+      return /Executing|You Bought|You Sold|Bought|Sold/i.test(p.source);
+    },
     statuses: [ES_DONE],
   },
   {
-    test: (p) => /rejected/i.test(p.source),
+    test: (p) => {
+      return /rejected/i.test(p.source);
+    },
     statuses: [ES_REJECTED],
   },
   {
-    test: (p) => /Credit limit/i.test(p.source),
+    test: (p) => {
+      return /Credit limit/i.test(p.source);
+    },
     statuses: [ES_CREDIT_EXCEEDED],
   },
   {
-    test: (p) => /timed out/i.test(p.source),
+    test: (p) => {
+      return /timed out/i.test(p.source);
+    },
     statuses: [ES_TIMEOUT],
   },
 ];
@@ -85,15 +115,24 @@ export async function expectTradeConfirmationMatchesOneOf(
   const status = w.scratch.lastTradeStatus;
   if (!status) throw new Error("no trade status captured");
   const accepted = new Set<ExecutionStatus>();
+
   for (const p of patterns) {
     for (const rule of UI_PATTERN_TO_STATUSES) {
       if (rule.test(p)) for (const s of rule.statuses) accepted.add(s);
     }
+
     if (p.test(status as unknown as string)) accepted.add(status);
   }
+
   if (!accepted.has(status)) {
     throw new Error(
-      `presenter status "${status as unknown as string}" not in accepted set [${[...accepted].map((s) => s as unknown as string).join(", ")}] ` +
+      `presenter status "${status as unknown as string}" not in accepted set [${[
+        ...accepted,
+      ]
+        .map((s) => {
+          return s as unknown as string;
+        })
+        .join(", ")}] ` +
         `(from UI patterns ${patterns.map(String).join(", ")})`,
     );
   }
@@ -107,16 +146,28 @@ export async function buyNTimesWithDismissals(
     w.ctx.app.presenters.currencyPairs.pairs$,
     5000,
   );
-  const gbpjpy = pairs.find((p) => p.symbol === "GBPJPY") ?? pairs[0]!;
+  const gbpjpyOrFirst =
+    pairs.find((p) => {
+      return p.symbol === "GBPJPY";
+    }) ?? pairs[0];
+  if (!gbpjpyOrFirst)
+    throw new Error("no currency pairs available for buyNTimesWithDismissals");
+  const gbpjpy = gbpjpyOrFirst;
 
   for (let i = 0; i < n; i++) {
     const price = await firstValueFrom(
       w.ctx.app.presenters.priceStream.price$(gbpjpy),
     );
     const result = await w.awaitFirstWithin(
-      w.ctx.app.presenters.execution.execute({ pair: gbpjpy, direction: DIR_BUY, price, notional: 1_000_000 }),
+      w.ctx.app.presenters.execution.execute({
+        pair: gbpjpy,
+        direction: DIR_BUY,
+        price,
+        notional: 1_000_000,
+      }),
       5000,
     );
+
     if ((result.status as unknown as string) === "Rejected") {
       w.scratch.rejectedSeen = true;
     }
@@ -146,7 +197,7 @@ export async function expectTradeConfirmationHides(
 export async function expectTradeNotionalEquals(
   w: PresenterWorld,
   expected: number,
-  ): Promise<void> {
+): Promise<void> {
   if (w.scratch.lastTradeNotional !== expected) {
     throw new Error(
       `trade notional ${w.scratch.lastTradeNotional} != expected ${expected}`,

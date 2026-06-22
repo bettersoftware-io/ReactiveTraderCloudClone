@@ -32,7 +32,7 @@ packages/
   domain/    @rtc/domain   Pure TS. Entities, use cases, port interfaces,
                            simulators. Only runtime dependency: rxjs.
   shared/    @rtc/shared   DTOs and wire-format contracts. Depends on domain.
-  client/    @rtc/client   React + RxJS + Vite web app. Depends on domain + shared.
+  client-react/  @rtc/client-react   React + RxJS + Vite web app. Depends on domain + shared.
   server/    @rtc/server   Marble.js + RxJS backend. Depends on domain + shared.
   mobile/    @rtc/mobile   React Native client (planned). Depends on domain + shared.
 ```
@@ -49,6 +49,7 @@ For the full picture, see:
 - [`docs/implementation-plan.md`](docs/implementation-plan.md) — the phased plan the build followed.
 - [`docs/superpowers/STATUS.md`](docs/superpowers/STATUS.md) — authoritative status of each phase, including the current test topology.
 - [`docs/superpowers/`](docs/superpowers/) — the per-phase specs and plans, including the design of the multi-runner verification stack (phases 5a–5e).
+- [`docs/claude-sandbox.md`](docs/claude-sandbox.md) — running this repo from macOS WebStorm + the Linux claude-sandbox container at once: volume-isolating `node_modules`/`dist` so both work without interfering, and fixing WebStorm module resolution.
 
 ## Prerequisites
 
@@ -83,7 +84,7 @@ pnpm build       # Topological build: domain → shared → client + server
 
 ```bash
 pnpm dev                          # everything: Vite client + tsx-watch server, concurrently
-pnpm --filter @rtc/client dev     # frontend only (Vite, http://localhost:5173)
+pnpm --filter @rtc/client-react dev     # frontend only (Vite, http://localhost:5173)
 pnpm --filter @rtc/server dev     # backend only (Marble.js, tsx watch)
 ```
 
@@ -115,10 +116,10 @@ Reports land under each package's own `reports/` tree — gitignored, and wiped 
 - **Coverage** (HTML + `lcov.info`) — the opt-in `:coverage` scripts ⇒
   `<package>/reports/<a>/<b>/coverage/` (`@rtc/domain` & `@rtc/server`
   `test:coverage` ⇒ `reports/unit/coverage/`). All report-only except
-  `@rtc/client test:ui:contract:coverage`, a CI-enforced ≥95% gate. The
-  `@rtc/client test:ui:visual:vitest-browser:react:coverage` report is a
+  `@rtc/client-react test:ui:contract:coverage`, a CI-enforced ≥95% gate. The
+  `@rtc/client-react test:ui:visual:vitest-browser:react:coverage` report is a
   **gap-finder**: uncovered `src/ui` branches are visual states with no golden
-  snapshot (inventory: `packages/client/tests/ui/visual/COVERAGE-GAPS.md`).
+  snapshot (inventory: `packages/client-react/tests/ui/visual/COVERAGE-GAPS.md`).
 
 Where each package writes:
 
@@ -127,14 +128,14 @@ Where each package writes:
 | `@rtc/domain` | `reports/unit/report/` | `reports/unit/coverage/` (`test:coverage`) |
 | `@rtc/server` | `reports/unit/report/` | `reports/unit/coverage/` (`test:coverage`) |
 | `@rtc/shared` | `reports/unit/report/` | — (package has no tests) |
-| `@rtc/client` | `reports/{unit,app,ui/contract}/report/`, `reports/ui/visual/<runner>/react/report/` | `reports/{app,ui/contract,ui/visual}/coverage/` |
+| `@rtc/client-react` | `reports/{unit,app,ui/contract}/report/`, `reports/ui/visual/<runner>/react/report/` | `reports/{app,ui/contract,ui/visual}/coverage/` |
 | `@rtc/tests` (e2e) | `reports/{presenter,browser,fullstack}/<suite>/report/` | — (cross-process; not measured) |
 
-Per-package detail: [`packages/client/README.md`](packages/client/README.md)
+Per-package detail: [`packages/client-react/README.md`](packages/client-react/README.md)
 (every client script ↔ report dir) and [`tests/README.md`](tests/README.md) (the
 e2e suite matrix).
 
-`pnpm test` runs each package's bare `test`; in `@rtc/client` that's the
+`pnpm test` runs each package's bare `test`; in `@rtc/client-react` that's the
 **union** of two co-resident tiers — the **app tier** (`test:app`: presenters +
 adapters under `src/app`) and the **ui contract tier** (`test:ui:contract`:
 sociable RTL specs over `src/ui`) — which also have focused per-tier runners.
@@ -166,7 +167,7 @@ just want to watch it run):
 ```bash
 pnpm test --force                                       # ignore the cache, run fresh
 TURBO_FORCE=true pnpm test                              # same, via env var
-pnpm exec turbo run test --filter @rtc/client --force   # one package only
+pnpm exec turbo run test --filter @rtc/client-react --force   # one package only
 ```
 
 Two tasks are deliberately **never cached** (`cache: false` in `turbo.json`):
@@ -187,7 +188,7 @@ turbo outputs) — `--force` regenerates them.
 ### Visual tests (a third tier — neither e2e nor integration)
 
 `pnpm test:ui:visual` is a separate tier that screenshots
-`@rtc/client` UI components and pages rendered against **injected fake data**.
+`@rtc/client-react` UI components and pages rendered against **injected fake data**.
 It mounts only `src/ui/**` behind the `HooksProvider` seam — no presenters, no
 domain use cases, no server, no live streams, no timers — so it tests *rendering
 only*, the exact layer a future SolidJS port would replace. The fixtures,
@@ -197,14 +198,14 @@ reimplementation.
 
 ```bash
 pnpm test:ui:visual                                              # all 3 runners vs committed goldens
-pnpm --filter @rtc/client test:ui:visual:playwright-ct:react:ui  # interactive (runner 1; runner 2 has :ui too)
+pnpm --filter @rtc/client-react test:ui:visual:playwright-ct:react:ui  # interactive (runner 1; runner 2 has :ui too)
 # Regenerate goldens per runner — inspect before committing:
-pnpm --filter @rtc/client test:ui:visual:playwright-ct:react:update
-pnpm --filter @rtc/client test:ui:visual:playwright:react:update
-pnpm --filter @rtc/client test:ui:visual:vitest-browser:react:update
+pnpm --filter @rtc/client-react test:ui:visual:playwright-ct:react:update
+pnpm --filter @rtc/client-react test:ui:visual:playwright:react:update
+pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update
 ```
 
-See `packages/client/tests/ui/visual/README.md` for the layout and the SolidJS porting
+See `packages/client-react/tests/ui/visual/README.md` for the layout and the SolidJS porting
 recipe.
 
 ### Do I need to start the servers first?
@@ -317,7 +318,7 @@ package with a filter:
 
 ```bash
 pnpm --filter @rtc/domain test
-pnpm --filter @rtc/client dev
+pnpm --filter @rtc/client-react dev
 ```
 
 ## Status

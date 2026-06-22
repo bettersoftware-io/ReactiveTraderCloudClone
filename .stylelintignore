@@ -1,0 +1,7 @@
+# Generated / vendored CSS — Biome and stylelint only police first-party source.
+**/dist/**
+**/reports/**
+**/coverage/**
+**/.cache/**
+**/__screenshots__/**
+**/node_modules/**

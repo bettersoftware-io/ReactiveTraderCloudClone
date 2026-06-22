@@ -1,5 +1,6 @@
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import type { PricingPort, RfqQuoteResult } from "../ports/pricingPort.js";
 import { RfqQuoteUseCase } from "./RfqQuoteUseCase.js";
 
@@ -8,8 +9,12 @@ describe("RfqQuoteUseCase", () => {
     const expected: RfqQuoteResult = { bid: 1.099, ask: 1.101, mid: 1.1 };
     let calledWith: { symbol: string; pipsPosition: number } | null = null;
     const port: PricingPort = {
-      getPriceUpdates: () => of(),
-      getPriceHistory: () => of([]),
+      getPriceUpdates: () => {
+        return of();
+      },
+      getPriceHistory: () => {
+        return of([]);
+      },
       getRfqQuote: (symbol, pipsPosition) => {
         calledWith = { symbol, pipsPosition };
         return of(expected);

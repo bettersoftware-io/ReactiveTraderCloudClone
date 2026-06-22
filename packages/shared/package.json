@@ -15,19 +15,23 @@
       "import": "./dist/__fixtures__/wireFrames.js"
     }
   },
+  "imports": {
+    "#/*": "./src/*"
+  },
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && tsc-alias -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dev": "tsc --build --watch",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo reports",
-    "clean:deep": "pnpm run clean && rm -rf node_modules"
+    "dev": "tsc-alias -w -p tsconfig.json & tsc --build --watch",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports 2>/dev/null || true",
+    "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
     "@rtc/domain": "workspace:*"
   },
   "devDependencies": {
     "@vitest/ui": "^4.1.8",
+    "tsc-alias": "1.8.17",
     "vitest": "^4"
   }
 }

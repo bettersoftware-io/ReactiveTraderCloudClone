@@ -1,8 +1,11 @@
 import { afterEach, vi } from "vitest";
+
 import { describeAnalyticsPortContract } from "../ports/__contracts__/AnalyticsPortContract.js";
 import { AnalyticsSimulator } from "./AnalyticsSimulator.js";
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describeAnalyticsPortContract("AnalyticsSimulator", () => {
   vi.useFakeTimers();
@@ -16,6 +19,8 @@ describeAnalyticsPortContract("AnalyticsSimulator", () => {
         await vi.advanceTimersByTimeAsync(0);
       },
     },
-    teardown: () => vi.useRealTimers(),
+    teardown: () => {
+      return vi.useRealTimers();
+    },
   };
 });

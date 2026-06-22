@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 /**
  * Full-stack browser happy path.
@@ -12,7 +12,9 @@ import { test, expect } from "@playwright/test";
  * adapter → WebSocket → server → domain.
  */
 test.describe("full-stack: live pricing renders from the real server", () => {
-  test("a price tile shows a live rate streamed from the backend", async ({ page }) => {
+  test("a price tile shows a live rate streamed from the backend", async ({
+    page,
+  }) => {
     await page.goto("/");
 
     const firstTile = page.locator("[data-testid^='tile-']").first();

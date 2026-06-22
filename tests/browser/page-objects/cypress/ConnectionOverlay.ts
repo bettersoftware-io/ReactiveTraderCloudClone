@@ -8,16 +8,28 @@ export class CypressConnectionOverlay implements ConnectionOverlayPO {
       return found.length === 0 || !found.is(":visible");
     }) as unknown as Promise<boolean>;
   }
+
   waitVisible(timeoutMs: number): Promise<void> {
-    return cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`, { timeout: timeoutMs })
+    return cy
+      .get(`[data-testid="${TESTIDS.connection.overlay}"]`, {
+        timeout: timeoutMs,
+      })
       .should("be.visible") as unknown as Promise<void>;
   }
+
   waitHidden(timeoutMs: number): Promise<void> {
-    return cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`, { timeout: timeoutMs })
+    return cy
+      .get(`[data-testid="${TESTIDS.connection.overlay}"]`, {
+        timeout: timeoutMs,
+      })
       .should("not.exist") as unknown as Promise<void>;
   }
+
   text(): Promise<string> {
-    return cy.get(`[data-testid="${TESTIDS.connection.overlay}"]`)
-      .then(($el) => $el.text()) as unknown as Promise<string>;
+    return cy
+      .get(`[data-testid="${TESTIDS.connection.overlay}"]`)
+      .then(($el) => {
+        return $el.text();
+      }) as unknown as Promise<string>;
   }
 }

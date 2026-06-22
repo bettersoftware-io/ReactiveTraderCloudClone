@@ -25,3 +25,6 @@ test-results/
 # dir, so this can't match them.
 packages/client/tests/ui/visual/**/__screenshots__/*.spec.ts/
 packages/client/tests/ui/visual/**/__screenshots__/*.spec.tsx/
+
+# actionlint binary (downloaded via scripts/install-actionlint.sh)
+.tooling/

@@ -2,7 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    // See domain/tsconfig.json — incremental cache lives in dist/ so the
+    // sandbox's isolated-dist / shared-root split can't desync emit.
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
+    "paths": { "#/*": ["./src/*"] }
   },
   "include": ["src"],
   "references": [{ "path": "../domain" }, { "path": "../shared" }]

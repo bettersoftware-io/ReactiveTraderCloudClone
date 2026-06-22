@@ -1,5 +1,12 @@
 import type { TestContext } from "../testContext";
-import { assertContains, assertEquals, assertGte, assertLte, assertTrue, assertGreaterThanZero } from "./assert";
+import {
+  assertContains,
+  assertEquals,
+  assertGreaterThanZero,
+  assertGte,
+  assertLte,
+  assertTrue,
+} from "./assert";
 
 export async function expectFirstPriceTileVisibleWithin(
   ctx: TestContext,
@@ -15,16 +22,33 @@ export async function expectAtLeastNTilesVisible(
   assertGte(await ctx.po.liveRatesTile.count(), n);
 }
 
-export async function expectFirstTileHasBuyAndSellButtons(ctx: TestContext): Promise<void> {
-  assertTrue(await ctx.po.liveRatesTile.firstTileSellVisible(), "first tile sell button not visible");
-  assertTrue(await ctx.po.liveRatesTile.firstTileBuyVisible(), "first tile buy button not visible");
+export async function expectFirstTileHasBuyAndSellButtons(
+  ctx: TestContext,
+): Promise<void> {
+  assertTrue(
+    await ctx.po.liveRatesTile.firstTileSellVisible(),
+    "first tile sell button not visible",
+  );
+  assertTrue(
+    await ctx.po.liveRatesTile.firstTileBuyVisible(),
+    "first tile buy button not visible",
+  );
 }
 
-export async function recordVisibleTileCount(ctx: TestContext, key: string): Promise<void> {
-  ctx.scratch.fxLiveRates.recordedCounts.set(key, await ctx.po.liveRatesTile.count());
+export async function recordVisibleTileCount(
+  ctx: TestContext,
+  key: string,
+): Promise<void> {
+  ctx.scratch.fxLiveRates.recordedCounts.set(
+    key,
+    await ctx.po.liveRatesTile.count(),
+  );
 }
 
-export async function clickCurrencyFilter(ctx: TestContext, category: string): Promise<void> {
+export async function clickCurrencyFilter(
+  ctx: TestContext,
+  category: string,
+): Promise<void> {
   await ctx.po.liveRatesTile.clickFilter(category);
 }
 
@@ -47,10 +71,16 @@ export async function expectVisibleTileCountEquals(
 }
 
 export async function expectViewToggleVisible(ctx: TestContext): Promise<void> {
-  assertTrue(await ctx.po.liveRatesTile.viewToggleVisible(), "view toggle not visible");
+  assertTrue(
+    await ctx.po.liveRatesTile.viewToggleVisible(),
+    "view toggle not visible",
+  );
 }
 
-export async function expectViewToggleShows(ctx: TestContext, expected: string): Promise<void> {
+export async function expectViewToggleShows(
+  ctx: TestContext,
+  expected: string,
+): Promise<void> {
   assertContains(await ctx.po.liveRatesTile.viewToggleLabel(), expected);
 }
 
@@ -59,14 +89,22 @@ export async function clickViewToggle(ctx: TestContext): Promise<void> {
 }
 
 export async function recordFirstTileText(ctx: TestContext): Promise<void> {
-  ctx.scratch.fxLiveRates.firstTileTextSnapshot = await ctx.po.liveRatesTile.firstTileText();
+  ctx.scratch.fxLiveRates.firstTileTextSnapshot =
+    await ctx.po.liveRatesTile.firstTileText();
 }
 
-export async function expectFirstTileTextNonEmpty(ctx: TestContext): Promise<void> {
+export async function expectFirstTileTextNonEmpty(
+  ctx: TestContext,
+): Promise<void> {
   const current = await ctx.po.liveRatesTile.firstTileText();
-  assertGreaterThanZero(ctx.scratch.fxLiveRates.firstTileTextSnapshot?.length ?? 0,
-    "snapshot length should be > 0");
-  assertGreaterThanZero(current.length, "current first tile text should be non-empty");
+  assertGreaterThanZero(
+    ctx.scratch.fxLiveRates.firstTileTextSnapshot?.length ?? 0,
+    "snapshot length should be > 0",
+  );
+  assertGreaterThanZero(
+    current.length,
+    "current first tile text should be non-empty",
+  );
 }
 
 export async function expectAtLeastNTilesVisibleWithin(
@@ -83,5 +121,8 @@ export async function expectFirstTileTextMatches(
   pattern: RegExp,
 ): Promise<void> {
   const text = await ctx.po.liveRatesTile.firstTileText();
-  assertTrue(pattern.test(text), `first tile text "${text}" did not match ${pattern}`);
+  assertTrue(
+    pattern.test(text),
+    `first tile text "${text}" did not match ${pattern}`,
+  );
 }

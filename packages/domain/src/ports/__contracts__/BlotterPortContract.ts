@@ -1,6 +1,9 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
+import { describe, expect, it } from "vitest";
+
+import { defined } from "#/__testUtils__/defined.js";
+
 import type { BlotterPort } from "../blotterPort.js";
 
 export interface BlotterDriver {
@@ -21,6 +24,7 @@ export function describeBlotterPortContract(
   describe(`${label} :: BlotterPort contract`, () => {
     it("emits an initial snapshot (possibly empty)", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(port.getTradeStream());
         await driver.emitInitialBlotter();
@@ -33,6 +37,7 @@ export function describeBlotterPortContract(
 
     it("each new trade produces a cumulative snapshot containing prior trades", async () => {
       const { port, driver, teardown } = makeHarness();
+
       try {
         const promise = firstValueFrom(
           port.getTradeStream().pipe(take(2), toArray()),
@@ -41,7 +46,9 @@ export function describeBlotterPortContract(
         await driver.appendTrade();
         const emissions = await promise;
         expect(emissions).toHaveLength(2);
-        expect(emissions[1]!.length).toBeGreaterThanOrEqual(emissions[0]!.length);
+        expect(defined(emissions[1]).length).toBeGreaterThanOrEqual(
+          defined(emissions[0]).length,
+        );
       } finally {
         teardown();
       }

@@ -21,20 +21,19 @@
 
 export * from "@badeball/cypress-cucumber-preprocessor";
 
-import {
-  defineStep as _defineStep,
-} from "@badeball/cypress-cucumber-preprocessor";
+import { defineStep as _defineStep } from "@badeball/cypress-cucumber-preprocessor";
 
 type StepFn = (...args: unknown[]) => unknown;
 type DefineStep = (pattern: string | RegExp, fn: StepFn) => void;
 
 function wrapStepFn(fn: StepFn): StepFn {
-  return function (this: unknown, ...args: unknown[]) {
+  return function wrappedStep(this: unknown, ...args: unknown[]) {
     // Call the (possibly async) step handler. Commands queued inside it via
     // cy.* are already in the Cypress queue regardless of whether the handler
     // is async. We discard the native Promise return value (if any) and let
     // the Cypress command queue handle ordering.
-    const result = (fn as Function).apply(this, args);
+    const result = (fn as (...a: unknown[]) => unknown).apply(this, args);
+
     // If the step handler returned a Cypress Chainable, return it directly so
     // the preprocessor can chain off it. Otherwise return cy.wrap(undefined)
     // as a safe no-op anchor. Either way the preprocessor never sees a native
@@ -45,6 +44,7 @@ function wrapStepFn(fn: StepFn): StepFn {
     if (Cypress.isCy(result)) {
       return result;
     }
+
     // Discard native Promise; return a Chainable that resolves after the
     // already-queued commands complete.
     return cy.wrap(undefined, { log: false });
@@ -52,10 +52,14 @@ function wrapStepFn(fn: StepFn): StepFn {
 }
 
 function makeStep(impl: DefineStep): DefineStep {
-  return (pattern: string | RegExp, fn: StepFn) => impl(pattern, wrapStepFn(fn));
+  return (pattern: string | RegExp, fn: StepFn) => {
+    return impl(pattern, wrapStepFn(fn));
+  };
 }
 
-export const defineStep: DefineStep = makeStep(_defineStep as unknown as DefineStep);
+export const defineStep: DefineStep = makeStep(
+  _defineStep as unknown as DefineStep,
+);
 export const Given: DefineStep = makeStep(_defineStep as unknown as DefineStep);
 export const When: DefineStep = makeStep(_defineStep as unknown as DefineStep);
 export const Then: DefineStep = makeStep(_defineStep as unknown as DefineStep);

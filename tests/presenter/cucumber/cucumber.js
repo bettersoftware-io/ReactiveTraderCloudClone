@@ -10,7 +10,11 @@ export default {
     "presenter/steps/**/*.ts",
   ],
   tags: "@presenter",
-  format: ["progress-bar", "html:reports/presenter/cucumber/report/index.html", "summary"],
+  format: [
+    "progress-bar",
+    "html:reports/presenter/cucumber/report/index.html",
+    "summary",
+  ],
   parallel: process.env.CI ? 1 : 2,
   retry: 0,
 };

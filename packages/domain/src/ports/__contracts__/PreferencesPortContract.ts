@@ -1,12 +1,14 @@
-import { describe, it, expect } from "vitest";
 import { firstValueFrom } from "rxjs";
-import type { PreferencesPort } from "../preferencesPort.js";
+import { describe, expect, it } from "vitest";
+
 import {
   DEFAULT_THEME,
   DEFAULT_VIEW_MODE,
   type Theme,
   type ViewMode,
-} from "../../preferences/preferences.js";
+} from "#/preferences/preferences.js";
+
+import type { PreferencesPort } from "../preferencesPort.js";
 
 /** A pre-seeded preferences store. Partial — omitted keys fall back to defaults. */
 export interface PreferencesSeed {
@@ -42,8 +44,18 @@ export function describePreferencesPortContract(
 
       let theme: Theme | undefined;
       let viewMode: ViewMode | undefined;
-      port.theme$().subscribe((t) => (theme = t)).unsubscribe();
-      port.viewMode$().subscribe((v) => (viewMode = v)).unsubscribe();
+      port
+        .theme$()
+        .subscribe((t) => {
+          theme = t;
+        })
+        .unsubscribe();
+      port
+        .viewMode$()
+        .subscribe((v) => {
+          viewMode = v;
+        })
+        .unsubscribe();
 
       // Synchronous: values are set by the time .subscribe() returns.
       expect(theme).toBe("light");
@@ -53,7 +65,9 @@ export function describePreferencesPortContract(
     it("setTheme persists and pushes to existing subscribers", () => {
       const port = makeEmpty();
       const seen: Theme[] = [];
-      const sub = port.theme$().subscribe((t) => seen.push(t));
+      const sub = port.theme$().subscribe((t) => {
+        return seen.push(t);
+      });
 
       port.setTheme("light");
 
@@ -64,7 +78,9 @@ export function describePreferencesPortContract(
     it("setViewMode persists and pushes to existing subscribers", () => {
       const port = makeEmpty();
       const seen: ViewMode[] = [];
-      const sub = port.viewMode$().subscribe((v) => seen.push(v));
+      const sub = port.viewMode$().subscribe((v) => {
+        return seen.push(v);
+      });
 
       port.setViewMode("price");
 

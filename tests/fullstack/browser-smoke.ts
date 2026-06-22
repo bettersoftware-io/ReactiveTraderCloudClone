@@ -12,10 +12,11 @@
  * Exits non-zero if the server, client, or Playwright run fails.
  */
 import { spawn } from "node:child_process";
+
 import {
   MONOREPO_ROOT,
-  startServer,
   startClient,
+  startServer,
   stopProcess,
   waitForHttp,
 } from "./_orchestration.js";
@@ -38,20 +39,18 @@ function runPlaywright(): Promise<number> {
     // FULLSTACK_HEADED (set by the :headed script) runs the real browser
     // visibly against the real backend, so the full stack can be watched live.
     if (process.env.FULLSTACK_HEADED) args.push("--headed");
-    const child = spawn(
-      "pnpm",
-      args,
-      {
-        cwd: MONOREPO_ROOT,
-        stdio: "inherit",
-        env: {
-          ...process.env,
-          FULLSTACK_CLIENT_PORT: String(CLIENT_PORT),
-          NODE_OPTIONS: "",
-        },
+    const child = spawn("pnpm", args, {
+      cwd: MONOREPO_ROOT,
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        FULLSTACK_CLIENT_PORT: String(CLIENT_PORT),
+        NODE_OPTIONS: "",
       },
-    );
-    child.on("exit", (code) => resolve(code ?? 1));
+    });
+    child.on("exit", (code) => {
+      return resolve(code ?? 1);
+    });
   });
 }
 
@@ -61,6 +60,7 @@ console.log(
 const server = startServer(SERVER_PORT, HOST);
 const client = startClient(CLIENT_PORT, `ws://${HOST}:${SERVER_PORT}`);
 let exitCode = 0;
+
 try {
   await waitForHttp(`http://${HOST}:${SERVER_PORT}/health`, 30_000);
   await waitForHttp(`http://${HOST}:${CLIENT_PORT}`, 60_000);
@@ -77,4 +77,5 @@ try {
 } finally {
   await Promise.all([stopProcess(client), stopProcess(server)]);
 }
+
 process.exit(exitCode);
