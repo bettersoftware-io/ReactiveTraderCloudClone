@@ -67,6 +67,9 @@ jobs:
       - name: Workflow lint (actionlint)
         run: pnpm lint:actions
 
+      - name: Version consistency (manypkg + syncpack)
+        run: pnpm check:versions
+
       - name: Typecheck
         run: pnpm typecheck
 

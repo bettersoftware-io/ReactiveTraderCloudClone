@@ -1,0 +1,9 @@
+{
+  "versionGroups": [
+    {
+      "label": "Private workspace root has no version field by design",
+      "packages": ["@rtc/root"],
+      "isIgnored": true
+    }
+  ]
+}
