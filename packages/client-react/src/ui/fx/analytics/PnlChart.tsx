@@ -12,8 +12,17 @@ const CHART_WIDTH = 400;
 const CHART_HEIGHT = 120;
 const PADDING = 8;
 
-function buildPath(history: readonly HistoricPosition[]): string {
-  if (history.length < 2) return "";
+interface PnlChartShape {
+  /** SVG path `d` for the P&L line, or "" when there are too few points. */
+  path: string;
+  /** Y of the zero baseline, or null when 0 is outside the value range. */
+  zeroY: number | null;
+}
+
+// Derive both the line path and the zero baseline from a single pass over the
+// history: values, min/max and the plot height are shared, so compute them once.
+function buildChart(history: readonly HistoricPosition[]): PnlChartShape {
+  if (history.length < 2) return { path: "", zeroY: null };
 
   const values = history.map((h) => {
     return h.usdPnl;
@@ -26,32 +35,23 @@ function buildPath(history: readonly HistoricPosition[]): string {
   const h = CHART_HEIGHT - PADDING * 2;
   const step = w / (values.length - 1);
 
-  return values
+  const path = values
     .map((v, i) => {
       const x = PADDING + i * step;
       const y = PADDING + h - ((v - min) / range) * h;
       return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
-}
 
-function buildZeroLine(history: readonly HistoricPosition[]): number | null {
-  if (history.length < 2) return null;
-  const values = history.map((h) => {
-    return h.usdPnl;
-  });
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const h = CHART_HEIGHT - PADDING * 2;
+  // Zero baseline only when 0 falls within [min, max].
+  const zeroY =
+    min > 0 || max < 0 ? null : PADDING + h - ((0 - min) / range) * h;
 
-  if (min > 0 || max < 0) return null;
-  return PADDING + h - ((0 - min) / range) * h;
+  return { path, zeroY };
 }
 
 export function PnlChart({ history }: PnlChartProps): ReactElement {
-  const path = buildPath(history);
-  const zeroY = buildZeroLine(history);
+  const { path, zeroY } = buildChart(history);
   const lastValue = history.length > 0 ? history[history.length - 1].usdPnl : 0;
   const isPositive = lastValue >= 0;
 
@@ -75,7 +75,7 @@ export function PnlChart({ history }: PnlChartProps): ReactElement {
           strokeDasharray="4 2"
         />
       )}
-      {path && (
+      {path !== "" && (
         <path
           d={path}
           fill="none"
