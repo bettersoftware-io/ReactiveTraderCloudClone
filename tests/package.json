@@ -46,7 +46,7 @@
     "@types/node": "^26.0.0",
     "@types/ws": "^8.18.1",
     "@vitest/ui": "^4.1.8",
-    "cypress": "15.16.0",
+    "cypress": "15.17.0",
     "cypress-mochawesome-reporter": "^4.0.2",
     "esbuild": "0.28.1",
     "quickpickle": "^1.11",
