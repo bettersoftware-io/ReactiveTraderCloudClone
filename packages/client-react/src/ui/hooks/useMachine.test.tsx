@@ -121,11 +121,11 @@ describe("useMachine", () => {
       return makeTestMachine(new BehaviorSubject(0)).machine;
     });
 
-    function wrapper({
-      children,
-    }: {
+    interface WrapperProps {
       children: React.ReactNode;
-    }): ReactElement {
+    }
+
+    function wrapper({ children }: WrapperProps): ReactElement {
       return <React.StrictMode>{children}</React.StrictMode>;
     }
 
@@ -174,11 +174,11 @@ describe("useMachine", () => {
    * (verified: a render() probe shows setup:2 cleanup:1, a renderHook probe
    * setup:1 cleanup:0). This is the only faithful unit-level reproduction of the
    * production StrictMode lifecycle that froze the tiles. */
-  function Probe({
-    machine,
-  }: {
-    machine: Machine<number, { bump: () => void }>;
-  }): ReactElement {
+  interface ProbeProps {
+    machine: Machine<number, LifecycleMachineIntents>;
+  }
+
+  function Probe({ machine }: ProbeProps): ReactElement {
     const { state, bump } = useMachine(() => {
       return machine;
     });

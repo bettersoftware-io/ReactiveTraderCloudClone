@@ -36,6 +36,18 @@ import { CLIENT_MSG, SERVER_MSG, type WsMessage } from "./protocol.js";
 
 type AbortSet = Set<AbortController>;
 
+interface SymbolPayload {
+  symbol: string;
+}
+
+interface CurrencyPayload {
+  currency: string;
+}
+
+interface ThroughputValuePayload {
+  value: number;
+}
+
 function send(
   ws: WebSocket,
   type: string,
@@ -84,7 +96,7 @@ function handleMessage(
       break;
 
     case CLIENT_MSG.SUBSCRIBE_PRICING:
-      streamPricing(ws, svc, subs, msg.payload as { symbol: string });
+      streamPricing(ws, svc, subs, msg.payload as SymbolPayload);
       break;
 
     case CLIENT_MSG.SUBSCRIBE_BLOTTER:
@@ -92,7 +104,7 @@ function handleMessage(
       break;
 
     case CLIENT_MSG.SUBSCRIBE_ANALYTICS:
-      streamAnalytics(ws, svc, subs, msg.payload as { currency: string });
+      streamAnalytics(ws, svc, subs, msg.payload as CurrencyPayload);
       break;
 
     // ── Credit Subscriptions ──────────────────────────────
@@ -214,7 +226,7 @@ function streamPricing(
   ws: WebSocket,
   svc: ServiceContainer,
   subs: AbortSet,
-  payload: { symbol: string },
+  payload: SymbolPayload,
 ): void {
   const ac = createSubscription(subs);
   const sub = svc.pricing.getPriceUpdates(payload.symbol).subscribe({
@@ -302,7 +314,7 @@ function streamAnalytics(
   ws: WebSocket,
   svc: ServiceContainer,
   subs: AbortSet,
-  payload: { currency: string },
+  payload: CurrencyPayload,
 ): void {
   const ac = createSubscription(subs);
   const sub = svc.analytics.getAnalytics(payload.currency).subscribe({
@@ -570,7 +582,7 @@ async function handleGetPriceHistory(
   msg: WsMessage,
 ): Promise<void> {
   try {
-    const { symbol } = msg.payload as { symbol: string };
+    const { symbol } = msg.payload as SymbolPayload;
     const prices = await firstValueFrom(svc.pricing.getPriceHistory(symbol));
     send(
       ws,
@@ -706,7 +718,7 @@ function handleSetThroughput(
   msg: WsMessage,
 ): void {
   try {
-    const { value } = msg.payload as { value: number };
+    const { value } = msg.payload as ThroughputValuePayload;
     svc.throughput.setThroughput(value);
     send(
       ws,

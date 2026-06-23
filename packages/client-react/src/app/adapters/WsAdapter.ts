@@ -15,6 +15,11 @@ interface WsMessage {
   readonly correlationId?: string;
 }
 
+interface PendingRpc {
+  resolve: (p: unknown) => void;
+  reject: (e: Error) => void;
+}
+
 const DEFAULT_RECONNECT_DELAY_MS = 3_000;
 
 export interface WsAdapterOptions {
@@ -30,10 +35,7 @@ export class WsAdapter implements IWsAdapter {
 
   private readonly handlers = new Map<string, Set<MessageHandler>>();
 
-  private readonly pendingRpcs = new Map<
-    string,
-    { resolve: (p: unknown) => void; reject: (e: Error) => void }
-  >();
+  private readonly pendingRpcs = new Map<string, PendingRpc>();
 
   // Messages issued before the socket reaches OPEN, held until onopen flushes
   // them. Without this, a subscription sent in the same tick as construction

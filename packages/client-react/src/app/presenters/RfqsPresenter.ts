@@ -33,6 +33,11 @@ import type { Machine } from "./machine";
  * constant. Relocated from NewRfqForm's `setTimeout(..., 1500)`. */
 const REDIRECT_DELAY_MS = 1500;
 
+interface SubmitCommand {
+  input: CreateRfqInput;
+  onRedirect: (rfqId: number) => void;
+}
+
 /** The create→confirmation→redirect lifecycle of NewRfqForm, relocated out of
  * the component's `await createRfq(...)` + `setTimeout` orchestration. The form
  * reads this state; draft input state stays in the component. */
@@ -139,10 +144,7 @@ export class RfqsPresenter {
    * success goes confirmed{rfqId} then fires onRedirect after REDIRECT_DELAY_MS.
    * dispose() cancels a pending redirect timer if torn down before it fires. */
   createSubmission(): Machine<RfqSubmissionState, RfqSubmissionIntents> {
-    const submit$ = new Subject<{
-      input: CreateRfqInput;
-      onRedirect: (rfqId: number) => void;
-    }>();
+    const submit$ = new Subject<SubmitCommand>();
 
     const EDITING: RfqSubmissionState = { status: "editing" };
     const SUBMITTING: RfqSubmissionState = { status: "submitting" };

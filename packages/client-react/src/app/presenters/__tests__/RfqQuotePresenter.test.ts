@@ -5,10 +5,15 @@ import type { PricingPort, RfqQuoteResult } from "@rtc/domain";
 
 import { RfqQuotePresenter } from "../RfqQuotePresenter";
 
+interface QuoteCall {
+  symbol: string;
+  pipsPosition: number;
+}
+
 describe("RfqQuotePresenter", () => {
   it("delegates to PricingPort.getRfqQuote", async () => {
     const result: RfqQuoteResult = { bid: 1.099, ask: 1.101, mid: 1.1 };
-    let calledWith: { symbol: string; pipsPosition: number } | null = null;
+    let calledWith: QuoteCall | null = null;
     const port: PricingPort = {
       getPriceUpdates: () => {
         return of();

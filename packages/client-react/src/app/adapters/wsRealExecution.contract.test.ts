@@ -5,6 +5,14 @@ import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { createWsRealPorts } from "./portFactory";
 
+interface ExecuteTradePayload {
+  currencyPair: string;
+  notional: number;
+  direction: string;
+  dealtCurrency: string;
+  spotRate: number;
+}
+
 describeExecutionPortContract("wsRealExecution", () => {
   const ws = new FakeWsAdapter();
   const ports = createWsRealPorts(ws);
@@ -16,13 +24,7 @@ describeExecutionPortContract("wsRealExecution", () => {
         const sent = ws.sentMessages().find((m) => {
           return m.type === "rpc.executeTrade";
         });
-        const req = sent?.payload as {
-          currencyPair: string;
-          notional: number;
-          direction: string;
-          dealtCurrency: string;
-          spotRate: number;
-        };
+        const req = sent?.payload as ExecuteTradePayload;
         ws.nextRpcResponse(
           "rpc.executeTrade",
           executionResponseAck({

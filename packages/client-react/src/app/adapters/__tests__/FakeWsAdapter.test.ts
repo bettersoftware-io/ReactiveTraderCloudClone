@@ -1,6 +1,10 @@
 // packages/client-react/src/app/adapters/__tests__/FakeWsAdapter.test.ts
 import { describe, expect, it } from "vitest";
 
+interface ConnectionEventRecord {
+  type: string;
+}
+
 import { FakeWsAdapter } from "./FakeWsAdapter";
 
 describe("FakeWsAdapter", () => {
@@ -65,7 +69,7 @@ describe("FakeWsAdapter", () => {
 
   it("emitConnectionEvent('gatewayConnected') reaches connectionEvents() subscribers", () => {
     const ws = new FakeWsAdapter();
-    const events: { type: string }[] = [];
+    const events: ConnectionEventRecord[] = [];
     ws.connectionEvents().subscribe((e) => {
       return events.push(e);
     });
@@ -75,7 +79,7 @@ describe("FakeWsAdapter", () => {
 
   it("emitConnectionEvent('gatewayDisconnected') reaches subscribers", () => {
     const ws = new FakeWsAdapter();
-    const events: { type: string }[] = [];
+    const events: ConnectionEventRecord[] = [];
     ws.connectionEvents().subscribe((e) => {
       return events.push(e);
     });
@@ -86,7 +90,7 @@ describe("FakeWsAdapter", () => {
   it("connectionEvents() replays the last event to late subscribers", () => {
     const ws = new FakeWsAdapter();
     ws.emitConnectionEvent("gatewayConnected");
-    const lateEvents: { type: string }[] = [];
+    const lateEvents: ConnectionEventRecord[] = [];
     ws.connectionEvents().subscribe((e) => {
       return lateEvents.push(e);
     });

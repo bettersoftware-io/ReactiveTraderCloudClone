@@ -44,6 +44,15 @@ function movementKey(movement: PriceMovementType): "up" | "down" | "flat" {
   return "flat";
 }
 
+interface PriceButtonProps {
+  label: string;
+  value: number;
+  ratePrecision: number;
+  pipsPosition: number;
+  movement: PriceMovementType;
+  side: "bid" | "ask";
+}
+
 function PriceButton({
   label,
   value,
@@ -51,14 +60,7 @@ function PriceButton({
   pipsPosition,
   movement,
   side,
-}: {
-  label: string;
-  value: number;
-  ratePrecision: number;
-  pipsPosition: number;
-  movement: PriceMovementType;
-  side: "bid" | "ask";
-}): ReactElement {
+}: PriceButtonProps): ReactElement {
   const { prefix, pips, fractional } = splitPrice(
     value,
     ratePrecision,
@@ -110,6 +112,10 @@ export function TilePrice({
   );
 }
 
-export function SpreadDisplay({ spread }: { spread: string }): ReactElement {
+interface SpreadDisplayProps {
+  spread: string;
+}
+
+export function SpreadDisplay({ spread }: SpreadDisplayProps): ReactElement {
   return <div className={styles.spread}>{spread}</div>;
 }

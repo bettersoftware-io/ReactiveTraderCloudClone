@@ -27,15 +27,33 @@ interface RunResult {
   sets: number[];
 }
 
+interface GetOpts {
+  /** Marble for getThroughput() (single value then complete, or error). */
+  marble: string;
+  values?: Record<string, number>;
+  error?: unknown;
+}
+
+interface FakeAdminOpts {
+  get: GetOpts;
+  set?: (value: number) => Observable<void>;
+}
+
+interface PresenterCtx {
+  presenter: ThroughputPresenter;
+  ts: TestScheduler;
+}
+
+interface MessageEvent {
+  time: number;
+  message: ThroughputView["message"];
+}
+
 /** Build a fake AdminPort whose get/set are marble-driven cold observables. */
 function fakeAdmin(
   ts: TestScheduler,
-  opts: {
-    /** Marble for getThroughput() (single value then complete, or error). */
-    get: { marble: string; values?: Record<string, number>; error?: unknown };
-    /** Factory for setThroughput()'s observable, given the value written. */
-    set?: (value: number) => Observable<void>;
-  },
+  /** Factory for setThroughput()'s observable, given the value written. */
+  opts: FakeAdminOpts,
 ): FakeAdmin {
   const sets: number[] = [];
   const port: AdminPort = {
@@ -61,8 +79,8 @@ function fakeAdmin(
  * `drive` schedules intents on the virtual timeline.
  */
 function run(
-  buildPort: (ts: TestScheduler) => { port: AdminPort; sets: number[] },
-  drive?: (ctx: { presenter: ThroughputPresenter; ts: TestScheduler }) => void,
+  buildPort: (ts: TestScheduler) => FakeAdmin,
+  drive?: (ctx: PresenterCtx) => void,
 ): RunResult {
   const states: ThroughputView[] = [];
   const ts = scheduler();
@@ -146,7 +164,7 @@ describe("ThroughputPresenter", () => {
   });
 
   it("shows a success banner, then dismisses it after MESSAGE_DISMISS_MS", () => {
-    const events: { time: number; message: ThroughputView["message"] }[] = [];
+    const events: MessageEvent[] = [];
     const ts = scheduler();
     ts.run(({ flush }) => {
       const built = fakeAdmin(ts, {
@@ -226,7 +244,7 @@ describe("ThroughputPresenter", () => {
     //   t=1300 debounce fires → setThroughput(999) resolves → banner B appears
     //   t=4300 dismiss for B fires (MESSAGE_DISMISS_MS after B's banner)
     //          A's original dismiss at t=3301 must NOT have fired.
-    const events: { time: number; message: ThroughputView["message"] }[] = [];
+    const events: MessageEvent[] = [];
     const ts = scheduler();
     ts.run(({ flush }) => {
       const built = fakeAdmin(ts, {

@@ -24,6 +24,12 @@ import {
 
 import type { Machine } from "./machine";
 
+interface ExecuteCommand {
+  direction: Direction;
+  price: Price;
+  notional: number;
+}
+
 /** The execution lifecycle of a single tile, relocated out of the old
  * useTileState + useExecuteTrade React hooks. The overlay reads this state. */
 export type TileExecutionState =
@@ -57,11 +63,7 @@ export function createTileExecutionMachine(
   pair: CurrencyPair,
   deps: TileExecutionDeps,
 ): Machine<TileExecutionState, TileExecutionIntents> {
-  const execute$ = new Subject<{
-    direction: Direction;
-    price: Price;
-    notional: number;
-  }>();
+  const execute$ = new Subject<ExecuteCommand>();
   const dismiss$ = new Subject<void>();
 
   // One execution run: started → (tooLong | result | timeout), collapsed so the

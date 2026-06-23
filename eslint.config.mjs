@@ -44,11 +44,46 @@ export default tseslint.config(
       ],
       "no-restricted-syntax": [
         "error",
+        // Ban anonymous inline object types in USAGE positions — extract each
+        // to a named interface/type alias. DEFINITION positions stay legal:
+        // `type X = { ... }`, discriminated-union members (`| { ... }`),
+        // `interface` bodies, and object types nested inside a named type's
+        // property. Functions' return types are also enforced here because
+        // Biome's useExplicitType permits inline-object returns; this is the
+        // one rule that forbids them. (Each selector is split out so the
+        // message names the offending position.)
         {
           selector:
-            ":matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression, TSDeclareFunction, TSMethodSignature) > .returnType TSTypeLiteral",
+            ":matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression, TSDeclareFunction, TSMethodSignature, TSFunctionType, TSConstructorType) > .returnType TSTypeLiteral",
           message:
             "Inline object return type — extract to a named interface/type alias.",
+        },
+        {
+          selector:
+            ":matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression, TSDeclareFunction, TSMethodSignature, TSFunctionType, TSConstructorType) > .params TSTypeLiteral",
+          message:
+            "Inline object parameter type — extract to a named interface/type alias.",
+        },
+        {
+          selector: "VariableDeclarator > .id > TSTypeAnnotation TSTypeLiteral",
+          message:
+            "Inline object variable type — extract to a named interface/type alias.",
+        },
+        {
+          selector: "PropertyDefinition > .typeAnnotation TSTypeLiteral",
+          message:
+            "Inline object property type — extract to a named interface/type alias.",
+        },
+        {
+          selector:
+            ":matches(TSAsExpression, TSSatisfiesExpression) > TSTypeLiteral",
+          message:
+            "Inline object type in a cast — extract to a named interface/type alias.",
+        },
+        {
+          selector: "TSTypeParameterInstantiation > TSTypeLiteral",
+          message:
+            "Inline object as a type argument — extract to a named interface/type alias.",
         },
         {
           selector:

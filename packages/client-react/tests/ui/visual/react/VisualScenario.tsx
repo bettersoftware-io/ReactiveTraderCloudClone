@@ -12,7 +12,11 @@ import { registry } from "./registry";
 // sit inside the padded inline-block wrapper used for component-level shots.
 const FULL_BLEED = new Set(["App"]);
 
-export function VisualScenario({ name }: { name: string }): ReactElement {
+interface VisualScenarioProps {
+  name: string;
+}
+
+export function VisualScenario({ name }: VisualScenarioProps): ReactElement {
   const scenario = scenarios[name];
   if (!scenario) throw new Error(`Unknown visual scenario: ${name}`);
   const data = fixtures[scenario.fixtureKey];

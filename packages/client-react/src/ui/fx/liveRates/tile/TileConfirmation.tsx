@@ -15,11 +15,13 @@ function formatNotional(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
+interface ConfirmationContentProps {
+  state: TileExecutionState;
+}
+
 function ConfirmationContent({
   state,
-}: {
-  state: TileExecutionState;
-}): ReactElement | null {
+}: ConfirmationContentProps): ReactElement | null {
   if (state.status === "started") {
     return <span>Executing...</span>;
   }

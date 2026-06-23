@@ -21,10 +21,14 @@ import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const pkgUrl = new URL("../../../package.json", import.meta.url);
-const pkg = JSON.parse(readFileSync(fileURLToPath(pkgUrl), "utf8")) as {
+interface PackageJson {
   scripts: Record<string, string>;
-};
+}
+
+const pkgUrl = new URL("../../../package.json", import.meta.url);
+const pkg = JSON.parse(
+  readFileSync(fileURLToPath(pkgUrl), "utf8"),
+) as PackageJson;
 
 const frameworkFilter: string | undefined = process.argv[2]; // e.g. "react" | undefined
 
