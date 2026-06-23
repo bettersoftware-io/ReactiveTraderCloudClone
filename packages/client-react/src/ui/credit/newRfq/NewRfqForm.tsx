@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
 import {
   CREDIT_MAX_QUANTITY_INPUT,
@@ -32,24 +32,24 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
   const [instrument, setInstrument] = useState<Instrument | null>(null);
   const [direction, setDirection] = useState<Direction>(Direction.Buy);
   const [quantity, setQuantity] = useState("");
-  const [selectedDealerIds, setSelectedDealerIds] = useState<Set<number>>(
-    new Set(),
+  // Dealers default to all-selected; an explicit, non-empty user choice
+  // overrides that default. Derived during render (not synced via an effect),
+  // so the component stays pure for the React Compiler — see
+  // docs/adr/ADR-003. An empty override falls back to all, preserving the
+  // original "selection can't be left empty" behaviour.
+  const [dealerOverride, setDealerOverride] = useState<Set<number> | null>(
+    null,
   );
 
   const submitting = submission.state.status === "submitting";
 
-  // Default all dealers selected
-  useMemo(() => {
-    if (dealers.length > 0 && selectedDealerIds.size === 0) {
-      setSelectedDealerIds(
-        new Set(
-          dealers.map((d) => {
-            return d.id;
-          }),
-        ),
-      );
-    }
-  }, [dealers, selectedDealerIds.size]);
+  const allDealerIds = new Set(
+    dealers.map((d) => {
+      return d.id;
+    }),
+  );
+  const selectedDealerIds =
+    dealerOverride && dealerOverride.size > 0 ? dealerOverride : allDealerIds;
 
   const quantityNum = parseFloat(quantity);
   const quantityError =
@@ -67,7 +67,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
     selectedDealerIds.size > 0 &&
     !submitting;
 
-  const handleSubmit = useCallback(() => {
+  function handleSubmit(): void {
     if (!canSubmit || !instrument) return;
     submit(
       {
@@ -78,15 +78,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
       },
       onCreated,
     );
-  }, [
-    canSubmit,
-    instrument,
-    submit,
-    selectedDealerIds,
-    quantityNum,
-    direction,
-    onCreated,
-  ]);
+  }
 
   if (submission.state.status === "confirmed") {
     return (
@@ -143,7 +135,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
       <DealerSelection
         dealers={dealers}
         selectedIds={selectedDealerIds}
-        onChange={setSelectedDealerIds}
+        onChange={setDealerOverride}
       />
 
       <button

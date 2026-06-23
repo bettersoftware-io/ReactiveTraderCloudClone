@@ -70,6 +70,7 @@ export interface AppHooks {
   usePrice: (pair: CurrencyPair) => Price | null;
   usePriceHistory: (symbol: string) => readonly PriceTick[];
   useTrades: () => readonly Trade[];
+  useNewTradeIds: () => ReadonlySet<number>;
   useAnalytics: () => PositionUpdates | null;
   useRfqs: () => readonly Rfq[];
   useQuotesForRfq: (rfqId: number) => readonly Quote[];
@@ -116,6 +117,10 @@ export function createAppHooks(
     [] as readonly PriceTick[],
   );
   const [useTrades] = bind(presenters.blotter.trades$, [] as readonly Trade[]);
+  const [useNewTradeIds] = bind(
+    presenters.blotter.newTradeIds$,
+    new Set<number>() as ReadonlySet<number>,
+  );
   const [useAnalytics] = bind(
     presenters.analytics.position$,
     null as PositionUpdates | null,
@@ -187,6 +192,7 @@ export function createAppHooks(
     usePrice,
     usePriceHistory,
     useTrades,
+    useNewTradeIds,
     useAnalytics,
     useRfqs,
     useQuotesForRfq,

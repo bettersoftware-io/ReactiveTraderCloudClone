@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { type CurrencyCategory, matchesCurrencyFilter } from "@rtc/domain";
 
@@ -19,11 +19,9 @@ export function LiveRatesPanel(): ReactElement {
   const { viewMode, setViewMode } = useViewModePreference();
   const [filter, setFilter] = useState<CurrencyCategory>("All");
 
-  const filteredPairs = useMemo(() => {
-    return pairs.filter((p) => {
-      return matchesCurrencyFilter(p.symbol, filter);
-    });
-  }, [pairs, filter]);
+  const filteredPairs = pairs.filter((p) => {
+    return matchesCurrencyFilter(p.symbol, filter);
+  });
 
   return (
     <div className={styles.panel}>

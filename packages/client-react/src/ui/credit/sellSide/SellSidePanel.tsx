@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { useMemo } from "react";
 
 import { ADAPTIVE_BANK_NAME, type Instrument, type Rfq } from "@rtc/domain";
 
@@ -40,17 +39,15 @@ export function SellSidePanel(): ReactElement {
   const instruments = useInstruments();
   const dealers = useDealers();
 
-  const adaptiveBankId = useMemo(() => {
-    return dealers.find((d) => {
-      return d.name === ADAPTIVE_BANK_NAME;
-    })?.id;
-  }, [dealers]);
+  const adaptiveBankId = dealers.find((d) => {
+    return d.name === ADAPTIVE_BANK_NAME;
+  })?.id;
 
-  const instrumentMap = useMemo(() => {
-    const m = new Map<number, Instrument>();
-    for (const i of instruments) m.set(i.id, i);
-    return m;
-  }, [instruments]);
+  const instrumentMap = new Map<number, Instrument>();
+
+  for (const i of instruments) {
+    instrumentMap.set(i.id, i);
+  }
 
   return (
     <div className={styles.panel}>

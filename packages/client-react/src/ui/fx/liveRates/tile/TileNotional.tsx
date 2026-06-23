@@ -1,10 +1,5 @@
 import type { ReactElement } from "react";
-import {
-  type ChangeEvent,
-  type KeyboardEvent,
-  useCallback,
-  useRef,
-} from "react";
+import { type ChangeEvent, type KeyboardEvent, useRef } from "react";
 
 import type {
   NotionalIntents,
@@ -26,22 +21,19 @@ export function TileNotional({
 }: TileNotionalProps): ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      notional.change(e.target.value);
-    },
-    [notional],
-  );
+  function handleChange(e: ChangeEvent<HTMLInputElement>): void {
+    notional.change(e.target.value);
+  }
 
-  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
     if (e.key === "Enter") {
       inputRef.current?.blur();
     }
-  }, []);
+  }
 
-  const handleFocus = useCallback(() => {
+  function handleFocus(): void {
     inputRef.current?.select();
-  }, []);
+  }
 
   const hasError = !!notional.state.error;
 

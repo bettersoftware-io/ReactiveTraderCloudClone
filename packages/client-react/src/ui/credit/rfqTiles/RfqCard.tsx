@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { useCallback, useMemo } from "react";
 
 import {
   type Dealer,
@@ -43,17 +42,17 @@ export function RfqCard({
   onAccept,
   onDismiss,
 }: RfqCardProps): ReactElement {
-  const dealerMap = useMemo(() => {
-    const m = new Map<number, Dealer>();
-    for (const d of dealers) m.set(d.id, d);
-    return m;
-  }, [dealers]);
+  const dealerMap = new Map<number, Dealer>();
+
+  for (const d of dealers) {
+    dealerMap.set(d.id, d);
+  }
 
   const canDismiss = rfq.state !== RfqState.Open;
 
-  const handleDismiss = useCallback(() => {
+  function handleDismiss(): void {
     if (onDismiss) onDismiss(rfq.id);
-  }, [onDismiss, rfq.id]);
+  }
 
   return (
     <div className={styles.card}>

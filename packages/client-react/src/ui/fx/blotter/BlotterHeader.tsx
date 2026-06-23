@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactElement } from "react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import type { Trade } from "@rtc/domain";
 
@@ -52,13 +52,10 @@ function FilterPanel({
   onApply,
   onClose,
 }: FilterPanelProps): ReactElement {
-  const handleApply = useCallback(
-    (filter: ColumnFilter | null) => {
-      onApply(filter);
-      onClose();
-    },
-    [onApply, onClose],
-  );
+  function handleApply(filter: ColumnFilter | null): void {
+    onApply(filter);
+    onClose();
+  }
 
   return (
     <div className={styles.filterPanel}>

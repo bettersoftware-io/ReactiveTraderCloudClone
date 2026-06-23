@@ -29,6 +29,8 @@ export interface AppData {
   prices: Record<string, Price | null>;
   priceHistory: Record<string, readonly PriceTick[]>;
   trades: readonly Trade[];
+  /** Ids the blotter should flag as newly arrived (useNewTradeIds); defaults to none. */
+  newTradeIds?: ReadonlySet<number>;
   analytics: PositionUpdates | null;
   rfqs: readonly Rfq[];
   quotesForRfq: Record<number, readonly Quote[]>;

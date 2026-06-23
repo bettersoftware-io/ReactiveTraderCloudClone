@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { useCallback } from "react";
 
 import {
   type CurrencyPair,
@@ -38,28 +37,25 @@ export function TileRfq({
 }: TileRfqProps): ReactElement | null {
   const { state } = rfqState;
 
-  const handleAccept = useCallback(
-    (direction: Direction) => {
-      // Capture the quote BEFORE accepting: accept() resets the machine to init
-      // and no longer returns the quote synchronously.
-      const quote = state.quote;
-      rfqState.accept();
-      if (!quote) return;
-      // Create a synthetic Price to pass to execution
-      const syntheticPrice = {
-        symbol: pair.symbol,
-        bid: quote.bid,
-        ask: quote.ask,
-        mid: (quote.bid + quote.ask) / 2,
-        valueDate: new Date().toISOString().slice(0, 10),
-        creationTimestamp: Date.now(),
-        movementType: PriceMovementType.NONE,
-        spread: "0",
-      } satisfies Price;
-      onExecute(direction, syntheticPrice, notional);
-    },
-    [rfqState, state.quote, pair, onExecute, notional],
-  );
+  function handleAccept(direction: Direction): void {
+    // Capture the quote BEFORE accepting: accept() resets the machine to init
+    // and no longer returns the quote synchronously.
+    const quote = state.quote;
+    rfqState.accept();
+    if (!quote) return;
+    // Create a synthetic Price to pass to execution
+    const syntheticPrice = {
+      symbol: pair.symbol,
+      bid: quote.bid,
+      ask: quote.ask,
+      mid: (quote.bid + quote.ask) / 2,
+      valueDate: new Date().toISOString().slice(0, 10),
+      creationTimestamp: Date.now(),
+      movementType: PriceMovementType.NONE,
+      spread: "0",
+    } satisfies Price;
+    onExecute(direction, syntheticPrice, notional);
+  }
 
   if (state.status === "init") {
     return (

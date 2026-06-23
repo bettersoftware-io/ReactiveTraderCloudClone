@@ -1,5 +1,5 @@
 import type { ChangeEvent, ReactElement } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
 import type { Instrument } from "@rtc/domain";
 
@@ -19,26 +19,22 @@ export function InstrumentSearch({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
 
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return instruments.filter((i) => {
-      return (
-        i.name.toLowerCase().includes(q) ||
-        i.ticker.toLowerCase().includes(q) ||
-        i.cusip.toLowerCase().includes(q)
-      );
-    });
-  }, [instruments, query]);
+  const q = query.toLowerCase();
+  const results = query.trim()
+    ? instruments.filter((i) => {
+        return (
+          i.name.toLowerCase().includes(q) ||
+          i.ticker.toLowerCase().includes(q) ||
+          i.cusip.toLowerCase().includes(q)
+        );
+      })
+    : [];
 
-  const handleSelect = useCallback(
-    (instrument: Instrument) => {
-      onSelect(instrument);
-      setQuery(instrument.name);
-      setOpen(false);
-    },
-    [onSelect],
-  );
+  function handleSelect(instrument: Instrument): void {
+    onSelect(instrument);
+    setQuery(instrument.name);
+    setOpen(false);
+  }
 
   return (
     <div className={styles.wrapper}>

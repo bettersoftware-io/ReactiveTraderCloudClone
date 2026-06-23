@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { CreditBlotter } from "./blotter/CreditBlotter";
 import { NewRfqForm } from "./newRfq/NewRfqForm";
@@ -13,9 +13,9 @@ type CreditView = "tiles" | "new-rfq" | "sell-side";
 export function CreditWorkspace(): ReactElement {
   const [view, setView] = useState<CreditView>("tiles");
 
-  const handleRfqCreated = useCallback(() => {
+  function handleRfqCreated(): void {
     setView("tiles");
-  }, []);
+  }
 
   return (
     <div className={styles.workspace}>

@@ -69,6 +69,11 @@ export function reactHooks(world: World): AppHooks {
     useTrades: () => {
       return useSubject(s.useTrades);
     },
+    // New-trade flagging lives in the presenter (not pinned by contract specs);
+    // the fake reports no rows as new.
+    useNewTradeIds: () => {
+      return new Set<number>();
+    },
     useAnalytics: () => {
       return useSubject(s.useAnalytics);
     },

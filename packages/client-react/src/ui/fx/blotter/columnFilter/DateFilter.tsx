@@ -1,5 +1,5 @@
 import type { ChangeEvent, ReactElement } from "react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import type { Trade } from "@rtc/domain";
 
@@ -45,7 +45,7 @@ export function DateFilter({
       : "",
   );
 
-  const handleApply = useCallback(() => {
+  function handleApply(): void {
     if (!value) {
       onApply(null);
       return;
@@ -58,7 +58,7 @@ export function DateFilter({
       value,
       valueTo: comparator === "inRange" ? valueTo : undefined,
     });
-  }, [column, comparator, value, valueTo, onApply]);
+  }
 
   return (
     <div className={styles.container}>

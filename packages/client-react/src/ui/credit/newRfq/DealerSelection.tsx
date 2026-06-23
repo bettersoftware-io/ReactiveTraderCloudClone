@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { useCallback } from "react";
 
 import type { Dealer } from "@rtc/domain";
 
@@ -16,15 +15,12 @@ export function DealerSelection({
   selectedIds,
   onChange,
 }: DealerSelectionProps): ReactElement {
-  const toggle = useCallback(
-    (id: number) => {
-      const next = new Set(selectedIds);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      onChange(next);
-    },
-    [selectedIds, onChange],
-  );
+  function toggle(id: number): void {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onChange(next);
+  }
 
   return (
     <div>

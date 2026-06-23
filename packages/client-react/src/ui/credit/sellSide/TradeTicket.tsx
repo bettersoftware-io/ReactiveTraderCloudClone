@@ -1,5 +1,5 @@
 import type { ChangeEvent, ReactElement } from "react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
 
@@ -30,15 +30,15 @@ export function TradeTicket({
     rfq.state === RfqState.Open && quote.state.type === "pendingWithoutPrice";
   const hasResponded = quote.state.type !== "pendingWithoutPrice";
 
-  const handleSubmit = useCallback(() => {
+  function handleSubmit(): void {
     const num = parseFloat(price);
     if (Number.isNaN(num) || num <= 0) return;
     submitPrice(quote.id, num);
-  }, [submitPrice, quote.id, price]);
+  }
 
-  const handlePass = useCallback(() => {
+  function handlePass(): void {
     pass(quote.id);
-  }, [pass, quote.id]);
+  }
 
   return (
     <div
