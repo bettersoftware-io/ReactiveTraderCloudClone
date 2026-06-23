@@ -10,15 +10,27 @@ import type { Machine } from "#/app/presenters/machine";
 
 import { useMachine } from "./useMachine";
 
-/** Build a minimal test machine from a BehaviorSubject.
- * We subscribe immediately so the StateObservable stays warm
- * for the duration of the test. */
-function makeTestMachine<S>(subject: BehaviorSubject<S>): {
-  machine: Machine<S, { intent: () => void }>;
+interface TestMachineIntents {
+  intent: () => void;
+}
+interface LifecycleMachineIntents {
+  bump: () => void;
+}
+interface TestMachine<S> {
+  machine: Machine<S, TestMachineIntents>;
   intent: Mock<() => void>;
   dispose: Mock<() => void>;
   subject: BehaviorSubject<S>;
-} {
+}
+interface LifecycleMachine {
+  machine: Machine<number, LifecycleMachineIntents>;
+  dispose: Mock<() => void>;
+}
+
+/** Build a minimal test machine from a BehaviorSubject.
+ * We subscribe immediately so the StateObservable stays warm
+ * for the duration of the test. */
+function makeTestMachine<S>(subject: BehaviorSubject<S>): TestMachine<S> {
   const state$ = state(subject, subject.getValue());
   // Keep the StateObservable warm (ref-count > 0) so useStateObservable can
   // read the synchronous default without entering Suspense.
@@ -29,7 +41,7 @@ function makeTestMachine<S>(subject: BehaviorSubject<S>): {
     return sub.unsubscribe();
   });
 
-  const machine: Machine<S, { intent: () => void }> = {
+  const machine: Machine<S, TestMachineIntents> = {
     state$,
     intents: { intent },
     dispose,
@@ -132,10 +144,7 @@ describe("useMachine", () => {
    * unsubscribes the warm sub. After dispose, the intent is a no-op (it pushes
    * into a completed Subject) and state$ can never emit again — exactly the
    * conditions that froze tiles in the real app under StrictMode. */
-  function makeLifecycleMachine(): {
-    machine: Machine<number, { bump: () => void }>;
-    dispose: Mock<() => void>;
-  } {
+  function makeLifecycleMachine(): LifecycleMachine {
     const source$ = new Subject<number>();
     const state$ = state(source$, 0);
     const warm = state$.subscribe();
@@ -146,7 +155,7 @@ describe("useMachine", () => {
       warm.unsubscribe();
     });
 
-    const machine: Machine<number, { bump: () => void }> = {
+    const machine: Machine<number, LifecycleMachineIntents> = {
       state$,
       intents: {
         bump: () => {

@@ -63,45 +63,45 @@ console.log(
 );
 for (const r of runners) console.log(`  • ${r}`);
 
-function run(
-  script: string,
-): Promise<{ script: string; code: number; output: string }> {
-  return new Promise<{ script: string; code: number; output: string }>(
-    (resolve) => {
-      const chunks: Buffer[] = [];
-      const child = spawn("pnpm", ["run", script], { shell: false });
-      child.stdout.on("data", (d: Buffer) => {
-        return chunks.push(d);
-      });
-      child.stderr.on("data", (d: Buffer) => {
-        return chunks.push(d);
-      });
+interface RunResult {
+  script: string;
+  code: number;
+  output: string;
+}
 
-      function finish(code: number): void {
-        resolve({
-          script,
-          code,
-          output: Buffer.concat(chunks).toString("utf8"),
-        });
-      }
+function run(script: string): Promise<RunResult> {
+  return new Promise<RunResult>((resolve) => {
+    const chunks: Buffer[] = [];
+    const child = spawn("pnpm", ["run", script], { shell: false });
+    child.stdout.on("data", (d: Buffer) => {
+      return chunks.push(d);
+    });
+    child.stderr.on("data", (d: Buffer) => {
+      return chunks.push(d);
+    });
 
-      child.on("error", (err) => {
-        chunks.push(Buffer.from(`failed to spawn: ${String(err)}\n`));
-        finish(1);
+    function finish(code: number): void {
+      resolve({
+        script,
+        code,
+        output: Buffer.concat(chunks).toString("utf8"),
       });
-      child.on("exit", (code) => {
-        return finish(code ?? 1);
-      });
-    },
-  );
+    }
+
+    child.on("error", (err) => {
+      chunks.push(Buffer.from(`failed to spawn: ${String(err)}\n`));
+      finish(1);
+    });
+    child.on("exit", (code) => {
+      return finish(code ?? 1);
+    });
+  });
 }
 
 // Bounded worker pool: at most `maxParallel` runners execute at once. Results
 // are written back by index so the printed order always matches `runners`,
 // regardless of which finishes first.
-const results: { script: string; code: number; output: string }[] = new Array(
-  runners.length,
-);
+const results: RunResult[] = new Array(runners.length);
 let nextIndex = 0;
 
 async function worker(): Promise<void> {
