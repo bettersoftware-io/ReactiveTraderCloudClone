@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback } from "react";
 
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
@@ -20,7 +21,7 @@ interface TileProps {
   showChart: boolean;
 }
 
-export function Tile({ pair, showChart }: TileProps) {
+export function Tile({ pair, showChart }: TileProps): ReactElement {
   const {
     usePrice,
     useStaleFlag,
@@ -88,8 +89,8 @@ export function Tile({ pair, showChart }: TileProps) {
           )
         ) : (
           <TileExecution
-            onExecute={(dir) => {
-              return handleExecute(dir);
+            onExecute={(dir: Direction): void => {
+              handleExecute(dir);
             }}
             disabled={isLoading || isBusy || hasError}
           />

@@ -16,7 +16,7 @@ describe("QuickFilter", () => {
     const filter = mount(QuickFilter, {
       props: {
         value: "",
-        onChange: (v) => {
+        onChange: (v: string) => {
           return seen.push(v);
         },
       },

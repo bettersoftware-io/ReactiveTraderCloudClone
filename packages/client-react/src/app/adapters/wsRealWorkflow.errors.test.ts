@@ -1,7 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { Direction } from "@rtc/domain";
+import { type CreateRfqRequest, Direction } from "@rtc/domain";
 import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
 
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
@@ -9,7 +9,7 @@ import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { createWsRealPorts } from "./portFactory";
 
 describe("wsRealWorkflow :: error paths", () => {
-  function makeReq() {
+  function makeReq(): CreateRfqRequest {
     return {
       instrumentId: 1,
       dealerIds: [0],

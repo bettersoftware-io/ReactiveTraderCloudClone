@@ -19,6 +19,9 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
+import type { NotionalView } from "#/app/presenters/NotionalMachine";
+import type { RfqQuote } from "#/app/presenters/RfqTileMachine";
+
 import { type AppData, makeAppData } from "./appData";
 
 const eurusd: CurrencyPair = {
@@ -704,7 +707,7 @@ const sellSideNoInstrumentRfq: Rfq = {
 
 // A base EURUSD tile (price present so the tile body renders). Execution and
 // stale arms reuse it; RFQ arms additionally flip notional to the RFQ layout.
-const eurusdTileBase = {
+const eurusdTileBase: Partial<AppData> = {
   currencyPairs: [eurusd],
   prices: { EURUSD: eurusdPrice },
 };
@@ -734,7 +737,7 @@ const eurusdDoneTradeSell: Trade = {
 
 // TileNotional error arm: an invalid notional draft drives the
 // `state.error ? "var(--accent-negative)"` underline + the error <span>.
-const erroredNotional = {
+const erroredNotional: NotionalView = {
   displayValue: "abc",
   numericValue: NaN,
   error: "Invalid notional",
@@ -744,7 +747,7 @@ const erroredNotional = {
 
 // RFQ-active layout: a notional at/above RFQ_THRESHOLD flips the tile to the
 // TileRfq body (Tile only renders TileRfq when notional.state.isRfq is true).
-const rfqNotional = {
+const rfqNotional: NotionalView = {
   displayValue: RFQ_THRESHOLD.toLocaleString("en-US"),
   numericValue: RFQ_THRESHOLD,
   error: null,
@@ -754,7 +757,7 @@ const rfqNotional = {
 
 // A received quote built from the EURUSD price. totalMs = RFQ_TIMEOUT_MS so the
 // countdown fraction is remainingMs / RFQ_TIMEOUT_MS.
-const eurusdQuote = {
+const eurusdQuote: RfqQuote = {
   bid: eurusdPrice.bid,
   ask: eurusdPrice.ask,
   timeoutMs: RFQ_TIMEOUT_MS,

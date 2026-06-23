@@ -1,3 +1,4 @@
+import type { ChangeEvent, ReactElement } from "react";
 import { useCallback, useState } from "react";
 
 import type { Trade } from "@rtc/domain";
@@ -26,7 +27,7 @@ export function DateFilter({
   column,
   currentFilter,
   onApply,
-}: DateFilterProps) {
+}: DateFilterProps): ReactElement {
   const [comparator, setComparator] = useState<Comparator>(
     currentFilter?.type === "date" ? currentFilter.comparator : "eq",
   );
@@ -59,8 +60,8 @@ export function DateFilter({
       <select
         data-testid="date-filter-comparator"
         value={comparator}
-        onChange={(e) => {
-          return setComparator(e.target.value as Comparator);
+        onChange={(e: ChangeEvent<HTMLSelectElement>): void => {
+          setComparator(e.target.value as Comparator);
         }}
         className={styles.select}
       >
@@ -76,8 +77,8 @@ export function DateFilter({
         type="date"
         data-testid="date-filter-value"
         value={value}
-        onChange={(e) => {
-          return setValue(e.target.value);
+        onChange={(e: ChangeEvent<HTMLInputElement>): void => {
+          setValue(e.target.value);
         }}
         className={styles.input}
       />
@@ -86,8 +87,8 @@ export function DateFilter({
           type="date"
           data-testid="date-filter-value-to"
           value={valueTo}
-          onChange={(e) => {
-            return setValueTo(e.target.value);
+          onChange={(e: ChangeEvent<HTMLInputElement>): void => {
+            setValueTo(e.target.value);
           }}
           className={styles.input}
         />

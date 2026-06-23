@@ -26,7 +26,7 @@ describe("ViewToggle", () => {
     const toggle = mount(ViewToggle, {
       props: {
         mode: "chart",
-        onChange: (m) => {
+        onChange: (m: ViewMode) => {
           return modes.push(m);
         },
       },
@@ -40,7 +40,7 @@ describe("ViewToggle", () => {
     const toggle = mount(ViewToggle, {
       props: {
         mode: "price",
-        onChange: (m) => {
+        onChange: (m: ViewMode) => {
           return modes.push(m);
         },
       },

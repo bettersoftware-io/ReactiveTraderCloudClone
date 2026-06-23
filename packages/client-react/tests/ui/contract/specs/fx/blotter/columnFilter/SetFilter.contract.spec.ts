@@ -68,7 +68,7 @@ describe("SetFilter", () => {
         column: "currencyPair",
         trades,
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           applied = f;
         },
       },
@@ -92,7 +92,7 @@ describe("SetFilter", () => {
         column: "currencyPair",
         trades,
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           called = true;
           applied = f;
         },

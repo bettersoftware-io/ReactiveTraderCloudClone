@@ -1,4 +1,8 @@
-import { within } from "@testing-library/dom";
+import {
+  type BoundFunctions,
+  type queries,
+  within,
+} from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
@@ -6,7 +10,7 @@ import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 export class RfqTilesPanelPage extends MountedComponent<Record<string, never>> {
   private readonly user: UserEvent = userEvent.setup();
 
-  private q() {
+  private q(): BoundFunctions<typeof queries> {
     return within(this.root);
   }
 

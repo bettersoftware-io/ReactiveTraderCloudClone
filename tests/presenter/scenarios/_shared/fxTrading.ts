@@ -83,25 +83,25 @@ const UI_PATTERN_TO_STATUSES: Array<{
   statuses: ExecutionStatus[];
 }> = [
   {
-    test: (p) => {
+    test: (p: RegExp) => {
       return /Executing|You Bought|You Sold|Bought|Sold/i.test(p.source);
     },
     statuses: [ES_DONE],
   },
   {
-    test: (p) => {
+    test: (p: RegExp) => {
       return /rejected/i.test(p.source);
     },
     statuses: [ES_REJECTED],
   },
   {
-    test: (p) => {
+    test: (p: RegExp) => {
       return /Credit limit/i.test(p.source);
     },
     statuses: [ES_CREDIT_EXCEEDED],
   },
   {
-    test: (p) => {
+    test: (p: RegExp) => {
       return /timed out/i.test(p.source);
     },
     statuses: [ES_TIMEOUT],

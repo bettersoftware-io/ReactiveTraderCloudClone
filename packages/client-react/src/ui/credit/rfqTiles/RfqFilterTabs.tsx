@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import styles from "./RfqFilterTabs.module.css";
 
 export type RfqFilter = "Live" | "All" | "Done" | "Expired" | "Cancelled";
@@ -9,7 +11,10 @@ interface RfqFilterTabsProps {
   onChange: (filter: RfqFilter) => void;
 }
 
-export function RfqFilterTabs({ selected, onChange }: RfqFilterTabsProps) {
+export function RfqFilterTabs({
+  selected,
+  onChange,
+}: RfqFilterTabsProps): ReactElement {
   return (
     <div className={styles.tabs}>
       {FILTERS.map((f) => {
@@ -19,8 +24,8 @@ export function RfqFilterTabs({ selected, onChange }: RfqFilterTabsProps) {
             type="button"
             data-testid={`rfq-filter-${f}`}
             data-active={selected === f ? "true" : "false"}
-            onClick={() => {
-              return onChange(f);
+            onClick={(): void => {
+              onChange(f);
             }}
             className={styles.tab}
           >

@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
 
 import styles from "./RfqCountdown.module.css";
 
@@ -7,7 +7,10 @@ interface RfqCountdownProps {
   totalMs: number;
 }
 
-export function RfqCountdown({ remainingMs, totalMs }: RfqCountdownProps) {
+export function RfqCountdown({
+  remainingMs,
+  totalMs,
+}: RfqCountdownProps): ReactElement {
   const fraction = totalMs > 0 ? remainingMs / totalMs : 0;
   const seconds = Math.ceil(remainingMs / 1000);
 

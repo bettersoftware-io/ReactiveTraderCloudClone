@@ -4,22 +4,22 @@ import { describe, expect, it } from "vitest";
 
 import { type CurrencyPair, KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 
-const pairs = KNOWN_CURRENCY_PAIRS;
+const pairs: readonly CurrencyPair[] = KNOWN_CURRENCY_PAIRS;
 const _eurusd = pairs.find((p) => {
   return p.symbol === "EURUSD";
 });
 if (!_eurusd) throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
-const eurusd = _eurusd;
+const eurusd: CurrencyPair = _eurusd;
 const _usdjpy = pairs.find((p) => {
   return p.symbol === "USDJPY";
 });
 if (!_usdjpy) throw new Error("USDJPY not found in KNOWN_CURRENCY_PAIRS");
-const usdjpy = _usdjpy;
+const usdjpy: CurrencyPair = _usdjpy;
 const _gbpjpy = pairs.find((p) => {
   return p.symbol === "GBPJPY";
 });
 if (!_gbpjpy) throw new Error("GBPJPY not found in KNOWN_CURRENCY_PAIRS");
-const gbpjpy = _gbpjpy;
+const gbpjpy: CurrencyPair = _gbpjpy;
 
 describe("LiveRatesPanel", () => {
   it("shows a loading placeholder until currency pairs arrive", () => {

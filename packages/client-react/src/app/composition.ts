@@ -3,6 +3,8 @@ import { merge, mergeMap, of } from "rxjs";
 import {
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
+  type CurrencyPair,
+  type ExecuteTradeInput,
 } from "@rtc/domain";
 
 import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
@@ -117,21 +119,21 @@ export function createMachineFactories(
   presenters: Presenters,
 ): MachineFactories {
   return {
-    tileExecution: (pair) => {
+    tileExecution: (pair: CurrencyPair) => {
       return createTileExecutionMachine(pair, {
-        execute: (input) => {
+        execute: (input: ExecuteTradeInput) => {
           return presenters.execution.execute(input);
         },
       });
     },
-    rfqTile: (pair) => {
+    rfqTile: (pair: CurrencyPair) => {
       return createRfqTileMachine(pair, {
-        requestQuote: (symbol, pipsPosition) => {
+        requestQuote: (symbol: string, pipsPosition: number) => {
           return presenters.rfqQuote.requestQuote(symbol, pipsPosition);
         },
       });
     },
-    staleFlag: (pair) => {
+    staleFlag: (pair: CurrencyPair) => {
       return createStaleFlagMachine({
         status$: presenters.connection.status$,
         value$: presenters.priceStream.price$(pair),
@@ -143,10 +145,10 @@ export function createMachineFactories(
         value$: presenters.analytics.position$,
       });
     },
-    rowHighlight: (isNew) => {
+    rowHighlight: (isNew: boolean) => {
       return createRowHighlightMachine(isNew);
     },
-    notional: (defaultNotional) => {
+    notional: (defaultNotional: number) => {
       return createNotionalMachine(defaultNotional);
     },
     rfqSubmission: () => {

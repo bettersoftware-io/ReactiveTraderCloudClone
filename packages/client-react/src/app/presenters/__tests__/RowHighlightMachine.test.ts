@@ -6,7 +6,7 @@ import {
   HIGHLIGHT_MS,
 } from "../RowHighlightMachine";
 
-function scheduler() {
+function scheduler(): TestScheduler {
   return new TestScheduler((actual, expected) => {
     expect(actual).toEqual(expected);
   });

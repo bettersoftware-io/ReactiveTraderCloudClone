@@ -1,3 +1,4 @@
+import type { ChangeEvent, ReactElement } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 import type { Instrument } from "@rtc/domain";
@@ -14,7 +15,7 @@ export function InstrumentSearch({
   instruments,
   selected,
   onSelect,
-}: InstrumentSearchProps) {
+}: InstrumentSearchProps): ReactElement {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -50,7 +51,7 @@ export function InstrumentSearch({
           </span>
           <button
             type="button"
-            onClick={() => {
+            onClick={(): void => {
               onSelect(null);
               setQuery("");
             }}
@@ -64,12 +65,12 @@ export function InstrumentSearch({
           <input
             data-testid="instrument-search-input"
             value={query}
-            onChange={(e) => {
+            onChange={(e: ChangeEvent<HTMLInputElement>): void => {
               setQuery(e.target.value);
               setOpen(true);
             }}
-            onFocus={() => {
-              return setOpen(true);
+            onFocus={(): void => {
+              setOpen(true);
             }}
             placeholder="Search by ticker, name, or CUSIP..."
             className={styles.searchInput}
@@ -82,8 +83,8 @@ export function InstrumentSearch({
                     key={inst.id}
                     type="button"
                     data-testid={`instrument-result-${inst.id}`}
-                    onClick={() => {
-                      return handleSelect(inst);
+                    onClick={(): void => {
+                      handleSelect(inst);
                     }}
                     className={styles.resultItem}
                   >

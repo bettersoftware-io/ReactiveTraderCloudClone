@@ -1,3 +1,4 @@
+import type { ChangeEvent, ReactElement } from "react";
 import { useId } from "react";
 
 import {
@@ -13,7 +14,11 @@ interface QuantityInputProps {
   error: string | null;
 }
 
-export function QuantityInput({ value, onChange, error }: QuantityInputProps) {
+export function QuantityInput({
+  value,
+  onChange,
+  error,
+}: QuantityInputProps): ReactElement {
   const inputId = useId();
   return (
     <div>
@@ -26,8 +31,8 @@ export function QuantityInput({ value, onChange, error }: QuantityInputProps) {
         data-testid="quantity-input"
         data-error={error ? "true" : "false"}
         value={value}
-        onChange={(e) => {
-          return onChange(e.target.value);
+        onChange={(e: ChangeEvent<HTMLInputElement>): void => {
+          onChange(e.target.value);
         }}
         max={CREDIT_MAX_QUANTITY_INPUT}
         placeholder="Enter quantity..."

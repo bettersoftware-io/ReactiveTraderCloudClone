@@ -13,7 +13,7 @@ import { scenarios } from "../shared/scenarios";
 //
 // Golden basename: scenario name with "/" → "-". The matcher appends the browser
 // name (e.g. `app-fx-chromium.png`); see the config's resolveScreenshotPath.
-function goldenName(scenario: string) {
+function goldenName(scenario: string): string {
   return scenario.replace(/\//g, "-");
 }
 

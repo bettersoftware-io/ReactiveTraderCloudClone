@@ -6,7 +6,7 @@ import { ConnectionStatus } from "@rtc/domain";
 
 import { createStaleFlagMachine } from "../StaleFlagMachine";
 
-function scheduler() {
+function scheduler(): TestScheduler {
   return new TestScheduler((actual, expected) => {
     expect(actual).toEqual(expected);
   });
@@ -38,9 +38,9 @@ function run(
   return flags;
 }
 
-const C = ConnectionStatus.CONNECTED;
-const D = ConnectionStatus.DISCONNECTED;
-const I = ConnectionStatus.IDLE_DISCONNECTED;
+const C: ConnectionStatus = ConnectionStatus.CONNECTED;
+const D: ConnectionStatus = ConnectionStatus.DISCONNECTED;
+const I: ConnectionStatus = ConnectionStatus.IDLE_DISCONNECTED;
 
 describe("createStaleFlagMachine", () => {
   it("starts false (synchronous default)", () => {

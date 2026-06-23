@@ -52,7 +52,7 @@ describe("NumberFilter", () => {
       props: {
         column: "notional",
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           applied = f;
         },
       },
@@ -74,7 +74,7 @@ describe("NumberFilter", () => {
       props: {
         column: "notional",
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           applied = f;
         },
       },
@@ -98,7 +98,7 @@ describe("NumberFilter", () => {
       props: {
         column: "notional",
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           applied = f;
         },
       },
@@ -124,7 +124,7 @@ describe("NumberFilter", () => {
       props: {
         column: "notional",
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           called = true;
           applied = f;
         },
@@ -141,7 +141,7 @@ describe("NumberFilter", () => {
       props: {
         column: "notional",
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           applied = f;
         },
       },

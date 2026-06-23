@@ -30,7 +30,7 @@ describe("RfqFilterTabs", () => {
     const tabs = mount(RfqFilterTabs, {
       props: {
         selected: "Live",
-        onChange: (f) => {
+        onChange: (f: RfqFilter) => {
           return picks.push(f);
         },
       },

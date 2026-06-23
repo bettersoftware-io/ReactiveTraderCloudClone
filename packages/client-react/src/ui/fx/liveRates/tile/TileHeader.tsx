@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import styles from "./TileHeader.module.css";
 
 interface TileHeaderProps {
@@ -5,7 +7,7 @@ interface TileHeaderProps {
   terms: string;
 }
 
-export function TileHeader({ base, terms }: TileHeaderProps) {
+export function TileHeader({ base, terms }: TileHeaderProps): ReactElement {
   return (
     <div className={styles.header}>
       <span>{base}</span>

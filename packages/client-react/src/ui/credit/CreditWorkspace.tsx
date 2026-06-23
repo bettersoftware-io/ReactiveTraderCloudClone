@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback, useState } from "react";
 
 import { CreditBlotter } from "./blotter/CreditBlotter";
@@ -9,7 +10,7 @@ import styles from "./CreditWorkspace.module.css";
 
 type CreditView = "tiles" | "new-rfq" | "sell-side";
 
-export function CreditWorkspace() {
+export function CreditWorkspace(): ReactElement {
   const [view, setView] = useState<CreditView>("tiles");
 
   const handleRfqCreated = useCallback(() => {
@@ -26,8 +27,8 @@ export function CreditWorkspace() {
               type="button"
               data-testid={`credit-tab-${v}`}
               data-active={view === v ? "true" : "false"}
-              onClick={() => {
-                return setView(v);
+              onClick={(): void => {
+                setView(v);
               }}
               className={styles.tab}
             >

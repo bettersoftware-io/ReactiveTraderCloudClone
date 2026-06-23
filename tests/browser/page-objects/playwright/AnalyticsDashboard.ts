@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 import type { AnalyticsDashboardPO } from "../contracts/AnalyticsDashboard";
 import { TESTIDS } from "../contracts/testids";
@@ -6,7 +6,7 @@ import { TESTIDS } from "../contracts/testids";
 export class PlaywrightAnalyticsDashboard implements AnalyticsDashboardPO {
   constructor(private readonly page: Page) {}
 
-  private locator() {
+  private locator(): Locator {
     return this.page.getByTestId(TESTIDS.analytics.panel);
   }
 

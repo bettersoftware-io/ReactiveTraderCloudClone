@@ -1,4 +1,9 @@
-import { fireEvent, within } from "@testing-library/dom";
+import {
+  type BoundFunctions,
+  fireEvent,
+  type queries,
+  within,
+} from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
@@ -25,7 +30,7 @@ export interface TileNotionalProps {
 export class TileNotionalPage extends MountedComponent<TileNotionalProps> {
   private readonly user: UserEvent = userEvent.setup();
 
-  private q() {
+  private q(): BoundFunctions<typeof queries> {
     return within(this.root);
   }
 

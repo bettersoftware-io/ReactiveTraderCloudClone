@@ -34,7 +34,10 @@ export default defineConfig({
     screenshotsFolder: "reports/browser/cypress/artifacts",
     defaultCommandTimeout: isCI ? 30_000 : 10_000,
     retries: { runMode: isCI ? 2 : 0, openMode: 0 },
-    setupNodeEvents(on, config) {
+    setupNodeEvents(
+      on: Cypress.PluginEvents,
+      config: Cypress.PluginConfigOptions,
+    ): Cypress.PluginConfigOptions {
       mochawesomePlugin(on);
       return config;
     },

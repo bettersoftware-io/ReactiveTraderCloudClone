@@ -1,5 +1,6 @@
 import { NewRfqForm } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
+import type { NewRfqFormPage } from "@ui-contract/pages/credit/newRfq/NewRfqFormPage";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -34,7 +35,7 @@ const dealers: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-const ready = () => {
+const ready = (): NewRfqFormPage => {
   return mount(NewRfqForm, {
     props: { onCreated: () => {} },
     hooks: { useInstruments: instruments, useDealers: dealers },

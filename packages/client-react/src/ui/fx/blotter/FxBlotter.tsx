@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import type { Trade } from "@rtc/domain";
@@ -18,7 +19,7 @@ import { QuickFilter } from "./QuickFilter";
 
 import styles from "./FxBlotter.module.css";
 
-export function FxBlotter() {
+export function FxBlotter(): ReactElement {
   const trades = useHooks().useTrades();
   const [sort, setSort] = useState<SortState>({
     column: null,

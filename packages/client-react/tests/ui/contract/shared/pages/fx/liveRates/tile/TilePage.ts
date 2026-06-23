@@ -1,4 +1,9 @@
-import { fireEvent, within } from "@testing-library/dom";
+import {
+  type BoundFunctions,
+  fireEvent,
+  type queries,
+  within,
+} from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import type { CurrencyPair, ExecuteTradeInput } from "@rtc/domain";
@@ -15,7 +20,7 @@ export class TilePage extends MountedComponent<TileProps> {
     advanceTimers: () => {},
   });
 
-  private q() {
+  private q(): BoundFunctions<typeof queries> {
     return within(this.root);
   }
 

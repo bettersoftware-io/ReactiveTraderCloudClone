@@ -186,11 +186,14 @@ export class RfqsPresenter {
     return {
       state$,
       intents: {
-        submit: (input, onRedirect) => {
-          return submit$.next({ input, onRedirect });
+        submit: (
+          input: CreateRfqInput,
+          onRedirect: (rfqId: number) => void,
+        ): void => {
+          submit$.next({ input, onRedirect });
         },
       },
-      dispose: () => {
+      dispose: (): void => {
         submit$.complete();
         warm.unsubscribe();
       },
@@ -236,14 +239,14 @@ export class RfqsPresenter {
     return {
       state$,
       intents: {
-        submitPrice: (quoteId, price) => {
-          return action$.next(this.quoteRfq({ quoteId, price }));
+        submitPrice: (quoteId: number, price: number): void => {
+          action$.next(this.quoteRfq({ quoteId, price }));
         },
-        pass: (quoteId) => {
-          return action$.next(this.passQuote(quoteId));
+        pass: (quoteId: number): void => {
+          action$.next(this.passQuote(quoteId));
         },
       },
-      dispose: () => {
+      dispose: (): void => {
         action$.complete();
         warm.unsubscribe();
       },

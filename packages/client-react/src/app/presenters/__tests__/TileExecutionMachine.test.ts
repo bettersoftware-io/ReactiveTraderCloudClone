@@ -59,7 +59,7 @@ const STARTED: TileExecutionState = { status: "started" };
 const TOO_LONG: TileExecutionState = { status: "tooLong" };
 const TIMEOUT: TileExecutionState = { status: "timeout" };
 
-function scheduler() {
+function scheduler(): TestScheduler {
   return new TestScheduler((actual, expected) => {
     expect(actual).toEqual(expected);
   });
@@ -114,7 +114,7 @@ describe("createTileExecutionMachine", () => {
   it("execute() → started, then finished with the result status and trade", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<ExecuteTradeResult> => {
           return ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", {
             a: doneResult,
           });
@@ -141,7 +141,7 @@ describe("createTileExecutionMachine", () => {
     };
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<ExecuteTradeResult> => {
           return ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", {
             a: rejected,
           });
@@ -166,7 +166,7 @@ describe("createTileExecutionMachine", () => {
   it("execute() that errors → finished{Timeout} (not the timeout state)", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<ExecuteTradeResult> => {
           return ts.createColdObservable<ExecuteTradeResult>(
             "10ms #",
             {},
@@ -191,7 +191,7 @@ describe("createTileExecutionMachine", () => {
   it("escalates to tooLong after TOO_LONG_THRESHOLD_MS while still started", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<ExecuteTradeResult> => {
           return never(ts);
         };
       },
@@ -211,7 +211,7 @@ describe("createTileExecutionMachine", () => {
   it("escalates to timeout after EXECUTION_TIMEOUT_MS, then auto-dismisses to ready", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<ExecuteTradeResult> => {
           return never(ts);
         };
       },
@@ -228,7 +228,7 @@ describe("createTileExecutionMachine", () => {
     const states = run(
       // result arrives 5ms AFTER the execution timeout — must be ignored.
       (ts) => {
-        return () => {
+        return (): Observable<ExecuteTradeResult> => {
           return ts.createColdObservable<ExecuteTradeResult>(
             `${EXECUTION_TIMEOUT_MS + 5}ms (a|)`,
             { a: doneResult },
@@ -249,7 +249,7 @@ describe("createTileExecutionMachine", () => {
     // Result resolves at 5ms, well before the 2000ms tooLong threshold.
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<ExecuteTradeResult> => {
           return ts.createColdObservable<ExecuteTradeResult>("5ms (a|)", {
             a: doneResult,
           });
@@ -277,7 +277,7 @@ describe("createTileExecutionMachine", () => {
   it("dismiss() returns to ready immediately and cancels pending escalation", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<ExecuteTradeResult> => {
           return never(ts);
         };
       },
@@ -296,7 +296,7 @@ describe("createTileExecutionMachine", () => {
   it("supports a fresh run after a dismiss (takeUntil only tears down the active run)", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<ExecuteTradeResult> => {
           return ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", {
             a: doneResult,
           });
@@ -328,7 +328,7 @@ describe("createTileExecutionMachine", () => {
   it("finishing cancels the tooLong/timeout escalation", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<ExecuteTradeResult> => {
           return ts.createColdObservable<ExecuteTradeResult>("10ms (a|)", {
             a: doneResult,
           });

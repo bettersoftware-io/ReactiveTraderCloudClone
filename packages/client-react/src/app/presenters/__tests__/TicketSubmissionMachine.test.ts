@@ -28,11 +28,11 @@ function port(
     cancelRfq: () => {
       return of(undefined);
     },
-    quote: (req) => {
+    quote: (req: QuoteRequest) => {
       rec.quote.push(req);
       return quote$;
     },
-    pass: (quoteId) => {
+    pass: (quoteId: number) => {
       rec.pass.push(quoteId);
       return pass$;
     },
@@ -42,7 +42,7 @@ function port(
   };
 }
 
-function scheduler() {
+function scheduler(): TestScheduler {
   return new TestScheduler((actual, expected) => {
     expect(actual).toEqual(expected);
   });

@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
 
 import styles from "./StaleIndicator.module.css";
 
@@ -15,7 +15,7 @@ export function StaleIndicator({
   stale,
   children,
   style,
-}: StaleIndicatorProps) {
+}: StaleIndicatorProps): ReactElement {
   return (
     <div
       data-stale={stale || undefined}

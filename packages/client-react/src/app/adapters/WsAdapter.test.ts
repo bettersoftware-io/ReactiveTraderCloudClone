@@ -281,7 +281,7 @@ describe("WsAdapter.rpc() + message routing", () => {
     });
     open(adapter);
 
-    function frame(symbol: string) {
+    function frame(symbol: string): MessageEvent {
       return new MessageEvent("message", {
         data: JSON.stringify({ type: "stream.priceTick", payload: { symbol } }),
       });

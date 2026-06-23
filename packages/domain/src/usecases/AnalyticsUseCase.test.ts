@@ -1,4 +1,4 @@
-import { firstValueFrom, from, lastValueFrom, of } from "rxjs";
+import { firstValueFrom, from, lastValueFrom, type Observable, of } from "rxjs";
 import { toArray } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
 
@@ -18,7 +18,7 @@ interface StubAnalytics {
 function stubAnalytics(updates: PositionUpdates[]): StubAnalytics {
   const lastCurrency = { current: null as string | null };
   const port: AnalyticsPort = {
-    getAnalytics(currency: string) {
+    getAnalytics(currency: string): Observable<PositionUpdates> {
       lastCurrency.current = currency;
       return from(updates);
     },

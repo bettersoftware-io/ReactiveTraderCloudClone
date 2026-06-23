@@ -92,7 +92,7 @@ export class PricingSimulator implements PricingPort {
       const live$ = new Observable<PriceTick>((subscriber) => {
         let timeoutId: ReturnType<typeof setTimeout>;
 
-        function scheduleNext() {
+        function scheduleNext(): void {
           timeoutId = setTimeout(() => {
             pairState.mid = applyRandomWalk(pairState.mid);
             const tick = createTick(symbol, pairState.mid, Date.now());
@@ -106,8 +106,8 @@ export class PricingSimulator implements PricingPort {
 
         scheduleNext();
 
-        return () => {
-          return clearTimeout(timeoutId);
+        return (): void => {
+          clearTimeout(timeoutId);
         };
       });
       return concat(from(state.history), live$);

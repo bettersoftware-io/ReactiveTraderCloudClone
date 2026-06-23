@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import { Direction, ExecutionStatus } from "@rtc/domain";
 
 import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
@@ -13,7 +15,11 @@ function formatNotional(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
-function ConfirmationContent({ state }: { state: TileExecutionState }) {
+function ConfirmationContent({
+  state,
+}: {
+  state: TileExecutionState;
+}): ReactElement | null {
   if (state.status === "started") {
     return <span>Executing...</span>;
   }
@@ -99,7 +105,10 @@ function statusKey(state: TileExecutionState): ConfirmationStatus {
   return state.status; // "started" | "tooLong" | "timeout"
 }
 
-export function TileConfirmation({ state, onDismiss }: TileConfirmationProps) {
+export function TileConfirmation({
+  state,
+  onDismiss,
+}: TileConfirmationProps): ReactElement | null {
   if (state.status === "ready") return null;
 
   if (state.status === "started") {

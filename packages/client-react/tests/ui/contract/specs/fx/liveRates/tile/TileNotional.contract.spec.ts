@@ -52,7 +52,7 @@ describe("TileNotional", () => {
         notional: notional(
           {},
           {
-            change: (v) => {
+            change: (v: string) => {
               return edits.push(v);
             },
           },

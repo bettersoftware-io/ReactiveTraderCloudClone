@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import styles from "./PnlValue.module.css";
 
 interface PnlValueProps {
@@ -19,7 +21,7 @@ function formatPnl(value: number): string {
   return (value >= 0 ? "+" : "-") + formatted;
 }
 
-export function PnlValue({ value }: PnlValueProps) {
+export function PnlValue({ value }: PnlValueProps): ReactElement {
   const sign = value >= 0 ? "pos" : "neg";
 
   return (

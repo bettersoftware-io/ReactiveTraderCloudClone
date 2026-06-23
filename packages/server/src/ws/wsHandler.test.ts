@@ -159,7 +159,7 @@ function fakeServices(
 ): ServiceContainer {
   const base = {
     referenceData: {
-      getCurrencyPairs: () => {
+      getCurrencyPairs: (): Observable<unknown> => {
         return of([
           {
             base: "EUR",
@@ -187,7 +187,7 @@ function fakeServices(
           }),
         );
       },
-      getPriceHistory: () => {
+      getPriceHistory: (): Observable<unknown> => {
         return of([
           {
             symbol: "EURUSD",
@@ -207,7 +207,7 @@ function fakeServices(
         dealtCurrency: string;
         direction: Direction;
         spotRate: number;
-      }) => {
+      }): Observable<unknown> => {
         return of({
           tradeId: 1,
           tradeName: "RTC",
@@ -223,7 +223,7 @@ function fakeServices(
       },
     },
     blotter: {
-      getTradeStream: () => {
+      getTradeStream: (): Observable<unknown> => {
         return of([
           {
             tradeId: 1,
@@ -241,7 +241,7 @@ function fakeServices(
       },
     },
     analytics: {
-      getAnalytics: () => {
+      getAnalytics: (): Observable<unknown> => {
         return of({
           currentPositions: [
             {
@@ -256,7 +256,7 @@ function fakeServices(
       },
     },
     instruments: {
-      getInstruments: () => {
+      getInstruments: (): Observable<unknown> => {
         return of([
           {
             id: 1,
@@ -271,7 +271,7 @@ function fakeServices(
       },
     },
     dealers: {
-      getDealers: () => {
+      getDealers: (): Observable<unknown> => {
         return of([{ id: 1, name: "Acme Bank" }]);
       },
     },
@@ -290,19 +290,19 @@ function fakeServices(
           },
         } as unknown as RfqEvent);
       },
-      createRfq: () => {
+      createRfq: (): Observable<unknown> => {
         return of(1);
       },
-      cancelRfq: () => {
+      cancelRfq: (): Observable<unknown> => {
         return of(undefined);
       },
-      quote: () => {
+      quote: (): Observable<unknown> => {
         return of(undefined);
       },
-      pass: () => {
+      pass: (): Observable<unknown> => {
         return of(undefined);
       },
-      accept: () => {
+      accept: (): Observable<unknown> => {
         return of(undefined);
       },
     },

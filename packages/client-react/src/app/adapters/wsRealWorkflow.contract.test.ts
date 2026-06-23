@@ -15,15 +15,15 @@ describeWorkflowPortContract("wsRealWorkflow", () => {
   return {
     port: ports.workflow,
     driver: {
-      ackCreateRfq: async (rfqId) => {
+      ackCreateRfq: async (rfqId: number) => {
         await awaitPendingRpc(ws, "rpc.createRfq");
         ws.nextRpcResponse("rpc.createRfq", rpcAck(rfqId));
       },
-      emitCreatedEvent: async (rfqId) => {
+      emitCreatedEvent: async (rfqId: number) => {
         await Promise.resolve();
         ws.emit("stream.workflowEvent", workflowEventCreated(rfqId));
       },
-      emitAcceptedEvent: async (rfqId, quoteId) => {
+      emitAcceptedEvent: async (rfqId: number, quoteId: number) => {
         await Promise.resolve();
         ws.emit("stream.workflowEvent", workflowEventAccepted(rfqId, quoteId));
       },

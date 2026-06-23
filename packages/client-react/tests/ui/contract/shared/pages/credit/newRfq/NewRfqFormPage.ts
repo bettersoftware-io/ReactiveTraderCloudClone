@@ -1,4 +1,8 @@
-import { within } from "@testing-library/dom";
+import {
+  type BoundFunctions,
+  type queries,
+  within,
+} from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import type { CreateRfqInput, Direction } from "@rtc/domain";
@@ -23,7 +27,7 @@ export class NewRfqFormPage extends MountedComponent<NewRfqFormProps> {
     this.user = userEvent.setup({ advanceTimers });
   }
 
-  private q() {
+  private q(): BoundFunctions<typeof queries> {
     return within(this.root);
   }
 

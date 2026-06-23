@@ -1,4 +1,8 @@
-import { within } from "@testing-library/dom";
+import {
+  type BoundFunctions,
+  type queries,
+  within,
+} from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import type { Dealer, Quote } from "@rtc/domain";
@@ -14,7 +18,7 @@ export interface QuoteCardProps {
 export class QuoteCardPage extends MountedComponent<QuoteCardProps> {
   private readonly user: UserEvent = userEvent.setup();
 
-  private q() {
+  private q(): BoundFunctions<typeof queries> {
     return within(this.root);
   }
 

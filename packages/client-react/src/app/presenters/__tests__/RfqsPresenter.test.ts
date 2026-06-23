@@ -2,8 +2,10 @@ import { firstValueFrom, lastValueFrom, of, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
+  type CreateRfqRequest,
   Direction,
   type Quote,
+  type QuoteRequest,
   type Rfq,
   type RfqEvent,
   RfqState,
@@ -98,7 +100,7 @@ describe("RfqsPresenter", () => {
     let received: unknown;
     const wp: WorkflowPort = {
       ...port([]),
-      createRfq: (req) => {
+      createRfq: (req: CreateRfqRequest) => {
         received = req;
         return of(42);
       },
@@ -129,7 +131,7 @@ describe("RfqsPresenter", () => {
     let received: unknown;
     const wp: WorkflowPort = {
       ...port([]),
-      quote: (req) => {
+      quote: (req: QuoteRequest) => {
         received = req;
         return of(undefined);
       },

@@ -1,3 +1,4 @@
+import type { ChangeEvent, ReactElement } from "react";
 import { useCallback, useState } from "react";
 
 import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
@@ -12,7 +13,11 @@ interface TradeTicketProps {
   instrument: Instrument | undefined;
 }
 
-export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
+export function TradeTicket({
+  rfq,
+  quote,
+  instrument,
+}: TradeTicketProps): ReactElement {
   const { useTicketSubmission } = useHooks();
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
@@ -68,8 +73,8 @@ export function TradeTicket({ rfq, quote, instrument }: TradeTicketProps) {
             type="number"
             data-testid="trade-ticket-price"
             value={price}
-            onChange={(e) => {
-              return setPrice(e.target.value);
+            onChange={(e: ChangeEvent<HTMLInputElement>): void => {
+              setPrice(e.target.value);
             }}
             placeholder="Price"
             className={styles.priceInput}

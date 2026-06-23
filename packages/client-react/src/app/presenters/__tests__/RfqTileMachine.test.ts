@@ -40,7 +40,7 @@ function received(remainingMs: number): RfqState {
   };
 }
 
-function scheduler() {
+function scheduler(): TestScheduler {
   return new TestScheduler((actual, expected) => {
     expect(actual).toEqual(expected);
   });
@@ -100,7 +100,7 @@ describe("createRfqTileMachine", () => {
   it("requestQuote() is a no-op unless in the init state", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<RfqQuoteResult> => {
           return never(ts);
         };
       },
@@ -121,7 +121,10 @@ describe("createRfqTileMachine", () => {
     const calls: { symbol: string; pipsPosition: number }[] = [];
     run(
       (ts) => {
-        return (symbol, pipsPosition) => {
+        return (
+          symbol: string,
+          pipsPosition: number,
+        ): Observable<RfqQuoteResult> => {
           calls.push({ symbol, pipsPosition });
           return never(ts);
         };
@@ -140,7 +143,7 @@ describe("createRfqTileMachine", () => {
   it("requested → received when the quote resolves", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<RfqQuoteResult> => {
           return ts.createColdObservable<RfqQuoteResult>("10ms (a|)", {
             a: quoteResult,
           });
@@ -164,7 +167,7 @@ describe("createRfqTileMachine", () => {
   it("requested → rejected when the quote request errors, then holds then init", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<RfqQuoteResult> => {
           return ts.createColdObservable<RfqQuoteResult>(
             "10ms #",
             {},
@@ -184,7 +187,7 @@ describe("createRfqTileMachine", () => {
   it("decrements remainingMs every COUNTDOWN_INTERVAL_MS while received", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<RfqQuoteResult> => {
           return ts.createColdObservable<RfqQuoteResult>("(a|)", {
             a: quoteResult,
           });
@@ -211,7 +214,7 @@ describe("createRfqTileMachine", () => {
   it("auto-rejects when the countdown reaches zero, then returns to init", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<RfqQuoteResult> => {
           return ts.createColdObservable<RfqQuoteResult>("(a|)", {
             a: quoteResult,
           });
@@ -278,7 +281,7 @@ describe("createRfqTileMachine", () => {
   it("cancel() returns to init only from the requested state", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<RfqQuoteResult> => {
           return never(ts);
         };
       },
@@ -305,7 +308,7 @@ describe("createRfqTileMachine", () => {
   it("reject() moves to rejected only from the received state", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<RfqQuoteResult> => {
           return ts.createColdObservable<RfqQuoteResult>("5ms (a|)", {
             a: quoteResult,
           });
@@ -337,7 +340,7 @@ describe("createRfqTileMachine", () => {
   it("accept() returns to init only from the received state (no synchronous return)", () => {
     const states = run(
       (ts) => {
-        return () => {
+        return (): Observable<RfqQuoteResult> => {
           return ts.createColdObservable<RfqQuoteResult>("5ms (a|)", {
             a: quoteResult,
           });

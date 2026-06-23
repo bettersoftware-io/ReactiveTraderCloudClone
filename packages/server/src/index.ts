@@ -6,7 +6,7 @@ import { createServices } from "./services/serviceContainer.js";
 import { handleConnection } from "./ws/wsHandler.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
-const HOSTNAME = process.env.HOSTNAME ?? "0.0.0.0";
+const HOSTNAME: string = process.env.HOSTNAME ?? "0.0.0.0";
 
 const services = createServices();
 

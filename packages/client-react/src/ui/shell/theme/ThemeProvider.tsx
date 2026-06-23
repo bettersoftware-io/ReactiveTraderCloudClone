@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { type ReactNode, useLayoutEffect } from "react";
 
 import { useHooks } from "#/ui/hooks/useHooks";
@@ -5,7 +6,7 @@ import { useHooks } from "#/ui/hooks/useHooks";
 import { ThemeContext } from "./ThemeContext";
 import { darkTokens, lightTokens, type ThemeTokens } from "./tokens";
 
-function applyTokens(tokens: ThemeTokens) {
+function applyTokens(tokens: ThemeTokens): void {
   const root = document.documentElement;
 
   for (const [prop, value] of Object.entries(tokens)) {
@@ -13,7 +14,11 @@ function applyTokens(tokens: ThemeTokens) {
   }
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({
+  children,
+}: {
+  children: ReactNode;
+}): ReactElement {
   // Persistence/state lives behind the seam (PreferencesPort); the provider
   // only reads the current theme and paints the CSS tokens for it.
   //

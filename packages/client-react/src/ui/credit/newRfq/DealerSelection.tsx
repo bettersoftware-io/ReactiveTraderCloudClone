@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback } from "react";
 
 import type { Dealer } from "@rtc/domain";
@@ -14,7 +15,7 @@ export function DealerSelection({
   dealers,
   selectedIds,
   onChange,
-}: DealerSelectionProps) {
+}: DealerSelectionProps): ReactElement {
   const toggle = useCallback(
     (id: number) => {
       const next = new Set(selectedIds);
@@ -35,8 +36,8 @@ export function DealerSelection({
               <input
                 type="checkbox"
                 checked={selectedIds.has(dealer.id)}
-                onChange={() => {
-                  return toggle(dealer.id);
+                onChange={(): void => {
+                  toggle(dealer.id);
                 }}
               />
               {dealer.name}

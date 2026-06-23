@@ -10,7 +10,7 @@ import {
   VIEW_MODE_STORAGE_KEY,
 } from "./LocalStoragePreferencesAdapter";
 
-function clearStorage() {
+function clearStorage(): void {
   localStorage.removeItem(THEME_STORAGE_KEY);
   localStorage.removeItem(VIEW_MODE_STORAGE_KEY);
 }

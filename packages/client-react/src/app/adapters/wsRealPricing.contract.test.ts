@@ -14,12 +14,12 @@ describePricingPortContract("wsRealPricing", () => {
   return {
     port: ports.pricing,
     driver: {
-      tickPrice: async (symbol) => {
+      tickPrice: async (symbol: string) => {
         await Promise.resolve();
         // "stream.priceTick" is the server-side event name for price ticks
         ws.emit("stream.priceTick", priceTickFrame(symbol));
       },
-      ackHistory: async (_symbol) => {
+      ackHistory: async (_symbol: string) => {
         // Poll until the port's getPriceHistory RPC is registered, then resolve it
         await awaitPendingRpc(ws, "rpc.getPriceHistory");
         ws.nextRpcResponse(
@@ -27,7 +27,7 @@ describePricingPortContract("wsRealPricing", () => {
           priceHistoryResponse(_symbol),
         );
       },
-      ackRfqQuote: async (_symbol) => {
+      ackRfqQuote: async (_symbol: string) => {
         // getRfqQuote reuses rpc.getPriceHistory — confirmed in portFactory.ts
         await awaitPendingRpc(ws, "rpc.getPriceHistory");
         ws.nextRpcResponse(

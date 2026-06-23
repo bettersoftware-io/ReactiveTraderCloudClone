@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback } from "react";
 
 import {
@@ -34,7 +35,7 @@ export function TileRfq({
   onRequestQuote,
   onExecute,
   notional,
-}: TileRfqProps) {
+}: TileRfqProps): ReactElement | null {
   const { state } = rfqState;
 
   const handleAccept = useCallback(

@@ -11,7 +11,7 @@ import {
   type ThroughputView,
 } from "../ThroughputPresenter";
 
-function scheduler() {
+function scheduler(): TestScheduler {
   return new TestScheduler((actual, expected) => {
     expect(actual).toEqual(expected);
   });

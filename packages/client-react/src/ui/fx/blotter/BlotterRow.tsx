@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { type Trade, TradeStatus } from "@rtc/domain";
@@ -13,7 +14,7 @@ interface BlotterRowProps {
   isNew: boolean;
 }
 
-export function BlotterRow({ trade, isNew }: BlotterRowProps) {
+export function BlotterRow({ trade, isNew }: BlotterRowProps): ReactElement {
   // The transient new-row highlight (true for HIGHLIGHT_MS then false) now lives
   // in the app-layer createRowHighlightMachine behind the seam, so this row holds
   // no timer. Hover stays here — it's pure interaction view state, no timer.

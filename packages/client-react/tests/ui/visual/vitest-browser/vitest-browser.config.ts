@@ -74,6 +74,13 @@ export default defineConfig({
             arg,
             browserName,
             ext,
+          }: {
+            root: string;
+            testFileDirectory: string;
+            testFileName: string;
+            arg: string;
+            browserName: string;
+            ext: string;
           }) => {
             return resolve(
               root,
@@ -103,6 +110,13 @@ export default defineConfig({
             arg,
             browserName,
             ext,
+          }: {
+            root: string;
+            testFileDirectory: string;
+            testFileName: string;
+            arg: string;
+            browserName: string;
+            ext: string;
           }) => {
             return resolve(
               root,

@@ -4,7 +4,7 @@ import { TESTIDS } from "../contracts/testids";
 const TILE_PREFIX_SELECTOR = `[data-testid^="${TESTIDS.liveRates.tilePrefix}"]`;
 
 export class CypressFxRfqForm implements FxRfqFormPO {
-  private firstTile() {
+  private firstTile(): Cypress.Chainable<JQuery<HTMLElement>> {
     return cy.get(TILE_PREFIX_SELECTOR).first();
   }
 

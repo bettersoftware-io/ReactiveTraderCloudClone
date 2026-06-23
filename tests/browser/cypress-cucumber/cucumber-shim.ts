@@ -27,7 +27,7 @@ type StepFn = (...args: unknown[]) => unknown;
 type DefineStep = (pattern: string | RegExp, fn: StepFn) => void;
 
 function wrapStepFn(fn: StepFn): StepFn {
-  return function wrappedStep(this: unknown, ...args: unknown[]) {
+  return function wrappedStep(this: unknown, ...args: unknown[]): unknown {
     // Call the (possibly async) step handler. Commands queued inside it via
     // cy.* are already in the Cypress queue regardless of whether the handler
     // is async. We discard the native Promise return value (if any) and let

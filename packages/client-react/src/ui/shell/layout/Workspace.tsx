@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import { AdminPanel } from "#/ui/admin/AdminPanel";
 import { CreditWorkspace } from "#/ui/credit/CreditWorkspace";
 import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
@@ -12,7 +14,7 @@ interface WorkspaceProps {
   activeTab: WorkspaceTab;
 }
 
-function FxWorkspace() {
+function FxWorkspace(): ReactElement {
   return (
     <>
       <div className={styles.fxSplitRow}>
@@ -28,7 +30,7 @@ function FxWorkspace() {
   );
 }
 
-export function Workspace({ activeTab }: WorkspaceProps) {
+export function Workspace({ activeTab }: WorkspaceProps): ReactElement {
   return (
     <main className={styles.workspace}>
       {activeTab === "fx" ? (

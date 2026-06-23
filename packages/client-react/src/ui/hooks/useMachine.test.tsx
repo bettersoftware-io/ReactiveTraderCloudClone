@@ -1,7 +1,9 @@
 import { state } from "@rx-state/core";
 import { act, render, renderHook } from "@testing-library/react";
+import type { ReactElement } from "react";
 import React from "react";
 import { BehaviorSubject, Subject } from "rxjs";
+import type { Mock } from "vitest";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Machine } from "#/app/presenters/machine";
@@ -11,7 +13,12 @@ import { useMachine } from "./useMachine";
 /** Build a minimal test machine from a BehaviorSubject.
  * We subscribe immediately so the StateObservable stays warm
  * for the duration of the test. */
-function makeTestMachine<S>(subject: BehaviorSubject<S>) {
+function makeTestMachine<S>(subject: BehaviorSubject<S>): {
+  machine: Machine<S, { intent: () => void }>;
+  intent: Mock<() => void>;
+  dispose: Mock<() => void>;
+  subject: BehaviorSubject<S>;
+} {
   const state$ = state(subject, subject.getValue());
   // Keep the StateObservable warm (ref-count > 0) so useStateObservable can
   // read the synchronous default without entering Suspense.
@@ -102,7 +109,11 @@ describe("useMachine", () => {
       return makeTestMachine(new BehaviorSubject(0)).machine;
     });
 
-    function wrapper({ children }: { children: React.ReactNode }) {
+    function wrapper({
+      children,
+    }: {
+      children: React.ReactNode;
+    }): ReactElement {
       return <React.StrictMode>{children}</React.StrictMode>;
     }
 
@@ -121,7 +132,10 @@ describe("useMachine", () => {
    * unsubscribes the warm sub. After dispose, the intent is a no-op (it pushes
    * into a completed Subject) and state$ can never emit again — exactly the
    * conditions that froze tiles in the real app under StrictMode. */
-  function makeLifecycleMachine() {
+  function makeLifecycleMachine(): {
+    machine: Machine<number, { bump: () => void }>;
+    dispose: Mock<() => void>;
+  } {
     const source$ = new Subject<number>();
     const state$ = state(source$, 0);
     const warm = state$.subscribe();
@@ -155,7 +169,7 @@ describe("useMachine", () => {
     machine,
   }: {
     machine: Machine<number, { bump: () => void }>;
-  }) {
+  }): ReactElement {
     const { state, bump } = useMachine(() => {
       return machine;
     });
@@ -163,8 +177,8 @@ describe("useMachine", () => {
       <button
         type="button"
         data-testid="probe"
-        onClick={() => {
-          return bump();
+        onClick={(): void => {
+          bump();
         }}
       >
         {state}

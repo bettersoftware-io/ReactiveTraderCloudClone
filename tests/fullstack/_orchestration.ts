@@ -100,7 +100,7 @@ export function stopProcess(child: ChildProcess | undefined): Promise<void> {
 
     // Kill the process group (negative pid) so the real server/Vite grandchild
     // dies with its `pnpm` wrapper instead of orphaning on its port.
-    function killGroup(signal: NodeJS.Signals) {
+    function killGroup(signal: NodeJS.Signals): void {
       try {
         process.kill(-groupPid, signal);
       } catch {

@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import { Direction } from "@rtc/domain";
 
 import styles from "./TileExecution.module.css";
@@ -7,7 +9,10 @@ interface TileExecutionProps {
   disabled: boolean;
 }
 
-export function TileExecution({ onExecute, disabled }: TileExecutionProps) {
+export function TileExecution({
+  onExecute,
+  disabled,
+}: TileExecutionProps): ReactElement {
   return (
     <div className={styles.row}>
       <button

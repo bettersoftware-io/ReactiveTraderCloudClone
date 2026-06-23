@@ -4,7 +4,7 @@ import { scenarioActions } from "../scenarioActions";
 import { scenarios } from "../shared/scenarios";
 
 // Golden filename: scenario name with "/" → "-" (path-safe, stable).
-function goldenName(scenario: string) {
+function goldenName(scenario: string): string {
   return `${scenario.replace(/\//g, "-")}.png`;
 }
 

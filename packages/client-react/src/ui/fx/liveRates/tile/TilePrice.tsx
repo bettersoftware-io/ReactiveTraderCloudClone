@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import { type Price, PriceMovementType } from "@rtc/domain";
 
 import styles from "./TilePrice.module.css";
@@ -56,7 +58,7 @@ function PriceButton({
   pipsPosition: number;
   movement: PriceMovementType;
   side: "bid" | "ask";
-}) {
+}): ReactElement {
   const { prefix, pips, fractional } = splitPrice(
     value,
     ratePrecision,
@@ -85,7 +87,7 @@ export function TilePrice({
   price,
   ratePrecision,
   pipsPosition,
-}: TilePriceProps) {
+}: TilePriceProps): ReactElement {
   return (
     <div className={styles.row}>
       <PriceButton
@@ -108,6 +110,6 @@ export function TilePrice({
   );
 }
 
-export function SpreadDisplay({ spread }: { spread: string }) {
+export function SpreadDisplay({ spread }: { spread: string }): ReactElement {
   return <div className={styles.spread}>{spread}</div>;
 }

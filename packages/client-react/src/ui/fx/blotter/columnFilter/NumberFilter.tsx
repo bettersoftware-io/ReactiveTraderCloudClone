@@ -1,3 +1,4 @@
+import type { ChangeEvent, ReactElement } from "react";
 import { useCallback, useState } from "react";
 
 import type { Trade } from "@rtc/domain";
@@ -26,7 +27,7 @@ export function NumberFilter({
   column,
   currentFilter,
   onApply,
-}: NumberFilterProps) {
+}: NumberFilterProps): ReactElement {
   const [comparator, setComparator] = useState<Comparator>(
     currentFilter?.type === "number" ? currentFilter.comparator : "eq",
   );
@@ -62,8 +63,8 @@ export function NumberFilter({
       <select
         data-testid="number-filter-comparator"
         value={comparator}
-        onChange={(e) => {
-          return setComparator(e.target.value as Comparator);
+        onChange={(e: ChangeEvent<HTMLSelectElement>): void => {
+          setComparator(e.target.value as Comparator);
         }}
         className={styles.select}
       >
@@ -79,8 +80,8 @@ export function NumberFilter({
         type="number"
         data-testid="number-filter-value"
         value={value}
-        onChange={(e) => {
-          return setValue(e.target.value);
+        onChange={(e: ChangeEvent<HTMLInputElement>): void => {
+          setValue(e.target.value);
         }}
         placeholder="Value"
         className={styles.input}
@@ -90,8 +91,8 @@ export function NumberFilter({
           type="number"
           data-testid="number-filter-value-to"
           value={valueTo}
-          onChange={(e) => {
-            return setValueTo(e.target.value);
+          onChange={(e: ChangeEvent<HTMLInputElement>): void => {
+            setValueTo(e.target.value);
           }}
           placeholder="To"
           className={styles.input}

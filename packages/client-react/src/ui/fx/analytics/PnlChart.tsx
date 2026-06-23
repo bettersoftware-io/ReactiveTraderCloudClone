@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import type { HistoricPosition } from "@rtc/domain";
 
 import styles from "./PnlChart.module.css";
@@ -47,7 +49,7 @@ function buildZeroLine(history: readonly HistoricPosition[]): number | null {
   return PADDING + h - ((0 - min) / range) * h;
 }
 
-export function PnlChart({ history }: PnlChartProps) {
+export function PnlChart({ history }: PnlChartProps): ReactElement {
   const path = buildPath(history);
   const zeroY = buildZeroLine(history);
   const lastValue = history.length > 0 ? history[history.length - 1].usdPnl : 0;

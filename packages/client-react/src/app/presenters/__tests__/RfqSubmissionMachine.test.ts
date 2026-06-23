@@ -46,7 +46,7 @@ function port(createRfq$: Observable<number>): WorkflowPort {
   };
 }
 
-function scheduler() {
+function scheduler(): TestScheduler {
   return new TestScheduler((actual, expected) => {
     expect(actual).toEqual(expected);
   });

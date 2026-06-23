@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback } from "react";
 
 import type { Dealer, Quote } from "@rtc/domain";
@@ -24,7 +25,11 @@ function displayText(state: Quote["state"]): string {
   }
 }
 
-export function QuoteCard({ quote, dealer, onAccept }: QuoteCardProps) {
+export function QuoteCard({
+  quote,
+  dealer,
+  onAccept,
+}: QuoteCardProps): ReactElement {
   const canAccept = quote.state.type === "pendingWithPrice" && onAccept;
 
   const handleAccept = useCallback(() => {

@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 import type { LiveRatesTilePO } from "../contracts/LiveRatesTile";
 import { TESTIDS } from "../contracts/testids";
@@ -6,13 +6,13 @@ import { TESTIDS } from "../contracts/testids";
 export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
   constructor(private readonly page: Page) {}
 
-  private allTiles() {
+  private allTiles(): Locator {
     return this.page.locator(
       `[data-testid^='${TESTIDS.liveRates.tilePrefix}']`,
     );
   }
 
-  private firstTile() {
+  private firstTile(): Locator {
     return this.allTiles().first();
   }
 

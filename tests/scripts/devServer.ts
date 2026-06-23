@@ -26,7 +26,7 @@ export const SHARED_DEV_SERVER_ENV = "RTC_DEV_SERVER_SHARED";
 // Resolve the monorepo root (two levels up from tests/scripts/)
 const MONOREPO_ROOT = join(fileURLToPath(import.meta.url), "..", "..", "..");
 
-function sleep(ms: number) {
+function sleep(ms: number): Promise<void> {
   return new Promise((r) => {
     return setTimeout(r, ms);
   });
@@ -84,7 +84,7 @@ function spawnDevServer(preferredPort: number): SpawnedServer {
   });
   let log = "";
 
-  function capture(d: Buffer) {
+  function capture(d: Buffer): void {
     log = (log + d.toString()).slice(-4000);
   }
 
@@ -111,7 +111,7 @@ function makeStop(child: ChildProcess): () => Promise<void> {
       const groupPid = pid;
 
       // Kill the process group (negative pid) so Vite dies with its wrapper.
-      function killGroup(signal: NodeJS.Signals) {
+      function killGroup(signal: NodeJS.Signals): void {
         try {
           process.kill(-groupPid, signal);
         } catch {

@@ -211,7 +211,7 @@ export function createWorld(
     sources,
     throughput,
     throughputSets,
-    setThroughputView: (patch) => {
+    setThroughputView: (patch: Partial<ThroughputView>) => {
       return throughput.next({ ...throughput.getValue(), ...patch });
     },
     theme,
@@ -219,13 +219,13 @@ export function createWorld(
     priceFor,
     historyFor,
     quotesForRfq,
-    setPrice: (symbol, value) => {
+    setPrice: (symbol: string, value: Price | null) => {
       return priceFor(symbol).next(value);
     },
-    setHistory: (symbol, value) => {
+    setHistory: (symbol: string, value: readonly PriceTick[]) => {
       return historyFor(symbol).next(value);
     },
-    setQuotesForRfq: (rfqId, value) => {
+    setQuotesForRfq: (rfqId: number, value: readonly Quote[]) => {
       return quotesForRfq(rfqId).next(value);
     },
     results,
@@ -237,7 +237,7 @@ export function createWorld(
       passQuote: [],
       quoteRfq: [],
     },
-    push(patch) {
+    push(patch: Partial<HookValues>): void {
       for (const key of Object.keys(patch) as (keyof HookValues)[]) {
         (sources[key] as BehaviorSubject<unknown>).next(patch[key]);
       }

@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import { HooksProvider } from "#/ui/hooks/HooksProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
@@ -10,7 +12,7 @@ import { registry } from "./registry";
 // sit inside the padded inline-block wrapper used for component-level shots.
 const FULL_BLEED = new Set(["App"]);
 
-export function VisualScenario({ name }: { name: string }) {
+export function VisualScenario({ name }: { name: string }): ReactElement {
   const scenario = scenarios[name];
   if (!scenario) throw new Error(`Unknown visual scenario: ${name}`);
   const data = fixtures[scenario.fixtureKey];
