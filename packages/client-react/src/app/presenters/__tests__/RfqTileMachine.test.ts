@@ -12,6 +12,21 @@ import {
 
 import { createRfqTileMachine, type RfqState } from "../RfqTileMachine";
 
+interface RunCtx {
+  machine: ReturnType<typeof createRfqTileMachine>;
+  ts: TestScheduler;
+}
+
+interface QuoteCall {
+  symbol: string;
+  pipsPosition: number;
+}
+
+interface TimedState {
+  frame: number;
+  state: RfqState;
+}
+
 const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "EURUSD";
 });
@@ -51,10 +66,7 @@ function run(
   buildRequestQuote: (
     ts: TestScheduler,
   ) => (symbol: string, pipsPosition: number) => Observable<RfqQuoteResult>,
-  drive: (ctx: {
-    machine: ReturnType<typeof createRfqTileMachine>;
-    ts: TestScheduler;
-  }) => void,
+  drive: (ctx: RunCtx) => void,
 ): RfqState[] {
   const states: RfqState[] = [];
   const ts = scheduler();
@@ -118,7 +130,7 @@ describe("createRfqTileMachine", () => {
   });
 
   it("requestQuote() requests for the pair's symbol and pipsPosition", () => {
-    const calls: { symbol: string; pipsPosition: number }[] = [];
+    const calls: QuoteCall[] = [];
     run(
       (ts) => {
         return (
@@ -242,7 +254,7 @@ describe("createRfqTileMachine", () => {
     // rejected→init transition must land exactly REJECTED_DISPLAY_MS after
     // rejected, not sooner.
     const ts = scheduler();
-    const seen: { frame: number; state: RfqState }[] = [];
+    const seen: TimedState[] = [];
     ts.run(({ flush }) => {
       const machine = createRfqTileMachine(pair, {
         requestQuote: () => {

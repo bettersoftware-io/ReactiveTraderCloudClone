@@ -17,13 +17,15 @@ import { reactHooks } from "./hooksFromWorld";
 import { PropsHost } from "./PropsHost";
 import { registry } from "./registry";
 
+interface RenderArgs {
+  propsSubject: BehaviorSubject<Partial<unknown>>;
+  world: World;
+}
+
 export const reactDriver: UiContractDriver = {
   render(
     token: ComponentToken<unknown, MountedComponent<unknown>>,
-    {
-      propsSubject,
-      world,
-    }: { propsSubject: BehaviorSubject<Partial<unknown>>; world: World },
+    { propsSubject, world }: RenderArgs,
   ): MountedRoot {
     const build = registry.get(token);
     if (!build) throw new Error("No React registry entry for the given token.");

@@ -22,6 +22,11 @@ import {
   type TileExecutionState,
 } from "../TileExecutionMachine";
 
+interface RunCtx {
+  machine: ReturnType<typeof createTileExecutionMachine>;
+  ts: TestScheduler;
+}
+
 const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "EURUSD";
 });
@@ -70,10 +75,7 @@ function run(
   buildExecute: (
     ts: TestScheduler,
   ) => (input: ExecuteTradeInput) => Observable<ExecuteTradeResult>,
-  drive: (ctx: {
-    machine: ReturnType<typeof createTileExecutionMachine>;
-    ts: TestScheduler;
-  }) => void,
+  drive: (ctx: RunCtx) => void,
 ): TileExecutionState[] {
   const states: TileExecutionState[] = [];
   const ts = scheduler();

@@ -25,9 +25,13 @@ import { startServer, stopProcess, waitForHttp } from "./_orchestration.js";
 const DIR_BUY = "Buy" as unknown as Direction;
 
 // Node < 22 exposes WebSocket only behind a flag; polyfill from `ws` if absent.
-if (typeof (globalThis as { WebSocket?: unknown }).WebSocket === "undefined") {
+interface GlobalWithWebSocket {
+  WebSocket?: unknown;
+}
+
+if (typeof (globalThis as GlobalWithWebSocket).WebSocket === "undefined") {
   const { WebSocket } = await import("ws");
-  (globalThis as { WebSocket?: unknown }).WebSocket = WebSocket;
+  (globalThis as GlobalWithWebSocket).WebSocket = WebSocket;
 }
 
 const HOST = "127.0.0.1";

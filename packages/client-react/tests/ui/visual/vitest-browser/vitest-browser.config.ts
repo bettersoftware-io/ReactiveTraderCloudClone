@@ -6,6 +6,15 @@ import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
+interface ScreenshotPathArgs {
+  root: string;
+  testFileDirectory: string;
+  testFileName: string;
+  arg: string;
+  browserName: string;
+  ext: string;
+}
+
 // Tier 3: Vitest browser mode (`@vitest/browser` + `vitest-browser-react`) using
 // the experimental `toMatchScreenshot` matcher (Vitest 4). Mounts the React
 // harness in a real Chromium via the Playwright provider and diffs against the
@@ -74,14 +83,7 @@ export default defineConfig({
             arg,
             browserName,
             ext,
-          }: {
-            root: string;
-            testFileDirectory: string;
-            testFileName: string;
-            arg: string;
-            browserName: string;
-            ext: string;
-          }) => {
+          }: ScreenshotPathArgs) => {
             return resolve(
               root,
               testFileDirectory,
@@ -110,14 +112,7 @@ export default defineConfig({
             arg,
             browserName,
             ext,
-          }: {
-            root: string;
-            testFileDirectory: string;
-            testFileName: string;
-            arg: string;
-            browserName: string;
-            ext: string;
-          }) => {
+          }: ScreenshotPathArgs) => {
             return resolve(
               root,
               testFileDirectory,

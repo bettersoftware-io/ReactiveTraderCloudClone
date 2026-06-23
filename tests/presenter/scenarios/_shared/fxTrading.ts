@@ -78,10 +78,12 @@ export async function executeBuyWithNotional(
   w.scratch.lastTradeNotional = r.notional;
 }
 
-const UI_PATTERN_TO_STATUSES: Array<{
+interface UiPatternRule {
   test: (p: RegExp) => boolean;
   statuses: ExecutionStatus[];
-}> = [
+}
+
+const UI_PATTERN_TO_STATUSES: UiPatternRule[] = [
   {
     test: (p: RegExp) => {
       return /Executing|You Bought|You Sold|Bought|Sold/i.test(p.source);

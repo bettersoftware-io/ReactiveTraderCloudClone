@@ -13,7 +13,12 @@ interface DateFilterProps {
   onApply: (filter: ColumnFilter | null) => void;
 }
 
-const comparators: { value: Comparator; label: string }[] = [
+interface ComparatorOption {
+  value: Comparator;
+  label: string;
+}
+
+const comparators: ComparatorOption[] = [
   { value: "eq", label: "Equals" },
   { value: "neq", label: "Not equal" },
   { value: "lt", label: "Less than" },

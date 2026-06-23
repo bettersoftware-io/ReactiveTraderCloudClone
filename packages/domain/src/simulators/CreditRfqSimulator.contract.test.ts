@@ -8,6 +8,11 @@ import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
 
+interface QuoteCreatedEvent {
+  type: "quoteCreated";
+  payload: { id: number };
+}
+
 afterEach(() => {
   return vi.useRealTimers();
 });
@@ -44,8 +49,7 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     const event = await quoteCreatedPromise;
-    return (event as { type: "quoteCreated"; payload: { id: number } }).payload
-      .id;
+    return (event as QuoteCreatedEvent).payload.id;
   }
 
   return {

@@ -14,11 +14,11 @@ function applyTokens(tokens: ThemeTokens): void {
   }
 }
 
-export function ThemeProvider({
-  children,
-}: {
+interface ThemeProviderProps {
   children: ReactNode;
-}): ReactElement {
+}
+
+export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   // Persistence/state lives behind the seam (PreferencesPort); the provider
   // only reads the current theme and paints the CSS tokens for it.
   //

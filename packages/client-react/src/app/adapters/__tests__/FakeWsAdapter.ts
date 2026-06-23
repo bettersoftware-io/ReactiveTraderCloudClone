@@ -12,6 +12,12 @@ interface SentMessage {
   payload?: unknown;
 }
 
+interface PendingRpcEntry {
+  type: string;
+  resolve: (r: unknown) => void;
+  reject: (e: unknown) => void;
+}
+
 /**
  * In-memory IWsAdapter for contract + nack tests.
  * - emit(type, payload) drives all `on(type)` subscribers (fake server frame).
@@ -23,11 +29,7 @@ export class FakeWsAdapter implements IWsAdapter {
 
   private sent: Array<SentMessage> = [];
 
-  private pendingRpcs: Array<{
-    type: string;
-    resolve: (r: unknown) => void;
-    reject: (e: unknown) => void;
-  }> = [];
+  private pendingRpcs: Array<PendingRpcEntry> = [];
 
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 

@@ -39,6 +39,32 @@ import type {
 
 import { useMachine } from "./useMachine";
 
+type UseTileExecutionResult = {
+  state: TileExecutionState;
+} & TileExecutionIntents;
+type UseRfqTileResult = { state: RfqState } & RfqTileIntents;
+type UseNotionalResult = { state: NotionalView } & NotionalIntents;
+type UseRfqSubmissionResult = {
+  state: RfqSubmissionState;
+} & RfqSubmissionIntents;
+type UseTicketSubmissionResult = {
+  state: TicketSubmissionState;
+} & TicketSubmissionIntents;
+type UseThroughputResult = ThroughputView & {
+  setValue: (value: number) => void;
+};
+
+interface UseThemePreferenceResult {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  toggle: () => void;
+}
+
+interface UseViewModePreferenceResult {
+  viewMode: ViewMode;
+  setViewMode: (viewMode: ViewMode) => void;
+}
+
 export interface AppHooks {
   // Streams
   usePrice: (pair: CurrencyPair) => Price | null;
@@ -55,38 +81,25 @@ export interface AppHooks {
   // Commands (one-shot fire-and-await; the bridge does firstValueFrom)
   useAcceptQuote: () => (quoteId: number) => Promise<void>;
   // Machines (app-layer RxJS behind the useMachine bridge)
-  useTileExecution: (
-    pair: CurrencyPair,
-  ) => { state: TileExecutionState } & TileExecutionIntents;
-  useRfqTile: (pair: CurrencyPair) => { state: RfqState } & RfqTileIntents;
+  useTileExecution: (pair: CurrencyPair) => UseTileExecutionResult;
+  useRfqTile: (pair: CurrencyPair) => UseRfqTileResult;
   // Intent-free derived flags: return just the boolean (no intents to expose).
   useStaleFlag: (pair: CurrencyPair) => boolean;
   useAnalyticsStaleFlag: () => boolean;
   /** Transient new-row highlight for a blotter row (`isNew` captured at mount). */
   useRowHighlight: (isNew: boolean) => boolean;
   /** Notional input state for a tile — view state plus intents. */
-  useNotional: (
-    defaultNotional: number,
-  ) => { state: NotionalView } & NotionalIntents;
+  useNotional: (defaultNotional: number) => UseNotionalResult;
   /** NewRfqForm create→confirm→redirect submission state plus the submit intent. */
-  useRfqSubmission: () => { state: RfqSubmissionState } & RfqSubmissionIntents;
+  useRfqSubmission: () => UseRfqSubmissionResult;
   /** TradeTicket submit-price / pass submission state plus its intents. */
-  useTicketSubmission: () => {
-    state: TicketSubmissionState;
-  } & TicketSubmissionIntents;
+  useTicketSubmission: () => UseTicketSubmissionResult;
   /** Global throughput control — shared view state plus the setValue intent. */
-  useThroughput: () => ThroughputView & { setValue: (value: number) => void };
+  useThroughput: () => UseThroughputResult;
   /** Global theme preference — current theme plus write/zero-arg-toggle intents. */
-  useThemePreference: () => {
-    theme: Theme;
-    setTheme: (theme: Theme) => void;
-    toggle: () => void;
-  };
+  useThemePreference: () => UseThemePreferenceResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
-  useViewModePreference: () => {
-    viewMode: ViewMode;
-    setViewMode: (viewMode: ViewMode) => void;
-  };
+  useViewModePreference: () => UseViewModePreferenceResult;
 }
 
 export function createAppHooks(

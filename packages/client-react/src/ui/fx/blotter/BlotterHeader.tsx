@@ -20,13 +20,15 @@ interface BlotterHeaderProps {
   trades: readonly Trade[];
 }
 
+interface SortIndicatorProps {
+  column: keyof Trade;
+  sort: SortState;
+}
+
 function SortIndicator({
   column,
   sort,
-}: {
-  column: keyof Trade;
-  sort: SortState;
-}): ReactElement | null {
+}: SortIndicatorProps): ReactElement | null {
   if (sort.column !== column || !sort.direction) return null;
   return (
     <span className={styles.sortIndicator}>
@@ -35,19 +37,21 @@ function SortIndicator({
   );
 }
 
+interface FilterPanelProps {
+  col: ColumnDef;
+  trades: readonly Trade[];
+  currentFilter: ColumnFilter | undefined;
+  onApply: (filter: ColumnFilter | null) => void;
+  onClose: () => void;
+}
+
 function FilterPanel({
   col,
   trades,
   currentFilter,
   onApply,
   onClose,
-}: {
-  col: ColumnDef;
-  trades: readonly Trade[];
-  currentFilter: ColumnFilter | undefined;
-  onApply: (filter: ColumnFilter | null) => void;
-  onClose: () => void;
-}): ReactElement {
+}: FilterPanelProps): ReactElement {
   const handleApply = useCallback(
     (filter: ColumnFilter | null) => {
       onApply(filter);

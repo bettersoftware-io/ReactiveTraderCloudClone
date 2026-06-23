@@ -7,6 +7,12 @@ import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
 
+type QuoteCreatedMatcher = { type: "quoteCreated" };
+type RfqClosedMatcher = { type: "rfqClosed" };
+type QuotePassedMatcher = { type: "quotePassed" };
+type QuoteAcceptedMatcher = { type: "quoteAccepted" };
+type QuoteQuotedMatcher = { type: "quoteQuoted" };
+
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
@@ -56,7 +62,7 @@ async function createRfqAndQuoteId(
     }),
   );
   await vi.advanceTimersByTimeAsync(0);
-  const e = (await quoteCreated) as Extract<RfqEvent, { type: "quoteCreated" }>;
+  const e = (await quoteCreated) as Extract<RfqEvent, QuoteCreatedMatcher>;
   return { rfqId, quoteId: e.payload.id };
 }
 
@@ -73,8 +79,7 @@ describe("CreditRfqSimulator", () => {
       return e.type === "rfqClosed";
     });
     expect(closed).toBeDefined();
-    const payload = (closed as Extract<RfqEvent, { type: "rfqClosed" }>)
-      .payload;
+    const payload = (closed as Extract<RfqEvent, RfqClosedMatcher>).payload;
     expect(payload.id).toBe(rfqId);
     expect(payload.state).toBe("Cancelled");
   });
@@ -108,8 +113,7 @@ describe("CreditRfqSimulator", () => {
       return e.type === "quotePassed";
     });
     expect(passed).toBeDefined();
-    const payload = (passed as Extract<RfqEvent, { type: "quotePassed" }>)
-      .payload;
+    const payload = (passed as Extract<RfqEvent, QuotePassedMatcher>).payload;
     expect(payload.id).toBe(quoteId);
     expect(payload.state.type).toBe("passed");
   });
@@ -164,7 +168,7 @@ describe("CreditRfqSimulator", () => {
     await vi.advanceTimersByTimeAsync(0);
     await quoteCreatedTwice;
     const winningQuoteId = (
-      (await firstQuotePromise) as Extract<RfqEvent, { type: "quoteCreated" }>
+      (await firstQuotePromise) as Extract<RfqEvent, QuoteCreatedMatcher>
     ).payload.id;
     await firstValueFrom(sim.quote({ quoteId: winningQuoteId, price: 100 }));
     await vi.advanceTimersByTimeAsync(0);
@@ -177,7 +181,7 @@ describe("CreditRfqSimulator", () => {
     });
     expect(accepted).toBeDefined();
     const acceptedPayload = (
-      accepted as Extract<RfqEvent, { type: "quoteAccepted" }>
+      accepted as Extract<RfqEvent, QuoteAcceptedMatcher>
     ).payload;
     expect(acceptedPayload.id).toBe(winningQuoteId);
     expect(acceptedPayload.state).toEqual({ type: "accepted", price: 100 });
@@ -185,9 +189,9 @@ describe("CreditRfqSimulator", () => {
       return e.type === "rfqClosed";
     });
     expect(closed).toBeDefined();
-    expect(
-      (closed as Extract<RfqEvent, { type: "rfqClosed" }>).payload.state,
-    ).toBe("Closed");
+    expect((closed as Extract<RfqEvent, RfqClosedMatcher>).payload.state).toBe(
+      "Closed",
+    );
   });
 
   it("accepting one quote implicitly rejects a competing priced quote (rejectedWithPrice)", async () => {
@@ -218,7 +222,7 @@ describe("CreditRfqSimulator", () => {
     await vi.advanceTimersByTimeAsync(0);
     const created = (await bothQuotesCreated) as Extract<
       RfqEvent,
-      { type: "quoteCreated" }
+      QuoteCreatedMatcher
     >[];
     const winningQuoteId = defined(created[0]).payload.id;
     const losingQuoteId = defined(created[1]).payload.id;
@@ -236,7 +240,7 @@ describe("CreditRfqSimulator", () => {
     stop();
     const loser = events.find((e) => {
       return e.type === "quoteCreated" && e.payload.id === losingQuoteId;
-    }) as Extract<RfqEvent, { type: "quoteCreated" }> | undefined;
+    }) as Extract<RfqEvent, QuoteCreatedMatcher> | undefined;
     expect(loser).toBeDefined();
     expect(defined(loser).payload.state).toEqual({
       type: "rejectedWithPrice",
@@ -272,7 +276,7 @@ describe("CreditRfqSimulator", () => {
     await vi.advanceTimersByTimeAsync(0);
     const created = (await bothQuotesCreated) as Extract<
       RfqEvent,
-      { type: "quoteCreated" }
+      QuoteCreatedMatcher
     >[];
     const winningQuoteId = defined(created[0]).payload.id;
     const losingQuoteId = defined(created[1]).payload.id; // stays pendingWithoutPrice
@@ -288,7 +292,7 @@ describe("CreditRfqSimulator", () => {
     stop();
     const loser = events.find((e) => {
       return e.type === "quoteCreated" && e.payload.id === losingQuoteId;
-    }) as Extract<RfqEvent, { type: "quoteCreated" }> | undefined;
+    }) as Extract<RfqEvent, QuoteCreatedMatcher> | undefined;
     expect(loser).toBeDefined();
     expect(defined(loser).payload.state).toEqual({
       type: "rejectedWithoutPrice",
@@ -367,7 +371,7 @@ describe("CreditRfqSimulator", () => {
       }),
     );
     await vi.advanceTimersByTimeAsync(30_000);
-    const e = (await quoted) as Extract<RfqEvent, { type: "quoteQuoted" }>;
+    const e = (await quoted) as Extract<RfqEvent, QuoteQuotedMatcher>;
     expect(e.payload.state.type).toBe("pendingWithPrice");
     expect(e.payload.state).toEqual({ type: "pendingWithPrice", price: 95 });
   });
