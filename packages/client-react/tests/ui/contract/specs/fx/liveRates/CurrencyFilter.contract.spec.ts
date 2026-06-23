@@ -33,7 +33,7 @@ describe("CurrencyFilter", () => {
     const filter = mount(CurrencyFilter, {
       props: {
         selected: "All",
-        onChange: (c) => {
+        onChange: (c: CurrencyCategory) => {
           return chosen.push(c);
         },
       },

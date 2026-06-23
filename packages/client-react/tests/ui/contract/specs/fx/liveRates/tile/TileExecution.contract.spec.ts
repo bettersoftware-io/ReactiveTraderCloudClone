@@ -17,7 +17,7 @@ describe("TileExecution", () => {
     const calls: Direction[] = [];
     const ex = mount(TileExecution, {
       props: {
-        onExecute: (d) => {
+        onExecute: (d: Direction) => {
           return calls.push(d);
         },
         disabled: false,
@@ -31,7 +31,7 @@ describe("TileExecution", () => {
     const calls: Direction[] = [];
     const ex = mount(TileExecution, {
       props: {
-        onExecute: (d) => {
+        onExecute: (d: Direction) => {
           return calls.push(d);
         },
         disabled: false,

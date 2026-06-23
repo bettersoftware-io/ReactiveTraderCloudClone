@@ -103,7 +103,7 @@ describe("TileRfq", () => {
           },
         ),
         onRequestQuote: () => {},
-        onExecute: (dir, price, notional) => {
+        onExecute: (dir: Direction, price: Price, notional: number) => {
           return executed.push({ dir, price, notional });
         },
         notional: 2_000_000,

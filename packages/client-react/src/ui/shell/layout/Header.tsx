@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import { ThemeToggle } from "../theme/ThemeToggle";
 
 import styles from "./Header.module.css";
@@ -9,7 +11,7 @@ interface HeaderProps {
   onTabChange: (tab: WorkspaceTab) => void;
 }
 
-export function Header({ activeTab, onTabChange }: HeaderProps) {
+export function Header({ activeTab, onTabChange }: HeaderProps): ReactElement {
   return (
     <header data-testid="header" className={styles.header}>
       <div className={styles.logoGroup}>

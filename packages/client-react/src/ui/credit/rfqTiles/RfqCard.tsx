@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback, useMemo } from "react";
 
 import {
@@ -41,7 +42,7 @@ export function RfqCard({
   dealers,
   onAccept,
   onDismiss,
-}: RfqCardProps) {
+}: RfqCardProps): ReactElement {
   const dealerMap = useMemo(() => {
     const m = new Map<number, Dealer>();
     for (const d of dealers) m.set(d.id, d);

@@ -26,7 +26,7 @@ const pkg = JSON.parse(readFileSync(fileURLToPath(pkgUrl), "utf8")) as {
   scripts: Record<string, string>;
 };
 
-const frameworkFilter = process.argv[2]; // e.g. "react" | undefined
+const frameworkFilter: string | undefined = process.argv[2]; // e.g. "react" | undefined
 
 // Leaf runner scripts only: test:ui:visual:<runner>:<framework> (exactly 5
 // parts), excluding :update / :ui variants (6 parts) and the aggregates
@@ -50,8 +50,8 @@ if (runners.length === 0) {
 // overrides (clamped to [1, runners.length]); a non-positive/NaN value falls
 // back to the default.
 const envMax = Number(process.env.RTC_VISUAL_MAX_PARALLEL);
-const defaultMax = process.env.CI ? runners.length : 1;
-const maxParallel =
+const defaultMax: number = process.env.CI ? runners.length : 1;
+const maxParallel: number =
   Number.isInteger(envMax) && envMax > 0
     ? Math.min(envMax, runners.length)
     : defaultMax;
@@ -63,7 +63,9 @@ console.log(
 );
 for (const r of runners) console.log(`  • ${r}`);
 
-function run(script: string) {
+function run(
+  script: string,
+): Promise<{ script: string; code: number; output: string }> {
   return new Promise<{ script: string; code: number; output: string }>(
     (resolve) => {
       const chunks: Buffer[] = [];
@@ -75,8 +77,8 @@ function run(script: string) {
         return chunks.push(d);
       });
 
-      function finish(code: number) {
-        return resolve({
+      function finish(code: number): void {
+        resolve({
           script,
           code,
           output: Buffer.concat(chunks).toString("utf8"),
@@ -102,7 +104,7 @@ const results: { script: string; code: number; output: string }[] = new Array(
 );
 let nextIndex = 0;
 
-async function worker() {
+async function worker(): Promise<void> {
   while (nextIndex < runners.length) {
     const i = nextIndex++;
     results[i] = await run(runners[i]);

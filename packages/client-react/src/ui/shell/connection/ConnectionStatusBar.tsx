@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import { ConnectionStatus } from "@rtc/domain";
 
 import { useHooks } from "#/ui/hooks/useHooks";
@@ -12,7 +14,7 @@ const statusLabel: Record<ConnectionStatus, string> = {
   [ConnectionStatus.OFFLINE_DISCONNECTED]: "Offline",
 };
 
-export function ConnectionStatusBar() {
+export function ConnectionStatusBar(): ReactElement {
   const { useConnectionStatus } = useHooks();
   const status = useConnectionStatus();
 

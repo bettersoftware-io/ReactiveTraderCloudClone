@@ -24,7 +24,7 @@ function stubWorkflow(): StubWorkflow {
     events: () => {
       throw new Error("not used");
     },
-    createRfq: (request) => {
+    createRfq: (request: CreateRfqRequest) => {
       lastRequest.current = request;
       return of(42);
     },

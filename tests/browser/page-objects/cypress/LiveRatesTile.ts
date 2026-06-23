@@ -6,7 +6,7 @@ const CONFIRMATION_SELECTOR = `[data-testid="${TESTIDS.liveRates.tradeConfirmati
 const TILE_CONFIRMATION_SELECTOR = `${TILE_PREFIX_SELECTOR} ${CONFIRMATION_SELECTOR}`;
 
 export class CypressLiveRatesTile implements LiveRatesTilePO {
-  private firstTile() {
+  private firstTile(): Cypress.Chainable<JQuery<HTMLElement>> {
     return cy.get(TILE_PREFIX_SELECTOR).first();
   }
 

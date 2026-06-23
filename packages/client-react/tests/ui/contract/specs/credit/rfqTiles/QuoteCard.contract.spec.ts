@@ -62,7 +62,7 @@ describe("QuoteCard", () => {
       props: {
         quote: quote({ type: "pendingWithPrice", price: 99 }, { id: 321 }),
         dealer,
-        onAccept: (id) => {
+        onAccept: (id: number) => {
           return accepted.push(id);
         },
       },

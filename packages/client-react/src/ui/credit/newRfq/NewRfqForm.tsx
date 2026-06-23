@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -18,7 +19,7 @@ interface NewRfqFormProps {
   onCreated: (rfqId: number) => void;
 }
 
-export function NewRfqForm({ onCreated }: NewRfqFormProps) {
+export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
   const { useInstruments, useDealers, useRfqSubmission } = useHooks();
   const instruments = useInstruments();
   const dealers = useDealers();

@@ -1,3 +1,4 @@
+import type { MouseEvent, ReactElement } from "react";
 import { useCallback, useState } from "react";
 
 import type { Trade } from "@rtc/domain";
@@ -25,7 +26,7 @@ function SortIndicator({
 }: {
   column: keyof Trade;
   sort: SortState;
-}) {
+}): ReactElement | null {
   if (sort.column !== column || !sort.direction) return null;
   return (
     <span className={styles.sortIndicator}>
@@ -46,7 +47,7 @@ function FilterPanel({
   currentFilter: ColumnFilter | undefined;
   onApply: (filter: ColumnFilter | null) => void;
   onClose: () => void;
-}) {
+}): ReactElement {
   const handleApply = useCallback(
     (filter: ColumnFilter | null) => {
       onApply(filter);
@@ -89,7 +90,7 @@ export function BlotterHeader({
   filters,
   onFilter,
   trades,
-}: BlotterHeaderProps) {
+}: BlotterHeaderProps): ReactElement {
   const [openFilter, setOpenFilter] = useState<keyof Trade | null>(null);
 
   return (
@@ -114,7 +115,7 @@ export function BlotterHeader({
             <button
               type="button"
               data-testid={`blotter-filter-toggle-${col.key}`}
-              onClick={(e) => {
+              onClick={(e: MouseEvent<HTMLButtonElement>): void => {
                 e.stopPropagation();
                 setOpenFilter(openFilter === col.key ? null : col.key);
               }}
@@ -127,8 +128,8 @@ export function BlotterHeader({
                 col={col}
                 trades={trades}
                 currentFilter={filters.get(col.key)}
-                onApply={(f) => {
-                  return onFilter(col.key, f);
+                onApply={(f: ColumnFilter | null): void => {
+                  onFilter(col.key, f);
                 }}
                 onClose={() => {
                   return setOpenFilter(null);

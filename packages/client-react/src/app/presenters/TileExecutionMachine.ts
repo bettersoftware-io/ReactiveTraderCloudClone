@@ -159,8 +159,8 @@ export function createTileExecutionMachine(
   return {
     state$,
     intents: {
-      execute: (direction, price, notional) => {
-        return execute$.next({ direction, price, notional });
+      execute: (direction: Direction, price: Price, notional: number): void => {
+        execute$.next({ direction, price, notional });
       },
       dismiss: () => {
         return dismiss$.next();

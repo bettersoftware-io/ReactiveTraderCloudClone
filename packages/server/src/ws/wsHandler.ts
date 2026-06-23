@@ -1,7 +1,15 @@
 import { firstValueFrom } from "rxjs";
 import type { WebSocket } from "ws";
 
-import type { RfqEvent } from "@rtc/domain";
+import type {
+  CurrencyPair,
+  Dealer,
+  Instrument,
+  PositionUpdates,
+  PriceTick,
+  RfqEvent,
+  Trade,
+} from "@rtc/domain";
 import type {
   AcceptRequestDto,
   AnalyticsDto,
@@ -167,7 +175,7 @@ function streamReferenceData(
   const ac = createSubscription(subs);
   let isFirst = true;
   const sub = svc.referenceData.getCurrencyPairs().subscribe({
-    next: (pairs) => {
+    next: (pairs: readonly CurrencyPair[]) => {
       if (ac.signal.aborted) return;
       const updates: CurrencyPairUpdateDto[] = pairs.map((p) => {
         return {
@@ -184,7 +192,7 @@ function streamReferenceData(
       send(ws, SERVER_MSG.REFERENCE_DATA, message);
       isFirst = false;
     },
-    error: (e) => {
+    error: (e: unknown) => {
       if (!ac.signal.aborted) console.error("ReferenceData stream error:", e);
       subs.delete(ac);
     },
@@ -210,7 +218,7 @@ function streamPricing(
 ): void {
   const ac = createSubscription(subs);
   const sub = svc.pricing.getPriceUpdates(payload.symbol).subscribe({
-    next: (tick) => {
+    next: (tick: PriceTick) => {
       if (ac.signal.aborted) return;
       const dto: PriceTickDto = {
         symbol: tick.symbol,
@@ -222,7 +230,7 @@ function streamPricing(
       };
       send(ws, SERVER_MSG.PRICE_TICK, dto);
     },
-    error: (e) => {
+    error: (e: unknown) => {
       if (!ac.signal.aborted) console.error("Pricing stream error:", e);
       subs.delete(ac);
     },
@@ -248,7 +256,7 @@ function streamBlotter(
   const ac = createSubscription(subs);
   let isFirst = true;
   const sub = svc.blotter.getTradeStream().subscribe({
-    next: (trades) => {
+    next: (trades: readonly Trade[]) => {
       if (ac.signal.aborted) return;
       const updates: TradeDto[] = trades.map((t) => {
         return {
@@ -272,7 +280,7 @@ function streamBlotter(
       send(ws, SERVER_MSG.BLOTTER, message);
       isFirst = false;
     },
-    error: (e) => {
+    error: (e: unknown) => {
       if (!ac.signal.aborted) console.error("Blotter stream error:", e);
       subs.delete(ac);
     },
@@ -298,7 +306,7 @@ function streamAnalytics(
 ): void {
   const ac = createSubscription(subs);
   const sub = svc.analytics.getAnalytics(payload.currency).subscribe({
-    next: (pos) => {
+    next: (pos: PositionUpdates) => {
       if (ac.signal.aborted) return;
       const dto: AnalyticsDto = {
         currentPositions: pos.currentPositions.map((p) => {
@@ -318,7 +326,7 @@ function streamAnalytics(
       };
       send(ws, SERVER_MSG.ANALYTICS, dto);
     },
-    error: (e) => {
+    error: (e: unknown) => {
       if (!ac.signal.aborted) console.error("Analytics stream error:", e);
       subs.delete(ac);
     },
@@ -352,7 +360,7 @@ function streamInstruments(
 
   let isFirst = true;
   const sub = svc.instruments.getInstruments().subscribe({
-    next: (instruments) => {
+    next: (instruments: readonly Instrument[]) => {
       if (ac.signal.aborted) return;
 
       for (const inst of instruments) {
@@ -378,7 +386,7 @@ function streamInstruments(
         isFirst = false;
       }
     },
-    error: (e) => {
+    error: (e: unknown) => {
       if (!ac.signal.aborted) console.error("Instruments stream error:", e);
       subs.delete(ac);
     },
@@ -409,7 +417,7 @@ function streamDealers(
 
   let isFirst = true;
   const sub = svc.dealers.getDealers().subscribe({
-    next: (dealers) => {
+    next: (dealers: readonly Dealer[]) => {
       if (ac.signal.aborted) return;
 
       for (const dealer of dealers) {
@@ -427,7 +435,7 @@ function streamDealers(
         isFirst = false;
       }
     },
-    error: (e) => {
+    error: (e: unknown) => {
       if (!ac.signal.aborted) console.error("Dealers stream error:", e);
       subs.delete(ac);
     },
@@ -488,11 +496,11 @@ function streamWorkflow(
   }
 
   const sub = svc.workflow.events().subscribe({
-    next: (event) => {
+    next: (event: RfqEvent) => {
       if (ac.signal.aborted) return;
       send(ws, SERVER_MSG.WORKFLOW_EVENT, transform(event));
     },
-    error: (e) => {
+    error: (e: unknown) => {
       if (!ac.signal.aborted) console.error("Workflow stream error:", e);
       subs.delete(ac);
     },

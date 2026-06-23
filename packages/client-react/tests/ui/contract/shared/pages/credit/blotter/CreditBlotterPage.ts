@@ -1,9 +1,13 @@
-import { within } from "@testing-library/dom";
+import {
+  type BoundFunctions,
+  type queries,
+  within,
+} from "@testing-library/dom";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export class CreditBlotterPage extends MountedComponent<Record<string, never>> {
-  private q() {
+  private q(): BoundFunctions<typeof queries> {
     return within(this.root);
   }
 

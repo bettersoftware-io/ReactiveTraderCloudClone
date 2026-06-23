@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import {
   type ChangeEvent,
   type KeyboardEvent,
@@ -22,7 +23,7 @@ export function TileNotional({
   notional,
   baseCurrency,
   disabled,
-}: TileNotionalProps) {
+}: TileNotionalProps): ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = useCallback(

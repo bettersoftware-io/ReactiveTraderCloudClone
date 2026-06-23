@@ -54,7 +54,7 @@ describe("BlotterHeader", () => {
     const header = mount(BlotterHeader, {
       props: {
         sort: noSort,
-        onSort: (c) => {
+        onSort: (c: keyof Trade) => {
           return sorted.push(c);
         },
         filters: new Map(),
@@ -162,7 +162,7 @@ describe("BlotterHeader", () => {
         sort: noSort,
         onSort: () => {},
         filters: new Map(),
-        onFilter: (column, filter) => {
+        onFilter: (column: keyof Trade, filter: ColumnFilter | null) => {
           return applied.push({ column, filter });
         },
         trades: [trade()],

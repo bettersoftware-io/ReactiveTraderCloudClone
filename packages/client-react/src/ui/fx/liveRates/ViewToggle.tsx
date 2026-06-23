@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import type { ViewMode } from "@rtc/domain";
 
 import styles from "./ViewToggle.module.css";
@@ -7,7 +9,7 @@ interface ViewToggleProps {
   onChange: (mode: ViewMode) => void;
 }
 
-export function ViewToggle({ mode, onChange }: ViewToggleProps) {
+export function ViewToggle({ mode, onChange }: ViewToggleProps): ReactElement {
   return (
     <button
       type="button"

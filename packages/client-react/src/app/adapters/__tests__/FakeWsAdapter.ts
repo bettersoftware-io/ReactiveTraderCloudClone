@@ -35,7 +35,7 @@ export class FakeWsAdapter implements IWsAdapter {
     if (!this.listeners.has(type)) this.listeners.set(type, new Set());
     (this.listeners.get(type) as Set<MessageHandler>).add(handler);
 
-    return () => {
+    return (): void => {
       this.listeners.get(type)?.delete(handler);
     };
   }

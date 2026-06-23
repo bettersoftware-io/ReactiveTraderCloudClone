@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import { useHooks } from "#/ui/hooks/useHooks";
 import { StaleIndicator } from "#/ui/shell/stale/StaleIndicator";
 
@@ -8,7 +10,7 @@ import { PositionBubbles } from "./PositionBubbles";
 
 import styles from "./AnalyticsPanel.module.css";
 
-export function AnalyticsPanel() {
+export function AnalyticsPanel(): ReactElement | null {
   const data = useHooks().useAnalytics();
   const stale = useHooks().useAnalyticsStaleFlag();
 

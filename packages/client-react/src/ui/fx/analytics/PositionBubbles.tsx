@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
 
 import type { CurrencyPairPosition } from "@rtc/domain";
 
@@ -17,7 +17,9 @@ function computeRadius(basePnl: number, maxAbsPnl: number): number {
   return MIN_RADIUS + fraction * (MAX_RADIUS - MIN_RADIUS);
 }
 
-export function PositionBubbles({ positions }: PositionBubblesProps) {
+export function PositionBubbles({
+  positions,
+}: PositionBubblesProps): ReactElement {
   const maxAbsPnl = Math.max(
     ...positions.map((p) => {
       return Math.abs(p.basePnl);

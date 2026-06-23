@@ -151,7 +151,7 @@ describe("RfqCard", () => {
         instrument,
         dealers,
         onAccept: () => {},
-        onDismiss: (id) => {
+        onDismiss: (id: number) => {
           return dismissed.push(id);
         },
       },
@@ -168,7 +168,7 @@ describe("RfqCard", () => {
         quotes: [quote({ id: 901, dealerId: 2 })],
         instrument,
         dealers,
-        onAccept: (id) => {
+        onAccept: (id: number) => {
           return accepted.push(id);
         },
       },

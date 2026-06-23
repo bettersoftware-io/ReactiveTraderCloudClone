@@ -15,6 +15,7 @@ import {
   DealerSimulator,
   deriveBaseTerm,
   type ExecutionPort,
+  type ExecutionRequest,
   ExecutionSimulator,
   type Instrument,
   type InstrumentPort,
@@ -251,7 +252,7 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
 
 function createExecutionPort(ws: IWsAdapter): ExecutionPort {
   return {
-    executeTrade(request): Observable<Trade> {
+    executeTrade(request: ExecutionRequest): Observable<Trade> {
       return new Observable<Trade>((subscriber) => {
         let cancelled = false;
         const dto: ExecutionRequestDto = {

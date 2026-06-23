@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
@@ -7,7 +8,7 @@ import { Workspace } from "./shell/layout/Workspace";
 
 import styles from "./App.module.css";
 
-export function App() {
+export function App(): ReactElement {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
 
   return (

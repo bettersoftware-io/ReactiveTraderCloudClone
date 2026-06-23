@@ -15,7 +15,7 @@ describe("RfqQuoteUseCase", () => {
       getPriceHistory: () => {
         return of([]);
       },
-      getRfqQuote: (symbol, pipsPosition) => {
+      getRfqQuote: (symbol: string, pipsPosition: number) => {
         calledWith = { symbol, pipsPosition };
         return of(expected);
       },

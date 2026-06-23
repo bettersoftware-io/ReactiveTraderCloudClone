@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 
 import { type CurrencyCategory, matchesCurrencyFilter } from "@rtc/domain";
@@ -10,7 +11,7 @@ import { ViewToggle } from "./ViewToggle";
 
 import styles from "./LiveRatesPanel.module.css";
 
-export function LiveRatesPanel() {
+export function LiveRatesPanel(): ReactElement {
   const { useCurrencyPairs, useViewModePreference } = useHooks();
   const pairs = useCurrencyPairs();
   // ViewMode persistence lives behind the seam (PreferencesPort). The category

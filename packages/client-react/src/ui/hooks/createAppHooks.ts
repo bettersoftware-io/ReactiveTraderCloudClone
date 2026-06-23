@@ -138,8 +138,8 @@ export function createAppHooks(
     message: null,
   } as ThroughputView);
 
-  function setThroughput(value: number) {
-    return presenters.throughput.setValue(value);
+  function setThroughput(value: number): void {
+    presenters.throughput.setValue(value);
   }
 
   // Global/shared display preferences → plain binds (not per-mount machines).
@@ -148,8 +148,8 @@ export function createAppHooks(
     DEFAULT_THEME,
   );
 
-  function setTheme(theme: Theme) {
-    return presenters.themePreference.setTheme(theme);
+  function setTheme(theme: Theme): void {
+    presenters.themePreference.setTheme(theme);
   }
 
   const [useViewModeValue] = bind(
@@ -157,8 +157,8 @@ export function createAppHooks(
     DEFAULT_VIEW_MODE,
   );
 
-  function setViewMode(viewMode: ViewMode) {
-    return presenters.viewModePreference.setViewMode(viewMode);
+  function setViewMode(viewMode: ViewMode): void {
+    presenters.viewModePreference.setViewMode(viewMode);
   }
 
   // Pre-bound command callbacks. Stable references across calls so React
@@ -166,7 +166,7 @@ export function createAppHooks(
   // presenter Observable to a Promise via firstValueFrom — the void commands'
   // presenters emit `undefined` before completing, so firstValueFrom resolves
   // (rather than rejecting with EmptyError) without needing a defaultValue.
-  function acceptQuote(quoteId: number) {
+  function acceptQuote(quoteId: number): Promise<void> {
     return firstValueFrom(presenters.rfqs.acceptQuote(quoteId));
   }
 

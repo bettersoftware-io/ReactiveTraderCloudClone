@@ -31,7 +31,7 @@ describe("Header", () => {
     const header = mount(Header, {
       props: {
         activeTab: "fx",
-        onTabChange: (tab) => {
+        onTabChange: (tab: WorkspaceTab) => {
           return changes.push(tab);
         },
       },

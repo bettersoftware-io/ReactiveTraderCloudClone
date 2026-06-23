@@ -2,15 +2,15 @@ import type { BlotterTablePO } from "../contracts/BlotterTable";
 import { TESTIDS } from "../contracts/testids";
 
 export class CypressBlotterTable implements BlotterTablePO {
-  private tableEl() {
+  private tableEl(): Cypress.Chainable<JQuery<HTMLElement>> {
     return cy.get(`[data-testid="${TESTIDS.blotter.table}"]`);
   }
 
-  private rows() {
+  private rows(): Cypress.Chainable<JQuery<HTMLElement>> {
     return this.tableEl().find("tbody tr");
   }
 
-  private firstRow() {
+  private firstRow(): Cypress.Chainable<JQuery<HTMLElement>> {
     return this.rows().first();
   }
 

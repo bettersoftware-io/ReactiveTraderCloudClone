@@ -93,7 +93,7 @@ const droppedCypress = skipCypress
         return s.script;
       })
   : [];
-const activeSuites = skipCypress
+const activeSuites: Suite[] = skipCypress
   ? suites.filter((s) => {
       return !s.script.includes("cypress");
     })
@@ -104,7 +104,7 @@ const activeSuites = skipCypress
 // CPU and trips timing-sensitive suites, so CI sets RTC_E2E_MAX_PARALLEL=2 to run
 // in small batches — slower wall-clock, but reliable.
 const envCap = Number(process.env.RTC_E2E_MAX_PARALLEL);
-const MAX_PARALLEL =
+const MAX_PARALLEL: number =
   Number.isFinite(envCap) && envCap > 0
     ? Math.floor(envCap)
     : activeSuites.length;
@@ -167,8 +167,8 @@ function runSuite(suite: Suite): Promise<Result> {
       return chunks.push(d);
     });
 
-    function finish(code: number) {
-      return resolve({
+    function finish(code: number): void {
+      resolve({
         script: suite.script,
         code,
         output: Buffer.concat(chunks).toString("utf8"),
@@ -186,7 +186,7 @@ function runSuite(suite: Suite): Promise<Result> {
   });
 }
 
-function rule(ch: string) {
+function rule(ch: string): string {
   return ch.repeat(72);
 }
 
@@ -219,16 +219,22 @@ if (MAX_PARALLEL < activeSuites.length) {
 
 // Resolve as each suite finishes so logs flush in completion order, not in a
 // final batch — keeps a long run feeling responsive without interleaving.
-const results = await mapWithLimit(activeSuites, MAX_PARALLEL, (s) => {
-  return runSuite(s).then((r) => {
-    const status = r.code === 0 ? "PASS" : "FAIL";
-    console.log(
-      `\n${rule("=")}\n${status}  ${r.script}  (${r.seconds.toFixed(1)}s)\n${rule("=")}`,
-    );
-    process.stdout.write(r.output.endsWith("\n") ? r.output : `${r.output}\n`);
-    return r;
-  });
-});
+const results: Result[] = await mapWithLimit(
+  activeSuites,
+  MAX_PARALLEL,
+  (s) => {
+    return runSuite(s).then((r) => {
+      const status = r.code === 0 ? "PASS" : "FAIL";
+      console.log(
+        `\n${rule("=")}\n${status}  ${r.script}  (${r.seconds.toFixed(1)}s)\n${rule("=")}`,
+      );
+      process.stdout.write(
+        r.output.endsWith("\n") ? r.output : `${r.output}\n`,
+      );
+      return r;
+    });
+  },
+);
 
 const failures = results.filter((r) => {
   return r.code !== 0;

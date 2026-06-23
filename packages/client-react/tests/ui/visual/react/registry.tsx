@@ -25,12 +25,12 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   ConnectionStatusBar: () => {
     return <ConnectionStatusBar />;
   },
-  Tile: (fixtureKey) => {
+  Tile: (fixtureKey: string) => {
     const pair = fixtures[fixtureKey].currencyPairs[0];
     return <Tile pair={pair} showChart={false} />;
   },
   // Same Tile component with the sparkline shown (TileChart sub-component).
-  TileChart: (fixtureKey) => {
+  TileChart: (fixtureKey: string) => {
     const pair = fixtures[fixtureKey].currencyPairs[0];
     return <Tile pair={pair} showChart={true} />;
   },
@@ -49,7 +49,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // Prop-driven single highlighted (isNew) row, wrapped in a table so the <tr>
   // renders. The fake's useRowHighlight(isNew) returns isNew, so this snapshots
   // the blue-highlight branch deterministically (no timer / no waiting).
-  BlotterRowHighlighted: (fixtureKey) => {
+  BlotterRowHighlighted: (fixtureKey: string) => {
     const trade = fixtures[fixtureKey].trades[0];
     return (
       <table style={{ borderCollapse: "collapse" }}>
@@ -62,7 +62,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // The isolated baseline for the row above: same component, isNew=false, so it
   // snapshots the settled (transparent) branch. Pairing the two makes the
   // highlight the ONLY visual delta when diffing the isolated component.
-  BlotterRowDefault: (fixtureKey) => {
+  BlotterRowDefault: (fixtureKey: string) => {
     const trade = fixtures[fixtureKey].trades[0];
     return (
       <table style={{ borderCollapse: "collapse" }}>
@@ -85,7 +85,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return <SellSidePanel />;
   },
   // Prop-driven single RFQ card: pull the fixture's lone rfq + its quotes.
-  RfqCard: (fixtureKey) => {
+  RfqCard: (fixtureKey: string) => {
     const data = fixtures[fixtureKey];
     const rfq = data.rfqs[0];
     const quotes = data.quotesForRfq[rfq.id] ?? [];

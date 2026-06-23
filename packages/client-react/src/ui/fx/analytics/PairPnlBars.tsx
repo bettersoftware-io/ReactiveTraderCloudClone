@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
 
 import type { CurrencyPairPosition } from "@rtc/domain";
 
@@ -15,7 +15,7 @@ function formatPnl(value: number): string {
   return value.toFixed(0);
 }
 
-export function PairPnlBars({ positions }: PairPnlBarsProps) {
+export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
   const maxAbsPnl = Math.max(
     ...positions.map((p) => {
       return Math.abs(p.basePnl);

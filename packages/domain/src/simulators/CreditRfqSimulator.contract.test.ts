@@ -58,7 +58,7 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
       },
 
       // Invariant 2: trigger an rfqCreated event on the live Subject.
-      emitCreatedEvent: async (_rfqId) => {
+      emitCreatedEvent: async (_rfqId: number) => {
         void port
           .createRfq({
             instrumentId: 1,

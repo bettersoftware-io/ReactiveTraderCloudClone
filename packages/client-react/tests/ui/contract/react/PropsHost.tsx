@@ -8,16 +8,16 @@ export function PropsHost<P>({
 }: {
   subject: BehaviorSubject<Partial<P>>;
   build: (props: Partial<P>) => ReactElement;
-}) {
+}): ReactElement {
   const props = useSyncExternalStore(
     (onChange) => {
       const sub = subject.subscribe(onChange);
 
-      return () => {
-        return sub.unsubscribe();
+      return (): void => {
+        sub.unsubscribe();
       };
     },
-    () => {
+    (): Partial<P> => {
       return subject.getValue();
     },
   );

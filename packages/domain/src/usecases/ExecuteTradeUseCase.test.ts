@@ -1,4 +1,4 @@
-import { firstValueFrom, of, throwError } from "rxjs";
+import { firstValueFrom, type Observable, of, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { CurrencyPair } from "../fx/currencyPair.js";
@@ -41,7 +41,7 @@ interface StubExecution {
 function stubExecution(trade: Trade): StubExecution {
   const lastRequest = { current: null as ExecutionRequest | null };
   const port: ExecutionPort = {
-    executeTrade(request) {
+    executeTrade(request: ExecutionRequest): Observable<Trade> {
       lastRequest.current = request;
       return of(trade);
     },
@@ -126,7 +126,7 @@ describe("ExecuteTradeUseCase", () => {
 
   it("propagates errors from the port (timeout handling stays in the hook)", async () => {
     const port: ExecutionPort = {
-      executeTrade() {
+      executeTrade(): Observable<Trade> {
         return throwError(() => {
           return new Error("timeout");
         });

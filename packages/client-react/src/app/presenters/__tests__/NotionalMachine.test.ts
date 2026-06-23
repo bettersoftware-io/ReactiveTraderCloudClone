@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { createNotionalMachine, type NotionalView } from "../NotionalMachine";
 
 describe("createNotionalMachine", () => {
-  function make(defaultNotional = 1_000_000) {
+  function make(
+    defaultNotional = 1_000_000,
+  ): ReturnType<typeof createNotionalMachine> {
     return createNotionalMachine(defaultNotional);
   }
 

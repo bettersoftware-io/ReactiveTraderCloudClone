@@ -67,7 +67,7 @@ describe("applyFilters — number filter comparators", () => {
     trade({ tradeId: 3, notional: 300 }),
   ];
 
-  function run(filter: ColumnFilter) {
+  function run(filter: ColumnFilter): number[] {
     return applyFilters(trades, filters(filter), "").map((t) => {
       return t.tradeId;
     });
@@ -164,7 +164,7 @@ describe("applyFilters — date filter comparators", () => {
     trade({ tradeId: 3, tradeDate: "2026-03-01" }),
   ];
 
-  function run(filter: ColumnFilter) {
+  function run(filter: ColumnFilter): number[] {
     return applyFilters(trades, filters(filter), "").map((t) => {
       return t.tradeId;
     });

@@ -61,13 +61,13 @@ export class WsAdapter implements IWsAdapter {
 
     this.ws = new WebSocket(this.url);
 
-    this.ws.onopen = () => {
+    this.ws.onopen = (): void => {
       console.log("[WsAdapter] Connected to", this.url);
       this.connectionEvents$.next({ type: "gatewayConnected" });
       this.flushSendQueue();
     };
 
-    this.ws.onmessage = (event) => {
+    this.ws.onmessage = (event: MessageEvent): void => {
       let msg: WsMessage;
 
       try {
@@ -97,7 +97,7 @@ export class WsAdapter implements IWsAdapter {
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (): void => {
       if (this.disposed) return;
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
       console.log(
@@ -108,7 +108,7 @@ export class WsAdapter implements IWsAdapter {
       this.scheduleReconnect();
     };
 
-    this.ws.onerror = () => {
+    this.ws.onerror = (): void => {
       // onclose will fire after onerror
     };
   }
@@ -171,7 +171,7 @@ export class WsAdapter implements IWsAdapter {
     const handlerSet = this.handlers.get(type) as Set<MessageHandler>;
     handlerSet.add(handler);
 
-    return () => {
+    return (): void => {
       this.handlers.get(type)?.delete(handler);
     };
   }
@@ -180,7 +180,7 @@ export class WsAdapter implements IWsAdapter {
   waitForConnection(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) return Promise.resolve();
     return new Promise((resolve) => {
-      const check = () => {
+      const check = (): void => {
         if (this.ws?.readyState === WebSocket.OPEN) {
           resolve();
         } else {

@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 import type { Trade } from "@rtc/domain";
@@ -18,7 +19,7 @@ export function SetFilter({
   trades,
   currentFilter,
   onApply,
-}: SetFilterProps) {
+}: SetFilterProps): ReactElement {
   const allValues = useMemo(() => {
     const vals = new Set<string>();
     for (const trade of trades) vals.add(String(trade[column]));

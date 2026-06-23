@@ -1,8 +1,10 @@
+import type { ChangeEvent, ReactElement } from "react";
+
 import { useHooks } from "../hooks/useHooks";
 
 import styles from "./AdminPanel.module.css";
 
-export function AdminPanel() {
+export function AdminPanel(): ReactElement {
   const { value, loading, message, setValue } = useHooks().useThroughput();
 
   if (loading) {
@@ -20,8 +22,8 @@ export function AdminPanel() {
           max={1000}
           step={10}
           value={value}
-          onChange={(e) => {
-            return setValue(Number(e.target.value));
+          onChange={(e: ChangeEvent<HTMLInputElement>): void => {
+            setValue(Number(e.target.value));
           }}
           className={styles.slider}
         />
@@ -33,7 +35,7 @@ export function AdminPanel() {
             max={1000}
             step={10}
             value={value}
-            onChange={(e) => {
+            onChange={(e: ChangeEvent<HTMLInputElement>): void => {
               const n = Number(e.target.value);
 
               if (Number.isFinite(n) && n >= 0 && n <= 1000) {

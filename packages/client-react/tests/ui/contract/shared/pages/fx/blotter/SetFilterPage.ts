@@ -1,4 +1,8 @@
-import { within } from "@testing-library/dom";
+import {
+  type BoundFunctions,
+  type queries,
+  within,
+} from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import type { Trade } from "@rtc/domain";
@@ -16,7 +20,7 @@ export interface SetFilterProps {
 export class SetFilterPage extends MountedComponent<SetFilterProps> {
   private readonly user: UserEvent = userEvent.setup();
 
-  private q() {
+  private q(): BoundFunctions<typeof queries> {
     return within(this.root);
   }
 

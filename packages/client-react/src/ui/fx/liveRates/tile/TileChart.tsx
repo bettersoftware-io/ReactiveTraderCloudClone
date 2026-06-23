@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import type { PriceTick } from "@rtc/domain";
 
 import styles from "./TileChart.module.css";
@@ -33,7 +35,7 @@ function buildPath(history: readonly PriceTick[]): string {
     .join(" ");
 }
 
-export function TileChart({ history }: TileChartProps) {
+export function TileChart({ history }: TileChartProps): ReactElement {
   const path = buildPath(history);
   const lastTick = history.length > 1 ? history[history.length - 1] : null;
   const prevTick = history.length > 1 ? history[history.length - 2] : null;

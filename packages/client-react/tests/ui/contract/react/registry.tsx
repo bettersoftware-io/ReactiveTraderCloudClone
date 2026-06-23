@@ -120,42 +120,42 @@ type ElementFor = (props: Record<string, unknown>) => ReactElement;
 export const registry = new Map<AnyToken, ElementFor>([
   [
     AnalyticsPanel,
-    () => {
+    (): ReactElement => {
       return <AnalyticsPanelComponent />;
     },
   ],
   [
     PnlValue,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return <PnlValueComponent value={p.value as number} />;
     },
   ],
   [
     ConnectionStatusBar,
-    () => {
+    (): ReactElement => {
       return <ConnectionStatusBarComponent />;
     },
   ],
   [
     FxBlotter,
-    () => {
+    (): ReactElement => {
       return <FxBlotterComponent />;
     },
   ],
   [
     QuickFilter,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <QuickFilterComponent
           value={(p.value as string) ?? ""}
-          onChange={(p.onChange as (v: string) => void) ?? (() => {})}
+          onChange={(p.onChange as (v: string) => void) ?? ((): void => {})}
         />
       );
     },
   ],
   [
     BlotterRow,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <table>
           <tbody>
@@ -170,13 +170,15 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     BlotterHeader,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <table>
           <thead>
             <BlotterHeaderComponent
               sort={(p.sort as SortState) ?? { column: null, direction: null }}
-              onSort={(p.onSort as (c: keyof Trade) => void) ?? (() => {})}
+              onSort={
+                (p.onSort as (c: keyof Trade) => void) ?? ((): void => {})
+              }
               filters={
                 (p.filters as Map<keyof Trade, ColumnFilter>) ?? new Map()
               }
@@ -184,7 +186,7 @@ export const registry = new Map<AnyToken, ElementFor>([
                 (p.onFilter as (
                   c: keyof Trade,
                   f: ColumnFilter | null,
-                ) => void) ?? (() => {})
+                ) => void) ?? ((): void => {})
               }
               trades={(p.trades as readonly Trade[]) ?? []}
             />
@@ -195,7 +197,7 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     SetFilter,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <SetFilterComponent
           column={(p.column as keyof Trade) ?? "currencyPair"}
@@ -210,7 +212,7 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     NumberFilter,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <NumberFilterComponent
           column={(p.column as keyof Trade) ?? "notional"}
@@ -224,7 +226,7 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     DateFilter,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <DateFilterComponent
           column={(p.column as keyof Trade) ?? "tradeDate"}
@@ -238,28 +240,28 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     NewRfqForm,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <NewRfqFormComponent
-          onCreated={(p.onCreated as (id: number) => void) ?? (() => {})}
+          onCreated={(p.onCreated as (id: number) => void) ?? ((): void => {})}
         />
       );
     },
   ],
   [
     RfqFilterTabs,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <RfqFilterTabsComponent
           selected={(p.selected as RfqFilter) ?? "Live"}
-          onChange={(p.onChange as (f: RfqFilter) => void) ?? (() => {})}
+          onChange={(p.onChange as (f: RfqFilter) => void) ?? ((): void => {})}
         />
       );
     },
   ],
   [
     QuoteCard,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <QuoteCardComponent
           quote={p.quote as Quote}
@@ -271,14 +273,14 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     RfqCard,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <RfqCardComponent
           rfq={p.rfq as Rfq}
           quotes={(p.quotes as readonly Quote[]) ?? []}
           instrument={p.instrument as Instrument | undefined}
           dealers={(p.dealers as readonly Dealer[]) ?? []}
-          onAccept={(p.onAccept as (id: number) => void) ?? (() => {})}
+          onAccept={(p.onAccept as (id: number) => void) ?? ((): void => {})}
           onDismiss={p.onDismiss as ((id: number) => void) | undefined}
         />
       );
@@ -286,19 +288,19 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     RfqTilesPanel,
-    () => {
+    (): ReactElement => {
       return <RfqTilesPanelComponent />;
     },
   ],
   [
     SellSidePanel,
-    () => {
+    (): ReactElement => {
       return <SellSidePanelComponent />;
     },
   ],
   [
     TradeTicket,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <TradeTicketComponent
           rfq={p.rfq as Rfq}
@@ -310,41 +312,43 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     CreditBlotter,
-    () => {
+    (): ReactElement => {
       return <CreditBlotterComponent />;
     },
   ],
   [
     LiveRatesPanel,
-    () => {
+    (): ReactElement => {
       return <LiveRatesPanelComponent />;
     },
   ],
   [
     CurrencyFilter,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <CurrencyFilterComponent
           selected={(p.selected as CurrencyCategory) ?? "All"}
-          onChange={(p.onChange as (c: CurrencyCategory) => void) ?? (() => {})}
+          onChange={
+            (p.onChange as (c: CurrencyCategory) => void) ?? ((): void => {})
+          }
         />
       );
     },
   ],
   [
     ViewToggle,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <ViewToggleComponent
           mode={(p.mode as ViewMode) ?? "chart"}
-          onChange={(p.onChange as (m: ViewMode) => void) ?? (() => {})}
+          onChange={(p.onChange as (m: ViewMode) => void) ?? ((): void => {})}
         />
       );
     },
   ],
   [
     Tile,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <TileComponent
           pair={p.pair as CurrencyPair}
@@ -355,7 +359,7 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     TileHeader,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <TileHeaderComponent
           base={p.base as string}
@@ -366,7 +370,7 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     TilePrice,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <TilePriceComponent
           price={p.price as Price}
@@ -378,16 +382,18 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     SpreadDisplay,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return <SpreadDisplayComponent spread={p.spread as string} />;
     },
   ],
   [
     TileExecution,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <TileExecutionComponent
-          onExecute={(p.onExecute as (d: Direction) => void) ?? (() => {})}
+          onExecute={
+            (p.onExecute as (d: Direction) => void) ?? ((): void => {})
+          }
           disabled={(p.disabled as boolean) ?? false}
         />
       );
@@ -395,7 +401,7 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     TileNotional,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <TileNotionalComponent
           notional={p.notional as { state: NotionalView } & NotionalIntents}
@@ -407,18 +413,18 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     TileConfirmation,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <TileConfirmationComponent
           state={p.state as TileExecutionState}
-          onDismiss={(p.onDismiss as () => void) ?? (() => {})}
+          onDismiss={(p.onDismiss as () => void) ?? ((): void => {})}
         />
       );
     },
   ],
   [
     RfqCountdown,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <RfqCountdownComponent
           remainingMs={p.remainingMs as number}
@@ -429,18 +435,18 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     TileRfq,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <TileRfqComponent
           pair={p.pair as CurrencyPair}
           rfqState={p.rfqState as TileRfqState}
-          onRequestQuote={(p.onRequestQuote as () => void) ?? (() => {})}
+          onRequestQuote={(p.onRequestQuote as () => void) ?? ((): void => {})}
           onExecute={
             (p.onExecute as (
               direction: Direction,
               price: Price,
               notional: number,
-            ) => void) ?? (() => {})
+            ) => void) ?? ((): void => {})
           }
           notional={(p.notional as number) ?? 0}
         />
@@ -449,24 +455,24 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     ConnectionOverlay,
-    () => {
+    (): ReactElement => {
       return <ConnectionOverlayComponent />;
     },
   ],
   [
     Footer,
-    () => {
+    (): ReactElement => {
       return <FooterComponent />;
     },
   ],
   [
     Header,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <HeaderComponent
           activeTab={(p.activeTab as WorkspaceTab) ?? "fx"}
           onTabChange={
-            (p.onTabChange as (t: WorkspaceTab) => void) ?? (() => {})
+            (p.onTabChange as (t: WorkspaceTab) => void) ?? ((): void => {})
           }
         />
       );
@@ -474,7 +480,7 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     StaleIndicator,
-    (p) => {
+    (p: Record<string, unknown>): ReactElement => {
       return (
         <StaleIndicatorComponent stale={(p.stale as boolean) ?? false}>
           <span>{(p.childLabel as string) ?? "content"}</span>
@@ -484,13 +490,13 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     ThemeToggle,
-    () => {
+    (): ReactElement => {
       return <ThemeToggleComponent />;
     },
   ],
   [
     AdminPanel,
-    () => {
+    (): ReactElement => {
       return <AdminPanelComponent />;
     },
   ],

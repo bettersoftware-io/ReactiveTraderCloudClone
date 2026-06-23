@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useMemo } from "react";
 
 import {
@@ -86,7 +87,7 @@ function deriveTrades(
   });
 }
 
-export function CreditBlotter() {
+export function CreditBlotter(): ReactElement {
   const { useRfqs, useAllQuotes, useInstruments, useDealers } = useHooks();
   const rfqs = useRfqs();
   const allQuotes = useAllQuotes();

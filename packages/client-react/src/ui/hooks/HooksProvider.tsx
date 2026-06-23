@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 import type { AppHooks } from "./createAppHooks";
 import { HooksContext } from "./HooksContext";
@@ -12,7 +12,7 @@ export function HooksProvider({
 }: {
   hooks: AppHooks;
   children: ReactNode;
-}) {
+}): ReactElement {
   return (
     <HooksContext.Provider value={hooks}>{children}</HooksContext.Provider>
   );

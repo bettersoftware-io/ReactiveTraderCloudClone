@@ -1,6 +1,6 @@
 import { BehaviorSubject } from "rxjs";
 
-import type { Theme, ViewMode } from "@rtc/domain";
+import type { Price, PriceTick, Quote, Theme, ViewMode } from "@rtc/domain";
 
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
@@ -54,38 +54,38 @@ export function mount<P, Page extends MountedComponent<P>>(
   // the caller's next assertion.
   const flush =
     rendered.flushSync ??
-    ((fn: () => void) => {
-      return fn();
+    ((fn: () => void): void => {
+      fn();
     });
 
   const ctx: PageContext<P> = {
     root: rendered.root,
-    setProps: (next) => {
+    setProps: (next: Partial<P>) => {
       return flush(() => {
         return propsSubject.next({ ...propsSubject.getValue(), ...next });
       });
     },
-    emit: (patch) => {
+    emit: (patch: Partial<HookValues>) => {
       return flush(() => {
         return world.push(patch);
       });
     },
-    setPrice: (symbol, value) => {
+    setPrice: (symbol: string, value: Price | null) => {
       return flush(() => {
         return world.setPrice(symbol, value);
       });
     },
-    setHistory: (symbol, value) => {
+    setHistory: (symbol: string, value: readonly PriceTick[]) => {
       return flush(() => {
         return world.setHistory(symbol, value);
       });
     },
-    setQuotesForRfq: (rfqId, value) => {
+    setQuotesForRfq: (rfqId: number, value: readonly Quote[]) => {
       return flush(() => {
         return world.setQuotesForRfq(rfqId, value);
       });
     },
-    setThroughputView: (patch) => {
+    setThroughputView: (patch: Partial<ThroughputView>) => {
       return flush(() => {
         return world.setThroughputView(patch);
       });

@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 import { type Dealer, type Instrument, type Rfq, RfqState } from "@rtc/domain";
@@ -38,7 +39,7 @@ function RfqTileRow({
   dealers,
   onAccept,
   onDismiss,
-}: RfqTileRowProps) {
+}: RfqTileRowProps): ReactElement {
   const quotes = useHooks().useQuotesForRfq(rfq.id);
   return (
     <RfqCard
@@ -52,7 +53,7 @@ function RfqTileRow({
   );
 }
 
-export function RfqTilesPanel() {
+export function RfqTilesPanel(): ReactElement {
   const { useRfqs, useInstruments, useDealers, useAcceptQuote } = useHooks();
   const rfqs = useRfqs();
   const instruments = useInstruments();

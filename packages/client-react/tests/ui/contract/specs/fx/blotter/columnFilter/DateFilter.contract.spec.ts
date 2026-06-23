@@ -51,7 +51,7 @@ describe("DateFilter", () => {
       props: {
         column: "tradeDate",
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           applied = f;
         },
       },
@@ -73,7 +73,7 @@ describe("DateFilter", () => {
       props: {
         column: "tradeDate",
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           applied = f;
         },
       },
@@ -98,7 +98,7 @@ describe("DateFilter", () => {
       props: {
         column: "tradeDate",
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           called = true;
           applied = f;
         },
@@ -115,7 +115,7 @@ describe("DateFilter", () => {
       props: {
         column: "tradeDate",
         currentFilter: undefined,
-        onApply: (f) => {
+        onApply: (f: ColumnFilter | null) => {
           applied = f;
         },
       },

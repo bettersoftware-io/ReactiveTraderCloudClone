@@ -1,7 +1,11 @@
 #!/usr/bin/env tsx
 import { spawn } from "node:child_process";
 
-import { SHARED_DEV_SERVER_ENV, startDevServer } from "./devServer";
+import {
+  type DevServerHandle,
+  SHARED_DEV_SERVER_ENV,
+  startDevServer,
+} from "./devServer";
 
 const [cmd, ...args] = process.argv.slice(2);
 
@@ -16,7 +20,7 @@ if (!cmd) {
 // baseURL — and set the shared flag so the child (and any of its own workers,
 // e.g. cucumber's per-worker BeforeAll hooks) reuse this server instead of
 // starting their own. The flag is set only in the child env, never ours.
-const dev = await startDevServer();
+const dev: DevServerHandle = await startDevServer();
 console.log(`[with-server] dev server ready on :${dev.port}`);
 
 let code = 1;

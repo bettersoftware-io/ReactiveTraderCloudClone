@@ -26,7 +26,7 @@ function trade(over: Partial<Trade> = {}): Trade {
  * them and capture the Blob's text to assert the serialized CSV content.
  */
 let captured: string | null;
-const RealBlob = globalThis.Blob;
+const RealBlob: typeof Blob = globalThis.Blob;
 
 /** A real Blob subclass that records the joined text parts it was built from. */
 class RecordingBlob extends RealBlob {

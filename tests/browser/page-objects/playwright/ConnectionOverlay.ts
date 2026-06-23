@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 import type { ConnectionOverlayPO } from "../contracts/ConnectionOverlay";
 import { TESTIDS } from "../contracts/testids";
@@ -6,7 +6,7 @@ import { TESTIDS } from "../contracts/testids";
 export class PlaywrightConnectionOverlay implements ConnectionOverlayPO {
   constructor(private readonly page: Page) {}
 
-  private locator() {
+  private locator(): Locator {
     return this.page.getByTestId(TESTIDS.connection.overlay);
   }
 

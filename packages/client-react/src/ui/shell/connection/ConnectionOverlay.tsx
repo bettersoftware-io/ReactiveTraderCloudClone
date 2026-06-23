@@ -1,3 +1,5 @@
+import type { ReactElement } from "react";
+
 import { ConnectionStatus } from "@rtc/domain";
 
 import { useHooks } from "#/ui/hooks/useHooks";
@@ -12,7 +14,7 @@ const overlayMessages: Partial<Record<ConnectionStatus, string>> = {
     "Your browser appears to be offline. Check your network connection.",
 };
 
-export function ConnectionOverlay() {
+export function ConnectionOverlay(): ReactElement | null {
   const { useConnectionStatus } = useHooks();
   const status = useConnectionStatus();
   const message = overlayMessages[status];

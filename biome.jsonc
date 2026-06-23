@@ -102,6 +102,14 @@
       "suspicious": {
         "noLeakedRender": "error",
         "noUndeclaredEnvVars": "error"
+      },
+      "nursery": {
+        // Require explicit types everywhere the inference would otherwise be
+        // implicit: function/method return types, parameters, and variables.
+        // Self-documents call sites and speeds up tsc. This is a `nursery`
+        // (not-yet-stable) rule — the ONLY nursery rule we opt into — so its
+        // semantics may shift on a Biome upgrade; revisit on each bump.
+        "useExplicitType": "error"
       }
     }
   },

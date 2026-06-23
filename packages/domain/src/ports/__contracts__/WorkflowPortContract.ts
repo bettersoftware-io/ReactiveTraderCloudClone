@@ -26,13 +26,16 @@ export interface WorkflowHarness {
 // verify the event TYPE is correct; specific ID round-trips are
 // tested in use-case unit tests.
 
-function isRfqCreated(_rfqId: number) {
+function isRfqCreated(_rfqId: number): (e: RfqEvent) => boolean {
   return (e: RfqEvent) => {
     return e.type === "rfqCreated";
   };
 }
 
-function isAccepted(_rfqId: number, _quoteId: number) {
+function isAccepted(
+  _rfqId: number,
+  _quoteId: number,
+): (e: RfqEvent) => boolean {
   return (e: RfqEvent) => {
     return e.type === "quoteAccepted";
   };

@@ -25,7 +25,7 @@ const isCI = !!process.env.CI;
  */
 const aliasCucumber: import("esbuild").Plugin = {
   name: "alias-cucumber",
-  setup(build) {
+  setup(build: import("esbuild").PluginBuild): void {
     build.onResolve({ filter: /^@cucumber\/cucumber$/ }, () => {
       return {
         path: path.resolve(
@@ -49,7 +49,10 @@ export default defineConfig({
     screenshotsFolder: "reports/browser/cypress-cucumber/artifacts",
     defaultCommandTimeout: isCI ? 30_000 : 10_000,
     retries: { runMode: isCI ? 2 : 0, openMode: 0 },
-    async setupNodeEvents(on, config) {
+    async setupNodeEvents(
+      on: Cypress.PluginEvents,
+      config: Cypress.PluginConfigOptions,
+    ): Promise<Cypress.PluginConfigOptions> {
       await addCucumberPreprocessorPlugin(on, config);
       on(
         "file:preprocessor",
