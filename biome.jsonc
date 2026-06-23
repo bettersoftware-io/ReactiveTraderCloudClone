@@ -80,6 +80,13 @@
       },
       "style": {
         "useComponentExportOnlyModules": "error",
+        // Force named exports everywhere we control: default exports are
+        // un-discoverable by editors, invite inconsistent local names, and
+        // their CJS/ESM default-import interop is fragile (a default import of
+        // a named-only module silently broke under a Cypress bump). Tool config
+        // files (vite/vitest/playwright/cypress/eslint/stylelint) MUST default-
+        // export, so they're scoped out in `overrides` below.
+        "noDefaultExport": "error",
         "noRestrictedImports": {
           "level": "error",
           "options": {
@@ -125,6 +132,21 @@
         "parser": {
           "allowComments": true,
           "allowTrailingCommas": true
+        }
+      }
+    },
+    {
+      // Framework config + ambient declaration files are required to use a
+      // default export (vite/vitest/playwright/cypress/eslint/stylelint configs,
+      // cucumber-js profile configs, `*.d.ts` module declarations). They are the
+      // ONLY place default exports are allowed — application and test code must
+      // use named exports.
+      "includes": ["**/*.config.*", "**/cucumber.js", "**/*.d.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
         }
       }
     }
