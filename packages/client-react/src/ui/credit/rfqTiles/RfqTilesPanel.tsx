@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
 import { type Dealer, type Instrument, type Rfq, RfqState } from "@rtc/domain";
 
@@ -62,34 +62,29 @@ export function RfqTilesPanel(): ReactElement {
   const [filter, setFilter] = useState<RfqFilter>("Live");
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
 
-  const instrumentMap = useMemo(() => {
-    const m = new Map<number, Instrument>();
-    for (const i of instruments) m.set(i.id, i);
-    return m;
-  }, [instruments]);
+  const instrumentMap = new Map<number, Instrument>();
 
-  const filteredRfqs = useMemo(() => {
-    return rfqs
-      .filter((r) => {
-        return filterMatches(r.state, filter) && !dismissed.has(r.id);
-      })
-      .sort((a, b) => {
-        return b.creationTimestamp - a.creationTimestamp;
-      });
-  }, [rfqs, filter, dismissed]);
+  for (const i of instruments) {
+    instrumentMap.set(i.id, i);
+  }
 
-  const handleAccept = useCallback(
-    async (quoteId: number) => {
-      await acceptQuote(quoteId);
-    },
-    [acceptQuote],
-  );
+  const filteredRfqs = rfqs
+    .filter((r) => {
+      return filterMatches(r.state, filter) && !dismissed.has(r.id);
+    })
+    .sort((a, b) => {
+      return b.creationTimestamp - a.creationTimestamp;
+    });
 
-  const handleDismiss = useCallback((rfqId: number) => {
+  async function handleAccept(quoteId: number): Promise<void> {
+    await acceptQuote(quoteId);
+  }
+
+  function handleDismiss(rfqId: number): void {
     setDismissed((prev) => {
       return new Set(prev).add(rfqId);
     });
-  }, []);
+  }
 
   return (
     <div className={styles.panel}>

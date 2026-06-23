@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { useMemo } from "react";
 
 import {
   type CreditTrade,
@@ -94,21 +93,19 @@ export function CreditBlotter(): ReactElement {
   const instruments = useInstruments();
   const dealers = useDealers();
 
-  const instrumentMap = useMemo(() => {
-    const m = new Map<number, Instrument>();
-    for (const i of instruments) m.set(i.id, i);
-    return m;
-  }, [instruments]);
+  const instrumentMap = new Map<number, Instrument>();
 
-  const dealerMap = useMemo(() => {
-    const m = new Map<number, Dealer>();
-    for (const d of dealers) m.set(d.id, d);
-    return m;
-  }, [dealers]);
+  for (const i of instruments) {
+    instrumentMap.set(i.id, i);
+  }
 
-  const trades = useMemo(() => {
-    return deriveTrades(rfqs, allQuotes, instrumentMap, dealerMap);
-  }, [rfqs, allQuotes, instrumentMap, dealerMap]);
+  const dealerMap = new Map<number, Dealer>();
+
+  for (const d of dealers) {
+    dealerMap.set(d.id, d);
+  }
+
+  const trades = deriveTrades(rfqs, allQuotes, instrumentMap, dealerMap);
 
   return (
     <div className={styles.blotter}>

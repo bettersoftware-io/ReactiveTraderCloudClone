@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
 import type { Trade } from "@rtc/domain";
 
@@ -20,33 +20,35 @@ export function SetFilter({
   currentFilter,
   onApply,
 }: SetFilterProps): ReactElement {
-  const allValues = useMemo(() => {
-    const vals = new Set<string>();
-    for (const trade of trades) vals.add(String(trade[column]));
-    return [...vals].sort();
-  }, [trades, column]);
+  const valSet = new Set<string>();
+
+  for (const trade of trades) {
+    valSet.add(String(trade[column]));
+  }
+
+  const allValues = [...valSet].sort();
 
   const [selected, setSelected] = useState<Set<string>>(() => {
     if (currentFilter?.type === "set") return new Set(currentFilter.values);
     return new Set(allValues);
   });
 
-  const toggleValue = useCallback((val: string) => {
+  function toggleValue(val: string): void {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(val)) next.delete(val);
       else next.add(val);
       return next;
     });
-  }, []);
+  }
 
-  const handleApply = useCallback(() => {
+  function handleApply(): void {
     if (selected.size === allValues.length) {
       onApply(null); // all selected = no filter
     } else {
       onApply({ type: "set", column, values: selected });
     }
-  }, [selected, allValues.length, onApply, column]);
+  }
 
   return (
     <div className={styles.container}>

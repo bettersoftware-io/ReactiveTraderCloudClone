@@ -22,6 +22,9 @@ export function buildFakeHooks(data: AppData): AppHooks {
     useTrades: () => {
       return data.trades;
     },
+    useNewTradeIds: () => {
+      return data.newTradeIds ?? new Set<number>();
+    },
     useAnalytics: () => {
       return data.analytics;
     },

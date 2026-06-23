@@ -115,6 +115,7 @@ The current stack is a snapshot, not a commitment. Each row says what role is be
 | Client state streams | RxJS (planned) | RxJS, vanilla TS |
 | UI ↔ stream bridge | react-rxjs (planned) | The bridge library only |
 | UI rendering | React 19 | React; **no `rxjs` import** |
+| UI memoization | React Compiler (build-time) | No manual `useMemo`/`useCallback`; see [ADR-003](adr/ADR-003-react-compiler-and-manual-memoization.md) |
 | Build tooling | Vite | -- |
 | Server framework | Node.js + native WebSocket | -- |
 | Wire format | JSON over WebSocket | DTOs in `@rtc/shared` |
@@ -1276,6 +1277,7 @@ via `makeHarness`, they don't reach into either implementation.
 | **AbortController per subscription** | Graceful cleanup when WebSocket closes -- all active streams are cancelled. |
 | **Behavioural specs in Gherkin** | One source of truth for expected behaviour, runnable from multiple test drivers. Survives driver and framework swaps. |
 | **Don't abstract React or RxJS behind portability shims** | Wrapping them produces leaky facades; instead keep their layers thin and rely on behavioural tests to make regeneration cheap. |
+| **React Compiler instead of manual memoization** | The compiler auto-memoizes at build time, so the UI carries no `useMemo`/`useCallback`. Its lint half (`eslint-plugin-react-hooks` `recommended-latest`, scoped to `src`) guards the Rules-of-React purity the compiler needs. One provisional exception: `react-hooks/refs` is scoped off for the two StrictMode build-once-ref seam files (`useMachine.ts`, `AppRoot.tsx`). Full rationale and the revisit note in [ADR-003](adr/ADR-003-react-compiler-and-manual-memoization.md). |
 
 ---
 

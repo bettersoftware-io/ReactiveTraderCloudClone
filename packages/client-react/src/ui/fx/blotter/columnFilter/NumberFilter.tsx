@@ -1,5 +1,5 @@
 import type { ChangeEvent, ReactElement } from "react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import type { Trade } from "@rtc/domain";
 
@@ -45,7 +45,7 @@ export function NumberFilter({
       : "",
   );
 
-  const handleApply = useCallback(() => {
+  function handleApply(): void {
     const num = parseFloat(value);
 
     if (Number.isNaN(num)) {
@@ -61,7 +61,7 @@ export function NumberFilter({
       value: num,
       valueTo: numTo !== undefined && !Number.isNaN(numTo) ? numTo : undefined,
     });
-  }, [column, comparator, value, valueTo, onApply]);
+  }
 
   return (
     <div className={styles.container}>

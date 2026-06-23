@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 
 import type { Trade } from "@rtc/domain";
 
@@ -21,6 +21,9 @@ import styles from "./FxBlotter.module.css";
 
 export function FxBlotter(): ReactElement {
   const trades = useHooks().useTrades();
+  // "Newly arrived" detection is a cross-emission stream-diff; it lives in the
+  // presenter (BlotterPresenter.newTradeIds$), not here — see docs/adr/ADR-003.
+  const newTradeIds = useHooks().useNewTradeIds();
   const [sort, setSort] = useState<SortState>({
     column: null,
     direction: null,
@@ -29,62 +32,36 @@ export function FxBlotter(): ReactElement {
     new Map(),
   );
   const [quickFilter, setQuickFilter] = useState("");
-  const seenTradeIds = useRef(new Set<number>());
 
-  // Track which trades are "new" (appeared after initial load)
-  const newTradeIds = useMemo(() => {
-    const newIds = new Set<number>();
-
-    for (const trade of trades) {
-      if (!seenTradeIds.current.has(trade.tradeId)) {
-        // Only mark as new if we've seen at least one snapshot
-        if (seenTradeIds.current.size > 0) {
-          newIds.add(trade.tradeId);
-        }
-
-        seenTradeIds.current.add(trade.tradeId);
-      }
-    }
-
-    return newIds;
-  }, [trades]);
-
-  const handleSort = useCallback((column: keyof Trade) => {
+  function handleSort(column: keyof Trade): void {
     setSort((prev) => {
       return nextSortDirection(column, prev);
     });
-  }, []);
+  }
 
-  const handleFilter = useCallback(
-    (column: keyof Trade, filter: ColumnFilter | null) => {
-      setFilters((prev) => {
-        const next = new Map(prev);
-        if (filter) next.set(column, filter);
-        else next.delete(column);
-        return next;
-      });
-    },
-    [],
-  );
+  function handleFilter(
+    column: keyof Trade,
+    filter: ColumnFilter | null,
+  ): void {
+    setFilters((prev) => {
+      const next = new Map(prev);
+      if (filter) next.set(column, filter);
+      else next.delete(column);
+      return next;
+    });
+  }
 
-  const processedTrades = useMemo(() => {
-    const filtered = applyFilters(trades, filters, quickFilter);
-    return applySortToTrades(filtered, sort);
-  }, [trades, filters, quickFilter, sort]);
+  const filtered = applyFilters(trades, filters, quickFilter);
+  const processedTrades = applySortToTrades(filtered, sort);
 
-  const activeFilterLabels = useMemo(() => {
-    const labels: string[] = [];
+  const activeFilterLabels: string[] = [];
 
-    for (const [key, filter] of filters) {
-      const col = COLUMNS.find((c) => {
-        return c.key === key;
-      });
-      if (col) labels.push(col.label);
-      void filter;
-    }
-
-    return labels;
-  }, [filters]);
+  for (const key of filters.keys()) {
+    const col = COLUMNS.find((c) => {
+      return c.key === key;
+    });
+    if (col) activeFilterLabels.push(col.label);
+  }
 
   return (
     <div className={styles.container}>

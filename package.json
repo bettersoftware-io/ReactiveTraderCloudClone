@@ -33,6 +33,7 @@
     "dependency-cruiser": "^17.4.3",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "knip": "^6.17.1",
     "stylelint": "^17.13.0",
     "stylelint-declaration-strict-value": "^1.11.1",

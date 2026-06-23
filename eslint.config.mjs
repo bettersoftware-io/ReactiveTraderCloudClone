@@ -1,4 +1,5 @@
 import prettier from "eslint-config-prettier";
+import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
@@ -93,6 +94,29 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    // React Compiler / Rules-of-React diagnostics, scoped to the app source the
+    // compiler actually compiles (src — not tests, which never go through the
+    // Babel transform). The `recommended-latest` preset bundles rules-of-hooks,
+    // the compiler's purity/immutability/set-state checks, and exhaustive-deps;
+    // these guard against writing components the compiler would silently bail
+    // out on, now that manual memoization has been removed in favour of it.
+    files: ["packages/client-react/src/**/*.{ts,tsx}"],
+    plugins: { "react-hooks": reactHooks },
+    rules: reactHooks.configs["recommended-latest"].rules,
+  },
+  {
+    // Provisional exception (see docs/adr/ADR-003). The StrictMode
+    // build-once-ref seam must read a stable, never-reassigned ref during
+    // render; no lint-clean rewrite preserves single construction without
+    // leaking RxJS subscriptions. `react-hooks/refs` is scoped off for these
+    // two files ONLY — it stays active everywhere else (it caught FxBlotter).
+    files: [
+      "packages/client-react/src/ui/hooks/useMachine.ts",
+      "packages/client-react/src/AppRoot.tsx",
+    ],
+    rules: { "react-hooks/refs": "off" },
   },
   prettier,
 );

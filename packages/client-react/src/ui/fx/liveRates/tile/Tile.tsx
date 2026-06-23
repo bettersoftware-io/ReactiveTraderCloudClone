@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { useCallback } from "react";
 
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 
@@ -43,15 +42,16 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
   const isRfqActive = rfqState.state.status !== "init";
   const notionalDisabled = isLoading || isBusy || isRfqActive;
 
-  const handleExecute = useCallback(
-    (direction: Direction, priceVal?: Price, notionalVal?: number) => {
-      const p = priceVal ?? price;
-      const n = notionalVal ?? notional.state.numericValue;
-      if (!p || hasError) return;
-      tileExecution.execute(direction, p, n);
-    },
-    [price, hasError, tileExecution, notional.state.numericValue],
-  );
+  function handleExecute(
+    direction: Direction,
+    priceVal?: Price,
+    notionalVal?: number,
+  ): void {
+    const p = priceVal ?? price;
+    const n = notionalVal ?? notional.state.numericValue;
+    if (!p || hasError) return;
+    tileExecution.execute(direction, p, n);
+  }
 
   return (
     <StaleIndicator stale={stale}>
