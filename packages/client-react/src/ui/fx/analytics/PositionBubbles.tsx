@@ -194,8 +194,8 @@ export function PositionBubbles({
 
     force.nodes(nodesRef.current).alpha(0.5).restart();
     // Tick once synchronously so jsdom/contract-tier sees the <g> nodes
-    // immediately, without waiting for d3-timer (which relies on setTimeout
-    // and won't fire before the test assertion in jsdom).
+    // immediately, without waiting for d3-timer's internal tick scheduling
+    // (which won't fire before the test assertion in jsdom).
     force.tick();
     renderTick();
 
