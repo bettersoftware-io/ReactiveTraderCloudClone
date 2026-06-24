@@ -218,7 +218,9 @@ export class CreditRfqSimulator implements WorkflowPort {
         if (rejectedState) {
           const rejected: Quote = { ...other, state: rejectedState };
           this.quotes.set(otherId, rejected);
-          // These are implicitly rejected, no separate event type — they come through as quote updates
+          // Surface the rejection live so competing cards flip immediately
+          // (rtc-original getQuoteStateOnAccept, creditRfqs.ts:173-216). The simulator is the server here.
+          this.events$.next({ type: "quoteRejected", payload: rejected });
         }
       }
 

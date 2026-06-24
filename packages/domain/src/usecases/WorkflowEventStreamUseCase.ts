@@ -34,6 +34,7 @@ export function reduceRfqEvent(
     case "quoteCreated":
     case "quoteQuoted":
     case "quotePassed":
+    case "quoteRejected":
 
     case "quoteAccepted": {
       const next = new Map(state.quotes);

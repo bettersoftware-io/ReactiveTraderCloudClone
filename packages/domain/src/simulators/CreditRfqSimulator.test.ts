@@ -11,6 +11,7 @@ type QuoteCreatedMatcher = { type: "quoteCreated" };
 type RfqClosedMatcher = { type: "rfqClosed" };
 type QuotePassedMatcher = { type: "quotePassed" };
 type QuoteAcceptedMatcher = { type: "quoteAccepted" };
+type QuoteRejectedMatcher = { type: "quoteRejected" };
 type QuoteQuotedMatcher = { type: "quoteQuoted" };
 
 afterEach(() => {
@@ -194,7 +195,7 @@ describe("CreditRfqSimulator", () => {
     );
   });
 
-  it("accepting one quote implicitly rejects a competing priced quote (rejectedWithPrice)", async () => {
+  it("accepting one quote emits a live quoteRejected event for the competing priced quote (rejectedWithPrice)", async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, "random").mockReturnValue(0); // scheduled dealers do NOT participate
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
@@ -232,15 +233,15 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(sim.quote({ quoteId: losingQuoteId, price: 105 }));
     await vi.advanceTimersByTimeAsync(0);
 
+    const { events, stop } = collectEvents(sim);
     await firstValueFrom(sim.accept(winningQuoteId));
     await vi.advanceTimersByTimeAsync(0);
-
-    // Rejected quotes carry no live event — observe via a fresh state-of-the-world snapshot.
-    const { events, stop } = collectEvents(sim);
     stop();
+
+    // The competing quote's rejection surfaces live as a quoteRejected event.
     const loser = events.find((e) => {
-      return e.type === "quoteCreated" && e.payload.id === losingQuoteId;
-    }) as Extract<RfqEvent, QuoteCreatedMatcher> | undefined;
+      return e.type === "quoteRejected" && e.payload.id === losingQuoteId;
+    }) as Extract<RfqEvent, QuoteRejectedMatcher> | undefined;
     expect(loser).toBeDefined();
     expect(defined(loser).payload.state).toEqual({
       type: "rejectedWithPrice",
@@ -248,7 +249,7 @@ describe("CreditRfqSimulator", () => {
     });
   });
 
-  it("accepting one quote implicitly rejects a competing unpriced quote (rejectedWithoutPrice)", async () => {
+  it("accepting one quote emits a live quoteRejected event for the competing unpriced quote (rejectedWithoutPrice)", async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, "random").mockReturnValue(0); // scheduled dealers do NOT participate
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
@@ -285,14 +286,15 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(sim.quote({ quoteId: winningQuoteId, price: 100 }));
     await vi.advanceTimersByTimeAsync(0);
 
+    const { events, stop } = collectEvents(sim);
     await firstValueFrom(sim.accept(winningQuoteId));
     await vi.advanceTimersByTimeAsync(0);
-
-    const { events, stop } = collectEvents(sim);
     stop();
+
+    // The competing quote's rejection surfaces live as a quoteRejected event.
     const loser = events.find((e) => {
-      return e.type === "quoteCreated" && e.payload.id === losingQuoteId;
-    }) as Extract<RfqEvent, QuoteCreatedMatcher> | undefined;
+      return e.type === "quoteRejected" && e.payload.id === losingQuoteId;
+    }) as Extract<RfqEvent, QuoteRejectedMatcher> | undefined;
     expect(loser).toBeDefined();
     expect(defined(loser).payload.state).toEqual({
       type: "rejectedWithoutPrice",
