@@ -3,11 +3,18 @@ import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
+// Package root (packages/client-react) — used to anchor # subpath aliases so
+// import.meta.url inside golden/helper modules gets a real filesystem URL.
+const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
       "@ui-contract": fileURLToPath(new URL("./shared", import.meta.url)),
+      // Mirrors package.json "imports" so Vite sets import.meta.url correctly.
+      "#/": `${pkgRoot}/src/`,
+      "#tests/": `${pkgRoot}/tests/`,
     },
   },
   test: {

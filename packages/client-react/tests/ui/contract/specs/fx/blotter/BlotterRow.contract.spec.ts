@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
+import { loadGolden } from "#tests/ui/__golden__/loadGolden";
+
 const trade = (over: Partial<Trade> = {}): Trade => {
   return {
     tradeId: 7001,
@@ -48,9 +50,9 @@ describe("BlotterRow", () => {
     expect(row.isRejected()).toBe(false);
   });
 
-  it("highlights a newly arrived trade", () => {
+  it("flashes a newly arrived trade", () => {
     const row = mount(BlotterRow, { props: { trade: trade(), isNew: true } });
-    expect(row.backgroundColor()).toContain("rgba(59, 130, 246");
+    expect(row.backgroundColor()).toBe("animation:backgroundFlash");
   });
 
   it("does not highlight an existing trade", () => {
@@ -67,14 +69,45 @@ describe("BlotterRow", () => {
     expect(row.backgroundColor()).toBe("transparent");
   });
 
-  it("clears the highlight after the timeout elapses", () => {
+  it("clears the flash after the 3s highlight window elapses", () => {
     vi.useFakeTimers();
     const row = mount(BlotterRow, { props: { trade: trade(), isNew: true } });
-    expect(row.backgroundColor()).toContain("rgba(59, 130, 246");
-    // The new-trade highlight is removed after 3s. Re-render (via a prop push,
-    // which wraps the mutation in act) so React flushes the timer's state update.
+    expect(row.backgroundColor()).toBe("animation:backgroundFlash");
     vi.advanceTimersByTime(3000);
     row.setProps({ isNew: true });
     expect(row.backgroundColor()).toBe("transparent");
+  });
+
+  describe("new-row flash animation (rtc-original parity)", () => {
+    const golden = loadGolden<{
+      input: string;
+      expected: {
+        animationName: string;
+        animationDuration?: string;
+        animationTimingFunction?: string;
+        animationIterationCount?: string;
+      };
+    }>("row-highlight-animation");
+
+    it("flashes 1s ease-in-out three times for a new row", () => {
+      const expected = golden.cases.find((c) => {
+        return c.input === "new-row";
+      })?.expected;
+      if (!expected) throw new Error("missing new-row golden case");
+
+      const row = mount(BlotterRow, { props: { trade: trade(), isNew: true } });
+      const anim = row.animation();
+      expect(anim.name).toBe(expected.animationName);
+      expect(anim.duration).toBe(expected.animationDuration);
+      expect(anim.timingFunction).toBe(expected.animationTimingFunction);
+      expect(anim.iterationCount).toBe(expected.animationIterationCount);
+    });
+
+    it("applies no flash animation to an existing row", () => {
+      const row = mount(BlotterRow, {
+        props: { trade: trade(), isNew: false },
+      });
+      expect(row.animation().name).toBe("none");
+    });
   });
 });

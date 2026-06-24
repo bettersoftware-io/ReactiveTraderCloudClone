@@ -1,0 +1,17 @@
+{
+  "_source": "rtc-original@4a31f01 App/Trades/GridRegion/styled.ts:36-38 + utils/styling/backgroundFlash.ts:3-13 + constants.ts:54",
+  "cases": [
+    {
+      "input": "new-row",
+      "expected": {
+        "animationName": "backgroundFlash",
+        "animationDuration": "1s",
+        "animationTimingFunction": "ease-in-out",
+        "animationIterationCount": "3",
+        "keyframeStops": ["bg-primary", "bg-brand-primary", "bg-primary"],
+        "holdMs": 3000
+      }
+    },
+    { "input": "existing-row", "expected": { "animationName": "none", "holdMs": 0 } }
+  ]
+}
