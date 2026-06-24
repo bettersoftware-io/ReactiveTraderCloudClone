@@ -40,6 +40,7 @@ export type { Quote, QuoteState } from "./credit/quote.js";
 export { validQuoteTransitions } from "./credit/quote.js";
 export type { Rfq } from "./credit/rfq.js";
 export {
+  applyMaximum,
   CREDIT_MAX_QUANTITY_INPUT,
   CREDIT_QUANTITY_MULTIPLIER,
   RfqState,
