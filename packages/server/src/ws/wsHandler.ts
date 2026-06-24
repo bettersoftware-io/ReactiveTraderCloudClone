@@ -495,6 +495,7 @@ function streamWorkflow(
       case "quoteQuoted":
       case "quotePassed":
       case "quoteAccepted":
+      case "quoteRejected":
         return {
           type: event.type,
           payload: {
