@@ -276,4 +276,24 @@ describe("Tile", () => {
     tile.setPrice("EURUSD", price({ bid: 1.1 }));
     expect(tile.isStale()).toBe(false);
   });
+
+  it("disables the Buy/Sell buttons while the tile is stale", () => {
+    const tile = mount(Tile, {
+      props: { pair: eurusd, showChart: false },
+      parametric: { prices: { EURUSD: price() } },
+      hooks: { useConnectionStatus: ConnectionStatus.CONNECTED },
+    });
+    expect(tile.isStale()).toBe(false);
+    expect(tile.isBuyDisabled()).toBe(false);
+    expect(tile.isSellDisabled()).toBe(false);
+    tile.emit({ useConnectionStatus: ConnectionStatus.DISCONNECTED });
+    tile.emit({ useConnectionStatus: ConnectionStatus.CONNECTED });
+    expect(tile.isStale()).toBe(true);
+    expect(tile.isBuyDisabled()).toBe(true);
+    expect(tile.isSellDisabled()).toBe(true);
+    tile.setPrice("EURUSD", price({ bid: 1.1 }));
+    expect(tile.isStale()).toBe(false);
+    expect(tile.isBuyDisabled()).toBe(false);
+    expect(tile.isSellDisabled()).toBe(false);
+  });
 });

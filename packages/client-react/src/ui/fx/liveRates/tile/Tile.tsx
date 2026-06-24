@@ -49,7 +49,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
   ): void {
     const p = priceVal ?? price;
     const n = notionalVal ?? notional.state.numericValue;
-    if (!p || hasError) return;
+    if (!p || hasError || stale) return;
     tileExecution.execute(direction, p, n);
   }
 
@@ -92,7 +92,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
             onExecute={(dir: Direction): void => {
               handleExecute(dir);
             }}
-            disabled={isLoading || isBusy || hasError}
+            disabled={isLoading || isBusy || hasError || stale}
           />
         )}
 
