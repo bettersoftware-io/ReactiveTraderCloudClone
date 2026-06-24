@@ -52,7 +52,6 @@ export default defineConfig({
         "src/ui/shell/theme/tokens.ts",
         // Canvas/chart leaves with no DOM-assertable logic — owned by the visual tier.
         "src/ui/fx/analytics/PnlChart.tsx",
-        "src/ui/fx/analytics/PairPnlBars.tsx",
         "src/ui/fx/liveRates/tile/TileChart.tsx",
       ],
       reporter: ["text", "html", "lcov"],

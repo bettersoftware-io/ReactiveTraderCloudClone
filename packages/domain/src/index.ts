@@ -7,6 +7,12 @@ export type {
   PositionUpdates,
 } from "./analytics/position.js";
 export { formatPnlValue } from "./analytics/formatPnlValue.js";
+export type { Scale } from "./analytics/formatScale.js";
+export {
+  formatPrecise2,
+  formatWithScale,
+  scaleNumber,
+} from "./analytics/formatScale.js";
 export type { CurrencyPositionNode } from "./analytics/aggregatePositions.js";
 export {
   aggregatePositionsByCurrency,

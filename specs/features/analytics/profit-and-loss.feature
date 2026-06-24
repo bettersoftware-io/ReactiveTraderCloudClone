@@ -112,11 +112,12 @@ Feature: Analytics - Profit and Loss
   Scenario: Each currency pair shows its P&L value with abbreviated notation
     Given a currency pair has a P&L of 1234
     Then the displayed value is "1k"
-    And for a P&L of 12345678 the displayed value is "12,346k"
+    And for a P&L of 12345678 the displayed value is "12m"
 
   Scenario: Hovering over a P&L bar value shows the precise amount
     When the user hovers over a currency pair P&L value
-    Then the display switches to a precise number formatted to 2 decimal places
+    Then the display switches to a precise number formatted to 2 decimal places with thousands separators
+    And for a P&L of 1234 the hovered value is "1,234.00"
 
   Scenario: P&L bar direction reflects the sign of the value
     Given a currency pair has a positive P&L

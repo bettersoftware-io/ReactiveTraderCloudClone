@@ -14,6 +14,10 @@ import {
 } from "./pages/credit/rfqTiles/RfqFilterTabsPage";
 import { AnalyticsPanelPage } from "./pages/fx/analytics/AnalyticsPanelPage";
 import {
+  PairPnlBarsPage,
+  type PairPnlBarsProps,
+} from "./pages/fx/analytics/PairPnlBarsPage";
+import {
   PnlValuePage,
   type PnlValueProps,
 } from "./pages/fx/analytics/PnlValuePage";
@@ -119,6 +123,12 @@ export const AnalyticsPanel = component<
 >((ctx) => {
   return new AnalyticsPanelPage(ctx);
 });
+
+export const PairPnlBars = component<PairPnlBarsProps, PairPnlBarsPage>(
+  (ctx) => {
+    return new PairPnlBarsPage(ctx);
+  },
+);
 
 export const PnlValue = component<PnlValueProps, PnlValuePage>((ctx) => {
   return new PnlValuePage(ctx);

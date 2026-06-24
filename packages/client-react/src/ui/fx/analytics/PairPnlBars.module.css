@@ -61,6 +61,7 @@
   text-align: left;
   font-size: 10px;
   flex-shrink: 0;
+  cursor: default;
 }
 
 .pnlLabel[data-sign="pos"] {

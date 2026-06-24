@@ -32,6 +32,7 @@ import { RfqTilesPanel as RfqTilesPanelComponent } from "#/ui/credit/rfqTiles/Rf
 import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
 import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
+import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
 import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
 import { PositionBubbles as PositionBubblesComponent } from "#/ui/fx/analytics/PositionBubbles";
 import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/BlotterHeader";
@@ -74,6 +75,7 @@ import {
   AdminPanel,
   AnalyticsPanel,
   BlotterHeader,
+  PairPnlBars,
   BlotterRow,
   ConnectionOverlay,
   ConnectionStatusBar,
@@ -131,6 +133,18 @@ export const registry = new Map<AnyToken, ElementFor>([
     PnlValue,
     (p: Record<string, unknown>): ReactElement => {
       return <PnlValueComponent value={p.value as number} />;
+    },
+  ],
+  [
+    PairPnlBars,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PairPnlBarsComponent
+          positions={
+            (p.positions as readonly CurrencyPairPosition[]) ?? []
+          }
+        />
+      );
     },
   ],
   [
