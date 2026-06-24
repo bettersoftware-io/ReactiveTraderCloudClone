@@ -20,7 +20,7 @@ export function createRfqCountdownMachine(
   const initialRemaining = Math.max(0, totalMs - elapsed);
 
   // Tick every COUNTDOWN_INTERVAL_MS, derive remaining from tick index.
-  // takeWhile(inclusive: false) stops the stream once remaining reaches 0.
+  // takeWhile(inclusive: true) emits the final 0 tick, then completes the stream.
   const stream$ = timer(0, COUNTDOWN_INTERVAL_MS).pipe(
     map((i): number => {
       return Math.max(0, initialRemaining - i * COUNTDOWN_INTERVAL_MS);
