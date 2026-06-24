@@ -41,36 +41,6 @@ export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
     return "transparent";
   }
 
-  /**
-   * The CSS animation longhands that apply to the row, derived from data
-   * attributes (the same data-attribute pattern used by backgroundColor so
-   * assertions are not blocked by jsdom's lack of a CSS layout engine).
-   * When data-highlight="true" the row has `animation: backgroundFlash 1s ease-in-out 3`;
-   * otherwise no animation is set.
-   */
-  animation(): {
-    name: string;
-    duration: string;
-    timingFunction: string;
-    iterationCount: string;
-  } {
-    const el = this.row();
-    if (el.dataset.highlight === "true") {
-      return {
-        name: "backgroundFlash",
-        duration: "1s",
-        timingFunction: "ease-in-out",
-        iterationCount: "3",
-      };
-    }
-    return {
-      name: "none",
-      duration: "0s",
-      timingFunction: "ease",
-      iterationCount: "1",
-    };
-  }
-
   /** Move the pointer over the row (drives the hover styling). */
   hover(): void {
     // React 19 synthesises onMouseEnter from native mouseover at the root.

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,20 +12,21 @@ export interface Golden<TCase> {
  * (commit 4a31f01). Fixtures live under tests/ui/__golden__/<name>.original.json
  * with a `_source` header citing the original file:line.
  *
- * Resolution strategy: use import.meta.url when it is an absolute filesystem
- * URL; fall back to process.cwd() when vitest jsdom exposes a synthetic virtual
- * URL (e.g. "file:///tests/ui/__golden__/...") whose decoded path lacks the
- * host-filesystem prefix.
+ * Resolution strategy: compute the candidate path from import.meta.url and use
+ * it when it exists on the real filesystem (node env: import.meta.url is a true
+ * filesystem URL so fileURLToPath yields a real path). If the candidate does not
+ * exist, fall back to cwd-anchored resolution — vitest jsdom virtualises module
+ * URLs, so fileURLToPath may return a synthetic path that doesn't exist on disk;
+ * stripping the leading separator and joining with process.cwd() (the package
+ * root) recovers the real path.
  */
 export function loadGolden<TCase>(name: string): Golden<TCase> {
   const jsonName = `${name}.original.json`;
   const candidate = fileURLToPath(new URL(`./${jsonName}`, import.meta.url));
-  // Vitest jsdom virtualises module URLs: the decoded path may start with
-  // "/tests/…" (a synthetic root-relative path, not a real filesystem path).
-  // Detect by checking whether the candidate is under a real directory; fall
-  // back to cwd-anchored resolution (vitest sets cwd = package root).
-  const filePath = candidate.startsWith("/tests/")
-    ? resolve(process.cwd(), candidate.slice(1)) // strip leading "/" then join with cwd
-    : candidate;
+  // If the candidate is a real filesystem path, use it directly; otherwise fall
+  // back to cwd-anchored resolution for vitest jsdom's virtual module URLs.
+  const filePath = existsSync(candidate)
+    ? candidate
+    : resolve(process.cwd(), candidate.replace(/^[/\\]/, ""));
   return JSON.parse(readFileSync(filePath, "utf8")) as Golden<TCase>;
 }

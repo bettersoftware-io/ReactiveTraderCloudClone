@@ -12,7 +12,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@ui-contract": fileURLToPath(new URL("./shared", import.meta.url)),
-      // Mirrors package.json "imports" so Vite sets import.meta.url correctly.
+      // Mirror package.json "imports" so that helper/golden modules imported by
+      // the harness (e.g. loadGolden, setup utilities) receive a real filesystem
+      // import.meta.url rather than a vitest jsdom virtual URL — enabling
+      // readFileSync and fileURLToPath to resolve correctly.
+      // NOTE: these aliases are for helper/golden modules only. Contract specs
+      // must NOT import src/ directly; all src/ access goes through page objects.
       "#/": `${pkgRoot}/src/`,
       "#tests/": `${pkgRoot}/tests/`,
     },
