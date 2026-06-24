@@ -6,6 +6,7 @@ export type {
   HistoricPosition,
   PositionUpdates,
 } from "./analytics/position.js";
+export { formatPnlValue } from "./analytics/formatPnlValue.js";
 export type {
   ConnectionEvent,
   GatewayStatus,

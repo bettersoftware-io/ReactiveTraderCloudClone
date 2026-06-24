@@ -47,7 +47,7 @@ Feature: Analytics - Profit and Loss
 
   Scenario: P&L value is formatted as a whole number with commas
     Given the most recent P&L value is 12345
-    Then the displayed value includes thousands separators
+    Then the displayed value is "USD +12,345"
 
   Scenario: P&L value updates as new data arrives
     Given the last P&L value is displayed
