@@ -12,6 +12,8 @@ Manages the lifecycle of the client's connection to the trading gateway, includi
 | `IDLE_DISCONNECTED` | Client intentionally disconnected after prolonged user inactivity. No auto-reconnect; requires user interaction. |
 | `OFFLINE_DISCONNECTED` | Browser/device lost network connectivity. Reconnection begins automatically when the network is restored. |
 
+> **Footer projection note:** The footer status bar collapses `IDLE_DISCONNECTED` and `OFFLINE_DISCONNECTED` to the single label "Disconnected". The distinct idle/offline wording is shown in the disconnection overlay (modal), not the footer.
+
 ## State Machine
 
 ```

@@ -17,7 +17,8 @@ Feature: Connection status
     When the browser goes offline
     Then the connection overlay becomes visible within 3 seconds
     And the connection overlay text matches /offline/i
-    And the connection status footer shows "Offline"
+    # offline-specific wording is asserted via the overlay text match above
+    And the connection status footer shows "Disconnected"
 
   @presenter
   Scenario: coming back online dismisses the overlay

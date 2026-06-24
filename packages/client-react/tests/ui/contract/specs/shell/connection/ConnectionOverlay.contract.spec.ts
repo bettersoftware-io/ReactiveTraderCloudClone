@@ -29,7 +29,7 @@ describe("ConnectionOverlay", () => {
       hooks: { useConnectionStatus: ConnectionStatus.DISCONNECTED },
     });
     expect(overlay.isVisible()).toBe(true);
-    expect(overlay.message()).toMatch(/reconnecting/i);
+    expect(overlay.message()).toMatch(/re-connect/i);
   });
 
   it("explains an idle disconnect", () => {

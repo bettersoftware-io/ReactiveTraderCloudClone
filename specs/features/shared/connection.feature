@@ -34,6 +34,7 @@ Feature: Connection Management
     When no mouse movement is detected for 15 minutes
     Then the connection should be terminated
     And the connection status should be "Idle Disconnected"
+    # Footer renders this state as "Disconnected"; idle-specific wording appears in the overlay.
     And the application should display an idle disconnection message
 
   Scenario: Reconnect from idle disconnection
@@ -59,6 +60,7 @@ Feature: Connection Management
     Given the connection status is "Connected"
     When the browser loses network connectivity
     Then the connection status should be "Offline Disconnected"
+    # Footer renders this state as "Disconnected"; offline-specific wording appears in the overlay.
     And a disconnection overlay should appear
 
   Scenario: Browser comes back online
