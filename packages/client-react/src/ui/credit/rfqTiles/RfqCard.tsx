@@ -46,7 +46,10 @@ export function RfqCard({
   onDismiss,
 }: RfqCardProps): ReactElement {
   const totalMs = rfq.expirySecs * 1000;
-  const remainingMs = useHooks().useRfqCountdown(rfq.creationTimestamp, totalMs);
+  const remainingMs = useHooks().useRfqCountdown(
+    rfq.creationTimestamp,
+    totalMs,
+  );
 
   const dealerMap = new Map<number, Dealer>();
 

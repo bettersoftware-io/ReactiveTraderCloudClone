@@ -8,12 +8,12 @@ import {
 } from "@rtc/domain";
 
 import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
+import type { IWsAdapter } from "./adapters/IWsAdapter";
 import {
   type AppPorts,
   createSimulatorPorts,
   createWsRealPorts,
 } from "./adapters/portFactory";
-import type { IWsAdapter } from "./adapters/IWsAdapter";
 import { WsAdapter } from "./adapters/WsAdapter";
 import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
 import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";

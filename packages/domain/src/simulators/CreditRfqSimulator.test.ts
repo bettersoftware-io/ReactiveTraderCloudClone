@@ -3,8 +3,8 @@ import { filter, take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defined } from "../__testUtils__/defined.js";
-import type { RfqEvent } from "../ports/workflowPort.js";
 import { CREDIT_RFQ_EXPIRY_SECONDS } from "../credit/rfq.js";
+import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
 
@@ -395,9 +395,13 @@ describe("CreditRfqSimulator", () => {
     );
     await vi.advanceTimersByTimeAsync(120_000);
     stop();
-    const closed = events.find((e) => { return e.type === "rfqClosed"; });
+    const closed = events.find((e) => {
+      return e.type === "rfqClosed";
+    });
     expect(closed).toBeDefined();
-    expect((closed as Extract<RfqEvent, RfqClosedMatcher>).payload.state).toBe("Expired");
+    expect((closed as Extract<RfqEvent, RfqClosedMatcher>).payload.state).toBe(
+      "Expired",
+    );
   });
 
   it("dispose cancels a pending expiry (RFQ never reaches Expired)", async () => {
@@ -417,6 +421,10 @@ describe("CreditRfqSimulator", () => {
     sim.dispose();
     await vi.advanceTimersByTimeAsync(120_000);
     stop();
-    expect(events.some((e) => { return e.type === "rfqClosed"; })).toBe(false);
+    expect(
+      events.some((e) => {
+        return e.type === "rfqClosed";
+      }),
+    ).toBe(false);
   });
 });

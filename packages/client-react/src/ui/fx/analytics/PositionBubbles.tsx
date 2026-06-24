@@ -7,8 +7,8 @@ import {
   type SimulationNodeDatum,
 } from "d3-force";
 import { select } from "d3-selection";
-import { useLayoutEffect, useRef } from "react";
 import type { ReactElement } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import {
   aggregatePositionsByCurrency,
@@ -178,8 +178,18 @@ export function PositionBubbles({
     };
 
     const force = forceSimulation<BubbleNode>()
-      .force("forceX", forceX<BubbleNode>().strength(0.1).x(width * 0.5))
-      .force("forceY", forceY<BubbleNode>().strength(0.1).y(height * 0.5))
+      .force(
+        "forceX",
+        forceX<BubbleNode>()
+          .strength(0.1)
+          .x(width * 0.5),
+      )
+      .force(
+        "forceY",
+        forceY<BubbleNode>()
+          .strength(0.1)
+          .y(height * 0.5),
+      )
       .force(
         "collide",
         forceCollide<BubbleNode>()

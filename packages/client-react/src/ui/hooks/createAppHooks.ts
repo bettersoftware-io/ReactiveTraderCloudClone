@@ -20,11 +20,11 @@ import {
 
 import type { Presenters } from "#/app/composition";
 import type { MachineFactories } from "#/app/presenters/machine";
-import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
 import type {
   NotionalIntents,
   NotionalView,
 } from "#/app/presenters/NotionalMachine";
+import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
 import type {
   RfqSubmissionIntents,
   RfqSubmissionState,

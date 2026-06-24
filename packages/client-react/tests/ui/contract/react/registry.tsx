@@ -76,7 +76,6 @@ import {
   AdminPanel,
   AnalyticsPanel,
   BlotterHeader,
-  PairPnlBars,
   BlotterRow,
   ConnectionOverlay,
   ConnectionStatusBar,
@@ -89,6 +88,7 @@ import {
   LiveRatesPanel,
   NewRfqForm,
   NumberFilter,
+  PairPnlBars,
   PnlValue,
   PositionBubbles,
   QuickFilter,
@@ -141,9 +141,7 @@ export const registry = new Map<AnyToken, ElementFor>([
     (p: Record<string, unknown>): ReactElement => {
       return (
         <PairPnlBarsComponent
-          positions={
-            (p.positions as readonly CurrencyPairPosition[]) ?? []
-          }
+          positions={(p.positions as readonly CurrencyPairPosition[]) ?? []}
         />
       );
     },
@@ -153,9 +151,7 @@ export const registry = new Map<AnyToken, ElementFor>([
     (p: Record<string, unknown>): ReactElement => {
       return (
         <PositionBubblesComponent
-          positions={
-            (p.positions as readonly CurrencyPairPosition[]) ?? []
-          }
+          positions={(p.positions as readonly CurrencyPairPosition[]) ?? []}
         />
       );
     },
@@ -220,7 +216,11 @@ export const registry = new Map<AnyToken, ElementFor>([
                   f: ColumnFilter | null,
                 ) => void) ?? ((): void => {})
               }
-              rows={(p.rows as readonly Trade[]) ?? (p.trades as readonly Trade[]) ?? []}
+              rows={
+                (p.rows as readonly Trade[]) ??
+                (p.trades as readonly Trade[]) ??
+                []
+              }
               columns={COLUMNS}
             />
           </thead>
@@ -234,7 +234,9 @@ export const registry = new Map<AnyToken, ElementFor>([
       return (
         <SetFilterComponent<Trade>
           column={(p.column as keyof Trade) ?? "currencyPair"}
-          rows={(p.rows as readonly Trade[]) ?? (p.trades as readonly Trade[]) ?? []}
+          rows={
+            (p.rows as readonly Trade[]) ?? (p.trades as readonly Trade[]) ?? []
+          }
           currentFilter={p.currentFilter as ColumnFilter<Trade> | undefined}
           onApply={
             (p.onApply as (f: ColumnFilter<Trade> | null) => void) ?? noopFilter

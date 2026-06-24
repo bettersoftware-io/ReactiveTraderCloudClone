@@ -53,13 +53,17 @@ describe("new-row flash CSS matches rtc-original (golden)", () => {
   it("defines @keyframes backgroundFlash with the golden colour stops in order", () => {
     const c = golden.cases.find((x) => x.input === "new-row");
     if (!c?.expected.keyframeStops) throw new Error("missing keyframeStops");
-    const block = css.match(/@keyframes\s+backgroundFlash\s*\{[\s\S]*?\n\}/)?.[0];
+    const block = css.match(
+      /@keyframes\s+backgroundFlash\s*\{[\s\S]*?\n\}/,
+    )?.[0];
     expect(block, "@keyframes backgroundFlash block present").toBeDefined();
     const stopVars = c.expected.keyframeStops.map((s) => `var(--${s})`);
     let from = 0;
     for (const v of stopVars) {
       const idx = (block as string).indexOf(v, from);
-      expect(idx, `keyframe stop ${v} present in order`).toBeGreaterThanOrEqual(0);
+      expect(idx, `keyframe stop ${v} present in order`).toBeGreaterThanOrEqual(
+        0,
+      );
       from = idx + v.length;
     }
   });

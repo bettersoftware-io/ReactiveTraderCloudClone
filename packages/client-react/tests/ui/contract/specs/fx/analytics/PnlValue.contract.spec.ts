@@ -4,15 +4,11 @@ import { describe, expect, it } from "vitest";
 
 describe("PnlValue", () => {
   it("shows a positive value with a USD prefix and + sign", () => {
-    expect(mount(PnlValue, { props: { value: 500 } }).text()).toBe(
-      "USD +500",
-    );
+    expect(mount(PnlValue, { props: { value: 500 } }).text()).toBe("USD +500");
   });
 
   it("shows a negative value with a USD prefix and - sign", () => {
-    expect(mount(PnlValue, { props: { value: -500 } }).text()).toBe(
-      "USD -500",
-    );
+    expect(mount(PnlValue, { props: { value: -500 } }).text()).toBe("USD -500");
   });
 
   it("treats zero as positive", () => {

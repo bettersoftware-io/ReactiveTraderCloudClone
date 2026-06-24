@@ -36,7 +36,9 @@ export function nextSortDirection(
 export function nextSortDirection<TRow>(
   column: keyof TRow,
   current: SortState<TRow>,
-  descFirst: ReadonlySet<keyof TRow> = FX_DESC_FIRST as unknown as ReadonlySet<keyof TRow>,
+  descFirst: ReadonlySet<keyof TRow> = FX_DESC_FIRST as unknown as ReadonlySet<
+    keyof TRow
+  >,
 ): SortState<TRow> {
   if (current.column !== column) {
     // New column — first click

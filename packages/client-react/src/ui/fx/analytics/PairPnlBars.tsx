@@ -1,7 +1,11 @@
-import { useState } from "react";
 import type { CSSProperties, ReactElement } from "react";
+import { useState } from "react";
 
-import { type CurrencyPairPosition, formatPrecise2, formatWithScale } from "@rtc/domain";
+import {
+  type CurrencyPairPosition,
+  formatPrecise2,
+  formatWithScale,
+} from "@rtc/domain";
 
 import styles from "./PairPnlBars.module.css";
 
@@ -43,7 +47,8 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
                 style={{ "--bar-width": barWidth } as CSSProperties}
               />
             </div>
-            <span
+            <button
+              type="button"
               data-sign={sign}
               data-testid={`priceLabel-${pos.symbol}`}
               className={styles.pnlLabel}
@@ -55,7 +60,7 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
               }}
             >
               {label}
-            </span>
+            </button>
           </div>
         );
       })}

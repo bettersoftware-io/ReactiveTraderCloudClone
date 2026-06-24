@@ -10,7 +10,6 @@ import {
   RfqState,
 } from "@rtc/domain";
 
-import { useHooks } from "#/ui/hooks/useHooks";
 import { BlotterHeader } from "#/ui/fx/blotter/BlotterHeader";
 import { BlotterRow } from "#/ui/fx/blotter/BlotterRow";
 import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
@@ -22,6 +21,7 @@ import {
 } from "#/ui/fx/blotter/columnSort";
 import { exportToCsv } from "#/ui/fx/blotter/csvExport";
 import { QuickFilter } from "#/ui/fx/blotter/QuickFilter";
+import { useHooks } from "#/ui/hooks/useHooks";
 
 import {
   CREDIT_COLUMNS,

@@ -4,10 +4,6 @@ import {
   type NewRfqFormProps,
 } from "./pages/credit/newRfq/NewRfqFormPage";
 import {
-  PositionBubblesPage,
-  type PositionBubblesProps,
-} from "./pages/fx/analytics/PositionBubblesPage";
-import {
   type RfqFilter,
   RfqFilterTabsPage,
   type RfqFilterTabsProps,
@@ -21,6 +17,10 @@ import {
   PnlValuePage,
   type PnlValueProps,
 } from "./pages/fx/analytics/PnlValuePage";
+import {
+  PositionBubblesPage,
+  type PositionBubblesProps,
+} from "./pages/fx/analytics/PositionBubblesPage";
 import {
   BlotterHeaderPage,
   type BlotterHeaderProps,

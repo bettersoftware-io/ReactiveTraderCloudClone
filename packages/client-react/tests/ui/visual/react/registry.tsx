@@ -55,7 +55,12 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <table style={{ borderCollapse: "collapse" }}>
         <tbody>
-          <BlotterRow trade={trade} isNew={true} columns={COLUMNS} format={formatFxCell} />
+          <BlotterRow
+            trade={trade}
+            isNew={true}
+            columns={COLUMNS}
+            format={formatFxCell}
+          />
         </tbody>
       </table>
     );
@@ -68,7 +73,12 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <table style={{ borderCollapse: "collapse" }}>
         <tbody>
-          <BlotterRow trade={trade} isNew={false} columns={COLUMNS} format={formatFxCell} />
+          <BlotterRow
+            trade={trade}
+            isNew={false}
+            columns={COLUMNS}
+            format={formatFxCell}
+          />
         </tbody>
       </table>
     );

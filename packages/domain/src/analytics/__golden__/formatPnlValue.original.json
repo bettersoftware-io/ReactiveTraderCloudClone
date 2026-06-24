@@ -1,10 +1,10 @@
 {
   "_source": "rtc-original@4a31f01 packages/client/src/client/App/Analytics/ProfitAndLoss/LastPosition.tsx:16 + utils/formatNumber.ts:95-99,136",
   "cases": [
-    { "input": 0,        "expected": "+0" },
-    { "input": 12345,    "expected": "+12,345" },
-    { "input": -12345,   "expected": "-12,345" },
-    { "input": 1500000,  "expected": "+1,500,000" },
-    { "input": 500,      "expected": "+500" }
+    { "input": 0, "expected": "+0" },
+    { "input": 12345, "expected": "+12,345" },
+    { "input": -12345, "expected": "-12,345" },
+    { "input": 1500000, "expected": "+1,500,000" },
+    { "input": 500, "expected": "+500" }
   ]
 }

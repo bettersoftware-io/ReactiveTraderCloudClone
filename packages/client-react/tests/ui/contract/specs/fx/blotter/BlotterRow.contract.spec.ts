@@ -75,5 +75,4 @@ describe("BlotterRow", () => {
     row.setProps({ isNew: true });
     expect(row.backgroundColor()).toBe("transparent");
   });
-
 });

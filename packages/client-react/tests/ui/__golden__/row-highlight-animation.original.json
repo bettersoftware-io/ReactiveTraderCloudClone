@@ -12,6 +12,9 @@
         "holdMs": 3000
       }
     },
-    { "input": "existing-row", "expected": { "animationName": "none", "holdMs": 0 } }
+    {
+      "input": "existing-row",
+      "expected": { "animationName": "none", "holdMs": 0 }
+    }
   ]
 }

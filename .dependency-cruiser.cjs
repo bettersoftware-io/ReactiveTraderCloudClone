@@ -21,7 +21,10 @@ module.exports = {
       severity: "error",
       comment:
         "@rtc/domain source must run in any JS environment — no Node built-ins in production code (test files and __testUtils__ excepted).",
-      from: { path: "^packages/domain/src", pathNot: "(\\.test\\.ts$|/__testUtils__/)" },
+      from: {
+        path: "^packages/domain/src",
+        pathNot: "(\\.test\\.ts$|/__testUtils__/)",
+      },
       to: { dependencyTypes: ["core"] },
     },
     {

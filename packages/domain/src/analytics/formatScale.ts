@@ -5,9 +5,9 @@
 export type Scale = "k" | "m" | "b" | "t" | "";
 
 const k = 1_000;
-const m = k * k;
-const b = m * k;
-const t = b * k;
+const m: number = k * k;
+const b: number = m * k;
+const t: number = b * k;
 
 const wholeNumber = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 0,

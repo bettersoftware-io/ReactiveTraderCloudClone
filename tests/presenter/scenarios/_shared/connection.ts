@@ -56,7 +56,9 @@ export async function expectStatusInWithin(
 ): Promise<void> {
   await w.awaitFirstWithin(
     w.ctx.app.presenters.connection.status$.pipe(
-      filter((s) => { return statuses.includes(s); }),
+      filter((s) => {
+        return statuses.includes(s);
+      }),
     ),
     seconds * 1000,
   );

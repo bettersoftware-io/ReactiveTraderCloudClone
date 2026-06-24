@@ -80,6 +80,8 @@ export class RfqCardPage extends MountedComponent<RfqCardProps> {
 
   /** Whether the live countdown widget is present (data-testid="rfq-countdown-fill"). */
   hasCountdown(): boolean {
-    return this.root.querySelector('[data-testid="rfq-countdown-fill"]') !== null;
+    return (
+      this.root.querySelector('[data-testid="rfq-countdown-fill"]') !== null
+    );
   }
 }

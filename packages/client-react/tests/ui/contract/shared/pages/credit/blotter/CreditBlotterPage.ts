@@ -20,9 +20,7 @@ export class CreditBlotterPage extends MountedComponent<Record<string, never>> {
         const spanText = (
           h.querySelector("span")?.firstChild?.textContent ?? ""
         ).trim();
-        return (
-          spanText || (h.textContent?.replace("▽", "").trim() ?? "")
-        );
+        return spanText || (h.textContent?.replace("▽", "").trim() ?? "");
       });
   }
 

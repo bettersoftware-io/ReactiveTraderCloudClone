@@ -3,11 +3,11 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import type { CurrencyPairPosition } from "./position.js";
 import {
   aggregatePositionsByCurrency,
   type CurrencyPositionNode,
 } from "./aggregatePositions.js";
+import type { CurrencyPairPosition } from "./position.js";
 
 interface Golden {
   readonly _source: string;
@@ -20,10 +20,7 @@ interface Golden {
 const golden: Golden = JSON.parse(
   readFileSync(
     fileURLToPath(
-      new URL(
-        "./__golden__/aggregatePositions.original.json",
-        import.meta.url,
-      ),
+      new URL("./__golden__/aggregatePositions.original.json", import.meta.url),
     ),
     "utf8",
   ),

@@ -218,7 +218,10 @@ describe("reduceRfqEvent quoteRejected", () => {
       rfqs: new Map(),
       quotes: new Map(),
     });
-    expect(state.quotes.get(1)?.state).toEqual({ type: "accepted", price: 100 });
+    expect(state.quotes.get(1)?.state).toEqual({
+      type: "accepted",
+      price: 100,
+    });
     expect(state.quotes.get(2)?.state).toEqual({
       type: "rejectedWithPrice",
       price: 105,

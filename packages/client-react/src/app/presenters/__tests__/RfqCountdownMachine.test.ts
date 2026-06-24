@@ -63,7 +63,8 @@ describe("createRfqCountdownMachine", () => {
     // fires at virtual frame 0, so two 500s appear at frame 0 — deduplicate by
     // taking unique (frame, value) pairs in emission order.
     const unique = seen.filter(
-      (e, i, arr) => i === 0 || e.frame !== arr[i - 1].frame || e.value !== arr[i - 1].value,
+      (e, i, arr) =>
+        i === 0 || e.frame !== arr[i - 1].frame || e.value !== arr[i - 1].value,
     );
     // Expected sequence: 500 @ 0, 400 @ 100, 300 @ 200, 200 @ 300, 100 @ 400
     // (0 is also emitted inclusively but the 0-clamp test covers it separately).
@@ -83,9 +84,7 @@ describe("createRfqCountdownMachine", () => {
     const lastEmission = seen[seen.length - 1];
     expect(lastEmission.value).toBe(0);
     expect(lastEmission.frame).toBe(TOTAL_MS);
-    expect(
-      seen.some((e) => e.value < 0),
-    ).toBe(false);
+    expect(seen.some((e) => e.value < 0)).toBe(false);
     // state() emits the default + the stream emits; the stream itself produces
     // (TOTAL_MS / INTERVAL) + 1 values (i=0 through i=TOTAL_MS/INTERVAL inclusive).
     // With the extra default, total = (TOTAL_MS / INTERVAL) + 2.

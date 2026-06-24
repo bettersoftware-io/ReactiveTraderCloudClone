@@ -1,15 +1,15 @@
 {
   "_source": "rtc-original@4a31f01 packages/client/src/client/App/Trades/TradesState/sortState.ts:32,66-69",
   "cases": [
-    { "input": "tradeId",       "expected": "desc" },
-    { "input": "tradeDate",     "expected": "desc" },
-    { "input": "valueDate",     "expected": "desc" },
-    { "input": "notional",      "expected": "asc" },
-    { "input": "spotRate",      "expected": "asc" },
-    { "input": "status",        "expected": "asc" },
-    { "input": "direction",     "expected": "asc" },
-    { "input": "currencyPair",  "expected": "asc" },
+    { "input": "tradeId", "expected": "desc" },
+    { "input": "tradeDate", "expected": "desc" },
+    { "input": "valueDate", "expected": "desc" },
+    { "input": "notional", "expected": "asc" },
+    { "input": "spotRate", "expected": "asc" },
+    { "input": "status", "expected": "asc" },
+    { "input": "direction", "expected": "asc" },
+    { "input": "currencyPair", "expected": "asc" },
     { "input": "dealtCurrency", "expected": "asc" },
-    { "input": "tradeName",     "expected": "asc" }
+    { "input": "tradeName", "expected": "asc" }
   ]
 }

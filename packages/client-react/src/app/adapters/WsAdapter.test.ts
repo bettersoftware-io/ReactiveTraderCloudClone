@@ -231,7 +231,10 @@ describe("WsAdapter.closeForIdle() / reopen()", () => {
     // Buffered message must have been flushed
     expect(lastMock.send).toHaveBeenCalledTimes(1);
     expect(lastMock.send).toHaveBeenCalledWith(
-      JSON.stringify({ type: "subscribe.pricing", payload: { symbol: "EURUSD" } }),
+      JSON.stringify({
+        type: "subscribe.pricing",
+        payload: { symbol: "EURUSD" },
+      }),
     );
     adapter.dispose();
   });

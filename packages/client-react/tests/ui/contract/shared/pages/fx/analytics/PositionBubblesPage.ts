@@ -43,9 +43,7 @@ export class PositionBubblesPage extends MountedComponent<PositionBubblesProps> 
 
   /** The tooltip text after hovering a currency's bubble, e.g. "EUR -2,000,000". */
   tooltipAfterHover(currency: string): string {
-    const label = within(this.root).getByTestId(
-      `positions-label-${currency}`,
-    );
+    const label = within(this.root).getByTestId(`positions-label-${currency}`);
     const group = label.closest("g.node");
     group?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
     const tip = within(this.root).queryByTestId("tooltip");

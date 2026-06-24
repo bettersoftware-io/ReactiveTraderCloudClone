@@ -291,14 +291,8 @@ describe("CreditBlotter", () => {
         hooks: {
           useInstruments: instruments,
           useDealers: dealers,
-          useRfqs: [
-            rfq(1, { quantity: 1000 }),
-            rfq(2, { quantity: 5000 }),
-          ],
-          useAllQuotes: quoteMap(
-            acceptedQuote(900, 1),
-            acceptedQuote(901, 2),
-          ),
+          useRfqs: [rfq(1, { quantity: 1000 }), rfq(2, { quantity: 5000 })],
+          useAllQuotes: quoteMap(acceptedQuote(900, 1), acceptedQuote(901, 2)),
         },
       });
       await blotter.openColumnFilter("Quantity");

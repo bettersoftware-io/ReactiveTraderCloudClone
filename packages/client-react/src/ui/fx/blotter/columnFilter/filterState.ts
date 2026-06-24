@@ -109,7 +109,9 @@ export function applyFilters<TRow>(
   if (quickFilter.trim()) {
     const terms = quickFilter.toLowerCase().split(/\s+/).filter(Boolean);
     result = result.filter((row) => {
-      const rowText = Object.values(row as object).join(" ").toLowerCase();
+      const rowText = Object.values(row as object)
+        .join(" ")
+        .toLowerCase();
       return terms.every((term) => {
         return rowText.includes(term);
       });

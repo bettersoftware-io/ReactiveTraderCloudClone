@@ -1,7 +1,7 @@
 import type { Trade } from "@rtc/domain";
 
-import { COLUMNS, formatFxCell } from "./blotterColumns";
 import type { CellFormatter, ColumnDef } from "./blotterColumns";
+import { COLUMNS, formatFxCell } from "./blotterColumns";
 
 /** Generic CSV export. Columns with keys in unformatted get String(row[key]) directly. */
 export function exportToCsv<TRow>(

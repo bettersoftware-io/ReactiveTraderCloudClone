@@ -9,10 +9,11 @@
 
 import { describe, expect, it, vi } from "vitest";
 
+import type { IWsAdapter } from "../adapters/IWsAdapter";
 import { routeIdleLifecycle } from "../composition";
 
 describe("composition.ts idle-teardown wiring (T2.2)", () => {
-  function makeWs() {
+  function makeWs(): Pick<IWsAdapter, "closeForIdle" | "reopen"> {
     return { closeForIdle: vi.fn(), reopen: vi.fn() };
   }
 
