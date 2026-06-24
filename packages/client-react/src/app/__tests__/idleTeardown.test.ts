@@ -4,114 +4,57 @@
 //   idleTimeout  → ws.closeForIdle()
 //   userActivity → ws.reopen()
 //
-// Uses the same tap logic extracted inline so the test doesn't need a live
-// VITE_SERVER_URL — it proves the side-effect contract, not the full build.
+// Imports routeIdleLifecycle directly from composition.ts so that removing or
+// misspelling the real wiring breaks this test (non-vacuous guard).
 
 import { describe, expect, it, vi } from "vitest";
-import { Subject, tap } from "rxjs";
 
-import type { ConnectionEvent } from "@rtc/domain";
-
-import { FakeWsAdapter } from "../adapters/__tests__/FakeWsAdapter";
-
-/**
- * The tap operator from composition.ts (WS branch), exercised in isolation.
- * Any change to the real tap must be reflected here — the test is intentionally
- * a copy so a diff in the production code breaks the test.
- */
-function applyCompositionTap(
-  source$: Subject<ConnectionEvent>,
-  ws: FakeWsAdapter,
-) {
-  return source$.pipe(
-    tap((e) => {
-      if (e.type === "idleTimeout") ws.closeForIdle();
-      else if (e.type === "userActivity") ws.reopen();
-    }),
-  );
-}
+import { routeIdleLifecycle } from "../composition";
 
 describe("composition.ts idle-teardown wiring (T2.2)", () => {
+  function makeWs() {
+    return { closeForIdle: vi.fn(), reopen: vi.fn() };
+  }
+
   it("idleTimeout event invokes closeForIdle() on the WsAdapter", () => {
-    const ws = new FakeWsAdapter();
-    const closeForIdle = vi.spyOn(ws, "closeForIdle");
-
-    const source$ = new Subject<ConnectionEvent>();
-    const tapped$ = applyCompositionTap(source$, ws);
-    tapped$.subscribe();
-
-    source$.next({ type: "idleTimeout" });
-
-    expect(closeForIdle).toHaveBeenCalledTimes(1);
-    ws.dispose();
+    const ws = makeWs();
+    routeIdleLifecycle({ type: "idleTimeout" }, ws);
+    expect(ws.closeForIdle).toHaveBeenCalledTimes(1);
+    expect(ws.reopen).not.toHaveBeenCalled();
   });
 
   it("userActivity event invokes reopen() on the WsAdapter", () => {
-    const ws = new FakeWsAdapter();
-    const reopen = vi.spyOn(ws, "reopen");
-
-    const source$ = new Subject<ConnectionEvent>();
-    const tapped$ = applyCompositionTap(source$, ws);
-    tapped$.subscribe();
-
-    source$.next({ type: "userActivity" });
-
-    expect(reopen).toHaveBeenCalledTimes(1);
-    ws.dispose();
+    const ws = makeWs();
+    routeIdleLifecycle({ type: "userActivity" }, ws);
+    expect(ws.reopen).toHaveBeenCalledTimes(1);
+    expect(ws.closeForIdle).not.toHaveBeenCalled();
   });
 
   it("unrelated events (e.g. gatewayConnected) do not call closeForIdle or reopen", () => {
-    const ws = new FakeWsAdapter();
-    const closeForIdle = vi.spyOn(ws, "closeForIdle");
-    const reopen = vi.spyOn(ws, "reopen");
-
-    const source$ = new Subject<ConnectionEvent>();
-    const tapped$ = applyCompositionTap(source$, ws);
-    tapped$.subscribe();
-
-    source$.next({ type: "gatewayConnected" });
-    source$.next({ type: "gatewayDisconnected" });
-    source$.next({ type: "reconnectAttempt" });
-
-    expect(closeForIdle).not.toHaveBeenCalled();
-    expect(reopen).not.toHaveBeenCalled();
-    ws.dispose();
+    const ws = makeWs();
+    routeIdleLifecycle({ type: "gatewayConnected" }, ws);
+    routeIdleLifecycle({ type: "gatewayDisconnected" }, ws);
+    routeIdleLifecycle({ type: "reconnectAttempt" }, ws);
+    expect(ws.closeForIdle).not.toHaveBeenCalled();
+    expect(ws.reopen).not.toHaveBeenCalled();
   });
 
   it("repeated userActivity events while NOT idle-closed are safe no-ops (reopen() is idempotent)", () => {
-    const ws = new FakeWsAdapter();
-    const events: ConnectionEvent[] = [];
-    ws.connectionEvents().subscribe((e) => events.push(e));
-
-    const source$ = new Subject<ConnectionEvent>();
-    const tapped$ = applyCompositionTap(source$, ws);
-    tapped$.subscribe();
-
-    // userActivity while not idle-closed must not emit spurious gatewayConnected
-    source$.next({ type: "userActivity" });
-    source$.next({ type: "userActivity" });
-
-    // No gatewayConnected emitted because reopen() is guarded by idleClosed flag
-    expect(events).toEqual([]);
-    ws.dispose();
+    const ws = makeWs();
+    // The FakeWsAdapter guard for reopen() is tested in FakeWsAdapter.test.ts;
+    // here we just confirm routeIdleLifecycle delegates to ws.reopen() each time.
+    routeIdleLifecycle({ type: "userActivity" }, ws);
+    routeIdleLifecycle({ type: "userActivity" }, ws);
+    // The real WsAdapter.reopen() is guarded by idleClosed; the spy counts raw calls.
+    expect(ws.reopen).toHaveBeenCalledTimes(2);
+    expect(ws.closeForIdle).not.toHaveBeenCalled();
   });
 
-  it("full idle→reopen lifecycle: closeForIdle then reopen emits correct events", () => {
-    const ws = new FakeWsAdapter();
-    const events: ConnectionEvent[] = [];
-    ws.connectionEvents().subscribe((e) => events.push(e));
-
-    const source$ = new Subject<ConnectionEvent>();
-    const tapped$ = applyCompositionTap(source$, ws);
-    tapped$.subscribe();
-
-    source$.next({ type: "idleTimeout" });
-    source$.next({ type: "userActivity" });
-
-    expect(events).toEqual([
-      { type: "gatewayDisconnected" },
-      { type: "gatewayConnected" },
-    ]);
-    ws.dispose();
+  it("full idle→reopen lifecycle: closeForIdle then reopen each called once", () => {
+    const ws = makeWs();
+    routeIdleLifecycle({ type: "idleTimeout" }, ws);
+    routeIdleLifecycle({ type: "userActivity" }, ws);
+    expect(ws.closeForIdle).toHaveBeenCalledTimes(1);
+    expect(ws.reopen).toHaveBeenCalledTimes(1);
   });
 });

@@ -13,6 +13,7 @@ import {
   createSimulatorPorts,
   createWsRealPorts,
 } from "./adapters/portFactory";
+import type { IWsAdapter } from "./adapters/IWsAdapter";
 import { WsAdapter } from "./adapters/WsAdapter";
 import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
 import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
@@ -37,6 +38,16 @@ import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
 import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
 
 export type { AppPorts };
+
+/** Routes idle-lifecycle events to the WS adapter. Exported so the wiring is
+ * directly testable (idleTeardown.test.ts). */
+export function routeIdleLifecycle(
+  event: { type: string },
+  ws: Pick<IWsAdapter, "closeForIdle" | "reopen">,
+): void {
+  if (event.type === "idleTimeout") ws.closeForIdle();
+  else if (event.type === "userActivity") ws.reopen();
+}
 
 export interface Presenters {
   priceStream: PriceStreamPresenter;
@@ -74,12 +85,7 @@ export function buildDefaultPorts(): AppPorts {
           // gateway socket; user activity (after an idle close) re-establishes
           // it. Reconnect is user-initiated, matching original
           // services/connection.ts:91-93.
-          tap((e) => {
-            if (e.type === "idleTimeout") ws.closeForIdle();
-            // reopen() is a no-op unless idleClosed, so frequent userActivity
-            // events while CONNECTED do not churn the socket.
-            else if (e.type === "userActivity") ws.reopen();
-          }),
+          tap((e) => routeIdleLifecycle(e, ws)),
         );
       },
     };
