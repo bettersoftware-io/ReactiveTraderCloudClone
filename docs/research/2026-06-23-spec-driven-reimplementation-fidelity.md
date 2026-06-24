@@ -282,3 +282,53 @@ All paths under `packages/client/src/` of the original repo (archived `HEAD 4a31
   distinct idle/offline wording in the modal — `components/DisconnectionOverlay.tsx:29-42`.
 - **Idle disconnect tears down:** `IDLE_TIMEOUT_MINUTES = 15`; `idleDisconnect$` calls
   `dispose()` — `services/connection.ts:71,74-96`.
+
+---
+
+## Resolution (2026-06-24)
+
+The divergences catalogued above were subsequently driven to ground truth in a
+dedicated **behaviour-sync workstream** that used the original codebase
+(`rtc-original@4a31f01`) — not the generated specs — as the source of truth, and
+corrected all three layers (`./specs/`, the test suites, and the implementation)
+so they finally agree. The clean architecture was preserved throughout (the
+dependency rule stayed machine-enforced; the domain stayed rxjs-only).
+
+- **Design:** [`docs/superpowers/specs/2026-06-23-behaviour-sync-to-original-design.md`](../superpowers/specs/2026-06-23-behaviour-sync-to-original-design.md)
+- **Plan:** [`docs/superpowers/plans/2026-06-23-behaviour-sync-to-original.md`](../superpowers/plans/2026-06-23-behaviour-sync-to-original.md)
+
+**13 in-scope behaviours synced**, each red-first and verified either by a
+**golden fixture lifted from the original's pure functions** (deterministic
+value/logic) or by an assertion **provenance-cited to the original `file:line`**
+(behavioural wiring):
+
+- Blotter sort direction (Notional/Rate ASC-first; desc-first set
+  `{tradeId, tradeDate, valueDate}`) and new-row 3× flash.
+- Analytics: latest-P&L `USD +12,345` format, scaled-vs-precise PnL-bar label
+  (`12m` / `12,345,678.00`), per-currency position bubbles (d3 force layout —
+  the only new dependency, client-side only).
+- Credit: New-RFQ quantity **cap** at 100,000,000 (not block), credit blotter
+  sort/filter/CSV via FX-grid reuse, competing-quote auto-reject surfaced live,
+  RFQ expiry → `Expired` at +120 s with a live (cosmetic) countdown.
+- FX/Tile: RFQ response delay 500–999 ms, stale tile disables Buy/Sell.
+- Shared: footer collapses idle/offline → "Disconnected" with verbatim overlay
+  copy, and idle now tears down the websocket (non-terminal `closeForIdle`/`reopen`).
+
+Where the original's behaviour was **server-driven** (auto-reject, expiry), the
+clone's RxJS simulators legitimately play the server's role — the faithful
+observable equivalent for a back-endless web build.
+
+**Deliberate non-fix:** `CreditExceeded` stays unreachable, matching the
+original's standard web build (`limitChecker.ts` returns `of(true)`; the real
+check exists only in the OpenFin build). This is the one intentional divergence.
+
+**Newly observed (out of scope, for a follow-up):** the original's
+idle-`DisconnectionOverlay` renders a "Reconnect" button that the clone omits.
+This pre-existing structural gap was surfaced during the sync but was not part of
+the 13-behaviour scope, so it was deliberately left for a future task rather than
+expanded into mid-stream.
+
+The corrected specs and tests are the durable artefact: the spec-conformance
+tier would now catch two generated-spec bugs this exercise exposed — the
+profit-and-loss feature's `"12,346k"` (the original yields `"12m"`) and the
+8-vs-9-currency-pair analytics contradiction.
