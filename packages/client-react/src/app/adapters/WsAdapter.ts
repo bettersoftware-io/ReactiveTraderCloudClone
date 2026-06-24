@@ -49,6 +49,8 @@ export class WsAdapter implements IWsAdapter {
 
   private disposed = false;
 
+  private idleClosed = false;
+
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
   constructor(url: string, options: WsAdapterOptions = {}) {
@@ -102,6 +104,10 @@ export class WsAdapter implements IWsAdapter {
     this.ws.onclose = (): void => {
       if (this.disposed) return;
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
+      if (this.idleClosed) {
+        // Idle close: suppress auto-reconnect; user must call reopen() explicitly.
+        return;
+      }
       console.log(
         "[WsAdapter] Disconnected, reconnecting in",
         this.reconnectDelayMs,
@@ -196,6 +202,27 @@ export class WsAdapter implements IWsAdapter {
 
   connectionEvents(): Observable<ConnectionEvent> {
     return this.connectionEvents$.asObservable();
+  }
+
+  /** Close the current socket for an idle timeout without disposing the adapter.
+   * Suppresses auto-reconnect (idle reconnect is user-initiated); preserves
+   * sendQueue so subscriptions re-flush on reopen(). Nulls this.ws so any
+   * sends while idle-closed are buffered rather than sent to a closing socket.
+   * Provenance: original services/connection.ts:91-93. */
+  closeForIdle(): void {
+    if (this.disposed || this.idleClosed) return;
+    this.idleClosed = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    const ws = this.ws;
+    this.ws = null;
+    ws?.close();
+  }
+
+  /** Re-establish the socket after an idle close (user activity). */
+  reopen(): void {
+    if (this.disposed || !this.idleClosed) return;
+    this.idleClosed = false;
+    this.connect();
   }
 
   dispose(): void {

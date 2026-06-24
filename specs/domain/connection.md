@@ -82,6 +82,8 @@ When the connection is in `IDLE_DISCONNECTED` and the gateway subsequently repor
 2. The idle timer also restarts when a new connection is established (to handle reconnection without subsequent mouse movement).
 3. The idle timer only runs while the connection is in `CONNECTING` or `CONNECTED` state.
 4. When the timer fires, the client closes the gateway connection and transitions to `IDLE_DISCONNECTED`.
+   <!-- Implemented: WsAdapter.closeForIdle() + composition.ts tap wiring (T2.2).
+        Provenance: original services/connection.ts:91-93 (dispose() + reset). -->
 5. Any `mousemove` event while in `IDLE_DISCONNECTED` triggers a new connection attempt (transition to `CONNECTING`).
 
 ## Offline/Online Detection

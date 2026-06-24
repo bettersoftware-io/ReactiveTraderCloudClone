@@ -1,4 +1,4 @@
-import { merge, mergeMap, of } from "rxjs";
+import { merge, mergeMap, of, tap } from "rxjs";
 
 import {
   type ConnectionEventsPort,
@@ -69,7 +69,18 @@ export function buildDefaultPorts(): AppPorts {
     const gateway = new WsConnectionEventsAdapter(ws);
     const connectionEvents: ConnectionEventsPort = {
       events: () => {
-        return merge(gateway.events(), browser.events());
+        return merge(gateway.events(), browser.events()).pipe(
+          // Side-effect the transport in lock-step: idle timeout closes the
+          // gateway socket; user activity (after an idle close) re-establishes
+          // it. Reconnect is user-initiated, matching original
+          // services/connection.ts:91-93.
+          tap((e) => {
+            if (e.type === "idleTimeout") ws.closeForIdle();
+            // reopen() is a no-op unless idleClosed, so frequent userActivity
+            // events while CONNECTED do not churn the socket.
+            else if (e.type === "userActivity") ws.reopen();
+          }),
+        );
       },
     };
     return { ...createWsRealPorts(ws), connectionEvents };
@@ -78,6 +89,9 @@ export function buildDefaultPorts(): AppPorts {
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
     events: () => {
+      // Idle teardown is a faithful no-op in simulator mode: there is no real
+      // socket to close. The state machine still reaches IDLE_DISCONNECTED and
+      // userActivity already re-emits gatewayConnected to resume.
       return merge(
         gateway.events(),
         browser.events().pipe(

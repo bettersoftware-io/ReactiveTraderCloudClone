@@ -186,6 +186,70 @@ describe("WsAdapter.connectionEvents()", () => {
   });
 });
 
+describe("WsAdapter.closeForIdle() / reopen()", () => {
+  it("(a) closeForIdle() closes the socket and suppresses auto-reconnect", () => {
+    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const events: ConnectionEvent[] = [];
+    adapter.connectionEvents().subscribe((e) => events.push(e));
+
+    lastMock.onopen?.(new Event("open"));
+    adapter.closeForIdle();
+    lastMock.onclose?.(new CloseEvent("close"));
+
+    // Must NOT schedule a reconnect — advancing well past delay should not build a new socket
+    vi.advanceTimersByTime(200);
+    expect(MockWebSocket.constructed).toBe(1);
+    expect(events).toEqual([
+      { type: "gatewayConnected" },
+      { type: "gatewayDisconnected" },
+    ]);
+    adapter.dispose();
+  });
+
+  it("(b) reopen() constructs a fresh socket and flushes a subscription buffered while idle-closed", () => {
+    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+
+    lastMock.readyState = MockWebSocket.OPEN;
+    lastMock.onopen?.(new Event("open"));
+
+    // Close for idle
+    adapter.closeForIdle();
+    lastMock.onclose?.(new CloseEvent("close"));
+
+    // Buffer a send while idle (socket is gone)
+    adapter.send("subscribe.pricing", { symbol: "EURUSD" });
+    expect(MockWebSocket.constructed).toBe(1);
+
+    // User activity: reopen
+    adapter.reopen();
+    expect(MockWebSocket.constructed).toBe(2);
+
+    // Simulate the new socket opening
+    lastMock.readyState = MockWebSocket.OPEN;
+    lastMock.onopen?.(new Event("open"));
+
+    // Buffered message must have been flushed
+    expect(lastMock.send).toHaveBeenCalledTimes(1);
+    expect(lastMock.send).toHaveBeenCalledWith(
+      JSON.stringify({ type: "subscribe.pricing", payload: { symbol: "EURUSD" } }),
+    );
+    adapter.dispose();
+  });
+
+  it("(c) dispose() after closeForIdle() is terminal; reopen() is then a permanent no-op", () => {
+    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    lastMock.onopen?.(new Event("open"));
+    adapter.closeForIdle();
+    lastMock.onclose?.(new CloseEvent("close"));
+
+    adapter.dispose();
+
+    // reopen() must be a no-op after dispose
+    adapter.reopen();
+    expect(MockWebSocket.constructed).toBe(1);
+  });
+});
+
 describe("WsAdapter.rpc() + message routing", () => {
   function open(_adapter: WsAdapter): MockWebSocket {
     lastMock.readyState = MockWebSocket.OPEN;
