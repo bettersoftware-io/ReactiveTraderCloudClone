@@ -53,6 +53,18 @@ describe("nextSortDirection", () => {
     });
   });
 
+  it("cycles asc -> desc -> none on an asc-first column", () => {
+    const none: SortState = { column: null, direction: null };
+    const step1 = nextSortDirection("notional", none);
+    expect(step1).toEqual({ column: "notional", direction: "asc" });
+    const step2 = nextSortDirection("notional", step1);
+    expect(step2).toEqual({ column: "notional", direction: "desc" });
+    expect(nextSortDirection("notional", step2)).toEqual({
+      column: null,
+      direction: null,
+    });
+  });
+
   it("cycles desc -> asc -> none on a desc-first column", () => {
     const desc: SortState = { column: "tradeId", direction: "desc" };
     const asc = nextSortDirection("tradeId", desc);

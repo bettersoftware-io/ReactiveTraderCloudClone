@@ -1,3 +1,6 @@
+// loadGolden reads the fixture via fileURLToPath(import.meta.url). Under the
+// client-react default jsdom env, import.meta.url is an http:// URL and
+// fileURLToPath throws, so this golden test must run in the node environment.
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
