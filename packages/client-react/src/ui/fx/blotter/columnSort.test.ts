@@ -25,10 +25,10 @@ function trade(over: Partial<Trade> = {}): Trade {
 }
 
 describe("nextSortDirection", () => {
-  it("starts a numeric/date column descending on first click", () => {
+  it("starts a date/ID column descending on first click", () => {
     const none: SortState = { column: null, direction: null };
-    expect(nextSortDirection("notional", none)).toEqual({
-      column: "notional",
+    expect(nextSortDirection("tradeId", none)).toEqual({
+      column: "tradeId",
       direction: "desc",
     });
     expect(nextSortDirection("tradeDate", none)).toEqual({
@@ -37,19 +37,27 @@ describe("nextSortDirection", () => {
     });
   });
 
-  it("starts a text column ascending on first click", () => {
+  it("starts a non-desc column (text or numeric) ascending on first click", () => {
     const none: SortState = { column: null, direction: null };
     expect(nextSortDirection("tradeName", none)).toEqual({
       column: "tradeName",
       direction: "asc",
     });
+    expect(nextSortDirection("notional", none)).toEqual({
+      column: "notional",
+      direction: "asc",
+    });
+    expect(nextSortDirection("spotRate", none)).toEqual({
+      column: "spotRate",
+      direction: "asc",
+    });
   });
 
-  it("cycles desc -> asc -> none on the same column", () => {
-    const desc: SortState = { column: "notional", direction: "desc" };
-    const asc = nextSortDirection("notional", desc);
-    expect(asc).toEqual({ column: "notional", direction: "asc" });
-    expect(nextSortDirection("notional", asc)).toEqual({
+  it("cycles desc -> asc -> none on a desc-first column", () => {
+    const desc: SortState = { column: "tradeId", direction: "desc" };
+    const asc = nextSortDirection("tradeId", desc);
+    expect(asc).toEqual({ column: "tradeId", direction: "asc" });
+    expect(nextSortDirection("tradeId", asc)).toEqual({
       column: null,
       direction: null,
     });
@@ -59,7 +67,7 @@ describe("nextSortDirection", () => {
     const nulled: SortState = { column: "notional", direction: null };
     expect(nextSortDirection("notional", nulled)).toEqual({
       column: "notional",
-      direction: "desc",
+      direction: "asc",
     });
     const nulledText: SortState = { column: "tradeName", direction: null };
     expect(nextSortDirection("tradeName", nulledText)).toEqual({

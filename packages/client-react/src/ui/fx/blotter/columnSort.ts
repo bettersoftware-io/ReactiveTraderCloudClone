@@ -7,13 +7,13 @@ export interface SortState {
   direction: SortDirection;
 }
 
-// Date/ID columns: desc first. Text columns: asc first.
-const numericOrDateColumns = new Set<keyof Trade>([
+// Desc-first columns, verbatim from rtc-original@4a31f01
+// App/Trades/TradesState/sortState.ts:32 `descDefaultFields`.
+// Every other column (incl. notional, spotRate) sorts ASC on first click.
+const descFirstColumns = new Set<keyof Trade>([
   "tradeId",
   "tradeDate",
   "valueDate",
-  "notional",
-  "spotRate",
 ]);
 
 export function nextSortDirection(
@@ -22,15 +22,20 @@ export function nextSortDirection(
 ): SortState {
   if (current.column !== column) {
     // New column — first click
-    const dir = numericOrDateColumns.has(column) ? "desc" : "asc";
+    const dir = descFirstColumns.has(column) ? "desc" : "asc";
     return { column, direction: dir };
   }
 
-  // Same column — cycle
-  if (current.direction === "desc") return { column, direction: "asc" };
-  if (current.direction === "asc") return { column: null, direction: null };
+  // Same column — cycle (mirrors original sortState.ts:46-63):
+  // desc-first: DESC → ASC → none; asc-first: ASC → DESC → none.
+  const isDescFirst = descFirstColumns.has(column);
+  if (isDescFirst && current.direction === "desc")
+    return { column, direction: "asc" };
+  if (!isDescFirst && current.direction === "asc")
+    return { column, direction: "desc" };
+  if (current.direction !== null) return { column: null, direction: null };
   // null -> first click
-  const dir = numericOrDateColumns.has(column) ? "desc" : "asc";
+  const dir = isDescFirst ? "desc" : "asc";
   return { column, direction: dir };
 }
 

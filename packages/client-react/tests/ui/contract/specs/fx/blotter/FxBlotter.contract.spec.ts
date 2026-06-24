@@ -79,26 +79,26 @@ describe("FxBlotter", () => {
     const b = trade(4002, { currencyPair: "USDJPY", notional: 1_000_000 });
     const c = trade(4003, { currencyPair: "GBPUSD", notional: 2_000_000 });
 
-    it("sorts a numeric column descending on first header click", async () => {
+    it("sorts a numeric column ascending on first header click", async () => {
       const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
-      await blotter.clickColumnHeader("Notional");
-      expect(blotter.sortIndicatorFor("Notional")).toBe("desc");
-      expect(blotter.columnValues("Notional")).toEqual([
-        "3,000,000",
-        "2,000,000",
-        "1,000,000",
-      ]);
-    });
-
-    it("toggles a numeric column to ascending on the second click", async () => {
-      const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
-      await blotter.clickColumnHeader("Notional");
       await blotter.clickColumnHeader("Notional");
       expect(blotter.sortIndicatorFor("Notional")).toBe("asc");
       expect(blotter.columnValues("Notional")).toEqual([
         "1,000,000",
         "2,000,000",
         "3,000,000",
+      ]);
+    });
+
+    it("toggles a numeric column to descending on the second click", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
+      await blotter.clickColumnHeader("Notional");
+      await blotter.clickColumnHeader("Notional");
+      expect(blotter.sortIndicatorFor("Notional")).toBe("desc");
+      expect(blotter.columnValues("Notional")).toEqual([
+        "3,000,000",
+        "2,000,000",
+        "1,000,000",
       ]);
     });
 
