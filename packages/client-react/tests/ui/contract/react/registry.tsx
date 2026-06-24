@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import type {
   CurrencyCategory,
   CurrencyPair,
+  CurrencyPairPosition,
   Dealer,
   Direction,
   Instrument,
@@ -32,6 +33,7 @@ import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/Se
 import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
 import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
+import { PositionBubbles as PositionBubblesComponent } from "#/ui/fx/analytics/PositionBubbles";
 import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/BlotterHeader";
 import { BlotterRow as BlotterRowComponent } from "#/ui/fx/blotter/BlotterRow";
 import { DateFilter as DateFilterComponent } from "#/ui/fx/blotter/columnFilter/DateFilter";
@@ -85,6 +87,7 @@ import {
   NewRfqForm,
   NumberFilter,
   PnlValue,
+  PositionBubbles,
   QuickFilter,
   QuoteCard,
   RfqCard,
@@ -128,6 +131,18 @@ export const registry = new Map<AnyToken, ElementFor>([
     PnlValue,
     (p: Record<string, unknown>): ReactElement => {
       return <PnlValueComponent value={p.value as number} />;
+    },
+  ],
+  [
+    PositionBubbles,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PositionBubblesComponent
+          positions={
+            (p.positions as readonly CurrencyPairPosition[]) ?? []
+          }
+        />
+      );
     },
   ],
   [

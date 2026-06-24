@@ -4,6 +4,10 @@ import {
   type NewRfqFormProps,
 } from "./pages/credit/newRfq/NewRfqFormPage";
 import {
+  PositionBubblesPage,
+  type PositionBubblesProps,
+} from "./pages/fx/analytics/PositionBubblesPage";
+import {
   type RfqFilter,
   RfqFilterTabsPage,
   type RfqFilterTabsProps,
@@ -118,6 +122,13 @@ export const AnalyticsPanel = component<
 
 export const PnlValue = component<PnlValueProps, PnlValuePage>((ctx) => {
   return new PnlValuePage(ctx);
+});
+
+export const PositionBubbles = component<
+  PositionBubblesProps,
+  PositionBubblesPage
+>((ctx) => {
+  return new PositionBubblesPage(ctx);
 });
 
 export const ConnectionStatusBar = component<

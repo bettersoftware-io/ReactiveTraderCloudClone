@@ -7,6 +7,12 @@ export type {
   PositionUpdates,
 } from "./analytics/position.js";
 export { formatPnlValue } from "./analytics/formatPnlValue.js";
+export type { CurrencyPositionNode } from "./analytics/aggregatePositions.js";
+export {
+  aggregatePositionsByCurrency,
+  POSITION_MAX_RADIUS,
+  POSITION_MIN_RADIUS,
+} from "./analytics/aggregatePositions.js";
 export type {
   ConnectionEvent,
   GatewayStatus,
