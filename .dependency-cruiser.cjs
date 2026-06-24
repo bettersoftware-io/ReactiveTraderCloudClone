@@ -17,6 +17,14 @@ module.exports = {
       to: { path: "^packages/(shared|client-react|server)/" },
     },
     {
+      name: "domain-no-node-builtins",
+      severity: "error",
+      comment:
+        "@rtc/domain source must run in any JS environment — no Node built-ins in production code (test files and __testUtils__ excepted).",
+      from: { path: "^packages/domain/src", pathNot: "(\\.test\\.ts$|/__testUtils__/)" },
+      to: { dependencyTypes: ["core"] },
+    },
+    {
       name: "shared-no-apps",
       severity: "error",
       comment: "@rtc/shared must not depend on client/server.",
