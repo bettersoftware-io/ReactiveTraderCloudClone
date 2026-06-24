@@ -23,8 +23,8 @@ describePricingPortContract("PricingSimulator", () => {
         await Promise.resolve();
       },
       ackRfqQuote: async () => {
-        // getRfqQuote delays 500–2000 ms via timer(); advance fake time past the max.
-        await vi.advanceTimersByTimeAsync(2_000);
+        // getRfqQuote delays 500–999 ms via timer(); advance fake time past the max.
+        await vi.advanceTimersByTimeAsync(1_000);
       },
     },
     teardown: () => {
