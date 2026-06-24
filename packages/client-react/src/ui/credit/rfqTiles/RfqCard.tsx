@@ -8,6 +8,9 @@ import {
   RfqState,
 } from "@rtc/domain";
 
+import { RfqCountdown } from "#/ui/fx/liveRates/tile/RfqCountdown";
+import { useHooks } from "#/ui/hooks/useHooks";
+
 import { QuoteCard } from "./QuoteCard";
 
 import styles from "./RfqCard.module.css";
@@ -42,6 +45,9 @@ export function RfqCard({
   onAccept,
   onDismiss,
 }: RfqCardProps): ReactElement {
+  const totalMs = rfq.expirySecs * 1000;
+  const remainingMs = useHooks().useRfqCountdown(rfq.creationTimestamp, totalMs);
+
   const dealerMap = new Map<number, Dealer>();
 
   for (const d of dealers) {
@@ -80,6 +86,10 @@ export function RfqCard({
           )}
         </div>
       </div>
+
+      {rfq.state === RfqState.Open && (
+        <RfqCountdown remainingMs={remainingMs} totalMs={totalMs} />
+      )}
 
       <div className={styles.quoteList}>
         {quotes.map((quote) => {

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defined } from "../__testUtils__/defined.js";
 import type { RfqEvent } from "../ports/workflowPort.js";
+import { CREDIT_RFQ_EXPIRY_SECONDS } from "../credit/rfq.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
 
@@ -376,5 +377,46 @@ describe("CreditRfqSimulator", () => {
     const e = (await quoted) as Extract<RfqEvent, QuoteQuotedMatcher>;
     expect(e.payload.state.type).toBe("pendingWithPrice");
     expect(e.payload.state).toEqual({ type: "pendingWithPrice", price: 95 });
+  });
+
+  it("an open RFQ transitions to Expired via rfqClosed after expirySecs", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const sim = new CreditRfqSimulator(DEALERS_CATALOG);
+    const { events, stop } = collectEvents(sim);
+    await firstValueFrom(
+      sim.createRfq({
+        instrumentId: 1,
+        dealerIds: [defined(DEALERS_CATALOG[0]).id],
+        quantity: 1000,
+        direction: "Buy" as never,
+        expirySecs: CREDIT_RFQ_EXPIRY_SECONDS,
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(120_000);
+    stop();
+    const closed = events.find((e) => { return e.type === "rfqClosed"; });
+    expect(closed).toBeDefined();
+    expect((closed as Extract<RfqEvent, RfqClosedMatcher>).payload.state).toBe("Expired");
+  });
+
+  it("dispose cancels a pending expiry (RFQ never reaches Expired)", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const sim = new CreditRfqSimulator(DEALERS_CATALOG);
+    const { events, stop } = collectEvents(sim);
+    await firstValueFrom(
+      sim.createRfq({
+        instrumentId: 1,
+        dealerIds: [defined(DEALERS_CATALOG[0]).id],
+        quantity: 1000,
+        direction: "Buy" as never,
+        expirySecs: CREDIT_RFQ_EXPIRY_SECONDS,
+      }),
+    );
+    sim.dispose();
+    await vi.advanceTimersByTimeAsync(120_000);
+    stop();
+    expect(events.some((e) => { return e.type === "rfqClosed"; })).toBe(false);
   });
 });

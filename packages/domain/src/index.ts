@@ -43,6 +43,7 @@ export {
   applyMaximum,
   CREDIT_MAX_QUANTITY_INPUT,
   CREDIT_QUANTITY_MULTIPLIER,
+  CREDIT_RFQ_EXPIRY_SECONDS,
   RfqState,
 } from "./credit/rfq.js";
 export type { CurrencyCategory } from "./fx/currencyFilter.js";
