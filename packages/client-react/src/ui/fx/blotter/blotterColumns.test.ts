@@ -20,7 +20,7 @@ function trade(over: Partial<Trade> = {}): Trade {
   };
 }
 
-function colFor(key: keyof Trade): ColumnDef {
+function colFor(key: keyof Trade): ColumnDef<Trade> {
   const c = COLUMNS.find((c) => {
     return c.key === key;
   });

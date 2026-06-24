@@ -1,22 +1,28 @@
 import type { Trade } from "@rtc/domain";
 
-import { COLUMNS, formatCellValue } from "./blotterColumns";
+import { COLUMNS, formatFxCell } from "./blotterColumns";
+import type { CellFormatter, ColumnDef } from "./blotterColumns";
 
-export function exportToCsv(trades: readonly Trade[]): void {
-  const headers = COLUMNS.map((c) => {
+/** Generic CSV export. Columns with keys in unformatted get String(row[key]) directly. */
+export function exportToCsv<TRow>(
+  rows: readonly TRow[],
+  columns: readonly ColumnDef<TRow>[],
+  format: CellFormatter<TRow>,
+  unformatted?: ReadonlySet<keyof TRow>,
+): void {
+  const headers = columns.map((c) => {
     return c.label;
   });
-  const rows = trades.map((trade) => {
-    return COLUMNS.map((col) => {
-      // Notional: unformatted integer for CSV
-      if (col.key === "notional") return String(trade.notional);
-      return formatCellValue(trade, col);
+  const csvRows = rows.map((row) => {
+    return columns.map((col) => {
+      if (unformatted?.has(col.key)) return String(row[col.key]);
+      return format(row, col);
     });
   });
 
   const csvContent = [
     headers.join(","),
-    ...rows.map((row) => {
+    ...csvRows.map((row) => {
       return row
         .map((cell) => {
           return cell.includes(",") ? `"${cell}"` : cell;
@@ -32,4 +38,14 @@ export function exportToCsv(trades: readonly Trade[]): void {
   link.download = "RT-Blotter.csv";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+/** FX-bound convenience — used by FxBlotter. */
+export function exportFxToCsv(trades: readonly Trade[]): void {
+  exportToCsv(
+    trades,
+    COLUMNS,
+    formatFxCell,
+    new Set<keyof Trade>(["notional"]),
+  );
 }
