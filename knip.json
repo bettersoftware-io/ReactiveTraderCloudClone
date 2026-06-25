@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignore": [".remember/**"],
+  "ignore": [".remember/**", "docs/design/**"],
   "ignoreBinaries": ["scripts/install-actionlint.sh"],
   "workspaces": {
     "packages/domain": {
