@@ -991,6 +991,46 @@ export const fixtures: Record<string, AppData> = {
     ]),
   }),
 
+  // RfqCountdown zero-expiry arm: an Open rfq with expirySecs=0 drives
+  // totalMs=0 in RfqCard → the `totalMs > 0 ? ... : 0` false branch in
+  // RfqCountdown.tsx line 14 (fraction=0, bar at 0%).
+  "rfq-countdown-zero": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [
+      {
+        id: 501,
+        instrumentId: 1,
+        quantity: 3_000_000,
+        direction: Direction.Buy,
+        state: RfqState.Open,
+        expirySecs: 0,
+        creationTimestamp: 1_750_000_300_000,
+      },
+    ],
+    quotesForRfq: {
+      501: [
+        {
+          id: 6001,
+          rfqId: 501,
+          dealerId: 2,
+          state: { type: "pendingWithoutPrice" },
+        },
+      ],
+    },
+    allQuotes: new Map([
+      [
+        6001,
+        {
+          id: 6001,
+          rfqId: 501,
+          dealerId: 2,
+          state: { type: "pendingWithoutPrice" },
+        },
+      ],
+    ]),
+  }),
+
   // --- Phase 9: tile execution confirmation arms (TileConfirmation overlay) ---
   "tile-exec-started": makeAppData({
     ...eurusdTileBase,
