@@ -68,13 +68,15 @@ export function nextConnectionStatus(
       }
 
     case ConnectionStatus.IDLE_DISCONNECTED:
-      // Guard: ignore gatewayDisconnected (idle takes precedence)
+      // Guard: ignore gatewayDisconnected (idle takes precedence).
+      // userActivity is intentionally NOT handled here — recovery from idle is
+      // button-only (reconnect). userActivity only resets the countdown while
+      // connected (BrowserConnectionEventsAdapter). Provenance: original
+      // services/connection.ts:43-50,74-96.
       switch (event.type) {
         case "reconnect":
           // User-initiated reconnect button: re-enter CONNECTING (triggers reopen
           // in routeIdleLifecycle → WsAdapter.reopen()). Button-only recovery.
-          return ConnectionStatus.CONNECTING;
-        case "userActivity":
           return ConnectionStatus.CONNECTING;
         case "browserOffline":
           return ConnectionStatus.OFFLINE_DISCONNECTED;
