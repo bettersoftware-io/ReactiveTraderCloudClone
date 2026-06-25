@@ -6,6 +6,11 @@ import { wholeNumberFormat } from "./numberFormat.js";
 
 export type Scale = "k" | "m" | "b" | "t" | "";
 
+export interface ScaledNumber {
+  value: number;
+  scale: Scale;
+}
+
 const k = 1_000;
 const m: number = k * k;
 const b: number = m * k;
@@ -16,7 +21,7 @@ const precise2 = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-export function scaleNumber(value: number): { value: number; scale: Scale } {
+export function scaleNumber(value: number): ScaledNumber {
   const magnitude = Math.abs(value);
   if (magnitude >= t) return { value: value / t, scale: "t" };
   if (magnitude >= b) return { value: value / b, scale: "b" };

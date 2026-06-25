@@ -52,7 +52,9 @@ describe("createRfqCountdownMachine", () => {
   it("decrements by INTERVAL on the first tick (non-vacuousness: a frozen countdown would fail this)", () => {
     const seen = run(TOTAL_MS);
     // Frame 0 is the immediate tick (timer(0, 100)), frame 100 is the first interval tick.
-    const firstTick = seen.find((e) => e.frame === INTERVAL);
+    const firstTick = seen.find((e) => {
+      return e.frame === INTERVAL;
+    });
     expect(firstTick).toBeDefined();
     expect(firstTick?.value).toBe(TOTAL_MS - INTERVAL);
   });
@@ -62,13 +64,16 @@ describe("createRfqCountdownMachine", () => {
     // state() emits the default synchronously then the timer's frame-0 tick also
     // fires at virtual frame 0, so two 500s appear at frame 0 — deduplicate by
     // taking unique (frame, value) pairs in emission order.
-    const unique = seen.filter(
-      (e, i, arr) =>
-        i === 0 || e.frame !== arr[i - 1].frame || e.value !== arr[i - 1].value,
-    );
+    const unique = seen.filter((e, i, arr) => {
+      return (
+        i === 0 || e.frame !== arr[i - 1].frame || e.value !== arr[i - 1].value
+      );
+    });
     // Expected sequence: 500 @ 0, 400 @ 100, 300 @ 200, 200 @ 300, 100 @ 400
     // (0 is also emitted inclusively but the 0-clamp test covers it separately).
-    const ticks = unique.filter((e) => e.value > 0);
+    const ticks = unique.filter((e) => {
+      return e.value > 0;
+    });
     expect(ticks).toEqual([
       { frame: 0, value: 500 },
       { frame: 100, value: 400 },
@@ -84,7 +89,11 @@ describe("createRfqCountdownMachine", () => {
     const lastEmission = seen[seen.length - 1];
     expect(lastEmission.value).toBe(0);
     expect(lastEmission.frame).toBe(TOTAL_MS);
-    expect(seen.some((e) => e.value < 0)).toBe(false);
+    expect(
+      seen.some((e) => {
+        return e.value < 0;
+      }),
+    ).toBe(false);
     // state() emits the default + the stream emits; the stream itself produces
     // (TOTAL_MS / INTERVAL) + 1 values (i=0 through i=TOTAL_MS/INTERVAL inclusive).
     // With the extra default, total = (TOTAL_MS / INTERVAL) + 2.

@@ -8,7 +8,7 @@ import {
 } from "d3-force";
 import { select } from "d3-selection";
 import type { ReactElement } from "react";
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import {
   aggregatePositionsByCurrency,
@@ -37,14 +37,17 @@ export function PositionBubbles({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   // Keep the latest aggregation in a ref so the d3 effect (mounted once) can
   // read fresh data without re-running and tearing down the simulation.
-  const nodesRef = useRef<BubbleNode[]>([]);
-  nodesRef.current = aggregatePositionsByCurrency(positions).map((n) => {
+  const nodes = aggregatePositionsByCurrency(positions).map((n) => {
     return {
       id: n.currency,
       r: n.radius,
       sign: n.sign,
       text: n.text,
     };
+  });
+  const nodesRef = useRef<BubbleNode[]>(nodes);
+  useEffect(() => {
+    nodesRef.current = nodes;
   });
 
   useLayoutEffect(() => {
@@ -68,10 +71,13 @@ export function PositionBubbles({
       .attr("width", width)
       .attr("height", height);
 
-    const positionTooltip = (
-      event: MouseEvent | null,
-      node: BubbleNode,
-    ): void => {
+    interface DragEvent {
+      x: number;
+      y: number;
+      sourceEvent: MouseEvent;
+    }
+
+    function positionTooltip(event: MouseEvent | null, node: BubbleNode): void {
       if (node.x === undefined || node.y === undefined) return;
       const tipWidth =
         (tooltip.node() as HTMLDivElement | null)?.clientWidth ?? 0;
@@ -81,21 +87,18 @@ export function PositionBubbles({
         .style("top", `${posY + 15}px`)
         .style("left", `${posX}px`)
         .text(`${node.id} ${node.text}`); // "{CURRENCY} {amount}"
-    };
+    }
 
-    const onMove = (
-      event: { x: number; y: number; sourceEvent: MouseEvent },
-      d: BubbleNode,
-    ): void => {
+    function onMove(event: DragEvent, d: BubbleNode): void {
       force.alpha(0.5).restart();
       positionTooltip(event.sourceEvent, d);
       d.fx = event.x;
       d.fy = event.y;
-    };
+    }
 
     /** Renders the current simulation state into the SVG. Called on each tick
      *  and once synchronously after startup so jsdom sees elements immediately. */
-    const renderTick = (): void => {
+    function renderTick(): void {
       svg
         .selectAll<SVGGElement, BubbleNode>("g:not(.exit)")
         .data(force.nodes(), (d) => {
@@ -175,7 +178,7 @@ export function PositionBubbles({
             return exit.classed("exit", true).remove();
           },
         );
-    };
+    }
 
     const force = forceSimulation<BubbleNode>()
       .force(

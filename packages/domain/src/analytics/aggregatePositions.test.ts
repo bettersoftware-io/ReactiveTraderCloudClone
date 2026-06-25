@@ -9,12 +9,14 @@ import {
 } from "./aggregatePositions.js";
 import type { CurrencyPairPosition } from "./position.js";
 
+interface GoldenCase {
+  input: CurrencyPairPosition[];
+  expected: CurrencyPositionNode[];
+}
+
 interface Golden {
   readonly _source: string;
-  readonly cases: ReadonlyArray<{
-    input: CurrencyPairPosition[];
-    expected: CurrencyPositionNode[];
-  }>;
+  readonly cases: ReadonlyArray<GoldenCase>;
 }
 
 const golden: Golden = JSON.parse(
@@ -40,12 +42,17 @@ describe("aggregatePositionsByCurrency (golden: original Positions/data.ts)", ()
 
     it(`drops zero-net currencies in case ${i}`, () => {
       const got = aggregatePositionsByCurrency(input);
-      expect(got.every((n) => n.tradedAmount !== 0)).toBe(true);
+      expect(
+        got.every((n) => {
+          return n.tradedAmount !== 0;
+        }),
+      ).toBe(true);
     });
   });
 
   it("scales radii linearly between 15 and 60", () => {
     const nodes = aggregatePositionsByCurrency(golden.cases[1].input);
+
     for (const n of nodes) {
       expect(n.radius).toBeGreaterThanOrEqual(15);
       expect(n.radius).toBeLessThanOrEqual(60);
@@ -66,6 +73,7 @@ describe("aggregatePositionsByCurrency (golden: original Positions/data.ts)", ()
     ];
     const nodes = aggregatePositionsByCurrency(input);
     expect(nodes).toHaveLength(2);
+
     for (const n of nodes) {
       expect(n.radius).toBe(60); // POSITION_MAX_RADIUS
     }

@@ -5,9 +5,14 @@ import { describe, expect, it } from "vitest";
 
 import { formatPnlValue } from "./formatPnlValue.js";
 
+interface GoldenCase {
+  input: number;
+  expected: string;
+}
+
 interface Golden {
   readonly _source: string;
-  readonly cases: ReadonlyArray<{ input: number; expected: string }>;
+  readonly cases: ReadonlyArray<GoldenCase>;
 }
 
 const golden: Golden = JSON.parse(

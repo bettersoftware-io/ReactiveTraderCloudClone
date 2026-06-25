@@ -112,7 +112,9 @@ describe("FakeWsAdapter", () => {
   it("closeForIdle() emits gatewayDisconnected", () => {
     const ws = new FakeWsAdapter();
     const events: ConnectionEventRecord[] = [];
-    ws.connectionEvents().subscribe((e) => events.push(e));
+    ws.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
     ws.closeForIdle();
     expect(events).toEqual([{ type: "gatewayDisconnected" }]);
   });
@@ -120,7 +122,9 @@ describe("FakeWsAdapter", () => {
   it("reopen() after closeForIdle() emits gatewayConnected", () => {
     const ws = new FakeWsAdapter();
     const events: ConnectionEventRecord[] = [];
-    ws.connectionEvents().subscribe((e) => events.push(e));
+    ws.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
     ws.closeForIdle();
     ws.reopen();
     expect(events).toEqual([
@@ -132,7 +136,9 @@ describe("FakeWsAdapter", () => {
   it("reopen() without prior closeForIdle() is a no-op", () => {
     const ws = new FakeWsAdapter();
     const events: ConnectionEventRecord[] = [];
-    ws.connectionEvents().subscribe((e) => events.push(e));
+    ws.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
     ws.reopen();
     expect(events).toEqual([]);
   });

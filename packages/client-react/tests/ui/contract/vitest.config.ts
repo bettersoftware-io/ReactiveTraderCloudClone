@@ -52,6 +52,9 @@ export default defineConfig({
         "src/ui/shell/theme/tokens.ts",
         // Canvas/chart leaves with no DOM-assertable logic — owned by the visual tier.
         "src/ui/fx/analytics/PnlChart.tsx",
+        // d3 force-layout leaf: aggregation is domain-tested; the rest is
+        // imperative d3 DOM (tooltip/tick/exit) exercised by the visual tier.
+        "src/ui/fx/analytics/PositionBubbles.tsx",
         "src/ui/fx/liveRates/tile/TileChart.tsx",
       ],
       reporter: ["text", "html", "lcov"],

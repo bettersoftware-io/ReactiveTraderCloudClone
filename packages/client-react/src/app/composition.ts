@@ -1,6 +1,7 @@
 import { merge, mergeMap, of, Subject, tap } from "rxjs";
 
 import {
+  type ConnectionEvent,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
   type CurrencyPair,
@@ -39,6 +40,11 @@ import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePres
 
 export type { AppPorts };
 
+/** The reconnect-intent event emitted from the Reconnect button. */
+interface ReconnectIntent {
+  type: "reconnect";
+}
+
 /** Routes idle-lifecycle events to the WS adapter. Exported so the wiring is
  * directly testable (idleTeardown.test.ts).
  * - idleTimeout  → closeForIdle() (suppresses auto-reconnect)
@@ -47,7 +53,7 @@ export type { AppPorts };
  *                                   only; does NOT reopen the socket)
  * Provenance: original services/connection.ts:74-96. */
 export function routeIdleLifecycle(
-  event: { type: string },
+  event: ConnectionEvent,
   ws: Pick<IWsAdapter, "closeForIdle" | "reopen">,
 ): void {
   if (event.type === "idleTimeout") ws.closeForIdle();
@@ -85,7 +91,7 @@ export interface App {
 /** User-initiated reconnect intent Subject. Owned in composition so both the
  * real-WS and simulator branches can merge it, and the hook factory can push
  * into it via AppCommands.reconnect(). */
-const reconnect$ = new Subject<{ type: "reconnect" }>();
+const reconnect$ = new Subject<ReconnectIntent>();
 
 export function buildDefaultPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
@@ -103,7 +109,9 @@ export function buildDefaultPorts(): AppPorts {
         //   userActivity → no-op here    (resets countdown in BrowserAdapter)
         // Provenance: original services/connection.ts:74-96.
         return merge(gateway.events(), browser.events(), reconnect$).pipe(
-          tap((e) => routeIdleLifecycle(e, ws)),
+          tap((e) => {
+            return routeIdleLifecycle(e, ws);
+          }),
         );
       },
     };
@@ -128,7 +136,9 @@ export function buildDefaultPorts(): AppPorts {
           }),
         ),
         reconnect$.pipe(
-          mergeMap(() => of({ type: "gatewayConnected" as const })),
+          mergeMap(() => {
+            return of({ type: "gatewayConnected" as const });
+          }),
         ),
       );
     },

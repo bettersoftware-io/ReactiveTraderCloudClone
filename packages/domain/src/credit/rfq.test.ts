@@ -9,6 +9,11 @@ interface Case {
   readonly input: number;
   readonly expected: number;
 }
+
+interface Golden {
+  cases: Case[];
+}
+
 const golden = JSON.parse(
   readFileSync(
     fileURLToPath(
@@ -16,7 +21,7 @@ const golden = JSON.parse(
     ),
     "utf8",
   ),
-) as { cases: Case[] };
+) as Golden;
 
 describe("applyMaximum (credit max-quantity cap)", () => {
   for (const c of golden.cases) {

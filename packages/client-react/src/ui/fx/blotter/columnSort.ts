@@ -10,7 +10,7 @@ export interface SortState<TRow = Trade> {
 // Desc-first columns, verbatim from rtc-original@4a31f01
 // App/Trades/TradesState/sortState.ts:32 `descDefaultFields`.
 // Every other column (incl. notional, spotRate) sorts ASC on first click.
-export const FX_DESC_FIRST = new Set<keyof Trade>([
+const FX_DESC_FIRST = new Set<keyof Trade>([
   "tradeId",
   "tradeDate",
   "valueDate",
@@ -33,6 +33,7 @@ export function nextSortDirection(
   column: keyof Trade,
   current: SortState<Trade>,
 ): SortState<Trade>;
+
 export function nextSortDirection<TRow>(
   column: keyof TRow,
   current: SortState<TRow>,

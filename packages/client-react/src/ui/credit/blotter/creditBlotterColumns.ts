@@ -1,6 +1,6 @@
 import type { CreditTrade } from "@rtc/domain";
 
-import type { CellFormatter, ColumnDef } from "#/ui/fx/blotter/blotterColumns";
+import type { ColumnDef } from "#/ui/fx/blotter/blotterColumns";
 
 // rtc-original@4a31f01 client/src/apps/Credit/CoreCreditTrades/colConfig.ts:109-167 creditColDef
 export const CREDIT_COLUMNS: readonly ColumnDef<CreditTrade>[] = [
@@ -41,19 +41,21 @@ const MONTHS = [
   "Dec",
 ];
 
-export const formatCreditCell: CellFormatter<CreditTrade> = (
+export function formatCreditCell(
   row: CreditTrade,
   col: ColumnDef<CreditTrade>,
-): string => {
+): string {
   switch (col.key) {
     case "status":
       return "Accepted";
+
     case "tradeDate": {
       const d = new Date(`${row.tradeDate}T00:00:00`);
       if (Number.isNaN(d.getTime())) return row.tradeDate;
       const day = String(d.getDate()).padStart(2, "0");
       return `${day}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
     }
+
     case "quantity":
       return row.quantity.toLocaleString("en-US", { maximumFractionDigits: 0 });
     case "unitPrice":
@@ -61,4 +63,4 @@ export const formatCreditCell: CellFormatter<CreditTrade> = (
     default:
       return String(row[col.key]);
   }
-};
+}
