@@ -18,7 +18,7 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
-import type { Presenters } from "#/app/composition";
+import type { AppCommands, Presenters } from "#/app/composition";
 import type { MachineFactories } from "#/app/presenters/machine";
 import type {
   NotionalIntents,
@@ -115,7 +115,7 @@ export interface AppHooks {
 export function createAppHooks(
   presenters: Presenters,
   machines: MachineFactories,
-  commands: { reconnect(): void },
+  commands: AppCommands,
 ): AppHooks {
   const [usePrice] = bind((pair: CurrencyPair) => {
     return presenters.priceStream.price$(pair);

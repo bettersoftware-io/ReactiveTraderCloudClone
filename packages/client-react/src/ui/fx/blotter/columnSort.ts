@@ -33,6 +33,7 @@ export function nextSortDirection(
   column: keyof Trade,
   current: SortState<Trade>,
 ): SortState<Trade>;
+
 export function nextSortDirection<TRow>(
   column: keyof TRow,
   current: SortState<TRow>,

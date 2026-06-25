@@ -18,6 +18,10 @@ export default tseslint.config(
       "packages/*/tests/**",
       "packages/*/vitest*.config.ts",
       "packages/*/vite.config.ts",
+      // *.golden.test.ts files in src/ are excluded from tsconfig.json (they
+      // run under separate vitest node environments). projectService cannot find
+      // them, so skip the typed pass for these files too.
+      "packages/**/*.golden.test.ts",
     ],
   },
   ...base,

@@ -104,10 +104,12 @@ export class WsAdapter implements IWsAdapter {
     this.ws.onclose = (): void => {
       if (this.disposed) return;
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
+
       if (this.idleClosed) {
         // Idle close: suppress auto-reconnect; user must call reopen() explicitly.
         return;
       }
+
       console.log(
         "[WsAdapter] Disconnected, reconnecting in",
         this.reconnectDelayMs,
@@ -126,6 +128,7 @@ export class WsAdapter implements IWsAdapter {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+
     this.reconnectTimer = setTimeout(() => {
       if (this.disposed) return;
       // Surface the retry so the connection state machine can show CONNECTING
@@ -215,10 +218,12 @@ export class WsAdapter implements IWsAdapter {
   closeForIdle(): void {
     if (this.disposed || this.idleClosed) return;
     this.idleClosed = true;
+
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+
     const ws = this.ws;
     this.ws = null;
     ws?.close();
@@ -235,10 +240,12 @@ export class WsAdapter implements IWsAdapter {
     this.disposed = true;
     this.connectionEvents$.complete();
     this.sendQueue.length = 0;
+
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+
     this.ws?.close();
     this.handlers.clear();
 

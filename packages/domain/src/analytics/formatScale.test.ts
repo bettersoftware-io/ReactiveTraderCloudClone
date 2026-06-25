@@ -5,12 +5,14 @@ import { describe, expect, it } from "vitest";
 
 import { formatPrecise2, formatWithScale, scaleNumber } from "./formatScale.js";
 
+interface GoldenCase {
+  input: number;
+  expected: { withScale: string; precise2: string };
+}
+
 interface Golden {
   readonly _source: string;
-  readonly cases: ReadonlyArray<{
-    input: number;
-    expected: { withScale: string; precise2: string };
-  }>;
+  readonly cases: ReadonlyArray<GoldenCase>;
 }
 
 const golden: Golden = JSON.parse(

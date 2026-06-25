@@ -32,6 +32,7 @@ export function aggregatePositionsByCurrency(
   positions: readonly CurrencyPairPosition[],
 ): readonly CurrencyPositionNode[] {
   const totals = new Map<string, number>();
+
   for (const p of positions) {
     const { base, terms } = deriveBaseTerm(p.symbol);
     totals.set(base, (totals.get(base) ?? 0) + p.baseTradedAmount);
@@ -54,14 +55,15 @@ export function aggregatePositionsByCurrency(
   const minValue = rawMin !== maxValue ? rawMin : 0;
 
   const span = maxValue - minValue;
-  const scaleRadius = (amount: number): number => {
+
+  function scaleRadius(amount: number): number {
     if (span === 0) return POSITION_MIN_RADIUS;
     const fraction = (Math.abs(amount) - minValue) / span;
     return (
       POSITION_MIN_RADIUS +
       fraction * (POSITION_MAX_RADIUS - POSITION_MIN_RADIUS)
     );
-  };
+  }
 
   return data.map((d) => {
     return {
