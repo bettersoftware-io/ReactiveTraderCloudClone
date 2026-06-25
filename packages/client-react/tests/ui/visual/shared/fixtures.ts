@@ -783,6 +783,9 @@ export const fixtures: Record<string, AppData> = {
   "connection-offline": makeAppData({
     connectionStatus: ConnectionStatus.OFFLINE_DISCONNECTED,
   }),
+  "connection-idle": makeAppData({
+    connectionStatus: ConnectionStatus.IDLE_DISCONNECTED,
+  }),
   "live-rates-populated": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },

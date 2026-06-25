@@ -18,16 +18,29 @@ const overlayMessages: Partial<Record<ConnectionStatus, string>> = {
 };
 
 export function ConnectionOverlay(): ReactElement | null {
-  const { useConnectionStatus } = useHooks();
+  const { useConnectionStatus, useReconnect } = useHooks();
   const status = useConnectionStatus();
+  const reconnect = useReconnect();
   const message = overlayMessages[status];
 
   if (!message) return null;
+
+  const isIdle = status === ConnectionStatus.IDLE_DISCONNECTED;
 
   return (
     <div data-testid="connection-overlay" className={styles.overlay}>
       <div className={styles.card}>
         <p className={styles.message}>{message}</p>
+        {isIdle && (
+          <button
+            type="button"
+            data-testid="reconnect-button"
+            className={styles.reconnectButton}
+            onClick={reconnect}
+          >
+            Reconnect
+          </button>
+        )}
       </div>
     </div>
   );

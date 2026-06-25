@@ -28,6 +28,10 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "ConnectionOverlay",
     fixtureKey: "connection-offline",
   },
+  "connection-overlay/idle": {
+    componentKey: "ConnectionOverlay",
+    fixtureKey: "connection-idle",
+  },
   "live-rates/populated": {
     componentKey: "LiveRatesPanel",
     fixtureKey: "live-rates-populated",
