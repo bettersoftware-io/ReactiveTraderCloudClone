@@ -85,6 +85,8 @@ export interface CommandLog {
   acceptQuote: number[];
   passQuote: number[];
   quoteRfq: QuoteRequest[];
+  /** Incremented each time useReconnect() callback is invoked. */
+  reconnect: number;
 }
 
 /** The default throughput view a fresh World reports (loaded, value 100). */
@@ -236,6 +238,7 @@ export function createWorld(
       acceptQuote: [],
       passQuote: [],
       quoteRfq: [],
+      reconnect: 0,
     },
     push(patch: Partial<HookValues>): void {
       for (const key of Object.keys(patch) as (keyof HookValues)[]) {

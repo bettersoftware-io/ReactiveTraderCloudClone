@@ -53,6 +53,10 @@ export function buildFakeHooks(data: AppData): AppHooks {
     useAcceptQuote: () => {
       return async (_quoteId: number) => {};
     },
+    // Reconnect: static screenshots don't click buttons; no-op is correct.
+    useReconnect: () => {
+      return noop;
+    },
     // Machine: per-symbol static snapshot for screenshots; intents are no-ops.
     // A missing key renders the same neutral state the real machine emits
     // initially ("ready" / "init"), so existing goldens are unchanged.

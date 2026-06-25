@@ -26,10 +26,11 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
   const hooksRef = useRef<AppHooks | null>(null);
 
   if (hooksRef.current === null) {
-    const { presenters } = createApp();
+    const { presenters, commands } = createApp();
     hooksRef.current = createAppHooks(
       presenters,
       createMachineFactories(presenters),
+      commands,
     );
   }
 

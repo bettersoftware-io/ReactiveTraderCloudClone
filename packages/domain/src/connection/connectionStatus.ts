@@ -14,6 +14,7 @@ export type ConnectionEvent =
   | { type: "gatewayDisconnected" }
   | { type: "reconnectAttempt" }
   | { type: "idleTimeout" }
+  | { type: "reconnect" }
   | { type: "userActivity" }
   | { type: "browserOffline" }
   | { type: "browserOnline" };
@@ -69,6 +70,10 @@ export function nextConnectionStatus(
     case ConnectionStatus.IDLE_DISCONNECTED:
       // Guard: ignore gatewayDisconnected (idle takes precedence)
       switch (event.type) {
+        case "reconnect":
+          // User-initiated reconnect button: re-enter CONNECTING (triggers reopen
+          // in routeIdleLifecycle → WsAdapter.reopen()). Button-only recovery.
+          return ConnectionStatus.CONNECTING;
         case "userActivity":
           return ConnectionStatus.CONNECTING;
         case "browserOffline":

@@ -103,6 +103,13 @@ export function reactHooks(world: World): AppHooks {
         world.commands.acceptQuote.push(quoteId);
       };
     },
+    // Command: record the reconnect invocation so contract specs can assert
+    // "clicking Reconnect fires the command exactly once".
+    useReconnect: () => {
+      return () => {
+        world.commands.reconnect += 1;
+      };
+    },
     // Machine: the REAL createTileExecutionMachine, driven by a World-backed
     // execute command that records inputs and emits the canned result (or errors
     // to drive the timeout-confirmation path), faithfully exercising the

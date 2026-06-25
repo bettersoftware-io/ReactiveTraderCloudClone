@@ -82,6 +82,10 @@ export interface AppHooks {
   useConnectionStatus: () => ConnectionStatus;
   // Commands (one-shot fire-and-await; the bridge does firstValueFrom)
   useAcceptQuote: () => (quoteId: number) => Promise<void>;
+  /** Fire-and-forget reconnect command — pushes a reconnect intent into the
+   * app layer after an idle close. The sole recovery path from IDLE_DISCONNECTED.
+   * Provenance: original components/DisconnectionOverlay.tsx:36 (onClick={initConnection}). */
+  useReconnect: () => () => void;
   // Machines (app-layer RxJS behind the useMachine bridge)
   useTileExecution: (pair: CurrencyPair) => UseTileExecutionResult;
   useRfqTile: (pair: CurrencyPair) => UseRfqTileResult;
@@ -111,6 +115,7 @@ export interface AppHooks {
 export function createAppHooks(
   presenters: Presenters,
   machines: MachineFactories,
+  commands: { reconnect(): void },
 ): AppHooks {
   const [usePrice] = bind((pair: CurrencyPair) => {
     return presenters.priceStream.price$(pair);
@@ -208,6 +213,9 @@ export function createAppHooks(
     useConnectionStatus,
     useAcceptQuote: () => {
       return acceptQuote;
+    },
+    useReconnect: () => {
+      return commands.reconnect;
     },
     useTileExecution: (pair: CurrencyPair) => {
       return useMachine(() => {
