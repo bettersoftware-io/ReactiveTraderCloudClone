@@ -1,6 +1,6 @@
 import type { Trade } from "@rtc/domain";
 
-export type FilterType = "set" | "number" | "date";
+type FilterType = "set" | "number" | "date";
 
 export interface ColumnDef<TRow> {
   key: keyof TRow;
