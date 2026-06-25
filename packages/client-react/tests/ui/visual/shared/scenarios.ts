@@ -28,6 +28,10 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "ConnectionOverlay",
     fixtureKey: "connection-offline",
   },
+  "connection-overlay/idle": {
+    componentKey: "ConnectionOverlay",
+    fixtureKey: "connection-idle",
+  },
   "live-rates/populated": {
     componentKey: "LiveRatesPanel",
     fixtureKey: "live-rates-populated",
@@ -363,4 +367,43 @@ export const scenarios: Record<string, Scenario> = {
   },
   // StaleIndicator "Reconnecting…" overlay arm.
   "tile/stale": { componentKey: "Tile", fixtureKey: "tile-stale" },
+
+  // --- Coverage-gap pass: behaviour-sync'd components (Step 5) ---
+
+  // CreditBlotter sort: click the Quantity column header → CreditBlotter
+  // handleSort fires, sort state changes, ▼ indicator appears on that column.
+  // Covers CreditBlotter.tsx lines 104-108 (handleSort / nextSortDirection call).
+  "credit/blotter-sorted": {
+    componentKey: "CreditBlotter",
+    fixtureKey: "credit-populated",
+  },
+  // CreditBlotter number filter: open the Quantity filter, enter a large
+  // value (99999999) that no trade matches → "No credit trades match" message.
+  // Covers handleFilter (lines 110-120), activeFilterLabels (128-131), and
+  // the "No credit trades match" empty-row branch (line 195).
+  "credit/blotter-filtered": {
+    componentKey: "CreditBlotter",
+    fixtureKey: "credit-populated",
+  },
+  // CreditBlotter quick-filter: type a string matching no trade →
+  // covers QuickFilter.tsx onChange (line 20), setQuickFilter in CreditBlotter,
+  // and the "No credit trades match" branch when quickFilter is non-empty.
+  "credit/blotter-quick-filter": {
+    componentKey: "CreditBlotter",
+    fixtureKey: "credit-populated",
+  },
+  // RfqTilesPanel Done filter: click the "Done" tab with the credit-populated
+  // fixture (which has rfq 102 in Closed state) → shows the Done rfq card.
+  // Covers filterMatches Done branch (RfqTilesPanel.tsx line 20).
+  "credit/rfq-tiles-filter-done": {
+    componentKey: "RfqTilesPanel",
+    fixtureKey: "credit-populated",
+  },
+  // RfqCountdown zero-expiry arm: an Open rfq with expirySecs=0 drives
+  // totalMs=0 → RfqCountdown fraction = 0 (the `totalMs > 0 ? : 0` false
+  // branch, RfqCountdown.tsx line 14). Bar renders at 0%.
+  "credit/rfq-countdown-zero": {
+    componentKey: "RfqTilesPanel",
+    fixtureKey: "rfq-countdown-zero",
+  },
 };

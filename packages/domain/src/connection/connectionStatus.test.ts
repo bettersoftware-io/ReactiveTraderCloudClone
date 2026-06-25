@@ -61,12 +61,20 @@ describe("nextConnectionStatus", () => {
     ).toBe(ConnectionStatus.IDLE_DISCONNECTED);
   });
 
-  it("IDLE_DISCONNECTED -> CONNECTING on userActivity", () => {
+  it("IDLE_DISCONNECTED -> CONNECTING on reconnect (button-only recovery)", () => {
+    expect(
+      nextConnectionStatus(ConnectionStatus.IDLE_DISCONNECTED, {
+        type: "reconnect",
+      }),
+    ).toBe(ConnectionStatus.CONNECTING);
+  });
+
+  it("IDLE_DISCONNECTED ignores userActivity (stays IDLE_DISCONNECTED — no auto-recover)", () => {
     expect(
       nextConnectionStatus(ConnectionStatus.IDLE_DISCONNECTED, {
         type: "userActivity",
       }),
-    ).toBe(ConnectionStatus.CONNECTING);
+    ).toBe(ConnectionStatus.IDLE_DISCONNECTED);
   });
 
   it("OFFLINE_DISCONNECTED -> CONNECTING on browserOnline", () => {

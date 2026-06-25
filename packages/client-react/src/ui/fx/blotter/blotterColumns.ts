@@ -75,6 +75,3 @@ export const formatFxCell: CellFormatter<Trade> = (
       return String(value);
   }
 };
-
-/** @deprecated use formatFxCell */
-export const formatCellValue: CellFormatter<Trade> = formatFxCell;

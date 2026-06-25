@@ -332,3 +332,23 @@ The corrected specs and tests are the durable artefact: the spec-conformance
 tier would now catch two generated-spec bugs this exercise exposed — the
 profit-and-loss feature's `"12,346k"` (the original yields `"12m"`) and the
 8-vs-9-currency-pair analytics contradiction.
+
+### Follow-up complete (2026-06-25)
+
+The one out-of-scope divergence the sync surfaced — the idle-`DisconnectionOverlay`
+"Reconnect" button — is now closed. The idle overlay (`IDLE_DISCONNECTED` only)
+renders a "Reconnect" button, and idle recovery is faithfully **button-only**:
+after an idle close, mouse activity no longer reconnects (it only resets the
+countdown while connected), matching the original `services/connection.ts` and
+`components/DisconnectionOverlay.tsx`. The button-only contract is enforced at
+every layer (the domain `nextConnectionStatus` reducer, the app-layer
+`routeIdleLifecycle` routing, and the UI), each independently tested. The four
+review-flagged cleanups were also cleared (dead `formatCellValue` alias removed,
+the whole-number `Intl` formatter deduped into `numberFormat.ts`, a direct
+`rejectedWithoutPrice` reducer case added, and the `WsAdapter` reconnect-timer
+nit fixed), and a coverage-gap pass restored the behaviour-sync'd files to
+standard across every test tier (see `COVERAGE-GAPS.md`, 2026-06-25).
+`CreditExceeded` remains the single deliberate non-fix.
+
+- **Design:** [`docs/superpowers/specs/2026-06-25-behaviour-sync-followups-design.md`](../superpowers/specs/2026-06-25-behaviour-sync-followups-design.md)
+- **Plan:** [`docs/superpowers/plans/2026-06-25-behaviour-sync-followups.md`](../superpowers/plans/2026-06-25-behaviour-sync-followups.md)

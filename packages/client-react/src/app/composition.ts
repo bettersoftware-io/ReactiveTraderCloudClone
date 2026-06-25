@@ -1,4 +1,4 @@
-import { merge, mergeMap, of, tap } from "rxjs";
+import { merge, mergeMap, of, Subject, tap } from "rxjs";
 
 import {
   type ConnectionEventsPort,
@@ -40,13 +40,18 @@ import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePres
 export type { AppPorts };
 
 /** Routes idle-lifecycle events to the WS adapter. Exported so the wiring is
- * directly testable (idleTeardown.test.ts). */
+ * directly testable (idleTeardown.test.ts).
+ * - idleTimeout  → closeForIdle() (suppresses auto-reconnect)
+ * - reconnect    → reopen()       (sole recovery from idle; button-only)
+ * - userActivity → no-op here     (resets countdown in BrowserConnectionEventsAdapter
+ *                                   only; does NOT reopen the socket)
+ * Provenance: original services/connection.ts:74-96. */
 export function routeIdleLifecycle(
   event: { type: string },
   ws: Pick<IWsAdapter, "closeForIdle" | "reopen">,
 ): void {
   if (event.type === "idleTimeout") ws.closeForIdle();
-  else if (event.type === "userActivity") ws.reopen();
+  else if (event.type === "reconnect") ws.reopen();
 }
 
 export interface Presenters {
@@ -66,10 +71,21 @@ export interface Presenters {
   viewModePreference: ViewModePreferencePresenter;
 }
 
+export interface AppCommands {
+  /** Push a user-initiated reconnect intent (wired to reconnect$ in composition). */
+  reconnect(): void;
+}
+
 export interface App {
   presenters: Presenters;
   ports: AppPorts;
+  commands: AppCommands;
 }
+
+/** User-initiated reconnect intent Subject. Owned in composition so both the
+ * real-WS and simulator branches can merge it, and the hook factory can push
+ * into it via AppCommands.reconnect(). */
+const reconnect$ = new Subject<{ type: "reconnect" }>();
 
 export function buildDefaultPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
@@ -80,11 +96,13 @@ export function buildDefaultPorts(): AppPorts {
     const gateway = new WsConnectionEventsAdapter(ws);
     const connectionEvents: ConnectionEventsPort = {
       events: () => {
-        return merge(gateway.events(), browser.events()).pipe(
-          // Side-effect the transport in lock-step: idle timeout closes the
-          // gateway socket; user activity (after an idle close) re-establishes
-          // it. Reconnect is user-initiated, matching original
-          // services/connection.ts:91-93.
+        // Merge gateway events, browser lifecycle events, and user-initiated
+        // reconnect intents. The tap side-effects the transport:
+        //   idleTimeout → closeForIdle()
+        //   reconnect   → reopen()       (sole recovery; button-only)
+        //   userActivity → no-op here    (resets countdown in BrowserAdapter)
+        // Provenance: original services/connection.ts:74-96.
+        return merge(gateway.events(), browser.events(), reconnect$).pipe(
           tap((e) => routeIdleLifecycle(e, ws)),
         );
       },
@@ -95,17 +113,22 @@ export function buildDefaultPorts(): AppPorts {
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
     events: () => {
-      // Idle teardown is a faithful no-op in simulator mode: there is no real
-      // socket to close. The state machine still reaches IDLE_DISCONNECTED and
-      // userActivity already re-emits gatewayConnected to resume.
+      // Simulator branch: idle closes are faithfully no-ops (no real socket).
+      // Recovery from idle is via the Reconnect button, which pushes reconnect$
+      // → gatewayConnected to resume the state machine. browserOnline also
+      // recovers (unchanged). userActivity no longer auto-resumes (item 1).
+      // Provenance: original services/connection.ts:43-50.
       return merge(
         gateway.events(),
         browser.events().pipe(
           mergeMap((e) => {
-            return e.type === "browserOnline" || e.type === "userActivity"
+            return e.type === "browserOnline"
               ? of(e, { type: "gatewayConnected" as const })
               : of(e);
           }),
+        ),
+        reconnect$.pipe(
+          mergeMap(() => of({ type: "gatewayConnected" as const })),
         ),
       );
     },
@@ -130,7 +153,12 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     themePreference: new ThemePreferencePresenter(ports.preferences),
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
   };
-  return { presenters, ports };
+  const commands: AppCommands = {
+    reconnect: () => {
+      reconnect$.next({ type: "reconnect" });
+    },
+  };
+  return { presenters, ports, commands };
 }
 
 /** Build the app-layer machine factories the hooks seam injects. Each factory

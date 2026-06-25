@@ -2,7 +2,8 @@
 //
 // Verifies the composition.ts WS-branch tap wiring:
 //   idleTimeout  → ws.closeForIdle()
-//   userActivity → ws.reopen()
+//   reconnect    → ws.reopen()         ← sole recovery from idle (Item 1)
+//   userActivity → neither             ← resets countdown only, not socket
 //
 // Imports routeIdleLifecycle directly from composition.ts so that removing or
 // misspelling the real wiring breaks this test (non-vacuous guard).
@@ -24,10 +25,17 @@ describe("composition.ts idle-teardown wiring (T2.2)", () => {
     expect(ws.reopen).not.toHaveBeenCalled();
   });
 
-  it("userActivity event invokes reopen() on the WsAdapter", () => {
+  it("reconnect event invokes reopen() on the WsAdapter (button-only recovery)", () => {
+    const ws = makeWs();
+    routeIdleLifecycle({ type: "reconnect" }, ws);
+    expect(ws.reopen).toHaveBeenCalledTimes(1);
+    expect(ws.closeForIdle).not.toHaveBeenCalled();
+  });
+
+  it("userActivity event no longer reopens the socket after an idle close", () => {
     const ws = makeWs();
     routeIdleLifecycle({ type: "userActivity" }, ws);
-    expect(ws.reopen).toHaveBeenCalledTimes(1);
+    expect(ws.reopen).not.toHaveBeenCalled();
     expect(ws.closeForIdle).not.toHaveBeenCalled();
   });
 
@@ -40,21 +48,10 @@ describe("composition.ts idle-teardown wiring (T2.2)", () => {
     expect(ws.reopen).not.toHaveBeenCalled();
   });
 
-  it("repeated userActivity events while NOT idle-closed are safe no-ops (reopen() is idempotent)", () => {
-    const ws = makeWs();
-    // The FakeWsAdapter guard for reopen() is tested in FakeWsAdapter.test.ts;
-    // here we just confirm routeIdleLifecycle delegates to ws.reopen() each time.
-    routeIdleLifecycle({ type: "userActivity" }, ws);
-    routeIdleLifecycle({ type: "userActivity" }, ws);
-    // The real WsAdapter.reopen() is guarded by idleClosed; the spy counts raw calls.
-    expect(ws.reopen).toHaveBeenCalledTimes(2);
-    expect(ws.closeForIdle).not.toHaveBeenCalled();
-  });
-
-  it("full idle→reopen lifecycle: closeForIdle then reopen each called once", () => {
+  it("full idle→reconnect lifecycle: closeForIdle then reopen each called once", () => {
     const ws = makeWs();
     routeIdleLifecycle({ type: "idleTimeout" }, ws);
-    routeIdleLifecycle({ type: "userActivity" }, ws);
+    routeIdleLifecycle({ type: "reconnect" }, ws);
     expect(ws.closeForIdle).toHaveBeenCalledTimes(1);
     expect(ws.reopen).toHaveBeenCalledTimes(1);
   });

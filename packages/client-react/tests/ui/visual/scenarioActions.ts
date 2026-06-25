@@ -41,6 +41,7 @@ export type ScenarioAction = {
 // component-level shot with no interaction.
 export const scenarioActions: Record<string, ScenarioAction> = {
   "connection-overlay/offline": { fullPage: true },
+  "connection-overlay/idle": { fullPage: true },
   "app/fx": { fullPage: true },
   "app/credit": {
     fullPage: true,
@@ -187,4 +188,33 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   "credit/sell-side-price-entered": {
     steps: [{ type: "trade-ticket-price", text: "98.5" }],
   },
+
+  // --- Coverage-gap pass: behaviour-sync'd components (Step 5) ---
+
+  // CreditBlotter sort: click the Quantity column sort button -> ▼ appears.
+  // First click on a CREDIT_DESC_FIRST column (tradeId/tradeDate) goes desc;
+  // quantity is NOT in CREDIT_DESC_FIRST so first click goes asc (▲).
+  "credit/blotter-sorted": { click: "blotter-sort-quantity" },
+  // CreditBlotter number filter: open the Quantity filter, enter a value that
+  // matches no trade (e.g. 1), apply -> "No credit trades match" message +
+  // "Filtered: Quantity" label on toolbar.
+  "credit/blotter-filtered": {
+    steps: [
+      { click: "blotter-filter-toggle-quantity" },
+      { type: "number-filter-value", text: "1" },
+      { click: "number-filter-apply" },
+    ],
+    waitForText: "Filtered: Quantity",
+  },
+  // CreditBlotter quick-filter: type text matching no credit trade ->
+  // "No credit trades match" message.
+  "credit/blotter-quick-filter": {
+    steps: [{ type: "quick-filter", text: "zzznomatch" }],
+    waitForText: "No credit trades match the current filters",
+  },
+  // RfqTilesPanel Done filter: click Done tab -> shows the Closed rfq card.
+  "credit/rfq-tiles-filter-done": { click: "rfq-filter-Done" },
+  // RfqCountdown zero-expiry: no interaction needed; the fixture seeds
+  // expirySecs=0 so the bar renders at 0% from the first render.
+  // (no entry needed — absent key == component-level shot with no interaction)
 };

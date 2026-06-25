@@ -141,4 +141,24 @@ describe("PricingSimulator", () => {
     const history = await firstValueFrom(engine.getPriceHistory("EURUSD"));
     expect(history).toHaveLength(PRICE_HISTORY_SIZE);
   });
+
+  it("history never grows beyond PRICE_HISTORY_SIZE after a single live tick", async () => {
+    vi.useFakeTimers();
+    const engine = new PricingSimulator();
+    // Subscribe and wait for exactly one live tick beyond the initial history batch.
+    // After the first live tick the internal history array is pushed to 51 items and
+    // immediately shifted back to 50 — the `if (> PRICE_HISTORY_SIZE) shift()` branch.
+    const liveTicks = lastValueFrom(
+      engine.getPriceUpdates("EURUSD").pipe(
+        take(PRICE_HISTORY_SIZE + 1), // 50 history + 1 live
+        toArray(),
+      ),
+    );
+    await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 2);
+    await liveTicks;
+    const history = await firstValueFrom(engine.getPriceHistory("EURUSD"));
+    // The shift() path must have fired: length must still equal the cap, not 51.
+    expect(history).toHaveLength(PRICE_HISTORY_SIZE);
+    expect(history.length).not.toBeGreaterThan(PRICE_HISTORY_SIZE);
+  });
 });

@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import { Direction } from "@rtc/domain";
 import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
 
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
@@ -46,6 +47,51 @@ describe("wsReal workflow :: quote/pass error paths", () => {
     await awaitPendingRpc(ws, "rpc.pass");
     ws.nextRpcResponse("rpc.pass", rpcNack());
     await expect(promise).rejects.toThrow(/Failed to pass on quote/);
+    ws.dispose();
+  });
+});
+
+describe("wsReal createRfq :: null-payload guard (line 472)", () => {
+  it("throws when ack response has a null rfqId payload", async () => {
+    // Exercises the `if (rfqId === undefined || rfqId === null)` branch in
+    // createRfq (portFactory.ts:471-472). A server bug returning ack without a
+    // numeric rfqId must not silently pass undefined downstream.
+    const ws = new FakeWsAdapter();
+    const ports = createWsRealPorts(ws);
+    const promise = firstValueFrom(
+      ports.workflow.createRfq({
+        instrumentId: 1,
+        dealerIds: [1],
+        quantity: 1_000_000,
+        direction: Direction.Buy,
+        expirySecs: 120,
+      }),
+    );
+    await awaitPendingRpc(ws, "rpc.createRfq");
+    // Simulate an ack with no payload (null payload) — a defensive server bug
+    ws.nextRpcResponse("rpc.createRfq", {
+      type: "ack",
+      payload: null as unknown as number,
+    });
+    await expect(promise).rejects.toThrow(/ack response missing payload/);
+    ws.dispose();
+  });
+});
+
+describe("wsReal admin.getThroughput :: null-payload guard (line 625)", () => {
+  it("throws when ack response has a null throughput payload", async () => {
+    // Exercises the `if (value === undefined || value === null)` branch in
+    // getThroughput (portFactory.ts:624-625). A server returning ack without a
+    // numeric value must not silently pass undefined downstream.
+    const ws = new FakeWsAdapter();
+    const ports = createWsRealPorts(ws);
+    const promise = firstValueFrom(ports.admin.getThroughput());
+    await awaitPendingRpc(ws, "admin.getThroughput");
+    ws.nextRpcResponse("admin.getThroughput", {
+      type: "ack",
+      payload: null as unknown as number,
+    });
+    await expect(promise).rejects.toThrow(/ack response missing payload/);
     ws.dispose();
   });
 });

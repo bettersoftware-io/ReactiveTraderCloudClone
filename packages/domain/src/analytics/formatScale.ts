@@ -2,17 +2,14 @@
 // See rtc-original@4a31f01 utils/formatNumber.ts:37-57 (scaleNumber),
 // :144-147 (formatWithScale), :136 (formatAsWholeNumber), :95-99 (precision).
 
+import { wholeNumberFormat } from "./numberFormat.js";
+
 export type Scale = "k" | "m" | "b" | "t" | "";
 
 const k = 1_000;
 const m: number = k * k;
 const b: number = m * k;
 const t: number = b * k;
-
-const wholeNumber = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
 
 const precise2 = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -35,7 +32,7 @@ export function scaleNumber(value: number): { value: number; scale: Scale } {
  */
 export function formatWithScale(value: number): string {
   const { value: scaled, scale } = scaleNumber(value);
-  return wholeNumber.format(scaled) + scale;
+  return wholeNumberFormat.format(scaled) + scale;
 }
 
 /** Original `precisionNumberFormatter(2)`: 2 fraction digits, comma grouping. */

@@ -7,3 +7,10 @@ test("connection-overlay/offline", async ({ mount, page }) => {
     animations: "disabled",
   });
 });
+
+test("connection-overlay/idle", async ({ mount, page }) => {
+  await mount(<VisualScenario name="connection-overlay/idle" />);
+  await expect(page).toHaveScreenshot("idle.png", {
+    animations: "disabled",
+  });
+});
