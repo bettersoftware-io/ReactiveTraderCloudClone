@@ -51,4 +51,23 @@ describe("aggregatePositionsByCurrency (golden: original Positions/data.ts)", ()
       expect(n.radius).toBeLessThanOrEqual(60);
     }
   });
+
+  it("assigns max radius to all currencies when all magnitudes are equal (minValue collapses to 0)", () => {
+    // EURUSD base=+1_000_000, counter=-1_000_000 → EUR=+1M, USD=-1M.
+    // magnitudes=[1M, 1M] → rawMin === maxValue → minValue = 0 (line 54 second arm).
+    // span = 1M − 0 = 1M; fraction = (1M − 0) / 1M = 1 → radius = POSITION_MAX_RADIUS for both.
+    const input: CurrencyPairPosition[] = [
+      {
+        symbol: "EURUSD",
+        basePnl: 0,
+        baseTradedAmount: 1_000_000,
+        counterTradedAmount: -1_000_000,
+      },
+    ];
+    const nodes = aggregatePositionsByCurrency(input);
+    expect(nodes).toHaveLength(2);
+    for (const n of nodes) {
+      expect(n.radius).toBe(60); // POSITION_MAX_RADIUS
+    }
+  });
 });
