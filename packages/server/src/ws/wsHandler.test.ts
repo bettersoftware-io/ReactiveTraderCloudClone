@@ -1077,6 +1077,7 @@ describe("wsHandler workflow quote-event transforms", () => {
     "quoteQuoted",
     "quotePassed",
     "quoteAccepted",
+    "quoteRejected",
   ] as const) {
     it(`maps a ${type} RfqEvent to a stream.workflowEvent QuoteBodyDto frame`, async () => {
       const ws = connect(
@@ -1097,6 +1098,34 @@ describe("wsHandler workflow quote-event transforms", () => {
       });
     });
   }
+
+  it("maps a quoteRejected RfqEvent with rejectedWithPrice state through without mutating the state", async () => {
+    const rejectedEvent = {
+      type: "quoteRejected",
+      payload: {
+        id: 11,
+        rfqId: 5,
+        dealerId: 3,
+        state: { type: "rejectedWithPrice", price: 105 },
+      },
+    } as unknown as RfqEvent;
+    const ws = connect(
+      fakeServices({ workflow: workflowEmitting(rejectedEvent) }),
+    );
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+    await wait();
+    const [frame] = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT);
+    expect(frame).toBeDefined();
+    expect(defined(frame).type).toBe(SERVER_MSG.WORKFLOW_EVENT);
+    const body = defined(frame).payload as QuoteEventBody;
+    expect(body.type).toBe("quoteRejected");
+    expect(body.payload).toEqual({
+      id: 11,
+      rfqId: 5,
+      dealerId: 3,
+      state: { type: "rejectedWithPrice", price: 105 },
+    });
+  });
 });
 
 describe("wsHandler workflow rfq-event transforms", () => {
@@ -1447,6 +1476,104 @@ describe("wsHandler RPC synchronous-throw handling", () => {
     const [resp] = ws.framesOfType(SERVER_MSG.SET_THROUGHPUT_RESPONSE);
     expect(defined(resp).correlationId).toBe("sync-tp");
     expect((defined(resp).payload as TypedFrame).type).toBe("nack");
+  });
+});
+
+describe("wsHandler abort-path cleanup", () => {
+  const TICK_MS = 10;
+
+  it("stops streaming instruments after the socket closes (abort-listener path)", async () => {
+    // Use an interval-based instruments service so the subscription is still
+    // active when the socket closes, exercising the abort-signal listener at
+    // wsHandler.ts streamInstruments lines 409-416.
+    let tick = 0;
+    const intervalInstruments = {
+      getInstruments: (): Observable<unknown> => {
+        return interval(TICK_MS).pipe(
+          map(() => {
+            tick += 1;
+            return [
+              {
+                id: tick,
+                name: `Bond ${tick}`,
+                cusip: "912828C57",
+                ticker: "T",
+                maturity: "2036-01-01",
+                interestRate: 0.04,
+                benchmark: "T",
+              },
+            ];
+          }),
+        );
+      },
+    } as unknown as ServiceContainer["instruments"];
+
+    const ws = connect(fakeServices({ instruments: intervalInstruments }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_INSTRUMENTS });
+    await wait(TICK_MS * 3);
+
+    const before = ws.framesOfType(SERVER_MSG.INSTRUMENT_EVENT).length;
+    expect(before).toBeGreaterThan(0);
+
+    ws.closeConnection();
+    await wait(TICK_MS * 4);
+
+    const after = ws.framesOfType(SERVER_MSG.INSTRUMENT_EVENT).length;
+    expect(after).toBe(before);
+  });
+
+  it("stops streaming workflow events after the socket closes (abort-listener path)", async () => {
+    // Use an interval-based workflow events service so the subscription is
+    // still active when the socket closes, exercising the abort-signal listener
+    // at wsHandler.ts streamWorkflow lines 524-531.
+    const intervalWorkflow = {
+      events: (): Observable<RfqEvent> => {
+        return interval(TICK_MS).pipe(
+          map(() => {
+            return {
+              type: "rfqCreated",
+              payload: {
+                id: 1,
+                instrumentId: 1,
+                quantity: 1_000_000,
+                direction: Direction.Buy,
+                state: "Open",
+                expirySecs: 120,
+                creationTimestamp: Date.now(),
+              },
+            } as unknown as RfqEvent;
+          }),
+        );
+      },
+      createRfq: (): Observable<unknown> => {
+        return of(1);
+      },
+      cancelRfq: (): Observable<unknown> => {
+        return of(undefined);
+      },
+      quote: (): Observable<unknown> => {
+        return of(undefined);
+      },
+      pass: (): Observable<unknown> => {
+        return of(undefined);
+      },
+      accept: (): Observable<unknown> => {
+        return of(undefined);
+      },
+    } as unknown as ServiceContainer["workflow"];
+
+    const ws = connect(fakeServices({ workflow: intervalWorkflow }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+    await wait(TICK_MS * 3);
+
+    const before = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT).length;
+    expect(before).toBeGreaterThan(0);
+
+    ws.closeConnection();
+    await wait(TICK_MS * 4);
+
+    const after = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT).length;
+    expect(after).toBe(before);
   });
 });
 
