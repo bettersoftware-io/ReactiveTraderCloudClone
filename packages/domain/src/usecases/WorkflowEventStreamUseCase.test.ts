@@ -171,6 +171,21 @@ describe("reduceRfqEvent", () => {
       price: 105,
     });
   });
+
+  it("quoteRejected upserts the rejected quote (rejectedWithoutPrice)", () => {
+    const rejected: Quote = {
+      id: 6,
+      rfqId: 7,
+      dealerId: 1,
+      state: { type: "rejectedWithoutPrice" },
+    };
+    const next = reduceRfqEvent(emptyState(), {
+      type: "quoteRejected",
+      payload: rejected,
+    });
+    expect(next.quotes.get(6)?.state).toEqual({ type: "rejectedWithoutPrice" });
+    expect(next.rfqs.size).toBe(0);
+  });
 });
 
 describe("reduceRfqEvent quoteRejected", () => {
