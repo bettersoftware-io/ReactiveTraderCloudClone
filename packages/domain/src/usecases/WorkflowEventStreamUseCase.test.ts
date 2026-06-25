@@ -154,6 +154,79 @@ describe("reduceRfqEvent", () => {
     });
     expect(next.quotes.get(5)?.state).toEqual({ type: "accepted", price: 100 });
   });
+
+  it("quoteRejected upserts the rejected quote (rejectedWithPrice)", () => {
+    const rejected: Quote = {
+      id: 5,
+      rfqId: 7,
+      dealerId: 1,
+      state: { type: "rejectedWithPrice", price: 105 },
+    };
+    const next = reduceRfqEvent(emptyState(), {
+      type: "quoteRejected",
+      payload: rejected,
+    });
+    expect(next.quotes.get(5)?.state).toEqual({
+      type: "rejectedWithPrice",
+      price: 105,
+    });
+  });
+});
+
+describe("reduceRfqEvent quoteRejected", () => {
+  it("flips a losing sibling to rejected in the quotes map", () => {
+    const events: RfqEvent[] = [
+      { type: "startOfStateOfTheWorld" },
+      {
+        type: "quoteCreated",
+        payload: {
+          id: 1,
+          rfqId: 9,
+          dealerId: 1,
+          state: { type: "pendingWithPrice", price: 100 },
+        },
+      },
+      {
+        type: "quoteCreated",
+        payload: {
+          id: 2,
+          rfqId: 9,
+          dealerId: 2,
+          state: { type: "pendingWithPrice", price: 105 },
+        },
+      },
+      {
+        type: "quoteAccepted",
+        payload: {
+          id: 1,
+          rfqId: 9,
+          dealerId: 1,
+          state: { type: "accepted", price: 100 },
+        },
+      },
+      {
+        type: "quoteRejected",
+        payload: {
+          id: 2,
+          rfqId: 9,
+          dealerId: 2,
+          state: { type: "rejectedWithPrice", price: 105 },
+        },
+      },
+    ];
+    const state = events.reduce(reduceRfqEvent, {
+      rfqs: new Map(),
+      quotes: new Map(),
+    });
+    expect(state.quotes.get(1)?.state).toEqual({
+      type: "accepted",
+      price: 100,
+    });
+    expect(state.quotes.get(2)?.state).toEqual({
+      type: "rejectedWithPrice",
+      price: 105,
+    });
+  });
 });
 
 describe("WorkflowEventStreamUseCase", () => {

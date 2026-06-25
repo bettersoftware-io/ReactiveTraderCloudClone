@@ -1,4 +1,4 @@
-import { merge, mergeMap, of } from "rxjs";
+import { merge, mergeMap, of, tap } from "rxjs";
 
 import {
   type ConnectionEventsPort,
@@ -8,6 +8,7 @@ import {
 } from "@rtc/domain";
 
 import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
+import type { IWsAdapter } from "./adapters/IWsAdapter";
 import {
   type AppPorts,
   createSimulatorPorts,
@@ -37,6 +38,16 @@ import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
 import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
 
 export type { AppPorts };
+
+/** Routes idle-lifecycle events to the WS adapter. Exported so the wiring is
+ * directly testable (idleTeardown.test.ts). */
+export function routeIdleLifecycle(
+  event: { type: string },
+  ws: Pick<IWsAdapter, "closeForIdle" | "reopen">,
+): void {
+  if (event.type === "idleTimeout") ws.closeForIdle();
+  else if (event.type === "userActivity") ws.reopen();
+}
 
 export interface Presenters {
   priceStream: PriceStreamPresenter;
@@ -69,7 +80,13 @@ export function buildDefaultPorts(): AppPorts {
     const gateway = new WsConnectionEventsAdapter(ws);
     const connectionEvents: ConnectionEventsPort = {
       events: () => {
-        return merge(gateway.events(), browser.events());
+        return merge(gateway.events(), browser.events()).pipe(
+          // Side-effect the transport in lock-step: idle timeout closes the
+          // gateway socket; user activity (after an idle close) re-establishes
+          // it. Reconnect is user-initiated, matching original
+          // services/connection.ts:91-93.
+          tap((e) => routeIdleLifecycle(e, ws)),
+        );
       },
     };
     return { ...createWsRealPorts(ws), connectionEvents };
@@ -78,6 +95,9 @@ export function buildDefaultPorts(): AppPorts {
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
     events: () => {
+      // Idle teardown is a faithful no-op in simulator mode: there is no real
+      // socket to close. The state machine still reaches IDLE_DISCONNECTED and
+      // userActivity already re-emits gatewayConnected to resume.
       return merge(
         gateway.events(),
         browser.events().pipe(

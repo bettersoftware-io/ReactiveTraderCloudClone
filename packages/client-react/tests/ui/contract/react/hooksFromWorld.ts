@@ -13,6 +13,7 @@ import type {
 } from "@rtc/domain";
 
 import { createNotionalMachine } from "#/app/presenters/NotionalMachine";
+import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
 import type {
   RfqSubmissionState,
   TicketSubmissionState,
@@ -268,6 +269,14 @@ export function reactHooks(world: World): AppHooks {
           return world.viewMode.next(next);
         },
       };
+    },
+    // Per-RFQ countdown: the REAL createRfqCountdownMachine, exercising the
+    // relocated countdown logic through the same useMachine bridge the app uses.
+    // Contract specs drive the countdown with fake timers.
+    useRfqCountdown: (creationTimestamp: number, totalMs: number) => {
+      return useMachine(() => {
+        return createRfqCountdownMachine(creationTimestamp, totalMs);
+      }).state;
     },
   };
 }

@@ -33,6 +33,7 @@ export type WorkflowEvent =
   | { readonly type: "quoteQuoted"; readonly payload: QuoteBodyDto }
   | { readonly type: "quotePassed"; readonly payload: QuoteBodyDto }
   | { readonly type: "quoteAccepted"; readonly payload: QuoteBodyDto }
+  | { readonly type: "quoteRejected"; readonly payload: QuoteBodyDto }
   | { readonly type: "rfqClosed"; readonly payload: RfqBodyDto };
 
 export interface CreateRfqRequestDto {

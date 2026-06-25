@@ -11,13 +11,11 @@ import styles from "./QuantityInput.module.css";
 interface QuantityInputProps {
   value: string;
   onChange: (value: string) => void;
-  error: string | null;
 }
 
 export function QuantityInput({
   value,
   onChange,
-  error,
 }: QuantityInputProps): ReactElement {
   const inputId = useId();
   return (
@@ -29,7 +27,6 @@ export function QuantityInput({
         type="number"
         id={inputId}
         data-testid="quantity-input"
-        data-error={error ? "true" : "false"}
         value={value}
         onChange={(e: ChangeEvent<HTMLInputElement>): void => {
           onChange(e.target.value);
@@ -38,7 +35,6 @@ export function QuantityInput({
         placeholder="Enter quantity..."
         className={styles.input}
       />
-      {error ? <span className={styles.errorMsg}>{error}</span> : null}
     </div>
   );
 }

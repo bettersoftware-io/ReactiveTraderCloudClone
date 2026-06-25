@@ -1,20 +1,27 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import { type Trade, TradeStatus } from "@rtc/domain";
+import { TradeStatus } from "@rtc/domain";
 
 import { useHooks } from "#/ui/hooks/useHooks";
 
-import { COLUMNS, formatCellValue } from "./blotterColumns";
+import type { CellFormatter, ColumnDef } from "./blotterColumns";
 
 import styles from "./BlotterRow.module.css";
 
-interface BlotterRowProps {
-  trade: Trade;
+interface BlotterRowProps<TRow> {
+  trade: TRow;
   isNew: boolean;
+  columns: readonly ColumnDef<TRow>[];
+  format: CellFormatter<TRow>;
 }
 
-export function BlotterRow({ trade, isNew }: BlotterRowProps): ReactElement {
+export function BlotterRow<TRow extends { status: string }>({
+  trade,
+  isNew,
+  columns,
+  format,
+}: BlotterRowProps<TRow>): ReactElement {
   // The transient new-row highlight (true for HIGHLIGHT_MS then false) now lives
   // in the app-layer createRowHighlightMachine behind the seam, so this row holds
   // no timer. Hover stays here — it's pure interaction view state, no timer.
@@ -35,10 +42,10 @@ export function BlotterRow({ trade, isNew }: BlotterRowProps): ReactElement {
       }}
       className={styles.row}
     >
-      {COLUMNS.map((col) => {
+      {columns.map((col) => {
         return (
-          <td key={col.key} className={styles.cell}>
-            {formatCellValue(trade, col)}
+          <td key={String(col.key)} className={styles.cell}>
+            {format(trade, col)}
           </td>
         );
       })}

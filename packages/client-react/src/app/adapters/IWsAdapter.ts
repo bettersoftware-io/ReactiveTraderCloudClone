@@ -19,5 +19,10 @@ export interface IWsAdapter {
    * Backed by `ReplaySubject(1)` so late subscribers see the most recent state.
    */
   connectionEvents(): Observable<ConnectionEvent>;
+  /** Close the current socket for an idle timeout without disposing the adapter.
+   * Suppresses auto-reconnect; preserves sendQueue for reopen(). */
+  closeForIdle(): void;
+  /** Re-establish the socket after an idle close (user-initiated). */
+  reopen(): void;
   dispose(): void;
 }

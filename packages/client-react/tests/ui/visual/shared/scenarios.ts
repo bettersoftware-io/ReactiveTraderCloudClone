@@ -309,7 +309,7 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "NewRfqForm",
     fixtureKey: "credit-populated",
   },
-  "credit/new-rfq-invalid": {
+  "credit/new-rfq-over-max": {
     componentKey: "NewRfqForm",
     fixtureKey: "credit-populated",
   },

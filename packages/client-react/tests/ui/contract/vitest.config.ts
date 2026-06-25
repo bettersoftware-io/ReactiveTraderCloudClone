@@ -3,11 +3,23 @@ import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
+// Package root (packages/client-react) — used to anchor # subpath aliases so
+// import.meta.url inside golden/helper modules gets a real filesystem URL.
+const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
       "@ui-contract": fileURLToPath(new URL("./shared", import.meta.url)),
+      // Mirror package.json "imports" so that helper/golden modules imported by
+      // the harness (e.g. loadGolden, setup utilities) receive a real filesystem
+      // import.meta.url rather than a vitest jsdom virtual URL — enabling
+      // readFileSync and fileURLToPath to resolve correctly.
+      // NOTE: these aliases are for helper/golden modules only. Contract specs
+      // must NOT import src/ directly; all src/ access goes through page objects.
+      "#/": `${pkgRoot}/src/`,
+      "#tests/": `${pkgRoot}/tests/`,
     },
   },
   test: {
@@ -40,8 +52,6 @@ export default defineConfig({
         "src/ui/shell/theme/tokens.ts",
         // Canvas/chart leaves with no DOM-assertable logic — owned by the visual tier.
         "src/ui/fx/analytics/PnlChart.tsx",
-        "src/ui/fx/analytics/PositionBubbles.tsx",
-        "src/ui/fx/analytics/PairPnlBars.tsx",
         "src/ui/fx/liveRates/tile/TileChart.tsx",
       ],
       reporter: ["text", "html", "lcov"],

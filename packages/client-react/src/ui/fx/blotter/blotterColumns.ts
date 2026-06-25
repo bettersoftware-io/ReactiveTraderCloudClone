@@ -1,14 +1,16 @@
 import type { Trade } from "@rtc/domain";
 
-type FilterType = "set" | "number" | "date";
+export type FilterType = "set" | "number" | "date";
 
-export interface ColumnDef {
-  key: keyof Trade;
+export interface ColumnDef<TRow> {
+  key: keyof TRow;
   label: string;
   filterType: FilterType;
 }
 
-export const COLUMNS: readonly ColumnDef[] = [
+export type CellFormatter<TRow> = (row: TRow, col: ColumnDef<TRow>) => string;
+
+export const COLUMNS: readonly ColumnDef<Trade>[] = [
   { key: "tradeId", label: "Trade ID", filterType: "number" },
   { key: "status", label: "Status", filterType: "set" },
   { key: "tradeDate", label: "Trade Date", filterType: "date" },
@@ -55,7 +57,10 @@ function formatRate(rate: number): string {
   return rate.toPrecision(6);
 }
 
-export function formatCellValue(trade: Trade, col: ColumnDef): string {
+export const formatFxCell: CellFormatter<Trade> = (
+  trade: Trade,
+  col: ColumnDef<Trade>,
+): string => {
   const value = trade[col.key];
 
   switch (col.key) {
@@ -69,4 +74,7 @@ export function formatCellValue(trade: Trade, col: ColumnDef): string {
     default:
       return String(value);
   }
-}
+};
+
+/** @deprecated use formatFxCell */
+export const formatCellValue: CellFormatter<Trade> = formatFxCell;

@@ -1,5 +1,18 @@
 // FX
 
+export type { CurrencyPositionNode } from "./analytics/aggregatePositions.js";
+export {
+  aggregatePositionsByCurrency,
+  POSITION_MAX_RADIUS,
+  POSITION_MIN_RADIUS,
+} from "./analytics/aggregatePositions.js";
+export { formatPnlValue } from "./analytics/formatPnlValue.js";
+export type { Scale } from "./analytics/formatScale.js";
+export {
+  formatPrecise2,
+  formatWithScale,
+  scaleNumber,
+} from "./analytics/formatScale.js";
 // Analytics
 export type {
   CurrencyPairPosition,
@@ -27,8 +40,10 @@ export type { Quote, QuoteState } from "./credit/quote.js";
 export { validQuoteTransitions } from "./credit/quote.js";
 export type { Rfq } from "./credit/rfq.js";
 export {
+  applyMaximum,
   CREDIT_MAX_QUANTITY_INPUT,
   CREDIT_QUANTITY_MULTIPLIER,
+  CREDIT_RFQ_EXPIRY_SECONDS,
   RfqState,
 } from "./credit/rfq.js";
 export type { CurrencyCategory } from "./fx/currencyFilter.js";
@@ -100,6 +115,7 @@ export {
   PreferencesSimulator,
   PricingSimulator,
   ReferenceDataSimulator,
+  rfqResponseDelayMs,
   ThroughputSimulator,
   TradeStoreSimulator,
 } from "./simulators/index.js";

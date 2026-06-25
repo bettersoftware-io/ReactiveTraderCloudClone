@@ -1,24 +1,11 @@
 import type { ReactElement } from "react";
 
+import { formatPnlValue } from "@rtc/domain";
+
 import styles from "./PnlValue.module.css";
 
 interface PnlValueProps {
   value: number;
-}
-
-function formatPnl(value: number): string {
-  const abs = Math.abs(value);
-  let formatted: string;
-
-  if (abs >= 1_000_000) {
-    formatted = `${(abs / 1_000_000).toFixed(2)}m`;
-  } else if (abs >= 1_000) {
-    formatted = `${(abs / 1_000).toFixed(1)}k`;
-  } else {
-    formatted = abs.toFixed(0);
-  }
-
-  return (value >= 0 ? "+" : "-") + formatted;
 }
 
 export function PnlValue({ value }: PnlValueProps): ReactElement {
@@ -26,7 +13,10 @@ export function PnlValue({ value }: PnlValueProps): ReactElement {
 
   return (
     <div data-sign={sign} className={styles.value}>
-      {formatPnl(value)}
+      <span className={styles.currency}>USD</span>{" "}
+      <span className={styles.amount} data-testid="lastPosition">
+        {formatPnlValue(value)}
+      </span>
     </div>
   );
 }

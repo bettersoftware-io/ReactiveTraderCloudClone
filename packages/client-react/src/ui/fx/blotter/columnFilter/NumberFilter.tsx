@@ -1,16 +1,14 @@
 import type { ChangeEvent, ReactElement } from "react";
 import { useState } from "react";
 
-import type { Trade } from "@rtc/domain";
-
 import type { ColumnFilter, Comparator } from "./filterState";
 
 import styles from "./NumberFilter.module.css";
 
-interface NumberFilterProps {
-  column: keyof Trade;
-  currentFilter: ColumnFilter | undefined;
-  onApply: (filter: ColumnFilter | null) => void;
+interface NumberFilterProps<TRow> {
+  column: keyof TRow;
+  currentFilter: ColumnFilter<TRow> | undefined;
+  onApply: (filter: ColumnFilter<TRow> | null) => void;
 }
 
 interface ComparatorOption {
@@ -28,11 +26,11 @@ const comparators: ComparatorOption[] = [
   { value: "inRange", label: "In range" },
 ];
 
-export function NumberFilter({
+export function NumberFilter<TRow>({
   column,
   currentFilter,
   onApply,
-}: NumberFilterProps): ReactElement {
+}: NumberFilterProps<TRow>): ReactElement {
   const [comparator, setComparator] = useState<Comparator>(
     currentFilter?.type === "number" ? currentFilter.comparator : "eq",
   );

@@ -1,0 +1,26 @@
+{
+  "_source": "rtc-original@4a31f01 utils/formatNumber.ts:37-57,95-99,136,144-147 + App/Analytics/PnL/PNLBar.tsx:49-50",
+  "cases": [
+    {
+      "input": 1234,
+      "expected": { "withScale": "1k", "precise2": "1,234.00" }
+    },
+    {
+      "input": 12345678,
+      "expected": { "withScale": "12m", "precise2": "12,345,678.00" }
+    },
+    {
+      "input": 564.97,
+      "expected": { "withScale": "565", "precise2": "564.97" }
+    },
+    {
+      "input": -1656.82,
+      "expected": { "withScale": "-2k", "precise2": "-1,656.82" }
+    },
+    {
+      "input": 1382.31,
+      "expected": { "withScale": "1k", "precise2": "1,382.31" }
+    },
+    { "input": 0, "expected": { "withScale": "0", "precise2": "0.00" } }
+  ]
+}

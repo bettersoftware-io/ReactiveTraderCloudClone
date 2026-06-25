@@ -1,0 +1,4 @@
+{
+  "_source": "rtc-original@4a31f01 (smoke fixture for the loadGolden helper)",
+  "cases": [{ "input": 1, "expected": 1 }]
+}

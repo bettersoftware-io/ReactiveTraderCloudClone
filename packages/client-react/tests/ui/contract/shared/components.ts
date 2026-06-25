@@ -10,9 +10,17 @@ import {
 } from "./pages/credit/rfqTiles/RfqFilterTabsPage";
 import { AnalyticsPanelPage } from "./pages/fx/analytics/AnalyticsPanelPage";
 import {
+  PairPnlBarsPage,
+  type PairPnlBarsProps,
+} from "./pages/fx/analytics/PairPnlBarsPage";
+import {
   PnlValuePage,
   type PnlValueProps,
 } from "./pages/fx/analytics/PnlValuePage";
+import {
+  PositionBubblesPage,
+  type PositionBubblesProps,
+} from "./pages/fx/analytics/PositionBubblesPage";
 import {
   BlotterHeaderPage,
   type BlotterHeaderProps,
@@ -116,8 +124,21 @@ export const AnalyticsPanel = component<
   return new AnalyticsPanelPage(ctx);
 });
 
+export const PairPnlBars = component<PairPnlBarsProps, PairPnlBarsPage>(
+  (ctx) => {
+    return new PairPnlBarsPage(ctx);
+  },
+);
+
 export const PnlValue = component<PnlValueProps, PnlValuePage>((ctx) => {
   return new PnlValuePage(ctx);
+});
+
+export const PositionBubbles = component<
+  PositionBubblesProps,
+  PositionBubblesPage
+>((ctx) => {
+  return new PositionBubblesPage(ctx);
 });
 
 export const ConnectionStatusBar = component<

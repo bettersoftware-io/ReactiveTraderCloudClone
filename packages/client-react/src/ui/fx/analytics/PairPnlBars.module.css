@@ -61,6 +61,15 @@
   text-align: left;
   font-size: 10px;
   flex-shrink: 0;
+  cursor: default;
+  /* button UA reset so it renders like the previous plain-text span */
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  line-height: inherit;
 }
 
 .pnlLabel[data-sign="pos"] {

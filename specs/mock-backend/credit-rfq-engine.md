@@ -43,9 +43,20 @@ price       = 100 + priceChange * direction
 
 ## RFQ Expiry
 
-- The mock backend does **not** explicitly simulate RFQ expiry
-- Expiry is handled entirely on the frontend using a countdown timer based on `expirySecs`
-- When the countdown reaches zero, the frontend transitions the RFQ to Expired state
+The mock backend (CreditRfqSimulator — "simulator is the server", decision D1) schedules a
+server-side expiry for every RFQ at creation time:
+
+- After `expirySecs` seconds (default `CREDIT_RFQ_EXPIRY_SECONDS = 120`, rtc-original
+  `CREDIT_RFQ_EXPIRY_SECONDS = 120`), the simulator flips an Open RFQ to **Expired** and emits
+  `rfqClosed` with `payload.state = "Expired"`.
+- The expiry is only applied if the RFQ is still in **Open** state at the time the timer fires; a
+  cancelled or already-closed RFQ is silently skipped.
+- Calling `dispose()` clears all pending expiry timeouts (same `pendingTimeouts` pool as dealer
+  responses), so no expiry fires after the simulator is torn down.
+- The **frontend countdown** (RfqCountdown / useRfqCountdown) is purely cosmetic: it derives
+  remaining time from `creationTimestamp + totalMs`, ticks every 100 ms, and stops at 0. It does
+  NOT drive state transitions — those come exclusively from the `rfqClosed` event emitted by the
+  simulator (mirrors rtc-original CreditRfqTimer + creditRfqs.ts:102-112).
 
 ## Sequence of Events
 

@@ -75,6 +75,8 @@ export class CreditRfqSimulator implements WorkflowPort {
       this.rfqQuotes.set(rfqId, []);
       this.events$.next({ type: "rfqCreated", payload: rfq });
 
+      this.scheduleExpiry(rfqId, request.expirySecs);
+
       // Create quotes for each selected dealer
       for (const dealerId of request.dealerIds) {
         const dealer = this.dealers.find((d) => {
@@ -105,6 +107,17 @@ export class CreditRfqSimulator implements WorkflowPort {
 
       return of(rfqId);
     });
+  }
+
+  private scheduleExpiry(rfqId: number, expirySecs: number): void {
+    const timeout = setTimeout(() => {
+      const rfq = this.rfqs.get(rfqId);
+      if (!rfq || rfq.state !== RfqState.Open) return;
+      const expired: Rfq = { ...rfq, state: RfqState.Expired };
+      this.rfqs.set(rfqId, expired);
+      this.events$.next({ type: "rfqClosed", payload: expired });
+    }, expirySecs * 1000);
+    this.pendingTimeouts.push(timeout);
   }
 
   private scheduleDealerResponse(
@@ -218,7 +231,9 @@ export class CreditRfqSimulator implements WorkflowPort {
         if (rejectedState) {
           const rejected: Quote = { ...other, state: rejectedState };
           this.quotes.set(otherId, rejected);
-          // These are implicitly rejected, no separate event type — they come through as quote updates
+          // Surface the rejection live so competing cards flip immediately
+          // (rtc-original getQuoteStateOnAccept, creditRfqs.ts:173-216). The simulator is the server here.
+          this.events$.next({ type: "quoteRejected", payload: rejected });
         }
       }
 

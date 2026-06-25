@@ -1,16 +1,14 @@
 import type { ChangeEvent, ReactElement } from "react";
 import { useState } from "react";
 
-import type { Trade } from "@rtc/domain";
-
 import type { ColumnFilter, Comparator } from "./filterState";
 
 import styles from "./DateFilter.module.css";
 
-interface DateFilterProps {
-  column: keyof Trade;
-  currentFilter: ColumnFilter | undefined;
-  onApply: (filter: ColumnFilter | null) => void;
+interface DateFilterProps<TRow> {
+  column: keyof TRow;
+  currentFilter: ColumnFilter<TRow> | undefined;
+  onApply: (filter: ColumnFilter<TRow> | null) => void;
 }
 
 interface ComparatorOption {
@@ -28,11 +26,11 @@ const comparators: ComparatorOption[] = [
   { value: "inRange", label: "In range" },
 ];
 
-export function DateFilter({
+export function DateFilter<TRow>({
   column,
   currentFilter,
   onApply,
-}: DateFilterProps): ReactElement {
+}: DateFilterProps<TRow>): ReactElement {
   const [comparator, setComparator] = useState<Comparator>(
     currentFilter?.type === "date" ? currentFilter.comparator : "eq",
   );

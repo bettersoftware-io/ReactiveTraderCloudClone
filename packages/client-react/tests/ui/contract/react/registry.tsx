@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import type {
   CurrencyCategory,
   CurrencyPair,
+  CurrencyPairPosition,
   Dealer,
   Direction,
   Instrument,
@@ -31,9 +32,12 @@ import { RfqTilesPanel as RfqTilesPanelComponent } from "#/ui/credit/rfqTiles/Rf
 import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
 import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
+import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
 import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
+import { PositionBubbles as PositionBubblesComponent } from "#/ui/fx/analytics/PositionBubbles";
 import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/BlotterHeader";
 import { BlotterRow as BlotterRowComponent } from "#/ui/fx/blotter/BlotterRow";
+import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
 import { DateFilter as DateFilterComponent } from "#/ui/fx/blotter/columnFilter/DateFilter";
 import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 import { NumberFilter as NumberFilterComponent } from "#/ui/fx/blotter/columnFilter/NumberFilter";
@@ -84,7 +88,9 @@ import {
   LiveRatesPanel,
   NewRfqForm,
   NumberFilter,
+  PairPnlBars,
   PnlValue,
+  PositionBubbles,
   QuickFilter,
   QuoteCard,
   RfqCard,
@@ -131,6 +137,26 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
+    PairPnlBars,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PairPnlBarsComponent
+          positions={(p.positions as readonly CurrencyPairPosition[]) ?? []}
+        />
+      );
+    },
+  ],
+  [
+    PositionBubbles,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PositionBubblesComponent
+          positions={(p.positions as readonly CurrencyPairPosition[]) ?? []}
+        />
+      );
+    },
+  ],
+  [
     ConnectionStatusBar,
     (): ReactElement => {
       return <ConnectionStatusBarComponent />;
@@ -162,6 +188,8 @@ export const registry = new Map<AnyToken, ElementFor>([
             <BlotterRowComponent
               trade={p.trade as Trade}
               isNew={(p.isNew as boolean) ?? false}
+              columns={COLUMNS}
+              format={formatFxCell}
             />
           </tbody>
         </table>
@@ -188,7 +216,12 @@ export const registry = new Map<AnyToken, ElementFor>([
                   f: ColumnFilter | null,
                 ) => void) ?? ((): void => {})
               }
-              trades={(p.trades as readonly Trade[]) ?? []}
+              rows={
+                (p.rows as readonly Trade[]) ??
+                (p.trades as readonly Trade[]) ??
+                []
+              }
+              columns={COLUMNS}
             />
           </thead>
         </table>
@@ -199,12 +232,14 @@ export const registry = new Map<AnyToken, ElementFor>([
     SetFilter,
     (p: Record<string, unknown>): ReactElement => {
       return (
-        <SetFilterComponent
+        <SetFilterComponent<Trade>
           column={(p.column as keyof Trade) ?? "currencyPair"}
-          trades={(p.trades as readonly Trade[]) ?? []}
-          currentFilter={p.currentFilter as ColumnFilter | undefined}
+          rows={
+            (p.rows as readonly Trade[]) ?? (p.trades as readonly Trade[]) ?? []
+          }
+          currentFilter={p.currentFilter as ColumnFilter<Trade> | undefined}
           onApply={
-            (p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter
+            (p.onApply as (f: ColumnFilter<Trade> | null) => void) ?? noopFilter
           }
         />
       );
@@ -214,11 +249,11 @@ export const registry = new Map<AnyToken, ElementFor>([
     NumberFilter,
     (p: Record<string, unknown>): ReactElement => {
       return (
-        <NumberFilterComponent
+        <NumberFilterComponent<Trade>
           column={(p.column as keyof Trade) ?? "notional"}
-          currentFilter={p.currentFilter as ColumnFilter | undefined}
+          currentFilter={p.currentFilter as ColumnFilter<Trade> | undefined}
           onApply={
-            (p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter
+            (p.onApply as (f: ColumnFilter<Trade> | null) => void) ?? noopFilter
           }
         />
       );
@@ -228,11 +263,11 @@ export const registry = new Map<AnyToken, ElementFor>([
     DateFilter,
     (p: Record<string, unknown>): ReactElement => {
       return (
-        <DateFilterComponent
+        <DateFilterComponent<Trade>
           column={(p.column as keyof Trade) ?? "tradeDate"}
-          currentFilter={p.currentFilter as ColumnFilter | undefined}
+          currentFilter={p.currentFilter as ColumnFilter<Trade> | undefined}
           onApply={
-            (p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter
+            (p.onApply as (f: ColumnFilter<Trade> | null) => void) ?? noopFilter
           }
         />
       );

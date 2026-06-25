@@ -1,29 +1,27 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import type { Trade } from "@rtc/domain";
-
 import type { ColumnFilter } from "./filterState";
 
 import styles from "./SetFilter.module.css";
 
-interface SetFilterProps {
-  column: keyof Trade;
-  trades: readonly Trade[];
-  currentFilter: ColumnFilter | undefined;
-  onApply: (filter: ColumnFilter | null) => void;
+interface SetFilterProps<TRow> {
+  column: keyof TRow;
+  rows: readonly TRow[];
+  currentFilter: ColumnFilter<TRow> | undefined;
+  onApply: (filter: ColumnFilter<TRow> | null) => void;
 }
 
-export function SetFilter({
+export function SetFilter<TRow>({
   column,
-  trades,
+  rows,
   currentFilter,
   onApply,
-}: SetFilterProps): ReactElement {
+}: SetFilterProps<TRow>): ReactElement {
   const valSet = new Set<string>();
 
-  for (const trade of trades) {
-    valSet.add(String(trade[column]));
+  for (const row of rows) {
+    valSet.add(String(row[column]));
   }
 
   const allValues = [...valSet].sort();

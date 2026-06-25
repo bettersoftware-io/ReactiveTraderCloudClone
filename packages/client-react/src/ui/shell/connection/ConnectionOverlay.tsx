@@ -6,12 +6,15 @@ import { useHooks } from "#/ui/hooks/useHooks";
 
 import styles from "./ConnectionOverlay.module.css";
 
+// The distinct idle/offline/plain disconnection wording lives here, in the
+// modal — the footer only ever shows "Disconnected".
+// Provenance: original components/DisconnectionOverlay.tsx:29-42.
 const overlayMessages: Partial<Record<ConnectionStatus, string>> = {
-  [ConnectionStatus.DISCONNECTED]: "Disconnected. Reconnecting...",
+  [ConnectionStatus.DISCONNECTED]: "Trying to re-connect to the server...",
   [ConnectionStatus.IDLE_DISCONNECTED]:
-    "You have been disconnected due to inactivity. Move the mouse or click to reconnect.",
+    "You have been disconnected due to inactivity.",
   [ConnectionStatus.OFFLINE_DISCONNECTED]:
-    "Your browser appears to be offline. Check your network connection.",
+    "This device has been detected to be offline.  Connection to the server will resume when a stable internet connection is established.",
 };
 
 export function ConnectionOverlay(): ReactElement | null {

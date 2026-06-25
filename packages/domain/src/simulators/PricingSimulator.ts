@@ -47,6 +47,17 @@ function tickInterval(): number {
   return Math.max(MIN_TICK_INTERVAL_MS, Math.random() * MAX_TICK_INTERVAL_MS);
 }
 
+/**
+ * Pure RFQ artificial-delay computation, extracted so the 500–999 ms bound is
+ * testable. Mirrors rtc-original packages/client/src/services/rfqs/rfqs.ts:13
+ * (`delay(500 + Math.floor(Math.random() * 500))`).
+ * @param rand a value in [0, 1) — pass Math.random() at the call site.
+ * @returns integer delay in ms, in [500, 999].
+ */
+export function rfqResponseDelayMs(rand: number): number {
+  return 500 + Math.floor(rand * 500);
+}
+
 export class PricingSimulator implements PricingPort {
   private readonly pairs = new Map<string, PairState>();
 
@@ -117,7 +128,7 @@ export class PricingSimulator implements PricingPort {
   /**
    * Generate an RFQ quote with widened spread.
    * priceChange = 0.3 / 10^pipsPosition
-   * Emits after a 500–2000 ms artificial delay (simulates network/pricing engine latency).
+   * Emits after a 500–999 ms artificial delay (simulates network/pricing engine latency).
    */
   getRfqQuote(
     symbol: string,
@@ -130,7 +141,7 @@ export class PricingSimulator implements PricingPort {
           return new Error(`Unknown symbol: ${symbol}`);
         });
       const priceChange = 0.3 / 10 ** pipsPosition;
-      const delayMs = 500 + Math.floor(Math.random() * 1500);
+      const delayMs = rfqResponseDelayMs(Math.random());
       const result: RfqQuoteResult = {
         ask: state.mid + HALF_SPREAD + priceChange,
         bid: state.mid - HALF_SPREAD - priceChange,

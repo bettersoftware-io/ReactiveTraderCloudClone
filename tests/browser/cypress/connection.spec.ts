@@ -27,7 +27,7 @@ describe("Connection status", () => {
     connection.setBrowserOffline(ctx, true);
     connection.expectConnectionOverlayVisibleWithin(ctx, 3);
     connection.expectConnectionOverlayTextMatches(ctx, "/offline/i");
-    connection.expectConnectionStatusFooterShows(ctx, "Offline");
+    connection.expectConnectionStatusFooterShows(ctx, "Disconnected");
   });
 
   it("coming back online dismisses the overlay", () => {

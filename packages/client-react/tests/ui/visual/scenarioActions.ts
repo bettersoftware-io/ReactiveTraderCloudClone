@@ -142,14 +142,14 @@ export const scenarioActions: Record<string, ScenarioAction> = {
     ],
     waitForText: "Submit RFQ",
   },
-  // Invalid quantity (> CREDIT_MAX_QUANTITY_INPUT) -> the validation error.
-  "credit/new-rfq-invalid": {
+  // Over-max quantity (> CREDIT_MAX_QUANTITY_INPUT) -> capped, submit stays enabled.
+  "credit/new-rfq-over-max": {
     steps: [
       { type: "instrument-search-input", text: "Treasury" },
       { click: "instrument-result-1" },
       { type: "quantity-input", text: "200000000" },
     ],
-    waitForText: "Max quantity exceeded",
+    waitForText: "Submit RFQ",
   },
   // Blotter: click a TEXT column (CCYCCY/currencyPair) once -> first click is
   // ascending (BlotterHeader's ▲ arm). No waitForText (synchronous, label non-unique).

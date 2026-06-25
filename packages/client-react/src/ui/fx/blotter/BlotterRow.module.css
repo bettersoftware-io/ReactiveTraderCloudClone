@@ -1,6 +1,5 @@
 .row {
   background-color: transparent;
-  transition: background-color 1s ease-in-out;
   color: var(--text-primary);
 }
 
@@ -8,8 +7,24 @@
   background-color: var(--bg-secondary);
 }
 
+/* New-row flash, ported from rtc-original GridRegion/styled.ts:36-38
+ * (animation: backgroundFlash 1s ease-in-out 3) + backgroundFlash.ts:3-13
+ * (bg -> brand -> bg). The 3s hold stays in createRowHighlightMachine
+ * (HIGHLIGHT_MS=3000), which removes data-highlight after the three cycles. */
+@keyframes backgroundFlash {
+  0% {
+    background-color: var(--bg-primary);
+  }
+  50% {
+    background-color: var(--bg-brand-primary);
+  }
+  100% {
+    background-color: var(--bg-primary);
+  }
+}
+
 .row[data-highlight="true"] {
-  background-color: rgba(59, 130, 246, 0.15);
+  animation: backgroundFlash 1s ease-in-out 3;
 }
 
 .row[data-state="rejected"] {

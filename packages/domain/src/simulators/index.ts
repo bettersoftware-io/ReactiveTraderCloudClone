@@ -11,7 +11,7 @@ export type { TradeListener } from "./ExecutionSimulator.js";
 export { ExecutionSimulator } from "./ExecutionSimulator.js";
 export type { PreferencesSeed } from "./PreferencesSimulator.js";
 export { PreferencesSimulator } from "./PreferencesSimulator.js";
-export { PricingSimulator } from "./PricingSimulator.js";
+export { PricingSimulator, rfqResponseDelayMs } from "./PricingSimulator.js";
 export { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";
 export { ThroughputSimulator } from "./ThroughputSimulator.js";
 export { TradeStoreSimulator } from "./TradeStoreSimulator.js";

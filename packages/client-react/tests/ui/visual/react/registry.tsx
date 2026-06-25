@@ -10,6 +10,7 @@ import { RfqTilesPanel } from "#/ui/credit/rfqTiles/RfqTilesPanel";
 import { SellSidePanel } from "#/ui/credit/sellSide/SellSidePanel";
 import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
 import { BlotterRow } from "#/ui/fx/blotter/BlotterRow";
+import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { Tile } from "#/ui/fx/liveRates/tile/Tile";
@@ -54,7 +55,12 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <table style={{ borderCollapse: "collapse" }}>
         <tbody>
-          <BlotterRow trade={trade} isNew={true} />
+          <BlotterRow
+            trade={trade}
+            isNew={true}
+            columns={COLUMNS}
+            format={formatFxCell}
+          />
         </tbody>
       </table>
     );
@@ -67,7 +73,12 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <table style={{ borderCollapse: "collapse" }}>
         <tbody>
-          <BlotterRow trade={trade} isNew={false} />
+          <BlotterRow
+            trade={trade}
+            isNew={false}
+            columns={COLUMNS}
+            format={formatFxCell}
+          />
         </tbody>
       </table>
     );

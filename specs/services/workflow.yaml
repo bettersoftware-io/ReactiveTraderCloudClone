@@ -22,6 +22,8 @@ operations:
           payload: QuoteBody (state = passed)
         quoteAccepted:
           payload: QuoteBody (state = accepted with price)
+        quoteRejected:
+          payload: QuoteBody (state = rejectedWithPrice or rejectedWithoutPrice)
         rfqClosed:
           payload: RfqBody (state = Closed/Expired/Cancelled)
     behavior:
@@ -105,5 +107,5 @@ operations:
     behavior:
       - Only valid for quotes in pendingWithPrice state
       - Triggers quoteAccepted update for the accepted quote
-      - All other pending quotes on the same RFQ are auto-rejected
+      - All other pending quotes on the same RFQ are auto-rejected, each via a quoteRejected update
       - The RFQ transitions to Closed state

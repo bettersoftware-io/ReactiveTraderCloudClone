@@ -15,12 +15,3 @@
   color: var(--text-primary);
   outline: none;
 }
-
-.input[data-error="true"] {
-  border-color: var(--accent-negative);
-}
-
-.errorMsg {
-  font-size: 10px;
-  color: var(--accent-negative);
-}

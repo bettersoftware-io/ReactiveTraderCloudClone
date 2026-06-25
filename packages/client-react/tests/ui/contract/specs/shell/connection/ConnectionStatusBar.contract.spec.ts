@@ -29,20 +29,20 @@ describe("ConnectionStatusBar", () => {
     ).toBe("Disconnected");
   });
 
-  it("labels an idle session", () => {
+  it("labels an idle session as disconnected", () => {
     expect(
       mount(ConnectionStatusBar, {
         hooks: { useConnectionStatus: ConnectionStatus.IDLE_DISCONNECTED },
       }).statusText(),
-    ).toBe("Idle");
+    ).toBe("Disconnected");
   });
 
-  it("labels an offline session", () => {
+  it("labels an offline session as disconnected", () => {
     expect(
       mount(ConnectionStatusBar, {
         hooks: { useConnectionStatus: ConnectionStatus.OFFLINE_DISCONNECTED },
       }).statusText(),
-    ).toBe("Offline");
+    ).toBe("Disconnected");
   });
 
   it("reflects a live connection drop", () => {

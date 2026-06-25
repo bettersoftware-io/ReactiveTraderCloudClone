@@ -147,5 +147,10 @@ export function buildFakeHooks(data: AppData): AppHooks {
         setViewMode: noop,
       };
     },
+    // Countdown: static snapshot for visual goldens — returns totalMs so the bar
+    // renders at 100% fill (deterministic; never wall-clock-dependent).
+    useRfqCountdown: (_creationTimestamp: number, totalMs: number) => {
+      return totalMs;
+    },
   };
 }

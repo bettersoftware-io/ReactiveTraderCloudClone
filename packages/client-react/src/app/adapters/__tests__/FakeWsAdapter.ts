@@ -33,6 +33,10 @@ export class FakeWsAdapter implements IWsAdapter {
 
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
+  private _idleClosed = false;
+
+  private _disposed = false;
+
   on(type: string, handler: MessageHandler): () => void {
     if (!this.listeners.has(type)) this.listeners.set(type, new Set());
     (this.listeners.get(type) as Set<MessageHandler>).add(handler);
@@ -57,7 +61,20 @@ export class FakeWsAdapter implements IWsAdapter {
     return this.connectionEvents$.asObservable();
   }
 
+  closeForIdle(): void {
+    if (this._disposed || this._idleClosed) return;
+    this._idleClosed = true;
+    this.connectionEvents$.next({ type: "gatewayDisconnected" });
+  }
+
+  reopen(): void {
+    if (this._disposed || !this._idleClosed) return;
+    this._idleClosed = false;
+    this.connectionEvents$.next({ type: "gatewayConnected" });
+  }
+
   dispose(): void {
+    this._disposed = true;
     this.connectionEvents$.complete();
     this.listeners.clear();
     this.pendingRpcs = [];

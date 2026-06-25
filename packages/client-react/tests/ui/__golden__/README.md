@@ -1,0 +1,16 @@
+# Golden fixtures (ground truth from the original)
+
+Each `<name>.original.json` pins the **original** ReactiveTraderCloud's actual
+output for a pure function, so the clone's reimplementation is verified against
+ground truth rather than a hand-typed number.
+
+Shape:
+```json
+{ "_source": "rtc-original@4a31f01 <path/file.ts:line>", "cases": [ { "input": ..., "expected": ... } ] }
+```
+
+- `_source` MUST cite the original commit (`4a31f01`) and the file:line the
+  expected values were derived from.
+- Load with `loadGolden(name)` from `#tests/ui/__golden__/loadGolden`.
+- Domain-side fixtures live under `packages/domain/src/.../__golden__/` and use
+  the domain `loadGolden` (or an inline `readFileSync` of the same shape).

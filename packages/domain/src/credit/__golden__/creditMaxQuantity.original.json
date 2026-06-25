@@ -1,0 +1,10 @@
+{
+  "_source": "rtc-original@4a31f01 packages/client/src/client/utils/formatNumber.ts:232-235",
+  "cases": [
+    { "input": 0, "expected": 0 },
+    { "input": 500, "expected": 500 },
+    { "input": 100000000, "expected": 100000000 },
+    { "input": 100000001, "expected": 100000000 },
+    { "input": 200000000, "expected": 100000000 }
+  ]
+}

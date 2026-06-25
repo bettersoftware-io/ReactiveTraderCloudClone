@@ -11,6 +11,8 @@ export interface ThemeTokens {
   "--bg-footer": string;
   "--bg-tile": string;
   "--bg-overlay": string;
+  /** Brand-primary background used for the new-row flash animation keyframe midpoint. */
+  "--bg-brand-primary": string;
 
   // Text
   "--text-primary": string;
@@ -46,6 +48,7 @@ export const darkTokens: ThemeTokens = {
   "--bg-footer": "#0f172a",
   "--bg-tile": "#1e293b",
   "--bg-overlay": "rgba(0, 0, 0, 0.75)",
+  "--bg-brand-primary": "#3b82f6",
 
   "--text-primary": "#f1f5f9",
   "--text-secondary": "#94a3b8",
@@ -73,6 +76,7 @@ export const lightTokens: ThemeTokens = {
   "--bg-footer": "#ffffff",
   "--bg-tile": "#ffffff",
   "--bg-overlay": "rgba(0, 0, 0, 0.5)",
+  "--bg-brand-primary": "#2563eb",
 
   "--text-primary": "#0f172a",
   "--text-secondary": "#475569",

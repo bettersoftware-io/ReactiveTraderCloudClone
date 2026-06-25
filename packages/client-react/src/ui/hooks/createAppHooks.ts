@@ -24,6 +24,7 @@ import type {
   NotionalIntents,
   NotionalView,
 } from "#/app/presenters/NotionalMachine";
+import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
 import type {
   RfqSubmissionIntents,
   RfqSubmissionState,
@@ -101,6 +102,10 @@ export interface AppHooks {
   useThemePreference: () => UseThemePreferenceResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
+  /** Per-RFQ countdown — remainingMs, ticking every 100ms, clamped at 0.
+   * Cosmetic-only; the authoritative expiry is server-driven (CreditRfqSimulator).
+   * Mirrors rtc-original CreditRfqTimer (creditRfqs.ts:102-112). */
+  useRfqCountdown: (creationTimestamp: number, totalMs: number) => number;
 }
 
 export function createAppHooks(
@@ -264,6 +269,11 @@ export function createAppHooks(
         viewMode: useViewModeValue(),
         setViewMode,
       };
+    },
+    useRfqCountdown: (creationTimestamp: number, totalMs: number) => {
+      return useMachine(() => {
+        return createRfqCountdownMachine(creationTimestamp, totalMs);
+      }).state;
     },
   };
 }

@@ -25,7 +25,7 @@ test.describe("Connection status", () => {
     await connection.setBrowserOffline(ctx, true);
     await connection.expectConnectionOverlayVisibleWithin(ctx, 3);
     await connection.expectConnectionOverlayTextMatches(ctx, "/offline/i");
-    await connection.expectConnectionStatusFooterShows(ctx, "Offline");
+    await connection.expectConnectionStatusFooterShows(ctx, "Disconnected");
   });
 
   test("coming back online dismisses the overlay", async ({ ctx }) => {

@@ -12,3 +12,12 @@
 .value[data-sign="neg"] {
   color: var(--accent-negative);
 }
+
+.currency {
+  margin-right: 6px;
+  color: var(--text-muted);
+}
+
+.amount {
+  /* sign + value; colour inherited from .value[data-sign] */
+}
