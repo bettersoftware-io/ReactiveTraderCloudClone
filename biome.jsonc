@@ -19,7 +19,7 @@
       // Design-artifact prototype (hand-authored HUD redesign mock). Not
       // production code — "shares no code with the real app" per its README —
       // so it is out of scope for the formatter/linter, like dist/reports.
-      "!new-prototype"
+      "!docs/design"
     ]
   },
   "formatter": {
