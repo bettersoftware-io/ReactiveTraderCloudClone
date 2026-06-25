@@ -335,10 +335,12 @@ describe("WsAdapter.closeForIdle() / reopen()", () => {
 });
 
 describe("WsAdapter misc guards", () => {
-  it("dispose() while reconnect timer is pending skips the timer callback (line 130)", () => {
-    // Exercises the `if (this.disposed) return` early-exit inside the
-    // setTimeout callback of scheduleReconnect(). dispose() must be terminal
-    // even when called between onclose() and the timer firing.
+  it("dispose() while a reconnect timer is pending cancels it (no reconnect after dispose)", () => {
+    // dispose() clears the pending reconnect timer (clearTimeout), so the
+    // scheduleReconnect callback never fires: advancing past the delay yields no
+    // new socket and no reconnectAttempt. dispose() is terminal even when called
+    // between onclose() and the timer firing. (The in-callback `if (this.disposed)
+    // return` guard is defence-in-depth, not reached here since the timer is cancelled.)
     const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
     const events: ConnectionEvent[] = [];
     adapter.connectionEvents().subscribe((e) => events.push(e));

@@ -94,23 +94,21 @@ describe("ConnectionOverlay — Reconnect button (item 1, button-only idle recov
     expect(overlay.commands.reconnect).toBe(1);
   });
 
-  it("recovery is button-only: a userActivity hook push after idle close does not dismiss the overlay", () => {
-    // This test verifies the UI contract: the overlay only hides when the
-    // connection status changes (driven by the app layer), not when userActivity
-    // is emitted. The app layer no longer routes userActivity→reopen (Task 1).
-    // Here we confirm the overlay component itself has no direct userActivity
-    // wiring — it only responds to useConnectionStatus changes.
+  it("overlay tracks only useConnectionStatus: stays for re-emitted IDLE, clears on CONNECTING", () => {
+    // The overlay is stateless w.r.t. user activity — it has no userActivity
+    // wiring and reacts solely to useConnectionStatus. So the only way the idle
+    // overlay can dismiss is a real status change driven by the app layer.
+    // (Button-only recovery itself — userActivity never reconnecting — is
+    // enforced and tested at the app/domain layer: connectionStatus.test.ts and
+    // idleTeardown.test.ts. This UI test only pins the overlay's status-tracking.)
     const overlay = mount(ConnectionOverlay, {
       hooks: { useConnectionStatus: ConnectionStatus.IDLE_DISCONNECTED },
     });
     expect(overlay.isVisible()).toBe(true);
-    // Simulate a userActivity event reaching the hook layer (no-op in new wiring).
-    // The overlay must remain visible because useConnectionStatus has not changed.
-    // (There is no "userActivity" hook to push; this comment documents intent:
-    // the overlay is stateless w.r.t. userActivity — it only reads useConnectionStatus.)
+    // Re-emitting the same idle status must not dismiss the overlay.
     overlay.emit({ useConnectionStatus: ConnectionStatus.IDLE_DISCONNECTED });
     expect(overlay.isVisible()).toBe(true);
-    // Recovery: the app layer pushes CONNECTING after reconnect$.
+    // Recovery: the app layer pushes CONNECTING after a reconnect intent.
     overlay.emit({ useConnectionStatus: ConnectionStatus.CONNECTING });
     expect(overlay.isVisible()).toBe(false);
   });

@@ -25,11 +25,10 @@ export class ConnectionOverlayPage extends MountedComponent<
 
   /** The Reconnect button element, or null when absent. */
   reconnectButton(): HTMLButtonElement | null {
-    return (
-      (within(this.root).queryByTestId(
-        "reconnect-button",
-      ) as HTMLButtonElement | null) ?? null
-    );
+    // queryByTestId returns null when absent, so the cast alone suffices.
+    return within(this.root).queryByTestId(
+      "reconnect-button",
+    ) as HTMLButtonElement | null;
   }
 
   /** Click the Reconnect button (throws if absent). */
