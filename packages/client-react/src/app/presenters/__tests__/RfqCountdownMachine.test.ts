@@ -1,5 +1,5 @@
 import { TestScheduler } from "rxjs/testing";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createRfqCountdownMachine } from "../RfqCountdownMachine";
 
@@ -35,6 +35,20 @@ function run(totalMs: number): Array<FrameEmission> {
 }
 
 describe("createRfqCountdownMachine", () => {
+  // Freeze the wall clock so the machine's internal Date.now() (RfqCountdownMachine
+  // line 19) returns the same instant as the creationTimestamp each test passes,
+  // pinning elapsed to a deterministic 0. TestScheduler virtualizes timers but
+  // NOT Date.now(), so without this the initial remaining occasionally reads
+  // totalMs-1 on a loaded runner and every assertion here (all assume elapsed 0)
+  // flakes — exactly the "expected 499 to be 500" CI failure.
+  beforeEach((): void => {
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+  });
+
+  afterEach((): void => {
+    vi.restoreAllMocks();
+  });
+
   it("initial state equals totalMs (creationTimestamp = now → elapsed ≈ 0)", () => {
     const ts = scheduler();
     ts.run(() => {
