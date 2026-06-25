@@ -121,6 +121,37 @@ describe("TileRfq", () => {
     expect(executed[0].price.symbol).toBe("EURUSD");
   });
 
+  it("executes the Sell side of a received quote with Direction.Sell", async () => {
+    let accepted = 0;
+    const executed: { dir: Direction; price: Price; notional: number }[] = [];
+    const rfq = mount(TileRfq, {
+      props: {
+        pair: eurusd,
+        rfqState: rfqState(
+          { status: "received", quote, remainingMs: 6_000 },
+          {
+            accept: () => {
+              accepted += 1;
+            },
+          },
+        ),
+        onRequestQuote: () => {},
+        onExecute: (dir: Direction, price: Price, notional: number) => {
+          return executed.push({ dir, price, notional });
+        },
+        notional: 1_500_000,
+      },
+    });
+    await rfq.click(/sell 1\.09210/i);
+    expect(accepted).toBe(1);
+    expect(executed).toHaveLength(1);
+    expect(executed[0].dir).toBe(Direction.Sell);
+    expect(executed[0].notional).toBe(1_500_000);
+    expect(executed[0].price.bid).toBe(quote.bid);
+    expect(executed[0].price.ask).toBe(quote.ask);
+    expect(executed[0].price.symbol).toBe("EURUSD");
+  });
+
   it("rejects the quote when Reject is clicked", async () => {
     let rejected = 0;
     const rfq = mount(TileRfq, {
