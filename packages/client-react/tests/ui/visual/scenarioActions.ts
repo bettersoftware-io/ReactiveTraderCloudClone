@@ -41,6 +41,7 @@ export type ScenarioAction = {
 // component-level shot with no interaction.
 export const scenarioActions: Record<string, ScenarioAction> = {
   "connection-overlay/offline": { fullPage: true },
+  "connection-overlay/idle": { fullPage: true },
   "app/fx": { fullPage: true },
   "app/credit": {
     fullPage: true,
