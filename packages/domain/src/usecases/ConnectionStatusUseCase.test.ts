@@ -29,10 +29,12 @@ describe("ConnectionStatusUseCase", () => {
   });
 
   it("folds events through nextConnectionStatus", async () => {
+    // Recovery from IDLE_DISCONNECTED is button-only: a reconnect intent (not
+    // userActivity) drives the fold back to CONNECTING. See connectionStatus.ts.
     const port = portFrom([
       { type: "gatewayConnected" },
       { type: "idleTimeout" },
-      { type: "userActivity" },
+      { type: "reconnect" },
     ]);
     const useCase = new ConnectionStatusUseCase(port);
     const emissions = await firstValueFrom(useCase.execute().pipe(toArray()));
