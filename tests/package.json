@@ -28,6 +28,7 @@
     "test:presenter:cucumber-fake-timers": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config presenter/cucumber-fake-timers/cucumber.js",
     "test:presenter:vitest-fake-timers": "vitest run --config presenter/vitest-fake-timers/vitest.config.ts",
     "test:presenter:vitest-quickpickle-fake-timers": "vitest run --config presenter/vitest-quickpickle-fake-timers/vitest.config.ts",
+    "coverage:report": "tsx scripts/coverage-report.ts",
     "test:report": "vitest run scripts/lib",
     "typecheck": "tsc --noEmit"
   },
