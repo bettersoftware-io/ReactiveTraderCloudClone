@@ -115,10 +115,13 @@ export function render(input: RenderInput): string {
     .sort((a, b) => a.stat.pct - b.stat.pct);
 
   const body: string[] = ["### Untested lines", ""];
-  // Exact length of the assembled output so far:
+  // Exact UTF-8 byte length of the assembled output so far:
   //   [...head, body.join("\n")].join("\n")
   // includes the single "\n" separator between the head string and body string.
-  let size = [...head, body.join("\n")].join("\n").length;
+  // GitHub's job-summary limit is 1 MiB measured in bytes, not UTF-16 code units;
+  // non-ASCII glyphs in the report (✅ ❌ ⚠️ · — ⋮) and arbitrary source
+  // snippets make byte length ≥ code-unit length, so Buffer.byteLength is required.
+  let size = Buffer.byteLength([...head, body.join("\n")].join("\n"), "utf8");
   let omitted = 0;
   let capped = false;
 
@@ -127,21 +130,27 @@ export function render(input: RenderInput): string {
     if (!capped) {
       const block = fileBlock(stat, rel, pkg, input.readSource(stat.file));
       // +1 for the "\n" join separator this element introduces in body.join("\n").
-      if (size + 1 + block.length > SUMMARY_CAP - NOTE_RESERVE) {
+      if (
+        size + 1 + Buffer.byteLength(block, "utf8") >
+        SUMMARY_CAP - NOTE_RESERVE
+      ) {
         capped = true;
       } else {
         body.push(block);
-        size += 1 + block.length;
+        size += 1 + Buffer.byteLength(block, "utf8");
         continue;
       }
     }
     // capped: line-numbers only (much smaller); count anything that still won't fit.
     const lean = linesOnlyBlock(stat, rel, pkg);
-    if (size + 1 + lean.length > SUMMARY_CAP - NOTE_RESERVE) {
+    if (
+      size + 1 + Buffer.byteLength(lean, "utf8") >
+      SUMMARY_CAP - NOTE_RESERVE
+    ) {
       omitted++;
     } else {
       body.push(lean);
-      size += 1 + lean.length;
+      size += 1 + Buffer.byteLength(lean, "utf8");
     }
   }
 

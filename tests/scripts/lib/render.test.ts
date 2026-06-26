@@ -92,7 +92,43 @@ describe("render", () => {
       repoRoot,
       readSource: () => [shortLine],
     });
-    expect(md.length).toBeLessThanOrEqual(SUMMARY_CAP);
+    expect(Buffer.byteLength(md, "utf8")).toBeLessThanOrEqual(SUMMARY_CAP);
+    expect(md).toMatch(/snippets omitted/i);
+  });
+
+  it("byte cap holds with multibyte (non-ASCII) source content", () => {
+    // Source lines are dense with multibyte glyphs: each char is 3 bytes in UTF-8
+    // but only 1 UTF-16 code unit (except 😀 which is 4 bytes / 2 code units).
+    // Byte:code-unit ratio ≈ 2.5×. With the old .length-based size tracking the
+    // renderer stops accepting full blocks when its code-unit counter reaches
+    // ~SUMMARY_CAP, but the actual UTF-8 bytes accumulated are ≈2.5× that value —
+    // far exceeding the 900 000-byte cap. Buffer.byteLength-based tracking fixes this.
+    const multibyteSourceLine = "日本語テキスト 😀 — ⋮ ".repeat(6); // ~84 CU, ~210 bytes
+    // 300 files × 100 uncovered lines × ~210 bytes ≈ 6 MB total source content;
+    // old .length tracking lets ~97 full blocks through (≈2.1 MB bytes) before
+    // its code-unit counter hits the cap — far exceeding SUMMARY_CAP.
+    const N = 300;
+    const many: PackageStat = {
+      name: "pkg",
+      total: N * 100,
+      covered: 0,
+      pct: 0,
+      files: Array.from({ length: N }, (_, i) => ({
+        file: `/r/src/f${i}.ts`,
+        total: 100,
+        covered: 0,
+        pct: 0,
+        uncovered: Array.from({ length: 100 }, (__, n) => n + 1),
+      })),
+    };
+    const md = render({
+      title: "t",
+      testResults: [],
+      packages: [many],
+      repoRoot,
+      readSource: () => Array.from({ length: 100 }, () => multibyteSourceLine),
+    });
+    expect(Buffer.byteLength(md, "utf8")).toBeLessThanOrEqual(SUMMARY_CAP);
     expect(md).toMatch(/snippets omitted/i);
   });
 
@@ -123,7 +159,7 @@ describe("render", () => {
       repoRoot,
       readSource: big,
     });
-    expect(md.length).toBeLessThanOrEqual(SUMMARY_CAP);
+    expect(Buffer.byteLength(md, "utf8")).toBeLessThanOrEqual(SUMMARY_CAP);
     expect(md).toMatch(/snippets omitted/i);
   });
 });

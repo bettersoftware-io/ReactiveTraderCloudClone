@@ -140,12 +140,15 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
 
   const { createWriteStream } = await import("node:fs");
   const summaryPath = process.env.GITHUB_STEP_SUMMARY;
-  const out =
+  const fileOut =
     summaryPath !== undefined
       ? createWriteStream(summaryPath, { flags: "a" })
       : outFlag !== -1
         ? createWriteStream(process.argv[outFlag + 1], { flags: "w" })
-        : process.stdout;
+        : null;
+  const out = fileOut ?? process.stdout;
 
   await main({ repoRoot, title, out });
+  // Close the file stream so it flushes deterministically; never close stdout.
+  if (fileOut !== null) fileOut.end();
 }
