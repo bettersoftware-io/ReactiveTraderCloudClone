@@ -19,7 +19,8 @@ function SellSideRfqRow({
   adaptiveBankId,
   instrumentMap,
 }: SellSideRfqRowProps): ReactElement | null {
-  const quotes = useHooks().useQuotesForRfq(rfq.id);
+  const { useQuotesForRfq } = useHooks();
+  const quotes = useQuotesForRfq(rfq.id);
   const abQuote = quotes.find((q) => {
     return q.dealerId === adaptiveBankId;
   });

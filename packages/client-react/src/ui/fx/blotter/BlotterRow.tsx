@@ -25,7 +25,8 @@ export function BlotterRow<TRow extends { status: string }>({
   // The transient new-row highlight (true for HIGHLIGHT_MS then false) now lives
   // in the app-layer createRowHighlightMachine behind the seam, so this row holds
   // no timer. Hover stays here — it's pure interaction view state, no timer.
-  const highlight = useHooks().useRowHighlight(isNew);
+  const { useRowHighlight } = useHooks();
+  const highlight = useRowHighlight(isNew);
   const [hovered, setHovered] = useState(false);
   const isRejected = trade.status === TradeStatus.Rejected;
 

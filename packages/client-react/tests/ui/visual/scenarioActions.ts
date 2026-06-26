@@ -217,4 +217,19 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   // RfqCountdown zero-expiry: no interaction needed; the fixture seeds
   // expirySecs=0 so the bar renders at 0% from the first render.
   // (no entry needed — absent key == component-level shot with no interaction)
+
+  // SetFilter applied: open the Status set-filter popover, uncheck "Rejected",
+  // Apply -> the Rejected row is filtered out (toggleValue / onChange / handleApply).
+  "fx-blotter/filter-set-applied": {
+    steps: [
+      { click: "blotter-filter-toggle-status" },
+      { click: "set-filter-option-Rejected" },
+      { click: "set-filter-apply" },
+    ],
+    waitForText: "Filtered: Status",
+  },
+  // CurrencyFilter: click the GBP category button -> the grid narrows to GBP
+  // pairs and that button becomes active. Click is synchronous (local state),
+  // so no waitForText (the "GBP" label is non-unique against the pair rows).
+  "live-rates/currency-filtered": { click: "filter-GBP" },
 };

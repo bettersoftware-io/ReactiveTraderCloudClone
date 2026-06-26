@@ -122,7 +122,17 @@ language js
 - [x] **destructure-use-hooks** — forbid binding the whole `useHooks()` object;
       force `const { useX } = useHooks()`. *Validated: flags
       `const hooks = useHooks()` (any name), leaves destructured form clean.*
-      Root-cause rule — makes the `hooks.useX()` member-call form impossible.
+      This stops the whole-object *bind* but, on its own, does **not** stop the
+      inline chained call `useHooks().useX()` — that survives with a
+      `MemberExpression` callee the selector can't see. The companion rule below
+      closes that gap.
+- [x] **no-chained-use-hooks** *(added 2026-06-26)* — forbid chaining off
+      `useHooks()` (`useHooks().useX()`). Selector
+      `MemberExpression[object.callee.name='useHooks']` in `eslint.config.mjs`.
+      *Validated: flagged all 10 surviving chained callsites red, then green
+      after converting each to `const { useX } = useHooks(); useX(args)`.*
+      Together the two rules force the destructure-first idiom with no escape
+      hatch.
 
 ```grit
 // biome-plugins/destructure-use-hooks.grit

@@ -32,7 +32,8 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   // Native app applies the theme its own way in its own ThemeProvider). Wrapping
   // this behind a port would be over-abstraction: ports are I/O boundaries, not
   // "how the View paints".
-  const { theme, toggle } = useHooks().useThemePreference();
+  const { useThemePreference } = useHooks();
+  const { theme, toggle } = useThemePreference();
 
   useLayoutEffect(() => {
     applyTokens(theme === "dark" ? darkTokens : lightTokens);
