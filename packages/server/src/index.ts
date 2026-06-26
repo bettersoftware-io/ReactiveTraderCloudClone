@@ -39,8 +39,9 @@ const wss = new WebSocketServer({
   // Reject unauthorized upgrades with 401 before a socket exists, so
   // handleConnection only ever runs for authorized clients. /health stays
   // token-free (it is an HTTP route, not a WS upgrade) for Fly health checks.
-  verifyClient: (info: Parameters<VerifyClientCallbackSync>[0]): boolean =>
-    isAuthorizedUpgrade(info.req.url, WS_ACCESS_TOKEN),
+  verifyClient: (info: Parameters<VerifyClientCallbackSync>[0]): boolean => {
+    return isAuthorizedUpgrade(info.req.url, WS_ACCESS_TOKEN);
+  },
 });
 
 wss.on("connection", (ws) => {
