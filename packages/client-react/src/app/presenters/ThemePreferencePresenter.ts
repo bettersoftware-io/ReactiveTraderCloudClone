@@ -1,27 +1,26 @@
 import { type Observable, shareReplay } from "rxjs";
 
-import type { PreferencesPort, Theme } from "@rtc/domain";
+import type { PreferencesPort, ThemeMode } from "@rtc/domain";
 
 /**
- * App-layer presenter for the theme preference. Exposes the replay-current
- * theme stream and the write/toggle operations, keeping persistence out of the
- * UI. shareReplay multicasts the current value to every subscriber.
+ * App-layer presenter for the theme-mode preference. Exposes the replay-current
+ * mode stream and the write/toggle operations, keeping persistence out of the UI.
  */
 export class ThemePreferencePresenter {
-  readonly theme$: Observable<Theme>;
+  readonly mode$: Observable<ThemeMode>;
 
   constructor(private readonly preferences: PreferencesPort) {
-    this.theme$ = preferences
-      .theme$()
+    this.mode$ = preferences
+      .themeMode$()
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));
   }
 
-  setTheme(theme: Theme): void {
-    this.preferences.setTheme(theme);
+  setMode(mode: ThemeMode): void {
+    this.preferences.setThemeMode(mode);
   }
 
   /** Flip light↔dark relative to the supplied current value. */
-  toggle(current: Theme): void {
-    this.setTheme(current === "dark" ? "light" : "dark");
+  toggle(current: ThemeMode): void {
+    this.setMode(current === "dark" ? "light" : "dark");
   }
 }
