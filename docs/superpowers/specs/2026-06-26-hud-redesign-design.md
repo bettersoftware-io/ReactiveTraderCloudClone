@@ -179,7 +179,7 @@ ui/admin/            MetricGauges · ThroughputChart · LatencyHistogram · Erro
 
 ## Delivery & git workflow
 
-- All work happens in the isolated worktree `.claude/worktrees/hud-redesign` on branch `worktree-hud-redesign` (branched from `main` @ `521503e`).
+- All work happens in the isolated worktree `.claude/worktrees/hud-redesign` on branch `worktree-hud-redesign` (rebased onto current `main` @ `ed3dd51`; originally branched at `521503e`).
 - **This spec and the implementation plans for all 7 phases are authored on the branch first.** Per the user's instruction (confirmed at the spec-review gate), the branch merges to `main` with **`git merge --no-ff`** only **after both the spec and the full 7-phase implementation plan are finished** — not before. Implementation itself happens after the merge, phase by phase.
 - The full plan is authored as one set on this branch (`docs/superpowers/plans/`), covering Phases 0–6, before the single consolidated `--no-ff` merge.
 - Commit copy ends with the required `Co-Authored-By:` / `Claude-Session:` trailers; `main` is treated as outward-facing (auto-pushes to origin).
