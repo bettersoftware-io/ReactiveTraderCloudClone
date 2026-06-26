@@ -11,14 +11,10 @@
 
 export type ThemeMode = "dark" | "light";
 export type ThemeSkin = "classic" | "holo" | "terminal" | "neon";
-/** @deprecated use ThemeMode; removed after the Phase 0 rename settles. */
-export type Theme = ThemeMode;
 export type ViewMode = "chart" | "price";
 
 export const DEFAULT_THEME_MODE: ThemeMode = "dark";
 export const DEFAULT_THEME_SKIN: ThemeSkin = "holo"; // showcase default; "classic" preserves the pre-redesign look
-/** @deprecated use DEFAULT_THEME_MODE. */
-export const DEFAULT_THEME: ThemeMode = DEFAULT_THEME_MODE;
 export const DEFAULT_VIEW_MODE: ViewMode = "chart";
 
 export const THEME_SKINS: readonly ThemeSkin[] = [

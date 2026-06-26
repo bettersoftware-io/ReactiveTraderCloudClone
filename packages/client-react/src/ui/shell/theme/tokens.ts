@@ -97,7 +97,7 @@ export interface ThemeTokens {
  * Exported for back-compat references during the transition; doubles as the
  * `classic.dark` cell of the store below.
  */
-export const darkTokens: ThemeTokens = {
+const darkTokens: ThemeTokens = {
   "--bg-primary": "#111827",
   "--bg-secondary": "#1f2937",
   "--bg-header": "#0f172a",
@@ -147,7 +147,7 @@ export const darkTokens: ThemeTokens = {
  * Exported for back-compat references during the transition; doubles as the
  * `classic.light` cell of the store below.
  */
-export const lightTokens: ThemeTokens = {
+const lightTokens: ThemeTokens = {
   "--bg-primary": "#f8fafc",
   "--bg-secondary": "#f1f5f9",
   "--bg-header": "#ffffff",

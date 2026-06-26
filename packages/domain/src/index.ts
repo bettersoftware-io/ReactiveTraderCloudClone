@@ -100,13 +100,11 @@ export type {
 } from "./ports/workflowPort.js";
 // Preferences
 export type {
-  Theme,
   ThemeMode,
   ThemeSkin,
   ViewMode,
 } from "./preferences/preferences.js";
 export {
-  DEFAULT_THEME,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
