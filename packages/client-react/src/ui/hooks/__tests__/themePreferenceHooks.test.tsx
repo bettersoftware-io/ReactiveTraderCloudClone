@@ -20,6 +20,7 @@ function makeHooks(): AppHooks {
     createMachineFactories(presenters),
     commands,
   );
+
   function createSimPorts(): AppPorts {
     // Reuse the default sim ports but swap preferences for an in-memory sim
     // so the test is isolated from real localStorage.
@@ -31,7 +32,9 @@ function makeHooks(): AppHooks {
 describe("theme/skin/animated-bg hooks", () => {
   it("useThemeSkinPreference reads default holo and sets terminal", () => {
     const hooks = makeHooks();
-    const { result } = renderHook(() => hooks.useThemeSkinPreference());
+    const { result } = renderHook(() => {
+      return hooks.useThemeSkinPreference();
+    });
     expect(result.current.skin).toBe("holo");
     act(() => {
       result.current.setSkin("terminal");
@@ -41,7 +44,9 @@ describe("theme/skin/animated-bg hooks", () => {
 
   it("useAnimatedBackground defaults off and toggles on", () => {
     const hooks = makeHooks();
-    const { result } = renderHook(() => hooks.useAnimatedBackground());
+    const { result } = renderHook(() => {
+      return hooks.useAnimatedBackground();
+    });
     expect(result.current.enabled).toBe(false);
     act(() => {
       result.current.toggle();

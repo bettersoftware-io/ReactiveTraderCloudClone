@@ -2,6 +2,10 @@ import { render, renderHook } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+interface WrapperProps {
+  children: ReactNode;
+}
+
 import type { AppHooks } from "#/ui/hooks/createAppHooks";
 import { HooksContext } from "#/ui/hooks/HooksContext";
 
@@ -26,15 +30,19 @@ describe("useTheme", () => {
 describe("ThemeProvider", () => {
   function mountWith(skin: "classic" | "holo" | "terminal" | "neon"): void {
     const hooks = {
-      useThemePreference: () => ({
-        mode: "dark",
-        setMode: vi.fn(),
-        toggle: vi.fn(),
-      }),
-      useThemeSkinPreference: () => ({ skin, setSkin: vi.fn() }),
+      useThemePreference: () => {
+        return {
+          mode: "dark",
+          setMode: vi.fn(),
+          toggle: vi.fn(),
+        };
+      },
+      useThemeSkinPreference: () => {
+        return { skin, setSkin: vi.fn() };
+      },
     } as unknown as AppHooks;
 
-    function Wrapper({ children }: { children: ReactNode }): ReactElement {
+    function Wrapper({ children }: WrapperProps): ReactElement {
       return (
         <HooksContext.Provider value={hooks}>{children}</HooksContext.Provider>
       );

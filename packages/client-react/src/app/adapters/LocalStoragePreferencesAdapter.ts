@@ -51,6 +51,7 @@ function readBool(key: string, fallback: boolean): boolean {
   } catch {
     // ignore — best-effort read
   }
+
   return fallback;
 }
 

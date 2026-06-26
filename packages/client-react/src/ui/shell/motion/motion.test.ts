@@ -24,8 +24,11 @@ function makeFakeAnimation(): Animation {
     },
     set onfinish(cb: (() => void) | null) {
       _onfinish = cb;
+
       if (cb) {
-        queueMicrotask(() => cb());
+        queueMicrotask(() => {
+          return cb();
+        });
       }
     },
     playState: "running",
@@ -50,14 +53,18 @@ function makeFakeAnimation(): Animation {
     persist: () => {},
     addEventListener: () => {},
     removeEventListener: () => {},
-    dispatchEvent: () => false,
+    dispatchEvent: () => {
+      return false;
+    },
   } as unknown as Animation;
 
   return fakeAnimation;
 }
 
 beforeEach(() => {
-  Element.prototype.animate = (): Animation => makeFakeAnimation();
+  Element.prototype.animate = (): Animation => {
+    return makeFakeAnimation();
+  };
 });
 
 describe("motion wrapper", () => {

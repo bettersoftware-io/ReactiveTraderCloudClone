@@ -7,7 +7,10 @@ const repoRoot = "/r";
 const src: Record<string, string[]> = {
   "/r/src/a.ts": ["const x = 1", "if (rare) {", "  edge()", "}"],
 };
-const readSource = (p: string): string[] | null => src[p] ?? null;
+
+function readSource(p: string): string[] | null {
+  return src[p] ?? null;
+}
 
 function pkg(over: Partial<PackageStat> = {}): PackageStat {
   return {
@@ -75,13 +78,15 @@ describe("render", () => {
       total: N,
       covered: 0,
       pct: 0,
-      files: Array.from({ length: N }, (_, i) => ({
-        file: `/r/src/f${i}.ts`,
-        total: 1,
-        covered: 0,
-        pct: 0,
-        uncovered: [1],
-      })),
+      files: Array.from({ length: N }, (_, i) => {
+        return {
+          file: `/r/src/f${i}.ts`,
+          total: 1,
+          covered: 0,
+          pct: 0,
+          uncovered: [1],
+        };
+      }),
     };
     // 100-char source line → full block ≈ 200 chars; 5 000 × 200 ≈ 1 M > SUMMARY_CAP.
     const shortLine = "x".repeat(100);
@@ -90,7 +95,9 @@ describe("render", () => {
       testResults: [],
       packages: [many],
       repoRoot,
-      readSource: () => [shortLine],
+      readSource: () => {
+        return [shortLine];
+      },
     });
     expect(Buffer.byteLength(md, "utf8")).toBeLessThanOrEqual(SUMMARY_CAP);
     expect(md).toMatch(/snippets omitted/i);
@@ -113,20 +120,28 @@ describe("render", () => {
       total: N * 100,
       covered: 0,
       pct: 0,
-      files: Array.from({ length: N }, (_, i) => ({
-        file: `/r/src/f${i}.ts`,
-        total: 100,
-        covered: 0,
-        pct: 0,
-        uncovered: Array.from({ length: 100 }, (__, n) => n + 1),
-      })),
+      files: Array.from({ length: N }, (_, i) => {
+        return {
+          file: `/r/src/f${i}.ts`,
+          total: 100,
+          covered: 0,
+          pct: 0,
+          uncovered: Array.from({ length: 100 }, (__, n) => {
+            return n + 1;
+          }),
+        };
+      }),
     };
     const md = render({
       title: "t",
       testResults: [],
       packages: [many],
       repoRoot,
-      readSource: () => Array.from({ length: 100 }, () => multibyteSourceLine),
+      readSource: () => {
+        return Array.from({ length: 100 }, () => {
+          return multibyteSourceLine;
+        });
+      },
     });
     expect(Buffer.byteLength(md, "utf8")).toBeLessThanOrEqual(SUMMARY_CAP);
     expect(md).toMatch(/snippets omitted/i);
@@ -138,20 +153,26 @@ describe("render", () => {
       total: 100000,
       covered: 0,
       pct: 0,
-      files: Array.from({ length: 400 }, (_, i) => ({
-        file: `/r/src/f${i}.ts`,
-        total: 250,
-        covered: 0,
-        pct: 0,
-        uncovered: Array.from({ length: 250 }, (_, n) => n + 1),
-      })),
+      files: Array.from({ length: 400 }, (_, i) => {
+        return {
+          file: `/r/src/f${i}.ts`,
+          total: 250,
+          covered: 0,
+          pct: 0,
+          uncovered: Array.from({ length: 250 }, (_, n) => {
+            return n + 1;
+          }),
+        };
+      }),
     };
+
     // Source long enough that full snippets would blow the cap.
-    const big = (p: string): string[] =>
-      Array.from(
-        { length: 250 },
-        (_, n) => `line ${n} of ${p} xxxxxxxxxxxxxxxxxxxx`,
-      );
+    function big(p: string): string[] {
+      return Array.from({ length: 250 }, (_, n) => {
+        return `line ${n} of ${p} xxxxxxxxxxxxxxxxxxxx`;
+      });
+    }
+
     const md = render({
       title: "t",
       testResults: [],
