@@ -92,25 +92,12 @@ export interface ThemeTokens {
 // ---------------------------------------------------------------------------
 
 /**
- * Classic dark base — the 22 pre-redesign keys.
- * Exported for back-compat references during the transition.
+ * Classic dark — the full 35-key surface: today's 22 pre-redesign values plus
+ * the 13 new keys filled with neutral values (no aurora, no blur, no glow).
+ * Exported for back-compat references during the transition; doubles as the
+ * `classic.dark` cell of the store below.
  */
-export const darkTokens: Omit<
-  ThemeTokens,
-  | "--accent-2"
-  | "--border-strong"
-  | "--panel"
-  | "--panel-head"
-  | "--panel-blur"
-  | "--glow"
-  | "--grid"
-  | "--chip"
-  | "--aurora-a"
-  | "--aurora-b"
-  | "--aurora-opacity"
-  | "--font-display"
-  | "--font-mono"
-> = {
+export const darkTokens: ThemeTokens = {
   "--bg-primary": "#111827",
   "--bg-secondary": "#1f2937",
   "--bg-header": "#0f172a",
@@ -128,36 +115,39 @@ export const darkTokens: Omit<
   "--accent-negative": "#ef4444",
   "--accent-aware": "#f59e0b",
   "--accent-primary": "#3b82f6",
+  "--accent-2": "#60a5fa",
 
   "--border-primary": "#334155",
   "--border-subtle": "#1e293b",
+  "--border-strong": "#475569",
 
   "--status-connected": "#22c55e",
   "--status-connecting": "#f59e0b",
   "--status-disconnected": "#ef4444",
   "--status-error": "#d32f2f",
+
+  "--panel": "var(--bg-tile)",
+  "--panel-head": "var(--bg-secondary)",
+  "--panel-blur": "0",
+  "--glow": "none",
+  "--grid": "rgba(148,163,184,0.06)",
+  "--chip": "rgba(59,130,246,0.12)",
+
+  "--aurora-a": "transparent",
+  "--aurora-b": "transparent",
+  "--aurora-opacity": "0",
+
+  "--font-display": "system-ui, sans-serif",
+  "--font-mono": "ui-monospace, monospace",
 };
 
 /**
- * Classic light base — the 22 pre-redesign keys.
- * Exported for back-compat references during the transition.
+ * Classic light — the full 35-key surface: today's 22 pre-redesign values plus
+ * the 13 neutral new keys.
+ * Exported for back-compat references during the transition; doubles as the
+ * `classic.light` cell of the store below.
  */
-export const lightTokens: Omit<
-  ThemeTokens,
-  | "--accent-2"
-  | "--border-strong"
-  | "--panel"
-  | "--panel-head"
-  | "--panel-blur"
-  | "--glow"
-  | "--grid"
-  | "--chip"
-  | "--aurora-a"
-  | "--aurora-b"
-  | "--aurora-opacity"
-  | "--font-display"
-  | "--font-mono"
-> = {
+export const lightTokens: ThemeTokens = {
   "--bg-primary": "#f8fafc",
   "--bg-secondary": "#f1f5f9",
   "--bg-header": "#ffffff",
@@ -175,35 +165,31 @@ export const lightTokens: Omit<
   "--accent-negative": "#dc2626",
   "--accent-aware": "#d97706",
   "--accent-primary": "#2563eb",
+  "--accent-2": "#60a5fa",
 
   "--border-primary": "#e2e8f0",
   "--border-subtle": "#f1f5f9",
+  "--border-strong": "#475569",
 
   "--status-connected": "#16a34a",
   "--status-connecting": "#d97706",
   "--status-disconnected": "#dc2626",
   "--status-error": "#d32f2f",
-};
 
-/** Neutral values for the 13 new keys — used by classic (no aurora, solid panels). */
-const classicNeutral = {
-  "--accent-2": "#60a5fa",
-  "--border-strong": "#475569",
   "--panel": "var(--bg-tile)",
   "--panel-head": "var(--bg-secondary)",
   "--panel-blur": "0",
   "--glow": "none",
   "--grid": "rgba(148,163,184,0.06)",
   "--chip": "rgba(59,130,246,0.12)",
+
   "--aurora-a": "transparent",
   "--aurora-b": "transparent",
   "--aurora-opacity": "0",
+
   "--font-display": "system-ui, sans-serif",
   "--font-mono": "ui-monospace, monospace",
-} as const;
-
-const classicDark: ThemeTokens = { ...darkTokens, ...classicNeutral };
-const classicLight: ThemeTokens = { ...lightTokens, ...classicNeutral };
+};
 
 // ---------------------------------------------------------------------------
 // Holo — Iron Man / Minority Report cyan HUD (glass, aurora, blur=14px)
@@ -492,7 +478,7 @@ const neonLight: ThemeTokens = {
 // ---------------------------------------------------------------------------
 
 export const themeTokens: Record<ThemeSkin, Record<ThemeMode, ThemeTokens>> = {
-  classic: { dark: classicDark, light: classicLight },
+  classic: { dark: darkTokens, light: lightTokens },
   holo: { dark: holoDark, light: holoLight },
   terminal: { dark: terminalDark, light: terminalLight },
   neon: { dark: neonDark, light: neonLight },

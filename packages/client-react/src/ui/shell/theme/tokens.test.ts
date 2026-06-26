@@ -36,6 +36,13 @@ describe("themeTokens skin×mode store", () => {
           expect(themeTokens[skin][mode][key]).toBeTruthy();
   });
 
+  it("every cell supplies the exact same full key surface", () => {
+    const reference = Object.keys(themeTokens.holo.dark).sort();
+    for (const skin of THEME_SKINS)
+      for (const mode of THEME_MODES)
+        expect(Object.keys(themeTokens[skin][mode]).sort()).toEqual(reference);
+  });
+
   it("holo dark carries the prototype cyan accent + glass blur", () => {
     expect(themeTokens.holo.dark["--accent-primary"]).toBe("#00e5ff");
     expect(themeTokens.holo.dark["--panel-blur"]).toBe("14px");
