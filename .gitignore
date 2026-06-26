@@ -28,3 +28,6 @@ packages/client/tests/ui/visual/**/__screenshots__/*.spec.tsx/
 
 # actionlint binary (downloaded via scripts/install-actionlint.sh)
 .tooling/
+
+# Subagent-driven-development scratch (ledger, task briefs, review packages, reports)
+.superpowers/
