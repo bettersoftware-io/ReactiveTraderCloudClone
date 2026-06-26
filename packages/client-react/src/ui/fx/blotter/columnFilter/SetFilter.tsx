@@ -55,6 +55,7 @@ export function SetFilter<TRow>({
           <label key={val} className={styles.option}>
             <input
               type="checkbox"
+              data-testid={`set-filter-option-${val}`}
               checked={selected.has(val)}
               onChange={() => {
                 return toggleValue(val);
@@ -64,7 +65,12 @@ export function SetFilter<TRow>({
           </label>
         );
       })}
-      <button type="button" onClick={handleApply} className={styles.applyBtn}>
+      <button
+        type="button"
+        data-testid="set-filter-apply"
+        onClick={handleApply}
+        className={styles.applyBtn}
+      >
         Apply
       </button>
     </div>

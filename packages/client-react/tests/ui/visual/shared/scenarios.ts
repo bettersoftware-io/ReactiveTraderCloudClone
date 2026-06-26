@@ -406,4 +406,21 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "RfqTilesPanel",
     fixtureKey: "rfq-countdown-zero",
   },
+
+  // --- Interaction scenarios whose handler produces a visible delta (firing
+  // the handler is the only way to reach these lines in the visual tier; the
+  // snapshot is meaningful because the post-interaction view differs) ---
+  // SetFilter: open the Status set-filter popover, uncheck "Rejected", Apply →
+  // the blotter drops the Rejected row + "Filtered: Status" toolbar label.
+  // Covers SetFilter toggleValue / checkbox onChange / handleApply (filter arm).
+  "fx-blotter/filter-set-applied": {
+    componentKey: "FxBlotter",
+    fixtureKey: "fx-trades",
+  },
+  // CurrencyFilter: click the GBP category → the active highlight moves and the
+  // rate grid narrows to GBP pairs. Covers the button onClick → onChange handler.
+  "live-rates/currency-filtered": {
+    componentKey: "LiveRatesPanel",
+    fixtureKey: "live-rates-populated",
+  },
 };
