@@ -3,6 +3,7 @@
   "globalPassThroughEnv": [
     "PORT",
     "HOSTNAME",
+    "WS_ACCESS_TOKEN",
     "RTC_DEV_PORT",
     "RTC_VISUAL_MAX_PARALLEL",
     "PWCUCUMBER_HEADED",
