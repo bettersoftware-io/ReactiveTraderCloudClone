@@ -92,6 +92,14 @@ export default tseslint.config(
           message:
             "Destructure the hooks you need: const { useX } = useHooks().",
         },
+        {
+          // Ban chained access off useHooks() — `useHooks().useX()` reaches into
+          // the bundle inline. Destructure first, then call:
+          //   const { useX } = useHooks();  useX(args)
+          selector: "MemberExpression[object.callee.name='useHooks']",
+          message:
+            "Don't chain off useHooks(). Destructure first: const { useX } = useHooks(); then call useX().",
+        },
       ],
     },
   },

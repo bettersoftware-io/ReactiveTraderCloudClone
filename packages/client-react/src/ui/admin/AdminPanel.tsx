@@ -5,7 +5,8 @@ import { useHooks } from "../hooks/useHooks";
 import styles from "./AdminPanel.module.css";
 
 export function AdminPanel(): ReactElement {
-  const { value, loading, message, setValue } = useHooks().useThroughput();
+  const { useThroughput } = useHooks();
+  const { value, loading, message, setValue } = useThroughput();
 
   if (loading) {
     return <div className={styles.loading}>Loading throughput...</div>;

@@ -40,7 +40,8 @@ function RfqTileRow({
   onAccept,
   onDismiss,
 }: RfqTileRowProps): ReactElement {
-  const quotes = useHooks().useQuotesForRfq(rfq.id);
+  const { useQuotesForRfq } = useHooks();
+  const quotes = useQuotesForRfq(rfq.id);
   return (
     <RfqCard
       rfq={rfq}

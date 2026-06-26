@@ -20,10 +20,11 @@ import { QuickFilter } from "./QuickFilter";
 import styles from "./FxBlotter.module.css";
 
 export function FxBlotter(): ReactElement {
-  const trades = useHooks().useTrades();
+  const { useTrades, useNewTradeIds } = useHooks();
+  const trades = useTrades();
   // "Newly arrived" detection is a cross-emission stream-diff; it lives in the
   // presenter (BlotterPresenter.newTradeIds$), not here — see docs/adr/ADR-003.
-  const newTradeIds = useHooks().useNewTradeIds();
+  const newTradeIds = useNewTradeIds();
   const [sort, setSort] = useState<SortState<Trade>>({
     column: null,
     direction: null,
