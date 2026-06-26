@@ -1,0 +1,39 @@
+{
+  // Lint-only umbrella program for the type-aware ESLint tier
+  // (eslint.config.typed.mjs). It exists so the type-aware rules
+  // (no-floating-promises, no-misused-promises, switch-exhaustiveness-check)
+  // run on EVERY ts/tsx file with no gaps — src, tests, and config files
+  // alike. The per-environment build tsconfigs (tsconfig.json,
+  // tsconfig.ui-contract.json, tsconfig.ui-visual.json, tsconfig.node.json)
+  // each cover only a slice, so no single one of them can back a no-gaps
+  // type-aware pass; this one deliberately unions them.
+  //
+  // Resolution: moduleResolution "bundler" (from base) honours each package's
+  // package.json "imports" field, so the "#/*" and "#tests/*" subpath aliases
+  // resolve per-package without any "paths" here (a root-level "paths" could
+  // not disambiguate "#/*" across packages anyway).
+  //
+  // compilerOptions are a deliberate SUPERSET (DOM + node + cypress libs/types,
+  // react-jsx). A lint program only queries types, never emits, so a widened
+  // ambient surface is harmless — it just means every file's globals resolve.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node", "cypress"]
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "packages/*/tests/**/*.ts",
+    "packages/*/tests/**/*.tsx",
+    "packages/*/*.config.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": ["**/node_modules/**", "**/dist/**"]
+}
