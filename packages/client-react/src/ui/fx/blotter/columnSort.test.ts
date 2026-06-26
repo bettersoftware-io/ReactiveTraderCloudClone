@@ -86,6 +86,14 @@ describe("nextSortDirection", () => {
       column: "tradeName",
       direction: "asc",
     });
+    // A desc-first column re-clicked from null re-initialises DESCending — the
+    // mirror of the asc-first cases above. Covers the desc arm of the null
+    // re-init branch, which the asc-first columns never reach.
+    const nulledDesc: SortState = { column: "tradeId", direction: null };
+    expect(nextSortDirection("tradeId", nulledDesc)).toEqual({
+      column: "tradeId",
+      direction: "desc",
+    });
   });
 
   it("switches to a fresh column when a different one was active", () => {
