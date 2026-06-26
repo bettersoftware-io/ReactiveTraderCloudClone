@@ -1,0 +1,96 @@
+# .github/workflows/coverage-report.yml
+name: Coverage Report
+
+# On-demand only. Run from the GitHub mobile app: Actions -> Coverage Report ->
+# Run workflow -> pick any branch. Renders test pass/fail + per-package coverage
+# with collapsible per-file untested-source snippets into the job summary
+# (readable on mobile, behind repo auth — the private repo rules out Pages).
+on:
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    name: coverage + untested lines
+    runs-on: ubuntu-latest
+    # Same Playwright image as the `visual` job: the client visual coverage tier
+    # renders in a real browser; the Node-based tiers run fine here too. Tag must
+    # track @playwright/test in packages/client-react.
+    container: mcr.microsoft.com/playwright:v1.61.0-noble
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      CYPRESS_INSTALL_BINARY: "0" # e2e is out of scope here
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 26
+
+      - name: Enable Corepack (pins pnpm from packageManager)
+        run: npm install -g corepack@0.35.0 && corepack enable
+
+      - name: Resolve pnpm store path
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
+
+      - name: Cache the pnpm content-addressable store
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # tsc-built libs (domain/shared/server) + the visual harness import workspace
+      # libs via their dist/; a fresh checkout has none. Build once up front so the
+      # direct `pnpm --filter ... test:*coverage` calls below resolve them.
+      - name: Build workspace
+        run: pnpm build
+
+      # Each tier emits istanbul-format coverage-final.json (--coverage.reporter=json)
+      # AND a vitest json test-results file (--reporter). continue-on-error so a tier
+      # below its threshold gate (contract's 95%) does NOT abort the report — surfacing
+      # gaps is the whole point.
+      - name: Coverage — domain
+        continue-on-error: true
+        run: >
+          pnpm --filter @rtc/domain test:coverage --
+          --coverage.reporter=json
+          --reporter=default --reporter=json
+          --outputFile.json=reports/unit/test-results.json
+
+      - name: Coverage — server
+        continue-on-error: true
+        run: >
+          pnpm --filter @rtc/server test:coverage --
+          --coverage.reporter=json
+          --reporter=default --reporter=json
+          --outputFile.json=reports/unit/test-results.json
+
+      - name: Coverage — client app
+        continue-on-error: true
+        run: >
+          pnpm --filter @rtc/client-react test:app:coverage --
+          --coverage.reporter=json
+          --reporter=default --reporter=json
+          --outputFile.json=reports/app/test-results.json
+
+      - name: Coverage — client UI (contract tier)
+        continue-on-error: true
+        run: >
+          pnpm --filter @rtc/client-react test:ui:contract:coverage --
+          --coverage.reporter=json
+          --reporter=default --reporter=json
+          --outputFile.json=reports/ui/contract/test-results.json
+
+      - name: Coverage — client UI (visual tier)
+        continue-on-error: true
+        run: >
+          pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:coverage --
+          --coverage.reporter=json
+          --reporter=default --reporter=json
+          --outputFile.json=reports/ui/visual/test-results.json
+
+      - name: Render report to job summary
+        run: pnpm --filter @rtc/tests coverage:report
