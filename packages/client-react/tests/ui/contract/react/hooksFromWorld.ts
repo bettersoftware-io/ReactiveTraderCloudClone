@@ -312,5 +312,10 @@ export function reactHooks(world: World): AppHooks {
         return createRfqCountdownMachine(creationTimestamp, totalMs);
       }).state;
     },
+    // Animation intents: no contract spec exercises animation in Phase 0; the
+    // fake reports no intent (null) for every target.
+    useAnimationIntents: (_target: string) => {
+      return null;
+    },
   };
 }

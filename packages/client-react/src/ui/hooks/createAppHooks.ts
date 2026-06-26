@@ -21,6 +21,7 @@ import {
 } from "@rtc/domain";
 
 import type { AppCommands, Presenters } from "#/app/composition";
+import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
 import type { MachineFactories } from "#/app/presenters/machine";
 import type {
   NotionalIntents,
@@ -127,6 +128,10 @@ export interface AppHooks {
    * Cosmetic-only; the authoritative expiry is server-driven (CreditRfqSimulator).
    * Mirrors rtc-original CreditRfqTimer (creditRfqs.ts:102-112). */
   useRfqCountdown: (creationTimestamp: number, totalMs: number) => number;
+  /** Latest animation intent for a target (e.g. "tile:EURUSD", "banner:connection").
+   * Null until the AnimationDirector emits a real domain-driven intent; the dumb
+   * UI maps the intent's kind to a CSS class / Motion One call. */
+  useAnimationIntents: (target: string) => AnimationIntent | null;
 }
 
 export function createAppHooks(
@@ -223,6 +228,15 @@ export function createAppHooks(
   function setViewMode(viewMode: ViewMode): void {
     presenters.viewModePreference.setViewMode(viewMode);
   }
+
+  // Animation intents → a parameterized bind (one per-target stream, like usePrice).
+  // Starts null; the dumb UI maps an emitted intent's kind to a CSS class / Motion call.
+  const [useAnimationIntents] = bind(
+    (target: string) => {
+      return presenters.animationDirector.intentsFor(target);
+    },
+    null as AnimationIntent | null,
+  );
 
   // Pre-bound command callbacks. Stable references across calls so React
   // memo/effect dep arrays remain stable. The bridge converts each one-shot
@@ -331,5 +345,6 @@ export function createAppHooks(
         return createRfqCountdownMachine(creationTimestamp, totalMs);
       }).state;
     },
+    useAnimationIntents,
   };
 }

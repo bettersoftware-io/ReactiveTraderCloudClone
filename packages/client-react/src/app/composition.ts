@@ -19,6 +19,7 @@ import { WsAdapter } from "./adapters/WsAdapter";
 import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
 import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
 import { AnimatedBackgroundPresenter } from "./presenters/AnimatedBackgroundPresenter";
+import { AnimationDirector } from "./presenters/AnimationDirector";
 import { BlotterPresenter } from "./presenters/BlotterPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
 import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
@@ -79,6 +80,7 @@ export interface Presenters {
   themeSkinPreference: ThemeSkinPreferencePresenter;
   animatedBackground: AnimatedBackgroundPresenter;
   viewModePreference: ViewModePreferencePresenter;
+  animationDirector: AnimationDirector;
 }
 
 export interface AppCommands {
@@ -151,6 +153,9 @@ export function buildDefaultPorts(): AppPorts {
 }
 
 export function createApp(ports: AppPorts = buildDefaultPorts()): App {
+  // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
+  // the same connection presenter instance the rest of the app consumes.
+  const connection = new ConnectionStatusPresenter(ports.connectionEvents);
   const presenters: Presenters = {
     priceStream: new PriceStreamPresenter(ports.pricing),
     priceHistory: new PriceHistoryPresenter(ports.pricing),
@@ -161,13 +166,22 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     currencyPairs: new CurrencyPairsPresenter(ports.referenceData),
     instruments: new InstrumentsPresenter(ports.instruments),
     dealers: new DealersPresenter(ports.dealers),
-    connection: new ConnectionStatusPresenter(ports.connectionEvents),
+    connection,
     rfqQuote: new RfqQuotePresenter(ports.pricing),
     throughput: new ThroughputPresenter(ports.admin),
     themePreference: new ThemePreferencePresenter(ports.preferences),
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
+    // Phase 0 wiring: connection-change intents only. Per-pair tick sources are
+    // an ASYNC stream (currencyPairs.pairs$) with no synchronous list at
+    // composition time, so priceStreams is empty here — per-pair tick sources
+    // attach in Phase 3 when tiles consume intents. The seam (and the
+    // useAnimationIntents hook) is still exercised via connectionStatus$.
+    animationDirector: new AnimationDirector({
+      priceStreams: {},
+      connectionStatus$: connection.status$,
+    }),
   };
   const commands: AppCommands = {
     reconnect: () => {

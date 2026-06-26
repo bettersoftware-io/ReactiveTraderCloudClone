@@ -175,5 +175,10 @@ export function buildFakeHooks(data: AppData): AppHooks {
     useRfqCountdown: (_creationTimestamp: number, totalMs: number) => {
       return totalMs;
     },
+    // Animation intents: static screenshots never fire intents, so the bar
+    // renders in its neutral, un-animated state.
+    useAnimationIntents: (_target: string) => {
+      return null;
+    },
   };
 }
