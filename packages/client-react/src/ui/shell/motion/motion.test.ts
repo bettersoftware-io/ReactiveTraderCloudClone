@@ -76,7 +76,7 @@ describe("motion wrapper", () => {
     el.remove();
   });
 
-  it("is the only module importing the motion engine", async () => {
+  it("exposes animateOnce as a function", async () => {
     const mod = await import("./index");
     expect(typeof mod.animateOnce).toBe("function");
   });

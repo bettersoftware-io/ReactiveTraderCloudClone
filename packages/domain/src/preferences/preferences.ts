@@ -5,8 +5,7 @@
  * the localStorage adapter is transparent to existing users.
  *
  * Theming has two orthogonal axes: a `ThemeSkin` (visual identity) and a
- * `ThemeMode` (light/dark recolouring). `Theme` is a deprecated alias of
- * `ThemeMode` kept for one transition step.
+ * `ThemeMode` (light/dark recolouring).
  */
 
 export type ThemeMode = "dark" | "light";

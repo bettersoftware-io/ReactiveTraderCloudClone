@@ -94,8 +94,7 @@ export interface ThemeTokens {
 /**
  * Classic dark — the full 35-key surface: today's 22 pre-redesign values plus
  * the 13 new keys filled with neutral values (no aurora, no blur, no glow).
- * Exported for back-compat references during the transition; doubles as the
- * `classic.dark` cell of the store below.
+ * Classic-skin dark token cell; also the pre-redesign default appearance.
  */
 const darkTokens: ThemeTokens = {
   "--bg-primary": "#111827",
@@ -144,8 +143,7 @@ const darkTokens: ThemeTokens = {
 /**
  * Classic light — the full 35-key surface: today's 22 pre-redesign values plus
  * the 13 neutral new keys.
- * Exported for back-compat references during the transition; doubles as the
- * `classic.light` cell of the store below.
+ * Classic-skin light token cell; also the pre-redesign default appearance.
  */
 const lightTokens: ThemeTokens = {
   "--bg-primary": "#f8fafc",
