@@ -64,6 +64,38 @@ describe("render", () => {
     expect(md).toContain("❌");
   });
 
+  it("stays within the cap for many tiny files (separator accounting)", () => {
+    // 5 000 files × ~200-byte block exceeds SUMMARY_CAP in total.
+    // The pre-fix bug did not count the +1 join separator per pushed block,
+    // causing size to under-run by ~4 500 bytes and the final string to overrun
+    // SUMMARY_CAP by a similar margin.
+    const N = 5_000;
+    const many: PackageStat = {
+      name: "pkg",
+      total: N,
+      covered: 0,
+      pct: 0,
+      files: Array.from({ length: N }, (_, i) => ({
+        file: `/r/src/f${i}.ts`,
+        total: 1,
+        covered: 0,
+        pct: 0,
+        uncovered: [1],
+      })),
+    };
+    // 100-char source line → full block ≈ 200 chars; 5 000 × 200 ≈ 1 M > SUMMARY_CAP.
+    const shortLine = "x".repeat(100);
+    const md = render({
+      title: "t",
+      testResults: [],
+      packages: [many],
+      repoRoot,
+      readSource: () => [shortLine],
+    });
+    expect(md.length).toBeLessThanOrEqual(SUMMARY_CAP);
+    expect(md).toMatch(/snippets omitted/i);
+  });
+
   it("degrades to line-numbers-only and notes omission past the size cap", () => {
     const many: PackageStat = {
       name: "big",

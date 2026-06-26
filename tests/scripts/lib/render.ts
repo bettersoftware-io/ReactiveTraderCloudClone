@@ -5,10 +5,10 @@ import type { TierResult } from "./testResults";
 
 export const SUMMARY_CAP = 900_000;
 
-// Reserve headroom for the cap-warning note text, the body.join("\n") separator
-// per pushed block (up to ~70), and the final head-to-body join separator.
-// Without this reserve, size tracking under-counts and the note pushes md past SUMMARY_CAP.
-const CAP_RESERVE = 300;
+// Upper bound on the cap-warning note's contribution to the final string
+// (1 join separator + note text). The note format is fixed; 256 safely covers
+// the longest form including a large omitted count.
+const NOTE_RESERVE = 256;
 
 export interface RenderInput {
   title: string;
@@ -82,10 +82,10 @@ function fileBlock(
   pkgName: string,
   source: string[] | null,
 ): string {
-  const summary = `${pkgName} · ${rel} — ${pct(stat.pct)} (${stat.uncovered.length} uncovered)`;
   if (!source) {
-    return `<details><summary>${summary}</summary>\n\nuncovered lines: ${stat.uncovered.join(", ")}\n</details>\n`;
+    return linesOnlyBlock(stat, rel, pkgName);
   }
+  const summary = `${pkgName} · ${rel} — ${pct(stat.pct)} (${stat.uncovered.length} uncovered)`;
   return [
     `<details><summary>${summary}</summary>`,
     "",
@@ -115,7 +115,10 @@ export function render(input: RenderInput): string {
     .sort((a, b) => a.stat.pct - b.stat.pct);
 
   const body: string[] = ["### Untested lines", ""];
-  let size = head.join("\n").length + body.join("\n").length;
+  // Exact length of the assembled output so far:
+  //   [...head, body.join("\n")].join("\n")
+  // includes the single "\n" separator between the head string and body string.
+  let size = [...head, body.join("\n")].join("\n").length;
   let omitted = 0;
   let capped = false;
 
@@ -123,21 +126,22 @@ export function render(input: RenderInput): string {
     const rel = relative(input.repoRoot, stat.file);
     if (!capped) {
       const block = fileBlock(stat, rel, pkg, input.readSource(stat.file));
-      if (size + block.length > SUMMARY_CAP - CAP_RESERVE) {
+      // +1 for the "\n" join separator this element introduces in body.join("\n").
+      if (size + 1 + block.length > SUMMARY_CAP - NOTE_RESERVE) {
         capped = true;
       } else {
         body.push(block);
-        size += block.length;
+        size += 1 + block.length;
         continue;
       }
     }
     // capped: line-numbers only (much smaller); count anything that still won't fit.
     const lean = linesOnlyBlock(stat, rel, pkg);
-    if (size + lean.length > SUMMARY_CAP - CAP_RESERVE) {
+    if (size + 1 + lean.length > SUMMARY_CAP - NOTE_RESERVE) {
       omitted++;
     } else {
       body.push(lean);
-      size += lean.length;
+      size += 1 + lean.length;
     }
   }
 
