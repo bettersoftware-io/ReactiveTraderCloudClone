@@ -107,3 +107,15 @@ jobs:
 
       - name: Render report to job summary
         run: pnpm --filter @rtc/tests coverage:report
+
+      # The rendered report lives on the run's Summary page, which the GitHub
+      # mobile APP does not render (mobile web does). Surface a direct link both
+      # in the step log AND as a ::notice:: annotation (the app shows annotations)
+      # so the report is one tap away — open it in a browser to see the summary.
+      - name: Coverage report link
+        if: always()
+        run: |
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          echo "Coverage report — open this in a browser to view the rendered summary:"
+          echo "  $url"
+          echo "::notice title=Coverage report::Open in a browser to view the rendered coverage report → $url"
