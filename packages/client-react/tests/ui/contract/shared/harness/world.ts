@@ -4,7 +4,7 @@ import {
   ConnectionStatus,
   type CreateRfqInput,
   type CurrencyPair,
-  DEFAULT_THEME,
+  DEFAULT_THEME_MODE,
   DEFAULT_VIEW_MODE,
   type Dealer,
   type ExecuteTradeInput,
@@ -17,7 +17,8 @@ import {
   type QuoteRequest,
   type Rfq,
   type RfqQuoteResult,
-  type Theme,
+  type ThemeMode,
+  type ThemeSkin,
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
@@ -104,8 +105,12 @@ export interface World {
   readonly throughputSets: number[];
   /** Push a new throughput view (drives the AdminPanel's re-render). */
   setThroughputView(patch: Partial<ThroughputView>): void;
-  /** Reactive theme preference backing useThemePreference (drives ThemeProvider). */
-  readonly theme: BehaviorSubject<Theme>;
+  /** Reactive theme-mode preference backing useThemePreference (drives ThemeProvider). */
+  readonly themeMode: BehaviorSubject<ThemeMode>;
+  /** Reactive theme-skin preference backing useThemeSkinPreference (drives ThemeProvider). */
+  readonly themeSkin: BehaviorSubject<ThemeSkin>;
+  /** Reactive animated-background preference backing useAnimatedBackground. */
+  readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive view-mode preference backing useViewModePreference (drives LiveRatesPanel). */
   readonly viewMode: BehaviorSubject<ViewMode>;
   /** Per-key subject for usePrice(pair), keyed by pair.symbol. */
@@ -131,8 +136,10 @@ export function createWorld(
   results: CommandResults = {},
   parametric: ParametricSeed = {},
   throughputSeed: Partial<ThroughputView> = {},
-  themeSeed?: Theme,
+  themeModeSeed?: ThemeMode,
   viewModeSeed?: ViewMode,
+  themeSkinSeed?: ThemeSkin,
+  animatedBackgroundSeed?: boolean,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -204,7 +211,17 @@ export function createWorld(
   // Stateful display preferences: setters/toggle push back onto these subjects so
   // a click through the seam re-renders the consuming component (ThemeProvider /
   // LiveRatesPanel), mirroring the PreferencesPort's replay-current streams.
-  const theme = new BehaviorSubject<Theme>(themeSeed ?? DEFAULT_THEME);
+  const themeMode = new BehaviorSubject<ThemeMode>(
+    themeModeSeed ?? DEFAULT_THEME_MODE,
+  );
+  // The harness pins the skin to "classic" by default (NOT the app's "holo"
+  // showcase default): classic's tokens are byte-identical to the pre-redesign
+  // single-axis tokens, so existing contract snapshots and deferred visual
+  // goldens stay stable until Phase 3 regenerates them for the new skins.
+  const themeSkin = new BehaviorSubject<ThemeSkin>(themeSkinSeed ?? "classic");
+  const animatedBackground = new BehaviorSubject<boolean>(
+    animatedBackgroundSeed ?? false,
+  );
   const viewMode = new BehaviorSubject<ViewMode>(
     viewModeSeed ?? DEFAULT_VIEW_MODE,
   );
@@ -216,7 +233,9 @@ export function createWorld(
     setThroughputView: (patch: Partial<ThroughputView>) => {
       return throughput.next({ ...throughput.getValue(), ...patch });
     },
-    theme,
+    themeMode,
+    themeSkin,
+    animatedBackground,
     viewMode,
     priceFor,
     historyFor,

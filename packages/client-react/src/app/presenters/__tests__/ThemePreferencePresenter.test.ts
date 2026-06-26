@@ -1,33 +1,33 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { PreferencesSimulator, type Theme } from "@rtc/domain";
+import { PreferencesSimulator, type ThemeMode } from "@rtc/domain";
 
 import { ThemePreferencePresenter } from "../ThemePreferencePresenter";
 
 describe("ThemePreferencePresenter", () => {
-  it("replays the current theme", async () => {
+  it("replays the current theme mode", async () => {
     const presenter = new ThemePreferencePresenter(
-      new PreferencesSimulator({ theme: "light" }),
+      new PreferencesSimulator({ themeMode: "light" }),
     );
-    expect(await firstValueFrom(presenter.theme$)).toBe("light");
+    expect(await firstValueFrom(presenter.mode$)).toBe("light");
   });
 
-  it("setTheme pushes to existing subscribers", () => {
+  it("setMode pushes to existing subscribers", () => {
     const presenter = new ThemePreferencePresenter(new PreferencesSimulator());
-    const seen: Theme[] = [];
-    const sub = presenter.theme$.subscribe((t) => {
+    const seen: ThemeMode[] = [];
+    const sub = presenter.mode$.subscribe((t) => {
       return seen.push(t);
     });
-    presenter.setTheme("light");
+    presenter.setMode("light");
     sub.unsubscribe();
     expect(seen).toEqual(["dark", "light"]);
   });
 
   it("toggle flips light↔dark", () => {
     const presenter = new ThemePreferencePresenter(new PreferencesSimulator());
-    const seen: Theme[] = [];
-    const sub = presenter.theme$.subscribe((t) => {
+    const seen: ThemeMode[] = [];
+    const sub = presenter.mode$.subscribe((t) => {
       return seen.push(t);
     });
     presenter.toggle("dark");
