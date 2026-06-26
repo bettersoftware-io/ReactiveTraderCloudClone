@@ -99,8 +99,20 @@ export type {
   WorkflowPort,
 } from "./ports/workflowPort.js";
 // Preferences
-export type { Theme, ViewMode } from "./preferences/preferences.js";
-export { DEFAULT_THEME, DEFAULT_VIEW_MODE } from "./preferences/preferences.js";
+export type {
+  Theme,
+  ThemeMode,
+  ThemeSkin,
+  ViewMode,
+} from "./preferences/preferences.js";
+export {
+  DEFAULT_THEME,
+  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_SKIN,
+  DEFAULT_VIEW_MODE,
+  THEME_MODES,
+  THEME_SKINS,
+} from "./preferences/preferences.js";
 export type { PreferencesSeed, TradeListener } from "./simulators/index.js";
 // Simulators (in-memory port implementations)
 export {
