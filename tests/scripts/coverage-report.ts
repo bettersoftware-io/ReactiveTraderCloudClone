@@ -86,35 +86,47 @@ export async function main(opts: MainOpts): Promise<string> {
 
   const covTiers =
     opts.coverageOverride ??
-    TIERS.coverage.map((t) => ({
-      name: t.name,
-      files: t.paths.map((p) => resolve(repoRoot, p)),
-    }));
+    TIERS.coverage.map((t) => {
+      return {
+        name: t.name,
+        files: t.paths.map((p) => {
+          return resolve(repoRoot, p);
+        }),
+      };
+    });
 
   const packages = covTiers
     .map((t) => {
       const reports = t.files
         .map(readJson)
-        .filter((j): j is unknown => j !== null)
+        .filter((j): j is unknown => {
+          return j !== null;
+        })
         .map(lineCoverageOf);
       if (reports.length === 0) return null;
       return packageStat(t.name, unionLines(reports));
     })
-    .filter((p): p is NonNullable<typeof p> => p !== null);
+    .filter((p): p is NonNullable<typeof p> => {
+      return p !== null;
+    });
 
   const resTiers =
     opts.resultsOverride ??
-    TIERS.results.map((t) => ({
-      tier: t.tier,
-      file: resolve(repoRoot, t.path),
-    }));
+    TIERS.results.map((t) => {
+      return {
+        tier: t.tier,
+        file: resolve(repoRoot, t.path),
+      };
+    });
 
   const testResults: TierResult[] = resTiers
     .map((t) => {
       const json = readJson(t.file);
       return json === null ? null : summarize(t.tier, json);
     })
-    .filter((r): r is TierResult => r !== null);
+    .filter((r): r is TierResult => {
+      return r !== null;
+    });
 
   const md = render({
     title: opts.title ?? "Coverage Report",

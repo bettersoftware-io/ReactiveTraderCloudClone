@@ -6,14 +6,15 @@ import { main, TIERS } from "./coverage-report";
 
 describe("coverage-report CLI", () => {
   it("exposes a tier manifest covering domain, server, and the three client tiers", () => {
-    expect(TIERS.coverage.map((t) => t.name)).toEqual([
-      "domain",
-      "server",
-      "client/app",
-      "client/ui",
-    ]);
+    expect(
+      TIERS.coverage.map((t) => {
+        return t.name;
+      }),
+    ).toEqual(["domain", "server", "client/app", "client/ui"]);
     // client/ui unions contract + visual.
-    const ui = TIERS.coverage.find((t) => t.name === "client/ui");
+    const ui = TIERS.coverage.find((t) => {
+      return t.name === "client/ui";
+    });
     expect(ui?.paths.length).toBe(2);
   });
 
