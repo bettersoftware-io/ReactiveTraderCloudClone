@@ -49,13 +49,20 @@ jobs:
         run: pnpm build
 
       # Each tier emits istanbul-format coverage-final.json (--coverage.reporter=json)
-      # AND a vitest json test-results file (--reporter). continue-on-error so a tier
-      # below its threshold gate (contract's 95%) does NOT abort the report — surfacing
-      # gaps is the whole point.
+      # AND a vitest json test-results file (--reporter=json). continue-on-error so a
+      # tier below its threshold gate (contract's 95%) does NOT abort the report —
+      # surfacing gaps is the whole point.
+      #
+      # We invoke vitest via `pnpm exec` rather than `pnpm <script> -- <flags>`:
+      # pnpm forwards trailing args with the literal `--` separator preserved
+      # (`vitest run --coverage -- <flags>`), and vitest treats everything after `--`
+      # as positional test-name FILTERS, not flags — so the reporter overrides are
+      # silently ignored and no JSON is written. `exec` passes the flags directly.
+      # The replicated per-tier args mirror the package.json coverage scripts.
       - name: Coverage — domain
         continue-on-error: true
         run: >
-          pnpm --filter @rtc/domain test:coverage --
+          pnpm --filter @rtc/domain exec vitest run --coverage
           --coverage.reporter=json
           --reporter=default --reporter=json
           --outputFile.json=reports/unit/test-results.json
@@ -63,7 +70,7 @@ jobs:
       - name: Coverage — server
         continue-on-error: true
         run: >
-          pnpm --filter @rtc/server test:coverage --
+          pnpm --filter @rtc/server exec vitest run --coverage
           --coverage.reporter=json
           --reporter=default --reporter=json
           --outputFile.json=reports/unit/test-results.json
@@ -71,7 +78,8 @@ jobs:
       - name: Coverage — client app
         continue-on-error: true
         run: >
-          pnpm --filter @rtc/client-react test:app:coverage --
+          pnpm --filter @rtc/client-react exec vitest run src/app
+          -c vitest.app.coverage.config.ts --coverage
           --coverage.reporter=json
           --reporter=default --reporter=json
           --outputFile.json=reports/app/test-results.json
@@ -79,7 +87,8 @@ jobs:
       - name: Coverage — client UI (contract tier)
         continue-on-error: true
         run: >
-          pnpm --filter @rtc/client-react test:ui:contract:coverage --
+          pnpm --filter @rtc/client-react exec vitest run
+          -c tests/ui/contract/vitest.coverage.config.ts --coverage
           --coverage.reporter=json
           --reporter=default --reporter=json
           --outputFile.json=reports/ui/contract/test-results.json
@@ -87,7 +96,8 @@ jobs:
       - name: Coverage — client UI (visual tier)
         continue-on-error: true
         run: >
-          pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:coverage --
+          pnpm --filter @rtc/client-react exec vitest run
+          -c tests/ui/visual/vitest-browser/vitest-browser.coverage.config.ts --coverage
           --coverage.reporter=json
           --reporter=default --reporter=json
           --outputFile.json=reports/ui/visual/test-results.json

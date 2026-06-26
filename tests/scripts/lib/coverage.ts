@@ -1,6 +1,9 @@
-// istanbul-lib-coverage is CommonJS — use named imports (NodeNext synthesizes
-// them via esModuleInterop), not a default import.
-import { type CoverageMapData, createCoverageMap } from "istanbul-lib-coverage";
+// istanbul-lib-coverage is CommonJS. Under Node's native ESM loader (how the
+// CLI runs via tsx) a named import fails — the cjs-module-lexer doesn't surface
+// `createCoverageMap` as a named export — so default-import the module object
+// and reach members off it (`libCoverage.createCoverageMap`). The type import is
+// erased at runtime, so it's harmless.
+import libCoverage, { type CoverageMapData } from "istanbul-lib-coverage";
 
 export type LineHits = Map<number, number>;
 export type FileLines = Map<string, LineHits>;
@@ -22,7 +25,7 @@ export interface PackageStat {
 }
 
 export function lineCoverageOf(coverageJson: unknown): FileLines {
-  const map = createCoverageMap(coverageJson as CoverageMapData);
+  const map = libCoverage.createCoverageMap(coverageJson as CoverageMapData);
   const out: FileLines = new Map();
   for (const file of map.files()) {
     const lc = map.fileCoverageFor(file).getLineCoverage();
