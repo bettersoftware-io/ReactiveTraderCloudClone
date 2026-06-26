@@ -4,7 +4,8 @@ import { firstValueFrom } from "rxjs";
 import {
   ConnectionStatus,
   type CurrencyPair,
-  DEFAULT_THEME,
+  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type Dealer,
   type Instrument,
@@ -13,7 +14,8 @@ import {
   type PriceTick,
   type Quote,
   type Rfq,
-  type Theme,
+  type ThemeMode,
+  type ThemeSkin,
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
@@ -56,8 +58,19 @@ type UseThroughputResult = ThroughputView & {
 };
 
 interface UseThemePreferenceResult {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
+  mode: ThemeMode;
+  setMode: (mode: ThemeMode) => void;
+  toggle: () => void;
+}
+
+interface UseThemeSkinPreferenceResult {
+  skin: ThemeSkin;
+  setSkin: (skin: ThemeSkin) => void;
+}
+
+interface UseAnimatedBackgroundResult {
+  enabled: boolean;
+  setEnabled: (on: boolean) => void;
   toggle: () => void;
 }
 
@@ -102,8 +115,12 @@ export interface AppHooks {
   useTicketSubmission: () => UseTicketSubmissionResult;
   /** Global throughput control — shared view state plus the setValue intent. */
   useThroughput: () => UseThroughputResult;
-  /** Global theme preference — current theme plus write/zero-arg-toggle intents. */
+  /** Global theme mode preference — current mode plus write/zero-arg-toggle intents. */
   useThemePreference: () => UseThemePreferenceResult;
+  /** Global theme skin preference — current skin plus the write intent. */
+  useThemeSkinPreference: () => UseThemeSkinPreferenceResult;
+  /** Global animated-background preference — enabled flag plus write/toggle intents. */
+  useAnimatedBackground: () => UseAnimatedBackgroundResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
   /** Per-RFQ countdown — remainingMs, ticking every 100ms, clamped at 0.
@@ -171,13 +188,31 @@ export function createAppHooks(
   }
 
   // Global/shared display preferences → plain binds (not per-mount machines).
-  const [useThemeValue] = bind(
-    presenters.themePreference.theme$,
-    DEFAULT_THEME,
+  const [useThemeModeValue] = bind(
+    presenters.themePreference.mode$,
+    DEFAULT_THEME_MODE,
   );
 
-  function setTheme(theme: Theme): void {
-    presenters.themePreference.setTheme(theme);
+  function setThemeMode(mode: ThemeMode): void {
+    presenters.themePreference.setMode(mode);
+  }
+
+  const [useThemeSkinValue] = bind(
+    presenters.themeSkinPreference.skin$,
+    DEFAULT_THEME_SKIN,
+  );
+
+  function setThemeSkin(skin: ThemeSkin): void {
+    presenters.themeSkinPreference.setSkin(skin);
+  }
+
+  const [useAnimatedBgValue] = bind(
+    presenters.animatedBackground.enabled$,
+    false,
+  );
+
+  function setAnimatedBg(on: boolean): void {
+    presenters.animatedBackground.set(on);
   }
 
   const [useViewModeValue] = bind(
@@ -260,15 +295,28 @@ export function createAppHooks(
     useThroughput: () => {
       return { ...useThroughputState(), setValue: setThroughput };
     },
-    // Global theme: read the currently-bound theme in the hook body so the
+    // Global theme mode: read the currently-bound mode in the hook body so the
     // component calls a zero-arg toggle() that flips relative to the live value.
     useThemePreference: () => {
-      const theme = useThemeValue();
+      const mode = useThemeModeValue();
       return {
-        theme,
-        setTheme,
+        mode,
+        setMode: setThemeMode,
         toggle: () => {
-          return presenters.themePreference.toggle(theme);
+          return presenters.themePreference.toggle(mode);
+        },
+      };
+    },
+    useThemeSkinPreference: () => {
+      return { skin: useThemeSkinValue(), setSkin: setThemeSkin };
+    },
+    useAnimatedBackground: () => {
+      const enabled = useAnimatedBgValue();
+      return {
+        enabled,
+        setEnabled: setAnimatedBg,
+        toggle: () => {
+          return presenters.animatedBackground.toggle(enabled);
         },
       };
     },

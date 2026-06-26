@@ -18,6 +18,7 @@ import {
 import { WsAdapter } from "./adapters/WsAdapter";
 import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
 import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
+import { AnimatedBackgroundPresenter } from "./presenters/AnimatedBackgroundPresenter";
 import { BlotterPresenter } from "./presenters/BlotterPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
 import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
@@ -33,6 +34,7 @@ import { createRfqTileMachine } from "./presenters/RfqTileMachine";
 import { createRowHighlightMachine } from "./presenters/RowHighlightMachine";
 import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
 import { ThemePreferencePresenter } from "./presenters/ThemePreferencePresenter";
+import { ThemeSkinPreferencePresenter } from "./presenters/ThemeSkinPreferencePresenter";
 import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
@@ -74,6 +76,8 @@ export interface Presenters {
   rfqQuote: RfqQuotePresenter;
   throughput: ThroughputPresenter;
   themePreference: ThemePreferencePresenter;
+  themeSkinPreference: ThemeSkinPreferencePresenter;
+  animatedBackground: AnimatedBackgroundPresenter;
   viewModePreference: ViewModePreferencePresenter;
 }
 
@@ -161,6 +165,8 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     rfqQuote: new RfqQuotePresenter(ports.pricing),
     throughput: new ThroughputPresenter(ports.admin),
     themePreference: new ThemePreferencePresenter(ports.preferences),
+    themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
+    animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
   };
   const commands: AppCommands = {
