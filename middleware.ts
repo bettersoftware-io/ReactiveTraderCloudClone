@@ -18,9 +18,13 @@ export default function middleware(request: Request): Response {
   const [scheme, encoded] = header.split(" ");
 
   if (scheme === "Basic" && encoded) {
-    const decoded = atob(encoded);
-    const password = decoded.slice(decoded.indexOf(":") + 1);
-    if (password === expected) return next();
+    try {
+      const decoded = atob(encoded);
+      const password = decoded.slice(decoded.indexOf(":") + 1);
+      if (password === expected) return next();
+    } catch {
+      // malformed base64 → fall through to 401
+    }
   }
 
   return new Response("Authentication required", {

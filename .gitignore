@@ -29,5 +29,8 @@ packages/client/tests/ui/visual/**/__screenshots__/*.spec.tsx/
 # actionlint binary (downloaded via scripts/install-actionlint.sh)
 .tooling/
 
+# Vercel CLI local project config (written by `vercel link` / `vercel pull`)
+.vercel/
+
 # Subagent-driven-development scratch (ledger, task briefs, review packages, reports)
 .superpowers/
