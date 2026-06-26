@@ -17,6 +17,7 @@ import {
 } from "./adapters/portFactory";
 import { WsAdapter } from "./adapters/WsAdapter";
 import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
+import { buildWsUrl } from "./wsUrl";
 import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
 import { BlotterPresenter } from "./presenters/BlotterPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
@@ -95,10 +96,11 @@ const reconnect$ = new Subject<ReconnectIntent>();
 
 export function buildDefaultPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
+  const token = import.meta.env.VITE_WS_TOKEN as string | undefined;
   const browser = new BrowserConnectionEventsAdapter();
 
   if (url) {
-    const ws = new WsAdapter(url);
+    const ws = new WsAdapter(buildWsUrl(url, token));
     const gateway = new WsConnectionEventsAdapter(ws);
     const connectionEvents: ConnectionEventsPort = {
       events: () => {
