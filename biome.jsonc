@@ -161,6 +161,21 @@
           }
         }
       }
+    },
+    {
+      // Vercel's Routing Middleware contract requires `export default function
+      // middleware(...)` — it is a framework entry-point, not application code.
+      // This is a deliberate, scoped exception to the repo-wide noDefaultExport
+      // policy (see commit message for full rationale). Scope is intentionally
+      // restricted to this single file so the policy holds everywhere else.
+      "includes": ["middleware.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
     }
   ]
 }
