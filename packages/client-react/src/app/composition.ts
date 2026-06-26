@@ -17,7 +17,6 @@ import {
 } from "./adapters/portFactory";
 import { WsAdapter } from "./adapters/WsAdapter";
 import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
-import { buildWsUrl } from "./wsUrl";
 import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
 import { BlotterPresenter } from "./presenters/BlotterPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
@@ -38,6 +37,7 @@ import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
 import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
+import { buildWsUrl } from "./wsUrl";
 
 export type { AppPorts };
 
