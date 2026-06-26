@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 
-import type { VerifyClientCallbackAsync } from "ws";
+import type { VerifyClientCallbackSync } from "ws";
 import { WebSocketServer } from "ws";
 
 import { isAuthorizedUpgrade } from "./auth.js";
@@ -39,7 +39,7 @@ const wss = new WebSocketServer({
   // Reject unauthorized upgrades with 401 before a socket exists, so
   // handleConnection only ever runs for authorized clients. /health stays
   // token-free (it is an HTTP route, not a WS upgrade) for Fly health checks.
-  verifyClient: ((info) => isAuthorizedUpgrade(info.req.url, WS_ACCESS_TOKEN)) as VerifyClientCallbackAsync,
+  verifyClient: ((info) => isAuthorizedUpgrade(info.req.url, WS_ACCESS_TOKEN)) as VerifyClientCallbackSync,
 });
 
 wss.on("connection", (ws) => {
