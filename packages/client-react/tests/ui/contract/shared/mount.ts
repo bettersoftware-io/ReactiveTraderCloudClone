@@ -1,6 +1,13 @@
 import { BehaviorSubject } from "rxjs";
 
-import type { Price, PriceTick, Quote, Theme, ViewMode } from "@rtc/domain";
+import type {
+  Price,
+  PriceTick,
+  Quote,
+  ThemeMode,
+  ThemeSkin,
+  ViewMode,
+} from "@rtc/domain";
 
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
@@ -25,8 +32,12 @@ export interface MountOptions<P> {
   parametric?: ParametricSeed;
   /** Seed the initial throughput view (useThroughput). */
   throughput?: Partial<ThroughputView>;
-  /** Seed the initial theme preference (useThemePreference); defaults to DEFAULT_THEME. */
-  theme?: Theme;
+  /** Seed the initial theme-mode preference (useThemePreference); defaults to DEFAULT_THEME_MODE. */
+  themeMode?: ThemeMode;
+  /** Seed the initial theme-skin preference (useThemeSkinPreference); defaults to "classic". */
+  themeSkin?: ThemeSkin;
+  /** Seed the initial animated-background preference (useAnimatedBackground); defaults to false. */
+  animatedBackground?: boolean;
   /** Seed the initial view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE. */
   viewMode?: ViewMode;
 }
@@ -42,8 +53,10 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.commands,
     opts.parametric,
     opts.throughput,
-    opts.theme,
+    opts.themeMode,
     opts.viewMode,
+    opts.themeSkin,
+    opts.animatedBackground,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

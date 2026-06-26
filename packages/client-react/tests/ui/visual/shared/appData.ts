@@ -11,7 +11,8 @@ import {
   type PriceTick,
   type Quote,
   type Rfq,
-  type Theme,
+  type ThemeMode,
+  type ThemeSkin,
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
@@ -55,8 +56,12 @@ export interface AppData {
   ticketSubmission?: TicketSubmissionState;
   /** Throughput control view (useThroughput); defaults to a loaded value of 100. */
   throughput?: ThroughputView;
-  /** Theme preference (useThemePreference); defaults to DEFAULT_THEME ("dark"). */
-  theme?: Theme;
+  /** Theme-mode preference (useThemePreference); defaults to DEFAULT_THEME_MODE ("dark"). */
+  themeMode?: ThemeMode;
+  /** Theme-skin preference (useThemeSkinPreference); defaults to "classic" in the fakes. */
+  themeSkin?: ThemeSkin;
+  /** Animated-background preference (useAnimatedBackground); defaults to false. */
+  animatedBackground?: boolean;
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
 }

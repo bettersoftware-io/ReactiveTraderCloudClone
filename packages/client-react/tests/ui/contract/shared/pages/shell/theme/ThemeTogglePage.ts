@@ -5,7 +5,7 @@ import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 /**
  * Page object for ThemeToggle. The toggle flips the real ThemeProvider's state,
- * which writes `document.documentElement.dataset.theme` — asserted here rather
+ * which writes `document.documentElement.dataset.mode` — asserted here rather
  * than any colour value, keeping the spec framework-neutral.
  */
 export class ThemeTogglePage extends MountedComponent<Record<string, never>> {
@@ -15,9 +15,9 @@ export class ThemeTogglePage extends MountedComponent<Record<string, never>> {
     return within(this.root).getByTestId("theme-toggle") as HTMLButtonElement;
   }
 
-  /** The active theme as published by the ThemeProvider on the document root. */
-  documentTheme(): string {
-    return document.documentElement.dataset.theme ?? "";
+  /** The active theme mode as published by the ThemeProvider on the document root. */
+  documentMode(): string {
+    return document.documentElement.dataset.mode ?? "";
   }
 
   /** The toggle's accessible label (announces the theme it would switch to). */

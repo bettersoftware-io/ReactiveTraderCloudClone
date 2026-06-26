@@ -5,17 +5,17 @@ import { useTheme } from "./useTheme";
 import styles from "./ThemeToggle.module.css";
 
 export function ThemeToggle(): ReactElement {
-  const { theme, toggle } = useTheme();
+  const { mode, toggleMode } = useTheme();
 
   return (
     <button
       type="button"
       data-testid="theme-toggle"
-      onClick={toggle}
-      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+      onClick={toggleMode}
+      aria-label={`Switch to ${mode === "dark" ? "light" : "dark"} theme`}
       className={styles.toggle}
     >
-      {theme === "dark" ? "☀️" : "🌙"}
+      {mode === "dark" ? "☀️" : "🌙"}
     </button>
   );
 }

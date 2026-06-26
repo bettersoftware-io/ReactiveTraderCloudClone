@@ -1,8 +1,14 @@
 import {
   type CurrencyPair,
-  DEFAULT_THEME,
+  DEFAULT_THEME_MODE,
   DEFAULT_VIEW_MODE,
 } from "@rtc/domain";
+
+// The visual fakes pin the skin to "classic" by default (NOT the app's "holo"
+// showcase default): classic's tokens are byte-identical to the pre-redesign
+// single-axis tokens, so the deferred goldens stay pixel-identical until
+// Phase 3 regenerates them for the new skins.
+const DEFAULT_THEME_SKIN_FOR_FIXTURES = "classic" as const;
 
 import type { NotionalView } from "#/app/presenters/NotionalMachine";
 import type { AppHooks } from "#/ui/hooks/createAppHooks";
@@ -140,8 +146,21 @@ export function buildFakeHooks(data: AppData): AppHooks {
     // Display preferences: static snapshots for screenshots; setters are no-ops.
     useThemePreference: () => {
       return {
-        theme: data.theme ?? DEFAULT_THEME,
-        setTheme: noop,
+        mode: data.themeMode ?? DEFAULT_THEME_MODE,
+        setMode: noop,
+        toggle: noop,
+      };
+    },
+    useThemeSkinPreference: () => {
+      return {
+        skin: data.themeSkin ?? DEFAULT_THEME_SKIN_FOR_FIXTURES,
+        setSkin: noop,
+      };
+    },
+    useAnimatedBackground: () => {
+      return {
+        enabled: data.animatedBackground ?? false,
+        setEnabled: noop,
         toggle: noop,
       };
     },

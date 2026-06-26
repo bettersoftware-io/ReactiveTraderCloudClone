@@ -21,7 +21,7 @@ for (const name of Object.keys(scenarios)) {
   const action = scenarioActions[name] ?? {};
 
   test(name, async () => {
-    // Theme and view-mode are seeded through the seam (per-fixture data.theme /
+    // Theme and view-mode are seeded through the seam (per-fixture data.themeMode /
     // data.viewMode), so dark/light and chart/price scenarios are deterministic
     // without any localStorage involvement.
 

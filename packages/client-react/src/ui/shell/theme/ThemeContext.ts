@@ -1,10 +1,12 @@
 import { createContext } from "react";
 
-import type { Theme } from "@rtc/domain";
+import type { ThemeMode, ThemeSkin } from "@rtc/domain";
 
 export interface ThemeContextValue {
-  theme: Theme;
-  toggle: () => void;
+  skin: ThemeSkin;
+  mode: ThemeMode;
+  setSkin: (skin: ThemeSkin) => void;
+  toggleMode: () => void;
 }
 
 /** Theme seam context. Split from the provider so `useTheme` consumers don't

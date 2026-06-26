@@ -1,6 +1,12 @@
-import { renderHook } from "@testing-library/react";
+import { render, renderHook } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import type { AppHooks } from "#/ui/hooks/createAppHooks";
+import { HooksContext } from "#/ui/hooks/HooksContext";
+
+import { ThemeProvider } from "./ThemeProvider";
+import { themeTokens } from "./tokens";
 import { useTheme } from "./useTheme";
 
 describe("useTheme", () => {
@@ -14,5 +20,43 @@ describe("useTheme", () => {
       });
     }).toThrow("useTheme must be used within ThemeProvider");
     spy.mockRestore();
+  });
+});
+
+describe("ThemeProvider", () => {
+  function mountWith(skin: "classic" | "holo" | "terminal" | "neon"): void {
+    const hooks = {
+      useThemePreference: () => ({
+        mode: "dark",
+        setMode: vi.fn(),
+        toggle: vi.fn(),
+      }),
+      useThemeSkinPreference: () => ({ skin, setSkin: vi.fn() }),
+    } as unknown as AppHooks;
+
+    function Wrapper({ children }: { children: ReactNode }): ReactElement {
+      return (
+        <HooksContext.Provider value={hooks}>{children}</HooksContext.Provider>
+      );
+    }
+
+    render(
+      <Wrapper>
+        <ThemeProvider>
+          <div />
+        </ThemeProvider>
+      </Wrapper>,
+    );
+  }
+
+  it("writes dataset.skin/dataset.mode and paints the skin×mode tokens on :root", () => {
+    mountWith("holo");
+
+    const root = document.documentElement;
+    expect(root.dataset.skin).toBe("holo");
+    expect(root.dataset.mode).toBe("dark");
+    expect(
+      getComputedStyle(root).getPropertyValue("--accent-primary").trim(),
+    ).toBe(themeTokens.holo.dark["--accent-primary"]);
   });
 });
