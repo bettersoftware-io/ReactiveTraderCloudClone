@@ -12,9 +12,15 @@ export type ThemeMode = "dark" | "light";
 export type ThemeSkin = "classic" | "holo" | "terminal" | "neon";
 export type ViewMode = "chart" | "price";
 
+/** The boot sequence visual variant. Cycles across sessions — each run advances
+ * to the next entry in the fixed order (core → laser → docking → core …).
+ * Mirrors `localStorage['rt_bootSeq']` from the prototype. */
+export type BootVariant = "core" | "laser" | "docking";
+
 export const DEFAULT_THEME_MODE: ThemeMode = "dark";
 export const DEFAULT_THEME_SKIN: ThemeSkin = "holo"; // showcase default; "classic" preserves the pre-redesign look
 export const DEFAULT_VIEW_MODE: ViewMode = "chart";
+export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
 
 export const THEME_SKINS: readonly ThemeSkin[] = [
   "classic",

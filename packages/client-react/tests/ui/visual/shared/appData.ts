@@ -64,6 +64,8 @@ export interface AppData {
   animatedBackground?: boolean;
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
+  /** Session lock state (useSession); defaults to false → LockScreen renders nothing. */
+  sessionLocked?: boolean;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

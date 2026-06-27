@@ -437,4 +437,18 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "LayoutEngineCollapsed",
     fixtureKey: "app-fx",
   },
+
+  // --- Phase 2: HUD shell surfaces ---
+  // Boot is captured under reduced motion (canvas suppressed) so only the
+  // deterministic chrome is golden'd; the per-variant animated canvas art is
+  // verified in-browser, not pixel-diffed (it is rAF/time-driven, not freezable
+  // by `animations: "disabled"`). See the runner specs / scenarioActions.
+  "boot/chrome": { componentKey: "BootSequence", fixtureKey: "boot" },
+  "lock/locked": { componentKey: "LockScreen", fixtureKey: "session-locked" },
+  "chrome/header": {
+    componentKey: "HeaderChrome",
+    fixtureKey: "app-connected",
+  },
+  "status/bar": { componentKey: "StatusBar", fixtureKey: "app-connected" },
+  "prefs/modal": { componentKey: "PreferencesModal", fixtureKey: "prefs-open" },
 };

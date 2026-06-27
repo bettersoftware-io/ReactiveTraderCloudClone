@@ -17,6 +17,7 @@ import {
   createDefaultLayoutPort,
   type WorkspaceTab,
 } from "#/app/layout/defaultLayoutPort";
+import { createBootSequenceMachine } from "#/app/presenters/BootSequenceMachine";
 import { createLayoutMachine } from "#/app/presenters/LayoutMachine";
 import { createNotionalMachine } from "#/app/presenters/NotionalMachine";
 import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
@@ -285,16 +286,21 @@ export function reactHooks(world: World): AppHooks {
       };
     },
     // Animated background: reactive boolean backed by the World subject; setEnabled
-    // /toggle push back so a click through the seam flips the rendered flag.
+    // /toggle push back so a click through the seam flips the rendered flag, and
+    // each written value is recorded so a spec can assert the seam was written
+    // (e.g. PreferencesModal's animated-bg toggle → animatedBackgroundSets [true]).
     useAnimatedBackground: () => {
       const enabled = useSubject(world.animatedBackground);
       return {
         enabled,
         setEnabled: (on: boolean) => {
-          return world.animatedBackground.next(on);
+          world.commands.animatedBackgroundSets.push(on);
+          world.animatedBackground.next(on);
         },
         toggle: () => {
-          return world.animatedBackground.next(!enabled);
+          const next = !enabled;
+          world.commands.animatedBackgroundSets.push(next);
+          world.animatedBackground.next(next);
         },
       };
     },
@@ -306,6 +312,25 @@ export function reactHooks(world: World): AppHooks {
         viewMode,
         setViewMode: (next: ViewMode) => {
           return world.viewMode.next(next);
+        },
+      };
+    },
+    // Session lock: reactive state backed by the World subject; lock/unlock push
+    // back so the seam transition re-renders the overlay. unlock (re-authenticate)
+    // also records the invocation so specs can assert "AUTHENTICATE fires once".
+    useSession: () => {
+      const state = useSubject(world.session);
+      return {
+        state,
+        lock: () => {
+          return world.session.next({
+            ...world.session.getValue(),
+            locked: true,
+          });
+        },
+        unlock: () => {
+          world.commands.sessionUnlock += 1;
+          world.session.next({ ...world.session.getValue(), locked: false });
         },
       };
     },
@@ -325,6 +350,18 @@ export function reactHooks(world: World): AppHooks {
     useLayout: (tab: WorkspaceTab) => {
       return useMachine(() => {
         return createLayoutMachine(createDefaultLayoutPort(tab));
+      });
+    },
+    // Boot sequence: no contract spec exercises the boot sequence in Phase 2;
+    // use the REAL machine with a fixed "core" variant and noop advance so it
+    // compiles and disposes cleanly without touching real preferences.
+    useBootSequence: (onDone: () => void) => {
+      return useMachine(() => {
+        return createBootSequenceMachine({
+          variant: "core",
+          advance: () => {},
+          onDone,
+        });
       });
     },
   };

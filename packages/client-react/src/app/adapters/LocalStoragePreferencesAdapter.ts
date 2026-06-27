@@ -1,6 +1,8 @@
 import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
 import {
+  type BootVariant,
+  DEFAULT_BOOT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -15,6 +17,7 @@ export const THEME_STORAGE_KEY = "rtc-theme"; // legacy key → mode (back-compa
 export const THEME_SKIN_STORAGE_KEY = "rtc-theme-skin";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
+export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 
 function isThemeMode(value: string | null): value is ThemeMode {
   return value === "dark" || value === "light";
@@ -26,6 +29,10 @@ function isThemeSkin(value: string | null): value is ThemeSkin {
 
 function isViewMode(value: string | null): value is ViewMode {
   return value === "chart" || value === "price";
+}
+
+function isBootVariant(value: string | null): value is BootVariant {
+  return value === "core" || value === "laser" || value === "docking";
 }
 
 function readStored<T extends string>(
@@ -81,6 +88,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly animatedBg: BehaviorSubject<boolean>;
 
+  private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
+
   constructor() {
     this.themeMode = new BehaviorSubject<ThemeMode>(
       readStored(THEME_STORAGE_KEY, isThemeMode, DEFAULT_THEME_MODE),
@@ -93,6 +102,9 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
     );
     this.animatedBg = new BehaviorSubject<boolean>(
       readBool(ANIMATED_BG_STORAGE_KEY, false),
+    );
+    this.bootVariantSubject = new BehaviorSubject<BootVariant>(
+      readStored(BOOT_VARIANT_STORAGE_KEY, isBootVariant, DEFAULT_BOOT_VARIANT),
     );
   }
 
@@ -130,5 +142,14 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setAnimatedBackground(on: boolean): void {
     writeStored(ANIMATED_BG_STORAGE_KEY, on ? "true" : "false");
     this.animatedBg.next(on);
+  }
+
+  bootVariant$(): Observable<BootVariant> {
+    return this.bootVariantSubject.pipe(distinctUntilChanged());
+  }
+
+  setBootVariant(variant: BootVariant): void {
+    writeStored(BOOT_VARIANT_STORAGE_KEY, variant);
+    this.bootVariantSubject.next(variant);
   }
 }

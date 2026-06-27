@@ -14,7 +14,9 @@ import {
   createDefaultLayoutPort,
   type WorkspaceTab,
 } from "#/app/layout/defaultLayoutPort";
+import type { BootSequenceState } from "#/app/presenters/BootSequenceMachine";
 import type { NotionalView } from "#/app/presenters/NotionalMachine";
+import { DEMO_USER } from "#/app/presenters/SessionPresenter";
 import type { AppHooks } from "#/ui/hooks/createAppHooks";
 
 import type { AppData } from "../shared/appData";
@@ -174,6 +176,15 @@ export function buildFakeHooks(data: AppData): AppHooks {
         setViewMode: noop,
       };
     },
+    // Session: static snapshot for screenshots. Defaults to unlocked, so the
+    // LockScreen overlay renders nothing and existing goldens are unchanged.
+    useSession: () => {
+      return {
+        state: { locked: data.sessionLocked ?? false, user: DEMO_USER },
+        lock: noop,
+        unlock: noop,
+      };
+    },
     // Countdown: static snapshot for visual goldens — returns totalMs so the bar
     // renders at 100% fill (deterministic; never wall-clock-dependent).
     useRfqCountdown: (_creationTimestamp: number, totalMs: number) => {
@@ -195,6 +206,17 @@ export function buildFakeHooks(data: AppData): AppHooks {
         expand: noop,
         resize: noop,
       };
+    },
+    // Boot sequence: visual goldens capture post-boot UI; return a static initial
+    // state with noop skip. The BootSequence component is not rendered in any
+    // existing golden scenario.
+    useBootSequence: (_onDone: () => void) => {
+      const state: BootSequenceState = {
+        variant: "core",
+        progress: 0,
+        done: false,
+      };
+      return { state, skip: noop };
     },
   };
 }

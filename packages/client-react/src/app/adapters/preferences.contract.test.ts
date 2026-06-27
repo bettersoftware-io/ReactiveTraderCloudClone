@@ -10,6 +10,7 @@ import { describePreferencesPortContract } from "@rtc/domain/ports/__contracts__
 
 import {
   ANIMATED_BG_STORAGE_KEY,
+  BOOT_VARIANT_STORAGE_KEY,
   LocalStoragePreferencesAdapter,
   THEME_SKIN_STORAGE_KEY,
   THEME_STORAGE_KEY,
@@ -21,6 +22,7 @@ function clearStorage(): void {
   localStorage.removeItem(THEME_SKIN_STORAGE_KEY);
   localStorage.removeItem(VIEW_MODE_STORAGE_KEY);
   localStorage.removeItem(ANIMATED_BG_STORAGE_KEY);
+  localStorage.removeItem(BOOT_VARIANT_STORAGE_KEY);
 }
 
 describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
@@ -46,6 +48,8 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
           ANIMATED_BG_STORAGE_KEY,
           seed.animatedBackground ? "true" : "false",
         );
+      if (seed.bootVariant)
+        localStorage.setItem(BOOT_VARIANT_STORAGE_KEY, seed.bootVariant);
       return new LocalStoragePreferencesAdapter();
     },
   );

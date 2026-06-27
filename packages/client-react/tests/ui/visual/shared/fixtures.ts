@@ -1126,4 +1126,18 @@ export const fixtures: Record<string, AppData> = {
 
   // --- Phase 9: stale "Reconnecting…" overlay arm ---
   "tile-stale": makeAppData({ ...eurusdTileBase, stale: { EURUSD: true } }),
+
+  // --- Phase 2 HUD shell surfaces (boot / lock / chrome / status / prefs) ---
+  // Header chrome + status bar render against a connected, unlocked session.
+  "app-connected": makeAppData({
+    connectionStatus: ConnectionStatus.CONNECTED,
+  }),
+  // Lock screen: the session is locked, so the full-screen overlay renders.
+  "session-locked": makeAppData({ sessionLocked: true }),
+  // Preferences modal: animated background off → its real switch reads "off".
+  "prefs-open": makeAppData({ animatedBackground: false }),
+  // Boot sequence: the deterministic chrome is captured under reduced motion
+  // (the canvas art is animated and intentionally not pixel-golden'd — see the
+  // shell visual specs). The default fake reports progress 0 / "core" variant.
+  boot: makeAppData({}),
 };

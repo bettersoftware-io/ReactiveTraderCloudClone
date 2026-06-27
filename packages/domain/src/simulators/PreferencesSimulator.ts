@@ -2,6 +2,8 @@ import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
 import type { PreferencesPort } from "../ports/preferencesPort.js";
 import {
+  type BootVariant,
+  DEFAULT_BOOT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -15,6 +17,7 @@ export interface PreferencesSeed {
   themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
   animatedBackground?: boolean;
+  bootVariant?: BootVariant;
 }
 
 /**
@@ -31,6 +34,8 @@ export class PreferencesSimulator implements PreferencesPort {
 
   private readonly animatedBg: BehaviorSubject<boolean>;
 
+  private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
+
   constructor(seed: PreferencesSeed = {}) {
     this.themeMode = new BehaviorSubject<ThemeMode>(
       seed.themeMode ?? DEFAULT_THEME_MODE,
@@ -43,6 +48,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.animatedBg = new BehaviorSubject<boolean>(
       seed.animatedBackground ?? false,
+    );
+    this.bootVariantSubject = new BehaviorSubject<BootVariant>(
+      seed.bootVariant ?? DEFAULT_BOOT_VARIANT,
     );
   }
 
@@ -76,5 +84,13 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setAnimatedBackground(on: boolean): void {
     this.animatedBg.next(on);
+  }
+
+  bootVariant$(): Observable<BootVariant> {
+    return this.bootVariantSubject.pipe(distinctUntilChanged());
+  }
+
+  setBootVariant(variant: BootVariant): void {
+    this.bootVariantSubject.next(variant);
   }
 }

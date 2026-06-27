@@ -2,6 +2,8 @@ import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
+  type BootVariant,
+  DEFAULT_BOOT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -18,6 +20,7 @@ export interface PreferencesSeed {
   themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
   animatedBackground?: boolean;
+  bootVariant?: BootVariant;
 }
 
 /**
@@ -136,6 +139,29 @@ export function describePreferencesPortContract(
       const port = makeSeeded({ themeSkin: "neon", animatedBackground: true });
       expect(await firstValueFrom(port.themeSkin$())).toBe("neon");
       expect(await firstValueFrom(port.animatedBackground$())).toBe(true);
+    });
+
+    it("empty store emits the default bootVariant", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.bootVariant$())).toBe(
+        DEFAULT_BOOT_VARIANT,
+      );
+    });
+
+    it("setBootVariant persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: BootVariant[] = [];
+      const sub = port.bootVariant$().subscribe((v) => {
+        return seen.push(v);
+      });
+      port.setBootVariant("laser");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_BOOT_VARIANT, "laser"]);
+    });
+
+    it("reads back a seeded bootVariant", async () => {
+      const port = makeSeeded({ bootVariant: "docking" });
+      expect(await firstValueFrom(port.bootVariant$())).toBe("docking");
     });
   });
 }

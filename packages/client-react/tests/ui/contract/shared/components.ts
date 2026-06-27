@@ -46,8 +46,10 @@ import {
   SetFilterPage,
   type SetFilterProps,
 } from "./pages/fx/blotter/SetFilterPage";
+import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
 import { LayoutEnginePage } from "./pages/shell/layout/LayoutEnginePage";
+import { LockScreenPage } from "./pages/shell/lock/LockScreenPage";
 
 export type { RfqFilter };
 
@@ -109,13 +111,21 @@ import {
   ViewTogglePage,
   type ViewToggleProps,
 } from "./pages/fx/liveRates/ViewTogglePage";
+import {
+  HeaderChromePage,
+  type HeaderChromeProps,
+} from "./pages/shell/chrome/HeaderChromePage";
+import { ThemePickerPage } from "./pages/shell/chrome/ThemePickerPage";
 import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverlayPage";
-import { FooterPage } from "./pages/shell/layout/FooterPage";
-import { HeaderPage, type HeaderProps } from "./pages/shell/layout/HeaderPage";
+import {
+  PreferencesModalPage,
+  type PreferencesModalProps,
+} from "./pages/shell/prefs/PreferencesModalPage";
 import {
   StaleIndicatorPage,
   type StaleIndicatorProps,
 } from "./pages/shell/stale/StaleIndicatorPage";
+import { StatusBarPage } from "./pages/shell/status/StatusBarPage";
 import { ThemeTogglePage } from "./pages/shell/theme/ThemeTogglePage";
 
 export const AnalyticsPanel = component<
@@ -302,13 +312,23 @@ export const ConnectionOverlay = component<
   return new ConnectionOverlayPage(ctx);
 });
 
-export const Footer = component<Record<string, never>, FooterPage>((ctx) => {
-  return new FooterPage(ctx);
-});
+export const StatusBar = component<Record<string, never>, StatusBarPage>(
+  (ctx) => {
+    return new StatusBarPage(ctx);
+  },
+);
 
-export const Header = component<HeaderProps, HeaderPage>((ctx) => {
-  return new HeaderPage(ctx);
-});
+export const HeaderChrome = component<HeaderChromeProps, HeaderChromePage>(
+  (ctx) => {
+    return new HeaderChromePage(ctx);
+  },
+);
+
+export const ThemePicker = component<Record<string, never>, ThemePickerPage>(
+  (ctx) => {
+    return new ThemePickerPage(ctx);
+  },
+);
 
 export const StaleIndicator = component<
   StaleIndicatorProps,
@@ -334,3 +354,22 @@ export const LayoutEngine = component<Record<string, never>, LayoutEnginePage>(
     return new LayoutEnginePage(ctx);
   },
 );
+
+export const BootSequence = component<Record<string, never>, BootSequencePage>(
+  (ctx) => {
+    return new BootSequencePage(ctx);
+  },
+);
+
+export const LockScreen = component<Record<string, never>, LockScreenPage>(
+  (ctx) => {
+    return new LockScreenPage(ctx);
+  },
+);
+
+export const PreferencesModal = component<
+  PreferencesModalProps,
+  PreferencesModalPage
+>((ctx) => {
+  return new PreferencesModalPage(ctx);
+});

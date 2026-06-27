@@ -23,6 +23,10 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
+import {
+  DEMO_USER,
+  type SessionState,
+} from "#/app/presenters/SessionPresenter";
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
@@ -88,6 +92,10 @@ export interface CommandLog {
   quoteRfq: QuoteRequest[];
   /** Incremented each time useReconnect() callback is invoked. */
   reconnect: number;
+  /** Incremented each time useSession().unlock() (re-authenticate) is invoked. */
+  sessionUnlock: number;
+  /** Each value written through useAnimatedBackground().setEnabled/toggle, in order. */
+  animatedBackgroundSets: boolean[];
 }
 
 /** The default throughput view a fresh World reports (loaded, value 100). */
@@ -96,6 +104,9 @@ const DEFAULT_THROUGHPUT: ThroughputView = {
   loading: false,
   message: null,
 };
+
+/** The default session a fresh World reports: unlocked, static demo user. */
+const DEFAULT_SESSION: SessionState = { locked: false, user: DEMO_USER };
 
 export interface World {
   readonly sources: { [K in keyof HookValues]: BehaviorSubject<HookValues[K]> };
@@ -113,6 +124,8 @@ export interface World {
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive view-mode preference backing useViewModePreference (drives LiveRatesPanel). */
   readonly viewMode: BehaviorSubject<ViewMode>;
+  /** Reactive session state backing useSession (drives LockScreen). */
+  readonly session: BehaviorSubject<SessionState>;
   /** Per-key subject for usePrice(pair), keyed by pair.symbol. */
   priceFor(symbol: string): BehaviorSubject<Price | null>;
   /** Per-key subject for usePriceHistory(symbol). */
@@ -140,6 +153,7 @@ export function createWorld(
   viewModeSeed?: ViewMode,
   themeSkinSeed?: ThemeSkin,
   animatedBackgroundSeed?: boolean,
+  sessionSeed: Partial<SessionState> = {},
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -225,6 +239,11 @@ export function createWorld(
   const viewMode = new BehaviorSubject<ViewMode>(
     viewModeSeed ?? DEFAULT_VIEW_MODE,
   );
+  const session = new BehaviorSubject<SessionState>({
+    ...DEFAULT_SESSION,
+    ...sessionSeed,
+    user: { ...DEFAULT_SESSION.user, ...sessionSeed.user },
+  });
 
   return {
     sources,
@@ -237,6 +256,7 @@ export function createWorld(
     themeSkin,
     animatedBackground,
     viewMode,
+    session,
     priceFor,
     historyFor,
     quotesForRfq,
@@ -258,6 +278,8 @@ export function createWorld(
       passQuote: [],
       quoteRfq: [],
       reconnect: 0,
+      sessionUnlock: 0,
+      animatedBackgroundSets: [],
     },
     push(patch: Partial<HookValues>): void {
       for (const key of Object.keys(patch) as (keyof HookValues)[]) {

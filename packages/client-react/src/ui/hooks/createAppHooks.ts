@@ -24,6 +24,10 @@ import type { AppCommands, Presenters } from "#/app/composition";
 import type { WorkspaceTab } from "#/app/layout/defaultLayoutPort";
 import type { LayoutState } from "#/app/layout/layoutPort";
 import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
+import type {
+  BootSequenceIntents,
+  BootSequenceState,
+} from "#/app/presenters/BootSequenceMachine";
 import type { LayoutIntents } from "#/app/presenters/LayoutMachine";
 import type { MachineFactories } from "#/app/presenters/machine";
 import type {
@@ -38,6 +42,10 @@ import type {
   TicketSubmissionState,
 } from "#/app/presenters/RfqsPresenter";
 import type { RfqState, RfqTileIntents } from "#/app/presenters/RfqTileMachine";
+import {
+  DEMO_USER,
+  type SessionState,
+} from "#/app/presenters/SessionPresenter";
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 import type {
   TileExecutionIntents,
@@ -46,6 +54,7 @@ import type {
 
 import { useMachine } from "./useMachine";
 
+type UseBootSequenceResult = { state: BootSequenceState } & BootSequenceIntents;
 type UseLayoutResult = { state: LayoutState } & LayoutIntents;
 type UseTileExecutionResult = {
   state: TileExecutionState;
@@ -82,6 +91,12 @@ interface UseAnimatedBackgroundResult {
 interface UseViewModePreferenceResult {
   viewMode: ViewMode;
   setViewMode: (viewMode: ViewMode) => void;
+}
+
+interface UseSessionResult {
+  state: SessionState;
+  lock: () => void;
+  unlock: () => void;
 }
 
 export interface AppHooks {
@@ -128,6 +143,9 @@ export interface AppHooks {
   useAnimatedBackground: () => UseAnimatedBackgroundResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
+  /** Global session lock state plus lock/unlock (re-authenticate) intents.
+   * Shared (one stream for the whole app), so a plain `bind` like the prefs. */
+  useSession: () => UseSessionResult;
   /** Per-RFQ countdown — remainingMs, ticking every 100ms, clamped at 0.
    * Cosmetic-only; the authoritative expiry is server-driven (CreditRfqSimulator).
    * Mirrors rtc-original CreditRfqTimer (creditRfqs.ts:102-112). */
@@ -138,6 +156,9 @@ export interface AppHooks {
   useAnimationIntents: (target: string) => AnimationIntent | null;
   /** Layout view-model + intents for a workspace tab (the in-house engine). */
   useLayout: (tab: WorkspaceTab) => UseLayoutResult;
+  /** Boot-sequence animation — progress ramp + skip intent. One per app mount.
+   * Calls onDone when the ramp completes or skip is invoked. */
+  useBootSequence: (onDone: () => void) => UseBootSequenceResult;
 }
 
 export function createAppHooks(
@@ -233,6 +254,21 @@ export function createAppHooks(
 
   function setViewMode(viewMode: ViewMode): void {
     presenters.viewModePreference.setViewMode(viewMode);
+  }
+
+  // Global/shared session lock state → a plain bind (not a per-mount machine).
+  const [useSessionState] = bind(presenters.session.state$, {
+    locked: false,
+    user: DEMO_USER,
+  } as SessionState);
+
+  // Stable, this-bound command callbacks (the presenter methods touch `this`).
+  function lockSession(): void {
+    presenters.session.lock();
+  }
+
+  function unlockSession(): void {
+    presenters.session.unlock();
   }
 
   // Animation intents → a parameterized bind (one per-target stream, like usePrice).
@@ -346,6 +382,13 @@ export function createAppHooks(
         setViewMode,
       };
     },
+    useSession: () => {
+      return {
+        state: useSessionState(),
+        lock: lockSession,
+        unlock: unlockSession,
+      };
+    },
     useRfqCountdown: (creationTimestamp: number, totalMs: number) => {
       return useMachine(() => {
         return createRfqCountdownMachine(creationTimestamp, totalMs);
@@ -355,6 +398,11 @@ export function createAppHooks(
     useLayout: (tab: WorkspaceTab) => {
       return useMachine(() => {
         return machines.layout(tab);
+      });
+    },
+    useBootSequence: (onDone: () => void) => {
+      return useMachine(() => {
+        return machines.boot(onDone);
       });
     },
   };
