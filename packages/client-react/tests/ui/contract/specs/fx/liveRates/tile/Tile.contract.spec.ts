@@ -29,7 +29,7 @@ const _nzdusd = KNOWN_CURRENCY_PAIRS.find((p) => {
 if (!_nzdusd) throw new Error("NZDUSD not found in KNOWN_CURRENCY_PAIRS");
 const nzdusd: CurrencyPair = _nzdusd;
 
-const price = (over: Partial<Price> = {}): Price => {
+function price(over: Partial<Price> = {}): Price {
   return {
     symbol: "EURUSD",
     bid: 1.0921,
@@ -41,7 +41,7 @@ const price = (over: Partial<Price> = {}): Price => {
     spread: "4.0",
     ...over,
   };
-};
+}
 
 const history: readonly PriceTick[] = [
   {
@@ -62,7 +62,7 @@ const history: readonly PriceTick[] = [
   },
 ];
 
-const tradeResult = (over: Partial<Trade> = {}): ExecuteTradeResult => {
+function tradeResult(over: Partial<Trade> = {}): ExecuteTradeResult {
   return {
     status: ExecutionStatus.Done,
     trade: {
@@ -79,7 +79,7 @@ const tradeResult = (over: Partial<Trade> = {}): ExecuteTradeResult => {
       ...over,
     },
   };
-};
+}
 
 afterEach(() => {
   vi.useRealTimers();

@@ -35,13 +35,13 @@ const dealers: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-const ready = (): NewRfqFormPage => {
+function ready(): NewRfqFormPage {
   return mount(NewRfqForm, {
     props: { onCreated: () => {} },
     hooks: { useInstruments: instruments, useDealers: dealers },
     commands: { createRfq: 555 },
   });
-};
+}
 
 describe("NewRfqForm", () => {
   it("keeps submit disabled until an instrument and quantity are provided", async () => {

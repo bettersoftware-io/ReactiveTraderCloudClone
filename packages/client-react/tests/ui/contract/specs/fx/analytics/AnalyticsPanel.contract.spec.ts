@@ -13,32 +13,32 @@ afterEach(() => {
   return cleanupMounted();
 });
 
-const historic = (
+function historic(
   usdPnl: number,
   timestamp = "2026-06-13T00:00:00Z",
-): HistoricPosition => {
+): HistoricPosition {
   return {
     timestamp,
     usdPnl,
   };
-};
+}
 
-const position = (symbol: string, basePnl: number): CurrencyPairPosition => {
+function position(symbol: string, basePnl: number): CurrencyPairPosition {
   return {
     symbol,
     basePnl,
     baseTradedAmount: 1_000_000,
     counterTradedAmount: 1_090_000,
   };
-};
+}
 
-const updates = (over: Partial<PositionUpdates> = {}): PositionUpdates => {
+function updates(over: Partial<PositionUpdates> = {}): PositionUpdates {
   return {
     currentPositions: [position("EURUSD", 12_500)],
     history: [historic(0, "2026-06-13T00:00:00Z"), historic(12_500)],
     ...over,
   };
-};
+}
 
 describe("AnalyticsPanel", () => {
   it("shows a loading placeholder until analytics data arrives", () => {

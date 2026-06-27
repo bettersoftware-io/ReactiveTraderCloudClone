@@ -95,25 +95,6 @@ export default tseslint.config(
     },
   },
   {
-    // Behavior-frozen contract specs are the framework-swap portability pillar:
-    // pinned verbatim, so the definitional AST style rules must not force edits
-    // to them. We scope OFF exactly those rules (rather than a blanket ignore)
-    // so the file is still parsed and every other rule — notably the type-aware
-    // tier in eslint.config.typed.mjs (no-floating-promises et al.) — keeps
-    // covering these specs. Whitespace/brace formatting stays owned by Biome.
-    files: [
-      "packages/client-react/tests/ui/contract/specs/**/*.contract.spec.ts",
-    ],
-    rules: {
-      "func-style": "off",
-      "arrow-body-style": "off",
-      "func-names": "off",
-      "lines-between-class-members": "off",
-      "padding-line-between-statements": "off",
-      "no-restricted-syntax": "off",
-    },
-  },
-  {
     // React Compiler / Rules-of-React diagnostics, scoped to the app source the
     // compiler actually compiles (src — not tests, which never go through the
     // Babel transform). The `recommended-latest` preset bundles rules-of-hooks,
