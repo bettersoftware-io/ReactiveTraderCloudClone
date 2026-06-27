@@ -23,7 +23,6 @@
       "entry": [
         "src/main.tsx",
         "src/index.ts",
-        "src/app/layout/layoutPort.ts",
         "index.html",
         "vite.config.ts",
         "tests/ui/visual/playwright-ct/host/index.tsx",

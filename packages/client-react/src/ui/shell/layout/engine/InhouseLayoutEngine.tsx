@@ -183,6 +183,8 @@ function SplitNode({
                 aria-orientation={
                   node.dir === "row" ? "vertical" : "horizontal"
                 }
+                aria-valuemin={0}
+                aria-valuemax={1}
                 aria-valuenow={node.sizes[i]}
                 data-orientation={
                   node.dir === "row" ? "vertical" : "horizontal"
