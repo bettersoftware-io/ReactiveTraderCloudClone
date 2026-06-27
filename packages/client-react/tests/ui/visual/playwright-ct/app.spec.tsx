@@ -36,7 +36,10 @@ test("app/admin", async ({ mount, page }) => {
   });
   await mount(<VisualScenario name="app/admin" />);
   await page.getByTestId("tab-admin").click();
-  await expect(page.getByText("Throughput Control")).toBeVisible();
+  // "Throughput Control" appears in both the engine panel header and the AdminPanel
+  // h2, so getByText is not unique. "Updates/sec" is only in the AdminPanel slider
+  // row and proves the panel is fully loaded without a strict-mode violation.
+  await expect(page.getByText("Updates/sec")).toBeVisible();
   await expect(page).toHaveScreenshot("admin.png", {
     animations: "disabled",
     fullPage: true,

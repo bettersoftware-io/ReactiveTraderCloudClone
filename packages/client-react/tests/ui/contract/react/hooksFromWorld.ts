@@ -13,6 +13,11 @@ import type {
   ViewMode,
 } from "@rtc/domain";
 
+import {
+  createDefaultLayoutPort,
+  type WorkspaceTab,
+} from "#/app/layout/defaultLayoutPort";
+import { createLayoutMachine } from "#/app/presenters/LayoutMachine";
 import { createNotionalMachine } from "#/app/presenters/NotionalMachine";
 import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
 import type {
@@ -316,6 +321,11 @@ export function reactHooks(world: World): AppHooks {
     // fake reports no intent (null) for every target.
     useAnimationIntents: (_target: string) => {
       return null;
+    },
+    useLayout: (tab: WorkspaceTab) => {
+      return useMachine(() => {
+        return createLayoutMachine(createDefaultLayoutPort(tab));
+      });
     },
   };
 }

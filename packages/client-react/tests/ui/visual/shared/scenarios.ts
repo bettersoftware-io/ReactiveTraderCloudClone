@@ -423,4 +423,18 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "LiveRatesPanel",
     fixtureKey: "live-rates-populated",
   },
+
+  // --- Phase 1: in-house layout engine arrangements ---
+  "layout/fx-default": {
+    componentKey: "LayoutEngineDefault",
+    fixtureKey: "app-fx",
+  },
+  "layout/fx-maximized": {
+    componentKey: "LayoutEngineMaximized",
+    fixtureKey: "app-fx",
+  },
+  "layout/fx-collapsed": {
+    componentKey: "LayoutEngineCollapsed",
+    fixtureKey: "app-fx",
+  },
 };
