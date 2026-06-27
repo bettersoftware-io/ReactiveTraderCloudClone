@@ -85,6 +85,7 @@ import {
   Footer,
   FxBlotter,
   Header,
+  LayoutEngine,
   LiveRatesPanel,
   NewRfqForm,
   NumberFilter,
@@ -116,6 +117,7 @@ import type {
   ComponentToken,
   MountedComponent,
 } from "../shared/harness/component";
+import { LayoutEngineHost } from "./LayoutEngineHost";
 
 function noopFilter(_f: ColumnFilter | null): void {}
 
@@ -533,6 +535,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     AdminPanel,
     (): ReactElement => {
       return <AdminPanelComponent />;
+    },
+  ],
+  [
+    LayoutEngine,
+    (): ReactElement => {
+      return <LayoutEngineHost />;
     },
   ],
 ]);
