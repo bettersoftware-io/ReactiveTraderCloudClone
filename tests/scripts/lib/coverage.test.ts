@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { fileStat, lineCoverageOf, packageStat, unionLines } from "./coverage";
+import { coverageOf, type FileMap, fileStat, packageStat } from "./coverage";
 
-// Minimal istanbul-format coverage: line 1 covered, line 2 uncovered.
-function cov(path: string, hits: Record<number, number>): unknown {
+// Minimal istanbul-format coverage: per-line statement hits + optional branch.
+// `branches`: map of line -> [hits-per-branch-arm].
+function cov(
+  path: string,
+  hits: Record<number, number>,
+  branches: Record<number, number[]> = {},
+): unknown {
   const statementMap: Record<string, unknown> = {};
   const s: Record<string, number> = {};
   let i = 0;
@@ -17,48 +22,67 @@ function cov(path: string, hits: Record<number, number>): unknown {
     i++;
   }
 
-  return {
-    [path]: { path, statementMap, s, fnMap: {}, f: {}, branchMap: {}, b: {} },
-  };
+  const branchMap: Record<string, unknown> = {};
+  const b: Record<string, number[]> = {};
+  let j = 0;
+
+  for (const [line, arms] of Object.entries(branches)) {
+    branchMap[j] = {
+      type: "branch",
+      line: Number(line),
+      locations: arms.map(() => {
+        return { start: { line: Number(line) } };
+      }),
+    };
+    b[j] = arms;
+    j++;
+  }
+
+  return { [path]: { path, statementMap, s, fnMap: {}, f: {}, branchMap, b } };
 }
 
-describe("lineCoverageOf", () => {
-  it("maps each instrumented line to its hit count", () => {
-    const lines = lineCoverageOf(cov("/r/a.ts", { 1: 3, 2: 0 }));
-    expect(lines.get("/r/a.ts")?.get(1)).toBe(3);
-    expect(lines.get("/r/a.ts")?.get(2)).toBe(0);
-  });
-});
-
-describe("unionLines", () => {
-  it("treats a line covered in either report as covered (per-line max)", () => {
-    const a = lineCoverageOf(cov("/r/a.ts", { 5: 0, 6: 0 })); // contract: both uncovered
-    const b = lineCoverageOf(cov("/r/a.ts", { 5: 1, 6: 0 })); // visual: line 5 covered
-    const merged = unionLines([a, b]);
-    expect(merged.get("/r/a.ts")?.get(5)).toBe(1);
-    expect(merged.get("/r/a.ts")?.get(6)).toBe(0);
+describe("coverageOf", () => {
+  it("maps each line to its statement hit count", () => {
+    const fm = coverageOf(cov("/r/a.ts", { 1: 3, 2: 0 }));
+    expect(fm.get("/r/a.ts")?.get(1)?.hits).toBe(3);
+    expect(fm.get("/r/a.ts")?.get(2)?.hits).toBe(0);
   });
 
-  it("keeps files present in only one report", () => {
-    const a = lineCoverageOf(cov("/r/only-a.ts", { 1: 1 }));
-    const b = lineCoverageOf(cov("/r/only-b.ts", { 1: 0 }));
-    const merged = unionLines([a, b]);
-    expect(merged.has("/r/only-a.ts")).toBe(true);
-    expect(merged.has("/r/only-b.ts")).toBe(true);
+  it("attaches per-line branch coverage where present", () => {
+    const fm = coverageOf(cov("/r/a.ts", { 1: 1 }, { 1: [1, 0] }));
+    expect(fm.get("/r/a.ts")?.get(1)?.branch).toEqual({ covered: 1, total: 2 });
   });
 });
 
 describe("fileStat", () => {
-  it("computes pct and sorted uncovered line list", () => {
-    const lines = lineCoverageOf(cov("/r/a.ts", { 3: 0, 1: 1, 2: 0 })).get(
-      "/r/a.ts",
-    );
-    if (lines === undefined) throw new Error("fixture missing file"); // no `!` (Biome bans non-null assertions)
+  it("separates uncovered lines from partial-branch lines", () => {
+    const lines = coverageOf(
+      cov("/r/a.ts", { 1: 1, 2: 0, 3: 1 }, { 3: [1, 0] }),
+    ).get("/r/a.ts");
+
+    if (lines === undefined) {
+      throw new Error("fixture missing file");
+    }
+
     const stat = fileStat("/r/a.ts", lines);
     expect(stat.total).toBe(3);
-    expect(stat.covered).toBe(1);
-    expect(stat.pct).toBeCloseTo(33.33, 1);
-    expect(stat.uncovered).toEqual([2, 3]);
+    expect(stat.covered).toBe(2);
+    expect(stat.uncoveredLines).toEqual([2]);
+    expect(stat.partialBranchLines).toEqual([3]);
+  });
+
+  it("does not flag a fully-covered branch line", () => {
+    const lines = coverageOf(cov("/r/a.ts", { 1: 1 }, { 1: [1, 1] })).get(
+      "/r/a.ts",
+    );
+
+    if (lines === undefined) {
+      throw new Error("fixture missing file");
+    }
+
+    const stat = fileStat("/r/a.ts", lines);
+    expect(stat.partialBranchLines).toEqual([]);
+    expect(stat.uncoveredLines).toEqual([]);
   });
 
   it("reports 100% for a file with no instrumented lines", () => {
@@ -67,20 +91,26 @@ describe("fileStat", () => {
 });
 
 describe("packageStat", () => {
-  it("aggregates totals and lists only files with gaps, worst pct first", () => {
-    const lines = unionLines([
-      lineCoverageOf(cov("/r/good.ts", { 1: 1, 2: 1 })), // 100%, no gaps -> omitted
-      lineCoverageOf(cov("/r/bad.ts", { 1: 0, 2: 0 })), // 0%
-      lineCoverageOf(cov("/r/mid.ts", { 1: 1, 2: 0 })), // 50%
-    ]);
-    const stat = packageStat("client/ui", lines);
-    expect(stat.total).toBe(6);
-    expect(stat.covered).toBe(3);
-    expect(stat.pct).toBe(50);
+  it("includes files with uncovered OR partial-branch lines, worst pct first", () => {
+    const fm: FileMap = new Map();
+    const parts = [
+      cov("/r/good.ts", { 1: 1, 2: 1 }), // 100% — excluded
+      cov("/r/bad.ts", { 1: 0, 2: 0 }), // 0%
+      cov("/r/partial.ts", { 1: 1 }, { 1: [1, 0] }), // 100% line, partial branch
+    ];
+
+    for (const part of parts) {
+      for (const [file, lines] of coverageOf(part)) {
+        fm.set(file, lines);
+      }
+    }
+
+    const stat = packageStat("client/ui (visual)", fm);
+    expect(stat.name).toBe("client/ui (visual)");
     expect(
       stat.files.map((f) => {
         return f.file;
       }),
-    ).toEqual(["/r/bad.ts", "/r/mid.ts"]);
+    ).toEqual(["/r/bad.ts", "/r/partial.ts"]);
   });
 });

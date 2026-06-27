@@ -5,10 +5,14 @@ import type { TierResult } from "./testResults";
 
 export const SUMMARY_CAP = 900_000;
 
-// Upper bound on the cap-warning note's contribution to the final string
-// (1 join separator + note text). The note format is fixed; 256 safely covers
-// the longest form including a large omitted count.
+// Upper bound on the cap-warning note's byte contribution (1 join separator +
+// note text). 256 safely covers the longest form including a large count.
 const NOTE_RESERVE = 256;
+
+// Render the entire file when it has this many source lines or fewer; larger
+// files fall back to ±CONTEXT windows around each gap.
+const FULL_FILE_MAX = 200;
+const CONTEXT = 5;
 
 export interface RenderInput {
   title: string;
@@ -20,12 +24,6 @@ export interface RenderInput {
 
 function pct(n: number): string {
   return `${n.toFixed(1)}%`;
-}
-
-function lang(file: string): string {
-  if (file.endsWith(".tsx")) return "tsx";
-  if (file.endsWith(".ts")) return "ts";
-  return "";
 }
 
 function testSection(results: TierResult[]): string {
@@ -70,45 +68,119 @@ function coverageTable(packages: PackageStat[]): string {
   ].join("\n");
 }
 
-// Uncovered lines as numbered text, with a `⋮` marker between non-contiguous runs.
-function snippet(uncovered: number[], source: string[]): string {
-  const parts: string[] = [];
-  let prev: number | null = null;
+function fileSummary(stat: FileStat, rel: string, tier: string): string {
+  const u = stat.uncoveredLines.length;
+  const b = stat.partialBranchLines.length;
+  const branchPart = b > 0 ? `, ${b} partial branch${b === 1 ? "" : "es"}` : "";
+  return `${tier} · ${rel} — ${pct(stat.pct)} (${u} uncovered${branchPart})`;
+}
 
-  for (const line of uncovered) {
-    if (prev !== null && line > prev + 1) parts.push("  ⋮");
-    const text = source[line - 1] ?? "";
-    parts.push(`${String(line).padStart(4)}  ${text}`);
-    prev = line;
+// The ordered line numbers to render: the full file when small, else merged
+// ±CONTEXT windows around gaps. A `0` entry marks a window separator (⋮).
+function renderedLineNumbers(stat: FileStat, lineCount: number): number[] {
+  if (lineCount <= FULL_FILE_MAX) {
+    return Array.from({ length: lineCount }, (_, i) => {
+      return i + 1;
+    });
   }
 
-  return parts.join("\n");
+  const interesting = [...stat.uncoveredLines, ...stat.partialBranchLines].sort(
+    (a, b) => {
+      return a - b;
+    },
+  );
+  const ranges: Array<[number, number]> = [];
+
+  for (const line of interesting) {
+    const lo = Math.max(1, line - CONTEXT);
+    const hi = Math.min(lineCount, line + CONTEXT);
+    const last = ranges.at(-1);
+
+    if (last !== undefined && lo <= last[1] + 1) {
+      last[1] = Math.max(last[1], hi);
+    } else {
+      ranges.push([lo, hi]);
+    }
+  }
+
+  const out: number[] = [];
+
+  for (let r = 0; r < ranges.length; r++) {
+    if (r > 0) {
+      out.push(0);
+    }
+
+    const range = ranges[r];
+
+    for (let n = range[0]; n <= range[1]; n++) {
+      out.push(n);
+    }
+  }
+
+  return out;
+}
+
+function diffLine(stat: FileStat, n: number, source: string[]): string {
+  const cov = stat.lines.get(n);
+  const text = source[n - 1] ?? "";
+  const branch = cov?.branch;
+  const uncovered = cov !== undefined && cov.hits === 0;
+  const partial =
+    cov !== undefined &&
+    cov.hits > 0 &&
+    branch !== undefined &&
+    branch.covered < branch.total;
+  const prefix = uncovered || partial ? "-" : " ";
+  const note =
+    partial && branch !== undefined
+      ? `    // ⚠ branch ${branch.covered}/${branch.total} not taken`
+      : "";
+  return `${prefix}  ${String(n).padStart(4)}  ${text}${note}`;
+}
+
+function fileDiff(stat: FileStat, source: string[]): string {
+  return renderedLineNumbers(stat, source.length)
+    .map((n) => {
+      if (n === 0) {
+        return "    ⋮";
+      }
+
+      return diffLine(stat, n, source);
+    })
+    .join("\n");
+}
+
+function linesOnlyBlock(stat: FileStat, rel: string, tier: string): string {
+  const parts = [
+    `uncovered lines: ${stat.uncoveredLines.join(", ") || "none"}`,
+  ];
+
+  if (stat.partialBranchLines.length > 0) {
+    parts.push(`partial-branch lines: ${stat.partialBranchLines.join(", ")}`);
+  }
+
+  return `<details><summary>${fileSummary(stat, rel, tier)}</summary>\n\n${parts.join("\n")}\n</details>\n`;
 }
 
 function fileBlock(
   stat: FileStat,
   rel: string,
-  pkgName: string,
+  tier: string,
   source: string[] | null,
 ): string {
-  if (!source) {
-    return linesOnlyBlock(stat, rel, pkgName);
+  if (source === null) {
+    return linesOnlyBlock(stat, rel, tier);
   }
 
-  const summary = `${pkgName} · ${rel} — ${pct(stat.pct)} (${stat.uncovered.length} uncovered)`;
   return [
-    `<details><summary>${summary}</summary>`,
+    `<details><summary>${fileSummary(stat, rel, tier)}</summary>`,
     "",
-    `\`\`\`${lang(stat.file)}`,
-    snippet(stat.uncovered, source),
+    "```diff",
+    fileDiff(stat, source),
     "```",
     "</details>",
     "",
   ].join("\n");
-}
-
-function linesOnlyBlock(stat: FileStat, rel: string, pkgName: string): string {
-  return `<details><summary>${pkgName} · ${rel} — ${pct(stat.pct)} (${stat.uncovered.length} uncovered)</summary>\n\nuncovered lines: ${stat.uncovered.join(", ")}\n</details>\n`;
 }
 
 export function render(input: RenderInput): string {
@@ -119,11 +191,11 @@ export function render(input: RenderInput): string {
     coverageTable(input.packages),
   ];
 
-  // Flatten all files-with-gaps across packages, worst pct first.
+  // Flatten all tiers' files-with-gaps, worst line-coverage first.
   const flat = input.packages
     .flatMap((p) => {
       return p.files.map((f) => {
-        return { stat: f, pkg: p.name };
+        return { stat: f, tier: p.name };
       });
     })
     .sort((a, b) => {
@@ -131,23 +203,19 @@ export function render(input: RenderInput): string {
     });
 
   const body: string[] = ["### Untested lines", ""];
-  // Exact UTF-8 byte length of the assembled output so far:
-  //   [...head, body.join("\n")].join("\n")
-  // includes the single "\n" separator between the head string and body string.
-  // GitHub's job-summary limit is 1 MiB measured in bytes, not UTF-16 code units;
-  // non-ASCII glyphs in the report (✅ ❌ ⚠️ · — ⋮) and arbitrary source
-  // snippets make byte length ≥ code-unit length, so Buffer.byteLength is required.
+  // Exact UTF-8 byte length of [...head, body.join("\n")].join("\n") so far,
+  // including the "\n" between head and body. GitHub's cap is bytes, not UTF-16
+  // code units, so Buffer.byteLength is required.
   let size = Buffer.byteLength([...head, body.join("\n")].join("\n"), "utf8");
   let omitted = 0;
   let capped = false;
 
-  for (const { stat, pkg } of flat) {
+  for (const { stat, tier } of flat) {
     const rel = relative(input.repoRoot, stat.file);
 
     if (!capped) {
-      const block = fileBlock(stat, rel, pkg, input.readSource(stat.file));
+      const block = fileBlock(stat, rel, tier, input.readSource(stat.file));
 
-      // +1 for the "\n" join separator this element introduces in body.join("\n").
       if (
         size + 1 + Buffer.byteLength(block, "utf8") >
         SUMMARY_CAP - NOTE_RESERVE
@@ -160,8 +228,7 @@ export function render(input: RenderInput): string {
       }
     }
 
-    // capped: line-numbers only (much smaller); count anything that still won't fit.
-    const lean = linesOnlyBlock(stat, rel, pkg);
+    const lean = linesOnlyBlock(stat, rel, tier);
 
     if (
       size + 1 + Buffer.byteLength(lean, "utf8") >
