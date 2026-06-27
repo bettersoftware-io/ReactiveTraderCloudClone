@@ -7,8 +7,10 @@ FROM node:26-slim
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /app
 
-# Corepack provides the pnpm version pinned in package.json's packageManager.
-RUN corepack enable
+# node:26-slim no longer bundles Corepack, so install it first (pinned to the
+# same version CI uses), then enable it to provide the pnpm version pinned in
+# package.json's packageManager field.
+RUN npm install -g corepack@0.35.0 && corepack enable
 
 # Copy the whole repo (the .dockerignore keeps it lean), install, build server.
 COPY . .
