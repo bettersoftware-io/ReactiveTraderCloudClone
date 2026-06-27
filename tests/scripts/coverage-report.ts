@@ -2,31 +2,34 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { lineCoverageOf, packageStat, unionLines } from "./lib/coverage";
+import { coverageOf, packageStat } from "./lib/coverage";
 import { render } from "./lib/render";
 import { summarize, type TierResult } from "./lib/testResults";
 
-// Coverage tiers (paths relative to repo root). client/ui unions contract+visual.
+// Coverage tiers (paths relative to repo root). Each tier is reported standalone
+// (no union) so every file is attributable to one script; the two UI tiers
+// (contract specs vs visual goldens) appear as separate sections.
 export const TIERS = {
   coverage: [
     {
       name: "domain",
-      paths: ["packages/domain/reports/unit/coverage/coverage-final.json"],
+      path: "packages/domain/reports/unit/coverage/coverage-final.json",
     },
     {
       name: "server",
-      paths: ["packages/server/reports/unit/coverage/coverage-final.json"],
+      path: "packages/server/reports/unit/coverage/coverage-final.json",
     },
     {
       name: "client/app",
-      paths: ["packages/client-react/reports/app/coverage/coverage-final.json"],
+      path: "packages/client-react/reports/app/coverage/coverage-final.json",
     },
     {
-      name: "client/ui",
-      paths: [
-        "packages/client-react/reports/ui/contract/coverage/coverage-final.json",
-        "packages/client-react/reports/ui/visual/coverage/coverage-final.json",
-      ],
+      name: "client/ui (contract)",
+      path: "packages/client-react/reports/ui/contract/coverage/coverage-final.json",
+    },
+    {
+      name: "client/ui (visual)",
+      path: "packages/client-react/reports/ui/visual/coverage/coverage-final.json",
     },
   ],
   results: [
@@ -55,17 +58,17 @@ function readJson(path: string): unknown | null {
   }
 }
 
-function readSource(absPath: string): string[] | null {
+function readSource(absPath: string): string[] {
   try {
     return readFileSync(absPath, "utf8").split("\n");
   } catch {
-    return null;
+    return [];
   }
 }
 
 interface CoverageOverride {
   name: string;
-  files: string[];
+  file: string;
 }
 
 interface ResultsOverride {
@@ -87,24 +90,18 @@ export async function main(opts: MainOpts): Promise<string> {
   const covTiers =
     opts.coverageOverride ??
     TIERS.coverage.map((t) => {
-      return {
-        name: t.name,
-        files: t.paths.map((p) => {
-          return resolve(repoRoot, p);
-        }),
-      };
+      return { name: t.name, file: resolve(repoRoot, t.path) };
     });
 
   const packages = covTiers
     .map((t) => {
-      const reports = t.files
-        .map(readJson)
-        .filter((j): j is unknown => {
-          return j !== null;
-        })
-        .map(lineCoverageOf);
-      if (reports.length === 0) return null;
-      return packageStat(t.name, unionLines(reports));
+      const json = readJson(t.file);
+
+      if (json === null) {
+        return null;
+      }
+
+      return packageStat(t.name, coverageOf(json));
     })
     .filter((p): p is NonNullable<typeof p> => {
       return p !== null;

@@ -14,7 +14,13 @@
     "s": { "0": 1, "1": 0 },
     "fnMap": {},
     "f": {},
-    "branchMap": {},
-    "b": {}
+    "branchMap": {
+      "0": {
+        "type": "if",
+        "line": 1,
+        "locations": [{ "start": { "line": 1 } }, { "start": { "line": 1 } }]
+      }
+    },
+    "b": { "0": [1, 0] }
   }
 }
