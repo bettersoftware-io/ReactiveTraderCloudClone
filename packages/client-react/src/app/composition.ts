@@ -17,6 +17,10 @@ import {
 } from "./adapters/portFactory";
 import { WsAdapter } from "./adapters/WsAdapter";
 import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
+import {
+  createDefaultLayoutPort,
+  type WorkspaceTab,
+} from "./layout/defaultLayoutPort";
 import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
 import { AnimatedBackgroundPresenter } from "./presenters/AnimatedBackgroundPresenter";
 import { AnimationDirector } from "./presenters/AnimationDirector";
@@ -25,6 +29,7 @@ import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresente
 import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
 import { DealersPresenter } from "./presenters/DealersPresenter";
 import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
+import { createLayoutMachine } from "./presenters/LayoutMachine";
 import type { MachineFactories } from "./presenters/machine";
 import { createNotionalMachine } from "./presenters/NotionalMachine";
 import { PriceHistoryPresenter } from "./presenters/PriceHistoryPresenter";
@@ -236,6 +241,9 @@ export function createMachineFactories(
     },
     ticketSubmission: () => {
       return presenters.rfqs.createTicketSubmission();
+    },
+    layout: (tab: WorkspaceTab) => {
+      return createLayoutMachine(createDefaultLayoutPort(tab));
     },
   };
 }
