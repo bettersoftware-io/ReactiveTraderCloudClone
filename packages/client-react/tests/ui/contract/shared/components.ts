@@ -46,6 +46,7 @@ import {
   SetFilterPage,
   type SetFilterProps,
 } from "./pages/fx/blotter/SetFilterPage";
+import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
 import { LayoutEnginePage } from "./pages/shell/layout/LayoutEnginePage";
 
@@ -332,5 +333,11 @@ export const AdminPanel = component<Record<string, never>, AdminPanelPage>(
 export const LayoutEngine = component<Record<string, never>, LayoutEnginePage>(
   (ctx) => {
     return new LayoutEnginePage(ctx);
+  },
+);
+
+export const BootSequence = component<Record<string, never>, BootSequencePage>(
+  (ctx) => {
+    return new BootSequencePage(ctx);
   },
 );

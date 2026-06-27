@@ -58,6 +58,9 @@ export default defineConfig({
         // imperative d3 DOM (tooltip/tick/exit) exercised by the visual tier.
         "src/ui/fx/analytics/PositionBubbles.tsx",
         "src/ui/fx/liveRates/tile/TileChart.tsx",
+        // Complex multi-variant canvas draw functions — no DOM-assertable API;
+        // the pixel output is validated by the visual (browser) tier.
+        "src/ui/shell/boot/bootCanvas.ts",
       ],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/ui/contract/coverage",

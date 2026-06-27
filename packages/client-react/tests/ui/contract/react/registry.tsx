@@ -62,6 +62,7 @@ import {
   type TileRfqState,
 } from "#/ui/fx/liveRates/tile/TileRfq";
 import { ViewToggle as ViewToggleComponent } from "#/ui/fx/liveRates/ViewToggle";
+import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
 import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
 import { Footer as FooterComponent } from "#/ui/shell/layout/Footer";
@@ -77,6 +78,7 @@ import {
   AnalyticsPanel,
   BlotterHeader,
   BlotterRow,
+  BootSequence,
   ConnectionOverlay,
   ConnectionStatusBar,
   CreditBlotter,
@@ -126,6 +128,12 @@ type ElementFor = (props: Record<string, unknown>) => ReactElement;
 
 /** token → React element factory. Identity-keyed; no string keys. */
 export const registry = new Map<AnyToken, ElementFor>([
+  [
+    BootSequence,
+    (): ReactElement => {
+      return <BootSequenceComponent onDone={(): void => {}} />;
+    },
+  ],
   [
     AnalyticsPanel,
     (): ReactElement => {
