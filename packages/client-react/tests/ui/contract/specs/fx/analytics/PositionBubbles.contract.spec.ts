@@ -8,13 +8,13 @@ afterEach(() => {
   return cleanupMounted();
 });
 
-const pair = (
+function pair(
   symbol: string,
   baseTradedAmount: number,
   counterTradedAmount: number,
-): CurrencyPairPosition => {
+): CurrencyPairPosition {
   return { symbol, basePnl: 0, baseTradedAmount, counterTradedAmount };
-};
+}
 
 describe("PositionBubbles", () => {
   it("renders one bubble per non-zero currency, base+counter aggregated", () => {
@@ -49,6 +49,7 @@ describe("PositionBubbles", () => {
         ],
       },
     });
+
     for (const ccy of ["EUR", "USD"]) {
       expect(bubbles.radiusFor(ccy)).toBeGreaterThanOrEqual(15);
       expect(bubbles.radiusFor(ccy)).toBeLessThanOrEqual(60);

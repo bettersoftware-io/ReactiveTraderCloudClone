@@ -3,10 +3,10 @@ import { mount } from "@ui-contract/mount";
 import type { NotionalLike } from "@ui-contract/pages/fx/liveRates/tile/TileNotionalPage";
 import { describe, expect, it } from "vitest";
 
-const notional = (
+function notional(
   stateOver: Partial<NotionalLike["state"]> = {},
   intentsOver: Partial<Omit<NotionalLike, "state">> = {},
-): NotionalLike => {
+): NotionalLike {
   return {
     state: {
       displayValue: "1,000,000",
@@ -20,7 +20,7 @@ const notional = (
     reset: () => {},
     ...intentsOver,
   };
-};
+}
 
 describe("TileNotional", () => {
   it("shows the base currency label and the formatted value", () => {

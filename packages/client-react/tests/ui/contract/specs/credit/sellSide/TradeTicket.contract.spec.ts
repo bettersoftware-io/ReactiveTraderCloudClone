@@ -21,7 +21,7 @@ const instrument: Instrument = {
   benchmark: "10Y",
 };
 
-const rfq = (over: Partial<Rfq> = {}): Rfq => {
+function rfq(over: Partial<Rfq> = {}): Rfq {
   return {
     id: 10,
     instrumentId: 1,
@@ -32,16 +32,16 @@ const rfq = (over: Partial<Rfq> = {}): Rfq => {
     creationTimestamp: 1_700_000_000_000,
     ...over,
   };
-};
+}
 
-const quote = (state: QuoteState): Quote => {
+function quote(state: QuoteState): Quote {
   return {
     id: 100,
     rfqId: 10,
     dealerId: 1,
     state,
   };
-};
+}
 
 describe("TradeTicket", () => {
   it("shows the instrument details and an active price form when awaiting a response", () => {

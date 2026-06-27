@@ -25,7 +25,7 @@ const dealers: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-const rfq = (over: Partial<Rfq> = {}): Rfq => {
+function rfq(over: Partial<Rfq> = {}): Rfq {
   return {
     id: 50,
     instrumentId: 2,
@@ -36,9 +36,9 @@ const rfq = (over: Partial<Rfq> = {}): Rfq => {
     creationTimestamp: 1_700_000_000_000,
     ...over,
   };
-};
+}
 
-const quote = (over: Partial<Quote> = {}): Quote => {
+function quote(over: Partial<Quote> = {}): Quote {
   return {
     id: 900,
     rfqId: 50,
@@ -46,7 +46,7 @@ const quote = (over: Partial<Quote> = {}): Quote => {
     state: { type: "pendingWithPrice", price: 99 },
     ...over,
   };
-};
+}
 
 describe("RfqCard", () => {
   it("shows the instrument name, direction and quantity", () => {

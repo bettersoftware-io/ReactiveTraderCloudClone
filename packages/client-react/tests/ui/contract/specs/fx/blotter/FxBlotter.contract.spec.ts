@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-const trade = (tradeId: number, over: Partial<Trade> = {}): Trade => {
+function trade(tradeId: number, over: Partial<Trade> = {}): Trade {
   return {
     tradeId,
     tradeName: `Trade ${tradeId}`,
@@ -18,7 +18,7 @@ const trade = (tradeId: number, over: Partial<Trade> = {}): Trade => {
     valueDate: "2026-06-08",
     ...over,
   };
-};
+}
 
 const t1 = trade(4001, { currencyPair: "EURUSD" });
 const t2 = trade(4002, {

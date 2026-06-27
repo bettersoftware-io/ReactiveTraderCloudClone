@@ -28,7 +28,7 @@ const withAdaptive: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => {
+function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
   return {
     id,
     instrumentId: 1,
@@ -39,16 +39,16 @@ const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => {
     creationTimestamp: 1_700_000_000_000 + id,
     ...over,
   };
-};
+}
 
-const adaptiveQuote = (rfqId: number): Quote => {
+function adaptiveQuote(rfqId: number): Quote {
   return {
     id: rfqId * 10,
     rfqId,
     dealerId: 1, // Adaptive Bank
     state: { type: "pendingWithoutPrice" },
   };
-};
+}
 
 describe("SellSidePanel", () => {
   it("shows the panel title", () => {

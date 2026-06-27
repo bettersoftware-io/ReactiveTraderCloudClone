@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-const trade = (over: Partial<Trade> = {}): Trade => {
+function trade(over: Partial<Trade> = {}): Trade {
   return {
     tradeId: 7001,
     tradeName: "Alice",
@@ -18,7 +18,7 @@ const trade = (over: Partial<Trade> = {}): Trade => {
     valueDate: "2026-04-01",
     ...over,
   };
-};
+}
 
 afterEach(() => {
   vi.useRealTimers();

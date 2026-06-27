@@ -8,9 +8,9 @@ afterEach(() => {
   return cleanupMounted();
 });
 
-const pos = (symbol: string, basePnl: number): CurrencyPairPosition => {
+function pos(symbol: string, basePnl: number): CurrencyPairPosition {
   return { symbol, basePnl, baseTradedAmount: 0, counterTradedAmount: 0 };
-};
+}
 
 describe("PairPnlBars", () => {
   it("shows each pair's P&L with whole-number scaled notation", () => {
