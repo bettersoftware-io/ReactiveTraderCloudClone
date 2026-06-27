@@ -58,11 +58,11 @@ function readJson(path: string): unknown | null {
   }
 }
 
-function readSource(absPath: string): string[] {
+function readSource(absPath: string): string[] | null {
   try {
     return readFileSync(absPath, "utf8").split("\n");
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -82,6 +82,7 @@ interface MainOpts {
   out?: NodeJS.WritableStream;
   coverageOverride?: CoverageOverride[];
   resultsOverride?: ResultsOverride[];
+  readSource?: (absPath: string) => string[] | null;
 }
 
 export async function main(opts: MainOpts): Promise<string> {
@@ -125,12 +126,13 @@ export async function main(opts: MainOpts): Promise<string> {
       return r !== null;
     });
 
+  const read = opts.readSource ?? readSource;
   const md = render({
     title: opts.title ?? "Coverage Report",
     testResults,
     packages,
     repoRoot,
-    readSource,
+    readSource: read,
   });
 
   const out = opts.out;

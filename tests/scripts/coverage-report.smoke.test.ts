@@ -32,6 +32,9 @@ describe("coverage-report CLI", () => {
         { name: "domain", file: `${dir}domain.coverage.json` },
       ],
       resultsOverride: [{ tier: "domain", file: `${dir}domain.results.json` }],
+      readSource: () => {
+        return ["const sample = 1", "function unused(): void {}"];
+      },
     });
     expect(md).toContain("## Coverage");
     expect(md).toContain("3 passed");
