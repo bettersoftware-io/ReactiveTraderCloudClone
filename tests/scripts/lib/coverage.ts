@@ -4,7 +4,9 @@
 // and reach members off it. The type import is erased at runtime.
 import libCoverage, { type CoverageMapData } from "istanbul-lib-coverage";
 
-export interface LineCov {
+// Used only within this module (as the element type of FileCov); not exported,
+// so knip does not flag it as an unused export.
+interface LineCov {
   hits: number;
   branch?: { covered: number; total: number };
 }
