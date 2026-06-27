@@ -5,6 +5,10 @@ import type { CurrencyPair } from "@rtc/domain";
 import type { WorkspaceTab } from "#/app/layout/defaultLayoutPort";
 import type { LayoutState } from "#/app/layout/layoutPort";
 
+import type {
+  BootSequenceIntents,
+  BootSequenceState,
+} from "./BootSequenceMachine";
 import type { LayoutIntents } from "./LayoutMachine";
 import type { NotionalIntents, NotionalView } from "./NotionalMachine";
 import type {
@@ -69,4 +73,7 @@ export interface MachineFactories {
   >;
   /** Layout view-model for a workspace tab — the in-house engine's tree state. */
   layout: (tab: WorkspaceTab) => Machine<LayoutState, LayoutIntents>;
+  /** Boot-sequence animation machine — progress ramp + skip intent, fires
+   * onDone when the ramp completes or skip is called. One per app mount. */
+  boot: (onDone: () => void) => Machine<BootSequenceState, BootSequenceIntents>;
 }

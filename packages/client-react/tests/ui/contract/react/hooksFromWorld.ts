@@ -17,6 +17,7 @@ import {
   createDefaultLayoutPort,
   type WorkspaceTab,
 } from "#/app/layout/defaultLayoutPort";
+import { createBootSequenceMachine } from "#/app/presenters/BootSequenceMachine";
 import { createLayoutMachine } from "#/app/presenters/LayoutMachine";
 import { createNotionalMachine } from "#/app/presenters/NotionalMachine";
 import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
@@ -325,6 +326,18 @@ export function reactHooks(world: World): AppHooks {
     useLayout: (tab: WorkspaceTab) => {
       return useMachine(() => {
         return createLayoutMachine(createDefaultLayoutPort(tab));
+      });
+    },
+    // Boot sequence: no contract spec exercises the boot sequence in Phase 2;
+    // use the REAL machine with a fixed "core" variant and noop advance so it
+    // compiles and disposes cleanly without touching real preferences.
+    useBootSequence: (onDone: () => void) => {
+      return useMachine(() => {
+        return createBootSequenceMachine({
+          variant: "core",
+          advance: () => {},
+          onDone,
+        });
       });
     },
   };

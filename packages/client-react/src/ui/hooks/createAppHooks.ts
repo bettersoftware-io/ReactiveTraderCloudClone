@@ -24,6 +24,10 @@ import type { AppCommands, Presenters } from "#/app/composition";
 import type { WorkspaceTab } from "#/app/layout/defaultLayoutPort";
 import type { LayoutState } from "#/app/layout/layoutPort";
 import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
+import type {
+  BootSequenceIntents,
+  BootSequenceState,
+} from "#/app/presenters/BootSequenceMachine";
 import type { LayoutIntents } from "#/app/presenters/LayoutMachine";
 import type { MachineFactories } from "#/app/presenters/machine";
 import type {
@@ -46,6 +50,7 @@ import type {
 
 import { useMachine } from "./useMachine";
 
+type UseBootSequenceResult = { state: BootSequenceState } & BootSequenceIntents;
 type UseLayoutResult = { state: LayoutState } & LayoutIntents;
 type UseTileExecutionResult = {
   state: TileExecutionState;
@@ -138,6 +143,9 @@ export interface AppHooks {
   useAnimationIntents: (target: string) => AnimationIntent | null;
   /** Layout view-model + intents for a workspace tab (the in-house engine). */
   useLayout: (tab: WorkspaceTab) => UseLayoutResult;
+  /** Boot-sequence animation — progress ramp + skip intent. One per app mount.
+   * Calls onDone when the ramp completes or skip is invoked. */
+  useBootSequence: (onDone: () => void) => UseBootSequenceResult;
 }
 
 export function createAppHooks(
@@ -355,6 +363,11 @@ export function createAppHooks(
     useLayout: (tab: WorkspaceTab) => {
       return useMachine(() => {
         return machines.layout(tab);
+      });
+    },
+    useBootSequence: (onDone: () => void) => {
+      return useMachine(() => {
+        return machines.boot(onDone);
       });
     },
   };

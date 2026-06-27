@@ -14,6 +14,7 @@ import {
   createDefaultLayoutPort,
   type WorkspaceTab,
 } from "#/app/layout/defaultLayoutPort";
+import type { BootSequenceState } from "#/app/presenters/BootSequenceMachine";
 import type { NotionalView } from "#/app/presenters/NotionalMachine";
 import type { AppHooks } from "#/ui/hooks/createAppHooks";
 
@@ -195,6 +196,17 @@ export function buildFakeHooks(data: AppData): AppHooks {
         expand: noop,
         resize: noop,
       };
+    },
+    // Boot sequence: visual goldens capture post-boot UI; return a static initial
+    // state with noop skip. The BootSequence component is not rendered in any
+    // existing golden scenario.
+    useBootSequence: (_onDone: () => void) => {
+      const state: BootSequenceState = {
+        variant: "core",
+        progress: 0,
+        done: false,
+      };
+      return { state, skip: noop };
     },
   };
 }

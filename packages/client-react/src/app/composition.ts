@@ -1,6 +1,7 @@
 import { merge, mergeMap, of, Subject, tap } from "rxjs";
 
 import {
+  type BootVariant,
   type ConnectionEvent,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
@@ -25,6 +26,8 @@ import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
 import { AnimatedBackgroundPresenter } from "./presenters/AnimatedBackgroundPresenter";
 import { AnimationDirector } from "./presenters/AnimationDirector";
 import { BlotterPresenter } from "./presenters/BlotterPresenter";
+import { BootPreferencePresenter } from "./presenters/BootPreferencePresenter";
+import { createBootSequenceMachine } from "./presenters/BootSequenceMachine";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
 import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
 import { DealersPresenter } from "./presenters/DealersPresenter";
@@ -87,6 +90,7 @@ export interface Presenters {
   animatedBackground: AnimatedBackgroundPresenter;
   viewModePreference: ViewModePreferencePresenter;
   animationDirector: AnimationDirector;
+  bootPreference: BootPreferencePresenter;
 }
 
 export interface AppCommands {
@@ -189,6 +193,7 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
       priceStreams: {},
       connectionStatus$: connection.status$,
     }),
+    bootPreference: new BootPreferencePresenter(ports.preferences),
   };
   const commands: AppCommands = {
     reconnect: () => {
@@ -244,6 +249,15 @@ export function createMachineFactories(
     },
     layout: (tab: WorkspaceTab) => {
       return createLayoutMachine(createDefaultLayoutPort(tab));
+    },
+    boot: (onDone: () => void) => {
+      return createBootSequenceMachine({
+        variant: presenters.bootPreference.current(),
+        advance: (next: BootVariant): void => {
+          presenters.bootPreference.setVariant(next);
+        },
+        onDone,
+      });
     },
   };
 }
