@@ -17,7 +17,7 @@ function scheduler(): TestScheduler {
 interface DepsFixture {
   deps: {
     variant: BootVariant;
-    advance: (n: BootVariant) => number;
+    advance: (n: BootVariant) => void;
     onDone: () => void;
   };
   advanced: BootVariant[];
@@ -30,8 +30,8 @@ function deps(variant: BootVariant): DepsFixture {
   return {
     deps: {
       variant,
-      advance: (n: BootVariant): number => {
-        return advanced.push(n);
+      advance: (n: BootVariant): void => {
+        advanced.push(n);
       },
       onDone: (): void => {
         done += 1;
@@ -117,5 +117,35 @@ describe("createBootSequenceMachine", () => {
 
   it("exposes BOOT_DURATION_MS as 4200", () => {
     expect(BOOT_DURATION_MS).toBe(4200);
+  });
+
+  it("onDone fires exactly once when skip() is called after natural ramp completion", () => {
+    const ts = scheduler();
+    const { deps: d, doneCount } = deps("core");
+    ts.run(({ flush }) => {
+      const m = createBootSequenceMachine(d);
+      const sub = m.state$.subscribe();
+      flush(); // ramp completes naturally — onDone should fire here
+      m.intents.skip(); // skip() called again after ramp is done
+      flush(); // drain any further emissions
+      sub.unsubscribe();
+      m.dispose();
+      expect(doneCount()).toBe(1);
+    });
+  });
+
+  it("onDone fires exactly once when skip() is called twice in a row", () => {
+    const ts = scheduler();
+    const { deps: d, doneCount } = deps("core");
+    ts.run(({ flush }) => {
+      const m = createBootSequenceMachine(d);
+      const sub = m.state$.subscribe();
+      m.intents.skip();
+      m.intents.skip(); // second skip before any flush
+      flush();
+      sub.unsubscribe();
+      m.dispose();
+      expect(doneCount()).toBe(1);
+    });
   });
 });

@@ -1,10 +1,12 @@
 import { type StateObservable, state } from "@rx-state/core";
 import { merge, Subject, timer } from "rxjs";
-import { map, takeUntil, takeWhile } from "rxjs/operators";
+import { filter, map, take, takeUntil, takeWhile } from "rxjs/operators";
+
+import type { BootVariant } from "@rtc/domain";
 
 import type { Machine } from "./machine";
 
-export type BootVariant = "core" | "laser" | "docking";
+export type { BootVariant };
 export const BOOT_VARIANTS: readonly BootVariant[] = [
   "core",
   "laser",
@@ -70,16 +72,23 @@ export function createBootSequenceMachine(
   const state$: StateObservable<BootSequenceState> = state(stream$, initial);
 
   // onDone fires exactly once when a done:true state lands.
-  const doneSub = state$.subscribe((s) => {
-    if (s.done) deps.onDone();
-  });
+  const doneSub = state$
+    .pipe(
+      filter((s) => {
+        return s.done;
+      }),
+      take(1),
+    )
+    .subscribe(() => {
+      deps.onDone();
+    });
   const warm = state$.subscribe();
 
   return {
     state$,
     intents: {
       skip: () => {
-        return skip$.next();
+        skip$.next();
       },
     },
     dispose: () => {
