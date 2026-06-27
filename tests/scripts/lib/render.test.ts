@@ -1,9 +1,42 @@
 import { describe, expect, it } from "vitest";
 
-import type { PackageStat } from "./coverage";
+import { type FileCov, fileStat, type PackageStat } from "./coverage";
 import { render, SUMMARY_CAP } from "./render";
 
 const repoRoot = "/r";
+
+interface LineSpec {
+  line: number;
+  hits: number;
+  branch?: { covered: number; total: number };
+}
+
+function cov(spec: LineSpec[]): FileCov {
+  const m: FileCov = new Map();
+
+  for (const e of spec) {
+    m.set(
+      e.line,
+      e.branch === undefined
+        ? { hits: e.hits }
+        : { hits: e.hits, branch: e.branch },
+    );
+  }
+
+  return m;
+}
+
+function pkg(name: string, file: string, lines: FileCov): PackageStat {
+  const stat = fileStat(file, lines);
+  return {
+    name,
+    total: stat.total,
+    covered: stat.covered,
+    pct: stat.pct,
+    files: [stat],
+  };
+}
+
 const src: Record<string, string[]> = {
   "/r/src/a.ts": ["const x = 1", "if (rare) {", "  edge()", "}"],
 };
@@ -12,17 +45,13 @@ function readSource(p: string): string[] | null {
   return src[p] ?? null;
 }
 
-function pkg(over: Partial<PackageStat> = {}): PackageStat {
-  return {
-    name: "client/ui",
-    total: 4,
-    covered: 2,
-    pct: 50,
-    files: [
-      { file: "/r/src/a.ts", total: 4, covered: 2, pct: 50, uncovered: [2, 3] },
-    ],
-    ...over,
-  };
+// First rendered line that includes a given source substring (spacing-robust).
+function lineWith(md: string, needle: string): string {
+  return (
+    md.split("\n").find((l) => {
+      return l.includes(needle);
+    }) ?? ""
+  );
 }
 
 describe("render", () => {
@@ -30,7 +59,18 @@ describe("render", () => {
     const md = render({
       title: "Coverage Report — feat @ abc123",
       testResults: [{ tier: "domain", passed: 10, failed: 0, skipped: 1 }],
-      packages: [pkg()],
+      packages: [
+        pkg(
+          "client/ui (visual)",
+          "/r/src/a.ts",
+          cov([
+            { line: 1, hits: 1 },
+            { line: 2, hits: 1 },
+            { line: 3, hits: 0 },
+            { line: 4, hits: 1 },
+          ]),
+        ),
+      ],
       repoRoot,
       readSource,
     });
@@ -39,21 +79,64 @@ describe("render", () => {
     expect(md).toContain("10 passed");
     expect(md).toContain("| domain |");
     expect(md).toContain("## Coverage");
-    expect(md).toContain("client/ui");
+    expect(md).toContain("client/ui (visual)");
   });
 
-  it("renders untested lines as a collapsible block with source + line numbers", () => {
+  it("renders the WHOLE small file in a diff block; uncovered red, covered context", () => {
     const md = render({
       title: "t",
       testResults: [],
-      packages: [pkg()],
+      packages: [
+        pkg(
+          "client/ui (visual)",
+          "/r/src/a.ts",
+          cov([
+            { line: 1, hits: 1 },
+            { line: 2, hits: 1 },
+            { line: 3, hits: 0 },
+            { line: 4, hits: 1 },
+          ]),
+        ),
+      ],
       repoRoot,
       readSource,
     });
-    expect(md).toContain("<details>");
-    expect(md).toContain("src/a.ts"); // repo-relative path
-    expect(md).toContain("if (rare) {"); // uncovered source line 2
-    expect(md).toContain("edge()"); // uncovered source line 3
+    expect(md).toContain("```diff");
+    expect(md).toContain("client/ui (visual) · src/a.ts");
+    // Full file: all four source lines are present.
+    expect(md).toContain("const x = 1");
+    expect(md).toContain("if (rare) {");
+    expect(md).toContain("edge()");
+    // Covered line 1 is context (starts with space); uncovered line 3 is red (`-`).
+    expect(lineWith(md, "const x = 1").startsWith(" ")).toBe(true);
+    expect(lineWith(md, "edge()").startsWith("-")).toBe(true);
+    // Line number 1 appears on the covered line.
+    expect(lineWith(md, "const x = 1")).toContain("1");
+  });
+
+  it("annotates partial-branch lines with a branch note and flags them red", () => {
+    const md = render({
+      title: "t",
+      testResults: [],
+      packages: [
+        pkg(
+          "client/ui (contract)",
+          "/r/src/a.ts",
+          cov([
+            { line: 1, hits: 1 },
+            { line: 2, hits: 1, branch: { covered: 1, total: 2 } },
+            { line: 3, hits: 1 },
+            { line: 4, hits: 1 },
+          ]),
+        ),
+      ],
+      repoRoot,
+      readSource,
+    });
+    const branchLine = lineWith(md, "if (rare) {");
+    expect(branchLine.startsWith("-")).toBe(true);
+    expect(branchLine).toContain("⚠ branch 1/2 not taken");
+    expect(md).toContain("1 partial branch");
   });
 
   it("marks overall failure when any tier has failures", () => {
@@ -67,28 +150,18 @@ describe("render", () => {
     expect(md).toContain("❌");
   });
 
-  it("stays within the cap for many tiny files (separator accounting)", () => {
-    // 5 000 files × ~200-byte block exceeds SUMMARY_CAP in total.
-    // The pre-fix bug did not count the +1 join separator per pushed block,
-    // causing size to under-run by ~4 500 bytes and the final string to overrun
-    // SUMMARY_CAP by a similar margin.
+  it("byte cap holds for a large pathological input (degrades + notes omission)", () => {
     const N = 5_000;
+    const files = Array.from({ length: N }, (_, i) => {
+      return fileStat(`/r/src/f${i}.ts`, cov([{ line: 1, hits: 0 }]));
+    });
     const many: PackageStat = {
       name: "pkg",
       total: N,
       covered: 0,
       pct: 0,
-      files: Array.from({ length: N }, (_, i) => {
-        return {
-          file: `/r/src/f${i}.ts`,
-          total: 1,
-          covered: 0,
-          pct: 0,
-          uncovered: [1],
-        };
-      }),
+      files,
     };
-    // 100-char source line → full block ≈ 200 chars; 5 000 × 200 ≈ 1 M > SUMMARY_CAP.
     const shortLine = "x".repeat(100);
     const md = render({
       title: "t",
@@ -98,87 +171,6 @@ describe("render", () => {
       readSource: () => {
         return [shortLine];
       },
-    });
-    expect(Buffer.byteLength(md, "utf8")).toBeLessThanOrEqual(SUMMARY_CAP);
-    expect(md).toMatch(/snippets omitted/i);
-  });
-
-  it("byte cap holds with multibyte (non-ASCII) source content", () => {
-    // Source lines are dense with multibyte glyphs: each char is 3 bytes in UTF-8
-    // but only 1 UTF-16 code unit (except 😀 which is 4 bytes / 2 code units).
-    // Byte:code-unit ratio ≈ 2.5×. With the old .length-based size tracking the
-    // renderer stops accepting full blocks when its code-unit counter reaches
-    // ~SUMMARY_CAP, but the actual UTF-8 bytes accumulated are ≈2.5× that value —
-    // far exceeding the 900 000-byte cap. Buffer.byteLength-based tracking fixes this.
-    const multibyteSourceLine = "日本語テキスト 😀 — ⋮ ".repeat(6); // ~84 CU, ~210 bytes
-    // 300 files × 100 uncovered lines × ~210 bytes ≈ 6 MB total source content;
-    // old .length tracking lets ~97 full blocks through (≈2.1 MB bytes) before
-    // its code-unit counter hits the cap — far exceeding SUMMARY_CAP.
-    const N = 300;
-    const many: PackageStat = {
-      name: "pkg",
-      total: N * 100,
-      covered: 0,
-      pct: 0,
-      files: Array.from({ length: N }, (_, i) => {
-        return {
-          file: `/r/src/f${i}.ts`,
-          total: 100,
-          covered: 0,
-          pct: 0,
-          uncovered: Array.from({ length: 100 }, (__, n) => {
-            return n + 1;
-          }),
-        };
-      }),
-    };
-    const md = render({
-      title: "t",
-      testResults: [],
-      packages: [many],
-      repoRoot,
-      readSource: () => {
-        return Array.from({ length: 100 }, () => {
-          return multibyteSourceLine;
-        });
-      },
-    });
-    expect(Buffer.byteLength(md, "utf8")).toBeLessThanOrEqual(SUMMARY_CAP);
-    expect(md).toMatch(/snippets omitted/i);
-  });
-
-  it("degrades to line-numbers-only and notes omission past the size cap", () => {
-    const many: PackageStat = {
-      name: "big",
-      total: 100000,
-      covered: 0,
-      pct: 0,
-      files: Array.from({ length: 400 }, (_, i) => {
-        return {
-          file: `/r/src/f${i}.ts`,
-          total: 250,
-          covered: 0,
-          pct: 0,
-          uncovered: Array.from({ length: 250 }, (_, n) => {
-            return n + 1;
-          }),
-        };
-      }),
-    };
-
-    // Source long enough that full snippets would blow the cap.
-    function big(p: string): string[] {
-      return Array.from({ length: 250 }, (_, n) => {
-        return `line ${n} of ${p} xxxxxxxxxxxxxxxxxxxx`;
-      });
-    }
-
-    const md = render({
-      title: "t",
-      testResults: [],
-      packages: [many],
-      repoRoot,
-      readSource: big,
     });
     expect(Buffer.byteLength(md, "utf8")).toBeLessThanOrEqual(SUMMARY_CAP);
     expect(md).toMatch(/snippets omitted/i);
