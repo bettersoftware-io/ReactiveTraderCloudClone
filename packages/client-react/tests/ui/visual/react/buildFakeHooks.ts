@@ -10,10 +10,6 @@ import {
 // Phase 3 regenerates them for the new skins.
 const DEFAULT_THEME_SKIN_FOR_FIXTURES = "classic" as const;
 
-import {
-  createDefaultLayoutPort,
-  type WorkspaceTab,
-} from "#/app/layout/defaultLayoutPort";
 import type { NotionalView } from "#/app/presenters/NotionalMachine";
 import type { AppHooks } from "#/ui/hooks/createAppHooks";
 
@@ -183,18 +179,6 @@ export function buildFakeHooks(data: AppData): AppHooks {
     // renders in its neutral, un-animated state.
     useAnimationIntents: (_target: string) => {
       return null;
-    },
-    // Layout: static snapshot for screenshots — returns the tab's default
-    // arrangement with noop intents (no drag, no maximize during capture).
-    useLayout: (tab: WorkspaceTab) => {
-      return {
-        state: createDefaultLayoutPort(tab).initial,
-        maximize: noop,
-        restore: noop,
-        collapse: noop,
-        expand: noop,
-        resize: noop,
-      };
     },
   };
 }

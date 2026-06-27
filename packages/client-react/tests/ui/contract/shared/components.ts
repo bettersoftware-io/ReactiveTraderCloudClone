@@ -47,7 +47,6 @@ import {
   type SetFilterProps,
 } from "./pages/fx/blotter/SetFilterPage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
-import { LayoutEnginePage } from "./pages/shell/layout/LayoutEnginePage";
 
 export type { RfqFilter };
 
@@ -326,11 +325,5 @@ export const ThemeToggle = component<Record<string, never>, ThemeTogglePage>(
 export const AdminPanel = component<Record<string, never>, AdminPanelPage>(
   (ctx) => {
     return new AdminPanelPage(ctx);
-  },
-);
-
-export const LayoutEngine = component<Record<string, never>, LayoutEnginePage>(
-  (ctx) => {
-    return new LayoutEnginePage(ctx);
   },
 );

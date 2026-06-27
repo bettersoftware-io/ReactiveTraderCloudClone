@@ -2,10 +2,6 @@ import type { StateObservable } from "@rx-state/core";
 
 import type { CurrencyPair } from "@rtc/domain";
 
-import type { WorkspaceTab } from "#/app/layout/defaultLayoutPort";
-import type { LayoutState } from "#/app/layout/layoutPort";
-
-import type { LayoutIntents } from "./LayoutMachine";
 import type { NotionalIntents, NotionalView } from "./NotionalMachine";
 import type {
   RfqSubmissionIntents,
@@ -67,6 +63,4 @@ export interface MachineFactories {
     TicketSubmissionState,
     TicketSubmissionIntents
   >;
-  /** Layout view-model for a workspace tab — the in-house engine's tree state. */
-  layout: (tab: WorkspaceTab) => Machine<LayoutState, LayoutIntents>;
 }

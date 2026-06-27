@@ -1,7 +1,5 @@
 import type { ReactElement } from "react";
 
-import { createDefaultLayoutPort } from "#/app/layout/defaultLayoutPort";
-import type { LayoutState } from "#/app/layout/layoutPort";
 import { App } from "#/ui/App";
 import { AdminPanel } from "#/ui/admin/AdminPanel";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
@@ -18,49 +16,8 @@ import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { Tile } from "#/ui/fx/liveRates/tile/Tile";
 import { ConnectionOverlay } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar } from "#/ui/shell/connection/ConnectionStatusBar";
-import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
-import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 
 import { fixtures } from "../shared/fixtures";
-
-const fxState: LayoutState = createDefaultLayoutPort("fx").initial;
-
-const visualPanelRegistry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div data-testid="fx-rates-body">RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div data-testid="fx-analytics-body">ANALYTICS</div>;
-  },
-  "fx-blotter": () => {
-    return <div data-testid="fx-blotter-body">BLOTTER</div>;
-  },
-  "credit-rfqs": () => {
-    return <div data-testid="credit-rfqs-body">RFQS</div>;
-  },
-  "credit-blotter": () => {
-    return <div data-testid="credit-blotter-body">CREDIT BLOTTER</div>;
-  },
-  "admin-throughput": () => {
-    return <div data-testid="admin-throughput-body">ADMIN</div>;
-  },
-};
-
-function noop(): void {}
-
-function staticEngine(state: LayoutState): ReactElement {
-  return (
-    <InhouseLayoutEngine
-      state={state}
-      registry={visualPanelRegistry}
-      onMaximize={noop}
-      onRestore={noop}
-      onCollapse={noop}
-      onExpand={noop}
-      onResize={noop}
-    />
-  );
-}
 
 // Maps a neutral componentKey to a concrete React element, given the scenario's
 // fixture key so prop-bearing components can pull their props from the data.
@@ -165,14 +122,5 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   App: () => {
     return <App />;
-  },
-  LayoutEngineDefault: () => {
-    return staticEngine(fxState);
-  },
-  LayoutEngineMaximized: () => {
-    return staticEngine({ ...fxState, maximized: "fx-rates" });
-  },
-  LayoutEngineCollapsed: () => {
-    return staticEngine({ ...fxState, collapsed: ["fx-analytics"] });
   },
 };

@@ -21,10 +21,7 @@ import {
 } from "@rtc/domain";
 
 import type { AppCommands, Presenters } from "#/app/composition";
-import type { WorkspaceTab } from "#/app/layout/defaultLayoutPort";
-import type { LayoutState } from "#/app/layout/layoutPort";
 import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
-import type { LayoutIntents } from "#/app/presenters/LayoutMachine";
 import type { MachineFactories } from "#/app/presenters/machine";
 import type {
   NotionalIntents,
@@ -46,7 +43,6 @@ import type {
 
 import { useMachine } from "./useMachine";
 
-type UseLayoutResult = { state: LayoutState } & LayoutIntents;
 type UseTileExecutionResult = {
   state: TileExecutionState;
 } & TileExecutionIntents;
@@ -136,8 +132,6 @@ export interface AppHooks {
    * Null until the AnimationDirector emits a real domain-driven intent; the dumb
    * UI maps the intent's kind to a CSS class / Motion One call. */
   useAnimationIntents: (target: string) => AnimationIntent | null;
-  /** Layout view-model + intents for a workspace tab (the in-house engine). */
-  useLayout: (tab: WorkspaceTab) => UseLayoutResult;
 }
 
 export function createAppHooks(
@@ -352,10 +346,5 @@ export function createAppHooks(
       }).state;
     },
     useAnimationIntents,
-    useLayout: (tab: WorkspaceTab) => {
-      return useMachine(() => {
-        return machines.layout(tab);
-      });
-    },
   };
 }
