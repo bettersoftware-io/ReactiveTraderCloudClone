@@ -1,0 +1,106 @@
+/* Reactive Trader — theme tokens
+ *
+ * NOTE (v2): there are now 5 themes — holo, holo3d, terminal, terminal3d, neon — and each
+ * has a DARK and a LIGHT palette plus a mode toggle. The three dark sets below are kept as
+ * a reference for the token shape; the *3D* themes add `tile`, `tileShadow`, `panelShadow`
+ * (gradient surfaces + drop shadows), and every theme has a parallel light variant. The
+ * authoritative, complete values live in the `themes` (dark) and `themesLight` (light)
+ * objects in the prototype source.
+ *
+ * The prototype defines three themes as flat token sets. Below they are expressed as
+ * CSS custom properties, scoped by a [data-theme] attribute on a root element.
+ *
+ * In the real app these map cleanly onto a styled-components ThemeProvider: each block
+ * becomes a theme object, and `var(--accent)` etc. become `props.theme.accent`.
+ *
+ * Token reference:
+ *   bg / bg2        page background (bg2 is the lighter radial-gradient centre)
+ *   panel           glass panel fill (translucent in holo/neon, solid in terminal)
+ *   panelHead       panel header strip fill
+ *   border          default panel/control border
+ *   borderStrong    active/selected border
+ *   text            primary text
+ *   dim / faint     secondary / tertiary text
+ *   accent          primary brand/accent (rates, highlights, glow)
+ *   accent2         secondary accent
+ *   buy / sell      bid (up) / ask (down) semantic colors
+ *   glow            box-shadow used on active/glowing elements
+ *   grid            faint HUD grid line color
+ *   chip            chip / pill background
+ *   auroraOp        opacity multiplier for the ambient animated background
+ *   fontD           display font (headings, nav, labels)
+ *   fontM           mono font (numbers, data, telemetry)
+ */
+
+/* ---- HOLO — Iron Man / Minority Report cyan HUD (default hero theme) ---- */
+[data-theme="holo"] {
+  --bg: #00060a;
+  --bg2: #02121d;
+  --panel: rgba(6,26,38,0.5);
+  --panelHead: rgba(0,224,255,0.06);
+  --border: rgba(0,224,255,0.26);
+  --borderStrong: rgba(0,224,255,0.6);
+  --text: #d6f7ff;
+  --dim: rgba(150,210,228,0.62);
+  --faint: rgba(120,190,210,0.42);
+  --accent: #00e5ff;
+  --accent2: #19ffd0;
+  --buy: #2bffb3;
+  --sell: #ff5d73;
+  --glow: 0 0 16px rgba(0,224,255,0.3);
+  --grid: rgba(0,224,255,0.05);
+  --chip: rgba(0,224,255,0.12);
+  --auroraOp: 0.6;
+  --fontD: 'Chakra Petch', sans-serif;
+  --fontM: 'JetBrains Mono', monospace;
+}
+
+/* ---- TERMINAL — Bloomberg-grade pro terminal (flat, amber-on-charcoal) ---- */
+[data-theme="terminal"] {
+  --bg: #0a0c10;
+  --bg2: #0e1116;
+  --panel: #13161c;
+  --panelHead: #171b22;
+  --border: #262b34;
+  --borderStrong: #3a4351;
+  --text: #e8ebf1;
+  --dim: #8b93a1;
+  --faint: #59616e;
+  --accent: #ffb000;
+  --accent2: #4a9eff;
+  --buy: #37d27e;
+  --sell: #ff5b52;
+  --glow: none;
+  --grid: rgba(255,255,255,0.022);
+  --chip: rgba(255,176,0,0.14);
+  --auroraOp: 0.22;
+  --fontD: 'IBM Plex Sans', sans-serif;
+  --fontM: 'IBM Plex Mono', monospace;
+}
+
+/* ---- NEON — high-contrast cyberpunk (magenta / cyan) ---- */
+[data-theme="neon"] {
+  --bg: #070210;
+  --bg2: #12041f;
+  --panel: rgba(28,6,46,0.52);
+  --panelHead: rgba(255,43,214,0.08);
+  --border: rgba(255,43,214,0.36);
+  --borderStrong: rgba(255,43,214,0.72);
+  --text: #f7e9ff;
+  --dim: rgba(214,160,235,0.7);
+  --faint: rgba(180,120,210,0.45);
+  --accent: #ff2bd6;
+  --accent2: #00f0ff;
+  --buy: #00ffa3;
+  --sell: #ff3864;
+  --glow: 0 0 18px rgba(255,43,214,0.4);
+  --grid: rgba(255,43,214,0.07);
+  --chip: rgba(255,43,214,0.14);
+  --auroraOp: 0.7;
+  --fontD: 'Chakra Petch', sans-serif;
+  --fontM: 'JetBrains Mono', monospace;
+}
+
+/* Fonts (Google Fonts):
+   Chakra Petch (400/500/600/700), JetBrains Mono (400/500/700),
+   IBM Plex Sans (400/500/600), IBM Plex Mono (400/500/600), Orbitron (500/700/900) */
