@@ -33,7 +33,8 @@
     "packages/*/tests/**/*.ts",
     "packages/*/tests/**/*.tsx",
     "packages/*/*.config.ts",
-    "tests/**/*.ts"
+    "tests/**/*.ts",
+    "middleware.ts"
   ],
   "exclude": ["**/node_modules/**", "**/dist/**"]
 }
