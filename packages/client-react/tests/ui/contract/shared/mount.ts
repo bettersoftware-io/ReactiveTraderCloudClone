@@ -9,6 +9,7 @@ import type {
   ViewMode,
 } from "@rtc/domain";
 
+import type { SessionState } from "#/app/presenters/SessionPresenter";
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
 import { getDriver, type MountedRoot } from "./harness/activeDriver";
@@ -40,6 +41,8 @@ export interface MountOptions<P> {
   animatedBackground?: boolean;
   /** Seed the initial view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE. */
   viewMode?: ViewMode;
+  /** Seed the initial session state (useSession); defaults to unlocked + demo user. */
+  session?: Partial<SessionState>;
 }
 
 const mounted: MountedRoot[] = [];
@@ -57,6 +60,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.viewMode,
     opts.themeSkin,
     opts.animatedBackground,
+    opts.session,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

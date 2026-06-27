@@ -16,6 +16,7 @@ import {
 } from "#/app/layout/defaultLayoutPort";
 import type { BootSequenceState } from "#/app/presenters/BootSequenceMachine";
 import type { NotionalView } from "#/app/presenters/NotionalMachine";
+import { DEMO_USER } from "#/app/presenters/SessionPresenter";
 import type { AppHooks } from "#/ui/hooks/createAppHooks";
 
 import type { AppData } from "../shared/appData";
@@ -173,6 +174,15 @@ export function buildFakeHooks(data: AppData): AppHooks {
       return {
         viewMode: data.viewMode ?? DEFAULT_VIEW_MODE,
         setViewMode: noop,
+      };
+    },
+    // Session: static snapshot for screenshots. Defaults to unlocked, so the
+    // LockScreen overlay renders nothing and existing goldens are unchanged.
+    useSession: () => {
+      return {
+        state: { locked: data.sessionLocked ?? false, user: DEMO_USER },
+        lock: noop,
+        unlock: noop,
       };
     },
     // Countdown: static snapshot for visual goldens — returns totalMs so the bar

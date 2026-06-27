@@ -70,6 +70,7 @@ import {
   Header as HeaderComponent,
   type WorkspaceTab,
 } from "#/ui/shell/layout/Header";
+import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
 import { StaleIndicator as StaleIndicatorComponent } from "#/ui/shell/stale/StaleIndicator";
 import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggle";
 
@@ -89,6 +90,7 @@ import {
   Header,
   LayoutEngine,
   LiveRatesPanel,
+  LockScreen,
   NewRfqForm,
   NumberFilter,
   PairPnlBars,
@@ -549,6 +551,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     LayoutEngine,
     (): ReactElement => {
       return <LayoutEngineHost />;
+    },
+  ],
+  [
+    LockScreen,
+    (): ReactElement => {
+      return <LockScreenComponent />;
     },
   ],
 ]);

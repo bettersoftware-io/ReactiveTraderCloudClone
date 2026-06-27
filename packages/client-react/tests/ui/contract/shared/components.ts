@@ -49,6 +49,7 @@ import {
 import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
 import { LayoutEnginePage } from "./pages/shell/layout/LayoutEnginePage";
+import { LockScreenPage } from "./pages/shell/lock/LockScreenPage";
 
 export type { RfqFilter };
 
@@ -339,5 +340,11 @@ export const LayoutEngine = component<Record<string, never>, LayoutEnginePage>(
 export const BootSequence = component<Record<string, never>, BootSequencePage>(
   (ctx) => {
     return new BootSequencePage(ctx);
+  },
+);
+
+export const LockScreen = component<Record<string, never>, LockScreenPage>(
+  (ctx) => {
+    return new LockScreenPage(ctx);
   },
 );

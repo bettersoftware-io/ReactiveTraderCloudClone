@@ -41,6 +41,7 @@ import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
 import { RfqsPresenter } from "./presenters/RfqsPresenter";
 import { createRfqTileMachine } from "./presenters/RfqTileMachine";
 import { createRowHighlightMachine } from "./presenters/RowHighlightMachine";
+import { SessionPresenter } from "./presenters/SessionPresenter";
 import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
 import { ThemePreferencePresenter } from "./presenters/ThemePreferencePresenter";
 import { ThemeSkinPreferencePresenter } from "./presenters/ThemeSkinPreferencePresenter";
@@ -91,6 +92,7 @@ export interface Presenters {
   viewModePreference: ViewModePreferencePresenter;
   animationDirector: AnimationDirector;
   bootPreference: BootPreferencePresenter;
+  session: SessionPresenter;
 }
 
 export interface AppCommands {
@@ -194,6 +196,8 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
       connectionStatus$: connection.status$,
     }),
     bootPreference: new BootPreferencePresenter(ports.preferences),
+    // Session lock/unlock state over the static demo user (no real auth backend).
+    session: new SessionPresenter(),
   };
   const commands: AppCommands = {
     reconnect: () => {

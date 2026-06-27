@@ -42,6 +42,10 @@ import type {
   TicketSubmissionState,
 } from "#/app/presenters/RfqsPresenter";
 import type { RfqState, RfqTileIntents } from "#/app/presenters/RfqTileMachine";
+import {
+  DEMO_USER,
+  type SessionState,
+} from "#/app/presenters/SessionPresenter";
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 import type {
   TileExecutionIntents,
@@ -89,6 +93,12 @@ interface UseViewModePreferenceResult {
   setViewMode: (viewMode: ViewMode) => void;
 }
 
+interface UseSessionResult {
+  state: SessionState;
+  lock: () => void;
+  unlock: () => void;
+}
+
 export interface AppHooks {
   // Streams
   usePrice: (pair: CurrencyPair) => Price | null;
@@ -133,6 +143,9 @@ export interface AppHooks {
   useAnimatedBackground: () => UseAnimatedBackgroundResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
+  /** Global session lock state plus lock/unlock (re-authenticate) intents.
+   * Shared (one stream for the whole app), so a plain `bind` like the prefs. */
+  useSession: () => UseSessionResult;
   /** Per-RFQ countdown — remainingMs, ticking every 100ms, clamped at 0.
    * Cosmetic-only; the authoritative expiry is server-driven (CreditRfqSimulator).
    * Mirrors rtc-original CreditRfqTimer (creditRfqs.ts:102-112). */
@@ -241,6 +254,21 @@ export function createAppHooks(
 
   function setViewMode(viewMode: ViewMode): void {
     presenters.viewModePreference.setViewMode(viewMode);
+  }
+
+  // Global/shared session lock state → a plain bind (not a per-mount machine).
+  const [useSessionState] = bind(presenters.session.state$, {
+    locked: false,
+    user: DEMO_USER,
+  } as SessionState);
+
+  // Stable, this-bound command callbacks (the presenter methods touch `this`).
+  function lockSession(): void {
+    presenters.session.lock();
+  }
+
+  function unlockSession(): void {
+    presenters.session.unlock();
   }
 
   // Animation intents → a parameterized bind (one per-target stream, like usePrice).
@@ -352,6 +380,13 @@ export function createAppHooks(
       return {
         viewMode: useViewModeValue(),
         setViewMode,
+      };
+    },
+    useSession: () => {
+      return {
+        state: useSessionState(),
+        lock: lockSession,
+        unlock: unlockSession,
       };
     },
     useRfqCountdown: (creationTimestamp: number, totalMs: number) => {

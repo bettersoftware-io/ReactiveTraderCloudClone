@@ -310,6 +310,25 @@ export function reactHooks(world: World): AppHooks {
         },
       };
     },
+    // Session lock: reactive state backed by the World subject; lock/unlock push
+    // back so the seam transition re-renders the overlay. unlock (re-authenticate)
+    // also records the invocation so specs can assert "AUTHENTICATE fires once".
+    useSession: () => {
+      const state = useSubject(world.session);
+      return {
+        state,
+        lock: () => {
+          return world.session.next({
+            ...world.session.getValue(),
+            locked: true,
+          });
+        },
+        unlock: () => {
+          world.commands.sessionUnlock += 1;
+          world.session.next({ ...world.session.getValue(), locked: false });
+        },
+      };
+    },
     // Per-RFQ countdown: the REAL createRfqCountdownMachine, exercising the
     // relocated countdown logic through the same useMachine bridge the app uses.
     // Contract specs drive the countdown with fake timers.
