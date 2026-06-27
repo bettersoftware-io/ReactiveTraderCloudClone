@@ -66,7 +66,7 @@ export class WsAdapter implements IWsAdapter {
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = (): void => {
-      console.log("[WsAdapter] Connected to", this.url);
+      console.log("[WsAdapter] Connected to", this.url.split("?")[0]);
       this.connectionEvents$.next({ type: "gatewayConnected" });
       this.flushSendQueue();
     };

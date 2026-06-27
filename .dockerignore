@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.turbo
+**/*.tsbuildinfo
+.git
+.github
+**/reports
+**/coverage
+**/tests
+**/__screenshots__
+.claude
+docs

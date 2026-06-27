@@ -40,6 +40,7 @@ import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
 import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
+import { buildWsUrl } from "./wsUrl";
 
 export type { AppPorts };
 
@@ -101,10 +102,11 @@ const reconnect$ = new Subject<ReconnectIntent>();
 
 export function buildDefaultPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
+  const token = import.meta.env.VITE_WS_TOKEN as string | undefined;
   const browser = new BrowserConnectionEventsAdapter();
 
   if (url) {
-    const ws = new WsAdapter(url);
+    const ws = new WsAdapter(buildWsUrl(url, token));
     const gateway = new WsConnectionEventsAdapter(ws);
     const connectionEvents: ConnectionEventsPort = {
       events: () => {
