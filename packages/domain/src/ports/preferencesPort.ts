@@ -1,6 +1,7 @@
 import type { Observable } from "rxjs";
 
 import type {
+  BootVariant,
   ThemeMode,
   ThemeSkin,
   ViewMode,
@@ -29,4 +30,9 @@ export interface PreferencesPort {
   /** Ambient-motion perf gate; default false. */
   animatedBackground$(): Observable<boolean>;
   setAnimatedBackground(on: boolean): void;
+  /** Replay-current boot-sequence variant stream; emits synchronously on subscribe.
+   * The cycle pointer (core → laser → docking → core …) is advanced by
+   * BootSequenceMachine at each boot start via setBootVariant. */
+  bootVariant$(): Observable<BootVariant>;
+  setBootVariant(variant: BootVariant): void;
 }
