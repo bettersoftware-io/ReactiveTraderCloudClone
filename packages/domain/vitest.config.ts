@@ -10,9 +10,12 @@ export default defineConfig({
     outputFile: { html: "reports/unit/report/index.html" },
     coverage: {
       provider: "v8",
-      // Count every src file (even ones no test imports) so wholly-untested
-      // modules surface at 0% rather than vanishing from the denominator.
-      include: ["src/**"],
+      // Count every src TypeScript file (even ones no test imports) so
+      // wholly-untested modules surface at 0% rather than vanishing from the
+      // denominator. Scoped to *.ts so non-code fixtures under src/ — the
+      // __golden__/*.original.json reference data and README.golden.md — aren't
+      // counted as 0%-covered "source" (they carry no executable lines).
+      include: ["src/**/*.ts"],
       // src/ports/__contracts__/*PortContract.ts are reusable test SUITES (they
       // import describe/it/expect and are run by the *.contract.test.ts files),
       // not production source. vitest only auto-excludes executed *.test.ts

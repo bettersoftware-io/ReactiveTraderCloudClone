@@ -1,12 +1,25 @@
 /**
  * User-facing display preferences. These are pure value types — the UI's
- * `Theme` (shell/theme/ThemeProvider) and `ViewMode` (fx/liveRates/ViewToggle)
- * unions mirror these exactly. Defaults match today's synchronous-read defaults
- * so the localStorage adapter is transparent to existing users.
+ * theme tokens (shell/theme) and `ViewMode` (fx/liveRates/ViewToggle) unions
+ * mirror these exactly. Defaults match today's synchronous-read defaults so
+ * the localStorage adapter is transparent to existing users.
+ *
+ * Theming has two orthogonal axes: a `ThemeSkin` (visual identity) and a
+ * `ThemeMode` (light/dark recolouring).
  */
 
-export type Theme = "dark" | "light";
+export type ThemeMode = "dark" | "light";
+export type ThemeSkin = "classic" | "holo" | "terminal" | "neon";
 export type ViewMode = "chart" | "price";
 
-export const DEFAULT_THEME: Theme = "dark";
+export const DEFAULT_THEME_MODE: ThemeMode = "dark";
+export const DEFAULT_THEME_SKIN: ThemeSkin = "holo"; // showcase default; "classic" preserves the pre-redesign look
 export const DEFAULT_VIEW_MODE: ViewMode = "chart";
+
+export const THEME_SKINS: readonly ThemeSkin[] = [
+  "classic",
+  "holo",
+  "terminal",
+  "neon",
+];
+export const THEME_MODES: readonly ThemeMode[] = ["dark", "light"];

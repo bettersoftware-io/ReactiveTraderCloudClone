@@ -809,8 +809,8 @@ export const fixtures: Record<string, AppData> = {
     throughput: { value: 250, loading: false, message: null },
   }),
   // Light-theme variant of the FX page. The theme now lives behind
-  // PreferencesPort, so the light arm is reached by seeding theme "light" rather
-  // than clicking the toggle — the rendered output is identical to the old
+  // PreferencesPort, so the light arm is reached by seeding theme mode "light"
+  // rather than clicking the toggle — the rendered output is identical to the old
   // post-click state, and the ThemeToggle's aria-label reads "Switch to dark theme".
   "app-fx-light": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],
@@ -818,7 +818,7 @@ export const fixtures: Record<string, AppData> = {
     analytics: analyticsData,
     connectionStatus: ConnectionStatus.CONNECTED,
     throughput: { value: 250, loading: false, message: null },
-    theme: "light",
+    themeMode: "light",
   }),
   "fx-trades": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],

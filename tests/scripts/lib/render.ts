@@ -29,12 +29,20 @@ function lang(file: string): string {
 }
 
 function testSection(results: TierResult[]): string {
-  const passed = results.reduce((a, r) => a + r.passed, 0);
-  const failed = results.reduce((a, r) => a + r.failed, 0);
-  const skipped = results.reduce((a, r) => a + r.skipped, 0);
+  const passed = results.reduce((a, r) => {
+    return a + r.passed;
+  }, 0);
+  const failed = results.reduce((a, r) => {
+    return a + r.failed;
+  }, 0);
+  const skipped = results.reduce((a, r) => {
+    return a + r.skipped;
+  }, 0);
   const status = failed > 0 ? "❌" : "✅";
   const rows = results
-    .map((r) => `| ${r.tier} | ${r.passed} | ${r.failed} | ${r.skipped} |`)
+    .map((r) => {
+      return `| ${r.tier} | ${r.passed} | ${r.failed} | ${r.skipped} |`;
+    })
     .join("\n");
   return [
     "## Tests",
@@ -49,10 +57,9 @@ function testSection(results: TierResult[]): string {
 
 function coverageTable(packages: PackageStat[]): string {
   const rows = packages
-    .map(
-      (p) =>
-        `| ${p.name} | ${pct(p.pct)} | ${p.covered} | ${p.total - p.covered} |`,
-    )
+    .map((p) => {
+      return `| ${p.name} | ${pct(p.pct)} | ${p.covered} | ${p.total - p.covered} |`;
+    })
     .join("\n");
   return [
     "## Coverage",
@@ -67,12 +74,14 @@ function coverageTable(packages: PackageStat[]): string {
 function snippet(uncovered: number[], source: string[]): string {
   const parts: string[] = [];
   let prev: number | null = null;
+
   for (const line of uncovered) {
     if (prev !== null && line > prev + 1) parts.push("  ⋮");
     const text = source[line - 1] ?? "";
     parts.push(`${String(line).padStart(4)}  ${text}`);
     prev = line;
   }
+
   return parts.join("\n");
 }
 
@@ -85,6 +94,7 @@ function fileBlock(
   if (!source) {
     return linesOnlyBlock(stat, rel, pkgName);
   }
+
   const summary = `${pkgName} · ${rel} — ${pct(stat.pct)} (${stat.uncovered.length} uncovered)`;
   return [
     `<details><summary>${summary}</summary>`,
@@ -111,8 +121,14 @@ export function render(input: RenderInput): string {
 
   // Flatten all files-with-gaps across packages, worst pct first.
   const flat = input.packages
-    .flatMap((p) => p.files.map((f) => ({ stat: f, pkg: p.name })))
-    .sort((a, b) => a.stat.pct - b.stat.pct);
+    .flatMap((p) => {
+      return p.files.map((f) => {
+        return { stat: f, pkg: p.name };
+      });
+    })
+    .sort((a, b) => {
+      return a.stat.pct - b.stat.pct;
+    });
 
   const body: string[] = ["### Untested lines", ""];
   // Exact UTF-8 byte length of the assembled output so far:
@@ -127,8 +143,10 @@ export function render(input: RenderInput): string {
 
   for (const { stat, pkg } of flat) {
     const rel = relative(input.repoRoot, stat.file);
+
     if (!capped) {
       const block = fileBlock(stat, rel, pkg, input.readSource(stat.file));
+
       // +1 for the "\n" join separator this element introduces in body.join("\n").
       if (
         size + 1 + Buffer.byteLength(block, "utf8") >
@@ -141,8 +159,10 @@ export function render(input: RenderInput): string {
         continue;
       }
     }
+
     // capped: line-numbers only (much smaller); count anything that still won't fit.
     const lean = linesOnlyBlock(stat, rel, pkg);
+
     if (
       size + 1 + Buffer.byteLength(lean, "utf8") >
       SUMMARY_CAP - NOTE_RESERVE

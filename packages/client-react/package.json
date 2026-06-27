@@ -49,6 +49,7 @@
     "d3-drag": "^3.0.0",
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",
+    "motion": "^12.42.0",
     "react": "^19",
     "react-dom": "^19",
     "rxjs": "^7.8"

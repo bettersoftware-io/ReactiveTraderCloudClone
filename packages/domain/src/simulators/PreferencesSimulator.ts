@@ -2,15 +2,19 @@ import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
 import type { PreferencesPort } from "../ports/preferencesPort.js";
 import {
-  DEFAULT_THEME,
+  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
-  type Theme,
+  type ThemeMode,
+  type ThemeSkin,
   type ViewMode,
 } from "../preferences/preferences.js";
 
 export interface PreferencesSeed {
-  theme?: Theme;
+  themeMode?: ThemeMode;
+  themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
+  animatedBackground?: boolean;
 }
 
 /**
@@ -19,23 +23,43 @@ export interface PreferencesSeed {
  * real browser persistence uses the localStorage adapter in the client package.
  */
 export class PreferencesSimulator implements PreferencesPort {
-  private readonly theme: BehaviorSubject<Theme>;
+  private readonly themeMode: BehaviorSubject<ThemeMode>;
+
+  private readonly themeSkin: BehaviorSubject<ThemeSkin>;
 
   private readonly viewMode: BehaviorSubject<ViewMode>;
 
+  private readonly animatedBg: BehaviorSubject<boolean>;
+
   constructor(seed: PreferencesSeed = {}) {
-    this.theme = new BehaviorSubject<Theme>(seed.theme ?? DEFAULT_THEME);
+    this.themeMode = new BehaviorSubject<ThemeMode>(
+      seed.themeMode ?? DEFAULT_THEME_MODE,
+    );
+    this.themeSkin = new BehaviorSubject<ThemeSkin>(
+      seed.themeSkin ?? DEFAULT_THEME_SKIN,
+    );
     this.viewMode = new BehaviorSubject<ViewMode>(
       seed.viewMode ?? DEFAULT_VIEW_MODE,
     );
+    this.animatedBg = new BehaviorSubject<boolean>(
+      seed.animatedBackground ?? false,
+    );
   }
 
-  theme$(): Observable<Theme> {
-    return this.theme.pipe(distinctUntilChanged());
+  themeMode$(): Observable<ThemeMode> {
+    return this.themeMode.pipe(distinctUntilChanged());
   }
 
-  setTheme(theme: Theme): void {
-    this.theme.next(theme);
+  setThemeMode(mode: ThemeMode): void {
+    this.themeMode.next(mode);
+  }
+
+  themeSkin$(): Observable<ThemeSkin> {
+    return this.themeSkin.pipe(distinctUntilChanged());
+  }
+
+  setThemeSkin(skin: ThemeSkin): void {
+    this.themeSkin.next(skin);
   }
 
   viewMode$(): Observable<ViewMode> {
@@ -44,5 +68,13 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setViewMode(viewMode: ViewMode): void {
     this.viewMode.next(viewMode);
+  }
+
+  animatedBackground$(): Observable<boolean> {
+    return this.animatedBg.pipe(distinctUntilChanged());
+  }
+
+  setAnimatedBackground(on: boolean): void {
+    this.animatedBg.next(on);
   }
 }

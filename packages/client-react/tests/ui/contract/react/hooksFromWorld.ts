@@ -8,7 +8,8 @@ import type {
   ExecuteTradeInput,
   ExecuteTradeResult,
   RfqQuoteResult,
-  Theme,
+  ThemeMode,
+  ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
 
@@ -251,18 +252,44 @@ export function reactHooks(world: World): AppHooks {
         },
       };
     },
-    // Global theme: reactive view backed by the World subject; setTheme/toggle
-    // push back so a click through the seam flips the rendered theme (mirroring
-    // the PreferencesPort's replay-current theme$ stream).
+    // Global theme mode: reactive view backed by the World subject; setMode/toggle
+    // push back so a click through the seam flips the rendered mode (mirroring
+    // the PreferencesPort's replay-current themeMode$ stream).
     useThemePreference: () => {
-      const theme = useSubject(world.theme);
+      const mode = useSubject(world.themeMode);
       return {
-        theme,
-        setTheme: (next: Theme) => {
-          return world.theme.next(next);
+        mode,
+        setMode: (next: ThemeMode) => {
+          return world.themeMode.next(next);
         },
         toggle: () => {
-          return world.theme.next(theme === "dark" ? "light" : "dark");
+          return world.themeMode.next(mode === "dark" ? "light" : "dark");
+        },
+      };
+    },
+    // Global theme skin: reactive view backed by the World subject; setSkin pushes
+    // back so a change through the seam repaints the skin (mirroring the
+    // PreferencesPort's replay-current themeSkin$ stream).
+    useThemeSkinPreference: () => {
+      const skin = useSubject(world.themeSkin);
+      return {
+        skin,
+        setSkin: (next: ThemeSkin) => {
+          return world.themeSkin.next(next);
+        },
+      };
+    },
+    // Animated background: reactive boolean backed by the World subject; setEnabled
+    // /toggle push back so a click through the seam flips the rendered flag.
+    useAnimatedBackground: () => {
+      const enabled = useSubject(world.animatedBackground);
+      return {
+        enabled,
+        setEnabled: (on: boolean) => {
+          return world.animatedBackground.next(on);
+        },
+        toggle: () => {
+          return world.animatedBackground.next(!enabled);
         },
       };
     },
@@ -284,6 +311,11 @@ export function reactHooks(world: World): AppHooks {
       return useMachine(() => {
         return createRfqCountdownMachine(creationTimestamp, totalMs);
       }).state;
+    },
+    // Animation intents: no contract spec exercises animation in Phase 0; the
+    // fake reports no intent (null) for every target.
+    useAnimationIntents: (_target: string) => {
+      return null;
     },
   };
 }

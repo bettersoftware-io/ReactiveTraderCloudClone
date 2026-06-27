@@ -7,6 +7,7 @@ function cov(path: string, hits: Record<number, number>): unknown {
   const statementMap: Record<string, unknown> = {};
   const s: Record<string, number> = {};
   let i = 0;
+
   for (const [line, count] of Object.entries(hits)) {
     statementMap[i] = {
       start: { line: Number(line), column: 0 },
@@ -15,6 +16,7 @@ function cov(path: string, hits: Record<number, number>): unknown {
     s[i] = count;
     i++;
   }
+
   return {
     [path]: { path, statementMap, s, fnMap: {}, f: {}, branchMap: {}, b: {} },
   };
@@ -75,6 +77,10 @@ describe("packageStat", () => {
     expect(stat.total).toBe(6);
     expect(stat.covered).toBe(3);
     expect(stat.pct).toBe(50);
-    expect(stat.files.map((f) => f.file)).toEqual(["/r/bad.ts", "/r/mid.ts"]);
+    expect(
+      stat.files.map((f) => {
+        return f.file;
+      }),
+    ).toEqual(["/r/bad.ts", "/r/mid.ts"]);
   });
 });
