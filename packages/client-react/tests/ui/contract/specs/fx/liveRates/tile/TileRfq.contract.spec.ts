@@ -16,10 +16,12 @@ const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS[0];
 
 const quote: RfqQuote = { bid: 1.0921, ask: 1.0925, timeoutMs: 10_000 };
 
-const rfqState = (
+type ExecutedTrade = { dir: Direction; price: Price; notional: number };
+
+function rfqState(
   state: RfqState,
   over: Partial<RfqStateLike> = {},
-): RfqStateLike => {
+): RfqStateLike {
   return {
     state,
     requestQuote: () => {},
@@ -28,7 +30,7 @@ const rfqState = (
     accept: () => {},
     ...over,
   };
-};
+}
 
 describe("TileRfq", () => {
   it("offers an Initiate RFQ button in the init state", async () => {
@@ -90,7 +92,7 @@ describe("TileRfq", () => {
 
   it("accepts a quote and executes the synthetic price for the chosen side", async () => {
     let accepted = 0;
-    const executed: { dir: Direction; price: Price; notional: number }[] = [];
+    const executed: ExecutedTrade[] = [];
     const rfq = mount(TileRfq, {
       props: {
         pair: eurusd,
@@ -123,7 +125,7 @@ describe("TileRfq", () => {
 
   it("executes the Sell side of a received quote with Direction.Sell", async () => {
     let accepted = 0;
-    const executed: { dir: Direction; price: Price; notional: number }[] = [];
+    const executed: ExecutedTrade[] = [];
     const rfq = mount(TileRfq, {
       props: {
         pair: eurusd,

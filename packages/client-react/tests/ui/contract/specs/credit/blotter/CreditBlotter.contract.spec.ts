@@ -39,7 +39,7 @@ const dealers: readonly Dealer[] = [
 // 2024-03-05 in UTC (avoid TZ flakiness by asserting the day/month/year parts).
 const TS = Date.UTC(2024, 2, 5, 12, 0, 0);
 
-const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => {
+function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
   return {
     id,
     instrumentId: 1,
@@ -50,13 +50,13 @@ const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => {
     creationTimestamp: TS,
     ...over,
   };
-};
+}
 
-const acceptedQuote = (
+function acceptedQuote(
   id: number,
   rfqId: number,
   over: Partial<Quote> = {},
-): Quote => {
+): Quote {
   return {
     id,
     rfqId,
@@ -64,15 +64,15 @@ const acceptedQuote = (
     state: { type: "accepted", price: 99 },
     ...over,
   };
-};
+}
 
-const quoteMap = (...quotes: Quote[]): ReadonlyMap<number, Quote> => {
+function quoteMap(...quotes: Quote[]): ReadonlyMap<number, Quote> {
   return new Map(
     quotes.map((q) => {
       return [q.id, q];
     }),
   );
-};
+}
 
 describe("CreditBlotter", () => {
   it("shows the column headers", () => {

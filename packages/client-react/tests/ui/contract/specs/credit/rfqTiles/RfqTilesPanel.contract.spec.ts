@@ -36,7 +36,7 @@ const dealers: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => {
+function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
   return {
     id,
     instrumentId: 1,
@@ -47,7 +47,7 @@ const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => {
     creationTimestamp: 1_700_000_000_000 + id,
     ...over,
   };
-};
+}
 
 describe("RfqTilesPanel", () => {
   it("shows the empty state when there are no RFQs", () => {

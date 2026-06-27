@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { type Price, PriceMovementType } from "@rtc/domain";
 
-const price = (over: Partial<Price> = {}): Price => {
+function price(over: Partial<Price> = {}): Price {
   return {
     symbol: "EURUSD",
     bid: 1.53816,
@@ -16,7 +16,7 @@ const price = (over: Partial<Price> = {}): Price => {
     spread: "1.8",
     ...over,
   };
-};
+}
 
 describe("TilePrice", () => {
   it("labels the two sides SELL (bid) and BUY (ask)", () => {
