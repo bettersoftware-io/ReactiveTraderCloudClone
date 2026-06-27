@@ -63,15 +63,16 @@ import {
 } from "#/ui/fx/liveRates/tile/TileRfq";
 import { ViewToggle as ViewToggleComponent } from "#/ui/fx/liveRates/ViewToggle";
 import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
+import {
+  HeaderChrome as HeaderChromeComponent,
+  type WorkspaceTab,
+} from "#/ui/shell/chrome/HeaderChrome";
+import { ThemePicker as ThemePickerComponent } from "#/ui/shell/chrome/ThemePicker";
 import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
-import { Footer as FooterComponent } from "#/ui/shell/layout/Footer";
-import {
-  Header as HeaderComponent,
-  type WorkspaceTab,
-} from "#/ui/shell/layout/Header";
 import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
 import { StaleIndicator as StaleIndicatorComponent } from "#/ui/shell/stale/StaleIndicator";
+import { StatusBar as StatusBarComponent } from "#/ui/shell/status/StatusBar";
 import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggle";
 
 import {
@@ -85,9 +86,8 @@ import {
   CreditBlotter,
   CurrencyFilter,
   DateFilter,
-  Footer,
   FxBlotter,
-  Header,
+  HeaderChrome,
   LayoutEngine,
   LiveRatesPanel,
   LockScreen,
@@ -106,6 +106,8 @@ import {
   SetFilter,
   SpreadDisplay,
   StaleIndicator,
+  StatusBar,
+  ThemePicker,
   ThemeToggle,
   Tile,
   TileConfirmation,
@@ -507,22 +509,28 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    Footer,
+    StatusBar,
     (): ReactElement => {
-      return <FooterComponent />;
+      return <StatusBarComponent />;
     },
   ],
   [
-    Header,
+    HeaderChrome,
     (p: Record<string, unknown>): ReactElement => {
       return (
-        <HeaderComponent
+        <HeaderChromeComponent
           activeTab={(p.activeTab as WorkspaceTab) ?? "fx"}
           onTabChange={
             (p.onTabChange as (t: WorkspaceTab) => void) ?? ((): void => {})
           }
         />
       );
+    },
+  ],
+  [
+    ThemePicker,
+    (): ReactElement => {
+      return <ThemePickerComponent />;
     },
   ],
   [

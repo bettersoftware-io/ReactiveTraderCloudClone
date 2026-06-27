@@ -2,11 +2,11 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { useHooks } from "./hooks/useHooks";
+import { HeaderChrome, type WorkspaceTab } from "./shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
-import { Footer } from "./shell/layout/Footer";
-import { Header, type WorkspaceTab } from "./shell/layout/Header";
+import { StatusBar } from "./shell/status/StatusBar";
 
 import styles from "./App.module.css";
 
@@ -35,9 +35,9 @@ export function App(): ReactElement {
 
   return (
     <div className={styles.app}>
-      <Header activeTab={activeTab} onTabChange={setActiveTab} />
+      <HeaderChrome activeTab={activeTab} onTabChange={setActiveTab} />
       <WorkspaceEngine key={activeTab} tab={activeTab} />
-      <Footer />
+      <StatusBar />
       <ConnectionOverlay />
     </div>
   );

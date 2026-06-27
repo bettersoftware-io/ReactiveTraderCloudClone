@@ -111,13 +111,17 @@ import {
   ViewTogglePage,
   type ViewToggleProps,
 } from "./pages/fx/liveRates/ViewTogglePage";
+import {
+  HeaderChromePage,
+  type HeaderChromeProps,
+} from "./pages/shell/chrome/HeaderChromePage";
+import { ThemePickerPage } from "./pages/shell/chrome/ThemePickerPage";
 import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverlayPage";
-import { FooterPage } from "./pages/shell/layout/FooterPage";
-import { HeaderPage, type HeaderProps } from "./pages/shell/layout/HeaderPage";
 import {
   StaleIndicatorPage,
   type StaleIndicatorProps,
 } from "./pages/shell/stale/StaleIndicatorPage";
+import { StatusBarPage } from "./pages/shell/status/StatusBarPage";
 import { ThemeTogglePage } from "./pages/shell/theme/ThemeTogglePage";
 
 export const AnalyticsPanel = component<
@@ -304,13 +308,23 @@ export const ConnectionOverlay = component<
   return new ConnectionOverlayPage(ctx);
 });
 
-export const Footer = component<Record<string, never>, FooterPage>((ctx) => {
-  return new FooterPage(ctx);
-});
+export const StatusBar = component<Record<string, never>, StatusBarPage>(
+  (ctx) => {
+    return new StatusBarPage(ctx);
+  },
+);
 
-export const Header = component<HeaderProps, HeaderPage>((ctx) => {
-  return new HeaderPage(ctx);
-});
+export const HeaderChrome = component<HeaderChromeProps, HeaderChromePage>(
+  (ctx) => {
+    return new HeaderChromePage(ctx);
+  },
+);
+
+export const ThemePicker = component<Record<string, never>, ThemePickerPage>(
+  (ctx) => {
+    return new ThemePickerPage(ctx);
+  },
+);
 
 export const StaleIndicator = component<
   StaleIndicatorProps,
