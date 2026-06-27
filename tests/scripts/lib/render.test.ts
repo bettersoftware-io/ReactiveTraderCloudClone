@@ -175,4 +175,36 @@ describe("render", () => {
     expect(Buffer.byteLength(md, "utf8")).toBeLessThanOrEqual(SUMMARY_CAP);
     expect(md).toMatch(/snippets omitted/i);
   });
+
+  it("renders context windows with a ⋮ separator for a large file (>200 lines)", () => {
+    const lineCount = 210;
+    const source = Array.from({ length: lineCount }, (_, i) => {
+      return `line ${i + 1}`;
+    });
+    const spec: LineSpec[] = [];
+
+    for (let n = 1; n <= lineCount; n++) {
+      spec.push({ line: n, hits: n === 5 || n === 100 ? 0 : 1 });
+    }
+
+    const md = render({
+      title: "t",
+      testResults: [],
+      packages: [pkg("domain", "/r/src/big.ts", cov(spec))],
+      repoRoot,
+      readSource: () => {
+        return source;
+      },
+    });
+    // The two gaps (lines 5 and 100) sit in non-contiguous windows, so a ⋮
+    // separator appears between them.
+    expect(md).toContain("⋮");
+    // Uncovered lines render red.
+    expect(lineWith(md, "line 5").startsWith("-")).toBe(true);
+    expect(lineWith(md, "line 100").startsWith("-")).toBe(true);
+    // Context around a gap renders as space-prefixed (line 4 is in the first window).
+    expect(lineWith(md, "line 4").startsWith(" ")).toBe(true);
+    // A line far from any gap is NOT rendered — this is windowing, not full file.
+    expect(md).not.toContain("line 50");
+  });
 });
