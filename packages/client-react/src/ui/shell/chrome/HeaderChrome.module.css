@@ -137,6 +137,11 @@
   height: 16px;
 }
 
+.gear {
+  font-size: 16px;
+  line-height: 1;
+}
+
 .badge {
   position: absolute;
   top: -5px;

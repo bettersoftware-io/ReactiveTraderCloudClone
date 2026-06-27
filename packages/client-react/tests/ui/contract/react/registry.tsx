@@ -71,6 +71,7 @@ import { ThemePicker as ThemePickerComponent } from "#/ui/shell/chrome/ThemePick
 import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
 import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
+import { PreferencesModal as PreferencesModalComponent } from "#/ui/shell/prefs/PreferencesModal";
 import { StaleIndicator as StaleIndicatorComponent } from "#/ui/shell/stale/StaleIndicator";
 import { StatusBar as StatusBarComponent } from "#/ui/shell/status/StatusBar";
 import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggle";
@@ -96,6 +97,7 @@ import {
   PairPnlBars,
   PnlValue,
   PositionBubbles,
+  PreferencesModal,
   QuickFilter,
   QuoteCard,
   RfqCard,
@@ -565,6 +567,17 @@ export const registry = new Map<AnyToken, ElementFor>([
     LockScreen,
     (): ReactElement => {
       return <LockScreenComponent />;
+    },
+  ],
+  [
+    PreferencesModal,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PreferencesModalComponent
+          open={(p.open as boolean) ?? false}
+          onClose={(p.onClose as () => void) ?? ((): void => {})}
+        />
+      );
     },
   ],
 ]);

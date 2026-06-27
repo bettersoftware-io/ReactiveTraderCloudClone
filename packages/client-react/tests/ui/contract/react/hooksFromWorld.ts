@@ -286,16 +286,21 @@ export function reactHooks(world: World): AppHooks {
       };
     },
     // Animated background: reactive boolean backed by the World subject; setEnabled
-    // /toggle push back so a click through the seam flips the rendered flag.
+    // /toggle push back so a click through the seam flips the rendered flag, and
+    // each written value is recorded so a spec can assert the seam was written
+    // (e.g. PreferencesModal's animated-bg toggle → animatedBackgroundSets [true]).
     useAnimatedBackground: () => {
       const enabled = useSubject(world.animatedBackground);
       return {
         enabled,
         setEnabled: (on: boolean) => {
-          return world.animatedBackground.next(on);
+          world.commands.animatedBackgroundSets.push(on);
+          world.animatedBackground.next(on);
         },
         toggle: () => {
-          return world.animatedBackground.next(!enabled);
+          const next = !enabled;
+          world.commands.animatedBackgroundSets.push(next);
+          world.animatedBackground.next(next);
         },
       };
     },

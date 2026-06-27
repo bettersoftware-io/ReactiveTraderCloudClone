@@ -16,10 +16,15 @@ import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { Tile } from "#/ui/fx/liveRates/tile/Tile";
+import { BootSequence } from "#/ui/shell/boot/BootSequence";
+import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar } from "#/ui/shell/connection/ConnectionStatusBar";
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
+import { LockScreen } from "#/ui/shell/lock/LockScreen";
+import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
+import { StatusBar } from "#/ui/shell/status/StatusBar";
 
 import { fixtures } from "../shared/fixtures";
 
@@ -165,6 +170,34 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   App: () => {
     return <App />;
+  },
+  // --- Phase 2 HUD shell surfaces ---
+  BootSequence: () => {
+    return <BootSequence onDone={() => {}} />;
+  },
+  LockScreen: () => {
+    return <LockScreen />;
+  },
+  HeaderChrome: () => {
+    return <HeaderChrome activeTab="fx" onTabChange={() => {}} />;
+  },
+  StatusBar: () => {
+    return <StatusBar />;
+  },
+  PreferencesModal: () => {
+    // The modal's backdrop is translucent; paint a deterministic dark field
+    // behind it so the capture isn't over the host's default body colour.
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "var(--bg-primary)",
+        }}
+      >
+        <PreferencesModal open={true} onClose={() => {}} />
+      </div>
+    );
   },
   LayoutEngineDefault: () => {
     return staticEngine(fxState);

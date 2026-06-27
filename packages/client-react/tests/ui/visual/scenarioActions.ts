@@ -18,6 +18,10 @@ export type ScenarioAction = {
   /** Screenshot the whole page (full App or a fixed-position overlay) rather
    *  than just the #scenario-root component box. */
   readonly fullPage?: boolean;
+  /** Emulate `prefers-reduced-motion: reduce` before rendering. The boot
+   *  sequence reads it to skip its rAF canvas loop, so only the deterministic
+   *  chrome is captured (the animated canvas art is intentionally not golden'd). */
+  readonly reducedMotion?: boolean;
   /** A testid to click after the page settles (e.g. a tab or the theme toggle). */
   readonly click?: string;
   /** Ordered interaction steps, run after `click`, before `waitForText`. Used
@@ -234,4 +238,15 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   // pairs and that button becomes active. Click is synchronous (local state),
   // so no waitForText (the "GBP" label is non-unique against the pair rows).
   "live-rates/currency-filtered": { click: "filter-GBP" },
+
+  // --- Phase 2: HUD shell surfaces ---
+  // Boot chrome under reduced motion (canvas loop skipped → deterministic).
+  "boot/chrome": {
+    fullPage: true,
+    reducedMotion: true,
+    waitForText: "TACTICAL TRADING OPERATING SYSTEM · v4.0",
+  },
+  // Lock + preferences are fixed-position viewport overlays → full-page capture.
+  "lock/locked": { fullPage: true, waitForText: "SESSION LOCKED" },
+  "prefs/modal": { fullPage: true, waitForText: "PREFERENCES" },
 };

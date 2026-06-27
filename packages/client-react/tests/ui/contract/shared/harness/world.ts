@@ -94,6 +94,8 @@ export interface CommandLog {
   reconnect: number;
   /** Incremented each time useSession().unlock() (re-authenticate) is invoked. */
   sessionUnlock: number;
+  /** Each value written through useAnimatedBackground().setEnabled/toggle, in order. */
+  animatedBackgroundSets: boolean[];
 }
 
 /** The default throughput view a fresh World reports (loaded, value 100). */
@@ -277,6 +279,7 @@ export function createWorld(
       quoteRfq: [],
       reconnect: 0,
       sessionUnlock: 0,
+      animatedBackgroundSets: [],
     },
     push(patch: Partial<HookValues>): void {
       for (const key of Object.keys(patch) as (keyof HookValues)[]) {

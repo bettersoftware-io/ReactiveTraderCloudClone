@@ -118,6 +118,10 @@ import {
 import { ThemePickerPage } from "./pages/shell/chrome/ThemePickerPage";
 import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverlayPage";
 import {
+  PreferencesModalPage,
+  type PreferencesModalProps,
+} from "./pages/shell/prefs/PreferencesModalPage";
+import {
   StaleIndicatorPage,
   type StaleIndicatorProps,
 } from "./pages/shell/stale/StaleIndicatorPage";
@@ -362,3 +366,10 @@ export const LockScreen = component<Record<string, never>, LockScreenPage>(
     return new LockScreenPage(ctx);
   },
 );
+
+export const PreferencesModal = component<
+  PreferencesModalProps,
+  PreferencesModalPage
+>((ctx) => {
+  return new PreferencesModalPage(ctx);
+});

@@ -119,4 +119,24 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
   hasLanguageSelector(): boolean {
     return within(this.root).queryByTestId("language-select") !== null;
   }
+
+  /** True when the ⚙ preferences control is present. */
+  hasSettings(): boolean {
+    return within(this.root).queryByTestId("settings-toggle") !== null;
+  }
+
+  /** True when the preferences modal is currently open. */
+  prefsOpen(): boolean {
+    return within(this.root).queryByTestId("prefs-modal") !== null;
+  }
+
+  /** Click the ⚙ control to open the preferences modal. */
+  async openPrefs(): Promise<void> {
+    await this.user.click(within(this.root).getByTestId("settings-toggle"));
+  }
+
+  /** Dismiss the preferences modal via its ✕ control. */
+  async closePrefs(): Promise<void> {
+    await this.user.click(within(this.root).getByTestId("prefs-close"));
+  }
 }

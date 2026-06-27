@@ -10,7 +10,14 @@ import { registry } from "./registry";
 
 // Components that paint their own full-height/viewport container and must not
 // sit inside the padded inline-block wrapper used for component-level shots.
-const FULL_BLEED = new Set(["App"]);
+// The Phase-2 boot/lock/prefs surfaces are fixed-position viewport overlays, so
+// they render full-bleed too (their scenarios are captured fullPage).
+const FULL_BLEED = new Set([
+  "App",
+  "BootSequence",
+  "LockScreen",
+  "PreferencesModal",
+]);
 
 interface VisualScenarioProps {
   name: string;

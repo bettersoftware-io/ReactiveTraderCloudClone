@@ -93,4 +93,18 @@ describe("HeaderChrome", () => {
     expect(name).toMatch(/anthony stark/i);
     expect(header.hasLanguageSelector()).toBe(true);
   });
+
+  it("opens and dismisses the preferences modal from the ⚙ control", async () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+    });
+    expect(header.hasSettings()).toBe(true);
+    expect(header.prefsOpen()).toBe(false);
+
+    await header.openPrefs();
+    expect(header.prefsOpen()).toBe(true);
+
+    await header.closePrefs();
+    expect(header.prefsOpen()).toBe(false);
+  });
 });

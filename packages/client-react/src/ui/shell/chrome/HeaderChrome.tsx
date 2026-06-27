@@ -1,5 +1,6 @@
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 
+import { PreferencesModal } from "../prefs/PreferencesModal";
 import { AccountMenu } from "./AccountMenu";
 import { EnvBadge } from "./EnvBadge";
 import { NotificationsMenu } from "./NotificationsMenu";
@@ -38,6 +39,10 @@ export function HeaderChrome({
   activeTab,
   onTabChange,
 }: HeaderChromeProps): ReactElement {
+  // Local view-state only (which UI panel is open) — not business logic, so a
+  // plain useState is correct here, no port involved.
+  const [prefsOpen, setPrefsOpen] = useState(false);
+
   function renderTab(tab: WorkspaceTab): ReactElement {
     const active = activeTab === tab;
     return (
@@ -87,9 +92,28 @@ export function HeaderChrome({
         <EnvBadge />
         <ThemePicker />
         <NotificationsMenu />
+        <button
+          type="button"
+          data-testid="settings-toggle"
+          aria-label="Open preferences"
+          className={styles.iconButton}
+          onClick={() => {
+            setPrefsOpen(true);
+          }}
+        >
+          <span className={styles.gear} aria-hidden="true">
+            ⚙
+          </span>
+        </button>
         <span className={styles.divider} />
         <AccountMenu />
       </div>
+      <PreferencesModal
+        open={prefsOpen}
+        onClose={() => {
+          setPrefsOpen(false);
+        }}
+      />
     </header>
   );
 }
