@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LayoutState } from "#/app/layout/layoutPort";
@@ -83,5 +83,68 @@ describe("InhouseLayoutEngine", () => {
     );
     screen.getByTestId("panel-fx-rates-maximize").click();
     expect(onMaximize).toHaveBeenCalledWith("fx-rates");
+  });
+
+  it("drives a row-split resize drag (pointerdown→move) and calls onResize with two new fractions", () => {
+    const onResize = vi.fn();
+    render(
+      <InhouseLayoutEngine
+        state={state}
+        registry={registry}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+        onResize={onResize}
+      />,
+    );
+    const handle = screen.getByTestId("handle--0");
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 60, clientY: 0 });
+    fireEvent.pointerMove(handle, { clientX: 90, clientY: 0 });
+    expect(onResize).toHaveBeenCalled();
+    const [path, sizes] = onResize.mock.calls[0] as [number[], number[]];
+    expect(path).toEqual([]);
+    // two adjacent fractions that still sum to the original pair (0.6 + 0.4)
+    expect(sizes).toHaveLength(2);
+    expect(sizes[0] + sizes[1]).toBeCloseTo(1, 5);
+
+    // pointerup removes the move/up listeners: a later move must NOT fire onResize
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 90, clientY: 0 });
+    onResize.mockClear();
+    fireEvent.pointerMove(handle, { clientX: 120, clientY: 0 });
+    expect(onResize).not.toHaveBeenCalled();
+  });
+
+  it("drives a column-split resize drag (vertical) and calls onResize", () => {
+    const columnState: LayoutState = {
+      root: {
+        kind: "split",
+        dir: "column",
+        sizes: [0.5, 0.5],
+        children: [
+          { kind: "panel", panelId: "fx-rates" },
+          { kind: "panel", panelId: "fx-analytics" },
+        ],
+      },
+      maximized: null,
+      collapsed: [],
+    };
+    const onResize = vi.fn();
+    render(
+      <InhouseLayoutEngine
+        state={columnState}
+        registry={registry}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+        onResize={onResize}
+      />,
+    );
+    const handle = screen.getByTestId("handle--0");
+    fireEvent.pointerDown(handle, { pointerId: 2, clientX: 0, clientY: 40 });
+    fireEvent.pointerMove(handle, { clientX: 0, clientY: 70 });
+    expect(onResize).toHaveBeenCalled();
+    fireEvent.pointerUp(handle, { pointerId: 2, clientX: 0, clientY: 70 });
   });
 });

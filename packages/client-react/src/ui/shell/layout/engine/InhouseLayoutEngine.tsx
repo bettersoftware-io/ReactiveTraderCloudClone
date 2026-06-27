@@ -93,7 +93,14 @@ function SplitNode({
   ): void {
     e.preventDefault();
     const handle = e.currentTarget;
-    handle.setPointerCapture(e.pointerId);
+
+    // Pointer capture is a progressive enhancement (keeps pointermove flowing to
+    // the handle if the cursor leaves it mid-drag); guard it so the drag still
+    // works where the API is absent (older engines, jsdom).
+    if (typeof handle.setPointerCapture === "function") {
+      handle.setPointerCapture(e.pointerId);
+    }
+
     const container = splitRef.current;
 
     if (!container) return;
@@ -119,7 +126,10 @@ function SplitNode({
     }
 
     function up(ev: PointerEvent): void {
-      handle.releasePointerCapture(ev.pointerId);
+      if (typeof handle.releasePointerCapture === "function") {
+        handle.releasePointerCapture(ev.pointerId);
+      }
+
       handle.removeEventListener("pointermove", move);
       handle.removeEventListener("pointerup", up);
     }

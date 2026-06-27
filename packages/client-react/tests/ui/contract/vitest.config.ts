@@ -47,6 +47,9 @@ export default defineConfig({
         // Real composition-root / providers / constants the harness replaces.
         "src/ui/hooks/createAppHooks.ts",
         "src/ui/hooks/HooksProvider.tsx",
+        // The real id→module-root map; the contract/visual harnesses mount a
+        // test PanelRegistry instead, exactly like the hooks providers above.
+        "src/ui/shell/layout/engine/appPanelRegistry.tsx",
         "src/ui/shell/theme/ThemeProvider.tsx",
         "src/ui/shell/theme/tokens.ts",
         // Canvas/chart leaves with no DOM-assertable logic — owned by the visual tier.
