@@ -1,7 +1,6 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import { CreditBlotter } from "./blotter/CreditBlotter";
 import { NewRfqForm } from "./newRfq/NewRfqForm";
 import { RfqTilesPanel } from "./rfqTiles/RfqTilesPanel";
 import { SellSidePanel } from "./sellSide/SellSidePanel";
@@ -45,8 +44,6 @@ export function CreditWorkspace(): ReactElement {
       {view === "new-rfq" && <NewRfqForm onCreated={handleRfqCreated} />}
       {view === "tiles" && <RfqTilesPanel />}
       {view === "sell-side" && <SellSidePanel />}
-
-      <CreditBlotter />
     </div>
   );
 }

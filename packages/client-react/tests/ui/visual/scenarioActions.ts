@@ -51,7 +51,9 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   "app/admin": {
     fullPage: true,
     click: "tab-admin",
-    waitForText: "Throughput Control",
+    // "Throughput Control" now appears twice (engine panel header + AdminPanel h2);
+    // "Updates/sec" is unique to the AdminPanel slider row and proves the panel loaded.
+    waitForText: "Updates/sec",
   },
   // Light theme is seeded through the seam (fixture app-fx-light, theme "light"),
   // so no toggle click is needed; the ThemeToggle's aria-label confirms the
