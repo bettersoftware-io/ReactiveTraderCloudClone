@@ -43,7 +43,6 @@ export default defineConfig({
       exclude: [
         // Full-page composition roots — owned by the visual (tests/ui/visual) tier, app/*, + e2e.
         "src/ui/App.tsx",
-        "src/ui/shell/layout/Workspace.tsx",
         "src/ui/credit/CreditWorkspace.tsx",
         // Real composition-root / providers / constants the harness replaces.
         "src/ui/hooks/createAppHooks.ts",

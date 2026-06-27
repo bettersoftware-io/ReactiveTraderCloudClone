@@ -24,7 +24,6 @@
         "src/main.tsx",
         "src/index.ts",
         "src/app/layout/layoutPort.ts",
-        "src/ui/shell/layout/engine/appPanelRegistry.tsx",
         "index.html",
         "vite.config.ts",
         "tests/ui/visual/playwright-ct/host/index.tsx",
