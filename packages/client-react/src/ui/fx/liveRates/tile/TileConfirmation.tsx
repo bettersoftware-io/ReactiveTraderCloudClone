@@ -9,6 +9,7 @@ import styles from "./TileConfirmation.module.css";
 interface TileConfirmationProps {
   state: TileExecutionState;
   onDismiss: () => void;
+  anim?: "fill" | "reject";
 }
 
 function formatNotional(n: number): string {
@@ -110,6 +111,7 @@ function statusKey(state: TileExecutionState): ConfirmationStatus {
 export function TileConfirmation({
   state,
   onDismiss,
+  anim,
 }: TileConfirmationProps): ReactElement | null {
   if (state.status === "ready") return null;
 
@@ -118,6 +120,7 @@ export function TileConfirmation({
       <div
         data-testid="trade-confirmation"
         data-status={statusKey(state)}
+        data-anim={anim}
         className={styles.overlay}
       >
         <ConfirmationContent state={state} />
@@ -130,6 +133,7 @@ export function TileConfirmation({
       type="button"
       data-testid="trade-confirmation"
       data-status={statusKey(state)}
+      data-anim={anim}
       onClick={onDismiss}
       className={styles.overlay}
     >
