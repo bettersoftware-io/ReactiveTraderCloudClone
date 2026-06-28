@@ -9,14 +9,15 @@ description: Use when about to change anything in this repo — before editing, 
 
 This repo is shared by **concurrent Claude Code sessions** working in the same checkout, and **local `main` auto-pushes to origin** the moment it advances. So every change must be isolated, proven on CI, and merged as an explicit merge commit — never improvised on `main`.
 
-**The four rules are non-negotiable. Violating the letter of a rule is violating its spirit.**
+**The five rules are non-negotiable. Violating the letter of a rule is violating its spirit.**
 
-## The Four Rules
+## The Five Rules
 
 1. **Isolate first.** Before touching *any* file, create a git worktree on a fresh branch. Never edit the live working tree or `main` directly.
 2. **PR + loop until CI is green.** When work is done, push the branch, open a PR, and poll CI until the run for your latest commit completes **successfully**. If it fails, fix on the branch and loop again.
 3. **Merge once green.** As soon as CI is green you may merge to `main` immediately via the GitHub API — no human review gate (move-fast policy, may tighten later).
 4. **Always a merge commit.** Merge with `--merge`. **Never** `--squash`, `--rebase`, or a fast-forward.
+5. **Clean up.** Once your commit is confirmed on `origin/main`, remove *your* worktree and delete its branch — immediately, not "later."
 
 ## Rule 1 — Isolate before any change
 
@@ -58,7 +59,24 @@ git fetch origin main
 git merge-base --is-ancestor $HEAD_SHA origin/main   # exit 0 = your work is on main
 ```
 
-Only after confirming your commit is an ancestor of `origin/main` may you remove the worktree (`ExitWorktree action:remove`, or `git worktree remove`).
+Confirming your commit is an ancestor of `origin/main` is the gate for Rule 5 — do not clean up before `git merge-base --is-ancestor` exits 0.
+
+## Rule 5 — Clean up the worktree
+
+A merged PR with its worktree still on disk is *not done*. Once the commit is confirmed on `origin/main`:
+
+```bash
+ExitWorktree action:remove        # native tool — preferred when it works
+```
+
+**If `ExitWorktree` no-ops** ("no active worktree session" — happens after a session resume, which drops the in-memory session link), fall back to git, targeting **only your** worktree and branch:
+
+```bash
+git worktree remove .claude/worktrees/<your-worktree>
+git branch -D <your-branch>       # the remote branch is auto-deleted by the merge
+```
+
+Never bulk-remove or prune other worktrees — concurrent sessions own them.
 
 ## Quick Reference
 
@@ -70,6 +88,7 @@ Only after confirming your commit is an ancestor of `origin/main` may you remove
 | Merge (merge commit) | `gh pr merge <n> --merge --subject "Merge PR #<n>: <title>"` |
 | ❌ Never to merge | `--squash`, `--rebase`, fast-forward |
 | Confirm landed | `git merge-base --is-ancestor $(git rev-parse HEAD) origin/main` |
+| Clean up after merge | `ExitWorktree action:remove` → fallback `git worktree remove <path>` + `git branch -D <branch>` |
 
 ## Rationalization Table
 
@@ -89,5 +108,6 @@ Only after confirming your commit is an ancestor of `origin/main` may you remove
 - About to type `gh pr merge` with `--squash`, `--rebase`, or `--auto`.
 - About to merge without having seen a `completed`/`success` run for your current `HEAD_SHA`.
 - Reaching for `gh pr checks` to read CI.
+- PR is merged but your worktree is still on disk — Rule 5 isn't done until it's removed.
 
 **Each of these means: stop and follow the rule above.**
