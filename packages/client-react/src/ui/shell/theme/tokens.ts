@@ -45,6 +45,8 @@ export interface ThemeTokens {
   // Borders
   "--border-primary": string;
   "--border-subtle": string;
+  /** General-purpose border (same value as --border-subtle per skin). */
+  "--border": string;
   /** Active / selected border. */
   "--border-strong": string;
 
@@ -118,6 +120,7 @@ const darkTokens: ThemeTokens = {
 
   "--border-primary": "#334155",
   "--border-subtle": "#1e293b",
+  "--border": "#1e293b",
   "--border-strong": "#475569",
 
   "--status-connected": "#22c55e",
@@ -167,6 +170,7 @@ const lightTokens: ThemeTokens = {
 
   "--border-primary": "#e2e8f0",
   "--border-subtle": "#f1f5f9",
+  "--border": "#f1f5f9",
   "--border-strong": "#475569",
 
   "--status-connected": "#16a34a",
@@ -217,6 +221,7 @@ const holoDark: ThemeTokens = {
 
   "--border-primary": "rgba(0,224,255,0.26)",
   "--border-subtle": "rgba(0,224,255,0.12)",
+  "--border": "rgba(0,224,255,0.12)",
   "--border-strong": "rgba(0,224,255,0.6)",
 
   "--status-connected": "#2bffb3",
@@ -261,6 +266,7 @@ const holoLight: ThemeTokens = {
 
   "--border-primary": "rgba(0,180,204,0.3)",
   "--border-subtle": "rgba(0,180,204,0.15)",
+  "--border": "rgba(0,180,204,0.15)",
   "--border-strong": "rgba(0,180,204,0.65)",
 
   "--status-connected": "#00c985",
@@ -311,6 +317,7 @@ const terminalDark: ThemeTokens = {
 
   "--border-primary": "#262b34",
   "--border-subtle": "#1a1e25",
+  "--border": "#1a1e25",
   "--border-strong": "#3a4351",
 
   "--status-connected": "#37d27e",
@@ -355,6 +362,7 @@ const terminalLight: ThemeTokens = {
 
   "--border-primary": "#c8cdd6",
   "--border-subtle": "#e2e5ea",
+  "--border": "#e2e5ea",
   "--border-strong": "#9098a8",
 
   "--status-connected": "#1fa856",
@@ -405,6 +413,7 @@ const neonDark: ThemeTokens = {
 
   "--border-primary": "rgba(255,43,214,0.36)",
   "--border-subtle": "rgba(255,43,214,0.18)",
+  "--border": "rgba(255,43,214,0.18)",
   "--border-strong": "rgba(255,43,214,0.72)",
 
   "--status-connected": "#00ffa3",
@@ -449,6 +458,7 @@ const neonLight: ThemeTokens = {
 
   "--border-primary": "rgba(200,0,160,0.3)",
   "--border-subtle": "rgba(200,0,160,0.15)",
+  "--border": "rgba(200,0,160,0.15)",
   "--border-strong": "rgba(200,0,160,0.65)",
 
   "--status-connected": "#00c97e",
