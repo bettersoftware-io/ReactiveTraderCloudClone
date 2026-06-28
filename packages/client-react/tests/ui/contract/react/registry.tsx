@@ -80,6 +80,7 @@ import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggl
 import {
   AdminPanel,
   AnalyticsPanel,
+  AnimationProbe,
   BlotterHeader,
   BlotterRow,
   BootGate,
@@ -127,6 +128,7 @@ import type {
   ComponentToken,
   MountedComponent,
 } from "../shared/harness/component";
+import { AnimationProbe as AnimationProbeComponent } from "./AnimationProbe";
 import { LayoutEngineHost } from "./LayoutEngineHost";
 
 function noopFilter(_f: ColumnFilter | null): void {}
@@ -136,6 +138,16 @@ type ElementFor = (props: Record<string, unknown>) => ReactElement;
 
 /** token → React element factory. Identity-keyed; no string keys. */
 export const registry = new Map<AnyToken, ElementFor>([
+  [
+    AnimationProbe,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <AnimationProbeComponent
+          target={(p.target as string) ?? "tile:EURUSD"}
+        />
+      );
+    },
+  ],
   [
     BootSequence,
     (): ReactElement => {

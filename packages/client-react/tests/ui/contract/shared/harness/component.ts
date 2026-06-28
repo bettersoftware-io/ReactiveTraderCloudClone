@@ -1,5 +1,6 @@
 import type { Price, PriceTick, Quote } from "@rtc/domain";
 
+import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
 import type { CommandLog, HookValues } from "./world";
@@ -15,6 +16,8 @@ export interface PageContext<P> {
   setHistory(symbol: string, value: readonly PriceTick[]): void;
   /** Push new quotes for one RFQ (parametric useQuotesForRfq source). */
   setQuotesForRfq(rfqId: number, value: readonly Quote[]): void;
+  /** Push a new animation intent for one target (useAnimationIntents source). */
+  setIntent(target: string, intent: AnimationIntent | null): void;
   /** Push a new throughput view (useThroughput source). */
   setThroughputView(patch: Partial<ThroughputView>): void;
   /** Values captured from useThroughput().setValue calls. */
@@ -56,6 +59,11 @@ export abstract class MountedComponent<P> {
   /** Push new quotes for one RFQ → re-render the subscribing card. */
   setQuotesForRfq(rfqId: number, value: readonly Quote[]): void {
     this.ctx.setQuotesForRfq(rfqId, value);
+  }
+
+  /** Push a new animation intent for one target → re-render the probe. */
+  setIntent(target: string, intent: AnimationIntent | null): void {
+    this.ctx.setIntent(target, intent);
   }
 
   /** Push a new throughput view → re-render the AdminPanel. */

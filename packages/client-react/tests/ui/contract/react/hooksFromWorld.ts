@@ -343,10 +343,11 @@ export function reactHooks(world: World): AppHooks {
         return createRfqCountdownMachine(creationTimestamp, totalMs);
       }).state;
     },
-    // Animation intents: no contract spec exercises animation in Phase 0; the
-    // fake reports no intent (null) for every target.
-    useAnimationIntents: (_target: string) => {
-      return null;
+    // Animation intents: backed by the World's per-target intent subject so the
+    // AnimationIntents.contract.spec can push synthetic intents and assert the
+    // data-anim mapping without wiring a real AnimationDirector.
+    useAnimationIntents: (target: string) => {
+      return useSubject(world.intentFor(target));
     },
     useLayout: (tab: WorkspaceTab) => {
       return useMachine(() => {

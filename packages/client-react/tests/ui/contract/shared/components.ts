@@ -51,6 +51,10 @@ import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
 import { LayoutEnginePage } from "./pages/shell/layout/LayoutEnginePage";
 import { LockScreenPage } from "./pages/shell/lock/LockScreenPage";
+import {
+  AnimationProbePage,
+  type AnimationProbeProps,
+} from "./pages/shell/motion/AnimationProbePage";
 
 export type { RfqFilter };
 
@@ -379,4 +383,11 @@ export const PreferencesModal = component<
   PreferencesModalPage
 >((ctx) => {
   return new PreferencesModalPage(ctx);
+});
+
+export const AnimationProbe = component<
+  AnimationProbeProps,
+  AnimationProbePage
+>((ctx) => {
+  return new AnimationProbePage(ctx);
 });
