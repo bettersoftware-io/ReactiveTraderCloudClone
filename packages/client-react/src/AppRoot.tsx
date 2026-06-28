@@ -1,8 +1,10 @@
 import { type ReactElement, type ReactNode, useRef } from "react";
 
 import { createApp, createMachineFactories } from "./app/composition";
+import { shouldPlayBootSplash } from "./bootSplashGate";
 import { type AppHooks, createAppHooks } from "./ui/hooks/createAppHooks";
 import { HooksProvider } from "./ui/hooks/HooksProvider";
+import { BootGate } from "./ui/shell/boot/BootGate";
 import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
 
 interface AppRootProps {
@@ -36,7 +38,13 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
 
   return (
     <HooksProvider hooks={hooksRef.current}>
-      <ThemeProvider>{children}</ThemeProvider>
+      <ThemeProvider>
+        {shouldPlayBootSplash() ? (
+          <BootGate>{children}</BootGate>
+        ) : (
+          <>{children}</>
+        )}
+      </ThemeProvider>
     </HooksProvider>
   );
 }

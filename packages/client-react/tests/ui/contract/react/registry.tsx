@@ -62,6 +62,7 @@ import {
   type TileRfqState,
 } from "#/ui/fx/liveRates/tile/TileRfq";
 import { ViewToggle as ViewToggleComponent } from "#/ui/fx/liveRates/ViewToggle";
+import { BootGate as BootGateComponent } from "#/ui/shell/boot/BootGate";
 import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
 import {
   HeaderChrome as HeaderChromeComponent,
@@ -81,6 +82,7 @@ import {
   AnalyticsPanel,
   BlotterHeader,
   BlotterRow,
+  BootGate,
   BootSequence,
   ConnectionOverlay,
   ConnectionStatusBar,
@@ -138,6 +140,16 @@ export const registry = new Map<AnyToken, ElementFor>([
     BootSequence,
     (): ReactElement => {
       return <BootSequenceComponent onDone={(): void => {}} />;
+    },
+  ],
+  [
+    BootGate,
+    (): ReactElement => {
+      return (
+        <BootGateComponent>
+          <div data-testid="boot-gate-child" />
+        </BootGateComponent>
+      );
     },
   ],
   [

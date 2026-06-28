@@ -107,4 +107,14 @@ describe("HeaderChrome", () => {
     await header.closePrefs();
     expect(header.prefsOpen()).toBe(false);
   });
+
+  it("locks the session through the seam from the account menu", async () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+    });
+    await header.openAccount();
+    expect(header.lockCount()).toBe(0);
+    await header.lockSession();
+    expect(header.lockCount()).toBe(1);
+  });
 });

@@ -120,6 +120,16 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
     return within(this.root).queryByTestId("language-select") !== null;
   }
 
+  /** Click LOCK SESSION inside the account panel (locks the session via the seam). */
+  async lockSession(): Promise<void> {
+    await this.user.click(within(this.root).getByTestId("account-lock"));
+  }
+
+  /** Number of times the session-lock command was invoked through the seam. */
+  lockCount(): number {
+    return this.commandLog().sessionLock;
+  }
+
   /** True when the ⚙ preferences control is present. */
   hasSettings(): boolean {
     return within(this.root).queryByTestId("settings-toggle") !== null;
