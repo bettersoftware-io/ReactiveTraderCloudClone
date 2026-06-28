@@ -9,9 +9,14 @@
   width: 100%;
   padding: 6px 8px;
   font-size: 12px;
-  border: 1px solid var(--border-primary);
+  font-family: var(--font-mono);
+  border: 1px solid var(--border);
   border-radius: 3px;
   background-color: transparent;
   color: var(--text-primary);
   outline: none;
+}
+
+.input:focus {
+  border-color: var(--border-strong);
 }
