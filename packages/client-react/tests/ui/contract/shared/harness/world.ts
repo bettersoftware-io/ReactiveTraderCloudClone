@@ -92,6 +92,8 @@ export interface CommandLog {
   quoteRfq: QuoteRequest[];
   /** Incremented each time useReconnect() callback is invoked. */
   reconnect: number;
+  /** Incremented each time useSession().lock() is invoked. */
+  sessionLock: number;
   /** Incremented each time useSession().unlock() (re-authenticate) is invoked. */
   sessionUnlock: number;
   /** Each value written through useAnimatedBackground().setEnabled/toggle, in order. */
@@ -278,6 +280,7 @@ export function createWorld(
       passQuote: [],
       quoteRfq: [],
       reconnect: 0,
+      sessionLock: 0,
       sessionUnlock: 0,
       animatedBackgroundSets: [],
     },

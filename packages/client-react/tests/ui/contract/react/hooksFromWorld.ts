@@ -323,7 +323,8 @@ export function reactHooks(world: World): AppHooks {
       return {
         state,
         lock: () => {
-          return world.session.next({
+          world.commands.sessionLock += 1;
+          world.session.next({
             ...world.session.getValue(),
             locked: true,
           });

@@ -360,3 +360,23 @@
   font-family: var(--font-mono);
   font-size: 11px;
 }
+
+.lockButton {
+  display: block;
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  border-top: 1px solid var(--border-primary);
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.lockButton:hover {
+  color: var(--accent-primary);
+}

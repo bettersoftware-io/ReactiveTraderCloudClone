@@ -18,7 +18,7 @@ const LANGUAGES = ["EN", "中文", "日本", "DE", "FR", "ES"];
  */
 export function AccountMenu(): ReactElement {
   const { useSession } = useHooks();
-  const { state } = useSession();
+  const { state, lock } = useSession();
   const { user } = state;
   const [open, setOpen] = useState(false);
 
@@ -71,6 +71,20 @@ export function AccountMenu(): ReactElement {
               })}
             </select>
           </label>
+          {/* Real chrome: locks the session through the `useSession` seam,
+              raising the LockScreen overlay (prototype account menu → lock). */}
+          <button
+            type="button"
+            data-testid="account-lock"
+            className={styles.lockButton}
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              lock();
+            }}
+          >
+            LOCK SESSION
+          </button>
         </div>
       ) : null}
     </div>

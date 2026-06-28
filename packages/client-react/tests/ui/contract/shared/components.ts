@@ -46,6 +46,7 @@ import {
   SetFilterPage,
   type SetFilterProps,
 } from "./pages/fx/blotter/SetFilterPage";
+import { BootGatePage } from "./pages/shell/boot/BootGatePage";
 import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
 import { LayoutEnginePage } from "./pages/shell/layout/LayoutEnginePage";
@@ -358,6 +359,12 @@ export const LayoutEngine = component<Record<string, never>, LayoutEnginePage>(
 export const BootSequence = component<Record<string, never>, BootSequencePage>(
   (ctx) => {
     return new BootSequencePage(ctx);
+  },
+);
+
+export const BootGate = component<Record<string, never>, BootGatePage>(
+  (ctx) => {
+    return new BootGatePage(ctx);
   },
 );
 

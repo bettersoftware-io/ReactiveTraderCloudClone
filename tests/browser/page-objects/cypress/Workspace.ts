@@ -8,25 +8,25 @@ import type { WorkspacePO } from "../contracts/Workspace";
  */
 export class CypressWorkspace implements WorkspacePO {
   open(): Promise<void> {
-    return cy.visit("/") as unknown as Promise<void>;
+    return cy.visit("/?nosplash") as unknown as Promise<void>;
   }
 
   openFx(): Promise<void> {
-    cy.visit("/");
+    cy.visit("/?nosplash");
     return cy
       .get(`[data-testid="${TESTIDS.shell.tab("fx")}"]`)
       .click() as unknown as Promise<void>;
   }
 
   openCredit(): Promise<void> {
-    cy.visit("/");
+    cy.visit("/?nosplash");
     return cy
       .get(`[data-testid="${TESTIDS.shell.tab("credit")}"]`)
       .click() as unknown as Promise<void>;
   }
 
   openAdmin(): Promise<void> {
-    cy.visit("/");
+    cy.visit("/?nosplash");
     return cy
       .get(`[data-testid="${TESTIDS.shell.tab("admin")}"]`)
       .click() as unknown as Promise<void>;

@@ -1,0 +1,6 @@
+/* Layout-neutral host: generates no box of its own (the splash inside is
+   position: fixed) but still receives the bubbled `transitionend` from the
+   splash root so BootGate can unmount the overlay once its fade completes. */
+.host {
+  display: contents;
+}
