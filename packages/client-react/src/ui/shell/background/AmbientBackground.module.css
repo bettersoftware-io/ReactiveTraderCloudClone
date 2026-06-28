@@ -1,0 +1,63 @@
+/* COSMETIC ONLY — decorative ambient HUD backdrop. Sits behind the workspace
+ * (z-index: -1, so it paints above .app's opaque background-color but below the
+ * in-flow chrome); the translucent glass panels then reveal the aurora through
+ * their blur. Both layers stay at opacity 0 unless the animated-background
+ * preference is on, so the default-off state is pixel-neutral. */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aurora,
+.grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.backdrop[data-animated="true"] .aurora {
+  opacity: var(--aurora-opacity);
+  background:
+    radial-gradient(40% 40% at 20% 30%, var(--aurora-a), transparent),
+    radial-gradient(40% 40% at 80% 70%, var(--aurora-b), transparent);
+  animation: auroraDrift 24s ease-in-out infinite;
+}
+
+.backdrop[data-animated="true"] .grid {
+  opacity: 1;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: gridDrift 40s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop[data-animated="true"] .aurora,
+  .backdrop[data-animated="true"] .grid {
+    animation: none;
+  }
+}
+
+@keyframes auroraDrift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(2%, -2%, 0);
+  }
+}
+
+@keyframes gridDrift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 40px 40px;
+  }
+}

@@ -62,6 +62,7 @@ import {
   type TileRfqState,
 } from "#/ui/fx/liveRates/tile/TileRfq";
 import { ViewToggle as ViewToggleComponent } from "#/ui/fx/liveRates/ViewToggle";
+import { AmbientBackground as AmbientBackgroundComponent } from "#/ui/shell/background/AmbientBackground";
 import { BootGate as BootGateComponent } from "#/ui/shell/boot/BootGate";
 import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
 import {
@@ -79,6 +80,7 @@ import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggl
 
 import {
   AdminPanel,
+  AmbientBackground,
   AnalyticsPanel,
   AnimationProbe,
   BlotterHeader,
@@ -591,6 +593,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     LockScreen,
     (): ReactElement => {
       return <LockScreenComponent />;
+    },
+  ],
+  [
+    AmbientBackground,
+    (): ReactElement => {
+      return <AmbientBackgroundComponent />;
     },
   ],
   [
