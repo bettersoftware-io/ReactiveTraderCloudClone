@@ -7,24 +7,22 @@
   background-color: var(--bg-secondary);
 }
 
-/* New-row flash, ported from rtc-original GridRegion/styled.ts:36-38
- * (animation: backgroundFlash 1s ease-in-out 3) + backgroundFlash.ts:3-13
- * (bg -> brand -> bg). The 3s hold stays in createRowHighlightMachine
- * (HIGHLIGHT_MS=3000), which removes data-highlight after the three cycles. */
-@keyframes backgroundFlash {
+/* New-row flash — Phase 3 HUD reskin: calm entrance via hudRowIn.
+ * The 3 s hold is still owned by createRowHighlightMachine (HIGHLIGHT_MS=3000),
+ * which removes data-highlight after the keyframe completes; only the look changes. */
+@keyframes hudRowIn {
   0% {
-    background-color: var(--bg-primary);
-  }
-  50% {
-    background-color: var(--bg-brand-primary);
+    background-color: var(--accent-2);
+    opacity: 0;
   }
   100% {
-    background-color: var(--bg-primary);
+    background-color: transparent;
+    opacity: 1;
   }
 }
 
 .row[data-highlight="true"] {
-  animation: backgroundFlash 1s ease-in-out 3;
+  animation: hudRowIn 0.6s ease-out;
 }
 
 .row[data-state="rejected"] {
