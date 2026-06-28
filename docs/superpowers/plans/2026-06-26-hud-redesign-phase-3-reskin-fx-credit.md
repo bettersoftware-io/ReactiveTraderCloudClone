@@ -241,7 +241,7 @@ The grid container, the currency-filter pills, and the chart/price view toggle. 
   ```
   Add `font-family: var(--font-display);` to `.filter`.
 - [ ] **Step 3 (CSS — view toggle)** — In `ViewToggle.module.css`, `.toggle` border `var(--border-primary)`→`var(--border)` + `:hover { border-color: var(--border-strong); }` + `font-family: var(--font-display);`.
-- [ ] **Step 4 (CSS — panel grid)** — `LiveRatesPanel.module.css` `.empty` keeps `var(--text-muted)`; no panel fill (the panel chrome is the layout's job per Phase 1) — leave `.grid`/`.controls` structural rules as-is. (If the design calls for a panel header strip here, add `.controls { ... background: var(--panel-head); }` — confirm against `docs/design/prototype` before adding; otherwise skip.)
+- [ ] **Step 4 (CSS — panel grid)** — `LiveRatesPanel.module.css` `.empty` keeps `var(--text-muted)`; no panel fill (the panel chrome is the layout's job per Phase 1) — leave `.grid`/`.controls` structural rules as-is. (If the design calls for a panel header strip here, add `.controls { ... background: var(--panel-head); }` — confirm against `docs/design/v1/dev-handoff/prototype` before adding; otherwise skip.)
 - [ ] **Step 5 (contract green AFTER)** — Re-run Step 1's command; identical PASS count.
 - [ ] **Step 6 (visual goldens)** —
   ```
