@@ -169,14 +169,20 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
   const connection = new ConnectionStatusPresenter(ports.connectionEvents);
+  // Hoisted so the AnimationDirector can consume their streams directly.
+  const priceStream = new PriceStreamPresenter(ports.pricing);
+  const execution = new TradeExecutionPresenter(ports.execution);
+  const rfqs = new RfqsPresenter(ports.workflow);
+  const currencyPairs = new CurrencyPairsPresenter(ports.referenceData);
+
   const presenters: Presenters = {
-    priceStream: new PriceStreamPresenter(ports.pricing),
+    priceStream,
     priceHistory: new PriceHistoryPresenter(ports.pricing),
-    execution: new TradeExecutionPresenter(ports.execution),
+    execution,
     blotter: new BlotterPresenter(ports.blotter),
     analytics: new AnalyticsPresenter(ports.analytics),
-    rfqs: new RfqsPresenter(ports.workflow),
-    currencyPairs: new CurrencyPairsPresenter(ports.referenceData),
+    rfqs,
+    currencyPairs,
     instruments: new InstrumentsPresenter(ports.instruments),
     dealers: new DealersPresenter(ports.dealers),
     connection,
@@ -186,14 +192,14 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
-    // Phase 0 wiring: connection-change intents only. Per-pair tick sources are
-    // an ASYNC stream (currencyPairs.pairs$) with no synchronous list at
-    // composition time, so priceStreams is empty here — per-pair tick sources
-    // attach in Phase 3 when tiles consume intents. The seam (and the
-    // useAnimationIntents hook) is still exercised via connectionStatus$.
     animationDirector: new AnimationDirector({
-      priceStreams: {},
+      pairs$: currencyPairs.pairs$,
+      priceFor: (pair: CurrencyPair) => {
+        return priceStream.price$(pair);
+      },
       connectionStatus$: connection.status$,
+      executions$: execution.executions$,
+      rfqEvents$: rfqs.events$,
     }),
     bootPreference: new BootPreferencePresenter(ports.preferences),
     // Session lock/unlock state over the static demo user (no real auth backend).

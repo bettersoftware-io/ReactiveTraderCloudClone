@@ -21,6 +21,7 @@ import {
   type Quote,
   type QuoteRequest,
   type Rfq,
+  type RfqEvent,
   type RfqStreamState,
   WorkflowEventStreamUseCase,
   type WorkflowPort,
@@ -78,6 +79,13 @@ export class RfqsPresenter {
 
   readonly allQuotes$: Observable<ReadonlyMap<number, Quote>>;
 
+  /** Raw RfqEvent stream — a second subscription to workflow.events() for the
+   * AnimationDirector (expiry/fill intents). The start-of-world snapshot
+   * contains only rfqCreated/quoteCreated, so no spurious animation intents
+   * fire on connect. WorkflowEventStreamUseCase.state$ is the sole consumer
+   * of the FIRST subscription (kept to avoid a knip dead-export). */
+  readonly events$: Observable<RfqEvent>;
+
   private readonly quotesByRfqCache = new Map<
     number,
     Observable<readonly Quote[]>
@@ -101,6 +109,9 @@ export class RfqsPresenter {
       distinctUntilChanged(),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
+    this.events$ = workflow
+      .events()
+      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
   }
 
   quotesForRfq$(rfqId: number): Observable<readonly Quote[]> {
