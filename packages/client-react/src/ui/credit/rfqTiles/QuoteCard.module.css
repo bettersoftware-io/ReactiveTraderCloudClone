@@ -4,13 +4,13 @@
   justify-content: space-between;
   padding: 4px 8px;
   border-radius: 3px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border);
   background-color: transparent;
   opacity: 1;
 }
 
 .quoteCard[data-state="accepted"] {
-  background-color: rgba(34, 197, 94, 0.1);
+  background-color: var(--chip);
 }
 
 .quoteCard[data-state="passed"],
@@ -34,6 +34,7 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
+  font-family: var(--font-mono);
 }
 
 .quoteCard[data-state="accepted"] .priceText {

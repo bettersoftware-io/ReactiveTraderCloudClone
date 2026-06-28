@@ -12,10 +12,12 @@
   font-weight: 400;
   background-color: transparent;
   color: var(--text-secondary);
+  font-family: var(--font-display);
 }
 
 .tab[data-active="true"] {
   font-weight: 600;
-  background-color: var(--accent-primary);
-  color: var(--text-on-accent);
+  background-color: var(--chip);
+  color: var(--accent-primary);
+  box-shadow: var(--glow);
 }
