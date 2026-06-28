@@ -1,21 +1,30 @@
+@import "../../shell/motion/animations.module.css";
+
 .ticket {
-  background-color: var(--bg-tile);
-  border: 1px solid var(--border-primary);
+  background-color: var(--panel);
+  backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   opacity: 1;
+  box-shadow: var(--glow);
 }
 
 .ticket[data-active="false"] {
   opacity: 0.6;
 }
 
+.ticket[data-anim="fill"] {
+  animation: hudFillPulse 0.5s ease-out;
+}
+
 .instrumentName {
   font-size: 13px;
   font-weight: 600;
+  font-family: var(--font-display);
   color: var(--text-primary);
 }
 
@@ -40,11 +49,16 @@
   flex: 1;
   padding: 4px 6px;
   font-size: 12px;
-  border: 1px solid var(--border-primary);
+  font-family: var(--font-mono);
+  border: 1px solid var(--border);
   border-radius: 3px;
   background-color: transparent;
   color: var(--text-primary);
   outline: none;
+}
+
+.priceInput:focus {
+  border-color: var(--border-strong);
 }
 
 .submitBtn {
@@ -67,7 +81,7 @@
 .passBtn {
   padding: 4px 10px;
   font-size: 11px;
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--border);
   border-radius: 3px;
   background-color: transparent;
   color: var(--text-secondary);

@@ -18,9 +18,10 @@ export function TradeTicket({
   quote,
   instrument,
 }: TradeTicketProps): ReactElement {
-  const { useTicketSubmission } = useHooks();
+  const { useTicketSubmission, useAnimationIntents } = useHooks();
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
+  const anim = useAnimationIntents(`rfq:${rfq.id}`);
   const ticket = useTicketSubmission();
   const { submitPrice, pass } = ticket;
   const [price, setPrice] = useState("");
@@ -44,6 +45,7 @@ export function TradeTicket({
     <div
       className={styles.ticket}
       data-active={rfq.state === RfqState.Open ? "true" : "false"}
+      data-anim={anim?.kind === "fill" ? "fill" : undefined}
     >
       <div>
         <div className={styles.instrumentName}>

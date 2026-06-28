@@ -1,11 +1,13 @@
 .blotter {
-  background-color: var(--bg-tile);
-  border: 1px solid var(--border-primary);
+  background-color: var(--panel);
+  backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  box-shadow: var(--glow);
 }
 
 .toolbar {
@@ -25,6 +27,7 @@
 .title {
   font-size: 13px;
   font-weight: 600;
+  font-family: var(--font-display);
   color: var(--text-primary);
 }
 
@@ -52,6 +55,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
+  font-family: var(--font-mono);
 }
 
 .headerCell {
@@ -60,13 +64,14 @@
   font-weight: 600;
   color: var(--text-secondary);
   text-align: left;
-  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--panel-head);
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 .cell {
   padding: 4px 8px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
   color: var(--text-primary);
 }
