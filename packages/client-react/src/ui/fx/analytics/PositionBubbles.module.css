@@ -11,12 +11,12 @@
 
 /* Bubble fill/stroke by sign, applied to the <g class="node"> wrapper. */
 .container :global(g.node[data-sign="pos"]) circle {
-  fill: rgba(34, 197, 94, 0.2);
+  fill: var(--chip);
   stroke: var(--accent-positive);
 }
 
 .container :global(g.node[data-sign="neg"]) circle {
-  fill: rgba(239, 68, 68, 0.2);
+  fill: var(--chip);
   stroke: var(--accent-negative);
 }
 
@@ -31,8 +31,8 @@
   position: absolute;
   padding: 2px 6px;
   font-size: 11px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-primary);
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 3px;
   pointer-events: none;
   white-space: nowrap;

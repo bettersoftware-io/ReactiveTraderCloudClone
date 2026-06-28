@@ -16,6 +16,7 @@
   width: 55px;
   text-align: right;
   color: var(--text-muted);
+  font-family: var(--font-mono);
   font-size: 10px;
   flex-shrink: 0;
 }
@@ -33,7 +34,7 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background-color: var(--border-primary);
+  background-color: var(--border);
 }
 
 /* Bar: positioned by data-sign; width driven by --bar-width custom property */
@@ -68,7 +69,7 @@
   padding: 0;
   border: none;
   background: none;
-  font-family: inherit;
+  font-family: var(--font-mono);
   line-height: inherit;
 }
 
