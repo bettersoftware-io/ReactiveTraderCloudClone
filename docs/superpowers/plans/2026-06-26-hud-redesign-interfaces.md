@@ -81,7 +81,7 @@ export interface ThemeTokens {
 }
 ```
 
-Token store shape: `export const themeTokens: Record<ThemeSkin, Record<ThemeMode, ThemeTokens>>`. `ThemeProvider` applies `themeTokens[skin][mode]` and sets `document.documentElement.dataset.skin` + `.dataset.mode`. Holo/terminal/neon dark values come from `docs/design/dev-handoff/theme-tokens.css`; light variants derived; `classic` = today's `darkTokens`/`lightTokens` plus neutral values for the new keys (`--panel-blur: "0"`, `--glow: "none"`, etc.).
+Token store shape: `export const themeTokens: Record<ThemeSkin, Record<ThemeMode, ThemeTokens>>`. `ThemeProvider` applies `themeTokens[skin][mode]` and sets `document.documentElement.dataset.skin` + `.dataset.mode`. Holo/terminal/neon dark values come from `docs/design/v1/dev-handoff/theme-tokens.css`; light variants derived; `classic` = today's `darkTokens`/`lightTokens` plus neutral values for the new keys (`--panel-blur: "0"`, `--glow: "none"`, etc.).
 
 ## 4. Animation seam — `packages/client-react/src/app/presenters/AnimationDirector.ts` (Phase 0)
 

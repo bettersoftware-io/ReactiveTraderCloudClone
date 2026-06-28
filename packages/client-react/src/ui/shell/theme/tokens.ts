@@ -9,7 +9,7 @@
  *   neon     — high-contrast cyberpunk (magenta / cyan, aurora FX)
  *
  * Dark values for holo / terminal / neon are mapped 1-to-1 from
- * docs/design/dev-handoff/theme-tokens.css.  Light variants are derived:
+ * docs/design/v1/dev-handoff/theme-tokens.css.  Light variants are derived:
  * backgrounds lifted toward white/light-grey, text inverted to dark, accents
  * kept from the skin family, aurora-opacity reduced.
  */

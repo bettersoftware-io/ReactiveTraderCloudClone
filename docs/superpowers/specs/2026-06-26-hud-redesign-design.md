@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-26
 **Status:** Approved (pending user review of this spec)
-**Design source:** `docs/design/` — the "Reactive Trader — Futuristic Redesign Prototype" (standalone HTML + `dev-handoff/`). A *design artifact* (mock data, `dc-runtime`), not production code. We re-implement its **look, motion, and layout** in the real client; we keep the real app's data and architecture.
+**Design source:** `docs/design/v1/` — the "Reactive Trader — Futuristic Redesign Prototype" (standalone HTML + `dev-handoff/`). A *design artifact* (mock data, `dc-runtime`), not production code. We re-implement its **look, motion, and layout** in the real client; we keep the real app's data and architecture. (The prototype now has a newer iteration under `docs/design/v2/`; this spec and the phase plans target the original **v1** prototype unless explicitly noted.)
 **Prototype is still evolving:** the user is actively adding more skins, light/dark mode, and richer feedback animations. This design must absorb those cheaply (skin × mode token architecture, neutral animation director).
 
 ## Goal
@@ -65,7 +65,7 @@ Each phase is independently shippable, gets its **own implementation plan**, and
 ## Phase 0 — Foundation: theming (skin × mode) + motion
 
 ### Theming
-- Extend `ui/shell/theme/tokens.ts` from one axis to two: `tokens[skin][mode]: ThemeTokens`. Seed skins `holo` / `terminal` / `neon` (dark values from `docs/design/dev-handoff/theme-tokens.css`; light variants derived). The current `dark`/`light` become a `classic` skin so nothing is lost.
+- Extend `ui/shell/theme/tokens.ts` from one axis to two: `tokens[skin][mode]: ThemeTokens`. Seed skins `holo` / `terminal` / `neon` (dark values from `docs/design/v1/dev-handoff/theme-tokens.css`; light variants derived). The current `dark`/`light` become a `classic` skin so nothing is lost.
 - Grow `ThemeTokens` with the prototype's semantic tokens: `--accent-2`, `--panel` (translucent vs solid), `--panel-blur` (0 = solid/terminal, >0 = glass/holo+neon), `--glow`, `--grid`, `--aurora-opacity`, `--chip`, `--font-display`, `--font-mono`. Glass = `backdrop-filter: blur(var(--panel-blur))` — translucency is a token, not a hack.
 - `ThemeProvider` resolves `(skin, mode)` → token object → CSS custom properties on `:root`, and sets `<html data-skin data-mode>` for state-class CSS hooks.
 - Persistence reuses the existing preferences port/presenter (`ThemePreferencePresenter` extended to carry skin + mode). Switcher = skin picker + light/dark toggle, both dumb UI over the presenter.
