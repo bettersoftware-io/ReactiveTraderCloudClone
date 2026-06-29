@@ -98,6 +98,7 @@ export type { AnalyticsPort } from "./ports/analyticsPort.js";
 export type { BlotterPort } from "./ports/blotterPort.js";
 export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
 export type { DealerPort } from "./ports/dealerPort.js";
+export type { EventLogPort } from "./ports/eventLogPort.js";
 export type { ExecutionPort } from "./ports/executionPort.js";
 export type { InstrumentPort } from "./ports/instrumentPort.js";
 // Ports
@@ -107,6 +108,9 @@ export type { PositionPort } from "./ports/positionPort.js";
 export type { PreferencesPort } from "./ports/preferencesPort.js";
 export type { PricingPort, RfqQuoteResult } from "./ports/pricingPort.js";
 export type { ReferenceDataPort } from "./ports/referenceDataPort.js";
+export type { ServiceHealthPort } from "./ports/serviceHealthPort.js";
+export type { SessionsPort } from "./ports/sessionsPort.js";
+export type { TelemetryPort } from "./ports/telemetryPort.js";
 export type {
   CreateRfqRequest,
   QuoteRequest,
