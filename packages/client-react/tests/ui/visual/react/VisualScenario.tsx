@@ -41,6 +41,7 @@ export function VisualScenario({
     void document.fonts.ready.then(() => {
       if (!cancelled) setFontsReady(true);
     });
+
     return () => {
       cancelled = true;
     };
