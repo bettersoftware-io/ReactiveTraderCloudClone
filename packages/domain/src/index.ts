@@ -46,6 +46,18 @@ export {
   CREDIT_RFQ_EXPIRY_SECONDS,
   RfqState,
 } from "./credit/rfq.js";
+// Equities
+export type { Candle } from "./equities/candle.js";
+export type { DepthBook, DepthLevel } from "./equities/depth.js";
+export type { EquityInstrument } from "./equities/instrument.js";
+export type {
+  EquityOrder,
+  OrderSide,
+  OrderStatus,
+  OrderType,
+} from "./equities/order.js";
+export type { EquityPosition } from "./equities/position.js";
+export type { EquityQuote } from "./equities/quote.js";
 export type { CurrencyCategory } from "./fx/currencyFilter.js";
 export {
   CURRENCY_CATEGORIES,
@@ -88,9 +100,12 @@ export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
 export type { DealerPort } from "./ports/dealerPort.js";
 export type { ExecutionPort } from "./ports/executionPort.js";
 export type { InstrumentPort } from "./ports/instrumentPort.js";
+// Ports
+export type { MarketDataPort } from "./ports/marketDataPort.js";
+export type { OrderPort, PlaceOrderRequest } from "./ports/orderPort.js";
+export type { PositionPort } from "./ports/positionPort.js";
 export type { PreferencesPort } from "./ports/preferencesPort.js";
 export type { PricingPort, RfqQuoteResult } from "./ports/pricingPort.js";
-// Ports
 export type { ReferenceDataPort } from "./ports/referenceDataPort.js";
 export type {
   CreateRfqRequest,
@@ -113,17 +128,29 @@ export {
   THEME_MODES,
   THEME_SKINS,
 } from "./preferences/preferences.js";
-export type { PreferencesSeed, TradeListener } from "./simulators/index.js";
+export type {
+  EquityOrderDeps,
+  FillEvent,
+  OrderListener,
+  PreferencesSeed,
+  TradeListener,
+} from "./simulators/index.js";
 // Simulators (in-memory port implementations)
 export {
   AnalyticsSimulator,
+  aggregateCandle,
   ConnectionEventsSimulator,
   CreditRfqSimulator,
   DEALERS_CATALOG,
   DealerSimulator,
+  EquityMarketDataSimulator,
+  EquityOrderSimulator,
+  EquityPositionSimulator,
   ExecutionSimulator,
+  gbmStep,
   INSTRUMENTS_CATALOG,
   InstrumentSimulator,
+  mulberry32,
   PreferencesSimulator,
   PricingSimulator,
   ReferenceDataSimulator,

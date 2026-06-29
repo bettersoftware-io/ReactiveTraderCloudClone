@@ -8,14 +8,15 @@ import { ThemePicker } from "./ThemePicker";
 
 import styles from "./HeaderChrome.module.css";
 
-/** The three real workspace tabs the shell switches between. Unchanged from the
- *  superseded Header — the e2e Workspace page object clicks `tab-${tab}`. */
-export type WorkspaceTab = "fx" | "credit" | "admin";
+/** The four real workspace tabs the shell switches between. Equities added in
+ *  Phase 4; the e2e Workspace page object clicks `tab-${tab}`. */
+export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
 
 const TAB_LABEL: Record<WorkspaceTab, string> = {
   fx: "FX",
   credit: "Credit",
   admin: "Admin",
+  equities: "Equities",
 };
 
 interface HeaderChromeProps {
@@ -29,11 +30,10 @@ interface HeaderChromeProps {
  * prototype header (Reactive Trader.dc.html:107-217) to CSS-module markup with
  * `var(--token)` colours.
  *
- * The three real nav tabs keep the superseded Header's contract verbatim
- * (`data-testid="tab-{fx|credit|admin}"`, `data-active`, `onTabChange`, labels
- * FX/Credit/Admin) so the x86 Cypress workspace scenarios stay green. The
- * "Equities" item is decorative and non-wired (Phase 4 builds equities); it
- * carries no `tab-*` testid and never calls `onTabChange`.
+ * All four nav tabs (FX, Credit, Equities, Admin) are live workspace tabs.
+ * Each renders with `data-testid="tab-{tab}"`, `data-active`, and calls
+ * `onTabChange` on click — keeping the Cypress workspace contract intact for
+ * all four workspaces. Equities was added as a full tab in Phase 4.
  */
 export function HeaderChrome({
   activeTab,
@@ -71,14 +71,7 @@ export function HeaderChrome({
       <nav className={styles.nav} aria-label="Workspace">
         {renderTab("fx")}
         {renderTab("credit")}
-        {/* DECORATIVE — cosmetic HUD chrome, intentionally not wired to any port (spec: decorative-but-dead is allowed and explicit). */}
-        <span
-          data-testid="nav-equities"
-          aria-disabled="true"
-          className={styles.navDisabled}
-        >
-          Equities
-        </span>
+        {renderTab("equities")}
         {renderTab("admin")}
       </nav>
 

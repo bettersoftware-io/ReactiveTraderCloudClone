@@ -1,9 +1,15 @@
 import {
   ADAPTIVE_BANK_NAME,
+  type Candle,
   ConnectionStatus,
   type CurrencyPair,
   type Dealer,
+  type DepthBook,
   Direction,
+  type EquityInstrument,
+  type EquityOrder,
+  type EquityPosition,
+  type EquityQuote,
   ExecutionStatus,
   type Instrument,
   type PositionUpdates,
@@ -20,6 +26,7 @@ import {
 } from "@rtc/domain";
 
 import type { NotionalView } from "#/app/presenters/NotionalMachine";
+import type { OrderTicketState } from "#/app/presenters/OrderTicketMachine";
 import type { RfqQuote } from "#/app/presenters/RfqTileMachine";
 
 import { type AppData, makeAppData } from "./appData";
@@ -1141,3 +1148,279 @@ export const fixtures: Record<string, AppData> = {
   // shell visual specs). The default fake reports progress 0 / "core" variant.
   boot: makeAppData({}),
 };
+
+// ── Phase 4 Equities fixtures ──────────────────────────────────────────────
+// All data is FIXED (no simulator) so every pixel is deterministic.
+
+const equityInstruments: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
+  { symbol: "NVDA", name: "NVIDIA Corp.", exchange: "NASDAQ" },
+  { symbol: "JPM", name: "JPMorgan Chase", exchange: "NYSE" },
+  { symbol: "GS", name: "Goldman Sachs", exchange: "NYSE" },
+  { symbol: "XOM", name: "ExxonMobil Corp.", exchange: "NYSE" },
+];
+
+const equityQuotes: Record<string, EquityQuote> = {
+  AAPL: {
+    symbol: "AAPL",
+    bid: 178.4,
+    ask: 178.6,
+    last: 178.5,
+    changePct: 3.45,
+    timestamp: 1_750_000_000_000,
+  },
+  MSFT: {
+    symbol: "MSFT",
+    bid: 421.1,
+    ask: 421.3,
+    last: 421.2,
+    changePct: 1.23,
+    timestamp: 1_750_000_000_000,
+  },
+  NVDA: {
+    symbol: "NVDA",
+    bid: 875.2,
+    ask: 875.8,
+    last: 875.5,
+    changePct: 7.21,
+    timestamp: 1_750_000_000_000,
+  },
+  JPM: {
+    symbol: "JPM",
+    bid: 197.4,
+    ask: 197.6,
+    last: 197.5,
+    changePct: -2.67,
+    timestamp: 1_750_000_000_000,
+  },
+  GS: {
+    symbol: "GS",
+    bid: 462.8,
+    ask: 463.2,
+    last: 463.0,
+    changePct: -0.88,
+    timestamp: 1_750_000_000_000,
+  },
+  XOM: {
+    symbol: "XOM",
+    bid: 114.2,
+    ask: 114.4,
+    last: 114.3,
+    changePct: 5.12,
+    timestamp: 1_750_000_000_000,
+  },
+};
+
+// 40 AAPL candles with clear up-down movement (GBM-like but hand-crafted).
+// Starts around 165, climbs to ~180 with volatility, so the chart renders
+// meaningfully with both green and red candles.
+const aaplCandles: readonly Candle[] = [
+  { time: 1_749_600_000, open: 165.0, high: 166.2, low: 164.5, close: 165.8 },
+  { time: 1_749_603_600, open: 165.8, high: 167.1, low: 165.2, close: 166.9 },
+  { time: 1_749_607_200, open: 166.9, high: 167.5, low: 165.8, close: 165.9 },
+  { time: 1_749_610_800, open: 165.9, high: 166.8, low: 164.9, close: 164.9 },
+  { time: 1_749_614_400, open: 164.9, high: 166.0, low: 164.2, close: 165.5 },
+  { time: 1_749_618_000, open: 165.5, high: 168.0, low: 165.0, close: 167.8 },
+  { time: 1_749_621_600, open: 167.8, high: 169.2, low: 167.1, close: 168.5 },
+  { time: 1_749_625_200, open: 168.5, high: 169.8, low: 167.8, close: 169.1 },
+  { time: 1_749_628_800, open: 169.1, high: 170.5, low: 168.6, close: 170.2 },
+  { time: 1_749_632_400, open: 170.2, high: 171.0, low: 169.0, close: 169.4 },
+  { time: 1_749_636_000, open: 169.4, high: 170.2, low: 168.5, close: 170.0 },
+  { time: 1_749_639_600, open: 170.0, high: 171.5, low: 169.5, close: 171.2 },
+  { time: 1_749_643_200, open: 171.2, high: 172.8, low: 170.8, close: 172.5 },
+  { time: 1_749_646_800, open: 172.5, high: 173.4, low: 171.8, close: 172.0 },
+  { time: 1_749_650_400, open: 172.0, high: 173.0, low: 171.0, close: 171.5 },
+  { time: 1_749_654_000, open: 171.5, high: 172.5, low: 170.5, close: 172.2 },
+  { time: 1_749_657_600, open: 172.2, high: 174.0, low: 172.0, close: 173.5 },
+  { time: 1_749_661_200, open: 173.5, high: 175.2, low: 173.0, close: 174.8 },
+  { time: 1_749_664_800, open: 174.8, high: 176.0, low: 174.2, close: 175.5 },
+  { time: 1_749_668_400, open: 175.5, high: 176.5, low: 174.5, close: 174.8 },
+  { time: 1_749_672_000, open: 174.8, high: 175.5, low: 173.5, close: 173.8 },
+  { time: 1_749_675_600, open: 173.8, high: 174.8, low: 173.0, close: 174.5 },
+  { time: 1_749_679_200, open: 174.5, high: 176.0, low: 174.2, close: 175.8 },
+  { time: 1_749_682_800, open: 175.8, high: 177.2, low: 175.2, close: 176.8 },
+  { time: 1_749_686_400, open: 176.8, high: 178.0, low: 176.0, close: 177.5 },
+  { time: 1_749_690_000, open: 177.5, high: 178.5, low: 176.8, close: 178.0 },
+  { time: 1_749_693_600, open: 178.0, high: 179.5, low: 177.5, close: 179.0 },
+  { time: 1_749_697_200, open: 179.0, high: 180.2, low: 178.5, close: 179.8 },
+  { time: 1_749_700_800, open: 179.8, high: 180.5, low: 178.8, close: 179.2 },
+  { time: 1_749_704_400, open: 179.2, high: 180.0, low: 178.5, close: 178.8 },
+  { time: 1_749_708_000, open: 178.8, high: 179.5, low: 178.0, close: 179.0 },
+  { time: 1_749_711_600, open: 179.0, high: 179.8, low: 178.2, close: 178.5 },
+  { time: 1_749_715_200, open: 178.5, high: 179.2, low: 177.8, close: 178.9 },
+  { time: 1_749_718_800, open: 178.9, high: 180.1, low: 178.5, close: 179.8 },
+  { time: 1_749_722_400, open: 179.8, high: 181.0, low: 179.2, close: 180.5 },
+  { time: 1_749_726_000, open: 180.5, high: 181.5, low: 179.8, close: 180.0 },
+  { time: 1_749_729_600, open: 180.0, high: 180.8, low: 179.2, close: 179.5 },
+  { time: 1_749_733_200, open: 179.5, high: 180.2, low: 178.8, close: 179.2 },
+  { time: 1_749_736_800, open: 179.2, high: 179.8, low: 178.4, close: 178.5 },
+  { time: 1_749_740_400, open: 178.5, high: 179.0, low: 177.8, close: 178.5 },
+];
+
+const aaplDepthBook: DepthBook = {
+  symbol: "AAPL",
+  asks: [
+    { price: 178.6, size: 1200 },
+    { price: 178.8, size: 850 },
+    { price: 179.0, size: 1500 },
+    { price: 179.2, size: 600 },
+    { price: 179.4, size: 950 },
+    { price: 179.6, size: 1100 },
+    { price: 179.8, size: 700 },
+    { price: 180.0, size: 2000 },
+  ],
+  bids: [
+    { price: 178.4, size: 900 },
+    { price: 178.2, size: 1100 },
+    { price: 178.0, size: 800 },
+    { price: 177.8, size: 1400 },
+    { price: 177.6, size: 650 },
+    { price: 177.4, size: 1050 },
+    { price: 177.2, size: 550 },
+    { price: 177.0, size: 1800 },
+  ],
+};
+
+const equityOrders: readonly EquityOrder[] = [
+  {
+    id: "ord-001",
+    symbol: "AAPL",
+    side: "buy",
+    type: "market",
+    qty: 100,
+    status: "filled",
+    filledQty: 100,
+    avgPrice: 178.5,
+    createdAt: 1_750_000_000_000,
+  },
+  {
+    id: "ord-002",
+    symbol: "MSFT",
+    side: "sell",
+    type: "limit",
+    qty: 50,
+    limitPrice: 421.0,
+    status: "working",
+    filledQty: 0,
+    createdAt: 1_750_000_001_000,
+  },
+  {
+    id: "ord-003",
+    symbol: "JPM",
+    side: "buy",
+    type: "market",
+    qty: 200,
+    status: "partiallyFilled",
+    filledQty: 80,
+    avgPrice: 197.5,
+    createdAt: 1_750_000_002_000,
+  },
+  {
+    id: "ord-004",
+    symbol: "GS",
+    side: "buy",
+    type: "market",
+    qty: 75,
+    status: "rejected",
+    filledQty: 0,
+    createdAt: 1_750_000_003_000,
+  },
+  {
+    id: "ord-005",
+    symbol: "XOM",
+    side: "sell",
+    type: "market",
+    qty: 150,
+    status: "new",
+    filledQty: 0,
+    createdAt: 1_750_000_004_000,
+  },
+];
+
+const equityPositions: readonly EquityPosition[] = [
+  {
+    symbol: "AAPL",
+    qty: 500,
+    avgPrice: 165.0,
+    markPrice: 178.5,
+    unrealisedPnl: 6750,
+  },
+  {
+    symbol: "MSFT",
+    qty: -100,
+    avgPrice: 420.0,
+    markPrice: 385.0,
+    unrealisedPnl: 3500,
+  },
+  {
+    symbol: "JPM",
+    qty: 300,
+    avgPrice: 199.0,
+    markPrice: 197.5,
+    unrealisedPnl: -450,
+  },
+  {
+    symbol: "XOM",
+    qty: 200,
+    avgPrice: 108.0,
+    markPrice: 114.3,
+    unrealisedPnl: 1260,
+  },
+];
+
+// Shared shape for equities base fixture data
+type EquitiesBaseFixture = {
+  equityWatchlist: readonly EquityInstrument[];
+  equityQuotes: Record<string, EquityQuote>;
+  equityCandles: Record<string, readonly Candle[]>;
+  equityDepth: Record<string, DepthBook>;
+  equityOrders: readonly EquityOrder[];
+  equityPositions: readonly EquityPosition[];
+};
+
+// Base equities data used by all equities scenarios
+const equitiesBase: EquitiesBaseFixture = {
+  equityWatchlist: equityInstruments,
+  equityQuotes,
+  equityCandles: { AAPL: aaplCandles },
+  equityDepth: { AAPL: aaplDepthBook },
+  equityOrders,
+  equityPositions,
+};
+
+// Order ticket states for the ticket-editing and ticket-filled scenarios
+const orderTicketEditing: OrderTicketState = {
+  phase: "editing",
+  form: { symbol: "AAPL", side: "buy", type: "market", qty: 100 },
+  error: null,
+};
+
+const orderTicketFilled: OrderTicketState = {
+  phase: "filled",
+  order: {
+    id: "ord-001",
+    symbol: "AAPL",
+    side: "buy",
+    type: "market",
+    qty: 100,
+    status: "filled",
+    filledQty: 100,
+    avgPrice: 178.5,
+    createdAt: 1_750_000_000_000,
+  },
+};
+
+// Equities fixture entries — added to the fixtures map after the data constants
+// are defined (module-level const ordering: the constants above are forward refs
+// relative to the `export const fixtures = {…}` object literal, so they are
+// added via index assignment after the object is closed).
+fixtures["equities-loaded"] = makeAppData(equitiesBase);
+fixtures["equities-ticket-editing"] = makeAppData({
+  ...equitiesBase,
+  equityOrderTicket: orderTicketEditing,
+});
+fixtures["equities-ticket-filled"] = makeAppData({
+  ...equitiesBase,
+  equityOrderTicket: orderTicketFilled,
+});

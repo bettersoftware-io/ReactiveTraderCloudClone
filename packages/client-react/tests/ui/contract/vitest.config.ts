@@ -58,9 +58,18 @@ export default defineConfig({
         // imperative d3 DOM (tooltip/tick/exit) exercised by the visual tier.
         "src/ui/fx/analytics/PositionBubbles.tsx",
         "src/ui/fx/liveRates/tile/TileChart.tsx",
+        // Equities candlestick canvas leaf (the analog of TileChart): the redraw
+        // effect early-returns in jsdom (no 2D context), so its colour-extraction
+        // branches only run in the browser tier. The DOM-assertable contract
+        // (labelled canvas + NO DATA placeholder) is still exercised by
+        // PriceChart.contract.spec.ts; only the canvas internals are excluded.
+        "src/ui/equities/chart/PriceChart.tsx",
         // Complex multi-variant canvas draw functions — no DOM-assertable API;
-        // the pixel output is validated by the visual (browser) tier.
+        // the pixel output is validated by the visual (browser) tier. (jsdom's
+        // canvas has no 2D context, so PriceChart's effect early-returns before
+        // ever calling drawCandles — it can only run in the browser tier.)
         "src/ui/shell/boot/bootCanvas.ts",
+        "src/ui/equities/chart/drawCandles.ts",
       ],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/ui/contract/coverage",

@@ -1,6 +1,7 @@
 import { BehaviorSubject } from "rxjs";
 
 import type {
+  EquityOrder,
   Price,
   PriceTick,
   Quote,
@@ -22,6 +23,7 @@ import type {
 import {
   type CommandResults,
   createWorld,
+  type EquitiesSeed,
   type HookValues,
   type ParametricSeed,
 } from "./harness/world";
@@ -44,6 +46,8 @@ export interface MountOptions<P> {
   viewMode?: ViewMode;
   /** Seed the initial session state (useSession); defaults to unlocked + demo user. */
   session?: Partial<SessionState>;
+  /** Seed the equities streams (useWatchlist / useEquityQuote / useEquityOrders / …). */
+  equities?: EquitiesSeed;
 }
 
 const mounted: MountedRoot[] = [];
@@ -62,6 +66,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.themeSkin,
     opts.animatedBackground,
     opts.session,
+    opts.equities,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });
@@ -111,6 +116,11 @@ export function mount<P, Page extends MountedComponent<P>>(
     setThroughputView: (patch: Partial<ThroughputView>) => {
       return flush(() => {
         return world.setThroughputView(patch);
+      });
+    },
+    pushOrderLifecycle: (order: EquityOrder) => {
+      return flush(() => {
+        return world.pushOrderLifecycle(order);
       });
     },
     throughputSets: world.throughputSets,

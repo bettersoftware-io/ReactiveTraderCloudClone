@@ -5,6 +5,7 @@ import {
   type AnalyticsPort,
   AnalyticsSimulator,
   type BlotterPort,
+  type Candle,
   type ConnectionEventsPort,
   type CreateRfqRequest,
   CreditRfqSimulator,
@@ -13,13 +14,26 @@ import {
   type Dealer,
   type DealerPort,
   DealerSimulator,
+  type DepthBook,
   deriveBaseTerm,
+  type EquityInstrument,
+  EquityMarketDataSimulator,
+  type EquityOrder,
+  EquityOrderSimulator,
+  type EquityPosition,
+  EquityPositionSimulator,
+  type EquityQuote,
   type ExecutionPort,
   type ExecutionRequest,
   ExecutionSimulator,
+  type FillEvent,
   type Instrument,
   type InstrumentPort,
   InstrumentSimulator,
+  type MarketDataPort,
+  type OrderPort,
+  type PlaceOrderRequest,
+  type PositionPort,
   type PositionUpdates,
   type PreferencesPort,
   type PriceTick,
@@ -64,12 +78,25 @@ export interface AppPorts {
   admin: AdminPort;
   preferences: PreferencesPort;
   connectionEvents: ConnectionEventsPort;
+  marketData: MarketDataPort;
+  orders: OrderPort;
+  positions: PositionPort;
 }
 
 export type TransportPorts = Omit<AppPorts, "connectionEvents">;
 
 export function createSimulatorPorts(): TransportPorts {
   const execution = new ExecutionSimulator();
+  const marketData = new EquityMarketDataSimulator();
+  const positionsSim = new EquityPositionSimulator(marketData);
+  const orders = new EquityOrderSimulator({
+    listener: (fill: FillEvent): void => {
+      positionsSim.onFill(fill);
+    },
+    markFor: (symbol: string): number => {
+      return marketData.currentPrice(symbol);
+    },
+  });
   return {
     referenceData: new ReferenceDataSimulator(),
     pricing: new PricingSimulator(),
@@ -83,6 +110,9 @@ export function createSimulatorPorts(): TransportPorts {
     // Real browser persistence even in sim mode — PreferencesSimulator is for
     // domain tests/fakes only.
     preferences: new LocalStoragePreferencesAdapter(),
+    marketData,
+    orders,
+    positions: positionsSim,
   };
 }
 
@@ -105,6 +135,14 @@ const CLIENT_MSG = {
   ACCEPT: "rpc.accept",
   GET_THROUGHPUT: "admin.getThroughput",
   SET_THROUGHPUT: "admin.setThroughput",
+  SUBSCRIBE_WATCHLIST: "subscribe.watchlist",
+  SUBSCRIBE_EQ_QUOTES: "subscribe.eqQuotes",
+  GET_CANDLES: "rpc.getCandles",
+  SUBSCRIBE_DEPTH: "subscribe.depth",
+  PLACE_ORDER: "rpc.placeOrder",
+  CANCEL_ORDER: "rpc.cancelOrder",
+  SUBSCRIBE_ORDERS: "subscribe.orders",
+  SUBSCRIBE_POSITIONS: "subscribe.positions",
 } as const;
 
 const SERVER_MSG = {
@@ -124,6 +162,14 @@ const SERVER_MSG = {
   ACCEPT_RESPONSE: "rpc.accept.response",
   THROUGHPUT_RESPONSE: "admin.getThroughput.response",
   SET_THROUGHPUT_RESPONSE: "admin.setThroughput.response",
+  WATCHLIST: "stream.watchlist",
+  EQ_QUOTE: "stream.eqQuote",
+  CANDLES_RESPONSE: "rpc.getCandles.response",
+  DEPTH: "stream.depth",
+  ORDER_LIFECYCLE: "stream.orderLifecycle",
+  CANCEL_ORDER_RESPONSE: "rpc.cancelOrder.response",
+  ORDERS: "stream.orders",
+  POSITIONS: "stream.positions",
 } as const;
 
 // ── Port Implementations ────────────────────────────────────────
@@ -667,6 +713,203 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
   };
 }
 
+function createMarketDataPort(ws: IWsAdapter): MarketDataPort {
+  return {
+    watchlist(): Observable<readonly EquityInstrument[]> {
+      return new Observable<readonly EquityInstrument[]>((subscriber) => {
+        const unsub = ws.on(SERVER_MSG.WATCHLIST, (payload) => {
+          subscriber.next(payload as readonly EquityInstrument[]);
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_WATCHLIST);
+
+        return () => {
+          unsub();
+        };
+      });
+    },
+
+    quotes(symbol: string): Observable<EquityQuote> {
+      return new Observable<EquityQuote>((subscriber) => {
+        const unsub = ws.on(SERVER_MSG.EQ_QUOTE, (payload) => {
+          const quote = payload as EquityQuote;
+
+          if (quote.symbol === symbol) {
+            subscriber.next(quote);
+          }
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_EQ_QUOTES, { symbol });
+
+        return () => {
+          unsub();
+        };
+      });
+    },
+
+    candles(symbol: string): Observable<readonly Candle[]> {
+      return new Observable<readonly Candle[]>((subscriber) => {
+        let cancelled = false;
+
+        void (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.GET_CANDLES, {
+              symbol,
+            })) as RpcResponse<readonly Candle[]>;
+            if (cancelled) return;
+
+            if (resp.type === "nack") {
+              subscriber.error(
+                new Error(`Failed to get candles for ${symbol}`),
+              );
+              return;
+            }
+
+            const candles = resp.payload;
+            if (!candles) throw new Error("ack response missing payload");
+            subscriber.next(candles);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+
+        return () => {
+          cancelled = true;
+        };
+      });
+    },
+
+    depth(symbol: string): Observable<DepthBook> {
+      return new Observable<DepthBook>((subscriber) => {
+        const unsub = ws.on(SERVER_MSG.DEPTH, (payload) => {
+          const book = payload as DepthBook;
+
+          if (book.symbol === symbol) {
+            subscriber.next(book);
+          }
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_DEPTH, { symbol });
+
+        return () => {
+          unsub();
+        };
+      });
+    },
+  };
+}
+
+type PlaceOrderAck = { readonly orderId: string };
+
+function createOrderPort(ws: IWsAdapter): OrderPort {
+  return {
+    place(req: PlaceOrderRequest): Observable<EquityOrder> {
+      return new Observable<EquityOrder>((subscriber) => {
+        let cancelled = false;
+        let unsub: (() => void) | undefined;
+
+        void (async () => {
+          try {
+            const resp = (await ws.rpc(
+              CLIENT_MSG.PLACE_ORDER,
+              req,
+            )) as RpcResponse<PlaceOrderAck>;
+            if (cancelled) return;
+
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Failed to place order"));
+              return;
+            }
+
+            const orderId = resp.payload?.orderId;
+            if (!orderId) throw new Error("ack response missing orderId");
+
+            unsub = ws.on(SERVER_MSG.ORDER_LIFECYCLE, (payload) => {
+              const order = payload as EquityOrder;
+
+              if (order.id !== orderId) return;
+
+              subscriber.next(order);
+
+              if (
+                order.status === "filled" ||
+                order.status === "cancelled" ||
+                order.status === "rejected"
+              ) {
+                subscriber.complete();
+              }
+            });
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+
+        return () => {
+          cancelled = true;
+          unsub?.();
+        };
+      });
+    },
+
+    cancel(orderId: string): Observable<void> {
+      return new Observable<void>((subscriber) => {
+        let cancelled = false;
+
+        void (async () => {
+          try {
+            const resp = (await ws.rpc(CLIENT_MSG.CANCEL_ORDER, {
+              orderId,
+            })) as RpcResponse;
+            if (cancelled) return;
+
+            if (resp.type === "nack") {
+              subscriber.error(new Error("Failed to cancel order"));
+              return;
+            }
+
+            subscriber.next(undefined);
+            subscriber.complete();
+          } catch (e) {
+            if (!cancelled) subscriber.error(e);
+          }
+        })();
+
+        return () => {
+          cancelled = true;
+        };
+      });
+    },
+
+    orders(): Observable<readonly EquityOrder[]> {
+      return new Observable<readonly EquityOrder[]>((subscriber) => {
+        const unsub = ws.on(SERVER_MSG.ORDERS, (payload) => {
+          subscriber.next(payload as readonly EquityOrder[]);
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_ORDERS);
+
+        return () => {
+          unsub();
+        };
+      });
+    },
+  };
+}
+
+function createPositionPort(ws: IWsAdapter): PositionPort {
+  return {
+    positions(): Observable<readonly EquityPosition[]> {
+      return new Observable<readonly EquityPosition[]>((subscriber) => {
+        const unsub = ws.on(SERVER_MSG.POSITIONS, (payload) => {
+          subscriber.next(payload as readonly EquityPosition[]);
+        });
+        ws.send(CLIENT_MSG.SUBSCRIBE_POSITIONS);
+
+        return () => {
+          unsub();
+        };
+      });
+    },
+  };
+}
+
 // ── Factory ─────────────────────────────────────────────────────
 
 export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
@@ -682,5 +925,8 @@ export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
     admin: createAdminPort(ws),
     // Browser persistence is independent of the transport.
     preferences: new LocalStoragePreferencesAdapter(),
+    marketData: createMarketDataPort(ws),
+    orders: createOrderPort(ws),
+    positions: createPositionPort(ws),
   };
 }

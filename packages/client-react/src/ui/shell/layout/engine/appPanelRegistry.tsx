@@ -1,6 +1,7 @@
 import { AdminPanel } from "#/ui/admin/AdminPanel";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditWorkspace } from "#/ui/credit/CreditWorkspace";
+import { EquitiesPanel } from "#/ui/equities/EquitiesPanel";
 import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
@@ -27,5 +28,8 @@ export const appPanelRegistry: PanelRegistry = {
   },
   "admin-throughput": () => {
     return <AdminPanel />;
+  },
+  equities: () => {
+    return <EquitiesPanel />;
   },
 };

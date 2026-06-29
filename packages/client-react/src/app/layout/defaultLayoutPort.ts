@@ -6,7 +6,7 @@ import type {
   PanelSpec,
 } from "./layoutPort";
 
-export type WorkspaceTab = "fx" | "credit" | "admin";
+export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
 
 /** Static panel descriptors. `pinned: true` marks a panel the engine renders in
  * the fixed bottom strip (the blotters), kept out of any resizable split's sizes
@@ -23,6 +23,7 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
     pinned: true,
   },
   "admin-throughput": { id: "admin-throughput", title: "Throughput Control" },
+  equities: { id: "equities", title: "Equities" },
 };
 
 const FX_ROOT: LayoutNode = {
@@ -55,10 +56,13 @@ const CREDIT_ROOT: LayoutNode = {
 
 const ADMIN_ROOT: LayoutNode = { kind: "panel", panelId: "admin-throughput" };
 
+const EQUITIES_ROOT: LayoutNode = { kind: "panel", panelId: "equities" };
+
 const ROOTS: Record<WorkspaceTab, LayoutNode> = {
   fx: FX_ROOT,
   credit: CREDIT_ROOT,
   admin: ADMIN_ROOT,
+  equities: EQUITIES_ROOT,
 };
 
 /** The default in-house arrangement for one workspace tab. A future

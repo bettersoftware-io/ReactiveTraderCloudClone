@@ -1,0 +1,17 @@
+{
+  "_source": "rtc-clone derived: mulberry32(seed)+gbmStep(price,rand,vol=0.002); candle bucket=60000ms; floats regenerated from implementation",
+  "gbm": [
+    { "price": 100, "rand": 0, "vol": 0.002, "expected": 99.8 },
+    { "price": 100, "rand": 0.5, "vol": 0.002, "expected": 100 },
+    { "price": 100, "rand": 1, "vol": 0.002, "expected": 100.2 }
+  ],
+  "mulberry32Seed42First3": [
+    0.6011037519201636, 0.44829055899754167, 0.8524657934904099
+  ],
+  "candle": {
+    "prices": [100, 102, 99, 101],
+    "time0": 0,
+    "bucketMs": 60000,
+    "expected": { "time": 0, "open": 100, "high": 102, "low": 99, "close": 101 }
+  }
+}

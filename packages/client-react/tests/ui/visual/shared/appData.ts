@@ -2,9 +2,15 @@
 // No React/Solid imports — this file (and the rest of shared/) is the
 // portable core shared by every UI implementation.
 import {
+  type Candle,
   ConnectionStatus,
   type CurrencyPair,
   type Dealer,
+  type DepthBook,
+  type EquityInstrument,
+  type EquityOrder,
+  type EquityPosition,
+  type EquityQuote,
   type Instrument,
   type PositionUpdates,
   type Price,
@@ -18,6 +24,7 @@ import {
 } from "@rtc/domain";
 
 import type { NotionalView } from "#/app/presenters/NotionalMachine";
+import type { OrderTicketState } from "#/app/presenters/OrderTicketMachine";
 import type {
   RfqSubmissionState,
   TicketSubmissionState,
@@ -66,6 +73,21 @@ export interface AppData {
   viewMode?: ViewMode;
   /** Session lock state (useSession); defaults to false → LockScreen renders nothing. */
   sessionLocked?: boolean;
+  // ── Equities fields (Phase 4) ─────────────────────────────────────────────
+  /** Watchlist of equity instruments (useWatchlist); defaults to []. */
+  equityWatchlist?: readonly EquityInstrument[];
+  /** Per-symbol equity quote (useEquityQuote); a missing key returns null. */
+  equityQuotes?: Record<string, EquityQuote>;
+  /** Per-symbol candle series (useCandles); a missing key returns []. */
+  equityCandles?: Record<string, readonly Candle[]>;
+  /** Per-symbol depth book (useDepth); a missing key returns null. */
+  equityDepth?: Record<string, DepthBook>;
+  /** All equity orders (useEquityOrders); defaults to []. */
+  equityOrders?: readonly EquityOrder[];
+  /** All equity positions (useEquityPositions); defaults to []. */
+  equityPositions?: readonly EquityPosition[];
+  /** Order ticket state (useOrderTicket) — overrides the default editing stub. */
+  equityOrderTicket?: OrderTicketState;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

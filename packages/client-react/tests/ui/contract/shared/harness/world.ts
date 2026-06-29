@@ -1,12 +1,18 @@
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject, Subject } from "rxjs";
 
 import {
+  type Candle,
   ConnectionStatus,
   type CreateRfqInput,
   type CurrencyPair,
   DEFAULT_THEME_MODE,
   DEFAULT_VIEW_MODE,
   type Dealer,
+  type DepthBook,
+  type EquityInstrument,
+  type EquityOrder,
+  type EquityPosition,
+  type EquityQuote,
   type ExecuteTradeInput,
   type ExecuteTradeResult,
   type Instrument,
@@ -68,6 +74,23 @@ export interface ParametricSeed {
   histories?: Readonly<Record<string, readonly PriceTick[]>>;
   /** Quotes per RFQ, keyed by rfqId (mirrors useQuotesForRfq(rfqId)). */
   quotesForRfq?: Readonly<Record<number, readonly Quote[]>>;
+}
+
+/**
+ * Seed values for the EQUITIES query hooks. Watchlist, orders, and positions are
+ * single shared streams (useWatchlist / useEquityOrders / useEquityPositions);
+ * quotes, candles, and depth are keyed by symbol, mirroring the per-argument
+ * binds of the real createAppHooks (watchlist.quote$, candleSeries.candles$,
+ * depth.depth$). The OrderTicket place lifecycle is driven separately via
+ * {@link World.orderLifecycle} (a plain Subject the page object pushes onto).
+ */
+export interface EquitiesSeed {
+  watchlist?: readonly EquityInstrument[];
+  orders?: readonly EquityOrder[];
+  positions?: readonly EquityPosition[];
+  quotes?: Readonly<Record<string, EquityQuote | null>>;
+  candles?: Readonly<Record<string, readonly Candle[]>>;
+  depth?: Readonly<Record<string, DepthBook | null>>;
 }
 
 /**
@@ -145,6 +168,34 @@ export interface World {
   setQuotesForRfq(rfqId: number, value: readonly Quote[]): void;
   /** Push a new animation intent for one target (drives the AnimationProbe's re-render). */
   setIntent(target: string, intent: AnimationIntent | null): void;
+  /** Reactive watchlist backing useWatchlist (drives Watchlist/InstrumentTabs/SectorHeatmap). */
+  readonly watchlist: BehaviorSubject<readonly EquityInstrument[]>;
+  /** Reactive equity orders backing useEquityOrders (drives OrdersBlotter). */
+  readonly equityOrders: BehaviorSubject<readonly EquityOrder[]>;
+  /** Reactive equity positions backing useEquityPositions (drives PositionsBlotter). */
+  readonly equityPositions: BehaviorSubject<readonly EquityPosition[]>;
+  /** Lifecycle stream the OrderTicket's place() subscribes to; the page pushes EquityOrders here. */
+  readonly orderLifecycle: Subject<EquityOrder>;
+  /** Per-symbol subject for useEquityQuote(symbol). */
+  equityQuoteFor(symbol: string): BehaviorSubject<EquityQuote | null>;
+  /** Per-symbol subject for useCandles(symbol). */
+  candlesFor(symbol: string): BehaviorSubject<readonly Candle[]>;
+  /** Per-symbol subject for useDepth(symbol). */
+  depthFor(symbol: string): BehaviorSubject<DepthBook | null>;
+  /** Push a new watchlist (drives the watchlist-backed panels' re-render). */
+  setWatchlist(value: readonly EquityInstrument[]): void;
+  /** Push new equity orders (drives the OrdersBlotter's re-render). */
+  setEquityOrders(value: readonly EquityOrder[]): void;
+  /** Push new equity positions (drives the PositionsBlotter's re-render). */
+  setEquityPositions(value: readonly EquityPosition[]): void;
+  /** Push a new equity quote for one symbol. */
+  setEquityQuote(symbol: string, value: EquityQuote | null): void;
+  /** Push a new candle series for one symbol. */
+  setCandles(symbol: string, value: readonly Candle[]): void;
+  /** Push a new depth book for one symbol. */
+  setDepth(symbol: string, value: DepthBook | null): void;
+  /** Advance the OrderTicket lifecycle by emitting one EquityOrder into place(). */
+  pushOrderLifecycle(order: EquityOrder): void;
   readonly results: CommandResults;
   readonly commands: CommandLog;
   /** Push new values for one or more NULLARY hooks (drives re-renders). */
@@ -161,6 +212,7 @@ export function createWorld(
   themeSkinSeed?: ThemeSkin,
   animatedBackgroundSeed?: boolean,
   sessionSeed: Partial<SessionState> = {},
+  equitiesSeed: EquitiesSeed = {},
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -235,6 +287,69 @@ export function createWorld(
     quotesForRfq(Number(rfqId)).next(value);
   }
 
+  // Equities: shared streams (watchlist/orders/positions) plus per-symbol
+  // subjects (quotes/candles/depth) and a plain lifecycle Subject the OrderTicket
+  // place() subscribes to.
+  const watchlist = new BehaviorSubject<readonly EquityInstrument[]>(
+    equitiesSeed.watchlist ?? [],
+  );
+  const equityOrders = new BehaviorSubject<readonly EquityOrder[]>(
+    equitiesSeed.orders ?? [],
+  );
+  const equityPositions = new BehaviorSubject<readonly EquityPosition[]>(
+    equitiesSeed.positions ?? [],
+  );
+  const orderLifecycle = new Subject<EquityOrder>();
+
+  const equityQuotes = new Map<string, BehaviorSubject<EquityQuote | null>>();
+  const candleSeries = new Map<string, BehaviorSubject<readonly Candle[]>>();
+  const depthBooks = new Map<string, BehaviorSubject<DepthBook | null>>();
+
+  function equityQuoteFor(symbol: string): BehaviorSubject<EquityQuote | null> {
+    let subject = equityQuotes.get(symbol);
+
+    if (!subject) {
+      subject = new BehaviorSubject<EquityQuote | null>(null);
+      equityQuotes.set(symbol, subject);
+    }
+
+    return subject;
+  }
+
+  function candlesFor(symbol: string): BehaviorSubject<readonly Candle[]> {
+    let subject = candleSeries.get(symbol);
+
+    if (!subject) {
+      subject = new BehaviorSubject<readonly Candle[]>([]);
+      candleSeries.set(symbol, subject);
+    }
+
+    return subject;
+  }
+
+  function depthFor(symbol: string): BehaviorSubject<DepthBook | null> {
+    let subject = depthBooks.get(symbol);
+
+    if (!subject) {
+      subject = new BehaviorSubject<DepthBook | null>(null);
+      depthBooks.set(symbol, subject);
+    }
+
+    return subject;
+  }
+
+  for (const [symbol, value] of Object.entries(equitiesSeed.quotes ?? {})) {
+    equityQuoteFor(symbol).next(value);
+  }
+
+  for (const [symbol, value] of Object.entries(equitiesSeed.candles ?? {})) {
+    candlesFor(symbol).next(value);
+  }
+
+  for (const [symbol, value] of Object.entries(equitiesSeed.depth ?? {})) {
+    depthFor(symbol).next(value);
+  }
+
   const throughput = new BehaviorSubject<ThroughputView>({
     ...DEFAULT_THROUGHPUT,
     ...throughputSeed,
@@ -291,6 +406,34 @@ export function createWorld(
     intentFor,
     setIntent: (target: string, intent: AnimationIntent | null) => {
       return intentFor(target).next(intent);
+    },
+    watchlist,
+    equityOrders,
+    equityPositions,
+    orderLifecycle,
+    equityQuoteFor,
+    candlesFor,
+    depthFor,
+    setWatchlist: (value: readonly EquityInstrument[]) => {
+      return watchlist.next(value);
+    },
+    setEquityOrders: (value: readonly EquityOrder[]) => {
+      return equityOrders.next(value);
+    },
+    setEquityPositions: (value: readonly EquityPosition[]) => {
+      return equityPositions.next(value);
+    },
+    setEquityQuote: (symbol: string, value: EquityQuote | null) => {
+      return equityQuoteFor(symbol).next(value);
+    },
+    setCandles: (symbol: string, value: readonly Candle[]) => {
+      return candlesFor(symbol).next(value);
+    },
+    setDepth: (symbol: string, value: DepthBook | null) => {
+      return depthFor(symbol).next(value);
+    },
+    pushOrderLifecycle: (order: EquityOrder) => {
+      return orderLifecycle.next(order);
     },
     results,
     commands: {

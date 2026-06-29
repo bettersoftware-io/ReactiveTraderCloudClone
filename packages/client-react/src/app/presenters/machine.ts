@@ -12,6 +12,10 @@ import type {
 import type { LayoutIntents } from "./LayoutMachine";
 import type { NotionalIntents, NotionalView } from "./NotionalMachine";
 import type {
+  OrderTicketIntents,
+  OrderTicketState,
+} from "./OrderTicketMachine";
+import type {
   RfqSubmissionIntents,
   RfqSubmissionState,
   TicketSubmissionIntents,
@@ -76,4 +80,8 @@ export interface MachineFactories {
   /** Boot-sequence animation machine — progress ramp + skip intent, fires
    * onDone when the ramp completes or skip is called. One per app mount. */
   boot: (onDone: () => void) => Machine<BootSequenceState, BootSequenceIntents>;
+  /** Order ticket lifecycle machine — validate + submit an equity order. */
+  orderTicket: (
+    defaultSymbol: string,
+  ) => Machine<OrderTicketState, OrderTicketIntents>;
 }

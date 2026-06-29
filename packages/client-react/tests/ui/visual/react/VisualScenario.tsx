@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 
 import { HooksProvider } from "#/ui/hooks/HooksProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
@@ -23,13 +23,38 @@ interface VisualScenarioProps {
   name: string;
 }
 
-export function VisualScenario({ name }: VisualScenarioProps): ReactElement {
+export function VisualScenario({
+  name,
+}: VisualScenarioProps): ReactElement | null {
+  // Content-width shots (inline-block wrapper below) measure text by the active
+  // font's metrics. If the screenshot is taken before the web fonts finish
+  // loading, the fallback font's wider/narrower glyphs change the measured
+  // width non-deterministically (observed: fx-blotter scenarios drifting
+  // ~46-66px between otherwise-identical x86 runs, which a dimension mismatch
+  // — unlike AA jitter — cannot absorb via maxDiffPixelRatio). Gate rendering
+  // on document.fonts.ready so every capture is taken in the fonts-loaded
+  // state; Playwright's toHaveScreenshot stability retry waits out the
+  // null→content transition.
+  const [fontsReady, setFontsReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void document.fonts.ready.then(() => {
+      if (!cancelled) setFontsReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const scenario = scenarios[name];
   if (!scenario) throw new Error(`Unknown visual scenario: ${name}`);
   const data = fixtures[scenario.fixtureKey];
   if (!data) throw new Error(`Unknown fixture: ${scenario.fixtureKey}`);
   const render = registry[scenario.componentKey];
   if (!render) throw new Error(`Unknown component: ${scenario.componentKey}`);
+
+  if (!fontsReady) return null;
 
   if (FULL_BLEED.has(scenario.componentKey)) {
     return (

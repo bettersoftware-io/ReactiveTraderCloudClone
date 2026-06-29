@@ -14,21 +14,28 @@ afterEach(() => {
 });
 
 describe("HeaderChrome", () => {
-  it("renders the header landmark, wordmark and the three real workspace tabs", () => {
+  it("renders the header landmark, wordmark and the four real workspace tabs", () => {
     const header = mount(HeaderChrome, {
       props: { activeTab: "fx", onTabChange: () => {} },
     });
     expect(header.isRendered()).toBe(true);
     expect(header.wordmark()).toMatch(/reactive trader/i);
-    expect(header.tabLabels()).toEqual(["FX", "Credit", "Admin"]);
+    expect(header.tabLabels()).toEqual(["FX", "Credit", "Equities", "Admin"]);
   });
 
-  it("renders a decorative, non-wired Equities nav item", () => {
+  it("reports an Equities tab click through onTabChange (wired in Phase 4)", async () => {
+    const changes: WorkspaceTab[] = [];
     const header = mount(HeaderChrome, {
-      props: { activeTab: "fx", onTabChange: () => {} },
+      props: {
+        activeTab: "fx",
+        onTabChange: (tab: WorkspaceTab) => {
+          return changes.push(tab);
+        },
+      },
     });
-    expect(header.equitiesLabel()).toBe("Equities");
-    expect(header.equitiesDisabled()).toBe(true);
+    await header.clickTab("equities");
+    expect(changes).toEqual(["equities"]);
+    expect(header.isActive("fx")).toBe(true);
   });
 
   it("highlights the active tab", () => {

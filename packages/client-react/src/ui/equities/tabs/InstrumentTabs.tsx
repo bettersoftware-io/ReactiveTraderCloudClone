@@ -1,0 +1,40 @@
+import type { ReactElement } from "react";
+
+import { useHooks } from "#/ui/hooks/useHooks";
+
+import styles from "./InstrumentTabs.module.css";
+
+interface InstrumentTabsProps {
+  selectedSymbol: string | null;
+  onSelect: (symbol: string) => void;
+}
+
+export function InstrumentTabs({
+  selectedSymbol,
+  onSelect,
+}: InstrumentTabsProps): ReactElement {
+  const { useWatchlist } = useHooks();
+  const instruments = useWatchlist();
+
+  return (
+    <nav className={styles.tabs} aria-label="Instrument tabs">
+      {instruments.map((inst) => {
+        const active = inst.symbol === selectedSymbol;
+        return (
+          <button
+            key={inst.symbol}
+            type="button"
+            data-active={active ? "true" : "false"}
+            data-testid={`instrument-tab-${inst.symbol}`}
+            className={styles.tab}
+            onClick={() => {
+              onSelect(inst.symbol);
+            }}
+          >
+            {inst.symbol}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}

@@ -218,5 +218,48 @@ export function buildFakeHooks(data: AppData): AppHooks {
       };
       return { state, skip: noop };
     },
+    // Equities: data-driven fakes reading from the AppData equities fields.
+    // Fixtures that don't set these fields return the same empty defaults as
+    // the old no-op stubs, so all pre-equities goldens stay pixel-identical.
+    useWatchlist: () => {
+      return data.equityWatchlist ?? [];
+    },
+    useEquityQuote: (symbol: string) => {
+      return data.equityQuotes?.[symbol] ?? null;
+    },
+    useCandles: (symbol: string) => {
+      return data.equityCandles?.[symbol] ?? [];
+    },
+    useDepth: (symbol: string) => {
+      return data.equityDepth?.[symbol] ?? null;
+    },
+    useEquityOrders: () => {
+      return data.equityOrders ?? [];
+    },
+    useEquityPositions: () => {
+      return data.equityPositions ?? [];
+    },
+    useOrderTicket: (defaultSymbol: string) => {
+      const state = data.equityOrderTicket ?? {
+        phase: "editing" as const,
+        form: {
+          symbol: defaultSymbol,
+          side: "buy" as const,
+          type: "market" as const,
+          qty: 0,
+        },
+        error: null,
+      };
+      return {
+        state,
+        setSymbol: noop,
+        setSide: noop,
+        setType: noop,
+        setQty: noop,
+        setLimitPrice: noop,
+        submit: noop,
+        reset: noop,
+      };
+    },
   };
 }

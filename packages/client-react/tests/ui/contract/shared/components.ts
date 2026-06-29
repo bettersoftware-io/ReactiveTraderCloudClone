@@ -76,6 +76,41 @@ import {
   type TradeTicketProps,
 } from "./pages/credit/sellSide/TradeTicketPage";
 import {
+  DepthLadderPage,
+  type DepthLadderProps,
+} from "./pages/equities/DepthLadderPage";
+import {
+  DeskPnlGaugePage,
+  type DeskPnlGaugeProps,
+} from "./pages/equities/DeskPnlGaugePage";
+import { EquitiesPanelPage } from "./pages/equities/EquitiesPanelPage";
+import {
+  InstrumentTabsPage,
+  type InstrumentTabsProps,
+} from "./pages/equities/InstrumentTabsPage";
+import { OrdersBlotterPage } from "./pages/equities/OrdersBlotterPage";
+import {
+  OrderTicketPage,
+  type OrderTicketProps,
+} from "./pages/equities/OrderTicketPage";
+import {
+  PnlSparklinePage,
+  type PnlSparklineProps,
+} from "./pages/equities/PnlSparklinePage";
+import { PositionsBlotterPage } from "./pages/equities/PositionsBlotterPage";
+import {
+  PriceChartPage,
+  type PriceChartProps,
+} from "./pages/equities/PriceChartPage";
+import {
+  SectorHeatmapPage,
+  type SectorHeatmapProps,
+} from "./pages/equities/SectorHeatmapPage";
+import {
+  WatchlistPage,
+  type WatchlistProps,
+} from "./pages/equities/WatchlistPage";
+import {
   CurrencyFilterPage,
   type CurrencyFilterProps,
 } from "./pages/fx/liveRates/CurrencyFilterPage";
@@ -398,4 +433,70 @@ export const AnimationProbe = component<
   AnimationProbePage
 >((ctx) => {
   return new AnimationProbePage(ctx);
+});
+
+export const OrderTicket = component<OrderTicketProps, OrderTicketPage>(
+  (ctx) => {
+    return new OrderTicketPage(ctx);
+  },
+);
+
+export const Watchlist = component<WatchlistProps, WatchlistPage>((ctx) => {
+  return new WatchlistPage(ctx);
+});
+
+export const OrdersBlotter = component<
+  Record<string, never>,
+  OrdersBlotterPage
+>((ctx) => {
+  return new OrdersBlotterPage(ctx);
+});
+
+export const InstrumentTabs = component<
+  InstrumentTabsProps,
+  InstrumentTabsPage
+>((ctx) => {
+  return new InstrumentTabsPage(ctx);
+});
+
+export const SectorHeatmap = component<SectorHeatmapProps, SectorHeatmapPage>(
+  (ctx) => {
+    return new SectorHeatmapPage(ctx);
+  },
+);
+
+export const PriceChart = component<PriceChartProps, PriceChartPage>((ctx) => {
+  return new PriceChartPage(ctx);
+});
+
+export const DepthLadder = component<DepthLadderProps, DepthLadderPage>(
+  (ctx) => {
+    return new DepthLadderPage(ctx);
+  },
+);
+
+export const PositionsBlotter = component<
+  Record<string, never>,
+  PositionsBlotterPage
+>((ctx) => {
+  return new PositionsBlotterPage(ctx);
+});
+
+export const DeskPnlGauge = component<DeskPnlGaugeProps, DeskPnlGaugePage>(
+  (ctx) => {
+    return new DeskPnlGaugePage(ctx);
+  },
+);
+
+export const PnlSparkline = component<PnlSparklineProps, PnlSparklinePage>(
+  (ctx) => {
+    return new PnlSparklinePage(ctx);
+  },
+);
+
+export const EquitiesPanel = component<
+  Record<string, never>,
+  EquitiesPanelPage
+>((ctx) => {
+  return new EquitiesPanelPage(ctx);
 });

@@ -6,6 +6,7 @@ import type {
   CurrencyPairPosition,
   Dealer,
   Direction,
+  EquityPosition,
   Instrument,
   Price,
   Quote,
@@ -31,6 +32,17 @@ import {
 import { RfqTilesPanel as RfqTilesPanelComponent } from "#/ui/credit/rfqTiles/RfqTilesPanel";
 import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
 import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
+import { DeskPnlGauge as DeskPnlGaugeComponent } from "#/ui/equities/blotter/DeskPnlGauge";
+import { OrdersBlotter as OrdersBlotterComponent } from "#/ui/equities/blotter/OrdersBlotter";
+import { PnlSparkline as PnlSparklineComponent } from "#/ui/equities/blotter/PnlSparkline";
+import { PositionsBlotter as PositionsBlotterComponent } from "#/ui/equities/blotter/PositionsBlotter";
+import { DepthLadder as DepthLadderComponent } from "#/ui/equities/chart/DepthLadder";
+import { PriceChart as PriceChartComponent } from "#/ui/equities/chart/PriceChart";
+import { EquitiesPanel as EquitiesPanelComponent } from "#/ui/equities/EquitiesPanel";
+import { InstrumentTabs as InstrumentTabsComponent } from "#/ui/equities/tabs/InstrumentTabs";
+import { OrderTicket as OrderTicketComponent } from "#/ui/equities/ticket/OrderTicket";
+import { SectorHeatmap as SectorHeatmapComponent } from "#/ui/equities/watchlist/SectorHeatmap";
+import { Watchlist as WatchlistComponent } from "#/ui/equities/watchlist/Watchlist";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
 import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
 import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
@@ -92,23 +104,33 @@ import {
   CreditBlotter,
   CurrencyFilter,
   DateFilter,
+  DepthLadder,
+  DeskPnlGauge,
+  EquitiesPanel,
   FxBlotter,
   HeaderChrome,
+  InstrumentTabs,
   LayoutEngine,
   LiveRatesPanel,
   LockScreen,
   NewRfqForm,
   NumberFilter,
+  OrdersBlotter,
+  OrderTicket,
   PairPnlBars,
+  PnlSparkline,
   PnlValue,
   PositionBubbles,
+  PositionsBlotter,
   PreferencesModal,
+  PriceChart,
   QuickFilter,
   QuoteCard,
   RfqCard,
   RfqCountdown,
   RfqFilterTabs,
   RfqTilesPanel,
+  SectorHeatmap,
   SellSidePanel,
   SetFilter,
   SpreadDisplay,
@@ -125,6 +147,7 @@ import {
   TileRfq,
   TradeTicket,
   ViewToggle,
+  Watchlist,
 } from "../shared/components";
 import type {
   ComponentToken,
@@ -610,6 +633,102 @@ export const registry = new Map<AnyToken, ElementFor>([
           onClose={(p.onClose as () => void) ?? ((): void => {})}
         />
       );
+    },
+  ],
+  [
+    OrderTicket,
+    (p: Record<string, unknown>): ReactElement => {
+      return <OrderTicketComponent symbol={(p.symbol as string) ?? "AAPL"} />;
+    },
+  ],
+  [
+    Watchlist,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <WatchlistComponent
+          selectedSymbol={(p.selectedSymbol as string | null) ?? null}
+          onSelect={
+            (p.onSelect as (symbol: string) => void) ?? ((): void => {})
+          }
+        />
+      );
+    },
+  ],
+  [
+    OrdersBlotter,
+    (): ReactElement => {
+      return <OrdersBlotterComponent />;
+    },
+  ],
+  [
+    InstrumentTabs,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <InstrumentTabsComponent
+          selectedSymbol={(p.selectedSymbol as string | null) ?? null}
+          onSelect={
+            (p.onSelect as (symbol: string) => void) ?? ((): void => {})
+          }
+        />
+      );
+    },
+  ],
+  [
+    SectorHeatmap,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <SectorHeatmapComponent
+          selectedSymbol={(p.selectedSymbol as string | null) ?? null}
+          onSelect={
+            (p.onSelect as (symbol: string) => void) ?? ((): void => {})
+          }
+        />
+      );
+    },
+  ],
+  [
+    PriceChart,
+    (p: Record<string, unknown>): ReactElement => {
+      return <PriceChartComponent symbol={(p.symbol as string) ?? "AAPL"} />;
+    },
+  ],
+  [
+    DepthLadder,
+    (p: Record<string, unknown>): ReactElement => {
+      return <DepthLadderComponent symbol={(p.symbol as string) ?? "AAPL"} />;
+    },
+  ],
+  [
+    PositionsBlotter,
+    (): ReactElement => {
+      return <PositionsBlotterComponent />;
+    },
+  ],
+  [
+    DeskPnlGauge,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <DeskPnlGaugeComponent
+          positions={(p.positions as readonly EquityPosition[]) ?? []}
+        />
+      );
+    },
+  ],
+  [
+    PnlSparkline,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PnlSparklineComponent
+          pnl={(p.pnl as number) ?? 0}
+          maxAbsPnl={p.maxAbsPnl as number | undefined}
+        />
+      );
+    },
+  ],
+  [
+    EquitiesPanel,
+    (): ReactElement => {
+      return <EquitiesPanelComponent />;
     },
   ],
 ]);

@@ -20,6 +20,7 @@ import {
 import { createBootSequenceMachine } from "#/app/presenters/BootSequenceMachine";
 import { createLayoutMachine } from "#/app/presenters/LayoutMachine";
 import { createNotionalMachine } from "#/app/presenters/NotionalMachine";
+import { createOrderTicketMachine } from "#/app/presenters/OrderTicketMachine";
 import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
 import type {
   RfqSubmissionState,
@@ -363,6 +364,43 @@ export function reactHooks(world: World): AppHooks {
           variant: "core",
           advance: () => {},
           onDone,
+        });
+      });
+    },
+    // Equities: reactive views backed by the World's shared streams (watchlist /
+    // orders / positions) and per-symbol subjects (quote / candles / depth) — so a
+    // spec seeding `equities: { watchlist, quotes, orders, … }` re-renders the
+    // subscribing panel, mirroring the real createAppHooks binds.
+    useWatchlist: () => {
+      return useSubject(world.watchlist);
+    },
+    useEquityQuote: (symbol: string) => {
+      return useSubject(world.equityQuoteFor(symbol));
+    },
+    useCandles: (symbol: string) => {
+      return useSubject(world.candlesFor(symbol));
+    },
+    useDepth: (symbol: string) => {
+      return useSubject(world.depthFor(symbol));
+    },
+    useEquityOrders: () => {
+      return useSubject(world.equityOrders);
+    },
+    useEquityPositions: () => {
+      return useSubject(world.equityPositions);
+    },
+    // Machine: the REAL createOrderTicketMachine, driven by a World-backed place()
+    // that returns the lifecycle Subject. A spec drives setQty/submit through the
+    // ticket's intents (editing→submitting), then pushOrderLifecycle emits
+    // working/partiallyFilled/filled orders — exercising the relocated place
+    // lifecycle through the same useMachine bridge the app uses.
+    useOrderTicket: (defaultSymbol: string) => {
+      return useMachine(() => {
+        return createOrderTicketMachine({
+          place: () => {
+            return world.orderLifecycle.asObservable();
+          },
+          defaultSymbol,
         });
       });
     },

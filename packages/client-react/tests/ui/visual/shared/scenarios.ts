@@ -210,6 +210,44 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "CreditWorkspace",
     fixtureKey: "credit-populated",
   },
+  // --- Phase 4: Equities panel scenarios ---
+  // Per-component sub-views with deterministic fixed-data fixtures.
+  "equities/watchlist-loaded": {
+    componentKey: "EquitiesWatchlist",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/sector-heatmap": {
+    componentKey: "EquitiesSectorHeatmap",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/chart-loaded": {
+    componentKey: "EquitiesPriceChart",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/depth-ladder": {
+    componentKey: "EquitiesDepthLadder",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/ticket-editing": {
+    componentKey: "EquitiesOrderTicket",
+    fixtureKey: "equities-ticket-editing",
+  },
+  "equities/ticket-filled": {
+    componentKey: "EquitiesOrderTicket",
+    fixtureKey: "equities-ticket-filled",
+  },
+  "equities/positions-with-pnl": {
+    componentKey: "EquitiesPositionsBlotter",
+    fixtureKey: "equities-loaded",
+  },
+  // Full EquitiesPanel at fixed 1280×680 (mirrors layout-engine constraint).
+  "equities/panel": {
+    componentKey: "EquitiesPanel",
+    fixtureKey: "equities-loaded",
+  },
+  // Full App shot with the equities tab active (parallels app/fx + app/credit).
+  "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },
+
   // Admin panel loaded (slider) state — throughput fetch stubbed.
   "admin/panel-loaded": { componentKey: "AdminPanel", fixtureKey: "app-fx" },
   // Seeded render-state arms with no interaction (the states are only transiently

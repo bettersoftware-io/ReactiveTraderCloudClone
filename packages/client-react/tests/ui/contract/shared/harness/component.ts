@@ -1,4 +1,4 @@
-import type { Price, PriceTick, Quote } from "@rtc/domain";
+import type { EquityOrder, Price, PriceTick, Quote } from "@rtc/domain";
 
 import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
@@ -20,6 +20,8 @@ export interface PageContext<P> {
   setIntent(target: string, intent: AnimationIntent | null): void;
   /** Push a new throughput view (useThroughput source). */
   setThroughputView(patch: Partial<ThroughputView>): void;
+  /** Advance the OrderTicket lifecycle by emitting one EquityOrder into place(). */
+  pushOrderLifecycle(order: EquityOrder): void;
   /** Values captured from useThroughput().setValue calls. */
   readonly throughputSets: number[];
   readonly commands: CommandLog;
@@ -69,6 +71,11 @@ export abstract class MountedComponent<P> {
   /** Push a new throughput view → re-render the AdminPanel. */
   protected setThroughputView(patch: Partial<ThroughputView>): void {
     this.ctx.setThroughputView(patch);
+  }
+
+  /** Emit one EquityOrder into the OrderTicket's place() lifecycle. */
+  protected pushOrderLifecycle(order: EquityOrder): void {
+    this.ctx.pushOrderLifecycle(order);
   }
 
   /** Values recorded by the faked useThroughput().setValue (PUT equivalent). */

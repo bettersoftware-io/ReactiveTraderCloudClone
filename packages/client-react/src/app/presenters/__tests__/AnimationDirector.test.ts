@@ -12,6 +12,7 @@ import {
 } from "@rtc/domain";
 
 import { AnimationDirector, type AnimationIntent } from "../AnimationDirector";
+import type { EquityFillSignal } from "../OrdersBlotterPresenter";
 import type { ExecutionOutcome } from "../TradeExecutionPresenter";
 
 const EURUSD: CurrencyPair = {
@@ -34,6 +35,7 @@ describe("AnimationDirector", () => {
     const status$ = new Subject<ConnectionStatus>();
     const executions$ = new Subject<ExecutionOutcome>();
     const rfqEvents$ = new Subject<RfqEvent>();
+    const equityFills$ = new Subject<EquityFillSignal>();
 
     const director = new AnimationDirector({
       pairs$,
@@ -43,6 +45,7 @@ describe("AnimationDirector", () => {
       connectionStatus$: status$,
       executions$,
       rfqEvents$,
+      equityFills$,
     });
 
     const seen: AnimationIntent[] = [];
@@ -63,6 +66,7 @@ describe("AnimationDirector", () => {
     const status$ = new Subject<ConnectionStatus>();
     const executions$ = new Subject<ExecutionOutcome>();
     const rfqEvents$ = new Subject<RfqEvent>();
+    const equityFills$ = new Subject<EquityFillSignal>();
 
     const director = new AnimationDirector({
       pairs$,
@@ -72,6 +76,7 @@ describe("AnimationDirector", () => {
       connectionStatus$: status$,
       executions$,
       rfqEvents$,
+      equityFills$,
     });
 
     const seen: AnimationIntent[] = [];
@@ -92,6 +97,7 @@ describe("AnimationDirector", () => {
     const status$ = new Subject<ConnectionStatus>();
     const executions$ = new Subject<ExecutionOutcome>();
     const rfqEvents$ = new Subject<RfqEvent>();
+    const equityFills$ = new Subject<EquityFillSignal>();
 
     const director = new AnimationDirector({
       pairs$,
@@ -101,6 +107,7 @@ describe("AnimationDirector", () => {
       connectionStatus$: status$,
       executions$,
       rfqEvents$,
+      equityFills$,
     });
 
     const seen: AnimationIntent[] = [];
@@ -127,6 +134,7 @@ describe("AnimationDirector", () => {
     const pairs$ = new BehaviorSubject<readonly CurrencyPair[]>([]);
     const executions$ = new Subject<ExecutionOutcome>();
     const rfqEvents$ = new Subject<RfqEvent>();
+    const equityFills$ = new Subject<EquityFillSignal>();
 
     const director = new AnimationDirector({
       pairs$,
@@ -136,6 +144,7 @@ describe("AnimationDirector", () => {
       connectionStatus$: status$,
       executions$,
       rfqEvents$,
+      equityFills$,
     });
 
     const seen: AnimationIntent[] = [];
@@ -158,6 +167,7 @@ describe("AnimationDirector", () => {
     const status$ = new Subject<ConnectionStatus>();
     const executions$ = new Subject<ExecutionOutcome>();
     const rfqEvents$ = new Subject<RfqEvent>();
+    const equityFills$ = new Subject<EquityFillSignal>();
 
     const director = new AnimationDirector({
       pairs$,
@@ -167,6 +177,7 @@ describe("AnimationDirector", () => {
       connectionStatus$: status$,
       executions$,
       rfqEvents$,
+      equityFills$,
     });
 
     const seen: AnimationIntent[] = [];
@@ -189,6 +200,7 @@ describe("AnimationDirector", () => {
     const status$ = new Subject<ConnectionStatus>();
     const executions$ = new Subject<ExecutionOutcome>();
     const rfqEvents$ = new Subject<RfqEvent>();
+    const equityFills$ = new Subject<EquityFillSignal>();
 
     const director = new AnimationDirector({
       pairs$,
@@ -198,6 +210,7 @@ describe("AnimationDirector", () => {
       connectionStatus$: status$,
       executions$,
       rfqEvents$,
+      equityFills$,
     });
 
     const seen: AnimationIntent[] = [];
@@ -223,6 +236,7 @@ describe("AnimationDirector", () => {
     const status$ = new Subject<ConnectionStatus>();
     const executions$ = new Subject<ExecutionOutcome>();
     const rfqEvents$ = new Subject<RfqEvent>();
+    const equityFills$ = new Subject<EquityFillSignal>();
 
     const director = new AnimationDirector({
       pairs$,
@@ -232,6 +246,7 @@ describe("AnimationDirector", () => {
       connectionStatus$: status$,
       executions$,
       rfqEvents$,
+      equityFills$,
     });
 
     const rfq7Seen: AnimationIntent[] = [];
@@ -275,6 +290,7 @@ describe("AnimationDirector", () => {
     const status$ = new Subject<ConnectionStatus>();
     const executions$ = new Subject<ExecutionOutcome>();
     const rfqEvents$ = new Subject<RfqEvent>();
+    const equityFills$ = new Subject<EquityFillSignal>();
 
     const director = new AnimationDirector({
       pairs$,
@@ -284,6 +300,7 @@ describe("AnimationDirector", () => {
       connectionStatus$: status$,
       executions$,
       rfqEvents$,
+      equityFills$,
     });
 
     const seen: AnimationIntent[] = [];
@@ -343,5 +360,34 @@ describe("AnimationDirector", () => {
     sub.unsubscribe();
 
     expect(seen).toHaveLength(0);
+  });
+
+  it("emits fill intent on ticket:AAPL when equityFills$ fires", () => {
+    const pairs$ = new BehaviorSubject<readonly CurrencyPair[]>([]);
+    const status$ = new Subject<ConnectionStatus>();
+    const executions$ = new Subject<ExecutionOutcome>();
+    const rfqEvents$ = new Subject<RfqEvent>();
+    const equityFills$ = new Subject<EquityFillSignal>();
+
+    const director = new AnimationDirector({
+      pairs$,
+      priceFor: (_pair: CurrencyPair) => {
+        return EMPTY;
+      },
+      connectionStatus$: status$,
+      executions$,
+      rfqEvents$,
+      equityFills$,
+    });
+
+    const seen: AnimationIntent[] = [];
+    const sub = director.intentsFor("ticket:AAPL").subscribe((i) => {
+      return seen.push(i);
+    });
+
+    equityFills$.next({ symbol: "AAPL" });
+    sub.unsubscribe();
+
+    expect(seen).toEqual([{ target: "ticket:AAPL", kind: "fill" }]);
   });
 });
