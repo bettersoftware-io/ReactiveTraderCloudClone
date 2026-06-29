@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { TESTIDS } from "../contracts/testids";
-import type { WorkspacePO } from "../contracts/Workspace";
+import type { ClickOptions, WorkspacePO } from "../contracts/Workspace";
 
 export class PlaywrightWorkspace implements WorkspacePO {
   constructor(private readonly page: Page) {}
@@ -41,6 +41,20 @@ export class PlaywrightWorkspace implements WorkspacePO {
     return await this.page.locator("#root > div").evaluate((el) => {
       return getComputedStyle(el as HTMLElement).backgroundColor;
     });
+  }
+
+  async clickTestId(id: string, options?: ClickOptions): Promise<void> {
+    const locator = this.page.getByTestId(id);
+
+    if (options?.force) {
+      // dispatchEvent bypasses browser pointer-event routing so clicks reach
+      // the element even when a higher z-index overlay intercepts cursor events.
+      await locator.evaluate((el) => {
+        return (el as HTMLElement).click();
+      });
+    } else {
+      await locator.click();
+    }
   }
 
   async wait(ms: number): Promise<void> {

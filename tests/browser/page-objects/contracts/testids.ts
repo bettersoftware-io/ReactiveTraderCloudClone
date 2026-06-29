@@ -39,4 +39,12 @@ export const TESTIDS = {
     },
     directionLabel: "rfq-direction-label",
   },
+  admin: {
+    incident: {
+      inject: (kind: string) => {
+        return `incident-${kind}`;
+      },
+      clear: "incident-clear",
+    },
+  },
 } as const;

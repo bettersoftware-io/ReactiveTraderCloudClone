@@ -1,5 +1,5 @@
 import { TESTIDS } from "../contracts/testids";
-import type { WorkspacePO } from "../contracts/Workspace";
+import type { ClickOptions, WorkspacePO } from "../contracts/Workspace";
 
 /**
  * Cypress impl of WorkspacePO. Methods return Promise<T> by chaining `.then`
@@ -57,6 +57,12 @@ export class CypressWorkspace implements WorkspacePO {
     return cy.get("#root > div").then(($el) => {
       return getComputedStyle($el[0]).backgroundColor;
     }) as unknown as Promise<string>;
+  }
+
+  clickTestId(id: string, options?: ClickOptions): Promise<void> {
+    return cy
+      .get(`[data-testid="${id}"]`)
+      .click({ force: options?.force }) as unknown as Promise<void>;
   }
 
   wait(ms: number): Promise<void> {
