@@ -128,17 +128,29 @@ export {
   THEME_MODES,
   THEME_SKINS,
 } from "./preferences/preferences.js";
-export type { PreferencesSeed, TradeListener } from "./simulators/index.js";
+export type {
+  EquityOrderDeps,
+  FillEvent,
+  OrderListener,
+  PreferencesSeed,
+  TradeListener,
+} from "./simulators/index.js";
 // Simulators (in-memory port implementations)
 export {
   AnalyticsSimulator,
+  aggregateCandle,
   ConnectionEventsSimulator,
   CreditRfqSimulator,
   DEALERS_CATALOG,
   DealerSimulator,
+  EquityMarketDataSimulator,
+  EquityOrderSimulator,
+  EquityPositionSimulator,
   ExecutionSimulator,
+  gbmStep,
   INSTRUMENTS_CATALOG,
   InstrumentSimulator,
+  mulberry32,
   PreferencesSimulator,
   PricingSimulator,
   ReferenceDataSimulator,
