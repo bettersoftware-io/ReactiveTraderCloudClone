@@ -34,11 +34,11 @@ describe("createDefaultLayoutPort", () => {
     expect(PANEL_SPECS["credit-blotter"].pinned).toBe(true);
   });
 
-  it("admin: a single throughput panel, no pinned slot", () => {
+  it("admin: a single dashboard panel, no pinned slot", () => {
     const { initial } = createDefaultLayoutPort("admin");
     expect(initial.root).toEqual({
       kind: "panel",
-      panelId: "admin-throughput",
+      panelId: "admin-dashboard",
     });
   });
 
