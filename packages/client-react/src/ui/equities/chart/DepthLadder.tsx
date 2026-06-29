@@ -21,6 +21,7 @@ function DepthRow({ level, side, depth }: DepthRowProps): ReactElement {
     <div
       data-side={side}
       className={styles.row}
+      // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
       style={{ "--depth": depth } as CSSProperties}
     >
       <div className={styles.bar} />

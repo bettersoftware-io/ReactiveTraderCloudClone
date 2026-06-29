@@ -43,6 +43,7 @@ export function ThemePicker(): ReactElement {
                 setSkin(s);
               }}
               style={
+                // eslint-disable-next-line no-restricted-syntax -- runtime theme swatch colors via CSS custom properties; static CSS can't express them
                 {
                   "--swatch-1": tokens["--accent-primary"],
                   "--swatch-2": tokens["--accent-2"],

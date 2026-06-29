@@ -50,6 +50,7 @@ function HeatCell({ symbol, active, onSelect }: CellProps): ReactElement {
       data-active={active ? "true" : "false"}
       data-testid={`heatmap-cell-${symbol}`}
       className={styles.cell}
+      // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
       style={{ "--heat": heat } as CSSProperties}
       onClick={() => {
         onSelect(symbol);

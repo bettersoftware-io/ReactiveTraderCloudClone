@@ -44,6 +44,7 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
               <div
                 data-sign={sign}
                 className={styles.bar}
+                // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
                 style={{ "--bar-width": barWidth } as CSSProperties}
               />
             </div>
