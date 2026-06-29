@@ -1,9 +1,13 @@
 # Deploy
 
 The client deploys to **Vercel**, the WebSocket server to **Fly.io** (London,
-`lhr`). A push to `main` triggers `.github/workflows/deploy.yml`, which deploys
-both in parallel and smoke-checks each. Access is gated by a single shared
-password (the Vercel UI) and a matching token (the Fly WS handshake).
+`lhr`). Deploys are **on-demand only** — the single official way is to run
+`.github/workflows/deploy.yml` manually (Actions tab → "Deploy" → Run workflow,
+or `gh workflow run deploy.yml`). It deploys both in parallel and smoke-checks
+each. Nothing auto-deploys on a push or merge, on any branch: Vercel's Git
+integration is turned off by `"git": { "deploymentEnabled": false }` in
+`vercel.json`, so the workflow is the only path. Access is gated by a single
+shared password (the Vercel UI) and a matching token (the Fly WS handshake).
 
 ## One-time setup
 
@@ -43,7 +47,9 @@ Settings → Secrets and variables → Actions → New repository secret:
 
 ## Deploying
 
-Merge to `main`. The workflow deploys both and smoke-checks:
+Run the **Deploy** workflow manually — Actions tab → "Deploy" → Run workflow, or
+`gh workflow run deploy.yml`. (Merging to `main` does **not** deploy.) The
+workflow deploys both and smoke-checks:
 - server `/health` → 200
 - client unauthenticated → 401 (the password wall is live)
 
