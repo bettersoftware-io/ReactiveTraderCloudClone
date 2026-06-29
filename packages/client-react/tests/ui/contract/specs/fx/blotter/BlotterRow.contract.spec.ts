@@ -4,22 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-function trade(over: Partial<Trade> = {}): Trade {
-  return {
-    tradeId: 7001,
-    tradeName: "Alice",
-    currencyPair: "EURUSD",
-    notional: 2_500_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.09221,
-    status: TradeStatus.Done,
-    tradeDate: "2026-03-30",
-    valueDate: "2026-04-01",
-    ...over,
-  };
-}
-
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -76,3 +60,19 @@ describe("BlotterRow", () => {
     expect(row.backgroundColor()).toBe("transparent");
   });
 });
+
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 7001,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 2_500_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-03-30",
+    valueDate: "2026-04-01",
+    ...over,
+  };
+}

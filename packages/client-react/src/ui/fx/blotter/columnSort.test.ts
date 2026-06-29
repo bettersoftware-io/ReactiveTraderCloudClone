@@ -8,22 +8,6 @@ import {
   type SortState,
 } from "./columnSort";
 
-function trade(over: Partial<Trade> = {}): Trade {
-  return {
-    tradeId: 1,
-    tradeName: "Alice",
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.1,
-    status: TradeStatus.Done,
-    tradeDate: "2026-01-01",
-    valueDate: "2026-01-03",
-    ...over,
-  };
-}
-
 describe("nextSortDirection", () => {
   it("starts a date/ID column descending on first click", () => {
     const none: SortState = { column: null, direction: null };
@@ -196,3 +180,19 @@ describe("applySortToTrades", () => {
     expect(trades).toEqual(before);
   });
 });
+
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 1,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.1,
+    status: TradeStatus.Done,
+    tradeDate: "2026-01-01",
+    valueDate: "2026-01-03",
+    ...over,
+  };
+}

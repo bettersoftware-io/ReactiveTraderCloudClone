@@ -3,30 +3,6 @@ import { describe, expect, it } from "vitest";
 import { loadGolden } from "../__testUtils__/loadGolden.js";
 import { aggregateCandle, gbmStep, mulberry32 } from "./gbm.js";
 
-interface GbmCase {
-  price: number;
-  rand: number;
-  vol: number;
-  expected: number;
-}
-interface Golden {
-  _source: string;
-  gbm: GbmCase[];
-  mulberry32Seed42First3: number[];
-  candle: {
-    prices: number[];
-    time0: number;
-    bucketMs: number;
-    expected: {
-      time: number;
-      open: number;
-      high: number;
-      low: number;
-      close: number;
-    };
-  };
-}
-
 describe("equities GBM + candle helpers (golden)", () => {
   const g = loadGolden<never>(
     "equitiesGbm",
@@ -56,3 +32,28 @@ describe("equities GBM + candle helpers (golden)", () => {
     expect(candle).toEqual(g.candle.expected);
   });
 });
+
+interface GbmCase {
+  price: number;
+  rand: number;
+  vol: number;
+  expected: number;
+}
+
+interface Golden {
+  _source: string;
+  gbm: GbmCase[];
+  mulberry32Seed42First3: number[];
+  candle: {
+    prices: number[];
+    time0: number;
+    bucketMs: number;
+    expected: {
+      time: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+    };
+  };
+}

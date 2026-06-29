@@ -16,22 +16,6 @@ const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS[0];
 
 const quote: RfqQuote = { bid: 1.0921, ask: 1.0925, timeoutMs: 10_000 };
 
-type ExecutedTrade = { dir: Direction; price: Price; notional: number };
-
-function rfqState(
-  state: RfqState,
-  over: Partial<RfqStateLike> = {},
-): RfqStateLike {
-  return {
-    state,
-    requestQuote: () => {},
-    cancel: () => {},
-    reject: () => {},
-    accept: () => {},
-    ...over,
-  };
-}
-
 describe("TileRfq", () => {
   it("offers an Initiate RFQ button in the init state", async () => {
     let requested = 0;
@@ -202,3 +186,19 @@ describe("TileRfq", () => {
     expect(rfq.isEmpty()).toBe(true);
   });
 });
+
+type ExecutedTrade = { dir: Direction; price: Price; notional: number };
+
+function rfqState(
+  state: RfqState,
+  over: Partial<RfqStateLike> = {},
+): RfqStateLike {
+  return {
+    state,
+    requestQuote: () => {},
+    cancel: () => {},
+    reject: () => {},
+    accept: () => {},
+    ...over,
+  };
+}

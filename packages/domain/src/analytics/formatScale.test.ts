@@ -5,16 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import { formatPrecise2, formatWithScale, scaleNumber } from "./formatScale.js";
 
-interface GoldenCase {
-  input: number;
-  expected: { withScale: string; precise2: string };
-}
-
-interface Golden {
-  readonly _source: string;
-  readonly cases: ReadonlyArray<GoldenCase>;
-}
-
 const golden: Golden = JSON.parse(
   readFileSync(
     fileURLToPath(
@@ -62,3 +52,13 @@ describe("scaleNumber — billion and trillion thresholds", () => {
     expect(value).toBeCloseTo(-2, 10);
   });
 });
+
+interface GoldenCase {
+  input: number;
+  expected: { withScale: string; precise2: string };
+}
+
+interface Golden {
+  readonly _source: string;
+  readonly cases: ReadonlyArray<GoldenCase>;
+}

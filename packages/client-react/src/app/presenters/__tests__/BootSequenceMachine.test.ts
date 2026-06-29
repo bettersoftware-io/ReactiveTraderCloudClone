@@ -8,42 +8,6 @@ import {
   createBootSequenceMachine,
 } from "../BootSequenceMachine";
 
-function scheduler(): TestScheduler {
-  return new TestScheduler((a, e) => {
-    return expect(a).toEqual(e);
-  });
-}
-
-interface DepsFixture {
-  deps: {
-    variant: BootVariant;
-    advance: (n: BootVariant) => void;
-    onDone: () => void;
-  };
-  advanced: BootVariant[];
-  doneCount: () => number;
-}
-
-function deps(variant: BootVariant): DepsFixture {
-  const advanced: BootVariant[] = [];
-  let done = 0;
-  return {
-    deps: {
-      variant,
-      advance: (n: BootVariant): void => {
-        advanced.push(n);
-      },
-      onDone: (): void => {
-        done += 1;
-      },
-    },
-    advanced,
-    doneCount: (): number => {
-      return done;
-    },
-  };
-}
-
 describe("createBootSequenceMachine", () => {
   beforeEach(() => {
     return vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
@@ -149,3 +113,39 @@ describe("createBootSequenceMachine", () => {
     });
   });
 });
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((a, e) => {
+    return expect(a).toEqual(e);
+  });
+}
+
+interface DepsFixture {
+  deps: {
+    variant: BootVariant;
+    advance: (n: BootVariant) => void;
+    onDone: () => void;
+  };
+  advanced: BootVariant[];
+  doneCount: () => number;
+}
+
+function deps(variant: BootVariant): DepsFixture {
+  const advanced: BootVariant[] = [];
+  let done = 0;
+  return {
+    deps: {
+      variant,
+      advance: (n: BootVariant): void => {
+        advanced.push(n);
+      },
+      onDone: (): void => {
+        done += 1;
+      },
+    },
+    advanced,
+    doneCount: (): number => {
+      return done;
+    },
+  };
+}

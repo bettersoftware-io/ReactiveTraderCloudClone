@@ -6,34 +6,6 @@ import { createRfqCountdownMachine } from "../RfqCountdownMachine";
 const TOTAL_MS = 500;
 const INTERVAL = 100;
 
-function scheduler(): TestScheduler {
-  return new TestScheduler((actual, expected) => {
-    expect(actual).toEqual(expected);
-  });
-}
-
-interface FrameEmission {
-  frame: number;
-  value: number;
-}
-
-/** Create a machine with creationTimestamp = Date.now() so elapsed ≈ 0 and
- * initialRemaining === totalMs. Collect every emission with its virtual frame. */
-function run(totalMs: number): Array<FrameEmission> {
-  const seen: Array<FrameEmission> = [];
-  const ts = scheduler();
-  ts.run(({ flush }) => {
-    const machine = createRfqCountdownMachine(Date.now(), totalMs);
-    const sub = machine.state$.subscribe((value) => {
-      return seen.push({ frame: ts.now(), value });
-    });
-    flush();
-    sub.unsubscribe();
-    machine.dispose();
-  });
-  return seen;
-}
-
 describe("createRfqCountdownMachine", () => {
   // Freeze the wall clock so the machine's internal Date.now() (RfqCountdownMachine
   // line 19) returns the same instant as the creationTimestamp each test passes,
@@ -131,3 +103,31 @@ describe("createRfqCountdownMachine", () => {
     });
   });
 });
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected);
+  });
+}
+
+interface FrameEmission {
+  frame: number;
+  value: number;
+}
+
+/** Create a machine with creationTimestamp = Date.now() so elapsed ≈ 0 and
+ * initialRemaining === totalMs. Collect every emission with its virtual frame. */
+function run(totalMs: number): Array<FrameEmission> {
+  const seen: Array<FrameEmission> = [];
+  const ts = scheduler();
+  ts.run(({ flush }) => {
+    const machine = createRfqCountdownMachine(Date.now(), totalMs);
+    const sub = machine.state$.subscribe((value) => {
+      return seen.push({ frame: ts.now(), value });
+    });
+    flush();
+    sub.unsubscribe();
+    machine.dispose();
+  });
+  return seen;
+}

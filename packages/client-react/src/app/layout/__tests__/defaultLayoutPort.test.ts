@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { createDefaultLayoutPort, PANEL_SPECS } from "../defaultLayoutPort";
 
-function panelIds(node: import("../layoutPort").LayoutNode): string[] {
-  return node.kind === "panel"
-    ? [node.panelId]
-    : node.children.flatMap(panelIds);
-}
-
 describe("createDefaultLayoutPort", () => {
   it("fx: rates + analytics fill the content row; blotter is the pinned bottom slot", () => {
     const { initial } = createDefaultLayoutPort("fx");
@@ -49,3 +43,9 @@ describe("createDefaultLayoutPort", () => {
     }
   });
 });
+
+function panelIds(node: import("../layoutPort").LayoutNode): string[] {
+  return node.kind === "panel"
+    ? [node.panelId]
+    : node.children.flatMap(panelIds);
+}

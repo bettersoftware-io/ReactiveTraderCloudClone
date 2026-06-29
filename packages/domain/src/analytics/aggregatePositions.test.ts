@@ -9,16 +9,6 @@ import {
 } from "./aggregatePositions.js";
 import type { CurrencyPairPosition } from "./position.js";
 
-interface GoldenCase {
-  input: CurrencyPairPosition[];
-  expected: CurrencyPositionNode[];
-}
-
-interface Golden {
-  readonly _source: string;
-  readonly cases: ReadonlyArray<GoldenCase>;
-}
-
 const golden: Golden = JSON.parse(
   readFileSync(
     fileURLToPath(
@@ -79,3 +69,13 @@ describe("aggregatePositionsByCurrency (golden: original Positions/data.ts)", ()
     }
   });
 });
+
+interface GoldenCase {
+  input: CurrencyPairPosition[];
+  expected: CurrencyPositionNode[];
+}
+
+interface Golden {
+  readonly _source: string;
+  readonly cases: ReadonlyArray<GoldenCase>;
+}

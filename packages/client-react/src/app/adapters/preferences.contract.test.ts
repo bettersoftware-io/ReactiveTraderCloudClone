@@ -17,14 +17,6 @@ import {
   VIEW_MODE_STORAGE_KEY,
 } from "./LocalStoragePreferencesAdapter";
 
-function clearStorage(): void {
-  localStorage.removeItem(THEME_STORAGE_KEY);
-  localStorage.removeItem(THEME_SKIN_STORAGE_KEY);
-  localStorage.removeItem(VIEW_MODE_STORAGE_KEY);
-  localStorage.removeItem(ANIMATED_BG_STORAGE_KEY);
-  localStorage.removeItem(BOOT_VARIANT_STORAGE_KEY);
-}
-
 describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
   beforeEach(clearStorage);
   afterEach(clearStorage);
@@ -90,3 +82,11 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     expect(await firstValueFrom(port.themeSkin$())).toBe(DEFAULT_THEME_SKIN);
   });
 });
+
+function clearStorage(): void {
+  localStorage.removeItem(THEME_STORAGE_KEY);
+  localStorage.removeItem(THEME_SKIN_STORAGE_KEY);
+  localStorage.removeItem(VIEW_MODE_STORAGE_KEY);
+  localStorage.removeItem(ANIMATED_BG_STORAGE_KEY);
+  localStorage.removeItem(BOOT_VARIANT_STORAGE_KEY);
+}

@@ -10,13 +10,6 @@ afterEach(() => {
   return vi.useRealTimers();
 });
 
-/** Unwrap current value; throws if the machine is not warm (StatePromise). */
-function peek<T>(obs: StateObservable<T>): T {
-  const v = obs.getValue();
-  if (v instanceof Promise) throw new Error("state$ not initialized");
-  return v;
-}
-
 describe("OrderTicketMachine", () => {
   it("starts editing with the default symbol and no error", () => {
     const m = createOrderTicketMachine({
@@ -89,3 +82,10 @@ describe("OrderTicketMachine", () => {
     m.dispose();
   });
 });
+
+/** Unwrap current value; throws if the machine is not warm (StatePromise). */
+function peek<T>(obs: StateObservable<T>): T {
+  const v = obs.getValue();
+  if (v instanceof Promise) throw new Error("state$ not initialized");
+  return v;
+}

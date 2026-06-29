@@ -14,10 +14,6 @@ const INSTRUMENTS: readonly EquityInstrument[] = [
   { symbol: "JPM", name: "JPMorgan", exchange: "NYSE" },
 ];
 
-function quote(symbol: string, changePct: number): EquityQuote {
-  return { symbol, bid: 99, ask: 101, last: 100, changePct, timestamp: 0 };
-}
-
 const QUOTES = {
   AAPL: quote("AAPL", 8),
   MSFT: quote("MSFT", -2),
@@ -72,3 +68,7 @@ describe("SectorHeatmap", () => {
     expect(heatmap.isEmpty()).toBe(true);
   });
 });
+
+function quote(symbol: string, changePct: number): EquityQuote {
+  return { symbol, bid: 99, ask: 101, last: 100, changePct, timestamp: 0 };
+}

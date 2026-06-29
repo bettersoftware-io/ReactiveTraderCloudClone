@@ -3,11 +3,6 @@ import { describe, expect, it } from "vitest";
 import { loadGolden } from "../__testUtils__/loadGolden.js";
 import { rfqResponseDelayMs } from "./PricingSimulator.js";
 
-interface DelayCase {
-  rand: number;
-  expected: number;
-}
-
 describe("rfqResponseDelayMs (golden: rtc-original rfqs.ts:13)", () => {
   const golden = loadGolden<DelayCase>("rfqResponseDelayMs", import.meta.url);
   it.each(golden.cases as DelayCase[])("rand=$rand -> $expected ms", ({
@@ -24,3 +19,8 @@ describe("rfqResponseDelayMs (golden: rtc-original rfqs.ts:13)", () => {
     }
   });
 });
+
+interface DelayCase {
+  rand: number;
+  expected: number;
+}

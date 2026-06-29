@@ -10,45 +10,6 @@ import type { Machine } from "#/app/presenters/machine";
 
 import { useMachine } from "./useMachine";
 
-interface TestMachineIntents {
-  intent: () => void;
-}
-interface LifecycleMachineIntents {
-  bump: () => void;
-}
-interface TestMachine<S> {
-  machine: Machine<S, TestMachineIntents>;
-  intent: Mock<() => void>;
-  dispose: Mock<() => void>;
-  subject: BehaviorSubject<S>;
-}
-interface LifecycleMachine {
-  machine: Machine<number, LifecycleMachineIntents>;
-  dispose: Mock<() => void>;
-}
-
-/** Build a minimal test machine from a BehaviorSubject.
- * We subscribe immediately so the StateObservable stays warm
- * for the duration of the test. */
-function makeTestMachine<S>(subject: BehaviorSubject<S>): TestMachine<S> {
-  const state$ = state(subject, subject.getValue());
-  // Keep the StateObservable warm (ref-count > 0) so useStateObservable can
-  // read the synchronous default without entering Suspense.
-  const sub = state$.subscribe();
-
-  const intent = vi.fn();
-  const dispose = vi.fn(() => {
-    return sub.unsubscribe();
-  });
-
-  const machine: Machine<S, TestMachineIntents> = {
-    state$,
-    intents: { intent },
-    dispose,
-  };
-  return { machine, intent, dispose, subject };
-}
-
 describe("useMachine", () => {
   it("calls the factory exactly once across re-renders", () => {
     const factory = vi.fn(() => {
@@ -253,3 +214,45 @@ describe("useMachine", () => {
     expect(dispose).toHaveBeenCalledTimes(1);
   });
 });
+
+interface TestMachineIntents {
+  intent: () => void;
+}
+
+interface LifecycleMachineIntents {
+  bump: () => void;
+}
+
+interface TestMachine<S> {
+  machine: Machine<S, TestMachineIntents>;
+  intent: Mock<() => void>;
+  dispose: Mock<() => void>;
+  subject: BehaviorSubject<S>;
+}
+
+interface LifecycleMachine {
+  machine: Machine<number, LifecycleMachineIntents>;
+  dispose: Mock<() => void>;
+}
+
+/** Build a minimal test machine from a BehaviorSubject.
+ * We subscribe immediately so the StateObservable stays warm
+ * for the duration of the test. */
+function makeTestMachine<S>(subject: BehaviorSubject<S>): TestMachine<S> {
+  const state$ = state(subject, subject.getValue());
+  // Keep the StateObservable warm (ref-count > 0) so useStateObservable can
+  // read the synchronous default without entering Suspense.
+  const sub = state$.subscribe();
+
+  const intent = vi.fn();
+  const dispose = vi.fn(() => {
+    return sub.unsubscribe();
+  });
+
+  const machine: Machine<S, TestMachineIntents> = {
+    state$,
+    intents: { intent },
+    dispose,
+  };
+  return { machine, intent, dispose, subject };
+}

@@ -5,15 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import { applyMaximum } from "./rfq.js";
 
-interface Case {
-  readonly input: number;
-  readonly expected: number;
-}
-
-interface Golden {
-  cases: Case[];
-}
-
 const golden = JSON.parse(
   readFileSync(
     fileURLToPath(
@@ -30,3 +21,12 @@ describe("applyMaximum (credit max-quantity cap)", () => {
     });
   }
 });
+
+interface Case {
+  readonly input: number;
+  readonly expected: number;
+}
+
+interface Golden {
+  cases: Case[];
+}

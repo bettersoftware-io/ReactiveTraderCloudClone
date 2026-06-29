@@ -11,6 +11,16 @@ import {
 
 import { type AppHooks, createAppHooks } from "../createAppHooks";
 
+describe("useAnimationIntents", () => {
+  it("starts null before any animation intent fires for the target", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useAnimationIntents("tile:EURUSD");
+    });
+    expect(result.current).toBeNull();
+  });
+});
+
 function makeHooks(): AppHooks {
   const { presenters, commands } = createApp({
     ...createSimPorts(),
@@ -26,13 +36,3 @@ function makeHooks(): AppHooks {
     return { ...base, preferences: new PreferencesSimulator() };
   }
 }
-
-describe("useAnimationIntents", () => {
-  it("starts null before any animation intent fires for the target", () => {
-    const hooks = makeHooks();
-    const { result } = renderHook(() => {
-      return hooks.useAnimationIntents("tile:EURUSD");
-    });
-    expect(result.current).toBeNull();
-  });
-});

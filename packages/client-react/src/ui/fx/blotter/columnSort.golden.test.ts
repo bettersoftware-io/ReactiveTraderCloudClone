@@ -10,11 +10,6 @@ import { loadGolden } from "#tests/ui/__golden__/loadGolden";
 
 import { nextSortDirection, type SortState } from "./columnSort";
 
-interface FirstClickCase {
-  input: keyof Trade;
-  expected: "asc" | "desc";
-}
-
 describe("nextSortDirection — first-click direction matches rtc-original descDefaultFields", () => {
   const golden = loadGolden<FirstClickCase>("sort-first-click-direction");
   const none: SortState = { column: null, direction: null };
@@ -28,3 +23,8 @@ describe("nextSortDirection — first-click direction matches rtc-original descD
     });
   }
 });
+
+interface FirstClickCase {
+  input: keyof Trade;
+  expected: "asc" | "desc";
+}

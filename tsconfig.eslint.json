@@ -33,6 +33,7 @@
     "packages/*/tests/**/*.ts",
     "packages/*/tests/**/*.tsx",
     "packages/*/*.config.ts",
+    "eslint-rules/*.ts",
     "tests/**/*.ts",
     "middleware.ts"
   ],
