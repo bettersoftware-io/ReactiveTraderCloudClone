@@ -3,7 +3,9 @@ import { afterEach, vi } from "vitest";
 import { describeOrderPortContract } from "../ports/__contracts__/OrderPortContract.js";
 import { EquityOrderSimulator } from "./EquityOrderSimulator.js";
 
-afterEach(() => {return vi.useRealTimers()});
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describeOrderPortContract("EquityOrderSimulator", () => {
   vi.useFakeTimers();
@@ -12,8 +14,8 @@ describeOrderPortContract("EquityOrderSimulator", () => {
     port,
     driver: {
       // Lifecycle stages (new→working→partiallyFilled→filled) fire via
-      // queueMicrotask which is NOT faked. Awaiting any Promise drains the
-      // microtask queue, completing the lifecycle before this returns.
+      // timer() over simulated time. Advancing 2000ms past FILL_MS=1500
+      // completes the full lifecycle.
       settlePlacement: async () => {
         await vi.advanceTimersByTimeAsync(2000);
       },
@@ -26,6 +28,8 @@ describeOrderPortContract("EquityOrderSimulator", () => {
         await Promise.resolve();
       },
     },
-    teardown: () => {return vi.useRealTimers()},
+    teardown: () => {
+      return vi.useRealTimers();
+    },
   };
 });

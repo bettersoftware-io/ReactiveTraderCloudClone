@@ -46,17 +46,20 @@ export function describeOrderPortContract(
       const { port, driver, teardown } = makeHarness();
 
       try {
-        await lastValueFrom(
+        const placed = lastValueFrom(
           port
             .place({ symbol: "AAPL", side: "buy", type: "market", qty: 50 })
             .pipe(toArray()),
           { defaultValue: [] },
         );
         await driver.settlePlacement();
+        await placed;
         const snapshot = lastValueFrom(port.orders().pipe(toArray()));
         await driver.ackOrders();
         const arrays = await snapshot;
-        expect(Array.isArray(arrays[arrays.length - 1])).toBe(true);
+        const lastSnapshot = arrays[arrays.length - 1] ?? [];
+        expect(Array.isArray(lastSnapshot)).toBe(true);
+        expect(lastSnapshot.length).toBeGreaterThan(0);
       } finally {
         teardown();
       }
@@ -68,9 +71,11 @@ export function describeOrderPortContract(
       try {
         const done = lastValueFrom(port.cancel("nonexistent").pipe(toArray()));
         await driver.ackCancel();
-        await expect(done).resolves.toSatisfy((values: readonly unknown[]) =>
-          {return values.every((v) => {return v === undefined})},
-        );
+        await expect(done).resolves.toSatisfy((values: readonly unknown[]) => {
+          return values.every((v) => {
+            return v === undefined;
+          });
+        });
       } finally {
         teardown();
       }
