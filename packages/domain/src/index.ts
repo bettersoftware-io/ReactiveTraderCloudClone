@@ -46,6 +46,18 @@ export {
   CREDIT_RFQ_EXPIRY_SECONDS,
   RfqState,
 } from "./credit/rfq.js";
+// Equities
+export type { Candle } from "./equities/candle.js";
+export type { DepthBook, DepthLevel } from "./equities/depth.js";
+export type { EquityInstrument } from "./equities/instrument.js";
+export type {
+  EquityOrder,
+  OrderSide,
+  OrderStatus,
+  OrderType,
+} from "./equities/order.js";
+export type { EquityPosition } from "./equities/position.js";
+export type { EquityQuote } from "./equities/quote.js";
 export type { CurrencyCategory } from "./fx/currencyFilter.js";
 export {
   CURRENCY_CATEGORIES,
