@@ -12,6 +12,7 @@
     "test:e2e": "turbo run test:e2e",
     "test:e2e:no-cypress": "RTC_E2E_SKIP_CYPRESS=1 turbo run test:e2e",
     "test:ui:visual": "turbo run test:ui:visual",
+    "test:rules": "vitest run --config eslint-rules/vitest.config.ts",
     "format": "biome format --write .",
     "lint": "biome lint .",
     "check": "biome check .",
@@ -41,6 +42,7 @@
     "syncpack": "^15.3.2",
     "turbo": "^2.4",
     "typescript": "^6",
-    "typescript-eslint": "^8.61.1"
+    "typescript-eslint": "^8.61.1",
+    "vitest": "^4"
   }
 }
