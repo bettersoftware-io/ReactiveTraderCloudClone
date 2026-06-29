@@ -2,5 +2,6 @@
   "framework": "vite",
   "buildCommand": "pnpm turbo run build --filter=@rtc/client-react",
   "outputDirectory": "packages/client-react/dist",
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
+  "git": { "deploymentEnabled": false }
 }

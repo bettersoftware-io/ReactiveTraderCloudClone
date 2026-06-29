@@ -83,6 +83,7 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
           <div className={styles.bar}>
             <div
               className={styles.fill}
+              // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
               style={{ "--boot-pct": `${state.progress}%` } as CSSProperties}
             />
           </div>

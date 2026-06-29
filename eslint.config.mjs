@@ -2,6 +2,79 @@ import prettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
+// Structural `no-restricted-syntax` bans shared between the repo-wide block and
+// the client-`src` block (which appends the inline-style ban). Flat config
+// REPLACES — does not merge — a rule's options across matching blocks, so the
+// scoped block must re-list these via the spread or it would silently disable
+// them for client `src`.
+//
+// Ban anonymous inline object types in USAGE positions — extract each to a
+// named interface/type alias. DEFINITION positions stay legal: `type X = {...}`,
+// discriminated-union members (`| { ... }`), `interface` bodies, and object
+// types nested inside a named type's property. Functions' return types are also
+// enforced here because Biome's useExplicitType permits inline-object returns;
+// this is the one rule that forbids them. (Each selector is split out so the
+// message names the offending position.)
+const restrictedSyntax = [
+  {
+    selector:
+      ":matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression, TSDeclareFunction, TSMethodSignature, TSFunctionType, TSConstructorType) > .returnType TSTypeLiteral",
+    message:
+      "Inline object return type — extract to a named interface/type alias.",
+  },
+  {
+    selector:
+      ":matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression, TSDeclareFunction, TSMethodSignature, TSFunctionType, TSConstructorType) > .params TSTypeLiteral",
+    message:
+      "Inline object parameter type — extract to a named interface/type alias.",
+  },
+  {
+    selector: "VariableDeclarator > .id > TSTypeAnnotation TSTypeLiteral",
+    message:
+      "Inline object variable type — extract to a named interface/type alias.",
+  },
+  {
+    selector: "PropertyDefinition > .typeAnnotation TSTypeLiteral",
+    message:
+      "Inline object property type — extract to a named interface/type alias.",
+  },
+  {
+    selector: ":matches(TSAsExpression, TSSatisfiesExpression) > TSTypeLiteral",
+    message:
+      "Inline object type in a cast — extract to a named interface/type alias.",
+  },
+  {
+    selector: "TSTypeParameterInstantiation > TSTypeLiteral",
+    message:
+      "Inline object as a type argument — extract to a named interface/type alias.",
+  },
+  {
+    selector:
+      "VariableDeclarator[init.callee.name='useHooks'][id.type='Identifier']",
+    message: "Destructure the hooks you need: const { useX } = useHooks().",
+  },
+  {
+    // Ban chained access off useHooks() — `useHooks().useX()` reaches into
+    // the bundle inline. Destructure first, then call:
+    //   const { useX } = useHooks();  useX(args)
+    selector: "MemberExpression[object.callee.name='useHooks']",
+    message:
+      "Don't chain off useHooks(). Destructure first: const { useX } = useHooks(); then call useX().",
+  },
+];
+
+// Ban inline `style={{…}}` object literals — with or without an `as
+// CSSProperties` cast (the cast wraps the object in a TSAsExpression, so it is
+// no longer a direct child of the JSX expression container). `style={variable}`
+// / `style={fn()}` are NOT matched (literal objects only — the original CSS-
+// Modules-migration grep gate's reach). Scoped to client `src` below.
+const inlineStyleProp = {
+  selector:
+    "JSXAttribute[name.name='style'] > JSXExpressionContainer > ObjectExpression, JSXAttribute[name.name='style'] > JSXExpressionContainer > TSAsExpression > ObjectExpression",
+  message:
+    "Inline style={{…}} is banned — move static styling to a co-located *.module.css. Only runtime-computed values (CSS custom properties) are exempt; if genuinely needed, add: // eslint-disable-next-line no-restricted-syntax -- <reason>.",
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -34,64 +107,19 @@ export default tseslint.config(
         { blankLine: "always", prev: "multiline-block-like", next: "*" },
         { blankLine: "always", prev: "*", next: "multiline-block-like" },
       ],
-      "no-restricted-syntax": [
-        "error",
-        // Ban anonymous inline object types in USAGE positions — extract each
-        // to a named interface/type alias. DEFINITION positions stay legal:
-        // `type X = { ... }`, discriminated-union members (`| { ... }`),
-        // `interface` bodies, and object types nested inside a named type's
-        // property. Functions' return types are also enforced here because
-        // Biome's useExplicitType permits inline-object returns; this is the
-        // one rule that forbids them. (Each selector is split out so the
-        // message names the offending position.)
-        {
-          selector:
-            ":matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression, TSDeclareFunction, TSMethodSignature, TSFunctionType, TSConstructorType) > .returnType TSTypeLiteral",
-          message:
-            "Inline object return type — extract to a named interface/type alias.",
-        },
-        {
-          selector:
-            ":matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression, TSDeclareFunction, TSMethodSignature, TSFunctionType, TSConstructorType) > .params TSTypeLiteral",
-          message:
-            "Inline object parameter type — extract to a named interface/type alias.",
-        },
-        {
-          selector: "VariableDeclarator > .id > TSTypeAnnotation TSTypeLiteral",
-          message:
-            "Inline object variable type — extract to a named interface/type alias.",
-        },
-        {
-          selector: "PropertyDefinition > .typeAnnotation TSTypeLiteral",
-          message:
-            "Inline object property type — extract to a named interface/type alias.",
-        },
-        {
-          selector:
-            ":matches(TSAsExpression, TSSatisfiesExpression) > TSTypeLiteral",
-          message:
-            "Inline object type in a cast — extract to a named interface/type alias.",
-        },
-        {
-          selector: "TSTypeParameterInstantiation > TSTypeLiteral",
-          message:
-            "Inline object as a type argument — extract to a named interface/type alias.",
-        },
-        {
-          selector:
-            "VariableDeclarator[init.callee.name='useHooks'][id.type='Identifier']",
-          message:
-            "Destructure the hooks you need: const { useX } = useHooks().",
-        },
-        {
-          // Ban chained access off useHooks() — `useHooks().useX()` reaches into
-          // the bundle inline. Destructure first, then call:
-          //   const { useX } = useHooks();  useX(args)
-          selector: "MemberExpression[object.callee.name='useHooks']",
-          message:
-            "Don't chain off useHooks(). Destructure first: const { useX } = useHooks(); then call useX().",
-        },
-      ],
+      "no-restricted-syntax": ["error", ...restrictedSyntax],
+    },
+  },
+  {
+    // Inline style={{…}} ban — production UI only. The test harness
+    // (tests/ui/visual/*) uses inline styles as framework-neutral layout
+    // scaffolding (e.g. the panel-width wrapper) and is intentionally out of
+    // scope. Re-lists `restrictedSyntax` via the spread because flat config
+    // REPLACES (does not merge) a rule's options across matching blocks — a
+    // bare `[inlineStyleProp]` here would disable the type bans for client src.
+    files: ["packages/client-react/src/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": ["error", ...restrictedSyntax, inlineStyleProp],
     },
   },
   {
