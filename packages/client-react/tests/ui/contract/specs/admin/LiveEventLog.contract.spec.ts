@@ -39,7 +39,7 @@ describe("LiveEventLog", () => {
     expect(log.rowCount()).toBe(3);
   });
 
-  it("renders events in the provided (newest-first) order", () => {
+  it("renders events in the provided array order", () => {
     // The component renders in array order; the real presenter provides newest-first.
     // Specs provide the array already sorted newest-first to match production behaviour.
     const log = mount(LiveEventLog, {

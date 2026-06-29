@@ -98,7 +98,9 @@ describe("SectorHeatmap", () => {
       },
     });
 
-    // The cell renders in the "Other" sector — just verify it renders.
+    // Verify the cell renders AND that its sector-group label is "Other",
+    // proving the DEFAULT_SECTOR branch actually routes unknowns there.
     expect(heatmap.cells()).toEqual(["UNKNOWN"]);
+    expect(heatmap.hasSectorLabel("Other")).toBe(true);
   });
 });

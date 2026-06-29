@@ -51,15 +51,4 @@ describe("AdminDashboard", () => {
     const dash = mount(AdminDashboard, {});
     expect(dash.hasErrorRate()).toBe(true);
   });
-
-  it("renders all seven sub-panels at once", () => {
-    const dash = mount(AdminDashboard, {});
-    expect(dash.hasIncidentControls()).toBe(true);
-    expect(dash.hasTopology()).toBe(true);
-    expect(dash.hasEventLog()).toBe(true);
-    expect(dash.hasSessions()).toBe(true);
-    expect(dash.hasThroughputChart()).toBe(true);
-    expect(dash.hasLatencyHistogram()).toBe(true);
-    expect(dash.hasErrorRate()).toBe(true);
-  });
 });
