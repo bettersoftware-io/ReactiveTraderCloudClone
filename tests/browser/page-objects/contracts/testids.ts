@@ -9,6 +9,7 @@ export const TESTIDS = {
   connection: {
     status: "connection-status",
     overlay: "connection-overlay",
+    clearIncident: "connection-overlay-clear-incident",
   },
   liveRates: {
     tilePrefix: "tile-",

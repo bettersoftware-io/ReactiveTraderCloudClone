@@ -54,6 +54,20 @@ export class ConnectionOverlayPage extends MountedComponent<
     });
   }
 
+  /** The Clear incident button element, or null when absent. */
+  clearIncidentButton(): HTMLButtonElement | null {
+    return within(this.root).queryByTestId(
+      "connection-overlay-clear-incident",
+    ) as HTMLButtonElement | null;
+  }
+
+  /** Click the "Clear incident" button on the overlay (throws if absent). */
+  clearIncident(): void {
+    const btn = this.clearIncidentButton();
+    if (!btn) throw new Error("Clear incident button not found on overlay");
+    btn.click();
+  }
+
   /** Command invocations captured during the test (e.g. reconnect count). */
   get commands(): CommandLog {
     return this.commandLog();

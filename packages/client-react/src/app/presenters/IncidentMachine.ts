@@ -39,6 +39,7 @@ export function createIncidentMachine(
 
   const injectPatch$ = inject$.pipe(
     map((kind): Patch => {
+      // Perturb every control; each simulator reacts only to its own kind (errorBurst moves error-rate/log, not latency/topology).
       for (const c of deps.controls) c.perturb(kind);
       if (DISCONNECTING.has(kind))
         deps.pushConnectionEvent({ type: "gatewayDisconnected" });

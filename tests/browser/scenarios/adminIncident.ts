@@ -25,14 +25,12 @@ export async function injectIncident(
 }
 
 /**
- * Click the Clear button to dismiss all active incidents.
- * The connection overlay covers the admin controls while an incident is active,
- * so force the click to reach the button behind the overlay.
+ * Click the "Clear incident" button on the connection overlay to dismiss the
+ * active incident. The overlay button is in the visible foreground, so no
+ * force click is needed.
  */
 export async function clearIncident(ctx: TestContext): Promise<void> {
-  await ctx.po.workspace.clickTestId(TESTIDS.admin.incident.clear, {
-    force: true,
-  });
+  await ctx.po.connectionOverlay.clearIncident();
 }
 
 /**

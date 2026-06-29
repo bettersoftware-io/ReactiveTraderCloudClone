@@ -108,6 +108,23 @@ describe("IncidentControls ↔ ConnectionOverlay coupling", () => {
     expect(controls.isIdle()).toBe(true);
   });
 
+  it("overlay 'Clear incident' button recovers from a serviceDown incident", async () => {
+    const world = createWorld();
+    const controls = mountWith(world, IncidentControls);
+    const overlay = mountWith(world, ConnectionOverlay);
+
+    // Inject serviceDown → overlay must appear with the clear button visible
+    controls.inject("serviceDown");
+    await overlay.waitUntilVisible();
+    expect(overlay.clearIncidentButton()).not.toBeNull();
+
+    // Click the overlay's own clear button → overlay must hide
+    overlay.clearIncident();
+    await overlay.waitUntilHidden();
+
+    expect(overlay.isVisible()).toBe(false);
+  });
+
   it("errorBurst marks the button active but leaves other buttons inactive", () => {
     const world = createWorld();
     const controls = mountWith(world, IncidentControls);

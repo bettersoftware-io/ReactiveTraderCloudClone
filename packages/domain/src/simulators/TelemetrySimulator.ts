@@ -15,6 +15,7 @@ export class TelemetrySimulator implements TelemetryPort {
   ) {}
 
   private sampleThroughput(): MetricSample {
+    // Safe only because getThroughput() is a synchronous of(value); the subscribe resolves before this returns. If it ever becomes async, this would silently report the 100 placeholder.
     let v = 100;
     this.throughputSim.getThroughput().subscribe((x) => {
       v = x;
