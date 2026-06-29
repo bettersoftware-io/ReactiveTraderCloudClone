@@ -50,6 +50,7 @@
   font-family: var(--font-mono);
   font-size: 22px;
   font-weight: 700;
+  line-height: 31px;
   color: var(--text-primary);
 }
 

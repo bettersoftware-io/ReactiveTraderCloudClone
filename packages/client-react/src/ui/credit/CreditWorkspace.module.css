@@ -13,6 +13,7 @@
 .tab {
   padding: 4px 12px;
   font-size: 12px;
+  line-height: 17px;
   font-family: var(--font-display);
   border: none;
   border-radius: 3px;

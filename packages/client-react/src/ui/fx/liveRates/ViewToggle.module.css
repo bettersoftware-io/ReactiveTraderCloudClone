@@ -1,6 +1,7 @@
 .toggle {
   padding: 4px 10px;
   font-size: 12px;
+  line-height: 17px;
   border: 1px solid var(--border);
   border-radius: 3px;
   cursor: pointer;

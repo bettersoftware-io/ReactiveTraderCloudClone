@@ -19,6 +19,7 @@
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 13px;
+  line-height: 18px;
   padding: 2px 0;
   outline: none;
   text-align: right;

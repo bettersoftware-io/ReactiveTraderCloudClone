@@ -6,6 +6,7 @@
 .tab {
   padding: 4px 10px;
   font-size: 12px;
+  line-height: 17px;
   border: none;
   border-radius: 3px;
   cursor: pointer;
