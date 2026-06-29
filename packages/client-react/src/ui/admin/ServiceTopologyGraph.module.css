@@ -31,6 +31,11 @@
   letter-spacing: 0.04em;
 }
 
+/* .node is a selector scope for the data-status pulse rules below; no base styles. */
+.node {
+  /* intentionally empty: status-driven styles live in the compound rules */
+}
+
 /* Status colours + pulse. The keyframe modulates transform scale only, so the
    throughput-driven fill-opacity stays intact. No JS timer drives any of this. */
 .node[data-status="ok"] .dot {
@@ -45,6 +50,17 @@
 .node[data-status="down"] .dot {
   fill: var(--accent-negative);
   animation: pulse 0.8s ease-in-out infinite;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-muted);
 }
 
 @keyframes pulse {
