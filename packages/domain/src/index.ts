@@ -100,9 +100,12 @@ export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
 export type { DealerPort } from "./ports/dealerPort.js";
 export type { ExecutionPort } from "./ports/executionPort.js";
 export type { InstrumentPort } from "./ports/instrumentPort.js";
+// Ports
+export type { MarketDataPort } from "./ports/marketDataPort.js";
+export type { OrderPort, PlaceOrderRequest } from "./ports/orderPort.js";
+export type { PositionPort } from "./ports/positionPort.js";
 export type { PreferencesPort } from "./ports/preferencesPort.js";
 export type { PricingPort, RfqQuoteResult } from "./ports/pricingPort.js";
-// Ports
 export type { ReferenceDataPort } from "./ports/referenceDataPort.js";
 export type {
   CreateRfqRequest,
