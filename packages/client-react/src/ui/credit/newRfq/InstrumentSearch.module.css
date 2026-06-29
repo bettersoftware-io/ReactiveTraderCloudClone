@@ -41,11 +41,15 @@
   width: 100%;
   padding: 6px 8px;
   font-size: 12px;
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--border);
   border-radius: 3px;
   background-color: transparent;
   color: var(--text-primary);
   outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--border-strong);
 }
 
 .dropdown {
@@ -54,8 +58,9 @@
   left: 0;
   right: 0;
   z-index: 10;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
+  background-color: var(--panel);
+  backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--border);
   border-radius: 4px;
   max-height: 200px;
   overflow: auto;
@@ -66,7 +71,7 @@
   appearance: none;
   background: none;
   border: none;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border);
   width: 100%;
   text-align: left;
   display: block;

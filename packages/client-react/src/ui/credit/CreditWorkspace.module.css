@@ -13,6 +13,8 @@
 .tab {
   padding: 4px 12px;
   font-size: 12px;
+  line-height: 17px;
+  font-family: var(--font-display);
   border: none;
   border-radius: 3px;
   cursor: pointer;
@@ -23,6 +25,7 @@
 
 .tab[data-active="true"] {
   font-weight: 600;
-  background-color: var(--accent-primary);
-  color: var(--text-on-accent);
+  background-color: var(--chip);
+  color: var(--accent-primary);
+  box-shadow: var(--glow);
 }

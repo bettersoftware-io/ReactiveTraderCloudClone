@@ -1,0 +1,63 @@
+/* Shared HUD feedback keyframes. Driven by data-anim (set from
+ * useAnimationIntents); never by a timer. One keyframe per AnimationKind that
+ * needs a reusable motion; area-specific tints come from the consuming module
+ * via var(--token) on the element, not here. */
+@keyframes hudTickUp {
+  0% {
+    color: var(--accent-positive);
+    text-shadow: var(--glow);
+  }
+  100% {
+    color: inherit;
+    text-shadow: none;
+  }
+}
+@keyframes hudTickDown {
+  0% {
+    color: var(--accent-negative);
+    text-shadow: var(--glow);
+  }
+  100% {
+    color: inherit;
+    text-shadow: none;
+  }
+}
+@keyframes hudFillPulse {
+  0% {
+    box-shadow: var(--glow);
+    border-color: var(--accent-positive);
+  }
+  100% {
+    box-shadow: none;
+    border-color: var(--border);
+  }
+}
+@keyframes hudRejectPulse {
+  0% {
+    box-shadow: var(--glow);
+    border-color: var(--accent-negative);
+  }
+  100% {
+    box-shadow: none;
+    border-color: var(--border);
+  }
+}
+@keyframes hudExpiryPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes hudRowIn {
+  0% {
+    background-color: var(--accent-2);
+    opacity: 0;
+  }
+  100% {
+    background-color: transparent;
+    opacity: 1;
+  }
+}

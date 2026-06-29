@@ -62,6 +62,7 @@ import {
   type TileRfqState,
 } from "#/ui/fx/liveRates/tile/TileRfq";
 import { ViewToggle as ViewToggleComponent } from "#/ui/fx/liveRates/ViewToggle";
+import { AmbientBackground as AmbientBackgroundComponent } from "#/ui/shell/background/AmbientBackground";
 import { BootGate as BootGateComponent } from "#/ui/shell/boot/BootGate";
 import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
 import {
@@ -79,7 +80,9 @@ import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggl
 
 import {
   AdminPanel,
+  AmbientBackground,
   AnalyticsPanel,
+  AnimationProbe,
   BlotterHeader,
   BlotterRow,
   BootGate,
@@ -127,6 +130,7 @@ import type {
   ComponentToken,
   MountedComponent,
 } from "../shared/harness/component";
+import { AnimationProbe as AnimationProbeComponent } from "./AnimationProbe";
 import { LayoutEngineHost } from "./LayoutEngineHost";
 
 function noopFilter(_f: ColumnFilter | null): void {}
@@ -136,6 +140,16 @@ type ElementFor = (props: Record<string, unknown>) => ReactElement;
 
 /** token → React element factory. Identity-keyed; no string keys. */
 export const registry = new Map<AnyToken, ElementFor>([
+  [
+    AnimationProbe,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <AnimationProbeComponent
+          target={(p.target as string) ?? "tile:EURUSD"}
+        />
+      );
+    },
+  ],
   [
     BootSequence,
     (): ReactElement => {
@@ -579,6 +593,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     LockScreen,
     (): ReactElement => {
       return <LockScreenComponent />;
+    },
+  ],
+  [
+    AmbientBackground,
+    (): ReactElement => {
+      return <AmbientBackgroundComponent />;
     },
   ],
   [

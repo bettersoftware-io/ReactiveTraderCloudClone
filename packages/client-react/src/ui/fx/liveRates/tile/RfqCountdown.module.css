@@ -7,7 +7,7 @@
 .track {
   height: 4px;
   border-radius: 2px;
-  background-color: var(--border-primary);
+  background-color: var(--border);
   overflow: hidden;
 }
 

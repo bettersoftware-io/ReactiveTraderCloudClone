@@ -41,7 +41,15 @@ describe("new-row flash CSS matches rtc-original (golden)", () => {
       animationTimingFunction,
       animationIterationCount,
     } = c.expected;
-    const shorthand = `animation: ${animationName} ${animationDuration} ${animationTimingFunction} ${animationIterationCount}`;
+    // Build shorthand from only the defined fields so optional iteration count
+    // (default 1, omitted from shorthand) does not produce a literal "undefined".
+    const parts = [
+      animationName,
+      animationDuration,
+      animationTimingFunction,
+      animationIterationCount,
+    ].filter(Boolean);
+    const shorthand = `animation: ${parts.join(" ")}`;
     // Match the highlight rule block so we read the rule itself, not a comment.
     const highlightBlock =
       css.match(/\.row\[data-highlight="true"\]\s*\{[\s\S]*?\}/)?.[0] ?? "";
@@ -52,15 +60,16 @@ describe("new-row flash CSS matches rtc-original (golden)", () => {
     expect(highlightBlock).toContain(shorthand);
   });
 
-  it("defines @keyframes backgroundFlash with the golden colour stops in order", () => {
+  it("defines the new-row @keyframes with the golden colour stops in order", () => {
     const c = golden.cases.find((x) => {
       return x.input === "new-row";
     });
     if (!c?.expected.keyframeStops) throw new Error("missing keyframeStops");
+    const { animationName } = c.expected;
     const block = css.match(
-      /@keyframes\s+backgroundFlash\s*\{[\s\S]*?\n\}/,
+      new RegExp(`@keyframes\\s+${animationName}\\s*\\{[\\s\\S]*?\\n\\}`),
     )?.[0];
-    expect(block, "@keyframes backgroundFlash block present").toBeDefined();
+    expect(block, `@keyframes ${animationName} block present`).toBeDefined();
     const stopVars = c.expected.keyframeStops.map((s) => {
       return `var(--${s})`;
     });

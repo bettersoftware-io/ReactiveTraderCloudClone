@@ -1,4 +1,4 @@
-import { firstValueFrom, lastValueFrom, of, toArray } from "rxjs";
+import { firstValueFrom, lastValueFrom, of, Subject, toArray } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -197,5 +197,27 @@ describe("RfqsPresenter", () => {
     const second = presenter.quotesForRfq$(7);
     expect(second).toBe(first);
     expect(presenter.quotesForRfq$(8)).not.toBe(first);
+  });
+
+  it("events$ re-emits each RfqEvent from workflow.events()", () => {
+    const eventSubject = new Subject<RfqEvent>();
+    const wp: WorkflowPort = {
+      ...port([]),
+      events: () => {
+        return eventSubject.asObservable();
+      },
+    };
+
+    const presenter = new RfqsPresenter(wp);
+    const seen: string[] = [];
+
+    presenter.events$.subscribe((e) => {
+      seen.push(e.type);
+    });
+
+    eventSubject.next({ type: "rfqCreated", payload: rfq(1) });
+    eventSubject.next({ type: "quoteCreated", payload: quote(10, 1) });
+
+    expect(seen).toEqual(["rfqCreated", "quoteCreated"]);
   });
 });

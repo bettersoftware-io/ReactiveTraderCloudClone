@@ -28,6 +28,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
     useNotional,
     useTileExecution,
     useRfqTile,
+    useAnimationIntents,
   } = useHooks();
   const price = usePrice(pair);
   const stale = useStaleFlag(pair);
@@ -35,12 +36,23 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
   const notional = useNotional(pair.defaultNotional);
   const tileExecution = useTileExecution(pair);
   const rfqState = useRfqTile(pair);
+  const animIntent = useAnimationIntents(`tile:${pair.symbol}`);
 
   const isLoading = !price;
   const isBusy = tileExecution.state.status !== "ready";
   const hasError = !!notional.state.error;
   const isRfqActive = rfqState.state.status !== "init";
   const notionalDisabled = isLoading || isBusy || isRfqActive;
+
+  const tickAnim =
+    animIntent?.kind === "tickUp" || animIntent?.kind === "tickDown"
+      ? animIntent.kind
+      : undefined;
+
+  const confirmAnim =
+    animIntent?.kind === "fill" || animIntent?.kind === "reject"
+      ? animIntent.kind
+      : undefined;
 
   function handleExecute(
     direction: Direction,
@@ -70,6 +82,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
               price={price}
               ratePrecision={pair.ratePrecision}
               pipsPosition={pair.pipsPosition}
+              anim={tickAnim}
             />
             <SpreadDisplay spread={price.spread} />
           </>
@@ -105,6 +118,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
         <TileConfirmation
           state={tileExecution.state}
           onDismiss={tileExecution.dismiss}
+          anim={confirmAnim}
         />
       </div>
     </StaleIndicator>

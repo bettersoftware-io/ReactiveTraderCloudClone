@@ -9,6 +9,7 @@ import type {
   ViewMode,
 } from "@rtc/domain";
 
+import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
 import type { SessionState } from "#/app/presenters/SessionPresenter";
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
@@ -100,6 +101,11 @@ export function mount<P, Page extends MountedComponent<P>>(
     setQuotesForRfq: (rfqId: number, value: readonly Quote[]) => {
       return flush(() => {
         return world.setQuotesForRfq(rfqId, value);
+      });
+    },
+    setIntent: (target: string, intent: AnimationIntent | null) => {
+      return flush(() => {
+        return world.setIntent(target, intent);
       });
     },
     setThroughputView: (patch: Partial<ThroughputView>) => {

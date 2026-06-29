@@ -46,8 +46,9 @@ export function RfqCard({
   onDismiss,
 }: RfqCardProps): ReactElement {
   const totalMs = rfq.expirySecs * 1000;
-  const { useRfqCountdown } = useHooks();
+  const { useRfqCountdown, useAnimationIntents } = useHooks();
   const remainingMs = useRfqCountdown(rfq.creationTimestamp, totalMs);
+  const anim = useAnimationIntents(`rfq:${rfq.id}`);
 
   const dealerMap = new Map<number, Dealer>();
 
@@ -62,7 +63,10 @@ export function RfqCard({
   }
 
   return (
-    <div className={styles.card}>
+    <div
+      className={styles.card}
+      data-anim={anim?.kind === "expiry" ? "expiry" : undefined}
+    >
       <div className={styles.header}>
         <div>
           <div className={styles.instrumentName}>

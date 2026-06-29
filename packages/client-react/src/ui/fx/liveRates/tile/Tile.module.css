@@ -1,7 +1,9 @@
 .tile {
-  background-color: var(--bg-tile);
-  border: 1px solid var(--border-primary);
+  background-color: var(--panel);
+  backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--border);
   border-radius: 6px;
+  box-shadow: var(--glow);
   padding: 12px;
   display: flex;
   flex-direction: column;

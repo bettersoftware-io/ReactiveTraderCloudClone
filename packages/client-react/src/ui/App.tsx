@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { useHooks } from "./hooks/useHooks";
+import { AmbientBackground } from "./shell/background/AmbientBackground";
 import { HeaderChrome, type WorkspaceTab } from "./shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
@@ -36,6 +37,7 @@ export function App(): ReactElement {
 
   return (
     <div className={styles.app}>
+      <AmbientBackground />
       <HeaderChrome activeTab={activeTab} onTabChange={setActiveTab} />
       <WorkspaceEngine key={activeTab} tab={activeTab} />
       <StatusBar />

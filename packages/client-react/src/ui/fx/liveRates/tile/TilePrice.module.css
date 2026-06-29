@@ -1,3 +1,5 @@
+@import "../../../shell/motion/animations.module.css";
+
 .row {
   display: flex;
   gap: 4px;
@@ -9,11 +11,15 @@
   flex-direction: column;
   padding: 6px 8px;
   background: none;
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   color: var(--text-primary);
   transition: border-color 0.15s;
+}
+
+.button:hover {
+  border-color: var(--border-strong);
 }
 
 .button[data-side="bid"] {
@@ -41,8 +47,10 @@
 }
 
 .pips {
+  font-family: var(--font-mono);
   font-size: 22px;
   font-weight: 700;
+  line-height: 31px;
   color: var(--text-primary);
 }
 
@@ -52,6 +60,14 @@
 
 .pips[data-movement="down"] {
   color: var(--accent-negative);
+}
+
+.pips[data-anim="tickUp"] {
+  animation: hudTickUp 0.4s ease-out;
+}
+
+.pips[data-anim="tickDown"] {
+  animation: hudTickDown 0.4s ease-out;
 }
 
 .fractional {

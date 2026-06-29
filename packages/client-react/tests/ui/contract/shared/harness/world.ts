@@ -23,6 +23,7 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
+import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
 import {
   DEMO_USER,
   type SessionState,
@@ -134,12 +135,16 @@ export interface World {
   historyFor(symbol: string): BehaviorSubject<readonly PriceTick[]>;
   /** Per-key subject for useQuotesForRfq(rfqId), keyed by rfqId. */
   quotesForRfq(rfqId: number): BehaviorSubject<readonly Quote[]>;
+  /** Per-target subject for useAnimationIntents(target), keyed by target string. */
+  intentFor(target: string): BehaviorSubject<AnimationIntent | null>;
   /** Push a new price for one symbol (drives that tile's re-render). */
   setPrice(symbol: string, value: Price | null): void;
   /** Push a new price history for one symbol. */
   setHistory(symbol: string, value: readonly PriceTick[]): void;
   /** Push new quotes for one RFQ (drives that card's re-render). */
   setQuotesForRfq(rfqId: number, value: readonly Quote[]): void;
+  /** Push a new animation intent for one target (drives the AnimationProbe's re-render). */
+  setIntent(target: string, intent: AnimationIntent | null): void;
   readonly results: CommandResults;
   readonly commands: CommandLog;
   /** Push new values for one or more NULLARY hooks (drives re-renders). */
@@ -172,6 +177,7 @@ export function createWorld(
   const prices = new Map<string, BehaviorSubject<Price | null>>();
   const histories = new Map<string, BehaviorSubject<readonly PriceTick[]>>();
   const quotes = new Map<number, BehaviorSubject<readonly Quote[]>>();
+  const intents = new Map<string, BehaviorSubject<AnimationIntent | null>>();
 
   function priceFor(symbol: string): BehaviorSubject<Price | null> {
     let subject = prices.get(symbol);
@@ -201,6 +207,17 @@ export function createWorld(
     if (!subject) {
       subject = new BehaviorSubject<readonly Quote[]>([]);
       quotes.set(rfqId, subject);
+    }
+
+    return subject;
+  }
+
+  function intentFor(target: string): BehaviorSubject<AnimationIntent | null> {
+    let subject = intents.get(target);
+
+    if (!subject) {
+      subject = new BehaviorSubject<AnimationIntent | null>(null);
+      intents.set(target, subject);
     }
 
     return subject;
@@ -270,6 +287,10 @@ export function createWorld(
     },
     setQuotesForRfq: (rfqId: number, value: readonly Quote[]) => {
       return quotesForRfq(rfqId).next(value);
+    },
+    intentFor,
+    setIntent: (target: string, intent: AnimationIntent | null) => {
+      return intentFor(target).next(intent);
     },
     results,
     commands: {
