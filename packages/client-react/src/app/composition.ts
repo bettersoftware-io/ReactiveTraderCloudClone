@@ -1,4 +1,4 @@
-import { merge, mergeMap, of, ReplaySubject, Subject, tap } from "rxjs";
+import { merge, mergeMap, of, Subject, tap } from "rxjs";
 
 import {
   type BootVariant,
@@ -129,11 +129,9 @@ export interface App {
  * into it via AppCommands.reconnect(). */
 const reconnect$ = new Subject<ReconnectIntent>();
 
-/** Incident-machine connection-event sink.  ReplaySubject(1) so that an
- * inject() call fired immediately before the second subscriber arrives (e.g.
- * between two firstValueFrom calls) is still delivered when the connection
- * presenter re-subscribes. Owned at module level alongside reconnect$. */
-const incident$ = new ReplaySubject<ConnectionEvent>(1);
+/** Incident-machine connection-event sink.  Plain Subject — a live sink for
+ * inject() calls.  Owned at module level alongside reconnect$. */
+const incident$ = new Subject<ConnectionEvent>();
 
 export function buildDefaultPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
