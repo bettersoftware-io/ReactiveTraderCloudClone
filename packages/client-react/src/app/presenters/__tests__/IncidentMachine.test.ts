@@ -64,4 +64,40 @@ describe("IncidentMachine", () => {
     expect(state.active).toEqual([]);
     m.dispose();
   });
+
+  it("inject(errorBurst) perturbs controls but does NOT push gatewayDisconnected", async () => {
+    const control = fakeControl();
+    const pushed: ConnectionEvent[] = [];
+    const m = createIncidentMachine({
+      controls: [control],
+      pushConnectionEvent: (ev: ConnectionEvent): void => {
+        pushed.push(ev);
+      },
+    });
+
+    m.intents.inject("errorBurst");
+
+    expect(control.calls).toContain("errorBurst");
+    expect(pushed).not.toContainEqual({ type: "gatewayDisconnected" });
+    const state = await firstValueFrom(m.state$);
+    expect(state.active).toContain("errorBurst");
+    m.dispose();
+  });
+
+  it("inject(serviceDown) pushes gatewayDisconnected", async () => {
+    const control = fakeControl();
+    const pushed: ConnectionEvent[] = [];
+    const m = createIncidentMachine({
+      controls: [control],
+      pushConnectionEvent: (ev: ConnectionEvent): void => {
+        pushed.push(ev);
+      },
+    });
+
+    m.intents.inject("serviceDown");
+
+    expect(control.calls).toContain("serviceDown");
+    expect(pushed).toContainEqual({ type: "gatewayDisconnected" });
+    m.dispose();
+  });
 });
