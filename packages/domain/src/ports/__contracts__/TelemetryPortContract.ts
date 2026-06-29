@@ -40,5 +40,16 @@ export function describeTelemetryPortContract(
         teardown();
       }
     });
+
+    it("errorRate$ emits a non-negative MetricSample on subscribe", async () => {
+      const { port, teardown } = makeHarness();
+      try {
+        const first = await firstValueFrom(port.errorRate$());
+        expect(first.value).toBeGreaterThanOrEqual(0);
+        expect(typeof first.t).toBe("number");
+      } finally {
+        teardown();
+      }
+    });
   });
 }
