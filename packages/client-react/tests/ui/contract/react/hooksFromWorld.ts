@@ -20,6 +20,7 @@ import {
 import { createBootSequenceMachine } from "#/app/presenters/BootSequenceMachine";
 import { createLayoutMachine } from "#/app/presenters/LayoutMachine";
 import { createNotionalMachine } from "#/app/presenters/NotionalMachine";
+import { createOrderTicketMachine } from "#/app/presenters/OrderTicketMachine";
 import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
 import type {
   RfqSubmissionState,
@@ -363,6 +364,37 @@ export function reactHooks(world: World): AppHooks {
           variant: "core",
           advance: () => {},
           onDone,
+        });
+      });
+    },
+    // Equities: stubs — no contract specs exercise equities in Phase 4 hooks;
+    // these empty defaults satisfy the AppHooks interface until equities
+    // contract specs are added.
+    useWatchlist: () => {
+      return [];
+    },
+    useEquityQuote: (_symbol: string) => {
+      return null;
+    },
+    useCandles: (_symbol: string) => {
+      return [];
+    },
+    useDepth: (_symbol: string) => {
+      return null;
+    },
+    useEquityOrders: () => {
+      return [];
+    },
+    useEquityPositions: () => {
+      return [];
+    },
+    useOrderTicket: (defaultSymbol: string) => {
+      return useMachine(() => {
+        return createOrderTicketMachine({
+          place: () => {
+            return EMPTY;
+          },
+          defaultSymbol,
         });
       });
     },

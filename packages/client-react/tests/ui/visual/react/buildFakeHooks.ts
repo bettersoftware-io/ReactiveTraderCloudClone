@@ -218,5 +218,46 @@ export function buildFakeHooks(data: AppData): AppHooks {
       };
       return { state, skip: noop };
     },
+    // Equities: static stubs — equities UI goldens are added in later tasks;
+    // these empty defaults keep existing goldens pixel-identical.
+    useWatchlist: () => {
+      return [];
+    },
+    useEquityQuote: (_symbol: string) => {
+      return null;
+    },
+    useCandles: (_symbol: string) => {
+      return [];
+    },
+    useDepth: (_symbol: string) => {
+      return null;
+    },
+    useEquityOrders: () => {
+      return [];
+    },
+    useEquityPositions: () => {
+      return [];
+    },
+    useOrderTicket: (_defaultSymbol: string) => {
+      return {
+        state: {
+          phase: "editing" as const,
+          form: {
+            symbol: _defaultSymbol,
+            side: "buy" as const,
+            type: "market" as const,
+            qty: 0,
+          },
+          error: null,
+        },
+        setSymbol: noop,
+        setSide: noop,
+        setType: noop,
+        setQty: noop,
+        setLimitPrice: noop,
+        submit: noop,
+        reset: noop,
+      };
+    },
   };
 }

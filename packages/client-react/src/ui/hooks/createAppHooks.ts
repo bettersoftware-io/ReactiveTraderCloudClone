@@ -2,12 +2,18 @@ import { bind } from "@react-rxjs/core";
 import { firstValueFrom } from "rxjs";
 
 import {
+  type Candle,
   ConnectionStatus,
   type CurrencyPair,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type Dealer,
+  type DepthBook,
+  type EquityInstrument,
+  type EquityOrder,
+  type EquityPosition,
+  type EquityQuote,
   type Instrument,
   type PositionUpdates,
   type Price,
@@ -34,6 +40,10 @@ import type {
   NotionalIntents,
   NotionalView,
 } from "#/app/presenters/NotionalMachine";
+import type {
+  OrderTicketIntents,
+  OrderTicketState,
+} from "#/app/presenters/OrderTicketMachine";
 import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
 import type {
   RfqSubmissionIntents,
@@ -70,6 +80,7 @@ type UseTicketSubmissionResult = {
 type UseThroughputResult = ThroughputView & {
   setValue: (value: number) => void;
 };
+type UseOrderTicketResult = { state: OrderTicketState } & OrderTicketIntents;
 
 interface UseThemePreferenceResult {
   mode: ThemeMode;
@@ -159,6 +170,21 @@ export interface AppHooks {
   /** Boot-sequence animation — progress ramp + skip intent. One per app mount.
    * Calls onDone when the ramp completes or skip is invoked. */
   useBootSequence: (onDone: () => void) => UseBootSequenceResult;
+  // Equities streams
+  /** Watchlist of equity instruments — starts empty until the market-data port emits. */
+  useWatchlist: () => readonly EquityInstrument[];
+  /** Latest equity quote for a symbol — null until the first quote arrives. */
+  useEquityQuote: (symbol: string) => EquityQuote | null;
+  /** Candle series for a symbol — starts empty until candles arrive. */
+  useCandles: (symbol: string) => readonly Candle[];
+  /** Depth book for a symbol — null until the first depth update arrives. */
+  useDepth: (symbol: string) => DepthBook | null;
+  /** All open/filled equity orders — starts empty. */
+  useEquityOrders: () => readonly EquityOrder[];
+  /** Current equity positions — starts empty. */
+  useEquityPositions: () => readonly EquityPosition[];
+  /** Per-mount order ticket machine — editing/submitting/working/filled/rejected state plus intents. */
+  useOrderTicket: (defaultSymbol: string) => UseOrderTicketResult;
 }
 
 export function createAppHooks(
@@ -289,6 +315,38 @@ export function createAppHooks(
     return firstValueFrom(presenters.rfqs.acceptQuote(quoteId));
   }
 
+  // Equities streams — shared (one active subscription per symbol, reference-counted by bind).
+  const [useWatchlist] = bind(
+    presenters.watchlist.watchlist$,
+    [] as readonly EquityInstrument[],
+  );
+  const [useEquityQuote] = bind(
+    (symbol: string) => {
+      return presenters.watchlist.quote$(symbol);
+    },
+    null as EquityQuote | null,
+  );
+  const [useCandles] = bind(
+    (symbol: string) => {
+      return presenters.candleSeries.candles$(symbol);
+    },
+    [] as readonly Candle[],
+  );
+  const [useDepth] = bind(
+    (symbol: string) => {
+      return presenters.depth.depth$(symbol);
+    },
+    null as DepthBook | null,
+  );
+  const [useEquityOrders] = bind(
+    presenters.ordersBlotter.orders$,
+    [] as readonly EquityOrder[],
+  );
+  const [useEquityPositions] = bind(
+    presenters.positions.positions$,
+    [] as readonly EquityPosition[],
+  );
+
   return {
     usePrice,
     usePriceHistory,
@@ -403,6 +461,17 @@ export function createAppHooks(
     useBootSequence: (onDone: () => void) => {
       return useMachine(() => {
         return machines.boot(onDone);
+      });
+    },
+    useWatchlist,
+    useEquityQuote,
+    useCandles,
+    useDepth,
+    useEquityOrders,
+    useEquityPositions,
+    useOrderTicket: (defaultSymbol: string) => {
+      return useMachine(() => {
+        return machines.orderTicket(defaultSymbol);
       });
     },
   };
