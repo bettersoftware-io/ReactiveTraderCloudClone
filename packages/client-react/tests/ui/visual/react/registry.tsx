@@ -157,10 +157,27 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return <RfqTilesPanel />;
   },
   NewRfqForm: () => {
-    return <NewRfqForm onCreated={() => {}} />;
+    // Render at a fixed width (test-only) so the form's content-driven
+    // intrinsic size doesn't drift on x86 (font-metric non-determinism).
+    // The form's max-width:400px allows it to fill 280px comfortably; in the
+    // real app it sits inside a fixed-size panel column, never shrink-to-fit.
+    return (
+      <div style={{ width: 280, display: "flex", flexDirection: "column" }}>
+        <NewRfqForm onCreated={() => {}} />
+      </div>
+    );
   },
   CreditBlotter: () => {
-    return <CreditBlotter />;
+    // Render filling a representative panel width (test-only) — the credit
+    // blotter table is width:100%, so a fixed-width wrapper pins the captured
+    // dimension deterministically; without it the intrinsic content-width
+    // resolves non-deterministically on x86 (~80-150px drift), a size
+    // mismatch maxDiffPixelRatio cannot absorb. Component stays responsive.
+    return (
+      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+        <CreditBlotter />
+      </div>
+    );
   },
   SellSidePanel: () => {
     return <SellSidePanel />;
