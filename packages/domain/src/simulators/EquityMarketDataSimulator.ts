@@ -64,6 +64,11 @@ export class EquityMarketDataSimulator implements MarketDataPort {
     return of(WATCHLIST);
   }
 
+  /** Latest simulated price for a symbol (synchronous; for fill-price marking). */
+  currentPrice(symbol: string): number {
+    return this.states.get(symbol)?.price ?? 100;
+  }
+
   private getState(symbol: string): SymbolState | undefined {
     return this.states.get(symbol);
   }

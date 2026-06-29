@@ -20,6 +20,7 @@ import {
   RfqState,
 } from "@rtc/domain";
 
+import type { EquityFillSignal } from "./OrdersBlotterPresenter";
 import type { ExecutionOutcome } from "./TradeExecutionPresenter";
 
 // Kept local (not exported) in Phase 0: nothing outside this module consumes
@@ -54,6 +55,9 @@ export interface AnimationDirectorDeps {
 
   /** Raw RfqEvent stream for credit workflow animation signals. */
   readonly rfqEvents$: Observable<RfqEvent>;
+
+  /** Emits { symbol } for each equity order fill (from OrdersBlotterPresenter). */
+  readonly equityFills$: Observable<EquityFillSignal>;
 }
 
 /** Narrows RfqEvent to rfqClosed variants for type-safe filter predicates. */
@@ -87,6 +91,7 @@ function isQuoteAccepted(e: RfqEvent): e is RfqQuoteAcceptedEvent {
  * - rfq:${rfqId}        → expiry             (credit RFQ expired)
  * - rfq:${rfqId}        → fill               (credit quote accepted)
  * - banner:connection   → connectionChange   (connection-status change)
+ * - ticket:${symbol}    → fill               (equity order filled)
  */
 export class AnimationDirector {
   private readonly all$: Observable<AnimationIntent>;
@@ -143,12 +148,19 @@ export class AnimationDirector {
       }),
     );
 
+    const equityFill$ = deps.equityFills$.pipe(
+      map(({ symbol }): AnimationIntent => {
+        return { target: `ticket:${symbol}`, kind: "fill" };
+      }),
+    );
+
     this.all$ = merge(
       ticks$,
       fxExec$,
       creditExpiry$,
       creditFill$,
       connection$,
+      equityFill$,
     ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
   }
 

@@ -32,5 +32,8 @@ describe("createSimulatorPorts — equities ports", () => {
       return p.symbol === "AAPL";
     });
     expect(aapl?.qty).toBe(100);
+    // markFor is now wired: market orders fill at the live sim price (~190),
+    // not the old flat placeholder of 100.
+    expect(aapl?.avgPrice).toBeGreaterThan(150);
   });
 });

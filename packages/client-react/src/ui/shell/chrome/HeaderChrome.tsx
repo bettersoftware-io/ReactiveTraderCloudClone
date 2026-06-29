@@ -30,11 +30,10 @@ interface HeaderChromeProps {
  * prototype header (Reactive Trader.dc.html:107-217) to CSS-module markup with
  * `var(--token)` colours.
  *
- * The three real nav tabs keep the superseded Header's contract verbatim
- * (`data-testid="tab-{fx|credit|admin}"`, `data-active`, `onTabChange`, labels
- * FX/Credit/Admin) so the x86 Cypress workspace scenarios stay green. The
- * "Equities" item is decorative and non-wired (Phase 4 builds equities); it
- * carries no `tab-*` testid and never calls `onTabChange`.
+ * All four nav tabs (FX, Credit, Equities, Admin) are live workspace tabs.
+ * Each renders with `data-testid="tab-{tab}"`, `data-active`, and calls
+ * `onTabChange` on click — keeping the Cypress workspace contract intact for
+ * all four workspaces. Equities was added as a full tab in Phase 4.
  */
 export function HeaderChrome({
   activeTab,

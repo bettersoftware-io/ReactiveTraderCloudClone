@@ -93,6 +93,9 @@ export function createSimulatorPorts(): TransportPorts {
     listener: (fill: FillEvent): void => {
       positionsSim.onFill(fill);
     },
+    markFor: (symbol: string): number => {
+      return marketData.currentPrice(symbol);
+    },
   });
   return {
     referenceData: new ReferenceDataSimulator(),

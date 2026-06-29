@@ -185,6 +185,9 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
   const execution = new TradeExecutionPresenter(ports.execution);
   const rfqs = new RfqsPresenter(ports.workflow);
   const currencyPairs = new CurrencyPairsPresenter(ports.referenceData);
+  // Hoisted so the AnimationDirector can consume its fills$ stream for ticket
+  // fill-flash choreography (Phase 4 equities).
+  const ordersBlotter = new OrdersBlotterPresenter(ports.orders);
 
   const presenters: Presenters = {
     priceStream,
@@ -211,6 +214,7 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
       connectionStatus$: connection.status$,
       executions$: execution.executions$,
       rfqEvents$: rfqs.events$,
+      equityFills$: ordersBlotter.fills$,
     }),
     bootPreference: new BootPreferencePresenter(ports.preferences),
     // Session lock/unlock state over the static demo user (no real auth backend).
@@ -218,7 +222,7 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     watchlist: new WatchlistPresenter(ports.marketData),
     candleSeries: new CandleSeriesPresenter(ports.marketData),
     depth: new DepthPresenter(ports.marketData),
-    ordersBlotter: new OrdersBlotterPresenter(ports.orders),
+    ordersBlotter,
     positions: new PositionsPresenter(ports.positions),
   };
   const commands: AppCommands = {
