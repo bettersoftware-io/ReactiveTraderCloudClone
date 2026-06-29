@@ -3,8 +3,8 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
-/** The three real workspace tabs the header switches between. */
-export type WorkspaceTab = "fx" | "credit" | "admin";
+/** The real workspace tabs the header switches between (equities wired in Phase 4). */
+export type WorkspaceTab = "fx" | "credit" | "equities" | "admin";
 
 export interface HeaderChromeProps {
   activeTab: WorkspaceTab;
@@ -28,9 +28,9 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
     );
   }
 
-  /** The visible label for each real tab button, in order. */
+  /** The visible label for each real tab button, in nav order. */
   tabLabels(): string[] {
-    return (["fx", "credit", "admin"] as const).map((tab) => {
+    return (["fx", "credit", "equities", "admin"] as const).map((tab) => {
       return (
         within(this.root).getByTestId(`tab-${tab}`).textContent?.trim() ?? ""
       );
@@ -46,22 +46,6 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
   /** Click one of the real workspace tabs (fires onTabChange). */
   async clickTab(tab: WorkspaceTab): Promise<void> {
     await this.user.click(within(this.root).getByTestId(`tab-${tab}`));
-  }
-
-  /** The decorative Equities nav item's label (present but non-wired). */
-  equitiesLabel(): string {
-    return (
-      within(this.root).getByTestId("nav-equities").textContent?.trim() ?? ""
-    );
-  }
-
-  /** True when the decorative Equities nav item is marked non-interactive. */
-  equitiesDisabled(): boolean {
-    return (
-      within(this.root)
-        .getByTestId("nav-equities")
-        .getAttribute("aria-disabled") === "true"
-    );
   }
 
   /** The fixed environment badge text (decorative). */
