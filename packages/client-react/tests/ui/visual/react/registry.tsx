@@ -100,7 +100,18 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return <LiveRatesPanel />;
   },
   FxBlotter: () => {
-    return <FxBlotter />;
+    // Render filling a representative panel width (test-only), like the real
+    // app where the blotter fills its layout panel — NOT shrink-to-content.
+    // The blotter table is width:100%, so a fixed-width wrapper pins the
+    // captured dimension deterministically; without it the intrinsic
+    // content-width resolved non-deterministically on x86 (~46-66px drift),
+    // a size mismatch maxDiffPixelRatio cannot absorb. The FxBlotter component
+    // itself is untouched and stays fully responsive.
+    return (
+      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+        <FxBlotter />
+      </div>
+    );
   },
   // Prop-driven single highlighted (isNew) row, wrapped in a table so the <tr>
   // renders. The fake's useRowHighlight(isNew) returns isNew, so this snapshots
