@@ -11,8 +11,16 @@ const PRIMARY_CALLERS = new Set([
 
 function baseCalleeName(callee) {
   let node = callee;
-  while (node && node.type === "MemberExpression") {
-    node = node.object;
+  while (node) {
+    if (node.type === "MemberExpression") {
+      node = node.object;
+    } else if (node.type === "CallExpression") {
+      node = node.callee;
+    } else if (node.type === "TaggedTemplateExpression") {
+      node = node.tag;
+    } else {
+      break;
+    }
   }
   return node && node.type === "Identifier" ? node.name : null;
 }

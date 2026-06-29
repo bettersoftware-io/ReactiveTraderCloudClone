@@ -151,7 +151,7 @@ vi.mock("./dep");
       errors: [{ messageId: "moveDown", data: { count: "1" } }],
     },
     {
-      name: "leading JSDoc comment travels with the helper",
+      name: "leading line comment travels with the helper",
       code: `import { describe, it } from "vitest";
 
 // makes a thing
@@ -174,6 +174,34 @@ describe("x", () => {
 });
 
 // makes a thing
+function helper() {
+  return 1;
+}
+`,
+      errors: [{ messageId: "moveDown", data: { count: "1" } }],
+    },
+    {
+      name: "curried describe.each is recognized as a test boundary",
+      code: `import { describe, it } from "vitest";
+
+function helper() {
+  return 1;
+}
+
+describe.each([1, 2])("case %s", (n) => {
+  it("works", () => {
+    helper();
+  });
+});
+`,
+      output: `import { describe, it } from "vitest";
+
+describe.each([1, 2])("case %s", (n) => {
+  it("works", () => {
+    helper();
+  });
+});
+
 function helper() {
   return 1;
 }
