@@ -12,14 +12,14 @@ describePositionPortContract("EquityPositionSimulator", () => {
   vi.useFakeTimers();
   const marketData = new EquityMarketDataSimulator(42);
   const port = new EquityPositionSimulator(marketData);
-  // Pre-populate one position via onFill so the describer can assert the PnL invariant.
-  port.onFill({ symbol: "AAPL", side: "buy", qty: 100, price: 190 });
+  // Fill at 150 so avgPrice=150 while live AAPL mark (~190 seed) differs → non-zero pnl.
+  port.onFill({ symbol: "AAPL", side: "buy", qty: 100, price: 150 });
   return {
     port,
     driver: {
-      // positions() is backed by BehaviorSubject — emits immediately on subscribe.
+      // Advance fake timers so at least one live quote tick fires through the lazy subscription.
       ackPositions: async () => {
-        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(600);
       },
     },
     teardown: () => {
