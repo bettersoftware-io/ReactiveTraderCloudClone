@@ -24,10 +24,6 @@ const EURUSD: CurrencyPair = {
   defaultNotional: 1_000_000,
 };
 
-function makePrice(mid: number): Price {
-  return { symbol: "EURUSD", bid: mid, ask: mid, mid } as Price;
-}
-
 describe("AnimationDirector", () => {
   it("maps a rising price tick to a tickUp intent on the pair's target", () => {
     const eurusd$ = new Subject<Price>();
@@ -391,3 +387,7 @@ describe("AnimationDirector", () => {
     expect(seen).toEqual([{ target: "ticket:AAPL", kind: "fill" }]);
   });
 });
+
+function makePrice(mid: number): Price {
+  return { symbol: "EURUSD", bid: mid, ask: mid, mid } as Price;
+}

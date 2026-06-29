@@ -9,16 +9,6 @@ import { ExecutionSimulator } from "./ExecutionSimulator.js";
 const DELAYED_PAIR_MS = 4_000;
 const NORMAL_MAX_DELAY_MS = 2_000;
 
-function makeRequest(pair: string): ExecutionRequest {
-  return {
-    currencyPair: pair,
-    spotRate: 1.5,
-    direction: Direction.Buy,
-    notional: 1_000_000,
-    dealtCurrency: pair.slice(0, 3),
-  };
-}
-
 describe("ExecutionSimulator", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -94,3 +84,13 @@ describe("ExecutionSimulator", () => {
     expect(trade.dealtCurrency).toBe("AUD");
   });
 });
+
+function makeRequest(pair: string): ExecutionRequest {
+  return {
+    currencyPair: pair,
+    spotRate: 1.5,
+    direction: Direction.Buy,
+    notional: 1_000_000,
+    dealtCurrency: pair.slice(0, 3),
+  };
+}

@@ -4,11 +4,6 @@ import { describe, expect, it } from "vitest";
 import type { PricingPort, RfqQuoteResult } from "../ports/pricingPort.js";
 import { RfqQuoteUseCase } from "./RfqQuoteUseCase.js";
 
-interface RfqQuoteCallArgs {
-  symbol: string;
-  pipsPosition: number;
-}
-
 describe("RfqQuoteUseCase", () => {
   it("delegates to PricingPort.getRfqQuote with symbol + pipsPosition", async () => {
     const expected: RfqQuoteResult = { bid: 1.099, ask: 1.101, mid: 1.1 };
@@ -31,3 +26,8 @@ describe("RfqQuoteUseCase", () => {
     expect(result).toBe(expected);
   });
 });
+
+interface RfqQuoteCallArgs {
+  symbol: string;
+  pipsPosition: number;
+}

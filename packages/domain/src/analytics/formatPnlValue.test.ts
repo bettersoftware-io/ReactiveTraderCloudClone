@@ -5,16 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import { formatPnlValue } from "./formatPnlValue.js";
 
-interface GoldenCase {
-  input: number;
-  expected: string;
-}
-
-interface Golden {
-  readonly _source: string;
-  readonly cases: ReadonlyArray<GoldenCase>;
-}
-
 const golden: Golden = JSON.parse(
   readFileSync(
     fileURLToPath(
@@ -31,3 +21,13 @@ describe("formatPnlValue (golden: original LastPosition + formatAsWholeNumber)",
     });
   }
 });
+
+interface GoldenCase {
+  input: number;
+  expected: string;
+}
+
+interface Golden {
+  readonly _source: string;
+  readonly cases: ReadonlyArray<GoldenCase>;
+}

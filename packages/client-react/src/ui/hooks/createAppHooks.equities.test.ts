@@ -11,20 +11,6 @@ import {
 
 import { type AppHooks, createAppHooks } from "./createAppHooks";
 
-function makeHooks(): AppHooks {
-  const { presenters, commands } = createApp(createSimPorts());
-  return createAppHooks(
-    presenters,
-    createMachineFactories(presenters),
-    commands,
-  );
-
-  function createSimPorts(): AppPorts {
-    const base = createApp().ports;
-    return { ...base, preferences: new PreferencesSimulator() };
-  }
-}
-
 describe("createAppHooks — equities hooks", () => {
   it("useWatchlist is a function and returns an array by default", () => {
     const hooks = makeHooks();
@@ -78,3 +64,17 @@ describe("createAppHooks — equities hooks", () => {
     expect(result.current.state).toBeDefined();
   });
 });
+
+function makeHooks(): AppHooks {
+  const { presenters, commands } = createApp(createSimPorts());
+  return createAppHooks(
+    presenters,
+    createMachineFactories(presenters),
+    commands,
+  );
+
+  function createSimPorts(): AppPorts {
+    const base = createApp().ports;
+    return { ...base, preferences: new PreferencesSimulator() };
+  }
+}

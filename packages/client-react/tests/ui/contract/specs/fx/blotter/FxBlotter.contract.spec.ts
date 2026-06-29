@@ -4,22 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-function trade(tradeId: number, over: Partial<Trade> = {}): Trade {
-  return {
-    tradeId,
-    tradeName: `Trade ${tradeId}`,
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.09221,
-    status: TradeStatus.Done,
-    tradeDate: "2026-06-06",
-    valueDate: "2026-06-08",
-    ...over,
-  };
-}
-
 const t1 = trade(4001, { currencyPair: "EURUSD" });
 const t2 = trade(4002, {
   currencyPair: "USDJPY",
@@ -217,3 +201,19 @@ describe("FxBlotter", () => {
     });
   });
 });
+
+function trade(tradeId: number, over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId,
+    tradeName: `Trade ${tradeId}`,
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-06-06",
+    valueDate: "2026-06-08",
+    ...over,
+  };
+}

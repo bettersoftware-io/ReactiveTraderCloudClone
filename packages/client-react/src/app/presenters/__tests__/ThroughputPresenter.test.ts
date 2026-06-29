@@ -11,94 +11,6 @@ import {
   type ThroughputView,
 } from "../ThroughputPresenter";
 
-function scheduler(): TestScheduler {
-  return new TestScheduler((actual, expected) => {
-    expect(actual).toEqual(expected);
-  });
-}
-
-interface FakeAdmin {
-  port: AdminPort;
-  sets: number[];
-}
-
-interface RunResult {
-  states: ThroughputView[];
-  sets: number[];
-}
-
-interface GetOpts {
-  /** Marble for getThroughput() (single value then complete, or error). */
-  marble: string;
-  values?: Record<string, number>;
-  error?: unknown;
-}
-
-interface FakeAdminOpts {
-  get: GetOpts;
-  set?: (value: number) => Observable<void>;
-}
-
-interface PresenterCtx {
-  presenter: ThroughputPresenter;
-  ts: TestScheduler;
-}
-
-interface MessageEvent {
-  time: number;
-  message: ThroughputView["message"];
-}
-
-/** Build a fake AdminPort whose get/set are marble-driven cold observables. */
-function fakeAdmin(
-  ts: TestScheduler,
-  /** Factory for setThroughput()'s observable, given the value written. */
-  opts: FakeAdminOpts,
-): FakeAdmin {
-  const sets: number[] = [];
-  const port: AdminPort = {
-    getThroughput: () => {
-      return ts.createColdObservable<number>(
-        opts.get.marble,
-        opts.get.values,
-        opts.get.error,
-      );
-    },
-    setThroughput: (value: number) => {
-      sets.push(value);
-      return opts.set
-        ? opts.set(value)
-        : ts.createColdObservable<void>("(a|)", { a: undefined });
-    },
-  };
-  return { port, sets };
-}
-
-/**
- * Run a presenter under the TestScheduler, collecting every state$ emission.
- * `drive` schedules intents on the virtual timeline.
- */
-function run(
-  buildPort: (ts: TestScheduler) => FakeAdmin,
-  drive?: (ctx: PresenterCtx) => void,
-): RunResult {
-  const states: ThroughputView[] = [];
-  const ts = scheduler();
-  let sets: number[] = [];
-  ts.run(({ flush }) => {
-    const built = buildPort(ts);
-    sets = built.sets;
-    const presenter = new ThroughputPresenter(built.port);
-    const sub = presenter.state$.subscribe((s) => {
-      return states.push(s);
-    });
-    drive?.({ presenter, ts });
-    flush();
-    sub.unsubscribe();
-  });
-  return { states, sets };
-}
-
 describe("ThroughputPresenter", () => {
   it("seeds loading:true synchronously, then the loaded value", () => {
     const { states } = run((ts) => {
@@ -305,3 +217,91 @@ describe("ThroughputPresenter", () => {
     ).toBe(false);
   });
 });
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected);
+  });
+}
+
+interface FakeAdmin {
+  port: AdminPort;
+  sets: number[];
+}
+
+interface RunResult {
+  states: ThroughputView[];
+  sets: number[];
+}
+
+interface GetOpts {
+  /** Marble for getThroughput() (single value then complete, or error). */
+  marble: string;
+  values?: Record<string, number>;
+  error?: unknown;
+}
+
+interface FakeAdminOpts {
+  get: GetOpts;
+  set?: (value: number) => Observable<void>;
+}
+
+interface PresenterCtx {
+  presenter: ThroughputPresenter;
+  ts: TestScheduler;
+}
+
+interface MessageEvent {
+  time: number;
+  message: ThroughputView["message"];
+}
+
+/** Build a fake AdminPort whose get/set are marble-driven cold observables. */
+function fakeAdmin(
+  ts: TestScheduler,
+  /** Factory for setThroughput()'s observable, given the value written. */
+  opts: FakeAdminOpts,
+): FakeAdmin {
+  const sets: number[] = [];
+  const port: AdminPort = {
+    getThroughput: () => {
+      return ts.createColdObservable<number>(
+        opts.get.marble,
+        opts.get.values,
+        opts.get.error,
+      );
+    },
+    setThroughput: (value: number) => {
+      sets.push(value);
+      return opts.set
+        ? opts.set(value)
+        : ts.createColdObservable<void>("(a|)", { a: undefined });
+    },
+  };
+  return { port, sets };
+}
+
+/**
+ * Run a presenter under the TestScheduler, collecting every state$ emission.
+ * `drive` schedules intents on the virtual timeline.
+ */
+function run(
+  buildPort: (ts: TestScheduler) => FakeAdmin,
+  drive?: (ctx: PresenterCtx) => void,
+): RunResult {
+  const states: ThroughputView[] = [];
+  const ts = scheduler();
+  let sets: number[] = [];
+  ts.run(({ flush }) => {
+    const built = buildPort(ts);
+    sets = built.sets;
+    const presenter = new ThroughputPresenter(built.port);
+    const sub = presenter.state$.subscribe((s) => {
+      return states.push(s);
+    });
+    drive?.({ presenter, ts });
+    flush();
+    sub.unsubscribe();
+  });
+  return { states, sets };
+}

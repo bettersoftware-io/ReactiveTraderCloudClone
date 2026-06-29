@@ -22,11 +22,6 @@ import {
   type TileExecutionState,
 } from "../TileExecutionMachine";
 
-interface RunCtx {
-  machine: ReturnType<typeof createTileExecutionMachine>;
-  ts: TestScheduler;
-}
-
 const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "EURUSD";
 });
@@ -63,36 +58,6 @@ const READY: TileExecutionState = { status: "ready" };
 const STARTED: TileExecutionState = { status: "started" };
 const TOO_LONG: TileExecutionState = { status: "tooLong" };
 const TIMEOUT: TileExecutionState = { status: "timeout" };
-
-function scheduler(): TestScheduler {
-  return new TestScheduler((actual, expected) => {
-    expect(actual).toEqual(expected);
-  });
-}
-
-/** Collect every emission of a machine's state$ as it runs, marble-driven. */
-function run(
-  buildExecute: (
-    ts: TestScheduler,
-  ) => (input: ExecuteTradeInput) => Observable<ExecuteTradeResult>,
-  drive: (ctx: RunCtx) => void,
-): TileExecutionState[] {
-  const states: TileExecutionState[] = [];
-  const ts = scheduler();
-  ts.run(({ flush }) => {
-    const machine = createTileExecutionMachine(pair, {
-      execute: buildExecute(ts),
-    });
-    const sub = machine.state$.subscribe((s) => {
-      return states.push(s);
-    });
-    drive({ machine, ts });
-    flush();
-    sub.unsubscribe();
-    machine.dispose();
-  });
-  return states;
-}
 
 describe("createTileExecutionMachine", () => {
   it("starts in the ready state (synchronous default)", () => {
@@ -386,4 +351,39 @@ describe("createTileExecutionMachine", () => {
 /** A cold observable that never emits/completes within the test window. */
 function never(ts: TestScheduler): Observable<ExecuteTradeResult> {
   return ts.createColdObservable<ExecuteTradeResult>("-");
+}
+
+interface RunCtx {
+  machine: ReturnType<typeof createTileExecutionMachine>;
+  ts: TestScheduler;
+}
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected);
+  });
+}
+
+/** Collect every emission of a machine's state$ as it runs, marble-driven. */
+function run(
+  buildExecute: (
+    ts: TestScheduler,
+  ) => (input: ExecuteTradeInput) => Observable<ExecuteTradeResult>,
+  drive: (ctx: RunCtx) => void,
+): TileExecutionState[] {
+  const states: TileExecutionState[] = [];
+  const ts = scheduler();
+  ts.run(({ flush }) => {
+    const machine = createTileExecutionMachine(pair, {
+      execute: buildExecute(ts),
+    });
+    const sub = machine.state$.subscribe((s) => {
+      return states.push(s);
+    });
+    drive({ machine, ts });
+    flush();
+    sub.unsubscribe();
+    machine.dispose();
+  });
+  return states;
 }

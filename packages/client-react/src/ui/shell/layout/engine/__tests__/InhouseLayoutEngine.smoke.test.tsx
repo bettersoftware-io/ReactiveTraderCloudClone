@@ -31,22 +31,6 @@ const registry: PanelRegistry = {
   },
 };
 
-function noop(): void {}
-
-function renderEngine(s: LayoutState = state): void {
-  render(
-    <InhouseLayoutEngine
-      state={s}
-      registry={registry}
-      onMaximize={noop}
-      onRestore={noop}
-      onCollapse={noop}
-      onExpand={noop}
-      onResize={noop}
-    />,
-  );
-}
-
 describe("InhouseLayoutEngine", () => {
   it("renders each panel's registry body inside a split", () => {
     renderEngine();
@@ -148,3 +132,19 @@ describe("InhouseLayoutEngine", () => {
     fireEvent.pointerUp(handle, { pointerId: 2, clientX: 0, clientY: 70 });
   });
 });
+
+function noop(): void {}
+
+function renderEngine(s: LayoutState = state): void {
+  render(
+    <InhouseLayoutEngine
+      state={s}
+      registry={registry}
+      onMaximize={noop}
+      onRestore={noop}
+      onCollapse={noop}
+      onExpand={noop}
+      onResize={noop}
+    />,
+  );
+}

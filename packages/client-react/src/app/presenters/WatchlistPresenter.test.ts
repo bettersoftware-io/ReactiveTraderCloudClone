@@ -11,41 +11,6 @@ import type {
 
 import { WatchlistPresenter } from "./WatchlistPresenter";
 
-function instrument(symbol: string): EquityInstrument {
-  return { symbol, name: symbol, exchange: "NASDAQ" };
-}
-
-function quote(symbol: string): EquityQuote {
-  return {
-    symbol,
-    bid: 100,
-    ask: 101,
-    last: 100,
-    changePct: 0,
-    timestamp: Date.now(),
-  };
-}
-
-function makePort(
-  instruments: EquityInstrument[],
-  quoteFor: (symbol: string) => EquityQuote,
-): MarketDataPort {
-  return {
-    watchlist: () => {
-      return of(instruments);
-    },
-    quotes: (symbol: string) => {
-      return of(quoteFor(symbol));
-    },
-    candles: (_symbol: string): ReturnType<MarketDataPort["candles"]> => {
-      return new Subject<readonly Candle[]>();
-    },
-    depth: (_symbol: string): ReturnType<MarketDataPort["depth"]> => {
-      return new Subject<DepthBook>();
-    },
-  };
-}
-
 describe("WatchlistPresenter", () => {
   it("emits the watchlist instruments", async () => {
     const instruments = [instrument("AAPL"), instrument("MSFT")];
@@ -81,3 +46,38 @@ describe("WatchlistPresenter", () => {
     expect(result.symbol).toBe("AAPL");
   });
 });
+
+function instrument(symbol: string): EquityInstrument {
+  return { symbol, name: symbol, exchange: "NASDAQ" };
+}
+
+function quote(symbol: string): EquityQuote {
+  return {
+    symbol,
+    bid: 100,
+    ask: 101,
+    last: 100,
+    changePct: 0,
+    timestamp: Date.now(),
+  };
+}
+
+function makePort(
+  instruments: EquityInstrument[],
+  quoteFor: (symbol: string) => EquityQuote,
+): MarketDataPort {
+  return {
+    watchlist: () => {
+      return of(instruments);
+    },
+    quotes: (symbol: string) => {
+      return of(quoteFor(symbol));
+    },
+    candles: (_symbol: string): ReturnType<MarketDataPort["candles"]> => {
+      return new Subject<readonly Candle[]>();
+    },
+    depth: (_symbol: string): ReturnType<MarketDataPort["depth"]> => {
+      return new Subject<DepthBook>();
+    },
+  };
+}

@@ -6,16 +6,6 @@ import type { Dealer, Quote, QuoteState } from "@rtc/domain";
 
 const dealer: Dealer = { id: 7, name: "Citi" };
 
-function quote(state: QuoteState, over: Partial<Quote> = {}): Quote {
-  return {
-    id: 100,
-    rfqId: 1,
-    dealerId: 7,
-    state,
-    ...over,
-  };
-}
-
 describe("QuoteCard", () => {
   it("shows the dealer name and awaiting text before a price arrives", () => {
     const card = mount(QuoteCard, {
@@ -111,3 +101,13 @@ describe("QuoteCard", () => {
     expect(card.canAccept()).toBe(true);
   });
 });
+
+function quote(state: QuoteState, over: Partial<Quote> = {}): Quote {
+  return {
+    id: 100,
+    rfqId: 1,
+    dealerId: 7,
+    state,
+    ...over,
+  };
+}

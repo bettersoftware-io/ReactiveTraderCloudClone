@@ -2,26 +2,6 @@ import { BootGate } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-/** Install a window.matchMedia stub for one test (jsdom omits it). */
-function stubReducedMotion(matches: boolean): void {
-  function fakeMatchMedia(query: string): MediaQueryList {
-    return {
-      matches,
-      media: query,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => {
-        return false;
-      },
-    } as MediaQueryList;
-  }
-
-  vi.stubGlobal("matchMedia", fakeMatchMedia);
-}
-
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -62,3 +42,23 @@ describe("BootGate", () => {
     expect(page.hasContent()).toBe(true);
   });
 });
+
+/** Install a window.matchMedia stub for one test (jsdom omits it). */
+function stubReducedMotion(matches: boolean): void {
+  function fakeMatchMedia(query: string): MediaQueryList {
+    return {
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => {
+        return false;
+      },
+    } as MediaQueryList;
+  }
+
+  vi.stubGlobal("matchMedia", fakeMatchMedia);
+}

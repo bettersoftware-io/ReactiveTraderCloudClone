@@ -5,10 +5,6 @@ import type { BlotterPort, Trade } from "@rtc/domain";
 
 import { BlotterPresenter } from "../BlotterPresenter";
 
-function trade(tradeId: number): Trade {
-  return { tradeId } as Trade;
-}
-
 describe("BlotterPresenter", () => {
   it("exposes the trade stream", async () => {
     const trades: readonly Trade[] = [];
@@ -45,3 +41,7 @@ describe("BlotterPresenter", () => {
     expect([...emitted[2]]).toEqual([]);
   });
 });
+
+function trade(tradeId: number): Trade {
+  return { tradeId } as Trade;
+}

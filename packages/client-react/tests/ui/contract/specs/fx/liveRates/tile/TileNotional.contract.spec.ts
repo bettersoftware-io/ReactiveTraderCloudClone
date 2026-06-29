@@ -3,25 +3,6 @@ import { mount } from "@ui-contract/mount";
 import type { NotionalLike } from "@ui-contract/pages/fx/liveRates/tile/TileNotionalPage";
 import { describe, expect, it } from "vitest";
 
-function notional(
-  stateOver: Partial<NotionalLike["state"]> = {},
-  intentsOver: Partial<Omit<NotionalLike, "state">> = {},
-): NotionalLike {
-  return {
-    state: {
-      displayValue: "1,000,000",
-      numericValue: 1_000_000,
-      error: null,
-      isRfq: false,
-      isDefault: true,
-      ...stateOver,
-    },
-    change: () => {},
-    reset: () => {},
-    ...intentsOver,
-  };
-}
-
 describe("TileNotional", () => {
   it("shows the base currency label and the formatted value", () => {
     const n = mount(TileNotional, {
@@ -138,3 +119,22 @@ describe("TileNotional", () => {
     expect(n.hasResetButton()).toBe(true);
   });
 });
+
+function notional(
+  stateOver: Partial<NotionalLike["state"]> = {},
+  intentsOver: Partial<Omit<NotionalLike, "state">> = {},
+): NotionalLike {
+  return {
+    state: {
+      displayValue: "1,000,000",
+      numericValue: 1_000_000,
+      error: null,
+      isRfq: false,
+      isDefault: true,
+      ...stateOver,
+    },
+    change: () => {},
+    reset: () => {},
+    ...intentsOver,
+  };
+}

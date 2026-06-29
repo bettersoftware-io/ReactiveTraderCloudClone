@@ -8,10 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-function position(symbol: string, unrealisedPnl: number): EquityPosition {
-  return { symbol, qty: 100, avgPrice: 100, markPrice: 100, unrealisedPnl };
-}
-
 describe("DeskPnlGauge", () => {
   it("reads positive aggregate P&L as a + sign with a fill arc", () => {
     const gauge = mount(DeskPnlGauge, {
@@ -50,3 +46,7 @@ describe("DeskPnlGauge", () => {
     expect(gauge.fillArcCount()).toBe(1);
   });
 });
+
+function position(symbol: string, unrealisedPnl: number): EquityPosition {
+  return { symbol, qty: 100, avgPrice: 100, markPrice: 100, unrealisedPnl };
+}

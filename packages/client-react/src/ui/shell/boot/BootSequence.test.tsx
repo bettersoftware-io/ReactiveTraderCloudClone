@@ -14,6 +14,67 @@ import { HooksContext } from "#/ui/hooks/HooksContext";
 
 import { BootSequence } from "./BootSequence";
 
+describe("BootSequence — canvas rAF loop (mocked context)", () => {
+  let rafSpy: ReturnType<typeof vi.spyOn>;
+  let cafSpy: ReturnType<typeof vi.spyOn>;
+  let ctxStub: CanvasRenderingContext2D;
+
+  beforeEach(() => {
+    ctxStub = makeCtxStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      ctxStub,
+    );
+    rafSpy = vi.spyOn(window, "requestAnimationFrame").mockReturnValue(42);
+    cafSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("starts the rAF loop when the canvas context is available", () => {
+    const onDone = vi.fn();
+    render(wrap(<BootSequence onDone={onDone} />));
+    expect(rafSpy).toHaveBeenCalled();
+  });
+
+  it("cancels the rAF loop on unmount (cleanup path)", () => {
+    const onDone = vi.fn();
+    const { unmount } = render(wrap(<BootSequence onDone={onDone} />));
+    unmount();
+    expect(cafSpy).toHaveBeenCalledWith(42);
+  });
+
+  it("draws using CSS-var fallbacks when custom properties are not set", () => {
+    const onDone = vi.fn();
+    expect(() => {
+      render(wrap(<BootSequence onDone={onDone} />));
+    }).not.toThrow();
+    expect(ctxStub.clearRect).toHaveBeenCalled();
+  });
+
+  it("draws using CSS-var values when custom properties are set", () => {
+    document.documentElement.style.setProperty("--accent-primary", "#c0ffee");
+    document.documentElement.style.setProperty("--accent-2", "#facade");
+    document.documentElement.style.setProperty("--accent-positive", "#00ff00");
+    document.documentElement.style.setProperty("--accent-negative", "#ff0000");
+
+    const onDone = vi.fn();
+    expect(() => {
+      render(wrap(<BootSequence onDone={onDone} />));
+    }).not.toThrow();
+
+    document.documentElement.style.removeProperty("--accent-primary");
+    document.documentElement.style.removeProperty("--accent-2");
+    document.documentElement.style.removeProperty("--accent-positive");
+    document.documentElement.style.removeProperty("--accent-negative");
+
+    expect(ctxStub.clearRect).toHaveBeenCalled();
+  });
+});
+
 /**
  * Minimal 2D context stub — every method the draw functions call is a no-op.
  * Properties are writable so the draw functions can set fillStyle etc. without
@@ -78,64 +139,3 @@ function wrap(
     <HooksContext.Provider value={defaultHooks}>{el}</HooksContext.Provider>
   );
 }
-
-describe("BootSequence — canvas rAF loop (mocked context)", () => {
-  let rafSpy: ReturnType<typeof vi.spyOn>;
-  let cafSpy: ReturnType<typeof vi.spyOn>;
-  let ctxStub: CanvasRenderingContext2D;
-
-  beforeEach(() => {
-    ctxStub = makeCtxStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-      ctxStub,
-    );
-    rafSpy = vi.spyOn(window, "requestAnimationFrame").mockReturnValue(42);
-    cafSpy = vi
-      .spyOn(window, "cancelAnimationFrame")
-      .mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("starts the rAF loop when the canvas context is available", () => {
-    const onDone = vi.fn();
-    render(wrap(<BootSequence onDone={onDone} />));
-    expect(rafSpy).toHaveBeenCalled();
-  });
-
-  it("cancels the rAF loop on unmount (cleanup path)", () => {
-    const onDone = vi.fn();
-    const { unmount } = render(wrap(<BootSequence onDone={onDone} />));
-    unmount();
-    expect(cafSpy).toHaveBeenCalledWith(42);
-  });
-
-  it("draws using CSS-var fallbacks when custom properties are not set", () => {
-    const onDone = vi.fn();
-    expect(() => {
-      render(wrap(<BootSequence onDone={onDone} />));
-    }).not.toThrow();
-    expect(ctxStub.clearRect).toHaveBeenCalled();
-  });
-
-  it("draws using CSS-var values when custom properties are set", () => {
-    document.documentElement.style.setProperty("--accent-primary", "#c0ffee");
-    document.documentElement.style.setProperty("--accent-2", "#facade");
-    document.documentElement.style.setProperty("--accent-positive", "#00ff00");
-    document.documentElement.style.setProperty("--accent-negative", "#ff0000");
-
-    const onDone = vi.fn();
-    expect(() => {
-      render(wrap(<BootSequence onDone={onDone} />));
-    }).not.toThrow();
-
-    document.documentElement.style.removeProperty("--accent-primary");
-    document.documentElement.style.removeProperty("--accent-2");
-    document.documentElement.style.removeProperty("--accent-positive");
-    document.documentElement.style.removeProperty("--accent-negative");
-
-    expect(ctxStub.clearRect).toHaveBeenCalled();
-  });
-});

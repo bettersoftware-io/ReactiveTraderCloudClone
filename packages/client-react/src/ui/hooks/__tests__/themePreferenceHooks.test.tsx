@@ -11,24 +11,6 @@ import {
 
 import { type AppHooks, createAppHooks } from "../createAppHooks";
 
-function makeHooks(): AppHooks {
-  const { presenters, commands } = createApp({
-    ...createSimPorts(),
-  });
-  return createAppHooks(
-    presenters,
-    createMachineFactories(presenters),
-    commands,
-  );
-
-  function createSimPorts(): AppPorts {
-    // Reuse the default sim ports but swap preferences for an in-memory sim
-    // so the test is isolated from real localStorage.
-    const base = createApp().ports;
-    return { ...base, preferences: new PreferencesSimulator() };
-  }
-}
-
 describe("theme/skin/animated-bg hooks", () => {
   it("useThemeSkinPreference reads default holo and sets terminal", () => {
     const hooks = makeHooks();
@@ -54,3 +36,21 @@ describe("theme/skin/animated-bg hooks", () => {
     expect(result.current.enabled).toBe(true);
   });
 });
+
+function makeHooks(): AppHooks {
+  const { presenters, commands } = createApp({
+    ...createSimPorts(),
+  });
+  return createAppHooks(
+    presenters,
+    createMachineFactories(presenters),
+    commands,
+  );
+
+  function createSimPorts(): AppPorts {
+    // Reuse the default sim ports but swap preferences for an in-memory sim
+    // so the test is isolated from real localStorage.
+    const base = createApp().ports;
+    return { ...base, preferences: new PreferencesSimulator() };
+  }
+}

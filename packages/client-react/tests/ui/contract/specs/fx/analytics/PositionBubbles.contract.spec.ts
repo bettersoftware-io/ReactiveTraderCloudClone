@@ -8,14 +8,6 @@ afterEach(() => {
   return cleanupMounted();
 });
 
-function pair(
-  symbol: string,
-  baseTradedAmount: number,
-  counterTradedAmount: number,
-): CurrencyPairPosition {
-  return { symbol, basePnl: 0, baseTradedAmount, counterTradedAmount };
-}
-
 describe("PositionBubbles", () => {
   it("renders one bubble per non-zero currency, base+counter aggregated", () => {
     const bubbles = mount(PositionBubbles, {
@@ -63,3 +55,11 @@ describe("PositionBubbles", () => {
     expect(bubbles.tooltipAfterHover("EUR")).toBe("EUR -2,000,000");
   });
 });
+
+function pair(
+  symbol: string,
+  baseTradedAmount: number,
+  counterTradedAmount: number,
+): CurrencyPairPosition {
+  return { symbol, basePnl: 0, baseTradedAmount, counterTradedAmount };
+}

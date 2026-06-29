@@ -8,10 +8,6 @@ afterEach(() => {
   return cleanupMounted();
 });
 
-function pos(symbol: string, basePnl: number): CurrencyPairPosition {
-  return { symbol, basePnl, baseTradedAmount: 0, counterTradedAmount: 0 };
-}
-
 describe("PairPnlBars", () => {
   it("shows each pair's P&L with whole-number scaled notation", () => {
     const bars = mount(PairPnlBars, {
@@ -42,3 +38,7 @@ describe("PairPnlBars", () => {
     expect(bars.labelFor("GBPUSD")).toBe("-1,656.82");
   });
 });
+
+function pos(symbol: string, basePnl: number): CurrencyPairPosition {
+  return { symbol, basePnl, baseTradedAmount: 0, counterTradedAmount: 0 };
+}

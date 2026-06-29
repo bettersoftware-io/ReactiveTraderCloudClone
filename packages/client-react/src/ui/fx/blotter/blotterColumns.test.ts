@@ -4,30 +4,6 @@ import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import { COLUMNS, type ColumnDef, formatFxCell } from "./blotterColumns";
 
-function trade(over: Partial<Trade> = {}): Trade {
-  return {
-    tradeId: 4001,
-    tradeName: "Alice",
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.09221,
-    status: TradeStatus.Done,
-    tradeDate: "2026-03-30",
-    valueDate: "2026-04-01",
-    ...over,
-  };
-}
-
-function colFor(key: keyof Trade): ColumnDef<Trade> {
-  const c = COLUMNS.find((c) => {
-    return c.key === key;
-  });
-  if (!c) throw new Error(`no column for ${String(key)}`);
-  return c;
-}
-
 describe("COLUMNS metadata", () => {
   it("exposes the expected ordered column keys", () => {
     expect(
@@ -135,3 +111,27 @@ describe("formatFxCell", () => {
     );
   });
 });
+
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 4001,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-03-30",
+    valueDate: "2026-04-01",
+    ...over,
+  };
+}
+
+function colFor(key: keyof Trade): ColumnDef<Trade> {
+  const c = COLUMNS.find((c) => {
+    return c.key === key;
+  });
+  if (!c) throw new Error(`no column for ${String(key)}`);
+  return c;
+}

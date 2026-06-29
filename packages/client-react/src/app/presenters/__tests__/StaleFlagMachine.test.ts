@@ -6,38 +6,6 @@ import { ConnectionStatus } from "@rtc/domain";
 
 import { createStaleFlagMachine } from "../StaleFlagMachine";
 
-function scheduler(): TestScheduler {
-  return new TestScheduler((actual, expected) => {
-    expect(actual).toEqual(expected);
-  });
-}
-
-/** Build the machine over two marble streams and collect every flag emission. */
-function run(
-  statusMarble: string,
-  statusValues: Record<string, ConnectionStatus>,
-  valueMarble: string,
-  valueValues: Record<string, unknown>,
-): boolean[] {
-  const flags: boolean[] = [];
-  const ts = scheduler();
-  ts.run(({ cold, flush }) => {
-    const status$ = cold(
-      statusMarble,
-      statusValues,
-    ) as Observable<ConnectionStatus>;
-    const value$ = cold(valueMarble, valueValues) as Observable<unknown>;
-    const machine = createStaleFlagMachine({ status$, value$ });
-    const sub = machine.state$.subscribe((s) => {
-      return flags.push(s);
-    });
-    flush();
-    sub.unsubscribe();
-    machine.dispose();
-  });
-  return flags;
-}
-
 const C: ConnectionStatus = ConnectionStatus.CONNECTED;
 const D: ConnectionStatus = ConnectionStatus.DISCONNECTED;
 const I: ConnectionStatus = ConnectionStatus.IDLE_DISCONNECTED;
@@ -144,3 +112,35 @@ describe("createStaleFlagMachine", () => {
     });
   });
 });
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected);
+  });
+}
+
+/** Build the machine over two marble streams and collect every flag emission. */
+function run(
+  statusMarble: string,
+  statusValues: Record<string, ConnectionStatus>,
+  valueMarble: string,
+  valueValues: Record<string, unknown>,
+): boolean[] {
+  const flags: boolean[] = [];
+  const ts = scheduler();
+  ts.run(({ cold, flush }) => {
+    const status$ = cold(
+      statusMarble,
+      statusValues,
+    ) as Observable<ConnectionStatus>;
+    const value$ = cold(valueMarble, valueValues) as Observable<unknown>;
+    const machine = createStaleFlagMachine({ status$, value$ });
+    const sub = machine.state$.subscribe((s) => {
+      return flags.push(s);
+    });
+    flush();
+    sub.unsubscribe();
+    machine.dispose();
+  });
+  return flags;
+}
