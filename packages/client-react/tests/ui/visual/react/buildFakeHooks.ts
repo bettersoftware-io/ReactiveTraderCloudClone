@@ -218,38 +218,40 @@ export function buildFakeHooks(data: AppData): AppHooks {
       };
       return { state, skip: noop };
     },
-    // Equities: static stubs — equities UI goldens are added in later tasks;
-    // these empty defaults keep existing goldens pixel-identical.
+    // Equities: data-driven fakes reading from the AppData equities fields.
+    // Fixtures that don't set these fields return the same empty defaults as
+    // the old no-op stubs, so all pre-equities goldens stay pixel-identical.
     useWatchlist: () => {
-      return [];
+      return data.equityWatchlist ?? [];
     },
-    useEquityQuote: (_symbol: string) => {
-      return null;
+    useEquityQuote: (symbol: string) => {
+      return data.equityQuotes?.[symbol] ?? null;
     },
-    useCandles: (_symbol: string) => {
-      return [];
+    useCandles: (symbol: string) => {
+      return data.equityCandles?.[symbol] ?? [];
     },
-    useDepth: (_symbol: string) => {
-      return null;
+    useDepth: (symbol: string) => {
+      return data.equityDepth?.[symbol] ?? null;
     },
     useEquityOrders: () => {
-      return [];
+      return data.equityOrders ?? [];
     },
     useEquityPositions: () => {
-      return [];
+      return data.equityPositions ?? [];
     },
-    useOrderTicket: (_defaultSymbol: string) => {
-      return {
-        state: {
-          phase: "editing" as const,
-          form: {
-            symbol: _defaultSymbol,
-            side: "buy" as const,
-            type: "market" as const,
-            qty: 0,
-          },
-          error: null,
+    useOrderTicket: (defaultSymbol: string) => {
+      const state = data.equityOrderTicket ?? {
+        phase: "editing" as const,
+        form: {
+          symbol: defaultSymbol,
+          side: "buy" as const,
+          type: "market" as const,
+          qty: 0,
         },
+        error: null,
+      };
+      return {
+        state,
         setSymbol: noop,
         setSide: noop,
         setType: noop,

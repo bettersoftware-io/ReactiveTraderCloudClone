@@ -19,5 +19,6 @@
   justify-content: center;
   font-family: var(--font-mono);
   font-size: 11px;
+  line-height: 15px;
   color: var(--text-muted);
 }

@@ -79,6 +79,7 @@
 .sectionHeading {
   font-family: var(--font-mono);
   font-size: 9px;
+  line-height: 13px;
   letter-spacing: 0.14em;
   color: var(--text-muted);
   padding: 4px 8px 2px;
@@ -97,6 +98,7 @@
   padding: 3px 8px;
   font-family: var(--font-mono);
   font-size: 9px;
+  line-height: 13px;
   letter-spacing: 0.1em;
   border: 1px solid transparent;
   border-bottom: 2px solid transparent;
@@ -118,6 +120,7 @@
   height: 100%;
   font-family: var(--font-mono);
   font-size: 12px;
+  line-height: 17px;
   color: var(--text-muted);
   letter-spacing: 0.1em;
 }

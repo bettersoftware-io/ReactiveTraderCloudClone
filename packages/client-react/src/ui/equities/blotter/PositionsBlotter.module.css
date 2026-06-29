@@ -17,6 +17,7 @@
   overflow-y: auto;
   font-family: var(--font-mono);
   font-size: 11px;
+  line-height: 15px;
 }
 
 .header {
@@ -85,4 +86,5 @@
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 11px;
+  line-height: 15px;
 }

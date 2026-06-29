@@ -239,6 +239,15 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   // so no waitForText (the "GBP" label is non-unique against the pair rows).
   "live-rates/currency-filtered": { click: "filter-GBP" },
 
+  // --- Phase 4: Equities panel ---
+  // Full App shot: click the equities tab, wait for WATCHLIST heading to confirm
+  // the EquitiesPanel rendered (analogous to app/credit + app/admin patterns).
+  "app/equities": {
+    fullPage: true,
+    click: "tab-equities",
+    waitForText: "WATCHLIST",
+  },
+
   // --- Phase 2: HUD shell surfaces ---
   // Boot chrome under reduced motion (canvas loop skipped → deterministic).
   "boot/chrome": {

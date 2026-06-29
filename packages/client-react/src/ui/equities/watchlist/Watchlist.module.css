@@ -10,6 +10,7 @@
   padding: 4px 8px;
   font-family: var(--font-mono);
   font-size: 9px;
+  line-height: 13px;
   letter-spacing: 0.12em;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
@@ -24,6 +25,7 @@
   gap: 4px;
   font-family: var(--font-mono);
   font-size: 12px;
+  line-height: 17px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   /* Heat tint via --heat custom property; opacity scales with heat intensity */
@@ -93,5 +95,6 @@
   min-height: 80px;
   font-family: var(--font-mono);
   font-size: 11px;
+  line-height: 15px;
   color: var(--text-muted);
 }
