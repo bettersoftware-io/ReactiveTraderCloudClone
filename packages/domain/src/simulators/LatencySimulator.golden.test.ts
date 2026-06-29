@@ -24,4 +24,22 @@ describe("LatencySimulator perturbation", () => {
     const vals = (await p).map((s) => s.value);
     expect(Math.max(...vals)).toBeGreaterThan(200);
   });
+
+  it("clearPerturbation() reverts latency to baseline band after a spike (golden)", async () => {
+    const sim = new LatencySimulator(1);
+    sim.perturb("latencySpike");
+    const p1 = firstValueFrom(sim.latency$().pipe(take(3), toArray()));
+    await vi.advanceTimersByTimeAsync(3_000);
+    // Real spike values: [450.83, 201.09, 410.98] — confirm we were in the high band
+    const spikedVals = (await p1).map((s) => s.value);
+    expect(Math.max(...spikedVals)).toBeGreaterThan(200);
+
+    // Clear and observe a fresh subscription: stream returns to baseline
+    sim.clearPerturbation();
+    const p2 = firstValueFrom(sim.latency$().pipe(take(3), toArray()));
+    await vi.advanceTimersByTimeAsync(3_000);
+    // Real values after clear: [29.53, 29.21, 12.03] — all in baseline band < 80
+    const clearedVals = (await p2).map((s) => s.value);
+    expect(clearedVals.every((v) => v < 80)).toBe(true);
+  });
 });
