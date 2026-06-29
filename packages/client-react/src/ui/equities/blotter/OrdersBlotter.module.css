@@ -1,0 +1,104 @@
+.blotter {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 80px 60px 60px 70px 70px 80px;
+  padding: 4px 8px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  gap: 4px;
+  flex: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 80px 60px 60px 70px 70px 80px;
+  align-items: center;
+  padding: 4px 8px;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.row[data-status="filled"] {
+  color: var(--text-secondary);
+}
+
+.row[data-status="rejected"],
+.row[data-status="cancelled"] {
+  opacity: 0.5;
+}
+
+.symbol {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.side[data-side="buy"] {
+  color: var(--accent-positive);
+}
+
+.side[data-side="sell"] {
+  color: var(--accent-negative);
+}
+
+.type {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.qty {
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.price {
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.row[data-status="filled"] .statusBadge {
+  color: var(--accent-positive);
+  border-color: var(--accent-positive);
+}
+
+.row[data-status="working"] .statusBadge,
+.row[data-status="partiallyFilled"] .statusBadge {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.row[data-status="rejected"] .statusBadge {
+  color: var(--accent-negative);
+  border-color: var(--accent-negative);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}

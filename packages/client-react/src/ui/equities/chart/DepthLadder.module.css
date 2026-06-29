@@ -1,0 +1,88 @@
+.ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sectionLabel {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  padding: 2px 4px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 80px 60px;
+  align-items: center;
+  height: 18px;
+  position: relative;
+  padding: 0 4px;
+  gap: 4px;
+}
+
+/* Bar fills from the price side, width driven by --depth custom property */
+.bar {
+  position: absolute;
+  inset-block: 0;
+  width: calc(var(--depth) * 100%);
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.row[data-side="bid"] .bar {
+  right: 0;
+  background-color: var(--accent-positive);
+}
+
+.row[data-side="ask"] .bar {
+  left: 0;
+  background-color: var(--accent-negative);
+}
+
+.price {
+  position: relative;
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.row[data-side="bid"] .price {
+  color: var(--accent-positive);
+}
+
+.row[data-side="ask"] .price {
+  color: var(--accent-negative);
+}
+
+.size {
+  position: relative;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.spread {
+  text-align: center;
+  font-size: 9px;
+  color: var(--text-muted);
+  padding: 2px 0;
+  border-block: 1px solid var(--border);
+  letter-spacing: 0.1em;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}

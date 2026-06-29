@@ -1,0 +1,174 @@
+.ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background-color: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* Fill choreography: data-anim="fill" pulses border via keyframe */
+.ticket[data-anim="fill"] {
+  animation: ticketFill 0.6s ease-out forwards;
+}
+
+@keyframes ticketFill {
+  0% {
+    border-color: var(--accent-positive);
+    box-shadow: var(--glow);
+  }
+  100% {
+    border-color: var(--border);
+    box-shadow: none;
+  }
+}
+
+.row {
+  display: flex;
+  gap: 6px;
+}
+
+.toggleGroup {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+
+.toggle {
+  flex: 1;
+  padding: 5px 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+
+.toggle[data-active="true"][data-side="buy"] {
+  background-color: var(--accent-positive);
+  border-color: var(--accent-positive);
+  color: var(--text-on-accent);
+}
+
+.toggle[data-active="true"][data-side="sell"] {
+  background-color: var(--accent-negative);
+  border-color: var(--accent-negative);
+  color: var(--text-on-accent);
+}
+
+.toggle[data-active="true"][data-kind="type"] {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.input {
+  width: 100%;
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background-color: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-primary);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.error {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-negative);
+}
+
+.submit {
+  width: 100%;
+  padding: 7px 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  border: 1px solid var(--accent-primary);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--accent-primary);
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
+}
+
+.submit:hover {
+  background-color: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
+.submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Phase-driven status states */
+.status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: center;
+  padding: 6px 0;
+}
+
+.ticket[data-phase="submitting"] .status {
+  color: var(--text-muted);
+}
+
+.ticket[data-phase="working"] .status {
+  color: var(--accent-primary);
+}
+
+.ticket[data-phase="partiallyFilled"] .status {
+  color: var(--accent-2);
+}
+
+.ticket[data-phase="filled"] .status {
+  color: var(--accent-positive);
+}
+
+.ticket[data-phase="rejected"] .status {
+  color: var(--accent-negative);
+}
+
+.resetBtn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  border: none;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}

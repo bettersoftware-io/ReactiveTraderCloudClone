@@ -8,14 +8,15 @@ import { ThemePicker } from "./ThemePicker";
 
 import styles from "./HeaderChrome.module.css";
 
-/** The three real workspace tabs the shell switches between. Unchanged from the
- *  superseded Header — the e2e Workspace page object clicks `tab-${tab}`. */
-export type WorkspaceTab = "fx" | "credit" | "admin";
+/** The four real workspace tabs the shell switches between. Equities added in
+ *  Phase 4; the e2e Workspace page object clicks `tab-${tab}`. */
+export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
 
 const TAB_LABEL: Record<WorkspaceTab, string> = {
   fx: "FX",
   credit: "Credit",
   admin: "Admin",
+  equities: "Equities",
 };
 
 interface HeaderChromeProps {
@@ -71,14 +72,7 @@ export function HeaderChrome({
       <nav className={styles.nav} aria-label="Workspace">
         {renderTab("fx")}
         {renderTab("credit")}
-        {/* DECORATIVE — cosmetic HUD chrome, intentionally not wired to any port (spec: decorative-but-dead is allowed and explicit). */}
-        <span
-          data-testid="nav-equities"
-          aria-disabled="true"
-          className={styles.navDisabled}
-        >
-          Equities
-        </span>
+        {renderTab("equities")}
         {renderTab("admin")}
       </nav>
 
