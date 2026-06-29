@@ -4,12 +4,15 @@ primary_region = "lhr"
 [build]
   dockerfile = "packages/server/Dockerfile"
 
+# Scale-to-zero: this is a share-with-friends demo, so the machine sleeps when
+# idle (no traffic) and Fly's router auto-wakes it on the next request (~2-5s
+# cold start). min_machines_running = 0 lets it go fully to zero → ~$0 idle cost.
 [http_service]
   internal_port = 4000
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = true
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
 
   [[http_service.checks]]
     interval = "15s"
