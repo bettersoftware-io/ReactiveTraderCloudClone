@@ -21,6 +21,7 @@ export function RfqCountdown({
           data-testid="rfq-countdown-fill"
           data-warn={fraction <= 0.3 ? "true" : "false"}
           className={styles.fill}
+          // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
           style={{ "--rfq-fill": `${fraction * 100}%` } as CSSProperties}
         />
       </div>

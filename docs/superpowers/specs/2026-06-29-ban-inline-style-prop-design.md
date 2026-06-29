@@ -50,6 +50,30 @@ JSXAttribute[name.name='style'] > JSXExpressionContainer > ObjectExpression,
 JSXAttribute[name.name='style'] > JSXExpressionContainer > TSAsExpression > ObjectExpression
 ```
 
+### Flat-config no-clobber requirement
+
+ESLint flat config does **not** merge `no-restricted-syntax` arrays across
+matching config blocks — for a file matched by several blocks, the *last*
+block's setting fully **replaces** earlier ones (no array concatenation). A
+scoped block containing only the style selector would therefore silently
+**disable** the existing inline-object-type bans for client `src/`.
+
+To avoid this, lift the existing selector array into a shared module-level
+`const` and reference it in both places:
+
+```js
+const restrictedSyntax = [ /* existing inline-object-type + useHooks selectors */ ];
+const styleProp = { selector: "…ObjectExpression, …TSAsExpression > ObjectExpression", message: "…" };
+
+// general block (**/*.{ts,tsx}):
+"no-restricted-syntax": ["error", ...restrictedSyntax],
+// scoped block (packages/client-react/src/**/*.tsx), placed AFTER the general block:
+"no-restricted-syntax": ["error", ...restrictedSyntax, styleProp],
+```
+
+Client `src/` files get the union; everything else (including the test harness)
+keeps the original set only.
+
 - First branch: `style={{ … }}`.
 - Second branch: `style={{ … } as CSSProperties}` (the cast wraps the object in a
   `TSAsExpression`, so the object is no longer a direct child of the container).
@@ -68,10 +92,10 @@ allows objects whose keys are all `--custom-props` would need universal
 quantification over properties, which esquery expresses awkwardly, and it would
 make exceptions silent. Blanket-ban + explicit disable is simpler and louder.
 
-## Existing exceptions (6)
+## Existing exceptions (7)
 
-Each of the 6 current `src/` usages — all the sanctioned custom-property pattern
-— gets a loud opt-out:
+Each current `src/` usage — all the sanctioned custom-property pattern — gets a
+loud opt-out:
 
 | File | Property |
 |------|----------|
@@ -81,11 +105,20 @@ Each of the 6 current `src/` usages — all the sanctioned custom-property patte
 | `src/ui/equities/chart/DepthLadder.tsx` | `--depth` |
 | `src/ui/equities/watchlist/Watchlist.tsx` | `--heat` |
 | `src/ui/equities/watchlist/SectorHeatmap.tsx` | `--heat` |
+| `src/ui/shell/chrome/ThemePicker.tsx` | `--swatch-1/2` |
+
+The 7th (`ThemePicker`) is the validation of the AST-over-grep premise: it uses a
+multi-line `style={ {…} }` (Biome wraps the object when it exceeds 80 cols), so
+the `style={{` substring grep never saw it. The new rule does.
 
 ```tsx
 // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
 style={{ "--heat": heat } as CSSProperties}
 ```
+
+For the multi-line `ThemePicker` case the disable comment sits *inside* the JSX
+expression container, on the line directly above the object literal's `{`, so it
+maps to the line ESLint reports (the object start) and survives Biome formatting.
 
 ## Trade-off accepted
 
