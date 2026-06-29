@@ -404,26 +404,31 @@ export function reactHooks(world: World): AppHooks {
         });
       });
     },
-    // Admin / telemetry (Phase 5): no contract spec exercises these yet; stub with
-    // empty/null defaults matching the real hooks' initial state so the AppHooks
-    // interface is satisfied and future specs can layer in a World-backed fake.
+    // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
+    // components when the test pushes new data. The incident fake mirrors the real
+    // IncidentMachine's connection-status asymmetry via world.injectIncident.
     useMetrics: () => {
-      return { throughput: [], latency: [], errorRate: [] };
+      return useSubject(world.metrics$);
     },
     useTopology: () => {
-      return null;
+      return useSubject(world.topology$);
     },
     useEventLog: () => {
-      return [];
+      return useSubject(world.eventLog$);
     },
     useSessions: () => {
-      return [];
+      return useSubject(world.sessions$);
     },
     useIncident: () => {
+      const state = useSubject(world.incidentState$);
       return {
-        state: { active: [] },
-        inject: () => {},
-        clear: () => {},
+        state,
+        inject: (kind: Parameters<typeof world.injectIncident>[0]) => {
+          world.injectIncident(kind);
+        },
+        clear: () => {
+          world.clearIncident();
+        },
       };
     },
   };

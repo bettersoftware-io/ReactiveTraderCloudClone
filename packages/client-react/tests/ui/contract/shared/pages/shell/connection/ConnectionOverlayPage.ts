@@ -1,4 +1,4 @@
-import { within } from "@testing-library/dom";
+import { waitFor, within } from "@testing-library/dom";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 import type { CommandLog } from "#tests/ui/contract/shared/harness/world";
@@ -36,6 +36,22 @@ export class ConnectionOverlayPage extends MountedComponent<
     const btn = this.reconnectButton();
     if (!btn) throw new Error("Reconnect button not found");
     btn.click();
+  }
+
+  /** Wait until the overlay becomes visible (e.g. after an incident inject). */
+  async waitUntilVisible(): Promise<void> {
+    await waitFor(() => {
+      if (!this.isVisible())
+        throw new Error("ConnectionOverlay did not become visible");
+    });
+  }
+
+  /** Wait until the overlay is hidden (e.g. after clear). */
+  async waitUntilHidden(): Promise<void> {
+    await waitFor(() => {
+      if (this.isVisible())
+        throw new Error("ConnectionOverlay is still visible");
+    });
   }
 
   /** Command invocations captured during the test (e.g. reconnect count). */
