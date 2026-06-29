@@ -5,10 +5,12 @@ import type { ConnectionEvent, MetricControl, Perturbation } from "@rtc/domain";
 
 import { createIncidentMachine } from "../IncidentMachine";
 
-function fakeControl(): MetricControl & {
+type FakeControl = MetricControl & {
   calls: Perturbation[];
   cleared: number;
-} {
+};
+
+function fakeControl(): FakeControl {
   const calls: Perturbation[] = [];
   let cleared = 0;
   return {

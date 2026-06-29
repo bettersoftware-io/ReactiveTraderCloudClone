@@ -5,9 +5,9 @@ import { mulberry32 } from "./prng.js";
 describe("mulberry32", () => {
   it("is deterministic for a fixed seed (golden sequence)", () => {
     const rand = mulberry32(42);
-    const seq = [rand(), rand(), rand(), rand()].map((n) =>
-      Number(n.toFixed(6)),
-    );
+    const seq = [rand(), rand(), rand(), rand()].map((n) => {
+      return Number(n.toFixed(6));
+    });
     expect(seq).toEqual([0.601104, 0.448291, 0.852466, 0.669734]);
   });
 

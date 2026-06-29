@@ -17,6 +17,7 @@ export function describeSessionsPortContract(
   describe(`${label} :: SessionsPort contract`, () => {
     it("sessions$ emits a non-empty readonly SessionInfo[]", async () => {
       const { port, teardown } = makeHarness();
+
       try {
         const sessions = await firstValueFrom(port.sessions$());
         expect(sessions.length).toBeGreaterThan(0);
@@ -31,6 +32,7 @@ export function describeSessionsPortContract(
 
     it("sessions$ keeps emitting on the simulator cadence", async () => {
       const { port, advance, teardown } = makeHarness();
+
       try {
         let count = 0;
         const sub = port.sessions$().subscribe(() => {

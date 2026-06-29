@@ -4,16 +4,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LatencySimulator } from "./LatencySimulator.js";
 
-beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+beforeEach(() => {
+  return vi.useFakeTimers();
+});
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describe("LatencySimulator perturbation", () => {
   it("seed 1 baseline is a stable low-latency walk (golden)", async () => {
     const sim = new LatencySimulator(1);
     const p = firstValueFrom(sim.latency$().pipe(take(3), toArray()));
     await vi.advanceTimersByTimeAsync(3_000);
-    const vals = (await p).map((s) => Math.round(s.value));
-    expect(vals.every((v) => v < 80)).toBe(true);
+    const vals = (await p).map((s) => {
+      return Math.round(s.value);
+    });
+    expect(
+      vals.every((v) => {
+        return v < 80;
+      }),
+    ).toBe(true);
   });
 
   it("perturb(latencySpike) raises the latency floor", async () => {
@@ -21,7 +31,9 @@ describe("LatencySimulator perturbation", () => {
     sim.perturb("latencySpike");
     const p = firstValueFrom(sim.latency$().pipe(take(3), toArray()));
     await vi.advanceTimersByTimeAsync(3_000);
-    const vals = (await p).map((s) => s.value);
+    const vals = (await p).map((s) => {
+      return s.value;
+    });
     expect(Math.max(...vals)).toBeGreaterThan(200);
   });
 
@@ -31,7 +43,9 @@ describe("LatencySimulator perturbation", () => {
     const p1 = firstValueFrom(sim.latency$().pipe(take(3), toArray()));
     await vi.advanceTimersByTimeAsync(3_000);
     // Real spike values: [450.83, 201.09, 410.98] — confirm we were in the high band
-    const spikedVals = (await p1).map((s) => s.value);
+    const spikedVals = (await p1).map((s) => {
+      return s.value;
+    });
     expect(Math.max(...spikedVals)).toBeGreaterThan(200);
 
     // Clear and observe a fresh subscription: stream returns to baseline
@@ -39,7 +53,13 @@ describe("LatencySimulator perturbation", () => {
     const p2 = firstValueFrom(sim.latency$().pipe(take(3), toArray()));
     await vi.advanceTimersByTimeAsync(3_000);
     // Real values after clear: [29.53, 29.21, 12.03] — all in baseline band < 80
-    const clearedVals = (await p2).map((s) => s.value);
-    expect(clearedVals.every((v) => v < 80)).toBe(true);
+    const clearedVals = (await p2).map((s) => {
+      return s.value;
+    });
+    expect(
+      clearedVals.every((v) => {
+        return v < 80;
+      }),
+    ).toBe(true);
   });
 });

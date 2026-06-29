@@ -25,9 +25,15 @@ function fakePort(
   errorRate$?: Subject<MetricSample>,
 ): TelemetryPort {
   return {
-    throughput$: () => throughput$ ?? new Subject<MetricSample>(),
-    latency$: () => latency$ ?? new Subject<MetricSample>(),
-    errorRate$: () => errorRate$ ?? new Subject<MetricSample>(),
+    throughput$: () => {
+      return throughput$ ?? new Subject<MetricSample>();
+    },
+    latency$: () => {
+      return latency$ ?? new Subject<MetricSample>();
+    },
+    errorRate$: () => {
+      return errorRate$ ?? new Subject<MetricSample>();
+    },
   };
 }
 
@@ -68,6 +74,7 @@ describe("ThroughputMetricPresenter", () => {
     for (let i = 0; i < WINDOW + 5; i++) {
       subject.next(sample(i));
     }
+
     sub.unsubscribe();
 
     expect(last.length).toBe(WINDOW);
@@ -97,6 +104,7 @@ describe("LatencyPresenter", () => {
     for (let i = 0; i < WINDOW + 3; i++) {
       subject.next(sample(i));
     }
+
     sub.unsubscribe();
 
     expect(last.length).toBe(WINDOW);

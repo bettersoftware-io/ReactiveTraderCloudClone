@@ -92,6 +92,12 @@ type UseThroughputResult = ThroughputView & {
 };
 type UseOrderTicketResult = { state: OrderTicketState } & OrderTicketIntents;
 
+interface MetricsView {
+  throughput: readonly MetricSample[];
+  latency: readonly MetricSample[];
+  errorRate: readonly MetricSample[];
+}
+
 interface UseThemePreferenceResult {
   mode: ThemeMode;
   setMode: (mode: ThemeMode) => void;
@@ -197,11 +203,7 @@ export interface AppHooks {
   useOrderTicket: (defaultSymbol: string) => UseOrderTicketResult;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
-  useMetrics: () => {
-    throughput: readonly MetricSample[];
-    latency: readonly MetricSample[];
-    errorRate: readonly MetricSample[];
-  };
+  useMetrics: () => MetricsView;
   /** Live service-topology graph — null until the first emission. */
   useTopology: () => ServiceTopology | null;
   /** Newest-first rolling event log — starts empty. */

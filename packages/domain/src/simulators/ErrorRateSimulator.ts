@@ -14,6 +14,7 @@ import type { MetricControl, Perturbation } from "./perturbation.js";
 
 export class ErrorRateSimulator implements MetricControl {
   private readonly rng: () => number;
+
   private readonly perturbation$ = new BehaviorSubject<Perturbation | null>(
     null,
   );
@@ -40,8 +41,15 @@ export class ErrorRateSimulator implements MetricControl {
   }
 
   errorRate$(): Observable<MetricSample> {
-    return defer(() =>
-      concat(of(this.sample()), interval(1_000).pipe(map(() => this.sample()))),
-    );
+    return defer(() => {
+      return concat(
+        of(this.sample()),
+        interval(1_000).pipe(
+          map(() => {
+            return this.sample();
+          }),
+        ),
+      );
+    });
   }
 }

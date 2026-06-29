@@ -13,12 +13,16 @@ describe("composition — incident ↔ connection seam", () => {
     // stays warm (refCount >= 1) across the inject — a plain Subject then delivers live.
     const disconnected = firstValueFrom(
       app.presenters.connection.status$.pipe(
-        filter((s) => s === ConnectionStatus.DISCONNECTED),
+        filter((s) => {
+          return s === ConnectionStatus.DISCONNECTED;
+        }),
       ),
     );
     await firstValueFrom(
       app.presenters.connection.status$.pipe(
-        filter((s) => s === ConnectionStatus.CONNECTED),
+        filter((s) => {
+          return s === ConnectionStatus.CONNECTED;
+        }),
       ),
     );
     app.presenters.incident.intents.inject("serviceDown");

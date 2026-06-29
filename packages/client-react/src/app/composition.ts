@@ -261,7 +261,9 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     positions: new PositionsPresenter(ports.positions),
     incident: createIncidentMachine({
       controls: ports.metricControls,
-      pushConnectionEvent: (ev: ConnectionEvent) => incident$.next(ev),
+      pushConnectionEvent: (ev: ConnectionEvent) => {
+        return incident$.next(ev);
+      },
     }),
     throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
     latencyMetric: new LatencyPresenter(ports.telemetry),

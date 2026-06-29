@@ -3,8 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ServiceTopologySimulator } from "./ServiceTopologySimulator.js";
 
-beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+beforeEach(() => {
+  return vi.useFakeTimers();
+});
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describe("ServiceTopologySimulator golden", () => {
   it("emits exactly 7 nodes in deterministic order", async () => {
@@ -12,7 +16,11 @@ describe("ServiceTopologySimulator golden", () => {
     const p = firstValueFrom(sim.topology$());
     await vi.advanceTimersByTimeAsync(0);
     const topo = await p;
-    expect(topo.nodes.map((n) => n.name)).toEqual([
+    expect(
+      topo.nodes.map((n) => {
+        return n.name;
+      }),
+    ).toEqual([
       "pricing",
       "execution",
       "blotter",
@@ -29,7 +37,9 @@ describe("ServiceTopologySimulator golden", () => {
     const p = firstValueFrom(sim.topology$());
     await vi.advanceTimersByTimeAsync(0);
     const topo = await p;
-    const pricing = topo.nodes.find((n) => n.name === "pricing");
+    const pricing = topo.nodes.find((n) => {
+      return n.name === "pricing";
+    });
     expect(pricing?.status).toBe("down");
   });
 
@@ -39,7 +49,9 @@ describe("ServiceTopologySimulator golden", () => {
     const pBase = firstValueFrom(simBase.topology$());
     await vi.advanceTimersByTimeAsync(0);
     const topoBase = await pBase;
-    const baselineEdge = topoBase.edges.find((e) => e.to === "pricing");
+    const baselineEdge = topoBase.edges.find((e) => {
+      return e.to === "pricing";
+    });
     const baselineLatency = baselineEdge?.latencyMs ?? 0;
     expect(baselineLatency).toBeGreaterThan(0.5);
     expect(baselineLatency).toBeLessThan(5); // real observed: ~4.07
@@ -50,7 +62,9 @@ describe("ServiceTopologySimulator golden", () => {
     const p = firstValueFrom(sim.topology$());
     await vi.advanceTimersByTimeAsync(0);
     const topo = await p;
-    const pricingEdge = topo.edges.find((e) => e.to === "pricing");
+    const pricingEdge = topo.edges.find((e) => {
+      return e.to === "pricing";
+    });
     expect(pricingEdge?.latencyMs).toBe(800);
     // Prove distinctness: 800 is ~196× the baseline (~4.07); gap > 795
     expect(pricingEdge?.latencyMs).not.toBe(baselineLatency);

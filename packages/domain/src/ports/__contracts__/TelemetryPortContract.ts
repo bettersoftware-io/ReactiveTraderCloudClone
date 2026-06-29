@@ -19,6 +19,7 @@ export function describeTelemetryPortContract(
   describe(`${label} :: TelemetryPort contract`, () => {
     it("throughput$ emits a non-negative MetricSample on subscribe", async () => {
       const { port, teardown } = makeHarness();
+
       try {
         const first = await firstValueFrom(port.throughput$());
         expect(first.value).toBeGreaterThanOrEqual(0);
@@ -30,9 +31,12 @@ export function describeTelemetryPortContract(
 
     it("latency$ keeps emitting on the simulator cadence", async () => {
       const { port, advance, teardown } = makeHarness();
+
       try {
         const collected: MetricSample[] = [];
-        const sub = port.latency$().subscribe((s) => collected.push(s));
+        const sub = port.latency$().subscribe((s) => {
+          return collected.push(s);
+        });
         await advance(5_000);
         sub.unsubscribe();
         expect(collected.length).toBeGreaterThan(1);
@@ -43,6 +47,7 @@ export function describeTelemetryPortContract(
 
     it("errorRate$ emits a non-negative MetricSample on subscribe", async () => {
       const { port, teardown } = makeHarness();
+
       try {
         const first = await firstValueFrom(port.errorRate$());
         expect(first.value).toBeGreaterThanOrEqual(0);

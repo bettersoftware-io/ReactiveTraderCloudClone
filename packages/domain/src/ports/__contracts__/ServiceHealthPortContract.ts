@@ -17,6 +17,7 @@ export function describeServiceHealthPortContract(
   describe(`${label} :: ServiceHealthPort contract`, () => {
     it("topology$ emits a ServiceTopology with non-empty nodes and edges", async () => {
       const { port, teardown } = makeHarness();
+
       try {
         const topology = await firstValueFrom(port.topology$());
         expect(topology.nodes.length).toBeGreaterThan(0);
@@ -28,6 +29,7 @@ export function describeServiceHealthPortContract(
 
     it("topology$ keeps emitting on the simulator cadence", async () => {
       const { port, advance, teardown } = makeHarness();
+
       try {
         let count = 0;
         const sub = port.topology$().subscribe(() => {

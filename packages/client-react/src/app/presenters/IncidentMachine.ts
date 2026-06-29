@@ -42,21 +42,29 @@ export function createIncidentMachine(
       for (const c of deps.controls) c.perturb(kind);
       if (DISCONNECTING.has(kind))
         deps.pushConnectionEvent({ type: "gatewayDisconnected" });
-      return (s: IncidentState): IncidentState => ({
-        active: s.active.includes(kind) ? s.active : [...s.active, kind],
-      });
+
+      return (s: IncidentState): IncidentState => {
+        return {
+          active: s.active.includes(kind) ? s.active : [...s.active, kind],
+        };
+      };
     }),
   );
   const clearPatch$ = clear$.pipe(
     map((): Patch => {
       for (const c of deps.controls) c.clearPerturbation();
       deps.pushConnectionEvent({ type: "gatewayConnected" });
-      return () => INITIAL;
+
+      return () => {
+        return INITIAL;
+      };
     }),
   );
 
   const stream$ = merge(injectPatch$, clearPatch$).pipe(
-    scan((s, patch) => patch(s), INITIAL),
+    scan((s, patch) => {
+      return patch(s);
+    }, INITIAL),
   );
   const state$: StateObservable<IncidentState> = state(stream$, INITIAL);
 
@@ -66,8 +74,12 @@ export function createIncidentMachine(
   return {
     state$,
     intents: {
-      inject: (kind: IncidentKind): void => inject$.next(kind),
-      clear: () => clear$.next(),
+      inject: (kind: IncidentKind): void => {
+        inject$.next(kind);
+      },
+      clear: (): void => {
+        clear$.next();
+      },
     },
     dispose: () => {
       // Complete the source Subjects first so the merged stream — and the

@@ -3,8 +3,12 @@ import { afterEach, beforeEach, vi } from "vitest";
 import { describeServiceHealthPortContract } from "../ports/__contracts__/ServiceHealthPortContract.js";
 import { ServiceTopologySimulator } from "./ServiceTopologySimulator.js";
 
-beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+beforeEach(() => {
+  return vi.useFakeTimers();
+});
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describeServiceHealthPortContract("ServiceTopologySimulator", () => {
   const port = new ServiceTopologySimulator(3);

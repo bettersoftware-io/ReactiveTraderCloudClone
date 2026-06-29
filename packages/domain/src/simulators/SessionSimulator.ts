@@ -30,6 +30,7 @@ export class SessionSimulator implements SessionsPort {
   constructor(seed = 5) {
     const rng = mulberry32(seed);
     const sessions: SessionInfo[] = [];
+
     for (let i = 0; i < 4; i++) {
       const userIdx = Math.floor(rng() * USERS.length);
       const regionIdx = Math.floor(rng() * REGIONS.length);
@@ -46,12 +47,20 @@ export class SessionSimulator implements SessionsPort {
         lon,
       });
     }
+
     this.sessions = sessions;
   }
 
   sessions$(): Observable<readonly SessionInfo[]> {
-    return defer(() =>
-      concat(of(this.sessions), interval(5_000).pipe(map(() => this.sessions))),
-    );
+    return defer(() => {
+      return concat(
+        of(this.sessions),
+        interval(5_000).pipe(
+          map(() => {
+            return this.sessions;
+          }),
+        ),
+      );
+    });
   }
 }

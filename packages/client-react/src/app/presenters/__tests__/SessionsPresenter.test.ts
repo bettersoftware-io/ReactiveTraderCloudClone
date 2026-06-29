@@ -16,7 +16,11 @@ function session(id: string): SessionInfo {
 describe("SessionsPresenter", () => {
   it("passes through the sessions array from the port", async () => {
     const sessions = [session("a"), session("b")];
-    const port: SessionsPort = { sessions$: () => of(sessions) };
+    const port: SessionsPort = {
+      sessions$: () => {
+        return of(sessions);
+      },
+    };
     const presenter = new SessionsPresenter(port);
 
     const first = await firstValueFrom(presenter.sessions$);
@@ -56,7 +60,11 @@ describe("SessionsPresenter", () => {
 
   it("concurrent late subscriber receives the latest replayed value (shareReplay buffer=1)", () => {
     const subject = new Subject<readonly SessionInfo[]>();
-    const port: SessionsPort = { sessions$: () => subject };
+    const port: SessionsPort = {
+      sessions$: () => {
+        return subject;
+      },
+    };
     const presenter = new SessionsPresenter(port);
 
     // First subscriber keeps refCount > 0 while second subscribes.

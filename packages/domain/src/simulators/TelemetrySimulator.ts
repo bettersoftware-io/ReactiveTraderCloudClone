@@ -23,12 +23,16 @@ export class TelemetrySimulator implements TelemetryPort {
   }
 
   throughput$(): Observable<MetricSample> {
-    return defer(() =>
-      concat(
+    return defer(() => {
+      return concat(
         of(this.sampleThroughput()),
-        interval(2_000).pipe(map(() => this.sampleThroughput())),
-      ),
-    );
+        interval(2_000).pipe(
+          map(() => {
+            return this.sampleThroughput();
+          }),
+        ),
+      );
+    });
   }
 
   latency$(): Observable<MetricSample> {

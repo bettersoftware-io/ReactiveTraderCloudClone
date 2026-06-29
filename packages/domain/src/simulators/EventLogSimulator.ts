@@ -47,6 +47,7 @@ const MESSAGES: Readonly<Record<Severity, readonly string[]>> = {
 
 export class EventLogSimulator implements EventLogPort, MetricControl {
   private readonly rng: () => number;
+
   private readonly perturbation$ = new BehaviorSubject<Perturbation | null>(
     null,
   );
@@ -66,12 +67,14 @@ export class EventLogSimulator implements EventLogPort, MetricControl {
   private pickSeverity(): Severity {
     const p = this.perturbation$.getValue();
     const r = this.rng();
+
     if (p === "errorBurst") {
       // 10% info, 10% warn, 80% error
       if (r < 0.1) return "info";
       if (r < 0.2) return "warn";
       return "error";
     }
+
     // 70% info, 20% warn, 10% error
     if (r < 0.7) return "info";
     if (r < 0.9) return "warn";
@@ -89,11 +92,15 @@ export class EventLogSimulator implements EventLogPort, MetricControl {
   }
 
   events$(): Observable<LogEvent> {
-    return defer(() =>
-      concat(
+    return defer(() => {
+      return concat(
         of(this.generateEvent()),
-        interval(500).pipe(map(() => this.generateEvent())),
-      ),
-    );
+        interval(500).pipe(
+          map(() => {
+            return this.generateEvent();
+          }),
+        ),
+      );
+    });
   }
 }

@@ -21,6 +21,7 @@ export function describeEventLogPortContract(
   describe(`${label} :: EventLogPort contract`, () => {
     it("events$ emits a LogEvent with a valid severity", async () => {
       const { port, teardown } = makeHarness();
+
       try {
         const event = await firstValueFrom(port.events$());
         expect(VALID_SEVERITIES).toContain(event.severity);
@@ -33,6 +34,7 @@ export function describeEventLogPortContract(
 
     it("events$ keeps emitting on the simulator cadence", async () => {
       const { port, advance, teardown } = makeHarness();
+
       try {
         let count = 0;
         const sub = port.events$().subscribe(() => {

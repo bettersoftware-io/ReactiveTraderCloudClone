@@ -28,31 +28,38 @@ const SERVICE_NAMES: readonly ServiceName[] = [
   "kernel",
 ];
 
-const OTHER_SERVICES: readonly ServiceName[] = SERVICE_NAMES.filter(
-  (n) => n !== "kernel",
-);
+const OTHER_SERVICES: readonly ServiceName[] = SERVICE_NAMES.filter((n) => {
+  return n !== "kernel";
+});
 
 export class ServiceTopologySimulator
   implements ServiceHealthPort, MetricControl
 {
   private readonly rng: () => number;
+
   private readonly perturbation$ = new BehaviorSubject<Perturbation | null>(
     null,
   );
+
   private nodeThroughputs: number[];
+
   private nodeLatencies: number[];
+
   private edgeLatencies: number[];
 
   constructor(seed = 3) {
     this.rng = mulberry32(seed);
     // Initialize node values: throughput ~50-200, latencyMs ~1-20
-    this.nodeThroughputs = SERVICE_NAMES.map(() => 50 + this.rng() * 150);
-    this.nodeLatencies = SERVICE_NAMES.map(() => 1 + this.rng() * 19);
+    this.nodeThroughputs = SERVICE_NAMES.map(() => {
+      return 50 + this.rng() * 150;
+    });
+    this.nodeLatencies = SERVICE_NAMES.map(() => {
+      return 1 + this.rng() * 19;
+    });
     // 6 edges (kernel → each other service): latencyMs ~0.5-5
-    this.edgeLatencies = Array.from(
-      { length: OTHER_SERVICES.length },
-      () => 0.5 + this.rng() * 4.5,
-    );
+    this.edgeLatencies = Array.from({ length: OTHER_SERVICES.length }, () => {
+      return 0.5 + this.rng() * 4.5;
+    });
   }
 
   perturb(kind: Perturbation): void {
@@ -70,34 +77,44 @@ export class ServiceTopologySimulator
   private buildTopology(): ServiceTopology {
     const p = this.perturbation$.getValue();
 
-    const nodes: ServiceNode[] = SERVICE_NAMES.map((name, i) => ({
-      name,
-      status: p === "serviceDown" && name === "pricing" ? "down" : "ok",
-      throughput: this.nodeThroughputs[i] ?? 100,
-      latencyMs: this.nodeLatencies[i] ?? 5,
-    }));
+    const nodes: ServiceNode[] = SERVICE_NAMES.map((name, i) => {
+      return {
+        name,
+        status: p === "serviceDown" && name === "pricing" ? "down" : "ok",
+        throughput: this.nodeThroughputs[i] ?? 100,
+        latencyMs: this.nodeLatencies[i] ?? 5,
+      };
+    });
 
-    const edges: ServiceEdge[] = OTHER_SERVICES.map((name, i) => ({
-      from: "kernel",
-      to: name,
-      latencyMs:
-        p === "serviceDown" && name === "pricing"
-          ? 800
-          : (this.edgeLatencies[i] ?? 2),
-    }));
+    const edges: ServiceEdge[] = OTHER_SERVICES.map((name, i) => {
+      return {
+        from: "kernel",
+        to: name,
+        latencyMs:
+          p === "serviceDown" && name === "pricing"
+            ? 800
+            : (this.edgeLatencies[i] ?? 2),
+      };
+    });
 
     return { nodes, edges };
   }
 
   private tick(): void {
-    this.nodeThroughputs = this.nodeThroughputs.map((v) => this.walk(v));
-    this.nodeLatencies = this.nodeLatencies.map((v) => this.walk(v));
-    this.edgeLatencies = this.edgeLatencies.map((v) => this.walk(v));
+    this.nodeThroughputs = this.nodeThroughputs.map((v) => {
+      return this.walk(v);
+    });
+    this.nodeLatencies = this.nodeLatencies.map((v) => {
+      return this.walk(v);
+    });
+    this.edgeLatencies = this.edgeLatencies.map((v) => {
+      return this.walk(v);
+    });
   }
 
   topology$(): Observable<ServiceTopology> {
-    return defer(() =>
-      concat(
+    return defer(() => {
+      return concat(
         of(this.buildTopology()),
         interval(2_000).pipe(
           map(() => {
@@ -105,7 +122,7 @@ export class ServiceTopologySimulator
             return this.buildTopology();
           }),
         ),
-      ),
-    );
+      );
+    });
   }
 }

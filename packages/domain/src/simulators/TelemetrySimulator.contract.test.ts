@@ -6,8 +6,12 @@ import { LatencySimulator } from "./LatencySimulator.js";
 import { TelemetrySimulator } from "./TelemetrySimulator.js";
 import { ThroughputSimulator } from "./ThroughputSimulator.js";
 
-beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+beforeEach(() => {
+  return vi.useFakeTimers();
+});
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describeTelemetryPortContract("TelemetrySimulator(composite)", () => {
   const port = new TelemetrySimulator(

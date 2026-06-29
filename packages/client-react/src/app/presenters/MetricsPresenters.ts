@@ -11,7 +11,9 @@ function windowedSamples(
 ): Observable<readonly MetricSample[]> {
   return source$.pipe(
     scan(
-      (acc, s) => [...acc, s].slice(-WINDOW) as readonly MetricSample[],
+      (acc, s) => {
+        return [...acc, s].slice(-WINDOW) as readonly MetricSample[];
+      },
       [] as readonly MetricSample[],
     ),
     startWith([] as readonly MetricSample[]),

@@ -15,7 +15,11 @@ function makeEvent(t: number): LogEvent {
 
 describe("EventLogPresenter", () => {
   it("emits an empty list immediately before any events arrive", async () => {
-    const port: EventLogPort = { events$: () => new Subject<LogEvent>() };
+    const port: EventLogPort = {
+      events$: () => {
+        return new Subject<LogEvent>();
+      },
+    };
     const presenter = new EventLogPresenter(port);
 
     const first = await firstValueFrom(presenter.events$);
@@ -24,7 +28,11 @@ describe("EventLogPresenter", () => {
 
   it("accumulates events newest-first", () => {
     const subject = new Subject<LogEvent>();
-    const port: EventLogPort = { events$: () => subject };
+    const port: EventLogPort = {
+      events$: () => {
+        return subject;
+      },
+    };
     const presenter = new EventLogPresenter(port);
 
     const emitted: (readonly LogEvent[])[] = [];
@@ -49,7 +57,11 @@ describe("EventLogPresenter", () => {
 
   it(`caps at MAX_LOG_ROWS (${MAX_LOG_ROWS}) and keeps the newest events`, () => {
     const subject = new Subject<LogEvent>();
-    const port: EventLogPort = { events$: () => subject };
+    const port: EventLogPort = {
+      events$: () => {
+        return subject;
+      },
+    };
     const presenter = new EventLogPresenter(port);
 
     let last: readonly LogEvent[] = [];
@@ -60,6 +72,7 @@ describe("EventLogPresenter", () => {
     for (let i = 0; i < MAX_LOG_ROWS + 10; i++) {
       subject.next(makeEvent(i));
     }
+
     sub.unsubscribe();
 
     expect(last.length).toBe(MAX_LOG_ROWS);

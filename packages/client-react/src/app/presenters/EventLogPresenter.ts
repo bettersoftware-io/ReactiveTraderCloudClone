@@ -19,7 +19,9 @@ export class EventLogPresenter {
   constructor(port: EventLogPort) {
     this.events$ = port.events$().pipe(
       scan(
-        (acc, e) => [e, ...acc].slice(0, MAX_LOG_ROWS) as readonly LogEvent[],
+        (acc, e) => {
+          return [e, ...acc].slice(0, MAX_LOG_ROWS) as readonly LogEvent[];
+        },
         [] as readonly LogEvent[],
       ),
       startWith([] as readonly LogEvent[]),
