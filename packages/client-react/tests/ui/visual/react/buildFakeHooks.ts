@@ -261,5 +261,22 @@ export function buildFakeHooks(data: AppData): AppHooks {
         reset: noop,
       };
     },
+    // Admin / telemetry (Phase 5): static goldens don't render the admin panel;
+    // return empty/null defaults identical to the real hooks' initial state.
+    useMetrics: () => {
+      return { throughput: [], latency: [], errorRate: [] };
+    },
+    useTopology: () => {
+      return null;
+    },
+    useEventLog: () => {
+      return [];
+    },
+    useSessions: () => {
+      return [];
+    },
+    useIncident: () => {
+      return { state: { active: [] }, inject: noop, clear: noop };
+    },
   };
 }

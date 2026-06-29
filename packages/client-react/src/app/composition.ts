@@ -33,6 +33,7 @@ import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresente
 import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
 import { DealersPresenter } from "./presenters/DealersPresenter";
 import { DepthPresenter } from "./presenters/DepthPresenter";
+import { EventLogPresenter } from "./presenters/EventLogPresenter";
 import {
   createIncidentMachine,
   type IncidentIntents,
@@ -40,6 +41,11 @@ import {
 } from "./presenters/IncidentMachine";
 import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
 import { createLayoutMachine } from "./presenters/LayoutMachine";
+import {
+  ErrorRatePresenter,
+  LatencyPresenter,
+  ThroughputMetricPresenter,
+} from "./presenters/MetricsPresenters";
 import type { Machine, MachineFactories } from "./presenters/machine";
 import { createNotionalMachine } from "./presenters/NotionalMachine";
 import { OrdersBlotterPresenter } from "./presenters/OrdersBlotterPresenter";
@@ -51,7 +57,9 @@ import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
 import { RfqsPresenter } from "./presenters/RfqsPresenter";
 import { createRfqTileMachine } from "./presenters/RfqTileMachine";
 import { createRowHighlightMachine } from "./presenters/RowHighlightMachine";
+import { ServiceTopologyPresenter } from "./presenters/ServiceTopologyPresenter";
 import { SessionPresenter } from "./presenters/SessionPresenter";
+import { SessionsPresenter } from "./presenters/SessionsPresenter";
 import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
 import { ThemePreferencePresenter } from "./presenters/ThemePreferencePresenter";
 import { ThemeSkinPreferencePresenter } from "./presenters/ThemeSkinPreferencePresenter";
@@ -111,6 +119,16 @@ export interface Presenters {
   positions: PositionsPresenter;
   /** Phase 5 Admin: incident injection + connection-seam control. */
   incident: Machine<IncidentState, IncidentIntents>;
+  /** Phase 5 Admin: per-metric rolling window series for charts. */
+  throughputMetric: ThroughputMetricPresenter;
+  latencyMetric: LatencyPresenter;
+  errorRateMetric: ErrorRatePresenter;
+  /** Phase 5 Admin: service-topology graph stream. */
+  topology: ServiceTopologyPresenter;
+  /** Phase 5 Admin: newest-first rolling event log. */
+  eventLog: EventLogPresenter;
+  /** Phase 5 Admin: active trader sessions feed. */
+  sessions: SessionsPresenter;
 }
 
 export interface AppCommands {
@@ -245,6 +263,12 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
       controls: ports.metricControls,
       pushConnectionEvent: (ev: ConnectionEvent) => incident$.next(ev),
     }),
+    throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
+    latencyMetric: new LatencyPresenter(ports.telemetry),
+    errorRateMetric: new ErrorRatePresenter(ports.telemetry),
+    topology: new ServiceTopologyPresenter(ports.serviceHealth),
+    eventLog: new EventLogPresenter(ports.eventLog),
+    sessions: new SessionsPresenter(ports.sessions),
   };
   const commands: AppCommands = {
     reconnect: () => {

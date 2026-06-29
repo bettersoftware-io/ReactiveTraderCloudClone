@@ -404,5 +404,27 @@ export function reactHooks(world: World): AppHooks {
         });
       });
     },
+    // Admin / telemetry (Phase 5): no contract spec exercises these yet; stub with
+    // empty/null defaults matching the real hooks' initial state so the AppHooks
+    // interface is satisfied and future specs can layer in a World-backed fake.
+    useMetrics: () => {
+      return { throughput: [], latency: [], errorRate: [] };
+    },
+    useTopology: () => {
+      return null;
+    },
+    useEventLog: () => {
+      return [];
+    },
+    useSessions: () => {
+      return [];
+    },
+    useIncident: () => {
+      return {
+        state: { active: [] },
+        inject: () => {},
+        clear: () => {},
+      };
+    },
   };
 }
