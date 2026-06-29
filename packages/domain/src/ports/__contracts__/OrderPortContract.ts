@@ -68,7 +68,9 @@ export function describeOrderPortContract(
       try {
         const done = lastValueFrom(port.cancel("nonexistent").pipe(toArray()));
         await driver.ackCancel();
-        await expect(done).resolves.toBeDefined();
+        await expect(done).resolves.toSatisfy((values: readonly unknown[]) =>
+          values.every((v) => v === undefined),
+        );
       } finally {
         teardown();
       }
