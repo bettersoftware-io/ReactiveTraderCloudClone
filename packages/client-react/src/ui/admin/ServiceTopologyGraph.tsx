@@ -97,6 +97,7 @@ export function ServiceTopologyGraph(): ReactElement {
               y2={b.y}
               className={styles.edge}
               style={
+                // eslint-disable-next-line no-restricted-syntax -- runtime edge heat via CSS custom property; static CSS can't express a per-edge value
                 {
                   "--edge-heat": edgeHeat(edge.latencyMs, peakLatency),
                 } as CSSProperties
@@ -118,6 +119,7 @@ export function ServiceTopologyGraph(): ReactElement {
                 r={nodeRadius(node.throughput, peakThroughput)}
                 className={styles.dot}
                 style={
+                  // eslint-disable-next-line no-restricted-syntax -- runtime node opacity via CSS custom property; static CSS can't express a per-node value
                   {
                     "--node-opacity": nodeOpacity(
                       node.throughput,
