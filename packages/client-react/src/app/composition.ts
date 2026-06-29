@@ -1,4 +1,4 @@
-import { merge, mergeMap, of, Subject, tap } from "rxjs";
+import { merge, mergeMap, of, ReplaySubject, Subject, tap } from "rxjs";
 
 import {
   type BootVariant,
@@ -33,9 +33,14 @@ import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresente
 import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
 import { DealersPresenter } from "./presenters/DealersPresenter";
 import { DepthPresenter } from "./presenters/DepthPresenter";
+import {
+  createIncidentMachine,
+  type IncidentIntents,
+  type IncidentState,
+} from "./presenters/IncidentMachine";
 import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
 import { createLayoutMachine } from "./presenters/LayoutMachine";
-import type { MachineFactories } from "./presenters/machine";
+import type { Machine, MachineFactories } from "./presenters/machine";
 import { createNotionalMachine } from "./presenters/NotionalMachine";
 import { OrdersBlotterPresenter } from "./presenters/OrdersBlotterPresenter";
 import { createOrderTicketMachine } from "./presenters/OrderTicketMachine";
@@ -104,6 +109,8 @@ export interface Presenters {
   depth: DepthPresenter;
   ordersBlotter: OrdersBlotterPresenter;
   positions: PositionsPresenter;
+  /** Phase 5 Admin: incident injection + connection-seam control. */
+  incident: Machine<IncidentState, IncidentIntents>;
 }
 
 export interface AppCommands {
@@ -122,6 +129,12 @@ export interface App {
  * into it via AppCommands.reconnect(). */
 const reconnect$ = new Subject<ReconnectIntent>();
 
+/** Incident-machine connection-event sink.  ReplaySubject(1) so that an
+ * inject() call fired immediately before the second subscriber arrives (e.g.
+ * between two firstValueFrom calls) is still delivered when the connection
+ * presenter re-subscribes. Owned at module level alongside reconnect$. */
+const incident$ = new ReplaySubject<ConnectionEvent>(1);
+
 export function buildDefaultPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
   const token = import.meta.env.VITE_WS_TOKEN as string | undefined;
@@ -138,7 +151,12 @@ export function buildDefaultPorts(): AppPorts {
         //   reconnect   → reopen()       (sole recovery; button-only)
         //   userActivity → no-op here    (resets countdown in BrowserAdapter)
         // Provenance: original services/connection.ts:74-96.
-        return merge(gateway.events(), browser.events(), reconnect$).pipe(
+        return merge(
+          gateway.events(),
+          browser.events(),
+          reconnect$,
+          incident$,
+        ).pipe(
           tap((e) => {
             return routeIdleLifecycle(e, ws);
           }),
@@ -170,6 +188,7 @@ export function buildDefaultPorts(): AppPorts {
             return of({ type: "gatewayConnected" as const });
           }),
         ),
+        incident$,
       );
     },
   };
@@ -224,6 +243,10 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     depth: new DepthPresenter(ports.marketData),
     ordersBlotter,
     positions: new PositionsPresenter(ports.positions),
+    incident: createIncidentMachine({
+      controls: ports.metricControls,
+      pushConnectionEvent: (ev: ConnectionEvent) => incident$.next(ev),
+    }),
   };
   const commands: AppCommands = {
     reconnect: () => {
