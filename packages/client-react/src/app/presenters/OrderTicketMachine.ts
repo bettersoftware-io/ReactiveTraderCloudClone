@@ -11,7 +11,7 @@ import type {
 
 import type { Machine } from "./machine";
 
-export interface OrderTicketForm {
+interface OrderTicketForm {
   symbol: string;
   side: OrderSide;
   type: OrderType;
