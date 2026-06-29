@@ -28,13 +28,18 @@ import { AnimationDirector } from "./presenters/AnimationDirector";
 import { BlotterPresenter } from "./presenters/BlotterPresenter";
 import { BootPreferencePresenter } from "./presenters/BootPreferencePresenter";
 import { createBootSequenceMachine } from "./presenters/BootSequenceMachine";
+import { CandleSeriesPresenter } from "./presenters/CandleSeriesPresenter";
 import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
 import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
 import { DealersPresenter } from "./presenters/DealersPresenter";
+import { DepthPresenter } from "./presenters/DepthPresenter";
 import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
 import { createLayoutMachine } from "./presenters/LayoutMachine";
 import type { MachineFactories } from "./presenters/machine";
 import { createNotionalMachine } from "./presenters/NotionalMachine";
+import { OrdersBlotterPresenter } from "./presenters/OrdersBlotterPresenter";
+import { createOrderTicketMachine } from "./presenters/OrderTicketMachine";
+import { PositionsPresenter } from "./presenters/PositionsPresenter";
 import { PriceHistoryPresenter } from "./presenters/PriceHistoryPresenter";
 import { PriceStreamPresenter } from "./presenters/PriceStreamPresenter";
 import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
@@ -49,6 +54,7 @@ import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
 import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
+import { WatchlistPresenter } from "./presenters/WatchlistPresenter";
 import { buildWsUrl } from "./wsUrl";
 
 export type { AppPorts };
@@ -93,6 +99,11 @@ export interface Presenters {
   animationDirector: AnimationDirector;
   bootPreference: BootPreferencePresenter;
   session: SessionPresenter;
+  watchlist: WatchlistPresenter;
+  candleSeries: CandleSeriesPresenter;
+  depth: DepthPresenter;
+  ordersBlotter: OrdersBlotterPresenter;
+  positions: PositionsPresenter;
 }
 
 export interface AppCommands {
@@ -204,6 +215,11 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     bootPreference: new BootPreferencePresenter(ports.preferences),
     // Session lock/unlock state over the static demo user (no real auth backend).
     session: new SessionPresenter(),
+    watchlist: new WatchlistPresenter(ports.marketData),
+    candleSeries: new CandleSeriesPresenter(ports.marketData),
+    depth: new DepthPresenter(ports.marketData),
+    ordersBlotter: new OrdersBlotterPresenter(ports.orders),
+    positions: new PositionsPresenter(ports.positions),
   };
   const commands: AppCommands = {
     reconnect: () => {
@@ -267,6 +283,14 @@ export function createMachineFactories(
           presenters.bootPreference.setVariant(next);
         },
         onDone,
+      });
+    },
+    orderTicket: (defaultSymbol: string) => {
+      return createOrderTicketMachine({
+        place: (req: Parameters<typeof presenters.ordersBlotter.place>[0]) => {
+          return presenters.ordersBlotter.place(req);
+        },
+        defaultSymbol,
       });
     },
   };
