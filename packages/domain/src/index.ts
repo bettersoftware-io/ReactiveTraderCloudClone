@@ -150,7 +150,6 @@ export {
   gbmStep,
   INSTRUMENTS_CATALOG,
   InstrumentSimulator,
-  mulberry32,
   PreferencesSimulator,
   PricingSimulator,
   ReferenceDataSimulator,
@@ -158,6 +157,18 @@ export {
   ThroughputSimulator,
   TradeStoreSimulator,
 } from "./simulators/index.js";
+export type { LogEvent, Severity } from "./telemetry/log.js";
+// Telemetry
+export type { MetricSample } from "./telemetry/metrics.js";
+export { mulberry32 } from "./telemetry/prng.js";
+export type { SessionInfo } from "./telemetry/session.js";
+export type {
+  ServiceEdge,
+  ServiceName,
+  ServiceNode,
+  ServiceStatus,
+  ServiceTopology,
+} from "./telemetry/topology.js";
 export type {
   CreateRfqInput,
   ExecuteTradeInput,
