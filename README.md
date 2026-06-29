@@ -321,6 +321,39 @@ pnpm --filter @rtc/domain test
 pnpm --filter @rtc/client-react dev
 ```
 
+## Deploy
+
+A public, password-gated demo can be deployed to **Vercel** (the client) +
+**Fly.io** (the WebSocket server, London `lhr`). **Deploys are on-demand only —
+nothing auto-deploys on a push or merge, on any branch** (Vercel's Git
+integration is disabled via `"git": { "deploymentEnabled": false }` in
+`vercel.json`). There is exactly **one official way** to deploy each app: its
+GitHub Actions workflow, triggered manually.
+
+### Main app (client + server)
+
+**Actions tab → "Deploy" → Run workflow** (or `gh workflow run deploy.yml`).
+
+One run deploys **both** halves together and smoke-checks each — server
+`/health` → 200, client unauthenticated → 401 (the password wall). Deploying the
+two together is the whole point of the manual workflow: the client and server
+share a token and must move in lockstep, which a piecemeal auto-deploy can't
+guarantee.
+
+See [`docs/DEPLOY.md`](docs/DEPLOY.md) for one-time setup (accounts, secrets,
+the shared password/token) and how the gating works.
+
+### Design prototype
+
+The standalone HUD design prototype under `docs/design/` deploys separately to
+its own Vercel project:
+
+**Actions tab → "Deploy Prototype" → Run workflow** — a path input selects which
+prototype (defaults to v2; change it to e.g.
+`docs/design/v3/standalone/Reactive Trader.html` for a future version). Or
+`gh workflow run deploy-proto.yml -f prototype_path="…"`. See
+[`deploy/prototype/README.md`](deploy/prototype/README.md).
+
 ## Status
 
 All planned phases are complete; the platform builds, typechecks, and passes the
