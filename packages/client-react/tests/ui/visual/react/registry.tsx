@@ -182,7 +182,19 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return <HeaderChrome activeTab="fx" onTabChange={() => {}} />;
   },
   StatusBar: () => {
-    return <StatusBar />;
+    // Render at a FIXED width (like the real app, where StatusBar stretches to
+    // the full-width column flex of `.app`) instead of letting the inline-block
+    // scenario-root shrink it to content. StatusBar text uses var(--font-mono);
+    // its content width resolves non-deterministically under x86 headless
+    // (glyph-advance metrics vary run-to-run), so a content-sized golden flakes
+    // on WIDTH (871<->811). Pinning the width makes the snapshot dimensions
+    // deterministic; residual sub-pixel text jitter is absorbed by the tier's
+    // maxDiffPixelRatio. flex-column so the child stretches to this width.
+    return (
+      <div style={{ display: "flex", flexDirection: "column", width: 880 }}>
+        <StatusBar />
+      </div>
+    );
   },
   PreferencesModal: () => {
     // The modal's backdrop is translucent; paint a deterministic dark field
