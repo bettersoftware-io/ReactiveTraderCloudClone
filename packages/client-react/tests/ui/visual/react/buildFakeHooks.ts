@@ -261,22 +261,29 @@ export function buildFakeHooks(data: AppData): AppHooks {
         reset: noop,
       };
     },
-    // Admin / telemetry (Phase 5): static goldens don't render the admin panel;
-    // return empty/null defaults identical to the real hooks' initial state.
+    // Admin / telemetry (Phase 5): data-driven fakes reading from AppData admin
+    // fields. Fixtures that don't set these fields return the same empty defaults
+    // as the old no-op stubs, so all pre-admin goldens stay pixel-identical.
     useMetrics: () => {
-      return { throughput: [], latency: [], errorRate: [] };
+      return (
+        data.adminMetrics ?? { throughput: [], latency: [], errorRate: [] }
+      );
     },
     useTopology: () => {
-      return null;
+      return data.adminTopology ?? null;
     },
     useEventLog: () => {
-      return [];
+      return data.adminEventLog ?? [];
     },
     useSessions: () => {
-      return [];
+      return data.adminSessions ?? [];
     },
     useIncident: () => {
-      return { state: { active: [] }, inject: noop, clear: noop };
+      return {
+        state: data.adminIncident ?? { active: [] },
+        inject: noop,
+        clear: noop,
+      };
     },
   };
 }

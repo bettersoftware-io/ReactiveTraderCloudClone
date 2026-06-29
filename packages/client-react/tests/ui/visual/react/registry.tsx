@@ -3,7 +3,11 @@ import type { ReactElement } from "react";
 import { createDefaultLayoutPort } from "#/app/layout/defaultLayoutPort";
 import type { LayoutState } from "#/app/layout/layoutPort";
 import { App } from "#/ui/App";
+import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { AdminPanel } from "#/ui/admin/AdminPanel";
+import { IncidentControls } from "#/ui/admin/IncidentControls";
+import { LiveEventLog } from "#/ui/admin/LiveEventLog";
+import { ServiceTopologyGraph } from "#/ui/admin/ServiceTopologyGraph";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditWorkspace } from "#/ui/credit/CreditWorkspace";
 import { NewRfqForm } from "#/ui/credit/newRfq/NewRfqForm";
@@ -185,6 +189,49 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   AdminPanel: () => {
     return <AdminPanel />;
+  },
+  // --- Phase 5 Admin dashboard components ---
+  // Full AdminDashboard at fixed 1280×700: mirrors the panel-sized container the
+  // real app provides. Fixed height prevents content overflow from unresolved
+  // canvas dimensions in headless mode.
+  AdminDashboard: () => {
+    return (
+      <div
+        style={{
+          width: 1280,
+          height: 700,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <AdminDashboard />
+      </div>
+    );
+  },
+  // ServiceTopologyGraph at a fixed SVG-viewport size (300×200) so the SVG
+  // viewBox fills the wrapper deterministically.
+  ServiceTopologyGraph: () => {
+    return (
+      <div style={{ width: 300, height: 200 }}>
+        <ServiceTopologyGraph />
+      </div>
+    );
+  },
+  // LiveEventLog at a fixed width — font-mono glyph-advance variance on x86
+  // would flake a content-sized wrapper; pinning the width stabilises it.
+  LiveEventLog: () => {
+    return (
+      <div style={{ width: 400, display: "flex", flexDirection: "column" }}>
+        <LiveEventLog />
+      </div>
+    );
+  },
+  // IncidentControls: renders the three inject buttons + Clear. The
+  // admin/incident-active fixture seeds state so "Inject service down" button
+  // has data-active="true" without any click interaction.
+  IncidentControls: () => {
+    return <IncidentControls />;
   },
   App: () => {
     return <App />;
