@@ -4,7 +4,9 @@ import { describePositionPortContract } from "../ports/__contracts__/PositionPor
 import { EquityMarketDataSimulator } from "./EquityMarketDataSimulator.js";
 import { EquityPositionSimulator } from "./EquityPositionSimulator.js";
 
-afterEach(() => {return vi.useRealTimers()});
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describePositionPortContract("EquityPositionSimulator", () => {
   vi.useFakeTimers();
@@ -20,6 +22,8 @@ describePositionPortContract("EquityPositionSimulator", () => {
         await Promise.resolve();
       },
     },
-    teardown: () => {return vi.useRealTimers()},
+    teardown: () => {
+      return vi.useRealTimers();
+    },
   };
 });

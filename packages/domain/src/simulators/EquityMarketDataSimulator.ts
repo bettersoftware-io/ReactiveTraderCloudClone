@@ -83,7 +83,10 @@ export class EquityMarketDataSimulator implements MarketDataPort {
   quotes(symbol: string): Observable<EquityQuote> {
     return defer(() => {
       const s = this.getState(symbol);
-      if (!s) return throwError(() => {return new Error(`Unknown symbol: ${symbol}`)});
+      if (!s)
+        return throwError(() => {
+          return new Error(`Unknown symbol: ${symbol}`);
+        });
       const first = this.toQuote(symbol, s, Date.now());
       const live$ = interval(TICK_MS).pipe(
         map(() => {
@@ -98,7 +101,10 @@ export class EquityMarketDataSimulator implements MarketDataPort {
   candles(symbol: string): Observable<readonly Candle[]> {
     return defer(() => {
       const s = this.getState(symbol);
-      if (!s) return throwError(() => {return new Error(`Unknown symbol: ${symbol}`)});
+      if (!s)
+        return throwError(() => {
+          return new Error(`Unknown symbol: ${symbol}`);
+        });
       const rng = mulberry32(7);
       let price = s.open;
       let candle: Candle | null = null;
@@ -126,7 +132,10 @@ export class EquityMarketDataSimulator implements MarketDataPort {
   depth(symbol: string): Observable<DepthBook> {
     return defer(() => {
       const s = this.getState(symbol);
-      if (!s) return throwError(() => {return new Error(`Unknown symbol: ${symbol}`)});
+      if (!s)
+        return throwError(() => {
+          return new Error(`Unknown symbol: ${symbol}`);
+        });
       const rng = mulberry32(13);
       const bids: DepthLevel[] = [];
       const asks: DepthLevel[] = [];

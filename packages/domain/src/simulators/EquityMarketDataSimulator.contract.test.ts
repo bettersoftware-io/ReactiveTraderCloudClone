@@ -3,7 +3,9 @@ import { afterEach, vi } from "vitest";
 import { describeMarketDataPortContract } from "../ports/__contracts__/MarketDataPortContract.js";
 import { EquityMarketDataSimulator } from "./EquityMarketDataSimulator.js";
 
-afterEach(() => {return vi.useRealTimers()});
+afterEach(() => {
+  return vi.useRealTimers();
+});
 
 describeMarketDataPortContract("EquityMarketDataSimulator", () => {
   vi.useFakeTimers();
@@ -26,6 +28,8 @@ describeMarketDataPortContract("EquityMarketDataSimulator", () => {
         await Promise.resolve();
       },
     },
-    teardown: () => {return vi.useRealTimers()},
+    teardown: () => {
+      return vi.useRealTimers();
+    },
   };
 });
