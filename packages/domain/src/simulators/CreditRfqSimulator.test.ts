@@ -6,7 +6,7 @@ import { defined } from "../__testUtils__/defined.js";
 import { CREDIT_RFQ_EXPIRY_SECONDS } from "../credit/rfq.js";
 import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
-import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
+import { DEALERS_CATALOG } from "./DealerSimulator.js";
 
 afterEach(() => {
   vi.useRealTimers();
