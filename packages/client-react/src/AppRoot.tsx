@@ -1,14 +1,17 @@
 import { type ReactElement, type ReactNode, useRef } from "react";
 
-import { createApp, createMachineFactories } from "./app/composition";
-import { shouldPlayBootSplash } from "./bootSplashGate";
-import { BootGate } from "./ui/shell/boot/BootGate";
-import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
+import { createApp, createMachineFactories } from "@rtc/client-core";
 import {
   createViewModel,
   type ViewModel,
-} from "./ui/viewModel/createViewModel";
-import { ViewModelProvider } from "./ui/viewModel/ViewModelProvider";
+  ViewModelProvider,
+} from "@rtc/react-bindings";
+
+import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+
+import { shouldPlayBootSplash } from "./bootSplashGate";
+import { BootGate } from "./ui/shell/boot/BootGate";
+import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
 
 interface AppRootProps {
   children: ReactNode;
@@ -31,7 +34,7 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
   const viewModelRef = useRef<ViewModel | null>(null);
 
   if (viewModelRef.current === null) {
-    const { presenters, commands } = createApp();
+    const { presenters, commands } = createApp(buildBrowserPorts());
     viewModelRef.current = createViewModel(
       presenters,
       createMachineFactories(presenters),

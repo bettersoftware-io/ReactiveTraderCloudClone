@@ -11,14 +11,13 @@ import {
 // Phase 3 regenerates them for the new skins.
 const DEFAULT_THEME_SKIN_FOR_FIXTURES = "classic" as const;
 
+import type { BootSequenceState, NotionalView } from "@rtc/client-core";
 import {
   createDefaultLayoutPort,
+  DEMO_USER,
   type WorkspaceTab,
-} from "#/app/layout/defaultLayoutPort";
-import type { BootSequenceState } from "#/app/presenters/BootSequenceMachine";
-import type { NotionalView } from "#/app/presenters/NotionalMachine";
-import { DEMO_USER } from "#/app/presenters/SessionPresenter";
-import type { ViewModel } from "#/ui/viewModel/createViewModel";
+} from "@rtc/client-core";
+import type { ViewModel } from "@rtc/react-bindings";
 
 import type { AppData } from "../shared/appData";
 

@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { BiometricLine } from "./BiometricLine";
 

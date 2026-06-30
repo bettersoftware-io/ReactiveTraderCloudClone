@@ -7,8 +7,12 @@ import {
   type AppPorts,
   createApp,
   createSimulatorPorts,
-} from "@rtc/client-react";
-import { type ConnectionEvent, ConnectionEventsSimulator } from "@rtc/domain";
+} from "@rtc/client-core";
+import {
+  type ConnectionEvent,
+  ConnectionEventsSimulator,
+  PreferencesSimulator,
+} from "@rtc/domain";
 
 export interface PresenterCtx {
   app: App;
@@ -19,7 +23,7 @@ export function buildPresenterApp(): PresenterCtx {
   const connectionEvents$ = new Subject<ConnectionEvent>();
   const gateway = new ConnectionEventsSimulator();
   const ports: AppPorts = {
-    ...createSimulatorPorts(),
+    ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
     connectionEvents: {
       events: () => {
         return merge(gateway.events(), connectionEvents$.asObservable());
@@ -43,9 +47,11 @@ export interface IncidentPresenterCtx {
  * Builds a simulator-ports app whose connection events include a reactive
  * bridge driven by IncidentMachine.state$.
  *
- * Problem: composition.ts wires IncidentMachine → module-level incident$, but
- * that Subject is not exported. Calling buildDefaultPorts() would access
- * import.meta.env (Vite-only), which throws in Node.js/tsx.
+ * Problem: composition.ts wires IncidentMachine → a module-level incident$
+ * Subject in @rtc/client-core. This helper builds an instance-scoped bridge
+ * instead of reusing that singleton, and avoids buildBrowserPorts() (the
+ * browser composition), which accesses import.meta.env (Vite-only) and throws
+ * in Node.js/tsx.
  *
  * Solution: build a custom connectionEvents port with myIncident$, then
  * subscribe to app.presenters.incident.state$ and re-emit the equivalent
@@ -62,7 +68,7 @@ export function buildIncidentPresenterApp(): IncidentPresenterCtx {
   const gateway = new ConnectionEventsSimulator();
 
   const ports: AppPorts = {
-    ...createSimulatorPorts(),
+    ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
     connectionEvents: {
       events: () => {
         return merge(gateway.events(), myIncident$.asObservable());

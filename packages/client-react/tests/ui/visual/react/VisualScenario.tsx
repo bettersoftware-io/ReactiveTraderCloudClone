@@ -1,7 +1,8 @@
 import { type ReactElement, useEffect, useState } from "react";
 
+import { ViewModelProvider } from "@rtc/react-bindings";
+
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
-import { ViewModelProvider } from "#/ui/viewModel/ViewModelProvider";
 
 import { fixtures } from "../shared/fixtures";
 import { scenarios } from "../shared/scenarios";

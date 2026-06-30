@@ -14,8 +14,10 @@
  */
 import { firstValueFrom, timeout } from "rxjs";
 
-import { createWsRealPorts, WsAdapter } from "@rtc/client-react";
+import { createWsRealPorts } from "@rtc/client-core";
+import { WsAdapter } from "@rtc/client-react";
 import type { Direction } from "@rtc/domain";
+import { PreferencesSimulator } from "@rtc/domain";
 
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.js";
 
@@ -47,7 +49,9 @@ function assert(cond: unknown, message: string): asserts cond {
 
 async function runChecks(): Promise<void> {
   const ws = new WsAdapter(`ws://${HOST}:${PORT}`);
-  const ports = createWsRealPorts(ws);
+  const ports = createWsRealPorts(ws, {
+    preferences: new PreferencesSimulator(),
+  });
 
   try {
     // 1. Pricing stream: subscribe → receive a live tick from the real server.

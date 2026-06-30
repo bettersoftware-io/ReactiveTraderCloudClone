@@ -2,8 +2,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { type Dealer, type Instrument, type Rfq, RfqState } from "@rtc/domain";
-
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { RfqCard } from "./RfqCard";
 import { type RfqFilter, RfqFilterTabs } from "./RfqFilterTabs";

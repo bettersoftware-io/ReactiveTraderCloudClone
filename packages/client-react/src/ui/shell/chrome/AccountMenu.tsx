@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./HeaderChrome.module.css";
 

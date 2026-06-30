@@ -1,3 +1,8 @@
+import type {
+  NotionalView,
+  OrderTicketState,
+  RfqQuote,
+} from "@rtc/client-core";
 import {
   ADAPTIVE_BANK_NAME,
   type Candle,
@@ -28,10 +33,6 @@ import {
   type Trade,
   TradeStatus,
 } from "@rtc/domain";
-
-import type { NotionalView } from "#/app/presenters/NotionalMachine";
-import type { OrderTicketState } from "#/app/presenters/OrderTicketMachine";
-import type { RfqQuote } from "#/app/presenters/RfqTileMachine";
 
 import { type AppData, makeAppData } from "./appData";
 

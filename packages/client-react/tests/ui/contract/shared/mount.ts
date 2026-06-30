@@ -1,6 +1,12 @@
 import { BehaviorSubject } from "rxjs";
 
 import type {
+  AnimationIntent,
+  IncidentKind,
+  SessionState,
+  ThroughputView,
+} from "@rtc/client-core";
+import type {
   EquityOrder,
   LogEvent,
   Price,
@@ -12,11 +18,6 @@ import type {
   ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
-
-import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
-import type { IncidentKind } from "#/app/presenters/IncidentMachine";
-import type { SessionState } from "#/app/presenters/SessionPresenter";
-import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
 import { getDriver, type MountedRoot } from "./harness/activeDriver";
 import type {

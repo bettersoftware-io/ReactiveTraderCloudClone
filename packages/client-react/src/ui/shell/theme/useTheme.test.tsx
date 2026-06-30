@@ -2,8 +2,8 @@ import { render, renderHook } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { ViewModel } from "#/ui/viewModel/createViewModel";
-import { ViewModelContext } from "#/ui/viewModel/ViewModelContext";
+import type { ViewModel } from "@rtc/react-bindings";
+import { ViewModelContext } from "@rtc/react-bindings";
 
 import { ThemeProvider } from "./ThemeProvider";
 import { themeTokens } from "./tokens";

@@ -1,6 +1,7 @@
 import { fireEvent, within } from "@testing-library/dom";
 
-import type { IncidentKind } from "#/app/presenters/IncidentMachine";
+import type { IncidentKind } from "@rtc/client-core";
+
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 /**

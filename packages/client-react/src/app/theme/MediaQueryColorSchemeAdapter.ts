@@ -1,6 +1,6 @@
 import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
-import type { ColorSchemeSource } from "./colorSchemeSource";
+import type { ColorSchemeSource } from "@rtc/client-core";
 
 const QUERY = "(prefers-color-scheme: dark)";
 

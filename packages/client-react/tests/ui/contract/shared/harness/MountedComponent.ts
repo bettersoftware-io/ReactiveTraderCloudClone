@@ -1,4 +1,9 @@
 import type {
+  AnimationIntent,
+  IncidentKind,
+  ThroughputView,
+} from "@rtc/client-core";
+import type {
   EquityOrder,
   LogEvent,
   Price,
@@ -7,10 +12,6 @@ import type {
   ServiceTopology,
   SessionInfo,
 } from "@rtc/domain";
-
-import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
-import type { IncidentKind } from "#/app/presenters/IncidentMachine";
-import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
 import type { CommandLog, HookValues, MetricsView } from "./world";
 

@@ -1,0 +1,39 @@
+{
+  "name": "@rtc/react-bindings",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "build": "tsc --build && tsc-alias -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports 2>/dev/null || true"
+  },
+  "dependencies": {
+    "@react-rxjs/core": "^0.10.7",
+    "@rtc/client-core": "workspace:*",
+    "@rtc/domain": "workspace:*",
+    "react": "^19",
+    "rxjs": "^7.8"
+  },
+  "devDependencies": {
+    "@rx-state/core": "^0.1.4",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19",
+    "@vitest/coverage-v8": "^4.1.8",
+    "jsdom": "^29",
+    "tsc-alias": "1.8.17",
+    "vitest": "^4"
+  }
+}

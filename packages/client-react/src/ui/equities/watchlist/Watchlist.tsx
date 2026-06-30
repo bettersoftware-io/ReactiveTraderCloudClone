@@ -1,8 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 
 import type { EquityInstrument } from "@rtc/domain";
-
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./Watchlist.module.css";
 
