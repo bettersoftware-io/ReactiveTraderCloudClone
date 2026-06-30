@@ -27,3 +27,30 @@ export interface ThemeTokens {
   /** Only the *3d skins define a separate panel shadow. */
   panelShadow?: string;
 }
+
+export interface User {
+  name: string;
+  initials: string;
+  role: string;
+  email: string;
+  desk: string;
+  id: string;
+}
+
+export interface Language {
+  code: string;
+  label: string;
+}
+
+export interface Notif {
+  t: string;
+  tag: string;
+  msg: string;
+  color: string;
+}
+
+export interface StatusItem {
+  label: string;
+  value: string;
+  color: string;
+}
