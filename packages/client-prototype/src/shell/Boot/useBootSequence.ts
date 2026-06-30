@@ -43,7 +43,7 @@ export function useBootSequence(opts: BootOptions): BootState {
   const { onDone, durationMs = DEFAULT_DURATION } = opts;
   const { tokens } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const variantRef = useRef<BootVariant>(nextVariant());
+  const [variant] = useState<BootVariant>(nextVariant);
   const [pct, setPct] = useState(0);
   const [lines, setLines] = useState<string[]>([]);
   const doneRef = useRef(false);
@@ -82,7 +82,7 @@ export function useBootSequence(opts: BootOptions): BootState {
       const ctx = canvas?.getContext("2d");
 
       if (ctx && canvas) {
-        drawBoot(ctx, variantRef.current, {
+        drawBoot(ctx, variant, {
           t,
           dur: durationMs,
           w: canvas.width,
@@ -114,11 +114,12 @@ export function useBootSequence(opts: BootOptions): BootState {
     tokens.accent2,
     tokens.buy,
     tokens.sell,
+    variant,
   ]);
 
   const skip = useCallback(() => {
     finish();
   }, [finish]);
 
-  return { canvasRef, pct, lines, variant: variantRef.current, skip };
+  return { canvasRef, pct, lines, variant, skip };
 }

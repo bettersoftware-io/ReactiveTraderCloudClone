@@ -23,9 +23,9 @@ test("toggling mode flips dark↔light", () => {
   bootToApp();
   const toggle = screen.getByLabelText("Toggle dark or light mode");
 
+  const before = document.documentElement.style.background;
   fireEvent.click(toggle);
-  const bg = document.documentElement.style.background;
-  expect(bg).not.toBe(""); // a light-mode bg was applied
+  expect(document.documentElement.style.background).not.toBe(before);
 });
 
 // — helpers ——————————————————————————————————————————————————————————————————
