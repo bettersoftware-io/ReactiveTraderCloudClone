@@ -116,6 +116,20 @@ into separate files.
 
 ## Migration inventory
 
+> **SCOPE DECISION (2026-06-30): Option B — strict full-newspaper.** During
+> execution the live rule exposed a contradiction in this spec: the prose below
+> said "private subcomponents, helper functions, types, and consts all sit
+> below" the export (strict — the export is the ABSOLUTE first declaration),
+> but the "Reorder (11)" list assumed only files with a private *component*
+> above the export violate (component-only). The two interpretations diverge
+> sharply: strict flags **66** files, component-only flags **11**. The user
+> chose **strict full-newspaper** — every `Props` interface, type, and const
+> moves below the exported component. The 11-file list below is therefore a
+> *subset*; the real migration autofixes ALL ~66 `notLede` violators (count
+> measured after merging the latest `origin/main`). The autofix is
+> count-agnostic (`eslint --fix` on the glob), TDZ-safe by construction, and
+> comment-preserving (verified zero-loss across all 66).
+
 **Split (1, manual):**
 - `packages/client-react/src/ui/fx/liveRates/tile/TilePrice.tsx` exports
   `TilePrice` + `SpreadDisplay` → extract `SpreadDisplay.tsx` (move the

@@ -570,20 +570,32 @@ git commit -m "refactor(client): extract SpreadDisplay into its own file + modul
 
 ### Task 4: Autofix-reorder the mis-ordered component files
 
-**Files (all Modify, via `eslint --fix`):**
-- `packages/client-react/src/ui/App.tsx`
-- `packages/client-react/src/ui/admin/AdminDashboard.tsx`
-- `packages/client-react/src/ui/admin/MetricGauges.tsx`
-- `packages/client-react/src/ui/credit/rfqTiles/RfqTilesPanel.tsx`
-- `packages/client-react/src/ui/credit/sellSide/SellSidePanel.tsx`
-- `packages/client-react/src/ui/equities/chart/DepthLadder.tsx`
-- `packages/client-react/src/ui/equities/watchlist/SectorHeatmap.tsx`
-- `packages/client-react/src/ui/equities/watchlist/Watchlist.tsx`
-- `packages/client-react/src/ui/fx/liveRates/tile/TileConfirmation.tsx`
-- `packages/client-react/src/ui/fx/liveRates/tile/TilePrice.tsx`
-- `packages/client-react/src/ui/shell/layout/engine/InhouseLayoutEngine.tsx`
+> **SCOPE DECISION (2026-06-30): Option B — strict full-newspaper.** The live
+> rule exposed a contradiction in the spec (prose said "types and consts all
+> sit below" → strict; the migration inventory listed 11 → component-only). The
+> user chose **strict full-newspaper**: the exported component must be the
+> ABSOLUTE first declaration after imports, so every `Props` interface, type,
+> and const moves below it. After merging the latest `origin/main` (which added
+> `react-bindings`/`client-prototype` and removed the `hooks/` dir), the live
+> count is **66 `notLede` files + 1 `multipleExports` (TilePrice, split in
+> Task 3) + 0 `filenameMismatch`** across 83 non-test `.tsx` files. The
+> migration is **autofix-driven**: `eslint --fix` on the glob fixes ALL 66
+> regardless of the exact list — do NOT hand-enumerate. Comment preservation
+> verified zero-loss across all 66 (`.superpowers/sdd/cn-probe-all.mjs`).
 
-**Context:** each of these has a private subcomponent (and sometimes helper consts/types) above the exported component. The rule's autofix hoists the single exported component to the lede; everything else keeps its relative order below it (TDZ-safe). This is a pure reorder — render output is byte-identical.
+**Files (all Modify, via `eslint --fix`):** every `notLede` violator under
+`packages/client-react/src/**/*.tsx` (66 post-merge) — the autofix discovers
+and fixes them all; no manual list. The original 11 (App, AdminDashboard,
+MetricGauges, RfqTilesPanel, SellSidePanel, DepthLadder, SectorHeatmap,
+Watchlist, TileConfirmation, TilePrice, InhouseLayoutEngine) are a subset; the
+rest are files with a `Props` interface / type / const above the component.
+
+**Context:** each violator has at least one declaration (a private
+subcomponent, helper, `Props` interface, type, or const) above the exported
+component. The rule's autofix hoists the single exported component to the lede;
+everything else keeps its relative order below it (TDZ-safe: types are
+compile-time, consts/private components are render-deferred). This is a pure
+reorder — render output is byte-identical, proven by zero golden churn (Step 5).
 
 - [ ] **Step 1: Apply the autofix across the scope**
 
