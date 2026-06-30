@@ -1,4 +1,5 @@
 import { firstValueFrom } from "rxjs";
+import { expect, test } from "vitest";
 
 import { buildCurrencyPairsStream } from "#/data/currencyPairsStream";
 
