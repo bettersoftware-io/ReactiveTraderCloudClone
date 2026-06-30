@@ -267,8 +267,16 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // IncidentControls: renders the three inject buttons + Clear. The
   // admin/incident-active fixture seeds state so "Inject service down" button
   // has data-active="true" without any click interaction.
+  // Render at a fixed width (test-only) — the controls are a content-width flex
+  // row of buttons whose total width is driven by button label glyph-advance,
+  // which varies by OS/arch font metrics (±68px dimension flake on x86 — 613↔545).
+  // Pinning the wrapper at 660px (> max observed content) captures a stable size.
   IncidentControls: () => {
-    return <IncidentControls />;
+    return (
+      <div style={{ width: 660, display: "flex", flexDirection: "column" }}>
+        <IncidentControls />
+      </div>
+    );
   },
   App: () => {
     return <App />;
