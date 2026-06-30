@@ -30,8 +30,8 @@ import { createRfqTileMachine } from "#/app/presenters/RfqTileMachine";
 import { createRowHighlightMachine } from "#/app/presenters/RowHighlightMachine";
 import { createStaleFlagMachine } from "#/app/presenters/StaleFlagMachine";
 import { createTileExecutionMachine } from "#/app/presenters/TileExecutionMachine";
-import type { ViewModel } from "#/ui/hooks/createViewModel";
-import { useMachine } from "#/ui/hooks/useMachine";
+import type { ViewModel } from "#/ui/viewModel/createViewModel";
+import { useMachine } from "#/ui/viewModel/useMachine";
 
 import type { World } from "../shared/harness/world";
 

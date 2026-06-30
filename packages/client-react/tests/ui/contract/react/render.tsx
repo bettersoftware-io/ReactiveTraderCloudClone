@@ -1,7 +1,7 @@
 import { act, render as rtlRender } from "@testing-library/react";
 import type { BehaviorSubject } from "rxjs";
 
-import { ViewModelProvider } from "#/ui/hooks/ViewModelProvider";
+import { ViewModelProvider } from "#/ui/viewModel/ViewModelProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import type {

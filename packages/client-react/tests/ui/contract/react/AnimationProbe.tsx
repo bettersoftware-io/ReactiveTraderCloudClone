@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 import type { AnimationProbeProps } from "#tests/ui/contract/shared/pages/shell/motion/AnimationProbePage";
 
 /**

@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { type Dealer, type Instrument, type Rfq, RfqState } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { RfqCard } from "./RfqCard";
 import { type RfqFilter, RfqFilterTabs } from "./RfqFilterTabs";

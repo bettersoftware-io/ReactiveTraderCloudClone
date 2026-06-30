@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import { useViewModel } from "./hooks/useViewModel";
+import { useViewModel } from "./viewModel/useViewModel";
 import { AmbientBackground } from "./shell/background/AmbientBackground";
 import { HeaderChrome, type WorkspaceTab } from "./shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";

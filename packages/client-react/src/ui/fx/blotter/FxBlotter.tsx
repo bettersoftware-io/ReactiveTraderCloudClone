@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import type { Trade } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";

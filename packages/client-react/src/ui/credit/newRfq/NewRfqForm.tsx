@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { Direction, type Instrument } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { DealerSelection } from "./DealerSelection";
 import { InstrumentSearch } from "./InstrumentSearch";

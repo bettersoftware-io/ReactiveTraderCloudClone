@@ -2,7 +2,7 @@ import type { CSSProperties, ReactElement } from "react";
 
 import type { ServiceName } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./ServiceTopologyGraph.module.css";
 

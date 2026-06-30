@@ -17,7 +17,7 @@ import {
 import type { BootSequenceState } from "#/app/presenters/BootSequenceMachine";
 import type { NotionalView } from "#/app/presenters/NotionalMachine";
 import { DEMO_USER } from "#/app/presenters/SessionPresenter";
-import type { ViewModel } from "#/ui/hooks/createViewModel";
+import type { ViewModel } from "#/ui/viewModel/createViewModel";
 
 import type { AppData } from "../shared/appData";
 

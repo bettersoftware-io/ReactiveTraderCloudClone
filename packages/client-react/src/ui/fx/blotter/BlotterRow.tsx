@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { TradeStatus } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import type { CellFormatter, ColumnDef } from "./blotterColumns";
 

@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 
 import { ConnectionStatus } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./ConnectionOverlay.module.css";
 

@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { type CurrencyCategory, matchesCurrencyFilter } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { CurrencyFilter } from "./CurrencyFilter";
 import { Tile } from "./tile/Tile";

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 import { useEffect, useRef } from "react";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import {
   type BootDrawCtx,

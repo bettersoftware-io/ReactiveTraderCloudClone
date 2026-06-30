@@ -9,8 +9,8 @@ import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ViewModel } from "#/ui/hooks/createViewModel";
-import { ViewModelContext } from "#/ui/hooks/ViewModelContext";
+import type { ViewModel } from "#/ui/viewModel/createViewModel";
+import { ViewModelContext } from "#/ui/viewModel/ViewModelContext";
 
 import { BootSequence } from "./BootSequence";
 

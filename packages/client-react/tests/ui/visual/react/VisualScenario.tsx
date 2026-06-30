@@ -1,6 +1,6 @@
 import { type ReactElement, useEffect, useState } from "react";
 
-import { ViewModelProvider } from "#/ui/hooks/ViewModelProvider";
+import { ViewModelProvider } from "#/ui/viewModel/ViewModelProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import { fixtures } from "../shared/fixtures";

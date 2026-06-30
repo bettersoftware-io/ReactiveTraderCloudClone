@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./TradeTicket.module.css";
 

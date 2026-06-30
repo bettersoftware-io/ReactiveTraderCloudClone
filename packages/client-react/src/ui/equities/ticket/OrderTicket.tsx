@@ -1,6 +1,6 @@
 import type { ChangeEvent, ReactElement } from "react";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./OrderTicket.module.css";
 

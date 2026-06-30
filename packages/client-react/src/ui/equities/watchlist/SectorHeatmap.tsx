@@ -2,7 +2,7 @@ import type { CSSProperties, ReactElement } from "react";
 
 import type { EquityInstrument } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./SectorHeatmap.module.css";
 

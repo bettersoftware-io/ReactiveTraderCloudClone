@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef } from "react";
 
 import type { MetricSample } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./ThroughputChart.module.css";
 

@@ -21,7 +21,7 @@ import {
 } from "#/ui/fx/blotter/columnSort";
 import { exportToCsv } from "#/ui/fx/blotter/csvExport";
 import { QuickFilter } from "#/ui/fx/blotter/QuickFilter";
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import {
   CREDIT_COLUMNS,

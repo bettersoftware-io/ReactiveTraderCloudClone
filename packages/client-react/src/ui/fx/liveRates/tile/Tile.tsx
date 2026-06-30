@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 
-import { useViewModel } from "#/ui/hooks/useViewModel";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 import { StaleIndicator } from "#/ui/shell/stale/StaleIndicator";
 
 import { TileChart } from "./TileChart";
