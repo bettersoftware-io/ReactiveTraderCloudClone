@@ -22,7 +22,6 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
     title: "Credit Blotter",
     pinned: true,
   },
-  "admin-throughput": { id: "admin-throughput", title: "Throughput Control" },
   "admin-dashboard": { id: "admin-dashboard", title: "Admin" },
   equities: { id: "equities", title: "Equities" },
 };
