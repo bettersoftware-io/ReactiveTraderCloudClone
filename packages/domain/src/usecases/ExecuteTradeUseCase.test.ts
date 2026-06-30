@@ -29,41 +29,6 @@ const PRICE: Price = {
   spread: "2.0",
 };
 
-interface LastRequestRef {
-  current: ExecutionRequest | null;
-}
-
-interface StubExecution {
-  port: ExecutionPort;
-  lastRequest: LastRequestRef;
-}
-
-function stubExecution(trade: Trade): StubExecution {
-  const lastRequest = { current: null as ExecutionRequest | null };
-  const port: ExecutionPort = {
-    executeTrade(request: ExecutionRequest): Observable<Trade> {
-      lastRequest.current = request;
-      return of(trade);
-    },
-  };
-  return { port, lastRequest };
-}
-
-function buildTrade(status: TradeStatus): Trade {
-  return {
-    tradeId: 42,
-    currencyPair: "EURUSD",
-    tradeName: "trader1",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.1002,
-    status,
-    valueDate: "2024-01-02",
-    tradeDate: "2024-01-02",
-  };
-}
-
 describe("ExecuteTradeUseCase", () => {
   it("for Direction.Buy uses ask as spot rate and base currency as dealt", async () => {
     const { port, lastRequest } = stubExecution(buildTrade(TradeStatus.Done));
@@ -146,3 +111,38 @@ describe("ExecuteTradeUseCase", () => {
     ).rejects.toThrow("timeout");
   });
 });
+
+interface LastRequestRef {
+  current: ExecutionRequest | null;
+}
+
+interface StubExecution {
+  port: ExecutionPort;
+  lastRequest: LastRequestRef;
+}
+
+function stubExecution(trade: Trade): StubExecution {
+  const lastRequest = { current: null as ExecutionRequest | null };
+  const port: ExecutionPort = {
+    executeTrade(request: ExecutionRequest): Observable<Trade> {
+      lastRequest.current = request;
+      return of(trade);
+    },
+  };
+  return { port, lastRequest };
+}
+
+function buildTrade(status: TradeStatus): Trade {
+  return {
+    tradeId: 42,
+    currencyPair: "EURUSD",
+    tradeName: "trader1",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.1002,
+    status,
+    valueDate: "2024-01-02",
+    tradeDate: "2024-01-02",
+  };
+}

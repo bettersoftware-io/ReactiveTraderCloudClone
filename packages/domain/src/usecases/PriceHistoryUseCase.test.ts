@@ -7,31 +7,6 @@ import { PRICE_HISTORY_SIZE } from "../fx/price.js";
 import type { PricingPort } from "../ports/pricingPort.js";
 import { PriceHistoryUseCase } from "./PriceHistoryUseCase.js";
 
-function stubPricing(ticks: PriceTick[]): PricingPort {
-  return {
-    getPriceUpdates: () => {
-      return from(ticks);
-    },
-    getPriceHistory: () => {
-      return of([] as readonly PriceTick[]);
-    },
-    getRfqQuote: () => {
-      return of({ bid: 0, ask: 0, mid: 0 });
-    },
-  };
-}
-
-function tick(timestamp: number, mid: number): PriceTick {
-  return {
-    symbol: "EURUSD",
-    bid: mid - 0.00001,
-    ask: mid + 0.00001,
-    mid,
-    valueDate: "2024-01-02",
-    creationTimestamp: timestamp,
-  };
-}
-
 describe("PriceHistoryUseCase", () => {
   it("yields a growing window for the first N ticks", async () => {
     const ticks = [tick(1, 1.1), tick(2, 1.11), tick(3, 1.12)];
@@ -66,3 +41,28 @@ describe("PriceHistoryUseCase", () => {
     );
   });
 });
+
+function stubPricing(ticks: PriceTick[]): PricingPort {
+  return {
+    getPriceUpdates: () => {
+      return from(ticks);
+    },
+    getPriceHistory: () => {
+      return of([] as readonly PriceTick[]);
+    },
+    getRfqQuote: () => {
+      return of({ bid: 0, ask: 0, mid: 0 });
+    },
+  };
+}
+
+function tick(timestamp: number, mid: number): PriceTick {
+  return {
+    symbol: "EURUSD",
+    bid: mid - 0.00001,
+    ask: mid + 0.00001,
+    mid,
+    valueDate: "2024-01-02",
+    creationTimestamp: timestamp,
+  };
+}

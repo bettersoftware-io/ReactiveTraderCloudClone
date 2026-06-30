@@ -2,10 +2,6 @@ import { render, renderHook } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-interface WrapperProps {
-  children: ReactNode;
-}
-
 import type { AppHooks } from "#/ui/hooks/createAppHooks";
 import { HooksContext } from "#/ui/hooks/HooksContext";
 
@@ -68,3 +64,7 @@ describe("ThemeProvider", () => {
     ).toBe(themeTokens.holo.dark["--accent-primary"]);
   });
 });
+
+interface WrapperProps {
+  children: ReactNode;
+}

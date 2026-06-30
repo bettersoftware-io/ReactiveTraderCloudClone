@@ -5,54 +5,9 @@ import { render, SUMMARY_CAP } from "./render";
 
 const repoRoot = "/r";
 
-interface LineSpec {
-  line: number;
-  hits: number;
-  branch?: { covered: number; total: number };
-}
-
-function cov(spec: LineSpec[]): FileCov {
-  const m: FileCov = new Map();
-
-  for (const e of spec) {
-    m.set(
-      e.line,
-      e.branch === undefined
-        ? { hits: e.hits }
-        : { hits: e.hits, branch: e.branch },
-    );
-  }
-
-  return m;
-}
-
-function pkg(name: string, file: string, lines: FileCov): PackageStat {
-  const stat = fileStat(file, lines);
-  return {
-    name,
-    total: stat.total,
-    covered: stat.covered,
-    pct: stat.pct,
-    files: [stat],
-  };
-}
-
 const src: Record<string, string[]> = {
   "/r/src/a.ts": ["const x = 1", "if (rare) {", "  edge()", "}"],
 };
-
-function readSource(p: string): string[] | null {
-  return src[p] ?? null;
-}
-
-// First rendered line that includes a given source substring (spacing-robust).
-function lineWith(md: string, needle: string): string {
-  return (
-    md.split("\n").find((l) => {
-      return l.includes(needle);
-    }) ?? ""
-  );
-}
 
 describe("render", () => {
   it("emits a title, the test summary, and a coverage table", () => {
@@ -208,3 +163,48 @@ describe("render", () => {
     expect(md).not.toContain("line 50");
   });
 });
+
+interface LineSpec {
+  line: number;
+  hits: number;
+  branch?: { covered: number; total: number };
+}
+
+function cov(spec: LineSpec[]): FileCov {
+  const m: FileCov = new Map();
+
+  for (const e of spec) {
+    m.set(
+      e.line,
+      e.branch === undefined
+        ? { hits: e.hits }
+        : { hits: e.hits, branch: e.branch },
+    );
+  }
+
+  return m;
+}
+
+function pkg(name: string, file: string, lines: FileCov): PackageStat {
+  const stat = fileStat(file, lines);
+  return {
+    name,
+    total: stat.total,
+    covered: stat.covered,
+    pct: stat.pct,
+    files: [stat],
+  };
+}
+
+function readSource(p: string): string[] | null {
+  return src[p] ?? null;
+}
+
+// First rendered line that includes a given source substring (spacing-robust).
+function lineWith(md: string, needle: string): string {
+  return (
+    md.split("\n").find((l) => {
+      return l.includes(needle);
+    }) ?? ""
+  );
+}

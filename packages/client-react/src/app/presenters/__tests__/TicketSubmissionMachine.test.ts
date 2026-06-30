@@ -6,48 +6,6 @@ import type { QuoteRequest, RfqEvent, WorkflowPort } from "@rtc/domain";
 
 import { RfqsPresenter, type TicketSubmissionState } from "../RfqsPresenter";
 
-interface Recorder {
-  quote: QuoteRequest[];
-  pass: number[];
-}
-
-/** A WorkflowPort that records quote/pass calls and returns the supplied
- * Observables (defaults: immediate success). */
-function port(
-  rec: Recorder,
-  quote$: Observable<void> = of(undefined),
-  pass$: Observable<void> = of(undefined),
-): WorkflowPort {
-  return {
-    events: () => {
-      return of<RfqEvent>();
-    },
-    createRfq: () => {
-      return of(0);
-    },
-    cancelRfq: () => {
-      return of(undefined);
-    },
-    quote: (req: QuoteRequest) => {
-      rec.quote.push(req);
-      return quote$;
-    },
-    pass: (quoteId: number) => {
-      rec.pass.push(quoteId);
-      return pass$;
-    },
-    accept: () => {
-      return of(undefined);
-    },
-  };
-}
-
-function scheduler(): TestScheduler {
-  return new TestScheduler((actual, expected) => {
-    expect(actual).toEqual(expected);
-  });
-}
-
 describe("RfqsPresenter.createTicketSubmission", () => {
   it("starts not-submitted (synchronous default)", () => {
     const rec: Recorder = { quote: [], pass: [] };
@@ -140,3 +98,45 @@ describe("RfqsPresenter.createTicketSubmission", () => {
     sub.unsubscribe();
   });
 });
+
+interface Recorder {
+  quote: QuoteRequest[];
+  pass: number[];
+}
+
+/** A WorkflowPort that records quote/pass calls and returns the supplied
+ * Observables (defaults: immediate success). */
+function port(
+  rec: Recorder,
+  quote$: Observable<void> = of(undefined),
+  pass$: Observable<void> = of(undefined),
+): WorkflowPort {
+  return {
+    events: () => {
+      return of<RfqEvent>();
+    },
+    createRfq: () => {
+      return of(0);
+    },
+    cancelRfq: () => {
+      return of(undefined);
+    },
+    quote: (req: QuoteRequest) => {
+      rec.quote.push(req);
+      return quote$;
+    },
+    pass: (quoteId: number) => {
+      rec.pass.push(quoteId);
+      return pass$;
+    },
+    accept: () => {
+      return of(undefined);
+    },
+  };
+}
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected);
+  });
+}

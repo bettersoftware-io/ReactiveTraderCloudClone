@@ -21,37 +21,6 @@ const input: CreateRfqInput = {
   direction: Direction.Sell,
 };
 
-/** A WorkflowPort whose createRfq returns the supplied Observable; everything
- * else is an inert stub (the submission machine only touches createRfq). */
-function port(createRfq$: Observable<number>): WorkflowPort {
-  return {
-    events: () => {
-      return of<RfqEvent>();
-    },
-    createRfq: () => {
-      return createRfq$;
-    },
-    cancelRfq: () => {
-      return of(undefined);
-    },
-    quote: () => {
-      return of(undefined);
-    },
-    pass: () => {
-      return of(undefined);
-    },
-    accept: () => {
-      return of(undefined);
-    },
-  };
-}
-
-function scheduler(): TestScheduler {
-  return new TestScheduler((actual, expected) => {
-    expect(actual).toEqual(expected);
-  });
-}
-
 describe("RfqsPresenter.createSubmission", () => {
   it("goes editing → submitting → confirmed and fires onRedirect at exactly REDIRECT_DELAY_MS", () => {
     const ts = scheduler();
@@ -149,3 +118,34 @@ describe("RfqsPresenter.createSubmission", () => {
     });
   });
 });
+
+/** A WorkflowPort whose createRfq returns the supplied Observable; everything
+ * else is an inert stub (the submission machine only touches createRfq). */
+function port(createRfq$: Observable<number>): WorkflowPort {
+  return {
+    events: () => {
+      return of<RfqEvent>();
+    },
+    createRfq: () => {
+      return createRfq$;
+    },
+    cancelRfq: () => {
+      return of(undefined);
+    },
+    quote: () => {
+      return of(undefined);
+    },
+    pass: () => {
+      return of(undefined);
+    },
+    accept: () => {
+      return of(undefined);
+    },
+  };
+}
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected);
+  });
+}

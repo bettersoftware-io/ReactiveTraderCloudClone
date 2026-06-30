@@ -1,10 +1,6 @@
 // packages/client-react/src/app/adapters/__tests__/FakeWsAdapter.test.ts
 import { describe, expect, it } from "vitest";
 
-interface ConnectionEventRecord {
-  type: string;
-}
-
 import { FakeWsAdapter } from "./FakeWsAdapter";
 
 describe("FakeWsAdapter", () => {
@@ -143,3 +139,7 @@ describe("FakeWsAdapter", () => {
     expect(events).toEqual([]);
   });
 });
+
+interface ConnectionEventRecord {
+  type: string;
+}

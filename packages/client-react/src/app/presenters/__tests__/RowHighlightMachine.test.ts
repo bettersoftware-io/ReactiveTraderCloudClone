@@ -6,34 +6,6 @@ import {
   HIGHLIGHT_MS,
 } from "../RowHighlightMachine";
 
-function scheduler(): TestScheduler {
-  return new TestScheduler((actual, expected) => {
-    expect(actual).toEqual(expected);
-  });
-}
-
-interface FrameEmission {
-  frame: number;
-  value: boolean;
-}
-
-/** Build the machine for a given `isNew` and collect every flag emission with
- * the virtual frame at which it occurred. */
-function run(isNew: boolean): Array<FrameEmission> {
-  const seen: Array<FrameEmission> = [];
-  const ts = scheduler();
-  ts.run(({ flush }) => {
-    const machine = createRowHighlightMachine(isNew);
-    const sub = machine.state$.subscribe((value) => {
-      return seen.push({ frame: ts.now(), value });
-    });
-    flush();
-    sub.unsubscribe();
-    machine.dispose();
-  });
-  return seen;
-}
-
 describe("createRowHighlightMachine", () => {
   it("starts true synchronously for a new row", () => {
     const ts = scheduler();
@@ -106,3 +78,31 @@ describe("createRowHighlightMachine", () => {
     });
   });
 });
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected);
+  });
+}
+
+interface FrameEmission {
+  frame: number;
+  value: boolean;
+}
+
+/** Build the machine for a given `isNew` and collect every flag emission with
+ * the virtual frame at which it occurred. */
+function run(isNew: boolean): Array<FrameEmission> {
+  const seen: Array<FrameEmission> = [];
+  const ts = scheduler();
+  ts.run(({ flush }) => {
+    const machine = createRowHighlightMachine(isNew);
+    const sub = machine.state$.subscribe((value) => {
+      return seen.push({ frame: ts.now(), value });
+    });
+    flush();
+    sub.unsubscribe();
+    machine.dispose();
+  });
+  return seen;
+}

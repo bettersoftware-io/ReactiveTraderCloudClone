@@ -2,6 +2,8 @@ import prettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
+import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
+
 // Structural `no-restricted-syntax` bans shared between the repo-wide block and
 // the client-`src` block (which appends the inline-style ban). Flat config
 // REPLACES — does not merge — a rule's options across matching blocks, so the
@@ -144,6 +146,15 @@ export default tseslint.config(
       "packages/client-react/src/AppRoot.tsx",
     ],
     rules: { "react-hooks/refs": "off" },
+  },
+  {
+    // Newspaper order for test files: type/helper/vi.mock declarations must sit
+    // BELOW the describe/it blocks. Custom autofixable rule in eslint-rules/.
+    // Scoped to test files only (contract specs included — reordering is
+    // behaviour-preserving). class/enum/vi.doMock/vi.hoisted stay put.
+    files: ["**/*.{spec,test}.{ts,tsx}"],
+    plugins: { rtc: { rules: { "newspaper-order": newspaperOrder } } },
+    rules: { "rtc/newspaper-order": "error" },
   },
   prettier,
 );

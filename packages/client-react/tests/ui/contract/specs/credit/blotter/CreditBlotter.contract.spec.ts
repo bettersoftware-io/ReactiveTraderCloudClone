@@ -39,41 +39,6 @@ const dealers: readonly Dealer[] = [
 // 2024-03-05 in UTC (avoid TZ flakiness by asserting the day/month/year parts).
 const TS = Date.UTC(2024, 2, 5, 12, 0, 0);
 
-function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
-  return {
-    id,
-    instrumentId: 1,
-    quantity: 5000,
-    direction: Direction.Buy,
-    state: RfqState.Closed,
-    expirySecs: 120,
-    creationTimestamp: TS,
-    ...over,
-  };
-}
-
-function acceptedQuote(
-  id: number,
-  rfqId: number,
-  over: Partial<Quote> = {},
-): Quote {
-  return {
-    id,
-    rfqId,
-    dealerId: 2,
-    state: { type: "accepted", price: 99 },
-    ...over,
-  };
-}
-
-function quoteMap(...quotes: Quote[]): ReadonlyMap<number, Quote> {
-  return new Map(
-    quotes.map((q) => {
-      return [q.id, q];
-    }),
-  );
-}
-
 describe("CreditBlotter", () => {
   it("shows the column headers", () => {
     const blotter = mount(CreditBlotter, {
@@ -387,3 +352,38 @@ describe("CreditBlotter", () => {
     });
   });
 });
+
+function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
+  return {
+    id,
+    instrumentId: 1,
+    quantity: 5000,
+    direction: Direction.Buy,
+    state: RfqState.Closed,
+    expirySecs: 120,
+    creationTimestamp: TS,
+    ...over,
+  };
+}
+
+function acceptedQuote(
+  id: number,
+  rfqId: number,
+  over: Partial<Quote> = {},
+): Quote {
+  return {
+    id,
+    rfqId,
+    dealerId: 2,
+    state: { type: "accepted", price: 99 },
+    ...over,
+  };
+}
+
+function quoteMap(...quotes: Quote[]): ReadonlyMap<number, Quote> {
+  return new Map(
+    quotes.map((q) => {
+      return [q.id, q];
+    }),
+  );
+}

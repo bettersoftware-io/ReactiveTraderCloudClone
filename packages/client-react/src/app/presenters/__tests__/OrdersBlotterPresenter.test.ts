@@ -12,20 +12,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function makeFakeOrder(overrides: Partial<EquityOrder> = {}): EquityOrder {
-  return {
-    id: "eq-1",
-    symbol: "AAPL",
-    side: "buy",
-    type: "market",
-    qty: 100,
-    status: "new",
-    filledQty: 0,
-    createdAt: Date.now(),
-    ...overrides,
-  };
-}
-
 describe("OrdersBlotterPresenter — fills$", () => {
   it("nexts fills$ with { symbol } when place() reaches 'filled' status", async () => {
     vi.useFakeTimers();
@@ -128,3 +114,17 @@ describe("OrdersBlotterPresenter — fills$", () => {
     expect(fillsSeen).toHaveLength(0);
   });
 });
+
+function makeFakeOrder(overrides: Partial<EquityOrder> = {}): EquityOrder {
+  return {
+    id: "eq-1",
+    symbol: "AAPL",
+    side: "buy",
+    type: "market",
+    qty: 100,
+    status: "new",
+    filledQty: 0,
+    createdAt: Date.now(),
+    ...overrides,
+  };
+}
