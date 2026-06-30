@@ -5,9 +5,9 @@ import {
 } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
+import type { RfqState, RfqTileIntents } from "@rtc/client-core";
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 
-import type { RfqState, RfqTileIntents } from "@rtc/client-core";
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 /** Controllable double for the rfq machine result the component consumes:

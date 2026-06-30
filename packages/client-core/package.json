@@ -6,9 +6,14 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
-  "imports": { "#/*": "./src/*" },
+  "imports": {
+    "#/*": "./src/*"
+  },
   "scripts": {
     "build": "tsc --build && tsc-alias -p tsconfig.json",
     "typecheck": "tsc --noEmit",

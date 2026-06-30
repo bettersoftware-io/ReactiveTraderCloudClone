@@ -2,6 +2,34 @@ import { bind } from "@react-rxjs/core";
 import { firstValueFrom } from "rxjs";
 
 import {
+  type AnimationIntent,
+  type BootSequenceIntents,
+  type BootSequenceState,
+  createRfqCountdownMachine,
+  DEMO_USER,
+  type IncidentIntents,
+  type IncidentKind,
+  type IncidentState,
+  type LayoutIntents,
+  type LayoutState,
+  type MachineFactories,
+  type NotionalIntents,
+  type NotionalView,
+  type OrderTicketIntents,
+  type OrderTicketState,
+  type RfqState,
+  type RfqSubmissionIntents,
+  type RfqSubmissionState,
+  type RfqTileIntents,
+  type SessionState,
+  type ThroughputView,
+  type TicketSubmissionIntents,
+  type TicketSubmissionState,
+  type TileExecutionIntents,
+  type TileExecutionState,
+  type WorkspaceTab,
+} from "@rtc/client-core";
+import {
   type Candle,
   ConnectionStatus,
   type CurrencyPair,
@@ -33,34 +61,6 @@ import {
 } from "@rtc/domain";
 
 import type { AppCommands, Presenters } from "#/app/composition";
-import {
-  type AnimationIntent,
-  type BootSequenceIntents,
-  type BootSequenceState,
-  createRfqCountdownMachine,
-  DEMO_USER,
-  type IncidentIntents,
-  type IncidentKind,
-  type IncidentState,
-  type LayoutIntents,
-  type LayoutState,
-  type MachineFactories,
-  type NotionalIntents,
-  type NotionalView,
-  type OrderTicketIntents,
-  type OrderTicketState,
-  type RfqState,
-  type RfqSubmissionIntents,
-  type RfqSubmissionState,
-  type RfqTileIntents,
-  type SessionState,
-  type TicketSubmissionIntents,
-  type TicketSubmissionState,
-  type ThroughputView,
-  type TileExecutionIntents,
-  type TileExecutionState,
-  type WorkspaceTab,
-} from "@rtc/client-core";
 
 import { useMachine } from "./useMachine";
 

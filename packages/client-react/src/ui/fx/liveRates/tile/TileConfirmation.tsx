@@ -1,8 +1,7 @@
 import type { ReactElement } from "react";
 
-import { Direction, ExecutionStatus } from "@rtc/domain";
-
 import type { TileExecutionState } from "@rtc/client-core";
+import { Direction, ExecutionStatus } from "@rtc/domain";
 
 import styles from "./TileConfirmation.module.css";
 

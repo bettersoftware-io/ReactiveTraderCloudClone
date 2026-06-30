@@ -1,13 +1,12 @@
 import type { ReactElement } from "react";
 
+import type { RfqState, RfqTileIntents } from "@rtc/client-core";
 import {
   type CurrencyPair,
   Direction,
   type Price,
   PriceMovementType,
 } from "@rtc/domain";
-
-import type { RfqState, RfqTileIntents } from "@rtc/client-core";
 
 import { RfqCountdown } from "./RfqCountdown";
 

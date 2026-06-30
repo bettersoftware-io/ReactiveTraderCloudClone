@@ -2,6 +2,7 @@ import { fireEvent, waitFor, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import type { ThroughputView } from "@rtc/client-core";
+
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 /**

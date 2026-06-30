@@ -1,5 +1,12 @@
 import { BehaviorSubject, Subject } from "rxjs";
 
+import type {
+  AnimationIntent,
+  IncidentKind,
+  IncidentState,
+  ThroughputView,
+} from "@rtc/client-core";
+import { DEMO_USER, type SessionState } from "@rtc/client-core";
 import {
   type Candle,
   ConnectionStatus,
@@ -32,17 +39,6 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-
-import type { AnimationIntent } from "@rtc/client-core";
-import type {
-  IncidentKind,
-  IncidentState,
-} from "@rtc/client-core";
-import {
-  DEMO_USER,
-  type SessionState,
-} from "@rtc/client-core";
-import type { ThroughputView } from "@rtc/client-core";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
  *  are modelled by the per-key subject maps below, not by this map. */

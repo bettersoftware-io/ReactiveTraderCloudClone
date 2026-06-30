@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  LayoutNode,
-  LayoutPort,
-  LayoutState,
-} from "#/layout/layoutPort";
+import type { LayoutNode, LayoutPort, LayoutState } from "#/layout/layoutPort";
 
 import { createLayoutMachine } from "../LayoutMachine";
 
