@@ -60,6 +60,16 @@ co-located `*.module.css` class per the rules below.
 - Tests use `@testing-library/react` `fireEvent.*` + explicit `cleanup()` in `afterEach`
   (Vitest `globals` are off; React 19 createRoot needs `act()` flush — P0 lesson). jsdom
   setup (localStorage + canvas shims) is already in `tests/setup/jsdom.ts`.
+- **Test files obey the SAME ESLint/Biome rules as `src`** (repo CI lints `tests/` too —
+  the per-task gate below covers both). The plan's test snippets show *intent*, not final
+  lint-formatting; before committing, conform them and run `eslint --fix` + `biome check
+  --write` over your test file. Specifically: arrow callbacks need **block bodies with an
+  explicit `return`** (`arrow-body-style: always`, e.g.
+  `renderHook(() => { return usePreferences(); }, { wrapper })`); object param/prop types
+  must be **named interfaces**, not inline `{ … }` (`no-restricted-syntax`); and test
+  helpers / types / `interface`s go **below** the `test(...)` calls, not above
+  (`rtc/newspaper-order` — function declarations hoist, so helpers used above their
+  definition still work).
 - After every task: `pnpm --filter @rtc/client-prototype typecheck && biome check && eslint
   && stylelint && test` must be green (commands in Task 0 below).
 
@@ -112,15 +122,17 @@ From repo root, the per-task green-gate for this package:
 ```bash
 pnpm --filter @rtc/client-prototype typecheck
 pnpm --filter @rtc/client-prototype test
-pnpm exec biome check packages/client-prototype/src
-pnpm exec eslint packages/client-prototype/src
+pnpm exec biome check packages/client-prototype/src packages/client-prototype/tests
+pnpm exec eslint packages/client-prototype/src packages/client-prototype/tests
 pnpm exec stylelint "packages/client-prototype/src/**/*.module.css"
 pnpm --filter @rtc/client-prototype build   # capstone (Task 8)
 ```
 
-(Run eslint/stylelint from repo root so the flat config + ignores resolve. If an eslint run
-appears to flag sibling `.claude/worktrees/*` files, that's the known primary-repo glob
-pollution — in-worktree runs are clean.)
+**Biome AND ESLint must cover `tests/` as well as `src/`** — repo CI lints both, and the
+test snippets in this plan need conforming (see the test-lint constraint in Global
+Constraints). Run eslint/stylelint from repo root so the flat config + ignores resolve. If
+an eslint run appears to flag sibling `.claude/worktrees/*` files, that's the known
+primary-repo glob pollution — in-worktree runs are clean.
 
 ---
 
