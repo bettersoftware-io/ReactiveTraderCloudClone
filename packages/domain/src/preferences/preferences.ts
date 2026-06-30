@@ -9,6 +9,13 @@
  */
 
 export type ThemeMode = "dark" | "light";
+/**
+ * The user's stored theme-mode choice. `"system"` defers the concrete mode to
+ * the OS (`prefers-color-scheme`); `resolveThemeMode` collapses it to a paintable
+ * `ThemeMode`. The two concrete values coincide with `ThemeMode`, so the painted
+ * tokens / `dataset.mode` stay `dark | light` regardless of the preference.
+ */
+export type ThemeModePreference = ThemeMode | "system";
 export type ThemeSkin = "classic" | "holo" | "terminal" | "neon";
 export type ViewMode = "chart" | "price";
 
@@ -29,3 +36,38 @@ export const THEME_SKINS: readonly ThemeSkin[] = [
   "neon",
 ];
 export const THEME_MODES: readonly ThemeMode[] = ["dark", "light"];
+
+/** Default stored mode preference. Equal in value to DEFAULT_THEME_MODE, so
+ * existing users (who have a concrete "dark"/"light" persisted) and the visual
+ * goldens are unaffected — "system" is strictly opt-in via the header toggle. */
+export const DEFAULT_THEME_MODE_PREFERENCE: ThemeModePreference = "dark";
+
+/** The header toggle cycles through these in order: dark → light → system → … */
+export const THEME_MODE_PREFERENCES: readonly ThemeModePreference[] = [
+  "dark",
+  "light",
+  "system",
+];
+
+/** The next preference in the toggle cycle (wraps around). */
+export function nextThemeModePreference(
+  current: ThemeModePreference,
+): ThemeModePreference {
+  const i = THEME_MODE_PREFERENCES.indexOf(current);
+  return (
+    THEME_MODE_PREFERENCES[(i + 1) % THEME_MODE_PREFERENCES.length] ?? "dark"
+  );
+}
+
+/** Collapse a stored preference to the concrete mode that actually paints:
+ * "system" follows the OS via `prefersDark`; concrete choices pass through. */
+export function resolveThemeMode(
+  pref: ThemeModePreference,
+  prefersDark: boolean,
+): ThemeMode {
+  if (pref === "system") {
+    return prefersDark ? "dark" : "light";
+  }
+
+  return pref;
+}

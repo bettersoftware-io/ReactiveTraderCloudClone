@@ -1,7 +1,8 @@
 import {
   type CurrencyPair,
-  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
+  resolveThemeMode,
 } from "@rtc/domain";
 
 // The visual fakes pin the skin to "classic" by default (NOT the app's "holo"
@@ -149,12 +150,15 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setValue: noop,
       };
     },
-    // Display preferences: static snapshots for screenshots; setters are no-ops.
+    // Display preferences: static snapshots for screenshots; the cycle is a
+    // no-op. `data.themeMode` is the stored PREFERENCE (dark | light | system);
+    // "system" resolves deterministically to dark for the snapshot.
     useThemePreference: () => {
+      const modePreference = data.themeMode ?? DEFAULT_THEME_MODE_PREFERENCE;
       return {
-        mode: data.themeMode ?? DEFAULT_THEME_MODE,
-        setMode: noop,
-        toggle: noop,
+        mode: resolveThemeMode(modePreference, true),
+        modePreference,
+        cycle: noop,
       };
     },
     useThemeSkinPreference: () => {

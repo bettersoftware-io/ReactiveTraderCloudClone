@@ -121,14 +121,19 @@ export type {
 export type {
   BootVariant,
   ThemeMode,
+  ThemeModePreference,
   ThemeSkin,
   ViewMode,
 } from "./preferences/preferences.js";
 export {
   DEFAULT_BOOT_VARIANT,
   DEFAULT_THEME_MODE,
+  DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
+  nextThemeModePreference,
+  resolveThemeMode,
+  THEME_MODE_PREFERENCES,
   THEME_MODES,
   THEME_SKINS,
 } from "./preferences/preferences.js";

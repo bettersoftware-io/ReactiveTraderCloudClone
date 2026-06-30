@@ -48,13 +48,28 @@ test("app/admin", async ({ mount, page }) => {
 
 test("app/fx-light", async ({ mount, page }) => {
   // Light theme is seeded through the seam (fixture theme "light"); confirm the
-  // toggle now offers switching back to dark before screenshotting.
+  // toggle offers switching to system (the next step in the cycle) before
+  // screenshotting.
   await mount(<VisualScenario name="app/fx-light" />);
+  await expect(page.getByTestId("theme-toggle")).toHaveAttribute(
+    "aria-label",
+    "Switch to system theme",
+  );
+  await expect(page).toHaveScreenshot("fx-light.png", {
+    animations: "disabled",
+    fullPage: true,
+  });
+});
+
+test("app/fx-system", async ({ mount, page }) => {
+  // System mode preference: the toggle shows the third (🖥️) icon and offers a
+  // switch to dark (cycle wrap). With no OS media query the page paints dark.
+  await mount(<VisualScenario name="app/fx-system" />);
   await expect(page.getByTestId("theme-toggle")).toHaveAttribute(
     "aria-label",
     "Switch to dark theme",
   );
-  await expect(page).toHaveScreenshot("fx-light.png", {
+  await expect(page).toHaveScreenshot("fx-system.png", {
     animations: "disabled",
     fullPage: true,
   });

@@ -29,8 +29,8 @@ describe("ThemeProvider", () => {
       useThemePreference: () => {
         return {
           mode: "dark",
-          setMode: vi.fn(),
-          toggle: vi.fn(),
+          modePreference: "dark",
+          cycle: vi.fn(),
         };
       },
       useThemeSkinPreference: () => {

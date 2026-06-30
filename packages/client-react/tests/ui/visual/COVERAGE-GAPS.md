@@ -84,10 +84,15 @@ OrderTicketMachine, IncidentMachine, AnimationDirector, plus the equities/admin
 presenters) and the **enforced** gate is the contract ≥95% `src/ui` gate (green at
 95.25% branch), not this metric. The remaining app-layer gaps are:
 
+**Update (2026-06-30, deferral-cleanup batch):** the two thin caching presenters
+flagged here — `DepthPresenter` and `CandleSeriesPresenter` (the actual `…sPresenter`
+at 25%, NOT `SessionsPresenter`, which already had a test) — **now have dedicated
+unit tests** (`DepthPresenter.test.ts` / `CandleSeriesPresenter.test.ts`) asserting
+the cache contract (relay, same-Observable cache hit, distinct-symbol streams).
+Only the `portFactory` wiring gap below remains, with the same intentional rationale.
+
 | File | Lines | Reason |
 |------|-------|--------|
-| `presenters/DepthPresenter.ts` 11-17 | `depth$()` body incl. cache-hit arm | Thin per-symbol caching accessor (`shareReplay` of `marketData.depth(symbol)`); the only branch is the cache hit. Exercised through the equities depth-ladder in the contract + visual tiers and the order→fill e2e flow; no dedicated unit arm. |
-| `presenters/SessionsPresenter.ts` 14-20 | `sessions$` accessor body | Same shape — a thin `shareReplay` accessor over `SessionsPort`. Driven by the admin `SessionsPanel` in the contract/visual tiers and the admin incident e2e flow. |
 | `adapters/portFactory.ts` 834-918, 928-935 | new equities/admin port-wiring + `if (cancelled)`/`catch` teardown arms | Composition wiring exercised end-to-end by the e2e + real-composition tests, not unit-isolated; the teardown/`catch` arms follow the same documented pattern as the 2026-06-25 portFactory gaps (fire only on mid-flight unsubscribe / `ws.rpc()` rejection). |
 
 ## Phase 10 (final) — Dumb-UI gates + whole-workstream verification (2026-06-18)
@@ -320,7 +325,25 @@ injected statically through the seam, so they are deterministic goldens.)
 | File | Uncovered visual state | Why no golden |
 |---|---|---|
 | `fx/blotter/BlotterRow.tsx` | row hover-background arm | hover-only (interaction, not a static state) |
-| `shell/theme/ThemeProvider.tsx` | non-default / system-preference theme arms | `system-preference` theme unimplemented; runtime media-query |
+
+**Update (2026-06-30):** the `system-preference` theme arm is now **implemented**
+(the header toggle cycles dark → light → system) and **snapshotted** via the new
+`app/fx-system` scenario, which pins the 🖥️ toggle icon (system resolves to dark
+with no OS media query in the harness). The remaining `ThemeProvider` runtime
+media-query branch (the live OS-flip re-resolution) is covered by the
+`ThemePreferencePresenter` unit test, not the static visual tier.
+
+### Interaction-only residual — triaged 2026-06-30 (intentionally still open)
+
+The deferral-cleanup batch reviewed the testid-gated / interaction-only handlers
+above and **left them un-snapshotted by design**: each either produces no visually
+distinct state (the click lands on a view already pinned by another golden), is a
+hover/drag/`onChange` reachable only through interaction the runner-neutral
+`ScenarioStep` set can't express, or is already driven by the sociable contract
+tier. Adding goldens would churn the canonical x86 set for no coverage gain. The
+genuinely-distinct gaps this batch DID close are recorded above (the new
+`app/fx-system` golden, the Depth/Candle presenter unit tests) plus the
+layout-engine splitter **drag**, now driven end-to-end by `browser/playwright/layout.spec.ts`.
 
 ## Utility logic not exercised by the visual tier
 

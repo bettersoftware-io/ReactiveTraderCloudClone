@@ -12,7 +12,13 @@ describe("SkinPicker", () => {
     const setSkin = vi.fn();
     render(
       <ThemeContext.Provider
-        value={{ skin: "holo", mode: "dark", setSkin, toggleMode: vi.fn() }}
+        value={{
+          skin: "holo",
+          mode: "dark",
+          modePreference: "dark",
+          setSkin,
+          cycleMode: vi.fn(),
+        }}
       >
         <SkinPicker />
       </ThemeContext.Provider>,

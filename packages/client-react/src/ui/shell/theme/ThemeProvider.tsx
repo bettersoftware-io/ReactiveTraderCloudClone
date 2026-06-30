@@ -33,7 +33,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   // this behind a port would be over-abstraction: ports are I/O boundaries, not
   // "how the View paints".
   const { useThemePreference, useThemeSkinPreference } = useViewModel();
-  const { mode, toggle: toggleMode } = useThemePreference();
+  const { mode, modePreference, cycle: cycleMode } = useThemePreference();
   const { skin, setSkin } = useThemeSkinPreference();
 
   useLayoutEffect(() => {
@@ -43,7 +43,9 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   }, [skin, mode]);
 
   return (
-    <ThemeContext.Provider value={{ skin, mode, setSkin, toggleMode }}>
+    <ThemeContext.Provider
+      value={{ skin, mode, modePreference, setSkin, cycleMode }}
+    >
       {children}
     </ThemeContext.Provider>
   );

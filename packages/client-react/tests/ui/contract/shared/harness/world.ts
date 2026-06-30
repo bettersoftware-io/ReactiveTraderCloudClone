@@ -5,7 +5,7 @@ import {
   ConnectionStatus,
   type CreateRfqInput,
   type CurrencyPair,
-  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   type Dealer,
   type DepthBook,
@@ -27,7 +27,7 @@ import {
   type RfqQuoteResult,
   type ServiceTopology,
   type SessionInfo,
-  type ThemeMode,
+  type ThemeModePreference,
   type ThemeSkin,
   type Trade,
   type ViewMode,
@@ -176,7 +176,7 @@ export interface World {
   /** Push a new throughput view (drives the AdminPanel's re-render). */
   setThroughputView(patch: Partial<ThroughputView>): void;
   /** Reactive theme-mode preference backing useThemePreference (drives ThemeProvider). */
-  readonly themeMode: BehaviorSubject<ThemeMode>;
+  readonly themeMode: BehaviorSubject<ThemeModePreference>;
   /** Reactive theme-skin preference backing useThemeSkinPreference (drives ThemeProvider). */
   readonly themeSkin: BehaviorSubject<ThemeSkin>;
   /** Reactive animated-background preference backing useAnimatedBackground. */
@@ -264,7 +264,7 @@ export function createWorld(
   results: CommandResults = {},
   parametric: ParametricSeed = {},
   throughputSeed: Partial<ThroughputView> = {},
-  themeModeSeed?: ThemeMode,
+  themeModeSeed?: ThemeModePreference,
   viewModeSeed?: ViewMode,
   themeSkinSeed?: ThemeSkin,
   animatedBackgroundSeed?: boolean,
@@ -417,8 +417,8 @@ export function createWorld(
   // Stateful display preferences: setters/toggle push back onto these subjects so
   // a click through the seam re-renders the consuming component (ThemeProvider /
   // LiveRatesPanel), mirroring the PreferencesPort's replay-current streams.
-  const themeMode = new BehaviorSubject<ThemeMode>(
-    themeModeSeed ?? DEFAULT_THEME_MODE,
+  const themeMode = new BehaviorSubject<ThemeModePreference>(
+    themeModeSeed ?? DEFAULT_THEME_MODE_PREFERENCE,
   );
   // The harness pins the skin to "classic" by default (NOT the app's "holo"
   // showcase default): classic's tokens are byte-identical to the pre-redesign

@@ -29,13 +29,13 @@ describe("ThemePicker", () => {
     expect(picker.documentSkin()).toBe("neon");
   });
 
-  it("toggles light/dark mode through the reused ThemeToggle seam", async () => {
+  it("cycles mode through the reused ThemeToggle seam", async () => {
     const picker = mount(ThemePicker, { themeSkin: "holo", themeMode: "dark" });
     expect(picker.documentMode()).toBe("dark");
     expect(picker.modeAriaLabel()).toMatch(/switch to light theme/i);
 
     await picker.toggleMode();
     expect(picker.documentMode()).toBe("light");
-    expect(picker.modeAriaLabel()).toMatch(/switch to dark theme/i);
+    expect(picker.modeAriaLabel()).toMatch(/switch to system theme/i);
   });
 });

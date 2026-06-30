@@ -48,4 +48,9 @@ export const TESTIDS = {
       clear: "incident-clear",
     },
   },
+  layout: {
+    // Splitter handles carry a dynamic id `handle-<pathKey>-<index>`; the engine
+    // owns the full id, so consumers match on this stable prefix.
+    handlePrefix: "handle-",
+  },
 } as const;

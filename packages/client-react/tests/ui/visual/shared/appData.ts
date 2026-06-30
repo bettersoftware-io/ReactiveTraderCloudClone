@@ -21,7 +21,7 @@ import {
   type Rfq,
   type ServiceTopology,
   type SessionInfo,
-  type ThemeMode,
+  type ThemeModePreference,
   type ThemeSkin,
   type Trade,
   type ViewMode,
@@ -69,7 +69,7 @@ export interface AppData {
   /** Throughput control view (useThroughput); defaults to a loaded value of 100. */
   throughput?: ThroughputView;
   /** Theme-mode preference (useThemePreference); defaults to DEFAULT_THEME_MODE ("dark"). */
-  themeMode?: ThemeMode;
+  themeMode?: ThemeModePreference;
   /** Theme-skin preference (useThemeSkinPreference); defaults to "classic" in the fakes. */
   themeSkin?: ThemeSkin;
   /** Animated-background preference (useAnimatedBackground); defaults to false. */

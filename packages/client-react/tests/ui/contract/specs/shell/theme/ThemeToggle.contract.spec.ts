@@ -20,19 +20,21 @@ describe("ThemeToggle", () => {
     expect(toggle.ariaLabel()).toMatch(/switch to light theme/i);
   });
 
-  it("flips the real ThemeProvider state when clicked", async () => {
+  it("advances dark → light on the first click, announcing system next", async () => {
     const toggle = mount(ThemeToggle);
     expect(toggle.documentMode()).toBe("dark");
     await toggle.toggle();
     expect(toggle.documentMode()).toBe("light");
-    expect(toggle.ariaLabel()).toMatch(/switch to dark theme/i);
+    expect(toggle.ariaLabel()).toMatch(/switch to system theme/i);
   });
 
-  it("toggles back to the original theme on a second click", async () => {
+  it("cycles light → system → dark across further clicks", async () => {
     const toggle = mount(ThemeToggle);
-    await toggle.toggle();
-    expect(toggle.documentMode()).toBe("light");
-    await toggle.toggle();
+    await toggle.toggle(); // dark → light
+    await toggle.toggle(); // light → system (resolves to dark with no OS query)
+    expect(toggle.ariaLabel()).toMatch(/switch to dark theme/i);
+    await toggle.toggle(); // system → dark
     expect(toggle.documentMode()).toBe("dark");
+    expect(toggle.ariaLabel()).toMatch(/switch to light theme/i);
   });
 });
