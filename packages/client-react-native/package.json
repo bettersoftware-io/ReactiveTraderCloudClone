@@ -1,0 +1,35 @@
+{
+  "name": "@rtc/client-react-native",
+  "version": "0.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "start": "expo start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "build": "tsc --noEmit",
+    "export": "expo export --platform ios --output-dir dist",
+    "clean": "rm -rf dist .turbo .expo *.tsbuildinfo node_modules/.cache 2>/dev/null || true",
+    "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
+  },
+  "dependencies": {
+    "expo": "^57.0.0",
+    "expo-constants": "^57.0.2",
+    "expo-router": "^57.0.0",
+    "expo-status-bar": "^57.0.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-native": "^0.86.0",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "babel-plugin-module-resolver": "^5.0.3",
+    "typescript": "^6",
+    "vitest": "^4"
+  }
+}

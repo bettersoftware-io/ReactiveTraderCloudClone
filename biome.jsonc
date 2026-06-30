@@ -176,6 +176,19 @@
           }
         }
       }
+    },
+    {
+      // Expo Router routes are framework entry-points: the file-based router
+      // discovers each screen by its DEFAULT export, so `app/**` is a scoped
+      // exception to the repo-wide noDefaultExport policy (mirrors middleware.ts).
+      "includes": ["packages/client-react-native/app/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
     }
   ]
 }

@@ -1,0 +1,9 @@
+# Expo / RN
+.expo/
+dist/
+*.log
+*.tsbuildinfo
+web-build/
+# Native
+/ios
+/android
