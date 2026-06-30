@@ -133,7 +133,10 @@ export default tseslint.config(
     // scope. Re-lists `restrictedSyntax` via the spread because flat config
     // REPLACES (does not merge) a rule's options across matching blocks — a
     // bare `[inlineStyleProp]` here would disable the type bans for client src.
-    files: ["packages/client-react/src/**/*.tsx"],
+    files: [
+      "packages/client-react/src/**/*.tsx",
+      "packages/client-prototype/src/**/*.tsx",
+    ],
     rules: {
       "no-restricted-syntax": ["error", ...restrictedSyntax, inlineStyleProp],
     },
