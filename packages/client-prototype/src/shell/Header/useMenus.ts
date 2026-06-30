@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
 export type Tab = "fx" | "credit" | "equities" | "admin";
-export type MenuName = "theme" | "notif" | "lang" | "user";
+type MenuName = "theme" | "notif" | "lang" | "user";
 
 export interface MenusApi {
   open: MenuName | null;
