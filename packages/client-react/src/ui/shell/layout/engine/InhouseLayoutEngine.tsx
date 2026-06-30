@@ -19,6 +19,44 @@ import type { PanelRegistry } from "./panelRegistry";
 
 import styles from "./InhouseLayoutEngine.module.css";
 
+/** Dumb renderer of a LayoutState. The pointer-event resize drag and the
+ * strip/maximize transitions are the ONE framework-coupled spot in the app
+ * (interfaces doc §5) — confined to this component behind the LayoutPort, so a
+ * SolidJS swap re-implements only this file. No rxjs, no persistence, no
+ * transport here; geometry is a `--split-size` custom property, state is
+ * semantic data-*. */
+export function InhouseLayoutEngine({
+  state,
+  registry,
+  specs = PANEL_SPECS,
+  onMaximize,
+  onRestore,
+  onCollapse,
+  onExpand,
+  onResize,
+}: InhouseLayoutEngineProps): ReactElement {
+  const sharedProps: SharedProps = {
+    state,
+    registry,
+    specs,
+    onMaximize,
+    onRestore,
+    onCollapse,
+    onExpand,
+    onResize,
+  };
+
+  return (
+    <main
+      data-testid="layout-engine"
+      className={styles.engine}
+      data-maximized={state.maximized ?? ""}
+    >
+      {renderNode(state.root, [], sharedProps)}
+    </main>
+  );
+}
+
 export interface InhouseLayoutEngineProps {
   state: LayoutState;
   registry: PanelRegistry;
@@ -304,43 +342,5 @@ function renderNode(
       path={path}
       {...sharedProps}
     />
-  );
-}
-
-/** Dumb renderer of a LayoutState. The pointer-event resize drag and the
- * strip/maximize transitions are the ONE framework-coupled spot in the app
- * (interfaces doc §5) — confined to this component behind the LayoutPort, so a
- * SolidJS swap re-implements only this file. No rxjs, no persistence, no
- * transport here; geometry is a `--split-size` custom property, state is
- * semantic data-*. */
-export function InhouseLayoutEngine({
-  state,
-  registry,
-  specs = PANEL_SPECS,
-  onMaximize,
-  onRestore,
-  onCollapse,
-  onExpand,
-  onResize,
-}: InhouseLayoutEngineProps): ReactElement {
-  const sharedProps: SharedProps = {
-    state,
-    registry,
-    specs,
-    onMaximize,
-    onRestore,
-    onCollapse,
-    onExpand,
-    onResize,
-  };
-
-  return (
-    <main
-      data-testid="layout-engine"
-      className={styles.engine}
-      data-maximized={state.maximized ?? ""}
-    >
-      {renderNode(state.root, [], sharedProps)}
-    </main>
   );
 }

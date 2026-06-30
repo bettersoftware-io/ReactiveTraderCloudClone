@@ -2,6 +2,41 @@ import type { ReactElement } from "react";
 
 import styles from "./PnlSparkline.module.css";
 
+export function PnlSparkline({
+  pnl,
+  maxAbsPnl,
+}: PnlSparklineProps): ReactElement {
+  const safe = maxAbsPnl !== undefined ? maxAbsPnl : Math.abs(pnl);
+  const path = buildSparkPath(pnl, safe);
+  const isPositive = pnl >= 0;
+
+  return (
+    <svg
+      width={WIDTH}
+      height={HEIGHT}
+      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      className={styles.sparkline}
+      aria-hidden="true"
+    >
+      {/* Zero baseline */}
+      <line
+        x1={PAD + HALF_W}
+        y1={PAD}
+        x2={PAD + HALF_W}
+        y2={HEIGHT - PAD}
+        stroke="var(--border)"
+        strokeWidth={1}
+      />
+      {/* P&L bar */}
+      <path
+        d={path}
+        fill={isPositive ? "var(--accent-positive)" : "var(--accent-negative)"}
+        opacity={0.7}
+      />
+    </svg>
+  );
+}
+
 interface PnlSparklineProps {
   /** Current unrealised P&L value (positive = profit, negative = loss). */
   pnl: number;
@@ -39,39 +74,4 @@ function buildSparkPath(pnl: number, maxAbsPnl: number): string {
 
   // bar extends leftward from centre
   return `M${cx},${barTop} h-${barLen} v${barH} h${barLen} Z`;
-}
-
-export function PnlSparkline({
-  pnl,
-  maxAbsPnl,
-}: PnlSparklineProps): ReactElement {
-  const safe = maxAbsPnl !== undefined ? maxAbsPnl : Math.abs(pnl);
-  const path = buildSparkPath(pnl, safe);
-  const isPositive = pnl >= 0;
-
-  return (
-    <svg
-      width={WIDTH}
-      height={HEIGHT}
-      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      className={styles.sparkline}
-      aria-hidden="true"
-    >
-      {/* Zero baseline */}
-      <line
-        x1={PAD + HALF_W}
-        y1={PAD}
-        x2={PAD + HALF_W}
-        y2={HEIGHT - PAD}
-        stroke="var(--border)"
-        strokeWidth={1}
-      />
-      {/* P&L bar */}
-      <path
-        d={path}
-        fill={isPositive ? "var(--accent-positive)" : "var(--accent-negative)"}
-        opacity={0.7}
-      />
-    </svg>
-  );
 }

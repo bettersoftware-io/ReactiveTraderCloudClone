@@ -5,6 +5,43 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./MetricGauges.module.css";
 
+/**
+ * Three radial gauges driven by the latest sample of each metric window. Each
+ * gauge sweeps relative to its own series peak — a pure function of the data,
+ * no thresholds baked in. Decorative-but-real: the arc moves with live metrics.
+ */
+export function MetricGauges(): ReactElement {
+  const { useMetrics } = useViewModel();
+  const { throughput, latency, errorRate } = useMetrics();
+
+  const tpVal = latest(throughput);
+  const latVal = latest(latency);
+  const errVal = latest(errorRate);
+
+  return (
+    <div className={styles.row}>
+      <RadialGauge
+        metric="throughput"
+        label="THROUGHPUT"
+        display={`${tpVal.toFixed(0)}/s`}
+        fraction={tpVal / peak(throughput)}
+      />
+      <RadialGauge
+        metric="latency"
+        label="LATENCY"
+        display={`${latVal.toFixed(0)}ms`}
+        fraction={latVal / peak(latency)}
+      />
+      <RadialGauge
+        metric="errorRate"
+        label="ERROR RATE"
+        display={errVal.toFixed(2)}
+        fraction={errVal / peak(errorRate)}
+      />
+    </div>
+  );
+}
+
 type GaugeMetric = "throughput" | "latency" | "errorRate";
 
 interface RadialGaugeProps {
@@ -76,43 +113,6 @@ function RadialGauge({
       </svg>
       <span className={styles.value}>{display}</span>
       <span className={styles.label}>{label}</span>
-    </div>
-  );
-}
-
-/**
- * Three radial gauges driven by the latest sample of each metric window. Each
- * gauge sweeps relative to its own series peak — a pure function of the data,
- * no thresholds baked in. Decorative-but-real: the arc moves with live metrics.
- */
-export function MetricGauges(): ReactElement {
-  const { useMetrics } = useViewModel();
-  const { throughput, latency, errorRate } = useMetrics();
-
-  const tpVal = latest(throughput);
-  const latVal = latest(latency);
-  const errVal = latest(errorRate);
-
-  return (
-    <div className={styles.row}>
-      <RadialGauge
-        metric="throughput"
-        label="THROUGHPUT"
-        display={`${tpVal.toFixed(0)}/s`}
-        fraction={tpVal / peak(throughput)}
-      />
-      <RadialGauge
-        metric="latency"
-        label="LATENCY"
-        display={`${latVal.toFixed(0)}ms`}
-        fraction={latVal / peak(latency)}
-      />
-      <RadialGauge
-        metric="errorRate"
-        label="ERROR RATE"
-        display={errVal.toFixed(2)}
-        fraction={errVal / peak(errorRate)}
-      />
     </div>
   );
 }

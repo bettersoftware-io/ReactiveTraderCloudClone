@@ -5,13 +5,6 @@ import type { ColumnFilter } from "./filterState";
 
 import styles from "./SetFilter.module.css";
 
-interface SetFilterProps<TRow> {
-  column: keyof TRow;
-  rows: readonly TRow[];
-  currentFilter: ColumnFilter<TRow> | undefined;
-  onApply: (filter: ColumnFilter<TRow> | null) => void;
-}
-
 export function SetFilter<TRow>({
   column,
   rows,
@@ -75,4 +68,11 @@ export function SetFilter<TRow>({
       </button>
     </div>
   );
+}
+
+interface SetFilterProps<TRow> {
+  column: keyof TRow;
+  rows: readonly TRow[];
+  currentFilter: ColumnFilter<TRow> | undefined;
+  onApply: (filter: ColumnFilter<TRow> | null) => void;
 }

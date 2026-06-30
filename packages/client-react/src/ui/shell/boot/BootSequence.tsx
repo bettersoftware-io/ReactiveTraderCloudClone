@@ -12,16 +12,6 @@ import {
 
 import styles from "./BootSequence.module.css";
 
-const DRAW = {
-  core: drawBootCore,
-  laser: drawBootLaser,
-  docking: drawBootDocking,
-} as const;
-
-interface BootSequenceProps {
-  onDone: () => void;
-}
-
 export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
   const { useBootSequence } = useViewModel();
   const { state, skip } = useBootSequence(onDone);
@@ -102,4 +92,14 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       </div>
     </div>
   );
+}
+
+const DRAW = {
+  core: drawBootCore,
+  laser: drawBootLaser,
+  docking: drawBootDocking,
+} as const;
+
+interface BootSequenceProps {
+  onDone: () => void;
 }

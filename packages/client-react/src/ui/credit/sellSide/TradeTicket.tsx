@@ -6,12 +6,6 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./TradeTicket.module.css";
 
-interface TradeTicketProps {
-  rfq: Rfq;
-  quote: Quote;
-  instrument: Instrument | undefined;
-}
-
 export function TradeTicket({
   rfq,
   quote,
@@ -104,4 +98,10 @@ export function TradeTicket({
       )}
     </div>
   );
+}
+
+interface TradeTicketProps {
+  rfq: Rfq;
+  quote: Quote;
+  instrument: Instrument | undefined;
 }

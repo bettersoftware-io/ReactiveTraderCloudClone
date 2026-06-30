@@ -5,20 +5,16 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { StaleIndicator } from "#/ui/shell/stale/StaleIndicator";
 
+import { SpreadDisplay } from "./SpreadDisplay";
 import { TileChart } from "./TileChart";
 import { TileConfirmation } from "./TileConfirmation";
 import { TileExecution } from "./TileExecution";
 import { TileHeader } from "./TileHeader";
 import { TileNotional } from "./TileNotional";
-import { SpreadDisplay, TilePrice } from "./TilePrice";
+import { TilePrice } from "./TilePrice";
 import { TileRfq } from "./TileRfq";
 
 import styles from "./Tile.module.css";
-
-interface TileProps {
-  pair: CurrencyPair;
-  showChart: boolean;
-}
 
 export function Tile({ pair, showChart }: TileProps): ReactElement {
   const {
@@ -123,4 +119,9 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
       </div>
     </StaleIndicator>
   );
+}
+
+interface TileProps {
+  pair: CurrencyPair;
+  showChart: boolean;
 }

@@ -7,6 +7,42 @@ import { useViewModel } from "@rtc/react-bindings";
 import styles from "./ThroughputChart.module.css";
 
 /**
+ * Throughput line chart on a <canvas>. Pattern mirrors PriceChart.tsx:
+ * - the pure `drawLine` helper is the only canvas-touching code
+ * - the token colour is read once via getComputedStyle (canvas cannot use vars)
+ * - redraw is triggered by `samples` change in useLayoutEffect — no rAF loop
+ */
+export function ThroughputChart(): ReactElement {
+  const { useMetrics } = useViewModel();
+  const { throughput } = useMetrics();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return; // jsdom / headless: no GPU context
+
+    const cs = getComputedStyle(document.documentElement);
+    const color = cs.getPropertyValue("--accent-primary").trim() || "#3b82f6";
+    drawLine(ctx, throughput, canvas.width, canvas.height, color);
+  }, [throughput]);
+
+  return (
+    <div data-testid="admin-throughput-chart" className={styles.wrapper}>
+      <canvas
+        ref={canvasRef}
+        className={styles.canvas}
+        aria-label="Throughput chart"
+      />
+      {throughput.length === 0 && <div className={styles.empty}>NO DATA</div>}
+    </div>
+  );
+}
+
+/**
  * Pure canvas draw — no React, no DOM state. Mirrors drawCandles.ts: an exported
  * helper called from a useLayoutEffect when `samples` change. Redraw-on-data,
  * not a continuous rAF loop, so there is no timer to leak.
@@ -46,40 +82,4 @@ function drawLine(
   }
 
   ctx.stroke();
-}
-
-/**
- * Throughput line chart on a <canvas>. Pattern mirrors PriceChart.tsx:
- * - the pure `drawLine` helper is the only canvas-touching code
- * - the token colour is read once via getComputedStyle (canvas cannot use vars)
- * - redraw is triggered by `samples` change in useLayoutEffect — no rAF loop
- */
-export function ThroughputChart(): ReactElement {
-  const { useMetrics } = useViewModel();
-  const { throughput } = useMetrics();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useLayoutEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return; // jsdom / headless: no GPU context
-
-    const cs = getComputedStyle(document.documentElement);
-    const color = cs.getPropertyValue("--accent-primary").trim() || "#3b82f6";
-    drawLine(ctx, throughput, canvas.width, canvas.height, color);
-  }, [throughput]);
-
-  return (
-    <div data-testid="admin-throughput-chart" className={styles.wrapper}>
-      <canvas
-        ref={canvasRef}
-        className={styles.canvas}
-        aria-label="Throughput chart"
-      />
-      {throughput.length === 0 && <div className={styles.empty}>NO DATA</div>}
-    </div>
-  );
 }

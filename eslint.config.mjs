@@ -3,6 +3,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 import { classFilenameMatch } from "./eslint-rules/class-filename-match.mjs";
+import { componentNewspaper } from "./eslint-rules/component-newspaper.mjs";
 import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
 
 // Structural `no-restricted-syntax` bans shared between the repo-wide block and
@@ -87,6 +88,7 @@ const rtcPlugin = {
   rules: {
     "newspaper-order": newspaperOrder,
     "class-filename-match": classFilenameMatch,
+    "component-newspaper": componentNewspaper,
   },
 };
 
@@ -201,6 +203,16 @@ export default tseslint.config(
     // filename is the cucumber idiom, not the class name.
     files: ["**/world.ts"],
     rules: { "rtc/class-filename-match": "off" },
+  },
+  {
+    // One component per .tsx file: the exported component is the newspaper lede
+    // (private subcomponents/helpers/types below it) and the filename matches it.
+    // Scoped to client-react source; test .tsx are excluded (they may define
+    // throwaway components and are governed by rtc/newspaper-order instead).
+    files: ["packages/client-react/src/**/*.tsx"],
+    ignores: ["**/*.{test,spec}.tsx"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/component-newspaper": "error" },
   },
   prettier,
 );

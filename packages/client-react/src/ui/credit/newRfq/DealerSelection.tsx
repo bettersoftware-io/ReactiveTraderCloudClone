@@ -4,12 +4,6 @@ import type { Dealer } from "@rtc/domain";
 
 import styles from "./DealerSelection.module.css";
 
-interface DealerSelectionProps {
-  dealers: readonly Dealer[];
-  selectedIds: Set<number>;
-  onChange: (ids: Set<number>) => void;
-}
-
 export function DealerSelection({
   dealers,
   selectedIds,
@@ -43,4 +37,10 @@ export function DealerSelection({
       </div>
     </div>
   );
+}
+
+interface DealerSelectionProps {
+  dealers: readonly Dealer[];
+  selectedIds: Set<number>;
+  onChange: (ids: Set<number>) => void;
 }

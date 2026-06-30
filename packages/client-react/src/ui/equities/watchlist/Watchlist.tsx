@@ -5,6 +5,39 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./Watchlist.module.css";
 
+export function Watchlist({
+  selectedSymbol,
+  onSelect,
+}: WatchlistProps): ReactElement {
+  const { useWatchlist } = useViewModel();
+  const instruments = useWatchlist();
+
+  if (instruments.length === 0) {
+    return <div className={styles.empty}>NO INSTRUMENTS</div>;
+  }
+
+  return (
+    <div className={styles.watchlist}>
+      <div className={styles.header}>
+        <span>SYMBOL</span>
+        <span>LAST</span>
+        <span>CHG%</span>
+        <span>SPRD</span>
+      </div>
+      {instruments.map((inst) => {
+        return (
+          <WatchlistRow
+            key={inst.symbol}
+            instrument={inst}
+            active={inst.symbol === selectedSymbol}
+            onSelect={onSelect}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 interface WatchlistProps {
   selectedSymbol: string | null;
   onSelect: (symbol: string) => void;
@@ -56,38 +89,5 @@ function WatchlistRow({
       <span className={styles.change}>{change}</span>
       <span className={styles.spread}>{spread}</span>
     </button>
-  );
-}
-
-export function Watchlist({
-  selectedSymbol,
-  onSelect,
-}: WatchlistProps): ReactElement {
-  const { useWatchlist } = useViewModel();
-  const instruments = useWatchlist();
-
-  if (instruments.length === 0) {
-    return <div className={styles.empty}>NO INSTRUMENTS</div>;
-  }
-
-  return (
-    <div className={styles.watchlist}>
-      <div className={styles.header}>
-        <span>SYMBOL</span>
-        <span>LAST</span>
-        <span>CHG%</span>
-        <span>SPRD</span>
-      </div>
-      {instruments.map((inst) => {
-        return (
-          <WatchlistRow
-            key={inst.symbol}
-            instrument={inst}
-            active={inst.symbol === selectedSymbol}
-            onSelect={onSelect}
-          />
-        );
-      })}
-    </div>
   );
 }

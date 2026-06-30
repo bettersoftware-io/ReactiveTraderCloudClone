@@ -9,10 +9,6 @@ import {
 
 import styles from "./PairPnlBars.module.css";
 
-interface PairPnlBarsProps {
-  positions: readonly CurrencyPairPosition[];
-}
-
 export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
   const [hoveredSymbol, setHoveredSymbol] = useState<string | null>(null);
 
@@ -67,4 +63,8 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
       })}
     </div>
   );
+}
+
+interface PairPnlBarsProps {
+  positions: readonly CurrencyPairPosition[];
 }

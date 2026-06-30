@@ -4,10 +4,6 @@ import { formatPnlValue } from "@rtc/domain";
 
 import styles from "./PnlValue.module.css";
 
-interface PnlValueProps {
-  value: number;
-}
-
 export function PnlValue({ value }: PnlValueProps): ReactElement {
   const sign = value >= 0 ? "pos" : "neg";
 
@@ -19,4 +15,8 @@ export function PnlValue({ value }: PnlValueProps): ReactElement {
       </span>
     </div>
   );
+}
+
+interface PnlValueProps {
+  value: number;
 }

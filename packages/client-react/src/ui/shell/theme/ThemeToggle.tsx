@@ -6,14 +6,6 @@ import { useTheme } from "./useTheme";
 
 import styles from "./ThemeToggle.module.css";
 
-// Icon per stored preference. dark→☀️ / light→🌙 are unchanged from the
-// two-state toggle (so existing goldens are byte-identical); system→🖥️ is new.
-const ICON: Record<ThemeModePreference, string> = {
-  dark: "☀️",
-  light: "🌙",
-  system: "🖥️",
-};
-
 export function ThemeToggle(): ReactElement {
   const { modePreference, cycleMode } = useTheme();
 
@@ -30,3 +22,11 @@ export function ThemeToggle(): ReactElement {
     </button>
   );
 }
+
+// Icon per stored preference. dark→☀️ / light→🌙 are unchanged from the
+// two-state toggle (so existing goldens are byte-identical); system→🖥️ is new.
+const ICON: Record<ThemeModePreference, string> = {
+  dark: "☀️",
+  light: "🌙",
+  system: "🖥️",
+};

@@ -7,10 +7,6 @@ import { drawCandles } from "./drawCandles";
 
 import styles from "./PriceChart.module.css";
 
-interface PriceChartProps {
-  symbol: string;
-}
-
 /**
  * Candlestick chart rendered on a <canvas>.
  * Pattern mirrors BootSequence.tsx + bootCanvas.ts:
@@ -49,4 +45,8 @@ export function PriceChart({ symbol }: PriceChartProps): ReactElement {
       {candles.length === 0 && <div className={styles.empty}>NO DATA</div>}
     </div>
   );
+}
+
+interface PriceChartProps {
+  symbol: string;
 }

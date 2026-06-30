@@ -4,11 +4,6 @@ import { CURRENCY_CATEGORIES, type CurrencyCategory } from "@rtc/domain";
 
 import styles from "./CurrencyFilter.module.css";
 
-interface CurrencyFilterProps {
-  selected: CurrencyCategory;
-  onChange: (category: CurrencyCategory) => void;
-}
-
 export function CurrencyFilter({
   selected,
   onChange,
@@ -33,4 +28,9 @@ export function CurrencyFilter({
       })}
     </div>
   );
+}
+
+interface CurrencyFilterProps {
+  selected: CurrencyCategory;
+  onChange: (category: CurrencyCategory) => void;
 }

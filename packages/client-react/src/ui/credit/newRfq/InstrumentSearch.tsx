@@ -5,12 +5,6 @@ import type { Instrument } from "@rtc/domain";
 
 import styles from "./InstrumentSearch.module.css";
 
-interface InstrumentSearchProps {
-  instruments: readonly Instrument[];
-  selected: Instrument | null;
-  onSelect: (instrument: Instrument | null) => void;
-}
-
 export function InstrumentSearch({
   instruments,
   selected,
@@ -97,4 +91,10 @@ export function InstrumentSearch({
       )}
     </div>
   );
+}
+
+interface InstrumentSearchProps {
+  instruments: readonly Instrument[];
+  selected: Instrument | null;
+  onSelect: (instrument: Instrument | null) => void;
 }
