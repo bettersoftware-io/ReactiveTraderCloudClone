@@ -9,6 +9,7 @@ import {
   type Rfq,
   RfqState,
 } from "@rtc/domain";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { BlotterHeader } from "#/ui/fx/blotter/BlotterHeader";
 import { BlotterRow } from "#/ui/fx/blotter/BlotterRow";
@@ -21,7 +22,6 @@ import {
 } from "#/ui/fx/blotter/columnSort";
 import { exportToCsv } from "#/ui/fx/blotter/csvExport";
 import { QuickFilter } from "#/ui/fx/blotter/QuickFilter";
-import { useHooks } from "#/ui/hooks/useHooks";
 
 import {
   CREDIT_COLUMNS,
@@ -72,7 +72,7 @@ function deriveTrades(
 }
 
 export function CreditBlotter(): ReactElement {
-  const { useRfqs, useAllQuotes, useInstruments, useDealers } = useHooks();
+  const { useRfqs, useAllQuotes, useInstruments, useDealers } = useViewModel();
   const rfqs = useRfqs();
   const allQuotes = useAllQuotes();
   const instruments = useInstruments();

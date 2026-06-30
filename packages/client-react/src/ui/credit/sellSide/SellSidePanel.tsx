@@ -1,8 +1,7 @@
 import type { ReactElement } from "react";
 
 import { ADAPTIVE_BANK_NAME, type Instrument, type Rfq } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { TradeTicket } from "./TradeTicket";
 
@@ -19,7 +18,7 @@ function SellSideRfqRow({
   adaptiveBankId,
   instrumentMap,
 }: SellSideRfqRowProps): ReactElement | null {
-  const { useQuotesForRfq } = useHooks();
+  const { useQuotesForRfq } = useViewModel();
   const quotes = useQuotesForRfq(rfq.id);
   const abQuote = quotes.find((q) => {
     return q.dealerId === adaptiveBankId;
@@ -35,7 +34,7 @@ function SellSideRfqRow({
 }
 
 export function SellSidePanel(): ReactElement {
-  const { useRfqs, useInstruments, useDealers } = useHooks();
+  const { useRfqs, useInstruments, useDealers } = useViewModel();
   const rfqs = useRfqs();
   const instruments = useInstruments();
   const dealers = useDealers();

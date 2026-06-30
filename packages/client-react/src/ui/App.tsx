@@ -1,7 +1,8 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import { useHooks } from "./hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
+
 import { AmbientBackground } from "./shell/background/AmbientBackground";
 import { HeaderChrome, type WorkspaceTab } from "./shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
@@ -17,7 +18,7 @@ interface WorkspaceEngineProps {
 }
 
 function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
-  const { useLayout } = useHooks();
+  const { useLayout } = useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
   return (
     <InhouseLayoutEngine

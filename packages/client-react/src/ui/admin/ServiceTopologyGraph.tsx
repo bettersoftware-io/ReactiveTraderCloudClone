@@ -1,8 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 
 import type { ServiceName } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./ServiceTopologyGraph.module.css";
 
@@ -50,7 +49,7 @@ function edgeHeat(latencyMs: number, peak: number): number {
  * `latencyMs`, and `data-status` drives a CSS pulse keyframe (no JS timer).
  */
 export function ServiceTopologyGraph(): ReactElement {
-  const { useTopology } = useHooks();
+  const { useTopology } = useViewModel();
   const topology = useTopology();
 
   if (!topology) {

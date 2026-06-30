@@ -1,0 +1,36 @@
+{
+  "name": "@rtc/client-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "build": "tsc --build && tsc-alias -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports 2>/dev/null || true"
+  },
+  "dependencies": {
+    "@rtc/domain": "workspace:*",
+    "@rtc/shared": "workspace:*",
+    "@rx-state/core": "^0.1.4",
+    "rxjs": "^7.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "@vitest/coverage-v8": "^4.1.8",
+    "tsc-alias": "1.8.17",
+    "vitest": "^4"
+  }
+}

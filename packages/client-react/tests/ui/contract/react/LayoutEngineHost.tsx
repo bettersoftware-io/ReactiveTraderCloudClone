@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 
-import { createDefaultLayoutPort } from "#/app/layout/defaultLayoutPort";
-import { createLayoutMachine } from "#/app/presenters/LayoutMachine";
-import { useMachine } from "#/ui/hooks/useMachine";
+import { createDefaultLayoutPort, createLayoutMachine } from "@rtc/client-core";
+import { useMachine } from "@rtc/react-bindings";
+
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 

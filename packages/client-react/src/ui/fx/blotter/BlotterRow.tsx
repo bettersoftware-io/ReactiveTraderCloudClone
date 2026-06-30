@@ -2,8 +2,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { TradeStatus } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import type { CellFormatter, ColumnDef } from "./blotterColumns";
 
@@ -25,7 +24,7 @@ export function BlotterRow<TRow extends { status: string }>({
   // The transient new-row highlight (true for HIGHLIGHT_MS then false) now lives
   // in the app-layer createRowHighlightMachine behind the seam, so this row holds
   // no timer. Hover stays here — it's pure interaction view state, no timer.
-  const { useRowHighlight } = useHooks();
+  const { useRowHighlight } = useViewModel();
   const highlight = useRowHighlight(isNew);
   const [hovered, setHovered] = useState(false);
   const isRejected = trade.status === TradeStatus.Rejected;

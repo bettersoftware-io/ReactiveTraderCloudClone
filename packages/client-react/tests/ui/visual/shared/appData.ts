@@ -1,6 +1,17 @@
-// Framework-neutral snapshot of everything the UI reads through AppHooks.
+// Framework-neutral snapshot of everything the UI reads through ViewModel.
 // No React/Solid imports — this file (and the rest of shared/) is the
 // portable core shared by every UI implementation.
+
+import type {
+  IncidentKind,
+  NotionalView,
+  OrderTicketState,
+  RfqState,
+  RfqSubmissionState,
+  ThroughputView,
+  TicketSubmissionState,
+  TileExecutionState,
+} from "@rtc/client-core";
 import {
   type Candle,
   ConnectionStatus,
@@ -26,17 +37,6 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-
-import type { IncidentKind } from "#/app/presenters/IncidentMachine";
-import type { NotionalView } from "#/app/presenters/NotionalMachine";
-import type { OrderTicketState } from "#/app/presenters/OrderTicketMachine";
-import type {
-  RfqSubmissionState,
-  TicketSubmissionState,
-} from "#/app/presenters/RfqsPresenter";
-import type { RfqState } from "#/app/presenters/RfqTileMachine";
-import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
-import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
 
 export interface AppData {
   prices: Record<string, Price | null>;

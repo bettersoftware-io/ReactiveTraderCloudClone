@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./InstrumentTabs.module.css";
 
@@ -13,7 +13,7 @@ export function InstrumentTabs({
   selectedSymbol,
   onSelect,
 }: InstrumentTabsProps): ReactElement {
-  const { useWatchlist } = useHooks();
+  const { useWatchlist } = useViewModel();
   const instruments = useWatchlist();
 
   return (

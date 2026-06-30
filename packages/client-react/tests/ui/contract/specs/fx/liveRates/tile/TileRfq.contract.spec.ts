@@ -3,14 +3,13 @@ import { mount } from "@ui-contract/mount";
 import type { RfqStateLike } from "@ui-contract/pages/fx/liveRates/tile/TileRfqPage";
 import { describe, expect, it } from "vitest";
 
+import type { RfqQuote, RfqState } from "@rtc/client-core";
 import {
   type CurrencyPair,
   Direction,
   KNOWN_CURRENCY_PAIRS,
   type Price,
 } from "@rtc/domain";
-
-import type { RfqQuote, RfqState } from "#/app/presenters/RfqTileMachine";
 
 const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS[0];
 

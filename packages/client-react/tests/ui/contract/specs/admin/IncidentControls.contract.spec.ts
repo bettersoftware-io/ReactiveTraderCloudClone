@@ -8,7 +8,7 @@
  * injectIncident() are immediately visible to both components.
  *
  * TDD evidence:
- *  RED:  hooksFromWorld stubs returned empty/no-op — overlay stayed hidden.
+ *  RED:  viewModelFromWorld stubs returned empty/no-op — overlay stayed hidden.
  *  GREEN: World-backed useIncident + injectIncident pushes DISCONNECTED →
  *          ConnectionOverlay re-renders visible.
  */

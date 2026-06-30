@@ -1,6 +1,6 @@
 import type { ChangeEvent, ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./OrderTicket.module.css";
 
@@ -21,7 +21,7 @@ interface OrderTicketProps {
  * order on a submitting state.
  */
 export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
-  const { useOrderTicket, useAnimationIntents } = useHooks();
+  const { useOrderTicket, useAnimationIntents } = useViewModel();
   const ticket = useOrderTicket(symbol);
   const animIntent = useAnimationIntents(`ticket:${symbol}`);
 

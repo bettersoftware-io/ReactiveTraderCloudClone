@@ -54,16 +54,16 @@ const restrictedSyntax = [
   },
   {
     selector:
-      "VariableDeclarator[init.callee.name='useHooks'][id.type='Identifier']",
-    message: "Destructure the hooks you need: const { useX } = useHooks().",
+      "VariableDeclarator[init.callee.name='useViewModel'][id.type='Identifier']",
+    message: "Destructure the hooks you need: const { useX } = useViewModel().",
   },
   {
-    // Ban chained access off useHooks() — `useHooks().useX()` reaches into
+    // Ban chained access off useViewModel() — `useViewModel().useX()` reaches into
     // the bundle inline. Destructure first, then call:
-    //   const { useX } = useHooks();  useX(args)
-    selector: "MemberExpression[object.callee.name='useHooks']",
+    //   const { useX } = useViewModel();  useX(args)
+    selector: "MemberExpression[object.callee.name='useViewModel']",
     message:
-      "Don't chain off useHooks(). Destructure first: const { useX } = useHooks(); then call useX().",
+      "Don't chain off useViewModel(). Destructure first: const { useX } = useViewModel(); then call useX().",
   },
 ];
 
@@ -135,7 +135,10 @@ export default tseslint.config(
     // scope. Re-lists `restrictedSyntax` via the spread because flat config
     // REPLACES (does not merge) a rule's options across matching blocks — a
     // bare `[inlineStyleProp]` here would disable the type bans for client src.
-    files: ["packages/client-react/src/**/*.tsx"],
+    files: [
+      "packages/client-react/src/**/*.tsx",
+      "packages/client-prototype/src/**/*.tsx",
+    ],
     rules: {
       "no-restricted-syntax": ["error", ...restrictedSyntax, inlineStyleProp],
     },
@@ -158,7 +161,7 @@ export default tseslint.config(
     // leaking RxJS subscriptions. `react-hooks/refs` is scoped off for these
     // two files ONLY — it stays active everywhere else (it caught FxBlotter).
     files: [
-      "packages/client-react/src/ui/hooks/useMachine.ts",
+      "packages/client-react/src/ui/viewModel/useMachine.ts",
       "packages/client-react/src/AppRoot.tsx",
     ],
     rules: { "react-hooks/refs": "off" },

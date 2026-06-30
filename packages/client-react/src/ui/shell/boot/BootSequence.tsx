@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 import { useEffect, useRef } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import {
   type BootDrawCtx,
@@ -23,7 +23,7 @@ interface BootSequenceProps {
 }
 
 export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
-  const { useBootSequence } = useHooks();
+  const { useBootSequence } = useViewModel();
   const { state, skip } = useBootSequence(onDone);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 

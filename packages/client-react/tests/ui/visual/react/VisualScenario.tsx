@@ -1,11 +1,12 @@
 import { type ReactElement, useEffect, useState } from "react";
 
-import { HooksProvider } from "#/ui/hooks/HooksProvider";
+import { ViewModelProvider } from "@rtc/react-bindings";
+
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import { fixtures } from "../shared/fixtures";
 import { scenarios } from "../shared/scenarios";
-import { buildFakeHooks } from "./buildFakeHooks";
+import { buildFakeViewModel } from "./buildFakeViewModel";
 import { registry } from "./registry";
 
 // Components that paint their own full-height/viewport container and must not
@@ -58,14 +59,14 @@ export function VisualScenario({
 
   if (FULL_BLEED.has(scenario.componentKey)) {
     return (
-      <HooksProvider hooks={buildFakeHooks(data)}>
+      <ViewModelProvider viewModel={buildFakeViewModel(data)}>
         <ThemeProvider>{render(scenario.fixtureKey)}</ThemeProvider>
-      </HooksProvider>
+      </ViewModelProvider>
     );
   }
 
   return (
-    <HooksProvider hooks={buildFakeHooks(data)}>
+    <ViewModelProvider viewModel={buildFakeViewModel(data)}>
       <ThemeProvider>
         <div
           data-testid="scenario-root"
@@ -81,6 +82,6 @@ export function VisualScenario({
           {render(scenario.fixtureKey)}
         </div>
       </ThemeProvider>
-    </HooksProvider>
+    </ViewModelProvider>
   );
 }

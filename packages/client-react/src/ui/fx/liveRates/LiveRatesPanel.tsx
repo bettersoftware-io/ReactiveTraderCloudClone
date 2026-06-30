@@ -2,8 +2,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { type CurrencyCategory, matchesCurrencyFilter } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { CurrencyFilter } from "./CurrencyFilter";
 import { Tile } from "./tile/Tile";
@@ -12,7 +11,7 @@ import { ViewToggle } from "./ViewToggle";
 import styles from "./LiveRatesPanel.module.css";
 
 export function LiveRatesPanel(): ReactElement {
-  const { useCurrencyPairs, useViewModePreference } = useHooks();
+  const { useCurrencyPairs, useViewModePreference } = useViewModel();
   const pairs = useCurrencyPairs();
   // ViewMode persistence lives behind the seam (PreferencesPort). The category
   // filter stays local — it's transient view state, not a persisted preference.

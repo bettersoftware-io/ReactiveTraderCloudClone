@@ -1,11 +1,11 @@
 import type { ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./OrdersBlotter.module.css";
 
 export function OrdersBlotter(): ReactElement {
-  const { useEquityOrders } = useHooks();
+  const { useEquityOrders } = useViewModel();
   const orders = useEquityOrders();
 
   if (orders.length === 0) {

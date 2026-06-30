@@ -22,7 +22,7 @@ colour or layout (that stays the visual tier's job).
   - `pages/` — page objects querying raw DOM via `@testing-library/dom`.
 - `react/` — **the only framework-specific surface**:
   - `registry.tsx` — token → React element.
-  - `hooksFromWorld.ts` — `reactHooks(world)` via `useSyncExternalStore`
+  - `viewModelFromWorld.ts` — `reactViewModel(world)` via `useSyncExternalStore`
     (re-renders the consuming component on each `emit`/`setProps`).
   - `render.tsx` — the driver (providers + a `PropsHost` for the props subject).
   - `setup.ts` — registers the driver via `setDriver`.
@@ -56,7 +56,7 @@ Drive updates via the returned page object: `page.setProps({...})`,
 ## Swapping the UI framework (e.g. SolidJS)
 
 1. Add a `solid/` trio — `registry.tsx` (token → Solid element),
-   `hooksFromWorld.ts` (`from(subject)` → signal), `render.tsx`
+   `viewModelFromWorld.ts` (`from(subject)` → signal), `render.tsx`
    (`@solidjs/testing-library`, which re-exports the same `@testing-library/dom`
    queries), and `setup.ts`.
 2. Point the vitest config's `setupFiles` at `solid/setup.ts`.
@@ -67,10 +67,10 @@ behavioural-parity punch-list.
 
 ## Dual use: sociable unit and integration
 
-The driver's only output is an `AppHooks` handed to `HooksProvider`. This tier
+The driver's only output is an `ViewModel` handed to `ViewModelProvider`. This tier
 uses **fake** hooks built from the `World`. The same tokens, page objects, and
 specs can drive an **integration** test by handing the provider the real
-`createAppHooks(presenters)` (real presenters fed by the domain `simulators`):
+`createViewModel(presenters)` (real presenters fed by the domain `simulators`):
 the query methods are valid in both modes; `emit`/`setProps`/`createdRfq` are
 unit-mode conveniences. (Integration mode is supported by the design but not yet
 built.)

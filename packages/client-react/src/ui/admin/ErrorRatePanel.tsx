@@ -1,8 +1,7 @@
 import type { ReactElement } from "react";
 
 import type { MetricSample } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./ErrorRatePanel.module.css";
 
@@ -49,7 +48,7 @@ function levelFor(latest: number, peak: number): Level {
  * is a pure bucket of the latest value relative to the window peak.
  */
 export function ErrorRatePanel(): ReactElement {
-  const { useMetrics } = useHooks();
+  const { useMetrics } = useViewModel();
   const { errorRate } = useMetrics();
 
   const latest =

@@ -2,8 +2,8 @@ import { render, renderHook } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { AppHooks } from "#/ui/hooks/createAppHooks";
-import { HooksContext } from "#/ui/hooks/HooksContext";
+import type { ViewModel } from "@rtc/react-bindings";
+import { ViewModelContext } from "@rtc/react-bindings";
 
 import { ThemeProvider } from "./ThemeProvider";
 import { themeTokens } from "./tokens";
@@ -36,11 +36,13 @@ describe("ThemeProvider", () => {
       useThemeSkinPreference: () => {
         return { skin, setSkin: vi.fn() };
       },
-    } as unknown as AppHooks;
+    } as unknown as ViewModel;
 
     function Wrapper({ children }: WrapperProps): ReactElement {
       return (
-        <HooksContext.Provider value={hooks}>{children}</HooksContext.Provider>
+        <ViewModelContext.Provider value={hooks}>
+          {children}
+        </ViewModelContext.Provider>
       );
     }
 

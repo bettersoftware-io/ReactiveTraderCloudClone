@@ -1,5 +1,12 @@
 import { BehaviorSubject, Subject } from "rxjs";
 
+import type {
+  AnimationIntent,
+  IncidentKind,
+  IncidentState,
+  ThroughputView,
+} from "@rtc/client-core";
+import { DEMO_USER, type SessionState } from "@rtc/client-core";
 import {
   type Candle,
   ConnectionStatus,
@@ -32,17 +39,6 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-
-import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
-import type {
-  IncidentKind,
-  IncidentState,
-} from "#/app/presenters/IncidentMachine";
-import {
-  DEMO_USER,
-  type SessionState,
-} from "#/app/presenters/SessionPresenter";
-import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
  *  are modelled by the per-key subject maps below, not by this map. */
@@ -88,7 +84,7 @@ export interface ParametricSeed {
  * Seed values for the EQUITIES query hooks. Watchlist, orders, and positions are
  * single shared streams (useWatchlist / useEquityOrders / useEquityPositions);
  * quotes, candles, and depth are keyed by symbol, mirroring the per-argument
- * binds of the real createAppHooks (watchlist.quote$, candleSeries.candles$,
+ * binds of the real createViewModel (watchlist.quote$, candleSeries.candles$,
  * depth.depth$). The OrderTicket place lifecycle is driven separately via
  * {@link World.orderLifecycle} (a plain Subject the page object pushes onto).
  */

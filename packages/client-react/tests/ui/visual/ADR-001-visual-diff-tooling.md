@@ -6,7 +6,7 @@ plan; this records the rationale and the framework-migration guidance).
 ## Context
 
 We want a deterministic visual-regression tier that screenshots `@rtc/client-react`
-UI rendered against injected fake data (`AppHooks`), with one explicit goal
+UI rendered against injected fake data (`ViewModel`), with one explicit goal
 beyond catching CSS regressions: the **same baselines must later gate a
 reimplementation of the UI layer in another framework** (SolidJS is the stated
 near-term target; Vue/Svelte/Angular are possible). True pixel diffing rules out
@@ -141,7 +141,7 @@ to `run-all.ts`.
 
 No, *if* you treat the **goldens + the React-free `shared/` manifest** as the
 portable contract rather than the runner. The framework-specific surface is only
-three small files (`react/buildFakeHooks.ts`, `react/registry.tsx`,
+three small files (`react/buildFakeViewModel.ts`, `react/registry.tsx`,
 `react/VisualScenario.tsx`); a new framework reimplements those and reuses
 `shared/` + `__screenshots__/` unchanged.
 

@@ -1,8 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 
 import type { DepthLevel } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./DepthLadder.module.css";
 
@@ -32,7 +31,7 @@ function DepthRow({ level, side, depth }: DepthRowProps): ReactElement {
 }
 
 export function DepthLadder({ symbol }: DepthLadderProps): ReactElement {
-  const { useDepth } = useHooks();
+  const { useDepth } = useViewModel();
   const book = useDepth(symbol);
 
   if (!book) {

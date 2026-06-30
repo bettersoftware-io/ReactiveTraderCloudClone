@@ -1,8 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 
 import type { EquityInstrument } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./SectorHeatmap.module.css";
 
@@ -36,7 +35,7 @@ interface CellProps {
 }
 
 function HeatCell({ symbol, active, onSelect }: CellProps): ReactElement {
-  const { useEquityQuote } = useHooks();
+  const { useEquityQuote } = useViewModel();
   const quote = useEquityQuote(symbol);
 
   const changePct = quote?.changePct ?? 0;
@@ -65,7 +64,7 @@ export function SectorHeatmap({
   selectedSymbol,
   onSelect,
 }: SectorHeatmapProps): ReactElement {
-  const { useWatchlist } = useHooks();
+  const { useWatchlist } = useViewModel();
   const instruments = useWatchlist();
 
   if (instruments.length === 0) {

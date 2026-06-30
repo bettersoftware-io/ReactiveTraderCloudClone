@@ -5,7 +5,8 @@ import {
 } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
-import type { TileExecutionState as TileState } from "#/app/presenters/TileExecutionMachine";
+import type { TileExecutionState as TileState } from "@rtc/client-core";
+
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export interface TileConfirmationProps {

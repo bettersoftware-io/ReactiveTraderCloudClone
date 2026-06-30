@@ -1,8 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 
 import type { EquityInstrument } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./Watchlist.module.css";
 
@@ -26,7 +25,7 @@ function WatchlistRow({
   active,
   onSelect,
 }: WatchlistRowProps): ReactElement {
-  const { useEquityQuote } = useHooks();
+  const { useEquityQuote } = useViewModel();
   const quote = useEquityQuote(instrument.symbol);
 
   const changePct = quote?.changePct ?? 0;
@@ -64,7 +63,7 @@ export function Watchlist({
   selectedSymbol,
   onSelect,
 }: WatchlistProps): ReactElement {
-  const { useWatchlist } = useHooks();
+  const { useWatchlist } = useViewModel();
   const instruments = useWatchlist();
 
   if (instruments.length === 0) {

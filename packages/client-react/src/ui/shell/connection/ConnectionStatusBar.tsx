@@ -1,8 +1,7 @@
 import type { ReactElement } from "react";
 
 import { ConnectionStatus } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./ConnectionStatusBar.module.css";
 
@@ -18,7 +17,7 @@ const statusLabel: Record<ConnectionStatus, string> = {
 };
 
 export function ConnectionStatusBar(): ReactElement {
-  const { useConnectionStatus } = useHooks();
+  const { useConnectionStatus } = useViewModel();
   const status = useConnectionStatus();
 
   return (

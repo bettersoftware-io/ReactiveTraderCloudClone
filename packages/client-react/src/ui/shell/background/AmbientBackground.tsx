@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./AmbientBackground.module.css";
 
@@ -13,7 +13,7 @@ import styles from "./AmbientBackground.module.css";
  * and pointer-events: none, so it never participates in interaction or a11y.
  */
 export function AmbientBackground(): ReactElement {
-  const { useAnimatedBackground } = useHooks();
+  const { useAnimatedBackground } = useViewModel();
   const { enabled } = useAnimatedBackground();
   return (
     <div

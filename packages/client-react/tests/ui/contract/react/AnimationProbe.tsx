@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
+
 import type { AnimationProbeProps } from "#tests/ui/contract/shared/pages/shell/motion/AnimationProbePage";
 
 /**
@@ -9,7 +10,7 @@ import type { AnimationProbeProps } from "#tests/ui/contract/shared/pages/shell/
  * intent→attribute contract via AnimationIntents.contract.spec.ts.
  */
 export function AnimationProbe({ target }: AnimationProbeProps): JSX.Element {
-  const { useAnimationIntents } = useHooks();
+  const { useAnimationIntents } = useViewModel();
   const intent = useAnimationIntents(target);
 
   return <div data-testid="anim" data-anim={intent?.kind ?? undefined} />;

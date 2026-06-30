@@ -7,9 +7,9 @@ import {
   type Rfq,
   RfqState,
 } from "@rtc/domain";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { RfqCountdown } from "#/ui/fx/liveRates/tile/RfqCountdown";
-import { useHooks } from "#/ui/hooks/useHooks";
 
 import { QuoteCard } from "./QuoteCard";
 
@@ -46,7 +46,7 @@ export function RfqCard({
   onDismiss,
 }: RfqCardProps): ReactElement {
   const totalMs = rfq.expirySecs * 1000;
-  const { useRfqCountdown, useAnimationIntents } = useHooks();
+  const { useRfqCountdown, useAnimationIntents } = useViewModel();
   const remainingMs = useRfqCountdown(rfq.creationTimestamp, totalMs);
   const anim = useAnimationIntents(`rfq:${rfq.id}`);
 

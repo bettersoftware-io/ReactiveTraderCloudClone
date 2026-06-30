@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
 import { PrefToggle } from "./PrefToggle";
@@ -176,7 +176,7 @@ const INITIAL_SEGMENTS: Record<string, string> = {
  * two-column DISPLAY / TRADING / NOTIFICATIONS / DATA grid of toggle + segment
  * rows. Only the Animated-background toggle is wired to a real port
  * (`useAnimatedBackground`); every other row is decorative (see the comment on
- * the catalogue above). Dumb component: consumes `useHooks()` destructured only,
+ * the catalogue above). Dumb component: consumes `useViewModel()` destructured only,
  * holds no app-layer state / persistence / transport / timers, and renders only
  * when `open`.
  */
@@ -184,7 +184,7 @@ export function PreferencesModal({
   open,
   onClose,
 }: PreferencesModalProps): ReactElement | null {
-  const { useAnimatedBackground } = useHooks();
+  const { useAnimatedBackground } = useViewModel();
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
 

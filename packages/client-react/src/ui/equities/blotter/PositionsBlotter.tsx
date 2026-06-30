@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { DeskPnlGauge } from "./DeskPnlGauge";
 import { PnlSparkline } from "./PnlSparkline";
@@ -8,7 +8,7 @@ import { PnlSparkline } from "./PnlSparkline";
 import styles from "./PositionsBlotter.module.css";
 
 export function PositionsBlotter(): ReactElement {
-  const { useEquityPositions } = useHooks();
+  const { useEquityPositions } = useViewModel();
   const positions = useEquityPositions();
 
   const maxAbsPnl = Math.max(

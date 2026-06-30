@@ -1,10 +1,7 @@
 import type { ReactElement } from "react";
 import { type ChangeEvent, type KeyboardEvent, useRef } from "react";
 
-import type {
-  NotionalIntents,
-  NotionalView,
-} from "#/app/presenters/NotionalMachine";
+import type { NotionalIntents, NotionalView } from "@rtc/client-core";
 
 import styles from "./TileNotional.module.css";
 
