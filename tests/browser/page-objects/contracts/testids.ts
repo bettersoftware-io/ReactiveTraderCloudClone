@@ -9,6 +9,7 @@ export const TESTIDS = {
   connection: {
     status: "connection-status",
     overlay: "connection-overlay",
+    clearIncident: "connection-overlay-clear-incident",
   },
   liveRates: {
     tilePrefix: "tile-",
@@ -38,5 +39,13 @@ export const TESTIDS = {
       return `credit-tab-${v}`;
     },
     directionLabel: "rfq-direction-label",
+  },
+  admin: {
+    incident: {
+      inject: (kind: string) => {
+        return `incident-${kind}`;
+      },
+      clear: "incident-clear",
+    },
   },
 } as const;

@@ -1,3 +1,4 @@
+import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { AdminPanel } from "#/ui/admin/AdminPanel";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditWorkspace } from "#/ui/credit/CreditWorkspace";
@@ -28,6 +29,9 @@ export const appPanelRegistry: PanelRegistry = {
   },
   "admin-throughput": () => {
     return <AdminPanel />;
+  },
+  "admin-dashboard": () => {
+    return <AdminDashboard />;
   },
   equities: () => {
     return <EquitiesPanel />;

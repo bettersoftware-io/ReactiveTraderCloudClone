@@ -16,6 +16,8 @@ import {
   type ExecuteTradeInput,
   type ExecuteTradeResult,
   type Instrument,
+  type LogEvent,
+  type MetricSample,
   type PositionUpdates,
   type Price,
   type PriceTick,
@@ -23,6 +25,8 @@ import {
   type QuoteRequest,
   type Rfq,
   type RfqQuoteResult,
+  type ServiceTopology,
+  type SessionInfo,
   type ThemeMode,
   type ThemeSkin,
   type Trade,
@@ -30,6 +34,10 @@ import {
 } from "@rtc/domain";
 
 import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
+import type {
+  IncidentKind,
+  IncidentState,
+} from "#/app/presenters/IncidentMachine";
 import {
   DEMO_USER,
   type SessionState,
@@ -93,6 +101,29 @@ export interface EquitiesSeed {
   depth?: Readonly<Record<string, DepthBook | null>>;
 }
 
+/** The combined metric series for useMetrics(). */
+export interface MetricsView {
+  readonly throughput: readonly MetricSample[];
+  readonly latency: readonly MetricSample[];
+  readonly errorRate: readonly MetricSample[];
+}
+
+const DEFAULT_METRICS_VIEW: MetricsView = {
+  throughput: [],
+  latency: [],
+  errorRate: [],
+};
+
+const INITIAL_INCIDENT_STATE: IncidentState = { active: [] };
+
+/** Seed values for the ADMIN / telemetry hooks (Phase 5). */
+export interface AdminSeed {
+  topology?: ServiceTopology | null;
+  eventLog?: readonly LogEvent[];
+  sessions?: readonly SessionInfo[];
+  metrics?: Partial<MetricsView>;
+}
+
 /**
  * Canned results emitted by command hooks. When a `*Throws` flag is set the
  * corresponding command's Observable errors instead of emitting, exercising the
@@ -122,6 +153,8 @@ export interface CommandLog {
   sessionUnlock: number;
   /** Each value written through useAnimatedBackground().setEnabled/toggle, in order. */
   animatedBackgroundSets: boolean[];
+  /** Each incident kind injected via injectIncident(), in order. */
+  injectedIncidents: IncidentKind[];
 }
 
 /** The default throughput view a fresh World reports (loaded, value 100). */
@@ -196,6 +229,30 @@ export interface World {
   setDepth(symbol: string, value: DepthBook | null): void;
   /** Advance the OrderTicket lifecycle by emitting one EquityOrder into place(). */
   pushOrderLifecycle(order: EquityOrder): void;
+  // Admin / telemetry streams (Phase 5)
+  /** Reactive service topology backing useTopology. Null until first push. */
+  readonly topology$: BehaviorSubject<ServiceTopology | null>;
+  /** Reactive newest-first event log backing useEventLog. */
+  readonly eventLog$: BehaviorSubject<readonly LogEvent[]>;
+  /** Reactive active sessions backing useSessions. */
+  readonly sessions$: BehaviorSubject<readonly SessionInfo[]>;
+  /** Reactive metric series backing useMetrics (throughput/latency/errorRate). */
+  readonly metrics$: BehaviorSubject<MetricsView>;
+  /** Reactive incident state (active kinds) backing useIncident. */
+  readonly incidentState$: BehaviorSubject<IncidentState>;
+  /** Inject an incident: latencySpike/serviceDown also push DISCONNECTED;
+   *  errorBurst is degraded-but-connected (mirrors IncidentMachine asymmetry). */
+  injectIncident(kind: IncidentKind): void;
+  /** Clear all active incidents and push CONNECTED. */
+  clearIncident(): void;
+  /** Push a new topology snapshot. */
+  setTopology(value: ServiceTopology | null): void;
+  /** Push a new event log (newest-first). */
+  setEventLog(value: readonly LogEvent[]): void;
+  /** Push new sessions. */
+  setSessions(value: readonly SessionInfo[]): void;
+  /** Patch the metric series (merges into current). */
+  setMetrics(patch: Partial<MetricsView>): void;
   readonly results: CommandResults;
   readonly commands: CommandLog;
   /** Push new values for one or more NULLARY hooks (drives re-renders). */
@@ -213,6 +270,7 @@ export function createWorld(
   animatedBackgroundSeed?: boolean,
   sessionSeed: Partial<SessionState> = {},
   equitiesSeed: EquitiesSeed = {},
+  adminSeed: AdminSeed = {},
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -379,6 +437,71 @@ export function createWorld(
     user: { ...DEFAULT_SESSION.user, ...sessionSeed.user },
   });
 
+  // Admin / telemetry subjects (Phase 5). Seeded from adminSeed; default to
+  // null/empty so components render their "no data" placeholders before a spec
+  // pushes live data — mirroring the app's start-before-first-emission state.
+  const topology$ = new BehaviorSubject<ServiceTopology | null>(
+    adminSeed.topology !== undefined ? adminSeed.topology : null,
+  );
+  const eventLog$ = new BehaviorSubject<readonly LogEvent[]>(
+    adminSeed.eventLog ?? [],
+  );
+  const sessions$ = new BehaviorSubject<readonly SessionInfo[]>(
+    adminSeed.sessions ?? [],
+  );
+  const metrics$ = new BehaviorSubject<MetricsView>({
+    ...DEFAULT_METRICS_VIEW,
+    ...adminSeed.metrics,
+  });
+
+  // Incident state tracks which kinds are currently active. Separate from the
+  // connection-status subject so the IncidentControls' data-active attributes
+  // re-render independently of the ConnectionOverlay.
+  const incidentState$ = new BehaviorSubject<IncidentState>(
+    INITIAL_INCIDENT_STATE,
+  );
+
+  // The disconnecting kinds mirror IncidentMachine's DISCONNECTING set.
+  const DISCONNECTING_KINDS: ReadonlySet<IncidentKind> = new Set([
+    "latencySpike",
+    "serviceDown",
+  ]);
+
+  function injectIncident(kind: IncidentKind): void {
+    commands.injectedIncidents.push(kind);
+    // Update incident state to include this kind.
+    const current = incidentState$.getValue();
+
+    if (!current.active.includes(kind)) {
+      incidentState$.next({ active: [...current.active, kind] });
+    }
+
+    // latencySpike and serviceDown break the gateway connection; errorBurst
+    // is degraded-but-connected (the real asymmetry from IncidentMachine).
+    if (DISCONNECTING_KINDS.has(kind)) {
+      sources.useConnectionStatus.next(ConnectionStatus.DISCONNECTED);
+    }
+  }
+
+  function clearIncident(): void {
+    incidentState$.next(INITIAL_INCIDENT_STATE);
+    sources.useConnectionStatus.next(ConnectionStatus.CONNECTED);
+  }
+
+  const commands: CommandLog = {
+    createRfq: [],
+    executeTrade: [],
+    requestRfqQuote: [],
+    acceptQuote: [],
+    passQuote: [],
+    quoteRfq: [],
+    reconnect: 0,
+    sessionLock: 0,
+    sessionUnlock: 0,
+    animatedBackgroundSets: [],
+    injectedIncidents: [],
+  };
+
   return {
     sources,
     throughput,
@@ -435,19 +558,28 @@ export function createWorld(
     pushOrderLifecycle: (order: EquityOrder) => {
       return orderLifecycle.next(order);
     },
-    results,
-    commands: {
-      createRfq: [],
-      executeTrade: [],
-      requestRfqQuote: [],
-      acceptQuote: [],
-      passQuote: [],
-      quoteRfq: [],
-      reconnect: 0,
-      sessionLock: 0,
-      sessionUnlock: 0,
-      animatedBackgroundSets: [],
+    // Admin subjects
+    topology$,
+    eventLog$,
+    sessions$,
+    metrics$,
+    incidentState$,
+    injectIncident,
+    clearIncident,
+    setTopology: (value: ServiceTopology | null) => {
+      return topology$.next(value);
     },
+    setEventLog: (value: readonly LogEvent[]) => {
+      return eventLog$.next(value);
+    },
+    setSessions: (value: readonly SessionInfo[]) => {
+      return sessions$.next(value);
+    },
+    setMetrics: (patch: Partial<MetricsView>) => {
+      return metrics$.next({ ...metrics$.getValue(), ...patch });
+    },
+    results,
+    commands,
     push(patch: Partial<HookValues>): void {
       for (const key of Object.keys(patch) as (keyof HookValues)[]) {
         (sources[key] as BehaviorSubject<unknown>).next(patch[key]);

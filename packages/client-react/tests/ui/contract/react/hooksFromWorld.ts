@@ -404,5 +404,32 @@ export function reactHooks(world: World): AppHooks {
         });
       });
     },
+    // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
+    // components when the test pushes new data. The incident fake mirrors the real
+    // IncidentMachine's connection-status asymmetry via world.injectIncident.
+    useMetrics: () => {
+      return useSubject(world.metrics$);
+    },
+    useTopology: () => {
+      return useSubject(world.topology$);
+    },
+    useEventLog: () => {
+      return useSubject(world.eventLog$);
+    },
+    useSessions: () => {
+      return useSubject(world.sessions$);
+    },
+    useIncident: () => {
+      const state = useSubject(world.incidentState$);
+      return {
+        state,
+        inject: (kind: Parameters<typeof world.injectIncident>[0]) => {
+          world.injectIncident(kind);
+        },
+        clear: () => {
+          world.clearIncident();
+        },
+      };
+    },
   };
 }

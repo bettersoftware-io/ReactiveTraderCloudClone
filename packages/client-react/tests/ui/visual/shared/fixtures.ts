@@ -12,6 +12,8 @@ import {
   type EquityQuote,
   ExecutionStatus,
   type Instrument,
+  type LogEvent,
+  type MetricSample,
   type PositionUpdates,
   type Price,
   PriceMovementType,
@@ -21,6 +23,8 @@ import {
   RFQ_TIMEOUT_MS,
   type Rfq,
   RfqState,
+  type ServiceTopology,
+  type SessionInfo,
   type Trade,
   TradeStatus,
 } from "@rtc/domain";
@@ -1423,4 +1427,123 @@ fixtures["equities-ticket-editing"] = makeAppData({
 fixtures["equities-ticket-filled"] = makeAppData({
   ...equitiesBase,
   equityOrderTicket: orderTicketFilled,
+});
+
+// ── Phase 5 Admin fixtures ─────────────────────────────────────────────────
+// All data is FIXED (no simulator) so every pixel is deterministic.
+
+const adminTopology: ServiceTopology = {
+  nodes: [
+    { name: "kernel", status: "ok", throughput: 250, latencyMs: 8 },
+    { name: "pricing", status: "ok", throughput: 180, latencyMs: 5 },
+    { name: "execution", status: "ok", throughput: 90, latencyMs: 12 },
+    { name: "blotter", status: "ok", throughput: 60, latencyMs: 6 },
+    { name: "analytics", status: "ok", throughput: 40, latencyMs: 9 },
+    { name: "credit", status: "degraded", throughput: 30, latencyMs: 45 },
+    { name: "refdata", status: "ok", throughput: 20, latencyMs: 4 },
+  ],
+  edges: [
+    { from: "kernel", to: "pricing", latencyMs: 5 },
+    { from: "kernel", to: "execution", latencyMs: 12 },
+    { from: "kernel", to: "blotter", latencyMs: 6 },
+    { from: "kernel", to: "analytics", latencyMs: 9 },
+    { from: "kernel", to: "credit", latencyMs: 45 },
+    { from: "kernel", to: "refdata", latencyMs: 4 },
+  ],
+};
+
+type AdminMetricWindows = {
+  throughput: readonly MetricSample[];
+  latency: readonly MetricSample[];
+  errorRate: readonly MetricSample[];
+};
+
+const adminMetricSamples: AdminMetricWindows = {
+  throughput: [
+    { t: 1_750_000_000_000, value: 180 },
+    { t: 1_750_000_001_000, value: 210 },
+    { t: 1_750_000_002_000, value: 195 },
+    { t: 1_750_000_003_000, value: 230 },
+    { t: 1_750_000_004_000, value: 250 },
+  ],
+  latency: [
+    { t: 1_750_000_000_000, value: 8 },
+    { t: 1_750_000_001_000, value: 10 },
+    { t: 1_750_000_002_000, value: 7 },
+    { t: 1_750_000_003_000, value: 12 },
+    { t: 1_750_000_004_000, value: 9 },
+  ],
+  errorRate: [
+    { t: 1_750_000_000_000, value: 0.01 },
+    { t: 1_750_000_001_000, value: 0.02 },
+    { t: 1_750_000_002_000, value: 0.0 },
+    { t: 1_750_000_003_000, value: 0.01 },
+    { t: 1_750_000_004_000, value: 0.0 },
+  ],
+};
+
+// Fixed log events: info/warn/error severity arms (newest-first when rendered).
+const adminEvents: readonly LogEvent[] = [
+  {
+    t: 1_750_000_004_000,
+    severity: "error",
+    service: "credit",
+    message: "Connection timeout — retrying",
+  },
+  {
+    t: 1_750_000_003_000,
+    severity: "warn",
+    service: "pricing",
+    message: "Latency spike detected: 45ms",
+  },
+  {
+    t: 1_750_000_002_000,
+    severity: "info",
+    service: "kernel",
+    message: "Heartbeat OK",
+  },
+  {
+    t: 1_750_000_001_000,
+    severity: "info",
+    service: "execution",
+    message: "Order acknowledged",
+  },
+];
+
+const adminSessionData: readonly SessionInfo[] = [
+  {
+    id: "sess-001",
+    user: "trader-alpha",
+    region: "EMEA",
+    lat: 51.5,
+    lon: -0.1,
+  },
+  {
+    id: "sess-002",
+    user: "trader-beta",
+    region: "APAC",
+    lat: 35.7,
+    lon: 139.7,
+  },
+];
+
+// "admin-loaded": all admin telemetry cards rendered with seeded deterministic data.
+fixtures["admin-loaded"] = makeAppData({
+  throughput: { value: 250, loading: false, message: null },
+  adminMetrics: adminMetricSamples,
+  adminTopology,
+  adminEventLog: adminEvents,
+  adminSessions: adminSessionData,
+});
+
+// "admin-incident-active": serviceDown incident active → "Inject service down"
+// button has data-active="true" and the Clear button is also active. State is
+// injected through the seam (no click / timing needed).
+fixtures["admin-incident-active"] = makeAppData({
+  throughput: { value: 250, loading: false, message: null },
+  adminMetrics: adminMetricSamples,
+  adminTopology,
+  adminEventLog: adminEvents,
+  adminSessions: adminSessionData,
+  adminIncident: { active: ["serviceDown"] },
 });

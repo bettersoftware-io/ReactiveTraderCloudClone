@@ -20,7 +20,16 @@ import type {
   NotionalView,
 } from "#/app/presenters/NotionalMachine";
 import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
+import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
 import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
+import { ErrorRatePanel as ErrorRatePanelComponent } from "#/ui/admin/ErrorRatePanel";
+import { IncidentControls as IncidentControlsComponent } from "#/ui/admin/IncidentControls";
+import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/admin/LatencyHistogram";
+import { LiveEventLog as LiveEventLogComponent } from "#/ui/admin/LiveEventLog";
+import { MetricGauges as MetricGaugesComponent } from "#/ui/admin/MetricGauges";
+import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/admin/ServiceTopologyGraph";
+import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPanel";
+import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
 import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqForm as NewRfqFormComponent } from "#/ui/credit/newRfq/NewRfqForm";
 import { QuoteCard as QuoteCardComponent } from "#/ui/credit/rfqTiles/QuoteCard";
@@ -91,6 +100,7 @@ import { StatusBar as StatusBarComponent } from "#/ui/shell/status/StatusBar";
 import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggle";
 
 import {
+  AdminDashboard,
   AdminPanel,
   AmbientBackground,
   AnalyticsPanel,
@@ -107,12 +117,17 @@ import {
   DepthLadder,
   DeskPnlGauge,
   EquitiesPanel,
+  ErrorRatePanel,
   FxBlotter,
   HeaderChrome,
+  IncidentControls,
   InstrumentTabs,
+  LatencyHistogram,
   LayoutEngine,
+  LiveEventLog,
   LiveRatesPanel,
   LockScreen,
+  MetricGauges,
   NewRfqForm,
   NumberFilter,
   OrdersBlotter,
@@ -132,12 +147,15 @@ import {
   RfqTilesPanel,
   SectorHeatmap,
   SellSidePanel,
+  ServiceTopologyGraph,
+  SessionsPanel,
   SetFilter,
   SpreadDisplay,
   StaleIndicator,
   StatusBar,
   ThemePicker,
   ThemeToggle,
+  ThroughputChart,
   Tile,
   TileConfirmation,
   TileExecution,
@@ -729,6 +747,61 @@ export const registry = new Map<AnyToken, ElementFor>([
     EquitiesPanel,
     (): ReactElement => {
       return <EquitiesPanelComponent />;
+    },
+  ],
+  // Admin / telemetry components (Phase 5 Task 8)
+  [
+    IncidentControls,
+    (): ReactElement => {
+      return <IncidentControlsComponent />;
+    },
+  ],
+  [
+    ServiceTopologyGraph,
+    (): ReactElement => {
+      return <ServiceTopologyGraphComponent />;
+    },
+  ],
+  [
+    LiveEventLog,
+    (): ReactElement => {
+      return <LiveEventLogComponent />;
+    },
+  ],
+  [
+    MetricGauges,
+    (): ReactElement => {
+      return <MetricGaugesComponent />;
+    },
+  ],
+  [
+    ThroughputChart,
+    (): ReactElement => {
+      return <ThroughputChartComponent />;
+    },
+  ],
+  [
+    LatencyHistogram,
+    (): ReactElement => {
+      return <LatencyHistogramComponent />;
+    },
+  ],
+  [
+    ErrorRatePanel,
+    (): ReactElement => {
+      return <ErrorRatePanelComponent />;
+    },
+  ],
+  [
+    SessionsPanel,
+    (): ReactElement => {
+      return <SessionsPanelComponent />;
+    },
+  ],
+  [
+    AdminDashboard,
+    (): ReactElement => {
+      return <AdminDashboardComponent />;
     },
   ],
 ]);

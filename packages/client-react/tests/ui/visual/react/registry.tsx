@@ -3,7 +3,11 @@ import type { ReactElement } from "react";
 import { createDefaultLayoutPort } from "#/app/layout/defaultLayoutPort";
 import type { LayoutState } from "#/app/layout/layoutPort";
 import { App } from "#/ui/App";
+import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { AdminPanel } from "#/ui/admin/AdminPanel";
+import { IncidentControls } from "#/ui/admin/IncidentControls";
+import { LiveEventLog } from "#/ui/admin/LiveEventLog";
+import { ServiceTopologyGraph } from "#/ui/admin/ServiceTopologyGraph";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditWorkspace } from "#/ui/credit/CreditWorkspace";
 import { NewRfqForm } from "#/ui/credit/newRfq/NewRfqForm";
@@ -150,16 +154,53 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     );
   },
   RfqTilesPanel: () => {
-    return <RfqTilesPanel />;
+    // Render at a fixed width (test-only) — the panel's auto-fill CSS grid
+    // (minmax 320px, 1fr) has a parent-driven column width; without a fixed
+    // container the RfqFilterTabs text drives the total width, which varies
+    // ±4-8px on x86 CI (font glyph-advance non-determinism), a dimension
+    // mismatch maxDiffPixelRatio cannot absorb. In the real app the panel sits
+    // inside a fixed CreditWorkspace column. Component stays responsive.
+    return (
+      <div style={{ width: 400, display: "flex", flexDirection: "column" }}>
+        <RfqTilesPanel />
+      </div>
+    );
   },
   NewRfqForm: () => {
-    return <NewRfqForm onCreated={() => {}} />;
+    // Render at a fixed width (test-only) so the form's content-driven
+    // intrinsic size doesn't drift on x86 (font-metric non-determinism).
+    // The form's max-width:400px allows it to fill 280px comfortably; in the
+    // real app it sits inside a fixed-size panel column, never shrink-to-fit.
+    return (
+      <div style={{ width: 280, display: "flex", flexDirection: "column" }}>
+        <NewRfqForm onCreated={() => {}} />
+      </div>
+    );
   },
   CreditBlotter: () => {
-    return <CreditBlotter />;
+    // Render filling a representative panel width (test-only) — the credit
+    // blotter table is width:100%, so a fixed-width wrapper pins the captured
+    // dimension deterministically; without it the intrinsic content-width
+    // resolves non-deterministically on x86 (~80-150px drift), a size
+    // mismatch maxDiffPixelRatio cannot absorb. Component stays responsive.
+    return (
+      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+        <CreditBlotter />
+      </div>
+    );
   },
   SellSidePanel: () => {
-    return <SellSidePanel />;
+    // Render at a fixed width (test-only) — the sell-side panel is a flex
+    // column with no parent width constraint; instrument-name and ticket text
+    // widths vary by OS/arch font metrics, causing a ±24px dimension flake on
+    // x86 CI (observed: 352↔328px run-to-run). Wrapping at 380px stabilises
+    // the captured dimension without touching the component; in the real app it
+    // sits inside a fixed CreditWorkspace column. Component stays responsive.
+    return (
+      <div style={{ width: 380, display: "flex", flexDirection: "column" }}>
+        <SellSidePanel />
+      </div>
+    );
   },
   // Prop-driven single RFQ card: pull the fixture's lone rfq + its quotes.
   RfqCard: (fixtureKey: string) => {
@@ -185,6 +226,57 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   AdminPanel: () => {
     return <AdminPanel />;
+  },
+  // --- Phase 5 Admin dashboard components ---
+  // Full AdminDashboard at fixed 1280×700: mirrors the panel-sized container the
+  // real app provides. Fixed height prevents content overflow from unresolved
+  // canvas dimensions in headless mode.
+  AdminDashboard: () => {
+    return (
+      <div
+        style={{
+          width: 1280,
+          height: 700,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <AdminDashboard />
+      </div>
+    );
+  },
+  // ServiceTopologyGraph at a fixed SVG-viewport size (300×200) so the SVG
+  // viewBox fills the wrapper deterministically.
+  ServiceTopologyGraph: () => {
+    return (
+      <div style={{ width: 300, height: 200 }}>
+        <ServiceTopologyGraph />
+      </div>
+    );
+  },
+  // LiveEventLog at a fixed width — font-mono glyph-advance variance on x86
+  // would flake a content-sized wrapper; pinning the width stabilises it.
+  LiveEventLog: () => {
+    return (
+      <div style={{ width: 400, display: "flex", flexDirection: "column" }}>
+        <LiveEventLog />
+      </div>
+    );
+  },
+  // IncidentControls: renders the three inject buttons + Clear. The
+  // admin/incident-active fixture seeds state so "Inject service down" button
+  // has data-active="true" without any click interaction.
+  // Render at a fixed width (test-only) — the controls are a content-width flex
+  // row of buttons whose total width is driven by button label glyph-advance,
+  // which varies by OS/arch font metrics (±68px dimension flake on x86 — 613↔545).
+  // Pinning the wrapper at 660px (> max observed content) captures a stable size.
+  IncidentControls: () => {
+    return (
+      <div style={{ width: 660, display: "flex", flexDirection: "column" }}>
+        <IncidentControls />
+      </div>
+    );
   },
   App: () => {
     return <App />;

@@ -1,0 +1,48 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 4px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 13px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.peak {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--text-secondary);
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  flex: 1;
+}
+
+.bar {
+  fill: var(--accent-aware);
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-muted);
+}

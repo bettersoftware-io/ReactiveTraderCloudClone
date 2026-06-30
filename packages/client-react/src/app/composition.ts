@@ -33,9 +33,20 @@ import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresente
 import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
 import { DealersPresenter } from "./presenters/DealersPresenter";
 import { DepthPresenter } from "./presenters/DepthPresenter";
+import { EventLogPresenter } from "./presenters/EventLogPresenter";
+import {
+  createIncidentMachine,
+  type IncidentIntents,
+  type IncidentState,
+} from "./presenters/IncidentMachine";
 import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
 import { createLayoutMachine } from "./presenters/LayoutMachine";
-import type { MachineFactories } from "./presenters/machine";
+import {
+  ErrorRatePresenter,
+  LatencyPresenter,
+  ThroughputMetricPresenter,
+} from "./presenters/MetricsPresenters";
+import type { Machine, MachineFactories } from "./presenters/machine";
 import { createNotionalMachine } from "./presenters/NotionalMachine";
 import { OrdersBlotterPresenter } from "./presenters/OrdersBlotterPresenter";
 import { createOrderTicketMachine } from "./presenters/OrderTicketMachine";
@@ -46,7 +57,9 @@ import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
 import { RfqsPresenter } from "./presenters/RfqsPresenter";
 import { createRfqTileMachine } from "./presenters/RfqTileMachine";
 import { createRowHighlightMachine } from "./presenters/RowHighlightMachine";
+import { ServiceTopologyPresenter } from "./presenters/ServiceTopologyPresenter";
 import { SessionPresenter } from "./presenters/SessionPresenter";
+import { SessionsPresenter } from "./presenters/SessionsPresenter";
 import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
 import { ThemePreferencePresenter } from "./presenters/ThemePreferencePresenter";
 import { ThemeSkinPreferencePresenter } from "./presenters/ThemeSkinPreferencePresenter";
@@ -104,6 +117,18 @@ export interface Presenters {
   depth: DepthPresenter;
   ordersBlotter: OrdersBlotterPresenter;
   positions: PositionsPresenter;
+  /** Phase 5 Admin: incident injection + connection-seam control. */
+  incident: Machine<IncidentState, IncidentIntents>;
+  /** Phase 5 Admin: per-metric rolling window series for charts. */
+  throughputMetric: ThroughputMetricPresenter;
+  latencyMetric: LatencyPresenter;
+  errorRateMetric: ErrorRatePresenter;
+  /** Phase 5 Admin: service-topology graph stream. */
+  topology: ServiceTopologyPresenter;
+  /** Phase 5 Admin: newest-first rolling event log. */
+  eventLog: EventLogPresenter;
+  /** Phase 5 Admin: active trader sessions feed. */
+  sessions: SessionsPresenter;
 }
 
 export interface AppCommands {
@@ -122,6 +147,10 @@ export interface App {
  * into it via AppCommands.reconnect(). */
 const reconnect$ = new Subject<ReconnectIntent>();
 
+/** Incident-machine connection-event sink.  Plain Subject — a live sink for
+ * inject() calls.  Owned at module level alongside reconnect$. */
+const incident$ = new Subject<ConnectionEvent>();
+
 export function buildDefaultPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
   const token = import.meta.env.VITE_WS_TOKEN as string | undefined;
@@ -138,7 +167,12 @@ export function buildDefaultPorts(): AppPorts {
         //   reconnect   → reopen()       (sole recovery; button-only)
         //   userActivity → no-op here    (resets countdown in BrowserAdapter)
         // Provenance: original services/connection.ts:74-96.
-        return merge(gateway.events(), browser.events(), reconnect$).pipe(
+        return merge(
+          gateway.events(),
+          browser.events(),
+          reconnect$,
+          incident$,
+        ).pipe(
           tap((e) => {
             return routeIdleLifecycle(e, ws);
           }),
@@ -170,6 +204,7 @@ export function buildDefaultPorts(): AppPorts {
             return of({ type: "gatewayConnected" as const });
           }),
         ),
+        incident$,
       );
     },
   };
@@ -224,6 +259,18 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     depth: new DepthPresenter(ports.marketData),
     ordersBlotter,
     positions: new PositionsPresenter(ports.positions),
+    incident: createIncidentMachine({
+      controls: ports.metricControls,
+      pushConnectionEvent: (ev: ConnectionEvent) => {
+        return incident$.next(ev);
+      },
+    }),
+    throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
+    latencyMetric: new LatencyPresenter(ports.telemetry),
+    errorRateMetric: new ErrorRatePresenter(ports.telemetry),
+    topology: new ServiceTopologyPresenter(ports.serviceHealth),
+    eventLog: new EventLogPresenter(ports.eventLog),
+    sessions: new SessionsPresenter(ports.sessions),
   };
   const commands: AppCommands = {
     reconnect: () => {

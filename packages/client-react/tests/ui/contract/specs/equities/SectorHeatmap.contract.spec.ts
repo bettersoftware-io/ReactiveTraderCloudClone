@@ -67,6 +67,38 @@ describe("SectorHeatmap", () => {
     expect(heatmap.cells()).toEqual([]);
     expect(heatmap.isEmpty()).toBe(true);
   });
+
+  it("defaults to 0% heat when no quote is available for an instrument", () => {
+    // Covers the `quote?.changePct ?? 0` null-coalescing branch in HeatCell.
+    const heatmap = mount(SectorHeatmap, {
+      props: { selectedSymbol: null, onSelect: () => {} },
+      equities: {
+        watchlist: [{ symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" }],
+        // No quotes seeded — quote is null
+      },
+    });
+
+    expect(heatmap.heatOf("AAPL")).toBe(0);
+    expect(heatmap.directionOf("AAPL")).toBe("up"); // changePct 0 >= 0 → "up"
+  });
+
+  it("groups unknown symbols into the 'Other' sector", () => {
+    // Covers the `SECTOR_MAP[inst.symbol] ?? DEFAULT_SECTOR` branch.
+    const heatmap = mount(SectorHeatmap, {
+      props: { selectedSymbol: null, onSelect: () => {} },
+      equities: {
+        watchlist: [
+          { symbol: "UNKNOWN", name: "Unknown Corp.", exchange: "NYSE" },
+        ],
+        quotes: { UNKNOWN: quote("UNKNOWN", 5) },
+      },
+    });
+
+    // Verify the cell renders AND that its sector-group label is "Other",
+    // proving the DEFAULT_SECTOR branch actually routes unknowns there.
+    expect(heatmap.cells()).toEqual(["UNKNOWN"]);
+    expect(heatmap.hasSectorLabel("Other")).toBe(true);
+  });
 });
 
 function quote(symbol: string, changePct: number): EquityQuote {

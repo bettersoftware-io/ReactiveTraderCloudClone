@@ -15,11 +15,15 @@ import {
   type EquityPosition,
   type EquityQuote,
   type Instrument,
+  type LogEvent,
+  type MetricSample,
   type PositionUpdates,
   type Price,
   type PriceTick,
   type Quote,
   type Rfq,
+  type ServiceTopology,
+  type SessionInfo,
   type ThemeMode,
   type ThemeSkin,
   type Trade,
@@ -34,6 +38,11 @@ import type {
   BootSequenceIntents,
   BootSequenceState,
 } from "#/app/presenters/BootSequenceMachine";
+import type {
+  IncidentIntents,
+  IncidentKind,
+  IncidentState,
+} from "#/app/presenters/IncidentMachine";
 import type { LayoutIntents } from "#/app/presenters/LayoutMachine";
 import type { MachineFactories } from "#/app/presenters/machine";
 import type {
@@ -65,6 +74,7 @@ import type {
 import { useMachine } from "./useMachine";
 
 type UseBootSequenceResult = { state: BootSequenceState } & BootSequenceIntents;
+type UseIncidentResult = { state: IncidentState } & IncidentIntents;
 type UseLayoutResult = { state: LayoutState } & LayoutIntents;
 type UseTileExecutionResult = {
   state: TileExecutionState;
@@ -81,6 +91,12 @@ type UseThroughputResult = ThroughputView & {
   setValue: (value: number) => void;
 };
 type UseOrderTicketResult = { state: OrderTicketState } & OrderTicketIntents;
+
+interface MetricsView {
+  throughput: readonly MetricSample[];
+  latency: readonly MetricSample[];
+  errorRate: readonly MetricSample[];
+}
 
 interface UseThemePreferenceResult {
   mode: ThemeMode;
@@ -185,6 +201,17 @@ export interface AppHooks {
   useEquityPositions: () => readonly EquityPosition[];
   /** Per-mount order ticket machine — editing/submitting/working/filled/rejected state plus intents. */
   useOrderTicket: (defaultSymbol: string) => UseOrderTicketResult;
+  // Admin / telemetry streams (Phase 5)
+  /** Rolling metric chart series — throughput, latency, and error-rate windows. */
+  useMetrics: () => MetricsView;
+  /** Live service-topology graph — null until the first emission. */
+  useTopology: () => ServiceTopology | null;
+  /** Newest-first rolling event log — starts empty. */
+  useEventLog: () => readonly LogEvent[];
+  /** Active trader sessions — starts empty. */
+  useSessions: () => readonly SessionInfo[];
+  /** Shared incident-machine state + inject/clear intents. */
+  useIncident: () => UseIncidentResult;
 }
 
 export function createAppHooks(
@@ -347,6 +374,46 @@ export function createAppHooks(
     [] as readonly EquityPosition[],
   );
 
+  // Admin / telemetry streams (Phase 5) — plain binds (shared, not per-mount).
+  const [useThroughputSamples] = bind(
+    presenters.throughputMetric.samples$,
+    [] as readonly MetricSample[],
+  );
+  const [useLatencySamples] = bind(
+    presenters.latencyMetric.samples$,
+    [] as readonly MetricSample[],
+  );
+  const [useErrorRateSamples] = bind(
+    presenters.errorRateMetric.samples$,
+    [] as readonly MetricSample[],
+  );
+  const [useTopologyValue] = bind(
+    presenters.topology.topology$,
+    null as ServiceTopology | null,
+  );
+  const [useEventLogValue] = bind(
+    presenters.eventLog.events$,
+    [] as readonly LogEvent[],
+  );
+  const [useSessionsValue] = bind(
+    presenters.sessions.sessions$,
+    [] as readonly SessionInfo[],
+  );
+
+  // Incident machine — shared single instance, bind its state$ (not per-mount useMachine).
+  const [useIncidentState] = bind(presenters.incident.state$, {
+    active: [] as readonly IncidentKind[],
+  });
+
+  // Stable callbacks for incident intents (this-safe; arrow functions).
+  function injectIncident(kind: IncidentKind): void {
+    presenters.incident.intents.inject(kind);
+  }
+
+  function clearIncident(): void {
+    presenters.incident.intents.clear();
+  }
+
   return {
     usePrice,
     usePriceHistory,
@@ -473,6 +540,23 @@ export function createAppHooks(
       return useMachine(() => {
         return machines.orderTicket(defaultSymbol);
       });
+    },
+    useMetrics: () => {
+      return {
+        throughput: useThroughputSamples(),
+        latency: useLatencySamples(),
+        errorRate: useErrorRateSamples(),
+      };
+    },
+    useTopology: useTopologyValue,
+    useEventLog: useEventLogValue,
+    useSessions: useSessionsValue,
+    useIncident: () => {
+      return {
+        state: useIncidentState(),
+        inject: injectIncident,
+        clear: clearIncident,
+      };
     },
   };
 }

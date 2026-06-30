@@ -12,17 +12,22 @@ import {
   type EquityPosition,
   type EquityQuote,
   type Instrument,
+  type LogEvent,
+  type MetricSample,
   type PositionUpdates,
   type Price,
   type PriceTick,
   type Quote,
   type Rfq,
+  type ServiceTopology,
+  type SessionInfo,
   type ThemeMode,
   type ThemeSkin,
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
 
+import type { IncidentKind } from "#/app/presenters/IncidentMachine";
 import type { NotionalView } from "#/app/presenters/NotionalMachine";
 import type { OrderTicketState } from "#/app/presenters/OrderTicketMachine";
 import type {
@@ -73,6 +78,21 @@ export interface AppData {
   viewMode?: ViewMode;
   /** Session lock state (useSession); defaults to false → LockScreen renders nothing. */
   sessionLocked?: boolean;
+  // ── Admin / telemetry fields (Phase 5) ───────────────────────────────────
+  /** Metric windows for the radial gauges / charts (useMetrics); defaults to empty series. */
+  adminMetrics?: {
+    throughput: readonly MetricSample[];
+    latency: readonly MetricSample[];
+    errorRate: readonly MetricSample[];
+  };
+  /** Service topology graph (useTopology); defaults to null. */
+  adminTopology?: ServiceTopology | null;
+  /** Event log entries (useEventLog); defaults to []. */
+  adminEventLog?: readonly LogEvent[];
+  /** Active trader sessions (useSessions); defaults to []. */
+  adminSessions?: readonly SessionInfo[];
+  /** Incident machine state (useIncident); defaults to { active: [] }. */
+  adminIncident?: { active: readonly IncidentKind[] };
   // ── Equities fields (Phase 4) ─────────────────────────────────────────────
   /** Watchlist of equity instruments (useWatchlist); defaults to []. */
   equityWatchlist?: readonly EquityInstrument[];

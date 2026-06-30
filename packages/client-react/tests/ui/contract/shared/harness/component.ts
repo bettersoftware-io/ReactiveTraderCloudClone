@@ -1,9 +1,18 @@
-import type { EquityOrder, Price, PriceTick, Quote } from "@rtc/domain";
+import type {
+  EquityOrder,
+  LogEvent,
+  Price,
+  PriceTick,
+  Quote,
+  ServiceTopology,
+  SessionInfo,
+} from "@rtc/domain";
 
 import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
+import type { IncidentKind } from "#/app/presenters/IncidentMachine";
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
-import type { CommandLog, HookValues } from "./world";
+import type { CommandLog, HookValues, MetricsView } from "./world";
 
 /** Everything a page object needs: the rendered root + update drivers + command log. */
 export interface PageContext<P> {
@@ -25,6 +34,19 @@ export interface PageContext<P> {
   /** Values captured from useThroughput().setValue calls. */
   readonly throughputSets: number[];
   readonly commands: CommandLog;
+  // Admin / telemetry setters (Phase 5 — flush-wrapped so re-renders are immediate).
+  /** Push a new service topology snapshot (useTopology source). */
+  setTopology(value: ServiceTopology | null): void;
+  /** Push a new event log (useEventLog source). */
+  setEventLog(value: readonly LogEvent[]): void;
+  /** Push new active sessions (useSessions source). */
+  setSessions(value: readonly SessionInfo[]): void;
+  /** Patch the metric series (useMetrics source). */
+  setMetrics(patch: Partial<MetricsView>): void;
+  /** Inject an incident kind (mirrors IncidentMachine asymmetry). */
+  injectIncident(kind: IncidentKind): void;
+  /** Clear all active incidents and restore CONNECTED status. */
+  clearIncident(): void;
 }
 
 /** Base class for all page objects. Provides the neutral update drivers. */
@@ -86,6 +108,38 @@ export abstract class MountedComponent<P> {
   /** Inputs recorded by the faked command hooks (unit-mode convenience). */
   protected commandLog(): CommandLog {
     return this.ctx.commands;
+  }
+
+  // Admin / telemetry drivers (Phase 5).
+
+  /** Push a new service topology → re-render the subscribing panel. */
+  setTopology(value: ServiceTopology | null): void {
+    this.ctx.setTopology(value);
+  }
+
+  /** Push a new event log → re-render the subscribing panel. */
+  setEventLog(value: readonly LogEvent[]): void {
+    this.ctx.setEventLog(value);
+  }
+
+  /** Push new active sessions → re-render the subscribing panel. */
+  setSessions(value: readonly SessionInfo[]): void {
+    this.ctx.setSessions(value);
+  }
+
+  /** Patch the metric series → re-render the subscribing gauges/charts. */
+  setMetrics(patch: Partial<MetricsView>): void {
+    this.ctx.setMetrics(patch);
+  }
+
+  /** Inject an incident → drives incidentState$ (and optionally DISCONNECTED). */
+  injectIncident(kind: IncidentKind): void {
+    this.ctx.injectIncident(kind);
+  }
+
+  /** Clear all active incidents → restore CONNECTED status. */
+  clearIncident(): void {
+    this.ctx.clearIncident();
   }
 }
 

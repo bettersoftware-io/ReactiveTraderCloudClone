@@ -23,6 +23,9 @@ import {
   type EquityPosition,
   EquityPositionSimulator,
   type EquityQuote,
+  ErrorRateSimulator,
+  type EventLogPort,
+  EventLogSimulator,
   type ExecutionPort,
   type ExecutionRequest,
   ExecutionSimulator,
@@ -30,7 +33,9 @@ import {
   type Instrument,
   type InstrumentPort,
   InstrumentSimulator,
+  LatencySimulator,
   type MarketDataPort,
+  type MetricControl,
   type OrderPort,
   type PlaceOrderRequest,
   type PositionPort,
@@ -44,6 +49,12 @@ import {
   ReferenceDataSimulator,
   type RfqEvent,
   type RfqQuoteResult,
+  type ServiceHealthPort,
+  ServiceTopologySimulator,
+  SessionSimulator,
+  type SessionsPort,
+  type TelemetryPort,
+  TelemetrySimulator,
   ThroughputSimulator,
   type Trade,
   TradeStoreSimulator,
@@ -81,6 +92,12 @@ export interface AppPorts {
   marketData: MarketDataPort;
   orders: OrderPort;
   positions: PositionPort;
+  telemetry: TelemetryPort;
+  serviceHealth: ServiceHealthPort;
+  eventLog: EventLogPort;
+  sessions: SessionsPort;
+  /** Perturbable controls passed to IncidentMachine — latency, errorRate, topology, eventLog sims. */
+  metricControls: readonly MetricControl[];
 }
 
 export type TransportPorts = Omit<AppPorts, "connectionEvents">;
@@ -97,6 +114,13 @@ export function createSimulatorPorts(): TransportPorts {
       return marketData.currentPrice(symbol);
     },
   });
+  // Hoist so TelemetrySimulator can share the same ThroughputSimulator instance.
+  const admin = new ThroughputSimulator();
+  // Perturbable telemetry simulators — fixed dev seeds (1-4) for reproducibility.
+  const latency = new LatencySimulator(1);
+  const errorRate = new ErrorRateSimulator(2);
+  const topology = new ServiceTopologySimulator(3);
+  const eventLog = new EventLogSimulator(4);
   return {
     referenceData: new ReferenceDataSimulator(),
     pricing: new PricingSimulator(),
@@ -106,13 +130,18 @@ export function createSimulatorPorts(): TransportPorts {
     instruments: new InstrumentSimulator(),
     dealers: new DealerSimulator(),
     workflow: new CreditRfqSimulator(DEALERS_CATALOG),
-    admin: new ThroughputSimulator(),
+    admin,
     // Real browser persistence even in sim mode — PreferencesSimulator is for
     // domain tests/fakes only.
     preferences: new LocalStoragePreferencesAdapter(),
     marketData,
     orders,
     positions: positionsSim,
+    telemetry: new TelemetrySimulator(admin, latency, errorRate),
+    serviceHealth: topology,
+    eventLog,
+    sessions: new SessionSimulator(5),
+    metricControls: [latency, errorRate, topology, eventLog],
   };
 }
 
@@ -913,6 +942,14 @@ function createPositionPort(ws: IWsAdapter): PositionPort {
 // ── Factory ─────────────────────────────────────────────────────
 
 export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
+  // Telemetry ports are browser-local regardless of transport (no wire RPC),
+  // mirroring how preferences is handled. Fixed dev seeds for reproducibility.
+  const latency = new LatencySimulator(1);
+  const errorRate = new ErrorRateSimulator(2);
+  const topology = new ServiceTopologySimulator(3);
+  const eventLog = new EventLogSimulator(4);
+  // Standalone ThroughputSimulator for telemetry sampling; admin port is WS-backed.
+  const throughput = new ThroughputSimulator();
   return {
     referenceData: createReferenceDataPort(ws),
     pricing: createPricingPort(ws),
@@ -928,5 +965,10 @@ export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
     marketData: createMarketDataPort(ws),
     orders: createOrderPort(ws),
     positions: createPositionPort(ws),
+    telemetry: new TelemetrySimulator(throughput, latency, errorRate),
+    serviceHealth: topology,
+    eventLog,
+    sessions: new SessionSimulator(5),
+    metricControls: [latency, errorRate, topology, eventLog],
   };
 }

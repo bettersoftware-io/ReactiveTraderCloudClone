@@ -72,8 +72,11 @@ export default defineConfig({
           // after a filter applies) flake on a handful of AA pixels that never
           // stabilise ("matcher did not succeed in time"). Allow a tiny absolute
           // cushion — far below any real component change (hundreds+ of px), so
-          // genuine regressions still fail. The Playwright tiers remain the
-          // strict pixel contract.
+          // genuine regressions still fail. This tier uses absolute pixel count
+          // (not a ratio) because it targets only a "handful of AA pixels"; the
+          // Playwright tiers use maxDiffPixelRatio: 0.06 (raised from 0.025) for
+          // x86 text-AA jitter on fixed-dimension text-heavy goldens. This tier
+          // has not exhibited that jitter so 100 px absolute remains sufficient.
           comparatorName: "pixelmatch",
           comparatorOptions: { allowedMismatchedPixels: 100 },
           resolveScreenshotPath: ({
