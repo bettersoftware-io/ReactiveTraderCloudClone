@@ -1,7 +1,9 @@
 .shell {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-d, sans-serif);

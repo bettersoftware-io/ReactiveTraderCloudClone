@@ -1,0 +1,109 @@
+/* PROTO lines 103–112: ambient animated-background layers.
+   Every animated layer ends with animation-play-state: var(--amb-play, paused)
+   so the PreferencesProvider's --amb-play token controls play/pause globally. */
+
+.ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* PROTO line 104: aurora blob wrapper carries the shared opacity token */
+.aurora {
+  position: absolute;
+  inset: 0;
+  opacity: var(--aurora-op, 0.6);
+}
+
+/* PROTO line 105: first aurora blob */
+.auroraA {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(38% 38% at 28% 32%, var(--accent) 0%, transparent 62%),
+    radial-gradient(34% 34% at 78% 64%, var(--accent2) 0%, transparent 62%);
+  opacity: 0.18;
+  filter: blur(46px);
+  animation: auroraA 52s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
+  will-change: transform;
+}
+
+/* PROTO line 106: second aurora blob */
+.auroraB {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(30% 36% at 66% 22%, var(--buy) 0%, transparent 60%),
+    radial-gradient(40% 40% at 22% 82%, var(--accent) 0%, transparent 60%);
+  opacity: 0.13;
+  filter: blur(58px);
+  animation: auroraB 68s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
+  will-change: transform;
+}
+
+/* PROTO line 108: slow rotating conic sweep */
+.sweep {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 170vmax;
+  height: 170vmax;
+  margin: -85vmax 0 0 -85vmax;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--accent) 10deg,
+    transparent 34deg
+  );
+  opacity: calc(var(--aurora-op, 0.6) * 0.06);
+  animation: sweepRot 90s linear infinite;
+  animation-play-state: var(--amb-play, paused);
+  will-change: transform;
+}
+
+/* PROTO line 109: drifting grid lines */
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid, rgba(0, 224, 255, 0.05)) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      var(--grid, rgba(0, 224, 255, 0.05)) 1px,
+      transparent 1px
+    );
+  background-size:
+    48px 48px,
+    48px 48px;
+  opacity: 0.4;
+  animation: gridDrift 60s linear infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+/* PROTO line 110: particle dot field */
+.particles {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--accent) 1.1px, transparent 1.4px);
+  background-size: 24px 24px;
+  opacity: calc(var(--aurora-op, 0.6) * 0.16);
+  animation: gridDrift 90s linear infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+/* PROTO line 112: vignette overlay (z-index:1 keeps it above the animated layers) */
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 78% 68% at 50% 38%,
+    transparent 48%,
+    rgba(0, 0, 0, 0.58) 100%
+  );
+}
