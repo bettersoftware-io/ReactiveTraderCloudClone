@@ -13,16 +13,23 @@ This repo is shared by **concurrent Claude Code sessions** working in the same c
 
 ## The Six Rules
 
-1. **Isolate first.** Before touching *any* file, create a git worktree on a fresh branch. Never edit the live working tree or `main` directly.
+1. **Isolate first, off the latest `main`.** Before touching *any* file, `git fetch` and create a git worktree on a fresh branch cut from an up-to-date `origin/main`. Never edit the live working tree or `main` directly.
 2. **PR + loop until CI is green.** When work is done, push the branch, open a PR, and poll CI until the run for your latest commit completes **successfully**. If it fails, fix on the branch and loop again.
 3. **Catch up to `main` before merging.** Once green, if `origin/main` has advanced past your branch, merge `origin/main` *into* the branch and re-run the CI loop. Only merge a branch that is green **and** current.
 4. **Merge once green.** As soon as CI is green on a current branch you may merge to `main` immediately via the GitHub API — no human review gate (move-fast policy, may tighten later).
 5. **Always a merge commit.** Merge with `--merge`. **Never** `--squash`, `--rebase`, or a fast-forward.
 6. **Clean up.** Once your commit is confirmed on `origin/main`, remove *your* worktree and delete its branch — immediately, not "later."
 
-## Rule 1 — Isolate before any change
+## Rule 1 — Isolate off the *latest* `main`, before any change
 
-Use the **native worktree tool** if available (`EnterWorktree`); otherwise follow `superpowers:using-git-worktrees` (git fallback branches off `origin/main`). Do this *before* the first edit, not after.
+Create the worktree *before* the first edit, not after — and branch it off an **up-to-date** `origin/main`. A stale base only grows Rule 3's catch-up burden, so **fetch first:**
+
+```bash
+git fetch origin main
+```
+
+- **Native tool (`EnterWorktree`)** — preferred. It branches off `origin/<default-branch>` only when `worktree.baseRef` is `fresh` (the default); if it's `head` you'd inherit your local `HEAD` instead. Either way the base is only as fresh as your last fetch — so fetch first.
+- **Git fallback (`superpowers:using-git-worktrees`)** — its `git worktree add <path> -b <branch>` branches off your **current `HEAD`**, *not* `origin/main`. So either fast-forward local `main` to `origin/main` before creating the worktree, or branch explicitly: `git worktree add <path> -b <branch> origin/main`.
 
 Pre-existing uncommitted files in the primary checkout stay there, untouched — that's the point of isolating.
 
@@ -108,7 +115,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 
 | Need | Command |
 |------|---------|
-| Isolate before editing | `EnterWorktree` (native) or `superpowers:using-git-worktrees` |
+| Isolate before editing | `git fetch origin main` first, then `EnterWorktree` (native) or `superpowers:using-git-worktrees` — base off latest `origin/main` |
 | Read CI status | `gh run list --branch <b> --workflow CI --json status,conclusion,headSha` |
 | ❌ Never for CI status | `gh pr checks` / `statusCheckRollup` (403 with this PAT) |
 | Is the branch current? | `git merge-base --is-ancestor origin/main HEAD` (exit 0 = current; else merge `origin/main` in + re-green) |
@@ -135,6 +142,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 ## Red Flags — STOP
 
 - About to run Edit/Write/`git mv`/`rm` while still in the primary checkout on `main`.
+- About to create the worktree without a fresh `git fetch` — you'd branch off a stale `origin/main`.
 - About to merge while your branch is **behind** `origin/main` — catch up (merge `origin/main` in) and re-green first.
 - About to type `gh pr merge` with `--squash`, `--rebase`, or `--auto`.
 - About to merge without having seen a `completed`/`success` run for your current `HEAD_SHA`.
