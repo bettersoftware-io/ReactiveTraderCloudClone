@@ -229,6 +229,40 @@ importers:
         specifier: ^4
         version: 4.1.9(@types/node@26.0.0)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-istanbul@4.1.9)(@vitest/coverage-v8@4.1.9)(@vitest/ui@4.1.9)(jsdom@29.1.1)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
+  packages/react-bindings:
+    dependencies:
+      '@react-rxjs/core':
+        specifier: ^0.10.7
+        version: 0.10.8(react@19.2.7)(rxjs@7.8.2)
+      '@rtc/client-core':
+        specifier: workspace:*
+        version: link:../client-core
+      react:
+        specifier: ^19
+        version: 19.2.7
+      rxjs:
+        specifier: ^7.8
+        version: 7.8.2
+    devDependencies:
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@types/react':
+        specifier: ^19
+        version: 19.2.17
+      '@vitest/coverage-v8':
+        specifier: ^4.1.8
+        version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
+      jsdom:
+        specifier: ^29
+        version: 29.1.1
+      tsc-alias:
+        specifier: 1.8.17
+        version: 1.8.17
+      vitest:
+        specifier: ^4
+        version: 4.1.9(@types/node@26.0.0)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-istanbul@4.1.9)(@vitest/coverage-v8@4.1.9)(@vitest/ui@4.1.9)(jsdom@29.1.1)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+
   packages/server:
     dependencies:
       '@rtc/domain':
