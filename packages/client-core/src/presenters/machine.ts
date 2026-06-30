@@ -2,8 +2,8 @@ import type { StateObservable } from "@rx-state/core";
 
 import type { CurrencyPair } from "@rtc/domain";
 
-import type { WorkspaceTab } from "#/app/layout/defaultLayoutPort";
-import type { LayoutState } from "#/app/layout/layoutPort";
+import type { WorkspaceTab } from "#/layout/defaultLayoutPort";
+import type { LayoutState } from "#/layout/layoutPort";
 
 import type {
   BootSequenceIntents,

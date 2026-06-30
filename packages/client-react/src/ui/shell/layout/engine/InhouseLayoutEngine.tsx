@@ -5,15 +5,15 @@ import {
   useRef,
 } from "react";
 
-import { PANEL_SPECS } from "#/app/layout/defaultLayoutPort";
-import type {
-  LayoutNode,
-  LayoutState,
-  PanelId,
-  PanelSpec,
-  SplitDir,
-} from "#/app/layout/layoutPort";
-import type { LayoutIntents } from "#/app/presenters/LayoutMachine";
+import {
+  type LayoutIntents,
+  type LayoutNode,
+  type LayoutState,
+  PANEL_SPECS,
+  type PanelId,
+  type PanelSpec,
+  type SplitDir,
+} from "@rtc/client-core";
 
 import type { PanelRegistry } from "./panelRegistry";
 

@@ -27,16 +27,16 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
-import type { IncidentKind } from "#/app/presenters/IncidentMachine";
-import type { NotionalView } from "#/app/presenters/NotionalMachine";
-import type { OrderTicketState } from "#/app/presenters/OrderTicketMachine";
+import type { IncidentKind } from "@rtc/client-core";
+import type { NotionalView } from "@rtc/client-core";
+import type { OrderTicketState } from "@rtc/client-core";
 import type {
   RfqSubmissionState,
   TicketSubmissionState,
-} from "#/app/presenters/RfqsPresenter";
-import type { RfqState } from "#/app/presenters/RfqTileMachine";
-import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
-import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
+} from "@rtc/client-core";
+import type { RfqState } from "@rtc/client-core";
+import type { ThroughputView } from "@rtc/client-core";
+import type { TileExecutionState } from "@rtc/client-core";
 
 export interface AppData {
   prices: Record<string, Price | null>;

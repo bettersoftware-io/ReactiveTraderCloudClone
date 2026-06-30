@@ -7,7 +7,7 @@ describe("layout machine factory", () => {
     const { presenters } = createApp();
     const machines = createMachineFactories(presenters);
     const m = machines.layout("fx");
-    let seen: import("#/app/layout/layoutPort").LayoutState | undefined;
+    let seen: import("@rtc/client-core").LayoutState | undefined;
     const sub = m.state$.subscribe((s) => {
       seen = s;
     });
@@ -18,7 +18,7 @@ describe("layout machine factory", () => {
     expect(seen.root.dir).toBe("column");
     m.intents.maximize("fx-rates");
     const after = (() => {
-      let s2: import("#/app/layout/layoutPort").LayoutState | undefined;
+      let s2: import("@rtc/client-core").LayoutState | undefined;
       const sub2 = m.state$.subscribe((s) => {
         s2 = s;
       });

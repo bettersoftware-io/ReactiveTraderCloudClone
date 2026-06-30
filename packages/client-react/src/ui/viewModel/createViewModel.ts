@@ -33,45 +33,34 @@ import {
 } from "@rtc/domain";
 
 import type { AppCommands, Presenters } from "#/app/composition";
-import type { WorkspaceTab } from "#/app/layout/defaultLayoutPort";
-import type { LayoutState } from "#/app/layout/layoutPort";
-import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
-import type {
-  BootSequenceIntents,
-  BootSequenceState,
-} from "#/app/presenters/BootSequenceMachine";
-import type {
-  IncidentIntents,
-  IncidentKind,
-  IncidentState,
-} from "#/app/presenters/IncidentMachine";
-import type { LayoutIntents } from "#/app/presenters/LayoutMachine";
-import type { MachineFactories } from "#/app/presenters/machine";
-import type {
-  NotionalIntents,
-  NotionalView,
-} from "#/app/presenters/NotionalMachine";
-import type {
-  OrderTicketIntents,
-  OrderTicketState,
-} from "#/app/presenters/OrderTicketMachine";
-import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
-import type {
-  RfqSubmissionIntents,
-  RfqSubmissionState,
-  TicketSubmissionIntents,
-  TicketSubmissionState,
-} from "#/app/presenters/RfqsPresenter";
-import type { RfqState, RfqTileIntents } from "#/app/presenters/RfqTileMachine";
 import {
+  type AnimationIntent,
+  type BootSequenceIntents,
+  type BootSequenceState,
+  createRfqCountdownMachine,
   DEMO_USER,
+  type IncidentIntents,
+  type IncidentKind,
+  type IncidentState,
+  type LayoutIntents,
+  type LayoutState,
+  type MachineFactories,
+  type NotionalIntents,
+  type NotionalView,
+  type OrderTicketIntents,
+  type OrderTicketState,
+  type RfqState,
+  type RfqSubmissionIntents,
+  type RfqSubmissionState,
+  type RfqTileIntents,
   type SessionState,
-} from "#/app/presenters/SessionPresenter";
-import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
-import type {
-  TileExecutionIntents,
-  TileExecutionState,
-} from "#/app/presenters/TileExecutionMachine";
+  type TicketSubmissionIntents,
+  type TicketSubmissionState,
+  type ThroughputView,
+  type TileExecutionIntents,
+  type TileExecutionState,
+  type WorkspaceTab,
+} from "@rtc/client-core";
 
 import { useMachine } from "./useMachine";
 

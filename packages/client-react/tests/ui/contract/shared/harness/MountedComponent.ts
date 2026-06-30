@@ -8,9 +8,9 @@ import type {
   SessionInfo,
 } from "@rtc/domain";
 
-import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
-import type { IncidentKind } from "#/app/presenters/IncidentMachine";
-import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
+import type { AnimationIntent } from "@rtc/client-core";
+import type { IncidentKind } from "@rtc/client-core";
+import type { ThroughputView } from "@rtc/client-core";
 
 import type { CommandLog, HookValues, MetricsView } from "./world";
 

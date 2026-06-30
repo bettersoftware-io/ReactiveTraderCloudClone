@@ -7,7 +7,7 @@ import {
   PriceMovementType,
 } from "@rtc/domain";
 
-import type { RfqState, RfqTileIntents } from "#/app/presenters/RfqTileMachine";
+import type { RfqState, RfqTileIntents } from "@rtc/client-core";
 
 import { RfqCountdown } from "./RfqCountdown";
 

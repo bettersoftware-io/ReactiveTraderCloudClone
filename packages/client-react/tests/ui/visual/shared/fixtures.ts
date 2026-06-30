@@ -29,9 +29,9 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-import type { NotionalView } from "#/app/presenters/NotionalMachine";
-import type { OrderTicketState } from "#/app/presenters/OrderTicketMachine";
-import type { RfqQuote } from "#/app/presenters/RfqTileMachine";
+import type { NotionalView } from "@rtc/client-core";
+import type { OrderTicketState } from "@rtc/client-core";
+import type { RfqQuote } from "@rtc/client-core";
 
 import { type AppData, makeAppData } from "./appData";
 

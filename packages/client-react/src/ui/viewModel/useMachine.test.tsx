@@ -6,7 +6,7 @@ import { BehaviorSubject, Subject } from "rxjs";
 import type { Mock } from "vitest";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Machine } from "#/app/presenters/machine";
+import type { Machine } from "@rtc/client-core";
 
 import { useMachine } from "./useMachine";
 

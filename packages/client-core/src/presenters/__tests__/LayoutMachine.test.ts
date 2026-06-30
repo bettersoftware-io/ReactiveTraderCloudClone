@@ -4,7 +4,7 @@ import type {
   LayoutNode,
   LayoutPort,
   LayoutState,
-} from "#/app/layout/layoutPort";
+} from "#/layout/layoutPort";
 
 import { createLayoutMachine } from "../LayoutMachine";
 

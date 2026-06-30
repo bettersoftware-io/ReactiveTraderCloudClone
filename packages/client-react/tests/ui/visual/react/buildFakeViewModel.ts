@@ -14,10 +14,10 @@ const DEFAULT_THEME_SKIN_FOR_FIXTURES = "classic" as const;
 import {
   createDefaultLayoutPort,
   type WorkspaceTab,
-} from "#/app/layout/defaultLayoutPort";
-import type { BootSequenceState } from "#/app/presenters/BootSequenceMachine";
-import type { NotionalView } from "#/app/presenters/NotionalMachine";
-import { DEMO_USER } from "#/app/presenters/SessionPresenter";
+} from "@rtc/client-core";
+import type { BootSequenceState } from "@rtc/client-core";
+import type { NotionalView } from "@rtc/client-core";
+import { DEMO_USER } from "@rtc/client-core";
 import type { ViewModel } from "#/ui/viewModel/createViewModel";
 
 import type { AppData } from "../shared/appData";

@@ -19,53 +19,52 @@ import {
 import { WsAdapter } from "./adapters/WsAdapter";
 import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
 import {
+  AnalyticsPresenter,
+  AnimatedBackgroundPresenter,
+  AnimationDirector,
+  BlotterPresenter,
+  BootPreferencePresenter,
+  createBootSequenceMachine,
+  CandleSeriesPresenter,
+  ConnectionStatusPresenter,
   createDefaultLayoutPort,
-  type WorkspaceTab,
-} from "./layout/defaultLayoutPort";
-import { AnalyticsPresenter } from "./presenters/AnalyticsPresenter";
-import { AnimatedBackgroundPresenter } from "./presenters/AnimatedBackgroundPresenter";
-import { AnimationDirector } from "./presenters/AnimationDirector";
-import { BlotterPresenter } from "./presenters/BlotterPresenter";
-import { BootPreferencePresenter } from "./presenters/BootPreferencePresenter";
-import { createBootSequenceMachine } from "./presenters/BootSequenceMachine";
-import { CandleSeriesPresenter } from "./presenters/CandleSeriesPresenter";
-import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresenter";
-import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
-import { DealersPresenter } from "./presenters/DealersPresenter";
-import { DepthPresenter } from "./presenters/DepthPresenter";
-import { ErrorRatePresenter } from "./presenters/ErrorRatePresenter";
-import { EventLogPresenter } from "./presenters/EventLogPresenter";
-import {
+  CurrencyPairsPresenter,
+  DealersPresenter,
+  DepthPresenter,
+  ErrorRatePresenter,
+  EventLogPresenter,
   createIncidentMachine,
   type IncidentIntents,
   type IncidentState,
-} from "./presenters/IncidentMachine";
-import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
-import { LatencyPresenter } from "./presenters/LatencyPresenter";
-import { createLayoutMachine } from "./presenters/LayoutMachine";
-import type { Machine, MachineFactories } from "./presenters/machine";
-import { createNotionalMachine } from "./presenters/NotionalMachine";
-import { OrdersBlotterPresenter } from "./presenters/OrdersBlotterPresenter";
-import { createOrderTicketMachine } from "./presenters/OrderTicketMachine";
-import { PositionsPresenter } from "./presenters/PositionsPresenter";
-import { PriceHistoryPresenter } from "./presenters/PriceHistoryPresenter";
-import { PriceStreamPresenter } from "./presenters/PriceStreamPresenter";
-import { RfqQuotePresenter } from "./presenters/RfqQuotePresenter";
-import { RfqsPresenter } from "./presenters/RfqsPresenter";
-import { createRfqTileMachine } from "./presenters/RfqTileMachine";
-import { createRowHighlightMachine } from "./presenters/RowHighlightMachine";
-import { ServiceTopologyPresenter } from "./presenters/ServiceTopologyPresenter";
-import { SessionPresenter } from "./presenters/SessionPresenter";
-import { SessionsPresenter } from "./presenters/SessionsPresenter";
-import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
-import { ThemePreferencePresenter } from "./presenters/ThemePreferencePresenter";
-import { ThemeSkinPreferencePresenter } from "./presenters/ThemeSkinPreferencePresenter";
-import { ThroughputMetricPresenter } from "./presenters/ThroughputMetricPresenter";
-import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
-import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
-import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
-import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
-import { WatchlistPresenter } from "./presenters/WatchlistPresenter";
+  InstrumentsPresenter,
+  LatencyPresenter,
+  createLayoutMachine,
+  type Machine,
+  type MachineFactories,
+  createNotionalMachine,
+  OrdersBlotterPresenter,
+  createOrderTicketMachine,
+  PositionsPresenter,
+  PriceHistoryPresenter,
+  PriceStreamPresenter,
+  RfqQuotePresenter,
+  RfqsPresenter,
+  createRfqTileMachine,
+  createRowHighlightMachine,
+  ServiceTopologyPresenter,
+  SessionPresenter,
+  SessionsPresenter,
+  createStaleFlagMachine,
+  ThemePreferencePresenter,
+  ThemeSkinPreferencePresenter,
+  ThroughputMetricPresenter,
+  ThroughputPresenter,
+  createTileExecutionMachine,
+  TradeExecutionPresenter,
+  ViewModePreferencePresenter,
+  WatchlistPresenter,
+  type WorkspaceTab,
+} from "@rtc/client-core";
 import { MediaQueryColorSchemeAdapter } from "./theme/MediaQueryColorSchemeAdapter";
 import { buildWsUrl } from "./wsUrl";
 

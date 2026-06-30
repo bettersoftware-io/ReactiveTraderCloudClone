@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 
-import { createDefaultLayoutPort } from "#/app/layout/defaultLayoutPort";
-import type { LayoutState } from "#/app/layout/layoutPort";
+import { createDefaultLayoutPort } from "@rtc/client-core";
+import type { LayoutState } from "@rtc/client-core";
 import { App } from "#/ui/App";
 import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { AdminPanel } from "#/ui/admin/AdminPanel";

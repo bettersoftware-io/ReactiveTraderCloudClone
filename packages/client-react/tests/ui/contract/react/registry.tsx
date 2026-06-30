@@ -18,8 +18,8 @@ import type {
 import type {
   NotionalIntents,
   NotionalView,
-} from "#/app/presenters/NotionalMachine";
-import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
+} from "@rtc/client-core";
+import type { TileExecutionState } from "@rtc/client-core";
 import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
 import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
 import { ErrorRatePanel as ErrorRatePanelComponent } from "#/ui/admin/ErrorRatePanel";

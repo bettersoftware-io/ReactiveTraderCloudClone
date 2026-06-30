@@ -13,10 +13,10 @@ import type {
   ViewMode,
 } from "@rtc/domain";
 
-import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
-import type { IncidentKind } from "#/app/presenters/IncidentMachine";
-import type { SessionState } from "#/app/presenters/SessionPresenter";
-import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
+import type { AnimationIntent } from "@rtc/client-core";
+import type { IncidentKind } from "@rtc/client-core";
+import type { SessionState } from "@rtc/client-core";
+import type { ThroughputView } from "@rtc/client-core";
 
 import { getDriver, type MountedRoot } from "./harness/activeDriver";
 import type {

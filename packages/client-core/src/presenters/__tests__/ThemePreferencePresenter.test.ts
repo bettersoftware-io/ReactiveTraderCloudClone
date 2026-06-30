@@ -7,7 +7,7 @@ import {
   type ThemeModePreference,
 } from "@rtc/domain";
 
-import type { ColorSchemeSource } from "#/app/theme/colorSchemeSource";
+import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
 
 import { ThemePreferencePresenter } from "../ThemePreferencePresenter";
 

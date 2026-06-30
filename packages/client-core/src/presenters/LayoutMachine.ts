@@ -7,7 +7,7 @@ import type {
   LayoutPort,
   LayoutState,
   PanelId,
-} from "#/app/layout/layoutPort";
+} from "#/layout/layoutPort";
 
 import type { Machine } from "./machine";
 

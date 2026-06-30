@@ -16,20 +16,20 @@ import { nextThemeModePreference, resolveThemeMode } from "@rtc/domain";
 import {
   createDefaultLayoutPort,
   type WorkspaceTab,
-} from "#/app/layout/defaultLayoutPort";
-import { createBootSequenceMachine } from "#/app/presenters/BootSequenceMachine";
-import { createLayoutMachine } from "#/app/presenters/LayoutMachine";
-import { createNotionalMachine } from "#/app/presenters/NotionalMachine";
-import { createOrderTicketMachine } from "#/app/presenters/OrderTicketMachine";
-import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
+} from "@rtc/client-core";
+import { createBootSequenceMachine } from "@rtc/client-core";
+import { createLayoutMachine } from "@rtc/client-core";
+import { createNotionalMachine } from "@rtc/client-core";
+import { createOrderTicketMachine } from "@rtc/client-core";
+import { createRfqCountdownMachine } from "@rtc/client-core";
 import type {
   RfqSubmissionState,
   TicketSubmissionState,
-} from "#/app/presenters/RfqsPresenter";
-import { createRfqTileMachine } from "#/app/presenters/RfqTileMachine";
-import { createRowHighlightMachine } from "#/app/presenters/RowHighlightMachine";
-import { createStaleFlagMachine } from "#/app/presenters/StaleFlagMachine";
-import { createTileExecutionMachine } from "#/app/presenters/TileExecutionMachine";
+} from "@rtc/client-core";
+import { createRfqTileMachine } from "@rtc/client-core";
+import { createRowHighlightMachine } from "@rtc/client-core";
+import { createStaleFlagMachine } from "@rtc/client-core";
+import { createTileExecutionMachine } from "@rtc/client-core";
 import type { ViewModel } from "#/ui/viewModel/createViewModel";
 import { useMachine } from "#/ui/viewModel/useMachine";
 

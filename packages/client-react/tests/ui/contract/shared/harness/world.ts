@@ -33,16 +33,16 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
-import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
+import type { AnimationIntent } from "@rtc/client-core";
 import type {
   IncidentKind,
   IncidentState,
-} from "#/app/presenters/IncidentMachine";
+} from "@rtc/client-core";
 import {
   DEMO_USER,
   type SessionState,
-} from "#/app/presenters/SessionPresenter";
-import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
+} from "@rtc/client-core";
+import type { ThroughputView } from "@rtc/client-core";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
  *  are modelled by the per-key subject maps below, not by this map. */
