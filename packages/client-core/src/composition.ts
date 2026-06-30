@@ -1,28 +1,36 @@
-import { merge, mergeMap, of, Subject, tap } from "rxjs";
+import { type Observable, of, Subject } from "rxjs";
 
+import type {
+  BootVariant,
+  ConnectionEvent,
+  CurrencyPair,
+  ExecuteTradeInput,
+} from "@rtc/domain";
+
+import type { IWsAdapter } from "#/adapters/IWsAdapter";
+import type { AppPorts } from "#/adapters/portFactory";
+import {
+  createDefaultLayoutPort,
+  type WorkspaceTab,
+} from "#/layout/defaultLayoutPort";
 import {
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
   AnimationDirector,
-  type AppPorts,
   BlotterPresenter,
   BootPreferencePresenter,
-  buildWsUrl,
   CandleSeriesPresenter,
   ConnectionStatusPresenter,
   CurrencyPairsPresenter,
   createBootSequenceMachine,
-  createDefaultLayoutPort,
   createIncidentMachine,
   createLayoutMachine,
   createNotionalMachine,
   createOrderTicketMachine,
   createRfqTileMachine,
   createRowHighlightMachine,
-  createSimulatorPorts,
   createStaleFlagMachine,
   createTileExecutionMachine,
-  createWsRealPorts,
   DealersPresenter,
   DepthPresenter,
   ErrorRatePresenter,
@@ -30,7 +38,6 @@ import {
   type IncidentIntents,
   type IncidentState,
   InstrumentsPresenter,
-  type IWsAdapter,
   LatencyPresenter,
   type Machine,
   type MachineFactories,
@@ -50,22 +57,7 @@ import {
   TradeExecutionPresenter,
   ViewModePreferencePresenter,
   WatchlistPresenter,
-  type WorkspaceTab,
-  WsConnectionEventsAdapter,
-} from "@rtc/client-core";
-import {
-  type BootVariant,
-  type ConnectionEvent,
-  type ConnectionEventsPort,
-  ConnectionEventsSimulator,
-  type CurrencyPair,
-  type ExecuteTradeInput,
-} from "@rtc/domain";
-
-import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
-import { LocalStoragePreferencesAdapter } from "./adapters/LocalStoragePreferencesAdapter";
-import { WsAdapter } from "./adapters/WsAdapter";
-import { MediaQueryColorSchemeAdapter } from "./theme/MediaQueryColorSchemeAdapter";
+} from "#/presenters/index";
 
 export type { AppPorts };
 
@@ -139,77 +131,24 @@ export interface App {
   commands: AppCommands;
 }
 
-/** User-initiated reconnect intent Subject. Owned in composition so both the
+/**
+ * Phase-0 shared seam — owned by the neutral core.
+ * User-initiated reconnect intent Subject. Owned in composition so both the
  * real-WS and simulator branches can merge it, and the hook factory can push
- * into it via AppCommands.reconnect(). */
-const reconnect$ = new Subject<ReconnectIntent>();
+ * into it via AppCommands.reconnect().
+ * `buildBrowserPorts` (client-react) imports and merges these into connectionEvents.
+ */
+export const reconnect$ = new Subject<ReconnectIntent>();
 
-/** Incident-machine connection-event sink.  Plain Subject — a live sink for
- * inject() calls.  Owned at module level alongside reconnect$. */
-const incident$ = new Subject<ConnectionEvent>();
+/**
+ * Phase-0 shared seam — owned by the neutral core.
+ * Incident-machine connection-event sink. Plain Subject — a live sink for
+ * inject() calls. Owned at module level alongside reconnect$.
+ * `buildBrowserPorts` (client-react) imports and merges these into connectionEvents.
+ */
+export const incident$ = new Subject<ConnectionEvent>();
 
-export function buildDefaultPorts(): AppPorts {
-  const url = import.meta.env.VITE_SERVER_URL as string | undefined;
-  const token = import.meta.env.VITE_WS_TOKEN as string | undefined;
-  const browser = new BrowserConnectionEventsAdapter();
-  const preferences = new LocalStoragePreferencesAdapter();
-
-  if (url) {
-    const ws = new WsAdapter(buildWsUrl(url, token));
-    const gateway = new WsConnectionEventsAdapter(ws);
-    const connectionEvents: ConnectionEventsPort = {
-      events: () => {
-        // Merge gateway events, browser lifecycle events, and user-initiated
-        // reconnect intents. The tap side-effects the transport:
-        //   idleTimeout → closeForIdle()
-        //   reconnect   → reopen()       (sole recovery; button-only)
-        //   userActivity → no-op here    (resets countdown in BrowserAdapter)
-        // Provenance: original services/connection.ts:74-96.
-        return merge(
-          gateway.events(),
-          browser.events(),
-          reconnect$,
-          incident$,
-        ).pipe(
-          tap((e) => {
-            return routeIdleLifecycle(e, ws);
-          }),
-        );
-      },
-    };
-    return { ...createWsRealPorts(ws, { preferences }), connectionEvents };
-  }
-
-  const gateway = new ConnectionEventsSimulator();
-  const connectionEvents: ConnectionEventsPort = {
-    events: () => {
-      // Simulator branch: idle closes are faithfully no-ops (no real socket).
-      // Recovery from idle is via the Reconnect button, which pushes reconnect$
-      // → gatewayConnected to resume the state machine. browserOnline also
-      // recovers (unchanged). userActivity no longer auto-resumes (item 1).
-      // Provenance: original services/connection.ts:43-50.
-      return merge(
-        gateway.events(),
-        browser.events().pipe(
-          mergeMap((e) => {
-            return e.type === "browserOnline"
-              ? of(e, { type: "gatewayConnected" as const })
-              : of(e);
-          }),
-        ),
-        reconnect$.pipe(
-          mergeMap(() => {
-            return of({ type: "gatewayConnected" as const });
-          }),
-        ),
-        incident$,
-      );
-    },
-  };
-  return { ...createSimulatorPorts({ preferences }), connectionEvents };
-}
-
-export function createApp(ports: AppPorts = buildDefaultPorts()): App {
+export function createApp(ports: AppPorts): App {
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
   const connection = new ConnectionStatusPresenter(ports.connectionEvents);
@@ -221,6 +160,14 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
   // Hoisted so the AnimationDirector can consume its fills$ stream for ticket
   // fill-flash choreography (Phase 4 equities).
   const ordersBlotter = new OrdersBlotterPresenter(ports.orders);
+
+  // Fall back to a light-always scheme when no OS color-scheme source is provided
+  // (tests, simulator, environments without matchMedia).
+  const colorScheme = ports.colorScheme ?? {
+    prefersDark$: (): Observable<boolean> => {
+      return of(false);
+    },
+  };
 
   const presenters: Presenters = {
     priceStream,
@@ -237,7 +184,7 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     throughput: new ThroughputPresenter(ports.admin),
     themePreference: new ThemePreferencePresenter(
       ports.preferences,
-      new MediaQueryColorSchemeAdapter(),
+      colorScheme,
     ),
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),

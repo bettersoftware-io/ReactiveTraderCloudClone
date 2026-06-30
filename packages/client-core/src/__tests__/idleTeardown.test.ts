@@ -1,4 +1,4 @@
-// packages/client-react/src/app/__tests__/idleTeardown.test.ts
+// packages/client-core/src/__tests__/idleTeardown.test.ts
 //
 // Verifies the composition.ts WS-branch tap wiring:
 //   idleTimeout  → ws.closeForIdle()
@@ -10,9 +10,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import type { IWsAdapter } from "@rtc/client-core";
-
-import { routeIdleLifecycle } from "../composition";
+import type { IWsAdapter } from "#/adapters/IWsAdapter";
+import { routeIdleLifecycle } from "#/composition";
 
 describe("composition.ts idle-teardown wiring (T2.2)", () => {
   function makeWs(): Pick<IWsAdapter, "closeForIdle" | "reopen"> {

@@ -1,13 +1,13 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { PreferencesSimulator } from "@rtc/domain";
-
 import {
   type AppPorts,
   createApp,
   createMachineFactories,
-} from "#/app/composition";
+  createSimulatorPorts,
+} from "@rtc/client-core";
+import { ConnectionEventsSimulator, PreferencesSimulator } from "@rtc/domain";
 
 import { createViewModel, type ViewModel } from "../createViewModel";
 
@@ -22,9 +22,7 @@ describe("useAnimationIntents", () => {
 });
 
 function makeHooks(): ViewModel {
-  const { presenters, commands } = createApp({
-    ...createSimPorts(),
-  });
+  const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,
     createMachineFactories(presenters),
@@ -32,7 +30,9 @@ function makeHooks(): ViewModel {
   );
 
   function createSimPorts(): AppPorts {
-    const base = createApp().ports;
-    return { ...base, preferences: new PreferencesSimulator() };
+    return {
+      ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
+      connectionEvents: new ConnectionEventsSimulator(),
+    };
   }
 }

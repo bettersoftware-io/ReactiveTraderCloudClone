@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { BootPreferencePresenter } from "@rtc/client-core";
 import { type BootVariant, PreferencesSimulator } from "@rtc/domain";
 
-import { createMachineFactories, type Presenters } from "../composition";
+import { createMachineFactories, type Presenters } from "#/composition";
+import { BootPreferencePresenter } from "#/presenters/index";
 
 describe("boot machine factory", () => {
   it("boot factory exists on MachineFactories", () => {
@@ -65,7 +65,9 @@ describe("boot machine factory", () => {
     const presenters = { bootPreference } as unknown as Presenters;
     const m = createMachineFactories(presenters).boot(() => {});
 
-    let seen: import("@rtc/client-core").BootSequenceState | undefined;
+    let seen:
+      | import("#/presenters/BootSequenceMachine").BootSequenceState
+      | undefined;
     const sub = m.state$.subscribe((s) => {
       seen = s;
     });

@@ -1,6 +1,7 @@
 import { bind } from "@react-rxjs/core";
 import { firstValueFrom } from "rxjs";
 
+import type { AppCommands, Presenters } from "@rtc/client-core";
 import {
   type AnimationIntent,
   type BootSequenceIntents,
@@ -59,8 +60,6 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-
-import type { AppCommands, Presenters } from "#/app/composition";
 
 import { useMachine } from "./useMachine";
 

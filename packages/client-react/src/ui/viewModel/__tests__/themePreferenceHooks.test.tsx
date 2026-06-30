@@ -1,13 +1,13 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { PreferencesSimulator } from "@rtc/domain";
-
 import {
   type AppPorts,
   createApp,
   createMachineFactories,
-} from "#/app/composition";
+  createSimulatorPorts,
+} from "@rtc/client-core";
+import { ConnectionEventsSimulator, PreferencesSimulator } from "@rtc/domain";
 
 import { createViewModel, type ViewModel } from "../createViewModel";
 
@@ -38,9 +38,7 @@ describe("theme/skin/animated-bg hooks", () => {
 });
 
 function makeHooks(): ViewModel {
-  const { presenters, commands } = createApp({
-    ...createSimPorts(),
-  });
+  const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,
     createMachineFactories(presenters),
@@ -48,9 +46,9 @@ function makeHooks(): ViewModel {
   );
 
   function createSimPorts(): AppPorts {
-    // Reuse the default sim ports but swap preferences for an in-memory sim
-    // so the test is isolated from real localStorage.
-    const base = createApp().ports;
-    return { ...base, preferences: new PreferencesSimulator() };
+    return {
+      ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
+      connectionEvents: new ConnectionEventsSimulator(),
+    };
   }
 }

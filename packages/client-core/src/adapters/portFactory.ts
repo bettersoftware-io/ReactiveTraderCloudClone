@@ -74,6 +74,8 @@ import type {
   WorkflowEvent,
 } from "@rtc/shared";
 
+import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
+
 import type { IWsAdapter } from "./IWsAdapter";
 
 export interface AppPorts {
@@ -97,6 +99,9 @@ export interface AppPorts {
   sessions: SessionsPort;
   /** Perturbable controls passed to IncidentMachine — latency, errorRate, topology, eventLog sims. */
   metricControls: readonly MetricControl[];
+  /** OS colour-scheme signal. Optional — omit in tests/simulators to default to light.
+   * Browser implementation: `MediaQueryColorSchemeAdapter` (client-react). */
+  colorScheme?: ColorSchemeSource;
 }
 
 export type TransportPorts = Omit<AppPorts, "connectionEvents">;
