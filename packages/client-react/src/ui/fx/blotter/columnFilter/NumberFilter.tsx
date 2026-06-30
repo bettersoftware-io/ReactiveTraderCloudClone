@@ -5,27 +5,6 @@ import type { ColumnFilter, Comparator } from "./filterState";
 
 import styles from "./NumberFilter.module.css";
 
-interface NumberFilterProps<TRow> {
-  column: keyof TRow;
-  currentFilter: ColumnFilter<TRow> | undefined;
-  onApply: (filter: ColumnFilter<TRow> | null) => void;
-}
-
-interface ComparatorOption {
-  value: Comparator;
-  label: string;
-}
-
-const comparators: ComparatorOption[] = [
-  { value: "eq", label: "Equals" },
-  { value: "neq", label: "Not equal" },
-  { value: "lt", label: "Less than" },
-  { value: "lte", label: "Less than or equals" },
-  { value: "gt", label: "Greater than" },
-  { value: "gte", label: "Greater than or equals" },
-  { value: "inRange", label: "In range" },
-];
-
 export function NumberFilter<TRow>({
   column,
   currentFilter,
@@ -123,3 +102,24 @@ export function NumberFilter<TRow>({
     </div>
   );
 }
+
+interface NumberFilterProps<TRow> {
+  column: keyof TRow;
+  currentFilter: ColumnFilter<TRow> | undefined;
+  onApply: (filter: ColumnFilter<TRow> | null) => void;
+}
+
+interface ComparatorOption {
+  value: Comparator;
+  label: string;
+}
+
+const comparators: ComparatorOption[] = [
+  { value: "eq", label: "Equals" },
+  { value: "neq", label: "Not equal" },
+  { value: "lt", label: "Less than" },
+  { value: "lte", label: "Less than or equals" },
+  { value: "gt", label: "Greater than" },
+  { value: "gte", label: "Greater than or equals" },
+  { value: "inRange", label: "In range" },
+];

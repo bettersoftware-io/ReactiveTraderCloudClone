@@ -5,10 +5,6 @@ import { BootSequence } from "./BootSequence";
 
 import styles from "./BootGate.module.css";
 
-interface BootGateProps {
-  children: ReactNode;
-}
-
 /**
  * Mounts the app immediately (so its streams warm during boot) and overlays the
  * BootSequence splash on top until the boot sequence completes. The splash's own
@@ -49,4 +45,8 @@ export function BootGate({ children }: BootGateProps): ReactElement {
       ) : null}
     </>
   );
+}
+
+interface BootGateProps {
+  children: ReactNode;
 }

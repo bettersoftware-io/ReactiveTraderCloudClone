@@ -76,10 +76,3 @@
   position: relative;
   top: -4px;
 }
-
-.spread {
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-muted);
-  padding: 2px 0;
-}

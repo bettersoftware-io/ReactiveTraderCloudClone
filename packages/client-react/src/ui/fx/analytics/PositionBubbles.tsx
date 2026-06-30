@@ -17,20 +17,6 @@ import {
 
 import styles from "./PositionBubbles.module.css";
 
-interface PositionBubblesProps {
-  positions: readonly CurrencyPairPosition[];
-}
-
-// Mirrors original BubbleChart.tsx:20 — collision padding beyond each radius.
-const COLLIDE_BORDER_WIDTH = 2;
-
-interface BubbleNode extends SimulationNodeDatum {
-  id: string; // currency code
-  r: number;
-  sign: "pos" | "neg";
-  text: string; // tooltip amount, formatAsWholeNumber
-}
-
 export function PositionBubbles({
   positions,
 }: PositionBubblesProps): ReactElement {
@@ -226,4 +212,18 @@ export function PositionBubbles({
       className={styles.container}
     />
   );
+}
+
+interface PositionBubblesProps {
+  positions: readonly CurrencyPairPosition[];
+}
+
+// Mirrors original BubbleChart.tsx:20 — collision padding beyond each radius.
+const COLLIDE_BORDER_WIDTH = 2;
+
+interface BubbleNode extends SimulationNodeDatum {
+  id: string; // currency code
+  r: number;
+  sign: "pos" | "neg";
+  text: string; // tooltip amount, formatAsWholeNumber
 }

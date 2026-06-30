@@ -32,45 +32,6 @@ import {
 
 import styles from "./CreditBlotter.module.css";
 
-function deriveTrades(
-  rfqs: readonly Rfq[],
-  allQuotes: ReadonlyMap<number, Quote>,
-  instruments: Map<number, Instrument>,
-  dealers: Map<number, Dealer>,
-): CreditTrade[] {
-  const trades: CreditTrade[] = [];
-
-  for (const rfq of rfqs) {
-    if (rfq.state !== RfqState.Closed) continue;
-
-    // Find the accepted quote
-    for (const quote of allQuotes.values()) {
-      if (quote.rfqId !== rfq.id || quote.state.type !== "accepted") continue;
-
-      const instrument = instruments.get(rfq.instrumentId);
-      const dealer = dealers.get(quote.dealerId);
-
-      trades.push({
-        tradeId: rfq.id,
-        status: "accepted",
-        tradeDate: new Date(rfq.creationTimestamp).toISOString().slice(0, 10),
-        direction: rfq.direction,
-        counterParty: dealer?.name ?? `Dealer ${quote.dealerId}`,
-        cusip: instrument?.cusip ?? "",
-        security: instrument?.ticker ?? "",
-        quantity: rfq.quantity,
-        orderType: "AON",
-        unitPrice: quote.state.price,
-      });
-      break;
-    }
-  }
-
-  return trades.sort((a, b) => {
-    return b.tradeId - a.tradeId;
-  });
-}
-
 export function CreditBlotter(): ReactElement {
   const { useRfqs, useAllQuotes, useInstruments, useDealers } = useViewModel();
   const rfqs = useRfqs();
@@ -201,4 +162,43 @@ export function CreditBlotter(): ReactElement {
       </div>
     </div>
   );
+}
+
+function deriveTrades(
+  rfqs: readonly Rfq[],
+  allQuotes: ReadonlyMap<number, Quote>,
+  instruments: Map<number, Instrument>,
+  dealers: Map<number, Dealer>,
+): CreditTrade[] {
+  const trades: CreditTrade[] = [];
+
+  for (const rfq of rfqs) {
+    if (rfq.state !== RfqState.Closed) continue;
+
+    // Find the accepted quote
+    for (const quote of allQuotes.values()) {
+      if (quote.rfqId !== rfq.id || quote.state.type !== "accepted") continue;
+
+      const instrument = instruments.get(rfq.instrumentId);
+      const dealer = dealers.get(quote.dealerId);
+
+      trades.push({
+        tradeId: rfq.id,
+        status: "accepted",
+        tradeDate: new Date(rfq.creationTimestamp).toISOString().slice(0, 10),
+        direction: rfq.direction,
+        counterParty: dealer?.name ?? `Dealer ${quote.dealerId}`,
+        cusip: instrument?.cusip ?? "",
+        security: instrument?.ticker ?? "",
+        quantity: rfq.quantity,
+        orderType: "AON",
+        unitPrice: quote.state.price,
+      });
+      break;
+    }
+  }
+
+  return trades.sort((a, b) => {
+    return b.tradeId - a.tradeId;
+  });
 }

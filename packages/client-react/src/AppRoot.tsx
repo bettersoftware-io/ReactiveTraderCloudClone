@@ -13,10 +13,6 @@ import { shouldPlayBootSplash } from "./bootSplashGate";
 import { BootGate } from "./ui/shell/boot/BootGate";
 import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
 
-interface AppRootProps {
-  children: ReactNode;
-}
-
 /** The app's composition root, as a component. Builds the presenters and the
  * ViewModel exactly once and supplies the whole provider stack (ViewModel +
  * theme) to the tree — replacing the module-level singletons that used to live
@@ -53,4 +49,8 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
       </ThemeProvider>
     </ViewModelProvider>
   );
+}
+
+interface AppRootProps {
+  children: ReactNode;
 }

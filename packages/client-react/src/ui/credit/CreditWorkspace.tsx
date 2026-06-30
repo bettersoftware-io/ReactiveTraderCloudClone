@@ -7,8 +7,6 @@ import { SellSidePanel } from "./sellSide/SellSidePanel";
 
 import styles from "./CreditWorkspace.module.css";
 
-type CreditView = "tiles" | "new-rfq" | "sell-side";
-
 export function CreditWorkspace(): ReactElement {
   const [view, setView] = useState<CreditView>("tiles");
 
@@ -47,3 +45,5 @@ export function CreditWorkspace(): ReactElement {
     </div>
   );
 }
+
+type CreditView = "tiles" | "new-rfq" | "sell-side";

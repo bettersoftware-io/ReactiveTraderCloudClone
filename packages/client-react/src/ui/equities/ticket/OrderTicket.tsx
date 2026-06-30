@@ -4,10 +4,6 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./OrderTicket.module.css";
 
-interface OrderTicketProps {
-  symbol: string;
-}
-
 /**
  * Equity order ticket — side/type toggles, qty input, optional limit-price,
  * Submit. Reads all state from useOrderTicket(symbol) and animation intent
@@ -249,4 +245,8 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
       </button>
     </div>
   );
+}
+
+interface OrderTicketProps {
+  symbol: string;
 }

@@ -12,21 +12,6 @@ import { ThroughputChart } from "./ThroughputChart";
 
 import styles from "./AdminDashboard.module.css";
 
-interface CardProps {
-  title: string;
-  className: string;
-  children: ReactElement;
-}
-
-function Card({ title, className, children }: CardProps): ReactElement {
-  return (
-    <section className={`${styles.card} ${className}`}>
-      <header className={styles.cardHead}>{title}</header>
-      <div className={styles.cardBody}>{children}</div>
-    </section>
-  );
-}
-
 /**
  * Admin observability dashboard — composes the telemetry cards (gauges, charts,
  * topology, sessions, live log) plus the break-glass incident controls and the
@@ -64,5 +49,20 @@ export function AdminDashboard(): ReactElement {
         <AdminPanel />
       </Card>
     </div>
+  );
+}
+
+interface CardProps {
+  title: string;
+  className: string;
+  children: ReactElement;
+}
+
+function Card({ title, className, children }: CardProps): ReactElement {
+  return (
+    <section className={`${styles.card} ${className}`}>
+      <header className={styles.cardHead}>{title}</header>
+      <div className={styles.cardBody}>{children}</div>
+    </section>
   );
 }

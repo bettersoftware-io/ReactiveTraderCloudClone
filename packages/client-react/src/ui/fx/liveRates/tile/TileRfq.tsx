@@ -12,21 +12,6 @@ import { RfqCountdown } from "./RfqCountdown";
 
 import styles from "./TileRfq.module.css";
 
-/** The machine result the tile passes down: current state plus the RFQ intents. */
-export type TileRfqState = { state: RfqState } & RfqTileIntents;
-
-interface TileRfqProps {
-  pair: CurrencyPair;
-  rfqState: TileRfqState;
-  onRequestQuote: () => void;
-  onExecute: (direction: Direction, price: Price, notional: number) => void;
-  notional: number;
-}
-
-function formatPrice(value: number, ratePrecision: number): string {
-  return value.toFixed(ratePrecision);
-}
-
 export function TileRfq({
   pair,
   rfqState,
@@ -126,4 +111,19 @@ export function TileRfq({
   }
 
   return null;
+}
+
+/** The machine result the tile passes down: current state plus the RFQ intents. */
+export type TileRfqState = { state: RfqState } & RfqTileIntents;
+
+interface TileRfqProps {
+  pair: CurrencyPair;
+  rfqState: TileRfqState;
+  onRequestQuote: () => void;
+  onExecute: (direction: Direction, price: Price, notional: number) => void;
+  notional: number;
+}
+
+function formatPrice(value: number, ratePrecision: number): string {
+  return value.toFixed(ratePrecision);
 }

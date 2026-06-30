@@ -10,6 +10,66 @@ import type { SortState } from "./columnSort";
 
 import styles from "./BlotterHeader.module.css";
 
+export function BlotterHeader<TRow>({
+  sort,
+  onSort,
+  filters,
+  onFilter,
+  rows,
+  columns,
+}: BlotterHeaderProps<TRow>): ReactElement {
+  const [openFilter, setOpenFilter] = useState<keyof TRow | null>(null);
+
+  return (
+    <tr>
+      {columns.map((col) => {
+        return (
+          <th
+            key={String(col.key)}
+            data-testid={`blotter-sort-${String(col.key)}`}
+            className={styles.headerCell}
+            onClick={() => {
+              return onSort(col.key);
+            }}
+          >
+            <span>
+              {col.label}
+              <SortIndicator column={col.key} sort={sort} />
+              {filters.has(col.key) && (
+                <span className={styles.filterDot}>{"●"}</span>
+              )}
+            </span>
+            <button
+              type="button"
+              data-testid={`blotter-filter-toggle-${String(col.key)}`}
+              onClick={(e: MouseEvent<HTMLButtonElement>): void => {
+                e.stopPropagation();
+                setOpenFilter(openFilter === col.key ? null : col.key);
+              }}
+              className={styles.filterToggle}
+            >
+              {"▽"}
+            </button>
+            {openFilter === col.key && (
+              <FilterPanel
+                col={col}
+                rows={rows}
+                currentFilter={filters.get(col.key)}
+                onApply={(f: ColumnFilter<TRow> | null): void => {
+                  onFilter(col.key, f);
+                }}
+                onClose={() => {
+                  return setOpenFilter(null);
+                }}
+              />
+            )}
+          </th>
+        );
+      })}
+    </tr>
+  );
+}
+
 interface BlotterHeaderProps<TRow> {
   sort: SortState<TRow>;
   onSort: (column: keyof TRow) => void;
@@ -81,65 +141,5 @@ function FilterPanel<TRow>({
         />
       )}
     </div>
-  );
-}
-
-export function BlotterHeader<TRow>({
-  sort,
-  onSort,
-  filters,
-  onFilter,
-  rows,
-  columns,
-}: BlotterHeaderProps<TRow>): ReactElement {
-  const [openFilter, setOpenFilter] = useState<keyof TRow | null>(null);
-
-  return (
-    <tr>
-      {columns.map((col) => {
-        return (
-          <th
-            key={String(col.key)}
-            data-testid={`blotter-sort-${String(col.key)}`}
-            className={styles.headerCell}
-            onClick={() => {
-              return onSort(col.key);
-            }}
-          >
-            <span>
-              {col.label}
-              <SortIndicator column={col.key} sort={sort} />
-              {filters.has(col.key) && (
-                <span className={styles.filterDot}>{"●"}</span>
-              )}
-            </span>
-            <button
-              type="button"
-              data-testid={`blotter-filter-toggle-${String(col.key)}`}
-              onClick={(e: MouseEvent<HTMLButtonElement>): void => {
-                e.stopPropagation();
-                setOpenFilter(openFilter === col.key ? null : col.key);
-              }}
-              className={styles.filterToggle}
-            >
-              {"▽"}
-            </button>
-            {openFilter === col.key && (
-              <FilterPanel
-                col={col}
-                rows={rows}
-                currentFilter={filters.get(col.key)}
-                onApply={(f: ColumnFilter<TRow> | null): void => {
-                  onFilter(col.key, f);
-                }}
-                onClose={() => {
-                  return setOpenFilter(null);
-                }}
-              />
-            )}
-          </th>
-        );
-      })}
-    </tr>
   );
 }

@@ -4,16 +4,6 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./LiveEventLog.module.css";
 
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-// HH:MM:SS from the event timestamp — pure, locale-stable formatting.
-function clock(t: number): string {
-  const d = new Date(t);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-}
-
 /**
  * Newest-first scrolling event log. Each row carries `data-severity` so the CSS
  * paints info/warn/error without className toggling. Pure render from
@@ -49,4 +39,14 @@ export function LiveEventLog(): ReactElement {
       )}
     </div>
   );
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+// HH:MM:SS from the event timestamp — pure, locale-stable formatting.
+function clock(t: number): string {
+  const d = new Date(t);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
 }

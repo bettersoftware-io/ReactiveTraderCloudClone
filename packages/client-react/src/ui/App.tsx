@@ -13,6 +13,21 @@ import { StatusBar } from "./shell/status/StatusBar";
 
 import styles from "./App.module.css";
 
+export function App(): ReactElement {
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
+
+  return (
+    <div className={styles.app}>
+      <AmbientBackground />
+      <HeaderChrome activeTab={activeTab} onTabChange={setActiveTab} />
+      <WorkspaceEngine key={activeTab} tab={activeTab} />
+      <StatusBar />
+      <ConnectionOverlay />
+      <LockScreen />
+    </div>
+  );
+}
+
 interface WorkspaceEngineProps {
   tab: WorkspaceTab;
 }
@@ -30,20 +45,5 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
       onExpand={expand}
       onResize={resize}
     />
-  );
-}
-
-export function App(): ReactElement {
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("fx");
-
-  return (
-    <div className={styles.app}>
-      <AmbientBackground />
-      <HeaderChrome activeTab={activeTab} onTabChange={setActiveTab} />
-      <WorkspaceEngine key={activeTab} tab={activeTab} />
-      <StatusBar />
-      <ConnectionOverlay />
-      <LockScreen />
-    </div>
   );
 }

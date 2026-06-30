@@ -10,10 +10,6 @@ import { QuantityInput } from "./QuantityInput";
 
 import styles from "./NewRfqForm.module.css";
 
-interface NewRfqFormProps {
-  onCreated: (rfqId: number) => void;
-}
-
 export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
   const { useInstruments, useDealers, useRfqSubmission } = useViewModel();
   const instruments = useInstruments();
@@ -133,4 +129,8 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
       </button>
     </div>
   );
+}
+
+interface NewRfqFormProps {
+  onCreated: (rfqId: number) => void;
 }

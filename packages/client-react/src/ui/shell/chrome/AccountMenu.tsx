@@ -5,11 +5,6 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./HeaderChrome.module.css";
 
-// DECORATIVE — cosmetic HUD chrome, intentionally not wired to any port (spec: decorative-but-dead is allowed and explicit).
-// The language selector below is a fixed, uncontrolled list (Reactive Trader.dc.html:773):
-// there is no i18n backend, so picking a language does nothing — presence only.
-const LANGUAGES = ["EN", "中文", "日本", "DE", "FR", "ES"];
-
 /**
  * Account menu — the account section is REAL chrome wired to the session seam
  * (`useSession`): it shows the signed-in operator's initials, name and role from
@@ -90,3 +85,8 @@ export function AccountMenu(): ReactElement {
     </div>
   );
 }
+
+// DECORATIVE — cosmetic HUD chrome, intentionally not wired to any port (spec: decorative-but-dead is allowed and explicit).
+// The language selector below is a fixed, uncontrolled list (Reactive Trader.dc.html:773):
+// there is no i18n backend, so picking a language does nothing — presence only.
+const LANGUAGES = ["EN", "中文", "日本", "DE", "FR", "ES"];

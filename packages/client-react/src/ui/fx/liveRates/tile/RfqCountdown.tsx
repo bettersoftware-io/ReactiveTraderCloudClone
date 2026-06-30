@@ -2,11 +2,6 @@ import type { CSSProperties, ReactElement } from "react";
 
 import styles from "./RfqCountdown.module.css";
 
-interface RfqCountdownProps {
-  remainingMs: number;
-  totalMs: number;
-}
-
 export function RfqCountdown({
   remainingMs,
   totalMs,
@@ -28,4 +23,9 @@ export function RfqCountdown({
       <span className={styles.caption}>{seconds}s remaining</span>
     </div>
   );
+}
+
+interface RfqCountdownProps {
+  remainingMs: number;
+  totalMs: number;
 }

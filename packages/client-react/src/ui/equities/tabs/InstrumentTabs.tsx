@@ -4,11 +4,6 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./InstrumentTabs.module.css";
 
-interface InstrumentTabsProps {
-  selectedSymbol: string | null;
-  onSelect: (symbol: string) => void;
-}
-
 export function InstrumentTabs({
   selectedSymbol,
   onSelect,
@@ -37,4 +32,9 @@ export function InstrumentTabs({
       })}
     </nav>
   );
+}
+
+interface InstrumentTabsProps {
+  selectedSymbol: string | null;
+  onSelect: (symbol: string) => void;
 }

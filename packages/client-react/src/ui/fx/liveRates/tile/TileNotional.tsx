@@ -5,12 +5,6 @@ import type { NotionalIntents, NotionalView } from "@rtc/client-core";
 
 import styles from "./TileNotional.module.css";
 
-interface TileNotionalProps {
-  notional: { state: NotionalView } & NotionalIntents;
-  baseCurrency: string;
-  disabled?: boolean;
-}
-
 export function TileNotional({
   notional,
   baseCurrency,
@@ -64,4 +58,10 @@ export function TileNotional({
       )}
     </div>
   );
+}
+
+interface TileNotionalProps {
+  notional: { state: NotionalView } & NotionalIntents;
+  baseCurrency: string;
+  disabled?: boolean;
 }

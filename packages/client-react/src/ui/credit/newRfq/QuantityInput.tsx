@@ -8,11 +8,6 @@ import {
 
 import styles from "./QuantityInput.module.css";
 
-interface QuantityInputProps {
-  value: string;
-  onChange: (value: string) => void;
-}
-
 export function QuantityInput({
   value,
   onChange,
@@ -37,4 +32,9 @@ export function QuantityInput({
       />
     </div>
   );
+}
+
+interface QuantityInputProps {
+  value: string;
+  onChange: (value: string) => void;
 }

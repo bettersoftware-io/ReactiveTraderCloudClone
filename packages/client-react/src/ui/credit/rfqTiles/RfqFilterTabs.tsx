@@ -2,15 +2,6 @@ import type { ReactElement } from "react";
 
 import styles from "./RfqFilterTabs.module.css";
 
-export type RfqFilter = "Live" | "All" | "Done" | "Expired" | "Cancelled";
-
-const FILTERS: RfqFilter[] = ["Live", "All", "Done", "Expired", "Cancelled"];
-
-interface RfqFilterTabsProps {
-  selected: RfqFilter;
-  onChange: (filter: RfqFilter) => void;
-}
-
 export function RfqFilterTabs({
   selected,
   onChange,
@@ -35,4 +26,13 @@ export function RfqFilterTabs({
       })}
     </div>
   );
+}
+
+export type RfqFilter = "Live" | "All" | "Done" | "Expired" | "Cancelled";
+
+const FILTERS: RfqFilter[] = ["Live", "All", "Done", "Expired", "Cancelled"];
+
+interface RfqFilterTabsProps {
+  selected: RfqFilter;
+  onChange: (filter: RfqFilter) => void;
 }
