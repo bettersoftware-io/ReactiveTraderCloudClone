@@ -156,7 +156,7 @@ export default tseslint.config(
     // leaking RxJS subscriptions. `react-hooks/refs` is scoped off for these
     // two files ONLY — it stays active everywhere else (it caught FxBlotter).
     files: [
-      "packages/client-react/src/ui/hooks/useMachine.ts",
+      "packages/client-react/src/ui/viewModel/useMachine.ts",
       "packages/client-react/src/AppRoot.tsx",
     ],
     rules: { "react-hooks/refs": "off" },

@@ -94,7 +94,7 @@ presenters) and the **enforced** gate is the contract ≥95% `src/ui` gate (gree
 
 **Architecture gates 26–29 added and GREEN.** `tests/scripts/grep-gates.ts`
 now ENFORCES the Dumb-UI rules against production `src/ui` (the
-`src/ui/hooks/` bridge dir and `*.test.`/`*.spec.` files are exempt):
+`src/ui/viewModel/` bridge dir and `*.test.`/`*.spec.` files are exempt):
 
 - **26** — no `rxjs` / `@react-rxjs` / `@rx-state` import in `src/ui` (bridge only).
 - **27** — no `localStorage` in `src/ui` (persistence lives in app-layer ports).
@@ -173,7 +173,7 @@ post-behaviour-sync codebase; intentionally-open gaps are documented below.
 | `ui/fx/blotter/columnFilter/filterState.ts` line 87 | `return true` fallthrough | TypeScript-exhaustive: `ColumnFilter` is a discriminated union with three types (`set`/`number`/`date`). The fallthrough only fires for a value outside the union, which the type system prevents. |
 | `ui/fx/liveRates/tile/TileRfq.tsx` line 45 | `if (!quote) return` after `rfqState.accept()` | The button renders only when `state.status === "received" && state.quote` (line 87). `quote` is captured before `accept()`. Structurally unreachable while `state.quote` is non-null at render. |
 | `ui/fx/liveRates/tile/TileConfirmation.tsx` line 102 | `default: return "unknown"` in switch | Exhaustive switch over `ExecutionStatus` — all enum members handled above. Defensive fallthrough for future enum additions. |
-| `ui/shell/connection/useViewModel.ts` line 11 | `throw new Error(...)` | Only fires when `useContext(ViewModelContext)` returns null — outside `ViewModelProvider`. All contract tests mount within the provider. |
+| `src/ui/viewModel/useViewModel.ts` line 11 | `throw new Error(...)` | Only fires when `useContext(ViewModelContext)` returns null — outside `ViewModelProvider`. All contract tests mount within the provider. |
 | `ui/shell/theme/useTheme.ts` line 7 | `throw new Error(...)` | Same: defensive provider-missing guard; always wrapped in `ThemeProvider` in tests. |
 | `ui/fx/analytics/PositionBubbles.tsx`, `ui/fx/analytics/PairPnlBars.tsx` | entire files | Excluded from contract tier scope (`coverage.exclude` in `vitest.config.ts`). D3/canvas render paths with no DOM-assertable logic — owned by the visual tier. |
 
