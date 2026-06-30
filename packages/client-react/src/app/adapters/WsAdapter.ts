@@ -5,9 +5,8 @@
 
 import { type Observable, ReplaySubject } from "rxjs";
 
+import type { IWsAdapter, MessageHandler } from "@rtc/client-core";
 import type { ConnectionEvent } from "@rtc/domain";
-
-import type { IWsAdapter, MessageHandler } from "./IWsAdapter";
 
 interface WsMessage {
   readonly type: string;
