@@ -114,6 +114,28 @@ the existing convention and prevent regressions.
 - `FxBlotter.contract.spec.ts` — 1 nested `RecordingBlob`: needs nothing
   (1 class, not top-level).
 
+**e2e / harness carve-out (added 2026-06-30 after wiring the rule — the live
+ESLint run surfaced 27 violators in the repo-root `tests/` tree that the
+planning scan, scoped to `packages/`, missed):**
+- `tests/browser/page-objects/{cypress,playwright}/**` — 20 page objects use
+  framework-prefixed class names (`CypressBlotterTable` / `PlaywrightBlotterTable`)
+  inside subject-named files (`BlotterTable.ts`) that mirror the shared
+  `contracts/<Subject>.ts`. The `cypress/ <-> playwright/ <-> contracts/`
+  filename parallelism is the whole point, so the filename intentionally matches
+  the *contract*, not the *class*. This is a **systematic convention across 20
+  files**, not a one-off, so — by explicit user decision — it is scoped off
+  `rtc/class-filename-match` with a documented `eslint.config.mjs` block rather
+  than 20 near-identical per-file disables. This is the sanctioned exception to
+  the "no config carve-out" default above: a carve-out is warranted when the
+  deviation is a *deliberate parallel structure*, not a scattered handful.
+- `**/world.ts` — the 4 cucumber World subclasses (`PresenterWorld`,
+  `PlaywrightWorld`, `FakePresenterWorld`, `VitestFakePresenterWorld`) live in
+  `world.ts` by the `setWorldConstructor` framework convention, one World per
+  flavor directory. Carved off the rule (filename is the cucumber idiom).
+- The two remaining harness one-offs stay as **per-file disables** (Task 6):
+  `tests/browser/testContext.ts` (`Scratchpad`) and
+  `tests/presenter/scenarios/_await.ts` (`RealAwaitHelpers`).
+
 **Coverage config:** add `**/*.testHelpers.ts` to the `exclude` arrays in
 `packages/server/vitest.config.ts`,
 `packages/client-react/vitest.app.coverage.config.ts`, and

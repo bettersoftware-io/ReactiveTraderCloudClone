@@ -179,5 +179,25 @@ export default tseslint.config(
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/class-filename-match": "error" },
   },
+  {
+    // Carve-out: e2e page objects use framework-prefixed class names
+    // (CypressBlotterTable / PlaywrightBlotterTable) inside subject-named files
+    // that mirror the shared contracts/<Subject>.ts. The cypress/ <-> playwright/
+    // <-> contracts/ filename parallelism is deliberate, so the filename matches
+    // the contract, not the class. A systematic convention across 20 files (not a
+    // one-off), so it is scoped off the rule rather than disabled per file.
+    files: [
+      "tests/browser/page-objects/cypress/**/*.ts",
+      "tests/browser/page-objects/playwright/**/*.ts",
+    ],
+    rules: { "rtc/class-filename-match": "off" },
+  },
+  {
+    // Carve-out: cucumber World classes live in `world.ts` by framework
+    // convention (setWorldConstructor) — one World per flavor directory. The
+    // filename is the cucumber idiom, not the class name.
+    files: ["**/world.ts"],
+    rules: { "rtc/class-filename-match": "off" },
+  },
   prettier,
 );

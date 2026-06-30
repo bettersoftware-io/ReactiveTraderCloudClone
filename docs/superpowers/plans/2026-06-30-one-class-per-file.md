@@ -682,11 +682,24 @@ git commit -m "refactor(test): extract MountedComponent + MockWebSocket/FakeWs t
 
 ### Task 6: Inline disables + final green verification
 
+> **Scope amendment (2026-06-30, post-Task-2):** the live ESLint run surfaced 27
+> violators outside `packages/` that the planning scan missed —
+> `tests/browser/page-objects/{cypress,playwright}/**` (20 framework-prefixed
+> page-object classes) and 7 harness files. Per user decision these are handled by
+> two **config carve-outs** added to `eslint.config.mjs` alongside the Task-2 wiring
+> (`tests/browser/page-objects/{cypress,playwright}/**/*.ts` and `**/world.ts` →
+> `rtc/class-filename-match: "off"`), leaving only `tests/browser/testContext.ts`
+> (`Scratchpad`) and `tests/presenter/scenarios/_await.ts` (`RealAwaitHelpers`) as
+> two ADDITIONAL per-file disables in Step 1 below. See the spec's "e2e / harness
+> carve-out" decision. After the carve-outs the pre-migration surface is 11 files.
+
 **Files:**
 - Modify: `packages/client-react/tests/setup/jsdom-storage.ts`
 - Modify: `packages/client-react/src/ui/fx/blotter/csvExport.test.ts`
 - Modify: `packages/domain/src/simulators/AnalyticsSimulator.minimalHistory.contract.test.ts`
 - Modify: `packages/client-react/tests/ui/contract/specs/credit/blotter/CreditBlotter.contract.spec.ts`
+- Modify: `tests/browser/testContext.ts`
+- Modify: `tests/presenter/scenarios/_await.ts`
 
 - [ ] **Step 1: Disable Rule B on the small / internal top-level doubles**
 
@@ -701,6 +714,14 @@ Directly above the top-level `class RecordingBlob extends RealBlob {` in `csvExp
 Directly above `class SingleEntryAnalyticsStub implements AnalyticsPort {` in `AnalyticsSimulator.minimalHistory.contract.test.ts`, add:
 ```ts
 // eslint-disable-next-line rtc/class-filename-match -- small local AnalyticsPort stub; file is named after the system under test
+```
+Directly above `export class Scratchpad` in `tests/browser/testContext.ts`, add:
+```ts
+// eslint-disable-next-line rtc/class-filename-match -- shared e2e scratchpad helper; testContext.ts is a purpose-named harness module
+```
+Directly above `export class RealAwaitHelpers` in `tests/presenter/scenarios/_await.ts`, add:
+```ts
+// eslint-disable-next-line rtc/class-filename-match -- await-helper bundle in a purpose-named scenarios module
 ```
 
 - [ ] **Step 2: Disable `max-classes-per-file` on the two-double contract spec**
