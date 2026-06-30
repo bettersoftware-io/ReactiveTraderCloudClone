@@ -23,7 +23,7 @@ import type { AppData } from "../shared/appData";
 
 function noop(): void {}
 
-export function buildFakeHooks(data: AppData): ViewModel {
+export function buildFakeViewModel(data: AppData): ViewModel {
   return {
     usePrice: (pair: CurrencyPair) => {
       return data.prices[pair.symbol] ?? null;

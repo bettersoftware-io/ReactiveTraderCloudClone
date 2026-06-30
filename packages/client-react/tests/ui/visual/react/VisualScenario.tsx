@@ -5,7 +5,7 @@ import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import { fixtures } from "../shared/fixtures";
 import { scenarios } from "../shared/scenarios";
-import { buildFakeHooks } from "./buildFakeHooks";
+import { buildFakeViewModel } from "./buildFakeViewModel";
 import { registry } from "./registry";
 
 // Components that paint their own full-height/viewport container and must not
@@ -58,14 +58,14 @@ export function VisualScenario({
 
   if (FULL_BLEED.has(scenario.componentKey)) {
     return (
-      <ViewModelProvider viewModel={buildFakeHooks(data)}>
+      <ViewModelProvider viewModel={buildFakeViewModel(data)}>
         <ThemeProvider>{render(scenario.fixtureKey)}</ThemeProvider>
       </ViewModelProvider>
     );
   }
 
   return (
-    <ViewModelProvider viewModel={buildFakeHooks(data)}>
+    <ViewModelProvider viewModel={buildFakeViewModel(data)}>
       <ThemeProvider>
         <div
           data-testid="scenario-root"

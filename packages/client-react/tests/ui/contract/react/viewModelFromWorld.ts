@@ -58,7 +58,7 @@ function useSubject<T>(subject: BehaviorSubject<T>): T {
 }
 
 /** Build a reactive ViewModel backed by the neutral World. */
-export function reactHooks(world: World): ViewModel {
+export function reactViewModel(world: World): ViewModel {
   const s = world.sources;
   return {
     // Parametric query hooks: each call subscribes to the World's per-key

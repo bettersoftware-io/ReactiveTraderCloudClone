@@ -13,7 +13,7 @@ import type {
   MountedComponent,
 } from "../shared/harness/component";
 import type { World } from "../shared/harness/world";
-import { reactHooks } from "./hooksFromWorld";
+import { reactViewModel } from "./viewModelFromWorld";
 import { PropsHost } from "./PropsHost";
 import { registry } from "./registry";
 
@@ -29,7 +29,7 @@ export const reactDriver: UiContractDriver = {
   ): MountedRoot {
     const build = registry.get(token);
     if (!build) throw new Error("No React registry entry for the given token.");
-    const hooks = reactHooks(world);
+    const hooks = reactViewModel(world);
     const { container, unmount } = rtlRender(
       <ViewModelProvider viewModel={hooks}>
         <ThemeProvider>
