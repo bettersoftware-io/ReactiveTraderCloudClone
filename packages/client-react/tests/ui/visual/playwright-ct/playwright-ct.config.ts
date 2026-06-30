@@ -36,9 +36,12 @@ export default defineConfig({
   // reddening main with no real visual change. A small maxDiffPixelRatio absorbs
   // the AA noise while still catching genuine layout/structure regressions — the
   // goldens' actual job as the cross-framework portability contract — which move
-  // far more than 2.5% of pixels. The plain-Playwright and vitest-browser tiers
-  // have not shown this jitter (different render pipelines); revisit if they do.
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.025 } },
+  // far more than 6% of pixels. Raised from 0.025 to 0.06: text-heavy
+  // fixed-dimension goldens (e.g. fxBlotter populated/sorted) show ~0.04 ratio
+  // of sub-pixel AA jitter on x86 run-to-run (dimensions stable, content byte-
+  // identical); 0.025 was too tight. The plain-Playwright and vitest-browser
+  // tiers have not shown this jitter (different render pipelines).
+  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.06 } },
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
   // siblings (the html reporter wipes its own folder). ../../../../ = packages/client-react.
   reporter: [

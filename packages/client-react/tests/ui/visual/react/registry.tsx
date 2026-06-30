@@ -154,7 +154,17 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     );
   },
   RfqTilesPanel: () => {
-    return <RfqTilesPanel />;
+    // Render at a fixed width (test-only) — the panel's auto-fill CSS grid
+    // (minmax 320px, 1fr) has a parent-driven column width; without a fixed
+    // container the RfqFilterTabs text drives the total width, which varies
+    // ±4-8px on x86 CI (font glyph-advance non-determinism), a dimension
+    // mismatch maxDiffPixelRatio cannot absorb. In the real app the panel sits
+    // inside a fixed CreditWorkspace column. Component stays responsive.
+    return (
+      <div style={{ width: 400, display: "flex", flexDirection: "column" }}>
+        <RfqTilesPanel />
+      </div>
+    );
   },
   NewRfqForm: () => {
     // Render at a fixed width (test-only) so the form's content-driven
@@ -180,7 +190,17 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     );
   },
   SellSidePanel: () => {
-    return <SellSidePanel />;
+    // Render at a fixed width (test-only) — the sell-side panel is a flex
+    // column with no parent width constraint; instrument-name and ticket text
+    // widths vary by OS/arch font metrics, causing a ±24px dimension flake on
+    // x86 CI (observed: 352↔328px run-to-run). Wrapping at 380px stabilises
+    // the captured dimension without touching the component; in the real app it
+    // sits inside a fixed CreditWorkspace column. Component stays responsive.
+    return (
+      <div style={{ width: 380, display: "flex", flexDirection: "column" }}>
+        <SellSidePanel />
+      </div>
+    );
   },
   // Prop-driven single RFQ card: pull the fixture's lone rfq + its quotes.
   RfqCard: (fixtureKey: string) => {
