@@ -30,6 +30,7 @@ src/index.ts            barrel re-exports (presenters, machines, composition, po
 src/presenters/**       (moved from client-react/src/app/presenters)
 src/machine.ts          (moved; the Machine type + base)
 src/layout/**           (moved from client-react/src/app/layout)
+src/theme/colorSchemeSource.ts  (moved; neutral ColorSchemeSource port interface — MediaQueryColorSchemeAdapter stays in client-react)
 src/composition.ts      neutral: createApp, createMachineFactories, routeIdleLifecycle, types
 src/adapters/IWsAdapter.ts             (moved; interface)
 src/adapters/WsConnectionEventsAdapter.ts (moved; universal)
@@ -246,9 +247,10 @@ This is the bulk move and involves **no DI change** — pure relocation + intra-
 **Files:**
 - Move (whole dirs): `packages/client-react/src/app/presenters/` → `packages/client-core/src/presenters/`; `packages/client-react/src/app/layout/` → `packages/client-core/src/layout/`
 - Move: `packages/client-react/src/app/presenters/machine.ts` travels inside the dir move.
-- Modify: every moved file's intra-imports (`#/app/presenters/X` → `#/presenters/X`, `#/app/layout/X` → `#/layout/X`).
-- Modify: `packages/client-core/src/index.ts` (barrel).
-- Modify: re-point sites in `client-react` that import these (chiefly `src/ui/viewModel/createViewModel.ts`, `AppRoot.tsx`, and UI components).
+- **Move (theme interface — neutral port):** `packages/client-react/src/app/theme/colorSchemeSource.ts` → `packages/client-core/src/theme/colorSchemeSource.ts`. This is a pure rxjs-typed port interface (`ColorSchemeSource`) that `ThemePreferencePresenter` (now in client-core) depends on, so it must travel with the presenters. **Leave `packages/client-react/src/app/theme/MediaQueryColorSchemeAdapter.ts` in client-react** — it is the browser `window.matchMedia` implementation (it stays, like `WsAdapter`/`BrowserConnectionEventsAdapter`/`LocalStoragePreferencesAdapter`), and its import of the interface re-points from `#/app/theme/colorSchemeSource` → `@rtc/client-core`. (`MediaQueryColorSchemeAdapter` is constructed in `composition.ts`'s browser half today; it migrates into `buildBrowserPorts` in Task 5.)
+- Modify: every moved file's intra-imports (`#/app/presenters/X` → `#/presenters/X`, `#/app/layout/X` → `#/layout/X`, `#/app/theme/colorSchemeSource` → `#/theme/colorSchemeSource`).
+- Modify: `packages/client-core/src/index.ts` (barrel) — include the theme interface.
+- Modify: re-point sites in `client-react` that import these (chiefly `src/ui/viewModel/createViewModel.ts`, `AppRoot.tsx`, `src/app/theme/MediaQueryColorSchemeAdapter.ts`, and UI components).
 
 **Interfaces:**
 - Produces (from `@rtc/client-core`): all presenter classes (e.g. `PriceStreamPresenter`, `CurrencyPairsPresenter`, `ConnectionStatusPresenter`, `BlotterPresenter`, `TradeExecutionPresenter`, …), all machine factories (e.g. `createNotionalMachine`, `createLayoutMachine`, `createBootSequenceMachine`, …), the `Machine`/`MachineFactories` types from `machine.ts`, and layout (`createDefaultLayoutPort`, `WorkspaceTab`, `layoutPort` types).
@@ -258,7 +260,10 @@ This is the bulk move and involves **no DI change** — pure relocation + intra-
 ```bash
 git mv packages/client-react/src/app/presenters packages/client-core/src/presenters
 git mv packages/client-react/src/app/layout packages/client-core/src/layout
+mkdir -p packages/client-core/src/theme
+git mv packages/client-react/src/app/theme/colorSchemeSource.ts packages/client-core/src/theme/colorSchemeSource.ts
 ```
+(`packages/client-react/src/app/theme/MediaQueryColorSchemeAdapter.ts` stays put.)
 
 - [ ] **Step 2: Re-point intra-package imports inside the moved files**
 
@@ -274,6 +279,7 @@ Find them: `grep -rn "#/app/" packages/client-core/src` — every hit must becom
 ```ts
 export * from "#/presenters/index";
 export * from "#/layout/index";
+export * from "#/theme/colorSchemeSource";
 ```
 
 If `presenters/` and `layout/` lack an `index.ts`, create one in each that re-exports every public module (list them explicitly; do not use a glob). Example `packages/client-core/src/layout/index.ts`:
@@ -289,7 +295,7 @@ For `presenters/index.ts`, re-export each presenter and machine module by name (
 
 In `packages/client-react/src`, replace the presenter/layout import sites (chiefly `src/ui/viewModel/createViewModel.ts`, `AppRoot.tsx`, and a few UI components). Each `import { X } from "#/app/presenters/Y"` or `"#/app/layout/Y"` becomes `import { X } from "@rtc/client-core"`. Note `createViewModel.ts` imports many presenter/machine types via `#/app/presenters/*` and `#/app/layout/*` (e.g. `AppCommands`/`Presenters` from `#/app/composition`, `MachineFactories` from `#/app/presenters/machine`) — re-point the presenter/layout ones now; the `#/app/composition` import is re-pointed in Task 5 when composition moves.
 
-Find them: `grep -rn '#/app/\(presenters\|layout\)' packages/client-react/src`. Re-point every hit. Add `"@rtc/client-core": "workspace:*"` to `packages/client-react/package.json` dependencies.
+Find them: `grep -rn '#/app/\(presenters\|layout\|theme/colorSchemeSource\)' packages/client-react/src`. Re-point every hit (this includes `src/app/theme/MediaQueryColorSchemeAdapter.ts`, which imports the now-moved `ColorSchemeSource` interface). Add `"@rtc/client-core": "workspace:*"` to `packages/client-react/package.json` dependencies.
 
 - [ ] **Step 5: Install, build, typecheck, test — verify green**
 
