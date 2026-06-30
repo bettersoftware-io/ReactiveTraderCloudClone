@@ -577,15 +577,17 @@ git commit -m "refactor(client): extract SpreadDisplay into its own file + modul
 > ABSOLUTE first declaration after imports, so every `Props` interface, type,
 > and const moves below it. After merging the latest `origin/main` (which added
 > `react-bindings`/`client-prototype` and removed the `hooks/` dir), the live
-> count is **66 `notLede` files + 1 `multipleExports` (TilePrice, split in
-> Task 3) + 0 `filenameMismatch`** across 83 non-test `.tsx` files. The
-> migration is **autofix-driven**: `eslint --fix` on the glob fixes ALL 66
-> regardless of the exact list — do NOT hand-enumerate. Comment preservation
-> verified zero-loss across all 66 (`.superpowers/sdd/cn-probe-all.mjs`).
+> count is **66 `notLede` files + 1 `multipleExports` (TilePrice) + 0
+> `filenameMismatch`** across 83 non-test `.tsx` files. After the Task-3 split
+> removes TilePrice's second export, TilePrice itself becomes a `notLede` fix,
+> so the Task-4 reorder touches **67** files. The migration is
+> **autofix-driven**: `eslint --fix` on the glob fixes them ALL regardless of
+> the exact list — do NOT hand-enumerate. Comment preservation verified
+> zero-loss across all of them (`.superpowers/sdd/cn-probe-all.mjs`).
 
 **Files (all Modify, via `eslint --fix`):** every `notLede` violator under
-`packages/client-react/src/**/*.tsx` (66 post-merge) — the autofix discovers
-and fixes them all; no manual list. The original 11 (App, AdminDashboard,
+`packages/client-react/src/**/*.tsx` (67 after the TilePrice split) — the
+autofix discovers and fixes them all; no manual list. The original 11 (App, AdminDashboard,
 MetricGauges, RfqTilesPanel, SellSidePanel, DepthLadder, SectorHeatmap,
 Watchlist, TileConfirmation, TilePrice, InhouseLayoutEngine) are a subset; the
 rest are files with a `Props` interface / type / const above the component.

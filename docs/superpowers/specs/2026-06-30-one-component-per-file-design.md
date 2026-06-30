@@ -125,10 +125,13 @@ into separate files.
 > sharply: strict flags **66** files, component-only flags **11**. The user
 > chose **strict full-newspaper** — every `Props` interface, type, and const
 > moves below the exported component. The 11-file list below is therefore a
-> *subset*; the real migration autofixes ALL ~66 `notLede` violators (count
-> measured after merging the latest `origin/main`). The autofix is
-> count-agnostic (`eslint --fix` on the glob), TDZ-safe by construction, and
-> comment-preserving (verified zero-loss across all 66).
+> *subset*; the real migration autofixes ALL `notLede` violators. Post-merge
+> there are **66** `notLede` files while `TilePrice` still exports two
+> components (it reports `multipleExports`, not `notLede`); once the Task-3
+> split removes its second export, `TilePrice` itself becomes a `notLede` fix,
+> so the Task-4 reorder touches **67** files. The autofix is count-agnostic
+> (`eslint --fix` on the glob), TDZ-safe by construction, and comment-preserving
+> (verified zero-loss across all of them).
 
 **Split (1, manual):**
 - `packages/client-react/src/ui/fx/liveRates/tile/TilePrice.tsx` exports
@@ -212,3 +215,13 @@ splits, which were verified byte-identical.
   export-is-lede boundary is enforced; private components keep their order).
 - Any change to the existing `rtc/newspaper-order` (tests) or
   `rtc/class-filename-match` (classes) rules.
+- **Indirect / specifier export forms.** `componentInfo` detects
+  `export function`, `export const`, and named `export default function` forms.
+  It does NOT resolve a component reached only via an `export { Foo }` /
+  `export { Foo as Bar }` specifier or an `export default <Identifier>`
+  reference back to a top-level declaration — such a component is treated as
+  non-exported (Facets 1/3 won't fire). This is a deliberate limitation:
+  `packages/client-react/src` uses `export function PascalCase()` uniformly
+  (0 `export default`, 0 `export {` component specifiers, 0 `styled`/`memo`/
+  `forwardRef` default-exports), so there is no current gap. Harden by
+  resolving specifiers/identifiers only if that convention changes.
