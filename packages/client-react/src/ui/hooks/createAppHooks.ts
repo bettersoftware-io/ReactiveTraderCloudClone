@@ -490,8 +490,10 @@ export function createAppHooks(
       return {
         mode,
         modePreference,
+        // cycle() reads the current preference in the presenter (not this render's
+        // captured value), so rapid clicks each advance from the true state.
         cycle: () => {
-          return presenters.themePreference.cycle(modePreference);
+          return presenters.themePreference.cycle();
         },
       };
     },

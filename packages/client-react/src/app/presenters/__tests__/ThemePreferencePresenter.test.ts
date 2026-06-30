@@ -61,16 +61,18 @@ describe("ThemePreferencePresenter", () => {
     expect(seen).toEqual(["dark", "light"]);
   });
 
-  it("cycle advances dark → light → system → dark", () => {
+  it("cycle advances dark → light → system → dark from the live current value", () => {
     const prefs = new PreferencesSimulator();
     const presenter = new ThemePreferencePresenter(prefs, colorScheme(true));
     const seen: ThemeModePreference[] = [];
     const sub = presenter.modePreference$.subscribe((p) => {
       seen.push(p);
     });
-    presenter.cycle("dark");
-    presenter.cycle("light");
-    presenter.cycle("system");
+    // Three zero-arg cycles in a row — each must advance from the true current
+    // value (no stale-closure no-op), even back-to-back.
+    presenter.cycle();
+    presenter.cycle();
+    presenter.cycle();
     sub.unsubscribe();
     expect(seen).toEqual(["dark", "light", "system", "dark"]);
   });

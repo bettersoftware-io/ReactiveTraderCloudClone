@@ -270,7 +270,11 @@ export function reactHooks(world: World): AppHooks {
         mode: resolveThemeMode(modePreference, true),
         modePreference,
         cycle: () => {
-          return world.themeMode.next(nextThemeModePreference(modePreference));
+          // Read the current value (not the captured one) so rapid clicks each
+          // advance from the true state, mirroring the real presenter's cycle().
+          return world.themeMode.next(
+            nextThemeModePreference(world.themeMode.getValue()),
+          );
         },
       };
     },

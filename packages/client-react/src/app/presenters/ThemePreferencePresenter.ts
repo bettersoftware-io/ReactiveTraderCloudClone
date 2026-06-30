@@ -4,9 +4,11 @@ import {
   map,
   type Observable,
   shareReplay,
+  take,
 } from "rxjs";
 
 import {
+  DEFAULT_THEME_MODE_PREFERENCE,
   nextThemeModePreference,
   type PreferencesPort,
   resolveThemeMode,
@@ -55,8 +57,18 @@ export class ThemePreferencePresenter {
   }
 
   /** Advance the stored preference one step in the toggle cycle
-   * (dark → light → system → dark), relative to the supplied current value. */
-  cycle(current: ThemeModePreference): void {
+   * (dark → light → system → dark). Reads the CURRENT persisted preference
+   * synchronously (themeMode$ is replay-current) rather than from a caller's
+   * captured value, so rapid successive clicks each advance from the true state
+   * instead of a stale render closure. */
+  cycle(): void {
+    let current: ThemeModePreference = DEFAULT_THEME_MODE_PREFERENCE;
+    this.preferences
+      .themeMode$()
+      .pipe(take(1))
+      .subscribe((p) => {
+        current = p;
+      });
     this.setMode(nextThemeModePreference(current));
   }
 }
