@@ -2,8 +2,12 @@
 
 import { merge, Subject, type Subscription } from "rxjs";
 
-import { createSimulatorPorts } from "@rtc/client-core";
-import { type App, type AppPorts, createApp } from "@rtc/client-react";
+import {
+  type App,
+  type AppPorts,
+  createApp,
+  createSimulatorPorts,
+} from "@rtc/client-core";
 import {
   type ConnectionEvent,
   ConnectionEventsSimulator,
@@ -43,9 +47,11 @@ export interface IncidentPresenterCtx {
  * Builds a simulator-ports app whose connection events include a reactive
  * bridge driven by IncidentMachine.state$.
  *
- * Problem: composition.ts wires IncidentMachine → module-level incident$, but
- * that Subject is not exported. Calling buildDefaultPorts() would access
- * import.meta.env (Vite-only), which throws in Node.js/tsx.
+ * Problem: composition.ts wires IncidentMachine → a module-level incident$
+ * Subject in @rtc/client-core. This helper builds an instance-scoped bridge
+ * instead of reusing that singleton, and avoids buildBrowserPorts() (the
+ * browser composition), which accesses import.meta.env (Vite-only) and throws
+ * in Node.js/tsx.
  *
  * Solution: build a custom connectionEvents port with myIncident$, then
  * subscribe to app.presenters.incident.state$ and re-emit the equivalent
