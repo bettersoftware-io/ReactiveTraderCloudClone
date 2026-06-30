@@ -58,6 +58,34 @@ importers:
         specifier: ^4
         version: 4.1.9(@types/node@26.0.0)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-istanbul@4.1.9)(@vitest/coverage-v8@4.1.9)(@vitest/ui@4.1.9)(jsdom@29.1.1)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
+  packages/client-core:
+    dependencies:
+      '@rtc/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@rx-state/core':
+        specifier: ^0.1.4
+        version: 0.1.4(rxjs@7.8.2)
+      rxjs:
+        specifier: ^7.8
+        version: 7.8.2
+    devDependencies:
+      '@types/node':
+        specifier: ^26.0.0
+        version: 26.0.0
+      '@vitest/coverage-v8':
+        specifier: ^4.1.8
+        version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
+      tsc-alias:
+        specifier: 1.8.17
+        version: 1.8.17
+      vitest:
+        specifier: ^4
+        version: 4.1.9(@types/node@26.0.0)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-istanbul@4.1.9)(@vitest/coverage-v8@4.1.9)(@vitest/ui@4.1.9)(jsdom@29.1.1)(vite@8.0.16(@types/node@26.0.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
+
   packages/client-react:
     dependencies:
       '@react-rxjs/core':
