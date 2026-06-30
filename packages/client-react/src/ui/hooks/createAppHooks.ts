@@ -6,6 +6,7 @@ import {
   ConnectionStatus,
   type CurrencyPair,
   DEFAULT_THEME_MODE,
+  DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type Dealer,
@@ -25,6 +26,7 @@ import {
   type ServiceTopology,
   type SessionInfo,
   type ThemeMode,
+  type ThemeModePreference,
   type ThemeSkin,
   type Trade,
   type ViewMode,
@@ -99,9 +101,12 @@ interface MetricsView {
 }
 
 interface UseThemePreferenceResult {
+  /** The resolved mode that paints (system already collapsed to dark | light). */
   mode: ThemeMode;
-  setMode: (mode: ThemeMode) => void;
-  toggle: () => void;
+  /** The stored choice (dark | light | system) — drives the toggle's icon. */
+  modePreference: ThemeModePreference;
+  /** Advance the stored preference one step: dark → light → system → dark. */
+  cycle: () => void;
 }
 
 interface UseThemeSkinPreferenceResult {
@@ -277,10 +282,10 @@ export function createAppHooks(
     presenters.themePreference.mode$,
     DEFAULT_THEME_MODE,
   );
-
-  function setThemeMode(mode: ThemeMode): void {
-    presenters.themePreference.setMode(mode);
-  }
+  const [useThemeModePreferenceValue] = bind(
+    presenters.themePreference.modePreference$,
+    DEFAULT_THEME_MODE_PREFERENCE,
+  );
 
   const [useThemeSkinValue] = bind(
     presenters.themeSkinPreference.skin$,
@@ -476,15 +481,19 @@ export function createAppHooks(
     useThroughput: () => {
       return { ...useThroughputState(), setValue: setThroughput };
     },
-    // Global theme mode: read the currently-bound mode in the hook body so the
-    // component calls a zero-arg toggle() that flips relative to the live value.
+    // Global theme mode: read the resolved mode (for painting) and the stored
+    // preference (for the toggle icon) in the hook body, so the component calls a
+    // zero-arg cycle() that advances relative to the live preference value.
     useThemePreference: () => {
       const mode = useThemeModeValue();
+      const modePreference = useThemeModePreferenceValue();
       return {
         mode,
-        setMode: setThemeMode,
-        toggle: () => {
-          return presenters.themePreference.toggle(mode);
+        modePreference,
+        // cycle() reads the current preference in the presenter (not this render's
+        // captured value), so rapid clicks each advance from the true state.
+        cycle: () => {
+          return presenters.themePreference.cycle();
         },
       };
     },

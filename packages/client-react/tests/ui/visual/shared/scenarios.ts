@@ -78,6 +78,8 @@ export const scenarios: Record<string, Scenario> = {
   "app/admin": { componentKey: "App", fixtureKey: "app-fx" },
   // Light-theme variant of the FX page (fixture seeds theme "light" through the seam).
   "app/fx-light": { componentKey: "App", fixtureKey: "app-fx-light" },
+  // System mode-preference variant: pins the third (🖥️) toggle icon (resolves to dark).
+  "app/fx-system": { componentKey: "App", fixtureKey: "app-fx-system" },
 
   // --- Phase V deterministic golden scenarios ---
   // FX tiles: TilePrice DOWN / NONE colour arms + TileChart down/empty arms.

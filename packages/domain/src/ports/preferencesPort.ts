@@ -2,7 +2,7 @@ import type { Observable } from "rxjs";
 
 import type {
   BootVariant,
-  ThemeMode,
+  ThemeModePreference,
   ThemeSkin,
   ViewMode,
 } from "../preferences/preferences.js";
@@ -18,9 +18,12 @@ import type {
  * (off by default).
  */
 export interface PreferencesPort {
-  /** Replay-current theme-mode stream; emits synchronously on subscribe. */
-  themeMode$(): Observable<ThemeMode>;
-  setThemeMode(mode: ThemeMode): void;
+  /** Replay-current theme-mode preference stream; emits synchronously on
+   * subscribe. The value is the stored CHOICE (dark | light | system), not the
+   * resolved mode — "system" is collapsed to a concrete mode downstream via
+   * `resolveThemeMode`. */
+  themeMode$(): Observable<ThemeModePreference>;
+  setThemeMode(mode: ThemeModePreference): void;
   /** Replay-current theme-skin stream; emits synchronously on subscribe. */
   themeSkin$(): Observable<ThemeSkin>;
   setThemeSkin(skin: ThemeSkin): void;
