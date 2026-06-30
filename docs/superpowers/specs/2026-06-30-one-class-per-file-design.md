@@ -68,12 +68,21 @@ the existing convention and prevent regressions.
 
 ## Migration inventory
 
-**Split (1, production):**
+**Split (2, production):**
 - `packages/domain/src/simulators/creditReferenceDataSimulator.ts` (2 classes,
   camelCase name) → `InstrumentSimulator.ts` (with `INSTRUMENTS_CATALOG`) +
   `DealerSimulator.ts` (with `DEALERS_CATALOG`). Update the domain barrel
   (`packages/domain/src/index.ts`) and the two contract-test imports
   (`InstrumentSimulator.contract.test.ts`, `DealerSimulator.contract.test.ts`).
+- `packages/client-react/src/app/presenters/MetricsPresenters.ts` (3 classes —
+  `ThroughputMetricPresenter`, `LatencyPresenter`, `ErrorRatePresenter`; plural
+  filename matches none) → `ThroughputMetricPresenter.ts` + `LatencyPresenter.ts`
+  + `ErrorRatePresenter.ts`. Update the importer `src/app/composition.ts`.
+  `MetricsPresenters.test.ts` violates no rule (no top-level class) so it can
+  keep its name and import from the three new files; splitting it into
+  per-presenter tests to mirror the repo's one-test-per-presenter convention is
+  optional (plan's choice, not rule-required). *(Added 2026-06-30 after merging
+  Admin Phase 5 — PR #49 — into the branch; not present in the original scan.)*
 
 **Extract (3 — a class declaration moved to its own correctly-named file):**
 - `MountedComponent` (in `tests/ui/contract/shared/harness/component.ts`) →
