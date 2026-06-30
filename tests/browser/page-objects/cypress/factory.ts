@@ -6,6 +6,7 @@ import { CypressCreditRfqForm } from "./CreditRfqForm";
 import { CypressCreditRfqPanel } from "./CreditRfqPanel";
 import { CypressFooter } from "./Footer";
 import { CypressFxRfqForm } from "./FxRfqForm";
+import { CypressLayout } from "./Layout";
 import { CypressLiveRatesTile } from "./LiveRatesTile";
 import { CypressThemeToggle } from "./ThemeToggle";
 import { CypressWorkspace } from "./Workspace";
@@ -22,5 +23,6 @@ export function buildCypressPageObjects(): PageObjects {
     creditRfqForm: new CypressCreditRfqForm(),
     creditRfqPanel: new CypressCreditRfqPanel(),
     blotterTable: new CypressBlotterTable(),
+    layout: new CypressLayout(),
   };
 }
