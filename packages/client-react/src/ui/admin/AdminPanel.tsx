@@ -1,11 +1,11 @@
 import type { ChangeEvent, ReactElement } from "react";
 
-import { useHooks } from "../hooks/useHooks";
+import { useViewModel } from "../viewModel/useViewModel";
 
 import styles from "./AdminPanel.module.css";
 
 export function AdminPanel(): ReactElement {
-  const { useThroughput } = useHooks();
+  const { useThroughput } = useViewModel();
   const { value, loading, message, setValue } = useThroughput();
 
   if (loading) {

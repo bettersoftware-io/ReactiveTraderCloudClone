@@ -30,8 +30,8 @@ import { createRfqTileMachine } from "#/app/presenters/RfqTileMachine";
 import { createRowHighlightMachine } from "#/app/presenters/RowHighlightMachine";
 import { createStaleFlagMachine } from "#/app/presenters/StaleFlagMachine";
 import { createTileExecutionMachine } from "#/app/presenters/TileExecutionMachine";
-import type { AppHooks } from "#/ui/hooks/createAppHooks";
-import { useMachine } from "#/ui/hooks/useMachine";
+import type { ViewModel } from "#/ui/viewModel/createViewModel";
+import { useMachine } from "#/ui/viewModel/useMachine";
 
 import type { World } from "../shared/harness/world";
 
@@ -57,8 +57,8 @@ function useSubject<T>(subject: BehaviorSubject<T>): T {
   );
 }
 
-/** Build a reactive AppHooks backed by the neutral World. */
-export function reactHooks(world: World): AppHooks {
+/** Build a reactive ViewModel backed by the neutral World. */
+export function reactViewModel(world: World): ViewModel {
   const s = world.sources;
   return {
     // Parametric query hooks: each call subscribes to the World's per-key
@@ -374,7 +374,7 @@ export function reactHooks(world: World): AppHooks {
     // Equities: reactive views backed by the World's shared streams (watchlist /
     // orders / positions) and per-symbol subjects (quote / candles / depth) — so a
     // spec seeding `equities: { watchlist, quotes, orders, … }` re-renders the
-    // subscribing panel, mirroring the real createAppHooks binds.
+    // subscribing panel, mirroring the real createViewModel binds.
     useWatchlist: () => {
       return useSubject(world.watchlist);
     },

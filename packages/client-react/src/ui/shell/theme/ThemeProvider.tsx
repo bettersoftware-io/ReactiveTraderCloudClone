@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { type ReactNode, useLayoutEffect } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { ThemeContext } from "./ThemeContext";
 import { type ThemeTokens, themeTokens } from "./tokens";
@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   // Native app applies the theme its own way in its own ThemeProvider). Wrapping
   // this behind a port would be over-abstraction: ports are I/O boundaries, not
   // "how the View paints".
-  const { useThemePreference, useThemeSkinPreference } = useHooks();
+  const { useThemePreference, useThemeSkinPreference } = useViewModel();
   const { mode, modePreference, cycle: cycleMode } = useThemePreference();
   const { skin, setSkin } = useThemeSkinPreference();
 

@@ -52,7 +52,7 @@ export interface Machine<TState, TIntents extends object> {
  * future read-only machines don't re-derive the `Record<string, never>` idiom. */
 export type ReadOnlyMachine<TState> = Machine<TState, Record<string, never>>;
 
-/** App-layer machine factories injected into the hooks seam. Each builds a
+/** App-layer machine factories injected into the ViewModel seam. Each builds a
  * fresh machine instance per component mount (useMachine owns its lifecycle). */
 export interface MachineFactories {
   tileExecution: (

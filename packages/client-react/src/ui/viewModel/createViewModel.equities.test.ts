@@ -9,9 +9,9 @@ import {
   createMachineFactories,
 } from "#/app/composition";
 
-import { type AppHooks, createAppHooks } from "./createAppHooks";
+import { createViewModel, type ViewModel } from "./createViewModel";
 
-describe("createAppHooks — equities hooks", () => {
+describe("createViewModel — equities hooks", () => {
   it("useWatchlist is a function and returns an array by default", () => {
     const hooks = makeHooks();
     expect(typeof hooks.useWatchlist).toBe("function");
@@ -65,9 +65,9 @@ describe("createAppHooks — equities hooks", () => {
   });
 });
 
-function makeHooks(): AppHooks {
+function makeHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
-  return createAppHooks(
+  return createViewModel(
     presenters,
     createMachineFactories(presenters),
     commands,

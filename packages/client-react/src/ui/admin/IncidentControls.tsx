@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./IncidentControls.module.css";
 
@@ -19,7 +19,7 @@ const INCIDENTS = [
  * come straight from `useIncident()` — the dumb UI holds no state.
  */
 export function IncidentControls(): ReactElement {
-  const { useIncident } = useHooks();
+  const { useIncident } = useViewModel();
   const { state, inject, clear } = useIncident();
 
   return (

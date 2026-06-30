@@ -1,18 +1,18 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { useHooks } from "./useHooks";
+import { useViewModel } from "./useViewModel";
 
-describe("useHooks", () => {
-  it("throws when rendered outside a HooksProvider", () => {
+describe("useViewModel", () => {
+  it("throws when rendered outside a ViewModelProvider", () => {
     // With no provider mounted the context is null, so the guard throws on the
     // first render. Silence React's expected error-boundary console output.
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => {
       renderHook(() => {
-        return useHooks();
+        return useViewModel();
       });
-    }).toThrow("useHooks must be used within HooksProvider");
+    }).toThrow("useViewModel must be used within ViewModelProvider");
     spy.mockRestore();
   });
 });

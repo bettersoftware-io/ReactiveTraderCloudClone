@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { ConnectionStatusBar } from "../connection/ConnectionStatusBar";
 import { CosmeticMetrics } from "./CosmeticMetrics";
@@ -16,7 +16,7 @@ import styles from "./StatusBar.module.css";
  * decorative (see CosmeticMetrics).
  */
 export function StatusBar(): ReactElement {
-  const { useSession } = useHooks();
+  const { useSession } = useViewModel();
   const { state } = useSession();
 
   return (

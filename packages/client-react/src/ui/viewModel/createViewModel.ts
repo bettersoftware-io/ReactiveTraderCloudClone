@@ -131,7 +131,7 @@ interface UseSessionResult {
   unlock: () => void;
 }
 
-export interface AppHooks {
+export interface ViewModel {
   // Streams
   usePrice: (pair: CurrencyPair) => Price | null;
   usePriceHistory: (symbol: string) => readonly PriceTick[];
@@ -219,11 +219,11 @@ export interface AppHooks {
   useIncident: () => UseIncidentResult;
 }
 
-export function createAppHooks(
+export function createViewModel(
   presenters: Presenters,
   machines: MachineFactories,
   commands: AppCommands,
-): AppHooks {
+): ViewModel {
   const [usePrice] = bind((pair: CurrencyPair) => {
     return presenters.priceStream.price$(pair);
   }, null);

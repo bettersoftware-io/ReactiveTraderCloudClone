@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./LiveEventLog.module.css";
 
@@ -20,7 +20,7 @@ function clock(t: number): string {
  * `useEventLog()` — no timers, no local state.
  */
 export function LiveEventLog(): ReactElement {
-  const { useEventLog } = useHooks();
+  const { useEventLog } = useViewModel();
   const events = useEventLog();
 
   return (

@@ -9,7 +9,7 @@ import {
   createMachineFactories,
 } from "#/app/composition";
 
-import { type AppHooks, createAppHooks } from "../createAppHooks";
+import { createViewModel, type ViewModel } from "../createViewModel";
 
 describe("theme/skin/animated-bg hooks", () => {
   it("useThemeSkinPreference reads default holo and sets terminal", () => {
@@ -37,11 +37,11 @@ describe("theme/skin/animated-bg hooks", () => {
   });
 });
 
-function makeHooks(): AppHooks {
+function makeHooks(): ViewModel {
   const { presenters, commands } = createApp({
     ...createSimPorts(),
   });
-  return createAppHooks(
+  return createViewModel(
     presenters,
     createMachineFactories(presenters),
     commands,

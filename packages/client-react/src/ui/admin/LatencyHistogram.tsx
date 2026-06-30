@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 
 import type { MetricSample } from "@rtc/domain";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./LatencyHistogram.module.css";
 
@@ -59,7 +59,7 @@ function buildHistogram(samples: readonly MetricSample[]): Histogram {
  * sample value against the window peak. No timers; re-derives on each render.
  */
 export function LatencyHistogram(): ReactElement {
-  const { useMetrics } = useHooks();
+  const { useMetrics } = useViewModel();
   const { latency } = useMetrics();
   const { bars, peakMs } = buildHistogram(latency);
 
