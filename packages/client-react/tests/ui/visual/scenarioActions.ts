@@ -61,8 +61,14 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   },
   // Light theme is seeded through the seam (fixture app-fx-light, theme "light"),
   // so no toggle click is needed; the ThemeToggle's aria-label confirms the
-  // light arm rendered (it offers a switch back to dark).
+  // light arm rendered (in the 3-state cycle, "light" offers a switch to system).
   "app/fx-light": {
+    fullPage: true,
+    assertAriaLabelOf: "theme-toggle",
+    expectAriaLabel: "Switch to system theme",
+  },
+  // System preference: the toggle shows 🖥️ and offers a switch to dark (cycle wrap).
+  "app/fx-system": {
     fullPage: true,
     assertAriaLabelOf: "theme-toggle",
     expectAriaLabel: "Switch to dark theme",

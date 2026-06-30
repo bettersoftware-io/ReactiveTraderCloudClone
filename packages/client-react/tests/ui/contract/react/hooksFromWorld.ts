@@ -8,10 +8,10 @@ import type {
   ExecuteTradeInput,
   ExecuteTradeResult,
   RfqQuoteResult,
-  ThemeMode,
   ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
+import { nextThemeModePreference, resolveThemeMode } from "@rtc/domain";
 
 import {
   createDefaultLayoutPort,
@@ -259,18 +259,18 @@ export function reactHooks(world: World): AppHooks {
         },
       };
     },
-    // Global theme mode: reactive view backed by the World subject; setMode/toggle
-    // push back so a click through the seam flips the rendered mode (mirroring
-    // the PreferencesPort's replay-current themeMode$ stream).
+    // Global theme mode: reactive view backed by the World subject. The subject
+    // holds the stored PREFERENCE (dark | light | system); `mode` is resolved for
+    // painting and `cycle` advances the preference through the seam (mirroring the
+    // PreferencesPort's replay-current themeMode$ stream). The harness has no OS
+    // media query, so "system" resolves deterministically to dark.
     useThemePreference: () => {
-      const mode = useSubject(world.themeMode);
+      const modePreference = useSubject(world.themeMode);
       return {
-        mode,
-        setMode: (next: ThemeMode) => {
-          return world.themeMode.next(next);
-        },
-        toggle: () => {
-          return world.themeMode.next(mode === "dark" ? "light" : "dark");
+        mode: resolveThemeMode(modePreference, true),
+        modePreference,
+        cycle: () => {
+          return world.themeMode.next(nextThemeModePreference(modePreference));
         },
       };
     },

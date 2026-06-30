@@ -8,7 +8,7 @@ import type {
   Quote,
   ServiceTopology,
   SessionInfo,
-  ThemeMode,
+  ThemeModePreference,
   ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
@@ -44,7 +44,7 @@ export interface MountOptions<P> {
   /** Seed the initial throughput view (useThroughput). */
   throughput?: Partial<ThroughputView>;
   /** Seed the initial theme-mode preference (useThemePreference); defaults to DEFAULT_THEME_MODE. */
-  themeMode?: ThemeMode;
+  themeMode?: ThemeModePreference;
   /** Seed the initial theme-skin preference (useThemeSkinPreference); defaults to "classic". */
   themeSkin?: ThemeSkin;
   /** Seed the initial animated-background preference (useAnimatedBackground); defaults to false. */

@@ -68,6 +68,7 @@ import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
 import { ViewModePreferencePresenter } from "./presenters/ViewModePreferencePresenter";
 import { WatchlistPresenter } from "./presenters/WatchlistPresenter";
+import { MediaQueryColorSchemeAdapter } from "./theme/MediaQueryColorSchemeAdapter";
 import { buildWsUrl } from "./wsUrl";
 
 export type { AppPorts };
@@ -237,7 +238,10 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
     connection,
     rfqQuote: new RfqQuotePresenter(ports.pricing),
     throughput: new ThroughputPresenter(ports.admin),
-    themePreference: new ThemePreferencePresenter(ports.preferences),
+    themePreference: new ThemePreferencePresenter(
+      ports.preferences,
+      new MediaQueryColorSchemeAdapter(),
+    ),
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),

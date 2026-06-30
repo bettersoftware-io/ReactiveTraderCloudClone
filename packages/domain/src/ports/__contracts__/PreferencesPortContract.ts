@@ -7,7 +7,7 @@ import {
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
-  type ThemeMode,
+  type ThemeModePreference,
   type ThemeSkin,
   type ViewMode,
 } from "#/preferences/preferences.js";
@@ -16,7 +16,7 @@ import type { PreferencesPort } from "../preferencesPort.js";
 
 /** A pre-seeded preferences store. Partial — omitted keys fall back to defaults. */
 export interface PreferencesSeed {
-  themeMode?: ThemeMode;
+  themeMode?: ThemeModePreference;
   themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
   animatedBackground?: boolean;
@@ -49,7 +49,7 @@ export function describePreferencesPortContract(
       port.setThemeMode("light");
       port.setViewMode("price");
 
-      let themeMode: ThemeMode | undefined;
+      let themeMode: ThemeModePreference | undefined;
       let viewMode: ViewMode | undefined;
       port
         .themeMode$()
@@ -71,7 +71,7 @@ export function describePreferencesPortContract(
 
     it("setThemeMode persists and pushes to existing subscribers", () => {
       const port = makeEmpty();
-      const seen: ThemeMode[] = [];
+      const seen: ThemeModePreference[] = [];
       const sub = port.themeMode$().subscribe((t) => {
         return seen.push(t);
       });
@@ -80,6 +80,15 @@ export function describePreferencesPortContract(
 
       sub.unsubscribe();
       expect(seen).toEqual([DEFAULT_THEME_MODE, "light"]);
+    });
+
+    it("persists and reads back the 'system' mode preference", async () => {
+      const port = makeEmpty();
+      port.setThemeMode("system");
+      expect(await firstValueFrom(port.themeMode$())).toBe("system");
+
+      const seeded = makeSeeded({ themeMode: "system" });
+      expect(await firstValueFrom(seeded.themeMode$())).toBe("system");
     });
 
     it("setViewMode persists and pushes to existing subscribers", () => {

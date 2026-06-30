@@ -831,6 +831,17 @@ export const fixtures: Record<string, AppData> = {
     throughput: { value: 250, loading: false, message: null },
     themeMode: "light",
   }),
+  // System mode preference: the header toggle shows the third (🖥️) icon and its
+  // aria-label reads "Switch to dark theme" (next in the cycle). With no OS media
+  // query in the harness, "system" resolves to dark, so the page paints dark.
+  "app-fx-system": makeAppData({
+    currencyPairs: [eurusd, gbpusd, usdjpy],
+    prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
+    analytics: analyticsData,
+    connectionStatus: ConnectionStatus.CONNECTED,
+    throughput: { value: 250, loading: false, message: null },
+    themeMode: "system",
+  }),
   "fx-trades": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },

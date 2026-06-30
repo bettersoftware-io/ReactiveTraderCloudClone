@@ -4,16 +4,16 @@ import type { PreferencesPort } from "../ports/preferencesPort.js";
 import {
   type BootVariant,
   DEFAULT_BOOT_VARIANT,
-  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
-  type ThemeMode,
+  type ThemeModePreference,
   type ThemeSkin,
   type ViewMode,
 } from "../preferences/preferences.js";
 
 export interface PreferencesSeed {
-  themeMode?: ThemeMode;
+  themeMode?: ThemeModePreference;
   themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
   animatedBackground?: boolean;
@@ -26,7 +26,7 @@ export interface PreferencesSeed {
  * real browser persistence uses the localStorage adapter in the client package.
  */
 export class PreferencesSimulator implements PreferencesPort {
-  private readonly themeMode: BehaviorSubject<ThemeMode>;
+  private readonly themeMode: BehaviorSubject<ThemeModePreference>;
 
   private readonly themeSkin: BehaviorSubject<ThemeSkin>;
 
@@ -37,8 +37,8 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
   constructor(seed: PreferencesSeed = {}) {
-    this.themeMode = new BehaviorSubject<ThemeMode>(
-      seed.themeMode ?? DEFAULT_THEME_MODE,
+    this.themeMode = new BehaviorSubject<ThemeModePreference>(
+      seed.themeMode ?? DEFAULT_THEME_MODE_PREFERENCE,
     );
     this.themeSkin = new BehaviorSubject<ThemeSkin>(
       seed.themeSkin ?? DEFAULT_THEME_SKIN,
@@ -54,11 +54,11 @@ export class PreferencesSimulator implements PreferencesPort {
     );
   }
 
-  themeMode$(): Observable<ThemeMode> {
+  themeMode$(): Observable<ThemeModePreference> {
     return this.themeMode.pipe(distinctUntilChanged());
   }
 
-  setThemeMode(mode: ThemeMode): void {
+  setThemeMode(mode: ThemeModePreference): void {
     this.themeMode.next(mode);
   }
 
