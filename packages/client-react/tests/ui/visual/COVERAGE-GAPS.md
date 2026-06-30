@@ -206,17 +206,15 @@ scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
 | `ui/fx/liveRates/CurrencyFilter.tsx` line 26 | `onChange` onClick | Requires clicking a non-default filter category. All three categories render identical tiles in the populated fixture. Deferred. |
 | `ui/fx/liveRates/ViewToggle.tsx` line 18 | `onChange` onClick | Clicking changes `viewMode`, but the resulting state is already pinned by `live-rates/price-view` (seeded through PreferencesPort seam). No additional visual branch. |
 
-**Dead seam command hooks (for a HUMAN pruning decision — NOT removed):** of the
-7 command hooks on `AppHooks`, only **`useAcceptQuote`** still has a `src/ui`
-component caller (`credit/rfqTiles/RfqTilesPanel.tsx`). The other six —
-**`useExecuteTrade`, `useCreateRfq`, `useCancelRfq`, `usePassQuote`,
-`useQuoteRfq`, `useRequestRfqQuote`** — are **dead**: present only in the
-`AppHooks` interface + `createAppHooks` impl + the two test fakes
+**Dead seam command hooks — RESOLVED (pruned during the HUD redesign, Phases 0–5).**
+The six orphaned command hooks flagged here on 2026-06-25
+(`useExecuteTrade`, `useCreateRfq`, `useCancelRfq`, `usePassQuote`, `useQuoteRfq`,
+`useRequestRfqQuote`) are **no longer present**: the `AppHooks` interface,
+`createAppHooks` impl, and both test fakes
 (`tests/ui/contract/react/hooksFromWorld.ts`,
-`tests/ui/visual/react/buildFakeHooks.ts`), with no component consumer. Earlier
-phases (esp. 8) routed those commands through machines, leaving the seam methods
-orphaned. Pruning requires deleting each from the interface, the impl, and both
-fakes together.
+`tests/ui/visual/react/buildFakeHooks.ts`) were all reshaped during the redesign
+and carry none of them. **`useAcceptQuote`** remains the one live command hook
+(caller: `credit/rfqTiles/RfqTilesPanel.tsx`). Nothing to prune.
 
 **Two expected reds:**
 
