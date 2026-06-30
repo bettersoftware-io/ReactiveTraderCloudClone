@@ -118,11 +118,3 @@ export function TilePrice({
     </div>
   );
 }
-
-interface SpreadDisplayProps {
-  spread: string;
-}
-
-export function SpreadDisplay({ spread }: SpreadDisplayProps): ReactElement {
-  return <div className={styles.spread}>{spread}</div>;
-}

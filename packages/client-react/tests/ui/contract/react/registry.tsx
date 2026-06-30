@@ -69,15 +69,13 @@ import { QuickFilter as QuickFilterComponent } from "#/ui/fx/blotter/QuickFilter
 import { CurrencyFilter as CurrencyFilterComponent } from "#/ui/fx/liveRates/CurrencyFilter";
 import { LiveRatesPanel as LiveRatesPanelComponent } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { RfqCountdown as RfqCountdownComponent } from "#/ui/fx/liveRates/tile/RfqCountdown";
+import { SpreadDisplay as SpreadDisplayComponent } from "#/ui/fx/liveRates/tile/SpreadDisplay";
 import { Tile as TileComponent } from "#/ui/fx/liveRates/tile/Tile";
 import { TileConfirmation as TileConfirmationComponent } from "#/ui/fx/liveRates/tile/TileConfirmation";
 import { TileExecution as TileExecutionComponent } from "#/ui/fx/liveRates/tile/TileExecution";
 import { TileHeader as TileHeaderComponent } from "#/ui/fx/liveRates/tile/TileHeader";
 import { TileNotional as TileNotionalComponent } from "#/ui/fx/liveRates/tile/TileNotional";
-import {
-  SpreadDisplay as SpreadDisplayComponent,
-  TilePrice as TilePriceComponent,
-} from "#/ui/fx/liveRates/tile/TilePrice";
+import { TilePrice as TilePriceComponent } from "#/ui/fx/liveRates/tile/TilePrice";
 import {
   TileRfq as TileRfqComponent,
   type TileRfqState,
