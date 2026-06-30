@@ -16,6 +16,9 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
+    "@rtc/client-core": "workspace:*",
+    "@rtc/domain": "workspace:*",
+    "rxjs": "^7.8",
     "expo": "^55.0.0",
     "expo-constants": "^55.0.16",
     "expo-router": "^55.0.16",
