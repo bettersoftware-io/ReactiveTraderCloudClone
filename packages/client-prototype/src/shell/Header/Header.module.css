@@ -1,0 +1,47 @@
+.header {
+  position: relative;
+  z-index: 20;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 18px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wordmark {
+  line-height: 1;
+}
+
+.wordmarkTitle {
+  font-family: "Orbitron", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  color: var(--text);
+}
+
+.wordmarkSub {
+  font-family: var(--font-m, monospace);
+  font-size: 8px;
+  letter-spacing: 0.4em;
+  color: var(--faint);
+  margin-top: 5px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
