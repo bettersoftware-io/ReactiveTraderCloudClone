@@ -3,7 +3,7 @@ import { VisualScenario } from "@ui-visual";
 
 test("admin/panel-loaded", async ({ mount }) => {
   // AdminPanel reads throughput through the ViewModelProvider seam; the visual
-  // fake (buildFakeHooks/app-fx fixture) provides a loaded value of 250, so the
+  // fake (buildFakeViewModel/app-fx fixture) provides a loaded value of 250, so the
   // slider state renders deterministically with no transport stub needed.
   const c = await mount(<VisualScenario name="admin/panel-loaded" />);
   await expect(c.getByText("Throughput Control")).toBeVisible();

@@ -168,7 +168,7 @@ function checkProductionAudit(): string[] {
 /**
  * Dumb-UI gate: NO setTimeout/setInterval anywhere in production src/ui. Every
  * timer is business/timer logic that belongs in the app-layer (machines/
- * presenters) behind the AppHooks seam — the last holdout, BlotterRow's new-row
+ * presenters) behind the ViewModel seam — the last holdout, BlotterRow's new-row
  * highlight, has been relocated to createRowHighlightMachine. The useMachine
  * bridge schedules disposal with queueMicrotask (not setTimeout), so no hooks
  * exception is needed. Test files are not gated here.

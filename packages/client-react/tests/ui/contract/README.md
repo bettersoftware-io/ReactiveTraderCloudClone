@@ -22,7 +22,7 @@ colour or layout (that stays the visual tier's job).
   - `pages/` — page objects querying raw DOM via `@testing-library/dom`.
 - `react/` — **the only framework-specific surface**:
   - `registry.tsx` — token → React element.
-  - `hooksFromWorld.ts` — `reactHooks(world)` via `useSyncExternalStore`
+  - `viewModelFromWorld.ts` — `reactViewModel(world)` via `useSyncExternalStore`
     (re-renders the consuming component on each `emit`/`setProps`).
   - `render.tsx` — the driver (providers + a `PropsHost` for the props subject).
   - `setup.ts` — registers the driver via `setDriver`.
@@ -56,7 +56,7 @@ Drive updates via the returned page object: `page.setProps({...})`,
 ## Swapping the UI framework (e.g. SolidJS)
 
 1. Add a `solid/` trio — `registry.tsx` (token → Solid element),
-   `hooksFromWorld.ts` (`from(subject)` → signal), `render.tsx`
+   `viewModelFromWorld.ts` (`from(subject)` → signal), `render.tsx`
    (`@solidjs/testing-library`, which re-exports the same `@testing-library/dom`
    queries), and `setup.ts`.
 2. Point the vitest config's `setupFiles` at `solid/setup.ts`.

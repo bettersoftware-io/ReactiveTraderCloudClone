@@ -1,7 +1,6 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import { useViewModel } from "./viewModel/useViewModel";
 import { AmbientBackground } from "./shell/background/AmbientBackground";
 import { HeaderChrome, type WorkspaceTab } from "./shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
@@ -9,6 +8,7 @@ import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
 import { LockScreen } from "./shell/lock/LockScreen";
 import { StatusBar } from "./shell/status/StatusBar";
+import { useViewModel } from "./viewModel/useViewModel";
 
 import styles from "./App.module.css";
 

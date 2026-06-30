@@ -62,7 +62,7 @@ tests/ui/visual/
     fixtures.ts      — Named fixture data sets
     scenarios.ts     — scenario name → { componentKey, fixture } manifest
   react/             — React render target (the @ui-visual alias barrel)
-    buildFakeHooks.ts — AppData → ViewModel adapter
+    buildFakeViewModel.ts — AppData → ViewModel adapter
     registry.tsx      — componentKey → React element map
     VisualScenario.tsx — theme + provider + backdrop wrapper
     index.ts          — barrel export (the @ui-visual alias target)
@@ -339,7 +339,7 @@ single runner and time it.
 
 The harness is type-checked by `pnpm typecheck` via `tsconfig.ui-visual.json`.
 The main `tsconfig.json` restricts `rootDir` to `src`; without the separate
-visual project, drift between `buildFakeHooks` and the `ViewModel` interface
+visual project, drift between `buildFakeViewModel` and the `ViewModel` interface
 would go unnoticed (the Playwright CT bundle strips types without checking
 them). The ui-visual tsconfig covers both `src` and `tests` (the whole
 visual suite, including `run-all.ts` — minus
@@ -361,7 +361,7 @@ The goal: run the **same** scenarios and match the **same** goldens.
 **What to implement for the new framework:**
 
 1. A new `<framework>/` folder with:
-   - `buildFakeHooks.ts` (or equivalent) — AppData fed into that framework's
+   - `buildFakeViewModel.ts` (or equivalent) — AppData fed into that framework's
      context/store model
    - `registry` — same `componentKey`s mapped to the new components
    - `VisualScenario` wrapper (theme + provider + backdrop)

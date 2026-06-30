@@ -211,8 +211,8 @@ The six orphaned command hooks flagged here on 2026-06-25
 (`useExecuteTrade`, `useCreateRfq`, `useCancelRfq`, `usePassQuote`, `useQuoteRfq`,
 `useRequestRfqQuote`) are **no longer present**: the `ViewModel` interface,
 `createViewModel` impl, and both test fakes
-(`tests/ui/contract/react/hooksFromWorld.ts`,
-`tests/ui/visual/react/buildFakeHooks.ts`) were all reshaped during the redesign
+(`tests/ui/contract/react/viewModelFromWorld.ts`,
+`tests/ui/visual/react/buildFakeViewModel.ts`) were all reshaped during the redesign
 and carry none of them. **`useAcceptQuote`** remains the one live command hook
 (caller: `credit/rfqTiles/RfqTilesPanel.tsx`). Nothing to prune.
 

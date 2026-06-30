@@ -53,16 +53,16 @@ const restrictedSyntax = [
   },
   {
     selector:
-      "VariableDeclarator[init.callee.name='useHooks'][id.type='Identifier']",
-    message: "Destructure the hooks you need: const { useX } = useHooks().",
+      "VariableDeclarator[init.callee.name='useViewModel'][id.type='Identifier']",
+    message: "Destructure the hooks you need: const { useX } = useViewModel().",
   },
   {
-    // Ban chained access off useHooks() — `useHooks().useX()` reaches into
+    // Ban chained access off useViewModel() — `useViewModel().useX()` reaches into
     // the bundle inline. Destructure first, then call:
-    //   const { useX } = useHooks();  useX(args)
-    selector: "MemberExpression[object.callee.name='useHooks']",
+    //   const { useX } = useViewModel();  useX(args)
+    selector: "MemberExpression[object.callee.name='useViewModel']",
     message:
-      "Don't chain off useHooks(). Destructure first: const { useX } = useHooks(); then call useX().",
+      "Don't chain off useViewModel(). Destructure first: const { useX } = useViewModel(); then call useX().",
   },
 ];
 

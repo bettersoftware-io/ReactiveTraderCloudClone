@@ -21,7 +21,7 @@ dependency-injection seam:
 - `createAppHooks(presenters, machines, commands)` builds an `AppHooks` bundle — a
   flat record of ~50 React hooks (`usePrice`, `useTrades`, `useIncident`, …) that
   adapt the application layer (presenters + RxJS machines + commands) into the hook
-  shape the UI consumes. See `packages/client-react/src/ui/hooks/createAppHooks.ts`.
+  shape the UI consumes. See `packages/client-react/src/ui/viewModel/createViewModel.ts`.
 - `HooksContext` (`React.createContext<AppHooks | null>(null)`) carries that bundle.
 - `HooksProvider` is the composition-root injector; only `AppRoot.tsx` and test
   harnesses mount it.
@@ -171,7 +171,7 @@ have to `import` it to use it, it's a coupling leak; if it arrives via
 
 - **The type is the single source of truth.** `ViewModel` (née `AppHooks`) is
   implemented by the real factory **and** by two test harnesses
-  (`tests/ui/visual/react/buildFakeHooks.ts`, `tests/ui/contract/react/hooksFromWorld.ts`).
+  (`tests/ui/visual/react/buildFakeViewModel.ts`, `tests/ui/contract/react/viewModelFromWorld.ts`).
   Adding any member (e.g. `useFeatureFlag`) is a compile error until all three
   implementations — plus the visual `appData.ts` fixture and the contract
   `world.ts` — provide it. This is a feature: the type forces full coverage.

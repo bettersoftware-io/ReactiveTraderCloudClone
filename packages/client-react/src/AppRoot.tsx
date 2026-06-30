@@ -2,10 +2,13 @@ import { type ReactElement, type ReactNode, useRef } from "react";
 
 import { createApp, createMachineFactories } from "./app/composition";
 import { shouldPlayBootSplash } from "./bootSplashGate";
-import { createViewModel, type ViewModel } from "./ui/viewModel/createViewModel";
-import { ViewModelProvider } from "./ui/viewModel/ViewModelProvider";
 import { BootGate } from "./ui/shell/boot/BootGate";
 import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
+import {
+  createViewModel,
+  type ViewModel,
+} from "./ui/viewModel/createViewModel";
+import { ViewModelProvider } from "./ui/viewModel/ViewModelProvider";
 
 interface AppRootProps {
   children: ReactNode;

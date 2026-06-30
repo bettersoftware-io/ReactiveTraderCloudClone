@@ -3,7 +3,7 @@
   // src files it mounts. The main tsconfig.json restricts rootDir to src, so the
   // visual tier — which lives outside src and imports both @rtc/domain and
   // ../../../../src — needs its own no-emit program for `pnpm typecheck` to catch
-  // drift between buildFakeHooks and the AppHooks interface.
+  // drift between buildFakeViewModel and the ViewModel interface.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,

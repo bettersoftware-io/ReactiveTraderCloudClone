@@ -1,8 +1,8 @@
 import { act, render as rtlRender } from "@testing-library/react";
 import type { BehaviorSubject } from "rxjs";
 
-import { ViewModelProvider } from "#/ui/viewModel/ViewModelProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
+import { ViewModelProvider } from "#/ui/viewModel/ViewModelProvider";
 
 import type {
   MountedRoot,
@@ -13,9 +13,9 @@ import type {
   MountedComponent,
 } from "../shared/harness/component";
 import type { World } from "../shared/harness/world";
-import { reactViewModel } from "./viewModelFromWorld";
 import { PropsHost } from "./PropsHost";
 import { registry } from "./registry";
+import { reactViewModel } from "./viewModelFromWorld";
 
 interface RenderArgs {
   propsSubject: BehaviorSubject<Partial<unknown>>;

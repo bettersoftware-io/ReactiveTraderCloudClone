@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 
-import { useViewModel } from "#/ui/viewModel/useViewModel";
 import { StaleIndicator } from "#/ui/shell/stale/StaleIndicator";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { PairPnlBars } from "./PairPnlBars";
 import { PnlChart } from "./PnlChart";
