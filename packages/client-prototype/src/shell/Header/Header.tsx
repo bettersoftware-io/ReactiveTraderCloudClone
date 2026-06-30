@@ -51,9 +51,9 @@ export function Header(props: HeaderProps): ReactElement {
           <StatusPills />
           <ModeToggle />
           <ThemePicker menus={menus} />
-          <div className={styles.divider} />
           <Notifications menus={menus} />
           <LanguageMenu menus={menus} lang={lang} onSelectLang={onSelectLang} />
+          <div className={styles.divider} />
           <AccountMenu
             menus={menus}
             onOpenPrefs={onOpenPrefs}
