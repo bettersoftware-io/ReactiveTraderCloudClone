@@ -1,4 +1,4 @@
-# Visual coverage gaps — snapshot 2026-06-17
+# Visual coverage gaps — snapshot 2026-06-30 (HUD redesign Phase 6)
 
 One-time inventory of `src/ui` components and conditional branches the **visual**
 tier does not render, i.e. that have **no golden snapshot**. Produced by reading
@@ -37,6 +37,58 @@ stale branches into "covered". The residual gap is now the genuinely
 interaction-only handlers and the runtime media-query theme arm (below), which a
 static screenshot still cannot pin deterministically — those are covered by the
 unit/contract tiers.
+
+## HUD redesign (Phases 0–5) — full re-verification (2026-06-30)
+
+Phase 6 consolidation snapshot, taken after the entire HUD redesign (theming +
+motion, in-house layout engine, shell chrome / boot / lock, reskinned FX+Credit,
+the new **Equities** module, and the new **Admin observability** module) landed on
+`main` (Phase 5 merge `baf0ed9d`). All gate families, both committed golden sets,
+the contract ≥95% gate, the 29 grep-gates (incl. dumb-UI 26–29), and the e2e
+suites are green. This phase added **zero** product behaviour — it re-ran every
+tier and recorded the figures below.
+
+### Headline numbers (2026-06-30)
+
+| Tier | Metric | Stmts | Branch | Funcs | Lines |
+|------|--------|-------|--------|-------|-------|
+| Domain (v8, report-only) | — | 95.36% | 81.56% | 95.23% | 96.82% |
+| Server (v8, report-only) | — | 92.47% | 77.46% | 91.37% | 95.67% |
+| Client app layer (v8, report-only) | — | 87.41% | 74.21% | 88.94% | 89.45% |
+| **Contract tier (v8, ENFORCED ≥95% `src/ui` gate)** | — | **98.56%** | **95.25%** | **99.05%** | **99.19%** |
+| Visual tier (istanbul, `src/ui/**/*.tsx`) | — | 82.22% | 72.58% | 76.09% | 83.53% |
+
+Unit/contract test totals: domain 276, server 65, client unit 805, contract 406.
+The visual gap-finder denominator grew (the equities + admin + HUD-chrome surface
+is now rendered), so the istanbul percentage moved relative to the 2026-06-25
+`82.53%` against a smaller pre-redesign denominator — it is **not** a regression;
+the absolute snapshotted-component count rose substantially (see below).
+
+### New components now snapshotted (all three visual tiers + contract arms)
+
+- **Equities (`src/ui/equities/`):** watchlist (heat-tint), canvas candlestick
+  chart, depth ladder, instrument tabs, order ticket (fill choreography), orders +
+  positions blotters, P&L spark-bars, bottom-arc desk gauge, sector heatmap.
+- **Admin (`src/ui/admin/`):** MetricGauges, ThroughputChart, LatencyHistogram,
+  ErrorRatePanel, SessionsPanel, LiveEventLog (canvas), ServiceTopologyGraph (SVG),
+  IncidentControls, AdminDashboard.
+- **Shell chrome (`src/ui/shell/`):** boot sequence canvas, lock screen, header /
+  status / prefs / theme-skin chrome, the in-house layout engine, ambient
+  background — across the classic/holo/terminal/neon skins × light/dark modes.
+
+### App-layer (v8, report-only) — intentionally-open gaps (2026-06-30)
+
+The report-only app-layer figure dipped versus 2026-06-25 because Phases 0–5 added
+a large volume of new machines/presenters (LayoutMachine, BootSequenceMachine,
+OrderTicketMachine, IncidentMachine, AnimationDirector, plus the equities/admin
+presenters) and the **enforced** gate is the contract ≥95% `src/ui` gate (green at
+95.25% branch), not this metric. The remaining app-layer gaps are:
+
+| File | Lines | Reason |
+|------|-------|--------|
+| `presenters/DepthPresenter.ts` 11-17 | `depth$()` body incl. cache-hit arm | Thin per-symbol caching accessor (`shareReplay` of `marketData.depth(symbol)`); the only branch is the cache hit. Exercised through the equities depth-ladder in the contract + visual tiers and the order→fill e2e flow; no dedicated unit arm. |
+| `presenters/SessionsPresenter.ts` 14-20 | `sessions$` accessor body | Same shape — a thin `shareReplay` accessor over `SessionsPort`. Driven by the admin `SessionsPanel` in the contract/visual tiers and the admin incident e2e flow. |
+| `adapters/portFactory.ts` 834-918, 928-935 | new equities/admin port-wiring + `if (cancelled)`/`catch` teardown arms | Composition wiring exercised end-to-end by the e2e + real-composition tests, not unit-isolated; the teardown/`catch` arms follow the same documented pattern as the 2026-06-25 portFactory gaps (fire only on mid-flight unsubscribe / `ws.rpc()` rejection). |
 
 ## Phase 10 (final) — Dumb-UI gates + whole-workstream verification (2026-06-18)
 
