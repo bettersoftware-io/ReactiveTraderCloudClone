@@ -29,6 +29,46 @@ test("mode toggle flips the themed background", () => {
   expect(document.documentElement.style.background).not.toBe(before);
 });
 
+test("account menu Sign Out fires onLogout", () => {
+  const onLogout = vi.fn();
+  render(
+    <ThemeProvider>
+      <Header
+        tab="fx"
+        onSelectTab={vi.fn()}
+        lang="EN"
+        onSelectLang={vi.fn()}
+        onOpenPrefs={vi.fn()}
+        onReboot={vi.fn()}
+        onLogout={onLogout}
+      />
+    </ThemeProvider>,
+  );
+  fireEvent.click(screen.getByLabelText("Account"));
+  fireEvent.click(screen.getByText(/Sign Out/));
+  expect(onLogout).toHaveBeenCalledOnce();
+});
+
+test("language menu opens then closes on backdrop click", () => {
+  render(
+    <ThemeProvider>
+      <Header
+        tab="fx"
+        onSelectTab={vi.fn()}
+        lang="EN"
+        onSelectLang={vi.fn()}
+        onOpenPrefs={vi.fn()}
+        onReboot={vi.fn()}
+        onLogout={vi.fn()}
+      />
+    </ThemeProvider>,
+  );
+  fireEvent.click(screen.getByLabelText("Language"));
+  expect(screen.getByText("Français")).toBeDefined();
+  fireEvent.click(screen.getByTestId("menu-backdrop"));
+  expect(screen.queryByText("Français")).toBeNull();
+});
+
 // — helpers ———————————————————————————————————————————————————————————————————
 
 interface RenderHeaderResult {
@@ -39,7 +79,15 @@ function renderHeader(tab: Tab = "fx"): RenderHeaderResult {
   const onSelectTab = vi.fn();
   render(
     <ThemeProvider>
-      <Header tab={tab} onSelectTab={onSelectTab} />
+      <Header
+        tab={tab}
+        onSelectTab={onSelectTab}
+        lang="EN"
+        onSelectLang={vi.fn()}
+        onOpenPrefs={vi.fn()}
+        onReboot={vi.fn()}
+        onLogout={vi.fn()}
+      />
     </ThemeProvider>,
   );
   return { onSelectTab };

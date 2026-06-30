@@ -45,3 +45,18 @@
   align-items: center;
   gap: 9px;
 }
+
+.divider {
+  width: 1px;
+  height: 26px;
+  background: var(--border);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  border: none;
+  background: transparent;
+  cursor: default;
+}
