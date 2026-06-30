@@ -99,6 +99,25 @@ function baseSegment(filename) {
   return base.split(".")[0];
 }
 
+// Returns the source position that includes `node`'s own-line leading comments.
+// Stops at a comment that shares a line with the previous token (trailing comment
+// of the preceding statement — must NOT be claimed).
+function startWithLeadingComments(node, sourceCode) {
+  const comments = sourceCode.getCommentsBefore(node);
+  let start = node.range[0];
+  for (let i = comments.length - 1; i >= 0; i--) {
+    const comment = comments[i];
+    const tokenBefore = sourceCode.getTokenBefore(comment, {
+      includeComments: true,
+    });
+    if (tokenBefore && tokenBefore.loc.end.line === comment.loc.start.line) {
+      break;
+    }
+    start = comment.range[0];
+  }
+  return start;
+}
+
 function create(context) {
   const sourceCode = context.sourceCode;
   const filename = context.filename;
@@ -159,26 +178,26 @@ function create(context) {
         messageId: "notLede",
         data: { name: lede.name },
         fix(fixer) {
-          const programText = sourceCode.text;
-          const nonImportBody = body.slice(firstNonImport);
-          const rangeStart = nonImportBody[0].range[0];
-          const rangeEnd = programText.length;
-          const ledeText = programText.slice(
-            lede.node.range[0],
-            lede.node.range[1],
+          // Surgical move: relocate ONLY the lede (with its leading comments)
+          // to the top; leave every other declaration byte-identical.
+          const ledeStart = startWithLeadingComments(lede.node, sourceCode);
+          const ledeText = sourceCode.text.slice(ledeStart, lede.node.range[1]);
+          const insertPos = startWithLeadingComments(
+            body[firstNonImport],
+            sourceCode,
           );
-          const others = nonImportBody.filter(
-            (_, i) => i + firstNonImport !== lede.index,
-          );
-          const otherTexts = others.map((s) =>
-            programText.slice(s.range[0], s.range[1]),
-          );
-          let replacement = ledeText;
-          if (otherTexts.length > 0) {
-            replacement += `\n\n${otherTexts.join("\n\n")}`;
-          }
-          replacement += "\n";
-          return fixer.replaceTextRange([rangeStart, rangeEnd], replacement);
+          const nextToken = sourceCode.getTokenAfter(lede.node, {
+            includeComments: true,
+          });
+          // Consume the blank-line gap that the moved lede leaves behind.
+          const removeEnd = nextToken ? nextToken.range[0] : lede.node.range[1];
+          return [
+            fixer.insertTextBeforeRange(
+              [insertPos, insertPos],
+              `${ledeText}\n\n`,
+            ),
+            fixer.removeRange([ledeStart, removeEnd]),
+          ];
         },
       });
     },

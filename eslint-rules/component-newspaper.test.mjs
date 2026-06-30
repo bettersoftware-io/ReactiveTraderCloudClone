@@ -58,7 +58,7 @@ ruleTester.run("component-newspaper", componentNewspaper, {
       code: "function Card() {\n  return <div />;\n}\n\nexport function AdminDashboard() {\n  return <div />;\n}\n",
       errors: [{ messageId: "notLede", data: { name: "AdminDashboard" } }],
       output:
-        "export function AdminDashboard() {\n  return <div />;\n}\n\nfunction Card() {\n  return <div />;\n}\n",
+        "export function AdminDashboard() {\n  return <div />;\n}\n\nfunction Card() {\n  return <div />;\n}\n\n\n",
     },
     {
       name: "non-component const above the export is reordered below it",
@@ -66,7 +66,7 @@ ruleTester.run("component-newspaper", componentNewspaper, {
       code: "const SECTOR_MAP = { a: 1 };\n\nexport function Heatmap() {\n  return <div />;\n}\n",
       errors: [{ messageId: "notLede", data: { name: "Heatmap" } }],
       output:
-        "export function Heatmap() {\n  return <div />;\n}\n\nconst SECTOR_MAP = { a: 1 };\n",
+        "export function Heatmap() {\n  return <div />;\n}\n\nconst SECTOR_MAP = { a: 1 };\n\n\n",
     },
     {
       name: "type/interface above the export is reordered below it",
@@ -74,7 +74,15 @@ ruleTester.run("component-newspaper", componentNewspaper, {
       code: "interface Props {\n  x: number;\n}\n\nexport function Widget({ x }: Props) {\n  return <div>{x}</div>;\n}\n",
       errors: [{ messageId: "notLede", data: { name: "Widget" } }],
       output:
-        "export function Widget({ x }: Props) {\n  return <div>{x}</div>;\n}\n\ninterface Props {\n  x: number;\n}\n",
+        "export function Widget({ x }: Props) {\n  return <div>{x}</div>;\n}\n\ninterface Props {\n  x: number;\n}\n\n\n",
+    },
+    {
+      name: "leading comment on private subcomponent above the export is preserved after autofix",
+      filename: "AdminDashboard.tsx",
+      code: "// keep me\nfunction Card() {\n  return <div />;\n}\n\nexport function AdminDashboard() {\n  return <div />;\n}\n",
+      errors: [{ messageId: "notLede", data: { name: "AdminDashboard" } }],
+      output:
+        "export function AdminDashboard() {\n  return <div />;\n}\n\n// keep me\nfunction Card() {\n  return <div />;\n}\n\n\n",
     },
     {
       name: "two exported components: report the second, no autofix",
