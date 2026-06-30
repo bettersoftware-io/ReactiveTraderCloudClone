@@ -16,11 +16,6 @@ import { TileRfq } from "./TileRfq";
 
 import styles from "./Tile.module.css";
 
-interface TileProps {
-  pair: CurrencyPair;
-  showChart: boolean;
-}
-
 export function Tile({ pair, showChart }: TileProps): ReactElement {
   const {
     usePrice,
@@ -124,4 +119,9 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
       </div>
     </StaleIndicator>
   );
+}
+
+interface TileProps {
+  pair: CurrencyPair;
+  showChart: boolean;
 }

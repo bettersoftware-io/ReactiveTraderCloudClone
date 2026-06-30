@@ -5,31 +5,6 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./DepthLadder.module.css";
 
-interface DepthLadderProps {
-  symbol: string;
-}
-
-interface DepthRowProps {
-  level: DepthLevel;
-  side: "bid" | "ask";
-  depth: number; // size / maxSize, [0, 1]
-}
-
-function DepthRow({ level, side, depth }: DepthRowProps): ReactElement {
-  return (
-    <div
-      data-side={side}
-      className={styles.row}
-      // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
-      style={{ "--depth": depth } as CSSProperties}
-    >
-      <div className={styles.bar} />
-      <span className={styles.price}>{level.price.toFixed(2)}</span>
-      <span className={styles.size}>{level.size.toLocaleString()}</span>
-    </div>
-  );
-}
-
 export function DepthLadder({ symbol }: DepthLadderProps): ReactElement {
   const { useDepth } = useViewModel();
   const book = useDepth(symbol);
@@ -86,6 +61,31 @@ export function DepthLadder({ symbol }: DepthLadderProps): ReactElement {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+interface DepthLadderProps {
+  symbol: string;
+}
+
+interface DepthRowProps {
+  level: DepthLevel;
+  side: "bid" | "ask";
+  depth: number; // size / maxSize, [0, 1]
+}
+
+function DepthRow({ level, side, depth }: DepthRowProps): ReactElement {
+  return (
+    <div
+      data-side={side}
+      className={styles.row}
+      // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
+      style={{ "--depth": depth } as CSSProperties}
+    >
+      <div className={styles.bar} />
+      <span className={styles.price}>{level.price.toFixed(2)}</span>
+      <span className={styles.size}>{level.size.toLocaleString()}</span>
     </div>
   );
 }

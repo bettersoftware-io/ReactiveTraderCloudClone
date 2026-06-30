@@ -4,26 +4,6 @@ import type { Dealer, Quote } from "@rtc/domain";
 
 import styles from "./QuoteCard.module.css";
 
-interface QuoteCardProps {
-  quote: Quote;
-  dealer: Dealer | undefined;
-  onAccept?: (quoteId: number) => void | Promise<void>;
-}
-
-function displayText(state: Quote["state"]): string {
-  switch (state.type) {
-    case "pendingWithoutPrice":
-    case "rejectedWithoutPrice":
-      return "Awaiting response";
-    case "pendingWithPrice":
-    case "accepted":
-    case "rejectedWithPrice":
-      return `$${state.price}`;
-    case "passed":
-      return "Passed";
-  }
-}
-
 export function QuoteCard({
   quote,
   dealer,
@@ -55,4 +35,24 @@ export function QuoteCard({
       )}
     </div>
   );
+}
+
+interface QuoteCardProps {
+  quote: Quote;
+  dealer: Dealer | undefined;
+  onAccept?: (quoteId: number) => void | Promise<void>;
+}
+
+function displayText(state: Quote["state"]): string {
+  switch (state.type) {
+    case "pendingWithoutPrice":
+    case "rejectedWithoutPrice":
+      return "Awaiting response";
+    case "pendingWithPrice":
+    case "accepted":
+    case "rejectedWithPrice":
+      return `$${state.price}`;
+    case "passed":
+      return "Passed";
+  }
 }

@@ -8,13 +8,6 @@ import type { CellFormatter, ColumnDef } from "./blotterColumns";
 
 import styles from "./BlotterRow.module.css";
 
-interface BlotterRowProps<TRow> {
-  trade: TRow;
-  isNew: boolean;
-  columns: readonly ColumnDef<TRow>[];
-  format: CellFormatter<TRow>;
-}
-
 export function BlotterRow<TRow extends { status: string }>({
   trade,
   isNew,
@@ -51,4 +44,11 @@ export function BlotterRow<TRow extends { status: string }>({
       })}
     </tr>
   );
+}
+
+interface BlotterRowProps<TRow> {
+  trade: TRow;
+  isNew: boolean;
+  columns: readonly ColumnDef<TRow>[];
+  format: CellFormatter<TRow>;
 }

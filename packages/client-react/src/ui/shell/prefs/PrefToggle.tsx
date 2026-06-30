@@ -2,19 +2,6 @@ import type { ReactElement } from "react";
 
 import styles from "./PreferencesModal.module.css";
 
-interface PrefToggleProps {
-  /** Row label (the setting name). */
-  label: string;
-  /** Optional secondary description line. */
-  description?: string;
-  /** Current on/off state (reflected on the switch via `data-on`). */
-  on: boolean;
-  /** Fired when the switch is clicked. */
-  onToggle: () => void;
-  /** Stable testid for the switch element (e.g. "pref-toggle-animatedBg"). */
-  testid: string;
-}
-
 /**
  * Reusable preferences row carrying a label/description and an on/off switch
  * (the `.rtSw` control, prototype Reactive Trader.dc.html:44-47). The switch
@@ -48,4 +35,17 @@ export function PrefToggle({
       />
     </div>
   );
+}
+
+interface PrefToggleProps {
+  /** Row label (the setting name). */
+  label: string;
+  /** Optional secondary description line. */
+  description?: string;
+  /** Current on/off state (reflected on the switch via `data-on`). */
+  on: boolean;
+  /** Fired when the switch is clicked. */
+  onToggle: () => void;
+  /** Stable testid for the switch element (e.g. "pref-toggle-animatedBg"). */
+  testid: string;
 }

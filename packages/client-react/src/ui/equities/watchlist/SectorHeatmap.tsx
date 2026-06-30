@@ -5,6 +5,52 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./SectorHeatmap.module.css";
 
+export function SectorHeatmap({
+  selectedSymbol,
+  onSelect,
+}: SectorHeatmapProps): ReactElement {
+  const { useWatchlist } = useViewModel();
+  const instruments = useWatchlist();
+
+  if (instruments.length === 0) {
+    return <div className={styles.empty}>NO DATA</div>;
+  }
+
+  // Group instruments by sector
+  const bySector = new Map<string, EquityInstrument[]>();
+
+  for (const inst of instruments) {
+    const sector = SECTOR_MAP[inst.symbol] ?? DEFAULT_SECTOR;
+    const group = bySector.get(sector) ?? [];
+    group.push(inst);
+    bySector.set(sector, group);
+  }
+
+  return (
+    <div className={styles.heatmap}>
+      {[...bySector.entries()].map(([sector, insts]) => {
+        return (
+          <div key={sector} className={styles.sectorRow}>
+            <div className={styles.sectorLabel}>{sector.toUpperCase()}</div>
+            <div className={styles.cellGrid}>
+              {insts.map((inst) => {
+                return (
+                  <HeatCell
+                    key={inst.symbol}
+                    symbol={inst.symbol}
+                    active={inst.symbol === selectedSymbol}
+                    onSelect={onSelect}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 interface SectorHeatmapProps {
   selectedSymbol: string | null;
   onSelect: (symbol: string) => void;
@@ -57,51 +103,5 @@ function HeatCell({ symbol, active, onSelect }: CellProps): ReactElement {
     >
       {symbol}
     </button>
-  );
-}
-
-export function SectorHeatmap({
-  selectedSymbol,
-  onSelect,
-}: SectorHeatmapProps): ReactElement {
-  const { useWatchlist } = useViewModel();
-  const instruments = useWatchlist();
-
-  if (instruments.length === 0) {
-    return <div className={styles.empty}>NO DATA</div>;
-  }
-
-  // Group instruments by sector
-  const bySector = new Map<string, EquityInstrument[]>();
-
-  for (const inst of instruments) {
-    const sector = SECTOR_MAP[inst.symbol] ?? DEFAULT_SECTOR;
-    const group = bySector.get(sector) ?? [];
-    group.push(inst);
-    bySector.set(sector, group);
-  }
-
-  return (
-    <div className={styles.heatmap}>
-      {[...bySector.entries()].map(([sector, insts]) => {
-        return (
-          <div key={sector} className={styles.sectorRow}>
-            <div className={styles.sectorLabel}>{sector.toUpperCase()}</div>
-            <div className={styles.cellGrid}>
-              {insts.map((inst) => {
-                return (
-                  <HeatCell
-                    key={inst.symbol}
-                    symbol={inst.symbol}
-                    active={inst.symbol === selectedSymbol}
-                    onSelect={onSelect}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </div>
   );
 }

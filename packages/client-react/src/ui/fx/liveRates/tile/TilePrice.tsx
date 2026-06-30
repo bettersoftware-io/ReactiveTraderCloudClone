@@ -4,6 +4,36 @@ import { type Price, PriceMovementType } from "@rtc/domain";
 
 import styles from "./TilePrice.module.css";
 
+export function TilePrice({
+  price,
+  ratePrecision,
+  pipsPosition,
+  anim,
+}: TilePriceProps): ReactElement {
+  return (
+    <div className={styles.row}>
+      <PriceButton
+        label="SELL"
+        value={price.bid}
+        ratePrecision={ratePrecision}
+        pipsPosition={pipsPosition}
+        movement={price.movementType}
+        side="bid"
+        anim={anim}
+      />
+      <PriceButton
+        label="BUY"
+        value={price.ask}
+        ratePrecision={ratePrecision}
+        pipsPosition={pipsPosition}
+        movement={price.movementType}
+        side="ask"
+        anim={anim}
+      />
+    </div>
+  );
+}
+
 interface TilePriceProps {
   price: Price;
   ratePrecision: number;
@@ -86,35 +116,5 @@ function PriceButton({
         <span className={styles.fractional}>{fractional}</span>
       </span>
     </button>
-  );
-}
-
-export function TilePrice({
-  price,
-  ratePrecision,
-  pipsPosition,
-  anim,
-}: TilePriceProps): ReactElement {
-  return (
-    <div className={styles.row}>
-      <PriceButton
-        label="SELL"
-        value={price.bid}
-        ratePrecision={ratePrecision}
-        pipsPosition={pipsPosition}
-        movement={price.movementType}
-        side="bid"
-        anim={anim}
-      />
-      <PriceButton
-        label="BUY"
-        value={price.ask}
-        ratePrecision={ratePrecision}
-        pipsPosition={pipsPosition}
-        movement={price.movementType}
-        side="ask"
-        anim={anim}
-      />
-    </div>
   );
 }

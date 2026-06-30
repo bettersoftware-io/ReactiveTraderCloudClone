@@ -5,27 +5,6 @@ import type { ColumnFilter, Comparator } from "./filterState";
 
 import styles from "./DateFilter.module.css";
 
-interface DateFilterProps<TRow> {
-  column: keyof TRow;
-  currentFilter: ColumnFilter<TRow> | undefined;
-  onApply: (filter: ColumnFilter<TRow> | null) => void;
-}
-
-interface ComparatorOption {
-  value: Comparator;
-  label: string;
-}
-
-const comparators: ComparatorOption[] = [
-  { value: "eq", label: "Equals" },
-  { value: "neq", label: "Not equal" },
-  { value: "lt", label: "Less than" },
-  { value: "lte", label: "Less than or equals" },
-  { value: "gt", label: "Greater than" },
-  { value: "gte", label: "Greater than or equals" },
-  { value: "inRange", label: "In range" },
-];
-
 export function DateFilter<TRow>({
   column,
   currentFilter,
@@ -118,3 +97,24 @@ export function DateFilter<TRow>({
     </div>
   );
 }
+
+interface DateFilterProps<TRow> {
+  column: keyof TRow;
+  currentFilter: ColumnFilter<TRow> | undefined;
+  onApply: (filter: ColumnFilter<TRow> | null) => void;
+}
+
+interface ComparatorOption {
+  value: Comparator;
+  label: string;
+}
+
+const comparators: ComparatorOption[] = [
+  { value: "eq", label: "Equals" },
+  { value: "neq", label: "Not equal" },
+  { value: "lt", label: "Less than" },
+  { value: "lte", label: "Less than or equals" },
+  { value: "gt", label: "Greater than" },
+  { value: "gte", label: "Greater than or equals" },
+  { value: "inRange", label: "In range" },
+];

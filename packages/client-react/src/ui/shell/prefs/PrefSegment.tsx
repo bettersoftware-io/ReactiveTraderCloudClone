@@ -2,26 +2,6 @@ import type { ReactElement } from "react";
 
 import styles from "./PreferencesModal.module.css";
 
-export interface PrefSegmentOption {
-  /** Stable value identifying the option. */
-  value: string;
-  /** Visible label. */
-  label: string;
-}
-
-interface PrefSegmentProps {
-  /** Row label (the setting name). */
-  label: string;
-  /** The selectable options, in render order. */
-  options: readonly PrefSegmentOption[];
-  /** The currently-selected option value (reflected via `data-on`). */
-  value: string;
-  /** Fired with the chosen value when a segment is clicked. */
-  onChange: (value: string) => void;
-  /** Stable testid prefix; each button gets `${testid}-${option.value}`. */
-  testid: string;
-}
-
 /**
  * Reusable preferences row carrying a label and a segmented button group (the
  * `.rtSeg` controls, prototype Reactive Trader.dc.html:48-50). The active
@@ -62,4 +42,24 @@ export function PrefSegment({
       </div>
     </div>
   );
+}
+
+export interface PrefSegmentOption {
+  /** Stable value identifying the option. */
+  value: string;
+  /** Visible label. */
+  label: string;
+}
+
+interface PrefSegmentProps {
+  /** Row label (the setting name). */
+  label: string;
+  /** The selectable options, in render order. */
+  options: readonly PrefSegmentOption[];
+  /** The currently-selected option value (reflected via `data-on`). */
+  value: string;
+  /** Fired with the chosen value when a segment is clicked. */
+  onChange: (value: string) => void;
+  /** Stable testid prefix; each button gets `${testid}-${option.value}`. */
+  testid: string;
 }

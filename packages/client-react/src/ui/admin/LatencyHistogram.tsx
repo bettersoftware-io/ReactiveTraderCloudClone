@@ -5,6 +5,51 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./LatencyHistogram.module.css";
 
+/**
+ * Latency distribution as SVG bars — height per bar is a pure function of the
+ * sample value against the window peak. No timers; re-derives on each render.
+ */
+export function LatencyHistogram(): ReactElement {
+  const { useMetrics } = useViewModel();
+  const { latency } = useMetrics();
+  const { bars, peakMs } = buildHistogram(latency);
+
+  return (
+    <div data-testid="admin-latency-histogram" className={styles.wrapper}>
+      <div className={styles.head}>
+        <span className={styles.label}>LATENCY</span>
+        <span className={styles.peak}>peak {peakMs.toFixed(0)}ms</span>
+      </div>
+      {bars.length === 0 ? (
+        <div className={styles.empty}>NO DATA</div>
+      ) : (
+        <svg
+          width="100%"
+          height={VIEW_H}
+          viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+          preserveAspectRatio="none"
+          className={styles.chart}
+          aria-label="Latency histogram"
+        >
+          <title>Latency histogram</title>
+          {bars.map((b) => {
+            return (
+              <rect
+                key={b.key}
+                x={b.x}
+                y={b.y}
+                width={b.w}
+                height={b.h}
+                className={styles.bar}
+              />
+            );
+          })}
+        </svg>
+      )}
+    </div>
+  );
+}
+
 const VIEW_W = 240;
 const VIEW_H = 96;
 const PAD = 4;
@@ -51,49 +96,4 @@ function buildHistogram(samples: readonly MetricSample[]): Histogram {
   });
 
   return { bars, peakMs };
-}
-
-/**
- * Latency distribution as SVG bars — height per bar is a pure function of the
- * sample value against the window peak. No timers; re-derives on each render.
- */
-export function LatencyHistogram(): ReactElement {
-  const { useMetrics } = useViewModel();
-  const { latency } = useMetrics();
-  const { bars, peakMs } = buildHistogram(latency);
-
-  return (
-    <div data-testid="admin-latency-histogram" className={styles.wrapper}>
-      <div className={styles.head}>
-        <span className={styles.label}>LATENCY</span>
-        <span className={styles.peak}>peak {peakMs.toFixed(0)}ms</span>
-      </div>
-      {bars.length === 0 ? (
-        <div className={styles.empty}>NO DATA</div>
-      ) : (
-        <svg
-          width="100%"
-          height={VIEW_H}
-          viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-          preserveAspectRatio="none"
-          className={styles.chart}
-          aria-label="Latency histogram"
-        >
-          <title>Latency histogram</title>
-          {bars.map((b) => {
-            return (
-              <rect
-                key={b.key}
-                x={b.x}
-                y={b.y}
-                width={b.w}
-                height={b.h}
-                className={styles.bar}
-              />
-            );
-          })}
-        </svg>
-      )}
-    </div>
-  );
 }

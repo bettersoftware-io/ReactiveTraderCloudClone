@@ -6,18 +6,6 @@ import { useViewModel } from "@rtc/react-bindings";
 import { ThemeContext } from "./ThemeContext";
 import { type ThemeTokens, themeTokens } from "./tokens";
 
-function applyTokens(tokens: ThemeTokens): void {
-  const root = document.documentElement;
-
-  for (const [prop, value] of Object.entries(tokens)) {
-    root.style.setProperty(prop, value);
-  }
-}
-
-interface ThemeProviderProps {
-  children: ReactNode;
-}
-
 export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   // Persistence/state lives behind the seam (PreferencesPort); the provider
   // only reads the current theme and paints the CSS tokens for it.
@@ -49,4 +37,16 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
       {children}
     </ThemeContext.Provider>
   );
+}
+
+function applyTokens(tokens: ThemeTokens): void {
+  const root = document.documentElement;
+
+  for (const [prop, value] of Object.entries(tokens)) {
+    root.style.setProperty(prop, value);
+  }
+}
+
+interface ThemeProviderProps {
+  children: ReactNode;
 }

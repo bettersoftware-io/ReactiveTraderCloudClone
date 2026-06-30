@@ -4,15 +4,6 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./IncidentControls.module.css";
 
-// The injectable incident kinds and their break-glass labels. `as const` gives
-// the literal union that structurally matches the app-layer IncidentKind, so no
-// app-layer type import is needed in the dumb UI.
-const INCIDENTS = [
-  { kind: "latencySpike", label: "Inject latency spike" },
-  { kind: "errorBurst", label: "Inject error burst" },
-  { kind: "serviceDown", label: "Inject service down" },
-] as const;
-
 /**
  * Break-glass incident controls. Each inject button reflects whether its kind is
  * currently active via `data-active`; Clear resets all perturbations. Intents
@@ -58,3 +49,12 @@ export function IncidentControls(): ReactElement {
     </div>
   );
 }
+
+// The injectable incident kinds and their break-glass labels. `as const` gives
+// the literal union that structurally matches the app-layer IncidentKind, so no
+// app-layer type import is needed in the dumb UI.
+const INCIDENTS = [
+  { kind: "latencySpike", label: "Inject latency spike" },
+  { kind: "errorBurst", label: "Inject error burst" },
+  { kind: "serviceDown", label: "Inject service down" },
+] as const;

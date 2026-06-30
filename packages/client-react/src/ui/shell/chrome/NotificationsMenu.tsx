@@ -4,30 +4,6 @@ import { useState } from "react";
 
 import styles from "./HeaderChrome.module.css";
 
-/** Static notification seed (prototype Reactive Trader.dc.html:774-778). There
- *  is no real alert stream (Non-goals: no real backend), so these are fixed,
- *  decorative rows — the menu opens/closes purely as local view state. */
-const NOTIF_SEED = [
-  {
-    t: "09:46",
-    tag: "LIMIT",
-    msg: "EURUSD position at 80% of desk limit",
-    tone: "accent" as const,
-  },
-  {
-    t: "09:41",
-    tag: "NEWS",
-    msg: "ECB rate decision in 25 minutes",
-    tone: "accent2" as const,
-  },
-  {
-    t: "09:38",
-    tag: "SETTLE",
-    msg: "2 trades settle today · value 25-Jun",
-    tone: "positive" as const,
-  },
-];
-
 export function NotificationsMenu(): ReactElement {
   const [open, setOpen] = useState(false);
 
@@ -88,3 +64,27 @@ export function NotificationsMenu(): ReactElement {
     </div>
   );
 }
+
+/** Static notification seed (prototype Reactive Trader.dc.html:774-778). There
+ *  is no real alert stream (Non-goals: no real backend), so these are fixed,
+ *  decorative rows — the menu opens/closes purely as local view state. */
+const NOTIF_SEED = [
+  {
+    t: "09:46",
+    tag: "LIMIT",
+    msg: "EURUSD position at 80% of desk limit",
+    tone: "accent" as const,
+  },
+  {
+    t: "09:41",
+    tag: "NEWS",
+    msg: "ECB rate decision in 25 minutes",
+    tone: "accent2" as const,
+  },
+  {
+    t: "09:38",
+    tag: "SETTLE",
+    msg: "2 trades settle today · value 25-Jun",
+    tone: "positive" as const,
+  },
+];

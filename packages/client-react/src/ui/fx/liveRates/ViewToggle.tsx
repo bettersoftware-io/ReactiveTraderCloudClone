@@ -4,11 +4,6 @@ import type { ViewMode } from "@rtc/domain";
 
 import styles from "./ViewToggle.module.css";
 
-interface ViewToggleProps {
-  mode: ViewMode;
-  onChange: (mode: ViewMode) => void;
-}
-
 export function ViewToggle({ mode, onChange }: ViewToggleProps): ReactElement {
   return (
     <button
@@ -23,4 +18,9 @@ export function ViewToggle({ mode, onChange }: ViewToggleProps): ReactElement {
       {mode === "chart" ? "\u25A4 Price" : "\u2937 Chart"}
     </button>
   );
+}
+
+interface ViewToggleProps {
+  mode: ViewMode;
+  onChange: (mode: ViewMode) => void;
 }

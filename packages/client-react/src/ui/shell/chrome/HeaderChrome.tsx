@@ -8,22 +8,6 @@ import { ThemePicker } from "./ThemePicker";
 
 import styles from "./HeaderChrome.module.css";
 
-/** The four real workspace tabs the shell switches between. Equities added in
- *  Phase 4; the e2e Workspace page object clicks `tab-${tab}`. */
-export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
-
-const TAB_LABEL: Record<WorkspaceTab, string> = {
-  fx: "FX",
-  credit: "Credit",
-  admin: "Admin",
-  equities: "Equities",
-};
-
-interface HeaderChromeProps {
-  activeTab: WorkspaceTab;
-  onTabChange: (tab: WorkspaceTab) => void;
-}
-
 /**
  * HUD header chrome — wordmark + workspace nav + LIVE indicator + env badge +
  * theme picker (skin + mode) + notifications + account menu. Ported from the
@@ -109,4 +93,20 @@ export function HeaderChrome({
       />
     </header>
   );
+}
+
+/** The four real workspace tabs the shell switches between. Equities added in
+ *  Phase 4; the e2e Workspace page object clicks `tab-${tab}`. */
+export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
+
+const TAB_LABEL: Record<WorkspaceTab, string> = {
+  fx: "FX",
+  credit: "Credit",
+  admin: "Admin",
+  equities: "Equities",
+};
+
+interface HeaderChromeProps {
+  activeTab: WorkspaceTab;
+  onTabChange: (tab: WorkspaceTab) => void;
 }

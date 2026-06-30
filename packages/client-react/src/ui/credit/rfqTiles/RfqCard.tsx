@@ -15,28 +15,6 @@ import { QuoteCard } from "./QuoteCard";
 
 import styles from "./RfqCard.module.css";
 
-interface RfqCardProps {
-  rfq: Rfq;
-  quotes: readonly Quote[];
-  instrument: Instrument | undefined;
-  dealers: readonly Dealer[];
-  onAccept: (quoteId: number) => void | Promise<void>;
-  onDismiss?: (rfqId: number) => void;
-}
-
-function stateLabel(state: RfqState): string {
-  switch (state) {
-    case RfqState.Open:
-      return "Live";
-    case RfqState.Closed:
-      return "Done";
-    case RfqState.Expired:
-      return "Expired";
-    case RfqState.Cancelled:
-      return "Cancelled";
-  }
-}
-
 export function RfqCard({
   rfq,
   quotes,
@@ -110,4 +88,26 @@ export function RfqCard({
       </div>
     </div>
   );
+}
+
+interface RfqCardProps {
+  rfq: Rfq;
+  quotes: readonly Quote[];
+  instrument: Instrument | undefined;
+  dealers: readonly Dealer[];
+  onAccept: (quoteId: number) => void | Promise<void>;
+  onDismiss?: (rfqId: number) => void;
+}
+
+function stateLabel(state: RfqState): string {
+  switch (state) {
+    case RfqState.Open:
+      return "Live";
+    case RfqState.Closed:
+      return "Done";
+    case RfqState.Expired:
+      return "Expired";
+    case RfqState.Cancelled:
+      return "Cancelled";
+  }
 }

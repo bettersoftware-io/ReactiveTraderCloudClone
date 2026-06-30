@@ -2,11 +2,6 @@ import type { ChangeEvent, ReactElement } from "react";
 
 import styles from "./QuickFilter.module.css";
 
-interface QuickFilterProps {
-  value: string;
-  onChange: (value: string) => void;
-}
-
 export function QuickFilter({
   value,
   onChange,
@@ -23,4 +18,9 @@ export function QuickFilter({
       className={styles.input}
     />
   );
+}
+
+interface QuickFilterProps {
+  value: string;
+  onChange: (value: string) => void;
 }

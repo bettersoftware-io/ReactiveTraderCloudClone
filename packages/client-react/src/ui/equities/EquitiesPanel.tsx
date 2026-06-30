@@ -13,8 +13,6 @@ import { Watchlist } from "./watchlist/Watchlist";
 
 import styles from "./EquitiesPanel.module.css";
 
-type BlotterView = "orders" | "positions";
-
 /**
  * Equities module root — composes all sub-panels around a selected-symbol
  * `useState`. The symbol is lifted here so tab, chart, depth, ticket, and
@@ -119,3 +117,5 @@ export function EquitiesPanel(): ReactElement {
     </div>
   );
 }
+
+type BlotterView = "orders" | "positions";
