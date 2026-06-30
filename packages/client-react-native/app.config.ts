@@ -9,9 +9,9 @@ const config: ExpoConfig = {
   // SDK 57 removed `newArchEnabled` from ExpoConfig — the New Architecture is
   // now the only architecture, so the field no longer exists in the type.
   runtimeVersion: { policy: "appVersion" },
-  // EAS Update fields are populated by `eas init` (deferred to Phase 2 start).
-  // updates: { url: "https://u.expo.dev/<projectId>" },
-  // extra: { eas: { projectId: "<filled by eas init>" } },
+  // Filled by `eas init` at the start of Phase 2 (account-bound, run by a human):
+  //   updates: { url: "https://u.expo.dev/<projectId>" },
+  //   extra: { eas: { projectId: "<uuid from eas init>" } },
   plugins: ["expo-router"],
 };
 

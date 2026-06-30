@@ -94,6 +94,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Expo bundle smoke (Metro monorepo resolution)
+        run: pnpm --filter @rtc/client-react-native export
+
       - name: Dead code (knip)
         run: pnpm lint:dead
 
