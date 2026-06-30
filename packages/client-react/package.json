@@ -45,7 +45,6 @@
     "@rtc/client-core": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/react-bindings": "workspace:*",
-    "@rtc/shared": "workspace:*",
     "d3-drag": "^3.0.0",
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",
