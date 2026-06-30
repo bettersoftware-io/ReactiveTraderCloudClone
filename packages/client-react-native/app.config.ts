@@ -6,7 +6,7 @@ const config: ExpoConfig = {
   scheme: "rtcmobile",
   version: "0.0.0",
   orientation: "portrait",
-  // SDK 57 removed `newArchEnabled` from ExpoConfig — the New Architecture is
+  // SDK 55 removed `newArchEnabled` from ExpoConfig — the New Architecture is
   // now the only architecture, so the field no longer exists in the type.
   runtimeVersion: { policy: "appVersion" },
   // Filled by `eas init` at the start of Phase 2 (account-bound, run by a human):
