@@ -1,4 +1,4 @@
-// Framework-neutral snapshot of everything the UI reads through AppHooks.
+// Framework-neutral snapshot of everything the UI reads through ViewModel.
 // No React/Solid imports — this file (and the rest of shared/) is the
 // portable core shared by every UI implementation.
 import {

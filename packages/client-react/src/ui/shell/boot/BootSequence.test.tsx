@@ -9,8 +9,8 @@ import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AppHooks } from "#/ui/hooks/createAppHooks";
-import { HooksContext } from "#/ui/hooks/HooksContext";
+import type { ViewModel } from "#/ui/hooks/createViewModel";
+import { ViewModelContext } from "#/ui/hooks/ViewModelContext";
 
 import { BootSequence } from "./BootSequence";
 
@@ -123,7 +123,7 @@ function makeCtxStub(): CanvasRenderingContext2D {
 
 function wrap(
   el: ReactElement,
-  partialHooks: Partial<AppHooks> = {},
+  partialHooks: Partial<ViewModel> = {},
 ): ReactElement {
   const defaultHooks = {
     useBootSequence: (_onDone: () => void) => {
@@ -133,9 +133,11 @@ function wrap(
       };
     },
     ...partialHooks,
-  } as unknown as AppHooks;
+  } as unknown as ViewModel;
 
   return (
-    <HooksContext.Provider value={defaultHooks}>{el}</HooksContext.Provider>
+    <ViewModelContext.Provider value={defaultHooks}>
+      {el}
+    </ViewModelContext.Provider>
   );
 }

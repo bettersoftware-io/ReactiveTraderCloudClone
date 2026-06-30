@@ -45,8 +45,8 @@ export default defineConfig({
         "src/ui/App.tsx",
         "src/ui/credit/CreditWorkspace.tsx",
         // Real composition-root / providers / constants the harness replaces.
-        "src/ui/hooks/createAppHooks.ts",
-        "src/ui/hooks/HooksProvider.tsx",
+        "src/ui/hooks/createViewModel.ts",
+        "src/ui/hooks/ViewModelProvider.tsx",
         // The real id→module-root map; the contract/visual harnesses mount a
         // test PanelRegistry instead, exactly like the hooks providers above.
         "src/ui/shell/layout/engine/appPanelRegistry.tsx",

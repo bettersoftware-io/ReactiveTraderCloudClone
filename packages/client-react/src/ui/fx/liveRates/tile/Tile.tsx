@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 
 import type { CurrencyPair, Direction, Price } from "@rtc/domain";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/hooks/useViewModel";
 import { StaleIndicator } from "#/ui/shell/stale/StaleIndicator";
 
 import { TileChart } from "./TileChart";
@@ -29,7 +29,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
     useTileExecution,
     useRfqTile,
     useAnimationIntents,
-  } = useHooks();
+  } = useViewModel();
   const price = usePrice(pair);
   const stale = useStaleFlag(pair);
   const history = usePriceHistory(pair.symbol);

@@ -9,7 +9,7 @@ import {
   createMachineFactories,
 } from "#/app/composition";
 
-import { type AppHooks, createAppHooks } from "../createAppHooks";
+import { createViewModel, type ViewModel } from "../createViewModel";
 
 describe("useAnimationIntents", () => {
   it("starts null before any animation intent fires for the target", () => {
@@ -21,11 +21,11 @@ describe("useAnimationIntents", () => {
   });
 });
 
-function makeHooks(): AppHooks {
+function makeHooks(): ViewModel {
   const { presenters, commands } = createApp({
     ...createSimPorts(),
   });
-  return createAppHooks(
+  return createViewModel(
     presenters,
     createMachineFactories(presenters),
     commands,

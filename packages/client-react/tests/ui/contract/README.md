@@ -67,10 +67,10 @@ behavioural-parity punch-list.
 
 ## Dual use: sociable unit and integration
 
-The driver's only output is an `AppHooks` handed to `HooksProvider`. This tier
+The driver's only output is an `ViewModel` handed to `ViewModelProvider`. This tier
 uses **fake** hooks built from the `World`. The same tokens, page objects, and
 specs can drive an **integration** test by handing the provider the real
-`createAppHooks(presenters)` (real presenters fed by the domain `simulators`):
+`createViewModel(presenters)` (real presenters fed by the domain `simulators`):
 the query methods are valid in both modes; `emit`/`setProps`/`createdRfq` are
 unit-mode conveniences. (Integration mode is supported by the design but not yet
 built.)

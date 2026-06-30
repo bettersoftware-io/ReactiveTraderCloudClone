@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { Direction, type Instrument } from "@rtc/domain";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/hooks/useViewModel";
 
 import { DealerSelection } from "./DealerSelection";
 import { InstrumentSearch } from "./InstrumentSearch";
@@ -16,7 +16,7 @@ interface NewRfqFormProps {
 }
 
 export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
-  const { useInstruments, useDealers, useRfqSubmission } = useHooks();
+  const { useInstruments, useDealers, useRfqSubmission } = useViewModel();
   const instruments = useInstruments();
   const dealers = useDealers();
   // App-layer machine: create→confirmation→redirect lifecycle. The component

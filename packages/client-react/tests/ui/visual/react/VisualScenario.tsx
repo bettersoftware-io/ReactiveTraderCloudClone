@@ -1,6 +1,6 @@
 import { type ReactElement, useEffect, useState } from "react";
 
-import { HooksProvider } from "#/ui/hooks/HooksProvider";
+import { ViewModelProvider } from "#/ui/hooks/ViewModelProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import { fixtures } from "../shared/fixtures";
@@ -58,14 +58,14 @@ export function VisualScenario({
 
   if (FULL_BLEED.has(scenario.componentKey)) {
     return (
-      <HooksProvider hooks={buildFakeHooks(data)}>
+      <ViewModelProvider viewModel={buildFakeHooks(data)}>
         <ThemeProvider>{render(scenario.fixtureKey)}</ThemeProvider>
-      </HooksProvider>
+      </ViewModelProvider>
     );
   }
 
   return (
-    <HooksProvider hooks={buildFakeHooks(data)}>
+    <ViewModelProvider viewModel={buildFakeHooks(data)}>
       <ThemeProvider>
         <div
           data-testid="scenario-root"
@@ -81,6 +81,6 @@ export function VisualScenario({
           {render(scenario.fixtureKey)}
         </div>
       </ThemeProvider>
-    </HooksProvider>
+    </ViewModelProvider>
   );
 }

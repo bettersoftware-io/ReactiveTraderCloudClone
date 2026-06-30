@@ -17,13 +17,13 @@ import {
 import type { BootSequenceState } from "#/app/presenters/BootSequenceMachine";
 import type { NotionalView } from "#/app/presenters/NotionalMachine";
 import { DEMO_USER } from "#/app/presenters/SessionPresenter";
-import type { AppHooks } from "#/ui/hooks/createAppHooks";
+import type { ViewModel } from "#/ui/hooks/createViewModel";
 
 import type { AppData } from "../shared/appData";
 
 function noop(): void {}
 
-export function buildFakeHooks(data: AppData): AppHooks {
+export function buildFakeHooks(data: AppData): ViewModel {
   return {
     usePrice: (pair: CurrencyPair) => {
       return data.prices[pair.symbol] ?? null;

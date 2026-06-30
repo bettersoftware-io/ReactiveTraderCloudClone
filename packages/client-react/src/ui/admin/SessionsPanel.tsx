@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/hooks/useViewModel";
 
 import styles from "./SessionsPanel.module.css";
 
@@ -9,7 +9,7 @@ import styles from "./SessionsPanel.module.css";
  * `useSessions()`; no local state.
  */
 export function SessionsPanel(): ReactElement {
-  const { useSessions } = useHooks();
+  const { useSessions } = useViewModel();
   const sessions = useSessions();
 
   return (

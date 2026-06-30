@@ -1,7 +1,7 @@
 # Visual tests
 
 Screenshots of the UI layer rendered against injected fake data. No server,
-no presenters, no live streams — the dependency graph stops at `HooksProvider`.
+no presenters, no live streams — the dependency graph stops at `ViewModelProvider`.
 
 ## Coverage
 
@@ -25,7 +25,7 @@ no presenters, no live streams — the dependency graph stops at `HooksProvider`
 - **Admin** — the loaded AdminPanel slider (`admin/panel-loaded`) and the full
   App on the Admin tab. The throughput fetch is stubbed (`page.route` for the
   Playwright tiers, `window.fetch` for vitest-browser), since `AdminPanel` reads
-  its own hook outside the `HooksProvider` seam.
+  its own hook outside the `ViewModelProvider` seam.
 
 ### Interaction-driven goldens
 
@@ -62,7 +62,7 @@ tests/ui/visual/
     fixtures.ts      — Named fixture data sets
     scenarios.ts     — scenario name → { componentKey, fixture } manifest
   react/             — React render target (the @ui-visual alias barrel)
-    buildFakeHooks.ts — AppData → AppHooks adapter
+    buildFakeHooks.ts — AppData → ViewModel adapter
     registry.tsx      — componentKey → React element map
     VisualScenario.tsx — theme + provider + backdrop wrapper
     index.ts          — barrel export (the @ui-visual alias target)
@@ -94,7 +94,7 @@ tests/ui/visual/
 
 `shared/` is what a SolidJS UI reuses verbatim — it has zero React imports.
 The contract is the data (`shared/`) and the goldens (`__screenshots__/`) — not
-the React-shaped `AppHooks` interface, which each framework adapts to its own
+the React-shaped `ViewModel` interface, which each framework adapts to its own
 model.
 
 ### Goldens: two committed sets (CI vs local)
@@ -160,7 +160,7 @@ flowchart TB
 
     subgraph REACT["react/ — the @ui-visual seam (swap this for SolidJS)"]
         REG["registry.tsx<br/>componentKey → React element"]
-        VS["VisualScenario.tsx<br/>theme + HooksProvider + backdrop"]
+        VS["VisualScenario.tsx<br/>theme + ViewModelProvider + backdrop"]
     end
 
     CORE --> REACT
@@ -339,7 +339,7 @@ single runner and time it.
 
 The harness is type-checked by `pnpm typecheck` via `tsconfig.ui-visual.json`.
 The main `tsconfig.json` restricts `rootDir` to `src`; without the separate
-visual project, drift between `buildFakeHooks` and the `AppHooks` interface
+visual project, drift between `buildFakeHooks` and the `ViewModel` interface
 would go unnoticed (the Playwright CT bundle strips types without checking
 them). The ui-visual tsconfig covers both `src` and `tests` (the whole
 visual suite, including `run-all.ts` — minus

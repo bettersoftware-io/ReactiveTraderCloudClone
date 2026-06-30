@@ -173,7 +173,7 @@ post-behaviour-sync codebase; intentionally-open gaps are documented below.
 | `ui/fx/blotter/columnFilter/filterState.ts` line 87 | `return true` fallthrough | TypeScript-exhaustive: `ColumnFilter` is a discriminated union with three types (`set`/`number`/`date`). The fallthrough only fires for a value outside the union, which the type system prevents. |
 | `ui/fx/liveRates/tile/TileRfq.tsx` line 45 | `if (!quote) return` after `rfqState.accept()` | The button renders only when `state.status === "received" && state.quote` (line 87). `quote` is captured before `accept()`. Structurally unreachable while `state.quote` is non-null at render. |
 | `ui/fx/liveRates/tile/TileConfirmation.tsx` line 102 | `default: return "unknown"` in switch | Exhaustive switch over `ExecutionStatus` — all enum members handled above. Defensive fallthrough for future enum additions. |
-| `ui/shell/connection/useHooks.ts` line 11 | `throw new Error(...)` | Only fires when `useContext(HooksContext)` returns null — outside `HooksProvider`. All contract tests mount within the provider. |
+| `ui/shell/connection/useViewModel.ts` line 11 | `throw new Error(...)` | Only fires when `useContext(ViewModelContext)` returns null — outside `ViewModelProvider`. All contract tests mount within the provider. |
 | `ui/shell/theme/useTheme.ts` line 7 | `throw new Error(...)` | Same: defensive provider-missing guard; always wrapped in `ThemeProvider` in tests. |
 | `ui/fx/analytics/PositionBubbles.tsx`, `ui/fx/analytics/PairPnlBars.tsx` | entire files | Excluded from contract tier scope (`coverage.exclude` in `vitest.config.ts`). D3/canvas render paths with no DOM-assertable logic — owned by the visual tier. |
 
@@ -209,8 +209,8 @@ scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
 **Dead seam command hooks — RESOLVED (pruned during the HUD redesign, Phases 0–5).**
 The six orphaned command hooks flagged here on 2026-06-25
 (`useExecuteTrade`, `useCreateRfq`, `useCancelRfq`, `usePassQuote`, `useQuoteRfq`,
-`useRequestRfqQuote`) are **no longer present**: the `AppHooks` interface,
-`createAppHooks` impl, and both test fakes
+`useRequestRfqQuote`) are **no longer present**: the `ViewModel` interface,
+`createViewModel` impl, and both test fakes
 (`tests/ui/contract/react/hooksFromWorld.ts`,
 `tests/ui/visual/react/buildFakeHooks.ts`) were all reshaped during the redesign
 and carry none of them. **`useAcceptQuote`** remains the one live command hook
@@ -275,7 +275,7 @@ now drives them and each has a dedicated golden across all three runners:
 The tile execution / RFQ / staleness states were previously listed below as
 timer/transition-driven and **excluded** from the coverage denominator. Earlier
 "Dumb-UI" phases relocated that logic into app-layer machines exposed through the
-`AppHooks` seam, so the state is now **injectable per-symbol** (static, no live
+`ViewModel` seam, so the state is now **injectable per-symbol** (static, no live
 timers) and each arm has a dedicated golden across all three runners:
 
 - `fx/liveRates/tile/TileConfirmation.tsx` — every execution-outcome banner →
@@ -339,5 +339,5 @@ doesn't drive**, not *missing snapshots*. Cover them in the unit/contract tiers.
 > (`useTileState` / `useExecuteTrade` / `useRfqState` / `useRfqQuote` /
 > `useStaleDetection` / `useNotional` / `useThroughput`) were removed by the
 > "Dumb-UI" refactor — their logic now lives in app-layer machines/presenters
-> behind the `AppHooks` seam, tested in the unit/contract tiers and (for the
+> behind the `ViewModel` seam, tested in the unit/contract tiers and (for the
 > render arms) snapshotted by Phase 9.

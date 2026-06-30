@@ -1,7 +1,7 @@
 import { act, render as rtlRender } from "@testing-library/react";
 import type { BehaviorSubject } from "rxjs";
 
-import { HooksProvider } from "#/ui/hooks/HooksProvider";
+import { ViewModelProvider } from "#/ui/hooks/ViewModelProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import type {
@@ -31,11 +31,11 @@ export const reactDriver: UiContractDriver = {
     if (!build) throw new Error("No React registry entry for the given token.");
     const hooks = reactHooks(world);
     const { container, unmount } = rtlRender(
-      <HooksProvider hooks={hooks}>
+      <ViewModelProvider viewModel={hooks}>
         <ThemeProvider>
           <PropsHost subject={propsSubject} build={build} />
         </ThemeProvider>
-      </HooksProvider>,
+      </ViewModelProvider>,
     );
     return {
       root: container,

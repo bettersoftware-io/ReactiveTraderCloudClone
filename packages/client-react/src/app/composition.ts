@@ -278,7 +278,7 @@ export function createApp(ports: AppPorts = buildDefaultPorts()): App {
   return { presenters, ports, commands };
 }
 
-/** Build the app-layer machine factories the hooks seam injects. Each factory
+/** Build the app-layer machine factories the ViewModel seam injects. Each factory
  * spins up a fresh machine per component mount, wired to the presenters. */
 export function createMachineFactories(
   presenters: Presenters,

@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 
 import type { MetricSample } from "@rtc/domain";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/hooks/useViewModel";
 
 import styles from "./MetricGauges.module.css";
 
@@ -87,7 +87,7 @@ function RadialGauge({
  * no thresholds baked in. Decorative-but-real: the arc moves with live metrics.
  */
 export function MetricGauges(): ReactElement {
-  const { useMetrics } = useHooks();
+  const { useMetrics } = useViewModel();
   const { throughput, latency, errorRate } = useMetrics();
 
   const tpVal = latest(throughput);

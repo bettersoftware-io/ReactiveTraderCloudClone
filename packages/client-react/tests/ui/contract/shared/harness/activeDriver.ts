@@ -6,7 +6,7 @@ import type { World } from "./world";
 interface RenderInputs<P> {
   /** Reactive props source; the driver renders the component from its latest value. */
   readonly propsSubject: BehaviorSubject<Partial<P>>;
-  /** The controllable hook world; the driver turns it into reactive AppHooks. */
+  /** The controllable hook world; the driver turns it into reactive ViewModel. */
   readonly world: World;
 }
 

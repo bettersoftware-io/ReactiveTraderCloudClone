@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { useLayoutEffect, useRef } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/hooks/useViewModel";
 
 import { drawCandles } from "./drawCandles";
 
@@ -19,7 +19,7 @@ interface PriceChartProps {
  * - Redraw triggered by `candles` change in useLayoutEffect — no rAF loop
  */
 export function PriceChart({ symbol }: PriceChartProps): ReactElement {
-  const { useCandles } = useHooks();
+  const { useCandles } = useViewModel();
   const candles = useCandles(symbol);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 

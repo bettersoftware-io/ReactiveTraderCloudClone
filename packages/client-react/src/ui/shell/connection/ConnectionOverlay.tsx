@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 
 import { ConnectionStatus } from "@rtc/domain";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/hooks/useViewModel";
 
 import styles from "./ConnectionOverlay.module.css";
 
@@ -18,7 +18,7 @@ const overlayMessages: Partial<Record<ConnectionStatus, string>> = {
 };
 
 export function ConnectionOverlay(): ReactElement | null {
-  const { useConnectionStatus, useReconnect, useIncident } = useHooks();
+  const { useConnectionStatus, useReconnect, useIncident } = useViewModel();
   const status = useConnectionStatus();
   const reconnect = useReconnect();
   const { state: incidentState, clear: clearIncident } = useIncident();

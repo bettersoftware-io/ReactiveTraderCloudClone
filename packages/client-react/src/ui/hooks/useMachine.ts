@@ -9,7 +9,7 @@ type MachineView<TState, TIntents> = { state: TState } & TIntents;
  * StrictMode double-render can't double-instantiate), reads state$ via
  * useStateObservable, returns { state, ...intents } (stable intent refs), and
  * disposes on unmount. The only UI primitive allowed to import react-rxjs;
- * components never import it (createAppHooks does).
+ * components never import it (createViewModel does).
  *
  * Why a hand-written bridge and NOT react-rxjs `bind`: `bind`/`state` model
  * GLOBAL, shared, refcounted singletons (one stream the whole app reads — e.g.

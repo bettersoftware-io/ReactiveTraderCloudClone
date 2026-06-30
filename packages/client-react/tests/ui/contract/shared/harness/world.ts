@@ -88,7 +88,7 @@ export interface ParametricSeed {
  * Seed values for the EQUITIES query hooks. Watchlist, orders, and positions are
  * single shared streams (useWatchlist / useEquityOrders / useEquityPositions);
  * quotes, candles, and depth are keyed by symbol, mirroring the per-argument
- * binds of the real createAppHooks (watchlist.quote$, candleSeries.candles$,
+ * binds of the real createViewModel (watchlist.quote$, candleSeries.candles$,
  * depth.depth$). The OrderTicket place lifecycle is driven separately via
  * {@link World.orderLifecycle} (a plain Subject the page object pushes onto).
  */
