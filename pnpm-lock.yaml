@@ -318,6 +318,9 @@ importers:
 
   tests:
     dependencies:
+      '@rtc/client-core':
+        specifier: workspace:*
+        version: link:../packages/client-core
       '@rtc/client-react':
         specifier: workspace:*
         version: link:../packages/client-react

@@ -1,7 +1,11 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { type CreateRfqRequest, Direction } from "@rtc/domain";
+import {
+  type CreateRfqRequest,
+  Direction,
+  type PreferencesPort,
+} from "@rtc/domain";
 import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
 
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
@@ -21,7 +25,7 @@ describe("wsRealWorkflow :: error paths", () => {
 
   it("rejects createRfq on nack", async () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws);
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
     const promise = firstValueFrom(ports.workflow.createRfq(makeReq()));
     await awaitPendingRpc(ws, "rpc.createRfq");
     ws.nextRpcResponse("rpc.createRfq", rpcNack());
@@ -31,7 +35,7 @@ describe("wsRealWorkflow :: error paths", () => {
 
   it("rejects cancelRfq on nack", async () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws);
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
     const promise = firstValueFrom(ports.workflow.cancelRfq(1));
     await awaitPendingRpc(ws, "rpc.cancelRfq");
     ws.nextRpcResponse("rpc.cancelRfq", rpcNack());
@@ -41,7 +45,7 @@ describe("wsRealWorkflow :: error paths", () => {
 
   it("rejects accept on nack", async () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws);
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
     const promise = firstValueFrom(ports.workflow.accept(1));
     await awaitPendingRpc(ws, "rpc.accept");
     ws.nextRpcResponse("rpc.accept", rpcNack());

@@ -1,3 +1,4 @@
+import type { PreferencesPort } from "@rtc/domain";
 import { describeWorkflowPortContract } from "@rtc/domain/ports/__contracts__/WorkflowPortContract";
 import {
   rpcAck,
@@ -11,7 +12,7 @@ import { createWsRealPorts } from "./portFactory";
 
 describeWorkflowPortContract("wsRealWorkflow", () => {
   const ws = new FakeWsAdapter();
-  const ports = createWsRealPorts(ws);
+  const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
   return {
     port: ports.workflow,
     driver: {

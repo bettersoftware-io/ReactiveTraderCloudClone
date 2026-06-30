@@ -4,8 +4,10 @@ import {
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
   AnimationDirector,
+  type AppPorts,
   BlotterPresenter,
   BootPreferencePresenter,
+  buildWsUrl,
   CandleSeriesPresenter,
   ConnectionStatusPresenter,
   CurrencyPairsPresenter,
@@ -17,8 +19,10 @@ import {
   createOrderTicketMachine,
   createRfqTileMachine,
   createRowHighlightMachine,
+  createSimulatorPorts,
   createStaleFlagMachine,
   createTileExecutionMachine,
+  createWsRealPorts,
   DealersPresenter,
   DepthPresenter,
   ErrorRatePresenter,
@@ -26,6 +30,7 @@ import {
   type IncidentIntents,
   type IncidentState,
   InstrumentsPresenter,
+  type IWsAdapter,
   LatencyPresenter,
   type Machine,
   type MachineFactories,
@@ -46,6 +51,7 @@ import {
   ViewModePreferencePresenter,
   WatchlistPresenter,
   type WorkspaceTab,
+  WsConnectionEventsAdapter,
 } from "@rtc/client-core";
 import {
   type BootVariant,
@@ -57,16 +63,9 @@ import {
 } from "@rtc/domain";
 
 import { BrowserConnectionEventsAdapter } from "./adapters/BrowserConnectionEventsAdapter";
-import type { IWsAdapter } from "./adapters/IWsAdapter";
-import {
-  type AppPorts,
-  createSimulatorPorts,
-  createWsRealPorts,
-} from "./adapters/portFactory";
+import { LocalStoragePreferencesAdapter } from "./adapters/LocalStoragePreferencesAdapter";
 import { WsAdapter } from "./adapters/WsAdapter";
-import { WsConnectionEventsAdapter } from "./adapters/WsConnectionEventsAdapter";
 import { MediaQueryColorSchemeAdapter } from "./theme/MediaQueryColorSchemeAdapter";
-import { buildWsUrl } from "./wsUrl";
 
 export type { AppPorts };
 
@@ -153,6 +152,7 @@ export function buildDefaultPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
   const token = import.meta.env.VITE_WS_TOKEN as string | undefined;
   const browser = new BrowserConnectionEventsAdapter();
+  const preferences = new LocalStoragePreferencesAdapter();
 
   if (url) {
     const ws = new WsAdapter(buildWsUrl(url, token));
@@ -177,7 +177,7 @@ export function buildDefaultPorts(): AppPorts {
         );
       },
     };
-    return { ...createWsRealPorts(ws), connectionEvents };
+    return { ...createWsRealPorts(ws, { preferences }), connectionEvents };
   }
 
   const gateway = new ConnectionEventsSimulator();
@@ -206,7 +206,7 @@ export function buildDefaultPorts(): AppPorts {
       );
     },
   };
-  return { ...createSimulatorPorts(), connectionEvents };
+  return { ...createSimulatorPorts({ preferences }), connectionEvents };
 }
 
 export function createApp(ports: AppPorts = buildDefaultPorts()): App {

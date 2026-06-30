@@ -1,3 +1,4 @@
+import type { PreferencesPort } from "@rtc/domain";
 import { describeInstrumentPortContract } from "@rtc/domain/ports/__contracts__/InstrumentPortContract";
 import {
   instrumentAdded,
@@ -10,7 +11,7 @@ import { createWsRealPorts } from "./portFactory";
 
 describeInstrumentPortContract("wsRealInstrument", () => {
   const ws = new FakeWsAdapter();
-  const ports = createWsRealPorts(ws);
+  const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
   return {
     port: ports.instruments,
     driver: {

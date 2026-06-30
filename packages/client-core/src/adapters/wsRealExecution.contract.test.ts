@@ -1,3 +1,4 @@
+import type { PreferencesPort } from "@rtc/domain";
 import { describeExecutionPortContract } from "@rtc/domain/ports/__contracts__/ExecutionPortContract";
 import { executionResponseAck } from "@rtc/shared/__fixtures__/wireFrames";
 
@@ -15,7 +16,7 @@ interface ExecuteTradePayload {
 
 describeExecutionPortContract("wsRealExecution", () => {
   const ws = new FakeWsAdapter();
-  const ports = createWsRealPorts(ws);
+  const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
   return {
     port: ports.execution,
     driver: {

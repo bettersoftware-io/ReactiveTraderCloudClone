@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { PreferencesPort } from "@rtc/domain";
 import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
 
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
@@ -10,7 +11,7 @@ import { createWsRealPorts } from "./portFactory";
 describe("wsRealPricing :: error paths", () => {
   it("rejects getPriceHistory when RPC returns nack", async () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws);
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
     const promise = firstValueFrom(ports.pricing.getPriceHistory("EURUSD"));
     await awaitPendingRpc(ws, "rpc.getPriceHistory");
     ws.nextRpcResponse("rpc.getPriceHistory", rpcNack());
@@ -20,7 +21,7 @@ describe("wsRealPricing :: error paths", () => {
 
   it("rejects getRfqQuote when RPC returns empty payload", async () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws);
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
     const promise = firstValueFrom(ports.pricing.getRfqQuote("EURUSD", 4));
     await awaitPendingRpc(ws, "rpc.getPriceHistory");
     ws.nextRpcResponse("rpc.getPriceHistory", {

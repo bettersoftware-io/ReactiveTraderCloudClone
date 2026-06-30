@@ -1,3 +1,4 @@
+import type { PreferencesPort } from "@rtc/domain";
 import { describePricingPortContract } from "@rtc/domain/ports/__contracts__/PricingPortContract";
 import {
   priceHistoryResponse,
@@ -10,7 +11,7 @@ import { createWsRealPorts } from "./portFactory";
 
 describePricingPortContract("wsRealPricing", () => {
   const ws = new FakeWsAdapter();
-  const ports = createWsRealPorts(ws);
+  const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
   return {
     port: ports.pricing,
     driver: {

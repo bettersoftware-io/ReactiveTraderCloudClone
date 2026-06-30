@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Dealer, Instrument } from "@rtc/domain";
+import type { Dealer, Instrument, PreferencesPort } from "@rtc/domain";
 import {
   dealerAdded,
   dealerEndOfSoW,
@@ -25,7 +25,7 @@ import { createWsRealPorts } from "./portFactory";
 describe("wsReal reference data :: removed event drops the entry", () => {
   it("instruments: a removed instrument disappears from the next emitted list", () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws);
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
     const emissions: (readonly Instrument[])[] = [];
     const sub = ports.instruments.getInstruments().subscribe((list) => {
       return emissions.push(list);
@@ -57,7 +57,7 @@ describe("wsReal reference data :: removed event drops the entry", () => {
 
   it("instruments: removing an unknown id leaves the list unchanged but still re-emits", () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws);
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
     const emissions: (readonly Instrument[])[] = [];
     const sub = ports.instruments.getInstruments().subscribe((list) => {
       return emissions.push(list);
@@ -80,7 +80,7 @@ describe("wsReal reference data :: removed event drops the entry", () => {
 
   it("dealers: a removed dealer disappears from the next emitted list", () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws);
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
     const emissions: (readonly Dealer[])[] = [];
     const sub = ports.dealers.getDealers().subscribe((list) => {
       return emissions.push(list);

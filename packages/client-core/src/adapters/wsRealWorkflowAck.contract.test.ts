@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { PreferencesPort } from "@rtc/domain";
 import { rpcAck } from "@rtc/shared/__fixtures__/wireFrames";
 
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
@@ -21,7 +22,7 @@ describe("wsReal void RPC ports :: ack emits undefined and completes", () => {
     rpcType: string,
   ): Promise<void> {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws);
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
     const promise = subscribe(ports);
     await awaitPendingRpc(ws, rpcType);
     ws.nextRpcResponse(rpcType, rpcAck(undefined));

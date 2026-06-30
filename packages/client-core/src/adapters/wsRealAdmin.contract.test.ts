@@ -1,3 +1,4 @@
+import type { PreferencesPort } from "@rtc/domain";
 import { describeAdminPortContract } from "@rtc/domain/ports/__contracts__/AdminPortContract";
 import { rpcAck } from "@rtc/shared/__fixtures__/wireFrames";
 
@@ -7,7 +8,9 @@ import { createWsRealPorts } from "./portFactory";
 
 describeAdminPortContract("createAdminPort (WsReal)", () => {
   const ws = new FakeWsAdapter();
-  const port = createWsRealPorts(ws).admin;
+  const port = createWsRealPorts(ws, {
+    preferences: {} as PreferencesPort,
+  }).admin;
   let primed = 0;
   return {
     port,

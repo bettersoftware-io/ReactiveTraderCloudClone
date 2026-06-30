@@ -1,3 +1,4 @@
+import type { PreferencesPort } from "@rtc/domain";
 import { describeAnalyticsPortContract } from "@rtc/domain/ports/__contracts__/AnalyticsPortContract";
 import { analyticsFrame } from "@rtc/shared/__fixtures__/wireFrames";
 
@@ -6,7 +7,7 @@ import { createWsRealPorts } from "./portFactory";
 
 describeAnalyticsPortContract("wsRealAnalytics", () => {
   const ws = new FakeWsAdapter();
-  const ports = createWsRealPorts(ws);
+  const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
   return {
     port: ports.analytics,
     driver: {

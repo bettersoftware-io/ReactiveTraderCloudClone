@@ -75,7 +75,6 @@ import type {
 } from "@rtc/shared";
 
 import type { IWsAdapter } from "./IWsAdapter";
-import { LocalStoragePreferencesAdapter } from "./LocalStoragePreferencesAdapter";
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
@@ -102,7 +101,9 @@ export interface AppPorts {
 
 export type TransportPorts = Omit<AppPorts, "connectionEvents">;
 
-export function createSimulatorPorts(): TransportPorts {
+export function createSimulatorPorts(deps: {
+  preferences: PreferencesPort;
+}): TransportPorts {
   const execution = new ExecutionSimulator();
   const marketData = new EquityMarketDataSimulator();
   const positionsSim = new EquityPositionSimulator(marketData);
@@ -131,9 +132,7 @@ export function createSimulatorPorts(): TransportPorts {
     dealers: new DealerSimulator(),
     workflow: new CreditRfqSimulator(DEALERS_CATALOG),
     admin,
-    // Real browser persistence even in sim mode — PreferencesSimulator is for
-    // domain tests/fakes only.
-    preferences: new LocalStoragePreferencesAdapter(),
+    preferences: deps.preferences,
     marketData,
     orders,
     positions: positionsSim,
@@ -941,7 +940,10 @@ function createPositionPort(ws: IWsAdapter): PositionPort {
 
 // ── Factory ─────────────────────────────────────────────────────
 
-export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
+export function createWsRealPorts(
+  ws: IWsAdapter,
+  deps: { preferences: PreferencesPort },
+): TransportPorts {
   // Telemetry ports are browser-local regardless of transport (no wire RPC),
   // mirroring how preferences is handled. Fixed dev seeds for reproducibility.
   const latency = new LatencySimulator(1);
@@ -960,8 +962,7 @@ export function createWsRealPorts(ws: IWsAdapter): TransportPorts {
     dealers: createDealerPort(ws),
     workflow: createWorkflowPort(ws),
     admin: createAdminPort(ws),
-    // Browser persistence is independent of the transport.
-    preferences: new LocalStoragePreferencesAdapter(),
+    preferences: deps.preferences,
     marketData: createMarketDataPort(ws),
     orders: createOrderPort(ws),
     positions: createPositionPort(ws),

@@ -1,7 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { Direction } from "@rtc/domain";
+import { Direction, type PreferencesPort } from "@rtc/domain";
 
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
@@ -25,7 +25,7 @@ describe("wsReal RPC ports :: transport reject propagates to subscriber", () => 
     rpcType: string,
   ): Promise<void> {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws);
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
     const promise = subscribe(ports);
     await awaitPendingRpc(ws, rpcType);
     ws.rejectPendingRpc(rpcType, boom);

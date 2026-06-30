@@ -2,13 +2,13 @@
 
 import { merge, Subject, type Subscription } from "rxjs";
 
+import { createSimulatorPorts } from "@rtc/client-core";
+import { type App, type AppPorts, createApp } from "@rtc/client-react";
 import {
-  type App,
-  type AppPorts,
-  createApp,
-  createSimulatorPorts,
-} from "@rtc/client-react";
-import { type ConnectionEvent, ConnectionEventsSimulator } from "@rtc/domain";
+  type ConnectionEvent,
+  ConnectionEventsSimulator,
+  PreferencesSimulator,
+} from "@rtc/domain";
 
 export interface PresenterCtx {
   app: App;
@@ -19,7 +19,7 @@ export function buildPresenterApp(): PresenterCtx {
   const connectionEvents$ = new Subject<ConnectionEvent>();
   const gateway = new ConnectionEventsSimulator();
   const ports: AppPorts = {
-    ...createSimulatorPorts(),
+    ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
     connectionEvents: {
       events: () => {
         return merge(gateway.events(), connectionEvents$.asObservable());
@@ -62,7 +62,7 @@ export function buildIncidentPresenterApp(): IncidentPresenterCtx {
   const gateway = new ConnectionEventsSimulator();
 
   const ports: AppPorts = {
-    ...createSimulatorPorts(),
+    ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
     connectionEvents: {
       events: () => {
         return merge(gateway.events(), myIncident$.asObservable());

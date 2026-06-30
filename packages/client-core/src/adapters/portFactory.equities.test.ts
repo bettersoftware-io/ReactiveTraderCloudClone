@@ -1,6 +1,8 @@
 import { firstValueFrom, lastValueFrom, toArray } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { PreferencesPort } from "@rtc/domain";
+
 import { createSimulatorPorts } from "./portFactory";
 
 afterEach(() => {
@@ -8,9 +10,11 @@ afterEach(() => {
 });
 
 describe("createSimulatorPorts — equities ports", () => {
+  const fakePreferences = {} as PreferencesPort;
+
   it("exposes marketData/orders/positions wired together", async () => {
     vi.useFakeTimers();
-    const ports = createSimulatorPorts();
+    const ports = createSimulatorPorts({ preferences: fakePreferences });
     expect(ports.marketData).toBeDefined();
     expect(ports.orders).toBeDefined();
     expect(ports.positions).toBeDefined();
