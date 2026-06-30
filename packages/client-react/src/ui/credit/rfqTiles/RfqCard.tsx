@@ -7,9 +7,9 @@ import {
   type Rfq,
   RfqState,
 } from "@rtc/domain";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { RfqCountdown } from "#/ui/fx/liveRates/tile/RfqCountdown";
-import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { QuoteCard } from "./QuoteCard";
 

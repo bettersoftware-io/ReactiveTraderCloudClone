@@ -2,8 +2,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { TradeStatus } from "@rtc/domain";
-
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import type { CellFormatter, ColumnDef } from "./blotterColumns";
 

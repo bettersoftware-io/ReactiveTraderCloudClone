@@ -1,6 +1,6 @@
 import type { ChangeEvent, ReactElement } from "react";
 
-import { useViewModel } from "../viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./AdminPanel.module.css";
 

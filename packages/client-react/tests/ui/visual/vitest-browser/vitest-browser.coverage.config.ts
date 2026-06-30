@@ -25,7 +25,6 @@ export default mergeConfig(
         provider: "istanbul",
         include: ["src/ui/**/*.tsx"],
         exclude: [
-          "src/ui/viewModel/ViewModelProvider.tsx", // pure context provider, no branches
           "src/ui/**/*.test.{ts,tsx}", // co-located unit tests; never the SUT
         ],
         reporter: ["text", "html", "lcov"],

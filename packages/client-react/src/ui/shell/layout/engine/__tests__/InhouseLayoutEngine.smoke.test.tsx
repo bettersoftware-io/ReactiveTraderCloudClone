@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { LayoutState } from "#/app/layout/layoutPort";
+import type { LayoutState } from "@rtc/client-core";
 
 import { InhouseLayoutEngine } from "../InhouseLayoutEngine";
 import type { PanelRegistry } from "../panelRegistry";

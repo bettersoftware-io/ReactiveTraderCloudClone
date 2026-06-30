@@ -3,6 +3,23 @@ import type { BehaviorSubject } from "rxjs";
 import { EMPTY, type Observable, of, throwError } from "rxjs";
 
 import type {
+  RfqSubmissionState,
+  TicketSubmissionState,
+} from "@rtc/client-core";
+import {
+  createBootSequenceMachine,
+  createDefaultLayoutPort,
+  createLayoutMachine,
+  createNotionalMachine,
+  createOrderTicketMachine,
+  createRfqCountdownMachine,
+  createRfqTileMachine,
+  createRowHighlightMachine,
+  createStaleFlagMachine,
+  createTileExecutionMachine,
+  type WorkspaceTab,
+} from "@rtc/client-core";
+import type {
   CreateRfqInput,
   CurrencyPair,
   ExecuteTradeInput,
@@ -12,26 +29,8 @@ import type {
   ViewMode,
 } from "@rtc/domain";
 import { nextThemeModePreference, resolveThemeMode } from "@rtc/domain";
-
-import {
-  createDefaultLayoutPort,
-  type WorkspaceTab,
-} from "#/app/layout/defaultLayoutPort";
-import { createBootSequenceMachine } from "#/app/presenters/BootSequenceMachine";
-import { createLayoutMachine } from "#/app/presenters/LayoutMachine";
-import { createNotionalMachine } from "#/app/presenters/NotionalMachine";
-import { createOrderTicketMachine } from "#/app/presenters/OrderTicketMachine";
-import { createRfqCountdownMachine } from "#/app/presenters/RfqCountdownMachine";
-import type {
-  RfqSubmissionState,
-  TicketSubmissionState,
-} from "#/app/presenters/RfqsPresenter";
-import { createRfqTileMachine } from "#/app/presenters/RfqTileMachine";
-import { createRowHighlightMachine } from "#/app/presenters/RowHighlightMachine";
-import { createStaleFlagMachine } from "#/app/presenters/StaleFlagMachine";
-import { createTileExecutionMachine } from "#/app/presenters/TileExecutionMachine";
-import type { ViewModel } from "#/ui/viewModel/createViewModel";
-import { useMachine } from "#/ui/viewModel/useMachine";
+import type { ViewModel } from "@rtc/react-bindings";
+import { useMachine } from "@rtc/react-bindings";
 
 import type { World } from "../shared/harness/world";
 

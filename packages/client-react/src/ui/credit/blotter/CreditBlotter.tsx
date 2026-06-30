@@ -9,6 +9,7 @@ import {
   type Rfq,
   RfqState,
 } from "@rtc/domain";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { BlotterHeader } from "#/ui/fx/blotter/BlotterHeader";
 import { BlotterRow } from "#/ui/fx/blotter/BlotterRow";
@@ -21,7 +22,6 @@ import {
 } from "#/ui/fx/blotter/columnSort";
 import { exportToCsv } from "#/ui/fx/blotter/csvExport";
 import { QuickFilter } from "#/ui/fx/blotter/QuickFilter";
-import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import {
   CREDIT_COLUMNS,

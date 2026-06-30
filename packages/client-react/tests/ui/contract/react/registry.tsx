@@ -1,6 +1,11 @@
 import type { ReactElement } from "react";
 
 import type {
+  NotionalIntents,
+  NotionalView,
+  TileExecutionState,
+} from "@rtc/client-core";
+import type {
   CurrencyCategory,
   CurrencyPair,
   CurrencyPairPosition,
@@ -15,11 +20,6 @@ import type {
   ViewMode,
 } from "@rtc/domain";
 
-import type {
-  NotionalIntents,
-  NotionalView,
-} from "#/app/presenters/NotionalMachine";
-import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
 import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
 import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
 import { ErrorRatePanel as ErrorRatePanelComponent } from "#/ui/admin/ErrorRatePanel";

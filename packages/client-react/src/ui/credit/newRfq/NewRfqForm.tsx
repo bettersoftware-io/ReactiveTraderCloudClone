@@ -2,8 +2,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { Direction, type Instrument } from "@rtc/domain";
-
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { DealerSelection } from "./DealerSelection";
 import { InstrumentSearch } from "./InstrumentSearch";

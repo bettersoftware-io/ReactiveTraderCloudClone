@@ -2,8 +2,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import type { Trade } from "@rtc/domain";
-
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";

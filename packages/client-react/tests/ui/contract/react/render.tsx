@@ -1,8 +1,9 @@
 import { act, render as rtlRender } from "@testing-library/react";
 import type { BehaviorSubject } from "rxjs";
 
+import { ViewModelProvider } from "@rtc/react-bindings";
+
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
-import { ViewModelProvider } from "#/ui/viewModel/ViewModelProvider";
 
 import type {
   MountedRoot,

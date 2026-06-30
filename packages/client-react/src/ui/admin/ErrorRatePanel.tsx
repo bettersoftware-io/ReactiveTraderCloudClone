@@ -1,8 +1,7 @@
 import type { ReactElement } from "react";
 
 import type { MetricSample } from "@rtc/domain";
-
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./ErrorRatePanel.module.css";
 

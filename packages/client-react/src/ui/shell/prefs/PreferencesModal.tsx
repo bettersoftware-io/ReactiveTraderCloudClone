@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from "react";
 
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
 import { PrefToggle } from "./PrefToggle";
