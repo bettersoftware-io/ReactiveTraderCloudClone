@@ -1,5 +1,11 @@
 import type { JSX } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  type ListRenderItemInfo,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import type { CurrencyPair } from "@rtc/domain";
 
@@ -40,8 +46,12 @@ export function CurrencyPairsScreen(): JSX.Element {
       <Text style={styles.heading}>Currency pairs (from @rtc/client-core)</Text>
       <FlatList
         data={pairs}
-        keyExtractor={(pair: CurrencyPair) => pair.symbol}
-        renderItem={({ item }: { item: CurrencyPair }) => renderPair(item)}
+        keyExtractor={(pair: CurrencyPair) => {
+          return pair.symbol;
+        }}
+        renderItem={({ item }: ListRenderItemInfo<CurrencyPair>) => {
+          return renderPair(item);
+        }}
       />
     </View>
   );

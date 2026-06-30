@@ -8,7 +8,10 @@ export function useCurrencyPairs(): readonly CurrencyPair[] {
   const [pairs, setPairs] = useState<readonly CurrencyPair[]>([]);
   useEffect(() => {
     const subscription = buildCurrencyPairsStream().subscribe(setPairs);
-    return () => subscription.unsubscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
   return pairs;
 }
