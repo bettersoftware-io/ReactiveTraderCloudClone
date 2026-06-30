@@ -4,38 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ConnectionEvent } from "@rtc/domain";
 
+import { lastMock, MockWebSocket } from "./MockWebSocket.testHelpers";
 import { WsAdapter } from "./WsAdapter";
-
-let lastMock: MockWebSocket;
-
-class MockWebSocket {
-  static OPEN = 1;
-
-  static constructed = 0;
-
-  readyState = 0;
-
-  onopen: ((ev: Event) => void) | null = null;
-
-  onclose: ((ev: CloseEvent) => void) | null = null;
-
-  onmessage: ((ev: MessageEvent) => void) | null = null;
-
-  onerror: ((ev: Event) => void) | null = null;
-
-  send = vi.fn();
-
-  close = vi.fn();
-
-  constructor() {
-    MockWebSocket.constructed++;
-    // Capture the most recently constructed socket so tests can drive its
-    // event handlers. WsAdapter does `new WebSocket(url)`, so a constructable
-    // stub is required — vitest 4 forwards `new` to the stubbed global, and an
-    // arrow `mockImplementation` is not a constructor.
-    lastMock = this;
-  }
-}
 
 beforeEach(() => {
   vi.useFakeTimers();

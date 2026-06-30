@@ -1,5 +1,3 @@
-import { EventEmitter } from "node:events";
-
 import { interval, map, type Observable, of, throwError } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 import type { WebSocket } from "ws";
@@ -18,6 +16,7 @@ import {
 
 import type { ServiceContainer } from "../services/serviceContainer.js";
 import { ThroughputService } from "../services/ThroughputService.js";
+import { FakeWs } from "./FakeWs.testHelpers.js";
 import { CLIENT_MSG, SERVER_MSG, type WsMessage } from "./protocol.js";
 import { handleConnection } from "./wsHandler.js";
 
@@ -32,38 +31,6 @@ import { handleConnection } from "./wsHandler.js";
  * end. Here we inject lightweight, immediate fake services so the assertions
  * stay fast and deterministic and isolate the handler's own behaviour.
  */
-
-// ── Fake ws socket ───────────────────────────────────────────────
-
-/** Minimal stand-in for the `ws` WebSocket the handler talks to. */
-class FakeWs extends EventEmitter {
-  readonly OPEN = 1;
-
-  readyState = 1;
-
-  readonly outbound: WsMessage[] = [];
-
-  send(data: string): void {
-    this.outbound.push(JSON.parse(data) as WsMessage);
-  }
-
-  /** Simulate a client → server frame. */
-  receive(msg: WsMessage): void {
-    this.emit("message", JSON.stringify(msg));
-  }
-
-  /** Simulate the socket closing. */
-  closeConnection(): void {
-    this.readyState = 3;
-    this.emit("close");
-  }
-
-  framesOfType(type: string): WsMessage[] {
-    return this.outbound.filter((m) => {
-      return m.type === type;
-    });
-  }
-}
 
 // ── Fake domain services ─────────────────────────────────────────
 

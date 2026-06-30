@@ -27,6 +27,7 @@ export default mergeConfig(
           // Covered by tests/fullstack + UI smokes. Mirrors the server's
           // src/index.ts / serviceContainer.ts coverage exclude.
           "src/app/composition.ts",
+          "**/*.testHelpers.ts", // extracted test doubles, not production source
         ],
         reporter: ["text", "html", "lcov"],
         reportsDirectory: "reports/app/coverage",

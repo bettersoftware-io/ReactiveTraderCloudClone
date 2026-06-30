@@ -17,6 +17,7 @@ export default defineConfig({
         "src/index.ts", // HTTP/WS bootstrap; binds a port on import, not unit-testable
         // without a production refactor — covered by tests/fullstack smokes
         "src/services/serviceContainer.ts", // pure `new X()` wiring; covered by the smokes
+        "**/*.testHelpers.ts", // extracted test doubles, not production source
       ],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/unit/coverage",
