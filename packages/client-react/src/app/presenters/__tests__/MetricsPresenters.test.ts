@@ -14,29 +14,6 @@ import {
   WINDOW,
 } from "../MetricsPresenters";
 
-function sample(t: number, value = 0): MetricSample {
-  return { t, value };
-}
-
-/** Minimal fake TelemetryPort — only wires the stream being tested. */
-function fakePort(
-  throughput$?: Subject<MetricSample>,
-  latency$?: Subject<MetricSample>,
-  errorRate$?: Subject<MetricSample>,
-): TelemetryPort {
-  return {
-    throughput$: () => {
-      return throughput$ ?? new Subject<MetricSample>();
-    },
-    latency$: () => {
-      return latency$ ?? new Subject<MetricSample>();
-    },
-    errorRate$: () => {
-      return errorRate$ ?? new Subject<MetricSample>();
-    },
-  };
-}
-
 describe("ThroughputMetricPresenter", () => {
   it("emits an empty list before any samples arrive", async () => {
     const presenter = new ThroughputMetricPresenter(fakePort());
@@ -139,3 +116,26 @@ describe("ErrorRatePresenter", () => {
     expect(emitted[2]).toEqual([sample(10), sample(20)]);
   });
 });
+
+function sample(t: number, value = 0): MetricSample {
+  return { t, value };
+}
+
+/** Minimal fake TelemetryPort — only wires the stream being tested. */
+function fakePort(
+  throughput$?: Subject<MetricSample>,
+  latency$?: Subject<MetricSample>,
+  errorRate$?: Subject<MetricSample>,
+): TelemetryPort {
+  return {
+    throughput$: () => {
+      return throughput$ ?? new Subject<MetricSample>();
+    },
+    latency$: () => {
+      return latency$ ?? new Subject<MetricSample>();
+    },
+    errorRate$: () => {
+      return errorRate$ ?? new Subject<MetricSample>();
+    },
+  };
+}

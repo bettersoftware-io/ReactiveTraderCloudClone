@@ -9,10 +9,6 @@ import type { EventLogPort, LogEvent } from "@rtc/domain";
 
 import { EventLogPresenter, MAX_LOG_ROWS } from "../EventLogPresenter";
 
-function makeEvent(t: number): LogEvent {
-  return { t, severity: "info", service: "pricing", message: `msg-${t}` };
-}
-
 describe("EventLogPresenter", () => {
   it("emits an empty list immediately before any events arrive", async () => {
     const port: EventLogPort = {
@@ -112,3 +108,7 @@ describe("EventLogPresenter", () => {
     expect(a).toEqual(b);
   });
 });
+
+function makeEvent(t: number): LogEvent {
+  return { t, severity: "info", service: "pricing", message: `msg-${t}` };
+}

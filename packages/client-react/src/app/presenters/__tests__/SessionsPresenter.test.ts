@@ -9,10 +9,6 @@ import type { SessionInfo, SessionsPort } from "@rtc/domain";
 
 import { SessionsPresenter } from "../SessionsPresenter";
 
-function session(id: string): SessionInfo {
-  return { id, user: "demo-user", region: "EU", lat: 51.5, lon: -0.1 };
-}
-
 describe("SessionsPresenter", () => {
   it("passes through the sessions array from the port", async () => {
     const sessions = [session("a"), session("b")];
@@ -83,3 +79,7 @@ describe("SessionsPresenter", () => {
     expect(received).toEqual([session("early")]);
   });
 });
+
+function session(id: string): SessionInfo {
+  return { id, user: "demo-user", region: "EU", lat: 51.5, lon: -0.1 };
+}

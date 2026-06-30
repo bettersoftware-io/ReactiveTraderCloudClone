@@ -5,28 +5,6 @@ import type { ConnectionEvent, MetricControl, Perturbation } from "@rtc/domain";
 
 import { createIncidentMachine } from "../IncidentMachine";
 
-type FakeControl = MetricControl & {
-  calls: Perturbation[];
-  cleared: number;
-};
-
-function fakeControl(): FakeControl {
-  const calls: Perturbation[] = [];
-  let cleared = 0;
-  return {
-    calls,
-    get cleared(): number {
-      return cleared;
-    },
-    perturb: (k: Perturbation): void => {
-      calls.push(k);
-    },
-    clearPerturbation: () => {
-      cleared += 1;
-    },
-  };
-}
-
 describe("IncidentMachine", () => {
   it("inject(latencySpike) perturbs controls and pushes gatewayDisconnected", async () => {
     const control = fakeControl();
@@ -103,3 +81,25 @@ describe("IncidentMachine", () => {
     m.dispose();
   });
 });
+
+type FakeControl = MetricControl & {
+  calls: Perturbation[];
+  cleared: number;
+};
+
+function fakeControl(): FakeControl {
+  const calls: Perturbation[] = [];
+  let cleared = 0;
+  return {
+    calls,
+    get cleared(): number {
+      return cleared;
+    },
+    perturb: (k: Perturbation): void => {
+      calls.push(k);
+    },
+    clearPerturbation: () => {
+      cleared += 1;
+    },
+  };
+}
