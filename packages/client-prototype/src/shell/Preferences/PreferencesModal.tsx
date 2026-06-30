@@ -146,7 +146,9 @@ export function PreferencesModal(props: PreferencesModalProps): ReactElement {
                 </div>
               </div>
 
-              <div className={styles.sectionHead}>TRADING</div>
+              <div className={`${styles.sectionHead} ${styles.sectionHeadMid}`}>
+                TRADING
+              </div>
               <ToggleRow
                 label="One-click trading"
                 hint="Execute without confirmation."
@@ -204,7 +206,9 @@ export function PreferencesModal(props: PreferencesModalProps): ReactElement {
                 }}
               />
 
-              <div className={styles.sectionHead}>DATA &amp; PRIVACY</div>
+              <div className={`${styles.sectionHead} ${styles.sectionHeadMid}`}>
+                DATA &amp; PRIVACY
+              </div>
               <SegmentedControl
                 label="Live refresh rate"
                 options={SEGMENT_DEFS.refreshRate}

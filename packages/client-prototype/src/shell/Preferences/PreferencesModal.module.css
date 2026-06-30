@@ -82,7 +82,8 @@
   padding-bottom: 6px;
 }
 
-.sectionHead + .sectionHead {
+/* Second section head in each column (TRADING, DATA) — PROTO uses 20px there. */
+.sectionHeadMid {
   margin-top: 20px;
 }
 
