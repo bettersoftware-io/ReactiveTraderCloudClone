@@ -23,6 +23,10 @@ export class MockWebSocket {
 
   constructor() {
     MockWebSocket.constructed++;
+    // Capture the most recently constructed socket so tests can drive its
+    // event handlers. WsAdapter does `new WebSocket(url)`, so a constructable
+    // stub is required — vitest forwards `new` to the stubbed global, and an
+    // arrow `mockImplementation` is not a constructor.
     lastMock = this;
   }
 }
