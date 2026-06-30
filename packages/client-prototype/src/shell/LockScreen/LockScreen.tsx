@@ -78,7 +78,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
           aria-label="Authenticate"
           onClick={onAuthenticate}
         >
-          AUTHENTICATE &#9658;
+          AUTHENTICATE ▸
         </button>
 
         <p className={styles.footer}>BIOMETRIC · ENCRYPTED CHANNEL</p>
