@@ -8,6 +8,7 @@ export interface AwaitHelpers {
   waitSeconds(n: number): Promise<void>;
 }
 
+// eslint-disable-next-line rtc/class-filename-match -- await-helper bundle in a purpose-named scenarios module
 export class RealAwaitHelpers implements AwaitHelpers {
   awaitFirstWithin<T>(source$: Observable<T>, timeoutMs: number): Promise<T> {
     return firstValueFrom(source$.pipe(timeout(timeoutMs)));

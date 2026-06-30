@@ -4,6 +4,7 @@ import type { PositionUpdates } from "../analytics/position.js";
 import { describeAnalyticsPortContract } from "../ports/__contracts__/AnalyticsPortContract.js";
 import type { AnalyticsPort } from "../ports/analyticsPort.js";
 
+// eslint-disable-next-line rtc/class-filename-match -- small local AnalyticsPort stub; file is named after the system under test
 class SingleEntryAnalyticsStub implements AnalyticsPort {
   getAnalytics(_currency: string): Observable<PositionUpdates> {
     return of({

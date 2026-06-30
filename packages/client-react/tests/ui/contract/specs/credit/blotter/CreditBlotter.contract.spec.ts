@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file -- two local RecordingBlob doubles in separate it() blocks */
 import { CreditBlotter } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it, vi } from "vitest";

@@ -13,6 +13,7 @@ let captured: string | null;
 const RealBlob: typeof Blob = globalThis.Blob;
 
 /** A real Blob subclass that records the joined text parts it was built from. */
+// eslint-disable-next-line rtc/class-filename-match -- small local Blob test double; file is named after the system under test
 class RecordingBlob extends RealBlob {
   constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
     super(parts, options);
