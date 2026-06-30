@@ -7,12 +7,10 @@ import { describe, expect, it } from "vitest";
 
 import type { MetricSample, TelemetryPort } from "@rtc/domain";
 
-import {
-  ErrorRatePresenter,
-  LatencyPresenter,
-  ThroughputMetricPresenter,
-  WINDOW,
-} from "../MetricsPresenters";
+import { ErrorRatePresenter } from "../ErrorRatePresenter";
+import { LatencyPresenter } from "../LatencyPresenter";
+import { ThroughputMetricPresenter } from "../ThroughputMetricPresenter";
+import { WINDOW } from "../windowedSamples";
 
 describe("ThroughputMetricPresenter", () => {
   it("emits an empty list before any samples arrive", async () => {

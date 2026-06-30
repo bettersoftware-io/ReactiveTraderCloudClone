@@ -33,6 +33,7 @@ import { ConnectionStatusPresenter } from "./presenters/ConnectionStatusPresente
 import { CurrencyPairsPresenter } from "./presenters/CurrencyPairsPresenter";
 import { DealersPresenter } from "./presenters/DealersPresenter";
 import { DepthPresenter } from "./presenters/DepthPresenter";
+import { ErrorRatePresenter } from "./presenters/ErrorRatePresenter";
 import { EventLogPresenter } from "./presenters/EventLogPresenter";
 import {
   createIncidentMachine,
@@ -40,12 +41,8 @@ import {
   type IncidentState,
 } from "./presenters/IncidentMachine";
 import { InstrumentsPresenter } from "./presenters/InstrumentsPresenter";
+import { LatencyPresenter } from "./presenters/LatencyPresenter";
 import { createLayoutMachine } from "./presenters/LayoutMachine";
-import {
-  ErrorRatePresenter,
-  LatencyPresenter,
-  ThroughputMetricPresenter,
-} from "./presenters/MetricsPresenters";
 import type { Machine, MachineFactories } from "./presenters/machine";
 import { createNotionalMachine } from "./presenters/NotionalMachine";
 import { OrdersBlotterPresenter } from "./presenters/OrdersBlotterPresenter";
@@ -63,6 +60,7 @@ import { SessionsPresenter } from "./presenters/SessionsPresenter";
 import { createStaleFlagMachine } from "./presenters/StaleFlagMachine";
 import { ThemePreferencePresenter } from "./presenters/ThemePreferencePresenter";
 import { ThemeSkinPreferencePresenter } from "./presenters/ThemeSkinPreferencePresenter";
+import { ThroughputMetricPresenter } from "./presenters/ThroughputMetricPresenter";
 import { ThroughputPresenter } from "./presenters/ThroughputPresenter";
 import { createTileExecutionMachine } from "./presenters/TileExecutionMachine";
 import { TradeExecutionPresenter } from "./presenters/TradeExecutionPresenter";
