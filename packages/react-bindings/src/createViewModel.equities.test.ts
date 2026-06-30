@@ -9,7 +9,7 @@ import {
 } from "@rtc/client-core";
 import { ConnectionEventsSimulator, PreferencesSimulator } from "@rtc/domain";
 
-import { createViewModel, type ViewModel } from "./createViewModel";
+import { createViewModel, type ViewModel } from "#/createViewModel";
 
 describe("createViewModel — equities hooks", () => {
   it("useWatchlist is a function and returns an array by default", () => {

@@ -9,7 +9,7 @@ import {
 } from "@rtc/client-core";
 import { ConnectionEventsSimulator, PreferencesSimulator } from "@rtc/domain";
 
-import { createViewModel, type ViewModel } from "../createViewModel";
+import { createViewModel, type ViewModel } from "#/createViewModel";
 
 describe("theme/skin/animated-bg hooks", () => {
   it("useThemeSkinPreference reads default holo and sets terminal", () => {

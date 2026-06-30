@@ -9,7 +9,7 @@ import {
 } from "@rtc/client-core";
 import { ConnectionEventsSimulator, PreferencesSimulator } from "@rtc/domain";
 
-import { createViewModel, type ViewModel } from "../createViewModel";
+import { createViewModel, type ViewModel } from "#/createViewModel";
 
 describe("useAnimationIntents", () => {
   it("starts null before any animation intent fires for the target", () => {

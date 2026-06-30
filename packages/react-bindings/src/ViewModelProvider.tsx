@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 
-import type { ViewModel } from "./createViewModel";
-import { ViewModelContext } from "./ViewModelContext";
+import type { ViewModel } from "#/createViewModel";
+import { ViewModelContext } from "#/ViewModelContext";
 
 interface ViewModelProviderProps {
   viewModel: ViewModel;

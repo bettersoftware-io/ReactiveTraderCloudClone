@@ -88,9 +88,6 @@ importers:
 
   packages/client-react:
     dependencies:
-      '@react-rxjs/core':
-        specifier: ^0.10.7
-        version: 0.10.8(react@19.2.7)(rxjs@7.8.2)
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../client-core
@@ -103,9 +100,6 @@ importers:
       '@rtc/shared':
         specifier: workspace:*
         version: link:../shared
-      '@rx-state/core':
-        specifier: ^0.1.4
-        version: 0.1.4(rxjs@7.8.2)
       d3-drag:
         specifier: ^3.0.0
         version: 3.0.0

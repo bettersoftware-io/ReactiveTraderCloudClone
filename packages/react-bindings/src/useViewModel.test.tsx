@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { useViewModel } from "./useViewModel";
+import { useViewModel } from "#/useViewModel";
 
 describe("useViewModel", () => {
   it("throws when rendered outside a ViewModelProvider", () => {

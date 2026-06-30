@@ -106,9 +106,12 @@ export interface AppPorts {
 
 export type TransportPorts = Omit<AppPorts, "connectionEvents">;
 
-export function createSimulatorPorts(deps: {
+/** Dependencies injected by the platform layer into both simulator and WS-real port factories. */
+export interface PortFactoryDeps {
   preferences: PreferencesPort;
-}): TransportPorts {
+}
+
+export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
   const execution = new ExecutionSimulator();
   const marketData = new EquityMarketDataSimulator();
   const positionsSim = new EquityPositionSimulator(marketData);
@@ -947,7 +950,7 @@ function createPositionPort(ws: IWsAdapter): PositionPort {
 
 export function createWsRealPorts(
   ws: IWsAdapter,
-  deps: { preferences: PreferencesPort },
+  deps: PortFactoryDeps,
 ): TransportPorts {
   // Telemetry ports are browser-local regardless of transport (no wire RPC),
   // mirroring how preferences is handled. Fixed dev seeds for reproducibility.

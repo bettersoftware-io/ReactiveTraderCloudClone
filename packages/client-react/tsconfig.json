@@ -12,5 +12,10 @@
   },
   "include": ["src"],
   "exclude": ["src/**/*.golden.test.ts"],
-  "references": [{ "path": "../domain" }, { "path": "../shared" }]
+  "references": [
+    { "path": "../domain" },
+    { "path": "../shared" },
+    { "path": "../client-core" },
+    { "path": "../react-bindings" }
+  ]
 }

@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Machine } from "@rtc/client-core";
 
-import { useMachine } from "./useMachine";
+import { useMachine } from "#/useMachine";
 
 describe("useMachine", () => {
   it("calls the factory exactly once across re-renders", () => {

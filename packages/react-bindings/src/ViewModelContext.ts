@@ -1,6 +1,6 @@
 import { createContext } from "react";
 
-import type { ViewModel } from "./createViewModel";
+import type { ViewModel } from "#/createViewModel";
 
 /** The DI seam's context: holds the ViewModel (or null until a
  * ViewModelProvider supplies it). Kept in its own module so UI components can import

@@ -1,7 +1,7 @@
 import { useContext } from "react";
 
-import type { ViewModel } from "./createViewModel";
-import { ViewModelContext } from "./ViewModelContext";
+import type { ViewModel } from "#/createViewModel";
+import { ViewModelContext } from "#/ViewModelContext";
 
 /** The seam UI components depend on: returns the ViewModel.
  * Importing this pulls in only the context + the ViewModel type — never the

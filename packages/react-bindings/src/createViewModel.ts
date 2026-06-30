@@ -61,7 +61,7 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
-import { useMachine } from "./useMachine";
+import { useMachine } from "#/useMachine";
 
 type UseBootSequenceResult = { state: BootSequenceState } & BootSequenceIntents;
 type UseIncidentResult = { state: IncidentState } & IncidentIntents;
