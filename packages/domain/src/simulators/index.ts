@@ -1,12 +1,7 @@
 export { AnalyticsSimulator } from "./AnalyticsSimulator.js";
 export { ConnectionEventsSimulator } from "./ConnectionEventsSimulator.js";
 export { CreditRfqSimulator } from "./CreditRfqSimulator.js";
-export {
-  DEALERS_CATALOG,
-  DealerSimulator,
-  INSTRUMENTS_CATALOG,
-  InstrumentSimulator,
-} from "./creditReferenceDataSimulator.js";
+export { DEALERS_CATALOG, DealerSimulator } from "./DealerSimulator.js";
 export { EquityMarketDataSimulator } from "./EquityMarketDataSimulator.js";
 export type {
   EquityOrderDeps,
@@ -20,6 +15,10 @@ export { EventLogSimulator } from "./EventLogSimulator.js";
 export type { TradeListener } from "./ExecutionSimulator.js";
 export { ExecutionSimulator } from "./ExecutionSimulator.js";
 export { aggregateCandle, gbmStep } from "./gbm.js";
+export {
+  INSTRUMENTS_CATALOG,
+  InstrumentSimulator,
+} from "./InstrumentSimulator.js";
 export { LatencySimulator } from "./LatencySimulator.js";
 export type { PreferencesSeed } from "./PreferencesSimulator.js";
 export { PreferencesSimulator } from "./PreferencesSimulator.js";

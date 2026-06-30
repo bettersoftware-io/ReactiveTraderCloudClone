@@ -30,6 +30,7 @@ function isWorking(storage: unknown): storage is Storage {
   }
 }
 
+// eslint-disable-next-line rtc/class-filename-match -- internal shim class in a purpose-named vitest setup module (registered by path in setupFiles)
 class MemoryStorage implements Storage {
   private readonly map = new Map<string, string>();
 

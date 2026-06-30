@@ -2,6 +2,7 @@ import prettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
+import { classFilenameMatch } from "./eslint-rules/class-filename-match.mjs";
 import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
 
 // Structural `no-restricted-syntax` bans shared between the repo-wide block and
@@ -77,6 +78,18 @@ const inlineStyleProp = {
     "Inline style={{…}} is banned — move static styling to a co-located *.module.css. Only runtime-computed values (CSS custom properties) are exempt; if genuinely needed, add: // eslint-disable-next-line no-restricted-syntax -- <reason>.",
 };
 
+// Both custom rules ship under the `rtc` plugin namespace. A single shared
+// plugin object lets two config blocks reference it (newspaper-order stays
+// test-file-scoped; class-filename-match applies to all ts/tsx) without
+// "Cannot redefine plugin" — flat config accepts the same object reference in
+// multiple blocks.
+const rtcPlugin = {
+  rules: {
+    "newspaper-order": newspaperOrder,
+    "class-filename-match": classFilenameMatch,
+  },
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -110,6 +123,7 @@ export default tseslint.config(
         { blankLine: "always", prev: "*", next: "multiline-block-like" },
       ],
       "no-restricted-syntax": ["error", ...restrictedSyntax],
+      "max-classes-per-file": ["error", 1],
     },
   },
   {
@@ -153,8 +167,37 @@ export default tseslint.config(
     // Scoped to test files only (contract specs included — reordering is
     // behaviour-preserving). class/enum/vi.doMock/vi.hoisted stay put.
     files: ["**/*.{spec,test}.{ts,tsx}"],
-    plugins: { rtc: { rules: { "newspaper-order": newspaperOrder } } },
+    plugins: { rtc: rtcPlugin },
     rules: { "rtc/newspaper-order": "error" },
+  },
+  {
+    // One class per file: a top-level class must live in a file named after it
+    // (filename's first dot-segment === class name). Applies to ALL ts/tsx;
+    // fires only when a top-level class exists, so non-class modules are
+    // untouched. Sanctioned exceptions use a per-line eslint-disable.
+    files: ["**/*.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/class-filename-match": "error" },
+  },
+  {
+    // Carve-out: e2e page objects use framework-prefixed class names
+    // (CypressBlotterTable / PlaywrightBlotterTable) inside subject-named files
+    // that mirror the shared contracts/<Subject>.ts. The cypress/ <-> playwright/
+    // <-> contracts/ filename parallelism is deliberate, so the filename matches
+    // the contract, not the class. A systematic convention across 20 files (not a
+    // one-off), so it is scoped off the rule rather than disabled per file.
+    files: [
+      "tests/browser/page-objects/cypress/**/*.ts",
+      "tests/browser/page-objects/playwright/**/*.ts",
+    ],
+    rules: { "rtc/class-filename-match": "off" },
+  },
+  {
+    // Carve-out: cucumber World classes live in `world.ts` by framework
+    // convention (setWorldConstructor) — one World per flavor directory. The
+    // filename is the cucumber idiom, not the class name.
+    files: ["**/world.ts"],
+    rules: { "rtc/class-filename-match": "off" },
   },
   prettier,
 );
