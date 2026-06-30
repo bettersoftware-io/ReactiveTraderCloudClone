@@ -17,8 +17,7 @@ import {
   DEMO_USER,
   type WorkspaceTab,
 } from "@rtc/client-core";
-
-import type { ViewModel } from "#/ui/viewModel/createViewModel";
+import type { ViewModel } from "@rtc/react-bindings";
 
 import type { AppData } from "../shared/appData";
 

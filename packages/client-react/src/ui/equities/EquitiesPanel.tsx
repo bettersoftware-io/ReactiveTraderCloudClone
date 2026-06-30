@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from "react";
 
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { OrdersBlotter } from "./blotter/OrdersBlotter";
 import { PositionsBlotter } from "./blotter/PositionsBlotter";

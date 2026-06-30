@@ -45,6 +45,7 @@
     "@react-rxjs/core": "^0.10.7",
     "@rtc/client-core": "workspace:*",
     "@rtc/domain": "workspace:*",
+    "@rtc/react-bindings": "workspace:*",
     "@rtc/shared": "workspace:*",
     "@rx-state/core": "^0.1.4",
     "d3-drag": "^3.0.0",

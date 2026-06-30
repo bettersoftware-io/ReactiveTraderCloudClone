@@ -29,9 +29,8 @@ import type {
   ViewMode,
 } from "@rtc/domain";
 import { nextThemeModePreference, resolveThemeMode } from "@rtc/domain";
-
-import type { ViewModel } from "#/ui/viewModel/createViewModel";
-import { useMachine } from "#/ui/viewModel/useMachine";
+import type { ViewModel } from "@rtc/react-bindings";
+import { useMachine } from "@rtc/react-bindings";
 
 import type { World } from "../shared/harness/world";
 

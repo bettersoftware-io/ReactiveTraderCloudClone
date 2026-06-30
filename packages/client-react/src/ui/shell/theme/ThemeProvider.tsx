@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { type ReactNode, useLayoutEffect } from "react";
 
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { ThemeContext } from "./ThemeContext";
 import { type ThemeTokens, themeTokens } from "./tokens";

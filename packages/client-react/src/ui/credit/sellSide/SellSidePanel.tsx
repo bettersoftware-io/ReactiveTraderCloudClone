@@ -1,8 +1,7 @@
 import type { ReactElement } from "react";
 
 import { ADAPTIVE_BANK_NAME, type Instrument, type Rfq } from "@rtc/domain";
-
-import { useViewModel } from "#/ui/viewModel/useViewModel";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { TradeTicket } from "./TradeTicket";
 

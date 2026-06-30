@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
 
 import { createDefaultLayoutPort, createLayoutMachine } from "@rtc/client-core";
+import { useMachine } from "@rtc/react-bindings";
 
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
-import { useMachine } from "#/ui/viewModel/useMachine";
 
 const layoutTestRegistry: PanelRegistry = {
   "fx-rates": () => {
