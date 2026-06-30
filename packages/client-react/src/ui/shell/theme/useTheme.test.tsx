@@ -2,12 +2,8 @@ import { render, renderHook } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-interface WrapperProps {
-  children: ReactNode;
-}
-
-import type { AppHooks } from "#/ui/hooks/createAppHooks";
-import { HooksContext } from "#/ui/hooks/HooksContext";
+import type { ViewModel } from "#/ui/viewModel/createViewModel";
+import { ViewModelContext } from "#/ui/viewModel/ViewModelContext";
 
 import { ThemeProvider } from "./ThemeProvider";
 import { themeTokens } from "./tokens";
@@ -33,18 +29,20 @@ describe("ThemeProvider", () => {
       useThemePreference: () => {
         return {
           mode: "dark",
-          setMode: vi.fn(),
-          toggle: vi.fn(),
+          modePreference: "dark",
+          cycle: vi.fn(),
         };
       },
       useThemeSkinPreference: () => {
         return { skin, setSkin: vi.fn() };
       },
-    } as unknown as AppHooks;
+    } as unknown as ViewModel;
 
     function Wrapper({ children }: WrapperProps): ReactElement {
       return (
-        <HooksContext.Provider value={hooks}>{children}</HooksContext.Provider>
+        <ViewModelContext.Provider value={hooks}>
+          {children}
+        </ViewModelContext.Provider>
       );
     }
 
@@ -68,3 +66,7 @@ describe("ThemeProvider", () => {
     ).toBe(themeTokens.holo.dark["--accent-primary"]);
   });
 });
+
+interface WrapperProps {
+  children: ReactNode;
+}

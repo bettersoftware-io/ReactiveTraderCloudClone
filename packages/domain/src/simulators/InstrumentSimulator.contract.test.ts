@@ -1,7 +1,7 @@
 import { afterEach, vi } from "vitest";
 
 import { describeInstrumentPortContract } from "../ports/__contracts__/InstrumentPortContract.js";
-import { InstrumentSimulator } from "./creditReferenceDataSimulator.js";
+import { InstrumentSimulator } from "./InstrumentSimulator.js";
 
 afterEach(() => {
   return vi.useRealTimers();

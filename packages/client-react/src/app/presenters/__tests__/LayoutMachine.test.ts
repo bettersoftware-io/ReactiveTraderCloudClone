@@ -28,16 +28,6 @@ const root: LayoutNode = {
 const initial: LayoutState = { root, maximized: null, collapsed: [] };
 const port: LayoutPort = { initial };
 
-function current(m: ReturnType<typeof createLayoutMachine>): LayoutState {
-  let view: LayoutState | undefined;
-  const sub = m.state$.subscribe((s) => {
-    view = s;
-  });
-  sub.unsubscribe();
-  if (!view) throw new Error("LayoutMachine state$ did not emit synchronously");
-  return view;
-}
-
 describe("createLayoutMachine", () => {
   it("seeds the initial tree from the port", () => {
     const m = createLayoutMachine(port);
@@ -115,3 +105,13 @@ describe("createLayoutMachine", () => {
     m.dispose();
   });
 });
+
+function current(m: ReturnType<typeof createLayoutMachine>): LayoutState {
+  let view: LayoutState | undefined;
+  const sub = m.state$.subscribe((s) => {
+    view = s;
+  });
+  sub.unsubscribe();
+  if (!view) throw new Error("LayoutMachine state$ did not emit synchronously");
+  return view;
+}

@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import type { Trade } from "@rtc/domain";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";
@@ -20,7 +20,7 @@ import { QuickFilter } from "./QuickFilter";
 import styles from "./FxBlotter.module.css";
 
 export function FxBlotter(): ReactElement {
-  const { useTrades, useNewTradeIds } = useHooks();
+  const { useTrades, useNewTradeIds } = useViewModel();
   const trades = useTrades();
   // "Newly arrived" detection is a cross-emission stream-diff; it lives in the
   // presenter (BlotterPresenter.newTradeIds$), not here — see docs/adr/ADR-003.

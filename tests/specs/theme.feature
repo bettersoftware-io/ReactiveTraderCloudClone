@@ -15,8 +15,10 @@ Feature: Theme
     And the trader reloads the page
     Then the workspace background color matches the toggled theme
 
-  Scenario: toggle button shows correct icon for current theme
+  Scenario: toggle cycles the mode preference and updates its aria-label
     Then the theme toggle aria-label mentions "light"
+    When the trader toggles the theme
+    Then the theme toggle aria-label mentions "system"
     When the trader toggles the theme
     Then the theme toggle aria-label mentions "dark"
 

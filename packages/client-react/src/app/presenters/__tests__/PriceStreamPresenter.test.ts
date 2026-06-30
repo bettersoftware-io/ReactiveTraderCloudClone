@@ -14,17 +14,6 @@ const EURUSD: CurrencyPair = {
   defaultNotional: 1_000_000,
 };
 
-function tick(mid: number): PriceTick {
-  return {
-    symbol: "EURUSD",
-    mid,
-    ask: mid + 0.0001,
-    bid: mid - 0.0001,
-    valueDate: "2026-05-05",
-    creationTimestamp: 1,
-  };
-}
-
 describe("PriceStreamPresenter", () => {
   it("emits a Price (enriched tick) for the given pair", async () => {
     const port: PricingPort = {
@@ -60,3 +49,14 @@ describe("PriceStreamPresenter", () => {
     expect(presenter.price$(EURUSD)).toBe(presenter.price$(EURUSD));
   });
 });
+
+function tick(mid: number): PriceTick {
+  return {
+    symbol: "EURUSD",
+    mid,
+    ask: mid + 0.0001,
+    bid: mid - 0.0001,
+    valueDate: "2026-05-05",
+    creationTimestamp: 1,
+  };
+}

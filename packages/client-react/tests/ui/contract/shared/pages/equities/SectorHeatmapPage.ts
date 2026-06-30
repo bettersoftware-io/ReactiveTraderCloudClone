@@ -54,4 +54,14 @@ export class SectorHeatmapPage extends MountedComponent<SectorHeatmapProps> {
   async select(symbol: string): Promise<void> {
     await this.user.click(this.cellFor(symbol));
   }
+
+  /**
+   * True when a sector-group label matching `name` is rendered (case-insensitive).
+   * The component renders `{sector.toUpperCase()}` as text — this probes that
+   * text node so the assertion fails if the unknown-symbol → DEFAULT_SECTOR
+   * mapping is broken.
+   */
+  hasSectorLabel(name: string): boolean {
+    return within(this.root).queryByText(new RegExp(`^${name}$`, "i")) !== null;
+  }
 }

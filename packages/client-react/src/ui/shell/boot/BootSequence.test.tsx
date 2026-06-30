@@ -9,75 +9,10 @@ import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AppHooks } from "#/ui/hooks/createAppHooks";
-import { HooksContext } from "#/ui/hooks/HooksContext";
+import type { ViewModel } from "#/ui/viewModel/createViewModel";
+import { ViewModelContext } from "#/ui/viewModel/ViewModelContext";
 
 import { BootSequence } from "./BootSequence";
-
-/**
- * Minimal 2D context stub — every method the draw functions call is a no-op.
- * Properties are writable so the draw functions can set fillStyle etc. without
- * throwing. createLinearGradient / createRadialGradient return a minimal stub.
- */
-function makeCtxStub(): CanvasRenderingContext2D {
-  const gradient = { addColorStop: vi.fn() };
-  return {
-    // Properties (writable)
-    fillStyle: "",
-    strokeStyle: "",
-    lineWidth: 0,
-    globalAlpha: 1,
-    font: "",
-    textAlign: "left",
-    textBaseline: "alphabetic",
-    shadowBlur: 0,
-    shadowColor: "",
-    lineJoin: "miter",
-    // Methods (no-ops)
-    arc: vi.fn(),
-    beginPath: vi.fn(),
-    clearRect: vi.fn(),
-    closePath: vi.fn(),
-    createLinearGradient: vi.fn(() => {
-      return gradient;
-    }),
-    createRadialGradient: vi.fn(() => {
-      return gradient;
-    }),
-    fill: vi.fn(),
-    fillRect: vi.fn(),
-    fillText: vi.fn(),
-    lineTo: vi.fn(),
-    moveTo: vi.fn(),
-    restore: vi.fn(),
-    rotate: vi.fn(),
-    save: vi.fn(),
-    scale: vi.fn(),
-    setLineDash: vi.fn(),
-    stroke: vi.fn(),
-    strokeRect: vi.fn(),
-    translate: vi.fn(),
-  } as unknown as CanvasRenderingContext2D;
-}
-
-function wrap(
-  el: ReactElement,
-  partialHooks: Partial<AppHooks> = {},
-): ReactElement {
-  const defaultHooks = {
-    useBootSequence: (_onDone: () => void) => {
-      return {
-        state: { variant: "core" as const, progress: 0, done: false },
-        skip: vi.fn(),
-      };
-    },
-    ...partialHooks,
-  } as unknown as AppHooks;
-
-  return (
-    <HooksContext.Provider value={defaultHooks}>{el}</HooksContext.Provider>
-  );
-}
 
 describe("BootSequence — canvas rAF loop (mocked context)", () => {
   let rafSpy: ReturnType<typeof vi.spyOn>;
@@ -139,3 +74,70 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     expect(ctxStub.clearRect).toHaveBeenCalled();
   });
 });
+
+/**
+ * Minimal 2D context stub — every method the draw functions call is a no-op.
+ * Properties are writable so the draw functions can set fillStyle etc. without
+ * throwing. createLinearGradient / createRadialGradient return a minimal stub.
+ */
+function makeCtxStub(): CanvasRenderingContext2D {
+  const gradient = { addColorStop: vi.fn() };
+  return {
+    // Properties (writable)
+    fillStyle: "",
+    strokeStyle: "",
+    lineWidth: 0,
+    globalAlpha: 1,
+    font: "",
+    textAlign: "left",
+    textBaseline: "alphabetic",
+    shadowBlur: 0,
+    shadowColor: "",
+    lineJoin: "miter",
+    // Methods (no-ops)
+    arc: vi.fn(),
+    beginPath: vi.fn(),
+    clearRect: vi.fn(),
+    closePath: vi.fn(),
+    createLinearGradient: vi.fn(() => {
+      return gradient;
+    }),
+    createRadialGradient: vi.fn(() => {
+      return gradient;
+    }),
+    fill: vi.fn(),
+    fillRect: vi.fn(),
+    fillText: vi.fn(),
+    lineTo: vi.fn(),
+    moveTo: vi.fn(),
+    restore: vi.fn(),
+    rotate: vi.fn(),
+    save: vi.fn(),
+    scale: vi.fn(),
+    setLineDash: vi.fn(),
+    stroke: vi.fn(),
+    strokeRect: vi.fn(),
+    translate: vi.fn(),
+  } as unknown as CanvasRenderingContext2D;
+}
+
+function wrap(
+  el: ReactElement,
+  partialHooks: Partial<ViewModel> = {},
+): ReactElement {
+  const defaultHooks = {
+    useBootSequence: (_onDone: () => void) => {
+      return {
+        state: { variant: "core" as const, progress: 0, done: false },
+        skip: vi.fn(),
+      };
+    },
+    ...partialHooks,
+  } as unknown as ViewModel;
+
+  return (
+    <ViewModelContext.Provider value={defaultHooks}>
+      {el}
+    </ViewModelContext.Provider>
+  );
+}

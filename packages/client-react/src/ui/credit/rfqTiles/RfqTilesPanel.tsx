@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { type Dealer, type Instrument, type Rfq, RfqState } from "@rtc/domain";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { RfqCard } from "./RfqCard";
 import { type RfqFilter, RfqFilterTabs } from "./RfqFilterTabs";
@@ -40,7 +40,7 @@ function RfqTileRow({
   onAccept,
   onDismiss,
 }: RfqTileRowProps): ReactElement {
-  const { useQuotesForRfq } = useHooks();
+  const { useQuotesForRfq } = useViewModel();
   const quotes = useQuotesForRfq(rfq.id);
   return (
     <RfqCard
@@ -55,7 +55,8 @@ function RfqTileRow({
 }
 
 export function RfqTilesPanel(): ReactElement {
-  const { useRfqs, useInstruments, useDealers, useAcceptQuote } = useHooks();
+  const { useRfqs, useInstruments, useDealers, useAcceptQuote } =
+    useViewModel();
   const rfqs = useRfqs();
   const instruments = useInstruments();
   const dealers = useDealers();

@@ -25,29 +25,6 @@ const dealers: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-function rfq(over: Partial<Rfq> = {}): Rfq {
-  return {
-    id: 50,
-    instrumentId: 2,
-    quantity: 5000,
-    direction: Direction.Buy,
-    state: RfqState.Open,
-    expirySecs: 120,
-    creationTimestamp: 1_700_000_000_000,
-    ...over,
-  };
-}
-
-function quote(over: Partial<Quote> = {}): Quote {
-  return {
-    id: 900,
-    rfqId: 50,
-    dealerId: 2,
-    state: { type: "pendingWithPrice", price: 99 },
-    ...over,
-  };
-}
-
 describe("RfqCard", () => {
   it("shows the instrument name, direction and quantity", () => {
     const card = mount(RfqCard, {
@@ -253,3 +230,26 @@ describe("RfqCard", () => {
     expect(cancelledCard.hasCountdown()).toBe(false);
   });
 });
+
+function rfq(over: Partial<Rfq> = {}): Rfq {
+  return {
+    id: 50,
+    instrumentId: 2,
+    quantity: 5000,
+    direction: Direction.Buy,
+    state: RfqState.Open,
+    expirySecs: 120,
+    creationTimestamp: 1_700_000_000_000,
+    ...over,
+  };
+}
+
+function quote(over: Partial<Quote> = {}): Quote {
+  return {
+    id: 900,
+    rfqId: 50,
+    dealerId: 2,
+    state: { type: "pendingWithPrice", price: 99 },
+    ...over,
+  };
+}

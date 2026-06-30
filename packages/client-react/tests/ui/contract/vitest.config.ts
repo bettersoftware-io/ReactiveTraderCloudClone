@@ -45,8 +45,8 @@ export default defineConfig({
         "src/ui/App.tsx",
         "src/ui/credit/CreditWorkspace.tsx",
         // Real composition-root / providers / constants the harness replaces.
-        "src/ui/hooks/createAppHooks.ts",
-        "src/ui/hooks/HooksProvider.tsx",
+        "src/ui/viewModel/createViewModel.ts",
+        "src/ui/viewModel/ViewModelProvider.tsx",
         // The real id→module-root map; the contract/visual harnesses mount a
         // test PanelRegistry instead, exactly like the hooks providers above.
         "src/ui/shell/layout/engine/appPanelRegistry.tsx",
@@ -64,6 +64,12 @@ export default defineConfig({
         // (labelled canvas + NO DATA placeholder) is still exercised by
         // PriceChart.contract.spec.ts; only the canvas internals are excluded.
         "src/ui/equities/chart/PriceChart.tsx",
+        // Admin throughput line chart: the canvas draw path (drawLine helper) is
+        // unreachable in jsdom (getContext("2d") returns null, early-return).
+        // The DOM-assertable contract (wrapper present, NO DATA placeholder) is
+        // tested by ThroughputChart.contract.spec.ts; only the canvas internals
+        // are excluded, exactly as per the PriceChart / TileChart pattern.
+        "src/ui/admin/ThroughputChart.tsx",
         // Complex multi-variant canvas draw functions — no DOM-assertable API;
         // the pixel output is validated by the visual (browser) tier. (jsdom's
         // canvas has no 2D context, so PriceChart's effect early-returns before

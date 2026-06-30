@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { OrdersBlotter } from "./blotter/OrdersBlotter";
 import { PositionsBlotter } from "./blotter/PositionsBlotter";
@@ -21,7 +21,7 @@ type BlotterView = "orders" | "positions";
  * watchlist all stay in sync through a single source of truth.
  */
 export function EquitiesPanel(): ReactElement {
-  const { useWatchlist } = useHooks();
+  const { useWatchlist } = useViewModel();
   const instruments = useWatchlist();
 
   // Selected symbol — default to the first instrument if available.

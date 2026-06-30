@@ -9,17 +9,6 @@ import { describe, expect, it } from "vitest";
 
 import { loadGolden } from "#tests/ui/__golden__/loadGolden";
 
-interface FlashCase {
-  input: string;
-  expected: {
-    animationName: string;
-    animationDuration?: string;
-    animationTimingFunction?: string;
-    animationIterationCount?: string;
-    keyframeStops?: string[];
-  };
-}
-
 // Read the ACTUAL CSS module text so this test fails if the animation shorthand
 // or keyframes diverge from the original — verifying the CSS, not a PO constant.
 const css = readFileSync(
@@ -94,3 +83,14 @@ describe("new-row flash CSS matches rtc-original (golden)", () => {
     expect(baseRule).not.toContain("animation");
   });
 });
+
+interface FlashCase {
+  input: string;
+  expected: {
+    animationName: string;
+    animationDuration?: string;
+    animationTimingFunction?: string;
+    animationIterationCount?: string;
+    keyframeStops?: string[];
+  };
+}

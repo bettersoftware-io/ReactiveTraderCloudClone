@@ -2,8 +2,6 @@ import { ViewToggle } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
 
-type ViewMode = "chart" | "price";
-
 describe("ViewToggle", () => {
   it("offers the price view when currently in chart mode", () => {
     const toggle = mount(ViewToggle, {
@@ -58,3 +56,5 @@ describe("ViewToggle", () => {
     expect(toggle.label()).toMatch(/chart/i);
   });
 });
+
+type ViewMode = "chart" | "price";

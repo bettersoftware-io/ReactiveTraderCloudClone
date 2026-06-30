@@ -4,8 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 
-type NumberFilterTag = { type: "number" };
-
 describe("NumberFilter", () => {
   it("defaults to the equals comparator with an empty value", () => {
     const filter = mount(NumberFilter, {
@@ -152,3 +150,5 @@ describe("NumberFilter", () => {
     expect(applied).toBeNull();
   });
 });
+
+type NumberFilterTag = { type: "number" };

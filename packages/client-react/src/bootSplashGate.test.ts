@@ -2,19 +2,6 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { shouldPlayBootSplash } from "./bootSplashGate";
 
-/** Drive window.location.search via the History API (jsdom-supported). */
-function setSearch(search: string): void {
-  window.history.replaceState({}, "", `/${search}`);
-}
-
-/** Override navigator.webdriver (read-only by default) for one test. */
-function setWebdriver(value: boolean): void {
-  Object.defineProperty(navigator, "webdriver", {
-    configurable: true,
-    value,
-  });
-}
-
 afterEach(() => {
   setSearch("");
   setWebdriver(false);
@@ -42,3 +29,16 @@ describe("shouldPlayBootSplash", () => {
     expect(shouldPlayBootSplash()).toBe(false);
   });
 });
+
+/** Drive window.location.search via the History API (jsdom-supported). */
+function setSearch(search: string): void {
+  window.history.replaceState({}, "", `/${search}`);
+}
+
+/** Override navigator.webdriver (read-only by default) for one test. */
+function setWebdriver(value: boolean): void {
+  Object.defineProperty(navigator, "webdriver", {
+    configurable: true,
+    value,
+  });
+}

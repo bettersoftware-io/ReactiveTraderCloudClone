@@ -29,20 +29,6 @@ const _nzdusd = KNOWN_CURRENCY_PAIRS.find((p) => {
 if (!_nzdusd) throw new Error("NZDUSD not found in KNOWN_CURRENCY_PAIRS");
 const nzdusd: CurrencyPair = _nzdusd;
 
-function price(over: Partial<Price> = {}): Price {
-  return {
-    symbol: "EURUSD",
-    bid: 1.0921,
-    ask: 1.0925,
-    mid: 1.0923,
-    valueDate: "2026-06-15",
-    creationTimestamp: 1_700_000_000_000,
-    movementType: PriceMovementType.NONE,
-    spread: "4.0",
-    ...over,
-  };
-}
-
 const history: readonly PriceTick[] = [
   {
     symbol: "EURUSD",
@@ -61,25 +47,6 @@ const history: readonly PriceTick[] = [
     creationTimestamp: 2,
   },
 ];
-
-function tradeResult(over: Partial<Trade> = {}): ExecuteTradeResult {
-  return {
-    status: ExecutionStatus.Done,
-    trade: {
-      tradeId: 5001,
-      tradeName: "Trader",
-      currencyPair: "EURUSD",
-      notional: 1_000_000,
-      dealtCurrency: "EUR",
-      direction: Direction.Buy,
-      spotRate: 1.0925,
-      status: TradeStatus.Done,
-      tradeDate: "2026-06-13",
-      valueDate: "2026-06-15",
-      ...over,
-    },
-  };
-}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -297,3 +264,36 @@ describe("Tile", () => {
     expect(tile.isSellDisabled()).toBe(false);
   });
 });
+
+function price(over: Partial<Price> = {}): Price {
+  return {
+    symbol: "EURUSD",
+    bid: 1.0921,
+    ask: 1.0925,
+    mid: 1.0923,
+    valueDate: "2026-06-15",
+    creationTimestamp: 1_700_000_000_000,
+    movementType: PriceMovementType.NONE,
+    spread: "4.0",
+    ...over,
+  };
+}
+
+function tradeResult(over: Partial<Trade> = {}): ExecuteTradeResult {
+  return {
+    status: ExecutionStatus.Done,
+    trade: {
+      tradeId: 5001,
+      tradeName: "Trader",
+      currencyPair: "EURUSD",
+      notional: 1_000_000,
+      dealtCurrency: "EUR",
+      direction: Direction.Buy,
+      spotRate: 1.0925,
+      status: TradeStatus.Done,
+      tradeDate: "2026-06-13",
+      valueDate: "2026-06-15",
+      ...over,
+    },
+  };
+}

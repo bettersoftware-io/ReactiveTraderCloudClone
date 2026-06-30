@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import { BiometricLine } from "./BiometricLine";
 
@@ -13,7 +13,7 @@ import styles from "./LockScreen.module.css";
  * Dumb component: all state arrives through the `useSession` hook seam.
  */
 export function LockScreen(): ReactElement | null {
-  const { useSession } = useHooks();
+  const { useSession } = useViewModel();
   const { state, unlock } = useSession();
 
   if (!state.locked) return null;

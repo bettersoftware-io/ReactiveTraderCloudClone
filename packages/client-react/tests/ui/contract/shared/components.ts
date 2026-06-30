@@ -59,7 +59,16 @@ import {
 
 export type { RfqFilter };
 
+import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
 import { AdminPanelPage } from "./pages/admin/AdminPanelPage";
+import { ErrorRatePanelPage } from "./pages/admin/ErrorRatePanelPage";
+import { IncidentControlsPage } from "./pages/admin/IncidentControlsPage";
+import { LatencyHistogramPage } from "./pages/admin/LatencyHistogramPage";
+import { LiveEventLogPage } from "./pages/admin/LiveEventLogPage";
+import { MetricGaugesPage } from "./pages/admin/MetricGaugesPage";
+import { ServiceTopologyGraphPage } from "./pages/admin/ServiceTopologyGraphPage";
+import { SessionsPanelPage } from "./pages/admin/SessionsPanelPage";
+import { ThroughputChartPage } from "./pages/admin/ThroughputChartPage";
 import { CreditBlotterPage } from "./pages/credit/blotter/CreditBlotterPage";
 import {
   QuoteCardPage,
@@ -499,4 +508,66 @@ export const EquitiesPanel = component<
   EquitiesPanelPage
 >((ctx) => {
   return new EquitiesPanelPage(ctx);
+});
+
+// Admin / telemetry components (Phase 5 Task 8)
+export const IncidentControls = component<
+  Record<string, never>,
+  IncidentControlsPage
+>((ctx) => {
+  return new IncidentControlsPage(ctx);
+});
+
+export const ServiceTopologyGraph = component<
+  Record<string, never>,
+  ServiceTopologyGraphPage
+>((ctx) => {
+  return new ServiceTopologyGraphPage(ctx);
+});
+
+export const LiveEventLog = component<Record<string, never>, LiveEventLogPage>(
+  (ctx) => {
+    return new LiveEventLogPage(ctx);
+  },
+);
+
+export const MetricGauges = component<Record<string, never>, MetricGaugesPage>(
+  (ctx) => {
+    return new MetricGaugesPage(ctx);
+  },
+);
+
+export const ThroughputChart = component<
+  Record<string, never>,
+  ThroughputChartPage
+>((ctx) => {
+  return new ThroughputChartPage(ctx);
+});
+
+export const LatencyHistogram = component<
+  Record<string, never>,
+  LatencyHistogramPage
+>((ctx) => {
+  return new LatencyHistogramPage(ctx);
+});
+
+export const ErrorRatePanel = component<
+  Record<string, never>,
+  ErrorRatePanelPage
+>((ctx) => {
+  return new ErrorRatePanelPage(ctx);
+});
+
+export const SessionsPanel = component<
+  Record<string, never>,
+  SessionsPanelPage
+>((ctx) => {
+  return new SessionsPanelPage(ctx);
+});
+
+export const AdminDashboard = component<
+  Record<string, never>,
+  AdminDashboardPage
+>((ctx) => {
+  return new AdminDashboardPage(ctx);
 });

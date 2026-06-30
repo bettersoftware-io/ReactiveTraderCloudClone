@@ -2,6 +2,27 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { animateOnce } from "./index";
 
+beforeEach(() => {
+  Element.prototype.animate = (): Animation => {
+    return makeFakeAnimation();
+  };
+});
+
+describe("motion wrapper", () => {
+  it("resolves once the animation finishes (jsdom WAAPI shim)", async () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    const result = animateOnce(el, { opacity: [0, 1] }, { duration: 0.01 });
+    await expect(result).resolves.toBeUndefined();
+    el.remove();
+  });
+
+  it("exposes animateOnce as a function", async () => {
+    const mod = await import("./index");
+    expect(typeof mod.animateOnce).toBe("function");
+  });
+});
+
 /**
  * jsdom does not implement the WAAPI (Element.animate / Animation).
  * motion's NativeAnimation wraps the raw WAAPI Animation:
@@ -60,24 +81,3 @@ function makeFakeAnimation(): Animation {
 
   return fakeAnimation;
 }
-
-beforeEach(() => {
-  Element.prototype.animate = (): Animation => {
-    return makeFakeAnimation();
-  };
-});
-
-describe("motion wrapper", () => {
-  it("resolves once the animation finishes (jsdom WAAPI shim)", async () => {
-    const el = document.createElement("div");
-    document.body.appendChild(el);
-    const result = animateOnce(el, { opacity: [0, 1] }, { duration: 0.01 });
-    await expect(result).resolves.toBeUndefined();
-    el.remove();
-  });
-
-  it("exposes animateOnce as a function", async () => {
-    const mod = await import("./index");
-    expect(typeof mod.animateOnce).toBe("function");
-  });
-});

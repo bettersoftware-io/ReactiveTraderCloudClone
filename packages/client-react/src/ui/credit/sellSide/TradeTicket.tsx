@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./TradeTicket.module.css";
 
@@ -18,7 +18,7 @@ export function TradeTicket({
   quote,
   instrument,
 }: TradeTicketProps): ReactElement {
-  const { useTicketSubmission, useAnimationIntents } = useHooks();
+  const { useTicketSubmission, useAnimationIntents } = useViewModel();
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
   const anim = useAnimationIntents(`rfq:${rfq.id}`);

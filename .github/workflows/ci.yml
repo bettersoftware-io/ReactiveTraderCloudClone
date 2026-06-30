@@ -67,6 +67,9 @@ jobs:
       - name: ESLint (AST rules)
         run: pnpm lint:eslint
 
+      - name: Custom ESLint rule tests (RuleTester)
+        run: pnpm test:rules
+
       - name: CSS lint (stylelint)
         run: pnpm lint:css
 

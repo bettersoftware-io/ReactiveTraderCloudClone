@@ -3,12 +3,12 @@ import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 import {
   type BootVariant,
   DEFAULT_BOOT_VARIANT,
-  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type PreferencesPort,
   THEME_SKINS,
-  type ThemeMode,
+  type ThemeModePreference,
   type ThemeSkin,
   type ViewMode,
 } from "@rtc/domain";
@@ -19,8 +19,10 @@ export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 
-function isThemeMode(value: string | null): value is ThemeMode {
-  return value === "dark" || value === "light";
+function isThemeModePreference(
+  value: string | null,
+): value is ThemeModePreference {
+  return value === "dark" || value === "light" || value === "system";
 }
 
 function isThemeSkin(value: string | null): value is ThemeSkin {
@@ -80,7 +82,7 @@ function writeStored(key: string, value: string): void {
  * localStorage site in the client.
  */
 export class LocalStoragePreferencesAdapter implements PreferencesPort {
-  private readonly themeMode: BehaviorSubject<ThemeMode>;
+  private readonly themeMode: BehaviorSubject<ThemeModePreference>;
 
   private readonly themeSkin: BehaviorSubject<ThemeSkin>;
 
@@ -91,8 +93,12 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
   constructor() {
-    this.themeMode = new BehaviorSubject<ThemeMode>(
-      readStored(THEME_STORAGE_KEY, isThemeMode, DEFAULT_THEME_MODE),
+    this.themeMode = new BehaviorSubject<ThemeModePreference>(
+      readStored(
+        THEME_STORAGE_KEY,
+        isThemeModePreference,
+        DEFAULT_THEME_MODE_PREFERENCE,
+      ),
     );
     this.themeSkin = new BehaviorSubject<ThemeSkin>(
       readStored(THEME_SKIN_STORAGE_KEY, isThemeSkin, DEFAULT_THEME_SKIN),
@@ -108,11 +114,11 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
     );
   }
 
-  themeMode$(): Observable<ThemeMode> {
+  themeMode$(): Observable<ThemeModePreference> {
     return this.themeMode.pipe(distinctUntilChanged());
   }
 
-  setThemeMode(mode: ThemeMode): void {
+  setThemeMode(mode: ThemeModePreference): void {
     writeStored(THEME_STORAGE_KEY, mode);
     this.themeMode.next(mode);
   }

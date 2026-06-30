@@ -168,7 +168,7 @@ function checkProductionAudit(): string[] {
 /**
  * Dumb-UI gate: NO setTimeout/setInterval anywhere in production src/ui. Every
  * timer is business/timer logic that belongs in the app-layer (machines/
- * presenters) behind the AppHooks seam — the last holdout, BlotterRow's new-row
+ * presenters) behind the ViewModel seam — the last holdout, BlotterRow's new-row
  * highlight, has been relocated to createRowHighlightMachine. The useMachine
  * bridge schedules disposal with queueMicrotask (not setTimeout), so no hooks
  * exception is needed. Test files are not gated here.
@@ -394,22 +394,22 @@ const GATES: Gate[] = [
     customCheck: checkProductionAudit,
   },
   {
-    name: "26. No rxjs/react-rxjs imports in src/ui (only src/ui/hooks bridge may)",
+    name: "26. No rxjs/react-rxjs imports in src/ui (only src/ui/viewModel bridge may)",
     pattern: 'from "rxjs"|@react-rxjs|@rx-state',
     paths: ["../packages/client-react/src/ui/"],
-    excludes: ["/node_modules/", "/src/ui/hooks/", ".test.", ".spec."],
+    excludes: ["/node_modules/", "/src/ui/viewModel/", ".test.", ".spec."],
   },
   {
     name: "27. No localStorage in src/ui (persistence belongs in app-layer ports)",
     pattern: "localStorage",
     paths: ["../packages/client-react/src/ui/"],
-    excludes: ["/node_modules/", "/src/ui/hooks/", ".test.", ".spec."],
+    excludes: ["/node_modules/", "/src/ui/viewModel/", ".test.", ".spec."],
   },
   {
     name: "28. No fetch/import.meta.env in src/ui (transport/config belongs in app-layer)",
     pattern: "fetch\\(|import\\.meta\\.env",
     paths: ["../packages/client-react/src/ui/"],
-    excludes: ["/node_modules/", "/src/ui/hooks/", ".test.", ".spec."],
+    excludes: ["/node_modules/", "/src/ui/viewModel/", ".test.", ".spec."],
   },
   {
     name: "29. No setTimeout/setInterval anywhere in src/ui",

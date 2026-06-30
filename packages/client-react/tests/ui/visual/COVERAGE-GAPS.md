@@ -1,4 +1,4 @@
-# Visual coverage gaps — snapshot 2026-06-17
+# Visual coverage gaps — snapshot 2026-06-30 (HUD redesign Phase 6)
 
 One-time inventory of `src/ui` components and conditional branches the **visual**
 tier does not render, i.e. that have **no golden snapshot**. Produced by reading
@@ -38,11 +38,68 @@ interaction-only handlers and the runtime media-query theme arm (below), which a
 static screenshot still cannot pin deterministically — those are covered by the
 unit/contract tiers.
 
+## HUD redesign (Phases 0–5) — full re-verification (2026-06-30)
+
+Phase 6 consolidation snapshot, taken after the entire HUD redesign (theming +
+motion, in-house layout engine, shell chrome / boot / lock, reskinned FX+Credit,
+the new **Equities** module, and the new **Admin observability** module) landed on
+`main` (Phase 5 merge `baf0ed9d`). All gate families, both committed golden sets,
+the contract ≥95% gate, the 29 grep-gates (incl. dumb-UI 26–29), and the e2e
+suites are green. This phase added **zero** product behaviour — it re-ran every
+tier and recorded the figures below.
+
+### Headline numbers (2026-06-30)
+
+| Tier | Metric | Stmts | Branch | Funcs | Lines |
+|------|--------|-------|--------|-------|-------|
+| Domain (v8, report-only) | — | 95.36% | 81.56% | 95.23% | 96.82% |
+| Server (v8, report-only) | — | 92.47% | 77.46% | 91.37% | 95.67% |
+| Client app layer (v8, report-only) | — | 87.41% | 74.21% | 88.94% | 89.45% |
+| **Contract tier (v8, ENFORCED ≥95% `src/ui` gate)** | — | **98.56%** | **95.25%** | **99.05%** | **99.19%** |
+| Visual tier (istanbul, `src/ui/**/*.tsx`) | — | 82.22% | 72.58% | 76.09% | 83.53% |
+
+Unit/contract test totals: domain 276, server 65, client unit 805, contract 406.
+The visual gap-finder denominator grew (the equities + admin + HUD-chrome surface
+is now rendered), so the istanbul percentage moved relative to the 2026-06-25
+`82.53%` against a smaller pre-redesign denominator — it is **not** a regression;
+the absolute snapshotted-component count rose substantially (see below).
+
+### New components now snapshotted (all three visual tiers + contract arms)
+
+- **Equities (`src/ui/equities/`):** watchlist (heat-tint), canvas candlestick
+  chart, depth ladder, instrument tabs, order ticket (fill choreography), orders +
+  positions blotters, P&L spark-bars, bottom-arc desk gauge, sector heatmap.
+- **Admin (`src/ui/admin/`):** MetricGauges, ThroughputChart, LatencyHistogram,
+  ErrorRatePanel, SessionsPanel, LiveEventLog (canvas), ServiceTopologyGraph (SVG),
+  IncidentControls, AdminDashboard.
+- **Shell chrome (`src/ui/shell/`):** boot sequence canvas, lock screen, header /
+  status / prefs / theme-skin chrome, the in-house layout engine, ambient
+  background — across the classic/holo/terminal/neon skins × light/dark modes.
+
+### App-layer (v8, report-only) — intentionally-open gaps (2026-06-30)
+
+The report-only app-layer figure dipped versus 2026-06-25 because Phases 0–5 added
+a large volume of new machines/presenters (LayoutMachine, BootSequenceMachine,
+OrderTicketMachine, IncidentMachine, AnimationDirector, plus the equities/admin
+presenters) and the **enforced** gate is the contract ≥95% `src/ui` gate (green at
+95.25% branch), not this metric. The remaining app-layer gaps are:
+
+**Update (2026-06-30, deferral-cleanup batch):** the two thin caching presenters
+flagged here — `DepthPresenter` and `CandleSeriesPresenter` (the actual `…sPresenter`
+at 25%, NOT `SessionsPresenter`, which already had a test) — **now have dedicated
+unit tests** (`DepthPresenter.test.ts` / `CandleSeriesPresenter.test.ts`) asserting
+the cache contract (relay, same-Observable cache hit, distinct-symbol streams).
+Only the `portFactory` wiring gap below remains, with the same intentional rationale.
+
+| File | Lines | Reason |
+|------|-------|--------|
+| `adapters/portFactory.ts` 834-918, 928-935 | new equities/admin port-wiring + `if (cancelled)`/`catch` teardown arms | Composition wiring exercised end-to-end by the e2e + real-composition tests, not unit-isolated; the teardown/`catch` arms follow the same documented pattern as the 2026-06-25 portFactory gaps (fire only on mid-flight unsubscribe / `ws.rpc()` rejection). |
+
 ## Phase 10 (final) — Dumb-UI gates + whole-workstream verification (2026-06-18)
 
 **Architecture gates 26–29 added and GREEN.** `tests/scripts/grep-gates.ts`
 now ENFORCES the Dumb-UI rules against production `src/ui` (the
-`src/ui/hooks/` bridge dir and `*.test.`/`*.spec.` files are exempt):
+`src/ui/viewModel/` bridge dir and `*.test.`/`*.spec.` files are exempt):
 
 - **26** — no `rxjs` / `@react-rxjs` / `@rx-state` import in `src/ui` (bridge only).
 - **27** — no `localStorage` in `src/ui` (persistence lives in app-layer ports).
@@ -121,7 +178,7 @@ post-behaviour-sync codebase; intentionally-open gaps are documented below.
 | `ui/fx/blotter/columnFilter/filterState.ts` line 87 | `return true` fallthrough | TypeScript-exhaustive: `ColumnFilter` is a discriminated union with three types (`set`/`number`/`date`). The fallthrough only fires for a value outside the union, which the type system prevents. |
 | `ui/fx/liveRates/tile/TileRfq.tsx` line 45 | `if (!quote) return` after `rfqState.accept()` | The button renders only when `state.status === "received" && state.quote` (line 87). `quote` is captured before `accept()`. Structurally unreachable while `state.quote` is non-null at render. |
 | `ui/fx/liveRates/tile/TileConfirmation.tsx` line 102 | `default: return "unknown"` in switch | Exhaustive switch over `ExecutionStatus` — all enum members handled above. Defensive fallthrough for future enum additions. |
-| `ui/shell/connection/useHooks.ts` line 11 | `throw new Error(...)` | Only fires when `useContext(HooksContext)` returns null — outside `HooksProvider`. All contract tests mount within the provider. |
+| `src/ui/viewModel/useViewModel.ts` line 11 | `throw new Error(...)` | Only fires when `useContext(ViewModelContext)` returns null — outside `ViewModelProvider`. All contract tests mount within the provider. |
 | `ui/shell/theme/useTheme.ts` line 7 | `throw new Error(...)` | Same: defensive provider-missing guard; always wrapped in `ThemeProvider` in tests. |
 | `ui/fx/analytics/PositionBubbles.tsx`, `ui/fx/analytics/PairPnlBars.tsx` | entire files | Excluded from contract tier scope (`coverage.exclude` in `vitest.config.ts`). D3/canvas render paths with no DOM-assertable logic — owned by the visual tier. |
 
@@ -154,17 +211,15 @@ scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
 | `ui/fx/liveRates/CurrencyFilter.tsx` line 26 | `onChange` onClick | Requires clicking a non-default filter category. All three categories render identical tiles in the populated fixture. Deferred. |
 | `ui/fx/liveRates/ViewToggle.tsx` line 18 | `onChange` onClick | Clicking changes `viewMode`, but the resulting state is already pinned by `live-rates/price-view` (seeded through PreferencesPort seam). No additional visual branch. |
 
-**Dead seam command hooks (for a HUMAN pruning decision — NOT removed):** of the
-7 command hooks on `AppHooks`, only **`useAcceptQuote`** still has a `src/ui`
-component caller (`credit/rfqTiles/RfqTilesPanel.tsx`). The other six —
-**`useExecuteTrade`, `useCreateRfq`, `useCancelRfq`, `usePassQuote`,
-`useQuoteRfq`, `useRequestRfqQuote`** — are **dead**: present only in the
-`AppHooks` interface + `createAppHooks` impl + the two test fakes
-(`tests/ui/contract/react/hooksFromWorld.ts`,
-`tests/ui/visual/react/buildFakeHooks.ts`), with no component consumer. Earlier
-phases (esp. 8) routed those commands through machines, leaving the seam methods
-orphaned. Pruning requires deleting each from the interface, the impl, and both
-fakes together.
+**Dead seam command hooks — RESOLVED (pruned during the HUD redesign, Phases 0–5).**
+The six orphaned command hooks flagged here on 2026-06-25
+(`useExecuteTrade`, `useCreateRfq`, `useCancelRfq`, `usePassQuote`, `useQuoteRfq`,
+`useRequestRfqQuote`) are **no longer present**: the `ViewModel` interface,
+`createViewModel` impl, and both test fakes
+(`tests/ui/contract/react/viewModelFromWorld.ts`,
+`tests/ui/visual/react/buildFakeViewModel.ts`) were all reshaped during the redesign
+and carry none of them. **`useAcceptQuote`** remains the one live command hook
+(caller: `credit/rfqTiles/RfqTilesPanel.tsx`). Nothing to prune.
 
 **Two expected reds:**
 
@@ -225,7 +280,7 @@ now drives them and each has a dedicated golden across all three runners:
 The tile execution / RFQ / staleness states were previously listed below as
 timer/transition-driven and **excluded** from the coverage denominator. Earlier
 "Dumb-UI" phases relocated that logic into app-layer machines exposed through the
-`AppHooks` seam, so the state is now **injectable per-symbol** (static, no live
+`ViewModel` seam, so the state is now **injectable per-symbol** (static, no live
 timers) and each arm has a dedicated golden across all three runners:
 
 - `fx/liveRates/tile/TileConfirmation.tsx` — every execution-outcome banner →
@@ -270,7 +325,25 @@ injected statically through the seam, so they are deterministic goldens.)
 | File | Uncovered visual state | Why no golden |
 |---|---|---|
 | `fx/blotter/BlotterRow.tsx` | row hover-background arm | hover-only (interaction, not a static state) |
-| `shell/theme/ThemeProvider.tsx` | non-default / system-preference theme arms | `system-preference` theme unimplemented; runtime media-query |
+
+**Update (2026-06-30):** the `system-preference` theme arm is now **implemented**
+(the header toggle cycles dark → light → system) and **snapshotted** via the new
+`app/fx-system` scenario, which pins the 🖥️ toggle icon (system resolves to dark
+with no OS media query in the harness). The remaining `ThemeProvider` runtime
+media-query branch (the live OS-flip re-resolution) is covered by the
+`ThemePreferencePresenter` unit test, not the static visual tier.
+
+### Interaction-only residual — triaged 2026-06-30 (intentionally still open)
+
+The deferral-cleanup batch reviewed the testid-gated / interaction-only handlers
+above and **left them un-snapshotted by design**: each either produces no visually
+distinct state (the click lands on a view already pinned by another golden), is a
+hover/drag/`onChange` reachable only through interaction the runner-neutral
+`ScenarioStep` set can't express, or is already driven by the sociable contract
+tier. Adding goldens would churn the canonical x86 set for no coverage gain. The
+genuinely-distinct gaps this batch DID close are recorded above (the new
+`app/fx-system` golden, the Depth/Candle presenter unit tests) plus the
+layout-engine splitter **drag**, now driven end-to-end by `browser/playwright/layout.spec.ts`.
 
 ## Utility logic not exercised by the visual tier
 
@@ -289,5 +362,5 @@ doesn't drive**, not *missing snapshots*. Cover them in the unit/contract tiers.
 > (`useTileState` / `useExecuteTrade` / `useRfqState` / `useRfqQuote` /
 > `useStaleDetection` / `useNotional` / `useThroughput`) were removed by the
 > "Dumb-UI" refactor — their logic now lives in app-layer machines/presenters
-> behind the `AppHooks` seam, tested in the unit/contract tiers and (for the
+> behind the `ViewModel` seam, tested in the unit/contract tiers and (for the
 > render arms) snapshotted by Phase 9.

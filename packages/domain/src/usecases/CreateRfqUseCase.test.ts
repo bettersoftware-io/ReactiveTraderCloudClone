@@ -9,41 +9,6 @@ import {
   RFQ_DEFAULT_EXPIRY_SECS,
 } from "./CreateRfqUseCase.js";
 
-interface LastRequestRef {
-  current: CreateRfqRequest | null;
-}
-
-interface StubWorkflow {
-  port: WorkflowPort;
-  lastRequest: LastRequestRef;
-}
-
-function stubWorkflow(): StubWorkflow {
-  const lastRequest = { current: null as CreateRfqRequest | null };
-  const port: WorkflowPort = {
-    events: () => {
-      throw new Error("not used");
-    },
-    createRfq: (request: CreateRfqRequest) => {
-      lastRequest.current = request;
-      return of(42);
-    },
-    cancelRfq: () => {
-      return of(undefined);
-    },
-    quote: () => {
-      return of(undefined);
-    },
-    pass: () => {
-      return of(undefined);
-    },
-    accept: () => {
-      return of(undefined);
-    },
-  };
-  return { port, lastRequest };
-}
-
 describe("CreateRfqUseCase", () => {
   it("multiplies the input quantity by CREDIT_QUANTITY_MULTIPLIER and applies default expiry", async () => {
     const { port, lastRequest } = stubWorkflow();
@@ -85,3 +50,38 @@ describe("CreateRfqUseCase", () => {
     expect(lastRequest.current?.expirySecs).toBe(60);
   });
 });
+
+interface LastRequestRef {
+  current: CreateRfqRequest | null;
+}
+
+interface StubWorkflow {
+  port: WorkflowPort;
+  lastRequest: LastRequestRef;
+}
+
+function stubWorkflow(): StubWorkflow {
+  const lastRequest = { current: null as CreateRfqRequest | null };
+  const port: WorkflowPort = {
+    events: () => {
+      throw new Error("not used");
+    },
+    createRfq: (request: CreateRfqRequest) => {
+      lastRequest.current = request;
+      return of(42);
+    },
+    cancelRfq: () => {
+      return of(undefined);
+    },
+    quote: () => {
+      return of(undefined);
+    },
+    pass: () => {
+      return of(undefined);
+    },
+    accept: () => {
+      return of(undefined);
+    },
+  };
+  return { port, lastRequest };
+}

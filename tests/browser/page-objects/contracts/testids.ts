@@ -9,6 +9,7 @@ export const TESTIDS = {
   connection: {
     status: "connection-status",
     overlay: "connection-overlay",
+    clearIncident: "connection-overlay-clear-incident",
   },
   liveRates: {
     tilePrefix: "tile-",
@@ -38,5 +39,18 @@ export const TESTIDS = {
       return `credit-tab-${v}`;
     },
     directionLabel: "rfq-direction-label",
+  },
+  admin: {
+    incident: {
+      inject: (kind: string) => {
+        return `incident-${kind}`;
+      },
+      clear: "incident-clear",
+    },
+  },
+  layout: {
+    // Splitter handles carry a dynamic id `handle-<pathKey>-<index>`; the engine
+    // owns the full id, so consumers match on this stable prefix.
+    handlePrefix: "handle-",
   },
 } as const;

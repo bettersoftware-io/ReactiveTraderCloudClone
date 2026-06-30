@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 
 import { ConnectionStatus } from "@rtc/domain";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./ConnectionOverlay.module.css";
 
@@ -18,14 +18,16 @@ const overlayMessages: Partial<Record<ConnectionStatus, string>> = {
 };
 
 export function ConnectionOverlay(): ReactElement | null {
-  const { useConnectionStatus, useReconnect } = useHooks();
+  const { useConnectionStatus, useReconnect, useIncident } = useViewModel();
   const status = useConnectionStatus();
   const reconnect = useReconnect();
+  const { state: incidentState, clear: clearIncident } = useIncident();
   const message = overlayMessages[status];
 
   if (!message) return null;
 
   const isIdle = status === ConnectionStatus.IDLE_DISCONNECTED;
+  const incidentActive = incidentState.active.length > 0;
 
   return (
     <div data-testid="connection-overlay" className={styles.overlay}>
@@ -39,6 +41,16 @@ export function ConnectionOverlay(): ReactElement | null {
             onClick={reconnect}
           >
             Reconnect
+          </button>
+        )}
+        {status === ConnectionStatus.DISCONNECTED && incidentActive && (
+          <button
+            type="button"
+            data-testid="connection-overlay-clear-incident"
+            className={styles.reconnectButton}
+            onClick={clearIncident}
+          >
+            Clear incident
           </button>
         )}
       </div>

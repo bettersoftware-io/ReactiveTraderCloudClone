@@ -21,7 +21,7 @@ import {
 } from "#/ui/fx/blotter/columnSort";
 import { exportToCsv } from "#/ui/fx/blotter/csvExport";
 import { QuickFilter } from "#/ui/fx/blotter/QuickFilter";
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import {
   CREDIT_COLUMNS,
@@ -72,7 +72,7 @@ function deriveTrades(
 }
 
 export function CreditBlotter(): ReactElement {
-  const { useRfqs, useAllQuotes, useInstruments, useDealers } = useHooks();
+  const { useRfqs, useAllQuotes, useInstruments, useDealers } = useViewModel();
   const rfqs = useRfqs();
   const allQuotes = useAllQuotes();
   const instruments = useInstruments();

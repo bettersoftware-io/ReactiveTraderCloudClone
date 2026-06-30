@@ -14,50 +14,6 @@ import {
 
 import { RfqsPresenter } from "../RfqsPresenter";
 
-function rfq(id: number): Rfq {
-  return {
-    id,
-    instrumentId: 1,
-    quantity: 1_000_000,
-    direction: Direction.Buy,
-    state: RfqState.Open,
-    expirySecs: 120,
-    creationTimestamp: Date.now(),
-  };
-}
-
-function quote(id: number, rfqId: number): Quote {
-  return {
-    id,
-    rfqId,
-    dealerId: 1,
-    state: { type: "pendingWithoutPrice" },
-  };
-}
-
-function port(events: readonly RfqEvent[]): WorkflowPort {
-  return {
-    events: () => {
-      return of(...events);
-    },
-    createRfq: () => {
-      return of(0);
-    },
-    cancelRfq: () => {
-      return of(undefined);
-    },
-    quote: () => {
-      return of(undefined);
-    },
-    pass: () => {
-      return of(undefined);
-    },
-    accept: () => {
-      return of(undefined);
-    },
-  };
-}
-
 describe("RfqsPresenter", () => {
   it("emits arrays of rfqs", async () => {
     const events: RfqEvent[] = [
@@ -221,3 +177,47 @@ describe("RfqsPresenter", () => {
     expect(seen).toEqual(["rfqCreated", "quoteCreated"]);
   });
 });
+
+function rfq(id: number): Rfq {
+  return {
+    id,
+    instrumentId: 1,
+    quantity: 1_000_000,
+    direction: Direction.Buy,
+    state: RfqState.Open,
+    expirySecs: 120,
+    creationTimestamp: Date.now(),
+  };
+}
+
+function quote(id: number, rfqId: number): Quote {
+  return {
+    id,
+    rfqId,
+    dealerId: 1,
+    state: { type: "pendingWithoutPrice" },
+  };
+}
+
+function port(events: readonly RfqEvent[]): WorkflowPort {
+  return {
+    events: () => {
+      return of(...events);
+    },
+    createRfq: () => {
+      return of(0);
+    },
+    cancelRfq: () => {
+      return of(undefined);
+    },
+    quote: () => {
+      return of(undefined);
+    },
+    pass: () => {
+      return of(undefined);
+    },
+    accept: () => {
+      return of(undefined);
+    },
+  };
+}

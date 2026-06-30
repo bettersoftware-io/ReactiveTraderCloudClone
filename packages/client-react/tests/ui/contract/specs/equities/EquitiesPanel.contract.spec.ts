@@ -13,10 +13,6 @@ const INSTRUMENTS: readonly EquityInstrument[] = [
   { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
 ];
 
-function quote(symbol: string, changePct: number): EquityQuote {
-  return { symbol, bid: 99, ask: 101, last: 100, changePct, timestamp: 0 };
-}
-
 const QUOTES = { AAPL: quote("AAPL", 2), MSFT: quote("MSFT", -1) };
 
 describe("EquitiesPanel", () => {
@@ -63,3 +59,7 @@ describe("EquitiesPanel", () => {
     expect(panel.showsOrders()).toBe(true);
   });
 });
+
+function quote(symbol: string, changePct: number): EquityQuote {
+  return { symbol, bid: 99, ask: 101, last: 100, changePct, timestamp: 0 };
+}

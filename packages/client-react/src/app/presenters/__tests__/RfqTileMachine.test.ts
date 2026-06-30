@@ -12,21 +12,6 @@ import {
 
 import { createRfqTileMachine, type RfqState } from "../RfqTileMachine";
 
-interface RunCtx {
-  machine: ReturnType<typeof createRfqTileMachine>;
-  ts: TestScheduler;
-}
-
-interface QuoteCall {
-  symbol: string;
-  pipsPosition: number;
-}
-
-interface TimedState {
-  frame: number;
-  state: RfqState;
-}
-
 const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "EURUSD";
 });
@@ -42,53 +27,6 @@ const REQUESTED: RfqState = {
   remainingMs: 0,
 };
 const REJECTED: RfqState = { status: "rejected", quote: null, remainingMs: 0 };
-
-function received(remainingMs: number): RfqState {
-  return {
-    status: "received",
-    quote: {
-      bid: quoteResult.bid,
-      ask: quoteResult.ask,
-      timeoutMs: RFQ_TIMEOUT_MS,
-    },
-    remainingMs,
-  };
-}
-
-function scheduler(): TestScheduler {
-  return new TestScheduler((actual, expected) => {
-    expect(actual).toEqual(expected);
-  });
-}
-
-/** Collect every emission of a machine's state$ as it runs, marble-driven. */
-function run(
-  buildRequestQuote: (
-    ts: TestScheduler,
-  ) => (symbol: string, pipsPosition: number) => Observable<RfqQuoteResult>,
-  drive: (ctx: RunCtx) => void,
-): RfqState[] {
-  const states: RfqState[] = [];
-  const ts = scheduler();
-  ts.run(({ flush }) => {
-    const machine = createRfqTileMachine(pair, {
-      requestQuote: buildRequestQuote(ts),
-    });
-    const sub = machine.state$.subscribe((s) => {
-      return states.push(s);
-    });
-    drive({ machine, ts });
-    flush();
-    sub.unsubscribe();
-    machine.dispose();
-  });
-  return states;
-}
-
-/** A request-quote command that never resolves within the test window. */
-function never(ts: TestScheduler): Observable<RfqQuoteResult> {
-  return ts.createColdObservable<RfqQuoteResult>("-");
-}
 
 describe("createRfqTileMachine", () => {
   it("starts in the init state (synchronous default)", () => {
@@ -422,3 +360,65 @@ describe("createRfqTileMachine", () => {
     });
   });
 });
+
+interface RunCtx {
+  machine: ReturnType<typeof createRfqTileMachine>;
+  ts: TestScheduler;
+}
+
+interface QuoteCall {
+  symbol: string;
+  pipsPosition: number;
+}
+
+interface TimedState {
+  frame: number;
+  state: RfqState;
+}
+
+function received(remainingMs: number): RfqState {
+  return {
+    status: "received",
+    quote: {
+      bid: quoteResult.bid,
+      ask: quoteResult.ask,
+      timeoutMs: RFQ_TIMEOUT_MS,
+    },
+    remainingMs,
+  };
+}
+
+function scheduler(): TestScheduler {
+  return new TestScheduler((actual, expected) => {
+    expect(actual).toEqual(expected);
+  });
+}
+
+/** Collect every emission of a machine's state$ as it runs, marble-driven. */
+function run(
+  buildRequestQuote: (
+    ts: TestScheduler,
+  ) => (symbol: string, pipsPosition: number) => Observable<RfqQuoteResult>,
+  drive: (ctx: RunCtx) => void,
+): RfqState[] {
+  const states: RfqState[] = [];
+  const ts = scheduler();
+  ts.run(({ flush }) => {
+    const machine = createRfqTileMachine(pair, {
+      requestQuote: buildRequestQuote(ts),
+    });
+    const sub = machine.state$.subscribe((s) => {
+      return states.push(s);
+    });
+    drive({ machine, ts });
+    flush();
+    sub.unsubscribe();
+    machine.dispose();
+  });
+  return states;
+}
+
+/** A request-quote command that never resolves within the test window. */
+function never(ts: TestScheduler): Observable<RfqQuoteResult> {
+  return ts.createColdObservable<RfqQuoteResult>("-");
+}

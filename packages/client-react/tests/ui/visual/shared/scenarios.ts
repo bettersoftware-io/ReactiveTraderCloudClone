@@ -78,6 +78,8 @@ export const scenarios: Record<string, Scenario> = {
   "app/admin": { componentKey: "App", fixtureKey: "app-fx" },
   // Light-theme variant of the FX page (fixture seeds theme "light" through the seam).
   "app/fx-light": { componentKey: "App", fixtureKey: "app-fx-light" },
+  // System mode-preference variant: pins the third (🖥️) toggle icon (resolves to dark).
+  "app/fx-system": { componentKey: "App", fixtureKey: "app-fx-system" },
 
   // --- Phase V deterministic golden scenarios ---
   // FX tiles: TilePrice DOWN / NONE colour arms + TileChart down/empty arms.
@@ -489,4 +491,27 @@ export const scenarios: Record<string, Scenario> = {
   },
   "status/bar": { componentKey: "StatusBar", fixtureKey: "app-connected" },
   "prefs/modal": { componentKey: "PreferencesModal", fixtureKey: "prefs-open" },
+
+  // --- Phase 5: Admin observability dashboard scenarios ---
+  // Full AdminDashboard with all telemetry cards rendered from seeded data.
+  "admin/dashboard": {
+    componentKey: "AdminDashboard",
+    fixtureKey: "admin-loaded",
+  },
+  // ServiceTopologyGraph isolated: seeded nodes + edges with a degraded credit node.
+  "admin/topology": {
+    componentKey: "ServiceTopologyGraph",
+    fixtureKey: "admin-loaded",
+  },
+  // LiveEventLog isolated: seeded events across info/warn/error severity arms.
+  "admin/event-log": {
+    componentKey: "LiveEventLog",
+    fixtureKey: "admin-loaded",
+  },
+  // IncidentControls with serviceDown active: "Inject service down" button has
+  // data-active="true"; state is injected through the seam — no click needed.
+  "admin/incident-active": {
+    componentKey: "IncidentControls",
+    fixtureKey: "admin-incident-active",
+  },
 };

@@ -12,49 +12,6 @@ import {
   WorkflowEventStreamUseCase,
 } from "./WorkflowEventStreamUseCase.js";
 
-function stubWorkflow(events$: Subject<RfqEvent>): WorkflowPort {
-  return {
-    events: () => {
-      return events$.asObservable();
-    },
-    createRfq: () => {
-      return of(0);
-    },
-    cancelRfq: () => {
-      return of(undefined);
-    },
-    quote: () => {
-      return of(undefined);
-    },
-    pass: () => {
-      return of(undefined);
-    },
-    accept: () => {
-      return of(undefined);
-    },
-  };
-}
-
-function emptyState(): RfqStreamState {
-  return { rfqs: new Map(), quotes: new Map() };
-}
-
-function buildRfq(id: number, state: RfqState = RfqState.Open): Rfq {
-  return {
-    id,
-    instrumentId: 1,
-    quantity: 1000,
-    direction: Direction.Buy,
-    state,
-    expirySecs: 120,
-    creationTimestamp: 1000,
-  };
-}
-
-function buildQuote(id: number, rfqId: number, dealerId = 1): Quote {
-  return { id, rfqId, dealerId, state: { type: "pendingWithoutPrice" } };
-}
-
 describe("reduceRfqEvent", () => {
   it("startOfStateOfTheWorld clears both maps", () => {
     const start: RfqStreamState = {
@@ -274,3 +231,46 @@ describe("WorkflowEventStreamUseCase", () => {
     sub.unsubscribe();
   });
 });
+
+function stubWorkflow(events$: Subject<RfqEvent>): WorkflowPort {
+  return {
+    events: () => {
+      return events$.asObservable();
+    },
+    createRfq: () => {
+      return of(0);
+    },
+    cancelRfq: () => {
+      return of(undefined);
+    },
+    quote: () => {
+      return of(undefined);
+    },
+    pass: () => {
+      return of(undefined);
+    },
+    accept: () => {
+      return of(undefined);
+    },
+  };
+}
+
+function emptyState(): RfqStreamState {
+  return { rfqs: new Map(), quotes: new Map() };
+}
+
+function buildRfq(id: number, state: RfqState = RfqState.Open): Rfq {
+  return {
+    id,
+    instrumentId: 1,
+    quantity: 1000,
+    direction: Direction.Buy,
+    state,
+    expirySecs: 120,
+    creationTimestamp: 1000,
+  };
+}
+
+function buildQuote(id: number, rfqId: number, dealerId = 1): Quote {
+  return { id, rfqId, dealerId, state: { type: "pendingWithoutPrice" } };
+}

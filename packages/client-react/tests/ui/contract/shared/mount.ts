@@ -2,15 +2,19 @@ import { BehaviorSubject } from "rxjs";
 
 import type {
   EquityOrder,
+  LogEvent,
   Price,
   PriceTick,
   Quote,
-  ThemeMode,
+  ServiceTopology,
+  SessionInfo,
+  ThemeModePreference,
   ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
 
 import type { AnimationIntent } from "#/app/presenters/AnimationDirector";
+import type { IncidentKind } from "#/app/presenters/IncidentMachine";
 import type { SessionState } from "#/app/presenters/SessionPresenter";
 import type { ThroughputView } from "#/app/presenters/ThroughputPresenter";
 
@@ -21,11 +25,14 @@ import type {
   PageContext,
 } from "./harness/component";
 import {
+  type AdminSeed,
   type CommandResults,
   createWorld,
   type EquitiesSeed,
   type HookValues,
+  type MetricsView,
   type ParametricSeed,
+  type World,
 } from "./harness/world";
 
 export interface MountOptions<P> {
@@ -37,7 +44,7 @@ export interface MountOptions<P> {
   /** Seed the initial throughput view (useThroughput). */
   throughput?: Partial<ThroughputView>;
   /** Seed the initial theme-mode preference (useThemePreference); defaults to DEFAULT_THEME_MODE. */
-  themeMode?: ThemeMode;
+  themeMode?: ThemeModePreference;
   /** Seed the initial theme-skin preference (useThemeSkinPreference); defaults to "classic". */
   themeSkin?: ThemeSkin;
   /** Seed the initial animated-background preference (useAnimatedBackground); defaults to false. */
@@ -48,30 +55,18 @@ export interface MountOptions<P> {
   session?: Partial<SessionState>;
   /** Seed the equities streams (useWatchlist / useEquityQuote / useEquityOrders / …). */
   equities?: EquitiesSeed;
+  /** Seed the admin / telemetry streams (useTopology / useEventLog / useSessions / useMetrics). */
+  admin?: AdminSeed;
 }
 
 const mounted: MountedRoot[] = [];
 
-export function mount<P, Page extends MountedComponent<P>>(
-  token: ComponentToken<P, Page>,
-  opts: MountOptions<P> = {},
-): Page {
-  const world = createWorld(
-    opts.hooks,
-    opts.commands,
-    opts.parametric,
-    opts.throughput,
-    opts.themeMode,
-    opts.viewMode,
-    opts.themeSkin,
-    opts.animatedBackground,
-    opts.session,
-    opts.equities,
-  );
-  const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
-  const rendered = getDriver().render(token, { propsSubject, world });
-  mounted.push(rendered);
-
+/** Build a PageContext wired to an existing World. Shared by mount() and mountWith(). */
+function buildContext<P>(
+  world: World,
+  propsSubject: BehaviorSubject<Partial<P>>,
+  rendered: MountedRoot,
+): PageContext<P> {
   // Use the driver's flush hook (e.g. React `act`) if provided so that
   // synchronous BehaviorSubject mutations flush pending re-renders before
   // the caller's next assertion.
@@ -81,7 +76,7 @@ export function mount<P, Page extends MountedComponent<P>>(
       fn();
     });
 
-  const ctx: PageContext<P> = {
+  return {
     root: rendered.root,
     setProps: (next: Partial<P>) => {
       return flush(() => {
@@ -125,8 +120,80 @@ export function mount<P, Page extends MountedComponent<P>>(
     },
     throughputSets: world.throughputSets,
     commands: world.commands,
+    // Admin / telemetry setters: flush-wrapped so React re-renders are flushed
+    // synchronously before the next assertion (mirrors ctx.emit behaviour).
+    setTopology: (value: ServiceTopology | null) => {
+      return flush(() => {
+        return world.setTopology(value);
+      });
+    },
+    setEventLog: (value: readonly LogEvent[]) => {
+      return flush(() => {
+        return world.setEventLog(value);
+      });
+    },
+    setSessions: (value: readonly SessionInfo[]) => {
+      return flush(() => {
+        return world.setSessions(value);
+      });
+    },
+    setMetrics: (patch: Partial<MetricsView>) => {
+      return flush(() => {
+        return world.setMetrics(patch);
+      });
+    },
+    injectIncident: (kind: IncidentKind) => {
+      return flush(() => {
+        return world.injectIncident(kind);
+      });
+    },
+    clearIncident: () => {
+      return flush(() => {
+        return world.clearIncident();
+      });
+    },
   };
-  return token.makePage(ctx);
+}
+
+export function mount<P, Page extends MountedComponent<P>>(
+  token: ComponentToken<P, Page>,
+  opts: MountOptions<P> = {},
+): Page {
+  const world = createWorld(
+    opts.hooks,
+    opts.commands,
+    opts.parametric,
+    opts.throughput,
+    opts.themeMode,
+    opts.viewMode,
+    opts.themeSkin,
+    opts.animatedBackground,
+    opts.session,
+    opts.equities,
+    opts.admin,
+  );
+  const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
+  const rendered = getDriver().render(token, { propsSubject, world });
+  mounted.push(rendered);
+  return token.makePage(buildContext(world, propsSubject, rendered));
+}
+
+/**
+ * Mount a component using a SHARED, pre-created World. Use this when two
+ * components must react to the same World subjects (e.g. the incident→banner
+ * coupling spec mounts IncidentControls and ConnectionOverlay on one World so
+ * that injectIncident() drives both). Create the shared world with
+ * {@link createWorld} before calling mountWith.
+ */
+export function mountWith<P, Page extends MountedComponent<P>>(
+  world: World,
+  token: ComponentToken<P, Page>,
+  props: Partial<P> = {},
+): Page {
+  const propsSubject = new BehaviorSubject<Partial<P>>(props);
+  const rendered = getDriver().render(token, { propsSubject, world });
+  mounted.push(rendered);
+  return token.makePage(buildContext(world, propsSubject, rendered));
 }
 
 /** Unmount everything mounted since the last cleanup (call in afterEach). */
@@ -136,3 +203,7 @@ export function cleanupMounted(): void {
     if (entry) entry.unmount();
   }
 }
+
+// Re-export createWorld so specs can create a shared world directly via the
+// mount-package alias (@ui-contract/mount) rather than the harness alias.
+export { createWorld } from "./harness/world";

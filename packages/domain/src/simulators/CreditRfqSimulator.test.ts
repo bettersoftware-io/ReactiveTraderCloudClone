@@ -6,67 +6,12 @@ import { defined } from "../__testUtils__/defined.js";
 import { CREDIT_RFQ_EXPIRY_SECONDS } from "../credit/rfq.js";
 import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
-import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
-
-type QuoteCreatedMatcher = { type: "quoteCreated" };
-type RfqClosedMatcher = { type: "rfqClosed" };
-type QuotePassedMatcher = { type: "quotePassed" };
-type QuoteAcceptedMatcher = { type: "quoteAccepted" };
-type QuoteRejectedMatcher = { type: "quoteRejected" };
-type QuoteQuotedMatcher = { type: "quoteQuoted" };
+import { DEALERS_CATALOG } from "./DealerSimulator.js";
 
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
-
-interface CollectedEvents {
-  events: RfqEvent[];
-  stop: () => void;
-}
-
-function collectEvents(sim: CreditRfqSimulator): CollectedEvents {
-  const events: RfqEvent[] = [];
-  const sub = sim.events().subscribe((e) => {
-    return events.push(e);
-  });
-  return {
-    events,
-    stop: () => {
-      return sub.unsubscribe();
-    },
-  };
-}
-
-interface RfqAndQuoteId {
-  rfqId: number;
-  quoteId: number;
-}
-
-async function createRfqAndQuoteId(
-  sim: CreditRfqSimulator,
-): Promise<RfqAndQuoteId> {
-  const quoteCreated = firstValueFrom(
-    sim.events().pipe(
-      filter((e: RfqEvent) => {
-        return e.type === "quoteCreated";
-      }),
-      take(1),
-    ),
-  );
-  const rfqId = await firstValueFrom(
-    sim.createRfq({
-      instrumentId: 1,
-      dealerIds: [defined(DEALERS_CATALOG[0]).id],
-      quantity: 1000,
-      direction: "Buy" as never,
-      expirySecs: 60,
-    }),
-  );
-  await vi.advanceTimersByTimeAsync(0);
-  const e = (await quoteCreated) as Extract<RfqEvent, QuoteCreatedMatcher>;
-  return { rfqId, quoteId: e.payload.id };
-}
 
 describe("CreditRfqSimulator", () => {
   it("cancelRfq closes an open RFQ via an rfqClosed event with Cancelled state", async () => {
@@ -428,3 +373,63 @@ describe("CreditRfqSimulator", () => {
     ).toBe(false);
   });
 });
+
+type QuoteCreatedMatcher = { type: "quoteCreated" };
+
+type RfqClosedMatcher = { type: "rfqClosed" };
+
+type QuotePassedMatcher = { type: "quotePassed" };
+
+type QuoteAcceptedMatcher = { type: "quoteAccepted" };
+
+type QuoteRejectedMatcher = { type: "quoteRejected" };
+
+type QuoteQuotedMatcher = { type: "quoteQuoted" };
+
+interface CollectedEvents {
+  events: RfqEvent[];
+  stop: () => void;
+}
+
+function collectEvents(sim: CreditRfqSimulator): CollectedEvents {
+  const events: RfqEvent[] = [];
+  const sub = sim.events().subscribe((e) => {
+    return events.push(e);
+  });
+  return {
+    events,
+    stop: () => {
+      return sub.unsubscribe();
+    },
+  };
+}
+
+interface RfqAndQuoteId {
+  rfqId: number;
+  quoteId: number;
+}
+
+async function createRfqAndQuoteId(
+  sim: CreditRfqSimulator,
+): Promise<RfqAndQuoteId> {
+  const quoteCreated = firstValueFrom(
+    sim.events().pipe(
+      filter((e: RfqEvent) => {
+        return e.type === "quoteCreated";
+      }),
+      take(1),
+    ),
+  );
+  const rfqId = await firstValueFrom(
+    sim.createRfq({
+      instrumentId: 1,
+      dealerIds: [defined(DEALERS_CATALOG[0]).id],
+      quantity: 1000,
+      direction: "Buy" as never,
+      expirySecs: 60,
+    }),
+  );
+  await vi.advanceTimersByTimeAsync(0);
+  const e = (await quoteCreated) as Extract<RfqEvent, QuoteCreatedMatcher>;
+  return { rfqId, quoteId: e.payload.id };
+}

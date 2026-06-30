@@ -21,12 +21,15 @@ test.describe("Theme", () => {
     await theme.expectBackgroundMatchesToggled(ctx);
   });
 
-  test("toggle button shows correct icon for current theme", async ({
-    ctx,
-  }) => {
-    await theme.expectThemeToggleAriaLabelMentions(ctx, "light");
+  test("toggle cycles dark → light → system → dark", async ({ ctx }) => {
+    // aria-label always names the NEXT preference in the cycle.
+    await theme.expectThemeToggleAriaLabelMentions(ctx, "light"); // on dark
     await theme.toggleAndCaptureBackgrounds(ctx);
-    await theme.expectThemeToggleAriaLabelMentions(ctx, "dark");
+    await theme.expectThemeToggleAriaLabelMentions(ctx, "system"); // on light
+    await theme.toggleAndCaptureBackgrounds(ctx);
+    await theme.expectThemeToggleAriaLabelMentions(ctx, "dark"); // on system
+    await theme.toggleAndCaptureBackgrounds(ctx);
+    await theme.expectThemeToggleAriaLabelMentions(ctx, "light"); // back on dark
   });
 
   test("workspace tabs work in both themes", async ({ ctx }) => {

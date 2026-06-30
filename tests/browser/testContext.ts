@@ -5,6 +5,7 @@ import type { PageObjects } from "./page-objects/contracts";
  * scenario by both PlaywrightWorld and the Cypress beforeEach hook. Holds all
  * cross-step state that used to live as module-level closures in step files.
  */
+// eslint-disable-next-line rtc/class-filename-match -- shared e2e scratchpad helper; testContext.ts is a purpose-named harness module
 export class Scratchpad {
   blotter = { recordedRowCounts: new Map<string, number>() };
 

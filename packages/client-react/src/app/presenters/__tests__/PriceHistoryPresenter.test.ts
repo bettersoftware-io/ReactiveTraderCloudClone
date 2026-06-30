@@ -5,17 +5,6 @@ import type { PriceTick, PricingPort } from "@rtc/domain";
 
 import { PriceHistoryPresenter } from "../PriceHistoryPresenter";
 
-function tick(mid: number, ts: number): PriceTick {
-  return {
-    symbol: "EURUSD",
-    mid,
-    ask: mid + 0.0001,
-    bid: mid - 0.0001,
-    valueDate: "2026-05-05",
-    creationTimestamp: ts,
-  };
-}
-
 describe("PriceHistoryPresenter", () => {
   it("accumulates live ticks into a rolling buffer", async () => {
     const t1 = tick(1.1, 1);
@@ -56,3 +45,14 @@ describe("PriceHistoryPresenter", () => {
     expect(presenter.history$("EURUSD")).not.toBe(presenter.history$("GBPUSD"));
   });
 });
+
+function tick(mid: number, ts: number): PriceTick {
+  return {
+    symbol: "EURUSD",
+    mid,
+    ask: mid + 0.0001,
+    bid: mid - 0.0001,
+    valueDate: "2026-05-05",
+    creationTimestamp: ts,
+  };
+}

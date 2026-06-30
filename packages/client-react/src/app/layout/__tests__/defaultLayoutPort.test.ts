@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { createDefaultLayoutPort, PANEL_SPECS } from "../defaultLayoutPort";
 
-function panelIds(node: import("../layoutPort").LayoutNode): string[] {
-  return node.kind === "panel"
-    ? [node.panelId]
-    : node.children.flatMap(panelIds);
-}
-
 describe("createDefaultLayoutPort", () => {
   it("fx: rates + analytics fill the content row; blotter is the pinned bottom slot", () => {
     const { initial } = createDefaultLayoutPort("fx");
@@ -34,11 +28,11 @@ describe("createDefaultLayoutPort", () => {
     expect(PANEL_SPECS["credit-blotter"].pinned).toBe(true);
   });
 
-  it("admin: a single throughput panel, no pinned slot", () => {
+  it("admin: a single dashboard panel, no pinned slot", () => {
     const { initial } = createDefaultLayoutPort("admin");
     expect(initial.root).toEqual({
       kind: "panel",
-      panelId: "admin-throughput",
+      panelId: "admin-dashboard",
     });
   });
 
@@ -49,3 +43,9 @@ describe("createDefaultLayoutPort", () => {
     }
   });
 });
+
+function panelIds(node: import("../layoutPort").LayoutNode): string[] {
+  return node.kind === "panel"
+    ? [node.panelId]
+    : node.children.flatMap(panelIds);
+}

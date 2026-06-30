@@ -4,22 +4,6 @@ import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import { exportFxToCsv } from "./csvExport";
 
-function trade(over: Partial<Trade> = {}): Trade {
-  return {
-    tradeId: 1,
-    tradeName: "Alice",
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.09221,
-    status: TradeStatus.Done,
-    tradeDate: "2026-01-01",
-    valueDate: "2026-01-03",
-    ...over,
-  };
-}
-
 /**
  * exportToCsv writes to a Blob and triggers a download via an anchor element.
  * jsdom does not implement URL.createObjectURL / revokeObjectURL, so we stub
@@ -29,6 +13,7 @@ let captured: string | null;
 const RealBlob: typeof Blob = globalThis.Blob;
 
 /** A real Blob subclass that records the joined text parts it was built from. */
+// eslint-disable-next-line rtc/class-filename-match -- small local Blob test double; file is named after the system under test
 class RecordingBlob extends RealBlob {
   constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
     super(parts, options);
@@ -53,15 +38,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
-
-/** Return `captured` after asserting it is non-null (set by RecordingBlob). */
-function capturedContent(): string {
-  if (captured === null)
-    throw new Error(
-      "RecordingBlob was not invoked — exportToCsv did not create a Blob",
-    );
-  return captured;
-}
 
 describe("exportToCsv", () => {
   it("writes a header row with all column labels", () => {
@@ -106,3 +82,28 @@ describe("exportToCsv", () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock");
   });
 });
+
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 1,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-01-01",
+    valueDate: "2026-01-03",
+    ...over,
+  };
+}
+
+/** Return `captured` after asserting it is non-null (set by RecordingBlob). */
+function capturedContent(): string {
+  if (captured === null)
+    throw new Error(
+      "RecordingBlob was not invoked — exportToCsv did not create a Blob",
+    );
+  return captured;
+}

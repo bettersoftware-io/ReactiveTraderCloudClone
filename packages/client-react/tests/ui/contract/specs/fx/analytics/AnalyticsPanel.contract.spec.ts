@@ -13,33 +13,6 @@ afterEach(() => {
   return cleanupMounted();
 });
 
-function historic(
-  usdPnl: number,
-  timestamp = "2026-06-13T00:00:00Z",
-): HistoricPosition {
-  return {
-    timestamp,
-    usdPnl,
-  };
-}
-
-function position(symbol: string, basePnl: number): CurrencyPairPosition {
-  return {
-    symbol,
-    basePnl,
-    baseTradedAmount: 1_000_000,
-    counterTradedAmount: 1_090_000,
-  };
-}
-
-function updates(over: Partial<PositionUpdates> = {}): PositionUpdates {
-  return {
-    currentPositions: [position("EURUSD", 12_500)],
-    history: [historic(0, "2026-06-13T00:00:00Z"), historic(12_500)],
-    ...over,
-  };
-}
-
 describe("AnalyticsPanel", () => {
   it("shows a loading placeholder until analytics data arrives", () => {
     const panel = mount(AnalyticsPanel, { hooks: { useAnalytics: null } });
@@ -123,3 +96,30 @@ describe("AnalyticsPanel", () => {
     expect(panel.latestPnlText()).toBe("+7,000");
   });
 });
+
+function historic(
+  usdPnl: number,
+  timestamp = "2026-06-13T00:00:00Z",
+): HistoricPosition {
+  return {
+    timestamp,
+    usdPnl,
+  };
+}
+
+function position(symbol: string, basePnl: number): CurrencyPairPosition {
+  return {
+    symbol,
+    basePnl,
+    baseTradedAmount: 1_000_000,
+    counterTradedAmount: 1_090_000,
+  };
+}
+
+function updates(over: Partial<PositionUpdates> = {}): PositionUpdates {
+  return {
+    currentPositions: [position("EURUSD", 12_500)],
+    history: [historic(0, "2026-06-13T00:00:00Z"), historic(12_500)],
+    ...over,
+  };
+}

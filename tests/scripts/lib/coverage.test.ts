@@ -2,45 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { coverageOf, type FileMap, fileStat, packageStat } from "./coverage";
 
-// Minimal istanbul-format coverage: per-line statement hits + optional branch.
-// `branches`: map of line -> [hits-per-branch-arm].
-function cov(
-  path: string,
-  hits: Record<number, number>,
-  branches: Record<number, number[]> = {},
-): unknown {
-  const statementMap: Record<string, unknown> = {};
-  const s: Record<string, number> = {};
-  let i = 0;
-
-  for (const [line, count] of Object.entries(hits)) {
-    statementMap[i] = {
-      start: { line: Number(line), column: 0 },
-      end: { line: Number(line), column: 10 },
-    };
-    s[i] = count;
-    i++;
-  }
-
-  const branchMap: Record<string, unknown> = {};
-  const b: Record<string, number[]> = {};
-  let j = 0;
-
-  for (const [line, arms] of Object.entries(branches)) {
-    branchMap[j] = {
-      type: "branch",
-      line: Number(line),
-      locations: arms.map(() => {
-        return { start: { line: Number(line) } };
-      }),
-    };
-    b[j] = arms;
-    j++;
-  }
-
-  return { [path]: { path, statementMap, s, fnMap: {}, f: {}, branchMap, b } };
-}
-
 describe("coverageOf", () => {
   it("maps each line to its statement hit count", () => {
     const fm = coverageOf(cov("/r/a.ts", { 1: 3, 2: 0 }));
@@ -114,3 +75,42 @@ describe("packageStat", () => {
     ).toEqual(["/r/bad.ts", "/r/partial.ts"]);
   });
 });
+
+// Minimal istanbul-format coverage: per-line statement hits + optional branch.
+// `branches`: map of line -> [hits-per-branch-arm].
+function cov(
+  path: string,
+  hits: Record<number, number>,
+  branches: Record<number, number[]> = {},
+): unknown {
+  const statementMap: Record<string, unknown> = {};
+  const s: Record<string, number> = {};
+  let i = 0;
+
+  for (const [line, count] of Object.entries(hits)) {
+    statementMap[i] = {
+      start: { line: Number(line), column: 0 },
+      end: { line: Number(line), column: 10 },
+    };
+    s[i] = count;
+    i++;
+  }
+
+  const branchMap: Record<string, unknown> = {};
+  const b: Record<string, number[]> = {};
+  let j = 0;
+
+  for (const [line, arms] of Object.entries(branches)) {
+    branchMap[j] = {
+      type: "branch",
+      line: Number(line),
+      locations: arms.map(() => {
+        return { start: { line: Number(line) } };
+      }),
+    };
+    b[j] = arms;
+    j++;
+  }
+
+  return { [path]: { path, statementMap, s, fnMap: {}, f: {}, branchMap, b } };
+}

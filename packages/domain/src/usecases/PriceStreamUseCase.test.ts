@@ -17,20 +17,6 @@ const EURUSD: CurrencyPair = {
   defaultNotional: 1_000_000,
 };
 
-function stubPricing(ticks: PriceTick[]): PricingPort {
-  return {
-    getPriceUpdates: () => {
-      return from(ticks);
-    },
-    getPriceHistory: () => {
-      return of([] as readonly PriceTick[]);
-    },
-    getRfqQuote: () => {
-      return of({ bid: 0, ask: 0, mid: 0 });
-    },
-  };
-}
-
 describe("PriceStreamUseCase", () => {
   it("enriches each tick with spread and movement, tracking previous mid across ticks", async () => {
     const ticks: PriceTick[] = [
@@ -95,3 +81,17 @@ describe("PriceStreamUseCase", () => {
     expect(second[0].movementType).toBe(PriceMovementType.NONE);
   });
 });
+
+function stubPricing(ticks: PriceTick[]): PricingPort {
+  return {
+    getPriceUpdates: () => {
+      return from(ticks);
+    },
+    getPriceHistory: () => {
+      return of([] as readonly PriceTick[]);
+    },
+    getRfqQuote: () => {
+      return of({ bid: 0, ask: 0, mid: 0 });
+    },
+  };
+}

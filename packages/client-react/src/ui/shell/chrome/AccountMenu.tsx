@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "#/ui/viewModel/useViewModel";
 
 import styles from "./HeaderChrome.module.css";
 
@@ -17,7 +17,7 @@ const LANGUAGES = ["EN", "中文", "日本", "DE", "FR", "ES"];
  * Opening/closing the panel is local view state.
  */
 export function AccountMenu(): ReactElement {
-  const { useSession } = useHooks();
+  const { useSession } = useViewModel();
   const { state, lock } = useSession();
   const { user } = state;
   const [open, setOpen] = useState(false);

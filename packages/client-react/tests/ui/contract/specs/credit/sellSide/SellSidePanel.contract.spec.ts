@@ -28,28 +28,6 @@ const withAdaptive: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
-  return {
-    id,
-    instrumentId: 1,
-    quantity: 2500,
-    direction: Direction.Buy,
-    state: RfqState.Open,
-    expirySecs: 120,
-    creationTimestamp: 1_700_000_000_000 + id,
-    ...over,
-  };
-}
-
-function adaptiveQuote(rfqId: number): Quote {
-  return {
-    id: rfqId * 10,
-    rfqId,
-    dealerId: 1, // Adaptive Bank
-    state: { type: "pendingWithoutPrice" },
-  };
-}
-
 describe("SellSidePanel", () => {
   it("shows the panel title", () => {
     const panel = mount(SellSidePanel, {
@@ -119,3 +97,25 @@ describe("SellSidePanel", () => {
     expect(panel.ticketCount()).toBe(1);
   });
 });
+
+function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
+  return {
+    id,
+    instrumentId: 1,
+    quantity: 2500,
+    direction: Direction.Buy,
+    state: RfqState.Open,
+    expirySecs: 120,
+    creationTimestamp: 1_700_000_000_000 + id,
+    ...over,
+  };
+}
+
+function adaptiveQuote(rfqId: number): Quote {
+  return {
+    id: rfqId * 10,
+    rfqId,
+    dealerId: 1, // Adaptive Bank
+    state: { type: "pendingWithoutPrice" },
+  };
+}

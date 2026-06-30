@@ -22,7 +22,7 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
     title: "Credit Blotter",
     pinned: true,
   },
-  "admin-throughput": { id: "admin-throughput", title: "Throughput Control" },
+  "admin-dashboard": { id: "admin-dashboard", title: "Admin" },
   equities: { id: "equities", title: "Equities" },
 };
 
@@ -54,7 +54,7 @@ const CREDIT_ROOT: LayoutNode = {
   ],
 };
 
-const ADMIN_ROOT: LayoutNode = { kind: "panel", panelId: "admin-throughput" };
+const ADMIN_ROOT: LayoutNode = { kind: "panel", panelId: "admin-dashboard" };
 
 const EQUITIES_ROOT: LayoutNode = { kind: "panel", panelId: "equities" };
 

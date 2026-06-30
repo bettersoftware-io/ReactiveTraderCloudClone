@@ -59,6 +59,10 @@ export class CypressWorkspace implements WorkspacePO {
     }) as unknown as Promise<string>;
   }
 
+  clickTestId(id: string): Promise<void> {
+    return cy.get(`[data-testid="${id}"]`).click() as unknown as Promise<void>;
+  }
+
   wait(ms: number): Promise<void> {
     return cy.wait(ms) as unknown as Promise<void>;
   }

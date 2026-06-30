@@ -5,6 +5,7 @@ import type { CreditRfqFormPO } from "./CreditRfqForm";
 import type { CreditRfqPanelPO } from "./CreditRfqPanel";
 import type { FooterPO } from "./Footer";
 import type { FxRfqFormPO } from "./FxRfqForm";
+import type { LayoutPO } from "./Layout";
 import type { LiveRatesTilePO } from "./LiveRatesTile";
 import type { ThemeTogglePO } from "./ThemeToggle";
 import type { WorkspacePO } from "./Workspace";
@@ -20,4 +21,5 @@ export interface PageObjects {
   creditRfqForm: CreditRfqFormPO;
   creditRfqPanel: CreditRfqPanelPO;
   blotterTable: BlotterTablePO;
+  layout: LayoutPO;
 }
