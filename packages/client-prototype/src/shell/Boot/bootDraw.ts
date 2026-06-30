@@ -129,10 +129,7 @@ const LASER_PANELS: BootPanel[] = [
 // ---------------------------------------------------------------------------
 // Globe — per-frame body of _drawBoot's inner draw() (.dc.html 924–939).
 // ---------------------------------------------------------------------------
-export function drawGlobe(
-  ctx: CanvasRenderingContext2D,
-  frame: BootFrame,
-): void {
+function drawGlobe(ctx: CanvasRenderingContext2D, frame: BootFrame): void {
   const { w, h, accent } = frame;
   const t = frame.t / 1000;
   const prog = Math.min(1, frame.t / frame.dur);
@@ -236,10 +233,7 @@ export function drawGlobe(
 // ---------------------------------------------------------------------------
 // Laser — per-frame body of _drawBootLaser's inner draw() (.dc.html 955–987).
 // ---------------------------------------------------------------------------
-export function drawLaser(
-  ctx: CanvasRenderingContext2D,
-  frame: BootFrame,
-): void {
+function drawLaser(ctx: CanvasRenderingContext2D, frame: BootFrame): void {
   const { accent, accent2 } = frame;
   const prog = Math.min(1, frame.t / frame.dur);
   const W = frame.w;
@@ -490,10 +484,7 @@ function drawPanelContent(
 // Docking — per-frame body of _drawBootDocking's inner draw() (.dc.html 998–1102).
 // Uses frame.buy (green go-cues) and frame.sell (red REC) faithfully to th.buy/th.sell.
 // ---------------------------------------------------------------------------
-export function drawDocking(
-  ctx: CanvasRenderingContext2D,
-  frame: BootFrame,
-): void {
+function drawDocking(ctx: CanvasRenderingContext2D, frame: BootFrame): void {
   const { accent, accent2, buy, sell } = frame;
   const t = frame.t / 1000;
   const prog = Math.min(1, frame.t / frame.dur);

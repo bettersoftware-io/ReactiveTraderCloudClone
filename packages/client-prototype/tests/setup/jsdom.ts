@@ -1,6 +1,7 @@
 // jsdom on Node 26 does not expose localStorage, and never implements canvas
-// 2D or a real rAF clock — shim all three so smoke tests can mount the app
-// (boot canvas + theme persistence) without touching real browser APIs.
+// 2D — shim both so smoke tests can mount the app (boot canvas + theme
+// persistence) without touching real browser APIs.
+import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
 
 function installStorage(): void {
@@ -41,5 +42,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   globalThis.localStorage.clear();
 });
