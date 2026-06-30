@@ -1,3 +1,5 @@
+/* Full-viewport shell: ambient layer (z-0) behind the chrome column (z-5). */
+
 .shell {
   position: relative;
   display: flex;
@@ -7,6 +9,16 @@
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-d, sans-serif);
+  isolation: isolate;
+}
+
+/* Chrome column (header / main / footer) sits above the z-0 ambient layer. */
+.chrome {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .body {
