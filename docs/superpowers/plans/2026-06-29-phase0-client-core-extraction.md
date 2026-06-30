@@ -42,14 +42,16 @@ vitest.config.ts        node environment, globals, fake-timer friendly
 ```
 package.json            @rtc/react-bindings — deps: @rtc/client-core, react, @react-rxjs/core, rxjs
 tsconfig.json           extends base; jsx: react-jsx; paths #/* → ./src/*; references client-core
-src/index.ts            barrel: createAppHooks, AppHooks, useHooks, useMachine, HooksProvider
-src/createAppHooks.tsx  (moved from client-react/src/ui/hooks)
+src/index.ts            barrel: createViewModel, ViewModel, useViewModel, useMachine, ViewModelProvider, ViewModelContext
+src/createViewModel.ts  (moved from client-react/src/ui/viewModel)
 src/useMachine.ts       (moved)
-src/useHooks.ts         (moved)
-src/HooksContext.ts     (moved)
-src/HooksProvider.tsx   (moved)
-vitest.config.ts        jsdom environment (React hooks render)
+src/useViewModel.ts     (moved)
+src/ViewModelContext.ts (moved)
+src/ViewModelProvider.tsx (moved)
+vitest.config.ts        jsdom environment (React view-model hooks render)
 ```
+
+> **Post-merge reconciliation (2026-06-30):** `origin/main` was merged into this branch before execution. Two relevant changes landed: **(1) PR #55 (ADR-004) renamed the React DI seam Hooks/AppHooks → ViewModel** and relocated it to `client-react/src/ui/viewModel/` — so the bridge files are now `createViewModel.ts` / `useViewModel.ts` / `ViewModelContext.ts` / `ViewModelProvider.tsx` / `useMachine.ts` (Task 6 reflects this); **(2) Phases 4–5 (telemetry/admin/layout) grew `portFactory.ts` and `composition.ts`** — all line numbers cited below have drifted, so **trust the `grep` commands over any hardcoded line number**. The premises still hold: `portFactory` still `new LocalStoragePreferencesAdapter()`s internally (now lines ~136/~964), and `composition.ts` still has `buildDefaultPorts()` (now ~153) with `createApp(ports = buildDefaultPorts())` (~213).
 
 **`packages/client-react/`** keeps (browser shell):
 ```
@@ -58,7 +60,7 @@ src/app/buildBrowserPorts.ts   NEW — constructs LocalStorage/Browser/Ws adapte
 src/app/adapters/WsAdapter.ts                  (stays — uses `new WebSocket`)
 src/app/adapters/BrowserConnectionEventsAdapter.ts (stays — window online/offline)
 src/app/adapters/LocalStoragePreferencesAdapter.ts (stays — localStorage)
-src/AppRoot.tsx                rewired: createApp(buildBrowserPorts()), hooks from react-bindings
+src/AppRoot.tsx                rewired: createApp(buildBrowserPorts()), view model from react-bindings
 src/ui/**                      DOM leaf components (unchanged except hook import paths)
 ```
 
@@ -246,7 +248,7 @@ This is the bulk move and involves **no DI change** — pure relocation + intra-
 - Move: `packages/client-react/src/app/presenters/machine.ts` travels inside the dir move.
 - Modify: every moved file's intra-imports (`#/app/presenters/X` → `#/presenters/X`, `#/app/layout/X` → `#/layout/X`).
 - Modify: `packages/client-core/src/index.ts` (barrel).
-- Modify: re-point sites in `client-react` that import these (per the map: in `createAppHooks.ts`, `AppRoot.tsx`, and UI components).
+- Modify: re-point sites in `client-react` that import these (chiefly `src/ui/viewModel/createViewModel.ts`, `AppRoot.tsx`, and UI components).
 
 **Interfaces:**
 - Produces (from `@rtc/client-core`): all presenter classes (e.g. `PriceStreamPresenter`, `CurrencyPairsPresenter`, `ConnectionStatusPresenter`, `BlotterPresenter`, `TradeExecutionPresenter`, …), all machine factories (e.g. `createNotionalMachine`, `createLayoutMachine`, `createBootSequenceMachine`, …), the `Machine`/`MachineFactories` types from `machine.ts`, and layout (`createDefaultLayoutPort`, `WorkspaceTab`, `layoutPort` types).
@@ -285,7 +287,7 @@ For `presenters/index.ts`, re-export each presenter and machine module by name (
 
 - [ ] **Step 4: Re-point `client-react` consumers to `@rtc/client-core`**
 
-In `packages/client-react/src`, replace the presenter/layout import sites (the map found these in `createAppHooks.ts`, `AppRoot.tsx`, and a few UI components). Each `import { X } from "#/app/presenters/Y"` or `"#/app/layout/Y"` becomes `import { X } from "@rtc/client-core"`.
+In `packages/client-react/src`, replace the presenter/layout import sites (chiefly `src/ui/viewModel/createViewModel.ts`, `AppRoot.tsx`, and a few UI components). Each `import { X } from "#/app/presenters/Y"` or `"#/app/layout/Y"` becomes `import { X } from "@rtc/client-core"`. Note `createViewModel.ts` imports many presenter/machine types via `#/app/presenters/*` and `#/app/layout/*` (e.g. `AppCommands`/`Presenters` from `#/app/composition`, `MachineFactories` from `#/app/presenters/machine`) — re-point the presenter/layout ones now; the `#/app/composition` import is re-pointed in Task 5 when composition moves.
 
 Find them: `grep -rn '#/app/\(presenters\|layout\)' packages/client-react/src`. Re-point every hit. Add `"@rtc/client-core": "workspace:*"` to `packages/client-react/package.json` dependencies.
 
@@ -506,7 +508,7 @@ import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 const { presenters, commands } = createApp(buildBrowserPorts());
 ```
 
-(`createAppHooks`/`HooksProvider` imports are re-pointed in Task 6.)
+(`createViewModel`/`ViewModelProvider` imports are re-pointed in Task 6. Note: `AppRoot.tsx` currently calls `createApp()` with no args — this step changes it to `createApp(buildBrowserPorts())`.)
 
 - [ ] **Step 6: Build, typecheck, test — verify green**
 
@@ -522,49 +524,56 @@ git commit -m "refactor: split composition into neutral createApp (client-core) 
 
 ---
 
-## Task 6: Move the React bridge hooks into `@rtc/react-bindings`
+## Task 6: Move the React view-model bridge into `@rtc/react-bindings`
+
+> **Renamed seam (post-merge):** PR #55 (ADR-004) renamed this bridge Hooks → **ViewModel** and it now lives in `packages/client-react/src/ui/viewModel/`. Files: `createViewModel.ts` (factory; exports `createViewModel` + the `ViewModel` interface), `useViewModel.ts` (`useViewModel(): ViewModel`), `useMachine.ts` (`useMachine(...)`), `ViewModelContext.ts` (`ViewModelContext`), `ViewModelProvider.tsx` (`ViewModelProvider`). None of these import the DOM; `createViewModel.ts` imports `react`/`@react-rxjs/core` (`bind`) + type-only symbols from `@rtc/domain` + presenter/composition types from `#/app/*` (now `@rtc/client-core`).
 
 **Files:**
-- Move: `packages/client-react/src/ui/hooks/createAppHooks.ts` (rename to `.tsx` if it contains JSX; the map shows it uses `bind` — keep `.ts` if no JSX), `useMachine.ts`, `useHooks.ts`, `HooksContext.ts`, `HooksProvider.tsx`, and their `__tests__` → `packages/react-bindings/src/`.
-- Move: `createAppHooks.equities.test.ts`, `useHooks.test.tsx`, `useMachine.test.tsx`, `__tests__/themePreferenceHooks.test.tsx`, `__tests__/useAnimationIntents.test.tsx` → `packages/react-bindings/src/__tests__/`.
-- Modify: the 29 `#/ui/hooks/useHooks` consumer import sites in `client-react/src/ui` → `@rtc/react-bindings`.
-- Modify: `AppRoot.tsx` hook imports → `@rtc/react-bindings`.
+- Move: `packages/client-react/src/ui/viewModel/{createViewModel.ts, useViewModel.ts, useMachine.ts, ViewModelContext.ts, ViewModelProvider.tsx}` → `packages/react-bindings/src/`.
+- Move tests: `createViewModel.equities.test.ts`, `useViewModel.test.tsx`, `useMachine.test.tsx` → `packages/react-bindings/src/`; `__tests__/themePreferenceHooks.test.tsx`, `__tests__/useAnimationIntents.test.tsx` → `packages/react-bindings/src/__tests__/`.
+- Modify: the ~39 `useViewModel` consumer import sites in `client-react/src/ui` → `@rtc/react-bindings` (import paths vary: 37× `#/ui/viewModel/useViewModel`, plus `../viewModel/useViewModel` and `./viewModel/useViewModel` in `src/ui/App.tsx`).
+- Modify: `AppRoot.tsx` (`createViewModel` + `ViewModelProvider` imports) → `@rtc/react-bindings`.
+- Modify: `packages/react-bindings/package.json` — add `"@rtc/domain": "workspace:*"` (createViewModel imports domain types).
 
 **Interfaces:**
-- Produces (from `@rtc/react-bindings`): `createAppHooks(presenters, machineFactories, commands): AppHooks`, type `AppHooks`, `HooksProvider`, `useHooks(): AppHooks`, `useMachine(...)`.
-- Consumes: presenter/machine/composition types from `@rtc/client-core`.
+- Produces (from `@rtc/react-bindings`): `createViewModel(presenters, machineFactories, commands): ViewModel`, interface `ViewModel`, `ViewModelProvider`, `ViewModelContext`, `useViewModel(): ViewModel`, `useMachine(...)`.
+- Consumes: presenter/machine/composition types from `@rtc/client-core`; domain types from `@rtc/domain`.
 
-- [ ] **Step 1: Move the hook files with git**
+- [ ] **Step 1: Add `@rtc/domain` to react-bindings deps**
+
+In `packages/react-bindings/package.json`, add `"@rtc/domain": "workspace:*"` to `dependencies` (alphabetical: before `@react-rxjs/core` is fine — syncpack will not reorder). Add `{ "path": "../domain" }` to `references` in `packages/react-bindings/tsconfig.json`.
+
+- [ ] **Step 2: Move the view-model files with git**
 
 ```bash
-git mv packages/client-react/src/ui/hooks/createAppHooks.ts packages/react-bindings/src/createAppHooks.ts
-git mv packages/client-react/src/ui/hooks/useMachine.ts packages/react-bindings/src/useMachine.ts
-git mv packages/client-react/src/ui/hooks/useHooks.ts packages/react-bindings/src/useHooks.ts
-git mv packages/client-react/src/ui/hooks/HooksContext.ts packages/react-bindings/src/HooksContext.ts
-git mv packages/client-react/src/ui/hooks/HooksProvider.tsx packages/react-bindings/src/HooksProvider.tsx
+git mv packages/client-react/src/ui/viewModel/createViewModel.ts packages/react-bindings/src/createViewModel.ts
+git mv packages/client-react/src/ui/viewModel/useViewModel.ts packages/react-bindings/src/useViewModel.ts
+git mv packages/client-react/src/ui/viewModel/useMachine.ts packages/react-bindings/src/useMachine.ts
+git mv packages/client-react/src/ui/viewModel/ViewModelContext.ts packages/react-bindings/src/ViewModelContext.ts
+git mv packages/client-react/src/ui/viewModel/ViewModelProvider.tsx packages/react-bindings/src/ViewModelProvider.tsx
+git mv packages/client-react/src/ui/viewModel/createViewModel.equities.test.ts packages/react-bindings/src/createViewModel.equities.test.ts
+git mv packages/client-react/src/ui/viewModel/useViewModel.test.tsx packages/react-bindings/src/useViewModel.test.tsx
+git mv packages/client-react/src/ui/viewModel/useMachine.test.tsx packages/react-bindings/src/useMachine.test.tsx
 mkdir -p packages/react-bindings/src/__tests__
-git mv packages/client-react/src/ui/hooks/createAppHooks.equities.test.ts packages/react-bindings/src/createAppHooks.equities.test.ts
-git mv packages/client-react/src/ui/hooks/useHooks.test.tsx packages/react-bindings/src/useHooks.test.tsx
-git mv packages/client-react/src/ui/hooks/useMachine.test.tsx packages/react-bindings/src/useMachine.test.tsx
-git mv packages/client-react/src/ui/hooks/__tests__/themePreferenceHooks.test.tsx packages/react-bindings/src/__tests__/themePreferenceHooks.test.tsx
-git mv packages/client-react/src/ui/hooks/__tests__/useAnimationIntents.test.tsx packages/react-bindings/src/__tests__/useAnimationIntents.test.tsx
+git mv packages/client-react/src/ui/viewModel/__tests__/themePreferenceHooks.test.tsx packages/react-bindings/src/__tests__/themePreferenceHooks.test.tsx
+git mv packages/client-react/src/ui/viewModel/__tests__/useAnimationIntents.test.tsx packages/react-bindings/src/__tests__/useAnimationIntents.test.tsx
 ```
 
-- [ ] **Step 2: Re-point imports inside the moved hook files**
+- [ ] **Step 3: Re-point imports inside the moved files**
 
-`grep -rn "#/app/\|#/ui/" packages/react-bindings/src` — re-point every presenter/machine/composition import to `@rtc/client-core`, and any sibling hook import to `#/<file>` (react-bindings' own `#/*`). No import may reference `@rtc/client-react`.
+`grep -rn "#/app/\|#/ui/" packages/react-bindings/src` — re-point every presenter/machine/composition import to `@rtc/client-core`, and any sibling view-model import to `#/<file>` (react-bindings' own `#/*`, e.g. `useViewModel` importing `ViewModelContext` → `#/ViewModelContext`). Imports of `@rtc/domain`, `react`, `@react-rxjs/core`, `rxjs` are unchanged. No import may reference `@rtc/client-react`.
 
-- [ ] **Step 3: Author the `react-bindings` barrel** `packages/react-bindings/src/index.ts`
+- [ ] **Step 4: Author the `react-bindings` barrel** `packages/react-bindings/src/index.ts`
 
 ```ts
-export * from "#/createAppHooks";
-export * from "#/useHooks";
+export * from "#/createViewModel";
+export * from "#/useViewModel";
 export * from "#/useMachine";
-export * from "#/HooksProvider";
-export * from "#/HooksContext";
+export * from "#/ViewModelProvider";
+export * from "#/ViewModelContext";
 ```
 
-- [ ] **Step 4: Add the `vitest.config.ts` for react-bindings (jsdom)**
+- [ ] **Step 5: Add the `vitest.config.ts` for react-bindings (jsdom)**
 
 ```ts
 import { defineConfig } from "vitest/config";
@@ -580,26 +589,30 @@ export default defineConfig({
 
 > The setup file is the Node-26 localStorage shim. If a cross-package relative path trips the `../../**` Biome rule or fails to resolve, copy the shim into `packages/react-bindings/tests/setup/jsdom-storage.ts` instead and reference it locally.
 
-- [ ] **Step 5: Re-point the 29 consumer imports in `client-react/src/ui`**
+- [ ] **Step 6: Re-point the ~39 `useViewModel` consumer imports in `client-react/src`**
 
-`grep -rln '#/ui/hooks/useHooks' packages/client-react/src` → in each, change `import { useHooks } from "#/ui/hooks/useHooks"` to `import { useHooks } from "@rtc/react-bindings"`. Also re-point `AppRoot.tsx`:
+```bash
+grep -rln 'useViewModel' packages/client-react/src --include='*.ts' --include='*.tsx' | grep -v node_modules
+```
+In each consumer (everything except the moved files themselves), change the import — regardless of its path form (`#/ui/viewModel/useViewModel`, `../viewModel/useViewModel`, `./viewModel/useViewModel`) — to `import { useViewModel } from "@rtc/react-bindings"`. Then re-point `AppRoot.tsx`:
 
 ```ts
-import { createAppHooks, HooksProvider } from "@rtc/react-bindings";
+import { createViewModel, type ViewModel } from "@rtc/react-bindings";
+import { ViewModelProvider } from "@rtc/react-bindings";
 ```
 
-Add `"@rtc/react-bindings": "workspace:*"` to `packages/client-react/package.json` dependencies.
+(Collapse to a single import line if AppRoot pulls several symbols.) Add `"@rtc/react-bindings": "workspace:*"` to `packages/client-react/package.json` dependencies. After this, `packages/client-react/src/ui/viewModel/` should contain no source files — only a possibly-empty dir (removed in Task 7).
 
-- [ ] **Step 6: Build, typecheck, test — verify green**
+- [ ] **Step 7: Build, typecheck, test — verify green**
 
 Run: `pnpm install && pnpm build && pnpm typecheck && pnpm test`
-Expected: all green. The hook tests now run under `@rtc/react-bindings`; `client-react` UI consumes hooks across the package boundary.
+Expected: all green. The view-model tests now run under `@rtc/react-bindings`; `client-react` UI consumes the view model across the package boundary.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add -A
-git commit -m "refactor(react-bindings): move createAppHooks/useHooks/useMachine/HooksProvider from client-react"
+git commit -m "refactor(react-bindings): move createViewModel/useViewModel/useMachine/ViewModelProvider from client-react"
 ```
 
 ---
@@ -615,9 +628,9 @@ git commit -m "refactor(react-bindings): move createAppHooks/useHooks/useMachine
 
 ```bash
 find packages/client-react/src/app -type d -empty -delete
-find packages/client-react/src/ui/hooks -type d -empty -delete
+find packages/client-react/src/ui/viewModel -type d -empty -delete
 ```
-Then: `grep -rn '@react-rxjs/core\|@rx-state/core' packages/client-react/src` — if there are **no** hits, remove those two entries from `packages/client-react/package.json` dependencies (they now belong to `react-bindings`/`client-core`). If there are hits, leave them.
+Then: `grep -rn '@react-rxjs/core\|@rx-state/core' packages/client-react/src` — if there are **no** hits, remove those two entries from `packages/client-react/package.json` dependencies (they now belong to `react-bindings`/`client-core`). If there are hits, leave them. (Expect `@react-rxjs/core` to have **no** hits once `createViewModel` moves — it was the main consumer — and `@rx-state/core` likewise once presenters/machines moved in Task 3.)
 
 - [ ] **Step 2: Add tsconfig project references in `client-react`**
 
