@@ -1,0 +1,246 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+input {
+  font-family: inherit;
+}
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border, #234);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+@keyframes spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes spinRev {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0);
+  }
+}
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
+}
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes rowFlashA {
+  0% {
+    background: color-mix(in srgb, var(--row-acc) 55%, transparent);
+    box-shadow:
+      inset 3px 0 0 var(--row-acc),
+      0 0 22px -6px var(--row-acc);
+  }
+  14% {
+    background: color-mix(in srgb, var(--row-acc) 48%, transparent);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+}
+@keyframes rowFlashB {
+  0% {
+    background: color-mix(in srgb, var(--row-acc) 55%, transparent);
+    box-shadow:
+      inset 3px 0 0 var(--row-acc),
+      0 0 22px -6px var(--row-acc);
+  }
+  14% {
+    background: color-mix(in srgb, var(--row-acc) 48%, transparent);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+}
+@keyframes acceptIn {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.1;
+    box-shadow: 0 0 0 0 var(--buy);
+  }
+  55% {
+    transform: scale(1.16);
+    box-shadow: 0 0 26px 4px var(--buy);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 10px var(--buy);
+  }
+}
+@keyframes acceptPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 7px var(--buy);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px 3px var(--buy);
+    transform: scale(1.06);
+  }
+}
+@keyframes cardInA {
+  0% {
+    opacity: 0;
+    transform: translateY(-13px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cardInB {
+  0% {
+    opacity: 0;
+    transform: translateY(-13px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cardOut {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+  }
+}
+@keyframes bookPulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent);
+  }
+  60% {
+    box-shadow:
+      0 0 0 3px transparent,
+      0 0 34px var(--accent);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+@keyframes cardFlash {
+  0%,
+  100% {
+    border-color: var(--border);
+  }
+  40% {
+    border-color: var(--sell);
+  }
+}
+@keyframes bootGlitch {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translate(1px, -1px);
+  }
+}
+@keyframes auroraA {
+  0% {
+    transform: translate3d(-7%, -4%, 0) scale(1.08);
+  }
+  50% {
+    transform: translate3d(7%, 5%, 0) scale(1.28);
+  }
+  100% {
+    transform: translate3d(-7%, -4%, 0) scale(1.08);
+  }
+}
+@keyframes auroraB {
+  0% {
+    transform: translate3d(6%, 4%, 0) scale(1.22);
+  }
+  50% {
+    transform: translate3d(-6%, -4%, 0) scale(1.04);
+  }
+  100% {
+    transform: translate3d(6%, 4%, 0) scale(1.22);
+  }
+}
+@keyframes gridDrift {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      0 48px,
+      48px 0;
+  }
+}
+@keyframes sweepRot {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes floatY {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes appReveal {
+  from {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
