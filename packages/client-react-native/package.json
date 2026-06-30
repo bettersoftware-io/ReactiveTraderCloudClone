@@ -16,15 +16,15 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
-    "expo": "^57.0.0",
-    "expo-constants": "^57.0.2",
-    "expo-router": "^57.0.0",
-    "expo-status-bar": "^57.0.0",
+    "expo": "^55.0.0",
+    "expo-constants": "^55.0.16",
+    "expo-router": "^55.0.16",
+    "expo-status-bar": "^55.0.6",
     "react": "^19",
     "react-dom": "^19",
-    "react-native": "^0.86.0",
-    "react-native-safe-area-context": "^5.7.0",
-    "react-native-screens": "^4.0.0"
+    "react-native": "^0.83.6",
+    "react-native-safe-area-context": "^5.6.2",
+    "react-native-screens": "^4.23.0"
   },
   "devDependencies": {
     "@types/react": "^19",

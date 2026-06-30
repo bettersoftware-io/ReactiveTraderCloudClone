@@ -15,20 +15,6 @@ allowBuilds:
 # the default. Add packages to `minimumReleaseAgeExclude` to bypass per-package.
 minimumReleaseAge: 1440
 
-# Cooldown bypass for the Expo SDK tree. Expo ships a whole SDK as one lockstep
-# release: SDK 57.0.0 (and every `@expo/*` / `expo-*` package it pins) was first
-# published 2026-06-30, so NO version of the SDK-57 line is older than 24h — the
-# cooldown can never be satisfied for the mandated target without this exclude.
-# This is the documented last-resort remedy (the plan's Global Constraints), used
-# only because the chosen SDK is too new for any patch to clear the window. Scope
-# is restricted to the Expo-authored packages; react-native/metro/etc. cleared
-# the cooldown on their own and are deliberately NOT excluded.
-minimumReleaseAgeExclude:
-  - expo
-  - "@expo/*"
-  - "expo-*"
-  - babel-preset-expo
-
 overrides:
   # Force the dev-only transitive uuid 11.0.x (11.0.5 -> 11.1.1, medium alert).
   # Verified REQUIRED: removing this override re-resolves uuid back to the
@@ -46,3 +32,9 @@ overrides:
   # the preprocessor is already latest (24.0.1) and even latest mocha (11.7.6)
   # still declares serialize-javascript ^6.0.2, so an override is the only path.
   serialize-javascript: ^7.0.3
+  # Force the transitive @xmldom/xmldom pulled in by @expo/plist@0.2.2 (which
+  # declares ~0.7.7) up to the patched 0.9.x line. @expo/plist uses xmldom only
+  # for plist parsing during app configuration — the 0.7→0.9 bump is API-compatible
+  # for basic DOM operations. Fixes 5 high GHSA advisories: GHSA-wh4c-j3r5-mjhp,
+  # GHSA-2v35-w6hq-6mfw, and 3 related XML-injection advisories (<0.8.13).
+  "@xmldom/xmldom": ^0.9.10
