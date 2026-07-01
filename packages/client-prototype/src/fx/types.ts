@@ -46,9 +46,16 @@ export type TileStage =
   | "success"
   | "failure";
 
+interface TileTrade {
+  id: number;
+  dir?: Dir;
+  notional?: string;
+  rate?: string;
+}
+
 export interface TileState {
   stage: TileStage;
-  trade?: { id: number; dir?: Dir };
+  trade?: TileTrade;
   quote?: { Sell: string; Buy: string };
   rfqStart?: number;
   rfqEnd?: number;
