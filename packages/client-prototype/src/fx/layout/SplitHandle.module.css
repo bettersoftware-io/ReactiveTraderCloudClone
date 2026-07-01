@@ -1,0 +1,34 @@
+/* Thin drag bar between two dock sections (PROTO 1231-1234 splitV/splitH). */
+
+.handle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.handle[data-orientation="v"] {
+  width: 7px;
+  cursor: col-resize;
+}
+
+.handle[data-orientation="h"] {
+  height: 7px;
+  cursor: row-resize;
+}
+
+.grip {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.handle[data-orientation="v"] .grip {
+  width: 2px;
+  height: 30px;
+}
+
+.handle[data-orientation="h"] .grip {
+  height: 2px;
+  width: 30px;
+}

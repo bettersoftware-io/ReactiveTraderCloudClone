@@ -1,0 +1,50 @@
+/* Panel chrome: a head (caller-supplied tabs/label + maximize glyph) over a
+   scrollable body. When maximized (data-max) the panel fills its dock
+   section — the parent grid (Task 10) hides the siblings via its own
+   [data-max] selector; this rule only handles the panel's own sizing. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+}
+
+.panel[data-max="true"] {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  min-height: 38px;
+  padding: 0 8px;
+  background: var(--panel-head);
+  border-bottom: 1px solid var(--border);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.maxBtn {
+  order: 99;
+  margin-left: 2px;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--faint);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.maxBtn:hover {
+  color: var(--accent);
+}

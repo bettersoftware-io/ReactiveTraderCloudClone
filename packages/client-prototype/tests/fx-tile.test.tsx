@@ -1,0 +1,57 @@
+import { cleanup, render } from "@testing-library/react";
+import { afterEach, describe, expect, test, vi } from "vitest";
+
+import { META } from "#/fx/fxData";
+import { RateTile, type TileVm } from "#/fx/LiveRates/RateTile";
+
+afterEach(cleanup);
+
+describe("RateTile", () => {
+  test("renders the pair, a big price segment, and the notional", () => {
+    const { getByText, getAllByText, container } = render(
+      <RateTile vm={makeVm({})} overlay={null} />,
+    );
+    expect(getByText("EUR / USD")).toBeTruthy();
+    // EURUSD @ 1.09213 with a 1.4-pip spread never crosses a hundredths
+    // boundary, so the Sell and Buy blocks share the same "big figure"
+    // (matches splitPrice(1.09213, META.EURUSD).big === "1.09" from the
+    // Task-1 fx-data test) — both TilePrice instances legitimately render
+    // it, so this asserts presence rather than DOM-wide uniqueness.
+    expect(getAllByText("1.09").length).toBeGreaterThan(0);
+    expect(container.querySelector('[data-tile-sym="EURUSD"]')).toBeTruthy();
+  });
+
+  test("shows the RFQ badge when isRfq and MAX when invalid", () => {
+    const { getAllByText, getByText } = render(
+      <RateTile
+        vm={makeVm({ isRfq: true, notionalInvalid: true })}
+        overlay={null}
+      />,
+    );
+    expect(getAllByText("RFQ").length).toBeGreaterThan(0);
+    expect(getByText("MAX")).toBeTruthy();
+  });
+});
+
+function makeVm(overrides: Partial<TileVm>): TileVm {
+  return {
+    sym: "EURUSD",
+    meta: META.EURUSD,
+    rate: 1.09213,
+    movePips: 4,
+    moveUp: true,
+    flashOn: false,
+    hist: Array.from({ length: 30 }, (_v, i) => {
+      return 1.09 + i * 1e-4;
+    }),
+    notional: "1,000,000",
+    notionalInvalid: false,
+    isRfq: false,
+    showCharts: true,
+    onNotional: vi.fn(),
+    onReset: vi.fn(),
+    onSell: vi.fn(),
+    onBuy: vi.fn(),
+    ...overrides,
+  };
+}
