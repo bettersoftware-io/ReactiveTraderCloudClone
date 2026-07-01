@@ -38,6 +38,8 @@
         "metro.config.js",
         "babel.config.js",
         "vitest.config.ts",
+        "jest.config.js",
+        "jest.setup.ts",
         "expo-env.d.ts"
       ],
       "project": ["**/*.{ts,tsx}"],
