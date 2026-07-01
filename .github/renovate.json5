@@ -47,5 +47,28 @@
       matchFileNames: ["pnpm-workspace.yaml"],
       enabled: false,
     },
+    {
+      // Auto-merge GitHub Action bumps once CI is green. These touch only CI
+      // infrastructure (`.github/workflows/*`), never product runtime, and the
+      // same CI that gates every merge validates them. Proven safe by the
+      // manual v-major bumps merged 2026-07-01 (actions/cache v6,
+      // configure-pages v6, deploy-pages v5, upload-pages-artifact v5) — each
+      // passed CI unchanged. `merge-commit` matches the repo's "always a merge
+      // commit" rule (never squash/rebase); the 24h `minimumReleaseAge`
+      // cooldown above still applies before a PR is even opened.
+      matchManagers: ["github-actions"],
+      automerge: true,
+      automergeStrategy: "merge-commit",
+    },
+    {
+      // Auto-merge patch & minor devDependency bumps once CI is green. Majors
+      // are deliberately excluded — they still open a normal PR for human
+      // review (e.g. @babel/core v8, dependency-cruiser v18). Production
+      // `dependencies` are excluded entirely: only devDependencies auto-merge.
+      matchDepTypes: ["devDependencies"],
+      matchUpdateTypes: ["patch", "minor"],
+      automerge: true,
+      automergeStrategy: "merge-commit",
+    },
   ],
 }
