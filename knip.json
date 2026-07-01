@@ -38,7 +38,10 @@
         "metro.config.js",
         "babel.config.js",
         "vitest.config.ts",
-        "expo-env.d.ts"
+        "jest.config.js",
+        "jest.setup.ts",
+        "expo-env.d.ts",
+        "scripts/liveWsSmoke.ts"
       ],
       "project": ["**/*.{ts,tsx}"],
       "ignoreDependencies": [

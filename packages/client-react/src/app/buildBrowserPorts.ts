@@ -8,6 +8,7 @@ import {
   incident$,
   reconnect$,
   routeIdleLifecycle,
+  WsAdapter,
   WsConnectionEventsAdapter,
 } from "@rtc/client-core";
 import {
@@ -17,7 +18,6 @@ import {
 
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
-import { WsAdapter } from "#/app/adapters/WsAdapter";
 import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
 
 export function buildBrowserPorts(): AppPorts {
