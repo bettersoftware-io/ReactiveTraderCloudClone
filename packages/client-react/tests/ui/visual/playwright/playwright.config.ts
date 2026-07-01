@@ -35,6 +35,22 @@ export default defineConfig({
   // show ~0.04 ratio of sub-pixel AA jitter on x86 run-to-run; 0.025 was too
   // tight. 0.06 still catches layout/structure regressions (which move >> 6%).
   // See project_visual_goldens_dual_set / PR #40 (playwright-ct precedent).
+  //
+  // NOT A TEMPORARY MASK — DO NOT "tighten this away". Sub-pixel glyph AA is
+  // non-deterministic ACROSS x86 CI runner instances (FreeType/HarfBuzz
+  // rasterization rounds differently per microarchitecture) even inside the
+  // byte-identical pinned Playwright container. A small pixel-ratio tolerance is
+  // the standard, correct way to compare pixel goldens across machines — it is
+  // the SOLUTION here, not a shortcut. The "fix it for good" alternative (force
+  // Chromium font-hinting off via launch flags, then regenerate BOTH committed
+  // golden sets — x86 `react/` via the update-visual-goldens workflow AND the
+  // local `react-local/<arch>/` set — and re-stabilise over several CI cycles)
+  // was evaluated and deliberately rejected: those flags only REDUCE, not
+  // eliminate, cross-microarch AA variance, so the payoff is a marginally
+  // tighter threshold at a high, CI-only, golden-churning cost. If AA jitter
+  // ever exceeds ~0.05, first check it is not a REAL regression (those move far
+  // past 6%); only then revisit. History: this is the settled decision after the
+  // HUD-redesign visual-flake saga (see project_hud_redesign_workstream).
   expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.06 } },
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
   // siblings (the html reporter wipes its own folder). ../../../../ = packages/client-react.
