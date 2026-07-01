@@ -9,15 +9,18 @@
   "scripts": {
     "start": "expo start",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run --passWithNoTests && jest",
     "build": "tsc --noEmit",
     "export": "expo export --platform ios --output-dir dist",
+    "smoke:ws": "tsx scripts/liveWsSmoke.ts",
     "clean": "rm -rf dist .turbo .expo *.tsbuildinfo node_modules/.cache 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@rtc/client-core": "workspace:*",
     "@rtc/domain": "workspace:*",
+    "@rtc/react-bindings": "workspace:*",
     "expo": "^55.0.0",
     "expo-constants": "^55.0.16",
     "expo-router": "^55.0.16",
@@ -30,8 +33,15 @@
     "rxjs": "^7.8"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "^29.5.14",
     "@types/react": "^19",
     "babel-plugin-module-resolver": "^5.0.3",
+    "jest": "^29.7.0",
+    "jest-expo": "^55.0.19",
+    "test-renderer": "^1.2.0",
+    "tsx": "^4",
     "typescript": "^6",
     "vitest": "^4"
   }
