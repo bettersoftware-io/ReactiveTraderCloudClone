@@ -20,14 +20,16 @@ const EXPOSURE_SEED: Array<[string, number, boolean]> = [
 
 // PROTO 1299: bubble diameter grows with sqrt(|exposure|); bubbles over 62px
 // get the larger 15px label. Amount label is signed with an M suffix.
-export const EXPOSURE: Exposure[] = EXPOSURE_SEED.map(([ccy, val, positive]) => {
-  const size = Math.round(40 + Math.sqrt(Math.abs(val)) * 11);
-  return {
-    ccy,
-    val,
-    positive,
-    size,
-    large: size > 62,
-    amt: `${val > 0 ? "+" : ""}${val}M`,
-  };
-});
+export const EXPOSURE: Exposure[] = EXPOSURE_SEED.map(
+  ([ccy, val, positive]) => {
+    const size = Math.round(40 + Math.sqrt(Math.abs(val)) * 11);
+    return {
+      ccy,
+      val,
+      positive,
+      size,
+      large: size > 62,
+      amt: `${val > 0 ? "+" : ""}${val}M`,
+    };
+  },
+);

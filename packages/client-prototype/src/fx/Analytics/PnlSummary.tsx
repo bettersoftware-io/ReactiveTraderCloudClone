@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 
-import styles from "#/fx/Analytics/PnlSummary.module.css";
 import { fmtPnl } from "#/fx/Analytics/analyticsData";
 import { PnlSparkline } from "#/fx/Analytics/PnlSparkline";
+import styles from "#/fx/Analytics/PnlSummary.module.css";
 
 export interface PnlSummaryProps {
   pnl: number;

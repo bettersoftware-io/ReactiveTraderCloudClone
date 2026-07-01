@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 
-import styles from "#/fx/Positions/PositionsView.module.css";
 import { ExposureBubbles } from "#/fx/Positions/ExposureBubbles";
 import { ExposureRows } from "#/fx/Positions/ExposureRows";
+import styles from "#/fx/Positions/PositionsView.module.css";
 
 // PROTO 518-524: the Positions panel body — "Net Exposure" over the bubble
 // cluster and the exposure list.

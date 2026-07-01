@@ -6,12 +6,12 @@ import { FxBlotterPanel } from "#/fx/Blotter/FxBlotterPanel";
 import styles from "#/fx/FxScreen.module.css";
 import type { Filter } from "#/fx/LiveRates/FilterChips";
 import { LiveRatesPanel } from "#/fx/LiveRates/LiveRatesPanel";
-import { PositionsView } from "#/fx/Positions/PositionsView";
 import { Panel } from "#/fx/layout/Panel";
 import { SplitHandle } from "#/fx/layout/SplitHandle";
 import type { PanelId } from "#/fx/layout/useDockState";
 import { useDockState } from "#/fx/layout/useDockState";
 import { useSplit } from "#/fx/layout/useSplit";
+import { PositionsView } from "#/fx/Positions/PositionsView";
 import { useFxBlotter } from "#/fx/useFxBlotter";
 import { useFxRates } from "#/fx/useFxRates";
 

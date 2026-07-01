@@ -15,7 +15,14 @@ describe("AnalyticsView", () => {
   test("renders all six currency-pair bars with values", () => {
     const { getByText } = render(<AnalyticsView pnl={0} />);
 
-    for (const pair of ["EURUSD", "USDJPY", "GBPUSD", "AUDUSD", "USDCAD", "EURJPY"]) {
+    for (const pair of [
+      "EURUSD",
+      "USDJPY",
+      "GBPUSD",
+      "AUDUSD",
+      "USDCAD",
+      "EURJPY",
+    ]) {
       expect(getByText(pair)).toBeTruthy();
     }
 

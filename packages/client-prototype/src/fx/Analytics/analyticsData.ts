@@ -7,7 +7,7 @@ export interface PairPnl {
 
 // PROTO 1297: static PnL sparkline — 11 y-values across a 300-wide viewBox.
 const PNL_PTS = [92, 76, 84, 54, 64, 40, 48, 34, 22, 14, 8];
-const PNL_N = PNL_PTS.length;
+const PNL_N: number = PNL_PTS.length;
 
 // PROTO 1300 `bars`: [pair, val (thousands), bar width %, positive].
 export const PAIR_PNL: PairPnl[] = [
