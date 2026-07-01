@@ -56,6 +56,23 @@ describe("TradesBlotter", () => {
       ).toBeTruthy();
     }
   });
+
+  test("marks only the row whose id matches newRowId as new", () => {
+    const { result } = renderHook(() => {
+      return useFxBlotter(SEED_TRADES);
+    });
+    const targetId = SEED_TRADES[0]?.id;
+
+    if (targetId == null) {
+      throw new Error("SEED_TRADES must be non-empty");
+    }
+
+    const { container } = render(
+      <TradesBlotter api={result.current} newRowId={targetId} />,
+    );
+
+    expect(container.querySelectorAll("[data-new]")).toHaveLength(1);
+  });
 });
 
 describe("BlotterRow", () => {

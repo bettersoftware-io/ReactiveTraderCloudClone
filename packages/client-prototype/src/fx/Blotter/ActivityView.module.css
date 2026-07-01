@@ -1,0 +1,33 @@
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  font-family: var(--font-m, monospace);
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.time {
+  flex: none;
+  width: 70px;
+  color: var(--faint);
+}
+
+.tag {
+  flex: none;
+  width: 58px;
+  color: var(--tag-color);
+}
+
+.msg {
+  color: var(--dim);
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+  color: var(--faint);
+}

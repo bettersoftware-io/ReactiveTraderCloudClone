@@ -6,18 +6,18 @@ import type { BlotterApi } from "#/fx/useFxBlotter";
 
 export interface TradesBlotterProps {
   api: BlotterApi;
+  newRowId?: number | null;
 }
 
-// PROTO 475-492 (the blotter table) + 1306/1308 (column defs + grid
-// template): a sortable header row — each column a clickable header cell
-// showing `label + ind` — over the 10-col FX blotter grid, then one
-// BlotterRow per filtered/sorted trade.
-//
-// `isNew` always renders false here: this component only receives `api`, not
-// a `newRowId`. A later phase (Task 8/10) threads `newRowId` through so the
-// row matching the just-booked trade can flash in.
+// PROTO 475-492 (the blotter table) + 1306/1308-1309 (column defs + grid
+// template + fxTrades map): a sortable header row — each column a clickable
+// header cell showing `label + ind` — over the 10-col FX blotter grid, then
+// one BlotterRow per filtered/sorted trade. The row whose id matches
+// `newRowId` (the just-booked trade, threaded down from FxBlotterPanel) is
+// the one that gets `isNew`, so its rowIn/rowFlashA-B entrance animation
+// fires.
 export function TradesBlotter(props: TradesBlotterProps): ReactElement {
-  const { api } = props;
+  const { api, newRowId } = props;
 
   return (
     <div>
@@ -39,7 +39,13 @@ export function TradesBlotter(props: TradesBlotterProps): ReactElement {
         })}
       </div>
       {api.rows.map((trade) => {
-        return <BlotterRow key={trade.id} trade={trade} isNew={false} />;
+        return (
+          <BlotterRow
+            key={trade.id}
+            trade={trade}
+            isNew={trade.id === newRowId}
+          />
+        );
       })}
     </div>
   );
