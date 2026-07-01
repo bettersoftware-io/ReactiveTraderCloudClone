@@ -34,9 +34,10 @@ test("renders symbol, ask split, spread and up-movement", async () => {
   );
   expect(screen.getByText("EURUSD")).toBeTruthy();
   expect(screen.getByText("0.6")).toBeTruthy();
-  expect(screen.getByTestId("spot-tile-movement").props.children).toBe(
-    PriceMovementType.UP,
-  );
+  expect(
+    screen.getByTestId("spot-tile-movement", { includeHiddenElements: true })
+      .props.children,
+  ).toBe(PriceMovementType.UP);
 });
 
 test("shows loading when price is null", async () => {

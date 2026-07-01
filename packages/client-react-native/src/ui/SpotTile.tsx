@@ -29,7 +29,9 @@ export function SpotTile({ pair }: SpotTileProps): JSX.Element {
         <Text>{ask.fractional}</Text>
       </View>
       <Text style={styles.spread}>{price.spread}</Text>
-      <Text testID="spot-tile-movement">{price.movementType}</Text>
+      <Text style={styles.hidden} testID="spot-tile-movement">
+        {price.movementType}
+      </Text>
     </View>
   );
 }
@@ -50,4 +52,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row" },
   spread: { fontSize: 11, opacity: 0.6 },
   loading: { fontSize: 12, opacity: 0.5 },
+  hidden: { display: "none" },
 });
