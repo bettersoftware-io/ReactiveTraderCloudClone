@@ -3,10 +3,11 @@ import { defineConfig } from "cypress";
 import mochawesomePlugin from "cypress-mochawesome-reporter/plugin";
 
 // On a loaded CI runner the app's connection settle (Connecting → Connected,
-// driven by an rxjs timer) can take well over the local ~1s, and the
-// `.should()`-retry assertions that gate on it (e.g. setBrowserOffline waiting
-// for "Connected") only partially yield to the AUT. Give CI more headroom and
-// retry a flaky spec; locally the fast path needs neither.
+// driven by an rxjs timer) can take well over the local ~1s, so give CI a
+// larger per-command timeout. Test-level `retries` are deliberately NOT used:
+// the flakes they once masked (timer starvation, dropped synthetic offline
+// dispatch, detached-element re-render races) are fixed at source in the
+// scenarios + page objects. Retrying a spec is wasteful and hides regressions.
 const isCI = !!process.env.CI;
 
 export default defineConfig({
@@ -33,7 +34,7 @@ export default defineConfig({
     screenshotOnRunFailure: true,
     screenshotsFolder: "reports/browser/cypress/artifacts",
     defaultCommandTimeout: isCI ? 30_000 : 10_000,
-    retries: { runMode: isCI ? 2 : 0, openMode: 0 },
+    retries: { runMode: 0, openMode: 0 },
     setupNodeEvents(
       on: Cypress.PluginEvents,
       config: Cypress.PluginConfigOptions,

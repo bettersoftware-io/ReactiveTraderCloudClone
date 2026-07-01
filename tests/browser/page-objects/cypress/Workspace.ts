@@ -48,6 +48,23 @@ export class CypressWorkspace implements WorkspacePO {
     // reliable across Cypress/Electron versions and avoids the cucumber
     // preprocessor's cy.task() context restriction that fires when
     // Cypress.automation native-Promise callbacks resolve outside the queue.
+    //
+    // ROOT-CAUSE GATE: a synthetic dispatch is silently DROPPED if the adapter's
+    // window listener is not attached yet. The adapter subscribes inside a React
+    // effect once the app mounts and connects, so before dispatching "offline"
+    // we wait — as a queued cy command, so the queue orders it BEFORE the
+    // dispatch — for the footer to read "Connected" (our proxy for "listener is
+    // wired up"). Without this the overlay never appears because the event
+    // vanished, not because of render timing (verified: the app stayed
+    // "Connected" after a dispatch+wait). Mirrors browser/cypress/scenarios/
+    // connection.ts; the raw-Cypress fork does the same. Online needs no gate —
+    // by then the listener is definitely attached.
+    if (offline) {
+      cy.get(`[data-testid="${TESTIDS.connection.status}"]`, {
+        log: false,
+      }).should("contain.text", "Connected");
+    }
+
     return cy.window({ log: false }).then((win) => {
       win.dispatchEvent(new win.Event(offline ? "offline" : "online"));
     }) as unknown as Promise<void>;

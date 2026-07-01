@@ -18,11 +18,17 @@ export class CypressConnectionOverlay implements ConnectionOverlayPO {
   }
 
   waitHidden(timeoutMs: number): Promise<void> {
-    return cy
-      .get(`[data-testid="${TESTIDS.connection.overlay}"]`, {
-        timeout: timeoutMs,
-      })
-      .should("not.exist") as unknown as Promise<void>;
+    // Assert absence via a STABLE ancestor (body) instead of
+    // cy.get(overlay).should("not.exist"). The overlay is present when this step
+    // begins and detaches mid-retry as the app re-renders on reconnect; the
+    // direct form then throws "Expected to find element … never found it" on the
+    // now-detached subject. Re-querying body every retry is immune to that.
+    return cy.get("body", { timeout: timeoutMs }).should(($body) => {
+      expect(
+        $body.find(`[data-testid="${TESTIDS.connection.overlay}"]`).length,
+        "connection overlay should be hidden",
+      ).to.equal(0);
+    }) as unknown as Promise<void>;
   }
 
   text(): Promise<string> {

@@ -110,9 +110,24 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
         .join("|"),
       "i",
     );
+    // The confirmation opens as "Executing…" and only resolves to a terminal
+    // message (You Bought/Sold/rejected/timed out/…) once the ExecutionSimulator's
+    // rxjs timer settles (≤ NORMAL_MAX_DELAY_MS, 2s). A bare .should() retry
+    // STARVES that timer (same root cause as BlotterTable.expectContainsText —
+    // verified: 10s of retry advances the app timer by 0ms), so the text stays
+    // "Executing…" forever. cy.wait() yields the event loop so the settle timer
+    // fires; should() then matches the resolved text.
+    //
+    // should() (not a chained .contains()) also re-runs cy.get each retry, so it
+    // reads a FRESH element — the text update detaches the node a chained
+    // .contains() would have captured → "cy.contains() … subject received
+    // jQuery{0}".
+    cy.wait(2_500);
     return cy
       .get(TILE_CONFIRMATION_SELECTOR, { timeout: timeoutMs })
-      .contains(combined) as unknown as Promise<void>;
+      .should(($el) => {
+        expect($el.text()).to.match(combined);
+      }) as unknown as Promise<void>;
   }
 
   dismissConfirmation(): Promise<void> {
@@ -123,9 +138,15 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
   }
 
   confirmationHidden(timeoutMs: number): Promise<void> {
-    return cy
-      .get(TILE_CONFIRMATION_SELECTOR, { timeout: timeoutMs })
-      .should("not.exist") as unknown as Promise<void>;
+    // Absence via a stable ancestor — same rationale as
+    // ConnectionOverlay.waitHidden: the confirmation detaches mid-retry, which
+    // makes a direct cy.get(sel).should("not.exist") throw on the stale subject.
+    return cy.get("body", { timeout: timeoutMs }).should(($body) => {
+      expect(
+        $body.find(TILE_CONFIRMATION_SELECTOR).length,
+        "trade confirmation should be hidden",
+      ).to.equal(0);
+    }) as unknown as Promise<void>;
   }
 
   isConfirmationVisible(): Promise<boolean> {
@@ -181,7 +202,14 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
         const found = $body.find(TILE_CONFIRMATION_SELECTOR);
 
         if (found.length > 0 && found.css("display") !== "none") {
-          cy.get(TILE_CONFIRMATION_SELECTOR).first().click();
+          // Click the element we JUST captured, natively and in-context — do not
+          // re-query with a separately-queued cy.get(...).first().click(). The
+          // confirmation auto-dismisses on a timer, so between this presence
+          // check and a later-queued click it can detach, leaving cy.get an
+          // empty subject → "cy.click() failed: requires a DOM element". A native
+          // click dispatches through React's delegated handler; if the node has
+          // already detached it is a harmless no-op instead of a hard failure.
+          found.first()[0].click();
           cy.wait(500);
         }
       });

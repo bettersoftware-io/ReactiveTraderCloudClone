@@ -56,18 +56,26 @@ export async function expectVisibleTileCountAtMost(
   ctx: TestContext,
   key: string,
 ): Promise<void> {
+  // Read the baseline AFTER awaiting the current count. Under the
+  // cucumber-cypress shim the prior record step's `map.set(...)` lands in an
+  // awaited continuation the shim discards, so a baseline read at the JS call
+  // site can fire before that set ("no recorded count for …"). Awaiting a PO
+  // call first drains the cy queue past the record step, guaranteeing the set
+  // has landed. No behaviour change for the async (Playwright) drivers.
+  const current = await ctx.po.liveRatesTile.count();
   const baseline = ctx.scratch.fxLiveRates.recordedCounts.get(key);
   if (baseline === undefined) throw new Error(`no recorded count for ${key}`);
-  assertLte(await ctx.po.liveRatesTile.count(), baseline);
+  assertLte(current, baseline);
 }
 
 export async function expectVisibleTileCountEquals(
   ctx: TestContext,
   key: string,
 ): Promise<void> {
+  const current = await ctx.po.liveRatesTile.count();
   const baseline = ctx.scratch.fxLiveRates.recordedCounts.get(key);
   if (baseline === undefined) throw new Error(`no recorded count for ${key}`);
-  assertEquals(await ctx.po.liveRatesTile.count(), baseline);
+  assertEquals(current, baseline);
 }
 
 export async function expectViewToggleVisible(ctx: TestContext): Promise<void> {

@@ -1,3 +1,9 @@
+// Registers cypress-mochawesome-reporter's per-test hooks (screenshot capture,
+// log embedding) — matches browser/cypress/_context.ts. The report itself is
+// configured in cypress.config.ts; see the comment there for why we use
+// mochawesome instead of the cucumber-preprocessor's reload-fragile html report.
+import "cypress-mochawesome-reporter/register";
+
 import { buildCypressContext } from "./world";
 
 beforeEach(function buildCtx() {
