@@ -1,0 +1,64 @@
+.heading {
+  margin: 14px 0 11px;
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.pair {
+  width: 62px;
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  background: var(--bg2);
+  border-radius: 2px;
+}
+
+.fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--bar-pct);
+}
+
+.fill[data-sign="pos"] {
+  background: var(--buy);
+  box-shadow: 0 0 10px var(--buy);
+}
+
+.fill[data-sign="neg"] {
+  background: var(--sell);
+  box-shadow: 0 0 10px var(--sell);
+}
+
+.val {
+  width: 38px;
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+  text-align: right;
+}
+
+.val[data-sign="pos"] {
+  color: var(--buy);
+}
+
+.val[data-sign="neg"] {
+  color: var(--sell);
+}
