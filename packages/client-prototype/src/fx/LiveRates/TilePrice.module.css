@@ -1,0 +1,71 @@
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.sideLabel {
+  font-family: var(--font-d, sans-serif);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+}
+
+.sideLabel[data-side="sell"] {
+  color: var(--sell);
+}
+
+.sideLabel[data-side="buy"] {
+  color: var(--buy);
+  margin-left: auto;
+}
+
+.rfqBadge {
+  font-family: var(--font-m, monospace);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0 3px;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  font-family: var(--font-m, monospace);
+  color: var(--text);
+}
+
+.priceRow[data-side="buy"] {
+  justify-content: flex-end;
+}
+
+.big {
+  font-size: 15px;
+}
+
+.pips {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 0.9;
+  color: var(--move-color);
+  background: transparent;
+  border-radius: 3px;
+  padding: 0;
+  transition:
+    background 0.25s,
+    color 0.25s;
+}
+
+.pips[data-flash="true"] {
+  color: var(--bg);
+  background: var(--move-color);
+  padding: 0 2px;
+}
+
+.frac {
+  font-size: 12px;
+  align-self: flex-start;
+}
