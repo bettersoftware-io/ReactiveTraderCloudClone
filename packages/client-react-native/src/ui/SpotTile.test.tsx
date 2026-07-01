@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { type CurrencyPair, type Price, PriceMovementType } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
@@ -50,10 +50,49 @@ test("shows loading when price is null", async () => {
   expect(screen.getByText("Loading…")).toBeTruthy();
 });
 
+test("pressing the tile opens the trade ticket", async () => {
+  await render(
+    <ViewModelProvider viewModel={fakeViewModel(UP_PRICE)}>
+      <SpotTile pair={EURUSD} />
+    </ViewModelProvider>,
+  );
+  expect(screen.queryByTestId("trade-ticket")).toBeNull();
+  await fireEvent.press(screen.getByTestId("spot-tile"));
+  expect(screen.getByTestId("trade-ticket")).toBeTruthy();
+});
+
 function fakeViewModel(price: Price | null): ViewModel {
   return {
     usePrice: () => {
       return price;
+    },
+    useNotional: () => {
+      return {
+        state: {
+          displayValue: "1,000,000",
+          numericValue: 1_000_000,
+          error: null,
+          isRfq: false,
+          isDefault: true,
+        },
+        change: () => {
+          return undefined;
+        },
+        reset: () => {
+          return undefined;
+        },
+      };
+    },
+    useTileExecution: () => {
+      return {
+        state: { status: "ready" as const },
+        execute: () => {
+          return undefined;
+        },
+        dismiss: () => {
+          return undefined;
+        },
+      };
     },
   } as unknown as ViewModel;
 }

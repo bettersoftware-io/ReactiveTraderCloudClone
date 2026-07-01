@@ -1,38 +1,64 @@
 import type { JSX } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { CurrencyPair } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { splitPrice } from "#/ui/formatPrice";
+import { TradeTicket } from "#/ui/TradeTicket";
 
 export function SpotTile({ pair }: SpotTileProps): JSX.Element {
   const { usePrice } = useViewModel();
   const price = usePrice(pair);
+  const [ticketVisible, setTicketVisible] = useState(false);
 
-  if (!price) {
-    return (
+  let body: JSX.Element;
+
+  if (price === null) {
+    body = (
       <View style={styles.container}>
         <Text style={styles.symbol}>{pair.symbol}</Text>
         <Text style={styles.loading}>Loading…</Text>
       </View>
     );
+  } else {
+    const ask = splitPrice(price.ask, pair.ratePrecision, pair.pipsPosition);
+    body = (
+      <View style={styles.container}>
+        <Text style={styles.symbol}>{pair.symbol}</Text>
+        <View style={styles.row}>
+          <Text>{ask.prefix}</Text>
+          <Text style={movementStyle[price.movementType]}>{ask.pips}</Text>
+          <Text>{ask.fractional}</Text>
+        </View>
+        <Text style={styles.spread}>{price.spread}</Text>
+        <Text style={styles.hidden} testID="spot-tile-movement">
+          {price.movementType}
+        </Text>
+      </View>
+    );
   }
 
-  const ask = splitPrice(price.ask, pair.ratePrecision, pair.pipsPosition);
   return (
-    <View style={styles.container}>
-      <Text style={styles.symbol}>{pair.symbol}</Text>
-      <View style={styles.row}>
-        <Text>{ask.prefix}</Text>
-        <Text style={movementStyle[price.movementType]}>{ask.pips}</Text>
-        <Text>{ask.fractional}</Text>
-      </View>
-      <Text style={styles.spread}>{price.spread}</Text>
-      <Text style={styles.hidden} testID="spot-tile-movement">
-        {price.movementType}
-      </Text>
-    </View>
+    <>
+      <Pressable
+        testID="spot-tile"
+        onPress={() => {
+          setTicketVisible(true);
+        }}
+      >
+        {body}
+      </Pressable>
+      {ticketVisible ? (
+        <TradeTicket
+          pair={pair}
+          onClose={() => {
+            setTicketVisible(false);
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 
