@@ -40,7 +40,8 @@
         "vitest.config.ts",
         "jest.config.js",
         "jest.setup.ts",
-        "expo-env.d.ts"
+        "expo-env.d.ts",
+        "scripts/liveWsSmoke.ts"
       ],
       "project": ["**/*.{ts,tsx}"],
       "ignoreDependencies": [

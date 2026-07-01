@@ -35,6 +35,7 @@
     "packages/client-react-native/app/**/*.ts",
     "packages/client-react-native/app/**/*.tsx",
     "packages/client-react-native/jest.setup.ts",
+    "packages/client-react-native/scripts/**/*.ts",
     "packages/*/*.config.ts",
     "eslint-rules/*.ts",
     "tests/**/*.ts",
