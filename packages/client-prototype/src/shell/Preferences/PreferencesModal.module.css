@@ -1,0 +1,178 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: var(--font-d, sans-serif);
+}
+
+.panel {
+  width: min(800px, 96vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg2);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.62);
+}
+
+.header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-head);
+}
+
+.title {
+  font-family: var(--font-d, sans-serif);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  color: var(--text);
+}
+
+.subtitle {
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+  margin-top: 4px;
+}
+
+.closeBtn {
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--dim);
+  font-size: 15px;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 22px 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 30px;
+}
+
+.sectionHead {
+  margin-top: 16px;
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+/* Second section head in each column (TRADING, DATA) — PROTO uses 20px there. */
+.sectionHeadMid {
+  margin-top: 20px;
+}
+
+.scaleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.label {
+  font-size: 13px;
+  color: var(--text);
+  min-width: 0;
+}
+
+.scaleControls {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 128px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  cursor: pointer;
+}
+
+.range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  cursor: pointer;
+}
+
+.scaleValue {
+  font-family: var(--font-m, monospace);
+  font-size: 12px;
+  color: var(--accent);
+  width: 40px;
+  text-align: right;
+}
+
+.footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-head);
+}
+
+.footerHint {
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.08em;
+}
+
+.doneBtn {
+  cursor: pointer;
+  padding: 8px 24px;
+  background: var(--buy);
+  color: var(--bg);
+  font-family: var(--font-d, sans-serif);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  border: none;
+}

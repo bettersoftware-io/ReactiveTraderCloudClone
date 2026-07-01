@@ -1,0 +1,23 @@
+.wrap {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex: none;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+.spin {
+  transform-origin: 24px 24px;
+  animation: spin 16s linear infinite;
+}
+
+.spinRev {
+  transform-origin: 24px 24px;
+  animation: spinRev 22s linear infinite;
+}

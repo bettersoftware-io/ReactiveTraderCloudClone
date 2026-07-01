@@ -1,34 +1,32 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { expect, test } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, expect, test } from "vitest";
 
 import { App } from "#/App";
 
+afterEach(cleanup);
+
 test("reaches the themed shell after boot", () => {
   bootToApp();
-  expect(screen.getByTestId("app-root")).toBeDefined();
+  expect(screen.getByTestId("app-shell")).toBeDefined();
 });
 
-test("switching skin updates the --accent CSS variable on :root", () => {
+test("theme picker switches skin (--accent → neon)", () => {
   bootToApp();
-  const select = screen.getByLabelText("Theme skin") as HTMLSelectElement;
-
-  select.value = "neon";
-  fireEvent.change(select);
-
-  const accent = document.documentElement.style.getPropertyValue("--accent");
-  expect(accent).toBe("#ff2bd6"); // neon dark accent
+  fireEvent.click(screen.getByLabelText("Theme picker"));
+  fireEvent.click(screen.getByText("Neon Grid"));
+  expect(document.documentElement.style.getPropertyValue("--accent")).toBe(
+    "#ff2bd6",
+  );
 });
 
-test("toggling mode flips dark↔light", () => {
+test("mode toggle flips dark↔light", () => {
   bootToApp();
-  const toggle = screen.getByLabelText("Toggle dark or light mode");
-
   const before = document.documentElement.style.background;
-  fireEvent.click(toggle);
+  fireEvent.click(screen.getByLabelText(/Switch to (dark|light) mode/));
   expect(document.documentElement.style.background).not.toBe(before);
 });
 
-// — helpers ——————————————————————————————————————————————————————————————————
+// — helpers —————————————————————————————————————————————————————————————————————
 
 function bootToApp(): void {
   render(<App />);

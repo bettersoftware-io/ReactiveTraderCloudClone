@@ -1,0 +1,60 @@
+.footer {
+  position: relative;
+  z-index: 5;
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 14px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-head);
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--dim);
+  gap: 0;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--buy);
+  box-shadow: 0 0 8px var(--buy);
+  animation: pulseDot 1.8s ease-in-out infinite;
+  margin-right: 7px;
+}
+
+.connected {
+  color: var(--buy);
+}
+
+.sep {
+  color: var(--faint);
+  margin: 0 9px;
+}
+
+.gateway {
+  color: var(--dim);
+}
+
+.itemLabel {
+  color: var(--faint);
+  padding-right: 3px;
+}
+
+.itemValue {
+  color: var(--item-color);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.build {
+  color: var(--faint);
+}
+
+.clock {
+  color: var(--accent);
+}

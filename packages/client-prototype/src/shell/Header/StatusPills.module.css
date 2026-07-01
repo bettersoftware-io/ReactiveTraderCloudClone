@@ -1,0 +1,38 @@
+.pills {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.liveGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--buy);
+  box-shadow: 0 0 10px var(--buy);
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
+
+.liveLabel {
+  font-family: var(--font-d, sans-serif);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--buy);
+}
+
+.prodBadge {
+  font-family: var(--font-m, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--buy);
+  border: 1px solid var(--buy);
+  border-radius: 3px;
+  padding: 3px 6px;
+}
