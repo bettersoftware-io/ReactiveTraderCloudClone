@@ -1,0 +1,12 @@
+.body {
+  padding: 16px;
+}
+
+.label {
+  margin-bottom: 6px;
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+  text-transform: uppercase;
+}

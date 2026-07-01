@@ -22,6 +22,9 @@ const RFQ_WINDOW_MS = 15_000;
 const REJECT_PROBABILITY = 0.12;
 const PNL_SPAN = 800;
 const PNL_BIAS = 0.3;
+const PNL_SEED = 17120;
+const PNL_TICK_SPAN = 500;
+const PNL_TICK_BIAS = 0.42;
 const MAX_NOTIONAL = 1e9;
 const DEFAULT_NOTIONAL = "1,000,000";
 const ACTIVITY_CAP = 40;
@@ -158,7 +161,7 @@ export function useFxRates(opts: UseFxRatesOptions = {}): RatesApi {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [trades, setTrades] = useState<Trade[]>(SEED_TRADES);
   const [newRowId, setNewRowId] = useState<number | null>(null);
-  const [pnl, setPnl] = useState(0);
+  const [pnl, setPnl] = useState(PNL_SEED);
 
   const fxSeqRef = useRef(FX_SEQ_START);
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -169,6 +172,12 @@ export function useFxRates(opts: UseFxRatesOptions = {}): RatesApi {
         const next = walkTick(prev, rngRef.current);
         ratesRef.current = next.rates;
         return next;
+      });
+      setPnl((prev) => {
+        return Math.max(
+          0,
+          prev + Math.round((rngRef.current() - PNL_TICK_BIAS) * PNL_TICK_SPAN),
+        );
       });
     }, intervalMs);
 

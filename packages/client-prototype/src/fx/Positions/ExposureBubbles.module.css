@@ -1,0 +1,98 @@
+.cluster {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 14px;
+}
+
+.bubble {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--bubble-size);
+  height: var(--bubble-size);
+  border-radius: 50%;
+}
+
+.bubble[data-sign="pos"] {
+  background: rgba(43, 255, 179, 0.1);
+}
+
+.bubble[data-sign="neg"] {
+  background: rgba(255, 93, 115, 0.1);
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid;
+  border-radius: 50%;
+  opacity: 0.5;
+  animation: spin 22s linear infinite;
+}
+
+.ring[data-sign="pos"] {
+  border-color: var(--buy);
+}
+
+.ring[data-sign="neg"] {
+  border-color: var(--sell);
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.glow[data-sign="pos"] {
+  background: radial-gradient(
+    circle at 50% 40%,
+    rgba(43, 255, 179, 0.22) 0%,
+    transparent 70%
+  );
+}
+
+.glow[data-sign="neg"] {
+  background: radial-gradient(
+    circle at 50% 40%,
+    rgba(255, 93, 115, 0.22) 0%,
+    transparent 70%
+  );
+}
+
+.inner {
+  position: relative;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.ccy {
+  display: block;
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.bubble[data-large="true"] .ccy {
+  font-size: 15px;
+}
+
+.bubble[data-sign="pos"] .ccy {
+  color: var(--buy);
+}
+
+.bubble[data-sign="neg"] .ccy {
+  color: var(--sell);
+}
+
+.amt {
+  display: block;
+  font-family: var(--font-m, monospace);
+  font-size: 9px;
+  color: var(--dim);
+}

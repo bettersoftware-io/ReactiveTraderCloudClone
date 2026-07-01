@@ -8,13 +8,13 @@ import { ThemeProvider } from "#/theme/ThemeProvider";
 afterEach(cleanup);
 
 describe("FxScreen", () => {
-  test("renders the FX dock — Live Rates tab and the P2.5 aside placeholders", () => {
+  test("renders the FX dock — Live Rates tab and the Analytics/Positions aside", () => {
     renderFxScreen();
 
     expect(screen.getByTestId("fx-screen")).toBeDefined();
     expect(screen.getByText("◧ Live Rates")).toBeDefined();
-    expect(screen.getByText(/Analytics · P2\.5/)).toBeDefined();
-    expect(screen.getByText(/Positions · P2\.5/)).toBeDefined();
+    expect(screen.getByText(/Profit & Loss · Today/)).toBeDefined();
+    expect(screen.getByText("Net Exposure")).toBeDefined();
   });
 });
 

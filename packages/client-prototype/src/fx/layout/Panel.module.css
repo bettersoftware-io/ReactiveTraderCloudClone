@@ -33,6 +33,14 @@
   overflow: auto;
 }
 
+.accessory {
+  order: 98;
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 13px;
+  line-height: 1;
+}
+
 .maxBtn {
   order: 99;
   margin-left: 2px;

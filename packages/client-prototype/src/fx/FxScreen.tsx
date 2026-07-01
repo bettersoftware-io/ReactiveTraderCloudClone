@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 import { useRef, useState } from "react";
 
+import { AnalyticsView } from "#/fx/Analytics/AnalyticsView";
 import { FxBlotterPanel } from "#/fx/Blotter/FxBlotterPanel";
 import styles from "#/fx/FxScreen.module.css";
 import type { Filter } from "#/fx/LiveRates/FilterChips";
@@ -10,6 +11,7 @@ import { SplitHandle } from "#/fx/layout/SplitHandle";
 import type { PanelId } from "#/fx/layout/useDockState";
 import { useDockState } from "#/fx/layout/useDockState";
 import { useSplit } from "#/fx/layout/useSplit";
+import { PositionsView } from "#/fx/Positions/PositionsView";
 import { useFxBlotter } from "#/fx/useFxBlotter";
 import { useFxRates } from "#/fx/useFxRates";
 
@@ -143,10 +145,11 @@ export function FxScreen(): ReactElement {
               <Panel
                 id={ANA_PANEL}
                 head={<span className={styles.regionLabel}>◉ Analytics</span>}
+                headAccessory="⊕"
                 maxPanel={dock.maxPanel}
                 onToggleMax={dock.toggleMax}
               >
-                <div className={styles.placeholder}>Analytics · P2.5</div>
+                <AnalyticsView pnl={rates.pnl} />
               </Panel>
             </div>
 
@@ -158,10 +161,11 @@ export function FxScreen(): ReactElement {
               <Panel
                 id={POS_PANEL}
                 head={<span className={styles.regionLabel}>◎ Positions</span>}
+                headAccessory="⊕"
                 maxPanel={dock.maxPanel}
                 onToggleMax={dock.toggleMax}
               >
-                <div className={styles.placeholder}>Positions · P2.5</div>
+                <PositionsView />
               </Panel>
             </div>
           </>
