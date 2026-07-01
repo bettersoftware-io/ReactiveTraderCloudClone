@@ -250,6 +250,9 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
+      '@rtc/react-bindings':
+        specifier: workspace:*
+        version: link:../react-bindings
       expo:
         specifier: ^55.0.0
         version: 55.0.27(@babel/core@7.29.7)(@expo/dom-webview@55.0.6)(@expo/metro-runtime@4.0.1(react-native@0.83.6(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.7)(supports-color@8.1.1)))(expo-router@55.0.16)(react-dom@19.2.7(react@19.2.7))(react-native@0.83.6(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.7)(supports-color@8.1.1))(react@19.2.7)(supports-color@8.1.1)(typescript@6.0.3)
