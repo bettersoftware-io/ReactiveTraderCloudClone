@@ -31,6 +31,22 @@
       ],
       "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
     },
+    "packages/client-react-native": {
+      "entry": [
+        "app/**/*.{ts,tsx}",
+        "app.config.ts",
+        "metro.config.js",
+        "babel.config.js",
+        "vitest.config.ts",
+        "expo-env.d.ts"
+      ],
+      "project": ["**/*.{ts,tsx}"],
+      "ignoreDependencies": [
+        "expo-status-bar",
+        "babel-plugin-module-resolver",
+        "expo-updates"
+      ]
+    },
     "tests": {
       "entry": [
         "**/*.spec.{ts,tsx}",

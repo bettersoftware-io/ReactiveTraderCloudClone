@@ -32,6 +32,8 @@
     "packages/*/src/**/*.tsx",
     "packages/*/tests/**/*.ts",
     "packages/*/tests/**/*.tsx",
+    "packages/client-react-native/app/**/*.ts",
+    "packages/client-react-native/app/**/*.tsx",
     "packages/*/*.config.ts",
     "eslint-rules/*.ts",
     "tests/**/*.ts",
