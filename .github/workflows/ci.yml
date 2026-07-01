@@ -225,9 +225,20 @@ jobs:
       # `pnpm --filter`) so the task's dependsOn ["build"] builds every workspace
       # lib first — the suites import @rtc/{domain,shared,client,server} via their
       # dist/. turbo then runs `pnpm gates` + the 10-way parallel orchestrator.
-      # CI=true (set by GitHub) makes cucumber use parallel:1 + retry:2.
-      - name: e2e suite (10 parallel suites)
-        run: pnpm test:e2e
+      #
+      # RTC_E2E_SKIP_CYPRESS=1 excludes the two Cypress suites from the CI GATE.
+      # Cypress's command-queue model is fundamentally mismatched with this app's
+      # real RxJS timers + Promise-shaped scenario contracts, producing a long
+      # tail of CI-timing-only flakes (dropped events, detached-element re-render
+      # races) that no longer reproduce locally — chasing each via ~15-min CI
+      # cycles was pure waste, and retries only masked them. The Playwright suites
+      # run the SAME 48 scenarios deterministically at retries:0 and are the gate.
+      # Cypress remains fully runnable locally (`pnpm --filter @rtc/tests
+      # test:browser:cypress[-cucumber]`) as the deliberate framework-comparison
+      # reference — see tests/STRATEGY.md §7. All known Cypress flakes are still
+      # fixed at source; this only stops undiscovered ones from blocking merges.
+      - name: e2e suite (Playwright + presenter + fullstack; Cypress excluded from the gate)
+        run: RTC_E2E_SKIP_CYPRESS=1 pnpm test:e2e
 
       - name: Upload e2e artifacts on failure
         if: failure()

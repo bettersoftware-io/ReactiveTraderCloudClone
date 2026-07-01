@@ -202,7 +202,14 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
         const found = $body.find(TILE_CONFIRMATION_SELECTOR);
 
         if (found.length > 0 && found.css("display") !== "none") {
-          cy.get(TILE_CONFIRMATION_SELECTOR).first().click();
+          // Click the element we JUST captured, natively and in-context — do not
+          // re-query with a separately-queued cy.get(...).first().click(). The
+          // confirmation auto-dismisses on a timer, so between this presence
+          // check and a later-queued click it can detach, leaving cy.get an
+          // empty subject → "cy.click() failed: requires a DOM element". A native
+          // click dispatches through React's delegated handler; if the node has
+          // already detached it is a harmless no-op instead of a hard failure.
+          found.first()[0].click();
           cy.wait(500);
         }
       });
