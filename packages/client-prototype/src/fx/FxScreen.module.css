@@ -1,0 +1,183 @@
+/* FX dock composition (PROTO 349-520): a left column (Live Rates over the FX
+   Blotter, split PROTO fxStackR) beside an aside column (Analytics over
+   Positions, split PROTO fxRightR), the two columns themselves split by
+   PROTO asideW/fxAsideR. All three ratios flow in from FxScreen as
+   `--main-ratio` / `--left-ratio` / `--aside-ratio` custom properties — set
+   once on the root, so every descendant just inherits them — and drive plain
+   `flex-grow` splits; CSS never reads pixels, only the persisted ratio.
+
+   Maximize (PROTO 1123 toggleMax) and aside-collapse (PROTO 1226 asideCol)
+   are driven by `data-max-panel` / `data-aside-collapsed` on the root: each
+   state below hides the panels/handles that aren't the maximized one, or
+   shrinks the aside to its collapsed strip. */
+
+.screen {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  flex: var(--main-ratio) 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.aside {
+  display: flex;
+  flex-direction: column;
+  flex: calc(1 - var(--main-ratio)) 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tilesRegion {
+  display: flex;
+  flex-direction: column;
+  flex: var(--left-ratio) 1 0;
+  min-height: 0;
+}
+
+.blotterRegion {
+  display: flex;
+  flex-direction: column;
+  flex: calc(1 - var(--left-ratio)) 1 0;
+  min-height: 0;
+}
+
+.anaRegion {
+  display: flex;
+  flex-direction: column;
+  flex: var(--aside-ratio) 1 0;
+  min-height: 0;
+}
+
+.posRegion {
+  display: flex;
+  flex-direction: column;
+  flex: calc(1 - var(--aside-ratio)) 1 0;
+  min-height: 0;
+}
+
+.leftHandle,
+.mainHandle,
+.asideHandle {
+  flex: none;
+}
+
+.regionLabel {
+  font-family: var(--font-d, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.placeholder {
+  padding: 16px;
+  font-family: var(--font-m, monospace);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.collapsedStrip {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
+  background: var(--panel-head);
+}
+
+.stripBtn {
+  flex: none;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 12px 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: var(--dim);
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}
+
+.stripBtn:hover {
+  color: var(--accent);
+}
+
+/* — maximize: hide every panel/handle but the maximized one, and let its
+   containing chain (and the panel itself) fill the whole section. — */
+
+.screen[data-max-panel="tiles"] .blotterRegion,
+.screen[data-max-panel="tiles"] .leftHandle,
+.screen[data-max-panel="tiles"] .aside,
+.screen[data-max-panel="tiles"] .mainHandle {
+  display: none;
+}
+
+.screen[data-max-panel="tiles"] .leftCol,
+.screen[data-max-panel="tiles"] .tilesRegion {
+  flex: 1 1 auto;
+}
+
+.screen[data-max-panel="fxblot"] .tilesRegion,
+.screen[data-max-panel="fxblot"] .leftHandle,
+.screen[data-max-panel="fxblot"] .aside,
+.screen[data-max-panel="fxblot"] .mainHandle {
+  display: none;
+}
+
+.screen[data-max-panel="fxblot"] .leftCol,
+.screen[data-max-panel="fxblot"] .blotterRegion {
+  flex: 1 1 auto;
+}
+
+.screen[data-max-panel="ana"] .leftCol,
+.screen[data-max-panel="ana"] .mainHandle,
+.screen[data-max-panel="ana"] .posRegion,
+.screen[data-max-panel="ana"] .asideHandle {
+  display: none;
+}
+
+.screen[data-max-panel="ana"] .aside,
+.screen[data-max-panel="ana"] .anaRegion {
+  flex: 1 1 auto;
+}
+
+.screen[data-max-panel="pos"] .leftCol,
+.screen[data-max-panel="pos"] .mainHandle,
+.screen[data-max-panel="pos"] .anaRegion,
+.screen[data-max-panel="pos"] .asideHandle {
+  display: none;
+}
+
+.screen[data-max-panel="pos"] .aside,
+.screen[data-max-panel="pos"] .posRegion {
+  flex: 1 1 auto;
+}
+
+/* — aside collapse: PROTO 1226 asideCol strip; the V-split handle hides and
+   the left column takes the freed space. — */
+
+.screen[data-aside-collapsed="true"] .mainHandle {
+  display: none;
+}
+
+.screen[data-aside-collapsed="true"] .aside {
+  flex: 0 0 38px;
+}
+
+.screen[data-aside-collapsed="true"] .leftCol {
+  flex: 1 1 auto;
+}

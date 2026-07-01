@@ -3,8 +3,7 @@ export {
   type AppPorts,
   createApp,
   type Presenters,
+  WsAdapter,
 } from "@rtc/client-core";
 
 export { buildBrowserPorts } from "#/app/buildBrowserPorts";
-
-export { WsAdapter } from "./app/adapters/WsAdapter";

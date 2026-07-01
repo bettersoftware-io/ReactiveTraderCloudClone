@@ -1,4 +1,4 @@
-// packages/client-react/src/app/adapters/WsAdapter.test.ts
+// packages/client-core/src/adapters/WsAdapter.test.ts
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
