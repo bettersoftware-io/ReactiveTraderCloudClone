@@ -23,6 +23,18 @@ interface BuildNativePortsOptions {
   simulator?: boolean;
 }
 
+/** The assembled `AppPorts` plus a `dispose` that tears down any transport the
+ * build owns. The real-WS branch constructs a `WsAdapter` that opens its socket
+ * eagerly in the constructor (not on Rx subscribe), so on unmount the raw
+ * `WebSocket` must be closed explicitly — otherwise it lingers and reconnects
+ * forever via its internal timer, and each remount opens another. `dispose`
+ * closes it (WsAdapter.dispose suppresses reconnect too); the simulator branch
+ * has no socket, so its `dispose` is a no-op. */
+export interface NativeComposition {
+  ports: AppPorts;
+  dispose: () => void;
+}
+
 /** The RN analogue of `buildBrowserPorts` (client-react): assembles the
  * `AppPorts` that `createApp` composes into presenters. Two branches selected
  * by the WS URL — a real WebSocket stack when `extra.serverUrl` is set, else a
@@ -32,7 +44,9 @@ interface BuildNativePortsOptions {
  *
  * The `simulator` option forces the simulator branch regardless of config — the
  * demo toggle (Task 6) drives it. */
-export function buildNativePorts(opts: BuildNativePortsOptions = {}): AppPorts {
+export function buildNativePorts(
+  opts: BuildNativePortsOptions = {},
+): NativeComposition {
   const extra = Constants.expoConfig?.extra ?? {};
   const url = opts.simulator
     ? undefined
@@ -56,7 +70,12 @@ export function buildNativePorts(opts: BuildNativePortsOptions = {}): AppPorts {
         );
       },
     };
-    return { ...createWsRealPorts(ws, { preferences }), connectionEvents };
+    return {
+      ports: { ...createWsRealPorts(ws, { preferences }), connectionEvents },
+      dispose: () => {
+        ws.dispose();
+      },
+    };
   }
 
   const gateway = new ConnectionEventsSimulator();
@@ -76,5 +95,8 @@ export function buildNativePorts(opts: BuildNativePortsOptions = {}): AppPorts {
       );
     },
   };
-  return { ...createSimulatorPorts({ preferences }), connectionEvents };
+  return {
+    ports: { ...createSimulatorPorts({ preferences }), connectionEvents },
+    dispose: () => {},
+  };
 }

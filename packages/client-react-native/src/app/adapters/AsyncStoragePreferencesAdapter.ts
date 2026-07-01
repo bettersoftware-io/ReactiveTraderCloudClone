@@ -14,7 +14,7 @@ import {
   type ViewMode,
 } from "@rtc/domain";
 
-export const THEME_STORAGE_KEY = "rtc-theme"; // legacy key → mode (back-compat)
+export const THEME_STORAGE_KEY = "rtc-theme"; // stores the theme mode
 export const THEME_SKIN_STORAGE_KEY = "rtc-theme-skin";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
