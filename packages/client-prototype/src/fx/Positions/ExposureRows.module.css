@@ -1,0 +1,22 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-m, monospace);
+  font-size: 12px;
+}
+
+.ccy {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.amt[data-sign="pos"] {
+  color: var(--buy);
+}
+
+.amt[data-sign="neg"] {
+  color: var(--sell);
+}
