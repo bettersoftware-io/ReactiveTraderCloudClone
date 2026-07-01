@@ -1,10 +1,24 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { type CurrencyPair, type Price, PriceMovementType } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { SpotTile } from "#/ui/SpotTile";
+
+// Stub out TradeTicket (an RN Modal) so the press test mounts a lightweight
+// marker instead of the real Modal — mounting Modal via an awaited RNTL event
+// hangs jest-expo on x86 CI (TradeTicket.test.tsx covers the real Modal by
+// rendering it directly on initial render, which does not hang).
+jest.mock("#/ui/TradeTicket", () => {
+  const react = require("react");
+  const { View } = require("react-native");
+  return {
+    TradeTicket: (): unknown => {
+      return react.createElement(View, { testID: "trade-ticket" });
+    },
+  };
+});
 
 const EURUSD: CurrencyPair = {
   symbol: "EURUSD",
