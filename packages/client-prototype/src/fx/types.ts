@@ -38,7 +38,7 @@ export interface Trade {
   valueDate: string;
 }
 
-export type TileStage =
+type TileStage =
   | "idle"
   | "executing"
   | "rfqReq"

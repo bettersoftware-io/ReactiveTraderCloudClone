@@ -3,7 +3,7 @@ import { useState } from "react";
 import { downloadCsv, toCsv } from "#/fx/csvExport";
 import type { Trade } from "#/fx/types";
 
-export type SortField =
+type SortField =
   | "tradeId"
   | "status"
   | "tradeDate"
