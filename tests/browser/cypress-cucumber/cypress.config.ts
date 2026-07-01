@@ -10,9 +10,13 @@ import { defineConfig } from "cypress";
 import mochawesomePlugin from "cypress-mochawesome-reporter/plugin";
 
 // Slow CI runners need more headroom for the app's connection to settle
-// (Connecting → Connected) before timing-sensitive `.should()` assertions, and
-// the cucumber-js `retry` does NOT apply to this Cypress suite — so retry flaky
-// specs here too. Locally the fast path needs neither.
+// (Connecting → Connected) before timing-sensitive `.should()` assertions, so
+// give CI a larger per-command timeout. Test-level `retries` are deliberately
+// NOT used: the flakes they once masked (timer starvation, dropped synthetic
+// offline dispatch, detached-element re-render races, record/expect ordering)
+// are now fixed at source in the shared scenarios + Cypress page objects.
+// Retrying a whole spec is wasteful and hides regressions; a clean run is the
+// contract.
 const isCI = !!process.env.CI;
 
 /**
@@ -71,7 +75,7 @@ export default defineConfig({
     screenshotOnRunFailure: true,
     screenshotsFolder: "reports/browser/cypress-cucumber/artifacts",
     defaultCommandTimeout: isCI ? 30_000 : 10_000,
-    retries: { runMode: isCI ? 2 : 0, openMode: 0 },
+    retries: { runMode: 0, openMode: 0 },
     async setupNodeEvents(
       on: Cypress.PluginEvents,
       config: Cypress.PluginConfigOptions,

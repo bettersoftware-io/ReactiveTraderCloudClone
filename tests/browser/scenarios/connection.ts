@@ -5,6 +5,11 @@ export async function setBrowserOffline(
   ctx: TestContext,
   offline: boolean,
 ): Promise<void> {
+  // The gate that makes Cypress's synthetic offline dispatch reliable (wait for
+  // the app to be connected so its window listener is attached) lives in the
+  // Cypress Workspace PO, not here — it must be a cy-queue command, which a
+  // shared async scenario cannot express. Playwright's CDP setOffline needs no
+  // such gate. See page-objects/cypress/Workspace.ts setOffline.
   await ctx.po.workspace.setOffline(offline);
 }
 

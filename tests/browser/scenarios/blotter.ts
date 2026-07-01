@@ -36,20 +36,25 @@ export async function expectBlotterRowCountAtMost(
   ctx: TestContext,
   key: string,
 ): Promise<void> {
+  // Read the baseline AFTER awaiting the current count — see the matching note
+  // in scenarios/fxLiveRates.ts. Prevents the cucumber-cypress "no recorded row
+  // count" race where the read fires before the prior record step's set lands.
+  const current = await ctx.po.blotterTable.rowCount();
   const baseline = ctx.scratch.blotter.recordedRowCounts.get(key);
   if (baseline === undefined)
     throw new Error(`no recorded row count for ${key}`);
-  assertLte(await ctx.po.blotterTable.rowCount(), baseline);
+  assertLte(current, baseline);
 }
 
 export async function expectBlotterRowCountEquals(
   ctx: TestContext,
   key: string,
 ): Promise<void> {
+  const current = await ctx.po.blotterTable.rowCount();
   const baseline = ctx.scratch.blotter.recordedRowCounts.get(key);
   if (baseline === undefined)
     throw new Error(`no recorded row count for ${key}`);
-  assertEquals(await ctx.po.blotterTable.rowCount(), baseline);
+  assertEquals(current, baseline);
 }
 
 export async function expectExportCsvVisible(ctx: TestContext): Promise<void> {
