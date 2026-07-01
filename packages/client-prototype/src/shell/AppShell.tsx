@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import { FxScreen } from "#/fx/FxScreen";
 import styles from "#/shell/AppShell.module.css";
 import { AmbientBackground } from "#/shell/ambient/AmbientBackground";
 import { Header } from "#/shell/Header/Header";
@@ -41,7 +42,7 @@ export function AppShell(props: AppShellProps): ReactElement {
           onLogout={onLogout}
         />
         <main className={styles.body}>
-          <PlaceholderPanel tab={tab} />
+          {tab === "fx" ? <FxScreen /> : <PlaceholderPanel tab={tab} />}
         </main>
         <StatusBar />
       </div>

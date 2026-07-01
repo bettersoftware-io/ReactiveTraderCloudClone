@@ -1,0 +1,45 @@
+.header {
+  display: grid;
+  grid-template-columns: 90px 1fr 90px 70px 60px;
+  padding: 7px 10px;
+  font-family: var(--font-m, monospace);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--faint);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 90px 1fr 90px 70px 60px;
+  align-items: center;
+  padding: 9px 10px;
+  font-family: var(--font-m, monospace);
+  font-size: 13px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.pair {
+  font-weight: 600;
+}
+
+.mid {
+  color: var(--move-color);
+}
+
+.move {
+  font-size: 11px;
+  color: var(--move-color);
+}
+
+.spread {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.trend {
+  display: flex;
+  align-items: center;
+}
