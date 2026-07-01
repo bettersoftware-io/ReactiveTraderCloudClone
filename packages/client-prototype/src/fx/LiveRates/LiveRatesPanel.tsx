@@ -8,6 +8,8 @@ import styles from "#/fx/LiveRates/LiveRatesPanel.module.css";
 import type { TileVm } from "#/fx/LiveRates/RateTile";
 import { RateTile } from "#/fx/LiveRates/RateTile";
 import { TileExecOverlay } from "#/fx/LiveRates/TileExecOverlay";
+import type { WatchRow } from "#/fx/LiveRates/WatchlistView";
+import { WatchlistView } from "#/fx/LiveRates/WatchlistView";
 import type { PairMeta, Sym, TileState } from "#/fx/types";
 import type { RatesApi } from "#/fx/useFxRates";
 import { useFlip } from "#/motion/useFlip";
@@ -99,7 +101,11 @@ export function LiveRatesPanel(props: LiveRatesPanelProps): ReactElement {
             })}
           </div>
         ) : (
-          <div>Watchlist</div>
+          <WatchlistView
+            rows={syms.map((sym) => {
+              return buildWatchRow(sym, rates);
+            })}
+          />
         )}
       </div>
     </div>
@@ -195,6 +201,38 @@ function priceUnit(d: number): number {
   return d === 3 ? 0.01 : 0.0001;
 }
 
+interface Move {
+  movePips: number;
+  moveUp: boolean;
+}
+
+// Shared by the tile grid (buildTileVm) and the Watchlist rows
+// (buildWatchRow) so the movePips math lives in exactly one place.
+function computeMove(sym: Sym, rates: RatesApi): Move {
+  const meta = META[sym];
+  const rate = rates.rates[sym];
+  const open = rates.opens[sym];
+  const pu = priceUnit(meta.d);
+  const movePips = Math.round((rate - open) / pu);
+  const moveUp = rate >= open;
+
+  return { movePips, moveUp };
+}
+
+function buildWatchRow(sym: Sym, rates: RatesApi): WatchRow {
+  const meta = META[sym];
+  const { movePips, moveUp } = computeMove(sym, rates);
+
+  return {
+    sym,
+    mid: rates.rates[sym].toFixed(meta.d),
+    movePips,
+    moveUp,
+    spread: meta.spread,
+    hist: rates.hist[sym],
+  };
+}
+
 function buildTileVm(
   sym: Sym,
   rates: RatesApi,
@@ -203,10 +241,7 @@ function buildTileVm(
 ): TileVm {
   const meta = META[sym];
   const rate = rates.rates[sym];
-  const open = rates.opens[sym];
-  const pu = priceUnit(meta.d);
-  const movePips = Math.round((rate - open) / pu);
-  const moveUp = rate >= open;
+  const { movePips, moveUp } = computeMove(sym, rates);
   const flashEvent = rates.flash[sym];
   const flashOn = flashEvent != null && now - flashEvent.ts < FLASH_WINDOW_MS;
   const notional = rates.notionals[sym];
