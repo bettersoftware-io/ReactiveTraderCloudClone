@@ -34,3 +34,9 @@ packages/client/tests/ui/visual/**/__screenshots__/*.spec.tsx/
 
 # Subagent-driven-development scratch (ledger, task briefs, review packages, reports)
 .superpowers/
+
+# Local env files (Expo EXPO_PUBLIC_* and friends) — may hold tokens, never
+# commit them. `.env.example` templates ARE tracked (not matched below).
+.env
+.env.local
+.env.*.local
