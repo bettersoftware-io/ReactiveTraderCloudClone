@@ -1,10 +1,17 @@
 import type { ReactElement } from "react";
 
 import type {
+  NotionalIntents,
+  NotionalView,
+  TileExecutionState,
+} from "@rtc/client-core";
+import type {
   CurrencyCategory,
   CurrencyPair,
+  CurrencyPairPosition,
   Dealer,
   Direction,
+  EquityPosition,
   Instrument,
   Price,
   Quote,
@@ -13,12 +20,16 @@ import type {
   ViewMode,
 } from "@rtc/domain";
 
-import type {
-  NotionalIntents,
-  NotionalView,
-} from "#/app/presenters/NotionalMachine";
-import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
+import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
 import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
+import { ErrorRatePanel as ErrorRatePanelComponent } from "#/ui/admin/ErrorRatePanel";
+import { IncidentControls as IncidentControlsComponent } from "#/ui/admin/IncidentControls";
+import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/admin/LatencyHistogram";
+import { LiveEventLog as LiveEventLogComponent } from "#/ui/admin/LiveEventLog";
+import { MetricGauges as MetricGaugesComponent } from "#/ui/admin/MetricGauges";
+import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/admin/ServiceTopologyGraph";
+import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPanel";
+import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
 import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqForm as NewRfqFormComponent } from "#/ui/credit/newRfq/NewRfqForm";
 import { QuoteCard as QuoteCardComponent } from "#/ui/credit/rfqTiles/QuoteCard";
@@ -30,10 +41,24 @@ import {
 import { RfqTilesPanel as RfqTilesPanelComponent } from "#/ui/credit/rfqTiles/RfqTilesPanel";
 import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
 import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
+import { DeskPnlGauge as DeskPnlGaugeComponent } from "#/ui/equities/blotter/DeskPnlGauge";
+import { OrdersBlotter as OrdersBlotterComponent } from "#/ui/equities/blotter/OrdersBlotter";
+import { PnlSparkline as PnlSparklineComponent } from "#/ui/equities/blotter/PnlSparkline";
+import { PositionsBlotter as PositionsBlotterComponent } from "#/ui/equities/blotter/PositionsBlotter";
+import { DepthLadder as DepthLadderComponent } from "#/ui/equities/chart/DepthLadder";
+import { PriceChart as PriceChartComponent } from "#/ui/equities/chart/PriceChart";
+import { EquitiesPanel as EquitiesPanelComponent } from "#/ui/equities/EquitiesPanel";
+import { InstrumentTabs as InstrumentTabsComponent } from "#/ui/equities/tabs/InstrumentTabs";
+import { OrderTicket as OrderTicketComponent } from "#/ui/equities/ticket/OrderTicket";
+import { SectorHeatmap as SectorHeatmapComponent } from "#/ui/equities/watchlist/SectorHeatmap";
+import { Watchlist as WatchlistComponent } from "#/ui/equities/watchlist/Watchlist";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
+import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
 import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
+import { PositionBubbles as PositionBubblesComponent } from "#/ui/fx/analytics/PositionBubbles";
 import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/BlotterHeader";
 import { BlotterRow as BlotterRowComponent } from "#/ui/fx/blotter/BlotterRow";
+import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
 import { DateFilter as DateFilterComponent } from "#/ui/fx/blotter/columnFilter/DateFilter";
 import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 import { NumberFilter as NumberFilterComponent } from "#/ui/fx/blotter/columnFilter/NumberFilter";
@@ -44,58 +69,91 @@ import { QuickFilter as QuickFilterComponent } from "#/ui/fx/blotter/QuickFilter
 import { CurrencyFilter as CurrencyFilterComponent } from "#/ui/fx/liveRates/CurrencyFilter";
 import { LiveRatesPanel as LiveRatesPanelComponent } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { RfqCountdown as RfqCountdownComponent } from "#/ui/fx/liveRates/tile/RfqCountdown";
+import { SpreadDisplay as SpreadDisplayComponent } from "#/ui/fx/liveRates/tile/SpreadDisplay";
 import { Tile as TileComponent } from "#/ui/fx/liveRates/tile/Tile";
 import { TileConfirmation as TileConfirmationComponent } from "#/ui/fx/liveRates/tile/TileConfirmation";
 import { TileExecution as TileExecutionComponent } from "#/ui/fx/liveRates/tile/TileExecution";
 import { TileHeader as TileHeaderComponent } from "#/ui/fx/liveRates/tile/TileHeader";
 import { TileNotional as TileNotionalComponent } from "#/ui/fx/liveRates/tile/TileNotional";
-import {
-  SpreadDisplay as SpreadDisplayComponent,
-  TilePrice as TilePriceComponent,
-} from "#/ui/fx/liveRates/tile/TilePrice";
+import { TilePrice as TilePriceComponent } from "#/ui/fx/liveRates/tile/TilePrice";
 import {
   TileRfq as TileRfqComponent,
   type TileRfqState,
 } from "#/ui/fx/liveRates/tile/TileRfq";
 import { ViewToggle as ViewToggleComponent } from "#/ui/fx/liveRates/ViewToggle";
+import { AmbientBackground as AmbientBackgroundComponent } from "#/ui/shell/background/AmbientBackground";
+import { BootGate as BootGateComponent } from "#/ui/shell/boot/BootGate";
+import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
+import {
+  HeaderChrome as HeaderChromeComponent,
+  type WorkspaceTab,
+} from "#/ui/shell/chrome/HeaderChrome";
+import { ThemePicker as ThemePickerComponent } from "#/ui/shell/chrome/ThemePicker";
 import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
-import { Footer as FooterComponent } from "#/ui/shell/layout/Footer";
-import {
-  Header as HeaderComponent,
-  type WorkspaceTab,
-} from "#/ui/shell/layout/Header";
+import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
+import { PreferencesModal as PreferencesModalComponent } from "#/ui/shell/prefs/PreferencesModal";
 import { StaleIndicator as StaleIndicatorComponent } from "#/ui/shell/stale/StaleIndicator";
+import { StatusBar as StatusBarComponent } from "#/ui/shell/status/StatusBar";
 import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggle";
 
 import {
+  AdminDashboard,
   AdminPanel,
+  AmbientBackground,
   AnalyticsPanel,
+  AnimationProbe,
   BlotterHeader,
   BlotterRow,
+  BootGate,
+  BootSequence,
   ConnectionOverlay,
   ConnectionStatusBar,
   CreditBlotter,
   CurrencyFilter,
   DateFilter,
-  Footer,
+  DepthLadder,
+  DeskPnlGauge,
+  EquitiesPanel,
+  ErrorRatePanel,
   FxBlotter,
-  Header,
+  HeaderChrome,
+  IncidentControls,
+  InstrumentTabs,
+  LatencyHistogram,
+  LayoutEngine,
+  LiveEventLog,
   LiveRatesPanel,
+  LockScreen,
+  MetricGauges,
   NewRfqForm,
   NumberFilter,
+  OrdersBlotter,
+  OrderTicket,
+  PairPnlBars,
+  PnlSparkline,
   PnlValue,
+  PositionBubbles,
+  PositionsBlotter,
+  PreferencesModal,
+  PriceChart,
   QuickFilter,
   QuoteCard,
   RfqCard,
   RfqCountdown,
   RfqFilterTabs,
   RfqTilesPanel,
+  SectorHeatmap,
   SellSidePanel,
+  ServiceTopologyGraph,
+  SessionsPanel,
   SetFilter,
   SpreadDisplay,
   StaleIndicator,
+  StatusBar,
+  ThemePicker,
   ThemeToggle,
+  ThroughputChart,
   Tile,
   TileConfirmation,
   TileExecution,
@@ -105,11 +163,14 @@ import {
   TileRfq,
   TradeTicket,
   ViewToggle,
+  Watchlist,
 } from "../shared/components";
 import type {
   ComponentToken,
   MountedComponent,
 } from "../shared/harness/component";
+import { AnimationProbe as AnimationProbeComponent } from "./AnimationProbe";
+import { LayoutEngineHost } from "./LayoutEngineHost";
 
 function noopFilter(_f: ColumnFilter | null): void {}
 
@@ -118,6 +179,32 @@ type ElementFor = (props: Record<string, unknown>) => ReactElement;
 
 /** token → React element factory. Identity-keyed; no string keys. */
 export const registry = new Map<AnyToken, ElementFor>([
+  [
+    AnimationProbe,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <AnimationProbeComponent
+          target={(p.target as string) ?? "tile:EURUSD"}
+        />
+      );
+    },
+  ],
+  [
+    BootSequence,
+    (): ReactElement => {
+      return <BootSequenceComponent onDone={(): void => {}} />;
+    },
+  ],
+  [
+    BootGate,
+    (): ReactElement => {
+      return (
+        <BootGateComponent>
+          <div data-testid="boot-gate-child" />
+        </BootGateComponent>
+      );
+    },
+  ],
   [
     AnalyticsPanel,
     (): ReactElement => {
@@ -128,6 +215,26 @@ export const registry = new Map<AnyToken, ElementFor>([
     PnlValue,
     (p: Record<string, unknown>): ReactElement => {
       return <PnlValueComponent value={p.value as number} />;
+    },
+  ],
+  [
+    PairPnlBars,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PairPnlBarsComponent
+          positions={(p.positions as readonly CurrencyPairPosition[]) ?? []}
+        />
+      );
+    },
+  ],
+  [
+    PositionBubbles,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PositionBubblesComponent
+          positions={(p.positions as readonly CurrencyPairPosition[]) ?? []}
+        />
+      );
     },
   ],
   [
@@ -162,6 +269,8 @@ export const registry = new Map<AnyToken, ElementFor>([
             <BlotterRowComponent
               trade={p.trade as Trade}
               isNew={(p.isNew as boolean) ?? false}
+              columns={COLUMNS}
+              format={formatFxCell}
             />
           </tbody>
         </table>
@@ -188,7 +297,12 @@ export const registry = new Map<AnyToken, ElementFor>([
                   f: ColumnFilter | null,
                 ) => void) ?? ((): void => {})
               }
-              trades={(p.trades as readonly Trade[]) ?? []}
+              rows={
+                (p.rows as readonly Trade[]) ??
+                (p.trades as readonly Trade[]) ??
+                []
+              }
+              columns={COLUMNS}
             />
           </thead>
         </table>
@@ -199,12 +313,14 @@ export const registry = new Map<AnyToken, ElementFor>([
     SetFilter,
     (p: Record<string, unknown>): ReactElement => {
       return (
-        <SetFilterComponent
+        <SetFilterComponent<Trade>
           column={(p.column as keyof Trade) ?? "currencyPair"}
-          trades={(p.trades as readonly Trade[]) ?? []}
-          currentFilter={p.currentFilter as ColumnFilter | undefined}
+          rows={
+            (p.rows as readonly Trade[]) ?? (p.trades as readonly Trade[]) ?? []
+          }
+          currentFilter={p.currentFilter as ColumnFilter<Trade> | undefined}
           onApply={
-            (p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter
+            (p.onApply as (f: ColumnFilter<Trade> | null) => void) ?? noopFilter
           }
         />
       );
@@ -214,11 +330,11 @@ export const registry = new Map<AnyToken, ElementFor>([
     NumberFilter,
     (p: Record<string, unknown>): ReactElement => {
       return (
-        <NumberFilterComponent
+        <NumberFilterComponent<Trade>
           column={(p.column as keyof Trade) ?? "notional"}
-          currentFilter={p.currentFilter as ColumnFilter | undefined}
+          currentFilter={p.currentFilter as ColumnFilter<Trade> | undefined}
           onApply={
-            (p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter
+            (p.onApply as (f: ColumnFilter<Trade> | null) => void) ?? noopFilter
           }
         />
       );
@@ -228,11 +344,11 @@ export const registry = new Map<AnyToken, ElementFor>([
     DateFilter,
     (p: Record<string, unknown>): ReactElement => {
       return (
-        <DateFilterComponent
+        <DateFilterComponent<Trade>
           column={(p.column as keyof Trade) ?? "tradeDate"}
-          currentFilter={p.currentFilter as ColumnFilter | undefined}
+          currentFilter={p.currentFilter as ColumnFilter<Trade> | undefined}
           onApply={
-            (p.onApply as (f: ColumnFilter | null) => void) ?? noopFilter
+            (p.onApply as (f: ColumnFilter<Trade> | null) => void) ?? noopFilter
           }
         />
       );
@@ -460,22 +576,28 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    Footer,
+    StatusBar,
     (): ReactElement => {
-      return <FooterComponent />;
+      return <StatusBarComponent />;
     },
   ],
   [
-    Header,
+    HeaderChrome,
     (p: Record<string, unknown>): ReactElement => {
       return (
-        <HeaderComponent
+        <HeaderChromeComponent
           activeTab={(p.activeTab as WorkspaceTab) ?? "fx"}
           onTabChange={
             (p.onTabChange as (t: WorkspaceTab) => void) ?? ((): void => {})
           }
         />
       );
+    },
+  ],
+  [
+    ThemePicker,
+    (): ReactElement => {
+      return <ThemePickerComponent />;
     },
   ],
   [
@@ -498,6 +620,186 @@ export const registry = new Map<AnyToken, ElementFor>([
     AdminPanel,
     (): ReactElement => {
       return <AdminPanelComponent />;
+    },
+  ],
+  [
+    LayoutEngine,
+    (): ReactElement => {
+      return <LayoutEngineHost />;
+    },
+  ],
+  [
+    LockScreen,
+    (): ReactElement => {
+      return <LockScreenComponent />;
+    },
+  ],
+  [
+    AmbientBackground,
+    (): ReactElement => {
+      return <AmbientBackgroundComponent />;
+    },
+  ],
+  [
+    PreferencesModal,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PreferencesModalComponent
+          open={(p.open as boolean) ?? false}
+          onClose={(p.onClose as () => void) ?? ((): void => {})}
+        />
+      );
+    },
+  ],
+  [
+    OrderTicket,
+    (p: Record<string, unknown>): ReactElement => {
+      return <OrderTicketComponent symbol={(p.symbol as string) ?? "AAPL"} />;
+    },
+  ],
+  [
+    Watchlist,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <WatchlistComponent
+          selectedSymbol={(p.selectedSymbol as string | null) ?? null}
+          onSelect={
+            (p.onSelect as (symbol: string) => void) ?? ((): void => {})
+          }
+        />
+      );
+    },
+  ],
+  [
+    OrdersBlotter,
+    (): ReactElement => {
+      return <OrdersBlotterComponent />;
+    },
+  ],
+  [
+    InstrumentTabs,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <InstrumentTabsComponent
+          selectedSymbol={(p.selectedSymbol as string | null) ?? null}
+          onSelect={
+            (p.onSelect as (symbol: string) => void) ?? ((): void => {})
+          }
+        />
+      );
+    },
+  ],
+  [
+    SectorHeatmap,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <SectorHeatmapComponent
+          selectedSymbol={(p.selectedSymbol as string | null) ?? null}
+          onSelect={
+            (p.onSelect as (symbol: string) => void) ?? ((): void => {})
+          }
+        />
+      );
+    },
+  ],
+  [
+    PriceChart,
+    (p: Record<string, unknown>): ReactElement => {
+      return <PriceChartComponent symbol={(p.symbol as string) ?? "AAPL"} />;
+    },
+  ],
+  [
+    DepthLadder,
+    (p: Record<string, unknown>): ReactElement => {
+      return <DepthLadderComponent symbol={(p.symbol as string) ?? "AAPL"} />;
+    },
+  ],
+  [
+    PositionsBlotter,
+    (): ReactElement => {
+      return <PositionsBlotterComponent />;
+    },
+  ],
+  [
+    DeskPnlGauge,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <DeskPnlGaugeComponent
+          positions={(p.positions as readonly EquityPosition[]) ?? []}
+        />
+      );
+    },
+  ],
+  [
+    PnlSparkline,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PnlSparklineComponent
+          pnl={(p.pnl as number) ?? 0}
+          maxAbsPnl={p.maxAbsPnl as number | undefined}
+        />
+      );
+    },
+  ],
+  [
+    EquitiesPanel,
+    (): ReactElement => {
+      return <EquitiesPanelComponent />;
+    },
+  ],
+  // Admin / telemetry components (Phase 5 Task 8)
+  [
+    IncidentControls,
+    (): ReactElement => {
+      return <IncidentControlsComponent />;
+    },
+  ],
+  [
+    ServiceTopologyGraph,
+    (): ReactElement => {
+      return <ServiceTopologyGraphComponent />;
+    },
+  ],
+  [
+    LiveEventLog,
+    (): ReactElement => {
+      return <LiveEventLogComponent />;
+    },
+  ],
+  [
+    MetricGauges,
+    (): ReactElement => {
+      return <MetricGaugesComponent />;
+    },
+  ],
+  [
+    ThroughputChart,
+    (): ReactElement => {
+      return <ThroughputChartComponent />;
+    },
+  ],
+  [
+    LatencyHistogram,
+    (): ReactElement => {
+      return <LatencyHistogramComponent />;
+    },
+  ],
+  [
+    ErrorRatePanel,
+    (): ReactElement => {
+      return <ErrorRatePanelComponent />;
+    },
+  ],
+  [
+    SessionsPanel,
+    (): ReactElement => {
+      return <SessionsPanelComponent />;
+    },
+  ],
+  [
+    AdminDashboard,
+    (): ReactElement => {
+      return <AdminDashboardComponent />;
     },
   ],
 ]);

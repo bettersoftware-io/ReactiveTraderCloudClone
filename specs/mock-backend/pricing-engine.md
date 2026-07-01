@@ -79,7 +79,7 @@ When an RFQ (Request for Quote) is requested for a symbol:
 
 ### Timing
 
-- **Response delay**: 500ms + random(0-500ms), so between **500ms and 1000ms**
+- **Response delay**: 500ms + floor(random()*500ms), so between **500ms and 999ms**
 - **Quote timeout**: **10,000ms** (10 seconds) from quote delivery
 
 ### Response Shape

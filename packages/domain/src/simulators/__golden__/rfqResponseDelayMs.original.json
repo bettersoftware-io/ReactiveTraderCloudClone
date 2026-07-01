@@ -1,0 +1,8 @@
+{
+  "_source": "rtc-original@4a31f01 packages/client/src/services/rfqs/rfqs.ts:13",
+  "cases": [
+    { "rand": 0, "expected": 500 },
+    { "rand": 0.998, "expected": 999 },
+    { "rand": 0.999999, "expected": 999 }
+  ]
+}

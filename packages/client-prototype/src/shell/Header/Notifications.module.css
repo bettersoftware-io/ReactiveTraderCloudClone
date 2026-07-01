@@ -1,0 +1,133 @@
+.wrap {
+  position: relative;
+}
+
+.trigger {
+  position: relative;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+}
+
+.bell {
+  width: 16px;
+  height: 16px;
+}
+
+.badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-m, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 60;
+  width: 300px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.dropHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-head);
+}
+
+.dropTitle {
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+
+.dropCount {
+  font-family: var(--font-m, monospace);
+  font-size: 9px;
+  color: var(--faint);
+}
+
+.list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.notifRow {
+  display: flex;
+  gap: 10px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--border);
+  align-items: baseline;
+}
+
+.tag {
+  font-family: var(--font-m, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--tag-color);
+  border: 1px solid var(--tag-color);
+  border-radius: 2px;
+  padding: 1px 4px;
+  flex: none;
+}
+
+.notifBody {
+  flex: 1;
+}
+
+.notifMsg {
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.4;
+}
+
+.notifTime {
+  font-family: var(--font-m, monospace);
+  font-size: 9px;
+  color: var(--faint);
+  margin-top: 3px;
+}
+
+.markRead {
+  width: 100%;
+  display: block;
+  text-align: center;
+  cursor: pointer;
+  padding: 9px;
+  font-family: var(--font-d, sans-serif);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  background: transparent;
+  border: none;
+}

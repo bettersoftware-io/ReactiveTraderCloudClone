@@ -6,12 +6,7 @@ import { defined } from "../__testUtils__/defined.js";
 import { describeWorkflowPortContract } from "../ports/__contracts__/WorkflowPortContract.js";
 import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
-import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
-
-interface QuoteCreatedEvent {
-  type: "quoteCreated";
-  payload: { id: number };
-}
+import { DEALERS_CATALOG } from "./DealerSimulator.js";
 
 afterEach(() => {
   return vi.useRealTimers();
@@ -96,3 +91,8 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
     },
   };
 });
+
+interface QuoteCreatedEvent {
+  type: "quoteCreated";
+  payload: { id: number };
+}

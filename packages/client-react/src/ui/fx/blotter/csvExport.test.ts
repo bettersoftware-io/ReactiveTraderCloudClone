@@ -2,23 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-import { exportToCsv } from "./csvExport";
-
-function trade(over: Partial<Trade> = {}): Trade {
-  return {
-    tradeId: 1,
-    tradeName: "Alice",
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.09221,
-    status: TradeStatus.Done,
-    tradeDate: "2026-01-01",
-    valueDate: "2026-01-03",
-    ...over,
-  };
-}
+import { exportFxToCsv } from "./csvExport";
 
 /**
  * exportToCsv writes to a Blob and triggers a download via an anchor element.
@@ -29,6 +13,7 @@ let captured: string | null;
 const RealBlob: typeof Blob = globalThis.Blob;
 
 /** A real Blob subclass that records the joined text parts it was built from. */
+// eslint-disable-next-line rtc/class-filename-match -- small local Blob test double; file is named after the system under test
 class RecordingBlob extends RealBlob {
   constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
     super(parts, options);
@@ -54,18 +39,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** Return `captured` after asserting it is non-null (set by RecordingBlob). */
-function capturedContent(): string {
-  if (captured === null)
-    throw new Error(
-      "RecordingBlob was not invoked — exportToCsv did not create a Blob",
-    );
-  return captured;
-}
-
 describe("exportToCsv", () => {
   it("writes a header row with all column labels", () => {
-    exportToCsv([trade()]);
+    exportFxToCsv([trade()]);
     const [header] = capturedContent().split("\n");
     expect(header).toBe(
       "Trade ID,Status,Trade Date,Direction,CCYCCY,Deal CCY,Notional,Rate,Value Date,Trader",
@@ -73,7 +49,7 @@ describe("exportToCsv", () => {
   });
 
   it("serializes one CSV row per trade with unformatted notional", () => {
-    exportToCsv([
+    exportFxToCsv([
       trade({ tradeId: 11, notional: 2_500_000, tradeName: "Bob" }),
       trade({ tradeId: 12, notional: 7_000_000, tradeName: "Carol" }),
     ]);
@@ -88,21 +64,46 @@ describe("exportToCsv", () => {
 
   it("quotes cells that contain a comma", () => {
     // A trader name with a comma must be wrapped in double quotes.
-    exportToCsv([trade({ tradeName: "Smith, John" })]);
+    exportFxToCsv([trade({ tradeName: "Smith, John" })]);
     const row = capturedContent().split("\n")[1];
     expect(row).toContain('"Smith, John"');
   });
 
   it("leaves comma-free cells unquoted", () => {
-    exportToCsv([trade({ tradeName: "Alice" })]);
+    exportFxToCsv([trade({ tradeName: "Alice" })]);
     const row = capturedContent().split("\n")[1];
     expect(row).not.toContain('"Alice"');
     expect(row).toContain("Alice");
   });
 
   it("revokes the object URL after triggering the download", () => {
-    exportToCsv([trade()]);
+    exportFxToCsv([trade()]);
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock");
   });
 });
+
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 1,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-01-01",
+    valueDate: "2026-01-03",
+    ...over,
+  };
+}
+
+/** Return `captured` after asserting it is non-null (set by RecordingBlob). */
+function capturedContent(): string {
+  if (captured === null)
+    throw new Error(
+      "RecordingBlob was not invoked — exportToCsv did not create a Blob",
+    );
+  return captured;
+}

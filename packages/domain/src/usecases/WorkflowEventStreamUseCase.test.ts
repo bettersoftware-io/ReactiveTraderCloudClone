@@ -12,49 +12,6 @@ import {
   WorkflowEventStreamUseCase,
 } from "./WorkflowEventStreamUseCase.js";
 
-function stubWorkflow(events$: Subject<RfqEvent>): WorkflowPort {
-  return {
-    events: () => {
-      return events$.asObservable();
-    },
-    createRfq: () => {
-      return of(0);
-    },
-    cancelRfq: () => {
-      return of(undefined);
-    },
-    quote: () => {
-      return of(undefined);
-    },
-    pass: () => {
-      return of(undefined);
-    },
-    accept: () => {
-      return of(undefined);
-    },
-  };
-}
-
-function emptyState(): RfqStreamState {
-  return { rfqs: new Map(), quotes: new Map() };
-}
-
-function buildRfq(id: number, state: RfqState = RfqState.Open): Rfq {
-  return {
-    id,
-    instrumentId: 1,
-    quantity: 1000,
-    direction: Direction.Buy,
-    state,
-    expirySecs: 120,
-    creationTimestamp: 1000,
-  };
-}
-
-function buildQuote(id: number, rfqId: number, dealerId = 1): Quote {
-  return { id, rfqId, dealerId, state: { type: "pendingWithoutPrice" } };
-}
-
 describe("reduceRfqEvent", () => {
   it("startOfStateOfTheWorld clears both maps", () => {
     const start: RfqStreamState = {
@@ -154,6 +111,94 @@ describe("reduceRfqEvent", () => {
     });
     expect(next.quotes.get(5)?.state).toEqual({ type: "accepted", price: 100 });
   });
+
+  it("quoteRejected upserts the rejected quote (rejectedWithPrice)", () => {
+    const rejected: Quote = {
+      id: 5,
+      rfqId: 7,
+      dealerId: 1,
+      state: { type: "rejectedWithPrice", price: 105 },
+    };
+    const next = reduceRfqEvent(emptyState(), {
+      type: "quoteRejected",
+      payload: rejected,
+    });
+    expect(next.quotes.get(5)?.state).toEqual({
+      type: "rejectedWithPrice",
+      price: 105,
+    });
+  });
+
+  it("quoteRejected upserts the rejected quote (rejectedWithoutPrice)", () => {
+    const rejected: Quote = {
+      id: 6,
+      rfqId: 7,
+      dealerId: 1,
+      state: { type: "rejectedWithoutPrice" },
+    };
+    const next = reduceRfqEvent(emptyState(), {
+      type: "quoteRejected",
+      payload: rejected,
+    });
+    expect(next.quotes.get(6)?.state).toEqual({ type: "rejectedWithoutPrice" });
+    expect(next.rfqs.size).toBe(0);
+  });
+});
+
+describe("reduceRfqEvent quoteRejected", () => {
+  it("flips a losing sibling to rejected in the quotes map", () => {
+    const events: RfqEvent[] = [
+      { type: "startOfStateOfTheWorld" },
+      {
+        type: "quoteCreated",
+        payload: {
+          id: 1,
+          rfqId: 9,
+          dealerId: 1,
+          state: { type: "pendingWithPrice", price: 100 },
+        },
+      },
+      {
+        type: "quoteCreated",
+        payload: {
+          id: 2,
+          rfqId: 9,
+          dealerId: 2,
+          state: { type: "pendingWithPrice", price: 105 },
+        },
+      },
+      {
+        type: "quoteAccepted",
+        payload: {
+          id: 1,
+          rfqId: 9,
+          dealerId: 1,
+          state: { type: "accepted", price: 100 },
+        },
+      },
+      {
+        type: "quoteRejected",
+        payload: {
+          id: 2,
+          rfqId: 9,
+          dealerId: 2,
+          state: { type: "rejectedWithPrice", price: 105 },
+        },
+      },
+    ];
+    const state = events.reduce(reduceRfqEvent, {
+      rfqs: new Map(),
+      quotes: new Map(),
+    });
+    expect(state.quotes.get(1)?.state).toEqual({
+      type: "accepted",
+      price: 100,
+    });
+    expect(state.quotes.get(2)?.state).toEqual({
+      type: "rejectedWithPrice",
+      price: 105,
+    });
+  });
 });
 
 describe("WorkflowEventStreamUseCase", () => {
@@ -186,3 +231,46 @@ describe("WorkflowEventStreamUseCase", () => {
     sub.unsubscribe();
   });
 });
+
+function stubWorkflow(events$: Subject<RfqEvent>): WorkflowPort {
+  return {
+    events: () => {
+      return events$.asObservable();
+    },
+    createRfq: () => {
+      return of(0);
+    },
+    cancelRfq: () => {
+      return of(undefined);
+    },
+    quote: () => {
+      return of(undefined);
+    },
+    pass: () => {
+      return of(undefined);
+    },
+    accept: () => {
+      return of(undefined);
+    },
+  };
+}
+
+function emptyState(): RfqStreamState {
+  return { rfqs: new Map(), quotes: new Map() };
+}
+
+function buildRfq(id: number, state: RfqState = RfqState.Open): Rfq {
+  return {
+    id,
+    instrumentId: 1,
+    quantity: 1000,
+    direction: Direction.Buy,
+    state,
+    expirySecs: 120,
+    creationTimestamp: 1000,
+  };
+}
+
+function buildQuote(id: number, rfqId: number, dealerId = 1): Quote {
+  return { id, rfqId, dealerId, state: { type: "pendingWithoutPrice" } };
+}

@@ -2,9 +2,13 @@ import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_THEME,
+  type BootVariant,
+  DEFAULT_BOOT_VARIANT,
+  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
-  type Theme,
+  type ThemeModePreference,
+  type ThemeSkin,
   type ViewMode,
 } from "#/preferences/preferences.js";
 
@@ -12,8 +16,11 @@ import type { PreferencesPort } from "../preferencesPort.js";
 
 /** A pre-seeded preferences store. Partial — omitted keys fall back to defaults. */
 export interface PreferencesSeed {
-  theme?: Theme;
+  themeMode?: ThemeModePreference;
+  themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
+  animatedBackground?: boolean;
+  bootVariant?: BootVariant;
 }
 
 /**
@@ -33,21 +40,21 @@ export function describePreferencesPortContract(
   describe(`${label} :: PreferencesPort contract`, () => {
     it("empty store emits the default theme and view mode first", async () => {
       const port = makeEmpty();
-      expect(await firstValueFrom(port.theme$())).toBe(DEFAULT_THEME);
+      expect(await firstValueFrom(port.themeMode$())).toBe(DEFAULT_THEME_MODE);
       expect(await firstValueFrom(port.viewMode$())).toBe(DEFAULT_VIEW_MODE);
     });
 
     it("emits the current value synchronously on subscribe (no flash)", () => {
       const port = makeEmpty();
-      port.setTheme("light");
+      port.setThemeMode("light");
       port.setViewMode("price");
 
-      let theme: Theme | undefined;
+      let themeMode: ThemeModePreference | undefined;
       let viewMode: ViewMode | undefined;
       port
-        .theme$()
+        .themeMode$()
         .subscribe((t) => {
-          theme = t;
+          themeMode = t;
         })
         .unsubscribe();
       port
@@ -58,21 +65,30 @@ export function describePreferencesPortContract(
         .unsubscribe();
 
       // Synchronous: values are set by the time .subscribe() returns.
-      expect(theme).toBe("light");
+      expect(themeMode).toBe("light");
       expect(viewMode).toBe("price");
     });
 
-    it("setTheme persists and pushes to existing subscribers", () => {
+    it("setThemeMode persists and pushes to existing subscribers", () => {
       const port = makeEmpty();
-      const seen: Theme[] = [];
-      const sub = port.theme$().subscribe((t) => {
+      const seen: ThemeModePreference[] = [];
+      const sub = port.themeMode$().subscribe((t) => {
         return seen.push(t);
       });
 
-      port.setTheme("light");
+      port.setThemeMode("light");
 
       sub.unsubscribe();
-      expect(seen).toEqual([DEFAULT_THEME, "light"]);
+      expect(seen).toEqual([DEFAULT_THEME_MODE, "light"]);
+    });
+
+    it("persists and reads back the 'system' mode preference", async () => {
+      const port = makeEmpty();
+      port.setThemeMode("system");
+      expect(await firstValueFrom(port.themeMode$())).toBe("system");
+
+      const seeded = makeSeeded({ themeMode: "system" });
+      expect(await firstValueFrom(seeded.themeMode$())).toBe("system");
     });
 
     it("setViewMode persists and pushes to existing subscribers", () => {
@@ -89,15 +105,72 @@ export function describePreferencesPortContract(
     });
 
     it("reads back a seeded store", async () => {
-      const port = makeSeeded({ theme: "light", viewMode: "price" });
-      expect(await firstValueFrom(port.theme$())).toBe("light");
+      const port = makeSeeded({ themeMode: "light", viewMode: "price" });
+      expect(await firstValueFrom(port.themeMode$())).toBe("light");
       expect(await firstValueFrom(port.viewMode$())).toBe("price");
     });
 
     it("falls back to defaults for unseeded keys", async () => {
-      const port = makeSeeded({ theme: "light" });
-      expect(await firstValueFrom(port.theme$())).toBe("light");
+      const port = makeSeeded({ themeMode: "light" });
+      expect(await firstValueFrom(port.themeMode$())).toBe("light");
       expect(await firstValueFrom(port.viewMode$())).toBe(DEFAULT_VIEW_MODE);
+    });
+
+    it("empty store emits the default skin and animatedBackground=false", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.themeSkin$())).toBe(DEFAULT_THEME_SKIN);
+      expect(await firstValueFrom(port.animatedBackground$())).toBe(false);
+    });
+
+    it("setThemeSkin persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: ThemeSkin[] = [];
+      const sub = port.themeSkin$().subscribe((s) => {
+        return seen.push(s);
+      });
+      port.setThemeSkin("terminal");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_THEME_SKIN, "terminal"]);
+    });
+
+    it("setAnimatedBackground persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: boolean[] = [];
+      const sub = port.animatedBackground$().subscribe((on) => {
+        return seen.push(on);
+      });
+      port.setAnimatedBackground(true);
+      sub.unsubscribe();
+      expect(seen).toEqual([false, true]);
+    });
+
+    it("reads back a seeded skin + animatedBackground", async () => {
+      const port = makeSeeded({ themeSkin: "neon", animatedBackground: true });
+      expect(await firstValueFrom(port.themeSkin$())).toBe("neon");
+      expect(await firstValueFrom(port.animatedBackground$())).toBe(true);
+    });
+
+    it("empty store emits the default bootVariant", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.bootVariant$())).toBe(
+        DEFAULT_BOOT_VARIANT,
+      );
+    });
+
+    it("setBootVariant persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: BootVariant[] = [];
+      const sub = port.bootVariant$().subscribe((v) => {
+        return seen.push(v);
+      });
+      port.setBootVariant("laser");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_BOOT_VARIANT, "laser"]);
+    });
+
+    it("reads back a seeded bootVariant", async () => {
+      const port = makeSeeded({ bootVariant: "docking" });
+      expect(await firstValueFrom(port.bootVariant$())).toBe("docking");
     });
   });
 }

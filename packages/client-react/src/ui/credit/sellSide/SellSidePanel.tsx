@@ -1,40 +1,14 @@
 import type { ReactElement } from "react";
 
 import { ADAPTIVE_BANK_NAME, type Instrument, type Rfq } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { TradeTicket } from "./TradeTicket";
 
 import styles from "./SellSidePanel.module.css";
 
-interface SellSideRfqRowProps {
-  rfq: Rfq;
-  adaptiveBankId: number;
-  instrumentMap: Map<number, Instrument>;
-}
-
-function SellSideRfqRow({
-  rfq,
-  adaptiveBankId,
-  instrumentMap,
-}: SellSideRfqRowProps): ReactElement | null {
-  const quotes = useHooks().useQuotesForRfq(rfq.id);
-  const abQuote = quotes.find((q) => {
-    return q.dealerId === adaptiveBankId;
-  });
-  if (!abQuote) return null;
-  return (
-    <TradeTicket
-      rfq={rfq}
-      quote={abQuote}
-      instrument={instrumentMap.get(rfq.instrumentId)}
-    />
-  );
-}
-
 export function SellSidePanel(): ReactElement {
-  const { useRfqs, useInstruments, useDealers } = useHooks();
+  const { useRfqs, useInstruments, useDealers } = useViewModel();
   const rfqs = useRfqs();
   const instruments = useInstruments();
   const dealers = useDealers();
@@ -68,5 +42,31 @@ export function SellSidePanel(): ReactElement {
         })
       )}
     </div>
+  );
+}
+
+interface SellSideRfqRowProps {
+  rfq: Rfq;
+  adaptiveBankId: number;
+  instrumentMap: Map<number, Instrument>;
+}
+
+function SellSideRfqRow({
+  rfq,
+  adaptiveBankId,
+  instrumentMap,
+}: SellSideRfqRowProps): ReactElement | null {
+  const { useQuotesForRfq } = useViewModel();
+  const quotes = useQuotesForRfq(rfq.id);
+  const abQuote = quotes.find((q) => {
+    return q.dealerId === adaptiveBankId;
+  });
+  if (!abQuote) return null;
+  return (
+    <TradeTicket
+      rfq={rfq}
+      quote={abQuote}
+      instrument={instrumentMap.get(rfq.instrumentId)}
+    />
   );
 }

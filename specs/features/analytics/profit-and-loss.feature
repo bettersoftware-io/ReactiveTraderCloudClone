@@ -47,7 +47,7 @@ Feature: Analytics - Profit and Loss
 
   Scenario: P&L value is formatted as a whole number with commas
     Given the most recent P&L value is 12345
-    Then the displayed value includes thousands separators
+    Then the displayed value is "USD +12,345"
 
   Scenario: P&L value updates as new data arrives
     Given the last P&L value is displayed
@@ -58,9 +58,9 @@ Feature: Analytics - Profit and Loss
   # Positions Bubble Chart
   # ---------------------------------------------------------------------------
 
-  Scenario: Bubble chart displays a bubble for each currency with a position
+  Scenario: Bubble chart displays a bubble for each currency with a non-zero net position
     Given the analytics service is providing position data
-    Then the bubble chart displays one bubble for each currency that has a non-zero position
+    Then the bubble chart displays one bubble per currency whose net traded amount (base + counter across all pairs) is non-zero
     And currencies may include: NZD, USD, JPY, GBP, EUR, CAD, AUD
 
   Scenario: Each bubble is labeled with its currency code
@@ -75,18 +75,18 @@ Feature: Analytics - Profit and Loss
     Given a currency has a negative traded amount
     Then its bubble is styled with the sell/negative color
 
-  Scenario: Bubble size represents relative position magnitude
-    Given two currencies have different absolute position sizes
-    Then the currency with the larger absolute position has a larger bubble
+  Scenario: Bubble size represents relative aggregated position magnitude
+    Given two currencies have different absolute net traded amounts
+    Then the currency with the larger absolute net traded amount has a larger bubble
     And bubble radii scale linearly between a minimum of 15 pixels and a maximum of 60 pixels
 
   Scenario: Hovering over a bubble shows a tooltip
     When the user hovers over a currency bubble
-    Then a tooltip appears displaying the currency code followed by the formatted amount
+    Then a tooltip appears displaying the currency code followed by the net traded amount
     And the tooltip text follows the pattern "{CURRENCY} {amount}"
     And the amount is formatted as a whole number with commas
 
-  Scenario: Bubbles can be dragged to different positions
+  Scenario: Bubbles can be dragged and drift back
     When the user drags a bubble to a new location
     Then the bubble moves to follow the drag
     And the tooltip remains visible during the drag
@@ -112,11 +112,12 @@ Feature: Analytics - Profit and Loss
   Scenario: Each currency pair shows its P&L value with abbreviated notation
     Given a currency pair has a P&L of 1234
     Then the displayed value is "1k"
-    And for a P&L of 12345678 the displayed value is "12,346k"
+    And for a P&L of 12345678 the displayed value is "12m"
 
   Scenario: Hovering over a P&L bar value shows the precise amount
     When the user hovers over a currency pair P&L value
-    Then the display switches to a precise number formatted to 2 decimal places
+    Then the display switches to a precise number formatted to 2 decimal places with thousands separators
+    And for a P&L of 1234 the hovered value is "1,234.00"
 
   Scenario: P&L bar direction reflects the sign of the value
     Given a currency pair has a positive P&L

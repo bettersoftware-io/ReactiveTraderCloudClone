@@ -1,29 +1,20 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import type { Trade } from "@rtc/domain";
-
 import type { ColumnFilter } from "./filterState";
 
 import styles from "./SetFilter.module.css";
 
-interface SetFilterProps {
-  column: keyof Trade;
-  trades: readonly Trade[];
-  currentFilter: ColumnFilter | undefined;
-  onApply: (filter: ColumnFilter | null) => void;
-}
-
-export function SetFilter({
+export function SetFilter<TRow>({
   column,
-  trades,
+  rows,
   currentFilter,
   onApply,
-}: SetFilterProps): ReactElement {
+}: SetFilterProps<TRow>): ReactElement {
   const valSet = new Set<string>();
 
-  for (const trade of trades) {
-    valSet.add(String(trade[column]));
+  for (const row of rows) {
+    valSet.add(String(row[column]));
   }
 
   const allValues = [...valSet].sort();
@@ -57,6 +48,7 @@ export function SetFilter({
           <label key={val} className={styles.option}>
             <input
               type="checkbox"
+              data-testid={`set-filter-option-${val}`}
               checked={selected.has(val)}
               onChange={() => {
                 return toggleValue(val);
@@ -66,9 +58,21 @@ export function SetFilter({
           </label>
         );
       })}
-      <button type="button" onClick={handleApply} className={styles.applyBtn}>
+      <button
+        type="button"
+        data-testid="set-filter-apply"
+        onClick={handleApply}
+        className={styles.applyBtn}
+      >
         Apply
       </button>
     </div>
   );
+}
+
+interface SetFilterProps<TRow> {
+  column: keyof TRow;
+  rows: readonly TRow[];
+  currentFilter: ColumnFilter<TRow> | undefined;
+  onApply: (filter: ColumnFilter<TRow> | null) => void;
 }

@@ -8,27 +8,11 @@ import {
   type SortState,
 } from "./columnSort";
 
-function trade(over: Partial<Trade> = {}): Trade {
-  return {
-    tradeId: 1,
-    tradeName: "Alice",
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.1,
-    status: TradeStatus.Done,
-    tradeDate: "2026-01-01",
-    valueDate: "2026-01-03",
-    ...over,
-  };
-}
-
 describe("nextSortDirection", () => {
-  it("starts a numeric/date column descending on first click", () => {
+  it("starts a date/ID column descending on first click", () => {
     const none: SortState = { column: null, direction: null };
-    expect(nextSortDirection("notional", none)).toEqual({
-      column: "notional",
+    expect(nextSortDirection("tradeId", none)).toEqual({
+      column: "tradeId",
       direction: "desc",
     });
     expect(nextSortDirection("tradeDate", none)).toEqual({
@@ -37,19 +21,39 @@ describe("nextSortDirection", () => {
     });
   });
 
-  it("starts a text column ascending on first click", () => {
+  it("starts a non-desc column (text or numeric) ascending on first click", () => {
     const none: SortState = { column: null, direction: null };
     expect(nextSortDirection("tradeName", none)).toEqual({
       column: "tradeName",
       direction: "asc",
     });
+    expect(nextSortDirection("notional", none)).toEqual({
+      column: "notional",
+      direction: "asc",
+    });
+    expect(nextSortDirection("spotRate", none)).toEqual({
+      column: "spotRate",
+      direction: "asc",
+    });
   });
 
-  it("cycles desc -> asc -> none on the same column", () => {
-    const desc: SortState = { column: "notional", direction: "desc" };
-    const asc = nextSortDirection("notional", desc);
-    expect(asc).toEqual({ column: "notional", direction: "asc" });
-    expect(nextSortDirection("notional", asc)).toEqual({
+  it("cycles asc -> desc -> none on an asc-first column", () => {
+    const none: SortState = { column: null, direction: null };
+    const step1 = nextSortDirection("notional", none);
+    expect(step1).toEqual({ column: "notional", direction: "asc" });
+    const step2 = nextSortDirection("notional", step1);
+    expect(step2).toEqual({ column: "notional", direction: "desc" });
+    expect(nextSortDirection("notional", step2)).toEqual({
+      column: null,
+      direction: null,
+    });
+  });
+
+  it("cycles desc -> asc -> none on a desc-first column", () => {
+    const desc: SortState = { column: "tradeId", direction: "desc" };
+    const asc = nextSortDirection("tradeId", desc);
+    expect(asc).toEqual({ column: "tradeId", direction: "asc" });
+    expect(nextSortDirection("tradeId", asc)).toEqual({
       column: null,
       direction: null,
     });
@@ -59,12 +63,20 @@ describe("nextSortDirection", () => {
     const nulled: SortState = { column: "notional", direction: null };
     expect(nextSortDirection("notional", nulled)).toEqual({
       column: "notional",
-      direction: "desc",
+      direction: "asc",
     });
     const nulledText: SortState = { column: "tradeName", direction: null };
     expect(nextSortDirection("tradeName", nulledText)).toEqual({
       column: "tradeName",
       direction: "asc",
+    });
+    // A desc-first column re-clicked from null re-initialises DESCending — the
+    // mirror of the asc-first cases above. Covers the desc arm of the null
+    // re-init branch, which the asc-first columns never reach.
+    const nulledDesc: SortState = { column: "tradeId", direction: null };
+    expect(nextSortDirection("tradeId", nulledDesc)).toEqual({
+      column: "tradeId",
+      direction: "desc",
     });
   });
 
@@ -168,3 +180,19 @@ describe("applySortToTrades", () => {
     expect(trades).toEqual(before);
   });
 });
+
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 1,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.1,
+    status: TradeStatus.Done,
+    tradeDate: "2026-01-01",
+    valueDate: "2026-01-03",
+    ...over,
+  };
+}

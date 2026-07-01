@@ -1,5 +1,3 @@
-import { EventEmitter } from "node:events";
-
 import { interval, map, type Observable, of, throwError } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 import type { WebSocket } from "ws";
@@ -18,71 +16,9 @@ import {
 
 import type { ServiceContainer } from "../services/serviceContainer.js";
 import { ThroughputService } from "../services/ThroughputService.js";
+import { FakeWs } from "./FakeWs.testHelpers.js";
 import { CLIENT_MSG, SERVER_MSG, type WsMessage } from "./protocol.js";
 import { handleConnection } from "./wsHandler.js";
-
-// ── Named types for inline casts ─────────────────────────────────
-
-/** Generic discriminated-frame type field only. */
-interface TypedFrame {
-  type: string;
-}
-
-/** Reference-data stream payload shape. */
-interface ReferenceDataPayload {
-  updates: { symbol: string; ratePrecision: number; pipsPosition: number }[];
-  isStateOfTheWorld: boolean;
-  isStale: boolean;
-}
-
-/** isStateOfTheWorld accessor on blotter/stream payloads. */
-interface StateOfWorldPayload {
-  isStateOfTheWorld: boolean;
-}
-
-/** Generic RPC ack body carrying an arbitrary typed payload. */
-interface RpcAckBody {
-  type: string;
-  payload: Record<string, unknown>;
-}
-
-/** Throughput RPC ack body. */
-interface ThroughputAckBody {
-  type: string;
-  payload: number;
-}
-
-/** Quote-event workflow body (quoteCreated / quoteQuoted / quotePassed / quoteAccepted). */
-interface QuoteEventBody {
-  type: string;
-  payload: {
-    id: number;
-    rfqId: number;
-    dealerId: number;
-    state: { type: string };
-  };
-}
-
-/** Parameter shape for the fake executeTrade service in fakeServices(). */
-interface ExecuteTradeReq {
-  currencyPair: string;
-  notional: number;
-  dealtCurrency: string;
-  direction: Direction;
-  spotRate: number;
-}
-
-/**
- * Runtime-safe non-null assertion for use in tests.
- * Throws with a clear message instead of silently compiling away like `!`.
- */
-function defined<T>(
-  value: T | null | undefined,
-  message = "Expected value to be defined",
-): NonNullable<T> {
-  if (value === null || value === undefined) throw new Error(message);
-  return value as NonNullable<T>;
-}
 
 /**
  * Protocol-level tests for the WebSocket translation layer (wsHandler).
@@ -96,271 +32,9 @@ function defined<T>(
  * stay fast and deterministic and isolate the handler's own behaviour.
  */
 
-// ── Fake ws socket ───────────────────────────────────────────────
-
-/** Minimal stand-in for the `ws` WebSocket the handler talks to. */
-class FakeWs extends EventEmitter {
-  readonly OPEN = 1;
-
-  readyState = 1;
-
-  readonly outbound: WsMessage[] = [];
-
-  send(data: string): void {
-    this.outbound.push(JSON.parse(data) as WsMessage);
-  }
-
-  /** Simulate a client → server frame. */
-  receive(msg: WsMessage): void {
-    this.emit("message", JSON.stringify(msg));
-  }
-
-  /** Simulate the socket closing. */
-  closeConnection(): void {
-    this.readyState = 3;
-    this.emit("close");
-  }
-
-  framesOfType(type: string): WsMessage[] {
-    return this.outbound.filter((m) => {
-      return m.type === type;
-    });
-  }
-}
-
-function wait(ms = 5): Promise<void> {
-  return new Promise((r) => {
-    return setTimeout(r, ms);
-  });
-}
-
-// ── Wire-shape contract helper ───────────────────────────────────
-
-/**
- * Recursively asserts `actual` has the SAME shape (key set + value types) as
- * `canonical` — NOT the same values (stream payloads are simulator-random).
- * Arrays are checked element-shape against the first canonical element. This
- * ties the server's emitted frames to the @rtc/shared fixture spine without
- * coupling to non-deterministic values or to handler internals.
- */
-function expectShape(
-  actual: unknown,
-  canonical: unknown,
-  path = "payload",
-): void {
-  if (Array.isArray(canonical)) {
-    expect(Array.isArray(actual), `${path} should be an array`).toBe(true);
-    const arr = actual as unknown[];
-
-    // Element shape is checked against the first element only. Empty arrays on
-    // either side are NOT shape-checked — keep the fakes emitting ≥1 element so
-    // array assertions don't silently become vacuous.
-    if (canonical.length > 0 && arr.length > 0) {
-      expectShape(arr[0], canonical[0], `${path}[0]`);
-    }
-
-    return;
-  }
-
-  if (canonical !== null && typeof canonical === "object") {
-    expect(
-      actual !== null && typeof actual === "object",
-      `${path} should be an object`,
-    ).toBe(true);
-    const obj = actual as Record<string, unknown>;
-
-    for (const key of Object.keys(canonical as Record<string, unknown>)) {
-      expect(obj, `${path} missing key "${key}"`).toHaveProperty(key);
-      expectShape(
-        obj[key],
-        (canonical as Record<string, unknown>)[key],
-        `${path}.${key}`,
-      );
-    }
-
-    return;
-  }
-
-  expect(typeof actual, `${path} type`).toBe(typeof canonical);
-}
-
-/** Assert a frame has the expected protocol type and a payload matching the canonical wire shape. */
-function expectFrameShape(
-  frame: WsMessage | undefined,
-  type: string,
-  canonicalPayload: unknown,
-): void {
-  expect(frame, `expected a ${type} frame`).toBeDefined();
-  const definedFrame = defined(frame, `expected a ${type} frame`);
-  expect(definedFrame.type).toBe(type);
-  expectShape(definedFrame.payload, canonicalPayload, "payload");
-}
-
 // ── Fake domain services ─────────────────────────────────────────
 
 const PRICE_TICK_MS = 10;
-
-/**
- * Build a ServiceContainer of immediate fakes. Pricing is a 10ms interval (so
- * the "stops after close" test is meaningful); everything else emits once and
- * completes. Overrides let individual tests swap in a failing service.
- */
-function fakeServices(
-  overrides: Partial<ServiceContainer> = {},
-): ServiceContainer {
-  const base = {
-    referenceData: {
-      getCurrencyPairs: (): Observable<unknown> => {
-        return of([
-          {
-            base: "EUR",
-            term: "USD",
-            symbol: "EURUSD",
-            ratePrecision: 5,
-            pipsPosition: 4,
-            defaultNotional: 1_000_000,
-          },
-        ]);
-      },
-    },
-    pricing: {
-      getPriceUpdates: (symbol: string): Observable<unknown> => {
-        return interval(PRICE_TICK_MS).pipe(
-          map(() => {
-            return {
-              symbol,
-              bid: 1.0998,
-              ask: 1.1002,
-              mid: 1.1,
-              valueDate: "2026-01-01",
-              creationTimestamp: 1,
-            };
-          }),
-        );
-      },
-      getPriceHistory: (): Observable<unknown> => {
-        return of([
-          {
-            symbol: "EURUSD",
-            bid: 1.0998,
-            ask: 1.1002,
-            mid: 1.1,
-            valueDate: "2026-01-01",
-            creationTimestamp: 1,
-          },
-        ]);
-      },
-    },
-    execution: {
-      executeTrade: (req: ExecuteTradeReq): Observable<unknown> => {
-        return of({
-          tradeId: 1,
-          tradeName: "RTC",
-          currencyPair: req.currencyPair,
-          notional: req.notional,
-          dealtCurrency: req.dealtCurrency,
-          direction: req.direction,
-          spotRate: req.spotRate,
-          status: TradeStatus.Done,
-          tradeDate: "2026-01-01",
-          valueDate: "2026-01-01",
-        });
-      },
-    },
-    blotter: {
-      getTradeStream: (): Observable<unknown> => {
-        return of([
-          {
-            tradeId: 1,
-            tradeName: "RTC",
-            currencyPair: "EURUSD",
-            notional: 1_000_000,
-            dealtCurrency: "EUR",
-            direction: Direction.Buy,
-            spotRate: 1.1,
-            status: TradeStatus.Done,
-            tradeDate: "2026-01-01",
-            valueDate: "2026-01-01",
-          },
-        ]);
-      },
-    },
-    analytics: {
-      getAnalytics: (): Observable<unknown> => {
-        return of({
-          currentPositions: [
-            {
-              symbol: "EURUSD",
-              basePnl: 1,
-              baseTradedAmount: 2,
-              counterTradedAmount: 3,
-            },
-          ],
-          history: [{ timestamp: "2026-01-01T00:00:00.000Z", usdPnl: 4 }],
-        });
-      },
-    },
-    instruments: {
-      getInstruments: (): Observable<unknown> => {
-        return of([
-          {
-            id: 1,
-            name: "US Treasury 10Y",
-            cusip: "912828C57",
-            ticker: "T",
-            maturity: "2036-01-01",
-            interestRate: 0.04,
-            benchmark: "T",
-          },
-        ]);
-      },
-    },
-    dealers: {
-      getDealers: (): Observable<unknown> => {
-        return of([{ id: 1, name: "Acme Bank" }]);
-      },
-    },
-    workflow: {
-      events: (): Observable<RfqEvent> => {
-        return of({
-          type: "rfqCreated",
-          payload: {
-            id: 1,
-            instrumentId: 1,
-            quantity: 1_000_000,
-            direction: Direction.Buy,
-            state: "Open",
-            expirySecs: 120,
-            creationTimestamp: 1,
-          },
-        } as unknown as RfqEvent);
-      },
-      createRfq: (): Observable<unknown> => {
-        return of(1);
-      },
-      cancelRfq: (): Observable<unknown> => {
-        return of(undefined);
-      },
-      quote: (): Observable<unknown> => {
-        return of(undefined);
-      },
-      pass: (): Observable<unknown> => {
-        return of(undefined);
-      },
-      accept: (): Observable<unknown> => {
-        return of(undefined);
-      },
-    },
-    throughput: new ThroughputService(),
-  };
-  return { ...base, ...overrides } as unknown as ServiceContainer;
-}
-
-function connect(services: ServiceContainer): FakeWs {
-  const ws = new FakeWs();
-  handleConnection(ws as unknown as WebSocket, services);
-  return ws;
-}
 
 describe("wsHandler protocol", () => {
   it("routes subscribe.pricing to stream.priceTick frames with the PriceTickDto shape", async () => {
@@ -1077,6 +751,7 @@ describe("wsHandler workflow quote-event transforms", () => {
     "quoteQuoted",
     "quotePassed",
     "quoteAccepted",
+    "quoteRejected",
   ] as const) {
     it(`maps a ${type} RfqEvent to a stream.workflowEvent QuoteBodyDto frame`, async () => {
       const ws = connect(
@@ -1097,6 +772,34 @@ describe("wsHandler workflow quote-event transforms", () => {
       });
     });
   }
+
+  it("maps a quoteRejected RfqEvent with rejectedWithPrice state through without mutating the state", async () => {
+    const rejectedEvent = {
+      type: "quoteRejected",
+      payload: {
+        id: 11,
+        rfqId: 5,
+        dealerId: 3,
+        state: { type: "rejectedWithPrice", price: 105 },
+      },
+    } as unknown as RfqEvent;
+    const ws = connect(
+      fakeServices({ workflow: workflowEmitting(rejectedEvent) }),
+    );
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+    await wait();
+    const [frame] = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT);
+    expect(frame).toBeDefined();
+    expect(defined(frame).type).toBe(SERVER_MSG.WORKFLOW_EVENT);
+    const body = defined(frame).payload as QuoteEventBody;
+    expect(body.type).toBe("quoteRejected");
+    expect(body.payload).toEqual({
+      id: 11,
+      rfqId: 5,
+      dealerId: 3,
+      state: { type: "rejectedWithPrice", price: 105 },
+    });
+  });
 });
 
 describe("wsHandler workflow rfq-event transforms", () => {
@@ -1450,6 +1153,104 @@ describe("wsHandler RPC synchronous-throw handling", () => {
   });
 });
 
+describe("wsHandler abort-path cleanup", () => {
+  const TICK_MS = 10;
+
+  it("stops streaming instruments after the socket closes (abort-listener path)", async () => {
+    // Use an interval-based instruments service so the subscription is still
+    // active when the socket closes, exercising the abort-signal listener at
+    // wsHandler.ts streamInstruments lines 409-416.
+    let tick = 0;
+    const intervalInstruments = {
+      getInstruments: (): Observable<unknown> => {
+        return interval(TICK_MS).pipe(
+          map(() => {
+            tick += 1;
+            return [
+              {
+                id: tick,
+                name: `Bond ${tick}`,
+                cusip: "912828C57",
+                ticker: "T",
+                maturity: "2036-01-01",
+                interestRate: 0.04,
+                benchmark: "T",
+              },
+            ];
+          }),
+        );
+      },
+    } as unknown as ServiceContainer["instruments"];
+
+    const ws = connect(fakeServices({ instruments: intervalInstruments }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_INSTRUMENTS });
+    await wait(TICK_MS * 3);
+
+    const before = ws.framesOfType(SERVER_MSG.INSTRUMENT_EVENT).length;
+    expect(before).toBeGreaterThan(0);
+
+    ws.closeConnection();
+    await wait(TICK_MS * 4);
+
+    const after = ws.framesOfType(SERVER_MSG.INSTRUMENT_EVENT).length;
+    expect(after).toBe(before);
+  });
+
+  it("stops streaming workflow events after the socket closes (abort-listener path)", async () => {
+    // Use an interval-based workflow events service so the subscription is
+    // still active when the socket closes, exercising the abort-signal listener
+    // at wsHandler.ts streamWorkflow lines 524-531.
+    const intervalWorkflow = {
+      events: (): Observable<RfqEvent> => {
+        return interval(TICK_MS).pipe(
+          map(() => {
+            return {
+              type: "rfqCreated",
+              payload: {
+                id: 1,
+                instrumentId: 1,
+                quantity: 1_000_000,
+                direction: Direction.Buy,
+                state: "Open",
+                expirySecs: 120,
+                creationTimestamp: Date.now(),
+              },
+            } as unknown as RfqEvent;
+          }),
+        );
+      },
+      createRfq: (): Observable<unknown> => {
+        return of(1);
+      },
+      cancelRfq: (): Observable<unknown> => {
+        return of(undefined);
+      },
+      quote: (): Observable<unknown> => {
+        return of(undefined);
+      },
+      pass: (): Observable<unknown> => {
+        return of(undefined);
+      },
+      accept: (): Observable<unknown> => {
+        return of(undefined);
+      },
+    } as unknown as ServiceContainer["workflow"];
+
+    const ws = connect(fakeServices({ workflow: intervalWorkflow }));
+    ws.receive({ type: CLIENT_MSG.SUBSCRIBE_WORKFLOW });
+    await wait(TICK_MS * 3);
+
+    const before = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT).length;
+    expect(before).toBeGreaterThan(0);
+
+    ws.closeConnection();
+    await wait(TICK_MS * 4);
+
+    const after = ws.framesOfType(SERVER_MSG.WORKFLOW_EVENT).length;
+    expect(after).toBe(before);
+  });
+});
+
 describe("expectShape helper", () => {
   it("passes when shapes match regardless of values", () => {
     expect(() => {
@@ -1472,3 +1273,296 @@ describe("expectShape helper", () => {
     }).toThrow();
   });
 });
+
+// ── Named types for inline casts ─────────────────────────────────
+
+/** Generic discriminated-frame type field only. */
+interface TypedFrame {
+  type: string;
+}
+
+/** Reference-data stream payload shape. */
+interface ReferenceDataPayload {
+  updates: { symbol: string; ratePrecision: number; pipsPosition: number }[];
+  isStateOfTheWorld: boolean;
+  isStale: boolean;
+}
+
+/** isStateOfTheWorld accessor on blotter/stream payloads. */
+interface StateOfWorldPayload {
+  isStateOfTheWorld: boolean;
+}
+
+/** Generic RPC ack body carrying an arbitrary typed payload. */
+interface RpcAckBody {
+  type: string;
+  payload: Record<string, unknown>;
+}
+
+/** Throughput RPC ack body. */
+interface ThroughputAckBody {
+  type: string;
+  payload: number;
+}
+
+/** Quote-event workflow body (quoteCreated / quoteQuoted / quotePassed / quoteAccepted). */
+interface QuoteEventBody {
+  type: string;
+  payload: {
+    id: number;
+    rfqId: number;
+    dealerId: number;
+    state: { type: string };
+  };
+}
+
+/** Parameter shape for the fake executeTrade service in fakeServices(). */
+interface ExecuteTradeReq {
+  currencyPair: string;
+  notional: number;
+  dealtCurrency: string;
+  direction: Direction;
+  spotRate: number;
+}
+
+/**
+ * Runtime-safe non-null assertion for use in tests.
+ * Throws with a clear message instead of silently compiling away like `!`.
+ */
+function defined<T>(
+  value: T | null | undefined,
+  message = "Expected value to be defined",
+): NonNullable<T> {
+  if (value === null || value === undefined) throw new Error(message);
+  return value as NonNullable<T>;
+}
+
+function wait(ms = 5): Promise<void> {
+  return new Promise((r) => {
+    return setTimeout(r, ms);
+  });
+}
+
+// ── Wire-shape contract helper ───────────────────────────────────
+
+/**
+ * Recursively asserts `actual` has the SAME shape (key set + value types) as
+ * `canonical` — NOT the same values (stream payloads are simulator-random).
+ * Arrays are checked element-shape against the first canonical element. This
+ * ties the server's emitted frames to the @rtc/shared fixture spine without
+ * coupling to non-deterministic values or to handler internals.
+ */
+function expectShape(
+  actual: unknown,
+  canonical: unknown,
+  path = "payload",
+): void {
+  if (Array.isArray(canonical)) {
+    expect(Array.isArray(actual), `${path} should be an array`).toBe(true);
+    const arr = actual as unknown[];
+
+    // Element shape is checked against the first element only. Empty arrays on
+    // either side are NOT shape-checked — keep the fakes emitting ≥1 element so
+    // array assertions don't silently become vacuous.
+    if (canonical.length > 0 && arr.length > 0) {
+      expectShape(arr[0], canonical[0], `${path}[0]`);
+    }
+
+    return;
+  }
+
+  if (canonical !== null && typeof canonical === "object") {
+    expect(
+      actual !== null && typeof actual === "object",
+      `${path} should be an object`,
+    ).toBe(true);
+    const obj = actual as Record<string, unknown>;
+
+    for (const key of Object.keys(canonical as Record<string, unknown>)) {
+      expect(obj, `${path} missing key "${key}"`).toHaveProperty(key);
+      expectShape(
+        obj[key],
+        (canonical as Record<string, unknown>)[key],
+        `${path}.${key}`,
+      );
+    }
+
+    return;
+  }
+
+  expect(typeof actual, `${path} type`).toBe(typeof canonical);
+}
+
+/** Assert a frame has the expected protocol type and a payload matching the canonical wire shape. */
+function expectFrameShape(
+  frame: WsMessage | undefined,
+  type: string,
+  canonicalPayload: unknown,
+): void {
+  expect(frame, `expected a ${type} frame`).toBeDefined();
+  const definedFrame = defined(frame, `expected a ${type} frame`);
+  expect(definedFrame.type).toBe(type);
+  expectShape(definedFrame.payload, canonicalPayload, "payload");
+}
+
+/**
+ * Build a ServiceContainer of immediate fakes. Pricing is a 10ms interval (so
+ * the "stops after close" test is meaningful); everything else emits once and
+ * completes. Overrides let individual tests swap in a failing service.
+ */
+function fakeServices(
+  overrides: Partial<ServiceContainer> = {},
+): ServiceContainer {
+  const base = {
+    referenceData: {
+      getCurrencyPairs: (): Observable<unknown> => {
+        return of([
+          {
+            base: "EUR",
+            term: "USD",
+            symbol: "EURUSD",
+            ratePrecision: 5,
+            pipsPosition: 4,
+            defaultNotional: 1_000_000,
+          },
+        ]);
+      },
+    },
+    pricing: {
+      getPriceUpdates: (symbol: string): Observable<unknown> => {
+        return interval(PRICE_TICK_MS).pipe(
+          map(() => {
+            return {
+              symbol,
+              bid: 1.0998,
+              ask: 1.1002,
+              mid: 1.1,
+              valueDate: "2026-01-01",
+              creationTimestamp: 1,
+            };
+          }),
+        );
+      },
+      getPriceHistory: (): Observable<unknown> => {
+        return of([
+          {
+            symbol: "EURUSD",
+            bid: 1.0998,
+            ask: 1.1002,
+            mid: 1.1,
+            valueDate: "2026-01-01",
+            creationTimestamp: 1,
+          },
+        ]);
+      },
+    },
+    execution: {
+      executeTrade: (req: ExecuteTradeReq): Observable<unknown> => {
+        return of({
+          tradeId: 1,
+          tradeName: "RTC",
+          currencyPair: req.currencyPair,
+          notional: req.notional,
+          dealtCurrency: req.dealtCurrency,
+          direction: req.direction,
+          spotRate: req.spotRate,
+          status: TradeStatus.Done,
+          tradeDate: "2026-01-01",
+          valueDate: "2026-01-01",
+        });
+      },
+    },
+    blotter: {
+      getTradeStream: (): Observable<unknown> => {
+        return of([
+          {
+            tradeId: 1,
+            tradeName: "RTC",
+            currencyPair: "EURUSD",
+            notional: 1_000_000,
+            dealtCurrency: "EUR",
+            direction: Direction.Buy,
+            spotRate: 1.1,
+            status: TradeStatus.Done,
+            tradeDate: "2026-01-01",
+            valueDate: "2026-01-01",
+          },
+        ]);
+      },
+    },
+    analytics: {
+      getAnalytics: (): Observable<unknown> => {
+        return of({
+          currentPositions: [
+            {
+              symbol: "EURUSD",
+              basePnl: 1,
+              baseTradedAmount: 2,
+              counterTradedAmount: 3,
+            },
+          ],
+          history: [{ timestamp: "2026-01-01T00:00:00.000Z", usdPnl: 4 }],
+        });
+      },
+    },
+    instruments: {
+      getInstruments: (): Observable<unknown> => {
+        return of([
+          {
+            id: 1,
+            name: "US Treasury 10Y",
+            cusip: "912828C57",
+            ticker: "T",
+            maturity: "2036-01-01",
+            interestRate: 0.04,
+            benchmark: "T",
+          },
+        ]);
+      },
+    },
+    dealers: {
+      getDealers: (): Observable<unknown> => {
+        return of([{ id: 1, name: "Acme Bank" }]);
+      },
+    },
+    workflow: {
+      events: (): Observable<RfqEvent> => {
+        return of({
+          type: "rfqCreated",
+          payload: {
+            id: 1,
+            instrumentId: 1,
+            quantity: 1_000_000,
+            direction: Direction.Buy,
+            state: "Open",
+            expirySecs: 120,
+            creationTimestamp: 1,
+          },
+        } as unknown as RfqEvent);
+      },
+      createRfq: (): Observable<unknown> => {
+        return of(1);
+      },
+      cancelRfq: (): Observable<unknown> => {
+        return of(undefined);
+      },
+      quote: (): Observable<unknown> => {
+        return of(undefined);
+      },
+      pass: (): Observable<unknown> => {
+        return of(undefined);
+      },
+      accept: (): Observable<unknown> => {
+        return of(undefined);
+      },
+    },
+    throughput: new ThroughputService(),
+  };
+  return { ...base, ...overrides } as unknown as ServiceContainer;
+}
+
+function connect(services: ServiceContainer): FakeWs {
+  const ws = new FakeWs();
+  handleConnection(ws as unknown as WebSocket, services);
+  return ws;
+}

@@ -2,31 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-import { COLUMNS, type ColumnDef, formatCellValue } from "./blotterColumns";
-
-function trade(over: Partial<Trade> = {}): Trade {
-  return {
-    tradeId: 4001,
-    tradeName: "Alice",
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.09221,
-    status: TradeStatus.Done,
-    tradeDate: "2026-03-30",
-    valueDate: "2026-04-01",
-    ...over,
-  };
-}
-
-function colFor(key: keyof Trade): ColumnDef {
-  const c = COLUMNS.find((c) => {
-    return c.key === key;
-  });
-  if (!c) throw new Error(`no column for ${String(key)}`);
-  return c;
-}
+import { COLUMNS, type ColumnDef, formatFxCell } from "./blotterColumns";
 
 describe("COLUMNS metadata", () => {
   it("exposes the expected ordered column keys", () => {
@@ -89,58 +65,73 @@ describe("COLUMNS metadata", () => {
   });
 });
 
-describe("formatCellValue", () => {
+describe("formatFxCell", () => {
   it("formats ISO dates as DD-Mon-YYYY", () => {
     expect(
-      formatCellValue(trade({ tradeDate: "2026-03-30" }), colFor("tradeDate")),
+      formatFxCell(trade({ tradeDate: "2026-03-30" }), colFor("tradeDate")),
     ).toBe("30-Mar-2026");
     expect(
-      formatCellValue(trade({ valueDate: "2026-01-05" }), colFor("valueDate")),
+      formatFxCell(trade({ valueDate: "2026-01-05" }), colFor("valueDate")),
     ).toBe("05-Jan-2026");
   });
 
   it("returns the raw string for an unparseable date", () => {
     expect(
-      formatCellValue(trade({ tradeDate: "not-a-date" }), colFor("tradeDate")),
+      formatFxCell(trade({ tradeDate: "not-a-date" }), colFor("tradeDate")),
     ).toBe("not-a-date");
   });
 
   it("formats notional with thousands separators and no decimals", () => {
     expect(
-      formatCellValue(trade({ notional: 2_500_000 }), colFor("notional")),
+      formatFxCell(trade({ notional: 2_500_000 }), colFor("notional")),
     ).toBe("2,500,000");
   });
 
   it("formats the spot rate to 6 significant digits", () => {
-    expect(
-      formatCellValue(trade({ spotRate: 1.09221 }), colFor("spotRate")),
-    ).toBe("1.09221");
+    expect(formatFxCell(trade({ spotRate: 1.09221 }), colFor("spotRate"))).toBe(
+      "1.09221",
+    );
   });
 
   it("stringifies other columns directly", () => {
-    expect(formatCellValue(trade({ tradeId: 4001 }), colFor("tradeId"))).toBe(
+    expect(formatFxCell(trade({ tradeId: 4001 }), colFor("tradeId"))).toBe(
       "4001",
     );
     expect(
-      formatCellValue(
-        trade({ status: TradeStatus.Rejected }),
-        colFor("status"),
-      ),
+      formatFxCell(trade({ status: TradeStatus.Rejected }), colFor("status")),
     ).toBe("Rejected");
     expect(
-      formatCellValue(
-        trade({ direction: Direction.Sell }),
-        colFor("direction"),
-      ),
+      formatFxCell(trade({ direction: Direction.Sell }), colFor("direction")),
     ).toBe("Sell");
     expect(
-      formatCellValue(
-        trade({ currencyPair: "USDJPY" }),
-        colFor("currencyPair"),
-      ),
+      formatFxCell(trade({ currencyPair: "USDJPY" }), colFor("currencyPair")),
     ).toBe("USDJPY");
-    expect(
-      formatCellValue(trade({ tradeName: "Bob" }), colFor("tradeName")),
-    ).toBe("Bob");
+    expect(formatFxCell(trade({ tradeName: "Bob" }), colFor("tradeName"))).toBe(
+      "Bob",
+    );
   });
 });
+
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 4001,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-03-30",
+    valueDate: "2026-04-01",
+    ...over,
+  };
+}
+
+function colFor(key: keyof Trade): ColumnDef<Trade> {
+  const c = COLUMNS.find((c) => {
+    return c.key === key;
+  });
+  if (!c) throw new Error(`no column for ${String(key)}`);
+  return c;
+}

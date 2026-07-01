@@ -35,14 +35,6 @@ const dealers: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-const ready = (): NewRfqFormPage => {
-  return mount(NewRfqForm, {
-    props: { onCreated: () => {} },
-    hooks: { useInstruments: instruments, useDealers: dealers },
-    commands: { createRfq: 555 },
-  });
-};
-
 describe("NewRfqForm", () => {
   it("keeps submit disabled until an instrument and quantity are provided", async () => {
     const form = ready();
@@ -88,12 +80,14 @@ describe("NewRfqForm", () => {
     expect(form.isSubmittingDisabled()).toBe(true);
   });
 
-  it("blocks submission when the quantity exceeds the maximum", async () => {
+  it("caps rather than blocks when the quantity exceeds the maximum", async () => {
     const form = ready();
     await form.chooseInstrument("Apple Inc 2030");
     await form.setQuantity(200_000_000);
-    expect(form.hasQuantityError()).toBe(true);
-    expect(form.isSubmitDisabled()).toBe(true);
+    // Cap, don't block: submission stays enabled (rtc-original state.ts:69-74).
+    expect(form.isSubmitEnabledWithOverMaxQuantity()).toBe(true);
+    await form.submit();
+    expect(form.createdRfq()).toMatchObject({ quantity: 200_000_000 });
   });
 
   it("lets the user clear a chosen instrument and search again", async () => {
@@ -143,3 +137,11 @@ describe("NewRfqForm", () => {
     }
   });
 });
+
+function ready(): NewRfqFormPage {
+  return mount(NewRfqForm, {
+    props: { onCreated: () => {} },
+    hooks: { useInstruments: instruments, useDealers: dealers },
+    commands: { createRfq: 555 },
+  });
+}

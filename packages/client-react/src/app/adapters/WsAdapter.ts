@@ -5,9 +5,8 @@
 
 import { type Observable, ReplaySubject } from "rxjs";
 
+import type { IWsAdapter, MessageHandler } from "@rtc/client-core";
 import type { ConnectionEvent } from "@rtc/domain";
-
-import type { IWsAdapter, MessageHandler } from "./IWsAdapter";
 
 interface WsMessage {
   readonly type: string;
@@ -49,6 +48,8 @@ export class WsAdapter implements IWsAdapter {
 
   private disposed = false;
 
+  private idleClosed = false;
+
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
   constructor(url: string, options: WsAdapterOptions = {}) {
@@ -64,7 +65,7 @@ export class WsAdapter implements IWsAdapter {
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = (): void => {
-      console.log("[WsAdapter] Connected to", this.url);
+      console.log("[WsAdapter] Connected to", this.url.split("?")[0]);
       this.connectionEvents$.next({ type: "gatewayConnected" });
       this.flushSendQueue();
     };
@@ -102,6 +103,12 @@ export class WsAdapter implements IWsAdapter {
     this.ws.onclose = (): void => {
       if (this.disposed) return;
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
+
+      if (this.idleClosed) {
+        // Idle close: suppress auto-reconnect; user must call reopen() explicitly.
+        return;
+      }
+
       console.log(
         "[WsAdapter] Disconnected, reconnecting in",
         this.reconnectDelayMs,
@@ -116,7 +123,11 @@ export class WsAdapter implements IWsAdapter {
   }
 
   private scheduleReconnect(): void {
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     this.reconnectTimer = setTimeout(() => {
       if (this.disposed) return;
       // Surface the retry so the connection state machine can show CONNECTING
@@ -198,11 +209,42 @@ export class WsAdapter implements IWsAdapter {
     return this.connectionEvents$.asObservable();
   }
 
+  /** Close the current socket for an idle timeout without disposing the adapter.
+   * Suppresses auto-reconnect (idle reconnect is user-initiated); preserves
+   * sendQueue so subscriptions re-flush on reopen(). Nulls this.ws so any
+   * sends while idle-closed are buffered rather than sent to a closing socket.
+   * Provenance: original services/connection.ts:91-93. */
+  closeForIdle(): void {
+    if (this.disposed || this.idleClosed) return;
+    this.idleClosed = true;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    const ws = this.ws;
+    this.ws = null;
+    ws?.close();
+  }
+
+  /** Re-establish the socket after an idle close (user activity). */
+  reopen(): void {
+    if (this.disposed || !this.idleClosed) return;
+    this.idleClosed = false;
+    this.connect();
+  }
+
   dispose(): void {
     this.disposed = true;
     this.connectionEvents$.complete();
     this.sendQueue.length = 0;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     this.ws?.close();
     this.handlers.clear();
 

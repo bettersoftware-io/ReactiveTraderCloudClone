@@ -6,22 +6,6 @@ import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 
-const trade = (over: Partial<Trade> = {}): Trade => {
-  return {
-    tradeId: 1,
-    tradeName: "Alice",
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.1,
-    status: TradeStatus.Done,
-    tradeDate: "2026-01-01",
-    valueDate: "2026-01-03",
-    ...over,
-  };
-};
-
 const noSort = { column: null, direction: null } as const;
 
 describe("BlotterHeader", () => {
@@ -156,7 +140,7 @@ describe("BlotterHeader", () => {
   });
 
   it("forwards an applied filter to onFilter and closes the panel", async () => {
-    const applied: { column: keyof Trade; filter: ColumnFilter | null }[] = [];
+    const applied: AppliedFilter[] = [];
     const header = mount(BlotterHeader, {
       props: {
         sort: noSort,
@@ -195,3 +179,21 @@ describe("BlotterHeader", () => {
     expect(header.hasActiveFilterDot("Notional")).toBe(false);
   });
 });
+
+type AppliedFilter = { column: keyof Trade; filter: ColumnFilter | null };
+
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 1,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.1,
+    status: TradeStatus.Done,
+    tradeDate: "2026-01-01",
+    valueDate: "2026-01-03",
+    ...over,
+  };
+}

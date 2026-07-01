@@ -3,6 +3,7 @@ import { mount } from "@ui-contract/mount";
 import type { RfqStateLike } from "@ui-contract/pages/fx/liveRates/tile/TileRfqPage";
 import { describe, expect, it } from "vitest";
 
+import type { RfqQuote, RfqState } from "@rtc/client-core";
 import {
   type CurrencyPair,
   Direction,
@@ -10,25 +11,9 @@ import {
   type Price,
 } from "@rtc/domain";
 
-import type { RfqQuote, RfqState } from "#/app/presenters/RfqTileMachine";
-
 const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS[0];
 
 const quote: RfqQuote = { bid: 1.0921, ask: 1.0925, timeoutMs: 10_000 };
-
-const rfqState = (
-  state: RfqState,
-  over: Partial<RfqStateLike> = {},
-): RfqStateLike => {
-  return {
-    state,
-    requestQuote: () => {},
-    cancel: () => {},
-    reject: () => {},
-    accept: () => {},
-    ...over,
-  };
-};
 
 describe("TileRfq", () => {
   it("offers an Initiate RFQ button in the init state", async () => {
@@ -90,7 +75,7 @@ describe("TileRfq", () => {
 
   it("accepts a quote and executes the synthetic price for the chosen side", async () => {
     let accepted = 0;
-    const executed: { dir: Direction; price: Price; notional: number }[] = [];
+    const executed: ExecutedTrade[] = [];
     const rfq = mount(TileRfq, {
       props: {
         pair: eurusd,
@@ -116,6 +101,37 @@ describe("TileRfq", () => {
     expect(executed).toHaveLength(1);
     expect(executed[0].dir).toBe(Direction.Buy);
     expect(executed[0].notional).toBe(2_000_000);
+    expect(executed[0].price.bid).toBe(quote.bid);
+    expect(executed[0].price.ask).toBe(quote.ask);
+    expect(executed[0].price.symbol).toBe("EURUSD");
+  });
+
+  it("executes the Sell side of a received quote with Direction.Sell", async () => {
+    let accepted = 0;
+    const executed: ExecutedTrade[] = [];
+    const rfq = mount(TileRfq, {
+      props: {
+        pair: eurusd,
+        rfqState: rfqState(
+          { status: "received", quote, remainingMs: 6_000 },
+          {
+            accept: () => {
+              accepted += 1;
+            },
+          },
+        ),
+        onRequestQuote: () => {},
+        onExecute: (dir: Direction, price: Price, notional: number) => {
+          return executed.push({ dir, price, notional });
+        },
+        notional: 1_500_000,
+      },
+    });
+    await rfq.click(/sell 1\.09210/i);
+    expect(accepted).toBe(1);
+    expect(executed).toHaveLength(1);
+    expect(executed[0].dir).toBe(Direction.Sell);
+    expect(executed[0].notional).toBe(1_500_000);
     expect(executed[0].price.bid).toBe(quote.bid);
     expect(executed[0].price.ask).toBe(quote.ask);
     expect(executed[0].price.symbol).toBe("EURUSD");
@@ -169,3 +185,19 @@ describe("TileRfq", () => {
     expect(rfq.isEmpty()).toBe(true);
   });
 });
+
+type ExecutedTrade = { dir: Direction; price: Price; notional: number };
+
+function rfqState(
+  state: RfqState,
+  over: Partial<RfqStateLike> = {},
+): RfqStateLike {
+  return {
+    state,
+    requestQuote: () => {},
+    cancel: () => {},
+    reject: () => {},
+    accept: () => {},
+    ...over,
+  };
+}

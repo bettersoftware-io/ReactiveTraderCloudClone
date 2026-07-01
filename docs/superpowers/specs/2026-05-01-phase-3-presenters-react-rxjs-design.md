@@ -535,18 +535,25 @@ The 12 hooks divide into three groups.
 
 These hooks are pure pass-throughs. After Phase 3 they no longer exist.
 
-| Hook | Replacement |
+> **Amendment (2026-06-26):** the `Replacement` column below originally
+> prescribed the chained `useHooks().useX()` form. That form is now banned by
+> ESLint (`no-restricted-syntax`, `MemberExpression[object.callee.name='useHooks']`
+> in `eslint.config.mjs`). The canonical form is **destructure first, then call**:
+> `const { useX } = useHooks(); const x = useX(args);`. The column has been
+> updated to the destructured form.
+
+| Hook | Replacement (destructure first, then call) |
 |---|---|
-| `usePriceStream(pair)` | `useHooks().usePrice(pair)` |
-| `usePriceHistory(symbol)` | `useHooks().usePriceHistory(symbol)` |
-| `useAnalytics()` | `useHooks().useAnalytics()` |
-| `useCurrencyPairs()` | `useHooks().useCurrencyPairs()` |
-| `useTradeStream()` | `useHooks().useTrades()` |
-| `useInstruments()` | `useHooks().useInstruments()` |
-| `useDealers()` | `useHooks().useDealers()` |
-| `useConnection()` | `useHooks().useConnectionStatus()` |
+| `usePriceStream(pair)` | `const { usePrice } = useHooks();` → `usePrice(pair)` |
+| `usePriceHistory(symbol)` | `const { usePriceHistory } = useHooks();` → `usePriceHistory(symbol)` |
+| `useAnalytics()` | `const { useAnalytics } = useHooks();` → `useAnalytics()` |
+| `useCurrencyPairs()` | `const { useCurrencyPairs } = useHooks();` → `useCurrencyPairs()` |
+| `useTradeStream()` | `const { useTrades } = useHooks();` → `useTrades()` |
+| `useInstruments()` | `const { useInstruments } = useHooks();` → `useInstruments()` |
+| `useDealers()` | `const { useDealers } = useHooks();` → `useDealers()` |
+| `useConnection()` | `const { useConnectionStatus } = useHooks();` → `useConnectionStatus()` |
 | `useRfqStream()` | Three hooks: `useRfqs()`, `useQuotesForRfq(rfqId)`, `useAllQuotes()` |
-| `useCreateRfq()` | `useHooks().useCreateRfq()` |
+| `useCreateRfq()` | `const { useCreateRfq } = useHooks();` → `useCreateRfq()` |
 
 For the `useRfqStream` consumers (3 components), the migration is:
 

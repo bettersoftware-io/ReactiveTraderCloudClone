@@ -12,9 +12,16 @@ for (const name of Object.keys(scenarios)) {
   const action = scenarioActions[name] ?? {};
 
   test(name, async ({ page }) => {
-    // Theme and view-mode are seeded through the seam (per-fixture data.theme /
+    // Theme and view-mode are seeded through the seam (per-fixture data.themeMode /
     // data.viewMode), so dark/light and chart/price scenarios are deterministic
     // without any localStorage involvement.
+
+    // The boot sequence reads prefers-reduced-motion to skip its rAF canvas loop;
+    // emulate it BEFORE navigating so only the deterministic chrome is rendered.
+    if (action.reducedMotion) {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+    }
+
     await page.goto(`/?scenario=${encodeURIComponent(name)}`);
 
     if (action.click) {

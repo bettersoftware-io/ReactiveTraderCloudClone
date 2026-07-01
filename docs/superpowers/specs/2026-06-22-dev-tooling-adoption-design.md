@@ -67,6 +67,7 @@ func-style + blank-line, which GritQL cannot):
 | No arrow implicit return | `arrow-body-style: ["error","always"]` |
 | No anonymous function expression | `func-names: ["error","always"]` |
 | Destructure `useHooks()` (forbid whole-object bind) | `no-restricted-syntax`: `VariableDeclarator[init.callee.name="useHooks"][id.type="Identifier"]` |
+| Forbid chained `useHooks().useX()` *(added 2026-06-26)* | `no-restricted-syntax`: `MemberExpression[object.callee.name="useHooks"]` |
 | Prefer function declarations | `func-style: ["error","declaration",{allowArrowFunctions:false}]` |
 | Exactly one blank line between blocks | `padding-line-between-statements` + `lines-between-class-members` |
 

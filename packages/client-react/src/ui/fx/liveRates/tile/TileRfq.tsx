@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import type { RfqState, RfqTileIntents } from "@rtc/client-core";
 import {
   type CurrencyPair,
   Direction,
@@ -7,26 +8,9 @@ import {
   PriceMovementType,
 } from "@rtc/domain";
 
-import type { RfqState, RfqTileIntents } from "#/app/presenters/RfqTileMachine";
-
 import { RfqCountdown } from "./RfqCountdown";
 
 import styles from "./TileRfq.module.css";
-
-/** The machine result the tile passes down: current state plus the RFQ intents. */
-export type TileRfqState = { state: RfqState } & RfqTileIntents;
-
-interface TileRfqProps {
-  pair: CurrencyPair;
-  rfqState: TileRfqState;
-  onRequestQuote: () => void;
-  onExecute: (direction: Direction, price: Price, notional: number) => void;
-  notional: number;
-}
-
-function formatPrice(value: number, ratePrecision: number): string {
-  return value.toFixed(ratePrecision);
-}
 
 export function TileRfq({
   pair,
@@ -127,4 +111,19 @@ export function TileRfq({
   }
 
   return null;
+}
+
+/** The machine result the tile passes down: current state plus the RFQ intents. */
+export type TileRfqState = { state: RfqState } & RfqTileIntents;
+
+interface TileRfqProps {
+  pair: CurrencyPair;
+  rfqState: TileRfqState;
+  onRequestQuote: () => void;
+  onExecute: (direction: Direction, price: Price, notional: number) => void;
+  notional: number;
+}
+
+function formatPrice(value: number, ratePrecision: number): string {
+  return value.toFixed(ratePrecision);
 }

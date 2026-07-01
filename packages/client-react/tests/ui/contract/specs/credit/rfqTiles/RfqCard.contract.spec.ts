@@ -25,29 +25,6 @@ const dealers: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-const rfq = (over: Partial<Rfq> = {}): Rfq => {
-  return {
-    id: 50,
-    instrumentId: 2,
-    quantity: 5000,
-    direction: Direction.Buy,
-    state: RfqState.Open,
-    expirySecs: 120,
-    creationTimestamp: 1_700_000_000_000,
-    ...over,
-  };
-};
-
-const quote = (over: Partial<Quote> = {}): Quote => {
-  return {
-    id: 900,
-    rfqId: 50,
-    dealerId: 2,
-    state: { type: "pendingWithPrice", price: 99 },
-    ...over,
-  };
-};
-
 describe("RfqCard", () => {
   it("shows the instrument name, direction and quantity", () => {
     const card = mount(RfqCard, {
@@ -206,4 +183,73 @@ describe("RfqCard", () => {
     card.setProps({ quotes: [quote()] });
     expect(card.hasText("$99")).toBe(true);
   });
+
+  it("shows a live countdown only on an Open RFQ, not on Closed/Expired/Cancelled", () => {
+    const openCard = mount(RfqCard, {
+      props: {
+        rfq: rfq({ state: RfqState.Open }),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+      },
+    });
+    expect(openCard.hasCountdown()).toBe(true);
+
+    const closedCard = mount(RfqCard, {
+      props: {
+        rfq: rfq({ state: RfqState.Closed }),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+      },
+    });
+    expect(closedCard.hasCountdown()).toBe(false);
+
+    const expiredCard = mount(RfqCard, {
+      props: {
+        rfq: rfq({ state: RfqState.Expired }),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+      },
+    });
+    expect(expiredCard.hasCountdown()).toBe(false);
+
+    const cancelledCard = mount(RfqCard, {
+      props: {
+        rfq: rfq({ state: RfqState.Cancelled }),
+        quotes: [],
+        instrument,
+        dealers,
+        onAccept: () => {},
+      },
+    });
+    expect(cancelledCard.hasCountdown()).toBe(false);
+  });
 });
+
+function rfq(over: Partial<Rfq> = {}): Rfq {
+  return {
+    id: 50,
+    instrumentId: 2,
+    quantity: 5000,
+    direction: Direction.Buy,
+    state: RfqState.Open,
+    expirySecs: 120,
+    creationTimestamp: 1_700_000_000_000,
+    ...over,
+  };
+}
+
+function quote(over: Partial<Quote> = {}): Quote {
+  return {
+    id: 900,
+    rfqId: 50,
+    dealerId: 2,
+    state: { type: "pendingWithPrice", price: 99 },
+    ...over,
+  };
+}

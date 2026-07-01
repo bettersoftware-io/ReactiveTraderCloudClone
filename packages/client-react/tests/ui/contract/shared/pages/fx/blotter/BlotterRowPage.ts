@@ -36,7 +36,7 @@ export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
   /** The row's current background colour (derived from data attributes). */
   backgroundColor(): string {
     const el = this.row();
-    if (el.dataset.highlight === "true") return "rgba(59, 130, 246, 0.15)";
+    if (el.dataset.highlight === "true") return "animation:backgroundFlash";
     if (el.dataset.hovered === "true") return "var(--bg-secondary)";
     return "transparent";
   }

@@ -1,4 +1,4 @@
-# Visual coverage gaps — snapshot 2026-06-17
+# Visual coverage gaps — snapshot 2026-06-30 (HUD redesign Phase 6)
 
 One-time inventory of `src/ui` components and conditional branches the **visual**
 tier does not render, i.e. that have **no golden snapshot**. Produced by reading
@@ -38,11 +38,68 @@ interaction-only handlers and the runtime media-query theme arm (below), which a
 static screenshot still cannot pin deterministically — those are covered by the
 unit/contract tiers.
 
+## HUD redesign (Phases 0–5) — full re-verification (2026-06-30)
+
+Phase 6 consolidation snapshot, taken after the entire HUD redesign (theming +
+motion, in-house layout engine, shell chrome / boot / lock, reskinned FX+Credit,
+the new **Equities** module, and the new **Admin observability** module) landed on
+`main` (Phase 5 merge `baf0ed9d`). All gate families, both committed golden sets,
+the contract ≥95% gate, the 29 grep-gates (incl. dumb-UI 26–29), and the e2e
+suites are green. This phase added **zero** product behaviour — it re-ran every
+tier and recorded the figures below.
+
+### Headline numbers (2026-06-30)
+
+| Tier | Metric | Stmts | Branch | Funcs | Lines |
+|------|--------|-------|--------|-------|-------|
+| Domain (v8, report-only) | — | 95.36% | 81.56% | 95.23% | 96.82% |
+| Server (v8, report-only) | — | 92.47% | 77.46% | 91.37% | 95.67% |
+| Client app layer (v8, report-only) | — | 87.41% | 74.21% | 88.94% | 89.45% |
+| **Contract tier (v8, ENFORCED ≥95% `src/ui` gate)** | — | **98.56%** | **95.25%** | **99.05%** | **99.19%** |
+| Visual tier (istanbul, `src/ui/**/*.tsx`) | — | 82.22% | 72.58% | 76.09% | 83.53% |
+
+Unit/contract test totals: domain 276, server 65, client unit 805, contract 406.
+The visual gap-finder denominator grew (the equities + admin + HUD-chrome surface
+is now rendered), so the istanbul percentage moved relative to the 2026-06-25
+`82.53%` against a smaller pre-redesign denominator — it is **not** a regression;
+the absolute snapshotted-component count rose substantially (see below).
+
+### New components now snapshotted (all three visual tiers + contract arms)
+
+- **Equities (`src/ui/equities/`):** watchlist (heat-tint), canvas candlestick
+  chart, depth ladder, instrument tabs, order ticket (fill choreography), orders +
+  positions blotters, P&L spark-bars, bottom-arc desk gauge, sector heatmap.
+- **Admin (`src/ui/admin/`):** MetricGauges, ThroughputChart, LatencyHistogram,
+  ErrorRatePanel, SessionsPanel, LiveEventLog (canvas), ServiceTopologyGraph (SVG),
+  IncidentControls, AdminDashboard.
+- **Shell chrome (`src/ui/shell/`):** boot sequence canvas, lock screen, header /
+  status / prefs / theme-skin chrome, the in-house layout engine, ambient
+  background — across the classic/holo/terminal/neon skins × light/dark modes.
+
+### App-layer (v8, report-only) — intentionally-open gaps (2026-06-30)
+
+The report-only app-layer figure dipped versus 2026-06-25 because Phases 0–5 added
+a large volume of new machines/presenters (LayoutMachine, BootSequenceMachine,
+OrderTicketMachine, IncidentMachine, AnimationDirector, plus the equities/admin
+presenters) and the **enforced** gate is the contract ≥95% `src/ui` gate (green at
+95.25% branch), not this metric. The remaining app-layer gaps are:
+
+**Update (2026-06-30, deferral-cleanup batch):** the two thin caching presenters
+flagged here — `DepthPresenter` and `CandleSeriesPresenter` (the actual `…sPresenter`
+at 25%, NOT `SessionsPresenter`, which already had a test) — **now have dedicated
+unit tests** (`DepthPresenter.test.ts` / `CandleSeriesPresenter.test.ts`) asserting
+the cache contract (relay, same-Observable cache hit, distinct-symbol streams).
+Only the `portFactory` wiring gap below remains, with the same intentional rationale.
+
+| File | Lines | Reason |
+|------|-------|--------|
+| `adapters/portFactory.ts` 834-918, 928-935 | new equities/admin port-wiring + `if (cancelled)`/`catch` teardown arms | Composition wiring exercised end-to-end by the e2e + real-composition tests, not unit-isolated; the teardown/`catch` arms follow the same documented pattern as the 2026-06-25 portFactory gaps (fire only on mid-flight unsubscribe / `ws.rpc()` rejection). |
+
 ## Phase 10 (final) — Dumb-UI gates + whole-workstream verification (2026-06-18)
 
 **Architecture gates 26–29 added and GREEN.** `tests/scripts/grep-gates.ts`
 now ENFORCES the Dumb-UI rules against production `src/ui` (the
-`src/ui/hooks/` bridge dir and `*.test.`/`*.spec.` files are exempt):
+`src/ui/viewModel/` bridge dir and `*.test.`/`*.spec.` files are exempt):
 
 - **26** — no `rxjs` / `@react-rxjs` / `@rx-state` import in `src/ui` (bridge only).
 - **27** — no `localStorage` in `src/ui` (persistence lives in app-layer ports).
@@ -67,17 +124,102 @@ domain 95.93 % stmts / 96.42 % lines (169 tests); server 90.04 % / 98.94 %
 green. The AdminPort / PreferencesPort contracts and the execution/RFQ/throughput
 machines sit at ~100 % where applicable.
 
-**Dead seam command hooks (for a HUMAN pruning decision — NOT removed):** of the
-7 command hooks on `AppHooks`, only **`useAcceptQuote`** still has a `src/ui`
-component caller (`credit/rfqTiles/RfqTilesPanel.tsx`). The other six —
-**`useExecuteTrade`, `useCreateRfq`, `useCancelRfq`, `usePassQuote`,
-`useQuoteRfq`, `useRequestRfqQuote`** — are **dead**: present only in the
-`AppHooks` interface + `createAppHooks` impl + the two test fakes
-(`tests/ui/contract/react/hooksFromWorld.ts`,
-`tests/ui/visual/react/buildFakeHooks.ts`), with no component consumer. Earlier
-phases (esp. 8) routed those commands through machines, leaving the seam methods
-orphaned. Pruning requires deleting each from the interface, the impl, and both
-fakes together.
+## Behaviour-sync coverage pass (2026-06-25)
+
+**Coverage gaps across all tiers closed** after the behaviour-sync followup pass
+(`feat/behaviour-sync-followups` branch). Each tier was audited against the
+post-behaviour-sync codebase; intentionally-open gaps are documented below.
+
+### Headline numbers after the pass
+
+| Tier | Metric | Before | After | Δ |
+|------|--------|--------|-------|---|
+| Domain (v8) | Branch | 86.88% | **88.52%** | +1.64pp |
+| Server `ws/wsHandler.ts` (v8) | Branch | 71.18% | **72.88%** | +1.70pp |
+| Client app layer (v8) | Lines | 99.04% | **100%** | +0.96pp |
+| Client app layer (v8) | Branch | 80.97% | **83.9%** | +2.93pp |
+| Contract tier (v8) | Functions | 99.41% | **100%** | +0.59pp |
+| Visual tier (istanbul) | Statements | 80.24% | **82.53%** | +2.29pp |
+| Visual tier (istanbul) | Branches | 77.96% | **79.38%** | +1.42pp |
+| Visual tier (istanbul) | Functions | 75.00% | **78.06%** | +3.06pp |
+| Visual tier (istanbul) | Lines | 81.73% | **83.76%** | +2.03pp |
+
+### Domain — intentionally-open gaps (2026-06-25)
+
+| File | Lines | Reason |
+|------|-------|--------|
+| `analytics/aggregatePositions.ts` lines 52-53,58 | `if (span === 0) return POSITION_MIN_RADIUS` | `span` = `maxValue - minValue`. With non-empty data and all magnitudes > 0 after filtering zeros, `minValue` is either `rawMin` (< maxValue → span > 0) or `0` (when rawMin === maxValue → span = maxValue > 0). `span===0` with non-empty data is structurally impossible through the public API. |
+| `simulators/CreditRfqSimulator.ts` lines 98,144 | Invariant throw + error catch | Line 98: defensive `throw` that fires only if `rfqQuotes.get(rfqId)` returns undefined immediately after `.set(rfqId, [])` — impossible under single-threaded JS. Line 144: `catch (e)` in a `setTimeout` callback around `applyQuote()` which has no throwing code paths. |
+| `simulators/AnalyticsSimulator.ts` line 81 | `if (history.length > HISTORY_SIZE)` false branch | History is initialized at exactly `HISTORY_SIZE` items. The first push makes it `HISTORY_SIZE+1` and `shift()` always fires — the false arm (history NOT yet at cap) is never hit. |
+| `simulators/PricingSimulator.ts` line 111 | `if (> PRICE_HISTORY_SIZE)` false branch | Same pattern — history starts at exactly `PRICE_HISTORY_SIZE`; the first live tick pushes to `+1` and `shift()` always fires. |
+
+### Server — intentionally-open gaps (2026-06-25)
+
+| File | Lines | Reason |
+|------|-------|--------|
+| `ws/wsHandler.ts` 253-260, 303-310, 349-356 | Abort listeners for `streamPricing`, `streamBlotter`, `streamAnalytics` | Same pattern as the two now-covered abort tests (instruments + workflow). These streams complete synchronously in the default `fakeServices()`. Covering them requires per-stream interval-based fakes; gap severity does not warrant the fixture complexity. |
+| `ws/wsHandler.ts` 461-462 | Abort listener for `streamDealers` | Same rationale as the three above. |
+
+### Client app layer — intentionally-open gaps (2026-06-25)
+
+| File | Lines | Reason |
+|------|-------|--------|
+| `adapters/WsAdapter.ts` lines 64, 87-97 | `connect()` disposed-guard; `pendingRpcs.get()` truthy-guard | Single-threaded JS invariants: `dispose()` clears the reconnect timer so the callback never runs; `pendingRpcs.get()` after `.has()` is always non-null. |
+| `adapters/WsAdapter.ts` lines 130-139 | Timer callback `if (this.disposed) return` | `dispose()` calls `clearTimeout(this.reconnectTimer)` so the callback is never invoked after dispose. Defensive dead code in single-threaded JS. |
+| `adapters/BrowserConnectionEventsAdapter.ts` line 56 | `if (idleTimer) clearTimeout(idleTimer)` false branch | `armIdleTimer()` is called unconditionally at subscription, so `idleTimer` is always non-null at teardown. |
+| `adapters/portFactory.ts` lines 616, 629-648, 658 | `if (cancelled) return` arm; `catch (e)` arms in `getThroughput`/`setThroughput` | The `cancelled = true` teardown fires on unsubscribe. In tests, the subscription is never cancelled mid-flight. The `catch` arms require `ws.rpc()` to reject — covered in `.errors.test.ts` files for other ports; duplicating for getThroughput/setThroughput adds setup complexity without new behavioural insight. |
+| `presenters/RfqsPresenter.ts` line 68 | `if (a === b) return true` in `shallowArrayEquals` | `Array.from()` always returns a new reference, so reference equality through `distinctUntilChanged(shallowArrayEquals)` is never true in practice. |
+
+### Contract tier — intentionally-open gaps (2026-06-25)
+
+| File | Lines | Reason |
+|------|-------|--------|
+| `ui/fx/blotter/FxBlotter.tsx` line 63 | `if (col)` false branch in `activeFilterLabels` loop | Defensive dead code: `filters.keys()` yields only `keyof Trade` values and every `Trade` key has a matching `COLUMNS` entry. The false branch (unknown key) is type-impossible. |
+| `ui/fx/blotter/columnFilter/filterState.ts` line 87 | `return true` fallthrough | TypeScript-exhaustive: `ColumnFilter` is a discriminated union with three types (`set`/`number`/`date`). The fallthrough only fires for a value outside the union, which the type system prevents. |
+| `ui/fx/liveRates/tile/TileRfq.tsx` line 45 | `if (!quote) return` after `rfqState.accept()` | The button renders only when `state.status === "received" && state.quote` (line 87). `quote` is captured before `accept()`. Structurally unreachable while `state.quote` is non-null at render. |
+| `ui/fx/liveRates/tile/TileConfirmation.tsx` line 102 | `default: return "unknown"` in switch | Exhaustive switch over `ExecutionStatus` — all enum members handled above. Defensive fallthrough for future enum additions. |
+| `src/ui/viewModel/useViewModel.ts` line 11 | `throw new Error(...)` | Only fires when `useContext(ViewModelContext)` returns null — outside `ViewModelProvider`. All contract tests mount within the provider. |
+| `ui/shell/theme/useTheme.ts` line 7 | `throw new Error(...)` | Same: defensive provider-missing guard; always wrapped in `ThemeProvider` in tests. |
+| `ui/fx/analytics/PositionBubbles.tsx`, `ui/fx/analytics/PairPnlBars.tsx` | entire files | Excluded from contract tier scope (`coverage.exclude` in `vitest.config.ts`). D3/canvas render paths with no DOM-assertable logic — owned by the visual tier. |
+
+### Visual tier — intentionally-open gaps (2026-06-25)
+
+These gaps were confirmed still open after the 2026-06-25 pass added five new
+scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
+`credit/blotter-quick-filter`, `credit/rfq-tiles-filter-done`,
+`credit/rfq-countdown-zero`).
+
+| File | Lines | Reason |
+|------|-------|--------|
+| `ui/fx/analytics/PositionBubbles.tsx` lines 90-93, 118-132 | D3 `onMove` drag handler + `exit`/`update` join callbacks | Drag requires a synthetic D3 drag event sequence (start/drag/end); `update`/`exit` callbacks require re-renders with changed `nodesRef.current`. Neither is achievable via `ScenarioStep` (click/type/select). |
+| `ui/fx/analytics/PairPnlBars.tsx` lines 56-59 | `hoveredSymbol === pos.symbol` hover branch | Requires a `hover` step type not present in `scenarioActions.ts`. Deferred. |
+| `ui/credit/newRfq/SetFilter.tsx` lines 35-47, 60 | `toggleValue` + `handleApply` subset arm | Checkboxes have no `data-testid`; individual values cannot be targeted by `click` step. Production code not modified (task constraint). |
+| `ui/credit/rfqTiles/RfqCard.tsx` line 63 | `handleDismiss` body | Dismiss `✕` button has no `data-testid`. Same constraint as SetFilter. |
+| `ui/credit/rfqTiles/RfqTilesPanel.tsx` lines 80-85 | `handleDismiss` + `handleAccept` | Dismiss and Accept buttons in QuoteCard have no testids. Production code unchanged. |
+| `ui/fx/liveRates/tile/TileExecution.tsx` lines 23-35 | Sell/Buy onClick arrow functions | Clicking triggers the execution flow → visual becomes "Executing…" overlay, already pinned by `tile/execution-started`. Click path produces no new visually distinct golden. |
+| `ui/fx/liveRates/tile/TileNotional.tsx` lines 25-35 | handleChange/handleKeyDown/handleFocus | Interaction handlers for the notional input. Result is the same tile-with-changed-notional view — already covered by static scenarios. No new visual branch pinned. |
+| `ui/fx/liveRates/tile/TileRfq.tsx` lines 43-57, 94-103 | `handleAccept` body, Sell button onClick | Click interactions that trigger execution flow — already pinned via `tile/rfq-received`; clicking navigates away from received state into execution. |
+| `ui/shell/admin/AdminPanel.tsx` lines 26-42 | slider onChange + number input onChange validation | No `data-testid` on slider or number input. Cannot target via `click`/`type` steps. |
+| `ui/credit/CreditWorkspace.tsx` line 17 | Router switch `default` fallback | Defensive fallthrough after all tabs handled. TypeScript-exhaustive. |
+| `ui/credit/newRfq/DealerSelection.tsx` lines 19-22, 36 | Checkbox onChange + deselect-all guard | No testids on individual dealer checkboxes. Same testid constraint. |
+| `ui/credit/newRfq/InstrumentSearch.tsx` lines 51-52 | "Change" button handler | No scenario seeds a pre-selected instrument. Clicking "Change" would produce the same empty-search view as the initial state — no new visual branch. |
+| `ui/credit/newRfq/NewRfqForm.tsx` lines 60-61 | `handleSubmit` `if (!canSubmit)` guard + `submit()` call | The fake `submit` is a noop. Clicking the enabled Submit button calls `noop()` — visual output stays identical to `credit/new-rfq-filled`. |
+| `ui/fx/blotter/FxBlotter.tsx` lines 49, 82 | `else next.delete(column)` (filter clear) + `exportFxToCsv` onClick | Line 49 requires applying a filter then removing it (two-step interaction beyond current single-action schemes). Line 82 triggers a CSV download — no visual state change. |
+| `ui/fx/blotter/BlotterHeader.tsx` line 121 | `setOpenFilter(…null)` arm | Requires double-clicking the same filter toggle (open then close without applying). Not a visually distinct state from the closed toggle. |
+| `ui/fx/liveRates/tile/TileConfirmation.tsx` line 72 | `return null` from `ConfirmationContent` | Fires when `state.status === "finished"` and `executionStatus === Done` but `trade` is undefined. Fixture always provides a trade when status is Done. A `trade`-less Done execution is not a valid production state. |
+| `ui/fx/liveRates/tile/TileConfirmation.tsx` line 102 | `default: return "unknown"` in `statusKey` | TypeScript-exhaustive switch over `ExecutionStatus`. Defensive fallthrough for future enum additions. |
+| `ui/fx/liveRates/CurrencyFilter.tsx` line 26 | `onChange` onClick | Requires clicking a non-default filter category. All three categories render identical tiles in the populated fixture. Deferred. |
+| `ui/fx/liveRates/ViewToggle.tsx` line 18 | `onChange` onClick | Clicking changes `viewMode`, but the resulting state is already pinned by `live-rates/price-view` (seeded through PreferencesPort seam). No additional visual branch. |
+
+**Dead seam command hooks — RESOLVED (pruned during the HUD redesign, Phases 0–5).**
+The six orphaned command hooks flagged here on 2026-06-25
+(`useExecuteTrade`, `useCreateRfq`, `useCancelRfq`, `usePassQuote`, `useQuoteRfq`,
+`useRequestRfqQuote`) are **no longer present**: the `ViewModel` interface,
+`createViewModel` impl, and both test fakes
+(`tests/ui/contract/react/viewModelFromWorld.ts`,
+`tests/ui/visual/react/buildFakeViewModel.ts`) were all reshaped during the redesign
+and carry none of them. **`useAcceptQuote`** remains the one live command hook
+(caller: `credit/rfqTiles/RfqTilesPanel.tsx`). Nothing to prune.
 
 **Two expected reds:**
 
@@ -138,7 +280,7 @@ now drives them and each has a dedicated golden across all three runners:
 The tile execution / RFQ / staleness states were previously listed below as
 timer/transition-driven and **excluded** from the coverage denominator. Earlier
 "Dumb-UI" phases relocated that logic into app-layer machines exposed through the
-`AppHooks` seam, so the state is now **injectable per-symbol** (static, no live
+`ViewModel` seam, so the state is now **injectable per-symbol** (static, no live
 timers) and each arm has a dedicated golden across all three runners:
 
 - `fx/liveRates/tile/TileConfirmation.tsx` — every execution-outcome banner →
@@ -183,7 +325,25 @@ injected statically through the seam, so they are deterministic goldens.)
 | File | Uncovered visual state | Why no golden |
 |---|---|---|
 | `fx/blotter/BlotterRow.tsx` | row hover-background arm | hover-only (interaction, not a static state) |
-| `shell/theme/ThemeProvider.tsx` | non-default / system-preference theme arms | `system-preference` theme unimplemented; runtime media-query |
+
+**Update (2026-06-30):** the `system-preference` theme arm is now **implemented**
+(the header toggle cycles dark → light → system) and **snapshotted** via the new
+`app/fx-system` scenario, which pins the 🖥️ toggle icon (system resolves to dark
+with no OS media query in the harness). The remaining `ThemeProvider` runtime
+media-query branch (the live OS-flip re-resolution) is covered by the
+`ThemePreferencePresenter` unit test, not the static visual tier.
+
+### Interaction-only residual — triaged 2026-06-30 (intentionally still open)
+
+The deferral-cleanup batch reviewed the testid-gated / interaction-only handlers
+above and **left them un-snapshotted by design**: each either produces no visually
+distinct state (the click lands on a view already pinned by another golden), is a
+hover/drag/`onChange` reachable only through interaction the runner-neutral
+`ScenarioStep` set can't express, or is already driven by the sociable contract
+tier. Adding goldens would churn the canonical x86 set for no coverage gain. The
+genuinely-distinct gaps this batch DID close are recorded above (the new
+`app/fx-system` golden, the Depth/Candle presenter unit tests) plus the
+layout-engine splitter **drag**, now driven end-to-end by `browser/playwright/layout.spec.ts`.
 
 ## Utility logic not exercised by the visual tier
 
@@ -196,11 +356,11 @@ doesn't drive**, not *missing snapshots*. Cover them in the unit/contract tiers.
 | `fx/blotter/csvExport.ts` | CSV export (Blob/anchor click) — never invoked by a snapshot |
 | `fx/blotter/columnSort.ts` | sort-direction cycling + comparator logic |
 | `fx/blotter/columnFilter/filterState.ts` | filter predicate construction/application |
-| `fx/blotter/blotterColumns.ts` | one `formatCellValue` arm unexercised |
+| `fx/blotter/blotterColumns.ts` | `formatFxCell` fully covered by contract tier (all arms exercised — function renamed in Task 3; no gap) |
 
 > The per-tile React hooks that used to be listed here
 > (`useTileState` / `useExecuteTrade` / `useRfqState` / `useRfqQuote` /
 > `useStaleDetection` / `useNotional` / `useThroughput`) were removed by the
 > "Dumb-UI" refactor — their logic now lives in app-layer machines/presenters
-> behind the `AppHooks` seam, tested in the unit/contract tiers and (for the
+> behind the `ViewModel` seam, tested in the unit/contract tiers and (for the
 > render arms) snapshotted by Phase 9.

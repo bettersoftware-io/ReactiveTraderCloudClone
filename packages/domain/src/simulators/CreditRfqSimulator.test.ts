@@ -3,68 +3,15 @@ import { filter, take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defined } from "../__testUtils__/defined.js";
+import { CREDIT_RFQ_EXPIRY_SECONDS } from "../credit/rfq.js";
 import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
-import { DEALERS_CATALOG } from "./creditReferenceDataSimulator.js";
-
-type QuoteCreatedMatcher = { type: "quoteCreated" };
-type RfqClosedMatcher = { type: "rfqClosed" };
-type QuotePassedMatcher = { type: "quotePassed" };
-type QuoteAcceptedMatcher = { type: "quoteAccepted" };
-type QuoteQuotedMatcher = { type: "quoteQuoted" };
+import { DEALERS_CATALOG } from "./DealerSimulator.js";
 
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
-
-interface CollectedEvents {
-  events: RfqEvent[];
-  stop: () => void;
-}
-
-function collectEvents(sim: CreditRfqSimulator): CollectedEvents {
-  const events: RfqEvent[] = [];
-  const sub = sim.events().subscribe((e) => {
-    return events.push(e);
-  });
-  return {
-    events,
-    stop: () => {
-      return sub.unsubscribe();
-    },
-  };
-}
-
-interface RfqAndQuoteId {
-  rfqId: number;
-  quoteId: number;
-}
-
-async function createRfqAndQuoteId(
-  sim: CreditRfqSimulator,
-): Promise<RfqAndQuoteId> {
-  const quoteCreated = firstValueFrom(
-    sim.events().pipe(
-      filter((e: RfqEvent) => {
-        return e.type === "quoteCreated";
-      }),
-      take(1),
-    ),
-  );
-  const rfqId = await firstValueFrom(
-    sim.createRfq({
-      instrumentId: 1,
-      dealerIds: [defined(DEALERS_CATALOG[0]).id],
-      quantity: 1000,
-      direction: "Buy" as never,
-      expirySecs: 60,
-    }),
-  );
-  await vi.advanceTimersByTimeAsync(0);
-  const e = (await quoteCreated) as Extract<RfqEvent, QuoteCreatedMatcher>;
-  return { rfqId, quoteId: e.payload.id };
-}
 
 describe("CreditRfqSimulator", () => {
   it("cancelRfq closes an open RFQ via an rfqClosed event with Cancelled state", async () => {
@@ -194,7 +141,7 @@ describe("CreditRfqSimulator", () => {
     );
   });
 
-  it("accepting one quote implicitly rejects a competing priced quote (rejectedWithPrice)", async () => {
+  it("accepting one quote emits a live quoteRejected event for the competing priced quote (rejectedWithPrice)", async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, "random").mockReturnValue(0); // scheduled dealers do NOT participate
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
@@ -232,15 +179,15 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(sim.quote({ quoteId: losingQuoteId, price: 105 }));
     await vi.advanceTimersByTimeAsync(0);
 
+    const { events, stop } = collectEvents(sim);
     await firstValueFrom(sim.accept(winningQuoteId));
     await vi.advanceTimersByTimeAsync(0);
-
-    // Rejected quotes carry no live event — observe via a fresh state-of-the-world snapshot.
-    const { events, stop } = collectEvents(sim);
     stop();
+
+    // The competing quote's rejection surfaces live as a quoteRejected event.
     const loser = events.find((e) => {
-      return e.type === "quoteCreated" && e.payload.id === losingQuoteId;
-    }) as Extract<RfqEvent, QuoteCreatedMatcher> | undefined;
+      return e.type === "quoteRejected" && e.payload.id === losingQuoteId;
+    }) as Extract<RfqEvent, QuoteRejectedMatcher> | undefined;
     expect(loser).toBeDefined();
     expect(defined(loser).payload.state).toEqual({
       type: "rejectedWithPrice",
@@ -248,7 +195,7 @@ describe("CreditRfqSimulator", () => {
     });
   });
 
-  it("accepting one quote implicitly rejects a competing unpriced quote (rejectedWithoutPrice)", async () => {
+  it("accepting one quote emits a live quoteRejected event for the competing unpriced quote (rejectedWithoutPrice)", async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, "random").mockReturnValue(0); // scheduled dealers do NOT participate
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
@@ -285,14 +232,15 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(sim.quote({ quoteId: winningQuoteId, price: 100 }));
     await vi.advanceTimersByTimeAsync(0);
 
+    const { events, stop } = collectEvents(sim);
     await firstValueFrom(sim.accept(winningQuoteId));
     await vi.advanceTimersByTimeAsync(0);
-
-    const { events, stop } = collectEvents(sim);
     stop();
+
+    // The competing quote's rejection surfaces live as a quoteRejected event.
     const loser = events.find((e) => {
-      return e.type === "quoteCreated" && e.payload.id === losingQuoteId;
-    }) as Extract<RfqEvent, QuoteCreatedMatcher> | undefined;
+      return e.type === "quoteRejected" && e.payload.id === losingQuoteId;
+    }) as Extract<RfqEvent, QuoteRejectedMatcher> | undefined;
     expect(loser).toBeDefined();
     expect(defined(loser).payload.state).toEqual({
       type: "rejectedWithoutPrice",
@@ -375,4 +323,113 @@ describe("CreditRfqSimulator", () => {
     expect(e.payload.state.type).toBe("pendingWithPrice");
     expect(e.payload.state).toEqual({ type: "pendingWithPrice", price: 95 });
   });
+
+  it("an open RFQ transitions to Expired via rfqClosed after expirySecs", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const sim = new CreditRfqSimulator(DEALERS_CATALOG);
+    const { events, stop } = collectEvents(sim);
+    await firstValueFrom(
+      sim.createRfq({
+        instrumentId: 1,
+        dealerIds: [defined(DEALERS_CATALOG[0]).id],
+        quantity: 1000,
+        direction: "Buy" as never,
+        expirySecs: CREDIT_RFQ_EXPIRY_SECONDS,
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(120_000);
+    stop();
+    const closed = events.find((e) => {
+      return e.type === "rfqClosed";
+    });
+    expect(closed).toBeDefined();
+    expect((closed as Extract<RfqEvent, RfqClosedMatcher>).payload.state).toBe(
+      "Expired",
+    );
+  });
+
+  it("dispose cancels a pending expiry (RFQ never reaches Expired)", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const sim = new CreditRfqSimulator(DEALERS_CATALOG);
+    const { events, stop } = collectEvents(sim);
+    await firstValueFrom(
+      sim.createRfq({
+        instrumentId: 1,
+        dealerIds: [defined(DEALERS_CATALOG[0]).id],
+        quantity: 1000,
+        direction: "Buy" as never,
+        expirySecs: CREDIT_RFQ_EXPIRY_SECONDS,
+      }),
+    );
+    sim.dispose();
+    await vi.advanceTimersByTimeAsync(120_000);
+    stop();
+    expect(
+      events.some((e) => {
+        return e.type === "rfqClosed";
+      }),
+    ).toBe(false);
+  });
 });
+
+type QuoteCreatedMatcher = { type: "quoteCreated" };
+
+type RfqClosedMatcher = { type: "rfqClosed" };
+
+type QuotePassedMatcher = { type: "quotePassed" };
+
+type QuoteAcceptedMatcher = { type: "quoteAccepted" };
+
+type QuoteRejectedMatcher = { type: "quoteRejected" };
+
+type QuoteQuotedMatcher = { type: "quoteQuoted" };
+
+interface CollectedEvents {
+  events: RfqEvent[];
+  stop: () => void;
+}
+
+function collectEvents(sim: CreditRfqSimulator): CollectedEvents {
+  const events: RfqEvent[] = [];
+  const sub = sim.events().subscribe((e) => {
+    return events.push(e);
+  });
+  return {
+    events,
+    stop: () => {
+      return sub.unsubscribe();
+    },
+  };
+}
+
+interface RfqAndQuoteId {
+  rfqId: number;
+  quoteId: number;
+}
+
+async function createRfqAndQuoteId(
+  sim: CreditRfqSimulator,
+): Promise<RfqAndQuoteId> {
+  const quoteCreated = firstValueFrom(
+    sim.events().pipe(
+      filter((e: RfqEvent) => {
+        return e.type === "quoteCreated";
+      }),
+      take(1),
+    ),
+  );
+  const rfqId = await firstValueFrom(
+    sim.createRfq({
+      instrumentId: 1,
+      dealerIds: [defined(DEALERS_CATALOG[0]).id],
+      quantity: 1000,
+      direction: "Buy" as never,
+      expirySecs: 60,
+    }),
+  );
+  await vi.advanceTimersByTimeAsync(0);
+  const e = (await quoteCreated) as Extract<RfqEvent, QuoteCreatedMatcher>;
+  return { rfqId, quoteId: e.payload.id };
+}

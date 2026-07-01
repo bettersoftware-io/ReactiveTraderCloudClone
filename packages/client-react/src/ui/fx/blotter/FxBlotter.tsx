@@ -2,33 +2,33 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import type { Trade } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";
-import { COLUMNS } from "./blotterColumns";
+import { COLUMNS, formatFxCell } from "./blotterColumns";
 import { applyFilters, type ColumnFilter } from "./columnFilter/filterState";
 import {
   applySortToTrades,
   nextSortDirection,
   type SortState,
 } from "./columnSort";
-import { exportToCsv } from "./csvExport";
+import { exportFxToCsv } from "./csvExport";
 import { QuickFilter } from "./QuickFilter";
 
 import styles from "./FxBlotter.module.css";
 
 export function FxBlotter(): ReactElement {
-  const trades = useHooks().useTrades();
+  const { useTrades, useNewTradeIds } = useViewModel();
+  const trades = useTrades();
   // "Newly arrived" detection is a cross-emission stream-diff; it lives in the
   // presenter (BlotterPresenter.newTradeIds$), not here — see docs/adr/ADR-003.
-  const newTradeIds = useHooks().useNewTradeIds();
-  const [sort, setSort] = useState<SortState>({
+  const newTradeIds = useNewTradeIds();
+  const [sort, setSort] = useState<SortState<Trade>>({
     column: null,
     direction: null,
   });
-  const [filters, setFilters] = useState<Map<keyof Trade, ColumnFilter>>(
+  const [filters, setFilters] = useState<Map<keyof Trade, ColumnFilter<Trade>>>(
     new Map(),
   );
   const [quickFilter, setQuickFilter] = useState("");
@@ -41,7 +41,7 @@ export function FxBlotter(): ReactElement {
 
   function handleFilter(
     column: keyof Trade,
-    filter: ColumnFilter | null,
+    filter: ColumnFilter<Trade> | null,
   ): void {
     setFilters((prev) => {
       const next = new Map(prev);
@@ -79,7 +79,7 @@ export function FxBlotter(): ReactElement {
           type="button"
           data-testid="export-csv"
           onClick={() => {
-            return exportToCsv(processedTrades);
+            return exportFxToCsv(processedTrades);
           }}
           className={styles.exportBtn}
         >
@@ -95,7 +95,8 @@ export function FxBlotter(): ReactElement {
               onSort={handleSort}
               filters={filters}
               onFilter={handleFilter}
-              trades={trades}
+              rows={trades}
+              columns={COLUMNS}
             />
           </thead>
           <tbody>
@@ -105,6 +106,8 @@ export function FxBlotter(): ReactElement {
                   key={trade.tradeId}
                   trade={trade}
                   isNew={newTradeIds.has(trade.tradeId)}
+                  columns={COLUMNS}
+                  format={formatFxCell}
                 />
               );
             })}

@@ -4,30 +4,6 @@ import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 import { applyFilters, type ColumnFilter } from "./filterState";
 
-function trade(over: Partial<Trade> = {}): Trade {
-  return {
-    tradeId: 1,
-    tradeName: "Alice",
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.1,
-    status: TradeStatus.Done,
-    tradeDate: "2026-01-01",
-    valueDate: "2026-01-03",
-    ...over,
-  };
-}
-
-function filters(...entries: ColumnFilter[]): Map<keyof Trade, ColumnFilter> {
-  return new Map(
-    entries.map((f) => {
-      return [f.column, f];
-    }),
-  );
-}
-
 describe("applyFilters — no filters", () => {
   it("returns all trades when no column filter and empty quick filter", () => {
     const trades = [trade({ tradeId: 1 }), trade({ tradeId: 2 })];
@@ -314,3 +290,27 @@ describe("applyFilters — quick filter", () => {
     ).toEqual([1]);
   });
 });
+
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 1,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.1,
+    status: TradeStatus.Done,
+    tradeDate: "2026-01-01",
+    valueDate: "2026-01-03",
+    ...over,
+  };
+}
+
+function filters(...entries: ColumnFilter[]): Map<keyof Trade, ColumnFilter> {
+  return new Map(
+    entries.map((f) => {
+      return [f.column, f];
+    }),
+  );
+}

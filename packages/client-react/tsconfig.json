@@ -11,5 +11,11 @@
     "paths": { "#/*": ["./src/*"] }
   },
   "include": ["src"],
-  "references": [{ "path": "../domain" }, { "path": "../shared" }]
+  "exclude": ["src/**/*.golden.test.ts"],
+  "references": [
+    { "path": "../domain" },
+    { "path": "../shared" },
+    { "path": "../client-core" },
+    { "path": "../react-bindings" }
+  ]
 }

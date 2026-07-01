@@ -36,19 +36,6 @@ const dealers: readonly Dealer[] = [
   { id: 2, name: "Citi" },
 ];
 
-const rfq = (id: number, over: Partial<Rfq> = {}): Rfq => {
-  return {
-    id,
-    instrumentId: 1,
-    quantity: 1000,
-    direction: Direction.Buy,
-    state: RfqState.Open,
-    expirySecs: 120,
-    creationTimestamp: 1_700_000_000_000 + id,
-    ...over,
-  };
-};
-
 describe("RfqTilesPanel", () => {
   it("shows the empty state when there are no RFQs", () => {
     const panel = mount(RfqTilesPanel, {
@@ -184,3 +171,16 @@ describe("RfqTilesPanel", () => {
     expect(panel.hasText("$77")).toBe(true);
   });
 });
+
+function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
+  return {
+    id,
+    instrumentId: 1,
+    quantity: 1000,
+    direction: Direction.Buy,
+    state: RfqState.Open,
+    expirySecs: 120,
+    creationTimestamp: 1_700_000_000_000 + id,
+    ...over,
+  };
+}

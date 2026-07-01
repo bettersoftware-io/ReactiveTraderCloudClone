@@ -113,7 +113,7 @@ describe("NumberFilter", () => {
       value: 100,
     });
     expect(
-      (applied as Extract<ColumnFilter, { type: "number" }>).valueTo,
+      (applied as Extract<ColumnFilter, NumberFilterTag>).valueTo,
     ).toBeUndefined();
   });
 
@@ -150,3 +150,5 @@ describe("NumberFilter", () => {
     expect(applied).toBeNull();
   });
 });
+
+type NumberFilterTag = { type: "number" };

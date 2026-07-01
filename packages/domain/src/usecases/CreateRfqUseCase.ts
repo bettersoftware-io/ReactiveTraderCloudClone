@@ -1,6 +1,6 @@
 import type { Observable } from "rxjs";
 
-import { CREDIT_QUANTITY_MULTIPLIER } from "../credit/rfq.js";
+import { applyMaximum, CREDIT_QUANTITY_MULTIPLIER } from "../credit/rfq.js";
 import type { Direction } from "../fx/trade.js";
 import type { CreateRfqRequest, WorkflowPort } from "../ports/workflowPort.js";
 
@@ -22,7 +22,7 @@ export class CreateRfqUseCase {
     const request: CreateRfqRequest = {
       instrumentId: input.instrumentId,
       dealerIds: [...input.dealerIds],
-      quantity: input.quantity * CREDIT_QUANTITY_MULTIPLIER,
+      quantity: applyMaximum(input.quantity) * CREDIT_QUANTITY_MULTIPLIER,
       direction: input.direction,
       expirySecs: input.expirySecs ?? RFQ_DEFAULT_EXPIRY_SECS,
     };

@@ -12,6 +12,7 @@ export type RfqEvent =
   | { readonly type: "quoteQuoted"; readonly payload: Quote }
   | { readonly type: "quotePassed"; readonly payload: Quote }
   | { readonly type: "quoteAccepted"; readonly payload: Quote }
+  | { readonly type: "quoteRejected"; readonly payload: Quote }
   | { readonly type: "rfqClosed"; readonly payload: Rfq };
 
 export interface CreateRfqRequest {

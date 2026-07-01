@@ -1,0 +1,90 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gauge {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.blotter {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 70px 60px 70px 70px 70px 82px;
+  padding: 4px 8px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  gap: 4px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 70px 60px 70px 70px 70px 82px;
+  align-items: center;
+  padding: 4px 8px;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.symbol {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.qty {
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.avgPrice {
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.markPrice {
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.pnl {
+  text-align: right;
+}
+
+.row[data-pnl="pos"] .pnl {
+  color: var(--accent-positive);
+}
+
+.row[data-pnl="neg"] .pnl {
+  color: var(--accent-negative);
+}
+
+.sparkCell {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+}

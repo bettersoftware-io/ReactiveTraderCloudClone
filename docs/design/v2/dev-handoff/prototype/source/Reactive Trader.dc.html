@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<rect width="100" height="100" fill="#00060a"/>
+<g transform="translate(50 50)" fill="none" stroke="#00e5ff" stroke-width="2">
+<polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11"/>
+<polygon points="0,-13 11,-6.5 11,6.5 0,13 -11,6.5 -11,-6.5" stroke="#19ffd0"/>
+<circle r="4" fill="#00e5ff" stroke="none"/>
+</g>
+</svg>
+</template>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+input{font-family:inherit;}
+::-webkit-scrollbar{width:7px;height:7px;}
+::-webkit-scrollbar-thumb{background:var(--border,#234);border-radius:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes spinRev{from{transform:rotate(360deg)}to{transform:rotate(0)}}
+@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+@keyframes rowIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+@keyframes rowFlashA{0%{background:color-mix(in srgb,var(--rowAcc) 55%,transparent);box-shadow:inset 3px 0 0 var(--rowAcc),0 0 22px -6px var(--rowAcc)}14%{background:color-mix(in srgb,var(--rowAcc) 48%,transparent)}100%{background:transparent;box-shadow:inset 0 0 0 0 transparent}}
+@keyframes rowFlashB{0%{background:color-mix(in srgb,var(--rowAcc) 55%,transparent);box-shadow:inset 3px 0 0 var(--rowAcc),0 0 22px -6px var(--rowAcc)}14%{background:color-mix(in srgb,var(--rowAcc) 48%,transparent)}100%{background:transparent;box-shadow:inset 0 0 0 0 transparent}}
+@keyframes acceptIn{0%{transform:scale(.55);opacity:.1;box-shadow:0 0 0 0 var(--buy)}55%{transform:scale(1.16);box-shadow:0 0 26px 4px var(--buy)}100%{transform:scale(1);opacity:1;box-shadow:0 0 10px var(--buy)}}
+@keyframes acceptPulse{0%,100%{box-shadow:0 0 7px var(--buy);transform:scale(1)}50%{box-shadow:0 0 20px 3px var(--buy);transform:scale(1.06)}}
+@keyframes cardInA{0%{opacity:0;transform:translateY(-13px) scale(.95)}60%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes cardInB{0%{opacity:0;transform:translateY(-13px) scale(.95)}60%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes cardOut{0%{opacity:1;transform:none}100%{opacity:0;transform:scale(.9) translateY(-10px)}}
+@keyframes bookPulse{0%{box-shadow:0 0 0 0 var(--accent)}60%{box-shadow:0 0 0 3px transparent,0 0 34px var(--accent)}100%{box-shadow:none}}
+@keyframes cardFlash{0%,100%{border-color:var(--border)}40%{border-color:var(--sell)}}
+@keyframes bootGlitch{0%,100%{opacity:1;transform:translate(0,0)}50%{opacity:.6;transform:translate(1px,-1px)}}
+@keyframes auroraA{0%{transform:translate3d(-7%,-4%,0) scale(1.08)}50%{transform:translate3d(7%,5%,0) scale(1.28)}100%{transform:translate3d(-7%,-4%,0) scale(1.08)}}
+@keyframes auroraB{0%{transform:translate3d(6%,4%,0) scale(1.22)}50%{transform:translate3d(-6%,-4%,0) scale(1.04)}100%{transform:translate3d(6%,4%,0) scale(1.22)}}
+@keyframes gridDrift{from{background-position:0 0,0 0}to{background-position:0 48px,48px 0}}
+@keyframes sweepRot{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes appReveal{from{opacity:0;transform:scale(1.015)}to{opacity:1;transform:none}}
+.rtSw{width:38px;height:20px;border-radius:10px;background:var(--chip,rgba(255,255,255,0.06));border:1px solid var(--border);position:relative;cursor:pointer;transition:background .15s,border-color .15s;flex:none}
+.rtSw::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--dim);transition:transform .15s,background .15s}
+.rtSw[data-on="true"]{background:color-mix(in srgb,var(--buy) 26%,transparent);border-color:var(--buy)}
+.rtSw[data-on="true"]::after{transform:translateX(18px);background:var(--buy);box-shadow:0 0 6px var(--buy)}
+.rtSeg{padding:5px 11px;border:1px solid var(--border);background:transparent;color:var(--dim);font-family:var(--fontM,monospace);font-size:11px;letter-spacing:.04em;cursor:pointer;border-radius:3px;transition:all .12s;white-space:nowrap}
+.rtSeg:hover{color:var(--text);border-color:var(--borderStrong)}
+.rtSeg[data-on="true"]{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent);color:var(--accent)}
+.rtRange{-webkit-appearance:none;appearance:none;width:128px;height:4px;border-radius:2px;background:var(--border);outline:none;cursor:pointer}
+.rtRange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);cursor:pointer}
+.rtRange::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);cursor:pointer}
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+
+  <sc-if value="{{ booting }}" hint-placeholder-val="{{ true }}">
+  <div style="{{ bootStyle }}">
+    <canvas ref="{{ setBootCanvas }}" style="position:absolute; inset:0; width:100%; height:100%;"></canvas>
+    <div style="position:relative; z-index:2; width:520px; max-width:86vw; text-align:center;">
+      <div style="font-family:'Orbitron',sans-serif; font-weight:900; font-size:30px; letter-spacing:0.42em; color:{{ bootAccent }}; text-shadow:0 0 26px {{ bootAccent }}; animation:bootGlitch 2.4s infinite;">REACTIVE&nbsp;TRADER</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.6em; color:{{ bootDim }}; margin-top:10px;">TACTICAL TRADING OPERATING SYSTEM · v4.0</div>
+      <div style="margin:30px auto 0; width:100%; height:148px; text-align:left; font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.85; color:{{ bootDim }}; overflow:hidden;">
+        <sc-for list="{{ bootLines }}" as="l" hint-placeholder-count="3"><div style="{{ l.style }}">{{ l.text }}</div></sc-for>
+      </div>
+      <div style="margin-top:18px; display:flex; align-items:center; gap:12px;">
+        <div style="flex:1; height:3px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden;"><div style="{{ bootBarStyle }}"></div></div>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:{{ bootAccent }}; width:44px; text-align:right;">{{ bootPct }}%</span>
+      </div>
+      <div onClick="{{ finishBoot }}" style="margin-top:22px; cursor:pointer; display:inline-block; font-family:'Chakra Petch',sans-serif; font-size:10px; letter-spacing:0.3em; color:{{ bootDim }}; border:1px solid {{ bootBorder }}; border-radius:3px; padding:6px 18px;">SKIP ▸</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ loggedOut }}" hint-placeholder-val="{{ false }}">
+  <div style="{{ bootStyle }}">
+    <div style="position:absolute; inset:0; z-index:0; pointer-events:none; background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px); background-size:46px 46px; opacity:0.5;"></div>
+    <div style="position:relative; z-index:2; text-align:center; width:360px; max-width:86vw;">
+      <svg viewBox="0 0 48 48" style="width:64px; height:64px; margin:0 auto 18px; display:block; filter:drop-shadow(0 0 10px var(--accent));"><g fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-linejoin="round"><polygon points="24,3 40.6,13.5 40.6,34.5 24,45 7.4,34.5 7.4,13.5"></polygon><polygon points="24,8 36.3,15.75 36.3,31.25 24,39 11.7,31.25 11.7,15.75" stroke="var(--accent2)" opacity="0.6"></polygon></g><circle cx="24" cy="24" r="11" fill="none" stroke="var(--accent2)" stroke-width="1" stroke-dasharray="3 5" opacity="0.85" style="transform-origin:24px 24px; animation:spin 16s linear infinite;"></circle><circle cx="24" cy="24" r="3.4" fill="var(--accent)"></circle></svg>
+      <div style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:18px; letter-spacing:0.32em; color:var(--text); margin-bottom:8px;">SESSION LOCKED</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.3em; color:var(--faint); margin-bottom:24px;">REACTIVE TRADER OS · {{ sessionId }}</div>
+      <div style="position:relative; width:48px; height:48px; margin:0 auto 10px; display:flex; align-items:center; justify-content:center;"><svg viewBox="0 0 28 28" style="position:absolute; inset:0; width:100%; height:100%;"><polygon points="14,1.5 25,7.75 25,20.25 14,26.5 3,20.25 3,7.75" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.3"></polygon></svg><span style="position:relative; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:15px; color:var(--accent);">{{ user.initials }}</span></div>
+      <div style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:14px; color:var(--text);">{{ user.name }}</div>
+      <div style="font-family:var(--fontM,monospace); font-size:10px; color:var(--dim); margin-top:3px;">{{ user.role }}</div>
+      <div style="display:flex; gap:8px; justify-content:center; margin:22px 0;"><div style="width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent);"></div><div style="width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent);"></div><div style="width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent);"></div><div style="width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent);"></div><div style="width:9px; height:9px; border-radius:50%; border:1px solid var(--border);"></div><div style="width:9px; height:9px; border-radius:50%; border:1px solid var(--border);"></div></div>
+      <div onClick="{{ onLogin }}" style="cursor:pointer; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:12px; letter-spacing:0.2em; color:var(--bg); background:var(--accent); border-radius:4px; padding:12px 0; box-shadow:var(--glow);">AUTHENTICATE ▸</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.3em; color:var(--faint); margin-top:16px;">BIOMETRIC · ENCRYPTED CHANNEL</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ booted }}" hint-placeholder-val="{{ false }}">
+  <div style="position:relative; height:100vh; overflow:hidden; display:flex; flex-direction:column; animation:appReveal .8s cubic-bezier(.22,.61,.36,1) both;">
+
+    <div style="position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden;">
+      <div style="position:absolute; inset:0; opacity:var(--auroraOp,0.6);">
+        <div style="position:absolute; inset:-25%; background:radial-gradient(38% 38% at 28% 32%, var(--accent) 0%, transparent 62%), radial-gradient(34% 34% at 78% 64%, var(--accent2) 0%, transparent 62%); opacity:0.18; filter:blur(46px); animation:auroraA 52s ease-in-out infinite; animation-play-state:var(--ambPlay,paused); will-change:transform;"></div>
+        <div style="position:absolute; inset:-25%; background:radial-gradient(30% 36% at 66% 22%, var(--buy) 0%, transparent 60%), radial-gradient(40% 40% at 22% 82%, var(--accent) 0%, transparent 60%); opacity:0.13; filter:blur(58px); animation:auroraB 68s ease-in-out infinite; animation-play-state:var(--ambPlay,paused); will-change:transform;"></div>
+      </div>
+      <div style="position:absolute; top:50%; left:50%; width:170vmax; height:170vmax; margin:-85vmax 0 0 -85vmax; background:conic-gradient(from 0deg, transparent 0deg, var(--accent) 10deg, transparent 34deg); opacity:calc(var(--auroraOp,0.6) * 0.06); animation:sweepRot 90s linear infinite; animation-play-state:var(--ambPlay,paused); will-change:transform;"></div>
+      <div style="position:absolute; inset:0; background-image:linear-gradient(var(--grid,rgba(0,224,255,0.05)) 1px,transparent 1px),linear-gradient(90deg,var(--grid,rgba(0,224,255,0.05)) 1px,transparent 1px); background-size:48px 48px,48px 48px; opacity:0.4; animation:gridDrift 60s linear infinite; animation-play-state:var(--ambPlay,paused);"></div>
+      <div style="position:absolute; inset:0; background-image:radial-gradient(var(--accent) 1.1px, transparent 1.4px); background-size:24px 24px; opacity:calc(var(--auroraOp,0.6) * 0.16); animation:gridDrift 90s linear infinite; animation-play-state:var(--ambPlay,paused);"></div>
+    </div>
+    <div style="position:absolute; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse 78% 68% at 50% 38%, transparent 48%, rgba(0,0,0,0.58) 100%);"></div>
+
+    <header style="position:relative; z-index:20; flex:none; display:flex; align-items:center; gap:16px; padding:11px 18px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(0,0,0,0.3), transparent);">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="position:relative; width:38px; height:38px; flex:none;">
+          <svg viewBox="0 0 48 48" style="width:100%; height:100%; display:block; filter:drop-shadow(0 0 6px var(--accent));">
+            <g fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linejoin="round">
+              <polygon points="24,3 40.6,13.5 40.6,34.5 24,45 7.4,34.5 7.4,13.5" opacity="0.9"></polygon>
+              <polygon points="24,8 36.3,15.75 36.3,31.25 24,39 11.7,31.25 11.7,15.75" stroke="var(--accent2)" stroke-width="1" opacity="0.6"></polygon>
+            </g>
+            <g stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" opacity="0.85">
+              <line x1="24" y1="2" x2="24" y2="6"></line><line x1="24" y1="42" x2="24" y2="46"></line>
+              <line x1="5" y1="13" x2="8.5" y2="15"></line><line x1="43" y1="13" x2="39.5" y2="15"></line>
+              <line x1="5" y1="35" x2="8.5" y2="33"></line><line x1="43" y1="35" x2="39.5" y2="33"></line>
+            </g>
+            <circle cx="24" cy="24" r="11" fill="none" stroke="var(--accent2)" stroke-width="1" stroke-dasharray="3 5" opacity="0.85" style="transform-origin:24px 24px; animation:spin 16s linear infinite;"></circle>
+            <g style="transform-origin:24px 24px; animation:spinRev 22s linear infinite;">
+              <path d="M24 15 L31.8 28.5 L16.2 28.5 Z" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-linejoin="round" opacity="0.8"></path>
+              <path d="M24 33 L16.2 19.5 L31.8 19.5 Z" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-linejoin="round" opacity="0.5"></path>
+            </g>
+            <circle cx="24" cy="24" r="3.4" fill="var(--accent)"></circle>
+            <circle cx="24" cy="24" r="6.4" fill="none" stroke="var(--accent)" stroke-width="1"></circle>
+          </svg>
+        </div>
+        <div style="line-height:1;">
+          <div style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:15px; letter-spacing:0.2em; color:var(--text);">REACTIVE TRADER</div>
+          <div style="font-family:var(--fontM,monospace); font-size:8px; letter-spacing:0.4em; color:var(--faint); margin-top:5px;">FX · CREDIT · EQUITIES · HUD TERMINAL</div>
+        </div>
+      </div>
+      <nav style="display:flex; gap:6px;">
+        <div onClick="{{ nav.fx.onClick }}" style="{{ nav.fx.style }}">FX</div>
+        <div onClick="{{ nav.credit.onClick }}" style="{{ nav.credit.style }}">CREDIT</div>
+        <div onClick="{{ nav.equities.onClick }}" style="{{ nav.equities.style }}">EQUITIES</div>
+        <div onClick="{{ nav.admin.onClick }}" style="{{ nav.admin.style }}">ADMIN</div>
+      </nav>
+      <div style="flex:1;"></div>
+      <div style="display:flex; align-items:center; gap:9px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="width:7px; height:7px; border-radius:50%; background:var(--buy); box-shadow:0 0 10px var(--buy); animation:pulseDot 1.6s ease-in-out infinite;"></div>
+          <span style="font-family:var(--fontD,sans-serif); font-size:10px; letter-spacing:0.16em; color:var(--buy);">LIVE</span>
+        </div>
+        <span style="font-family:var(--fontM,monospace); font-size:9px; font-weight:600; letter-spacing:0.12em; color:var(--buy); border:1px solid var(--buy); border-radius:3px; padding:3px 6px;">PROD</span>
+        <div onClick="{{ onToggleMode }}" title="{{ modeTitle }}" style="cursor:pointer; width:32px; height:32px; flex:none; display:flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:5px; font-size:14px; color:var(--accent);">{{ modeGlyph }}</div>
+        <div style="position:relative;">
+          <div onClick="{{ onToggleTheme }}" style="cursor:pointer; display:flex; align-items:center; gap:6px; height:32px; padding:0 10px; border:1px solid var(--border); border-radius:5px;">
+            <span style="width:11px; height:11px; border-radius:3px; background:var(--accent); box-shadow:0 0 6px var(--accent);"></span>
+            <span style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:10px; letter-spacing:0.08em; color:var(--text);">{{ curTheme }}</span>
+            <span style="font-size:9px; color:var(--accent);">▾</span>
+          </div>
+          <sc-if value="{{ menu.theme }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; top:calc(100% + 10px); right:0; z-index:60; width:200px; background:var(--bg); border:1px solid var(--borderStrong); border-radius:6px; box-shadow:0 14px 40px rgba(0,0,0,0.6); overflow:hidden;">
+            <div style="padding:9px 13px; border-bottom:1px solid var(--border); background:var(--panelHead); font-family:var(--fontD,sans-serif); font-weight:600; font-size:10px; letter-spacing:0.14em; color:var(--accent);">THEME</div>
+            <sc-for list="{{ themeList }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.onClick }}" style="{{ t.style }}"><span style="display:flex; align-items:center; gap:9px;"><span style="display:flex; gap:3px;"><span style="{{ t.sw1Style }}"></span><span style="{{ t.sw2Style }}"></span></span><span>{{ t.label }}</span></span><span style="color:var(--accent);">{{ t.mark }}</span></div></sc-for>
+          </div>
+          </sc-if>
+        </div>
+
+        <div style="position:relative;">
+          <div onClick="{{ onToggleNotif }}" style="position:relative; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:5px;">
+            <svg viewBox="0 0 24 24" style="width:16px; height:16px;" fill="none" stroke="var(--dim)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+            <span style="position:absolute; top:-5px; right:-5px; min-width:15px; height:15px; padding:0 3px; display:flex; align-items:center; justify-content:center; font-family:var(--fontM,monospace); font-size:9px; font-weight:700; color:var(--bg); background:var(--accent); border-radius:8px; box-shadow:0 0 8px var(--accent);">{{ notifCount }}</span>
+          </div>
+          <sc-if value="{{ menu.notif }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; top:calc(100% + 10px); right:0; z-index:60; width:300px; background:var(--bg); border:1px solid var(--borderStrong); border-radius:6px; box-shadow:0 14px 40px rgba(0,0,0,0.6); overflow:hidden;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--border); background:var(--panelHead);"><span style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:11px; letter-spacing:0.14em; color:var(--accent);">NOTIFICATIONS</span><span style="font-family:var(--fontM,monospace); font-size:9px; color:var(--faint);">{{ notifCount }} new</span></div>
+            <div style="max-height:280px; overflow-y:auto;">
+              <sc-for list="{{ notifs }}" as="n" hint-placeholder-count="4"><div style="display:flex; gap:10px; padding:10px 13px; border-bottom:1px solid var(--border); align-items:baseline;"><span style="font-family:var(--fontM,monospace); font-size:8px; font-weight:700; letter-spacing:0.06em; color:{{ n.color }}; border:1px solid {{ n.color }}; border-radius:2px; padding:1px 4px; flex:none;">{{ n.tag }}</span><div style="flex:1;"><div style="font-family:var(--fontM,monospace); font-size:11px; color:var(--dim); line-height:1.4;">{{ n.msg }}</div><div style="font-family:var(--fontM,monospace); font-size:9px; color:var(--faint); margin-top:3px;">{{ n.t }}</div></div></div></sc-for>
+            </div>
+            <div onClick="{{ onCloseMenu }}" style="text-align:center; cursor:pointer; padding:9px; font-family:var(--fontD,sans-serif); font-size:10px; letter-spacing:0.14em; color:var(--accent);">MARK ALL READ</div>
+          </div>
+          </sc-if>
+        </div>
+
+        <div style="position:relative;">
+          <div onClick="{{ onToggleLang }}" style="cursor:pointer; display:flex; align-items:center; gap:6px; height:32px; padding:0 10px; border:1px solid var(--border); border-radius:5px;">
+            <svg viewBox="0 0 24 24" style="width:15px; height:15px;" fill="none" stroke="var(--dim)" stroke-width="1.5"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"></path></svg>
+            <span style="font-family:var(--fontM,monospace); font-size:11px; color:var(--text);">{{ lang }}</span><span style="font-size:9px; color:var(--accent);">▾</span>
+          </div>
+          <sc-if value="{{ menu.lang }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; top:calc(100% + 10px); right:0; z-index:60; width:180px; background:var(--bg); border:1px solid var(--borderStrong); border-radius:6px; box-shadow:0 14px 40px rgba(0,0,0,0.6); overflow:hidden;">
+            <sc-for list="{{ langs }}" as="l" hint-placeholder-count="6"><div onClick="{{ l.onClick }}" style="{{ l.style }}"><span>{{ l.label }}</span><span style="color:var(--accent);">{{ l.mark }}</span></div></sc-for>
+          </div>
+          </sc-if>
+        </div>
+
+        <div style="width:1px; height:26px; background:var(--border);"></div>
+
+        <div style="position:relative;">
+          <div onClick="{{ onToggleUser }}" style="cursor:pointer; display:flex; align-items:center; gap:5px;">
+            <div style="position:relative; width:30px; height:30px; flex:none; display:flex; align-items:center; justify-content:center;"><svg viewBox="0 0 28 28" style="position:absolute; inset:0; width:100%; height:100%; filter:drop-shadow(0 0 4px var(--accent));"><polygon points="14,1.5 25,7.75 25,20.25 14,26.5 3,20.25 3,7.75" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.3"></polygon></svg><span style="position:relative; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:11px; color:var(--accent);">{{ user.initials }}</span></div>
+            <span style="font-size:9px; color:var(--accent);">▾</span>
+          </div>
+          <sc-if value="{{ menu.user }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; top:calc(100% + 10px); right:0; z-index:60; width:260px; background:var(--bg); border:1px solid var(--borderStrong); border-radius:6px; box-shadow:0 14px 40px rgba(0,0,0,0.6); overflow:hidden;">
+            <div style="display:flex; gap:12px; align-items:center; padding:15px 14px; border-bottom:1px solid var(--border); background:var(--panelHead);">
+              <div style="position:relative; width:38px; height:38px; flex:none; display:flex; align-items:center; justify-content:center;"><svg viewBox="0 0 28 28" style="position:absolute; inset:0; width:100%; height:100%; filter:drop-shadow(0 0 6px var(--accent));"><polygon points="14,1.5 25,7.75 25,20.25 14,26.5 3,20.25 3,7.75" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.3"></polygon></svg><span style="position:relative; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:13px; color:var(--accent);">{{ user.initials }}</span></div>
+              <div style="line-height:1.3;"><div style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:13px; color:var(--text);">{{ user.name }}</div><div style="font-family:var(--fontM,monospace); font-size:10px; color:var(--dim); margin-top:2px;">{{ user.email }}</div></div>
+            </div>
+            <div style="padding:11px 14px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:10px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span style="color:var(--faint);">TRADER ID</span><span style="color:var(--text);">{{ user.id }}</span></div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span style="color:var(--faint);">DESK</span><span style="color:var(--text);">{{ user.desk }}</span></div>
+              <div style="display:flex; justify-content:space-between;"><span style="color:var(--faint);">CLEARANCE</span><span style="color:var(--buy);">LEVEL 4 · FULL</span></div>
+            </div>
+            <div onClick="{{ onOpenPrefs }}" style="cursor:pointer; padding:11px 14px; font-family:var(--fontM,monospace); font-size:12px; color:var(--dim); border-bottom:1px solid var(--border);">⚙ Preferences</div>
+            <div onClick="{{ onReboot }}" style="cursor:pointer; padding:11px 14px; font-family:var(--fontM,monospace); font-size:12px; color:var(--dim); border-bottom:1px solid var(--border);">⟳ Reboot HUD</div>
+            <div onClick="{{ onLogout }}" style="cursor:pointer; padding:11px 14px; font-family:var(--fontD,sans-serif); font-weight:600; font-size:12px; letter-spacing:0.08em; color:var(--sell);">⏻ Sign Out</div>
+          </div>
+          </sc-if>
+        </div>
+      </div>
+    </header>
+
+    <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}"><div onClick="{{ onCloseMenu }}" style="position:fixed; inset:0; z-index:15;"></div></sc-if>
+
+    <sc-if value="{{ prefsOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onClosePrefs }}" style="position:fixed; inset:0; z-index:60; background:rgba(0,0,0,0.62); display:flex; align-items:center; justify-content:center; padding:24px; font-family:var(--fontD,sans-serif);">
+      <div onClick="{{ prefsStop }}" style="width:min(800px,96vw); max-height:86vh; display:flex; flex-direction:column; background:var(--bg2); border:1px solid var(--borderStrong); box-shadow:0 30px 90px rgba(0,0,0,0.62);">
+        <div style="flex:none; display:flex; align-items:center; justify-content:space-between; padding:16px 22px; border-bottom:1px solid var(--border); background:var(--panelHead);">
+          <div>
+            <div style="font-family:'Orbitron',sans-serif; font-weight:800; font-size:15px; letter-spacing:0.18em; color:var(--text);">PREFERENCES</div>
+            <div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.14em; color:var(--faint); margin-top:4px;">DISPLAY · TRADING · NOTIFICATIONS · DATA</div>
+          </div>
+          <div onClick="{{ onClosePrefs }}" style="cursor:pointer; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border:1px solid var(--border); color:var(--dim); font-size:15px;">✕</div>
+        </div>
+        <div style="flex:1; min-height:0; overflow:auto; padding:4px 22px 14px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0 30px;">
+            <div>
+              <div style="margin-top:16px; font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.22em; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:6px;">DISPLAY</div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Animated background</div><div style="font-size:11px; color:var(--faint); margin-top:2px; text-wrap:pretty;">Drifting aurora &amp; grid. Static is lighter on CPU/GPU.</div></div>
+                <div class="rtSw" data-on="{{ prefOn.animatedBg }}" onClick="{{ prefHand.animatedBg }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Reduce motion</div><div style="font-size:11px; color:var(--faint); margin-top:2px;">Disable all ambient animation.</div></div>
+                <div class="rtSw" data-on="{{ prefOn.reduceMotion }}" onClick="{{ prefHand.reduceMotion }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Glass blur panels</div><div style="font-size:11px; color:var(--faint); margin-top:2px;">Frosted panel backdrop.</div></div>
+                <div class="rtSw" data-on="{{ prefOn.glassBlur }}" onClick="{{ prefHand.glassBlur }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Background grid</div></div>
+                <div class="rtSw" data-on="{{ prefOn.showGrid }}" onClick="{{ prefHand.showGrid }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Scanline overlay</div></div>
+                <div class="rtSw" data-on="{{ prefOn.scanlines }}" onClick="{{ prefHand.scanlines }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Density</div></div>
+                <div style="display:flex; gap:6px;"><sc-for list="{{ seg.density }}" as="o" hint-placeholder-count="2"><div class="rtSeg" data-on="{{ o.on }}" onClick="{{ o.set }}">{{ o.label }}</div></sc-for></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Display font</div></div>
+                <div style="display:flex; gap:6px;"><sc-for list="{{ seg.font }}" as="o" hint-placeholder-count="3"><div class="rtSeg" data-on="{{ o.on }}" onClick="{{ o.set }}">{{ o.label }}</div></sc-for></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Interface scale</div></div>
+                <div style="display:flex; align-items:center; gap:11px;"><input type="range" class="rtRange" min="80" max="120" step="5" value="{{ prefs.uiScale }}" onChange="{{ onScale }}" /><span style="font-family:var(--fontM,monospace); font-size:12px; color:var(--accent); width:40px; text-align:right;">{{ uiScaleLabel }}</span></div>
+              </div>
+
+              <div style="margin-top:20px; font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.22em; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:6px;">TRADING</div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">One-click trading</div><div style="font-size:11px; color:var(--faint); margin-top:2px;">Execute without confirmation.</div></div>
+                <div class="rtSw" data-on="{{ prefOn.oneClick }}" onClick="{{ prefHand.oneClick }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Confirm before execute</div></div>
+                <div class="rtSw" data-on="{{ prefOn.confirmExec }}" onClick="{{ prefHand.confirmExec }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Execution sound</div></div>
+                <div class="rtSw" data-on="{{ prefOn.execSound }}" onClick="{{ prefHand.execSound }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Price precision</div></div>
+                <div style="display:flex; gap:6px;"><sc-for list="{{ seg.precision }}" as="o" hint-placeholder-count="3"><div class="rtSeg" data-on="{{ o.on }}" onClick="{{ o.set }}">{{ o.label }}</div></sc-for></div>
+              </div>
+            </div>
+
+            <div>
+              <div style="margin-top:16px; font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.22em; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:6px;">NOTIFICATIONS</div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Desktop alerts</div><div style="font-size:11px; color:var(--faint); margin-top:2px;">Trade fills &amp; rejections.</div></div>
+                <div class="rtSw" data-on="{{ prefOn.desktopAlerts }}" onClick="{{ prefHand.desktopAlerts }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Price alerts</div></div>
+                <div class="rtSw" data-on="{{ prefOn.priceAlerts }}" onClick="{{ prefHand.priceAlerts }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Market news feed</div></div>
+                <div class="rtSw" data-on="{{ prefOn.marketNews }}" onClick="{{ prefHand.marketNews }}"></div>
+              </div>
+
+              <div style="margin-top:20px; font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.22em; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:6px;">DATA &amp; PRIVACY</div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Live refresh rate</div></div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;"><sc-for list="{{ seg.refresh }}" as="o" hint-placeholder-count="4"><div class="rtSeg" data-on="{{ o.on }}" onClick="{{ o.set }}">{{ o.label }}</div></sc-for></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Time zone</div></div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;"><sc-for list="{{ seg.tz }}" as="o" hint-placeholder-count="4"><div class="rtSeg" data-on="{{ o.on }}" onClick="{{ o.set }}">{{ o.label }}</div></sc-for></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Connection heartbeat</div><div style="font-size:11px; color:var(--faint); margin-top:2px;">Keep-alive ping to gateway.</div></div>
+                <div class="rtSw" data-on="{{ prefOn.heartbeat }}" onClick="{{ prefHand.heartbeat }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Anonymous telemetry</div></div>
+                <div class="rtSw" data-on="{{ prefOn.telemetry }}" onClick="{{ prefHand.telemetry }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Crash reports</div></div>
+                <div class="rtSw" data-on="{{ prefOn.crashReports }}" onClick="{{ prefHand.crashReports }}"></div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 2px; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; color:var(--text);">Beta modules</div><div style="font-size:11px; color:var(--faint); margin-top:2px;">Early-access trading tools.</div></div>
+                <div class="rtSw" data-on="{{ prefOn.betaModules }}" onClick="{{ prefHand.betaModules }}"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:none; display:flex; align-items:center; justify-content:space-between; padding:13px 22px; border-top:1px solid var(--border); background:var(--panelHead);">
+          <div style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint); letter-spacing:0.08em;">⚡ Static background recommended — lowest GPU load</div>
+          <div onClick="{{ onClosePrefs }}" style="cursor:pointer; padding:8px 24px; background:var(--buy); color:#02161a; font-family:'Orbitron',sans-serif; font-weight:700; font-size:12px; letter-spacing:0.14em;">DONE</div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <main style="position:relative; z-index:5; flex:1; min-height:0; display:flex;">
+
+      <!-- ============ FX ============ -->
+      <sc-if value="{{ isFx }}" hint-placeholder-val="{{ true }}">
+      <section data-screen-label="FX" style="{{ sectionRow }}">
+        <div style="{{ fxLeftCol }}">
+          <div style="{{ panTiles }}">
+            <div style="{{ panelHeadStyle }}">
+              <div onClick="{{ p.fxLeft.rates.onClick }}" style="{{ p.fxLeft.rates.style }}">◧ Live Rates</div>
+              <div onClick="{{ p.fxLeft.watch.onClick }}" style="{{ p.fxLeft.watch.style }}">☰ Watchlist</div>
+              <div style="flex:1;"></div>
+              <div onClick="{{ toggleCharts }}" style="{{ chartsBtn }}">CHARTS</div>
+              <span style="{{ addBtnStyle }}" title="Add module">⊕</span><div onClick="{{ mx.tiles.onClick }}" style="{{ mxBtn }}" title="Maximize">{{ mx.tiles.glyph }}</div>
+            </div>
+            <div style="{{ sb14 }}">
+              <div style="display:flex; align-items:center; gap:7px; margin-bottom:13px; flex-wrap:wrap;">
+                <span style="font-family:var(--fontM,monospace); font-size:9px; letter-spacing:0.2em; color:var(--faint); margin-right:4px;">FILTER</span>
+                <div onClick="{{ chips.all.onClick }}" style="{{ chips.all.style }}">All</div>
+                <div onClick="{{ chips.eur.onClick }}" style="{{ chips.eur.style }}">EUR</div>
+                <div onClick="{{ chips.usd.onClick }}" style="{{ chips.usd.style }}">USD</div>
+                <div onClick="{{ chips.gbp.onClick }}" style="{{ chips.gbp.style }}">GBP</div>
+                <div onClick="{{ chips.jpy.onClick }}" style="{{ chips.jpy.style }}">JPY</div>
+                <div onClick="{{ chips.aud.onClick }}" style="{{ chips.aud.style }}">AUD</div>
+              </div>
+              <sc-if value="{{ fxRatesView }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:12px;">
+                <sc-for list="{{ tiles }}" as="t" hint-placeholder-count="6">
+                  <div data-tile-sym="{{ t.sym }}" style="{{ t.cardStyle }}">
+                    <div style="position:absolute; top:6px; right:9px; font-family:var(--fontM,monospace); font-size:8px; letter-spacing:0.16em; color:var(--faint);">{{ t.code }}</div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                      <span style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:15px; letter-spacing:0.06em; color:var(--text);">{{ t.pair }}</span>
+                      <span style="display:flex; align-items:center; gap:5px; font-family:var(--fontM,monospace); font-size:11px; color:{{ t.moveColor }};">{{ t.arrow }} {{ t.movePips }}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                      <label style="font-family:var(--fontM,monospace); font-size:11px; color:var(--dim);">{{ t.base }}</label>
+                      <div style="position:relative; flex:1; display:flex; align-items:center;">
+                        <input value="{{ t.notional }}" onChange="{{ t.onNotional }}" onFocus="{{ selectAll }}" style="{{ t.notionalStyle }}"/>
+                        <span onClick="{{ t.onReset }}" style="{{ t.resetStyle }}">↺</span>
+                      </div>
+                      <sc-if value="{{ t.notionalInvalid }}" hint-placeholder-val="{{ false }}"><span style="font-family:var(--fontM,monospace); font-size:9px; color:var(--sell);">MAX</span></sc-if>
+                    </div>
+                    <div style="display:flex; align-items:stretch; gap:7px;">
+                      <div onClick="{{ t.onSell }}" style="{{ t.sellStyle }}">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
+                          <span style="font-family:var(--fontD,sans-serif); font-size:9px; font-weight:600; letter-spacing:0.22em; color:var(--sell);">SELL</span>
+                          <sc-if value="{{ t.isRfq }}" hint-placeholder-val="{{ false }}"><span style="{{ rfqBadge }}">RFQ</span></sc-if>
+                        </div>
+                        <div style="display:flex; align-items:baseline; font-family:var(--fontM,monospace); color:var(--text);">
+                          <span style="font-size:15px;">{{ t.sellBig }}</span>
+                          <span style="{{ t.sellPipStyle }}">{{ t.sellPips }}</span>
+                          <span style="font-size:12px; align-self:flex-start;">{{ t.sellFrac }}</span>
+                        </div>
+                      </div>
+                      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:22px;">
+                        <span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--accent);">{{ t.spread }}</span>
+                      </div>
+                      <div onClick="{{ t.onBuy }}" style="{{ t.buyStyle }}">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
+                          <sc-if value="{{ t.isRfq }}" hint-placeholder-val="{{ false }}"><span style="{{ rfqBadge }}">RFQ</span></sc-if>
+                          <span style="font-family:var(--fontD,sans-serif); font-size:9px; font-weight:600; letter-spacing:0.22em; color:var(--buy); margin-left:auto;">BUY</span>
+                        </div>
+                        <div style="display:flex; align-items:baseline; justify-content:flex-end; font-family:var(--fontM,monospace); color:var(--text);">
+                          <span style="font-size:15px;">{{ t.buyBig }}</span>
+                          <span style="{{ t.buyPipStyle }}">{{ t.buyPips }}</span>
+                          <span style="font-size:12px; align-self:flex-start;">{{ t.buyFrac }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <sc-if value="{{ showCharts }}" hint-placeholder-val="{{ true }}">
+                    <svg viewBox="0 0 300 40" preserveAspectRatio="none" style="width:100%; height:34px; display:block; margin-top:9px; overflow:visible;"><polyline points="{{ t.spark }}" fill="none" stroke="{{ t.moveColor }}" stroke-width="1.5" stroke-linejoin="round" style="opacity:0.75;"></polyline></svg>
+                    </sc-if>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:9px; padding-top:8px; border-top:1px solid var(--border);">
+                      <span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint);">SPT {{ t.spotDate }}</span>
+                      <span style="font-family:var(--fontM,monospace); font-size:11px; color:var(--dim);">{{ t.notional }} {{ t.base }}</span>
+                    </div>
+                    <sc-if value="{{ t.showOverlay }}" hint-placeholder-val="{{ false }}">
+                    <div style="{{ t.overlayStyle }}">
+                      <sc-if value="{{ t.busy }}" hint-placeholder-val="{{ false }}">
+                        <div style="width:34px; height:34px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite;"></div>
+                        <div style="font-family:var(--fontM,monospace); font-size:11px; letter-spacing:0.14em; color:var(--dim); margin-top:12px;">{{ t.busyLabel }}</div>
+                        <sc-if value="{{ t.rfqReq }}" hint-placeholder-val="{{ false }}"><div onClick="{{ t.onDismiss }}" style="margin-top:14px; cursor:pointer; font-family:var(--fontD,sans-serif); font-size:10px; letter-spacing:0.14em; color:var(--dim); border:1px solid var(--border); border-radius:3px; padding:5px 14px;">CANCEL</div></sc-if>
+                      </sc-if>
+                      <sc-if value="{{ t.rfqRecv }}" hint-placeholder-val="{{ false }}">
+                        <div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.16em; color:var(--accent); margin-bottom:8px;">QUOTE · {{ t.rfqSecs }}s</div>
+                        <div style="display:flex; gap:8px; width:100%;">
+                          <div onClick="{{ t.onSell }}" style="flex:1; cursor:pointer; text-align:center; background:var(--bg2); border:1px solid var(--sell); border-radius:4px; padding:9px 0;"><div style="font-family:var(--fontD,sans-serif); font-size:9px; letter-spacing:0.2em; color:var(--sell);">SELL</div><div style="font-family:var(--fontM,monospace); font-size:18px; color:var(--text); margin-top:2px;">{{ t.rfqSell }}</div></div>
+                          <div onClick="{{ t.onBuy }}" style="flex:1; cursor:pointer; text-align:center; background:var(--bg2); border:1px solid var(--buy); border-radius:4px; padding:9px 0;"><div style="font-family:var(--fontD,sans-serif); font-size:9px; letter-spacing:0.2em; color:var(--buy);">BUY</div><div style="font-family:var(--fontM,monospace); font-size:18px; color:var(--text); margin-top:2px;">{{ t.rfqBuy }}</div></div>
+                        </div>
+                        <div style="width:100%; height:4px; background:var(--bg2); border-radius:2px; margin-top:10px; overflow:hidden;"><div style="{{ t.rfqBarStyle }}"></div></div>
+                        <div onClick="{{ t.onDismiss }}" style="margin-top:10px; cursor:pointer; font-family:var(--fontD,sans-serif); font-size:10px; letter-spacing:0.14em; color:var(--dim);">REJECT</div>
+                      </sc-if>
+                      <sc-if value="{{ t.done }}" hint-placeholder-val="{{ false }}">
+                        <div style="font-size:26px; line-height:1; color:{{ t.doneColor }}; text-shadow:0 0 14px currentColor;">{{ t.doneIcon }}</div>
+                        <div style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:14px; color:var(--text); margin-top:8px;">{{ t.doneTitle }}</div>
+                        <div style="font-family:var(--fontM,monospace); font-size:12px; color:var(--dim); margin-top:3px;">{{ t.doneSub }}</div>
+                        <sc-if value="{{ t.success }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex; gap:14px; margin-top:10px; font-family:var(--fontM,monospace); font-size:11px;">
+                            <div style="text-align:center;"><div style="color:var(--faint);">RATE</div><div style="color:var(--text); margin-top:2px;">{{ t.doneRate }}</div></div>
+                            <div style="text-align:center;"><div style="color:var(--faint);">SPT</div><div style="color:var(--text); margin-top:2px;">{{ t.spotDate }}</div></div>
+                            <div style="text-align:center;"><div style="color:var(--faint);">ID</div><div style="color:var(--text); margin-top:2px;">{{ t.doneId }}</div></div>
+                          </div>
+                        </sc-if>
+                        <div onClick="{{ t.onDismiss }}" style="margin-top:13px; cursor:pointer; font-family:var(--fontD,sans-serif); font-size:10px; letter-spacing:0.16em; color:var(--bg); background:var(--accent); border-radius:3px; padding:6px 18px; box-shadow:var(--glow);">DISMISS</div>
+                      </sc-if>
+                    </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              </sc-if>
+              <sc-if value="{{ fxWatchView }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <div style="display:grid; grid-template-columns:90px 1fr 90px 70px 60px; padding:7px 10px; font-family:var(--fontM,monospace); font-size:9px; letter-spacing:0.12em; color:var(--faint); text-transform:uppercase; border-bottom:1px solid var(--border);"><span>Pair</span><span>Mid</span><span>Move</span><span>Spread</span><span>Trend</span></div>
+                <sc-for list="{{ tiles }}" as="t" hint-placeholder-count="6">
+                  <div data-tile-sym="{{ t.code }}" style="display:grid; grid-template-columns:90px 1fr 90px 70px 60px; align-items:center; padding:9px 10px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:13px; color:var(--text);">
+                    <span style="font-weight:600;">{{ t.code }}</span><span style="color:{{ t.moveColor }};">{{ t.mid }}</span><span style="color:{{ t.moveColor }}; font-size:11px;">{{ t.arrow }} {{ t.movePips }}</span><span style="color:var(--accent); font-size:12px;">{{ t.spread }}</span>
+                    <svg viewBox="0 0 60 18" preserveAspectRatio="none" style="width:60px; height:16px; overflow:visible;"><polyline points="{{ t.miniSpark }}" fill="none" stroke="{{ t.moveColor }}" stroke-width="1.4"></polyline></svg>
+                  </div>
+                </sc-for>
+              </div>
+              </sc-if>
+            </div>
+          </div>
+
+          <div onPointerDown="{{ splits.fxStack }}" style="{{ splitH }}"><div style="{{ handleH }}"></div></div>
+
+          <div style="{{ panBlot }}">
+            <div style="{{ panelHeadStyle }}">
+              <div onClick="{{ p.fxBlot.blotter.onClick }}" style="{{ p.fxBlot.blotter.style }}">▤ FX Blotter</div>
+              <div onClick="{{ p.fxBlot.activity.onClick }}" style="{{ p.fxBlot.activity.style }}">⚡ Activity</div><div onClick="{{ mx.fxblot.onClick }}" style="{{ mxBtn }}" title="Maximize">{{ mx.fxblot.glyph }}</div>
+              <div style="flex:1;"></div>
+              <sc-if value="{{ fxBlotterView }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint);">{{ fxCount }}</span>
+                <div style="position:relative; display:flex; align-items:center;"><span style="position:absolute; left:8px; font-size:11px; color:var(--faint);">⌕</span><input value="{{ fxQuery }}" onInput="{{ onFxQuery }}" placeholder="Filter…" style="background:var(--bg2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:11px; padding:4px 9px 4px 22px; width:130px; outline:none;"/></div>
+                <div onClick="{{ onExportFx }}" style="cursor:pointer; font-family:var(--fontD,sans-serif); font-size:10px; letter-spacing:0.1em; color:var(--accent); border:1px solid var(--borderStrong); border-radius:4px; padding:4px 10px;">⤓ CSV</div>
+              </div>
+              </sc-if>
+            </div>
+            <sc-if value="{{ fxBlotterView }}" hint-placeholder-val="{{ true }}">
+            <div style="{{ sbTable }}">
+              <div style="display:grid; grid-template-columns:84px 92px 118px 80px 92px 72px 116px 92px 106px 84px; min-width:930px; padding:8px 14px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.08em; color:var(--faint); text-transform:uppercase; position:sticky; top:0; background:var(--panel); z-index:2;">
+                <sc-for list="{{ fxCols }}" as="c" hint-placeholder-count="10"><span onClick="{{ c.onClick }}" style="cursor:pointer; user-select:none;">{{ c.label }}{{ c.ind }}</span></sc-for>
+              </div>
+              <sc-for list="{{ fxTrades }}" as="t" hint-placeholder-count="6">
+                <div style="{{ t.rowStyle }}"><span style="color:var(--dim);">{{ t.id }}</span><span style="color:{{ t.statusColor }};">{{ t.status }}</span><span style="color:var(--dim);">{{ t.tradeDate }}</span><span style="color:{{ t.dirColor }};">{{ t.dir }}</span><span>{{ t.symbol }}</span><span style="color:var(--dim);">{{ t.dealtCcy }}</span><span>{{ t.notional }}</span><span>{{ t.rate }}</span><span style="color:var(--dim);">{{ t.valueDate }}</span><span style="color:var(--dim);">{{ t.trader }}</span></div>
+              </sc-for>
+            </div>
+            </sc-if>
+            <sc-if value="{{ fxActivityView }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ sb614 }}">
+              <sc-for list="{{ activity }}" as="a" hint-placeholder-count="5"><div style="display:flex; gap:12px; padding:6px 0; font-family:var(--fontM,monospace); font-size:12px; align-items:baseline; border-bottom:1px solid var(--border);"><span style="color:var(--faint); flex:none; width:70px;">{{ a.t }}</span><span style="color:{{ a.color }}; flex:none; width:58px;">{{ a.tag }}</span><span style="color:var(--dim);">{{ a.msg }}</span></div></sc-for>
+              <sc-if value="{{ noActivity }}" hint-placeholder-val="{{ false }}"><div style="padding:24px; text-align:center; font-family:var(--fontM,monospace); font-size:11px; color:var(--faint);">No activity yet — execute a trade to populate the feed</div></sc-if>
+            </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div onPointerDown="{{ splits.fxAside }}" style="{{ splitV }}"><div style="{{ handleV }}"></div></div>
+
+        <div style="{{ asideCol }}"><sc-if value="{{ fxAsideCollapsed }}" hint-placeholder-val="{{ false }}"><div style="{{ stripWrap }}"><div onClick="{{ onRestore }}" style="{{ stripBar }}" title="Restore">⛶  ANALYTICS</div><div onClick="{{ onRestore }}" style="{{ stripBar }}" title="Restore">⛶  POSITIONS</div></div></sc-if>
+          <div style="{{ panAna }}">
+            <div style="{{ panelHeadStyle }}"><div style="{{ tabActiveStyle }}">◉ Analytics</div><div style="flex:1;"></div><span style="{{ addBtnStyle }}">⊕</span><div onClick="{{ mx.ana.onClick }}" style="{{ mxBtn }}" title="Maximize">{{ mx.ana.glyph }}</div></div>
+            <div style="{{ sb16 }}">
+              <div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.14em; color:var(--faint); text-transform:uppercase;">Profit &amp; Loss · Today</div>
+              <div style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:32px; letter-spacing:0.02em; color:{{ pnlColor }}; text-shadow:0 0 18px currentColor; margin:3px 0 2px;">{{ pnlStr }}</div>
+              <svg viewBox="0 0 300 100" preserveAspectRatio="none" style="width:100%; height:90px; display:block;"><defs><linearGradient id="pf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent2)" stop-opacity="0.32"></stop><stop offset="1" stop-color="var(--accent2)" stop-opacity="0"></stop></linearGradient></defs><path d="{{ pnlArea }}" fill="url(#pf)"></path><polyline points="{{ pnlLine }}" fill="none" stroke="var(--buy)" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 5px var(--buy));"></polyline></svg>
+              <div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.14em; color:var(--faint); text-transform:uppercase; margin:14px 0 11px;">PnL per Currency Pair</div>
+              <sc-for list="{{ bars }}" as="b" hint-placeholder-count="6"><div style="display:flex; align-items:center; gap:10px; margin-bottom:7px;"><span style="width:62px; font-family:var(--fontM,monospace); font-size:11px; color:var(--dim);">{{ b.p }}</span><div style="flex:1; height:8px; background:var(--bg2); border-radius:2px; position:relative; overflow:hidden;"><div style="{{ b.barStyle }}"></div></div><span style="width:38px; text-align:right; font-family:var(--fontM,monospace); font-size:11px; color:{{ b.color }};">{{ b.val }}</span></div></sc-for>
+            </div>
+          </div>
+
+          <div onPointerDown="{{ splits.fxRight }}" style="{{ splitH }}"><div style="{{ handleH }}"></div></div>
+
+          <div style="{{ panPos }}">
+            <div style="{{ panelHeadStyle }}"><div style="{{ tabActiveStyle }}">◎ Positions</div><div style="flex:1;"></div><span style="{{ addBtnStyle }}">⊕</span><div onClick="{{ mx.pos.onClick }}" style="{{ mxBtn }}" title="Maximize">{{ mx.pos.glyph }}</div></div>
+            <div style="{{ sb16 }}">
+              <div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.14em; color:var(--faint); text-transform:uppercase; margin-bottom:6px;">Net Exposure</div>
+              <div style="position:relative; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px; margin:8px 0 14px;">
+                <sc-for list="{{ bubbles }}" as="b" hint-placeholder-count="7"><div style="{{ b.wrapStyle }}"><div style="position:absolute; inset:0; border-radius:50%; border:1px solid {{ b.color }}; opacity:0.5; animation:spin 22s linear infinite;"></div><div style="position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle at 50% 40%, {{ b.glow }} 0%, transparent 70%);"></div><div style="position:relative; text-align:center; line-height:1.1;"><div style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:{{ b.labelSize }}; color:{{ b.color }};">{{ b.ccy }}</div><div style="font-family:var(--fontM,monospace); font-size:9px; color:var(--dim);">{{ b.amt }}</div></div></div></sc-for>
+              </div>
+              <sc-for list="{{ bubbles }}" as="b" hint-placeholder-count="7"><div style="display:flex; align-items:center; justify-content:space-between; padding:6px 2px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:12px;"><span style="color:var(--text); font-weight:600;">{{ b.ccy }}</span><span style="color:{{ b.color }};">{{ b.amt }}</span></div></sc-for>
+            </div>
+          </div>
+        </div>
+      </section>
+      </sc-if>
+
+      <!-- ============ CREDIT ============ -->
+      <sc-if value="{{ isCredit }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="Credit" style="{{ sectionRow }}">
+        <div style="{{ creditLeftCol }}"><sc-if value="{{ crLeftCollapsed }}" hint-placeholder-val="{{ false }}"><div style="{{ stripWrap }}"><div onClick="{{ onRestore }}" style="{{ stripBar }}" title="Restore">⛶  NEW RFQ</div></div></sc-if>
+          <div style="{{ panFull }}">
+            <div style="{{ panelHeadStyle }}"><div style="{{ tabActiveStyle }}">✚ New RFQ</div><div style="flex:1;"></div><span style="{{ addBtnStyle }}">⊕</span></div>
+            <div style="{{ sb16 }}">
+              <div style="display:flex; background:var(--bg2); border:1px solid var(--border); border-radius:5px; padding:3px; margin-bottom:14px;"><div onClick="{{ rfqForm.onBuy }}" style="{{ rfqForm.buyStyle }}">You Buy</div><div onClick="{{ rfqForm.onSell }}" style="{{ rfqForm.sellStyle }}">You Sell</div></div>
+              <div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.12em; color:var(--faint); text-transform:uppercase; margin-bottom:6px;">Instrument</div>
+              <div style="position:relative; margin-bottom:14px;">
+                <div onClick="{{ rfqForm.onToggleInstr }}" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; background:var(--bg2); border:1px solid var(--border); border-radius:5px; padding:9px 12px; font-family:var(--fontM,monospace); font-size:12px; color:{{ rfqForm.instrColor }};"><span>{{ rfqForm.instrLabel }}</span><span style="color:var(--accent);">▾</span></div>
+                <sc-if value="{{ rfqForm.showInstr }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:30; max-height:220px; overflow-y:auto; background:var(--bg); border:1px solid var(--borderStrong); border-radius:5px; box-shadow:0 8px 30px rgba(0,0,0,0.6);">
+                  <sc-for list="{{ rfqForm.instruments }}" as="i" hint-placeholder-count="6"><div onClick="{{ i.onSelect }}" style="cursor:pointer; padding:9px 12px; border-bottom:1px solid var(--border);"><div style="font-family:var(--fontM,monospace); font-size:12px; color:var(--text);">{{ i.ticker }}</div><div style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint); margin-top:2px;">{{ i.cusip }} · {{ i.name }}</div></div></sc-for>
+                </div>
+                </sc-if>
+              </div>
+              <div style="display:flex; gap:12px; margin-bottom:14px;">
+                <div style="flex:1;"><div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.12em; color:var(--faint); text-transform:uppercase; margin-bottom:6px;">Qty (000)</div><input value="{{ rfqForm.qty }}" onInput="{{ rfqForm.onQty }}" placeholder="0" style="width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:5px; color:var(--text); font-family:var(--fontM,monospace); font-size:13px; padding:9px 12px; outline:none;"/></div>
+                <div style="flex:1;"><div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.12em; color:var(--faint); text-transform:uppercase; margin-bottom:6px;">Duration</div><div style="background:var(--bg2); border:1px solid var(--border); border-radius:5px; color:var(--dim); font-family:var(--fontM,monospace); font-size:13px; padding:9px 12px;">2 Min</div></div>
+              </div>
+              <div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.12em; color:var(--faint); text-transform:uppercase; margin-bottom:8px;">Counterparties</div>
+              <div onClick="{{ rfqForm.onToggleAll }}" style="display:flex; align-items:center; gap:9px; padding:5px 0; cursor:pointer;"><div style="{{ rfqForm.allBox }}">{{ rfqForm.allCheck }}</div><span style="font-family:var(--fontM,monospace); font-size:12px; color:var(--dim);">All Dealers</span></div>
+              <sc-for list="{{ rfqForm.dealers }}" as="d" hint-placeholder-count="6"><div onClick="{{ d.onToggle }}" style="display:flex; align-items:center; gap:9px; padding:5px 0; cursor:pointer;"><div style="{{ d.box }}">{{ d.check }}</div><span style="font-family:var(--fontM,monospace); font-size:12px; color:{{ d.nameColor }};">{{ d.name }}</span></div></sc-for>
+              <div style="display:flex; gap:10px; margin-top:16px;"><div onClick="{{ rfqForm.onClear }}" style="flex:1; text-align:center; cursor:pointer; font-family:var(--fontD,sans-serif); font-weight:600; font-size:12px; letter-spacing:0.1em; color:var(--dim); border:1px solid var(--border); border-radius:5px; padding:10px 0;">CLEAR</div><div onClick="{{ rfqForm.onSend }}" style="{{ rfqForm.sendStyle }}">SEND RFQ</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div onPointerDown="{{ splits.creditAside }}" style="{{ splitV }}"><div style="{{ handleV }}"></div></div>
+
+        <div style="{{ creditRightCol }}">
+          <div style="{{ panRfqs }}">
+            <div style="{{ panelHeadStyle }}"><div style="{{ tabActiveStyle }}">◳ RFQs</div><div onClick="{{ mx.rfqs.onClick }}" style="{{ mxBtn }}" title="Maximize">{{ mx.rfqs.glyph }}</div><div style="flex:1;"></div><div style="display:flex; gap:6px;"><div onClick="{{ creditFilter.live.onClick }}" style="{{ creditFilter.live.style }}">LIVE {{ creditFilter.liveCount }}</div><div onClick="{{ creditFilter.closed.onClick }}" style="{{ creditFilter.closed.style }}">CLOSED</div><div onClick="{{ creditFilter.all.onClick }}" style="{{ creditFilter.all.style }}">ALL</div></div></div>
+            <div style="{{ sb14 }}">
+              <sc-if value="{{ noRfqs }}" hint-placeholder-val="{{ false }}"><div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:50px 20px; border:1px dashed var(--border); border-radius:8px;"><div style="font-size:38px; opacity:0.4;">◇</div><div style="font-family:var(--fontD,sans-serif); font-size:15px; color:var(--dim); margin-top:12px;">No RFQs to show</div><div style="font-family:var(--fontM,monospace); font-size:11px; color:var(--faint); margin-top:6px;">Create one with the New RFQ form</div></div></sc-if>
+              <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:13px;">
+                <sc-for list="{{ rfqCards }}" as="q" hint-placeholder-count="2">
+                  <div data-rfq-id="{{ q.rid }}" style="{{ q.cardStyle }}">
+                    <div style="display:flex; align-items:flex-start; justify-content:space-between; padding-bottom:11px; border-bottom:1px solid var(--border);"><div><div style="display:flex; align-items:center; gap:7px;"><span style="font-family:var(--fontD,sans-serif); font-size:10px; font-weight:600; letter-spacing:0.1em; padding:1px 7px; border-radius:3px; color:{{ q.dirColor }}; border:1px solid {{ q.dirColor }};">{{ q.dir }}</span><span style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:14px; color:var(--text);">{{ q.ticker }}</span></div><div style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint); margin-top:5px;">{{ q.cusip }} · QTY {{ q.qty }}</div></div><span style="font-family:var(--fontD,sans-serif); font-size:10px; font-weight:600; letter-spacing:0.1em; color:{{ q.stateColor }};">{{ q.stateLabel }}</span></div>
+                    <div style="padding:4px 0;"><sc-for list="{{ q.quotes }}" as="k" hint-placeholder-count="3"><div style="{{ k.rowStyle }}"><div style="display:flex; align-items:center; gap:7px;"><sc-if value="{{ k.best }}" hint-placeholder-val="{{ false }}"><span style="font-size:9px; color:var(--buy);">★</span></sc-if><span style="font-family:var(--fontM,monospace); font-size:12px; color:{{ k.nameColor }};">{{ k.bank }}</span></div><div style="display:flex; align-items:center; gap:10px;"><span style="font-family:var(--fontM,monospace); font-size:14px; color:{{ k.priceColor }};">{{ k.price }}</span><sc-if value="{{ k.canAccept }}" hint-placeholder-val="{{ false }}"><div onClick="{{ k.onAccept }}" style="{{ k.acceptStyle }}">ACCEPT</div></sc-if></div></div></sc-for></div>
+                    <div style="padding-top:11px; border-top:1px solid var(--border);">
+                      <sc-if value="{{ q.live }}" hint-placeholder-val="{{ false }}"><div style="display:flex; align-items:center; gap:10px;"><span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--dim); white-space:nowrap;">{{ q.secs }} secs</span><div style="flex:1; height:5px; background:var(--bg2); border-radius:3px; overflow:hidden;"><div style="{{ q.barStyle }}"></div></div><div onClick="{{ q.onCancel }}" style="cursor:pointer; font-family:var(--fontD,sans-serif); font-weight:600; font-size:9px; letter-spacing:0.1em; color:var(--accent); border:1px solid var(--borderStrong); border-radius:3px; padding:4px 11px;">CANCEL</div></div></sc-if>
+                      <sc-if value="{{ q.accepted }}" hint-placeholder-val="{{ false }}"><div style="display:flex; align-items:center; gap:8px;"><span style="color:var(--buy); font-size:13px;">✓</span><span style="font-family:var(--fontM,monospace); font-size:11px; color:var(--buy);">You traded with {{ q.acceptedDealer }}</span></div></sc-if>
+                      <sc-if value="{{ q.terminated }}" hint-placeholder-val="{{ false }}"><div onClick="{{ q.onRemove }}" style="display:flex; align-items:center; gap:8px; cursor:pointer;"><span style="color:var(--faint); font-size:12px;">🗑</span><span style="font-family:var(--fontM,monospace); font-size:11px; color:var(--dim);">{{ q.stateLabel }} · remove</span></div></sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div onPointerDown="{{ splits.creditStack }}" style="{{ splitH }}"><div style="{{ handleH }}"></div></div>
+
+          <div style="{{ panCBlot }}">
+            <div style="{{ panelHeadStyle }}"><div style="{{ tabActiveStyle }}">▤ Credit Blotter</div><div style="flex:1;"></div><span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint); margin-right:8px;">{{ creditCount }}</span><div onClick="{{ mx.cblot.onClick }}" style="{{ mxBtn }}" title="Maximize">{{ mx.cblot.glyph }}</div><div onClick="{{ onExportCredit }}" style="cursor:pointer; font-family:var(--fontD,sans-serif); font-size:10px; letter-spacing:0.1em; color:var(--accent); border:1px solid var(--borderStrong); border-radius:4px; padding:4px 10px;">⤓ CSV</div></div>
+            <div style="{{ sbTable }}">
+              <div style="display:grid; grid-template-columns:64px 92px 118px 64px 112px 104px 126px 92px 72px 84px; min-width:940px; padding:8px 14px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.08em; color:var(--faint); text-transform:uppercase; position:sticky; top:0; background:var(--panel);"><span>ID</span><span>Status</span><span>Date</span><span>Dir</span><span>Counterparty</span><span>CUSIP</span><span>Security</span><span>Qty</span><span>Type</span><span>Price</span></div>
+              <sc-for list="{{ creditTrades }}" as="t" hint-placeholder-count="3"><div style="{{ t.rowStyle }}"><span style="color:var(--dim);">{{ t.id }}</span><span style="color:var(--buy);">{{ t.status }}</span><span style="color:var(--dim);">{{ t.date }}</span><span style="color:{{ t.dirColor }};">{{ t.dir }}</span><span>{{ t.cp }}</span><span style="color:var(--dim);">{{ t.cusip }}</span><span>{{ t.sec }}</span><span>{{ t.qty }}</span><span style="color:var(--dim);">{{ t.ot }}</span><span>{{ t.price }}</span></div></sc-for>
+            </div>
+          </div>
+        </div>
+      </section>
+      </sc-if>
+
+      <!-- ============ EQUITIES ============ -->
+      <sc-if value="{{ isEquities }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="Equities" style="{{ sectionRow }}">
+        <div style="{{ eqCenterCol }}">
+          <div style="{{ panChart }}">
+            <div style="{{ panelHeadStyle }}">
+              <sc-for list="{{ eqTabs }}" as="tb" hint-placeholder-count="2"><div onClick="{{ tb.onClick }}" style="{{ tb.style }}">{{ tb.label }}<span onClick="{{ tb.onClose }}" style="margin-left:8px; opacity:0.5;">✕</span></div></sc-for>
+              <div style="flex:1;"></div>
+              <div onClick="{{ mx.chart.onClick }}" style="{{ mxBtn }}" title="Maximize">{{ mx.chart.glyph }}</div><div style="display:flex; gap:4px;"><div onClick="{{ tf.d1.onClick }}" style="{{ tf.d1.style }}">1D</div><div onClick="{{ tf.w1.onClick }}" style="{{ tf.w1.style }}">1W</div><div onClick="{{ tf.m1.onClick }}" style="{{ tf.m1.style }}">1M</div><div onClick="{{ tf.m3.onClick }}" style="{{ tf.m3.style }}">3M</div></div>
+            </div>
+            <div style="flex:1; min-height:0; display:flex; flex-direction:column; padding:14px; gap:12px;">
+              <div style="flex:none; display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap;">
+                <div><div style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:20px; letter-spacing:0.06em; color:var(--text);">{{ inst.sym }}</div><div style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint); margin-top:3px;">{{ inst.name }} · {{ inst.exch }}</div></div>
+                <div style="display:flex; align-items:baseline; gap:10px;"><span style="{{ inst.lastStyle }}">{{ inst.last }}</span><span style="font-family:var(--fontM,monospace); font-size:14px; color:{{ inst.chgColor }};">{{ inst.chg }} ({{ inst.chgPct }})</span></div>
+                <div style="flex:1;"></div>
+                <div style="display:flex; gap:18px; font-family:var(--fontM,monospace); font-size:11px;">
+                  <div><div style="color:var(--faint);">BID</div><div style="color:var(--sell); margin-top:2px;">{{ inst.bid }}</div></div>
+                  <div><div style="color:var(--faint);">ASK</div><div style="color:var(--buy); margin-top:2px;">{{ inst.ask }}</div></div>
+                  <div><div style="color:var(--faint);">DAY RANGE</div><div style="color:var(--text); margin-top:2px;">{{ inst.range }}</div></div>
+                  <div><div style="color:var(--faint);">VOL</div><div style="color:var(--text); margin-top:2px;">{{ inst.vol }}</div></div>
+                </div>
+              </div>
+              <div style="flex:1; min-height:0; position:relative; background:var(--bg2); border:1px solid var(--border); border-radius:5px; overflow:hidden;">
+                <sc-for list="{{ chart.grid }}" as="g" hint-placeholder-count="4"><div style="{{ g.style }}"></div></sc-for>
+                <sc-for list="{{ chart.labels }}" as="g" hint-placeholder-count="4"><div style="{{ g.style }}">{{ g.txt }}</div></sc-for>
+                <sc-for list="{{ chart.candles }}" as="c" hint-placeholder-count="30"><div style="{{ c.wickStyle }}"></div><div style="{{ c.bodyStyle }}"></div></sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div onPointerDown="{{ splits.eqCenter }}" style="{{ splitH }}"><div style="{{ handleH }}"></div></div>
+
+          <div style="{{ panEBlot }}">
+            <div style="{{ panelHeadStyle }}"><div onClick="{{ p.eqBlot.orders.onClick }}" style="{{ p.eqBlot.orders.style }}">▤ Orders</div><div onClick="{{ p.eqBlot.positions.onClick }}" style="{{ p.eqBlot.positions.style }}">◴ Positions</div><div style="flex:1;"></div><span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint); margin-right:8px;">{{ eqBlotCount }}</span><div onClick="{{ mx.eblot.onClick }}" style="{{ mxBtn }}" title="Maximize">{{ mx.eblot.glyph }}</div></div>
+            <sc-if value="{{ eqOrdersView }}" hint-placeholder-val="{{ true }}">
+            <div style="{{ sbTable }}"><div style="display:grid; grid-template-columns:96px 80px 70px 80px 90px 100px 100px; min-width:620px; padding:8px 14px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.08em; color:var(--faint); text-transform:uppercase; position:sticky; top:0; background:var(--panel);"><span>Time</span><span>Symbol</span><span>Side</span><span>Type</span><span>Qty</span><span>Price</span><span>Status</span></div>
+              <sc-for list="{{ eqOrders }}" as="o" hint-placeholder-count="3"><div style="{{ o.rowStyle }}"><span style="color:var(--dim);">{{ o.time }}</span><span style="font-weight:600;">{{ o.sym }}</span><span style="color:{{ o.sideColor }};">{{ o.side }}</span><span style="color:var(--dim);">{{ o.type }}</span><span>{{ o.qty }}</span><span>{{ o.price }}</span><span style="color:{{ o.statusColor }};">{{ o.status }}</span></div></sc-for>
+              <sc-if value="{{ noOrders }}" hint-placeholder-val="{{ false }}"><div style="padding:24px; text-align:center; font-family:var(--fontM,monospace); font-size:11px; color:var(--faint);">No orders — submit one from the ticket</div></sc-if>
+            </div>
+            </sc-if>
+            <sc-if value="{{ eqPositionsView }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ sbTable }}"><div style="display:grid; grid-template-columns:90px 80px 100px 100px 110px 100px; min-width:580px; padding:8px 14px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.08em; color:var(--faint); text-transform:uppercase; position:sticky; top:0; background:var(--panel);"><span>Symbol</span><span>Qty</span><span>Avg Px</span><span>Last</span><span>Mkt Value</span><span>P/L</span></div>
+              <sc-for list="{{ eqPositions }}" as="o" hint-placeholder-count="2"><div style="display:grid; grid-template-columns:90px 80px 100px 100px 110px 100px; min-width:580px; padding:9px 14px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:12px; color:var(--text); align-items:center;"><span style="font-weight:600;">{{ o.sym }}</span><span>{{ o.qty }}</span><span style="color:var(--dim);">{{ o.avg }}</span><span>{{ o.last }}</span><span>{{ o.mv }}</span><span style="color:{{ o.plColor }};">{{ o.pl }}</span></div></sc-for>
+              <sc-if value="{{ noPositions }}" hint-placeholder-val="{{ false }}"><div style="padding:24px; text-align:center; font-family:var(--fontM,monospace); font-size:11px; color:var(--faint);">No open positions</div></sc-if>
+            </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div onPointerDown="{{ splits.eqAside }}" style="{{ splitV }}"><div style="{{ handleV }}"></div></div>
+
+        <div style="{{ eqRightCol }}"><sc-if value="{{ eqRightCollapsed }}" hint-placeholder-val="{{ false }}"><div style="{{ stripWrap }}"><div onClick="{{ onRestore }}" style="{{ stripBar }}" title="Restore">⛶  ORDER TICKET</div><div onClick="{{ onRestore }}" style="{{ stripBar }}" title="Restore">⛶  WATCHLIST</div></div></sc-if>
+          <div style="{{ panTicket }}">
+            <div style="{{ panelHeadStyle }}"><div style="{{ tabActiveStyle }}">✚ Order Ticket</div><div style="flex:1;"></div><div onClick="{{ mx.ticket.onClick }}" style="{{ mxBtn }}" title="Maximize">{{ mx.ticket.glyph }}</div></div>
+            <div style="{{ sb16 }}">
+              <div style="display:flex; background:var(--bg2); border:1px solid var(--border); border-radius:5px; padding:3px; margin-bottom:14px;"><div onClick="{{ ticket.onBuy }}" style="{{ ticket.buyStyle }}">BUY</div><div onClick="{{ ticket.onSell }}" style="{{ ticket.sellStyle }}">SELL</div></div>
+              <div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.12em; color:var(--faint); text-transform:uppercase; margin-bottom:6px;">Order Type</div>
+              <div style="display:flex; gap:6px; margin-bottom:14px;"><div onClick="{{ ticket.onMarket }}" style="{{ ticket.marketStyle }}">Market</div><div onClick="{{ ticket.onLimit }}" style="{{ ticket.limitStyle }}">Limit</div></div>
+              <div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.12em; color:var(--faint); text-transform:uppercase; margin-bottom:6px;">Quantity</div>
+              <div style="display:flex; align-items:center; gap:7px; margin-bottom:14px;"><div onClick="{{ ticket.onDec }}" style="cursor:pointer; width:32px; height:34px; display:flex; align-items:center; justify-content:center; background:var(--bg2); border:1px solid var(--border); border-radius:5px; color:var(--accent); font-size:16px;">−</div><input value="{{ ticket.qty }}" onInput="{{ ticket.onQty }}" style="flex:1; text-align:center; background:var(--bg2); border:1px solid var(--border); border-radius:5px; color:var(--text); font-family:var(--fontM,monospace); font-size:14px; padding:9px 0; outline:none;"/><div onClick="{{ ticket.onInc }}" style="cursor:pointer; width:32px; height:34px; display:flex; align-items:center; justify-content:center; background:var(--bg2); border:1px solid var(--border); border-radius:5px; color:var(--accent); font-size:16px;">+</div></div>
+              <sc-if value="{{ ticket.isLimit }}" hint-placeholder-val="{{ false }}"><div style="font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.12em; color:var(--faint); text-transform:uppercase; margin-bottom:6px;">Limit Price</div><input value="{{ ticket.limit }}" onInput="{{ ticket.onLimitPx }}" placeholder="{{ ticket.lastRaw }}" style="width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:5px; color:var(--text); font-family:var(--fontM,monospace); font-size:14px; padding:9px 12px; outline:none; margin-bottom:14px;"/></sc-if>
+              <div style="background:var(--bg2); border:1px solid var(--border); border-radius:5px; padding:12px; margin-bottom:14px;">
+                <div style="display:flex; justify-content:space-between; font-family:var(--fontM,monospace); font-size:11px; margin-bottom:7px;"><span style="color:var(--faint);">Est. Cost</span><span style="color:var(--text);">{{ ticket.cost }}</span></div>
+                <div style="display:flex; justify-content:space-between; font-family:var(--fontM,monospace); font-size:11px; margin-bottom:7px;"><span style="color:var(--faint);">Buying Power</span><span style="color:var(--text);">{{ ticket.bp }}</span></div>
+                <div style="display:flex; justify-content:space-between; font-family:var(--fontM,monospace); font-size:11px;"><span style="color:var(--faint);">Time in Force</span><span style="color:var(--dim);">Day</span></div>
+              </div>
+              <div onClick="{{ ticket.onSubmit }}" style="{{ ticket.submitStyle }}">{{ ticket.submitLabel }}</div>
+              <sc-if value="{{ ticket.flash }}" hint-placeholder-val="{{ false }}"><div style="margin-top:12px; text-align:center; font-family:var(--fontM,monospace); font-size:11px; color:var(--buy);">✓ {{ ticket.flashMsg }}</div></sc-if>
+            </div>
+          </div>
+
+          <div onPointerDown="{{ splits.eqRight }}" style="{{ splitH }}"><div style="{{ handleH }}"></div></div>
+
+          <div style="{{ panWatch }}">
+            <div style="{{ panelHeadStyle }}"><div style="{{ tabActiveStyle }}">☰ Watchlist</div><div style="flex:1;"></div><div onClick="{{ wlSortBtn.onClick }}" style="{{ wlSortBtn.style }}" title="Sort watchlist">⇅ {{ wlSortBtn.label }}</div><span style="{{ addBtnStyle }}">⊕</span><div onClick="{{ mx.watch.onClick }}" style="{{ mxBtn }}" title="Maximize">{{ mx.watch.glyph }}</div></div>
+            <div style="{{ sb6 }}">
+              <sc-for list="{{ watchlist }}" as="w" hint-placeholder-count="6"><div data-watch-sym="{{ w.sym }}" onClick="{{ w.onClick }}" style="{{ w.rowStyle }}"><div><div style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:13px; color:var(--text);">{{ w.sym }}</div><div style="font-family:var(--fontM,monospace); font-size:9px; color:var(--faint);">{{ w.name }}</div></div><div style="text-align:right;"><div style="font-family:var(--fontM,monospace); font-size:13px; color:{{ w.chgColor }};">{{ w.last }}</div><div style="font-family:var(--fontM,monospace); font-size:9px; color:{{ w.chgColor }};">{{ w.chg }}</div></div></div></sc-for>
+            </div>
+          </div>
+        </div>
+      </section>
+      </sc-if>
+
+      <!-- ============ ADMIN ============ -->
+      <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="Admin" style="{{ sectionRow }}">
+        <div style="{{ panFull }}">
+          <div style="{{ panelHeadStyle }}"><div style="{{ tabActiveStyle }}">◈ Observability</div><div style="flex:1;"></div><span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--buy); letter-spacing:0.08em;">● ALL SYSTEMS NOMINAL</span></div>
+          <div style="{{ sb16 }}">
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:14px;">
+              <sc-for list="{{ adminKpis }}" as="k" hint-placeholder-count="4">
+                <div style="position:relative; background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:14px; overflow:hidden;">
+                  <div style="font-family:var(--fontM,monospace); font-size:9px; letter-spacing:0.16em; color:var(--faint); text-transform:uppercase;">{{ k.label }}</div>
+                  <div style="display:flex; align-items:baseline; gap:5px; margin-top:6px;"><span style="font-family:'Orbitron',sans-serif; font-weight:700; font-size:26px; color:{{ k.color }}; text-shadow:0 0 14px currentColor;">{{ k.value }}</span><span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--dim);">{{ k.unit }}</span></div>
+                  <div style="font-family:var(--fontM,monospace); font-size:10px; color:{{ k.deltaColor }}; margin-top:3px;">{{ k.delta }}</div>
+                  <svg viewBox="0 0 100 30" preserveAspectRatio="none" style="position:absolute; bottom:0; left:0; width:100%; height:30px; opacity:0.55;"><polyline points="{{ k.spark }}" fill="none" stroke="{{ k.color }}" stroke-width="1.4"></polyline></svg>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:12px; margin-bottom:14px;">
+              <div style="background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:11px; letter-spacing:0.12em; color:var(--accent);">MESSAGE THROUGHPUT</span><span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint);">last 60s · msg/s</span></div>
+                <svg viewBox="0 0 300 96" preserveAspectRatio="none" style="width:100%; height:96px; display:block;"><defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent2)" stop-opacity="0.3"></stop><stop offset="1" stop-color="var(--accent2)" stop-opacity="0"></stop></linearGradient></defs><path d="{{ tputArea }}" fill="url(#tg)"></path><polyline points="{{ tputLine }}" fill="none" stroke="var(--accent2)" stroke-width="1.6" style="filter:drop-shadow(0 0 4px var(--accent2));"></polyline></svg>
+              </div>
+              <div style="background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:11px; letter-spacing:0.12em; color:var(--accent);">LATENCY DISTRIBUTION</span><span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint);">ms</span></div>
+                <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:6px; height:96px;">
+                  <sc-for list="{{ latBars }}" as="b" hint-placeholder-count="6"><div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;"><div style="{{ b.barStyle }}"></div><span style="font-family:var(--fontM,monospace); font-size:8px; color:var(--faint); margin-top:5px;">{{ b.l }}</span></div></sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div style="background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:14px;">
+                <div style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:11px; letter-spacing:0.12em; color:var(--accent); margin-bottom:12px;">SERVICE HEALTH</div>
+                <sc-for list="{{ services }}" as="s" hint-placeholder-count="6"><div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;"><div style="width:7px; height:7px; border-radius:50%; flex:none; background:{{ s.color }}; box-shadow:0 0 8px {{ s.color }};"></div><span style="width:128px; flex:none; font-family:var(--fontM,monospace); font-size:11px; color:var(--text);">{{ s.name }}</span><div style="flex:1; height:6px; background:var(--panel); border-radius:3px; overflow:hidden;"><div style="{{ s.barStyle }}"></div></div><span style="width:42px; text-align:right; font-family:var(--fontM,monospace); font-size:10px; color:var(--dim);">{{ s.lat }}</span><span style="width:48px; text-align:right; font-family:var(--fontM,monospace); font-size:10px; color:{{ s.color }};">{{ s.up }}</span></div></sc-for>
+              </div>
+              <div style="background:var(--bg2); border:1px solid var(--border); border-radius:6px; padding:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><span style="font-family:var(--fontD,sans-serif); font-weight:600; font-size:11px; letter-spacing:0.12em; color:var(--accent);">LIVE EVENTS</span><span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--faint);">{{ eventCount }}</span></div>
+                <div style="max-height:200px; overflow-y:auto;">
+                  <sc-for list="{{ adminEvents }}" as="e" hint-placeholder-count="6"><div style="display:flex; gap:9px; padding:6px 0; align-items:baseline; border-bottom:1px solid var(--border);"><span style="font-family:var(--fontM,monospace); font-size:9px; color:var(--faint); flex:none; width:54px;">{{ e.t }}</span><span style="{{ e.tagStyle }}">{{ e.sev }}</span><span style="font-family:var(--fontM,monospace); font-size:10px; color:var(--accent); flex:none; width:64px;">{{ e.svc }}</span><span style="font-family:var(--fontM,monospace); font-size:11px; color:var(--dim);">{{ e.msg }}</span></div></sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      </sc-if>
+
+    </main>
+
+    <footer style="position:relative; z-index:5; flex:none; display:flex; align-items:center; height:26px; padding:0 14px; border-top:1px solid var(--border); background:var(--panelHead); font-family:var(--fontM,monospace); font-size:10px; letter-spacing:0.04em; color:var(--dim); gap:0;">
+      <div style="width:7px; height:7px; border-radius:50%; background:var(--buy); box-shadow:0 0 8px var(--buy); animation:pulseDot 1.8s ease-in-out infinite; margin-right:7px;"></div>
+      <span style="color:var(--buy);">CONNECTED</span>
+      <span style="color:var(--faint); margin:0 9px;">│</span>
+      <span style="color:var(--dim);">GW eu-west-1</span>
+      <sc-for list="{{ statusItems }}" as="s" hint-placeholder-count="6"><span style="color:var(--faint); margin:0 9px;">│</span><span style="color:var(--faint);">{{ s.label }}&nbsp;</span><span style="color:{{ s.color }};">{{ s.value }}</span></sc-for>
+      <div style="flex:1;"></div>
+      <span style="color:var(--faint);">BUILD v4.0.1</span>
+      <span style="color:var(--faint); margin:0 9px;">│</span>
+      <span style="color:var(--accent);">{{ clock }} UTC</span>
+    </footer>
+
+  </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;holo&quot;,&quot;terminal&quot;,&quot;neon&quot;],&quot;default&quot;:&quot;holo&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;tickMs&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:850,&quot;min&quot;:200,&quot;max&quot;:2000,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    this.order = ['EURUSD','GBPUSD','USDJPY','EURJPY','GBPJPY','AUDUSD','USDCAD','NZDUSD'];
+    this.meta = {
+      EURUSD:{pair:'EUR / USD',base:'EUR',d:5,bigLen:4,spread:'1.4'}, GBPUSD:{pair:'GBP / USD',base:'GBP',d:5,bigLen:4,spread:'1.8'},
+      USDJPY:{pair:'USD / JPY',base:'USD',d:3,bigLen:3,spread:'1.6'}, EURJPY:{pair:'EUR / JPY',base:'EUR',d:3,bigLen:3,spread:'2.1'},
+      GBPJPY:{pair:'GBP / JPY',base:'GBP',d:3,bigLen:3,spread:'2.6'}, AUDUSD:{pair:'AUD / USD',base:'AUD',d:5,bigLen:4,spread:'2.0'},
+      USDCAD:{pair:'USD / CAD',base:'USD',d:5,bigLen:4,spread:'2.2'}, NZDUSD:{pair:'NZD / USD',base:'NZD',d:5,bigLen:4,spread:'2.4'}
+    };
+    this.order.forEach(k => this.meta[k].key = k);
+    this.dealers = [{id:1,name:'Adaptive Bank'},{id:2,name:'Citi'},{id:3,name:'JP Morgan'},{id:4,name:'Goldman Sachs'},{id:5,name:'Morgan Stanley'},{id:6,name:'Barclays'},{id:7,name:'RBC'},{id:8,name:'HSBC'},{id:9,name:'Deutsche Bank'}];
+    this.instruments = [
+      {id:1,ticker:'AAPL 2.4 08/30',name:'Apple Inc',cusip:'037833DX5',ref:98.4},{id:2,ticker:'MSFT 3.3 02/27',name:'Microsoft Corp',cusip:'594918BV5',ref:99.8},
+      {id:3,ticker:'AMZN 4.05 08/47',name:'Amazon.com Inc',cusip:'023135BW5',ref:96.2},{id:4,ticker:'GOOGL 1.1 08/30',name:'Alphabet Inc',cusip:'02079KAC1',ref:91.5},
+      {id:5,ticker:'TSLA 5.3 08/25',name:'Tesla Inc',cusip:'88160RAG6',ref:100.6},{id:6,ticker:'UST 4.0 11/34',name:'US Treasury 10Y',cusip:'91282CFP1',ref:98.9},
+      {id:7,ticker:'VZ 4.5 08/33',name:'Verizon Comms',cusip:'92343VGE9',ref:97.3},{id:8,ticker:'KO 1.45 06/27',name:'Coca-Cola Co',cusip:'191216DA5',ref:93.7}
+    ];
+    this.eqMeta = {
+      AAPL:{name:'Apple Inc',exch:'NASDAQ',px:229.35}, MSFT:{name:'Microsoft Corp',exch:'NASDAQ',px:467.12}, NVDA:{name:'NVIDIA Corp',exch:'NASDAQ',px:131.26},
+      TSLA:{name:'Tesla Inc',exch:'NASDAQ',px:251.44}, AMZN:{name:'Amazon.com',exch:'NASDAQ',px:218.07}, GOOGL:{name:'Alphabet Inc',exch:'NASDAQ',px:178.53},
+      META:{name:'Meta Platforms',exch:'NASDAQ',px:591.80}, SPY:{name:'S&P 500 ETF',exch:'NYSE ARCA',px:588.21}
+    };
+    this.eqSyms = Object.keys(this.eqMeta);
+    this.themes = {
+      holo: { bg:'#00060a', bg2:'#02121d', panel:'rgba(6,26,38,0.5)', panelHead:'rgba(0,224,255,0.06)', border:'rgba(0,224,255,0.26)', borderStrong:'rgba(0,224,255,0.6)', text:'#d6f7ff', dim:'rgba(150,210,228,0.62)', faint:'rgba(120,190,210,0.42)', accent:'#00e5ff', accent2:'#19ffd0', buy:'#2bffb3', sell:'#ff5d73', glow:'0 0 16px rgba(0,224,255,0.3)', grid:'rgba(0,224,255,0.05)', chip:'rgba(0,224,255,0.12)', auroraOp:'0.6', tile:'linear-gradient(158deg, rgba(15,43,58,0.92) 0%, rgba(9,28,40,0.86) 100%)', tileShadow:'0 5px 16px -7px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)', fontD:"'Chakra Petch',sans-serif", fontM:"'JetBrains Mono',monospace" },
+      holo3d: { bg:'#00080e', bg2:'#04161f', panel:'linear-gradient(157deg, rgba(13,44,60,0.66) 0%, rgba(6,22,33,0.52) 54%, rgba(3,14,22,0.5) 100%)', panelHead:'linear-gradient(180deg, rgba(0,224,255,0.13) 0%, rgba(0,224,255,0.02) 100%)', border:'rgba(0,224,255,0.30)', borderStrong:'rgba(0,224,255,0.66)', text:'#dcf8ff', dim:'rgba(150,210,228,0.64)', faint:'rgba(120,190,210,0.44)', accent:'#00e5ff', accent2:'#19ffd0', buy:'#2bffb3', sell:'#ff5d73', glow:'0 0 16px rgba(0,224,255,0.32)', grid:'rgba(0,224,255,0.05)', chip:'linear-gradient(180deg, rgba(0,224,255,0.18), rgba(0,224,255,0.07))', auroraOp:'0.5', tile:'linear-gradient(157deg, rgba(18,52,68,0.95) 0%, rgba(10,30,43,0.88) 100%)', panelShadow:'0 14px 38px -12px rgba(0,0,0,0.72), 0 3px 10px -3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 0 0 1px rgba(0,224,255,0.04)', tileShadow:'0 8px 20px -10px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07)', fontD:"'Chakra Petch',sans-serif", fontM:"'JetBrains Mono',monospace" },
+      terminal: { bg:'#0a0c10', bg2:'#0e1116', panel:'#13161c', panelHead:'#171b22', border:'#262b34', borderStrong:'#3a4351', text:'#e8ebf1', dim:'#8b93a1', faint:'#59616e', accent:'#ffb000', accent2:'#4a9eff', buy:'#37d27e', sell:'#ff5b52', glow:'none', grid:'rgba(255,255,255,0.022)', chip:'rgba(255,176,0,0.14)', auroraOp:'0.22', tile:'linear-gradient(180deg, #1b2029 0%, #15191f 100%)', tileShadow:'0 3px 10px -4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)', fontD:"'IBM Plex Sans',sans-serif", fontM:"'IBM Plex Mono',monospace" },
+      terminal3d: { bg:'#090b0f', bg2:'#0d1015', panel:'linear-gradient(160deg, #181c24 0%, #11141a 100%)', panelHead:'linear-gradient(180deg, #1c212a 0%, #14181e 100%)', border:'#2a303a', borderStrong:'#414b5a', text:'#e8ebf1', dim:'#8b93a1', faint:'#59616e', accent:'#ffb000', accent2:'#4a9eff', buy:'#37d27e', sell:'#ff5b52', glow:'none', grid:'rgba(255,255,255,0.02)', chip:'linear-gradient(180deg, rgba(255,176,0,0.18), rgba(255,176,0,0.07))', auroraOp:'0.16', tile:'linear-gradient(180deg, #1f2530 0%, #161b22 100%)', tileShadow:'0 5px 16px -7px rgba(0,0,0,0.72), 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)', panelShadow:'0 14px 38px -12px rgba(0,0,0,0.8), 0 3px 10px -3px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)', fontD:"'IBM Plex Sans',sans-serif", fontM:"'IBM Plex Mono',monospace" },
+      neon: { bg:'#070210', bg2:'#12041f', panel:'rgba(28,6,46,0.52)', panelHead:'rgba(255,43,214,0.08)', border:'rgba(255,43,214,0.36)', borderStrong:'rgba(255,43,214,0.72)', text:'#f7e9ff', dim:'rgba(214,160,235,0.7)', faint:'rgba(180,120,210,0.45)', accent:'#ff2bd6', accent2:'#00f0ff', buy:'#00ffa3', sell:'#ff3864', glow:'0 0 18px rgba(255,43,214,0.4)', grid:'rgba(255,43,214,0.07)', chip:'rgba(255,43,214,0.14)', auroraOp:'0.7', tile:'linear-gradient(158deg, rgba(42,11,64,0.9) 0%, rgba(26,7,42,0.84) 100%)', tileShadow:'0 5px 16px -7px rgba(0,0,0,0.62), 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)', fontD:"'Chakra Petch',sans-serif", fontM:"'JetBrains Mono',monospace" }
+    };
+    this.themesLight = {
+      holo: { bg:'#e7eff3', bg2:'#f6fbfd', panel:'rgba(255,255,255,0.62)', panelHead:'rgba(0,150,179,0.07)', border:'rgba(0,150,179,0.26)', borderStrong:'rgba(0,135,165,0.58)', text:'#0a2330', dim:'rgba(22,72,92,0.72)', faint:'rgba(45,95,115,0.5)', accent:'#0096b3', accent2:'#0ab39a', buy:'#0a9e63', sell:'#d63d52', glow:'0 0 14px rgba(0,150,179,0.2)', grid:'rgba(0,150,179,0.06)', chip:'rgba(0,150,179,0.12)', auroraOp:'0.12', tile:'linear-gradient(158deg, #ffffff 0%, #edf6f9 100%)', tileShadow:'0 5px 14px -7px rgba(20,60,80,0.22), 0 1px 2px rgba(20,60,80,0.1), inset 0 1px 0 rgba(255,255,255,0.85)', fontD:"'Chakra Petch',sans-serif", fontM:"'JetBrains Mono',monospace" },
+      holo3d: { bg:'#e3edf2', bg2:'#f3f9fc', panel:'linear-gradient(157deg, rgba(255,255,255,0.84) 0%, rgba(231,243,248,0.74) 100%)', panelHead:'linear-gradient(180deg, rgba(0,150,179,0.12) 0%, rgba(0,150,179,0.02) 100%)', border:'rgba(0,150,179,0.3)', borderStrong:'rgba(0,135,165,0.6)', text:'#0a2330', dim:'rgba(22,72,92,0.74)', faint:'rgba(45,95,115,0.52)', accent:'#0096b3', accent2:'#0ab39a', buy:'#0a9e63', sell:'#d63d52', glow:'0 0 14px rgba(0,150,179,0.22)', grid:'rgba(0,150,179,0.06)', chip:'linear-gradient(180deg, rgba(0,150,179,0.16), rgba(0,150,179,0.05))', auroraOp:'0.12', tile:'linear-gradient(157deg, #ffffff 0%, #e9f4f7 100%)', panelShadow:'0 14px 34px -12px rgba(20,60,80,0.26), 0 3px 8px -3px rgba(20,60,80,0.15), inset 0 1px 0 rgba(255,255,255,0.95)', tileShadow:'0 8px 18px -10px rgba(20,60,80,0.24), inset 0 1px 0 rgba(255,255,255,0.9)', fontD:"'Chakra Petch',sans-serif", fontM:"'JetBrains Mono',monospace" },
+      terminal: { bg:'#eef0f3', bg2:'#fafbfc', panel:'#ffffff', panelHead:'#eef1f4', border:'#d4d8de', borderStrong:'#a8b0bb', text:'#1a1f27', dim:'#5b6470', faint:'#8b93a1', accent:'#b67700', accent2:'#2f6fd0', buy:'#1f8a52', sell:'#cf4339', glow:'none', grid:'rgba(0,0,0,0.03)', chip:'rgba(182,119,0,0.13)', auroraOp:'0.07', tile:'linear-gradient(180deg, #ffffff 0%, #f4f6f8 100%)', tileShadow:'0 3px 9px -4px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.9)', fontD:"'IBM Plex Sans',sans-serif", fontM:"'IBM Plex Mono',monospace" },
+      terminal3d: { bg:'#e9ecef', bg2:'#f6f7f9', panel:'linear-gradient(160deg, #ffffff 0%, #eef0f3 100%)', panelHead:'linear-gradient(180deg, #f2f4f6 0%, #e8ebef 100%)', border:'#d2d6dc', borderStrong:'#a8b0bb', text:'#1a1f27', dim:'#5b6470', faint:'#8b93a1', accent:'#b67700', accent2:'#2f6fd0', buy:'#1f8a52', sell:'#cf4339', glow:'none', grid:'rgba(0,0,0,0.03)', chip:'linear-gradient(180deg, rgba(182,119,0,0.16), rgba(182,119,0,0.06))', auroraOp:'0.06', tile:'linear-gradient(180deg, #ffffff 0%, #edf0f3 100%)', tileShadow:'0 5px 14px -7px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.9)', panelShadow:'0 14px 34px -12px rgba(0,0,0,0.2), 0 3px 8px -3px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.95)', fontD:"'IBM Plex Sans',sans-serif", fontM:"'IBM Plex Mono',monospace" },
+      neon: { bg:'#f4ebf3', bg2:'#fdf6fb', panel:'rgba(255,255,255,0.62)', panelHead:'rgba(200,0,160,0.07)', border:'rgba(200,0,160,0.28)', borderStrong:'rgba(190,0,150,0.58)', text:'#2a0a26', dim:'rgba(95,32,85,0.72)', faint:'rgba(125,62,115,0.5)', accent:'#c800a0', accent2:'#0093b3', buy:'#0a9e63', sell:'#d63d52', glow:'0 0 14px rgba(200,0,160,0.2)', grid:'rgba(200,0,160,0.06)', chip:'rgba(200,0,160,0.12)', auroraOp:'0.12', tile:'linear-gradient(158deg, #ffffff 0%, #f7ecf5 100%)', tileShadow:'0 5px 14px -7px rgba(80,20,70,0.24), 0 1px 2px rgba(80,20,70,0.1), inset 0 1px 0 rgba(255,255,255,0.85)', fontD:"'Chakra Petch',sans-serif", fontM:"'JetBrains Mono',monospace" }
+    };
+    this.RFQ_THRESHOLD = 10000000; this.fxSeq = 1043; this.creditSeq = 240; this.rfqSeq = 700; this.eqSeq = 5100;
+    this.bootMessages = [
+      'BOOT> initializing kernel ............ OK','BOOT> mounting secure enclave ........ OK','NET > linking pricing engine ......... OK',
+      'NET > credit rfq gateway ............. OK','NET > equities market data ........... OK','SYS > calibrating HUD shaders ........ OK','SYS > all systems nominal ▸ ONLINE'
+    ];
+    this.user = { name:'Anthony Stark', initials:'AS', role:'Senior FX Trader', email:'a.stark@reactivetrader.io', desk:'G10 Spot · London', id:'TRD-0042' };
+    this.languages = [{code:'EN',label:'English'},{code:'中文',label:'中文 (简体)'},{code:'日本',label:'日本語'},{code:'DE',label:'Deutsch'},{code:'FR',label:'Français'},{code:'ES',label:'Español'}];
+    this.notifSeed = [
+      {t:'09:46',tag:'LIMIT',msg:'EURUSD position at 80% of desk limit',color:'var(--accent)'},
+      {t:'09:41',tag:'NEWS',msg:'ECB rate decision in 25 minutes',color:'var(--accent2)'},
+      {t:'09:38',tag:'SETTLE',msg:'2 trades settle today · value 25-Jun',color:'var(--buy)'}
+    ];
+    this.seedEvents = [
+      {t:'09:46:12',sev:'INFO',svc:'analytics',msg:'Snapshot recomputed in 38ms'},
+      {t:'09:45:50',sev:'WARN',svc:'refdata',msg:'Latency 48ms exceeds 40ms SLO'},
+      {t:'09:44:03',sev:'ERROR',svc:'refdata',msg:'Upstream timeout · retry 1/3 scheduled'},
+      {t:'09:43:21',sev:'INFO',svc:'pricing',msg:'Subscribed 8 instruments'},
+      {t:'09:42:10',sev:'INFO',svc:'execution',msg:'Gateway handshake complete'},
+      {t:'09:41:02',sev:'INFO',svc:'kernel',msg:'Secure enclave mounted · AES-256'}
+    ];
+    const baseRates = { EURUSD:1.09213, GBPUSD:1.26414, USDJPY:151.203, EURJPY:165.142, GBPJPY:191.085, AUDUSD:0.66121, USDCAD:1.36782, NZDUSD:0.61054 };
+    const hist = {}; this.order.forEach(k => { hist[k] = Array.from({length:30}, () => baseRates[k]*(1+(Math.random()-0.5)*0.0015)); });
+    const notionals = {}; this.order.forEach(k => notionals[k] = '1,000,000');
+    const eqRates = {}, eqPrev = {}; this.candles = {};
+    this.eqSyms.forEach(s => { eqRates[s] = this.eqMeta[s].px; eqPrev[s] = this.eqMeta[s].px*(1-(Math.random()-0.4)*0.02); this.candles[s] = this.genCandles(s,'1D'); });
+    const gs = (n,b,a)=>{ const o=[]; let v=b; for(let i=0;i<n;i++){ v=Math.max(0,v+(Math.random()-0.5)*a); o.push(v); } return o; };
+
+    this.state = {
+      booting: true, booted: false, bootPct: 0, bootLines: [],
+      theme: this.props.theme || 'holo', tab: 'fx', filter: 'All', clock: '', now: Date.now(), showCharts: true,
+      lang: 'EN', menu: null, loggedOut: false, maxPanel: null, prefsOpen: false, dragging: false, mode: 'dark',
+      prefs: { animatedBg:false, reduceMotion:false, showGrid:true, scanlines:true, glassBlur:true, density:'Comfortable', uiScale:100, fontFace:'Orbitron', confirmExec:true, oneClick:false, defaultNotional:'1,000,000', execSound:true, desktopAlerts:true, priceAlerts:false, marketNews:true, refreshRate:'250 ms', precision:'5 dp', timezone:'UTC', heartbeat:true, telemetry:false, crashReports:true, betaModules:false },
+      rates: { ...baseRates }, opens: { ...baseRates }, dirs: {}, hist, notionals, flash: {}, tiles: {}, pnl: 17120,
+      fxSort: { field:'tradeId', dir:-1 }, fxQuery: '',
+      fxTrades: [ this._seedFx(1042,'Done','Buy','EURUSD','EUR',1000000,'1.09213','A.Stark',-3), this._seedFx(1041,'Done','Sell','USDJPY','USD',2000000,'151.203','A.Stark',-3), this._seedFx(1040,'Rejected','Buy','GBPUSD','GBP',500000,'1.26414','N.Romanoff',-4), this._seedFx(1039,'Done','Sell','EURJPY','EUR',1500000,'165.142','S.Rogers',-5), this._seedFx(1038,'Done','Buy','AUDUSD','AUD',3000000,'0.66121','B.Banner',-6) ],
+      activity: [], newRowId: null, newCreditId: null, newOrderId: null, newRfqId: null, exitingRfqs: [],
+      creditTab: 'all', tabAt: 0, tabSeq: 0, rfqs: [ this._seedRfq(238,'Closed','Buy',2,3500000,2,99.80), this._seedRfq(237,'Cancelled','Sell',5,2000000,null,null) ],
+      creditTrades: [ {id:238,status:'Done',date:this._fmtDate(-2),dir:'Buy',cp:'Citi',cusip:'594918BV5',sec:'MSFT 3.3 02/27',qty:'3,500,000',ot:'AON',price:'$99.8'}, {id:235,status:'Done',date:this._fmtDate(-6),dir:'Sell',cp:'Goldman Sachs',cusip:'037833DX5',sec:'AAPL 2.4 08/30',qty:'2,000,000',ot:'AON',price:'$101.2'} ],
+      credit: { dir:'Buy', instrumentId:null, qty:'', dealerIds:[], showInstr:false },
+      panels: { fxLeft:'rates', fxBlot:'blotter', eqBlot:'orders' },
+      asideW: 360, fxStackR: 0.66, fxRightR: 0.5, creditW: 330, creditStackR: 0.62, eqAsideW: 290, eqCenterR: 0.66, eqRightR: 0.5,
+      metrics: { tput: gs(48,1200,160), lat: gs(48,42,9), err: gs(48,0.4,0.18), sess: gs(48,1280,36) },
+      eqRates, eqPrev, eqFlash: {}, eqSel:'AAPL', eqOpenTabs:['AAPL'], eqTf:'1D', wlSort:'chg', eqOrders:[], eqTicket:{ side:'Buy', type:'Market', qty:'100', limit:'' }, ticketFlash:null
+    };
+    this.sessionId = 'RT-' + Math.random().toString(36).slice(2,7).toUpperCase();
+  }
+
+  _fmtDate(o){ const d=new Date(); d.setDate(d.getDate()+(o||0)); return String(d.getDate()).padStart(2,'0')+'-'+this.MONTHS[d.getMonth()]+'-'+d.getFullYear(); }
+  _fmtShort(o){ const d=new Date(); d.setDate(d.getDate()+(o||0)); return String(d.getDate()).padStart(2,'0')+' '+this.MONTHS[d.getMonth()]; }
+  _hhmm(){ return new Date().toTimeString().slice(0,8); }
+  _seedFx(id,status,dir,symbol,dealtCcy,notional,rate,trader,off){ return { id,status,dir,symbol,dealtCcy,notional:this.fmtNum(notional),rate,trader,tradeDate:this._fmtDate(off),valueDate:this._fmtDate((off||0)+2),notionalNum:notional }; }
+  _seedRfq(id,state,dir,instrumentId,qty,acc,price){ const inst=this.instruments.find(i=>i.id===instrumentId); const quotes=this.dealers.slice(0,4).map(d=>({dealerId:d.id,state:d.id===acc?'accepted':(state==='Cancelled'?'passed':'priced'),price:d.id===acc?price:(price?+(price+(Math.random()-0.5)).toFixed(2):+(inst.ref+(Math.random()-0.5)).toFixed(2))})); return { id,state,dir,instrumentId,qty,acceptedDealerId:acc,dealerIds:quotes.map(q=>q.dealerId),quotes,createdAt:Date.now()-200000,expirySecs:120 }; }
+  hexToRgba(hex,a){ let h=hex.replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join(''); const n=parseInt(h,16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+  fmtNum(n){ return Math.round(n).toLocaleString('en-US'); }
+
+  genCandles(sym,tf){ const cfg={'1D':[40,0.004],'1W':[44,0.009],'1M':[48,0.016],'3M':[52,0.03]}[tf]||[40,0.004]; const n=cfg[0], vol=cfg[1]; let px=this.eqMeta[sym].px*(1-vol*6); const out=[]; for(let i=0;i<n;i++){ const o=px; const c=o*(1+(Math.random()-0.48)*vol*2); const h=Math.max(o,c)*(1+Math.random()*vol); const l=Math.min(o,c)*(1-Math.random()*vol); out.push({o,h,l,c}); px=c; } return out; }
+
+  setBootCanvas = (el)=>{ if(el){ this.bootCanvas=el; this._startBoot(); } };
+  selectAll = (e)=>{ e.target.select(); };
+
+  componentDidMount(){
+    const ms = this.props.tickMs || 850;
+    this.tickTimer = setInterval(()=>this.tick(), ms);
+    this.nowTimer = setInterval(()=>{ this.setState({clock:this._hhmm(), now:Date.now()}); this._checkExpiries(); }, 400);
+    this.setState({clock:this._hhmm()});
+    this._lastFilter = this.state.filter;
+    if(this.state.booting) this._startBoot();
+  }
+  componentWillUnmount(){ clearInterval(this.tickTimer); clearInterval(this.nowTimer); if(this.bootRaf) cancelAnimationFrame(this.bootRaf); if(this.splitMove){ window.removeEventListener('pointermove',this.splitMove); window.removeEventListener('pointerup',this.splitUp); } }
+
+  // ---------- FLIP glide helper (Isotope-style) ----------
+  _measure(sel, attr){ const root=this.el||document; const m={}; Array.from(root.querySelectorAll(sel)).forEach(n=>{ const r=n.getBoundingClientRect(); m[n.getAttribute(attr)]={x:r.left,y:r.top}; }); return m; }
+  _flip(sel, attr, prev, opts){
+    opts=opts||{}; const root=this.el||document; const EASE=opts.ease||'cubic-bezier(.22,.85,.3,1)', DUR=opts.dur||440;
+    const now={}; Array.from(root.querySelectorAll(sel)).forEach(n=>{
+      const key=n.getAttribute(attr); const r=n.getBoundingClientRect(); now[key]={x:r.left,y:r.top};
+      const o=prev[key]; if(o){ const dx=o.x-r.left, dy=o.y-r.top; if(Math.abs(dx)>0.5||Math.abs(dy)>0.5){
+        try{ n.animate([{transform:`translate(${dx}px,${dy}px)`,zIndex:5},{transform:'translate(0,0)',zIndex:5}],{duration:DUR,easing:EASE}); }catch(e){}
+        if(opts.highlight){ const up=dy>0; const c=up?'rgba(43,255,179,0.9)':'rgba(255,93,115,0.9)'; const cs=getComputedStyle(n);
+          try{ n.animate([{boxShadow:'inset 3px 0 0 '+c+', 0 0 0 0 '+c},{boxShadow:'inset 3px 0 0 '+c+', 0 0 18px -4px '+c, offset:0.25},{boxShadow:'inset 0 0 0 0 transparent, 0 0 0 0 transparent'}],{duration:DUR+260,easing:'ease-out'}); }catch(e){}
+        }
+      } }
+      else if(opts.enter!==false){ try{ n.animate([{opacity:0,transform:'scale(.78)'},{opacity:1,transform:'scale(1)'}],{duration:DUR,easing:EASE}); }catch(e){} }
+    });
+    return now;
+  }
+  componentDidUpdate(prevProps, prevState){
+    const reduce = this.state.prefs && this.state.prefs.reduceMotion;
+    const mid = this._flipUntil && Date.now()<this._flipUntil;
+    // --- Live Rates tiles: glide on currency-filter change ---
+    const filterChanged = this._lastFilter!==undefined && this._lastFilter!==this.state.filter;
+    const canTileFlip = filterChanged && this.state.tab==='fx' && (this.state.panels.fxLeft==='rates'||this.state.panels.fxLeft==='watch') && !reduce;
+    this._lastFilter = this.state.filter;
+    if(canTileFlip){ this._tilePos=this._flip('[data-tile-sym]','data-tile-sym',this._tilePos||{}); this._flipUntil=Date.now()+480; }
+    else if(!mid){ this._tilePos=this._measure('[data-tile-sym]','data-tile-sym'); }
+    // --- Watchlist rows: glide by RANK DELTA (nodes recycle by index, so drive from data) ---
+    if(this.state.tab==='equities' && !reduce){
+      const order=this._watchOrder||[]; const prevRank=this._wlRank;
+      const root=this.el||document; const nodes=Array.from(root.querySelectorAll('[data-watch-sym]'));
+      if(prevRank && nodes.length){
+        const ROWH=(nodes[1]&&nodes[0])?(nodes[1].getBoundingClientRect().top-nodes[0].getBoundingClientRect().top)||52:52;
+        nodes.forEach((n,i)=>{ const sym=n.getAttribute('data-watch-sym'); const oldI=prevRank[sym];
+          if(oldI!==undefined && oldI!==i){ const dy=(oldI-i)*ROWH; const up=dy>0; const c=up?'rgba(43,255,179,0.95)':'rgba(255,93,115,0.95)';
+            try{ n.animate([{transform:`translateY(${dy}px)`},{transform:'translateY(0)'}],{duration:560,easing:'cubic-bezier(.34,1.28,.5,1)'}); }catch(e){}
+            try{ n.animate([{boxShadow:'inset 3px 0 0 '+c+',0 0 0 0 '+c,offset:0},{boxShadow:'inset 3px 0 0 '+c+',0 0 16px -3px '+c,offset:0.3},{boxShadow:'inset 0 0 0 0 transparent,0 0 0 0 transparent',offset:1}],{duration:820,easing:'ease-out'}); }catch(e){}
+          }
+        });
+      }
+      const nr={}; order.forEach((sym,i)=>nr[sym]=i); this._wlRank=nr;
+    }
+    // --- RFQ cards: glide on reorder/filter (same effect as Live Rates) ---
+    const rfqSig=(this._rfqOrder||[]).join(',');
+    const rfqChanged = this._rfqSig!==undefined && this._rfqSig!==rfqSig;
+    const rfqMid = this._rfqFlipUntil && Date.now()<this._rfqFlipUntil;
+    if(this.state.tab==='credit' && rfqChanged && !reduce){ this._rfqPos=this._flip('[data-rfq-id]','data-rfq-id',this._rfqPos||{},{enter:false,dur:480,ease:'cubic-bezier(.22,.9,.3,1)'}); this._rfqFlipUntil=Date.now()+520; }
+    else if(!rfqMid){ this._rfqPos=this._measure('[data-rfq-id]','data-rfq-id'); }
+    this._rfqSig=rfqSig;
+  }
+
+  // ---------- boot ----------
+  _startBoot(){
+    if(this._bootStarted || !this.state.booting) return;
+    this._bootStarted = true;
+    const start = Date.now(); const DUR = 4200;
+    this.bootMessages.forEach((m,i)=> setTimeout(()=>{ if(this.state.booting) this.setState(s=>({bootLines:[...s.bootLines,{text:m, style:{animation:'bootGlitch .4s'}}]})); }, 350 + i*480));
+    const tickPct = ()=>{ const e=Date.now()-start; const pct=Math.min(100, Math.round(e/DUR*100)); this.setState({bootPct:pct}); if(e<DUR && this.state.booting){ this.bootPctRaf=setTimeout(tickPct,90);} };
+    tickPct();
+    this._bootFinishTimer = setTimeout(()=>this.finishBoot(), DUR);
+    const variants=['core','laser','docking'];
+    let idx=0; try{ idx=(parseInt(localStorage.getItem('rt_bootSeq')||'0',10)||0)%variants.length; localStorage.setItem('rt_bootSeq', String((idx+1)%variants.length)); }catch(e){}
+    this.bootVariant=variants[idx];
+    if(this.bootVariant==='laser') this._drawBootLaser(start, DUR);
+    else if(this.bootVariant==='docking') this._drawBootDocking(start, DUR);
+    else this._drawBoot(start, DUR);
+  }
+  _drawBoot(start, DUR){
+    const c=this.bootCanvas; if(!c) return; const ctx=c.getContext('2d');
+    const resize=()=>{ c.width=c.offsetWidth; c.height=c.offsetHeight; }; resize();
+    const th=this._th(); const acc=th.accent;
+    const lat=[], lon=[]; for(let a=-80;a<=80;a+=20) lat.push(a*Math.PI/180); for(let b=0;b<360;b+=20) lon.push(b*Math.PI/180);
+    const draw=()=>{
+      if(!this.bootCanvas || !this.state.booting) return;
+      if(c.width!==c.offsetWidth) resize();
+      const t=(Date.now()-start)/1000; const prog=Math.min(1,(Date.now()-start)/DUR);
+      ctx.clearRect(0,0,c.width,c.height); ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(0,0,c.width,c.height);
+      const cx=c.width/2, cy=c.height/2 - 30; const R=Math.min(c.width,c.height)*0.18*Math.min(1,prog*1.6+0.2);
+      const yaw=t*0.7, pitch=0.5;
+      const proj=(la,lo)=>{ let x=Math.cos(la)*Math.cos(lo), y=Math.sin(la), z=Math.cos(la)*Math.sin(lo); let x2=x*Math.cos(yaw)-z*Math.sin(yaw), z2=x*Math.sin(yaw)+z*Math.cos(yaw); let y2=y*Math.cos(pitch)-z2*Math.sin(pitch), z3=y*Math.sin(pitch)+z2*Math.cos(pitch); return {x:cx+x2*R, y:cy+y2*R, z:z3}; };
+      ctx.lineWidth=1;
+      for(let i=0;i<lat.length;i++){ ctx.beginPath(); for(let j=0;j<=lon.length;j++){ const p=proj(lat[i],lon[j%lon.length]); const a=0.15+0.5*((p.z+1)/2); ctx.strokeStyle=this.hexToRgba(acc,a); if(j===0)ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);} ctx.stroke(); }
+      for(let j=0;j<lon.length;j+=1){ ctx.beginPath(); for(let i=0;i<lat.length;i++){ const p=proj(lat[i],lon[j]); const a=0.12+0.45*((p.z+1)/2); ctx.strokeStyle=this.hexToRgba(acc,a); if(i===0)ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);} ctx.stroke(); }
+      for(let r=0;r<3;r++){ const rad=R*1.5+((t*60+r*70)%200); ctx.beginPath(); ctx.strokeStyle=this.hexToRgba(acc,Math.max(0,0.4-(rad-R*1.5)/200*0.4)); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.stroke(); }
+      ctx.strokeStyle=this.hexToRgba(acc,0.25); ctx.beginPath(); ctx.moveTo(cx-c.width,cy); ctx.lineTo(cx+c.width,cy); ctx.moveTo(cx,cy-c.height); ctx.lineTo(cx,cy+c.height); ctx.stroke();
+      ctx.strokeStyle=this.hexToRgba(acc,0.8); ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,R*1.35,t*2,t*2+1.2); ctx.stroke();
+      this.bootRaf=requestAnimationFrame(draw);
+    };
+    draw();
+  }
+  _drawBootLaser(start, DUR){
+    const c=this.bootCanvas; if(!c) return; const ctx=c.getContext('2d');
+    const resize=()=>{ c.width=c.offsetWidth; c.height=c.offsetHeight; }; resize();
+    const th=this._th(); const acc=th.accent; const ac2=th.accent2||acc;
+    const ease=(k)=>1-Math.pow(1-Math.max(0,Math.min(1,k)),3);
+    const panels=[
+      {nx:0.055,ny:0.045,nw:0.89,nh:0.075, t0:0.00,t1:0.10, kind:'header'},
+      {nx:0.055,ny:0.155,nw:0.56,nh:0.50,  t0:0.09,t1:0.32, kind:'main'},
+      {nx:0.635,ny:0.155,nw:0.31,nh:0.235, t0:0.30,t1:0.45, kind:'list'},
+      {nx:0.635,ny:0.415,nw:0.31,nh:0.24,  t0:0.43,t1:0.57, kind:'list'},
+      {nx:0.055,ny:0.685,nw:0.89,nh:0.17,  t0:0.55,t1:0.68, kind:'blotter'},
+      {nx:0.055,ny:0.875,nw:0.89,nh:0.05,  t0:0.66,t1:0.74, kind:'status'}
+    ];
+    const draw=()=>{
+      if(!this.bootCanvas || !this.state.booting) return;
+      if(c.width!==c.offsetWidth) resize();
+      const t=(Date.now()-start)/1000; const prog=Math.min(1,(Date.now()-start)/DUR);
+      const W=c.width, H=c.height;
+      ctx.clearRect(0,0,W,H); ctx.fillStyle='rgba(0,0,0,0.42)'; ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle=this.hexToRgba(acc,0.045); ctx.lineWidth=1;
+      for(let x=0;x<W;x+=44){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+      for(let y=0;y<H;y+=44){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+      const R=(p)=>({x:p.nx*W, y:p.ny*H, w:p.nw*W, h:p.nh*H});
+      let head=null;
+      panels.forEach(p=>{
+        const r=R(p); const frac=Math.max(0,Math.min(1,(prog-p.t0)/(p.t1-p.t0)));
+        if(frac<=0) return;
+        const segs=[[r.x,r.y,r.x+r.w,r.y],[r.x+r.w,r.y,r.x+r.w,r.y+r.h],[r.x+r.w,r.y+r.h,r.x,r.y+r.h],[r.x,r.y+r.h,r.x,r.y]];
+        const lens=segs.map(s=>Math.hypot(s[2]-s[0],s[3]-s[1]));
+        const P=lens.reduce((a,b)=>a+b,0); let target=frac*P;
+        ctx.lineWidth=1.6; ctx.lineJoin='round'; ctx.shadowColor=acc; ctx.shadowBlur=frac<1?16:7;
+        ctx.strokeStyle=this.hexToRgba(acc, frac<1?0.98:0.62);
+        ctx.beginPath(); ctx.moveTo(segs[0][0],segs[0][1]);
+        let hx=segs[0][0], hy=segs[0][1];
+        for(let i=0;i<segs.length;i++){ const s=segs[i]; if(target>=lens[i]){ ctx.lineTo(s[2],s[3]); hx=s[2]; hy=s[3]; target-=lens[i]; } else { const u=lens[i]?target/lens[i]:0; hx=s[0]+(s[2]-s[0])*u; hy=s[1]+(s[3]-s[1])*u; ctx.lineTo(hx,hy); target=0; break; } }
+        ctx.stroke(); ctx.shadowBlur=0;
+        if(frac<1) head={x:hx,y:hy};
+        if(prog>=p.t1 && prog<p.t1+0.07){ const fa=1-(prog-p.t1)/0.07; ctx.fillStyle=this.hexToRgba(acc,0.20*fa); ctx.fillRect(r.x,r.y,r.w,r.h); }
+        if(frac>0.985){ ctx.strokeStyle=this.hexToRgba(ac2,0.85); ctx.lineWidth=1.4; const tk=8; [[r.x,r.y,1,1],[r.x+r.w,r.y,-1,1],[r.x,r.y+r.h,1,-1],[r.x+r.w,r.y+r.h,-1,-1]].forEach(q=>{ ctx.beginPath(); ctx.moveTo(q[0],q[1]+q[3]*tk); ctx.lineTo(q[0],q[1]); ctx.lineTo(q[0]+q[2]*tk,q[1]); ctx.stroke(); }); }
+        const cs=p.t1, ce=Math.min(1,p.t1+0.24); const k=ease((prog-cs)/(ce-cs));
+        if(k>0){ const cxp=r.x+r.w/2, cyp=r.y+r.h/2, sc=0.32+0.68*k; ctx.save(); ctx.globalAlpha=k; ctx.translate(cxp,cyp); ctx.scale(sc,sc); ctx.translate(-cxp,-cyp); this._bootContent(ctx,p,r,acc,ac2); ctx.restore(); ctx.globalAlpha=1; }
+      });
+      if(head){ const ex=W*0.5, ey=-24; ctx.strokeStyle=this.hexToRgba(ac2,0.45); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(ex,ey); ctx.lineTo(head.x,head.y); ctx.stroke();
+        ctx.fillStyle=this.hexToRgba(acc,0.45); ctx.shadowColor=acc; ctx.shadowBlur=22; ctx.beginPath(); ctx.arc(head.x,head.y,7,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#fff'; ctx.shadowBlur=14; ctx.beginPath(); ctx.arc(head.x,head.y,3,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; }
+      this.bootRaf=requestAnimationFrame(draw);
+    };
+    draw();
+  }
+  _drawBootDocking(start, DUR){
+    const c=this.bootCanvas; if(!c) return; const ctx=c.getContext('2d');
+    const resize=()=>{ c.width=c.offsetWidth; c.height=c.offsetHeight; }; resize();
+    const th=this._th(); const acc=th.accent; const ac2=th.accent2||acc;
+    const ease=(k)=>1-Math.pow(1-Math.max(0,Math.min(1,k)),3);
+    const MONO="'JetBrains Mono','IBM Plex Mono',monospace";
+    const pad2=(n)=>String(Math.abs(Math.floor(n))).padStart(2,'0');
+    const draw=()=>{
+      if(!this.bootCanvas || !this.state.booting) return;
+      if(c.width!==c.offsetWidth) resize();
+      const t=(Date.now()-start)/1000; const prog=Math.min(1,(Date.now()-start)/DUR);
+      const W=c.width, H=c.height, cx=W/2, cy=H/2, E=ease(prog);
+      ctx.clearRect(0,0,W,H); ctx.fillStyle='rgba(0,2,4,0.64)'; ctx.fillRect(0,0,W,H);
+      // camera vignette + scanlines
+      const vg=ctx.createRadialGradient(cx,cy,Math.min(W,H)*0.18,cx,cy,Math.max(W,H)*0.62); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.55)'); ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle=this.hexToRgba(acc,0.035); for(let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
+      const shake=(1-E)*1.0+0.22; const jx=(Math.sin(t*9)*1.4+Math.sin(t*17)*0.7)*shake, jy=(Math.cos(t*7)*1.1+Math.sin(t*23)*0.5)*shake;
+      // ---- tracked scene: perspective alignment grid converging on the bay ----
+      ctx.save(); ctx.translate(jx,jy); ctx.lineWidth=1;
+      ctx.strokeStyle=this.hexToRgba(acc,0.10);
+      for(let i=-6;i<=6;i++){ const ex=cx+i*(W/12); ctx.beginPath(); ctx.moveTo(ex,0); ctx.lineTo(cx,cy); ctx.stroke(); ctx.beginPath(); ctx.moveTo(ex,H); ctx.lineTo(cx,cy); ctx.stroke(); }
+      for(let i=-4;i<=4;i++){ const ey=cy+i*(H/8); ctx.beginPath(); ctx.moveTo(0,ey); ctx.lineTo(cx,cy); ctx.stroke(); ctx.beginPath(); ctx.moveTo(W,ey); ctx.lineTo(cx,cy); ctx.stroke(); }
+      ctx.strokeStyle=this.hexToRgba(ac2,0.16); for(let r=1;r<=5;r++){ ctx.beginPath(); ctx.arc(cx,cy,r*Math.min(W,H)*0.08,0,Math.PI*2); ctx.stroke(); }
+      ctx.restore();
+      // ---- flat HUD grid overlay (fixed) ----
+      ctx.strokeStyle=this.hexToRgba(acc,0.06); ctx.lineWidth=1; const gs=Math.round(W/16);
+      for(let x=0;x<=W;x+=gs){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+      for(let y=0;y<=H;y+=gs){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+      // ---- incoming craft (tracked target): distant upper-left → bay centre, growing ----
+      const wob=1-E; const tgx=cx+jx+Math.sin(t*1.3)*6*wob, tgy=cy+jy+Math.cos(t*1.1)*5*wob;
+      const craftR=12+E*92;
+      // ---- docking target: station hull backdrop + docking port (head-on, growing) ----
+      const R0=craftR;
+      ctx.save(); ctx.translate(tgx,tgy);
+      ctx.fillStyle='rgba(8,16,22,0.5)'; ctx.fillRect(-R0*3.6,-R0*1.6,R0*7.2,R0*3.2);
+      ctx.strokeStyle=this.hexToRgba(acc,0.12); ctx.lineWidth=1;
+      for(let i=-3;i<=3;i++){ ctx.beginPath(); ctx.moveTo(i*R0*1.15,-R0*1.6); ctx.lineTo(i*R0*1.15,R0*1.6); ctx.stroke(); }
+      for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(-R0*3.6,i*R0*0.95); ctx.lineTo(R0*3.6,i*R0*0.95); ctx.stroke(); }
+      ctx.strokeStyle=this.hexToRgba(acc,0.18); ctx.strokeRect(-R0*3.4,-R0*0.55,R0*0.95,R0*1.1); ctx.strokeRect(R0*2.45,-R0*0.55,R0*0.95,R0*1.1);
+      ctx.restore();
+      // concentric docking mechanism
+      ctx.save(); ctx.translate(tgx,tgy); ctx.rotate(Math.sin(t*0.2)*0.05);
+      ctx.strokeStyle=this.hexToRgba(acc,0.85); ctx.lineWidth=2.4; ctx.beginPath(); ctx.arc(0,0,R0*1.15,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle=this.hexToRgba(acc,0.4); ctx.lineWidth=1; ctx.beginPath(); ctx.arc(0,0,R0*1.34,0,Math.PI*2); ctx.stroke();
+      for(let i=0;i<36;i++){ const a=i/36*Math.PI*2, r1=R0*1.15, r2=R0*(i%3===0?1.32:1.24); ctx.strokeStyle=this.hexToRgba(acc,i%3===0?0.6:0.28); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1); ctx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2); ctx.stroke(); }
+      ctx.strokeStyle=this.hexToRgba(acc,0.6); ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(0,0,R0*0.84,0,Math.PI*2); ctx.stroke();
+      for(let i=0;i<12;i++){ const a=i/12*Math.PI*2; ctx.fillStyle=this.hexToRgba(acc,0.5); ctx.beginPath(); ctx.arc(Math.cos(a)*R0*0.84,Math.sin(a)*R0*0.84,R0*0.045,0,Math.PI*2); ctx.fill(); }
+      ctx.fillStyle=this.hexToRgba(ac2,0.10); ctx.strokeStyle=this.hexToRgba(ac2,0.55); ctx.lineWidth=1.4;
+      for(let k=0;k<4;k++){ const a=k/4*Math.PI*2+Math.PI/4; ctx.save(); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(-R0*0.22,-R0*0.64); ctx.lineTo(R0*0.22,-R0*0.64); ctx.lineTo(R0*0.12,-R0*0.34); ctx.lineTo(-R0*0.12,-R0*0.34); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+      ctx.strokeStyle=this.hexToRgba(acc,0.7); ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(0,0,R0*0.5,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle=this.hexToRgba(acc,0.45); ctx.beginPath(); ctx.arc(0,0,R0*0.28,0,Math.PI*2); ctx.stroke();
+      for(let i=0;i<4;i++){ const a=i/4*Math.PI*2; ctx.strokeStyle=this.hexToRgba(acc,0.4); ctx.beginPath(); ctx.moveTo(Math.cos(a)*R0*0.28,Math.sin(a)*R0*0.28); ctx.lineTo(Math.cos(a)*R0*0.5,Math.sin(a)*R0*0.5); ctx.stroke(); }
+      ctx.fillStyle=this.hexToRgba(ac2,0.9); ctx.beginPath(); ctx.arc(0,0,R0*0.06,0,Math.PI*2); ctx.fill(); ctx.restore();
+      // green alignment marker drifting toward centre as we align
+      const misx=(-W*0.05)*wob+Math.sin(t*1.1)*R0*0.5*wob, misy=(-H*0.05)*wob+Math.cos(t*0.9)*R0*0.45*wob;
+      ctx.save(); ctx.translate(tgx+misx,tgy+misy); ctx.strokeStyle=this.hexToRgba(th.buy,0.9); ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(0,0,R0*0.15,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,-R0*0.26); ctx.lineTo(0,R0*0.26); ctx.moveTo(-R0*0.26,0); ctx.lineTo(R0*0.26,0); ctx.stroke(); ctx.restore();
+      // ---- primary circular docking reticle + PYR / PITCH / RANGE readouts ----
+      const RR=Math.min(W,H)*0.36, rng=Math.max(0,Math.round(4820*(1-E)));
+      ctx.strokeStyle=this.hexToRgba(acc,0.5); ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(cx,cy,RR,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle=this.hexToRgba(acc,0.2); ctx.beginPath(); ctx.arc(cx,cy,RR+8,0,Math.PI*2); ctx.stroke();
+      ctx.font="11px "+MONO; ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.fillStyle=this.hexToRgba(th.buy,0.85);
+      ctx.fillText((Math.sin(t*0.6)*3.1*wob).toFixed(1)+'\u00b0', cx-RR+20, cy-14); ctx.fillText((Math.cos(t*0.5)*2.3*wob).toFixed(1)+'\u00b0', cx-RR+20, cy); ctx.fillText((Math.sin(t*0.4)*0.6*wob).toFixed(1)+'\u00b0', cx-RR+20, cy+14);
+      ctx.save(); ctx.translate(cx-RR+8,cy); ctx.rotate(-Math.PI/2); ctx.fillStyle=this.hexToRgba(acc,0.5); ctx.textAlign='center'; ctx.fillText('P Y R',0,0); ctx.restore();
+      ctx.textAlign='right'; ctx.fillStyle=this.hexToRgba(th.buy,0.85); ctx.fillText((Math.sin(t*0.5)*0.1).toFixed(1)+'\u00b0', cx+RR-18, cy-8); ctx.fillStyle=this.hexToRgba(ac2,0.7); ctx.fillText((Math.sin(t*0.7)*0.6*wob).toFixed(1)+'\u00b0/m', cx+RR-18, cy+8);
+      ctx.save(); ctx.translate(cx+RR-6,cy); ctx.rotate(Math.PI/2); ctx.fillStyle=this.hexToRgba(acc,0.5); ctx.textAlign='center'; ctx.fillText('P I T C H',0,0); ctx.restore();
+      ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+      ctx.fillStyle=this.hexToRgba(acc,0.5); ctx.font="9px "+MONO; ctx.fillText('RANGE', cx-RR*0.42, cy+RR-28); ctx.fillText('RANGE RATE', cx+RR*0.42, cy+RR-28);
+      ctx.fillStyle=this.hexToRgba(acc,0.95); ctx.font="bold 18px "+MONO; ctx.fillText(rng+' m', cx-RR*0.42, cy+RR-9);
+      ctx.fillStyle=this.hexToRgba(ac2,0.95); ctx.fillText('-0.'+pad2(34-Math.round(prog*6))+' m/s', cx+RR*0.42, cy+RR-9);
+      ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+      // ---- target-lock box with converging L brackets ----
+      const lock=ease(Math.min(1,(prog-0.18)/0.5)); const acq=prog<0.25;
+      const box=craftR*1.45+(1-lock)*Math.min(W,H)*0.18; const blink=acq?(0.4+0.6*Math.abs(Math.sin(t*9))):1; const lc=(prog>0.55?ac2:acc);
+      ctx.strokeStyle=this.hexToRgba(lc,0.92*blink); ctx.lineWidth=1.8; const tk=Math.max(10,box*0.22);
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(q=>{ const qx=tgx+q[0]*box, qy=tgy+q[1]*box; ctx.beginPath(); ctx.moveTo(qx,qy-q[1]*tk); ctx.lineTo(qx,qy); ctx.lineTo(qx-q[0]*tk,qy); ctx.stroke(); });
+      if(prog<0.6){ ctx.save(); ctx.translate(tgx,tgy); ctx.rotate(t*1.4); ctx.strokeStyle=this.hexToRgba(acc,0.5*blink); ctx.setLineDash([8,7]); ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(0,0,box*1.25,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); ctx.restore(); }
+      ctx.strokeStyle=this.hexToRgba(lc,0.5); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(tgx+box,tgy-box); ctx.lineTo(tgx+box+34,tgy-box-24); ctx.lineTo(tgx+box+200,tgy-box-24); ctx.stroke();
+      ctx.font="11px "+MONO; ctx.textBaseline='alphabetic'; ctx.textAlign='left'; ctx.fillStyle=this.hexToRgba(lc,0.9); ctx.fillText('AC-417 ▸ EUR/USD ESCORT', tgx+box+40, tgy-box-28);
+      ctx.strokeStyle=this.hexToRgba(ac2,0.55); ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(tgx,tgy); ctx.lineTo(tgx+(cx-tgx)*0.5,tgy+(cy-tgy)*0.5); ctx.stroke();
+      // ---- boresight crosshair (fixed centre) ----
+      ctx.strokeStyle=this.hexToRgba(acc,0.6); ctx.lineWidth=1.4; const gp=14;
+      ctx.beginPath(); ctx.moveTo(cx-46,cy); ctx.lineTo(cx-gp,cy); ctx.moveTo(cx+gp,cy); ctx.lineTo(cx+46,cy); ctx.moveTo(cx,cy-46); ctx.lineTo(cx,cy-gp); ctx.moveTo(cx,cy+gp); ctx.lineTo(cx,cy+46); ctx.stroke();
+      ctx.strokeStyle=this.hexToRgba(acc,0.3); ctx.beginPath(); ctx.arc(cx,cy,8,0,Math.PI*2); ctx.stroke();
+      // ---- pitch ladder ----
+      ctx.save(); ctx.translate(cx,cy+Math.sin(t*0.8)*10); ctx.strokeStyle=this.hexToRgba(acc,0.22); ctx.fillStyle=this.hexToRgba(acc,0.4); ctx.font="9px "+MONO; ctx.lineWidth=1;
+      for(let p=-2;p<=2;p++){ if(p===0)continue; const yy=p*46; ctx.beginPath(); ctx.moveTo(-72,yy); ctx.lineTo(-32,yy); ctx.moveTo(32,yy); ctx.lineTo(72,yy); ctx.stroke(); ctx.fillText(pad2(p*5), -92, yy+3); } ctx.restore();
+      // ---- horizontal scan sweep ----
+      const ssy=((t*0.35)%1)*H; const sg=ctx.createLinearGradient(0,ssy-30,0,ssy+30); sg.addColorStop(0,'rgba(0,0,0,0)'); sg.addColorStop(0.5,this.hexToRgba(ac2,0.10)); sg.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=sg; ctx.fillRect(0,ssy-30,W,60);
+      // ---- telemetry corners ----
+      const range=Math.max(0,Math.round(4820*(1-E))); const closure=Math.max(0,Math.round((58+22*Math.sin(t*2))*(1-prog)+3));
+      const bearing=(271.4+Math.sin(t*0.7)*0.6).toFixed(1), az=(Math.sin(t*0.9)*2.4*wob).toFixed(2), el=(Math.cos(t*0.8)*1.8*wob).toFixed(2);
+      const dX=((tgx-cx)/W*100).toFixed(2), dY=((tgy-cy)/H*100).toFixed(2), dZ=(range/100).toFixed(2);
+      const tc=pad2(t/60)+':'+pad2(t%60)+':'+pad2((t*100)%100);
+      const lbl=(x,y,a,col)=>{ ctx.font="11px "+MONO; ctx.fillStyle=this.hexToRgba(col||acc,0.85); a.forEach((ln,i)=>ctx.fillText(ln,x,y+i*15)); };
+      ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+      lbl(20,28,['◉ CAM-04  DOCK BAY 07','GIMBAL TRACK · AUTO','TC '+tc]);
+      ctx.fillStyle=this.hexToRgba(th.sell,0.9); ctx.font="11px "+MONO; ctx.fillText('● REC',20,73);
+      ctx.textAlign='right';
+      lbl(W-20,28,['RANGE   '+range+' m','CLOSURE '+closure+' m/s','BEARING '+bearing+'°']);
+      lbl(W-20,73,['AZ '+az+'   EL '+el],ac2);
+      lbl(W-20,H-58,['LINK  SECURE · AES-256','AUTH  OK ▸ TRD-0042'],ac2);
+      ctx.textAlign='left';
+      lbl(20,H-58,['ALIGN  dX '+dX+'  dY '+dY,'       dZ '+dZ+'  ROLL '+(Math.sin(t*1.7)*1.2).toFixed(1),'THRUST '+Math.round(8+12*(1-prog))+'%   MASS 42.6t']);
+      const bars=5; for(let i=0;i<bars;i++){ const on=i<(3+Math.round(1.4*Math.sin(t*4+i)+1.2)); ctx.fillStyle=this.hexToRgba(on?ac2:acc,on?0.85:0.2); ctx.fillRect(W-20-(bars-i)*9,H-26,6,4+i*3); }
+      // ---- lock status banner ----
+      let stt='ACQUIRING', sc=acc; if(prog>=0.25&&prog<0.55){stt='TRACKING';} else if(prog>=0.55&&prog<0.8){stt='TARGET LOCKED';sc=ac2;} else if(prog>=0.8&&prog<0.96){stt='DOCKING SEQUENCE';sc=ac2;} else if(prog>=0.96){stt='CLAMP ENGAGED';sc=th.buy;}
+      const bk=(stt==='ACQUIRING')?(0.45+0.55*Math.abs(Math.sin(t*7))):1; ctx.font="bold 13px "+MONO; ctx.textAlign='center'; ctx.fillStyle=this.hexToRgba(sc,0.95*bk); ctx.fillText('▸ '+stt+' ◂',cx,cy-66);
+      ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+      if(prog>0.92){ const fa=(prog-0.92)/0.08; const fg=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(W,H)*0.5); fg.addColorStop(0,this.hexToRgba('#ffffff',0.4*fa)); fg.addColorStop(0.35,this.hexToRgba(ac2,0.3*fa)); fg.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=fg; ctx.fillRect(0,0,W,H); }
+      this.bootRaf=requestAnimationFrame(draw);
+    };
+    draw();
+  }
+  _bootContent(ctx,p,r,acc,ac2){
+    const pad=Math.min(r.w,r.h)*0.11, x=r.x+pad, y=r.y+pad, w=r.w-pad*2, h=r.h-pad*2;
+    if(p.kind==='header'){ for(let i=0;i<4;i++){ ctx.fillStyle=this.hexToRgba(i===0?ac2:acc,0.55); ctx.fillRect(x+i*72, y+h*0.3, 54, h*0.4); } }
+    else if(p.kind==='main'){ const tw=(w-14)/2, tht=(h-14)/2; for(let i=0;i<2;i++) for(let j=0;j<2;j++){ const bx=x+i*(tw+14), by=y+j*(tht+14); ctx.strokeStyle=this.hexToRgba(acc,0.5); ctx.lineWidth=1; ctx.strokeRect(bx,by,tw,tht); ctx.fillStyle=this.hexToRgba(acc,0.16); ctx.fillRect(bx,by,tw,tht*0.34); ctx.strokeStyle=this.hexToRgba(ac2,0.7); ctx.lineWidth=1.4; ctx.beginPath(); for(let s=0;s<=12;s++){ const sx=bx+6+(tw-12)*s/12, sy=by+tht*0.78-Math.sin(s*0.8+i*2+j)*tht*0.13; s===0?ctx.moveTo(sx,sy):ctx.lineTo(sx,sy);} ctx.stroke(); } }
+    else if(p.kind==='list'){ const rows=4, rh=h/rows; for(let i=0;i<rows;i++){ ctx.fillStyle=this.hexToRgba(acc,0.42-i*0.06); ctx.fillRect(x, y+i*rh+rh*0.25, w*(0.92-i*0.14), rh*0.4); } }
+    else if(p.kind==='blotter'){ const rows=4, rh=h/rows; ctx.fillStyle=this.hexToRgba(ac2,0.5); ctx.fillRect(x,y,w,rh*0.45); for(let i=1;i<rows;i++){ ctx.strokeStyle=this.hexToRgba(acc,0.3); ctx.beginPath(); ctx.moveTo(x,y+i*rh); ctx.lineTo(x+w,y+i*rh); ctx.stroke(); for(let cI=0;cI<5;cI++){ ctx.fillStyle=this.hexToRgba(acc,0.3); ctx.fillRect(x+cI*(w/5)+5, y+i*rh+rh*0.3, (w/5)*0.6, rh*0.34); } } }
+    else if(p.kind==='status'){ for(let i=0;i<9;i++){ ctx.fillStyle=this.hexToRgba(i%3===0?ac2:acc,0.5); ctx.fillRect(x+i*(w/9), y+h*0.3, (w/9)*0.55, h*0.4); } }
+  }
+  finishBoot(){ if(!this.state.booting || this.state.bootFading || this.state.booted) return; try{ sessionStorage.setItem('rt_booted','1'); }catch(e){} if(this._bootFinishTimer) clearTimeout(this._bootFinishTimer); this.setState({booted:true, bootPct:100}); this._bootFadeTimer=setTimeout(()=>{ this.setState({bootFading:true}); this._bootFadeTimer2=setTimeout(()=>{ if(this.bootRaf) cancelAnimationFrame(this.bootRaf); this.setState({booting:false, bootFading:false}); }, 800); }, 130); }
+  reboot(){ try{ sessionStorage.removeItem('rt_booted'); }catch(e){} this._bootStarted=false; this.setState({booting:true, booted:false, bootPct:0, bootLines:[], menu:null}); setTimeout(()=>this._startBoot(), 60); }
+  toggleMenu(name){ this.setState(s=>({menu:s.menu===name?null:name})); }
+  closeMenu(){ this.setState({menu:null}); }
+  openPrefs(){ this.setState({prefsOpen:true, menu:null}); }
+  closePrefs(){ this.setState({prefsOpen:false}); }
+  setPref(key,val){ this.setState(s=>({prefs:Object.assign({},s.prefs,{[key]:val})})); }
+  togglePref(key){ this.setState(s=>({prefs:Object.assign({},s.prefs,{[key]:!s.prefs[key]})})); }
+  setLang(code){ this.setState({lang:code, menu:null}); }
+  setTheme(name){ this.setState({theme:name, menu:null}); }
+  toggleMax(id){ this.setState(s=>({maxPanel:s.maxPanel===id?null:id})); }
+  logout(){ this.setState({loggedOut:true, menu:null}); }
+  login(){ this.setState({loggedOut:false}); }
+  langItemStyle(on){ return {display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',padding:'9px 13px',fontFamily:'var(--fontM)',fontSize:'12px',color:on?'var(--accent)':'var(--dim)',background:on?'var(--chip)':'transparent',borderBottom:'1px solid var(--border)'}; }
+
+  // ---------- ticks ----------
+  tick(){
+    this.setState(s=>{
+      const rates={...s.rates}, dirs={...s.dirs}, hist={...s.hist}, flash={...s.flash};
+      this.order.forEach(k=>{ const step=this.meta[k].d===3?0.02:0.00018; const dlt=(Math.random()-0.5)*step; let nv=rates[k]+dlt; if(nv<=0)nv=rates[k]; rates[k]=+nv.toFixed(this.meta[k].d); dirs[k]=dlt>=0?1:-1; hist[k]=[...s.hist[k].slice(1),rates[k]]; flash[k]={dir:dirs[k],ts:Date.now()}; });
+      const eqRates={...s.eqRates}, eqFlash={...s.eqFlash}, eqPrev={...s.eqPrev};
+      this.eqSyms.forEach(sy=>{ const dlt=eqRates[sy]*(Math.random()-0.5)*0.0016; let nv=+(eqRates[sy]+dlt).toFixed(2); eqRates[sy]=nv; eqPrev[sy]=eqPrev[sy]+(nv-eqPrev[sy])*0.12; eqFlash[sy]={dir:dlt>=0?1:-1,ts:Date.now()}; const cs=this.candles[sy]; if(cs&&cs.length){ const last=cs[cs.length-1]; last.c=nv; if(nv>last.h)last.h=nv; if(nv<last.l)last.l=nv; } });
+      const pnl=Math.max(0, s.pnl+Math.round((Math.random()-0.42)*500));
+      const stp=(arr,a,mn,mx)=>{ const v=arr[arr.length-1]; let nv=v+(Math.random()-0.5)*a; nv=Math.max(mn,Math.min(mx,nv)); return [...arr.slice(1),+nv.toFixed(3)]; };
+      const m=s.metrics; const metrics={ tput:stp(m.tput,150,600,2200), lat:stp(m.lat,7,8,90), err:stp(m.err,0.16,0,2.2), sess:stp(m.sess,28,900,1800) };
+      return { rates,dirs,hist,flash,eqRates,eqPrev,eqFlash,pnl,metrics };
+    });
+  }
+  logEvt(tag,msg,color){ this.setState(s=>({activity:[{t:this._hhmm(),tag,msg,color},...s.activity].slice(0,40)})); }
+
+  // ---------- notional ----------
+  parseNotional(str){ if(str==null) return NaN; let s=String(str).trim().toLowerCase().replace(/,/g,''); let m=1; if(s.endsWith('m')){m=1e6;s=s.slice(0,-1);} else if(s.endsWith('k')){m=1e3;s=s.slice(0,-1);} const n=parseFloat(s); return Number.isNaN(n)?NaN:Math.round(n*m); }
+  onNotionalChange(sym,raw){ const n=this.parseNotional(raw); this.setState(s=>({notionals:{...s.notionals,[sym]:Number.isNaN(n)?raw:this.fmtNum(n)}})); }
+  resetNotional(sym){ this.setState(s=>({notionals:{...s.notionals,[sym]:'1,000,000'}})); }
+
+  // ---------- fx exec ----------
+  fmt(rate,m){ const s=rate.toFixed(m.d); return {big:s.slice(0,m.bigLen),pips:s.slice(m.bigLen,m.bigLen+2),frac:s.slice(m.bigLen+2)}; }
+  setTile(sym,patch){ this.setState(s=>({tiles:{...s.tiles,[sym]:{...(s.tiles[sym]||{}),...patch}}})); }
+  priceClick(sym,side){ const st=this.state.tiles[sym]||{stage:'idle'}; const n=this.parseNotional(this.state.notionals[sym]); if(Number.isNaN(n)||n>1e9) return; const isRfq=n>this.RFQ_THRESHOLD; if(isRfq){ if(st.stage==='rfqRecv') this.book(sym,side,st.quote?st.quote[side]:null); else if(!st.stage||st.stage==='idle') this.initTileRfq(sym); return; } this.book(sym,side); }
+  book(sym,side,forced){ const m=this.meta[sym]; this.setTile(sym,{stage:'executing'}); setTimeout(()=>{ const cur=this.state.rates[sym]; const pu=m.d===3?0.01:0.0001; const half=parseFloat(m.spread)/2*pu; const rate=(forced!=null?forced:(side==='Sell'?cur-half:cur+half)); const rateStr=(+rate).toFixed(m.d); const n=this.parseNotional(this.state.notionals[sym]); const rejected=Math.random()<0.12; const id=this.fxSeq++; if(rejected){ this.setTile(sym,{stage:'failure',trade:{id,side}}); this.logEvt('REJECT','Trade '+id+' '+sym+' rejected','var(--sell)'); } else { const trade={id,status:'Done',dir:side,symbol:sym,dealtCcy:m.base,notional:this.fmtNum(n),notionalNum:n,rate:rateStr,trader:'You',tradeDate:this._fmtDate(0),valueDate:this._fmtDate(2)}; this.setState(s=>({tiles:{...s.tiles,[sym]:{stage:'success',trade}}, fxTrades:[trade,...s.fxTrades].slice(0,40), pnl:Math.max(0,s.pnl+Math.round((Math.random()-0.3)*800)), newRowId:id})); this.logEvt('TRADE',side+' '+sym+' '+this.fmtNum(n)+' @ '+rateStr,'var(--accent2)'); } },1200); }
+  initTileRfq(sym){ const m=this.meta[sym]; this.setTile(sym,{stage:'rfqReq'}); this.logEvt('RFQ','Quote requested · '+sym,'var(--accent)'); setTimeout(()=>{ const cur=this.state.rates[sym]; const pu=m.d===3?0.01:0.0001; const half=parseFloat(m.spread)*1.4/2*pu; const end=Date.now()+15000; this.setTile(sym,{stage:'rfqRecv',quote:{Sell:(cur-half).toFixed(m.d),Buy:(cur+half).toFixed(m.d)},rfqStart:Date.now(),rfqEnd:end}); },1700); }
+  dismissTile(sym){ this.setTile(sym,{stage:'idle'}); }
+
+  // ---------- blotter ----------
+  fxSortClick(f){ this.setState(s=>({fxSort:{field:f,dir:s.fxSort.field===f?-s.fxSort.dir:1}})); }
+  onFxQuery(v){ this.setState({fxQuery:v}); }
+  exportCsv(fn,heads,rows){ const esc=v=>'"'+String(v).replace(/"/g,'""')+'"'; const csv=[heads.map(esc).join(','),...rows.map(r=>r.map(esc).join(','))].join('\n'); try{ const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=fn; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }catch(e){} }
+  exportFx(){ this.exportCsv('fx-trades.csv',['Trade ID','Status','Trade Date','Direction','CCYCCY','Deal CCY','Notional','Rate','Value Date','Trader'], this._fxRows().map(t=>[t.id,t.status,t.tradeDate,t.dir,t.symbol,t.dealtCcy,t.notional,t.rate,t.valueDate,t.trader])); }
+  exportCredit(){ this.exportCsv('credit-trades.csv',['Trade ID','Status','Trade Date','Direction','Counterparty','CUSIP','Security','Quantity','Order Type','Unit Price'], this.state.creditTrades.map(t=>[t.id,t.status,t.date,t.dir,t.cp,t.cusip,t.sec,t.qty,t.ot,t.price])); }
+  _fxRows(){ const s=this.state; const q=s.fxQuery.trim().toLowerCase(); let rows=s.fxTrades.slice(); if(q) rows=rows.filter(t=>[t.id,t.status,t.dir,t.symbol,t.dealtCcy,t.notional,t.rate,t.trader,t.tradeDate].join(' ').toLowerCase().includes(q)); const f=s.fxSort.field,dir=s.fxSort.dir; const val=t=>f==='tradeId'?t.id:f==='notional'?t.notionalNum:f==='spotRate'?parseFloat(t.rate):f==='direction'?t.dir:f==='symbol'?t.symbol:f==='status'?t.status:f==='dealtCurrency'?t.dealtCcy:f==='traderName'?t.trader:t.id; rows.sort((a,b)=>{const va=val(a),vb=val(b); if(va<vb)return -dir; if(va>vb)return dir; return 0;}); return rows; }
+
+  // ---------- credit ----------
+  cForm(p){ this.setState(s=>({credit:{...s.credit,...p}})); }
+  toggleDealer(id){ this.setState(s=>{ const has=s.credit.dealerIds.includes(id); return {credit:{...s.credit,dealerIds:has?s.credit.dealerIds.filter(x=>x!==id):[...s.credit.dealerIds,id]}}; }); }
+  toggleAllDealers(){ this.setState(s=>({credit:{...s.credit,dealerIds:s.credit.dealerIds.length===this.dealers.length?[]:this.dealers.map(d=>d.id)}})); }
+  clearForm(){ this.setState({credit:{dir:'Buy',instrumentId:null,qty:'',dealerIds:[],showInstr:false}}); }
+  sendRfq(){ const c=this.state.credit; const qtyNum=this.parseNotional(c.qty)*1000; if(c.instrumentId==null||!qtyNum||!c.dealerIds.length) return; const inst=this.instruments.find(i=>i.id===c.instrumentId); const id=this.rfqSeq++; const quotes=c.dealerIds.map(did=>({dealerId:did,state:'pending',price:null})); const rfq={id,state:'Open',dir:c.dir,instrumentId:c.instrumentId,qty:qtyNum,dealerIds:[...c.dealerIds],quotes,acceptedDealerId:null,createdAt:Date.now(),expirySecs:120}; this.setState(s=>({rfqs:[rfq,...s.rfqs],creditTab:'live',tabAt:Date.now(),tabSeq:s.tabSeq+1,newRfqId:id,credit:{dir:'Buy',instrumentId:null,qty:'',dealerIds:[],showInstr:false}})); setTimeout(()=>{ if(this.state.newRfqId===id) this.setState({newRfqId:null}); },800); this.logEvt('RFQ','Sent RFQ '+id+' · '+inst.ticker+' · '+c.dealerIds.length+' dealers','var(--accent)'); quotes.forEach(qt=>{ const delay=700+Math.random()*3200; setTimeout(()=>{ this.setState(s=>{ const rfqs=s.rfqs.map(r=>{ if(r.id!==id||r.state!=='Open') return r; const pass=Math.random()<0.12; const isA=qt.dealerId===1; let price=inst.ref+(Math.random()-0.5)*0.9; if(isA) price-=(c.dir==='Buy'?0.18:-0.18); return {...r,quotes:r.quotes.map(x=>x.dealerId===qt.dealerId?{...x,state:pass?'passed':'priced',price:pass?null:+price.toFixed(2)}:x)}; }); return {rfqs}; }); },delay); }); }
+  acceptQuote(rfqId,dealerId){ this.setState(s=>{ const r=s.rfqs.find(x=>x.id===rfqId); if(!r) return null; const inst=this.instruments.find(i=>i.id===r.instrumentId); const dealer=this.dealers.find(d=>d.id===dealerId); const q=r.quotes.find(x=>x.dealerId===dealerId); const rfqs=s.rfqs.map(x=>x.id!==rfqId?x:{...x,state:'Closed',_exitAt:Date.now(),acceptedDealerId:dealerId,quotes:x.quotes.map(qq=>qq.dealerId===dealerId?{...qq,state:'accepted'}:qq)}); const trade={id:rfqId,status:'Done',date:this._fmtDate(0),dir:r.dir,cp:dealer.name,cusip:inst.cusip,sec:inst.ticker,qty:this.fmtNum(r.qty),ot:'AON',price:'$'+(q?q.price:inst.ref).toFixed(2)}; return {rfqs,creditTrades:[trade,...s.creditTrades].slice(0,40),newCreditId:rfqId}; }); this.logEvt('FILL','RFQ '+rfqId+' traded','var(--buy)'); }
+  cancelRfq(rfqId){ this.setState(s=>({rfqs:s.rfqs.map(r=>r.id===rfqId&&r.state==='Open'?{...r,state:'Cancelled',_exitAt:Date.now()}:r)})); this.logEvt('CANCEL','RFQ '+rfqId+' cancelled','var(--faint)'); }
+  removeRfq(rfqId){ if(this.state.exitingRfqs.indexOf(rfqId)>=0) return; this.setState(s=>({exitingRfqs:[...s.exitingRfqs,rfqId]})); setTimeout(()=>{ this.setState(s=>({rfqs:s.rfqs.filter(r=>r.id!==rfqId), exitingRfqs:s.exitingRfqs.filter(x=>x!==rfqId)})); },330); }
+  _checkExpiries(){ const now=Date.now(); let changed=false; const rfqs=this.state.rfqs.map(r=>{ if(r.state==='Open'&&now>r.createdAt+r.expirySecs*1000){ changed=true; return {...r,state:'Expired',_exitAt:now,quotes:r.quotes.map(q=>q.state==='pending'?{...q,state:'passed'}:q)}; } return r; }); let tc=false; const tiles={...this.state.tiles}; Object.keys(tiles).forEach(sy=>{ const t=tiles[sy]; if(t&&t.stage==='rfqRecv'&&t.rfqEnd&&now>t.rfqEnd){ tiles[sy]={stage:'idle'}; tc=true; } }); if(changed||tc) this.setState({rfqs,tiles}); }
+
+  // ---------- equities ----------
+  selectEq(sym){ this.setState(s=>{ const tabs=s.eqOpenTabs.includes(sym)?s.eqOpenTabs:[...s.eqOpenTabs,sym]; return {eqSel:sym, eqOpenTabs:tabs}; }); if(!this.candles[sym]) this.candles[sym]=this.genCandles(sym,this.state.eqTf); }
+  closeEqTab(sym,e){ if(e&&e.stopPropagation)e.stopPropagation(); this.setState(s=>{ const tabs=s.eqOpenTabs.filter(t=>t!==sym); const sel=s.eqSel===sym?(tabs[tabs.length-1]||null):s.eqSel; return {eqOpenTabs:tabs.length?tabs:[s.eqSel], eqSel:sel||s.eqSel}; }); }
+  setTf(tf){ this.candles[this.state.eqSel]=this.genCandles(this.state.eqSel,tf); this.setState({eqTf:tf}); }
+  cycleWlSort(){ const order=['sym','chg','price']; this.setState(s=>({wlSort:order[(order.indexOf(s.wlSort)+1)%order.length]})); }
+  ticketSet(p){ this.setState(s=>({eqTicket:{...s.eqTicket,...p}})); }
+  ticketQtyStep(d){ this.setState(s=>{ const q=Math.max(0,(parseInt(s.eqTicket.qty,10)||0)+d); return {eqTicket:{...s.eqTicket,qty:String(q)}}; }); }
+  submitOrder(){ const tk=this.state.eqTicket; const sym=this.state.eqSel; const qty=parseInt(tk.qty,10)||0; if(qty<=0) return; const last=this.state.eqRates[sym]; const px=tk.type==='Limit'?(parseFloat(tk.limit)||last):last; const filled=tk.type==='Market'; const id=this.eqSeq++; const order={id,time:this._hhmm(),sym,side:tk.side,type:tk.type,qty,price:px,status:filled?'Filled':'Working'}; this.setState(s=>({eqOrders:[order,...s.eqOrders].slice(0,40),newOrderId:id,ticketFlash:{msg:(filled?'Filled ':'Working ')+tk.side+' '+qty+' '+sym+' @ $'+px.toFixed(2),ts:Date.now()}})); this.logEvt('ORDER',tk.side+' '+qty+' '+sym+' @ $'+px.toFixed(2)+(filled?' · Filled':' · Working'),'var(--accent2)'); setTimeout(()=>this.setState(s=>(s.ticketFlash&&Date.now()-s.ticketFlash.ts>=2400?{ticketFlash:null}:null)),2600); }
+
+  // ---------- splitter ----------
+  startSplit(e, opts){ e.preventDefault(); this.setState({dragging:true}); if(opts.axis==='x'){ const sx=e.clientX, sw=this.state[opts.key]; this.splitMove=(ev)=>{ let d=ev.clientX-sx; if(opts.invert) d=-d; this.setState({[opts.key]:Math.max(opts.min,Math.min(opts.max,sw+d))}); }; } else { const sy=e.clientY; const cont=Math.max(120,(e.currentTarget.parentElement?e.currentTarget.parentElement.getBoundingClientRect().height:600)); const sr=this.state[opts.key]; this.splitMove=(ev)=>{ let d=(ev.clientY-sy)/cont; if(opts.invert) d=-d; this.setState({[opts.key]:Math.max(0.18,Math.min(0.82,sr+d))}); }; } this.splitUp=()=>{ this.setState({dragging:false}); window.removeEventListener('pointermove',this.splitMove); window.removeEventListener('pointerup',this.splitUp); }; window.addEventListener('pointermove',this.splitMove); window.addEventListener('pointerup',this.splitUp); }
+
+  // ---------- style helpers ----------
+  navStyle(on){ return {padding:'7px 12px',borderRadius:'3px',cursor:'pointer',fontFamily:'var(--fontD)',fontWeight:600,fontSize:'12px',letterSpacing:'0.08em',textTransform:'uppercase',transition:'all .2s',border:'1px solid '+(on?'var(--borderStrong)':'transparent'),color:on?'var(--accent)':'var(--dim)',background:on?'var(--chip)':'transparent',boxShadow:on?'var(--glow)':'none'}; }
+  themeStyleObj(on){ return {padding:'5px 11px',borderRadius:'3px',cursor:'pointer',fontFamily:'var(--fontD)',fontWeight:600,fontSize:'10px',letterSpacing:'0.14em',transition:'all .2s',color:on?'var(--bg)':'var(--dim)',background:on?'var(--accent)':'transparent',boxShadow:on?'var(--glow)':'none'}; }
+  chipStyleObj(on){ return {padding:'4px 12px',borderRadius:'20px',cursor:'pointer',fontFamily:'var(--fontM)',fontSize:'11px',letterSpacing:'0.04em',transition:'all .15s',border:'1px solid '+(on?'var(--borderStrong)':'var(--border)'),color:on?'var(--accent)':'var(--dim)',background:on?'var(--chip)':'transparent'}; }
+  tabStyleObj(on){ return {padding:'9px 14px',cursor:'pointer',fontFamily:'var(--fontD)',fontWeight:600,fontSize:'11px',letterSpacing:'0.06em',color:on?'var(--accent)':'var(--dim)',background:on?'var(--panel)':'transparent',borderBottom:'2px solid '+(on?'var(--accent)':'transparent'),transition:'all .15s',whiteSpace:'nowrap',display:'flex',alignItems:'center'}; }
+  pillStyleObj(on){ return {padding:'4px 10px',borderRadius:'3px',cursor:'pointer',fontFamily:'var(--fontD)',fontWeight:600,fontSize:'9px',letterSpacing:'0.08em',color:on?'var(--accent)':'var(--dim)',background:on?'var(--chip)':'transparent',border:'1px solid '+(on?'var(--borderStrong)':'var(--border)')}; }
+  boxStyle(on){ return {width:'16px',height:'16px',flex:'none',borderRadius:'3px',border:'1px solid '+(on?'var(--accent)':'var(--border)'),background:on?'var(--accent)':'transparent',color:'var(--bg)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',fontWeight:700}; }
+
+  _th(){ const set=(this.state.mode==='light')?this.themesLight:this.themes; return set[this.state.theme]||set.holo||this.themes.holo; }
+  toggleMode(){ this.setState(s=>({mode:s.mode==='light'?'dark':'light'})); }
+  renderVals(){
+    const S=this.state; const th=this._th();
+    const vars={}; for(const k in th) vars['--'+k]=th[k];
+    vars['--ambPlay']=((S.prefs&&S.prefs.animatedBg&&!S.prefs.reduceMotion)?'running':'paused');
+    const rootStyle=Object.assign({position:'relative',minHeight:'100vh',width:'100%',background:'radial-gradient(ellipse 120% 90% at 50% -10%, '+th.bg2+' 0%, '+th.bg+' 60%)',color:th.text,fontFamily:th.fontM,overflow:'hidden'},vars);
+
+    const bootStyle={position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:th.bg,transition:'opacity .72s ease, transform .72s ease, filter .72s ease',opacity:S.bootFading?0:1,transform:S.bootFading?'scale(1.05)':'none',filter:S.bootFading?'blur(7px)':'none',pointerEvents:S.bootFading?'none':'auto'};
+    const bootBarStyle={height:'100%',width:S.bootPct+'%',background:th.accent,boxShadow:'0 0 12px '+th.accent,transition:'width .1s linear'};
+    const bootLines=S.bootLines.map(l=>({text:l.text, style:Object.assign({},l.style,(/ONLINE/.test(l.text)?{color:th.buy,fontWeight:700}:{}))}));
+
+    // layout primitives
+    const panTrans=S.dragging?'none':'flex-grow .34s cubic-bezier(.4,0,.2,1), flex-basis .34s cubic-bezier(.4,0,.2,1), width .34s cubic-bezier(.4,0,.2,1), height .34s cubic-bezier(.4,0,.2,1)';
+    const panelBase={position:'relative',background:th.panel,border:'1px solid '+th.border,borderRadius:'6px',overflow:'hidden',display:'flex',flexDirection:'column',minHeight:0,minWidth:0,boxShadow:th.panelShadow||'none',transition:panTrans};
+    const panGrow=(r)=>Object.assign({},panelBase,{flexGrow:r,flexShrink:1,flexBasis:0});
+    const F=S.maxPanel; const _grp={tiles:['tiles','fxblot'],fxblot:['tiles','fxblot'],ana:['ana','pos'],pos:['ana','pos'],rfqs:['rfqs','cblot'],cblot:['rfqs','cblot'],chart:['chart','eblot'],eblot:['chart','eblot'],ticket:['ticket','watch'],watch:['ticket','watch']};
+    const _sec={tiles:'fx',fxblot:'fx',ana:'fx',pos:'fx',rfqs:'cr',cblot:'cr',chart:'eq',eblot:'eq',ticket:'eq',watch:'eq'};
+    const _wide={tiles:1,fxblot:1,rfqs:1,cblot:1,chart:1,eblot:1};
+    const _collapsed=Object.assign({},panelBase,{flexGrow:0,flexShrink:0,flexBasis:'40px',overflow:'hidden'});
+    const _grow=Object.assign({},panelBase,{flexGrow:1,flexShrink:1,flexBasis:0});
+    const panFor=(id,base)=>{ if(!F) return base; if(F===id) return _grow; const collapses=_wide[F]?(_sec[id]===_sec[F]):(_grp[F]&&_grp[F].includes(id)); return collapses?_collapsed:base; };
+    const _wideF=F&&_wide[F]; const fxAsideCollapsed=_wideF&&_sec[F]==='fx'; const crLeftCollapsed=_wideF&&_sec[F]==='cr'; const eqRightCollapsed=_wideF&&_sec[F]==='eq';
+    const stripWrap={position:'absolute',inset:0,zIndex:5,display:'flex',flexDirection:'column',background:th.panel,border:'1px solid '+th.border,borderRadius:'6px',overflow:'hidden'};
+    const stripBar={flex:'1',minHeight:0,display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',cursor:'pointer',writingMode:'vertical-rl',transform:'rotate(180deg)',fontFamily:'var(--fontD)',fontWeight:600,fontSize:'11px',letterSpacing:'0.22em',color:'var(--dim)',background:th.panelHead,borderBottom:'1px solid '+th.border};
+    const mxBtn='cursor:pointer; color:var(--faint); font-size:13px; line-height:1; padding:0 6px; user-select:none; order:99; margin-left:2px;';
+    const mx={}; ['tiles','fxblot','ana','pos','rfqs','cblot','chart','eblot','ticket','watch'].forEach(id=>{ const on=S.maxPanel===id; mx[id]={onClick:()=>this.toggleMax(id),glyph:on?'⧉':'⛶'}; });
+    const panFull=Object.assign({},panelBase,{flex:'1 1 0'});
+    const sectionRow={flex:'1',minWidth:0,minHeight:0,display:'flex',padding:'10px',position:'relative'};
+    const colBase={minHeight:0,display:'flex',flexDirection:'column',transition:panTrans};
+    const fxLeftCol=Object.assign({flex:'1',minWidth:0},colBase);
+    const asideCol=Object.assign({width:(fxAsideCollapsed?'38px':S.asideW+'px'),flex:'none',overflow:'hidden',position:'relative'},colBase);
+    const creditLeftCol=Object.assign({width:(crLeftCollapsed?'38px':S.creditW+'px'),flex:'none',overflow:'hidden',position:'relative'},colBase);
+    const creditRightCol=Object.assign({flex:'1',minWidth:0},colBase);
+    const eqCenterCol=Object.assign({flex:'1',minWidth:0},colBase);
+    const eqRightCol=Object.assign({width:(eqRightCollapsed?'38px':S.eqAsideW+'px'),flex:'none',overflow:'hidden',position:'relative'},colBase);
+    const splitV={width:'7px',flex:'none',cursor:'col-resize',display:'flex',alignItems:'center',justifyContent:'center',touchAction:'none'};
+    const splitH={height:'7px',flex:'none',cursor:'row-resize',display:'flex',alignItems:'center',justifyContent:'center',touchAction:'none'};
+    const handleV='width:2px;height:30px;background:var(--border);border-radius:2px;';
+    const handleH='height:2px;width:30px;background:var(--border);border-radius:2px;';
+    const sb=(pad)=>({flex:1,minHeight:0,overflow:'auto',padding:pad});
+    const sb16=sb('16px'), sb14=sb('14px'), sb6=sb('6px'), sb614=sb('6px 14px'), sbTable={flex:1,minHeight:0,overflow:'auto'};
+    const splits={
+      fxStack:(e)=>this.startSplit(e,{axis:'y',key:'fxStackR',invert:false}),
+      fxAside:(e)=>this.startSplit(e,{axis:'x',key:'asideW',invert:true,min:280,max:560}),
+      fxRight:(e)=>this.startSplit(e,{axis:'y',key:'fxRightR',invert:false}),
+      creditAside:(e)=>this.startSplit(e,{axis:'x',key:'creditW',invert:false,min:260,max:480}),
+      creditStack:(e)=>this.startSplit(e,{axis:'y',key:'creditStackR',invert:false}),
+      eqAside:(e)=>this.startSplit(e,{axis:'x',key:'eqAsideW',invert:true,min:240,max:420}),
+      eqCenter:(e)=>this.startSplit(e,{axis:'y',key:'eqCenterR',invert:false}),
+      eqRight:(e)=>this.startSplit(e,{axis:'y',key:'eqRightR',invert:false})
+    };
+
+    const panelStyle=panelBase;
+    const panelHeadStyle={display:'flex',alignItems:'center',gap:'2px',padding:'0 8px',background:th.panelHead,borderBottom:'1px solid '+th.border,minHeight:'38px',flexShrink:0};
+    const tabActiveStyle=this.tabStyleObj(true);
+    const addBtnStyle='cursor:pointer; color:var(--faint); font-size:15px; padding:0 8px;';
+    const rfqBadge='font-family:var(--fontM,monospace); font-size:8px; letter-spacing:0.12em; color:var(--accent); border:1px solid var(--border); border-radius:2px; padding:0 3px;';
+
+    const nav={ fx:{style:this.navStyle(S.tab==='fx'),onClick:()=>this.setState({tab:'fx',maxPanel:null})}, credit:{style:this.navStyle(S.tab==='credit'),onClick:()=>this.setState({tab:'credit',maxPanel:null})}, equities:{style:this.navStyle(S.tab==='equities'),onClick:()=>this.setState({tab:'equities',maxPanel:null})}, admin:{style:this.navStyle(S.tab==='admin'),onClick:()=>this.setState({tab:'admin',maxPanel:null})} };
+    const theme={ holo:{style:this.themeStyleObj(S.theme==='holo'),onClick:()=>this.setState({theme:'holo'})}, terminal:{style:this.themeStyleObj(S.theme==='terminal'),onClick:()=>this.setState({theme:'terminal'})}, neon:{style:this.themeStyleObj(S.theme==='neon'),onClick:()=>this.setState({theme:'neon'})} };
+    const chips={}; ['All','EUR','USD','GBP','JPY','AUD'].forEach(f=>chips[f.toLowerCase()]={style:this.chipStyleObj(S.filter===f),onClick:()=>this.setState(s=>(s.filter===f?null:{filter:f}))});
+    const chartsBtn={padding:'4px 11px',borderRadius:'4px',cursor:'pointer',fontFamily:'var(--fontD)',fontWeight:600,fontSize:'9px',letterSpacing:'0.1em',marginRight:'4px',border:'1px solid '+(S.showCharts?'var(--borderStrong)':'var(--border)'),color:S.showCharts?'var(--accent)':'var(--dim)',background:S.showCharts?'var(--chip)':'transparent'};
+
+    const mkTab=(group,id)=>({style:this.tabStyleObj(S.panels[group]===id),onClick:()=>this.setState(st=>({panels:{...st.panels,[group]:id}}))});
+    const p={ fxLeft:{rates:mkTab('fxLeft','rates'),watch:mkTab('fxLeft','watch')}, fxBlot:{blotter:mkTab('fxBlot','blotter'),activity:mkTab('fxBlot','activity')}, eqBlot:{orders:mkTab('eqBlot','orders'),positions:mkTab('eqBlot','positions')} };
+
+    // tiles
+    const fxRatesView=S.panels.fxLeft==='rates', fxWatchView=S.panels.fxLeft==='watch';
+    const tiles=this.order.filter(k=>S.filter==='All'||this.meta[k].key.includes(S.filter)).map((k)=>{
+      const m=this.meta[k], rate=S.rates[k]; const pu=m.d===3?0.01:0.0001; const half=parseFloat(m.spread)/2*pu;
+      const sell=this.fmt(rate-half,m), buy=this.fmt(rate+half,m); const fl=S.flash[k];
+      const flashOn=fl&&(S.now-fl.ts<650); const flashCol=fl&&fl.dir>0?'var(--buy)':'var(--sell)';
+      const movePips=Math.round((rate-S.opens[k])/pu); const moveColor=movePips>=0?'var(--buy)':'var(--sell)'; const moveArrow=movePips>=0?'▲':'▼';
+      const h=S.hist[k]; const mn=Math.min(...h),mx=Math.max(...h),rng=(mx-mn)||1;
+      const spark=h.map((v,i)=>(i/(h.length-1)*300).toFixed(1)+','+(40-(v-mn)/rng*36).toFixed(1)).join(' ');
+      const miniSpark=h.slice(-12).map((v,i)=>(i/11*60).toFixed(1)+','+(18-(v-mn)/rng*16).toFixed(1)).join(' ');
+      const n=this.parseNotional(S.notionals[k]); const invalid=Number.isNaN(n)||n>1e9; const isRfq=!invalid&&n>this.RFQ_THRESHOLD;
+      const st=S.tiles[k]||{stage:'idle'}; const stage=st.stage||'idle'; const showOverlay=stage!=='idle'; const booked=stage==='success';
+      const busy=stage==='executing'||stage==='rfqReq'; const rfqRecv=stage==='rfqRecv'; const done=stage==='success'||stage==='failure';
+      let doneIcon='',doneTitle='',doneSub='',doneRate='',doneId='',doneColor='var(--buy)';
+      if(stage==='success'&&st.trade){const tr=st.trade; doneIcon='✓'; doneTitle='You '+(tr.dir==='Buy'?'Bought':'Sold'); doneSub=m.base+' '+tr.notional; doneRate=tr.rate; doneId=tr.id;}
+      if(stage==='failure'){doneIcon='✕';doneColor='var(--sell)';doneTitle='Trade Rejected';doneSub='Execution failed — retry';}
+      let rfqSecs=0,rfqPct=0,rfqSell='',rfqBuy='';
+      if(rfqRecv&&st.rfqEnd){rfqSecs=Math.max(0,Math.ceil((st.rfqEnd-S.now)/1000));rfqPct=Math.max(0,(st.rfqEnd-S.now)/(st.rfqEnd-st.rfqStart)*100);rfqSell=st.quote.Sell;rfqBuy=st.quote.Buy;}
+      const priceBase={flex:'1',cursor:'pointer',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:'4px',padding:'7px 11px',transition:'all .15s'};
+      const pipStyle=()=>({fontSize:'26px',fontWeight:700,lineHeight:'0.9',color:flashOn?'var(--bg)':moveColor,background:flashOn?flashCol:'transparent',borderRadius:'3px',padding:flashOn?'0 2px':'0',transition:'background .25s, color .25s'});
+      return { key:k, sym:k, code:k, pair:m.pair, base:m.base, spread:m.spread, notional:S.notionals[k], notionalInvalid:invalid, isRfq,
+        mid:rate.toFixed(m.d), arrow:moveArrow, movePips:Math.abs(movePips)+' pip', moveColor, spark, miniSpark, spotDate:this._fmtShort(2),
+        sellBig:sell.big, sellPips:sell.pips, sellFrac:sell.frac, buyBig:buy.big, buyPips:buy.pips, buyFrac:buy.frac, sellPipStyle:pipStyle(), buyPipStyle:pipStyle(),
+        cardStyle:Object.assign({position:'relative',background:'var(--tile,var(--bg2))',border:'1px solid '+(showOverlay?'var(--borderStrong)':'var(--border)'),borderRadius:'5px',padding:'13px 14px 11px',overflow:'hidden',boxShadow:'var(--tileShadow,none)',animation:booked?'bookPulse 1s ease':'none'}),
+        notionalStyle:{width:'100%',background:'var(--panel)',border:'1px solid '+(invalid?'var(--sell)':'var(--border)'),borderRadius:'4px',color:'var(--text)',fontFamily:'var(--fontM)',fontSize:'12px',padding:'5px 26px 5px 9px',outline:'none'},
+        resetStyle:{position:'absolute',right:'8px',cursor:'pointer',fontSize:'12px',color:'var(--faint)',userSelect:'none'},
+        sellStyle:priceBase, buyStyle:Object.assign({},priceBase,{textAlign:'right'}),
+        showOverlay, busy, busyLabel:stage==='rfqReq'?'REQUESTING QUOTE…':'EXECUTING…', rfqReq:stage==='rfqReq', rfqRecv, done, success:stage==='success',
+        doneIcon, doneTitle, doneSub, doneRate, doneId, doneColor, rfqSecs, rfqSell, rfqBuy,
+        rfqBarStyle:{height:'100%',width:rfqPct+'%',background:'var(--accent)',transition:'width .4s linear'},
+        overlayStyle:{position:'absolute',inset:'0',zIndex:8,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:'14px',background:this.hexToRgba(th.bg,0.95)},
+        onNotional:(e)=>this.onNotionalChange(k,e.target.value), onReset:()=>this.resetNotional(k), onSell:()=>this.priceClick(k,'Sell'), onBuy:()=>this.priceClick(k,'Buy'), onDismiss:()=>this.dismissTile(k) };
+    });
+
+    // analytics
+    const pnlPts=[92,76,84,54,64,40,48,34,22,14,8]; const pnlLine=pnlPts.map((y,i)=>(i/(pnlPts.length-1)*300).toFixed(0)+','+y).join(' ');
+    const pnlArea='M0,'+pnlPts[0]+' '+pnlPts.map((y,i)=>(i/(pnlPts.length-1)*300).toFixed(0)+','+y).join(' ')+' L300,100 L0,100 Z';
+    const pnlPos=S.pnl>=0; const pnlStr=(pnlPos?'+':'-')+'$'+(Math.abs(S.pnl)/1000).toFixed(1)+'k';
+    const bubData=[['EUR',15.2,1],['USD',-22.8,0],['JPY',8.4,1],['GBP',-6.1,0],['AUD',4.7,1],['CAD',-3.2,0],['NZD',2.1,1]];
+    const bubbles=bubData.map(([ccy,val,pos])=>{ const size=Math.round(40+Math.sqrt(Math.abs(val))*11); return {ccy,amt:(val>0?'+':'')+val+'M',color:pos?'var(--buy)':'var(--sell)',glow:pos?'rgba(43,255,179,0.22)':'rgba(255,93,115,0.22)',labelSize:(size>62?'15px':'12px'),wrapStyle:{position:'relative',width:size+'px',height:size+'px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%',background:(pos?'rgba(43,255,179,0.10)':'rgba(255,93,115,0.10)')}}; });
+    const bars=[['EURUSD',13,78,1],['USDJPY',-4,26,0],['GBPUSD',9,58,1],['AUDUSD',6,42,1],['USDCAD',-2,16,0],['EURJPY',5,38,1]].map(([pp,v,w,pos])=>({p:pp,val:(v>0?'+':'')+v+'k',color:pos?'var(--buy)':'var(--sell)',barStyle:{position:'absolute',left:0,top:0,bottom:0,width:w+'%',background:pos?'var(--buy)':'var(--sell)',boxShadow:'0 0 10px '+(pos?'var(--buy)':'var(--sell)')}}));
+
+    // fx blotter
+    const fxBlotterView=S.panels.fxBlot==='blotter', fxActivityView=S.panels.fxBlot==='activity';
+    const colDefs=[['tradeId','ID'],['status','Status'],['tradeDate','Date'],['direction','Dir'],['symbol','CCYCCY'],['dealtCurrency','Deal'],['notional','Notional'],['spotRate','Rate'],['valueDate','Value'],['traderName','Trader']];
+    const fxCols=colDefs.map(([f,l])=>({label:l,ind:S.fxSort.field===f?(S.fxSort.dir>0?' ▲':' ▼'):'',onClick:()=>this.fxSortClick(f)}));
+    const fxRowTpl='display:grid; grid-template-columns:84px 92px 118px 80px 92px 72px 116px 92px 106px 84px; min-width:930px; padding:9px 14px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:12px; color:var(--text); align-items:center;';
+    const fxTrades=this._fxRows().map(t=>({id:t.id,status:t.status,tradeDate:t.tradeDate,dir:t.dir,symbol:t.symbol,dealtCcy:t.dealtCcy,notional:t.notional,rate:t.rate,valueDate:t.valueDate,trader:t.trader,statusColor:t.status==='Rejected'?'var(--sell)':'var(--buy)',dirColor:t.dir==='Buy'?'var(--buy)':'var(--sell)',rowStyle:fxRowTpl+(t.id===S.newRowId?'animation:rowIn .45s ease, '+(t.id%2?'rowFlashB':'rowFlashA')+' 1.5s ease-out;--rowAcc:'+(t.status==='Rejected'?'var(--sell)':(t.dir==='Buy'?'var(--buy)':'var(--sell)'))+';':'')}));
+    const fxCount=this._fxRows().length+' trades';
+    const activity=S.activity; const noActivity=activity.length===0;
+
+    // credit
+    const c=S.credit; const selInstr=c.instrumentId!=null?this.instruments.find(i=>i.id===c.instrumentId):null; const validRfq=c.instrumentId!=null&&this.parseNotional(c.qty)>0&&c.dealerIds.length>0;
+    const rfqForm={ onBuy:()=>this.cForm({dir:'Buy'}), onSell:()=>this.cForm({dir:'Sell'}),
+      buyStyle:{flex:'1',textAlign:'center',cursor:'pointer',padding:'7px 0',borderRadius:'3px',fontFamily:'var(--fontD)',fontWeight:600,fontSize:'12px',letterSpacing:'0.08em',color:c.dir==='Buy'?'var(--bg)':'var(--dim)',background:c.dir==='Buy'?'var(--buy)':'transparent'},
+      sellStyle:{flex:'1',textAlign:'center',cursor:'pointer',padding:'7px 0',borderRadius:'3px',fontFamily:'var(--fontD)',fontWeight:600,fontSize:'12px',letterSpacing:'0.08em',color:c.dir==='Sell'?'var(--bg)':'var(--dim)',background:c.dir==='Sell'?'var(--sell)':'transparent'},
+      onToggleInstr:()=>this.cForm({showInstr:!c.showInstr}), showInstr:c.showInstr, instrLabel:selInstr?selInstr.ticker:'Select instrument', instrColor:selInstr?'var(--text)':'var(--faint)',
+      instruments:this.instruments.map(i=>({ticker:i.ticker,cusip:i.cusip,name:i.name,onSelect:()=>this.cForm({instrumentId:i.id,showInstr:false})})),
+      qty:c.qty, onQty:(e)=>this.cForm({qty:e.target.value}), allBox:this.boxStyle(c.dealerIds.length===this.dealers.length), allCheck:c.dealerIds.length===this.dealers.length?'✓':'', onToggleAll:()=>this.toggleAllDealers(),
+      dealers:this.dealers.map(d=>{const on=c.dealerIds.includes(d.id); return {name:d.name,box:this.boxStyle(on),check:on?'✓':'',nameColor:d.id===1?'var(--accent)':'var(--dim)',onToggle:()=>this.toggleDealer(d.id)};}),
+      onClear:()=>this.clearForm(), onSend:()=>this.sendRfq(),
+      sendStyle:{flex:'1',textAlign:'center',cursor:validRfq?'pointer':'not-allowed',fontFamily:'var(--fontD)',fontWeight:600,fontSize:'12px',letterSpacing:'0.1em',color:validRfq?'var(--bg)':'var(--faint)',background:validRfq?'var(--accent)':'transparent',border:'1px solid '+(validRfq?'var(--accent)':'var(--border)'),borderRadius:'5px',padding:'10px 0',boxShadow:validRfq?'var(--glow)':'none'} };
+    const liveRfqs=S.rfqs.filter(r=>r.state==='Open'); const cf=(k,on)=>({style:this.pillStyleObj(on),onClick:()=>this.setState(s=>(s.creditTab===k?null:{creditTab:k, tabAt:Date.now(), tabSeq:s.tabSeq+1}))});
+    const creditFilter={live:cf('live',S.creditTab==='live'),closed:cf('closed',S.creditTab==='closed'),all:cf('all',S.creditTab==='all'),liveCount:liveRfqs.length?'('+liveRfqs.length+')':''};
+    const _rfqMatch=(r)=> S.creditTab==='live'?r.state==='Open':(S.creditTab==='closed'?r.state!=='Open':true);
+    let shownRfqs=S.rfqs.filter(r=> _rfqMatch(r) || S.exitingRfqs.indexOf(r.id)>=0 || (S.creditTab==='live' && r.state!=='Open' && r._exitAt && S.now-r._exitAt<380));
+    const noRfqs=shownRfqs.length===0;
+    this._rfqOrder=shownRfqs.map(r=>r.id);
+    const rfqCards=shownRfqs.map((r,ci)=>{ const exiting=S.exitingRfqs.indexOf(r.id)>=0 || (S.creditTab==='live' && r.state!=='Open' && r._exitAt && S.now-r._exitAt<380); const tabRecent=S.now-S.tabAt<480; const inst=this.instruments.find(i=>i.id===r.instrumentId); const live=r.state==='Open',accepted=r.state==='Closed',terminated=r.state==='Cancelled'||r.state==='Expired'; const secs=live?Math.max(0,Math.ceil((r.createdAt+r.expirySecs*1000-S.now)/1000)):0; const pct=live?Math.max(0,(r.createdAt+r.expirySecs*1000-S.now)/(r.expirySecs*1000)*100):0; const priced=r.quotes.filter(q=>q.state==='priced'||q.state==='accepted'); let bestId=null; if(priced.length){const best=priced.reduce((a,b)=>(r.dir==='Buy'?(b.price<a.price?b:a):(b.price>a.price?b:a))); bestId=best.dealerId;} const quotes=r.dealerIds.map(did=>{const dealer=this.dealers.find(d=>d.id===did); const q=r.quotes.find(x=>x.dealerId===did)||{state:'pending'}; const isBest=live&&q.dealerId===bestId&&q.state==='priced'; let price='',pc='var(--text)'; if(q.state==='pending'){price='…';pc='var(--faint)';} else if(q.state==='passed'){price='Passed';pc='var(--faint)';} else {price='$'+Number(q.price).toFixed(2);pc=isBest?'var(--buy)':'var(--text)';} if(q.state==='accepted'){price='$'+Number(q.price).toFixed(2);pc='var(--buy)';} return {bank:dealer.name,price,priceColor:pc,best:isBest,nameColor:did===1?'var(--accent)':'var(--dim)',canAccept:live&&q.state==='priced',acceptStyle:'cursor:pointer; font-family:var(--fontD,sans-serif); font-weight:600; font-size:9px; letter-spacing:0.1em; color:var(--bg); background:var(--buy); border-radius:3px; padding:4px 11px; box-shadow:0 0 10px var(--buy); animation:acceptIn .42s cubic-bezier(.2,1.5,.5,1)'+(isBest?', acceptPulse 1.7s ease-in-out .42s infinite':'')+';',rowStyle:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 0',borderTop:'1px solid var(--border)',opacity:(q.state==='passed'?0.5:1)},onAccept:()=>this.acceptQuote(r.id,did)};}); const stateLabel=r.state==='Open'?'LIVE':r.state==='Closed'?'ACCEPTED':r.state.toUpperCase(); const stateColor=r.state==='Open'?'var(--buy)':r.state==='Closed'?'var(--accent)':'var(--faint)'; const acceptedDealer=accepted&&r.acceptedDealerId?(this.dealers.find(d=>d.id===r.acceptedDealerId)||{}).name:''; return {rid:r.id,cardStyle:{position:'relative',background:'var(--tile,var(--bg2))',border:'1px solid '+(live?'var(--borderStrong)':'var(--border)'),borderRadius:'5px',padding:'14px 15px',boxShadow:'var(--tileShadow,none)',animation:(exiting?'cardOut .34s cubic-bezier(.4,0,.7,1) forwards':(r.id===S.newRfqId?('cardIn'+(r.id%2?'B':'A')+' .46s cubic-bezier(.2,.8,.3,1)'):(tabRecent?('cardIn'+(S.tabSeq%2?'B':'A')+' .42s cubic-bezier(.2,.8,.3,1) '+(ci*45)+'ms both'):(terminated&&r.id===S.newCreditId?'cardFlash .6s':'none'))))},dir:r.dir.toUpperCase(),dirColor:r.dir==='Buy'?'var(--buy)':'var(--sell)',ticker:inst.ticker,cusip:inst.cusip,qty:this.fmtNum(r.qty),stateLabel,stateColor,quotes,live,accepted,terminated,secs,acceptedDealer,barStyle:{height:'100%',width:pct+'%',background:'var(--accent)',transition:'width .4s linear'},onCancel:()=>this.cancelRfq(r.id),onRemove:()=>this.removeRfq(r.id)}; });
+    const creditRowTpl='display:grid; grid-template-columns:64px 92px 118px 64px 112px 104px 126px 92px 72px 84px; min-width:940px; padding:9px 14px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:12px; color:var(--text); align-items:center;';
+    const creditTrades=S.creditTrades.map(t=>({...t,dirColor:t.dir==='Buy'?'var(--buy)':'var(--sell)',rowStyle:creditRowTpl+(t.id===S.newCreditId?'animation:rowIn .45s ease, '+(t.id%2?'rowFlashB':'rowFlashA')+' 1.5s ease-out;--rowAcc:'+(t.dir==='Buy'?'var(--buy)':'var(--sell)')+';':'')}));
+    const creditCount=S.creditTrades.length+' trades';
+
+    // equities
+    const eqTabs=S.eqOpenTabs.map(sym=>({label:sym,style:this.tabStyleObj(S.eqSel===sym),onClick:()=>this.selectEq(sym),onClose:(e)=>this.closeEqTab(sym,e)}));
+    const watchlist=this.eqSyms.map(sym=>{ const last=S.eqRates[sym]; const prev=S.eqPrev[sym]; const chgPct=((last-prev)/prev*100); const up=chgPct>=0; const fl=S.eqFlash[sym]; const flashOn=fl&&(S.now-fl.ts<650); return {sym,name:this.eqMeta[sym].name,last:last.toFixed(2),_lastN:last,_chgN:chgPct,chg:(up?'+':'')+chgPct.toFixed(2)+'%',chgColor:up?'var(--buy)':'var(--sell)',rowStyle:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 10px',borderRadius:'4px',cursor:'pointer',marginBottom:'2px',background:S.eqSel===sym?'var(--chip)':(flashOn?(up?'rgba(43,255,179,0.08)':'rgba(255,93,115,0.08)'):'transparent'),border:'1px solid '+(S.eqSel===sym?'var(--borderStrong)':'transparent'),transition:'background .25s'},onClick:()=>this.selectEq(sym)}; }); const wlSort=S.wlSort||'sym'; if(wlSort==='chg') watchlist.sort((a,b)=>b._chgN-a._chgN); else if(wlSort==='price') watchlist.sort((a,b)=>b._lastN-a._lastN); this._watchOrder=watchlist.map(w=>w.sym); const wlSortBtn={ label: wlSort==='sym'?'A–Z':(wlSort==='chg'?'% CHG':'PRICE'), onClick:()=>this.cycleWlSort(), style:{cursor:'pointer',fontFamily:'var(--fontM,monospace)',fontSize:'8.5px',letterSpacing:'0.06em',color:'var(--accent)',background:'var(--chip)',border:'1px solid var(--border)',borderRadius:'3px',padding:'2px 7px'} };
+    const sel=S.eqSel; const last=S.eqRates[sel]; const prev=S.eqPrev[sel]; const chgAbs=last-prev; const chgPct=(chgAbs/prev*100); const up=chgAbs>=0; const efl=S.eqFlash[sel]; const eflashOn=efl&&(S.now-efl.ts<650);
+    const cs=this.candles[sel]||[]; const dayHi=Math.max(...cs.map(x=>x.h),last), dayLo=Math.min(...cs.map(x=>x.l),last);
+    const inst={ sym:sel, name:this.eqMeta[sel].name, exch:this.eqMeta[sel].exch, last:last.toFixed(2), lastStyle:{fontFamily:"'Orbitron',sans-serif",fontWeight:700,fontSize:'30px',letterSpacing:'0.02em',color:eflashOn?(efl.dir>0?'var(--buy)':'var(--sell)'):'var(--text)',transition:'color .3s'}, chg:(up?'+':'')+chgAbs.toFixed(2), chgPct:(up?'+':'')+chgPct.toFixed(2)+'%', chgColor:up?'var(--buy)':'var(--sell)', bid:(last-0.03).toFixed(2), ask:(last+0.03).toFixed(2), range:dayLo.toFixed(2)+' – '+dayHi.toFixed(2), vol:(2.4+Math.random()*0.2).toFixed(1)+'M' };
+    const cmin=Math.min(...cs.map(x=>x.l)), cmax=Math.max(...cs.map(x=>x.h)), crng=(cmax-cmin)||1; const nc=cs.length; const cw=100/nc;
+    const yPct=pp=>((cmax-pp)/crng)*86+6;
+    const chartCandles=cs.map((cd,i)=>{ const xpct=(i+0.5)*cw; const upC=cd.c>=cd.o; const col=upC?th.buy:th.sell; const yo=yPct(cd.o),yc=yPct(cd.c),yh=yPct(cd.h),yl=yPct(cd.l); const top=Math.min(yo,yc), bh=Math.max(0.6,Math.abs(yo-yc)); const lastOne=i===nc-1; return { wickStyle:{position:'absolute',left:'calc('+xpct+'% - 0.5px)',top:yh+'%',height:(yl-yh)+'%',width:'1px',background:col,opacity:0.7}, bodyStyle:{position:'absolute',left:'calc('+xpct+'% - '+(cw*0.32)+'%)',top:top+'%',height:bh+'%',width:(cw*0.64)+'%',background:col,boxShadow:lastOne&&eflashOn?'0 0 8px '+col:'none',opacity:lastOne?1:0.85} }; });
+    const chartGrid=[0.2,0.4,0.6,0.8].map(f=>({style:{position:'absolute',left:0,right:0,top:(f*100)+'%',height:'1px',background:th.border,opacity:0.5}}));
+    const chartLabels=[0.12,0.37,0.62,0.87].map(f=>({txt:(cmax-f*crng).toFixed(2),style:{position:'absolute',right:'6px',top:'calc('+(f*100)+'% - 6px)',fontFamily:th.fontM,fontSize:'9px',color:th.faint}}));
+    const tfBtn=(id,on)=>({style:this.pillStyleObj(on),onClick:()=>this.setTf(id)});
+    const tf={d1:tfBtn('1D',S.eqTf==='1D'),w1:tfBtn('1W',S.eqTf==='1W'),m1:tfBtn('1M',S.eqTf==='1M'),m3:tfBtn('3M',S.eqTf==='3M')};
+    const tk=S.eqTicket; const qtyN=parseInt(tk.qty,10)||0; const costN=qtyN*(tk.type==='Limit'&&parseFloat(tk.limit)?parseFloat(tk.limit):last);
+    const ticket={ onBuy:()=>this.ticketSet({side:'Buy'}), onSell:()=>this.ticketSet({side:'Sell'}),
+      buyStyle:{flex:'1',textAlign:'center',cursor:'pointer',padding:'8px 0',borderRadius:'3px',fontFamily:'var(--fontD)',fontWeight:700,fontSize:'12px',letterSpacing:'0.1em',color:tk.side==='Buy'?'var(--bg)':'var(--dim)',background:tk.side==='Buy'?'var(--buy)':'transparent'},
+      sellStyle:{flex:'1',textAlign:'center',cursor:'pointer',padding:'8px 0',borderRadius:'3px',fontFamily:'var(--fontD)',fontWeight:700,fontSize:'12px',letterSpacing:'0.1em',color:tk.side==='Sell'?'var(--bg)':'var(--dim)',background:tk.side==='Sell'?'var(--sell)':'transparent'},
+      onMarket:()=>this.ticketSet({type:'Market'}), onLimit:()=>this.ticketSet({type:'Limit'}), isLimit:tk.type==='Limit',
+      marketStyle:{flex:'1',textAlign:'center',cursor:'pointer',padding:'7px 0',borderRadius:'4px',fontFamily:'var(--fontM)',fontSize:'11px',color:tk.type==='Market'?'var(--accent)':'var(--dim)',border:'1px solid '+(tk.type==='Market'?'var(--borderStrong)':'var(--border)'),background:tk.type==='Market'?'var(--chip)':'transparent'},
+      limitStyle:{flex:'1',textAlign:'center',cursor:'pointer',padding:'7px 0',borderRadius:'4px',fontFamily:'var(--fontM)',fontSize:'11px',color:tk.type==='Limit'?'var(--accent)':'var(--dim)',border:'1px solid '+(tk.type==='Limit'?'var(--borderStrong)':'var(--border)'),background:tk.type==='Limit'?'var(--chip)':'transparent'},
+      qty:tk.qty, onQty:(e)=>this.ticketSet({qty:e.target.value.replace(/[^0-9]/g,'')}), onInc:()=>this.ticketQtyStep(10), onDec:()=>this.ticketQtyStep(-10),
+      limit:tk.limit, onLimitPx:(e)=>this.ticketSet({limit:e.target.value}), lastRaw:last.toFixed(2),
+      cost:'$'+this.fmtNum(costN), bp:'$250,000',
+      onSubmit:()=>this.submitOrder(), submitLabel:(tk.side==='Buy'?'BUY ':'SELL ')+sel,
+      submitStyle:{textAlign:'center',cursor:'pointer',fontFamily:'var(--fontD)',fontWeight:700,fontSize:'13px',letterSpacing:'0.1em',color:'var(--bg)',background:tk.side==='Buy'?'var(--buy)':'var(--sell)',borderRadius:'5px',padding:'12px 0',boxShadow:'0 0 14px '+(tk.side==='Buy'?'var(--buy)':'var(--sell)')},
+      flash:!!S.ticketFlash, flashMsg:S.ticketFlash?S.ticketFlash.msg:'' };
+    const eqOrdersView=S.panels.eqBlot==='orders', eqPositionsView=S.panels.eqBlot==='positions';
+    const eqRowTpl='display:grid; grid-template-columns:96px 80px 70px 80px 90px 100px 100px; min-width:620px; padding:9px 14px; border-bottom:1px solid var(--border); font-family:var(--fontM,monospace); font-size:12px; color:var(--text); align-items:center;';
+    const eqOrders=S.eqOrders.map(o=>({time:o.time,sym:o.sym,side:o.side,type:o.type,qty:this.fmtNum(o.qty),price:'$'+o.price.toFixed(2),status:o.status,sideColor:o.side==='Buy'?'var(--buy)':'var(--sell)',statusColor:o.status==='Filled'?'var(--buy)':'var(--accent)',rowStyle:eqRowTpl+(o.id===S.newOrderId?'animation:rowIn .45s ease, '+(o.id%2?'rowFlashB':'rowFlashA')+' 1.5s ease-out;--rowAcc:'+(o.side==='Buy'?'var(--buy)':'var(--sell)')+';':'')}));
+    const noOrders=S.eqOrders.length===0;
+    const posMap={}; S.eqOrders.filter(o=>o.status==='Filled').forEach(o=>{ if(!posMap[o.sym]) posMap[o.sym]={sym:o.sym,qty:0,cost:0}; const sign=o.side==='Buy'?1:-1; posMap[o.sym].qty+=sign*o.qty; posMap[o.sym].cost+=sign*o.qty*o.price; });
+    const eqPositions=Object.values(posMap).filter(p2=>p2.qty!==0).map(p2=>{ const lastP=S.eqRates[p2.sym]; const avg=p2.cost/p2.qty; const mv=p2.qty*lastP; const pl=mv-p2.cost; return {sym:p2.sym,qty:this.fmtNum(p2.qty),avg:'$'+avg.toFixed(2),last:'$'+lastP.toFixed(2),mv:'$'+this.fmtNum(mv),pl:(pl>=0?'+$':'-$')+this.fmtNum(Math.abs(pl)),plColor:pl>=0?'var(--buy)':'var(--sell)'}; });
+    const noPositions=eqPositions.length===0;
+    const eqBlotCount=(eqOrdersView?S.eqOrders.length+' orders':eqPositions.length+' positions');
+
+    // admin observability
+    const M=S.metrics;
+    const spark100=(arr)=>{ const mn=Math.min(...arr),mx=Math.max(...arr),rg=(mx-mn)||1; return arr.map((v,i)=>(i/(arr.length-1)*100).toFixed(1)+','+(28-(v-mn)/rg*26).toFixed(1)).join(' '); };
+    const kpi=(label,arr,fmt,unit,colorPick)=>{ const cur=arr[arr.length-1], past=arr[arr.length-9]||arr[0]; const dl=cur-past; const color=colorPick(cur); return {label,value:fmt(cur),unit,delta:(dl>=0?'▲ +':'▼ ')+fmt(Math.abs(dl)),deltaColor:(dl>=0?'var(--buy)':'var(--sell)'),spark:spark100(arr),color}; };
+    const adminKpis=[
+      kpi('Throughput',M.tput,(v)=>(v/1000).toFixed(2),'k msg/s',()=>'var(--accent2)'),
+      kpi('P99 Latency',M.lat,(v)=>Math.round(v),'ms',(v)=>v>60?'var(--sell)':'var(--accent)'),
+      kpi('Error Rate',M.err,(v)=>v.toFixed(2),'%',(v)=>v>0.8?'var(--sell)':'var(--buy)'),
+      kpi('Active Sessions',M.sess,(v)=>Math.round(v),'',()=>'var(--buy)')
+    ];
+    const tarr=M.tput; const tmn=Math.min(...tarr),tmx=Math.max(...tarr),trg=(tmx-tmn)||1; const tpts=tarr.map((v,i)=>(i/(tarr.length-1)*300).toFixed(1)+','+(92-(v-tmn)/trg*84).toFixed(1)); const tputLine=tpts.join(' '); const tputArea='M0,96 '+tpts.join(' ')+' L300,96 Z';
+    const latBuckets=[['<10',14],['10-25',40],['25-50',76],['50-80',46],['80-150',20],['150+',6]];
+    const latBars=latBuckets.map(([l,base],i)=>{ const hv=Math.max(4,base+(Math.random()*8-4)); return {l,barStyle:{width:'70%',height:hv+'%',background:(i===2?'var(--accent2)':'var(--accent)'),borderRadius:'2px 2px 0 0',opacity:0.85,boxShadow:'0 0 8px '+(i===2?'var(--accent2)':'var(--accent)')}}; });
+    const latNow=Math.round(M.lat[M.lat.length-1]);
+    const services=[{name:'PRICING ENGINE',status:'ONLINE',up:'99.99%',lv:8},{name:'EXECUTION',status:'ONLINE',up:'99.98%',lv:14},{name:'BLOTTER STREAM',status:'ONLINE',up:'100%',lv:6},{name:'EQUITIES FEED',status:'ONLINE',up:'99.96%',lv:10},{name:'REFERENCE DATA',status:'DEGRADED',up:'99.40%',lv:48},{name:'CREDIT RFQ',status:'ONLINE',up:'99.97%',lv:12}].map(s2=>{ const color=s2.status==='ONLINE'?'var(--buy)':'var(--accent)'; return {...s2,color,lat:s2.lv+'ms',barStyle:{height:'100%',width:Math.min(100,s2.lv/60*100)+'%',background:color,boxShadow:'0 0 8px '+color}}; });
+    const sevStyle=(sev)=>{ const col=sev==='ERROR'?'var(--sell)':sev==='WARN'?'var(--accent)':'var(--buy)'; return 'font-family:var(--fontM,monospace); font-size:8px; font-weight:700; letter-spacing:0.08em; flex:none; width:42px; text-align:center; padding:1px 0; border-radius:2px; color:'+col+'; border:1px solid '+col+';'; };
+    const actEvents=S.activity.slice(0,8).map(a=>{ const sev=(a.tag==='REJECT'?'ERROR':a.tag==='CANCEL'||a.tag==='WARN'?'WARN':'INFO'); return {t:a.t,sev,svc:'trading',msg:a.msg,tagStyle:sevStyle(sev)}; });
+    const adminEvents=actEvents.concat(this.seedEvents.map(e=>({...e,tagStyle:sevStyle(e.sev)}))).slice(0,30);
+    const eventCount=adminEvents.length+' events';
+
+    // status bar
+    const tputNow=(M.tput[M.tput.length-1]/1000).toFixed(2); const sessNow=Math.round(M.sess[M.sess.length-1]);
+    const memNow=Math.round(190+(M.sess[M.sess.length-1]-1280)*0.06+40); const fps=58+(latNow<40?2:latNow<60?1:0);
+    const statusItems=[
+      {label:'LAT',value:latNow+'ms',color:'var(--text)'},
+      {label:'TPUT',value:tputNow+'k/s',color:'var(--text)'},
+      {label:'FPS',value:String(fps),color:'var(--text)'},
+      {label:'MEM',value:memNow+'MB',color:'var(--text)'},
+      {label:'POS',value:String(eqPositions.length),color:'var(--text)'},
+      {label:'P&L',value:pnlStr,color:pnlPos?'var(--buy)':'var(--sell)'},
+      {label:'SES',value:String(sessNow),color:'var(--text)'}
+    ];
+
+    // header account / lang / notifications
+    const langs=this.languages.map(l=>({code:l.code,label:l.label,mark:S.lang===l.code?'✓':'',style:this.langItemStyle(S.lang===l.code),onClick:()=>this.setLang(l.code)}));
+    const menu={lang:S.menu==='lang',notif:S.menu==='notif',user:S.menu==='user',theme:S.menu==='theme'};
+    const themeNames={holo:'Holo HUD',holo3d:'Holo HUD 3D',terminal:'Terminal',terminal3d:'Terminal 3D',neon:'Neon Grid'};
+    const themeList=Object.keys(this.themes).map(k=>({key:k,label:themeNames[k]||k,mark:S.theme===k?'✓':'',style:this.langItemStyle(S.theme===k),sw1Style:{width:'11px',height:'11px',borderRadius:'3px',flex:'none',background:this.themes[k].accent,boxShadow:'0 0 6px '+this.themes[k].accent},sw2Style:{width:'11px',height:'11px',borderRadius:'3px',flex:'none',background:this.themes[k].accent2},onClick:()=>this.setTheme(k)}));
+    const curTheme=themeNames[S.theme]||S.theme;
+    const menuOpen=S.menu!==null;
+    const notifs=[...S.activity.slice(0,4).map(a=>({t:(a.t||'').slice(0,5),tag:a.tag,msg:a.msg,color:a.color})),...this.notifSeed];
+
+    const P=S.prefs; const ph={}, on={};
+    ['animatedBg','reduceMotion','glassBlur','showGrid','scanlines','oneClick','confirmExec','execSound','desktopAlerts','priceAlerts','marketNews','heartbeat','telemetry','crashReports','betaModules'].forEach(k=>{ ph[k]=()=>this.togglePref(k); on[k]=!!P[k]; });
+    const segDefs={ density:['Comfortable','Compact'], font:['Orbitron','Rajdhani','Mono'], precision:['3 dp','5 dp','Pips'], refresh:['100 ms','250 ms','500 ms','1 s'], tz:['UTC','Local','EST','LON'] };
+    const segKey={ density:'density', font:'fontFace', precision:'precision', refresh:'refreshRate', tz:'timezone' };
+    const seg={}; for(const g in segDefs){ const key=segKey[g]; seg[g]=segDefs[g].map(opt=>({ label:opt, on:P[key]===opt, set:()=>this.setPref(key,opt) })); }
+
+    return {
+      rootStyle, booting:S.booting, booted:S.booted, setBootCanvas:this.setBootCanvas, finishBoot:()=>this.finishBoot(), onReboot:()=>this.reboot(),
+      prefsOpen:S.prefsOpen, onOpenPrefs:()=>this.openPrefs(), onClosePrefs:()=>this.closePrefs(), prefsStop:(e)=>e.stopPropagation(),
+      prefHand:ph, prefOn:on, seg, prefs:P, uiScaleLabel:P.uiScale+'%', onScale:(e)=>this.setPref('uiScale',+e.target.value),
+      langs, menu, menuOpen, notifs, notifCount:notifs.length, user:this.user, lang:S.lang, loggedOut:S.loggedOut,
+      themeList, curTheme, onToggleTheme:()=>this.toggleMenu('theme'), mode:S.mode, modeGlyph:S.mode==='light'?'☾':'☀', modeTitle:(S.mode==='light'?'Switch to dark':'Switch to light')+' mode', onToggleMode:()=>this.toggleMode(),
+      onToggleLang:()=>this.toggleMenu('lang'), onToggleNotif:()=>this.toggleMenu('notif'), onToggleUser:()=>this.toggleMenu('user'), onCloseMenu:()=>this.closeMenu(), onLogout:()=>this.logout(), onLogin:()=>this.login(),
+      bootStyle, bootBarStyle, bootPct:S.bootPct, bootLines, bootAccent:th.accent, bootDim:th.dim, bootBorder:th.border, sessionId:this.sessionId,
+      panelStyle, panelHeadStyle, tabActiveStyle, addBtnStyle, rfqBadge,
+      panFull:panFor(S.tab==='admin'?'admin':'newrfq', panFull), mx, mxBtn, fxAsideCollapsed, crLeftCollapsed, eqRightCollapsed, stripWrap, stripBar, onRestore:()=>this.setState({maxPanel:null}),
+      panTiles:panFor('tiles',panGrow(S.fxStackR)), panBlot:panFor('fxblot',panGrow(1-S.fxStackR)), panAna:panFor('ana',panGrow(S.fxRightR)), panPos:panFor('pos',panGrow(1-S.fxRightR)),
+      panRfqs:panFor('rfqs',panGrow(S.creditStackR)), panCBlot:panFor('cblot',panGrow(1-S.creditStackR)), panChart:panFor('chart',panGrow(S.eqCenterR)), panEBlot:panFor('eblot',panGrow(1-S.eqCenterR)), panTicket:panFor('ticket',panGrow(S.eqRightR)), panWatch:panFor('watch',panGrow(1-S.eqRightR)),
+      sectionRow, fxLeftCol, asideCol, creditLeftCol, creditRightCol, eqCenterCol, eqRightCol,
+      splitV, splitH, handleV, handleH, splits, sb16, sb14, sb6, sb614, sbTable,
+      nav, theme, chips, chartsBtn, toggleCharts:()=>this.setState(s=>({showCharts:!s.showCharts})), showCharts:S.showCharts, clock:S.clock, selectAll:this.selectAll,
+      isFx:S.tab==='fx', isCredit:S.tab==='credit', isEquities:S.tab==='equities', isAdmin:S.tab==='admin',
+      p, fxRatesView, fxWatchView, tiles, pnlLine, pnlArea, pnlStr, pnlColor:pnlPos?'var(--buy)':'var(--sell)', bubbles, bars,
+      fxBlotterView, fxActivityView, fxCols, fxTrades, fxCount, fxQuery:S.fxQuery, onFxQuery:(e)=>this.onFxQuery(e.target.value), onExportFx:()=>this.exportFx(), activity, noActivity,
+      rfqForm, creditFilter, noRfqs, rfqCards, creditTrades, creditCount, onExportCredit:()=>this.exportCredit(),
+      watchlist, wlSortBtn, eqTabs, inst, chart:{candles:chartCandles,grid:chartGrid,labels:chartLabels}, tf, ticket, eqOrdersView, eqPositionsView, eqOrders, noOrders, eqPositions, noPositions, eqBlotCount,
+      adminKpis, tputLine, tputArea, latBars, services, adminEvents, eventCount, statusItems
+    };
+  }
+}
+</script>
+</body>
+</html>

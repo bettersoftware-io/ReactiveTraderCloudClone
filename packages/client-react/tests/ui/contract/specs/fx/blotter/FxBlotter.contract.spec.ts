@@ -4,22 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-const trade = (tradeId: number, over: Partial<Trade> = {}): Trade => {
-  return {
-    tradeId,
-    tradeName: `Trade ${tradeId}`,
-    currencyPair: "EURUSD",
-    notional: 1_000_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.09221,
-    status: TradeStatus.Done,
-    tradeDate: "2026-06-06",
-    valueDate: "2026-06-08",
-    ...over,
-  };
-};
-
 const t1 = trade(4001, { currencyPair: "EURUSD" });
 const t2 = trade(4002, {
   currencyPair: "USDJPY",
@@ -79,26 +63,26 @@ describe("FxBlotter", () => {
     const b = trade(4002, { currencyPair: "USDJPY", notional: 1_000_000 });
     const c = trade(4003, { currencyPair: "GBPUSD", notional: 2_000_000 });
 
-    it("sorts a numeric column descending on first header click", async () => {
+    it("sorts a numeric column ascending on first header click", async () => {
       const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
-      await blotter.clickColumnHeader("Notional");
-      expect(blotter.sortIndicatorFor("Notional")).toBe("desc");
-      expect(blotter.columnValues("Notional")).toEqual([
-        "3,000,000",
-        "2,000,000",
-        "1,000,000",
-      ]);
-    });
-
-    it("toggles a numeric column to ascending on the second click", async () => {
-      const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
-      await blotter.clickColumnHeader("Notional");
       await blotter.clickColumnHeader("Notional");
       expect(blotter.sortIndicatorFor("Notional")).toBe("asc");
       expect(blotter.columnValues("Notional")).toEqual([
         "1,000,000",
         "2,000,000",
         "3,000,000",
+      ]);
+    });
+
+    it("toggles a numeric column to descending on the second click", async () => {
+      const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
+      await blotter.clickColumnHeader("Notional");
+      await blotter.clickColumnHeader("Notional");
+      expect(blotter.sortIndicatorFor("Notional")).toBe("desc");
+      expect(blotter.columnValues("Notional")).toEqual([
+        "3,000,000",
+        "2,000,000",
+        "1,000,000",
       ]);
     });
 
@@ -217,3 +201,19 @@ describe("FxBlotter", () => {
     });
   });
 });
+
+function trade(tradeId: number, over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId,
+    tradeName: `Trade ${tradeId}`,
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-06-06",
+    valueDate: "2026-06-08",
+    ...over,
+  };
+}

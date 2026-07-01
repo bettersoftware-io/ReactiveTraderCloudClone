@@ -32,12 +32,10 @@ export class AnalyticsPanelPage extends MountedComponent<
       });
   }
 
-  /** The formatted latest-P&L figure the panel summarises, e.g. "+12.5k". */
+  /** The formatted latest-P&L amount the panel summarises, e.g. "+12,345". */
   latestPnlText(): string {
-    const label = within(this.root).getByText(/profit & loss/i);
-    // The PnlValue leaf is the next element sibling after the section label.
-    const value = label.nextElementSibling;
-    return value?.textContent?.trim() ?? "";
+    const amount = within(this.root).queryByTestId("lastPosition");
+    return amount?.textContent?.trim() ?? "";
   }
 
   /** True when the stale overlay ("Reconnecting...") is visible. */

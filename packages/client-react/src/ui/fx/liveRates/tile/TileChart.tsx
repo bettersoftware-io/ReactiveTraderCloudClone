@@ -4,6 +4,35 @@ import type { PriceTick } from "@rtc/domain";
 
 import styles from "./TileChart.module.css";
 
+export function TileChart({ history }: TileChartProps): ReactElement {
+  const path = buildPath(history);
+  const lastTick = history.length > 1 ? history[history.length - 1] : null;
+  const prevTick = history.length > 1 ? history[history.length - 2] : null;
+  const isUp = lastTick && prevTick ? lastTick.mid > prevTick.mid : true;
+
+  return (
+    <svg
+      width="100%"
+      height={CHART_HEIGHT}
+      viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+      preserveAspectRatio="none"
+      className={styles.chartWrapper}
+    >
+      <title>Price history chart</title>
+      {path && (
+        <path
+          d={path}
+          fill="none"
+          stroke={isUp ? "var(--accent-positive)" : "var(--accent-negative)"}
+          strokeWidth={1.5}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      )}
+    </svg>
+  );
+}
+
 interface TileChartProps {
   history: readonly PriceTick[];
 }
@@ -33,33 +62,4 @@ function buildPath(history: readonly PriceTick[]): string {
       return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
-}
-
-export function TileChart({ history }: TileChartProps): ReactElement {
-  const path = buildPath(history);
-  const lastTick = history.length > 1 ? history[history.length - 1] : null;
-  const prevTick = history.length > 1 ? history[history.length - 2] : null;
-  const isUp = lastTick && prevTick ? lastTick.mid > prevTick.mid : true;
-
-  return (
-    <svg
-      width="100%"
-      height={CHART_HEIGHT}
-      viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-      preserveAspectRatio="none"
-      className={styles.chartWrapper}
-    >
-      <title>Price history chart</title>
-      {path && (
-        <path
-          d={path}
-          fill="none"
-          stroke={isUp ? "var(--accent-positive)" : "var(--accent-negative)"}
-          strokeWidth={1.5}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      )}
-    </svg>
-  );
 }

@@ -1,0 +1,125 @@
+{
+  "_source": "rtc-original@4a31f01 App/Analytics/Positions/data.ts:46-99 (per-currency fold + scaleLinear[15,60] + formatAsWholeNumber); pair->currency via symbol.slice(0,3)/slice(3,6)",
+  "cases": [
+    {
+      "input": [
+        {
+          "symbol": "EURUSD",
+          "basePnl": 0,
+          "baseTradedAmount": 1000000,
+          "counterTradedAmount": 0
+        },
+        {
+          "symbol": "USDJPY",
+          "basePnl": 0,
+          "baseTradedAmount": -2000000,
+          "counterTradedAmount": 0
+        }
+      ],
+      "expected": [
+        {
+          "currency": "EUR",
+          "tradedAmount": 1000000,
+          "radius": 15,
+          "sign": "pos",
+          "text": "1,000,000"
+        },
+        {
+          "currency": "USD",
+          "tradedAmount": -2000000,
+          "radius": 60,
+          "sign": "neg",
+          "text": "-2,000,000"
+        }
+      ]
+    },
+    {
+      "input": [
+        {
+          "symbol": "EURUSD",
+          "basePnl": 0,
+          "baseTradedAmount": -2000000,
+          "counterTradedAmount": 2726570
+        },
+        {
+          "symbol": "USDJPY",
+          "basePnl": 0,
+          "baseTradedAmount": -1000000,
+          "counterTradedAmount": 102144000
+        },
+        {
+          "symbol": "GBPUSD",
+          "basePnl": 0,
+          "baseTradedAmount": -1000000,
+          "counterTradedAmount": 1638980
+        },
+        {
+          "symbol": "GBPJPY",
+          "basePnl": 0,
+          "baseTradedAmount": 0,
+          "counterTradedAmount": 0
+        },
+        {
+          "symbol": "EURJPY",
+          "basePnl": 0,
+          "baseTradedAmount": 0,
+          "counterTradedAmount": 0
+        },
+        {
+          "symbol": "AUDUSD",
+          "basePnl": 0,
+          "baseTradedAmount": 0,
+          "counterTradedAmount": 0
+        },
+        {
+          "symbol": "NZDUSD",
+          "basePnl": 0,
+          "baseTradedAmount": 0,
+          "counterTradedAmount": 0
+        },
+        {
+          "symbol": "EURCAD",
+          "basePnl": 0,
+          "baseTradedAmount": 0,
+          "counterTradedAmount": 0
+        },
+        {
+          "symbol": "EURAUD",
+          "basePnl": 0,
+          "baseTradedAmount": 0,
+          "counterTradedAmount": 0
+        }
+      ],
+      "expected": [
+        {
+          "currency": "EUR",
+          "tradedAmount": -2000000,
+          "radius": 15.444910227003085,
+          "sign": "neg",
+          "text": "-2,000,000"
+        },
+        {
+          "currency": "USD",
+          "tradedAmount": 3365550,
+          "radius": 16.05245738748715,
+          "sign": "pos",
+          "text": "3,365,550"
+        },
+        {
+          "currency": "JPY",
+          "tradedAmount": 102144000,
+          "radius": 60,
+          "sign": "pos",
+          "text": "102,144,000"
+        },
+        {
+          "currency": "GBP",
+          "tradedAmount": -1000000,
+          "radius": 15,
+          "sign": "neg",
+          "text": "-1,000,000"
+        }
+      ]
+    }
+  ]
+}

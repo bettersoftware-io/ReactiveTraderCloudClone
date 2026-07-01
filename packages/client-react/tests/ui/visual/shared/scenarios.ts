@@ -28,6 +28,10 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "ConnectionOverlay",
     fixtureKey: "connection-offline",
   },
+  "connection-overlay/idle": {
+    componentKey: "ConnectionOverlay",
+    fixtureKey: "connection-idle",
+  },
   "live-rates/populated": {
     componentKey: "LiveRatesPanel",
     fixtureKey: "live-rates-populated",
@@ -74,6 +78,8 @@ export const scenarios: Record<string, Scenario> = {
   "app/admin": { componentKey: "App", fixtureKey: "app-fx" },
   // Light-theme variant of the FX page (fixture seeds theme "light" through the seam).
   "app/fx-light": { componentKey: "App", fixtureKey: "app-fx-light" },
+  // System mode-preference variant: pins the third (🖥️) toggle icon (resolves to dark).
+  "app/fx-system": { componentKey: "App", fixtureKey: "app-fx-system" },
 
   // --- Phase V deterministic golden scenarios ---
   // FX tiles: TilePrice DOWN / NONE colour arms + TileChart down/empty arms.
@@ -206,6 +212,44 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "CreditWorkspace",
     fixtureKey: "credit-populated",
   },
+  // --- Phase 4: Equities panel scenarios ---
+  // Per-component sub-views with deterministic fixed-data fixtures.
+  "equities/watchlist-loaded": {
+    componentKey: "EquitiesWatchlist",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/sector-heatmap": {
+    componentKey: "EquitiesSectorHeatmap",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/chart-loaded": {
+    componentKey: "EquitiesPriceChart",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/depth-ladder": {
+    componentKey: "EquitiesDepthLadder",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/ticket-editing": {
+    componentKey: "EquitiesOrderTicket",
+    fixtureKey: "equities-ticket-editing",
+  },
+  "equities/ticket-filled": {
+    componentKey: "EquitiesOrderTicket",
+    fixtureKey: "equities-ticket-filled",
+  },
+  "equities/positions-with-pnl": {
+    componentKey: "EquitiesPositionsBlotter",
+    fixtureKey: "equities-loaded",
+  },
+  // Full EquitiesPanel at fixed 1280×680 (mirrors layout-engine constraint).
+  "equities/panel": {
+    componentKey: "EquitiesPanel",
+    fixtureKey: "equities-loaded",
+  },
+  // Full App shot with the equities tab active (parallels app/fx + app/credit).
+  "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },
+
   // Admin panel loaded (slider) state — throughput fetch stubbed.
   "admin/panel-loaded": { componentKey: "AdminPanel", fixtureKey: "app-fx" },
   // Seeded render-state arms with no interaction (the states are only transiently
@@ -309,7 +353,7 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "NewRfqForm",
     fixtureKey: "credit-populated",
   },
-  "credit/new-rfq-invalid": {
+  "credit/new-rfq-over-max": {
     componentKey: "NewRfqForm",
     fixtureKey: "credit-populated",
   },
@@ -363,4 +407,111 @@ export const scenarios: Record<string, Scenario> = {
   },
   // StaleIndicator "Reconnecting…" overlay arm.
   "tile/stale": { componentKey: "Tile", fixtureKey: "tile-stale" },
+
+  // --- Coverage-gap pass: behaviour-sync'd components (Step 5) ---
+
+  // CreditBlotter sort: click the Quantity column header → CreditBlotter
+  // handleSort fires, sort state changes, ▼ indicator appears on that column.
+  // Covers CreditBlotter.tsx lines 104-108 (handleSort / nextSortDirection call).
+  "credit/blotter-sorted": {
+    componentKey: "CreditBlotter",
+    fixtureKey: "credit-populated",
+  },
+  // CreditBlotter number filter: open the Quantity filter, enter a large
+  // value (99999999) that no trade matches → "No credit trades match" message.
+  // Covers handleFilter (lines 110-120), activeFilterLabels (128-131), and
+  // the "No credit trades match" empty-row branch (line 195).
+  "credit/blotter-filtered": {
+    componentKey: "CreditBlotter",
+    fixtureKey: "credit-populated",
+  },
+  // CreditBlotter quick-filter: type a string matching no trade →
+  // covers QuickFilter.tsx onChange (line 20), setQuickFilter in CreditBlotter,
+  // and the "No credit trades match" branch when quickFilter is non-empty.
+  "credit/blotter-quick-filter": {
+    componentKey: "CreditBlotter",
+    fixtureKey: "credit-populated",
+  },
+  // RfqTilesPanel Done filter: click the "Done" tab with the credit-populated
+  // fixture (which has rfq 102 in Closed state) → shows the Done rfq card.
+  // Covers filterMatches Done branch (RfqTilesPanel.tsx line 20).
+  "credit/rfq-tiles-filter-done": {
+    componentKey: "RfqTilesPanel",
+    fixtureKey: "credit-populated",
+  },
+  // RfqCountdown zero-expiry arm: an Open rfq with expirySecs=0 drives
+  // totalMs=0 → RfqCountdown fraction = 0 (the `totalMs > 0 ? : 0` false
+  // branch, RfqCountdown.tsx line 14). Bar renders at 0%.
+  "credit/rfq-countdown-zero": {
+    componentKey: "RfqTilesPanel",
+    fixtureKey: "rfq-countdown-zero",
+  },
+
+  // --- Interaction scenarios whose handler produces a visible delta (firing
+  // the handler is the only way to reach these lines in the visual tier; the
+  // snapshot is meaningful because the post-interaction view differs) ---
+  // SetFilter: open the Status set-filter popover, uncheck "Rejected", Apply →
+  // the blotter drops the Rejected row + "Filtered: Status" toolbar label.
+  // Covers SetFilter toggleValue / checkbox onChange / handleApply (filter arm).
+  "fx-blotter/filter-set-applied": {
+    componentKey: "FxBlotter",
+    fixtureKey: "fx-trades",
+  },
+  // CurrencyFilter: click the GBP category → the active highlight moves and the
+  // rate grid narrows to GBP pairs. Covers the button onClick → onChange handler.
+  "live-rates/currency-filtered": {
+    componentKey: "LiveRatesPanel",
+    fixtureKey: "live-rates-populated",
+  },
+
+  // --- Phase 1: in-house layout engine arrangements ---
+  "layout/fx-default": {
+    componentKey: "LayoutEngineDefault",
+    fixtureKey: "app-fx",
+  },
+  "layout/fx-maximized": {
+    componentKey: "LayoutEngineMaximized",
+    fixtureKey: "app-fx",
+  },
+  "layout/fx-collapsed": {
+    componentKey: "LayoutEngineCollapsed",
+    fixtureKey: "app-fx",
+  },
+
+  // --- Phase 2: HUD shell surfaces ---
+  // Boot is captured under reduced motion (canvas suppressed) so only the
+  // deterministic chrome is golden'd; the per-variant animated canvas art is
+  // verified in-browser, not pixel-diffed (it is rAF/time-driven, not freezable
+  // by `animations: "disabled"`). See the runner specs / scenarioActions.
+  "boot/chrome": { componentKey: "BootSequence", fixtureKey: "boot" },
+  "lock/locked": { componentKey: "LockScreen", fixtureKey: "session-locked" },
+  "chrome/header": {
+    componentKey: "HeaderChrome",
+    fixtureKey: "app-connected",
+  },
+  "status/bar": { componentKey: "StatusBar", fixtureKey: "app-connected" },
+  "prefs/modal": { componentKey: "PreferencesModal", fixtureKey: "prefs-open" },
+
+  // --- Phase 5: Admin observability dashboard scenarios ---
+  // Full AdminDashboard with all telemetry cards rendered from seeded data.
+  "admin/dashboard": {
+    componentKey: "AdminDashboard",
+    fixtureKey: "admin-loaded",
+  },
+  // ServiceTopologyGraph isolated: seeded nodes + edges with a degraded credit node.
+  "admin/topology": {
+    componentKey: "ServiceTopologyGraph",
+    fixtureKey: "admin-loaded",
+  },
+  // LiveEventLog isolated: seeded events across info/warn/error severity arms.
+  "admin/event-log": {
+    componentKey: "LiveEventLog",
+    fixtureKey: "admin-loaded",
+  },
+  // IncidentControls with serviceDown active: "Inject service down" button has
+  // data-active="true"; state is injected through the seam — no click needed.
+  "admin/incident-active": {
+    componentKey: "IncidentControls",
+    fixtureKey: "admin-incident-active",
+  },
 };

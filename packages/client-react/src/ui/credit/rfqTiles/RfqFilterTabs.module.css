@@ -6,16 +6,19 @@
 .tab {
   padding: 4px 10px;
   font-size: 12px;
+  line-height: 17px;
   border: none;
   border-radius: 3px;
   cursor: pointer;
   font-weight: 400;
   background-color: transparent;
   color: var(--text-secondary);
+  font-family: var(--font-display);
 }
 
 .tab[data-active="true"] {
   font-weight: 600;
-  background-color: var(--accent-primary);
-  color: var(--text-on-accent);
+  background-color: var(--chip);
+  color: var(--accent-primary);
+  box-shadow: var(--glow);
 }

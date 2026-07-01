@@ -4,22 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-const trade = (over: Partial<Trade> = {}): Trade => {
-  return {
-    tradeId: 7001,
-    tradeName: "Alice",
-    currencyPair: "EURUSD",
-    notional: 2_500_000,
-    dealtCurrency: "EUR",
-    direction: Direction.Buy,
-    spotRate: 1.09221,
-    status: TradeStatus.Done,
-    tradeDate: "2026-03-30",
-    valueDate: "2026-04-01",
-    ...over,
-  };
-};
-
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -48,9 +32,9 @@ describe("BlotterRow", () => {
     expect(row.isRejected()).toBe(false);
   });
 
-  it("highlights a newly arrived trade", () => {
+  it("flashes a newly arrived trade", () => {
     const row = mount(BlotterRow, { props: { trade: trade(), isNew: true } });
-    expect(row.backgroundColor()).toContain("rgba(59, 130, 246");
+    expect(row.backgroundColor()).toBe("animation:backgroundFlash");
   });
 
   it("does not highlight an existing trade", () => {
@@ -67,14 +51,28 @@ describe("BlotterRow", () => {
     expect(row.backgroundColor()).toBe("transparent");
   });
 
-  it("clears the highlight after the timeout elapses", () => {
+  it("clears the flash after the 3s highlight window elapses", () => {
     vi.useFakeTimers();
     const row = mount(BlotterRow, { props: { trade: trade(), isNew: true } });
-    expect(row.backgroundColor()).toContain("rgba(59, 130, 246");
-    // The new-trade highlight is removed after 3s. Re-render (via a prop push,
-    // which wraps the mutation in act) so React flushes the timer's state update.
+    expect(row.backgroundColor()).toBe("animation:backgroundFlash");
     vi.advanceTimersByTime(3000);
     row.setProps({ isNew: true });
     expect(row.backgroundColor()).toBe("transparent");
   });
 });
+
+function trade(over: Partial<Trade> = {}): Trade {
+  return {
+    tradeId: 7001,
+    tradeName: "Alice",
+    currencyPair: "EURUSD",
+    notional: 2_500_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.09221,
+    status: TradeStatus.Done,
+    tradeDate: "2026-03-30",
+    valueDate: "2026-04-01",
+    ...over,
+  };
+}

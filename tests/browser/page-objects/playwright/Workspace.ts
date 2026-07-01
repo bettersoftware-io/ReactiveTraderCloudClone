@@ -43,6 +43,10 @@ export class PlaywrightWorkspace implements WorkspacePO {
     });
   }
 
+  async clickTestId(id: string): Promise<void> {
+    await this.page.getByTestId(id).click();
+  }
+
   async wait(ms: number): Promise<void> {
     await this.page.waitForTimeout(ms);
   }

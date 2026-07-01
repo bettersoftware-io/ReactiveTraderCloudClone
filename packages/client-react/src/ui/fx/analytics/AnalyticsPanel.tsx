@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
+
 import { StaleIndicator } from "#/ui/shell/stale/StaleIndicator";
 
 import { PairPnlBars } from "./PairPnlBars";
@@ -11,8 +12,9 @@ import { PositionBubbles } from "./PositionBubbles";
 import styles from "./AnalyticsPanel.module.css";
 
 export function AnalyticsPanel(): ReactElement | null {
-  const data = useHooks().useAnalytics();
-  const stale = useHooks().useAnalyticsStaleFlag();
+  const { useAnalytics, useAnalyticsStaleFlag } = useViewModel();
+  const data = useAnalytics();
+  const stale = useAnalyticsStaleFlag();
 
   if (!data) {
     return <div className={styles.loading}>Loading analytics...</div>;

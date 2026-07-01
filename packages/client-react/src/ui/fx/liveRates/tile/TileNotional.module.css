@@ -15,13 +15,14 @@
   flex: 1;
   background: none;
   border: none;
-  border-bottom: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border);
   color: var(--text-primary);
+  font-family: var(--font-mono);
   font-size: 13px;
+  line-height: 18px;
   padding: 2px 0;
   outline: none;
   text-align: right;
-  font-family: inherit;
 }
 
 .input[data-error="true"] {

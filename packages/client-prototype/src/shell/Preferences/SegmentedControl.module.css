@@ -1,0 +1,46 @@
+.control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.label {
+  font-size: 13px;
+  color: var(--text);
+  min-width: 0;
+}
+
+.options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.option {
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.option:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.option[data-on="true"] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}

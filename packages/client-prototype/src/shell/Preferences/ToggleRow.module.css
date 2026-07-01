@@ -1,0 +1,63 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.labelGroup {
+  min-width: 0;
+}
+
+.label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--faint);
+  margin-top: 2px;
+  text-wrap: pretty;
+}
+
+.sw {
+  width: 38px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--chip, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border);
+  position: relative;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  flex: none;
+}
+
+.sw::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--dim);
+  transition:
+    transform 0.15s,
+    background 0.15s;
+}
+
+.sw[data-on="true"] {
+  background: color-mix(in srgb, var(--buy) 26%, transparent);
+  border-color: var(--buy);
+}
+
+.sw[data-on="true"]::after {
+  transform: translateX(18px);
+  background: var(--buy);
+  box-shadow: 0 0 6px var(--buy);
+}

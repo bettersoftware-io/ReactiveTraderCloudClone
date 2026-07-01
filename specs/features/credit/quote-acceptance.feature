@@ -42,6 +42,7 @@ Feature: Accept Credit Quote
     Then "Wells Fargo"'s quote transitions to rejectedWithPrice
     And "Goldman Sachs"'s quote transitions to rejectedWithoutPrice
     And "Citigroup"'s quote remains in passed state
+    And these rejections surface live on the open subscription (no re-snapshot required)
 
   Scenario: RFQ transitions to Closed state after acceptance
     Given the trader has accepted a quote

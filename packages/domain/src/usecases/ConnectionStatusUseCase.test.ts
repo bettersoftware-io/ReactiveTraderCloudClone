@@ -8,14 +8,6 @@ import {
 import type { ConnectionEventsPort } from "../ports/connectionEventsPort.js";
 import { ConnectionStatusUseCase } from "./ConnectionStatusUseCase.js";
 
-function portFrom(events: readonly ConnectionEvent[]): ConnectionEventsPort {
-  return {
-    events: () => {
-      return of(...events);
-    },
-  };
-}
-
 describe("ConnectionStatusUseCase", () => {
   it("emits the initial status synchronously when there are no events", async () => {
     const port: ConnectionEventsPort = {
@@ -29,10 +21,12 @@ describe("ConnectionStatusUseCase", () => {
   });
 
   it("folds events through nextConnectionStatus", async () => {
+    // Recovery from IDLE_DISCONNECTED is button-only: a reconnect intent (not
+    // userActivity) drives the fold back to CONNECTING. See connectionStatus.ts.
     const port = portFrom([
       { type: "gatewayConnected" },
       { type: "idleTimeout" },
-      { type: "userActivity" },
+      { type: "reconnect" },
     ]);
     const useCase = new ConnectionStatusUseCase(port);
     const emissions = await firstValueFrom(useCase.execute().pipe(toArray()));
@@ -83,3 +77,11 @@ describe("ConnectionStatusUseCase", () => {
     ]);
   });
 });
+
+function portFrom(events: readonly ConnectionEvent[]): ConnectionEventsPort {
+  return {
+    events: () => {
+      return of(...events);
+    },
+  };
+}

@@ -4,10 +4,41 @@ import { type Price, PriceMovementType } from "@rtc/domain";
 
 import styles from "./TilePrice.module.css";
 
+export function TilePrice({
+  price,
+  ratePrecision,
+  pipsPosition,
+  anim,
+}: TilePriceProps): ReactElement {
+  return (
+    <div className={styles.row}>
+      <PriceButton
+        label="SELL"
+        value={price.bid}
+        ratePrecision={ratePrecision}
+        pipsPosition={pipsPosition}
+        movement={price.movementType}
+        side="bid"
+        anim={anim}
+      />
+      <PriceButton
+        label="BUY"
+        value={price.ask}
+        ratePrecision={ratePrecision}
+        pipsPosition={pipsPosition}
+        movement={price.movementType}
+        side="ask"
+        anim={anim}
+      />
+    </div>
+  );
+}
+
 interface TilePriceProps {
   price: Price;
   ratePrecision: number;
   pipsPosition: number;
+  anim?: "tickUp" | "tickDown";
 }
 
 interface PriceParts {
@@ -51,6 +82,7 @@ interface PriceButtonProps {
   pipsPosition: number;
   movement: PriceMovementType;
   side: "bid" | "ask";
+  anim?: "tickUp" | "tickDown";
 }
 
 function PriceButton({
@@ -60,6 +92,7 @@ function PriceButton({
   pipsPosition,
   movement,
   side,
+  anim,
 }: PriceButtonProps): ReactElement {
   const { prefix, pips, fractional } = splitPrice(
     value,
@@ -75,6 +108,7 @@ function PriceButton({
         <span
           data-testid="tile-pips"
           data-movement={movementKey(movement)}
+          data-anim={anim}
           className={styles.pips}
         >
           {pips}
@@ -83,39 +117,4 @@ function PriceButton({
       </span>
     </button>
   );
-}
-
-export function TilePrice({
-  price,
-  ratePrecision,
-  pipsPosition,
-}: TilePriceProps): ReactElement {
-  return (
-    <div className={styles.row}>
-      <PriceButton
-        label="SELL"
-        value={price.bid}
-        ratePrecision={ratePrecision}
-        pipsPosition={pipsPosition}
-        movement={price.movementType}
-        side="bid"
-      />
-      <PriceButton
-        label="BUY"
-        value={price.ask}
-        ratePrecision={ratePrecision}
-        pipsPosition={pipsPosition}
-        movement={price.movementType}
-        side="ask"
-      />
-    </div>
-  );
-}
-
-interface SpreadDisplayProps {
-  spread: string;
-}
-
-export function SpreadDisplay({ spread }: SpreadDisplayProps): ReactElement {
-  return <div className={styles.spread}>{spread}</div>;
 }

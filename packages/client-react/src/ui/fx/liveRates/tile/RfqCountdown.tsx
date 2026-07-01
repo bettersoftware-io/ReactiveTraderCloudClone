@@ -2,11 +2,6 @@ import type { CSSProperties, ReactElement } from "react";
 
 import styles from "./RfqCountdown.module.css";
 
-interface RfqCountdownProps {
-  remainingMs: number;
-  totalMs: number;
-}
-
 export function RfqCountdown({
   remainingMs,
   totalMs,
@@ -21,10 +16,16 @@ export function RfqCountdown({
           data-testid="rfq-countdown-fill"
           data-warn={fraction <= 0.3 ? "true" : "false"}
           className={styles.fill}
+          // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
           style={{ "--rfq-fill": `${fraction * 100}%` } as CSSProperties}
         />
       </div>
       <span className={styles.caption}>{seconds}s remaining</span>
     </div>
   );
+}
+
+interface RfqCountdownProps {
+  remainingMs: number;
+  totalMs: number;
 }

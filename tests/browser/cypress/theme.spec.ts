@@ -25,11 +25,16 @@ describe("Theme", () => {
     theme.expectBackgroundMatchesToggled(ctx);
   });
 
-  it("toggle button shows correct icon for current theme", () => {
+  it("toggle cycles dark → light → system → dark", () => {
     const ctx = getCtx();
-    theme.expectThemeToggleAriaLabelMentions(ctx, "light");
+    // aria-label always names the NEXT preference in the cycle.
+    theme.expectThemeToggleAriaLabelMentions(ctx, "light"); // on dark
     theme.toggleAndCaptureBackgrounds(ctx);
-    theme.expectThemeToggleAriaLabelMentions(ctx, "dark");
+    theme.expectThemeToggleAriaLabelMentions(ctx, "system"); // on light
+    theme.toggleAndCaptureBackgrounds(ctx);
+    theme.expectThemeToggleAriaLabelMentions(ctx, "dark"); // on system
+    theme.toggleAndCaptureBackgrounds(ctx);
+    theme.expectThemeToggleAriaLabelMentions(ctx, "light"); // back on dark
   });
 
   it("workspace tabs work in both themes", () => {

@@ -1,21 +1,17 @@
 import type { CSSProperties, ReactElement } from "react";
+import { useState } from "react";
 
-import type { CurrencyPairPosition } from "@rtc/domain";
+import {
+  type CurrencyPairPosition,
+  formatPrecise2,
+  formatWithScale,
+} from "@rtc/domain";
 
 import styles from "./PairPnlBars.module.css";
 
-interface PairPnlBarsProps {
-  positions: readonly CurrencyPairPosition[];
-}
-
-function formatPnl(value: number): string {
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
-  return value.toFixed(0);
-}
-
 export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
+  const [hoveredSymbol, setHoveredSymbol] = useState<string | null>(null);
+
   const maxAbsPnl = Math.max(
     ...positions.map((p) => {
       return Math.abs(p.basePnl);
@@ -29,6 +25,10 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
         const fraction = pos.basePnl / maxAbsPnl;
         const sign = pos.basePnl >= 0 ? "pos" : "neg";
         const barWidth = `${Math.abs(fraction) * 50}%`;
+        const hovering = hoveredSymbol === pos.symbol;
+        const label = hovering
+          ? formatPrecise2(pos.basePnl)
+          : formatWithScale(pos.basePnl);
 
         return (
           <div key={pos.symbol} className={styles.row}>
@@ -40,15 +40,31 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
               <div
                 data-sign={sign}
                 className={styles.bar}
+                // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
                 style={{ "--bar-width": barWidth } as CSSProperties}
               />
             </div>
-            <span data-sign={sign} className={styles.pnlLabel}>
-              {formatPnl(pos.basePnl)}
-            </span>
+            <button
+              type="button"
+              data-sign={sign}
+              data-testid={`priceLabel-${pos.symbol}`}
+              className={styles.pnlLabel}
+              onMouseEnter={() => {
+                return setHoveredSymbol(pos.symbol);
+              }}
+              onMouseLeave={() => {
+                return setHoveredSymbol(null);
+              }}
+            >
+              {label}
+            </button>
           </div>
         );
       })}
     </div>
   );
+}
+
+interface PairPnlBarsProps {
+  positions: readonly CurrencyPairPosition[];
 }

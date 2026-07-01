@@ -8,25 +8,25 @@ import type { WorkspacePO } from "../contracts/Workspace";
  */
 export class CypressWorkspace implements WorkspacePO {
   open(): Promise<void> {
-    return cy.visit("/") as unknown as Promise<void>;
+    return cy.visit("/?nosplash") as unknown as Promise<void>;
   }
 
   openFx(): Promise<void> {
-    cy.visit("/");
+    cy.visit("/?nosplash");
     return cy
       .get(`[data-testid="${TESTIDS.shell.tab("fx")}"]`)
       .click() as unknown as Promise<void>;
   }
 
   openCredit(): Promise<void> {
-    cy.visit("/");
+    cy.visit("/?nosplash");
     return cy
       .get(`[data-testid="${TESTIDS.shell.tab("credit")}"]`)
       .click() as unknown as Promise<void>;
   }
 
   openAdmin(): Promise<void> {
-    cy.visit("/");
+    cy.visit("/?nosplash");
     return cy
       .get(`[data-testid="${TESTIDS.shell.tab("admin")}"]`)
       .click() as unknown as Promise<void>;
@@ -57,6 +57,10 @@ export class CypressWorkspace implements WorkspacePO {
     return cy.get("#root > div").then(($el) => {
       return getComputedStyle($el[0]).backgroundColor;
     }) as unknown as Promise<string>;
+  }
+
+  clickTestId(id: string): Promise<void> {
+    return cy.get(`[data-testid="${id}"]`).click() as unknown as Promise<void>;
   }
 
   wait(ms: number): Promise<void> {

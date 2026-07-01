@@ -2,25 +2,19 @@ import type { ChangeEvent, ReactElement } from "react";
 import { useState } from "react";
 
 import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./TradeTicket.module.css";
-
-interface TradeTicketProps {
-  rfq: Rfq;
-  quote: Quote;
-  instrument: Instrument | undefined;
-}
 
 export function TradeTicket({
   rfq,
   quote,
   instrument,
 }: TradeTicketProps): ReactElement {
-  const { useTicketSubmission } = useHooks();
+  const { useTicketSubmission, useAnimationIntents } = useViewModel();
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
+  const anim = useAnimationIntents(`rfq:${rfq.id}`);
   const ticket = useTicketSubmission();
   const { submitPrice, pass } = ticket;
   const [price, setPrice] = useState("");
@@ -44,6 +38,7 @@ export function TradeTicket({
     <div
       className={styles.ticket}
       data-active={rfq.state === RfqState.Open ? "true" : "false"}
+      data-anim={anim?.kind === "fill" ? "fill" : undefined}
     >
       <div>
         <div className={styles.instrumentName}>
@@ -103,4 +98,10 @@ export function TradeTicket({
       )}
     </div>
   );
+}
+
+interface TradeTicketProps {
+  rfq: Rfq;
+  quote: Quote;
+  instrument: Instrument | undefined;
 }

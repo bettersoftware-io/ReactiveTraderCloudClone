@@ -2,12 +2,6 @@ import type { CSSProperties, ReactElement, ReactNode } from "react";
 
 import styles from "./StaleIndicator.module.css";
 
-interface StaleIndicatorProps {
-  stale: boolean;
-  children: ReactNode;
-  style?: CSSProperties;
-}
-
 /**
  * Wraps children with a greyed-out overlay when data is stale.
  */
@@ -32,4 +26,10 @@ export function StaleIndicator({
       )}
     </div>
   );
+}
+
+interface StaleIndicatorProps {
+  stale: boolean;
+  children: ReactNode;
+  style?: CSSProperties;
 }

@@ -1,38 +1,15 @@
 import type { ChangeEvent, ReactElement } from "react";
 import { useState } from "react";
 
-import type { Trade } from "@rtc/domain";
-
 import type { ColumnFilter, Comparator } from "./filterState";
 
 import styles from "./NumberFilter.module.css";
 
-interface NumberFilterProps {
-  column: keyof Trade;
-  currentFilter: ColumnFilter | undefined;
-  onApply: (filter: ColumnFilter | null) => void;
-}
-
-interface ComparatorOption {
-  value: Comparator;
-  label: string;
-}
-
-const comparators: ComparatorOption[] = [
-  { value: "eq", label: "Equals" },
-  { value: "neq", label: "Not equal" },
-  { value: "lt", label: "Less than" },
-  { value: "lte", label: "Less than or equals" },
-  { value: "gt", label: "Greater than" },
-  { value: "gte", label: "Greater than or equals" },
-  { value: "inRange", label: "In range" },
-];
-
-export function NumberFilter({
+export function NumberFilter<TRow>({
   column,
   currentFilter,
   onApply,
-}: NumberFilterProps): ReactElement {
+}: NumberFilterProps<TRow>): ReactElement {
   const [comparator, setComparator] = useState<Comparator>(
     currentFilter?.type === "number" ? currentFilter.comparator : "eq",
   );
@@ -125,3 +102,24 @@ export function NumberFilter({
     </div>
   );
 }
+
+interface NumberFilterProps<TRow> {
+  column: keyof TRow;
+  currentFilter: ColumnFilter<TRow> | undefined;
+  onApply: (filter: ColumnFilter<TRow> | null) => void;
+}
+
+interface ComparatorOption {
+  value: Comparator;
+  label: string;
+}
+
+const comparators: ComparatorOption[] = [
+  { value: "eq", label: "Equals" },
+  { value: "neq", label: "Not equal" },
+  { value: "lt", label: "Less than" },
+  { value: "lte", label: "Less than or equals" },
+  { value: "gt", label: "Greater than" },
+  { value: "gte", label: "Greater than or equals" },
+  { value: "inRange", label: "In range" },
+];

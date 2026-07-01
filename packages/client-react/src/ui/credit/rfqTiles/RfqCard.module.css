@@ -1,12 +1,20 @@
+@import "../../shell/motion/animations.module.css";
+
 .card {
-  background-color: var(--bg-tile);
-  border: 1px solid var(--border-primary);
+  background-color: var(--panel);
+  backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 280px;
+  box-shadow: var(--glow);
+}
+
+.card[data-anim="expiry"] {
+  animation: hudExpiryPulse 0.8s ease-in-out;
 }
 
 .header {
@@ -18,7 +26,9 @@
 .instrumentName {
   font-size: 13px;
   font-weight: 600;
+  line-height: 18px;
   color: var(--text-primary);
+  font-family: var(--font-display);
 }
 
 .instrumentMeta {

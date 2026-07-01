@@ -26,6 +26,16 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
+  // Tolerate cross-CI-runner anti-aliasing jitter (~1-4% of pixels, byte-identical
+  // layout) the same way the playwright-ct tier does: glyph-edge AA varies between
+  // the runner that renders the goldens (update-visual-goldens workflow) and the
+  // runner that verifies them (the `visual` CI job), tipping a random text-heavy
+  // golden over a strict threshold with no real change. Raised from 0.025 to
+  // 0.06: text-heavy fixed-dimension goldens (e.g. fxBlotter populated/sorted)
+  // show ~0.04 ratio of sub-pixel AA jitter on x86 run-to-run; 0.025 was too
+  // tight. 0.06 still catches layout/structure regressions (which move >> 6%).
+  // See project_visual_goldens_dual_set / PR #40 (playwright-ct precedent).
+  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.06 } },
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
   // siblings (the html reporter wipes its own folder). ../../../../ = packages/client-react.
   reporter: [

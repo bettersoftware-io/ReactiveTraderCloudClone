@@ -1,5 +1,18 @@
 // FX
 
+export type { CurrencyPositionNode } from "./analytics/aggregatePositions.js";
+export {
+  aggregatePositionsByCurrency,
+  POSITION_MAX_RADIUS,
+  POSITION_MIN_RADIUS,
+} from "./analytics/aggregatePositions.js";
+export { formatPnlValue } from "./analytics/formatPnlValue.js";
+export type { Scale } from "./analytics/formatScale.js";
+export {
+  formatPrecise2,
+  formatWithScale,
+  scaleNumber,
+} from "./analytics/formatScale.js";
 // Analytics
 export type {
   CurrencyPairPosition,
@@ -27,10 +40,24 @@ export type { Quote, QuoteState } from "./credit/quote.js";
 export { validQuoteTransitions } from "./credit/quote.js";
 export type { Rfq } from "./credit/rfq.js";
 export {
+  applyMaximum,
   CREDIT_MAX_QUANTITY_INPUT,
   CREDIT_QUANTITY_MULTIPLIER,
+  CREDIT_RFQ_EXPIRY_SECONDS,
   RfqState,
 } from "./credit/rfq.js";
+// Equities
+export type { Candle } from "./equities/candle.js";
+export type { DepthBook, DepthLevel } from "./equities/depth.js";
+export type { EquityInstrument } from "./equities/instrument.js";
+export type {
+  EquityOrder,
+  OrderSide,
+  OrderStatus,
+  OrderType,
+} from "./equities/order.js";
+export type { EquityPosition } from "./equities/position.js";
+export type { EquityQuote } from "./equities/quote.js";
 export type { CurrencyCategory } from "./fx/currencyFilter.js";
 export {
   CURRENCY_CATEGORIES,
@@ -71,12 +98,19 @@ export type { AnalyticsPort } from "./ports/analyticsPort.js";
 export type { BlotterPort } from "./ports/blotterPort.js";
 export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
 export type { DealerPort } from "./ports/dealerPort.js";
+export type { EventLogPort } from "./ports/eventLogPort.js";
 export type { ExecutionPort } from "./ports/executionPort.js";
 export type { InstrumentPort } from "./ports/instrumentPort.js";
+// Ports
+export type { MarketDataPort } from "./ports/marketDataPort.js";
+export type { OrderPort, PlaceOrderRequest } from "./ports/orderPort.js";
+export type { PositionPort } from "./ports/positionPort.js";
 export type { PreferencesPort } from "./ports/preferencesPort.js";
 export type { PricingPort, RfqQuoteResult } from "./ports/pricingPort.js";
-// Ports
 export type { ReferenceDataPort } from "./ports/referenceDataPort.js";
+export type { ServiceHealthPort } from "./ports/serviceHealthPort.js";
+export type { SessionsPort } from "./ports/sessionsPort.js";
+export type { TelemetryPort } from "./ports/telemetryPort.js";
 export type {
   CreateRfqRequest,
   QuoteRequest,
@@ -84,25 +118,74 @@ export type {
   WorkflowPort,
 } from "./ports/workflowPort.js";
 // Preferences
-export type { Theme, ViewMode } from "./preferences/preferences.js";
-export { DEFAULT_THEME, DEFAULT_VIEW_MODE } from "./preferences/preferences.js";
-export type { PreferencesSeed, TradeListener } from "./simulators/index.js";
+export type {
+  BootVariant,
+  ThemeMode,
+  ThemeModePreference,
+  ThemeSkin,
+  ViewMode,
+} from "./preferences/preferences.js";
+export {
+  DEFAULT_BOOT_VARIANT,
+  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_MODE_PREFERENCE,
+  DEFAULT_THEME_SKIN,
+  DEFAULT_VIEW_MODE,
+  nextThemeModePreference,
+  resolveThemeMode,
+  THEME_MODE_PREFERENCES,
+  THEME_MODES,
+  THEME_SKINS,
+} from "./preferences/preferences.js";
+export type {
+  EquityOrderDeps,
+  FillEvent,
+  MetricControl,
+  OrderListener,
+  Perturbation,
+  PreferencesSeed,
+  TradeListener,
+} from "./simulators/index.js";
 // Simulators (in-memory port implementations)
 export {
   AnalyticsSimulator,
+  aggregateCandle,
   ConnectionEventsSimulator,
   CreditRfqSimulator,
   DEALERS_CATALOG,
   DealerSimulator,
+  EquityMarketDataSimulator,
+  EquityOrderSimulator,
+  EquityPositionSimulator,
+  ErrorRateSimulator,
+  EventLogSimulator,
   ExecutionSimulator,
+  gbmStep,
   INSTRUMENTS_CATALOG,
   InstrumentSimulator,
+  LatencySimulator,
   PreferencesSimulator,
   PricingSimulator,
   ReferenceDataSimulator,
+  rfqResponseDelayMs,
+  ServiceTopologySimulator,
+  SessionSimulator,
+  TelemetrySimulator,
   ThroughputSimulator,
   TradeStoreSimulator,
 } from "./simulators/index.js";
+// Telemetry
+export type { LogEvent, Severity } from "./telemetry/log.js";
+export type { MetricSample } from "./telemetry/metrics.js";
+export { mulberry32 } from "./telemetry/prng.js";
+export type { SessionInfo } from "./telemetry/session.js";
+export type {
+  ServiceEdge,
+  ServiceName,
+  ServiceNode,
+  ServiceStatus,
+  ServiceTopology,
+} from "./telemetry/topology.js";
 export type {
   CreateRfqInput,
   ExecuteTradeInput,

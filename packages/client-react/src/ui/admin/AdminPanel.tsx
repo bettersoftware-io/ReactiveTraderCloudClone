@@ -1,11 +1,12 @@
 import type { ChangeEvent, ReactElement } from "react";
 
-import { useHooks } from "../hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./AdminPanel.module.css";
 
 export function AdminPanel(): ReactElement {
-  const { value, loading, message, setValue } = useHooks().useThroughput();
+  const { useThroughput } = useViewModel();
+  const { value, loading, message, setValue } = useThroughput();
 
   if (loading) {
     return <div className={styles.loading}>Loading throughput...</div>;

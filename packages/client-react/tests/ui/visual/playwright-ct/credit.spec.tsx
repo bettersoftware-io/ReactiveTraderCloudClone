@@ -248,13 +248,14 @@ test("credit/new-rfq-filled", async ({ mount, page }) => {
   });
 });
 
-test("credit/new-rfq-invalid", async ({ mount, page }) => {
-  const c = await mount(<VisualScenario name="credit/new-rfq-invalid" />);
+test("credit/new-rfq-over-max", async ({ mount, page }) => {
+  // Over-max quantity is CAPPED (not blocked): submit stays enabled.
+  const c = await mount(<VisualScenario name="credit/new-rfq-over-max" />);
   await page.getByTestId("instrument-search-input").fill("Treasury");
   await page.getByTestId("instrument-result-1").click();
   await page.getByTestId("quantity-input").fill("200000000");
-  await expect(page.getByText("Max quantity exceeded")).toBeVisible();
-  await expect(c).toHaveScreenshot("new-rfq-invalid.png", {
+  await expect(page.getByRole("button", { name: /submit rfq/i })).toBeEnabled();
+  await expect(c).toHaveScreenshot("new-rfq-over-max.png", {
     animations: "disabled",
   });
 });

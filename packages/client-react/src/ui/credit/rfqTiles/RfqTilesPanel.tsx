@@ -2,59 +2,16 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { type Dealer, type Instrument, type Rfq, RfqState } from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { RfqCard } from "./RfqCard";
 import { type RfqFilter, RfqFilterTabs } from "./RfqFilterTabs";
 
 import styles from "./RfqTilesPanel.module.css";
 
-function filterMatches(state: string, filter: RfqFilter): boolean {
-  switch (filter) {
-    case "All":
-      return true;
-    case "Live":
-      return state === RfqState.Open;
-    case "Done":
-      return state === RfqState.Closed;
-    case "Expired":
-      return state === RfqState.Expired;
-    case "Cancelled":
-      return state === RfqState.Cancelled;
-  }
-}
-
-interface RfqTileRowProps {
-  rfq: Rfq;
-  instrumentMap: Map<number, Instrument>;
-  dealers: readonly Dealer[];
-  onAccept: (quoteId: number) => Promise<void>;
-  onDismiss: (rfqId: number) => void;
-}
-
-function RfqTileRow({
-  rfq,
-  instrumentMap,
-  dealers,
-  onAccept,
-  onDismiss,
-}: RfqTileRowProps): ReactElement {
-  const quotes = useHooks().useQuotesForRfq(rfq.id);
-  return (
-    <RfqCard
-      rfq={rfq}
-      quotes={quotes}
-      instrument={instrumentMap.get(rfq.instrumentId)}
-      dealers={dealers}
-      onAccept={onAccept}
-      onDismiss={onDismiss}
-    />
-  );
-}
-
 export function RfqTilesPanel(): ReactElement {
-  const { useRfqs, useInstruments, useDealers, useAcceptQuote } = useHooks();
+  const { useRfqs, useInstruments, useDealers, useAcceptQuote } =
+    useViewModel();
   const rfqs = useRfqs();
   const instruments = useInstruments();
   const dealers = useDealers();
@@ -109,5 +66,49 @@ export function RfqTilesPanel(): ReactElement {
         </div>
       )}
     </div>
+  );
+}
+
+function filterMatches(state: string, filter: RfqFilter): boolean {
+  switch (filter) {
+    case "All":
+      return true;
+    case "Live":
+      return state === RfqState.Open;
+    case "Done":
+      return state === RfqState.Closed;
+    case "Expired":
+      return state === RfqState.Expired;
+    case "Cancelled":
+      return state === RfqState.Cancelled;
+  }
+}
+
+interface RfqTileRowProps {
+  rfq: Rfq;
+  instrumentMap: Map<number, Instrument>;
+  dealers: readonly Dealer[];
+  onAccept: (quoteId: number) => Promise<void>;
+  onDismiss: (rfqId: number) => void;
+}
+
+function RfqTileRow({
+  rfq,
+  instrumentMap,
+  dealers,
+  onAccept,
+  onDismiss,
+}: RfqTileRowProps): ReactElement {
+  const { useQuotesForRfq } = useViewModel();
+  const quotes = useQuotesForRfq(rfq.id);
+  return (
+    <RfqCard
+      rfq={rfq}
+      quotes={quotes}
+      instrument={instrumentMap.get(rfq.instrumentId)}
+      dealers={dealers}
+      onAccept={onAccept}
+      onDismiss={onDismiss}
+    />
   );
 }

@@ -36,7 +36,10 @@ test("app/admin", async ({ mount, page }) => {
   });
   await mount(<VisualScenario name="app/admin" />);
   await page.getByTestId("tab-admin").click();
-  await expect(page.getByText("Throughput Control")).toBeVisible();
+  // "Throughput Control" appears in both the engine panel header and the AdminPanel
+  // h2, so getByText is not unique. "Updates/sec" is only in the AdminPanel slider
+  // row and proves the panel is fully loaded without a strict-mode violation.
+  await expect(page.getByText("Updates/sec")).toBeVisible();
   await expect(page).toHaveScreenshot("admin.png", {
     animations: "disabled",
     fullPage: true,
@@ -45,13 +48,28 @@ test("app/admin", async ({ mount, page }) => {
 
 test("app/fx-light", async ({ mount, page }) => {
   // Light theme is seeded through the seam (fixture theme "light"); confirm the
-  // toggle now offers switching back to dark before screenshotting.
+  // toggle offers switching to system (the next step in the cycle) before
+  // screenshotting.
   await mount(<VisualScenario name="app/fx-light" />);
+  await expect(page.getByTestId("theme-toggle")).toHaveAttribute(
+    "aria-label",
+    "Switch to system theme",
+  );
+  await expect(page).toHaveScreenshot("fx-light.png", {
+    animations: "disabled",
+    fullPage: true,
+  });
+});
+
+test("app/fx-system", async ({ mount, page }) => {
+  // System mode preference: the toggle shows the third (🖥️) icon and offers a
+  // switch to dark (cycle wrap). With no OS media query the page paints dark.
+  await mount(<VisualScenario name="app/fx-system" />);
   await expect(page.getByTestId("theme-toggle")).toHaveAttribute(
     "aria-label",
     "Switch to dark theme",
   );
-  await expect(page).toHaveScreenshot("fx-light.png", {
+  await expect(page).toHaveScreenshot("fx-system.png", {
     animations: "disabled",
     fullPage: true,
   });

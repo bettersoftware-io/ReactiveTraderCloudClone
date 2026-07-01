@@ -18,6 +18,10 @@ export type ScenarioAction = {
   /** Screenshot the whole page (full App or a fixed-position overlay) rather
    *  than just the #scenario-root component box. */
   readonly fullPage?: boolean;
+  /** Emulate `prefers-reduced-motion: reduce` before rendering. The boot
+   *  sequence reads it to skip its rAF canvas loop, so only the deterministic
+   *  chrome is captured (the animated canvas art is intentionally not golden'd). */
+  readonly reducedMotion?: boolean;
   /** A testid to click after the page settles (e.g. a tab or the theme toggle). */
   readonly click?: string;
   /** Ordered interaction steps, run after `click`, before `waitForText`. Used
@@ -41,6 +45,7 @@ export type ScenarioAction = {
 // component-level shot with no interaction.
 export const scenarioActions: Record<string, ScenarioAction> = {
   "connection-overlay/offline": { fullPage: true },
+  "connection-overlay/idle": { fullPage: true },
   "app/fx": { fullPage: true },
   "app/credit": {
     fullPage: true,
@@ -50,12 +55,20 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   "app/admin": {
     fullPage: true,
     click: "tab-admin",
-    waitForText: "Throughput Control",
+    // "Throughput Control" now appears twice (engine panel header + AdminPanel h2);
+    // "Updates/sec" is unique to the AdminPanel slider row and proves the panel loaded.
+    waitForText: "Updates/sec",
   },
   // Light theme is seeded through the seam (fixture app-fx-light, theme "light"),
   // so no toggle click is needed; the ThemeToggle's aria-label confirms the
-  // light arm rendered (it offers a switch back to dark).
+  // light arm rendered (in the 3-state cycle, "light" offers a switch to system).
   "app/fx-light": {
+    fullPage: true,
+    assertAriaLabelOf: "theme-toggle",
+    expectAriaLabel: "Switch to system theme",
+  },
+  // System preference: the toggle shows 🖥️ and offers a switch to dark (cycle wrap).
+  "app/fx-system": {
     fullPage: true,
     assertAriaLabelOf: "theme-toggle",
     expectAriaLabel: "Switch to dark theme",
@@ -142,14 +155,14 @@ export const scenarioActions: Record<string, ScenarioAction> = {
     ],
     waitForText: "Submit RFQ",
   },
-  // Invalid quantity (> CREDIT_MAX_QUANTITY_INPUT) -> the validation error.
-  "credit/new-rfq-invalid": {
+  // Over-max quantity (> CREDIT_MAX_QUANTITY_INPUT) -> capped, submit stays enabled.
+  "credit/new-rfq-over-max": {
     steps: [
       { type: "instrument-search-input", text: "Treasury" },
       { click: "instrument-result-1" },
       { type: "quantity-input", text: "200000000" },
     ],
-    waitForText: "Max quantity exceeded",
+    waitForText: "Submit RFQ",
   },
   // Blotter: click a TEXT column (CCYCCY/currencyPair) once -> first click is
   // ascending (BlotterHeader's ▲ arm). No waitForText (synchronous, label non-unique).
@@ -187,4 +200,68 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   "credit/sell-side-price-entered": {
     steps: [{ type: "trade-ticket-price", text: "98.5" }],
   },
+
+  // --- Coverage-gap pass: behaviour-sync'd components (Step 5) ---
+
+  // CreditBlotter sort: click the Quantity column sort button -> ▼ appears.
+  // First click on a CREDIT_DESC_FIRST column (tradeId/tradeDate) goes desc;
+  // quantity is NOT in CREDIT_DESC_FIRST so first click goes asc (▲).
+  "credit/blotter-sorted": { click: "blotter-sort-quantity" },
+  // CreditBlotter number filter: open the Quantity filter, enter a value that
+  // matches no trade (e.g. 1), apply -> "No credit trades match" message +
+  // "Filtered: Quantity" label on toolbar.
+  "credit/blotter-filtered": {
+    steps: [
+      { click: "blotter-filter-toggle-quantity" },
+      { type: "number-filter-value", text: "1" },
+      { click: "number-filter-apply" },
+    ],
+    waitForText: "Filtered: Quantity",
+  },
+  // CreditBlotter quick-filter: type text matching no credit trade ->
+  // "No credit trades match" message.
+  "credit/blotter-quick-filter": {
+    steps: [{ type: "quick-filter", text: "zzznomatch" }],
+    waitForText: "No credit trades match the current filters",
+  },
+  // RfqTilesPanel Done filter: click Done tab -> shows the Closed rfq card.
+  "credit/rfq-tiles-filter-done": { click: "rfq-filter-Done" },
+  // RfqCountdown zero-expiry: no interaction needed; the fixture seeds
+  // expirySecs=0 so the bar renders at 0% from the first render.
+  // (no entry needed — absent key == component-level shot with no interaction)
+
+  // SetFilter applied: open the Status set-filter popover, uncheck "Rejected",
+  // Apply -> the Rejected row is filtered out (toggleValue / onChange / handleApply).
+  "fx-blotter/filter-set-applied": {
+    steps: [
+      { click: "blotter-filter-toggle-status" },
+      { click: "set-filter-option-Rejected" },
+      { click: "set-filter-apply" },
+    ],
+    waitForText: "Filtered: Status",
+  },
+  // CurrencyFilter: click the GBP category button -> the grid narrows to GBP
+  // pairs and that button becomes active. Click is synchronous (local state),
+  // so no waitForText (the "GBP" label is non-unique against the pair rows).
+  "live-rates/currency-filtered": { click: "filter-GBP" },
+
+  // --- Phase 4: Equities panel ---
+  // Full App shot: click the equities tab, wait for WATCHLIST heading to confirm
+  // the EquitiesPanel rendered (analogous to app/credit + app/admin patterns).
+  "app/equities": {
+    fullPage: true,
+    click: "tab-equities",
+    waitForText: "WATCHLIST",
+  },
+
+  // --- Phase 2: HUD shell surfaces ---
+  // Boot chrome under reduced motion (canvas loop skipped → deterministic).
+  "boot/chrome": {
+    fullPage: true,
+    reducedMotion: true,
+    waitForText: "TACTICAL TRADING OPERATING SYSTEM · v4.0",
+  },
+  // Lock + preferences are fixed-position viewport overlays → full-page capture.
+  "lock/locked": { fullPage: true, waitForText: "SESSION LOCKED" },
+  "prefs/modal": { fullPage: true, waitForText: "PREFERENCES" },
 };

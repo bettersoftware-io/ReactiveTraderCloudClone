@@ -1,14 +1,48 @@
 import type { ReactElement } from "react";
 
+import type { TileExecutionState } from "@rtc/client-core";
 import { Direction, ExecutionStatus } from "@rtc/domain";
 
-import type { TileExecutionState } from "#/app/presenters/TileExecutionMachine";
-
 import styles from "./TileConfirmation.module.css";
+
+export function TileConfirmation({
+  state,
+  onDismiss,
+  anim,
+}: TileConfirmationProps): ReactElement | null {
+  if (state.status === "ready") return null;
+
+  if (state.status === "started") {
+    return (
+      <div
+        data-testid="trade-confirmation"
+        data-status={statusKey(state)}
+        data-anim={anim}
+        className={styles.overlay}
+      >
+        <ConfirmationContent state={state} />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      data-testid="trade-confirmation"
+      data-status={statusKey(state)}
+      data-anim={anim}
+      onClick={onDismiss}
+      className={styles.overlay}
+    >
+      <ConfirmationContent state={state} />
+    </button>
+  );
+}
 
 interface TileConfirmationProps {
   state: TileExecutionState;
   onDismiss: () => void;
+  anim?: "fill" | "reject";
 }
 
 function formatNotional(n: number): string {
@@ -105,35 +139,4 @@ function statusKey(state: TileExecutionState): ConfirmationStatus {
 
   if (state.status === "ready") return "unknown";
   return state.status; // "started" | "tooLong" | "timeout"
-}
-
-export function TileConfirmation({
-  state,
-  onDismiss,
-}: TileConfirmationProps): ReactElement | null {
-  if (state.status === "ready") return null;
-
-  if (state.status === "started") {
-    return (
-      <div
-        data-testid="trade-confirmation"
-        data-status={statusKey(state)}
-        className={styles.overlay}
-      >
-        <ConfirmationContent state={state} />
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      data-testid="trade-confirmation"
-      data-status={statusKey(state)}
-      onClick={onDismiss}
-      className={styles.overlay}
-    >
-      <ConfirmationContent state={state} />
-    </button>
-  );
 }

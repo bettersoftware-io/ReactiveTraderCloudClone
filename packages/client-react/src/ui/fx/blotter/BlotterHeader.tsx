@@ -1,9 +1,7 @@
 import type { MouseEvent, ReactElement } from "react";
 import { useState } from "react";
 
-import type { Trade } from "@rtc/domain";
-
-import { COLUMNS, type ColumnDef } from "./blotterColumns";
+import type { ColumnDef } from "./blotterColumns";
 import { DateFilter } from "./columnFilter/DateFilter";
 import type { ColumnFilter } from "./columnFilter/filterState";
 import { NumberFilter } from "./columnFilter/NumberFilter";
@@ -12,23 +10,84 @@ import type { SortState } from "./columnSort";
 
 import styles from "./BlotterHeader.module.css";
 
-interface BlotterHeaderProps {
-  sort: SortState;
-  onSort: (column: keyof Trade) => void;
-  filters: Map<keyof Trade, ColumnFilter>;
-  onFilter: (column: keyof Trade, filter: ColumnFilter | null) => void;
-  trades: readonly Trade[];
+export function BlotterHeader<TRow>({
+  sort,
+  onSort,
+  filters,
+  onFilter,
+  rows,
+  columns,
+}: BlotterHeaderProps<TRow>): ReactElement {
+  const [openFilter, setOpenFilter] = useState<keyof TRow | null>(null);
+
+  return (
+    <tr>
+      {columns.map((col) => {
+        return (
+          <th
+            key={String(col.key)}
+            data-testid={`blotter-sort-${String(col.key)}`}
+            className={styles.headerCell}
+            onClick={() => {
+              return onSort(col.key);
+            }}
+          >
+            <span>
+              {col.label}
+              <SortIndicator column={col.key} sort={sort} />
+              {filters.has(col.key) && (
+                <span className={styles.filterDot}>{"●"}</span>
+              )}
+            </span>
+            <button
+              type="button"
+              data-testid={`blotter-filter-toggle-${String(col.key)}`}
+              onClick={(e: MouseEvent<HTMLButtonElement>): void => {
+                e.stopPropagation();
+                setOpenFilter(openFilter === col.key ? null : col.key);
+              }}
+              className={styles.filterToggle}
+            >
+              {"▽"}
+            </button>
+            {openFilter === col.key && (
+              <FilterPanel
+                col={col}
+                rows={rows}
+                currentFilter={filters.get(col.key)}
+                onApply={(f: ColumnFilter<TRow> | null): void => {
+                  onFilter(col.key, f);
+                }}
+                onClose={() => {
+                  return setOpenFilter(null);
+                }}
+              />
+            )}
+          </th>
+        );
+      })}
+    </tr>
+  );
 }
 
-interface SortIndicatorProps {
-  column: keyof Trade;
-  sort: SortState;
+interface BlotterHeaderProps<TRow> {
+  sort: SortState<TRow>;
+  onSort: (column: keyof TRow) => void;
+  filters: Map<keyof TRow, ColumnFilter<TRow>>;
+  onFilter: (column: keyof TRow, filter: ColumnFilter<TRow> | null) => void;
+  rows: readonly TRow[];
+  columns: readonly ColumnDef<TRow>[];
 }
 
-function SortIndicator({
+interface SortIndicatorProps<TRow> {
+  column: keyof TRow;
+  sort: SortState<TRow>;
+}
+
+function SortIndicator<TRow>({
   column,
   sort,
-}: SortIndicatorProps): ReactElement | null {
+}: SortIndicatorProps<TRow>): ReactElement | null {
   if (sort.column !== column || !sort.direction) return null;
   return (
     <span className={styles.sortIndicator}>
@@ -37,22 +96,22 @@ function SortIndicator({
   );
 }
 
-interface FilterPanelProps {
-  col: ColumnDef;
-  trades: readonly Trade[];
-  currentFilter: ColumnFilter | undefined;
-  onApply: (filter: ColumnFilter | null) => void;
+interface FilterPanelProps<TRow> {
+  col: ColumnDef<TRow>;
+  rows: readonly TRow[];
+  currentFilter: ColumnFilter<TRow> | undefined;
+  onApply: (filter: ColumnFilter<TRow> | null) => void;
   onClose: () => void;
 }
 
-function FilterPanel({
+function FilterPanel<TRow>({
   col,
-  trades,
+  rows,
   currentFilter,
   onApply,
   onClose,
-}: FilterPanelProps): ReactElement {
-  function handleApply(filter: ColumnFilter | null): void {
+}: FilterPanelProps<TRow>): ReactElement {
+  function handleApply(filter: ColumnFilter<TRow> | null): void {
     onApply(filter);
     onClose();
   }
@@ -62,7 +121,7 @@ function FilterPanel({
       {col.filterType === "set" && (
         <SetFilter
           column={col.key}
-          trades={trades}
+          rows={rows}
           currentFilter={currentFilter}
           onApply={handleApply}
         />
@@ -82,64 +141,5 @@ function FilterPanel({
         />
       )}
     </div>
-  );
-}
-
-export function BlotterHeader({
-  sort,
-  onSort,
-  filters,
-  onFilter,
-  trades,
-}: BlotterHeaderProps): ReactElement {
-  const [openFilter, setOpenFilter] = useState<keyof Trade | null>(null);
-
-  return (
-    <tr>
-      {COLUMNS.map((col) => {
-        return (
-          <th
-            key={col.key}
-            data-testid={`blotter-sort-${col.key}`}
-            className={styles.headerCell}
-            onClick={() => {
-              return onSort(col.key);
-            }}
-          >
-            <span>
-              {col.label}
-              <SortIndicator column={col.key} sort={sort} />
-              {filters.has(col.key) && (
-                <span className={styles.filterDot}>{"●"}</span>
-              )}
-            </span>
-            <button
-              type="button"
-              data-testid={`blotter-filter-toggle-${col.key}`}
-              onClick={(e: MouseEvent<HTMLButtonElement>): void => {
-                e.stopPropagation();
-                setOpenFilter(openFilter === col.key ? null : col.key);
-              }}
-              className={styles.filterToggle}
-            >
-              {"▽"}
-            </button>
-            {openFilter === col.key && (
-              <FilterPanel
-                col={col}
-                trades={trades}
-                currentFilter={filters.get(col.key)}
-                onApply={(f: ColumnFilter | null): void => {
-                  onFilter(col.key, f);
-                }}
-                onClose={() => {
-                  return setOpenFilter(null);
-                }}
-              />
-            )}
-          </th>
-        );
-      })}
-    </tr>
   );
 }

@@ -1,14 +1,17 @@
 .headerCell {
   padding: 6px 8px;
   font-size: 11px;
+  line-height: 15px;
   font-weight: 600;
   color: var(--text-secondary);
   text-align: left;
-  border-bottom: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
   position: relative;
   cursor: pointer;
   user-select: none;
+  background-color: var(--panel-head);
+  font-family: var(--font-display);
 }
 
 .sortIndicator {
@@ -35,8 +38,9 @@
   top: 100%;
   left: 0;
   z-index: 10;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
+  background-color: var(--panel);
+  backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--border);
   border-radius: 4px;
   min-width: 160px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);

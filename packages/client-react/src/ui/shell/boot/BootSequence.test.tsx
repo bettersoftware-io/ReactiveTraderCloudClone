@@ -1,0 +1,143 @@
+/**
+ * Co-located unit test for the BootSequence canvas path.
+ * The contract tier (tests/ui/contract/specs/shell/boot/) covers the DOM chrome
+ * (wordmark, progress, SKIP → onDone) in jsdom without a real canvas context.
+ * This file covers the rAF loop branch (lines 42-63) that the contract spec
+ * skips because jsdom's getContext("2d") returns null.
+ */
+import { render } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { ViewModel } from "@rtc/react-bindings";
+import { ViewModelContext } from "@rtc/react-bindings";
+
+import { BootSequence } from "./BootSequence";
+
+describe("BootSequence — canvas rAF loop (mocked context)", () => {
+  let rafSpy: ReturnType<typeof vi.spyOn>;
+  let cafSpy: ReturnType<typeof vi.spyOn>;
+  let ctxStub: CanvasRenderingContext2D;
+
+  beforeEach(() => {
+    ctxStub = makeCtxStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      ctxStub,
+    );
+    rafSpy = vi.spyOn(window, "requestAnimationFrame").mockReturnValue(42);
+    cafSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("starts the rAF loop when the canvas context is available", () => {
+    const onDone = vi.fn();
+    render(wrap(<BootSequence onDone={onDone} />));
+    expect(rafSpy).toHaveBeenCalled();
+  });
+
+  it("cancels the rAF loop on unmount (cleanup path)", () => {
+    const onDone = vi.fn();
+    const { unmount } = render(wrap(<BootSequence onDone={onDone} />));
+    unmount();
+    expect(cafSpy).toHaveBeenCalledWith(42);
+  });
+
+  it("draws using CSS-var fallbacks when custom properties are not set", () => {
+    const onDone = vi.fn();
+    expect(() => {
+      render(wrap(<BootSequence onDone={onDone} />));
+    }).not.toThrow();
+    expect(ctxStub.clearRect).toHaveBeenCalled();
+  });
+
+  it("draws using CSS-var values when custom properties are set", () => {
+    document.documentElement.style.setProperty("--accent-primary", "#c0ffee");
+    document.documentElement.style.setProperty("--accent-2", "#facade");
+    document.documentElement.style.setProperty("--accent-positive", "#00ff00");
+    document.documentElement.style.setProperty("--accent-negative", "#ff0000");
+
+    const onDone = vi.fn();
+    expect(() => {
+      render(wrap(<BootSequence onDone={onDone} />));
+    }).not.toThrow();
+
+    document.documentElement.style.removeProperty("--accent-primary");
+    document.documentElement.style.removeProperty("--accent-2");
+    document.documentElement.style.removeProperty("--accent-positive");
+    document.documentElement.style.removeProperty("--accent-negative");
+
+    expect(ctxStub.clearRect).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Minimal 2D context stub — every method the draw functions call is a no-op.
+ * Properties are writable so the draw functions can set fillStyle etc. without
+ * throwing. createLinearGradient / createRadialGradient return a minimal stub.
+ */
+function makeCtxStub(): CanvasRenderingContext2D {
+  const gradient = { addColorStop: vi.fn() };
+  return {
+    // Properties (writable)
+    fillStyle: "",
+    strokeStyle: "",
+    lineWidth: 0,
+    globalAlpha: 1,
+    font: "",
+    textAlign: "left",
+    textBaseline: "alphabetic",
+    shadowBlur: 0,
+    shadowColor: "",
+    lineJoin: "miter",
+    // Methods (no-ops)
+    arc: vi.fn(),
+    beginPath: vi.fn(),
+    clearRect: vi.fn(),
+    closePath: vi.fn(),
+    createLinearGradient: vi.fn(() => {
+      return gradient;
+    }),
+    createRadialGradient: vi.fn(() => {
+      return gradient;
+    }),
+    fill: vi.fn(),
+    fillRect: vi.fn(),
+    fillText: vi.fn(),
+    lineTo: vi.fn(),
+    moveTo: vi.fn(),
+    restore: vi.fn(),
+    rotate: vi.fn(),
+    save: vi.fn(),
+    scale: vi.fn(),
+    setLineDash: vi.fn(),
+    stroke: vi.fn(),
+    strokeRect: vi.fn(),
+    translate: vi.fn(),
+  } as unknown as CanvasRenderingContext2D;
+}
+
+function wrap(
+  el: ReactElement,
+  partialHooks: Partial<ViewModel> = {},
+): ReactElement {
+  const defaultHooks = {
+    useBootSequence: (_onDone: () => void) => {
+      return {
+        state: { variant: "core" as const, progress: 0, done: false },
+        skip: vi.fn(),
+      };
+    },
+    ...partialHooks,
+  } as unknown as ViewModel;
+
+  return (
+    <ViewModelContext.Provider value={defaultHooks}>
+      {el}
+    </ViewModelContext.Provider>
+  );
+}

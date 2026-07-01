@@ -77,4 +77,11 @@ export class RfqCardPage extends MountedComponent<RfqCardProps> {
       this.q().getAllByRole("button", { name: /accept/i })[0],
     );
   }
+
+  /** Whether the live countdown widget is present (data-testid="rfq-countdown-fill"). */
+  hasCountdown(): boolean {
+    return (
+      this.root.querySelector('[data-testid="rfq-countdown-fill"]') !== null
+    );
+  }
 }

@@ -1,0 +1,16 @@
+/* Centered placeholder body shown for each tab pending its P-phase implementation. */
+
+.panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--dim);
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.copy {
+  margin: 0;
+}

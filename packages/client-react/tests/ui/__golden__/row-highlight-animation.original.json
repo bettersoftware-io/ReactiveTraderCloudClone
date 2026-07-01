@@ -1,0 +1,20 @@
+{
+  "_source": "rtc-original@4a31f01 App/Trades/GridRegion/styled.ts:36-38 + utils/styling/backgroundFlash.ts:3-13 + constants.ts:54",
+  "_note": "Phase 3 reskin: backgroundFlash→hudRowIn (HUD calm entrance). holdMs still owned by createRowHighlightMachine (HIGHLIGHT_MS=3000); only the look changes.",
+  "cases": [
+    {
+      "input": "new-row",
+      "expected": {
+        "animationName": "hudRowIn",
+        "animationDuration": "0.6s",
+        "animationTimingFunction": "ease-out",
+        "keyframeStops": ["accent-2"],
+        "holdMs": 3000
+      }
+    },
+    {
+      "input": "existing-row",
+      "expected": { "animationName": "none", "holdMs": 0 }
+    }
+  ]
+}

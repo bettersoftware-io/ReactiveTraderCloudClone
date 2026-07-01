@@ -4,11 +4,6 @@ import { Direction } from "@rtc/domain";
 
 import styles from "./TileExecution.module.css";
 
-interface TileExecutionProps {
-  onExecute: (direction: Direction) => void;
-  disabled: boolean;
-}
-
 export function TileExecution({
   onExecute,
   disabled,
@@ -41,4 +36,9 @@ export function TileExecution({
       </button>
     </div>
   );
+}
+
+interface TileExecutionProps {
+  onExecute: (direction: Direction) => void;
+  disabled: boolean;
 }

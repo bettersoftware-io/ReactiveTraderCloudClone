@@ -32,4 +32,10 @@ export class CypressConnectionOverlay implements ConnectionOverlayPO {
         return $el.text();
       }) as unknown as Promise<string>;
   }
+
+  clearIncident(): Promise<void> {
+    return cy
+      .get(`[data-testid="${TESTIDS.connection.clearIncident}"]`)
+      .click() as unknown as Promise<void>;
+  }
 }

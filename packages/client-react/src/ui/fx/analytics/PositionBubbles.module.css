@@ -1,33 +1,40 @@
 .container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-  align-items: center;
-  padding: 8px 0;
+  position: relative;
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
 }
 
-/* Bubble: size and font-size driven by custom properties */
-.bubble {
-  width: var(--bubble-size);
-  height: var(--bubble-size);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--bubble-font-size);
+.container svg {
+  display: block;
+}
+
+/* Bubble fill/stroke by sign, applied to the <g class="node"> wrapper. */
+.container :global(g.node[data-sign="pos"]) circle {
+  fill: var(--chip);
+  stroke: var(--accent-positive);
+}
+
+.container :global(g.node[data-sign="neg"]) circle {
+  fill: var(--chip);
+  stroke: var(--accent-negative);
+}
+
+.label {
+  font-size: 11px;
   font-weight: 600;
-  flex-shrink: 0;
+  fill: var(--text-primary);
+  pointer-events: none;
 }
 
-.bubble[data-sign="pos"] {
-  background-color: rgba(34, 197, 94, 0.2);
-  border: 1px solid var(--accent-positive);
-  color: var(--accent-positive);
-}
-
-.bubble[data-sign="neg"] {
-  background-color: rgba(239, 68, 68, 0.2);
-  border: 1px solid var(--accent-negative);
-  color: var(--accent-negative);
+.tooltip {
+  position: absolute;
+  padding: 2px 6px;
+  font-size: 11px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1;
 }

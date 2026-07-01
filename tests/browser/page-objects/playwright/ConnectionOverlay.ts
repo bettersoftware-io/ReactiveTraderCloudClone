@@ -25,4 +25,8 @@ export class PlaywrightConnectionOverlay implements ConnectionOverlayPO {
   async text(): Promise<string> {
     return (await this.locator().textContent()) ?? "";
   }
+
+  async clearIncident(): Promise<void> {
+    await this.page.getByTestId(TESTIDS.connection.clearIncident).click();
+  }
 }

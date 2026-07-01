@@ -6,33 +6,6 @@ import type { PositionUpdates } from "../analytics/position.js";
 import type { AnalyticsPort } from "../ports/analyticsPort.js";
 import { AnalyticsUseCase } from "./AnalyticsUseCase.js";
 
-interface LastCurrencyRef {
-  current: string | null;
-}
-
-interface StubAnalytics {
-  port: AnalyticsPort;
-  lastCurrency: LastCurrencyRef;
-}
-
-function stubAnalytics(updates: PositionUpdates[]): StubAnalytics {
-  const lastCurrency = { current: null as string | null };
-  const port: AnalyticsPort = {
-    getAnalytics(currency: string): Observable<PositionUpdates> {
-      lastCurrency.current = currency;
-      return from(updates);
-    },
-  };
-  return { port, lastCurrency };
-}
-
-function buildUpdate(): PositionUpdates {
-  return {
-    currentPositions: [],
-    history: [],
-  };
-}
-
 describe("AnalyticsUseCase", () => {
   it("calls the port with the default base currency 'USD'", async () => {
     const { port, lastCurrency } = stubAnalytics([buildUpdate()]);
@@ -76,3 +49,30 @@ describe("AnalyticsUseCase", () => {
     expect(result).toBe(update);
   });
 });
+
+interface LastCurrencyRef {
+  current: string | null;
+}
+
+interface StubAnalytics {
+  port: AnalyticsPort;
+  lastCurrency: LastCurrencyRef;
+}
+
+function stubAnalytics(updates: PositionUpdates[]): StubAnalytics {
+  const lastCurrency = { current: null as string | null };
+  const port: AnalyticsPort = {
+    getAnalytics(currency: string): Observable<PositionUpdates> {
+      lastCurrency.current = currency;
+      return from(updates);
+    },
+  };
+  return { port, lastCurrency };
+}
+
+function buildUpdate(): PositionUpdates {
+  return {
+    currentPositions: [],
+    history: [],
+  };
+}

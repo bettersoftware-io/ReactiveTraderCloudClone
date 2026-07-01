@@ -10,9 +10,17 @@ import {
 } from "./pages/credit/rfqTiles/RfqFilterTabsPage";
 import { AnalyticsPanelPage } from "./pages/fx/analytics/AnalyticsPanelPage";
 import {
+  PairPnlBarsPage,
+  type PairPnlBarsProps,
+} from "./pages/fx/analytics/PairPnlBarsPage";
+import {
   PnlValuePage,
   type PnlValueProps,
 } from "./pages/fx/analytics/PnlValuePage";
+import {
+  PositionBubblesPage,
+  type PositionBubblesProps,
+} from "./pages/fx/analytics/PositionBubblesPage";
 import {
   BlotterHeaderPage,
   type BlotterHeaderProps,
@@ -38,11 +46,29 @@ import {
   SetFilterPage,
   type SetFilterProps,
 } from "./pages/fx/blotter/SetFilterPage";
+import { AmbientBackgroundPage } from "./pages/shell/background/AmbientBackgroundPage";
+import { BootGatePage } from "./pages/shell/boot/BootGatePage";
+import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
+import { LayoutEnginePage } from "./pages/shell/layout/LayoutEnginePage";
+import { LockScreenPage } from "./pages/shell/lock/LockScreenPage";
+import {
+  AnimationProbePage,
+  type AnimationProbeProps,
+} from "./pages/shell/motion/AnimationProbePage";
 
 export type { RfqFilter };
 
+import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
 import { AdminPanelPage } from "./pages/admin/AdminPanelPage";
+import { ErrorRatePanelPage } from "./pages/admin/ErrorRatePanelPage";
+import { IncidentControlsPage } from "./pages/admin/IncidentControlsPage";
+import { LatencyHistogramPage } from "./pages/admin/LatencyHistogramPage";
+import { LiveEventLogPage } from "./pages/admin/LiveEventLogPage";
+import { MetricGaugesPage } from "./pages/admin/MetricGaugesPage";
+import { ServiceTopologyGraphPage } from "./pages/admin/ServiceTopologyGraphPage";
+import { SessionsPanelPage } from "./pages/admin/SessionsPanelPage";
+import { ThroughputChartPage } from "./pages/admin/ThroughputChartPage";
 import { CreditBlotterPage } from "./pages/credit/blotter/CreditBlotterPage";
 import {
   QuoteCardPage,
@@ -58,6 +84,41 @@ import {
   TradeTicketPage,
   type TradeTicketProps,
 } from "./pages/credit/sellSide/TradeTicketPage";
+import {
+  DepthLadderPage,
+  type DepthLadderProps,
+} from "./pages/equities/DepthLadderPage";
+import {
+  DeskPnlGaugePage,
+  type DeskPnlGaugeProps,
+} from "./pages/equities/DeskPnlGaugePage";
+import { EquitiesPanelPage } from "./pages/equities/EquitiesPanelPage";
+import {
+  InstrumentTabsPage,
+  type InstrumentTabsProps,
+} from "./pages/equities/InstrumentTabsPage";
+import { OrdersBlotterPage } from "./pages/equities/OrdersBlotterPage";
+import {
+  OrderTicketPage,
+  type OrderTicketProps,
+} from "./pages/equities/OrderTicketPage";
+import {
+  PnlSparklinePage,
+  type PnlSparklineProps,
+} from "./pages/equities/PnlSparklinePage";
+import { PositionsBlotterPage } from "./pages/equities/PositionsBlotterPage";
+import {
+  PriceChartPage,
+  type PriceChartProps,
+} from "./pages/equities/PriceChartPage";
+import {
+  SectorHeatmapPage,
+  type SectorHeatmapProps,
+} from "./pages/equities/SectorHeatmapPage";
+import {
+  WatchlistPage,
+  type WatchlistProps,
+} from "./pages/equities/WatchlistPage";
 import {
   CurrencyFilterPage,
   type CurrencyFilterProps,
@@ -100,13 +161,21 @@ import {
   ViewTogglePage,
   type ViewToggleProps,
 } from "./pages/fx/liveRates/ViewTogglePage";
+import {
+  HeaderChromePage,
+  type HeaderChromeProps,
+} from "./pages/shell/chrome/HeaderChromePage";
+import { ThemePickerPage } from "./pages/shell/chrome/ThemePickerPage";
 import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverlayPage";
-import { FooterPage } from "./pages/shell/layout/FooterPage";
-import { HeaderPage, type HeaderProps } from "./pages/shell/layout/HeaderPage";
+import {
+  PreferencesModalPage,
+  type PreferencesModalProps,
+} from "./pages/shell/prefs/PreferencesModalPage";
 import {
   StaleIndicatorPage,
   type StaleIndicatorProps,
 } from "./pages/shell/stale/StaleIndicatorPage";
+import { StatusBarPage } from "./pages/shell/status/StatusBarPage";
 import { ThemeTogglePage } from "./pages/shell/theme/ThemeTogglePage";
 
 export const AnalyticsPanel = component<
@@ -116,8 +185,21 @@ export const AnalyticsPanel = component<
   return new AnalyticsPanelPage(ctx);
 });
 
+export const PairPnlBars = component<PairPnlBarsProps, PairPnlBarsPage>(
+  (ctx) => {
+    return new PairPnlBarsPage(ctx);
+  },
+);
+
 export const PnlValue = component<PnlValueProps, PnlValuePage>((ctx) => {
   return new PnlValuePage(ctx);
+});
+
+export const PositionBubbles = component<
+  PositionBubblesProps,
+  PositionBubblesPage
+>((ctx) => {
+  return new PositionBubblesPage(ctx);
 });
 
 export const ConnectionStatusBar = component<
@@ -280,13 +362,23 @@ export const ConnectionOverlay = component<
   return new ConnectionOverlayPage(ctx);
 });
 
-export const Footer = component<Record<string, never>, FooterPage>((ctx) => {
-  return new FooterPage(ctx);
-});
+export const StatusBar = component<Record<string, never>, StatusBarPage>(
+  (ctx) => {
+    return new StatusBarPage(ctx);
+  },
+);
 
-export const Header = component<HeaderProps, HeaderPage>((ctx) => {
-  return new HeaderPage(ctx);
-});
+export const HeaderChrome = component<HeaderChromeProps, HeaderChromePage>(
+  (ctx) => {
+    return new HeaderChromePage(ctx);
+  },
+);
+
+export const ThemePicker = component<Record<string, never>, ThemePickerPage>(
+  (ctx) => {
+    return new ThemePickerPage(ctx);
+  },
+);
 
 export const StaleIndicator = component<
   StaleIndicatorProps,
@@ -306,3 +398,176 @@ export const AdminPanel = component<Record<string, never>, AdminPanelPage>(
     return new AdminPanelPage(ctx);
   },
 );
+
+export const LayoutEngine = component<Record<string, never>, LayoutEnginePage>(
+  (ctx) => {
+    return new LayoutEnginePage(ctx);
+  },
+);
+
+export const BootSequence = component<Record<string, never>, BootSequencePage>(
+  (ctx) => {
+    return new BootSequencePage(ctx);
+  },
+);
+
+export const BootGate = component<Record<string, never>, BootGatePage>(
+  (ctx) => {
+    return new BootGatePage(ctx);
+  },
+);
+
+export const LockScreen = component<Record<string, never>, LockScreenPage>(
+  (ctx) => {
+    return new LockScreenPage(ctx);
+  },
+);
+
+export const AmbientBackground = component<
+  Record<string, never>,
+  AmbientBackgroundPage
+>((ctx) => {
+  return new AmbientBackgroundPage(ctx);
+});
+
+export const PreferencesModal = component<
+  PreferencesModalProps,
+  PreferencesModalPage
+>((ctx) => {
+  return new PreferencesModalPage(ctx);
+});
+
+export const AnimationProbe = component<
+  AnimationProbeProps,
+  AnimationProbePage
+>((ctx) => {
+  return new AnimationProbePage(ctx);
+});
+
+export const OrderTicket = component<OrderTicketProps, OrderTicketPage>(
+  (ctx) => {
+    return new OrderTicketPage(ctx);
+  },
+);
+
+export const Watchlist = component<WatchlistProps, WatchlistPage>((ctx) => {
+  return new WatchlistPage(ctx);
+});
+
+export const OrdersBlotter = component<
+  Record<string, never>,
+  OrdersBlotterPage
+>((ctx) => {
+  return new OrdersBlotterPage(ctx);
+});
+
+export const InstrumentTabs = component<
+  InstrumentTabsProps,
+  InstrumentTabsPage
+>((ctx) => {
+  return new InstrumentTabsPage(ctx);
+});
+
+export const SectorHeatmap = component<SectorHeatmapProps, SectorHeatmapPage>(
+  (ctx) => {
+    return new SectorHeatmapPage(ctx);
+  },
+);
+
+export const PriceChart = component<PriceChartProps, PriceChartPage>((ctx) => {
+  return new PriceChartPage(ctx);
+});
+
+export const DepthLadder = component<DepthLadderProps, DepthLadderPage>(
+  (ctx) => {
+    return new DepthLadderPage(ctx);
+  },
+);
+
+export const PositionsBlotter = component<
+  Record<string, never>,
+  PositionsBlotterPage
+>((ctx) => {
+  return new PositionsBlotterPage(ctx);
+});
+
+export const DeskPnlGauge = component<DeskPnlGaugeProps, DeskPnlGaugePage>(
+  (ctx) => {
+    return new DeskPnlGaugePage(ctx);
+  },
+);
+
+export const PnlSparkline = component<PnlSparklineProps, PnlSparklinePage>(
+  (ctx) => {
+    return new PnlSparklinePage(ctx);
+  },
+);
+
+export const EquitiesPanel = component<
+  Record<string, never>,
+  EquitiesPanelPage
+>((ctx) => {
+  return new EquitiesPanelPage(ctx);
+});
+
+// Admin / telemetry components (Phase 5 Task 8)
+export const IncidentControls = component<
+  Record<string, never>,
+  IncidentControlsPage
+>((ctx) => {
+  return new IncidentControlsPage(ctx);
+});
+
+export const ServiceTopologyGraph = component<
+  Record<string, never>,
+  ServiceTopologyGraphPage
+>((ctx) => {
+  return new ServiceTopologyGraphPage(ctx);
+});
+
+export const LiveEventLog = component<Record<string, never>, LiveEventLogPage>(
+  (ctx) => {
+    return new LiveEventLogPage(ctx);
+  },
+);
+
+export const MetricGauges = component<Record<string, never>, MetricGaugesPage>(
+  (ctx) => {
+    return new MetricGaugesPage(ctx);
+  },
+);
+
+export const ThroughputChart = component<
+  Record<string, never>,
+  ThroughputChartPage
+>((ctx) => {
+  return new ThroughputChartPage(ctx);
+});
+
+export const LatencyHistogram = component<
+  Record<string, never>,
+  LatencyHistogramPage
+>((ctx) => {
+  return new LatencyHistogramPage(ctx);
+});
+
+export const ErrorRatePanel = component<
+  Record<string, never>,
+  ErrorRatePanelPage
+>((ctx) => {
+  return new ErrorRatePanelPage(ctx);
+});
+
+export const SessionsPanel = component<
+  Record<string, never>,
+  SessionsPanelPage
+>((ctx) => {
+  return new SessionsPanelPage(ctx);
+});
+
+export const AdminDashboard = component<
+  Record<string, never>,
+  AdminDashboardPage
+>((ctx) => {
+  return new AdminDashboardPage(ctx);
+});

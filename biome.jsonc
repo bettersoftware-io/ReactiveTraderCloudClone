@@ -15,7 +15,11 @@
       "!**/*.png",
       "!**/.turbo",
       "!**/*.json5",
-      "!pnpm-lock.yaml"
+      "!pnpm-lock.yaml",
+      // Design-artifact prototype (hand-authored HUD redesign mock). Not
+      // production code — "shares no code with the real app" per its README —
+      // so it is out of scope for the formatter/linter, like dist/reports.
+      "!docs/design"
     ]
   },
   "formatter": {
@@ -150,6 +154,34 @@
       // ONLY place default exports are allowed — application and test code must
       // use named exports.
       "includes": ["**/*.config.*", "**/cucumber.js", "**/*.d.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    },
+    {
+      // Vercel's Routing Middleware contract requires `export default function
+      // middleware(...)` — it is a framework entry-point, not application code.
+      // This is a deliberate, scoped exception to the repo-wide noDefaultExport
+      // policy (see commit message for full rationale). Scope is intentionally
+      // restricted to this single file so the policy holds everywhere else.
+      "includes": ["middleware.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    },
+    {
+      // Expo Router routes are framework entry-points: the file-based router
+      // discovers each screen by its DEFAULT export, so `app/**` is a scoped
+      // exception to the repo-wide noDefaultExport policy (mirrors middleware.ts).
+      "includes": ["packages/client-react-native/app/**"],
       "linter": {
         "rules": {
           "style": {

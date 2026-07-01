@@ -1,13 +1,8 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import {
-  CREDIT_MAX_QUANTITY_INPUT,
-  Direction,
-  type Instrument,
-} from "@rtc/domain";
-
-import { useHooks } from "#/ui/hooks/useHooks";
+import { Direction, type Instrument } from "@rtc/domain";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { DealerSelection } from "./DealerSelection";
 import { InstrumentSearch } from "./InstrumentSearch";
@@ -15,12 +10,8 @@ import { QuantityInput } from "./QuantityInput";
 
 import styles from "./NewRfqForm.module.css";
 
-interface NewRfqFormProps {
-  onCreated: (rfqId: number) => void;
-}
-
 export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
-  const { useInstruments, useDealers, useRfqSubmission } = useHooks();
+  const { useInstruments, useDealers, useRfqSubmission } = useViewModel();
   const instruments = useInstruments();
   const dealers = useDealers();
   // App-layer machine: create→confirmation→redirect lifecycle. The component
@@ -52,18 +43,11 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
     dealerOverride && dealerOverride.size > 0 ? dealerOverride : allDealerIds;
 
   const quantityNum = parseFloat(quantity);
-  const quantityError =
-    quantity &&
-    !Number.isNaN(quantityNum) &&
-    quantityNum > CREDIT_MAX_QUANTITY_INPUT
-      ? "Max quantity exceeded"
-      : null;
 
   const canSubmit =
     instrument !== null &&
     !Number.isNaN(quantityNum) &&
     quantityNum > 0 &&
-    !quantityError &&
     selectedDealerIds.size > 0 &&
     !submitting;
 
@@ -126,11 +110,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
         </div>
       </div>
 
-      <QuantityInput
-        value={quantity}
-        onChange={setQuantity}
-        error={quantityError}
-      />
+      <QuantityInput value={quantity} onChange={setQuantity} />
 
       <DealerSelection
         dealers={dealers}
@@ -149,4 +129,8 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): ReactElement {
       </button>
     </div>
   );
+}
+
+interface NewRfqFormProps {
+  onCreated: (rfqId: number) => void;
 }

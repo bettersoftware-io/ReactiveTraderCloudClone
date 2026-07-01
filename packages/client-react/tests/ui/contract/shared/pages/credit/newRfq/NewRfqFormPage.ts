@@ -109,9 +109,9 @@ export class NewRfqFormPage extends MountedComponent<NewRfqFormProps> {
     return btn.disabled;
   }
 
-  hasQuantityError(): boolean {
-    // Error text: "Max quantity exceeded" — matches /max quantity exceeded/i
-    return this.q().queryByText(/max quantity exceeded/i) !== null;
+  /** The submit button is enabled even when the entered quantity exceeds the maximum. */
+  isSubmitEnabledWithOverMaxQuantity(): boolean {
+    return !this.isSubmitDisabled();
   }
 
   /** The RFQ input recorded by the faked create-RFQ command, or null. */

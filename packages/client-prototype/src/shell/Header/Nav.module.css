@@ -1,0 +1,27 @@
+.nav {
+  display: flex;
+  gap: 6px;
+}
+
+.item {
+  padding: 7px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  color: var(--dim);
+  background: transparent;
+  box-shadow: none;
+}
+
+.item[data-active="true"] {
+  border-color: var(--border-strong);
+  color: var(--accent);
+  background: var(--chip);
+  box-shadow: var(--glow);
+}

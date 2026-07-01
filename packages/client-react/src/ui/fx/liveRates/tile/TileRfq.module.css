@@ -25,11 +25,15 @@
 .cancelButton {
   padding: 6px 0;
   font-size: 12px;
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--border);
   border-radius: 4px;
   background-color: transparent;
   color: var(--text-secondary);
   cursor: pointer;
+}
+
+.cancelButton:hover {
+  border-color: var(--border-strong);
 }
 
 .receivedWrapper {
@@ -48,11 +52,15 @@
   padding: 6px 4px;
   font-size: 12px;
   font-weight: 600;
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--border);
   border-radius: 4px;
   background-color: transparent;
   color: var(--accent-negative);
   cursor: pointer;
+}
+
+.sellQuoteButton:hover {
+  border-color: var(--border-strong);
 }
 
 .buyQuoteButton {
@@ -60,11 +68,15 @@
   padding: 6px 4px;
   font-size: 12px;
   font-weight: 600;
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--border);
   border-radius: 4px;
   background-color: transparent;
   color: var(--accent-positive);
   cursor: pointer;
+}
+
+.buyQuoteButton:hover {
+  border-color: var(--border-strong);
 }
 
 .rejectButton {

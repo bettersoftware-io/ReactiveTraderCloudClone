@@ -3,12 +3,17 @@
   "globalPassThroughEnv": [
     "PORT",
     "HOSTNAME",
+    "SITE_PASSWORD",
+    "WS_ACCESS_TOKEN",
     "RTC_DEV_PORT",
     "RTC_VISUAL_MAX_PARALLEL",
     "PWCUCUMBER_HEADED",
     "FULLSTACK_PORT",
     "FULLSTACK_CLIENT_PORT",
-    "FULLSTACK_HEADED"
+    "FULLSTACK_HEADED",
+    "GITHUB_SHA",
+    "GITHUB_REF_NAME",
+    "GITHUB_STEP_SUMMARY"
   ],
   "tasks": {
     "build": {

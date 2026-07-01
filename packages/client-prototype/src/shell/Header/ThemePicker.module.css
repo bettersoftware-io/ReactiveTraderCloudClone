@@ -1,0 +1,115 @@
+.picker {
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.triggerSwatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+.triggerLabel {
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.triggerChevron {
+  font-size: 9px;
+  color: var(--accent);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 60;
+  width: 200px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.dropHeader {
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-head);
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 9px 13px;
+  font-family: var(--font-m, monospace);
+  font-size: 12px;
+  color: var(--dim);
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  width: 100%;
+}
+
+.row[data-active="true"] {
+  color: var(--accent);
+  background: var(--chip);
+}
+
+.swatches {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.rowInner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.swatchA {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex: none;
+  background: var(--sw-a);
+  box-shadow: 0 0 6px var(--sw-a);
+}
+
+.swatchB {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex: none;
+  background: var(--sw-b);
+}
+
+.check {
+  color: var(--accent);
+}

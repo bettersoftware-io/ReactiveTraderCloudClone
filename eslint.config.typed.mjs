@@ -3,22 +3,23 @@ import tseslint from "typescript-eslint";
 import base from "./eslint.config.mjs";
 
 export default tseslint.config(
-  // Files that are NOT covered by a standard tsconfig.json discoverable by projectService:
-  //   - .remember/ is a scratch directory outside the project
-  //   - packages/*/tests/ files belong to per-tier tsconfigs (tsconfig.ui-contract.json,
-  //     tsconfig.ui-visual.json) which projectService won't auto-discover (they aren't
-  //     named tsconfig.json).
-  //   - vitest.config.ts / vite.config.ts files live under tsconfig.node.json.
-  // root tests/ IS covered: tests/tsconfig.json exists and is named tsconfig.json, so
-  // projectService auto-discovers it and includes browser/, presenter/, fullstack/, scripts/.
-  // The AST tier (eslint.config.mjs) still covers ALL files including the ignored ones above.
+  // The type-aware tier runs on EVERY ts/tsx file — no gaps. Coverage is backed
+  // by tsconfig.eslint.json, a lint-only program that unions src + tests + config
+  // files across all packages (see that file's header for why a single build
+  // tsconfig can't). We use the classic `project` parser option rather than
+  // `projectService: true` on purpose: projectService auto-discovers only files
+  // literally named tsconfig.json (so it could never reach the per-tier configs
+  // tsconfig.ui-contract.json / tsconfig.ui-visual.json / tsconfig.node.json),
+  // whereas `project` points straight at the umbrella. A bonus property: under
+  // `project`, any ts/tsx file NOT in the umbrella's include is a hard error, so
+  // a future un-covered file fails the lint instead of silently slipping the
+  // type-aware rules.
+  //
+  // The ONLY ignore is .remember/ — an untracked scratch/history directory
+  // (Claude's memory buffer), not project source, so it is intentionally outside
+  // the umbrella and skipped here.
   {
-    ignores: [
-      ".remember/**",
-      "packages/*/tests/**",
-      "packages/*/vitest*.config.ts",
-      "packages/*/vite.config.ts",
-    ],
+    ignores: [".remember/**"],
   },
   ...base,
   {
@@ -26,7 +27,7 @@ export default tseslint.config(
     plugins: { "@typescript-eslint": tseslint.plugin },
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        project: ["./tsconfig.eslint.json"],
         tsconfigRootDir: import.meta.dirname,
       },
     },

@@ -1,14 +1,11 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import { CreditBlotter } from "./blotter/CreditBlotter";
 import { NewRfqForm } from "./newRfq/NewRfqForm";
 import { RfqTilesPanel } from "./rfqTiles/RfqTilesPanel";
 import { SellSidePanel } from "./sellSide/SellSidePanel";
 
 import styles from "./CreditWorkspace.module.css";
-
-type CreditView = "tiles" | "new-rfq" | "sell-side";
 
 export function CreditWorkspace(): ReactElement {
   const [view, setView] = useState<CreditView>("tiles");
@@ -45,8 +42,8 @@ export function CreditWorkspace(): ReactElement {
       {view === "new-rfq" && <NewRfqForm onCreated={handleRfqCreated} />}
       {view === "tiles" && <RfqTilesPanel />}
       {view === "sell-side" && <SellSidePanel />}
-
-      <CreditBlotter />
     </div>
   );
 }
+
+type CreditView = "tiles" | "new-rfq" | "sell-side";

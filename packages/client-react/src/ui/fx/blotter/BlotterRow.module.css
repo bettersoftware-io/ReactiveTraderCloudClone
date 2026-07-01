@@ -1,6 +1,5 @@
 .row {
   background-color: transparent;
-  transition: background-color 1s ease-in-out;
   color: var(--text-primary);
 }
 
@@ -8,8 +7,22 @@
   background-color: var(--bg-secondary);
 }
 
+/* New-row flash — Phase 3 HUD reskin: calm entrance via hudRowIn.
+ * The 3 s hold is still owned by createRowHighlightMachine (HIGHLIGHT_MS=3000),
+ * which removes data-highlight after the keyframe completes; only the look changes. */
+@keyframes hudRowIn {
+  0% {
+    background-color: var(--accent-2);
+    opacity: 0;
+  }
+  100% {
+    background-color: transparent;
+    opacity: 1;
+  }
+}
+
 .row[data-highlight="true"] {
-  background-color: rgba(59, 130, 246, 0.15);
+  animation: hudRowIn 0.6s ease-out;
 }
 
 .row[data-state="rejected"] {
