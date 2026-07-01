@@ -70,21 +70,28 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   }
 
   private async hydrate(): Promise<void> {
-    const [themeMode, themeSkin, viewMode, animatedBg, bootVariant] =
-      await Promise.all([
-        AsyncStorage.getItem(THEME_STORAGE_KEY),
-        AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
-        AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
-        AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
-        AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
-      ]);
+    try {
+      const [themeMode, themeSkin, viewMode, animatedBg, bootVariant] =
+        await Promise.all([
+          AsyncStorage.getItem(THEME_STORAGE_KEY),
+          AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
+          AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
+          AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
+          AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
+        ]);
 
-    if (isThemeModePreference(themeMode)) this.themeMode.next(themeMode);
-    if (isThemeSkin(themeSkin)) this.themeSkin.next(themeSkin);
-    if (isViewMode(viewMode)) this.viewMode.next(viewMode);
-    if (animatedBg === "true") this.animatedBg.next(true);
-    else if (animatedBg === "false") this.animatedBg.next(false);
-    if (isBootVariant(bootVariant)) this.bootVariantSubject.next(bootVariant);
+      if (isThemeModePreference(themeMode)) this.themeMode.next(themeMode);
+      if (isThemeSkin(themeSkin)) this.themeSkin.next(themeSkin);
+      if (isViewMode(viewMode)) this.viewMode.next(viewMode);
+      if (animatedBg === "true") this.animatedBg.next(true);
+      else if (animatedBg === "false") this.animatedBg.next(false);
+
+      if (isBootVariant(bootVariant)) {
+        this.bootVariantSubject.next(bootVariant);
+      }
+    } catch {
+      // AsyncStorage may be unavailable — keep the seeded defaults.
+    }
   }
 
   themeMode$(): Observable<ThemeModePreference> {
@@ -92,7 +99,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   }
 
   setThemeMode(mode: ThemeModePreference): void {
-    void AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
+    void AsyncStorage.setItem(THEME_STORAGE_KEY, mode).catch(() => {});
     this.themeMode.next(mode);
   }
 
@@ -101,7 +108,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   }
 
   setThemeSkin(skin: ThemeSkin): void {
-    void AsyncStorage.setItem(THEME_SKIN_STORAGE_KEY, skin);
+    void AsyncStorage.setItem(THEME_SKIN_STORAGE_KEY, skin).catch(() => {});
     this.themeSkin.next(skin);
   }
 
@@ -110,7 +117,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   }
 
   setViewMode(viewMode: ViewMode): void {
-    void AsyncStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+    void AsyncStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode).catch(() => {});
     this.viewMode.next(viewMode);
   }
 
@@ -119,7 +126,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   }
 
   setAnimatedBackground(on: boolean): void {
-    void AsyncStorage.setItem(ANIMATED_BG_STORAGE_KEY, on ? "true" : "false");
+    void AsyncStorage.setItem(
+      ANIMATED_BG_STORAGE_KEY,
+      on ? "true" : "false",
+    ).catch(() => {});
     this.animatedBg.next(on);
   }
 
@@ -128,7 +138,9 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   }
 
   setBootVariant(variant: BootVariant): void {
-    void AsyncStorage.setItem(BOOT_VARIANT_STORAGE_KEY, variant);
+    void AsyncStorage.setItem(BOOT_VARIANT_STORAGE_KEY, variant).catch(
+      () => {},
+    );
     this.bootVariantSubject.next(variant);
   }
 }
