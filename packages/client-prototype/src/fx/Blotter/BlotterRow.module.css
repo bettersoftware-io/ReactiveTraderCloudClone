@@ -1,0 +1,35 @@
+.row {
+  display: grid;
+  grid-template-columns: 84px 92px 118px 80px 92px 72px 116px 92px 106px 84px;
+  min-width: 930px;
+  align-items: center;
+  padding: 9px 14px;
+  font-family: var(--font-m, monospace);
+  font-size: 12px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.flashA {
+  animation:
+    rowIn 0.45s ease,
+    rowFlashA 1.5s ease-out;
+}
+
+.flashB {
+  animation:
+    rowIn 0.45s ease,
+    rowFlashB 1.5s ease-out;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.buy {
+  color: var(--buy);
+}
+
+.sell {
+  color: var(--sell);
+}
