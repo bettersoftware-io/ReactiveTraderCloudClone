@@ -80,14 +80,6 @@
   color: var(--text);
 }
 
-.placeholder {
-  padding: 16px;
-  font-family: var(--font-m, monospace);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  color: var(--faint);
-}
-
 .collapsedStrip {
   display: flex;
   flex-direction: column;
