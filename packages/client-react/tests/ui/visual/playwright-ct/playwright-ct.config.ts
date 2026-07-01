@@ -41,6 +41,9 @@ export default defineConfig({
   // of sub-pixel AA jitter on x86 run-to-run (dimensions stable, content byte-
   // identical); 0.025 was too tight. The plain-Playwright and vitest-browser
   // tiers have not shown this jitter (different render pipelines).
+  // This is a deliberate, settled decision, NOT a temporary mask to tighten
+  // away — see ../playwright/playwright.config.ts for the full rationale and the
+  // rejected "font-hinting-off + regenerate goldens" alternative.
   expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.06 } },
   // Terminal reporter unchanged; HTML is additive. report/ + artifacts/ are
   // siblings (the html reporter wipes its own folder). ../../../../ = packages/client-react.
