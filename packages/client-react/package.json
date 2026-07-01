@@ -54,7 +54,7 @@
     "rxjs": "^7.8"
   },
   "devDependencies": {
-    "@babel/core": "^7.29.0",
+    "@babel/core": "^8.0.0",
     "@playwright/experimental-ct-react": "^1.60.0",
     "@playwright/test": "^1.60.0",
     "@rolldown/plugin-babel": "^0.2.3",
