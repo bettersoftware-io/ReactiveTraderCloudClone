@@ -42,12 +42,13 @@ export function TradeTicket({ pair, onClose }: TradeTicketProps): JSX.Element {
     }
   }, [status, onClose]);
 
-  const onSide = (direction: Direction): void => {
+  function onSide(direction: Direction): void {
     if (price === null) {
       return;
     }
+
     execution.execute(direction, price, notional.state.numericValue);
-  };
+  }
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -77,7 +78,9 @@ export function TradeTicket({ pair, onClose }: TradeTicketProps): JSX.Element {
           <Pressable
             testID="sell-btn"
             disabled={!canExecute}
-            onPress={() => onSide(Direction.Sell)}
+            onPress={() => {
+              return onSide(Direction.Sell);
+            }}
             style={canExecute ? styles.sell : styles.disabled}
           >
             <Text>Sell</Text>
@@ -85,7 +88,9 @@ export function TradeTicket({ pair, onClose }: TradeTicketProps): JSX.Element {
           <Pressable
             testID="buy-btn"
             disabled={!canExecute}
-            onPress={() => onSide(Direction.Buy)}
+            onPress={() => {
+              return onSide(Direction.Buy);
+            }}
             style={canExecute ? styles.buy : styles.disabled}
           >
             <Text>Buy</Text>

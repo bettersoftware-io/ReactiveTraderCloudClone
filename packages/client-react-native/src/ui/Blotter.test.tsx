@@ -19,10 +19,6 @@ const TRADE: Trade = {
   valueDate: "2026-07-03",
 };
 
-function fakeViewModel(trades: readonly Trade[]): ViewModel {
-  return { useTrades: () => trades } as unknown as ViewModel;
-}
-
 test("renders a row per trade", async () => {
   await render(
     <ViewModelProvider viewModel={fakeViewModel([TRADE])}>
@@ -41,3 +37,11 @@ test("shows an empty state when there are no trades", async () => {
   );
   expect(screen.getByTestId("blotter-empty")).toBeTruthy();
 });
+
+function fakeViewModel(trades: readonly Trade[]): ViewModel {
+  return {
+    useTrades: () => {
+      return trades;
+    },
+  } as unknown as ViewModel;
+}

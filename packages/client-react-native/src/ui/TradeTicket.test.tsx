@@ -32,41 +32,6 @@ const PRICE: Price = {
   spread: "0.6",
 };
 
-type ExecFn = (d: Direction, p: Price, n: number) => void;
-
-function noop(): void {
-  // Intentionally does nothing.
-}
-
-// A fake ViewModel exposing the three hooks TradeTicket uses. `execState` and
-// the notional `error` are parameters so a test can pin any machine state.
-function fakeViewModel(opts: {
-  execute: ExecFn;
-  execState?: ReturnType<ViewModel["useTileExecution"]>["state"];
-  error?: string | null;
-}): ViewModel {
-  const state = opts.execState ?? { status: "ready" as const };
-  return {
-    usePrice: () => PRICE,
-    useNotional: () => ({
-      state: {
-        displayValue: "1,000,000",
-        numericValue: 1_000_000,
-        error: opts.error ?? null,
-        isRfq: false,
-        isDefault: true,
-      },
-      change: () => undefined,
-      reset: () => undefined,
-    }),
-    useTileExecution: () => ({
-      state,
-      execute: opts.execute,
-      dismiss: () => undefined,
-    }),
-  } as unknown as ViewModel;
-}
-
 test("tapping Buy executes with direction, price and notional", async () => {
   const execute = jest.fn<ExecFn>();
   await render(
@@ -74,7 +39,7 @@ test("tapping Buy executes with direction, price and notional", async () => {
       <TradeTicket pair={EURUSD} onClose={noop} />
     </ViewModelProvider>,
   );
-  fireEvent.press(screen.getByTestId("buy-btn"));
+  void fireEvent.press(screen.getByTestId("buy-btn"));
   expect(execute).toHaveBeenCalledWith(Direction.Buy, PRICE, 1_000_000);
 });
 
@@ -87,7 +52,7 @@ test("Buy/Sell disabled when the notional has an error", async () => {
       <TradeTicket pair={EURUSD} onClose={noop} />
     </ViewModelProvider>,
   );
-  fireEvent.press(screen.getByTestId("buy-btn"));
+  void fireEvent.press(screen.getByTestId("buy-btn"));
   expect(execute).not.toHaveBeenCalled();
   expect(screen.getByTestId("notional-error")).toBeTruthy();
 });
@@ -96,7 +61,9 @@ test("shows a Done confirmation when the machine finishes", async () => {
   await render(
     <ViewModelProvider
       viewModel={fakeViewModel({
-        execute: () => undefined,
+        execute: () => {
+          return undefined;
+        },
         execState: {
           status: "finished",
           executionStatus: ExecutionStatus.Done,
@@ -114,7 +81,9 @@ test("auto-closes when a terminal state dismisses back to ready", async () => {
   const { rerender } = await render(
     <ViewModelProvider
       viewModel={fakeViewModel({
-        execute: () => undefined,
+        execute: () => {
+          return undefined;
+        },
         execState: {
           status: "finished",
           executionStatus: ExecutionStatus.Done,
@@ -128,7 +97,9 @@ test("auto-closes when a terminal state dismisses back to ready", async () => {
   await rerender(
     <ViewModelProvider
       viewModel={fakeViewModel({
-        execute: () => undefined,
+        execute: () => {
+          return undefined;
+        },
         execState: { status: "ready" },
       })}
     >
@@ -137,3 +108,52 @@ test("auto-closes when a terminal state dismisses back to ready", async () => {
   );
   expect(onClose).toHaveBeenCalledTimes(1);
 });
+
+type ExecFn = (d: Direction, p: Price, n: number) => void;
+
+function noop(): void {
+  // Intentionally does nothing.
+}
+
+interface FakeVmOpts {
+  execute: ExecFn;
+  execState?: ReturnType<ViewModel["useTileExecution"]>["state"];
+  error?: string | null;
+}
+
+// A fake ViewModel exposing the three hooks TradeTicket uses. `execState` and
+// the notional `error` are parameters so a test can pin any machine state.
+function fakeViewModel(opts: FakeVmOpts): ViewModel {
+  const state = opts.execState ?? { status: "ready" as const };
+  return {
+    usePrice: () => {
+      return PRICE;
+    },
+    useNotional: () => {
+      return {
+        state: {
+          displayValue: "1,000,000",
+          numericValue: 1_000_000,
+          error: opts.error ?? null,
+          isRfq: false,
+          isDefault: true,
+        },
+        change: () => {
+          return undefined;
+        },
+        reset: () => {
+          return undefined;
+        },
+      };
+    },
+    useTileExecution: () => {
+      return {
+        state,
+        execute: opts.execute,
+        dismiss: () => {
+          return undefined;
+        },
+      };
+    },
+  } as unknown as ViewModel;
+}
