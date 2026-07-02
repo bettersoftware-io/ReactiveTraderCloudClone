@@ -22,6 +22,16 @@ test("useTheme throws outside a provider", async () => {
   await expect(renderProbe(null)).rejects.toThrow(/ThemeProvider/);
 });
 
+test("fills the platform system monospace for the classic skin", async () => {
+  // classic bundles no mono font (token `fontMono` is undefined); the provider
+  // must resolve it to a real platform monospace so digits align. Before the
+  // resolution this rendered `undefined`.
+  await renderProbe(fakeViewModel("classic", "dark"));
+  const mono = screen.getByTestId("probe-mono").props.children;
+  expect(typeof mono).toBe("string");
+  expect(mono.length).toBeGreaterThan(0);
+});
+
 // Probe lives nested inside the helper (not at module scope) so the file has no
 // unexported top-level component — mirrors client-react's useTheme.test.tsx and
 // satisfies Biome's useComponentExportOnlyModules. A null viewModel renders the
@@ -29,7 +39,12 @@ test("useTheme throws outside a provider", async () => {
 function renderProbe(viewModel: ViewModel | null): Promise<unknown> {
   function Probe(): React.JSX.Element {
     const theme = useTheme();
-    return <Text testID="probe">{theme.bgTile}</Text>;
+    return (
+      <>
+        <Text testID="probe">{theme.bgTile}</Text>
+        <Text testID="probe-mono">{theme.fontMono}</Text>
+      </>
+    );
   }
 
   if (viewModel === null) {
