@@ -391,6 +391,9 @@ importers:
       '@rtc/shared':
         specifier: workspace:*
         version: link:../shared
+      '@rtc/ws-effects':
+        specifier: workspace:*
+        version: link:../ws-effects
       rxjs:
         specifier: ^7.8
         version: 7.8.2
