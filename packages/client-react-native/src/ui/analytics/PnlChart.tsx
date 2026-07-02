@@ -8,10 +8,7 @@ import {
   CHART_HEIGHT,
   CHART_WIDTH,
 } from "#/ui/analytics/buildChart";
-
-const POSITIVE = "#3fb68b";
-const NEGATIVE = "#e05252";
-const BASELINE = "#c8c8c8";
+import { BASELINE, NEGATIVE, POSITIVE } from "#/ui/analytics/colours";
 
 export function PnlChart({ history }: PnlChartProps): JSX.Element {
   const { path, zeroY } = buildChart(history);

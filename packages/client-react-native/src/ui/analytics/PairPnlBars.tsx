@@ -3,6 +3,8 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { type CurrencyPairPosition, formatWithScale } from "@rtc/domain";
 
+import { BASELINE, NEGATIVE, POSITIVE } from "#/ui/analytics/colours";
+
 export function PairPnlBars({ positions }: PairPnlBarsProps): JSX.Element {
   const maxAbsPnl = Math.max(
     ...positions.map((p) => {
@@ -34,7 +36,10 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): JSX.Element {
               />
               <View style={styles.spacer} />
             </View>
-            <Text style={positive ? styles.labelPos : styles.labelNeg}>
+            <Text
+              testID={`pair-pnl-label-${pos.symbol}`}
+              style={positive ? styles.labelPos : styles.labelNeg}
+            >
               {formatWithScale(pos.basePnl)}
             </Text>
           </View>
@@ -58,12 +63,12 @@ const styles = StyleSheet.create({
     left: "50%",
     width: 1,
     height: 12,
-    backgroundColor: "#c8c8c8",
+    backgroundColor: BASELINE,
   },
   bar: { height: 8 },
-  barPos: { backgroundColor: "#3fb68b" },
-  barNeg: { backgroundColor: "#e05252" },
+  barPos: { backgroundColor: POSITIVE },
+  barNeg: { backgroundColor: NEGATIVE },
   spacer: { flex: 1 },
-  labelPos: { width: 56, textAlign: "right", color: "#3fb68b", fontSize: 12 },
-  labelNeg: { width: 56, textAlign: "right", color: "#e05252", fontSize: 12 },
+  labelPos: { width: 56, textAlign: "right", color: POSITIVE, fontSize: 12 },
+  labelNeg: { width: 56, textAlign: "right", color: NEGATIVE, fontSize: 12 },
 });

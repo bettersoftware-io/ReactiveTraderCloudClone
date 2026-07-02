@@ -10,10 +10,9 @@ import {
   bubblesHeight,
   computeBubbleLayout,
 } from "#/ui/analytics/bubbleLayout";
+import { NEGATIVE, POSITIVE } from "#/ui/analytics/colours";
 
 const AREA_WIDTH = 320;
-const POSITIVE = "#3fb68b";
-const NEGATIVE = "#e05252";
 
 export function ExposureBubbles({
   positions,

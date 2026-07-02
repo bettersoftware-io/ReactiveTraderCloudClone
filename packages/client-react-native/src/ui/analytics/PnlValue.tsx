@@ -3,6 +3,8 @@ import { StyleSheet, Text } from "react-native";
 
 import { formatPnlValue } from "@rtc/domain";
 
+import { NEGATIVE, POSITIVE } from "#/ui/analytics/colours";
+
 export function PnlValue({ value }: PnlValueProps): JSX.Element {
   const color = value >= 0 ? styles.pos : styles.neg;
   return (
@@ -18,6 +20,6 @@ interface PnlValueProps {
 
 const styles = StyleSheet.create({
   value: { fontSize: 20, fontWeight: "600" },
-  pos: { color: "#3fb68b" },
-  neg: { color: "#e05252" },
+  pos: { color: POSITIVE },
+  neg: { color: NEGATIVE },
 });
