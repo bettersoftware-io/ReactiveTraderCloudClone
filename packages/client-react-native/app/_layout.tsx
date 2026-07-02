@@ -1,43 +1,110 @@
 import { Tabs } from "expo-router";
 import type { JSX } from "react";
 import { useState } from "react";
-import { SafeAreaView, StyleSheet, Switch, Text, View } from "react-native";
+import {
+  SafeAreaView,
+  StyleSheet,
+  Switch,
+  Text,
+  type TextStyle,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import { AppRoot } from "#/app/AppRoot";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
+import { useAppFonts } from "#/ui/theme/fonts";
+import { ThemeProvider } from "#/ui/theme/ThemeProvider";
+import type { RnTheme } from "#/ui/theme/tokens";
+import { useTheme } from "#/ui/theme/useTheme";
+import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-/** Root layout: owns the simulator/live toggle and wraps the whole tab
- * navigator in a single `AppRoot` so both tabs (Rates | Blotter) share one
- * composition — one WS connection, one blotter presenter. Flipping the toggle
- * re-mounts `AppRoot` via the `key`, rebuilding the composition against the
- * newly selected branch (moved up one level from Phase 2's index screen). */
+/** Root layout: owns the simulator/live toggle, wraps the tab navigator in one
+ * `AppRoot` (one composition, one WS, one blotter presenter) and one
+ * `ThemeProvider` (one resolved skin×mode shared by every tab). First paint is
+ * gated on the bundled fonts so no leaf renders a not-yet-loaded family. */
 export default function RootLayout(): JSX.Element {
   const [simulator, setSimulator] = useState(false);
+  const fontsLoaded = useAppFonts();
+
+  if (!fontsLoaded) {
+    return <SafeAreaView style={styles.screen} testID="fonts-loading" />;
+  }
+
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.toolbar}>
-        <Text>Simulator</Text>
-        <Switch value={simulator} onValueChange={setSimulator} />
-      </View>
       <AppRoot key={simulator ? "sim" : "live"} simulator={simulator}>
-        <ConnectionBanner />
-        <Tabs screenOptions={{ headerShown: false }}>
-          <Tabs.Screen name="index" options={{ title: "Rates" }} />
-          <Tabs.Screen name="blotter" options={{ title: "Blotter" }} />
-          <Tabs.Screen name="analytics" options={{ title: "Analytics" }} />
-        </Tabs>
+        <ThemeProvider>
+          <Chrome simulator={simulator} onToggle={setSimulator} />
+        </ThemeProvider>
       </AppRoot>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+interface ChromeProps {
+  simulator: boolean;
+  onToggle: (value: boolean) => void;
+}
+
+/** Themed shell inside the providers — reads the theme for the toolbar and tab
+ * bar and renders the connection banner + tab navigator. */
+function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+
+  return (
+    <View style={styles.fill}>
+      <View style={styles.toolbar}>
+        <Text style={styles.toolbarLabel}>Simulator</Text>
+        <Switch value={simulator} onValueChange={onToggle} />
+      </View>
+      <ConnectionBanner />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: theme.bgHeader,
+            borderTopColor: theme.borderSubtle,
+          },
+          tabBarActiveTintColor: theme.accentPrimary,
+          tabBarInactiveTintColor: theme.textMuted,
+        }}
+      >
+        <Tabs.Screen name="index" options={{ title: "Rates" }} />
+        <Tabs.Screen name="blotter" options={{ title: "Blotter" }} />
+        <Tabs.Screen name="analytics" options={{ title: "Analytics" }} />
+        <Tabs.Screen name="appearance" options={{ title: "Appearance" }} />
+      </Tabs>
+    </View>
+  );
+}
+
+interface RootLayoutStyles {
+  screen: ViewStyle;
+}
+
+const styles: RootLayoutStyles = StyleSheet.create({
   screen: { flex: 1 },
-  toolbar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
 });
+
+interface ChromeStyles {
+  fill: ViewStyle;
+  toolbar: ViewStyle;
+  toolbarLabel: TextStyle;
+}
+
+function makeStyles(t: RnTheme): ChromeStyles {
+  return StyleSheet.create({
+    fill: { flex: 1, backgroundColor: t.bgPrimary },
+    toolbar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      backgroundColor: t.bgHeader,
+    },
+    toolbarLabel: { color: t.textPrimary, fontFamily: t.fontDisplay },
+  });
+}
