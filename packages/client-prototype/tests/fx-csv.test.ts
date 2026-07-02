@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { downloadCsv, toCsv } from "#/fx/csvExport";
+import { downloadCsv, toCsv } from "#/csvExport";
 
 describe("csvExport", () => {
   test("toCsv quotes every field and doubles embedded quotes (PROTO 1159)", () => {

@@ -1,14 +1,13 @@
 import type { ReactElement, ReactNode } from "react";
 
-import styles from "#/fx/layout/Panel.module.css";
-import type { PanelId } from "#/fx/layout/useDockState";
+import styles from "#/layout/Panel.module.css";
 
 export interface PanelProps {
-  id: PanelId;
+  id: string;
   head: ReactElement;
   children: ReactNode;
-  maxPanel: PanelId | null;
-  onToggleMax(id: PanelId): void;
+  maxPanel: string | null;
+  onToggleMax(id: string): void;
   headAccessory?: ReactNode;
 }
 
