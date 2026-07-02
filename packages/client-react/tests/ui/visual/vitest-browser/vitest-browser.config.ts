@@ -70,15 +70,18 @@ export default defineConfig({
           // threshold 0.2); vitest's toMatchScreenshot defaults to ZERO
           // tolerance, so interaction scenarios that re-layout (e.g. the blotter
           // after a filter applies) flake on a handful of AA pixels that never
-          // stabilise ("matcher did not succeed in time"). Allow a tiny absolute
-          // cushion — far below any real component change (hundreds+ of px), so
-          // genuine regressions still fail. This tier uses absolute pixel count
-          // (not a ratio) because it targets only a "handful of AA pixels"; the
-          // Playwright tiers use maxDiffPixelRatio: 0.06 (raised from 0.025) for
-          // x86 text-AA jitter on fixed-dimension text-heavy goldens. This tier
-          // has not exhibited that jitter so 100 px absolute remains sufficient.
+          // stabilise ("matcher did not succeed in time"). This tier originally
+          // used a 100-px absolute cushion on the theory that it "has not
+          // exhibited" the x86 text-AA jitter the Playwright tiers absorb with
+          // maxDiffPixelRatio: 0.06 (raised from 0.025) — falsified 2026-07-02:
+          // once the v2 redesign filled the full-App FX shots with glow
+          // text-shadows, gradient tiles and drop-shadowed bubbles, app/fx*
+          // exceeded 100 mismatched px between otherwise-identical x86 CI runner
+          // instances (passed one run, failed the next, same goldens). Use the
+          // same 0.06 ratio as the other two tiers — the settled repo-wide AA
+          // budget; genuine layout/structure regressions move far more pixels.
           comparatorName: "pixelmatch",
-          comparatorOptions: { allowedMismatchedPixels: 100 },
+          comparatorOptions: { allowedMismatchedPixelRatio: 0.06 },
           resolveScreenshotPath: ({
             root,
             testFileDirectory,
