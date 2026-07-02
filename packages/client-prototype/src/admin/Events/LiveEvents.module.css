@@ -1,0 +1,87 @@
+.card {
+  padding: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.count {
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  color: var(--faint);
+}
+
+.list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  gap: 9px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.time {
+  flex: none;
+  width: 54px;
+  font-family: var(--font-m, monospace);
+  font-size: 9px;
+  color: var(--faint);
+}
+
+.sev {
+  flex: none;
+  width: 42px;
+  padding: 1px 0;
+  font-family: var(--font-m, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+}
+
+.sev[data-sev="INFO"] {
+  color: var(--buy);
+}
+
+.sev[data-sev="WARN"] {
+  color: var(--accent);
+}
+
+.sev[data-sev="ERROR"] {
+  color: var(--sell);
+}
+
+.svc {
+  flex: none;
+  width: 64px;
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.msg {
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+  color: var(--dim);
+}
