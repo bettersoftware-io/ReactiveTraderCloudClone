@@ -23,23 +23,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-.title {
-  display: flex;
-  align-items: center;
-  padding: 9px 14px;
-  font-family: var(--font-d, sans-serif);
-  font-weight: 600;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-  color: var(--accent);
-  border-bottom: 2px solid var(--accent);
-}
-
-.spacer {
-  flex: 1;
-}
-
 .filters {
   display: flex;
   gap: 6px;

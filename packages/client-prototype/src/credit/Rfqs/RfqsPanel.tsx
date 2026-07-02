@@ -14,9 +14,11 @@ export interface RfqsPanelProps {
   rfqs: CreditRfqsApi;
 }
 
-// PROTO L563-582: the RFQs panel — a static "◳ RFQs" head plus LIVE/CLOSED/
-// ALL filter pills, and a FLIP-glided grid of RfqCards (or the empty state
-// when the active filter matches nothing). The useFlip wiring mirrors
+// PROTO L563-582: the RFQs panel — a LIVE/CLOSED/ALL filter-pill head and a
+// FLIP-glided grid of RfqCards (or the empty state when the active filter
+// matches nothing). The "◳ RFQs" region label lives in the outer dock
+// <Panel head> (CreditScreen), mirroring FX's region-label-in-Panel model.
+// The useFlip wiring mirrors
 // LiveRatesPanel's exactly: a ref over the grid, keyed on the shown ids plus
 // the active tab, so a filter switch (or a card entering/leaving) glides the
 // survivors instead of jumping.
@@ -40,8 +42,6 @@ export function RfqsPanel(props: RfqsPanelProps): ReactElement {
   return (
     <div className={styles.panel}>
       <div className={styles.head}>
-        <span className={styles.title}>◳ RFQs</span>
-        <div className={styles.spacer} />
         <div className={styles.filters}>
           <button
             type="button"

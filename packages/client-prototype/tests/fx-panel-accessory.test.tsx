@@ -37,6 +37,22 @@ describe("Panel headAccessory", () => {
     expect(queryByText("⊕")).toBeNull();
     expect(getByLabelText("Maximize")).toBeTruthy();
   });
+
+  test("omits the maximize button when maximizable is false", () => {
+    const { queryByTitle, queryByLabelText } = render(
+      <Panel
+        id={ANA_ID}
+        head={<span>Analytics</span>}
+        maxPanel={null}
+        onToggleMax={noop}
+        maximizable={false}
+      >
+        <div>body</div>
+      </Panel>,
+    );
+    expect(queryByLabelText("Maximize")).toBeNull();
+    expect(queryByTitle("Maximize")).toBeNull();
+  });
 });
 
 // — helpers ————————————————————————————————————————————————————————————————

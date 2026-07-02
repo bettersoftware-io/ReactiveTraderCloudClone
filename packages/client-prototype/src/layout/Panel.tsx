@@ -9,10 +9,19 @@ export interface PanelProps {
   maxPanel: string | null;
   onToggleMax(id: string): void;
   headAccessory?: ReactNode;
+  maximizable?: boolean;
 }
 
 export function Panel(props: PanelProps): ReactElement {
-  const { id, head, children, maxPanel, onToggleMax, headAccessory } = props;
+  const {
+    id,
+    head,
+    children,
+    maxPanel,
+    onToggleMax,
+    headAccessory,
+    maximizable = true,
+  } = props;
   const isMax = maxPanel === id;
 
   function handleMaxClick(): void {
@@ -28,15 +37,17 @@ export function Panel(props: PanelProps): ReactElement {
             {headAccessory}
           </span>
         ) : null}
-        <button
-          type="button"
-          className={styles.maxBtn}
-          aria-label="Maximize"
-          title="Maximize"
-          onClick={handleMaxClick}
-        >
-          {isMax ? "⤡" : "⤢"}
-        </button>
+        {maximizable ? (
+          <button
+            type="button"
+            className={styles.maxBtn}
+            aria-label="Maximize"
+            title="Maximize"
+            onClick={handleMaxClick}
+          >
+            {isMax ? "⤡" : "⤢"}
+          </button>
+        ) : null}
       </div>
       <div className={styles.body}>{children}</div>
     </div>
