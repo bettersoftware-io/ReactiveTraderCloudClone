@@ -1,5 +1,5 @@
 // packages/client-react-native/src/ui/theme/renderWithTheme.tsx
-import { render, type RenderResult } from "@testing-library/react-native";
+import { type RenderResult, render } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 
 import { ThemeContext } from "#/ui/theme/ThemeContext";
@@ -13,5 +13,7 @@ export function renderWithTheme(
   ui: ReactElement,
   theme: RnTheme = rnThemeTokens.holo.dark,
 ): Promise<RenderResult> {
-  return render(<ThemeContext.Provider value={theme}>{ui}</ThemeContext.Provider>);
+  return render(
+    <ThemeContext.Provider value={theme}>{ui}</ThemeContext.Provider>,
+  );
 }

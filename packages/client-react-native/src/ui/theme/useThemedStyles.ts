@@ -1,8 +1,8 @@
 // packages/client-react-native/src/ui/theme/useThemedStyles.ts
 import { useMemo } from "react";
 
-import { useTheme } from "#/ui/theme/useTheme";
 import type { RnTheme } from "#/ui/theme/tokens";
+import { useTheme } from "#/ui/theme/useTheme";
 
 /** Build a StyleSheet from the current theme, recomputing only when the theme
  * object identity changes. `make` is a module-level factory (stable identity),

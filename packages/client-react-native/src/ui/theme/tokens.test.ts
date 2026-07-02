@@ -5,12 +5,33 @@ import { THEME_MODES, THEME_SKINS } from "@rtc/domain";
 import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 
 const COLOUR_KEYS: readonly (keyof RnTheme)[] = [
-  "bgPrimary", "bgSecondary", "bgHeader", "bgFooter", "bgTile", "bgOverlay",
-  "bgBrandPrimary", "textPrimary", "textSecondary", "textMuted", "textOnAccent",
-  "accentPositive", "accentNegative", "accentAware", "accentPrimary", "accent2",
-  "borderPrimary", "borderSubtle", "border", "borderStrong",
-  "statusConnected", "statusConnecting", "statusDisconnected", "statusError",
-  "panel", "panelHead", "chip",
+  "bgPrimary",
+  "bgSecondary",
+  "bgHeader",
+  "bgFooter",
+  "bgTile",
+  "bgOverlay",
+  "bgBrandPrimary",
+  "textPrimary",
+  "textSecondary",
+  "textMuted",
+  "textOnAccent",
+  "accentPositive",
+  "accentNegative",
+  "accentAware",
+  "accentPrimary",
+  "accent2",
+  "borderPrimary",
+  "borderSubtle",
+  "border",
+  "borderStrong",
+  "statusConnected",
+  "statusConnecting",
+  "statusDisconnected",
+  "statusError",
+  "panel",
+  "panelHead",
+  "chip",
 ];
 
 const COLOUR = /^(#[0-9a-fA-F]{3,8}|rgba?\([\d.,\s]+\))$/;
@@ -19,6 +40,7 @@ test("every skin × mode cell defines all colour keys as valid colour strings", 
   for (const skin of THEME_SKINS) {
     for (const mode of THEME_MODES) {
       const cell = rnThemeTokens[skin][mode];
+
       for (const key of COLOUR_KEYS) {
         const value = cell[key];
         expect(value, `${skin}.${mode}.${key}`).toMatch(COLOUR);

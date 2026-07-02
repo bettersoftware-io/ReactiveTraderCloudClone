@@ -6,8 +6,10 @@ import type { RnTheme } from "#/ui/theme/tokens";
 
 export function useTheme(): RnTheme {
   const theme = useContext(ThemeContext);
+
   if (theme === null) {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
+
   return theme;
 }
