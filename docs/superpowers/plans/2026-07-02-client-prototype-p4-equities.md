@@ -18,7 +18,7 @@ Every task's requirements implicitly include this section. Values are copied ver
 
 - **Package self-containment:** no `@rtc/domain` / `@rtc/shared`, no RxJS, no machines, no ViewModel seam, no React Compiler. `equities/` imports **nothing** from `fx/` or `credit/` (and vice-versa); shared code lives in `src/layout/`, `src/motion/`, `src/mock/`.
 - **CSS-Modules taxonomy:** static → class; semantic state → `data-*` (stringify with `String(bool)` — never inline colour strings); runtime geometry → a **named-const** `style={x}` object typed `as CSSProperties` that sets only a `--custom-property`. No `eslint-disable` anywhere.
-- **Render purity (StrictMode):** the seeded RNG lives in a `useRef` and is never resynced; RNG and persistence never run inside a `setState` updater (compute values *outside* the updater, pass them in); all `setTimeout`/`setInterval` ids are tracked in a `useRef<Set<…>>` and cleared on unmount.
+- **Render purity (StrictMode):** the seeded RNG lives in a `useRef` and is never resynced; RNG and persistence never run inside a `setState` updater **nor inside a `useState`/`useMemo` initializer** — StrictMode double-invokes both, drawing the RNG twice. To seed rng-dependent initial state, use a **render-body ref-lazy-init** (`const seedRef = useRef<T | null>(null); if (seedRef.current === null) { seedRef.current = seed(rngRef.current); } const [x, setX] = useState(seedRef.current);`) — the ref persists across StrictMode's double render, so `seed()` runs exactly once. Compute updater values *outside* the updater and pass them in. All `setTimeout`/`setInterval` ids are tracked in a `useRef<Set<…>>` and cleared on unmount.
 - **Lint/format rules that have bitten prior phases:** `arrow-body-style: always` (every arrow, including `.map`/`.find` callbacks — always `=> { return … }`); module-level functions are `function` declarations (not arrow consts); `rtc/newspaper-order` (types/helpers/`vi.mock` go **below** the `describe`); `rtc/component-newspaper` (the exported component is the file's lede, filename matches it); `useUniqueElementIds` (any element/SVG `id` uses `useId()`; logical panel-id props use a **bottom `const`** var, not an inline string literal); `useExplicitType` (a `const` whose initializer isn't literal-inferrable gets an explicit type annotation).
 - **The gate for every task (all must pass before commit):**
   - `pnpm --filter @rtc/client-prototype typecheck`
@@ -581,9 +581,21 @@ export function useEqChart(opts: UseEqChartOptions = {}): EqChartApi {
   const [openTabs, setOpenTabs] = useState<EqSym[]>([INITIAL_SYM]);
   const [tf, setTfState] = useState<Timeframe>(INITIAL_TF);
   const [wlSort, setWlSort] = useState<WlSort>("chg");
-  const [seriesMap, setSeriesMap] = useState<Record<string, Candle[]>>(() => {
-    return { [INITIAL_SYM]: genCandles(INITIAL_SYM, INITIAL_TF, rngRef.current) };
-  });
+
+  // Seed the initial series via a render-body ref-lazy-init, NOT a useState
+  // initializer (StrictMode double-invokes initializers, drawing the RNG
+  // twice). The ref persists across the double render, so genCandles runs once.
+  const seedRef = useRef<Record<string, Candle[]> | null>(null);
+
+  if (seedRef.current === null) {
+    seedRef.current = {
+      [INITIAL_SYM]: genCandles(INITIAL_SYM, INITIAL_TF, rngRef.current),
+    };
+  }
+
+  const [seriesMap, setSeriesMap] = useState<Record<string, Candle[]>>(
+    seedRef.current,
+  );
 
   const selRef = useRef(sel);
   selRef.current = sel;
