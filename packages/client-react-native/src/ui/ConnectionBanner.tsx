@@ -1,8 +1,18 @@
 import type { JSX } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  type TextStyle,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import { ConnectionStatus } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
+
+import type { RnTheme } from "#/ui/theme/tokens";
+import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 const LABEL: Record<ConnectionStatus, string> = {
   [ConnectionStatus.CONNECTING]: "Connecting…",
@@ -19,32 +29,46 @@ export function ConnectionBanner(): JSX.Element {
   const { useConnectionStatus, useReconnect } = useViewModel();
   const status = useConnectionStatus();
   const reconnect = useReconnect();
+  const styles = useThemedStyles(makeStyles);
   const showReconnect =
     status !== ConnectionStatus.CONNECTED &&
     status !== ConnectionStatus.CONNECTING;
 
   return (
     <View style={styles.banner}>
-      <Text>{LABEL[status]}</Text>
+      <Text style={styles.label}>{LABEL[status]}</Text>
       {showReconnect ? (
         <Pressable
           onPress={() => {
             reconnect();
           }}
         >
-          <Text>Reconnect</Text>
+          <Text style={styles.reconnect}>Reconnect</Text>
         </Pressable>
       ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  banner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-});
+interface ConnectionBannerStyles {
+  banner: ViewStyle;
+  label: TextStyle;
+  reconnect: TextStyle;
+}
+
+function makeStyles(t: RnTheme): ConnectionBannerStyles {
+  return StyleSheet.create({
+    banner: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      backgroundColor: t.bgHeader,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.borderSubtle,
+    },
+    label: { color: t.textPrimary, fontFamily: t.fontDisplay },
+    reconnect: { color: t.accentPrimary, fontFamily: t.fontDisplay },
+  });
+}

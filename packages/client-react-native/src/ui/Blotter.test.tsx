@@ -1,10 +1,11 @@
 import { expect, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
+import { screen } from "@testing-library/react-native";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { Blotter } from "#/ui/Blotter";
+import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 const TRADE: Trade = {
   tradeId: 7,
@@ -20,7 +21,7 @@ const TRADE: Trade = {
 };
 
 test("renders a row per trade", async () => {
-  await render(
+  await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel([TRADE])}>
       <Blotter />
     </ViewModelProvider>,
@@ -30,7 +31,7 @@ test("renders a row per trade", async () => {
 });
 
 test("shows an empty state when there are no trades", async () => {
-  await render(
+  await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel([])}>
       <Blotter />
     </ViewModelProvider>,
