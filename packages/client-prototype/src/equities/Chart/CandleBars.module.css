@@ -1,0 +1,31 @@
+.wick {
+  position: absolute;
+  left: var(--wx);
+  top: var(--wtop);
+  height: var(--wh);
+  width: 1px;
+  opacity: 0.7;
+}
+
+.body {
+  position: absolute;
+  left: calc(var(--x) - var(--wleft-offset, 0px));
+  top: var(--top);
+  height: var(--h);
+  width: var(--w);
+  opacity: 0.85;
+}
+
+.body[data-up="true"],
+.wick[data-up="true"] {
+  background: var(--buy);
+}
+
+.body[data-up="false"],
+.wick[data-up="false"] {
+  background: var(--sell);
+}
+
+.body[style*="--glow: 1"] {
+  opacity: 1;
+}
