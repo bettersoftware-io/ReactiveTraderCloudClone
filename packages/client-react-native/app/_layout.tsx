@@ -63,6 +63,7 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
       <Tabs
         screenOptions={{
           headerShown: false,
+          sceneStyle: { backgroundColor: theme.bgPrimary },
           tabBarStyle: {
             backgroundColor: theme.bgHeader,
             borderTopColor: theme.borderSubtle,
