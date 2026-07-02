@@ -65,6 +65,15 @@ export class TileNotionalPage extends MountedComponent<TileNotionalProps> {
     return this.q().queryByTitle(/reset to default/i) !== null;
   }
 
+  /** The compact "MAX" badge shown beside the input while in error. */
+  hasMaxTag(): boolean {
+    return (
+      [...this.root.querySelectorAll("span")].find((s) => {
+        return s.textContent?.trim() === "MAX";
+      }) !== undefined
+    );
+  }
+
   /** Type a character into the input (fires onChange with the new value). */
   async typeIntoInput(text: string): Promise<void> {
     await this.user.type(this.input(), text);
@@ -100,7 +109,7 @@ export class TileNotionalPage extends MountedComponent<TileNotionalProps> {
     this.input().focus();
   }
 
-  /** Border colour of the input's bottom edge (red when in error). */
+  /** Border colour of the input (red when in error; v2 draws a full border, not just the bottom edge). */
   borderBottomColor(): string {
     const inError = this.input().dataset.error === "true";
     return inError ? "var(--accent-negative)" : "var(--border-primary)";

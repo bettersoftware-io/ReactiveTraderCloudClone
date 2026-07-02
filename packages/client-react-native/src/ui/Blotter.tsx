@@ -4,12 +4,15 @@ import {
   type ListRenderItemInfo,
   StyleSheet,
   Text,
+  type TextStyle,
 } from "react-native";
 
 import type { Trade } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { TradeRow } from "#/ui/TradeRow";
+import type { RnTheme } from "#/ui/theme/tokens";
+import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 function keyExtractor(trade: Trade): string {
   return String(trade.tradeId);
@@ -25,6 +28,7 @@ function renderItem({ item }: ListRenderItemInfo<Trade>): JSX.Element {
 export function Blotter(): JSX.Element {
   const { useTrades } = useViewModel();
   const trades = useTrades();
+  const styles = useThemedStyles(makeStyles);
 
   if (trades.length === 0) {
     return (
@@ -44,6 +48,12 @@ export function Blotter(): JSX.Element {
   );
 }
 
-const styles = StyleSheet.create({
-  empty: { padding: 16, opacity: 0.6 },
-});
+interface BlotterStyles {
+  empty: TextStyle;
+}
+
+function makeStyles(t: RnTheme): BlotterStyles {
+  return StyleSheet.create({
+    empty: { padding: 16, color: t.textMuted, fontFamily: t.fontDisplay },
+  });
+}

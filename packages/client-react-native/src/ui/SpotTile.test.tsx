@@ -1,10 +1,12 @@
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, screen } from "@testing-library/react-native";
 
 import { type CurrencyPair, type Price, PriceMovementType } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { SpotTile } from "#/ui/SpotTile";
+import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
 // Stub out TradeTicket (an RN Modal) so the press test mounts a lightweight
 // marker instead of the real Modal — mounting Modal via an awaited RNTL event
@@ -40,8 +42,13 @@ const UP_PRICE: Price = {
   spread: "0.6",
 };
 
+const DOWN_PRICE: Price = {
+  ...UP_PRICE,
+  movementType: PriceMovementType.DOWN,
+};
+
 test("renders symbol, ask split, spread and up-movement", async () => {
-  await render(
+  await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(UP_PRICE)}>
       <SpotTile pair={EURUSD} />
     </ViewModelProvider>,
@@ -55,7 +62,7 @@ test("renders symbol, ask split, spread and up-movement", async () => {
 });
 
 test("shows loading when price is null", async () => {
-  await render(
+  await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(null)}>
       <SpotTile pair={EURUSD} />
     </ViewModelProvider>,
@@ -65,7 +72,7 @@ test("shows loading when price is null", async () => {
 });
 
 test("pressing the tile opens the trade ticket", async () => {
-  await render(
+  await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(UP_PRICE)}>
       <SpotTile pair={EURUSD} />
     </ViewModelProvider>,
@@ -73,6 +80,33 @@ test("pressing the tile opens the trade ticket", async () => {
   expect(screen.queryByTestId("trade-ticket")).toBeNull();
   await fireEvent.press(screen.getByTestId("spot-tile"));
   expect(screen.getByTestId("trade-ticket")).toBeTruthy();
+});
+
+// Discriminating colour checks: the pips <Text> is the sibling that carries
+// the movement colour (prefix/fractional stay theme.textPrimary). Reading
+// its rendered `style.color` fails this test the moment movement stops
+// mapping to the theme's accent tokens (e.g. UP/DOWN swapped, or a token
+// renamed without updating the mapping).
+test("paints the ask pips with the positive accent colour on an up-move", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(UP_PRICE)}>
+      <SpotTile pair={EURUSD} />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByText("81").props.style.color).toBe(
+    rnThemeTokens.holo.dark.accentPositive,
+  );
+});
+
+test("paints the ask pips with the negative accent colour on a down-move", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(DOWN_PRICE)}>
+      <SpotTile pair={EURUSD} />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByText("81").props.style.color).toBe(
+    rnThemeTokens.holo.dark.accentNegative,
+  );
 });
 
 function fakeViewModel(price: Price | null): ViewModel {

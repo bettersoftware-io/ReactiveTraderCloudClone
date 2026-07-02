@@ -17,6 +17,7 @@ import {
   ConnectionEventsSimulator,
 } from "@rtc/domain";
 
+import { AppearanceColorSchemeAdapter } from "#/app/adapters/AppearanceColorSchemeAdapter";
 import { AsyncStoragePreferencesAdapter } from "#/app/adapters/AsyncStoragePreferencesAdapter";
 
 interface BuildNativePortsOptions {
@@ -39,8 +40,8 @@ export interface NativeComposition {
  * `AppPorts` that `createApp` composes into presenters. Two branches selected
  * by the WS URL — a real WebSocket stack when `extra.serverUrl` is set, else a
  * fully in-process simulator stack. There is no DOM here, so the browser
- * connectivity source and `colorScheme` port are both dropped (`colorScheme`
- * is optional; client-core's `of(false)` fallback applies).
+ * connectivity source is dropped; `colorScheme` is supplied by an
+ * `Appearance`-backed adapter so "system" mode follows the device setting.
  *
  * The `simulator` option forces the simulator branch regardless of config — the
  * demo toggle (Task 6) drives it. */
@@ -53,6 +54,7 @@ export function buildNativePorts(
     : (extra.serverUrl as string | undefined);
   const token = extra.wsToken as string | undefined;
   const preferences = new AsyncStoragePreferencesAdapter();
+  const colorScheme = new AppearanceColorSchemeAdapter();
 
   if (url) {
     const ws = new WsAdapter(buildWsUrl(url, token));
@@ -71,7 +73,11 @@ export function buildNativePorts(
       },
     };
     return {
-      ports: { ...createWsRealPorts(ws, { preferences }), connectionEvents },
+      ports: {
+        ...createWsRealPorts(ws, { preferences }),
+        connectionEvents,
+        colorScheme,
+      },
       dispose: () => {
         ws.dispose();
       },
@@ -96,7 +102,11 @@ export function buildNativePorts(
     },
   };
   return {
-    ports: { ...createSimulatorPorts({ preferences }), connectionEvents },
+    ports: {
+      ...createSimulatorPorts({ preferences }),
+      connectionEvents,
+      colorScheme,
+    },
     dispose: () => {},
   };
 }

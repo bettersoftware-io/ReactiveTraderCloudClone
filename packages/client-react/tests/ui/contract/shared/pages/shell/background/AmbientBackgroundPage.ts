@@ -5,9 +5,11 @@ import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 /**
  * Page object for AmbientBackground. The backdrop is decorative chrome gated by
  * useAnimatedBackground: it always renders a single aria-hidden root whose
- * `data-animated` flag mirrors the preference ("true" → aurora/grid animate,
- * "false" → calm / no visible pixels). There is no behaviour to drive — the
- * page only reads the rendered flag + the accessibility hint.
+ * aurora layers are always visible at `--aurora-opacity` (v2 fidelity — the
+ * backdrop is never blank); the `data-animated` flag only gates whether the
+ * aurora/grid layers animate ("true" → animating, "false" → held static at
+ * their current frame). There is no behaviour to drive — the page only reads
+ * the rendered flag + the accessibility hint.
  */
 export class AmbientBackgroundPage extends MountedComponent<
   Record<string, never>

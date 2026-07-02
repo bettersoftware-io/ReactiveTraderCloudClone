@@ -9,9 +9,11 @@
  *   neon     — high-contrast cyberpunk (magenta / cyan, aurora FX)
  *
  * Dark values for holo / terminal / neon are mapped 1-to-1 from
- * docs/design/v1/dev-handoff/theme-tokens.css.  Light variants are derived:
- * backgrounds lifted toward white/light-grey, text inverted to dark, accents
- * kept from the skin family, aurora-opacity reduced.
+ * docs/design/v1/dev-handoff/theme-tokens.css.  Light variants for holo /
+ * terminal / neon are mapped 1-to-1 from the v2 prototype's `themesLight`
+ * table (docs/design/v2/dev-handoff/prototype/source/Reactive Trader.dc.html)
+ * — verbatim, not derived. Classic (both modes) stays the pre-redesign
+ * palette, neutral on the aurora/blur/glow/tile/panel-shadow keys.
  */
 
 import type { ThemeMode, ThemeSkin } from "@rtc/domain";
@@ -86,6 +88,16 @@ export interface ThemeTokens {
   "--font-display": string;
   /** Mono font family (numbers, data, telemetry). */
   "--font-mono": string;
+  /** Display font for wordmark / KPI headlines — Orbitron in all redesign skins. */
+  "--font-logo": string;
+
+  // v2 tile / panel surfaces
+  /** Tile surface fill — a gradient in every non-classic skin (PROTO `tile`). */
+  "--tile": string;
+  /** Layered tile shadow incl. inset top highlight (PROTO `tileShadow`); "none" for classic. */
+  "--tile-shadow": string;
+  /** Panel-level shadow (PROTO `panelShadow`); "none" for flat skins — 3d skins will fill this. */
+  "--panel-shadow": string;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +153,11 @@ const darkTokens: ThemeTokens = {
 
   "--font-display": "system-ui, sans-serif",
   "--font-mono": "ui-monospace, monospace",
+  "--font-logo": "system-ui, sans-serif",
+
+  "--tile": "var(--bg-tile)",
+  "--tile-shadow": "none",
+  "--panel-shadow": "none",
 };
 
 /**
@@ -191,12 +208,17 @@ const lightTokens: ThemeTokens = {
 
   "--font-display": "system-ui, sans-serif",
   "--font-mono": "ui-monospace, monospace",
+  "--font-logo": "system-ui, sans-serif",
+
+  "--tile": "var(--bg-tile)",
+  "--tile-shadow": "none",
+  "--panel-shadow": "none",
 };
 
 // ---------------------------------------------------------------------------
 // Holo — Iron Man / Minority Report cyan HUD (glass, aurora, blur=14px)
 // Dark values mapped 1-to-1 from theme-tokens.css [data-theme="holo"].
-// Light: lifted backgrounds, inverted text, same cyan accent, aurora-opacity 0.25.
+// Light: PROTO `themesLight.holo` verbatim — cyan accent, aurora-opacity 0.12.
 // ---------------------------------------------------------------------------
 
 const holoDark: ThemeTokens = {
@@ -242,57 +264,75 @@ const holoDark: ThemeTokens = {
 
   "--font-display": "'Chakra Petch', sans-serif",
   "--font-mono": "'JetBrains Mono', monospace",
+  "--font-logo": "'Orbitron', sans-serif",
+
+  "--tile":
+    "linear-gradient(158deg, rgba(15,43,58,0.92) 0%, rgba(9,28,40,0.86) 100%)",
+  "--tile-shadow":
+    "0 5px 16px -7px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)",
+  "--panel-shadow": "none",
 };
 
+/**
+ * Holo light — v2 verbatim from PROTO `themesLight.holo` (Task 2 brief), not
+ * derived; backgrounds/panel/border/text/accents/glow/grid/chip/auroraOp all
+ * come straight from the prototype's light theme table.
+ */
 const holoLight: ThemeTokens = {
-  "--bg-primary": "#e8f9fd",
-  "--bg-secondary": "#cdf1f9",
-  "--bg-header": "#ffffff",
-  "--bg-footer": "#ffffff",
+  "--bg-primary": "#e7eff3",
+  "--bg-secondary": "#f6fbfd",
+  "--bg-header": "#f6fbfd",
+  "--bg-footer": "#f6fbfd",
   "--bg-tile": "rgba(200,240,250,0.7)",
   "--bg-overlay": "rgba(0,6,10,0.4)",
-  "--bg-brand-primary": "#00b4cc",
+  "--bg-brand-primary": "#0096b3",
 
-  "--text-primary": "#002a35",
-  "--text-secondary": "rgba(0,60,80,0.7)",
-  "--text-muted": "rgba(0,60,80,0.45)",
+  "--text-primary": "#0a2330",
+  "--text-secondary": "rgba(22,72,92,0.72)",
+  "--text-muted": "rgba(45,95,115,0.5)",
   "--text-on-accent": "#ffffff",
 
-  "--accent-positive": "#00c985",
-  "--accent-negative": "#e8304a",
+  "--accent-positive": "#0a9e63",
+  "--accent-negative": "#d63d52",
   "--accent-aware": "#cc8800",
-  "--accent-primary": "#00b4cc",
-  "--accent-2": "#00cc9e",
+  "--accent-primary": "#0096b3",
+  "--accent-2": "#0ab39a",
 
-  "--border-primary": "rgba(0,180,204,0.3)",
+  "--border-primary": "rgba(0,150,179,0.26)",
   "--border-subtle": "rgba(0,180,204,0.15)",
   "--border": "rgba(0,180,204,0.15)",
-  "--border-strong": "rgba(0,180,204,0.65)",
+  "--border-strong": "rgba(0,135,165,0.58)",
 
-  "--status-connected": "#00c985",
+  "--status-connected": "#0a9e63",
   "--status-connecting": "#cc8800",
-  "--status-disconnected": "#e8304a",
-  "--status-error": "#e8304a",
+  "--status-disconnected": "#d63d52",
+  "--status-error": "#d63d52",
 
-  "--panel": "rgba(200,240,250,0.7)",
-  "--panel-head": "rgba(0,180,204,0.08)",
+  "--panel": "rgba(255,255,255,0.62)",
+  "--panel-head": "rgba(0,150,179,0.07)",
   "--panel-blur": "14px",
-  "--glow": "0 0 14px rgba(0,180,204,0.25)",
-  "--grid": "rgba(0,180,204,0.06)",
-  "--chip": "rgba(0,180,204,0.14)",
+  "--glow": "0 0 14px rgba(0,150,179,0.2)",
+  "--grid": "rgba(0,150,179,0.06)",
+  "--chip": "rgba(0,150,179,0.12)",
 
   "--aurora-a": "rgba(0,180,204,0.2)",
   "--aurora-b": "rgba(0,204,158,0.18)",
-  "--aurora-opacity": "0.25",
+  "--aurora-opacity": "0.12",
 
   "--font-display": "'Chakra Petch', sans-serif",
   "--font-mono": "'JetBrains Mono', monospace",
+  "--font-logo": "'Orbitron', sans-serif",
+
+  "--tile": "linear-gradient(158deg, #ffffff 0%, #edf6f9 100%)",
+  "--tile-shadow":
+    "0 5px 14px -7px rgba(20,60,80,0.22), 0 1px 2px rgba(20,60,80,0.1), inset 0 1px 0 rgba(255,255,255,0.85)",
+  "--panel-shadow": "none",
 };
 
 // ---------------------------------------------------------------------------
 // Terminal — Bloomberg-grade pro terminal (flat/solid, amber-on-charcoal)
 // Dark values mapped 1-to-1 from theme-tokens.css [data-theme="terminal"].
-// Light: lifted charcoal → light-grey backgrounds, dark text, amber accent retained.
+// Light: PROTO `themesLight.terminal` verbatim — light-grey backgrounds, dark text, amber accent.
 // ---------------------------------------------------------------------------
 
 const terminalDark: ThemeTokens = {
@@ -338,57 +378,73 @@ const terminalDark: ThemeTokens = {
 
   "--font-display": "'IBM Plex Sans', sans-serif",
   "--font-mono": "'IBM Plex Mono', monospace",
+  "--font-logo": "'Orbitron', sans-serif",
+
+  "--tile": "linear-gradient(180deg, #1b2029 0%, #15191f 100%)",
+  "--tile-shadow":
+    "0 3px 10px -4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)",
+  "--panel-shadow": "none",
 };
 
+/**
+ * Terminal light — v2 verbatim from PROTO `themesLight.terminal` (Task 2
+ * brief), not derived.
+ */
 const terminalLight: ThemeTokens = {
-  "--bg-primary": "#f4f5f7",
-  "--bg-secondary": "#eaecef",
-  "--bg-header": "#ffffff",
-  "--bg-footer": "#ffffff",
+  "--bg-primary": "#eef0f3",
+  "--bg-secondary": "#fafbfc",
+  "--bg-header": "#fafbfc",
+  "--bg-footer": "#fafbfc",
   "--bg-tile": "#ffffff",
   "--bg-overlay": "rgba(10,12,16,0.35)",
-  "--bg-brand-primary": "#b37a00",
+  "--bg-brand-primary": "#b67700",
 
-  "--text-primary": "#12151c",
-  "--text-secondary": "#3e4452",
-  "--text-muted": "#6b7280",
+  "--text-primary": "#1a1f27",
+  "--text-secondary": "#5b6470",
+  "--text-muted": "#8b93a1",
   "--text-on-accent": "#ffffff",
 
-  "--accent-positive": "#1fa856",
-  "--accent-negative": "#d93a33",
+  "--accent-positive": "#1f8a52",
+  "--accent-negative": "#cf4339",
   "--accent-aware": "#b37a00",
-  "--accent-primary": "#b37a00",
-  "--accent-2": "#2e6db5",
+  "--accent-primary": "#b67700",
+  "--accent-2": "#2f6fd0",
 
-  "--border-primary": "#c8cdd6",
+  "--border-primary": "#d4d8de",
   "--border-subtle": "#e2e5ea",
   "--border": "#e2e5ea",
-  "--border-strong": "#9098a8",
+  "--border-strong": "#a8b0bb",
 
-  "--status-connected": "#1fa856",
+  "--status-connected": "#1f8a52",
   "--status-connecting": "#b37a00",
-  "--status-disconnected": "#d93a33",
-  "--status-error": "#d93a33",
+  "--status-disconnected": "#cf4339",
+  "--status-error": "#cf4339",
 
   "--panel": "#ffffff",
-  "--panel-head": "#f0f2f5",
+  "--panel-head": "#eef1f4",
   "--panel-blur": "0",
   "--glow": "none",
-  "--grid": "rgba(0,0,0,0.04)",
-  "--chip": "rgba(179,122,0,0.12)",
+  "--grid": "rgba(0,0,0,0.03)",
+  "--chip": "rgba(182,119,0,0.13)",
 
   "--aurora-a": "rgba(179,122,0,0.08)",
   "--aurora-b": "rgba(46,109,181,0.07)",
-  "--aurora-opacity": "0.12",
+  "--aurora-opacity": "0.07",
 
   "--font-display": "'IBM Plex Sans', sans-serif",
   "--font-mono": "'IBM Plex Mono', monospace",
+  "--font-logo": "'Orbitron', sans-serif",
+
+  "--tile": "linear-gradient(180deg, #ffffff 0%, #f4f6f8 100%)",
+  "--tile-shadow":
+    "0 3px 9px -4px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.9)",
+  "--panel-shadow": "none",
 };
 
 // ---------------------------------------------------------------------------
 // Neon — high-contrast cyberpunk (magenta / cyan, aurora FX, blur=12px)
 // Dark values mapped 1-to-1 from theme-tokens.css [data-theme="neon"].
-// Light: lifted backgrounds toward white/lavender, dark text, magenta accent retained.
+// Light: PROTO `themesLight.neon` verbatim — white/lavender backgrounds, dark text, magenta accent.
 // ---------------------------------------------------------------------------
 
 const neonDark: ThemeTokens = {
@@ -434,51 +490,68 @@ const neonDark: ThemeTokens = {
 
   "--font-display": "'Chakra Petch', sans-serif",
   "--font-mono": "'JetBrains Mono', monospace",
+  "--font-logo": "'Orbitron', sans-serif",
+
+  "--tile":
+    "linear-gradient(158deg, rgba(42,11,64,0.9) 0%, rgba(26,7,42,0.84) 100%)",
+  "--tile-shadow":
+    "0 5px 16px -7px rgba(0,0,0,0.62), 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)",
+  "--panel-shadow": "none",
 };
 
+/**
+ * Neon light — v2 verbatim from PROTO `themesLight.neon` (Task 2 brief), not
+ * derived.
+ */
 const neonLight: ThemeTokens = {
-  "--bg-primary": "#faf0fe",
-  "--bg-secondary": "#f3e0fc",
-  "--bg-header": "#ffffff",
-  "--bg-footer": "#ffffff",
+  "--bg-primary": "#f4ebf3",
+  "--bg-secondary": "#fdf6fb",
+  "--bg-header": "#fdf6fb",
+  "--bg-footer": "#fdf6fb",
   "--bg-tile": "rgba(240,210,255,0.65)",
   "--bg-overlay": "rgba(7,2,16,0.35)",
   "--bg-brand-primary": "#c800a0",
 
-  "--text-primary": "#1a0030",
-  "--text-secondary": "rgba(80,10,120,0.75)",
-  "--text-muted": "rgba(80,10,120,0.5)",
+  "--text-primary": "#2a0a26",
+  "--text-secondary": "rgba(95,32,85,0.72)",
+  "--text-muted": "rgba(125,62,115,0.5)",
   "--text-on-accent": "#ffffff",
 
-  "--accent-positive": "#00c97e",
-  "--accent-negative": "#e8304a",
+  "--accent-positive": "#0a9e63",
+  "--accent-negative": "#d63d52",
   "--accent-aware": "#cc8800",
   "--accent-primary": "#c800a0",
-  "--accent-2": "#00b8cc",
+  "--accent-2": "#0093b3",
 
-  "--border-primary": "rgba(200,0,160,0.3)",
+  "--border-primary": "rgba(200,0,160,0.28)",
   "--border-subtle": "rgba(200,0,160,0.15)",
   "--border": "rgba(200,0,160,0.15)",
-  "--border-strong": "rgba(200,0,160,0.65)",
+  "--border-strong": "rgba(190,0,150,0.58)",
 
-  "--status-connected": "#00c97e",
+  "--status-connected": "#0a9e63",
   "--status-connecting": "#cc8800",
-  "--status-disconnected": "#e8304a",
-  "--status-error": "#e8304a",
+  "--status-disconnected": "#d63d52",
+  "--status-error": "#d63d52",
 
-  "--panel": "rgba(240,210,255,0.65)",
-  "--panel-head": "rgba(200,0,160,0.08)",
+  "--panel": "rgba(255,255,255,0.62)",
+  "--panel-head": "rgba(200,0,160,0.07)",
   "--panel-blur": "12px",
-  "--glow": "0 0 16px rgba(200,0,160,0.3)",
+  "--glow": "0 0 14px rgba(200,0,160,0.2)",
   "--grid": "rgba(200,0,160,0.06)",
   "--chip": "rgba(200,0,160,0.12)",
 
   "--aurora-a": "rgba(200,0,160,0.2)",
   "--aurora-b": "rgba(0,184,204,0.18)",
-  "--aurora-opacity": "0.25",
+  "--aurora-opacity": "0.12",
 
   "--font-display": "'Chakra Petch', sans-serif",
   "--font-mono": "'JetBrains Mono', monospace",
+  "--font-logo": "'Orbitron', sans-serif",
+
+  "--tile": "linear-gradient(158deg, #ffffff 0%, #f7ecf5 100%)",
+  "--tile-shadow":
+    "0 5px 14px -7px rgba(80,20,70,0.24), 0 1px 2px rgba(80,20,70,0.1), inset 0 1px 0 rgba(255,255,255,0.85)",
+  "--panel-shadow": "none",
 };
 
 // ---------------------------------------------------------------------------

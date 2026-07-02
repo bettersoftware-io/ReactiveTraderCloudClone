@@ -12,7 +12,9 @@ export function ConnectionStatusBar(): ReactElement {
   return (
     <div data-testid="connection-status" className={styles.statusBar}>
       <span data-status={status} className={styles.dot} />
-      <span>{statusLabel[status]}</span>
+      <span data-status={status} className={styles.label}>
+        {statusLabel[status]}
+      </span>
     </div>
   );
 }

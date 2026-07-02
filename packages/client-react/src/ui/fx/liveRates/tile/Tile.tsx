@@ -1,14 +1,20 @@
 import type { ReactElement } from "react";
 
-import type { CurrencyPair, Direction, Price } from "@rtc/domain";
+import {
+  type CurrencyPair,
+  type Direction,
+  type Price,
+  PriceMovementType,
+  type PriceTick,
+} from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { StaleIndicator } from "#/ui/shell/stale/StaleIndicator";
 
-import { SpreadDisplay } from "./SpreadDisplay";
+import { formatSpotDate } from "./formatSpotDate";
 import { TileChart } from "./TileChart";
 import { TileConfirmation } from "./TileConfirmation";
-import { TileExecution } from "./TileExecution";
+import { TileFooter } from "./TileFooter";
 import { TileHeader } from "./TileHeader";
 import { TileNotional } from "./TileNotional";
 import { TilePrice } from "./TilePrice";
@@ -37,8 +43,15 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
   const isLoading = !price;
   const isBusy = tileExecution.state.status !== "ready";
   const hasError = !!notional.state.error;
-  const isRfqActive = rfqState.state.status !== "init";
-  const notionalDisabled = isLoading || isBusy || isRfqActive;
+  // "Mid-flow" RFQ state (a quote has been requested/received/rejected) —
+  // distinct from notional.state.isRfq, which just says the CURRENT notional
+  // value requires the RFQ path (before the flow has even been initiated).
+  const isRfqFlowActive = rfqState.state.status !== "init";
+  const notionalDisabled = isLoading || isBusy || isRfqFlowActive;
+  // The price boxes execute at the live market price, so they must be
+  // disabled whenever the notional requires an RFQ quote instead.
+  const priceBoxDisabled =
+    isLoading || isBusy || hasError || stale || notional.state.isRfq;
 
   const tickAnim =
     animIntent?.kind === "tickUp" || animIntent?.kind === "tickDown"
@@ -66,50 +79,56 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
       <div
         data-testid={`tile-${pair.symbol}`}
         data-loading={isLoading ? "true" : "false"}
+        data-busy={isBusy ? "true" : "false"}
         className={styles.tile}
       >
-        <TileHeader base={pair.base} terms={pair.terms} />
-
-        {showChart ? <TileChart history={history} /> : null}
-
-        {price ? (
-          <>
-            <TilePrice
-              price={price}
-              ratePrecision={pair.ratePrecision}
-              pipsPosition={pair.pipsPosition}
-              anim={tickAnim}
-            />
-            <SpreadDisplay spread={price.spread} />
-          </>
-        ) : (
-          <div className={styles.loadingPlaceholder}>Loading...</div>
-        )}
-
-        {notional.state.isRfq ? (
-          !isBusy && (
-            <TileRfq
-              pair={pair}
-              rfqState={rfqState}
-              onRequestQuote={rfqState.requestQuote}
-              onExecute={handleExecute}
-              notional={notional.state.numericValue}
-            />
-          )
-        ) : (
-          <TileExecution
-            onExecute={(dir: Direction): void => {
-              handleExecute(dir);
-            }}
-            disabled={isLoading || isBusy || hasError || stale}
-          />
-        )}
+        <TileHeader
+          base={pair.base}
+          terms={pair.terms}
+          symbol={pair.symbol}
+          movement={price?.movementType ?? PriceMovementType.NONE}
+          movementPips={computeMovementPips(history, pair.pipsPosition)}
+        />
 
         <TileNotional
           notional={notional}
           baseCurrency={pair.base}
           disabled={notionalDisabled}
         />
+
+        {price ? (
+          <TilePrice
+            price={price}
+            ratePrecision={pair.ratePrecision}
+            pipsPosition={pair.pipsPosition}
+            anim={tickAnim}
+            spread={price.spread}
+            onExecute={(dir: Direction): void => {
+              handleExecute(dir);
+            }}
+            disabled={priceBoxDisabled}
+          />
+        ) : (
+          <div className={styles.loadingPlaceholder}>Loading...</div>
+        )}
+
+        {showChart ? <TileChart history={history} /> : null}
+
+        <TileFooter
+          spotDate={formatSpotDate(new Date(), SPOT_VALUE_DAYS)}
+          notional={notional.state.displayValue}
+          baseCurrency={pair.base}
+        />
+
+        {notional.state.isRfq && !isBusy && (
+          <TileRfq
+            pair={pair}
+            rfqState={rfqState}
+            onRequestQuote={rfqState.requestQuote}
+            onExecute={handleExecute}
+            notional={notional.state.numericValue}
+          />
+        )}
 
         <TileConfirmation
           state={tileExecution.state}
@@ -124,4 +143,20 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
 interface TileProps {
   pair: CurrencyPair;
   showChart: boolean;
+}
+
+const SPOT_VALUE_DAYS = 2;
+
+/**
+ * Pip movement between the two most recent history ticks, scaled by the
+ * pair's pip position. Used for the header's "▲/▼ n pip" badge magnitude.
+ */
+function computeMovementPips(
+  history: readonly PriceTick[],
+  pipsPosition: number,
+): number {
+  if (history.length < 2) return 0;
+  const last = history[history.length - 1];
+  const prev = history[history.length - 2];
+  return Math.round(Math.abs(last.mid - prev.mid) * 10 ** pipsPosition);
 }

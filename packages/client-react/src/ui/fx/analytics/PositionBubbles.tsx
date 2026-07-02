@@ -128,12 +128,18 @@ export function PositionBubbles({
               .attr("cy", height / 2);
             g.append("text")
               .attr("text-anchor", "middle")
-              .attr("class", styles.label)
+              .attr("class", styles.symbol)
               .attr("data-testid", (d) => {
                 return `positions-label-${d.id}`;
               })
               .text((d) => {
                 return d.id;
+              });
+            g.append("text")
+              .attr("text-anchor", "middle")
+              .attr("class", styles.amount)
+              .text((d) => {
+                return d.text;
               });
             return g;
           },
@@ -151,12 +157,20 @@ export function PositionBubbles({
                 return d.r;
               });
             update
-              .select("text")
+              .select(`.${styles.symbol}`)
               .attr("x", (d) => {
                 return d.x ?? width / 2;
               })
               .attr("y", (d) => {
-                return (d.y ?? height / 2) + 4;
+                return (d.y ?? height / 2) - 2;
+              });
+            update
+              .select(`.${styles.amount}`)
+              .attr("x", (d) => {
+                return d.x ?? width / 2;
+              })
+              .attr("y", (d) => {
+                return (d.y ?? height / 2) + 10;
               });
             return update;
           },
@@ -206,11 +220,14 @@ export function PositionBubbles({
   }, []);
 
   return (
-    <div
-      ref={wrapperRef}
-      data-testid="position-bubbles"
-      className={styles.container}
-    />
+    <div className={styles.wrapper}>
+      <span className={styles.title}>Net Exposure</span>
+      <div
+        ref={wrapperRef}
+        data-testid="position-bubbles"
+        className={styles.container}
+      />
+    </div>
   );
 }
 

@@ -1,63 +1,129 @@
-/* COSMETIC ONLY — decorative ambient HUD backdrop. Sits behind the workspace
- * (z-index: -1, so it paints above .app's opaque background-color but below the
- * in-flow chrome); the translucent glass panels then reveal the aurora through
- * their blur. Both layers stay at opacity 0 unless the animated-background
- * preference is on, so the default-off state is pixel-neutral. */
+/* COSMETIC ONLY — decorative v2 aurora backdrop (PROTO L104-110/L45-46): two
+ * blurred radial layers, a conic sweep, and a drifting dot grid, sitting
+ * behind the workspace at the per-skin --aurora-opacity token. The
+ * animated-background preference does not toggle visibility (the aurora is
+ * always visible) — it toggles --amb-play between "running"/"paused" via an
+ * inline style on the root, which every layer's animation-play-state reads
+ * through inheritance. */
 
-.backdrop {
+.wrap {
   position: absolute;
   inset: 0;
-  z-index: -1;
   overflow: hidden;
   pointer-events: none;
+  opacity: var(--aurora-opacity);
 }
 
-.aurora,
+.layerA,
+.layerB {
+  position: absolute;
+  inset: -25%;
+  will-change: transform;
+  animation-play-state: var(--amb-play, paused);
+}
+
+.layerA {
+  background:
+    radial-gradient(38% 38% at 28% 32%, var(--aurora-a) 0%, transparent 62%),
+    radial-gradient(34% 34% at 78% 64%, var(--aurora-b) 0%, transparent 62%);
+  opacity: 0.18;
+  filter: blur(46px);
+  animation: aurora-a 52s ease-in-out infinite;
+}
+
+.layerB {
+  background:
+    radial-gradient(
+      30% 36% at 66% 22%,
+      var(--accent-positive) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      40% 40% at 22% 82%,
+      var(--accent-primary) 0%,
+      transparent 60%
+    );
+  opacity: 0.13;
+  filter: blur(58px);
+  animation: aurora-b 68s ease-in-out infinite;
+}
+
+.sweep {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 170vmax;
+  height: 170vmax;
+  margin: -85vmax 0 0 -85vmax;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--accent-primary) 10deg,
+    transparent 34deg
+  );
+  opacity: 0.06;
+  will-change: transform;
+  animation: sweep-rot 90s linear infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
 .grid {
   position: absolute;
   inset: 0;
-  opacity: 0;
+  background-image: radial-gradient(
+    var(--accent-primary) 1.1px,
+    transparent 1.4px
+  );
+  background-size: 24px 24px;
+  opacity: 0.16;
+  animation: grid-drift 90s linear infinite;
+  animation-play-state: var(--amb-play, paused);
 }
 
-.backdrop[data-animated="true"] .aurora {
-  opacity: var(--aurora-opacity);
-  background:
-    radial-gradient(40% 40% at 20% 30%, var(--aurora-a), transparent),
-    radial-gradient(40% 40% at 80% 70%, var(--aurora-b), transparent);
-  animation: auroraDrift 24s ease-in-out infinite;
-}
-
-.backdrop[data-animated="true"] .grid {
-  opacity: 1;
-  background-image:
-    linear-gradient(var(--grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 40px 40px;
-  animation: gridDrift 40s linear infinite;
-}
-
+/* OS-level reduced motion wins over the in-app preference: even with
+ * --amb-play: running, the layers hold still. Same mechanism as the previous
+ * revision (animation: none). */
 @media (prefers-reduced-motion: reduce) {
-  .backdrop[data-animated="true"] .aurora,
-  .backdrop[data-animated="true"] .grid {
+  .layerA,
+  .layerB,
+  .sweep,
+  .grid {
     animation: none;
   }
 }
 
-@keyframes auroraDrift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
+@keyframes aurora-a {
+  0% {
+    transform: translate3d(-7%, -4%, 0) scale(1.08);
   }
   50% {
-    transform: translate3d(2%, -2%, 0);
+    transform: translate3d(7%, 5%, 0) scale(1.28);
+  }
+  100% {
+    transform: translate3d(-7%, -4%, 0) scale(1.08);
   }
 }
 
-@keyframes gridDrift {
+@keyframes aurora-b {
   0% {
-    background-position: 0 0;
+    transform: translate3d(6%, 4%, 0) scale(1.22);
+  }
+  50% {
+    transform: translate3d(-6%, -4%, 0) scale(1.04);
   }
   100% {
-    background-position: 40px 40px;
+    transform: translate3d(6%, 4%, 0) scale(1.22);
+  }
+}
+
+@keyframes sweep-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes grid-drift {
+  to {
+    background-position: 24px 24px;
   }
 }

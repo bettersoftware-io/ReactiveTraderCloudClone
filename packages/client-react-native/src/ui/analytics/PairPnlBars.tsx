@@ -1,11 +1,19 @@
 import type { JSX } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  type TextStyle,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import { type CurrencyPairPosition, formatWithScale } from "@rtc/domain";
 
-import { BASELINE, NEGATIVE, POSITIVE } from "#/ui/analytics/colours";
+import type { RnTheme } from "#/ui/theme/tokens";
+import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 export function PairPnlBars({ positions }: PairPnlBarsProps): JSX.Element {
+  const styles = useThemedStyles(makeStyles);
   const maxAbsPnl = Math.max(
     ...positions.map((p) => {
       return Math.abs(p.basePnl);
@@ -53,22 +61,55 @@ interface PairPnlBarsProps {
   positions: readonly CurrencyPairPosition[];
 }
 
-const styles = StyleSheet.create({
-  container: { gap: 6 },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  symbol: { width: 64, fontSize: 12 },
-  track: { flex: 1, flexDirection: "row", alignItems: "center", height: 12 },
-  centerLine: {
-    position: "absolute",
-    left: "50%",
-    width: 1,
-    height: 12,
-    backgroundColor: BASELINE,
-  },
-  bar: { height: 8 },
-  barPos: { backgroundColor: POSITIVE },
-  barNeg: { backgroundColor: NEGATIVE },
-  spacer: { flex: 1 },
-  labelPos: { width: 56, textAlign: "right", color: POSITIVE, fontSize: 12 },
-  labelNeg: { width: 56, textAlign: "right", color: NEGATIVE, fontSize: 12 },
-});
+interface PairPnlBarsStyles {
+  container: ViewStyle;
+  row: ViewStyle;
+  symbol: TextStyle;
+  track: ViewStyle;
+  centerLine: ViewStyle;
+  bar: ViewStyle;
+  barPos: ViewStyle;
+  barNeg: ViewStyle;
+  spacer: ViewStyle;
+  labelPos: TextStyle;
+  labelNeg: TextStyle;
+}
+
+function makeStyles(t: RnTheme): PairPnlBarsStyles {
+  return StyleSheet.create({
+    container: { gap: 6 },
+    row: { flexDirection: "row", alignItems: "center", gap: 8 },
+    symbol: {
+      width: 64,
+      fontSize: 12,
+      color: t.textSecondary,
+      fontFamily: t.fontMono,
+    },
+    track: { flex: 1, flexDirection: "row", alignItems: "center", height: 12 },
+    centerLine: {
+      position: "absolute",
+      left: "50%",
+      width: 1,
+      height: 12,
+      backgroundColor: t.textMuted,
+    },
+    bar: { height: 8 },
+    barPos: { backgroundColor: t.accentPositive },
+    barNeg: { backgroundColor: t.accentNegative },
+    spacer: { flex: 1 },
+    labelPos: {
+      width: 56,
+      textAlign: "right",
+      color: t.accentPositive,
+      fontSize: 12,
+      fontFamily: t.fontMono,
+    },
+    labelNeg: {
+      width: 56,
+      textAlign: "right",
+      color: t.accentNegative,
+      fontSize: 12,
+      fontFamily: t.fontMono,
+    },
+  });
+}

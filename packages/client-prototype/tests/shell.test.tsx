@@ -5,10 +5,11 @@ import { App } from "#/App";
 
 afterEach(cleanup);
 
-test("nav switches the active placeholder panel", () => {
+test("admin tab shows AdminScreen", () => {
   boot();
   fireEvent.click(screen.getByText("ADMIN"));
-  expect(screen.getByTestId("panel-admin")).toBeDefined();
+  expect(screen.getByTestId("admin-screen")).toBeDefined();
+  expect(screen.queryByTestId("panel-admin")).toBeNull();
 });
 
 test("Preferences toggling animatedBg flips --amb-play", () => {

@@ -14,8 +14,16 @@ afterEach(() => {
 });
 
 describe("ThemePicker", () => {
-  it("lists every skin and selecting one writes it through the skin seam", async () => {
+  it("keeps the skin dropdown closed until the trigger opens it", () => {
     const picker = mount(ThemePicker, { themeSkin: "holo", themeMode: "dark" });
+    expect(picker.isMenuOpen()).toBe(false);
+  });
+
+  it("lists every skin in the open dropdown and selecting one writes it through the skin seam, closing the menu", async () => {
+    const picker = mount(ThemePicker, { themeSkin: "holo", themeMode: "dark" });
+
+    await picker.openMenu();
+    expect(picker.isMenuOpen()).toBe(true);
     expect(picker.skinOptions()).toEqual([
       "classic",
       "holo",
@@ -25,8 +33,30 @@ describe("ThemePicker", () => {
     expect(picker.activeSkin()).toBe("holo");
 
     await picker.selectSkin("neon");
-    expect(picker.activeSkin()).toBe("neon");
+    expect(picker.isMenuOpen()).toBe(false);
     expect(picker.documentSkin()).toBe("neon");
+  });
+
+  it("closes the dropdown on Escape without changing the skin", async () => {
+    const picker = mount(ThemePicker, { themeSkin: "holo", themeMode: "dark" });
+
+    await picker.openMenu();
+    expect(picker.isMenuOpen()).toBe(true);
+
+    await picker.closeMenuWithEscape();
+    expect(picker.isMenuOpen()).toBe(false);
+    expect(picker.documentSkin()).toBe("holo");
+  });
+
+  it("closes the dropdown on an outside click without changing the skin", async () => {
+    const picker = mount(ThemePicker, { themeSkin: "holo", themeMode: "dark" });
+
+    await picker.openMenu();
+    expect(picker.isMenuOpen()).toBe(true);
+
+    await picker.closeMenuWithOutsideClick();
+    expect(picker.isMenuOpen()).toBe(false);
+    expect(picker.documentSkin()).toBe("holo");
   });
 
   it("cycles mode through the reused ThemeToggle seam", async () => {
