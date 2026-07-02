@@ -9,6 +9,6 @@ module.exports = {
     "^@rtc/react-bindings$": "<rootDir>/../react-bindings/dist/index.js",
   },
   transformIgnorePatterns: [
-    "node_modules/(?!(\\.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@testing-library/react-native|@react-rxjs/.*|@rx-state/.*|react-native-svg))",
+    "node_modules/(?!(\\.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@testing-library/react-native|@react-rxjs/.*|@rx-state/.*|react-native-svg|@expo-google-fonts/.*))",
   ],
 };
