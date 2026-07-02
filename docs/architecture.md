@@ -30,6 +30,12 @@
    - [FX Trade Execution Flow](#54-fx-trade-execution-flow)
 6. [Package Dependencies](#6-package-dependencies)
 7. [Communication Patterns](#7-communication-patterns)
+   - [WebSocket Message Format](#websocket-message-format)
+   - [Three Communication Styles](#three-communication-styles)
+   - [Observable Pipeline](#observable-pipeline)
+   - [Runtime Topology: What Runs When](#runtime-topology-what-runs-when)
+   - [Equities Coverage Gap](#equities-coverage-gap)
+   - [Planned: Declarative Effects Server (`@rtc/ws-effects`)](#planned-declarative-effects-server-rtc-ws-effects)
 8. [Replaceability Matrix](#8-replaceability-matrix)
 9. [Test Strategy](#9-test-strategy)
 10. [Key Design Decisions](#10-key-design-decisions)
@@ -263,6 +269,8 @@ C4Component
 ```
 
 > **Naming**: these are **simulators**, not "mocks". They are production code that stands in for an external pricing or execution venue. *Test* mocks are a separate concept and live alongside tests.
+
+> **Two things this diagram does not yet show** (both detailed in [§7 Runtime Topology](#runtime-topology-what-runs-when)): (1) these same simulators also run **in the browser** in simulator mode — the server is only in the loop when `VITE_SERVER_URL` is set; (2) the server currently serves **FX + Credit + Admin only** — the **Equities** simulators are not wired in, so equities is served in browser-simulator mode but not over WebSocket. Both the imperative `WS Handler` and the equities gap are addressed by the planned [`@rtc/ws-effects` declarative server](#planned-declarative-effects-server-rtc-ws-effects).
 
 ---
 
@@ -1108,6 +1116,105 @@ react-rxjs hook             ->  bind(price$) -> usePrice(symbol)
   |
 React component             ->  const price = usePrice(symbol); render
 ```
+
+### Runtime Topology: What Runs When
+
+The single most confusing thing about this system if you only read the code is: **where does the ticking data actually come from when you run the app?** The answer is *"it depends on one environment variable"* — and both answers are correct, because the same simulators are hosted in two different places behind the same port interfaces.
+
+**One switch decides everything.** The client's composition root (`packages/client-react/src/app/buildBrowserPorts.ts`) reads `VITE_SERVER_URL`:
+
+```mermaid
+flowchart TD
+    Dev["pnpm dev (local)"] -->|VITE_SERVER_URL unset| Root
+    Deploy["Vercel deployed build"] -->|VITE_SERVER_URL set| Root
+    E2E["fullstack e2e harness"] -->|VITE_SERVER_URL set| Root
+    Root["buildBrowserPorts()"] --> Q{"url present?"}
+    Q -->|"no"| SIM["createSimulatorPorts()<br/>simulators run IN the browser tab"]
+    Q -->|"yes"| WS["createWsRealPorts(ws)<br/>thin WS adapters → backend"]
+    SIM --> Ports["AppPorts — identical interface either way"]
+    WS --> Ports
+    Ports --> UI["React UI (cannot tell which transport)"]
+```
+
+| How it is run | `VITE_SERVER_URL` | Where prices / blotter / charts come from |
+|---|---|---|
+| **`pnpm dev` locally** (default) | unset | **No backend at all.** The simulators run *inside the browser tab*. The `@rtc/server` package is not even started. |
+| **Deployed site** (Vercel client → Fly server) | set (baked at build) | **Backend over WebSocket** — for FX + Credit + Admin. (Equities: see the gap below.) |
+| **Fullstack e2e** (`tests/fullstack/`) | set (harness spins up a real server) | Backend over WebSocket — this is the path that actually exercises `@rtc/server`. |
+
+**The two modes share one simulator set.** This is the clean-architecture payoff: the UI depends only on port interfaces, never on a transport, so the composition root can fulfil those ports either way.
+
+```mermaid
+flowchart LR
+    subgraph SimMode["MODE A — local pnpm dev (no server)"]
+        direction TB
+        UIa["React UI"] --> VMa["ViewModel / presenters"]
+        VMa --> SPa["Simulator ports"]
+        SPa --> Sa["domain simulators<br/>(in the browser tab)"]
+    end
+
+    subgraph WsMode["MODE B — deployed (Fly + Vercel)"]
+        direction TB
+        UIb["React UI"] --> VMb["ViewModel / presenters"]
+        VMb --> WPb["WS-real ports (thin)"]
+        WPb --> Wsb["WsAdapter"]
+        Wsb <-->|"WebSocket JSON<br/>{type,payload,correlationId}"| Srv["wsHandler switch"]
+        Srv --> SCb["serviceContainer"]
+        SCb --> Sb["SAME domain simulators<br/>(on the server)"]
+    end
+```
+
+A few ports are **always browser-local**, even in Mode B: the telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) has no wire RPC, so `createWsRealPorts` instantiates those simulators in-process regardless of transport — mirroring how `preferences` is handled. Everything else in Mode B is served over the wire.
+
+> The per-tick sequence (subscribe → stream, and RPC with correlation) is the same in both modes — see [§4.1 FX Price Streaming](#41-fx-price-streaming) and [§4.2 FX Trade Execution](#42-fx-trade-execution-rpc), whose `alt` branches already show the mock-vs-real split.
+
+### Equities Coverage Gap
+
+The server's message router (`wsHandler.ts`) handles **16 message types — none of them equities**, and `serviceContainer` does not instantiate the equity simulators. So equities is served **only** in Mode A:
+
+```mermaid
+flowchart TD
+    subgraph Works["Handled by the server (Mode B)"]
+        FX["FX: pricing, blotter, analytics"]
+        Credit["Credit: RFQ workflow"]
+        Admin["Admin: throughput"]
+    end
+    subgraph Gap["NOT handled by the server"]
+        Eq["Equities: watchlist, candles,<br/>depth, orders, positions"]
+    end
+    Eq -.->|"client sends over WS,<br/>server ignores → no data"| Void["(silently dropped)"]
+```
+
+| Feature | Mode A (local sim) | Mode B (deployed WS) |
+|---|---|---|
+| FX pricing / blotter / analytics | ✅ | ✅ server streams |
+| Credit RFQ | ✅ | ✅ |
+| Admin throughput | ✅ | ✅ |
+| Telemetry / incidents | ✅ | ✅ *(browser-local even in WS mode)* |
+| **Equities** (watchlist, charts, depth, orders, positions) | ✅ | ❌ **server has no handlers** |
+
+The equities panels were built simulator-first (HUD / prototype workstreams) and the server was never extended. This is an unfinished seam, not a defect — and it is scheduled to be closed by the declarative-server work below, which also makes Mode B fully faithful.
+
+### Planned: Declarative Effects Server (`@rtc/ws-effects`)
+
+The current server dispatch is an imperative `switch` in `wsHandler.ts`. A planned change replaces it with a small, declarative, RxJS-native **effects micro-framework** extracted into its own package, `@rtc/ws-effects` (`rxjs` only, zero domain knowledge). `@rtc/server` becomes a thin app that composes *effects* — each a stream transform `(inbound$) => outbound$` — instead of hand-routing a switch. The same change **closes the equities gap** by adding the 8 missing message types and wiring the three equity simulators into `serviceContainer`.
+
+This realises the "any framework should be replaceable by changing only its package" principle from [§1.2](#12-architectural-principles): the transport-dispatch framework becomes a genuine, swappable package with the app on top of it.
+
+```mermaid
+flowchart TD
+    Core["WsEffect primitive<br/>(in$, ctx) => out$   — pure, marble-tested"]
+    Sugar1["stream(type, project)"] --> Core
+    Sugar2["rpc(type, outType, handle)   (ack/nack + correlationId)"] --> Core
+    App["app effects (pricing$, executeTrade$, watchlist$ …)"] --> Sugar1
+    App --> Sugar2
+    Core --> Combine["combineEffects(...) → createWsListener(ctx)"]
+    Combine --> Socket["toSocket(ws) — one Socket per connection"]
+```
+
+The wire protocol is unchanged (same `{ type, payload, correlationId }` envelope and message names), so the client is untouched apart from consolidating the duplicated protocol constants into `@rtc/shared`. Full design: [`docs/superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md`](superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md).
+
+> **Historical note.** `@rtc/server` was originally scaffolded with `@marblejs/*` + `fp-ts` dependencies (hence the "Marble.js" mentions in `CLAUDE.md`/`README.md`), but they were **never imported** and were removed by the knip dead-code gate. `@rtc/ws-effects` is a from-scratch homage to the marblejs *pattern* — declarative RxJS effects — without the unmaintained dependency and its transitive vulnerable `ws`.
 
 ---
 
