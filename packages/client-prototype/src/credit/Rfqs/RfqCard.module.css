@@ -1,0 +1,175 @@
+.card {
+  position: relative;
+  background: var(--tile, var(--bg2));
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 14px 15px;
+  box-shadow: var(--tile-shadow, none);
+}
+
+.card[data-state="live"] {
+  border-color: var(--border-strong);
+}
+
+.card[data-anim="enter"][data-parity="a"] {
+  animation: cardInA 0.46s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.card[data-anim="enter"][data-parity="b"] {
+  animation: cardInB 0.46s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.card[data-anim="exit"] {
+  animation: cardOut 0.34s cubic-bezier(0.4, 0, 0.7, 1) forwards;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--border);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dirChip {
+  font-family: var(--font-d, sans-serif);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 1px 7px;
+  border-radius: 3px;
+}
+
+.dirChip[data-dir="buy"] {
+  color: var(--buy);
+  border: 1px solid var(--buy);
+}
+
+.dirChip[data-dir="sell"] {
+  color: var(--sell);
+  border: 1px solid var(--sell);
+}
+
+.ticker {
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.subline {
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  color: var(--faint);
+  margin-top: 5px;
+}
+
+.stateLabel {
+  font-family: var(--font-d, sans-serif);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+.stateLabel[data-state="live"] {
+  color: var(--buy);
+}
+
+.stateLabel[data-state="accepted"] {
+  color: var(--accent);
+}
+
+.quotes {
+  padding: 4px 0;
+}
+
+.footer {
+  padding-top: 11px;
+  border-top: 1px solid var(--border);
+}
+
+.liveRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.secs {
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.barTrack {
+  flex: 1;
+  height: 5px;
+  background: var(--bg2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  width: var(--bar-pct);
+  background: var(--accent);
+  transition: width 0.4s linear;
+}
+
+.cancelBtn {
+  cursor: pointer;
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  padding: 4px 11px;
+}
+
+.acceptedRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkGlyph {
+  color: var(--buy);
+  font-size: 13px;
+}
+
+.acceptedText {
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+  color: var(--buy);
+}
+
+.removeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.binGlyph {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.removeText {
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+  color: var(--dim);
+}
