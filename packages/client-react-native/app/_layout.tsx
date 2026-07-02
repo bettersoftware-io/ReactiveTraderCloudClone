@@ -24,6 +24,7 @@ export default function RootLayout(): JSX.Element {
         <Tabs screenOptions={{ headerShown: false }}>
           <Tabs.Screen name="index" options={{ title: "Rates" }} />
           <Tabs.Screen name="blotter" options={{ title: "Blotter" }} />
+          <Tabs.Screen name="analytics" options={{ title: "Analytics" }} />
         </Tabs>
       </AppRoot>
     </SafeAreaView>
