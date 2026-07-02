@@ -1,0 +1,39 @@
+.wick {
+  position: absolute;
+  left: var(--wx);
+  top: var(--wtop);
+  height: var(--wh);
+  width: 1px;
+  opacity: 0.7;
+}
+
+.body {
+  position: absolute;
+  left: calc(var(--x) - var(--wleft-offset, 0px));
+  top: var(--top);
+  height: var(--h);
+  width: var(--w);
+  opacity: 0.85;
+}
+
+.body[data-up="true"],
+.wick[data-up="true"] {
+  background: var(--buy);
+}
+
+.body[data-up="false"],
+.wick[data-up="false"] {
+  background: var(--sell);
+}
+
+.body[data-last="true"] {
+  opacity: 1;
+}
+
+.body[data-up="true"][data-glow="true"] {
+  box-shadow: 0 0 8px var(--buy);
+}
+
+.body[data-up="false"][data-glow="true"] {
+  box-shadow: 0 0 8px var(--sell);
+}

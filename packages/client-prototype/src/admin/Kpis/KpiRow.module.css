@@ -1,0 +1,100 @@
+.row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  padding: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.label {
+  font-family: var(--font-m, monospace);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.valueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.value {
+  font-family: "Orbitron", sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  text-shadow: 0 0 14px currentColor;
+}
+
+.value[data-kpi="tput"] {
+  color: var(--accent2);
+}
+
+.value[data-kpi="lat"],
+.line[data-kpi="lat"] {
+  color: var(--accent);
+  stroke: var(--accent);
+}
+
+.value[data-kpi="lat"][data-warn="true"],
+.line[data-kpi="lat"][data-warn="true"],
+.value[data-kpi="err"][data-warn="true"],
+.line[data-kpi="err"][data-warn="true"] {
+  color: var(--sell);
+  stroke: var(--sell);
+}
+
+.value[data-kpi="err"],
+.line[data-kpi="err"],
+.value[data-kpi="sess"],
+.line[data-kpi="sess"] {
+  color: var(--buy);
+  stroke: var(--buy);
+}
+
+.line[data-kpi="tput"] {
+  stroke: var(--accent2);
+}
+
+.unit {
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.delta {
+  margin-top: 3px;
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+}
+
+.delta[data-delta-up="true"] {
+  color: var(--buy);
+}
+
+.delta[data-delta-up="false"] {
+  color: var(--sell);
+}
+
+.spark {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 30px;
+  opacity: 0.55;
+}
+
+.line {
+  fill: transparent;
+  stroke-width: 1.4;
+}

@@ -37,7 +37,7 @@ export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
   backgroundColor(): string {
     const el = this.row();
     if (el.dataset.highlight === "true") return "animation:backgroundFlash";
-    if (el.dataset.hovered === "true") return "var(--bg-secondary)";
+    if (el.dataset.hovered === "true") return "var(--chip)";
     return "transparent";
   }
 

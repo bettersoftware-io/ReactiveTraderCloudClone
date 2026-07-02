@@ -1,0 +1,159 @@
+/* Equities dock (PROTO 596-685): a center column (Chart over the Orders/
+   Positions blotter, split eqCenterR) beside an aside (Order Ticket over the
+   Watchlist, split eqRightR), the two split by eqAsideR. Ratios flow in as
+   `--main-ratio` / `--center-ratio` / `--aside-ratio` custom properties and
+   drive flex-grow splits. Maximize (data-max-panel) hides the non-maximized
+   panels; a maximized center panel additionally collapses the aside to a 38px
+   restore strip (rendered by EquitiesScreen when rightCollapsed). */
+
+.screen {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.centerCol {
+  display: flex;
+  flex-direction: column;
+  flex: var(--main-ratio) 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.aside {
+  display: flex;
+  flex-direction: column;
+  flex: calc(1 - var(--main-ratio)) 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chartRegion {
+  display: flex;
+  flex-direction: column;
+  flex: var(--center-ratio) 1 0;
+  min-height: 0;
+}
+
+.eblotRegion {
+  display: flex;
+  flex-direction: column;
+  flex: calc(1 - var(--center-ratio)) 1 0;
+  min-height: 0;
+}
+
+.ticketRegion {
+  display: flex;
+  flex-direction: column;
+  flex: var(--aside-ratio) 1 0;
+  min-height: 0;
+}
+
+.watchRegion {
+  display: flex;
+  flex-direction: column;
+  flex: calc(1 - var(--aside-ratio)) 1 0;
+  min-height: 0;
+}
+
+.centerHandle,
+.mainHandle,
+.asideHandle {
+  flex: none;
+}
+
+.regionLabel {
+  font-family: var(--font-d, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.collapsedStrip {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
+  background: var(--panel-head);
+}
+
+.stripBtn {
+  flex: 1;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  padding: 12px 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: var(--dim);
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}
+
+.stripBtn:hover {
+  color: var(--accent);
+}
+
+/* — maximize a center panel: hide its column sibling + center handle + the
+   V-split handle, and collapse the aside to its 38px restore strip. — */
+
+.screen[data-max-panel="chart"] .eblotRegion,
+.screen[data-max-panel="chart"] .centerHandle,
+.screen[data-max-panel="chart"] .mainHandle {
+  display: none;
+}
+
+.screen[data-max-panel="chart"] .centerCol,
+.screen[data-max-panel="chart"] .chartRegion {
+  flex: 1 1 auto;
+}
+
+.screen[data-max-panel="chart"] .aside {
+  flex: 0 0 38px;
+}
+
+.screen[data-max-panel="eblot"] .chartRegion,
+.screen[data-max-panel="eblot"] .centerHandle,
+.screen[data-max-panel="eblot"] .mainHandle {
+  display: none;
+}
+
+.screen[data-max-panel="eblot"] .centerCol,
+.screen[data-max-panel="eblot"] .eblotRegion {
+  flex: 1 1 auto;
+}
+
+.screen[data-max-panel="eblot"] .aside {
+  flex: 0 0 38px;
+}
+
+/* — maximize an aside panel: hide only its aside sibling + aside handle; the
+   center column is untouched. — */
+
+.screen[data-max-panel="ticket"] .watchRegion,
+.screen[data-max-panel="ticket"] .asideHandle {
+  display: none;
+}
+
+.screen[data-max-panel="ticket"] .ticketRegion {
+  flex: 1 1 auto;
+}
+
+.screen[data-max-panel="watch"] .ticketRegion,
+.screen[data-max-panel="watch"] .asideHandle {
+  display: none;
+}
+
+.screen[data-max-panel="watch"] .watchRegion {
+  flex: 1 1 auto;
+}

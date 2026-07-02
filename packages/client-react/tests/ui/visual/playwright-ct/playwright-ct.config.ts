@@ -26,6 +26,23 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
+  // Serial worker pin — everywhere, not just locally. Each CT worker is its
+  // own Chromium instance mounting components through a live-compiling Vite
+  // dev server; under CPU contention a handful of scenarios' "wait for stable
+  // frame" check can pass one frame before layout has actually settled —
+  // producing a screenshot 1-7px off in width or height (not the AA colour
+  // jitter the maxDiffPixelRatio below absorbs; a genuine dimension mismatch,
+  // which toHaveScreenshot always hard-fails regardless of that ratio).
+  // Serialized (--workers=1) runs were 100% reproducible across repeated
+  // full-suite passes; default (CPU-count) parallelism flaked on a random
+  // ~2-5% subset every run. Same oversubscription problem run-all.ts already
+  // solves for cross-runner concurrency (see its top-of-file comment). First
+  // observed on a darwin-arm64 dev box; then confirmed on CI x86 runners
+  // (2026-07-02): an update-visual-goldens run and the very next ci.yml visual
+  // run — same container image, same commit — disagreed on 25 CT fixtures by
+  // 1-7px dimension drift, so both golden generation and comparison must run
+  // serialized to be deterministic.
+  workers: 1,
   // Cross-runner anti-aliasing tolerance. The component-test runner bundles each
   // scenario through its own privately-pinned vite (see ctViteConfig below) and
   // rasterizes text in isolation; glyph-edge anti-aliasing varies by ~1% of

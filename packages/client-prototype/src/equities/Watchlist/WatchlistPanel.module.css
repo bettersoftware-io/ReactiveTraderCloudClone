@@ -1,0 +1,40 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sortBtn {
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--chip);
+  color: var(--accent);
+  font-family: var(--font-m, monospace);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.add {
+  color: var(--faint);
+  font-size: 15px;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px;
+}

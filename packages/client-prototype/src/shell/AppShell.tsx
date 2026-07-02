@@ -1,12 +1,13 @@
 import type { ReactElement } from "react";
 
+import { AdminScreen } from "#/admin/AdminScreen";
 import { CreditScreen } from "#/credit/CreditScreen";
+import { EquitiesScreen } from "#/equities/EquitiesScreen";
 import { FxScreen } from "#/fx/FxScreen";
 import styles from "#/shell/AppShell.module.css";
 import { AmbientBackground } from "#/shell/ambient/AmbientBackground";
 import { Header } from "#/shell/Header/Header";
 import type { Tab } from "#/shell/Header/useMenus";
-import { PlaceholderPanel } from "#/shell/PlaceholderPanel";
 import { StatusBar } from "#/shell/StatusBar/StatusBar";
 
 export interface AppShellProps {
@@ -47,8 +48,10 @@ export function AppShell(props: AppShellProps): ReactElement {
             <FxScreen />
           ) : tab === "credit" ? (
             <CreditScreen />
+          ) : tab === "equities" ? (
+            <EquitiesScreen />
           ) : (
-            <PlaceholderPanel tab={tab} />
+            <AdminScreen />
           )}
         </main>
         <StatusBar />

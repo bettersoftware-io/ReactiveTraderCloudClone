@@ -4,7 +4,12 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background-color: var(--bg-primary);
+  background: transparent;
+  /* The dock's 8px inset lives here — exactly once, at the root. It must NOT
+   * sit on .split: splits nest (FX is column → [row-split, blotter]), so a
+   * per-split padding compounds with depth and insets the inner row's panels
+   * 16px while the sibling blotter sits at 8px. */
+  padding: 8px;
 }
 
 .split {
@@ -12,7 +17,7 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
-  gap: 0;
+  gap: 8px;
 }
 
 .split[data-dir="row"] {
@@ -27,7 +32,20 @@
   display: flex;
   min-width: 0;
   min-height: 0;
-  flex-grow: var(--split-size, 1);
+  /* A pinned sibling always renders with flex-grow:0 (never contributes a
+   * --split-size), so a growing split can end up with a grow-factor SUM
+   * below 1 (e.g. the FX root split is [0.78 growing, 0 pinned]). Per the
+   * flexbox spec, free space is distributed as `own-factor / line-sum`, but
+   * when that sum is < 1 the growing item only consumes `own-factor` of the
+   * free space and leaves the rest unfilled — a real, observable browser
+   * behaviour (verified: a solo flex-grow:0.78 item in an 800px column only
+   * grows to 624px, not 800px), not a CSS authoring mistake here. Scaling by
+   * a large constant pushes the line's grow-factor sum comfortably above 1
+   * in every case while leaving the *ratio* between growing siblings (e.g.
+   * the 0.7/0.3 rates|analytics split, which has no pinned sibling and was
+   * already unaffected) unchanged, so it fully consumes the split's height
+   * with no dead band above the pinned blotter strip. */
+  flex-grow: calc(var(--split-size, 1) * 1000);
   flex-shrink: 1;
   flex-basis: 0;
   position: relative;
@@ -60,9 +78,12 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--panel);
+  backdrop-filter: blur(var(--panel-blur));
+  box-shadow: var(--panel-shadow);
   overflow: hidden;
-  background-color: var(--panel);
-  border: 1px solid var(--border-subtle);
 }
 
 .panel[data-strip="true"] {
@@ -77,15 +98,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px;
-  background-color: var(--panel-head);
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 9px 13px;
+  background: var(--panel-head);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .panelTitle {
   font-family: var(--font-display);
-  color: var(--text-secondary);
-  font-size: 12px;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--accent-primary);
 }
 
 .panelControls {

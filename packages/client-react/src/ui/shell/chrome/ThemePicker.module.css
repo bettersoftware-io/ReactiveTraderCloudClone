@@ -4,7 +4,47 @@
   gap: 9px;
 }
 
+.anchor {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-primary);
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: transparent;
+}
+
+.trigger[aria-expanded="true"] {
+  border-color: var(--border-strong);
+  background-color: var(--chip);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 60;
+  width: 200px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
 .heading {
+  display: block;
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--border-primary);
+  background-color: var(--panel-head);
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 10px;
@@ -12,32 +52,34 @@
   color: var(--accent-primary);
 }
 
-.skins {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
 .skinRow {
   display: flex;
   align-items: center;
-  gap: 7px;
-  height: 28px;
-  padding: 0 9px;
-  border: 1px solid var(--border-primary);
-  border-radius: 5px;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 13px;
+  border: none;
+  border-bottom: 1px solid var(--border-primary);
   cursor: pointer;
   background-color: transparent;
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-secondary);
+  text-align: left;
+}
+
+.skinRow:last-child {
+  border-bottom: none;
+}
+
+.skinRow:hover {
+  color: var(--text-primary);
 }
 
 .skinRow[data-active="true"] {
-  border-color: var(--border-strong);
   background-color: var(--chip);
   color: var(--text-primary);
 }
@@ -64,7 +106,21 @@
 }
 
 .skinName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: inherit;
+}
+
+.trigger .skinName {
+  color: var(--text-primary);
+}
+
+.caret {
+  font-size: 9px;
+  color: var(--accent-primary);
 }
 
 .mark {

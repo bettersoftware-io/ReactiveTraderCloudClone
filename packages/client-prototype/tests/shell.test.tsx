@@ -5,10 +5,11 @@ import { App } from "#/App";
 
 afterEach(cleanup);
 
-test("nav switches the active placeholder panel", () => {
+test("admin tab shows AdminScreen", () => {
   boot();
-  fireEvent.click(screen.getByText("EQUITIES"));
-  expect(screen.getByTestId("panel-equities")).toBeDefined();
+  fireEvent.click(screen.getByText("ADMIN"));
+  expect(screen.getByTestId("admin-screen")).toBeDefined();
+  expect(screen.queryByTestId("panel-admin")).toBeNull();
 });
 
 test("Preferences toggling animatedBg flips --amb-play", () => {
@@ -43,6 +44,13 @@ test("credit tab shows CreditScreen with RFQs panel", () => {
   fireEvent.click(screen.getByText("CREDIT"));
   expect(screen.getByText("◳ RFQs")).toBeDefined();
   expect(screen.queryByTestId("panel-credit")).toBeNull();
+});
+
+test("equities tab shows EquitiesScreen", () => {
+  boot();
+  fireEvent.click(screen.getByText("EQUITIES"));
+  expect(screen.getByTestId("equities-screen")).toBeDefined();
+  expect(screen.queryByTestId("panel-equities")).toBeNull();
 });
 
 // — helpers —————————————————————————————————————————————————————————————————————

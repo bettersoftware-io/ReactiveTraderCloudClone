@@ -48,8 +48,15 @@ export function HeaderChrome({
   return (
     <header data-testid="header" className={styles.header}>
       <div className={styles.brand}>
-        <span className={styles.wordmark}>REACTIVE TRADER</span>
-        <span className={styles.subtitle}>FX · CREDIT · EQUITIES · HUD</span>
+        <span className={styles.logoMark} aria-hidden="true">
+          ⬡
+        </span>
+        <span className={styles.brandText}>
+          <span className={styles.wordmark}>REACTIVE TRADER</span>
+          <span className={styles.subtitle}>
+            FX · CREDIT · EQUITIES · HUD TERMINAL
+          </span>
+        </span>
       </div>
 
       <nav className={styles.nav} aria-label="Workspace">

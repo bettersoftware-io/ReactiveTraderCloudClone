@@ -64,7 +64,7 @@ describe("TileNotional", () => {
     expect(reset).toBe(1);
   });
 
-  it("renders the error message and red underline when in error", () => {
+  it("renders the error message and red border when in error", () => {
     const n = mount(TileNotional, {
       props: {
         notional: notional({
@@ -77,6 +77,23 @@ describe("TileNotional", () => {
     });
     expect(n.errorText()).toBe("Invalid input");
     expect(n.borderBottomColor()).toContain("var(--accent-negative)");
+  });
+
+  it("shows a MAX tag beside the input when in error", () => {
+    const n = mount(TileNotional, {
+      props: {
+        notional: notional({ error: "Invalid input", isDefault: false }),
+        baseCurrency: "EUR",
+      },
+    });
+    expect(n.hasMaxTag()).toBe(true);
+  });
+
+  it("hides the MAX tag when there is no error", () => {
+    const n = mount(TileNotional, {
+      props: { notional: notional(), baseCurrency: "EUR" },
+    });
+    expect(n.hasMaxTag()).toBe(false);
   });
 
   it("disables the input when disabled", () => {

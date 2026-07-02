@@ -1,0 +1,92 @@
+.card {
+  padding: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.title {
+  margin-bottom: 12px;
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.name {
+  flex: none;
+  width: 128px;
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+  color: var(--text);
+}
+
+.track {
+  flex: 1;
+  height: 6px;
+  overflow: hidden;
+  background: var(--panel);
+  border-radius: 3px;
+}
+
+.fill {
+  width: var(--bar-pct);
+  height: 100%;
+}
+
+.lat {
+  width: 42px;
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  text-align: right;
+  color: var(--dim);
+}
+
+.up {
+  width: 48px;
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  text-align: right;
+}
+
+.row[data-status="ONLINE"] .dot,
+.row[data-status="ONLINE"] .fill,
+.row[data-status="ONLINE"] .up {
+  color: var(--buy);
+  background: var(--buy);
+}
+
+.row[data-status="DEGRADED"] .dot,
+.row[data-status="DEGRADED"] .fill,
+.row[data-status="DEGRADED"] .up {
+  color: var(--accent);
+  background: var(--accent);
+}
+
+.row[data-status="ONLINE"] .dot {
+  box-shadow: 0 0 8px var(--buy);
+}
+
+.row[data-status="DEGRADED"] .dot {
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.row[data-status="ONLINE"] .up,
+.row[data-status="DEGRADED"] .up {
+  background: none;
+}

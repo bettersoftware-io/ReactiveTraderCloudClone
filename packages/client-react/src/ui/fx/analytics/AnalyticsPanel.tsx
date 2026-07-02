@@ -29,7 +29,9 @@ export function AnalyticsPanel(): ReactElement | null {
         <span className={styles.title}>Analytics</span>
 
         <div>
-          <span className={styles.sectionLabel}>Profit &amp; Loss</span>
+          <span className={`${styles.sectionLabel} ${styles.pnlLabel}`}>
+            Profit &amp; Loss
+          </span>
           <PnlValue value={latestPnl} />
           <PnlChart history={data.history} />
         </div>

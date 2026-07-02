@@ -10,13 +10,14 @@ import {
   bubblesHeight,
   computeBubbleLayout,
 } from "#/ui/analytics/bubbleLayout";
-import { NEGATIVE, POSITIVE } from "#/ui/analytics/colours";
+import { useTheme } from "#/ui/theme/useTheme";
 
 const AREA_WIDTH = 320;
 
 export function ExposureBubbles({
   positions,
 }: ExposureBubblesProps): JSX.Element {
+  const theme = useTheme();
   const placed = computeBubbleLayout(aggregatePositionsByCurrency(positions), {
     width: AREA_WIDTH,
   });
@@ -38,7 +39,11 @@ export function ExposureBubbles({
             cx={bubble.x}
             cy={bubble.y}
             r={bubble.radius}
-            fill={bubble.sign === "pos" ? POSITIVE : NEGATIVE}
+            fill={
+              bubble.sign === "pos"
+                ? theme.accentPositive
+                : theme.accentNegative
+            }
             fillOpacity={0.7}
           />
         );
@@ -50,7 +55,7 @@ export function ExposureBubbles({
             x={bubble.x}
             y={bubble.y}
             fontSize={11}
-            fill="#ffffff"
+            fill={theme.textOnAccent}
             textAnchor="middle"
             alignmentBaseline="middle"
           >
