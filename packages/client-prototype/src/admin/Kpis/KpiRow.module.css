@@ -55,7 +55,8 @@
 
 .value[data-kpi="err"],
 .line[data-kpi="err"],
-.value[data-kpi="sess"] {
+.value[data-kpi="sess"],
+.line[data-kpi="sess"] {
   color: var(--buy);
   stroke: var(--buy);
 }
