@@ -14,18 +14,9 @@
 .sym {
   font-family: "Orbitron", sans-serif;
   font-weight: 700;
-  font-size: 30px;
-  letter-spacing: 0.02em;
+  font-size: 20px;
+  letter-spacing: 0.06em;
   color: var(--text);
-  transition: color 0.3s;
-}
-
-.sym[data-flash="true"][data-dir="up"] {
-  color: var(--buy);
-}
-
-.sym[data-flash="true"][data-dir="down"] {
-  color: var(--sell);
 }
 
 .name {
@@ -33,6 +24,29 @@
   font-family: var(--font-m, monospace);
   font-size: 10px;
   color: var(--faint);
+}
+
+.priceBlock {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.last {
+  font-family: "Orbitron", sans-serif;
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  transition: color 0.3s;
+}
+
+.last[data-flash="true"][data-dir="up"] {
+  color: var(--buy);
+}
+
+.last[data-flash="true"][data-dir="down"] {
+  color: var(--sell);
 }
 
 .change {
@@ -54,6 +68,11 @@
   gap: 18px;
   font-family: var(--font-m, monospace);
   font-size: 11px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
 }
 
 .statLabel {

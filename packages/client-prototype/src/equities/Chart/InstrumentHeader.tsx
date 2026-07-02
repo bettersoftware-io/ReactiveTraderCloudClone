@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactElement } from "react";
+import type { ReactElement } from "react";
 
 import styles from "#/equities/Chart/InstrumentHeader.module.css";
 import { EQ_META } from "#/equities/equitiesData";
@@ -17,8 +17,9 @@ export interface InstrumentHeaderProps {
   vol: string;
 }
 
-// PROTO L610-618: the live instrument header — symbol lede, price + change,
-// and the BID/ASK/RANGE/VOL stat strip.
+// PROTO L607-618: the live instrument header — a static Orbitron ticker lede
+// with the name/exchange beneath, a separate flash-coloured Orbitron price
+// with its absolute+percent change, and the BID/ASK/RANGE/VOL stat strip.
 export function InstrumentHeader(props: InstrumentHeaderProps): ReactElement {
   const { sym, last, prev, flashOn, flashDir, seriesHigh, seriesLow, vol } =
     props;
@@ -27,27 +28,28 @@ export function InstrumentHeader(props: InstrumentHeaderProps): ReactElement {
   const up = chgAbs >= 0;
   const dayHi = Math.max(seriesHigh, last);
   const dayLo = Math.min(seriesLow, last);
-  const flashStyle = { "--flash": flashOn ? "1" : "0" } as CSSProperties;
 
   return (
     <div className={styles.header}>
       <div className={styles.idBlock}>
+        <div className={styles.sym}>{sym}</div>
+        <div className={styles.name}>
+          {EQ_META[sym].name} · {EQ_META[sym].exch}
+        </div>
+      </div>
+      <div className={styles.priceBlock}>
         <div
-          className={styles.sym}
+          className={styles.last}
           data-flash={String(flashOn)}
           data-dir={flashDir === 1 ? "up" : "down"}
-          style={flashStyle}
         >
           {last.toFixed(2)}
         </div>
-        <div className={styles.name}>
-          {sym} · {EQ_META[sym].name} · {EQ_META[sym].exch}
+        <div className={styles.change} data-up={String(up)}>
+          {up ? "+" : ""}
+          {chgAbs.toFixed(2)} ({up ? "+" : ""}
+          {chgPct.toFixed(2)}%)
         </div>
-      </div>
-      <div className={styles.change} data-up={String(up)}>
-        {up ? "+" : ""}
-        {chgAbs.toFixed(2)} ({up ? "+" : ""}
-        {chgPct.toFixed(2)}%)
       </div>
       <div className={styles.spacer} />
       <div className={styles.stats}>
