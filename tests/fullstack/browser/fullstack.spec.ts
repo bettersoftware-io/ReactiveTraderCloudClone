@@ -26,3 +26,28 @@ test.describe("full-stack: live pricing renders from the real server", () => {
     await expect(firstTile).not.toContainText("Loading...");
   });
 });
+
+/**
+ * Regression test for the equities-over-WS gap closed in Tasks 12-13: before
+ * those tasks, the server had no equities effects, so the watchlist's
+ * `marketData.watchlist()` port call never resolved over WsReal and the panel
+ * stayed empty. A watchlist row rendering here proves the full chain: browser
+ * → React → presenter → WsReal adapter → WebSocket → server watchlist$
+ * effect → EquityMarketDataSimulator.
+ */
+test.describe("full-stack: equities data renders from the real server", () => {
+  test("the equities watchlist shows a live quote streamed from the backend", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    await page.locator("[data-testid='tab-equities']").click();
+
+    const firstRow = page.locator("[data-testid^='watchlist-row-']").first();
+    await expect(firstRow).toBeVisible({ timeout: 20_000 });
+
+    // The LAST column reads "—" until a real quote tick arrives over the
+    // socket, then renders a decimal price (e.g. 142.37).
+    await expect(firstRow).toContainText(/\d+\.\d+/, { timeout: 20_000 });
+  });
+});

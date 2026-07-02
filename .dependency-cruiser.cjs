@@ -47,6 +47,14 @@ module.exports = {
       from: { path: "^packages/server/src" },
       to: { path: "^packages/client-react/" },
     },
+    {
+      name: "ws-effects-stays-pure",
+      severity: "error",
+      comment:
+        "@rtc/ws-effects is a transport framework — it must not depend on domain/shared/client/server.",
+      from: { path: "^packages/ws-effects/src" },
+      to: { path: "^packages/(domain|shared|client-react|server)/" },
+    },
   ],
   options: {
     tsPreCompilationDeps: false,

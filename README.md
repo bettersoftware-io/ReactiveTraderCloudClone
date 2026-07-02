@@ -33,13 +33,14 @@ packages/
                            simulators. Only runtime dependency: rxjs.
   shared/    @rtc/shared   DTOs and wire-format contracts. Depends on domain.
   client-react/  @rtc/client-react   React + RxJS + Vite web app. Depends on domain + shared.
-  server/    @rtc/server   Marble.js + RxJS backend. Depends on domain + shared.
+  ws-effects/  @rtc/ws-effects   Small declarative RxJS effects framework (rxjs-only). Depends on nothing but rxjs.
+  server/    @rtc/server   Native WebSocket + @rtc/ws-effects backend. Depends on domain + shared + ws-effects.
   mobile/    @rtc/mobile   React Native client (planned). Depends on domain + shared.
 ```
 
 **The rule:** `domain` knows nothing of `shared`; `shared` knows nothing of the
 apps; `client`, `server`, and `mobile` never depend on each other. Any
-framework (React, RxJS, Marble.js, Vite, Vitest) is meant to be replaceable by
+framework (React, RxJS, ws-effects, Vite, Vitest) is meant to be replaceable by
 changing only its own package. pnpm strict mode enforces the single-dependency
 constraint on the domain at install time.
 
@@ -85,7 +86,7 @@ pnpm build       # Topological build: domain → shared → client + server
 ```bash
 pnpm dev                          # everything: Vite client + tsx-watch server, concurrently
 pnpm --filter @rtc/client-react dev     # frontend only (Vite, http://localhost:5173)
-pnpm --filter @rtc/server dev     # backend only (Marble.js, tsx watch)
+pnpm --filter @rtc/server dev     # backend only (native WebSocket + @rtc/ws-effects, tsx watch)
 ```
 
 The client is served by Vite (default `http://localhost:5173`). The composition

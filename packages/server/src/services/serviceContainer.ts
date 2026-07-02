@@ -3,8 +3,15 @@ import {
   CreditRfqSimulator,
   DEALERS_CATALOG,
   DealerSimulator,
+  EquityMarketDataSimulator,
+  EquityOrderSimulator,
+  EquityPositionSimulator,
   ExecutionSimulator,
+  type FillEvent,
   InstrumentSimulator,
+  type MarketDataPort,
+  type OrderPort,
+  type PositionPort,
   PricingSimulator,
   ReferenceDataSimulator,
   TradeStoreSimulator,
@@ -22,6 +29,9 @@ export interface ServiceContainer {
   readonly dealers: DealerSimulator;
   readonly workflow: CreditRfqSimulator;
   readonly throughput: ThroughputService;
+  readonly marketData: MarketDataPort;
+  readonly orders: OrderPort;
+  readonly positions: PositionPort;
 }
 
 export function createServices(): ServiceContainer {
@@ -34,6 +44,16 @@ export function createServices(): ServiceContainer {
   const dealers = new DealerSimulator();
   const workflow = new CreditRfqSimulator(DEALERS_CATALOG);
   const throughput = new ThroughputService();
+  const marketData = new EquityMarketDataSimulator();
+  const positions = new EquityPositionSimulator(marketData);
+  const orders = new EquityOrderSimulator({
+    listener: (fill: FillEvent): void => {
+      positions.onFill(fill);
+    },
+    markFor: (symbol: string): number => {
+      return marketData.currentPrice(symbol);
+    },
+  });
 
   return {
     referenceData,
@@ -45,5 +65,8 @@ export function createServices(): ServiceContainer {
     dealers,
     workflow,
     throughput,
+    marketData,
+    orders,
+    positions,
   };
 }

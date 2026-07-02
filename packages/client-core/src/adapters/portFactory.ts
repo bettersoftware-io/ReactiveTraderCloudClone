@@ -73,6 +73,7 @@ import type {
   RpcResponse,
   WorkflowEvent,
 } from "@rtc/shared";
+import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
 
@@ -151,62 +152,6 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
     metricControls: [latency, errorRate, topology, eventLog],
   };
 }
-
-// ── Protocol constants (mirrored from server) ───────────────────
-
-const CLIENT_MSG = {
-  SUBSCRIBE_REFERENCE_DATA: "subscribe.referenceData",
-  SUBSCRIBE_PRICING: "subscribe.pricing",
-  SUBSCRIBE_BLOTTER: "subscribe.blotter",
-  SUBSCRIBE_ANALYTICS: "subscribe.analytics",
-  SUBSCRIBE_INSTRUMENTS: "subscribe.instruments",
-  SUBSCRIBE_DEALERS: "subscribe.dealers",
-  SUBSCRIBE_WORKFLOW: "subscribe.workflow",
-  EXECUTE_TRADE: "rpc.executeTrade",
-  GET_PRICE_HISTORY: "rpc.getPriceHistory",
-  CREATE_RFQ: "rpc.createRfq",
-  CANCEL_RFQ: "rpc.cancelRfq",
-  QUOTE: "rpc.quote",
-  PASS: "rpc.pass",
-  ACCEPT: "rpc.accept",
-  GET_THROUGHPUT: "admin.getThroughput",
-  SET_THROUGHPUT: "admin.setThroughput",
-  SUBSCRIBE_WATCHLIST: "subscribe.watchlist",
-  SUBSCRIBE_EQ_QUOTES: "subscribe.eqQuotes",
-  GET_CANDLES: "rpc.getCandles",
-  SUBSCRIBE_DEPTH: "subscribe.depth",
-  PLACE_ORDER: "rpc.placeOrder",
-  CANCEL_ORDER: "rpc.cancelOrder",
-  SUBSCRIBE_ORDERS: "subscribe.orders",
-  SUBSCRIBE_POSITIONS: "subscribe.positions",
-} as const;
-
-const SERVER_MSG = {
-  REFERENCE_DATA: "stream.referenceData",
-  PRICE_TICK: "stream.priceTick",
-  BLOTTER: "stream.blotter",
-  ANALYTICS: "stream.analytics",
-  INSTRUMENT_EVENT: "stream.instrumentEvent",
-  DEALER_EVENT: "stream.dealerEvent",
-  WORKFLOW_EVENT: "stream.workflowEvent",
-  EXECUTION_RESPONSE: "rpc.executeTrade.response",
-  PRICE_HISTORY_RESPONSE: "rpc.getPriceHistory.response",
-  CREATE_RFQ_RESPONSE: "rpc.createRfq.response",
-  CANCEL_RFQ_RESPONSE: "rpc.cancelRfq.response",
-  QUOTE_RESPONSE: "rpc.quote.response",
-  PASS_RESPONSE: "rpc.pass.response",
-  ACCEPT_RESPONSE: "rpc.accept.response",
-  THROUGHPUT_RESPONSE: "admin.getThroughput.response",
-  SET_THROUGHPUT_RESPONSE: "admin.setThroughput.response",
-  WATCHLIST: "stream.watchlist",
-  EQ_QUOTE: "stream.eqQuote",
-  CANDLES_RESPONSE: "rpc.getCandles.response",
-  DEPTH: "stream.depth",
-  ORDER_LIFECYCLE: "stream.orderLifecycle",
-  CANCEL_ORDER_RESPONSE: "rpc.cancelOrder.response",
-  ORDERS: "stream.orders",
-  POSITIONS: "stream.positions",
-} as const;
 
 // ── Port Implementations ────────────────────────────────────────
 

@@ -29,16 +29,17 @@ packages/
   shared/        @rtc/shared         — DTOs, wire-format contracts. Depends on domain.
   client-react/  @rtc/client-react   — React + RxJS + Vite. Depends on domain, shared.
   mobile/        @rtc/mobile         — React Native (planned). Depends on domain, shared.
-  server/        @rtc/server         — Marble.js + RxJS. Depends on domain, shared.
+  ws-effects/    @rtc/ws-effects     — Small declarative RxJS effects framework. Pure TS, depends only on rxjs at runtime.
+  server/        @rtc/server         — Native WebSocket + @rtc/ws-effects. Depends on domain, shared, ws-effects.
 ```
 
-**Dependency rule:** dependencies flow inward only. `domain` has only `rxjs` as a runtime dep. `shared` depends only on `domain`. `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other.
+**Dependency rule:** dependencies flow inward only. `domain` has only `rxjs` as a runtime dep. `shared` depends only on `domain`. `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other. `server` additionally depends on `ws-effects`, which itself depends on nothing but `rxjs`.
 
-**Single-dep constraint on `@rtc/domain`:** Domain may depend on `rxjs` at runtime — and only on `rxjs`. RxJS is the explicit architectural exception, chosen for its declarative stream operators and the team's familiarity with it. No other runtime dependencies are permitted. pnpm strict mode enforces this at install time.
+**Single-dep constraint on `@rtc/domain`:** Domain may depend on `rxjs` at runtime — and only on `rxjs`. RxJS is the explicit architectural exception, chosen for its declarative stream operators and the team's familiarity with it. No other runtime dependencies are permitted. pnpm strict mode enforces this at install time. `@rtc/ws-effects` follows the same rxjs-only constraint.
 
 ## Architecture Goals
 
 - Follow clean architecture principles (separation of concerns, dependency inversion)
-- "Make choices, defer commitment" — any framework (React, RxJS, Marble.js, Vite, Vitest) should be replaceable by changing only its package, not the monorepo config or domain logic
+- "Make choices, defer commitment" — any framework (React, RxJS, ws-effects, Vite, Vitest) should be replaceable by changing only its package, not the monorepo config or domain logic
 - Turborepo config is framework-blind (task names + dependency graph only)
 - Reference implementation: https://github.com/AdaptiveConsulting/ReactiveTraderCloud

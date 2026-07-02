@@ -3,15 +3,19 @@ import { createServer } from "node:http";
 import type { VerifyClientCallbackSync } from "ws";
 import { WebSocketServer } from "ws";
 
+import { combineEffects, createWsListener } from "@rtc/ws-effects";
+
 import { isAuthorizedUpgrade } from "./auth.js";
+import { allEffects } from "./effects/index.js";
 import { createServices } from "./services/serviceContainer.js";
-import { handleConnection } from "./ws/wsHandler.js";
+import { toSocket } from "./ws/toSocket.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
 const HOSTNAME: string = process.env.HOSTNAME ?? "0.0.0.0";
 const WS_ACCESS_TOKEN: string | undefined = process.env.WS_ACCESS_TOKEN;
 
 const services = createServices();
+const listen = createWsListener(combineEffects(...allEffects), services);
 
 // ── HTTP Server ─────────────────────────────────────────────────
 
@@ -37,7 +41,7 @@ const httpServer = createServer((req, res) => {
 const wss = new WebSocketServer({
   server: httpServer,
   // Reject unauthorized upgrades with 401 before a socket exists, so
-  // handleConnection only ever runs for authorized clients. /health stays
+  // listen() only ever runs for authorized clients. /health stays
   // token-free (it is an HTTP route, not a WS upgrade) for Fly health checks.
   verifyClient: (info: Parameters<VerifyClientCallbackSync>[0]): boolean => {
     return isAuthorizedUpgrade(info.req.url, WS_ACCESS_TOKEN);
@@ -45,7 +49,7 @@ const wss = new WebSocketServer({
 });
 
 wss.on("connection", (ws) => {
-  handleConnection(ws, services);
+  listen(toSocket(ws));
 });
 
 // ── Start ───────────────────────────────────────────────────────

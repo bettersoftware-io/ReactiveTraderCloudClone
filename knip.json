@@ -15,6 +15,10 @@
       "entry": ["src/index.ts", "src/__fixtures__/wireFrames.ts"],
       "project": "src/**/*.ts"
     },
+    "packages/ws-effects": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
     "packages/server": {
       "entry": ["src/index.ts"],
       "project": "src/**/*.ts"
