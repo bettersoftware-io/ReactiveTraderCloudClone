@@ -18,11 +18,17 @@ export function CandleBars(props: CandleBarsProps): ReactElement {
       {candles.map((cd) => {
         return (
           <div key={cd.key} data-candle="" data-up={String(cd.up)}>
-            <span className={styles.wick} style={cd.wickStyle} />
+            <span
+              className={styles.wick}
+              style={cd.wickStyle}
+              data-up={String(cd.up)}
+            />
             <span
               className={styles.body}
               style={cd.style}
               data-up={String(cd.up)}
+              data-last={String(cd.last)}
+              data-glow={String(cd.glow)}
             />
           </div>
         );

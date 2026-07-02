@@ -26,6 +26,14 @@
   background: var(--sell);
 }
 
-.body[style*="--glow: 1"] {
+.body[data-last="true"] {
   opacity: 1;
+}
+
+.body[data-up="true"][data-glow="true"] {
+  box-shadow: 0 0 8px var(--buy);
+}
+
+.body[data-up="false"][data-glow="true"] {
+  box-shadow: 0 0 8px var(--sell);
 }

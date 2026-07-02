@@ -13,6 +13,8 @@ const LABEL_FRACTIONS = [0.12, 0.37, 0.62, 0.87];
 export interface CandleVm {
   key: number;
   up: boolean;
+  last: boolean;
+  glow: boolean;
   style: CSSProperties;
   wickStyle: CSSProperties;
 }
@@ -92,13 +94,13 @@ export function chartVm(
     const top = Math.min(yo, yc);
     const bodyH = Math.max(MIN_BODY, Math.abs(yo - yc));
     const isLast = i === n - 1;
+    const glow = isLast && flashOn;
     const style = {
       "--x": `${x}%`,
       "--top": `${top}%`,
       "--h": `${bodyH}%`,
       "--w": `${cw * BODY_FRAC}%`,
       "--wleft-offset": `${cw * HALF_BODY_FRAC}%`,
-      "--glow": isLast && flashOn ? "1" : "0",
     } as CSSProperties;
     const wickStyle = {
       "--wx": `calc(${x}% - 0.5px)`,
@@ -106,7 +108,7 @@ export function chartVm(
       "--wh": `${yPct(cd.l) - yPct(cd.h)}%`,
     } as CSSProperties;
 
-    return { key: i, up, style, wickStyle };
+    return { key: i, up, last: isLast, glow, style, wickStyle };
   });
 
   const grid: GridLineVm[] = GRID_FRACTIONS.map((f, i) => {
