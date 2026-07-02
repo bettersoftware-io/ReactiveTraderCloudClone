@@ -1,8 +1,8 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { Panel } from "#/fx/layout/Panel";
 import type { PanelId } from "#/fx/layout/useDockState";
+import { Panel } from "#/layout/Panel";
 
 afterEach(cleanup);
 
@@ -36,6 +36,22 @@ describe("Panel headAccessory", () => {
     );
     expect(queryByText("⊕")).toBeNull();
     expect(getByLabelText("Maximize")).toBeTruthy();
+  });
+
+  test("omits the maximize button when maximizable is false", () => {
+    const { queryByTitle, queryByLabelText } = render(
+      <Panel
+        id={ANA_ID}
+        head={<span>Analytics</span>}
+        maxPanel={null}
+        onToggleMax={noop}
+        maximizable={false}
+      >
+        <div>body</div>
+      </Panel>,
+    );
+    expect(queryByLabelText("Maximize")).toBeNull();
+    expect(queryByTitle("Maximize")).toBeNull();
   });
 });
 

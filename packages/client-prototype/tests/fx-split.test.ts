@@ -2,7 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { useSplit } from "#/fx/layout/useSplit";
+import { useSplit } from "#/layout/useSplit";
 
 afterEach(cleanup);
 

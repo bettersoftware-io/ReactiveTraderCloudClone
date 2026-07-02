@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 
-import styles from "#/fx/layout/SplitHandle.module.css";
-import type { SplitApi } from "#/fx/layout/useSplit";
+import styles from "#/layout/SplitHandle.module.css";
+import type { SplitApi } from "#/layout/useSplit";
 
 export interface SplitHandleProps {
   api: SplitApi;

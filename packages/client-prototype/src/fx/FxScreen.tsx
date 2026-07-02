@@ -6,14 +6,14 @@ import { FxBlotterPanel } from "#/fx/Blotter/FxBlotterPanel";
 import styles from "#/fx/FxScreen.module.css";
 import type { Filter } from "#/fx/LiveRates/FilterChips";
 import { LiveRatesPanel } from "#/fx/LiveRates/LiveRatesPanel";
-import { Panel } from "#/fx/layout/Panel";
-import { SplitHandle } from "#/fx/layout/SplitHandle";
 import type { PanelId } from "#/fx/layout/useDockState";
 import { useDockState } from "#/fx/layout/useDockState";
-import { useSplit } from "#/fx/layout/useSplit";
 import { PositionsView } from "#/fx/Positions/PositionsView";
 import { useFxBlotter } from "#/fx/useFxBlotter";
 import { useFxRates } from "#/fx/useFxRates";
+import { Panel } from "#/layout/Panel";
+import { SplitHandle } from "#/layout/SplitHandle";
+import { useSplit } from "#/layout/useSplit";
 
 // PROTO 823: the persisted dock defaults — tiles-vs-blotter, aside width
 // (as a fraction of the ~1320px reference stage), and analytics-vs-positions.

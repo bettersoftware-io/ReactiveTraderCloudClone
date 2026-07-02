@@ -1,0 +1,28 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.glyph {
+  font-size: 38px;
+  opacity: 0.4;
+}
+
+.title {
+  font-family: var(--font-d, sans-serif);
+  font-size: 15px;
+  color: var(--dim);
+  margin-top: 12px;
+}
+
+.hint {
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+  color: var(--faint);
+  margin-top: 6px;
+}
