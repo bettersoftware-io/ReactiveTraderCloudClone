@@ -1,0 +1,96 @@
+.header {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+  flex: none;
+}
+
+.idBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.sym {
+  font-family: "Orbitron", sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.name {
+  margin-top: 3px;
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  color: var(--faint);
+}
+
+.priceBlock {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.last {
+  font-family: "Orbitron", sans-serif;
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  transition: color 0.3s;
+}
+
+.last[data-flash="true"][data-dir="up"] {
+  color: var(--buy);
+}
+
+.last[data-flash="true"][data-dir="down"] {
+  color: var(--sell);
+}
+
+.change {
+  font-family: var(--font-m, monospace);
+  font-size: 14px;
+  color: var(--buy);
+}
+
+.change[data-up="false"] {
+  color: var(--sell);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.stats {
+  display: flex;
+  gap: 18px;
+  font-family: var(--font-m, monospace);
+  font-size: 11px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.statLabel {
+  color: var(--faint);
+}
+
+.statValue {
+  margin-top: 2px;
+}
+
+.statValue[data-tone="buy"] {
+  color: var(--buy);
+}
+
+.statValue[data-tone="sell"] {
+  color: var(--sell);
+}
+
+.statValue[data-tone="text"] {
+  color: var(--text);
+}

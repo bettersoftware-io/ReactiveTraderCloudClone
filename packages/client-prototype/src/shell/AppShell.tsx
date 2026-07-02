@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 
 import { CreditScreen } from "#/credit/CreditScreen";
+import { EquitiesScreen } from "#/equities/EquitiesScreen";
 import { FxScreen } from "#/fx/FxScreen";
 import styles from "#/shell/AppShell.module.css";
 import { AmbientBackground } from "#/shell/ambient/AmbientBackground";
@@ -47,6 +48,8 @@ export function AppShell(props: AppShellProps): ReactElement {
             <FxScreen />
           ) : tab === "credit" ? (
             <CreditScreen />
+          ) : tab === "equities" ? (
+            <EquitiesScreen />
           ) : (
             <PlaceholderPanel tab={tab} />
           )}

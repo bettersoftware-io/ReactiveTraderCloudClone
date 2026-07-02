@@ -1,0 +1,23 @@
+.pills {
+  display: flex;
+  gap: 4px;
+}
+
+.pill {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.pill[data-active="true"] {
+  color: var(--accent);
+  background: var(--chip);
+  border-color: var(--border-strong);
+}
