@@ -1,0 +1,119 @@
+/* Credit dock composition: a left column (the New RFQ form) beside a right
+   column (RFQs over the Credit Blotter, split PROTO creditStackR), the two
+   columns themselves split by PROTO creditW. Both ratios flow in from
+   CreditScreen as `--main-ratio` / `--stack-ratio` custom properties — set
+   once on the root, so every descendant just inherits them — and drive plain
+   `flex-grow` splits; CSS never reads pixels, only the persisted ratio.
+
+   Maximize (useCreditDock toggleMax) is driven by `data-max-panel` on the
+   root: each state below hides the panels/handles that aren't the maximized
+   one and collapses the left form to its restore strip, since the form has
+   no room to render alongside a maximized right panel. */
+
+.screen {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  flex: var(--main-ratio) 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  flex: calc(1 - var(--main-ratio)) 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rfqsRegion {
+  display: flex;
+  flex-direction: column;
+  flex: var(--stack-ratio) 1 0;
+  min-height: 0;
+}
+
+.cblotRegion {
+  display: flex;
+  flex-direction: column;
+  flex: calc(1 - var(--stack-ratio)) 1 0;
+  min-height: 0;
+}
+
+.mainHandle,
+.rightHandle {
+  flex: none;
+}
+
+.regionLabel {
+  font-family: var(--font-d, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.collapsedStrip {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 38px;
+  gap: 1px;
+  height: 100%;
+  background: var(--panel-head);
+}
+
+.stripBtn {
+  flex: none;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 12px 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: var(--dim);
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}
+
+.stripBtn:hover {
+  color: var(--accent);
+}
+
+/* — maximize: hide every panel/handle but the maximized one, and collapse
+   the left form to its restore strip so the maximized panel fills the whole
+   right column. — */
+
+.screen[data-max-panel="rfqs"] .cblotRegion,
+.screen[data-max-panel="rfqs"] .rightHandle,
+.screen[data-max-panel="rfqs"] .mainHandle {
+  display: none;
+}
+
+.screen[data-max-panel="rfqs"] .rightCol,
+.screen[data-max-panel="rfqs"] .rfqsRegion {
+  flex: 1 1 auto;
+}
+
+.screen[data-max-panel="cblot"] .rfqsRegion,
+.screen[data-max-panel="cblot"] .rightHandle,
+.screen[data-max-panel="cblot"] .mainHandle {
+  display: none;
+}
+
+.screen[data-max-panel="cblot"] .rightCol,
+.screen[data-max-panel="cblot"] .cblotRegion {
+  flex: 1 1 auto;
+}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { downloadCsv, toCsv } from "#/fx/csvExport";
+import { downloadCsv, toCsv } from "#/csvExport";
 import type { Trade } from "#/fx/types";
 
 type SortField =
