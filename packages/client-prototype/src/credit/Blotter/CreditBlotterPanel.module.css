@@ -1,0 +1,91 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 8px 14px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.count {
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  color: var(--faint);
+}
+
+.csvBtn {
+  cursor: pointer;
+  font-family: var(--font-d, sans-serif);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+.table {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.headerRow {
+  display: grid;
+  grid-template-columns: 64px 92px 118px 64px 112px 104px 126px 92px 72px 84px;
+  min-width: 940px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 2;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 64px 92px 118px 64px 112px 104px 126px 92px 72px 84px;
+  min-width: 940px;
+  align-items: center;
+  padding: 9px 14px;
+  font-family: var(--font-m, monospace);
+  font-size: 12px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.row[data-new="true"] {
+  animation:
+    rowIn 0.45s ease,
+    rowFlashA 1.5s ease-out;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.status {
+  color: var(--buy);
+}
+
+.dir[data-dir="Buy"] {
+  color: var(--buy);
+}
+
+.dir[data-dir="Sell"] {
+  color: var(--sell);
+}
