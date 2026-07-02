@@ -26,6 +26,20 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
+  // Local-machine worker cap. Each CT worker is its own Chromium instance
+  // mounting components through a live-compiling Vite dev server; on a local
+  // dev machine (observed: this repo's darwin-arm64 box) enough of them run
+  // concurrently to contend for CPU, and under that contention a handful of
+  // scenarios' "wait for stable frame" check can pass one frame before layout
+  // has actually settled — producing a screenshot 1-4px off in width or height
+  // (not the AA colour jitter the maxDiffPixelRatio below absorbs; a genuine
+  // dimension mismatch, which toHaveScreenshot always hard-fails regardless of
+  // that ratio). Serialized (--workers=1) runs were 100% reproducible across
+  // repeated full-suite passes; default (CPU-count) parallelism flaked on a
+  // random ~2-5% subset every run. Same oversubscription problem run-all.ts
+  // already solves for cross-runner concurrency (see its top-of-file comment)
+  // — CI's x86 runners have not shown this, so parallelism stays on there.
+  workers: process.env.CI ? undefined : 1,
   // Cross-runner anti-aliasing tolerance. The component-test runner bundles each
   // scenario through its own privately-pinned vite (see ctViteConfig below) and
   // rasterizes text in isolation; glyph-edge anti-aliasing varies by ~1% of
