@@ -1,3 +1,17 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .container {
   position: relative;
   width: 100%;
@@ -9,21 +23,41 @@
   display: block;
 }
 
-/* Bubble fill/stroke by sign, applied to the <g class="node"> wrapper. */
+/* Bubble fill/stroke/glow by sign, applied to the <g class="node"> wrapper. */
 .container :global(g.node[data-sign="pos"]) circle {
-  fill: var(--chip);
+  fill: color-mix(in srgb, var(--accent-positive) 12%, transparent);
   stroke: var(--accent-positive);
+  stroke-width: 1px;
+  filter: drop-shadow(var(--glow));
 }
 
 .container :global(g.node[data-sign="neg"]) circle {
-  fill: var(--chip);
+  fill: color-mix(in srgb, var(--accent-negative) 12%, transparent);
   stroke: var(--accent-negative);
+  stroke-width: 1px;
+  filter: drop-shadow(var(--glow));
 }
 
-.label {
+.symbol {
+  font-family: var(--font-display);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   fill: var(--text-primary);
+  pointer-events: none;
+}
+
+.container :global(g.node[data-sign="pos"]) .symbol {
+  fill: var(--accent-positive);
+}
+
+.container :global(g.node[data-sign="neg"]) .symbol {
+  fill: var(--accent-negative);
+}
+
+.amount {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--text-muted);
   pointer-events: none;
 }
 

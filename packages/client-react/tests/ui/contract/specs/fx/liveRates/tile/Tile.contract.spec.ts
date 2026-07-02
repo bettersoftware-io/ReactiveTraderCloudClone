@@ -56,9 +56,9 @@ describe("Tile", () => {
   it("shows a loading state until a price arrives", () => {
     const tile = mount(Tile, { props: { pair: eurusd, showChart: false } });
     expect(tile.isPriceLoading()).toBe(true);
-    // Execution controls render but are disabled while loading.
-    expect(tile.isSellDisabled()).toBe(true);
-    expect(tile.isBuyDisabled()).toBe(true);
+    // The price boxes ARE the execution buttons now, so with no price yet
+    // there is nothing to render (and nothing to click).
+    expect(tile.hasExecutionButtons()).toBe(false);
   });
 
   it("renders the header, price and spread once a price streams in", () => {
@@ -180,7 +180,11 @@ describe("Tile", () => {
       parametric: { prices: { NZDUSD: price({ symbol: "NZDUSD" }) } },
     });
     expect(tile.hasInitiateRfq()).toBe(true);
-    expect(tile.hasExecutionButtons()).toBe(false);
+    // The price boxes still render (they show the live price) but are
+    // disabled — market execution is blocked while the notional requires
+    // going through the RFQ quote flow instead.
+    expect(tile.isSellDisabled()).toBe(true);
+    expect(tile.isBuyDisabled()).toBe(true);
   });
 
   it("requests an RFQ quote and renders the two-sided quote", async () => {

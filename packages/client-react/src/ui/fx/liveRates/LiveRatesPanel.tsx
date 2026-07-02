@@ -4,6 +4,8 @@ import { useState } from "react";
 import { type CurrencyCategory, matchesCurrencyFilter } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { useFlipGrid } from "#/ui/shell/motion/useFlipGrid";
+
 import { CurrencyFilter } from "./CurrencyFilter";
 import { Tile } from "./tile/Tile";
 import { ViewToggle } from "./ViewToggle";
@@ -22,6 +24,10 @@ export function LiveRatesPanel(): ReactElement {
     return matchesCurrencyFilter(p.symbol, filter);
   });
 
+  // Tiles glide (FLIP) to their new grid position whenever the filter changes
+  // which pairs are shown.
+  const { register } = useFlipGrid([filter]);
+
   return (
     <div className={styles.panel}>
       <div className={styles.controls}>
@@ -35,11 +41,13 @@ export function LiveRatesPanel(): ReactElement {
         <div className={styles.grid}>
           {filteredPairs.map((pair) => {
             return (
-              <Tile
+              <div
                 key={pair.symbol}
-                pair={pair}
-                showChart={viewMode === "chart"}
-              />
+                ref={register(pair.symbol)}
+                className={styles.tileSlot}
+              >
+                <Tile pair={pair} showChart={viewMode === "chart"} />
+              </div>
             );
           })}
         </div>

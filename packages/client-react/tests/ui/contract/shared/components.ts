@@ -137,9 +137,9 @@ import {
   type TileConfirmationProps,
 } from "./pages/fx/liveRates/tile/TileConfirmationPage";
 import {
-  TileExecutionPage,
-  type TileExecutionProps,
-} from "./pages/fx/liveRates/tile/TileExecutionPage";
+  TileFooterPage,
+  type TileFooterProps,
+} from "./pages/fx/liveRates/tile/TileFooterPage";
 import {
   TileHeaderPage,
   type TileHeaderProps,
@@ -326,11 +326,9 @@ export const SpreadDisplay = component<SpreadDisplayProps, SpreadDisplayPage>(
   },
 );
 
-export const TileExecution = component<TileExecutionProps, TileExecutionPage>(
-  (ctx) => {
-    return new TileExecutionPage(ctx);
-  },
-);
+export const TileFooter = component<TileFooterProps, TileFooterPage>((ctx) => {
+  return new TileFooterPage(ctx);
+});
 
 export const TileNotional = component<TileNotionalProps, TileNotionalPage>(
   (ctx) => {

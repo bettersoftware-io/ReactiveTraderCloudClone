@@ -20,6 +20,10 @@ const REQUIRED_KEYS: readonly (keyof ThemeTokens)[] = [
   "--aurora-opacity",
   "--font-display",
   "--font-mono",
+  "--tile",
+  "--tile-shadow",
+  "--panel-shadow",
+  "--font-logo",
 ];
 
 describe("themeTokens skin×mode store", () => {
@@ -57,5 +61,26 @@ describe("themeTokens skin×mode store", () => {
     expect(themeTokens.classic.dark["--accent-primary"]).toBe("#3b82f6");
     expect(themeTokens.classic.dark["--panel-blur"]).toBe("0");
     expect(themeTokens.classic.dark["--glow"]).toBe("none");
+  });
+
+  it("v2 tile surfaces: every non-classic dark skin has a gradient tile + layered shadow", () => {
+    for (const skin of ["holo", "terminal", "neon"] as const) {
+      expect(themeTokens[skin].dark["--tile"]).toContain("linear-gradient");
+      expect(themeTokens[skin].dark["--tile-shadow"]).toContain("inset");
+    }
+  });
+
+  it("classic keeps neutral values for the new keys", () => {
+    for (const mode of ["dark", "light"] as const) {
+      expect(themeTokens.classic[mode]["--tile"]).toBe("var(--bg-tile)");
+      expect(themeTokens.classic[mode]["--tile-shadow"]).toBe("none");
+      expect(themeTokens.classic[mode]["--panel-shadow"]).toBe("none");
+    }
+  });
+
+  it("v2 light palettes are the prototype's, not derived", () => {
+    expect(themeTokens.holo.light["--accent-primary"]).toBe("#0096b3");
+    expect(themeTokens.terminal.light["--accent-primary"]).toBe("#b67700");
+    expect(themeTokens.neon.light["--accent-primary"]).toBe("#c800a0");
   });
 });

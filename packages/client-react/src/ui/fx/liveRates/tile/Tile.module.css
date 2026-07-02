@@ -1,21 +1,22 @@
 .tile {
-  background-color: var(--panel);
-  backdrop-filter: blur(var(--panel-blur));
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: var(--glow);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  position: relative;
+  background: var(--tile);
+  border: 1px solid var(--border-primary);
+  border-radius: 5px;
+  padding: 13px 14px 11px;
+  overflow: hidden;
+  box-shadow: var(--tile-shadow);
   opacity: 1;
   transition: opacity 0.3s;
   min-width: 280px;
-  position: relative;
 }
 
 .tile[data-loading="true"] {
   opacity: 0.5;
+}
+
+.tile[data-busy="true"] {
+  border-color: var(--border-strong);
 }
 
 .loadingPlaceholder {
