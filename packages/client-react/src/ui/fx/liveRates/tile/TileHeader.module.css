@@ -1,15 +1,52 @@
 .header {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.symbolCode {
+  position: absolute;
+  top: -9px;
+  right: -4px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+}
+
+.pairRow {
   display: flex;
-  align-items: baseline;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
   font-family: var(--font-display);
-  font-size: 13px;
   font-weight: 600;
-  line-height: 18px;
+  font-size: 15px;
+  letter-spacing: 0.06em;
   color: var(--text-primary);
 }
 
 .separator {
   color: var(--text-muted);
   font-weight: 400;
+}
+
+.pairRow .movementBadge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: normal;
+}
+
+.movementBadge[data-movement="up"] {
+  color: var(--accent-positive);
+}
+
+.movementBadge[data-movement="down"] {
+  color: var(--accent-negative);
+}
+
+.movementBadge[data-movement="flat"] {
+  color: var(--text-muted);
 }

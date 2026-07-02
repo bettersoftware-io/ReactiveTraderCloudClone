@@ -1,6 +1,8 @@
 import type { ReactElement } from "react";
 
-import { type Price, PriceMovementType } from "@rtc/domain";
+import { Direction, type Price, PriceMovementType } from "@rtc/domain";
+
+import { SpreadDisplay } from "./SpreadDisplay";
 
 import styles from "./TilePrice.module.css";
 
@@ -9,26 +11,32 @@ export function TilePrice({
   ratePrecision,
   pipsPosition,
   anim,
+  spread,
+  onExecute,
+  disabled,
 }: TilePriceProps): ReactElement {
   return (
     <div className={styles.row}>
       <PriceButton
-        label="SELL"
         value={price.bid}
         ratePrecision={ratePrecision}
         pipsPosition={pipsPosition}
         movement={price.movementType}
         side="bid"
         anim={anim}
+        onExecute={onExecute}
+        disabled={disabled}
       />
+      <SpreadDisplay spread={spread} />
       <PriceButton
-        label="BUY"
         value={price.ask}
         ratePrecision={ratePrecision}
         pipsPosition={pipsPosition}
         movement={price.movementType}
         side="ask"
         anim={anim}
+        onExecute={onExecute}
+        disabled={disabled}
       />
     </div>
   );
@@ -39,6 +47,9 @@ interface TilePriceProps {
   ratePrecision: number;
   pipsPosition: number;
   anim?: "tickUp" | "tickDown";
+  spread: string;
+  onExecute: (direction: Direction) => void;
+  disabled: boolean;
 }
 
 interface PriceParts {
@@ -76,23 +87,25 @@ function movementKey(movement: PriceMovementType): "up" | "down" | "flat" {
 }
 
 interface PriceButtonProps {
-  label: string;
   value: number;
   ratePrecision: number;
   pipsPosition: number;
   movement: PriceMovementType;
   side: "bid" | "ask";
   anim?: "tickUp" | "tickDown";
+  onExecute: (direction: Direction) => void;
+  disabled: boolean;
 }
 
 function PriceButton({
-  label,
   value,
   ratePrecision,
   pipsPosition,
   movement,
   side,
   anim,
+  onExecute,
+  disabled,
 }: PriceButtonProps): ReactElement {
   const { prefix, pips, fractional } = splitPrice(
     value,
@@ -100,11 +113,22 @@ function PriceButton({
     pipsPosition,
   );
 
+  function handleClick(): void {
+    onExecute(side === "bid" ? Direction.Sell : Direction.Buy);
+  }
+
   return (
-    <button type="button" className={styles.button} data-side={side}>
-      <span className={styles.label}>{label}</span>
+    <button
+      type="button"
+      data-testid={side === "bid" ? "sell-btn" : "buy-btn"}
+      data-side={side}
+      onClick={handleClick}
+      disabled={disabled}
+      className={styles.priceBox}
+    >
+      <span className={styles.boxLabel}>{side === "bid" ? "SELL" : "BUY"}</span>
       <span className={styles.value}>
-        <span className={styles.prefix}>{prefix}</span>
+        <span className={styles.big}>{prefix}</span>
         <span
           data-testid="tile-pips"
           data-movement={movementKey(movement)}
@@ -113,7 +137,7 @@ function PriceButton({
         >
           {pips}
         </span>
-        <span className={styles.fractional}>{fractional}</span>
+        <span className={styles.frac}>{fractional}</span>
       </span>
     </button>
   );

@@ -25,6 +25,7 @@ export function BlotterRow<TRow extends { status: string }>({
   return (
     <tr
       data-state={isRejected ? "rejected" : "live"}
+      data-status={trade.status.toLowerCase()}
       data-highlight={highlight ? "true" : undefined}
       data-hovered={hovered ? "true" : undefined}
       onMouseEnter={() => {

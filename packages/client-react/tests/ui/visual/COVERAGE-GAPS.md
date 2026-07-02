@@ -196,7 +196,7 @@ scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
 | `ui/credit/newRfq/SetFilter.tsx` lines 35-47, 60 | `toggleValue` + `handleApply` subset arm | Checkboxes have no `data-testid`; individual values cannot be targeted by `click` step. Production code not modified (task constraint). |
 | `ui/credit/rfqTiles/RfqCard.tsx` line 63 | `handleDismiss` body | Dismiss `✕` button has no `data-testid`. Same constraint as SetFilter. |
 | `ui/credit/rfqTiles/RfqTilesPanel.tsx` lines 80-85 | `handleDismiss` + `handleAccept` | Dismiss and Accept buttons in QuoteCard have no testids. Production code unchanged. |
-| `ui/fx/liveRates/tile/TileExecution.tsx` lines 23-35 | Sell/Buy onClick arrow functions | Clicking triggers the execution flow → visual becomes "Executing…" overlay, already pinned by `tile/execution-started`. Click path produces no new visually distinct golden. |
+| `ui/fx/liveRates/tile/TilePrice.tsx` lines 115-117 | `PriceButton` `handleClick` (Sell/Buy) | Clicking triggers the execution flow → visual becomes "Executing…" overlay, already pinned by `tile/execution-started`. Click path produces no new visually distinct golden. (Note: this handler moved here from the now-deleted `TileExecution.tsx` during the v2 spot-tile restructure.) |
 | `ui/fx/liveRates/tile/TileNotional.tsx` lines 25-35 | handleChange/handleKeyDown/handleFocus | Interaction handlers for the notional input. Result is the same tile-with-changed-notional view — already covered by static scenarios. No new visual branch pinned. |
 | `ui/fx/liveRates/tile/TileRfq.tsx` lines 43-57, 94-103 | `handleAccept` body, Sell button onClick | Click interactions that trigger execution flow — already pinned via `tile/rfq-received`; clicking navigates away from received state into execution. |
 | `ui/shell/admin/AdminPanel.tsx` lines 26-42 | slider onChange + number input onChange validation | No `data-testid` on slider or number input. Cannot target via `click`/`type` steps. |
@@ -309,7 +309,7 @@ not. (A future testid-only batch could lift these into goldens.)
 | `fx/blotter/QuickFilter.tsx` | input `onChange` handler | contract tier |
 | `credit/newRfq/DealerSelection.tsx` | dealer checkbox checked/unchecked toggle arms | contract tier |
 | `credit/newRfq/NewRfqForm.tsx` | submit/confirmation success arm (timer + RPC) | contract tier |
-| `fx/liveRates/tile/TileExecution.tsx` | buy/sell `onClick` handlers | contract tier |
+| `fx/liveRates/tile/TilePrice.tsx` | buy/sell `onClick` handlers | contract tier |
 | `fx/liveRates/tile/TileNotional.tsx` | reset (↺) button + inline-error arms | contract tier |
 | `fx/liveRates/CurrencyFilter.tsx` | category-tab `onChange` handler | contract tier |
 

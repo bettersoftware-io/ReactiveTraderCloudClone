@@ -14,6 +14,7 @@ import type {
   EquityPosition,
   Instrument,
   Price,
+  PriceMovementType,
   Quote,
   Rfq,
   Trade,
@@ -72,7 +73,7 @@ import { RfqCountdown as RfqCountdownComponent } from "#/ui/fx/liveRates/tile/Rf
 import { SpreadDisplay as SpreadDisplayComponent } from "#/ui/fx/liveRates/tile/SpreadDisplay";
 import { Tile as TileComponent } from "#/ui/fx/liveRates/tile/Tile";
 import { TileConfirmation as TileConfirmationComponent } from "#/ui/fx/liveRates/tile/TileConfirmation";
-import { TileExecution as TileExecutionComponent } from "#/ui/fx/liveRates/tile/TileExecution";
+import { TileFooter as TileFooterComponent } from "#/ui/fx/liveRates/tile/TileFooter";
 import { TileHeader as TileHeaderComponent } from "#/ui/fx/liveRates/tile/TileHeader";
 import { TileNotional as TileNotionalComponent } from "#/ui/fx/liveRates/tile/TileNotional";
 import { TilePrice as TilePriceComponent } from "#/ui/fx/liveRates/tile/TilePrice";
@@ -156,7 +157,7 @@ import {
   ThroughputChart,
   Tile,
   TileConfirmation,
-  TileExecution,
+  TileFooter,
   TileHeader,
   TileNotional,
   TilePrice,
@@ -480,6 +481,9 @@ export const registry = new Map<AnyToken, ElementFor>([
         <TileHeaderComponent
           base={p.base as string}
           terms={p.terms as string}
+          symbol={(p.symbol as string) ?? ""}
+          movement={(p.movement as PriceMovementType) ?? "NONE"}
+          movementPips={(p.movementPips as number) ?? 0}
         />
       );
     },
@@ -492,6 +496,12 @@ export const registry = new Map<AnyToken, ElementFor>([
           price={p.price as Price}
           ratePrecision={p.ratePrecision as number}
           pipsPosition={p.pipsPosition as number}
+          anim={p.anim as "tickUp" | "tickDown" | undefined}
+          spread={(p.spread as string) ?? ""}
+          onExecute={
+            (p.onExecute as (d: Direction) => void) ?? ((): void => {})
+          }
+          disabled={(p.disabled as boolean) ?? false}
         />
       );
     },
@@ -503,14 +513,13 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    TileExecution,
+    TileFooter,
     (p: Record<string, unknown>): ReactElement => {
       return (
-        <TileExecutionComponent
-          onExecute={
-            (p.onExecute as (d: Direction) => void) ?? ((): void => {})
-          }
-          disabled={(p.disabled as boolean) ?? false}
+        <TileFooterComponent
+          spotDate={(p.spotDate as string) ?? ""}
+          notional={(p.notional as string) ?? ""}
+          baseCurrency={(p.baseCurrency as string) ?? ""}
         />
       );
     },

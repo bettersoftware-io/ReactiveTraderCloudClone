@@ -4,10 +4,10 @@
   flex: none;
   display: flex;
   align-items: center;
-  height: 28px;
+  height: 26px;
   padding: 0 14px;
-  gap: 9px;
-  background-color: var(--bg-footer);
+  gap: 0;
+  background: var(--panel-head);
   border-top: 1px solid var(--border-primary);
   font-family: var(--font-mono);
   font-size: 10px;

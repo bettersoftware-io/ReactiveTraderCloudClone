@@ -10,6 +10,7 @@ export function CurrencyFilter({
 }: CurrencyFilterProps): ReactElement {
   return (
     <div data-testid="currency-filter" className={styles.filterBar}>
+      <span className={styles.label}>FILTER</span>
       {CURRENCY_CATEGORIES.map((cat) => {
         return (
           <button
@@ -20,7 +21,7 @@ export function CurrencyFilter({
             onClick={() => {
               return onChange(cat);
             }}
-            className={styles.filter}
+            className={styles.chip}
           >
             {cat}
           </button>

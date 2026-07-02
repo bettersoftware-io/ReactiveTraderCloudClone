@@ -22,6 +22,7 @@ export function StatusBar(): ReactElement {
   return (
     <footer className={styles.statusBar}>
       <ConnectionStatusBar />
+      <span className={styles.metricSep}>│</span>
       <span className={styles.operator} data-testid="status-operator">
         {state.user.id}
       </span>

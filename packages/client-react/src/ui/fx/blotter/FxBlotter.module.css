@@ -37,14 +37,25 @@
   color: var(--text-muted);
 }
 
+/* Chip treatment established for filter pills — CurrencyFilter.module.css
+ * (Task 7). CSS modules don't share classes across files, so it's copied. */
 .exportBtn {
-  padding: 4px 10px;
-  font-size: 11px;
-  border: 1px solid var(--border-primary);
-  border-radius: 3px;
-  background-color: transparent;
-  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-radius: 20px;
   cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.exportBtn:hover {
+  border-color: var(--border-strong);
+  color: var(--accent-primary);
+  background: var(--chip);
 }
 
 .tableWrapper {

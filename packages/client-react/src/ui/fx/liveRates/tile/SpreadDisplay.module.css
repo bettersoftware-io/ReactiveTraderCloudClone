@@ -1,6 +1,10 @@
 .spread {
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-muted);
-  padding: 2px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-primary);
 }

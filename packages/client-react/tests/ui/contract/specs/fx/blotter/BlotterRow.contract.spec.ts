@@ -46,7 +46,7 @@ describe("BlotterRow", () => {
     const row = mount(BlotterRow, { props: { trade: trade(), isNew: false } });
     expect(row.backgroundColor()).toBe("transparent");
     row.hover();
-    expect(row.backgroundColor()).toBe("var(--bg-secondary)");
+    expect(row.backgroundColor()).toBe("var(--chip)");
     row.unhover();
     expect(row.backgroundColor()).toBe("transparent");
   });
