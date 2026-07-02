@@ -1,0 +1,74 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 10px;
+  margin-bottom: 2px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+
+.row[data-selected="true"] {
+  background: var(--chip);
+  border-color: var(--border-strong);
+}
+
+.row[data-selected="false"][data-flash="true"][data-up="true"] {
+  background: rgba(43, 255, 179, 0.08);
+}
+
+.row[data-selected="false"][data-flash="true"][data-up="false"] {
+  background: rgba(255, 93, 115, 0.08);
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.sym {
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.name {
+  font-family: var(--font-m, monospace);
+  font-size: 9px;
+  color: var(--faint);
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.last,
+.chg {
+  font-family: var(--font-m, monospace);
+}
+
+.last {
+  font-size: 13px;
+}
+
+.chg {
+  font-size: 9px;
+}
+
+.last[data-up="true"],
+.chg[data-up="true"] {
+  color: var(--buy);
+}
+
+.last[data-up="false"],
+.chg[data-up="false"] {
+  color: var(--sell);
+}
