@@ -80,6 +80,18 @@
   animation-play-state: var(--amb-play, paused);
 }
 
+/* OS-level reduced motion wins over the in-app preference: even with
+ * --amb-play: running, the layers hold still. Same mechanism as the previous
+ * revision (animation: none). */
+@media (prefers-reduced-motion: reduce) {
+  .layerA,
+  .layerB,
+  .sweep,
+  .grid {
+    animation: none;
+  }
+}
+
 @keyframes aurora-a {
   0% {
     transform: translate3d(-7%, -4%, 0) scale(1.08);
