@@ -38,6 +38,13 @@ test("a header menu opens and closes on backdrop click", () => {
   expect(screen.queryByText("Français")).toBeNull();
 });
 
+test("credit tab shows CreditScreen with RFQs panel", () => {
+  boot();
+  fireEvent.click(screen.getByText("CREDIT"));
+  expect(screen.getByText("◳ RFQs")).toBeDefined();
+  expect(screen.queryByTestId("panel-credit")).toBeNull();
+});
+
 // — helpers —————————————————————————————————————————————————————————————————————
 
 function boot(): void {
