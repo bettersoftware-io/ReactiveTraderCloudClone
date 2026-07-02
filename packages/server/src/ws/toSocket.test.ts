@@ -30,4 +30,27 @@ describe("toSocket", () => {
     ws.closeConnection();
     await expect(closed).resolves.toBeUndefined();
   });
+
+  it("drops a malformed (non-JSON) frame without emitting or erroring, and still delivers the next valid frame", async () => {
+    const ws = new FakeWs();
+    const socket = toSocket(ws as unknown as import("ws").WebSocket);
+    const received: unknown[] = [];
+    let errored = false;
+    socket.messages$.subscribe({
+      next: (msg: unknown) => {
+        received.push(msg);
+      },
+      error: () => {
+        errored = true;
+      },
+    });
+
+    ws.emit("message", "not json");
+    ws.receive({ type: "subscribe.pricing", payload: { symbol: "EURUSD" } });
+
+    expect(errored).toBe(false);
+    expect(received).toEqual([
+      { type: "subscribe.pricing", payload: { symbol: "EURUSD" } },
+    ]);
+  });
 });

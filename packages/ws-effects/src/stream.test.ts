@@ -1,4 +1,4 @@
-import { map } from "rxjs";
+import { map, of, Subject, throwError } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -53,6 +53,35 @@ describe("stream", () => {
         b: out("tick", "b") as Outbound,
       });
     });
+  });
+
+  it("isolates an erroring inner stream: a later matching inbound still produces output", () => {
+    const in$ = new Subject<Inbound>();
+    let calls = 0;
+    const effect = stream<unknown>("subscribe.pricing", () => {
+      calls += 1;
+      return calls === 1
+        ? throwError(() => {
+            return new Error("boom");
+          })
+        : of(out("tick", "second"));
+    });
+    const outs: Outbound[] = [];
+    let errored = false;
+    effect(in$, undefined).subscribe({
+      next: (frame: Outbound) => {
+        outs.push(frame);
+      },
+      error: () => {
+        errored = true;
+      },
+    });
+
+    in$.next({ type: "subscribe.pricing" });
+    in$.next({ type: "subscribe.pricing" });
+
+    expect(errored).toBe(false);
+    expect(outs).toEqual([out("tick", "second")]);
   });
 
   it("ignores non-matching inbound", () => {

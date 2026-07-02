@@ -1,4 +1,4 @@
-import { map, type Observable, Subject } from "rxjs";
+import { map, type Observable, Subject, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import { combineEffects } from "#/combineEffects";
@@ -25,6 +25,27 @@ describe("combineEffects", () => {
 
     expect(outs).toEqual([{ type: "A" }, { type: "B" }, { type: "A" }]);
   });
+
+  it("isolates an erroring effect: a sibling effect keeps emitting and the merge does not error", () => {
+    const in$ = new Subject<Inbound>();
+    const combined = combineEffects(explodingEffect, echoB);
+    const outs: Outbound[] = [];
+    let errored = false;
+    combined(in$, undefined).subscribe({
+      next: (frame: Outbound) => {
+        outs.push(frame);
+      },
+      error: () => {
+        errored = true;
+      },
+    });
+
+    in$.next({ type: "b" });
+    in$.complete();
+
+    expect(errored).toBe(false);
+    expect(outs).toEqual([{ type: "B" }]);
+  });
 });
 
 function echoA(in$: Observable<Inbound>): Observable<Outbound> {
@@ -43,4 +64,10 @@ function echoB(in$: Observable<Inbound>): Observable<Outbound> {
       return out("B");
     }),
   );
+}
+
+function explodingEffect(): Observable<Outbound> {
+  return throwError(() => {
+    return new Error("boom");
+  });
 }
