@@ -31,26 +31,29 @@ export function TileNotional({
   return (
     <div className={styles.wrapper}>
       <span className={styles.currencyLabel}>{baseCurrency}</span>
-      <input
-        ref={inputRef}
-        value={notional.state.displayValue}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        onFocus={handleFocus}
-        disabled={disabled}
-        data-error={hasError ? "true" : "false"}
-        className={styles.input}
-      />
-      {!notional.state.isDefault && (
-        <button
-          type="button"
-          onClick={notional.reset}
-          title="Reset to default"
-          className={styles.resetButton}
-        >
-          {"↺"}
-        </button>
-      )}
+      <div className={styles.inputArea}>
+        <input
+          ref={inputRef}
+          value={notional.state.displayValue}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onFocus={handleFocus}
+          disabled={disabled}
+          data-error={hasError ? "true" : "false"}
+          className={styles.input}
+        />
+        {!notional.state.isDefault && (
+          <button
+            type="button"
+            onClick={notional.reset}
+            title="Reset to default"
+            className={styles.resetButton}
+          >
+            {"↺"}
+          </button>
+        )}
+      </div>
+      {hasError && <span className={styles.maxTag}>MAX</span>}
       {hasError && (
         <span data-testid="notional-error" className={styles.errorMessage}>
           {notional.state.error}

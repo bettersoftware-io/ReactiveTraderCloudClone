@@ -53,10 +53,9 @@ export class TilePage extends MountedComponent<TileProps> {
   }
 
   spreadText(): string | null {
-    // SpreadDisplay is a small centred div; find by its numeric pattern is hard,
-    // so locate via the price area: the spread sits between price buttons and
-    // the execution controls. Expose the raw price.spread by data: read the
-    // text node that matches a decimal.
+    // SpreadDisplay is a small centred div sitting between the SELL and BUY
+    // price boxes (inside TilePrice); find it by its numeric text pattern
+    // rather than depending on its exact position in the tree.
     const candidate = [...this.root.querySelectorAll("div")].find((d) => {
       return (
         d.children.length === 0 &&
@@ -66,7 +65,9 @@ export class TilePage extends MountedComponent<TileProps> {
     return candidate?.textContent?.trim() ?? null;
   }
 
-  // ---- Execution (non-RFQ) controls ----
+  // ---- Execution: the clickable SELL/BUY price boxes (TilePrice) ----
+  // Present whenever a price has streamed in (RFQ or not); disabled while
+  // loading, busy, in notional error, stale, or the notional requires an RFQ.
   hasExecutionButtons(): boolean {
     return this.q().queryByTestId("sell-btn") !== null;
   }
