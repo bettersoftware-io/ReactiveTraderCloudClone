@@ -4,7 +4,7 @@
 }
 
 .row[data-hovered="true"] {
-  background-color: var(--bg-secondary);
+  background-color: var(--chip);
 }
 
 /* New-row flash — Phase 3 HUD reskin: calm entrance via hudRowIn.
@@ -30,9 +30,17 @@
   color: var(--accent-negative);
 }
 
+/* Status is the 2nd column (blotterColumns.ts COLUMNS[1]) — colour just that
+ * cell by outcome. Rejected rows already recolour the whole row above;
+ * "live" rows only ever carry TradeStatus.Done, so this reads as Done→positive. */
+.row[data-state="live"] .cell:nth-child(2) {
+  color: var(--accent-positive);
+}
+
 .cell {
   padding: 4px 8px;
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   border-bottom: 1px solid var(--border-subtle);
   white-space: nowrap;
 }
