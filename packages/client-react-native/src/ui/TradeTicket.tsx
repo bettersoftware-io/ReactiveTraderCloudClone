@@ -6,12 +6,17 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextStyle,
   View,
+  type ViewStyle,
 } from "react-native";
 
 import type { TileExecutionState } from "@rtc/client-core";
 import { type CurrencyPair, Direction, ExecutionStatus } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
+
+import type { RnTheme } from "#/ui/theme/tokens";
+import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** The bottom-sheet trade ticket. Mounted only while open (SpotTile gates it),
  * so the execution/notional subscriptions live for exactly the open window.
@@ -27,6 +32,7 @@ export function TradeTicket({ pair, onClose }: TradeTicketProps): JSX.Element {
   const price = usePrice(pair);
   const notional = useNotional(pair.defaultNotional);
   const execution = useTileExecution(pair);
+  const styles = useThemedStyles(makeStyles);
 
   const status = execution.state.status;
   const isBusy = status === "started" || status === "tooLong";
@@ -83,7 +89,7 @@ export function TradeTicket({ pair, onClose }: TradeTicketProps): JSX.Element {
             }}
             style={canExecute ? styles.sell : styles.disabled}
           >
-            <Text>Sell</Text>
+            <Text style={styles.label}>Sell</Text>
           </Pressable>
           <Pressable
             testID="buy-btn"
@@ -93,7 +99,7 @@ export function TradeTicket({ pair, onClose }: TradeTicketProps): JSX.Element {
             }}
             style={canExecute ? styles.buy : styles.disabled}
           >
-            <Text>Buy</Text>
+            <Text style={styles.label}>Buy</Text>
           </Pressable>
         </View>
         <Text testID="exec-status">{statusLabel(execution.state)}</Text>
@@ -126,52 +132,73 @@ function statusLabel(state: TileExecutionState): string {
   }
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  sheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    backgroundColor: "#ffffff",
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    gap: 12,
-  },
-  pair: { fontSize: 18, fontWeight: "600" },
-  price: { fontSize: 16 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#cccccc",
-    borderRadius: 6,
-    padding: 10,
-  },
-  error: { color: "#e05252" },
-  buttons: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
-  sell: {
-    flex: 1,
-    alignItems: "center",
-    padding: 14,
-    borderRadius: 6,
-    backgroundColor: "#f2c0c0",
-  },
-  buy: {
-    flex: 1,
-    alignItems: "center",
-    padding: 14,
-    borderRadius: 6,
-    backgroundColor: "#bfe6d5",
-  },
-  disabled: {
-    flex: 1,
-    alignItems: "center",
-    padding: 14,
-    borderRadius: 6,
-    backgroundColor: "#e6e6e6",
-    opacity: 0.5,
-  },
-});
+interface TradeTicketStyles {
+  backdrop: ViewStyle;
+  sheet: ViewStyle;
+  pair: TextStyle;
+  price: TextStyle;
+  input: TextStyle;
+  error: TextStyle;
+  buttons: ViewStyle;
+  sell: ViewStyle;
+  buy: ViewStyle;
+  disabled: ViewStyle;
+  label: TextStyle;
+}
+
+function makeStyles(t: RnTheme): TradeTicketStyles {
+  return StyleSheet.create({
+    backdrop: { flex: 1, backgroundColor: t.bgOverlay },
+    sheet: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: 20,
+      backgroundColor: t.panel,
+      borderTopLeftRadius: 12,
+      borderTopRightRadius: 12,
+      gap: 12,
+    },
+    pair: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: t.textPrimary,
+      fontFamily: t.fontDisplay,
+    },
+    price: { fontSize: 16, color: t.textPrimary, fontFamily: t.fontMono },
+    input: {
+      borderWidth: 1,
+      borderColor: t.border,
+      borderRadius: 6,
+      padding: 10,
+      color: t.textPrimary,
+      fontFamily: t.fontMono,
+    },
+    error: { color: t.accentNegative },
+    buttons: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
+    sell: {
+      flex: 1,
+      alignItems: "center",
+      padding: 14,
+      borderRadius: 6,
+      backgroundColor: t.accentNegative,
+    },
+    buy: {
+      flex: 1,
+      alignItems: "center",
+      padding: 14,
+      borderRadius: 6,
+      backgroundColor: t.accentPositive,
+    },
+    disabled: {
+      flex: 1,
+      alignItems: "center",
+      padding: 14,
+      borderRadius: 6,
+      backgroundColor: t.bgSecondary,
+      opacity: 0.5,
+    },
+    label: { color: t.textOnAccent, fontFamily: t.fontDisplay },
+  });
+}

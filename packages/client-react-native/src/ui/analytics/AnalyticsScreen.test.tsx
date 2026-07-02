@@ -1,10 +1,11 @@
 import { expect, test } from "@jest/globals";
-import { render, screen } from "@testing-library/react-native";
+import { screen } from "@testing-library/react-native";
 
 import type { PositionUpdates } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { AnalyticsScreen } from "#/ui/analytics/AnalyticsScreen";
+import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
 const DATA: PositionUpdates = {
   history: [
@@ -22,7 +23,7 @@ const DATA: PositionUpdates = {
 };
 
 test("shows a loading state before the first emission", async () => {
-  await render(
+  await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(null, false)}>
       <AnalyticsScreen />
     </ViewModelProvider>,
@@ -32,7 +33,7 @@ test("shows a loading state before the first emission", async () => {
 });
 
 test("renders the three sections when data has arrived", async () => {
-  await render(
+  await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(DATA, false)}>
       <AnalyticsScreen />
     </ViewModelProvider>,
@@ -45,7 +46,7 @@ test("renders the three sections when data has arrived", async () => {
 });
 
 test("surfaces a stale indicator when the stream is stale", async () => {
-  await render(
+  await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(DATA, true)}>
       <AnalyticsScreen />
     </ViewModelProvider>,

@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, screen } from "@testing-library/react-native";
 
 import {
   type CurrencyPair,
@@ -11,6 +11,9 @@ import {
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { TradeTicket } from "#/ui/TradeTicket";
+import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { ThemeContext } from "#/ui/theme/ThemeContext";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
 const EURUSD: CurrencyPair = {
   symbol: "EURUSD",
@@ -34,7 +37,7 @@ const PRICE: Price = {
 
 test("tapping Buy executes with direction, price and notional", async () => {
   const execute = jest.fn<ExecFn>();
-  await render(
+  await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel({ execute })}>
       <TradeTicket pair={EURUSD} onClose={noop} />
     </ViewModelProvider>,
@@ -45,7 +48,7 @@ test("tapping Buy executes with direction, price and notional", async () => {
 
 test("Buy/Sell disabled when the notional has an error", async () => {
   const execute = jest.fn<ExecFn>();
-  await render(
+  await renderWithTheme(
     <ViewModelProvider
       viewModel={fakeViewModel({ execute, error: "Too small" })}
     >
@@ -58,7 +61,7 @@ test("Buy/Sell disabled when the notional has an error", async () => {
 });
 
 test("shows a Done confirmation when the machine finishes", async () => {
-  await render(
+  await renderWithTheme(
     <ViewModelProvider
       viewModel={fakeViewModel({
         execute: () => {
@@ -78,7 +81,7 @@ test("shows a Done confirmation when the machine finishes", async () => {
 
 test("auto-closes when a terminal state dismisses back to ready", async () => {
   const onClose = jest.fn<() => void>();
-  const { rerender } = await render(
+  const { rerender } = await renderWithTheme(
     <ViewModelProvider
       viewModel={fakeViewModel({
         execute: () => {
@@ -95,16 +98,18 @@ test("auto-closes when a terminal state dismisses back to ready", async () => {
   );
   expect(onClose).not.toHaveBeenCalled();
   await rerender(
-    <ViewModelProvider
-      viewModel={fakeViewModel({
-        execute: () => {
-          return undefined;
-        },
-        execState: { status: "ready" },
-      })}
-    >
-      <TradeTicket pair={EURUSD} onClose={onClose} />
-    </ViewModelProvider>,
+    <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
+      <ViewModelProvider
+        viewModel={fakeViewModel({
+          execute: () => {
+            return undefined;
+          },
+          execState: { status: "ready" },
+        })}
+      >
+        <TradeTicket pair={EURUSD} onClose={onClose} />
+      </ViewModelProvider>
+    </ThemeContext.Provider>,
   );
   expect(onClose).toHaveBeenCalledTimes(1);
 });
