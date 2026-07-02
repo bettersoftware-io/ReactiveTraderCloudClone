@@ -1,4 +1,4 @@
-import { of, Subject } from "rxjs";
+import { of, Subject, throwError } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
@@ -206,6 +206,58 @@ describe("equities effects", () => {
       type: "market",
       qty: 10,
     });
+    // One order → exactly one place() call (guards against a shareReplay
+    // re-subscribe ever double-invoking the side-effecting sim call).
+    expect(ctx.orders.place).toHaveBeenCalledTimes(1);
+  });
+
+  it("placeOrder$ nacks on a place error and keeps serving later orders", () => {
+    const order = {
+      id: "o2",
+      symbol: "AAPL",
+      side: "buy",
+      type: "market",
+      qty: 5,
+      status: "filled",
+      filledQty: 5,
+      createdAt: 2,
+    };
+    const place = vi
+      .fn()
+      .mockReturnValueOnce(
+        throwError(() => {
+          return new Error("boom");
+        }),
+      )
+      .mockReturnValueOnce(of(order));
+    const ctx = { orders: { place } };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+    // First order errors → a nack, no lifecycle frame.
+    messages$.next({
+      type: CLIENT_MSG.PLACE_ORDER,
+      payload: { symbol: "AAPL", side: "buy", type: "market", qty: 5 },
+      correlationId: "8",
+    });
+    // Second order is still handled — the error was isolated to the first.
+    messages$.next({
+      type: CLIENT_MSG.PLACE_ORDER,
+      payload: { symbol: "AAPL", side: "buy", type: "market", qty: 5 },
+      correlationId: "9",
+    });
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.PLACE_ORDER_RESPONSE,
+        payload: { type: "nack" },
+        correlationId: "8",
+      },
+      {
+        type: SERVER_MSG.PLACE_ORDER_RESPONSE,
+        payload: { type: "ack", payload: { orderId: "o2" } },
+        correlationId: "9",
+      },
+      { type: SERVER_MSG.ORDER_LIFECYCLE, payload: order },
+    ]);
+    expect(place).toHaveBeenCalledTimes(2);
   });
 });
 

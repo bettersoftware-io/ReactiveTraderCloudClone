@@ -8,6 +8,12 @@ import type { Inbound, Outbound, WsEffect } from "./types.js";
  * rpc/raw effect, or anything not already caught inside `stream`), it logs
  * and completes without taking down its siblings in the merge. Belt-and-
  * suspenders with `stream`'s own per-inner-stream isolation.
+ *
+ * Note: a caught effect is replaced by `EMPTY` for the REMAINDER of the
+ * connection — it does not resume for later inbound. This last-resort catch
+ * should rarely fire: the `stream`/`rpc` sugars (and `placeOrder$`) isolate
+ * errors per message internally, so they keep serving after an error. It
+ * only permanently disables an effect that lacks its own per-message catch.
  */
 export function combineEffects<Ctx>(
   ...effects: WsEffect<Ctx>[]

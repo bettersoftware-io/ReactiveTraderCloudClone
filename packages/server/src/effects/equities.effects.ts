@@ -1,4 +1,13 @@
-import { map, merge, mergeMap, type Observable, shareReplay, take } from "rxjs";
+import {
+  catchError,
+  map,
+  merge,
+  mergeMap,
+  type Observable,
+  of,
+  shareReplay,
+  take,
+} from "rxjs";
 
 import type {
   Candle,
@@ -140,7 +149,24 @@ function placeOrder$(in$: Observable<Inbound>, ctx: Ctx): Observable<Outbound> {
           return out(SERVER_MSG.ORDER_LIFECYCLE, order);
         }),
       );
-      return merge(ack$, stream$);
+      // Per-message error isolation (parity with rpc()'s nack path — the raw
+      // primitive has no built-in catchError). An error placing the order
+      // before the ack becomes a nack, so the client's rpc rejects rather
+      // than hangs; a late error (after the ack) is a no-op for the client,
+      // which already resolved on correlationId. Either way the error is
+      // contained to this message and placeOrder$ keeps serving later orders.
+      return merge(ack$, stream$).pipe(
+        catchError((err: unknown) => {
+          console.error("ws-effects: placeOrder effect error", err);
+          return of(
+            out(
+              SERVER_MSG.PLACE_ORDER_RESPONSE,
+              { type: "nack" },
+              msg.correlationId,
+            ),
+          );
+        }),
+      );
     }),
   );
 }
