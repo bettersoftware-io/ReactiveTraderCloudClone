@@ -1,0 +1,65 @@
+.card {
+  padding: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.title {
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.sub {
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  color: var(--faint);
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  height: 96px;
+}
+
+.col {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.bar {
+  width: 70%;
+  height: var(--bar-h);
+  border-radius: 2px 2px 0 0;
+  opacity: 0.85;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.bar[data-accent="true"] {
+  background: var(--accent2);
+  box-shadow: 0 0 8px var(--accent2);
+}
+
+.tick {
+  margin-top: 5px;
+  font-family: var(--font-m, monospace);
+  font-size: 8px;
+  color: var(--faint);
+}

@@ -1,0 +1,46 @@
+.screen {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+}
+
+.head {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-family: var(--font-d, sans-serif);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.nominal {
+  font-family: var(--font-m, monospace);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--buy);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 12px;
+}
+
+.bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
