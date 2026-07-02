@@ -70,12 +70,25 @@ function walkTick(state: WalkState, rng: () => number): WalkState {
 export function useEquities(opts: UseEquitiesOptions = {}): EquitiesApi {
   const { rng = Math.random, intervalMs = DEFAULT_INTERVAL_MS } = opts;
   const rngRef = useRef(rng);
-  const [walk, setWalk] = useState<WalkState>(() => {
-    return seedWalk(rngRef.current);
-  });
-  const [vol] = useState<Record<EqSym, string>>(() => {
-    return seedVols(rngRef.current);
-  });
+
+  // Seed once via a render-body ref-lazy-init, NOT a useState initializer:
+  // StrictMode double-invokes useState/useMemo initializers, which would draw
+  // the injected RNG twice before the first commit. The ref persists across
+  // the double render, so seedWalk/seedVols each run exactly once.
+  const seedRef = useRef<{
+    walk: WalkState;
+    vol: Record<EqSym, string>;
+  } | null>(null);
+
+  if (seedRef.current === null) {
+    seedRef.current = {
+      walk: seedWalk(rngRef.current),
+      vol: seedVols(rngRef.current),
+    };
+  }
+
+  const [walk, setWalk] = useState<WalkState>(seedRef.current.walk);
+  const [vol] = useState<Record<EqSym, string>>(seedRef.current.vol);
 
   useEffect(() => {
     const id = setInterval(() => {
