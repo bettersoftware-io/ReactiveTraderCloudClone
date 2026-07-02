@@ -1,4 +1,6 @@
-export type Severity = "INFO" | "WARN" | "ERROR";
+// File-local: referenced only by AdminEvent/EventTemplate below (not exported —
+// knip flags an unused export, matching the P4 dead-export convention).
+type Severity = "INFO" | "WARN" | "ERROR";
 
 export type MetricKey = "tput" | "lat" | "err" | "sess";
 
