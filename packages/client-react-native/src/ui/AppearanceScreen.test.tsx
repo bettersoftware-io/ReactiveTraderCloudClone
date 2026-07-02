@@ -12,14 +12,14 @@ test("shows the current mode preference and cycles on press", async () => {
   const cycle = jest.fn();
   await renderScreen(fakeViewModel(cycle, () => {}));
   expect(screen.getByTestId("appearance-mode")).toBeTruthy();
-  fireEvent.press(screen.getByTestId("appearance-mode"));
+  await fireEvent.press(screen.getByTestId("appearance-mode"));
   expect(cycle).toHaveBeenCalledTimes(1);
 });
 
 test("selects a skin on press", async () => {
   const setSkin = jest.fn();
   await renderScreen(fakeViewModel(() => {}, setSkin));
-  fireEvent.press(screen.getByTestId("appearance-skin-terminal"));
+  await fireEvent.press(screen.getByTestId("appearance-skin-terminal"));
   expect(setSkin).toHaveBeenCalledWith("terminal");
 });
 
