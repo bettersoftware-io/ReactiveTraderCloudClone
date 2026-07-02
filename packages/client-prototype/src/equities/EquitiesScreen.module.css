@@ -1,9 +1,9 @@
 /* Equities dock (PROTO 596-685): a center column (Chart over the Orders/
    Positions blotter, split eqCenterR) beside an aside (Order Ticket over the
-   Watchlist, split eqRightR), the two split by eqAsideW. Ratios flow in as
+   Watchlist, split eqRightR), the two split by eqAsideR. Ratios flow in as
    `--main-ratio` / `--center-ratio` / `--aside-ratio` custom properties and
    drive flex-grow splits. Maximize (data-max-panel) hides the non-maximized
-   panels; a maximized center panel additionally collapses the aside to its
+   panels; a maximized center panel additionally collapses the aside to a 38px
    restore strip (rendered by EquitiesScreen when rightCollapsed). */
 
 .screen {
@@ -78,8 +78,8 @@
 .collapsedStrip {
   display: flex;
   flex-direction: column;
-  flex: 0 0 38px;
   gap: 1px;
+  width: 100%;
   height: 100%;
   background: var(--panel-head);
 }
@@ -105,7 +105,7 @@
 }
 
 /* — maximize a center panel: hide its column sibling + center handle + the
-   V-split handle; the aside is already the restore strip (JS). — */
+   V-split handle, and collapse the aside to its 38px restore strip. — */
 
 .screen[data-max-panel="chart"] .eblotRegion,
 .screen[data-max-panel="chart"] .centerHandle,
@@ -116,6 +116,10 @@
 .screen[data-max-panel="chart"] .centerCol,
 .screen[data-max-panel="chart"] .chartRegion {
   flex: 1 1 auto;
+}
+
+.screen[data-max-panel="chart"] .aside {
+  flex: 0 0 38px;
 }
 
 .screen[data-max-panel="eblot"] .chartRegion,
@@ -129,8 +133,12 @@
   flex: 1 1 auto;
 }
 
+.screen[data-max-panel="eblot"] .aside {
+  flex: 0 0 38px;
+}
+
 /* — maximize an aside panel: hide only its aside sibling + aside handle; the
-   center column is untouched (spec §3). — */
+   center column is untouched. — */
 
 .screen[data-max-panel="ticket"] .watchRegion,
 .screen[data-max-panel="ticket"] .asideHandle {
