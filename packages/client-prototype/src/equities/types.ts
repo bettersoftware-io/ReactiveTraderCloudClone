@@ -11,7 +11,7 @@ export type EqSym =
 export type Timeframe = "1D" | "1W" | "1M" | "3M";
 export type OrderSide = "Buy" | "Sell";
 export type OrderType = "Market" | "Limit";
-export type OrderStatus = "Filled" | "Working";
+type OrderStatus = "Filled" | "Working";
 export type WlSort = "sym" | "chg" | "price";
 
 export interface Candle {
