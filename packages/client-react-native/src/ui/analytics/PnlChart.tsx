@@ -8,12 +8,13 @@ import {
   CHART_HEIGHT,
   CHART_WIDTH,
 } from "#/ui/analytics/buildChart";
-import { BASELINE, NEGATIVE, POSITIVE } from "#/ui/analytics/colours";
+import { useTheme } from "#/ui/theme/useTheme";
 
 export function PnlChart({ history }: PnlChartProps): JSX.Element {
+  const theme = useTheme();
   const { path, zeroY } = buildChart(history);
   const lastValue = history.length > 0 ? history[history.length - 1].usdPnl : 0;
-  const stroke = lastValue >= 0 ? POSITIVE : NEGATIVE;
+  const stroke = lastValue >= 0 ? theme.accentPositive : theme.accentNegative;
 
   return (
     <Svg
@@ -29,7 +30,7 @@ export function PnlChart({ history }: PnlChartProps): JSX.Element {
           x2={CHART_WIDTH - 8}
           y1={zeroY}
           y2={zeroY}
-          stroke={BASELINE}
+          stroke={theme.textMuted}
           strokeWidth={0.5}
           strokeDasharray="4 2"
         />

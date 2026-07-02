@@ -44,3 +44,23 @@ test("simulator branch dispose is a no-op function (no socket to close)", () => 
 vi.mock("expo-constants", () => {
   return { default: { expoConfig: { extra: {} } } };
 });
+
+// buildNativePorts wires an AppearanceColorSchemeAdapter, whose module scope
+// reads `react-native`'s `Appearance` at import time. Vitest's node
+// environment runs the SSR transform (rolldown) directly against
+// node_modules, which cannot parse the Flow syntax in react-native's own
+// entry point — so the real module never loads under vitest at all (jest's
+// babel-based transform handles it fine; see AppearanceColorSchemeAdapter's
+// own .test.tsx under jest). Stub the sliver this composition path touches.
+vi.mock("react-native", () => {
+  return {
+    Appearance: {
+      getColorScheme: () => {
+        return null;
+      },
+      addChangeListener: () => {
+        return { remove: () => {} };
+      },
+    },
+  };
+});

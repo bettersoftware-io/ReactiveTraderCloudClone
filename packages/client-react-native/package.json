@@ -17,12 +17,17 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
+    "@expo-google-fonts/chakra-petch": "^0.4.1",
+    "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
+    "@expo-google-fonts/ibm-plex-sans": "^0.4.1",
+    "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@rtc/client-core": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/react-bindings": "workspace:*",
     "expo": "^55.0.0",
     "expo-constants": "^55.0.16",
+    "expo-font": "~55.0.8",
     "expo-router": "^55.0.16",
     "expo-status-bar": "^55.0.6",
     "react": "^19",
