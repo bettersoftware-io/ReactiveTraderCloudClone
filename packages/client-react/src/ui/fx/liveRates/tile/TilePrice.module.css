@@ -84,15 +84,39 @@
   color: var(--accent-negative);
 }
 
-/* Tick flash = the prototype's filled big-figure block. */
+/* Tick flash = the prototype's filled big-figure block, held for 650ms then
+ * released back to the steady state over 250ms (PROTO source L1266-1281:
+ * `flashOn = fl && (S.now - fl.ts < 650)` + `transition: background .25s,
+ * color .25s`). Self-terminating animation, not a persistent style, so the
+ * fill doesn't blot out the movement color under continuous streaming. */
 .pips[data-anim="tickUp"] {
-  background: var(--accent-positive);
-  color: var(--bg-primary);
-  padding: 0 2px;
+  animation: v2TickUp 0.9s ease-out;
 }
 
 .pips[data-anim="tickDown"] {
-  background: var(--accent-negative);
-  color: var(--bg-primary);
-  padding: 0 2px;
+  animation: v2TickDown 0.9s ease-out;
+}
+
+@keyframes v2TickUp {
+  0%,
+  72% {
+    background: var(--accent-positive);
+    color: var(--bg-primary);
+    padding: 0 2px;
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes v2TickDown {
+  0%,
+  72% {
+    background: var(--accent-negative);
+    color: var(--bg-primary);
+    padding: 0 2px;
+  }
+  100% {
+    background: transparent;
+  }
 }
