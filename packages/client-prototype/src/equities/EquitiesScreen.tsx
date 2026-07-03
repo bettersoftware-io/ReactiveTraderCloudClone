@@ -2,7 +2,10 @@ import type { CSSProperties, ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import type { EqBlotView } from "#/equities/Blotter/EqBlotterPanel";
-import { EqBlotterPanel } from "#/equities/Blotter/EqBlotterPanel";
+import {
+  EqBlotterPanel,
+  EqBlotterPanelControls,
+} from "#/equities/Blotter/EqBlotterPanel";
 import { ChartPanel, ChartPanelControls } from "#/equities/Chart/ChartPanel";
 import styles from "#/equities/EquitiesScreen.module.css";
 import { positionsVm } from "#/equities/positionsVm";
@@ -134,6 +137,14 @@ export function EquitiesScreen(): ReactElement {
             head={
               <span className={styles.regionLabel}>▤ Orders / Positions</span>
             }
+            headControls={
+              <EqBlotterPanelControls
+                view={blotView}
+                onView={setBlotView}
+                ordersCount={ticket.orders.length}
+                positionsCount={positions.length}
+              />
+            }
             maxPanel={dock.maxPanel}
             onToggleMax={dock.toggleMax}
           >
@@ -141,7 +152,6 @@ export function EquitiesScreen(): ReactElement {
               orders={ticket.orders}
               positions={positions}
               view={blotView}
-              onView={setBlotView}
               newOrderId={ticket.newOrderId}
             />
           </Panel>

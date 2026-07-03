@@ -1,7 +1,11 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { EqBlotterPanel } from "#/equities/Blotter/EqBlotterPanel";
+import type { EqBlotView } from "#/equities/Blotter/EqBlotterPanel";
+import {
+  EqBlotterPanel,
+  EqBlotterPanelControls,
+} from "#/equities/Blotter/EqBlotterPanel";
 import type { EqOrder } from "#/equities/types";
 
 afterEach(cleanup);
@@ -26,7 +30,6 @@ describe("EqBlotterPanel", () => {
         orders={[]}
         positions={[]}
         view="orders"
-        onView={noop}
         newOrderId={null}
       />,
     );
@@ -37,7 +40,6 @@ describe("EqBlotterPanel", () => {
         orders={ORDERS}
         positions={[]}
         view="orders"
-        onView={noop}
         newOrderId={5001}
       />,
     );
@@ -62,7 +64,6 @@ describe("EqBlotterPanel", () => {
         orders={[]}
         positions={[]}
         view="positions"
-        onView={noop}
         newOrderId={null}
       />,
     );
@@ -70,4 +71,35 @@ describe("EqBlotterPanel", () => {
   });
 });
 
-function noop(): void {}
+describe("EqBlotterPanelControls", () => {
+  test("shows the live count and calls onView when a tab is clicked", () => {
+    let view: EqBlotView = "orders";
+
+    function handleView(next: EqBlotView): void {
+      view = next;
+    }
+
+    const { getByText, rerender } = render(
+      <EqBlotterPanelControls
+        view={view}
+        onView={handleView}
+        ordersCount={3}
+        positionsCount={2}
+      />,
+    );
+    expect(getByText("3 orders")).toBeTruthy();
+
+    fireEvent.click(getByText(/Positions/));
+    expect(view).toBe("positions");
+
+    rerender(
+      <EqBlotterPanelControls
+        view={view}
+        onView={handleView}
+        ordersCount={3}
+        positionsCount={2}
+      />,
+    );
+    expect(getByText("2 positions")).toBeTruthy();
+  });
+});
