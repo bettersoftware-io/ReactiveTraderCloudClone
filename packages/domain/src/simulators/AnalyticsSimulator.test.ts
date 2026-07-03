@@ -2,7 +2,7 @@ import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { defined } from "../__testUtils__/defined.js";
+import { netExposureByCurrency } from "../analytics/netExposure.js";
 import type { PositionUpdates } from "../analytics/position.js";
 import { AnalyticsSimulator } from "./AnalyticsSimulator.js";
 
@@ -28,33 +28,45 @@ describe("AnalyticsSimulator", () => {
     }
   });
 
-  it("emits static positions for 9 pairs", async () => {
-    const engine = new AnalyticsSimulator();
-    const update = await firstValueFrom(engine.getAnalytics("USD"));
+  it("emits 9 static positions with PROTO-scale PnL", async () => {
+    const sim = new AnalyticsSimulator();
+    const update = await firstValueFrom(sim.getAnalytics("USD"));
     expect(update.currentPositions).toHaveLength(9);
+    const bySymbol = new Map(
+      update.currentPositions.map((p) => {
+        return [p.symbol, p.basePnl];
+      }),
+    );
+    expect(bySymbol.get("EURUSD")).toBe(13_000);
+    expect(bySymbol.get("USDJPY")).toBe(-4_000);
+    expect(bySymbol.get("GBPUSD")).toBe(9_000);
+    expect(bySymbol.get("AUDUSD")).toBe(6_000);
+    expect(bySymbol.get("EURCAD")).toBe(-2_000);
+    expect(bySymbol.get("EURJPY")).toBe(5_000);
+  });
 
-    const eurusd = update.currentPositions.find((p) => {
-      return p.symbol === "EURUSD";
-    });
-    expect(eurusd).toBeDefined();
-    expect(defined(eurusd).basePnl).toBe(564.97);
+  it("static positions aggregate to the PROTO net-exposure targets", async () => {
+    const sim = new AnalyticsSimulator();
+    const update = await firstValueFrom(sim.getAnalytics("USD"));
+    const exposure = netExposureByCurrency(update.currentPositions);
+    expect(exposure).toEqual([
+      { currency: "EUR", amountMillions: 15.2 },
+      { currency: "USD", amountMillions: -22.8 },
+      { currency: "JPY", amountMillions: 8.4 },
+      { currency: "GBP", amountMillions: -6.1 },
+      { currency: "AUD", amountMillions: 4.7 },
+      { currency: "NZD", amountMillions: 2.1 },
+      { currency: "CAD", amountMillions: -3.2 },
+    ]);
+  });
 
-    const usdjpy = update.currentPositions.find((p) => {
-      return p.symbol === "USDJPY";
-    });
-    expect(defined(usdjpy).basePnl).toBe(1382.31);
-
-    const gbpusd = update.currentPositions.find((p) => {
-      return p.symbol === "GBPUSD";
-    });
-    expect(defined(gbpusd).basePnl).toBe(-1656.82);
-
-    // Zero positions
-    const gbpjpy = update.currentPositions.find((p) => {
-      return p.symbol === "GBPJPY";
-    });
-    expect(defined(gbpjpy).basePnl).toBe(0);
-    expect(defined(gbpjpy).baseTradedAmount).toBe(0);
+  it("PnL history starts near the PROTO seed of 17120", async () => {
+    const sim = new AnalyticsSimulator();
+    const update = await firstValueFrom(sim.getAnalytics("USD"));
+    const latest = update.history[update.history.length - 1];
+    // 90 random-walk steps of ±0.5% each can drift at most ~(1.005)^90 ≈ 1.57×.
+    expect(latest.usdPnl).toBeGreaterThan(17_120 / 1.6);
+    expect(latest.usdPnl).toBeLessThan(17_120 * 1.6);
   });
 
   it("emits initial snapshot then updates every 10s, capped at 90 entries", async () => {
