@@ -45,6 +45,21 @@ describe("FxBlotterHeadControls", () => {
 
     expect(queryByPlaceholderText("Filter…")).toBeNull();
   });
+
+  test("labels the trade count as 'N trades', matching canonical fxCount", () => {
+    const { result } = renderHook(() => {
+      return useFxBlotter(SEED_TRADES);
+    });
+    const { getByText } = render(
+      <FxBlotterHeadControls
+        api={result.current}
+        view="blotter"
+        onView={vi.fn()}
+      />,
+    );
+
+    expect(getByText(`${SEED_TRADES.length} trades`)).toBeTruthy();
+  });
 });
 
 describe("FxBlotterPanel", () => {
