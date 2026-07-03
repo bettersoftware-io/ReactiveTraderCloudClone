@@ -2,12 +2,11 @@
   display: block;
 }
 
-/* Line glow matches the sign colour set inline on the <path> stroke attr
- * (PnlChart.tsx can't be touched here — this is a CSS-only restyle). */
-.chart path[stroke="var(--accent-positive)"] {
+/* Line glow matches the sign colour set on the <path> stroke. */
+.chart path[data-sign="positive"] {
   filter: drop-shadow(0 0 5px var(--accent-positive));
 }
 
-.chart path[stroke="var(--accent-negative)"] {
+.chart path[data-sign="negative"] {
   filter: drop-shadow(0 0 5px var(--accent-negative));
 }

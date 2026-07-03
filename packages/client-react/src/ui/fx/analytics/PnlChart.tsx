@@ -33,6 +33,7 @@ export function PnlChart({ history }: PnlChartProps): ReactElement {
         <path
           d={path}
           fill="none"
+          data-sign={isPositive ? "positive" : "negative"}
           stroke={
             isPositive ? "var(--accent-positive)" : "var(--accent-negative)"
           }
