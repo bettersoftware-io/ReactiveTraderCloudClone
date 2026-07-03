@@ -1,10 +1,12 @@
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 /**
  * FLIP (First-Last-Invert-Play) glide for a keyed grid. Consumers register
  * each item's root element via `register(key)`; whenever any of `deps`
  * changes, moved items animate from their previous screen position to the
- * new one instead of jump-cutting. Uses the raw WAAPI (`Element.animate`),
+ * new one instead of jump-cutting. Geometry changes that arrive between
+ * deps changes (window resize, dock panels dragged/resized) refresh the
+ * stored origins without animating. Uses the raw WAAPI (`Element.animate`),
  * not the `animateOnce` Motion One wrapper — FLIP fires per-item on every
  * layout, so a short-lived native animation avoids spinning up the Motion One
  * engine per grid item.
@@ -16,20 +18,42 @@ import { useLayoutEffect, useRef } from "react";
 export function useFlipGrid(deps: unknown[]): FlipGridApi {
   const elementsRef = useRef(new Map<string, HTMLElement>());
   const positionsRef = useRef(new Map<string, Rect>());
+  const observerRef = useRef<ResizeObserver | null>(null);
+
+  // The deps-change effect below is the only writer that ANIMATES; everything
+  // else that moves the grid (window resize, a dock panel being dragged or
+  // resized — both change tile sizes, which ResizeObserver sees) just
+  // refreshes the stored origins so the NEXT deps-change FLIP doesn't glide
+  // in from a stale position.
+  useEffect(() => {
+    function resnapshot(): void {
+      positionsRef.current = measurePositions(elementsRef.current);
+    }
+
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(resnapshot);
+    observerRef.current = observer;
+    elementsRef.current.forEach((el) => {
+      observer?.observe(el);
+    });
+    window.addEventListener("resize", resnapshot);
+
+    return (): void => {
+      window.removeEventListener("resize", resnapshot);
+      observer?.disconnect();
+      observerRef.current = null;
+    };
+  }, []);
 
   useLayoutEffect(() => {
-    const elements = elementsRef.current;
-    const nextPositions = new Map<string, Rect>();
-    elements.forEach((el, key) => {
-      const rect = el.getBoundingClientRect();
-      nextPositions.set(key, { left: rect.left, top: rect.top });
-    });
-
+    const nextPositions = measurePositions(elementsRef.current);
     const prevPositions = positionsRef.current;
 
     if (prevPositions.size > 0 && !prefersReducedMotion()) {
       for (const { key, dx, dy } of flipDeltas(prevPositions, nextPositions)) {
-        const el = elements.get(key);
+        const el = elementsRef.current.get(key);
         if (el) playFlip(el, dx, dy);
       }
     }
@@ -47,7 +71,10 @@ export function useFlipGrid(deps: unknown[]): FlipGridApi {
     return (el: HTMLElement | null): void => {
       if (el) {
         elementsRef.current.set(key, el);
+        observerRef.current?.observe(el);
       } else {
+        const prev = elementsRef.current.get(key);
+        if (prev) observerRef.current?.unobserve(prev);
         elementsRef.current.delete(key);
       }
     };
@@ -74,6 +101,18 @@ export function flipDeltas(
     deltas.push({ key, dx, dy });
   });
   return deltas;
+}
+
+/** Snapshot each registered element's current viewport position. */
+function measurePositions(
+  elements: ReadonlyMap<string, HTMLElement>,
+): Map<string, Rect> {
+  const positions = new Map<string, Rect>();
+  elements.forEach((el, key) => {
+    const rect = el.getBoundingClientRect();
+    positions.set(key, { left: rect.left, top: rect.top });
+  });
+  return positions;
 }
 
 function playFlip(el: HTMLElement, dx: number, dy: number): void {
