@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { SessionPresenter, type SessionState } from "../SessionPresenter";
+import {
+  DEMO_USER,
+  SessionPresenter,
+  type SessionState,
+} from "../SessionPresenter";
 
 describe("SessionPresenter", () => {
   it("starts unlocked, lock() locks, unlock() re-authenticates", () => {
-    const p = new SessionPresenter({
-      name: "Anthony Stark",
-      initials: "AS",
-      role: "Senior FX Trader",
-      id: "TRD-0042",
-    });
+    const p = new SessionPresenter(DEMO_USER);
     const seen: boolean[] = [];
     const sub = p.state$.subscribe((s) => {
       return seen.push(s.locked);
@@ -21,12 +20,7 @@ describe("SessionPresenter", () => {
   });
 
   it("pairs the lock flag with the static demo user", () => {
-    const user = {
-      name: "Anthony Stark",
-      initials: "AS",
-      role: "Senior FX Trader",
-      id: "TRD-0042",
-    };
+    const user = DEMO_USER;
     const p = new SessionPresenter(user);
     let latest: SessionState | undefined;
     const sub = p.state$.subscribe((s) => {

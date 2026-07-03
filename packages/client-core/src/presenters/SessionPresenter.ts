@@ -1,12 +1,15 @@
 import { BehaviorSubject, combineLatest, type Observable, of } from "rxjs";
 import { map, shareReplay } from "rxjs/operators";
 
-/** The signed-in operator shown on the lock overlay. */
+/** The signed-in operator shown on the lock overlay and the account menu. */
 export interface SessionUser {
   readonly name: string;
   readonly initials: string;
   readonly role: string;
   readonly id: string;
+  readonly email: string;
+  readonly desk: string;
+  readonly clearance: string;
 }
 
 /** Session view-model: whether the session is locked plus the static user. */
@@ -25,6 +28,9 @@ export const DEMO_USER: SessionUser = {
   initials: "AS",
   role: "Senior FX Trader",
   id: "TRD-0042",
+  email: "a.stark@reactivetrader.io",
+  desk: "G10 Spot · London",
+  clearance: "LEVEL 4 · FULL",
 };
 
 /**
