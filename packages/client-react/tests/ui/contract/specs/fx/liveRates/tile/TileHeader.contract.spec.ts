@@ -54,6 +54,20 @@ describe("TileHeader", () => {
     expect(header.movementText()).toBe("– 0 pip");
     expect(header.movementKey()).toBe("flat");
   });
+
+  // Before two history ticks exist the pip magnitude is unknown (not zero),
+  // while the price's movementType can already be non-flat — rendering
+  // "▲ 0 pip" would be misleading, so the badge stays hidden.
+  it("hides the badge while the pip magnitude is still unknown", () => {
+    const header = mount(TileHeader, {
+      props: headerProps({
+        movement: PriceMovementType.UP,
+        movementPips: null,
+      }),
+    });
+    expect(header.hasMovementBadge()).toBe(false);
+    expect(header.movementText()).toBe("");
+  });
 });
 
 function headerProps(over: Partial<TileHeaderProps> = {}): TileHeaderProps {

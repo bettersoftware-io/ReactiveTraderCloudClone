@@ -18,12 +18,14 @@ export function TileHeader({
         <span>{base}</span>
         <span className={styles.separator}>/</span>
         <span>{terms}</span>
-        <span
-          data-movement={movementKey(movement)}
-          className={styles.movementBadge}
-        >
-          {movementArrow(movement)} {movementPips} pip
-        </span>
+        {movementPips !== null && (
+          <span
+            data-movement={movementKey(movement)}
+            className={styles.movementBadge}
+          >
+            {movementArrow(movement)} {movementPips} pip
+          </span>
+        )}
       </div>
     </div>
   );
@@ -34,7 +36,8 @@ interface TileHeaderProps {
   terms: string;
   symbol: string;
   movement: PriceMovementType;
-  movementPips: number;
+  /** Pip magnitude of the last tick, or null (no badge) before two ticks. */
+  movementPips: number | null;
 }
 
 function movementKey(movement: PriceMovementType): "up" | "down" | "flat" {
