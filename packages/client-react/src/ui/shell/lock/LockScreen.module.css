@@ -79,9 +79,10 @@
 /*
  * --chip is a gradient on the 3d skins, and SVG `fill` cannot take a CSS
  * gradient — it falls back to black. Derive the same solid tint from the
- * accent instead. On classic --accent-primary is #3b82f6 and --chip is
+ * accent instead. On classic DARK --accent-primary is #3b82f6 and --chip is
  * rgba(59,130,246,0.12); color-mix at exactly 12% reproduces that value
- * bit-for-bit, so this is pixel-identical there.
+ * bit-for-bit. Other skin×mode cells shift sub-perceptually (their chip
+ * base wasn't exactly accent@12%) — verified under the golden budget.
  */
 .avatarChip {
   fill: color-mix(in srgb, var(--accent-primary) 12%, transparent);
