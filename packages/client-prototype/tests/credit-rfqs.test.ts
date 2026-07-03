@@ -125,4 +125,30 @@ describe("useCreditRfqs", () => {
     });
     expect(result.current.rfqs[0].state).toBe("Cancelled");
   });
+
+  test("cardExitIds marks an RFQ that resolves while on the live tab, then clears after the next 400ms sweep", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => {
+      return useCreditRfqs({ rng: mulberry32(1) });
+    });
+    act(() => {
+      result.current.sendRfq({ ...BUY });
+    });
+    act(() => {
+      result.current.cancelRfq(700);
+    });
+    expect(result.current.creditTab).toBe("live");
+    expect(result.current.rfqs[0].state).toBe("Cancelled");
+    expect(result.current.cardExitIds).toContain(700);
+    expect(
+      result.current.shownRfqs.some((r) => {
+        return r.id === 700;
+      }),
+    ).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(result.current.cardExitIds).not.toContain(700);
+  });
 });

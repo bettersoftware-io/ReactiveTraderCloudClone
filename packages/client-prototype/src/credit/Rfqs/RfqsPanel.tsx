@@ -127,7 +127,7 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
       <RfqCard
         vm={vm}
         isNew={rfq.id === rfqs.newRfqId}
-        isExiting={rfqs.exitingRfqs.includes(rfq.id)}
+        isExiting={rfqs.cardExitIds.includes(rfq.id)}
         onAccept={handleAccept}
         onCancel={handleCancel}
         onRemove={handleRemove}

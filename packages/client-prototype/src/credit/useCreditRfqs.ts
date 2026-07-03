@@ -57,6 +57,7 @@ export interface CreditRfqsApi {
   newRfqId: number | null;
   newCreditId: number | null;
   exitingRfqs: number[];
+  cardExitIds: number[];
   onTab(tab: CreditTab): void;
   sendRfq(form: RfqFormValue): void;
   acceptQuote(rfqId: number, dealerId: number): void;
@@ -372,17 +373,30 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
     downloadCsv("credit-trades.csv", csv);
   }
 
-  // PROTO L1327: shown = matches the active tab, plus anything mid
-  // remove-animation, plus anything that just left "live" (accepted/expired)
-  // so its card can animate out before vanishing.
+  // PROTO L1327/L1330: shown = matches the active tab, plus anything mid
+  // remove-animation, plus anything that just left "live" (accepted/
+  // cancelled/expired) so its card can animate out before vanishing.
+  // cardExitIds is the union RfqCard's isExiting reads from — a manual
+  // trash-click exit (exitingRfqs) or this auto-exit (still inside its
+  // EXITING_RETAIN_MS grace window) both play the same cardOut fade.
+  const autoExitRfqIds = rfqs
+    .filter((r) => {
+      return (
+        creditTab === "live" &&
+        r.state !== "Open" &&
+        r.exitAt != null &&
+        now - r.exitAt < EXITING_RETAIN_MS
+      );
+    })
+    .map((r) => {
+      return r.id;
+    });
+  const cardExitIds = Array.from(new Set([...exitingRfqs, ...autoExitRfqIds]));
   const shownRfqs = rfqs.filter((r) => {
     return (
       rfqMatch(r, creditTab) ||
       exitingRfqs.includes(r.id) ||
-      (creditTab === "live" &&
-        r.state !== "Open" &&
-        r.exitAt != null &&
-        now - r.exitAt < EXITING_RETAIN_MS)
+      autoExitRfqIds.includes(r.id)
     );
   });
   const liveRfqs = rfqs.filter((r) => {
@@ -402,6 +416,7 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
     newRfqId,
     newCreditId,
     exitingRfqs,
+    cardExitIds,
     onTab,
     sendRfq,
     acceptQuote,
