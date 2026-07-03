@@ -23,7 +23,14 @@ export const TESTIDS = {
     filter: (category: string) => {
       return `filter-${category}`;
     },
-    viewToggle: "view-toggle",
+    /** Head-slot chip (LiveRatesHead) that toggles tile sparklines. No
+     * Price/Chart text — reflect its on/off state via `data-active`. */
+    chartsToggle: "charts-toggle",
+    /** Per-tile sparkline (TileChart), rendered only when the charts toggle is
+     * active. Deliberately does NOT start with `tile-` — that prefix is reserved
+     * for per-pair tile roots (`tilePrefix`) and a collision double-counts
+     * `[data-testid^="tile-"]` prefix queries (e.g. LiveRatesPanelPage.tileCount). */
+    tileChart: "sparkline",
   },
   blotter: {
     table: "blotter-table",
@@ -32,6 +39,17 @@ export const TESTIDS = {
   },
   analytics: {
     panel: "analytics-panel",
+  },
+  positions: {
+    panel: "positions-panel",
+    bubblePrefix: "exposure-bubble-",
+    bubble: (currency: string) => {
+      return `exposure-bubble-${currency}`;
+    },
+    rowPrefix: "exposure-row-",
+    row: (currency: string) => {
+      return `exposure-row-${currency}`;
+    },
   },
   credit: {
     nav: "credit-nav",

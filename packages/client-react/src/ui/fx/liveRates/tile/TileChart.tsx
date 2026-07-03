@@ -12,6 +12,7 @@ export function TileChart({ history }: TileChartProps): ReactElement {
 
   return (
     <svg
+      data-testid="sparkline"
       width="100%"
       height={CHART_HEIGHT}
       viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}

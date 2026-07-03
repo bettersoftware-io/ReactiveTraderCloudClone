@@ -3,7 +3,6 @@
 // See Phase 5A.4 spec §3.3.
 
 import {
-  assertContains,
   assertEquals,
   assertGreaterThanZero,
   assertGte,
@@ -72,23 +71,32 @@ export function expectVisibleTileCountEquals(
   });
 }
 
-export function expectViewToggleVisible(ctx: TestContext): void {
-  chainable(ctx.po.liveRatesTile.viewToggleVisible()).then((v) => {
-    return assertTrue(v, "view toggle not visible");
+export function expectChartsToggleVisible(ctx: TestContext): void {
+  chainable(ctx.po.liveRatesTile.chartsToggleVisible()).then((v) => {
+    return assertTrue(v, "charts toggle not visible");
   });
 }
 
-export function expectViewToggleShows(
+export function expectChartsToggleActive(
   ctx: TestContext,
-  expected: string,
+  active: boolean,
 ): void {
-  chainable(ctx.po.liveRatesTile.viewToggleLabel()).then((label) => {
-    return assertContains(label, expected);
+  chainable(ctx.po.liveRatesTile.chartsToggleActive()).then((v) => {
+    return assertEquals(v, active);
   });
 }
 
-export function clickViewToggle(ctx: TestContext): void {
-  void ctx.po.liveRatesTile.clickViewToggle();
+export function clickChartsToggle(ctx: TestContext): void {
+  void ctx.po.liveRatesTile.clickChartsToggle();
+}
+
+export function expectFirstTileChartVisible(
+  ctx: TestContext,
+  visible: boolean,
+): void {
+  chainable(ctx.po.liveRatesTile.firstTileChartVisible()).then((v) => {
+    return assertEquals(v, visible);
+  });
 }
 
 export function recordFirstTileText(ctx: TestContext): void {

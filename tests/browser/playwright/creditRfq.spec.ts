@@ -48,7 +48,7 @@ test.describe("Credit RFQ", () => {
     await creditRfq.expectSellSideHeadingWithin(ctx, 3);
   });
 
-  test("credit RFQ list is empty when no RFQs have been created", async ({
+  test("live RFQ list shows no open RFQs initially — seeded terminal RFQs live under All", async ({
     ctx,
   }) => {
     await creditRfq.expectMessageWithin(ctx, "No RFQs to display", 3);

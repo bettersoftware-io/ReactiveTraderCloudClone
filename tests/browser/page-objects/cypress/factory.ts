@@ -8,6 +8,7 @@ import { CypressFooter } from "./Footer";
 import { CypressFxRfqForm } from "./FxRfqForm";
 import { CypressLayout } from "./Layout";
 import { CypressLiveRatesTile } from "./LiveRatesTile";
+import { CypressPositionsPanel } from "./PositionsPanel";
 import { CypressThemeToggle } from "./ThemeToggle";
 import { CypressWorkspace } from "./Workspace";
 
@@ -20,6 +21,7 @@ export function buildCypressPageObjects(): PageObjects {
     liveRatesTile: new CypressLiveRatesTile(),
     fxRfqForm: new CypressFxRfqForm(),
     analyticsDashboard: new CypressAnalyticsDashboard(),
+    positionsPanel: new CypressPositionsPanel(),
     creditRfqForm: new CypressCreditRfqForm(),
     creditRfqPanel: new CypressCreditRfqPanel(),
     blotterTable: new CypressBlotterTable(),

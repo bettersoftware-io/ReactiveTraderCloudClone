@@ -20,6 +20,14 @@ describe("Analytics panel", () => {
     analytics.expectAnalyticsHasSection(ctx, "Profit & Loss");
   });
 
+  it("positions panel shows net exposure", () => {
+    const ctx = getCtx();
+    analytics.expectPositionsPanelVisibleWithin(ctx, 5);
+    analytics.expectPositionsPanelHasBubbles(ctx, 1);
+    analytics.expectFirstBubbleHasSignedAmount(ctx);
+    analytics.expectFirstRowHasSignedAmount(ctx);
+  });
+
   it("analytics panel shows alongside live rates", () => {
     const ctx = getCtx();
     theme.expectFirstPriceTileVisible(ctx, 5_000);

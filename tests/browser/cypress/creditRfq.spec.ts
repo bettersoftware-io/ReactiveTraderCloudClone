@@ -56,7 +56,7 @@ describe("Credit RFQ", () => {
     creditRfq.expectSellSideHeadingWithin(ctx, 3);
   });
 
-  it("credit RFQ list is empty when no RFQs have been created", () => {
+  it("live RFQ list shows no open RFQs initially — seeded terminal RFQs live under All", () => {
     const ctx = getCtx();
     creditRfq.expectMessageWithin(ctx, "No RFQs to display", 3);
   });

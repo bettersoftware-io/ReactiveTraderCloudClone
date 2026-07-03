@@ -32,16 +32,22 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
     await this.page.getByTestId(TESTIDS.liveRates.filter(category)).click();
   }
 
-  async clickViewToggle(): Promise<void> {
-    await this.page.getByTestId(TESTIDS.liveRates.viewToggle).click();
+  async clickChartsToggle(): Promise<void> {
+    await this.page.getByTestId(TESTIDS.liveRates.chartsToggle).click();
   }
 
-  async viewToggleLabel(): Promise<string> {
+  async chartsToggleActive(): Promise<boolean> {
     return (
       (await this.page
-        .getByTestId(TESTIDS.liveRates.viewToggle)
-        .textContent()) ?? ""
+        .getByTestId(TESTIDS.liveRates.chartsToggle)
+        .getAttribute("data-active")) === "true"
     );
+  }
+
+  async chartsToggleVisible(): Promise<boolean> {
+    return await this.page
+      .getByTestId(TESTIDS.liveRates.chartsToggle)
+      .isVisible();
   }
 
   async firstTileBuyVisible(): Promise<boolean> {
@@ -56,9 +62,9 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
       .isVisible();
   }
 
-  async viewToggleVisible(): Promise<boolean> {
-    return await this.page
-      .getByTestId(TESTIDS.liveRates.viewToggle)
+  async firstTileChartVisible(): Promise<boolean> {
+    return await this.firstTile()
+      .getByTestId(TESTIDS.liveRates.tileChart)
       .isVisible();
   }
 

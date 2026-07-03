@@ -78,8 +78,7 @@
   color: var(--accent-primary);
   background: var(--chip);
   border-color: var(--border-strong);
-  box-shadow: 0 0 12px
-    color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  box-shadow: var(--glow);
 }
 
 .navDisabled {

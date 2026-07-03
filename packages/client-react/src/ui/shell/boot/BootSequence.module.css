@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: var(--bg-primary);
   /* appReveal exit curve, ported verbatim from prototype line 94. */
   transition: opacity 0.8s cubic-bezier(0.22, 0.61, 0.36, 1);
 }

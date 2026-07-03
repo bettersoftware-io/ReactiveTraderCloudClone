@@ -25,17 +25,19 @@ export function PositionsPanel(): ReactElement | null {
         <div className={styles.cluster}>
           {exposures.map((e) => {
             const size = bubbleSize(e.amountMillions);
-            const bubbleStyle = {
-              "--bubble-size": `${size}px`,
-              "--bubble-label-size": size > 62 ? "15px" : "12px",
-            } as CSSProperties;
             return (
               <span
                 key={e.currency}
                 data-testid={`exposure-bubble-${e.currency}`}
                 data-sign={e.amountMillions >= 0 ? "pos" : "neg"}
                 className={styles.bubble}
-                style={bubbleStyle}
+                style={
+                  // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
+                  {
+                    "--bubble-size": `${size}px`,
+                    "--bubble-label-size": size > 62 ? "15px" : "12px",
+                  } as CSSProperties
+                }
               >
                 <span className={styles.bubbleRing} aria-hidden="true" />
                 <span className={styles.bubbleCcy}>{e.currency}</span>

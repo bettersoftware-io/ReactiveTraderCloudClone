@@ -20,21 +20,26 @@ Feature: FX live rates
     When the trader clicks the "All" currency filter
     Then the visible tile count equals "all"
 
-  Scenario: view toggle switches between chart and price view
-    Then the view toggle button is visible
-    And the view toggle button shows "Price"
-    When the trader clicks the view toggle
-    Then the view toggle button shows "Chart"
-    When the trader clicks the view toggle
-    Then the view toggle button shows "Price"
+  Scenario: charts toggle switches tile sparklines on and off
+    Then a price tile is visible within 5 seconds
+    And the charts toggle is visible
+    And the charts toggle is active
+    And the first tile chart is visible
+    When the trader clicks the charts toggle
+    Then the charts toggle is inactive
+    And the first tile chart is hidden
+    When the trader clicks the charts toggle
+    Then the charts toggle is active
+    And the first tile chart is visible
 
-  Scenario: view preference persists across reloads
-    Then the view toggle button is visible
-    When the trader clicks the view toggle
-    Then the view toggle button shows "Chart"
+  Scenario: charts toggle preference persists across reloads
+    Then a price tile is visible within 5 seconds
+    And the charts toggle is visible
+    When the trader clicks the charts toggle
+    Then the charts toggle is inactive
     When the trader reloads the page
     And the trader switches to the "fx" tab
-    Then the view toggle button shows "Chart"
+    Then the charts toggle is inactive
 
   @presenter
   Scenario: prices update over time

@@ -48,20 +48,25 @@
   background: color-mix(in srgb, var(--accent-positive) 10%, transparent);
   box-shadow: 0 0 14px
     color-mix(in srgb, var(--accent-positive) 22%, transparent);
+  color: var(--accent-positive);
 }
 
 .bubble[data-sign="neg"] {
   background: color-mix(in srgb, var(--accent-negative) 10%, transparent);
   box-shadow: 0 0 14px
     color-mix(in srgb, var(--accent-negative) 22%, transparent);
+  color: var(--accent-negative);
 }
 
-/* PROTO decorative spin ring (22s linear); motion gated below. */
+/* PROTO decorative spin ring (22s linear); motion gated below. PROTO
+ * (dc.html L522-524): a solid 1px ring in the sign colour, not dashed —
+ * `color` on `.bubble[data-sign]` above supplies `currentcolor` here. */
 .bubbleRing {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 1px dashed color-mix(in srgb, currentcolor 35%, transparent);
+  border: 1px solid currentcolor;
+  opacity: 0.5;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -86,16 +91,8 @@
 .bubbleAmt {
   font-family: var(--font-mono);
   font-size: 9px;
-}
-
-.bubble[data-sign="pos"] .bubbleCcy,
-.bubble[data-sign="pos"] .bubbleAmt {
-  color: var(--accent-positive);
-}
-
-.bubble[data-sign="neg"] .bubbleCcy,
-.bubble[data-sign="neg"] .bubbleAmt {
-  color: var(--accent-negative);
+  /* PROTO paints the bubble amount dim; sign lives in the ring/ccy colour. */
+  color: var(--text-muted);
 }
 
 .ladder {
@@ -107,7 +104,7 @@
   display: flex;
   justify-content: space-between;
   padding: 6px 2px;
-  border-bottom: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border);
   font-size: 12px;
 }
 
