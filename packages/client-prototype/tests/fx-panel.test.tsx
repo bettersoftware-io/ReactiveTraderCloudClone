@@ -79,6 +79,39 @@ describe("Panel", () => {
 
     expect(container.firstElementChild?.getAttribute("data-max")).toBe("false");
   });
+
+  test("renders headControls inside the single head bar and uses the canonical maximize glyph", () => {
+    const { container, getByText, getByRole } = render(
+      <Panel
+        id={TILES_ID}
+        head={<span>TILES</span>}
+        headControls={<button type="button">RATES</button>}
+        maxPanel={null}
+        onToggleMax={vi.fn()}
+      >
+        <div>body</div>
+      </Panel>,
+    );
+    const head = container.querySelector('[class*="head"]');
+    // both the label and the controls live in the ONE head bar
+    expect(head?.textContent).toContain("TILES");
+    expect(getByText("RATES")).toBeTruthy();
+    expect(getByRole("button", { name: /maximize/i }).textContent).toBe("⛶");
+  });
+
+  test("maximize glyph flips to restore when this panel is maximized", () => {
+    const { getByRole } = render(
+      <Panel
+        id={TILES_ID}
+        head={<span>T</span>}
+        maxPanel={TILES_ID}
+        onToggleMax={vi.fn()}
+      >
+        <div>b</div>
+      </Panel>,
+    );
+    expect(getByRole("button", { name: /maximize/i }).textContent).toBe("⧉");
+  });
 });
 
 const TILES_ID: PanelId = "tiles";

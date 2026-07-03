@@ -33,6 +33,25 @@
   overflow: auto;
 }
 
+.label {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 14px;
+  background: var(--panel);
+  border-bottom: 2px solid var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .accessory {
   order: 98;
   margin-left: auto;
