@@ -32,6 +32,18 @@ describe("BlotterRow", () => {
     expect(row.isRejected()).toBe(false);
   });
 
+  // The status-cell colour (Done → positive, Pending → aware accent) hangs
+  // off this attribute in CSS, which jsdom can't compute — so the contract
+  // pins the attribute itself for every TradeStatus.
+  it("exposes each trade status as a lowercased data-status", () => {
+    const row = mount(BlotterRow, { props: { trade: trade(), isNew: false } });
+    expect(row.status()).toBe("done");
+    row.setProps({ trade: trade({ status: TradeStatus.Pending }) });
+    expect(row.status()).toBe("pending");
+    row.setProps({ trade: trade({ status: TradeStatus.Rejected }) });
+    expect(row.status()).toBe("rejected");
+  });
+
   it("flashes a newly arrived trade", () => {
     const row = mount(BlotterRow, { props: { trade: trade(), isNew: true } });
     expect(row.backgroundColor()).toBe("animation:backgroundFlash");

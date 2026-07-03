@@ -10,6 +10,8 @@ import type { CurrencyPair, ExecuteTradeInput } from "@rtc/domain";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
+import { findSpreadText } from "./findSpreadText";
+
 export interface TileProps {
   pair: CurrencyPair;
   showChart: boolean;
@@ -53,16 +55,7 @@ export class TilePage extends MountedComponent<TileProps> {
   }
 
   spreadText(): string | null {
-    // SpreadDisplay is a small centred div sitting between the SELL and BUY
-    // price boxes (inside TilePrice); find it by its numeric text pattern
-    // rather than depending on its exact position in the tree.
-    const candidate = [...this.root.querySelectorAll("div")].find((d) => {
-      return (
-        d.children.length === 0 &&
-        /^\d+(\.\d+)?$/.test(d.textContent?.trim() ?? "")
-      );
-    });
-    return candidate?.textContent?.trim() ?? null;
+    return findSpreadText(this.root);
   }
 
   // ---- Execution: the clickable SELL/BUY price boxes (TilePrice) ----
