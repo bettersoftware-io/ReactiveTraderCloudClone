@@ -92,6 +92,7 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
         <Tabs.Screen name="index" options={{ title: "Rates" }} />
         <Tabs.Screen name="blotter" options={{ title: "Blotter" }} />
         <Tabs.Screen name="analytics" options={{ title: "Analytics" }} />
+        <Tabs.Screen name="credit" options={{ title: "Credit" }} />
         <Tabs.Screen name="appearance" options={{ title: "Appearance" }} />
       </Tabs>
       <LockScreen />

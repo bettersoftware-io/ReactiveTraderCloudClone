@@ -1,18 +1,19 @@
 name: Deploy Prototype
 
-# On-demand deploy of a standalone design prototype to the rtc-clone-proto
-# Vercel project (https://rtc-clone-proto.vercel.app), behind a Basic-Auth gate.
-# Separate from the main app's Deploy workflow — this never auto-runs and touches
-# only the prototype project. Run it from the Actions tab ("Run workflow", pick
-# which prototype via the path input) or:
-#   gh workflow run deploy-proto.yml -f prototype_path="docs/design/v3/standalone/Reactive Trader.html"
+# On-demand deploy of the @rtc/client-prototype React port (the readable,
+# self-contained port of the v2 design) to the rtc-clone-proto Vercel project
+# (https://rtc-clone-proto.vercel.app), behind a Basic-Auth gate. Separate from
+# the main app's Deploy workflow AND from the "Deploy Claude Design Prototype"
+# workflow (which ships the hand-authored HTML mockup) — this never auto-runs and
+# touches only the proto project. Run it from the Actions tab ("Run workflow") or:
+#   gh workflow run deploy-proto.yml
+#
+# Requires the repo secret VERCEL_PROTO_PROJECT_ID (the rtc-clone-proto
+# project's prj_… id) — see deploy/proto/README.md for one-time setup. (A
+# project id isn't sensitive, so a Variable would work too; it's kept a
+# Secret to match the main app's VERCEL_PROJECT_ID convention.)
 on:
   workflow_dispatch:
-    inputs:
-      prototype_path:
-        description: "Path to the standalone prototype HTML to deploy"
-        required: true
-        default: "docs/design/v2/standalone/Reactive Trader.html"
 
 concurrency:
   group: deploy-proto
@@ -23,8 +24,10 @@ permissions:
 
 jobs:
   deploy-proto:
-    name: prototype → vercel
+    name: client-prototype → vercel
     runs-on: ubuntu-latest
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
@@ -32,13 +35,17 @@ jobs:
         with:
           node-version: 26
 
+      - name: Enable Corepack
+        run: npm install -g corepack@0.35.0 && corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
-      - name: Deploy chosen prototype (generate gate, copy HTML, deploy, smoke)
-        # prototype_path is bound via env and passed as a quoted argument — never
-        # interpolated into the script body — to avoid dispatch-input injection.
+      - name: Build @rtc/client-prototype, generate gate, deploy, smoke
         env:
-          SRC: ${{ inputs.prototype_path }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROTO_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: bash deploy/prototype/deploy.sh "$SRC"
+        run: bash deploy/proto/deploy.sh
