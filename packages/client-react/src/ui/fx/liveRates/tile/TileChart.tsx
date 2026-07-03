@@ -27,6 +27,7 @@ export function TileChart({ history }: TileChartProps): ReactElement {
           strokeWidth={1.5}
           strokeLinejoin="round"
           strokeLinecap="round"
+          opacity={0.75}
         />
       )}
     </svg>

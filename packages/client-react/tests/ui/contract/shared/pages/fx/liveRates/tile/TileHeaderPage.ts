@@ -14,9 +14,32 @@ export interface TileHeaderProps {
 export class TileHeaderPage extends MountedComponent<TileHeaderProps> {
   /** All span texts in order: [base, "/", terms, movement badge]. */
   parts(): string[] {
-    return [...this.root.querySelectorAll("span")].map((s) => {
-      return s.textContent?.trim() ?? "";
-    });
+    // Find the wrapper div that contains the symbol code and pair row
+    const header = this.root.querySelector("div");
+    if (!header) return [];
+
+    // Find all divs (the structure is: header > [symbolCode div, pairRow div])
+    const divs = [...header.querySelectorAll(":scope > div")];
+    const pairRowDiv = divs.length > 1 ? divs[1] : divs[0];
+
+    if (!pairRowDiv) return [];
+
+    // Get all spans at this level and one level deep
+    const directSpans = [...pairRowDiv.querySelectorAll(":scope > span")];
+
+    // First span should be pairName wrapper, get its child spans
+    const pairNameSpan = directSpans[0];
+    const pairParts = pairNameSpan
+      ? [...pairNameSpan.querySelectorAll("span")].map(
+          (s) => {return s.textContent?.trim() ?? ""},
+        )
+      : [];
+
+    // Look for movement badge among direct spans (second span if present)
+    const badge = directSpans.find((s) => {return s.hasAttribute("data-movement")});
+    const badgeParts = badge ? [badge.textContent?.trim() ?? ""] : [];
+
+    return [...pairParts, ...badgeParts];
   }
 
   /** The pair-name text only (e.g. "EUR/USD"), excluding the movement badge. */
