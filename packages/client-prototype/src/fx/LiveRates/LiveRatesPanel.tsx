@@ -259,6 +259,10 @@ function buildTileVm(
   const { movePips, moveUp } = computeMove(sym, rates);
   const flashEvent = rates.flash[sym];
   const flashOn = flashEvent != null && now - flashEvent.ts < FLASH_WINDOW_MS;
+  // PROTO 1268: `flashCol=fl&&fl.dir>0?'var(--buy)':'var(--sell)'` — the
+  // flash color follows the triggering tick's own direction, independent of
+  // `moveUp` (the daily move used for the base pip color).
+  const flashUp = flashEvent != null && flashEvent.dir > 0;
   const notional = rates.notionals[sym];
   const parsed = parseNotional(notional);
   const notionalInvalid = Number.isNaN(parsed) || parsed > MAX_NOTIONAL_CAP;
@@ -271,6 +275,7 @@ function buildTileVm(
     movePips,
     moveUp,
     flashOn,
+    flashUp,
     hist: rates.hist[sym],
     notional,
     notionalInvalid,

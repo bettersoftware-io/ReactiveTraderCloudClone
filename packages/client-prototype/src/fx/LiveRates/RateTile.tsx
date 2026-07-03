@@ -18,6 +18,7 @@ export interface TileVm {
   movePips: number;
   moveUp: boolean;
   flashOn: boolean;
+  flashUp: boolean;
   hist: number[];
   notional: string;
   notionalInvalid: boolean;
@@ -106,6 +107,7 @@ export function RateTile(props: RateTileProps): ReactElement {
             meta={vm.meta}
             moveUp={vm.moveUp}
             flashOn={vm.flashOn}
+            flashUp={vm.flashUp}
             isRfq={vm.isRfq}
           />
         </button>
@@ -122,6 +124,7 @@ export function RateTile(props: RateTileProps): ReactElement {
             meta={vm.meta}
             moveUp={vm.moveUp}
             flashOn={vm.flashOn}
+            flashUp={vm.flashUp}
             isRfq={vm.isRfq}
           />
         </button>

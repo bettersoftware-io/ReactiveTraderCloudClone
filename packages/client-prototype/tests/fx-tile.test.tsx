@@ -79,6 +79,25 @@ describe("RateTile", () => {
         ?.getAttribute("data-overlay-active"),
     ).toBe("true");
   });
+
+  test("colors the flash background by the tick's own direction, independent of the daily move", () => {
+    const { container } = render(
+      <RateTile
+        vm={makeVm({ moveUp: true, flashOn: true, flashUp: false })}
+        stage="idle"
+        overlay={null}
+      />,
+    );
+    const flashed = container.querySelector(
+      '[data-flash="true"]',
+    ) as HTMLElement | null;
+
+    expect(flashed).toBeTruthy();
+    expect(flashed?.style.getPropertyValue("--flash-color")).toBe(
+      "var(--sell)",
+    );
+    expect(flashed?.style.getPropertyValue("--move-color")).toBe("var(--buy)");
+  });
 });
 
 function makeVm(overrides: Partial<TileVm>): TileVm {
@@ -89,6 +108,7 @@ function makeVm(overrides: Partial<TileVm>): TileVm {
     movePips: 4,
     moveUp: true,
     flashOn: false,
+    flashUp: false,
     hist: Array.from({ length: 30 }, (_v, i) => {
       return 1.09 + i * 1e-4;
     }),
