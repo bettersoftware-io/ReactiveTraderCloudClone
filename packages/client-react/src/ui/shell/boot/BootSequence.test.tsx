@@ -5,7 +5,7 @@
  * This file covers the rAF loop branch (lines 42-63) that the contract spec
  * skips because jsdom's getContext("2d") returns null.
  */
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -72,6 +72,65 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     document.documentElement.style.removeProperty("--accent-negative");
 
     expect(ctxStub.clearRect).toHaveBeenCalled();
+  });
+});
+
+describe("BootSequence — boot log lines (visibility by progress)", () => {
+  it("reveals boot log lines as progress advances and all when done", () => {
+    const onDone = vi.fn();
+    const { rerender } = render(
+      wrap(<BootSequence onDone={onDone} />, {
+        useBootSequence: (_onDone: () => void) => {
+          return {
+            state: { variant: "core" as const, progress: 0, done: false },
+            skip: vi.fn(),
+          };
+        },
+      }),
+    );
+
+    // progress 0 -> 0 lines visible
+    expect(screen.queryByText(/BOOT> initializing kernel/)).toBe(null);
+
+    // progress 50 -> lines 0-3 visible (thresholds 9, 20, 32, 43, 55, 66, 77)
+    rerender(
+      wrap(<BootSequence onDone={onDone} />, {
+        useBootSequence: (_onDone: () => void) => {
+          return {
+            state: { variant: "core" as const, progress: 50, done: false },
+            skip: vi.fn(),
+          };
+        },
+      }),
+    );
+    expect(screen.queryByText(/BOOT> initializing kernel/)).not.toBe(null);
+    expect(screen.queryByText(/BOOT> mounting secure enclave/)).not.toBe(null);
+    expect(screen.queryByText(/NET > linking pricing engine/)).not.toBe(null);
+    expect(screen.queryByText(/NET > credit rfq gateway/)).not.toBe(null);
+    expect(screen.queryByText(/NET > equities market data/)).toBe(null);
+
+    // progress 100 -> all 7 lines, final line has data-online="true"
+    rerender(
+      wrap(<BootSequence onDone={onDone} />, {
+        useBootSequence: (_onDone: () => void) => {
+          return {
+            state: { variant: "core" as const, progress: 100, done: false },
+            skip: vi.fn(),
+          };
+        },
+      }),
+    );
+    expect(screen.queryByText(/BOOT> initializing kernel/)).not.toBe(null);
+    expect(screen.queryByText(/BOOT> mounting secure enclave/)).not.toBe(null);
+    expect(screen.queryByText(/NET > linking pricing engine/)).not.toBe(null);
+    expect(screen.queryByText(/NET > credit rfq gateway/)).not.toBe(null);
+    expect(screen.queryByText(/NET > equities market data/)).not.toBe(null);
+    expect(screen.queryByText(/SYS > calibrating HUD shaders/)).not.toBe(null);
+    expect(screen.queryByText(/SYS > all systems nominal/)).not.toBe(null);
+
+    // Verify the final line is marked as online
+    const finalLine = screen.getByText(/SYS > all systems nominal/);
+    expect(finalLine.getAttribute("data-online")).toBe("true");
   });
 });
 
