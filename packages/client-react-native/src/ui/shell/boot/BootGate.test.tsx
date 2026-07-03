@@ -98,11 +98,20 @@ test("fades out then calls onFinished on the animated (non-reduce-motion) path",
   expect(onFinished).toHaveBeenCalledTimes(1);
 });
 
-interface AnimationEndResult {
-  finished: boolean;
-}
-
-type AnimationEndCallback = (result: AnimationEndResult) => void;
+test("still calls onFinished if the reduce-motion probe rejects (never strands the splash)", async () => {
+  jest
+    .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+    .mockRejectedValue(new Error("probe failed"));
+  const onFinished = jest.fn();
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeDoneOnce()}>
+      <BootGate onFinished={onFinished} />
+    </ViewModelProvider>,
+  );
+  await waitFor(() => {
+    expect(onFinished).toHaveBeenCalled();
+  });
+});
 
 // Never-done fake: useBootSequence returns a running state and never invokes
 // onDone — the splash stays up so we can assert it rendered.
@@ -140,3 +149,9 @@ function fakeDoneOnce(): ViewModel {
     },
   } as unknown as ViewModel;
 }
+
+interface AnimationEndResult {
+  finished: boolean;
+}
+
+type AnimationEndCallback = (result: AnimationEndResult) => void;

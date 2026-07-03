@@ -22,24 +22,29 @@ export function BootEmblem(): JSX.Element {
   useEffect(() => {
     let cancelled = false;
     let loop: Animated.CompositeAnimation | undefined;
-    void AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
-      if (cancelled || reduce) return;
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulse, {
-            toValue: 0.4,
-            duration: 900,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulse, {
-            toValue: 1,
-            duration: 900,
-            useNativeDriver: true,
-          }),
-        ]),
-      );
-      loop.start();
-    });
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then((reduce) => {
+        if (cancelled || reduce) return;
+        loop = Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulse, {
+              toValue: 0.4,
+              duration: 900,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulse, {
+              toValue: 1,
+              duration: 900,
+              useNativeDriver: true,
+            }),
+          ]),
+        );
+        loop.start();
+      })
+      .catch(() => {
+        // Cosmetic pulse only — if the reduce-motion probe rejects, just skip
+        // the animation (same as reduce=true); never let it go unhandled.
+      });
 
     return () => {
       cancelled = true;

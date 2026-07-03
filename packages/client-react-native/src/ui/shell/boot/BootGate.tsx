@@ -26,20 +26,25 @@ export function BootGate({ onFinished }: BootGateProps): JSX.Element {
   const opacity = useRef(new Animated.Value(1)).current;
 
   function handleDone(): void {
-    void AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
-      if (reduce) {
-        onFinished();
-        return;
-      }
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then((reduce) => {
+        if (reduce) {
+          onFinished();
+          return;
+        }
 
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: FADE_MS,
-        useNativeDriver: true,
-      }).start(() => {
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: FADE_MS,
+          useNativeDriver: true,
+        }).start(() => {
+          onFinished();
+        });
+      })
+      .catch(() => {
+        // If the reduce-motion probe rejects, still dismiss — never strand the splash.
         onFinished();
       });
-    });
   }
 
   return (
