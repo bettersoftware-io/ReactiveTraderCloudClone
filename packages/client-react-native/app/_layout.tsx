@@ -14,6 +14,8 @@ import {
 import { AppRoot } from "#/app/AppRoot";
 import { shouldPlayBootSplash } from "#/app/bootSplashGate";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
+import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
+import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 import { BootGate } from "#/ui/shell/boot/BootGate";
 import { LockButton } from "#/ui/shell/lock/LockButton";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
@@ -66,6 +68,7 @@ interface ChromeProps {
 function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
 
   return (
     <View style={styles.fill}>
@@ -73,6 +76,11 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
         <Text style={styles.toolbarLabel}>Simulator</Text>
         <View style={styles.toolbarRight}>
           <Switch value={simulator} onValueChange={onToggle} />
+          <AppearanceButton
+            onPress={() => {
+              setAppearanceOpen(true);
+            }}
+          />
           <LockButton />
         </View>
       </View>
@@ -93,8 +101,14 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
         <Tabs.Screen name="blotter" options={{ title: "Blotter" }} />
         <Tabs.Screen name="analytics" options={{ title: "Analytics" }} />
         <Tabs.Screen name="credit" options={{ title: "Credit" }} />
-        <Tabs.Screen name="appearance" options={{ title: "Appearance" }} />
+        <Tabs.Screen name="equities" options={{ title: "Equities" }} />
       </Tabs>
+      <AppearanceOverlay
+        open={appearanceOpen}
+        onClose={() => {
+          setAppearanceOpen(false);
+        }}
+      />
       <LockScreen />
     </View>
   );
