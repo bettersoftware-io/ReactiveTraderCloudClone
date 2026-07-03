@@ -150,12 +150,14 @@ const SPOT_VALUE_DAYS = 2;
 /**
  * Pip movement between the two most recent history ticks, scaled by the
  * pair's pip position. Used for the header's "▲/▼ n pip" badge magnitude.
+ * Null (badge hidden) until two ticks exist — the magnitude is unknown
+ * then, not zero, and the price's movementType may already be non-flat.
  */
 function computeMovementPips(
   history: readonly PriceTick[],
   pipsPosition: number,
-): number {
-  if (history.length < 2) return 0;
+): number | null {
+  if (history.length < 2) return null;
   const last = history[history.length - 1];
   const prev = history[history.length - 2];
   return Math.round(Math.abs(last.mid - prev.mid) * 10 ** pipsPosition);

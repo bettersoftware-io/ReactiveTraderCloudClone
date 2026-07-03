@@ -5,6 +5,8 @@ import type { Direction, Price } from "@rtc/domain";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
+import { findSpreadText } from "./findSpreadText";
+
 export interface TilePriceProps {
   price: Price;
   ratePrecision: number;
@@ -36,19 +38,9 @@ export class TilePricePage extends MountedComponent<TilePriceProps> {
     await this.user.click(this.box(side));
   }
 
-  /**
-   * The rendered spread text, between the two price boxes. SpreadDisplay
-   * renders a childless <div>; the pip digits live in <span>s, so filtering
-   * to <div> disambiguates it from the numeric price text.
-   */
+  /** The rendered spread text, between the two price boxes. */
   spreadText(): string {
-    const candidate = [...this.root.querySelectorAll("div")].find((d) => {
-      return (
-        d.children.length === 0 &&
-        /^\d+(\.\d+)?$/.test(d.textContent?.trim() ?? "")
-      );
-    });
-    return candidate?.textContent?.trim() ?? "";
+    return findSpreadText(this.root) ?? "";
   }
 
   /** The two price-side labels in order: ["SELL", "BUY"]. */

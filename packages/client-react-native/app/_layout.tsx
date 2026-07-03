@@ -12,7 +12,11 @@ import {
 } from "react-native";
 
 import { AppRoot } from "#/app/AppRoot";
+import { shouldPlayBootSplash } from "#/app/bootSplashGate";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
+import { BootGate } from "#/ui/shell/boot/BootGate";
+import { LockButton } from "#/ui/shell/lock/LockButton";
+import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { useAppFonts } from "#/ui/theme/fonts";
 import { ThemeProvider } from "#/ui/theme/ThemeProvider";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -25,17 +29,27 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * gated on the bundled fonts so no leaf renders a not-yet-loaded family. */
 export default function RootLayout(): JSX.Element {
   const [simulator, setSimulator] = useState(false);
+  const [bootDone, setBootDone] = useState(false);
   const fontsLoaded = useAppFonts();
 
   if (!fontsLoaded) {
     return <SafeAreaView style={styles.screen} testID="fonts-loading" />;
   }
 
+  const playSplash = shouldPlayBootSplash();
+
   return (
     <SafeAreaView style={styles.screen}>
       <AppRoot key={simulator ? "sim" : "live"} simulator={simulator}>
         <ThemeProvider>
           <Chrome simulator={simulator} onToggle={setSimulator} />
+          {playSplash && !bootDone ? (
+            <BootGate
+              onFinished={(): void => {
+                setBootDone(true);
+              }}
+            />
+          ) : null}
         </ThemeProvider>
       </AppRoot>
     </SafeAreaView>
@@ -57,7 +71,10 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
     <View style={styles.fill}>
       <View style={styles.toolbar}>
         <Text style={styles.toolbarLabel}>Simulator</Text>
-        <Switch value={simulator} onValueChange={onToggle} />
+        <View style={styles.toolbarRight}>
+          <Switch value={simulator} onValueChange={onToggle} />
+          <LockButton />
+        </View>
       </View>
       <ConnectionBanner />
       <Tabs
@@ -77,6 +94,7 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
         <Tabs.Screen name="analytics" options={{ title: "Analytics" }} />
         <Tabs.Screen name="appearance" options={{ title: "Appearance" }} />
       </Tabs>
+      <LockScreen />
     </View>
   );
 }
@@ -92,6 +110,7 @@ const styles: RootLayoutStyles = StyleSheet.create({
 interface ChromeStyles {
   fill: ViewStyle;
   toolbar: ViewStyle;
+  toolbarRight: ViewStyle;
   toolbarLabel: TextStyle;
 }
 
@@ -106,6 +125,7 @@ function makeStyles(t: RnTheme): ChromeStyles {
       paddingVertical: 8,
       backgroundColor: t.bgHeader,
     },
+    toolbarRight: { flexDirection: "row", alignItems: "center", gap: 12 },
     toolbarLabel: { color: t.textPrimary, fontFamily: t.fontDisplay },
   });
 }

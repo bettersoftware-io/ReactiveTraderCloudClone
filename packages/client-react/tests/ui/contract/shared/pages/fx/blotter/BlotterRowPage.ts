@@ -33,6 +33,14 @@ export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
     return this.row().dataset.state === "rejected";
   }
 
+  /**
+   * The lowercased TradeStatus the row exposes for the status-cell colour
+   * (done → positive, pending → aware accent; CSS keys off `data-status`).
+   */
+  status(): string | undefined {
+    return this.row().dataset.status;
+  }
+
   /** The row's current background colour (derived from data attributes). */
   backgroundColor(): string {
     const el = this.row();

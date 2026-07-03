@@ -483,7 +483,9 @@ export const registry = new Map<AnyToken, ElementFor>([
           terms={p.terms as string}
           symbol={(p.symbol as string) ?? ""}
           movement={(p.movement as PriceMovementType) ?? "NONE"}
-          movementPips={(p.movementPips as number) ?? 0}
+          movementPips={
+            p.movementPips === undefined ? 0 : (p.movementPips as number | null)
+          }
         />
       );
     },

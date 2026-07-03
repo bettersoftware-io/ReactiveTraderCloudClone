@@ -7,7 +7,8 @@ export interface TileHeaderProps {
   terms: string;
   symbol: string;
   movement: PriceMovementType;
-  movementPips: number;
+  /** Pip magnitude of the last tick, or null (no badge) before two ticks. */
+  movementPips: number | null;
 }
 
 export class TileHeaderPage extends MountedComponent<TileHeaderProps> {
@@ -23,7 +24,12 @@ export class TileHeaderPage extends MountedComponent<TileHeaderProps> {
     return this.parts().slice(0, 3).join("");
   }
 
-  /** The movement badge's text (e.g. "▲ 5 pip"). */
+  /** True when the movement badge is rendered at all. */
+  hasMovementBadge(): boolean {
+    return this.root.querySelector("[data-movement]") !== null;
+  }
+
+  /** The movement badge's text (e.g. "▲ 5 pip"), or "" when hidden. */
   movementText(): string {
     return this.parts()[3] ?? "";
   }
