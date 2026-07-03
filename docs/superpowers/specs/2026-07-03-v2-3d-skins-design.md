@@ -23,8 +23,13 @@ two `SKIN_LABEL` entries in client-react; RN label + token-alias entries; test
 updates (domain, tokens invariants, ThemePicker contract, RN AppearanceScreen);
 acceptance screenshots.
 
+**In (correction found during planning):** a mechanical
+`background-color:` → `background:` substitution on the 29 declarations that
+consume `--panel` / `--panel-head` / `--chip`, so the 3d skins' gradient fills
+actually render (see §5).
+
 **Out:** RN depth styling (iOS `shadow*` / Android `elevation` design); any
-component/CSS change (none is needed — the consumers already exist);
+other component/CSS change;
 client-prototype parity; visual-golden growth (goldens pin `classic` only);
 preferences-catalogue parity; downgrade handling for persisted `"holo3d"` read
 by an older build (predates this phase's concern, consistent with v1→v2 skins).
@@ -113,10 +118,18 @@ What makes these entries "3d" rather than copies of their siblings: gradient
 time in the store — a real `--panel-shadow` (multi-layer drop shadow + inset
 highlight) instead of `"none"`.
 
-**No component or CSS-module changes.** `Tile.module.css` already applies
-`box-shadow: var(--tile-shadow)` and `InhouseLayoutEngine.module.css` applies
-`box-shadow: var(--panel-shadow)`; the flagship slice put the schema and
-consumers in place precisely so this phase is token-only.
+**One mechanical CSS-module change, no component changes.** `Tile.module.css`
+already applies `box-shadow: var(--tile-shadow)` and
+`InhouseLayoutEngine.module.css` applies `box-shadow: var(--panel-shadow)` —
+the shadow plumbing is token-only. But the 3d skins are the first to put
+**gradients** into `--panel`, `--panel-head`, and `--chip`, and 29 declarations
+across 15 CSS modules consume those via `background-color:`, which is invalid
+for a gradient (the fill would silently vanish on 3d skins). Those 29
+declarations change to the `background:` shorthand — behavior-identical for
+every current solid value (audited: none of the affected rules set any other
+background sub-property the shorthand would reset). `--tile` needs nothing:
+it has been a gradient since the flagship slice, so its consumers already use
+`background:`.
 
 `ThemePicker.tsx` `SKIN_LABEL` gains `holo3d: "Holo HUD 3D"` and
 `terminal3d: "Terminal 3D"` (PROTO L1406 verbatim).
