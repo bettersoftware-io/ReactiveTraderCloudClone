@@ -1,5 +1,5 @@
 import { cleanup, render, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 
 import { ActivityView } from "#/fx/Blotter/ActivityView";
 import { FxBlotterPanel } from "#/fx/Blotter/FxBlotterPanel";
@@ -36,7 +36,6 @@ describe("FxBlotterPanel", () => {
         api={result.current}
         activity={[makeEvent({})]}
         view="activity"
-        onView={vi.fn()}
       />,
     );
 

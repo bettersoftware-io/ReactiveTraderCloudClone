@@ -20,6 +20,11 @@ export interface LiveRatesPanelProps {
   filter: Filter;
   onFilter(f: Filter): void;
   view: "rates" | "watch";
+  showCharts: boolean;
+}
+
+export interface LiveRatesHeadControlsProps {
+  view: "rates" | "watch";
   onView(v: "rates" | "watch"): void;
   showCharts: boolean;
   onToggleCharts(): void;
@@ -33,9 +38,52 @@ const MAX_NOTIONAL_CAP = 1e9;
 // PROTO 1256: `fl&&(S.now-fl.ts<650)` — a rate flash stays "on" for 650ms.
 const FLASH_WINDOW_MS = 650;
 
+// PROTO 349-356 (panTiles head): the Live Rates/Watchlist view toggle and the
+// CHARTS switch. Rendered as Panel's `headControls` (one 38px bar shared
+// with the region label and maximize button) instead of a second head bar
+// inside this panel's own body.
+export function LiveRatesHeadControls(
+  props: LiveRatesHeadControlsProps,
+): ReactElement {
+  const { view, onView, showCharts, onToggleCharts } = props;
+
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.tab}
+        data-active={String(view === "rates")}
+        onClick={() => {
+          onView("rates");
+        }}
+      >
+        ◧ Live Rates
+      </button>
+      <button
+        type="button"
+        className={styles.tab}
+        data-active={String(view === "watch")}
+        onClick={() => {
+          onView("watch");
+        }}
+      >
+        ☰ Watchlist
+      </button>
+      <div className={styles.spacer} />
+      <button
+        type="button"
+        className={styles.chartsBtn}
+        data-active={String(showCharts)}
+        onClick={onToggleCharts}
+      >
+        CHARTS
+      </button>
+    </>
+  );
+}
+
 export function LiveRatesPanel(props: LiveRatesPanelProps): ReactElement {
-  const { rates, filter, onFilter, view, onView, showCharts, onToggleCharts } =
-    props;
+  const { rates, filter, onFilter, view, showCharts } = props;
   const { prefs } = usePreferences();
   const now = useNowTick();
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -46,68 +94,34 @@ export function LiveRatesPanel(props: LiveRatesPanelProps): ReactElement {
   });
 
   return (
-    <div className={styles.panel}>
-      <div className={styles.head}>
-        <button
-          type="button"
-          className={styles.tab}
-          data-active={String(view === "rates")}
-          onClick={() => {
-            onView("rates");
-          }}
-        >
-          ◧ Live Rates
-        </button>
-        <button
-          type="button"
-          className={styles.tab}
-          data-active={String(view === "watch")}
-          onClick={() => {
-            onView("watch");
-          }}
-        >
-          ☰ Watchlist
-        </button>
-        <div className={styles.spacer} />
-        <button
-          type="button"
-          className={styles.chartsBtn}
-          data-active={String(showCharts)}
-          onClick={onToggleCharts}
-        >
-          CHARTS
-        </button>
-      </div>
+    <div className={styles.body}>
+      <FilterChips value={filter} onChange={onFilter} />
 
-      <div className={styles.body}>
-        <FilterChips value={filter} onChange={onFilter} />
-
-        {view === "rates" ? (
-          <div className={styles.grid} ref={gridRef}>
-            {syms.map((sym) => {
-              return (
-                <TileCell
-                  key={sym}
-                  sym={sym}
-                  vm={buildTileVm(sym, rates, showCharts, now)}
-                  tile={rates.tiles[sym]}
-                  meta={META[sym]}
-                  now={now}
-                  onDismiss={() => {
-                    rates.onDismiss(sym);
-                  }}
-                />
-              );
-            })}
-          </div>
-        ) : (
-          <WatchlistView
-            rows={syms.map((sym) => {
-              return buildWatchRow(sym, rates);
-            })}
-          />
-        )}
-      </div>
+      {view === "rates" ? (
+        <div className={styles.grid} ref={gridRef}>
+          {syms.map((sym) => {
+            return (
+              <TileCell
+                key={sym}
+                sym={sym}
+                vm={buildTileVm(sym, rates, showCharts, now)}
+                tile={rates.tiles[sym]}
+                meta={META[sym]}
+                now={now}
+                onDismiss={() => {
+                  rates.onDismiss(sym);
+                }}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <WatchlistView
+          rows={syms.map((sym) => {
+            return buildWatchRow(sym, rates);
+          })}
+        />
+      )}
     </div>
   );
 }
