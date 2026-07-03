@@ -23,7 +23,14 @@ describe("theme axis value types", () => {
 
   it("enumerations list every member in canonical order", () => {
     expect(THEME_MODES).toEqual(["dark", "light"]);
-    expect(THEME_SKINS).toEqual(["classic", "holo", "terminal", "neon"]);
+    expect(THEME_SKINS).toEqual([
+      "classic",
+      "holo",
+      "holo3d",
+      "terminal",
+      "terminal3d",
+      "neon",
+    ]);
   });
 });
 

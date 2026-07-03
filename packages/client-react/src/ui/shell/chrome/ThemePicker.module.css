@@ -24,7 +24,7 @@
 
 .trigger[aria-expanded="true"] {
   border-color: var(--border-strong);
-  background-color: var(--chip);
+  background: var(--chip);
 }
 
 .menu {
@@ -44,7 +44,7 @@
   display: block;
   padding: 9px 13px;
   border-bottom: 1px solid var(--border-primary);
-  background-color: var(--panel-head);
+  background: var(--panel-head);
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 10px;
@@ -80,7 +80,7 @@
 }
 
 .skinRow[data-active="true"] {
-  background-color: var(--chip);
+  background: var(--chip);
   color: var(--text-primary);
 }
 

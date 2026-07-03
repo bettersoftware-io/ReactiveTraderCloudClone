@@ -1,5 +1,5 @@
 .loading {
-  background-color: var(--panel);
+  background: var(--panel);
   backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -10,7 +10,7 @@
 }
 
 .panel {
-  background-color: var(--panel);
+  background: var(--panel);
   backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--border);
   box-shadow: var(--glow);

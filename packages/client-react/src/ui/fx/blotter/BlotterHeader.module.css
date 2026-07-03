@@ -13,7 +13,7 @@
   position: relative;
   cursor: pointer;
   user-select: none;
-  background-color: var(--panel-head);
+  background: var(--panel-head);
 }
 
 .sortIndicator {
@@ -40,7 +40,7 @@
   top: 100%;
   left: 0;
   z-index: 10;
-  background-color: var(--panel);
+  background: var(--panel);
   backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--border);
   border-radius: 4px;

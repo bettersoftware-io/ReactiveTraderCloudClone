@@ -16,7 +16,13 @@ export type ThemeMode = "dark" | "light";
  * tokens / `dataset.mode` stay `dark | light` regardless of the preference.
  */
 export type ThemeModePreference = ThemeMode | "system";
-export type ThemeSkin = "classic" | "holo" | "terminal" | "neon";
+export type ThemeSkin =
+  | "classic"
+  | "holo"
+  | "holo3d"
+  | "terminal"
+  | "terminal3d"
+  | "neon";
 export type ViewMode = "chart" | "price";
 
 /** The boot sequence visual variant. Cycles across sessions — each run advances
@@ -32,7 +38,9 @@ export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
 export const THEME_SKINS: readonly ThemeSkin[] = [
   "classic",
   "holo",
+  "holo3d",
   "terminal",
+  "terminal3d",
   "neon",
 ];
 export const THEME_MODES: readonly ThemeMode[] = ["dark", "light"];

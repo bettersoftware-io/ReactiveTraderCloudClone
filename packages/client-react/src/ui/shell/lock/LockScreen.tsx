@@ -72,7 +72,7 @@ export function LockScreen(): ReactElement | null {
           >
             <polygon
               points="14,1.5 25,7.75 25,20.25 14,26.5 3,20.25 3,7.75"
-              fill="var(--chip)"
+              className={styles.avatarChip}
               stroke="var(--accent-primary)"
               strokeWidth="1.3"
             />

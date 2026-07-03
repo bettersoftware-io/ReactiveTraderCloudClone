@@ -27,7 +27,9 @@ describe("ThemePicker", () => {
     expect(picker.skinOptions()).toEqual([
       "classic",
       "holo",
+      "holo3d",
       "terminal",
+      "terminal3d",
       "neon",
     ]);
     expect(picker.activeSkin()).toBe("holo");
@@ -35,6 +37,15 @@ describe("ThemePicker", () => {
     await picker.selectSkin("neon");
     expect(picker.isMenuOpen()).toBe(false);
     expect(picker.documentSkin()).toBe("neon");
+  });
+
+  it("selecting a 3d skin writes it through the skin seam", async () => {
+    const picker = mount(ThemePicker, { themeSkin: "holo", themeMode: "dark" });
+
+    await picker.openMenu();
+    await picker.selectSkin("holo3d");
+    expect(picker.isMenuOpen()).toBe(false);
+    expect(picker.documentSkin()).toBe("holo3d");
   });
 
   it("closes the dropdown on Escape without changing the skin", async () => {

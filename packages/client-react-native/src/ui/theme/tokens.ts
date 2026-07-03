@@ -313,6 +313,10 @@ const neonLight: RnTheme = {
 export const rnThemeTokens: Record<ThemeSkin, Record<ThemeMode, RnTheme>> = {
   classic: { dark: classicDark, light: classicLight },
   holo: { dark: holoDark, light: holoLight },
+  // RN has no layered-shadow depth styling yet; the 3d skins render as their
+  // flat siblings until the mobile-3d phase gives them real elevation.
+  holo3d: { dark: holoDark, light: holoLight },
   terminal: { dark: terminalDark, light: terminalLight },
+  terminal3d: { dark: terminalDark, light: terminalLight },
   neon: { dark: neonDark, light: neonLight },
 };
