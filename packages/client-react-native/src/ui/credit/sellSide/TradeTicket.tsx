@@ -83,14 +83,14 @@ export function TradeTicket({
             style={price ? styles.submitBtn : styles.submitBtnDisabled}
             onPress={handleSubmit}
           >
-            <Text style={styles.btnLabel}>Submit</Text>
+            <Text style={styles.submitLabel}>Submit</Text>
           </Pressable>
           <Pressable
             testID={`sell-ticket-pass-${rfq.id}`}
             style={styles.passBtn}
             onPress={handlePass}
           >
-            <Text style={styles.btnLabel}>Pass</Text>
+            <Text style={styles.passLabel}>Pass</Text>
           </Pressable>
         </View>
       ) : (
@@ -145,7 +145,8 @@ interface TradeTicketStyles {
   submitBtn: ViewStyle;
   submitBtnDisabled: ViewStyle;
   passBtn: ViewStyle;
-  btnLabel: TextStyle;
+  submitLabel: TextStyle;
+  passLabel: TextStyle;
 }
 
 function makeStyles(t: RnTheme): TradeTicketStyles {
@@ -199,18 +200,25 @@ function makeStyles(t: RnTheme): TradeTicketStyles {
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 6,
-      backgroundColor: t.bgSecondary,
+      backgroundColor: t.accentPositive,
       opacity: 0.5,
     },
     passBtn: {
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 6,
-      backgroundColor: t.bgSecondary,
+      backgroundColor: "transparent",
+      borderWidth: 1,
+      borderColor: t.border,
     },
-    btnLabel: {
+    submitLabel: {
       fontSize: 12,
       color: t.textOnAccent,
+      fontFamily: t.fontDisplay,
+    },
+    passLabel: {
+      fontSize: 12,
+      color: t.textSecondary,
       fontFamily: t.fontDisplay,
     },
   });
