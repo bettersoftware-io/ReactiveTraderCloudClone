@@ -41,7 +41,7 @@ describe("ExecutionSimulator", () => {
     expect(trade.status).toBe(TradeStatus.Done);
   });
 
-  it("trade IDs auto-increment from 1", async () => {
+  it("trade IDs auto-increment from 1043", async () => {
     vi.useFakeTimers();
     const engine = new ExecutionSimulator();
     const p1 = firstValueFrom(engine.executeTrade(makeRequest("EURUSD")));
@@ -50,8 +50,8 @@ describe("ExecutionSimulator", () => {
     const p2 = firstValueFrom(engine.executeTrade(makeRequest("EURUSD")));
     await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);
     const t2 = await p2;
-    expect(t1.tradeId).toBe(1);
-    expect(t2.tradeId).toBe(2);
+    expect(t1.tradeId).toBe(1043);
+    expect(t2.tradeId).toBe(1044);
   });
 
   it("notifies listeners on execution", async () => {
@@ -66,7 +66,7 @@ describe("ExecutionSimulator", () => {
     await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);
     await promise;
     expect(trades).toHaveLength(1);
-    expect(trades[0].tradeId).toBe(1);
+    expect(trades[0].tradeId).toBe(1043);
   });
 
   it("response includes all request properties", async () => {
