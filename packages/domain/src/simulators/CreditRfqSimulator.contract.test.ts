@@ -18,7 +18,7 @@ describeWorkflowPortContract("CreditRfqSimulator", () => {
   const port = new CreditRfqSimulator(DEALERS_CATALOG);
 
   /**
-   * Creates an RFQ using dealerId=0 (J.P. Morgan) and returns the
+   * Creates an RFQ using dealerId=0 (Adaptive Bank) and returns the
    * auto-generated rfqId plus the first quoteId emitted by the simulator.
    */
   async function createRfqAndGetQuoteId(): Promise<number> {

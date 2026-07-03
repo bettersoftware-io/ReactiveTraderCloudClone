@@ -11,23 +11,38 @@ describe("DealerSimulator", () => {
       service.getDealers().pipe(toArray()),
     );
     expect(emissions).toHaveLength(1);
-    expect(emissions[0]).toHaveLength(10);
+    expect(emissions[0]).toHaveLength(9);
     expect(emissions[0]).toEqual(DEALERS_CATALOG);
   });
 
-  it("does not include Adaptive Bank", () => {
-    const names = DEALERS_CATALOG.map((d) => {
-      return d.name;
-    });
-    expect(names).not.toContain("Adaptive Bank");
+  it("includes Adaptive Bank as dealer id 0 (the user's own bank)", () => {
+    expect(DEALERS_CATALOG[0]).toEqual({ id: 0, name: "Adaptive Bank" });
   });
 
   it("includes expected dealers", () => {
     const names = DEALERS_CATALOG.map((d) => {
       return d.name;
     });
-    expect(names).toContain("J.P. Morgan");
+    expect(names).toContain("Citi");
     expect(names).toContain("Goldman Sachs");
-    expect(names).toContain("Capital One");
+    expect(names).toContain("Deutsche Bank");
+  });
+
+  it("carries the PROTO dealer catalogue in order, Adaptive Bank first", async () => {
+    expect(
+      DEALERS_CATALOG.map((d) => {
+        return d.name;
+      }),
+    ).toEqual([
+      "Adaptive Bank",
+      "Citi",
+      "JP Morgan",
+      "Goldman Sachs",
+      "Morgan Stanley",
+      "Barclays",
+      "RBC",
+      "HSBC",
+      "Deutsche Bank",
+    ]);
   });
 });

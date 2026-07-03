@@ -11,13 +11,13 @@ import { creditEffects } from "./credit.effects.js";
 describe("credit effects", () => {
   it("streams instruments as SoW-marker fan-out: start, added, end", () => {
     const instrument = {
-      id: 1,
-      name: "ORCL 4.755 08/15/2026",
-      cusip: "68389X105",
-      ticker: "ORCL",
-      maturity: "20260815",
-      interestRate: 4.755,
-      benchmark: "5Y UST 1.500 08/2026",
+      id: 0,
+      name: "AAPL 2.4 08/30",
+      cusip: "037833DX5",
+      ticker: "AAPL",
+      maturity: "20300815",
+      interestRate: 2.4,
+      benchmark: "10Y UST 4.000 08/2030",
     };
     const ctx = {
       instruments: {
@@ -43,13 +43,13 @@ describe("credit effects", () => {
 
   it("only emits end-of-SoW once, on the first source emission", () => {
     const instrument = {
-      id: 1,
-      name: "ORCL 4.755 08/15/2026",
-      cusip: "68389X105",
-      ticker: "ORCL",
-      maturity: "20260815",
-      interestRate: 4.755,
-      benchmark: "5Y UST 1.500 08/2026",
+      id: 0,
+      name: "AAPL 2.4 08/30",
+      cusip: "037833DX5",
+      ticker: "AAPL",
+      maturity: "20300815",
+      interestRate: 2.4,
+      benchmark: "10Y UST 4.000 08/2030",
     };
     const ctx = {
       instruments: {
@@ -69,7 +69,7 @@ describe("credit effects", () => {
   });
 
   it("streams dealers as SoW-marker fan-out: start, added, end", () => {
-    const dealer = { id: 0, name: "J.P. Morgan" };
+    const dealer = { id: 0, name: "Adaptive Bank" };
     const ctx = {
       dealers: {
         getDealers: vi.fn(() => {
