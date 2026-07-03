@@ -64,10 +64,35 @@ describe("themeTokens skin×mode store", () => {
   });
 
   it("v2 tile surfaces: every non-classic dark skin has a gradient tile + layered shadow", () => {
-    for (const skin of ["holo", "terminal", "neon"] as const) {
+    for (const skin of [
+      "holo",
+      "holo3d",
+      "terminal",
+      "terminal3d",
+      "neon",
+    ] as const) {
       expect(themeTokens[skin].dark["--tile"]).toContain("linear-gradient");
       expect(themeTokens[skin].dark["--tile-shadow"]).toContain("inset");
     }
+  });
+
+  it("3d skins carry a layered panel shadow; flat skins stay flat", () => {
+    for (const mode of ["dark", "light"] as const) {
+      for (const skin of ["holo3d", "terminal3d"] as const) {
+        expect(themeTokens[skin][mode]["--panel-shadow"]).not.toBe("none");
+        expect(themeTokens[skin][mode]["--panel-shadow"]).toContain("inset");
+      }
+      for (const skin of ["classic", "holo", "terminal", "neon"] as const) {
+        expect(themeTokens[skin][mode]["--panel-shadow"]).toBe("none");
+      }
+    }
+  });
+
+  it("3d skins keep their flat sibling's accent (same palette family)", () => {
+    expect(themeTokens.holo3d.dark["--accent-primary"]).toBe("#00e5ff");
+    expect(themeTokens.holo3d.light["--accent-primary"]).toBe("#0096b3");
+    expect(themeTokens.terminal3d.dark["--accent-primary"]).toBe("#ffb000");
+    expect(themeTokens.terminal3d.light["--accent-primary"]).toBe("#b67700");
   });
 
   it("classic keeps neutral values for the new keys", () => {

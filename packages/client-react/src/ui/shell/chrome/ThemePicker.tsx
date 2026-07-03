@@ -140,6 +140,8 @@ export function ThemePicker(): ReactElement {
 const SKIN_LABEL: Record<ThemeSkin, string> = {
   classic: "Classic",
   holo: "Holo HUD",
+  holo3d: "Holo HUD 3D",
   terminal: "Terminal",
+  terminal3d: "Terminal 3D",
   neon: "Neon",
 };

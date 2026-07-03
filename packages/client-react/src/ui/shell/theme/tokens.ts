@@ -2,10 +2,12 @@
  * Design tokens for dark and light themes.
  * Applied as CSS custom properties on :root via ThemeProvider.
  *
- * The token store is keyed by ThemeSkin × ThemeMode and covers all four skins:
+ * The token store is keyed by ThemeSkin × ThemeMode and covers six skins:
  *   classic  — pre-redesign blue palette (neutral on aurora / blur / glow)
  *   holo     — Iron Man / Minority Report cyan HUD (glass panels, aurora FX)
+ *   holo3d   — Holo with physical depth (gradient panels, layered panel/tile shadows)
  *   terminal — Bloomberg-grade pro terminal (solid, amber-on-charcoal)
+ *   terminal3d — Terminal with physical depth (gradient panels, layered panel/tile shadows)
  *   neon     — high-contrast cyberpunk (magenta / cyan, aurora FX)
  *
  * Dark values for holo / terminal / neon are mapped 1-to-1 from
@@ -330,6 +332,130 @@ const holoLight: ThemeTokens = {
 };
 
 // ---------------------------------------------------------------------------
+// Holo 3D — the holo palette with physical depth: gradient panel/chip fills
+// and layered panel/tile shadows. PROTO `themes.holo3d` (L772) dark and
+// `themesLight.holo3d` (L779) light, verbatim; derived keys (overlay from the
+// dark bg, subtle border, aurora stops, blur, on-accent, aware) follow the
+// flat holo entries' derivations.
+// ---------------------------------------------------------------------------
+
+const holo3dDark: ThemeTokens = {
+  "--bg-primary": "#00080e",
+  "--bg-secondary": "#04161f",
+  "--bg-header": "#04161f",
+  "--bg-footer": "#04161f",
+  "--bg-tile": "rgba(6,26,38,0.5)",
+  "--bg-overlay": "rgba(0,8,14,0.78)",
+  "--bg-brand-primary": "#00e5ff",
+
+  "--text-primary": "#dcf8ff",
+  "--text-secondary": "rgba(150,210,228,0.64)",
+  "--text-muted": "rgba(120,190,210,0.44)",
+  "--text-on-accent": "#00080e",
+
+  "--accent-positive": "#2bffb3",
+  "--accent-negative": "#ff5d73",
+  "--accent-aware": "#ffb000",
+  "--accent-primary": "#00e5ff",
+  "--accent-2": "#19ffd0",
+
+  "--border-primary": "rgba(0,224,255,0.30)",
+  "--border-subtle": "rgba(0,224,255,0.12)",
+  "--border": "rgba(0,224,255,0.12)",
+  "--border-strong": "rgba(0,224,255,0.66)",
+
+  "--status-connected": "#2bffb3",
+  "--status-connecting": "#ffb000",
+  "--status-disconnected": "#ff5d73",
+  "--status-error": "#ff5d73",
+
+  "--panel":
+    "linear-gradient(157deg, rgba(13,44,60,0.66) 0%, rgba(6,22,33,0.52) 54%, rgba(3,14,22,0.5) 100%)",
+  "--panel-head":
+    "linear-gradient(180deg, rgba(0,224,255,0.13) 0%, rgba(0,224,255,0.02) 100%)",
+  "--panel-blur": "14px",
+  "--glow": "0 0 16px rgba(0,224,255,0.32)",
+  "--grid": "rgba(0,224,255,0.05)",
+  "--chip":
+    "linear-gradient(180deg, rgba(0,224,255,0.18), rgba(0,224,255,0.07))",
+
+  "--aurora-a": "rgba(0,224,255,0.35)",
+  "--aurora-b": "rgba(25,255,208,0.3)",
+  "--aurora-opacity": "0.5",
+
+  "--font-display": "'Chakra Petch', sans-serif",
+  "--font-mono": "'JetBrains Mono', monospace",
+  "--font-logo": "'Orbitron', sans-serif",
+
+  "--tile":
+    "linear-gradient(157deg, rgba(18,52,68,0.95) 0%, rgba(10,30,43,0.88) 100%)",
+  "--tile-shadow":
+    "0 8px 20px -10px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07)",
+  "--panel-shadow":
+    "0 14px 38px -12px rgba(0,0,0,0.72), 0 3px 10px -3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 0 0 1px rgba(0,224,255,0.04)",
+};
+
+/**
+ * Holo 3D light — PROTO `themesLight.holo3d` (L779) verbatim; derived keys
+ * follow holoLight (overlay = holo3d dark bg at 0.4, white on-accent, amber
+ * aware, aurora from the light accents at holoLight's opacities).
+ */
+const holo3dLight: ThemeTokens = {
+  "--bg-primary": "#e3edf2",
+  "--bg-secondary": "#f3f9fc",
+  "--bg-header": "#f3f9fc",
+  "--bg-footer": "#f3f9fc",
+  "--bg-tile": "rgba(200,240,250,0.7)",
+  "--bg-overlay": "rgba(0,8,14,0.4)",
+  "--bg-brand-primary": "#0096b3",
+
+  "--text-primary": "#0a2330",
+  "--text-secondary": "rgba(22,72,92,0.74)",
+  "--text-muted": "rgba(45,95,115,0.52)",
+  "--text-on-accent": "#ffffff",
+
+  "--accent-positive": "#0a9e63",
+  "--accent-negative": "#d63d52",
+  "--accent-aware": "#cc8800",
+  "--accent-primary": "#0096b3",
+  "--accent-2": "#0ab39a",
+
+  "--border-primary": "rgba(0,150,179,0.3)",
+  "--border-subtle": "rgba(0,180,204,0.15)",
+  "--border": "rgba(0,180,204,0.15)",
+  "--border-strong": "rgba(0,135,165,0.6)",
+
+  "--status-connected": "#0a9e63",
+  "--status-connecting": "#cc8800",
+  "--status-disconnected": "#d63d52",
+  "--status-error": "#d63d52",
+
+  "--panel":
+    "linear-gradient(157deg, rgba(255,255,255,0.84) 0%, rgba(231,243,248,0.74) 100%)",
+  "--panel-head":
+    "linear-gradient(180deg, rgba(0,150,179,0.12) 0%, rgba(0,150,179,0.02) 100%)",
+  "--panel-blur": "14px",
+  "--glow": "0 0 14px rgba(0,150,179,0.22)",
+  "--grid": "rgba(0,150,179,0.06)",
+  "--chip":
+    "linear-gradient(180deg, rgba(0,150,179,0.16), rgba(0,150,179,0.05))",
+
+  "--aurora-a": "rgba(0,180,204,0.2)",
+  "--aurora-b": "rgba(0,204,158,0.18)",
+  "--aurora-opacity": "0.12",
+
+  "--font-display": "'Chakra Petch', sans-serif",
+  "--font-mono": "'JetBrains Mono', monospace",
+  "--font-logo": "'Orbitron', sans-serif",
+
+  "--tile": "linear-gradient(157deg, #ffffff 0%, #e9f4f7 100%)",
+  "--tile-shadow":
+    "0 8px 18px -10px rgba(20,60,80,0.24), inset 0 1px 0 rgba(255,255,255,0.9)",
+  "--panel-shadow":
+    "0 14px 34px -12px rgba(20,60,80,0.26), 0 3px 8px -3px rgba(20,60,80,0.15), inset 0 1px 0 rgba(255,255,255,0.95)",
+};
+
+// ---------------------------------------------------------------------------
 // Terminal — Bloomberg-grade pro terminal (flat/solid, amber-on-charcoal)
 // Dark values mapped 1-to-1 from theme-tokens.css [data-theme="terminal"].
 // Light: PROTO `themesLight.terminal` verbatim — light-grey backgrounds, dark text, amber accent.
@@ -439,6 +565,124 @@ const terminalLight: ThemeTokens = {
   "--tile-shadow":
     "0 3px 9px -4px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.9)",
   "--panel-shadow": "none",
+};
+
+// ---------------------------------------------------------------------------
+// Terminal 3D — the terminal palette with physical depth: gradient panel/chip
+// fills and layered panel/tile shadows. PROTO `themes.terminal3d` (L774) dark
+// and `themesLight.terminal3d` (L781) light, verbatim; derived keys follow the
+// flat terminal entries' derivations.
+// ---------------------------------------------------------------------------
+
+const terminal3dDark: ThemeTokens = {
+  "--bg-primary": "#090b0f",
+  "--bg-secondary": "#0d1015",
+  "--bg-header": "#0d1015",
+  "--bg-footer": "#0d1015",
+  "--bg-tile": "#13161c",
+  "--bg-overlay": "rgba(9,11,15,0.8)",
+  "--bg-brand-primary": "#ffb000",
+
+  "--text-primary": "#e8ebf1",
+  "--text-secondary": "#8b93a1",
+  "--text-muted": "#59616e",
+  "--text-on-accent": "#090b0f",
+
+  "--accent-positive": "#37d27e",
+  "--accent-negative": "#ff5b52",
+  "--accent-aware": "#ffb000",
+  "--accent-primary": "#ffb000",
+  "--accent-2": "#4a9eff",
+
+  "--border-primary": "#2a303a",
+  "--border-subtle": "#1a1e25",
+  "--border": "#1a1e25",
+  "--border-strong": "#414b5a",
+
+  "--status-connected": "#37d27e",
+  "--status-connecting": "#ffb000",
+  "--status-disconnected": "#ff5b52",
+  "--status-error": "#ff5b52",
+
+  "--panel": "linear-gradient(160deg, #181c24 0%, #11141a 100%)",
+  "--panel-head": "linear-gradient(180deg, #1c212a 0%, #14181e 100%)",
+  "--panel-blur": "0",
+  "--glow": "none",
+  "--grid": "rgba(255,255,255,0.02)",
+  "--chip":
+    "linear-gradient(180deg, rgba(255,176,0,0.18), rgba(255,176,0,0.07))",
+
+  "--aurora-a": "rgba(255,176,0,0.15)",
+  "--aurora-b": "rgba(74,158,255,0.12)",
+  "--aurora-opacity": "0.16",
+
+  "--font-display": "'IBM Plex Sans', sans-serif",
+  "--font-mono": "'IBM Plex Mono', monospace",
+  "--font-logo": "'Orbitron', sans-serif",
+
+  "--tile": "linear-gradient(180deg, #1f2530 0%, #161b22 100%)",
+  "--tile-shadow":
+    "0 5px 16px -7px rgba(0,0,0,0.72), 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
+  "--panel-shadow":
+    "0 14px 38px -12px rgba(0,0,0,0.8), 0 3px 10px -3px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)",
+};
+
+/**
+ * Terminal 3D light — PROTO `themesLight.terminal3d` (L781) verbatim; derived
+ * keys follow terminalLight (overlay = terminal3d dark bg at 0.35, white
+ * on-accent, `#b37a00` aware/connecting, aurora at terminalLight's opacities).
+ */
+const terminal3dLight: ThemeTokens = {
+  "--bg-primary": "#e9ecef",
+  "--bg-secondary": "#f6f7f9",
+  "--bg-header": "#f6f7f9",
+  "--bg-footer": "#f6f7f9",
+  "--bg-tile": "#ffffff",
+  "--bg-overlay": "rgba(9,11,15,0.35)",
+  "--bg-brand-primary": "#b67700",
+
+  "--text-primary": "#1a1f27",
+  "--text-secondary": "#5b6470",
+  "--text-muted": "#8b93a1",
+  "--text-on-accent": "#ffffff",
+
+  "--accent-positive": "#1f8a52",
+  "--accent-negative": "#cf4339",
+  "--accent-aware": "#b37a00",
+  "--accent-primary": "#b67700",
+  "--accent-2": "#2f6fd0",
+
+  "--border-primary": "#d2d6dc",
+  "--border-subtle": "#e2e5ea",
+  "--border": "#e2e5ea",
+  "--border-strong": "#a8b0bb",
+
+  "--status-connected": "#1f8a52",
+  "--status-connecting": "#b37a00",
+  "--status-disconnected": "#cf4339",
+  "--status-error": "#cf4339",
+
+  "--panel": "linear-gradient(160deg, #ffffff 0%, #eef0f3 100%)",
+  "--panel-head": "linear-gradient(180deg, #f2f4f6 0%, #e8ebef 100%)",
+  "--panel-blur": "0",
+  "--glow": "none",
+  "--grid": "rgba(0,0,0,0.03)",
+  "--chip":
+    "linear-gradient(180deg, rgba(182,119,0,0.16), rgba(182,119,0,0.06))",
+
+  "--aurora-a": "rgba(179,122,0,0.08)",
+  "--aurora-b": "rgba(46,109,181,0.07)",
+  "--aurora-opacity": "0.06",
+
+  "--font-display": "'IBM Plex Sans', sans-serif",
+  "--font-mono": "'IBM Plex Mono', monospace",
+  "--font-logo": "'Orbitron', sans-serif",
+
+  "--tile": "linear-gradient(180deg, #ffffff 0%, #edf0f3 100%)",
+  "--tile-shadow":
+    "0 5px 14px -7px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.9)",
+  "--panel-shadow":
+    "0 14px 34px -12px rgba(0,0,0,0.2), 0 3px 8px -3px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.95)",
 };
 
 // ---------------------------------------------------------------------------
@@ -561,6 +805,8 @@ const neonLight: ThemeTokens = {
 export const themeTokens: Record<ThemeSkin, Record<ThemeMode, ThemeTokens>> = {
   classic: { dark: darkTokens, light: lightTokens },
   holo: { dark: holoDark, light: holoLight },
+  holo3d: { dark: holo3dDark, light: holo3dLight },
   terminal: { dark: terminalDark, light: terminalLight },
+  terminal3d: { dark: terminal3dDark, light: terminal3dLight },
   neon: { dark: neonDark, light: neonLight },
 };
