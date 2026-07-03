@@ -12,17 +12,6 @@
   box-shadow: var(--panel-shadow, none);
 }
 
-.head {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0 8px;
-  min-height: 38px;
-  flex-shrink: 0;
-  background: var(--panel-head);
-  border-bottom: 1px solid var(--border);
-}
-
 .filters {
   display: flex;
   gap: 6px;

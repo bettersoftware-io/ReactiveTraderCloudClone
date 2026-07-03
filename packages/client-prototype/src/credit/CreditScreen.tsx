@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { CreditBlotterPanel } from "#/credit/Blotter/CreditBlotterPanel";
 import styles from "#/credit/CreditScreen.module.css";
 import { NewRfqPanel } from "#/credit/NewRfq/NewRfqPanel";
-import { RfqsPanel } from "#/credit/Rfqs/RfqsPanel";
+import { RfqFilterPills, RfqsPanel } from "#/credit/Rfqs/RfqsPanel";
 import type { CreditPanelId } from "#/credit/useCreditDock";
 import { useCreditDock } from "#/credit/useCreditDock";
 import { useCreditForm } from "#/credit/useCreditForm";
@@ -99,6 +99,13 @@ export function CreditScreen(): ReactElement {
           <Panel
             id={RFQS_PANEL}
             head={<span className={styles.regionLabel}>◳ RFQs</span>}
+            headControls={
+              <RfqFilterPills
+                creditTab={rfqs.creditTab}
+                liveCount={rfqs.liveCount}
+                onTab={rfqs.onTab}
+              />
+            }
             maxPanel={dock.maxPanel}
             onToggleMax={dock.toggleMax}
           >
