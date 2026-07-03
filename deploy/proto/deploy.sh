@@ -1,44 +1,55 @@
 #!/usr/bin/env bash
-# Deploy a standalone design prototype to the rtc-clone-proto Vercel project
+# Deploy the @rtc/client-prototype React port (the readable, self-contained port
+# of the v2 design) to the rtc-clone-proto Vercel project
 # (https://rtc-clone-proto.vercel.app), behind a shared-password Basic-Auth gate.
 #
-#   ./deploy/prototype/deploy.sh [PATH_TO_STANDALONE_HTML]
+#   ./deploy/proto/deploy.sh
 #
-# PATH_TO_STANDALONE_HTML defaults to the v2 standalone. Pass another version's
-# path to ship it instead, e.g.:
-#   ./deploy/prototype/deploy.sh "docs/design/v3/standalone/Reactive Trader.html"
+# This is the *running code* prototype. The hand-authored HTML design mockup
+# ships separately via the "Deploy Claude Design Prototype" workflow →
+# rtc-clone-cd-proto; see ../cd-proto/README.md.
 #
 # The gate (a tiny Basic-Auth middleware) is GENERATED here at deploy time, not
 # committed — so this is the single source of truth for both local runs and the
 # Deploy Prototype GitHub Action, and the strict monorepo linters never see a
-# stray middleware.ts / package.json. The HTML is copied, never committed (it is
-# an 835 KB duplicate of the standalone).
+# stray middleware.ts / package.json. The built dist/ is copied, never committed.
 #
 # Auth/targeting:
 #   - Project is selected via VERCEL_ORG_ID + VERCEL_PROJECT_ID (not secrets — a
-#     project ID appears in dashboard URLs); defaults below point at the proto.
+#     project ID appears in dashboard URLs). VERCEL_PROJECT_ID has no default: it
+#     must be set to the rtc-clone-proto project's id (one-time, see README).
 #   - Locally: relies on `vercel login`. In CI: set VERCEL_TOKEN and it is used.
 #   - The password (SITE_PASSWORD) is an env var ON the Vercel project, set once
 #     in the dashboard and reused every deploy — it never passes through here.
 set -euo pipefail
 
 : "${VERCEL_ORG_ID:=team_Nm5Q36b0kTItH0gXCGG6fGUp}"
-: "${VERCEL_PROJECT_ID:=prj_VxG4x6dsstNbG3cEnhrZjZZM2Ayl}"
+# One-time setup: create the rtc-clone-proto Vercel project, then paste its
+# project id (visible in the dashboard URL, prj_…) here or export it as
+# VERCEL_PROJECT_ID before running. The sentinel below fails the deploy loudly
+# so we never ship to the wrong project by accident.
+: "${VERCEL_PROJECT_ID:=__SET_RTC_CLONE_PROTO_PROJECT_ID__}"
 export VERCEL_ORG_ID VERCEL_PROJECT_ID
 
-REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
-SRC="${1:-docs/design/v2/standalone/Reactive Trader.html}"
-case "$SRC" in
-  /*) ABS="$SRC" ;;
-  *)  ABS="$REPO_ROOT/$SRC" ;;
-esac
-
-if [ ! -f "$ABS" ]; then
-  echo "error: prototype HTML not found at: $SRC" >&2
+if [ "$VERCEL_PROJECT_ID" = "__SET_RTC_CLONE_PROTO_PROJECT_ID__" ]; then
+  echo "error: VERCEL_PROJECT_ID is unset. Create the rtc-clone-proto Vercel" >&2
+  echo "       project, then set its prj_… id in deploy/proto/deploy.sh (or" >&2
+  echo "       export VERCEL_PROJECT_ID). See deploy/proto/README.md." >&2
   exit 1
 fi
 
-# Assemble the deployment in a throwaway dir: generated gate + copied HTML.
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+DIST="$REPO_ROOT/packages/client-prototype/dist"
+
+echo "Building @rtc/client-prototype…"
+(cd "$REPO_ROOT" && pnpm turbo run build --filter=@rtc/client-prototype)
+
+if [ ! -d "$DIST" ] || [ ! -f "$DIST/index.html" ]; then
+  echo "error: build did not produce $DIST/index.html" >&2
+  exit 1
+fi
+
+# Assemble the deployment in a throwaway dir: generated gate + copied dist/.
 BUILD="$(mktemp -d)"
 trap 'rm -rf "$BUILD"' EXIT
 
@@ -84,11 +95,12 @@ cat > "$BUILD/package.json" <<'EOF'
 }
 EOF
 
-# framework:null → static serve of index.html, no build step.
+# framework:null → static serve of the pre-built SPA, no build step on Vercel.
+# @rtc/client-prototype has no client-side router, so no SPA rewrite is needed.
 printf '{ "framework": null }\n' > "$BUILD/vercel.json"
 
-echo "Staging '$SRC' ($(wc -c < "$ABS" | tr -d ' ') bytes) as index.html"
-cp "$ABS" "$BUILD/index.html"
+echo "Staging $DIST → deployment root"
+cp -R "$DIST/." "$BUILD/"
 
 TOKEN_ARG=()
 [ -n "${VERCEL_TOKEN:-}" ] && TOKEN_ARG=(--token "$VERCEL_TOKEN")

@@ -344,16 +344,21 @@ guarantee.
 See [`docs/DEPLOY.md`](docs/DEPLOY.md) for one-time setup (accounts, secrets,
 the shared password/token) and how the gating works.
 
-### Design prototype
+### Design prototypes
 
-The standalone HUD design prototype under `docs/design/` deploys separately to
-its own Vercel project:
+Two prototypes deploy separately from the main app, each to its own Vercel
+project, on demand, behind a shared password:
 
-**Actions tab → "Deploy Prototype" → Run workflow** — a path input selects which
-prototype (defaults to v2; change it to e.g.
-`docs/design/v3/standalone/Reactive Trader.html` for a future version). Or
-`gh workflow run deploy-proto.yml -f prototype_path="…"`. See
-[`deploy/prototype/README.md`](deploy/prototype/README.md).
+- **Claude Design Prototype** — the hand-authored standalone HTML mockup under
+  `docs/design/<version>/standalone/`. **Actions tab → "Deploy Claude Design
+  Prototype" → Run workflow** — a path input selects which version (defaults to
+  v2). Or `gh workflow run deploy-cd-proto.yml -f prototype_path="…"`. →
+  `rtc-clone-cd-proto.vercel.app`. See
+  [`deploy/cd-proto/README.md`](deploy/cd-proto/README.md).
+- **Prototype (React port)** — the readable `@rtc/client-prototype` React port.
+  **Actions tab → "Deploy Prototype" → Run workflow** (no inputs). Or
+  `gh workflow run deploy-proto.yml`. → `rtc-clone-proto.vercel.app`. See
+  [`deploy/proto/README.md`](deploy/proto/README.md).
 
 ## Status
 
