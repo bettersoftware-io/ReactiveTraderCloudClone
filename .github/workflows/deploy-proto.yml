@@ -8,8 +8,10 @@ name: Deploy Prototype
 # touches only the proto project. Run it from the Actions tab ("Run workflow") or:
 #   gh workflow run deploy-proto.yml
 #
-# Requires the repo variable VERCEL_PROTO_PROJECT_ID (the rtc-clone-proto
-# project's prj_… id) — see deploy/proto/README.md for one-time setup.
+# Requires the repo secret VERCEL_PROTO_PROJECT_ID (the rtc-clone-proto
+# project's prj_… id) — see deploy/proto/README.md for one-time setup. (A
+# project id isn't sensitive, so a Variable would work too; it's kept a
+# Secret to match the main app's VERCEL_PROJECT_ID convention.)
 on:
   workflow_dispatch:
 
@@ -44,6 +46,6 @@ jobs:
 
       - name: Build @rtc/client-prototype, generate gate, deploy, smoke
         env:
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROTO_PROJECT_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROTO_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: bash deploy/proto/deploy.sh

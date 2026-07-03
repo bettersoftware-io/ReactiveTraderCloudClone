@@ -33,11 +33,14 @@ calls it). At deploy time it:
    this deploys via CLI only).
 2. Copy its **project id** (`prj_…`, visible in the project's dashboard URL /
    Settings → General).
-3. Add it as a GitHub **Actions variable** (not a secret — project ids aren't
-   sensitive): repo Settings → Secrets and variables → Actions → **Variables** →
-   New variable → `VERCEL_PROTO_PROJECT_ID` = `prj_…`. The workflow reads it and
-   passes it to the script; if it's missing the deploy fails fast with a clear
-   message rather than shipping to the wrong project.
+3. Add it as a GitHub **Actions secret**: repo Settings → Secrets and variables →
+   Actions → **Secrets** → New repository secret → `VERCEL_PROTO_PROJECT_ID` =
+   `prj_…`. The workflow reads it and passes it to the script; if it's missing the
+   deploy fails fast with a clear message rather than shipping to the wrong
+   project. (A project id isn't actually sensitive, so an Actions *Variable* would
+   work equally well — it's kept a Secret only to match the main app's
+   `VERCEL_PROJECT_ID` convention. If you switch it, flip `secrets.` → `vars.` in
+   `deploy-proto.yml`.)
    (For local runs instead, export `VERCEL_PROJECT_ID=prj_…` or paste it over the
    sentinel in `deploy/proto/deploy.sh`.)
 4. Set **`SITE_PASSWORD`** on the project (Settings → Environment Variables,
