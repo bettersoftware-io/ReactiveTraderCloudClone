@@ -136,7 +136,9 @@ it has been a gradient since the flagship slice, so its consumers already use
 
 ## 6. React Native alias (`@rtc/client-react-native`)
 
-- `ui/AppearanceScreen.tsx` `SKIN_LABEL` gains the same two labels.
+- `ui/AppearanceScreen.tsx` `SKIN_LABEL` gains `holo3d: "Holo 3D"` and
+  `terminal3d: "Terminal 3D"` — following RN's existing short-label convention
+  (its `holo` is "Holo", not "Holo HUD").
 - The RN token store (`src/ui/theme/tokens.ts`) maps each 3d skin to its flat
   sibling's theme object by reference (`holo3d: <holo entry>`,
   `terminal3d: <terminal entry>`), each with a comment naming the future
