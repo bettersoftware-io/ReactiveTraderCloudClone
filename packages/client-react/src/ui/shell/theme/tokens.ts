@@ -344,6 +344,8 @@ const holo3dDark: ThemeTokens = {
   "--bg-secondary": "#04161f",
   "--bg-header": "#04161f",
   "--bg-footer": "#04161f",
+  // holo's flat sibling's solid --bg-tile — a gradient can't fill
+  // --bg-tile's color positions.
   "--bg-tile": "rgba(6,26,38,0.5)",
   "--bg-overlay": "rgba(0,8,14,0.78)",
   "--bg-brand-primary": "#00e5ff",
@@ -405,6 +407,8 @@ const holo3dLight: ThemeTokens = {
   "--bg-secondary": "#f3f9fc",
   "--bg-header": "#f3f9fc",
   "--bg-footer": "#f3f9fc",
+  // holo's flat sibling's solid --bg-tile — a gradient can't fill
+  // --bg-tile's color positions.
   "--bg-tile": "rgba(200,240,250,0.7)",
   "--bg-overlay": "rgba(0,8,14,0.4)",
   "--bg-brand-primary": "#0096b3",
@@ -579,6 +583,8 @@ const terminal3dDark: ThemeTokens = {
   "--bg-secondary": "#0d1015",
   "--bg-header": "#0d1015",
   "--bg-footer": "#0d1015",
+  // terminal's flat sibling's solid --bg-tile — a gradient can't fill
+  // --bg-tile's color positions.
   "--bg-tile": "#13161c",
   "--bg-overlay": "rgba(9,11,15,0.8)",
   "--bg-brand-primary": "#ffb000",
@@ -637,6 +643,8 @@ const terminal3dLight: ThemeTokens = {
   "--bg-secondary": "#f6f7f9",
   "--bg-header": "#f6f7f9",
   "--bg-footer": "#f6f7f9",
+  // terminal's flat sibling's solid --bg-tile — a gradient can't fill
+  // --bg-tile's color positions.
   "--bg-tile": "#ffffff",
   "--bg-overlay": "rgba(9,11,15,0.35)",
   "--bg-brand-primary": "#b67700",

@@ -140,7 +140,10 @@
 }
 
 .sw[data-on="true"] {
-  background-color: color-mix(in srgb, var(--accent-positive) 26%, transparent);
+  /* Shorthand (not background-color): the base rule sets a gradient
+     background-image on the 3d skins, and background-color alone would
+     leave it showing through instead of clearing it. */
+  background: color-mix(in srgb, var(--accent-positive) 26%, transparent);
   border-color: var(--accent-positive);
 }
 
