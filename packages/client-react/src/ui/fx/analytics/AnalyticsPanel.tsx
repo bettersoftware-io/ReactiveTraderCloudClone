@@ -25,12 +25,8 @@ export function AnalyticsPanel(): ReactElement | null {
   return (
     <StaleIndicator stale={stale}>
       <div data-testid="analytics-panel" className={styles.panel}>
-        <span className={styles.title}>Analytics</span>
-
         <div>
-          <span className={`${styles.sectionLabel} ${styles.pnlLabel}`}>
-            Profit &amp; Loss
-          </span>
+          <span className={styles.sectionLabel}>Profit &amp; Loss · Today</span>
           <PnlValue value={latestPnl} />
           <PnlChart history={data.history} />
         </div>

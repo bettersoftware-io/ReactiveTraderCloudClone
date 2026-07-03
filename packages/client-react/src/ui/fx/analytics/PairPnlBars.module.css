@@ -13,20 +13,23 @@
 }
 
 .symbol {
-  width: 55px;
+  width: 62px;
   text-align: right;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 14px;
   flex-shrink: 0;
 }
 
+/* Track: fixed-height rounded background behind the centre line + bar. */
 .barContainer {
   flex: 1;
   display: flex;
   position: relative;
-  height: 12px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--bg-secondary);
 }
 
 .centerLine {
@@ -41,26 +44,30 @@
 /* Bar: positioned by data-sign; width driven by --bar-width custom property */
 .bar {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
+  top: 1px;
+  bottom: 1px;
   width: var(--bar-width);
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .bar[data-sign="pos"] {
   left: 50%;
-  background-color: var(--accent-positive);
+  color: var(--accent-positive);
+  background-color: currentColor;
+  box-shadow: 0 0 10px currentColor;
 }
 
 .bar[data-sign="neg"] {
   right: 50%;
-  background-color: var(--accent-negative);
+  color: var(--accent-negative);
+  background-color: currentColor;
+  box-shadow: 0 0 10px currentColor;
 }
 
 .pnlLabel {
-  width: 45px;
+  width: 38px;
   text-align: right;
-  font-size: 10px;
+  font-size: 11px;
   flex-shrink: 0;
   cursor: default;
   /* button UA reset so it renders like the previous plain-text span */

@@ -1,7 +1,5 @@
 .value {
-  font-family: var(--font-mono);
-  text-align: center;
-  padding: 3px 0 2px;
+  margin: 3px 0 2px;
 }
 
 .value[data-sign="pos"] {
@@ -12,14 +10,7 @@
   color: var(--accent-negative);
 }
 
-.currency {
-  margin-right: 6px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
 .amount {
-  /* sign + value; colour inherited from .value[data-sign] */
   font-family: var(--font-logo);
   font-weight: 700;
   font-size: 32px;

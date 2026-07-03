@@ -25,18 +25,24 @@ describe("AnalyticsPanel", () => {
     expect(panel.isLoaded()).toBe(true);
     expect(panel.loadingMessage()).toBeNull();
     expect(panel.sectionLabels()).toEqual([
-      "Profit & Loss",
+      "Profit & Loss · Today",
       "PnL per Currency Pair",
     ]);
   });
 
-  it("summarises the latest historic P&L figure", () => {
+  it("does not repeat the panel title — the chrome header owns it", () => {
+    const panel = mount(AnalyticsPanel, { hooks: { useAnalytics: updates() } });
+    expect(panel.hasDuplicateTitle()).toBe(false);
+  });
+
+  it("summarises the latest historic P&L figure in k-format", () => {
     const panel = mount(AnalyticsPanel, {
       hooks: {
         useAnalytics: updates({ history: [historic(0), historic(1_500_000)] }),
       },
     });
-    expect(panel.latestPnlText()).toBe("+1,500,000");
+    expect(panel.latestPnlText()).toMatch(/^[+-]\$\d+\.\dk$/);
+    expect(panel.latestPnlText()).toBe("+$1500.0k");
   });
 
   it("falls back to zero P&L when there is no history", () => {
@@ -44,7 +50,7 @@ describe("AnalyticsPanel", () => {
       hooks: { useAnalytics: updates({ history: [] }) },
     });
     expect(panel.isLoaded()).toBe(true);
-    expect(panel.latestPnlText()).toBe("+0");
+    expect(panel.latestPnlText()).toBe("+$0.0k");
   });
 
   it("transitions from loading to loaded when analytics begin streaming", () => {
@@ -54,7 +60,7 @@ describe("AnalyticsPanel", () => {
       useAnalytics: updates({ history: [historic(0), historic(-2_500)] }),
     });
     expect(panel.isLoaded()).toBe(true);
-    expect(panel.latestPnlText()).toBe("-2,500");
+    expect(panel.latestPnlText()).toBe("-$2.5k");
   });
 
   it("updates the summarised P&L figure when newer analytics stream in", () => {
@@ -63,13 +69,13 @@ describe("AnalyticsPanel", () => {
         useAnalytics: updates({ history: [historic(0), historic(500)] }),
       },
     });
-    expect(panel.latestPnlText()).toBe("+500");
+    expect(panel.latestPnlText()).toBe("+$0.5k");
     panel.emit({
       useAnalytics: updates({
         history: [historic(0), historic(500), historic(12_500)],
       }),
     });
-    expect(panel.latestPnlText()).toBe("+12,500");
+    expect(panel.latestPnlText()).toBe("+$12.5k");
   });
 
   it("shows the stale overlay after a disconnect/reconnect with no fresh data", () => {
@@ -92,7 +98,7 @@ describe("AnalyticsPanel", () => {
       useAnalytics: updates({ history: [historic(0), historic(7_000)] }),
     });
     expect(panel.isStale()).toBe(false);
-    expect(panel.latestPnlText()).toBe("+7,000");
+    expect(panel.latestPnlText()).toBe("+$7.0k");
   });
 });
 

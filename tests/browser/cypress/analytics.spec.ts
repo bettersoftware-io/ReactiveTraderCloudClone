@@ -10,9 +10,7 @@ describe("Analytics panel", () => {
   it("analytics panel is visible with sections", () => {
     const ctx = getCtx();
     analytics.expectAnalyticsPanelVisibleWithin(ctx, 5);
-    analytics.expectAnalyticsHasSection(ctx, "Analytics");
     analytics.expectAnalyticsHasSection(ctx, "Profit & Loss");
-    analytics.expectAnalyticsHasSection(ctx, "Positions");
     analytics.expectAnalyticsHasSection(ctx, "PnL per Currency Pair");
   });
 
@@ -20,12 +18,6 @@ describe("Analytics panel", () => {
     const ctx = getCtx();
     analytics.expectAnalyticsPanelVisibleWithin(ctx, 5);
     analytics.expectAnalyticsHasSection(ctx, "Profit & Loss");
-  });
-
-  it("positions section is visible", () => {
-    const ctx = getCtx();
-    analytics.expectAnalyticsPanelVisibleWithin(ctx, 5);
-    analytics.expectAnalyticsHasSection(ctx, "Positions");
   });
 
   it("analytics panel shows alongside live rates", () => {
