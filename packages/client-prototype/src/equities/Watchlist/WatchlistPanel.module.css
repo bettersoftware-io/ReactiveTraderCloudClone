@@ -10,9 +10,6 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  padding: 6px 10px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--border);
 }
 
 .sortBtn {
@@ -28,6 +25,7 @@
 }
 
 .add {
+  padding: 0 8px;
   color: var(--faint);
   font-size: 15px;
 }

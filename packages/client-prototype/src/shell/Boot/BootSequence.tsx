@@ -11,7 +11,13 @@ export function BootSequence(props: BootSequenceProps): ReactElement {
   const { onDone } = props;
   const boot = useBootSequence({ onDone });
   return (
-    <div className={styles.boot}>
+    <div className={styles.boot} data-fading={String(boot.fading)}>
+      <div className={styles.brand}>
+        <div className={styles.wordmark}>REACTIVE TRADER</div>
+        <div className={styles.subtitle}>
+          TACTICAL TRADING OPERATING SYSTEM · v4.0
+        </div>
+      </div>
       <canvas
         ref={boot.canvasRef}
         width={320}

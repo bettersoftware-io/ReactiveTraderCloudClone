@@ -61,7 +61,7 @@
 
 .pips[data-flash="true"] {
   color: var(--bg);
-  background: var(--move-color);
+  background: var(--flash-color);
   padding: 0 2px;
 }
 

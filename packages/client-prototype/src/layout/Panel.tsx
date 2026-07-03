@@ -8,6 +8,7 @@ export interface PanelProps {
   children: ReactNode;
   maxPanel: string | null;
   onToggleMax(id: string): void;
+  headControls?: ReactNode;
   headAccessory?: ReactNode;
   maximizable?: boolean;
 }
@@ -19,6 +20,7 @@ export function Panel(props: PanelProps): ReactElement {
     children,
     maxPanel,
     onToggleMax,
+    headControls,
     headAccessory,
     maximizable = true,
   } = props;
@@ -31,7 +33,10 @@ export function Panel(props: PanelProps): ReactElement {
   return (
     <div className={styles.panel} data-max={String(isMax)}>
       <div className={styles.head}>
-        {head}
+        <span className={styles.label}>{head}</span>
+        {headControls != null ? (
+          <div className={styles.controls}>{headControls}</div>
+        ) : null}
         {headAccessory != null ? (
           <span className={styles.accessory} aria-hidden="true">
             {headAccessory}
@@ -45,7 +50,7 @@ export function Panel(props: PanelProps): ReactElement {
             title="Maximize"
             onClick={handleMaxClick}
           >
-            {isMax ? "⤡" : "⤢"}
+            {isMax ? "⧉" : "⛶"}
           </button>
         ) : null}
       </div>

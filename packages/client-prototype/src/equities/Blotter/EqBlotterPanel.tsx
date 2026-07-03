@@ -7,22 +7,22 @@ import type { EqOrder, EqPosition } from "#/equities/types";
 
 export type EqBlotView = "orders" | "positions";
 
-export interface EqBlotterPanelProps {
-  orders: EqOrder[];
-  positions: EqPosition[];
+export interface EqBlotterPanelControlsProps {
   view: EqBlotView;
   onView(view: EqBlotView): void;
-  newOrderId: number | null;
+  ordersCount: number;
+  positionsCount: number;
 }
 
-// PROTO L626-638: the equities blotter body — an Orders/Positions tab sub-head
-// with a count, then the active table. (The outer dock Panel owns maximize.)
-export function EqBlotterPanel(props: EqBlotterPanelProps): ReactElement {
-  const { orders, positions, view, onView, newOrderId } = props;
+// PROTO L626-638: the equities blotter's control row — the Orders/Positions
+// tab toggle + a live count — hoisted out of the body so the dock Panel's
+// headControls renders it inline in the single head bar.
+export function EqBlotterPanelControls(
+  props: EqBlotterPanelControlsProps,
+): ReactElement {
+  const { view, onView, ordersCount, positionsCount } = props;
   const count =
-    view === "orders"
-      ? `${orders.length} orders`
-      : `${positions.length} positions`;
+    view === "orders" ? `${ordersCount} orders` : `${positionsCount} positions`;
 
   function showOrders(): void {
     onView("orders");
@@ -33,27 +33,43 @@ export function EqBlotterPanel(props: EqBlotterPanelProps): ReactElement {
   }
 
   return (
+    <div className={styles.tabs}>
+      <button
+        type="button"
+        className={styles.tab}
+        data-active={String(view === "orders")}
+        onClick={showOrders}
+      >
+        ▤ Orders
+      </button>
+      <button
+        type="button"
+        className={styles.tab}
+        data-active={String(view === "positions")}
+        onClick={showPositions}
+      >
+        ◴ Positions
+      </button>
+      <span className={styles.count}>{count}</span>
+    </div>
+  );
+}
+
+export interface EqBlotterPanelProps {
+  orders: EqOrder[];
+  positions: EqPosition[];
+  view: EqBlotView;
+  newOrderId: number | null;
+}
+
+// PROTO L626-638: the equities blotter body — the active table. (The control
+// row is EqBlotterPanelControls, rendered by the dock Panel's headControls;
+// the outer dock Panel owns maximize.)
+export function EqBlotterPanel(props: EqBlotterPanelProps): ReactElement {
+  const { orders, positions, view, newOrderId } = props;
+
+  return (
     <div className={styles.body}>
-      <div className={styles.tabs}>
-        <button
-          type="button"
-          className={styles.tab}
-          data-active={String(view === "orders")}
-          onClick={showOrders}
-        >
-          ▤ Orders
-        </button>
-        <button
-          type="button"
-          className={styles.tab}
-          data-active={String(view === "positions")}
-          onClick={showPositions}
-        >
-          ◴ Positions
-        </button>
-        <span className={styles.spacer} />
-        <span className={styles.count}>{count}</span>
-      </div>
       {view === "orders" ? (
         <OrdersTable orders={orders} newOrderId={newOrderId} />
       ) : (

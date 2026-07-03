@@ -2,8 +2,11 @@ import type { CSSProperties, ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import type { EqBlotView } from "#/equities/Blotter/EqBlotterPanel";
-import { EqBlotterPanel } from "#/equities/Blotter/EqBlotterPanel";
-import { ChartPanel } from "#/equities/Chart/ChartPanel";
+import {
+  EqBlotterPanel,
+  EqBlotterPanelControls,
+} from "#/equities/Blotter/EqBlotterPanel";
+import { ChartPanel, ChartPanelControls } from "#/equities/Chart/ChartPanel";
 import styles from "#/equities/EquitiesScreen.module.css";
 import { positionsVm } from "#/equities/positionsVm";
 import { OrderTicketPanel } from "#/equities/Ticket/OrderTicketPanel";
@@ -12,7 +15,10 @@ import type { EqPanelId } from "#/equities/useEqDock";
 import { useEqDock } from "#/equities/useEqDock";
 import { useEqTicket } from "#/equities/useEqTicket";
 import { useEquities } from "#/equities/useEquities";
-import { WatchlistPanel } from "#/equities/Watchlist/WatchlistPanel";
+import {
+  WatchlistPanel,
+  WatchlistPanelControls,
+} from "#/equities/Watchlist/WatchlistPanel";
 import { watchlistVm } from "#/equities/watchlistVm";
 import { Panel } from "#/layout/Panel";
 import { SplitHandle } from "#/layout/SplitHandle";
@@ -109,6 +115,7 @@ export function EquitiesScreen(): ReactElement {
           <Panel
             id={CHART_PANEL}
             head={<span className={styles.regionLabel}>◈ Chart</span>}
+            headControls={<ChartPanelControls chart={chart} />}
             maxPanel={dock.maxPanel}
             onToggleMax={dock.toggleMax}
           >
@@ -133,6 +140,14 @@ export function EquitiesScreen(): ReactElement {
             head={
               <span className={styles.regionLabel}>▤ Orders / Positions</span>
             }
+            headControls={
+              <EqBlotterPanelControls
+                view={blotView}
+                onView={setBlotView}
+                ordersCount={ticket.orders.length}
+                positionsCount={positions.length}
+              />
+            }
             maxPanel={dock.maxPanel}
             onToggleMax={dock.toggleMax}
           >
@@ -140,7 +155,6 @@ export function EquitiesScreen(): ReactElement {
               orders={ticket.orders}
               positions={positions}
               view={blotView}
-              onView={setBlotView}
               newOrderId={ticket.newOrderId}
             />
           </Panel>
@@ -181,15 +195,16 @@ export function EquitiesScreen(): ReactElement {
               <Panel
                 id={WATCH_PANEL}
                 head={<span className={styles.regionLabel}>☰ Watchlist</span>}
+                headControls={
+                  <WatchlistPanelControls
+                    wlSort={chart.wlSort}
+                    onCycleSort={chart.cycleWlSort}
+                  />
+                }
                 maxPanel={dock.maxPanel}
                 onToggleMax={dock.toggleMax}
               >
-                <WatchlistPanel
-                  rows={rows}
-                  wlSort={chart.wlSort}
-                  onSelect={chart.selectEq}
-                  onCycleSort={chart.cycleWlSort}
-                />
+                <WatchlistPanel rows={rows} onSelect={chart.selectEq} />
               </Panel>
             </div>
           </>

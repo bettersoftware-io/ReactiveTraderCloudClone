@@ -8,6 +8,8 @@ export interface RfqCardProps {
   vm: RfqCardVm;
   isNew: boolean;
   isExiting: boolean;
+  isTabRecent: boolean;
+  index: number;
   onAccept(dealerId: number): void;
   onCancel(): void;
   onRemove(): void;
@@ -15,6 +17,11 @@ export interface RfqCardProps {
 
 type CardState = "live" | "accepted" | "terminated";
 type CardAnim = "enter" | "exit" | "none";
+
+// PROTO L1330: a tab-switch cascade staggers every surviving card's entrance
+// by this many ms per grid index; a lone new-RFQ arrival plays immediately
+// (no stagger).
+const STAGGER_STEP_MS = 45;
 
 // PROTO L568-580: one streaming RFQ card — header (dir chip, ticker, state
 // label), the dealer quote list, and a footer that switches on the RFQ's
@@ -26,10 +33,21 @@ type CardAnim = "enter" | "exit" | "none";
 // ever produces a Closed, not terminated, rfq) — it is dead in the
 // reference and is not ported.
 export function RfqCard(props: RfqCardProps): ReactElement {
-  const { vm, isNew, isExiting, onAccept, onCancel, onRemove } = props;
+  const {
+    vm,
+    isNew,
+    isExiting,
+    isTabRecent,
+    index,
+    onAccept,
+    onCancel,
+    onRemove,
+  } = props;
   const state = cardState(vm);
-  const anim = cardAnim(isNew, isExiting);
+  const anim = cardAnim(isNew, isExiting, isTabRecent);
+  const delayMs = cardDelayMs(anim, isNew, isTabRecent, index);
   const barStyle = { "--bar-pct": `${vm.pct}%` } as CSSProperties;
+  const cardDelayStyle = { "--card-delay": `${delayMs}ms` } as CSSProperties;
 
   return (
     <div
@@ -37,6 +55,7 @@ export function RfqCard(props: RfqCardProps): ReactElement {
       data-state={state}
       data-anim={anim}
       data-parity={vm.rid % 2 ? "b" : "a"}
+      style={cardDelayStyle}
     >
       <div className={styles.header}>
         <div>
@@ -118,14 +137,31 @@ function cardState(vm: RfqCardVm): CardState {
   return "terminated";
 }
 
-function cardAnim(isNew: boolean, isExiting: boolean): CardAnim {
+function cardAnim(
+  isNew: boolean,
+  isExiting: boolean,
+  isTabRecent: boolean,
+): CardAnim {
   if (isExiting) {
     return "exit";
   }
 
-  if (isNew) {
+  if (isNew || isTabRecent) {
     return "enter";
   }
 
   return "none";
+}
+
+function cardDelayMs(
+  anim: CardAnim,
+  isNew: boolean,
+  isTabRecent: boolean,
+  index: number,
+): number {
+  if (anim === "enter" && !isNew && isTabRecent) {
+    return index * STAGGER_STEP_MS;
+  }
+
+  return 0;
 }

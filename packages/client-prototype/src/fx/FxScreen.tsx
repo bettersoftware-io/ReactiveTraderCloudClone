@@ -2,10 +2,16 @@ import type { CSSProperties, ReactElement } from "react";
 import { useRef, useState } from "react";
 
 import { AnalyticsView } from "#/fx/Analytics/AnalyticsView";
-import { FxBlotterPanel } from "#/fx/Blotter/FxBlotterPanel";
+import {
+  FxBlotterHeadControls,
+  FxBlotterPanel,
+} from "#/fx/Blotter/FxBlotterPanel";
 import styles from "#/fx/FxScreen.module.css";
 import type { Filter } from "#/fx/LiveRates/FilterChips";
-import { LiveRatesPanel } from "#/fx/LiveRates/LiveRatesPanel";
+import {
+  LiveRatesHeadControls,
+  LiveRatesPanel,
+} from "#/fx/LiveRates/LiveRatesPanel";
 import type { PanelId } from "#/fx/layout/useDockState";
 import { useDockState } from "#/fx/layout/useDockState";
 import { PositionsView } from "#/fx/Positions/PositionsView";
@@ -95,6 +101,14 @@ export function FxScreen(): ReactElement {
           <Panel
             id={TILES_PANEL}
             head={<span className={styles.regionLabel}>Live Rates</span>}
+            headControls={
+              <LiveRatesHeadControls
+                view={view}
+                onView={setView}
+                showCharts={showCharts}
+                onToggleCharts={toggleCharts}
+              />
+            }
             maxPanel={dock.maxPanel}
             onToggleMax={dock.toggleMax}
           >
@@ -103,9 +117,7 @@ export function FxScreen(): ReactElement {
               filter={filter}
               onFilter={setFilter}
               view={view}
-              onView={setView}
               showCharts={showCharts}
-              onToggleCharts={toggleCharts}
             />
           </Panel>
         </div>
@@ -118,6 +130,13 @@ export function FxScreen(): ReactElement {
           <Panel
             id={FXBLOT_PANEL}
             head={<span className={styles.regionLabel}>FX Blotter</span>}
+            headControls={
+              <FxBlotterHeadControls
+                api={blotter}
+                view={blotView}
+                onView={setBlotView}
+              />
+            }
             maxPanel={dock.maxPanel}
             onToggleMax={dock.toggleMax}
           >
@@ -125,7 +144,6 @@ export function FxScreen(): ReactElement {
               api={blotter}
               activity={rates.activity}
               view={blotView}
-              onView={setBlotView}
               newRowId={rates.newRowId}
             />
           </Panel>

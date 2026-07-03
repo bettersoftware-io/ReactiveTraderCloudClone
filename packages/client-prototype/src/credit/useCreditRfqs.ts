@@ -27,6 +27,8 @@ const REMOVE_ANIM_MS = 330;
 const EXITING_RETAIN_MS = 380;
 const NOW_INTERVAL_MS = 400;
 const TRADE_CAP = 40;
+// PROTO L1330: tabRecent = a switch triggered its cascade within this window.
+const TAB_RECENT_MS = 480;
 
 const CSV_HEADERS = [
   "Trade ID",
@@ -51,12 +53,14 @@ export interface CreditRfqsApi {
   creditTab: CreditTab;
   creditTrades: CreditTrade[];
   now: number;
-  liveCount: number;
+  liveCount: string;
   shownRfqs: Rfq[];
   noRfqs: boolean;
   newRfqId: number | null;
   newCreditId: number | null;
   exitingRfqs: number[];
+  cardExitIds: number[];
+  tabRecent: boolean;
   onTab(tab: CreditTab): void;
   sendRfq(form: RfqFormValue): void;
   acceptQuote(rfqId: number, dealerId: number): void;
@@ -121,6 +125,7 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
   const [newRfqId, setNewRfqId] = useState<number | null>(null);
   const [newCreditId, setNewCreditId] = useState<number | null>(null);
   const [exitingRfqs, setExitingRfqs] = useState<number[]>([]);
+  const [tabChangedAt, setTabChangedAt] = useState(0);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -148,8 +153,15 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
     };
   }, []);
 
+  // PROTO L1325: a no-op click on the already-active tab doesn't restart
+  // the cascade window.
   function onTab(tab: CreditTab): void {
+    if (tab === creditTab) {
+      return;
+    }
+
     setCreditTab(tab);
+    setTabChangedAt(Date.now());
   }
 
   // PROTO L1169 (sendRfq): draw each dealer's delay/pass/price synchronously
@@ -372,23 +384,38 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
     downloadCsv("credit-trades.csv", csv);
   }
 
-  // PROTO L1327: shown = matches the active tab, plus anything mid
-  // remove-animation, plus anything that just left "live" (accepted/expired)
-  // so its card can animate out before vanishing.
+  // PROTO L1327/L1330: shown = matches the active tab, plus anything mid
+  // remove-animation, plus anything that just left "live" (accepted/
+  // cancelled/expired) so its card can animate out before vanishing.
+  // cardExitIds is the union RfqCard's isExiting reads from — a manual
+  // trash-click exit (exitingRfqs) or this auto-exit (still inside its
+  // EXITING_RETAIN_MS grace window) both play the same cardOut fade.
+  const autoExitRfqIds = rfqs
+    .filter((r) => {
+      return (
+        creditTab === "live" &&
+        r.state !== "Open" &&
+        r.exitAt != null &&
+        now - r.exitAt < EXITING_RETAIN_MS
+      );
+    })
+    .map((r) => {
+      return r.id;
+    });
+  const cardExitIds = Array.from(new Set([...exitingRfqs, ...autoExitRfqIds]));
   const shownRfqs = rfqs.filter((r) => {
     return (
       rfqMatch(r, creditTab) ||
       exitingRfqs.includes(r.id) ||
-      (creditTab === "live" &&
-        r.state !== "Open" &&
-        r.exitAt != null &&
-        now - r.exitAt < EXITING_RETAIN_MS)
+      autoExitRfqIds.includes(r.id)
     );
   });
-  const liveCount: number = rfqs.filter((r) => {
+  const liveRfqs = rfqs.filter((r) => {
     return r.state === "Open";
-  }).length;
+  });
+  const liveCount = liveRfqs.length ? `(${liveRfqs.length})` : "";
   const noRfqs: boolean = shownRfqs.length === 0;
+  const tabRecent = now - tabChangedAt < TAB_RECENT_MS;
 
   return {
     rfqs,
@@ -401,6 +428,8 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
     newRfqId,
     newCreditId,
     exitingRfqs,
+    cardExitIds,
+    tabRecent,
     onTab,
     sendRfq,
     acceptQuote,

@@ -26,6 +26,19 @@ describe("useCreditRfqs", () => {
     expect(result.current.creditTab).toBe("all");
   });
 
+  test("liveCount is '' with no Open RFQs, and '(n)' once one is live (PROTO L1325 format)", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => {
+      return useCreditRfqs({ rng: mulberry32(1) });
+    });
+    expect(result.current.liveCount).toBe("");
+
+    act(() => {
+      result.current.sendRfq({ ...BUY });
+    });
+    expect(result.current.liveCount).toBe("(1)");
+  });
+
   test("sendRfq prepends a live RFQ, switches to live, and flags it new", () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => {
@@ -111,5 +124,50 @@ describe("useCreditRfqs", () => {
       result.current.cancelRfq(700);
     });
     expect(result.current.rfqs[0].state).toBe("Cancelled");
+  });
+
+  test("cardExitIds marks an RFQ that resolves while on the live tab, then clears after the next 400ms sweep", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => {
+      return useCreditRfqs({ rng: mulberry32(1) });
+    });
+    act(() => {
+      result.current.sendRfq({ ...BUY });
+    });
+    act(() => {
+      result.current.cancelRfq(700);
+    });
+    expect(result.current.creditTab).toBe("live");
+    expect(result.current.rfqs[0].state).toBe("Cancelled");
+    expect(result.current.cardExitIds).toContain(700);
+    expect(
+      result.current.shownRfqs.some((r) => {
+        return r.id === 700;
+      }),
+    ).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(result.current.cardExitIds).not.toContain(700);
+  });
+
+  test("tabRecent flags a real tab switch for ~480ms, then decays", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => {
+      return useCreditRfqs({ rng: mulberry32(1) });
+    });
+    expect(result.current.tabRecent).toBe(false);
+
+    act(() => {
+      result.current.onTab("live");
+    });
+    expect(result.current.creditTab).toBe("live");
+    expect(result.current.tabRecent).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(result.current.tabRecent).toBe(false);
   });
 });

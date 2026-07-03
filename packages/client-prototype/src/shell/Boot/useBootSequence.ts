@@ -28,6 +28,7 @@ export interface BootState {
   pct: number;
   lines: string[];
   variant: BootVariant;
+  fading: boolean;
   skip(): void;
 }
 
@@ -46,7 +47,9 @@ export function useBootSequence(opts: BootOptions): BootState {
   const [variant] = useState<BootVariant>(nextVariant);
   const [pct, setPct] = useState(0);
   const [lines, setLines] = useState<string[]>([]);
+  const [fading, setFading] = useState(false);
   const doneRef = useRef(false);
+  const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const finish = useCallback(() => {
     if (doneRef.current) {
@@ -54,7 +57,10 @@ export function useBootSequence(opts: BootOptions): BootState {
     }
 
     doneRef.current = true;
-    onDone();
+    setFading(true);
+    fadeTimerRef.current = setTimeout(() => {
+      onDone();
+    }, 800);
   }, [onDone]);
 
   useEffect(() => {
@@ -106,6 +112,10 @@ export function useBootSequence(opts: BootOptions): BootState {
 
     return () => {
       cancelAnimationFrame(raf);
+
+      if (fadeTimerRef.current != null) {
+        clearTimeout(fadeTimerRef.current);
+      }
     };
   }, [
     durationMs,
@@ -121,5 +131,5 @@ export function useBootSequence(opts: BootOptions): BootState {
     finish();
   }, [finish]);
 
-  return { canvasRef, pct, lines, variant, skip };
+  return { canvasRef, pct, lines, variant, fading, skip };
 }

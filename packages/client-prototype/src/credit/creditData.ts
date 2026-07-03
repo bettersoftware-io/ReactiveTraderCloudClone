@@ -5,6 +5,7 @@ import type {
   Quote,
   Rfq,
 } from "#/credit/types";
+import { mulberry32 } from "#/mock/rng";
 
 export const RFQ_SEQ_START = 700;
 export const RFQ_EXPIRY_SECS = 120;
@@ -130,14 +131,27 @@ export function fmtDate(offsetDays: number): string {
   return `${day}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
 }
 
-// PROTO L835 _seedRfq, simplified to a static shape: a Closed RFQ (accepted at
-// 99.80 by Citi) and a Cancelled RFQ. Static prices — no RNG at module load.
+// PROTO L835 _seedRfq: a Closed RFQ (accepted at 99.80 by Citi) and a
+// Cancelled RFQ. The accepted price is static; every losing dealer's price
+// gets a small jitter off the base (price if given, else ref) — canonical
+// draws that jitter from Math.random(), but a module-scope RNG must stay
+// deterministic across StrictMode double-invoke and reloads, so this seeds
+// mulberry32 once instead of calling Math.random() at module scope.
+// 238 (the Closed seed's own id) rounds a losing dealer's jitter to exactly
+// 99.80 by floating-point coincidence, defeating the "not identical to the
+// accepted price" guarantee this feature exists for — 239 is the nearest
+// seed clear of that coincidence, kept fixed for the same traceability.
+const SEED_JITTER_SEED = 239;
+const seedJitterRng = mulberry32(SEED_JITTER_SEED);
+
 function seedQuotes(
   dealerIds: number[],
   acceptedId: number | null,
   price: number | null,
   ref: number,
 ): Quote[] {
+  const base = price ?? ref;
+
   return dealerIds.map((did) => {
     if (did === acceptedId) {
       return { dealerId: did, state: "accepted", price };
@@ -146,7 +160,7 @@ function seedQuotes(
     return {
       dealerId: did,
       state: acceptedId == null ? "passed" : "priced",
-      price: price ?? ref,
+      price: +(base + (seedJitterRng() - 0.5)).toFixed(2),
     };
   });
 }

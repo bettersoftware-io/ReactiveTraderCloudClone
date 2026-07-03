@@ -26,6 +26,18 @@ test("mode toggle flips dark↔light", () => {
   expect(document.documentElement.style.background).not.toBe(before);
 });
 
+test("reboot overlays the boot screen without unmounting the shell", () => {
+  bootToApp();
+  expect(screen.getByTestId("app-shell")).toBeDefined();
+
+  fireEvent.click(screen.getByLabelText("Account"));
+  fireEvent.click(screen.getByText(/Reboot HUD/));
+
+  // boot overlay is back AND the shell is still mounted underneath
+  expect(screen.getByTestId("boot-skip")).toBeDefined();
+  expect(screen.getByTestId("app-shell")).toBeDefined();
+});
+
 // — helpers —————————————————————————————————————————————————————————————————————
 
 function bootToApp(): void {

@@ -10,18 +10,23 @@ export interface TilePriceProps {
   meta: PairMeta;
   moveUp: boolean;
   flashOn: boolean;
+  flashUp: boolean;
   isRfq: boolean;
 }
 
 export function TilePrice(props: TilePriceProps): ReactElement {
-  const { side, rate, meta, moveUp, flashOn, isRfq } = props;
+  const { side, rate, meta, moveUp, flashOn, flashUp, isRfq } = props;
   const sideAttr = side === "Sell" ? "sell" : "buy";
   const pu = meta.d === 3 ? 0.01 : 0.0001;
   const half = (parseFloat(meta.spread) / 2) * pu;
   const price = side === "Sell" ? rate - half : rate + half;
   const split = splitPrice(price, meta);
+  // PROTO 1268/1281: the pips span carries two independent colors — the
+  // daily-move color at rest (`--move-color`) and the triggering tick's own
+  // direction for the flash background (`--flash-color`).
   const moveColor = {
     "--move-color": moveUp ? "var(--buy)" : "var(--sell)",
+    "--flash-color": flashUp ? "var(--buy)" : "var(--sell)",
   } as CSSProperties;
 
   return (

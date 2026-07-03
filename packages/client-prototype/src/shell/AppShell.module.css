@@ -12,6 +12,10 @@
   isolation: isolate;
 }
 
+.shell[data-booted="true"] {
+  animation: appReveal 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
 /* Chrome column (header / main / footer) sits above the z-0 ambient layer. */
 .chrome {
   position: relative;

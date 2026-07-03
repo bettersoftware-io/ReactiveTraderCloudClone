@@ -86,6 +86,14 @@
   box-shadow: 0 0 8px var(--accent);
 }
 
+.row[data-status="ONLINE"] .track {
+  box-shadow: 0 0 8px var(--buy);
+}
+
+.row[data-status="DEGRADED"] .track {
+  box-shadow: 0 0 8px var(--accent);
+}
+
 .row[data-status="ONLINE"] .up,
 .row[data-status="DEGRADED"] .up {
   background: none;

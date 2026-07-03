@@ -57,7 +57,7 @@ function WatchRowCell(props: WatchRowCellProps): ReactElement {
         {row.mid}
       </span>
       <span className={styles.move} style={moveColor}>
-        {row.moveUp ? "▲" : "▼"} {row.movePips}
+        {row.moveUp ? "▲" : "▼"} {Math.abs(row.movePips)}
       </span>
       <span className={styles.spread}>{row.spread}</span>
       <div className={styles.trend}>

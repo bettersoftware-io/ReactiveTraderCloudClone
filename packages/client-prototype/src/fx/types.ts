@@ -62,6 +62,7 @@ export interface TileState {
 }
 
 export interface ActivityEvent {
+  id: number;
   t: string;
   tag: string;
   msg: string;

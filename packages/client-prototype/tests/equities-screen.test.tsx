@@ -21,6 +21,15 @@ describe("EquitiesScreen", () => {
     fireEvent.click(getByText(/BUY AAPL/));
     expect(container.querySelector('[data-order-id="5001"]')).toBeTruthy();
   });
+
+  test("each dock panel renders exactly one head bar, with its controls inline", () => {
+    const { getAllByRole, getByText } = renderScreen();
+    // four panels ⇒ four maximize buttons ⇒ one head bar each.
+    expect(getAllByRole("button", { name: /maximize/i })).toHaveLength(4);
+    // the watchlist sort control now lives in that single bar.
+    fireEvent.click(getByText("% CHG"));
+    expect(getByText("PRICE")).toBeTruthy();
+  });
 });
 
 function renderScreen(): ReturnType<typeof render> {

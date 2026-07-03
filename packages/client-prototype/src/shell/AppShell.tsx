@@ -18,6 +18,7 @@ export interface AppShellProps {
   onOpenPrefs(): void;
   onReboot(): void;
   onLogout(): void;
+  booted?: boolean;
 }
 
 export function AppShell(props: AppShellProps): ReactElement {
@@ -29,9 +30,14 @@ export function AppShell(props: AppShellProps): ReactElement {
     onOpenPrefs,
     onReboot,
     onLogout,
+    booted = true,
   } = props;
   return (
-    <div className={styles.shell} data-testid="app-shell">
+    <div
+      className={styles.shell}
+      data-testid="app-shell"
+      data-booted={String(booted)}
+    >
       <AmbientBackground />
       <div className={styles.chrome}>
         <Header

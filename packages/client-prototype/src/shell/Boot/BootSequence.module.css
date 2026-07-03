@@ -7,6 +7,40 @@
   justify-content: center;
   background: var(--bg);
   z-index: 100;
+  transition:
+    opacity 0.72s ease,
+    transform 0.72s ease,
+    filter 0.72s ease;
+}
+
+.boot[data-fading="true"] {
+  opacity: 0;
+  transform: scale(1.05);
+  filter: blur(7px);
+  pointer-events: none;
+}
+
+.brand {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.wordmark {
+  font-family: "Orbitron", sans-serif;
+  font-weight: 900;
+  font-size: 30px;
+  letter-spacing: 0.42em;
+  color: var(--accent);
+  text-shadow: 0 0 26px var(--accent);
+  animation: bootGlitch 2.4s infinite;
+}
+
+.subtitle {
+  margin-top: 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.6em;
+  color: var(--dim);
 }
 
 .canvas {

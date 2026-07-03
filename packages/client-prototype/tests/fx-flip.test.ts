@@ -44,6 +44,48 @@ describe("useFlip", () => {
 
     container.remove();
   });
+
+  test("suppresses a glide when a node moved less than 0.5px, plays it above the threshold", () => {
+    const container = document.createElement("div");
+    const node = document.createElement("div");
+    node.setAttribute("data-flip-key", "a");
+    container.append(node);
+    document.body.append(container);
+
+    if (typeof Element.prototype.animate !== "function") {
+      Element.prototype.animate = stubAnimate;
+    }
+
+    const animateSpy = vi.spyOn(Element.prototype, "animate");
+
+    // First measurement at left:0. Then move sub-threshold (0.3px) — no glide.
+    let left = 0;
+
+    node.getBoundingClientRect = (): DOMRect => {
+      return { left, top: 0 } as DOMRect;
+    };
+
+    const rootRef = { current: container };
+    const { rerender } = renderHook(
+      (props: HarnessProps) => {
+        useFlip(rootRef, props.filterKey, {});
+      },
+      { initialProps: { filterKey: "All" } },
+    );
+    left = 0.3;
+    act(() => {
+      rerender({ filterKey: "EUR" });
+    });
+    expect(animateSpy).not.toHaveBeenCalled();
+
+    // Now move above threshold (2px) — glide plays.
+    left = 2.3;
+    act(() => {
+      rerender({ filterKey: "GBP" });
+    });
+    expect(animateSpy).toHaveBeenCalled();
+    container.remove();
+  });
 });
 
 interface HarnessProps {
