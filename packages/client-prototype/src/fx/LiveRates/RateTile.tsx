@@ -56,7 +56,7 @@ export function RateTile(props: RateTileProps): ReactElement {
       <div className={styles.header}>
         <span className={styles.pair}>{vm.meta.pair}</span>
         <span className={styles.move} style={moveColor}>
-          {vm.moveUp ? "▲" : "▼"} {vm.movePips} pip
+          {vm.moveUp ? "▲" : "▼"} {Math.abs(vm.movePips)} pip
         </span>
       </div>
 

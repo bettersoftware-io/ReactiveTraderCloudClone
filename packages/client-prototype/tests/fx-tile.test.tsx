@@ -31,6 +31,13 @@ describe("RateTile", () => {
     expect(getAllByText("RFQ").length).toBeGreaterThan(0);
     expect(getByText("MAX")).toBeTruthy();
   });
+
+  test("shows the absolute pip count even on a down move", () => {
+    const { getByText } = render(
+      <RateTile vm={makeVm({ movePips: -7, moveUp: false })} overlay={null} />,
+    );
+    expect(getByText("▼ 7 pip")).toBeTruthy();
+  });
 });
 
 function makeVm(overrides: Partial<TileVm>): TileVm {

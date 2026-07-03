@@ -21,6 +21,13 @@ describe("WatchlistView", () => {
     expect(getByText("Trend")).toBeTruthy();
     expect(container.querySelectorAll("svg").length).toBe(2);
   });
+
+  test("shows the absolute pip count even on a down move", () => {
+    const { getByText } = render(
+      <WatchlistView rows={[makeRow({ movePips: -7, moveUp: false })]} />,
+    );
+    expect(getByText("▼ 7")).toBeTruthy();
+  });
 });
 
 function makeRow(overrides: Partial<WatchRow>): WatchRow {
