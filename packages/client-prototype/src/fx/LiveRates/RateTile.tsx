@@ -9,7 +9,7 @@ import { fmtShort } from "#/fx/fxData";
 import styles from "#/fx/LiveRates/RateTile.module.css";
 import { Sparkline } from "#/fx/LiveRates/Sparkline";
 import { TilePrice } from "#/fx/LiveRates/TilePrice";
-import type { PairMeta, Sym } from "#/fx/types";
+import type { PairMeta, Sym, TileState } from "#/fx/types";
 
 export interface TileVm {
   sym: Sym;
@@ -31,13 +31,14 @@ export interface TileVm {
 
 export interface RateTileProps {
   vm: TileVm;
+  stage: TileState["stage"];
   overlay?: ReactElement | null;
 }
 
 const SPOT_OFFSET_DAYS = 2;
 
 export function RateTile(props: RateTileProps): ReactElement {
-  const { vm, overlay } = props;
+  const { vm, stage, overlay } = props;
 
   function handleNotionalChange(e: ChangeEvent<HTMLInputElement>): void {
     vm.onNotional(e.target.value);
@@ -52,7 +53,11 @@ export function RateTile(props: RateTileProps): ReactElement {
   } as CSSProperties;
 
   return (
-    <div className={styles.tile} data-tile-sym={vm.sym}>
+    <div
+      className={styles.tile}
+      data-tile-sym={vm.sym}
+      data-booked={String(stage === "success")}
+    >
       <div className={styles.header}>
         <span className={styles.pair}>{vm.meta.pair}</span>
         <span className={styles.move} style={moveColor}>

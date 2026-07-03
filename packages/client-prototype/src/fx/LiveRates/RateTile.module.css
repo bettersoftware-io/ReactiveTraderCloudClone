@@ -8,6 +8,10 @@
   box-shadow: var(--tile-shadow, none);
 }
 
+.tile[data-booked="true"] {
+  animation: bookPulse 1s ease;
+}
+
 .header {
   display: flex;
   align-items: center;

@@ -185,6 +185,7 @@ function TileCell(props: TileCellProps): ReactElement {
     <div data-flip-key={sym} className={styles.cell}>
       <RateTile
         vm={vm}
+        stage={tile.stage}
         overlay={
           <div ref={overlayHostRef} className={styles.overlayHost}>
             <TileExecOverlay tile={tile} meta={meta} now={now} />

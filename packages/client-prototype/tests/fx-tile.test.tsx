@@ -9,7 +9,7 @@ afterEach(cleanup);
 describe("RateTile", () => {
   test("renders the pair, a big price segment, and the notional", () => {
     const { getByText, getAllByText, container } = render(
-      <RateTile vm={makeVm({})} overlay={null} />,
+      <RateTile vm={makeVm({})} stage="idle" overlay={null} />,
     );
     expect(getByText("EUR / USD")).toBeTruthy();
     // EURUSD @ 1.09213 with a 1.4-pip spread never crosses a hundredths
@@ -25,6 +25,7 @@ describe("RateTile", () => {
     const { getAllByText, getByText } = render(
       <RateTile
         vm={makeVm({ isRfq: true, notionalInvalid: true })}
+        stage="idle"
         overlay={null}
       />,
     );
@@ -34,9 +35,31 @@ describe("RateTile", () => {
 
   test("shows the absolute pip count even on a down move", () => {
     const { getByText } = render(
-      <RateTile vm={makeVm({ movePips: -7, moveUp: false })} overlay={null} />,
+      <RateTile
+        vm={makeVm({ movePips: -7, moveUp: false })}
+        stage="idle"
+        overlay={null}
+      />,
     );
     expect(getByText("▼ 7 pip")).toBeTruthy();
+  });
+
+  test("carries data-booked only while the tile's stage is success", () => {
+    const { container, rerender } = render(
+      <RateTile vm={makeVm({})} stage="idle" overlay={null} />,
+    );
+    expect(
+      container
+        .querySelector('[data-tile-sym="EURUSD"]')
+        ?.getAttribute("data-booked"),
+    ).toBe("false");
+
+    rerender(<RateTile vm={makeVm({})} stage="success" overlay={null} />);
+    expect(
+      container
+        .querySelector('[data-tile-sym="EURUSD"]')
+        ?.getAttribute("data-booked"),
+    ).toBe("true");
   });
 });
 
