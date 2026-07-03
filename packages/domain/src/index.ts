@@ -6,6 +6,10 @@ export {
   POSITION_MAX_RADIUS,
   POSITION_MIN_RADIUS,
 } from "./analytics/aggregatePositions.js";
+export {
+  formatPnlHeadline,
+  formatPnlK,
+} from "./analytics/formatPnlHeadline.js";
 export { formatPnlValue } from "./analytics/formatPnlValue.js";
 export type { Scale } from "./analytics/formatScale.js";
 export {
@@ -13,6 +17,8 @@ export {
   formatWithScale,
   scaleNumber,
 } from "./analytics/formatScale.js";
+export type { CurrencyExposure } from "./analytics/netExposure.js";
+export { netExposureByCurrency } from "./analytics/netExposure.js";
 // Analytics
 export type {
   CurrencyPairPosition,

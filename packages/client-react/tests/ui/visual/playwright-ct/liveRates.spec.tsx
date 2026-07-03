@@ -6,11 +6,13 @@ test("live-rates/populated", async ({ mount }) => {
   await expect(c).toHaveScreenshot("populated.png", { animations: "disabled" });
 });
 
-test("live-rates/price-view", async ({ mount, page }) => {
-  // Price view is seeded through the seam (fixture viewMode "price"); confirm the
-  // button offers switching back ("Chart" label) before screenshotting.
+test("live-rates/price-view", async ({ mount }) => {
+  // Price view is seeded through the seam (fixture viewMode "price") — no
+  // interaction needed. The CHARTS toggle that used to live inline (and read
+  // "Chart" when offering a switch back) moved to the fx-rates panel's head
+  // slot (LiveRatesHead), outside this standalone component; the screenshot
+  // alone proves the price-mode arm (charts suppressed) rendered.
   const c = await mount(<VisualScenario name="live-rates/price-view" />);
-  await expect(page.getByText("Chart")).toBeVisible();
   await expect(c).toHaveScreenshot("price-view.png", {
     animations: "disabled",
   });

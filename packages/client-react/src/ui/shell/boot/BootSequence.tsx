@@ -69,6 +69,23 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
         <div className={styles.subtitle}>
           TACTICAL TRADING OPERATING SYSTEM · v4.0
         </div>
+        <div data-testid="boot-log" className={styles.log}>
+          {BOOT_LOG_LINES.slice(0, visibleLineCount(state.progress)).map(
+            (line, i) => {
+              return (
+                <div
+                  key={line}
+                  data-online={
+                    i === BOOT_LOG_LINES.length - 1 ? "true" : "false"
+                  }
+                  className={styles.logLine}
+                >
+                  {line}
+                </div>
+              );
+            },
+          )}
+        </div>
         <div data-testid="boot-progress" className={styles.progressRow}>
           <div className={styles.bar}>
             <div
@@ -92,6 +109,29 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       </div>
     </div>
   );
+}
+
+/** PROTO bootMessages (dc.html L785-788), verbatim. */
+const BOOT_LOG_LINES = [
+  "BOOT> initializing kernel ............ OK",
+  "BOOT> mounting secure enclave ........ OK",
+  "NET > linking pricing engine ......... OK",
+  "NET > credit rfq gateway ............. OK",
+  "NET > equities market data ........... OK",
+  "SYS > calibrating HUD shaders ........ OK",
+  "SYS > all systems nominal ▸ ONLINE",
+] as const;
+
+/** PROTO staggering (L908: 350 + i*480 ms over DUR 4200) expressed as progress
+ * thresholds, so visibility derives from the existing ramp — no new timers. */
+function visibleLineCount(progress: number): number {
+  let count = 0;
+
+  for (let i = 0; i < BOOT_LOG_LINES.length; i++) {
+    if (progress >= ((350 + i * 480) / 4200) * 100) count++;
+  }
+
+  return count;
 }
 
 const DRAW = {

@@ -99,6 +99,48 @@ describe("InhouseLayoutEngine", () => {
     expect(onResize).not.toHaveBeenCalled();
   });
 
+  it("renders a fixed-width cell for fixedPx split children and no resize handle", () => {
+    const fixedState: LayoutState = {
+      root: {
+        kind: "split",
+        dir: "row",
+        sizes: [0.7, 0.3],
+        fixedPx: [undefined, 360],
+        children: [
+          { kind: "panel", panelId: "a" },
+          { kind: "panel", panelId: "b" },
+        ],
+      },
+      maximized: null,
+      collapsed: [],
+    };
+    const fixedRegistry: PanelRegistry = {
+      a: () => {
+        return <div data-testid="a-body">A</div>;
+      },
+      b: () => {
+        return <div data-testid="b-body">B</div>;
+      },
+    };
+    render(
+      <InhouseLayoutEngine
+        state={fixedState}
+        registry={fixedRegistry}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+        onResize={noop}
+      />,
+    );
+    const fixedCell = screen
+      .getByTestId("panel-b")
+      .closest("[data-fixed-cell]");
+    expect(fixedCell?.getAttribute("data-fixed-cell")).toBe("true");
+    // root pathKey is "" (root path = []), so the suppressed handle would be handle--0
+    expect(screen.queryByTestId("handle--0")).toBeNull();
+  });
+
   it("drives a column-split resize drag (vertical) and calls onResize", () => {
     const columnState: LayoutState = {
       root: {

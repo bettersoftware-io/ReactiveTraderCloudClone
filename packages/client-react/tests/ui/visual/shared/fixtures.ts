@@ -43,6 +43,8 @@ const eurusd: CurrencyPair = {
   base: "EUR",
   terms: "USD",
   defaultNotional: 1_000_000,
+  baseMid: 1.09213,
+  typicalSpreadPips: 1.4,
 };
 
 const eurusdPrice: Price = {
@@ -93,6 +95,8 @@ const gbpusd: CurrencyPair = {
   base: "GBP",
   terms: "USD",
   defaultNotional: 1_000_000,
+  baseMid: 1.26414,
+  typicalSpreadPips: 1.8,
 };
 const usdjpy: CurrencyPair = {
   symbol: "USDJPY",
@@ -101,6 +105,8 @@ const usdjpy: CurrencyPair = {
   base: "USD",
   terms: "JPY",
   defaultNotional: 1_000_000,
+  baseMid: 151.203,
+  typicalSpreadPips: 1.6,
 };
 const gbpusdPrice: Price = {
   symbol: "GBPUSD",
@@ -246,7 +252,8 @@ const eurusdHistoryFlat: readonly PriceTick[] = [
 
 // Analytics arms: negative latest PnL + a negative current position (PnlValue /
 // PnlChart negative colour arms); an empty panel (no positions, no history);
-// and all-flat positions (PositionBubbles maxAbsPnl === 0 degenerate arm).
+// and all-flat positions (PairPnlBars maxAbsPnl === 0 degenerate arm; the
+// PositionsPanel net-exposure bubbles are exercised separately by positions/*).
 const analyticsNegative: PositionUpdates = {
   currentPositions: [
     {
@@ -322,6 +329,29 @@ const analyticsFlat: PositionUpdates = {
     { timestamp: "2026-06-06T10:00:00Z", usdPnl: 0 },
   ],
 };
+// PositionsPanel "USD dominates negative" arm: two positions both short USD
+// (long EUR / long GBP against it) so netExposureByCurrency nets USD to the
+// largest-magnitude negative bubble, with EUR/GBP as smaller positive ones.
+const positionsNegative: PositionUpdates = {
+  currentPositions: [
+    {
+      symbol: "EURUSD",
+      basePnl: 6100,
+      baseTradedAmount: 5_000_000,
+      counterTradedAmount: -5_461_000,
+    },
+    {
+      symbol: "GBPUSD",
+      basePnl: -2900,
+      baseTradedAmount: 3_000_000,
+      counterTradedAmount: -3_792_570,
+    },
+  ],
+  history: [
+    { timestamp: "2026-06-06T09:00:00Z", usdPnl: 0 },
+    { timestamp: "2026-06-06T10:00:00Z", usdPnl: 3200 },
+  ],
+};
 
 // FX blotter trades — static, deterministic rows for BlotterRow + filters.
 const fxTrades: readonly Trade[] = [
@@ -376,6 +406,7 @@ const creditInstruments: readonly Instrument[] = [
     maturity: "2034-02-15",
     interestRate: 1.5,
     benchmark: "10Y",
+    refPrice: 98.4,
   },
   {
     id: 2,
@@ -385,6 +416,7 @@ const creditInstruments: readonly Instrument[] = [
     maturity: "2030-05-11",
     interestRate: 2.4,
     benchmark: "7Y",
+    refPrice: 99.8,
   },
 ];
 const creditDealers: readonly Dealer[] = [
@@ -805,7 +837,8 @@ export const fixtures: Record<string, AppData> = {
   // Same data as live-rates-populated but seeded into price view through the
   // seam (viewMode "price"). The view mode now lives behind PreferencesPort, so
   // the price-mode arm is reached by seeding state, not by a runtime toggle —
-  // the rendered output (charts suppressed, ViewToggle offers "Chart") is identical.
+  // the rendered output (tile charts suppressed) is identical. The CHARTS
+  // toggle itself now lives in LiveRatesHead, outside this panel.
   "live-rates-price": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
@@ -924,6 +957,11 @@ export const fixtures: Record<string, AppData> = {
   // Million-scale, all-positive analytics: PnlValue/PairPnlBars "m" labels +
   // PnlChart no-zero-line arm.
   "analytics-millions": makeAppData({ analytics: analyticsMillions }),
+  // PositionsPanel net-exposure bubble arm: USD is the dominant negative
+  // currency (see positionsNegative above). populated/empty reuse the
+  // existing analytics-populated/analytics-empty fixtures — both components
+  // read the same PositionUpdates shape off useAnalytics().
+  "positions-negative": makeAppData({ analytics: positionsNegative }),
   // Credit RFQ-card terminal states (prop-driven RfqCard key).
   "rfq-done": rfqCardFixture(rfqDone, rfqDoneQuotes),
   "rfq-expired": rfqCardFixture(rfqExpired, rfqExpiredQuotes),

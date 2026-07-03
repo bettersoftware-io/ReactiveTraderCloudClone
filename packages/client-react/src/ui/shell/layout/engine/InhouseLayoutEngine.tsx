@@ -29,6 +29,7 @@ export function InhouseLayoutEngine({
   state,
   registry,
   specs = PANEL_SPECS,
+  headRegistry,
   onMaximize,
   onRestore,
   onCollapse,
@@ -39,6 +40,7 @@ export function InhouseLayoutEngine({
     state,
     registry,
     specs,
+    headRegistry,
     onMaximize,
     onRestore,
     onCollapse,
@@ -61,6 +63,10 @@ export interface InhouseLayoutEngineProps {
   state: LayoutState;
   registry: PanelRegistry;
   specs?: Readonly<Record<PanelId, PanelSpec>>;
+  /** Per-panel head-slot override: when set for a panel id, its element renders
+   * in place of the default title span (the collapse/maximize controls stay).
+   * Used for the FX Live Rates head tabs + CHARTS chip (Task 11). */
+  headRegistry?: Partial<Record<PanelId, () => ReactElement>>;
   onMaximize: LayoutIntents["maximize"];
   onRestore: LayoutIntents["restore"];
   onCollapse: LayoutIntents["collapse"];
@@ -72,6 +78,7 @@ interface SharedProps {
   state: LayoutState;
   registry: PanelRegistry;
   specs: Readonly<Record<PanelId, PanelSpec>>;
+  headRegistry?: Partial<Record<PanelId, () => ReactElement>>;
   onMaximize: LayoutIntents["maximize"];
   onRestore: LayoutIntents["restore"];
   onCollapse: LayoutIntents["collapse"];
@@ -86,6 +93,7 @@ type SplitLayoutNode = {
   readonly dir: SplitDir;
   readonly children: readonly LayoutNode[];
   readonly sizes: readonly number[];
+  readonly fixedPx?: readonly (number | undefined)[];
 };
 
 interface SplitNodeProps extends SharedProps {
@@ -116,6 +124,7 @@ function SplitNode({
   state,
   registry,
   specs,
+  headRegistry,
   onMaximize,
   onRestore,
   onCollapse,
@@ -188,6 +197,7 @@ function SplitNode({
     state,
     registry,
     specs,
+    headRegistry,
     onMaximize,
     onRestore,
     onCollapse,
@@ -210,18 +220,29 @@ function SplitNode({
           nextChild !== undefined &&
           nextChild.kind === "panel" &&
           specs[nextChild.panelId]?.pinned === true;
+        const childFixed = node.fixedPx?.[i];
+        const nextFixed = node.fixedPx?.[i + 1];
         const showHandle =
-          !childPinned && i < node.children.length - 1 && !nextChildPinned;
+          !childPinned &&
+          i < node.children.length - 1 &&
+          !nextChildPinned &&
+          childFixed === undefined &&
+          nextFixed === undefined;
 
         return (
           <div
             key={childKey(child, path, i)}
             className={styles.cell}
             data-pinned-cell={childPinned ? "true" : "false"}
+            data-fixed-cell={childFixed !== undefined ? "true" : "false"}
             style={
               childPinned
                 ? undefined
-                : ({ "--split-size": String(node.sizes[i]) } as CSSProperties)
+                : childFixed !== undefined
+                  ? ({ "--split-fixed": `${childFixed}px` } as CSSProperties)
+                  : ({
+                      "--split-size": String(node.sizes[i]),
+                    } as CSSProperties)
             }
           >
             {renderNode(child, [...path, i], sharedProps)}
@@ -258,6 +279,7 @@ function renderPanel(
     state,
     registry,
     specs,
+    headRegistry,
     onMaximize,
     onRestore,
     onCollapse,
@@ -269,6 +291,7 @@ function renderPanel(
   const maximizedHere = state.maximized === panelId;
   const isMaximized = state.maximized !== null;
   const strip = (isMaximized && !maximizedHere) || collapsed;
+  const headContent = headRegistry?.[panelId];
 
   return (
     <section
@@ -283,7 +306,16 @@ function renderPanel(
         data-testid={`panel-${panelId}-header`}
         className={styles.panelHeader}
       >
-        <span className={styles.panelTitle}>{spec?.title ?? panelId}</span>
+        {headContent ? (
+          <div className={styles.panelHeadContent}>{headContent()}</div>
+        ) : (
+          <span
+            data-testid={`panel-${panelId}-title`}
+            className={styles.panelTitle}
+          >
+            {spec?.title ?? panelId}
+          </span>
+        )}
         <div className={styles.panelControls}>
           <button
             type="button"

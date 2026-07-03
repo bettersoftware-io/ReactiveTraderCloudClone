@@ -37,9 +37,11 @@ export class TilePage extends MountedComponent<TileProps> {
 
   headerText(): string {
     // Header is the first flex row inside the tile; read base/terms spans.
+    // The pair name is wrapped in a span, so we skip that wrapper and get its 3 children.
     const spans = [...this.root.querySelectorAll("span")];
+    // Skip the pairName wrapper (first span) and take its 3 children (base, /, terms)
     return spans
-      .slice(0, 3)
+      .slice(1, 4)
       .map((s) => {
         return s.textContent?.trim() ?? "";
       })

@@ -8,6 +8,7 @@ export interface InstrumentDto {
   readonly maturity: string;
   readonly interestRate: number;
   readonly benchmark: string;
+  readonly refPrice: number;
 }
 
 export type InstrumentEvent = MarkerEvent<InstrumentDto>;

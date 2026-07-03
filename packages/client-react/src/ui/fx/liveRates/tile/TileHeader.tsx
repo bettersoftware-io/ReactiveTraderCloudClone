@@ -15,9 +15,11 @@ export function TileHeader({
     <div className={styles.header}>
       <div className={styles.symbolCode}>{symbol}</div>
       <div className={styles.pairRow}>
-        <span>{base}</span>
-        <span className={styles.separator}>/</span>
-        <span>{terms}</span>
+        <span className={styles.pairName}>
+          <span>{base}</span>
+          <span className={styles.separator}>/</span>
+          <span>{terms}</span>
+        </span>
         {movementPips !== null && (
           <span
             data-movement={movementKey(movement)}

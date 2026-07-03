@@ -7,6 +7,7 @@ import type { FooterPO } from "./Footer";
 import type { FxRfqFormPO } from "./FxRfqForm";
 import type { LayoutPO } from "./Layout";
 import type { LiveRatesTilePO } from "./LiveRatesTile";
+import type { PositionsPanelPO } from "./PositionsPanel";
 import type { ThemeTogglePO } from "./ThemeToggle";
 import type { WorkspacePO } from "./Workspace";
 
@@ -18,6 +19,7 @@ export interface PageObjects {
   liveRatesTile: LiveRatesTilePO;
   fxRfqForm: FxRfqFormPO;
   analyticsDashboard: AnalyticsDashboardPO;
+  positionsPanel: PositionsPanelPO;
   creditRfqForm: CreditRfqFormPO;
   creditRfqPanel: CreditRfqPanelPO;
   blotterTable: BlotterTablePO;

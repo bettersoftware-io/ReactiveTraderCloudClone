@@ -60,22 +60,25 @@
 }
 
 .navButton {
-  padding: 6px 14px;
+  padding: 7px 12px;
   font-family: var(--font-display);
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
   border-radius: 3px;
   cursor: pointer;
-  font-weight: 400;
-  background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--text-muted);
+  background: transparent;
+  transition: all 0.2s;
 }
 
 .navButton[data-active="true"] {
-  font-weight: 600;
-  background-color: var(--accent-primary);
-  color: var(--text-on-accent);
+  color: var(--accent-primary);
+  background: var(--chip);
+  border-color: var(--border-strong);
+  box-shadow: var(--glow);
 }
 
 .navDisabled {
@@ -192,18 +195,67 @@
   cursor: pointer;
 }
 
-.avatar {
+/* Hexagon avatar (PROTO Reactive Trader.dc.html:201,207) — trigger (30×30)
+   and panel-head (38×38) share the same hexagon SVG markup; only the
+   container size and drop-shadow strength differ between the two. */
+.avatarWrap {
+  position: relative;
   width: 30px;
   height: 30px;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  background: var(--chip);
-  border: 1px solid var(--accent-primary);
+}
+
+.avatarHex {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 4px var(--accent-primary));
+}
+
+/*
+ * --chip is a gradient on the 3d skins, and SVG `fill` cannot take a CSS
+ * gradient — it falls back to black. Derive the same solid tint from the
+ * accent instead (same fix as LockScreen's `avatarChip`).
+ */
+.avatarHexFill {
+  fill: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+}
+
+.avatarInitials {
+  position: relative;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 11px;
+  color: var(--accent-primary);
+}
+
+.avatarWrapLarge {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatarHexLarge {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 6px var(--accent-primary));
+}
+
+.avatarInitialsLarge {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
   color: var(--accent-primary);
 }
 
@@ -312,21 +364,6 @@
   background: var(--panel-head);
 }
 
-.avatarLarge {
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  background: var(--chip);
-  border: 1px solid var(--accent-primary);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--accent-primary);
-}
-
 .accountIdentity {
   display: flex;
   flex-direction: column;
@@ -364,23 +401,62 @@
   color: var(--text-primary);
 }
 
-.langRow {
+.langTrigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--border-primary);
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: transparent;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.langTrigger[aria-expanded="true"] {
+  border-color: var(--border-strong);
+  background: var(--chip);
+  color: var(--text-primary);
+}
+
+.langOption {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 11px 14px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-}
-
-.langSelect {
+  width: 100%;
+  padding: 9px 13px;
+  border: none;
+  border-bottom: 1px solid var(--border-primary);
+  cursor: pointer;
   background-color: transparent;
-  color: var(--text-primary);
-  border: 1px solid var(--border-primary);
-  border-radius: 4px;
-  padding: 3px 6px;
   font-family: var(--font-mono);
   font-size: 11px;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.langOption:last-child {
+  border-bottom: none;
+}
+
+.langOption:hover {
+  color: var(--text-primary);
+}
+
+.langOption[data-active="true"] {
+  background: var(--chip);
+  color: var(--text-primary);
+}
+
+.mark {
+  width: 9px;
+  font-size: 9px;
+  color: var(--accent-primary);
 }
 
 .lockButton {

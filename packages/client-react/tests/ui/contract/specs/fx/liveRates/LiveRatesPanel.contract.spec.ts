@@ -72,20 +72,6 @@ describe("LiveRatesPanel", () => {
       hooks: { useCurrencyPairs: [eurusd] },
     });
     expect(panel.hasAnyChart()).toBe(true);
-    expect(panel.viewToggleLabel()).toMatch(/price/i);
-  });
-
-  it("toggles to price view, hiding the charts", async () => {
-    const panel = mount(LiveRatesPanel, {
-      hooks: { useCurrencyPairs: [eurusd] },
-    });
-    expect(panel.hasAnyChart()).toBe(true);
-    await panel.toggleView();
-    // The toggle routes through the seam (useViewModePreference); the panel
-    // re-renders with charts suppressed. Persistence is the presenter's job and
-    // is verified at the app/presenter layer, not in the UI contract.
-    expect(panel.hasAnyChart()).toBe(false);
-    expect(panel.viewToggleLabel()).toMatch(/chart/i);
   });
 
   it("reflects the seeded view mode on mount", () => {
@@ -93,8 +79,9 @@ describe("LiveRatesPanel", () => {
       hooks: { useCurrencyPairs: [eurusd] },
       viewMode: "price",
     });
-    // Seeded "price" → charts suppressed, toggle offers "chart".
+    // Seeded "price" → charts suppressed. The CHARTS chip that drives this
+    // seam now lives in LiveRatesHead (Task 11) — see
+    // LiveRatesHead.contract.spec.ts for the toggle-through-the-chip contract.
     expect(panel.hasAnyChart()).toBe(false);
-    expect(panel.viewToggleLabel()).toMatch(/chart/i);
   });
 });

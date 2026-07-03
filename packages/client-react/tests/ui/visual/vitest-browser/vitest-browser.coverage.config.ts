@@ -14,7 +14,7 @@ import base from "./vitest-browser.config";
 // include automatically drops the .ts logic/hook files (csvExport, columnSort,
 // filterState, use*.ts, etc.) — those carry no JSX render path a golden could
 // capture and are covered by the app / contract tiers. Charts and full-page
-// roots (App, Workspace, CreditWorkspace, PnlChart, PositionBubbles,
+// roots (App, Workspace, CreditWorkspace, PnlChart, PositionsPanel,
 // PairPnlBars, TileChart) stay IN — they are exactly what this tier uniquely
 // renders.
 export default mergeConfig(

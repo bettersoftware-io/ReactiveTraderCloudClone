@@ -25,22 +25,27 @@ test.describe("FX live rates", () => {
     await fxLiveRates.expectVisibleTileCountEquals(ctx, "all");
   });
 
-  test("view toggle switches between chart and price view", async ({ ctx }) => {
-    await fxLiveRates.expectViewToggleVisible(ctx);
-    await fxLiveRates.expectViewToggleShows(ctx, "Price");
-    await fxLiveRates.clickViewToggle(ctx);
-    await fxLiveRates.expectViewToggleShows(ctx, "Chart");
-    await fxLiveRates.clickViewToggle(ctx);
-    await fxLiveRates.expectViewToggleShows(ctx, "Price");
+  test("charts toggle switches tile sparklines on and off", async ({ ctx }) => {
+    await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    await fxLiveRates.expectChartsToggleVisible(ctx);
+    await fxLiveRates.expectChartsToggleActive(ctx, true);
+    await fxLiveRates.expectFirstTileChartVisible(ctx, true);
+    await fxLiveRates.clickChartsToggle(ctx);
+    await fxLiveRates.expectChartsToggleActive(ctx, false);
+    await fxLiveRates.expectFirstTileChartVisible(ctx, false);
+    await fxLiveRates.clickChartsToggle(ctx);
+    await fxLiveRates.expectChartsToggleActive(ctx, true);
+    await fxLiveRates.expectFirstTileChartVisible(ctx, true);
   });
 
-  test("view preference persists across reloads", async ({ ctx }) => {
-    await fxLiveRates.expectViewToggleVisible(ctx);
-    await fxLiveRates.clickViewToggle(ctx);
-    await fxLiveRates.expectViewToggleShows(ctx, "Chart");
+  test("charts toggle preference persists across reloads", async ({ ctx }) => {
+    await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    await fxLiveRates.expectChartsToggleVisible(ctx);
+    await fxLiveRates.clickChartsToggle(ctx);
+    await fxLiveRates.expectChartsToggleActive(ctx, false);
     await common.reloadPage(ctx);
     await common.clickTab(ctx, "fx");
-    await fxLiveRates.expectViewToggleShows(ctx, "Chart");
+    await fxLiveRates.expectChartsToggleActive(ctx, false);
   });
 
   test("prices update over time", async ({ ctx }) => {

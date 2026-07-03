@@ -4,20 +4,23 @@ import { useState } from "react";
 import { type CurrencyCategory, matchesCurrencyFilter } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { useFxView } from "#/ui/fx/useFxView";
 import { useFlipGrid } from "#/ui/shell/motion/useFlipGrid";
 
 import { CurrencyFilter } from "./CurrencyFilter";
 import { Tile } from "./tile/Tile";
-import { ViewToggle } from "./ViewToggle";
 
 import styles from "./LiveRatesPanel.module.css";
 
 export function LiveRatesPanel(): ReactElement {
   const { useCurrencyPairs, useViewModePreference } = useViewModel();
   const pairs = useCurrencyPairs();
-  // ViewMode persistence lives behind the seam (PreferencesPort). The category
-  // filter stays local — it's transient view state, not a persisted preference.
-  const { viewMode, setViewMode } = useViewModePreference();
+  // ViewMode persistence lives behind the seam (PreferencesPort); the CHARTS
+  // chip in LiveRatesHead is the only writer now (Task 11 moved it out of the
+  // body). The category filter stays local — it's transient view state, not a
+  // persisted preference.
+  const { viewMode } = useViewModePreference();
+  const { ratesTab } = useFxView();
   const [filter, setFilter] = useState<CurrencyCategory>("All");
 
   const filteredPairs = pairs.filter((p) => {
@@ -28,11 +31,20 @@ export function LiveRatesPanel(): ReactElement {
   // which pairs are shown.
   const { register } = useFlipGrid([filter]);
 
+  if (ratesTab === "watchlist") {
+    return (
+      <div className={styles.panel}>
+        <div data-testid="watchlist-placeholder" className={styles.placeholder}>
+          WATCHLIST VIEW — COMING ONLINE
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.panel}>
       <div className={styles.controls}>
         <CurrencyFilter selected={filter} onChange={setFilter} />
-        <ViewToggle mode={viewMode} onChange={setViewMode} />
       </div>
 
       {pairs.length === 0 ? (

@@ -6,4 +6,6 @@ export interface Instrument {
   readonly maturity: string;
   readonly interestRate: number;
   readonly benchmark: string;
+  /** PROTO reference price (dc.html L758-763); demo quote anchor. */
+  readonly refPrice: number;
 }

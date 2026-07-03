@@ -23,3 +23,31 @@ Then(
     return analytics.expectAnalyticsPanelVisibleWithin(this.ctx, n);
   },
 );
+
+Then(
+  "the positions panel is visible within {int} seconds",
+  function positionsPanelVisibleWithin(this: StepContext, seconds: number) {
+    return analytics.expectPositionsPanelVisibleWithin(this.ctx, seconds);
+  },
+);
+
+Then(
+  "the positions panel shows at least {int} exposure bubble",
+  function positionsPanelHasBubbles(this: StepContext, n: number) {
+    return analytics.expectPositionsPanelHasBubbles(this.ctx, n);
+  },
+);
+
+Then(
+  "the first exposure bubble has a signed amount",
+  function firstBubbleHasSignedAmount(this: StepContext) {
+    return analytics.expectFirstBubbleHasSignedAmount(this.ctx);
+  },
+);
+
+Then(
+  "the first exposure ladder row has a signed amount",
+  function firstRowHasSignedAmount(this: StepContext) {
+    return analytics.expectFirstRowHasSignedAmount(this.ctx);
+  },
+);

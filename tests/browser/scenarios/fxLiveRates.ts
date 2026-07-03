@@ -1,6 +1,5 @@
 import type { TestContext } from "../testContext";
 import {
-  assertContains,
   assertEquals,
   assertGreaterThanZero,
   assertGte,
@@ -78,22 +77,31 @@ export async function expectVisibleTileCountEquals(
   assertEquals(current, baseline);
 }
 
-export async function expectViewToggleVisible(ctx: TestContext): Promise<void> {
+export async function expectChartsToggleVisible(
+  ctx: TestContext,
+): Promise<void> {
   assertTrue(
-    await ctx.po.liveRatesTile.viewToggleVisible(),
-    "view toggle not visible",
+    await ctx.po.liveRatesTile.chartsToggleVisible(),
+    "charts toggle not visible",
   );
 }
 
-export async function expectViewToggleShows(
+export async function expectChartsToggleActive(
   ctx: TestContext,
-  expected: string,
+  active: boolean,
 ): Promise<void> {
-  assertContains(await ctx.po.liveRatesTile.viewToggleLabel(), expected);
+  assertEquals(await ctx.po.liveRatesTile.chartsToggleActive(), active);
 }
 
-export async function clickViewToggle(ctx: TestContext): Promise<void> {
-  await ctx.po.liveRatesTile.clickViewToggle();
+export async function clickChartsToggle(ctx: TestContext): Promise<void> {
+  await ctx.po.liveRatesTile.clickChartsToggle();
+}
+
+export async function expectFirstTileChartVisible(
+  ctx: TestContext,
+  visible: boolean,
+): Promise<void> {
+  assertEquals(await ctx.po.liveRatesTile.firstTileChartVisible(), visible);
 }
 
 export async function recordFirstTileText(ctx: TestContext): Promise<void> {

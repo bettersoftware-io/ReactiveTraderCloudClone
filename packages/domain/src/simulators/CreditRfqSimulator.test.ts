@@ -1,9 +1,10 @@
 import { firstValueFrom } from "rxjs";
-import { filter, take, toArray } from "rxjs/operators";
+import { filter, take, takeWhile, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defined } from "../__testUtils__/defined.js";
-import { CREDIT_RFQ_EXPIRY_SECONDS } from "../credit/rfq.js";
+import { CREDIT_RFQ_EXPIRY_SECONDS, RfqState } from "../credit/rfq.js";
+import { Direction } from "../fx/trade.js";
 import type { RfqEvent } from "../ports/workflowPort.js";
 import { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 import { DEALERS_CATALOG } from "./DealerSimulator.js";
@@ -84,23 +85,7 @@ describe("CreditRfqSimulator", () => {
     vi.useFakeTimers();
     vi.spyOn(Math, "random").mockReturnValue(0); // force scheduled dealers to NOT participate
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
-    const quoteCreatedTwice = firstValueFrom(
-      sim.events().pipe(
-        filter((e: RfqEvent) => {
-          return e.type === "quoteCreated";
-        }),
-        take(2),
-      ),
-    );
-    const firstQuotePromise = firstValueFrom(
-      sim.events().pipe(
-        filter((e: RfqEvent) => {
-          return e.type === "quoteCreated";
-        }),
-        take(1),
-      ),
-    );
-    await firstValueFrom(
+    const rfqId = await firstValueFrom(
       sim.createRfq({
         instrumentId: 1,
         dealerIds: [
@@ -113,10 +98,19 @@ describe("CreditRfqSimulator", () => {
       }),
     );
     await vi.advanceTimersByTimeAsync(0);
-    await quoteCreatedTwice;
-    const winningQuoteId = (
-      (await firstQuotePromise) as Extract<RfqEvent, QuoteCreatedMatcher>
-    ).payload.id;
+    // Subscribe AFTER creation and filter by rfqId: the seeded demo state
+    // also emits quoteCreated snapshot events, so an unfiltered take() would
+    // pick up a seeded quote instead of this RFQ's own.
+    const created = await firstValueFrom(
+      sim.events().pipe(
+        filter((e: RfqEvent): e is Extract<RfqEvent, QuoteCreatedMatcher> => {
+          return e.type === "quoteCreated" && e.payload.rfqId === rfqId;
+        }),
+        take(2),
+        toArray(),
+      ),
+    );
+    const winningQuoteId = defined(created[0]).payload.id;
     await firstValueFrom(sim.quote({ quoteId: winningQuoteId, price: 100 }));
     await vi.advanceTimersByTimeAsync(0);
     const { events, stop } = collectEvents(sim);
@@ -145,16 +139,7 @@ describe("CreditRfqSimulator", () => {
     vi.useFakeTimers();
     vi.spyOn(Math, "random").mockReturnValue(0); // scheduled dealers do NOT participate
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
-    const bothQuotesCreated = firstValueFrom(
-      sim.events().pipe(
-        filter((e: RfqEvent) => {
-          return e.type === "quoteCreated";
-        }),
-        take(2),
-        toArray(),
-      ),
-    );
-    await firstValueFrom(
+    const rfqId = await firstValueFrom(
       sim.createRfq({
         instrumentId: 1,
         dealerIds: [
@@ -167,10 +152,18 @@ describe("CreditRfqSimulator", () => {
       }),
     );
     await vi.advanceTimersByTimeAsync(0);
-    const created = (await bothQuotesCreated) as Extract<
-      RfqEvent,
-      QuoteCreatedMatcher
-    >[];
+    // Subscribe AFTER creation and filter by rfqId: the seeded demo state
+    // also emits quoteCreated snapshot events, so an unfiltered take() would
+    // pick up a seeded quote instead of this RFQ's own.
+    const created = await firstValueFrom(
+      sim.events().pipe(
+        filter((e: RfqEvent): e is Extract<RfqEvent, QuoteCreatedMatcher> => {
+          return e.type === "quoteCreated" && e.payload.rfqId === rfqId;
+        }),
+        take(2),
+        toArray(),
+      ),
+    );
     const winningQuoteId = defined(created[0]).payload.id;
     const losingQuoteId = defined(created[1]).payload.id;
 
@@ -199,16 +192,7 @@ describe("CreditRfqSimulator", () => {
     vi.useFakeTimers();
     vi.spyOn(Math, "random").mockReturnValue(0); // scheduled dealers do NOT participate
     const sim = new CreditRfqSimulator(DEALERS_CATALOG);
-    const bothQuotesCreated = firstValueFrom(
-      sim.events().pipe(
-        filter((e: RfqEvent) => {
-          return e.type === "quoteCreated";
-        }),
-        take(2),
-        toArray(),
-      ),
-    );
-    await firstValueFrom(
+    const rfqId = await firstValueFrom(
       sim.createRfq({
         instrumentId: 1,
         dealerIds: [
@@ -221,10 +205,18 @@ describe("CreditRfqSimulator", () => {
       }),
     );
     await vi.advanceTimersByTimeAsync(0);
-    const created = (await bothQuotesCreated) as Extract<
-      RfqEvent,
-      QuoteCreatedMatcher
-    >[];
+    // Subscribe AFTER creation and filter by rfqId: the seeded demo state
+    // also emits quoteCreated snapshot events, so an unfiltered take() would
+    // pick up a seeded quote instead of this RFQ's own.
+    const created = await firstValueFrom(
+      sim.events().pipe(
+        filter((e: RfqEvent): e is Extract<RfqEvent, QuoteCreatedMatcher> => {
+          return e.type === "quoteCreated" && e.payload.rfqId === rfqId;
+        }),
+        take(2),
+        toArray(),
+      ),
+    );
     const winningQuoteId = defined(created[0]).payload.id;
     const losingQuoteId = defined(created[1]).payload.id; // stays pendingWithoutPrice
 
@@ -256,7 +248,9 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(
       sim.createRfq({
         instrumentId: 1,
-        dealerIds: [defined(DEALERS_CATALOG[0]).id],
+        // Citi (id 1), not Adaptive Bank (id 0) — Adaptive never schedules
+        // an auto-response (ADAPTIVE_BANK_NAME skip rule).
+        dealerIds: [defined(DEALERS_CATALOG[1]).id],
         quantity: 1000,
         direction: "Buy" as never,
         expirySecs: 60,
@@ -312,7 +306,9 @@ describe("CreditRfqSimulator", () => {
     await firstValueFrom(
       sim.createRfq({
         instrumentId: 1,
-        dealerIds: [defined(DEALERS_CATALOG[0]).id],
+        // Citi (id 1), not Adaptive Bank (id 0) — Adaptive never schedules
+        // an auto-response (ADAPTIVE_BANK_NAME skip rule).
+        dealerIds: [defined(DEALERS_CATALOG[1]).id],
         quantity: 1000,
         direction: "Buy" as never,
         expirySecs: 60,
@@ -372,9 +368,89 @@ describe("CreditRfqSimulator", () => {
       }),
     ).toBe(false);
   });
+
+  it("emits seeded state of the world: RFQs 235, 237, 238 with quotes", async () => {
+    const sim = new CreditRfqSimulator(DEALERS_CATALOG);
+    const events = await firstValueFrom(
+      sim.events().pipe(
+        takeWhile((e) => {
+          return e.type !== "endOfStateOfTheWorld";
+        }, true),
+        toArray(),
+      ),
+    );
+    const rfqs = events
+      .filter((e) => {
+        return e.type === "rfqCreated";
+      })
+      .map((e) => {
+        return (e as Extract<RfqEvent, RfqCreatedMatcher>).payload;
+      });
+    expect(
+      rfqs
+        .map((r) => {
+          return r.id;
+        })
+        .sort((a, b) => {
+          return a - b;
+        }),
+    ).toEqual([235, 237, 238]);
+
+    const byId = new Map(
+      rfqs.map((r) => {
+        return [r.id, r];
+      }),
+    );
+    expect(byId.get(238)?.state).toBe(RfqState.Closed);
+    expect(byId.get(238)?.direction).toBe(Direction.Buy);
+    expect(byId.get(238)?.quantity).toBe(3_500_000);
+    expect(byId.get(237)?.state).toBe(RfqState.Cancelled);
+    expect(byId.get(235)?.state).toBe(RfqState.Closed);
+
+    const quotes = events
+      .filter((e) => {
+        return e.type === "quoteCreated";
+      })
+      .map((e) => {
+        return (e as Extract<RfqEvent, QuoteCreatedMatcher>).payload;
+      });
+    const accepted238 = quotes.find((q) => {
+      return q.rfqId === 238 && q.state.type === "accepted";
+    });
+    expect(accepted238?.state).toEqual({ type: "accepted", price: 99.8 });
+    const accepted235 = quotes.find((q) => {
+      return q.rfqId === 235 && q.state.type === "accepted";
+    });
+    expect(accepted235?.state).toEqual({ type: "accepted", price: 101.2 });
+    expect(
+      quotes
+        .filter((q) => {
+          return q.rfqId === 237;
+        })
+        .every((q) => {
+          return q.state.type === "passed";
+        }),
+    ).toBe(true);
+  });
+
+  it("new RFQs get ids from 240 (PROTO creditSeq)", async () => {
+    const sim = new CreditRfqSimulator(DEALERS_CATALOG);
+    const id = await firstValueFrom(
+      sim.createRfq({
+        instrumentId: 0,
+        quantity: 1_000,
+        direction: Direction.Buy,
+        expirySecs: 1,
+        dealerIds: [1],
+      }),
+    );
+    expect(id).toBe(240);
+  });
 });
 
 type QuoteCreatedMatcher = { type: "quoteCreated" };
+
+type RfqCreatedMatcher = { type: "rfqCreated" };
 
 type RfqClosedMatcher = { type: "rfqClosed" };
 
@@ -412,14 +488,6 @@ interface RfqAndQuoteId {
 async function createRfqAndQuoteId(
   sim: CreditRfqSimulator,
 ): Promise<RfqAndQuoteId> {
-  const quoteCreated = firstValueFrom(
-    sim.events().pipe(
-      filter((e: RfqEvent) => {
-        return e.type === "quoteCreated";
-      }),
-      take(1),
-    ),
-  );
   const rfqId = await firstValueFrom(
     sim.createRfq({
       instrumentId: 1,
@@ -430,6 +498,17 @@ async function createRfqAndQuoteId(
     }),
   );
   await vi.advanceTimersByTimeAsync(0);
-  const e = (await quoteCreated) as Extract<RfqEvent, QuoteCreatedMatcher>;
+  // Subscribe AFTER creation and filter by rfqId: the seeded demo state
+  // also emits quoteCreated snapshot events, so an unfiltered take() would
+  // pick up a seeded quote instead of this RFQ's own.
+  const quoteCreated = await firstValueFrom(
+    sim.events().pipe(
+      filter((e: RfqEvent) => {
+        return e.type === "quoteCreated" && e.payload.rfqId === rfqId;
+      }),
+      take(1),
+    ),
+  );
+  const e = quoteCreated as Extract<RfqEvent, QuoteCreatedMatcher>;
   return { rfqId, quoteId: e.payload.id };
 }

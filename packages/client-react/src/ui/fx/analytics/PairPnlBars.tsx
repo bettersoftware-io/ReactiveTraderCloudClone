@@ -3,8 +3,8 @@ import { useState } from "react";
 
 import {
   type CurrencyPairPosition,
+  formatPnlK,
   formatPrecise2,
-  formatWithScale,
 } from "@rtc/domain";
 
 import styles from "./PairPnlBars.module.css";
@@ -28,7 +28,7 @@ export function PairPnlBars({ positions }: PairPnlBarsProps): ReactElement {
         const hovering = hoveredSymbol === pos.symbol;
         const label = hovering
           ? formatPrecise2(pos.basePnl)
-          : formatWithScale(pos.basePnl);
+          : formatPnlK(pos.basePnl);
 
         return (
           <div key={pos.symbol} className={styles.row}>

@@ -7,9 +7,13 @@ import styles from "./HeaderChrome.module.css";
 
 /**
  * Account menu — the account section is REAL chrome wired to the session seam
- * (`useSession`): it shows the signed-in operator's initials, name and role from
- * the SessionPresenter. The language selector is decorative (see note above).
- * Opening/closing the panel is local view state.
+ * (`useSession`): it shows the signed-in operator's identity (initials, name,
+ * role, trader id, email, desk, clearance) from the SessionPresenter. The
+ * trigger + dropdown-head avatar is the PROTO hexagon chip (Reactive
+ * Trader.dc.html:201,207) — an inline SVG hexagon with the operator's
+ * initials laid over it, sized 30×30 for the trigger and 38×38 in the panel
+ * head. Opening/closing the panel is local view state. The language selector
+ * moved out to the standalone `LanguageMenu` (decorative, no port).
  */
 export function AccountMenu(): ReactElement {
   const { useSession } = useViewModel();
@@ -29,7 +33,10 @@ export function AccountMenu(): ReactElement {
           setOpen(!open);
         }}
       >
-        <span className={styles.avatar}>{user.initials}</span>
+        <span className={styles.avatarWrap}>
+          <HexAvatarSvg className={styles.avatarHex} />
+          <span className={styles.avatarInitials}>{user.initials}</span>
+        </span>
         <span className={styles.caret}>▾</span>
       </button>
       {open ? (
@@ -39,33 +46,36 @@ export function AccountMenu(): ReactElement {
           role="menu"
         >
           <div className={styles.accountHead}>
-            <span className={styles.avatarLarge}>{user.initials}</span>
+            <span className={styles.avatarWrapLarge}>
+              <HexAvatarSvg className={styles.avatarHexLarge} />
+              <span className={styles.avatarInitialsLarge}>
+                {user.initials}
+              </span>
+            </span>
             <span className={styles.accountIdentity}>
               <span className={styles.accountName}>{user.name}</span>
               <span className={styles.accountRole}>{user.role}</span>
             </span>
           </div>
-          <div className={styles.accountMeta}>
+          <div className={styles.accountMeta} data-testid="account-meta-id">
             <span className={styles.accountMetaKey}>TRADER ID</span>
             <span className={styles.accountMetaVal}>{user.id}</span>
           </div>
-          <label className={styles.langRow}>
-            <span className={styles.accountMetaKey}>LANGUAGE</span>
-            <select
-              data-testid="language-select"
-              className={styles.langSelect}
-              defaultValue="EN"
-              aria-label="Language"
-            >
-              {LANGUAGES.map((lang) => {
-                return (
-                  <option key={lang} value={lang}>
-                    {lang}
-                  </option>
-                );
-              })}
-            </select>
-          </label>
+          <div className={styles.accountMeta} data-testid="account-meta-email">
+            <span className={styles.accountMetaKey}>EMAIL</span>
+            <span className={styles.accountMetaVal}>{user.email}</span>
+          </div>
+          <div className={styles.accountMeta} data-testid="account-meta-desk">
+            <span className={styles.accountMetaKey}>DESK</span>
+            <span className={styles.accountMetaVal}>{user.desk}</span>
+          </div>
+          <div
+            className={styles.accountMeta}
+            data-testid="account-meta-clearance"
+          >
+            <span className={styles.accountMetaKey}>CLEARANCE</span>
+            <span className={styles.accountMetaVal}>{user.clearance}</span>
+          </div>
           {/* Real chrome: locks the session through the `useSession` seam,
               raising the LockScreen overlay (prototype account menu → lock). */}
           <button
@@ -86,7 +96,28 @@ export function AccountMenu(): ReactElement {
   );
 }
 
-// DECORATIVE — cosmetic HUD chrome, intentionally not wired to any port (spec: decorative-but-dead is allowed and explicit).
-// The language selector below is a fixed, uncontrolled list (Reactive Trader.dc.html:773):
-// there is no i18n backend, so picking a language does nothing — presence only.
-const LANGUAGES = ["EN", "中文", "日本", "DE", "FR", "ES"];
+/**
+ * The PROTO hexagon avatar outline (Reactive Trader.dc.html:201,207), shared
+ * by the trigger (30×30) and the panel-head (38×38) avatars — only the
+ * container size + drop-shadow strength differ between them (see
+ * `.avatarWrap`/`.avatarWrapLarge` in HeaderChrome.module.css). `--chip` is a
+ * gradient on the 3d skins and SVG `fill` cannot take a gradient (falls back
+ * to black), so the fill is a solid `color-mix` tint of the accent colour
+ * instead (same fix as LockScreen's `avatarChip`), not the `--chip` token.
+ */
+interface HexAvatarSvgProps {
+  className: string;
+}
+
+function HexAvatarSvg({ className }: HexAvatarSvgProps): ReactElement {
+  return (
+    <svg viewBox="0 0 30 30" className={className} aria-hidden="true">
+      <polygon
+        points="15,2 27,9 27,21 15,28 3,21 3,9"
+        className={styles.avatarHexFill}
+        stroke="var(--accent-primary)"
+        strokeWidth="1.3"
+      />
+    </svg>
+  );
+}

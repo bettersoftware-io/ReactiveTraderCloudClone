@@ -29,24 +29,29 @@ describe("FX live rates", () => {
     fxLiveRates.expectVisibleTileCountEquals(ctx, "all");
   });
 
-  it("view toggle switches between chart and price view", () => {
+  it("charts toggle switches tile sparklines on and off", () => {
     const ctx = getCtx();
-    fxLiveRates.expectViewToggleVisible(ctx);
-    fxLiveRates.expectViewToggleShows(ctx, "Price");
-    fxLiveRates.clickViewToggle(ctx);
-    fxLiveRates.expectViewToggleShows(ctx, "Chart");
-    fxLiveRates.clickViewToggle(ctx);
-    fxLiveRates.expectViewToggleShows(ctx, "Price");
+    fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    fxLiveRates.expectChartsToggleVisible(ctx);
+    fxLiveRates.expectChartsToggleActive(ctx, true);
+    fxLiveRates.expectFirstTileChartVisible(ctx, true);
+    fxLiveRates.clickChartsToggle(ctx);
+    fxLiveRates.expectChartsToggleActive(ctx, false);
+    fxLiveRates.expectFirstTileChartVisible(ctx, false);
+    fxLiveRates.clickChartsToggle(ctx);
+    fxLiveRates.expectChartsToggleActive(ctx, true);
+    fxLiveRates.expectFirstTileChartVisible(ctx, true);
   });
 
-  it("view preference persists across reloads", () => {
+  it("charts toggle preference persists across reloads", () => {
     const ctx = getCtx();
-    fxLiveRates.expectViewToggleVisible(ctx);
-    fxLiveRates.clickViewToggle(ctx);
-    fxLiveRates.expectViewToggleShows(ctx, "Chart");
+    fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
+    fxLiveRates.expectChartsToggleVisible(ctx);
+    fxLiveRates.clickChartsToggle(ctx);
+    fxLiveRates.expectChartsToggleActive(ctx, false);
     common.reloadPage(ctx);
     common.clickTab(ctx, "fx");
-    fxLiveRates.expectViewToggleShows(ctx, "Chart");
+    fxLiveRates.expectChartsToggleActive(ctx, false);
   });
 
   it("prices update over time", () => {

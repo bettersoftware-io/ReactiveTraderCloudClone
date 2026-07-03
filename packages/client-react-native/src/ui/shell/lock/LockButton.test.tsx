@@ -24,7 +24,15 @@ function fakeViewModel(lock: () => void): ViewModel {
       return {
         state: {
           locked: false,
-          user: { name: "", initials: "", role: "", id: "" },
+          user: {
+            name: "",
+            initials: "",
+            role: "",
+            id: "",
+            email: "",
+            desk: "",
+            clearance: "",
+          },
         },
         lock,
         unlock: () => {

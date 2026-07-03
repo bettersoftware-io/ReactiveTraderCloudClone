@@ -24,6 +24,12 @@
   color: var(--text-primary);
 }
 
+.pairName {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .separator {
   color: var(--text-muted);
   font-weight: 400;

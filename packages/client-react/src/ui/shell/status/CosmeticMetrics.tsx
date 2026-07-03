@@ -39,7 +39,7 @@ const METRICS = [
   { label: "FPS", value: "60", tone: "dim" as const },
   { label: "MEM", value: "248MB", tone: "dim" as const },
   { label: "POS", value: "8", tone: "dim" as const },
-  { label: "P&L", value: "+17,120", tone: "positive" as const },
+  { label: "P&L", value: "+$17.1k", tone: "positive" as const },
   { label: "SES", value: "1284", tone: "dim" as const },
 ];
 

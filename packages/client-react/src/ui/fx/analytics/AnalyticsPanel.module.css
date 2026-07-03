@@ -22,23 +22,10 @@
   min-width: 280px;
 }
 
-.title {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .sectionLabel {
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--text-muted);
-}
-
-/* "· Today" is presentational only (PROTO L508) — added via ::after so the
- * label's textContent stays exactly "Profit & Loss" for the contract spec. */
-.pnlLabel::after {
-  content: " · Today";
 }

@@ -1,0 +1,73 @@
+.headTabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.headTab {
+  padding: 9px 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.headTab[data-active="true"] {
+  color: var(--accent-primary);
+  background: var(--panel);
+  border-bottom-color: var(--accent-primary);
+}
+
+.headSpacer {
+  flex: 1;
+}
+
+.headChip {
+  padding: 4px 11px;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  margin-right: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+}
+
+.headChip[data-active="true"] {
+  color: var(--accent-primary);
+  background: var(--chip);
+  border-color: var(--border-strong);
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+/* CSV export chip (PROTO L478) — always accent-colored, unlike .headChip's
+ * toggle-driven data-active state; it triggers an action, not a mode. */
+.csvChip {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  margin-right: 4px;
+  color: var(--accent-primary);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+}

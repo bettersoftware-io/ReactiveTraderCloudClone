@@ -10,6 +10,7 @@ import { PlaywrightFooter } from "./Footer";
 import { PlaywrightFxRfqForm } from "./FxRfqForm";
 import { PlaywrightLayout } from "./Layout";
 import { PlaywrightLiveRatesTile } from "./LiveRatesTile";
+import { PlaywrightPositionsPanel } from "./PositionsPanel";
 import { PlaywrightThemeToggle } from "./ThemeToggle";
 import { PlaywrightWorkspace } from "./Workspace";
 
@@ -22,6 +23,7 @@ export function buildPlaywrightPageObjects(page: Page): PageObjects {
     liveRatesTile: new PlaywrightLiveRatesTile(page),
     fxRfqForm: new PlaywrightFxRfqForm(page),
     analyticsDashboard: new PlaywrightAnalyticsDashboard(page),
+    positionsPanel: new PlaywrightPositionsPanel(page),
     creditRfqForm: new PlaywrightCreditRfqForm(page),
     creditRfqPanel: new PlaywrightCreditRfqPanel(page),
     blotterTable: new PlaywrightBlotterTable(page),

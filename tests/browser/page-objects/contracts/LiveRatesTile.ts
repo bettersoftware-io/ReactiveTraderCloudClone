@@ -9,16 +9,19 @@ export interface LiveRatesTilePO {
   /** Click a category filter (e.g. "EUR", "All"). */
   clickFilter(category: string): Promise<void>;
 
-  /** View toggle (chart/price). */
-  clickViewToggle(): Promise<void>;
-  viewToggleLabel(): Promise<string>;
+  /** Charts-toggle chip (LiveRatesHead): click it and read its on/off state. */
+  clickChartsToggle(): Promise<void>;
+  /** Whether the charts-toggle chip is currently active (`data-active="true"`). */
+  chartsToggleActive(): Promise<boolean>;
+  /** Whether the charts-toggle chip is visible. */
+  chartsToggleVisible(): Promise<boolean>;
 
   /** Whether the first tile shows a buy button. */
   firstTileBuyVisible(): Promise<boolean>;
   /** Whether the first tile shows a sell button. */
   firstTileSellVisible(): Promise<boolean>;
-  /** Whether the view-toggle button is visible. */
-  viewToggleVisible(): Promise<boolean>;
+  /** Whether the first tile's sparkline chart is rendered (charts toggle active). */
+  firstTileChartVisible(): Promise<boolean>;
 
   /** Trade execution on the first tile. */
   clickBuyOnFirst(): Promise<void>;

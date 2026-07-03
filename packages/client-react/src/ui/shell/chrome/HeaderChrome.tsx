@@ -3,6 +3,7 @@ import { type ReactElement, useState } from "react";
 import { PreferencesModal } from "../prefs/PreferencesModal";
 import { AccountMenu } from "./AccountMenu";
 import { EnvBadge } from "./EnvBadge";
+import { LanguageMenu } from "./LanguageMenu";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { ThemePicker } from "./ThemePicker";
 
@@ -89,6 +90,7 @@ export function HeaderChrome({
             ⚙
           </span>
         </button>
+        <LanguageMenu />
         <span className={styles.divider} />
         <AccountMenu />
       </div>

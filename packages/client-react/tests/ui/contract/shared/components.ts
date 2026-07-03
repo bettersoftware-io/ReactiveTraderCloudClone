@@ -18,10 +18,6 @@ import {
   type PnlValueProps,
 } from "./pages/fx/analytics/PnlValuePage";
 import {
-  PositionBubblesPage,
-  type PositionBubblesProps,
-} from "./pages/fx/analytics/PositionBubblesPage";
-import {
   BlotterHeaderPage,
   type BlotterHeaderProps,
 } from "./pages/fx/blotter/BlotterHeaderPage";
@@ -34,6 +30,7 @@ import {
   type DateFilterProps,
 } from "./pages/fx/blotter/DateFilterPage";
 import { FxBlotterPage } from "./pages/fx/blotter/FxBlotterPage";
+import { FxBlotterWorkspacePage } from "./pages/fx/blotter/FxBlotterWorkspacePage";
 import {
   NumberFilterPage,
   type NumberFilterProps,
@@ -46,11 +43,15 @@ import {
   SetFilterPage,
   type SetFilterProps,
 } from "./pages/fx/blotter/SetFilterPage";
+import { PositionsPanelPage } from "./pages/fx/positions/PositionsPanelPage";
 import { AmbientBackgroundPage } from "./pages/shell/background/AmbientBackgroundPage";
 import { BootGatePage } from "./pages/shell/boot/BootGatePage";
 import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
-import { LayoutEnginePage } from "./pages/shell/layout/LayoutEnginePage";
+import {
+  LayoutEnginePage,
+  type LayoutEngineProps,
+} from "./pages/shell/layout/LayoutEnginePage";
 import { LockScreenPage } from "./pages/shell/lock/LockScreenPage";
 import {
   AnimationProbePage,
@@ -124,6 +125,7 @@ import {
   type CurrencyFilterProps,
 } from "./pages/fx/liveRates/CurrencyFilterPage";
 import { LiveRatesPanelPage } from "./pages/fx/liveRates/LiveRatesPanelPage";
+import { LiveRatesWorkspacePage } from "./pages/fx/liveRates/LiveRatesWorkspacePage";
 import {
   RfqCountdownPage,
   type RfqCountdownProps,
@@ -158,10 +160,6 @@ import {
   type TileRfqProps,
 } from "./pages/fx/liveRates/tile/TileRfqPage";
 import {
-  ViewTogglePage,
-  type ViewToggleProps,
-} from "./pages/fx/liveRates/ViewTogglePage";
-import {
   HeaderChromePage,
   type HeaderChromeProps,
 } from "./pages/shell/chrome/HeaderChromePage";
@@ -195,11 +193,11 @@ export const PnlValue = component<PnlValueProps, PnlValuePage>((ctx) => {
   return new PnlValuePage(ctx);
 });
 
-export const PositionBubbles = component<
-  PositionBubblesProps,
-  PositionBubblesPage
+export const PositionsPanel = component<
+  Record<string, never>,
+  PositionsPanelPage
 >((ctx) => {
-  return new PositionBubblesPage(ctx);
+  return new PositionsPanelPage(ctx);
 });
 
 export const ConnectionStatusBar = component<
@@ -214,6 +212,13 @@ export const FxBlotter = component<Record<string, never>, FxBlotterPage>(
     return new FxBlotterPage(ctx);
   },
 );
+
+export const FxBlotterWorkspace = component<
+  Record<string, never>,
+  FxBlotterWorkspacePage
+>((ctx) => {
+  return new FxBlotterWorkspacePage(ctx);
+});
 
 export const QuickFilter = component<QuickFilterProps, QuickFilterPage>(
   (ctx) => {
@@ -297,15 +302,18 @@ export const LiveRatesPanel = component<
   return new LiveRatesPanelPage(ctx);
 });
 
+export const LiveRatesWorkspace = component<
+  Record<string, never>,
+  LiveRatesWorkspacePage
+>((ctx) => {
+  return new LiveRatesWorkspacePage(ctx);
+});
+
 export const CurrencyFilter = component<
   CurrencyFilterProps,
   CurrencyFilterPage
 >((ctx) => {
   return new CurrencyFilterPage(ctx);
-});
-
-export const ViewToggle = component<ViewToggleProps, ViewTogglePage>((ctx) => {
-  return new ViewTogglePage(ctx);
 });
 
 export const Tile = component<TileProps, TilePage>((ctx) => {
@@ -397,7 +405,7 @@ export const AdminPanel = component<Record<string, never>, AdminPanelPage>(
   },
 );
 
-export const LayoutEngine = component<Record<string, never>, LayoutEnginePage>(
+export const LayoutEngine = component<LayoutEngineProps, LayoutEnginePage>(
   (ctx) => {
     return new LayoutEnginePage(ctx);
   },

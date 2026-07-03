@@ -1,6 +1,10 @@
 import type { ReactElement } from "react";
 
-import { createDefaultLayoutPort, createLayoutMachine } from "@rtc/client-core";
+import {
+  createDefaultLayoutPort,
+  createLayoutMachine,
+  type PanelId,
+} from "@rtc/client-core";
 import { useMachine } from "@rtc/react-bindings";
 
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
@@ -12,6 +16,9 @@ const layoutTestRegistry: PanelRegistry = {
   },
   "fx-analytics": () => {
     return <div data-testid="fx-analytics-body">ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div data-testid="fx-positions-body">POSITIONS</div>;
   },
   "fx-blotter": () => {
     return <div data-testid="fx-blotter-body">BLOTTER</div>;
@@ -27,7 +34,9 @@ const layoutTestRegistry: PanelRegistry = {
   },
 };
 
-export function LayoutEngineHost(): ReactElement {
+export function LayoutEngineHost({
+  headRegistry,
+}: LayoutEngineHostProps): ReactElement {
   const { state, maximize, restore, collapse, expand, resize } = useMachine(
     () => {
       return createLayoutMachine(createDefaultLayoutPort("fx"));
@@ -37,6 +46,7 @@ export function LayoutEngineHost(): ReactElement {
     <InhouseLayoutEngine
       state={state}
       registry={layoutTestRegistry}
+      headRegistry={headRegistry}
       onMaximize={maximize}
       onRestore={restore}
       onCollapse={collapse}
@@ -44,4 +54,8 @@ export function LayoutEngineHost(): ReactElement {
       onResize={resize}
     />
   );
+}
+
+interface LayoutEngineHostProps {
+  headRegistry?: Partial<Record<PanelId, () => ReactElement>>;
 }

@@ -1,8 +1,101 @@
 import { concat, defer, type Observable, of, Subject } from "rxjs";
 
 import type { Trade } from "../fx/trade.js";
+import { Direction, TradeStatus } from "../fx/trade.js";
 import type { BlotterPort } from "../ports/blotterPort.js";
 import type { ExecutionSimulator } from "./ExecutionSimulator.js";
+
+const DAY_MS = 86_400_000;
+
+interface SeedSpec {
+  readonly tradeId: number;
+  readonly status: TradeStatus;
+  readonly direction: Direction;
+  readonly currencyPair: string;
+  readonly dealtCurrency: string;
+  readonly notional: number;
+  readonly spotRate: number;
+  readonly tradeName: string;
+  readonly daysAgo: number;
+}
+
+/** PROTO seeded FX blotter (dc.html L818/L834). Rates are the pairs' base mids. */
+const SEED_TRADES: readonly SeedSpec[] = [
+  {
+    tradeId: 1042,
+    status: TradeStatus.Done,
+    direction: Direction.Buy,
+    currencyPair: "EURUSD",
+    dealtCurrency: "EUR",
+    notional: 1_000_000,
+    spotRate: 1.09213,
+    tradeName: "A.Stark",
+    daysAgo: 3,
+  },
+  {
+    tradeId: 1041,
+    status: TradeStatus.Done,
+    direction: Direction.Sell,
+    currencyPair: "USDJPY",
+    dealtCurrency: "USD",
+    notional: 2_000_000,
+    spotRate: 151.203,
+    tradeName: "A.Stark",
+    daysAgo: 3,
+  },
+  {
+    tradeId: 1040,
+    status: TradeStatus.Rejected,
+    direction: Direction.Buy,
+    currencyPair: "GBPUSD",
+    dealtCurrency: "GBP",
+    notional: 500_000,
+    spotRate: 1.26414,
+    tradeName: "N.Romanoff",
+    daysAgo: 4,
+  },
+  {
+    tradeId: 1039,
+    status: TradeStatus.Done,
+    direction: Direction.Sell,
+    currencyPair: "EURJPY",
+    dealtCurrency: "EUR",
+    notional: 1_500_000,
+    spotRate: 165.142,
+    tradeName: "S.Rogers",
+    daysAgo: 5,
+  },
+  {
+    tradeId: 1038,
+    status: TradeStatus.Done,
+    direction: Direction.Buy,
+    currencyPair: "AUDUSD",
+    dealtCurrency: "AUD",
+    notional: 3_000_000,
+    spotRate: 0.66121,
+    tradeName: "B.Banner",
+    daysAgo: 6,
+  },
+];
+
+function isoDaysFromNow(offsetDays: number): string {
+  return new Date(Date.now() + offsetDays * DAY_MS).toISOString().slice(0, 10);
+}
+
+function seedTrade(spec: SeedSpec): Trade {
+  return {
+    tradeId: spec.tradeId,
+    tradeName: spec.tradeName,
+    currencyPair: spec.currencyPair,
+    notional: spec.notional,
+    dealtCurrency: spec.dealtCurrency,
+    direction: spec.direction,
+    spotRate: spec.spotRate,
+    status: spec.status,
+    tradeDate: isoDaysFromNow(-spec.daysAgo),
+    valueDate: isoDaysFromNow(-spec.daysAgo + 2),
+  };
+}
 
 /**
  * Mock trade store that accumulates trades from the execution engine.
@@ -15,6 +108,12 @@ export class TradeStoreSimulator implements BlotterPort {
   private readonly snapshots$ = new Subject<readonly Trade[]>();
 
   constructor(executionEngine: ExecutionSimulator) {
+    for (const spec of [...SEED_TRADES].sort((a, b) => {
+      return a.tradeId - b.tradeId;
+    })) {
+      this.trades.set(spec.tradeId, seedTrade(spec));
+    }
+
     executionEngine.onTrade((trade) => {
       this.trades.set(trade.tradeId, trade);
       this.snapshots$.next(this.snapshot());

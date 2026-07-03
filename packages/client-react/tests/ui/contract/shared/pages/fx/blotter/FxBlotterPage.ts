@@ -87,12 +87,11 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
   }
 
   // --- quick filter --------------------------------------------------------
-
-  async typeQuickFilter(text: string): Promise<void> {
-    const input = within(this.root).getByTestId("quick-filter");
-    await this.user.clear(input);
-    if (text) await this.user.type(input, text);
-  }
+  //
+  // The quick-filter input itself moved to FxBlotterHead (Task 12) — this
+  // component only reads `quickFilter` from FxViewContext. Typing it is
+  // exercised via FxBlotterWorkspacePage (head + body mounted together),
+  // not here.
 
   /** The "Filtered: …" summary label, or null when no column filter is active. */
   activeFilterSummary(): string | null {
@@ -137,10 +136,5 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
     await this.user.clear(valueInput);
     await this.user.type(valueInput, value);
     await this.applyOpenFilter();
-  }
-
-  /** Export-CSV trigger. */
-  async clickExport(): Promise<void> {
-    await this.user.click(within(this.root).getByTestId("export-csv"));
   }
 }

@@ -91,14 +91,51 @@ describe("HeaderChrome", () => {
     expect(rows.join(" ")).toMatch(/EURUSD position at 80% of desk limit/);
   });
 
-  it("wires the account menu to the session seam and offers the decorative language selector", async () => {
+  it("wires the account menu to the session seam and shows the operator's identity rows", async () => {
     const header = mount(HeaderChrome, {
       props: { activeTab: "fx", onTabChange: () => {} },
     });
     expect(header.accountInitials()).toMatch(/AS/);
     const name = await header.openAccount();
     expect(name).toMatch(/anthony stark/i);
-    expect(header.hasLanguageSelector()).toBe(true);
+    expect(header.accountMeta()).toEqual({
+      email: "a.stark@reactivetrader.io",
+      desk: "G10 Spot · London",
+      clearance: "LEVEL 4 · FULL",
+    });
+  });
+
+  it("renders every nav tab with the uppercase outlined-pill class", () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+    });
+    expect(header.hasNavPillClass("fx")).toBe(true);
+    expect(header.hasNavPillClass("credit")).toBe(true);
+    expect(header.hasNavPillClass("equities")).toBe(true);
+    expect(header.hasNavPillClass("admin")).toBe(true);
+    // Labels stay mixed-case in code — the CSS module class applies the
+    // `text-transform: uppercase` visual treatment (pixel fidelity verified
+    // by the visual golden tier).
+    expect(header.tabLabels()).toEqual(["FX", "Credit", "Equities", "Admin"]);
+  });
+
+  it("opens the standalone decorative language menu and relabels the trigger on selection", async () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+    });
+    expect(header.hasLanguageMenu()).toBe(true);
+    expect(header.languageTriggerLabel()).toMatch(/^EN/);
+
+    const options = await header.openLanguageMenu();
+    expect(options.join(" ")).toMatch(/English/);
+    expect(options.join(" ")).toMatch(/中文 \(简体\)/);
+    expect(options.join(" ")).toMatch(/日本語/);
+    expect(options.join(" ")).toMatch(/Deutsch/);
+    expect(options.join(" ")).toMatch(/Français/);
+    expect(options.join(" ")).toMatch(/Español/);
+
+    const newLabel = await header.selectLanguage("DE");
+    expect(newLabel).toMatch(/^DE/);
   });
 
   it("opens and dismisses the preferences modal from the ⚙ control", async () => {

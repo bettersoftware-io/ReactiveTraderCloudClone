@@ -1,13 +1,15 @@
 import type { ReactElement } from "react";
+import { useId } from "react";
 
 import type { HistoricPosition } from "@rtc/domain";
 
 import styles from "./PnlChart.module.css";
 
 export function PnlChart({ history }: PnlChartProps): ReactElement {
-  const { path, zeroY } = buildChart(history);
+  const { areaPath, path, zeroY } = buildChart(history);
   const lastValue = history.length > 0 ? history[history.length - 1].usdPnl : 0;
   const isPositive = lastValue >= 0;
+  const gradientId = useId();
 
   return (
     <svg
@@ -18,6 +20,12 @@ export function PnlChart({ history }: PnlChartProps): ReactElement {
       className={styles.chart}
     >
       <title>P&amp;L chart</title>
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity={0.32} />
+          <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
+        </linearGradient>
+      </defs>
       {zeroY !== null && (
         <line
           x1={PADDING}
@@ -29,6 +37,14 @@ export function PnlChart({ history }: PnlChartProps): ReactElement {
           strokeDasharray="4 2"
         />
       )}
+      {areaPath !== "" && (
+        <path
+          d={areaPath}
+          fill={`url(#${gradientId})`}
+          data-sign={isPositive ? "positive" : "negative"}
+          className={styles.area}
+        />
+      )}
       {path !== "" && (
         <path
           d={path}
@@ -37,9 +53,10 @@ export function PnlChart({ history }: PnlChartProps): ReactElement {
           stroke={
             isPositive ? "var(--accent-positive)" : "var(--accent-negative)"
           }
-          strokeWidth={1.5}
+          strokeWidth={2}
           strokeLinejoin="round"
           strokeLinecap="round"
+          className={styles.line}
         />
       )}
     </svg>
@@ -57,6 +74,8 @@ const PADDING = 8;
 interface PnlChartShape {
   /** SVG path `d` for the P&L line, or "" when there are too few points. */
   path: string;
+  /** `path` closed to the bottom edge, for the gradient area fill; "" when `path` is. */
+  areaPath: string;
   /** Y of the zero baseline, or null when 0 is outside the value range. */
   zeroY: number | null;
 }
@@ -64,7 +83,7 @@ interface PnlChartShape {
 // Derive both the line path and the zero baseline from a single pass over the
 // history: values, min/max and the plot height are shared, so compute them once.
 function buildChart(history: readonly HistoricPosition[]): PnlChartShape {
-  if (history.length < 2) return { path: "", zeroY: null };
+  if (history.length < 2) return { path: "", areaPath: "", zeroY: null };
 
   const values = history.map((h) => {
     return h.usdPnl;
@@ -85,9 +104,14 @@ function buildChart(history: readonly HistoricPosition[]): PnlChartShape {
     })
     .join(" ");
 
+  const areaPath =
+    path === ""
+      ? ""
+      : `${path} L${CHART_WIDTH - PADDING},${CHART_HEIGHT} L${PADDING},${CHART_HEIGHT} Z`;
+
   // Zero baseline only when 0 falls within [min, max].
   const zeroY =
     min > 0 || max < 0 ? null : PADDING + h - ((0 - min) / range) * h;
 
-  return { path, zeroY };
+  return { path, areaPath, zeroY };
 }

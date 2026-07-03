@@ -14,9 +14,19 @@ export interface TileHeaderProps {
 export class TileHeaderPage extends MountedComponent<TileHeaderProps> {
   /** All span texts in order: [base, "/", terms, movement badge]. */
   parts(): string[] {
-    return [...this.root.querySelectorAll("span")].map((s) => {
+    // The pair name is wrapped in a span; skip that wrapper and get its 3 children (base, /, terms)
+    const spans = [...this.root.querySelectorAll("span")];
+    const pairParts = spans.slice(1, 4).map((s) => {
       return s.textContent?.trim() ?? "";
     });
+
+    // Look for movement badge by attribute
+    const badge = spans.find((s) => {
+      return s.hasAttribute("data-movement");
+    });
+    const badgeParts = badge ? [badge.textContent?.trim() ?? ""] : [];
+
+    return [...pairParts, ...badgeParts];
   }
 
   /** The pair-name text only (e.g. "EUR/USD"), excluding the movement badge. */

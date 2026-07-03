@@ -1,8 +1,10 @@
 import type { ReactElement } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { Trade } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
+
+import { useFxView } from "#/ui/fx/useFxView";
 
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";
@@ -14,7 +16,6 @@ import {
   type SortState,
 } from "./columnSort";
 import { exportFxToCsv } from "./csvExport";
-import { QuickFilter } from "./QuickFilter";
 
 import styles from "./FxBlotter.module.css";
 
@@ -24,6 +25,7 @@ export function FxBlotter(): ReactElement {
   // "Newly arrived" detection is a cross-emission stream-diff; it lives in the
   // presenter (BlotterPresenter.newTradeIds$), not here — see docs/adr/ADR-003.
   const newTradeIds = useNewTradeIds();
+  const { blotterTab, quickFilter, setExportCsvHandler } = useFxView();
   const [sort, setSort] = useState<SortState<Trade>>({
     column: null,
     direction: null,
@@ -31,7 +33,6 @@ export function FxBlotter(): ReactElement {
   const [filters, setFilters] = useState<Map<keyof Trade, ColumnFilter<Trade>>>(
     new Map(),
   );
-  const [quickFilter, setQuickFilter] = useState("");
 
   function handleSort(column: keyof Trade): void {
     setSort((prev) => {
@@ -54,6 +55,15 @@ export function FxBlotter(): ReactElement {
   const filtered = applyFilters(trades, filters, quickFilter);
   const processedTrades = applySortToTrades(filtered, sort);
 
+  // The CSV chip lives in FxBlotterHead now (Task 12); it calls exportCsv()
+  // from context, which invokes whatever handler was last registered here —
+  // bound to the current filtered/sorted rows.
+  useEffect(() => {
+    setExportCsvHandler(() => {
+      exportFxToCsv(processedTrades);
+    });
+  }, [processedTrades, setExportCsvHandler]);
+
   const activeFilterLabels: string[] = [];
 
   for (const key of filters.keys()) {
@@ -63,29 +73,23 @@ export function FxBlotter(): ReactElement {
     if (col) activeFilterLabels.push(col.label);
   }
 
+  if (blotterTab === "activity") {
+    return (
+      <div className={styles.container}>
+        <div data-testid="activity-placeholder" className={styles.placeholder}>
+          ACTIVITY FEED — COMING ONLINE
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
-          <span className={styles.title}>Trades</span>
-          <QuickFilter value={quickFilter} onChange={setQuickFilter} />
-          {activeFilterLabels.length > 0 && (
-            <span className={styles.filterLabel}>
-              Filtered: {activeFilterLabels.join(", ")}
-            </span>
-          )}
-        </div>
-        <button
-          type="button"
-          data-testid="export-csv"
-          onClick={() => {
-            return exportFxToCsv(processedTrades);
-          }}
-          className={styles.exportBtn}
-        >
-          Export CSV
-        </button>
-      </div>
+      {activeFilterLabels.length > 0 && (
+        <span className={styles.filterLabel}>
+          Filtered: {activeFilterLabels.join(", ")}
+        </span>
+      )}
 
       <div className={styles.tableWrapper}>
         <table data-testid="blotter-table" className={styles.table}>

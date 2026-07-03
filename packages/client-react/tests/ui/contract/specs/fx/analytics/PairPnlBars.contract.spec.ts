@@ -9,31 +9,32 @@ afterEach(() => {
 });
 
 describe("PairPnlBars", () => {
-  it("shows each pair's P&L with whole-number scaled notation", () => {
+  it("shows each pair's P&L in PROTO whole-k format with explicit sign", () => {
     const bars = mount(PairPnlBars, {
       props: { positions: [pos("EURUSD", 1234), pos("USDJPY", 12_345_678)] },
     });
-    expect(bars.labelFor("EURUSD")).toBe("1k");
-    expect(bars.labelFor("USDJPY")).toBe("12m");
+    expect(bars.labelFor("EURUSD")).toMatch(/^[+-]\d+k$/);
+    expect(bars.labelFor("EURUSD")).toBe("+1k");
+    expect(bars.labelFor("USDJPY")).toBe("+12346k");
   });
 
   it("switches to a precise 2dp comma format while hovered", () => {
     const bars = mount(PairPnlBars, {
       props: { positions: [pos("EURUSD", 1234)] },
     });
-    expect(bars.labelFor("EURUSD")).toBe("1k");
+    expect(bars.labelFor("EURUSD")).toBe("+1k");
     bars.hover("EURUSD");
     expect(bars.labelFor("EURUSD")).toBe("1,234.00");
     bars.unhover("EURUSD");
-    expect(bars.labelFor("EURUSD")).toBe("1k");
+    expect(bars.labelFor("EURUSD")).toBe("+1k");
   });
 
-  it("renders sub-thousand and negative values without a scale suffix change", () => {
+  it("rounds sub-thousand and negative values to the nearest whole k", () => {
     const bars = mount(PairPnlBars, {
       props: { positions: [pos("GBPUSD", -1656.82), pos("EURJPY", 564.97)] },
     });
     expect(bars.labelFor("GBPUSD")).toBe("-2k");
-    expect(bars.labelFor("EURJPY")).toBe("565");
+    expect(bars.labelFor("EURJPY")).toBe("+1k");
     bars.hover("GBPUSD");
     expect(bars.labelFor("GBPUSD")).toBe("-1,656.82");
   });

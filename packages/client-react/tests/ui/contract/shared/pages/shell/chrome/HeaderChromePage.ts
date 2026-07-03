@@ -11,6 +11,12 @@ export interface HeaderChromeProps {
   onTabChange: (tab: WorkspaceTab) => void;
 }
 
+interface AccountMeta {
+  email: string;
+  desk: string;
+  clearance: string;
+}
+
 export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
   private readonly user: UserEvent = userEvent.setup();
 
@@ -41,6 +47,16 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
   isActive(tab: WorkspaceTab): boolean {
     const button = within(this.root).getByTestId(`tab-${tab}`);
     return button.dataset.active === "true";
+  }
+
+  /** True when the given tab renders with the uppercase outlined-pill nav
+   *  class (the CSS-module class carries `text-transform: uppercase` — jsdom
+   *  doesn't apply stylesheet rules, so the contract tier asserts the class
+   *  is wired rather than the computed style; pixel fidelity is the visual
+   *  tier's job). */
+  hasNavPillClass(tab: WorkspaceTab): boolean {
+    const button = within(this.root).getByTestId(`tab-${tab}`);
+    return button.className.includes("navButton");
   }
 
   /** Click one of the real workspace tabs (fires onTabChange). */
@@ -99,9 +115,61 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
     );
   }
 
-  /** True when the decorative language selector is present inside the account panel. */
-  hasLanguageSelector(): boolean {
-    return within(this.root).queryByTestId("language-select") !== null;
+  /** The account panel's EMAIL / DESK / CLEARANCE identity row values.
+   *  Assumes the account panel is already open. */
+  accountMeta(): AccountMeta {
+    return {
+      email: this.accountMetaRow("email"),
+      desk: this.accountMetaRow("desk"),
+      clearance: this.accountMetaRow("clearance"),
+    };
+  }
+
+  private accountMetaRow(field: "email" | "desk" | "clearance"): string {
+    const row = within(this.root).getByTestId(`account-meta-${field}`);
+    // Row is "KEY  VALUE" (two spans); the value is the second.
+    const value = row.children[1];
+    return value?.textContent?.trim() ?? "";
+  }
+
+  /** True when the standalone language menu control is present in the header. */
+  hasLanguageMenu(): boolean {
+    return within(this.root).queryByTestId("language-toggle") !== null;
+  }
+
+  /** The language menu trigger's current label (e.g. "EN"). */
+  languageTriggerLabel(): string {
+    return (
+      within(this.root).getByTestId("language-toggle").textContent?.trim() ?? ""
+    );
+  }
+
+  /** Open the language menu (no-op if already open) and select the given
+   *  language code, returning the trigger's new label. */
+  async selectLanguage(code: string): Promise<string> {
+    if (within(this.root).queryByTestId("language-panel") === null) {
+      await this.user.click(within(this.root).getByTestId("language-toggle"));
+    }
+
+    await this.user.click(
+      within(this.root).getByTestId(`language-option-${code}`),
+    );
+    return this.languageTriggerLabel();
+  }
+
+  /** Open the language menu (no-op if already open) and return the visible
+   *  option labels. */
+  async openLanguageMenu(): Promise<string[]> {
+    if (within(this.root).queryByTestId("language-panel") === null) {
+      await this.user.click(within(this.root).getByTestId("language-toggle"));
+    }
+
+    const panel = within(this.root).getByTestId("language-panel");
+    return within(panel)
+      .getAllByRole("menuitemradio")
+      .map((el) => {
+        return el.textContent?.trim() ?? "";
+      });
   }
 
   /** Click LOCK SESSION inside the account panel (locks the session via the seam). */

@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import type {
   NotionalIntents,
   NotionalView,
+  PanelId,
   TileExecutionState,
 } from "@rtc/client-core";
 import type {
@@ -18,7 +19,6 @@ import type {
   Quote,
   Rfq,
   Trade,
-  ViewMode,
 } from "@rtc/domain";
 
 import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
@@ -56,7 +56,6 @@ import { Watchlist as WatchlistComponent } from "#/ui/equities/watchlist/Watchli
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
 import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
 import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
-import { PositionBubbles as PositionBubblesComponent } from "#/ui/fx/analytics/PositionBubbles";
 import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/BlotterHeader";
 import { BlotterRow as BlotterRowComponent } from "#/ui/fx/blotter/BlotterRow";
 import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
@@ -66,8 +65,10 @@ import { NumberFilter as NumberFilterComponent } from "#/ui/fx/blotter/columnFil
 import { SetFilter as SetFilterComponent } from "#/ui/fx/blotter/columnFilter/SetFilter";
 import type { SortState } from "#/ui/fx/blotter/columnSort";
 import { FxBlotter as FxBlotterComponent } from "#/ui/fx/blotter/FxBlotter";
+import { FxBlotterHead as FxBlotterHeadComponent } from "#/ui/fx/blotter/FxBlotterHead";
 import { QuickFilter as QuickFilterComponent } from "#/ui/fx/blotter/QuickFilter";
 import { CurrencyFilter as CurrencyFilterComponent } from "#/ui/fx/liveRates/CurrencyFilter";
+import { LiveRatesHead as LiveRatesHeadComponent } from "#/ui/fx/liveRates/LiveRatesHead";
 import { LiveRatesPanel as LiveRatesPanelComponent } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { RfqCountdown as RfqCountdownComponent } from "#/ui/fx/liveRates/tile/RfqCountdown";
 import { SpreadDisplay as SpreadDisplayComponent } from "#/ui/fx/liveRates/tile/SpreadDisplay";
@@ -81,7 +82,7 @@ import {
   TileRfq as TileRfqComponent,
   type TileRfqState,
 } from "#/ui/fx/liveRates/tile/TileRfq";
-import { ViewToggle as ViewToggleComponent } from "#/ui/fx/liveRates/ViewToggle";
+import { PositionsPanel as PositionsPanelComponent } from "#/ui/fx/positions/PositionsPanel";
 import { AmbientBackground as AmbientBackgroundComponent } from "#/ui/shell/background/AmbientBackground";
 import { BootGate as BootGateComponent } from "#/ui/shell/boot/BootGate";
 import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
@@ -118,6 +119,7 @@ import {
   EquitiesPanel,
   ErrorRatePanel,
   FxBlotter,
+  FxBlotterWorkspace,
   HeaderChrome,
   IncidentControls,
   InstrumentTabs,
@@ -125,6 +127,7 @@ import {
   LayoutEngine,
   LiveEventLog,
   LiveRatesPanel,
+  LiveRatesWorkspace,
   LockScreen,
   MetricGauges,
   NewRfqForm,
@@ -134,8 +137,8 @@ import {
   PairPnlBars,
   PnlSparkline,
   PnlValue,
-  PositionBubbles,
   PositionsBlotter,
+  PositionsPanel,
   PreferencesModal,
   PriceChart,
   QuickFilter,
@@ -163,7 +166,6 @@ import {
   TilePrice,
   TileRfq,
   TradeTicket,
-  ViewToggle,
   Watchlist,
 } from "../shared/components";
 import type {
@@ -229,13 +231,9 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    PositionBubbles,
-    (p: Record<string, unknown>): ReactElement => {
-      return (
-        <PositionBubblesComponent
-          positions={(p.positions as readonly CurrencyPairPosition[]) ?? []}
-        />
-      );
+    PositionsPanel,
+    (): ReactElement => {
+      return <PositionsPanelComponent />;
     },
   ],
   [
@@ -248,6 +246,17 @@ export const registry = new Map<AnyToken, ElementFor>([
     FxBlotter,
     (): ReactElement => {
       return <FxBlotterComponent />;
+    },
+  ],
+  [
+    FxBlotterWorkspace,
+    (): ReactElement => {
+      return (
+        <>
+          <FxBlotterHeadComponent />
+          <FxBlotterComponent />
+        </>
+      );
     },
   ],
   [
@@ -453,13 +462,13 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    ViewToggle,
-    (p: Record<string, unknown>): ReactElement => {
+    LiveRatesWorkspace,
+    (): ReactElement => {
       return (
-        <ViewToggleComponent
-          mode={(p.mode as ViewMode) ?? "chart"}
-          onChange={(p.onChange as (m: ViewMode) => void) ?? ((): void => {})}
-        />
+        <>
+          <LiveRatesHeadComponent />
+          <LiveRatesPanelComponent />
+        </>
       );
     },
   ],
@@ -635,8 +644,18 @@ export const registry = new Map<AnyToken, ElementFor>([
   ],
   [
     LayoutEngine,
-    (): ReactElement => {
-      return <LayoutEngineHost />;
+    (p: Record<string, unknown>): ReactElement => {
+      const customHeadPanelIds =
+        (p.customHeadPanelIds as readonly string[] | undefined) ?? [];
+      const headRegistry: Partial<Record<PanelId, () => ReactElement>> = {};
+
+      for (const id of customHeadPanelIds) {
+        headRegistry[id] = (): ReactElement => {
+          return <span data-testid="custom-head">Custom head for {id}</span>;
+        };
+      }
+
+      return <LayoutEngineHost headRegistry={headRegistry} />;
     },
   ],
   [

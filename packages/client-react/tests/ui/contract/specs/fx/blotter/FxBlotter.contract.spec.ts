@@ -1,6 +1,6 @@
 import { FxBlotter } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
@@ -112,22 +112,9 @@ describe("FxBlotter", () => {
     });
   });
 
-  describe("quick filter", () => {
-    it("filters rows to those matching the typed term", async () => {
-      const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
-      expect(blotter.tradeRowCount()).toBe(2);
-      await blotter.typeQuickFilter("usdjpy");
-      expect(blotter.tradeRowCount()).toBe(1);
-      expect(blotter.hasCell("USDJPY")).toBe(true);
-    });
-
-    it("shows the no-match message when nothing matches the quick filter", async () => {
-      const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
-      await blotter.typeQuickFilter("zzz-nomatch");
-      expect(blotter.tradeRowCount()).toBe(0);
-      expect(blotter.emptyMessage()).toMatch(/no trades match/i);
-    });
-  });
+  // Quick filter is exercised via FxBlotterHead.contract.spec.ts (the input
+  // moved to the head slot in Task 12) — FxBlotter alone only reads
+  // `quickFilter` from FxViewContext, it doesn't render the input.
 
   describe("column filter", () => {
     it("filters rows via a set filter and shows the active-filter summary", async () => {
@@ -164,42 +151,9 @@ describe("FxBlotter", () => {
     });
   });
 
-  describe("CSV export", () => {
-    afterEach(() => {
-      vi.unstubAllGlobals();
-      vi.restoreAllMocks();
-    });
-
-    it("serializes the visible trades when Export CSV is clicked", async () => {
-      // jsdom lacks URL.createObjectURL; stub the download plumbing.
-      const RealBlob = globalThis.Blob;
-      let captured = "";
-      class RecordingBlob extends RealBlob {
-        constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
-          super(parts, options);
-          captured = (parts ?? [])
-            .map((p) => {
-              return String(p);
-            })
-            .join("");
-        }
-      }
-      vi.stubGlobal("Blob", RecordingBlob);
-      vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock");
-      vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-        () => {},
-      );
-
-      const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
-      await blotter.clickExport();
-
-      expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
-      const lines = captured.split("\n");
-      expect(lines[0]).toContain("Trade ID");
-      expect(lines).toHaveLength(3); // header + 2 trades
-    });
-  });
+  // CSV export is exercised via FxBlotterHead.contract.spec.ts (the CSV chip
+  // moved to the head slot in Task 12) — FxBlotter alone only registers the
+  // export handler via setExportCsvHandler, it doesn't render a trigger.
 });
 
 function trade(tradeId: number, over: Partial<Trade> = {}): Trade {

@@ -35,18 +35,26 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
       .click() as unknown as Promise<void>;
   }
 
-  clickViewToggle(): Promise<void> {
+  clickChartsToggle(): Promise<void> {
     return cy
-      .get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
+      .get(`[data-testid="${TESTIDS.liveRates.chartsToggle}"]`)
       .click() as unknown as Promise<void>;
   }
 
-  viewToggleLabel(): Promise<string> {
+  chartsToggleActive(): Promise<boolean> {
     return cy
-      .get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
+      .get(`[data-testid="${TESTIDS.liveRates.chartsToggle}"]`)
       .then(($el) => {
-        return $el.text();
-      }) as unknown as Promise<string>;
+        return $el.attr("data-active") === "true";
+      }) as unknown as Promise<boolean>;
+  }
+
+  chartsToggleVisible(): Promise<boolean> {
+    return cy
+      .get(`[data-testid="${TESTIDS.liveRates.chartsToggle}"]`)
+      .then(($el) => {
+        return $el.is(":visible");
+      }) as unknown as Promise<boolean>;
   }
 
   firstTileBuyVisible(): Promise<boolean> {
@@ -65,12 +73,12 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
     }) as unknown as Promise<boolean>;
   }
 
-  viewToggleVisible(): Promise<boolean> {
-    return cy
-      .get(`[data-testid="${TESTIDS.liveRates.viewToggle}"]`)
-      .then(($el) => {
-        return $el.is(":visible");
-      }) as unknown as Promise<boolean>;
+  firstTileChartVisible(): Promise<boolean> {
+    return this.firstTile().then(($tile) => {
+      return $tile
+        .find(`[data-testid="${TESTIDS.liveRates.tileChart}"]`)
+        .is(":visible");
+    }) as unknown as Promise<boolean>;
   }
 
   clickBuyOnFirst(): Promise<void> {

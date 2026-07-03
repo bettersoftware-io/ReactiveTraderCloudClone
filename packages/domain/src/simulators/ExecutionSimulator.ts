@@ -9,12 +9,13 @@ const REJECTED_PAIR = "GBPJPY";
 const DELAYED_PAIR = "EURJPY";
 const DELAYED_PAIR_MS = 4_000;
 const NORMAL_MAX_DELAY_MS = 2_000;
-const DEFAULT_TRADER_NAME = "RTC";
+const DEFAULT_TRADER_NAME = "A.Stark";
 
 export type TradeListener = (trade: Trade) => void;
 
 export class ExecutionSimulator implements ExecutionPort {
-  private nextId = 1;
+  // PROTO fxSeq (dc.html L784): live trades continue after seed ids 1038-1042.
+  private nextId = 1043;
 
   private readonly listeners: TradeListener[] = [];
 

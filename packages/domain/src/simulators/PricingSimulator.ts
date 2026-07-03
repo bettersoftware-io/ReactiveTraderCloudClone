@@ -15,29 +15,43 @@ import type { PriceTick } from "../fx/price.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
 import type { PricingPort, RfqQuoteResult } from "../ports/pricingPort.js";
 
-const HALF_SPREAD = 0.0002;
 const MIN_TICK_INTERVAL_MS = 150;
 const MAX_TICK_INTERVAL_MS = 1_000;
 
 interface PairState {
   mid: number;
   history: PriceTick[];
+  halfSpread: number;
+  stepSize: number;
+  ratePrecision: number;
 }
 
-function generateInitialMid(): number {
-  return Math.trunc(Math.random() * 1_000_000) / 100_000;
+/** Pip unit: 10^-pipsPosition (0.01 for JPY-quoted pairs, 0.0001 otherwise). */
+function pipUnit(pipsPosition: number): number {
+  return 10 ** -pipsPosition;
 }
 
-function applyRandomWalk(mid: number): number {
-  return mid * (1 + (Math.random() > 0.5 ? 0.0001 : -0.0001));
+/** PROTO tick step (dc.html L1132): 0.02 for JPY-quoted pairs, 0.00018 otherwise. */
+function stepSizeFor(pair: CurrencyPair): number {
+  return pair.pipsPosition === 2 ? 2 * pipUnit(2) : 1.8 * pipUnit(4);
 }
 
-function createTick(symbol: string, mid: number, timestamp: number): PriceTick {
+function applyRandomWalk(state: PairState): number {
+  const next = state.mid + (Math.random() - 0.5) * state.stepSize;
+  const rounded = Number(next.toFixed(state.ratePrecision));
+  return rounded > 0 ? rounded : state.mid;
+}
+
+function createTick(
+  symbol: string,
+  state: PairState,
+  timestamp: number,
+): PriceTick {
   return {
     symbol,
-    mid,
-    ask: mid + HALF_SPREAD,
-    bid: mid - HALF_SPREAD,
+    mid: state.mid,
+    ask: state.mid + state.halfSpread,
+    bid: state.mid - state.halfSpread,
     valueDate: new Date().toISOString().slice(0, 10),
     creationTimestamp: timestamp,
   };
@@ -68,17 +82,22 @@ export class PricingSimulator implements PricingPort {
   }
 
   private initPair(pair: CurrencyPair): void {
-    let mid = generateInitialMid();
+    const state: PairState = {
+      mid: pair.baseMid,
+      history: [],
+      halfSpread: (pair.typicalSpreadPips / 2) * pipUnit(pair.pipsPosition),
+      stepSize: stepSizeFor(pair),
+      ratePrecision: pair.ratePrecision,
+    };
     const now = Date.now();
-    const history: PriceTick[] = [];
 
     for (let i = PRICE_HISTORY_SIZE - 1; i >= 0; i--) {
-      mid = applyRandomWalk(mid);
+      state.mid = applyRandomWalk(state);
       const timestamp = now - i * 500; // ~500ms between historical ticks
-      history.push(createTick(pair.symbol, mid, timestamp));
+      state.history.push(createTick(pair.symbol, state, timestamp));
     }
 
-    this.pairs.set(pair.symbol, { mid, history });
+    this.pairs.set(pair.symbol, state);
   }
 
   getPriceHistory(symbol: string): Observable<readonly PriceTick[]> {
@@ -105,8 +124,8 @@ export class PricingSimulator implements PricingPort {
 
         function scheduleNext(): void {
           timeoutId = setTimeout(() => {
-            pairState.mid = applyRandomWalk(pairState.mid);
-            const tick = createTick(symbol, pairState.mid, Date.now());
+            pairState.mid = applyRandomWalk(pairState);
+            const tick = createTick(symbol, pairState, Date.now());
             pairState.history.push(tick);
             if (pairState.history.length > PRICE_HISTORY_SIZE)
               pairState.history.shift();
@@ -143,8 +162,8 @@ export class PricingSimulator implements PricingPort {
       const priceChange = 0.3 / 10 ** pipsPosition;
       const delayMs = rfqResponseDelayMs(Math.random());
       const result: RfqQuoteResult = {
-        ask: state.mid + HALF_SPREAD + priceChange,
-        bid: state.mid - HALF_SPREAD - priceChange,
+        ask: state.mid + state.halfSpread + priceChange,
+        bid: state.mid - state.halfSpread - priceChange,
         mid: state.mid,
       };
       return timer(delayMs).pipe(

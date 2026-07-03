@@ -54,23 +54,44 @@ Then(
 );
 
 Then(
-  "the view toggle button is visible",
-  function expectViewToggleVisible(this: StepContext) {
-    return fxLiveRates.expectViewToggleVisible(this.ctx);
+  "the charts toggle is visible",
+  function expectChartsToggleVisible(this: StepContext) {
+    return fxLiveRates.expectChartsToggleVisible(this.ctx);
   },
 );
 
 Then(
-  "the view toggle button shows {string}",
-  function expectViewToggleShows(this: StepContext, expected: string) {
-    return fxLiveRates.expectViewToggleShows(this.ctx, expected);
+  "the charts toggle is active",
+  function expectChartsToggleActive(this: StepContext) {
+    return fxLiveRates.expectChartsToggleActive(this.ctx, true);
+  },
+);
+
+Then(
+  "the charts toggle is inactive",
+  function expectChartsToggleInactive(this: StepContext) {
+    return fxLiveRates.expectChartsToggleActive(this.ctx, false);
   },
 );
 
 When(
-  "the trader clicks the view toggle",
-  function clickViewToggle(this: StepContext) {
-    return fxLiveRates.clickViewToggle(this.ctx);
+  "the trader clicks the charts toggle",
+  function clickChartsToggle(this: StepContext) {
+    return fxLiveRates.clickChartsToggle(this.ctx);
+  },
+);
+
+Then(
+  "the first tile chart is visible",
+  function expectFirstTileChartVisible(this: StepContext) {
+    return fxLiveRates.expectFirstTileChartVisible(this.ctx, true);
+  },
+);
+
+Then(
+  "the first tile chart is hidden",
+  function expectFirstTileChartHidden(this: StepContext) {
+    return fxLiveRates.expectFirstTileChartVisible(this.ctx, false);
   },
 );
 

@@ -23,7 +23,7 @@ export class AnalyticsPanelPage extends MountedComponent<
 
   /** The section labels shown down the panel, in order. */
   sectionLabels(): string[] {
-    return [/profit & loss/i, /^positions$/i, /pnl per currency pair/i]
+    return [/profit & loss/i, /pnl per currency pair/i]
       .map((re) => {
         return within(this.root).queryByText(re)?.textContent?.trim() ?? "";
       })
@@ -32,10 +32,19 @@ export class AnalyticsPanelPage extends MountedComponent<
       });
   }
 
-  /** The formatted latest-P&L amount the panel summarises, e.g. "+12,345". */
+  /** The formatted latest-P&L amount the panel summarises, e.g. "+$17.1k". */
   latestPnlText(): string {
     const amount = within(this.root).queryByTestId("lastPosition");
     return amount?.textContent?.trim() ?? "";
+  }
+
+  /**
+   * True if a redundant "Analytics" title span still exists inside the panel.
+   * The surrounding chrome header owns the title (PROTO dedup fix); the panel
+   * itself must not repeat it.
+   */
+  hasDuplicateTitle(): boolean {
+    return within(this.root).queryByText("Analytics") !== null;
   }
 
   /** True when the stale overlay ("Reconnecting...") is visible. */

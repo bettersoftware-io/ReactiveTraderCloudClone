@@ -12,6 +12,9 @@ const USER = {
   initials: "AS",
   role: "Senior FX Trader",
   id: "TRD-0042",
+  email: "a.stark@reactivetrader.io",
+  desk: "G10 Spot · London",
+  clearance: "LEVEL 4 · FULL",
 };
 
 test("renders nothing when the session is unlocked", async () => {

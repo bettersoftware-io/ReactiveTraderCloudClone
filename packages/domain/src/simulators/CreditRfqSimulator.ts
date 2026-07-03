@@ -5,6 +5,7 @@ import { ADAPTIVE_BANK_NAME } from "../credit/dealer.js";
 import type { Quote, QuoteState } from "../credit/quote.js";
 import type { Rfq } from "../credit/rfq.js";
 import { RfqState } from "../credit/rfq.js";
+import { Direction } from "../fx/trade.js";
 import type {
   CreateRfqRequest,
   QuoteRequest,
@@ -18,9 +19,9 @@ const PRICE_BASELINE = 100;
 const MAX_PRICE_CHANGE = 10;
 
 export class CreditRfqSimulator implements WorkflowPort {
-  private nextRfqId = 1;
+  private nextRfqId = 240; // PROTO creditSeq (dc.html L784)
 
-  private nextQuoteId = 1;
+  private nextQuoteId = 13; // after the 12 seeded quotes
 
   private readonly rfqs = new Map<number, Rfq>();
 
@@ -36,6 +37,111 @@ export class CreditRfqSimulator implements WorkflowPort {
 
   constructor(dealers: readonly Dealer[]) {
     this.dealers = dealers;
+    this.seedDemoState();
+  }
+
+  /**
+   * PROTO demo seeds (dc.html L820-821/L835): two terminal RFQ cards
+   * (238 accepted, 237 cancelled) plus RFQ 235 whose accepted quote
+   * produces the second credit-blotter row (blotter derives from
+   * Closed+accepted RFQs — see CreditBlotter.deriveTrades).
+   */
+  private seedDemoState(): void {
+    const DAY_MS = 86_400_000;
+    const seedRfqs: readonly Rfq[] = [
+      {
+        id: 238,
+        instrumentId: 1,
+        quantity: 3_500_000,
+        direction: Direction.Buy,
+        state: RfqState.Closed,
+        expirySecs: 120,
+        creationTimestamp: Date.now() - 2 * DAY_MS,
+      },
+      {
+        id: 237,
+        instrumentId: 4,
+        quantity: 2_000_000,
+        direction: Direction.Sell,
+        state: RfqState.Cancelled,
+        expirySecs: 120,
+        creationTimestamp: Date.now() - 200_000,
+      },
+      {
+        id: 235,
+        instrumentId: 0,
+        quantity: 2_000_000,
+        direction: Direction.Sell,
+        state: RfqState.Closed,
+        expirySecs: 120,
+        creationTimestamp: Date.now() - 6 * DAY_MS,
+      },
+    ];
+    // dealer ids: 0 Adaptive Bank, 1 Citi, 2 JP Morgan, 3 Goldman Sachs
+    const seedQuotes: readonly Quote[] = [
+      {
+        id: 1,
+        rfqId: 238,
+        dealerId: 0,
+        state: { type: "pendingWithPrice", price: 99.47 },
+      },
+      {
+        id: 2,
+        rfqId: 238,
+        dealerId: 1,
+        state: { type: "accepted", price: 99.8 },
+      },
+      {
+        id: 3,
+        rfqId: 238,
+        dealerId: 2,
+        state: { type: "pendingWithPrice", price: 99.54 },
+      },
+      {
+        id: 4,
+        rfqId: 238,
+        dealerId: 3,
+        state: { type: "pendingWithPrice", price: 100.27 },
+      },
+      { id: 5, rfqId: 237, dealerId: 0, state: { type: "passed" } },
+      { id: 6, rfqId: 237, dealerId: 1, state: { type: "passed" } },
+      { id: 7, rfqId: 237, dealerId: 2, state: { type: "passed" } },
+      { id: 8, rfqId: 237, dealerId: 3, state: { type: "passed" } },
+      {
+        id: 9,
+        rfqId: 235,
+        dealerId: 0,
+        state: { type: "pendingWithPrice", price: 100.9 },
+      },
+      {
+        id: 10,
+        rfqId: 235,
+        dealerId: 1,
+        state: { type: "pendingWithPrice", price: 101.4 },
+      },
+      {
+        id: 11,
+        rfqId: 235,
+        dealerId: 2,
+        state: { type: "pendingWithPrice", price: 100.7 },
+      },
+      {
+        id: 12,
+        rfqId: 235,
+        dealerId: 3,
+        state: { type: "accepted", price: 101.2 },
+      },
+    ];
+
+    for (const rfq of seedRfqs) {
+      this.rfqs.set(rfq.id, rfq);
+      this.rfqQuotes.set(rfq.id, []);
+    }
+
+    for (const quote of seedQuotes) {
+      this.quotes.set(quote.id, quote);
+      this.rfqQuotes.get(quote.rfqId)?.push(quote.id);
+    }
   }
 
   events(): Observable<RfqEvent> {

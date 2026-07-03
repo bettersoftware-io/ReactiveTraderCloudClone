@@ -22,6 +22,8 @@ const EURUSD: CurrencyPair = {
   base: "EUR",
   terms: "USD",
   defaultNotional: 1_000_000,
+  baseMid: 1.09213,
+  typicalSpreadPips: 1.4,
 };
 
 const PRICE: Price = {

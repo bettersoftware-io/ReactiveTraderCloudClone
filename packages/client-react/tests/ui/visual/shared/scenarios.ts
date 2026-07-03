@@ -99,7 +99,8 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "TileChart",
     fixtureKey: "tile-chart-flat",
   },
-  // FX live-rates: price view seeded through the seam (ViewToggle "Chart" label / price-mode arm).
+  // FX live-rates: price view seeded through the seam (the CHARTS toggle now
+  // lives in LiveRatesHead; this pins the panel's price-mode arm itself).
   "live-rates/price-view": {
     componentKey: "LiveRatesPanel",
     fixtureKey: "live-rates-price",
@@ -121,6 +122,22 @@ export const scenarios: Record<string, Scenario> = {
   "analytics/millions": {
     componentKey: "AnalyticsPanel",
     fixtureKey: "analytics-millions",
+  },
+  // PositionsPanel — the FX net-exposure bubble/ladder panel (restyled out of
+  // AnalyticsPanel; see fx/positions/PositionsPanel.tsx). Same fixture pattern
+  // as analytics/* above: a seeded world, a USD-dominated-negative world, and
+  // an empty (no positions) world.
+  "positions/populated": {
+    componentKey: "PositionsPanel",
+    fixtureKey: "analytics-populated",
+  },
+  "positions/negative": {
+    componentKey: "PositionsPanel",
+    fixtureKey: "positions-negative",
+  },
+  "positions/empty": {
+    componentKey: "PositionsPanel",
+    fixtureKey: "analytics-empty",
   },
   // Credit RFQ cards: terminal-state badges + accepted/passed quote colours.
   "credit/rfq-tiles-done": { componentKey: "RfqCard", fixtureKey: "rfq-done" },

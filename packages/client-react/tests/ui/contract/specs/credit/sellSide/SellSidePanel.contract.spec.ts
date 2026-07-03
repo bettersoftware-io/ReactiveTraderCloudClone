@@ -21,6 +21,7 @@ const instruments: readonly Instrument[] = [
     maturity: "2034-02-15",
     interestRate: 1.5,
     benchmark: "10Y",
+    refPrice: 98.4,
   },
 ];
 const withAdaptive: readonly Dealer[] = [

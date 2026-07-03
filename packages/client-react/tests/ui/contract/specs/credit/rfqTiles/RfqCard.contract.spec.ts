@@ -19,6 +19,7 @@ const instrument: Instrument = {
   maturity: "2030-05-11",
   interestRate: 2.4,
   benchmark: "7Y",
+  refPrice: 99.8,
 };
 const dealers: readonly Dealer[] = [
   { id: 1, name: "Adaptive Bank" },

@@ -116,8 +116,11 @@ export type PanelId = string;
 export interface PanelSpec { readonly id: PanelId; readonly title: string; readonly pinned?: boolean; }
 export type SplitDir = "row" | "column";
 export type LayoutNode =
-  | { readonly kind: "split"; readonly dir: SplitDir; readonly children: readonly LayoutNode[]; readonly sizes: readonly number[]; }
+  | { readonly kind: "split"; readonly dir: SplitDir; readonly children: readonly LayoutNode[]; readonly sizes: readonly number[]; readonly fixedPx?: readonly (number | undefined)[]; }
   | { readonly kind: "panel"; readonly panelId: PanelId; };
+// fixedPx (added Task 8, v2-fidelity-data-fx-chrome): per-child fixed size in css px along `dir`.
+// A set entry overrides the fractional size, renders flex:0 0 Npx, and suppresses adjacent resize
+// handles (like pinned). Additive — existing consumers with no fixedPx are unaffected.
 export interface LayoutState {
   readonly root: LayoutNode;
   readonly maximized: PanelId | null;

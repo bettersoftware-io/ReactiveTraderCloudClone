@@ -3,6 +3,7 @@ import { take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defined } from "../__testUtils__/defined.js";
+import { KNOWN_CURRENCY_PAIRS } from "../fx/currencyPair.js";
 import { PRICE_HISTORY_SIZE } from "../fx/price.js";
 import type { RfqQuoteResult } from "../ports/pricingPort.js";
 import { PricingSimulator } from "./PricingSimulator.js";
@@ -33,13 +34,58 @@ describe("PricingSimulator", () => {
     expect(typeof tick.valueDate).toBe("string");
   });
 
-  it("ask = mid + 0.0002 and bid = mid - 0.0002", async () => {
+  it("ask/bid = mid ± half the pair's typical spread in pip units", async () => {
     const engine = new PricingSimulator();
-    const history = await firstValueFrom(engine.getPriceHistory("EURUSD"));
 
-    for (const tick of history) {
-      expect(tick.ask).toBeCloseTo(tick.mid + 0.0002, 10);
-      expect(tick.bid).toBeCloseTo(tick.mid - 0.0002, 10);
+    // EURUSD: pipsPosition 4 → pip unit 0.0001; spread 1.4 pips → half 0.00007
+    const eur = await firstValueFrom(engine.getPriceHistory("EURUSD"));
+
+    for (const tick of eur) {
+      expect(tick.ask).toBeCloseTo(tick.mid + 0.00007, 10);
+      expect(tick.bid).toBeCloseTo(tick.mid - 0.00007, 10);
+    }
+
+    // USDJPY: pipsPosition 2 → pip unit 0.01; spread 1.6 pips → half 0.008
+    const jpy = await firstValueFrom(engine.getPriceHistory("USDJPY"));
+
+    for (const tick of jpy) {
+      expect(tick.ask).toBeCloseTo(tick.mid + 0.008, 10);
+      expect(tick.bid).toBeCloseTo(tick.mid - 0.008, 10);
+    }
+  });
+
+  it("initial mids stay within history-walk range of the PROTO base mid", async () => {
+    const engine = new PricingSimulator();
+
+    for (const pair of KNOWN_CURRENCY_PAIRS) {
+      const history = await firstValueFrom(engine.getPriceHistory(pair.symbol));
+      const stepSize = pair.pipsPosition === 2 ? 0.02 : 0.00018;
+      // 50 history steps of at most stepSize/2 each from baseMid, plus up to
+      // half an ulp of toFixed rounding per step — bound with full stepSize.
+      const maxDrift = PRICE_HISTORY_SIZE * stepSize;
+
+      for (const tick of history) {
+        expect(
+          Math.abs(tick.mid - pair.baseMid),
+          pair.symbol,
+        ).toBeLessThanOrEqual(maxDrift + 1e-9);
+      }
+    }
+  });
+
+  it("live mids respect the pair's rate precision", async () => {
+    vi.useFakeTimers();
+    const engine = new PricingSimulator();
+    const ticksPromise = lastValueFrom(
+      engine
+        .getPriceUpdates("USDJPY")
+        .pipe(take(PRICE_HISTORY_SIZE + 3), toArray()),
+    );
+    await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 5);
+    const ticks = await ticksPromise;
+
+    for (const tick of ticks.slice(PRICE_HISTORY_SIZE)) {
+      expect(Number(tick.mid.toFixed(3))).toBe(tick.mid);
     }
   });
 
@@ -77,9 +123,9 @@ describe("PricingSimulator", () => {
     await vi.advanceTimersByTimeAsync(1000);
     const quote = await promise;
 
-    // priceChange = 0.3 / 10^4 = 0.00003
-    const expectedAsk = quote.mid + 0.0002 + 0.00003;
-    const expectedBid = quote.mid - 0.0002 - 0.00003;
+    // priceChange = 0.3 / 10^4 = 0.00003; EURUSD half-spread = 0.00007
+    const expectedAsk = quote.mid + 0.00007 + 0.00003;
+    const expectedBid = quote.mid - 0.00007 - 0.00003;
     expect(quote.ask).toBeCloseTo(expectedAsk, 8);
     expect(quote.bid).toBeCloseTo(expectedBid, 8);
   });

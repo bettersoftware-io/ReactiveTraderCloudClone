@@ -8,9 +8,7 @@ test.describe("Analytics panel", () => {
 
   test("analytics panel is visible with sections", async ({ ctx }) => {
     await analytics.expectAnalyticsPanelVisibleWithin(ctx, 5);
-    await analytics.expectAnalyticsHasSection(ctx, "Analytics");
     await analytics.expectAnalyticsHasSection(ctx, "Profit & Loss");
-    await analytics.expectAnalyticsHasSection(ctx, "Positions");
     await analytics.expectAnalyticsHasSection(ctx, "PnL per Currency Pair");
   });
 
@@ -19,9 +17,11 @@ test.describe("Analytics panel", () => {
     await analytics.expectAnalyticsHasSection(ctx, "Profit & Loss");
   });
 
-  test("positions section is visible", async ({ ctx }) => {
-    await analytics.expectAnalyticsPanelVisibleWithin(ctx, 5);
-    await analytics.expectAnalyticsHasSection(ctx, "Positions");
+  test("positions panel shows net exposure", async ({ ctx }) => {
+    await analytics.expectPositionsPanelVisibleWithin(ctx, 5);
+    await analytics.expectPositionsPanelHasBubbles(ctx, 1);
+    await analytics.expectFirstBubbleHasSignedAmount(ctx);
+    await analytics.expectFirstRowHasSignedAmount(ctx);
   });
 
   test("analytics panel shows alongside live rates", async ({ ctx }) => {
