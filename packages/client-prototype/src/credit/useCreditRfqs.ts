@@ -27,6 +27,8 @@ const REMOVE_ANIM_MS = 330;
 const EXITING_RETAIN_MS = 380;
 const NOW_INTERVAL_MS = 400;
 const TRADE_CAP = 40;
+// PROTO L1330: tabRecent = a switch triggered its cascade within this window.
+const TAB_RECENT_MS = 480;
 
 const CSV_HEADERS = [
   "Trade ID",
@@ -58,6 +60,7 @@ export interface CreditRfqsApi {
   newCreditId: number | null;
   exitingRfqs: number[];
   cardExitIds: number[];
+  tabRecent: boolean;
   onTab(tab: CreditTab): void;
   sendRfq(form: RfqFormValue): void;
   acceptQuote(rfqId: number, dealerId: number): void;
@@ -122,6 +125,7 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
   const [newRfqId, setNewRfqId] = useState<number | null>(null);
   const [newCreditId, setNewCreditId] = useState<number | null>(null);
   const [exitingRfqs, setExitingRfqs] = useState<number[]>([]);
+  const [tabChangedAt, setTabChangedAt] = useState(0);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -149,8 +153,15 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
     };
   }, []);
 
+  // PROTO L1325: a no-op click on the already-active tab doesn't restart
+  // the cascade window.
   function onTab(tab: CreditTab): void {
+    if (tab === creditTab) {
+      return;
+    }
+
     setCreditTab(tab);
+    setTabChangedAt(Date.now());
   }
 
   // PROTO L1169 (sendRfq): draw each dealer's delay/pass/price synchronously
@@ -404,6 +415,7 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
   });
   const liveCount = liveRfqs.length ? `(${liveRfqs.length})` : "";
   const noRfqs: boolean = shownRfqs.length === 0;
+  const tabRecent = now - tabChangedAt < TAB_RECENT_MS;
 
   return {
     rfqs,
@@ -417,6 +429,7 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
     newCreditId,
     exitingRfqs,
     cardExitIds,
+    tabRecent,
     onTab,
     sendRfq,
     acceptQuote,

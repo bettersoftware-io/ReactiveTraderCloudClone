@@ -43,8 +43,10 @@ export function RfqsPanel(props: RfqsPanelProps): ReactElement {
           <EmptyRfqs />
         ) : (
           <div className={styles.grid} ref={gridRef}>
-            {rfqs.shownRfqs.map((rfq) => {
-              return <RfqCardCell key={rfq.id} rfq={rfq} rfqs={rfqs} />;
+            {rfqs.shownRfqs.map((rfq, ci) => {
+              return (
+                <RfqCardCell key={rfq.id} rfq={rfq} rfqs={rfqs} index={ci} />
+              );
             })}
           </div>
         )}
@@ -104,10 +106,11 @@ export function RfqFilterPills(props: RfqFilterPillsProps): ReactElement {
 interface RfqCardCellProps {
   rfq: Rfq;
   rfqs: CreditRfqsApi;
+  index: number;
 }
 
 function RfqCardCell(props: RfqCardCellProps): ReactElement {
-  const { rfq, rfqs } = props;
+  const { rfq, rfqs, index } = props;
   const vm = rfqCardVm(rfq, rfqs.now);
 
   function handleAccept(dealerId: number): void {
@@ -128,6 +131,8 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
         vm={vm}
         isNew={rfq.id === rfqs.newRfqId}
         isExiting={rfqs.cardExitIds.includes(rfq.id)}
+        isTabRecent={rfqs.tabRecent}
+        index={index}
         onAccept={handleAccept}
         onCancel={handleCancel}
         onRemove={handleRemove}

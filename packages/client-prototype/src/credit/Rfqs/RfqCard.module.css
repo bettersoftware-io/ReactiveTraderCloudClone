@@ -12,11 +12,13 @@
 }
 
 .card[data-anim="enter"][data-parity="a"] {
-  animation: cardInA 0.46s cubic-bezier(0.2, 0.8, 0.3, 1);
+  animation: cardInA 0.46s cubic-bezier(0.2, 0.8, 0.3, 1) var(--card-delay, 0ms)
+    both;
 }
 
 .card[data-anim="enter"][data-parity="b"] {
-  animation: cardInB 0.46s cubic-bezier(0.2, 0.8, 0.3, 1);
+  animation: cardInB 0.46s cubic-bezier(0.2, 0.8, 0.3, 1) var(--card-delay, 0ms)
+    both;
 }
 
 .card[data-anim="exit"] {

@@ -151,4 +151,23 @@ describe("useCreditRfqs", () => {
     });
     expect(result.current.cardExitIds).not.toContain(700);
   });
+
+  test("tabRecent flags a real tab switch for ~480ms, then decays", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => {
+      return useCreditRfqs({ rng: mulberry32(1) });
+    });
+    expect(result.current.tabRecent).toBe(false);
+
+    act(() => {
+      result.current.onTab("live");
+    });
+    expect(result.current.creditTab).toBe("live");
+    expect(result.current.tabRecent).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(result.current.tabRecent).toBe(false);
+  });
 });
