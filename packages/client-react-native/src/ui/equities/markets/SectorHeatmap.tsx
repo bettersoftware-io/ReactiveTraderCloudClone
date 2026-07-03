@@ -1,5 +1,12 @@
 import type { JSX } from "react";
-import { Pressable, StyleSheet, Text, type TextStyle, View, type ViewStyle } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  type TextStyle,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -10,7 +17,10 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** Sector-grouped heat grid. Each cell mounts `useEquityQuote(symbol)` and
  * tints by change%. Ported from web `SectorHeatmap`. */
-export function SectorHeatmap({ selectedSymbol, onSelect }: SectorHeatmapProps): JSX.Element {
+export function SectorHeatmap({
+  selectedSymbol,
+  onSelect,
+}: SectorHeatmapProps): JSX.Element {
   const { useWatchlist } = useViewModel();
   const instruments = useWatchlist();
   const styles = useThemedStyles(makeStyles);
@@ -79,7 +89,13 @@ function HeatCell({ symbol, active, onSelect }: HeatCellProps): JSX.Element {
     >
       <View
         pointerEvents="none"
-        style={[styles.heat, { backgroundColor: up ? theme.accentPositive : theme.accentNegative, opacity: intensity * 0.5 }]}
+        style={[
+          styles.heat,
+          {
+            backgroundColor: up ? theme.accentPositive : theme.accentNegative,
+            opacity: intensity * 0.5,
+          },
+        ]}
       />
       <Text style={styles.cellLabel}>{symbol}</Text>
     </Pressable>
@@ -117,7 +133,11 @@ function makeStyles(t: RnTheme): SectorHeatmapStyles {
     cell: baseCell,
     cellActive: { ...baseCell, borderColor: t.accentPrimary, borderWidth: 1 },
     heat: StyleSheet.absoluteFillObject,
-    cellLabel: { fontSize: 12, color: t.textPrimary, fontFamily: t.fontDisplay },
+    cellLabel: {
+      fontSize: 12,
+      color: t.textPrimary,
+      fontFamily: t.fontDisplay,
+    },
     empty: { padding: 16, color: t.textMuted, fontFamily: t.fontMono },
   });
 }

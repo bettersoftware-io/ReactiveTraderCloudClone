@@ -1,5 +1,12 @@
 import type { JSX } from "react";
-import { Pressable, StyleSheet, Text, type TextStyle, View, type ViewStyle } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  type TextStyle,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import type { EquityInstrument } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
@@ -12,7 +19,10 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 /** Scrollable instrument list. Each row mounts its own `useEquityQuote(symbol)`
  * (hooks at component top level), tinted by a heat overlay proportional to the
  * change%. Ported from web `Watchlist`. */
-export function Watchlist({ selectedSymbol, onSelect }: WatchlistProps): JSX.Element {
+export function Watchlist({
+  selectedSymbol,
+  onSelect,
+}: WatchlistProps): JSX.Element {
   const { useWatchlist } = useViewModel();
   const instruments = useWatchlist();
   const styles = useThemedStyles(makeStyles);
@@ -58,7 +68,11 @@ interface WatchlistRowProps {
   onSelect: (symbol: string) => void;
 }
 
-function WatchlistRow({ instrument, active, onSelect }: WatchlistRowProps): JSX.Element {
+function WatchlistRow({
+  instrument,
+  active,
+  onSelect,
+}: WatchlistRowProps): JSX.Element {
   const { useEquityQuote } = useViewModel();
   const quote = useEquityQuote(instrument.symbol);
   const theme = useTheme();
@@ -81,7 +95,13 @@ function WatchlistRow({ instrument, active, onSelect }: WatchlistRowProps): JSX.
     >
       <View
         pointerEvents="none"
-        style={[styles.heat, { backgroundColor: up ? theme.accentPositive : theme.accentNegative, opacity: intensity * 0.4 }]}
+        style={[
+          styles.heat,
+          {
+            backgroundColor: up ? theme.accentPositive : theme.accentNegative,
+            opacity: intensity * 0.4,
+          },
+        ]}
       />
       <Text style={styles.symbol}>{instrument.symbol}</Text>
       <Text style={styles.num}>{last}</Text>
@@ -115,7 +135,11 @@ function makeStyles(t: RnTheme): WatchlistStyles {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.borderSubtle,
   };
-  const headerCell: TextStyle = { fontSize: 10, color: t.textMuted, fontFamily: t.fontMono };
+  const headerCell: TextStyle = {
+    fontSize: 10,
+    color: t.textMuted,
+    fontFamily: t.fontMono,
+  };
   return StyleSheet.create({
     list: { backgroundColor: t.panel },
     header: { ...baseRow, paddingVertical: 6 },
@@ -124,8 +148,19 @@ function makeStyles(t: RnTheme): WatchlistStyles {
     row: baseRow,
     rowActive: { ...baseRow, backgroundColor: t.chip },
     heat: StyleSheet.absoluteFillObject,
-    symbol: { flex: 2, fontSize: 13, color: t.textPrimary, fontFamily: t.fontDisplay },
-    num: { flex: 1, fontSize: 13, color: t.textSecondary, fontFamily: t.fontMono, textAlign: "right" },
+    symbol: {
+      flex: 2,
+      fontSize: 13,
+      color: t.textPrimary,
+      fontFamily: t.fontDisplay,
+    },
+    num: {
+      flex: 1,
+      fontSize: 13,
+      color: t.textSecondary,
+      fontFamily: t.fontMono,
+      textAlign: "right",
+    },
     up: { color: t.accentPositive },
     down: { color: t.accentNegative },
     empty: { padding: 16, color: t.textMuted, fontFamily: t.fontMono },

@@ -30,14 +30,18 @@ export interface SectorGroup {
 }
 
 /** Group instruments by `SECTOR_MAP`, preserving first-seen sector order. */
-export function groupBySector(instruments: readonly EquityInstrument[]): readonly SectorGroup[] {
+export function groupBySector(
+  instruments: readonly EquityInstrument[],
+): readonly SectorGroup[] {
   const bySector = new Map<string, EquityInstrument[]>();
+
   for (const inst of instruments) {
     const sector = SECTOR_MAP[inst.symbol] ?? DEFAULT_SECTOR;
     const group = bySector.get(sector) ?? [];
     group.push(inst);
     bySector.set(sector, group);
   }
+
   return [...bySector.entries()].map(([sector, insts]) => {
     return { sector, instruments: insts };
   });

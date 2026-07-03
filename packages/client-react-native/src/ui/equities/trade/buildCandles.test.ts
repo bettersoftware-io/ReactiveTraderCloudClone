@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import type { Candle } from "@rtc/domain";
 
-import { buildCandles, CANDLE_HEIGHT, CANDLE_WIDTH } from "#/ui/equities/trade/buildCandles";
-
-const c = (open: number, high: number, low: number, close: number): Candle => ({ time: 0, open, high, low, close });
+import {
+  buildCandles,
+  CANDLE_HEIGHT,
+  CANDLE_WIDTH,
+} from "#/ui/equities/trade/buildCandles";
 
 describe("buildCandles", () => {
   it("returns [] for no candles", () => {
@@ -32,3 +34,13 @@ describe("buildCandles", () => {
     expect(flat.bodyH).toBeGreaterThanOrEqual(1);
   });
 });
+
+function c(open: number, high: number, low: number, close: number): Candle {
+  return {
+    time: 0,
+    open,
+    high,
+    low,
+    close,
+  };
+}
