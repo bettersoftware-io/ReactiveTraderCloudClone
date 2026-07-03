@@ -26,7 +26,6 @@ describe("AnalyticsPanel", () => {
     expect(panel.loadingMessage()).toBeNull();
     expect(panel.sectionLabels()).toEqual([
       "Profit & Loss",
-      "Positions",
       "PnL per Currency Pair",
     ]);
   });

@@ -18,10 +18,6 @@ import {
   type PnlValueProps,
 } from "./pages/fx/analytics/PnlValuePage";
 import {
-  PositionBubblesPage,
-  type PositionBubblesProps,
-} from "./pages/fx/analytics/PositionBubblesPage";
-import {
   BlotterHeaderPage,
   type BlotterHeaderProps,
 } from "./pages/fx/blotter/BlotterHeaderPage";
@@ -46,6 +42,7 @@ import {
   SetFilterPage,
   type SetFilterProps,
 } from "./pages/fx/blotter/SetFilterPage";
+import { PositionsPanelPage } from "./pages/fx/positions/PositionsPanelPage";
 import { AmbientBackgroundPage } from "./pages/shell/background/AmbientBackgroundPage";
 import { BootGatePage } from "./pages/shell/boot/BootGatePage";
 import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
@@ -195,11 +192,11 @@ export const PnlValue = component<PnlValueProps, PnlValuePage>((ctx) => {
   return new PnlValuePage(ctx);
 });
 
-export const PositionBubbles = component<
-  PositionBubblesProps,
-  PositionBubblesPage
+export const PositionsPanel = component<
+  Record<string, never>,
+  PositionsPanelPage
 >((ctx) => {
-  return new PositionBubblesPage(ctx);
+  return new PositionsPanelPage(ctx);
 });
 
 export const ConnectionStatusBar = component<

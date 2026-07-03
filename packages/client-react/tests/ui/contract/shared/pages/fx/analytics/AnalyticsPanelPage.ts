@@ -23,7 +23,7 @@ export class AnalyticsPanelPage extends MountedComponent<
 
   /** The section labels shown down the panel, in order. */
   sectionLabels(): string[] {
-    return [/profit & loss/i, /^positions$/i, /pnl per currency pair/i]
+    return [/profit & loss/i, /pnl per currency pair/i]
       .map((re) => {
         return within(this.root).queryByText(re)?.textContent?.trim() ?? "";
       })

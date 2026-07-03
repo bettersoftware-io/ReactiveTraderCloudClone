@@ -56,7 +56,6 @@ import { Watchlist as WatchlistComponent } from "#/ui/equities/watchlist/Watchli
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
 import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
 import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
-import { PositionBubbles as PositionBubblesComponent } from "#/ui/fx/analytics/PositionBubbles";
 import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/BlotterHeader";
 import { BlotterRow as BlotterRowComponent } from "#/ui/fx/blotter/BlotterRow";
 import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
@@ -82,6 +81,7 @@ import {
   type TileRfqState,
 } from "#/ui/fx/liveRates/tile/TileRfq";
 import { ViewToggle as ViewToggleComponent } from "#/ui/fx/liveRates/ViewToggle";
+import { PositionsPanel as PositionsPanelComponent } from "#/ui/fx/positions/PositionsPanel";
 import { AmbientBackground as AmbientBackgroundComponent } from "#/ui/shell/background/AmbientBackground";
 import { BootGate as BootGateComponent } from "#/ui/shell/boot/BootGate";
 import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
@@ -134,8 +134,8 @@ import {
   PairPnlBars,
   PnlSparkline,
   PnlValue,
-  PositionBubbles,
   PositionsBlotter,
+  PositionsPanel,
   PreferencesModal,
   PriceChart,
   QuickFilter,
@@ -229,13 +229,9 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    PositionBubbles,
-    (p: Record<string, unknown>): ReactElement => {
-      return (
-        <PositionBubblesComponent
-          positions={(p.positions as readonly CurrencyPairPosition[]) ?? []}
-        />
-      );
+    PositionsPanel,
+    (): ReactElement => {
+      return <PositionsPanelComponent />;
     },
   ],
   [
