@@ -28,6 +28,7 @@ import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { Tile } from "#/ui/fx/liveRates/tile/Tile";
+import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "#/ui/shell/connection/ConnectionOverlay";
@@ -97,6 +98,9 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   AnalyticsPanel: () => {
     return <AnalyticsPanel />;
+  },
+  PositionsPanel: () => {
+    return <PositionsPanel />;
   },
   ConnectionOverlay: () => {
     return <ConnectionOverlay />;

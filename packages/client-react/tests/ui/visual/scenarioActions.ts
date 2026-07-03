@@ -74,9 +74,12 @@ export const scenarioActions: Record<string, ScenarioAction> = {
     expectAriaLabel: "Switch to dark theme",
   },
   // Price view is seeded through the seam (fixture live-rates-price, viewMode
-  // "price"); the ViewToggle label reads "Chart" (offering a switch back),
-  // proving the price-mode arm rendered.
-  "live-rates/price-view": { waitForText: "Chart" },
+  // "price") — no interaction needed, no entry required (lookups fall back to
+  // `{}`). The CHARTS toggle that used to live inline (and read "Chart" when
+  // offering a switch back) moved to the fx-rates panel's head slot
+  // (LiveRatesHead, outside this standalone component) once the panel head
+  // grew tabs; the screenshot alone proves the price-mode arm (charts
+  // suppressed) rendered.
   // Credit workspace sub-views: click the tab, wait for that view's heading.
   "credit/workspace-new-rfq": {
     click: "credit-tab-new-rfq",

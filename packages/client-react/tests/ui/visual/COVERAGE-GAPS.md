@@ -180,7 +180,6 @@ post-behaviour-sync codebase; intentionally-open gaps are documented below.
 | `ui/fx/liveRates/tile/TileConfirmation.tsx` line 102 | `default: return "unknown"` in switch | Exhaustive switch over `ExecutionStatus` — all enum members handled above. Defensive fallthrough for future enum additions. |
 | `src/ui/viewModel/useViewModel.ts` line 11 | `throw new Error(...)` | Only fires when `useContext(ViewModelContext)` returns null — outside `ViewModelProvider`. All contract tests mount within the provider. |
 | `ui/shell/theme/useTheme.ts` line 7 | `throw new Error(...)` | Same: defensive provider-missing guard; always wrapped in `ThemeProvider` in tests. |
-| `ui/fx/analytics/PositionBubbles.tsx`, `ui/fx/analytics/PairPnlBars.tsx` | entire files | Excluded from contract tier scope (`coverage.exclude` in `vitest.config.ts`). D3/canvas render paths with no DOM-assertable logic — owned by the visual tier. |
 
 ### Visual tier — intentionally-open gaps (2026-06-25)
 
@@ -191,7 +190,6 @@ scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
 
 | File | Lines | Reason |
 |------|-------|--------|
-| `ui/fx/analytics/PositionBubbles.tsx` lines 90-93, 118-132 | D3 `onMove` drag handler + `exit`/`update` join callbacks | Drag requires a synthetic D3 drag event sequence (start/drag/end); `update`/`exit` callbacks require re-renders with changed `nodesRef.current`. Neither is achievable via `ScenarioStep` (click/type/select). |
 | `ui/fx/analytics/PairPnlBars.tsx` lines 56-59 | `hoveredSymbol === pos.symbol` hover branch | Requires a `hover` step type not present in `scenarioActions.ts`. Deferred. |
 | `ui/credit/newRfq/SetFilter.tsx` lines 35-47, 60 | `toggleValue` + `handleApply` subset arm | Checkboxes have no `data-testid`; individual values cannot be targeted by `click` step. Production code not modified (task constraint). |
 | `ui/credit/rfqTiles/RfqCard.tsx` line 63 | `handleDismiss` body | Dismiss `✕` button has no `data-testid`. Same constraint as SetFilter. |
@@ -209,7 +207,7 @@ scenarios (`credit/blotter-sorted`, `credit/blotter-filtered`,
 | `ui/fx/liveRates/tile/TileConfirmation.tsx` line 72 | `return null` from `ConfirmationContent` | Fires when `state.status === "finished"` and `executionStatus === Done` but `trade` is undefined. Fixture always provides a trade when status is Done. A `trade`-less Done execution is not a valid production state. |
 | `ui/fx/liveRates/tile/TileConfirmation.tsx` line 102 | `default: return "unknown"` in `statusKey` | TypeScript-exhaustive switch over `ExecutionStatus`. Defensive fallthrough for future enum additions. |
 | `ui/fx/liveRates/CurrencyFilter.tsx` line 26 | `onChange` onClick | Requires clicking a non-default filter category. All three categories render identical tiles in the populated fixture. Deferred. |
-| `ui/fx/liveRates/ViewToggle.tsx` line 18 | `onChange` onClick | Clicking changes `viewMode`, but the resulting state is already pinned by `live-rates/price-view` (seeded through PreferencesPort seam). No additional visual branch. |
+| `ui/fx/liveRates/LiveRatesHead.tsx` `charts-toggle` onClick | `setViewMode` call | Clicking changes `viewMode`, but the resulting state is already pinned by `live-rates/price-view` (seeded through PreferencesPort seam). No additional visual branch. (The toggle lived in the now-removed `ViewToggle.tsx` until the panel head grew tabs; it moved to this head-slot component.) |
 
 **Dead seam command hooks — RESOLVED (pruned during the HUD redesign, Phases 0–5).**
 The six orphaned command hooks flagged here on 2026-06-25
@@ -251,7 +249,9 @@ are no longer listed:
 - `TileChart.tsx` down-trend + empty-path arms → `tile/chart-down`, `tile/chart-empty`
 - `ViewToggle.tsx` / `LiveRatesPanel.tsx` price-mode arm → `live-rates/price-view`
 - `AnalyticsPanel.tsx` empty arm + `PnlValue`/`PnlChart` negative arms → `analytics/negative-pnl`, `analytics/empty`
-- `PositionBubbles.tsx` all-flat degenerate arm → `analytics/flat-positions`
+- `PositionBubbles.tsx` all-flat degenerate arm → `analytics/flat-positions` (the
+  component was later restyled and renamed to `ui/fx/positions/PositionsPanel.tsx`;
+  its own net-exposure bubbles are covered separately by `positions/*`)
 - `RfqCard.tsx` Done/Expired/Cancelled badge + dismiss arms → `credit/rfq-tiles-{done,expired,cancelled}`
 - `QuoteCard.tsx` accepted/passed/rejected colour arms → `credit/rfq-tiles-{accepted,passed}`
 - `RfqTilesPanel.tsx` empty-after-filter arm → `credit/rfq-tiles-empty`

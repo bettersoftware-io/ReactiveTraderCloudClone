@@ -2,6 +2,7 @@ import { type ReactElement, useEffect, useState } from "react";
 
 import { ViewModelProvider } from "@rtc/react-bindings";
 
+import { FxViewProvider } from "#/ui/fx/FxViewProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import { fixtures } from "../shared/fixtures";
@@ -60,7 +61,12 @@ export function VisualScenario({
   if (FULL_BLEED.has(scenario.componentKey)) {
     return (
       <ViewModelProvider viewModel={buildFakeViewModel(data)}>
-        <ThemeProvider>{render(scenario.fixtureKey)}</ThemeProvider>
+        <ThemeProvider>
+          {/* App.tsx nests its own FxViewProvider inside WorkspaceEngine; this
+              outer one is a harmless no-op for that path and covers every
+              other full-bleed component that might read useFxView. */}
+          <FxViewProvider>{render(scenario.fixtureKey)}</FxViewProvider>
+        </ThemeProvider>
       </ViewModelProvider>
     );
   }
@@ -68,19 +74,24 @@ export function VisualScenario({
   return (
     <ViewModelProvider viewModel={buildFakeViewModel(data)}>
       <ThemeProvider>
-        <div
-          data-testid="scenario-root"
-          style={{
-            // ThemeProvider sets CSS vars on <html>; paint a real backdrop so
-            // component-level shots aren't on default white.
-            backgroundColor: "var(--bg-primary)",
-            color: "var(--text-primary)",
-            padding: 24,
-            display: "inline-block",
-          }}
-        >
-          {render(scenario.fixtureKey)}
-        </div>
+        {/* FxBlotter/LiveRatesPanel (and any future FX panel) read useFxView()
+            for their tab/filter state; standalone component-level shots need
+            the same provider App.tsx supplies via WorkspaceEngine. */}
+        <FxViewProvider>
+          <div
+            data-testid="scenario-root"
+            style={{
+              // ThemeProvider sets CSS vars on <html>; paint a real backdrop so
+              // component-level shots aren't on default white.
+              backgroundColor: "var(--bg-primary)",
+              color: "var(--text-primary)",
+              padding: 24,
+              display: "inline-block",
+            }}
+          >
+            {render(scenario.fixtureKey)}
+          </div>
+        </FxViewProvider>
       </ThemeProvider>
     </ViewModelProvider>
   );
