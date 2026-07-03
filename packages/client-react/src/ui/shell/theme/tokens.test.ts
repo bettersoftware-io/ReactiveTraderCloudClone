@@ -82,6 +82,7 @@ describe("themeTokens skin×mode store", () => {
         expect(themeTokens[skin][mode]["--panel-shadow"]).not.toBe("none");
         expect(themeTokens[skin][mode]["--panel-shadow"]).toContain("inset");
       }
+
       for (const skin of ["classic", "holo", "terminal", "neon"] as const) {
         expect(themeTokens[skin][mode]["--panel-shadow"]).toBe("none");
       }
