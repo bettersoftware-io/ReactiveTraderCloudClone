@@ -103,7 +103,11 @@ substituting the 3d PROTO row's values:
   `grid→--grid`, `chip→--chip`, `panel→--panel` + `--bg-tile`,
   `panelHead→--panel-head`, `auroraOp→--aurora-opacity`,
   `tile→--tile`, `tileShadow→--tile-shadow`, `panelShadow→--panel-shadow`,
-  `fontD/fontM→--font-display/--font-mono`.
+  `fontD/fontM→--font-display/--font-mono`. Deviation: for the 3d entries
+  `panel` is a gradient and can't fill `--bg-tile`'s solid-color positions
+  (e.g. `color-mix`/SVG paints), so `--bg-tile` instead takes the flat
+  sibling's solid `panel` value — documented inline on each 3d entry in
+  `tokens.ts`.
 - Derived, same as sibling: `--border-subtle`/`--border` (sibling's derivation
   from the border colour), `--text-on-accent` (= bg-primary for dark, stays
   light-on-accent for light — copy the sibling's choice), `--accent-aware` and
@@ -123,7 +127,7 @@ already applies `box-shadow: var(--tile-shadow)` and
 `InhouseLayoutEngine.module.css` applies `box-shadow: var(--panel-shadow)` —
 the shadow plumbing is token-only. But the 3d skins are the first to put
 **gradients** into `--panel`, `--panel-head`, and `--chip`, and 29 declarations
-across 15 CSS modules consume those via `background-color:`, which is invalid
+across 17 CSS modules consume those via `background-color:`, which is invalid
 for a gradient (the fill would silently vanish on 3d skins). Those 29
 declarations change to the `background:` shorthand — behavior-identical for
 every current solid value (audited: none of the affected rules set any other
@@ -157,9 +161,13 @@ picker never lies about what a skin *is*, only renders it without depth.
     non-`"none"` `--panel-shadow` containing `inset`; `holo`/`terminal`/`neon`/
     `classic` keep `--panel-shadow: "none"`.
   - Existing schema-completeness checks pick the new entries up automatically.
-- **ThemePicker contract spec:** menu lists 6 skins with the labels above;
-  selecting a 3d skin updates the selection (same shape as existing cases).
-- **RN AppearanceScreen test:** row count/labels updated for 6 skins.
+- **ThemePicker contract spec:** menu lists 6 skins by `data-skin` key
+  (`classic`, `holo`, `holo3d`, `terminal`, `terminal3d`, `neon`); selecting a
+  3d skin updates the selection (same shape as existing cases). Label text
+  itself is pinned by the acceptance screenshots, not this spec.
+- **RN AppearanceScreen test:** asserts the 3d skins' testIDs are present and
+  that pressing one dispatches `setSkin` with the right key — not row counts
+  or label text, which are pinned by the acceptance screenshots.
 - **Acceptance (the faithfulness gate):** screenshots of the running app in
   holo3d and terminal3d, dark and light, side-by-side against the PROTO's same
   themes, delivered for the user's eyeball — exactly like the flagship slice's
