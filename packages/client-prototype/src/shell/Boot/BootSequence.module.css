@@ -7,6 +7,17 @@
   justify-content: center;
   background: var(--bg);
   z-index: 100;
+  transition:
+    opacity 0.72s ease,
+    transform 0.72s ease,
+    filter 0.72s ease;
+}
+
+.boot[data-fading="true"] {
+  opacity: 0;
+  transform: scale(1.05);
+  filter: blur(7px);
+  pointer-events: none;
 }
 
 .brand {
