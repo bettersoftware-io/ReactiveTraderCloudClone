@@ -9,6 +9,29 @@
   z-index: 100;
 }
 
+.brand {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.wordmark {
+  font-family: "Orbitron", sans-serif;
+  font-weight: 900;
+  font-size: 30px;
+  letter-spacing: 0.42em;
+  color: var(--accent);
+  text-shadow: 0 0 26px var(--accent);
+  animation: bootGlitch 2.4s infinite;
+}
+
+.subtitle {
+  margin-top: 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.6em;
+  color: var(--dim);
+}
+
 .canvas {
   width: 320px;
   height: 320px;
