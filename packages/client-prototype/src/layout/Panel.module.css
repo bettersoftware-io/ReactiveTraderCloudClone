@@ -36,7 +36,7 @@
 .label {
   display: inline-flex;
   align-items: center;
-  height: 100%;
+  align-self: stretch;
   padding: 0 14px;
   background: var(--panel);
   border-bottom: 2px solid var(--accent);

@@ -78,13 +78,19 @@
   background: var(--accent);
 }
 
-.row[data-status="ONLINE"] .dot,
-.row[data-status="ONLINE"] .fill {
+.row[data-status="ONLINE"] .dot {
   box-shadow: 0 0 8px var(--buy);
 }
 
-.row[data-status="DEGRADED"] .dot,
-.row[data-status="DEGRADED"] .fill {
+.row[data-status="DEGRADED"] .dot {
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.row[data-status="ONLINE"] .track {
+  box-shadow: 0 0 8px var(--buy);
+}
+
+.row[data-status="DEGRADED"] .track {
   box-shadow: 0 0 8px var(--accent);
 }
 

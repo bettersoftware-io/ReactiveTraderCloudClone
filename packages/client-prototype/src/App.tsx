@@ -33,6 +33,7 @@ export function App(): ReactElement {
           onLogout={() => {
             setLoggedOut(true);
           }}
+          booted={booted}
         />
         {prefsOpen ? (
           <PreferencesModal

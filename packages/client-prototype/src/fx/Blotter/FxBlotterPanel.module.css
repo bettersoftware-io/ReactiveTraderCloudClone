@@ -21,10 +21,6 @@
   border-bottom-color: var(--accent);
 }
 
-.spacer {
-  flex: 1;
-}
-
 .tools {
   display: flex;
   align-items: center;

@@ -57,7 +57,6 @@ export function FxBlotterHeadControls(
       >
         ⚡ Activity
       </button>
-      <div className={styles.spacer} />
       {view === "blotter" ? (
         <div className={styles.tools}>
           <span className={styles.count}>{api.count} trades</span>

@@ -69,7 +69,6 @@ export function LiveRatesHeadControls(
       >
         ☰ Watchlist
       </button>
-      <div className={styles.spacer} />
       <button
         type="button"
         className={styles.chartsBtn}

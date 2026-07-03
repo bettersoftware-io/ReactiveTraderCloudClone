@@ -21,10 +21,6 @@
   border-bottom-color: var(--accent);
 }
 
-.spacer {
-  flex: 1;
-}
-
 .chartsBtn {
   padding: 4px 11px;
   margin-right: 4px;

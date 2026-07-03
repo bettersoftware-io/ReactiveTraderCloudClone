@@ -10,6 +10,9 @@
   color: var(--text);
   font-family: var(--font-d, sans-serif);
   isolation: isolate;
+}
+
+.shell[data-booted="true"] {
   animation: appReveal 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
