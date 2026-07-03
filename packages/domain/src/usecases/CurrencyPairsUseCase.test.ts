@@ -15,6 +15,8 @@ describe("CurrencyPairsUseCase", () => {
         ratePrecision: 5,
         pipsPosition: 4,
         defaultNotional: 1_000_000,
+        baseMid: 1.09213,
+        typicalSpreadPips: 1.4,
       },
     ];
     const port: ReferenceDataPort = {
