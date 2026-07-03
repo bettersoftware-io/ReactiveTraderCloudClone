@@ -12,6 +12,31 @@ import type { FlashEvent } from "#/equities/useEquities";
 
 const FLASH_MS = 650;
 
+export interface ChartPanelControlsProps {
+  chart: EqChartApi;
+}
+
+// PROTO L601-603: the chart panel's control row — instrument tabs + timeframe
+// pills — hoisted out of the body so the dock Panel's headControls renders it
+// inline in the single 38px head bar instead of a second strip.
+export function ChartPanelControls(
+  props: ChartPanelControlsProps,
+): ReactElement {
+  const { chart } = props;
+
+  return (
+    <div className={styles.controls}>
+      <InstrumentTabs
+        tabs={chart.openTabs}
+        sel={chart.sel}
+        onSelect={chart.selectEq}
+        onClose={chart.closeTab}
+      />
+      <TimeframePills tf={chart.tf} onSet={chart.setTf} />
+    </div>
+  );
+}
+
 export interface ChartPanelProps {
   chart: EqChartApi;
   rates: Record<EqSym, number>;
@@ -21,9 +46,9 @@ export interface ChartPanelProps {
   now: number;
 }
 
-// PROTO L599-624: the chart panel body — a control sub-head (instrument tabs +
-// timeframe pills; the outer dock Panel from Task 9 owns the maximize glyph),
-// then the live instrument header over the candlestick plot.
+// PROTO L599-624: the chart panel body — the live instrument header over the
+// candlestick plot. (The control row is ChartPanelControls, rendered by the
+// dock Panel's headControls; the outer dock Panel owns the maximize glyph.)
 export function ChartPanel(props: ChartPanelProps): ReactElement {
   const { chart, rates, prev, flash, vol, now } = props;
   const sel = chart.sel;
@@ -44,16 +69,6 @@ export function ChartPanel(props: ChartPanelProps): ReactElement {
 
   return (
     <div className={styles.body}>
-      <div className={styles.controls}>
-        <InstrumentTabs
-          tabs={chart.openTabs}
-          sel={sel}
-          onSelect={chart.selectEq}
-          onClose={chart.closeTab}
-        />
-        <div className={styles.spacer} />
-        <TimeframePills tf={chart.tf} onSet={chart.setTf} />
-      </div>
       <div className={styles.chartArea}>
         <InstrumentHeader
           sym={sel}

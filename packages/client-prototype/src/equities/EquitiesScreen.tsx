@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { EqBlotView } from "#/equities/Blotter/EqBlotterPanel";
 import { EqBlotterPanel } from "#/equities/Blotter/EqBlotterPanel";
-import { ChartPanel } from "#/equities/Chart/ChartPanel";
+import { ChartPanel, ChartPanelControls } from "#/equities/Chart/ChartPanel";
 import styles from "#/equities/EquitiesScreen.module.css";
 import { positionsVm } from "#/equities/positionsVm";
 import { OrderTicketPanel } from "#/equities/Ticket/OrderTicketPanel";
@@ -109,6 +109,7 @@ export function EquitiesScreen(): ReactElement {
           <Panel
             id={CHART_PANEL}
             head={<span className={styles.regionLabel}>◈ Chart</span>}
+            headControls={<ChartPanelControls chart={chart} />}
             maxPanel={dock.maxPanel}
             onToggleMax={dock.toggleMax}
           >
