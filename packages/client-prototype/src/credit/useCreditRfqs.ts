@@ -51,7 +51,7 @@ export interface CreditRfqsApi {
   creditTab: CreditTab;
   creditTrades: CreditTrade[];
   now: number;
-  liveCount: number;
+  liveCount: string;
   shownRfqs: Rfq[];
   noRfqs: boolean;
   newRfqId: number | null;
@@ -385,9 +385,10 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
         now - r.exitAt < EXITING_RETAIN_MS)
     );
   });
-  const liveCount: number = rfqs.filter((r) => {
+  const liveRfqs = rfqs.filter((r) => {
     return r.state === "Open";
-  }).length;
+  });
+  const liveCount = liveRfqs.length ? `(${liveRfqs.length})` : "";
   const noRfqs: boolean = shownRfqs.length === 0;
 
   return {

@@ -26,7 +26,7 @@ describe("RfqsPanel", () => {
     expect(view.getByText("ACCEPTED")).toBeTruthy();
     expect(view.getByText("CANCELLED")).toBeTruthy();
 
-    fireEvent.click(view.getByText("LIVE 0"));
+    fireEvent.click(view.getByText("LIVE"));
     view.rerender(
       <PreferencesProvider>
         <RfqsPanel rfqs={result.current} />

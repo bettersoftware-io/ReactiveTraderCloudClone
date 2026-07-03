@@ -26,6 +26,19 @@ describe("useCreditRfqs", () => {
     expect(result.current.creditTab).toBe("all");
   });
 
+  test("liveCount is '' with no Open RFQs, and '(n)' once one is live (PROTO L1325 format)", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => {
+      return useCreditRfqs({ rng: mulberry32(1) });
+    });
+    expect(result.current.liveCount).toBe("");
+
+    act(() => {
+      result.current.sendRfq({ ...BUY });
+    });
+    expect(result.current.liveCount).toBe("(1)");
+  });
+
   test("sendRfq prepends a live RFQ, switches to live, and flags it new", () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => {
