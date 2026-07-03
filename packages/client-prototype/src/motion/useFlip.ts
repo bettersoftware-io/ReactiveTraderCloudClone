@@ -17,7 +17,7 @@ export interface UseFlipOptions {
   durMs?: number;
 }
 
-const DEFAULT_DUR_MS = 480;
+const DEFAULT_DUR_MS = 440;
 const FLIP_EASING = "cubic-bezier(.22,.85,.3,1)";
 
 function measure(root: HTMLElement): Record<string, FlipRect> {
@@ -52,7 +52,9 @@ function playGlide(
     const dx = prev.left - rect.left;
     const dy = prev.top - rect.top;
 
-    if (dx === 0 && dy === 0) {
+    // PROTO suppresses sub-pixel glides so a re-render that barely nudges a
+    // node doesn't flicker; only move it if it travelled at least ~0.5px.
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
       continue;
     }
 
