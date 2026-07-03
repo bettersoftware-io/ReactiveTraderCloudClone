@@ -109,8 +109,19 @@ echo "Deploying to rtc-clone-proto (production)…"
 URL="$(cd "$BUILD" && vercel deploy --prod --yes "${TOKEN_ARG[@]}")"
 echo "Deployed: $URL"
 
-echo "Smoke — unauthenticated request must be gated (401)…"
-CODE="$(curl -s -o /dev/null -w "%{http_code}" "$URL")"
+# Smoke the canonical alias (what users hit), NOT the per-deployment URL that
+# `vercel deploy` prints: Vercel Deployment Protection guards generated
+# *.vercel.app deployment URLs with a 302 (redirect to Vercel login) but exempts
+# the project alias, so only the alias reaches our SITE_PASSWORD gate → 401.
+ALIAS="https://rtc-clone-proto.vercel.app"
+echo "Smoke — unauthenticated request to $ALIAS must be gated (401)…"
+CODE=""
+for attempt in 1 2 3 4 5; do
+  CODE="$(curl -s -o /dev/null -w "%{http_code}" "$ALIAS")"
+  [ "$CODE" = "401" ] && break
+  echo "attempt $attempt: got HTTP $CODE, waiting for the alias to settle…"
+  sleep 3
+done
 echo "Got HTTP $CODE"
 [ "$CODE" = "401" ] || { echo "error: expected 401 from the gate, got $CODE" >&2; exit 1; }
-echo "OK — live at https://rtc-clone-proto.vercel.app (gate active)"
+echo "OK — live at $ALIAS (gate active)"
