@@ -39,6 +39,7 @@ describe("PricingSimulator", () => {
 
     // EURUSD: pipsPosition 4 → pip unit 0.0001; spread 1.4 pips → half 0.00007
     const eur = await firstValueFrom(engine.getPriceHistory("EURUSD"));
+
     for (const tick of eur) {
       expect(tick.ask).toBeCloseTo(tick.mid + 0.00007, 10);
       expect(tick.bid).toBeCloseTo(tick.mid - 0.00007, 10);
@@ -46,6 +47,7 @@ describe("PricingSimulator", () => {
 
     // USDJPY: pipsPosition 2 → pip unit 0.01; spread 1.6 pips → half 0.008
     const jpy = await firstValueFrom(engine.getPriceHistory("USDJPY"));
+
     for (const tick of jpy) {
       expect(tick.ask).toBeCloseTo(tick.mid + 0.008, 10);
       expect(tick.bid).toBeCloseTo(tick.mid - 0.008, 10);
@@ -54,16 +56,19 @@ describe("PricingSimulator", () => {
 
   it("initial mids stay within history-walk range of the PROTO base mid", async () => {
     const engine = new PricingSimulator();
+
     for (const pair of KNOWN_CURRENCY_PAIRS) {
       const history = await firstValueFrom(engine.getPriceHistory(pair.symbol));
       const stepSize = pair.pipsPosition === 2 ? 0.02 : 0.00018;
       // 50 history steps of at most stepSize/2 each from baseMid, plus up to
       // half an ulp of toFixed rounding per step — bound with full stepSize.
       const maxDrift = PRICE_HISTORY_SIZE * stepSize;
+
       for (const tick of history) {
-        expect(Math.abs(tick.mid - pair.baseMid), pair.symbol).toBeLessThanOrEqual(
-          maxDrift + 1e-9,
-        );
+        expect(
+          Math.abs(tick.mid - pair.baseMid),
+          pair.symbol,
+        ).toBeLessThanOrEqual(maxDrift + 1e-9);
       }
     }
   });
@@ -72,10 +77,13 @@ describe("PricingSimulator", () => {
     vi.useFakeTimers();
     const engine = new PricingSimulator();
     const ticksPromise = lastValueFrom(
-      engine.getPriceUpdates("USDJPY").pipe(take(PRICE_HISTORY_SIZE + 3), toArray()),
+      engine
+        .getPriceUpdates("USDJPY")
+        .pipe(take(PRICE_HISTORY_SIZE + 3), toArray()),
     );
     await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 5);
     const ticks = await ticksPromise;
+
     for (const tick of ticks.slice(PRICE_HISTORY_SIZE)) {
       expect(Number(tick.mid.toFixed(3))).toBe(tick.mid);
     }
