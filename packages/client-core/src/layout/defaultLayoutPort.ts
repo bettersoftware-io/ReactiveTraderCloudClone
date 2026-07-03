@@ -15,6 +15,7 @@ export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
 export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   "fx-rates": { id: "fx-rates", title: "Live Rates" },
   "fx-analytics": { id: "fx-analytics", title: "Analytics" },
+  "fx-positions": { id: "fx-positions", title: "Positions" },
   "fx-blotter": { id: "fx-blotter", title: "Blotter", pinned: true },
   "credit-rfqs": { id: "credit-rfqs", title: "Credit" },
   "credit-blotter": {
@@ -35,9 +36,20 @@ const FX_ROOT: LayoutNode = {
       kind: "split",
       dir: "row",
       sizes: [0.7, 0.3],
+      // PROTO aside: width 360px, flex 0 0 auto (measured on the deployed
+      // prototype). The fixed rail is what restores the 7-across tile grid.
+      fixedPx: [undefined, 360],
       children: [
         { kind: "panel", panelId: "fx-rates" },
-        { kind: "panel", panelId: "fx-analytics" },
+        {
+          kind: "split",
+          dir: "column",
+          sizes: [0.5, 0.5],
+          children: [
+            { kind: "panel", panelId: "fx-analytics" },
+            { kind: "panel", panelId: "fx-positions" },
+          ],
+        },
       ],
     },
     { kind: "panel", panelId: "fx-blotter" },

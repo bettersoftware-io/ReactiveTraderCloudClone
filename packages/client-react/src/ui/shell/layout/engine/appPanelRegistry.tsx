@@ -5,6 +5,7 @@ import { EquitiesPanel } from "#/ui/equities/EquitiesPanel";
 import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
+import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
 
 import type { PanelRegistry } from "./panelRegistry";
 
@@ -16,6 +17,9 @@ export const appPanelRegistry: PanelRegistry = {
   },
   "fx-analytics": () => {
     return <AnalyticsPanel />;
+  },
+  "fx-positions": () => {
+    return <PositionsPanel />;
   },
   "fx-blotter": () => {
     return <FxBlotter />;

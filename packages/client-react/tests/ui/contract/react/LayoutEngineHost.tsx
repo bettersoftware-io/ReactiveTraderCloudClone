@@ -13,6 +13,9 @@ const layoutTestRegistry: PanelRegistry = {
   "fx-analytics": () => {
     return <div data-testid="fx-analytics-body">ANALYTICS</div>;
   },
+  "fx-positions": () => {
+    return <div data-testid="fx-positions-body">POSITIONS</div>;
+  },
   "fx-blotter": () => {
     return <div data-testid="fx-blotter-body">BLOTTER</div>;
   },

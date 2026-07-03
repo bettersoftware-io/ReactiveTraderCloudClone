@@ -17,6 +17,10 @@ export type LayoutNode =
       readonly dir: SplitDir;
       readonly children: readonly LayoutNode[];
       readonly sizes: readonly number[];
+      /** Per-child fixed size in css px along `dir`. A set entry overrides the
+       * fractional size, renders flex:0 0 Npx, and suppresses adjacent resize
+       * handles (like pinned). Additive to the §5 pinned contract. */
+      readonly fixedPx?: readonly (number | undefined)[];
     }
   | { readonly kind: "panel"; readonly panelId: PanelId };
 export interface LayoutState {

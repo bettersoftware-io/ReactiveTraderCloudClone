@@ -86,6 +86,7 @@ type SplitLayoutNode = {
   readonly dir: SplitDir;
   readonly children: readonly LayoutNode[];
   readonly sizes: readonly number[];
+  readonly fixedPx?: readonly (number | undefined)[];
 };
 
 interface SplitNodeProps extends SharedProps {
@@ -210,18 +211,29 @@ function SplitNode({
           nextChild !== undefined &&
           nextChild.kind === "panel" &&
           specs[nextChild.panelId]?.pinned === true;
+        const childFixed = node.fixedPx?.[i];
+        const nextFixed = node.fixedPx?.[i + 1];
         const showHandle =
-          !childPinned && i < node.children.length - 1 && !nextChildPinned;
+          !childPinned &&
+          i < node.children.length - 1 &&
+          !nextChildPinned &&
+          childFixed === undefined &&
+          nextFixed === undefined;
 
         return (
           <div
             key={childKey(child, path, i)}
             className={styles.cell}
             data-pinned-cell={childPinned ? "true" : "false"}
+            data-fixed-cell={childFixed !== undefined ? "true" : "false"}
             style={
               childPinned
                 ? undefined
-                : ({ "--split-size": String(node.sizes[i]) } as CSSProperties)
+                : childFixed !== undefined
+                  ? ({ "--split-fixed": `${childFixed}px` } as CSSProperties)
+                  : ({
+                      "--split-size": String(node.sizes[i]),
+                    } as CSSProperties)
             }
           >
             {renderNode(child, [...path, i], sharedProps)}

@@ -58,6 +58,11 @@
   flex-basis: auto;
 }
 
+/* A fixed-px cell (PROTO's 360px FX aside): exact basis, never grows/shrinks. */
+.cell[data-fixed-cell="true"] {
+  flex: 0 0 var(--split-fixed);
+}
+
 .handle {
   flex: 0 0 6px;
   background-color: var(--border-subtle);
