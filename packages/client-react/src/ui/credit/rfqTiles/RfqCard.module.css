@@ -1,7 +1,7 @@
 @import "../../shell/motion/animations.module.css";
 
 .card {
-  background-color: var(--panel);
+  background: var(--panel);
   backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--border);
   border-radius: 6px;

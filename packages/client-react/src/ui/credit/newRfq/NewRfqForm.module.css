@@ -1,5 +1,5 @@
 .confirmedCard {
-  background-color: var(--panel);
+  background: var(--panel);
   backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -23,7 +23,7 @@
 }
 
 .form {
-  background-color: var(--panel);
+  background: var(--panel);
   backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--border);
   border-radius: 6px;

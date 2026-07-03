@@ -10,7 +10,7 @@
 }
 
 .quoteCard[data-state="accepted"] {
-  background-color: var(--chip);
+  background: var(--chip);
 }
 
 .quoteCard[data-state="passed"],

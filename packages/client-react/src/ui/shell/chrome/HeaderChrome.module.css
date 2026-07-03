@@ -199,7 +199,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background-color: var(--chip);
+  background: var(--chip);
   border: 1px solid var(--accent-primary);
   font-family: var(--font-display);
   font-weight: 700;
@@ -230,7 +230,7 @@
   justify-content: space-between;
   padding: 11px 13px;
   border-bottom: 1px solid var(--border-primary);
-  background-color: var(--panel-head);
+  background: var(--panel-head);
 }
 
 .dropdownTitle {
@@ -309,7 +309,7 @@
   align-items: center;
   padding: 15px 14px;
   border-bottom: 1px solid var(--border-primary);
-  background-color: var(--panel-head);
+  background: var(--panel-head);
 }
 
 .avatarLarge {
@@ -319,7 +319,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background-color: var(--chip);
+  background: var(--chip);
   border: 1px solid var(--accent-primary);
   font-family: var(--font-display);
   font-weight: 700;

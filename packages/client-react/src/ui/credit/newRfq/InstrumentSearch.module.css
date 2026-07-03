@@ -58,7 +58,7 @@
   left: 0;
   right: 0;
   z-index: 10;
-  background-color: var(--panel);
+  background: var(--panel);
   backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--border);
   border-radius: 4px;

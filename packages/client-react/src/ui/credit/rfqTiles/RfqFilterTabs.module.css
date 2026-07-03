@@ -18,7 +18,7 @@
 
 .tab[data-active="true"] {
   font-weight: 600;
-  background-color: var(--chip);
+  background: var(--chip);
   color: var(--accent-primary);
   box-shadow: var(--glow);
 }

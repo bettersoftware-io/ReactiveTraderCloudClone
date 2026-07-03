@@ -27,7 +27,7 @@
   justify-content: space-between;
   padding: 16px 22px;
   border-bottom: 1px solid var(--border-primary);
-  background-color: var(--panel-head);
+  background: var(--panel-head);
 }
 
 .title {
@@ -118,7 +118,7 @@
   padding: 0;
   border: 1px solid var(--border-primary);
   border-radius: 10px;
-  background-color: var(--chip);
+  background: var(--chip);
   cursor: pointer;
   transition:
     background-color 0.15s,
@@ -184,7 +184,7 @@
   justify-content: space-between;
   padding: 13px 22px;
   border-top: 1px solid var(--border-primary);
-  background-color: var(--panel-head);
+  background: var(--panel-head);
 }
 
 .footNote {
