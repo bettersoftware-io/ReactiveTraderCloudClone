@@ -1,7 +1,10 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { WatchlistPanel } from "#/equities/Watchlist/WatchlistPanel";
+import {
+  WatchlistPanel,
+  WatchlistPanelControls,
+} from "#/equities/Watchlist/WatchlistPanel";
 import type { WatchRowVm } from "#/equities/watchlistVm";
 import { PreferencesProvider } from "#/shell/Preferences/PreferencesProvider";
 
@@ -29,15 +32,10 @@ const ROWS: WatchRowVm[] = [
 ];
 
 describe("WatchlistPanel", () => {
-  test("renders a row per symbol, marks the selected one, shows the sort label", () => {
-    const { container, getByText } = render(
+  test("renders a row per symbol and marks the selected one", () => {
+    const { container } = render(
       <PreferencesProvider>
-        <WatchlistPanel
-          rows={ROWS}
-          wlSort="chg"
-          onSelect={noop}
-          onCycleSort={noop}
-        />
+        <WatchlistPanel rows={ROWS} onSelect={noop} />
       </PreferencesProvider>,
     );
     expect(container.querySelectorAll("[data-watch-sym]")).toHaveLength(2);
@@ -46,7 +44,24 @@ describe("WatchlistPanel", () => {
         .querySelector('[data-watch-sym="AAPL"]')
         ?.getAttribute("data-selected"),
     ).toBe("true");
+  });
+});
+
+describe("WatchlistPanelControls", () => {
+  test("shows the sort label and cycles sort on click", () => {
+    let clicks = 0;
+
+    function handleCycle(): void {
+      clicks += 1;
+    }
+
+    const { getByText } = render(
+      <WatchlistPanelControls wlSort="chg" onCycleSort={handleCycle} />,
+    );
     expect(getByText("% CHG")).toBeTruthy();
+
+    fireEvent.click(getByText("% CHG"));
+    expect(clicks).toBe(1);
   });
 });
 

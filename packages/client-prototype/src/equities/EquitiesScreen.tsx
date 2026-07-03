@@ -15,7 +15,10 @@ import type { EqPanelId } from "#/equities/useEqDock";
 import { useEqDock } from "#/equities/useEqDock";
 import { useEqTicket } from "#/equities/useEqTicket";
 import { useEquities } from "#/equities/useEquities";
-import { WatchlistPanel } from "#/equities/Watchlist/WatchlistPanel";
+import {
+  WatchlistPanel,
+  WatchlistPanelControls,
+} from "#/equities/Watchlist/WatchlistPanel";
 import { watchlistVm } from "#/equities/watchlistVm";
 import { Panel } from "#/layout/Panel";
 import { SplitHandle } from "#/layout/SplitHandle";
@@ -192,15 +195,16 @@ export function EquitiesScreen(): ReactElement {
               <Panel
                 id={WATCH_PANEL}
                 head={<span className={styles.regionLabel}>☰ Watchlist</span>}
+                headControls={
+                  <WatchlistPanelControls
+                    wlSort={chart.wlSort}
+                    onCycleSort={chart.cycleWlSort}
+                  />
+                }
                 maxPanel={dock.maxPanel}
                 onToggleMax={dock.toggleMax}
               >
-                <WatchlistPanel
-                  rows={rows}
-                  wlSort={chart.wlSort}
-                  onSelect={chart.selectEq}
-                  onCycleSort={chart.cycleWlSort}
-                />
+                <WatchlistPanel rows={rows} onSelect={chart.selectEq} />
               </Panel>
             </div>
           </>
