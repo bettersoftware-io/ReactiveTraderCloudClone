@@ -47,7 +47,10 @@ import { AmbientBackgroundPage } from "./pages/shell/background/AmbientBackgroun
 import { BootGatePage } from "./pages/shell/boot/BootGatePage";
 import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
-import { LayoutEnginePage } from "./pages/shell/layout/LayoutEnginePage";
+import {
+  LayoutEnginePage,
+  type LayoutEngineProps,
+} from "./pages/shell/layout/LayoutEnginePage";
 import { LockScreenPage } from "./pages/shell/lock/LockScreenPage";
 import {
   AnimationProbePage,
@@ -121,6 +124,7 @@ import {
   type CurrencyFilterProps,
 } from "./pages/fx/liveRates/CurrencyFilterPage";
 import { LiveRatesPanelPage } from "./pages/fx/liveRates/LiveRatesPanelPage";
+import { LiveRatesWorkspacePage } from "./pages/fx/liveRates/LiveRatesWorkspacePage";
 import {
   RfqCountdownPage,
   type RfqCountdownProps,
@@ -154,10 +158,6 @@ import {
   TileRfqPage,
   type TileRfqProps,
 } from "./pages/fx/liveRates/tile/TileRfqPage";
-import {
-  ViewTogglePage,
-  type ViewToggleProps,
-} from "./pages/fx/liveRates/ViewTogglePage";
 import {
   HeaderChromePage,
   type HeaderChromeProps,
@@ -294,15 +294,18 @@ export const LiveRatesPanel = component<
   return new LiveRatesPanelPage(ctx);
 });
 
+export const LiveRatesWorkspace = component<
+  Record<string, never>,
+  LiveRatesWorkspacePage
+>((ctx) => {
+  return new LiveRatesWorkspacePage(ctx);
+});
+
 export const CurrencyFilter = component<
   CurrencyFilterProps,
   CurrencyFilterPage
 >((ctx) => {
   return new CurrencyFilterPage(ctx);
-});
-
-export const ViewToggle = component<ViewToggleProps, ViewTogglePage>((ctx) => {
-  return new ViewTogglePage(ctx);
 });
 
 export const Tile = component<TileProps, TilePage>((ctx) => {
@@ -394,7 +397,7 @@ export const AdminPanel = component<Record<string, never>, AdminPanelPage>(
   },
 );
 
-export const LayoutEngine = component<Record<string, never>, LayoutEnginePage>(
+export const LayoutEngine = component<LayoutEngineProps, LayoutEnginePage>(
   (ctx) => {
     return new LayoutEnginePage(ctx);
   },

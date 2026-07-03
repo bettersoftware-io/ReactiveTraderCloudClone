@@ -3,6 +3,7 @@ import type { BehaviorSubject } from "rxjs";
 
 import { ViewModelProvider } from "@rtc/react-bindings";
 
+import { FxViewProvider } from "#/ui/fx/FxViewProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import type {
@@ -34,7 +35,9 @@ export const reactDriver: UiContractDriver = {
     const { container, unmount } = rtlRender(
       <ViewModelProvider viewModel={hooks}>
         <ThemeProvider>
-          <PropsHost subject={propsSubject} build={build} />
+          <FxViewProvider>
+            <PropsHost subject={propsSubject} build={build} />
+          </FxViewProvider>
         </ThemeProvider>
       </ViewModelProvider>,
     );

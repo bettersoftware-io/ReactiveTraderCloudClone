@@ -3,9 +3,11 @@ import { useState } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { FxViewProvider } from "./fx/FxViewProvider";
 import { AmbientBackground } from "./shell/background/AmbientBackground";
 import { HeaderChrome, type WorkspaceTab } from "./shell/chrome/HeaderChrome";
 import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
+import { appHeadRegistry } from "./shell/layout/engine/appHeadRegistry";
 import { appPanelRegistry } from "./shell/layout/engine/appPanelRegistry";
 import { InhouseLayoutEngine } from "./shell/layout/engine/InhouseLayoutEngine";
 import { LockScreen } from "./shell/lock/LockScreen";
@@ -36,14 +38,17 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
   const { useLayout } = useViewModel();
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
   return (
-    <InhouseLayoutEngine
-      state={state}
-      registry={appPanelRegistry}
-      onMaximize={maximize}
-      onRestore={restore}
-      onCollapse={collapse}
-      onExpand={expand}
-      onResize={resize}
-    />
+    <FxViewProvider>
+      <InhouseLayoutEngine
+        state={state}
+        registry={appPanelRegistry}
+        headRegistry={appHeadRegistry}
+        onMaximize={maximize}
+        onRestore={restore}
+        onCollapse={collapse}
+        onExpand={expand}
+        onResize={resize}
+      />
+    </FxViewProvider>
   );
 }

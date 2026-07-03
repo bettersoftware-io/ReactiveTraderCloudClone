@@ -29,6 +29,7 @@ export function InhouseLayoutEngine({
   state,
   registry,
   specs = PANEL_SPECS,
+  headRegistry,
   onMaximize,
   onRestore,
   onCollapse,
@@ -39,6 +40,7 @@ export function InhouseLayoutEngine({
     state,
     registry,
     specs,
+    headRegistry,
     onMaximize,
     onRestore,
     onCollapse,
@@ -61,6 +63,10 @@ export interface InhouseLayoutEngineProps {
   state: LayoutState;
   registry: PanelRegistry;
   specs?: Readonly<Record<PanelId, PanelSpec>>;
+  /** Per-panel head-slot override: when set for a panel id, its element renders
+   * in place of the default title span (the collapse/maximize controls stay).
+   * Used for the FX Live Rates head tabs + CHARTS chip (Task 11). */
+  headRegistry?: Partial<Record<PanelId, () => ReactElement>>;
   onMaximize: LayoutIntents["maximize"];
   onRestore: LayoutIntents["restore"];
   onCollapse: LayoutIntents["collapse"];
@@ -72,6 +78,7 @@ interface SharedProps {
   state: LayoutState;
   registry: PanelRegistry;
   specs: Readonly<Record<PanelId, PanelSpec>>;
+  headRegistry?: Partial<Record<PanelId, () => ReactElement>>;
   onMaximize: LayoutIntents["maximize"];
   onRestore: LayoutIntents["restore"];
   onCollapse: LayoutIntents["collapse"];
@@ -117,6 +124,7 @@ function SplitNode({
   state,
   registry,
   specs,
+  headRegistry,
   onMaximize,
   onRestore,
   onCollapse,
@@ -189,6 +197,7 @@ function SplitNode({
     state,
     registry,
     specs,
+    headRegistry,
     onMaximize,
     onRestore,
     onCollapse,
@@ -270,6 +279,7 @@ function renderPanel(
     state,
     registry,
     specs,
+    headRegistry,
     onMaximize,
     onRestore,
     onCollapse,
@@ -281,6 +291,7 @@ function renderPanel(
   const maximizedHere = state.maximized === panelId;
   const isMaximized = state.maximized !== null;
   const strip = (isMaximized && !maximizedHere) || collapsed;
+  const headContent = headRegistry?.[panelId];
 
   return (
     <section
@@ -295,7 +306,16 @@ function renderPanel(
         data-testid={`panel-${panelId}-header`}
         className={styles.panelHeader}
       >
-        <span className={styles.panelTitle}>{spec?.title ?? panelId}</span>
+        {headContent ? (
+          <div className={styles.panelHeadContent}>{headContent()}</div>
+        ) : (
+          <span
+            data-testid={`panel-${panelId}-title`}
+            className={styles.panelTitle}
+          >
+            {spec?.title ?? panelId}
+          </span>
+        )}
         <div className={styles.panelControls}>
           <button
             type="button"

@@ -51,14 +51,6 @@ export class LiveRatesPanelPage extends MountedComponent<
     await this.user.click(this.q().getByTestId(`filter-${category}`));
   }
 
-  async toggleView(): Promise<void> {
-    await this.user.click(this.q().getByTestId("view-toggle"));
-  }
-
-  viewToggleLabel(): string {
-    return (this.q().getByTestId("view-toggle").textContent ?? "").trim();
-  }
-
   /** True when at least one tile renders a chart (svg sparkline, chart view). */
   hasAnyChart(): boolean {
     return this.root.querySelector("svg") !== null;
