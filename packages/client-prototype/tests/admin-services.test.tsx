@@ -33,4 +33,20 @@ describe("ServiceHealth", () => {
     expect(container.querySelector('[data-status="DEGRADED"]')).toBeTruthy();
     expect(container.querySelectorAll("[data-status]")).toHaveLength(2);
   });
+
+  test("nests each row's utilisation fill under the row's status data attribute so the CSS glow rule can target it", () => {
+    // The box-shadow glow itself is a paint property jsdom cannot observe;
+    // this pins the data-attr wiring the `.row[data-status="..."] .fill`
+    // descendant selectors depend on. Actual glow: opus paint-review + live browser.
+    const { container } = render(<ServiceHealth services={SERVICES} />);
+
+    const onlineRow = container.querySelector('[data-status="ONLINE"]');
+    const degradedRow = container.querySelector('[data-status="DEGRADED"]');
+
+    const onlineFill = onlineRow?.querySelector('[style*="--bar-pct"]');
+    const degradedFill = degradedRow?.querySelector('[style*="--bar-pct"]');
+
+    expect(onlineFill).toBeTruthy();
+    expect(degradedFill).toBeTruthy();
+  });
 });
