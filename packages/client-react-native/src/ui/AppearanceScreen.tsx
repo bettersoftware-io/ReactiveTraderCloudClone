@@ -29,7 +29,9 @@ const MODE_LABEL: Record<ThemeModePreference, string> = {
 const SKIN_LABEL: Record<ThemeSkin, string> = {
   classic: "Classic",
   holo: "Holo",
+  holo3d: "Holo 3D",
   terminal: "Terminal",
+  terminal3d: "Terminal 3D",
   neon: "Neon",
 };
 

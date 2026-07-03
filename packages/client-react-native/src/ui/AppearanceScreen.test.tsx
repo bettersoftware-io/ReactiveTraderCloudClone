@@ -23,6 +23,14 @@ test("selects a skin on press", async () => {
   expect(setSkin).toHaveBeenCalledWith("terminal");
 });
 
+test("lists the 3d skins and selects holo3d on press", async () => {
+  const setSkin = jest.fn();
+  await renderScreen(fakeViewModel(() => {}, setSkin));
+  expect(screen.getByTestId("appearance-skin-terminal3d")).toBeTruthy();
+  await fireEvent.press(screen.getByTestId("appearance-skin-holo3d"));
+  expect(setSkin).toHaveBeenCalledWith("holo3d");
+});
+
 test("marks the active skin selected", async () => {
   await renderScreen(
     fakeViewModel(
