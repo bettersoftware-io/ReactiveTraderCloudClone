@@ -164,6 +164,7 @@ export function useFxRates(opts: UseFxRatesOptions = {}): RatesApi {
   const [pnl, setPnl] = useState(PNL_SEED);
 
   const fxSeqRef = useRef(FX_SEQ_START);
+  const activitySeqRef = useRef(0);
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   useEffect(() => {
@@ -225,8 +226,12 @@ export function useFxRates(opts: UseFxRatesOptions = {}): RatesApi {
   }, []);
 
   function logEvt(tag: string, msg: string, color: string): void {
+    const id = activitySeqRef.current++;
     setActivity((prev) => {
-      return [{ t: hhmm(), tag, msg, color }, ...prev].slice(0, ACTIVITY_CAP);
+      return [{ id, t: hhmm(), tag, msg, color }, ...prev].slice(
+        0,
+        ACTIVITY_CAP,
+      );
     });
   }
 

@@ -22,12 +22,7 @@ export function ActivityView(props: ActivityViewProps): ReactElement {
   return (
     <div>
       {events.map((event) => {
-        return (
-          <ActivityRow
-            key={`${event.t}-${event.tag}-${event.msg}`}
-            event={event}
-          />
-        );
+        return <ActivityRow key={event.id} event={event} />;
       })}
     </div>
   );
