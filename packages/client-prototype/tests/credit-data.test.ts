@@ -41,4 +41,33 @@ describe("creditData seeds", () => {
     expect(parseNotional("3.5m")).toBe(3_500_000);
     expect(parseNotional("250")).toBe(250);
   });
+
+  test("seedQuotes jitters losing dealers deterministically around the base price (not identical to it)", () => {
+    const closed = SEED_RFQS[0];
+    const losingClosed = closed.quotes.filter((q) => {
+      return q.dealerId !== closed.acceptedDealerId;
+    });
+    expect(losingClosed).toHaveLength(3);
+
+    for (const q of losingClosed) {
+      expect(q.price).not.toBeNull();
+      expect(q.price).not.toBe(99.8);
+      expect(Math.abs((q.price as number) - 99.8)).toBeLessThanOrEqual(0.5);
+    }
+
+    expect(
+      new Set(
+        losingClosed.map((q) => {
+          return q.price;
+        }),
+      ).size,
+    ).toBe(3);
+
+    const cancelled = SEED_RFQS[1];
+
+    for (const q of cancelled.quotes) {
+      expect(q.price).not.toBe(100.6);
+      expect(Math.abs((q.price as number) - 100.6)).toBeLessThanOrEqual(0.5);
+    }
+  });
 });
