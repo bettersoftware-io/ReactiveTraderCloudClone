@@ -27,7 +27,7 @@ Feature: FX trade blotter
   Scenario: export CSV button is visible and labeled
     Then the blotter table is visible
     And the export CSV button is visible
-    And the export CSV button text contains "Export CSV"
+    And the export CSV button text contains "CSV"
 
   Scenario: new trade row has a non-empty background color
     Then a price tile is visible within 5 seconds

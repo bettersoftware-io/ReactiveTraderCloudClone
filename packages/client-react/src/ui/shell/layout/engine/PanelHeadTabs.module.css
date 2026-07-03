@@ -48,3 +48,26 @@
   background: var(--chip);
   border-color: var(--border-strong);
 }
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+/* CSV export chip (PROTO L478) — always accent-colored, unlike .headChip's
+ * toggle-driven data-active state; it triggers an action, not a mode. */
+.csvChip {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  margin-right: 4px;
+  color: var(--accent-primary);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+}

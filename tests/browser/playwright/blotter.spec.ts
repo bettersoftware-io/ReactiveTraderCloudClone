@@ -35,7 +35,7 @@ test.describe("FX trade blotter", () => {
   test("export CSV button is visible and labeled", async ({ ctx }) => {
     await fxTrading.expectBlotterVisible(ctx);
     await blotter.expectExportCsvVisible(ctx);
-    await blotter.expectExportCsvTextContains(ctx, "Export CSV");
+    await blotter.expectExportCsvTextContains(ctx, "CSV");
   });
 
   test("new trade row has a non-empty background color", async ({ ctx }) => {

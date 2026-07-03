@@ -30,6 +30,7 @@ import {
   type DateFilterProps,
 } from "./pages/fx/blotter/DateFilterPage";
 import { FxBlotterPage } from "./pages/fx/blotter/FxBlotterPage";
+import { FxBlotterWorkspacePage } from "./pages/fx/blotter/FxBlotterWorkspacePage";
 import {
   NumberFilterPage,
   type NumberFilterProps,
@@ -211,6 +212,13 @@ export const FxBlotter = component<Record<string, never>, FxBlotterPage>(
     return new FxBlotterPage(ctx);
   },
 );
+
+export const FxBlotterWorkspace = component<
+  Record<string, never>,
+  FxBlotterWorkspacePage
+>((ctx) => {
+  return new FxBlotterWorkspacePage(ctx);
+});
 
 export const QuickFilter = component<QuickFilterProps, QuickFilterPage>(
   (ctx) => {

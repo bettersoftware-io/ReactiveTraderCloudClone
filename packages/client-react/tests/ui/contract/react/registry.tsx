@@ -65,6 +65,7 @@ import { NumberFilter as NumberFilterComponent } from "#/ui/fx/blotter/columnFil
 import { SetFilter as SetFilterComponent } from "#/ui/fx/blotter/columnFilter/SetFilter";
 import type { SortState } from "#/ui/fx/blotter/columnSort";
 import { FxBlotter as FxBlotterComponent } from "#/ui/fx/blotter/FxBlotter";
+import { FxBlotterHead as FxBlotterHeadComponent } from "#/ui/fx/blotter/FxBlotterHead";
 import { QuickFilter as QuickFilterComponent } from "#/ui/fx/blotter/QuickFilter";
 import { CurrencyFilter as CurrencyFilterComponent } from "#/ui/fx/liveRates/CurrencyFilter";
 import { LiveRatesHead as LiveRatesHeadComponent } from "#/ui/fx/liveRates/LiveRatesHead";
@@ -118,6 +119,7 @@ import {
   EquitiesPanel,
   ErrorRatePanel,
   FxBlotter,
+  FxBlotterWorkspace,
   HeaderChrome,
   IncidentControls,
   InstrumentTabs,
@@ -244,6 +246,17 @@ export const registry = new Map<AnyToken, ElementFor>([
     FxBlotter,
     (): ReactElement => {
       return <FxBlotterComponent />;
+    },
+  ],
+  [
+    FxBlotterWorkspace,
+    (): ReactElement => {
+      return (
+        <>
+          <FxBlotterHeadComponent />
+          <FxBlotterComponent />
+        </>
+      );
     },
   ],
   [

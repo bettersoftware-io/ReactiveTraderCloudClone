@@ -39,7 +39,7 @@ describe("FX trade blotter", () => {
     const ctx = getCtx();
     fxTrading.expectBlotterVisible(ctx);
     blotter.expectExportCsvVisible(ctx);
-    blotter.expectExportCsvTextContains(ctx, "Export CSV");
+    blotter.expectExportCsvTextContains(ctx, "CSV");
   });
 
   it("new trade row has a non-empty background color", () => {
