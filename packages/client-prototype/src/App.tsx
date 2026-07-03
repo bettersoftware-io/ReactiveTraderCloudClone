@@ -16,48 +16,42 @@ export function App(): ReactElement {
   const [loggedOut, setLoggedOut] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
 
-  if (!booted) {
-    return (
-      <ThemeProvider>
-        <BootSequence
-          onDone={() => {
-            setBooted(true);
-          }}
-        />
-      </ThemeProvider>
-    );
-  }
-
   return (
     <ThemeProvider>
       <PreferencesProvider>
+        <AppShell
+          tab={tab}
+          onSelectTab={setTab}
+          lang={lang}
+          onSelectLang={setLang}
+          onOpenPrefs={() => {
+            setPrefsOpen(true);
+          }}
+          onReboot={() => {
+            setBooted(false);
+          }}
+          onLogout={() => {
+            setLoggedOut(true);
+          }}
+        />
+        {prefsOpen ? (
+          <PreferencesModal
+            onClose={() => {
+              setPrefsOpen(false);
+            }}
+          />
+        ) : null}
         {loggedOut ? (
           <LockScreen
             onAuthenticate={() => {
               setLoggedOut(false);
             }}
           />
-        ) : (
-          <AppShell
-            tab={tab}
-            onSelectTab={setTab}
-            lang={lang}
-            onSelectLang={setLang}
-            onOpenPrefs={() => {
-              setPrefsOpen(true);
-            }}
-            onReboot={() => {
-              setBooted(false);
-            }}
-            onLogout={() => {
-              setLoggedOut(true);
-            }}
-          />
-        )}
-        {prefsOpen ? (
-          <PreferencesModal
-            onClose={() => {
-              setPrefsOpen(false);
+        ) : null}
+        {!booted ? (
+          <BootSequence
+            onDone={() => {
+              setBooted(true);
             }}
           />
         ) : null}
