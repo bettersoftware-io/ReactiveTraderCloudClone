@@ -57,6 +57,7 @@ export function RateTile(props: RateTileProps): ReactElement {
       className={styles.tile}
       data-tile-sym={vm.sym}
       data-booked={String(stage === "success")}
+      data-overlay-active={String(stage !== "idle")}
     >
       <div className={styles.header}>
         <span className={styles.pair}>{vm.meta.pair}</span>

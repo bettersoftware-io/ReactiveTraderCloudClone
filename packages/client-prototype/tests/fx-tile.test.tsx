@@ -61,6 +61,24 @@ describe("RateTile", () => {
         ?.getAttribute("data-booked"),
     ).toBe("true");
   });
+
+  test("strengthens the border while any exec/RFQ/done overlay is active", () => {
+    const { container, rerender } = render(
+      <RateTile vm={makeVm({})} stage="idle" overlay={null} />,
+    );
+    expect(
+      container
+        .querySelector('[data-tile-sym="EURUSD"]')
+        ?.getAttribute("data-overlay-active"),
+    ).toBe("false");
+
+    rerender(<RateTile vm={makeVm({})} stage="executing" overlay={null} />);
+    expect(
+      container
+        .querySelector('[data-tile-sym="EURUSD"]')
+        ?.getAttribute("data-overlay-active"),
+    ).toBe("true");
+  });
 });
 
 function makeVm(overrides: Partial<TileVm>): TileVm {
