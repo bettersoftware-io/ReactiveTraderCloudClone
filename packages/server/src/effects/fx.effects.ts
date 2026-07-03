@@ -48,6 +48,8 @@ const referenceData$: WsEffect<Ctx> = stream(
             symbol: p.symbol,
             ratePrecision: p.ratePrecision,
             pipsPosition: p.pipsPosition,
+            baseMid: p.baseMid,
+            typicalSpreadPips: p.typicalSpreadPips,
           };
         });
         const message: ReferenceDataMessage = {

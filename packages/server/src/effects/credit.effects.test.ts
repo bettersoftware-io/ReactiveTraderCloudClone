@@ -18,6 +18,7 @@ describe("credit effects", () => {
       maturity: "20300815",
       interestRate: 2.4,
       benchmark: "10Y UST 4.000 08/2030",
+      refPrice: 98.4,
     };
     const ctx = {
       instruments: {
@@ -50,6 +51,7 @@ describe("credit effects", () => {
       maturity: "20300815",
       interestRate: 2.4,
       benchmark: "10Y UST 4.000 08/2030",
+      refPrice: 98.4,
     };
     const ctx = {
       instruments: {

@@ -43,6 +43,8 @@ const eurusd: CurrencyPair = {
   base: "EUR",
   terms: "USD",
   defaultNotional: 1_000_000,
+  baseMid: 1.09213,
+  typicalSpreadPips: 1.4,
 };
 
 const eurusdPrice: Price = {
@@ -93,6 +95,8 @@ const gbpusd: CurrencyPair = {
   base: "GBP",
   terms: "USD",
   defaultNotional: 1_000_000,
+  baseMid: 1.26414,
+  typicalSpreadPips: 1.8,
 };
 const usdjpy: CurrencyPair = {
   symbol: "USDJPY",
@@ -101,6 +105,8 @@ const usdjpy: CurrencyPair = {
   base: "USD",
   terms: "JPY",
   defaultNotional: 1_000_000,
+  baseMid: 151.203,
+  typicalSpreadPips: 1.6,
 };
 const gbpusdPrice: Price = {
   symbol: "GBPUSD",
@@ -376,6 +382,7 @@ const creditInstruments: readonly Instrument[] = [
     maturity: "2034-02-15",
     interestRate: 1.5,
     benchmark: "10Y",
+    refPrice: 98.4,
   },
   {
     id: 2,
@@ -385,6 +392,7 @@ const creditInstruments: readonly Instrument[] = [
     maturity: "2030-05-11",
     interestRate: 2.4,
     benchmark: "7Y",
+    refPrice: 99.8,
   },
 ];
 const creditDealers: readonly Dealer[] = [

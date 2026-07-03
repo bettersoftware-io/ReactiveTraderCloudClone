@@ -18,6 +18,8 @@ describe("fx effects", () => {
         base: "EUR",
         terms: "USD",
         defaultNotional: 1_000_000,
+        baseMid: 1.09213,
+        typicalSpreadPips: 1.4,
       },
     ];
     const ctx = {
@@ -33,7 +35,15 @@ describe("fx effects", () => {
       {
         type: SERVER_MSG.REFERENCE_DATA,
         payload: {
-          updates: [{ symbol: "EURUSD", ratePrecision: 5, pipsPosition: 4 }],
+          updates: [
+            {
+              symbol: "EURUSD",
+              ratePrecision: 5,
+              pipsPosition: 4,
+              baseMid: 1.09213,
+              typicalSpreadPips: 1.4,
+            },
+          ],
           isStateOfTheWorld: true,
           isStale: false,
         },
@@ -41,7 +51,15 @@ describe("fx effects", () => {
       {
         type: SERVER_MSG.REFERENCE_DATA,
         payload: {
-          updates: [{ symbol: "EURUSD", ratePrecision: 5, pipsPosition: 4 }],
+          updates: [
+            {
+              symbol: "EURUSD",
+              ratePrecision: 5,
+              pipsPosition: 4,
+              baseMid: 1.09213,
+              typicalSpreadPips: 1.4,
+            },
+          ],
           isStateOfTheWorld: false,
           isStale: false,
         },

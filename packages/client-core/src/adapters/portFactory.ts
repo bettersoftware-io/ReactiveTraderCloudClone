@@ -168,6 +168,8 @@ function createReferenceDataPort(ws: IWsAdapter): ReferenceDataPort {
               ratePrecision: dto.ratePrecision,
               pipsPosition: dto.pipsPosition,
               defaultNotional: dto.symbol === "NZDUSD" ? 10_000_000 : 1_000_000,
+              baseMid: dto.baseMid,
+              typicalSpreadPips: dto.typicalSpreadPips,
             };
           });
           subscriber.next(pairs);

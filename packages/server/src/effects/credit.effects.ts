@@ -82,6 +82,7 @@ const instruments$: WsEffect<Ctx> = stream(
             maturity: inst.maturity,
             interestRate: inst.interestRate,
             benchmark: inst.benchmark,
+            refPrice: inst.refPrice,
           };
           return out(SERVER_MSG.INSTRUMENT_EVENT, {
             type: "added",
