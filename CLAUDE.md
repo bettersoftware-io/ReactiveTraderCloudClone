@@ -18,8 +18,12 @@ pnpm typecheck   # tsc --noEmit in all packages
 pnpm test        # vitest run in all packages
 pnpm test:e2e    # Playwright (client only)
 pnpm dev         # Vite dev server (client) + tsx watch (server)
+pnpm dev:proto   # @rtc/client-prototype only — the v2 design React port (Vite) → http://localhost:5273
+pnpm dev:design  # standalone v2 design prototype HTML, served by a zero-dep Node script → http://localhost:8899
 pnpm clean       # Remove dist/ in all packages
 ```
+
+`dev:design` serves `docs/design/v2/standalone/Reactive Trader.html` (a self-contained design artifact, not app code) via `scripts/serve-design.mjs`. `dev:proto` runs its React re-implementation in `packages/client-prototype`.
 
 ## Package Structure
 
