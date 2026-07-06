@@ -7,7 +7,7 @@ settings:
 overrides:
   uuid@11: ^11.1.1
   serialize-javascript: ^7.0.3
-  '@xmldom/xmldom@<0.8.13': ^0.9.10
+  '@xmldom/xmldom@<0.8.13': ^0.8.13
   '@expo/metro-runtime': ~57.0.3
 
 importers:
@@ -3311,6 +3311,10 @@ packages:
 
   '@vue/shared@3.5.39':
     resolution: {integrity: sha512-l1rrBtBfTnmxvtsvdQDXltUUy8S1Y+ZaqdfUzmAnJkTd8Z8rv5v/ytW+TKiqEOWyHPoqtPlNFSs0lhRmYVSHVA==}
+
+  '@xmldom/xmldom@0.8.13':
+    resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
+    engines: {node: '>=10.0.0'}
 
   '@xmldom/xmldom@0.9.10':
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
@@ -9754,7 +9758,7 @@ snapshots:
 
   '@expo/plist@0.8.0':
     dependencies:
-      '@xmldom/xmldom': 0.9.10
+      '@xmldom/xmldom': 0.8.13
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
 
@@ -11342,6 +11346,8 @@ snapshots:
       '@vue/shared': 3.5.39
 
   '@vue/shared@3.5.39': {}
+
+  '@xmldom/xmldom@0.8.13': {}
 
   '@xmldom/xmldom@0.9.10': {}
 
