@@ -6,43 +6,53 @@ import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 const TAB_PREFIX = "instrument-tab-";
 
 /**
- * Page object for the equity InstrumentTabs. Reads/writes the REAL
- * eqWorkspace machine directly (openTabs/sel/select/closeTab) — no props.
+ * Page object for EqChartHead — the panel headControls composing the
+ * instrument tabs (real eqWorkspace machine) and timeframe pills.
  */
-export class InstrumentTabsPage extends MountedComponent<
-  Record<string, never>
-> {
+export class EqChartHeadPage extends MountedComponent<Record<string, never>> {
   private readonly user: UserEvent = userEvent.setup();
 
   private tabEls(): HTMLElement[] {
     return within(this.root).queryAllByTestId(new RegExp(`^${TAB_PREFIX}`));
   }
 
-  /** The symbols of the rendered (open) tabs, in order. */
   tabs(): string[] {
     return this.tabEls().map((el) => {
       return el.getAttribute("data-testid")?.replace(TAB_PREFIX, "") ?? "";
     });
   }
 
-  /** The active (selected) tab's symbol, or null when none is active. */
-  activeSymbol(): string | null {
+  activeTab(): string | null {
     const active = this.tabEls().find((el) => {
       return el.getAttribute("data-active") === "true";
     });
     return active?.getAttribute("data-testid")?.replace(TAB_PREFIX, "") ?? null;
   }
 
-  /** Click a tab → selects it through the real eqWorkspace machine. */
-  async select(symbol: string): Promise<void> {
+  activeTf(): string | null {
+    const active = within(this.root)
+      .queryAllByRole("button")
+      .find((el) => {
+        return (
+          el.hasAttribute("data-tf") &&
+          el.getAttribute("data-active") === "true"
+        );
+      });
+    return active?.getAttribute("data-tf") ?? null;
+  }
+
+  async selectTab(symbol: string): Promise<void> {
     await this.user.click(
       within(this.root).getByTestId(`${TAB_PREFIX}${symbol}`),
     );
   }
 
-  /** Click a tab's close glyph → closes it through the real eqWorkspace machine. */
-  async close(symbol: string): Promise<void> {
+  async closeTab(symbol: string): Promise<void> {
     const tab = within(this.root).getByTestId(`${TAB_PREFIX}${symbol}`);
     await this.user.click(within(tab).getByText("✕"));
+  }
+
+  async selectTimeframe(tf: string): Promise<void> {
+    await this.user.click(within(this.root).getByRole("button", { name: tf }));
   }
 }

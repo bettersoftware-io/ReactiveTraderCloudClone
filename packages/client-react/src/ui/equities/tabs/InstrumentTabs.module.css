@@ -11,6 +11,9 @@
 }
 
 .tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex: none;
   padding: 6px 12px;
   font-family: var(--font-mono);
@@ -30,9 +33,19 @@
 
 .tab[data-active="true"] {
   color: var(--accent-primary);
+  background-color: var(--panel);
   border-bottom-color: var(--accent-primary);
 }
 
 .tab:hover:not([data-active="true"]) {
   color: var(--text-secondary);
+}
+
+.close {
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.close:hover {
+  opacity: 1;
 }

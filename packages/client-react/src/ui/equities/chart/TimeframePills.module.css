@@ -1,0 +1,28 @@
+.pills {
+  display: flex;
+  gap: 4px;
+}
+
+.pill {
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 9px;
+  line-height: 13px;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+
+.pill[data-active="true"] {
+  color: var(--accent-primary);
+  background-color: var(--chip);
+  border-color: var(--border-strong);
+}

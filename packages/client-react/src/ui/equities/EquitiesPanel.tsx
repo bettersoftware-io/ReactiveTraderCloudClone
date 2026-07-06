@@ -14,46 +14,35 @@ import { Watchlist } from "./watchlist/Watchlist";
 import styles from "./EquitiesPanel.module.css";
 
 /**
- * Equities module root — composes all sub-panels around a selected-symbol
- * `useState`. The symbol is lifted here so tab, chart, depth, ticket, and
- * watchlist all stay in sync through a single source of truth.
+ * Equities module root — composes all sub-panels around the shared
+ * eqWorkspace machine's selection (the same source of truth the instrument
+ * tabs read/write directly), so tab clicks and watchlist-row clicks stay in
+ * sync through one machine instead of a locally-lifted `useState`.
+ * Superseded by the four-panel dock layout in a later phase.
  */
 export function EquitiesPanel(): ReactElement {
-  const { useWatchlist } = useViewModel();
-  const instruments = useWatchlist();
-
-  // Selected symbol — default to the first instrument if available.
-  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+  const { useEqWorkspace } = useViewModel();
+  const { state, select } = useEqWorkspace();
   const [blotterView, setBlotterView] = useState<BlotterView>("orders");
 
-  // Use first instrument when selected is null (seeds the ticket with a real symbol)
-  const activeSymbol = selectedSymbol ?? instruments[0]?.symbol ?? "";
+  const activeSymbol = state.sel;
 
   return (
     <div className={styles.panel}>
       {/* Instrument tabs row */}
       <div className={styles.tabs}>
-        <InstrumentTabs
-          selectedSymbol={activeSymbol}
-          onSelect={setSelectedSymbol}
-        />
+        <InstrumentTabs />
       </div>
 
       <div className={styles.body}>
         {/* Left column: Watchlist (top) + Sector heatmap (bottom) */}
         <div className={styles.watchlistPane}>
           <div className={styles.sectionHeading}>WATCHLIST</div>
-          <Watchlist
-            selectedSymbol={activeSymbol}
-            onSelect={setSelectedSymbol}
-          />
+          <Watchlist selectedSymbol={activeSymbol} onSelect={select} />
         </div>
         <div className={styles.sectorPane}>
           <div className={styles.sectionHeading}>SECTORS</div>
-          <SectorHeatmap
-            selectedSymbol={activeSymbol}
-            onSelect={setSelectedSymbol}
-          />
+          <SectorHeatmap selectedSymbol={activeSymbol} onSelect={select} />
         </div>
 
         {/* Centre column: chart (top) + order ticket (bottom) */}
