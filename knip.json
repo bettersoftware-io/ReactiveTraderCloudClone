@@ -51,7 +51,7 @@
       "ignoreDependencies": [
         "expo-status-bar",
         "babel-plugin-module-resolver",
-        "expo-updates"
+        "babel-preset-expo"
       ]
     },
     "tests": {
