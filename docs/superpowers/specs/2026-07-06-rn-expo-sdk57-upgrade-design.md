@@ -82,6 +82,17 @@ surfaces any remaining config/version drift.
 | `babel-preset-expo` | `package.json` devDep | Bump `~55.0.23` → `~57.x`. (Verify whether `--fix` catches it as an expo-managed package; if not, manual.) |
 | `@testing-library/react-native` | `package.json` devDep | Verify React 19.2 / RN 0.86 compat; bump `^14.0.1` only if `expo-doctor` / jest flags it. |
 
+### 2a. Implementation note — `expo.install.exclude` (added during execution)
+
+The RN package's `package.json` carries an `expo` block with
+`install.exclude: ["react", "react-dom"]`. `package.json` cannot hold comments,
+so the rationale lives here: `expo-doctor` wanted `react`/`react-dom` at the SDK's
+exact `bundledNativeModules` patch, but the monorepo pins a single shared
+`^19.2.3` range across all packages (syncpack). The exclude tells `expo install
+--fix` to stop "correcting" react/react-dom back to the SDK patch, keeping the
+one workspace-consistent range and avoiding a duplicate-React install. Remove it
+only if react/react-dom are ever allowed to diverge per-package.
+
 ### 3. Config migration
 
 Driven by `expo-doctor` output:
