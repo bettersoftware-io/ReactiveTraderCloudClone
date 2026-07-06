@@ -15,6 +15,10 @@ import {
   type PairPnlBarsProps,
 } from "./pages/fx/analytics/PairPnlBarsPage";
 import {
+  PnlChartPage,
+  type PnlChartProps,
+} from "./pages/fx/analytics/PnlChartPage";
+import {
   PnlValuePage,
   type PnlValueProps,
 } from "./pages/fx/analytics/PnlValuePage";
@@ -200,6 +204,10 @@ export const PairPnlBars = component<PairPnlBarsProps, PairPnlBarsPage>(
 
 export const PnlValue = component<PnlValueProps, PnlValuePage>((ctx) => {
   return new PnlValuePage(ctx);
+});
+
+export const PnlChart = component<PnlChartProps, PnlChartPage>((ctx) => {
+  return new PnlChartPage(ctx);
 });
 
 export const PositionsPanel = component<

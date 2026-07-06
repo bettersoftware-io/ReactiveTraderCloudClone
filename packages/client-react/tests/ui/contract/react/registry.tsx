@@ -13,6 +13,7 @@ import type {
   Dealer,
   Direction,
   EquityPosition,
+  HistoricPosition,
   Instrument,
   Price,
   PriceMovementType,
@@ -56,6 +57,7 @@ import { Watchlist as WatchlistComponent } from "#/ui/equities/watchlist/Watchli
 import { AnalyticsHead as AnalyticsHeadComponent } from "#/ui/fx/analytics/AnalyticsHead";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
 import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
+import { PnlChart as PnlChartComponent } from "#/ui/fx/analytics/PnlChart";
 import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
 import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/BlotterHeader";
 import { BlotterRow as BlotterRowComponent } from "#/ui/fx/blotter/BlotterRow";
@@ -138,6 +140,7 @@ import {
   OrdersBlotter,
   OrderTicket,
   PairPnlBars,
+  PnlChart,
   PnlSparkline,
   PnlValue,
   PositionsBlotter,
@@ -236,6 +239,16 @@ export const registry = new Map<AnyToken, ElementFor>([
       return (
         <PairPnlBarsComponent
           positions={(p.positions as readonly CurrencyPairPosition[]) ?? []}
+        />
+      );
+    },
+  ],
+  [
+    PnlChart,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PnlChartComponent
+          history={(p.history as readonly HistoricPosition[]) ?? []}
         />
       );
     },
