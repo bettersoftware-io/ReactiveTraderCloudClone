@@ -17,6 +17,11 @@ afterEach(() => {
 });
 
 describe("AdminDashboard", () => {
+  it("renders the KPI row", () => {
+    const dash = mount(AdminDashboard, {});
+    expect(dash.hasKpiRow()).toBe(true);
+  });
+
   it("renders the incident-controls panel", () => {
     const dash = mount(AdminDashboard, {});
     expect(dash.hasIncidentControls()).toBe(true);
@@ -45,10 +50,5 @@ describe("AdminDashboard", () => {
   it("renders the latency histogram", () => {
     const dash = mount(AdminDashboard, {});
     expect(dash.hasLatencyHistogram()).toBe(true);
-  });
-
-  it("renders the error rate panel", () => {
-    const dash = mount(AdminDashboard, {});
-    expect(dash.hasErrorRate()).toBe(true);
   });
 });

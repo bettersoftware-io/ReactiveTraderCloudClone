@@ -5,11 +5,16 @@ import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 /**
  * Page object for AdminDashboard. The dashboard has no container data-testid,
  * so assertions query for the child component test-ids that the dashboard
- * always composes (incident-controls, topology, event-log, sessions, metrics).
+ * always composes (incident-controls, topology, event-log, sessions, KPI row).
  */
 export class AdminDashboardPage extends MountedComponent<
   Record<string, never>
 > {
+  /** True when the KPI row (throughput/latency/error-rate/sessions) is present. */
+  hasKpiRow(): boolean {
+    return within(this.root).queryByTestId("admin-kpi-row") !== null;
+  }
+
   /** True when the incident-controls panel is present (always in the dashboard). */
   hasIncidentControls(): boolean {
     return within(this.root).queryByTestId("admin-incident-controls") !== null;
@@ -38,10 +43,5 @@ export class AdminDashboardPage extends MountedComponent<
   /** True when the latency histogram is present. */
   hasLatencyHistogram(): boolean {
     return within(this.root).queryByTestId("admin-latency-histogram") !== null;
-  }
-
-  /** True when the error-rate panel is present. */
-  hasErrorRate(): boolean {
-    return within(this.root).queryByTestId("admin-error-rate") !== null;
   }
 }

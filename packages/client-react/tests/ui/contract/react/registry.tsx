@@ -24,11 +24,10 @@ import type {
 
 import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
 import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
-import { ErrorRatePanel as ErrorRatePanelComponent } from "#/ui/admin/ErrorRatePanel";
 import { IncidentControls as IncidentControlsComponent } from "#/ui/admin/IncidentControls";
+import { KpiRow as KpiRowComponent } from "#/ui/admin/kpis/KpiRow";
 import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/admin/LatencyHistogram";
 import { LiveEventLog as LiveEventLogComponent } from "#/ui/admin/LiveEventLog";
-import { MetricGauges as MetricGaugesComponent } from "#/ui/admin/MetricGauges";
 import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/admin/ServiceTopologyGraph";
 import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPanel";
 import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
@@ -122,19 +121,18 @@ import {
   DepthLadder,
   DeskPnlGauge,
   EquitiesPanel,
-  ErrorRatePanel,
   FxBlotter,
   FxBlotterWorkspace,
   HeaderChrome,
   IncidentControls,
   InstrumentTabs,
+  KpiRow,
   LatencyHistogram,
   LayoutEngine,
   LiveEventLog,
   LiveRatesPanel,
   LiveRatesWorkspace,
   LockScreen,
-  MetricGauges,
   NewRfqForm,
   NumberFilter,
   OrdersBlotter,
@@ -831,9 +829,9 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    MetricGauges,
+    KpiRow,
     (): ReactElement => {
-      return <MetricGaugesComponent />;
+      return <KpiRowComponent />;
     },
   ],
   [
@@ -846,12 +844,6 @@ export const registry = new Map<AnyToken, ElementFor>([
     LatencyHistogram,
     (): ReactElement => {
       return <LatencyHistogramComponent />;
-    },
-  ],
-  [
-    ErrorRatePanel,
-    (): ReactElement => {
-      return <ErrorRatePanelComponent />;
     },
   ],
   [

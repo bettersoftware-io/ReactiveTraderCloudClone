@@ -39,7 +39,7 @@
 }
 
 /* Grid placement — 4-column layout. */
-.gaugesCard {
+.kpiCard {
   grid-column: span 2;
 }
 
@@ -49,10 +49,6 @@
 
 .latencyCard {
   grid-column: span 2;
-}
-
-.errorCard {
-  grid-column: span 1;
 }
 
 .controlCard {

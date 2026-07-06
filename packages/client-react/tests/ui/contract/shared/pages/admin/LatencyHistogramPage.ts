@@ -6,6 +6,10 @@ import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 export class LatencyHistogramPage extends MountedComponent<
   Record<string, never>
 > {
+  private container(): HTMLElement {
+    return within(this.root).getByTestId("admin-latency-histogram");
+  }
+
   /** True when the "NO DATA" placeholder is shown. */
   isEmpty(): boolean {
     return within(this.root).queryByText(/NO DATA/i) !== null;
@@ -16,17 +20,28 @@ export class LatencyHistogramPage extends MountedComponent<
     return within(this.root).queryByTestId("admin-latency-histogram") !== null;
   }
 
-  /** The peak latency text shown in the header. */
-  peakText(): string | null {
-    const el = this.root.querySelector("[class*='peak']");
-    return el?.textContent?.trim() ?? null;
+  /** Number of latency buckets rendered (always 6 once samples exist). */
+  barCount(): number {
+    return this.container().querySelectorAll("[data-accent]").length;
   }
 
-  /** Number of SVG bar rectangles rendered. */
-  barCount(): number {
-    const svg = this.root.querySelector(
-      "[data-testid='admin-latency-histogram'] svg",
+  /** The bucket tick labels, in order. */
+  labels(): string[] {
+    return Array.from(this.container().querySelectorAll("[class*='tick']")).map(
+      (el) => {
+        return el.textContent ?? "";
+      },
     );
-    return svg?.querySelectorAll("rect").length ?? 0;
+  }
+
+  /** The label of the bucket flagged data-accent="true" (the modal bucket), or null. */
+  accentLabel(): string | null {
+    const cols = Array.from(
+      this.container().querySelectorAll("[class*='col']"),
+    );
+    const accented = cols.find((col) => {
+      return col.querySelector("[data-accent='true']") !== null;
+    });
+    return accented?.querySelector("[class*='tick']")?.textContent ?? null;
   }
 }
