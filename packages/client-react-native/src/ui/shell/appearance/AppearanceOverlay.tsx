@@ -50,7 +50,7 @@ interface AppearanceOverlayStyles {
 function makeStyles(t: RnTheme): AppearanceOverlayStyles {
   return StyleSheet.create({
     overlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       zIndex: 150,
       elevation: 150,
       backgroundColor: t.bgPrimary,

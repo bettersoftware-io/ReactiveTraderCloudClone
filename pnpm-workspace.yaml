@@ -33,28 +33,31 @@ overrides:
   # still declares serialize-javascript ^6.0.2, so an override is the only path.
   serialize-javascript: ^7.0.3
   # Force the transitive @xmldom/xmldom (pulled in by @expo/plist and plist —
-  # Expo/native-build tooling exercised only at native build time, Phase 3+, NOT
-  # the Phase 1/2 JS-export + EAS-Update path) up from the vulnerable <0.8.13 line
-  # to the patched 0.9.x. SCOPED to the vulnerable range (like uuid@11 above) so a
-  # future consumer resolving an already-safe xmldom (>=0.8.13) is never forced
-  # onto an untested major. The 0.7→0.9 bump is API-compatible for the
-  # DOMParser/XMLSerializer surface @expo/plist uses (it crosses xmldom 0.8's
-  # error-handling change, irrelevant to parsing the app's own trusted plist).
+  # Expo native-build tooling, exercised by `expo prebuild`/`run:ios` and every
+  # `eas build`) up from the vulnerable <0.8.13 line to the PATCHED 0.8.13.
+  # SCOPED to the vulnerable range (like uuid@11 above) so a future consumer
+  # resolving an already-safe xmldom (>=0.8.13) is never forced off its choice.
   # Fixes 5 high XML-injection GHSA advisories (GHSA-wh4c-j3r5-mjhp,
-  # GHSA-2v35-w6hq-6mfw, +3 related, all <0.8.13). A pnpm auditConfig.ignoreGhsas
-  # allowlist was the alternative (the XML is trusted + build-time only); the
-  # override is chosen to match this repo's prefer-a-real-fix posture (see uuid).
-  "@xmldom/xmldom@<0.8.13": ^0.9.10
-  # Pin @expo/metro-runtime to the SDK-55 line. It arrives as a PEER dep via
+  # GHSA-2v35-w6hq-6mfw, +3 related, all <0.8.13) — 0.8.13 is the minimal
+  # version that patches every one of them.
+  # NOTE — DO NOT bump this to 0.9.x. xmldom 0.9.0 made the `mimeType` argument
+  # of `DOMParser.parseFromString` REQUIRED, but @expo/plist@0.8.0 still calls it
+  # one-arg — so 0.9.x throws `mimeType "undefined" is not valid` inside the iOS
+  # infoPlist base-mod during prebuild, breaking `expo run:ios` and all EAS
+  # native builds. (A prior override pinned ^0.9.10 on the assumption the native
+  # path was never exercised; the SDK-57 native-build work proved that wrong.)
+  # 0.8.13 keeps the pre-0.9 one-arg DOMParser API @expo/plist depends on.
+  "@xmldom/xmldom@<0.8.13": ^0.8.13
+  # Pin @expo/metro-runtime to the SDK-57 line. It arrives as a PEER dep via
   # `expo`'s loose `*` range, and the minimumReleaseAge cooldown above steered
-  # pnpm to the aged 4.0.1 (SDK-52 era) instead of the 55.0.11 that expo-router
-  # actually requires (^55.0.11) and expo's bundledNativeModules pins (~55.0.11).
-  # 4.0.1 is fatal on RN 0.83: its messageSocket.native.ts calls
+  # pnpm to the aged 4.0.1 (SDK-52 era) instead of the 57.0.3 that expo-router
+  # actually requires and expo's bundledNativeModules pins for SDK 57.
+  # 4.0.1 is fatal on RN 0.86: its messageSocket.native.ts calls
   # `require("react-native/.../getDevServer")()` expecting the OLD CJS contract
-  # (module.exports = fn), but RN 0.83 ships getDevServer as an ESM
+  # (module.exports = fn), but RN 0.86 ships getDevServer as an ESM
   # `export default`, so the require yields the namespace object → the app
   # crashes at boot with `TypeError: getDevServer is not a function (it is
-  # Object)`. 55.0.11 removed that broken consumer entirely and uses a proper
-  # ESM import, matching RN 0.83 by construction. Without this override the
+  # Object)`. 57.0.3 removed that broken consumer entirely and uses a proper
+  # ESM import, matching RN 0.86 by construction. Without this override the
   # peer re-resolves to 4.0.1 on every install.
-  "@expo/metro-runtime": ~55.0.11
+  "@expo/metro-runtime": ~57.0.3

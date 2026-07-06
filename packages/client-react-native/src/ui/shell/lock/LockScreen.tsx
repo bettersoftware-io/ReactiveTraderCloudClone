@@ -101,7 +101,7 @@ interface LockScreenStyles {
 function makeStyles(t: RnTheme): LockScreenStyles {
   return StyleSheet.create({
     overlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       // zIndex 200 orders LockScreen within Chrome; BootGate's 100 lives in a
       // different parent (sibling of Chrome) and paints above the whole Chrome
       // subtree regardless. The two overlays never coexist — the session starts

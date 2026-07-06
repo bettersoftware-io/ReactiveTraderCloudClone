@@ -132,7 +132,7 @@ function makeStyles(t: RnTheme): SectorHeatmapStyles {
     cellGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
     cell: baseCell,
     cellActive: { ...baseCell, borderColor: t.accentPrimary, borderWidth: 1 },
-    heat: StyleSheet.absoluteFillObject,
+    heat: StyleSheet.absoluteFill,
     cellLabel: {
       fontSize: 12,
       color: t.textPrimary,
