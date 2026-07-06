@@ -46,6 +46,13 @@ describe("servicesVm", () => {
     expect(rows[0].latencyLabel).toBe("37ms");
   });
 
+  it("rounds a fractional latencyMs (live simulator emits unrounded floats) so the label never overflows its fixed-width column", () => {
+    const rows = servicesVm([
+      { name: "pricing", status: "ok", throughput: 10, latencyMs: 42.73 },
+    ]);
+    expect(rows[0].latencyLabel).toBe("43ms");
+  });
+
   describe("barPct", () => {
     it("gives the busiest node 100%", () => {
       const rows = servicesVm([

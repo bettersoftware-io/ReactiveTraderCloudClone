@@ -48,7 +48,11 @@ export function servicesVm(
       status: node.status,
       statusLabel: STATUS_LABEL[node.status],
       barPct: barPctFor(node.throughput, maxThroughput),
-      latencyLabel: `${node.latencyMs}ms`,
+      // The live topology simulator emits unrounded floats (e.g.
+      // 11.660331597900071); every fixture/test uses whole numbers, so this
+      // only surfaces live. Round to an integer — the `.lat` column is a
+      // fixed 42px width sized for a short string like "12ms".
+      latencyLabel: `${Math.round(node.latencyMs)}ms`,
       uptimeLabel: uptimeLabelFor(node.name, node.status),
     };
   });

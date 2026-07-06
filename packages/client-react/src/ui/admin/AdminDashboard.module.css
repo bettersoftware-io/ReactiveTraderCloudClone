@@ -17,10 +17,19 @@
 }
 
 /* PROTO AdminScreen.module.css `.bottom` — service health / live events,
-   equal width. */
+   equal width. Fixed row height (unlike `.charts`/`.retained`, which are
+   fine to auto-size on static/bounded content): LiveEventLog's own list is
+   `flex:1; min-height:0; overflow-y:auto`, which only engages its internal
+   scrollbar if ITS ancestor chain resolves to a definite height. Without
+   one, `height:100%` on the ServiceHealth/LiveEventLog cards resolves to
+   auto and the live, ever-growing event list drags the whole `.dashboard`
+   taller instead of scrolling internally — same class of bug as the P6
+   `.shell{min-height:100vh}` blank-panels lesson. 320px comfortably fits
+   ServiceHealth's fixed 7 rows with no clipping. */
 .bottom {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  height: 320px;
   gap: 12px;
 }
 
