@@ -141,4 +141,57 @@ export class CreditBlotterPage extends MountedComponent<Record<string, never>> {
   async clickExport(): Promise<void> {
     await this.user.click(within(this.root).getByTestId("export-csv"));
   }
+
+  // --- prototype chrome: controls row ---------------------------------------
+
+  /** The "{n} trades" count text in the controls row above the table
+   * (PROTO CreditScreen `countText`). */
+  tradeCountText(): string {
+    return (
+      within(this.root)
+        .getByText(/^\d+ trades$/)
+        .textContent?.trim() ?? ""
+    );
+  }
+
+  /** The CSV export chip's visible label (kept at the `export-csv` testid). */
+  csvChipLabel(): string {
+    return (
+      within(this.root).getByTestId("export-csv").textContent?.trim() ?? ""
+    );
+  }
+
+  // --- prototype chrome: per-row direction accent + new-trade flash --------
+
+  private rows(): HTMLTableRowElement[] {
+    return [
+      ...this.table().querySelectorAll("tbody tr"),
+    ] as HTMLTableRowElement[];
+  }
+
+  /** Locate a trade row by its Trade ID column text (the first cell). */
+  private rowForTradeId(tradeId: string): HTMLTableRowElement {
+    const row = this.rows().find((r) => {
+      return r.querySelector("td")?.textContent?.trim() === tradeId;
+    });
+    if (!row) throw new Error(`No row for trade id ${tradeId}`);
+    return row;
+  }
+
+  /** The row's `--row-acc` custom property value (PROTO rowAccent()). */
+  rowAccent(tradeId: string): string {
+    return this.rowForTradeId(tradeId)
+      .style.getPropertyValue("--row-acc")
+      .trim();
+  }
+
+  /** The row's `data-dir` attribute (Buy/Sell). */
+  rowDirection(tradeId: string): string | null {
+    return this.rowForTradeId(tradeId).getAttribute("data-dir");
+  }
+
+  /** Whether the row is currently flagged as a newly-streamed-in trade. */
+  isRowNew(tradeId: string): boolean {
+    return this.rowForTradeId(tradeId).getAttribute("data-new") === "true";
+  }
 }

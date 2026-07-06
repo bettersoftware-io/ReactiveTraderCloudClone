@@ -2,6 +2,7 @@ import type { Observable } from "rxjs";
 
 import type {
   BootVariant,
+  CreditRfqFilter,
   ThemeModePreference,
   ThemeSkin,
   ViewMode,
@@ -38,4 +39,8 @@ export interface PreferencesPort {
    * BootSequenceMachine at each boot start via setBootVariant. */
   bootVariant$(): Observable<BootVariant>;
   setBootVariant(variant: BootVariant): void;
+  /** Replay-current Credit RFQs filter stream; emits synchronously on subscribe.
+   * Shared between the RFQs panel (reader) and its head's filter pills (writer). */
+  creditRfqFilter$(): Observable<CreditRfqFilter>;
+  setCreditRfqFilter(filter: CreditRfqFilter): void;
 }

@@ -33,7 +33,9 @@ import {
 import {
   type Candle,
   ConnectionStatus,
+  type CreditRfqFilter,
   type CurrencyPair,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
@@ -113,6 +115,13 @@ interface UseViewModePreferenceResult {
   setViewMode: (viewMode: ViewMode) => void;
 }
 
+/** Credit RFQs panel filter preference — shared between the RFQs panel
+ * (reader) and its head's filter pills (Task 4, writer). */
+interface UseCreditRfqFilterPreferenceResult {
+  filter: CreditRfqFilter;
+  setFilter: (filter: CreditRfqFilter) => void;
+}
+
 interface UseSessionResult {
   state: SessionState;
   lock: () => void;
@@ -138,6 +147,9 @@ export interface ViewModel {
   useConnectionStatus: () => ConnectionStatus;
   // Commands (one-shot fire-and-await; the bridge does firstValueFrom)
   useAcceptQuote: () => (quoteId: number) => Promise<void>;
+  /** Cancel an in-flight RFQ (RfqsPresenter.cancelRfq). Same one-shot
+   * fire-and-await shape as useAcceptQuote. */
+  useCancelRfq: () => (rfqId: number) => Promise<void>;
   /** Fire-and-forget reconnect command — pushes a reconnect intent into the
    * app layer after an idle close. The sole recovery path from IDLE_DISCONNECTED.
    * Provenance: original components/DisconnectionOverlay.tsx:36 (onClick={initConnection}). */
@@ -166,6 +178,10 @@ export interface ViewModel {
   useAnimatedBackground: () => UseAnimatedBackgroundResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
+  /** Credit RFQs panel LIVE/CLOSED/ALL filter preference — current filter plus
+   * the write intent. Shared between RfqsPanel (reader) and RfqsHead's filter
+   * pills (Task 4, writer). */
+  useCreditRfqFilterPreference: () => UseCreditRfqFilterPreferenceResult;
   /** Global session lock state plus lock/unlock (re-authenticate) intents.
    * Shared (one stream for the whole app), so a plain `bind` like the prefs. */
   useSession: () => UseSessionResult;
@@ -309,6 +325,15 @@ export function createViewModel(
     presenters.viewModePreference.setViewMode(viewMode);
   }
 
+  const [useCreditRfqFilterValue] = bind(
+    presenters.creditRfqFilterPreference.filter$,
+    DEFAULT_CREDIT_RFQ_FILTER,
+  );
+
+  function setCreditRfqFilter(filter: CreditRfqFilter): void {
+    presenters.creditRfqFilterPreference.setFilter(filter);
+  }
+
   // Global/shared session lock state → a plain bind (not a per-mount machine).
   const [useSessionState] = bind(presenters.session.state$, {
     locked: false,
@@ -340,6 +365,10 @@ export function createViewModel(
   // (rather than rejecting with EmptyError) without needing a defaultValue.
   function acceptQuote(quoteId: number): Promise<void> {
     return firstValueFrom(presenters.rfqs.acceptQuote(quoteId));
+  }
+
+  function cancelRfq(rfqId: number): Promise<void> {
+    return firstValueFrom(presenters.rfqs.cancelRfq(rfqId));
   }
 
   // Equities streams — shared (one active subscription per symbol, reference-counted by bind).
@@ -431,6 +460,9 @@ export function createViewModel(
     useAcceptQuote: () => {
       return acceptQuote;
     },
+    useCancelRfq: () => {
+      return cancelRfq;
+    },
     useReconnect: () => {
       return commands.reconnect;
     },
@@ -510,6 +542,12 @@ export function createViewModel(
       return {
         viewMode: useViewModeValue(),
         setViewMode,
+      };
+    },
+    useCreditRfqFilterPreference: () => {
+      return {
+        filter: useCreditRfqFilterValue(),
+        setFilter: setCreditRfqFilter,
       };
     },
     useSession: () => {

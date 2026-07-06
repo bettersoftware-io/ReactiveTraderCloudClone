@@ -56,9 +56,14 @@ export async function expectFirstPriceTileVisible(
   await ctx.po.liveRatesTile.waitForFirstTile(timeoutMs);
 }
 
-export async function expectCreditNavVisible(ctx: TestContext): Promise<void> {
+/** "Credit screen fully loaded" signal for cross-cutting smoke checks (e.g.
+ * the theme-toggle-then-switch-tabs regression) that don't otherwise care
+ * about credit internals — the dock's three panels (New RFQ, RFQs, Credit
+ * Blotter) all render simultaneously, replacing the old tabbed
+ * CreditWorkspace's single nav bar as the "did it load" anchor. */
+export async function expectCreditDockVisible(ctx: TestContext): Promise<void> {
   assertTrue(
-    await ctx.po.creditRfqPanel.navIsVisible(),
-    "credit nav not visible",
+    await ctx.po.creditRfqPanel.dockIsVisible(),
+    "credit dock not visible",
   );
 }

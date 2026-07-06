@@ -12,7 +12,9 @@ import {
   type Candle,
   ConnectionStatus,
   type CreateRfqInput,
+  type CreditRfqFilter,
   type CurrencyPair,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   type Dealer,
@@ -142,6 +144,7 @@ export interface CommandLog {
   executeTrade: ExecuteTradeInput[];
   requestRfqQuote: { symbol: string; pipsPosition: number }[];
   acceptQuote: number[];
+  cancelRfq: number[];
   passQuote: number[];
   quoteRfq: QuoteRequest[];
   /** Incremented each time useReconnect() callback is invoked. */
@@ -182,6 +185,10 @@ export interface World {
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive view-mode preference backing useViewModePreference (drives LiveRatesPanel). */
   readonly viewMode: BehaviorSubject<ViewMode>;
+  /** Reactive Credit RFQs filter preference backing useCreditRfqFilterPreference (drives RfqsPanel). */
+  readonly creditRfqFilter: BehaviorSubject<CreditRfqFilter>;
+  /** Push a new Credit RFQs filter (drives RfqsPanel's re-render + entrance cascade). */
+  setCreditRfqFilter(filter: CreditRfqFilter): void;
   /** Reactive session state backing useSession (drives LockScreen). */
   readonly session: BehaviorSubject<SessionState>;
   /** Per-key subject for usePrice(pair), keyed by pair.symbol. */
@@ -270,6 +277,7 @@ export function createWorld(
   sessionSeed: Partial<SessionState> = {},
   equitiesSeed: EquitiesSeed = {},
   adminSeed: AdminSeed = {},
+  creditRfqFilterSeed?: CreditRfqFilter,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -430,6 +438,9 @@ export function createWorld(
   const viewMode = new BehaviorSubject<ViewMode>(
     viewModeSeed ?? DEFAULT_VIEW_MODE,
   );
+  const creditRfqFilter = new BehaviorSubject<CreditRfqFilter>(
+    creditRfqFilterSeed ?? DEFAULT_CREDIT_RFQ_FILTER,
+  );
   const session = new BehaviorSubject<SessionState>({
     ...DEFAULT_SESSION,
     ...sessionSeed,
@@ -492,6 +503,7 @@ export function createWorld(
     executeTrade: [],
     requestRfqQuote: [],
     acceptQuote: [],
+    cancelRfq: [],
     passQuote: [],
     quoteRfq: [],
     reconnect: 0,
@@ -512,6 +524,10 @@ export function createWorld(
     themeSkin,
     animatedBackground,
     viewMode,
+    creditRfqFilter,
+    setCreditRfqFilter: (filter: CreditRfqFilter) => {
+      return creditRfqFilter.next(filter);
+    },
     session,
     priceFor,
     historyFor,

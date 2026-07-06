@@ -11,6 +11,7 @@ import { describePreferencesPortContract } from "@rtc/domain/ports/__contracts__
 import {
   ANIMATED_BG_STORAGE_KEY,
   BOOT_VARIANT_STORAGE_KEY,
+  CREDIT_RFQ_FILTER_STORAGE_KEY,
   LocalStoragePreferencesAdapter,
   THEME_SKIN_STORAGE_KEY,
   THEME_STORAGE_KEY,
@@ -42,6 +43,11 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
         );
       if (seed.bootVariant)
         localStorage.setItem(BOOT_VARIANT_STORAGE_KEY, seed.bootVariant);
+      if (seed.creditRfqFilter)
+        localStorage.setItem(
+          CREDIT_RFQ_FILTER_STORAGE_KEY,
+          seed.creditRfqFilter,
+        );
       return new LocalStoragePreferencesAdapter();
     },
   );
@@ -89,4 +95,5 @@ function clearStorage(): void {
   localStorage.removeItem(VIEW_MODE_STORAGE_KEY);
   localStorage.removeItem(ANIMATED_BG_STORAGE_KEY);
   localStorage.removeItem(BOOT_VARIANT_STORAGE_KEY);
+  localStorage.removeItem(CREDIT_RFQ_FILTER_STORAGE_KEY);
 }

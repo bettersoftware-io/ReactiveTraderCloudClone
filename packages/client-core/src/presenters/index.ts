@@ -6,6 +6,7 @@ export * from "#/presenters/BootPreferencePresenter";
 export * from "#/presenters/BootSequenceMachine";
 export * from "#/presenters/CandleSeriesPresenter";
 export * from "#/presenters/ConnectionStatusPresenter";
+export * from "#/presenters/CreditRfqFilterPreferencePresenter";
 export * from "#/presenters/CurrencyPairsPresenter";
 export * from "#/presenters/DealersPresenter";
 export * from "#/presenters/DepthPresenter";

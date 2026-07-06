@@ -1,5 +1,6 @@
 import {
   type CurrencyPair,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   resolveThemeMode,
@@ -67,6 +68,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // Commands: async no-op. Not exercised by static screenshots.
     useAcceptQuote: () => {
       return async (_quoteId: number) => {};
+    },
+    useCancelRfq: () => {
+      return async (_rfqId: number) => {};
     },
     // Reconnect: static screenshots don't click buttons; no-op is correct.
     useReconnect: () => {
@@ -180,6 +184,12 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       return {
         viewMode: data.viewMode ?? DEFAULT_VIEW_MODE,
         setViewMode: noop,
+      };
+    },
+    useCreditRfqFilterPreference: () => {
+      return {
+        filter: data.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER,
+        setFilter: noop,
       };
     },
     // Session: static snapshot for screenshots. Defaults to unlocked, so the

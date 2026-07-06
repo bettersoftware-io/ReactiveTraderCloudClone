@@ -64,8 +64,8 @@ export function expectFirstPriceTileVisible(
   void ctx.po.liveRatesTile.waitForFirstTile(timeoutMs);
 }
 
-export function expectCreditNavVisible(ctx: TestContext): void {
-  chainable(ctx.po.creditRfqPanel.navIsVisible()).then((v) => {
-    return assertTrue(v, "credit nav not visible");
+export function expectCreditDockVisible(ctx: TestContext): void {
+  chainable(ctx.po.creditRfqPanel.dockIsVisible()).then((v) => {
+    return assertTrue(v, "credit dock not visible");
   });
 }

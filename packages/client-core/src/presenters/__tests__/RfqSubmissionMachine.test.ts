@@ -22,7 +22,7 @@ const input: CreateRfqInput = {
 };
 
 describe("RfqsPresenter.createSubmission", () => {
-  it("goes editing → submitting → confirmed and fires onRedirect at exactly REDIRECT_DELAY_MS", () => {
+  it("goes editing → submitting → confirmed → editing (after the redirect delay) and fires onRedirect at exactly REDIRECT_DELAY_MS", () => {
     const ts = scheduler();
     ts.run(({ cold, flush }) => {
       // create-RFQ resolves 10ms after submit with rfqId 555.
@@ -63,7 +63,55 @@ describe("RfqsPresenter.createSubmission", () => {
         { status: "editing" },
         { status: "submitting" },
         { status: "confirmed", rfqId: 555 },
+        // The docked form is never unmounted (unlike the old tabbed
+        // workspace), so the machine itself must return to editing once the
+        // redirect window elapses — otherwise the form dead-ends on the
+        // confirmation card forever.
+        { status: "editing" },
       ]);
+    });
+  });
+
+  it("supports a second submit round-trip after the redirect returns to editing", () => {
+    const ts = scheduler();
+    ts.run(({ cold, flush }) => {
+      const presenter = new RfqsPresenter(port(cold("10ms (a|)", { a: 555 })));
+      const machine = presenter.createSubmission();
+
+      const states: RfqSubmissionState[] = [];
+      const redirects: number[] = [];
+      const sub = machine.state$.subscribe((s) => {
+        return states.push(s);
+      });
+
+      machine.intents.submit(input, (rfqId) => {
+        return redirects.push(rfqId);
+      });
+
+      // Fire the second submit well after the first redirect has elapsed.
+      ts.schedule(
+        () => {
+          machine.intents.submit(input, (rfqId) => {
+            return redirects.push(rfqId);
+          });
+        },
+        10 + REDIRECT_DELAY_MS + 100,
+      );
+
+      flush();
+      sub.unsubscribe();
+      machine.dispose();
+
+      expect(states).toEqual([
+        { status: "editing" },
+        { status: "submitting" },
+        { status: "confirmed", rfqId: 555 },
+        { status: "editing" },
+        { status: "submitting" },
+        { status: "confirmed", rfqId: 555 },
+        { status: "editing" },
+      ]);
+      expect(redirects).toEqual([555, 555]);
     });
   });
 
