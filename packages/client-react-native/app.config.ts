@@ -6,6 +6,13 @@ const config: ExpoConfig = {
   scheme: "rtcmobile",
   version: "0.0.0",
   orientation: "portrait",
+  // Native app identity. Required by any native build — `expo run:ios`,
+  // `expo prebuild`, and every `eas build` profile (incl. the free-path Android
+  // APK) — which cannot auto-write these into a dynamic (`app.config.ts`) config.
+  // Org-scoped reverse-DNS matching the `bettersoftware-io` GitHub org. NOT used
+  // by Expo Go, which ignores native identity. Same id on both platforms.
+  ios: { bundleIdentifier: "io.bettersoftware.rtcmobile" },
+  android: { package: "io.bettersoftware.rtcmobile" },
   // SDK 55 removed `newArchEnabled` from ExpoConfig — the New Architecture is
   // now the only architecture, so the field no longer exists in the type.
   runtimeVersion: { policy: "appVersion" },
