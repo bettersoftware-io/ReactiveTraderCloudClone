@@ -9,7 +9,11 @@ const REJECTED_PAIR = "GBPJPY";
 const DELAYED_PAIR = "EURJPY";
 const DELAYED_PAIR_MS = 4_000;
 const NORMAL_MAX_DELAY_MS = 2_000;
-const DEFAULT_TRADER_NAME = "A.Stark";
+// User-executed trades (as opposed to the PROTO seed trades in
+// TradeStoreSimulator, which keep their own tradeName per SEED_TRADES) are
+// always attributed to the local user, "You" — this is the only trader this
+// client can execute as.
+const DEFAULT_TRADER_NAME = "You";
 
 export type TradeListener = (trade: Trade) => void;
 
