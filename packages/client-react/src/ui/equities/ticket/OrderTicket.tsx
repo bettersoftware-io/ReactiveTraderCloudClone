@@ -9,9 +9,9 @@ import styles from "./OrderTicket.module.css";
  * conditional limit price, a cost summary, and a big accent Submit. Reads all
  * state from useOrderTicket(symbol) and animation intent from
  * useAnimationIntents(`ticket:${symbol}`). The traded symbol defaults to the
- * shared eqWorkspace selection when no `symbol` prop is given — EquitiesPanel
- * still passes an explicit symbol today (Task 6 will drop the prop once the
- * ticket moves into the new dock layout).
+ * shared eqWorkspace selection when no `symbol` prop is given — the eq-ticket
+ * dock panel (Task 6) mounts it with no symbol, relying on that fallback; the
+ * visual/contract specs still pass an explicit symbol to pin a fixed AAPL shot.
  *
  * Phase → data-phase: editing | submitting | working | partiallyFilled |
  *                      filled | rejected

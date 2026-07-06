@@ -53,12 +53,6 @@ export default defineConfig({
         // (PnlChart is an SVG path leaf, not canvas — it IS DOM-assertable and has
         // its own contract spec; see PnlChart.contract.spec.ts.)
         "src/ui/fx/liveRates/tile/TileChart.tsx",
-        // Equities candlestick canvas leaf (the analog of TileChart): the redraw
-        // effect early-returns in jsdom (no 2D context), so its colour-extraction
-        // branches only run in the browser tier. The DOM-assertable contract
-        // (labelled canvas + NO DATA placeholder) is still exercised by
-        // PriceChart.contract.spec.ts; only the canvas internals are excluded.
-        "src/ui/equities/chart/PriceChart.tsx",
         // Admin throughput line chart: the canvas draw path (drawLine helper) is
         // unreachable in jsdom (getContext("2d") returns null, early-return).
         // The DOM-assertable contract (wrapper present, NO DATA placeholder) is
@@ -66,11 +60,8 @@ export default defineConfig({
         // are excluded, exactly as per the PriceChart / TileChart pattern.
         "src/ui/admin/ThroughputChart.tsx",
         // Complex multi-variant canvas draw functions — no DOM-assertable API;
-        // the pixel output is validated by the visual (browser) tier. (jsdom's
-        // canvas has no 2D context, so PriceChart's effect early-returns before
-        // ever calling drawCandles — it can only run in the browser tier.)
+        // the pixel output is validated by the visual (browser) tier.
         "src/ui/shell/boot/bootCanvas.ts",
-        "src/ui/equities/chart/drawCandles.ts",
       ],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/ui/contract/coverage",

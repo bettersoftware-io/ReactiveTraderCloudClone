@@ -15,13 +15,9 @@ import { NewRfqForm } from "#/ui/credit/newRfq/NewRfqForm";
 import { RfqCard } from "#/ui/credit/rfqTiles/RfqCard";
 import { RfqTilesPanel } from "#/ui/credit/rfqTiles/RfqTilesPanel";
 import { SellSidePanel } from "#/ui/credit/sellSide/SellSidePanel";
-import { PositionsBlotter } from "#/ui/equities/blotter/PositionsBlotter";
 import { DepthLadder } from "#/ui/equities/chart/DepthLadder";
-import { PriceChart } from "#/ui/equities/chart/PriceChart";
-import { EquitiesPanel } from "#/ui/equities/EquitiesPanel";
 import { OrderTicket } from "#/ui/equities/ticket/OrderTicket";
 import { SectorHeatmap } from "#/ui/equities/watchlist/SectorHeatmap";
-import { Watchlist } from "#/ui/equities/watchlist/Watchlist";
 import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
 import { ActivityView } from "#/ui/fx/blotter/ActivityView";
 import { BlotterRow } from "#/ui/fx/blotter/BlotterRow";
@@ -313,28 +309,13 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return <App />;
   },
   // --- Phase 4: Equities sub-components (fixed-size wrappers for x86 stability) ---
-  // Watchlist at fixed width — content-sized goldens flake on x86 due to
-  // font-mono glyph-advance variance; pinning the width makes the snapshot stable.
-  EquitiesWatchlist: () => {
-    return (
-      <div style={{ width: 280, display: "flex", flexDirection: "column" }}>
-        <Watchlist selectedSymbol="AAPL" onSelect={() => {}} />
-      </div>
-    );
-  },
+  // SectorHeatmap and DepthLadder survive outside the four-panel dock (Task 6):
+  // eq-sectors/eq-depth are registered but not placed in the default tree, so
+  // these scenarios mount them directly with fixed props, same as before.
   EquitiesSectorHeatmap: () => {
     return (
       <div style={{ width: 280 }}>
         <SectorHeatmap selectedSymbol="AAPL" onSelect={() => {}} />
-      </div>
-    );
-  },
-  // PriceChart: fixed-size container so canvas.offsetWidth/Height resolve to real
-  // dimensions in the headless browser (the canvas is display:block width/height 100%).
-  EquitiesPriceChart: () => {
-    return (
-      <div style={{ width: 400, height: 200 }}>
-        <PriceChart symbol="AAPL" />
       </div>
     );
   },
@@ -349,32 +330,6 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <div style={{ width: 280 }}>
         <OrderTicket symbol="AAPL" />
-      </div>
-    );
-  },
-  // PositionsBlotter includes the DeskPnlGauge SVG arc + PnlSparkline bars.
-  // Fixed width prevents content-size variance from font-mono metrics.
-  EquitiesPositionsBlotter: () => {
-    return (
-      <div style={{ width: 520 }}>
-        <PositionsBlotter />
-      </div>
-    );
-  },
-  // EquitiesPanel at fixed 1280×680: mirrors the InhouseLayoutEngine constraint
-  // the panel receives in the real app. The panel's height:100% needs a parent
-  // with a resolved height (unlike a content-sized inline-block wrapper).
-  EquitiesPanel: () => {
-    return (
-      <div
-        style={{
-          width: 1280,
-          height: 680,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <EquitiesPanel />
       </div>
     );
   },

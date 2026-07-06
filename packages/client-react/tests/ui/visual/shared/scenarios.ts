@@ -246,16 +246,13 @@ export const scenarios: Record<string, Scenario> = {
   },
   // --- Phase 4: Equities panel scenarios ---
   // Per-component sub-views with deterministic fixed-data fixtures.
-  "equities/watchlist-loaded": {
-    componentKey: "EquitiesWatchlist",
-    fixtureKey: "equities-loaded",
-  },
+  // (equities/watchlist-loaded, equities/chart-loaded, equities/positions-with-pnl,
+  // and equities/panel were retired in Task 6 along with the flat EquitiesPanel/
+  // PriceChart/OrdersBlotter/PositionsBlotter/Watchlist components they mounted —
+  // ChartPanel/EqBlotterPanel/WatchlistPanel are the four-panel-dock replacements;
+  // Task 7 adds their scenarios.)
   "equities/sector-heatmap": {
     componentKey: "EquitiesSectorHeatmap",
-    fixtureKey: "equities-loaded",
-  },
-  "equities/chart-loaded": {
-    componentKey: "EquitiesPriceChart",
     fixtureKey: "equities-loaded",
   },
   "equities/depth-ladder": {
@@ -269,15 +266,6 @@ export const scenarios: Record<string, Scenario> = {
   "equities/ticket-filled": {
     componentKey: "EquitiesOrderTicket",
     fixtureKey: "equities-ticket-filled",
-  },
-  "equities/positions-with-pnl": {
-    componentKey: "EquitiesPositionsBlotter",
-    fixtureKey: "equities-loaded",
-  },
-  // Full EquitiesPanel at fixed 1280×680 (mirrors layout-engine constraint).
-  "equities/panel": {
-    componentKey: "EquitiesPanel",
-    fixtureKey: "equities-loaded",
   },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).
   "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },

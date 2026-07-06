@@ -65,6 +65,64 @@ describe("createDefaultLayoutPort", () => {
     });
   });
 
+  it("equities: a four-panel dock — chart+blotter column beside ticket+watchlist column", () => {
+    const { initial } = createDefaultLayoutPort("equities");
+    expect(panelIds(initial.root)).toEqual([
+      "eq-chart",
+      "eq-blotter",
+      "eq-ticket",
+      "eq-watchlist",
+    ]);
+
+    if (initial.root.kind !== "split") {
+      throw new Error("equities root must be a split");
+    }
+
+    expect(initial.root.dir).toBe("row");
+    expect(initial.root.sizes).toEqual([0.78, 0.22]);
+
+    const leftColumn = initial.root.children[0];
+
+    if (leftColumn.kind !== "split") {
+      throw new Error("left column must be a split");
+    }
+
+    expect(leftColumn.dir).toBe("column");
+    expect(leftColumn.sizes).toEqual([0.66, 0.34]);
+    expect(leftColumn.children).toEqual([
+      { kind: "panel", panelId: "eq-chart" },
+      { kind: "panel", panelId: "eq-blotter" },
+    ]);
+
+    const rightColumn = initial.root.children[1];
+
+    if (rightColumn.kind !== "split") {
+      throw new Error("right column must be a split");
+    }
+
+    expect(rightColumn.dir).toBe("column");
+    expect(rightColumn.sizes).toEqual([0.5, 0.5]);
+    expect(rightColumn.children).toEqual([
+      { kind: "panel", panelId: "eq-ticket" },
+      { kind: "panel", panelId: "eq-watchlist" },
+    ]);
+  });
+
+  it("PANEL_SPECS registers eq-depth and eq-sectors, but neither appears in the equities default tree (mounted directly, not docked)", () => {
+    const { initial } = createDefaultLayoutPort("equities");
+    expect(PANEL_SPECS["eq-depth"]).toEqual({ id: "eq-depth", title: "Depth" });
+    expect(PANEL_SPECS["eq-sectors"]).toEqual({
+      id: "eq-sectors",
+      title: "Sectors",
+    });
+    expect(panelIds(initial.root)).not.toContain("eq-depth");
+    expect(panelIds(initial.root)).not.toContain("eq-sectors");
+  });
+
+  it("the old single flat equities panel spec is retired", () => {
+    expect(PANEL_SPECS.equities).toBeUndefined();
+  });
+
   it("every PANEL_SPECS entry has a human title matching its id key", () => {
     for (const [id, spec] of Object.entries(PANEL_SPECS)) {
       expect(spec.id).toBe(id);

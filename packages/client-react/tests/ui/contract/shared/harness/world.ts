@@ -221,11 +221,11 @@ export interface World {
   setQuotesForRfq(rfqId: number, value: readonly Quote[]): void;
   /** Push a new animation intent for one target (drives the AnimationProbe's re-render). */
   setIntent(target: string, intent: AnimationIntent | null): void;
-  /** Reactive watchlist backing useWatchlist (drives Watchlist/InstrumentTabs/SectorHeatmap). */
+  /** Reactive watchlist backing useWatchlist (drives WatchlistPanel/InstrumentTabs/SectorHeatmap). */
   readonly watchlist: BehaviorSubject<readonly EquityInstrument[]>;
-  /** Reactive equity orders backing useEquityOrders (drives OrdersBlotter). */
+  /** Reactive equity orders backing useEquityOrders (drives EqBlotterPanel/OrdersTable). */
   readonly equityOrders: BehaviorSubject<readonly EquityOrder[]>;
-  /** Reactive equity positions backing useEquityPositions (drives PositionsBlotter). */
+  /** Reactive equity positions backing useEquityPositions (drives EqBlotterPanel/PositionsTable). */
   readonly equityPositions: BehaviorSubject<readonly EquityPosition[]>;
   /** Lifecycle stream the OrderTicket's place() subscribes to; the page pushes EquityOrders here. */
   readonly orderLifecycle: Subject<EquityOrder>;
@@ -237,9 +237,9 @@ export interface World {
   depthFor(symbol: string): BehaviorSubject<DepthBook | null>;
   /** Push a new watchlist (drives the watchlist-backed panels' re-render). */
   setWatchlist(value: readonly EquityInstrument[]): void;
-  /** Push new equity orders (drives the OrdersBlotter's re-render). */
+  /** Push new equity orders (drives the OrdersTable's re-render). */
   setEquityOrders(value: readonly EquityOrder[]): void;
-  /** Push new equity positions (drives the PositionsBlotter's re-render). */
+  /** Push new equity positions (drives the PositionsTable's re-render). */
   setEquityPositions(value: readonly EquityPosition[]): void;
   /** Push a new equity quote for one symbol. */
   setEquityQuote(symbol: string, value: EquityQuote | null): void;

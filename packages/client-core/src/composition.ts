@@ -167,8 +167,9 @@ export const incident$ = new Subject<ConnectionEvent>();
  * so this reliably captures "AAPL" (or whatever heads the catalogue) before
  * `createApp` returns. A real WS backend's `watchlist()` arrives over the
  * wire (not synchronously) — this peek then finds nothing and falls back to
- * "", same as EquitiesPanel's existing `instruments[0]?.symbol ?? ""` guard
- * tolerates before the watchlist has loaded. The peek subscribes and
+ * "", the same empty-selection state the eq-* dock panels' own
+ * `instruments[0]?.symbol ?? ""` guards tolerate before the watchlist has
+ * loaded. The peek subscribes and
  * immediately unsubscribes; `watchlist$`'s `shareReplay({refCount: true})`
  * tears down and restarts cleanly for whichever component subscribes next. */
 function peekFirstWatchlistSymbol(

@@ -116,10 +116,8 @@ import {
 import { EqBlotterHeadPage } from "./pages/equities/EqBlotterHeadPage";
 import { EqBlotterPanelPage } from "./pages/equities/EqBlotterPanelPage";
 import { EqTicketHeadPage } from "./pages/equities/EqTicketHeadPage";
-import { EquitiesPanelPage } from "./pages/equities/EquitiesPanelPage";
 import { EqWatchlistHeadPage } from "./pages/equities/EqWatchlistHeadPage";
 import { InstrumentTabsPage } from "./pages/equities/InstrumentTabsPage";
-import { OrdersBlotterPage } from "./pages/equities/OrdersBlotterPage";
 import {
   OrdersTablePage,
   type OrdersTableProps,
@@ -132,23 +130,14 @@ import {
   PnlSparklinePage,
   type PnlSparklineProps,
 } from "./pages/equities/PnlSparklinePage";
-import { PositionsBlotterPage } from "./pages/equities/PositionsBlotterPage";
 import {
   PositionsTablePage,
   type PositionsTableProps,
 } from "./pages/equities/PositionsTablePage";
 import {
-  PriceChartPage,
-  type PriceChartProps,
-} from "./pages/equities/PriceChartPage";
-import {
   SectorHeatmapPage,
   type SectorHeatmapProps,
 } from "./pages/equities/SectorHeatmapPage";
-import {
-  WatchlistPage,
-  type WatchlistProps,
-} from "./pages/equities/WatchlistPage";
 import { WatchlistPanelPage } from "./pages/equities/WatchlistPanelPage";
 import {
   CurrencyFilterPage,
@@ -504,17 +493,6 @@ export const OrderTicket = component<OrderTicketProps, OrderTicketPage>(
   },
 );
 
-export const Watchlist = component<WatchlistProps, WatchlistPage>((ctx) => {
-  return new WatchlistPage(ctx);
-});
-
-export const OrdersBlotter = component<
-  Record<string, never>,
-  OrdersBlotterPage
->((ctx) => {
-  return new OrdersBlotterPage(ctx);
-});
-
 export const InstrumentTabs = component<
   Record<string, never>,
   InstrumentTabsPage
@@ -580,22 +558,11 @@ export const SectorHeatmap = component<SectorHeatmapProps, SectorHeatmapPage>(
   },
 );
 
-export const PriceChart = component<PriceChartProps, PriceChartPage>((ctx) => {
-  return new PriceChartPage(ctx);
-});
-
 export const DepthLadder = component<DepthLadderProps, DepthLadderPage>(
   (ctx) => {
     return new DepthLadderPage(ctx);
   },
 );
-
-export const PositionsBlotter = component<
-  Record<string, never>,
-  PositionsBlotterPage
->((ctx) => {
-  return new PositionsBlotterPage(ctx);
-});
 
 export const DeskPnlGauge = component<DeskPnlGaugeProps, DeskPnlGaugePage>(
   (ctx) => {
@@ -635,13 +602,6 @@ export const PnlSparkline = component<PnlSparklineProps, PnlSparklinePage>(
     return new PnlSparklinePage(ctx);
   },
 );
-
-export const EquitiesPanel = component<
-  Record<string, never>,
-  EquitiesPanelPage
->((ctx) => {
-  return new EquitiesPanelPage(ctx);
-});
 
 // Admin / telemetry components (Phase 5 Task 8)
 export const IncidentControls = component<

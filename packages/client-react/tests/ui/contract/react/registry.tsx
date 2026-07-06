@@ -50,10 +50,8 @@ import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeT
 import { DeskPnlGauge as DeskPnlGaugeComponent } from "#/ui/equities/blotter/DeskPnlGauge";
 import { EqBlotterHead as EqBlotterHeadComponent } from "#/ui/equities/blotter/EqBlotterHead";
 import { EqBlotterPanel as EqBlotterPanelComponent } from "#/ui/equities/blotter/EqBlotterPanel";
-import { OrdersBlotter as OrdersBlotterComponent } from "#/ui/equities/blotter/OrdersBlotter";
 import { OrdersTable as OrdersTableComponent } from "#/ui/equities/blotter/OrdersTable";
 import { PnlSparkline as PnlSparklineComponent } from "#/ui/equities/blotter/PnlSparkline";
-import { PositionsBlotter as PositionsBlotterComponent } from "#/ui/equities/blotter/PositionsBlotter";
 import { PositionsTable as PositionsTableComponent } from "#/ui/equities/blotter/PositionsTable";
 import { CandleChart as CandleChartComponent } from "#/ui/equities/chart/CandleChart";
 import { ChartPanel as ChartPanelComponent } from "#/ui/equities/chart/ChartPanel";
@@ -61,15 +59,12 @@ import type { ChartVm } from "#/ui/equities/chart/chartVm";
 import { DepthLadder as DepthLadderComponent } from "#/ui/equities/chart/DepthLadder";
 import { EqChartHead as EqChartHeadComponent } from "#/ui/equities/chart/EqChartHead";
 import { InstrumentHeader as InstrumentHeaderComponent } from "#/ui/equities/chart/InstrumentHeader";
-import { PriceChart as PriceChartComponent } from "#/ui/equities/chart/PriceChart";
 import { TimeframePills as TimeframePillsComponent } from "#/ui/equities/chart/TimeframePills";
-import { EquitiesPanel as EquitiesPanelComponent } from "#/ui/equities/EquitiesPanel";
 import { InstrumentTabs as InstrumentTabsComponent } from "#/ui/equities/tabs/InstrumentTabs";
 import { EqTicketHead as EqTicketHeadComponent } from "#/ui/equities/ticket/EqTicketHead";
 import { OrderTicket as OrderTicketComponent } from "#/ui/equities/ticket/OrderTicket";
 import { EqWatchlistHead as EqWatchlistHeadComponent } from "#/ui/equities/watchlist/EqWatchlistHead";
 import { SectorHeatmap as SectorHeatmapComponent } from "#/ui/equities/watchlist/SectorHeatmap";
-import { Watchlist as WatchlistComponent } from "#/ui/equities/watchlist/Watchlist";
 import { WatchlistPanel as WatchlistPanelComponent } from "#/ui/equities/watchlist/WatchlistPanel";
 import { AnalyticsHead as AnalyticsHeadComponent } from "#/ui/fx/analytics/AnalyticsHead";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
@@ -144,7 +139,6 @@ import {
   EqBlotterPanel,
   EqChartHead,
   EqTicketHead,
-  EquitiesPanel,
   EqWatchlistHead,
   ErrorRatePanel,
   FxBlotter,
@@ -162,19 +156,16 @@ import {
   MetricGauges,
   NewRfqForm,
   NumberFilter,
-  OrdersBlotter,
   OrdersTable,
   OrderTicket,
   PairPnlBars,
   PnlChart,
   PnlSparkline,
   PnlValue,
-  PositionsBlotter,
   PositionsHead,
   PositionsPanel,
   PositionsTable,
   PreferencesModal,
-  PriceChart,
   QuickFilter,
   QuoteCard,
   RfqCard,
@@ -201,7 +192,6 @@ import {
   TileRfq,
   TimeframePills,
   TradeTicket,
-  Watchlist,
   WatchlistPanel,
 } from "../shared/components";
 import type {
@@ -751,25 +741,6 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    Watchlist,
-    (p: Record<string, unknown>): ReactElement => {
-      return (
-        <WatchlistComponent
-          selectedSymbol={(p.selectedSymbol as string | null) ?? null}
-          onSelect={
-            (p.onSelect as (symbol: string) => void) ?? ((): void => {})
-          }
-        />
-      );
-    },
-  ],
-  [
-    OrdersBlotter,
-    (): ReactElement => {
-      return <OrdersBlotterComponent />;
-    },
-  ],
-  [
     InstrumentTabs,
     (): ReactElement => {
       return <InstrumentTabsComponent />;
@@ -852,21 +823,9 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    PriceChart,
-    (p: Record<string, unknown>): ReactElement => {
-      return <PriceChartComponent symbol={(p.symbol as string) ?? "AAPL"} />;
-    },
-  ],
-  [
     DepthLadder,
     (p: Record<string, unknown>): ReactElement => {
       return <DepthLadderComponent symbol={(p.symbol as string) ?? "AAPL"} />;
-    },
-  ],
-  [
-    PositionsBlotter,
-    (): ReactElement => {
-      return <PositionsBlotterComponent />;
     },
   ],
   [
@@ -888,12 +847,6 @@ export const registry = new Map<AnyToken, ElementFor>([
           maxAbsPnl={p.maxAbsPnl as number | undefined}
         />
       );
-    },
-  ],
-  [
-    EquitiesPanel,
-    (): ReactElement => {
-      return <EquitiesPanelComponent />;
     },
   ],
   [
