@@ -120,6 +120,18 @@ describe("Watchlist view", () => {
     // `range === 0` fallback; the row still renders normally either way.
     expect(page.watchRowCount()).toBe(1);
   });
+
+  it("shows the neutral glyph in the Move cell for a flat-movement row, not an up arrow", async () => {
+    const page = mount(LiveRatesWorkspace, {
+      hooks: { useCurrencyPairs: [eurusd] },
+      parametric: {
+        prices: { EURUSD: price() },
+        histories: { EURUSD: flatHistory() },
+      },
+    });
+    await page.selectWatchlistTab();
+    expect(page.watchMoveText("EURUSD")).toMatch(/^– \d+ pip$/);
+  });
 });
 
 function price(over: Partial<Price> = {}): Price {

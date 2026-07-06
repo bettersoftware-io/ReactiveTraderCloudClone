@@ -7,6 +7,8 @@ import {
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { computeMovementPips } from "./movementPips";
+
 import styles from "./WatchlistView.module.css";
 
 /**
@@ -82,23 +84,9 @@ function movementSign(movement: PriceMovementType): MovementSign {
 }
 
 function movementArrow(sign: MovementSign): string {
-  return sign === "down" ? "▼" : "▲";
-}
-
-/**
- * Pip movement between the two most recent history ticks, scaled by the
- * pair's pip position. Mirrors Tile.tsx's computeMovementPips — the same
- * math, independently applied here so this row's Mid/Move cells always
- * agree with the tile grid's header badge for the same pair.
- */
-function computeMovementPips(
-  history: readonly PriceTick[],
-  pipsPosition: number,
-): number | null {
-  if (history.length < 2) return null;
-  const last = history[history.length - 1];
-  const prev = history[history.length - 2];
-  return Math.round(Math.abs(last.mid - prev.mid) * 10 ** pipsPosition);
+  if (sign === "up") return "▲";
+  if (sign === "down") return "▼";
+  return "–";
 }
 
 interface SparklineProps {
@@ -149,15 +137,23 @@ function buildTrendPoints(history: readonly PriceTick[]): string {
   const shown = history.slice(-TREND_POINTS_SHOWN);
   if (shown.length < 2) return "";
 
-  const mids = shown.map((tick) => {
+  // Normalize over the FULL history buffer (like the prototype's histRange
+  // and TileChart's buildPath), then plot only the sliced last-12 ticks —
+  // so the trend's vertical scale is stable across ticks, not rescaled to
+  // whatever the visible window happens to contain.
+  const allMids = history.map((tick) => {
     return tick.mid;
   });
-  const min = Math.min(...mids);
-  const max = Math.max(...mids);
+  const min = Math.min(...allMids);
+  const max = Math.max(...allMids);
   const range = max - min || 1;
-  const step = TREND_VIEW_WIDTH / (mids.length - 1);
 
-  return mids
+  const shownMids = shown.map((tick) => {
+    return tick.mid;
+  });
+  const step = TREND_VIEW_WIDTH / (shownMids.length - 1);
+
+  return shownMids
     .map((mid, i) => {
       const x = i * step;
       const y = TREND_VIEW_HEIGHT - ((mid - min) / range) * TREND_VIEW_HEIGHT;
