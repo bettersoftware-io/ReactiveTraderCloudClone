@@ -49,6 +49,7 @@ import {
   RfqsPresenter,
   ServiceTopologyPresenter,
   SessionPresenter,
+  SessionsKpiPresenter,
   SessionsPresenter,
   ThemePreferencePresenter,
   ThemeSkinPreferencePresenter,
@@ -118,6 +119,8 @@ export interface Presenters {
   eventLog: EventLogPresenter;
   /** Phase 5 Admin: active trader sessions feed. */
   sessions: SessionsPresenter;
+  /** Plan E Admin: rolling session-count series for the "Active Sessions" KPI card. */
+  sessionsKpi: SessionsKpiPresenter;
 }
 
 export interface AppCommands {
@@ -219,6 +222,7 @@ export function createApp(ports: AppPorts): App {
     topology: new ServiceTopologyPresenter(ports.serviceHealth),
     eventLog: new EventLogPresenter(ports.eventLog),
     sessions: new SessionsPresenter(ports.sessions),
+    sessionsKpi: new SessionsKpiPresenter(ports.sessions),
   };
   const commands: AppCommands = {
     reconnect: () => {

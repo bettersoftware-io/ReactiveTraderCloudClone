@@ -429,6 +429,9 @@ export function reactViewModel(world: World): ViewModel {
     useSessions: () => {
       return useSubject(world.sessions$);
     },
+    useSessionCountSeries: () => {
+      return useSubject(world.sessionCountSeries$);
+    },
     useIncident: () => {
       const state = useSubject(world.incidentState$);
       return {

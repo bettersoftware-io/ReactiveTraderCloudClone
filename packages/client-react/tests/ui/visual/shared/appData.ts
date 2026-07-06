@@ -94,6 +94,9 @@ export interface AppData {
   adminEventLog?: readonly LogEvent[];
   /** Active trader sessions (useSessions); defaults to []. */
   adminSessions?: readonly SessionInfo[];
+  /** Rolling session-count series for the Active Sessions KPI card
+   * (useSessionCountSeries); defaults to []. */
+  adminSessionCountSeries?: readonly MetricSample[];
   /** Incident machine state (useIncident); defaults to { active: [] }. */
   adminIncident?: { active: readonly IncidentKind[] };
   // ── Equities fields (Phase 4) ─────────────────────────────────────────────

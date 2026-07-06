@@ -284,6 +284,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useSessions: () => {
       return data.adminSessions ?? [];
     },
+    useSessionCountSeries: () => {
+      return data.adminSessionCountSeries ?? [];
+    },
     useIncident: () => {
       return {
         state: data.adminIncident ?? { active: [] },
