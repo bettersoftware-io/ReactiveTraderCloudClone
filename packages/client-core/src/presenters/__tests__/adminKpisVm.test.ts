@@ -43,7 +43,11 @@ describe("kpisVm", () => {
     };
     const vms = kpisVm(input);
 
-    expect(vms.map((v) => {return v.key})).toEqual(["tput", "lat", "err", "sess"]);
+    expect(
+      vms.map((v) => {
+        return v.key;
+      }),
+    ).toEqual(["tput", "lat", "err", "sess"]);
 
     const tput = vms[0];
     expect(tput.label).toBe("Throughput");
@@ -139,7 +143,11 @@ describe("kpisVm", () => {
     expect(vms[1].value).toBe("0");
     expect(vms[2].value).toBe("0.00");
     expect(vms[3].value).toBe("0");
-    expect(vms.every((v) => {return v.deltaUp})).toBe(true);
+    expect(
+      vms.every((v) => {
+        return v.deltaUp;
+      }),
+    ).toBe(true);
   });
 
   it("falls back to the earliest sample when the series is shorter than the lookback", () => {
@@ -178,19 +186,18 @@ describe("throughputPaths", () => {
 describe("latencyBuckets", () => {
   it("assigns the 6 fixed labels in order", () => {
     const buckets = latencyBuckets([]);
-    expect(buckets.map((b) => {return b.label})).toEqual([
-      "<10",
-      "10-25",
-      "25-50",
-      "50-80",
-      "80-150",
-      "150+",
-    ]);
+    expect(
+      buckets.map((b) => {
+        return b.label;
+      }),
+    ).toEqual(["<10", "10-25", "25-50", "50-80", "80-150", "150+"]);
   });
 
   it("lands boundary values in the lower bucket", () => {
     const buckets = latencyBuckets(series([10, 25, 50, 80, 150, 151]));
-    const counts = buckets.map((b) => {return Math.round((b.heightPct / 100) * 1)});
+    const counts = buckets.map((b) => {
+      return Math.round((b.heightPct / 100) * 1);
+    });
     // Each boundary value should land exactly once, in its lower bucket:
     // <10 gets 10, 10-25 gets 25, 25-50 gets 50, 50-80 gets 80, 80-150 gets 150, 150+ gets 151.
     expect(counts).toEqual([1, 1, 1, 1, 1, 1]);
@@ -209,7 +216,11 @@ describe("latencyBuckets", () => {
     expect(buckets[1].heightPct).toBe(100);
     expect(buckets[1].accent).toBe(true);
     expect(buckets[2].heightPct).toBeCloseTo((1 / 3) * 100);
-    expect(buckets.filter((b) => {return b.accent})).toHaveLength(1);
+    expect(
+      buckets.filter((b) => {
+        return b.accent;
+      }),
+    ).toHaveLength(1);
   });
 
   it("has no accent bucket and zero heights for an empty series", () => {

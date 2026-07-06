@@ -42,3 +42,59 @@ test("admin/incident-active", async ({ mount }) => {
     animations: "disabled",
   });
 });
+
+test("admin/kpi-row", async ({ mount }) => {
+  // KpiRow isolated: the "loaded" baseline arm — all four cards warn=false.
+  const c = await mount(<VisualScenario name="admin/kpi-row" />);
+  await expect(c.getByTestId("admin-kpi-row")).toBeVisible();
+  await expect(c).toHaveScreenshot("kpi-row.png", {
+    animations: "disabled",
+  });
+});
+
+test("admin/kpi-row-warn", async ({ mount }) => {
+  // KpiRow warn arm: latency + error-rate cross their warn thresholds
+  // (lat>60, err>0.8) → the accent-negative value/delta colour on those cards.
+  const c = await mount(<VisualScenario name="admin/kpi-row-warn" />);
+  await expect(
+    c.getByTestId("admin-kpi-lat").locator("span[data-kpi='lat']"),
+  ).toHaveAttribute("data-warn", "true");
+  await expect(c).toHaveScreenshot("kpi-row-warn.png", {
+    animations: "disabled",
+  });
+});
+
+test("admin/service-health", async ({ mount }) => {
+  // ServiceHealth isolated: mixed status arms (ok/degraded/down) in one
+  // topology snapshot — "down" is a real-app extra with no PROTO equivalent.
+  const c = await mount(<VisualScenario name="admin/service-health" />);
+  await expect(c.getByTestId("admin-service-health")).toBeVisible();
+  await expect(c).toHaveScreenshot("service-health.png", {
+    animations: "disabled",
+  });
+});
+
+test("admin/head-nominal", async ({ mount }) => {
+  // AdminHead isolated: no incident active → "ALL SYSTEMS NOMINAL" pill.
+  const c = await mount(<VisualScenario name="admin/head-nominal" />);
+  await expect(c.getByTestId("admin-status-pill")).toHaveAttribute(
+    "data-incident",
+    "false",
+  );
+  await expect(c).toHaveScreenshot("head-nominal.png", {
+    animations: "disabled",
+  });
+});
+
+test("admin/head-incident", async ({ mount }) => {
+  // AdminHead isolated: serviceDown incident active → "INCIDENT ACTIVE" pill —
+  // the same real useIncident() seam IncidentControls drives.
+  const c = await mount(<VisualScenario name="admin/head-incident" />);
+  await expect(c.getByTestId("admin-status-pill")).toHaveAttribute(
+    "data-incident",
+    "true",
+  );
+  await expect(c).toHaveScreenshot("head-incident.png", {
+    animations: "disabled",
+  });
+});

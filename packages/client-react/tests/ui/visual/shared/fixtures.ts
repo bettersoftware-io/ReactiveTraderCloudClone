@@ -1696,3 +1696,50 @@ fixtures["admin-incident-active"] = makeAppData({
   adminSessions: adminSessionData,
   adminIncident: { active: ["serviceDown"] },
 });
+
+// KpiRow isolated warn arm: latency's last sample (65ms) and error-rate's
+// last sample (0.92%) both cross their warn thresholds (lat>60, err>0.8) —
+// the accent-negative value/delta colour on those two cards. Throughput and
+// sessions never warn (kpisVm's `noWarn`), so only lat/err flip.
+const adminKpiWarnSamples: AdminMetricWindows = {
+  throughput: [
+    { t: 1_750_000_000_000, value: 180 },
+    { t: 1_750_000_001_000, value: 190 },
+    { t: 1_750_000_002_000, value: 200 },
+    { t: 1_750_000_003_000, value: 210 },
+    { t: 1_750_000_004_000, value: 220 },
+  ],
+  latency: [
+    { t: 1_750_000_000_000, value: 20 },
+    { t: 1_750_000_001_000, value: 30 },
+    { t: 1_750_000_002_000, value: 45 },
+    { t: 1_750_000_003_000, value: 55 },
+    { t: 1_750_000_004_000, value: 65 },
+  ],
+  errorRate: [
+    { t: 1_750_000_000_000, value: 0.1 },
+    { t: 1_750_000_001_000, value: 0.3 },
+    { t: 1_750_000_002_000, value: 0.5 },
+    { t: 1_750_000_003_000, value: 0.7 },
+    { t: 1_750_000_004_000, value: 0.92 },
+  ],
+};
+fixtures["admin-kpi-warn"] = makeAppData({
+  throughput: { value: 250, loading: false, message: null },
+  adminMetrics: adminKpiWarnSamples,
+});
+
+// ServiceHealth isolated mixed-status arm: ok + degraded + down in one
+// topology snapshot. "down" is a real-app extra the topology simulator can
+// emit that PROTO never modelled (servicesVm's em-dash uptime + red row).
+const adminTopologyMixed: ServiceTopology = {
+  nodes: [
+    { name: "kernel", status: "ok", throughput: 250, latencyMs: 8 },
+    { name: "credit", status: "degraded", throughput: 30, latencyMs: 45 },
+    { name: "execution", status: "down", throughput: 0, latencyMs: 0 },
+  ],
+  edges: [],
+};
+fixtures["admin-service-mixed"] = makeAppData({
+  adminTopology: adminTopologyMixed,
+});

@@ -8,7 +8,7 @@ import type { ServiceNode, ServiceStatus } from "@rtc/domain";
 // deterministic uptime string. NO RNG — uptime varies only by service name
 // (stable across renders and re-mounts).
 
-export type ServiceStatusLabel = "ONLINE" | "DEGRADED" | "DOWN";
+type ServiceStatusLabel = "ONLINE" | "DEGRADED" | "DOWN";
 
 export interface ServiceRowVm {
   readonly name: string;

@@ -5,10 +5,13 @@ import { createDefaultLayoutPort } from "@rtc/client-core";
 
 import { App } from "#/ui/App";
 import { AdminDashboard } from "#/ui/admin/AdminDashboard";
+import { AdminHead } from "#/ui/admin/AdminHead";
 import { AdminPanel } from "#/ui/admin/AdminPanel";
 import { IncidentControls } from "#/ui/admin/IncidentControls";
+import { KpiRow } from "#/ui/admin/kpis/KpiRow";
 import { LiveEventLog } from "#/ui/admin/LiveEventLog";
 import { ServiceTopologyGraph } from "#/ui/admin/ServiceTopologyGraph";
+import { ServiceHealth } from "#/ui/admin/services/ServiceHealth";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditWorkspace } from "#/ui/credit/CreditWorkspace";
 import { NewRfqForm } from "#/ui/credit/newRfq/NewRfqForm";
@@ -306,6 +309,36 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <div style={{ width: 660, display: "flex", flexDirection: "column" }}>
         <IncidentControls />
+      </div>
+    );
+  },
+  // KpiRow: `.row` is a `grid-template-columns: repeat(4, 1fr)` strip — a
+  // content-sized wrapper would flake on font-mono glyph-advance variance
+  // (same rationale as IncidentControls/LiveEventLog above). 900px mirrors a
+  // representative share of the dashboard's 1280px width.
+  KpiRow: () => {
+    return (
+      <div style={{ width: 900, display: "flex", flexDirection: "column" }}>
+        <KpiRow />
+      </div>
+    );
+  },
+  // ServiceHealth: `.card` is `height: 100%` (fills its dashboard grid cell),
+  // so an isolated shot needs an explicit parent height to resolve.
+  ServiceHealth: () => {
+    return (
+      <div style={{ width: 360, height: 280 }}>
+        <ServiceHealth />
+      </div>
+    );
+  },
+  // AdminHead: `.head` is `display: flex; flex: 1` (fills the panel header's
+  // remaining width in the real layout engine) — a fixed-width flex wrapper
+  // stabilises the title/pill spacing for an isolated shot.
+  AdminHead: () => {
+    return (
+      <div style={{ width: 480, display: "flex" }}>
+        <AdminHead />
       </div>
     );
   },

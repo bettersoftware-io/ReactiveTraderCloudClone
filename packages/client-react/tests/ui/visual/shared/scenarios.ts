@@ -546,4 +546,31 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "IncidentControls",
     fixtureKey: "admin-incident-active",
   },
+  // KpiRow isolated: the "loaded" baseline arm — all four cards warn=false.
+  "admin/kpi-row": {
+    componentKey: "KpiRow",
+    fixtureKey: "admin-loaded",
+  },
+  // KpiRow isolated warn arm: latency + error-rate cross their warn thresholds
+  // (lat>60, err>0.8) → the accent-negative value/delta colour on those cards.
+  "admin/kpi-row-warn": {
+    componentKey: "KpiRow",
+    fixtureKey: "admin-kpi-warn",
+  },
+  // ServiceHealth isolated: mixed status arms (ok/degraded/down) in one
+  // topology snapshot — "down" is a real-app extra with no PROTO equivalent.
+  "admin/service-health": {
+    componentKey: "ServiceHealth",
+    fixtureKey: "admin-service-mixed",
+  },
+  // AdminHead isolated: nominal (no incident active) vs incident-active pill
+  // arms — the real useIncident() wiring IncidentControls also drives.
+  "admin/head-nominal": {
+    componentKey: "AdminHead",
+    fixtureKey: "admin-loaded",
+  },
+  "admin/head-incident": {
+    componentKey: "AdminHead",
+    fixtureKey: "admin-incident-active",
+  },
 };
