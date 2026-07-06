@@ -80,6 +80,11 @@ interface PnlChartShape {
   zeroY: number | null;
 }
 
+interface Point {
+  x: number;
+  y: number;
+}
+
 // Derive both the line path and the zero baseline from a single pass over the
 // history: values, min/max and the plot height are shared, so compute them once.
 function buildChart(history: readonly HistoricPosition[]): PnlChartShape {
@@ -96,22 +101,51 @@ function buildChart(history: readonly HistoricPosition[]): PnlChartShape {
   const h = CHART_HEIGHT - PADDING * 2;
   const step = w / (values.length - 1);
 
-  const path = values
-    .map((v, i) => {
-      const x = PADDING + i * step;
-      const y = PADDING + h - ((v - min) / range) * h;
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
+  const points: Point[] = values.map((v, i) => {
+    return {
+      x: PADDING + i * step,
+      y: PADDING + h - ((v - min) / range) * h,
+    };
+  });
 
-  const areaPath =
-    path === ""
-      ? ""
-      : `${path} L${CHART_WIDTH - PADDING},${CHART_HEIGHT} L${PADDING},${CHART_HEIGHT} Z`;
+  const path = smoothPath(points);
+
+  const areaPath = `${path} L${CHART_WIDTH - PADDING},${CHART_HEIGHT} L${PADDING},${CHART_HEIGHT} Z`;
 
   // Zero baseline only when 0 falls within [min, max].
   const zeroY =
     min > 0 || max < 0 ? null : PADDING + h - ((0 - min) / range) * h;
 
   return { path, areaPath, zeroY };
+}
+
+// Catmull-Rom-through-cubic-Bézier smoothing (standard 1/6-tension formula):
+// each segment's control points are derived from the neighbours either side
+// of the segment's endpoints, so the curve passes through every data point
+// while staying tangent-continuous — replaces the old straight-`L`-segment
+// polyline (which read as a jagged line + a boxy area fill at 90 history
+// points) with the smooth glow-area look of the v2 prototype.
+// Only called from buildChart, which already guards `history.length >= 2`.
+function smoothPath(points: readonly Point[]): string {
+  const first = points[0];
+  let d = `M${fmt(first.x)},${fmt(first.y)}`;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = i > 0 ? points[i - 1] : points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = i + 2 < points.length ? points[i + 2] : p2;
+
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${fmt(c1x)},${fmt(c1y)} ${fmt(c2x)},${fmt(c2y)} ${fmt(p2.x)},${fmt(p2.y)}`;
+  }
+
+  return d;
+}
+
+function fmt(n: number): string {
+  return n.toFixed(1);
 }

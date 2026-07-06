@@ -7,26 +7,50 @@ afterEach(() => {
 });
 
 describe("InhouseLayoutEngine", () => {
-  it("renders the fx arrangement: rates + a fixed rail (analytics over positions), blotter pinned", () => {
+  it("renders the fx arrangement: rates + a resizable right column (analytics over positions), blotter resizable (not pinned)", () => {
     const page = mount(LayoutEngine, {});
     expect(page.bodyText("fx-rates")).toBe("RATES");
     expect(page.bodyText("fx-analytics")).toBe("ANALYTICS");
     expect(page.bodyText("fx-positions")).toBe("POSITIONS");
     expect(page.bodyText("fx-blotter")).toBe("BLOTTER");
-    expect(page.isPinned("fx-blotter")).toBe(true);
+    expect(page.isPinned("fx-blotter")).toBe(false);
   });
 
-  it("suppresses the resize handle between rates and the fixed 360px rail", () => {
+  it("shows a resize handle between rates and the right column (no fixedPx suppressing it)", () => {
     const page = mount(LayoutEngine, {});
-    // content row is child 0 of the root column split → pathKey "0"; the
-    // rail's fixedPx suppresses the handle at that split entirely.
-    expect(page.handleExists("0", 0)).toBe(false);
+    // content row is child 0 of the root column split → pathKey "0"
+    expect(page.handleExists("0", 0)).toBe(true);
   });
 
-  it("shows a resize handle between analytics and positions inside the fixed rail", () => {
+  it("shows a resize handle between analytics and positions inside the right column", () => {
     const page = mount(LayoutEngine, {});
-    // the rail is child 1 of the content row → pathKey "0.1"
+    // the right column is child 1 of the content row → pathKey "0.1"
     expect(page.handleExists("0.1", 0)).toBe(true);
+  });
+
+  it("shows a resize handle between the content row and the blotter (blotter is no longer pinned)", () => {
+    const page = mount(LayoutEngine, {});
+    // root path is [] → pathKey ""
+    expect(page.handleExists("", 0)).toBe(true);
+  });
+
+  it("renders split handles as siblings between cells, not inside them", () => {
+    const page = mount(LayoutEngine, {});
+    // the analytics/positions rail is a column split at pathKey "0.1"
+    const handle = page.handleElement("0.1", 0);
+    expect(handle.parentElement?.getAttribute("data-dir")).toBe("column");
+    expect(handle.previousElementSibling?.getAttribute("data-testid")).toBe(
+      "cell-0.1-0",
+    );
+  });
+
+  it("shows the maximize glyph, swapping to the restore glyph once maximized, with matching aria-labels", () => {
+    const page = mount(LayoutEngine, {});
+    expect(page.maximizeGlyph("fx-rates")).toBe("⛶");
+    expect(page.maximizeAriaLabel("fx-rates")).toBe("Maximize Live Rates");
+    page.maximize("fx-rates");
+    expect(page.maximizeGlyph("fx-rates")).toBe("⧉");
+    expect(page.maximizeAriaLabel("fx-rates")).toBe("Restore Live Rates");
   });
 
   it("maximize collapses the other panels to strips; restore brings them back", () => {
@@ -47,5 +71,98 @@ describe("InhouseLayoutEngine", () => {
     page.expand("fx-analytics");
     expect(page.isStrip("fx-analytics")).toBe(false);
     expect(page.bodyText("fx-analytics")).toBe("ANALYTICS");
+  });
+
+  it("a collapsed panel renders a single restore control labelled with its title and no body; clicking it expands", () => {
+    const page = mount(LayoutEngine, {});
+    page.collapse("fx-analytics");
+    expect(page.stripRestoreLabel("fx-analytics")).toBe("Restore Analytics");
+    expect(page.bodyText("fx-analytics")).toBeNull();
+    page.expand("fx-analytics");
+    // no longer a strip: the same testid now belongs to the small collapse
+    // icon in the header, not the restore bar.
+    expect(page.stripRestoreLabel("fx-analytics")).toBe("Collapse Analytics");
+    expect(page.bodyText("fx-analytics")).toBe("ANALYTICS");
+  });
+
+  it("clicking the restore bar of a panel stripped by another panel's maximize restores (un-maximizes)", () => {
+    const page = mount(LayoutEngine, {});
+    page.maximize("fx-rates");
+    expect(page.stripRestoreLabel("fx-analytics")).toBe("Restore Analytics");
+    page.expandStrip("fx-analytics");
+    expect(page.isStrip("fx-analytics")).toBe(false);
+    expect(page.isStrip("fx-positions")).toBe(false);
+    expect(page.isStrip("fx-blotter")).toBe(false);
+  });
+
+  it("marks a collapsed panel's own cell as a strip cell (releasing its ratio-derived flex-grow) but leaves its growing sibling's cell alone", () => {
+    const page = mount(LayoutEngine, {});
+    // the analytics/positions rail is a column split at pathKey "0.1":
+    // analytics is child 0, positions is child 1.
+    page.collapse("fx-analytics");
+    expect(page.isStripCell("0.1", 0)).toBe(true);
+    expect(page.isStripCell("0.1", 1)).toBe(false);
+  });
+
+  it("marks every non-maximized cell a strip cell on maximize, including a nested split whose entire subtree stripped, but never the maximized panel's own cell chain", () => {
+    const page = mount(LayoutEngine, {});
+    page.maximize("fx-rates");
+    // fx-rates is the maximized panel: its own cell (content row child 0)
+    // must NOT strip, nor must its ancestor (root content-row cell).
+    expect(page.isStripCell("0", 0)).toBe(false);
+    expect(page.isStripCell("", 0)).toBe(false);
+    // the right rail (content row child 1) is an all-strip subtree: both the
+    // rail's own cell and its two inner (analytics/positions) cells strip.
+    expect(page.isStripCell("0", 1)).toBe(true);
+    expect(page.isStripCell("0.1", 0)).toBe(true);
+    expect(page.isStripCell("0.1", 1)).toBe(true);
+    // the blotter (root child 1) strips too.
+    expect(page.isStripCell("", 1)).toBe(true);
+  });
+
+  it("suppresses the resize handle beside a cell that collapsed to a strip", () => {
+    const page = mount(LayoutEngine, {});
+    page.collapse("fx-analytics");
+    // the analytics/positions handle sits at pathKey "0.1", index 0.
+    expect(page.handleExists("0.1", 0)).toBe(false);
+  });
+
+  it("suppresses resize handles beside cells stripped as a side effect of another panel's maximize", () => {
+    const page = mount(LayoutEngine, {});
+    page.maximize("fx-rates");
+    // content-row/blotter handle at root path "", index 0 — blotter stripped.
+    expect(page.handleExists("", 0)).toBe(false);
+    // rates/rail handle within the content row at pathKey "0", index 0 — the
+    // rail (analytics+positions) is an all-strip subtree.
+    expect(page.handleExists("0", 0)).toBe(false);
+  });
+
+  it("orients the restore bar vertically when the strip's cell is a child of a row split, horizontally otherwise", () => {
+    const page = mount(LayoutEngine, {});
+    page.maximize("fx-analytics");
+    // fx-rates sits in the content row (a row split) → narrow/tall strip
+    expect(page.stripOrientation("fx-rates")).toBe("vertical");
+    // fx-blotter sits under the root column split → short/wide strip
+    expect(page.stripOrientation("fx-blotter")).toBe("horizontal");
+  });
+
+  // The default FX tree is fully resizable (Task 2), so nothing shipped
+  // exercises the engine's pinned/fixedPx render branches anymore. The engine
+  // keeps that machinery for a future panel that opts out of resizing; this
+  // fixture (see react/pinnedFixtureLayoutPort.ts) mounts it directly so the
+  // branches stay covered instead of rotting unexercised.
+  describe("pinned + fixedPx machinery (kept for a future non-resizable panel)", () => {
+    it("renders a pinned panel with data-pinned and no resize handle beside it", () => {
+      const page = mount(LayoutEngine, { props: { pinnedFixture: true } });
+      expect(page.isPinned("fx-blotter")).toBe(true);
+      // root path is [] → pathKey ""; the pinned tail suppresses the handle
+      expect(page.handleExists("", 0)).toBe(false);
+    });
+
+    it("suppresses the resize handle beside a fixedPx cell", () => {
+      const page = mount(LayoutEngine, { props: { pinnedFixture: true } });
+      // content row is child 0 of the root column split → pathKey "0"
+      expect(page.handleExists("0", 0)).toBe(false);
+    });
   });
 });

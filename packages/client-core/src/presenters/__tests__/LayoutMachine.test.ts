@@ -72,7 +72,7 @@ describe("createLayoutMachine", () => {
     const inner = r.children[0];
     if (inner.kind !== "split") throw new Error("inner split expected");
     expect(inner.sizes).toEqual([0.5, 0.5]);
-    // the outer (pinned-bearing) split is untouched
+    // the outer split (whose second child is the blotter) is untouched
     expect(r.sizes).toEqual([0.8, 0.2]);
     m.dispose();
   });

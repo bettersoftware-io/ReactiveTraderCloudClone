@@ -38,7 +38,7 @@ export class TileConfirmationPage extends MountedComponent<TileConfirmationProps
     // token the component used to render (and that the contract spec asserts).
     switch (this.overlay()?.dataset.status) {
       case "done":
-        return "var(--accent-positive)";
+        return "var(--bg-secondary)";
       case "rejected":
         return "var(--accent-negative)";
       case "tooLong":
@@ -58,12 +58,24 @@ export class TileConfirmationPage extends MountedComponent<TileConfirmationProps
   cursor(): string {
     const status = this.overlay()?.dataset.status;
     if (status === undefined) return "";
-    return status === "started" ? "default" : "pointer";
+    // The done card is a static panel — only its DISMISS button is
+    // clickable, unlike the other statuses' click-anywhere overlay button.
+    return status === "started" || status === "done" ? "default" : "pointer";
   }
 
   async clickOverlay(): Promise<void> {
     const el = this.overlay();
     if (!el) throw new Error("No confirmation overlay to click");
+    await this.user.click(el);
+  }
+
+  dismissButton(): HTMLElement | null {
+    return this.q().queryByRole("button", { name: /dismiss/i });
+  }
+
+  async clickDismissButton(): Promise<void> {
+    const el = this.dismissButton();
+    if (!el) throw new Error("No DISMISS button to click");
     await this.user.click(el);
   }
 }

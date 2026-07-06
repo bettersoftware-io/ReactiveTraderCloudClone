@@ -83,6 +83,27 @@ describe("ExecutionSimulator", () => {
     expect(trade.notional).toBe(1_000_000);
     expect(trade.dealtCurrency).toBe("AUD");
   });
+
+  it("attributes a user-executed trade to You, not a seeded trader name", async () => {
+    vi.useFakeTimers();
+    const engine = new ExecutionSimulator();
+    const promise = firstValueFrom(engine.executeTrade(makeRequest("EURUSD")));
+    await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);
+    const trade = await promise;
+    expect(trade.tradeName).toBe("You");
+  });
+
+  it("value date is trade date + 2 days (spot T+2 convention)", async () => {
+    vi.useFakeTimers();
+    const engine = new ExecutionSimulator();
+    const promise = firstValueFrom(engine.executeTrade(makeRequest("EURUSD")));
+    await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);
+    const trade = await promise;
+    const dayMs = 86_400_000;
+    expect(
+      new Date(trade.valueDate).getTime() - new Date(trade.tradeDate).getTime(),
+    ).toBe(2 * dayMs);
+  });
 });
 
 function makeRequest(pair: string): ExecutionRequest {

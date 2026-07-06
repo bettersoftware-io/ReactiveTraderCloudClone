@@ -61,7 +61,7 @@ describe("TradeStoreSimulator", () => {
     await vi.advanceTimersByTimeAsync(2_100);
     const trade = await executed;
     expect(trade.tradeId).toBe(1043);
-    expect(trade.tradeName).toBe("A.Stark");
+    expect(trade.tradeName).toBe("You");
     const snapshot = await firstValueFrom(store.getTradeStream());
     expect(snapshot).toHaveLength(6);
     vi.useRealTimers();

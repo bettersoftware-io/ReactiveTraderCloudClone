@@ -19,7 +19,7 @@ describe("layout machine factory", () => {
     });
     sub.unsubscribe();
     if (!seen) throw new Error("layout state did not emit synchronously");
-    // fx arrangement: rates + analytics fill, blotter pinned bottom
+    // fx arrangement: rates + analytics fill, blotter a resizable bottom split
     if (seen.root.kind !== "split") throw new Error("split root expected");
     expect(seen.root.dir).toBe("column");
     m.intents.maximize("fx-rates");

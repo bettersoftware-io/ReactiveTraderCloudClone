@@ -2,14 +2,22 @@ import { defer, type Observable, timer } from "rxjs";
 import { map, tap } from "rxjs/operators";
 
 import type { ExecutionRequest, Trade } from "../fx/trade.js";
-import { TradeStatus } from "../fx/trade.js";
+import {
+  isoDaysFromNow,
+  SPOT_VALUE_DATE_OFFSET_DAYS,
+  TradeStatus,
+} from "../fx/trade.js";
 import type { ExecutionPort } from "../ports/executionPort.js";
 
 const REJECTED_PAIR = "GBPJPY";
 const DELAYED_PAIR = "EURJPY";
 const DELAYED_PAIR_MS = 4_000;
 const NORMAL_MAX_DELAY_MS = 2_000;
-const DEFAULT_TRADER_NAME = "A.Stark";
+// User-executed trades (as opposed to the PROTO seed trades in
+// TradeStoreSimulator, which keep their own tradeName per SEED_TRADES) are
+// always attributed to the local user, "You" — this is the only trader this
+// client can execute as.
+const DEFAULT_TRADER_NAME = "You";
 
 export type TradeListener = (trade: Trade) => void;
 
@@ -26,7 +34,9 @@ export class ExecutionSimulator implements ExecutionPort {
   executeTrade(request: ExecutionRequest): Observable<Trade> {
     return defer(() => {
       const tradeId = this.nextId++;
-      const now = new Date().toISOString().slice(0, 10);
+      const nowMs = Date.now();
+      const tradeDate = isoDaysFromNow(0, nowMs);
+      const valueDate = isoDaysFromNow(SPOT_VALUE_DATE_OFFSET_DAYS, nowMs);
       const status =
         request.currencyPair === REJECTED_PAIR
           ? TradeStatus.Rejected
@@ -46,8 +56,8 @@ export class ExecutionSimulator implements ExecutionPort {
             direction: request.direction,
             spotRate: request.spotRate,
             status,
-            tradeDate: now,
-            valueDate: now,
+            tradeDate,
+            valueDate,
           };
         }),
         tap((trade) => {

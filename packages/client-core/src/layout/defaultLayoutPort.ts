@@ -8,21 +8,19 @@ import type {
 
 export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
 
-/** Static panel descriptors. `pinned: true` marks a panel the engine renders in
- * the fixed bottom strip (the blotters), kept out of any resizable split's sizes
- * so a drag never touches it. Ids are stable — the PanelRegistry (Task 5) maps
- * them to module roots. */
+/** Static panel descriptors. `pinned: true` (unused by any default tree today)
+ * marks a panel the engine renders in a fixed bottom strip, kept out of any
+ * resizable split's sizes so a drag never touches it — the machinery stays
+ * for a future panel that genuinely needs to opt out of resizing. Every
+ * current default tree is fully user-resizable instead (Task 2). Ids are
+ * stable — the PanelRegistry (Task 5) maps them to module roots. */
 export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   "fx-rates": { id: "fx-rates", title: "Live Rates" },
   "fx-analytics": { id: "fx-analytics", title: "Analytics" },
   "fx-positions": { id: "fx-positions", title: "Positions" },
-  "fx-blotter": { id: "fx-blotter", title: "Blotter", pinned: true },
+  "fx-blotter": { id: "fx-blotter", title: "Blotter" },
   "credit-rfqs": { id: "credit-rfqs", title: "Credit" },
-  "credit-blotter": {
-    id: "credit-blotter",
-    title: "Credit Blotter",
-    pinned: true,
-  },
+  "credit-blotter": { id: "credit-blotter", title: "Credit Blotter" },
   "admin-dashboard": { id: "admin-dashboard", title: "Admin" },
   equities: { id: "equities", title: "Equities" },
 };
@@ -35,10 +33,10 @@ const FX_ROOT: LayoutNode = {
     {
       kind: "split",
       dir: "row",
-      sizes: [0.7, 0.3],
-      // PROTO aside: width 360px, flex 0 0 auto (measured on the deployed
-      // prototype). The fixed rail is what restores the 7-across tile grid.
-      fixedPx: [undefined, 360],
+      // 0.26 ≈ 360px at the prototype's 1400px reference viewport — a ratio
+      // default that starts at the same place the old fixed rail did, but
+      // (unlike fixedPx) remains user-draggable.
+      sizes: [0.74, 0.26],
       children: [
         { kind: "panel", panelId: "fx-rates" },
         {

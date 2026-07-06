@@ -776,7 +776,7 @@ const eurusdDoneTradeSell: Trade = {
   tradeId: 4243,
   tradeName: "Trade 4243",
   direction: Direction.Sell,
-  dealtCurrency: "USD",
+  dealtCurrency: "EUR",
 };
 
 // TileNotional error arm: an invalid notional draft drives the

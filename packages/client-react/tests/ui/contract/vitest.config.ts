@@ -50,7 +50,8 @@ export default defineConfig({
         "src/ui/shell/theme/ThemeProvider.tsx",
         "src/ui/shell/theme/tokens.ts",
         // Canvas/chart leaves with no DOM-assertable logic — owned by the visual tier.
-        "src/ui/fx/analytics/PnlChart.tsx",
+        // (PnlChart is an SVG path leaf, not canvas — it IS DOM-assertable and has
+        // its own contract spec; see PnlChart.contract.spec.ts.)
         "src/ui/fx/liveRates/tile/TileChart.tsx",
         // Equities candlestick canvas leaf (the analog of TileChart): the redraw
         // effect early-returns in jsdom (no 2D context), so its colour-extraction

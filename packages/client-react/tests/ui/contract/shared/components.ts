@@ -8,11 +8,16 @@ import {
   RfqFilterTabsPage,
   type RfqFilterTabsProps,
 } from "./pages/credit/rfqTiles/RfqFilterTabsPage";
+import { AnalyticsHeadPage } from "./pages/fx/analytics/AnalyticsHeadPage";
 import { AnalyticsPanelPage } from "./pages/fx/analytics/AnalyticsPanelPage";
 import {
   PairPnlBarsPage,
   type PairPnlBarsProps,
 } from "./pages/fx/analytics/PairPnlBarsPage";
+import {
+  PnlChartPage,
+  type PnlChartProps,
+} from "./pages/fx/analytics/PnlChartPage";
 import {
   PnlValuePage,
   type PnlValueProps,
@@ -43,6 +48,7 @@ import {
   SetFilterPage,
   type SetFilterProps,
 } from "./pages/fx/blotter/SetFilterPage";
+import { PositionsHeadPage } from "./pages/fx/positions/PositionsHeadPage";
 import { PositionsPanelPage } from "./pages/fx/positions/PositionsPanelPage";
 import { AmbientBackgroundPage } from "./pages/shell/background/AmbientBackgroundPage";
 import { BootGatePage } from "./pages/shell/boot/BootGatePage";
@@ -183,6 +189,13 @@ export const AnalyticsPanel = component<
   return new AnalyticsPanelPage(ctx);
 });
 
+export const AnalyticsHead = component<
+  Record<string, never>,
+  AnalyticsHeadPage
+>((ctx) => {
+  return new AnalyticsHeadPage(ctx);
+});
+
 export const PairPnlBars = component<PairPnlBarsProps, PairPnlBarsPage>(
   (ctx) => {
     return new PairPnlBarsPage(ctx);
@@ -193,11 +206,22 @@ export const PnlValue = component<PnlValueProps, PnlValuePage>((ctx) => {
   return new PnlValuePage(ctx);
 });
 
+export const PnlChart = component<PnlChartProps, PnlChartPage>((ctx) => {
+  return new PnlChartPage(ctx);
+});
+
 export const PositionsPanel = component<
   Record<string, never>,
   PositionsPanelPage
 >((ctx) => {
   return new PositionsPanelPage(ctx);
+});
+
+export const PositionsHead = component<
+  Record<string, never>,
+  PositionsHeadPage
+>((ctx) => {
+  return new PositionsHeadPage(ctx);
 });
 
 export const ConnectionStatusBar = component<

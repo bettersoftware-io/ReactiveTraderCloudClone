@@ -77,6 +77,35 @@ describe("BlotterHeader", () => {
     expect(header.showsDescending("Notional")).toBe(true);
   });
 
+  // PROTO TradesBlotter chrome parity: the header is plain dim uppercase
+  // text everywhere except the actively-sorted column, which alone carries
+  // the ▲/▼ glyph.
+  it("shows a sort glyph on exactly the actively-sorted column", () => {
+    const header = mount(BlotterHeader, {
+      props: {
+        sort: { column: "notional", direction: "desc" },
+        onSort: () => {},
+        filters: new Map(),
+        onFilter: () => {},
+        trades: [],
+      },
+    });
+    expect(header.columnsWithSortGlyph()).toEqual(["Notional"]);
+  });
+
+  it("shows no sort glyph on any column when unsorted", () => {
+    const header = mount(BlotterHeader, {
+      props: {
+        sort: noSort,
+        onSort: () => {},
+        filters: new Map(),
+        onFilter: () => {},
+        trades: [],
+      },
+    });
+    expect(header.columnsWithSortGlyph()).toEqual([]);
+  });
+
   it("opens a set-filter panel for a set column", async () => {
     const header = mount(BlotterHeader, {
       props: {

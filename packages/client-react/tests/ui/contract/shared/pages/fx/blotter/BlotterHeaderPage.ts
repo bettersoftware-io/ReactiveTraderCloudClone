@@ -56,6 +56,22 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
     return (this.cellFor(label).textContent ?? "").includes("▼");
   }
 
+  /**
+   * Labels of the header(s) currently showing a sort glyph (▲ or ▼) — the
+   * per-column filter toggle's "▽" caret is a distinct character and never
+   * counts. Chrome parity requires this to name at most the one actively
+   * sorted column.
+   */
+  columnsWithSortGlyph(): string[] {
+    return this.headerCells()
+      .filter((th) => {
+        return /[▲▼]/.test(th.textContent ?? "");
+      })
+      .map((th) => {
+        return th.querySelector("span")?.firstChild?.textContent?.trim() ?? "";
+      });
+  }
+
   /** Open (or toggle) the filter panel for a column via its dropdown toggle. */
   async openFilter(label: string): Promise<void> {
     const cell = this.cellFor(label);
