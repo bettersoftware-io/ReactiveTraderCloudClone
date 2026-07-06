@@ -222,6 +222,9 @@ export interface ViewModel {
   useEventLog: () => readonly LogEvent[];
   /** Active trader sessions — starts empty. */
   useSessions: () => readonly SessionInfo[];
+  /** Rolling session-count series for the Admin "Active Sessions" KPI card —
+   * starts empty, mirrors useMetrics()'s three streams in shape. */
+  useSessionCountSeries: () => readonly MetricSample[];
   /** Shared incident-machine state + inject/clear intents. */
   useIncident: () => UseIncidentResult;
 }
@@ -428,6 +431,10 @@ export function createViewModel(
     presenters.sessions.sessions$,
     [] as readonly SessionInfo[],
   );
+  const [useSessionCountSeriesValue] = bind(
+    presenters.sessionsKpi.countSeries$,
+    [] as readonly MetricSample[],
+  );
 
   // Incident machine — shared single instance, bind its state$ (not per-mount useMachine).
   const [useIncidentState] = bind(presenters.incident.state$, {
@@ -594,6 +601,7 @@ export function createViewModel(
     useTopology: useTopologyValue,
     useEventLog: useEventLogValue,
     useSessions: useSessionsValue,
+    useSessionCountSeries: useSessionCountSeriesValue,
     useIncident: () => {
       return {
         state: useIncidentState(),

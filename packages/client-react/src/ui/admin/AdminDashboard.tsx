@@ -1,68 +1,88 @@
 import type { ReactElement } from "react";
 
 import { AdminPanel } from "./AdminPanel";
-import { ErrorRatePanel } from "./ErrorRatePanel";
 import { IncidentControls } from "./IncidentControls";
+import { KpiRow } from "./kpis/KpiRow";
 import { LatencyHistogram } from "./LatencyHistogram";
 import { LiveEventLog } from "./LiveEventLog";
-import { MetricGauges } from "./MetricGauges";
 import { ServiceTopologyGraph } from "./ServiceTopologyGraph";
 import { SessionsPanel } from "./SessionsPanel";
+import { ServiceHealth } from "./services/ServiceHealth";
 import { ThroughputChart } from "./ThroughputChart";
 
 import styles from "./AdminDashboard.module.css";
 
 /**
- * Admin observability dashboard — composes the telemetry cards (gauges, charts,
- * topology, sessions, live log) plus the break-glass incident controls and the
- * retained throughput-control card (AdminPanel) in a CSS grid. Mounted via the
- * PanelRegistry "admin-dashboard" entry, mirroring Phase 4's Equities panel.
+ * Admin observability dashboard (PROTO AdminScreen.tsx `.body`) — a flex
+ * column of rows: the KPI strip, a charts row (throughput + latency), a
+ * health/events row, and a retained row of real-app extras the prototype
+ * never modelled (service topology, sessions, break-glass incident
+ * controls, throughput control). Mounted via the PanelRegistry
+ * "admin-dashboard" entry, with its head registered separately
+ * (AdminHead, appHeadRegistry).
+ *
+ * Kills the "double header" Tasks 2/3 flagged: KpiRow/ThroughputChart/
+ * LatencyHistogram/ServiceHealth/LiveEventLog each render their OWN card
+ * chrome (background/border/head) already, so they render bare here — no
+ * wrapper. The four retained components have no such self-contained chrome
+ * (ServiceTopologyGraph has no head at all; SessionsPanel/IncidentControls/
+ * AdminPanel already render their own low-key label, restyled to the same
+ * card-head tone in AdminPanel's case), so `RetainedCard` gives them a
+ * shared shell — with an explicit title only for ServiceTopologyGraph,
+ * which is the one that would otherwise be unlabeled.
  */
 export function AdminDashboard(): ReactElement {
   return (
     <div className={styles.dashboard}>
-      <Card title="METRICS" className={styles.gaugesCard}>
-        <MetricGauges />
-      </Card>
-      <Card title="THROUGHPUT" className={styles.throughputCard}>
+      <KpiRow />
+      <div className={styles.charts}>
         <ThroughputChart />
-      </Card>
-      <Card title="LATENCY" className={styles.latencyCard}>
         <LatencyHistogram />
-      </Card>
-      <Card title="ERRORS" className={styles.errorCard}>
-        <ErrorRatePanel />
-      </Card>
-      <Card title="SERVICE TOPOLOGY" className={styles.topologyCard}>
-        <ServiceTopologyGraph />
-      </Card>
-      <Card title="EVENT LOG" className={styles.logCard}>
+      </div>
+      <div className={styles.bottom}>
+        <ServiceHealth />
         <LiveEventLog />
-      </Card>
-      <Card title="SESSIONS" className={styles.sessionsCard}>
-        <SessionsPanel />
-      </Card>
-      <Card title="INCIDENT CONTROLS" className={styles.incidentCard}>
-        <IncidentControls />
-      </Card>
-      <Card title="THROUGHPUT CONTROL" className={styles.controlCard}>
-        <AdminPanel />
-      </Card>
+      </div>
+      <div className={styles.retained}>
+        <RetainedCard title="SERVICE TOPOLOGY" className={styles.topologyCard}>
+          <ServiceTopologyGraph />
+        </RetainedCard>
+        <RetainedCard className={styles.sessionsCard}>
+          <SessionsPanel />
+        </RetainedCard>
+        <RetainedCard className={styles.incidentCard}>
+          <IncidentControls />
+        </RetainedCard>
+        <RetainedCard className={styles.controlCard}>
+          <AdminPanel />
+        </RetainedCard>
+      </div>
     </div>
   );
 }
 
-interface CardProps {
-  title: string;
-  className: string;
-  children: ReactElement;
-}
-
-function Card({ title, className, children }: CardProps): ReactElement {
+/** Shell for the four retained (non-self-headed-enough) cards: prototype-tone
+ * background/border/radius, with an OPTIONAL uppercase head — omitted for
+ * SessionsPanel/IncidentControls/AdminPanel, which already render their own
+ * label internally (a second title here would just recreate the very
+ * double-header problem this regrid closes). */
+function RetainedCard({
+  title,
+  className,
+  children,
+}: RetainedCardProps): ReactElement {
   return (
-    <section className={`${styles.card} ${className}`}>
-      <header className={styles.cardHead}>{title}</header>
-      <div className={styles.cardBody}>{children}</div>
+    <section className={`${styles.retainedCard} ${className}`}>
+      {title != null && (
+        <header className={styles.retainedHead}>{title}</header>
+      )}
+      <div className={styles.retainedBody}>{children}</div>
     </section>
   );
+}
+
+interface RetainedCardProps {
+  title?: string;
+  className: string;
+  children: ReactElement;
 }

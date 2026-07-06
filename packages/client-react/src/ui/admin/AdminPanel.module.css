@@ -1,18 +1,26 @@
 .loading {
-  padding: 24px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
   color: var(--text-secondary);
 }
 
 .panel {
-  padding: 24px;
-  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .heading {
-  font-size: 16px;
+  flex: none;
+  margin-bottom: 14px;
+  font-family: var(--font-display);
   font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 24px;
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
 }
 
 .row {
@@ -21,8 +29,41 @@
   gap: 16px;
 }
 
+/* Token-based accent styling for the native range input — the browser
+   default thumb/track clashed badly against the card's dark panel tone. */
 .slider {
   flex: 1;
+  height: 4px;
+  appearance: none;
+  background: var(--border-primary);
+  border-radius: 2px;
+  outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  appearance: none;
+  background: var(--accent-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent-primary);
+  cursor: pointer;
+}
+
+.slider::-moz-range-track {
+  height: 4px;
+  background: var(--border-primary);
+  border-radius: 2px;
+}
+
+.slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent-primary);
+  cursor: pointer;
 }
 
 .inputGroup {

@@ -122,6 +122,7 @@ export interface AdminSeed {
   topology?: ServiceTopology | null;
   eventLog?: readonly LogEvent[];
   sessions?: readonly SessionInfo[];
+  sessionCountSeries?: readonly MetricSample[];
   metrics?: Partial<MetricsView>;
 }
 
@@ -242,6 +243,9 @@ export interface World {
   readonly eventLog$: BehaviorSubject<readonly LogEvent[]>;
   /** Reactive active sessions backing useSessions. */
   readonly sessions$: BehaviorSubject<readonly SessionInfo[]>;
+  /** Reactive session-count series backing useSessionCountSeries (the Active
+   * Sessions KPI card's sparkline). */
+  readonly sessionCountSeries$: BehaviorSubject<readonly MetricSample[]>;
   /** Reactive metric series backing useMetrics (throughput/latency/errorRate). */
   readonly metrics$: BehaviorSubject<MetricsView>;
   /** Reactive incident state (active kinds) backing useIncident. */
@@ -257,6 +261,8 @@ export interface World {
   setEventLog(value: readonly LogEvent[]): void;
   /** Push new sessions. */
   setSessions(value: readonly SessionInfo[]): void;
+  /** Push a new session-count series (drives the Active Sessions KPI sparkline). */
+  setSessionCountSeries(value: readonly MetricSample[]): void;
   /** Patch the metric series (merges into current). */
   setMetrics(patch: Partial<MetricsView>): void;
   readonly results: CommandResults;
@@ -459,6 +465,9 @@ export function createWorld(
   const sessions$ = new BehaviorSubject<readonly SessionInfo[]>(
     adminSeed.sessions ?? [],
   );
+  const sessionCountSeries$ = new BehaviorSubject<readonly MetricSample[]>(
+    adminSeed.sessionCountSeries ?? [],
+  );
   const metrics$ = new BehaviorSubject<MetricsView>({
     ...DEFAULT_METRICS_VIEW,
     ...adminSeed.metrics,
@@ -577,6 +586,7 @@ export function createWorld(
     topology$,
     eventLog$,
     sessions$,
+    sessionCountSeries$,
     metrics$,
     incidentState$,
     injectIncident,
@@ -589,6 +599,9 @@ export function createWorld(
     },
     setSessions: (value: readonly SessionInfo[]) => {
       return sessions$.next(value);
+    },
+    setSessionCountSeries: (value: readonly MetricSample[]) => {
+      return sessionCountSeries$.next(value);
     },
     setMetrics: (patch: Partial<MetricsView>) => {
       return metrics$.next({ ...metrics$.getValue(), ...patch });

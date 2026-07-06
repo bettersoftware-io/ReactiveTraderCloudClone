@@ -23,14 +23,15 @@ import type {
 } from "@rtc/domain";
 
 import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
+import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
 import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
-import { ErrorRatePanel as ErrorRatePanelComponent } from "#/ui/admin/ErrorRatePanel";
 import { IncidentControls as IncidentControlsComponent } from "#/ui/admin/IncidentControls";
+import { KpiRow as KpiRowComponent } from "#/ui/admin/kpis/KpiRow";
 import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/admin/LatencyHistogram";
 import { LiveEventLog as LiveEventLogComponent } from "#/ui/admin/LiveEventLog";
-import { MetricGauges as MetricGaugesComponent } from "#/ui/admin/MetricGauges";
 import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/admin/ServiceTopologyGraph";
 import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPanel";
+import { ServiceHealth as ServiceHealthComponent } from "#/ui/admin/services/ServiceHealth";
 import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
 import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditBlotterHead as CreditBlotterHeadComponent } from "#/ui/credit/blotter/CreditBlotterHead";
@@ -103,6 +104,7 @@ import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggl
 
 import {
   AdminDashboard,
+  AdminHead,
   AdminPanel,
   AmbientBackground,
   AnalyticsHead,
@@ -121,19 +123,18 @@ import {
   DepthLadder,
   DeskPnlGauge,
   EquitiesPanel,
-  ErrorRatePanel,
   FxBlotter,
   FxBlotterWorkspace,
   HeaderChrome,
   IncidentControls,
   InstrumentTabs,
+  KpiRow,
   LatencyHistogram,
   LayoutEngine,
   LiveEventLog,
   LiveRatesPanel,
   LiveRatesWorkspace,
   LockScreen,
-  MetricGauges,
   NewRfqHead,
   NewRfqPanel,
   NumberFilter,
@@ -155,6 +156,7 @@ import {
   RfqsPanel,
   SectorHeatmap,
   SellSidePanel,
+  ServiceHealth,
   ServiceTopologyGraph,
   SessionsPanel,
   SetFilter,
@@ -812,6 +814,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
+    ServiceHealth,
+    (): ReactElement => {
+      return <ServiceHealthComponent />;
+    },
+  ],
+  [
     ServiceTopologyGraph,
     (): ReactElement => {
       return <ServiceTopologyGraphComponent />;
@@ -824,9 +832,9 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    MetricGauges,
+    KpiRow,
     (): ReactElement => {
-      return <MetricGaugesComponent />;
+      return <KpiRowComponent />;
     },
   ],
   [
@@ -842,12 +850,6 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    ErrorRatePanel,
-    (): ReactElement => {
-      return <ErrorRatePanelComponent />;
-    },
-  ],
-  [
     SessionsPanel,
     (): ReactElement => {
       return <SessionsPanelComponent />;
@@ -857,6 +859,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     AdminDashboard,
     (): ReactElement => {
       return <AdminDashboardComponent />;
+    },
+  ],
+  [
+    AdminHead,
+    (): ReactElement => {
+      return <AdminHeadComponent />;
     },
   ],
 ]);

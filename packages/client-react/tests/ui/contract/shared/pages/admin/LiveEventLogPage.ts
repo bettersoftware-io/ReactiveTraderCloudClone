@@ -3,10 +3,9 @@ import { within } from "@testing-library/dom";
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 /**
- * Page object for LiveEventLog. Queries event rows by the <li data-severity>
- * elements within the admin-event-log container. Note: the component does NOT
- * use data-testid="event-row" on each <li> (reported as a gap) — the
- * data-severity attribute is used instead, which is present and unique.
+ * Page object for LiveEventLog. Queries event rows by the [data-sev] chip
+ * within the admin-event-log container (uppercase INFO/WARN/ERROR — the
+ * component maps the lowercase domain Severity for display).
  */
 export class LiveEventLogPage extends MountedComponent<Record<string, never>> {
   private container(): HTMLElement {
@@ -18,11 +17,20 @@ export class LiveEventLogPage extends MountedComponent<Record<string, never>> {
     return within(this.root).queryByText(/NO EVENTS/i) !== null;
   }
 
-  /** All event row elements (<li data-severity> within the log container). */
+  /** The "{n} events" count text in the head, or null before any row renders. */
+  countText(): string | null {
+    return (
+      within(this.container()).queryByText(/^\d+ events$/i)?.textContent ?? null
+    );
+  }
+
+  /** All event row elements ([data-sev] chips' row ancestor). */
   rows(): Element[] {
     return Array.from(
-      this.container().querySelectorAll<HTMLLIElement>("li[data-severity]"),
-    );
+      this.container().querySelectorAll<HTMLElement>("[data-sev]"),
+    ).map((chip) => {
+      return chip.parentElement as Element;
+    });
   }
 
   /** Total number of rendered event rows. */
@@ -31,14 +39,18 @@ export class LiveEventLogPage extends MountedComponent<Record<string, never>> {
   }
 
   /**
-   * The data-severity value of the row at the given index (0 = first/newest).
-   * Returns null when no row exists at that position.
+   * The uppercase data-sev value of the row at the given index (0 =
+   * first/newest). Returns null when no row exists at that position.
    */
   rowSeverity(index: number): string | null {
-    return this.rows()[index]?.getAttribute("data-severity") ?? null;
+    return (
+      this.rows()
+        [index]?.querySelector("[data-sev]")
+        ?.getAttribute("data-sev") ?? null
+    );
   }
 
-  /** The data-severity value of the first (newest) row. */
+  /** The uppercase data-sev value of the first (newest) row. */
   firstRowSeverity(): string | null {
     return this.rowSeverity(0);
   }
@@ -48,7 +60,7 @@ export class LiveEventLogPage extends MountedComponent<Record<string, never>> {
     const row = this.rows()[0];
     if (!row) return null;
     const spans = row.querySelectorAll("span");
-    // spans[0] = time, spans[1] = service, spans[2] = message
-    return spans[2]?.textContent?.trim() ?? null;
+    // spans[0] = time, spans[1] = severity chip, spans[2] = service, spans[3] = message
+    return spans[3]?.textContent?.trim() ?? null;
   }
 }

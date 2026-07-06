@@ -10,6 +10,7 @@ import type {
   CreditRfqFilter,
   EquityOrder,
   LogEvent,
+  MetricSample,
   Price,
   PriceTick,
   Quote,
@@ -139,6 +140,11 @@ function buildContext<P>(
     setSessions: (value: readonly SessionInfo[]) => {
       return flush(() => {
         return world.setSessions(value);
+      });
+    },
+    setSessionCountSeries: (value: readonly MetricSample[]) => {
+      return flush(() => {
+        return world.setSessionCountSeries(value);
       });
     },
     setMetrics: (patch: Partial<MetricsView>) => {

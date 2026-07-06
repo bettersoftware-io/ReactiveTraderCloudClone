@@ -7,6 +7,7 @@ import type {
   CreditRfqFilter,
   EquityOrder,
   LogEvent,
+  MetricSample,
   Price,
   PriceTick,
   Quote,
@@ -43,6 +44,9 @@ export interface PageContext<P> {
   setEventLog(value: readonly LogEvent[]): void;
   /** Push new active sessions (useSessions source). */
   setSessions(value: readonly SessionInfo[]): void;
+  /** Push a new session-count series (useSessionCountSeries source — the
+   *  Active Sessions KPI card's sparkline). */
+  setSessionCountSeries(value: readonly MetricSample[]): void;
   /** Patch the metric series (useMetrics source). */
   setMetrics(patch: Partial<MetricsView>): void;
   /** Inject an incident kind (mirrors IncidentMachine asymmetry). */
@@ -129,6 +133,11 @@ export abstract class MountedComponent<P> {
   /** Push new active sessions → re-render the subscribing panel. */
   setSessions(value: readonly SessionInfo[]): void {
     this.ctx.setSessions(value);
+  }
+
+  /** Push a new session-count series → re-render the Active Sessions KPI card. */
+  setSessionCountSeries(value: readonly MetricSample[]): void {
+    this.ctx.setSessionCountSeries(value);
   }
 
   /** Patch the metric series → re-render the subscribing gauges/charts. */

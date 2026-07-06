@@ -1,11 +1,12 @@
 import { component } from "./harness/component";
 import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
+import { AdminHeadPage } from "./pages/admin/AdminHeadPage";
 import { AdminPanelPage } from "./pages/admin/AdminPanelPage";
-import { ErrorRatePanelPage } from "./pages/admin/ErrorRatePanelPage";
 import { IncidentControlsPage } from "./pages/admin/IncidentControlsPage";
+import { KpiRowPage } from "./pages/admin/KpiRowPage";
 import { LatencyHistogramPage } from "./pages/admin/LatencyHistogramPage";
 import { LiveEventLogPage } from "./pages/admin/LiveEventLogPage";
-import { MetricGaugesPage } from "./pages/admin/MetricGaugesPage";
+import { ServiceHealthPage } from "./pages/admin/ServiceHealthPage";
 import { ServiceTopologyGraphPage } from "./pages/admin/ServiceTopologyGraphPage";
 import { SessionsPanelPage } from "./pages/admin/SessionsPanelPage";
 import { ThroughputChartPage } from "./pages/admin/ThroughputChartPage";
@@ -552,6 +553,13 @@ export const IncidentControls = component<
   return new IncidentControlsPage(ctx);
 });
 
+export const ServiceHealth = component<
+  Record<string, never>,
+  ServiceHealthPage
+>((ctx) => {
+  return new ServiceHealthPage(ctx);
+});
+
 export const ServiceTopologyGraph = component<
   Record<string, never>,
   ServiceTopologyGraphPage
@@ -565,11 +573,9 @@ export const LiveEventLog = component<Record<string, never>, LiveEventLogPage>(
   },
 );
 
-export const MetricGauges = component<Record<string, never>, MetricGaugesPage>(
-  (ctx) => {
-    return new MetricGaugesPage(ctx);
-  },
-);
+export const KpiRow = component<Record<string, never>, KpiRowPage>((ctx) => {
+  return new KpiRowPage(ctx);
+});
 
 export const ThroughputChart = component<
   Record<string, never>,
@@ -585,13 +591,6 @@ export const LatencyHistogram = component<
   return new LatencyHistogramPage(ctx);
 });
 
-export const ErrorRatePanel = component<
-  Record<string, never>,
-  ErrorRatePanelPage
->((ctx) => {
-  return new ErrorRatePanelPage(ctx);
-});
-
 export const SessionsPanel = component<
   Record<string, never>,
   SessionsPanelPage
@@ -605,3 +604,9 @@ export const AdminDashboard = component<
 >((ctx) => {
   return new AdminDashboardPage(ctx);
 });
+
+export const AdminHead = component<Record<string, never>, AdminHeadPage>(
+  (ctx) => {
+    return new AdminHeadPage(ctx);
+  },
+);
