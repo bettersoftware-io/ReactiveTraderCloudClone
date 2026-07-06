@@ -4,6 +4,9 @@ React Native (Expo Router) client for ReactiveTraderCloudClone. Consumes the
 framework-neutral `@rtc/client-core` verbatim; only the leaf UI + platform
 adapters are RN-specific. See `docs/superpowers/specs/2026-06-29-react-native-expo-client-design.md`.
 
+Runs on **Expo SDK 57 / React Native 0.86** (see
+`docs/superpowers/specs/2026-07-06-rn-expo-sdk57-upgrade-design.md`).
+
 ## What the app shows
 
 The screen streams live FX spot tiles from the deployed Fly server by
@@ -19,34 +22,113 @@ other wiring: same presenters, same UI, different ports.
 
 ---
 
-## Quick start — see it on your phone in ~2 minutes (no account, no EAS)
+## Running the app
 
-This runs the app straight from your Mac to your phone over Wi-Fi via the
-**Expo Go** app. Best for your own phone or a colleague sitting next to you.
+The app has no custom native code — every native module it uses ships inside
+Expo Go and the Expo prebuild. Which runner you use depends on the platform.
 
-1. Install **Expo Go** on your phone (App Store / Play Store).
-2. Make sure the phone and the Mac are on the **same Wi-Fi network**.
-3. From the repo root:
+### iOS — use the simulator (recommended)
 
-   ```bash
-   pnpm build                                    # build the workspace libs (client-core → dist)
-   pnpm --filter @rtc/client-react-native start  # starts Metro, prints a QR code
-   ```
+> **Why not Expo Go on your iPhone?** App Store **Expo Go is frozen at SDK 54**
+> (Apple's review backlog), but this app is on **SDK 57**. Expo Go only runs the
+> single SDK baked into it, so it rejects this app on iOS as "incompatible."
+> Until Apple ships a newer Expo Go, the free iOS path is the **simulator**
+> (a dev build), not Expo Go.
 
-4. Scan the QR code with the phone (iOS: Camera app → open in Expo Go;
-   Android: scan from inside Expo Go).
+From the repo root (with Xcode + an iOS simulator runtime installed):
 
-The app opens. **Flip the Simulator switch** to see streaming tiles
-immediately. To see *live* data instead, set up the WS token below first.
+```bash
+pnpm build                                                # build the workspace libs (client-core → dist)
+pnpm --filter @rtc/client-react-native exec expo run:ios  # builds a dev client, launches the simulator
+```
 
-### Verify the bundle without a device
+- Use `pnpm … exec expo` (the workspace-local Expo CLI), **not** `npx expo` —
+  on this repo's Node 26, `npx expo` crashes (a `stripTypeScriptTypes` bug in
+  npx's isolated fetch).
+- The **first** `run:ios` compiles the native project (prebuild → pod install →
+  xcodebuild) and takes ~10–15 min; later runs are incremental and fast.
+- Once it launches, flip the in-app **Simulator** switch for instant
+  deterministic tiles — no server or token needed.
+
+<details>
+<summary>Force deterministic simulator data without tapping the toggle</summary>
+
+`buildNativePorts` takes the in-process simulator branch whenever `serverUrl`
+is empty. Since `EXPO_PUBLIC_*` vars are inlined at bundle time and `??` only
+catches null/undefined, an empty string works:
+
+```bash
+EXPO_PUBLIC_SERVER_URL="" pnpm --filter @rtc/client-react-native exec expo start --clear
+```
+
+Then open the installed dev client at Metro:
+
+```bash
+xcrun simctl openurl booted "exp+rtc-mobile://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+```
+</details>
+
+### Android — Expo Go or an APK
+
+Android's Play Store Expo Go tracks the latest SDK, so the QR path generally
+works there:
+
+```bash
+pnpm build
+pnpm --filter @rtc/client-react-native start   # starts Metro, prints a QR code
+```
+
+Scan the QR from inside Expo Go (phone and Mac on the **same Wi-Fi**). If the
+Expo Go build is mid-rollout, build a standalone **APK** instead (see
+Distribution below) — it needs no Expo Go and no signing gatekeeper.
+
+### Verify the bundle without any device
 
 ```bash
 pnpm --filter @rtc/client-react-native export
 ```
 
-Compiles the whole app through Metro (no phone needed) — a quick check that
-everything still bundles.
+Compiles the whole app through Metro (no phone/simulator needed) — a quick
+check that everything still bundles. Note this is a *production* export; it does
+**not** exercise the dev runtime. To prove the dev bundle boots, start Metro and
+fetch `http://localhost:8081/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true&minify=false`.
+
+---
+
+## Distribution options
+
+This app is wired for **free-path distribution** — no paid Apple Developer
+account. `eas.json` carries exactly two build profiles (`development` dev-client
+and `preview` Android APK) and no EAS Update / OTA (`updates: { enabled: false }`
+in `app.config.ts`; the `eas.projectId` is already set in `extra`). Run the EAS
+CLI on demand with `pnpm dlx eas-cli` (no global install needed).
+
+| Target | How | Cost |
+|---|---|---|
+| **iOS Simulator** (Mac) | `expo run:ios` (dev build) — see above | Free |
+| **Android** device/emulator | Expo Go QR (`… start`), or a standalone APK: `eas build -p android --profile preview` → share the link | Free |
+| **Your own iPhone** (physical) | `expo run:ios --device` — cabled, signed with a **free** Apple ID (Xcode Personal Team) | Free, but **7-day** expiry + must be cabled |
+| **iPhone via EAS** (over-the-air link, no cable) | `eas device:create` then `eas build -p ios` | **Needs Apple Developer Program ($99/yr)** |
+| **iOS Expo Go** (App Store) | ❌ Not possible — frozen at SDK 54, rejects this SDK-57 app | — |
+
+### Why iOS-on-a-real-device costs money
+
+iOS refuses to run any app on a physical device unless it's **code-signed with a
+provisioning profile listing that device's UDID**. Registering device UDIDs and
+minting those profiles is a **paid Apple Developer Program** capability, which
+EAS drives on your behalf — so EAS device installs inherit Apple's paywall. A
+**free** Apple ID only gets a "Personal Team," which can sign locally via Xcode
+(cabled, 7-day) but has no cloud/EAS access. Android has no equivalent gate — the
+APK sideloads freely, which is why it's the free way to share broadly.
+
+### If you later want over-the-air updates (EAS Update)
+
+Deliberately **out of scope** here (free-path policy). Adopting it means
+installing `expo-updates`, replacing `updates: { enabled: false }` with
+`updates: { url: "https://u.expo.dev/<projectId>" }` in `app.config.ts`, adding
+`channel`s back to `eas.json`, and `eas update --channel <name>`. It still
+requires a build that colleagues can install first (Expo Go or a dev/preview
+build) — OTA only ships the JS bundle, not the native shell.
 
 ---
 
@@ -107,7 +189,8 @@ EXPO_PUBLIC_WS_TOKEN=some-demo-secret pnpm --filter @rtc/client-react-native sta
 ```
 
 Optional companion var: `EXPO_PUBLIC_SERVER_URL` overrides the WS endpoint
-(defaults to `wss://rtc-clone-server.fly.dev`).
+(defaults to `wss://rtc-clone-server.fly.dev`; set it to an empty string to
+force the in-process simulator branch — see Running the app).
 
 > ⚠️ **Two caveats.**
 > 1. `.env` is git-ignored on purpose — **never commit a real token**. Keep
@@ -135,68 +218,14 @@ the connection (see Step 1).
 
 ---
 
-## Sharing over-the-air with EAS Update (for *remote* colleagues)
-
-**Only needed if you want to send the app to someone who is NOT on your
-Wi-Fi.** For anyone next to you, the Quick start above is enough. EAS Update
-publishes the JS bundle to Expo's servers so anyone with **Expo Go** + the
-link can load it from anywhere.
-
-You don't have to install anything globally — run the CLI on demand with
-`pnpm dlx eas-cli` (or `npm install -g eas-cli` if you'd rather have a
-permanent `eas` command). `eas.json` (build profiles + `development` /
-`preview` / `production` channels) is already committed.
-
-One-time, account-bound sequence:
-
-1. Create a free Expo account at <https://expo.dev>.
-2. Log in:
-
-   ```bash
-   pnpm dlx eas-cli login
-   ```
-
-3. Initialise the EAS project (from the package dir):
-
-   ```bash
-   cd packages/client-react-native
-   pnpm dlx eas-cli init          # creates the project; prints a projectId
-   ```
-
-4. In `app.config.ts`, uncomment and fill the two fields `eas init` gave you
-   — the top-level `updates.url` and `eas.projectId`. **Add `eas.projectId`
-   into the EXISTING `extra` object** (the inline comments there guide you) —
-   do NOT add a second `extra` key, it would clobber `serverUrl`/`wsToken`:
-
-   ```ts
-   updates: { url: "https://u.expo.dev/<projectId>" },
-   extra: {
-     router: { root: "./app" },
-     serverUrl: process.env.EXPO_PUBLIC_SERVER_URL ?? "wss://rtc-clone-server.fly.dev",
-     wsToken: process.env.EXPO_PUBLIC_WS_TOKEN,
-     eas: { projectId: "<uuid from eas init>" },
-   },
-   ```
-
-5. Publish an over-the-air update to the `preview` channel:
-
-   ```bash
-   pnpm dlx eas-cli update --channel preview
-   ```
-
-6. `eas update` prints a **QR code and a link** — open either in Expo Go on a
-   phone. That first `preview` publish is the first colleague-facing demo
-   (Phase 2).
-
-> For EAS builds/updates the WS token should come from **EAS environment
-> variables** (an `env` block in `eas.json`, or the EAS dashboard), not your
-> local `.env` — the local file isn't uploaded to the EAS build.
-
----
-
 ## Monorepo resolution (how the build finds the workspace libs)
 
 Metro is configured for pnpm in `metro.config.js` (watchFolders → workspace
 root, `nodeModulesPaths`, symlinks + package `exports`). Workspace packages are
 consumed from their built `dist`, so run `pnpm build` after changing a lib. The
 `#/` alias resolves via `babel-plugin-module-resolver` (`babel.config.js`).
+
+The `@expo/metro-runtime` override (`pnpm-workspace.yaml`) is pinned to the
+SDK-57 line, and `@xmldom/xmldom` to `^0.8.13` — both load-bearing for native
+builds; the inline comments there explain why (do not bump xmldom to 0.9.x, it
+breaks `expo prebuild`).
