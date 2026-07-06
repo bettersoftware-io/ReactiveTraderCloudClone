@@ -142,7 +142,7 @@ function makeStyles(t: RnTheme): DepthLadderStyles {
       paddingHorizontal: 4,
       overflow: "hidden",
     },
-    bar: { ...StyleSheet.absoluteFillObject, right: undefined, opacity: 0.18 },
+    bar: { ...StyleSheet.absoluteFill, right: undefined, opacity: 0.18 },
     price: {
       flex: 1,
       fontSize: 12,

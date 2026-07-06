@@ -147,7 +147,7 @@ function makeStyles(t: RnTheme): WatchlistStyles {
     hNum: { ...headerCell, flex: 1, textAlign: "right" },
     row: baseRow,
     rowActive: { ...baseRow, backgroundColor: t.chip },
-    heat: StyleSheet.absoluteFillObject,
+    heat: StyleSheet.absoluteFill,
     symbol: {
       flex: 2,
       fontSize: 13,

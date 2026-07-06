@@ -59,5 +59,5 @@ interface BootGateStyles {
 }
 
 const styles: BootGateStyles = StyleSheet.create({
-  overlay: { ...StyleSheet.absoluteFillObject, zIndex: 100, elevation: 100 },
+  overlay: { ...StyleSheet.absoluteFill, zIndex: 100, elevation: 100 },
 });
