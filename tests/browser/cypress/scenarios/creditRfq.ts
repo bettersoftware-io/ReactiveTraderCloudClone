@@ -2,69 +2,95 @@
 // Cypress fork of tests/browser/scenarios/creditRfq.ts — synchronous bodies, queue-aware.
 // See Phase 5A.4 spec §3.3.
 
-import { assertTrue } from "#/browser/scenarios/assert";
+import {
+  assertEquals,
+  assertGte,
+  assertTrue,
+} from "#/browser/scenarios/assert";
 import type { TestContext } from "#/browser/testContext";
 
 import { chainable } from "./_chainable";
 
-const VALID_CREDIT_TABS = new Set(["tiles", "new-rfq", "sell-side"]);
+/** AAPL 2.4 08/30 — id 0 in InstrumentSimulator.INSTRUMENTS_CATALOG. */
+const AAPL_INSTRUMENT_ID = 0;
+/** Adaptive Bank — id 0 in DealerSimulator.DEALERS_CATALOG; see the async
+ * fork (tests/browser/scenarios/creditRfq.ts) for why quoting to only this
+ * dealer keeps the resulting quote deterministically "pending" forever. */
+const ADAPTIVE_BANK_DEALER_ID = 0;
+/** CreditRfqSimulator.seedDemoState(): fixed demo seed ids, always present. */
+const SEEDED_CLOSED_RFQ_IDS = [238, 237, 235];
 
-function ensureCreditTab(
-  tab: string,
-): asserts tab is "tiles" | "new-rfq" | "sell-side" {
-  if (!VALID_CREDIT_TABS.has(tab))
-    throw new Error(`unsupported credit tab: ${tab}`);
+export function expectNoRfqsMessageWithin(
+  ctx: TestContext,
+  seconds: number,
+): void {
+  void ctx.po.creditRfqPanel.waitForNoRfqsMessage(seconds * 1_000);
 }
 
-export function clickCreditTab(ctx: TestContext, tab: string): void {
-  ensureCreditTab(tab);
-  void ctx.po.creditRfqPanel.clickTab(tab);
+export function expectSendButtonWithin(
+  ctx: TestContext,
+  seconds: number,
+): void {
+  void ctx.po.creditRfqForm.waitForSendButton(seconds * 1_000);
 }
 
-export function expectCreditTabVisible(ctx: TestContext, tab: string): void {
-  ensureCreditTab(tab);
-  chainable(ctx.po.creditRfqPanel.tabIsVisible(tab)).then((v) => {
-    return assertTrue(v, `credit tab not visible: ${tab}`);
+export function expectHasDirectionButtons(ctx: TestContext): void {
+  chainable(ctx.po.creditRfqForm.hasDirectionButtons()).then((v) => {
+    return assertTrue(v, "credit RFQ form missing Buy/Sell direction buttons");
   });
 }
 
-export function expectMessageWithin(
+export function expectHasQtyInput(ctx: TestContext): void {
+  chainable(ctx.po.creditRfqForm.hasQtyInput()).then((v) => {
+    return assertTrue(v, "credit RFQ form missing the quantity input");
+  });
+}
+
+/** Fills and sends the New RFQ form for AAPL, quoted to Adaptive Bank only,
+ * then waits for the "RFQ Created" confirmation. The rfqId is stashed on
+ * ctx.scratch by the caller via the returned chainable's `.then`. */
+export function createAdaptiveBankOnlyRfq(
   ctx: TestContext,
-  message: string,
+  seconds: number,
+): Cypress.Chainable<number> {
+  void ctx.po.creditRfqForm.selectInstrument(AAPL_INSTRUMENT_ID);
+  void ctx.po.creditRfqForm.fillQuantity("500");
+  void ctx.po.creditRfqForm.toggleDealer(ADAPTIVE_BANK_DEALER_ID);
+  void ctx.po.creditRfqForm.clickSend();
+  return chainable(ctx.po.creditRfqForm.waitForConfirmedRfqId(seconds * 1_000));
+}
+
+export function expectRfqCardWithin(
+  ctx: TestContext,
+  rfqId: number,
   seconds: number,
 ): void {
-  if (message === "No RFQs to display") {
-    void ctx.po.creditRfqPanel.waitForNoRfqsMessage(seconds * 1_000);
-    return;
+  void ctx.po.creditRfqPanel.waitForRfqCard(rfqId, seconds * 1_000);
+}
+
+export function expectFirstQuoteStatePending(
+  ctx: TestContext,
+  rfqId: number,
+): void {
+  chainable(ctx.po.creditRfqPanel.firstQuoteState(rfqId)).then((state) => {
+    return assertEquals(
+      state,
+      "pending",
+      `expected rfq ${rfqId}'s first quote to be pending (no price)`,
+    );
+  });
+}
+
+export function clickClosedFilter(ctx: TestContext): void {
+  void ctx.po.creditRfqPanel.clickFilterPill("closed");
+}
+
+export function expectSeededClosedRfqsVisible(ctx: TestContext): void {
+  for (const rfqId of SEEDED_CLOSED_RFQ_IDS) {
+    chainable(ctx.po.creditRfqPanel.rfqCardIsVisible(rfqId)).then((v) => {
+      return assertTrue(v, `seeded closed rfq card not visible: ${rfqId}`);
+    });
   }
-
-  throw new Error(`message "${message}" has no PO method; add one if needed`);
-}
-
-export function expectCreditRfqSubmitButtonWithin(
-  ctx: TestContext,
-  seconds: number,
-): void {
-  void ctx.po.creditRfqForm.waitForSubmitButton(seconds * 1_000);
-}
-
-export function expectCreditRfqHasBuySellButtons(ctx: TestContext): void {
-  chainable(ctx.po.creditRfqForm.hasBuyAndSellButtons()).then((v) => {
-    return assertTrue(v, "credit RFQ form missing Buy/Sell buttons");
-  });
-}
-
-export function expectCreditRfqHasDirectionLabel(ctx: TestContext): void {
-  chainable(ctx.po.creditRfqForm.hasDirectionLabel()).then((v) => {
-    return assertTrue(v, "credit RFQ form missing Direction label");
-  });
-}
-
-export function expectSellSideHeadingWithin(
-  ctx: TestContext,
-  seconds: number,
-): void {
-  void ctx.po.creditRfqPanel.waitForSellSideHeading(seconds * 1_000);
 }
 
 export function expectCreditTradesHeadingWithin(
@@ -72,4 +98,17 @@ export function expectCreditTradesHeadingWithin(
   seconds: number,
 ): void {
   void ctx.po.creditRfqPanel.waitForCreditTradesHeading(seconds * 1_000);
+}
+
+export function expectCreditBlotterRowCountAtLeast(
+  ctx: TestContext,
+  minCount: number,
+): void {
+  chainable(ctx.po.blotterTable.rowCount()).then((count) => {
+    return assertGte(
+      count,
+      minCount,
+      `expected the credit blotter to have at least ${minCount} rows`,
+    );
+  });
 }

@@ -51,12 +51,44 @@ export const TESTIDS = {
       return `exposure-row-${currency}`;
     },
   },
+  /**
+   * The credit dock (PR replacing the old tabbed CreditWorkspace): New RFQ
+   * form, RFQs card list, and Credit Blotter are all simultaneously visible
+   * panels — there is no nav/tab to switch between them any more.
+   */
   credit: {
-    nav: "credit-nav",
-    tab: (v: "tiles" | "new-rfq" | "sell-side") => {
-      return `credit-tab-${v}`;
+    newRfq: {
+      headTitle: "new-rfq-head-title",
+      dirButton: (dir: "buy" | "sell") => {
+        return `new-rfq-dir-${dir}`;
+      },
+      instrumentToggle: "new-rfq-instrument-toggle",
+      instrumentOption: (instrumentId: number) => {
+        return `new-rfq-instrument-option-${instrumentId}`;
+      },
+      qtyInput: "new-rfq-qty-input",
+      dealer: (dealerId: number) => {
+        return `new-rfq-dealer-${dealerId}`;
+      },
+      send: "new-rfq-send",
+      confirmed: "new-rfq-confirmed",
     },
-    directionLabel: "rfq-direction-label",
+    rfqs: {
+      headTitle: "rfqs-head-title",
+      filterPill: (filter: "live" | "closed" | "all") => {
+        return `rfq-filter-${filter}`;
+      },
+      card: (rfqId: number) => {
+        return `rfq-card-${rfqId}`;
+      },
+      /** Prefix-matched (not exact — see liveRates.tilePrefix's comment for
+       * why): a QuoteRow's own testid (`rfq-quote-<id>`) shares this prefix
+       * with its nested bank-name span (`rfq-quote-bank-<id>`) and accept
+       * button (`rfq-quote-accept-<id>`); combine with the `[data-state]`
+       * attribute (only the row itself carries it) to select just the row. */
+      quotePrefix: "rfq-quote-",
+    },
+    blotterHeadTitle: "credit-blotter-head-title",
   },
   admin: {
     incident: {

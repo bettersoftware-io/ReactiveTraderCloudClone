@@ -3,63 +3,71 @@ import { Then, When } from "@cucumber/cucumber";
 import * as creditRfq from "../scenarios/creditRfq";
 import type { StepContext } from "../testContext";
 
-When(
-  "the trader switches to the credit {string} tab",
-  function clickCreditTab(this: StepContext, tab: string) {
-    return creditRfq.clickCreditTab(this.ctx, tab);
+Then(
+  "the credit RFQ list is empty within {int} seconds",
+  function expectCreditRfqListEmptyWithin(this: StepContext, seconds: number) {
+    return creditRfq.expectNoRfqsMessageWithin(this.ctx, seconds);
   },
 );
 
 Then(
-  "the credit {string} tab is visible",
-  function expectCreditTabVisible(this: StepContext, tab: string) {
-    return creditRfq.expectCreditTabVisible(this.ctx, tab);
-  },
-);
-
-Then(
-  "the message {string} appears within {int} seconds",
-  function expectMessageWithin(
-    this: StepContext,
-    message: string,
-    seconds: number,
-  ) {
-    return creditRfq.expectMessageWithin(this.ctx, message, seconds);
-  },
-);
-
-Then(
-  "the credit RFQ submit button appears within {int} seconds",
-  function expectCreditRfqSubmitButtonWithin(
-    this: StepContext,
-    seconds: number,
-  ) {
-    return creditRfq.expectCreditRfqSubmitButtonWithin(this.ctx, seconds);
+  "the credit RFQ send button appears within {int} seconds",
+  function expectCreditRfqSendButtonWithin(this: StepContext, seconds: number) {
+    return creditRfq.expectSendButtonWithin(this.ctx, seconds);
   },
 );
 
 Then(
   "the credit RFQ form has Buy and Sell direction buttons",
-  function expectCreditRfqHasBuySellButtons(this: StepContext) {
-    return creditRfq.expectCreditRfqHasBuySellButtons(this.ctx);
+  function expectCreditRfqHasDirectionButtons(this: StepContext) {
+    return creditRfq.expectHasDirectionButtons(this.ctx);
   },
 );
 
 Then(
-  "the credit RFQ form has a Direction label",
-  function expectCreditRfqHasDirectionLabel(this: StepContext) {
-    return creditRfq.expectCreditRfqHasDirectionLabel(this.ctx);
+  "the credit RFQ form has a quantity input",
+  function expectCreditRfqHasQtyInput(this: StepContext) {
+    return creditRfq.expectHasQtyInput(this.ctx);
+  },
+);
+
+When(
+  "the trader creates a new credit RFQ quoted to Adaptive Bank",
+  async function createAdaptiveBankOnlyRfq(this: StepContext) {
+    this.ctx.scratch.creditRfq.rfqId =
+      await creditRfq.createAdaptiveBankOnlyRfq(this.ctx, 5);
   },
 );
 
 Then(
-  "the sell-side heading {string} appears within {int} seconds",
-  function expectSellSideHeadingWithin(
-    this: StepContext,
-    _heading: string,
-    seconds: number,
-  ) {
-    return creditRfq.expectSellSideHeadingWithin(this.ctx, seconds);
+  "the new RFQ card appears within {int} seconds",
+  function expectRfqCardWithin(this: StepContext, seconds: number) {
+    const rfqId = this.ctx.scratch.creditRfq.rfqId;
+    if (rfqId == null) throw new Error("no rfqId recorded on ctx.scratch");
+    return creditRfq.expectRfqCardWithin(this.ctx, rfqId, seconds);
+  },
+);
+
+Then(
+  "its first quote is pending",
+  function expectFirstQuotePending(this: StepContext) {
+    const rfqId = this.ctx.scratch.creditRfq.rfqId;
+    if (rfqId == null) throw new Error("no rfqId recorded on ctx.scratch");
+    return creditRfq.expectFirstQuoteStatePending(this.ctx, rfqId);
+  },
+);
+
+When(
+  "the trader clicks the credit closed filter",
+  function clickClosedFilter(this: StepContext) {
+    return creditRfq.clickClosedFilter(this.ctx);
+  },
+);
+
+Then(
+  "the seeded closed RFQs are visible",
+  function expectSeededClosedRfqsVisible(this: StepContext) {
+    return creditRfq.expectSeededClosedRfqsVisible(this.ctx);
   },
 );
 
@@ -75,12 +83,11 @@ Then(
 );
 
 Then(
-  "the credit RFQ list is empty within {int} seconds",
-  function expectCreditRfqListEmptyWithin(this: StepContext, seconds: number) {
-    return creditRfq.expectMessageWithin(
-      this.ctx,
-      "No RFQs to display",
-      seconds,
-    );
+  "the credit blotter has at least {int} rows",
+  function expectCreditBlotterRowCountAtLeast(
+    this: StepContext,
+    minCount: number,
+  ) {
+    return creditRfq.expectCreditBlotterRowCountAtLeast(this.ctx, minCount);
   },
 );

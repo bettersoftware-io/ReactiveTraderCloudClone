@@ -27,7 +27,7 @@ Feature: Theme
     Then a price tile is visible
     When the trader toggles the theme
     And the trader switches to the "credit" tab
-    Then the credit navigation is visible
+    Then the credit dock is visible
     When the trader switches to the "admin" tab
     And the trader switches to the "fx" tab
     Then a price tile is visible
