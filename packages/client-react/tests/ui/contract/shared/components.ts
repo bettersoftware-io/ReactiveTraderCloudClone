@@ -92,6 +92,20 @@ import {
   type TradeTicketProps,
 } from "./pages/credit/sellSide/TradeTicketPage";
 import {
+  CandleChartPage,
+  type CandleChartProps,
+} from "./pages/equities/chart/CandleChartPage";
+import { ChartPanelPage } from "./pages/equities/chart/ChartPanelPage";
+import { EqChartHeadPage } from "./pages/equities/chart/EqChartHeadPage";
+import {
+  InstrumentHeaderPage,
+  type InstrumentHeaderProps,
+} from "./pages/equities/chart/InstrumentHeaderPage";
+import {
+  TimeframePillsPage,
+  type TimeframePillsProps,
+} from "./pages/equities/chart/TimeframePillsPage";
+import {
   DepthLadderPage,
   type DepthLadderProps,
 } from "./pages/equities/DepthLadderPage";
@@ -99,11 +113,10 @@ import {
   DeskPnlGaugePage,
   type DeskPnlGaugeProps,
 } from "./pages/equities/DeskPnlGaugePage";
+import { EqTicketHeadPage } from "./pages/equities/EqTicketHeadPage";
 import { EquitiesPanelPage } from "./pages/equities/EquitiesPanelPage";
-import {
-  InstrumentTabsPage,
-  type InstrumentTabsProps,
-} from "./pages/equities/InstrumentTabsPage";
+import { EqWatchlistHeadPage } from "./pages/equities/EqWatchlistHeadPage";
+import { InstrumentTabsPage } from "./pages/equities/InstrumentTabsPage";
 import { OrdersBlotterPage } from "./pages/equities/OrdersBlotterPage";
 import {
   OrderTicketPage,
@@ -126,6 +139,7 @@ import {
   WatchlistPage,
   type WatchlistProps,
 } from "./pages/equities/WatchlistPage";
+import { WatchlistPanelPage } from "./pages/equities/WatchlistPanelPage";
 import {
   CurrencyFilterPage,
   type CurrencyFilterProps,
@@ -492,11 +506,63 @@ export const OrdersBlotter = component<
 });
 
 export const InstrumentTabs = component<
-  InstrumentTabsProps,
+  Record<string, never>,
   InstrumentTabsPage
 >((ctx) => {
   return new InstrumentTabsPage(ctx);
 });
+
+export const ChartPanel = component<Record<string, never>, ChartPanelPage>(
+  (ctx) => {
+    return new ChartPanelPage(ctx);
+  },
+);
+
+export const InstrumentHeader = component<
+  InstrumentHeaderProps,
+  InstrumentHeaderPage
+>((ctx) => {
+  return new InstrumentHeaderPage(ctx);
+});
+
+export const CandleChart = component<CandleChartProps, CandleChartPage>(
+  (ctx) => {
+    return new CandleChartPage(ctx);
+  },
+);
+
+export const TimeframePills = component<
+  TimeframePillsProps,
+  TimeframePillsPage
+>((ctx) => {
+  return new TimeframePillsPage(ctx);
+});
+
+export const EqChartHead = component<Record<string, never>, EqChartHeadPage>(
+  (ctx) => {
+    return new EqChartHeadPage(ctx);
+  },
+);
+
+export const WatchlistPanel = component<
+  Record<string, never>,
+  WatchlistPanelPage
+>((ctx) => {
+  return new WatchlistPanelPage(ctx);
+});
+
+export const EqWatchlistHead = component<
+  Record<string, never>,
+  EqWatchlistHeadPage
+>((ctx) => {
+  return new EqWatchlistHeadPage(ctx);
+});
+
+export const EqTicketHead = component<Record<string, never>, EqTicketHeadPage>(
+  (ctx) => {
+    return new EqTicketHeadPage(ctx);
+  },
+);
 
 export const SectorHeatmap = component<SectorHeatmapProps, SectorHeatmapPage>(
   (ctx) => {
