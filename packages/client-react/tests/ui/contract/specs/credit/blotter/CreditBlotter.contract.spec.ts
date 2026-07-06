@@ -354,6 +354,86 @@ describe("CreditBlotter", () => {
       expect(lines[1]).toContain("05-Mar-2024");
     });
   });
+
+  describe("prototype chrome (controls row)", () => {
+    it("shows the trade count above the table (PROTO CreditScreen countText)", () => {
+      const blotter = mount(CreditBlotter, {
+        hooks: {
+          useInstruments: instruments,
+          useDealers: dealers,
+          useRfqs: [rfq(1, { instrumentId: 1 }), rfq(2, { instrumentId: 2 })],
+          useAllQuotes: quoteMap(acceptedQuote(900, 1), acceptedQuote(901, 2)),
+        },
+      });
+      expect(blotter.tradeCountText()).toBe("2 trades");
+    });
+
+    it("updates the trade count when a quick filter narrows the visible rows", async () => {
+      const blotter = mount(CreditBlotter, {
+        hooks: {
+          useInstruments: instruments,
+          useDealers: dealers,
+          useRfqs: [rfq(1, { instrumentId: 1 }), rfq(2, { instrumentId: 2 })],
+          useAllQuotes: quoteMap(
+            acceptedQuote(900, 1, { dealerId: 1 }),
+            acceptedQuote(901, 2, { dealerId: 2 }),
+          ),
+        },
+      });
+      expect(blotter.tradeCountText()).toBe("2 trades");
+      await blotter.typeQuickFilter("Adaptive");
+      expect(blotter.tradeCountText()).toBe("1 trades");
+    });
+
+    it("shows the CSV export chip with its glyph label at the same export-csv testid", () => {
+      const blotter = mount(CreditBlotter, {
+        hooks: { useInstruments: instruments, useDealers: dealers },
+      });
+      expect(blotter.csvChipLabel()).toBe("⤓ CSV");
+    });
+  });
+
+  describe("prototype chrome (row direction accent)", () => {
+    it("sets --row-acc + data-dir from the trade's direction (Buy vs Sell)", () => {
+      const blotter = mount(CreditBlotter, {
+        hooks: {
+          useInstruments: instruments,
+          useDealers: dealers,
+          useRfqs: [
+            rfq(1, { instrumentId: 1, direction: Direction.Buy }),
+            rfq(2, { instrumentId: 2, direction: Direction.Sell }),
+          ],
+          useAllQuotes: quoteMap(acceptedQuote(900, 1), acceptedQuote(901, 2)),
+        },
+      });
+      expect(blotter.rowDirection("1")).toBe("Buy");
+      expect(blotter.rowAccent("1")).toBe("var(--accent-positive)");
+      expect(blotter.rowDirection("2")).toBe("Sell");
+      expect(blotter.rowAccent("2")).toBe("var(--accent-negative)");
+    });
+  });
+
+  describe("prototype chrome (new-trade flash)", () => {
+    it("flags a newly streamed-in trade with data-new, but not pre-existing trades", () => {
+      const blotter = mount(CreditBlotter, {
+        hooks: {
+          useInstruments: instruments,
+          useDealers: dealers,
+          useRfqs: [rfq(1, { instrumentId: 1 })],
+          useAllQuotes: quoteMap(acceptedQuote(900, 1)),
+        },
+      });
+      expect(blotter.isRowNew("1")).toBe(false);
+
+      blotter.emit({
+        useRfqs: [rfq(1, { instrumentId: 1 }), rfq(2, { instrumentId: 2 })],
+        useAllQuotes: quoteMap(acceptedQuote(900, 1), acceptedQuote(901, 2)),
+      });
+
+      expect(blotter.isRowNew("2")).toBe(true);
+      expect(blotter.isRowNew("1")).toBe(false);
+    });
+  });
 });
 
 function rfq(id: number, over: Partial<Rfq> = {}): Rfq {

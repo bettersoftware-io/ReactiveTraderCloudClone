@@ -37,14 +37,35 @@
   color: var(--text-muted);
 }
 
-.exportBtn {
-  padding: 4px 10px;
-  font-size: 11px;
-  border: 1px solid var(--border-primary);
-  border-radius: 3px;
-  background-color: transparent;
-  color: var(--text-secondary);
+/* PROTO Blotter/CreditBlotterPanel.module.css `.controls`: the trade-count +
+ * CSV-export sub-head, over the sticky column-header row. */
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--text-muted);
+}
+
+.csvBtn {
   cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.1em;
+  color: var(--accent-primary);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 4px 10px;
 }
 
 .tableWrapper {
@@ -76,6 +97,65 @@
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   color: var(--text-primary);
+}
+
+.row {
+  background-color: transparent;
+}
+
+/* Direction column (CREDIT_COLUMNS[3], 1-based nth-child(4)) coloured by the
+ * trade's own Buy/Sell direction — PROTO Blotter/CreditBlotterPanel.module.css
+ * `.dir[data-dir="Buy"|"Sell"]`, same nth-child convention as
+ * BlotterRow.module.css's status-cell colouring. */
+.row[data-dir="Buy"] .cell:nth-child(4) {
+  color: var(--accent-positive);
+}
+
+.row[data-dir="Sell"] .cell:nth-child(4) {
+  color: var(--accent-negative);
+}
+
+/* New-trade entrance flash — PROTO global.css rowIn/rowFlashA, re-keyed off
+ * this row's own --row-acc (set from the trade's direction, see
+ * rowAccentVar() in CreditBlotter.tsx). Gated on prefers-reduced-motion, same
+ * convention as RfqCard.module.css/PositionsPanel.module.css: the base rule
+ * carries no animation at all under reduced motion. */
+@keyframes creditRowIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes creditRowFlash {
+  0% {
+    background: color-mix(in srgb, var(--row-acc) 55%, transparent);
+    box-shadow:
+      inset 3px 0 0 var(--row-acc),
+      0 0 22px -6px var(--row-acc);
+  }
+
+  14% {
+    background: color-mix(in srgb, var(--row-acc) 48%, transparent);
+  }
+
+  100% {
+    background: transparent;
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .row[data-new="true"] {
+    animation:
+      creditRowIn 0.45s ease,
+      creditRowFlash 1.5s ease-out;
+  }
 }
 
 .emptyCell {
