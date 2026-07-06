@@ -88,7 +88,7 @@ describe("TileConfirmation", () => {
           trade: {
             ...doneTrade,
             direction: Direction.Sell,
-            dealtCurrency: "USD",
+            dealtCurrency: "EUR",
           },
         } as TileState,
         onDismiss: () => {},
