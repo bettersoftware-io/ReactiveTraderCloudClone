@@ -80,7 +80,9 @@ export function rfqCardVm(
     direction: rfq.direction,
     ticker: instrument?.ticker ?? "",
     cusip: instrument?.cusip ?? "",
-    qty: rfq.quantity.toLocaleString(),
+    // Pinned locale (PROTO creditData.ts fmtNum): host-locale-independent so
+    // tests/snapshots don't vary with the running machine's locale.
+    qty: rfq.quantity.toLocaleString("en-US"),
     stateLabel: stateLabel(rfq.state),
     cardState: cardState(live, accepted),
     quotes: quotes.map((q) => {

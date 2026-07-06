@@ -51,7 +51,10 @@ export function RfqFilterPills(props: RfqFilterPillsProps): ReactElement {
 
 export interface RfqFilterPillsProps {
   filter: CreditRfqFilter;
-  /** Count of Open RFQs, shown next to the LIVE pill (PROTO L1325). */
-  liveCount: number;
+  /** Pre-formatted count of Open RFQs, shown next to the LIVE pill (PROTO
+   * useCreditRfqs.ts liveCount / L1325): "(N)" when N > 0, "" when zero — so
+   * the rendered label reads "LIVE (3)" or bare "LIVE", never "LIVE 0". The
+   * caller (RfqsHead, Task 4) is responsible for the formatting. */
+  liveCount: string;
   onFilter: (filter: CreditRfqFilter) => void;
 }

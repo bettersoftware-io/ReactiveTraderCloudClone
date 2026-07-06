@@ -1,4 +1,4 @@
-import { within } from "@testing-library/dom";
+import { fireEvent, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
@@ -14,6 +14,52 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
   /** The card's data-state (live / accepted / terminated), or null if absent. */
   cardState(rfqId: number): string | null {
     return this.card(rfqId)?.dataset.state ?? null;
+  }
+
+  /** The card's data-anim ("enter" / "exit" / "none"), or null if absent. */
+  cardAnim(rfqId: number): string | null {
+    return this.card(rfqId)?.dataset.anim ?? null;
+  }
+
+  /** The "N secs" countdown caption on a live card. */
+  secsCaption(rfqId: number): string | null {
+    const el = this.card(rfqId)?.querySelector<HTMLElement>('[class*="secs"]');
+    return el?.textContent?.trim() ?? null;
+  }
+
+  /** The live countdown bar's --bar-pct custom property, e.g. "50%". */
+  barPct(rfqId: number): string {
+    const fill =
+      this.card(rfqId)?.querySelector<HTMLElement>('[class*="barFill"]');
+    return fill?.style.getPropertyValue("--bar-pct").trim() ?? "";
+  }
+
+  /** The card root's --card-delay custom property, e.g. "45ms". */
+  cardDelay(rfqId: number): string {
+    return (
+      this.card(rfqId)?.style.getPropertyValue("--card-delay").trim() ?? ""
+    );
+  }
+
+  /** Fire the native event React actually listens for on `onAnimationEnd` in
+   * THIS jsdom, simulating a card's CSS entrance/exit keyframe completing
+   * (jsdom never runs real CSS animations). react-dom feature-detects the
+   * animationend event name at startup and falls back to the WebKit-prefixed
+   * native name whenever `window.AnimationEvent` is undefined — true in this
+   * repo's jsdom (confirmed empirically: it implements neither the
+   * constructor nor dispatches a bare "animationend"). @testing-library/dom's
+   * `fireEvent.animationEnd` fires the unprefixed name and is silently
+   * ignored here, so dispatch the vendor-prefixed one directly instead.
+   * RfqCard's handler doesn't inspect animationName — it just reports
+   * whichever of "enter"/"exit" is CURRENTLY selected — so a bare event with
+   * no init is enough. */
+  fireCardAnimationEnd(rfqId: number): void {
+    const card = this.card(rfqId);
+    if (!card) throw new Error(`No rendered card for rfq ${rfqId}`);
+    fireEvent(
+      card,
+      new Event("webkitAnimationEnd", { bubbles: true, cancelable: false }),
+    );
   }
 
   /** The empty-state message, or null when cards are present. */

@@ -464,7 +464,7 @@ export const registry = new Map<AnyToken, ElementFor>([
       return (
         <RfqFilterPillsComponent
           filter={(p.filter as CreditRfqFilter) ?? "live"}
-          liveCount={(p.liveCount as number) ?? 0}
+          liveCount={(p.liveCount as string) ?? ""}
           onFilter={
             (p.onFilter as (f: CreditRfqFilter) => void) ?? ((): void => {})
           }

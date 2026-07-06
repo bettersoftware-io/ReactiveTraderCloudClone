@@ -7,14 +7,14 @@ import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 export interface RfqFilterPillsProps {
   filter: CreditRfqFilter;
-  liveCount: number;
+  liveCount: string;
   onFilter: (filter: CreditRfqFilter) => void;
 }
 
 export class RfqFilterPillsPage extends MountedComponent<RfqFilterPillsProps> {
   private readonly user: UserEvent = userEvent.setup();
 
-  /** testid → pill label text, e.g. "rfq-filter-live" → "LIVE 3". */
+  /** testid → pill label text, e.g. "rfq-filter-live" → "LIVE (3)". */
   text(testId: "live" | "closed" | "all"): string {
     return this.pill(testId).textContent?.trim() ?? "";
   }

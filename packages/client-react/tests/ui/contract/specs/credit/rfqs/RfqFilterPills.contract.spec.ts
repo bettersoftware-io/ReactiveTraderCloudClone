@@ -11,9 +11,9 @@ afterEach(() => {
 describe("RfqFilterPills", () => {
   it("shows the LIVE count and highlights the active pill", () => {
     const pills = mount(RfqFilterPills, {
-      props: { filter: "live", liveCount: 3, onFilter: () => {} },
+      props: { filter: "live", liveCount: "(3)", onFilter: () => {} },
     });
-    expect(pills.text("live")).toBe("LIVE 3");
+    expect(pills.text("live")).toBe("LIVE (3)");
     expect(pills.text("closed")).toBe("CLOSED");
     expect(pills.text("all")).toBe("ALL");
     expect(pills.isActive("live")).toBe(true);
@@ -21,9 +21,18 @@ describe("RfqFilterPills", () => {
     expect(pills.isActive("all")).toBe(false);
   });
 
+  // PROTO useCreditRfqs.ts: liveCount is "" (not "0") when nothing is live,
+  // so the label reads bare "LIVE", never "LIVE 0".
+  it("shows a bare LIVE label when the live count is zero", () => {
+    const pills = mount(RfqFilterPills, {
+      props: { filter: "all", liveCount: "", onFilter: () => {} },
+    });
+    expect(pills.text("live")).toBe("LIVE");
+  });
+
   it("highlights whichever filter prop is active", () => {
     const pills = mount(RfqFilterPills, {
-      props: { filter: "all", liveCount: 0, onFilter: () => {} },
+      props: { filter: "all", liveCount: "", onFilter: () => {} },
     });
     expect(pills.isActive("all")).toBe(true);
     expect(pills.isActive("live")).toBe(false);
@@ -34,7 +43,7 @@ describe("RfqFilterPills", () => {
     const pills = mount(RfqFilterPills, {
       props: {
         filter: "live",
-        liveCount: 1,
+        liveCount: "(1)",
         onFilter: (f: CreditRfqFilter) => {
           return picks.push(f);
         },
@@ -48,7 +57,7 @@ describe("RfqFilterPills", () => {
 
   it("moves the highlight when the filter prop changes", () => {
     const pills = mount(RfqFilterPills, {
-      props: { filter: "live", liveCount: 2, onFilter: () => {} },
+      props: { filter: "live", liveCount: "(2)", onFilter: () => {} },
     });
     expect(pills.isActive("live")).toBe(true);
     pills.setProps({ filter: "closed" });

@@ -14,6 +14,7 @@ import { useFlipGrid } from "#/ui/shell/motion/useFlipGrid";
 
 import { EmptyRfqs } from "./EmptyRfqs";
 import { RfqCard } from "./RfqCard";
+import { type CardAnim, cardAnim, enterCascadeAdditions } from "./rfqCardAnim";
 import { rfqCardVm } from "./rfqCardVm";
 
 import styles from "./RfqsPanel.module.css";
@@ -22,7 +23,18 @@ import styles from "./RfqsPanel.module.css";
  * (or the empty state when the active filter matches nothing). The active
  * filter (LIVE/CLOSED/ALL) lives behind the shared useCreditRfqFilterPreference
  * seam — this panel only READS it; RfqsHead's filter pills (Task 4) write it,
- * the same head/body split LiveRatesHead/LiveRatesPanel use for viewMode. */
+ * the same head/body split LiveRatesHead/LiveRatesPanel use for viewMode.
+ *
+ * Entrance/exit/tab-switch-cascade animation (PROTO isNew/tabRecent/
+ * exitingRfqs) is re-derived client-side without a clock: `entering`/
+ * `exiting` are plain id-keyed maps/sets, computed by diffing the shown-id
+ * set across renders (see rfqCardAnim.ts) via React's "adjust state during
+ * render" pattern, and cleared via each card's own `onAnimationEnd` — src/ui
+ * may not use setTimeout/Date.now (tests/scripts/grep-gates.ts gate 29), so
+ * there is no fixed-ms flash/retain window the way the prototype's hook has
+ * one; a dismiss instead waits for the real CSS exit animation to finish
+ * (or, under prefers-reduced-motion, happens immediately — see
+ * prefersReducedMotion below). */
 export function RfqsPanel(): ReactElement {
   const { useRfqs, useInstruments, useDealers, useCreditRfqFilterPreference } =
     useViewModel();
@@ -31,6 +43,10 @@ export function RfqsPanel(): ReactElement {
   const dealers = useDealers();
   const { filter } = useCreditRfqFilterPreference();
   const [dismissed, setDismissed] = useState<ReadonlySet<number>>(new Set());
+  const [exiting, setExiting] = useState<ReadonlySet<number>>(new Set());
+  const [entering, setEntering] = useState<ReadonlyMap<number, number>>(
+    new Map(),
+  );
 
   const shown = rfqs
     .filter((r) => {
@@ -39,15 +55,78 @@ export function RfqsPanel(): ReactElement {
     .sort((a, b) => {
       return b.creationTimestamp - a.creationTimestamp;
     });
+  const shownIds = shown.map((r) => {
+    return r.id;
+  });
+  const shownIdsKey = shownIds.join(",");
 
-  const shownIds = shown
-    .map((r) => {
-      return r.id;
-    })
-    .join(",");
-  const { register } = useFlipGrid([filter, shownIds]);
+  const [prevShown, setPrevShown] = useState<PrevShown>(() => {
+    return { key: shownIdsKey, ids: new Set(shownIds) };
+  });
+  const [prevFilter, setPrevFilter] = useState(filter);
+  const shownChanged = shownIdsKey !== prevShown.key;
+  const filterChanged = filter !== prevFilter;
+
+  // React's sanctioned "adjust state during render" pattern (see
+  // react.dev's "You Might Not Need an Effect"): recompute the entrance
+  // cascade the instant the shown-id set or the active filter changes, and
+  // fold the previous-render snapshots forward. This can never loop — the
+  // branch only runs while the derived snapshots disagree with this
+  // render's inputs, and it always ends that render by matching them.
+  if (shownChanged || filterChanged) {
+    if (!prefersReducedMotion()) {
+      const additions = enterCascadeAdditions({
+        prevShownIds: prevShown.ids,
+        shownIds,
+        filterChanged,
+      });
+
+      if (additions.size > 0) {
+        const merged = new Map(entering);
+        additions.forEach((delay, id) => {
+          merged.set(id, delay);
+        });
+        setEntering(merged);
+      }
+    }
+
+    if (shownChanged)
+      setPrevShown({ key: shownIdsKey, ids: new Set(shownIds) });
+    if (filterChanged) setPrevFilter(filter);
+  }
+
+  const { register } = useFlipGrid([filter, shownIdsKey]);
 
   function handleRemove(rfqId: number): void {
+    if (prefersReducedMotion()) {
+      setDismissed((prev) => {
+        return new Set(prev).add(rfqId);
+      });
+      return;
+    }
+
+    setExiting((prev) => {
+      return new Set(prev).add(rfqId);
+    });
+  }
+
+  function handleCardAnimationEnd(rfqId: number, kind: "enter" | "exit"): void {
+    if (kind === "enter") {
+      setEntering((prev) => {
+        if (!prev.has(rfqId)) return prev;
+        const next = new Map(prev);
+        next.delete(rfqId);
+        return next;
+      });
+      return;
+    }
+
+    setExiting((prev) => {
+      if (!prev.has(rfqId)) return prev;
+      const next = new Set(prev);
+      next.delete(rfqId);
+      return next;
+    });
     setDismissed((prev) => {
       return new Set(prev).add(rfqId);
     });
@@ -71,7 +150,10 @@ export function RfqsPanel(): ReactElement {
                     rfq={rfq}
                     instruments={instruments}
                     dealers={dealers}
+                    anim={cardAnim(exiting.has(rfq.id), entering.has(rfq.id))}
+                    delayMs={entering.get(rfq.id) ?? 0}
                     onRemove={handleRemove}
+                    onAnimationEnd={handleCardAnimationEnd}
                   />
                 </div>
               );
@@ -81,6 +163,11 @@ export function RfqsPanel(): ReactElement {
       </div>
     </div>
   );
+}
+
+interface PrevShown {
+  key: string;
+  ids: ReadonlySet<number>;
 }
 
 function matchesFilter(state: RfqState, filter: CreditRfqFilter): boolean {
@@ -94,15 +181,29 @@ function matchesFilter(state: RfqState, filter: CreditRfqFilter): boolean {
   }
 }
 
+/** Same matchMedia seam BootGate/BootSequence/useFlipGrid already consult
+ * (jsdom omits window.matchMedia entirely, so this defaults to false — i.e.
+ * motion IS considered active — in every contract spec that doesn't stub
+ * it via vi.stubGlobal). */
+function prefersReducedMotion(): boolean {
+  return (
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+  );
+}
+
 interface RfqCardCellProps {
   rfq: Rfq;
   instruments: readonly Instrument[];
   dealers: readonly Dealer[];
+  anim: CardAnim;
+  delayMs: number;
   onRemove: (rfqId: number) => void;
+  onAnimationEnd: (rfqId: number, kind: "enter" | "exit") => void;
 }
 
 function RfqCardCell(props: RfqCardCellProps): ReactElement {
-  const { rfq, instruments, dealers, onRemove } = props;
+  const { rfq, instruments, dealers, anim, delayMs, onRemove, onAnimationEnd } =
+    props;
   const { useQuotesForRfq, useAcceptQuote, useCancelRfq } = useViewModel();
   const quotes = useQuotesForRfq(rfq.id);
   const acceptQuote = useAcceptQuote();
@@ -121,14 +222,21 @@ function RfqCardCell(props: RfqCardCellProps): ReactElement {
     onRemove(rfq.id);
   }
 
+  function handleAnimationEnd(kind: "enter" | "exit"): void {
+    onAnimationEnd(rfq.id, kind);
+  }
+
   return (
     <RfqCard
       vm={vm}
       creationTimestamp={rfq.creationTimestamp}
       expirySecs={rfq.expirySecs}
+      anim={anim}
+      delayMs={delayMs}
       onAccept={handleAccept}
       onCancel={handleCancel}
       onRemove={handleRemove}
+      onAnimationEnd={handleAnimationEnd}
     />
   );
 }

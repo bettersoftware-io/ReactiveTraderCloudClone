@@ -12,6 +12,71 @@
   border-color: var(--border-strong);
 }
 
+/* PROTO Rfqs/RfqCard.tsx cardAnim + global.css cardInA/cardInB/cardOut:
+ * entrance (alternating by rfq-id parity, staggered per-card via
+ * --card-delay) and exit keyframes. Gated on prefers-reduced-motion, same
+ * convention as PositionsPanel.module.css/InhouseLayoutEngine.module.css —
+ * the base rule carries no animation at all under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .card[data-anim="enter"][data-parity="a"] {
+    animation: cardInA 0.46s cubic-bezier(0.2, 0.8, 0.3, 1)
+      var(--card-delay, 0ms) both;
+  }
+
+  .card[data-anim="enter"][data-parity="b"] {
+    animation: cardInB 0.46s cubic-bezier(0.2, 0.8, 0.3, 1)
+      var(--card-delay, 0ms) both;
+  }
+
+  .card[data-anim="exit"] {
+    animation: cardOut 0.34s cubic-bezier(0.4, 0, 0.7, 1) forwards;
+  }
+}
+
+@keyframes cardInA {
+  0% {
+    opacity: 0;
+    transform: translateY(-13px) scale(0.95);
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cardInB {
+  0% {
+    opacity: 0;
+    transform: translateY(-13px) scale(0.95);
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cardOut {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+  }
+}
+
 .header {
   display: flex;
   align-items: flex-start;

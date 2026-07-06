@@ -1,6 +1,6 @@
 import { RfqsPanel } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ADAPTIVE_BANK_NAME,
@@ -14,6 +14,8 @@ import {
 
 afterEach(() => {
   cleanupMounted();
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 const instruments: readonly Instrument[] = [
@@ -236,8 +238,113 @@ describe("RfqsPanel", () => {
     });
     expect(panel.cardCount()).toBe(1);
     await panel.remove(1);
+    // The card plays its cardOut exit animation before it actually leaves —
+    // still rendered (data-anim="exit") until the animation completes.
+    expect(panel.cardCount()).toBe(1);
+    expect(panel.cardAnim(1)).toBe("exit");
+    panel.fireCardAnimationEnd(1);
     expect(panel.cardCount()).toBe(0);
     expect(panel.emptyMessage()).toBe("No RFQs to show");
+  });
+
+  it("dismisses a terminated RFQ immediately under prefers-reduced-motion", async () => {
+    stubReducedMotion(true);
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [rfq(1, { state: RfqState.Expired })],
+      },
+      creditRfqFilter: "all",
+    });
+    await panel.remove(1);
+    expect(panel.cardCount()).toBe(0);
+  });
+
+  it("plays a cardIn entrance animation for a newly-arrived RFQ, clearing on animationend", () => {
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [rfq(1, { state: RfqState.Open })],
+      },
+    });
+    // The initial seed render never plays an entrance animation.
+    expect(panel.cardAnim(1)).toBe("none");
+
+    panel.emit({
+      useRfqs: [
+        rfq(2, { state: RfqState.Open, creationTimestamp: 1_700_000_001_000 }),
+        rfq(1, { state: RfqState.Open }),
+      ],
+    });
+    expect(panel.cardAnim(2)).toBe("enter");
+    // A lone new arrival never staggers (0ms delay).
+    expect(panel.cardDelay(2)).toBe("0ms");
+    expect(panel.cardAnim(1)).toBe("none");
+
+    panel.fireCardAnimationEnd(2);
+    expect(panel.cardAnim(2)).toBe("none");
+  });
+
+  it("staggers every card's re-entrance by its grid index when the filter changes", () => {
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [
+          rfq(1, { state: RfqState.Open }),
+          rfq(2, {
+            state: RfqState.Cancelled,
+            creationTimestamp: 1_700_000_002_000,
+          }),
+          rfq(3, {
+            state: RfqState.Expired,
+            creationTimestamp: 1_700_000_003_000,
+          }),
+        ],
+      },
+      creditRfqFilter: "all",
+    });
+    // Sorted newest-first: 3, 2, 1 — none animate on the initial mount.
+    expect(panel.cardAnim(3)).toBe("none");
+
+    panel.setCreditRfqFilter("closed");
+    // "closed" shows 3 then 2 (newest first); both are surviving (not new)
+    // ids re-entering as part of the cascade, staggered by grid index.
+    expect(panel.cardCount()).toBe(2);
+    expect(panel.cardAnim(3)).toBe("enter");
+    expect(panel.cardDelay(3)).toBe("0ms");
+    expect(panel.cardAnim(2)).toBe("enter");
+    expect(panel.cardDelay(2)).toBe("45ms");
+  });
+
+  it("shows the live countdown seconds and progress-bar percentage, ticking down under fake timers", async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [
+          rfq(1, {
+            state: RfqState.Open,
+            creationTimestamp: now,
+            expirySecs: 10,
+          }),
+        ],
+      },
+    });
+    expect(panel.secsCaption(1)).toBe("10 secs");
+    expect(panel.barPct(1)).toBe("100%");
+
+    // advanceTimersByTimeAsync yields to the microtask queue between ticks,
+    // which the underlying rx-state/useSyncExternalStore bridge needs to
+    // actually flush a re-render (same idiom as NewRfqForm.contract.spec.ts's
+    // fake-timer setTimeout wait).
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(panel.secsCaption(1)).toBe("5 secs");
+    expect(panel.barPct(1)).toBe("50%");
   });
 
   it("does not offer a remove control on a live or accepted card", () => {
@@ -268,4 +375,25 @@ function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
     creationTimestamp: 1_700_000_000_000 + id,
     ...over,
   };
+}
+
+/** Install a window.matchMedia stub for one test (jsdom omits it) — same
+ * helper as BootGate.contract.spec.ts/BootSequence.contract.spec.ts. */
+function stubReducedMotion(matches: boolean): void {
+  function fakeMatchMedia(query: string): MediaQueryList {
+    return {
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => {
+        return false;
+      },
+    } as MediaQueryList;
+  }
+
+  vi.stubGlobal("matchMedia", fakeMatchMedia);
 }

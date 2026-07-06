@@ -1,8 +1,13 @@
-import type { CSSProperties, ReactElement } from "react";
+import type {
+  CSSProperties,
+  AnimationEvent as ReactAnimationEvent,
+  ReactElement,
+} from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
 import { QuoteRow } from "./QuoteRow";
+import type { CardAnim } from "./rfqCardAnim";
 import type { RfqCardVm } from "./rfqCardVm";
 
 import styles from "./RfqCard.module.css";
@@ -12,27 +17,57 @@ import styles from "./RfqCard.module.css";
  * the RFQ's lifecycle (live countdown+cancel, accepted confirmation, or
  * terminated+remove). The countdown is read from the real useRfqCountdown
  * machine (cosmetic-only; CreditRfqSimulator drives the authoritative
- * expiry), not recomputed here. */
+ * expiry), not recomputed here.
+ *
+ * `anim`/`delayMs` drive the entrance/exit keyframes (PROTO cardInA/cardInB/
+ * cardOut, data-parity alternating by rfq id parity) — RfqsPanel computes
+ * both without a clock (see rfqCardAnim.ts) and clears its `entering`/
+ * `exiting` bookkeeping via `onAnimationEnd`, fired by the CSS animation's
+ * own native completion (no setTimeout anywhere in this module: src/ui
+ * timers are gated off entirely by tests/scripts/grep-gates.ts gate 29).
+ * `data-anim` only ever selects ONE keyframe at a time, so the handler
+ * doesn't need to read `event.animationName` — it just reports whichever
+ * one is CURRENTLY selected via the `anim` prop. Reduced-motion users never
+ * receive `anim !== "none"` in the first place (RfqsPanel skips the
+ * cascade for them), so `onAnimationEnd` simply never fires — nothing is
+ * left to clear. */
 export function RfqCard(props: RfqCardProps): ReactElement {
-  const { vm, creationTimestamp, expirySecs, onAccept, onCancel, onRemove } =
-    props;
+  const {
+    vm,
+    creationTimestamp,
+    expirySecs,
+    anim,
+    delayMs,
+    onAccept,
+    onCancel,
+    onRemove,
+    onAnimationEnd,
+  } = props;
   const totalMs = expirySecs * 1000;
   const { useRfqCountdown } = useViewModel();
   const remainingMs = useRfqCountdown(creationTimestamp, totalMs);
   const secs = Math.ceil(remainingMs / 1000);
   const pct = totalMs > 0 ? Math.max(0, (remainingMs / totalMs) * 100) : 0;
-  // A variable reference in the style prop (not an inline object literal)
-  // — the runtime CSS custom property still reaches the DOM the same way,
-  // but this form doesn't trip the inline-style ESLint ban (which matches an
-  // ObjectExpression directly inside the JSX attribute), so no disable
-  // comment is needed.
-  const barStyle: CSSProperties = { "--bar-pct": `${pct}%` } as CSSProperties;
+
+  function handleAnimationEnd(
+    event: ReactAnimationEvent<HTMLDivElement>,
+  ): void {
+    // Ignore animations bubbling up from descendants (none currently exist,
+    // but this keeps the handler correct if one is added later).
+    if (event.target !== event.currentTarget) return;
+    if (anim === "enter" || anim === "exit") onAnimationEnd(anim);
+  }
 
   return (
     <div
       className={styles.card}
       data-state={vm.cardState}
+      data-anim={anim}
+      data-parity={vm.rfqId % 2 ? "b" : "a"}
       data-testid={`rfq-card-${vm.rfqId}`}
+      onAnimationEnd={handleAnimationEnd}
+      // eslint-disable-next-line no-restricted-syntax -- runtime entrance-stagger delay via CSS custom property; static CSS can't express it
+      style={{ "--card-delay": `${delayMs}ms` } as CSSProperties}
     >
       <div className={styles.header}>
         <div>
@@ -73,7 +108,11 @@ export function RfqCard(props: RfqCardProps): ReactElement {
           <div className={styles.liveRow}>
             <span className={styles.secs}>{secs} secs</span>
             <div className={styles.barTrack}>
-              <div className={styles.barFill} style={barStyle} />
+              <div
+                className={styles.barFill}
+                // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
+                style={{ "--bar-pct": `${pct}%` } as CSSProperties}
+              />
             </div>
             <button
               type="button"
@@ -115,7 +154,13 @@ export interface RfqCardProps {
   vm: RfqCardVm;
   creationTimestamp: number;
   expirySecs: number;
+  /** Entrance/exit keyframe selector (see rfqCardAnim.ts), computed by RfqsPanel. */
+  anim: CardAnim;
+  /** Per-card entrance-stagger delay, in ms (0 outside a tab-switch cascade). */
+  delayMs: number;
   onAccept: (quoteId: number) => void;
   onCancel: () => void;
   onRemove: () => void;
+  /** Fired when this card's OWN CSS entrance/exit animation completes natively. */
+  onAnimationEnd: (kind: "enter" | "exit") => void;
 }

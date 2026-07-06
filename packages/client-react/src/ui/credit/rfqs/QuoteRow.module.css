@@ -70,8 +70,7 @@
   border: none;
   border-radius: 3px;
   padding: 4px 11px;
-}
-
-.acceptBtn[data-best="true"] {
+  /* PROTO QuoteRow.module.css: every ACCEPT button glows, not only the
+   * best-priced one (the port previously scoped this to [data-best="true"]). */
   box-shadow: 0 0 10px var(--accent-positive);
 }

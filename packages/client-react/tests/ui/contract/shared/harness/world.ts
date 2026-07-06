@@ -187,6 +187,8 @@ export interface World {
   readonly viewMode: BehaviorSubject<ViewMode>;
   /** Reactive Credit RFQs filter preference backing useCreditRfqFilterPreference (drives RfqsPanel). */
   readonly creditRfqFilter: BehaviorSubject<CreditRfqFilter>;
+  /** Push a new Credit RFQs filter (drives RfqsPanel's re-render + entrance cascade). */
+  setCreditRfqFilter(filter: CreditRfqFilter): void;
   /** Reactive session state backing useSession (drives LockScreen). */
   readonly session: BehaviorSubject<SessionState>;
   /** Per-key subject for usePrice(pair), keyed by pair.symbol. */
@@ -523,6 +525,9 @@ export function createWorld(
     animatedBackground,
     viewMode,
     creditRfqFilter,
+    setCreditRfqFilter: (filter: CreditRfqFilter) => {
+      return creditRfqFilter.next(filter);
+    },
     session,
     priceFor,
     historyFor,

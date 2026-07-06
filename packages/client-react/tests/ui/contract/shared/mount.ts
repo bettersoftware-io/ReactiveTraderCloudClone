@@ -156,6 +156,11 @@ function buildContext<P>(
         return world.clearIncident();
       });
     },
+    setCreditRfqFilter: (filter: CreditRfqFilter) => {
+      return flush(() => {
+        return world.setCreditRfqFilter(filter);
+      });
+    },
   };
 }
 
