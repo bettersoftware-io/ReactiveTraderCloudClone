@@ -95,6 +95,48 @@ describe("InhouseLayoutEngine", () => {
     expect(page.isStrip("fx-blotter")).toBe(false);
   });
 
+  it("marks a collapsed panel's own cell as a strip cell (releasing its ratio-derived flex-grow) but leaves its growing sibling's cell alone", () => {
+    const page = mount(LayoutEngine, {});
+    // the analytics/positions rail is a column split at pathKey "0.1":
+    // analytics is child 0, positions is child 1.
+    page.collapse("fx-analytics");
+    expect(page.isStripCell("0.1", 0)).toBe(true);
+    expect(page.isStripCell("0.1", 1)).toBe(false);
+  });
+
+  it("marks every non-maximized cell a strip cell on maximize, including a nested split whose entire subtree stripped, but never the maximized panel's own cell chain", () => {
+    const page = mount(LayoutEngine, {});
+    page.maximize("fx-rates");
+    // fx-rates is the maximized panel: its own cell (content row child 0)
+    // must NOT strip, nor must its ancestor (root content-row cell).
+    expect(page.isStripCell("0", 0)).toBe(false);
+    expect(page.isStripCell("", 0)).toBe(false);
+    // the right rail (content row child 1) is an all-strip subtree: both the
+    // rail's own cell and its two inner (analytics/positions) cells strip.
+    expect(page.isStripCell("0", 1)).toBe(true);
+    expect(page.isStripCell("0.1", 0)).toBe(true);
+    expect(page.isStripCell("0.1", 1)).toBe(true);
+    // the blotter (root child 1) strips too.
+    expect(page.isStripCell("", 1)).toBe(true);
+  });
+
+  it("suppresses the resize handle beside a cell that collapsed to a strip", () => {
+    const page = mount(LayoutEngine, {});
+    page.collapse("fx-analytics");
+    // the analytics/positions handle sits at pathKey "0.1", index 0.
+    expect(page.handleExists("0.1", 0)).toBe(false);
+  });
+
+  it("suppresses resize handles beside cells stripped as a side effect of another panel's maximize", () => {
+    const page = mount(LayoutEngine, {});
+    page.maximize("fx-rates");
+    // content-row/blotter handle at root path "", index 0 — blotter stripped.
+    expect(page.handleExists("", 0)).toBe(false);
+    // rates/rail handle within the content row at pathKey "0", index 0 — the
+    // rail (analytics+positions) is an all-strip subtree.
+    expect(page.handleExists("0", 0)).toBe(false);
+  });
+
   it("orients the restore bar vertically when the strip's cell is a child of a row split, horizontally otherwise", () => {
     const page = mount(LayoutEngine, {});
     page.maximize("fx-analytics");

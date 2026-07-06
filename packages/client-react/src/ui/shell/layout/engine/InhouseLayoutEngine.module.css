@@ -68,6 +68,22 @@
   flex-direction: column;
 }
 
+/* A cell whose entire subtree is strips (every panel leaf inside it is
+ * stripped — collapsed itself, or a sibling of the maximized panel further up
+ * the tree) hugs its strip content instead of keeping its ratio-derived
+ * flex-grow. Without this, only the innermost `.panel[data-strip="true"]`
+ * shrank to its 32px strip while THIS cell kept its full ratio-derived size
+ * around it, leaving a dead background gap and starving growing siblings of
+ * the space the strip gave up (the maximize/collapse regression this rule
+ * fixes). Computed recursively by InhouseLayoutEngine's isStripSubtree — a
+ * nested split (e.g. the FX right rail's analytics/positions column) only
+ * counts as all-strip when every one of its own children does too. Placed
+ * before the pinned/fixed rules below so those still win on the (currently
+ * hypothetical) cell that is both. */
+.cell[data-strip-cell="true"] {
+  flex: 0 0 auto;
+}
+
 /* A pinned cell takes content height only and never grows. */
 .cell[data-pinned-cell="true"] {
   flex-grow: 0;
@@ -78,6 +94,29 @@
 /* A fixed-px cell (PROTO's 360px FX aside): exact basis, never grows/shrinks. */
 .cell[data-fixed-cell="true"] {
   flex: 0 0 var(--split-fixed);
+}
+
+/* Duplicates panTrans's glide onto `.cell`: the geometry that actually
+ * reclaims on strip/maximize is this CELL's flex-grow (the rule above drops
+ * its ratio-derived grow factor to 0) — transitioning only `.panel` (below)
+ * animates the panel's own 32px shrink but not the reclaim of the cell
+ * around it, so growing siblings would snap to their new size instantly.
+ * Unconditional on `.cell` would also retarget on every `--split-size` update
+ * during an interactive resize drag (the same flex-grow property), visibly
+ * lagging behind the pointer — SplitNode's pointer handlers set
+ * `data-dragging` on the split imperatively (not via React state, so a
+ * mid-drag re-render can't clobber it) for exactly the drag's duration, and
+ * the rule below disables the transition while it's set. */
+@media (prefers-reduced-motion: no-preference) {
+  .cell {
+    transition:
+      flex-grow 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      flex-basis 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .split[data-dragging="true"] .cell {
+    transition: none;
+  }
 }
 
 /* Ported from client-prototype's SplitHandle (7px track, 2x30px centered

@@ -127,6 +127,18 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
     return within(this.root).queryByTestId(`handle-${pathKey}-${i}`) !== null;
   }
 
+  /** True when the cell wrapping this child (identified the same way as
+   * `handleExists`'s pathKey/index pair) has released its ratio-derived
+   * flex-grow because its entire subtree is strips — every panel leaf inside
+   * it is either collapsed or a sibling of the maximized panel elsewhere. */
+  isStripCell(pathKey: string, i: number): boolean {
+    return (
+      within(this.root)
+        .getByTestId(`cell-${pathKey}-${i}`)
+        .getAttribute("data-strip-cell") === "true"
+    );
+  }
+
   /** The handle element itself — for asserting DOM position (sibling vs
    * descendant of a cell), not just presence. */
   handleElement(pathKey: string, i: number): HTMLElement {

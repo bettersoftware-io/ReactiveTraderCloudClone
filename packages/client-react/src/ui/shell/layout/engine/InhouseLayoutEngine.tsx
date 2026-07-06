@@ -115,6 +115,29 @@ function childKey(
   return [...path, i].join(".");
 }
 
+/** True when every panel leaf in `node`'s subtree is currently a strip
+ * (collapsed itself, or stripped as a sibling of the maximized panel further
+ * up the tree) — a split node counts as an all-strip subtree only when every
+ * one of its own children does too. Drives `.cell[data-strip-cell="true"]`,
+ * which releases the CELL's ratio-derived flex-grow so growing siblings
+ * reclaim the freed space. Without this, only the innermost
+ * `.panel[data-strip="true"]` shrank to its 32px strip while the `.cell`
+ * wrapping it kept its full ratio-derived size, leaving a dead background
+ * gap and starving growing siblings of the space the strip gave up (the
+ * maximize/collapse regression this function fixes). */
+function isStripSubtree(node: LayoutNode, state: LayoutState): boolean {
+  if (node.kind === "panel") {
+    const maximizedHere = state.maximized === node.panelId;
+    const isMaximized = state.maximized !== null;
+    const collapsed = state.collapsed.includes(node.panelId);
+    return (isMaximized && !maximizedHere) || collapsed;
+  }
+
+  return node.children.every((child) => {
+    return isStripSubtree(child, state);
+  });
+}
+
 /** A single split pane — owns the useRef for drag handles and recurses into
  * children. Extracted as a real named component so hooks live at component
  * top-level (rules-of-hooks). Panel leaves are rendered by renderPanel which
@@ -149,9 +172,24 @@ function SplitNode({
       handle.setPointerCapture(e.pointerId);
     }
 
-    const container = splitRef.current;
+    const containerOrNull = splitRef.current;
 
-    if (!container) return;
+    if (!containerOrNull) return;
+
+    // A stable non-null binding: `container` (unlike `containerOrNull`) keeps
+    // its narrowed type inside the `up` closure below, which TS cannot verify
+    // stays non-null through a nested function declaration.
+    const container: HTMLDivElement = containerOrNull;
+
+    // Suppresses the strip/maximize glide transition on this split's cells
+    // for the drag's duration (see .split[data-dragging="true"] .cell in the
+    // module CSS): flex-grow is the SAME property a strip toggle animates and
+    // a resize drag continuously retargets via --split-size, so an
+    // unconditional transition on .cell would make the split visibly lag
+    // behind the pointer. Set imperatively (not via JSX/React state) so a
+    // mid-drag re-render (onResize triggers one on every pointermove) can't
+    // clobber it back to the non-dragging value.
+    container.dataset.dragging = "true";
 
     const rect = container.getBoundingClientRect();
     const total = node.dir === "row" ? rect.width : rect.height;
@@ -178,6 +216,7 @@ function SplitNode({
         handle.releasePointerCapture(ev.pointerId);
       }
 
+      container.dataset.dragging = "false";
       handle.removeEventListener("pointermove", move);
       handle.removeEventListener("pointerup", up);
     }
@@ -223,12 +262,17 @@ function SplitNode({
           specs[nextChild.panelId]?.pinned === true;
         const childFixed = node.fixedPx?.[i];
         const nextFixed = node.fixedPx?.[i + 1];
+        const childIsStripCell = isStripSubtree(child, state);
+        const nextIsStripCell =
+          nextChild !== undefined && isStripSubtree(nextChild, state);
         const showHandle =
           !childPinned &&
           i < node.children.length - 1 &&
           !nextChildPinned &&
           childFixed === undefined &&
-          nextFixed === undefined;
+          nextFixed === undefined &&
+          !childIsStripCell &&
+          !nextIsStripCell;
 
         return (
           <Fragment key={childKey(child, path, i)}>
@@ -238,6 +282,7 @@ function SplitNode({
               data-dir={node.dir}
               data-pinned-cell={childPinned ? "true" : "false"}
               data-fixed-cell={childFixed !== undefined ? "true" : "false"}
+              data-strip-cell={childIsStripCell ? "true" : "false"}
               style={
                 childPinned
                   ? undefined
