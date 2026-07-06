@@ -16,8 +16,10 @@ const WALK_CLAMP_FRACTION = 0.25;
 
 export class TelemetrySimulator implements TelemetryPort {
   private readonly rng: () => number;
+
   /** Current offset from the setpoint, in the same units as the setpoint. */
   private walkOffset = 0;
+
   /** Last observed setpoint, so a slider change can recenter the walk. */
   private lastSetpoint: number | undefined;
 

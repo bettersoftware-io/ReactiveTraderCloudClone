@@ -14,27 +14,6 @@ afterEach(() => {
   return vi.useRealTimers();
 });
 
-function makeTelemetry(seed?: number): {
-  telemetry: TelemetrySimulator;
-  admin: ThroughputSimulator;
-} {
-  const admin = new ThroughputSimulator();
-  const telemetry =
-    seed === undefined
-      ? new TelemetrySimulator(
-          admin,
-          new LatencySimulator(1),
-          new ErrorRateSimulator(2),
-        )
-      : new TelemetrySimulator(
-          admin,
-          new LatencySimulator(1),
-          new ErrorRateSimulator(2),
-          seed,
-        );
-  return { telemetry, admin };
-}
-
 describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
   it("walks: successive samples differ instead of a flat constant line", async () => {
     const { telemetry } = makeTelemetry();
@@ -43,7 +22,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
     const values = (await p).map((s) => {
       return s.value;
     });
-    const unique = new Set(values.map((v) => Math.round(v * 1000)));
+    const unique = new Set(values.map((v) => {return Math.round(v * 1000)}));
     expect(unique.size).toBeGreaterThan(1);
   });
 
@@ -54,6 +33,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
     const values = (await p).map((s) => {
       return s.value;
     });
+
     for (const v of values) {
       expect(v).toBeGreaterThanOrEqual(100 * 0.75);
       expect(v).toBeLessThanOrEqual(100 * 1.25);
@@ -79,6 +59,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
     );
     await vi.advanceTimersByTimeAsync(20_000);
     const followUp = await p3;
+
     for (const s of followUp) {
       expect(s.value).toBeGreaterThanOrEqual(500 * 0.75);
       expect(s.value).toBeLessThanOrEqual(500 * 1.25);
@@ -129,3 +110,26 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
     expect(Math.max(...errorVals)).toBeGreaterThan(8);
   });
 });
+
+interface TelemetryHarness {
+  telemetry: TelemetrySimulator;
+  admin: ThroughputSimulator;
+}
+
+function makeTelemetry(seed?: number): TelemetryHarness {
+  const admin = new ThroughputSimulator();
+  const telemetry =
+    seed === undefined
+      ? new TelemetrySimulator(
+          admin,
+          new LatencySimulator(1),
+          new ErrorRateSimulator(2),
+        )
+      : new TelemetrySimulator(
+          admin,
+          new LatencySimulator(1),
+          new ErrorRateSimulator(2),
+          seed,
+        );
+  return { telemetry, admin };
+}
