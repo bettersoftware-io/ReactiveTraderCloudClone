@@ -1,4 +1,4 @@
-import { concat, map, of, timer } from "rxjs";
+import { concat, map, of, tap, timer } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { EquityOrder, OrderPort, PlaceOrderRequest } from "@rtc/domain";
@@ -112,6 +112,69 @@ describe("OrdersBlotterPresenter — fills$", () => {
     sub.unsubscribe();
 
     expect(fillsSeen).toHaveLength(0);
+  });
+});
+
+describe("OrdersBlotterPresenter — orders$ live updates", () => {
+  it("re-fetches the order-book snapshot on every place() lifecycle transition, so a live subscriber observes new -> working -> filled (not a one-shot stale snapshot)", async () => {
+    vi.useFakeTimers();
+
+    // OrderPort.orders() is a one-shot snapshot query in the real domain
+    // simulator (defer -> of(book) -> complete) — it never emits again on its
+    // own. This fake mirrors that exactly: `orders()` always reads whatever
+    // `book` currently holds, but only on subscribe.
+    let book: readonly EquityOrder[] = [];
+
+    const fakePort: OrderPort = {
+      orders: () => {
+        return of(book);
+      },
+      place: (_req: PlaceOrderRequest) => {
+        return concat(
+          of(makeFakeOrder({ status: "new" })),
+          timer(300).pipe(
+            map(() => {
+              return makeFakeOrder({ status: "working" });
+            }),
+          ),
+          timer(500).pipe(
+            map(() => {
+              return makeFakeOrder({
+                status: "filled",
+                filledQty: 100,
+                avgPrice: 190,
+              });
+            }),
+          ),
+        ).pipe(
+          tap((order) => {
+            // upsert: this fake tracks a single order, replaced in place with
+            // its latest status — same shape as EquityOrderSimulator.upsert.
+            book = [order];
+          }),
+        );
+      },
+      cancel: (_orderId: string) => {
+        return of(undefined);
+      },
+    };
+
+    const presenter = new OrdersBlotterPresenter(fakePort);
+
+    const seenStatuses: string[] = [];
+    const ordersSub = presenter.orders$.subscribe((orders) => {
+      seenStatuses.push(orders[0]?.status ?? "empty");
+    });
+
+    const placeSub = presenter
+      .place({ symbol: "AAPL", side: "buy", type: "market", qty: 100 })
+      .subscribe();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    placeSub.unsubscribe();
+    ordersSub.unsubscribe();
+
+    expect(seenStatuses).toEqual(["empty", "new", "working", "filled"]);
   });
 });
 
