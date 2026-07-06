@@ -319,6 +319,102 @@ describe("RfqsPanel", () => {
     expect(panel.cardDelay(2)).toBe("45ms");
   });
 
+  // PROTO isTabRecent: a DISJOINT filter switch (live→closed shares no ids)
+  // still staggers every revealed card by grid index — the 0ms fast path is
+  // only for a genuinely just-CREATED RFQ, never a filter-revealed one.
+  it("staggers a disjoint filter switch (live→closed) instead of treating revealed cards as new", () => {
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [
+          rfq(1, { state: RfqState.Open }),
+          rfq(2, {
+            state: RfqState.Cancelled,
+            creationTimestamp: 1_700_000_002_000,
+          }),
+          rfq(3, {
+            state: RfqState.Expired,
+            creationTimestamp: 1_700_000_003_000,
+          }),
+        ],
+      },
+      creditRfqFilter: "live",
+    });
+    expect(panel.cardCount()).toBe(1);
+
+    panel.setCreditRfqFilter("closed");
+    // Shows 3 then 2 (newest first) — neither was in the previous SHOWN set,
+    // but both already existed unfiltered, so they cascade by grid index.
+    expect(panel.cardCount()).toBe(2);
+    expect(panel.cardAnim(3)).toBe("enter");
+    expect(panel.cardDelay(3)).toBe("0ms");
+    expect(panel.cardAnim(2)).toBe("enter");
+    expect(panel.cardDelay(2)).toBe("45ms");
+  });
+
+  // PROTO exitAt/EXITING_RETAIN_MS: an RFQ that leaves the active filter via
+  // a STATE change (Open→Expired while viewing LIVE) plays its exit
+  // animation before vanishing, rather than popping out instantly. Ported
+  // clock-free: retained in the exit set until its own animationend.
+  it("plays an exit animation when an RFQ leaves the live filter via a state change", () => {
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [rfq(1, { state: RfqState.Open })],
+      },
+      creditRfqFilter: "live",
+    });
+    expect(panel.cardCount()).toBe(1);
+
+    panel.emit({ useRfqs: [rfq(1, { state: RfqState.Expired })] });
+    // No longer matches "live", but retained mid exit animation.
+    expect(panel.cardCount()).toBe(1);
+    expect(panel.cardAnim(1)).toBe("exit");
+
+    panel.fireCardAnimationEnd(1);
+    expect(panel.cardCount()).toBe(0);
+
+    // NOT dismissed — only hidden by the filter; CLOSED must still show it.
+    panel.setCreditRfqFilter("closed");
+    expect(panel.cardCount()).toBe(1);
+    expect(panel.cardState(1)).toBe("terminated");
+  });
+
+  // PROTO: a card revealed by a state transition while viewing another tab
+  // (Open→Expired seen from CLOSED) appears plain — no entrance animation.
+  it("does not animate a card revealed by a state change while viewing another tab", () => {
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [
+          rfq(1, { state: RfqState.Open }),
+          rfq(2, {
+            state: RfqState.Cancelled,
+            creationTimestamp: 1_700_000_002_000,
+          }),
+        ],
+      },
+      creditRfqFilter: "closed",
+    });
+    expect(panel.cardCount()).toBe(1);
+
+    panel.emit({
+      useRfqs: [
+        rfq(1, { state: RfqState.Expired }),
+        rfq(2, {
+          state: RfqState.Cancelled,
+          creationTimestamp: 1_700_000_002_000,
+        }),
+      ],
+    });
+    expect(panel.cardCount()).toBe(2);
+    expect(panel.cardAnim(1)).toBe("none");
+    expect(panel.cardAnim(2)).toBe("none");
+  });
+
   it("shows the live countdown seconds and progress-bar percentage, ticking down under fake timers", async () => {
     vi.useFakeTimers();
     const now = Date.now();

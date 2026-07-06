@@ -26,15 +26,19 @@ import styles from "./RfqsPanel.module.css";
  * the same head/body split LiveRatesHead/LiveRatesPanel use for viewMode.
  *
  * Entrance/exit/tab-switch-cascade animation (PROTO isNew/tabRecent/
- * exitingRfqs) is re-derived client-side without a clock: `entering`/
- * `exiting` are plain id-keyed maps/sets, computed by diffing the shown-id
- * set across renders (see rfqCardAnim.ts) via React's "adjust state during
+ * exitingRfqs/exitAt) is re-derived client-side without a clock: `entering`/
+ * `exiting` are plain id-keyed maps, computed by diffing the rfq-id sets
+ * across renders (see rfqCardAnim.ts) via React's "adjust state during
  * render" pattern, and cleared via each card's own `onAnimationEnd` — src/ui
- * may not use setTimeout/Date.now (tests/scripts/grep-gates.ts gate 29), so
+ * may not schedule timers or read the wall clock (grep-gates.ts gate 29), so
  * there is no fixed-ms flash/retain window the way the prototype's hook has
- * one; a dismiss instead waits for the real CSS exit animation to finish
- * (or, under prefers-reduced-motion, happens immediately — see
- * prefersReducedMotion below). */
+ * one; the retain window is instead exactly the CSS exit animation's own
+ * duration. Two exit flavours share the machinery, distinguished by
+ * ExitReason: "remove" (trash click — dismissed for good once the animation
+ * ends) and "auto" (the RFQ left the active filter via a STATE change, e.g.
+ * Open→Expired while viewing LIVE — retained mid-animation, then simply no
+ * longer rendered; switching to CLOSED shows it again). Under
+ * prefers-reduced-motion both flavours skip the animation entirely. */
 export function RfqsPanel(): ReactElement {
   const { useRfqs, useInstruments, useDealers, useCreditRfqFilterPreference } =
     useViewModel();
@@ -43,41 +47,100 @@ export function RfqsPanel(): ReactElement {
   const dealers = useDealers();
   const { filter } = useCreditRfqFilterPreference();
   const [dismissed, setDismissed] = useState<ReadonlySet<number>>(new Set());
-  const [exiting, setExiting] = useState<ReadonlySet<number>>(new Set());
+  const [exiting, setExiting] = useState<ReadonlyMap<number, ExitReason>>(
+    new Map(),
+  );
   const [entering, setEntering] = useState<ReadonlyMap<number, number>>(
     new Map(),
   );
 
-  const shown = rfqs
+  const allIds = rfqs.map((r) => {
+    return r.id;
+  });
+  const allIdsKey = allIds.join(",");
+  const matching = rfqs.filter((r) => {
+    return matchesFilter(r.state, filter) && !dismissed.has(r.id);
+  });
+  const matchingIdSet = new Set(
+    matching.map((r) => {
+      return r.id;
+    }),
+  );
+  const matchingKey = [...matchingIdSet].join(",");
+
+  const [prevAll, setPrevAll] = useState<IdSnapshot>(() => {
+    return { key: allIdsKey, ids: new Set(allIds) };
+  });
+  const [prevMatching, setPrevMatching] = useState<IdSnapshot>(() => {
+    return { key: matchingKey, ids: matchingIdSet };
+  });
+  const [prevFilter, setPrevFilter] = useState(filter);
+  const allChanged = allIdsKey !== prevAll.key;
+  const matchingChanged = matchingKey !== prevMatching.key;
+  const filterChanged = filter !== prevFilter;
+  const inputsChanged = allChanged || matchingChanged || filterChanged;
+  const reduced = inputsChanged && prefersReducedMotion();
+
+  // React's sanctioned "adjust state during render" pattern (see react.dev's
+  // "You Might Not Need an Effect"): react to id-set/filter changes the
+  // instant they render, folding the previous-render snapshots forward. This
+  // can never loop — the branches only run while the snapshots disagree with
+  // this render's inputs, and they always end that render by matching them.
+  //
+  // Auto-exit grace (PROTO exitAt/EXITING_RETAIN_MS): an id that dropped out
+  // of the MATCHING set without a filter change (a state transition, e.g. an
+  // RFQ expiring while LIVE is the active tab) is retained in `exiting` so
+  // its card can play the cardOut animation before it stops rendering. A
+  // filter change never auto-exits — the outgoing tab's cards are simply
+  // replaced (matching the prototype, which only retains state-transition
+  // and trash-click exits across the swap).
+  let exitingNow = exiting;
+
+  if (inputsChanged && !reduced && matchingChanged && !filterChanged) {
+    const allIdSet = new Set(allIds);
+    const dropped = [...prevMatching.ids].filter((id) => {
+      return (
+        !matchingIdSet.has(id) &&
+        allIdSet.has(id) &&
+        !dismissed.has(id) &&
+        !exiting.has(id)
+      );
+    });
+
+    if (dropped.length > 0) {
+      const merged = new Map(exiting);
+
+      for (const id of dropped) {
+        merged.set(id, "auto");
+      }
+
+      exitingNow = merged;
+      setExiting(merged);
+    }
+  }
+
+  // Rendered = matches the active filter, plus anything mid exit animation;
+  // user-dismissed ids are gone for good.
+  const rendered = rfqs
     .filter((r) => {
-      return matchesFilter(r.state, filter) && !dismissed.has(r.id);
+      return (
+        !dismissed.has(r.id) &&
+        (matchesFilter(r.state, filter) || exitingNow.has(r.id))
+      );
     })
     .sort((a, b) => {
       return b.creationTimestamp - a.creationTimestamp;
     });
-  const shownIds = shown.map((r) => {
+  const renderedIds = rendered.map((r) => {
     return r.id;
   });
-  const shownIdsKey = shownIds.join(",");
+  const renderedIdsKey = renderedIds.join(",");
 
-  const [prevShown, setPrevShown] = useState<PrevShown>(() => {
-    return { key: shownIdsKey, ids: new Set(shownIds) };
-  });
-  const [prevFilter, setPrevFilter] = useState(filter);
-  const shownChanged = shownIdsKey !== prevShown.key;
-  const filterChanged = filter !== prevFilter;
-
-  // React's sanctioned "adjust state during render" pattern (see
-  // react.dev's "You Might Not Need an Effect"): recompute the entrance
-  // cascade the instant the shown-id set or the active filter changes, and
-  // fold the previous-render snapshots forward. This can never loop — the
-  // branch only runs while the derived snapshots disagree with this
-  // render's inputs, and it always ends that render by matching them.
-  if (shownChanged || filterChanged) {
-    if (!prefersReducedMotion()) {
+  if (inputsChanged) {
+    if (!reduced) {
       const additions = enterCascadeAdditions({
-        prevShownIds: prevShown.ids,
-        shownIds,
+        prevAllIds: prevAll.ids,
+        shownIds: renderedIds,
         filterChanged,
       });
 
@@ -90,12 +153,13 @@ export function RfqsPanel(): ReactElement {
       }
     }
 
-    if (shownChanged)
-      setPrevShown({ key: shownIdsKey, ids: new Set(shownIds) });
+    if (allChanged) setPrevAll({ key: allIdsKey, ids: new Set(allIds) });
+    if (matchingChanged)
+      setPrevMatching({ key: matchingKey, ids: matchingIdSet });
     if (filterChanged) setPrevFilter(filter);
   }
 
-  const { register } = useFlipGrid([filter, shownIdsKey]);
+  const { register } = useFlipGrid([filter, renderedIdsKey]);
 
   function handleRemove(rfqId: number): void {
     if (prefersReducedMotion()) {
@@ -106,7 +170,11 @@ export function RfqsPanel(): ReactElement {
     }
 
     setExiting((prev) => {
-      return new Set(prev).add(rfqId);
+      // A trash click upgrades an in-flight auto-exit: either way the user
+      // asked for this card gone, so the animation now ends in a dismissal.
+      const next = new Map(prev);
+      next.set(rfqId, "remove");
+      return next;
     });
   }
 
@@ -121,25 +189,35 @@ export function RfqsPanel(): ReactElement {
       return;
     }
 
+    const reason = exiting.get(rfqId);
     setExiting((prev) => {
       if (!prev.has(rfqId)) return prev;
-      const next = new Set(prev);
+      const next = new Map(prev);
       next.delete(rfqId);
       return next;
     });
-    setDismissed((prev) => {
-      return new Set(prev).add(rfqId);
+    setEntering((prev) => {
+      if (!prev.has(rfqId)) return prev;
+      const next = new Map(prev);
+      next.delete(rfqId);
+      return next;
     });
+
+    if (reason === "remove") {
+      setDismissed((prev) => {
+        return new Set(prev).add(rfqId);
+      });
+    }
   }
 
   return (
     <div className={styles.panel}>
       <div className={styles.body}>
-        {shown.length === 0 ? (
+        {rendered.length === 0 ? (
           <EmptyRfqs />
         ) : (
           <div className={styles.grid}>
-            {shown.map((rfq) => {
+            {rendered.map((rfq) => {
               return (
                 <div
                   key={rfq.id}
@@ -150,7 +228,10 @@ export function RfqsPanel(): ReactElement {
                     rfq={rfq}
                     instruments={instruments}
                     dealers={dealers}
-                    anim={cardAnim(exiting.has(rfq.id), entering.has(rfq.id))}
+                    anim={cardAnim(
+                      exitingNow.has(rfq.id),
+                      entering.has(rfq.id),
+                    )}
                     delayMs={entering.get(rfq.id) ?? 0}
                     onRemove={handleRemove}
                     onAnimationEnd={handleCardAnimationEnd}
@@ -165,7 +246,12 @@ export function RfqsPanel(): ReactElement {
   );
 }
 
-interface PrevShown {
+/** Why a card is playing its exit animation: a trash click ("remove",
+ * dismissed for good on animationend) or a state transition that pushed it
+ * out of the active filter ("auto", merely stops rendering). */
+type ExitReason = "remove" | "auto";
+
+interface IdSnapshot {
   key: string;
   ids: ReadonlySet<number>;
 }

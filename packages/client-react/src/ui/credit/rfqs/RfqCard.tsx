@@ -23,8 +23,8 @@ import styles from "./RfqCard.module.css";
  * cardOut, data-parity alternating by rfq id parity) — RfqsPanel computes
  * both without a clock (see rfqCardAnim.ts) and clears its `entering`/
  * `exiting` bookkeeping via `onAnimationEnd`, fired by the CSS animation's
- * own native completion (no setTimeout anywhere in this module: src/ui
- * timers are gated off entirely by tests/scripts/grep-gates.ts gate 29).
+ * own native completion (no timer scheduling anywhere in this module:
+ * src/ui timer primitives are banned by grep-gates.ts gate 29).
  * `data-anim` only ever selects ONE keyframe at a time, so the handler
  * doesn't need to read `event.animationName` — it just reports whichever
  * one is CURRENTLY selected via the `anim` prop. Reduced-motion users never
