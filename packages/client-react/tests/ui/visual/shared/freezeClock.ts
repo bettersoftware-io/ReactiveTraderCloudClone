@@ -29,7 +29,16 @@ const RealDate: DateConstructor = Date;
 // A class EXPRESSION (not a top-level class declaration) so this small local
 // double doesn't need its own one-class-per-file `FrozenDate.ts` — see
 // eslint-rules/class-filename-match.mjs (only flags ClassDeclaration).
-const FrozenDate = class extends RealDate {
+// Typed as construct-signature + the one static we define — NOT DateConstructor,
+// whose bare-call signature `(): string` a class can never satisfy; the final
+// assignment to globalThis.Date carries the cast instead.
+interface FrozenDateStatics {
+  now(): number;
+}
+
+type FrozenDateCtor = (new (...args: unknown[]) => Date) & FrozenDateStatics;
+
+const FrozenDate: FrozenDateCtor = class extends RealDate {
   constructor(...args: unknown[]) {
     if (args.length === 0) {
       super(pinnedMs);
