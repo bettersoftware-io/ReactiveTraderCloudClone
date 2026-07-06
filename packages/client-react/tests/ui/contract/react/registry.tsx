@@ -53,6 +53,7 @@ import { InstrumentTabs as InstrumentTabsComponent } from "#/ui/equities/tabs/In
 import { OrderTicket as OrderTicketComponent } from "#/ui/equities/ticket/OrderTicket";
 import { SectorHeatmap as SectorHeatmapComponent } from "#/ui/equities/watchlist/SectorHeatmap";
 import { Watchlist as WatchlistComponent } from "#/ui/equities/watchlist/Watchlist";
+import { AnalyticsHead as AnalyticsHeadComponent } from "#/ui/fx/analytics/AnalyticsHead";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
 import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
 import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
@@ -82,6 +83,7 @@ import {
   TileRfq as TileRfqComponent,
   type TileRfqState,
 } from "#/ui/fx/liveRates/tile/TileRfq";
+import { PositionsHead as PositionsHeadComponent } from "#/ui/fx/positions/PositionsHead";
 import { PositionsPanel as PositionsPanelComponent } from "#/ui/fx/positions/PositionsPanel";
 import { AmbientBackground as AmbientBackgroundComponent } from "#/ui/shell/background/AmbientBackground";
 import { BootGate as BootGateComponent } from "#/ui/shell/boot/BootGate";
@@ -103,6 +105,7 @@ import {
   AdminDashboard,
   AdminPanel,
   AmbientBackground,
+  AnalyticsHead,
   AnalyticsPanel,
   AnimationProbe,
   BlotterHeader,
@@ -138,6 +141,7 @@ import {
   PnlSparkline,
   PnlValue,
   PositionsBlotter,
+  PositionsHead,
   PositionsPanel,
   PreferencesModal,
   PriceChart,
@@ -215,6 +219,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
+    AnalyticsHead,
+    (): ReactElement => {
+      return <AnalyticsHeadComponent />;
+    },
+  ],
+  [
     PnlValue,
     (p: Record<string, unknown>): ReactElement => {
       return <PnlValueComponent value={p.value as number} />;
@@ -234,6 +244,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     PositionsPanel,
     (): ReactElement => {
       return <PositionsPanelComponent />;
+    },
+  ],
+  [
+    PositionsHead,
+    (): ReactElement => {
+      return <PositionsHeadComponent />;
     },
   ],
   [

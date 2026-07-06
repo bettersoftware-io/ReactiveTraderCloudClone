@@ -377,7 +377,7 @@ function renderPanel(
                   maximizedHere ? onRestore() : onMaximize(panelId);
                 }}
               >
-                {maximizedHere ? "▣" : "▢"}
+                {maximizedHere ? "⧉" : "⛶"}
               </button>
             </div>
           </header>

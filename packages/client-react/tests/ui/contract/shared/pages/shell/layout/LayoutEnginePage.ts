@@ -79,6 +79,27 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
     return this.panel(id).getAttribute("data-pinned") === "true";
   }
 
+  /** The header's own maximize/restore control glyph: "⛶" while collapsed
+   * (click to maximize) or "⧉" once maximized (click to restore) — ported
+   * from client-prototype's Panel.tsx `maxBtn` glyph pair (Task 4). */
+  maximizeGlyph(id: string): string | null {
+    return (
+      within(this.panel(id)).queryByTestId(`panel-${id}-maximize`)
+        ?.textContent ?? null
+    );
+  }
+
+  /** The accessible name of the header's maximize/restore control — kept
+   * separate from `stripRestoreLabel` (the strip's own restore-bar control,
+   * a different element with the "-collapse" testid). */
+  maximizeAriaLabel(id: string): string | null {
+    return (
+      within(this.panel(id))
+        .queryByTestId(`panel-${id}-maximize`)
+        ?.getAttribute("aria-label") ?? null
+    );
+  }
+
   maximize(id: string): void {
     this.emitClick(`panel-${id}-maximize`);
   }

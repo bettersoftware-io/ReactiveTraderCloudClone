@@ -8,6 +8,7 @@ import {
   RfqFilterTabsPage,
   type RfqFilterTabsProps,
 } from "./pages/credit/rfqTiles/RfqFilterTabsPage";
+import { AnalyticsHeadPage } from "./pages/fx/analytics/AnalyticsHeadPage";
 import { AnalyticsPanelPage } from "./pages/fx/analytics/AnalyticsPanelPage";
 import {
   PairPnlBarsPage,
@@ -43,6 +44,7 @@ import {
   SetFilterPage,
   type SetFilterProps,
 } from "./pages/fx/blotter/SetFilterPage";
+import { PositionsHeadPage } from "./pages/fx/positions/PositionsHeadPage";
 import { PositionsPanelPage } from "./pages/fx/positions/PositionsPanelPage";
 import { AmbientBackgroundPage } from "./pages/shell/background/AmbientBackgroundPage";
 import { BootGatePage } from "./pages/shell/boot/BootGatePage";
@@ -183,6 +185,13 @@ export const AnalyticsPanel = component<
   return new AnalyticsPanelPage(ctx);
 });
 
+export const AnalyticsHead = component<
+  Record<string, never>,
+  AnalyticsHeadPage
+>((ctx) => {
+  return new AnalyticsHeadPage(ctx);
+});
+
 export const PairPnlBars = component<PairPnlBarsProps, PairPnlBarsPage>(
   (ctx) => {
     return new PairPnlBarsPage(ctx);
@@ -198,6 +207,13 @@ export const PositionsPanel = component<
   PositionsPanelPage
 >((ctx) => {
   return new PositionsPanelPage(ctx);
+});
+
+export const PositionsHead = component<
+  Record<string, never>,
+  PositionsHeadPage
+>((ctx) => {
+  return new PositionsHeadPage(ctx);
 });
 
 export const ConnectionStatusBar = component<

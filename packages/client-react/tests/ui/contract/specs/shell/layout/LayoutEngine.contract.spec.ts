@@ -44,6 +44,15 @@ describe("InhouseLayoutEngine", () => {
     );
   });
 
+  it("shows the maximize glyph, swapping to the restore glyph once maximized, with matching aria-labels", () => {
+    const page = mount(LayoutEngine, {});
+    expect(page.maximizeGlyph("fx-rates")).toBe("⛶");
+    expect(page.maximizeAriaLabel("fx-rates")).toBe("Maximize Live Rates");
+    page.maximize("fx-rates");
+    expect(page.maximizeGlyph("fx-rates")).toBe("⧉");
+    expect(page.maximizeAriaLabel("fx-rates")).toBe("Restore Live Rates");
+  });
+
   it("maximize collapses the other panels to strips; restore brings them back", () => {
     const page = mount(LayoutEngine, {});
     page.maximize("fx-rates");

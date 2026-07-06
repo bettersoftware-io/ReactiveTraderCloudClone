@@ -171,12 +171,24 @@
   flex-shrink: 0;
 }
 
+/* Icon-less default title — harmonizes with the FX panels' registered heads
+ * (PanelHeadTabs.module.css's `.headTab[data-active="true"]`, itself ported
+ * from PROTO's tabStyleObj): every panel without its own head slot (Credit,
+ * Equities, Admin, Credit Blotter — until their own restructures) now reads
+ * as the same single accent tab instead of a plain label. There is only ever
+ * one "tab" here, so it always renders active; the declarations are
+ * duplicated rather than shared via CSS Modules `composes` (no precedent for
+ * that feature elsewhere in this codebase). */
 .panelTitle {
+  padding: 9px 14px;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.06em;
   color: var(--accent-primary);
+  background: var(--panel);
+  border-bottom: 2px solid var(--accent-primary);
+  cursor: default;
 }
 
 .panelHeadContent {
@@ -192,13 +204,22 @@
   gap: 4px;
 }
 
+/* Ported from client-prototype's Panel.module.css `.maxBtn` (dc.html's
+ * `mxBtn`): a flat dim glyph, not a bordered chip — shared by the collapse
+ * ("—") and maximize (⛶/⧉) controls, which is why the hover accent below
+ * applies to both. */
 .panelControl {
-  background: var(--chip);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
+  background: none;
+  border: none;
+  color: var(--text-muted);
   cursor: pointer;
+  font-size: 13px;
   line-height: 1;
-  padding: 2px 6px;
+  padding: 0 6px;
+}
+
+.panelControl:hover {
+  color: var(--accent-primary);
 }
 
 .panelBody {
