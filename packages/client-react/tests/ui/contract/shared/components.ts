@@ -72,6 +72,7 @@ import { IncidentControlsPage } from "./pages/admin/IncidentControlsPage";
 import { KpiRowPage } from "./pages/admin/KpiRowPage";
 import { LatencyHistogramPage } from "./pages/admin/LatencyHistogramPage";
 import { LiveEventLogPage } from "./pages/admin/LiveEventLogPage";
+import { ServiceHealthPage } from "./pages/admin/ServiceHealthPage";
 import { ServiceTopologyGraphPage } from "./pages/admin/ServiceTopologyGraphPage";
 import { SessionsPanelPage } from "./pages/admin/SessionsPanelPage";
 import { ThroughputChartPage } from "./pages/admin/ThroughputChartPage";
@@ -545,6 +546,13 @@ export const IncidentControls = component<
   IncidentControlsPage
 >((ctx) => {
   return new IncidentControlsPage(ctx);
+});
+
+export const ServiceHealth = component<
+  Record<string, never>,
+  ServiceHealthPage
+>((ctx) => {
+  return new ServiceHealthPage(ctx);
 });
 
 export const ServiceTopologyGraph = component<

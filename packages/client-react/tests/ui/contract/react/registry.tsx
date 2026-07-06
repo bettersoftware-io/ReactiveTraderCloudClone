@@ -30,6 +30,7 @@ import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/admin/Latenc
 import { LiveEventLog as LiveEventLogComponent } from "#/ui/admin/LiveEventLog";
 import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/admin/ServiceTopologyGraph";
 import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPanel";
+import { ServiceHealth as ServiceHealthComponent } from "#/ui/admin/services/ServiceHealth";
 import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
 import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqForm as NewRfqFormComponent } from "#/ui/credit/newRfq/NewRfqForm";
@@ -154,6 +155,7 @@ import {
   RfqTilesPanel,
   SectorHeatmap,
   SellSidePanel,
+  ServiceHealth,
   ServiceTopologyGraph,
   SessionsPanel,
   SetFilter,
@@ -814,6 +816,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     IncidentControls,
     (): ReactElement => {
       return <IncidentControlsComponent />;
+    },
+  ],
+  [
+    ServiceHealth,
+    (): ReactElement => {
+      return <ServiceHealthComponent />;
     },
   ],
   [

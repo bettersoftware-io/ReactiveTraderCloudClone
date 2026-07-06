@@ -7,17 +7,20 @@ import { LatencyHistogram } from "./LatencyHistogram";
 import { LiveEventLog } from "./LiveEventLog";
 import { ServiceTopologyGraph } from "./ServiceTopologyGraph";
 import { SessionsPanel } from "./SessionsPanel";
+import { ServiceHealth } from "./services/ServiceHealth";
 import { ThroughputChart } from "./ThroughputChart";
 
 import styles from "./AdminDashboard.module.css";
 
 /**
  * Admin observability dashboard — composes the telemetry cards (KPI strip,
- * charts, topology, sessions, live log) plus the break-glass incident controls
- * and the retained throughput-control card (AdminPanel) in a CSS grid. Mounted
- * via the PanelRegistry "admin-dashboard" entry, mirroring Phase 4's Equities
- * panel. Full regrid (dropping this generic Card wrapper for the KPI/chart
- * cards, which now render their own heads) is a later task.
+ * charts, topology, service health, live log, sessions) plus the break-glass
+ * incident controls and the retained throughput-control card (AdminPanel) in
+ * a CSS grid. Mounted via the PanelRegistry "admin-dashboard" entry,
+ * mirroring Phase 4's Equities panel. Full regrid (dropping this generic
+ * Card wrapper for the KPI/chart/health/log cards, which now all render
+ * their own internal heads — a temporary double-header until then) is a
+ * later task.
  */
 export function AdminDashboard(): ReactElement {
   return (
@@ -36,6 +39,9 @@ export function AdminDashboard(): ReactElement {
       </Card>
       <Card title="EVENT LOG" className={styles.logCard}>
         <LiveEventLog />
+      </Card>
+      <Card title="SERVICE HEALTH" className={styles.healthCard}>
+        <ServiceHealth />
       </Card>
       <Card title="SESSIONS" className={styles.sessionsCard}>
         <SessionsPanel />

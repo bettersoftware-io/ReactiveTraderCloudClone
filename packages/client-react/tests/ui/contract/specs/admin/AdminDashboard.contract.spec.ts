@@ -51,4 +51,9 @@ describe("AdminDashboard", () => {
     const dash = mount(AdminDashboard, {});
     expect(dash.hasLatencyHistogram()).toBe(true);
   });
+
+  it("renders the service-health list", () => {
+    const dash = mount(AdminDashboard, {});
+    expect(dash.hasServiceHealth()).toBe(true);
+  });
 });

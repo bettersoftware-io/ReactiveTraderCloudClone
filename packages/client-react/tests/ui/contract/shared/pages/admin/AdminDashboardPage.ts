@@ -44,4 +44,9 @@ export class AdminDashboardPage extends MountedComponent<
   hasLatencyHistogram(): boolean {
     return within(this.root).queryByTestId("admin-latency-histogram") !== null;
   }
+
+  /** True when the service-health list is present. */
+  hasServiceHealth(): boolean {
+    return within(this.root).queryByTestId("admin-service-health") !== null;
+  }
 }
