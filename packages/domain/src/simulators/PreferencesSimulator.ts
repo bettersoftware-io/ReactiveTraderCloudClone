@@ -3,7 +3,9 @@ import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 import type { PreferencesPort } from "../ports/preferencesPort.js";
 import {
   type BootVariant,
+  type CreditRfqFilter,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -18,6 +20,7 @@ export interface PreferencesSeed {
   viewMode?: ViewMode;
   animatedBackground?: boolean;
   bootVariant?: BootVariant;
+  creditRfqFilter?: CreditRfqFilter;
 }
 
 /**
@@ -36,6 +39,8 @@ export class PreferencesSimulator implements PreferencesPort {
 
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
+  private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
+
   constructor(seed: PreferencesSeed = {}) {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
       seed.themeMode ?? DEFAULT_THEME_MODE_PREFERENCE,
@@ -51,6 +56,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       seed.bootVariant ?? DEFAULT_BOOT_VARIANT,
+    );
+    this.creditRfqFilterSubject = new BehaviorSubject<CreditRfqFilter>(
+      seed.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER,
     );
   }
 
@@ -92,5 +100,13 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setBootVariant(variant: BootVariant): void {
     this.bootVariantSubject.next(variant);
+  }
+
+  creditRfqFilter$(): Observable<CreditRfqFilter> {
+    return this.creditRfqFilterSubject.pipe(distinctUntilChanged());
+  }
+
+  setCreditRfqFilter(filter: CreditRfqFilter): void {
+    this.creditRfqFilterSubject.next(filter);
   }
 }

@@ -78,6 +78,11 @@ import { SessionsPanelPage } from "./pages/admin/SessionsPanelPage";
 import { ThroughputChartPage } from "./pages/admin/ThroughputChartPage";
 import { CreditBlotterPage } from "./pages/credit/blotter/CreditBlotterPage";
 import {
+  RfqFilterPillsPage,
+  type RfqFilterPillsProps,
+} from "./pages/credit/rfqs/RfqFilterPillsPage";
+import { RfqsPanelPage } from "./pages/credit/rfqs/RfqsPanelPage";
+import {
   QuoteCardPage,
   type QuoteCardProps,
 } from "./pages/credit/rfqTiles/QuoteCardPage";
@@ -297,6 +302,19 @@ export const RfqTilesPanel = component<
   RfqTilesPanelPage
 >((ctx) => {
   return new RfqTilesPanelPage(ctx);
+});
+
+export const RfqsPanel = component<Record<string, never>, RfqsPanelPage>(
+  (ctx) => {
+    return new RfqsPanelPage(ctx);
+  },
+);
+
+export const RfqFilterPills = component<
+  RfqFilterPillsProps,
+  RfqFilterPillsPage
+>((ctx) => {
+  return new RfqFilterPillsPage(ctx);
 });
 
 export const SellSidePanel = component<

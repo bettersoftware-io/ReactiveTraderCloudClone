@@ -7,6 +7,7 @@ import type {
   TileExecutionState,
 } from "@rtc/client-core";
 import type {
+  CreditRfqFilter,
   CurrencyCategory,
   CurrencyPair,
   CurrencyPairPosition,
@@ -34,6 +35,8 @@ import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPane
 import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
 import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqForm as NewRfqFormComponent } from "#/ui/credit/newRfq/NewRfqForm";
+import { RfqFilterPills as RfqFilterPillsComponent } from "#/ui/credit/rfqs/RfqFilterPills";
+import { RfqsPanel as RfqsPanelComponent } from "#/ui/credit/rfqs/RfqsPanel";
 import { QuoteCard as QuoteCardComponent } from "#/ui/credit/rfqTiles/QuoteCard";
 import { RfqCard as RfqCardComponent } from "#/ui/credit/rfqTiles/RfqCard";
 import {
@@ -152,7 +155,9 @@ import {
   QuoteCard,
   RfqCard,
   RfqCountdown,
+  RfqFilterPills,
   RfqFilterTabs,
+  RfqsPanel,
   RfqTilesPanel,
   SectorHeatmap,
   SellSidePanel,
@@ -445,6 +450,26 @@ export const registry = new Map<AnyToken, ElementFor>([
     RfqTilesPanel,
     (): ReactElement => {
       return <RfqTilesPanelComponent />;
+    },
+  ],
+  [
+    RfqsPanel,
+    (): ReactElement => {
+      return <RfqsPanelComponent />;
+    },
+  ],
+  [
+    RfqFilterPills,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <RfqFilterPillsComponent
+          filter={(p.filter as CreditRfqFilter) ?? "live"}
+          liveCount={(p.liveCount as number) ?? 0}
+          onFilter={
+            (p.onFilter as (f: CreditRfqFilter) => void) ?? ((): void => {})
+          }
+        />
+      );
     },
   ],
   [

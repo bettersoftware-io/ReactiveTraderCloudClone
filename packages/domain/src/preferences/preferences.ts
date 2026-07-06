@@ -25,6 +25,12 @@ export type ThemeSkin =
   | "neon";
 export type ViewMode = "chart" | "price";
 
+/** The Credit RFQs panel's LIVE/CLOSED/ALL filter, shared between the panel
+ * (reader) and its head's filter pills (writer) via the same
+ * useCreditRfqFilterPreference seam as ViewMode. Mirrors the prototype's
+ * CreditTab union (dc.html `creditTab` state). */
+export type CreditRfqFilter = "live" | "closed" | "all";
+
 /** The boot sequence visual variant. Cycles across sessions — each run advances
  * to the next entry in the fixed order (core → laser → docking → core …).
  * Mirrors `localStorage['rt_bootSeq']` from the prototype. */
@@ -33,6 +39,7 @@ export type BootVariant = "core" | "laser" | "docking";
 export const DEFAULT_THEME_MODE: ThemeMode = "dark";
 export const DEFAULT_THEME_SKIN: ThemeSkin = "holo"; // showcase default; "classic" preserves the pre-redesign look
 export const DEFAULT_VIEW_MODE: ViewMode = "chart";
+export const DEFAULT_CREDIT_RFQ_FILTER: CreditRfqFilter = "live";
 export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
 
 export const THEME_SKINS: readonly ThemeSkin[] = [

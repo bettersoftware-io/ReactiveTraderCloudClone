@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   type BootVariant,
+  type CreditRfqFilter,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -21,6 +23,7 @@ export interface PreferencesSeed {
   viewMode?: ViewMode;
   animatedBackground?: boolean;
   bootVariant?: BootVariant;
+  creditRfqFilter?: CreditRfqFilter;
 }
 
 /**
@@ -171,6 +174,29 @@ export function describePreferencesPortContract(
     it("reads back a seeded bootVariant", async () => {
       const port = makeSeeded({ bootVariant: "docking" });
       expect(await firstValueFrom(port.bootVariant$())).toBe("docking");
+    });
+
+    it("empty store emits the default creditRfqFilter", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.creditRfqFilter$())).toBe(
+        DEFAULT_CREDIT_RFQ_FILTER,
+      );
+    });
+
+    it("setCreditRfqFilter persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: CreditRfqFilter[] = [];
+      const sub = port.creditRfqFilter$().subscribe((f) => {
+        return seen.push(f);
+      });
+      port.setCreditRfqFilter("closed");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_CREDIT_RFQ_FILTER, "closed"]);
+    });
+
+    it("reads back a seeded creditRfqFilter", async () => {
+      const port = makeSeeded({ creditRfqFilter: "all" });
+      expect(await firstValueFrom(port.creditRfqFilter$())).toBe("all");
     });
   });
 }

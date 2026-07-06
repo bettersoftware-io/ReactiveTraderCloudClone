@@ -16,6 +16,7 @@ import type {
 import {
   type Candle,
   ConnectionStatus,
+  type CreditRfqFilter,
   type CurrencyPair,
   type Dealer,
   type DepthBook,
@@ -79,6 +80,8 @@ export interface AppData {
   animatedBackground?: boolean;
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
+  /** Credit RFQs panel filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER ("live"). */
+  creditRfqFilter?: CreditRfqFilter;
   /** Session lock state (useSession); defaults to false → LockScreen renders nothing. */
   sessionLocked?: boolean;
   // ── Admin / telemetry fields (Phase 5) ───────────────────────────────────

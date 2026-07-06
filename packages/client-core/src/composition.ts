@@ -21,6 +21,7 @@ import {
   BootPreferencePresenter,
   CandleSeriesPresenter,
   ConnectionStatusPresenter,
+  CreditRfqFilterPreferencePresenter,
   CurrencyPairsPresenter,
   createBootSequenceMachine,
   createIncidentMachine,
@@ -98,6 +99,7 @@ export interface Presenters {
   themeSkinPreference: ThemeSkinPreferencePresenter;
   animatedBackground: AnimatedBackgroundPresenter;
   viewModePreference: ViewModePreferencePresenter;
+  creditRfqFilterPreference: CreditRfqFilterPreferencePresenter;
   animationDirector: AnimationDirector;
   bootPreference: BootPreferencePresenter;
   session: SessionPresenter;
@@ -189,6 +191,9 @@ export function createApp(ports: AppPorts): App {
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
+    creditRfqFilterPreference: new CreditRfqFilterPreferencePresenter(
+      ports.preferences,
+    ),
     animationDirector: new AnimationDirector({
       pairs$: currencyPairs.pairs$,
       priceFor: (pair: CurrencyPair) => {

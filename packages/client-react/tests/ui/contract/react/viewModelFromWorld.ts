@@ -21,6 +21,7 @@ import {
 } from "@rtc/client-core";
 import type {
   CreateRfqInput,
+  CreditRfqFilter,
   CurrencyPair,
   ExecuteTradeInput,
   ExecuteTradeResult,
@@ -115,6 +116,13 @@ export function reactViewModel(world: World): ViewModel {
     useAcceptQuote: () => {
       return async (quoteId: number) => {
         world.commands.acceptQuote.push(quoteId);
+      };
+    },
+    // Command: record the cancelled rfq id, mirroring useAcceptQuote's shape
+    // (one-shot fire-and-await; the bridge does firstValueFrom).
+    useCancelRfq: () => {
+      return async (rfqId: number) => {
+        world.commands.cancelRfq.push(rfqId);
       };
     },
     // Command: record the reconnect invocation so contract specs can assert
@@ -323,6 +331,18 @@ export function reactViewModel(world: World): ViewModel {
         viewMode,
         setViewMode: (next: ViewMode) => {
           return world.viewMode.next(next);
+        },
+      };
+    },
+    // Credit RFQs filter: reactive view backed by the World subject; setFilter
+    // pushes back so a click through the seam (RfqsHead's pills, Task 4)
+    // re-renders RfqsPanel — mirroring useViewModePreference exactly.
+    useCreditRfqFilterPreference: () => {
+      const filter = useSubject(world.creditRfqFilter);
+      return {
+        filter,
+        setFilter: (next: CreditRfqFilter) => {
+          return world.creditRfqFilter.next(next);
         },
       };
     },

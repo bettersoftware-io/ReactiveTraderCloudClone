@@ -1,0 +1,77 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+}
+
+.row[data-state="passed"],
+.row[data-state="rejected"] {
+  opacity: 0.5;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.star {
+  font-size: 9px;
+  line-height: 9px;
+  color: var(--accent-positive);
+}
+
+.bank {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.bank[data-house="true"] {
+  color: var(--accent-primary);
+}
+
+.priceWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.price {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--text-primary);
+}
+
+.price[data-state="pending"],
+.price[data-state="passed"],
+.price[data-state="rejected"] {
+  color: var(--text-muted);
+}
+
+.price[data-state="priced"][data-best="true"],
+.price[data-state="accepted"] {
+  color: var(--accent-positive);
+}
+
+.acceptBtn {
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 9px;
+  line-height: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text-on-accent);
+  background: var(--accent-positive);
+  border: none;
+  border-radius: 3px;
+  padding: 4px 11px;
+}
+
+.acceptBtn[data-best="true"] {
+  box-shadow: 0 0 10px var(--accent-positive);
+}
