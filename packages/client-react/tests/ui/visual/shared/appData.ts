@@ -20,10 +20,12 @@ import {
   type CurrencyPair,
   type Dealer,
   type DepthBook,
+  type EqBlotterView,
   type EquityInstrument,
   type EquityOrder,
   type EquityPosition,
   type EquityQuote,
+  type EqWatchlistSort,
   type Instrument,
   type LogEvent,
   type MetricSample,
@@ -115,6 +117,10 @@ export interface AppData {
   /** Eq workspace state (useEqWorkspace) — selected symbol / open tabs /
    * timeframe; defaults to { sel: "", openTabs: [], timeframe: "1D" }. */
   equityWorkspace?: EqWorkspaceState;
+  /** Watchlist sort-mode preference (useEqWatchlistSort); defaults to DEFAULT_EQ_WATCHLIST_SORT ("chg"). */
+  eqWatchlistSort?: EqWatchlistSort;
+  /** Blotter tab preference (useEqBlotterView); defaults to DEFAULT_EQ_BLOTTER_VIEW ("orders"). */
+  eqBlotterView?: EqBlotterView;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

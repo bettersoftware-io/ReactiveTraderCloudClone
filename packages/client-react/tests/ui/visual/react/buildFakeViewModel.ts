@@ -1,5 +1,7 @@
 import {
   type CurrencyPair,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   resolveThemeMode,
@@ -180,6 +182,19 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       return {
         viewMode: data.viewMode ?? DEFAULT_VIEW_MODE,
         setViewMode: noop,
+      };
+    },
+    useEqWatchlistSort: () => {
+      return {
+        sort: data.eqWatchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
+        setSort: noop,
+        cycle: noop,
+      };
+    },
+    useEqBlotterView: () => {
+      return {
+        view: data.eqBlotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
+        setView: noop,
       };
     },
     // Session: static snapshot for screenshots. Defaults to unlocked, so the

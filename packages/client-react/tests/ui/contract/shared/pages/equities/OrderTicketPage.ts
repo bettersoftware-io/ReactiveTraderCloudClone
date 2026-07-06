@@ -5,9 +5,10 @@ import type { EquityOrder, OrderStatus } from "@rtc/domain";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
-/** Props the OrderTicket component reads (the instrument it trades). */
+/** Props the OrderTicket component reads (the instrument it trades). Optional:
+ * an unset symbol falls back to the shared eqWorkspace selection. */
 export interface OrderTicketProps {
-  symbol: string;
+  symbol?: string;
 }
 
 /** The shape a spec pushes to advance the place lifecycle one step. */
@@ -58,6 +59,39 @@ export class OrderTicketPage extends MountedComponent<OrderTicketProps> {
   /** True when the conditional limit-price field is shown (limit order). */
   hasLimitField(): boolean {
     return within(this.root).queryByText(/limit price/i) !== null;
+  }
+
+  /** The current quantity, read from the qty stepper's number input. */
+  qty(): number {
+    const input = within(this.root).getAllByRole(
+      "spinbutton",
+    )[0] as HTMLInputElement;
+    return input.value === "" ? 0 : Number(input.value);
+  }
+
+  /** Click the qty stepper's − button (steps down by 10, floored at 0). */
+  async stepQtyDown(): Promise<void> {
+    await this.user.click(
+      this.container().querySelector(
+        '[data-testid="order-ticket-qty-dec"]',
+      ) as HTMLElement,
+    );
+  }
+
+  /** Click the qty stepper's + button (steps up by 10). */
+  async stepQtyUp(): Promise<void> {
+    await this.user.click(
+      this.container().querySelector(
+        '[data-testid="order-ticket-qty-inc"]',
+      ) as HTMLElement,
+    );
+  }
+
+  /** The formatted "Est. Cost" summary row value (e.g. "$22,935"). */
+  estCost(): string {
+    return (
+      within(this.root).getByTestId("order-ticket-est-cost").textContent ?? ""
+    );
   }
 
   /** Click a side toggle (Buy / Sell). */

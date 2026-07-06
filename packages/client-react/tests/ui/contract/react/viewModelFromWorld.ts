@@ -22,13 +22,19 @@ import {
 import type {
   CreateRfqInput,
   CurrencyPair,
+  EqBlotterView,
+  EqWatchlistSort,
   ExecuteTradeInput,
   ExecuteTradeResult,
   RfqQuoteResult,
   ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
-import { nextThemeModePreference, resolveThemeMode } from "@rtc/domain";
+import {
+  nextEqWatchlistSort,
+  nextThemeModePreference,
+  resolveThemeMode,
+} from "@rtc/domain";
 import type { ViewModel } from "@rtc/react-bindings";
 import { useMachine } from "@rtc/react-bindings";
 
@@ -356,6 +362,36 @@ export function reactViewModel(world: World): ViewModel {
         viewMode,
         setViewMode: (next: ViewMode) => {
           return world.viewMode.next(next);
+        },
+      };
+    },
+    // Equities watchlist sort: reactive view backed by the World subject;
+    // setSort pushes back directly, cycle() reads the CURRENT value (not a
+    // captured one) so rapid clicks each advance from the true state —
+    // mirroring the real presenter's cycle().
+    useEqWatchlistSort: () => {
+      const sort = useSubject(world.eqWatchlistSort);
+      return {
+        sort,
+        setSort: (next: EqWatchlistSort) => {
+          return world.eqWatchlistSort.next(next);
+        },
+        cycle: () => {
+          return world.eqWatchlistSort.next(
+            nextEqWatchlistSort(world.eqWatchlistSort.getValue()),
+          );
+        },
+      };
+    },
+    // Equities blotter tab: reactive view backed by the World subject;
+    // setView pushes back so a tab click through the seam flips the rendered
+    // view (Task 5 consumes this).
+    useEqBlotterView: () => {
+      const view = useSubject(world.eqBlotterView);
+      return {
+        view,
+        setView: (next: EqBlotterView) => {
+          return world.eqBlotterView.next(next);
         },
       };
     },

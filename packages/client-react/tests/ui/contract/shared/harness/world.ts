@@ -20,14 +20,18 @@ import {
   ConnectionStatus,
   type CreateRfqInput,
   type CurrencyPair,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   type Dealer,
   type DepthBook,
+  type EqBlotterView,
   type EquityInstrument,
   type EquityOrder,
   type EquityPosition,
   type EquityQuote,
+  type EqWatchlistSort,
   type ExecuteTradeInput,
   type ExecuteTradeResult,
   type Instrument,
@@ -109,6 +113,12 @@ export interface EquitiesSeed {
    * composition root's synchronous first-watchlist-symbol peek). Defaults to
    * `watchlist`'s first symbol, or "" if neither is provided. */
   initialSymbol?: string;
+  /** Seeds the watchlist sort-mode preference (useEqWatchlistSort); defaults
+   * to DEFAULT_EQ_WATCHLIST_SORT ("chg"). */
+  watchlistSort?: EqWatchlistSort;
+  /** Seeds the blotter tab preference (useEqBlotterView); defaults to
+   * DEFAULT_EQ_BLOTTER_VIEW ("orders"). */
+  blotterView?: EqBlotterView;
 }
 
 /** The combined metric series for useMetrics(). */
@@ -244,6 +254,10 @@ export interface World {
    * reading useEqWorkspace() through this World observes the same selection/
    * open-tabs/timeframe state. */
   readonly eqWorkspace: Machine<EqWorkspaceState, EqWorkspaceIntents>;
+  /** Reactive watchlist sort-mode preference backing useEqWatchlistSort. */
+  readonly eqWatchlistSort: BehaviorSubject<EqWatchlistSort>;
+  /** Reactive blotter tab preference backing useEqBlotterView. */
+  readonly eqBlotterView: BehaviorSubject<EqBlotterView>;
   // Admin / telemetry streams (Phase 5)
   /** Reactive service topology backing useTopology. Null until first push. */
   readonly topology$: BehaviorSubject<ServiceTopology | null>;
@@ -377,6 +391,12 @@ export function createWorld(
     initialSymbol:
       equitiesSeed.initialSymbol ?? equitiesSeed.watchlist?.[0]?.symbol ?? "",
   });
+  const eqWatchlistSort = new BehaviorSubject<EqWatchlistSort>(
+    equitiesSeed.watchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
+  );
+  const eqBlotterView = new BehaviorSubject<EqBlotterView>(
+    equitiesSeed.blotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
+  );
 
   const equityQuotes = new Map<string, BehaviorSubject<EquityQuote | null>>();
   const candleSeries = new Map<string, BehaviorSubject<readonly Candle[]>>();
@@ -578,6 +598,8 @@ export function createWorld(
       return orderLifecycle.next(order);
     },
     eqWorkspace,
+    eqWatchlistSort,
+    eqBlotterView,
     // Admin subjects
     topology$,
     eventLog$,
