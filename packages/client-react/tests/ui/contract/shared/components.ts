@@ -4,6 +4,10 @@ import {
   type NewRfqFormProps,
 } from "./pages/credit/newRfq/NewRfqFormPage";
 import {
+  NewRfqPanelPage,
+  type NewRfqPanelProps,
+} from "./pages/credit/newRfq/NewRfqPanelPage";
+import {
   type RfqFilter,
   RfqFilterTabsPage,
   type RfqFilterTabsProps,
@@ -282,6 +286,12 @@ export const DateFilter = component<DateFilterProps, DateFilterPage>((ctx) => {
 export const NewRfqForm = component<NewRfqFormProps, NewRfqFormPage>((ctx) => {
   return new NewRfqFormPage(ctx);
 });
+
+export const NewRfqPanel = component<NewRfqPanelProps, NewRfqPanelPage>(
+  (ctx) => {
+    return new NewRfqPanelPage(ctx);
+  },
+);
 
 export const RfqFilterTabs = component<RfqFilterTabsProps, RfqFilterTabsPage>(
   (ctx) => {

@@ -35,6 +35,7 @@ import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPane
 import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
 import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqForm as NewRfqFormComponent } from "#/ui/credit/newRfq/NewRfqForm";
+import { NewRfqPanel as NewRfqPanelComponent } from "#/ui/credit/newRfq/NewRfqPanel";
 import { RfqFilterPills as RfqFilterPillsComponent } from "#/ui/credit/rfqs/RfqFilterPills";
 import { RfqsPanel as RfqsPanelComponent } from "#/ui/credit/rfqs/RfqsPanel";
 import { QuoteCard as QuoteCardComponent } from "#/ui/credit/rfqTiles/QuoteCard";
@@ -139,6 +140,7 @@ import {
   LockScreen,
   MetricGauges,
   NewRfqForm,
+  NewRfqPanel,
   NumberFilter,
   OrdersBlotter,
   OrderTicket,
@@ -403,6 +405,16 @@ export const registry = new Map<AnyToken, ElementFor>([
     (p: Record<string, unknown>): ReactElement => {
       return (
         <NewRfqFormComponent
+          onCreated={(p.onCreated as (id: number) => void) ?? ((): void => {})}
+        />
+      );
+    },
+  ],
+  [
+    NewRfqPanel,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <NewRfqPanelComponent
           onCreated={(p.onCreated as (id: number) => void) ?? ((): void => {})}
         />
       );
