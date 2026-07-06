@@ -18,17 +18,16 @@ describe("LiveRatesHead + LiveRatesPanel", () => {
     expect(page.hasWatchlistPlaceholder()).toBe(false);
   });
 
-  it("swaps the panel body to the watchlist placeholder when Watchlist is selected", async () => {
+  it("swaps the panel body to the watchlist view when Watchlist is selected", async () => {
     const page = mount(LiveRatesWorkspace, {
       hooks: { useCurrencyPairs: KNOWN_CURRENCY_PAIRS },
     });
     await page.selectWatchlistTab();
     expect(page.isWatchlistTabActive()).toBe(true);
     expect(page.isRatesTabActive()).toBe(false);
-    expect(page.hasWatchlistPlaceholder()).toBe(true);
-    expect(page.watchlistPlaceholderText()).toMatch(
-      /watchlist view.*coming online/i,
-    );
+    expect(page.hasWatchlistPlaceholder()).toBe(false);
+    expect(page.hasWatchlistView()).toBe(true);
+    expect(page.watchRowCount()).toBe(KNOWN_CURRENCY_PAIRS.length);
   });
 
   it("returns to the tile grid when Live Rates is reselected", async () => {
@@ -37,7 +36,7 @@ describe("LiveRatesHead + LiveRatesPanel", () => {
     });
     await page.selectWatchlistTab();
     await page.selectRatesTab();
-    expect(page.hasWatchlistPlaceholder()).toBe(false);
+    expect(page.hasWatchlistView()).toBe(false);
     expect(page.isRatesTabActive()).toBe(true);
   });
 

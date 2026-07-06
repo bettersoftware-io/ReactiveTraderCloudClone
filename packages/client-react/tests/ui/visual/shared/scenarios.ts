@@ -36,6 +36,10 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "LiveRatesPanel",
     fixtureKey: "live-rates-populated",
   },
+  "live-rates/watchlist": {
+    componentKey: "FxWatchlist",
+    fixtureKey: "watchlist-populated",
+  },
   "app/fx": { componentKey: "App", fixtureKey: "app-fx" },
   // FX blotter populated with trades (the app/fx page only ever shows it empty).
   "fx-blotter/populated": {

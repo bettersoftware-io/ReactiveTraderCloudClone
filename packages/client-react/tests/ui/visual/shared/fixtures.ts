@@ -250,6 +250,54 @@ const eurusdHistoryFlat: readonly PriceTick[] = [
   },
 ];
 
+// Watchlist Trend column arms: a descending GBPUSD series (red sparkline) and
+// a flat USDJPY series (horizontal sparkline) — paired with eurusdHistoryUp
+// (green) so watchlist/populated exercises all three Trend directions at once.
+const gbpusdHistoryDown: readonly PriceTick[] = [
+  {
+    symbol: "GBPUSD",
+    bid: 1.2652,
+    ask: 1.2654,
+    mid: 1.2653,
+    valueDate: "2026-06-08",
+    creationTimestamp: 1_750_000_000_000,
+  },
+  {
+    symbol: "GBPUSD",
+    bid: 1.2646,
+    ask: 1.2648,
+    mid: 1.2647,
+    valueDate: "2026-06-08",
+    creationTimestamp: 1_750_000_001_000,
+  },
+  {
+    symbol: "GBPUSD",
+    bid: 1.264,
+    ask: 1.2642,
+    mid: 1.2641,
+    valueDate: "2026-06-08",
+    creationTimestamp: 1_750_000_002_000,
+  },
+];
+const usdjpyHistoryFlat: readonly PriceTick[] = [
+  {
+    symbol: "USDJPY",
+    bid: 151.203,
+    ask: 151.219,
+    mid: 151.211,
+    valueDate: "2026-06-08",
+    creationTimestamp: 1_750_000_000_000,
+  },
+  {
+    symbol: "USDJPY",
+    bid: 151.203,
+    ask: 151.219,
+    mid: 151.211,
+    valueDate: "2026-06-08",
+    creationTimestamp: 1_750_000_001_000,
+  },
+];
+
 // Analytics arms: negative latest PnL + a negative current position (PnlValue /
 // PnlChart negative colour arms); an empty panel (no positions, no history);
 // and all-flat positions (PairPnlBars maxAbsPnl === 0 degenerate arm; the
@@ -843,6 +891,17 @@ export const fixtures: Record<string, AppData> = {
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
     viewMode: "price",
+  }),
+  // Watchlist table: three pairs covering all three Trend directions — EURUSD
+  // up (green), GBPUSD down (red), USDJPY flat (horizontal).
+  "watchlist-populated": makeAppData({
+    currencyPairs: [eurusd, gbpusd, usdjpy],
+    prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
+    priceHistory: {
+      EURUSD: eurusdHistoryUp,
+      GBPUSD: gbpusdHistoryDown,
+      USDJPY: usdjpyHistoryFlat,
+    },
   }),
   "app-fx": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],

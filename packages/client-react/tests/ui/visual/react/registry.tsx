@@ -28,6 +28,7 @@ import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { Tile } from "#/ui/fx/liveRates/tile/Tile";
+import { WatchlistView } from "#/ui/fx/liveRates/WatchlistView";
 import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
@@ -107,6 +108,17 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   LiveRatesPanel: () => {
     return <LiveRatesPanel />;
+  },
+  // The Watchlist table is width:100% (fills its panel like FxBlotter); pin a
+  // fixed panel-width wrapper so the capture's content-width is deterministic
+  // (avoids the same font-mono glyph-advance drift as fx-blotter/*).
+  FxWatchlist: (fixtureKey: string) => {
+    const pairs = fixtures[fixtureKey].currencyPairs;
+    return (
+      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+        <WatchlistView pairs={pairs} />
+      </div>
+    );
   },
   FxBlotter: () => {
     // Render filling a representative panel width (test-only), like the real
