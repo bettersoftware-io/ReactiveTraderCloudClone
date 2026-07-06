@@ -7,26 +7,31 @@ afterEach(() => {
 });
 
 describe("InhouseLayoutEngine", () => {
-  it("renders the fx arrangement: rates + a fixed rail (analytics over positions), blotter pinned", () => {
+  it("renders the fx arrangement: rates + a resizable right column (analytics over positions), blotter resizable (not pinned)", () => {
     const page = mount(LayoutEngine, {});
     expect(page.bodyText("fx-rates")).toBe("RATES");
     expect(page.bodyText("fx-analytics")).toBe("ANALYTICS");
     expect(page.bodyText("fx-positions")).toBe("POSITIONS");
     expect(page.bodyText("fx-blotter")).toBe("BLOTTER");
-    expect(page.isPinned("fx-blotter")).toBe(true);
+    expect(page.isPinned("fx-blotter")).toBe(false);
   });
 
-  it("suppresses the resize handle between rates and the fixed 360px rail", () => {
+  it("shows a resize handle between rates and the right column (no fixedPx suppressing it)", () => {
     const page = mount(LayoutEngine, {});
-    // content row is child 0 of the root column split → pathKey "0"; the
-    // rail's fixedPx suppresses the handle at that split entirely.
-    expect(page.handleExists("0", 0)).toBe(false);
+    // content row is child 0 of the root column split → pathKey "0"
+    expect(page.handleExists("0", 0)).toBe(true);
   });
 
-  it("shows a resize handle between analytics and positions inside the fixed rail", () => {
+  it("shows a resize handle between analytics and positions inside the right column", () => {
     const page = mount(LayoutEngine, {});
-    // the rail is child 1 of the content row → pathKey "0.1"
+    // the right column is child 1 of the content row → pathKey "0.1"
     expect(page.handleExists("0.1", 0)).toBe(true);
+  });
+
+  it("shows a resize handle between the content row and the blotter (blotter is no longer pinned)", () => {
+    const page = mount(LayoutEngine, {});
+    // root path is [] → pathKey ""
+    expect(page.handleExists("", 0)).toBe(true);
   });
 
   it("renders split handles as siblings between cells, not inside them", () => {
@@ -57,5 +62,25 @@ describe("InhouseLayoutEngine", () => {
     page.expand("fx-analytics");
     expect(page.isStrip("fx-analytics")).toBe(false);
     expect(page.bodyText("fx-analytics")).toBe("ANALYTICS");
+  });
+
+  // The default FX tree is fully resizable (Task 2), so nothing shipped
+  // exercises the engine's pinned/fixedPx render branches anymore. The engine
+  // keeps that machinery for a future panel that opts out of resizing; this
+  // fixture (see react/pinnedFixtureLayoutPort.ts) mounts it directly so the
+  // branches stay covered instead of rotting unexercised.
+  describe("pinned + fixedPx machinery (kept for a future non-resizable panel)", () => {
+    it("renders a pinned panel with data-pinned and no resize handle beside it", () => {
+      const page = mount(LayoutEngine, { props: { pinnedFixture: true } });
+      expect(page.isPinned("fx-blotter")).toBe(true);
+      // root path is [] → pathKey ""; the pinned tail suppresses the handle
+      expect(page.handleExists("", 0)).toBe(false);
+    });
+
+    it("suppresses the resize handle beside a fixedPx cell", () => {
+      const page = mount(LayoutEngine, { props: { pinnedFixture: true } });
+      // content row is child 0 of the root column split → pathKey "0"
+      expect(page.handleExists("0", 0)).toBe(false);
+    });
   });
 });

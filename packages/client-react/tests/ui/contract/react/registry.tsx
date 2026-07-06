@@ -655,7 +655,12 @@ export const registry = new Map<AnyToken, ElementFor>([
         };
       }
 
-      return <LayoutEngineHost headRegistry={headRegistry} />;
+      return (
+        <LayoutEngineHost
+          headRegistry={headRegistry}
+          pinnedFixture={(p.pinnedFixture as boolean | undefined) ?? false}
+        />
+      );
     },
   ],
   [

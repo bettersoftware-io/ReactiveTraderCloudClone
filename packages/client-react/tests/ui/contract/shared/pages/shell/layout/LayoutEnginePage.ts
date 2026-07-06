@@ -10,6 +10,13 @@ export interface LayoutEngineProps {
    * `Partial<Record<PanelId, () => ReactElement>>` — so the spec stays a plain
    * .ts file; the React registry builds the actual headRegistry from it. */
   customHeadPanelIds?: readonly string[];
+  /** Mounts the synthetic pinned + fixedPx fixture (see
+   * react/pinnedFixtureLayoutPort.ts) instead of the default FX tree, to
+   * exercise the InhouseLayoutEngine render branches that PANEL_SPECS /
+   * defaultLayoutPort no longer produce since every default split became
+   * user-resizable (Task 2). The pinned/fixedPx machinery itself stays in the
+   * engine for a future panel that opts out of resizing. */
+  pinnedFixture?: boolean;
 }
 
 /** Page object for the InhouseLayoutEngine. The engine is dumb: it renders a
