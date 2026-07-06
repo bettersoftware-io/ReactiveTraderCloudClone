@@ -35,6 +35,8 @@ import {
   createTileExecutionMachine,
   DealersPresenter,
   DepthPresenter,
+  EqBlotterViewPreferencePresenter,
+  EqWatchlistSortPreferencePresenter,
   type EqWorkspaceIntents,
   type EqWorkspaceState,
   ErrorRatePresenter,
@@ -102,6 +104,10 @@ export interface Presenters {
   themeSkinPreference: ThemeSkinPreferencePresenter;
   animatedBackground: AnimatedBackgroundPresenter;
   viewModePreference: ViewModePreferencePresenter;
+  /** Equities watchlist sort-mode preference (the head's ⇅ cycle control). */
+  eqWatchlistSortPreference: EqWatchlistSortPreferencePresenter;
+  /** Equities blotter tab preference (Orders/Positions), consumed by Task 5. */
+  eqBlotterViewPreference: EqBlotterViewPreferencePresenter;
   animationDirector: AnimationDirector;
   bootPreference: BootPreferencePresenter;
   session: SessionPresenter;
@@ -220,6 +226,12 @@ export function createApp(ports: AppPorts): App {
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
+    eqWatchlistSortPreference: new EqWatchlistSortPreferencePresenter(
+      ports.preferences,
+    ),
+    eqBlotterViewPreference: new EqBlotterViewPreferencePresenter(
+      ports.preferences,
+    ),
     animationDirector: new AnimationDirector({
       pairs$: currencyPairs.pairs$,
       priceFor: (pair: CurrencyPair) => {

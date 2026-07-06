@@ -37,16 +37,20 @@ import {
   type CandleTimeframe,
   ConnectionStatus,
   type CurrencyPair,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type Dealer,
   type DepthBook,
+  type EqBlotterView,
   type EquityInstrument,
   type EquityOrder,
   type EquityPosition,
   type EquityQuote,
+  type EqWatchlistSort,
   type Instrument,
   type LogEvent,
   type MetricSample,
@@ -119,6 +123,19 @@ interface UseViewModePreferenceResult {
   setViewMode: (viewMode: ViewMode) => void;
 }
 
+interface UseEqWatchlistSortResult {
+  sort: EqWatchlistSort;
+  setSort: (sort: EqWatchlistSort) => void;
+  /** Advance the sort one step (sym → chg → price → sym) — the Watchlist
+   * head's ⇅ control. */
+  cycle: () => void;
+}
+
+interface UseEqBlotterViewResult {
+  view: EqBlotterView;
+  setView: (view: EqBlotterView) => void;
+}
+
 interface UseSessionResult {
   state: SessionState;
   lock: () => void;
@@ -172,6 +189,12 @@ export interface ViewModel {
   useAnimatedBackground: () => UseAnimatedBackgroundResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
+  /** Equities watchlist sort-mode preference — current sort plus write/cycle
+   * intents (the Watchlist head's ⇅ control). */
+  useEqWatchlistSort: () => UseEqWatchlistSortResult;
+  /** Equities blotter tab preference (Orders/Positions) — current view plus
+   * the write intent. Plumbed here; Task 5's Blotter panel consumes it. */
+  useEqBlotterView: () => UseEqBlotterViewResult;
   /** Global session lock state plus lock/unlock (re-authenticate) intents.
    * Shared (one stream for the whole app), so a plain `bind` like the prefs. */
   useSession: () => UseSessionResult;
@@ -323,6 +346,24 @@ export function createViewModel(
 
   function setViewMode(viewMode: ViewMode): void {
     presenters.viewModePreference.setViewMode(viewMode);
+  }
+
+  const [useEqWatchlistSortValue] = bind(
+    presenters.eqWatchlistSortPreference.sort$,
+    DEFAULT_EQ_WATCHLIST_SORT,
+  );
+
+  function setEqWatchlistSort(sort: EqWatchlistSort): void {
+    presenters.eqWatchlistSortPreference.setSort(sort);
+  }
+
+  const [useEqBlotterViewValue] = bind(
+    presenters.eqBlotterViewPreference.view$,
+    DEFAULT_EQ_BLOTTER_VIEW,
+  );
+
+  function setEqBlotterView(view: EqBlotterView): void {
+    presenters.eqBlotterViewPreference.setView(view);
   }
 
   // Global/shared session lock state → a plain bind (not a per-mount machine).
@@ -549,6 +590,21 @@ export function createViewModel(
       return {
         viewMode: useViewModeValue(),
         setViewMode,
+      };
+    },
+    useEqWatchlistSort: () => {
+      return {
+        sort: useEqWatchlistSortValue(),
+        setSort: setEqWatchlistSort,
+        cycle: () => {
+          presenters.eqWatchlistSortPreference.cycle();
+        },
+      };
+    },
+    useEqBlotterView: () => {
+      return {
+        view: useEqBlotterViewValue(),
+        setView: setEqBlotterView,
       };
     },
     useSession: () => {

@@ -4,9 +4,13 @@ import type { PreferencesPort } from "../ports/preferencesPort.js";
 import {
   type BootVariant,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
+  type EqBlotterView,
+  type EqWatchlistSort,
   type ThemeModePreference,
   type ThemeSkin,
   type ViewMode,
@@ -18,6 +22,8 @@ export interface PreferencesSeed {
   viewMode?: ViewMode;
   animatedBackground?: boolean;
   bootVariant?: BootVariant;
+  eqWatchlistSort?: EqWatchlistSort;
+  eqBlotterView?: EqBlotterView;
 }
 
 /**
@@ -36,6 +42,10 @@ export class PreferencesSimulator implements PreferencesPort {
 
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
+  private readonly eqWatchlistSortSubject: BehaviorSubject<EqWatchlistSort>;
+
+  private readonly eqBlotterViewSubject: BehaviorSubject<EqBlotterView>;
+
   constructor(seed: PreferencesSeed = {}) {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
       seed.themeMode ?? DEFAULT_THEME_MODE_PREFERENCE,
@@ -51,6 +61,12 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       seed.bootVariant ?? DEFAULT_BOOT_VARIANT,
+    );
+    this.eqWatchlistSortSubject = new BehaviorSubject<EqWatchlistSort>(
+      seed.eqWatchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
+    );
+    this.eqBlotterViewSubject = new BehaviorSubject<EqBlotterView>(
+      seed.eqBlotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
     );
   }
 
@@ -92,5 +108,21 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setBootVariant(variant: BootVariant): void {
     this.bootVariantSubject.next(variant);
+  }
+
+  eqWatchlistSort$(): Observable<EqWatchlistSort> {
+    return this.eqWatchlistSortSubject.pipe(distinctUntilChanged());
+  }
+
+  setEqWatchlistSort(sort: EqWatchlistSort): void {
+    this.eqWatchlistSortSubject.next(sort);
+  }
+
+  eqBlotterView$(): Observable<EqBlotterView> {
+    return this.eqBlotterViewSubject.pipe(distinctUntilChanged());
+  }
+
+  setEqBlotterView(view: EqBlotterView): void {
+    this.eqBlotterViewSubject.next(view);
   }
 }

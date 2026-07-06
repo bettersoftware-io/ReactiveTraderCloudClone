@@ -30,10 +30,26 @@ export type ViewMode = "chart" | "price";
  * Mirrors `localStorage['rt_bootSeq']` from the prototype. */
 export type BootVariant = "core" | "laser" | "docking";
 
+/** The equities Watchlist's sort mode — symbol (A–Z), % change, or last price.
+ * Driven by the watchlist head's ⇅ cycle control. */
+export type EqWatchlistSort = "sym" | "chg" | "price";
+
+/** The equities Blotter panel's active tab — Orders or Positions. */
+export type EqBlotterView = "orders" | "positions";
+
 export const DEFAULT_THEME_MODE: ThemeMode = "dark";
 export const DEFAULT_THEME_SKIN: ThemeSkin = "holo"; // showcase default; "classic" preserves the pre-redesign look
 export const DEFAULT_VIEW_MODE: ViewMode = "chart";
 export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
+export const DEFAULT_EQ_WATCHLIST_SORT: EqWatchlistSort = "chg";
+export const DEFAULT_EQ_BLOTTER_VIEW: EqBlotterView = "orders";
+
+/** The watchlist head's ⇅ button cycles through these in order. */
+export const EQ_WATCHLIST_SORTS: readonly EqWatchlistSort[] = [
+  "sym",
+  "chg",
+  "price",
+];
 
 export const THEME_SKINS: readonly ThemeSkin[] = [
   "classic",
@@ -78,4 +94,13 @@ export function resolveThemeMode(
   }
 
   return pref;
+}
+
+/** The next sort in the watchlist head's ⇅ cycle (wraps around): sym → chg → price → sym. */
+export function nextEqWatchlistSort(current: EqWatchlistSort): EqWatchlistSort {
+  const i = EQ_WATCHLIST_SORTS.indexOf(current);
+  return (
+    EQ_WATCHLIST_SORTS[(i + 1) % EQ_WATCHLIST_SORTS.length] ??
+    DEFAULT_EQ_WATCHLIST_SORT
+  );
 }

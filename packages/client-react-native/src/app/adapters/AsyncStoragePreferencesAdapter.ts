@@ -4,9 +4,14 @@ import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 import {
   type BootVariant,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
+  EQ_WATCHLIST_SORTS,
+  type EqBlotterView,
+  type EqWatchlistSort,
   type PreferencesPort,
   THEME_SKINS,
   type ThemeModePreference,
@@ -19,6 +24,8 @@ export const THEME_SKIN_STORAGE_KEY = "rtc-theme-skin";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
+export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
+export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 
 function isThemeModePreference(
   value: string | null,
@@ -36,6 +43,16 @@ function isViewMode(value: string | null): value is ViewMode {
 
 function isBootVariant(value: string | null): value is BootVariant {
   return value === "core" || value === "laser" || value === "docking";
+}
+
+function isEqWatchlistSort(value: string | null): value is EqWatchlistSort {
+  return (
+    value !== null && (EQ_WATCHLIST_SORTS as readonly string[]).includes(value)
+  );
+}
+
+function isEqBlotterView(value: string | null): value is EqBlotterView {
+  return value === "orders" || value === "positions";
 }
 
 /**
@@ -65,20 +82,36 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     DEFAULT_BOOT_VARIANT,
   );
 
+  private readonly eqWatchlistSortSubject =
+    new BehaviorSubject<EqWatchlistSort>(DEFAULT_EQ_WATCHLIST_SORT);
+
+  private readonly eqBlotterViewSubject = new BehaviorSubject<EqBlotterView>(
+    DEFAULT_EQ_BLOTTER_VIEW,
+  );
+
   constructor() {
     void this.hydrate();
   }
 
   private async hydrate(): Promise<void> {
     try {
-      const [themeMode, themeSkin, viewMode, animatedBg, bootVariant] =
-        await Promise.all([
-          AsyncStorage.getItem(THEME_STORAGE_KEY),
-          AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
-          AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
-          AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
-          AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
-        ]);
+      const [
+        themeMode,
+        themeSkin,
+        viewMode,
+        animatedBg,
+        bootVariant,
+        eqWatchlistSort,
+        eqBlotterView,
+      ] = await Promise.all([
+        AsyncStorage.getItem(THEME_STORAGE_KEY),
+        AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
+        AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
+        AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
+        AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
+        AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
+        AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
+      ]);
 
       if (isThemeModePreference(themeMode)) this.themeMode.next(themeMode);
       if (isThemeSkin(themeSkin)) this.themeSkin.next(themeSkin);
@@ -88,6 +121,14 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
       if (isBootVariant(bootVariant)) {
         this.bootVariantSubject.next(bootVariant);
+      }
+
+      if (isEqWatchlistSort(eqWatchlistSort)) {
+        this.eqWatchlistSortSubject.next(eqWatchlistSort);
+      }
+
+      if (isEqBlotterView(eqBlotterView)) {
+        this.eqBlotterViewSubject.next(eqBlotterView);
       }
     } catch {
       // AsyncStorage may be unavailable — keep the seeded defaults.
@@ -142,5 +183,27 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       () => {},
     );
     this.bootVariantSubject.next(variant);
+  }
+
+  eqWatchlistSort$(): Observable<EqWatchlistSort> {
+    return this.eqWatchlistSortSubject.pipe(distinctUntilChanged());
+  }
+
+  setEqWatchlistSort(sort: EqWatchlistSort): void {
+    void AsyncStorage.setItem(EQ_WATCHLIST_SORT_STORAGE_KEY, sort).catch(
+      () => {},
+    );
+    this.eqWatchlistSortSubject.next(sort);
+  }
+
+  eqBlotterView$(): Observable<EqBlotterView> {
+    return this.eqBlotterViewSubject.pipe(distinctUntilChanged());
+  }
+
+  setEqBlotterView(view: EqBlotterView): void {
+    void AsyncStorage.setItem(EQ_BLOTTER_VIEW_STORAGE_KEY, view).catch(
+      () => {},
+    );
+    this.eqBlotterViewSubject.next(view);
   }
 }

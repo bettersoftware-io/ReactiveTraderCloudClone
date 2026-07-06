@@ -128,6 +128,8 @@ export type {
 // Preferences
 export type {
   BootVariant,
+  EqBlotterView,
+  EqWatchlistSort,
   ThemeMode,
   ThemeModePreference,
   ThemeSkin,
@@ -135,10 +137,14 @@ export type {
 } from "./preferences/preferences.js";
 export {
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
+  EQ_WATCHLIST_SORTS,
+  nextEqWatchlistSort,
   nextThemeModePreference,
   resolveThemeMode,
   THEME_MODE_PREFERENCES,

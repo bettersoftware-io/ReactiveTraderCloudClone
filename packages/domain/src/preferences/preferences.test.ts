@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
+  EQ_WATCHLIST_SORTS,
+  nextEqWatchlistSort,
   nextThemeModePreference,
   resolveThemeMode,
   THEME_MODE_PREFERENCES,
@@ -51,5 +55,24 @@ describe("system theme-mode preference", () => {
     expect(resolveThemeMode("system", false)).toBe("light");
     expect(resolveThemeMode("dark", false)).toBe("dark");
     expect(resolveThemeMode("light", true)).toBe("light");
+  });
+});
+
+describe("equities watchlist-sort preference", () => {
+  it("lists every sort in cycle order; the default is chg", () => {
+    expect(EQ_WATCHLIST_SORTS).toEqual(["sym", "chg", "price"]);
+    expect(DEFAULT_EQ_WATCHLIST_SORT).toBe("chg");
+  });
+
+  it("nextEqWatchlistSort cycles sym → chg → price → sym", () => {
+    expect(nextEqWatchlistSort("sym")).toBe("chg");
+    expect(nextEqWatchlistSort("chg")).toBe("price");
+    expect(nextEqWatchlistSort("price")).toBe("sym");
+  });
+});
+
+describe("equities blotter-view preference", () => {
+  it("defaults to orders", () => {
+    expect(DEFAULT_EQ_BLOTTER_VIEW).toBe("orders");
   });
 });
