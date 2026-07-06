@@ -34,7 +34,7 @@
     "@types/react": "^19",
     "@vitest/coverage-v8": "^4.1.8",
     "jsdom": "^29",
-    "tsc-alias": "1.8.17",
+    "tsc-alias": "1.9.0",
     "vitest": "^4"
   }
 }
