@@ -62,6 +62,21 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
     );
   }
 
+  /** Fire the native "animationcancel" event RfqCard listens for via a plain
+   * `addEventListener` (final review M-a) — e.g. a mid-flight
+   * prefers-reduced-motion flip cancelling the exit keyframe. Unlike
+   * animationend above, this bypasses React's synthetic event system
+   * entirely (react-dom has no onAnimationCancel prop to feature-detect a
+   * vendor prefix for), so the bare unprefixed event name is enough. */
+  fireCardAnimationCancel(rfqId: number): void {
+    const card = this.card(rfqId);
+    if (!card) throw new Error(`No rendered card for rfq ${rfqId}`);
+    fireEvent(
+      card,
+      new Event("animationcancel", { bubbles: true, cancelable: false }),
+    );
+  }
+
   /** The empty-state message, or null when cards are present. */
   emptyMessage(): string | null {
     const el = within(this.root).queryByText(/no rfqs to show/i);

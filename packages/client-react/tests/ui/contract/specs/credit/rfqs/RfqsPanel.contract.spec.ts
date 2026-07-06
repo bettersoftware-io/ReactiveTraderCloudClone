@@ -247,6 +247,75 @@ describe("RfqsPanel", () => {
     expect(panel.emptyMessage()).toBe("No RFQs to show");
   });
 
+  it("clears exit bookkeeping when the animation is CANCELLED, not just when it ends (final review M-a)", async () => {
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [rfq(1, { state: RfqState.Expired })],
+      },
+      creditRfqFilter: "all",
+    });
+    expect(panel.cardCount()).toBe(1);
+    await panel.remove(1);
+    // Mid-flight, a prefers-reduced-motion toggle (or any other cause) can
+    // CANCEL the browser's exit keyframe instead of letting it end — without
+    // an onAnimationCancel-equivalent handler, the card would be stranded in
+    // RfqsPanel's `exiting` map forever.
+    expect(panel.cardAnim(1)).toBe("exit");
+    panel.fireCardAnimationCancel(1);
+    expect(panel.cardCount()).toBe(0);
+    expect(panel.emptyMessage()).toBe("No RFQs to show");
+  });
+
+  // PROTO cardAnim: a STATE change revealing an RFQ while the filter is
+  // unchanged shows it plain, never entering (rfqCardAnim.ts:43-45). A stale
+  // `entering` entry orphaned by an EARLIER filter switch — the card's
+  // entrance never got to fire its own animationend because a filter change
+  // unmounted it mid-flight — must not resurrect and replay that entrance
+  // once the id becomes visible again (final review M-b).
+  it("doesn't replay a stale entrance orphaned by a filter switch, once the RFQ resurfaces via a state change", () => {
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [rfq(1, { state: RfqState.Open })],
+      },
+      creditRfqFilter: "live",
+    });
+
+    // id 2 is created while viewing "live" — it plays a 0ms entrance.
+    panel.emit({
+      useRfqs: [
+        rfq(1, { state: RfqState.Open }),
+        rfq(2, { state: RfqState.Open, creationTimestamp: 1_700_000_001_000 }),
+      ],
+    });
+    expect(panel.cardAnim(2)).toBe("enter");
+
+    // Switch filters before id 2's entrance animation ever ends — it
+    // unmounts (Open doesn't match "closed"), orphaning the `entering`
+    // entry with no animationend ever coming to clear it.
+    panel.setCreditRfqFilter("closed");
+    expect(panel.cardCount()).toBe(0);
+
+    // Still viewing "closed" (no further filter change): id 2 transitions
+    // Open -> Expired, which now matches "closed" — a pure STATE change
+    // revealing it, exactly the "shows plain" case. Without pruning the
+    // orphaned entry, it would incorrectly replay the entrance.
+    panel.emit({
+      useRfqs: [
+        rfq(1, { state: RfqState.Open }),
+        rfq(2, {
+          state: RfqState.Expired,
+          creationTimestamp: 1_700_000_001_000,
+        }),
+      ],
+    });
+    expect(panel.cardCount()).toBe(1);
+    expect(panel.cardAnim(2)).toBe("none");
+  });
+
   it("dismisses a terminated RFQ immediately under prefers-reduced-motion", async () => {
     stubReducedMotion(true);
     const panel = mount(RfqsPanel, {

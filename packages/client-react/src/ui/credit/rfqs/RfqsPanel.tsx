@@ -137,6 +137,28 @@ export function RfqsPanel(): ReactElement {
   const renderedIdsKey = renderedIds.join(",");
 
   if (inputsChanged) {
+    // Prune any `entering` id that's no longer rendered (final review M-b):
+    // a card created under one filter gets an `entering` entry; if the user
+    // switches filters before its 0.46s entrance completes, the card
+    // unmounts without ever firing animationend, so nothing would otherwise
+    // clear its entry — orphaned in the map. If that same id later
+    // re-enters the rendered set via a STATE change with the filter
+    // unchanged (which shows plain, no entrance — enterCascadeAdditions
+    // deliberately omits it), the stale entry would incorrectly replay the
+    // entrance. Dropping ids the moment they leave `rendered` (same
+    // "adjust state during render" pass that computes the new additions)
+    // keeps `entering` in sync with what's actually mounted.
+    const renderedIdSet = new Set(renderedIds);
+    const merged = new Map(entering);
+    let enteringChanged = false;
+
+    for (const id of merged.keys()) {
+      if (!renderedIdSet.has(id)) {
+        merged.delete(id);
+        enteringChanged = true;
+      }
+    }
+
     if (!reduced) {
       const additions = enterCascadeAdditions({
         prevAllIds: prevAll.ids,
@@ -145,13 +167,14 @@ export function RfqsPanel(): ReactElement {
       });
 
       if (additions.size > 0) {
-        const merged = new Map(entering);
         additions.forEach((delay, id) => {
           merged.set(id, delay);
         });
-        setEntering(merged);
+        enteringChanged = true;
       }
     }
+
+    if (enteringChanged) setEntering(merged);
 
     if (allChanged) setPrevAll({ key: allIdsKey, ids: new Set(allIds) });
     if (matchingChanged)

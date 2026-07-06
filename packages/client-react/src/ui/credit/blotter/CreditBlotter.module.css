@@ -1,13 +1,15 @@
+/* The layout engine's own .panel already paints the chrome (background,
+ * blur, border, radius, --panel-shadow — InhouseLayoutEngine.module.css
+ * .panel) around a bare .panelBody. Nesting a second card here doubled the
+ * chrome AND capped the table at a fixed height, leaving dead engine-panel
+ * background below it (glaring on maximize) — final review F2. This root
+ * now just fills the panel and lets the table area do the scrolling,
+ * matching the prototype (CreditBlotterPanel.module.css .body). */
 .blotter {
-  background: var(--panel);
-  backdrop-filter: blur(var(--panel-blur));
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  box-shadow: var(--glow);
+  height: 100%;
+  min-height: 0;
 }
 
 .toolbar {
@@ -16,6 +18,8 @@
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: 12px 14px 0;
 }
 
 .toolbarLeft {
@@ -38,14 +42,17 @@
 }
 
 /* PROTO Blotter/CreditBlotterPanel.module.css `.controls`: the trade-count +
- * CSV-export sub-head, over the sticky column-header row. */
+ * CSV-export sub-head, over the sticky column-header row. Fixed (flex-shrink:
+ * 0) above the scrolling table area, same as the prototype's `.controls`
+ * sitting above its flex:1 `.table`. */
 .controls {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  padding: 8px 0;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .count {
@@ -68,9 +75,13 @@
   padding: 4px 10px;
 }
 
+/* Fills the rest of the panel and owns the internal scroll — no fixed
+ * max-height (that's what left the dead engine-panel background below the
+ * old card, glaring on maximize; final review F2). */
 .tableWrapper {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  max-height: 250px;
 }
 
 .table {
@@ -80,6 +91,22 @@
   line-height: 17px;
   font-family: var(--font-mono);
 }
+
+/* A sticky column-header row (`.table thead th/tr { position: sticky }`),
+ * matching the prototype's `.headerRow`, was tried here and reverted: with
+ * this table's real `<thead>`/`<th>` markup, `position: sticky` on either
+ * the row or its cells makes Chromium clip/hit-test the column-filter
+ * popover (BlotterHeader's `.filterPanel`, absolutely positioned off a
+ * `<th>`) as if it were behind `.tableWrapper`'s scroll clip — confirmed
+ * live via the `credit/blotter-filtered` visual scenario, whose Apply
+ * button became unclickable (hit-tested through to `scenario-root` behind
+ * it) the instant sticky was added, in BOTH the row and per-cell forms.
+ * The prototype's own header has no such popover to conflict with (its
+ * filters are a different UI). Left non-sticky rather than risk the same
+ * interaction breaking in the live docked app; a follow-up would need to
+ * split the header out of the scrolling table (e.g. a fixed header table +
+ * a separately-scrolling body table) rather than lean on `position: sticky`
+ * against this shared BlotterHeader component. */
 
 .headerCell {
   padding: 6px 8px;

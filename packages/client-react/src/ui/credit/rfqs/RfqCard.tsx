@@ -3,6 +3,7 @@ import type {
   AnimationEvent as ReactAnimationEvent,
   ReactElement,
 } from "react";
+import { useEffect, useRef } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -30,7 +31,20 @@ import styles from "./RfqCard.module.css";
  * one is CURRENTLY selected via the `anim` prop. Reduced-motion users never
  * receive `anim !== "none"` in the first place (RfqsPanel skips the
  * cascade for them), so `onAnimationEnd` simply never fires — nothing is
- * left to clear. */
+ * left to clear.
+ *
+ * A mid-flight `prefers-reduced-motion` flip can CANCEL rather than end the
+ * exit keyframe (final review M-a): it's gated on `prefers-reduced-motion:
+ * no-preference` (RfqCard.module.css), so a card mid-exit whose OS setting
+ * flips to *reduce* gets the animation cancelled by the browser —
+ * `animationcancel`, never `animationend` — and without handling it,
+ * RfqsPanel's `exiting`/`entering` bookkeeping for that card would never
+ * clear. React has no synthetic `onAnimationCancel` prop (unlike
+ * `onAnimationEnd`/`onTransitionCancel` — checked react-dom's
+ * simpleEventPluginEvents list, "animationcancel" isn't registered), so this
+ * is wired via a native listener on the card's own ref instead of JSX;
+ * treating cancel identically to completion is correct here — either way
+ * the card's native animation is done playing. */
 export function RfqCard(props: RfqCardProps): ReactElement {
   const {
     vm,
@@ -48,6 +62,7 @@ export function RfqCard(props: RfqCardProps): ReactElement {
   const remainingMs = useRfqCountdown(creationTimestamp, totalMs);
   const secs = Math.ceil(remainingMs / 1000);
   const pct = totalMs > 0 ? Math.max(0, (remainingMs / totalMs) * 100) : 0;
+  const cardRef = useRef<HTMLDivElement>(null);
 
   function handleAnimationEnd(
     event: ReactAnimationEvent<HTMLDivElement>,
@@ -58,8 +73,29 @@ export function RfqCard(props: RfqCardProps): ReactElement {
     if (anim === "enter" || anim === "exit") onAnimationEnd(anim);
   }
 
+  // See the doc comment above: no React synthetic event exists for
+  // "animationcancel", so it's subscribed natively. jsdom (this repo's test
+  // DOM) dispatches plain "animationcancel" events fine via addEventListener
+  // — unlike animationend, there's no vendor-prefix fallback to feature-detect.
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    function handleAnimationCancel(event: AnimationEvent): void {
+      if (event.target !== event.currentTarget) return;
+      if (anim === "enter" || anim === "exit") onAnimationEnd(anim);
+    }
+
+    el.addEventListener("animationcancel", handleAnimationCancel);
+
+    return () => {
+      el.removeEventListener("animationcancel", handleAnimationCancel);
+    };
+  }, [anim, onAnimationEnd]);
+
   return (
     <div
+      ref={cardRef}
       className={styles.card}
       data-state={vm.cardState}
       data-anim={anim}
