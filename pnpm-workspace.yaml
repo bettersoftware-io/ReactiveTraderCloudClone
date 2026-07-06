@@ -45,3 +45,16 @@ overrides:
   # allowlist was the alternative (the XML is trusted + build-time only); the
   # override is chosen to match this repo's prefer-a-real-fix posture (see uuid).
   "@xmldom/xmldom@<0.8.13": ^0.9.10
+  # Pin @expo/metro-runtime to the SDK-55 line. It arrives as a PEER dep via
+  # `expo`'s loose `*` range, and the minimumReleaseAge cooldown above steered
+  # pnpm to the aged 4.0.1 (SDK-52 era) instead of the 55.0.11 that expo-router
+  # actually requires (^55.0.11) and expo's bundledNativeModules pins (~55.0.11).
+  # 4.0.1 is fatal on RN 0.83: its messageSocket.native.ts calls
+  # `require("react-native/.../getDevServer")()` expecting the OLD CJS contract
+  # (module.exports = fn), but RN 0.83 ships getDevServer as an ESM
+  # `export default`, so the require yields the namespace object → the app
+  # crashes at boot with `TypeError: getDevServer is not a function (it is
+  # Object)`. 55.0.11 removed that broken consumer entirely and uses a proper
+  # ESM import, matching RN 0.83 by construction. Without this override the
+  # peer re-resolves to 4.0.1 on every install.
+  "@expo/metro-runtime": ~55.0.11
