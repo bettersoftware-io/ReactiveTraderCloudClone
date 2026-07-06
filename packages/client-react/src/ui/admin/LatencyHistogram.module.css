@@ -35,7 +35,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  flex: 1;
+  height: 96px;
   gap: 6px;
 }
 

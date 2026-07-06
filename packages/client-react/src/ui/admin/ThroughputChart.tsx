@@ -23,7 +23,7 @@ export function ThroughputChart(): ReactElement {
     <div data-testid="admin-throughput-chart" className={styles.card}>
       <div className={styles.head}>
         <span className={styles.title}>MESSAGE THROUGHPUT</span>
-        <span className={styles.sub}>last 60s · msg/s</span>
+        <span className={styles.sub}>last 120s · msg/s</span>
       </div>
       {throughput.length === 0 ? (
         <div className={styles.empty}>NO DATA</div>
