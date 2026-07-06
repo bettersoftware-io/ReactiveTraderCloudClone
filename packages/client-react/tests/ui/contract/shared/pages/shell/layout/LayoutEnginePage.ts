@@ -51,6 +51,30 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
     return this.panel(id).getAttribute("data-strip") === "true";
   }
 
+  /** The accessible name of whatever control currently sits at the shared
+   * `panel-<id>-collapse` testid: the strip's restore bar ("Restore <title>")
+   * while the panel is a strip (collapsed, or a sibling of the maximized
+   * panel), or the header's small collapse icon ("Collapse <title>")
+   * otherwise. */
+  stripRestoreLabel(id: string): string | null {
+    return (
+      within(this.panel(id))
+        .queryByTestId(`panel-${id}-collapse`)
+        ?.getAttribute("aria-label") ?? null
+    );
+  }
+
+  /** "vertical" when the strip restore bar reads top-to-bottom (its cell is
+   * a child of a row split — narrow/tall), "horizontal" otherwise. Null when
+   * the panel isn't currently a strip. */
+  stripOrientation(id: string): string | null {
+    return (
+      within(this.panel(id))
+        .queryByTestId(`panel-${id}-collapse`)
+        ?.getAttribute("data-orientation") ?? null
+    );
+  }
+
   isPinned(id: string): boolean {
     return this.panel(id).getAttribute("data-pinned") === "true";
   }
@@ -64,6 +88,13 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
   }
 
   expand(id: string): void {
+    this.emitClick(`panel-${id}-collapse`);
+  }
+
+  /** Clicks a strip's restore bar when the panel isn't itself collapsed but
+   * was forced to strip by another panel's maximize — same control, named
+   * separately here because it drives `onRestore` rather than `onExpand`. */
+  expandStrip(id: string): void {
     this.emitClick(`panel-${id}-collapse`);
   }
 

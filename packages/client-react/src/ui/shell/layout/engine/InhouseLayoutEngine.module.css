@@ -51,6 +51,23 @@
   position: relative;
 }
 
+/* Matches the owning split's own direction (the flex default is row, which
+ * is only right for a row split's cells). This decides which axis a strip
+ * panel's `.panel[data-strip="true"] { flex: 0 0 32px }` below shrinks
+ * along: cells in a row split stretch to the cell's full height and shrink
+ * to a narrow width (a "column child of a row split", PROTO's vertical
+ * stripBar); cells in a column split stretch to full width and shrink to a
+ * short height instead. Without this, every strip shrinks to a narrow
+ * column regardless of split direction, leaving a dead gap in a column
+ * split's wider cell. */
+.cell[data-dir="row"] {
+  flex-direction: row;
+}
+
+.cell[data-dir="column"] {
+  flex-direction: column;
+}
+
 /* A pinned cell takes content height only and never grows. */
 .cell[data-pinned-cell="true"] {
   flex-grow: 0;
@@ -128,6 +145,22 @@
   flex: 1;
 }
 
+/* PROTO's `panTrans` (dc.html panelBase): flex-grow/flex-basis/width/height
+ * all glide at 0.34s on the same easing when a panel enters/leaves a strip
+ * or becomes maximized. Scoped to `.panel` only (not `.cell`, whose
+ * flex-grow tracks `--split-size` during an interactive resize drag — an
+ * unconditional transition there would make the split visibly lag behind
+ * the pointer). Gated on `prefers-reduced-motion` per the interfaces doc. */
+@media (prefers-reduced-motion: no-preference) {
+  .panel {
+    transition:
+      flex-grow 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      flex-basis 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      width 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      height 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
 .panelHeader {
   display: flex;
   align-items: center;
@@ -172,4 +205,39 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+
+/* PROTO's stripBar (dc.html `stripBar`): the entire strip is one clickable
+ * restore control — no separate header/body while stripped. */
+.stripBar {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  padding: 0;
+  background: var(--panel-head);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.stripBar[data-orientation="vertical"] {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.stripGlyph {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.stripLabel {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }

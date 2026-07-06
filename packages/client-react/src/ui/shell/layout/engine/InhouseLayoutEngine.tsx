@@ -55,7 +55,7 @@ export function InhouseLayoutEngine({
       className={styles.engine}
       data-maximized={state.maximized ?? ""}
     >
-      {renderNode(state.root, [], sharedProps)}
+      {renderNode(state.root, [], sharedProps, null)}
     </main>
   );
 }
@@ -235,6 +235,7 @@ function SplitNode({
             <div
               className={styles.cell}
               data-testid={`cell-${pathKey}-${i}`}
+              data-dir={node.dir}
               data-pinned-cell={childPinned ? "true" : "false"}
               data-fixed-cell={childFixed !== undefined ? "true" : "false"}
               style={
@@ -247,7 +248,7 @@ function SplitNode({
                       } as CSSProperties)
               }
             >
-              {renderNode(child, [...path, i], sharedProps)}
+              {renderNode(child, [...path, i], sharedProps, node.dir)}
             </div>
             {showHandle ? (
               // Sibling of the cell (not nested inside it): `.cell` is a flex
@@ -281,7 +282,10 @@ function SplitNode({
   );
 }
 
-/** Renders a panel leaf — no hooks, plain function helper. */
+/** Renders a panel leaf — no hooks, plain function helper. `parentDir` is the
+ * `dir` of the split whose cell holds this panel (null at the tree root, for
+ * a single-panel tab like Admin/Equities); it decides the strip's restore-bar
+ * orientation below. */
 function renderPanel(
   panelId: PanelId,
   {
@@ -294,13 +298,20 @@ function renderPanel(
     onCollapse,
     onExpand,
   }: SharedProps,
+  parentDir: SplitDir | null,
 ): ReactElement {
   const spec = specs[panelId];
+  const title = spec?.title ?? panelId;
   const collapsed = state.collapsed.includes(panelId);
   const maximizedHere = state.maximized === panelId;
   const isMaximized = state.maximized !== null;
   const strip = (isMaximized && !maximizedHere) || collapsed;
   const headContent = headRegistry?.[panelId];
+  // A row split lays its cells out side by side, so a stripped cell there
+  // shrinks to a narrow, full-height column (PROTO stripBar) — restoring it
+  // reads top-to-bottom. A column split's stripped cell instead shrinks to a
+  // short, full-width bar, which reads left-to-right like the normal header.
+  const stripOrientation = parentDir === "row" ? "vertical" : "horizontal";
 
   return (
     <section
@@ -311,55 +322,67 @@ function renderPanel(
       data-strip={strip ? "true" : "false"}
       data-maximized={maximizedHere ? "true" : "false"}
     >
-      <header
-        data-testid={`panel-${panelId}-header`}
-        className={styles.panelHeader}
-      >
-        {headContent ? (
-          <div className={styles.panelHeadContent}>{headContent()}</div>
-        ) : (
-          <span
-            data-testid={`panel-${panelId}-title`}
-            className={styles.panelTitle}
-          >
-            {spec?.title ?? panelId}
+      {strip ? (
+        <button
+          type="button"
+          data-testid={`panel-${panelId}-collapse`}
+          className={styles.stripBar}
+          data-orientation={stripOrientation}
+          aria-label={`Restore ${title}`}
+          onClick={() => {
+            collapsed ? onExpand(panelId) : onRestore();
+          }}
+        >
+          <span aria-hidden="true" className={styles.stripGlyph}>
+            ⛶
           </span>
-        )}
-        <div className={styles.panelControls}>
-          <button
-            type="button"
-            data-testid={`panel-${panelId}-collapse`}
-            className={styles.panelControl}
-            aria-label={
-              collapsed
-                ? `Expand ${spec?.title ?? panelId}`
-                : `Collapse ${spec?.title ?? panelId}`
-            }
-            onClick={() => {
-              collapsed ? onExpand(panelId) : onCollapse(panelId);
-            }}
+          <span className={styles.stripLabel}>{title}</span>
+        </button>
+      ) : (
+        <>
+          <header
+            data-testid={`panel-${panelId}-header`}
+            className={styles.panelHeader}
           >
-            {collapsed ? "▢" : "—"}
-          </button>
-          <button
-            type="button"
-            data-testid={`panel-${panelId}-maximize`}
-            className={styles.panelControl}
-            aria-label={
-              maximizedHere
-                ? `Restore ${spec?.title ?? panelId}`
-                : `Maximize ${spec?.title ?? panelId}`
-            }
-            onClick={() => {
-              maximizedHere ? onRestore() : onMaximize(panelId);
-            }}
-          >
-            {maximizedHere ? "▣" : "▢"}
-          </button>
-        </div>
-      </header>
-      {strip ? null : (
-        <div className={styles.panelBody}>{registry[panelId]?.()}</div>
+            {headContent ? (
+              <div className={styles.panelHeadContent}>{headContent()}</div>
+            ) : (
+              <span
+                data-testid={`panel-${panelId}-title`}
+                className={styles.panelTitle}
+              >
+                {title}
+              </span>
+            )}
+            <div className={styles.panelControls}>
+              <button
+                type="button"
+                data-testid={`panel-${panelId}-collapse`}
+                className={styles.panelControl}
+                aria-label={`Collapse ${title}`}
+                onClick={() => {
+                  onCollapse(panelId);
+                }}
+              >
+                —
+              </button>
+              <button
+                type="button"
+                data-testid={`panel-${panelId}-maximize`}
+                className={styles.panelControl}
+                aria-label={
+                  maximizedHere ? `Restore ${title}` : `Maximize ${title}`
+                }
+                onClick={() => {
+                  maximizedHere ? onRestore() : onMaximize(panelId);
+                }}
+              >
+                {maximizedHere ? "▣" : "▢"}
+              </button>
+            </div>
+          </header>
+          <div className={styles.panelBody}>{registry[panelId]?.()}</div>
+        </>
       )}
     </section>
   );
@@ -371,9 +394,10 @@ function renderNode(
   node: LayoutNode,
   path: readonly number[],
   sharedProps: SharedProps,
+  parentDir: SplitDir | null,
 ): ReactElement {
   if (node.kind === "panel") {
-    return renderPanel(node.panelId, sharedProps);
+    return renderPanel(node.panelId, sharedProps, parentDir);
   }
 
   return (

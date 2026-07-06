@@ -15,7 +15,7 @@ describe("InhouseLayoutEngine panel head slot", () => {
     expect(page.titleText("fx-rates")).toBeNull();
   });
 
-  it("keeps the collapse/maximize controls when a custom head is registered", () => {
+  it("still round-trips collapse/expand (to the strip restore bar and back) when a custom head is registered", () => {
     const page = mount(LayoutEngine, {
       props: { customHeadPanelIds: ["fx-rates"] },
     });

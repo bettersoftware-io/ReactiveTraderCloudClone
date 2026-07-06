@@ -64,6 +64,37 @@ describe("InhouseLayoutEngine", () => {
     expect(page.bodyText("fx-analytics")).toBe("ANALYTICS");
   });
 
+  it("a collapsed panel renders a single restore control labelled with its title and no body; clicking it expands", () => {
+    const page = mount(LayoutEngine, {});
+    page.collapse("fx-analytics");
+    expect(page.stripRestoreLabel("fx-analytics")).toBe("Restore Analytics");
+    expect(page.bodyText("fx-analytics")).toBeNull();
+    page.expand("fx-analytics");
+    // no longer a strip: the same testid now belongs to the small collapse
+    // icon in the header, not the restore bar.
+    expect(page.stripRestoreLabel("fx-analytics")).toBe("Collapse Analytics");
+    expect(page.bodyText("fx-analytics")).toBe("ANALYTICS");
+  });
+
+  it("clicking the restore bar of a panel stripped by another panel's maximize restores (un-maximizes)", () => {
+    const page = mount(LayoutEngine, {});
+    page.maximize("fx-rates");
+    expect(page.stripRestoreLabel("fx-analytics")).toBe("Restore Analytics");
+    page.expandStrip("fx-analytics");
+    expect(page.isStrip("fx-analytics")).toBe(false);
+    expect(page.isStrip("fx-positions")).toBe(false);
+    expect(page.isStrip("fx-blotter")).toBe(false);
+  });
+
+  it("orients the restore bar vertically when the strip's cell is a child of a row split, horizontally otherwise", () => {
+    const page = mount(LayoutEngine, {});
+    page.maximize("fx-analytics");
+    // fx-rates sits in the content row (a row split) → narrow/tall strip
+    expect(page.stripOrientation("fx-rates")).toBe("vertical");
+    // fx-blotter sits under the root column split → short/wide strip
+    expect(page.stripOrientation("fx-blotter")).toBe("horizontal");
+  });
+
   // The default FX tree is fully resizable (Task 2), so nothing shipped
   // exercises the engine's pinned/fixedPx render branches anymore. The engine
   // keeps that machinery for a future panel that opts out of resizing; this
