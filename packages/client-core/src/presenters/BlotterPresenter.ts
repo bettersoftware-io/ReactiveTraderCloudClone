@@ -32,6 +32,11 @@ interface ActivityScan {
   readonly initialized: boolean;
 }
 
+/** Maximum number of Activity feed rows retained (newest-first), mirroring
+ * client-prototype's own `ACTIVITY_CAP` (packages/client-prototype/src/fx/useFxRates.ts)
+ * for behavioural parity with the v2 design. */
+export const ACTIVITY_CAP = 40;
+
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
@@ -61,7 +66,30 @@ export class BlotterPresenter {
    * executions to that name; TradeStoreSimulator's seeds keep their own
    * historical trader names) — not a magic id-threshold. Like
    * `newTradeIds$`, the first snapshot is suppressed (seed load isn't
-   * "activity"), and this stream-diff lives here, not in the dumb UI. */
+   * "activity"), and this stream-diff lives here, not in the dumb UI.
+   *
+   * Capped at `ACTIVITY_CAP` entries (oldest dropped first).
+   *
+   * Uses `refCount: false` (unlike every other shareReplay in this
+   * codebase) so the `scan` accumulator is NOT torn down when the last
+   * subscriber (FxBlotter's ActivityView) unmounts. `App.tsx` remounts the
+   * active tab's whole subtree on tab switch (`<WorkspaceEngine
+   * key={activeTab}>`), which unsubscribes ActivityView; with the usual
+   * `refCount: true`, that drops activity$'s subscriber count to zero, the
+   * scan tears down, and on the next mount the accumulated entries are
+   * gone — plus the resubscription to `trades$` sees TradeStoreSimulator's
+   * replayed current snapshot and (correctly, per the "suppress first
+   * snapshot" rule above) treats it as non-activity, so history is lost
+   * silently rather than merely paused. `refCount: false` keeps the
+   * internal subscription (and therefore the scan's accumulator) alive for
+   * the lifetime of this presenter instead, which is safe here because
+   * `BlotterPresenter` itself is a composition-root singleton
+   * (packages/client-core/src/composition.ts) constructed once for the
+   * app's lifetime — there is no per-mount instance to leak. The
+   * trade-off: this presenter now holds one permanent subscription into
+   * `trades$` (and transitively the blotter WS stream) even while no UI
+   * is observing it, instead of releasing it between mounts; that is an
+   * intentional, bounded, singleton-scoped cost, not an unbounded leak. */
   readonly activity$: Observable<readonly ActivityEntry[]>;
 
   constructor(blotter: BlotterPort) {
@@ -116,7 +144,9 @@ export class BlotterPresenter {
           }
 
           const entries =
-            additions.length > 0 ? [...additions, ...acc.entries] : acc.entries;
+            additions.length > 0
+              ? [...additions, ...acc.entries].slice(0, ACTIVITY_CAP)
+              : acc.entries;
 
           return { seen: acc.seen, entries, initialized: true };
         },
@@ -129,7 +159,8 @@ export class BlotterPresenter {
       map((acc: ActivityScan): readonly ActivityEntry[] => {
         return acc.entries;
       }),
-      shareReplay({ bufferSize: 1, refCount: true }),
+      // refCount: false — see the activity$ doc comment above.
+      shareReplay({ bufferSize: 1, refCount: false }),
     );
   }
 }

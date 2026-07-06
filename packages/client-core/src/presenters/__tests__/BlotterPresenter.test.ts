@@ -9,7 +9,11 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-import { type ActivityEntry, BlotterPresenter } from "../BlotterPresenter";
+import {
+  ACTIVITY_CAP,
+  type ActivityEntry,
+  BlotterPresenter,
+} from "../BlotterPresenter";
 
 describe("BlotterPresenter", () => {
   it("exposes the trade stream", async () => {
@@ -131,6 +135,100 @@ describe("BlotterPresenter", () => {
           return e.trade.tradeId;
         }),
       ).toEqual([2, 1]);
+    });
+
+    it(`caps at ACTIVITY_CAP (${ACTIVITY_CAP}) and keeps the newest entries`, () => {
+      const subject = new Subject<readonly Trade[]>();
+      const port: BlotterPort = {
+        getTradeStream: () => {
+          return subject;
+        },
+      };
+      const presenter = new BlotterPresenter(port);
+
+      let last: readonly ActivityEntry[] = [];
+      const sub = presenter.activity$.subscribe((entries) => {
+        last = entries;
+      });
+
+      subject.next([]); // initial snapshot — empty
+
+      const total = ACTIVITY_CAP + 10;
+
+      for (let i = 1; i <= total; i++) {
+        subject.next([trade(i, { tradeName: DEFAULT_TRADER_NAME })]);
+      }
+
+      sub.unsubscribe();
+
+      expect(last).toHaveLength(ACTIVITY_CAP);
+      // Newest arrival (highest tradeId) is first.
+      expect(last[0]?.trade.tradeId).toBe(total);
+      // Oldest retained arrival is at the tail.
+      expect(last[ACTIVITY_CAP - 1]?.trade.tradeId).toBe(
+        total - ACTIVITY_CAP + 1,
+      );
+    });
+
+    // Regression for the Critical review finding: App.tsx remounts a tab's
+    // whole subtree on switch (`<WorkspaceEngine key={activeTab}>`), which
+    // unsubscribes FxBlotter/ActivityView. TradeStoreSimulator's real
+    // getTradeStream() replays the CURRENT snapshot to a fresh subscriber
+    // (defer → concat(of(snapshot), ...)) — modelled here by the source
+    // re-emitting the same snapshot on resubscribe. With the old
+    // `refCount: true`, that tore down the scan accumulator and the
+    // replayed snapshot was (correctly, per the "suppress first snapshot"
+    // rule) treated as non-activity — silently discarding all session
+    // activity. `refCount: false` must keep the accumulator alive across
+    // this unsubscribe/resubscribe cycle.
+    it("survives unsubscribe/resubscribe (tab remount) without losing accumulated entries", () => {
+      const subject = new Subject<readonly Trade[]>();
+      const port: BlotterPort = {
+        getTradeStream: () => {
+          return subject;
+        },
+      };
+      const presenter = new BlotterPresenter(port);
+
+      const firstRun: (readonly ActivityEntry[])[] = [];
+      const sub1 = presenter.activity$.subscribe((entries) => {
+        firstRun.push(entries);
+      });
+
+      subject.next([]); // initial snapshot — empty
+      subject.next([trade(1, { tradeName: DEFAULT_TRADER_NAME })]); // live execution
+
+      const afterFirstExecution = firstRun.at(-1);
+      expect(afterFirstExecution).toHaveLength(1);
+      const capturedTimestamp = afterFirstExecution?.[0]?.time;
+
+      // Simulate the FX tab unmounting (switch to Equities, etc.) — the
+      // presenter itself is a composition-root singleton and is NOT
+      // recreated, only its subscribers come and go.
+      sub1.unsubscribe();
+
+      const secondRun: (readonly ActivityEntry[])[] = [];
+      const sub2 = presenter.activity$.subscribe((entries) => {
+        secondRun.push(entries);
+      });
+
+      // Resubscription (real TradeStoreSimulator behaviour): the source
+      // replays the CURRENT snapshot, which still contains trade 1.
+      subject.next([trade(1, { tradeName: DEFAULT_TRADER_NAME })]);
+
+      // shareReplay(1) immediately replays the last buffered value to the
+      // new subscriber — that's the accumulated entry surviving the gap.
+      expect(secondRun[0]).toHaveLength(1);
+      expect(secondRun[0]?.[0]?.trade.tradeId).toBe(1);
+      expect(secondRun[0]?.[0]?.time).toBe(capturedTimestamp);
+
+      // The replayed snapshot must not be treated as a fresh arrival —
+      // no duplicate entry.
+      const afterResubscribeSnapshot = secondRun.at(-1);
+      expect(afterResubscribeSnapshot).toHaveLength(1);
+      expect(afterResubscribeSnapshot?.[0]?.time).toBe(capturedTimestamp);
+
+      sub2.unsubscribe();
     });
   });
 });
