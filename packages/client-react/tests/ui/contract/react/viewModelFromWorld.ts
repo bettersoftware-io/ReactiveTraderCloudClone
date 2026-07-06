@@ -218,6 +218,10 @@ export function reactViewModel(world: World): ViewModel {
     // world.commands.createRfq, flips editing→submitting→confirmed, and schedules
     // onRedirect via a REAL setTimeout(REDIRECT_DELAY_MS) so the spec's fake-timer
     // advance drives the redirect with the same timing as the real RxJS timer.
+    // Mirrors RfqsPresenter.createSubmission: the same timeout that fires
+    // onRedirect also returns the state to editing — the docked panel is never
+    // unmounted, so the fake must hand back an empty editing state exactly
+    // like the real machine, or specs would never exercise the reset path.
     useRfqSubmission: () => {
       const [submissionState, setSubmissionState] =
         useState<RfqSubmissionState>({
@@ -236,7 +240,8 @@ export function reactViewModel(world: World): ViewModel {
           if (rfqId === undefined) return;
           setSubmissionState({ status: "confirmed", rfqId });
           setTimeout(() => {
-            return onRedirect(rfqId);
+            onRedirect(rfqId);
+            setSubmissionState({ status: "editing" });
           }, REDIRECT_DELAY_MS);
         },
         [],

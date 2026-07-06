@@ -1,5 +1,5 @@
 import type { ChangeEvent, ReactElement } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   CREDIT_RFQ_EXPIRY_SECONDS,
@@ -29,6 +29,26 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
 
   const [value, setValue] = useState<FormValue>(EMPTY_VALUE);
   const [instrumentOpen, setInstrumentOpen] = useState(false);
+
+  // The docked NewRfqPanel is never unmounted (unlike the old tabbed
+  // CreditWorkspace, which reset by unmounting on tab-switch). The machine
+  // itself returns confirmed → editing once the redirect delay elapses
+  // (RfqsPresenter.createSubmission); mirror that CLEAR here so the draft is
+  // wiped exactly on that transition — not on every render while editing, and
+  // not on the initial mount (which already starts from EMPTY_VALUE).
+  const previousStatusRef = useRef(submission.state.status);
+  useEffect(() => {
+    const previousStatus = previousStatusRef.current;
+    previousStatusRef.current = submission.state.status;
+
+    if (
+      previousStatus === "confirmed" &&
+      submission.state.status === "editing"
+    ) {
+      setValue(EMPTY_VALUE);
+      setInstrumentOpen(false);
+    }
+  }, [submission.state.status]);
 
   const selectedInstrument =
     instruments.find((instrument) => {

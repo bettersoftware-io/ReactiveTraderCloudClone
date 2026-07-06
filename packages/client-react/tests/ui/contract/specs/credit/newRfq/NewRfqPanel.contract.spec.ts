@@ -144,6 +144,49 @@ describe("NewRfqPanel", () => {
     expect(panel.isConfirmed()).toBe(true);
   });
 
+  it("returns to an empty editing state after the confirmation interval, and a second submission round-trips", async () => {
+    // Real timers throughout: racing the fake's setTimeout(REDIRECT_DELAY_MS)
+    // against userEvent's own internal real-timer waits (see wait.js in
+    // @testing-library/user-event) under vi.useFakeTimers() deadlocks, so
+    // this spec drives the actual 1500ms redirect delay in real time
+    // instead — the marble-precise timing is already pinned by the
+    // client-core unit test (RfqSubmissionMachine.test.ts).
+    const panel = ready();
+
+    await panel.chooseInstrument(2);
+    await panel.setQuantity(5);
+    await panel.chooseDirection(Direction.Sell);
+    await panel.toggleDealer(2);
+    await panel.send();
+    expect(panel.isConfirmed()).toBe(true);
+
+    // REDIRECT_DELAY_MS (1500ms) — the same delay the real
+    // RfqsPresenter.createSubmission timer uses before returning to editing.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1600);
+    });
+
+    expect(panel.isConfirmed()).toBe(false);
+    expect(panel.instrumentLabel()).toContain("Select instrument");
+    expect(panel.isDirectionActive(Direction.Buy)).toBe(true);
+    expect(panel.isDealerChecked(2)).toBe(false);
+    expect(panel.isSendEnabled()).toBe(false);
+
+    // A second RFQ can be drafted and submitted from the cleared form.
+    await panel.chooseInstrument(1);
+    await panel.setQuantity(3);
+    await panel.toggleDealer(3);
+    await panel.send();
+    expect(panel.isConfirmed()).toBe(true);
+    expect(panel.submittedRfqs()).toHaveLength(2);
+    expect(panel.submittedRfqs()[1]).toMatchObject({
+      instrumentId: 1,
+      dealerIds: [3],
+      quantity: 3,
+      direction: Direction.Buy,
+    });
+  }, 10_000);
+
   it("resets every field via CLEAR", async () => {
     const panel = ready();
     await panel.chooseInstrument(2);

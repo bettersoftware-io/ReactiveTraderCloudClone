@@ -114,6 +114,12 @@ export class NewRfqPanelPage extends MountedComponent<NewRfqPanelProps> {
     return this.commandLog().createRfq[0] ?? null;
   }
 
+  /** Every RFQ input recorded across all submit() calls in mount order — for
+   * specs that submit more than once (e.g. the post-redirect round-trip). */
+  submittedRfqs(): readonly CreateRfqInput[] {
+    return this.commandLog().createRfq;
+  }
+
   private byTestId(testId: string): HTMLElement {
     const el = this.root.querySelector<HTMLElement>(
       `[data-testid="${testId}"]`,
