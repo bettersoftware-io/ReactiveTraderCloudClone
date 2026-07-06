@@ -6,6 +6,12 @@ import { FxViewProvider } from "#/ui/fx/FxViewProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import { fixtures } from "../shared/fixtures";
+// Side-effect import: pins the wall clock before anything below renders. This
+// module is the single import surface every tier routes through (vitest-
+// browser's spec, the plain-Playwright host, and every playwright-ct spec all
+// import VisualScenario via "@ui-visual" → react/index.ts → here), so freezing
+// the clock here freezes it identically in all three — see freezeClock.ts.
+import "../shared/freezeClock";
 import { scenarios } from "../shared/scenarios";
 import { buildFakeViewModel } from "./buildFakeViewModel";
 import { registry } from "./registry";
