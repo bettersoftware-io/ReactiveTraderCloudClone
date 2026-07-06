@@ -28,6 +28,7 @@ export function BlotterHeader<TRow>({
             key={String(col.key)}
             data-testid={`blotter-sort-${String(col.key)}`}
             className={styles.headerCell}
+            aria-sort={ariaSortFor(col.key, sort)}
             onClick={() => {
               return onSort(col.key);
             }}
@@ -77,6 +78,14 @@ interface BlotterHeaderProps<TRow> {
   onFilter: (column: keyof TRow, filter: ColumnFilter<TRow> | null) => void;
   rows: readonly TRow[];
   columns: readonly ColumnDef<TRow>[];
+}
+
+function ariaSortFor<TRow>(
+  column: keyof TRow,
+  sort: SortState<TRow>,
+): "ascending" | "descending" | undefined {
+  if (sort.column !== column || !sort.direction) return undefined;
+  return sort.direction === "asc" ? "ascending" : "descending";
 }
 
 interface SortIndicatorProps<TRow> {

@@ -28,7 +28,11 @@ export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
     return within(this.row()).queryByText(text) !== null;
   }
 
-  /** True when the row renders with the rejected (struck-through) styling. */
+  /**
+   * True when the row carries the rejected row state (muted row + red
+   * status-cell text via CSS keyed off `data-state`/`data-status` — no
+   * line-through anywhere).
+   */
   isRejected(): boolean {
     return this.row().dataset.state === "rejected";
   }

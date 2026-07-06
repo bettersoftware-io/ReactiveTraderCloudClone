@@ -20,14 +20,18 @@ describe("BlotterRow", () => {
     expect(row.hasCell("30-Mar-2026")).toBe(true);
   });
 
-  it("strikes through rejected trades", () => {
+  // Rejected trades get the muted "rejected" row state (status cell text
+  // recolours red via CSS keyed off data-status — see BlotterRow.module.css)
+  // and never the struck-through look: `data-state="rejected"` is the only
+  // presentation hook the row exposes, with no separate line-through class.
+  it("marks rejected trades with the rejected row state", () => {
     const row = mount(BlotterRow, {
       props: { trade: trade({ status: TradeStatus.Rejected }), isNew: false },
     });
     expect(row.isRejected()).toBe(true);
   });
 
-  it("renders a non-rejected trade without strike-through", () => {
+  it("does not mark a non-rejected trade as rejected", () => {
     const row = mount(BlotterRow, { props: { trade: trade(), isNew: false } });
     expect(row.isRejected()).toBe(false);
   });
