@@ -159,6 +159,7 @@ export {
   ConnectionEventsSimulator,
   CreditRfqSimulator,
   DEALERS_CATALOG,
+  DEFAULT_TRADER_NAME,
   DealerSimulator,
   EquityMarketDataSimulator,
   EquityOrderSimulator,

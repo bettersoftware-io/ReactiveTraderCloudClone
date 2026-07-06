@@ -3,6 +3,7 @@
 // portable core shared by every UI implementation.
 
 import type {
+  ActivityEntry,
   IncidentKind,
   NotionalView,
   OrderTicketState,
@@ -44,6 +45,8 @@ export interface AppData {
   trades: readonly Trade[];
   /** Ids the blotter should flag as newly arrived (useNewTradeIds); defaults to none. */
   newTradeIds?: ReadonlySet<number>;
+  /** Live-executed entries for the Activity tab (useActivity); defaults to []. */
+  activity?: readonly ActivityEntry[];
   analytics: PositionUpdates | null;
   rfqs: readonly Rfq[];
   quotesForRfq: Record<number, readonly Quote[]>;

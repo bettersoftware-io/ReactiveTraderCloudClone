@@ -5,6 +5,8 @@ import {
 } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 
+import type { CurrencyCategory } from "@rtc/domain";
+
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
 /** Page object for LiveRatesHead + LiveRatesPanel mounted together (sharing
@@ -68,5 +70,48 @@ export class LiveRatesWorkspacePage extends MountedComponent<
   /** True when at least one tile renders a chart (svg sparkline, chart view). */
   hasAnyChart(): boolean {
     return this.root.querySelector("svg") !== null;
+  }
+
+  async chooseFilter(category: CurrencyCategory): Promise<void> {
+    await this.user.click(this.q().getByTestId(`filter-${category}`));
+  }
+
+  /** True once the Watchlist body (WatchlistView) is rendered. */
+  hasWatchlistView(): boolean {
+    return this.q().queryByTestId("watchlist-view") !== null;
+  }
+
+  /** The symbols of every rendered watchlist row, in order. */
+  watchRowSymbols(): string[] {
+    return [
+      ...this.root.querySelectorAll<HTMLElement>("[data-testid^='watch-row-']"),
+    ].map((el) => {
+      const testid = el.getAttribute("data-testid");
+      if (!testid)
+        throw new Error("watch row element missing data-testid attribute");
+      return testid.replace("watch-row-", "");
+    });
+  }
+
+  watchRowCount(): number {
+    return this.root.querySelectorAll("[data-testid^='watch-row-']").length;
+  }
+
+  private watchRow(symbol: string): HTMLElement {
+    return this.q().getByTestId(`watch-row-${symbol}`);
+  }
+
+  /** The `data-sign` value driving a watchlist row's Mid cell colour. */
+  watchMidSign(symbol: string): string | undefined {
+    return within(this.watchRow(symbol)).getByTestId("watch-mid").dataset.sign;
+  }
+
+  /** The Move cell's text (e.g. "▲ 5 pip"), for a given pair's row. */
+  watchMoveText(symbol: string): string {
+    return (
+      within(this.watchRow(symbol))
+        .getByTestId("watch-move")
+        .textContent?.trim() ?? ""
+    );
   }
 }

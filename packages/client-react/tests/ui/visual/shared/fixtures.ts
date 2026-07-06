@@ -1,4 +1,5 @@
 import type {
+  ActivityEntry,
   NotionalView,
   OrderTicketState,
   RfqQuote,
@@ -250,6 +251,54 @@ const eurusdHistoryFlat: readonly PriceTick[] = [
   },
 ];
 
+// Watchlist Trend column arms: a descending GBPUSD series (red sparkline) and
+// a flat USDJPY series (horizontal sparkline) — paired with eurusdHistoryUp
+// (green) so watchlist/populated exercises all three Trend directions at once.
+const gbpusdHistoryDown: readonly PriceTick[] = [
+  {
+    symbol: "GBPUSD",
+    bid: 1.2652,
+    ask: 1.2654,
+    mid: 1.2653,
+    valueDate: "2026-06-08",
+    creationTimestamp: 1_750_000_000_000,
+  },
+  {
+    symbol: "GBPUSD",
+    bid: 1.2646,
+    ask: 1.2648,
+    mid: 1.2647,
+    valueDate: "2026-06-08",
+    creationTimestamp: 1_750_000_001_000,
+  },
+  {
+    symbol: "GBPUSD",
+    bid: 1.264,
+    ask: 1.2642,
+    mid: 1.2641,
+    valueDate: "2026-06-08",
+    creationTimestamp: 1_750_000_002_000,
+  },
+];
+const usdjpyHistoryFlat: readonly PriceTick[] = [
+  {
+    symbol: "USDJPY",
+    bid: 151.203,
+    ask: 151.219,
+    mid: 151.211,
+    valueDate: "2026-06-08",
+    creationTimestamp: 1_750_000_000_000,
+  },
+  {
+    symbol: "USDJPY",
+    bid: 151.203,
+    ask: 151.219,
+    mid: 151.211,
+    valueDate: "2026-06-08",
+    creationTimestamp: 1_750_000_001_000,
+  },
+];
+
 // Analytics arms: negative latest PnL + a negative current position (PnlValue /
 // PnlChart negative colour arms); an empty panel (no positions, no history);
 // and all-flat positions (PairPnlBars maxAbsPnl === 0 degenerate arm; the
@@ -390,6 +439,42 @@ const fxTrades: readonly Trade[] = [
     status: TradeStatus.Rejected,
     tradeDate: "2026-06-05",
     valueDate: "2026-06-07",
+  },
+];
+
+// FX blotter Activity feed — live-executed entries (tradeName "You"), newest
+// first. One TRADE and one REJECT so both badge/description color arms
+// appear in a single shot.
+const fxActivity: readonly ActivityEntry[] = [
+  {
+    trade: {
+      tradeId: 1044,
+      tradeName: "You",
+      currencyPair: "GBPJPY",
+      notional: 750_000,
+      dealtCurrency: "GBP",
+      direction: Direction.Buy,
+      spotRate: 190.442,
+      status: TradeStatus.Rejected,
+      tradeDate: "2026-07-06",
+      valueDate: "2026-07-08",
+    },
+    time: "09:31:40",
+  },
+  {
+    trade: {
+      tradeId: 1043,
+      tradeName: "You",
+      currencyPair: "EURUSD",
+      notional: 1_000_000,
+      dealtCurrency: "EUR",
+      direction: Direction.Sell,
+      spotRate: 1.09205,
+      status: TradeStatus.Done,
+      tradeDate: "2026-07-06",
+      valueDate: "2026-07-08",
+    },
+    time: "09:30:15",
   },
 ];
 
@@ -844,6 +929,17 @@ export const fixtures: Record<string, AppData> = {
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
     viewMode: "price",
   }),
+  // Watchlist table: three pairs covering all three Trend directions — EURUSD
+  // up (green), GBPUSD down (red), USDJPY flat (horizontal).
+  "watchlist-populated": makeAppData({
+    currencyPairs: [eurusd, gbpusd, usdjpy],
+    prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
+    priceHistory: {
+      EURUSD: eurusdHistoryUp,
+      GBPUSD: gbpusdHistoryDown,
+      USDJPY: usdjpyHistoryFlat,
+    },
+  }),
   "app-fx": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
@@ -880,6 +976,9 @@ export const fixtures: Record<string, AppData> = {
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
     trades: fxTrades,
+  }),
+  "fx-activity-populated": makeAppData({
+    activity: fxActivity,
   }),
   "credit-populated": makeAppData({
     instruments: creditInstruments,

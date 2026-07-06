@@ -13,7 +13,10 @@ export { EquityPositionSimulator } from "./EquityPositionSimulator.js";
 export { ErrorRateSimulator } from "./ErrorRateSimulator.js";
 export { EventLogSimulator } from "./EventLogSimulator.js";
 export type { TradeListener } from "./ExecutionSimulator.js";
-export { ExecutionSimulator } from "./ExecutionSimulator.js";
+export {
+  DEFAULT_TRADER_NAME,
+  ExecutionSimulator,
+} from "./ExecutionSimulator.js";
 export { aggregateCandle, gbmStep } from "./gbm.js";
 export {
   INSTRUMENTS_CATALOG,

@@ -15,19 +15,6 @@
   color: var(--text-muted);
 }
 
-/* Mirrors LiveRatesPanel.module.css .placeholder (Task 11's Watchlist
- * placeholder) — same treatment for the Activity tab's coming-soon body. */
-.placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: var(--text-muted);
-}
-
 .tableWrapper {
   overflow: auto;
   max-height: 300px;

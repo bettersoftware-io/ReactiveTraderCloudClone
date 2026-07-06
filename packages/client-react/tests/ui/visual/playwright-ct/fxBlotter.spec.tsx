@@ -22,6 +22,22 @@ test("fx-blotter/non-highlighted-row", async ({ mount }) => {
   });
 });
 
+test("fx-blotter/activity-empty", async ({ mount }) => {
+  const c = await mount(<VisualScenario name="fx-blotter/activity-empty" />);
+  await expect(c).toHaveScreenshot("activity-empty.png", {
+    animations: "disabled",
+  });
+});
+
+test("fx-blotter/activity-populated", async ({ mount }) => {
+  const c = await mount(
+    <VisualScenario name="fx-blotter/activity-populated" />,
+  );
+  await expect(c).toHaveScreenshot("activity-populated.png", {
+    animations: "disabled",
+  });
+});
+
 test("fx-blotter/sorted", async ({ mount, page }) => {
   const c = await mount(<VisualScenario name="fx-blotter/sorted" />);
   await page.getByTestId("blotter-sort-notional").click();

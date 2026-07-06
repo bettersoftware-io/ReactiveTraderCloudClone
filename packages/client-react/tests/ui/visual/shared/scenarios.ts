@@ -36,6 +36,10 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "LiveRatesPanel",
     fixtureKey: "live-rates-populated",
   },
+  "live-rates/watchlist": {
+    componentKey: "FxWatchlist",
+    fixtureKey: "watchlist-populated",
+  },
   "app/fx": { componentKey: "App", fixtureKey: "app-fx" },
   // FX blotter populated with trades (the app/fx page only ever shows it empty).
   "fx-blotter/populated": {
@@ -55,6 +59,17 @@ export const scenarios: Record<string, Scenario> = {
   "fx-blotter/non-highlighted-row": {
     componentKey: "BlotterRowDefault",
     fixtureKey: "fx-trades",
+  },
+  // Activity tab, empty state — "fx-trades" has no `activity` set so it
+  // defaults to [] (the feed starts empty until a trade executes).
+  "fx-blotter/activity-empty": {
+    componentKey: "FxActivityView",
+    fixtureKey: "fx-trades",
+  },
+  // Activity tab, populated — one TRADE row + one REJECT row, newest first.
+  "fx-blotter/activity-populated": {
+    componentKey: "FxActivityView",
+    fixtureKey: "fx-activity-populated",
   },
   // Credit tab — component-level views + the full page (Credit tab active).
   "credit/rfq-tiles": {

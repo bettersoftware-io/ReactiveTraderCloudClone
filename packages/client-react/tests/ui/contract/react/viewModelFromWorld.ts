@@ -82,6 +82,13 @@ export function reactViewModel(world: World): ViewModel {
     useNewTradeIds: () => {
       return new Set<number>();
     },
+    // The Activity feed's live/seed split and receipt-time stamping live in
+    // the presenter (BlotterPresenter.activity$, not pinned by contract
+    // specs) — specs inject the already-derived entries directly, the same
+    // way they inject useTrades.
+    useActivity: () => {
+      return useSubject(s.useActivity);
+    },
     useAnalytics: () => {
       return useSubject(s.useAnalytics);
     },

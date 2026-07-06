@@ -6,6 +6,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { useFxView } from "#/ui/fx/useFxView";
 
+import { ActivityView } from "./ActivityView";
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";
 import { COLUMNS, formatFxCell } from "./blotterColumns";
@@ -20,11 +21,14 @@ import { exportFxToCsv } from "./csvExport";
 import styles from "./FxBlotter.module.css";
 
 export function FxBlotter(): ReactElement {
-  const { useTrades, useNewTradeIds } = useViewModel();
+  const { useTrades, useNewTradeIds, useActivity } = useViewModel();
   const trades = useTrades();
   // "Newly arrived" detection is a cross-emission stream-diff; it lives in the
   // presenter (BlotterPresenter.newTradeIds$), not here — see docs/adr/ADR-003.
   const newTradeIds = useNewTradeIds();
+  // Same story for the Activity feed's live/seed split and receipt-time
+  // stamping — BlotterPresenter.activity$, not here.
+  const activity = useActivity();
   const { blotterTab, quickFilter, setExportCsvHandler } = useFxView();
   const [sort, setSort] = useState<SortState<Trade>>({
     column: null,
@@ -76,9 +80,7 @@ export function FxBlotter(): ReactElement {
   if (blotterTab === "activity") {
     return (
       <div className={styles.container}>
-        <div data-testid="activity-placeholder" className={styles.placeholder}>
-          ACTIVITY FEED — COMING ONLINE
-        </div>
+        <ActivityView entries={activity} />
       </div>
     );
   }

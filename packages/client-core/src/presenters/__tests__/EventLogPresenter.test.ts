@@ -107,6 +107,43 @@ describe("EventLogPresenter", () => {
     // Both observers see the same values
     expect(a).toEqual(b);
   });
+
+  // Regression for the same-class bug found alongside BlotterPresenter's
+  // Activity feed: LiveEventLog (Admin tab) is this stream's only
+  // consumer, and App.tsx remounts a tab's whole subtree on switch
+  // (`<WorkspaceEngine key={activeTab}>`), unsubscribing it. The rolling
+  // log must survive that unsubscribe/resubscribe, not reset to [].
+  it("survives unsubscribe/resubscribe (tab remount) without losing accumulated events", () => {
+    const subject = new Subject<LogEvent>();
+    const port: EventLogPort = {
+      events$: () => {
+        return subject;
+      },
+    };
+    const presenter = new EventLogPresenter(port);
+
+    const sub1 = presenter.events$.subscribe(() => {});
+    subject.next(makeEvent(1));
+    subject.next(makeEvent(2));
+    sub1.unsubscribe();
+
+    const secondRun: (readonly LogEvent[])[] = [];
+    const sub2 = presenter.events$.subscribe((events) => {
+      secondRun.push(events);
+    });
+
+    // shareReplay(1) immediately replays the last buffered value.
+    expect(secondRun[0]).toEqual([makeEvent(2), makeEvent(1)]);
+
+    subject.next(makeEvent(3));
+    expect(secondRun.at(-1)).toEqual([
+      makeEvent(3),
+      makeEvent(2),
+      makeEvent(1),
+    ]);
+
+    sub2.unsubscribe();
+  });
 });
 
 function makeEvent(t: number): LogEvent {

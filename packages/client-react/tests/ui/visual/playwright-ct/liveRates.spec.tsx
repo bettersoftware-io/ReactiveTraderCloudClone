@@ -17,3 +17,10 @@ test("live-rates/price-view", async ({ mount }) => {
     animations: "disabled",
   });
 });
+
+test("live-rates/watchlist", async ({ mount }) => {
+  const c = await mount(<VisualScenario name="live-rates/watchlist" />);
+  await expect(c).toHaveScreenshot("watchlist.png", {
+    animations: "disabled",
+  });
+});

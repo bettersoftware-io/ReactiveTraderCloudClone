@@ -9,6 +9,7 @@ import { useFlipGrid } from "#/ui/shell/motion/useFlipGrid";
 
 import { CurrencyFilter } from "./CurrencyFilter";
 import { Tile } from "./tile/Tile";
+import { WatchlistView } from "./WatchlistView";
 
 import styles from "./LiveRatesPanel.module.css";
 
@@ -31,16 +32,6 @@ export function LiveRatesPanel(): ReactElement {
   // which pairs are shown.
   const { register } = useFlipGrid([filter]);
 
-  if (ratesTab === "watchlist") {
-    return (
-      <div className={styles.panel}>
-        <div data-testid="watchlist-placeholder" className={styles.placeholder}>
-          WATCHLIST VIEW — COMING ONLINE
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.panel}>
       <div className={styles.controls}>
@@ -49,6 +40,8 @@ export function LiveRatesPanel(): ReactElement {
 
       {pairs.length === 0 ? (
         <div className={styles.empty}>Loading currency pairs...</div>
+      ) : ratesTab === "watchlist" ? (
+        <WatchlistView pairs={filteredPairs} />
       ) : (
         <div className={styles.grid}>
           {filteredPairs.map((pair) => {

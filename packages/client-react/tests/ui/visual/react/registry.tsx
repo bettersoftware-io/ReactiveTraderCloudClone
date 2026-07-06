@@ -23,11 +23,13 @@ import { OrderTicket } from "#/ui/equities/ticket/OrderTicket";
 import { SectorHeatmap } from "#/ui/equities/watchlist/SectorHeatmap";
 import { Watchlist } from "#/ui/equities/watchlist/Watchlist";
 import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
+import { ActivityView } from "#/ui/fx/blotter/ActivityView";
 import { BlotterRow } from "#/ui/fx/blotter/BlotterRow";
 import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
 import { Tile } from "#/ui/fx/liveRates/tile/Tile";
+import { WatchlistView } from "#/ui/fx/liveRates/WatchlistView";
 import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
@@ -108,6 +110,17 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   LiveRatesPanel: () => {
     return <LiveRatesPanel />;
   },
+  // The Watchlist table is width:100% (fills its panel like FxBlotter); pin a
+  // fixed panel-width wrapper so the capture's content-width is deterministic
+  // (avoids the same font-mono glyph-advance drift as fx-blotter/*).
+  FxWatchlist: (fixtureKey: string) => {
+    const pairs = fixtures[fixtureKey].currencyPairs;
+    return (
+      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+        <WatchlistView pairs={pairs} />
+      </div>
+    );
+  },
   FxBlotter: () => {
     // Render filling a representative panel width (test-only), like the real
     // app where the blotter fills its layout panel — NOT shrink-to-content.
@@ -119,6 +132,19 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
         <FxBlotter />
+      </div>
+    );
+  },
+  // Prop-driven Activity feed (FxBlotter's Activity tab body), rendered
+  // directly like BlotterRow above — same width-920 panel wrapper as
+  // FxBlotter/FxWatchlist. `activity` defaults to [] (fixtures that don't set
+  // it), so the same registry entry covers both the empty and populated
+  // scenarios by fixtureKey alone.
+  FxActivityView: (fixtureKey: string) => {
+    const entries = fixtures[fixtureKey].activity ?? [];
+    return (
+      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+        <ActivityView entries={entries} />
       </div>
     );
   },

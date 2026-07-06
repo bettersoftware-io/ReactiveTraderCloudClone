@@ -37,6 +37,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useNewTradeIds: () => {
       return data.newTradeIds ?? new Set<number>();
     },
+    useActivity: () => {
+      return data.activity ?? [];
+    },
     useAnalytics: () => {
       return data.analytics;
     },
