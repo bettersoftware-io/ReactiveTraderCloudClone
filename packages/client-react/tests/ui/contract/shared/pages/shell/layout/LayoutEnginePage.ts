@@ -67,4 +67,10 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
   handleExists(pathKey: string, i: number): boolean {
     return within(this.root).queryByTestId(`handle-${pathKey}-${i}`) !== null;
   }
+
+  /** The handle element itself — for asserting DOM position (sibling vs
+   * descendant of a cell), not just presence. */
+  handleElement(pathKey: string, i: number): HTMLElement {
+    return within(this.root).getByTestId(`handle-${pathKey}-${i}`);
+  }
 }

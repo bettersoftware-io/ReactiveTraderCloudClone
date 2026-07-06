@@ -29,6 +29,16 @@ describe("InhouseLayoutEngine", () => {
     expect(page.handleExists("0.1", 0)).toBe(true);
   });
 
+  it("renders split handles as siblings between cells, not inside them", () => {
+    const page = mount(LayoutEngine, {});
+    // the analytics/positions rail is a column split at pathKey "0.1"
+    const handle = page.handleElement("0.1", 0);
+    expect(handle.parentElement?.getAttribute("data-dir")).toBe("column");
+    expect(handle.previousElementSibling?.getAttribute("data-testid")).toBe(
+      "cell-0.1-0",
+    );
+  });
+
   it("maximize collapses the other panels to strips; restore brings them back", () => {
     const page = mount(LayoutEngine, {});
     page.maximize("fx-rates");

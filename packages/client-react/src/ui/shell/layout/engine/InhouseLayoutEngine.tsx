@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  Fragment,
   type ReactElement,
   type PointerEvent as ReactPointerEvent,
   useRef,
@@ -230,23 +231,31 @@ function SplitNode({
           nextFixed === undefined;
 
         return (
-          <div
-            key={childKey(child, path, i)}
-            className={styles.cell}
-            data-pinned-cell={childPinned ? "true" : "false"}
-            data-fixed-cell={childFixed !== undefined ? "true" : "false"}
-            style={
-              childPinned
-                ? undefined
-                : childFixed !== undefined
-                  ? ({ "--split-fixed": `${childFixed}px` } as CSSProperties)
-                  : ({
-                      "--split-size": String(node.sizes[i]),
-                    } as CSSProperties)
-            }
-          >
-            {renderNode(child, [...path, i], sharedProps)}
+          <Fragment key={childKey(child, path, i)}>
+            <div
+              className={styles.cell}
+              data-testid={`cell-${pathKey}-${i}`}
+              data-pinned-cell={childPinned ? "true" : "false"}
+              data-fixed-cell={childFixed !== undefined ? "true" : "false"}
+              style={
+                childPinned
+                  ? undefined
+                  : childFixed !== undefined
+                    ? ({ "--split-fixed": `${childFixed}px` } as CSSProperties)
+                    : ({
+                        "--split-size": String(node.sizes[i]),
+                      } as CSSProperties)
+              }
+            >
+              {renderNode(child, [...path, i], sharedProps)}
+            </div>
             {showHandle ? (
+              // Sibling of the cell (not nested inside it): `.cell` is a flex
+              // row, so a handle rendered inside it would always paint along
+              // that row's cross axis regardless of the split's own
+              // direction. As a sibling under `.split`, the handle inherits
+              // the split's own flex-direction and paints along the correct
+              // axis with the matching resize cursor.
               <hr
                 data-testid={`handle-${pathKey}-${i}`}
                 aria-orientation={
@@ -265,7 +274,7 @@ function SplitNode({
                 }}
               />
             ) : null}
-          </div>
+          </Fragment>
         );
       })}
     </div>

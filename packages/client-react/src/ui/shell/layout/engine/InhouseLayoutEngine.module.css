@@ -63,9 +63,17 @@
   flex: 0 0 var(--split-fixed);
 }
 
+/* Ported from client-prototype's SplitHandle (7px track, 2x30px centered
+ * grip bar) — the track itself stays transparent; only the grip bar reads.
+ * The bar is an ::after (not a nested element) because the handle stays an
+ * `<hr>`, which has no content model for a real child. */
 .handle {
-  flex: 0 0 6px;
-  background-color: var(--border-subtle);
+  flex: 0 0 7px;
+  align-self: stretch;
+  position: relative;
+  margin: 0;
+  border: none;
+  background: transparent;
   cursor: col-resize;
 }
 
@@ -73,8 +81,29 @@
   cursor: row-resize;
 }
 
-.handle:hover {
-  background-color: var(--border-strong);
+.handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.handle[data-orientation="vertical"]::after {
+  width: 2px;
+  height: 30px;
+}
+
+.handle[data-orientation="horizontal"]::after {
+  width: 30px;
+  height: 2px;
+}
+
+.handle:hover::after,
+.handle:active::after {
+  background: var(--border-strong);
 }
 
 .panel {
