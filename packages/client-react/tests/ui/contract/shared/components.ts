@@ -67,6 +67,7 @@ import {
 export type { RfqFilter };
 
 import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
+import { AdminHeadPage } from "./pages/admin/AdminHeadPage";
 import { AdminPanelPage } from "./pages/admin/AdminPanelPage";
 import { IncidentControlsPage } from "./pages/admin/IncidentControlsPage";
 import { KpiRowPage } from "./pages/admin/KpiRowPage";
@@ -599,3 +600,9 @@ export const AdminDashboard = component<
 >((ctx) => {
   return new AdminDashboardPage(ctx);
 });
+
+export const AdminHead = component<Record<string, never>, AdminHeadPage>(
+  (ctx) => {
+    return new AdminHeadPage(ctx);
+  },
+);

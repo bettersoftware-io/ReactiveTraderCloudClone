@@ -23,6 +23,7 @@ import type {
 } from "@rtc/domain";
 
 import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
+import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
 import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
 import { IncidentControls as IncidentControlsComponent } from "#/ui/admin/IncidentControls";
 import { KpiRow as KpiRowComponent } from "#/ui/admin/kpis/KpiRow";
@@ -105,6 +106,7 @@ import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggl
 
 import {
   AdminDashboard,
+  AdminHead,
   AdminPanel,
   AmbientBackground,
   AnalyticsHead,
@@ -864,6 +866,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     AdminDashboard,
     (): ReactElement => {
       return <AdminDashboardComponent />;
+    },
+  ],
+  [
+    AdminHead,
+    (): ReactElement => {
+      return <AdminHeadComponent />;
     },
   ],
 ]);
