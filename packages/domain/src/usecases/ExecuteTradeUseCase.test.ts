@@ -56,7 +56,7 @@ describe("ExecuteTradeUseCase", () => {
     expect(result.trade.status).toBe(TradeStatus.Done);
   });
 
-  it("for Direction.Sell uses bid as spot rate and terms currency as dealt", async () => {
+  it("for Direction.Sell uses bid as spot rate and base currency as dealt", async () => {
     const { port, lastRequest } = stubExecution(buildTrade(TradeStatus.Done));
     const useCase = new ExecuteTradeUseCase(port);
 
@@ -70,7 +70,9 @@ describe("ExecuteTradeUseCase", () => {
     );
 
     expect(lastRequest.current?.spotRate).toBe(1.1);
-    expect(lastRequest.current?.dealtCurrency).toBe("USD");
+    // Dealt currency is always the pair's base currency in this app's UX,
+    // regardless of Buy/Sell direction — see deriveDealtCurrency.
+    expect(lastRequest.current?.dealtCurrency).toBe("EUR");
     expect(lastRequest.current?.direction).toBe(Direction.Sell);
   });
 

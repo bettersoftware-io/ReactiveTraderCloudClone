@@ -2,7 +2,11 @@ import { defer, type Observable, timer } from "rxjs";
 import { map, tap } from "rxjs/operators";
 
 import type { ExecutionRequest, Trade } from "../fx/trade.js";
-import { TradeStatus } from "../fx/trade.js";
+import {
+  isoDaysFromNow,
+  SPOT_VALUE_DATE_OFFSET_DAYS,
+  TradeStatus,
+} from "../fx/trade.js";
 import type { ExecutionPort } from "../ports/executionPort.js";
 
 const REJECTED_PAIR = "GBPJPY";
@@ -30,7 +34,9 @@ export class ExecutionSimulator implements ExecutionPort {
   executeTrade(request: ExecutionRequest): Observable<Trade> {
     return defer(() => {
       const tradeId = this.nextId++;
-      const now = new Date().toISOString().slice(0, 10);
+      const nowMs = Date.now();
+      const tradeDate = isoDaysFromNow(0, nowMs);
+      const valueDate = isoDaysFromNow(SPOT_VALUE_DATE_OFFSET_DAYS, nowMs);
       const status =
         request.currencyPair === REJECTED_PAIR
           ? TradeStatus.Rejected
@@ -50,8 +56,8 @@ export class ExecutionSimulator implements ExecutionPort {
             direction: request.direction,
             spotRate: request.spotRate,
             status,
-            tradeDate: now,
-            valueDate: now,
+            tradeDate,
+            valueDate,
           };
         }),
         tap((trade) => {

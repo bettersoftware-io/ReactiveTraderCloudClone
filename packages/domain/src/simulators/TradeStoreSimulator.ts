@@ -1,11 +1,14 @@
 import { concat, defer, type Observable, of, Subject } from "rxjs";
 
 import type { Trade } from "../fx/trade.js";
-import { Direction, TradeStatus } from "../fx/trade.js";
+import {
+  Direction,
+  isoDaysFromNow,
+  SPOT_VALUE_DATE_OFFSET_DAYS,
+  TradeStatus,
+} from "../fx/trade.js";
 import type { BlotterPort } from "../ports/blotterPort.js";
 import type { ExecutionSimulator } from "./ExecutionSimulator.js";
-
-const DAY_MS = 86_400_000;
 
 interface SeedSpec {
   readonly tradeId: number;
@@ -78,10 +81,6 @@ const SEED_TRADES: readonly SeedSpec[] = [
   },
 ];
 
-function isoDaysFromNow(offsetDays: number): string {
-  return new Date(Date.now() + offsetDays * DAY_MS).toISOString().slice(0, 10);
-}
-
 function seedTrade(spec: SeedSpec): Trade {
   return {
     tradeId: spec.tradeId,
@@ -93,7 +92,7 @@ function seedTrade(spec: SeedSpec): Trade {
     spotRate: spec.spotRate,
     status: spec.status,
     tradeDate: isoDaysFromNow(-spec.daysAgo),
-    valueDate: isoDaysFromNow(-spec.daysAgo + 2),
+    valueDate: isoDaysFromNow(-spec.daysAgo + SPOT_VALUE_DATE_OFFSET_DAYS),
   };
 }
 
