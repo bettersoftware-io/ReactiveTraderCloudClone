@@ -12,6 +12,7 @@ import type { Candle } from "../equities/candle.js";
 import type { DepthBook, DepthLevel } from "../equities/depth.js";
 import type { EquityInstrument } from "../equities/instrument.js";
 import type { EquityQuote } from "../equities/quote.js";
+import type { CandleTimeframe } from "../equities/timeframe.js";
 import type { MarketDataPort } from "../ports/marketDataPort.js";
 import { aggregateCandle, gbmStep } from "./gbm.js";
 import { mulberry32 } from "./seededRandom.js";
@@ -40,6 +41,51 @@ const TICK_MS = 500;
 const CANDLE_BUCKET_MS = 60_000;
 const CANDLE_HISTORY = 60;
 const DEPTH_LEVELS = 8;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+interface TimeframeConfig {
+  /** Number of candles in the returned series. */
+  readonly count: number;
+  /** Bucket duration in ms — spans roughly the named timeframe over `count`
+   * buckets (e.g. "1M" ~ 30 days / 48 buckets = 15h/bucket). */
+  readonly bucketMs: number;
+  /** Per-step GBM volatility. */
+  readonly vol: number;
+  /** Distinct mulberry32 seed so each timeframe's chart differs. */
+  readonly seed: number;
+}
+
+/** Per-timeframe candle generation config. "1D" is the original, unparameterised
+ * shape (60 one-minute buckets, seed 7) — kept byte-identical so `candles(symbol)`
+ * (no timeframe arg) stays a pure default-parameter alias for it. The others
+ * follow the prototype's `TF_CONFIG` (bucket counts + step vol), with bucket
+ * duration derived so `count` buckets roughly span the named period. */
+const TF_CONFIG: Readonly<Record<CandleTimeframe, TimeframeConfig>> = {
+  "1D": {
+    count: CANDLE_HISTORY,
+    bucketMs: CANDLE_BUCKET_MS,
+    vol: VOL * 4,
+    seed: 7,
+  },
+  "1W": {
+    count: 44,
+    bucketMs: Math.round((7 * DAY_MS) / 44),
+    vol: 0.009,
+    seed: 17,
+  },
+  "1M": {
+    count: 48,
+    bucketMs: Math.round((30 * DAY_MS) / 48),
+    vol: 0.016,
+    seed: 27,
+  },
+  "3M": {
+    count: 52,
+    bucketMs: Math.round((90 * DAY_MS) / 52),
+    vol: 0.03,
+    seed: 37,
+  },
+};
 
 interface SymbolState {
   price: number;
@@ -103,28 +149,32 @@ export class EquityMarketDataSimulator implements MarketDataPort {
     });
   }
 
-  candles(symbol: string): Observable<readonly Candle[]> {
+  candles(
+    symbol: string,
+    timeframe: CandleTimeframe = "1D",
+  ): Observable<readonly Candle[]> {
     return defer(() => {
       const s = this.getState(symbol);
       if (!s)
         return throwError(() => {
           return new Error(`Unknown symbol: ${symbol}`);
         });
-      const rng = mulberry32(7);
+      const { count, bucketMs, vol, seed } = TF_CONFIG[timeframe];
+      const rng = mulberry32(seed);
       let price = s.open;
       let candle: Candle | null = null;
       const out: Candle[] = [];
       const now = Date.now();
 
-      for (let i = CANDLE_HISTORY - 1; i >= 0; i--) {
-        const t = now - i * CANDLE_BUCKET_MS;
-        price = gbmStep(price, rng(), VOL * 4);
-        candle = aggregateCandle(candle, price, t, CANDLE_BUCKET_MS);
+      for (let i = count - 1; i >= 0; i--) {
+        const t = now - i * bucketMs;
+        price = gbmStep(price, rng(), vol);
+        candle = aggregateCandle(candle, price, t, bucketMs);
 
         if (
           i === 0 ||
-          Math.floor((now - (i - 1) * CANDLE_BUCKET_MS) / CANDLE_BUCKET_MS) !==
-            Math.floor(t / CANDLE_BUCKET_MS)
+          Math.floor((now - (i - 1) * bucketMs) / bucketMs) !==
+            Math.floor(t / bucketMs)
         ) {
           out.push(candle);
         }

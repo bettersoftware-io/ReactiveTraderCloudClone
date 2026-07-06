@@ -31,6 +31,30 @@ describe("createViewModel — equities hooks", () => {
     expect(typeof hooks.useCandles).toBe("function");
   });
 
+  it("useCandles defaults to '1D' (60 one-minute candles) when timeframe is omitted", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useCandles("AAPL");
+    });
+    expect(result.current).toHaveLength(60);
+  });
+
+  it("useCandles threads an explicit timeframe through to a distinct series length", () => {
+    const hooks = makeHooks();
+    const { result: oneWeek } = renderHook(() => {
+      return hooks.useCandles("AAPL", "1W");
+    });
+    const { result: oneMonth } = renderHook(() => {
+      return hooks.useCandles("AAPL", "1M");
+    });
+    const { result: threeMonths } = renderHook(() => {
+      return hooks.useCandles("AAPL", "3M");
+    });
+    expect(oneWeek.current).toHaveLength(44);
+    expect(oneMonth.current).toHaveLength(48);
+    expect(threeMonths.current).toHaveLength(52);
+  });
+
   it("useDepth is a function", () => {
     const hooks = makeHooks();
     expect(typeof hooks.useDepth).toBe("function");

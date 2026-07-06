@@ -6,6 +6,7 @@ import {
   AnalyticsSimulator,
   type BlotterPort,
   type Candle,
+  type CandleTimeframe,
   type ConnectionEventsPort,
   type CreateRfqRequest,
   CreditRfqSimulator,
@@ -728,7 +729,10 @@ function createMarketDataPort(ws: IWsAdapter): MarketDataPort {
       });
     },
 
-    candles(symbol: string): Observable<readonly Candle[]> {
+    candles(
+      symbol: string,
+      timeframe?: CandleTimeframe,
+    ): Observable<readonly Candle[]> {
       return new Observable<readonly Candle[]>((subscriber) => {
         let cancelled = false;
 
@@ -736,6 +740,7 @@ function createMarketDataPort(ws: IWsAdapter): MarketDataPort {
           try {
             const resp = (await ws.rpc(CLIENT_MSG.GET_CANDLES, {
               symbol,
+              timeframe,
             })) as RpcResponse<readonly Candle[]>;
             if (cancelled) return;
 

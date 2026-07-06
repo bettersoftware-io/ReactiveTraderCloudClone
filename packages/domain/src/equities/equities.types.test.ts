@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type {
   Candle,
+  CandleTimeframe,
   DepthBook,
   DepthLevel,
   EquityInstrument,
@@ -12,6 +13,7 @@ import type {
   OrderStatus,
   OrderType,
 } from "./index.js";
+import { CANDLE_TIMEFRAMES } from "./index.js";
 
 describe("equities entities", () => {
   it("compose a working order across the full lifecycle vocabulary", () => {
@@ -65,6 +67,7 @@ describe("equities entities", () => {
     };
     const level: DepthLevel = { price: 190, size: 500 };
     const book: DepthBook = { symbol: "AAPL", bids: [level], asks: [level] };
+    const timeframe: CandleTimeframe = "1W";
 
     expect(instrument.exchange).toBe("NASDAQ");
     expect(quote.ask).toBeGreaterThan(quote.bid);
@@ -73,5 +76,10 @@ describe("equities entities", () => {
     expect(order.status).toBe("working");
     expect(position.unrealisedPnl).toBe(100);
     expect(book.bids[0]?.size).toBe(500);
+    expect(timeframe).toBe("1W");
+  });
+
+  it("CANDLE_TIMEFRAMES enumerates the four supported timeframes in ascending span order", () => {
+    expect(CANDLE_TIMEFRAMES).toEqual(["1D", "1W", "1M", "3M"]);
   });
 });

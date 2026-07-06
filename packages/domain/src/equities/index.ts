@@ -9,3 +9,5 @@ export type {
 } from "./order.js";
 export type { EquityPosition } from "./position.js";
 export type { EquityQuote } from "./quote.js";
+export type { CandleTimeframe } from "./timeframe.js";
+export { CANDLE_TIMEFRAMES } from "./timeframe.js";

@@ -11,6 +11,7 @@ import {
 
 import type {
   Candle,
+  CandleTimeframe,
   DepthBook,
   EquityInstrument,
   EquityOrder,
@@ -33,6 +34,11 @@ import type { Ctx } from "./context.js";
 
 interface SymbolPayload {
   readonly symbol: string;
+}
+
+interface CandlesPayload {
+  readonly symbol: string;
+  readonly timeframe?: CandleTimeframe;
 }
 
 interface OrderIdPayload {
@@ -102,12 +108,14 @@ const positions$: WsEffect<Ctx> = stream(
 );
 
 // getCandles — rpc; ack payload is the candles array, forwarded as-is.
+// `timeframe` is optional — an omitted field threads through as `undefined`,
+// and the port defaults to "1D" (preserving pre-timeframe wire behaviour).
 const getCandles$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.GET_CANDLES,
   SERVER_MSG.CANDLES_RESPONSE,
   (payload, ctx): Observable<readonly Candle[]> => {
-    const { symbol } = payload as SymbolPayload;
-    return ctx.marketData.candles(symbol);
+    const { symbol, timeframe } = payload as CandlesPayload;
+    return ctx.marketData.candles(symbol, timeframe);
   },
 );
 

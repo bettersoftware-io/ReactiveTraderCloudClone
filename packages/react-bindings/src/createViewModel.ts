@@ -32,6 +32,7 @@ import {
 } from "@rtc/client-core";
 import {
   type Candle,
+  type CandleTimeframe,
   ConnectionStatus,
   type CurrencyPair,
   DEFAULT_THEME_MODE,
@@ -187,8 +188,12 @@ export interface ViewModel {
   useWatchlist: () => readonly EquityInstrument[];
   /** Latest equity quote for a symbol — null until the first quote arrives. */
   useEquityQuote: (symbol: string) => EquityQuote | null;
-  /** Candle series for a symbol — starts empty until candles arrive. */
-  useCandles: (symbol: string) => readonly Candle[];
+  /** Candle series for a symbol at a timeframe (default "1D") — starts empty
+   * until candles arrive. */
+  useCandles: (
+    symbol: string,
+    timeframe?: CandleTimeframe,
+  ) => readonly Candle[];
   /** Depth book for a symbol — null until the first depth update arrives. */
   useDepth: (symbol: string) => DepthBook | null;
   /** All open/filled equity orders — starts empty. */
@@ -354,8 +359,8 @@ export function createViewModel(
     null as EquityQuote | null,
   );
   const [useCandles] = bind(
-    (symbol: string) => {
-      return presenters.candleSeries.candles$(symbol);
+    (symbol: string, timeframe?: CandleTimeframe) => {
+      return presenters.candleSeries.candles$(symbol, timeframe);
     },
     [] as readonly Candle[],
   );

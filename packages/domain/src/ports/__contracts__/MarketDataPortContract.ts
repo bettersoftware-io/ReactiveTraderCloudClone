@@ -1,6 +1,8 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import { CANDLE_TIMEFRAMES } from "#/equities/timeframe.js";
+
 import type { MarketDataPort } from "../marketDataPort.js";
 
 export interface MarketDataDriver {
@@ -55,6 +57,22 @@ export function describeMarketDataPortContract(
 
       try {
         const promise = firstValueFrom(port.candles("AAPL"));
+        await driver.ackCandles("AAPL");
+        const candles = await promise;
+        expect(candles.length).toBeGreaterThan(0);
+        for (const c of candles) expect(c.high).toBeGreaterThanOrEqual(c.low);
+      } finally {
+        teardown();
+      }
+    });
+
+    it.each(
+      CANDLE_TIMEFRAMES,
+    )("candles(symbol, %s) emits an OHLC array with high >= low for each bar", async (timeframe) => {
+      const { port, driver, teardown } = makeHarness();
+
+      try {
+        const promise = firstValueFrom(port.candles("AAPL", timeframe));
         await driver.ackCandles("AAPL");
         const candles = await promise;
         expect(candles.length).toBeGreaterThan(0);
