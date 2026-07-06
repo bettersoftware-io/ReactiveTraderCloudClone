@@ -81,6 +81,54 @@ export const scenarios: Record<string, Scenario> = {
     fixtureKey: "credit-populated",
   },
   "app/credit": { componentKey: "App", fixtureKey: "credit-populated" },
+  // Credit dock: RfqsPanel filter arms (live/closed) + card states, and the
+  // New RFQ form (fresh/filled/sell-direction/confirmed). Replaces the old
+  // rfqTiles/NewRfqForm goldens Task 4 retired against the new three-panel
+  // dock components (RfqsPanel, RfqCard, NewRfqPanel).
+  "credit/rfqs-live": {
+    componentKey: "RfqsPanel",
+    fixtureKey: "credit-populated",
+  },
+  "credit/rfqs-accepted": {
+    componentKey: "RfqsPanel",
+    fixtureKey: "credit-rfqs-closed",
+  },
+  "credit/rfqs-terminated": {
+    componentKey: "RfqsPanel",
+    fixtureKey: "credit-rfqs-terminated",
+  },
+  "credit/rfqs-empty": {
+    componentKey: "RfqsPanel",
+    fixtureKey: "credit-rfqs-empty",
+  },
+  "credit/rfqs-card-passed": {
+    componentKey: "RfqCardStandalone",
+    fixtureKey: "credit-card-passed",
+  },
+  "credit/rfqs-card-rejected": {
+    componentKey: "RfqCardStandalone",
+    fixtureKey: "credit-card-rejected",
+  },
+  "credit/rfqs-card-expired": {
+    componentKey: "RfqCardStandalone",
+    fixtureKey: "credit-card-expired",
+  },
+  "credit/new-rfq": {
+    componentKey: "NewRfqPanel",
+    fixtureKey: "credit-populated",
+  },
+  "credit/new-rfq-filled": {
+    componentKey: "NewRfqPanel",
+    fixtureKey: "credit-populated",
+  },
+  "credit/new-rfq-sell": {
+    componentKey: "NewRfqPanel",
+    fixtureKey: "credit-populated",
+  },
+  "credit/new-rfq-confirmed": {
+    componentKey: "NewRfqPanel",
+    fixtureKey: "credit-new-rfq-confirmed",
+  },
   // Admin tab — App with the throughput fetch stubbed by the spec.
   "app/admin": { componentKey: "App", fixtureKey: "app-fx" },
   // Light-theme variant of the FX page (fixture seeds theme "light" through the seam).

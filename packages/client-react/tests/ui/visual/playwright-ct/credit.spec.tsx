@@ -134,3 +134,99 @@ test("credit/sell-side-price-entered", async ({ mount, page }) => {
     animations: "disabled",
   });
 });
+
+// --- Credit dock: RfqsPanel filter arms + per-card states, New RFQ form ---
+// (Task 6 — replacing the old rfqTiles/NewRfqForm CT coverage retired in
+// Task 4 against the new three-panel dock components.)
+
+test("credit/rfqs-live", async ({ mount }) => {
+  // Default LIVE filter: an Open rfq with best/house/pending quote markers,
+  // the countdown bar, and the CANCEL button.
+  const c = await mount(<VisualScenario name="credit/rfqs-live" />);
+  await expect(c).toHaveScreenshot("rfqs-live.png", {
+    animations: "disabled",
+  });
+});
+
+test("credit/rfqs-accepted", async ({ mount }) => {
+  // CLOSED filter: the accepted card's "✓ You traded with …" footer.
+  const c = await mount(<VisualScenario name="credit/rfqs-accepted" />);
+  await expect(c).toHaveScreenshot("rfqs-accepted.png", {
+    animations: "disabled",
+  });
+});
+
+test("credit/rfqs-terminated", async ({ mount }) => {
+  // CLOSED filter, a Cancelled rfq: the "🗑 CANCELLED · remove" footer.
+  const c = await mount(<VisualScenario name="credit/rfqs-terminated" />);
+  await expect(c).toHaveScreenshot("rfqs-terminated.png", {
+    animations: "disabled",
+  });
+});
+
+test("credit/rfqs-empty", async ({ mount }) => {
+  const c = await mount(<VisualScenario name="credit/rfqs-empty" />);
+  await expect(c).toHaveScreenshot("rfqs-empty.png", {
+    animations: "disabled",
+  });
+});
+
+test("credit/rfqs-card-passed", async ({ mount }) => {
+  // Standalone RfqCard: a still-live card with a "passed" quote colour.
+  const c = await mount(<VisualScenario name="credit/rfqs-card-passed" />);
+  await expect(c).toHaveScreenshot("rfqs-card-passed.png", {
+    animations: "disabled",
+  });
+});
+
+test("credit/rfqs-card-rejected", async ({ mount }) => {
+  // Standalone RfqCard: a still-live card with a rejectedWithPrice quote.
+  const c = await mount(<VisualScenario name="credit/rfqs-card-rejected" />);
+  await expect(c).toHaveScreenshot("rfqs-card-rejected.png", {
+    animations: "disabled",
+  });
+});
+
+test("credit/rfqs-card-expired", async ({ mount }) => {
+  // Standalone RfqCard: the terminated EXPIRED label (distinct from Cancelled).
+  const c = await mount(<VisualScenario name="credit/rfqs-card-expired" />);
+  await expect(c).toHaveScreenshot("rfqs-card-expired.png", {
+    animations: "disabled",
+  });
+});
+
+test("credit/new-rfq", async ({ mount }) => {
+  // Fresh form: Buy default, no instrument, empty qty, no dealers -> disabled SEND.
+  const c = await mount(<VisualScenario name="credit/new-rfq" />);
+  await expect(c).toHaveScreenshot("new-rfq.png", { animations: "disabled" });
+});
+
+test("credit/new-rfq-filled", async ({ mount, page }) => {
+  // Select an instrument, fill qty, select all dealers -> SEND RFQ enabled.
+  const c = await mount(<VisualScenario name="credit/new-rfq-filled" />);
+  await page.getByTestId("new-rfq-instrument-toggle").click();
+  await page.getByTestId("new-rfq-instrument-option-1").click();
+  await page.getByTestId("new-rfq-qty-input").fill("5000");
+  await page.getByTestId("new-rfq-dealer-all").click();
+  await expect(c).toHaveScreenshot("new-rfq-filled.png", {
+    animations: "disabled",
+  });
+});
+
+test("credit/new-rfq-sell", async ({ mount, page }) => {
+  // Click "You Sell" -> the accent-negative active DirButton arm.
+  const c = await mount(<VisualScenario name="credit/new-rfq-sell" />);
+  await page.getByTestId("new-rfq-dir-sell").click();
+  await expect(c).toHaveScreenshot("new-rfq-sell.png", {
+    animations: "disabled",
+  });
+});
+
+test("credit/new-rfq-confirmed", async ({ mount }) => {
+  // Submission machine seeded to "confirmed" through the seam -> the inline
+  // "RFQ Created" confirmation card (no interaction needed).
+  const c = await mount(<VisualScenario name="credit/new-rfq-confirmed" />);
+  await expect(c).toHaveScreenshot("new-rfq-confirmed.png", {
+    animations: "disabled",
+  });
+});

@@ -559,6 +559,79 @@ const creditAllQuotes: ReadonlyMap<number, Quote> = new Map(
   }),
 );
 
+// Task 6 dock scenarios — RfqsPanel/RfqCard/NewRfqPanel replace the old
+// rfqTiles/NewRfqForm goldens Task 4 deleted; these fixtures cover the same
+// per-state arms (live/accepted/terminated cards, passed/rejected quote
+// colours, the empty panel, and the New RFQ form's confirmed arm) against the
+// new components.
+// A terminated (Cancelled) card for the RfqsPanel "closed" filter arm.
+const creditTerminatedRfq: Rfq = {
+  id: 103,
+  instrumentId: 1,
+  quantity: 3_000_000,
+  direction: Direction.Sell,
+  state: RfqState.Cancelled,
+  expirySecs: 120,
+  creationTimestamp: 1_750_000_100_000,
+};
+const creditTerminatedQuote: Quote = {
+  id: 3001,
+  rfqId: 103,
+  dealerId: 3,
+  state: { type: "passed" },
+};
+
+// Standalone RfqCard states not otherwise reached by a panel-filter arm:
+// a still-live card with a passed quote (QuoteRow "passed" colour, no ACCEPT),
+// a still-live card with a rejectedWithPrice quote ("Rejected" text + colour),
+// and an Expired (terminated, EXPIRED label) card distinct from the Cancelled
+// one above.
+const creditCardPassedRfq: Rfq = {
+  id: 111,
+  instrumentId: 1,
+  quantity: 4_000_000,
+  direction: Direction.Buy,
+  state: RfqState.Open,
+  expirySecs: 120,
+  creationTimestamp: 1_750_000_300_000,
+};
+const creditCardPassedQuote: Quote = {
+  id: 1101,
+  rfqId: 111,
+  dealerId: 2,
+  state: { type: "passed" },
+};
+const creditCardRejectedRfq: Rfq = {
+  id: 112,
+  instrumentId: 2,
+  quantity: 1_500_000,
+  direction: Direction.Sell,
+  state: RfqState.Open,
+  expirySecs: 120,
+  creationTimestamp: 1_750_000_300_000,
+};
+const creditCardRejectedQuote: Quote = {
+  id: 1102,
+  rfqId: 112,
+  dealerId: 3,
+  state: { type: "rejectedWithPrice", price: 97.1 },
+};
+const creditCardExpiredRfq: Rfq = {
+  id: 113,
+  instrumentId: 1,
+  quantity: 2_500_000,
+  direction: Direction.Buy,
+  state: RfqState.Expired,
+  expirySecs: 120,
+  creationTimestamp: 1_750_000_100_000,
+};
+const creditCardExpiredQuote: Quote = {
+  id: 1103,
+  rfqId: 113,
+  dealerId: 4,
+  state: { type: "rejectedWithoutPrice" },
+};
+
 // CreditBlotter degraded-data row: a Closed rfq with an accepted quote whose
 // instrumentId (777) and dealerId (888) resolve to nothing in the maps, so the
 // row renders the `?? "Dealer 888"` / `?? ""` (empty CUSIP/Security) fallbacks.
@@ -874,6 +947,66 @@ export const fixtures: Record<string, AppData> = {
     rfqs: creditRfqs,
     quotesForRfq: { 101: creditQuotes101, 102: creditQuotes102 },
     allQuotes: creditAllQuotes,
+  }),
+  // RfqsPanel "closed" filter arm: same populated world as credit-populated,
+  // switched to CLOSED so only rfq 102 (Closed, accepted quote) renders — the
+  // card's "accepted" data-state (✓ You traded with … footer).
+  "credit-rfqs-closed": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: creditRfqs,
+    quotesForRfq: { 101: creditQuotes101, 102: creditQuotes102 },
+    allQuotes: creditAllQuotes,
+    creditRfqFilter: "closed",
+  }),
+  // RfqsPanel terminated-card arm: a Cancelled rfq under the CLOSED filter →
+  // the card's "terminated" data-state (🗑 CANCELLED · remove footer).
+  "credit-rfqs-terminated": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [creditTerminatedRfq],
+    quotesForRfq: { 103: [creditTerminatedQuote] },
+    allQuotes: new Map([[creditTerminatedQuote.id, creditTerminatedQuote]]),
+    creditRfqFilter: "closed",
+  }),
+  // RfqsPanel empty arm: no rfqs at all → EmptyRfqs under the default LIVE filter.
+  "credit-rfqs-empty": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [],
+  }),
+  // Standalone RfqCard per-quote-state arms (still-live cards): passed and
+  // rejectedWithPrice quote colours, neither reachable via a panel filter arm
+  // alone (both rfqs stay Open/live).
+  "credit-card-passed": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [creditCardPassedRfq],
+    quotesForRfq: { 111: [creditCardPassedQuote] },
+    allQuotes: new Map([[creditCardPassedQuote.id, creditCardPassedQuote]]),
+  }),
+  "credit-card-rejected": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [creditCardRejectedRfq],
+    quotesForRfq: { 112: [creditCardRejectedQuote] },
+    allQuotes: new Map([[creditCardRejectedQuote.id, creditCardRejectedQuote]]),
+  }),
+  // Standalone RfqCard terminated (Expired) arm — the EXPIRED label, distinct
+  // from the Cancelled arm covered by credit-rfqs-terminated above.
+  "credit-card-expired": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [creditCardExpiredRfq],
+    quotesForRfq: { 113: [creditCardExpiredQuote] },
+    allQuotes: new Map([[creditCardExpiredQuote.id, creditCardExpiredQuote]]),
+  }),
+  // NewRfqPanel confirmed arm (submission machine seeded via the seam — no
+  // interaction needed): the "RFQ Created" inline confirmation card.
+  "credit-new-rfq-confirmed": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqSubmission: { status: "confirmed", rfqId: 999 },
   }),
   // AdminPanel loading arm: throughput not yet loaded → "Loading throughput…".
   "admin-loading": makeAppData({

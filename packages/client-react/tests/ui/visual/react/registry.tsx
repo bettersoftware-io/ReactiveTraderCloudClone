@@ -10,6 +10,10 @@ import { IncidentControls } from "#/ui/admin/IncidentControls";
 import { LiveEventLog } from "#/ui/admin/LiveEventLog";
 import { ServiceTopologyGraph } from "#/ui/admin/ServiceTopologyGraph";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
+import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
+import { RfqCard } from "#/ui/credit/rfqs/RfqCard";
+import { RfqsPanel } from "#/ui/credit/rfqs/RfqsPanel";
+import { rfqCardVm } from "#/ui/credit/rfqs/rfqCardVm";
 import { SellSidePanel } from "#/ui/credit/sellSide/SellSidePanel";
 import { PositionsBlotter } from "#/ui/equities/blotter/PositionsBlotter";
 import { DepthLadder } from "#/ui/equities/chart/DepthLadder";
@@ -189,6 +193,54 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
         <CreditBlotter />
+      </div>
+    );
+  },
+  // RfqsPanel: fixed width (test-only) — the panel's auto-fill CSS grid
+  // (minmax 300px, 1fr) has a parent-driven column width; without a fixed
+  // container the card text drives the total width, which varies on x86 CI
+  // (font glyph-advance non-determinism), a dimension mismatch
+  // maxDiffPixelRatio cannot absorb. In the real app the panel sits inside the
+  // dock's fixed "RFQs" column. Component stays responsive.
+  RfqsPanel: () => {
+    return (
+      <div style={{ width: 400, display: "flex", flexDirection: "column" }}>
+        <RfqsPanel />
+      </div>
+    );
+  },
+  // NewRfqPanel: fixed width (test-only), same rationale as RfqsPanel above —
+  // the form's content-driven intrinsic size doesn't drift on x86. In the real
+  // app it sits inside the dock's fixed "New RFQ" column, never shrink-to-fit.
+  NewRfqPanel: () => {
+    return (
+      <div style={{ width: 280, display: "flex", flexDirection: "column" }}>
+        <NewRfqPanel onCreated={() => {}} />
+      </div>
+    );
+  },
+  // Prop-driven single RfqCard, bypassing RfqsPanel's filter/animation
+  // bookkeeping — a static per-card-state shot (vm built directly via
+  // rfqCardVm from the fixture's lone rfq + its quotes). Fixed width for the
+  // same font-metric-drift reason as the other credit component keys above.
+  RfqCardStandalone: (fixtureKey: string) => {
+    const data = fixtures[fixtureKey];
+    const rfq = data.rfqs[0];
+    const quotes = data.quotesForRfq[rfq.id] ?? [];
+    const vm = rfqCardVm(rfq, quotes, data.instruments, data.dealers);
+    return (
+      <div style={{ width: 300, display: "flex", flexDirection: "column" }}>
+        <RfqCard
+          vm={vm}
+          creationTimestamp={rfq.creationTimestamp}
+          expirySecs={rfq.expirySecs}
+          anim="none"
+          delayMs={0}
+          onAccept={() => {}}
+          onCancel={() => {}}
+          onRemove={() => {}}
+          onAnimationEnd={() => {}}
+        />
       </div>
     );
   },

@@ -155,6 +155,19 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   "credit/sell-side-price-entered": {
     steps: [{ type: "trade-ticket-price", text: "98.5" }],
   },
+  // NewRfqPanel filled arm: select an instrument, fill qty, select all
+  // dealers -> validation passes, SEND RFQ becomes enabled (data-enabled=true).
+  "credit/new-rfq-filled": {
+    steps: [
+      { click: "new-rfq-instrument-toggle" },
+      { click: "new-rfq-instrument-option-1" },
+      { type: "new-rfq-qty-input", text: "5000" },
+      { click: "new-rfq-dealer-all" },
+    ],
+  },
+  // NewRfqPanel direction toggle: click "You Sell" -> the accent-negative
+  // active-button arm (DirButton data-dir="sell" data-active="true").
+  "credit/new-rfq-sell": { click: "new-rfq-dir-sell" },
 
   // --- Coverage-gap pass: behaviour-sync'd components (Step 5) ---
 
