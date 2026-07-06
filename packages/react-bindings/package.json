@@ -25,7 +25,7 @@
     "@react-rxjs/core": "^0.10.7",
     "@rtc/client-core": "workspace:*",
     "@rtc/domain": "workspace:*",
-    "react": "^19",
+    "react": "^19.2.3",
     "rxjs": "^7.8"
   },
   "devDependencies": {
