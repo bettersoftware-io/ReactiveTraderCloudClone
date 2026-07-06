@@ -64,11 +64,19 @@ describe("TileConfirmation", () => {
         onDismiss: () => {},
       },
     });
+    // ✓ glyph, "You Bought" verb, dealt line, RATE/SPT/ID column row, and a
+    // DISMISS chip button — PROTO parity for the completed-trade card.
+    expect(c.text()).toContain("✓");
     expect(c.text()).toMatch(/you bought/i);
     expect(c.text()).toContain("EUR 2,500,000");
-    expect(c.text()).toContain("EURUSD @ 1.09221");
-    expect(c.text()).toMatch(/trade id: 9001/i);
-    expect(c.backgroundColor()).toBe("var(--accent-positive)");
+    expect(c.text()).toMatch(/rate/i);
+    expect(c.text()).toContain("1.09221");
+    expect(c.text()).toMatch(/spt/i);
+    expect(c.text()).toContain("15 Jun");
+    expect(c.text()).toMatch(/id/i);
+    expect(c.text()).toContain("9001");
+    expect(c.dismissButton()).not.toBeNull();
+    expect(c.backgroundColor()).toBe("var(--bg-secondary)");
   });
 
   it("confirms a completed sell with the sell verb", () => {
@@ -145,7 +153,7 @@ describe("TileConfirmation", () => {
     expect(c.text()).toBe("");
   });
 
-  it("dismisses a finished confirmation on click", async () => {
+  it("dismisses a completed trade card via its DISMISS button", async () => {
     let dismissed = 0;
     const c = mount(TileConfirmation, {
       props: {
@@ -153,6 +161,23 @@ describe("TileConfirmation", () => {
           status: "finished",
           executionStatus: ExecutionStatus.Done,
           trade: doneTrade,
+        } as TileState,
+        onDismiss: () => {
+          dismissed += 1;
+        },
+      },
+    });
+    await c.clickDismissButton();
+    expect(dismissed).toBe(1);
+  });
+
+  it("dismisses a rejected confirmation on click anywhere in the overlay", async () => {
+    let dismissed = 0;
+    const c = mount(TileConfirmation, {
+      props: {
+        state: {
+          status: "finished",
+          executionStatus: ExecutionStatus.Rejected,
         } as TileState,
         onDismiss: () => {
           dismissed += 1;

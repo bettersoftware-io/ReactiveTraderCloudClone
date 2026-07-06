@@ -1,7 +1,9 @@
 import type { ReactElement } from "react";
 
 import type { TileExecutionState } from "@rtc/client-core";
-import { Direction, ExecutionStatus } from "@rtc/domain";
+import { Direction, ExecutionStatus, type Trade } from "@rtc/domain";
+
+import { formatSpotDate } from "./formatSpotDate";
 
 import styles from "./TileConfirmation.module.css";
 
@@ -21,6 +23,27 @@ export function TileConfirmation({
         className={styles.overlay}
       >
         <ConfirmationContent state={state} />
+      </div>
+    );
+  }
+
+  // PROTO parity: the completed-trade confirmation is a dedicated card (icon,
+  // verb, dealt line, RATE/SPT/ID row, a DISMISS chip) that only the DISMISS
+  // button dismisses — unlike the other statuses below, where the whole
+  // overlay is a click-anywhere-to-dismiss button.
+  if (
+    state.status === "finished" &&
+    state.executionStatus === ExecutionStatus.Done &&
+    state.trade
+  ) {
+    return (
+      <div
+        data-testid="trade-confirmation"
+        data-status={statusKey(state)}
+        data-anim={anim}
+        className={styles.overlay}
+      >
+        <DoneBody trade={state.trade} onDismiss={onDismiss} />
       </div>
     );
   }
@@ -45,10 +68,6 @@ interface TileConfirmationProps {
   anim?: "fill" | "reject";
 }
 
-function formatNotional(n: number): string {
-  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
-}
-
 interface ConfirmationContentProps {
   state: TileExecutionState;
 }
@@ -69,7 +88,7 @@ function ConfirmationContent({
   }
 
   if (state.status === "finished") {
-    const { executionStatus, trade } = state;
+    const { executionStatus } = state;
 
     if (executionStatus === ExecutionStatus.Rejected) {
       return <span>Your trade has been rejected</span>;
@@ -83,27 +102,74 @@ function ConfirmationContent({
       return <span>Credit limit exceeded</span>;
     }
 
-    if (executionStatus === ExecutionStatus.Done && trade) {
-      const verb =
-        trade.direction === Direction.Buy ? "You Bought" : "You Sold";
-      return (
-        <div className={styles.tradeDetails}>
-          <span className={styles.tradeVerb}>{verb}</span>
-          <span>
-            {trade.dealtCurrency} {formatNotional(trade.notional)}
-          </span>
-          <span className={styles.tradeMeta}>
-            {trade.currencyPair} @ {trade.spotRate}
-          </span>
-          <span className={styles.tradeId}>
-            Trade ID: {trade.tradeId} | {trade.valueDate}
-          </span>
-        </div>
-      );
-    }
+    // executionStatus === Done: a trade renders via the DoneBody branch in
+    // TileConfirmation above; Done without a trade falls through to null.
   }
 
   return null;
+}
+
+interface DoneBodyProps {
+  trade: Trade;
+  onDismiss: () => void;
+}
+
+function DoneBody(props: DoneBodyProps): ReactElement {
+  const { trade, onDismiss } = props;
+  const verb = trade.direction === Direction.Buy ? "You Bought" : "You Sold";
+
+  return (
+    <>
+      <div className={styles.iconSuccess}>✓</div>
+      <div className={styles.doneTitle}>{verb}</div>
+      <div className={styles.doneSub}>
+        {trade.dealtCurrency} {formatNotional(trade.notional)}
+      </div>
+      <div className={styles.detailRow}>
+        <DetailCell label="RATE" value={formatRate(trade.spotRate)} />
+        <DetailCell
+          label="SPT"
+          value={formatSpotDate(new Date(trade.valueDate), 0)}
+        />
+        <DetailCell label="ID" value={String(trade.tradeId)} />
+      </div>
+      <button
+        type="button"
+        className={styles.dismiss}
+        data-action="dismiss"
+        onClick={onDismiss}
+      >
+        DISMISS
+      </button>
+    </>
+  );
+}
+
+interface DetailCellProps {
+  label: string;
+  value: string;
+}
+
+function DetailCell(props: DetailCellProps): ReactElement {
+  const { label, value } = props;
+
+  return (
+    <div className={styles.detailCell}>
+      <div className={styles.detailLabel}>{label}</div>
+      <div className={styles.detailValue}>{value}</div>
+    </div>
+  );
+}
+
+function formatNotional(n: number): string {
+  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+// 6 significant digits, matching the blotter's rate column (blotterColumns.ts
+// formatRate) — kept as a small local duplicate rather than a shared import,
+// following this file's existing formatNotional precedent.
+function formatRate(rate: number): string {
+  return rate.toPrecision(6);
 }
 
 type ConfirmationStatus =
