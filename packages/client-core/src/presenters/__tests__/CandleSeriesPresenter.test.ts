@@ -57,6 +57,22 @@ describe("CandleSeriesPresenter", () => {
     expect(second).toBe(first);
     expect(calls).toEqual([["AAPL", "3M"]]);
   });
+
+  it("guards an empty symbol: emits [] synchronously without ever calling the port", async () => {
+    const calls: Array<[string, CandleTimeframe]> = [];
+    const presenter = new CandleSeriesPresenter(fakeMarketData(calls));
+    expect(await firstValueFrom(presenter.candles$(""))).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it("caches the empty-symbol guard stream by key, same as any real symbol", () => {
+    const calls: Array<[string, CandleTimeframe]> = [];
+    const presenter = new CandleSeriesPresenter(fakeMarketData(calls));
+    const first = presenter.candles$("", "1D");
+    const second = presenter.candles$("", "1D");
+    expect(second).toBe(first);
+    expect(calls).toEqual([]);
+  });
 });
 
 function series(symbol: string, timeframe: CandleTimeframe): readonly Candle[] {

@@ -1,4 +1,4 @@
-import { bind } from "@react-rxjs/core";
+import { bind, useStateObservable } from "@react-rxjs/core";
 import { firstValueFrom } from "rxjs";
 
 import type { ActivityEntry, AppCommands, Presenters } from "@rtc/client-core";
@@ -471,15 +471,35 @@ export function createViewModel(
     presenters.incident.intents.clear();
   }
 
-  // Eq workspace machine — shared single instance, bind its state$ (not
-  // per-mount useMachine): the chart/tabs/watchlist panels must all observe
-  // the same selection, so this mirrors the incident machine's wiring above
-  // rather than the per-mount useMachine bridge used for useOrderTicket etc.
-  const [useEqWorkspaceState] = bind(presenters.eqWorkspace.state$, {
-    sel: "",
-    openTabs: [] as readonly string[],
-    timeframe: "1D" as CandleTimeframe,
-  });
+  // Eq workspace machine — shared single instance. Reads
+  // presenters.eqWorkspace.state$ DIRECTLY via useStateObservable, NOT via
+  // bind() (unlike the incident machine's wiring above, and unlike this
+  // function's own first draft — see the CRITICAL bug this replaced).
+  //
+  // bind(source$, defaultValue) builds its OWN new StateObservable wrapping
+  // source$; that NEW wrapper's currentValue/refCount start out empty
+  // regardless of how warm source$ already is, and only pick up a value once
+  // the WRAPPER gets its first subscriber — which react-rxjs's
+  // useSyncExternalStore-based hook defers to a passive effect, i.e. AFTER
+  // the first commit. On that first render every caller (e.g. ChartPanel)
+  // therefore saw the explicit default ({sel: "", ...}), never
+  // EqWorkspaceMachine's real warm value, even though the machine keeps
+  // itself warm from construction (see its own doc comment) specifically to
+  // avoid this. ChartPanel calls useCandles(sel, timeframe) unconditionally
+  // (before its own `if (!sel)` guard), so an empty sel reached
+  // EquityMarketDataSimulator.candles(""), which throws synchronously for
+  // any symbol it doesn't recognise — crashing the whole app on the very
+  // first Equities-tab render, with no ErrorBoundary to contain it.
+  //
+  // Calling useStateObservable directly on the machine's OWN (already-warm,
+  // refCount >= 1) state$ reads its real currentValue synchronously on the
+  // very first render: no extra wrapper, no mismatched default, no window
+  // where a stale/invalid value can leak downstream. This mirrors why
+  // useMachine reads a per-mount machine's own state$ directly instead of
+  // re-binding it — the source is already the right shape to read as-is.
+  function useEqWorkspaceState(): EqWorkspaceState {
+    return useStateObservable(presenters.eqWorkspace.state$);
+  }
 
   // Stable callbacks for eqWorkspace intents (this-safe; arrow functions).
   function selectEqSymbol(sym: string): void {

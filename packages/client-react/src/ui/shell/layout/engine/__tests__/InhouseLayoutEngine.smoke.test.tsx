@@ -1,10 +1,17 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LayoutState } from "@rtc/client-core";
 
 import { InhouseLayoutEngine } from "../InhouseLayoutEngine";
 import type { PanelRegistry } from "../panelRegistry";
+import { ThrowingPanel } from "./panelErrorFixtures";
 
 afterEach(cleanup);
 
@@ -141,6 +148,42 @@ describe("InhouseLayoutEngine", () => {
     expect(screen.queryByTestId("handle--0")).toBeNull();
   });
 
+  it("confines a panel that throws during render to a scoped panel-error fallback, leaving sibling panels intact (no app-wide white screen)", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    // Registry entries are always `() => <RealComponent />` (see
+    // appPanelRegistry.tsx) — a JSX element descriptor, not an eagerly-invoked
+    // plain function. The crash this guards against happens when REACT
+    // itself later renders that returned element as a child fiber (e.g.
+    // ChartPanel's own body throwing), not when the registry function is
+    // called. So the fake here must throw from within an actual rendered
+    // component, matching that real shape — a registry entry that throws
+    // directly, as a plain function call, would throw one call frame too
+    // early to exercise the boundary at all.
+    const throwingRegistry: PanelRegistry = {
+      ...registry,
+      "fx-analytics": () => {
+        return <ThrowingPanel />;
+      },
+    };
+
+    try {
+      renderEngine(state, throwingRegistry);
+    } finally {
+      consoleError.mockRestore();
+    }
+
+    // The throwing panel shows a scoped error state...
+    const analyticsPanel = screen.getByTestId("panel-fx-analytics");
+    expect(
+      within(analyticsPanel).getByTestId("panel-error").textContent,
+    ).toContain("Analytics");
+    // ...while its sibling panel, and the engine root itself, render fine.
+    expect(screen.getByTestId("layout-engine")).toBeTruthy();
+    expect(screen.getByTestId("rates-body").textContent).toBe("RATES");
+  });
+
   it("drives a column-split resize drag (vertical) and calls onResize", () => {
     const columnState: LayoutState = {
       root: {
@@ -177,11 +220,14 @@ describe("InhouseLayoutEngine", () => {
 
 function noop(): void {}
 
-function renderEngine(s: LayoutState = state): void {
+function renderEngine(
+  s: LayoutState = state,
+  r: PanelRegistry = registry,
+): void {
   render(
     <InhouseLayoutEngine
       state={s}
-      registry={registry}
+      registry={r}
       onMaximize={noop}
       onRestore={noop}
       onCollapse={noop}

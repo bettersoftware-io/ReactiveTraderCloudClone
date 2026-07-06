@@ -16,6 +16,7 @@ import {
   type SplitDir,
 } from "@rtc/client-core";
 
+import { PanelErrorBoundary } from "./PanelErrorBoundary";
 import type { PanelRegistry } from "./panelRegistry";
 
 import styles from "./InhouseLayoutEngine.module.css";
@@ -426,7 +427,11 @@ function renderPanel(
               </button>
             </div>
           </header>
-          <div className={styles.panelBody}>{registry[panelId]?.()}</div>
+          <div className={styles.panelBody}>
+            <PanelErrorBoundary title={title}>
+              {registry[panelId]?.()}
+            </PanelErrorBoundary>
+          </div>
         </>
       )}
     </section>
