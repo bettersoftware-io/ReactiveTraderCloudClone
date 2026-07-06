@@ -21,6 +21,7 @@ import {
 } from "@rtc/client-core";
 import type {
   CreateRfqInput,
+  CreditRfqFilter,
   CurrencyPair,
   EqBlotterView,
   EqWatchlistSort,
@@ -156,6 +157,13 @@ export function reactViewModel(world: World): ViewModel {
         world.commands.acceptQuote.push(quoteId);
       };
     },
+    // Command: record the cancelled rfq id, mirroring useAcceptQuote's shape
+    // (one-shot fire-and-await; the bridge does firstValueFrom).
+    useCancelRfq: () => {
+      return async (rfqId: number) => {
+        world.commands.cancelRfq.push(rfqId);
+      };
+    },
     // Command: record the reconnect invocation so contract specs can assert
     // "clicking Reconnect fires the command exactly once".
     useReconnect: () => {
@@ -249,6 +257,10 @@ export function reactViewModel(world: World): ViewModel {
     // world.commands.createRfq, flips editing→submitting→confirmed, and schedules
     // onRedirect via a REAL setTimeout(REDIRECT_DELAY_MS) so the spec's fake-timer
     // advance drives the redirect with the same timing as the real RxJS timer.
+    // Mirrors RfqsPresenter.createSubmission: the same timeout that fires
+    // onRedirect also returns the state to editing — the docked panel is never
+    // unmounted, so the fake must hand back an empty editing state exactly
+    // like the real machine, or specs would never exercise the reset path.
     useRfqSubmission: () => {
       const [submissionState, setSubmissionState] =
         useState<RfqSubmissionState>({
@@ -267,7 +279,8 @@ export function reactViewModel(world: World): ViewModel {
           if (rfqId === undefined) return;
           setSubmissionState({ status: "confirmed", rfqId });
           setTimeout(() => {
-            return onRedirect(rfqId);
+            onRedirect(rfqId);
+            setSubmissionState({ status: "editing" });
           }, REDIRECT_DELAY_MS);
         },
         [],
@@ -362,6 +375,18 @@ export function reactViewModel(world: World): ViewModel {
         viewMode,
         setViewMode: (next: ViewMode) => {
           return world.viewMode.next(next);
+        },
+      };
+    },
+    // Credit RFQs filter: reactive view backed by the World subject; setFilter
+    // pushes back so a click through the seam (RfqsHead's pills, Task 4)
+    // re-renders RfqsPanel — mirroring useViewModePreference exactly.
+    useCreditRfqFilterPreference: () => {
+      const filter = useSubject(world.creditRfqFilter);
+      return {
+        filter,
+        setFilter: (next: CreditRfqFilter) => {
+          return world.creditRfqFilter.next(next);
         },
       };
     },
@@ -511,6 +536,9 @@ export function reactViewModel(world: World): ViewModel {
     },
     useSessions: () => {
       return useSubject(world.sessions$);
+    },
+    useSessionCountSeries: () => {
+      return useSubject(world.sessionCountSeries$);
     },
     useIncident: () => {
       const state = useSubject(world.incidentState$);

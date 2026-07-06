@@ -19,7 +19,9 @@ import {
   type Candle,
   ConnectionStatus,
   type CreateRfqInput,
+  type CreditRfqFilter,
   type CurrencyPair,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -141,6 +143,7 @@ export interface AdminSeed {
   topology?: ServiceTopology | null;
   eventLog?: readonly LogEvent[];
   sessions?: readonly SessionInfo[];
+  sessionCountSeries?: readonly MetricSample[];
   metrics?: Partial<MetricsView>;
 }
 
@@ -163,6 +166,7 @@ export interface CommandLog {
   executeTrade: ExecuteTradeInput[];
   requestRfqQuote: { symbol: string; pipsPosition: number }[];
   acceptQuote: number[];
+  cancelRfq: number[];
   passQuote: number[];
   quoteRfq: QuoteRequest[];
   /** Incremented each time useReconnect() callback is invoked. */
@@ -203,6 +207,10 @@ export interface World {
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive view-mode preference backing useViewModePreference (drives LiveRatesPanel). */
   readonly viewMode: BehaviorSubject<ViewMode>;
+  /** Reactive Credit RFQs filter preference backing useCreditRfqFilterPreference (drives RfqsPanel). */
+  readonly creditRfqFilter: BehaviorSubject<CreditRfqFilter>;
+  /** Push a new Credit RFQs filter (drives RfqsPanel's re-render + entrance cascade). */
+  setCreditRfqFilter(filter: CreditRfqFilter): void;
   /** Reactive session state backing useSession (drives LockScreen). */
   readonly session: BehaviorSubject<SessionState>;
   /** Per-key subject for usePrice(pair), keyed by pair.symbol. */
@@ -265,6 +273,9 @@ export interface World {
   readonly eventLog$: BehaviorSubject<readonly LogEvent[]>;
   /** Reactive active sessions backing useSessions. */
   readonly sessions$: BehaviorSubject<readonly SessionInfo[]>;
+  /** Reactive session-count series backing useSessionCountSeries (the Active
+   * Sessions KPI card's sparkline). */
+  readonly sessionCountSeries$: BehaviorSubject<readonly MetricSample[]>;
   /** Reactive metric series backing useMetrics (throughput/latency/errorRate). */
   readonly metrics$: BehaviorSubject<MetricsView>;
   /** Reactive incident state (active kinds) backing useIncident. */
@@ -280,6 +291,8 @@ export interface World {
   setEventLog(value: readonly LogEvent[]): void;
   /** Push new sessions. */
   setSessions(value: readonly SessionInfo[]): void;
+  /** Push a new session-count series (drives the Active Sessions KPI sparkline). */
+  setSessionCountSeries(value: readonly MetricSample[]): void;
   /** Patch the metric series (merges into current). */
   setMetrics(patch: Partial<MetricsView>): void;
   readonly results: CommandResults;
@@ -300,6 +313,7 @@ export function createWorld(
   sessionSeed: Partial<SessionState> = {},
   equitiesSeed: EquitiesSeed = {},
   adminSeed: AdminSeed = {},
+  creditRfqFilterSeed?: CreditRfqFilter,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -470,6 +484,9 @@ export function createWorld(
   const viewMode = new BehaviorSubject<ViewMode>(
     viewModeSeed ?? DEFAULT_VIEW_MODE,
   );
+  const creditRfqFilter = new BehaviorSubject<CreditRfqFilter>(
+    creditRfqFilterSeed ?? DEFAULT_CREDIT_RFQ_FILTER,
+  );
   const session = new BehaviorSubject<SessionState>({
     ...DEFAULT_SESSION,
     ...sessionSeed,
@@ -487,6 +504,9 @@ export function createWorld(
   );
   const sessions$ = new BehaviorSubject<readonly SessionInfo[]>(
     adminSeed.sessions ?? [],
+  );
+  const sessionCountSeries$ = new BehaviorSubject<readonly MetricSample[]>(
+    adminSeed.sessionCountSeries ?? [],
   );
   const metrics$ = new BehaviorSubject<MetricsView>({
     ...DEFAULT_METRICS_VIEW,
@@ -532,6 +552,7 @@ export function createWorld(
     executeTrade: [],
     requestRfqQuote: [],
     acceptQuote: [],
+    cancelRfq: [],
     passQuote: [],
     quoteRfq: [],
     reconnect: 0,
@@ -552,6 +573,10 @@ export function createWorld(
     themeSkin,
     animatedBackground,
     viewMode,
+    creditRfqFilter,
+    setCreditRfqFilter: (filter: CreditRfqFilter) => {
+      return creditRfqFilter.next(filter);
+    },
     session,
     priceFor,
     historyFor,
@@ -604,6 +629,7 @@ export function createWorld(
     topology$,
     eventLog$,
     sessions$,
+    sessionCountSeries$,
     metrics$,
     incidentState$,
     injectIncident,
@@ -616,6 +642,9 @@ export function createWorld(
     },
     setSessions: (value: readonly SessionInfo[]) => {
       return sessions$.next(value);
+    },
+    setSessionCountSeries: (value: readonly MetricSample[]) => {
+      return sessionCountSeries$.next(value);
     },
     setMetrics: (patch: Partial<MetricsView>) => {
       return metrics$.next({ ...metrics$.getValue(), ...patch });

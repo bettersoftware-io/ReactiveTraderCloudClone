@@ -1,91 +1,28 @@
 import { component } from "./harness/component";
-import {
-  NewRfqFormPage,
-  type NewRfqFormProps,
-} from "./pages/credit/newRfq/NewRfqFormPage";
-import {
-  type RfqFilter,
-  RfqFilterTabsPage,
-  type RfqFilterTabsProps,
-} from "./pages/credit/rfqTiles/RfqFilterTabsPage";
-import { AnalyticsHeadPage } from "./pages/fx/analytics/AnalyticsHeadPage";
-import { AnalyticsPanelPage } from "./pages/fx/analytics/AnalyticsPanelPage";
-import {
-  PairPnlBarsPage,
-  type PairPnlBarsProps,
-} from "./pages/fx/analytics/PairPnlBarsPage";
-import {
-  PnlChartPage,
-  type PnlChartProps,
-} from "./pages/fx/analytics/PnlChartPage";
-import {
-  PnlValuePage,
-  type PnlValueProps,
-} from "./pages/fx/analytics/PnlValuePage";
-import {
-  BlotterHeaderPage,
-  type BlotterHeaderProps,
-} from "./pages/fx/blotter/BlotterHeaderPage";
-import {
-  BlotterRowPage,
-  type BlotterRowProps,
-} from "./pages/fx/blotter/BlotterRowPage";
-import {
-  DateFilterPage,
-  type DateFilterProps,
-} from "./pages/fx/blotter/DateFilterPage";
-import { FxBlotterPage } from "./pages/fx/blotter/FxBlotterPage";
-import { FxBlotterWorkspacePage } from "./pages/fx/blotter/FxBlotterWorkspacePage";
-import {
-  NumberFilterPage,
-  type NumberFilterProps,
-} from "./pages/fx/blotter/NumberFilterPage";
-import {
-  QuickFilterPage,
-  type QuickFilterProps,
-} from "./pages/fx/blotter/QuickFilterPage";
-import {
-  SetFilterPage,
-  type SetFilterProps,
-} from "./pages/fx/blotter/SetFilterPage";
-import { PositionsHeadPage } from "./pages/fx/positions/PositionsHeadPage";
-import { PositionsPanelPage } from "./pages/fx/positions/PositionsPanelPage";
-import { AmbientBackgroundPage } from "./pages/shell/background/AmbientBackgroundPage";
-import { BootGatePage } from "./pages/shell/boot/BootGatePage";
-import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
-import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
-import {
-  LayoutEnginePage,
-  type LayoutEngineProps,
-} from "./pages/shell/layout/LayoutEnginePage";
-import { LockScreenPage } from "./pages/shell/lock/LockScreenPage";
-import {
-  AnimationProbePage,
-  type AnimationProbeProps,
-} from "./pages/shell/motion/AnimationProbePage";
-
-export type { RfqFilter };
-
 import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
+import { AdminHeadPage } from "./pages/admin/AdminHeadPage";
 import { AdminPanelPage } from "./pages/admin/AdminPanelPage";
-import { ErrorRatePanelPage } from "./pages/admin/ErrorRatePanelPage";
 import { IncidentControlsPage } from "./pages/admin/IncidentControlsPage";
+import { KpiRowPage } from "./pages/admin/KpiRowPage";
 import { LatencyHistogramPage } from "./pages/admin/LatencyHistogramPage";
 import { LiveEventLogPage } from "./pages/admin/LiveEventLogPage";
-import { MetricGaugesPage } from "./pages/admin/MetricGaugesPage";
+import { ServiceHealthPage } from "./pages/admin/ServiceHealthPage";
 import { ServiceTopologyGraphPage } from "./pages/admin/ServiceTopologyGraphPage";
 import { SessionsPanelPage } from "./pages/admin/SessionsPanelPage";
 import { ThroughputChartPage } from "./pages/admin/ThroughputChartPage";
+import { CreditBlotterHeadPage } from "./pages/credit/blotter/CreditBlotterHeadPage";
 import { CreditBlotterPage } from "./pages/credit/blotter/CreditBlotterPage";
+import { NewRfqHeadPage } from "./pages/credit/newRfq/NewRfqHeadPage";
 import {
-  QuoteCardPage,
-  type QuoteCardProps,
-} from "./pages/credit/rfqTiles/QuoteCardPage";
+  NewRfqPanelPage,
+  type NewRfqPanelProps,
+} from "./pages/credit/newRfq/NewRfqPanelPage";
 import {
-  RfqCardPage,
-  type RfqCardProps,
-} from "./pages/credit/rfqTiles/RfqCardPage";
-import { RfqTilesPanelPage } from "./pages/credit/rfqTiles/RfqTilesPanelPage";
+  RfqFilterPillsPage,
+  type RfqFilterPillsProps,
+} from "./pages/credit/rfqs/RfqFilterPillsPage";
+import { RfqsHeadPage } from "./pages/credit/rfqs/RfqsHeadPage";
+import { RfqsPanelPage } from "./pages/credit/rfqs/RfqsPanelPage";
 import { SellSidePanelPage } from "./pages/credit/sellSide/SellSidePanelPage";
 import {
   TradeTicketPage,
@@ -141,6 +78,46 @@ import {
   type SectorHeatmapProps,
 } from "./pages/equities/SectorHeatmapPage";
 import { WatchlistPanelPage } from "./pages/equities/WatchlistPanelPage";
+import { AnalyticsHeadPage } from "./pages/fx/analytics/AnalyticsHeadPage";
+import { AnalyticsPanelPage } from "./pages/fx/analytics/AnalyticsPanelPage";
+import {
+  PairPnlBarsPage,
+  type PairPnlBarsProps,
+} from "./pages/fx/analytics/PairPnlBarsPage";
+import {
+  PnlChartPage,
+  type PnlChartProps,
+} from "./pages/fx/analytics/PnlChartPage";
+import {
+  PnlValuePage,
+  type PnlValueProps,
+} from "./pages/fx/analytics/PnlValuePage";
+import {
+  BlotterHeaderPage,
+  type BlotterHeaderProps,
+} from "./pages/fx/blotter/BlotterHeaderPage";
+import {
+  BlotterRowPage,
+  type BlotterRowProps,
+} from "./pages/fx/blotter/BlotterRowPage";
+import {
+  DateFilterPage,
+  type DateFilterProps,
+} from "./pages/fx/blotter/DateFilterPage";
+import { FxBlotterPage } from "./pages/fx/blotter/FxBlotterPage";
+import { FxBlotterWorkspacePage } from "./pages/fx/blotter/FxBlotterWorkspacePage";
+import {
+  NumberFilterPage,
+  type NumberFilterProps,
+} from "./pages/fx/blotter/NumberFilterPage";
+import {
+  QuickFilterPage,
+  type QuickFilterProps,
+} from "./pages/fx/blotter/QuickFilterPage";
+import {
+  SetFilterPage,
+  type SetFilterProps,
+} from "./pages/fx/blotter/SetFilterPage";
 import {
   CurrencyFilterPage,
   type CurrencyFilterProps,
@@ -180,12 +157,27 @@ import {
   TileRfqPage,
   type TileRfqProps,
 } from "./pages/fx/liveRates/tile/TileRfqPage";
+import { PositionsHeadPage } from "./pages/fx/positions/PositionsHeadPage";
+import { PositionsPanelPage } from "./pages/fx/positions/PositionsPanelPage";
+import { AmbientBackgroundPage } from "./pages/shell/background/AmbientBackgroundPage";
+import { BootGatePage } from "./pages/shell/boot/BootGatePage";
+import { BootSequencePage } from "./pages/shell/boot/BootSequencePage";
 import {
   HeaderChromePage,
   type HeaderChromeProps,
 } from "./pages/shell/chrome/HeaderChromePage";
 import { ThemePickerPage } from "./pages/shell/chrome/ThemePickerPage";
 import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverlayPage";
+import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
+import {
+  LayoutEnginePage,
+  type LayoutEngineProps,
+} from "./pages/shell/layout/LayoutEnginePage";
+import { LockScreenPage } from "./pages/shell/lock/LockScreenPage";
+import {
+  AnimationProbePage,
+  type AnimationProbeProps,
+} from "./pages/shell/motion/AnimationProbePage";
 import {
   PreferencesModalPage,
   type PreferencesModalProps,
@@ -289,29 +281,35 @@ export const DateFilter = component<DateFilterProps, DateFilterPage>((ctx) => {
   return new DateFilterPage(ctx);
 });
 
-export const NewRfqForm = component<NewRfqFormProps, NewRfqFormPage>((ctx) => {
-  return new NewRfqFormPage(ctx);
-});
-
-export const RfqFilterTabs = component<RfqFilterTabsProps, RfqFilterTabsPage>(
+export const NewRfqPanel = component<NewRfqPanelProps, NewRfqPanelPage>(
   (ctx) => {
-    return new RfqFilterTabsPage(ctx);
+    return new NewRfqPanelPage(ctx);
   },
 );
 
-export const QuoteCard = component<QuoteCardProps, QuoteCardPage>((ctx) => {
-  return new QuoteCardPage(ctx);
-});
+export const NewRfqHead = component<Record<string, never>, NewRfqHeadPage>(
+  (ctx) => {
+    return new NewRfqHeadPage(ctx);
+  },
+);
 
-export const RfqCard = component<RfqCardProps, RfqCardPage>((ctx) => {
-  return new RfqCardPage(ctx);
-});
+export const RfqsPanel = component<Record<string, never>, RfqsPanelPage>(
+  (ctx) => {
+    return new RfqsPanelPage(ctx);
+  },
+);
 
-export const RfqTilesPanel = component<
-  Record<string, never>,
-  RfqTilesPanelPage
+export const RfqsHead = component<Record<string, never>, RfqsHeadPage>(
+  (ctx) => {
+    return new RfqsHeadPage(ctx);
+  },
+);
+
+export const RfqFilterPills = component<
+  RfqFilterPillsProps,
+  RfqFilterPillsPage
 >((ctx) => {
-  return new RfqTilesPanelPage(ctx);
+  return new RfqFilterPillsPage(ctx);
 });
 
 export const SellSidePanel = component<
@@ -332,6 +330,13 @@ export const CreditBlotter = component<
   CreditBlotterPage
 >((ctx) => {
   return new CreditBlotterPage(ctx);
+});
+
+export const CreditBlotterHead = component<
+  Record<string, never>,
+  CreditBlotterHeadPage
+>((ctx) => {
+  return new CreditBlotterHeadPage(ctx);
 });
 
 export const LiveRatesPanel = component<
@@ -629,6 +634,13 @@ export const IncidentControls = component<
   return new IncidentControlsPage(ctx);
 });
 
+export const ServiceHealth = component<
+  Record<string, never>,
+  ServiceHealthPage
+>((ctx) => {
+  return new ServiceHealthPage(ctx);
+});
+
 export const ServiceTopologyGraph = component<
   Record<string, never>,
   ServiceTopologyGraphPage
@@ -642,11 +654,9 @@ export const LiveEventLog = component<Record<string, never>, LiveEventLogPage>(
   },
 );
 
-export const MetricGauges = component<Record<string, never>, MetricGaugesPage>(
-  (ctx) => {
-    return new MetricGaugesPage(ctx);
-  },
-);
+export const KpiRow = component<Record<string, never>, KpiRowPage>((ctx) => {
+  return new KpiRowPage(ctx);
+});
 
 export const ThroughputChart = component<
   Record<string, never>,
@@ -662,13 +672,6 @@ export const LatencyHistogram = component<
   return new LatencyHistogramPage(ctx);
 });
 
-export const ErrorRatePanel = component<
-  Record<string, never>,
-  ErrorRatePanelPage
->((ctx) => {
-  return new ErrorRatePanelPage(ctx);
-});
-
 export const SessionsPanel = component<
   Record<string, never>,
   SessionsPanelPage
@@ -682,3 +685,9 @@ export const AdminDashboard = component<
 >((ctx) => {
   return new AdminDashboardPage(ctx);
 });
+
+export const AdminHead = component<Record<string, never>, AdminHeadPage>(
+  (ctx) => {
+    return new AdminHeadPage(ctx);
+  },
+);

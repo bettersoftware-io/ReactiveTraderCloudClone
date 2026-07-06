@@ -43,7 +43,6 @@ export default defineConfig({
       exclude: [
         // Full-page composition roots — owned by the visual (tests/ui/visual) tier, app/*, + e2e.
         "src/ui/App.tsx",
-        "src/ui/credit/CreditWorkspace.tsx",
         // The real id→module-root map; the contract/visual harnesses mount a
         // test PanelRegistry instead, exactly like the hooks providers above.
         "src/ui/shell/layout/engine/appPanelRegistry.tsx",

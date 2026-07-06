@@ -3,7 +3,6 @@ import {
   catchError,
   concat,
   distinctUntilChanged,
-  ignoreElements,
   map,
   merge,
   type Observable,
@@ -168,16 +167,23 @@ export class RfqsPresenter {
             switchMap((rfqId) => {
               return merge(
                 of<RfqSubmissionState>({ status: "confirmed", rfqId }),
-                // Redirect after the delay. The redirect timer is cancelled when
-                // warm.unsubscribe() (in dispose()) tears down the subscription
-                // chain — NOT by submit$ completing, since switchMap does not
-                // unsubscribe its current inner observable when the source
-                // completes.
+                // Redirect after the delay, then return to editing. The docked
+                // form is never unmounted (unlike the old tabbed workspace,
+                // which reset by unmounting on tab-switch), so the machine
+                // itself must hand the form back an empty editing state once
+                // the redirect window elapses — otherwise it dead-ends on the
+                // confirmation card forever. The redirect timer is cancelled
+                // when warm.unsubscribe() (in dispose()) tears down the
+                // subscription chain — NOT by submit$ completing, since
+                // switchMap does not unsubscribe its current inner observable
+                // when the source completes.
                 timer(REDIRECT_DELAY_MS).pipe(
                   tap(() => {
                     return onRedirect(rfqId);
                   }),
-                  ignoreElements(),
+                  map((): RfqSubmissionState => {
+                    return EDITING;
+                  }),
                 ),
               );
             }),

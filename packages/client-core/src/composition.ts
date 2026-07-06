@@ -22,6 +22,7 @@ import {
   BootPreferencePresenter,
   CandleSeriesPresenter,
   ConnectionStatusPresenter,
+  CreditRfqFilterPreferencePresenter,
   CurrencyPairsPresenter,
   createBootSequenceMachine,
   createEqWorkspaceMachine,
@@ -55,6 +56,7 @@ import {
   RfqsPresenter,
   ServiceTopologyPresenter,
   SessionPresenter,
+  SessionsKpiPresenter,
   SessionsPresenter,
   ThemePreferencePresenter,
   ThemeSkinPreferencePresenter,
@@ -104,6 +106,7 @@ export interface Presenters {
   themeSkinPreference: ThemeSkinPreferencePresenter;
   animatedBackground: AnimatedBackgroundPresenter;
   viewModePreference: ViewModePreferencePresenter;
+  creditRfqFilterPreference: CreditRfqFilterPreferencePresenter;
   /** Equities watchlist sort-mode preference (the head's ⇅ cycle control). */
   eqWatchlistSortPreference: EqWatchlistSortPreferencePresenter;
   /** Equities blotter tab preference (Orders/Positions), consumed by Task 5. */
@@ -131,6 +134,8 @@ export interface Presenters {
   eventLog: EventLogPresenter;
   /** Phase 5 Admin: active trader sessions feed. */
   sessions: SessionsPresenter;
+  /** Plan E Admin: rolling session-count series for the "Active Sessions" KPI card. */
+  sessionsKpi: SessionsKpiPresenter;
 }
 
 export interface AppCommands {
@@ -227,6 +232,9 @@ export function createApp(ports: AppPorts): App {
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
+    creditRfqFilterPreference: new CreditRfqFilterPreferencePresenter(
+      ports.preferences,
+    ),
     eqWatchlistSortPreference: new EqWatchlistSortPreferencePresenter(
       ports.preferences,
     ),
@@ -266,6 +274,7 @@ export function createApp(ports: AppPorts): App {
     topology: new ServiceTopologyPresenter(ports.serviceHealth),
     eventLog: new EventLogPresenter(ports.eventLog),
     sessions: new SessionsPresenter(ports.sessions),
+    sessionsKpi: new SessionsKpiPresenter(ports.sessions),
   };
   const commands: AppCommands = {
     reconnect: () => {

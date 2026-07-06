@@ -18,6 +18,13 @@ export class Scratchpad {
     backgroundBefore: undefined as string | undefined,
     backgroundAfter: undefined as string | undefined,
   };
+
+  /** rfqId recorded by the "creates a new credit RFQ" step, read back by the
+   * later steps that assert on the resulting card — quoteIds/rfqIds are
+   * server-assigned, so there's nothing to hardcode in the Gherkin text. */
+  creditRfq = {
+    rfqId: undefined as number | undefined,
+  };
 }
 
 /** What scenario functions accept. Driver-agnostic. */

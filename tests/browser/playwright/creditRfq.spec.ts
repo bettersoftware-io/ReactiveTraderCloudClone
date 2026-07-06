@@ -6,51 +6,43 @@ import { withCreditWorkspaceOpen } from "./_openWorkspace";
 test.describe("Credit RFQ", () => {
   withCreditWorkspaceOpen();
 
-  test("credit workspace shows navigation tabs", async ({ ctx }) => {
-    await theme.expectCreditNavVisible(ctx);
-    await creditRfq.expectCreditTabVisible(ctx, "tiles");
-    await creditRfq.expectCreditTabVisible(ctx, "new-rfq");
-    await creditRfq.expectCreditTabVisible(ctx, "sell-side");
+  test("credit dock shows the New RFQ, RFQs, and Credit Blotter panels together", async ({
+    ctx,
+  }) => {
+    await theme.expectCreditDockVisible(ctx);
   });
 
-  test("RFQ tiles panel shows initial state", async ({ ctx }) => {
-    await creditRfq.expectCreditTabVisible(ctx, "tiles");
-    await creditRfq.expectMessageWithin(ctx, "No RFQs to display", 5);
-  });
-
-  test("navigate to New RFQ form", async ({ ctx }) => {
-    await creditRfq.clickCreditTab(ctx, "new-rfq");
-    await creditRfq.expectCreditRfqSubmitButtonWithin(ctx, 3);
+  test("RFQs panel shows initial state", async ({ ctx }) => {
+    await creditRfq.expectNoRfqsMessageWithin(ctx, 5);
   });
 
   test("New RFQ form has all required fields", async ({ ctx }) => {
-    await creditRfq.clickCreditTab(ctx, "new-rfq");
-    await creditRfq.expectCreditRfqSubmitButtonWithin(ctx, 3);
-    await creditRfq.expectCreditRfqHasBuySellButtons(ctx);
-    await creditRfq.expectCreditRfqHasDirectionLabel(ctx);
+    await creditRfq.expectSendButtonWithin(ctx, 3);
+    await creditRfq.expectHasDirectionButtons(ctx);
+    await creditRfq.expectHasQtyInput(ctx);
   });
 
-  test("navigate to Sell Side panel", async ({ ctx }) => {
-    await creditRfq.clickCreditTab(ctx, "sell-side");
-    await creditRfq.expectSellSideHeadingWithin(ctx, 5);
+  test("creating a new RFQ shows it live in the RFQs panel with a pending quote", async ({
+    ctx,
+  }) => {
+    const rfqId = await creditRfq.createAdaptiveBankOnlyRfq(ctx, 5);
+    await creditRfq.expectRfqCardWithin(ctx, rfqId, 5);
+    await creditRfq.expectFirstQuoteStatePending(ctx, rfqId);
   });
 
-  test("credit blotter is visible below the workspace", async ({ ctx }) => {
+  test("filter pills switch between live and closed RFQs", async ({ ctx }) => {
+    await creditRfq.clickClosedFilter(ctx);
+    await creditRfq.expectSeededClosedRfqsVisible(ctx);
+  });
+
+  test("credit blotter shows existing trades", async ({ ctx }) => {
     await creditRfq.expectCreditTradesHeadingWithin(ctx, 5);
-  });
-
-  test("switching between credit views maintains state", async ({ ctx }) => {
-    await creditRfq.clickCreditTab(ctx, "new-rfq");
-    await creditRfq.expectCreditRfqSubmitButtonWithin(ctx, 3);
-    await creditRfq.clickCreditTab(ctx, "tiles");
-    await creditRfq.expectMessageWithin(ctx, "No RFQs to display", 3);
-    await creditRfq.clickCreditTab(ctx, "sell-side");
-    await creditRfq.expectSellSideHeadingWithin(ctx, 3);
+    await creditRfq.expectCreditBlotterRowCountAtLeast(ctx, 2);
   });
 
   test("live RFQ list shows no open RFQs initially — seeded terminal RFQs live under All", async ({
     ctx,
   }) => {
-    await creditRfq.expectMessageWithin(ctx, "No RFQs to display", 3);
+    await creditRfq.expectNoRfqsMessageWithin(ctx, 3);
   });
 });

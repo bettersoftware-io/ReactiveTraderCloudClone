@@ -1,5 +1,6 @@
 import {
   type CurrencyPair,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -69,6 +70,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // Commands: async no-op. Not exercised by static screenshots.
     useAcceptQuote: () => {
       return async (_quoteId: number) => {};
+    },
+    useCancelRfq: () => {
+      return async (_rfqId: number) => {};
     },
     // Reconnect: static screenshots don't click buttons; no-op is correct.
     useReconnect: () => {
@@ -182,6 +186,12 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       return {
         viewMode: data.viewMode ?? DEFAULT_VIEW_MODE,
         setViewMode: noop,
+      };
+    },
+    useCreditRfqFilterPreference: () => {
+      return {
+        filter: data.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER,
+        setFilter: noop,
       };
     },
     useEqWatchlistSort: () => {
@@ -298,6 +308,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     },
     useSessions: () => {
       return data.adminSessions ?? [];
+    },
+    useSessionCountSeries: () => {
+      return data.adminSessionCountSeries ?? [];
     },
     useIncident: () => {
       return {

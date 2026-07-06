@@ -128,6 +128,7 @@ export type {
 // Preferences
 export type {
   BootVariant,
+  CreditRfqFilter,
   EqBlotterView,
   EqWatchlistSort,
   ThemeMode,
@@ -137,6 +138,7 @@ export type {
 } from "./preferences/preferences.js";
 export {
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,

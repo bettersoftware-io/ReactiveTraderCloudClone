@@ -43,8 +43,8 @@ Then(
 );
 
 Then(
-  "the credit navigation is visible",
-  function expectCreditNavVisible(this: StepContext) {
-    return theme.expectCreditNavVisible(this.ctx);
+  "the credit dock is visible",
+  function expectCreditDockVisible(this: StepContext) {
+    return theme.expectCreditDockVisible(this.ctx);
   },
 );

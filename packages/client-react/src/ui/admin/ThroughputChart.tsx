@@ -1,85 +1,50 @@
-import type { ReactElement } from "react";
-import { useLayoutEffect, useRef } from "react";
+import { type ReactElement, useId } from "react";
 
-import type { MetricSample } from "@rtc/domain";
+import { throughputPaths } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./ThroughputChart.module.css";
 
 /**
- * Throughput line chart on a <canvas>. Pattern mirrors PriceChart.tsx:
- * - the pure `drawLine` helper is the only canvas-touching code
- * - the token colour is read once via getComputedStyle (canvas cannot use vars)
- * - redraw is triggered by `samples` change in useLayoutEffect — no rAF loop
+ * Message-throughput area+line chart — an SVG gradient-glow area chart
+ * replacing the earlier <canvas> draw, ported from PROTO
+ * Throughput/ThroughputChart.tsx. Paths come from the shared throughputPaths
+ * vm (client-core); the gradient id is per-instance via useId() (PnlChart.tsx
+ * precedent), and the area fill closes to a flat baseline when no data has
+ * arrived yet, which is when the "NO DATA" placeholder takes over instead.
  */
 export function ThroughputChart(): ReactElement {
   const { useMetrics } = useViewModel();
   const { throughput } = useMetrics();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useLayoutEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return; // jsdom / headless: no GPU context
-
-    const cs = getComputedStyle(document.documentElement);
-    const color = cs.getPropertyValue("--accent-primary").trim() || "#3b82f6";
-    drawLine(ctx, throughput, canvas.width, canvas.height, color);
-  }, [throughput]);
+  const { line, area } = throughputPaths(throughput);
+  const gradientId = useId();
 
   return (
-    <div data-testid="admin-throughput-chart" className={styles.wrapper}>
-      <canvas
-        ref={canvasRef}
-        className={styles.canvas}
-        aria-label="Throughput chart"
-      />
-      {throughput.length === 0 && <div className={styles.empty}>NO DATA</div>}
+    <div data-testid="admin-throughput-chart" className={styles.card}>
+      <div className={styles.head}>
+        <span className={styles.title}>MESSAGE THROUGHPUT</span>
+        <span className={styles.sub}>last 120s · msg/s</span>
+      </div>
+      {throughput.length === 0 ? (
+        <div className={styles.empty}>NO DATA</div>
+      ) : (
+        <svg
+          className={styles.svg}
+          viewBox="0 0 300 96"
+          preserveAspectRatio="none"
+          aria-label="Throughput chart"
+        >
+          <title>Throughput chart</title>
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="var(--accent-2)" stopOpacity="0.3" />
+              <stop offset="1" stopColor="var(--accent-2)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={area} fill={`url(#${gradientId})`} />
+          <polyline className={styles.line} points={line} />
+        </svg>
+      )}
     </div>
   );
-}
-
-/**
- * Pure canvas draw — no React, no DOM state. Mirrors drawCandles.ts: an exported
- * helper called from a useLayoutEffect when `samples` change. Redraw-on-data,
- * not a continuous rAF loop, so there is no timer to leak.
- */
-function drawLine(
-  ctx: CanvasRenderingContext2D,
-  samples: readonly MetricSample[],
-  w: number,
-  h: number,
-  color: string,
-): void {
-  ctx.clearRect(0, 0, w, h);
-  if (samples.length < 2) return;
-
-  const values = samples.map((s) => {
-    return s.value;
-  });
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-
-  const pad = 4;
-  const plotW = w - pad * 2;
-  const plotH = h - pad * 2;
-  const step = plotW / (values.length - 1);
-
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5;
-  ctx.lineJoin = "round";
-  ctx.beginPath();
-
-  for (let i = 0; i < values.length; i++) {
-    const x = pad + i * step;
-    const y = pad + plotH - ((values[i] - min) / range) * plotH;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-
-  ctx.stroke();
 }

@@ -51,10 +51,51 @@ describe("createDefaultLayoutPort", () => {
     ]);
   });
 
-  it("credit: rfqs over a resizable (non-pinned) blotter", () => {
+  it("credit: a New RFQ rail beside a resizable RFQs-over-blotter column", () => {
     const { initial } = createDefaultLayoutPort("credit");
-    expect(panelIds(initial.root)).toEqual(["credit-rfqs", "credit-blotter"]);
+    expect(panelIds(initial.root)).toEqual([
+      "credit-new-rfq",
+      "credit-rfqs",
+      "credit-blotter",
+    ]);
     expect(PANEL_SPECS["credit-blotter"].pinned).toBeUndefined();
+    expect(PANEL_SPECS["credit-new-rfq"]).toEqual({
+      id: "credit-new-rfq",
+      title: "New RFQ",
+    });
+    expect(PANEL_SPECS["credit-rfqs"]).toEqual({
+      id: "credit-rfqs",
+      title: "RFQs",
+    });
+    // credit-sell-side is registered (Sell Side) but not part of the default
+    // credit tree — it has no dock slot yet, unlike every other spec entry.
+    expect(PANEL_SPECS["credit-sell-side"]).toEqual({
+      id: "credit-sell-side",
+      title: "Sell Side",
+    });
+
+    // root: a row split — [New RFQ rail | RFQs-over-blotter column].
+    const root = initial.root;
+    if (root.kind !== "split") throw new Error("credit root must be a split");
+    expect(root.dir).toBe("row");
+    expect(root.sizes).toEqual([0.25, 0.75]);
+    expect(root.children[0]).toEqual({
+      kind: "panel",
+      panelId: "credit-new-rfq",
+    });
+
+    const column = root.children[1];
+
+    if (column.kind !== "split") {
+      throw new Error("credit RFQs/blotter column must be a split");
+    }
+
+    expect(column.dir).toBe("column");
+    expect(column.sizes).toEqual([0.62, 0.38]);
+    expect(column.children).toEqual([
+      { kind: "panel", panelId: "credit-rfqs" },
+      { kind: "panel", panelId: "credit-blotter" },
+    ]);
   });
 
   it("admin: a single dashboard panel, no pinned slot", () => {

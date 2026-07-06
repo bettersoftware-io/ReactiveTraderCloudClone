@@ -2,6 +2,10 @@ import type { ReactElement } from "react";
 
 import type { PanelId } from "@rtc/client-core";
 
+import { AdminHead } from "#/ui/admin/AdminHead";
+import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";
+import { NewRfqHead } from "#/ui/credit/newRfq/NewRfqHead";
+import { RfqsHead } from "#/ui/credit/rfqs/RfqsHead";
 import { EqBlotterHead } from "#/ui/equities/blotter/EqBlotterHead";
 import { EqChartHead } from "#/ui/equities/chart/EqChartHead";
 import { EqTicketHead } from "#/ui/equities/ticket/EqTicketHead";
@@ -14,8 +18,8 @@ import { PositionsHead } from "#/ui/fx/positions/PositionsHead";
 /** The real id→head-slot map, passed to InhouseLayoutEngine's headRegistry
  * prop. Panel ids without an entry fall back to the engine's default title
  * span (Task 4 restyled that span to match this same tab chrome, so
- * Credit/Admin/Credit Blotter/eq-depth/eq-sectors — which have no entry here
- * — read as one family with the FX panels below). */
+ * Sell Side — which has no entry here — reads as one family with the FX
+ * panels below). */
 export const appHeadRegistry: Partial<Record<PanelId, () => ReactElement>> = {
   "fx-rates": () => {
     return <LiveRatesHead />;
@@ -40,5 +44,17 @@ export const appHeadRegistry: Partial<Record<PanelId, () => ReactElement>> = {
   },
   "eq-watchlist": () => {
     return <EqWatchlistHead />;
+  },
+  "admin-dashboard": () => {
+    return <AdminHead />;
+  },
+  "credit-new-rfq": () => {
+    return <NewRfqHead />;
+  },
+  "credit-rfqs": () => {
+    return <RfqsHead />;
+  },
+  "credit-blotter": () => {
+    return <CreditBlotterHead />;
   },
 };

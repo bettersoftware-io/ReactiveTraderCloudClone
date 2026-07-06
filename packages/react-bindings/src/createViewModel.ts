@@ -36,7 +36,9 @@ import {
   type Candle,
   type CandleTimeframe,
   ConnectionStatus,
+  type CreditRfqFilter,
   type CurrencyPair,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
@@ -123,6 +125,13 @@ interface UseViewModePreferenceResult {
   setViewMode: (viewMode: ViewMode) => void;
 }
 
+/** Credit RFQs panel filter preference — shared between the RFQs panel
+ * (reader) and its head's filter pills (Task 4, writer). */
+interface UseCreditRfqFilterPreferenceResult {
+  filter: CreditRfqFilter;
+  setFilter: (filter: CreditRfqFilter) => void;
+}
+
 interface UseEqWatchlistSortResult {
   sort: EqWatchlistSort;
   setSort: (sort: EqWatchlistSort) => void;
@@ -161,6 +170,9 @@ export interface ViewModel {
   useConnectionStatus: () => ConnectionStatus;
   // Commands (one-shot fire-and-await; the bridge does firstValueFrom)
   useAcceptQuote: () => (quoteId: number) => Promise<void>;
+  /** Cancel an in-flight RFQ (RfqsPresenter.cancelRfq). Same one-shot
+   * fire-and-await shape as useAcceptQuote. */
+  useCancelRfq: () => (rfqId: number) => Promise<void>;
   /** Fire-and-forget reconnect command — pushes a reconnect intent into the
    * app layer after an idle close. The sole recovery path from IDLE_DISCONNECTED.
    * Provenance: original components/DisconnectionOverlay.tsx:36 (onClick={initConnection}). */
@@ -189,6 +201,10 @@ export interface ViewModel {
   useAnimatedBackground: () => UseAnimatedBackgroundResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
+  /** Credit RFQs panel LIVE/CLOSED/ALL filter preference — current filter plus
+   * the write intent. Shared between RfqsPanel (reader) and RfqsHead's filter
+   * pills (Task 4, writer). */
+  useCreditRfqFilterPreference: () => UseCreditRfqFilterPreferenceResult;
   /** Equities watchlist sort-mode preference — current sort plus write/cycle
    * intents (the Watchlist head's ⇅ control). */
   useEqWatchlistSort: () => UseEqWatchlistSortResult;
@@ -245,6 +261,9 @@ export interface ViewModel {
   useEventLog: () => readonly LogEvent[];
   /** Active trader sessions — starts empty. */
   useSessions: () => readonly SessionInfo[];
+  /** Rolling session-count series for the Admin "Active Sessions" KPI card —
+   * starts empty, mirrors useMetrics()'s three streams in shape. */
+  useSessionCountSeries: () => readonly MetricSample[];
   /** Shared incident-machine state + inject/clear intents. */
   useIncident: () => UseIncidentResult;
 }
@@ -348,6 +367,15 @@ export function createViewModel(
     presenters.viewModePreference.setViewMode(viewMode);
   }
 
+  const [useCreditRfqFilterValue] = bind(
+    presenters.creditRfqFilterPreference.filter$,
+    DEFAULT_CREDIT_RFQ_FILTER,
+  );
+
+  function setCreditRfqFilter(filter: CreditRfqFilter): void {
+    presenters.creditRfqFilterPreference.setFilter(filter);
+  }
+
   const [useEqWatchlistSortValue] = bind(
     presenters.eqWatchlistSortPreference.sort$,
     DEFAULT_EQ_WATCHLIST_SORT,
@@ -397,6 +425,10 @@ export function createViewModel(
   // (rather than rejecting with EmptyError) without needing a defaultValue.
   function acceptQuote(quoteId: number): Promise<void> {
     return firstValueFrom(presenters.rfqs.acceptQuote(quoteId));
+  }
+
+  function cancelRfq(rfqId: number): Promise<void> {
+    return firstValueFrom(presenters.rfqs.cancelRfq(rfqId));
   }
 
   // Equities streams — shared (one active subscription per symbol, reference-counted by bind).
@@ -455,6 +487,10 @@ export function createViewModel(
   const [useSessionsValue] = bind(
     presenters.sessions.sessions$,
     [] as readonly SessionInfo[],
+  );
+  const [useSessionCountSeriesValue] = bind(
+    presenters.sessionsKpi.countSeries$,
+    [] as readonly MetricSample[],
   );
 
   // Incident machine — shared single instance, bind its state$ (not per-mount useMachine).
@@ -530,6 +566,9 @@ export function createViewModel(
     useConnectionStatus,
     useAcceptQuote: () => {
       return acceptQuote;
+    },
+    useCancelRfq: () => {
+      return cancelRfq;
     },
     useReconnect: () => {
       return commands.reconnect;
@@ -612,6 +651,12 @@ export function createViewModel(
         setViewMode,
       };
     },
+    useCreditRfqFilterPreference: () => {
+      return {
+        filter: useCreditRfqFilterValue(),
+        setFilter: setCreditRfqFilter,
+      };
+    },
     useEqWatchlistSort: () => {
       return {
         sort: useEqWatchlistSortValue(),
@@ -679,6 +724,7 @@ export function createViewModel(
     useTopology: useTopologyValue,
     useEventLog: useEventLogValue,
     useSessions: useSessionsValue,
+    useSessionCountSeries: useSessionCountSeriesValue,
     useIncident: () => {
       return {
         state: useIncidentState(),

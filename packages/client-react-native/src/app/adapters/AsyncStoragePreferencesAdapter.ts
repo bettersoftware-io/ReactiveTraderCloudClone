@@ -3,7 +3,9 @@ import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
 import {
   type BootVariant,
+  type CreditRfqFilter,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -24,6 +26,7 @@ export const THEME_SKIN_STORAGE_KEY = "rtc-theme-skin";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
+export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 
@@ -43,6 +46,10 @@ function isViewMode(value: string | null): value is ViewMode {
 
 function isBootVariant(value: string | null): value is BootVariant {
   return value === "core" || value === "laser" || value === "docking";
+}
+
+function isCreditRfqFilter(value: string | null): value is CreditRfqFilter {
+  return value === "live" || value === "closed" || value === "all";
 }
 
 function isEqWatchlistSort(value: string | null): value is EqWatchlistSort {
@@ -82,6 +89,9 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     DEFAULT_BOOT_VARIANT,
   );
 
+  private readonly creditRfqFilterSubject =
+    new BehaviorSubject<CreditRfqFilter>(DEFAULT_CREDIT_RFQ_FILTER);
+
   private readonly eqWatchlistSortSubject =
     new BehaviorSubject<EqWatchlistSort>(DEFAULT_EQ_WATCHLIST_SORT);
 
@@ -101,6 +111,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         viewMode,
         animatedBg,
         bootVariant,
+        creditRfqFilter,
         eqWatchlistSort,
         eqBlotterView,
       ] = await Promise.all([
@@ -109,6 +120,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
         AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
         AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
+        AsyncStorage.getItem(CREDIT_RFQ_FILTER_STORAGE_KEY),
         AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
         AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
       ]);
@@ -121,6 +133,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
       if (isBootVariant(bootVariant)) {
         this.bootVariantSubject.next(bootVariant);
+      }
+
+      if (isCreditRfqFilter(creditRfqFilter)) {
+        this.creditRfqFilterSubject.next(creditRfqFilter);
       }
 
       if (isEqWatchlistSort(eqWatchlistSort)) {
@@ -183,6 +199,17 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       () => {},
     );
     this.bootVariantSubject.next(variant);
+  }
+
+  creditRfqFilter$(): Observable<CreditRfqFilter> {
+    return this.creditRfqFilterSubject.pipe(distinctUntilChanged());
+  }
+
+  setCreditRfqFilter(filter: CreditRfqFilter): void {
+    void AsyncStorage.setItem(CREDIT_RFQ_FILTER_STORAGE_KEY, filter).catch(
+      () => {},
+    );
+    this.creditRfqFilterSubject.next(filter);
   }
 
   eqWatchlistSort$(): Observable<EqWatchlistSort> {

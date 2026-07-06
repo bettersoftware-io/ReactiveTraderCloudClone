@@ -480,7 +480,7 @@ const fxActivity: readonly ActivityEntry[] = [
 ];
 
 // Credit fixture — instrument/dealer/rfq/quote ids are cross-linked:
-//   RfqTilesPanel (default "Live" filter) needs an Open rfq + its quotes;
+//   RfqsPanel (default "Live" filter) needs an Open rfq + its quotes;
 //   CreditBlotter needs a Closed rfq with an accepted quote in allQuotes;
 //   SellSidePanel needs a quote from the "Adaptive Bank" dealer.
 const creditInstruments: readonly Instrument[] = [
@@ -560,6 +560,79 @@ const creditAllQuotes: ReadonlyMap<number, Quote> = new Map(
   }),
 );
 
+// Task 6 dock scenarios — RfqsPanel/RfqCard/NewRfqPanel replace the old
+// rfqTiles/NewRfqForm goldens Task 4 deleted; these fixtures cover the same
+// per-state arms (live/accepted/terminated cards, passed/rejected quote
+// colours, the empty panel, and the New RFQ form's confirmed arm) against the
+// new components.
+// A terminated (Cancelled) card for the RfqsPanel "closed" filter arm.
+const creditTerminatedRfq: Rfq = {
+  id: 103,
+  instrumentId: 1,
+  quantity: 3_000_000,
+  direction: Direction.Sell,
+  state: RfqState.Cancelled,
+  expirySecs: 120,
+  creationTimestamp: 1_750_000_100_000,
+};
+const creditTerminatedQuote: Quote = {
+  id: 3001,
+  rfqId: 103,
+  dealerId: 3,
+  state: { type: "passed" },
+};
+
+// Standalone RfqCard states not otherwise reached by a panel-filter arm:
+// a still-live card with a passed quote (QuoteRow "passed" colour, no ACCEPT),
+// a still-live card with a rejectedWithPrice quote ("Rejected" text + colour),
+// and an Expired (terminated, EXPIRED label) card distinct from the Cancelled
+// one above.
+const creditCardPassedRfq: Rfq = {
+  id: 111,
+  instrumentId: 1,
+  quantity: 4_000_000,
+  direction: Direction.Buy,
+  state: RfqState.Open,
+  expirySecs: 120,
+  creationTimestamp: 1_750_000_300_000,
+};
+const creditCardPassedQuote: Quote = {
+  id: 1101,
+  rfqId: 111,
+  dealerId: 2,
+  state: { type: "passed" },
+};
+const creditCardRejectedRfq: Rfq = {
+  id: 112,
+  instrumentId: 2,
+  quantity: 1_500_000,
+  direction: Direction.Sell,
+  state: RfqState.Open,
+  expirySecs: 120,
+  creationTimestamp: 1_750_000_300_000,
+};
+const creditCardRejectedQuote: Quote = {
+  id: 1102,
+  rfqId: 112,
+  dealerId: 3,
+  state: { type: "rejectedWithPrice", price: 97.1 },
+};
+const creditCardExpiredRfq: Rfq = {
+  id: 113,
+  instrumentId: 1,
+  quantity: 2_500_000,
+  direction: Direction.Buy,
+  state: RfqState.Expired,
+  expirySecs: 120,
+  creationTimestamp: 1_750_000_100_000,
+};
+const creditCardExpiredQuote: Quote = {
+  id: 1103,
+  rfqId: 113,
+  dealerId: 4,
+  state: { type: "rejectedWithoutPrice" },
+};
+
 // CreditBlotter degraded-data row: a Closed rfq with an accepted quote whose
 // instrumentId (777) and dealerId (888) resolve to nothing in the maps, so the
 // row renders the `?? "Dealer 888"` / `?? ""` (empty CUSIP/Security) fallbacks.
@@ -578,118 +651,6 @@ const creditBlotterUnresolvedQuote: Quote = {
   dealerId: 888,
   state: { type: "accepted", price: 100.5 },
 };
-
-// Single-RFQ-per-card fixtures for the prop-driven RfqCard key. Each pairs one
-// Rfq (in a terminal/badge state) with quotes that exercise a QuoteCard arm.
-// stateLabel/stateBadgeColor (Done/Expired/Cancelled) + canDismiss live on the
-// Rfq state; the accepted/passed quote-colour arms live on the Quote state.
-const rfqDone: Rfq = {
-  id: 201,
-  instrumentId: 1,
-  quantity: 5_000_000,
-  direction: Direction.Buy,
-  state: RfqState.Closed,
-  expirySecs: 120,
-  creationTimestamp: 1_750_000_300_000,
-};
-const rfqDoneQuotes: readonly Quote[] = [
-  {
-    id: 3001,
-    rfqId: 201,
-    dealerId: 2,
-    state: { type: "accepted", price: 99.1 },
-  },
-  {
-    id: 3002,
-    rfqId: 201,
-    dealerId: 3,
-    state: { type: "rejectedWithPrice", price: 99.4 },
-  },
-];
-const rfqExpired: Rfq = {
-  id: 202,
-  instrumentId: 2,
-  quantity: 2_000_000,
-  direction: Direction.Sell,
-  state: RfqState.Expired,
-  expirySecs: 120,
-  creationTimestamp: 1_750_000_300_000,
-};
-const rfqExpiredQuotes: readonly Quote[] = [
-  {
-    id: 3101,
-    rfqId: 202,
-    dealerId: 2,
-    state: { type: "rejectedWithoutPrice" },
-  },
-];
-const rfqCancelled: Rfq = {
-  id: 203,
-  instrumentId: 1,
-  quantity: 3_000_000,
-  direction: Direction.Buy,
-  state: RfqState.Cancelled,
-  expirySecs: 120,
-  creationTimestamp: 1_750_000_300_000,
-};
-const rfqCancelledQuotes: readonly Quote[] = [
-  { id: 3201, rfqId: 203, dealerId: 2, state: { type: "pendingWithoutPrice" } },
-];
-const rfqAccepted: Rfq = {
-  id: 204,
-  instrumentId: 1,
-  quantity: 4_000_000,
-  direction: Direction.Buy,
-  state: RfqState.Closed,
-  expirySecs: 120,
-  creationTimestamp: 1_750_000_300_000,
-};
-const rfqAcceptedQuotes: readonly Quote[] = [
-  {
-    id: 3301,
-    rfqId: 204,
-    dealerId: 2,
-    state: { type: "accepted", price: 100.75 },
-  },
-  {
-    id: 3302,
-    rfqId: 204,
-    dealerId: 3,
-    state: { type: "pendingWithPrice", price: 100.9 },
-  },
-];
-const rfqPassed: Rfq = {
-  id: 205,
-  instrumentId: 2,
-  quantity: 1_500_000,
-  direction: Direction.Sell,
-  state: RfqState.Closed,
-  expirySecs: 120,
-  creationTimestamp: 1_750_000_300_000,
-};
-const rfqPassedQuotes: readonly Quote[] = [
-  { id: 3401, rfqId: 205, dealerId: 2, state: { type: "passed" } },
-  {
-    id: 3402,
-    rfqId: 205,
-    dealerId: 3,
-    state: { type: "accepted", price: 97.6 },
-  },
-];
-
-function rfqCardFixture(rfq: Rfq, quotes: readonly Quote[]): AppData {
-  return makeAppData({
-    instruments: creditInstruments,
-    dealers: creditDealers,
-    rfqs: [rfq],
-    quotesForRfq: { [rfq.id]: quotes },
-    allQuotes: new Map(
-      quotes.map((q) => {
-        return [q.id, q];
-      }),
-    ),
-  });
-}
 
 // Sell-side: an Open RFQ where Adaptive Bank's quote is pendingWithoutPrice
 // drives the active (price-entry) ticket; a passed quote drives the responded
@@ -988,17 +949,65 @@ export const fixtures: Record<string, AppData> = {
     quotesForRfq: { 101: creditQuotes101, 102: creditQuotes102 },
     allQuotes: creditAllQuotes,
   }),
-  // NewRfqForm submission lifecycle render arms (seeded via the submission seam,
-  // since these states are only transiently reachable through interaction).
-  "credit-new-rfq-submitting": makeAppData({
+  // RfqsPanel "closed" filter arm: same populated world as credit-populated,
+  // switched to CLOSED so only rfq 102 (Closed, accepted quote) renders — the
+  // card's "accepted" data-state (✓ You traded with … footer).
+  "credit-rfqs-closed": makeAppData({
     instruments: creditInstruments,
     dealers: creditDealers,
-    rfqSubmission: { status: "submitting" },
+    rfqs: creditRfqs,
+    quotesForRfq: { 101: creditQuotes101, 102: creditQuotes102 },
+    allQuotes: creditAllQuotes,
+    creditRfqFilter: "closed",
   }),
+  // RfqsPanel terminated-card arm: a Cancelled rfq under the CLOSED filter →
+  // the card's "terminated" data-state (🗑 CANCELLED · remove footer).
+  "credit-rfqs-terminated": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [creditTerminatedRfq],
+    quotesForRfq: { 103: [creditTerminatedQuote] },
+    allQuotes: new Map([[creditTerminatedQuote.id, creditTerminatedQuote]]),
+    creditRfqFilter: "closed",
+  }),
+  // RfqsPanel empty arm: no rfqs at all → EmptyRfqs under the default LIVE filter.
+  "credit-rfqs-empty": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [],
+  }),
+  // Standalone RfqCard per-quote-state arms (still-live cards): passed and
+  // rejectedWithPrice quote colours, neither reachable via a panel filter arm
+  // alone (both rfqs stay Open/live).
+  "credit-card-passed": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [creditCardPassedRfq],
+    quotesForRfq: { 111: [creditCardPassedQuote] },
+    allQuotes: new Map([[creditCardPassedQuote.id, creditCardPassedQuote]]),
+  }),
+  "credit-card-rejected": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [creditCardRejectedRfq],
+    quotesForRfq: { 112: [creditCardRejectedQuote] },
+    allQuotes: new Map([[creditCardRejectedQuote.id, creditCardRejectedQuote]]),
+  }),
+  // Standalone RfqCard terminated (Expired) arm — the EXPIRED label, distinct
+  // from the Cancelled arm covered by credit-rfqs-terminated above.
+  "credit-card-expired": makeAppData({
+    instruments: creditInstruments,
+    dealers: creditDealers,
+    rfqs: [creditCardExpiredRfq],
+    quotesForRfq: { 113: [creditCardExpiredQuote] },
+    allQuotes: new Map([[creditCardExpiredQuote.id, creditCardExpiredQuote]]),
+  }),
+  // NewRfqPanel confirmed arm (submission machine seeded via the seam — no
+  // interaction needed): the "RFQ Created" inline confirmation card.
   "credit-new-rfq-confirmed": makeAppData({
     instruments: creditInstruments,
     dealers: creditDealers,
-    rfqSubmission: { status: "confirmed", rfqId: 12345 },
+    rfqSubmission: { status: "confirmed", rfqId: 999 },
   }),
   // AdminPanel loading arm: throughput not yet loaded → "Loading throughput…".
   "admin-loading": makeAppData({
@@ -1062,18 +1071,6 @@ export const fixtures: Record<string, AppData> = {
   // existing analytics-populated/analytics-empty fixtures — both components
   // read the same PositionUpdates shape off useAnalytics().
   "positions-negative": makeAppData({ analytics: positionsNegative }),
-  // Credit RFQ-card terminal states (prop-driven RfqCard key).
-  "rfq-done": rfqCardFixture(rfqDone, rfqDoneQuotes),
-  "rfq-expired": rfqCardFixture(rfqExpired, rfqExpiredQuotes),
-  "rfq-cancelled": rfqCardFixture(rfqCancelled, rfqCancelledQuotes),
-  "rfq-accepted": rfqCardFixture(rfqAccepted, rfqAcceptedQuotes),
-  "rfq-passed": rfqCardFixture(rfqPassed, rfqPassedQuotes),
-  // RfqTilesPanel empty arm: no rfqs => "No RFQs to display".
-  "rfq-tiles-empty": makeAppData({
-    instruments: creditInstruments,
-    dealers: creditDealers,
-    rfqs: [],
-  }),
   // SellSidePanel arms (need an Adaptive Bank quote per RFQ).
   "sell-side-active": makeAppData({
     instruments: creditInstruments,
@@ -1149,46 +1146,6 @@ export const fixtures: Record<string, AppData> = {
     quotesForRfq: { 401: [creditBlotterUnresolvedQuote] },
     allQuotes: new Map([
       [creditBlotterUnresolvedQuote.id, creditBlotterUnresolvedQuote],
-    ]),
-  }),
-
-  // RfqCountdown zero-expiry arm: an Open rfq with expirySecs=0 drives
-  // totalMs=0 in RfqCard → the `totalMs > 0 ? ... : 0` false branch in
-  // RfqCountdown.tsx line 14 (fraction=0, bar at 0%).
-  "rfq-countdown-zero": makeAppData({
-    instruments: creditInstruments,
-    dealers: creditDealers,
-    rfqs: [
-      {
-        id: 501,
-        instrumentId: 1,
-        quantity: 3_000_000,
-        direction: Direction.Buy,
-        state: RfqState.Open,
-        expirySecs: 0,
-        creationTimestamp: 1_750_000_300_000,
-      },
-    ],
-    quotesForRfq: {
-      501: [
-        {
-          id: 6001,
-          rfqId: 501,
-          dealerId: 2,
-          state: { type: "pendingWithoutPrice" },
-        },
-      ],
-    },
-    allQuotes: new Map([
-      [
-        6001,
-        {
-          id: 6001,
-          rfqId: 501,
-          dealerId: 2,
-          state: { type: "pendingWithoutPrice" },
-        },
-      ],
     ]),
   }),
 
@@ -1726,4 +1683,51 @@ fixtures["admin-incident-active"] = makeAppData({
   adminEventLog: adminEvents,
   adminSessions: adminSessionData,
   adminIncident: { active: ["serviceDown"] },
+});
+
+// KpiRow isolated warn arm: latency's last sample (65ms) and error-rate's
+// last sample (0.92%) both cross their warn thresholds (lat>60, err>0.8) —
+// the accent-negative value/delta colour on those two cards. Throughput and
+// sessions never warn (kpisVm's `noWarn`), so only lat/err flip.
+const adminKpiWarnSamples: AdminMetricWindows = {
+  throughput: [
+    { t: 1_750_000_000_000, value: 180 },
+    { t: 1_750_000_001_000, value: 190 },
+    { t: 1_750_000_002_000, value: 200 },
+    { t: 1_750_000_003_000, value: 210 },
+    { t: 1_750_000_004_000, value: 220 },
+  ],
+  latency: [
+    { t: 1_750_000_000_000, value: 20 },
+    { t: 1_750_000_001_000, value: 30 },
+    { t: 1_750_000_002_000, value: 45 },
+    { t: 1_750_000_003_000, value: 55 },
+    { t: 1_750_000_004_000, value: 65 },
+  ],
+  errorRate: [
+    { t: 1_750_000_000_000, value: 0.1 },
+    { t: 1_750_000_001_000, value: 0.3 },
+    { t: 1_750_000_002_000, value: 0.5 },
+    { t: 1_750_000_003_000, value: 0.7 },
+    { t: 1_750_000_004_000, value: 0.92 },
+  ],
+};
+fixtures["admin-kpi-warn"] = makeAppData({
+  throughput: { value: 250, loading: false, message: null },
+  adminMetrics: adminKpiWarnSamples,
+});
+
+// ServiceHealth isolated mixed-status arm: ok + degraded + down in one
+// topology snapshot. "down" is a real-app extra the topology simulator can
+// emit that PROTO never modelled (servicesVm's em-dash uptime + red row).
+const adminTopologyMixed: ServiceTopology = {
+  nodes: [
+    { name: "kernel", status: "ok", throughput: 250, latencyMs: 8 },
+    { name: "credit", status: "degraded", throughput: 30, latencyMs: 45 },
+    { name: "execution", status: "down", throughput: 0, latencyMs: 0 },
+  ],
+  edges: [],
+};
+fixtures["admin-service-mixed"] = makeAppData({
+  adminTopology: adminTopologyMixed,
 });

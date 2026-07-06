@@ -2,7 +2,9 @@ import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
 import {
   type BootVariant,
+  type CreditRfqFilter,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -23,6 +25,7 @@ export const THEME_SKIN_STORAGE_KEY = "rtc-theme-skin";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
+export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 
@@ -42,6 +45,10 @@ function isViewMode(value: string | null): value is ViewMode {
 
 function isBootVariant(value: string | null): value is BootVariant {
   return value === "core" || value === "laser" || value === "docking";
+}
+
+function isCreditRfqFilter(value: string | null): value is CreditRfqFilter {
+  return value === "live" || value === "closed" || value === "all";
 }
 
 function isEqWatchlistSort(value: string | null): value is EqWatchlistSort {
@@ -109,6 +116,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
+  private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
+
   private readonly eqWatchlistSortSubject: BehaviorSubject<EqWatchlistSort>;
 
   private readonly eqBlotterViewSubject: BehaviorSubject<EqBlotterView>;
@@ -132,6 +141,13 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       readStored(BOOT_VARIANT_STORAGE_KEY, isBootVariant, DEFAULT_BOOT_VARIANT),
+    );
+    this.creditRfqFilterSubject = new BehaviorSubject<CreditRfqFilter>(
+      readStored(
+        CREDIT_RFQ_FILTER_STORAGE_KEY,
+        isCreditRfqFilter,
+        DEFAULT_CREDIT_RFQ_FILTER,
+      ),
     );
     this.eqWatchlistSortSubject = new BehaviorSubject<EqWatchlistSort>(
       readStored(
@@ -192,6 +208,15 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setBootVariant(variant: BootVariant): void {
     writeStored(BOOT_VARIANT_STORAGE_KEY, variant);
     this.bootVariantSubject.next(variant);
+  }
+
+  creditRfqFilter$(): Observable<CreditRfqFilter> {
+    return this.creditRfqFilterSubject.pipe(distinctUntilChanged());
+  }
+
+  setCreditRfqFilter(filter: CreditRfqFilter): void {
+    writeStored(CREDIT_RFQ_FILTER_STORAGE_KEY, filter);
+    this.creditRfqFilterSubject.next(filter);
   }
 
   eqWatchlistSort$(): Observable<EqWatchlistSort> {

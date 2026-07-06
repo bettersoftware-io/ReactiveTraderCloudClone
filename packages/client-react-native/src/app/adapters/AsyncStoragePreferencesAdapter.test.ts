@@ -92,6 +92,29 @@ test("setViewMode does not throw when AsyncStorage.setItem rejects", async () =>
   expect(next).toBe("price");
 });
 
+test("emits the default credit RFQ filter (live) synchronously", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const first = await firstValueFrom(prefs.creditRfqFilter$());
+  expect(first).toBe("live");
+});
+
+test("hydrates a stored, non-default credit RFQ filter after construction", async () => {
+  store.set("credit-rfqs-filter", "closed");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydrated = await firstValueFrom(
+    prefs.creditRfqFilter$().pipe(skip(1), take(1)),
+  );
+  expect(hydrated).toBe("closed");
+});
+
+test("setCreditRfqFilter writes through to AsyncStorage and emits", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setCreditRfqFilter("all");
+  const next = await firstValueFrom(prefs.creditRfqFilter$());
+  expect(next).toBe("all");
+  expect(store.get("credit-rfqs-filter")).toBe("all");
+});
+
 test("emits the default eqWatchlistSort and eqBlotterView synchronously", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
   expect(await firstValueFrom(prefs.eqWatchlistSort$())).toBe(

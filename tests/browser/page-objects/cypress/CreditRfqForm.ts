@@ -1,37 +1,89 @@
 import type { CreditRfqFormPO } from "../contracts/CreditRfqForm";
-import { STRINGS } from "../contracts/strings";
 import { TESTIDS } from "../contracts/testids";
 
+const RFQ_ID_PATTERN = /RFQ ID:\s*(\d+)/;
+
 export class CypressCreditRfqForm implements CreditRfqFormPO {
-  waitForSubmitButton(timeoutMs: number): Promise<void> {
+  waitForSendButton(timeoutMs: number): Promise<void> {
     return cy
-      .contains(STRINGS.creditRfq.submitButton, { timeout: timeoutMs })
+      .get(`[data-testid="${TESTIDS.credit.newRfq.send}"]`, {
+        timeout: timeoutMs,
+      })
       .should("be.visible") as unknown as Promise<void>;
   }
 
-  hasBuyAndSellButtons(): Promise<boolean> {
+  hasDirectionButtons(): Promise<boolean> {
     return cy.get("body").then(($body) => {
-      const buyBtn = $body.find("button").filter((_, el) => {
-        return el.textContent?.trim() === STRINGS.creditRfq.buyButton;
-      });
-      const sellBtn = $body.find("button").filter((_, el) => {
-        return el.textContent?.trim() === STRINGS.creditRfq.sellButton;
-      });
+      const buy = $body.find(
+        `[data-testid="${TESTIDS.credit.newRfq.dirButton("buy")}"]`,
+      );
+      const sell = $body.find(
+        `[data-testid="${TESTIDS.credit.newRfq.dirButton("sell")}"]`,
+      );
       return (
-        buyBtn.length > 0 &&
-        buyBtn.is(":visible") &&
-        sellBtn.length > 0 &&
-        sellBtn.is(":visible")
+        buy.length > 0 &&
+        buy.is(":visible") &&
+        sell.length > 0 &&
+        sell.is(":visible")
       );
     }) as unknown as Promise<boolean>;
   }
 
-  hasDirectionLabel(): Promise<boolean> {
+  hasQtyInput(): Promise<boolean> {
     return cy.get("body").then(($body) => {
-      const $label = $body.find(
-        `[data-testid="${TESTIDS.credit.directionLabel}"]`,
+      const found = $body.find(
+        `[data-testid="${TESTIDS.credit.newRfq.qtyInput}"]`,
       );
-      return $label.length > 0 && $label.is(":visible");
+      return found.length > 0 && found.is(":visible");
     }) as unknown as Promise<boolean>;
+  }
+
+  selectInstrument(instrumentId: number): Promise<void> {
+    void cy
+      .get(`[data-testid="${TESTIDS.credit.newRfq.instrumentToggle}"]`)
+      .click();
+    return cy
+      .get(
+        `[data-testid="${TESTIDS.credit.newRfq.instrumentOption(instrumentId)}"]`,
+      )
+      .click() as unknown as Promise<void>;
+  }
+
+  fillQuantity(qty: string): Promise<void> {
+    return cy
+      .get(`[data-testid="${TESTIDS.credit.newRfq.qtyInput}"]`)
+      .type(qty) as unknown as Promise<void>;
+  }
+
+  toggleDealer(dealerId: number): Promise<void> {
+    return cy
+      .get(`[data-testid="${TESTIDS.credit.newRfq.dealer(dealerId)}"]`)
+      .click() as unknown as Promise<void>;
+  }
+
+  clickSend(): Promise<void> {
+    return cy
+      .get(`[data-testid="${TESTIDS.credit.newRfq.send}"]`)
+      .click() as unknown as Promise<void>;
+  }
+
+  waitForConfirmedRfqId(timeoutMs: number): Promise<number> {
+    return cy
+      .get(`[data-testid="${TESTIDS.credit.newRfq.confirmed}"]`, {
+        timeout: timeoutMs,
+      })
+      .should("be.visible")
+      .invoke("text")
+      .then((text) => {
+        const match = RFQ_ID_PATTERN.exec(text);
+
+        if (!match) {
+          throw new Error(
+            `could not parse RFQ id from confirmation text: "${text}"`,
+          );
+        }
+
+        return Number(match[1]);
+      }) as unknown as Promise<number>;
   }
 }

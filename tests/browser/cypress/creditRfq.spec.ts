@@ -7,57 +7,45 @@ import * as theme from "./scenarios/theme";
 describe("Credit RFQ", () => {
   withCreditWorkspaceOpen();
 
-  it("credit workspace shows navigation tabs", () => {
+  it("credit dock shows the New RFQ, RFQs, and Credit Blotter panels together", () => {
     const ctx = getCtx();
-    theme.expectCreditNavVisible(ctx);
-    creditRfq.expectCreditTabVisible(ctx, "tiles");
-    creditRfq.expectCreditTabVisible(ctx, "new-rfq");
-    creditRfq.expectCreditTabVisible(ctx, "sell-side");
+    theme.expectCreditDockVisible(ctx);
   });
 
-  it("RFQ tiles panel shows initial state", () => {
+  it("RFQs panel shows initial state", () => {
     const ctx = getCtx();
-    creditRfq.expectCreditTabVisible(ctx, "tiles");
-    creditRfq.expectMessageWithin(ctx, "No RFQs to display", 5);
-  });
-
-  it("navigate to New RFQ form", () => {
-    const ctx = getCtx();
-    creditRfq.clickCreditTab(ctx, "new-rfq");
-    creditRfq.expectCreditRfqSubmitButtonWithin(ctx, 3);
+    creditRfq.expectNoRfqsMessageWithin(ctx, 5);
   });
 
   it("New RFQ form has all required fields", () => {
     const ctx = getCtx();
-    creditRfq.clickCreditTab(ctx, "new-rfq");
-    creditRfq.expectCreditRfqSubmitButtonWithin(ctx, 3);
-    creditRfq.expectCreditRfqHasBuySellButtons(ctx);
-    creditRfq.expectCreditRfqHasDirectionLabel(ctx);
+    creditRfq.expectSendButtonWithin(ctx, 3);
+    creditRfq.expectHasDirectionButtons(ctx);
+    creditRfq.expectHasQtyInput(ctx);
   });
 
-  it("navigate to Sell Side panel", () => {
+  it("creating a new RFQ shows it live in the RFQs panel with a pending quote", () => {
     const ctx = getCtx();
-    creditRfq.clickCreditTab(ctx, "sell-side");
-    creditRfq.expectSellSideHeadingWithin(ctx, 5);
+    creditRfq.createAdaptiveBankOnlyRfq(ctx, 5).then((rfqId) => {
+      creditRfq.expectRfqCardWithin(ctx, rfqId, 5);
+      creditRfq.expectFirstQuoteStatePending(ctx, rfqId);
+    });
   });
 
-  it("credit blotter is visible below the workspace", () => {
+  it("filter pills switch between live and closed RFQs", () => {
+    const ctx = getCtx();
+    creditRfq.clickClosedFilter(ctx);
+    creditRfq.expectSeededClosedRfqsVisible(ctx);
+  });
+
+  it("credit blotter shows existing trades", () => {
     const ctx = getCtx();
     creditRfq.expectCreditTradesHeadingWithin(ctx, 5);
-  });
-
-  it("switching between credit views maintains state", () => {
-    const ctx = getCtx();
-    creditRfq.clickCreditTab(ctx, "new-rfq");
-    creditRfq.expectCreditRfqSubmitButtonWithin(ctx, 3);
-    creditRfq.clickCreditTab(ctx, "tiles");
-    creditRfq.expectMessageWithin(ctx, "No RFQs to display", 3);
-    creditRfq.clickCreditTab(ctx, "sell-side");
-    creditRfq.expectSellSideHeadingWithin(ctx, 3);
+    creditRfq.expectCreditBlotterRowCountAtLeast(ctx, 2);
   });
 
   it("live RFQ list shows no open RFQs initially — seeded terminal RFQs live under All", () => {
     const ctx = getCtx();
-    creditRfq.expectMessageWithin(ctx, "No RFQs to display", 3);
+    creditRfq.expectNoRfqsMessageWithin(ctx, 3);
   });
 });

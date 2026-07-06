@@ -17,6 +17,7 @@ import type {
 import {
   type Candle,
   ConnectionStatus,
+  type CreditRfqFilter,
   type CurrencyPair,
   type Dealer,
   type DepthBook,
@@ -68,7 +69,7 @@ export interface AppData {
   analyticsStale?: boolean;
   /** Notional view override for TileNotional screenshots; defaults to formatted defaultNotional. */
   notional?: NotionalView;
-  /** NewRfqForm submission state (useRfqSubmission); defaults to "editing". */
+  /** NewRfqPanel submission state (useRfqSubmission); defaults to "editing". */
   rfqSubmission?: RfqSubmissionState;
   /** TradeTicket submission state (useTicketSubmission); defaults to not submitted. */
   ticketSubmission?: TicketSubmissionState;
@@ -82,6 +83,8 @@ export interface AppData {
   animatedBackground?: boolean;
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
+  /** Credit RFQs panel filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER ("live"). */
+  creditRfqFilter?: CreditRfqFilter;
   /** Session lock state (useSession); defaults to false → LockScreen renders nothing. */
   sessionLocked?: boolean;
   // ── Admin / telemetry fields (Phase 5) ───────────────────────────────────
@@ -97,6 +100,9 @@ export interface AppData {
   adminEventLog?: readonly LogEvent[];
   /** Active trader sessions (useSessions); defaults to []. */
   adminSessions?: readonly SessionInfo[];
+  /** Rolling session-count series for the Active Sessions KPI card
+   * (useSessionCountSeries); defaults to []. */
+  adminSessionCountSeries?: readonly MetricSample[];
   /** Incident machine state (useIncident); defaults to { active: [] }. */
   adminIncident?: { active: readonly IncidentKind[] };
   // ── Equities fields (Phase 4) ─────────────────────────────────────────────

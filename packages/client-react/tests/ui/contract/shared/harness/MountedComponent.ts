@@ -4,8 +4,10 @@ import type {
   ThroughputView,
 } from "@rtc/client-core";
 import type {
+  CreditRfqFilter,
   EquityOrder,
   LogEvent,
+  MetricSample,
   Price,
   PriceTick,
   Quote,
@@ -42,12 +44,17 @@ export interface PageContext<P> {
   setEventLog(value: readonly LogEvent[]): void;
   /** Push new active sessions (useSessions source). */
   setSessions(value: readonly SessionInfo[]): void;
+  /** Push a new session-count series (useSessionCountSeries source — the
+   *  Active Sessions KPI card's sparkline). */
+  setSessionCountSeries(value: readonly MetricSample[]): void;
   /** Patch the metric series (useMetrics source). */
   setMetrics(patch: Partial<MetricsView>): void;
   /** Inject an incident kind (mirrors IncidentMachine asymmetry). */
   injectIncident(kind: IncidentKind): void;
   /** Clear all active incidents and restore CONNECTED status. */
   clearIncident(): void;
+  /** Push a new Credit RFQs filter (drives RfqsPanel's re-render + entrance cascade). */
+  setCreditRfqFilter(filter: CreditRfqFilter): void;
 }
 
 /** Base class for all page objects. Provides the neutral update drivers. */
@@ -128,6 +135,11 @@ export abstract class MountedComponent<P> {
     this.ctx.setSessions(value);
   }
 
+  /** Push a new session-count series → re-render the Active Sessions KPI card. */
+  setSessionCountSeries(value: readonly MetricSample[]): void {
+    this.ctx.setSessionCountSeries(value);
+  }
+
   /** Patch the metric series → re-render the subscribing gauges/charts. */
   setMetrics(patch: Partial<MetricsView>): void {
     this.ctx.setMetrics(patch);
@@ -141,5 +153,10 @@ export abstract class MountedComponent<P> {
   /** Clear all active incidents → restore CONNECTED status. */
   clearIncident(): void {
     this.ctx.clearIncident();
+  }
+
+  /** Push a new Credit RFQs filter → re-render the subscribing RfqsPanel. */
+  setCreditRfqFilter(filter: CreditRfqFilter): void {
+    this.ctx.setCreditRfqFilter(filter);
   }
 }

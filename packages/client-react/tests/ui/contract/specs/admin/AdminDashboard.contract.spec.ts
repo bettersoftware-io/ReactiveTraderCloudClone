@@ -17,6 +17,11 @@ afterEach(() => {
 });
 
 describe("AdminDashboard", () => {
+  it("renders the KPI row", () => {
+    const dash = mount(AdminDashboard, {});
+    expect(dash.hasKpiRow()).toBe(true);
+  });
+
   it("renders the incident-controls panel", () => {
     const dash = mount(AdminDashboard, {});
     expect(dash.hasIncidentControls()).toBe(true);
@@ -47,8 +52,27 @@ describe("AdminDashboard", () => {
     expect(dash.hasLatencyHistogram()).toBe(true);
   });
 
-  it("renders the error rate panel", () => {
+  it("renders the service-health list", () => {
     const dash = mount(AdminDashboard, {});
-    expect(dash.hasErrorRate()).toBe(true);
+    expect(dash.hasServiceHealth()).toBe(true);
+  });
+
+  it("renders the throughput-control card (AdminPanel) in the retained row", () => {
+    const dash = mount(AdminDashboard, {});
+    expect(dash.hasThroughputControl()).toBe(true);
+  });
+
+  it("renders regions top-to-bottom: KPIs, charts, health+events, then the retained row", () => {
+    const dash = mount(AdminDashboard, {});
+    expect(dash.regionOrder()).toEqual([
+      "admin-kpi-row",
+      "admin-throughput-chart",
+      "admin-latency-histogram",
+      "admin-service-health",
+      "admin-event-log",
+      "admin-topology",
+      "admin-sessions",
+      "admin-incident-controls",
+    ]);
   });
 });

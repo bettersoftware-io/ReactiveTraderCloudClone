@@ -5,11 +5,12 @@
 }
 
 .label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  line-height: 13px;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0.12em;
+  color: var(--accent-primary);
 }
 
 .buttons {
