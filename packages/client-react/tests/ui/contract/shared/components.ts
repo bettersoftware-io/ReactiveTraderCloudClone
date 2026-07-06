@@ -113,11 +113,17 @@ import {
   DeskPnlGaugePage,
   type DeskPnlGaugeProps,
 } from "./pages/equities/DeskPnlGaugePage";
+import { EqBlotterHeadPage } from "./pages/equities/EqBlotterHeadPage";
+import { EqBlotterPanelPage } from "./pages/equities/EqBlotterPanelPage";
 import { EqTicketHeadPage } from "./pages/equities/EqTicketHeadPage";
 import { EquitiesPanelPage } from "./pages/equities/EquitiesPanelPage";
 import { EqWatchlistHeadPage } from "./pages/equities/EqWatchlistHeadPage";
 import { InstrumentTabsPage } from "./pages/equities/InstrumentTabsPage";
 import { OrdersBlotterPage } from "./pages/equities/OrdersBlotterPage";
+import {
+  OrdersTablePage,
+  type OrdersTableProps,
+} from "./pages/equities/OrdersTablePage";
 import {
   OrderTicketPage,
   type OrderTicketProps,
@@ -127,6 +133,10 @@ import {
   type PnlSparklineProps,
 } from "./pages/equities/PnlSparklinePage";
 import { PositionsBlotterPage } from "./pages/equities/PositionsBlotterPage";
+import {
+  PositionsTablePage,
+  type PositionsTableProps,
+} from "./pages/equities/PositionsTablePage";
 import {
   PriceChartPage,
   type PriceChartProps,
@@ -592,6 +602,33 @@ export const DeskPnlGauge = component<DeskPnlGaugeProps, DeskPnlGaugePage>(
     return new DeskPnlGaugePage(ctx);
   },
 );
+
+export const OrdersTable = component<OrdersTableProps, OrdersTablePage>(
+  (ctx) => {
+    return new OrdersTablePage(ctx);
+  },
+);
+
+export const PositionsTable = component<
+  PositionsTableProps,
+  PositionsTablePage
+>((ctx) => {
+  return new PositionsTablePage(ctx);
+});
+
+export const EqBlotterPanel = component<
+  Record<string, never>,
+  EqBlotterPanelPage
+>((ctx) => {
+  return new EqBlotterPanelPage(ctx);
+});
+
+export const EqBlotterHead = component<
+  Record<string, never>,
+  EqBlotterHeadPage
+>((ctx) => {
+  return new EqBlotterHeadPage(ctx);
+});
 
 export const PnlSparkline = component<PnlSparklineProps, PnlSparklinePage>(
   (ctx) => {

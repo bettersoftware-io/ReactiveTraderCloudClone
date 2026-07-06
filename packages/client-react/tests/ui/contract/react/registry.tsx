@@ -14,6 +14,7 @@ import type {
   CurrencyPairPosition,
   Dealer,
   Direction,
+  EquityOrder,
   EquityPosition,
   EquityQuote,
   HistoricPosition,
@@ -47,9 +48,13 @@ import { RfqTilesPanel as RfqTilesPanelComponent } from "#/ui/credit/rfqTiles/Rf
 import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
 import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
 import { DeskPnlGauge as DeskPnlGaugeComponent } from "#/ui/equities/blotter/DeskPnlGauge";
+import { EqBlotterHead as EqBlotterHeadComponent } from "#/ui/equities/blotter/EqBlotterHead";
+import { EqBlotterPanel as EqBlotterPanelComponent } from "#/ui/equities/blotter/EqBlotterPanel";
 import { OrdersBlotter as OrdersBlotterComponent } from "#/ui/equities/blotter/OrdersBlotter";
+import { OrdersTable as OrdersTableComponent } from "#/ui/equities/blotter/OrdersTable";
 import { PnlSparkline as PnlSparklineComponent } from "#/ui/equities/blotter/PnlSparkline";
 import { PositionsBlotter as PositionsBlotterComponent } from "#/ui/equities/blotter/PositionsBlotter";
+import { PositionsTable as PositionsTableComponent } from "#/ui/equities/blotter/PositionsTable";
 import { CandleChart as CandleChartComponent } from "#/ui/equities/chart/CandleChart";
 import { ChartPanel as ChartPanelComponent } from "#/ui/equities/chart/ChartPanel";
 import type { ChartVm } from "#/ui/equities/chart/chartVm";
@@ -135,6 +140,8 @@ import {
   DateFilter,
   DepthLadder,
   DeskPnlGauge,
+  EqBlotterHead,
+  EqBlotterPanel,
   EqChartHead,
   EqTicketHead,
   EquitiesPanel,
@@ -156,6 +163,7 @@ import {
   NewRfqForm,
   NumberFilter,
   OrdersBlotter,
+  OrdersTable,
   OrderTicket,
   PairPnlBars,
   PnlChart,
@@ -164,6 +172,7 @@ import {
   PositionsBlotter,
   PositionsHead,
   PositionsPanel,
+  PositionsTable,
   PreferencesModal,
   PriceChart,
   QuickFilter,
@@ -885,6 +894,39 @@ export const registry = new Map<AnyToken, ElementFor>([
     EquitiesPanel,
     (): ReactElement => {
       return <EquitiesPanelComponent />;
+    },
+  ],
+  [
+    OrdersTable,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <OrdersTableComponent
+          orders={(p.orders as readonly EquityOrder[]) ?? []}
+          newOrderId={(p.newOrderId as string | null) ?? null}
+        />
+      );
+    },
+  ],
+  [
+    PositionsTable,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PositionsTableComponent
+          positions={(p.positions as readonly EquityPosition[]) ?? []}
+        />
+      );
+    },
+  ],
+  [
+    EqBlotterPanel,
+    (): ReactElement => {
+      return <EqBlotterPanelComponent />;
+    },
+  ],
+  [
+    EqBlotterHead,
+    (): ReactElement => {
+      return <EqBlotterHeadComponent />;
     },
   ],
   // Admin / telemetry components (Phase 5 Task 8)
