@@ -126,6 +126,7 @@ export type {
 // Preferences
 export type {
   BootVariant,
+  CreditRfqFilter,
   ThemeMode,
   ThemeModePreference,
   ThemeSkin,
@@ -133,6 +134,7 @@ export type {
 } from "./preferences/preferences.js";
 export {
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,

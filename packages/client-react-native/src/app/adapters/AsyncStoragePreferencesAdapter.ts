@@ -3,7 +3,9 @@ import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
 import {
   type BootVariant,
+  type CreditRfqFilter,
   DEFAULT_BOOT_VARIANT,
+  DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -19,6 +21,7 @@ export const THEME_SKIN_STORAGE_KEY = "rtc-theme-skin";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
+export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 
 function isThemeModePreference(
   value: string | null,
@@ -36,6 +39,10 @@ function isViewMode(value: string | null): value is ViewMode {
 
 function isBootVariant(value: string | null): value is BootVariant {
   return value === "core" || value === "laser" || value === "docking";
+}
+
+function isCreditRfqFilter(value: string | null): value is CreditRfqFilter {
+  return value === "live" || value === "closed" || value === "all";
 }
 
 /**
@@ -65,20 +72,30 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     DEFAULT_BOOT_VARIANT,
   );
 
+  private readonly creditRfqFilterSubject =
+    new BehaviorSubject<CreditRfqFilter>(DEFAULT_CREDIT_RFQ_FILTER);
+
   constructor() {
     void this.hydrate();
   }
 
   private async hydrate(): Promise<void> {
     try {
-      const [themeMode, themeSkin, viewMode, animatedBg, bootVariant] =
-        await Promise.all([
-          AsyncStorage.getItem(THEME_STORAGE_KEY),
-          AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
-          AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
-          AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
-          AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
-        ]);
+      const [
+        themeMode,
+        themeSkin,
+        viewMode,
+        animatedBg,
+        bootVariant,
+        creditRfqFilter,
+      ] = await Promise.all([
+        AsyncStorage.getItem(THEME_STORAGE_KEY),
+        AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
+        AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
+        AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
+        AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
+        AsyncStorage.getItem(CREDIT_RFQ_FILTER_STORAGE_KEY),
+      ]);
 
       if (isThemeModePreference(themeMode)) this.themeMode.next(themeMode);
       if (isThemeSkin(themeSkin)) this.themeSkin.next(themeSkin);
@@ -88,6 +105,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
       if (isBootVariant(bootVariant)) {
         this.bootVariantSubject.next(bootVariant);
+      }
+
+      if (isCreditRfqFilter(creditRfqFilter)) {
+        this.creditRfqFilterSubject.next(creditRfqFilter);
       }
     } catch {
       // AsyncStorage may be unavailable — keep the seeded defaults.
@@ -142,5 +163,16 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       () => {},
     );
     this.bootVariantSubject.next(variant);
+  }
+
+  creditRfqFilter$(): Observable<CreditRfqFilter> {
+    return this.creditRfqFilterSubject.pipe(distinctUntilChanged());
+  }
+
+  setCreditRfqFilter(filter: CreditRfqFilter): void {
+    void AsyncStorage.setItem(CREDIT_RFQ_FILTER_STORAGE_KEY, filter).catch(
+      () => {},
+    );
+    this.creditRfqFilterSubject.next(filter);
   }
 }

@@ -1,9 +1,10 @@
-import type { ReactElement } from "react";
+import type { CSSProperties, ReactElement } from "react";
 import { useState } from "react";
 
 import {
   type CreditTrade,
   type Dealer,
+  Direction,
   type Instrument,
   type Quote,
   type Rfq,
@@ -12,7 +13,6 @@ import {
 import { useViewModel } from "@rtc/react-bindings";
 
 import { BlotterHeader } from "#/ui/fx/blotter/BlotterHeader";
-import { BlotterRow } from "#/ui/fx/blotter/BlotterRow";
 import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 import { applyFilters } from "#/ui/fx/blotter/columnFilter/filterState";
 import {
@@ -62,6 +62,34 @@ export function CreditBlotter(): ReactElement {
 
   const trades = deriveTrades(rfqs, allQuotes, instrumentMap, dealerMap);
 
+  // PROTO CreditScreen newCreditId / useCreditRfqs's timer-cleared flash
+  // window, re-derived without a clock: src/ui may not schedule timers or read
+  // the wall clock (tests/scripts/grep-gates.ts gate 29 and siblings — see
+  // rfqCardAnim.ts for the fuller-featured version of this same technique).
+  // A trade id absent from the previous render's FULL id set is "just booked"
+  // for exactly one id-set change; React's "adjust state during render"
+  // pattern (react.dev) folds the previous snapshot forward the instant the
+  // id set changes, so the CSS entrance animation (gated on data-new, one-shot
+  // by construction) plays once per newly-booked trade with no timer to clear.
+  const tradeIds = trades.map((t) => {
+    return t.tradeId;
+  });
+  const tradeIdsKey = tradeIds.join(",");
+  const [prevTradeIds, setPrevTradeIds] = useState<TradeIdSnapshot>(() => {
+    return { key: tradeIdsKey, ids: new Set(tradeIds) };
+  });
+  const [newTradeIds, setNewTradeIds] = useState<ReadonlySet<number>>(
+    new Set(),
+  );
+
+  if (tradeIdsKey !== prevTradeIds.key) {
+    const justAppeared = tradeIds.filter((id) => {
+      return !prevTradeIds.ids.has(id);
+    });
+    setNewTradeIds(new Set(justAppeared));
+    setPrevTradeIds({ key: tradeIdsKey, ids: new Set(tradeIds) });
+  }
+
   function handleSort(column: keyof CreditTrade): void {
     setSort((prev) => {
       return nextSortDirection(column, prev, CREDIT_DESC_FIRST);
@@ -104,6 +132,12 @@ export function CreditBlotter(): ReactElement {
             </span>
           )}
         </div>
+      </div>
+
+      {/* PROTO Blotter/CreditBlotterPanel.tsx `.controls` sub-head: trade
+       * count + the CSV export chip, over the sticky column-header row. */}
+      <div className={styles.controls}>
+        <span className={styles.count}>{processedTrades.length} trades</span>
         <button
           type="button"
           data-testid="export-csv"
@@ -115,9 +149,9 @@ export function CreditBlotter(): ReactElement {
               CREDIT_CSV_UNFORMATTED,
             );
           }}
-          className={styles.exportBtn}
+          className={styles.csvBtn}
         >
-          Export CSV
+          ⤓ CSV
         </button>
       </div>
 
@@ -135,14 +169,25 @@ export function CreditBlotter(): ReactElement {
           </thead>
           <tbody>
             {processedTrades.map((trade) => {
+              const acc = rowAccentVar(trade.direction);
+
               return (
-                <BlotterRow
+                <tr
                   key={trade.tradeId}
-                  trade={trade}
-                  isNew={false}
-                  columns={CREDIT_COLUMNS}
-                  format={formatCreditCell}
-                />
+                  data-new={newTradeIds.has(trade.tradeId) ? "true" : undefined}
+                  data-dir={trade.direction}
+                  className={styles.row}
+                  // eslint-disable-next-line no-restricted-syntax -- runtime direction accent via CSS custom property; static CSS can't express it
+                  style={{ "--row-acc": acc } as CSSProperties}
+                >
+                  {CREDIT_COLUMNS.map((col) => {
+                    return (
+                      <td key={String(col.key)} className={styles.cell}>
+                        {formatCreditCell(trade, col)}
+                      </td>
+                    );
+                  })}
+                </tr>
               );
             })}
             {processedTrades.length === 0 && (
@@ -162,6 +207,15 @@ export function CreditBlotter(): ReactElement {
       </div>
     </div>
   );
+}
+
+// PROTO Blotter/CreditBlotterPanel.tsx rowAccent(): the entrance flash's
+// accent colour — the trade's own Buy/Sell direction, mapped to this app's
+// positive/negative accent tokens (PROTO's flat --buy/--sell equivalents).
+function rowAccentVar(direction: Direction): string {
+  return direction === Direction.Buy
+    ? "var(--accent-positive)"
+    : "var(--accent-negative)";
 }
 
 function deriveTrades(
@@ -201,4 +255,11 @@ function deriveTrades(
   return trades.sort((a, b) => {
     return b.tradeId - a.tradeId;
   });
+}
+
+/** A trade-id-set snapshot, taken across renders to detect "just booked"
+ * arrivals (see the new-trade flash comment above). */
+interface TradeIdSnapshot {
+  key: string;
+  ids: ReadonlySet<number>;
 }

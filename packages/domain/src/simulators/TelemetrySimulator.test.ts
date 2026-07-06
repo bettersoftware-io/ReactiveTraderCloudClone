@@ -22,7 +22,11 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
     const values = (await p).map((s) => {
       return s.value;
     });
-    const unique = new Set(values.map((v) => {return Math.round(v * 1000)}));
+    const unique = new Set(
+      values.map((v) => {
+        return Math.round(v * 1000);
+      }),
+    );
     expect(unique.size).toBeGreaterThan(1);
   });
 

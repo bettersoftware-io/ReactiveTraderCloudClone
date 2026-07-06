@@ -7,6 +7,7 @@ import type {
   ThroughputView,
 } from "@rtc/client-core";
 import type {
+  CreditRfqFilter,
   EquityOrder,
   LogEvent,
   MetricSample,
@@ -59,6 +60,8 @@ export interface MountOptions<P> {
   equities?: EquitiesSeed;
   /** Seed the admin / telemetry streams (useTopology / useEventLog / useSessions / useMetrics). */
   admin?: AdminSeed;
+  /** Seed the initial Credit RFQs filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER. */
+  creditRfqFilter?: CreditRfqFilter;
 }
 
 const mounted: MountedRoot[] = [];
@@ -159,6 +162,11 @@ function buildContext<P>(
         return world.clearIncident();
       });
     },
+    setCreditRfqFilter: (filter: CreditRfqFilter) => {
+      return flush(() => {
+        return world.setCreditRfqFilter(filter);
+      });
+    },
   };
 }
 
@@ -178,6 +186,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.session,
     opts.equities,
     opts.admin,
+    opts.creditRfqFilter,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

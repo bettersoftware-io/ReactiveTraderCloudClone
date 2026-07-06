@@ -43,7 +43,7 @@ describe("Theme", () => {
     theme.expectFirstPriceTileVisible(ctx, 5_000);
     theme.toggleAndCaptureBackgrounds(ctx);
     common.clickTab(ctx, "credit");
-    theme.expectCreditNavVisible(ctx);
+    theme.expectCreditDockVisible(ctx);
     common.clickTab(ctx, "admin");
     common.clickTab(ctx, "fx");
     theme.expectFirstPriceTileVisible(ctx, 5_000);

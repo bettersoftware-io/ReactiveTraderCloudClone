@@ -4,6 +4,7 @@ import type {
   ThroughputView,
 } from "@rtc/client-core";
 import type {
+  CreditRfqFilter,
   EquityOrder,
   LogEvent,
   MetricSample,
@@ -52,6 +53,8 @@ export interface PageContext<P> {
   injectIncident(kind: IncidentKind): void;
   /** Clear all active incidents and restore CONNECTED status. */
   clearIncident(): void;
+  /** Push a new Credit RFQs filter (drives RfqsPanel's re-render + entrance cascade). */
+  setCreditRfqFilter(filter: CreditRfqFilter): void;
 }
 
 /** Base class for all page objects. Provides the neutral update drivers. */
@@ -150,5 +153,10 @@ export abstract class MountedComponent<P> {
   /** Clear all active incidents → restore CONNECTED status. */
   clearIncident(): void {
     this.ctx.clearIncident();
+  }
+
+  /** Push a new Credit RFQs filter → re-render the subscribing RfqsPanel. */
+  setCreditRfqFilter(filter: CreditRfqFilter): void {
+    this.ctx.setCreditRfqFilter(filter);
   }
 }
