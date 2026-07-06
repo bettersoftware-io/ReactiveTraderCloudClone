@@ -11,7 +11,7 @@
 // SPOT_VALUE_DAYS (2) to `from`, so the instant below is the one that
 // reproduces that date — it also matches formatSpotDate.test.ts's own fixture
 // (`new Date("2026-07-02T09:00:00Z")`, offsetDays 2 → "04 Jul").
-export const PINNED_INSTANT = "2026-07-02T09:00:00.000Z";
+const PINNED_INSTANT = "2026-07-02T09:00:00.000Z";
 
 const pinnedMs = Date.parse(PINNED_INSTANT);
 
