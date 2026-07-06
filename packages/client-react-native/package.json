@@ -16,6 +16,7 @@
   },
   "scripts": {
     "start": "expo start",
+    "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests && jest",
     "build": "tsc --noEmit",
