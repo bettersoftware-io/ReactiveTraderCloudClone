@@ -4,6 +4,7 @@
 
 import type {
   ActivityEntry,
+  EqWorkspaceState,
   IncidentKind,
   NotionalView,
   OrderTicketState,
@@ -111,6 +112,9 @@ export interface AppData {
   equityPositions?: readonly EquityPosition[];
   /** Order ticket state (useOrderTicket) — overrides the default editing stub. */
   equityOrderTicket?: OrderTicketState;
+  /** Eq workspace state (useEqWorkspace) — selected symbol / open tabs /
+   * timeframe; defaults to { sel: "", openTabs: [], timeframe: "1D" }. */
+  equityWorkspace?: EqWorkspaceState;
 }
 
 /** A fully-populated empty baseline; fixtures override only what they exercise. */

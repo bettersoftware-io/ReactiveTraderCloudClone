@@ -8,6 +8,8 @@ import {
   type BootSequenceState,
   createRfqCountdownMachine,
   DEMO_USER,
+  type EqWorkspaceIntents,
+  type EqWorkspaceState,
   type IncidentIntents,
   type IncidentKind,
   type IncidentState,
@@ -82,6 +84,9 @@ type UseThroughputResult = ThroughputView & {
   setValue: (value: number) => void;
 };
 type UseOrderTicketResult = { state: OrderTicketState } & OrderTicketIntents;
+type UseEqWorkspaceResult = {
+  state: EqWorkspaceState;
+} & EqWorkspaceIntents;
 
 interface MetricsView {
   throughput: readonly MetricSample[];
@@ -202,6 +207,12 @@ export interface ViewModel {
   useEquityPositions: () => readonly EquityPosition[];
   /** Per-mount order ticket machine — editing/submitting/working/filled/rejected state plus intents. */
   useOrderTicket: (defaultSymbol: string) => UseOrderTicketResult;
+  /** Shared equities workspace state — selected symbol, open instrument tabs,
+   * and chart timeframe. One machine instance for the whole app (a
+   * composition-root singleton, not per-mount): the chart, instrument-tabs,
+   * and watchlist panels are independent engine cells that read/write this
+   * one shared source of truth. */
+  useEqWorkspace: () => UseEqWorkspaceResult;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -419,6 +430,29 @@ export function createViewModel(
     presenters.incident.intents.clear();
   }
 
+  // Eq workspace machine — shared single instance, bind its state$ (not
+  // per-mount useMachine): the chart/tabs/watchlist panels must all observe
+  // the same selection, so this mirrors the incident machine's wiring above
+  // rather than the per-mount useMachine bridge used for useOrderTicket etc.
+  const [useEqWorkspaceState] = bind(presenters.eqWorkspace.state$, {
+    sel: "",
+    openTabs: [] as readonly string[],
+    timeframe: "1D" as CandleTimeframe,
+  });
+
+  // Stable callbacks for eqWorkspace intents (this-safe; arrow functions).
+  function selectEqSymbol(sym: string): void {
+    presenters.eqWorkspace.intents.select(sym);
+  }
+
+  function closeEqTab(sym: string): void {
+    presenters.eqWorkspace.intents.closeTab(sym);
+  }
+
+  function setEqTimeframe(tf: CandleTimeframe): void {
+    presenters.eqWorkspace.intents.setTimeframe(tf);
+  }
+
   return {
     usePrice,
     usePriceHistory,
@@ -550,6 +584,14 @@ export function createViewModel(
       return useMachine(() => {
         return machines.orderTicket(defaultSymbol);
       });
+    },
+    useEqWorkspace: () => {
+      return {
+        state: useEqWorkspaceState(),
+        select: selectEqSymbol,
+        closeTab: closeEqTab,
+        setTimeframe: setEqTimeframe,
+      };
     },
     useMetrics: () => {
       return {

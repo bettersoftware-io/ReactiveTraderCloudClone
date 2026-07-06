@@ -4,6 +4,7 @@ import type {
   BootVariant,
   ConnectionEvent,
   CurrencyPair,
+  EquityInstrument,
   ExecuteTradeInput,
 } from "@rtc/domain";
 
@@ -23,6 +24,7 @@ import {
   ConnectionStatusPresenter,
   CurrencyPairsPresenter,
   createBootSequenceMachine,
+  createEqWorkspaceMachine,
   createIncidentMachine,
   createLayoutMachine,
   createNotionalMachine,
@@ -33,6 +35,8 @@ import {
   createTileExecutionMachine,
   DealersPresenter,
   DepthPresenter,
+  type EqWorkspaceIntents,
+  type EqWorkspaceState,
   ErrorRatePresenter,
   EventLogPresenter,
   type IncidentIntents,
@@ -108,6 +112,9 @@ export interface Presenters {
   positions: PositionsPresenter;
   /** Phase 5 Admin: incident injection + connection-seam control. */
   incident: Machine<IncidentState, IncidentIntents>;
+  /** Equities: cross-panel selected-symbol / open-tabs / timeframe state,
+   * shared by the chart, instrument-tabs, and watchlist panels. */
+  eqWorkspace: Machine<EqWorkspaceState, EqWorkspaceIntents>;
   /** Phase 5 Admin: per-metric rolling window series for charts. */
   throughputMetric: ThroughputMetricPresenter;
   latencyMetric: LatencyPresenter;
@@ -148,6 +155,27 @@ export const reconnect$ = new Subject<ReconnectIntent>();
  */
 export const incident$ = new Subject<ConnectionEvent>();
 
+/** One-shot synchronous peek at the watchlist's first symbol, used only to
+ * seed EqWorkspaceMachine's initial tab/selection at composition time. The
+ * simulator port's `watchlist()` is `of(WATCHLIST)` — it emits synchronously,
+ * so this reliably captures "AAPL" (or whatever heads the catalogue) before
+ * `createApp` returns. A real WS backend's `watchlist()` arrives over the
+ * wire (not synchronously) — this peek then finds nothing and falls back to
+ * "", same as EquitiesPanel's existing `instruments[0]?.symbol ?? ""` guard
+ * tolerates before the watchlist has loaded. The peek subscribes and
+ * immediately unsubscribes; `watchlist$`'s `shareReplay({refCount: true})`
+ * tears down and restarts cleanly for whichever component subscribes next. */
+function peekFirstWatchlistSymbol(
+  watchlist$: Observable<readonly EquityInstrument[]>,
+): string {
+  let first = "";
+  const sub = watchlist$.subscribe((list) => {
+    if (first === "" && list.length > 0) first = list[0]?.symbol ?? "";
+  });
+  sub.unsubscribe();
+  return first;
+}
+
 export function createApp(ports: AppPorts): App {
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
@@ -160,6 +188,9 @@ export function createApp(ports: AppPorts): App {
   // Hoisted so the AnimationDirector can consume its fills$ stream for ticket
   // fill-flash choreography (Phase 4 equities).
   const ordersBlotter = new OrdersBlotterPresenter(ports.orders);
+  // Hoisted so eqWorkspace can seed its initial selection from the first
+  // watchlist symbol (see peekFirstWatchlistSymbol below).
+  const watchlist = new WatchlistPresenter(ports.marketData);
 
   // Fall back to a light-always scheme when no OS color-scheme source is provided
   // (tests, simulator, environments without matchMedia).
@@ -202,7 +233,7 @@ export function createApp(ports: AppPorts): App {
     bootPreference: new BootPreferencePresenter(ports.preferences),
     // Session lock/unlock state over the static demo user (no real auth backend).
     session: new SessionPresenter(),
-    watchlist: new WatchlistPresenter(ports.marketData),
+    watchlist,
     candleSeries: new CandleSeriesPresenter(ports.marketData),
     depth: new DepthPresenter(ports.marketData),
     ordersBlotter,
@@ -212,6 +243,9 @@ export function createApp(ports: AppPorts): App {
       pushConnectionEvent: (ev: ConnectionEvent) => {
         return incident$.next(ev);
       },
+    }),
+    eqWorkspace: createEqWorkspaceMachine({
+      initialSymbol: peekFirstWatchlistSymbol(watchlist.watchlist$),
     }),
     throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
     latencyMetric: new LatencyPresenter(ports.telemetry),

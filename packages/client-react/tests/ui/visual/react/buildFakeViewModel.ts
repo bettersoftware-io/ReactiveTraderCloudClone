@@ -291,5 +291,19 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         clear: noop,
       };
     },
+    // Eq workspace: static snapshot for screenshots; intents are no-ops (no
+    // tab switch/close/timeframe change during capture).
+    useEqWorkspace: () => {
+      return {
+        state: data.equityWorkspace ?? {
+          sel: "",
+          openTabs: [],
+          timeframe: "1D",
+        },
+        select: noop,
+        closeTab: noop,
+        setTimeframe: noop,
+      };
+    },
   };
 }

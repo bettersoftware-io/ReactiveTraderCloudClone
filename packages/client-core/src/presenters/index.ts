@@ -9,6 +9,7 @@ export * from "#/presenters/ConnectionStatusPresenter";
 export * from "#/presenters/CurrencyPairsPresenter";
 export * from "#/presenters/DealersPresenter";
 export * from "#/presenters/DepthPresenter";
+export * from "#/presenters/EqWorkspaceMachine";
 export * from "#/presenters/ErrorRatePresenter";
 export * from "#/presenters/EventLogPresenter";
 export * from "#/presenters/IncidentMachine";

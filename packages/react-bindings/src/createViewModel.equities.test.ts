@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -86,6 +86,84 @@ describe("createViewModel — equities hooks", () => {
     });
     expect(typeof result.current.submit).toBe("function");
     expect(result.current.state).toBeDefined();
+  });
+
+  it("useEqWorkspace starts selected on the first watchlist symbol with it as the sole open tab, timeframe 1D", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+    // The simulator's watchlist heads with AAPL (EquityMarketDataSimulator's
+    // WATCHLIST) — the composition root's synchronous peek seeds eqWorkspace
+    // with it, exercising the real end-to-end wiring (not a stub timeframe).
+    expect(result.current.state.sel).toBe("AAPL");
+    expect(result.current.state.openTabs).toEqual(["AAPL"]);
+    expect(result.current.state.timeframe).toBe("1D");
+  });
+
+  it("useEqWorkspace().select opens a new tab and selects it, shared across every hook call", () => {
+    const hooks = makeHooks();
+    const first = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+    const second = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+
+    act(() => {
+      first.result.current.select("MSFT");
+    });
+
+    // Both hook calls observe the same shared machine (composition-root
+    // singleton), not independent per-mount instances.
+    expect(first.result.current.state.sel).toBe("MSFT");
+    expect(first.result.current.state.openTabs).toEqual(["AAPL", "MSFT"]);
+    expect(second.result.current.state.sel).toBe("MSFT");
+    expect(second.result.current.state.openTabs).toEqual(["AAPL", "MSFT"]);
+  });
+
+  it("useEqWorkspace().closeTab falls back selection to the nearest remaining tab", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+
+    act(() => {
+      result.current.select("MSFT");
+    });
+    act(() => {
+      result.current.closeTab("AAPL");
+    });
+
+    expect(result.current.state.sel).toBe("MSFT");
+    expect(result.current.state.openTabs).toEqual(["MSFT"]);
+  });
+
+  it("useEqWorkspace().closeTab never empties the last remaining tab", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+
+    act(() => {
+      result.current.closeTab("AAPL");
+    });
+
+    expect(result.current.state.sel).toBe("AAPL");
+    expect(result.current.state.openTabs).toEqual(["AAPL"]);
+  });
+
+  it("useEqWorkspace().setTimeframe updates the shared timeframe", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useEqWorkspace();
+    });
+
+    act(() => {
+      result.current.setTimeframe("1M");
+    });
+
+    expect(result.current.state.timeframe).toBe("1M");
   });
 });
 

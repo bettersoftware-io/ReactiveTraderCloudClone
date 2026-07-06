@@ -56,6 +56,39 @@ function useSubject<T>(subject: BehaviorSubject<T>): T {
   );
 }
 
+interface Unsubscribable {
+  unsubscribe(): void;
+}
+
+/** A warmed `@rx-state/core` `StateObservable` — structurally typed here (not
+ * imported by name) so this test-only package doesn't need its own dependency
+ * on `@rx-state/core` (a transitive dep via `@rtc/client-core`). */
+interface PeekableState<T> {
+  subscribe(onNext: (v: T) => void): Unsubscribable;
+  getValue(): T | Promise<T>;
+}
+
+/** Subscribe a React component to a shared machine's `state$` (mirrors
+ * useSubject, for the eqWorkspace singleton which — unlike the per-mount
+ * `useMachine`-bridged machines — is constructed once for the whole World). */
+function useMachineState<T>(state$: PeekableState<T>): T {
+  return useSyncExternalStore(
+    (onChange) => {
+      const sub = state$.subscribe(onChange);
+
+      return () => {
+        return sub.unsubscribe();
+      };
+    },
+    () => {
+      const v = state$.getValue();
+      if (v instanceof Promise)
+        throw new Error("eqWorkspace state$ not initialized");
+      return v;
+    },
+  );
+}
+
 /** Build a reactive ViewModel backed by the neutral World. */
 export function reactViewModel(world: World): ViewModel {
   const s = world.sources;
@@ -413,6 +446,20 @@ export function reactViewModel(world: World): ViewModel {
           defaultSymbol,
         });
       });
+    },
+    // Eq workspace: the REAL createEqWorkspaceMachine, one shared instance for
+    // the whole World (world.eqWorkspace) — NOT a per-mount useMachine, so
+    // every component reading useEqWorkspace() through this World observes the
+    // same selection/open-tabs/timeframe, mirroring the app's composition-root
+    // singleton wiring.
+    useEqWorkspace: () => {
+      const state = useMachineState(world.eqWorkspace.state$);
+      return {
+        state,
+        select: world.eqWorkspace.intents.select,
+        closeTab: world.eqWorkspace.intents.closeTab,
+        setTimeframe: world.eqWorkspace.intents.setTimeframe,
+      };
     },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real

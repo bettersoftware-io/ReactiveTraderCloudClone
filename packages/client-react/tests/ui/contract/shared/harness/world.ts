@@ -3,11 +3,18 @@ import { BehaviorSubject, Subject } from "rxjs";
 import type {
   ActivityEntry,
   AnimationIntent,
+  EqWorkspaceState,
   IncidentKind,
   IncidentState,
   ThroughputView,
 } from "@rtc/client-core";
-import { DEMO_USER, type SessionState } from "@rtc/client-core";
+import {
+  createEqWorkspaceMachine,
+  DEMO_USER,
+  type EqWorkspaceIntents,
+  type Machine,
+  type SessionState,
+} from "@rtc/client-core";
 import {
   type Candle,
   ConnectionStatus,
@@ -98,6 +105,10 @@ export interface EquitiesSeed {
   quotes?: Readonly<Record<string, EquityQuote | null>>;
   candles?: Readonly<Record<string, readonly Candle[]>>;
   depth?: Readonly<Record<string, DepthBook | null>>;
+  /** Seeds the eqWorkspace machine's initial selection/open tab (mirrors the
+   * composition root's synchronous first-watchlist-symbol peek). Defaults to
+   * `watchlist`'s first symbol, or "" if neither is provided. */
+  initialSymbol?: string;
 }
 
 /** The combined metric series for useMetrics(). */
@@ -228,6 +239,11 @@ export interface World {
   setDepth(symbol: string, value: DepthBook | null): void;
   /** Advance the OrderTicket lifecycle by emitting one EquityOrder into place(). */
   pushOrderLifecycle(order: EquityOrder): void;
+  /** The REAL createEqWorkspaceMachine, one shared instance for the whole
+   * World — mirrors the composition root's singleton wiring so every panel
+   * reading useEqWorkspace() through this World observes the same selection/
+   * open-tabs/timeframe state. */
+  readonly eqWorkspace: Machine<EqWorkspaceState, EqWorkspaceIntents>;
   // Admin / telemetry streams (Phase 5)
   /** Reactive service topology backing useTopology. Null until first push. */
   readonly topology$: BehaviorSubject<ServiceTopology | null>;
@@ -357,6 +373,10 @@ export function createWorld(
     equitiesSeed.positions ?? [],
   );
   const orderLifecycle = new Subject<EquityOrder>();
+  const eqWorkspace = createEqWorkspaceMachine({
+    initialSymbol:
+      equitiesSeed.initialSymbol ?? equitiesSeed.watchlist?.[0]?.symbol ?? "",
+  });
 
   const equityQuotes = new Map<string, BehaviorSubject<EquityQuote | null>>();
   const candleSeries = new Map<string, BehaviorSubject<readonly Candle[]>>();
@@ -557,6 +577,7 @@ export function createWorld(
     pushOrderLifecycle: (order: EquityOrder) => {
       return orderLifecycle.next(order);
     },
+    eqWorkspace,
     // Admin subjects
     topology$,
     eventLog$,
