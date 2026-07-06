@@ -115,6 +115,8 @@ import {
 } from "./pages/equities/DeskPnlGaugePage";
 import { EqBlotterHeadPage } from "./pages/equities/EqBlotterHeadPage";
 import { EqBlotterPanelPage } from "./pages/equities/EqBlotterPanelPage";
+import { EqDepthDockPage } from "./pages/equities/EqDepthDockPage";
+import { EqSectorsDockPage } from "./pages/equities/EqSectorsDockPage";
 import { EqTicketHeadPage } from "./pages/equities/EqTicketHeadPage";
 import { EqWatchlistHeadPage } from "./pages/equities/EqWatchlistHeadPage";
 import { InstrumentTabsPage } from "./pages/equities/InstrumentTabsPage";
@@ -563,6 +565,22 @@ export const DepthLadder = component<DepthLadderProps, DepthLadderPage>(
     return new DepthLadderPage(ctx);
   },
 );
+
+// eq-depth/eq-sectors dock registrations (Task 6): connecting wrappers that
+// feed the shared eqWorkspace selection to DepthLadder/SectorHeatmap, the
+// props-driven leaves above.
+export const EqDepthDock = component<Record<string, never>, EqDepthDockPage>(
+  (ctx) => {
+    return new EqDepthDockPage(ctx);
+  },
+);
+
+export const EqSectorsDock = component<
+  Record<string, never>,
+  EqSectorsDockPage
+>((ctx) => {
+  return new EqSectorsDockPage(ctx);
+});
 
 export const DeskPnlGauge = component<DeskPnlGaugeProps, DeskPnlGaugePage>(
   (ctx) => {

@@ -40,3 +40,79 @@ test("equities/ticket-filled", async ({ mount }) => {
     animations: "disabled",
   });
 });
+
+// --- Task 7: four-panel-dock replacement scenarios ---
+
+test("equities/chart-panel", async ({ mount }) => {
+  // ChartPanel body only (the instrument-tabs strip lives in EqChartHead, the
+  // panel's separate headControls slot — not part of ChartPanel itself, same
+  // split as LiveRatesPanel/LiveRatesHead): instrument header (AAPL) +
+  // candlestick plot, seeded via equitiesBase's equityWorkspace (sel "AAPL").
+  const c = await mount(<VisualScenario name="equities/chart-panel" />);
+  await expect(c.getByTestId("instrument-header")).toBeVisible();
+  await expect(c.getByTestId("instrument-header-last")).toHaveText("178.50");
+  await expect(c).toHaveScreenshot("chart-panel.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/instrument-header", async ({ mount }) => {
+  // Standalone InstrumentHeader with a forced flashOn=true/dir="up" — the
+  // tick-flash accent arm a static ChartPanel capture can never reach.
+  const c = await mount(<VisualScenario name="equities/instrument-header" />);
+  await expect(c.getByTestId("instrument-header-last")).toHaveAttribute(
+    "data-flash",
+    "true",
+  );
+  await expect(c).toHaveScreenshot("instrument-header.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/watchlist-loaded", async ({ mount }) => {
+  // Default sort (unset → "chg"); AAPL row is data-selected (workspace sel).
+  const c = await mount(<VisualScenario name="equities/watchlist-loaded" />);
+  await expect(c.getByTestId("watch-row-AAPL")).toHaveAttribute(
+    "data-selected",
+    "true",
+  );
+  await expect(c).toHaveScreenshot("watchlist-loaded.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/watchlist-sort-sym", async ({ mount }) => {
+  const c = await mount(<VisualScenario name="equities/watchlist-sort-sym" />);
+  await expect(c.getByTestId("watch-row-AAPL")).toBeVisible();
+  await expect(c).toHaveScreenshot("watchlist-sort-sym.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/watchlist-sort-price", async ({ mount }) => {
+  const c = await mount(
+    <VisualScenario name="equities/watchlist-sort-price" />,
+  );
+  await expect(c.getByTestId("watch-row-AAPL")).toBeVisible();
+  await expect(c).toHaveScreenshot("watchlist-sort-price.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/blotter-orders", async ({ mount }) => {
+  // Default view (unset → "orders"): the 5 seeded equityOrders render.
+  const c = await mount(<VisualScenario name="equities/blotter-orders" />);
+  await expect(c.getByTestId("order-row-ord-001")).toBeVisible();
+  await expect(c).toHaveScreenshot("blotter-orders.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/blotter-positions", async ({ mount }) => {
+  // eqBlotterView "positions": the 4 seeded equityPositions + DeskPnlGauge.
+  const c = await mount(<VisualScenario name="equities/blotter-positions" />);
+  await expect(c.getByTestId("position-row-AAPL")).toBeVisible();
+  await expect(c).toHaveScreenshot("blotter-positions.png", {
+    animations: "disabled",
+  });
+});

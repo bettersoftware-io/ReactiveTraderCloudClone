@@ -58,11 +58,13 @@ import { ChartPanel as ChartPanelComponent } from "#/ui/equities/chart/ChartPane
 import type { ChartVm } from "#/ui/equities/chart/chartVm";
 import { DepthLadder as DepthLadderComponent } from "#/ui/equities/chart/DepthLadder";
 import { EqChartHead as EqChartHeadComponent } from "#/ui/equities/chart/EqChartHead";
+import { EqDepthDock as EqDepthDockComponent } from "#/ui/equities/chart/EqDepthDock";
 import { InstrumentHeader as InstrumentHeaderComponent } from "#/ui/equities/chart/InstrumentHeader";
 import { TimeframePills as TimeframePillsComponent } from "#/ui/equities/chart/TimeframePills";
 import { InstrumentTabs as InstrumentTabsComponent } from "#/ui/equities/tabs/InstrumentTabs";
 import { EqTicketHead as EqTicketHeadComponent } from "#/ui/equities/ticket/EqTicketHead";
 import { OrderTicket as OrderTicketComponent } from "#/ui/equities/ticket/OrderTicket";
+import { EqSectorsDock as EqSectorsDockComponent } from "#/ui/equities/watchlist/EqSectorsDock";
 import { EqWatchlistHead as EqWatchlistHeadComponent } from "#/ui/equities/watchlist/EqWatchlistHead";
 import { SectorHeatmap as SectorHeatmapComponent } from "#/ui/equities/watchlist/SectorHeatmap";
 import { WatchlistPanel as WatchlistPanelComponent } from "#/ui/equities/watchlist/WatchlistPanel";
@@ -138,6 +140,8 @@ import {
   EqBlotterHead,
   EqBlotterPanel,
   EqChartHead,
+  EqDepthDock,
+  EqSectorsDock,
   EqTicketHead,
   EqWatchlistHead,
   ErrorRatePanel,
@@ -826,6 +830,18 @@ export const registry = new Map<AnyToken, ElementFor>([
     DepthLadder,
     (p: Record<string, unknown>): ReactElement => {
       return <DepthLadderComponent symbol={(p.symbol as string) ?? "AAPL"} />;
+    },
+  ],
+  [
+    EqDepthDock,
+    (): ReactElement => {
+      return <EqDepthDockComponent />;
+    },
+  ],
+  [
+    EqSectorsDock,
+    (): ReactElement => {
+      return <EqSectorsDockComponent />;
     },
   ],
   [
