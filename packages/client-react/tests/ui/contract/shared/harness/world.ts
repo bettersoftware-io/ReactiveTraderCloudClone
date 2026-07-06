@@ -1,6 +1,7 @@
 import { BehaviorSubject, Subject } from "rxjs";
 
 import type {
+  ActivityEntry,
   AnimationIntent,
   IncidentKind,
   IncidentState,
@@ -45,6 +46,7 @@ import {
 export interface HookValues {
   useConnectionStatus: ConnectionStatus;
   useTrades: readonly Trade[];
+  useActivity: readonly ActivityEntry[];
   useAnalytics: PositionUpdates | null;
   useRfqs: readonly Rfq[];
   useAllQuotes: ReadonlyMap<number, Quote>;
@@ -56,6 +58,7 @@ export interface HookValues {
 const DEFAULTS: HookValues = {
   useConnectionStatus: ConnectionStatus.CONNECTED,
   useTrades: [],
+  useActivity: [],
   useAnalytics: null,
   useRfqs: [],
   useAllQuotes: new Map(),

@@ -37,17 +37,16 @@ describe("FxBlotterHead + FxBlotter", () => {
     expect(page.tradeRowCount()).toBe(1);
   });
 
-  it("swaps the panel body to the activity placeholder when Activity is selected", async () => {
+  it("swaps the panel body to the activity feed when Activity is selected", async () => {
     const page = mount(FxBlotterWorkspace, {
       hooks: { useTrades: [t1, t2] },
     });
     await page.selectActivityTab();
     expect(page.isActivityTabActive()).toBe(true);
     expect(page.isTradesTabActive()).toBe(false);
-    expect(page.hasActivityPlaceholder()).toBe(true);
-    expect(page.activityPlaceholderText()).toMatch(
-      /activity feed.*coming online/i,
-    );
+    // The old "COMING ONLINE" placeholder must never reappear.
+    expect(page.hasActivityPlaceholder()).toBe(false);
+    expect(page.activityFeedText()).toMatch(/no activity yet/i);
   });
 
   it("hides the count, filter and CSV chip while the Activity tab is showing", async () => {

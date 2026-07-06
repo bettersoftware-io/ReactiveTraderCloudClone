@@ -48,11 +48,16 @@ function formatDate(dateStr: string): string {
   return `${day}-${month}-${year}`;
 }
 
-function formatNotional(n: number): string {
+/** Exported so other FX blotter views (e.g. ActivityView) render notionals
+ * identically to the table's Notional column, instead of reimplementing the
+ * same `toLocaleString` formatting. */
+export function formatNotional(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
-function formatRate(rate: number): string {
+/** Exported so other FX blotter views (e.g. ActivityView) render rates
+ * identically to the table's Rate column. */
+export function formatRate(rate: number): string {
   // 6 significant digits
   return rate.toPrecision(6);
 }

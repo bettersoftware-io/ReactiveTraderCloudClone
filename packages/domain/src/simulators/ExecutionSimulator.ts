@@ -16,8 +16,10 @@ const NORMAL_MAX_DELAY_MS = 2_000;
 // User-executed trades (as opposed to the PROTO seed trades in
 // TradeStoreSimulator, which keep their own tradeName per SEED_TRADES) are
 // always attributed to the local user, "You" — this is the only trader this
-// client can execute as.
-const DEFAULT_TRADER_NAME = "You";
+// client can execute as. Exported so other consumers (e.g. BlotterPresenter's
+// live-activity derivation) can distinguish live executions from seeded
+// history by this same domain-provided name, instead of a magic id threshold.
+export const DEFAULT_TRADER_NAME = "You";
 
 export type TradeListener = (trade: Trade) => void;
 

@@ -1,7 +1,7 @@
 import { bind } from "@react-rxjs/core";
 import { firstValueFrom } from "rxjs";
 
-import type { AppCommands, Presenters } from "@rtc/client-core";
+import type { ActivityEntry, AppCommands, Presenters } from "@rtc/client-core";
 import {
   type AnimationIntent,
   type BootSequenceIntents,
@@ -125,6 +125,9 @@ export interface ViewModel {
   usePriceHistory: (symbol: string) => readonly PriceTick[];
   useTrades: () => readonly Trade[];
   useNewTradeIds: () => ReadonlySet<number>;
+  /** Live-executed trades, newest first, for the FX Blotter's Activity tab
+   * (see BlotterPresenter.activity$ — seeded history never appears here). */
+  useActivity: () => readonly ActivityEntry[];
   useAnalytics: () => PositionUpdates | null;
   useRfqs: () => readonly Rfq[];
   useQuotesForRfq: (rfqId: number) => readonly Quote[];
@@ -225,6 +228,10 @@ export function createViewModel(
   const [useNewTradeIds] = bind(
     presenters.blotter.newTradeIds$,
     new Set<number>() as ReadonlySet<number>,
+  );
+  const [useActivity] = bind(
+    presenters.blotter.activity$,
+    [] as readonly ActivityEntry[],
   );
   const [useAnalytics] = bind(
     presenters.analytics.position$,
@@ -412,6 +419,7 @@ export function createViewModel(
     usePriceHistory,
     useTrades,
     useNewTradeIds,
+    useActivity,
     useAnalytics,
     useRfqs,
     useQuotesForRfq,

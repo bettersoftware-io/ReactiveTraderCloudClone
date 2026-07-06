@@ -44,15 +44,27 @@ export class FxBlotterWorkspacePage extends MountedComponent<
     await this.user.click(this.q().getByTestId("blotter-tab-trades"));
   }
 
+  /** Standing regression guard: the old "COMING ONLINE" placeholder testid
+   * must never reappear now that the Activity tab renders a real feed
+   * (mirrors FxBlotterWorkspacePage's Watchlist-tab equivalent). */
   hasActivityPlaceholder(): boolean {
     return this.q().queryByTestId("activity-placeholder") !== null;
   }
 
-  activityPlaceholderText(): string | null {
-    return (
-      this.q().queryByTestId("activity-placeholder")?.textContent?.trim() ??
-      null
-    );
+  activityFeedText(): string | null {
+    return this.q().queryByTestId("activity-feed")?.textContent?.trim() ?? null;
+  }
+
+  activityRowCount(): number {
+    return this.q().queryAllByTestId("activity-row").length;
+  }
+
+  activityRowTexts(): string[] {
+    return this.q()
+      .queryAllByTestId("activity-row")
+      .map((row) => {
+        return row.textContent?.trim() ?? "";
+      });
   }
 
   tradeCountText(): string | null {

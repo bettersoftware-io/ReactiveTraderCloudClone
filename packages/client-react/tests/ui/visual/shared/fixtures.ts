@@ -1,4 +1,5 @@
 import type {
+  ActivityEntry,
   NotionalView,
   OrderTicketState,
   RfqQuote,
@@ -438,6 +439,42 @@ const fxTrades: readonly Trade[] = [
     status: TradeStatus.Rejected,
     tradeDate: "2026-06-05",
     valueDate: "2026-06-07",
+  },
+];
+
+// FX blotter Activity feed — live-executed entries (tradeName "You"), newest
+// first. One TRADE and one REJECT so both badge/description color arms
+// appear in a single shot.
+const fxActivity: readonly ActivityEntry[] = [
+  {
+    trade: {
+      tradeId: 1044,
+      tradeName: "You",
+      currencyPair: "GBPJPY",
+      notional: 750_000,
+      dealtCurrency: "GBP",
+      direction: Direction.Buy,
+      spotRate: 190.442,
+      status: TradeStatus.Rejected,
+      tradeDate: "2026-07-06",
+      valueDate: "2026-07-08",
+    },
+    time: "09:31:40",
+  },
+  {
+    trade: {
+      tradeId: 1043,
+      tradeName: "You",
+      currencyPair: "EURUSD",
+      notional: 1_000_000,
+      dealtCurrency: "EUR",
+      direction: Direction.Sell,
+      spotRate: 1.09205,
+      status: TradeStatus.Done,
+      tradeDate: "2026-07-06",
+      valueDate: "2026-07-08",
+    },
+    time: "09:30:15",
   },
 ];
 
@@ -939,6 +976,9 @@ export const fixtures: Record<string, AppData> = {
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
     trades: fxTrades,
+  }),
+  "fx-activity-populated": makeAppData({
+    activity: fxActivity,
   }),
   "credit-populated": makeAppData({
     instruments: creditInstruments,

@@ -23,6 +23,7 @@ import { OrderTicket } from "#/ui/equities/ticket/OrderTicket";
 import { SectorHeatmap } from "#/ui/equities/watchlist/SectorHeatmap";
 import { Watchlist } from "#/ui/equities/watchlist/Watchlist";
 import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
+import { ActivityView } from "#/ui/fx/blotter/ActivityView";
 import { BlotterRow } from "#/ui/fx/blotter/BlotterRow";
 import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
@@ -131,6 +132,19 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
         <FxBlotter />
+      </div>
+    );
+  },
+  // Prop-driven Activity feed (FxBlotter's Activity tab body), rendered
+  // directly like BlotterRow above — same width-920 panel wrapper as
+  // FxBlotter/FxWatchlist. `activity` defaults to [] (fixtures that don't set
+  // it), so the same registry entry covers both the empty and populated
+  // scenarios by fixtureKey alone.
+  FxActivityView: (fixtureKey: string) => {
+    const entries = fixtures[fixtureKey].activity ?? [];
+    return (
+      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+        <ActivityView entries={entries} />
       </div>
     );
   },
