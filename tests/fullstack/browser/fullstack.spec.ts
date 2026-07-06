@@ -43,7 +43,7 @@ test.describe("full-stack: equities data renders from the real server", () => {
 
     await page.locator("[data-testid='tab-equities']").click();
 
-    const firstRow = page.locator("[data-testid^='watchlist-row-']").first();
+    const firstRow = page.locator("[data-testid^='watch-row-']").first();
     await expect(firstRow).toBeVisible({ timeout: 20_000 });
 
     // The LAST column reads "—" until a real quote tick arrives over the
