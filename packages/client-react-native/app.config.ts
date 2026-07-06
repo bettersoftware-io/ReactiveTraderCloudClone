@@ -15,12 +15,14 @@ const config: ExpoConfig = {
   // unconditionally expects `expo-updates` to be installed
   // (`config.updates?.enabled !== false` in its dependency inference).
   updates: { enabled: false },
-  // Filled by `eas init` at the start of Phase 2 (account-bound, run by a human):
-  // add the top-level `updates.url`, and add `eas.projectId` to the EXISTING
-  // `extra` object below (do NOT add a second `extra` key — that would clobber
-  // `serverUrl`/`wsToken`):
-  //   updates: { url: "https://u.expo.dev/<projectId>" },
-  //   extra: { ...existing, eas: { projectId: "<uuid from eas init>" } },
+  // `eas.projectId` is already set in the EXISTING `extra` object below (done —
+  // no future step needed there; do NOT add a second `extra` key, that would
+  // clobber `serverUrl`/`wsToken`).
+  // EAS Update / OTA (top-level `updates.url` + the `expo-updates` package) is
+  // intentionally OUT OF SCOPE under this workstream's free-path distribution
+  // policy; the `updates: { enabled: false }` above encodes that. If OTA is ever
+  // adopted, it must REPLACE `enabled: false` (e.g. `updates: { url: "..." }`) —
+  // never be merged alongside it.
   // `router.root` (in the existing `extra`) pins Expo Router to the real
   // top-level `app/` directory.
   // Without it, Expo Router auto-detects `src/app` (it prefers that layout
