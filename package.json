@@ -19,7 +19,7 @@
     "check:fix": "biome check --write .",
     "dev": "turbo run dev",
     "dev:proto": "pnpm --filter @rtc/client-prototype dev",
-    "dev:design": "python3 -m http.server 8899 --directory \"docs/design/v2/standalone\"",
+    "dev:design": "node scripts/serve-design.mjs",
     "clean": "turbo run clean && (rm -rf .turbo 2>/dev/null || true)",
     "clean:deep": "turbo run clean:deep && (rm -rf node_modules .pnpm-store .turbo 2>/dev/null || true) && find . -name .DS_Store -type f -delete",
     "lint:actions": "scripts/install-actionlint.sh && .tooling/actionlint -color",
