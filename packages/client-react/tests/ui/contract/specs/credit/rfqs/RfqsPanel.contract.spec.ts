@@ -436,8 +436,7 @@ describe("RfqsPanel", () => {
 
     // advanceTimersByTimeAsync yields to the microtask queue between ticks,
     // which the underlying rx-state/useSyncExternalStore bridge needs to
-    // actually flush a re-render (same idiom as NewRfqForm.contract.spec.ts's
-    // fake-timer setTimeout wait).
+    // actually flush a re-render.
     await vi.advanceTimersByTimeAsync(5000);
     expect(panel.secsCaption(1)).toBe("5 secs");
     expect(panel.barPct(1)).toBe("50%");

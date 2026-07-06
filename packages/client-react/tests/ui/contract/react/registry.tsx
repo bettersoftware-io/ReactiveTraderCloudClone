@@ -11,7 +11,6 @@ import type {
   CurrencyCategory,
   CurrencyPair,
   CurrencyPairPosition,
-  Dealer,
   Direction,
   EquityPosition,
   HistoricPosition,
@@ -34,17 +33,12 @@ import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/admi
 import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPanel";
 import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
 import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
-import { NewRfqForm as NewRfqFormComponent } from "#/ui/credit/newRfq/NewRfqForm";
+import { CreditBlotterHead as CreditBlotterHeadComponent } from "#/ui/credit/blotter/CreditBlotterHead";
+import { NewRfqHead as NewRfqHeadComponent } from "#/ui/credit/newRfq/NewRfqHead";
 import { NewRfqPanel as NewRfqPanelComponent } from "#/ui/credit/newRfq/NewRfqPanel";
 import { RfqFilterPills as RfqFilterPillsComponent } from "#/ui/credit/rfqs/RfqFilterPills";
+import { RfqsHead as RfqsHeadComponent } from "#/ui/credit/rfqs/RfqsHead";
 import { RfqsPanel as RfqsPanelComponent } from "#/ui/credit/rfqs/RfqsPanel";
-import { QuoteCard as QuoteCardComponent } from "#/ui/credit/rfqTiles/QuoteCard";
-import { RfqCard as RfqCardComponent } from "#/ui/credit/rfqTiles/RfqCard";
-import {
-  type RfqFilter,
-  RfqFilterTabs as RfqFilterTabsComponent,
-} from "#/ui/credit/rfqTiles/RfqFilterTabs";
-import { RfqTilesPanel as RfqTilesPanelComponent } from "#/ui/credit/rfqTiles/RfqTilesPanel";
 import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
 import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
 import { DeskPnlGauge as DeskPnlGaugeComponent } from "#/ui/equities/blotter/DeskPnlGauge";
@@ -121,6 +115,7 @@ import {
   ConnectionOverlay,
   ConnectionStatusBar,
   CreditBlotter,
+  CreditBlotterHead,
   CurrencyFilter,
   DateFilter,
   DepthLadder,
@@ -139,7 +134,7 @@ import {
   LiveRatesWorkspace,
   LockScreen,
   MetricGauges,
-  NewRfqForm,
+  NewRfqHead,
   NewRfqPanel,
   NumberFilter,
   OrdersBlotter,
@@ -154,13 +149,10 @@ import {
   PreferencesModal,
   PriceChart,
   QuickFilter,
-  QuoteCard,
-  RfqCard,
   RfqCountdown,
   RfqFilterPills,
-  RfqFilterTabs,
+  RfqsHead,
   RfqsPanel,
-  RfqTilesPanel,
   SectorHeatmap,
   SellSidePanel,
   ServiceTopologyGraph,
@@ -401,16 +393,6 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    NewRfqForm,
-    (p: Record<string, unknown>): ReactElement => {
-      return (
-        <NewRfqFormComponent
-          onCreated={(p.onCreated as (id: number) => void) ?? ((): void => {})}
-        />
-      );
-    },
-  ],
-  [
     NewRfqPanel,
     (p: Record<string, unknown>): ReactElement => {
       return (
@@ -421,53 +403,21 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    RfqFilterTabs,
-    (p: Record<string, unknown>): ReactElement => {
-      return (
-        <RfqFilterTabsComponent
-          selected={(p.selected as RfqFilter) ?? "Live"}
-          onChange={(p.onChange as (f: RfqFilter) => void) ?? ((): void => {})}
-        />
-      );
-    },
-  ],
-  [
-    QuoteCard,
-    (p: Record<string, unknown>): ReactElement => {
-      return (
-        <QuoteCardComponent
-          quote={p.quote as Quote}
-          dealer={p.dealer as Dealer | undefined}
-          onAccept={p.onAccept as ((id: number) => void) | undefined}
-        />
-      );
-    },
-  ],
-  [
-    RfqCard,
-    (p: Record<string, unknown>): ReactElement => {
-      return (
-        <RfqCardComponent
-          rfq={p.rfq as Rfq}
-          quotes={(p.quotes as readonly Quote[]) ?? []}
-          instrument={p.instrument as Instrument | undefined}
-          dealers={(p.dealers as readonly Dealer[]) ?? []}
-          onAccept={(p.onAccept as (id: number) => void) ?? ((): void => {})}
-          onDismiss={p.onDismiss as ((id: number) => void) | undefined}
-        />
-      );
-    },
-  ],
-  [
-    RfqTilesPanel,
+    NewRfqHead,
     (): ReactElement => {
-      return <RfqTilesPanelComponent />;
+      return <NewRfqHeadComponent />;
     },
   ],
   [
     RfqsPanel,
     (): ReactElement => {
       return <RfqsPanelComponent />;
+    },
+  ],
+  [
+    RfqsHead,
+    (): ReactElement => {
+      return <RfqsHeadComponent />;
     },
   ],
   [
@@ -506,6 +456,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     CreditBlotter,
     (): ReactElement => {
       return <CreditBlotterComponent />;
+    },
+  ],
+  [
+    CreditBlotterHead,
+    (): ReactElement => {
+      return <CreditBlotterHeadComponent />;
     },
   ],
   [

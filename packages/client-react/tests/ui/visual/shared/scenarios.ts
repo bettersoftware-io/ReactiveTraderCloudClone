@@ -72,14 +72,6 @@ export const scenarios: Record<string, Scenario> = {
     fixtureKey: "fx-activity-populated",
   },
   // Credit tab — component-level views + the full page (Credit tab active).
-  "credit/rfq-tiles": {
-    componentKey: "RfqTilesPanel",
-    fixtureKey: "credit-populated",
-  },
-  "credit/new-rfq": {
-    componentKey: "NewRfqForm",
-    fixtureKey: "credit-populated",
-  },
   "credit/blotter": {
     componentKey: "CreditBlotter",
     fixtureKey: "credit-populated",
@@ -154,28 +146,6 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "PositionsPanel",
     fixtureKey: "analytics-empty",
   },
-  // Credit RFQ cards: terminal-state badges + accepted/passed quote colours.
-  "credit/rfq-tiles-done": { componentKey: "RfqCard", fixtureKey: "rfq-done" },
-  "credit/rfq-tiles-expired": {
-    componentKey: "RfqCard",
-    fixtureKey: "rfq-expired",
-  },
-  "credit/rfq-tiles-cancelled": {
-    componentKey: "RfqCard",
-    fixtureKey: "rfq-cancelled",
-  },
-  "credit/rfq-tiles-accepted": {
-    componentKey: "RfqCard",
-    fixtureKey: "rfq-accepted",
-  },
-  "credit/rfq-tiles-passed": {
-    componentKey: "RfqCard",
-    fixtureKey: "rfq-passed",
-  },
-  "credit/rfq-tiles-empty": {
-    componentKey: "RfqTilesPanel",
-    fixtureKey: "rfq-tiles-empty",
-  },
   // Credit sell-side ticket arms + empty; credit blotter empty.
   "credit/sell-side-active": {
     componentKey: "SellSidePanel",
@@ -235,15 +205,6 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "CreditBlotter",
     fixtureKey: "credit-blotter-unresolved",
   },
-  // Credit workspace sub-views (click the credit-tab-* control).
-  "credit/workspace-new-rfq": {
-    componentKey: "CreditWorkspace",
-    fixtureKey: "credit-populated",
-  },
-  "credit/workspace-sell-side": {
-    componentKey: "CreditWorkspace",
-    fixtureKey: "credit-populated",
-  },
   // --- Phase 4: Equities panel scenarios ---
   // Per-component sub-views with deterministic fixed-data fixtures.
   "equities/watchlist-loaded": {
@@ -284,20 +245,12 @@ export const scenarios: Record<string, Scenario> = {
 
   // Admin panel loaded (slider) state — throughput fetch stubbed.
   "admin/panel-loaded": { componentKey: "AdminPanel", fixtureKey: "app-fx" },
-  // Seeded render-state arms with no interaction (the states are only transiently
-  // reachable at runtime, so they are seeded through the seam for a stable golden):
-  // AdminPanel loading, and the NewRfqForm submission in-flight / success views.
+  // Seeded render-state arm with no interaction (the state is only transiently
+  // reachable at runtime, so it is seeded through the seam for a stable golden):
+  // AdminPanel loading.
   "admin/panel-loading": {
     componentKey: "AdminPanel",
     fixtureKey: "admin-loading",
-  },
-  "credit/new-rfq-submitting": {
-    componentKey: "NewRfqForm",
-    fixtureKey: "credit-new-rfq-submitting",
-  },
-  "credit/new-rfq-confirmed": {
-    componentKey: "NewRfqForm",
-    fixtureKey: "credit-new-rfq-confirmed",
   },
   // AdminPanel throughput banner arms (the `{message && …}` block): the
   // confirmation (accent-primary) and error (status-error) colour arms.
@@ -356,40 +309,12 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "FxBlotter",
     fixtureKey: "fx-trades",
   },
-  // NewRfqForm: select the Sell direction → the `var(--accent-negative)` button arm.
-  "credit/new-rfq-sell": {
-    componentKey: "NewRfqForm",
-    fixtureKey: "credit-populated",
-  },
   // SellSidePanel active ticket: type a price → the enabled-Submit truthy arms
   // (cursor "pointer" / opacity 1).
   "credit/sell-side-price-entered": {
     componentKey: "SellSidePanel",
     fixtureKey: "sell-side-active",
   },
-  // Credit RFQ "All" filter tab (RfqFilterTabs).
-  "credit/rfq-tiles-all": {
-    componentKey: "RfqTilesPanel",
-    fixtureKey: "credit-populated",
-  },
-  // Credit new-RFQ form states (InstrumentSearch / QuantityInput / submit gate).
-  "credit/new-rfq-search-open": {
-    componentKey: "NewRfqForm",
-    fixtureKey: "credit-populated",
-  },
-  "credit/new-rfq-instrument-selected": {
-    componentKey: "NewRfqForm",
-    fixtureKey: "credit-populated",
-  },
-  "credit/new-rfq-filled": {
-    componentKey: "NewRfqForm",
-    fixtureKey: "credit-populated",
-  },
-  "credit/new-rfq-over-max": {
-    componentKey: "NewRfqForm",
-    fixtureKey: "credit-populated",
-  },
-
   // --- Phase 9 deterministic tile execution / RFQ / stale arms ---
   // Their state is now injected through the seam (per-symbol tileExecution /
   // rfqTile / stale records), so each transient timer state is a static shot —
@@ -464,21 +389,6 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "CreditBlotter",
     fixtureKey: "credit-populated",
   },
-  // RfqTilesPanel Done filter: click the "Done" tab with the credit-populated
-  // fixture (which has rfq 102 in Closed state) → shows the Done rfq card.
-  // Covers filterMatches Done branch (RfqTilesPanel.tsx line 20).
-  "credit/rfq-tiles-filter-done": {
-    componentKey: "RfqTilesPanel",
-    fixtureKey: "credit-populated",
-  },
-  // RfqCountdown zero-expiry arm: an Open rfq with expirySecs=0 drives
-  // totalMs=0 → RfqCountdown fraction = 0 (the `totalMs > 0 ? : 0` false
-  // branch, RfqCountdown.tsx line 14). Bar renders at 0%.
-  "credit/rfq-countdown-zero": {
-    componentKey: "RfqTilesPanel",
-    fixtureKey: "rfq-countdown-zero",
-  },
-
   // --- Interaction scenarios whose handler produces a visible delta (firing
   // the handler is the only way to reach these lines in the visual tier; the
   // snapshot is meaningful because the post-interaction view differs) ---

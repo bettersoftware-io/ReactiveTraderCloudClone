@@ -479,7 +479,7 @@ const fxActivity: readonly ActivityEntry[] = [
 ];
 
 // Credit fixture — instrument/dealer/rfq/quote ids are cross-linked:
-//   RfqTilesPanel (default "Live" filter) needs an Open rfq + its quotes;
+//   RfqsPanel (default "Live" filter) needs an Open rfq + its quotes;
 //   CreditBlotter needs a Closed rfq with an accepted quote in allQuotes;
 //   SellSidePanel needs a quote from the "Adaptive Bank" dealer.
 const creditInstruments: readonly Instrument[] = [
@@ -577,118 +577,6 @@ const creditBlotterUnresolvedQuote: Quote = {
   dealerId: 888,
   state: { type: "accepted", price: 100.5 },
 };
-
-// Single-RFQ-per-card fixtures for the prop-driven RfqCard key. Each pairs one
-// Rfq (in a terminal/badge state) with quotes that exercise a QuoteCard arm.
-// stateLabel/stateBadgeColor (Done/Expired/Cancelled) + canDismiss live on the
-// Rfq state; the accepted/passed quote-colour arms live on the Quote state.
-const rfqDone: Rfq = {
-  id: 201,
-  instrumentId: 1,
-  quantity: 5_000_000,
-  direction: Direction.Buy,
-  state: RfqState.Closed,
-  expirySecs: 120,
-  creationTimestamp: 1_750_000_300_000,
-};
-const rfqDoneQuotes: readonly Quote[] = [
-  {
-    id: 3001,
-    rfqId: 201,
-    dealerId: 2,
-    state: { type: "accepted", price: 99.1 },
-  },
-  {
-    id: 3002,
-    rfqId: 201,
-    dealerId: 3,
-    state: { type: "rejectedWithPrice", price: 99.4 },
-  },
-];
-const rfqExpired: Rfq = {
-  id: 202,
-  instrumentId: 2,
-  quantity: 2_000_000,
-  direction: Direction.Sell,
-  state: RfqState.Expired,
-  expirySecs: 120,
-  creationTimestamp: 1_750_000_300_000,
-};
-const rfqExpiredQuotes: readonly Quote[] = [
-  {
-    id: 3101,
-    rfqId: 202,
-    dealerId: 2,
-    state: { type: "rejectedWithoutPrice" },
-  },
-];
-const rfqCancelled: Rfq = {
-  id: 203,
-  instrumentId: 1,
-  quantity: 3_000_000,
-  direction: Direction.Buy,
-  state: RfqState.Cancelled,
-  expirySecs: 120,
-  creationTimestamp: 1_750_000_300_000,
-};
-const rfqCancelledQuotes: readonly Quote[] = [
-  { id: 3201, rfqId: 203, dealerId: 2, state: { type: "pendingWithoutPrice" } },
-];
-const rfqAccepted: Rfq = {
-  id: 204,
-  instrumentId: 1,
-  quantity: 4_000_000,
-  direction: Direction.Buy,
-  state: RfqState.Closed,
-  expirySecs: 120,
-  creationTimestamp: 1_750_000_300_000,
-};
-const rfqAcceptedQuotes: readonly Quote[] = [
-  {
-    id: 3301,
-    rfqId: 204,
-    dealerId: 2,
-    state: { type: "accepted", price: 100.75 },
-  },
-  {
-    id: 3302,
-    rfqId: 204,
-    dealerId: 3,
-    state: { type: "pendingWithPrice", price: 100.9 },
-  },
-];
-const rfqPassed: Rfq = {
-  id: 205,
-  instrumentId: 2,
-  quantity: 1_500_000,
-  direction: Direction.Sell,
-  state: RfqState.Closed,
-  expirySecs: 120,
-  creationTimestamp: 1_750_000_300_000,
-};
-const rfqPassedQuotes: readonly Quote[] = [
-  { id: 3401, rfqId: 205, dealerId: 2, state: { type: "passed" } },
-  {
-    id: 3402,
-    rfqId: 205,
-    dealerId: 3,
-    state: { type: "accepted", price: 97.6 },
-  },
-];
-
-function rfqCardFixture(rfq: Rfq, quotes: readonly Quote[]): AppData {
-  return makeAppData({
-    instruments: creditInstruments,
-    dealers: creditDealers,
-    rfqs: [rfq],
-    quotesForRfq: { [rfq.id]: quotes },
-    allQuotes: new Map(
-      quotes.map((q) => {
-        return [q.id, q];
-      }),
-    ),
-  });
-}
 
 // Sell-side: an Open RFQ where Adaptive Bank's quote is pendingWithoutPrice
 // drives the active (price-entry) ticket; a passed quote drives the responded
@@ -987,18 +875,6 @@ export const fixtures: Record<string, AppData> = {
     quotesForRfq: { 101: creditQuotes101, 102: creditQuotes102 },
     allQuotes: creditAllQuotes,
   }),
-  // NewRfqForm submission lifecycle render arms (seeded via the submission seam,
-  // since these states are only transiently reachable through interaction).
-  "credit-new-rfq-submitting": makeAppData({
-    instruments: creditInstruments,
-    dealers: creditDealers,
-    rfqSubmission: { status: "submitting" },
-  }),
-  "credit-new-rfq-confirmed": makeAppData({
-    instruments: creditInstruments,
-    dealers: creditDealers,
-    rfqSubmission: { status: "confirmed", rfqId: 12345 },
-  }),
   // AdminPanel loading arm: throughput not yet loaded → "Loading throughput…".
   "admin-loading": makeAppData({
     throughput: { value: 0, loading: true, message: null },
@@ -1061,18 +937,6 @@ export const fixtures: Record<string, AppData> = {
   // existing analytics-populated/analytics-empty fixtures — both components
   // read the same PositionUpdates shape off useAnalytics().
   "positions-negative": makeAppData({ analytics: positionsNegative }),
-  // Credit RFQ-card terminal states (prop-driven RfqCard key).
-  "rfq-done": rfqCardFixture(rfqDone, rfqDoneQuotes),
-  "rfq-expired": rfqCardFixture(rfqExpired, rfqExpiredQuotes),
-  "rfq-cancelled": rfqCardFixture(rfqCancelled, rfqCancelledQuotes),
-  "rfq-accepted": rfqCardFixture(rfqAccepted, rfqAcceptedQuotes),
-  "rfq-passed": rfqCardFixture(rfqPassed, rfqPassedQuotes),
-  // RfqTilesPanel empty arm: no rfqs => "No RFQs to display".
-  "rfq-tiles-empty": makeAppData({
-    instruments: creditInstruments,
-    dealers: creditDealers,
-    rfqs: [],
-  }),
   // SellSidePanel arms (need an Adaptive Bank quote per RFQ).
   "sell-side-active": makeAppData({
     instruments: creditInstruments,
@@ -1148,46 +1012,6 @@ export const fixtures: Record<string, AppData> = {
     quotesForRfq: { 401: [creditBlotterUnresolvedQuote] },
     allQuotes: new Map([
       [creditBlotterUnresolvedQuote.id, creditBlotterUnresolvedQuote],
-    ]),
-  }),
-
-  // RfqCountdown zero-expiry arm: an Open rfq with expirySecs=0 drives
-  // totalMs=0 in RfqCard → the `totalMs > 0 ? ... : 0` false branch in
-  // RfqCountdown.tsx line 14 (fraction=0, bar at 0%).
-  "rfq-countdown-zero": makeAppData({
-    instruments: creditInstruments,
-    dealers: creditDealers,
-    rfqs: [
-      {
-        id: 501,
-        instrumentId: 1,
-        quantity: 3_000_000,
-        direction: Direction.Buy,
-        state: RfqState.Open,
-        expirySecs: 0,
-        creationTimestamp: 1_750_000_300_000,
-      },
-    ],
-    quotesForRfq: {
-      501: [
-        {
-          id: 6001,
-          rfqId: 501,
-          dealerId: 2,
-          state: { type: "pendingWithoutPrice" },
-        },
-      ],
-    },
-    allQuotes: new Map([
-      [
-        6001,
-        {
-          id: 6001,
-          rfqId: 501,
-          dealerId: 2,
-          state: { type: "pendingWithoutPrice" },
-        },
-      ],
     ]),
   }),
 

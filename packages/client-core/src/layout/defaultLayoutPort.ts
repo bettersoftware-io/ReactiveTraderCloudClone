@@ -19,8 +19,13 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   "fx-analytics": { id: "fx-analytics", title: "Analytics" },
   "fx-positions": { id: "fx-positions", title: "Positions" },
   "fx-blotter": { id: "fx-blotter", title: "Blotter" },
-  "credit-rfqs": { id: "credit-rfqs", title: "Credit" },
+  "credit-new-rfq": { id: "credit-new-rfq", title: "New RFQ" },
+  "credit-rfqs": { id: "credit-rfqs", title: "RFQs" },
   "credit-blotter": { id: "credit-blotter", title: "Credit Blotter" },
+  // Registered like every other spec, but not part of CREDIT_ROOT — it has no
+  // dock slot yet (Task 4 flips the tabbed workspace to the three-panel dock;
+  // sell-side isn't one of the three).
+  "credit-sell-side": { id: "credit-sell-side", title: "Sell Side" },
   "admin-dashboard": { id: "admin-dashboard", title: "Admin" },
   equities: { id: "equities", title: "Equities" },
 };
@@ -56,11 +61,19 @@ const FX_ROOT: LayoutNode = {
 
 const CREDIT_ROOT: LayoutNode = {
   kind: "split",
-  dir: "column",
-  sizes: [0.7, 0.3],
+  dir: "row",
+  sizes: [0.25, 0.75],
   children: [
-    { kind: "panel", panelId: "credit-rfqs" },
-    { kind: "panel", panelId: "credit-blotter" },
+    { kind: "panel", panelId: "credit-new-rfq" },
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.62, 0.38],
+      children: [
+        { kind: "panel", panelId: "credit-rfqs" },
+        { kind: "panel", panelId: "credit-blotter" },
+      ],
+    },
   ],
 };
 

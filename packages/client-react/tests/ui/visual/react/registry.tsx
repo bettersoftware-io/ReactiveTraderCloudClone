@@ -10,10 +10,6 @@ import { IncidentControls } from "#/ui/admin/IncidentControls";
 import { LiveEventLog } from "#/ui/admin/LiveEventLog";
 import { ServiceTopologyGraph } from "#/ui/admin/ServiceTopologyGraph";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
-import { CreditWorkspace } from "#/ui/credit/CreditWorkspace";
-import { NewRfqForm } from "#/ui/credit/newRfq/NewRfqForm";
-import { RfqCard } from "#/ui/credit/rfqTiles/RfqCard";
-import { RfqTilesPanel } from "#/ui/credit/rfqTiles/RfqTilesPanel";
 import { SellSidePanel } from "#/ui/credit/sellSide/SellSidePanel";
 import { PositionsBlotter } from "#/ui/equities/blotter/PositionsBlotter";
 import { DepthLadder } from "#/ui/equities/chart/DepthLadder";
@@ -184,30 +180,6 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
       </table>
     );
   },
-  RfqTilesPanel: () => {
-    // Render at a fixed width (test-only) — the panel's auto-fill CSS grid
-    // (minmax 320px, 1fr) has a parent-driven column width; without a fixed
-    // container the RfqFilterTabs text drives the total width, which varies
-    // ±4-8px on x86 CI (font glyph-advance non-determinism), a dimension
-    // mismatch maxDiffPixelRatio cannot absorb. In the real app the panel sits
-    // inside a fixed CreditWorkspace column. Component stays responsive.
-    return (
-      <div style={{ width: 400, display: "flex", flexDirection: "column" }}>
-        <RfqTilesPanel />
-      </div>
-    );
-  },
-  NewRfqForm: () => {
-    // Render at a fixed width (test-only) so the form's content-driven
-    // intrinsic size doesn't drift on x86 (font-metric non-determinism).
-    // The form's max-width:400px allows it to fill 280px comfortably; in the
-    // real app it sits inside a fixed-size panel column, never shrink-to-fit.
-    return (
-      <div style={{ width: 280, display: "flex", flexDirection: "column" }}>
-        <NewRfqForm onCreated={() => {}} />
-      </div>
-    );
-  },
   CreditBlotter: () => {
     // Render filling a representative panel width (test-only) — the credit
     // blotter table is width:100%, so a fixed-width wrapper pins the captured
@@ -226,34 +198,13 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     // widths vary by OS/arch font metrics, causing a ±24px dimension flake on
     // x86 CI (observed: 352↔328px run-to-run). Wrapping at 380px stabilises
     // the captured dimension without touching the component; in the real app it
-    // sits inside a fixed CreditWorkspace column. Component stays responsive.
+    // sits inside a fixed credit-dock column (Task 4's three-panel layout).
+    // Component stays responsive.
     return (
       <div style={{ width: 380, display: "flex", flexDirection: "column" }}>
         <SellSidePanel />
       </div>
     );
-  },
-  // Prop-driven single RFQ card: pull the fixture's lone rfq + its quotes.
-  RfqCard: (fixtureKey: string) => {
-    const data = fixtures[fixtureKey];
-    const rfq = data.rfqs[0];
-    const quotes = data.quotesForRfq[rfq.id] ?? [];
-    const instrument = data.instruments.find((i) => {
-      return i.id === rfq.instrumentId;
-    });
-    return (
-      <RfqCard
-        rfq={rfq}
-        quotes={quotes}
-        instrument={instrument}
-        dealers={data.dealers}
-        onAccept={() => {}}
-        onDismiss={() => {}}
-      />
-    );
-  },
-  CreditWorkspace: () => {
-    return <CreditWorkspace />;
   },
   AdminPanel: () => {
     return <AdminPanel />;

@@ -80,15 +80,6 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   // (LiveRatesHead, outside this standalone component) once the panel head
   // grew tabs; the screenshot alone proves the price-mode arm (charts
   // suppressed) rendered.
-  // Credit workspace sub-views: click the tab, wait for that view's heading.
-  "credit/workspace-new-rfq": {
-    click: "credit-tab-new-rfq",
-    waitForText: "Submit RFQ",
-  },
-  "credit/workspace-sell-side": {
-    click: "credit-tab-sell-side",
-    waitForText: "Sell Side (Adaptive Bank)",
-  },
   // Admin panel loaded state: the seam fake provides a loaded value (250).
   "admin/panel-loaded": { waitForText: "Throughput Control" },
 
@@ -131,42 +122,6 @@ export const scenarioActions: Record<string, ScenarioAction> = {
     waitForText: "Apply",
   },
 
-  // Credit RFQ filter: click the "All" tab (shows Live + terminal RFQs). No
-  // waitForText: the click is synchronous and "All" is a non-unique substring.
-  "credit/rfq-tiles-all": { click: "rfq-filter-All" },
-
-  // Credit new-RFQ form states.
-  // Search dropdown open with results (typed query matches instruments).
-  "credit/new-rfq-search-open": {
-    steps: [{ type: "instrument-search-input", text: "Treasury" }],
-    waitForText: "CUSIP: 912828ZQ6",
-  },
-  // Instrument chosen -> the selected-instrument summary (CUSIP + Coupon).
-  "credit/new-rfq-instrument-selected": {
-    steps: [
-      { type: "instrument-search-input", text: "Treasury" },
-      { click: "instrument-result-1" },
-    ],
-    waitForText: "Coupon: 1.5%",
-  },
-  // Filled: instrument + (default) dealers + valid quantity -> submit enabled.
-  "credit/new-rfq-filled": {
-    steps: [
-      { type: "instrument-search-input", text: "Treasury" },
-      { click: "instrument-result-1" },
-      { type: "quantity-input", text: "5000" },
-    ],
-    waitForText: "Submit RFQ",
-  },
-  // Over-max quantity (> CREDIT_MAX_QUANTITY_INPUT) -> capped, submit stays enabled.
-  "credit/new-rfq-over-max": {
-    steps: [
-      { type: "instrument-search-input", text: "Treasury" },
-      { click: "instrument-result-1" },
-      { type: "quantity-input", text: "200000000" },
-    ],
-    waitForText: "Submit RFQ",
-  },
   // Blotter: click a TEXT column (CCYCCY/currencyPair) once -> first click is
   // ascending (BlotterHeader's ▲ arm). No waitForText (synchronous, label non-unique).
   "fx-blotter/sorted-asc": { click: "blotter-sort-currencyPair" },
@@ -195,9 +150,6 @@ export const scenarioActions: Record<string, ScenarioAction> = {
     ],
     waitForText: "Filtered: Notional",
   },
-  // NewRfqForm: click the Sell direction button -> the selected Sell button's
-  // var(--accent-negative) background arm.
-  "credit/new-rfq-sell": { click: "rfq-direction-Sell" },
   // SellSidePanel active ticket: type a price into the price input -> the
   // enabled-Submit truthy arms (cursor "pointer" / opacity 1).
   "credit/sell-side-price-entered": {
@@ -227,12 +179,6 @@ export const scenarioActions: Record<string, ScenarioAction> = {
     steps: [{ type: "quick-filter", text: "zzznomatch" }],
     waitForText: "No credit trades match the current filters",
   },
-  // RfqTilesPanel Done filter: click Done tab -> shows the Closed rfq card.
-  "credit/rfq-tiles-filter-done": { click: "rfq-filter-Done" },
-  // RfqCountdown zero-expiry: no interaction needed; the fixture seeds
-  // expirySecs=0 so the bar renders at 0% from the first render.
-  // (no entry needed — absent key == component-level shot with no interaction)
-
   // SetFilter applied: open the Status set-filter popover, uncheck "Rejected",
   // Apply -> the Rejected row is filtered out (toggleValue / onChange / handleApply).
   "fx-blotter/filter-set-applied": {

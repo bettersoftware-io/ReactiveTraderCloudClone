@@ -66,7 +66,7 @@ export interface AppData {
   analyticsStale?: boolean;
   /** Notional view override for TileNotional screenshots; defaults to formatted defaultNotional. */
   notional?: NotionalView;
-  /** NewRfqForm submission state (useRfqSubmission); defaults to "editing". */
+  /** NewRfqPanel submission state (useRfqSubmission); defaults to "editing". */
   rfqSubmission?: RfqSubmissionState;
   /** TradeTicket submission state (useTicketSubmission); defaults to not submitted. */
   ticketSubmission?: TicketSubmissionState;
