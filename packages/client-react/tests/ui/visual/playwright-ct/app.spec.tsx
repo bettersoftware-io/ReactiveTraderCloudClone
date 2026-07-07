@@ -18,7 +18,7 @@ test("app/credit", async ({ mount, page }) => {
   });
   await mount(<VisualScenario name="app/credit" />);
   await page.getByTestId("tab-credit").click();
-  await expect(page.getByText("Credit Trades")).toBeVisible();
+  await expect(page.getByText("▤ Credit Blotter")).toBeVisible();
   await expect(page).toHaveScreenshot("credit.png", {
     animations: "disabled",
     fullPage: true,

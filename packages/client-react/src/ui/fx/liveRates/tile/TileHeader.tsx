@@ -30,7 +30,7 @@ export function TileHeader({
               {movementArrow(movement)} {movementPips} pip
             </span>
           )}
-          {onInitiateRfq && (
+          {onInitiateRfq ? (
             <button
               type="button"
               data-testid="rfq-initiate"
@@ -41,7 +41,7 @@ export function TileHeader({
             >
               ⚡ RFQ
             </button>
-          )}
+          ) : null}
         </span>
       </div>
     </div>

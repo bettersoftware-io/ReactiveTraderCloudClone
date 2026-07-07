@@ -134,6 +134,7 @@ import {
   ConnectionStatusBar,
   CreditBlotter,
   CreditBlotterHead,
+  CreditBlotterWorkspace,
   CurrencyFilter,
   DateFilter,
   DepthLadder,
@@ -487,6 +488,17 @@ export const registry = new Map<AnyToken, ElementFor>([
     CreditBlotterHead,
     (): ReactElement => {
       return <CreditBlotterHeadComponent />;
+    },
+  ],
+  [
+    CreditBlotterWorkspace,
+    (): ReactElement => {
+      return (
+        <>
+          <CreditBlotterHeadComponent />
+          <CreditBlotterComponent />
+        </>
+      );
     },
   ],
   [

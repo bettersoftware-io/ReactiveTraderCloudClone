@@ -13,6 +13,7 @@ import { LiveEventLog } from "#/ui/admin/LiveEventLog";
 import { ServiceTopologyGraph } from "#/ui/admin/ServiceTopologyGraph";
 import { ServiceHealth } from "#/ui/admin/services/ServiceHealth";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
+import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
 import { RfqCard } from "#/ui/credit/rfqs/RfqCard";
 import { RfqsPanel } from "#/ui/credit/rfqs/RfqsPanel";
@@ -195,6 +196,17 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     // mismatch maxDiffPixelRatio cannot absorb. Component stays responsive.
     return (
       <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+        <CreditBlotter />
+      </div>
+    );
+  },
+  // Head + body mounted together (sharing the harness's CreditViewProvider),
+  // for scenarios that drive the head's quick-filter input against the
+  // body's rows — same fixed-width rationale as CreditBlotter above.
+  CreditBlotterWorkspace: () => {
+    return (
+      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+        <CreditBlotterHead />
         <CreditBlotter />
       </div>
     );

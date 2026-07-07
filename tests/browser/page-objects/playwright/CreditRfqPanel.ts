@@ -49,10 +49,10 @@ export class PlaywrightCreditRfqPanel implements CreditRfqPanelPO {
   }
 
   async waitForCreditTradesHeading(timeoutMs: number): Promise<void> {
+    // The in-body "Credit Trades" title is gone (the blotter chrome moved
+    // into the panel head) — the head tab title is the loaded-marker now.
     await expect(
-      this.page.getByText(STRINGS.creditRfq.creditTradesHeading, {
-        exact: true,
-      }),
+      this.page.getByTestId(TESTIDS.credit.blotterHeadTitle),
     ).toBeVisible({ timeout: timeoutMs });
   }
 }
