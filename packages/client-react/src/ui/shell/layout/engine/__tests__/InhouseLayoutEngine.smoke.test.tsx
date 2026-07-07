@@ -208,6 +208,96 @@ describe("InhouseLayoutEngine", () => {
       fireEvent.pointerUp(handle, { pointerId: 3, clientX: 90, clientY: 0 });
     });
 
+    it("first drag converts the cells' MEASURED px to fractions and dispatches those, not the stored sizes", () => {
+      // Three children make the measurement observable through onResize: the
+      // untouched first fraction and the dragged pair's sum come straight
+      // from the measured baseline, whereas a two-child split renormalises
+      // to 1 from either baseline. The measured cell px (500/300/200 in a
+      // 1014px container with two 7px handles) deliberately disagree with
+      // the stored sizes below — a fallback to node.sizes would dispatch
+      // 0.6 for the untouched first child instead of the measured 0.5.
+      const cellPx: Record<string, number> = {
+        "cell--0": 500,
+        "cell--1": 300,
+        "cell--2": 200,
+      };
+      const containerPx = 1014;
+      const measuredState: LayoutState = {
+        root: {
+          kind: "split",
+          dir: "row",
+          sizes: [0.6, 0.25, 0.15],
+          initialPx: [undefined, undefined, 200],
+          children: [
+            { kind: "panel", panelId: "a" },
+            { kind: "panel", panelId: "b" },
+            { kind: "panel", panelId: "c" },
+          ],
+        },
+        maximized: null,
+        collapsed: [],
+      };
+      const measuredRegistry: PanelRegistry = {
+        ...abRegistry,
+        c: () => {
+          return <div data-testid="c-body">C</div>;
+        },
+      };
+      // jsdom's real rects are zero-size (which is exactly why every other
+      // drag test falls back to node.sizes) — stub them so the split
+      // container and its cells report the widths above.
+      const boundingRect = vi
+        .spyOn(Element.prototype, "getBoundingClientRect")
+        .mockImplementation(function stubbedRect(this: Element): DOMRect {
+          const width =
+            cellPx[this.getAttribute("data-testid") ?? ""] ?? containerPx;
+          return new DOMRect(0, 0, width, 600);
+        });
+      const onResize = vi.fn();
+
+      try {
+        render(
+          <InhouseLayoutEngine
+            state={measuredState}
+            registry={measuredRegistry}
+            onMaximize={noop}
+            onRestore={noop}
+            onCollapse={noop}
+            onExpand={noop}
+            onResize={onResize}
+          />,
+        );
+        const handle = screen.getByTestId("handle--1");
+        fireEvent.pointerDown(handle, {
+          pointerId: 4,
+          clientX: 807,
+          clientY: 0,
+        });
+        fireEvent.pointerMove(handle, { clientX: 850, clientY: 0 });
+        fireEvent.pointerUp(handle, { pointerId: 4, clientX: 850, clientY: 0 });
+      } finally {
+        boundingRect.mockRestore();
+      }
+
+      expect(onResize).toHaveBeenCalled();
+      const [path, sizes] = onResize.mock.calls[0] as [number[], number[]];
+      expect(path).toEqual([]);
+      expect(sizes).toHaveLength(3);
+      // Measured fractions are cell px over the 1000px cell total (handles
+      // excluded): the untouched first child keeps its measured 500/1000.
+      expect(sizes[0]).toBeCloseTo(0.5, 5);
+      // The dragged pair rebalances around the pointer: fracA is the pointer
+      // position over the FULL 1014px container, minus the measured 0.5
+      // sitting before the pair; the pair conserves the measured 0.3 + 0.2.
+      const fracA = 850 / containerPx - 0.5;
+      expect(sizes[1]).toBeCloseTo(fracA, 5);
+      expect(sizes[2]).toBeCloseTo(0.5 - fracA, 5);
+      expect(sizes[0] + sizes[1] + sizes[2]).toBeCloseTo(1, 5);
+      // The machine side — resize() clearing initialPx so the split is a
+      // plain ratio split thereafter — is covered by LayoutMachine.test.ts
+      // in @rtc/client-core.
+    });
+
     it("drops the px-fixed treatment while a panel is maximized, so the maximized panel can fill the dock", () => {
       renderEngine({ ...initialPxState, maximized: "b" }, abRegistry);
       const cell = screen.getByTestId("panel-b").closest("[data-initial-cell]");
