@@ -53,4 +53,14 @@ describe("InstrumentTabs", () => {
     expect(tabs.tabs()).toEqual(["AAPL"]);
     expect(tabs.activeSymbol()).toBe("AAPL");
   });
+
+  // C2 regression: with no watchlist known yet (WS-real before the catalogue
+  // arrives), the workspace seeds "" — this must render NO tabs at all, never
+  // a label-less "✕" phantom tab for the empty symbol.
+  it("renders no tabs (not a phantom empty-symbol tab) when the workspace has no selection yet", () => {
+    const tabs = mount(InstrumentTabs, {});
+
+    expect(tabs.tabs()).toEqual([]);
+    expect(tabs.activeSymbol()).toBeNull();
+  });
 });

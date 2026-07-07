@@ -1,4 +1,4 @@
-import { firstValueFrom } from "rxjs";
+import { firstValueFrom, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import { createEqWorkspaceMachine } from "../EqWorkspaceMachine";
@@ -102,6 +102,67 @@ describe("EqWorkspaceMachine", () => {
     expect(state.timeframe).toBe("1W");
     expect(state.sel).toBe("MSFT");
     expect(state.openTabs).toEqual(["AAPL", "MSFT"]);
+    m.dispose();
+  });
+});
+
+describe("EqWorkspaceMachine — empty-seed recovery (C2 regression)", () => {
+  it("starts with no selection and NO phantom tab when initialSymbol is empty", async () => {
+    const m = createEqWorkspaceMachine({ initialSymbol: "" });
+    const state = await firstValueFrom(m.state$);
+    expect(state).toEqual({ sel: "", openTabs: [], timeframe: "1D" });
+    m.dispose();
+  });
+
+  it("seeds sel/openTabs from an async deferred watchlist port once it resolves", async () => {
+    // Mirrors the WS-real composition path: the synchronous peek finds
+    // nothing (initialSymbol ""), but the watchlist arrives moments later —
+    // this deferred Subject stands in for that async watchlist port.
+    const seed$ = new Subject<string>();
+    const m = createEqWorkspaceMachine({ initialSymbol: "", seed$ });
+
+    let state = await firstValueFrom(m.state$);
+    expect(state).toEqual({ sel: "", openTabs: [], timeframe: "1D" });
+
+    seed$.next("AAPL");
+    state = await firstValueFrom(m.state$);
+    expect(state).toEqual({ sel: "AAPL", openTabs: ["AAPL"], timeframe: "1D" });
+    m.dispose();
+  });
+
+  it("only ever seeds once — a second seed$ emission is ignored", async () => {
+    const seed$ = new Subject<string>();
+    const m = createEqWorkspaceMachine({ initialSymbol: "", seed$ });
+
+    seed$.next("AAPL");
+    seed$.next("MSFT");
+    const state = await firstValueFrom(m.state$);
+    expect(state.sel).toBe("AAPL");
+    expect(state.openTabs).toEqual(["AAPL"]);
+    m.dispose();
+  });
+
+  it("a user select() before the seed arrives wins — the late seed never clobbers it", async () => {
+    const seed$ = new Subject<string>();
+    const m = createEqWorkspaceMachine({ initialSymbol: "", seed$ });
+
+    m.intents.select("TSLA");
+    seed$.next("AAPL");
+
+    const state = await firstValueFrom(m.state$);
+    expect(state.sel).toBe("TSLA");
+    expect(state.openTabs).toEqual(["TSLA"]);
+    m.dispose();
+  });
+
+  it("a non-empty initialSymbol is never overridden by a later seed$ emission", async () => {
+    const seed$ = new Subject<string>();
+    const m = createEqWorkspaceMachine({ initialSymbol: "AAPL", seed$ });
+
+    seed$.next("MSFT");
+    const state = await firstValueFrom(m.state$);
+    expect(state.sel).toBe("AAPL");
+    expect(state.openTabs).toEqual(["AAPL"]);
     m.dispose();
   });
 });

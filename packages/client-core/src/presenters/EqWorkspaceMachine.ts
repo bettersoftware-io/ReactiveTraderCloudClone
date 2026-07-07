@@ -1,6 +1,6 @@
 import { type StateObservable, state } from "@rx-state/core";
-import { merge, Subject } from "rxjs";
-import { map, scan } from "rxjs/operators";
+import { EMPTY, merge, type Observable, Subject } from "rxjs";
+import { map, scan, take } from "rxjs/operators";
 
 import type { CandleTimeframe } from "@rtc/domain";
 
@@ -23,6 +23,16 @@ export interface EqWorkspaceDeps {
    * selection. Composition supplies the first watchlist symbol (falls back
    * to "" if none is known synchronously yet). */
   readonly initialSymbol: string;
+  /** Optional async recovery source, used ONLY when `initialSymbol` arrives
+   * "" (WS-real: the watchlist hasn't loaded synchronously at composition
+   * time, unlike the simulator's synchronous `of(WATCHLIST)`). Emits the
+   * resolved seed symbol once, when it first becomes known; the machine
+   * takes exactly one emission and seeds `sel`/`openTabs` from it, but ONLY
+   * if nothing has selected a symbol in the meantime (a user click or the
+   * synchronous peek always wins over a late-arriving seed — see
+   * `seedPatch$` below). Omitted by tests that don't care about the async
+   * path (defaults to a source that never emits). */
+  readonly seed$?: Observable<string>;
 }
 
 type Patch = (s: EqWorkspaceState) => EqWorkspaceState;
@@ -50,9 +60,12 @@ export function createEqWorkspaceMachine(
   const closeTab$ = new Subject<string>();
   const setTimeframe$ = new Subject<CandleTimeframe>();
 
+  // An empty initialSymbol means no tab is open yet (WS-real, watchlist not
+  // arrived synchronously) — NOT a phantom "" tab. InstrumentTabs then simply
+  // renders nothing until seedPatch$ (or a user select()) populates openTabs.
   const initial: EqWorkspaceState = {
     sel: deps.initialSymbol,
-    openTabs: [deps.initialSymbol],
+    openTabs: deps.initialSymbol === "" ? [] : [deps.initialSymbol],
     timeframe: "1D",
   };
 
@@ -100,7 +113,27 @@ export function createEqWorkspaceMachine(
     }),
   );
 
-  const stream$ = merge(selectPatch$, closeTabPatch$, setTimeframePatch$).pipe(
+  // Recovery patch: takes exactly one emission from seed$ (or never emits,
+  // when seed$ is omitted) and seeds sel/openTabs — but only while sel is
+  // still "", so a synchronous initialSymbol or an intervening user select()
+  // always wins. This is the ONLY path that can turn an empty workspace into
+  // a seeded one when the watchlist arrives asynchronously (WS-real).
+  const seedPatch$ = (deps.seed$ ?? EMPTY).pipe(
+    take(1),
+    map((sym): Patch => {
+      return (s: EqWorkspaceState): EqWorkspaceState => {
+        if (s.sel !== "") return s;
+        return { ...s, sel: sym, openTabs: [sym] };
+      };
+    }),
+  );
+
+  const stream$ = merge(
+    selectPatch$,
+    closeTabPatch$,
+    setTimeframePatch$,
+    seedPatch$,
+  ).pipe(
     scan((s, patch) => {
       return patch(s);
     }, initial),

@@ -1,4 +1,5 @@
 import { type Observable, of, Subject } from "rxjs";
+import { filter, map, take } from "rxjs/operators";
 
 import type {
   BootVariant,
@@ -188,6 +189,28 @@ function peekFirstWatchlistSymbol(
   return first;
 }
 
+/** Async companion to {@link peekFirstWatchlistSymbol}: resolves the SAME
+ * first-watchlist-symbol, but as an Observable that waits for it to actually
+ * arrive instead of only checking what's already buffered. Passed to
+ * EqWorkspaceMachine as `seed$` so a WS-real backend (whose watchlist() lands
+ * over the wire, not synchronously) can recover from the peek's "" fallback:
+ * once the watchlist's first non-empty list arrives, this emits its first
+ * symbol exactly once and completes. A no-op when the sync peek already
+ * found a symbol — the machine only applies a seed while sel is still "". */
+export function firstWatchlistSymbol$(
+  watchlist$: Observable<readonly EquityInstrument[]>,
+): Observable<string> {
+  return watchlist$.pipe(
+    map((list) => {
+      return list[0]?.symbol ?? "";
+    }),
+    filter((symbol) => {
+      return symbol !== "";
+    }),
+    take(1),
+  );
+}
+
 export function createApp(ports: AppPorts): App {
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
@@ -267,6 +290,7 @@ export function createApp(ports: AppPorts): App {
     }),
     eqWorkspace: createEqWorkspaceMachine({
       initialSymbol: peekFirstWatchlistSymbol(watchlist.watchlist$),
+      seed$: firstWatchlistSymbol$(watchlist.watchlist$),
     }),
     throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
     latencyMetric: new LatencyPresenter(ports.telemetry),
