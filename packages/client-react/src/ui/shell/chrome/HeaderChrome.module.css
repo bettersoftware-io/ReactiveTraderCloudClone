@@ -17,19 +17,15 @@
   gap: 12px;
 }
 
-.logoMark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Sized wrapper for the shared animated HudLogo (prototype Logo.module.css
+   .wrap/.svg) — the SVG fills it; the glow drop-shadow lives here. */
+.logoWrap {
+  position: relative;
+  display: block;
   width: 38px;
   height: 38px;
   flex: none;
-  border: 1px solid var(--accent-primary);
-  border-radius: 8px;
-  font-size: 20px;
-  line-height: 1;
-  color: var(--accent-primary);
-  box-shadow: var(--glow);
+  filter: drop-shadow(0 0 6px var(--accent-primary));
 }
 
 .brandText {

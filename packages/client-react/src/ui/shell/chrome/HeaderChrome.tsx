@@ -1,5 +1,6 @@
 import { type ReactElement, useState } from "react";
 
+import { HudLogo } from "../logo/HudLogo";
 import { PreferencesModal } from "../prefs/PreferencesModal";
 import { AccountMenu } from "./AccountMenu";
 import { EnvBadge } from "./EnvBadge";
@@ -49,8 +50,8 @@ export function HeaderChrome({
   return (
     <header data-testid="header" className={styles.header}>
       <div className={styles.brand}>
-        <span className={styles.logoMark} aria-hidden="true">
-          ⬡
+        <span className={styles.logoWrap} aria-hidden="true">
+          <HudLogo />
         </span>
         <span className={styles.brandText}>
           <span className={styles.wordmark}>REACTIVE TRADER</span>

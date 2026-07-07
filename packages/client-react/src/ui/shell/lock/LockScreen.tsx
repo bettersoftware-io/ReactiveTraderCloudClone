@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { HudLogo } from "../logo/HudLogo";
 import { BiometricLine } from "./BiometricLine";
 
 import styles from "./LockScreen.module.css";
@@ -24,39 +25,10 @@ export function LockScreen(): ReactElement | null {
     <div data-testid="lock-screen" className={styles.overlay}>
       <div className={styles.grid} aria-hidden="true" />
       <div className={styles.panel}>
-        {/* Hex emblem (prototype line 80). */}
-        <svg
-          viewBox="0 0 48 48"
-          className={styles.badge}
-          aria-hidden="true"
-          role="presentation"
-        >
-          <g
-            fill="none"
-            stroke="var(--accent-primary)"
-            strokeWidth="1.3"
-            strokeLinejoin="round"
-          >
-            <polygon points="24,3 40.6,13.5 40.6,34.5 24,45 7.4,34.5 7.4,13.5" />
-            <polygon
-              points="24,8 36.3,15.75 36.3,31.25 24,39 11.7,31.25 11.7,15.75"
-              stroke="var(--accent-2)"
-              opacity="0.6"
-            />
-          </g>
-          <circle
-            cx="24"
-            cy="24"
-            r="11"
-            fill="none"
-            stroke="var(--accent-2)"
-            strokeWidth="1"
-            strokeDasharray="3 5"
-            opacity="0.85"
-            className={styles.spin}
-          />
-          <circle cx="24" cy="24" r="3.4" fill="var(--accent-primary)" />
-        </svg>
+        {/* Hex emblem (prototype line 80) — the shared animated HUD logo. */}
+        <div className={styles.badge} aria-hidden="true">
+          <HudLogo />
+        </div>
 
         <div data-testid="lock-title" className={styles.title}>
           SESSION LOCKED
