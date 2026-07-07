@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export type TickDirection = "up" | "down";
+type TickDirection = "up" | "down";
 
 export interface TickFlash {
   readonly flashOn: boolean;

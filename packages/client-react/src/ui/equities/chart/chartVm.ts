@@ -10,7 +10,7 @@ const MIN_BODY = 0.6;
 const GRID_FRACTIONS = [0.2, 0.4, 0.6, 0.8];
 const LABEL_FRACTIONS = [0.12, 0.37, 0.62, 0.87];
 
-export interface CandleVm {
+interface CandleVm {
   key: number;
   up: boolean;
   last: boolean;
