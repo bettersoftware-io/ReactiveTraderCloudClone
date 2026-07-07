@@ -1,5 +1,11 @@
+import { act } from "@testing-library/react";
 import { OrderTicket } from "@ui-contract/components";
-import { cleanupMounted, mount } from "@ui-contract/mount";
+import {
+  cleanupMounted,
+  createWorld,
+  mount,
+  mountWith,
+} from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { EquityQuote } from "@rtc/domain";
@@ -90,6 +96,85 @@ describe("OrderTicket — symbol defaults to the shared eqWorkspace selection", 
       equities: { initialSymbol: "MSFT" },
     });
 
+    expect(ticket.submitLabel()).toMatch(/buy msft/i);
+  });
+
+  // C1 regression: the docked ticket (no `symbol` prop) mounts its machine
+  // once and must stay synced when the shared workspace selection changes
+  // AFTER mount — the exact live bug was "select MSFT, CTA says BUY MSFT,
+  // submit places an AAPL order" because the machine's form.symbol was
+  // frozen at the mount-time selection.
+  it("re-syncs the traded symbol when the workspace selection changes after mount, and submits the NEW symbol", async () => {
+    const world = createWorld(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { initialSymbol: "AAPL" },
+    );
+    const ticket = mountWith(world, OrderTicket, {});
+
+    expect(ticket.submitLabel()).toMatch(/buy aapl/i);
+
+    act(() => {
+      world.eqWorkspace.intents.select("MSFT");
+    });
+
+    // The CTA (and every other affordance) already tracked the new symbol
+    // before the fix — the bug was invisible until you looked at what
+    // actually got placed.
+    expect(ticket.submitLabel()).toMatch(/buy msft/i);
+
+    await ticket.setQty(100);
+    await ticket.submit();
+    expect(ticket.phase()).toBe("submitting");
+
+    expect(ticket.placedSymbols()).toEqual(["MSFT"]);
+  });
+
+  it("does not retarget an in-flight order when the selection changes mid-submission", async () => {
+    const world = createWorld(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { initialSymbol: "AAPL" },
+    );
+    const ticket = mountWith(world, OrderTicket, {});
+
+    await ticket.setQty(100);
+    await ticket.submit();
+    expect(ticket.phase()).toBe("submitting");
+    expect(ticket.placedSymbols()).toEqual(["AAPL"]);
+
+    // Selection changes while the AAPL order is still in flight (submitting)
+    // — must not clobber the in-flight state or its already-captured request.
+    act(() => {
+      world.eqWorkspace.intents.select("MSFT");
+    });
+    expect(ticket.phase()).toBe("submitting");
+
+    ticket.pushLifecycle({ status: "working", filledQty: 0 });
+    expect(ticket.phase()).toBe("working");
+    expect(ticket.placedSymbols()).toEqual(["AAPL"]);
+
+    ticket.pushLifecycle({ status: "filled", filledQty: 100 });
+    expect(ticket.phase()).toBe("filled");
+
+    // Once the ticket returns to editing (reset), it picks up the symbol
+    // the workspace has selected in the meantime.
+    await ticket.reset();
+    expect(ticket.phase()).toBe("editing");
     expect(ticket.submitLabel()).toMatch(/buy msft/i);
   });
 });

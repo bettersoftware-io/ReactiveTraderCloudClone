@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactElement } from "react";
+import { type ChangeEvent, type ReactElement, useEffect } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -19,6 +19,22 @@ import styles from "./OrderTicket.module.css";
  *
  * NOTE: `submitting` phase has NO `order` field — the component never reads
  * order on a submitting state.
+ *
+ * Symbol sync (C1 fix): `useOrderTicket` (via `useMachine`) instantiates the
+ * underlying OrderTicketMachine ONCE per mount — its `form.symbol` is frozen
+ * at whatever `sym` was on the first render. The eq-ticket dock panel never
+ * remounts, so without an explicit sync, changing the workspace selection
+ * (click a different watchlist row) would leave the ticket trading its STALE
+ * initial symbol while every visible affordance (CTA, quote, est. cost)
+ * already shows the new one — the exact live bug (select MSFT, place an
+ * AAPL order). The effect below calls `ticket.setSymbol(sym)` whenever the
+ * workspace selection drifts from the machine's current form.symbol, but
+ * ONLY while the machine is in the "editing" phase: once a submit is
+ * in-flight (submitting/working/partiallyFilled/filled/rejected) the ticket
+ * is displaying an order already placed against the OLD symbol, and a
+ * selection change must never retarget or clobber that in-flight/terminal
+ * state — the next edit simply starts on the new symbol once the machine
+ * returns to editing (on mount, or after reset()).
  */
 export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
   const {
@@ -35,6 +51,13 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
 
   const { state } = ticket;
   const animAttr = animIntent?.kind === "fill" ? "fill" : undefined;
+  const formSymbol = state.phase === "editing" ? state.form.symbol : undefined;
+
+  useEffect(() => {
+    if (formSymbol !== undefined && formSymbol !== sym) {
+      ticket.setSymbol(sym);
+    }
+  }, [sym, formSymbol, ticket]);
 
   // ── Terminal / in-flight phase rendering ──────────────────────────────────
 

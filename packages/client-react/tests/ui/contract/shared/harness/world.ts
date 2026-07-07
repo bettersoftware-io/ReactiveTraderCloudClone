@@ -39,6 +39,7 @@ import {
   type Instrument,
   type LogEvent,
   type MetricSample,
+  type PlaceOrderRequest,
   type PositionUpdates,
   type Price,
   type PriceTick,
@@ -175,6 +176,13 @@ export interface CommandLog {
   sessionLock: number;
   /** Incremented each time useSession().unlock() (re-authenticate) is invoked. */
   sessionUnlock: number;
+  /** Each PlaceOrderRequest the OrderTicketMachine's place() dep was invoked
+   * with, in order — captures what symbol/side/qty was ACTUALLY submitted,
+   * independent of pushOrderLifecycle's canned lifecycle order (which the
+   * page hard-codes symbol "TEST" for). Regression proof for C1 (stale
+   * ticket symbol): a spec asserts the last entry's `symbol` matches the
+   * workspace selection at submit time, not the machine's mount-time default. */
+  placedOrderRequests: PlaceOrderRequest[];
   /** Each value written through useAnimatedBackground().setEnabled/toggle, in order. */
   animatedBackgroundSets: boolean[];
   /** Each incident kind injected via injectIncident(), in order. */
@@ -560,6 +568,7 @@ export function createWorld(
     sessionUnlock: 0,
     animatedBackgroundSets: [],
     injectedIncidents: [],
+    placedOrderRequests: [],
   };
 
   return {

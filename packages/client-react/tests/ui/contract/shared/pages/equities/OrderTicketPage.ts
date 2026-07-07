@@ -145,6 +145,16 @@ export class OrderTicketPage extends MountedComponent<OrderTicketProps> {
     await this.user.click(within(this.root).getByTestId("order-ticket-submit"));
   }
 
+  /** The symbols of every PlaceOrderRequest actually submitted (in order) —
+   * i.e. what the REAL OrderTicketMachine's place() dep was called with, NOT
+   * pushLifecycle's canned "TEST" order. Regression proof for C1: submitting
+   * after a workspace selection change must place the NEW symbol. */
+  placedSymbols(): string[] {
+    return this.commandLog().placedOrderRequests.map((req) => {
+      return req.symbol;
+    });
+  }
+
   /** Advance the place lifecycle by emitting one order (status + filledQty). */
   pushLifecycle(patch: LifecyclePatch): void {
     const order: EquityOrder = {

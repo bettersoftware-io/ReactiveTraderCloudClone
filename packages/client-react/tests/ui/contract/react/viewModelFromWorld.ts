@@ -27,6 +27,7 @@ import type {
   EqWatchlistSort,
   ExecuteTradeInput,
   ExecuteTradeResult,
+  PlaceOrderRequest,
   RfqQuoteResult,
   ThemeSkin,
   ViewMode,
@@ -501,7 +502,8 @@ export function reactViewModel(world: World): ViewModel {
     useOrderTicket: (defaultSymbol: string) => {
       return useMachine(() => {
         return createOrderTicketMachine({
-          place: () => {
+          place: (req: PlaceOrderRequest) => {
+            world.commands.placedOrderRequests.push(req);
             return world.orderLifecycle.asObservable();
           },
           defaultSymbol,
