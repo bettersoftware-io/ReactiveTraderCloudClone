@@ -84,6 +84,45 @@ describe("EquityMarketDataSimulator :: timeframe-parameterised candles", () => {
     );
   });
 
+  it.each([
+    "1D",
+    "1W",
+    "1M",
+    "3M",
+  ] as const)("'%s' generates real OHLC bodies — not every bar is a degenerate doji (I1 regression)", async (tf) => {
+    // Before the fix, candles() drew exactly ONE GBM sample per bucket, so
+    // every bar had open===high===low===close (a flat doji, zero-length
+    // wick) — the "candlestick chart" was a scatter of dashes.
+    const port = new EquityMarketDataSimulator(42);
+    const candles = await firstValueFrom(port.candles("AAPL", tf));
+
+    const hasRealBody = candles.some((c) => {
+      return c.open !== c.close;
+    });
+    const hasRealWick = candles.some((c) => {
+      return c.high > c.low;
+    });
+
+    expect(hasRealBody).toBe(true);
+    expect(hasRealWick).toBe(true);
+  });
+
+  it.each([
+    "1D",
+    "1W",
+    "1M",
+    "3M",
+  ] as const)("'%s' anchors the last candle's close to the CURRENT live price, not an independent frozen walk (I1 regression)", async (tf) => {
+    // Before the fix, the candle walk (fresh mulberry32(seed) from s.open)
+    // and the live quote walk (a per-symbol RNG evolving since
+    // construction) were unrelated — chartVm's live-overlay stretched the
+    // last candle's high/low to reach the live price, producing a
+    // permanent full-height "wick" pillar wherever they'd diverged to.
+    const port = new EquityMarketDataSimulator(42);
+    const candles = await firstValueFrom(port.candles("MSFT", tf));
+    expect(candles.at(-1)?.close).toBeCloseTo(port.currentPrice("MSFT"), 6);
+  });
+
   it("is deterministic — repeated calls for the same symbol+timeframe reproduce the same close-price path", async () => {
     const port = new EquityMarketDataSimulator(42);
     const first = await firstValueFrom(port.candles("MSFT", "1M"));

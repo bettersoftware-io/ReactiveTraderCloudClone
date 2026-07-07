@@ -42,6 +42,16 @@ const CANDLE_BUCKET_MS = 60_000;
 const CANDLE_HISTORY = 60;
 const DEPTH_LEVELS = 8;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** GBM samples folded into each bucket via aggregateCandle (I1 fix): one
+ * sample per bucket makes open===high===low===close for every candle (a
+ * degenerate doji) — the samples never diverge within a bucket because
+ * there's only ever one. Splitting each bucket's motion into several
+ * substeps gives every bar a real body + wicks. Substep vol is scaled by
+ * 1/sqrt(n) so the compounded per-bucket variance still roughly matches the
+ * original single-step vol (a random walk's variance is additive across
+ * independent steps), keeping each timeframe's overall level/character
+ * close to its previous (single-step) shape. */
+const CANDLE_SUBSTEPS = 6;
 
 interface TimeframeConfig {
   /** Number of candles in the returned series. */
@@ -161,26 +171,53 @@ export class EquityMarketDataSimulator implements MarketDataPort {
         });
       const { count, bucketMs, vol, seed } = TF_CONFIG[timeframe];
       const rng = mulberry32(seed);
+      const substepVol = vol / Math.sqrt(CANDLE_SUBSTEPS);
       let price = s.open;
-      let candle: Candle | null = null;
       const out: Candle[] = [];
       const now = Date.now();
 
       for (let i = count - 1; i >= 0; i--) {
-        const t = now - i * bucketMs;
-        price = gbmStep(price, rng(), vol);
-        candle = aggregateCandle(candle, price, t, bucketMs);
+        const bucketTime =
+          Math.floor((now - i * bucketMs) / bucketMs) * bucketMs;
+        let candle: Candle | null = null;
 
-        if (
-          i === 0 ||
-          Math.floor((now - (i - 1) * bucketMs) / bucketMs) !==
-            Math.floor(t / bucketMs)
-        ) {
-          out.push(candle);
+        for (let sub = 0; sub < CANDLE_SUBSTEPS; sub++) {
+          price = gbmStep(price, rng(), substepVol);
+          candle = aggregateCandle(candle, price, bucketTime, bucketMs);
         }
+
+        out.push(candle as Candle);
       }
 
-      return of(out as readonly Candle[]);
+      // Anchor the series to the CURRENT live price (I1 fix, second half):
+      // the walk above starts from `s.open` (frozen at construction) on its
+      // own seeded RNG stream, completely independent of the live quote's
+      // ongoing per-tick walk (a different stream that keeps moving after
+      // construction) — left alone the two diverge without bound, and
+      // chartVm's live-overlay (which stretches the last candle's high/low
+      // to include the live price) turns that gap into a permanent
+      // full-height "wick" pillar. Rescaling every OHLC value by the ratio
+      // needed to make the last bucket's close equal `s.price` keeps the
+      // deterministic seeded SHAPE (same relative up/down pattern, same
+      // tests' distinctness/determinism properties) while anchoring the
+      // endpoint to wherever the live overlay will actually draw from — the
+      // live overlay then only has to bridge the (much smaller) gap accrued
+      // since THIS series was generated, not since the simulator itself was
+      // constructed.
+      const rawEndClose = out.at(-1)?.close;
+      const scale = rawEndClose ? s.price / rawEndClose : 1;
+
+      const anchored: Candle[] = out.map((c) => {
+        return {
+          time: c.time,
+          open: c.open * scale,
+          high: c.high * scale,
+          low: c.low * scale,
+          close: c.close * scale,
+        };
+      });
+
+      return of(anchored as readonly Candle[]);
     });
   }
 
