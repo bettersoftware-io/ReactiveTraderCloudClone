@@ -16,22 +16,19 @@ const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS[0];
 const quote: RfqQuote = { bid: 1.0921, ask: 1.0925, timeoutMs: 10_000 };
 
 describe("TileRfq", () => {
-  it("offers an Initiate RFQ button in the init state", async () => {
-    let requested = 0;
+  // The RFQ-initiation affordance is TileHeader's compact ⚡ RFQ chip now —
+  // TileRfq renders nothing in the init state (no extra bottom row).
+  it("renders nothing in the init state (the ⚡ RFQ chip lives in TileHeader)", () => {
     const rfq = mount(TileRfq, {
       props: {
         pair: eurusd,
         rfqState: rfqState({ status: "init", quote: null, remainingMs: 0 }),
-        onRequestQuote: () => {
-          requested += 1;
-        },
         onExecute: () => {},
         notional: 1_000_000,
       },
     });
-    expect(rfq.hasButton(/initiate rfq/i)).toBe(true);
-    await rfq.click(/initiate rfq/i);
-    expect(requested).toBe(1);
+    expect(rfq.isEmpty()).toBe(true);
+    expect(rfq.hasButton(/initiate rfq/i)).toBe(false);
   });
 
   it("shows an awaiting-price state with a cancel action", async () => {
@@ -47,7 +44,6 @@ describe("TileRfq", () => {
             },
           },
         ),
-        onRequestQuote: () => {},
         onExecute: () => {},
         notional: 1_000_000,
       },
@@ -62,7 +58,6 @@ describe("TileRfq", () => {
       props: {
         pair: eurusd,
         rfqState: rfqState({ status: "received", quote, remainingMs: 6_000 }),
-        onRequestQuote: () => {},
         onExecute: () => {},
         notional: 1_000_000,
       },
@@ -87,7 +82,6 @@ describe("TileRfq", () => {
             },
           },
         ),
-        onRequestQuote: () => {},
         onExecute: (dir: Direction, price: Price, notional: number) => {
           return executed.push({ dir, price, notional });
         },
@@ -120,7 +114,6 @@ describe("TileRfq", () => {
             },
           },
         ),
-        onRequestQuote: () => {},
         onExecute: (dir: Direction, price: Price, notional: number) => {
           return executed.push({ dir, price, notional });
         },
@@ -150,7 +143,6 @@ describe("TileRfq", () => {
             },
           },
         ),
-        onRequestQuote: () => {},
         onExecute: () => {},
         notional: 1_000_000,
       },
@@ -164,7 +156,6 @@ describe("TileRfq", () => {
       props: {
         pair: eurusd,
         rfqState: rfqState({ status: "rejected", quote: null, remainingMs: 0 }),
-        onRequestQuote: () => {},
         onExecute: () => {},
         notional: 1_000_000,
       },
@@ -177,7 +168,6 @@ describe("TileRfq", () => {
       props: {
         pair: eurusd,
         rfqState: rfqState({ status: "received", quote: null, remainingMs: 0 }),
-        onRequestQuote: () => {},
         onExecute: () => {},
         notional: 1_000_000,
       },

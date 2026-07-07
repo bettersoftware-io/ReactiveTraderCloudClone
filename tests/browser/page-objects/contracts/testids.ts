@@ -18,6 +18,10 @@ export const TESTIDS = {
     },
     sellBtn: "sell-btn",
     buyBtn: "buy-btn",
+    /** The compact ⚡ RFQ chip in the tile header's pair row (the RFQ
+     * init-state affordance; its visible text is just "⚡ RFQ" — the
+     * "Initiate RFQ" name lives in title/aria-label). */
+    rfqInitiate: "rfq-initiate",
     tradeConfirmation: "trade-confirmation",
     currencyFilter: "currency-filter",
     filter: (category: string) => {

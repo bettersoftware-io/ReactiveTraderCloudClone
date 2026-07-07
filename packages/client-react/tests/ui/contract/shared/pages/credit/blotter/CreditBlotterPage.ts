@@ -92,12 +92,11 @@ export class CreditBlotterPage extends MountedComponent<Record<string, never>> {
   }
 
   // --- quick filter --------------------------------------------------------
-
-  async typeQuickFilter(text: string): Promise<void> {
-    const input = within(this.root).getByTestId("quick-filter");
-    await this.user.clear(input);
-    if (text) await this.user.type(input, text);
-  }
+  //
+  // The quick-filter input itself moved to CreditBlotterHead — this component
+  // only reads `quickFilter` from CreditViewContext. Typing it is exercised
+  // via CreditBlotterWorkspacePage (head + body mounted together), not here
+  // (same split as FxBlotterPage / FxBlotterWorkspacePage).
 
   /** The "Filtered: …" summary label, or null when no column filter is active. */
   activeFilterSummary(): string | null {
@@ -137,29 +136,10 @@ export class CreditBlotterPage extends MountedComponent<Record<string, never>> {
     await this.applyOpenFilter();
   }
 
-  /** Export-CSV trigger. */
-  async clickExport(): Promise<void> {
-    await this.user.click(within(this.root).getByTestId("export-csv"));
-  }
-
-  // --- prototype chrome: controls row ---------------------------------------
-
-  /** The "{n} trades" count text in the controls row above the table
-   * (PROTO CreditScreen `countText`). */
-  tradeCountText(): string {
-    return (
-      within(this.root)
-        .getByText(/^\d+ trades$/)
-        .textContent?.trim() ?? ""
-    );
-  }
-
-  /** The CSV export chip's visible label (kept at the `export-csv` testid). */
-  csvChipLabel(): string {
-    return (
-      within(this.root).getByTestId("export-csv").textContent?.trim() ?? ""
-    );
-  }
+  // --- CSV export / trade count ---------------------------------------------
+  //
+  // The CSV chip and the "{n} trades" count moved to CreditBlotterHead; they
+  // are exercised via CreditBlotterWorkspacePage, not here.
 
   // --- prototype chrome: per-row direction accent + new-trade flash --------
 

@@ -68,7 +68,7 @@
   letter-spacing: 0.1em;
   margin-right: 4px;
   color: var(--accent-primary);
-  background: transparent;
+  background: var(--chip);
   border: 1px solid var(--border-strong);
   cursor: pointer;
 }

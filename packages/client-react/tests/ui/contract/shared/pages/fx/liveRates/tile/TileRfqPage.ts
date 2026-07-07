@@ -18,7 +18,6 @@ export type RfqStateLike = { state: RfqState } & RfqTileIntents;
 export interface TileRfqProps {
   pair: CurrencyPair;
   rfqState: RfqStateLike;
-  onRequestQuote: () => void;
   onExecute: (direction: Direction, price: Price, notional: number) => void;
   notional: number;
 }

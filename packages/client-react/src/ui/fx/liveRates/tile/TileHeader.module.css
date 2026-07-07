@@ -35,6 +35,37 @@
   font-weight: 400;
 }
 
+/* Right side of the pair row: movement badge and/or the ⚡ RFQ chip. */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Compact RFQ-initiation chip — same chrome as the CHARTS head-chip
+ * (PanelHeadTabs.module.css .headChip), with the active-chip accent
+ * treatment on hover/focus. `background:` shorthand: --chip is a gradient
+ * on 3d skins. */
+.rfqChip {
+  padding: 4px 11px;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+}
+
+.rfqChip:hover,
+.rfqChip:focus-visible {
+  color: var(--accent-primary);
+  background: var(--chip);
+  border-color: var(--border-strong);
+}
+
 .pairRow .movementBadge {
   display: flex;
   align-items: center;

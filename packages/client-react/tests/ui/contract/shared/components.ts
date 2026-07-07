@@ -12,6 +12,7 @@ import { SessionsPanelPage } from "./pages/admin/SessionsPanelPage";
 import { ThroughputChartPage } from "./pages/admin/ThroughputChartPage";
 import { CreditBlotterHeadPage } from "./pages/credit/blotter/CreditBlotterHeadPage";
 import { CreditBlotterPage } from "./pages/credit/blotter/CreditBlotterPage";
+import { CreditBlotterWorkspacePage } from "./pages/credit/blotter/CreditBlotterWorkspacePage";
 import { NewRfqHeadPage } from "./pages/credit/newRfq/NewRfqHeadPage";
 import {
   NewRfqPanelPage,
@@ -337,6 +338,13 @@ export const CreditBlotterHead = component<
   CreditBlotterHeadPage
 >((ctx) => {
   return new CreditBlotterHeadPage(ctx);
+});
+
+export const CreditBlotterWorkspace = component<
+  Record<string, never>,
+  CreditBlotterWorkspacePage
+>((ctx) => {
+  return new CreditBlotterWorkspacePage(ctx);
 });
 
 export const LiveRatesPanel = component<

@@ -3,6 +3,7 @@ import type { BehaviorSubject } from "rxjs";
 
 import { ViewModelProvider } from "@rtc/react-bindings";
 
+import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
 import { FxViewProvider } from "#/ui/fx/FxViewProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
@@ -36,7 +37,9 @@ export const reactDriver: UiContractDriver = {
       <ViewModelProvider viewModel={hooks}>
         <ThemeProvider>
           <FxViewProvider>
-            <PropsHost subject={propsSubject} build={build} />
+            <CreditViewProvider>
+              <PropsHost subject={propsSubject} build={build} />
+            </CreditViewProvider>
           </FxViewProvider>
         </ThemeProvider>
       </ViewModelProvider>,

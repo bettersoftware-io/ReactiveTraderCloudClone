@@ -2,6 +2,7 @@ import { type ReactElement, useEffect, useState } from "react";
 
 import { ViewModelProvider } from "@rtc/react-bindings";
 
+import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
 import { FxViewProvider } from "#/ui/fx/FxViewProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
@@ -68,10 +69,15 @@ export function VisualScenario({
     return (
       <ViewModelProvider viewModel={buildFakeViewModel(data)}>
         <ThemeProvider>
-          {/* App.tsx nests its own FxViewProvider inside WorkspaceEngine; this
-              outer one is a harmless no-op for that path and covers every
-              other full-bleed component that might read useFxView. */}
-          <FxViewProvider>{render(scenario.fixtureKey)}</FxViewProvider>
+          {/* App.tsx nests its own Fx/CreditViewProviders inside
+              WorkspaceEngine; these outer ones are harmless no-ops for that
+              path and cover every other full-bleed component that might read
+              useFxView/useCreditView. */}
+          <FxViewProvider>
+            <CreditViewProvider>
+              {render(scenario.fixtureKey)}
+            </CreditViewProvider>
+          </FxViewProvider>
         </ThemeProvider>
       </ViewModelProvider>
     );
@@ -80,23 +86,26 @@ export function VisualScenario({
   return (
     <ViewModelProvider viewModel={buildFakeViewModel(data)}>
       <ThemeProvider>
-        {/* FxBlotter/LiveRatesPanel (and any future FX panel) read useFxView()
-            for their tab/filter state; standalone component-level shots need
-            the same provider App.tsx supplies via WorkspaceEngine. */}
+        {/* FxBlotter/LiveRatesPanel/CreditBlotter (and any future FX/credit
+            panel) read useFxView()/useCreditView() for their tab/filter
+            state; standalone component-level shots need the same providers
+            App.tsx supplies via WorkspaceEngine. */}
         <FxViewProvider>
-          <div
-            data-testid="scenario-root"
-            style={{
-              // ThemeProvider sets CSS vars on <html>; paint a real backdrop so
-              // component-level shots aren't on default white.
-              backgroundColor: "var(--bg-primary)",
-              color: "var(--text-primary)",
-              padding: 24,
-              display: "inline-block",
-            }}
-          >
-            {render(scenario.fixtureKey)}
-          </div>
+          <CreditViewProvider>
+            <div
+              data-testid="scenario-root"
+              style={{
+                // ThemeProvider sets CSS vars on <html>; paint a real backdrop so
+                // component-level shots aren't on default white.
+                backgroundColor: "var(--bg-primary)",
+                color: "var(--text-primary)",
+                padding: 24,
+                display: "inline-block",
+              }}
+            >
+              {render(scenario.fixtureKey)}
+            </div>
+          </CreditViewProvider>
         </FxViewProvider>
       </ThemeProvider>
     </ViewModelProvider>
