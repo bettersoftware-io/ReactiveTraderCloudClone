@@ -104,6 +104,16 @@
   flex: 0 0 auto;
 }
 
+/* A strip cell whose strips run PERPENDICULAR to the owning split's axis —
+ * an inherited orientation: its whole subtree collapsed sideways along an
+ * ANCESTOR split's axis (e.g. the analytics/positions column stripped by a
+ * row-sibling's maximize). Along its own split's main axis it shares space
+ * instead of hugging, so multiple vertical strips stack down the freed
+ * full-height rail (PROTO's collapsedStrip column). */
+.cell[data-strip-cell="true"][data-strip-fill="true"] {
+  flex: 1 1 auto;
+}
+
 /* A pinned cell takes content height only and never grows. */
 .cell[data-pinned-cell="true"] {
   flex-grow: 0;
@@ -196,8 +206,21 @@
   overflow: hidden;
 }
 
+/* Strip sizing follows the strip's OWN orientation (data-strip-orientation,
+ * stamped from the reclaim axis — the nearest non-stripped ancestor split's
+ * dir), not the wrapping cell's flex-direction: a horizontal strip is a
+ * short full-width bar; a vertical one is a narrow full-height column. */
 .panel[data-strip="true"] {
   flex: 0 0 32px;
+}
+
+/* Vertical strip (PROTO FxScreen `.collapsedStrip`/`.stripBtn`, 38px-wide
+ * rail): fixed width, and flex 1 1 auto along the wrapping cell's axis so
+ * multiple vertical strips stack down — and share — the full-height rail
+ * (their cells release space via `.cell[data-strip-fill]` above). */
+.panel[data-strip="true"][data-strip-orientation="vertical"] {
+  flex: 1 1 auto;
+  width: 38px;
 }
 
 .panel[data-maximized="true"] {

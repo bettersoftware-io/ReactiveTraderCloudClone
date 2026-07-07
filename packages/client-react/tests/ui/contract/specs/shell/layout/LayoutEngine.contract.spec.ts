@@ -138,16 +138,44 @@ describe("InhouseLayoutEngine", () => {
     expect(page.handleExists("0", 0)).toBe(false);
   });
 
-  it("orients the restore bar by its cell's parent split dir (every FX panel now sits in a column split → horizontal)", () => {
+  it("orients strips by the reclaim axis: maximizing rates turns the fully-stripped right rail into vertical strips, while the blotter (whose column still hosts rates) stays horizontal", () => {
+    const page = mount(LayoutEngine, {});
+    page.maximize("fx-rates");
+    // The right rail (analytics/positions column) is fully stripped: its
+    // space reclaims sideways along the ROOT ROW, so both strips render as
+    // narrow full-height columns despite their immediate parent being a
+    // column split — and their cells share the rail's height (strip-fill).
+    expect(page.stripOrientation("fx-analytics")).toBe("vertical");
+    expect(page.stripOrientation("fx-positions")).toBe("vertical");
+    expect(page.isStripFillCell("1", 0)).toBe(true);
+    expect(page.isStripFillCell("1", 1)).toBe(true);
+    // The blotter's parent column still hosts the maximized rates panel (not
+    // fully stripped), so its space reclaims down that column → horizontal.
+    expect(page.stripOrientation("fx-blotter")).toBe("horizontal");
+    expect(page.isStripFillCell("0", 1)).toBe(false);
+  });
+
+  it("orients strips by the reclaim axis: maximizing analytics turns the fully-stripped left column (rates + blotter) into vertical strips, while positions stays horizontal", () => {
     const page = mount(LayoutEngine, {});
     page.maximize("fx-analytics");
-    // Immediate-parent derivation (pre-inherited-orientation): fx-rates and
-    // fx-blotter both live in the left COLUMN split → short/wide strips.
-    // The G4 inherited-strip-orientation change revisits this: a fully
-    // stripped subtree will inherit the dir of the split where space
-    // actually reclaims (the root row) and go vertical.
-    expect(page.stripOrientation("fx-rates")).toBe("horizontal");
+    // The left column (rates over blotter) is fully stripped — space
+    // reclaims along the root row → both go vertical, stacking down the rail.
+    expect(page.stripOrientation("fx-rates")).toBe("vertical");
+    expect(page.stripOrientation("fx-blotter")).toBe("vertical");
+    expect(page.isStripFillCell("0", 0)).toBe(true);
+    expect(page.isStripFillCell("0", 1)).toBe(true);
+    // positions shares its column with the maximized analytics panel → its
+    // space reclaims down that column → horizontal.
+    expect(page.stripOrientation("fx-positions")).toBe("horizontal");
+  });
+
+  it("orients a plainly collapsed panel (no maximize) by its immediate parent split's dir", () => {
+    const page = mount(LayoutEngine, {});
+    page.collapse("fx-blotter");
+    // Only the blotter collapsed — its column still hosts the live rates
+    // panel, so the strip reclaims down the column → horizontal, as today.
     expect(page.stripOrientation("fx-blotter")).toBe("horizontal");
+    expect(page.isStripFillCell("0", 1)).toBe(false);
   });
 
   // The default FX tree is fully resizable (Task 2), so nothing shipped

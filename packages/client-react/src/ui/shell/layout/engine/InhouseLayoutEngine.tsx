@@ -56,7 +56,7 @@ export function InhouseLayoutEngine({
       className={styles.engine}
       data-maximized={state.maximized ?? ""}
     >
-      {renderNode(state.root, [], sharedProps, null)}
+      {renderNode(state.root, [], sharedProps, null, null)}
     </main>
   );
 }
@@ -101,6 +101,12 @@ type SplitLayoutNode = {
 interface SplitNodeProps extends SharedProps {
   node: SplitLayoutNode;
   path: readonly number[];
+  /** Non-null when THIS split's entire subtree is stripped: the dir of the
+   * nearest ancestor split that is not itself fully stripped — the split
+   * along whose axis the collapsed space actually reclaims. Propagated to
+   * every descendant so their strips orient against that axis rather than
+   * their immediate parent's (see renderPanel). */
+  stripDir: SplitDir | null;
 }
 
 /** Derive a stable key for a child node that does not use the array index.
@@ -146,6 +152,7 @@ function isStripSubtree(node: LayoutNode, state: LayoutState): boolean {
 function SplitNode({
   node,
   path,
+  stripDir,
   state,
   registry,
   specs,
@@ -266,6 +273,19 @@ function SplitNode({
         const childIsStripCell = isStripSubtree(child, state);
         const nextIsStripCell =
           nextChild !== undefined && isStripSubtree(nextChild, state);
+        // The strip orientation a stripped child's subtree inherits: when
+        // THIS split is already inside a fully-stripped subtree, keep
+        // propagating the ancestor dir it received; otherwise this split is
+        // where the collapsed space reclaims, so a fully-stripped child
+        // orients against THIS split's dir. Null for children that render
+        // normally.
+        const childStripDir = stripDir ?? (childIsStripCell ? node.dir : null);
+        // A strip cell whose strips run perpendicular to this split's own
+        // axis (an inherited orientation — e.g. vertical strips stacked
+        // inside a column split whose whole rail collapsed sideways) shares
+        // the split's main-axis space instead of hugging, so the strips
+        // stack down the full-height rail (`.cell[data-strip-fill]`).
+        const stripFill = childStripDir !== null && childStripDir !== node.dir;
         const showHandle =
           !childPinned &&
           i < node.children.length - 1 &&
@@ -284,6 +304,7 @@ function SplitNode({
               data-pinned-cell={childPinned ? "true" : "false"}
               data-fixed-cell={childFixed !== undefined ? "true" : "false"}
               data-strip-cell={childIsStripCell ? "true" : "false"}
+              data-strip-fill={stripFill ? "true" : "false"}
               style={
                 childPinned
                   ? undefined
@@ -294,7 +315,13 @@ function SplitNode({
                       } as CSSProperties)
               }
             >
-              {renderNode(child, [...path, i], sharedProps, node.dir)}
+              {renderNode(
+                child,
+                [...path, i],
+                sharedProps,
+                node.dir,
+                childStripDir,
+              )}
             </div>
             {showHandle ? (
               // Sibling of the cell (not nested inside it): `.cell` is a flex
@@ -330,8 +357,10 @@ function SplitNode({
 
 /** Renders a panel leaf — no hooks, plain function helper. `parentDir` is the
  * `dir` of the split whose cell holds this panel (null at the tree root, for
- * a single-panel tab like Admin/Equities); it decides the strip's restore-bar
- * orientation below. */
+ * a single-panel tab like Admin); `stripDir`, when non-null, is the dir of
+ * the nearest ancestor split that is NOT itself fully stripped — the axis
+ * along which this panel's collapsed space actually reclaims. Together they
+ * decide the strip's restore-bar orientation below. */
 function renderPanel(
   panelId: PanelId,
   {
@@ -345,6 +374,7 @@ function renderPanel(
     onExpand,
   }: SharedProps,
   parentDir: SplitDir | null,
+  stripDir: SplitDir | null,
 ): ReactElement {
   const spec = specs[panelId];
   const title = spec?.title ?? panelId;
@@ -353,11 +383,15 @@ function renderPanel(
   const isMaximized = state.maximized !== null;
   const strip = (isMaximized && !maximizedHere) || collapsed;
   const headContent = headRegistry?.[panelId];
-  // A row split lays its cells out side by side, so a stripped cell there
-  // shrinks to a narrow, full-height column (PROTO stripBar) — restoring it
-  // reads top-to-bottom. A column split's stripped cell instead shrinks to a
-  // short, full-width bar, which reads left-to-right like the normal header.
-  const stripOrientation = parentDir === "row" ? "vertical" : "horizontal";
+  // A strip whose space reclaims along a row axis shrinks to a narrow,
+  // full-height column (PROTO stripBar/collapsedStrip) — restoring it reads
+  // top-to-bottom. One reclaiming along a column axis shrinks to a short,
+  // full-width bar, which reads left-to-right like the normal header. The
+  // reclaim axis is the inherited stripDir when this panel sits inside a
+  // fully-stripped subtree (its own parent split collapsed with it, so THAT
+  // dir is irrelevant), else the immediate parent split's dir.
+  const stripOrientation =
+    (stripDir ?? parentDir) === "row" ? "vertical" : "horizontal";
 
   return (
     <section
@@ -366,6 +400,7 @@ function renderPanel(
       data-collapsed={collapsed ? "true" : "false"}
       data-pinned={spec?.pinned ? "true" : "false"}
       data-strip={strip ? "true" : "false"}
+      data-strip-orientation={stripOrientation}
       data-maximized={maximizedHere ? "true" : "false"}
     >
       {strip ? (
@@ -445,9 +480,10 @@ function renderNode(
   path: readonly number[],
   sharedProps: SharedProps,
   parentDir: SplitDir | null,
+  stripDir: SplitDir | null,
 ): ReactElement {
   if (node.kind === "panel") {
-    return renderPanel(node.panelId, sharedProps, parentDir);
+    return renderPanel(node.panelId, sharedProps, parentDir, stripDir);
   }
 
   return (
@@ -455,6 +491,7 @@ function renderNode(
       key={path.join(".") || "root"}
       node={node}
       path={path}
+      stripDir={stripDir}
       {...sharedProps}
     />
   );

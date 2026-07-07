@@ -184,6 +184,82 @@ describe("InhouseLayoutEngine", () => {
     expect(screen.getByTestId("rates-body").textContent).toBe("RATES");
   });
 
+  describe("strip orientation follows the reclaim axis (credit-shaped tree: rail | column[b, c])", () => {
+    const creditShapedState: LayoutState = {
+      root: {
+        kind: "split",
+        dir: "row",
+        sizes: [0.25, 0.75],
+        children: [
+          { kind: "panel", panelId: "rail" },
+          {
+            kind: "split",
+            dir: "column",
+            sizes: [0.6, 0.4],
+            children: [
+              { kind: "panel", panelId: "b" },
+              { kind: "panel", panelId: "c" },
+            ],
+          },
+        ],
+      },
+      maximized: null,
+      collapsed: [],
+    };
+    const creditShapedRegistry: PanelRegistry = {
+      rail: () => {
+        return <div data-testid="rail-body">RAIL</div>;
+      },
+      b: () => {
+        return <div data-testid="b-body">B</div>;
+      },
+      c: () => {
+        return <div data-testid="c-body">C</div>;
+      },
+    };
+
+    it("keeps a direct row-split child vertical and a column sibling of the maximized panel horizontal", () => {
+      renderEngine(
+        { ...creditShapedState, maximized: "b" },
+        creditShapedRegistry,
+      );
+      // rail is a direct child of the root row → narrow full-height strip.
+      const rail = screen.getByTestId("panel-rail");
+      expect(rail.getAttribute("data-strip")).toBe("true");
+      expect(rail.getAttribute("data-strip-orientation")).toBe("vertical");
+      // c shares its column with the maximized b → short full-width strip.
+      const c = screen.getByTestId("panel-c");
+      expect(c.getAttribute("data-strip")).toBe("true");
+      expect(c.getAttribute("data-strip-orientation")).toBe("horizontal");
+      expect(
+        screen.getByTestId("cell-1-1").getAttribute("data-strip-fill"),
+      ).toBe("false");
+    });
+
+    it("inherits the row axis through a fully-stripped column: maximizing the rail turns both column panels into vertical, rail-filling strips", () => {
+      renderEngine(
+        { ...creditShapedState, maximized: "rail" },
+        creditShapedRegistry,
+      );
+      for (const id of ["b", "c"]) {
+        const panel = screen.getByTestId(`panel-${id}`);
+        expect(panel.getAttribute("data-strip")).toBe("true");
+        expect(panel.getAttribute("data-strip-orientation")).toBe("vertical");
+      }
+      // Their cells share the freed rail's height instead of hugging.
+      expect(
+        screen.getByTestId("cell-1-0").getAttribute("data-strip-fill"),
+      ).toBe("true");
+      expect(
+        screen.getByTestId("cell-1-1").getAttribute("data-strip-fill"),
+      ).toBe("true");
+      // The fully-stripped column's own cell hugs along the row (no fill).
+      expect(
+        screen.getByTestId("cell--1").getAttribute("data-strip-fill"),
+      ).toBe("false");
+    });
+  });
+
   it("drives a column-split resize drag (vertical) and calls onResize", () => {
     const columnState: LayoutState = {
       root: {
