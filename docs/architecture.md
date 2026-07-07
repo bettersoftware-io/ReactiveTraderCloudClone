@@ -171,41 +171,61 @@ C4Context
     Rel(admin, rtc, "Monitors health, adjusts throughput", "HTTP / Browser")
     Rel(market, rtc, "Publishes FX spot rates", "Streaming")
     Rel(rtc, oms, "Sends executed trades", "Async")
+
+    UpdateElementStyle(trader, $bgColor="#30363d", $fontColor="#ffffff", $borderColor="#8b949e")
+    UpdateElementStyle(admin, $bgColor="#30363d", $fontColor="#ffffff", $borderColor="#8b949e")
+    UpdateElementStyle(rtc, $bgColor="#238636", $fontColor="#ffffff", $borderColor="#56d364")
+    UpdateElementStyle(market, $bgColor="#1f2d3d", $fontColor="#e6edf3", $borderColor="#4493f8")
+    UpdateElementStyle(oms, $bgColor="#1f2d3d", $fontColor="#e6edf3", $borderColor="#4493f8")
+    UpdateRelStyle(trader, rtc, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(admin, rtc, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(market, rtc, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(rtc, oms, $textColor="#6e7fa3", $lineColor="#6e7fa3")
 ```
+
+> **Diagram theming note.** GitHub serves one SVG to readers on both light and dark themes, and Mermaid's default C4 palette (pale fills, faint gray arrows) is nearly invisible on the dark one. All §2 diagrams therefore use self-contained colors that contrast on both backgrounds, with one consistent scheme: **blue = UI**, **purple = bindings bridge**, **green = application core / the system**, **amber = server & effects framework**, **slate = domain & shared contracts**, **gray = actors/external**.
 
 ### 2.2 Container Diagram
 
 Containers are described by **role first, current technology second**. The roles are the contract; the technology is replaceable.
 
 ```mermaid
-C4Container
-    title Container Diagram - Reactive Trader Cloud
+flowchart TB
+    trader(["Trader — FX / Credit / Equities"]):::actor
 
-    Person(trader, "Trader", "FX / Credit / Equities trader")
+    subgraph rtc["Reactive Trader Cloud"]
+        direction TB
+        webClient["<b>Web Client</b><br/>@rtc/client-react · React 19 + Vite + CSS Modules<br/>dumb UI + browser adapters · deployed to Vercel"]:::ui
+        rnClient["<b>Mobile Client</b><br/>@rtc/client-react-native · Expo SDK 57 / RN 0.86<br/>dumb UI + native adapters · EAS internal"]:::ui
+        bindings["<b>React Bindings</b><br/>@rtc/react-bindings · react-rxjs<br/>createViewModel / useMachine / ViewModelProvider"]:::bridge
+        core["<b>Application Core</b><br/>@rtc/client-core · TS + RxJS + @rx-state/core<br/>composition root · presenters · machines · port factories"]:::core
+        server["<b>WebSocket Server</b><br/>@rtc/server · Node.js + ws<br/>thin app of 24 effects · deployed to Fly.io"]:::server
+        wsEffects["<b>WS Effects Framework</b><br/>@rtc/ws-effects · rxjs only<br/>WsEffect · stream()/rpc() · combineEffects"]:::server
+        domain["<b>Domain Library</b><br/>@rtc/domain · pure TS + rxjs<br/>entities · use cases · ports · simulators"]:::domain
+        shared["<b>Shared Contracts</b><br/>@rtc/shared<br/>DTOs · CLIENT_MSG / SERVER_MSG"]:::domain
+    end
 
-    System_Boundary(rtc, "Reactive Trader Cloud") {
-        Container(webClient, "Web Client", "@rtc/client-react -- React 19 + Vite + CSS Modules", "Dumb UI + browser platform adapters; deployed to Vercel")
-        Container(rnClient, "Mobile Client", "@rtc/client-react-native -- Expo SDK 57 / RN 0.86", "Dumb UI + native platform adapters; expo-router tabs; EAS internal distribution")
-        Container(core, "Application Core", "@rtc/client-core -- vanilla TS + RxJS + @rx-state/core", "Composition root, presenters, state machines, WS transport + port factories. Shared by all clients; zero framework imports")
-        Container(bindings, "React Bindings", "@rtc/react-bindings -- react-rxjs", "createViewModel / useMachine / ViewModelProvider -- the only place React meets RxJS")
-        Container(server, "WebSocket Server", "@rtc/server -- Node.js + ws", "Thin app of declarative effects hosting the domain simulators; deployed to Fly.io")
-        Container(wsEffects, "WS Effects Framework", "@rtc/ws-effects -- rxjs only", "WsEffect primitive, stream()/rpc() sugar, combineEffects, error isolation. Zero domain knowledge")
-        Container(domain, "Domain Library", "@rtc/domain -- pure TypeScript + rxjs", "Entities, value objects, use cases, port interfaces, simulators")
-        Container(shared, "Shared Contracts", "@rtc/shared", "DTOs, wire-format envelopes, CLIENT_MSG / SERVER_MSG protocol constants")
-    }
+    trader -->|"HTTPS / Browser"| webClient
+    trader -->|"iOS / Android"| rnClient
+    webClient -->|"renders through ViewModel"| bindings
+    rnClient -->|"renders through ViewModel"| bindings
+    bindings -->|"binds presenters & machines"| core
+    core --> domain
+    core --> shared
+    core -. WebSocket JSON .-> server
+    server -->|"composes effects"| wsEffects
+    server -->|"hosts simulators"| domain
+    server --> shared
+    shared --> domain
 
-    Rel(trader, webClient, "Uses", "HTTPS / Browser")
-    Rel(trader, rnClient, "Uses", "iOS / Android")
-    Rel(webClient, bindings, "Renders through ViewModel", "TS import")
-    Rel(rnClient, bindings, "Renders through ViewModel", "TS import")
-    Rel(bindings, core, "Binds presenters & machines", "TS import")
-    Rel(core, domain, "Imports ports, use cases, simulators", "TS import")
-    Rel(core, shared, "Imports DTOs + protocol", "TS import")
-    Rel(core, server, "Subscribes to streams; sends RPC", "WebSocket JSON")
-    Rel(server, wsEffects, "Composes effects", "TS import")
-    Rel(server, domain, "Hosts simulators", "TS import")
-    Rel(server, shared, "Speaks the protocol", "TS import")
-    Rel(shared, domain, "Depends on domain types", "TS import")
+    classDef actor  fill:#30363d,stroke:#8b949e,color:#ffffff
+    classDef ui     fill:#1f6feb,stroke:#79c0ff,color:#ffffff
+    classDef bridge fill:#8957e5,stroke:#d2a8ff,color:#ffffff
+    classDef core   fill:#238636,stroke:#56d364,color:#ffffff
+    classDef server fill:#9e6a03,stroke:#e3b341,color:#ffffff
+    classDef domain fill:#1f2d3d,stroke:#4493f8,color:#e6edf3
+    style rtc fill:transparent,stroke:#6e7681
+    linkStyle default stroke:#6e7fa3,stroke-width:1.5px
 ```
 
 Two further packages exist **outside** the production dependency graph, as design-comprehension artifacts (see [§8.1](#81-the-multi-client-proof--the-solidjs-plan) for how they relate to the fidelity workstream):
@@ -220,48 +240,54 @@ Two further packages exist **outside** the production dependency graph, as desig
 The web client is now three packages deep. The **Application Core** (`@rtc/client-core`) is plain TypeScript + RxJS -- no React imports anywhere. The **Bindings** (`@rtc/react-bindings`) turn core streams into hooks. What remains in `@rtc/client-react` is only the dumb UI plus the browser-specific leaves. Replacing React means rewriting the last package; core and bindings-contract are untouched.
 
 ```mermaid
-C4Component
-    title Component Diagram - Web Client
+flowchart TB
+    subgraph uiLayer["@rtc/client-react — React, dumb"]
+        direction TB
+        app["<b>App Shell</b><br/>workspace layout engine · header ·<br/>boot gate · lock screen · ambient background"]:::ui
+        fxTiles["<b>FX</b><br/>tiles · blotter ·<br/>analytics · positions"]:::ui
+        creditRfq["<b>Credit RFQ</b><br/>form · RFQ tiles ·<br/>sell-side panel"]:::ui
+        equities["<b>Equities Dock</b><br/>watchlist · candles · depth ·<br/>ticket · blotters"]:::ui
+        admin["<b>Admin / Telemetry</b><br/>KPIs · throughput · latency ·<br/>topology · event log"]:::ui
+        appRoot["<b>AppRoot</b><br/>createApp(buildBrowserPorts()) + createViewModel<br/>once per mount (StrictMode-safe)"]:::ui
+        browserAdapters["<b>Browser Platform Adapters</b><br/>buildBrowserPorts (VITE_SERVER_URL switch) ·<br/>LocalStorage prefs · matchMedia color scheme"]:::ui
+        app --> fxTiles
+        app --> creditRfq
+        app --> equities
+        app --> admin
+    end
 
-    Container_Boundary(uiLayer, "@rtc/client-react (React, dumb)") {
-        Component(app, "App Shell", "React", "Workspace layout engine (FX/Credit/Equities/Admin), header, boot gate, lock screen, ambient background")
-        Component(fxTiles, "FX Live Rates + Blotter + Analytics", "React", "Price tiles, trade table, PnL chart, positions")
-        Component(creditRfq, "Credit RFQ", "React", "RFQ form, RFQ tiles with dealer quote cards, sell-side panel")
-        Component(equities, "Equities Dock", "React", "Watchlist, candle chart, depth ladder, order ticket, orders/positions blotter")
-        Component(admin, "Admin / Telemetry", "React", "KPIs, throughput, latency, service topology, event log")
-        Component(appRoot, "AppRoot", "React", "Composition-root component: createApp(buildBrowserPorts()) + createViewModel, once per mount (StrictMode-safe)")
-        Component(browserAdapters, "Browser Platform Adapters", "TypeScript", "buildBrowserPorts (VITE_SERVER_URL switch), LocalStorage preferences, matchMedia color scheme, browser connection events")
-    }
+    subgraph bindingsLayer["@rtc/react-bindings — the bridge"]
+        viewModel["<b>ViewModel</b><br/>~60 use* hooks — bind() for shared streams ·<br/>useMachine per mount · firstValueFrom for commands<br/>ViewModelProvider + useViewModel()"]:::bridge
+    end
 
-    Container_Boundary(bindingsLayer, "@rtc/react-bindings (the bridge)") {
-        Component(viewModel, "ViewModel", "react-rxjs + React context", "createViewModel: ~60 use* hooks -- bind() for shared streams, useMachine for per-mount machines, firstValueFrom for commands. ViewModelProvider + useViewModel()")
-    }
+    subgraph coreLayer["@rtc/client-core — vanilla TS + RxJS"]
+        direction TB
+        composition["<b>createApp / createMachineFactories</b><br/>wires ports → presenters → commands"]:::core
+        presenters["<b>Presenters & State Machines</b><br/>~40: price$ · trades$ · rfqs$ · watchlist ·<br/>order ticket · boot · layout · theme · telemetry"]:::core
+        portFactory["<b>portFactory</b><br/>createSimulatorPorts / createWsRealPorts"]:::core
+        wsAdapter["<b>WsAdapter</b><br/>send · rpc w/ correlation IDs · reconnect"]:::core
+        composition --> presenters
+        composition --> portFactory
+        portFactory -->|"WS mode"| wsAdapter
+    end
 
-    Container_Boundary(coreLayer, "@rtc/client-core (vanilla TS + RxJS)") {
-        Component(presenters, "Presenters & State Machines", "RxJS + @rx-state/core", "~40 presenters/machines: price$, trades$, rfqs$, watchlist, order ticket, boot sequence, layout, theme prefs, telemetry ...")
-        Component(composition, "createApp / createMachineFactories", "Vanilla TS", "Wires ports → presenters → commands at startup")
-        Component(portFactory, "portFactory", "TypeScript", "createSimulatorPorts / createWsRealPorts -- assembles domain simulators or WS-real port impls")
-        Component(wsAdapter, "WsAdapter", "TypeScript", "WebSocket transport: send, rpc with correlation IDs, reconnect, connection events")
-    }
+    server["<b>WebSocket Server</b><br/>Node.js + @rtc/ws-effects"]:::server
 
-    Container(server, "WebSocket Server", "Node.js + @rtc/ws-effects")
+    fxTiles & creditRfq & equities & admin -->|"useViewModel()"| viewModel
+    appRoot --> browserAdapters
+    appRoot -->|"createApp(ports)"| composition
+    appRoot -->|"ViewModelProvider"| viewModel
+    viewModel -->|"subscribes streams / machines"| presenters
+    wsAdapter -. WebSocket JSON .-> server
 
-    Rel(app, fxTiles, "Renders")
-    Rel(app, creditRfq, "Renders")
-    Rel(app, equities, "Renders")
-    Rel(app, admin, "Renders")
-    Rel(fxTiles, viewModel, "useViewModel()")
-    Rel(creditRfq, viewModel, "useViewModel()")
-    Rel(equities, viewModel, "useViewModel()")
-    Rel(admin, viewModel, "useViewModel()")
-    Rel(appRoot, browserAdapters, "buildBrowserPorts()")
-    Rel(appRoot, composition, "createApp(ports)")
-    Rel(appRoot, viewModel, "createViewModel(...) → ViewModelProvider")
-    Rel(viewModel, presenters, "Subscribes to streams / machines")
-    Rel(composition, presenters, "Instantiates")
-    Rel(composition, portFactory, "Consumes AppPorts")
-    Rel(portFactory, wsAdapter, "Wraps (WS mode)")
-    Rel(wsAdapter, server, "WebSocket JSON")
+    classDef ui     fill:#1f6feb,stroke:#79c0ff,color:#ffffff
+    classDef bridge fill:#8957e5,stroke:#d2a8ff,color:#ffffff
+    classDef core   fill:#238636,stroke:#56d364,color:#ffffff
+    classDef server fill:#9e6a03,stroke:#e3b341,color:#ffffff
+    style uiLayer fill:transparent,stroke:#6e7681
+    style bindingsLayer fill:transparent,stroke:#6e7681
+    style coreLayer fill:transparent,stroke:#6e7681
+    linkStyle default stroke:#6e7fa3,stroke-width:1.5px
 ```
 
 **Key boundary**: anything inside `@rtc/client-core` may use RxJS freely. Anything in `src/ui` must not import `rxjs`, `@react-rxjs`, or `@rx-state` and must not see `Observable<T>` -- machine-enforced by grep gate 26 (plus gates 27--29 banning `localStorage`, `fetch`/`import.meta.env`, and timers in the UI). The bindings package is the only place that bridges the two worlds, and it is small (~850 LOC) precisely so a `@rtc/solid-bindings` sibling can be written in about a day.
@@ -294,6 +320,24 @@ C4Component
     Rel(screens, rnTheme, "useThemedStyles")
     Rel(bindings2, core2, "Binds presenters & machines")
     Rel(core2, server2, "WebSocket JSON (live mode)")
+
+    UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+    UpdateElementStyle(tabs, $bgColor="#1f6feb", $fontColor="#ffffff", $borderColor="#79c0ff")
+    UpdateElementStyle(screens, $bgColor="#1f6feb", $fontColor="#ffffff", $borderColor="#79c0ff")
+    UpdateElementStyle(rnAppRoot, $bgColor="#1f6feb", $fontColor="#ffffff", $borderColor="#79c0ff")
+    UpdateElementStyle(nativeAdapters, $bgColor="#1f6feb", $fontColor="#ffffff", $borderColor="#79c0ff")
+    UpdateElementStyle(rnTheme, $bgColor="#1f6feb", $fontColor="#ffffff", $borderColor="#79c0ff")
+    UpdateElementStyle(bindings2, $bgColor="#8957e5", $fontColor="#ffffff", $borderColor="#d2a8ff")
+    UpdateElementStyle(core2, $bgColor="#238636", $fontColor="#ffffff", $borderColor="#56d364")
+    UpdateElementStyle(server2, $bgColor="#9e6a03", $fontColor="#ffffff", $borderColor="#e3b341")
+    UpdateRelStyle(tabs, screens, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(screens, bindings2, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(rnAppRoot, nativeAdapters, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(rnAppRoot, core2, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(rnAppRoot, bindings2, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(screens, rnTheme, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(bindings2, core2, $textColor="#6e7fa3", $lineColor="#6e7fa3")
+    UpdateRelStyle(core2, server2, $textColor="#d29922", $lineColor="#d29922")
 ```
 
 What is native-specific, exhaustively:
@@ -321,50 +365,54 @@ wss.on("connection", (ws) => listen(toSocket(ws)));
 ```
 
 ```mermaid
-C4Component
-    title Component Diagram - WebSocket Server
+flowchart TB
+    client["<b>Clients</b><br/>Web + React Native"]:::actor
 
-    Container_Boundary(server, "@rtc/server (thin app)") {
-        Component(http, "HTTP Server", "node:http", "GET /health (Fly health check), WebSocket upgrade with token auth (isAuthorizedUpgrade)")
-        Component(toSocket, "toSocket", "TypeScript", "Adapts a ws.WebSocket to the transport-agnostic Socket interface (messages$, send, closed$)")
-        Component(fxFx, "FX effects (6)", "WsEffect", "referenceData$, pricing$, blotter$, analytics$, executeTrade$, getPriceHistory$")
-        Component(fxCredit, "Credit effects (8)", "WsEffect", "instruments$, dealers$, workflow$, createRfq$, cancelRfq$, quote$, pass$, accept$")
-        Component(fxAdmin, "Admin effects (2)", "WsEffect", "getThroughput$, setThroughput$")
-        Component(fxEq, "Equities effects (8)", "WsEffect", "watchlist$, eqQuotes$, depth$, orders$, positions$, getCandles$, placeOrder$ (+ ORDER_LIFECYCLE stream), cancelOrder$")
-        Component(svcContainer, "createServices", "TypeScript", "Instantiates all 12 services: FX + credit + equities simulators + ThroughputService")
-    }
+    subgraph srv["@rtc/server — thin app"]
+        direction TB
+        http["<b>HTTP Server</b> · node:http<br/>GET /health · WS upgrade with token auth"]:::server
+        toSocket["<b>toSocket</b><br/>ws.WebSocket → Socket (messages$, send, closed$)"]:::server
+        fxFx["<b>FX effects (6)</b><br/>referenceData$ · pricing$ · blotter$ ·<br/>analytics$ · executeTrade$ · getPriceHistory$"]:::server
+        fxCredit["<b>Credit effects (8)</b><br/>instruments$ · dealers$ · workflow$ · createRfq$ ·<br/>cancelRfq$ · quote$ · pass$ · accept$"]:::server
+        fxAdmin["<b>Admin effects (2)</b><br/>getThroughput$ · setThroughput$"]:::server
+        fxEq["<b>Equities effects (8)</b><br/>watchlist$ · eqQuotes$ · depth$ · orders$ · positions$ ·<br/>getCandles$ · placeOrder$ (+ ORDER_LIFECYCLE) · cancelOrder$"]:::server
+        svcContainer["<b>createServices</b><br/>all 12 services: FX + credit + equities simulators<br/>+ ThroughputService"]:::server
+        http --> toSocket
+        fxFx ~~~ fxCredit ~~~ fxAdmin ~~~ fxEq
+    end
 
-    Container_Boundary(fw, "@rtc/ws-effects (framework, rxjs-only)") {
-        Component(effectType, "WsEffect primitive", "TypeScript", "(in$, ctx) => out$ -- pure stream transform, marble-tested")
-        Component(sugar, "stream() / rpc()", "TypeScript", "Subscription fan-out and correlated request/response (ack/nack) with per-message error isolation")
-        Component(combine, "combineEffects + createWsListener", "TypeScript", "merge all effects over one shared inbound stream; catchError → EMPTY per effect; teardown on closed$")
-    }
+    subgraph fw["@rtc/ws-effects — framework, rxjs-only"]
+        direction TB
+        combine["<b>combineEffects + createWsListener</b><br/>merge all effects over one shared inbound stream ·<br/>catchError → EMPTY per effect · teardown on closed$"]:::server
+        sugar["<b>stream() / rpc()</b><br/>subscription fan-out · correlated ack/nack ·<br/>per-message error isolation"]:::server
+        effectType["<b>WsEffect primitive</b><br/>(in$, ctx) => out$ — pure stream transform, marble-tested"]:::server
+        combine --> sugar --> effectType
+    end
 
-    Container_Boundary(simulators, "Domain Simulators (@rtc/domain, in-memory port impls)") {
-        Component(pricingSim, "Pricing / RefData / Execution / TradeStore / Analytics", "TypeScript", "Random-walk pricing, execution with delays and rejections, blotter, PnL")
-        Component(rfqSim, "Credit RFQ + Instrument + Dealer", "TypeScript", "RFQ lifecycle, dealer simulation, quote state machine")
-        Component(eqSim, "EquityMarketData / EquityOrder / EquityPosition", "TypeScript", "Watchlist, quotes, candles, depth, order lifecycle → position fills")
-    }
+    subgraph simulators["Domain Simulators — @rtc/domain, in-memory port impls"]
+        direction TB
+        pricingSim["<b>Pricing / RefData / Execution / TradeStore / Analytics</b><br/>random-walk pricing · execution with delays/rejections · blotter · PnL"]:::domain
+        rfqSim["<b>Credit RFQ + Instrument + Dealer</b><br/>RFQ lifecycle · dealer simulation · quote state machine"]:::domain
+        eqSim["<b>EquityMarketData / EquityOrder / EquityPosition</b><br/>watchlist · quotes · candles · depth · order lifecycle → fills"]:::domain
+        pricingSim ~~~ rfqSim ~~~ eqSim
+    end
 
-    Container(client, "Clients", "Web + React Native")
+    client -->|"WS upgrade (?access= token)"| http
+    toSocket -->|"Socket per connection"| combine
+    combine -->|"merges"| fxFx
+    fxFx & fxCredit & fxAdmin & fxEq -.->|"built with"| sugar
+    fxFx & fxEq -->|"ctx"| svcContainer
+    svcContainer -->|"creates"| pricingSim
+    svcContainer -->|"creates"| rfqSim
+    svcContainer -->|"creates"| eqSim
 
-    Rel(client, http, "WS upgrade (?access= token)", "HTTP -> WS")
-    Rel(http, toSocket, "Wraps connection")
-    Rel(toSocket, combine, "Socket per connection")
-    Rel(fxFx, sugar, "Built with")
-    Rel(fxCredit, sugar, "Built with")
-    Rel(fxAdmin, sugar, "Built with")
-    Rel(fxEq, sugar, "Built with")
-    Rel(sugar, effectType, "Sugar over")
-    Rel(combine, fxFx, "Merges")
-    Rel(combine, fxCredit, "Merges")
-    Rel(combine, fxAdmin, "Merges")
-    Rel(combine, fxEq, "Merges")
-    Rel(fxFx, svcContainer, "ctx")
-    Rel(fxEq, svcContainer, "ctx")
-    Rel(svcContainer, pricingSim, "Creates")
-    Rel(svcContainer, rfqSim, "Creates")
-    Rel(svcContainer, eqSim, "Creates")
+    classDef actor  fill:#30363d,stroke:#8b949e,color:#ffffff
+    classDef server fill:#9e6a03,stroke:#e3b341,color:#ffffff
+    classDef domain fill:#1f2d3d,stroke:#4493f8,color:#e6edf3
+    style srv fill:transparent,stroke:#6e7681
+    style fw fill:transparent,stroke:#6e7681
+    style simulators fill:transparent,stroke:#6e7681
+    linkStyle default stroke:#6e7fa3,stroke-width:1.5px
 ```
 
 > **Naming**: these are **simulators**, not "mocks". They are production code that stands in for an external pricing or execution venue. *Test* mocks are a separate concept and live alongside tests.
@@ -1466,11 +1514,11 @@ The single most confusing thing about this system if you only read the code is: 
 
 ```mermaid
 flowchart TD
-    Dev["pnpm dev (web, local)"] -->|VITE_SERVER_URL unset| RootW
-    Deploy["Vercel deployed build"] -->|VITE_SERVER_URL set| RootW
-    E2E["fullstack e2e harness"] -->|VITE_SERVER_URL set| RootW
-    Sim["expo dev, sim toggle ON<br/>or EXPO_PUBLIC_SERVER_URL=''"] -->|simulator| RootN
-    Live["expo dev, live mode<br/>(default: wss://rtc-clone-server.fly.dev)"] -->|URL set| RootN
+    Dev["pnpm dev (web, local)"] -->|"VITE_SERVER_URL unset"| RootW
+    Deploy["Vercel deployed build"] -->|"VITE_SERVER_URL set"| RootW
+    E2E["fullstack e2e harness"] -->|"VITE_SERVER_URL set"| RootW
+    Sim["expo dev, sim toggle ON<br/>or EXPO_PUBLIC_SERVER_URL=''"] -->|"simulator"| RootN
+    Live["expo dev, live mode<br/>(default: wss://rtc-clone-server.fly.dev)"] -->|"URL set"| RootN
 
     RootW["buildBrowserPorts()<br/>client-react"] --> Q{"url present?"}
     RootN["buildNativePorts()<br/>client-react-native"] --> Q
