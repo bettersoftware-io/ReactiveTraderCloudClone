@@ -12,11 +12,14 @@
   border-radius: 4px;
   background-color: transparent;
   cursor: pointer;
-  transition: background-color 0.25s;
+  transition: background 0.25s;
 }
 
 .row[data-selected="true"] {
-  background-color: var(--chip);
+  /* `background:` shorthand, NOT `background-color:` — `--chip` is a
+     gradient in the 3d skins (holo3d/terminal3d) and `background-color:
+     <gradient>` is invalid CSS, silently dropped (I2 fix). */
+  background: var(--chip);
   border-color: var(--border-strong);
 }
 

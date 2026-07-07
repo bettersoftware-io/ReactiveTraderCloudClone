@@ -33,7 +33,10 @@
 
 .tab[data-active="true"] {
   color: var(--accent-primary);
-  background-color: var(--panel);
+  /* `background:` shorthand, NOT `background-color:` — `--panel` is a
+     gradient in the 3d skins (holo3d/terminal3d) and `background-color:
+     <gradient>` is invalid CSS, silently dropped (I2 fix). */
+  background: var(--panel);
   border-bottom-color: var(--accent-primary);
 }
 

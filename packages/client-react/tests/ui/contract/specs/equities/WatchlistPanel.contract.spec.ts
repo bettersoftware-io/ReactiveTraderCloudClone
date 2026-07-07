@@ -6,7 +6,7 @@ import {
   mount,
   mountWith,
 } from "@ui-contract/mount";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { EquityInstrument, EquityQuote } from "@rtc/domain";
 
@@ -186,6 +186,150 @@ describe("WatchlistPanel — row select hits the shared eqWorkspace machine", ()
   });
 });
 
+describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
+  // jsdom has no Element.animate, so useRankGlide's gliding-gate never
+  // engages there (the real bug/fix only bites in a real browser). This
+  // stubs a controllable fake Animation — a resolvable `.finished` promise —
+  // so the coalescing gate DOES engage, proving end-to-end (through the real
+  // WatchlistPanel + useRankGlide, not just the pure coalesceOrder function)
+  // that a second rapid reorder while the first is still "gliding" is
+  // buffered instead of committed, and applied only once the glide settles.
+  let resolveFns: Array<() => void> = [];
+  let originalAnimate: typeof Element.prototype.animate | undefined;
+
+  function fakeAnimate(): Animation {
+    let resolveFinished: (() => void) | undefined;
+    const finished = new Promise<Animation>((resolve) => {
+      resolveFinished = (): void => {
+        resolve(fake);
+      };
+    });
+    // The Promise executor above runs synchronously, so resolveFinished is
+    // already assigned by the time we get here.
+    resolveFns.push(resolveFinished as () => void);
+    const fake = { finished } as unknown as Animation;
+    return fake;
+  }
+
+  beforeEach(() => {
+    resolveFns = [];
+    originalAnimate = Element.prototype.animate;
+    Element.prototype.animate = fakeAnimate;
+  });
+
+  afterEach(() => {
+    // jsdom has no Element.animate at all — restore that exact absence,
+    // rather than leaving the fake in place when `originalAnimate` is
+    // undefined (a falsy `if` would silently skip restoring it, leaking the
+    // stub into every later test in the file).
+    if (originalAnimate) {
+      Element.prototype.animate = originalAnimate;
+    } else {
+      delete (Element.prototype as MaybeAnimateProp).animate;
+    }
+  });
+
+  async function settleGlide(): Promise<void> {
+    const toResolve = resolveFns;
+    resolveFns = [];
+    await act(async () => {
+      toResolve.forEach((resolve) => {
+        resolve();
+      });
+      // Flush the .then() microtask chain that applies the buffered order.
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+
+  it("a second rapid reorder while the first is still gliding is buffered, then applied once settled", async () => {
+    const world = createWorld(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { watchlist: INSTRUMENTS, quotes: QUOTES },
+    );
+    const panel = mountWith(world, WatchlistPanel, {});
+
+    // Mount itself settles a "reorder": rows start in raw watchlist order
+    // (no quotes reported yet on the very first render) and re-sort once
+    // each row's own useEquityQuote effect reports its seeded quote — that
+    // settling already kicks off a (fake) glide. Drain it so the test
+    // exercises a clean idle→gliding→buffered→settled cycle from here.
+    await settleGlide();
+    expect(panel.rows()).toEqual(["MSFT", "AAPL", "TSLA"]);
+
+    // First reorder: TSLA's chg jumps to the top. Idle → commits immediately
+    // and kicks off the (fake) glide.
+    act(() => {
+      world.setEquityQuote("TSLA", quote("TSLA", 260, 5.0));
+    });
+    expect(panel.rows()).toEqual(["TSLA", "MSFT", "AAPL"]);
+    expect(resolveFns.length).toBeGreaterThan(0);
+
+    // Second reorder arrives WHILE the first glide is still in flight: AAPL's
+    // chg jumps above everything. Must be BUFFERED — rows stay exactly as
+    // the first commit left them; the intermediate churn never renders.
+    act(() => {
+      world.setEquityQuote("AAPL", quote("AAPL", 300, 10.0));
+    });
+    expect(panel.rows()).toEqual(["TSLA", "MSFT", "AAPL"]);
+
+    // Settle the first glide — the buffered (second) order applies now, in
+    // one step, directly to the final coalesced order.
+    await settleGlide();
+    expect(panel.rows()).toEqual(["AAPL", "TSLA", "MSFT"]);
+  });
+
+  it("skips a committed symbol that's been removed from the watchlist while its glide was still in flight", async () => {
+    const world = createWorld(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { watchlist: INSTRUMENTS, quotes: QUOTES },
+    );
+    const panel = mountWith(world, WatchlistPanel, {});
+    await settleGlide();
+    expect(panel.rows()).toEqual(["MSFT", "AAPL", "TSLA"]);
+
+    // Kick off a glide (idle → commits immediately).
+    act(() => {
+      world.setEquityQuote("TSLA", quote("TSLA", 260, 5.0));
+    });
+    expect(panel.rows()).toEqual(["TSLA", "MSFT", "AAPL"]);
+    expect(resolveFns.length).toBeGreaterThan(0);
+
+    // AAPL is removed from the watchlist entirely WHILE that glide is still
+    // in flight — the committed order still lists it (buffered, not yet
+    // re-evaluated), but its instrument is gone, so the row must be skipped
+    // rather than rendered with no name.
+    act(() => {
+      world.setWatchlist(
+        INSTRUMENTS.filter((inst) => {
+          return inst.symbol !== "AAPL";
+        }),
+      );
+    });
+    expect(panel.rows()).toEqual(["TSLA", "MSFT"]);
+
+    // Once the glide settles, the next commit reflects AAPL's removal for good.
+    await settleGlide();
+    expect(panel.rows()).toEqual(["TSLA", "MSFT"]);
+  });
+});
+
 describe("WatchlistPanel + EqWatchlistHead — sort cycle order + persistence", () => {
   it("cycling the head's ⇅ chip re-sorts the SAME shared watchlist rows", async () => {
     const world = createWorld(
@@ -230,4 +374,11 @@ function quote(symbol: string, last: number, changePct: number): EquityQuote {
     changePct,
     timestamp: 0,
   };
+}
+
+/** Minimal shape for deleting a possibly-absent `animate` from Element.prototype
+ * (jsdom has none at all — see the "I4 coalesced reorders" describe's afterEach
+ * restore). */
+interface MaybeAnimateProp {
+  animate?: unknown;
 }

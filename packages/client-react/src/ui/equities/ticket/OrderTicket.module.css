@@ -1,10 +1,18 @@
+/* Bare root (I3 fix): the eq-ticket dock panel mounts this flush inside the
+ * layout engine's own `.panel` (InhouseLayoutEngine.module.css), which
+ * already paints the border/radius/background/shadow — re-adding them here
+ * doubled the chrome (a stacked border ring, and in the 3d skins a visibly
+ * denser stacked-gradient panel). Mirrors the prototype's bare
+ * `OrderTicketPanel.module.css .body { padding: 16px; }`. The transparent
+ * border below is NOT chrome — it's the substrate the fill-flash keyframe
+ * animates border-color onto (see .ticket[data-anim="fill"]); at rest it's
+ * invisible. */
 .ticket {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 14px;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 6px;
   overflow: auto;
   height: 100%;
@@ -23,7 +31,7 @@
   }
 
   100% {
-    border-color: var(--border);
+    border-color: transparent;
     box-shadow: none;
   }
 }
@@ -94,7 +102,10 @@
 
 .type[data-active="true"] {
   color: var(--accent-primary);
-  background-color: var(--chip);
+  /* `background:` shorthand, NOT `background-color:` — `--chip` is a
+     gradient in the 3d skins (holo3d/terminal3d) and `background-color:
+     <gradient>` is invalid CSS, silently dropped (I2 fix). */
+  background: var(--chip);
   border-color: var(--border-strong);
 }
 

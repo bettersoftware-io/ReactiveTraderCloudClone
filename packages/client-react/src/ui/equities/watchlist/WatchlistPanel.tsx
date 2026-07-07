@@ -16,6 +16,16 @@ import styles from "./WatchlistPanel.module.css";
  * panel can order by %chg/price without duplicating quote streams; rows keep
  * their symbol as React key across re-sorts so `useRankGlide` can glide the
  * SAME row elements to their new rank instead of remounting them.
+ *
+ * Row ORDER vs row VALUES (I4): the live "chg"/"price" sort recomputes on
+ * every one of the up-to-six independent 500ms quote ticks — but each row's
+ * displayed price/%chg is already live via its OWN useEquityQuote(symbol)
+ * subscription, so the sort recompute here only ever affects ROW ORDER.
+ * `useRankGlide` coalesces those order changes to at most one commit per
+ * glide window and returns the order actually safe to render (`committed`,
+ * NOT the raw `rows`/`candidateOrder` computed this render) — rendering off
+ * anything else would let the DOM's physical row order race ahead of what
+ * the glide is animating.
  */
 export function WatchlistPanel(): ReactElement {
   const { useWatchlist, useEqWorkspace, useEqWatchlistSort } = useViewModel();
@@ -50,28 +60,35 @@ export function WatchlistPanel(): ReactElement {
       changePct: q?.changePct ?? null,
     };
   });
-  const rows = sortWatchlistRows(rowInputs, sort);
-
-  useRankGlide(
-    listRef,
-    rows.map((r) => {
-      return r.symbol;
-    }),
-  );
+  const candidateOrder = sortWatchlistRows(rowInputs, sort).map((row) => {
+    return row.symbol;
+  });
+  const committedOrder = useRankGlide(listRef, candidateOrder);
 
   if (instruments.length === 0) {
     return <div className={styles.empty}>NO INSTRUMENTS</div>;
   }
 
+  const nameBySymbol = new Map(
+    instruments.map((inst) => {
+      return [inst.symbol, inst.name] as const;
+    }),
+  );
+
   return (
     <div className={styles.panel} ref={listRef}>
-      {rows.map((row) => {
+      {committedOrder.map((symbol) => {
+        const name = nameBySymbol.get(symbol);
+        // A committed symbol can briefly outlive its instrument (removed from
+        // the watchlist while a glide was still in flight) — skip it rather
+        // than render a nameless row; the next settled commit drops it.
+        if (name === undefined) return null;
         return (
           <WatchlistRow
-            key={row.symbol}
-            symbol={row.symbol}
-            name={row.name}
-            selected={row.symbol === workspace.state.sel}
+            key={symbol}
+            symbol={symbol}
+            name={name}
+            selected={symbol === workspace.state.sel}
             onSelect={workspace.select}
             onQuote={reportQuote}
           />
