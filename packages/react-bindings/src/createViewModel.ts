@@ -1,4 +1,4 @@
-import { bind } from "@react-rxjs/core";
+import { bind, useStateObservable } from "@react-rxjs/core";
 import { firstValueFrom } from "rxjs";
 
 import type { ActivityEntry, AppCommands, Presenters } from "@rtc/client-core";
@@ -8,6 +8,8 @@ import {
   type BootSequenceState,
   createRfqCountdownMachine,
   DEMO_USER,
+  type EqWorkspaceIntents,
+  type EqWorkspaceState,
   type IncidentIntents,
   type IncidentKind,
   type IncidentState,
@@ -32,20 +34,25 @@ import {
 } from "@rtc/client-core";
 import {
   type Candle,
+  type CandleTimeframe,
   ConnectionStatus,
   type CreditRfqFilter,
   type CurrencyPair,
   DEFAULT_CREDIT_RFQ_FILTER,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type Dealer,
   type DepthBook,
+  type EqBlotterView,
   type EquityInstrument,
   type EquityOrder,
   type EquityPosition,
   type EquityQuote,
+  type EqWatchlistSort,
   type Instrument,
   type LogEvent,
   type MetricSample,
@@ -83,6 +90,9 @@ type UseThroughputResult = ThroughputView & {
   setValue: (value: number) => void;
 };
 type UseOrderTicketResult = { state: OrderTicketState } & OrderTicketIntents;
+type UseEqWorkspaceResult = {
+  state: EqWorkspaceState;
+} & EqWorkspaceIntents;
 
 interface MetricsView {
   throughput: readonly MetricSample[];
@@ -120,6 +130,19 @@ interface UseViewModePreferenceResult {
 interface UseCreditRfqFilterPreferenceResult {
   filter: CreditRfqFilter;
   setFilter: (filter: CreditRfqFilter) => void;
+}
+
+interface UseEqWatchlistSortResult {
+  sort: EqWatchlistSort;
+  setSort: (sort: EqWatchlistSort) => void;
+  /** Advance the sort one step (sym → chg → price → sym) — the Watchlist
+   * head's ⇅ control. */
+  cycle: () => void;
+}
+
+interface UseEqBlotterViewResult {
+  view: EqBlotterView;
+  setView: (view: EqBlotterView) => void;
 }
 
 interface UseSessionResult {
@@ -182,6 +205,12 @@ export interface ViewModel {
    * the write intent. Shared between RfqsPanel (reader) and RfqsHead's filter
    * pills (Task 4, writer). */
   useCreditRfqFilterPreference: () => UseCreditRfqFilterPreferenceResult;
+  /** Equities watchlist sort-mode preference — current sort plus write/cycle
+   * intents (the Watchlist head's ⇅ control). */
+  useEqWatchlistSort: () => UseEqWatchlistSortResult;
+  /** Equities blotter tab preference (Orders/Positions) — current view plus
+   * the write intent. Plumbed here; Task 5's Blotter panel consumes it. */
+  useEqBlotterView: () => UseEqBlotterViewResult;
   /** Global session lock state plus lock/unlock (re-authenticate) intents.
    * Shared (one stream for the whole app), so a plain `bind` like the prefs. */
   useSession: () => UseSessionResult;
@@ -203,8 +232,12 @@ export interface ViewModel {
   useWatchlist: () => readonly EquityInstrument[];
   /** Latest equity quote for a symbol — null until the first quote arrives. */
   useEquityQuote: (symbol: string) => EquityQuote | null;
-  /** Candle series for a symbol — starts empty until candles arrive. */
-  useCandles: (symbol: string) => readonly Candle[];
+  /** Candle series for a symbol at a timeframe (default "1D") — starts empty
+   * until candles arrive. */
+  useCandles: (
+    symbol: string,
+    timeframe?: CandleTimeframe,
+  ) => readonly Candle[];
   /** Depth book for a symbol — null until the first depth update arrives. */
   useDepth: (symbol: string) => DepthBook | null;
   /** All open/filled equity orders — starts empty. */
@@ -213,6 +246,12 @@ export interface ViewModel {
   useEquityPositions: () => readonly EquityPosition[];
   /** Per-mount order ticket machine — editing/submitting/working/filled/rejected state plus intents. */
   useOrderTicket: (defaultSymbol: string) => UseOrderTicketResult;
+  /** Shared equities workspace state — selected symbol, open instrument tabs,
+   * and chart timeframe. One machine instance for the whole app (a
+   * composition-root singleton, not per-mount): the chart, instrument-tabs,
+   * and watchlist panels are independent engine cells that read/write this
+   * one shared source of truth. */
+  useEqWorkspace: () => UseEqWorkspaceResult;
   // Admin / telemetry streams (Phase 5)
   /** Rolling metric chart series — throughput, latency, and error-rate windows. */
   useMetrics: () => MetricsView;
@@ -337,6 +376,24 @@ export function createViewModel(
     presenters.creditRfqFilterPreference.setFilter(filter);
   }
 
+  const [useEqWatchlistSortValue] = bind(
+    presenters.eqWatchlistSortPreference.sort$,
+    DEFAULT_EQ_WATCHLIST_SORT,
+  );
+
+  function setEqWatchlistSort(sort: EqWatchlistSort): void {
+    presenters.eqWatchlistSortPreference.setSort(sort);
+  }
+
+  const [useEqBlotterViewValue] = bind(
+    presenters.eqBlotterViewPreference.view$,
+    DEFAULT_EQ_BLOTTER_VIEW,
+  );
+
+  function setEqBlotterView(view: EqBlotterView): void {
+    presenters.eqBlotterViewPreference.setView(view);
+  }
+
   // Global/shared session lock state → a plain bind (not a per-mount machine).
   const [useSessionState] = bind(presenters.session.state$, {
     locked: false,
@@ -386,8 +443,8 @@ export function createViewModel(
     null as EquityQuote | null,
   );
   const [useCandles] = bind(
-    (symbol: string) => {
-      return presenters.candleSeries.candles$(symbol);
+    (symbol: string, timeframe?: CandleTimeframe) => {
+      return presenters.candleSeries.candles$(symbol, timeframe);
     },
     [] as readonly Candle[],
   );
@@ -448,6 +505,49 @@ export function createViewModel(
 
   function clearIncident(): void {
     presenters.incident.intents.clear();
+  }
+
+  // Eq workspace machine — shared single instance. Reads
+  // presenters.eqWorkspace.state$ DIRECTLY via useStateObservable, NOT via
+  // bind() (unlike the incident machine's wiring above, and unlike this
+  // function's own first draft — see the CRITICAL bug this replaced).
+  //
+  // bind(source$, defaultValue) builds its OWN new StateObservable wrapping
+  // source$; that NEW wrapper's currentValue/refCount start out empty
+  // regardless of how warm source$ already is, and only pick up a value once
+  // the WRAPPER gets its first subscriber — which react-rxjs's
+  // useSyncExternalStore-based hook defers to a passive effect, i.e. AFTER
+  // the first commit. On that first render every caller (e.g. ChartPanel)
+  // therefore saw the explicit default ({sel: "", ...}), never
+  // EqWorkspaceMachine's real warm value, even though the machine keeps
+  // itself warm from construction (see its own doc comment) specifically to
+  // avoid this. ChartPanel calls useCandles(sel, timeframe) unconditionally
+  // (before its own `if (!sel)` guard), so an empty sel reached
+  // EquityMarketDataSimulator.candles(""), which throws synchronously for
+  // any symbol it doesn't recognise — crashing the whole app on the very
+  // first Equities-tab render, with no ErrorBoundary to contain it.
+  //
+  // Calling useStateObservable directly on the machine's OWN (already-warm,
+  // refCount >= 1) state$ reads its real currentValue synchronously on the
+  // very first render: no extra wrapper, no mismatched default, no window
+  // where a stale/invalid value can leak downstream. This mirrors why
+  // useMachine reads a per-mount machine's own state$ directly instead of
+  // re-binding it — the source is already the right shape to read as-is.
+  function useEqWorkspaceState(): EqWorkspaceState {
+    return useStateObservable(presenters.eqWorkspace.state$);
+  }
+
+  // Stable callbacks for eqWorkspace intents (this-safe; arrow functions).
+  function selectEqSymbol(sym: string): void {
+    presenters.eqWorkspace.intents.select(sym);
+  }
+
+  function closeEqTab(sym: string): void {
+    presenters.eqWorkspace.intents.closeTab(sym);
+  }
+
+  function setEqTimeframe(tf: CandleTimeframe): void {
+    presenters.eqWorkspace.intents.setTimeframe(tf);
   }
 
   return {
@@ -557,6 +657,21 @@ export function createViewModel(
         setFilter: setCreditRfqFilter,
       };
     },
+    useEqWatchlistSort: () => {
+      return {
+        sort: useEqWatchlistSortValue(),
+        setSort: setEqWatchlistSort,
+        cycle: () => {
+          presenters.eqWatchlistSortPreference.cycle();
+        },
+      };
+    },
+    useEqBlotterView: () => {
+      return {
+        view: useEqBlotterViewValue(),
+        setView: setEqBlotterView,
+      };
+    },
     useSession: () => {
       return {
         state: useSessionState(),
@@ -590,6 +705,14 @@ export function createViewModel(
       return useMachine(() => {
         return machines.orderTicket(defaultSymbol);
       });
+    },
+    useEqWorkspace: () => {
+      return {
+        state: useEqWorkspaceState(),
+        select: selectEqSymbol,
+        closeTab: closeEqTab,
+        setTimeframe: setEqTimeframe,
+      };
     },
     useMetrics: () => {
       return {

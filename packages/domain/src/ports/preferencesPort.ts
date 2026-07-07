@@ -3,6 +3,8 @@ import type { Observable } from "rxjs";
 import type {
   BootVariant,
   CreditRfqFilter,
+  EqBlotterView,
+  EqWatchlistSort,
   ThemeModePreference,
   ThemeSkin,
   ViewMode,
@@ -43,4 +45,12 @@ export interface PreferencesPort {
    * Shared between the RFQs panel (reader) and its head's filter pills (writer). */
   creditRfqFilter$(): Observable<CreditRfqFilter>;
   setCreditRfqFilter(filter: CreditRfqFilter): void;
+  /** Replay-current equities watchlist sort-mode stream; emits synchronously
+   * on subscribe. Driven by the Watchlist head's ⇅ cycle control. */
+  eqWatchlistSort$(): Observable<EqWatchlistSort>;
+  setEqWatchlistSort(sort: EqWatchlistSort): void;
+  /** Replay-current equities blotter tab stream; emits synchronously on
+   * subscribe. Consumed by the Orders/Positions blotter (Task 5). */
+  eqBlotterView$(): Observable<EqBlotterView>;
+  setEqBlotterView(view: EqBlotterView): void;
 }

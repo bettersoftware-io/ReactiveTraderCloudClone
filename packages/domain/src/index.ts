@@ -64,6 +64,8 @@ export type {
 } from "./equities/order.js";
 export type { EquityPosition } from "./equities/position.js";
 export type { EquityQuote } from "./equities/quote.js";
+export type { CandleTimeframe } from "./equities/timeframe.js";
+export { CANDLE_TIMEFRAMES } from "./equities/timeframe.js";
 export type { CurrencyCategory } from "./fx/currencyFilter.js";
 export {
   CURRENCY_CATEGORIES,
@@ -127,6 +129,8 @@ export type {
 export type {
   BootVariant,
   CreditRfqFilter,
+  EqBlotterView,
+  EqWatchlistSort,
   ThemeMode,
   ThemeModePreference,
   ThemeSkin,
@@ -135,10 +139,14 @@ export type {
 export {
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
+  EQ_WATCHLIST_SORTS,
+  nextEqWatchlistSort,
   nextThemeModePreference,
   resolveThemeMode,
   THEME_MODE_PREFERENCES,

@@ -1,9 +1,11 @@
 import { type Observable, of, Subject } from "rxjs";
+import { filter, map, take } from "rxjs/operators";
 
 import type {
   BootVariant,
   ConnectionEvent,
   CurrencyPair,
+  EquityInstrument,
   ExecuteTradeInput,
 } from "@rtc/domain";
 
@@ -24,6 +26,7 @@ import {
   CreditRfqFilterPreferencePresenter,
   CurrencyPairsPresenter,
   createBootSequenceMachine,
+  createEqWorkspaceMachine,
   createIncidentMachine,
   createLayoutMachine,
   createNotionalMachine,
@@ -34,6 +37,10 @@ import {
   createTileExecutionMachine,
   DealersPresenter,
   DepthPresenter,
+  EqBlotterViewPreferencePresenter,
+  EqWatchlistSortPreferencePresenter,
+  type EqWorkspaceIntents,
+  type EqWorkspaceState,
   ErrorRatePresenter,
   EventLogPresenter,
   type IncidentIntents,
@@ -101,6 +108,10 @@ export interface Presenters {
   animatedBackground: AnimatedBackgroundPresenter;
   viewModePreference: ViewModePreferencePresenter;
   creditRfqFilterPreference: CreditRfqFilterPreferencePresenter;
+  /** Equities watchlist sort-mode preference (the head's ⇅ cycle control). */
+  eqWatchlistSortPreference: EqWatchlistSortPreferencePresenter;
+  /** Equities blotter tab preference (Orders/Positions), consumed by Task 5. */
+  eqBlotterViewPreference: EqBlotterViewPreferencePresenter;
   animationDirector: AnimationDirector;
   bootPreference: BootPreferencePresenter;
   session: SessionPresenter;
@@ -111,6 +122,9 @@ export interface Presenters {
   positions: PositionsPresenter;
   /** Phase 5 Admin: incident injection + connection-seam control. */
   incident: Machine<IncidentState, IncidentIntents>;
+  /** Equities: cross-panel selected-symbol / open-tabs / timeframe state,
+   * shared by the chart, instrument-tabs, and watchlist panels. */
+  eqWorkspace: Machine<EqWorkspaceState, EqWorkspaceIntents>;
   /** Phase 5 Admin: per-metric rolling window series for charts. */
   throughputMetric: ThroughputMetricPresenter;
   latencyMetric: LatencyPresenter;
@@ -153,6 +167,50 @@ export const reconnect$ = new Subject<ReconnectIntent>();
  */
 export const incident$ = new Subject<ConnectionEvent>();
 
+/** One-shot synchronous peek at the watchlist's first symbol, used only to
+ * seed EqWorkspaceMachine's initial tab/selection at composition time. The
+ * simulator port's `watchlist()` is `of(WATCHLIST)` — it emits synchronously,
+ * so this reliably captures "AAPL" (or whatever heads the catalogue) before
+ * `createApp` returns. A real WS backend's `watchlist()` arrives over the
+ * wire (not synchronously) — this peek then finds nothing and falls back to
+ * "", the same empty-selection state the eq-* dock panels' own
+ * `instruments[0]?.symbol ?? ""` guards tolerate before the watchlist has
+ * loaded. The peek subscribes and
+ * immediately unsubscribes; `watchlist$`'s `shareReplay({refCount: true})`
+ * tears down and restarts cleanly for whichever component subscribes next. */
+function peekFirstWatchlistSymbol(
+  watchlist$: Observable<readonly EquityInstrument[]>,
+): string {
+  let first = "";
+  const sub = watchlist$.subscribe((list) => {
+    if (first === "" && list.length > 0) first = list[0]?.symbol ?? "";
+  });
+  sub.unsubscribe();
+  return first;
+}
+
+/** Async companion to {@link peekFirstWatchlistSymbol}: resolves the SAME
+ * first-watchlist-symbol, but as an Observable that waits for it to actually
+ * arrive instead of only checking what's already buffered. Passed to
+ * EqWorkspaceMachine as `seed$` so a WS-real backend (whose watchlist() lands
+ * over the wire, not synchronously) can recover from the peek's "" fallback:
+ * once the watchlist's first non-empty list arrives, this emits its first
+ * symbol exactly once and completes. A no-op when the sync peek already
+ * found a symbol — the machine only applies a seed while sel is still "". */
+export function firstWatchlistSymbol$(
+  watchlist$: Observable<readonly EquityInstrument[]>,
+): Observable<string> {
+  return watchlist$.pipe(
+    map((list) => {
+      return list[0]?.symbol ?? "";
+    }),
+    filter((symbol) => {
+      return symbol !== "";
+    }),
+    take(1),
+  );
+}
+
 export function createApp(ports: AppPorts): App {
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
@@ -165,6 +223,9 @@ export function createApp(ports: AppPorts): App {
   // Hoisted so the AnimationDirector can consume its fills$ stream for ticket
   // fill-flash choreography (Phase 4 equities).
   const ordersBlotter = new OrdersBlotterPresenter(ports.orders);
+  // Hoisted so eqWorkspace can seed its initial selection from the first
+  // watchlist symbol (see peekFirstWatchlistSymbol below).
+  const watchlist = new WatchlistPresenter(ports.marketData);
 
   // Fall back to a light-always scheme when no OS color-scheme source is provided
   // (tests, simulator, environments without matchMedia).
@@ -197,6 +258,12 @@ export function createApp(ports: AppPorts): App {
     creditRfqFilterPreference: new CreditRfqFilterPreferencePresenter(
       ports.preferences,
     ),
+    eqWatchlistSortPreference: new EqWatchlistSortPreferencePresenter(
+      ports.preferences,
+    ),
+    eqBlotterViewPreference: new EqBlotterViewPreferencePresenter(
+      ports.preferences,
+    ),
     animationDirector: new AnimationDirector({
       pairs$: currencyPairs.pairs$,
       priceFor: (pair: CurrencyPair) => {
@@ -210,7 +277,7 @@ export function createApp(ports: AppPorts): App {
     bootPreference: new BootPreferencePresenter(ports.preferences),
     // Session lock/unlock state over the static demo user (no real auth backend).
     session: new SessionPresenter(),
-    watchlist: new WatchlistPresenter(ports.marketData),
+    watchlist,
     candleSeries: new CandleSeriesPresenter(ports.marketData),
     depth: new DepthPresenter(ports.marketData),
     ordersBlotter,
@@ -220,6 +287,10 @@ export function createApp(ports: AppPorts): App {
       pushConnectionEvent: (ev: ConnectionEvent) => {
         return incident$.next(ev);
       },
+    }),
+    eqWorkspace: createEqWorkspaceMachine({
+      initialSymbol: peekFirstWatchlistSymbol(watchlist.watchlist$),
+      seed$: firstWatchlistSymbol$(watchlist.watchlist$),
     }),
     throughputMetric: new ThroughputMetricPresenter(ports.telemetry),
     latencyMetric: new LatencyPresenter(ports.telemetry),

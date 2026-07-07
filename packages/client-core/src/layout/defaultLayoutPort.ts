@@ -27,7 +27,15 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   // sell-side isn't one of the three).
   "credit-sell-side": { id: "credit-sell-side", title: "Sell Side" },
   "admin-dashboard": { id: "admin-dashboard", title: "Admin" },
-  equities: { id: "equities", title: "Equities" },
+  "eq-chart": { id: "eq-chart", title: "Equities" },
+  "eq-blotter": { id: "eq-blotter", title: "Orders & Positions" },
+  "eq-ticket": { id: "eq-ticket", title: "Order Ticket" },
+  "eq-watchlist": { id: "eq-watchlist", title: "Watchlist" },
+  // Registered so the panel registries can resolve them, but not placed in
+  // EQUITIES_ROOT below — both survive outside the default dock, mounted
+  // directly (visual/contract specs mount them standalone; see Task 6 brief).
+  "eq-depth": { id: "eq-depth", title: "Depth" },
+  "eq-sectors": { id: "eq-sectors", title: "Sectors" },
 };
 
 const FX_ROOT: LayoutNode = {
@@ -79,7 +87,31 @@ const CREDIT_ROOT: LayoutNode = {
 
 const ADMIN_ROOT: LayoutNode = { kind: "panel", panelId: "admin-dashboard" };
 
-const EQUITIES_ROOT: LayoutNode = { kind: "panel", panelId: "equities" };
+const EQUITIES_ROOT: LayoutNode = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.78, 0.22],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.66, 0.34],
+      children: [
+        { kind: "panel", panelId: "eq-chart" },
+        { kind: "panel", panelId: "eq-blotter" },
+      ],
+    },
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.5, 0.5],
+      children: [
+        { kind: "panel", panelId: "eq-ticket" },
+        { kind: "panel", panelId: "eq-watchlist" },
+      ],
+    },
+  ],
+};
 
 const ROOTS: Record<WorkspaceTab, LayoutNode> = {
   fx: FX_ROOT,

@@ -2,6 +2,8 @@ import { firstValueFrom } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -12,6 +14,8 @@ import {
   ANIMATED_BG_STORAGE_KEY,
   BOOT_VARIANT_STORAGE_KEY,
   CREDIT_RFQ_FILTER_STORAGE_KEY,
+  EQ_BLOTTER_VIEW_STORAGE_KEY,
+  EQ_WATCHLIST_SORT_STORAGE_KEY,
   LocalStoragePreferencesAdapter,
   THEME_SKIN_STORAGE_KEY,
   THEME_STORAGE_KEY,
@@ -48,6 +52,13 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
           CREDIT_RFQ_FILTER_STORAGE_KEY,
           seed.creditRfqFilter,
         );
+      if (seed.eqWatchlistSort)
+        localStorage.setItem(
+          EQ_WATCHLIST_SORT_STORAGE_KEY,
+          seed.eqWatchlistSort,
+        );
+      if (seed.eqBlotterView)
+        localStorage.setItem(EQ_BLOTTER_VIEW_STORAGE_KEY, seed.eqBlotterView);
       return new LocalStoragePreferencesAdapter();
     },
   );
@@ -87,6 +98,26 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     const port = new LocalStoragePreferencesAdapter();
     expect(await firstValueFrom(port.themeSkin$())).toBe(DEFAULT_THEME_SKIN);
   });
+
+  it("persists eqWatchlistSort and eqBlotterView to their own keys", () => {
+    const port = new LocalStoragePreferencesAdapter();
+    port.setEqWatchlistSort("price");
+    port.setEqBlotterView("positions");
+    expect(localStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY)).toBe("price");
+    expect(localStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY)).toBe("positions");
+  });
+
+  it("falls back to defaults for invalid stored eqWatchlistSort/eqBlotterView", async () => {
+    localStorage.setItem(EQ_WATCHLIST_SORT_STORAGE_KEY, "volume");
+    localStorage.setItem(EQ_BLOTTER_VIEW_STORAGE_KEY, "trades");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.eqWatchlistSort$())).toBe(
+      DEFAULT_EQ_WATCHLIST_SORT,
+    );
+    expect(await firstValueFrom(port.eqBlotterView$())).toBe(
+      DEFAULT_EQ_BLOTTER_VIEW,
+    );
+  });
 });
 
 function clearStorage(): void {
@@ -96,4 +127,6 @@ function clearStorage(): void {
   localStorage.removeItem(ANIMATED_BG_STORAGE_KEY);
   localStorage.removeItem(BOOT_VARIANT_STORAGE_KEY);
   localStorage.removeItem(CREDIT_RFQ_FILTER_STORAGE_KEY);
+  localStorage.removeItem(EQ_WATCHLIST_SORT_STORAGE_KEY);
+  localStorage.removeItem(EQ_BLOTTER_VIEW_STORAGE_KEY);
 }

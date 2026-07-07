@@ -1,0 +1,101 @@
+.header {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+  flex: none;
+}
+
+.idBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.sym {
+  font-family: var(--font-logo);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+
+.name {
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--text-muted);
+}
+
+.priceBlock {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.last {
+  font-family: var(--font-logo);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 34px;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  transition: color 0.3s;
+}
+
+.last[data-flash="true"][data-dir="up"] {
+  color: var(--accent-positive);
+}
+
+.last[data-flash="true"][data-dir="down"] {
+  color: var(--accent-negative);
+}
+
+.change {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--accent-positive);
+}
+
+.change[data-up="false"] {
+  color: var(--accent-negative);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.stats {
+  display: flex;
+  gap: 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.statLabel {
+  color: var(--text-muted);
+}
+
+.statValue {
+  margin-top: 2px;
+}
+
+.statValue[data-tone="buy"] {
+  color: var(--accent-positive);
+}
+
+.statValue[data-tone="sell"] {
+  color: var(--accent-negative);
+}
+
+.statValue[data-tone="text"] {
+  color: var(--text-primary);
+}

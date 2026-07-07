@@ -15,38 +15,52 @@ const INSTRUMENTS: readonly EquityInstrument[] = [
 ];
 
 describe("InstrumentTabs", () => {
-  it("renders a tab per watchlist instrument", () => {
+  it("opens on the first watchlist symbol as the sole tab, selected", () => {
     const tabs = mount(InstrumentTabs, {
-      props: { selectedSymbol: "AAPL", onSelect: () => {} },
       equities: { watchlist: INSTRUMENTS },
     });
 
-    expect(tabs.tabs()).toEqual(["AAPL", "MSFT", "JPM"]);
+    expect(tabs.tabs()).toEqual(["AAPL"]);
+    expect(tabs.activeSymbol()).toBe("AAPL");
   });
 
-  it("marks the selected symbol as the active tab", () => {
+  it("opens on the seeded initialSymbol when one is given", () => {
     const tabs = mount(InstrumentTabs, {
-      props: { selectedSymbol: "MSFT", onSelect: () => {} },
-      equities: { watchlist: INSTRUMENTS },
+      equities: { watchlist: INSTRUMENTS, initialSymbol: "MSFT" },
     });
 
+    expect(tabs.tabs()).toEqual(["MSFT"]);
     expect(tabs.activeSymbol()).toBe("MSFT");
   });
 
-  it("fires onSelect with the symbol when a tab is clicked", async () => {
-    const selected: string[] = [];
+  it("selecting the sole open tab is a no-op re-selection through the real machine", async () => {
     const tabs = mount(InstrumentTabs, {
-      props: {
-        selectedSymbol: "AAPL",
-        onSelect: (symbol: string) => {
-          selected.push(symbol);
-        },
-      },
       equities: { watchlist: INSTRUMENTS },
     });
 
-    await tabs.select("JPM");
+    await tabs.select("AAPL");
 
-    expect(selected).toEqual(["JPM"]);
+    expect(tabs.activeSymbol()).toBe("AAPL");
+  });
+
+  it("closing the sole open tab through the real machine never empties the strip", async () => {
+    const tabs = mount(InstrumentTabs, {
+      equities: { watchlist: INSTRUMENTS },
+    });
+
+    await tabs.close("AAPL");
+
+    expect(tabs.tabs()).toEqual(["AAPL"]);
+    expect(tabs.activeSymbol()).toBe("AAPL");
+  });
+
+  // C2 regression: with no watchlist known yet (WS-real before the catalogue
+  // arrives), the workspace seeds "" — this must render NO tabs at all, never
+  // a label-less "✕" phantom tab for the empty symbol.
+  it("renders no tabs (not a phantom empty-symbol tab) when the workspace has no selection yet", () => {
+    const tabs = mount(InstrumentTabs, {});
+
+    expect(tabs.tabs()).toEqual([]);
+    expect(tabs.activeSymbol()).toBeNull();
   });
 });

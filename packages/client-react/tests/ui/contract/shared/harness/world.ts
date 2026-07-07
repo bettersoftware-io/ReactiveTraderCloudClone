@@ -3,11 +3,18 @@ import { BehaviorSubject, Subject } from "rxjs";
 import type {
   ActivityEntry,
   AnimationIntent,
+  EqWorkspaceState,
   IncidentKind,
   IncidentState,
   ThroughputView,
 } from "@rtc/client-core";
-import { DEMO_USER, type SessionState } from "@rtc/client-core";
+import {
+  createEqWorkspaceMachine,
+  DEMO_USER,
+  type EqWorkspaceIntents,
+  type Machine,
+  type SessionState,
+} from "@rtc/client-core";
 import {
   type Candle,
   ConnectionStatus,
@@ -15,19 +22,24 @@ import {
   type CreditRfqFilter,
   type CurrencyPair,
   DEFAULT_CREDIT_RFQ_FILTER,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   type Dealer,
   type DepthBook,
+  type EqBlotterView,
   type EquityInstrument,
   type EquityOrder,
   type EquityPosition,
   type EquityQuote,
+  type EqWatchlistSort,
   type ExecuteTradeInput,
   type ExecuteTradeResult,
   type Instrument,
   type LogEvent,
   type MetricSample,
+  type PlaceOrderRequest,
   type PositionUpdates,
   type Price,
   type PriceTick,
@@ -100,6 +112,16 @@ export interface EquitiesSeed {
   quotes?: Readonly<Record<string, EquityQuote | null>>;
   candles?: Readonly<Record<string, readonly Candle[]>>;
   depth?: Readonly<Record<string, DepthBook | null>>;
+  /** Seeds the eqWorkspace machine's initial selection/open tab (mirrors the
+   * composition root's synchronous first-watchlist-symbol peek). Defaults to
+   * `watchlist`'s first symbol, or "" if neither is provided. */
+  initialSymbol?: string;
+  /** Seeds the watchlist sort-mode preference (useEqWatchlistSort); defaults
+   * to DEFAULT_EQ_WATCHLIST_SORT ("chg"). */
+  watchlistSort?: EqWatchlistSort;
+  /** Seeds the blotter tab preference (useEqBlotterView); defaults to
+   * DEFAULT_EQ_BLOTTER_VIEW ("orders"). */
+  blotterView?: EqBlotterView;
 }
 
 /** The combined metric series for useMetrics(). */
@@ -154,6 +176,13 @@ export interface CommandLog {
   sessionLock: number;
   /** Incremented each time useSession().unlock() (re-authenticate) is invoked. */
   sessionUnlock: number;
+  /** Each PlaceOrderRequest the OrderTicketMachine's place() dep was invoked
+   * with, in order — captures what symbol/side/qty was ACTUALLY submitted,
+   * independent of pushOrderLifecycle's canned lifecycle order (which the
+   * page hard-codes symbol "TEST" for). Regression proof for C1 (stale
+   * ticket symbol): a spec asserts the last entry's `symbol` matches the
+   * workspace selection at submit time, not the machine's mount-time default. */
+  placedOrderRequests: PlaceOrderRequest[];
   /** Each value written through useAnimatedBackground().setEnabled/toggle, in order. */
   animatedBackgroundSets: boolean[];
   /** Each incident kind injected via injectIncident(), in order. */
@@ -208,11 +237,11 @@ export interface World {
   setQuotesForRfq(rfqId: number, value: readonly Quote[]): void;
   /** Push a new animation intent for one target (drives the AnimationProbe's re-render). */
   setIntent(target: string, intent: AnimationIntent | null): void;
-  /** Reactive watchlist backing useWatchlist (drives Watchlist/InstrumentTabs/SectorHeatmap). */
+  /** Reactive watchlist backing useWatchlist (drives WatchlistPanel/InstrumentTabs/SectorHeatmap). */
   readonly watchlist: BehaviorSubject<readonly EquityInstrument[]>;
-  /** Reactive equity orders backing useEquityOrders (drives OrdersBlotter). */
+  /** Reactive equity orders backing useEquityOrders (drives EqBlotterPanel/OrdersTable). */
   readonly equityOrders: BehaviorSubject<readonly EquityOrder[]>;
-  /** Reactive equity positions backing useEquityPositions (drives PositionsBlotter). */
+  /** Reactive equity positions backing useEquityPositions (drives EqBlotterPanel/PositionsTable). */
   readonly equityPositions: BehaviorSubject<readonly EquityPosition[]>;
   /** Lifecycle stream the OrderTicket's place() subscribes to; the page pushes EquityOrders here. */
   readonly orderLifecycle: Subject<EquityOrder>;
@@ -224,9 +253,9 @@ export interface World {
   depthFor(symbol: string): BehaviorSubject<DepthBook | null>;
   /** Push a new watchlist (drives the watchlist-backed panels' re-render). */
   setWatchlist(value: readonly EquityInstrument[]): void;
-  /** Push new equity orders (drives the OrdersBlotter's re-render). */
+  /** Push new equity orders (drives the OrdersTable's re-render). */
   setEquityOrders(value: readonly EquityOrder[]): void;
-  /** Push new equity positions (drives the PositionsBlotter's re-render). */
+  /** Push new equity positions (drives the PositionsTable's re-render). */
   setEquityPositions(value: readonly EquityPosition[]): void;
   /** Push a new equity quote for one symbol. */
   setEquityQuote(symbol: string, value: EquityQuote | null): void;
@@ -236,6 +265,15 @@ export interface World {
   setDepth(symbol: string, value: DepthBook | null): void;
   /** Advance the OrderTicket lifecycle by emitting one EquityOrder into place(). */
   pushOrderLifecycle(order: EquityOrder): void;
+  /** The REAL createEqWorkspaceMachine, one shared instance for the whole
+   * World — mirrors the composition root's singleton wiring so every panel
+   * reading useEqWorkspace() through this World observes the same selection/
+   * open-tabs/timeframe state. */
+  readonly eqWorkspace: Machine<EqWorkspaceState, EqWorkspaceIntents>;
+  /** Reactive watchlist sort-mode preference backing useEqWatchlistSort. */
+  readonly eqWatchlistSort: BehaviorSubject<EqWatchlistSort>;
+  /** Reactive blotter tab preference backing useEqBlotterView. */
+  readonly eqBlotterView: BehaviorSubject<EqBlotterView>;
   // Admin / telemetry streams (Phase 5)
   /** Reactive service topology backing useTopology. Null until first push. */
   readonly topology$: BehaviorSubject<ServiceTopology | null>;
@@ -371,6 +409,16 @@ export function createWorld(
     equitiesSeed.positions ?? [],
   );
   const orderLifecycle = new Subject<EquityOrder>();
+  const eqWorkspace = createEqWorkspaceMachine({
+    initialSymbol:
+      equitiesSeed.initialSymbol ?? equitiesSeed.watchlist?.[0]?.symbol ?? "",
+  });
+  const eqWatchlistSort = new BehaviorSubject<EqWatchlistSort>(
+    equitiesSeed.watchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
+  );
+  const eqBlotterView = new BehaviorSubject<EqBlotterView>(
+    equitiesSeed.blotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
+  );
 
   const equityQuotes = new Map<string, BehaviorSubject<EquityQuote | null>>();
   const candleSeries = new Map<string, BehaviorSubject<readonly Candle[]>>();
@@ -520,6 +568,7 @@ export function createWorld(
     sessionUnlock: 0,
     animatedBackgroundSets: [],
     injectedIncidents: [],
+    placedOrderRequests: [],
   };
 
   return {
@@ -582,6 +631,9 @@ export function createWorld(
     pushOrderLifecycle: (order: EquityOrder) => {
       return orderLifecycle.next(order);
     },
+    eqWorkspace,
+    eqWatchlistSort,
+    eqBlotterView,
     // Admin subjects
     topology$,
     eventLog$,

@@ -7,12 +7,16 @@ import type {
   TileExecutionState,
 } from "@rtc/client-core";
 import type {
+  Candle,
+  CandleTimeframe,
   CreditRfqFilter,
   CurrencyCategory,
   CurrencyPair,
   CurrencyPairPosition,
   Direction,
+  EquityOrder,
   EquityPosition,
+  EquityQuote,
   HistoricPosition,
   Instrument,
   Price,
@@ -43,16 +47,26 @@ import { RfqsPanel as RfqsPanelComponent } from "#/ui/credit/rfqs/RfqsPanel";
 import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
 import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
 import { DeskPnlGauge as DeskPnlGaugeComponent } from "#/ui/equities/blotter/DeskPnlGauge";
-import { OrdersBlotter as OrdersBlotterComponent } from "#/ui/equities/blotter/OrdersBlotter";
+import { EqBlotterHead as EqBlotterHeadComponent } from "#/ui/equities/blotter/EqBlotterHead";
+import { EqBlotterPanel as EqBlotterPanelComponent } from "#/ui/equities/blotter/EqBlotterPanel";
+import { OrdersTable as OrdersTableComponent } from "#/ui/equities/blotter/OrdersTable";
 import { PnlSparkline as PnlSparklineComponent } from "#/ui/equities/blotter/PnlSparkline";
-import { PositionsBlotter as PositionsBlotterComponent } from "#/ui/equities/blotter/PositionsBlotter";
+import { PositionsTable as PositionsTableComponent } from "#/ui/equities/blotter/PositionsTable";
+import { CandleChart as CandleChartComponent } from "#/ui/equities/chart/CandleChart";
+import { ChartPanel as ChartPanelComponent } from "#/ui/equities/chart/ChartPanel";
+import type { ChartVm } from "#/ui/equities/chart/chartVm";
 import { DepthLadder as DepthLadderComponent } from "#/ui/equities/chart/DepthLadder";
-import { PriceChart as PriceChartComponent } from "#/ui/equities/chart/PriceChart";
-import { EquitiesPanel as EquitiesPanelComponent } from "#/ui/equities/EquitiesPanel";
+import { EqChartHead as EqChartHeadComponent } from "#/ui/equities/chart/EqChartHead";
+import { EqDepthDock as EqDepthDockComponent } from "#/ui/equities/chart/EqDepthDock";
+import { InstrumentHeader as InstrumentHeaderComponent } from "#/ui/equities/chart/InstrumentHeader";
+import { TimeframePills as TimeframePillsComponent } from "#/ui/equities/chart/TimeframePills";
 import { InstrumentTabs as InstrumentTabsComponent } from "#/ui/equities/tabs/InstrumentTabs";
+import { EqTicketHead as EqTicketHeadComponent } from "#/ui/equities/ticket/EqTicketHead";
 import { OrderTicket as OrderTicketComponent } from "#/ui/equities/ticket/OrderTicket";
+import { EqSectorsDock as EqSectorsDockComponent } from "#/ui/equities/watchlist/EqSectorsDock";
+import { EqWatchlistHead as EqWatchlistHeadComponent } from "#/ui/equities/watchlist/EqWatchlistHead";
 import { SectorHeatmap as SectorHeatmapComponent } from "#/ui/equities/watchlist/SectorHeatmap";
-import { Watchlist as WatchlistComponent } from "#/ui/equities/watchlist/Watchlist";
+import { WatchlistPanel as WatchlistPanelComponent } from "#/ui/equities/watchlist/WatchlistPanel";
 import { AnalyticsHead as AnalyticsHeadComponent } from "#/ui/fx/analytics/AnalyticsHead";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
 import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
@@ -114,6 +128,8 @@ import {
   BlotterRow,
   BootGate,
   BootSequence,
+  CandleChart,
+  ChartPanel,
   ConnectionOverlay,
   ConnectionStatusBar,
   CreditBlotter,
@@ -122,11 +138,18 @@ import {
   DateFilter,
   DepthLadder,
   DeskPnlGauge,
-  EquitiesPanel,
+  EqBlotterHead,
+  EqBlotterPanel,
+  EqChartHead,
+  EqDepthDock,
+  EqSectorsDock,
+  EqTicketHead,
+  EqWatchlistHead,
   FxBlotter,
   FxBlotterWorkspace,
   HeaderChrome,
   IncidentControls,
+  InstrumentHeader,
   InstrumentTabs,
   KpiRow,
   LatencyHistogram,
@@ -138,17 +161,16 @@ import {
   NewRfqHead,
   NewRfqPanel,
   NumberFilter,
-  OrdersBlotter,
+  OrdersTable,
   OrderTicket,
   PairPnlBars,
   PnlChart,
   PnlSparkline,
   PnlValue,
-  PositionsBlotter,
   PositionsHead,
   PositionsPanel,
+  PositionsTable,
   PreferencesModal,
-  PriceChart,
   QuickFilter,
   RfqCountdown,
   RfqFilterPills,
@@ -173,8 +195,9 @@ import {
   TileNotional,
   TilePrice,
   TileRfq,
+  TimeframePills,
   TradeTicket,
-  Watchlist,
+  WatchlistPanel,
 } from "../shared/components";
 import type {
   ComponentToken,
@@ -713,39 +736,76 @@ export const registry = new Map<AnyToken, ElementFor>([
   [
     OrderTicket,
     (p: Record<string, unknown>): ReactElement => {
-      return <OrderTicketComponent symbol={(p.symbol as string) ?? "AAPL"} />;
-    },
-  ],
-  [
-    Watchlist,
-    (p: Record<string, unknown>): ReactElement => {
-      return (
-        <WatchlistComponent
-          selectedSymbol={(p.selectedSymbol as string | null) ?? null}
-          onSelect={
-            (p.onSelect as (symbol: string) => void) ?? ((): void => {})
-          }
-        />
-      );
-    },
-  ],
-  [
-    OrdersBlotter,
-    (): ReactElement => {
-      return <OrdersBlotterComponent />;
+      return <OrderTicketComponent symbol={p.symbol as string | undefined} />;
     },
   ],
   [
     InstrumentTabs,
+    (): ReactElement => {
+      return <InstrumentTabsComponent />;
+    },
+  ],
+  [
+    ChartPanel,
+    (): ReactElement => {
+      return <ChartPanelComponent />;
+    },
+  ],
+  [
+    InstrumentHeader,
     (p: Record<string, unknown>): ReactElement => {
       return (
-        <InstrumentTabsComponent
-          selectedSymbol={(p.selectedSymbol as string | null) ?? null}
-          onSelect={
-            (p.onSelect as (symbol: string) => void) ?? ((): void => {})
-          }
+        <InstrumentHeaderComponent
+          symbol={(p.symbol as string) ?? ""}
+          instrumentName={p.instrumentName as string | undefined}
+          exchange={p.exchange as string | undefined}
+          quote={(p.quote as EquityQuote | null) ?? null}
+          candles={(p.candles as readonly Candle[]) ?? []}
+          flashOn={(p.flashOn as boolean) ?? false}
+          flashDir={(p.flashDir as "up" | "down") ?? "up"}
         />
       );
+    },
+  ],
+  [
+    CandleChart,
+    (p: Record<string, unknown>): ReactElement => {
+      return <CandleChartComponent vm={p.vm as ChartVm} />;
+    },
+  ],
+  [
+    TimeframePills,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <TimeframePillsComponent
+          tf={(p.tf as CandleTimeframe) ?? "1D"}
+          onSet={(p.onSet as (tf: CandleTimeframe) => void) ?? ((): void => {})}
+        />
+      );
+    },
+  ],
+  [
+    EqChartHead,
+    (): ReactElement => {
+      return <EqChartHeadComponent />;
+    },
+  ],
+  [
+    WatchlistPanel,
+    (): ReactElement => {
+      return <WatchlistPanelComponent />;
+    },
+  ],
+  [
+    EqWatchlistHead,
+    (): ReactElement => {
+      return <EqWatchlistHeadComponent />;
+    },
+  ],
+  [
+    EqTicketHead,
+    (): ReactElement => {
+      return <EqTicketHeadComponent />;
     },
   ],
   [
@@ -762,21 +822,21 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    PriceChart,
-    (p: Record<string, unknown>): ReactElement => {
-      return <PriceChartComponent symbol={(p.symbol as string) ?? "AAPL"} />;
-    },
-  ],
-  [
     DepthLadder,
     (p: Record<string, unknown>): ReactElement => {
       return <DepthLadderComponent symbol={(p.symbol as string) ?? "AAPL"} />;
     },
   ],
   [
-    PositionsBlotter,
+    EqDepthDock,
     (): ReactElement => {
-      return <PositionsBlotterComponent />;
+      return <EqDepthDockComponent />;
+    },
+  ],
+  [
+    EqSectorsDock,
+    (): ReactElement => {
+      return <EqSectorsDockComponent />;
     },
   ],
   [
@@ -801,9 +861,36 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
-    EquitiesPanel,
+    OrdersTable,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <OrdersTableComponent
+          orders={(p.orders as readonly EquityOrder[]) ?? []}
+          newOrderId={(p.newOrderId as string | null) ?? null}
+        />
+      );
+    },
+  ],
+  [
+    PositionsTable,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <PositionsTableComponent
+          positions={(p.positions as readonly EquityPosition[]) ?? []}
+        />
+      );
+    },
+  ],
+  [
+    EqBlotterPanel,
     (): ReactElement => {
-      return <EquitiesPanelComponent />;
+      return <EqBlotterPanelComponent />;
+    },
+  ],
+  [
+    EqBlotterHead,
+    (): ReactElement => {
+      return <EqBlotterHeadComponent />;
     },
   ],
   // Admin / telemetry components (Phase 5 Task 8)

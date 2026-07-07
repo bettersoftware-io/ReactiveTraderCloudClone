@@ -23,13 +23,20 @@ import type {
   CreateRfqInput,
   CreditRfqFilter,
   CurrencyPair,
+  EqBlotterView,
+  EqWatchlistSort,
   ExecuteTradeInput,
   ExecuteTradeResult,
+  PlaceOrderRequest,
   RfqQuoteResult,
   ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
-import { nextThemeModePreference, resolveThemeMode } from "@rtc/domain";
+import {
+  nextEqWatchlistSort,
+  nextThemeModePreference,
+  resolveThemeMode,
+} from "@rtc/domain";
 import type { ViewModel } from "@rtc/react-bindings";
 import { useMachine } from "@rtc/react-bindings";
 
@@ -53,6 +60,39 @@ function useSubject<T>(subject: BehaviorSubject<T>): T {
     },
     () => {
       return subject.getValue();
+    },
+  );
+}
+
+interface Unsubscribable {
+  unsubscribe(): void;
+}
+
+/** A warmed `@rx-state/core` `StateObservable` — structurally typed here (not
+ * imported by name) so this test-only package doesn't need its own dependency
+ * on `@rx-state/core` (a transitive dep via `@rtc/client-core`). */
+interface PeekableState<T> {
+  subscribe(onNext: (v: T) => void): Unsubscribable;
+  getValue(): T | Promise<T>;
+}
+
+/** Subscribe a React component to a shared machine's `state$` (mirrors
+ * useSubject, for the eqWorkspace singleton which — unlike the per-mount
+ * `useMachine`-bridged machines — is constructed once for the whole World). */
+function useMachineState<T>(state$: PeekableState<T>): T {
+  return useSyncExternalStore(
+    (onChange) => {
+      const sub = state$.subscribe(onChange);
+
+      return () => {
+        return sub.unsubscribe();
+      };
+    },
+    () => {
+      const v = state$.getValue();
+      if (v instanceof Promise)
+        throw new Error("eqWorkspace state$ not initialized");
+      return v;
     },
   );
 }
@@ -351,6 +391,36 @@ export function reactViewModel(world: World): ViewModel {
         },
       };
     },
+    // Equities watchlist sort: reactive view backed by the World subject;
+    // setSort pushes back directly, cycle() reads the CURRENT value (not a
+    // captured one) so rapid clicks each advance from the true state —
+    // mirroring the real presenter's cycle().
+    useEqWatchlistSort: () => {
+      const sort = useSubject(world.eqWatchlistSort);
+      return {
+        sort,
+        setSort: (next: EqWatchlistSort) => {
+          return world.eqWatchlistSort.next(next);
+        },
+        cycle: () => {
+          return world.eqWatchlistSort.next(
+            nextEqWatchlistSort(world.eqWatchlistSort.getValue()),
+          );
+        },
+      };
+    },
+    // Equities blotter tab: reactive view backed by the World subject;
+    // setView pushes back so a tab click through the seam flips the rendered
+    // view (Task 5 consumes this).
+    useEqBlotterView: () => {
+      const view = useSubject(world.eqBlotterView);
+      return {
+        view,
+        setView: (next: EqBlotterView) => {
+          return world.eqBlotterView.next(next);
+        },
+      };
+    },
     // Session lock: reactive state backed by the World subject; lock/unlock push
     // back so the seam transition re-renders the overlay. unlock (re-authenticate)
     // also records the invocation so specs can assert "AUTHENTICATE fires once".
@@ -432,12 +502,27 @@ export function reactViewModel(world: World): ViewModel {
     useOrderTicket: (defaultSymbol: string) => {
       return useMachine(() => {
         return createOrderTicketMachine({
-          place: () => {
+          place: (req: PlaceOrderRequest) => {
+            world.commands.placedOrderRequests.push(req);
             return world.orderLifecycle.asObservable();
           },
           defaultSymbol,
         });
       });
+    },
+    // Eq workspace: the REAL createEqWorkspaceMachine, one shared instance for
+    // the whole World (world.eqWorkspace) — NOT a per-mount useMachine, so
+    // every component reading useEqWorkspace() through this World observes the
+    // same selection/open-tabs/timeframe, mirroring the app's composition-root
+    // singleton wiring.
+    useEqWorkspace: () => {
+      const state = useMachineState(world.eqWorkspace.state$);
+      return {
+        state,
+        select: world.eqWorkspace.intents.select,
+        closeTab: world.eqWorkspace.intents.closeTab,
+        setTimeframe: world.eqWorkspace.intents.setTimeframe,
+      };
     },
     // Admin / telemetry (Phase 5): World-backed fakes that re-render subscribing
     // components when the test pushes new data. The incident fake mirrors the real

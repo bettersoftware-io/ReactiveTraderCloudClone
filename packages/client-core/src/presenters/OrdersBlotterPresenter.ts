@@ -1,4 +1,11 @@
-import { type Observable, Subject, shareReplay, tap } from "rxjs";
+import {
+  type Observable,
+  Subject,
+  shareReplay,
+  startWith,
+  switchMap,
+  tap,
+} from "rxjs";
 
 import type { EquityOrder, OrderPort, PlaceOrderRequest } from "@rtc/domain";
 
@@ -10,6 +17,14 @@ export interface EquityFillSignal {
 export class OrdersBlotterPresenter {
   private readonly fillsSubject = new Subject<EquityFillSignal>();
 
+  /** Triggers a fresh orders$ snapshot — nexted on every lifecycle emission
+   * from place() (new/working/partiallyFilled/filled), since OrderPort.orders()
+   * is a one-shot snapshot query (defer→of→complete), not a push stream: it
+   * never emits again on its own once subscribed. Without this, a mounted
+   * blotter would show whatever snapshot existed at mount forever, never
+   * observing an order's own lifecycle transitions. */
+  private readonly refresh = new Subject<void>();
+
   /** Emits { symbol } for each equity order that reaches "filled" status. */
   readonly fills$: Observable<EquityFillSignal> =
     this.fillsSubject.asObservable();
@@ -17,14 +32,20 @@ export class OrdersBlotterPresenter {
   readonly orders$: Observable<readonly EquityOrder[]>;
 
   constructor(private readonly orderPort: OrderPort) {
-    this.orders$ = this.orderPort
-      .orders()
-      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    this.orders$ = this.refresh.pipe(
+      startWith(undefined),
+      switchMap(() => {
+        return this.orderPort.orders();
+      }),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
   }
 
   place(req: PlaceOrderRequest): Observable<EquityOrder> {
     return this.orderPort.place(req).pipe(
       tap((order) => {
+        this.refresh.next();
+
         if (order.status === "filled") {
           this.fillsSubject.next({ symbol: order.symbol });
         }

@@ -6,9 +6,13 @@ import {
   type CreditRfqFilter,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
+  type EqBlotterView,
+  type EqWatchlistSort,
   type ThemeModePreference,
   type ThemeSkin,
   type ViewMode,
@@ -21,6 +25,8 @@ export interface PreferencesSeed {
   animatedBackground?: boolean;
   bootVariant?: BootVariant;
   creditRfqFilter?: CreditRfqFilter;
+  eqWatchlistSort?: EqWatchlistSort;
+  eqBlotterView?: EqBlotterView;
 }
 
 /**
@@ -41,6 +47,10 @@ export class PreferencesSimulator implements PreferencesPort {
 
   private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
 
+  private readonly eqWatchlistSortSubject: BehaviorSubject<EqWatchlistSort>;
+
+  private readonly eqBlotterViewSubject: BehaviorSubject<EqBlotterView>;
+
   constructor(seed: PreferencesSeed = {}) {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
       seed.themeMode ?? DEFAULT_THEME_MODE_PREFERENCE,
@@ -59,6 +69,12 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.creditRfqFilterSubject = new BehaviorSubject<CreditRfqFilter>(
       seed.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER,
+    );
+    this.eqWatchlistSortSubject = new BehaviorSubject<EqWatchlistSort>(
+      seed.eqWatchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
+    );
+    this.eqBlotterViewSubject = new BehaviorSubject<EqBlotterView>(
+      seed.eqBlotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
     );
   }
 
@@ -108,5 +124,21 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setCreditRfqFilter(filter: CreditRfqFilter): void {
     this.creditRfqFilterSubject.next(filter);
+  }
+
+  eqWatchlistSort$(): Observable<EqWatchlistSort> {
+    return this.eqWatchlistSortSubject.pipe(distinctUntilChanged());
+  }
+
+  setEqWatchlistSort(sort: EqWatchlistSort): void {
+    this.eqWatchlistSortSubject.next(sort);
+  }
+
+  eqBlotterView$(): Observable<EqBlotterView> {
+    return this.eqBlotterViewSubject.pipe(distinctUntilChanged());
+  }
+
+  setEqBlotterView(view: EqBlotterView): void {
+    this.eqBlotterViewSubject.next(view);
   }
 }

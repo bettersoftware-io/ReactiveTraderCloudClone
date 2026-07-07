@@ -1,5 +1,6 @@
 import type {
   ActivityEntry,
+  EqWorkspaceState,
   NotionalView,
   OrderTicketState,
   RfqQuote,
@@ -1487,9 +1488,15 @@ type EquitiesBaseFixture = {
   equityDepth: Record<string, DepthBook>;
   equityOrders: readonly EquityOrder[];
   equityPositions: readonly EquityPosition[];
+  equityWorkspace: EqWorkspaceState;
 };
 
-// Base equities data used by all equities scenarios
+// Base equities data used by all equities scenarios. equityWorkspace seeds a
+// real selection (AAPL) with two extra open tabs, so the four-panel dock's
+// ChartPanel/OrderTicket/WatchlistPanel render their SELECTED-instrument arms
+// (not the `sel: ""` "SELECT AN INSTRUMENT" / unselected-row placeholder that
+// the seam's own useEqWorkspace default falls back to) — mirrors the real
+// composition root's peekFirstWatchlistSymbol seed (composition.ts).
 const equitiesBase: EquitiesBaseFixture = {
   equityWatchlist: equityInstruments,
   equityQuotes,
@@ -1497,6 +1504,11 @@ const equitiesBase: EquitiesBaseFixture = {
   equityDepth: { AAPL: aaplDepthBook },
   equityOrders,
   equityPositions,
+  equityWorkspace: {
+    sel: "AAPL",
+    openTabs: ["AAPL", "MSFT", "JPM"],
+    timeframe: "1D",
+  },
 };
 
 // Order ticket states for the ticket-editing and ticket-filled scenarios
@@ -1530,6 +1542,25 @@ fixtures["equities-ticket-editing"] = makeAppData({
   ...equitiesBase,
   equityOrderTicket: orderTicketEditing,
 });
+// Watchlist sort-cycle arms — same rows/quotes, different useEqWatchlistSort
+// preference (the head's ⇅ chip). Default (unset → DEFAULT_EQ_WATCHLIST_SORT
+// "chg") is covered by "equities-loaded" itself (equities/watchlist-loaded).
+fixtures["equities-watchlist-sort-sym"] = makeAppData({
+  ...equitiesBase,
+  eqWatchlistSort: "sym",
+});
+fixtures["equities-watchlist-sort-price"] = makeAppData({
+  ...equitiesBase,
+  eqWatchlistSort: "price",
+});
+// Blotter view arms — same orders/positions data, different useEqBlotterView
+// preference (the head's ▤/◴ tabs). Default ("orders") is covered by
+// "equities-loaded" itself (equities/blotter-orders).
+fixtures["equities-blotter-positions"] = makeAppData({
+  ...equitiesBase,
+  eqBlotterView: "positions",
+});
+
 fixtures["equities-ticket-filled"] = makeAppData({
   ...equitiesBase,
   equityOrderTicket: orderTicketFilled,

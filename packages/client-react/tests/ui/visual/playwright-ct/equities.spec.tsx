@@ -1,33 +1,12 @@
 import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
 
-test("equities/watchlist-loaded", async ({ mount }) => {
-  // Watchlist with 6 instruments — AAPL row visible and active; varied
-  // up/down heat tints render deterministically from fixed changePct values.
-  const c = await mount(<VisualScenario name="equities/watchlist-loaded" />);
-  await expect(c.getByTestId("watchlist-row-AAPL")).toBeVisible();
-  await expect(c).toHaveScreenshot("watchlist-loaded.png", {
-    animations: "disabled",
-  });
-});
-
 test("equities/sector-heatmap", async ({ mount }) => {
   // Heatmap cells grouped by sector; AAPL cell is active (border-accent).
   // Up/down heat colours derived from the fixed quote changePct values.
   const c = await mount(<VisualScenario name="equities/sector-heatmap" />);
   await expect(c.getByTestId("heatmap-cell-AAPL")).toBeVisible();
   await expect(c).toHaveScreenshot("sector-heatmap.png", {
-    animations: "disabled",
-  });
-});
-
-test("equities/chart-loaded", async ({ mount }) => {
-  // PriceChart canvas rendered with 40 AAPL candles inside a fixed 400×200
-  // container. Canvas draws via useLayoutEffect (sync with layout); the aria-label
-  // confirms the canvas element is in the DOM.
-  const c = await mount(<VisualScenario name="equities/chart-loaded" />);
-  await expect(c.locator('[aria-label="AAPL price chart"]')).toBeVisible();
-  await expect(c).toHaveScreenshot("chart-loaded.png", {
     animations: "disabled",
   });
 });
@@ -62,21 +41,78 @@ test("equities/ticket-filled", async ({ mount }) => {
   });
 });
 
-test("equities/positions-with-pnl", async ({ mount }) => {
-  // PositionsBlotter: DeskPnlGauge arc + 4 positions with mixed P&L signs
-  // (AAPL/MSFT positive, JPM negative, XOM positive). PnlSparkline bars
-  // extend left (neg) / right (pos) from the centre line.
-  const c = await mount(<VisualScenario name="equities/positions-with-pnl" />);
-  await expect(c.getByTestId("position-row-AAPL")).toBeVisible();
-  await expect(c).toHaveScreenshot("positions-with-pnl.png", {
+// --- Task 7: four-panel-dock replacement scenarios ---
+
+test("equities/chart-panel", async ({ mount }) => {
+  // ChartPanel body only (the instrument-tabs strip lives in EqChartHead, the
+  // panel's separate headControls slot — not part of ChartPanel itself, same
+  // split as LiveRatesPanel/LiveRatesHead): instrument header (AAPL) +
+  // candlestick plot, seeded via equitiesBase's equityWorkspace (sel "AAPL").
+  const c = await mount(<VisualScenario name="equities/chart-panel" />);
+  await expect(c.getByTestId("instrument-header")).toBeVisible();
+  await expect(c.getByTestId("instrument-header-last")).toHaveText("178.50");
+  await expect(c).toHaveScreenshot("chart-panel.png", {
     animations: "disabled",
   });
 });
 
-test("equities/panel", async ({ mount }) => {
-  // Full EquitiesPanel at 1280×680 — tabs, watchlist, heatmap, price chart,
-  // order ticket, depth ladder, orders blotter (default view) all in one shot.
-  const c = await mount(<VisualScenario name="equities/panel" />);
-  await expect(c.getByText("WATCHLIST")).toBeVisible();
-  await expect(c).toHaveScreenshot("panel.png", { animations: "disabled" });
+test("equities/instrument-header", async ({ mount }) => {
+  // Standalone InstrumentHeader with a forced flashOn=true/dir="up" — the
+  // tick-flash accent arm a static ChartPanel capture can never reach.
+  const c = await mount(<VisualScenario name="equities/instrument-header" />);
+  await expect(c.getByTestId("instrument-header-last")).toHaveAttribute(
+    "data-flash",
+    "true",
+  );
+  await expect(c).toHaveScreenshot("instrument-header.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/watchlist-loaded", async ({ mount }) => {
+  // Default sort (unset → "chg"); AAPL row is data-selected (workspace sel).
+  const c = await mount(<VisualScenario name="equities/watchlist-loaded" />);
+  await expect(c.getByTestId("watch-row-AAPL")).toHaveAttribute(
+    "data-selected",
+    "true",
+  );
+  await expect(c).toHaveScreenshot("watchlist-loaded.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/watchlist-sort-sym", async ({ mount }) => {
+  const c = await mount(<VisualScenario name="equities/watchlist-sort-sym" />);
+  await expect(c.getByTestId("watch-row-AAPL")).toBeVisible();
+  await expect(c).toHaveScreenshot("watchlist-sort-sym.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/watchlist-sort-price", async ({ mount }) => {
+  const c = await mount(
+    <VisualScenario name="equities/watchlist-sort-price" />,
+  );
+  await expect(c.getByTestId("watch-row-AAPL")).toBeVisible();
+  await expect(c).toHaveScreenshot("watchlist-sort-price.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/blotter-orders", async ({ mount }) => {
+  // Default view (unset → "orders"): the 5 seeded equityOrders render.
+  const c = await mount(<VisualScenario name="equities/blotter-orders" />);
+  await expect(c.getByTestId("order-row-ord-001")).toBeVisible();
+  await expect(c).toHaveScreenshot("blotter-orders.png", {
+    animations: "disabled",
+  });
+});
+
+test("equities/blotter-positions", async ({ mount }) => {
+  // eqBlotterView "positions": the 4 seeded equityPositions + DeskPnlGauge.
+  const c = await mount(<VisualScenario name="equities/blotter-positions" />);
+  await expect(c.getByTestId("position-row-AAPL")).toBeVisible();
+  await expect(c).toHaveScreenshot("blotter-positions.png", {
+    animations: "disabled",
+  });
 });

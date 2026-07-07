@@ -1,0 +1,29 @@
+.plot {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--gtop);
+  height: 1px;
+  background: var(--grid);
+  opacity: 0.5;
+}
+
+.label {
+  position: absolute;
+  right: 6px;
+  top: var(--ltop);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 12px;
+  color: var(--text-muted);
+}

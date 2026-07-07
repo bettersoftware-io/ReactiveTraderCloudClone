@@ -1,0 +1,104 @@
+.table {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.headerRow,
+.row {
+  display: grid;
+  grid-template-columns: 90px 80px 70px 80px 90px 100px 100px;
+  min-width: 620px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+}
+
+.headerRow {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 14px;
+  background: var(--panel);
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.row {
+  align-items: center;
+  border-left: 3px solid var(--row-acc);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.row[data-new="true"] {
+  animation:
+    rowIn 0.45s ease,
+    rowFlashFade 1.5s ease-out;
+}
+
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rowFlashFade {
+  from {
+    background-color: var(--bg-brand-primary);
+  }
+
+  to {
+    background-color: transparent;
+  }
+}
+
+.dim {
+  color: var(--text-secondary);
+}
+
+.sym {
+  font-weight: 600;
+}
+
+.side[data-side="buy"] {
+  color: var(--accent-positive);
+}
+
+.side[data-side="sell"] {
+  color: var(--accent-negative);
+}
+
+.status[data-status="filled"] {
+  color: var(--accent-positive);
+}
+
+.status[data-status="new"],
+.status[data-status="working"],
+.status[data-status="partiallyFilled"] {
+  color: var(--accent-primary);
+}
+
+.status[data-status="cancelled"],
+.status[data-status="rejected"] {
+  color: var(--accent-negative);
+}
+
+.empty {
+  padding: 24px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-muted);
+  text-align: center;
+}

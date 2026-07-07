@@ -5,9 +5,14 @@ import {
   type CreditRfqFilter,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
+  EQ_WATCHLIST_SORTS,
+  type EqBlotterView,
+  type EqWatchlistSort,
   type PreferencesPort,
   THEME_SKINS,
   type ThemeModePreference,
@@ -21,6 +26,8 @@ export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
+export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
+export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 
 function isThemeModePreference(
   value: string | null,
@@ -42,6 +49,16 @@ function isBootVariant(value: string | null): value is BootVariant {
 
 function isCreditRfqFilter(value: string | null): value is CreditRfqFilter {
   return value === "live" || value === "closed" || value === "all";
+}
+
+function isEqWatchlistSort(value: string | null): value is EqWatchlistSort {
+  return (
+    value !== null && (EQ_WATCHLIST_SORTS as readonly string[]).includes(value)
+  );
+}
+
+function isEqBlotterView(value: string | null): value is EqBlotterView {
+  return value === "orders" || value === "positions";
 }
 
 function readStored<T extends string>(
@@ -101,6 +118,10 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
 
+  private readonly eqWatchlistSortSubject: BehaviorSubject<EqWatchlistSort>;
+
+  private readonly eqBlotterViewSubject: BehaviorSubject<EqBlotterView>;
+
   constructor() {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
       readStored(
@@ -126,6 +147,20 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
         CREDIT_RFQ_FILTER_STORAGE_KEY,
         isCreditRfqFilter,
         DEFAULT_CREDIT_RFQ_FILTER,
+      ),
+    );
+    this.eqWatchlistSortSubject = new BehaviorSubject<EqWatchlistSort>(
+      readStored(
+        EQ_WATCHLIST_SORT_STORAGE_KEY,
+        isEqWatchlistSort,
+        DEFAULT_EQ_WATCHLIST_SORT,
+      ),
+    );
+    this.eqBlotterViewSubject = new BehaviorSubject<EqBlotterView>(
+      readStored(
+        EQ_BLOTTER_VIEW_STORAGE_KEY,
+        isEqBlotterView,
+        DEFAULT_EQ_BLOTTER_VIEW,
       ),
     );
   }
@@ -182,5 +217,23 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setCreditRfqFilter(filter: CreditRfqFilter): void {
     writeStored(CREDIT_RFQ_FILTER_STORAGE_KEY, filter);
     this.creditRfqFilterSubject.next(filter);
+  }
+
+  eqWatchlistSort$(): Observable<EqWatchlistSort> {
+    return this.eqWatchlistSortSubject.pipe(distinctUntilChanged());
+  }
+
+  setEqWatchlistSort(sort: EqWatchlistSort): void {
+    writeStored(EQ_WATCHLIST_SORT_STORAGE_KEY, sort);
+    this.eqWatchlistSortSubject.next(sort);
+  }
+
+  eqBlotterView$(): Observable<EqBlotterView> {
+    return this.eqBlotterViewSubject.pipe(distinctUntilChanged());
+  }
+
+  setEqBlotterView(view: EqBlotterView): void {
+    writeStored(EQ_BLOTTER_VIEW_STORAGE_KEY, view);
+    this.eqBlotterViewSubject.next(view);
   }
 }

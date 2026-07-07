@@ -6,9 +6,13 @@ import {
   type CreditRfqFilter,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
+  type EqBlotterView,
+  type EqWatchlistSort,
   type ThemeModePreference,
   type ThemeSkin,
   type ViewMode,
@@ -24,6 +28,8 @@ export interface PreferencesSeed {
   animatedBackground?: boolean;
   bootVariant?: BootVariant;
   creditRfqFilter?: CreditRfqFilter;
+  eqWatchlistSort?: EqWatchlistSort;
+  eqBlotterView?: EqBlotterView;
 }
 
 /**
@@ -197,6 +203,47 @@ export function describePreferencesPortContract(
     it("reads back a seeded creditRfqFilter", async () => {
       const port = makeSeeded({ creditRfqFilter: "all" });
       expect(await firstValueFrom(port.creditRfqFilter$())).toBe("all");
+    });
+
+    it("empty store emits the default eqWatchlistSort and eqBlotterView", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.eqWatchlistSort$())).toBe(
+        DEFAULT_EQ_WATCHLIST_SORT,
+      );
+      expect(await firstValueFrom(port.eqBlotterView$())).toBe(
+        DEFAULT_EQ_BLOTTER_VIEW,
+      );
+    });
+
+    it("setEqWatchlistSort persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: EqWatchlistSort[] = [];
+      const sub = port.eqWatchlistSort$().subscribe((s) => {
+        return seen.push(s);
+      });
+      port.setEqWatchlistSort("sym");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_EQ_WATCHLIST_SORT, "sym"]);
+    });
+
+    it("setEqBlotterView persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: EqBlotterView[] = [];
+      const sub = port.eqBlotterView$().subscribe((v) => {
+        return seen.push(v);
+      });
+      port.setEqBlotterView("positions");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_EQ_BLOTTER_VIEW, "positions"]);
+    });
+
+    it("reads back a seeded eqWatchlistSort and eqBlotterView", async () => {
+      const port = makeSeeded({
+        eqWatchlistSort: "price",
+        eqBlotterView: "positions",
+      });
+      expect(await firstValueFrom(port.eqWatchlistSort$())).toBe("price");
+      expect(await firstValueFrom(port.eqBlotterView$())).toBe("positions");
     });
   });
 }

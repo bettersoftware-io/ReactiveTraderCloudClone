@@ -1,6 +1,8 @@
 import {
   type CurrencyPair,
   DEFAULT_CREDIT_RFQ_FILTER,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   resolveThemeMode,
@@ -192,6 +194,19 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setFilter: noop,
       };
     },
+    useEqWatchlistSort: () => {
+      return {
+        sort: data.eqWatchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
+        setSort: noop,
+        cycle: noop,
+      };
+    },
+    useEqBlotterView: () => {
+      return {
+        view: data.eqBlotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
+        setView: noop,
+      };
+    },
     // Session: static snapshot for screenshots. Defaults to unlocked, so the
     // LockScreen overlay renders nothing and existing goldens are unchanged.
     useSession: () => {
@@ -302,6 +317,20 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         state: data.adminIncident ?? { active: [] },
         inject: noop,
         clear: noop,
+      };
+    },
+    // Eq workspace: static snapshot for screenshots; intents are no-ops (no
+    // tab switch/close/timeframe change during capture).
+    useEqWorkspace: () => {
+      return {
+        state: data.equityWorkspace ?? {
+          sel: "",
+          openTabs: [],
+          timeframe: "1D",
+        },
+        select: noop,
+        closeTab: noop,
+        setTimeframe: noop,
       };
     },
   };

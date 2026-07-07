@@ -141,7 +141,34 @@ describe("equities effects", () => {
         correlationId: "1",
       },
     ]);
-    expect(ctx.marketData.candles).toHaveBeenCalledWith("AAPL");
+    // No `timeframe` in the payload -> threaded through as undefined; the
+    // port's own default parameter ("1D") applies.
+    expect(ctx.marketData.candles).toHaveBeenCalledWith("AAPL", undefined);
+  });
+
+  it("acks getCandles with a timeframe, threading it through to the port", () => {
+    const candle = { time: 1, open: 100, high: 101, low: 99, close: 100.5 };
+    const ctx = {
+      marketData: {
+        candles: vi.fn(() => {
+          return of([candle]);
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+    messages$.next({
+      type: CLIENT_MSG.GET_CANDLES,
+      payload: { symbol: "AAPL", timeframe: "1W" },
+      correlationId: "1w",
+    });
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.CANDLES_RESPONSE,
+        payload: { type: "ack", payload: [candle] },
+        correlationId: "1w",
+      },
+    ]);
+    expect(ctx.marketData.candles).toHaveBeenCalledWith("AAPL", "1W");
   });
 
   it("acks cancelOrder", () => {

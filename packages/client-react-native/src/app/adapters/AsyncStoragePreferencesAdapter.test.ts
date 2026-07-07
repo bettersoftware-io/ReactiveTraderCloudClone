@@ -3,7 +3,11 @@ import { firstValueFrom } from "rxjs";
 import { skip, take } from "rxjs/operators";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-import { DEFAULT_VIEW_MODE } from "@rtc/domain";
+import {
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_VIEW_MODE,
+} from "@rtc/domain";
 
 import { AsyncStoragePreferencesAdapter } from "#/app/adapters/AsyncStoragePreferencesAdapter";
 
@@ -109,6 +113,43 @@ test("setCreditRfqFilter writes through to AsyncStorage and emits", async () => 
   const next = await firstValueFrom(prefs.creditRfqFilter$());
   expect(next).toBe("all");
   expect(store.get("credit-rfqs-filter")).toBe("all");
+});
+
+test("emits the default eqWatchlistSort and eqBlotterView synchronously", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  expect(await firstValueFrom(prefs.eqWatchlistSort$())).toBe(
+    DEFAULT_EQ_WATCHLIST_SORT,
+  );
+  expect(await firstValueFrom(prefs.eqBlotterView$())).toBe(
+    DEFAULT_EQ_BLOTTER_VIEW,
+  );
+});
+
+test("hydrates a stored eqWatchlistSort and eqBlotterView after construction", async () => {
+  store.set("eq-watchlist-sort", "price");
+  store.set("eq-blotter-view", "positions");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  // Subscribe to both streams before awaiting either — hydrate() resolves
+  // both subjects in the same Promise.all batch, so awaiting sequentially
+  // would let the second subscription's skip(1) discard its only emission.
+  const hydratedSort$ = firstValueFrom(
+    prefs.eqWatchlistSort$().pipe(skip(1), take(1)),
+  );
+  const hydratedView$ = firstValueFrom(
+    prefs.eqBlotterView$().pipe(skip(1), take(1)),
+  );
+  expect(await hydratedSort$).toBe("price");
+  expect(await hydratedView$).toBe("positions");
+});
+
+test("setEqWatchlistSort/setEqBlotterView write through to AsyncStorage and emit", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setEqWatchlistSort("sym");
+  prefs.setEqBlotterView("positions");
+  expect(await firstValueFrom(prefs.eqWatchlistSort$())).toBe("sym");
+  expect(await firstValueFrom(prefs.eqBlotterView$())).toBe("positions");
+  expect(store.get("eq-watchlist-sort")).toBe("sym");
+  expect(store.get("eq-blotter-view")).toBe("positions");
 });
 
 vi.mock("@react-native-async-storage/async-storage", () => {

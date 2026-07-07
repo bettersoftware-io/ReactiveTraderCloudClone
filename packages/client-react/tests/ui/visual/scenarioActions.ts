@@ -208,12 +208,17 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   "live-rates/currency-filtered": { click: "filter-GBP" },
 
   // --- Phase 4: Equities panel ---
-  // Full App shot: click the equities tab, wait for WATCHLIST heading to confirm
-  // the EquitiesPanel rendered (analogous to app/credit + app/admin patterns).
+  // Full App shot: click the equities tab, wait for the watchlist head's "☰
+  // Watchlist" tab label to confirm the four-panel dock rendered (analogous to
+  // app/credit + app/admin patterns). Task 6 flipped the layout from the flat
+  // EquitiesPanel (which rendered a "WATCHLIST" section heading) to the dock —
+  // WorkspaceEngine remounts per tab (App.tsx `key={activeTab}`), so this text
+  // is unique to the equities tab even though FX's LiveRatesHead renders the
+  // same literal string (it unmounts when the equities tab is active).
   "app/equities": {
     fullPage: true,
     click: "tab-equities",
-    waitForText: "WATCHLIST",
+    waitForText: "☰ Watchlist",
   },
 
   // --- Phase 2: HUD shell surfaces ---

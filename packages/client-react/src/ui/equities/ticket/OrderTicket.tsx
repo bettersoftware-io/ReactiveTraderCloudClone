@@ -1,13 +1,17 @@
-import type { ChangeEvent, ReactElement } from "react";
+import { type ChangeEvent, type ReactElement, useEffect } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./OrderTicket.module.css";
 
 /**
- * Equity order ticket — side/type toggles, qty input, optional limit-price,
- * Submit. Reads all state from useOrderTicket(symbol) and animation intent
- * from useAnimationIntents(`ticket:${symbol}`).
+ * Equity order ticket — BUY/SELL + Market/Limit toggles, a qty stepper,
+ * conditional limit price, a cost summary, and a big accent Submit. Reads all
+ * state from useOrderTicket(symbol) and animation intent from
+ * useAnimationIntents(`ticket:${symbol}`). The traded symbol defaults to the
+ * shared eqWorkspace selection when no `symbol` prop is given — the eq-ticket
+ * dock panel (Task 6) mounts it with no symbol, relying on that fallback; the
+ * visual/contract specs still pass an explicit symbol to pin a fixed AAPL shot.
  *
  * Phase → data-phase: editing | submitting | working | partiallyFilled |
  *                      filled | rejected
@@ -15,14 +19,45 @@ import styles from "./OrderTicket.module.css";
  *
  * NOTE: `submitting` phase has NO `order` field — the component never reads
  * order on a submitting state.
+ *
+ * Symbol sync (C1 fix): `useOrderTicket` (via `useMachine`) instantiates the
+ * underlying OrderTicketMachine ONCE per mount — its `form.symbol` is frozen
+ * at whatever `sym` was on the first render. The eq-ticket dock panel never
+ * remounts, so without an explicit sync, changing the workspace selection
+ * (click a different watchlist row) would leave the ticket trading its STALE
+ * initial symbol while every visible affordance (CTA, quote, est. cost)
+ * already shows the new one — the exact live bug (select MSFT, place an
+ * AAPL order). The effect below calls `ticket.setSymbol(sym)` whenever the
+ * workspace selection drifts from the machine's current form.symbol, but
+ * ONLY while the machine is in the "editing" phase: once a submit is
+ * in-flight (submitting/working/partiallyFilled/filled/rejected) the ticket
+ * is displaying an order already placed against the OLD symbol, and a
+ * selection change must never retarget or clobber that in-flight/terminal
+ * state — the next edit simply starts on the new symbol once the machine
+ * returns to editing (on mount, or after reset()).
  */
 export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
-  const { useOrderTicket, useAnimationIntents } = useViewModel();
-  const ticket = useOrderTicket(symbol);
-  const animIntent = useAnimationIntents(`ticket:${symbol}`);
+  const {
+    useOrderTicket,
+    useAnimationIntents,
+    useEqWorkspace,
+    useEquityQuote,
+  } = useViewModel();
+  const workspace = useEqWorkspace();
+  const sym = symbol ?? workspace.state.sel;
+  const ticket = useOrderTicket(sym);
+  const animIntent = useAnimationIntents(`ticket:${sym}`);
+  const quote = useEquityQuote(sym);
 
   const { state } = ticket;
   const animAttr = animIntent?.kind === "fill" ? "fill" : undefined;
+  const formSymbol = state.phase === "editing" ? state.form.symbol : undefined;
+
+  useEffect(() => {
+    if (formSymbol !== undefined && formSymbol !== sym) {
+      ticket.setSymbol(sym);
+    }
+  }, [sym, formSymbol, ticket]);
 
   // ── Terminal / in-flight phase rendering ──────────────────────────────────
 
@@ -130,6 +165,16 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
 
   const { form, error } = state;
   const isLimit = form.type === "limit";
+  const live = quote?.last ?? 0;
+  // PROTO Ticket/OrderTicketPanel.tsx:24 — a limit order costs at the limit
+  // price ONLY once one has actually been entered; a blank/zero limit still
+  // prices off the live last (matches the prototype's `limitN ? limitN : last`).
+  const unitPrice = isLimit && form.limitPrice ? form.limitPrice : live;
+  const estCost = form.qty * unitPrice;
+
+  function stepQty(delta: number): void {
+    ticket.setQty(Math.max(0, form.qty + delta));
+  }
 
   return (
     <div
@@ -139,69 +184,76 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
       className={styles.ticket}
     >
       {/* Side toggle: Buy / Sell */}
-      <div className={styles.row}>
-        <div className={styles.toggleGroup}>
-          <button
-            type="button"
-            data-side="buy"
-            data-active={form.side === "buy" ? "true" : "false"}
-            className={styles.toggle}
-            onClick={() => {
-              ticket.setSide("buy");
-            }}
-          >
-            BUY
-          </button>
-          <button
-            type="button"
-            data-side="sell"
-            data-active={form.side === "sell" ? "true" : "false"}
-            className={styles.toggle}
-            onClick={() => {
-              ticket.setSide("sell");
-            }}
-          >
-            SELL
-          </button>
-        </div>
+      <div className={styles.sideToggle}>
+        <button
+          type="button"
+          data-side="buy"
+          data-active={form.side === "buy" ? "true" : "false"}
+          className={styles.side}
+          onClick={() => {
+            ticket.setSide("buy");
+          }}
+        >
+          BUY
+        </button>
+        <button
+          type="button"
+          data-side="sell"
+          data-active={form.side === "sell" ? "true" : "false"}
+          className={styles.side}
+          onClick={() => {
+            ticket.setSide("sell");
+          }}
+        >
+          SELL
+        </button>
       </div>
 
       {/* Type toggle: Market / Limit */}
-      <div className={styles.row}>
-        <div className={styles.toggleGroup}>
-          <button
-            type="button"
-            data-kind="type"
-            data-active={form.type === "market" ? "true" : "false"}
-            className={styles.toggle}
-            onClick={() => {
-              ticket.setType("market");
-            }}
-          >
-            MARKET
-          </button>
-          <button
-            type="button"
-            data-kind="type"
-            data-active={form.type === "limit" ? "true" : "false"}
-            className={styles.toggle}
-            onClick={() => {
-              ticket.setType("limit");
-            }}
-          >
-            LIMIT
-          </button>
-        </div>
+      <span className={styles.label}>ORDER TYPE</span>
+      <div className={styles.typeRow}>
+        <button
+          type="button"
+          data-kind="type"
+          data-active={form.type === "market" ? "true" : "false"}
+          className={styles.type}
+          onClick={() => {
+            ticket.setType("market");
+          }}
+        >
+          MARKET
+        </button>
+        <button
+          type="button"
+          data-kind="type"
+          data-active={form.type === "limit" ? "true" : "false"}
+          className={styles.type}
+          onClick={() => {
+            ticket.setType("limit");
+          }}
+        >
+          LIMIT
+        </button>
       </div>
 
-      {/* Quantity */}
-      <div className={styles.fieldGroup}>
-        <span className={styles.label}>QUANTITY</span>
+      {/* Quantity stepper */}
+      <span className={styles.label}>QUANTITY</span>
+      <div className={styles.qtyRow}>
+        <button
+          type="button"
+          data-testid="order-ticket-qty-dec"
+          className={styles.step}
+          onClick={() => {
+            stepQty(-QTY_STEP);
+          }}
+        >
+          −
+        </button>
         <input
           type="number"
-          min={1}
+          min={0}
           step={1}
-          className={styles.input}
+          className={styles.qtyInput}
           value={form.qty === 0 ? "" : form.qty}
           placeholder="0"
           onChange={(e: ChangeEvent<HTMLInputElement>) => {
@@ -209,11 +261,21 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
             if (Number.isFinite(n)) ticket.setQty(n);
           }}
         />
+        <button
+          type="button"
+          data-testid="order-ticket-qty-inc"
+          className={styles.step}
+          onClick={() => {
+            stepQty(QTY_STEP);
+          }}
+        >
+          +
+        </button>
       </div>
 
       {/* Conditional limit price */}
       {isLimit && (
-        <div className={styles.fieldGroup}>
+        <>
           <span className={styles.label}>LIMIT PRICE</span>
           <input
             type="number"
@@ -221,32 +283,80 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
             step={0.01}
             className={styles.input}
             value={form.limitPrice ?? ""}
-            placeholder="0.00"
+            placeholder={live.toFixed(2)}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               const n =
                 e.target.value === "" ? undefined : Number(e.target.value);
               ticket.setLimitPrice(Number.isFinite(n) ? n : undefined);
             }}
           />
-        </div>
+        </>
       )}
 
       {/* Validation error */}
       {!!error && <div className={styles.error}>{error}</div>}
 
+      {/* Cost summary */}
+      <div className={styles.summary}>
+        <SummaryRow
+          label="Est. Cost"
+          value={`$${fmtNum(estCost)}`}
+          testId="order-ticket-est-cost"
+        />
+        <SummaryRow label="Buying Power" value={BUYING_POWER} />
+        <SummaryRow label="Time in Force" value="Day" dim />
+      </div>
+
       {/* Submit */}
       <button
         type="button"
         data-testid="order-ticket-submit"
+        data-side={form.side}
         className={styles.submit}
         onClick={ticket.submit}
       >
-        {form.side === "buy" ? "BUY" : "SELL"} {symbol}
+        {form.side === "buy" ? "BUY" : "SELL"} {sym}
       </button>
     </div>
   );
 }
 
+const BUYING_POWER = "$250,000";
+const QTY_STEP = 10;
+
+/** Rounds to the nearest integer and formats with thousands separators —
+ * mirrors the prototype's `fmtNum` (Ticket/OrderTicketPanel.tsx). */
+function fmtNum(n: number): string {
+  return Math.round(n).toLocaleString("en-US");
+}
+
 interface OrderTicketProps {
-  symbol: string;
+  symbol?: string;
+}
+
+interface SummaryRowProps {
+  label: string;
+  value: string;
+  dim?: boolean;
+  testId?: string;
+}
+
+function SummaryRow({
+  label,
+  value,
+  dim = false,
+  testId,
+}: SummaryRowProps): ReactElement {
+  return (
+    <div className={styles.summaryRow}>
+      <span className={styles.summaryLabel}>{label}</span>
+      <span
+        data-testid={testId}
+        className={styles.summaryValue}
+        data-dim={dim ? "true" : "false"}
+      >
+        {value}
+      </span>
+    </div>
+  );
 }

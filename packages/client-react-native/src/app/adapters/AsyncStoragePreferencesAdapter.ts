@@ -6,9 +6,14 @@ import {
   type CreditRfqFilter,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
+  DEFAULT_EQ_BLOTTER_VIEW,
+  DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
+  EQ_WATCHLIST_SORTS,
+  type EqBlotterView,
+  type EqWatchlistSort,
   type PreferencesPort,
   THEME_SKINS,
   type ThemeModePreference,
@@ -22,6 +27,8 @@ export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
+export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
+export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
 
 function isThemeModePreference(
   value: string | null,
@@ -43,6 +50,16 @@ function isBootVariant(value: string | null): value is BootVariant {
 
 function isCreditRfqFilter(value: string | null): value is CreditRfqFilter {
   return value === "live" || value === "closed" || value === "all";
+}
+
+function isEqWatchlistSort(value: string | null): value is EqWatchlistSort {
+  return (
+    value !== null && (EQ_WATCHLIST_SORTS as readonly string[]).includes(value)
+  );
+}
+
+function isEqBlotterView(value: string | null): value is EqBlotterView {
+  return value === "orders" || value === "positions";
 }
 
 /**
@@ -75,6 +92,13 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   private readonly creditRfqFilterSubject =
     new BehaviorSubject<CreditRfqFilter>(DEFAULT_CREDIT_RFQ_FILTER);
 
+  private readonly eqWatchlistSortSubject =
+    new BehaviorSubject<EqWatchlistSort>(DEFAULT_EQ_WATCHLIST_SORT);
+
+  private readonly eqBlotterViewSubject = new BehaviorSubject<EqBlotterView>(
+    DEFAULT_EQ_BLOTTER_VIEW,
+  );
+
   constructor() {
     void this.hydrate();
   }
@@ -88,6 +112,8 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         animatedBg,
         bootVariant,
         creditRfqFilter,
+        eqWatchlistSort,
+        eqBlotterView,
       ] = await Promise.all([
         AsyncStorage.getItem(THEME_STORAGE_KEY),
         AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
@@ -95,6 +121,8 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
         AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
         AsyncStorage.getItem(CREDIT_RFQ_FILTER_STORAGE_KEY),
+        AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
+        AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
       ]);
 
       if (isThemeModePreference(themeMode)) this.themeMode.next(themeMode);
@@ -109,6 +137,14 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
       if (isCreditRfqFilter(creditRfqFilter)) {
         this.creditRfqFilterSubject.next(creditRfqFilter);
+      }
+
+      if (isEqWatchlistSort(eqWatchlistSort)) {
+        this.eqWatchlistSortSubject.next(eqWatchlistSort);
+      }
+
+      if (isEqBlotterView(eqBlotterView)) {
+        this.eqBlotterViewSubject.next(eqBlotterView);
       }
     } catch {
       // AsyncStorage may be unavailable — keep the seeded defaults.
@@ -174,5 +210,27 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       () => {},
     );
     this.creditRfqFilterSubject.next(filter);
+  }
+
+  eqWatchlistSort$(): Observable<EqWatchlistSort> {
+    return this.eqWatchlistSortSubject.pipe(distinctUntilChanged());
+  }
+
+  setEqWatchlistSort(sort: EqWatchlistSort): void {
+    void AsyncStorage.setItem(EQ_WATCHLIST_SORT_STORAGE_KEY, sort).catch(
+      () => {},
+    );
+    this.eqWatchlistSortSubject.next(sort);
+  }
+
+  eqBlotterView$(): Observable<EqBlotterView> {
+    return this.eqBlotterViewSubject.pipe(distinctUntilChanged());
+  }
+
+  setEqBlotterView(view: EqBlotterView): void {
+    void AsyncStorage.setItem(EQ_BLOTTER_VIEW_STORAGE_KEY, view).catch(
+      () => {},
+    );
+    this.eqBlotterViewSubject.next(view);
   }
 }

@@ -3,7 +3,12 @@ import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
 import { RfqsPanel } from "#/ui/credit/rfqs/RfqsPanel";
 import { SellSidePanel } from "#/ui/credit/sellSide/SellSidePanel";
-import { EquitiesPanel } from "#/ui/equities/EquitiesPanel";
+import { EqBlotterPanel } from "#/ui/equities/blotter/EqBlotterPanel";
+import { ChartPanel } from "#/ui/equities/chart/ChartPanel";
+import { EqDepthDock } from "#/ui/equities/chart/EqDepthDock";
+import { OrderTicket } from "#/ui/equities/ticket/OrderTicket";
+import { EqSectorsDock } from "#/ui/equities/watchlist/EqSectorsDock";
+import { WatchlistPanel } from "#/ui/equities/watchlist/WatchlistPanel";
 import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
@@ -51,7 +56,26 @@ export const appPanelRegistry: PanelRegistry = {
   "admin-dashboard": () => {
     return <AdminDashboard />;
   },
-  equities: () => {
-    return <EquitiesPanel />;
+  "eq-chart": () => {
+    return <ChartPanel />;
+  },
+  "eq-blotter": () => {
+    return <EqBlotterPanel />;
+  },
+  "eq-ticket": () => {
+    return <OrderTicket />;
+  },
+  "eq-watchlist": () => {
+    return <WatchlistPanel />;
+  },
+  // eq-depth / eq-sectors are registered but not placed in the default
+  // four-panel tree (they survive outside it, mounted directly by their own
+  // contract/visual specs); these dock wrappers feed them the shared
+  // eqWorkspace selection for when the app registry does mount them.
+  "eq-depth": () => {
+    return <EqDepthDock />;
+  },
+  "eq-sectors": () => {
+    return <EqSectorsDock />;
   },
 };

@@ -255,16 +255,13 @@ export const scenarios: Record<string, Scenario> = {
   },
   // --- Phase 4: Equities panel scenarios ---
   // Per-component sub-views with deterministic fixed-data fixtures.
-  "equities/watchlist-loaded": {
-    componentKey: "EquitiesWatchlist",
-    fixtureKey: "equities-loaded",
-  },
+  // (equities/watchlist-loaded, equities/chart-loaded, equities/positions-with-pnl,
+  // and equities/panel were retired in Task 6 along with the flat EquitiesPanel/
+  // PriceChart/OrdersBlotter/PositionsBlotter/Watchlist components they mounted —
+  // ChartPanel/EqBlotterPanel/WatchlistPanel are the four-panel-dock replacements;
+  // Task 7 adds their scenarios below.)
   "equities/sector-heatmap": {
     componentKey: "EquitiesSectorHeatmap",
-    fixtureKey: "equities-loaded",
-  },
-  "equities/chart-loaded": {
-    componentKey: "EquitiesPriceChart",
     fixtureKey: "equities-loaded",
   },
   "equities/depth-ladder": {
@@ -279,14 +276,42 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "EquitiesOrderTicket",
     fixtureKey: "equities-ticket-filled",
   },
-  "equities/positions-with-pnl": {
-    componentKey: "EquitiesPositionsBlotter",
+  // --- Task 7: four-panel-dock replacement scenarios ---
+  // Chart panel: instrument header + candlestick plot for the seeded
+  // selection (AAPL), 3 open tabs (close ✕ affordance visible).
+  "equities/chart-panel": {
+    componentKey: "EquitiesChartPanel",
     fixtureKey: "equities-loaded",
   },
-  // Full EquitiesPanel at fixed 1280×680 (mirrors layout-engine constraint).
-  "equities/panel": {
-    componentKey: "EquitiesPanel",
+  // Instrument header standalone, forced flashOn=true — pins the tick-flash
+  // accent arm no static ChartPanel capture (no live ticks) can reach.
+  "equities/instrument-header": {
+    componentKey: "EquitiesInstrumentHeader",
     fixtureKey: "equities-loaded",
+  },
+  // Watchlist rail — default sort (unset → DEFAULT_EQ_WATCHLIST_SORT "chg")
+  // plus the other two ⇅ cycle arms (A–Z / PRICE).
+  "equities/watchlist-loaded": {
+    componentKey: "EquitiesWatchlistPanel",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/watchlist-sort-sym": {
+    componentKey: "EquitiesWatchlistPanel",
+    fixtureKey: "equities-watchlist-sort-sym",
+  },
+  "equities/watchlist-sort-price": {
+    componentKey: "EquitiesWatchlistPanel",
+    fixtureKey: "equities-watchlist-sort-price",
+  },
+  // Orders/Positions blotter — default view (unset → "orders") plus the
+  // ◴ Positions arm (DeskPnlGauge + PnlSparkline cells).
+  "equities/blotter-orders": {
+    componentKey: "EquitiesBlotterPanel",
+    fixtureKey: "equities-loaded",
+  },
+  "equities/blotter-positions": {
+    componentKey: "EquitiesBlotterPanel",
+    fixtureKey: "equities-blotter-positions",
   },
   // Full App shot with the equities tab active (parallels app/fx + app/credit).
   "app/equities": { componentKey: "App", fixtureKey: "equities-loaded" },

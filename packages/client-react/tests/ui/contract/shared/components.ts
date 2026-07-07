@@ -29,6 +29,20 @@ import {
   type TradeTicketProps,
 } from "./pages/credit/sellSide/TradeTicketPage";
 import {
+  CandleChartPage,
+  type CandleChartProps,
+} from "./pages/equities/chart/CandleChartPage";
+import { ChartPanelPage } from "./pages/equities/chart/ChartPanelPage";
+import { EqChartHeadPage } from "./pages/equities/chart/EqChartHeadPage";
+import {
+  InstrumentHeaderPage,
+  type InstrumentHeaderProps,
+} from "./pages/equities/chart/InstrumentHeaderPage";
+import {
+  TimeframePillsPage,
+  type TimeframePillsProps,
+} from "./pages/equities/chart/TimeframePillsPage";
+import {
   DepthLadderPage,
   type DepthLadderProps,
 } from "./pages/equities/DepthLadderPage";
@@ -36,12 +50,17 @@ import {
   DeskPnlGaugePage,
   type DeskPnlGaugeProps,
 } from "./pages/equities/DeskPnlGaugePage";
-import { EquitiesPanelPage } from "./pages/equities/EquitiesPanelPage";
+import { EqBlotterHeadPage } from "./pages/equities/EqBlotterHeadPage";
+import { EqBlotterPanelPage } from "./pages/equities/EqBlotterPanelPage";
+import { EqDepthDockPage } from "./pages/equities/EqDepthDockPage";
+import { EqSectorsDockPage } from "./pages/equities/EqSectorsDockPage";
+import { EqTicketHeadPage } from "./pages/equities/EqTicketHeadPage";
+import { EqWatchlistHeadPage } from "./pages/equities/EqWatchlistHeadPage";
+import { InstrumentTabsPage } from "./pages/equities/InstrumentTabsPage";
 import {
-  InstrumentTabsPage,
-  type InstrumentTabsProps,
-} from "./pages/equities/InstrumentTabsPage";
-import { OrdersBlotterPage } from "./pages/equities/OrdersBlotterPage";
+  OrdersTablePage,
+  type OrdersTableProps,
+} from "./pages/equities/OrdersTablePage";
 import {
   OrderTicketPage,
   type OrderTicketProps,
@@ -50,19 +69,15 @@ import {
   PnlSparklinePage,
   type PnlSparklineProps,
 } from "./pages/equities/PnlSparklinePage";
-import { PositionsBlotterPage } from "./pages/equities/PositionsBlotterPage";
 import {
-  PriceChartPage,
-  type PriceChartProps,
-} from "./pages/equities/PriceChartPage";
+  PositionsTablePage,
+  type PositionsTableProps,
+} from "./pages/equities/PositionsTablePage";
 import {
   SectorHeatmapPage,
   type SectorHeatmapProps,
 } from "./pages/equities/SectorHeatmapPage";
-import {
-  WatchlistPage,
-  type WatchlistProps,
-} from "./pages/equities/WatchlistPage";
+import { WatchlistPanelPage } from "./pages/equities/WatchlistPanelPage";
 import { AnalyticsHeadPage } from "./pages/fx/analytics/AnalyticsHeadPage";
 import { AnalyticsPanelPage } from "./pages/fx/analytics/AnalyticsPanelPage";
 import {
@@ -485,23 +500,64 @@ export const OrderTicket = component<OrderTicketProps, OrderTicketPage>(
   },
 );
 
-export const Watchlist = component<WatchlistProps, WatchlistPage>((ctx) => {
-  return new WatchlistPage(ctx);
-});
-
-export const OrdersBlotter = component<
-  Record<string, never>,
-  OrdersBlotterPage
->((ctx) => {
-  return new OrdersBlotterPage(ctx);
-});
-
 export const InstrumentTabs = component<
-  InstrumentTabsProps,
+  Record<string, never>,
   InstrumentTabsPage
 >((ctx) => {
   return new InstrumentTabsPage(ctx);
 });
+
+export const ChartPanel = component<Record<string, never>, ChartPanelPage>(
+  (ctx) => {
+    return new ChartPanelPage(ctx);
+  },
+);
+
+export const InstrumentHeader = component<
+  InstrumentHeaderProps,
+  InstrumentHeaderPage
+>((ctx) => {
+  return new InstrumentHeaderPage(ctx);
+});
+
+export const CandleChart = component<CandleChartProps, CandleChartPage>(
+  (ctx) => {
+    return new CandleChartPage(ctx);
+  },
+);
+
+export const TimeframePills = component<
+  TimeframePillsProps,
+  TimeframePillsPage
+>((ctx) => {
+  return new TimeframePillsPage(ctx);
+});
+
+export const EqChartHead = component<Record<string, never>, EqChartHeadPage>(
+  (ctx) => {
+    return new EqChartHeadPage(ctx);
+  },
+);
+
+export const WatchlistPanel = component<
+  Record<string, never>,
+  WatchlistPanelPage
+>((ctx) => {
+  return new WatchlistPanelPage(ctx);
+});
+
+export const EqWatchlistHead = component<
+  Record<string, never>,
+  EqWatchlistHeadPage
+>((ctx) => {
+  return new EqWatchlistHeadPage(ctx);
+});
+
+export const EqTicketHead = component<Record<string, never>, EqTicketHeadPage>(
+  (ctx) => {
+    return new EqTicketHeadPage(ctx);
+  },
+);
 
 export const SectorHeatmap = component<SectorHeatmapProps, SectorHeatmapPage>(
   (ctx) => {
@@ -509,21 +565,26 @@ export const SectorHeatmap = component<SectorHeatmapProps, SectorHeatmapPage>(
   },
 );
 
-export const PriceChart = component<PriceChartProps, PriceChartPage>((ctx) => {
-  return new PriceChartPage(ctx);
-});
-
 export const DepthLadder = component<DepthLadderProps, DepthLadderPage>(
   (ctx) => {
     return new DepthLadderPage(ctx);
   },
 );
 
-export const PositionsBlotter = component<
+// eq-depth/eq-sectors dock registrations (Task 6): connecting wrappers that
+// feed the shared eqWorkspace selection to DepthLadder/SectorHeatmap, the
+// props-driven leaves above.
+export const EqDepthDock = component<Record<string, never>, EqDepthDockPage>(
+  (ctx) => {
+    return new EqDepthDockPage(ctx);
+  },
+);
+
+export const EqSectorsDock = component<
   Record<string, never>,
-  PositionsBlotterPage
+  EqSectorsDockPage
 >((ctx) => {
-  return new PositionsBlotterPage(ctx);
+  return new EqSectorsDockPage(ctx);
 });
 
 export const DeskPnlGauge = component<DeskPnlGaugeProps, DeskPnlGaugePage>(
@@ -532,18 +593,38 @@ export const DeskPnlGauge = component<DeskPnlGaugeProps, DeskPnlGaugePage>(
   },
 );
 
+export const OrdersTable = component<OrdersTableProps, OrdersTablePage>(
+  (ctx) => {
+    return new OrdersTablePage(ctx);
+  },
+);
+
+export const PositionsTable = component<
+  PositionsTableProps,
+  PositionsTablePage
+>((ctx) => {
+  return new PositionsTablePage(ctx);
+});
+
+export const EqBlotterPanel = component<
+  Record<string, never>,
+  EqBlotterPanelPage
+>((ctx) => {
+  return new EqBlotterPanelPage(ctx);
+});
+
+export const EqBlotterHead = component<
+  Record<string, never>,
+  EqBlotterHeadPage
+>((ctx) => {
+  return new EqBlotterHeadPage(ctx);
+});
+
 export const PnlSparkline = component<PnlSparklineProps, PnlSparklinePage>(
   (ctx) => {
     return new PnlSparklinePage(ctx);
   },
 );
-
-export const EquitiesPanel = component<
-  Record<string, never>,
-  EquitiesPanelPage
->((ctx) => {
-  return new EquitiesPanelPage(ctx);
-});
 
 // Admin / telemetry components (Phase 5 Task 8)
 export const IncidentControls = component<

@@ -3,26 +3,22 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
 
-/** Props the InstrumentTabs component reads (selection + a select callback). */
-export interface InstrumentTabsProps {
-  selectedSymbol: string | null;
-  onSelect: (symbol: string) => void;
-}
-
 const TAB_PREFIX = "instrument-tab-";
 
 /**
- * Page object for the equity InstrumentTabs. Dumb nav: reads its tabs from
- * `useWatchlist()` and paints the selected symbol via `data-active`.
+ * Page object for the equity InstrumentTabs. Reads/writes the REAL
+ * eqWorkspace machine directly (openTabs/sel/select/closeTab) — no props.
  */
-export class InstrumentTabsPage extends MountedComponent<InstrumentTabsProps> {
+export class InstrumentTabsPage extends MountedComponent<
+  Record<string, never>
+> {
   private readonly user: UserEvent = userEvent.setup();
 
   private tabEls(): HTMLElement[] {
     return within(this.root).queryAllByTestId(new RegExp(`^${TAB_PREFIX}`));
   }
 
-  /** The symbols of the rendered tabs, in order. */
+  /** The symbols of the rendered (open) tabs, in order. */
   tabs(): string[] {
     return this.tabEls().map((el) => {
       return el.getAttribute("data-testid")?.replace(TAB_PREFIX, "") ?? "";
@@ -37,10 +33,16 @@ export class InstrumentTabsPage extends MountedComponent<InstrumentTabsProps> {
     return active?.getAttribute("data-testid")?.replace(TAB_PREFIX, "") ?? null;
   }
 
-  /** Click a tab → fires the onSelect prop with its symbol. */
+  /** Click a tab → selects it through the real eqWorkspace machine. */
   async select(symbol: string): Promise<void> {
     await this.user.click(
       within(this.root).getByTestId(`${TAB_PREFIX}${symbol}`),
     );
+  }
+
+  /** Click a tab's close glyph → closes it through the real eqWorkspace machine. */
+  async close(symbol: string): Promise<void> {
+    const tab = within(this.root).getByTestId(`${TAB_PREFIX}${symbol}`);
+    await this.user.click(within(tab).getByText("✕"));
   }
 }
