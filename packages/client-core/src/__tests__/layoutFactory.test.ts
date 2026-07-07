@@ -19,9 +19,10 @@ describe("layout machine factory", () => {
     });
     sub.unsubscribe();
     if (!seen) throw new Error("layout state did not emit synchronously");
-    // fx arrangement: rates + analytics fill, blotter a resizable bottom split
+    // fx arrangement: a tiles+blotter column beside the analytics/positions
+    // rail — a row split at the root (prototype shape, same as equities).
     if (seen.root.kind !== "split") throw new Error("split root expected");
-    expect(seen.root.dir).toBe("column");
+    expect(seen.root.dir).toBe("row");
     m.intents.maximize("fx-rates");
     const after = (() => {
       let s2: import("#/layout/layoutPort").LayoutState | undefined;

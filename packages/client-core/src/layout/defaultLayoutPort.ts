@@ -38,32 +38,34 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   "eq-sectors": { id: "eq-sectors", title: "Sectors" },
 };
 
+/** Prototype FX dock shape (same as EQUITIES_ROOT): a full-height right rail
+ * (analytics over positions) beside a left column where the blotter sits
+ * under the tiles ONLY — it does not span the rail's width. Ratios are the
+ * prototype defaults: main split 0.73/0.27, tiles/blotter 0.66/0.34,
+ * analytics/positions 0.5/0.5. */
 const FX_ROOT: LayoutNode = {
   kind: "split",
-  dir: "column",
-  sizes: [0.78, 0.22],
+  dir: "row",
+  sizes: [0.73, 0.27],
   children: [
     {
       kind: "split",
-      dir: "row",
-      // 0.26 ≈ 360px at the prototype's 1400px reference viewport — a ratio
-      // default that starts at the same place the old fixed rail did, but
-      // (unlike fixedPx) remains user-draggable.
-      sizes: [0.74, 0.26],
+      dir: "column",
+      sizes: [0.66, 0.34],
       children: [
         { kind: "panel", panelId: "fx-rates" },
-        {
-          kind: "split",
-          dir: "column",
-          sizes: [0.5, 0.5],
-          children: [
-            { kind: "panel", panelId: "fx-analytics" },
-            { kind: "panel", panelId: "fx-positions" },
-          ],
-        },
+        { kind: "panel", panelId: "fx-blotter" },
       ],
     },
-    { kind: "panel", panelId: "fx-blotter" },
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.5, 0.5],
+      children: [
+        { kind: "panel", panelId: "fx-analytics" },
+        { kind: "panel", panelId: "fx-positions" },
+      ],
+    },
   ],
 };
 

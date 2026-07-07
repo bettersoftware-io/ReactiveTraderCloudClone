@@ -5,13 +5,13 @@ import { createDefaultLayoutPort, PANEL_SPECS } from "../defaultLayoutPort";
 import type { LayoutNode, PanelId, PanelSpec } from "../layoutPort";
 
 describe("createDefaultLayoutPort", () => {
-  it("fx: rates + a resizable right column (analytics over positions) fill the content row; blotter is a resizable bottom split", () => {
+  it("fx: a tiles-over-blotter left column beside a full-height analytics/positions right rail (prototype shape, same as equities)", () => {
     const { initial } = createDefaultLayoutPort("fx");
     expect(panelIds(initial.root)).toEqual([
       "fx-rates",
+      "fx-blotter",
       "fx-analytics",
       "fx-positions",
-      "fx-blotter",
     ]);
     expect(PANEL_SPECS["fx-blotter"].pinned).toBeUndefined();
     expect(PANEL_SPECS["fx-rates"].pinned).toBeUndefined();
@@ -19,12 +19,23 @@ describe("createDefaultLayoutPort", () => {
       id: "fx-positions",
       title: "Positions",
     });
-    // the content row is a 0.74/0.26 row split (rates wider than the column)
+
+    // root: a 0.73/0.27 row split — [tiles+blotter column | right rail].
     if (initial.root.kind !== "split") throw new Error("split root");
-    const contentRow = initial.root.children[0];
-    if (contentRow.kind !== "split") throw new Error("content row split");
-    expect(contentRow.dir).toBe("row");
-    expect(contentRow.sizes).toEqual([0.74, 0.26]);
+    expect(initial.root.dir).toBe("row");
+    expect(initial.root.sizes).toEqual([0.73, 0.27]);
+
+    // left column: rates over blotter at 0.66/0.34 — the blotter sits under
+    // the tiles only, never spanning the rail's width.
+    const leftColumn = initial.root.children[0];
+    if (leftColumn.kind !== "split") throw new Error("left column split");
+    expect(leftColumn.dir).toBe("column");
+    expect(leftColumn.sizes).toEqual([0.66, 0.34]);
+    expect(leftColumn.children).toEqual([
+      { kind: "panel", panelId: "fx-rates" },
+      { kind: "panel", panelId: "fx-blotter" },
+    ]);
+
     expect(initial.maximized).toBeNull();
     expect(initial.collapsed).toEqual([]);
   });
@@ -33,18 +44,23 @@ describe("createDefaultLayoutPort", () => {
     const { initial } = createDefaultLayoutPort("fx");
     const root = initial.root;
     if (root.kind !== "split") throw new Error("fx root must be a split");
-    expect(root.sizes).toEqual([0.78, 0.22]);
     expect(root.fixedPx).toBeUndefined();
-    const topRow = root.children[0];
-    if (topRow.kind !== "split") throw new Error("fx top row must be a split");
-    expect(topRow.fixedPx).toBeUndefined();
-    const rightColumn = topRow.children[1];
+    const leftColumn = root.children[0];
+
+    if (leftColumn.kind !== "split") {
+      throw new Error("fx left column must be a split");
+    }
+
+    expect(leftColumn.fixedPx).toBeUndefined();
+    const rightColumn = root.children[1];
 
     if (rightColumn.kind !== "split") {
       throw new Error("right column must be a split");
     }
 
     expect(rightColumn.fixedPx).toBeUndefined();
+    expect(rightColumn.dir).toBe("column");
+    expect(rightColumn.sizes).toEqual([0.5, 0.5]);
     expect(rightColumn.children).toEqual([
       { kind: "panel", panelId: "fx-analytics" },
       { kind: "panel", panelId: "fx-positions" },
