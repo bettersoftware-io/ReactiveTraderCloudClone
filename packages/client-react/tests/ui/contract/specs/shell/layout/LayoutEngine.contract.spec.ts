@@ -7,7 +7,7 @@ afterEach(() => {
 });
 
 describe("InhouseLayoutEngine", () => {
-  it("renders the fx arrangement: rates + a resizable right column (analytics over positions), blotter resizable (not pinned)", () => {
+  it("renders the fx arrangement: a tiles-over-blotter left column beside a full-height analytics/positions rail, blotter resizable (not pinned)", () => {
     const page = mount(LayoutEngine, {});
     expect(page.bodyText("fx-rates")).toBe("RATES");
     expect(page.bodyText("fx-analytics")).toBe("ANALYTICS");
@@ -16,19 +16,19 @@ describe("InhouseLayoutEngine", () => {
     expect(page.isPinned("fx-blotter")).toBe(false);
   });
 
-  it("shows a resize handle between rates and the right column (no fixedPx suppressing it)", () => {
+  it("shows a resize handle between rates and the blotter inside the left column", () => {
     const page = mount(LayoutEngine, {});
-    // content row is child 0 of the root column split → pathKey "0"
+    // the left column is child 0 of the root row split → pathKey "0"
     expect(page.handleExists("0", 0)).toBe(true);
   });
 
-  it("shows a resize handle between analytics and positions inside the right column", () => {
+  it("shows a resize handle between analytics and positions inside the right rail", () => {
     const page = mount(LayoutEngine, {});
-    // the right column is child 1 of the content row → pathKey "0.1"
-    expect(page.handleExists("0.1", 0)).toBe(true);
+    // the right rail is child 1 of the root row split → pathKey "1"
+    expect(page.handleExists("1", 0)).toBe(true);
   });
 
-  it("shows a resize handle between the content row and the blotter (blotter is no longer pinned)", () => {
+  it("shows a resize handle between the left column and the right rail", () => {
     const page = mount(LayoutEngine, {});
     // root path is [] → pathKey ""
     expect(page.handleExists("", 0)).toBe(true);
@@ -36,11 +36,11 @@ describe("InhouseLayoutEngine", () => {
 
   it("renders split handles as siblings between cells, not inside them", () => {
     const page = mount(LayoutEngine, {});
-    // the analytics/positions rail is a column split at pathKey "0.1"
-    const handle = page.handleElement("0.1", 0);
+    // the analytics/positions rail is a column split at pathKey "1"
+    const handle = page.handleElement("1", 0);
     expect(handle.parentElement?.getAttribute("data-dir")).toBe("column");
     expect(handle.previousElementSibling?.getAttribute("data-testid")).toBe(
-      "cell-0.1-0",
+      "cell-1-0",
     );
   });
 
@@ -97,53 +97,85 @@ describe("InhouseLayoutEngine", () => {
 
   it("marks a collapsed panel's own cell as a strip cell (releasing its ratio-derived flex-grow) but leaves its growing sibling's cell alone", () => {
     const page = mount(LayoutEngine, {});
-    // the analytics/positions rail is a column split at pathKey "0.1":
+    // the analytics/positions rail is a column split at pathKey "1":
     // analytics is child 0, positions is child 1.
     page.collapse("fx-analytics");
-    expect(page.isStripCell("0.1", 0)).toBe(true);
-    expect(page.isStripCell("0.1", 1)).toBe(false);
+    expect(page.isStripCell("1", 0)).toBe(true);
+    expect(page.isStripCell("1", 1)).toBe(false);
   });
 
   it("marks every non-maximized cell a strip cell on maximize, including a nested split whose entire subtree stripped, but never the maximized panel's own cell chain", () => {
     const page = mount(LayoutEngine, {});
     page.maximize("fx-rates");
-    // fx-rates is the maximized panel: its own cell (content row child 0)
-    // must NOT strip, nor must its ancestor (root content-row cell).
+    // fx-rates is the maximized panel: its own cell (left column child 0)
+    // must NOT strip, nor must its ancestor (root left-column cell).
     expect(page.isStripCell("0", 0)).toBe(false);
     expect(page.isStripCell("", 0)).toBe(false);
-    // the right rail (content row child 1) is an all-strip subtree: both the
-    // rail's own cell and its two inner (analytics/positions) cells strip.
-    expect(page.isStripCell("0", 1)).toBe(true);
-    expect(page.isStripCell("0.1", 0)).toBe(true);
-    expect(page.isStripCell("0.1", 1)).toBe(true);
-    // the blotter (root child 1) strips too.
+    // the right rail (root child 1) is an all-strip subtree: both the rail's
+    // own cell and its two inner (analytics/positions) cells strip.
     expect(page.isStripCell("", 1)).toBe(true);
+    expect(page.isStripCell("1", 0)).toBe(true);
+    expect(page.isStripCell("1", 1)).toBe(true);
+    // the blotter (left column child 1) strips too.
+    expect(page.isStripCell("0", 1)).toBe(true);
   });
 
   it("suppresses the resize handle beside a cell that collapsed to a strip", () => {
     const page = mount(LayoutEngine, {});
     page.collapse("fx-analytics");
-    // the analytics/positions handle sits at pathKey "0.1", index 0.
-    expect(page.handleExists("0.1", 0)).toBe(false);
+    // the analytics/positions handle sits at pathKey "1", index 0.
+    expect(page.handleExists("1", 0)).toBe(false);
   });
 
   it("suppresses resize handles beside cells stripped as a side effect of another panel's maximize", () => {
     const page = mount(LayoutEngine, {});
     page.maximize("fx-rates");
-    // content-row/blotter handle at root path "", index 0 — blotter stripped.
+    // left-column/rail handle at root path "", index 0 — the rail
+    // (analytics+positions) is an all-strip subtree.
     expect(page.handleExists("", 0)).toBe(false);
-    // rates/rail handle within the content row at pathKey "0", index 0 — the
-    // rail (analytics+positions) is an all-strip subtree.
+    // rates/blotter handle within the left column at pathKey "0", index 0 —
+    // the blotter is stripped.
     expect(page.handleExists("0", 0)).toBe(false);
   });
 
-  it("orients the restore bar vertically when the strip's cell is a child of a row split, horizontally otherwise", () => {
+  it("orients strips by the reclaim axis: maximizing rates turns the fully-stripped right rail into vertical strips, while the blotter (whose column still hosts rates) stays horizontal", () => {
+    const page = mount(LayoutEngine, {});
+    page.maximize("fx-rates");
+    // The right rail (analytics/positions column) is fully stripped: its
+    // space reclaims sideways along the ROOT ROW, so both strips render as
+    // narrow full-height columns despite their immediate parent being a
+    // column split — and their cells share the rail's height (strip-fill).
+    expect(page.stripOrientation("fx-analytics")).toBe("vertical");
+    expect(page.stripOrientation("fx-positions")).toBe("vertical");
+    expect(page.isStripFillCell("1", 0)).toBe(true);
+    expect(page.isStripFillCell("1", 1)).toBe(true);
+    // The blotter's parent column still hosts the maximized rates panel (not
+    // fully stripped), so its space reclaims down that column → horizontal.
+    expect(page.stripOrientation("fx-blotter")).toBe("horizontal");
+    expect(page.isStripFillCell("0", 1)).toBe(false);
+  });
+
+  it("orients strips by the reclaim axis: maximizing analytics turns the fully-stripped left column (rates + blotter) into vertical strips, while positions stays horizontal", () => {
     const page = mount(LayoutEngine, {});
     page.maximize("fx-analytics");
-    // fx-rates sits in the content row (a row split) → narrow/tall strip
+    // The left column (rates over blotter) is fully stripped — space
+    // reclaims along the root row → both go vertical, stacking down the rail.
     expect(page.stripOrientation("fx-rates")).toBe("vertical");
-    // fx-blotter sits under the root column split → short/wide strip
+    expect(page.stripOrientation("fx-blotter")).toBe("vertical");
+    expect(page.isStripFillCell("0", 0)).toBe(true);
+    expect(page.isStripFillCell("0", 1)).toBe(true);
+    // positions shares its column with the maximized analytics panel → its
+    // space reclaims down that column → horizontal.
+    expect(page.stripOrientation("fx-positions")).toBe("horizontal");
+  });
+
+  it("orients a plainly collapsed panel (no maximize) by its immediate parent split's dir", () => {
+    const page = mount(LayoutEngine, {});
+    page.collapse("fx-blotter");
+    // Only the blotter collapsed — its column still hosts the live rates
+    // panel, so the strip reclaims down the column → horizontal, as today.
     expect(page.stripOrientation("fx-blotter")).toBe("horizontal");
+    expect(page.isStripFillCell("0", 1)).toBe(false);
   });
 
   // The default FX tree is fully resizable (Task 2), so nothing shipped

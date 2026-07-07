@@ -56,7 +56,7 @@ export function InhouseLayoutEngine({
       className={styles.engine}
       data-maximized={state.maximized ?? ""}
     >
-      {renderNode(state.root, [], sharedProps, null)}
+      {renderNode(state.root, [], sharedProps, null, null)}
     </main>
   );
 }
@@ -96,11 +96,18 @@ type SplitLayoutNode = {
   readonly children: readonly LayoutNode[];
   readonly sizes: readonly number[];
   readonly fixedPx?: readonly (number | undefined)[];
+  readonly initialPx?: readonly (number | undefined)[];
 };
 
 interface SplitNodeProps extends SharedProps {
   node: SplitLayoutNode;
   path: readonly number[];
+  /** Non-null when THIS split's entire subtree is stripped: the dir of the
+   * nearest ancestor split that is not itself fully stripped — the split
+   * along whose axis the collapsed space actually reclaims. Propagated to
+   * every descendant so their strips orient against that axis rather than
+   * their immediate parent's (see renderPanel). */
+  stripDir: SplitDir | null;
 }
 
 /** Derive a stable key for a child node that does not use the array index.
@@ -114,6 +121,32 @@ function childKey(
 ): string {
   if (child.kind === "panel") return child.panelId;
   return [...path, i].join(".");
+}
+
+/** Effective per-child fractions of a split, measured from its cells' current
+ * css px along the split axis — the drag baseline for a split whose rendered
+ * geometry is px-driven (initialPx) rather than sizes-driven. Returns null
+ * when the measurement is unusable (zero total, e.g. jsdom, or a cell-count
+ * mismatch with sizes). Handles are excluded: only `.cell` children count. */
+function measuredFractions(
+  container: HTMLDivElement,
+  node: SplitLayoutNode,
+): readonly number[] | null {
+  const cellsPx = Array.from(container.children)
+    .filter((el): el is HTMLElement => {
+      return el instanceof HTMLElement && el.classList.contains(styles.cell);
+    })
+    .map((cell) => {
+      const r = cell.getBoundingClientRect();
+      return node.dir === "row" ? r.width : r.height;
+    });
+  const cellsTotal = cellsPx.reduce((s, v) => {
+    return s + v;
+  }, 0);
+  if (cellsPx.length !== node.sizes.length || cellsTotal <= 0) return null;
+  return cellsPx.map((px) => {
+    return px / cellsTotal;
+  });
 }
 
 /** True when every panel leaf in `node`'s subtree is currently a strip
@@ -146,6 +179,7 @@ function isStripSubtree(node: LayoutNode, state: LayoutState): boolean {
 function SplitNode({
   node,
   path,
+  stripDir,
   state,
   registry,
   specs,
@@ -195,18 +229,30 @@ function SplitNode({
     const rect = container.getBoundingClientRect();
     const total = node.dir === "row" ? rect.width : rect.height;
     const origin = node.dir === "row" ? rect.left : rect.top;
-    const a = node.sizes[index];
-    const b = node.sizes[index + 1];
+    // Baseline fractions for the drag. A split with a design-value initialPx
+    // child renders px-fixed geometry that no longer matches node.sizes, so
+    // the first drag derives effective fractions from the cells' measured px
+    // instead and dispatches those through the normal onResize — the machine
+    // clears initialPx, and the split is a plain ratio split thereafter.
+    // Falls back to node.sizes when there is nothing to measure (jsdom's
+    // zero-size rects, or a cell-count mismatch).
+    const baseSizes = node.initialPx?.some((px) => {
+      return px !== undefined;
+    })
+      ? (measuredFractions(container, node) ?? node.sizes)
+      : node.sizes;
+    const a = baseSizes[index];
+    const b = baseSizes[index + 1];
     const pair = a + b;
 
     function move(ev: PointerEvent): void {
       const pos = (node.dir === "row" ? ev.clientX : ev.clientY) - origin;
-      const before = node.sizes.slice(0, index).reduce((s, v) => {
+      const before = baseSizes.slice(0, index).reduce((s, v) => {
         return s + v;
       }, 0);
       let fracA = pos / total - before;
       fracA = Math.max(0.05, Math.min(pair - 0.05, fracA));
-      const next = node.sizes.slice();
+      const next = baseSizes.slice();
       next[index] = fracA;
       next[index + 1] = pair - fracA;
       onResize(path, next);
@@ -264,8 +310,35 @@ function SplitNode({
         const childFixed = node.fixedPx?.[i];
         const nextFixed = node.fixedPx?.[i + 1];
         const childIsStripCell = isStripSubtree(child, state);
+        // Design-value default width (initialPx): renders px-fixed like
+        // fixedPx but KEEPS the resize handles — the first drag converts the
+        // split to plain fractions. fixedPx wins when both are set. Dropped
+        // whenever a panel is maximized (the freed geometry must flow to the
+        // maximized panel's cell chain — ratio flex-grow beside hugging strip
+        // cells — which a px-fixed rail would pin shut) and while the child's
+        // own subtree is stripped (the strip hugs its 32/38px bar, restoring
+        // the design width when it expands again).
+        const childInitial =
+          childFixed === undefined &&
+          state.maximized === null &&
+          !childIsStripCell
+            ? node.initialPx?.[i]
+            : undefined;
         const nextIsStripCell =
           nextChild !== undefined && isStripSubtree(nextChild, state);
+        // The strip orientation a stripped child's subtree inherits: when
+        // THIS split is already inside a fully-stripped subtree, keep
+        // propagating the ancestor dir it received; otherwise this split is
+        // where the collapsed space reclaims, so a fully-stripped child
+        // orients against THIS split's dir. Null for children that render
+        // normally.
+        const childStripDir = stripDir ?? (childIsStripCell ? node.dir : null);
+        // A strip cell whose strips run perpendicular to this split's own
+        // axis (an inherited orientation — e.g. vertical strips stacked
+        // inside a column split whose whole rail collapsed sideways) shares
+        // the split's main-axis space instead of hugging, so the strips
+        // stack down the full-height rail (`.cell[data-strip-fill]`).
+        const stripFill = childStripDir !== null && childStripDir !== node.dir;
         const showHandle =
           !childPinned &&
           i < node.children.length - 1 &&
@@ -283,18 +356,30 @@ function SplitNode({
               data-dir={node.dir}
               data-pinned-cell={childPinned ? "true" : "false"}
               data-fixed-cell={childFixed !== undefined ? "true" : "false"}
+              data-initial-cell={childInitial !== undefined ? "true" : "false"}
               data-strip-cell={childIsStripCell ? "true" : "false"}
+              data-strip-fill={stripFill ? "true" : "false"}
               style={
                 childPinned
                   ? undefined
                   : childFixed !== undefined
                     ? ({ "--split-fixed": `${childFixed}px` } as CSSProperties)
-                    : ({
-                        "--split-size": String(node.sizes[i]),
-                      } as CSSProperties)
+                    : childInitial !== undefined
+                      ? ({
+                          "--split-fixed": `${childInitial}px`,
+                        } as CSSProperties)
+                      : ({
+                          "--split-size": String(node.sizes[i]),
+                        } as CSSProperties)
               }
             >
-              {renderNode(child, [...path, i], sharedProps, node.dir)}
+              {renderNode(
+                child,
+                [...path, i],
+                sharedProps,
+                node.dir,
+                childStripDir,
+              )}
             </div>
             {showHandle ? (
               // Sibling of the cell (not nested inside it): `.cell` is a flex
@@ -330,8 +415,10 @@ function SplitNode({
 
 /** Renders a panel leaf — no hooks, plain function helper. `parentDir` is the
  * `dir` of the split whose cell holds this panel (null at the tree root, for
- * a single-panel tab like Admin/Equities); it decides the strip's restore-bar
- * orientation below. */
+ * a single-panel tab like Admin); `stripDir`, when non-null, is the dir of
+ * the nearest ancestor split that is NOT itself fully stripped — the axis
+ * along which this panel's collapsed space actually reclaims. Together they
+ * decide the strip's restore-bar orientation below. */
 function renderPanel(
   panelId: PanelId,
   {
@@ -345,6 +432,7 @@ function renderPanel(
     onExpand,
   }: SharedProps,
   parentDir: SplitDir | null,
+  stripDir: SplitDir | null,
 ): ReactElement {
   const spec = specs[panelId];
   const title = spec?.title ?? panelId;
@@ -353,11 +441,15 @@ function renderPanel(
   const isMaximized = state.maximized !== null;
   const strip = (isMaximized && !maximizedHere) || collapsed;
   const headContent = headRegistry?.[panelId];
-  // A row split lays its cells out side by side, so a stripped cell there
-  // shrinks to a narrow, full-height column (PROTO stripBar) — restoring it
-  // reads top-to-bottom. A column split's stripped cell instead shrinks to a
-  // short, full-width bar, which reads left-to-right like the normal header.
-  const stripOrientation = parentDir === "row" ? "vertical" : "horizontal";
+  // A strip whose space reclaims along a row axis shrinks to a narrow,
+  // full-height column (PROTO stripBar/collapsedStrip) — restoring it reads
+  // top-to-bottom. One reclaiming along a column axis shrinks to a short,
+  // full-width bar, which reads left-to-right like the normal header. The
+  // reclaim axis is the inherited stripDir when this panel sits inside a
+  // fully-stripped subtree (its own parent split collapsed with it, so THAT
+  // dir is irrelevant), else the immediate parent split's dir.
+  const stripOrientation =
+    (stripDir ?? parentDir) === "row" ? "vertical" : "horizontal";
 
   return (
     <section
@@ -366,6 +458,7 @@ function renderPanel(
       data-collapsed={collapsed ? "true" : "false"}
       data-pinned={spec?.pinned ? "true" : "false"}
       data-strip={strip ? "true" : "false"}
+      data-strip-orientation={stripOrientation}
       data-maximized={maximizedHere ? "true" : "false"}
     >
       {strip ? (
@@ -445,9 +538,10 @@ function renderNode(
   path: readonly number[],
   sharedProps: SharedProps,
   parentDir: SplitDir | null,
+  stripDir: SplitDir | null,
 ): ReactElement {
   if (node.kind === "panel") {
-    return renderPanel(node.panelId, sharedProps, parentDir);
+    return renderPanel(node.panelId, sharedProps, parentDir, stripDir);
   }
 
   return (
@@ -455,6 +549,7 @@ function renderNode(
       key={path.join(".") || "root"}
       node={node}
       path={path}
+      stripDir={stripDir}
       {...sharedProps}
     />
   );

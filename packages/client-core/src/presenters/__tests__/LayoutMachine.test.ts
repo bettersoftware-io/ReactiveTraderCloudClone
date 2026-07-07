@@ -93,6 +93,64 @@ describe("createLayoutMachine", () => {
     m.dispose();
   });
 
+  it("resize() clears the target split's initialPx — after the first drag it is a plain ratio split", () => {
+    const initialPxRoot: LayoutNode = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.73, 0.27],
+      initialPx: [undefined, 360],
+      children: [
+        { kind: "panel", panelId: "fx-rates" },
+        { kind: "panel", panelId: "fx-analytics" },
+      ],
+    };
+    const m = createLayoutMachine({
+      initial: { root: initialPxRoot, maximized: null, collapsed: [] },
+    });
+    m.intents.resize([], [0.6, 0.4]);
+    const r = current(m).root;
+    if (r.kind !== "split") throw new Error("root split expected");
+    expect(r.sizes).toEqual([0.6, 0.4]);
+    expect(r.initialPx).toBeUndefined();
+    m.dispose();
+  });
+
+  it("resize() on a nested split clears only that split's initialPx, leaving an ancestor's intact", () => {
+    const nestedRoot: LayoutNode = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.73, 0.27],
+      initialPx: [undefined, 360],
+      children: [
+        { kind: "panel", panelId: "fx-rates" },
+        {
+          kind: "split",
+          dir: "column",
+          sizes: [0.5, 0.5],
+          initialPx: [undefined, 200],
+          children: [
+            { kind: "panel", panelId: "fx-analytics" },
+            { kind: "panel", panelId: "fx-positions" },
+          ],
+        },
+      ],
+    };
+    const m = createLayoutMachine({
+      initial: { root: nestedRoot, maximized: null, collapsed: [] },
+    });
+    m.intents.resize([1], [0.3, 0.7]);
+    const r = current(m).root;
+    if (r.kind !== "split") throw new Error("root split expected");
+    // the untouched root keeps its design-value default…
+    expect(r.initialPx).toEqual([undefined, 360]);
+    const rail = r.children[1];
+    if (rail.kind !== "split") throw new Error("rail split expected");
+    // …while the dragged rail becomes a plain ratio split.
+    expect(rail.sizes).toEqual([0.3, 0.7]);
+    expect(rail.initialPx).toBeUndefined();
+    m.dispose();
+  });
+
   it("dispose() completes the machine without error", () => {
     const m = createLayoutMachine(port);
     expect(() => {
