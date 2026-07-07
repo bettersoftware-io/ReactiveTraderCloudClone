@@ -6,6 +6,15 @@
 - **Decision 2 — feature-flag layering:** Accepted as architecture; **no code yet**
   (Proposed). Recorded here so the boundary is settled before the first flag is added.
 
+> **Update (2026-07-07).** Decision 1 **shipped** — in a stronger shape than this ADR
+> planned: the seam became its own package, **`@rtc/react-bindings`**
+> (`createViewModel`, `useViewModel`, `ViewModelProvider`, `ViewModelContext`,
+> `useMachine`), rather than a `src/ui/viewModel/` directory inside `client-react`.
+> The `Presenters` input type moved with the application-core extraction to
+> `packages/client-core/src/composition.ts`. Path references below are the ADR's
+> point-in-time record; the live description is
+> [architecture.md §3.6](../architecture.md#36-the-viewmodel-seam).
+
 > Sibling decision records. ADR-001 lives co-located with its concern at
 > `packages/client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md`;
 > [ADR-002](./ADR-002-layout-management-port.md) covers layout management;

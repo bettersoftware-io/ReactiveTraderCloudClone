@@ -22,39 +22,58 @@ edge is forbidden.
 
 ```mermaid
 graph TD
-    client["@rtc/client-react<br/>(app + UI)"]
+    webc["@rtc/client-react<br/>(web UI + browser adapters)"]
+    rnc["@rtc/client-react-native<br/>(RN UI + native adapters)"]
+    rb["@rtc/react-bindings<br/>(ViewModel bridge)"]
+    core["@rtc/client-core<br/>(application core)"]
     server["@rtc/server<br/>(WebSocket server)"]
-    shared["@rtc/shared<br/>(DTOs / wire format)"]
-    domain["@rtc/domain<br/>(entities, ports, use cases)<br/>runtime dep: rxjs only"]
+    wse["@rtc/ws-effects<br/>(effects framework, rxjs only)"]
+    shared["@rtc/shared<br/>(DTOs / wire protocol)"]
+    domain["@rtc/domain<br/>(entities, ports, use cases, simulators)<br/>runtime dep: rxjs only"]
+    proto["@rtc/client-prototype<br/>(design island — no @rtc/* deps)"]
 
-    client -->|allowed| shared
-    client -->|allowed| domain
+    webc -->|allowed| rb
+    webc -->|allowed| core
+    webc -->|allowed| domain
+    rnc -->|allowed| rb
+    rnc -->|allowed| core
+    rnc -->|allowed| domain
+    rb -->|allowed| core
+    rb -->|allowed| domain
+    core -->|allowed| shared
+    core -->|allowed| domain
     server -->|allowed| shared
     server -->|allowed| domain
+    server -->|allowed| wse
     shared -->|allowed| domain
 
-    client -. forbidden:<br/>client-not-server .-x server
-    server -. forbidden:<br/>server-not-client .-x client
-    shared -. forbidden:<br/>shared-no-apps .-x client
-    shared -. forbidden:<br/>shared-no-apps .-x server
-    domain -. forbidden:<br/>domain-stays-pure .-x shared
+    webc -. "forbidden:<br/>client-not-server" .-x server
+    server -. "forbidden:<br/>server-not-client" .-x webc
+    shared -. "forbidden:<br/>shared-no-apps" .-x server
+    domain -. "forbidden:<br/>domain-stays-pure" .-x shared
+    wse -. "forbidden:<br/>ws-effects-stays-pure" .-x domain
 
     classDef pure fill:#4CAF50,color:#fff;
     classDef dto fill:#2196F3,color:#fff;
+    classDef coreC fill:#00897B,color:#fff;
     classDef app fill:#FF9800,color:#fff;
     classDef srv fill:#9C27B0,color:#fff;
+    classDef isle fill:#607D8B,color:#fff;
     class domain pure;
     class shared dto;
-    class client app;
-    class server srv;
+    class core,rb coreC;
+    class webc,rnc app;
+    class server,wse srv;
+    class proto isle;
 ```
 
-Solid arrows are permitted imports; dashed crossed (`-.-x`) arrows are the edges
-the `forbidden` rules reject. `domain-stays-pure` forbids `domain → shared` (and
-by extension `domain → client/server`); the apps may reach inward but never reach
-across to each other.
+Solid arrows are permitted imports; dashed crossed (`-.-x`) arrows are examples of
+the edges the `forbidden` rules reject. `domain-stays-pure` forbids
+`domain → shared` (and by extension `domain → client/server`);
+`ws-effects-stays-pure` keeps the effects framework domain-blind; the apps may
+reach inward but never reach across to each other.
 
-## The 5 forbidden rules
+## The 7 forbidden rules
 
 All rules are `severity: "error"` — any match fails the gate.
 
@@ -62,14 +81,23 @@ All rules are `severity: "error"` — any match fails the gate.
 |------|-----------------|------------------------|----------|
 | `no-circular` | anything | any module forming a cycle | No import loops (type-only edges excluded) |
 | `domain-stays-pure` | `^packages/domain/src` | `^packages/(shared\|client-react\|server)/` | Domain is the innermost layer — no internal deps |
+| `domain-no-node-builtins` | `^packages/domain/src` (tests and `__testUtils__` excepted) | Node built-ins (`dependencyTypes: ["core"]`) | Domain runs in any JS environment — browser, RN, Node |
 | `shared-no-apps` | `^packages/shared/src` | `^packages/(client-react\|server)/` | Shared may only reach inward to domain |
 | `client-not-server` | `^packages/client-react/src` | `^packages/server/` | The two apps never couple |
 | `server-not-client` | `^packages/server/src` | `^packages/client-react/` | (mirror of the above) |
+| `ws-effects-stays-pure` | `^packages/ws-effects/src` | `^packages/(domain\|shared\|client-react\|server)/` | The effects framework is domain-blind and app-agnostic (rxjs only) |
 
 **Asymmetry to note:** each rule matches the *source* against `…/src` but the
 *target* against the **bare package path** (e.g. `^packages/server/`). So
 importing a server **test** file from the client is rejected too — not only
 `server/src`.
+
+**Scope note:** the pairwise rules still name only the original apps
+(`client-react`, `server`). The newer packages are protected by `no-circular`,
+`ws-effects-stays-pure`, and pnpm strict dependencies (a package simply cannot
+resolve an undeclared `@rtc/*` import), but there are no dedicated pair rules for
+`client-core` / `react-bindings` / `client-react-native` yet — broadening the
+regexes is an open, low-priority TODO.
 
 ## The `options` block (how the graph is built)
 
