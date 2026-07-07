@@ -8,7 +8,7 @@ This project aims to recreate [ReactiveTraderCloud](https://github.com/AdaptiveC
 
 ## Current Status
 
-Monorepo scaffolding is in place with pnpm workspaces + Turborepo. All four packages build, typecheck, and pass tests.
+Monorepo with pnpm workspaces + Turborepo; nine packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; `docs/architecture.md` is the authoritative architecture reference.
 
 ## Build Commands
 
@@ -30,15 +30,18 @@ pnpm clean       # Remove dist/ in all packages
 
 ```
 packages/
-  domain/        @rtc/domain         — Pure TS, depends only on rxjs at runtime. Entities, use cases, port interfaces, simulators.
-  shared/        @rtc/shared         — DTOs, wire-format contracts. Depends on domain.
-  client-react/  @rtc/client-react   — React + RxJS + Vite. Depends on domain, shared.
-  mobile/        @rtc/mobile         — React Native (planned). Depends on domain, shared.
-  ws-effects/    @rtc/ws-effects     — Small declarative RxJS effects framework. Pure TS, depends only on rxjs at runtime.
-  server/        @rtc/server         — Native WebSocket + @rtc/ws-effects. Depends on domain, shared, ws-effects.
+  domain/              @rtc/domain              — Pure TS, depends only on rxjs at runtime. Entities, use cases, port interfaces, simulators.
+  shared/              @rtc/shared              — DTOs, wire protocol (CLIENT_MSG/SERVER_MSG), envelopes. Depends on domain.
+  client-core/         @rtc/client-core         — Framework-free application core: composition root, presenters, state machines, WsAdapter + port factories. Depends on domain, shared (+ rxjs, @rx-state/core). No React/DOM/RN imports.
+  react-bindings/      @rtc/react-bindings      — The React↔RxJS bridge: createViewModel, useMachine, ViewModelProvider/useViewModel. Depends on client-core, domain (+ @react-rxjs/core, react).
+  client-react/        @rtc/client-react        — Web client: dumb React 19 UI + browser adapters (Vite). Depends on client-core, react-bindings, domain.
+  client-react-native/ @rtc/client-react-native — Mobile client: Expo SDK 57 / RN 0.86, dumb RN UI + native adapters. Depends on client-core, react-bindings, domain.
+  client-prototype/    @rtc/client-prototype    — Readable React port of the docs/design/v2 prototype. Isolated: react/react-dom only, no @rtc/* imports.
+  ws-effects/          @rtc/ws-effects          — Small declarative RxJS effects framework. Pure TS, depends only on rxjs at runtime.
+  server/              @rtc/server              — Native WebSocket + @rtc/ws-effects (24 effects: FX/Credit/Admin/Equities). Depends on domain, shared, ws-effects.
 ```
 
-**Dependency rule:** dependencies flow inward only. `domain` has only `rxjs` as a runtime dep. `shared` depends only on `domain`. `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other. `server` additionally depends on `ws-effects`, which itself depends on nothing but `rxjs`.
+**Dependency rule:** dependencies flow inward only. `domain` has only `rxjs` as a runtime dep. `shared` depends only on `domain`. `client-core` is the shared application layer; the client packages and `server` never import each other. `server` additionally depends on `ws-effects`, which itself depends on nothing but `rxjs`. See `docs/architecture.md` §6 for the full graph.
 
 **Single-dep constraint on `@rtc/domain`:** Domain may depend on `rxjs` at runtime — and only on `rxjs`. RxJS is the explicit architectural exception, chosen for its declarative stream operators and the team's familiarity with it. No other runtime dependencies are permitted. pnpm strict mode enforces this at install time. `@rtc/ws-effects` follows the same rxjs-only constraint.
 

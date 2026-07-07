@@ -10,19 +10,21 @@
 2. [C4 Model](#2-c4-model)
    - [System Context](#21-system-context-diagram)
    - [Container Diagram](#22-container-diagram)
-   - [Component Diagram -- Client App](#23-component-diagram--client-app)
-   - [Component Diagram -- WebSocket Server](#24-component-diagram--websocket-server)
+   - [Component Diagram -- Web Client](#23-component-diagram----web-client)
+   - [Component Diagram -- React Native Client](#24-component-diagram----react-native-client)
+   - [Component Diagram -- WebSocket Server](#25-component-diagram----websocket-server)
 3. [UML Class Diagrams](#3-uml-class-diagrams)
    - [FX Domain Entities](#31-fx-domain-entities)
    - [Credit Domain Entities](#32-credit-domain-entities)
    - [Ports & Adapters](#33-ports--adapters-hexagonal-architecture)
    - [Use Cases](#34-use-cases)
-   - [Presenters & State Streams](#35-presenters--state-streams)
-   - [No DI in the UI](#36-no-di-in-the-ui)
+   - [Presenters, Machines & State Streams](#35-presenters-machines--state-streams)
+   - [The ViewModel Seam](#36-the-viewmodel-seam)
 4. [Sequence Diagrams](#4-sequence-diagrams)
    - [FX Price Streaming](#41-fx-price-streaming)
    - [FX Trade Execution](#42-fx-trade-execution-rpc)
    - [Credit RFQ Workflow](#43-credit-rfq-workflow)
+   - [Equities Order Lifecycle](#44-equities-order-lifecycle)
 5. [State Diagrams](#5-state-diagrams)
    - [Connection Status](#51-connection-status)
    - [Quote State Machine](#52-quote-state-machine-credit-rfq)
@@ -34,9 +36,12 @@
    - [Three Communication Styles](#three-communication-styles)
    - [Observable Pipeline](#observable-pipeline)
    - [Runtime Topology: What Runs When](#runtime-topology-what-runs-when)
-   - [Equities Coverage Gap](#equities-coverage-gap)
-   - [Planned: Declarative Effects Server (`@rtc/ws-effects`)](#planned-declarative-effects-server-rtc-ws-effects)
+   - [Animated: The Life of a Price Tick](#animated-the-life-of-a-price-tick)
+   - [The Declarative Effects Server (`@rtc/ws-effects`)](#the-declarative-effects-server-rtcws-effects)
+   - [Equities Over the Wire](#equities-over-the-wire-gap-closed)
+   - [Deployment Topology](#deployment-topology)
 8. [Replaceability Matrix](#8-replaceability-matrix)
+   - [The Multi-Client Proof & the SolidJS Plan](#81-the-multi-client-proof--the-solidjs-plan)
 9. [Test Strategy](#9-test-strategy)
 10. [Key Design Decisions](#10-key-design-decisions)
 11. [Key Files Reference](#11-key-files-reference)
@@ -48,9 +53,15 @@
 
 ### 1.1 Purpose
 
-**Reactive Trader Cloud Clone** is a real-time FX trading and Credit RFQ (Request for Quote) platform. It serves equally as a working trading app and as a reference for clean, framework-agnostic architecture.
+**Reactive Trader Cloud Clone** is a real-time FX trading, Credit RFQ (Request for Quote), Equities, and Admin-telemetry platform. It serves equally as a working trading app and as a reference for clean, framework-agnostic architecture.
 
 The codebase is organised so that any single technology -- React, RxJS, react-rxjs, Vite, the WebSocket transport, Vitest, Playwright -- can be replaced with another by changing only its layer. The rest of the system, and the behavioural test suite, continue to work unchanged.
+
+That claim is no longer hypothetical. The same application core (`@rtc/client-core`) today drives **two shipping UIs** -- a React 19 web client and an Expo/React Native mobile client -- and is designed to drive a third (SolidJS, planned) by adding one bindings package and one UI package. See [§8.1](#81-the-multi-client-proof--the-solidjs-plan).
+
+![Animated overview: a price tick travelling from either data source through the shared port, use case, presenter and bindings layers into a UI tile](architecture/tick-journey.svg)
+
+*Animated overview (renders live on GitHub): the two runtime modes feed the same `PricingPort`; everything from the port to the pixel is shared. Details in [§7 Runtime Topology](#runtime-topology-what-runs-when).*
 
 ### 1.2 Architectural Principles
 
@@ -60,7 +71,7 @@ These rules override individual technology choices.
 
 **2. The Dependency Rule** ([Uncle Bob, Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)). Source-code dependencies point only inward. Inner circles know nothing about outer circles. Entities know nothing about use cases; use cases know nothing about presenters; presenters know nothing about UI frameworks.
 
-**3. Dumb UI.** The UI layer renders state and emits intents. It contains no business logic, no transport awareness, and no orchestration. A complete UI rewrite from React to SolidJS (or anything else) should be tractable, given a hook-shaped contract and a behavioural test suite.
+**3. Dumb UI.** The UI layer renders state and emits intents. It contains no business logic, no transport awareness, and no orchestration. A complete UI rewrite from React to SolidJS (or anything else) should be tractable, given the ViewModel contract and a behavioural test suite. (The React Native client is the existence proof: same core, new leaves — [§8.1](#81-the-multi-client-proof--the-solidjs-plan).)
 
 **4. Behavioural Tests as Insurance.** Tests describe *what* the system does, not *how*. They do not import React, RxJS, or Playwright internals; framework-specific glue lives in step definitions and page objects. Behavioural specs survive technology swaps and are the contract that makes a swap safe.
 
@@ -72,35 +83,39 @@ Two terms commonly conflated -- "client" and "UI" -- mean different things here.
 
 | Term | Meaning |
 |---|---|
-| **Domain** | Pure-TypeScript entities, value objects, ports, and use cases. Lives in `@rtc/domain`. RxJS is the single permitted runtime dependency (used as the boundary stream type). Knows nothing about UI or transport. |
-| **Server** | Process that hosts adapters around domain ports and serves data to clients over WebSocket. |
-| **Client** | Everything that runs in the browser -- the entire JavaScript bundle. **Includes** use cases, presenters, *and* the UI layer. |
-| **Application Layer (client)** | Use cases (vanilla TS + RxJS, shared with domain) + Presenters (RxJS streams). Lives inside `@rtc/client-react` but contains zero React. Could be promoted to `@rtc/client-react-app` later if useful. |
-| **UI Layer (client)** | React components + react-rxjs-bound hooks. Consumes the Application Layer through hook contracts only. Never imports `rxjs`. |
+| **Domain** | Pure-TypeScript entities, value objects, ports, use cases, and simulators. Lives in `@rtc/domain`. RxJS is the single permitted runtime dependency (used as the boundary stream type). Knows nothing about UI or transport. |
+| **Server** | Process that hosts the domain simulators behind declarative WebSocket effects (`@rtc/ws-effects`) and serves data to clients. |
+| **Client** | Everything that runs on the user's device -- the whole bundle/app. **Includes** the application core, the bindings bridge, *and* the UI layer. There are two shipping clients (web React, mobile React Native) plus a planned SolidJS one. |
+| **Application Core** | `@rtc/client-core` -- composition root, presenters, state machines, and port adapters (WS transport + simulator assembly). Vanilla TS + RxJS + `@rx-state/core`. **Zero framework imports** -- no React, no DOM, no React Native. Shared verbatim by every client. |
+| **Bindings** | `@rtc/react-bindings` -- the one package that knows both worlds. Maps `Observable<T>` state to framework-native reactivity: `createViewModel` (react-rxjs `bind()` for shared streams, `useMachine` for per-mount machines, `firstValueFrom` for one-shot commands). A future SolidJS client gets a sibling `@rtc/solid-bindings`. |
+| **UI Layer** | Dumb components only. Web: React 19 + CSS Modules in `@rtc/client-react/src/ui`. Mobile: React Native + `react-native-svg` in `@rtc/client-react-native/src/ui`. Consumes the core exclusively through the [ViewModel seam](#36-the-viewmodel-seam) (`useViewModel()`); **never imports `rxjs`** (machine-enforced, gate 26). |
+| **Platform Adapters** | The thin per-client leaves: web has `LocalStoragePreferencesAdapter` / `MediaQueryColorSchemeAdapter` / `buildBrowserPorts`; mobile has `AsyncStoragePreferencesAdapter` / `AppearanceColorSchemeAdapter` / `buildNativePorts`. Everything else is shared. |
 
-Note: **"no RxJS on the UI side" is not the same as "no RxJS on the client side"**. RxJS is the boundary stream type for ports and use cases (in `@rtc/domain`) and is also the implementation language of the client's presenter layer. It is forbidden in the UI Layer.
+Note: **"no RxJS on the UI side" is not the same as "no RxJS on the client side"**. RxJS is the boundary stream type for ports and use cases (in `@rtc/domain`) and is the implementation language of `@rtc/client-core`. It is forbidden in the UI layer of both clients.
 
 ```mermaid
 graph TB
     subgraph FrameworksDrivers["Frameworks & Drivers (outer)"]
-        UI["UI Components<br/>React (dumb)"]
-        WS["WebSocket Transport<br/>(browser API)"]
+        UIWeb["Web UI Components<br/>React 19 (dumb)<br/>@rtc/client-react"]
+        UIRn["Mobile UI Components<br/>React Native (dumb)<br/>@rtc/client-react-native"]
+        WS["WebSocket Transport<br/>(browser / RN API)"]
     end
     subgraph InterfaceAdapters["Interface Adapters"]
-        Hooks["react-rxjs Hooks<br/>(thin generated bridge)"]
-        Presenters["Presenters / State Streams<br/>(RxJS, vanilla)"]
-        Adapters["Port Adapters<br/>(WS-backed, simulators)"]
+        VM["ViewModel bridge<br/>@rtc/react-bindings<br/>(bind · useMachine · commands)"]
+        Presenters["Presenters & State Machines<br/>@rtc/client-core<br/>(RxJS + @rx-state/core)"]
+        Adapters["Port Adapters<br/>@rtc/client-core<br/>(WsAdapter · portFactory · simulators assembly)"]
     end
     subgraph ApplicationCircle["Application / Use Cases"]
-        UseCases["Use Cases<br/>(vanilla TS)"]
+        UseCases["Use Cases<br/>@rtc/domain (vanilla TS)"]
     end
     subgraph EntitiesCircle["Entities (innermost)"]
-        Entities["Entities & Value Objects<br/>Price, Trade, Rfq, ..."]
+        Entities["Entities & Value Objects<br/>Price, Trade, Rfq, EquityOrder, ..."]
     end
     Ports["Port Interfaces<br/>(RxJS Observable)"]
 
-    UI --> Hooks
-    Hooks --> Presenters
+    UIWeb --> VM
+    UIRn --> VM
+    VM --> Presenters
     Presenters --> UseCases
     UseCases --> Ports
     UseCases --> Entities
@@ -108,7 +123,7 @@ graph TB
     WS -.used by.-> Adapters
 ```
 
-The arrows are source-code dependencies. The UI imports hooks but has no path to ports, adapters, or use cases. Ports are dependency-inverted -- adapters point at port interfaces, never the reverse.
+The arrows are source-code dependencies. The UI imports `useViewModel` but has no path to ports, adapters, use cases, or raw Observables. Ports are dependency-inverted -- adapters point at port interfaces, never the reverse. Each circle is now literally a package boundary, which is what makes the dependency rule machine-enforceable (dependency-cruiser + pnpm strict mode + grep gates).
 
 ### 1.4 Technology Choices
 
@@ -118,15 +133,17 @@ The current stack is a snapshot, not a commitment. Each row says what role is be
 |---|---|---|
 | Entities & use cases | Pure TypeScript + RxJS | RxJS only (the explicit architectural exception in `@rtc/domain`) |
 | Boundary stream type | RxJS `Observable<T>` | RxJS, the single explicit dependency exception in `@rtc/domain` |
-| Client state streams | RxJS (planned) | RxJS, vanilla TS |
-| UI ↔ stream bridge | react-rxjs (planned) | The bridge library only |
-| UI rendering | React 19 | React; **no `rxjs` import** |
-| UI memoization | React Compiler (build-time) | No manual `useMemo`/`useCallback`; see [ADR-003](adr/ADR-003-react-compiler-and-manual-memoization.md) |
-| Build tooling | Vite | -- |
-| Server framework | Node.js + native WebSocket | -- |
-| Wire format | JSON over WebSocket | DTOs in `@rtc/shared` |
-| Unit test runner | Vitest | -- |
-| E2E driver | Playwright + Cypress | -- |
+| Client state streams & machines | RxJS + `@rx-state/core` in `@rtc/client-core` | RxJS, `@rx-state/core`, vanilla TS -- **no framework imports** |
+| UI ↔ stream bridge | `@rtc/react-bindings` (react-rxjs `bind` + hand-written `useMachine`) | The bridge package only; the sole place React and RxJS meet |
+| Web UI rendering | React 19 + CSS Modules | React; **no `rxjs` import** (gate 26) |
+| Mobile UI rendering | React Native 0.86 / Expo SDK 57 + `react-native-svg` | React Native; same no-`rxjs` rule |
+| UI memoization (web) | React Compiler (build-time) | No manual `useMemo`/`useCallback`; see [ADR-003](adr/ADR-003-react-compiler-and-manual-memoization.md) |
+| Build tooling | Vite (web) · Metro/Expo (mobile) | -- |
+| Server dispatch framework | `@rtc/ws-effects` (declarative RxJS effects) | rxjs only; zero domain knowledge |
+| Server host | Node.js + `ws` + native `http` | -- |
+| Wire format | JSON over WebSocket | DTOs + `CLIENT_MSG`/`SERVER_MSG` in `@rtc/shared` |
+| Unit test runner | Vitest (all packages) + jest-expo (RN components) | -- |
+| E2E driver | Playwright (CI gate) + Cypress (local, de-gated) | -- |
 | Behavioural specs | Gherkin | -- |
 | Build orchestration | pnpm workspaces + Turborepo | -- |
 
@@ -164,113 +181,195 @@ Containers are described by **role first, current technology second**. The roles
 C4Container
     title Container Diagram - Reactive Trader Cloud
 
-    Person(trader, "Trader", "FX and Credit trader")
+    Person(trader, "Trader", "FX / Credit / Equities trader")
 
     System_Boundary(rtc, "Reactive Trader Cloud") {
-        Container(client, "Client App", "Browser bundle (currently React 19 + Vite + RxJS + react-rxjs)", "Application layer (use cases, presenters) + dumb UI")
-        Container(server, "WebSocket Server", "Node service (currently Node.js + native WS)", "Hosts port adapters around domain simulators; streams data and processes RPC")
-        Container(domain, "Domain Library", "Pure TypeScript", "Entities, value objects, use cases, port interfaces -- zero runtime dependencies")
-        Container(shared, "Shared Contracts", "TypeScript", "DTOs, wire-format envelopes, protocol constants")
+        Container(webClient, "Web Client", "@rtc/client-react -- React 19 + Vite + CSS Modules", "Dumb UI + browser platform adapters; deployed to Vercel")
+        Container(rnClient, "Mobile Client", "@rtc/client-react-native -- Expo SDK 57 / RN 0.86", "Dumb UI + native platform adapters; expo-router tabs; EAS internal distribution")
+        Container(core, "Application Core", "@rtc/client-core -- vanilla TS + RxJS + @rx-state/core", "Composition root, presenters, state machines, WS transport + port factories. Shared by all clients; zero framework imports")
+        Container(bindings, "React Bindings", "@rtc/react-bindings -- react-rxjs", "createViewModel / useMachine / ViewModelProvider -- the only place React meets RxJS")
+        Container(server, "WebSocket Server", "@rtc/server -- Node.js + ws", "Thin app of declarative effects hosting the domain simulators; deployed to Fly.io")
+        Container(wsEffects, "WS Effects Framework", "@rtc/ws-effects -- rxjs only", "WsEffect primitive, stream()/rpc() sugar, combineEffects, error isolation. Zero domain knowledge")
+        Container(domain, "Domain Library", "@rtc/domain -- pure TypeScript + rxjs", "Entities, value objects, use cases, port interfaces, simulators")
+        Container(shared, "Shared Contracts", "@rtc/shared", "DTOs, wire-format envelopes, CLIENT_MSG / SERVER_MSG protocol constants")
     }
 
-    Rel(trader, client, "Uses", "HTTPS / Browser")
-    Rel(client, server, "Subscribes to streams; sends RPC", "WebSocket JSON")
-    Rel(client, domain, "Imports entities, ports, use cases", "TypeScript import")
-    Rel(client, shared, "Imports DTOs", "TypeScript import")
-    Rel(server, domain, "Imports entities, ports, simulators", "TypeScript import")
-    Rel(server, shared, "Imports DTOs", "TypeScript import")
-    Rel(shared, domain, "Depends on domain types", "TypeScript import")
+    Rel(trader, webClient, "Uses", "HTTPS / Browser")
+    Rel(trader, rnClient, "Uses", "iOS / Android")
+    Rel(webClient, bindings, "Renders through ViewModel", "TS import")
+    Rel(rnClient, bindings, "Renders through ViewModel", "TS import")
+    Rel(bindings, core, "Binds presenters & machines", "TS import")
+    Rel(core, domain, "Imports ports, use cases, simulators", "TS import")
+    Rel(core, shared, "Imports DTOs + protocol", "TS import")
+    Rel(core, server, "Subscribes to streams; sends RPC", "WebSocket JSON")
+    Rel(server, wsEffects, "Composes effects", "TS import")
+    Rel(server, domain, "Hosts simulators", "TS import")
+    Rel(server, shared, "Speaks the protocol", "TS import")
+    Rel(shared, domain, "Depends on domain types", "TS import")
 ```
 
-### 2.3 Component Diagram -- Client App
+Two further packages exist **outside** the production dependency graph, as design-comprehension artifacts (see [§8.1](#81-the-multi-client-proof--the-solidjs-plan) for how they relate to the fidelity workstream):
 
-The client splits into two layers. The **Application Layer** is plain TypeScript + RxJS -- no React imports anywhere. The **UI Layer** is React components plus a tiny generated hook bridge (`react-rxjs`). Replacing React means rewriting only the UI Layer; the Application Layer is untouched.
+| Package | What it is | Runtime deps |
+|---|---|---|
+| `@rtc/client-prototype` | A readable React 19 re-implementation of the `docs/design/v2` standalone design prototype. Mock data via seeded random walks; no domain, no rxjs. `pnpm dev:proto` → port 5273. | `react`, `react-dom` only |
+| `docs/design/v2/standalone/` | Not a package -- a single self-contained ~836 KB HTML file (the canonical design artifact). Served by `scripts/serve-design.mjs` (`pnpm dev:design` → port 8899). | none |
+
+### 2.3 Component Diagram -- Web Client
+
+The web client is now three packages deep. The **Application Core** (`@rtc/client-core`) is plain TypeScript + RxJS -- no React imports anywhere. The **Bindings** (`@rtc/react-bindings`) turn core streams into hooks. What remains in `@rtc/client-react` is only the dumb UI plus the browser-specific leaves. Replacing React means rewriting the last package; core and bindings-contract are untouched.
 
 ```mermaid
 C4Component
-    title Component Diagram - Client App
+    title Component Diagram - Web Client
 
-    Container_Boundary(uiLayer, "UI Layer (React, dumb)") {
-        Component(app, "App Shell", "React", "Tab layout (FX/Credit/Admin), header, footer, connection overlay")
-        Component(fxTiles, "FX Live Rates", "React", "Price tiles -- bid/ask/spread/movement, Buy/Sell, RFQ trigger")
-        Component(blotter, "FX Blotter", "React", "Live trade table -- filter, sort")
-        Component(analytics, "Analytics Panel", "React", "PnL chart and currency position breakdown")
-        Component(creditRfq, "Credit RFQ", "React", "RFQ form, RFQ tiles with dealer quote cards")
-        Component(connOverlay, "Connection Overlay", "React", "Dumb display of connection status")
-        Component(rxHooks, "react-rxjs Hooks", "Generated bindings", "usePrice, useTrades, useAnalytics, useRfqs, useConnectionStatus -- the only contract exposed to UI")
+    Container_Boundary(uiLayer, "@rtc/client-react (React, dumb)") {
+        Component(app, "App Shell", "React", "Workspace layout engine (FX/Credit/Equities/Admin), header, boot gate, lock screen, ambient background")
+        Component(fxTiles, "FX Live Rates + Blotter + Analytics", "React", "Price tiles, trade table, PnL chart, positions")
+        Component(creditRfq, "Credit RFQ", "React", "RFQ form, RFQ tiles with dealer quote cards, sell-side panel")
+        Component(equities, "Equities Dock", "React", "Watchlist, candle chart, depth ladder, order ticket, orders/positions blotter")
+        Component(admin, "Admin / Telemetry", "React", "KPIs, throughput, latency, service topology, event log")
+        Component(appRoot, "AppRoot", "React", "Composition-root component: createApp(buildBrowserPorts()) + createViewModel, once per mount (StrictMode-safe)")
+        Component(browserAdapters, "Browser Platform Adapters", "TypeScript", "buildBrowserPorts (VITE_SERVER_URL switch), LocalStorage preferences, matchMedia color scheme, browser connection events")
     }
 
-    Container_Boundary(appLayer, "Application Layer (vanilla TS + RxJS)") {
-        Component(presenters, "Presenters / State Streams", "RxJS Observables", "price$, trades$, position$, rfqs$, status$ -- UI-shaped state")
-        Component(useCases, "Use Cases", "Vanilla TS", "PriceStreamUseCase, ExecuteTradeUseCase, CreateRfqUseCase, WorkflowEventStreamUseCase, ... -- orchestrate ports and entities")
-        Component(composition, "Composition Root", "Vanilla TS", "Wires ports → use cases → presenters at startup; selects simulators or WS adapters")
-        Component(wsAdapter, "WebSocket Transport", "TypeScript", "send, rpc with correlation IDs, reconnect")
-        Component(portAdapters, "Port Adapters", "TypeScript", "WsRealPricingAdapter, WsRealExecutionAdapter, ... wrap WsAdapter as port impls")
+    Container_Boundary(bindingsLayer, "@rtc/react-bindings (the bridge)") {
+        Component(viewModel, "ViewModel", "react-rxjs + React context", "createViewModel: ~60 use* hooks -- bind() for shared streams, useMachine for per-mount machines, firstValueFrom for commands. ViewModelProvider + useViewModel()")
     }
 
-    Container(server, "WebSocket Server", "Node.js")
+    Container_Boundary(coreLayer, "@rtc/client-core (vanilla TS + RxJS)") {
+        Component(presenters, "Presenters & State Machines", "RxJS + @rx-state/core", "~40 presenters/machines: price$, trades$, rfqs$, watchlist, order ticket, boot sequence, layout, theme prefs, telemetry ...")
+        Component(composition, "createApp / createMachineFactories", "Vanilla TS", "Wires ports → presenters → commands at startup")
+        Component(portFactory, "portFactory", "TypeScript", "createSimulatorPorts / createWsRealPorts -- assembles domain simulators or WS-real port impls")
+        Component(wsAdapter, "WsAdapter", "TypeScript", "WebSocket transport: send, rpc with correlation IDs, reconnect, connection events")
+    }
+
+    Container(server, "WebSocket Server", "Node.js + @rtc/ws-effects")
 
     Rel(app, fxTiles, "Renders")
-    Rel(app, blotter, "Renders")
     Rel(app, creditRfq, "Renders")
-    Rel(app, connOverlay, "Reads")
-    Rel(fxTiles, rxHooks, "Calls")
-    Rel(blotter, rxHooks, "Calls")
-    Rel(analytics, rxHooks, "Calls")
-    Rel(creditRfq, rxHooks, "Calls")
-    Rel(rxHooks, presenters, "Subscribes to streams")
-    Rel(presenters, useCases, "Pipes use case output")
-    Rel(useCases, portAdapters, "Through port interfaces")
-    Rel(composition, portAdapters, "Instantiates")
-    Rel(composition, useCases, "Instantiates")
+    Rel(app, equities, "Renders")
+    Rel(app, admin, "Renders")
+    Rel(fxTiles, viewModel, "useViewModel()")
+    Rel(creditRfq, viewModel, "useViewModel()")
+    Rel(equities, viewModel, "useViewModel()")
+    Rel(admin, viewModel, "useViewModel()")
+    Rel(appRoot, browserAdapters, "buildBrowserPorts()")
+    Rel(appRoot, composition, "createApp(ports)")
+    Rel(appRoot, viewModel, "createViewModel(...) → ViewModelProvider")
+    Rel(viewModel, presenters, "Subscribes to streams / machines")
     Rel(composition, presenters, "Instantiates")
-    Rel(portAdapters, wsAdapter, "Uses")
+    Rel(composition, portFactory, "Consumes AppPorts")
+    Rel(portFactory, wsAdapter, "Wraps (WS mode)")
     Rel(wsAdapter, server, "WebSocket JSON")
 ```
 
-**Key boundary**: anything below the `react-rxjs Hooks` component may use RxJS freely. Anything above must not import `rxjs` and must not see `Observable<T>`. The hooks layer is the only place that bridges the two worlds, and it is small enough (see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)) to be regenerated for SolidJS (a hypothetical `solid-rxjs`) without touching the Application Layer.
+**Key boundary**: anything inside `@rtc/client-core` may use RxJS freely. Anything in `src/ui` must not import `rxjs`, `@react-rxjs`, or `@rx-state` and must not see `Observable<T>` -- machine-enforced by grep gate 26 (plus gates 27--29 banning `localStorage`, `fetch`/`import.meta.env`, and timers in the UI). The bindings package is the only place that bridges the two worlds, and it is small (~850 LOC) precisely so a `@rtc/solid-bindings` sibling can be written in about a day.
 
-### 2.4 Component Diagram -- WebSocket Server
+### 2.4 Component Diagram -- React Native Client
+
+The mobile client (`@rtc/client-react-native`, Expo SDK 57 / RN 0.86) is deliberately boring: it is the **same architecture with different leaves**. Core and bindings are imported verbatim -- React is React on both platforms, so even the bindings package is shared. Only the UI components and two platform adapters are native-specific.
+
+```mermaid
+C4Component
+    title Component Diagram - React Native Client
+
+    Container_Boundary(rnUi, "@rtc/client-react-native (RN, dumb)") {
+        Component(tabs, "expo-router Tabs", "React Native", "5 tabs: Rates, Blotter, Analytics, Credit, Equities (+ Appearance overlay)")
+        Component(screens, "Screens", "React Native + react-native-svg", "SpotTile grid, blotter, PnL chart / exposure bubbles, RFQ workflow, equities markets/trade/blotters")
+        Component(rnAppRoot, "AppRoot", "React Native", "createApp(buildNativePorts()) + createViewModel, once per mount; sim/live toggle re-mounts with a React key")
+        Component(nativeAdapters, "Native Platform Adapters", "TypeScript", "buildNativePorts (EXPO_PUBLIC_SERVER_URL switch), AsyncStorage preferences, Appearance color scheme")
+        Component(rnTheme, "RN Theme Tokens", "TypeScript", "rnThemeTokens: camelCased plain-color subset of the web CSS tokens, delivered via React context")
+    }
+
+    Container(bindings2, "@rtc/react-bindings", "SAME package as the web client")
+    Container(core2, "@rtc/client-core", "SAME package as the web client")
+    Container(server2, "WebSocket Server", "wss://rtc-clone-server.fly.dev")
+
+    Rel(tabs, screens, "Routes")
+    Rel(screens, bindings2, "useViewModel() -- same ~60 hooks")
+    Rel(rnAppRoot, nativeAdapters, "buildNativePorts()")
+    Rel(rnAppRoot, core2, "createApp(ports)")
+    Rel(rnAppRoot, bindings2, "createViewModel → ViewModelProvider")
+    Rel(screens, rnTheme, "useThemedStyles")
+    Rel(bindings2, core2, "Binds presenters & machines")
+    Rel(core2, server2, "WebSocket JSON (live mode)")
+```
+
+What is native-specific, exhaustively:
+
+| Concern | Web (`client-react`) | Mobile (`client-react-native`) |
+|---|---|---|
+| Port selection switch | `src/app/buildBrowserPorts.ts` reads `VITE_SERVER_URL` | `src/app/buildNativePorts.ts` reads `EXPO_PUBLIC_SERVER_URL` via `expo-constants` (empty string forces simulator mode) |
+| Preferences persistence | `LocalStoragePreferencesAdapter` (sync) | `AsyncStoragePreferencesAdapter` (seeds defaults synchronously, then `hydrate()` -- no-flash contract) |
+| OS color scheme | `MediaQueryColorSchemeAdapter` (matchMedia) | `AppearanceColorSchemeAdapter` (RN `Appearance`) |
+| Charts | SVG/canvas in React DOM | `react-native-svg`, geometry precomputed in pure vitest-tested helpers (`buildChart`, `buildCandles`, `buildGauge`, ...) |
+| Theming | CSS custom properties (5 skins × dark/light) | `rnThemeTokens` context (same skins, CSS-only effects dropped) |
+| Navigation | In-house workspace/layout engine | `expo-router` native tabs |
+| Everything else | shared `@rtc/client-core` + `@rtc/react-bindings` | **identical imports** |
+
+The Admin/telemetry workspace is web-only today; the RN app exposes five trading tabs. Distribution is the free path: EAS `development`/`preview` internal profiles, Android APK, no OTA updates (`updates.enabled: false`); the native `ios/`/`android/` folders are gitignored and regenerated by `expo prebuild` (`pnpm dev:ios` from the repo root).
+
+### 2.5 Component Diagram -- WebSocket Server
+
+The imperative `wsHandler.ts` switch is **gone**. The server is now a thin app composed of 24 declarative effects on top of `@rtc/ws-effects`. The entire connection wiring is four lines:
+
+```typescript
+const services = createServices();
+const listen = createWsListener(combineEffects(...allEffects), services);
+wss.on("connection", (ws) => listen(toSocket(ws)));
+```
 
 ```mermaid
 C4Component
     title Component Diagram - WebSocket Server
 
-    Container_Boundary(server, "WebSocket Server") {
-        Component(http, "HTTP Server", "Node.js http", "Health check, CORS, throughput API, WebSocket upgrade")
-        Component(wsHandler, "WS Handler", "TypeScript", "Message routing -- dispatches subscriptions and RPC per connection")
-        Component(protocol, "Protocol Constants", "TypeScript", "CLIENT_MSG / SERVER_MSG type enums for all message types")
-        Component(svcContainer, "Service Container", "TypeScript", "Wires simulators at startup and resolves them per request")
-        Component(throughput, "Throughput Service", "TypeScript", "Configurable message rate throttling for perf testing")
+    Container_Boundary(server, "@rtc/server (thin app)") {
+        Component(http, "HTTP Server", "node:http", "GET /health (Fly health check), WebSocket upgrade with token auth (isAuthorizedUpgrade)")
+        Component(toSocket, "toSocket", "TypeScript", "Adapts a ws.WebSocket to the transport-agnostic Socket interface (messages$, send, closed$)")
+        Component(fxFx, "FX effects (6)", "WsEffect", "referenceData$, pricing$, blotter$, analytics$, executeTrade$, getPriceHistory$")
+        Component(fxCredit, "Credit effects (8)", "WsEffect", "instruments$, dealers$, workflow$, createRfq$, cancelRfq$, quote$, pass$, accept$")
+        Component(fxAdmin, "Admin effects (2)", "WsEffect", "getThroughput$, setThroughput$")
+        Component(fxEq, "Equities effects (8)", "WsEffect", "watchlist$, eqQuotes$, depth$, orders$, positions$, getCandles$, placeOrder$ (+ ORDER_LIFECYCLE stream), cancelOrder$")
+        Component(svcContainer, "createServices", "TypeScript", "Instantiates all 12 services: FX + credit + equities simulators + ThroughputService")
     }
 
-    Container_Boundary(simulators, "Domain Simulators (in-memory port impls)") {
-        Component(pricingSim, "Pricing Simulator", "TypeScript", "Random-walk price generation at 150-1000ms intervals")
-        Component(execSim, "Execution Simulator", "TypeScript", "Trade execution with simulated delays and rejections")
-        Component(tradeStore, "Trade Store", "TypeScript", "In-memory trade blotter with listener pattern")
-        Component(analyticsSim, "Analytics Simulator", "TypeScript", "PnL history and position tracking")
-        Component(rfqSim, "Credit RFQ Simulator", "TypeScript", "RFQ lifecycle, dealer simulation, quote state machine")
-        Component(refData, "Reference Data", "TypeScript", "Currency pairs, instruments, dealers catalogs")
+    Container_Boundary(fw, "@rtc/ws-effects (framework, rxjs-only)") {
+        Component(effectType, "WsEffect primitive", "TypeScript", "(in$, ctx) => out$ -- pure stream transform, marble-tested")
+        Component(sugar, "stream() / rpc()", "TypeScript", "Subscription fan-out and correlated request/response (ack/nack) with per-message error isolation")
+        Component(combine, "combineEffects + createWsListener", "TypeScript", "merge all effects over one shared inbound stream; catchError → EMPTY per effect; teardown on closed$")
     }
 
-    Container(client, "Client App", "Browser bundle")
+    Container_Boundary(simulators, "Domain Simulators (@rtc/domain, in-memory port impls)") {
+        Component(pricingSim, "Pricing / RefData / Execution / TradeStore / Analytics", "TypeScript", "Random-walk pricing, execution with delays and rejections, blotter, PnL")
+        Component(rfqSim, "Credit RFQ + Instrument + Dealer", "TypeScript", "RFQ lifecycle, dealer simulation, quote state machine")
+        Component(eqSim, "EquityMarketData / EquityOrder / EquityPosition", "TypeScript", "Watchlist, quotes, candles, depth, order lifecycle → position fills")
+    }
 
-    Rel(client, http, "WebSocket upgrade", "HTTP -> WS")
-    Rel(http, wsHandler, "Delegates")
-    Rel(wsHandler, protocol, "Uses")
-    Rel(wsHandler, svcContainer, "Resolves simulators")
+    Container(client, "Clients", "Web + React Native")
+
+    Rel(client, http, "WS upgrade (?access= token)", "HTTP -> WS")
+    Rel(http, toSocket, "Wraps connection")
+    Rel(toSocket, combine, "Socket per connection")
+    Rel(fxFx, sugar, "Built with")
+    Rel(fxCredit, sugar, "Built with")
+    Rel(fxAdmin, sugar, "Built with")
+    Rel(fxEq, sugar, "Built with")
+    Rel(sugar, effectType, "Sugar over")
+    Rel(combine, fxFx, "Merges")
+    Rel(combine, fxCredit, "Merges")
+    Rel(combine, fxAdmin, "Merges")
+    Rel(combine, fxEq, "Merges")
+    Rel(fxFx, svcContainer, "ctx")
+    Rel(fxEq, svcContainer, "ctx")
     Rel(svcContainer, pricingSim, "Creates")
-    Rel(svcContainer, execSim, "Creates")
-    Rel(svcContainer, tradeStore, "Creates")
-    Rel(svcContainer, analyticsSim, "Creates")
     Rel(svcContainer, rfqSim, "Creates")
-    Rel(svcContainer, refData, "Creates")
-    Rel(tradeStore, execSim, "Listens for new trades")
+    Rel(svcContainer, eqSim, "Creates")
 ```
 
 > **Naming**: these are **simulators**, not "mocks". They are production code that stands in for an external pricing or execution venue. *Test* mocks are a separate concept and live alongside tests.
 
-> **Two things this diagram does not yet show** (both detailed in [§7 Runtime Topology](#runtime-topology-what-runs-when)): (1) these same simulators also run **in the browser** in simulator mode — the server is only in the loop when `VITE_SERVER_URL` is set; (2) the server currently serves **FX + Credit + Admin only** — the **Equities** simulators are not wired in, so equities is served in browser-simulator mode but not over WebSocket. Both the imperative `WS Handler` and the equities gap are addressed by the planned [`@rtc/ws-effects` declarative server](#planned-declarative-effects-server-rtc-ws-effects).
+> **One thing this diagram does not show** (detailed in [§7 Runtime Topology](#runtime-topology-what-runs-when)): these same simulators also run **in the browser / on the device** in simulator mode -- the server is only in the loop when a server URL is configured. Since the ws-effects rewrite shipped, the server serves **all four domains** (FX, Credit, Admin, Equities); the old equities gap is closed ([§7](#equities-over-the-wire-gap-closed)).
 
 ---
 
@@ -379,7 +478,7 @@ classDiagram
 
 **Constants:** `DEFAULT_NOTIONAL = 1M`, `RFQ_THRESHOLD = 10M`, `MAX_NOTIONAL = 1B`, `PRICE_HISTORY_SIZE = 50`
 
-> These functions are pure, vendor-neutral, and are consumed by use cases (not by hooks). The current code in client hooks that calls `detectMovement + calculateSpread` directly is a target for relocation into `PriceStreamUseCase`.
+> These functions are pure, vendor-neutral, and are consumed by use cases (not by hooks): `detectMovement + calculateSpread` live in `PriceStreamUseCase`, so no UI rewrite can lose them.
 
 ### 3.2 Credit Domain Entities
 
@@ -582,11 +681,81 @@ classDiagram
     ConnectionEventsPort <|.. BrowserConnectionEventsAdapter : implements
 ```
 
-> **`WsReal*` adapters are factory functions, not classes.** The boxes above (`WsRealPricingAdapter`, `WsRealExecutionAdapter`, ...) are drawn as classes for diagram symmetry, but the real-mode port implementations are produced by factory functions (`createPricingPort`, `createExecutionPort`, ...) in `packages/client-react/src/app/adapters/portFactory.ts`, each closing over a shared `WsAdapter`. There are nine port interfaces in total: the eight transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](#96-port-contract-test-layer)).
+> **`WsReal*` adapters are factory functions, not classes.** The boxes above (`WsRealPricingAdapter`, `WsRealExecutionAdapter`, ...) are drawn as classes for diagram symmetry, but the real-mode port implementations are produced by factory functions (`createPricingPort`, `createExecutionPort`, ...) in `packages/client-core/src/adapters/portFactory.ts`, each closing over a shared `WsAdapter`. The eight classic transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](#96-port-contract-test-layer)) are shown above; the port surface has since grown the families below.
 
-**Adapter selection** is performed at the **Composition Root** (single startup point), not at render time. `VITE_SERVER_URL` controls the choice:
-- **Unset** -- Composition Root constructs simulators directly (in-process, no transport).
-- **Set** -- Composition Root constructs `WsAdapter` and the `WsReal*Adapter` family.
+**Newer port families** (added by the Equities, HUD, and Admin/telemetry workstreams; same dependency-inversion rules):
+
+```mermaid
+classDiagram
+    direction TB
+
+    class MarketDataPort {
+        <<interface>>
+        +watchlist() Observable~EquityInstrument[]~
+        +quotes(symbol) Observable~EquityQuote~
+        +candles(symbol, timeframe) Observable~Candle[]~
+        +depth(symbol) Observable~DepthBook~
+    }
+    class OrderPort {
+        <<interface>>
+        +place(request) Observable~OrderEvent~
+        +cancel(orderId) Observable~void~
+        +orders() Observable~EquityOrder[]~
+    }
+    class PositionPort {
+        <<interface>>
+        +positions() Observable~EquityPosition[]~
+    }
+    class AdminPort {
+        <<interface>>
+        +getThroughput() Observable~number~
+        +setThroughput(value) Observable~void~
+    }
+    class PreferencesPort {
+        <<interface>>
+        +theme / skin / boot / view prefs
+        +streams + setters
+    }
+    class TelemetryFamily {
+        <<interfaces>>
+        telemetry · serviceHealth
+        eventLog · sessions
+    }
+
+    class WsRealEquitiesAdapters {
+        createMarketDataPort(ws)
+        createOrderPort(ws)
+        createPositionPort(ws)
+    }
+    class EquitySimulators {
+        EquityMarketDataSimulator
+        EquityOrderSimulator
+        EquityPositionSimulator
+    }
+    class LocalStoragePreferencesAdapter {
+        web · sync localStorage
+    }
+    class AsyncStoragePreferencesAdapter {
+        mobile · RN AsyncStorage
+    }
+
+    MarketDataPort <|.. WsRealEquitiesAdapters : implements
+    OrderPort <|.. WsRealEquitiesAdapters : implements
+    PositionPort <|.. WsRealEquitiesAdapters : implements
+    MarketDataPort <|.. EquitySimulators : implements
+    OrderPort <|.. EquitySimulators : implements
+    PositionPort <|.. EquitySimulators : implements
+    PreferencesPort <|.. LocalStoragePreferencesAdapter : implements
+    PreferencesPort <|.. AsyncStoragePreferencesAdapter : implements
+```
+
+The telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) is simulator-only by design — it has no wire protocol and stays in-process even in WS mode (see [§7 Runtime Topology](#runtime-topology-what-runs-when)).
+
+**Adapter selection** is performed at the **Composition Root** (single startup point), not at render time. Each client has one switch file that builds the full `AppPorts` either way:
+- **Web** — `packages/client-react/src/app/buildBrowserPorts.ts` reads `VITE_SERVER_URL`: unset → `createSimulatorPorts()` (in-process, no transport); set → `new WsAdapter(buildWsUrl(url, token))` + `createWsRealPorts(ws, ...)`.
+- **Mobile** — `packages/client-react-native/src/app/buildNativePorts.ts` reads `EXPO_PUBLIC_SERVER_URL` via `expo-constants`; an in-app sim/live toggle re-mounts `AppRoot` with a React `key` to switch branches without any branch logic in the tree.
+
+Both factories (`createSimulatorPorts`, `createWsRealPorts`) live in `@rtc/client-core` and are shared; only the ~100-line switch file is per-platform.
 
 **Gateway-events adapter pair.** `ConnectionEventsPort` is supplied by one of two transport-specific adapters chosen at the composition root: `WsConnectionEventsAdapter` (wraps `IWsAdapter.connectionEvents()` so `WsAdapter`'s `onopen`/`onclose` lifecycle reaches the state machine) in WS-real mode, or `ConnectionEventsSimulator` (one-shot `of(gatewayConnected)`) in simulator mode. Either choice is then merged with `BrowserConnectionEventsAdapter` (the source of `browserOnline`/`browserOffline`/`idleTimeout`/`userActivity`) via a plain `merge(...)` in `composition.ts`.
 
@@ -669,14 +838,16 @@ execute(pair: CurrencyPair): Observable<Price> {
 
 **Why this layer exists**: it isolates application logic from both ports below (transport-agnostic) and presenters above (UI-framework-agnostic). Use cases are exhaustively tested via behavioural specs that swap port implementations between simulator and contract-test fixtures. RxJS in this layer is the explicit architectural exception; replacing React leaves use cases entirely untouched.
 
-### 3.5 Presenters & State Streams
+### 3.5 Presenters, Machines & State Streams
 
-Presenters are the client-side glue between use cases (which already emit `Observable<T>`) and the UI (which consumes hooks). The presenter layer is where multicasting and UI-shaping happen -- `share`/`shareReplay` so the underlying port subscription is started once per symbol, `combineLatest` to fan in derived state, `scan` for accumulators that the UI snapshots.
+Presenters are the client-side glue between use cases (which already emit `Observable<T>`) and the UI (which consumes hooks). The presenter layer is where multicasting and UI-shaping happen -- `share`/`shareReplay` so the underlying port subscription is started once per symbol, `combineLatest` to fan in derived state, `scan` for accumulators that the UI snapshots. They all live in `packages/client-core/src/presenters/` -- roughly 40 presenters and machines across FX, Credit, Equities, Admin/telemetry, and shell concerns.
 
-RxJS appears in three layers: **port signatures** (`@rtc/domain` ports), **use cases** (`@rtc/domain` use cases), and **presenters** (`@rtc/client-react`). It does **not** appear in:
-- React components or hook call sites (use react-rxjs hooks; never import `rxjs`)
+Alongside plain stream presenters, the core defines **state machines** -- the framework-neutral `Machine<TState, TIntents>` type (`{ state$, intents, dispose }` in `presenters/machine.ts`). Machines model per-component-instance lifecycles: `TileExecutionMachine`, `NotionalMachine`, `OrderTicketMachine`, `RfqCountdownMachine`, `BootSequenceMachine`, `LayoutMachine`, `IncidentMachine`, and friends. Their `state$` is a `StateObservable` from **`@rx-state/core`** -- the rxjs-only, framework-neutral half of react-rxjs -- which is what lets shareable, defaulted observable state live in the core while React (via `@react-rxjs/core` in the bindings) consumes it downstream. The split matters: `@rx-state/core` in `client-core`, `@react-rxjs/core` only in `react-bindings`.
 
-Because use cases already return `Observable<T>`, presenters are usually a thin `pipe(...)` over a use-case output rather than an `AsyncIterable -> Observable` conversion. Presenters expose the resulting stream to react-rxjs which auto-generates a hook.
+RxJS appears in three layers: **port signatures** (`@rtc/domain` ports), **use cases** (`@rtc/domain` use cases), and **presenters/machines** (`@rtc/client-core`). It does **not** appear in:
+- UI components or hook call sites in either client (use the ViewModel hooks; never import `rxjs` -- gate 26)
+
+Because use cases already return `Observable<T>`, presenters are usually a thin `pipe(...)` over a use-case output rather than an `AsyncIterable -> Observable` conversion. Presenters expose the resulting stream to the bindings package, which turns it into a hook.
 
 ```mermaid
 classDiagram
@@ -714,33 +885,83 @@ classDiagram
         +status$ Observable~ConnectionStatus~
     }
 
-    class ReactRxJsHooks {
-        <<generated bridge>>
+    class ViewModel {
+        <<bindings bridge>>
         usePrice(symbol)
         useTrades()
         useAnalytics(currency)
         useRfqs()
         useConnectionStatus()
+        useTileExecution() -- machine
+        useOrderTicket() -- machine
+        useAcceptQuote() -- command
+        ... ~60 use* members
     }
 
-    ReactRxJsHooks ..> PriceStreamPresenter : binds
-    ReactRxJsHooks ..> BlotterPresenter : binds
-    ReactRxJsHooks ..> AnalyticsPresenter : binds
-    ReactRxJsHooks ..> RfqsPresenter : binds
-    ReactRxJsHooks ..> ConnectionStatusPresenter : binds
+    ViewModel ..> PriceStreamPresenter : binds
+    ViewModel ..> BlotterPresenter : binds
+    ViewModel ..> AnalyticsPresenter : binds
+    ViewModel ..> RfqsPresenter : binds
+    ViewModel ..> ConnectionStatusPresenter : binds
 ```
 
-The diagram shows the representative presenters. The full set in `packages/client-react/src/app/presenters/` also includes `PriceHistoryPresenter`, `CurrencyPairsPresenter`, `InstrumentsPresenter`, `DealersPresenter`, `TradeExecutionPresenter`, and `RfqQuotePresenter`. **Command methods return `Observable<T>`, not `Promise<T>`** — they are one-shot streams; UI call sites apply `firstValueFrom(...)` when they need to `await` (e.g. `NewRfqForm`, `RfqTilesPanel`). This keeps the command return type uniform with the streaming surface; `firstValueFrom` is the only RxJS symbol the UI layer imports.
+The diagram shows representative presenters. The full set in `packages/client-core/src/presenters/` also includes `PriceHistoryPresenter`, `CurrencyPairsPresenter`, `InstrumentsPresenter`, `DealersPresenter`, `TradeExecutionPresenter`, `RfqQuotePresenter`, the equities set (`WatchlistPresenter`, `CandleSeriesPresenter`, `OrdersBlotterPresenter`, `DepthPresenter`), the admin/telemetry set (`ThroughputMetricPresenter`, `LatencyPresenter`, `ErrorRatePresenter`, `ServiceTopologyPresenter`, `EventLogPresenter`, `SessionsPresenter`), and shell presenters (`SessionPresenter`, `AnimationDirector`, theme/boot/view preference presenters). **Command methods return `Observable<T>`, not `Promise<T>`** — they are one-shot streams. The UI no longer calls `firstValueFrom` itself: command hooks in the bindings (`useAcceptQuote`, `useCancelRfq`, ...) wrap it, so the UI layer imports **zero** RxJS symbols.
 
-**Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)) that maps an `Observable<T>` to a React hook with Suspense semantics. To swap React -> SolidJS, write a tiny `solid-rxjs` analogue that maps an `Observable<T>` to a Solid signal. Presenters and below are unchanged. UI components are rewritten -- but their contracts (the hook signatures) are mirrored 1:1, and the behavioural spec suite verifies the rewrite.
+**Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)), and this repo already uses it split into its two halves: `@rx-state/core` (framework-neutral, in `client-core`) + `@react-rxjs/core` (React-facing, in `react-bindings`). To swap React -> SolidJS, write a `@rtc/solid-bindings` that maps the same `StateObservable`s to Solid signals -- presenters and below are unchanged. UI components are rewritten -- but their contracts (the ViewModel hook signatures) are mirrored 1:1, and the behavioural spec suite verifies the rewrite. See [§8.1](#81-the-multi-client-proof--the-solidjs-plan).
 
 **Replacing RxJS itself** (for example with effect-ts): high-cost. RxJS is the boundary stream type, so swapping it touches every port, every simulator, every use case, and every presenter. The change is mechanical -- mostly `Observable<T>` → `Stream<T>` and operator-name remapping -- and behavioural tests at the UI level don't change, but it is no longer a single-layer rewrite. This is the cost paid in exchange for the simplicity of a single boundary stream type ([§8 Replaceability Matrix](#8-replaceability-matrix) tracks the trade-off).
 
-### 3.6 No DI in the UI
+### 3.6 The ViewModel Seam
 
-A consequence of the layering above: **the UI has no need for a DI container**. The Composition Root constructs port adapters → use cases → presenters once at startup. react-rxjs binds presenters to hooks at module load. A React component imports a hook; the hook is already wired to a pre-instantiated presenter. There is no per-render injection and no Context-based service locator inside the UI tree.
+The UI's **only** doorway into the application core is the ViewModel seam ([ADR-004](adr/ADR-004-viewmodel-seam-and-feature-flags.md)). It is deliberately a single, flat dependency-injection surface: one interface, one context, one accessor.
 
-The earlier `ServiceProvider` React Context is therefore retired. Its only remaining responsibility -- selecting simulator vs. real adapters at startup -- moves to the Composition Root, which runs **before** React renders.
+```mermaid
+flowchart TB
+    subgraph bindings["@rtc/react-bindings"]
+        VMtype["ViewModel interface<br/>~60 use* members — the contract"]
+        factory["createViewModel(presenters, machineFactories, commands)"]
+        provider["ViewModelProvider<br/>(React context)"]
+        accessor["useViewModel()<br/>(the accessor the UI imports)"]
+        um["useMachine<br/>(per-mount lifecycle bridge)"]
+    end
+
+    subgraph roots["Composition roots (one per client)"]
+        webRoot["client-react AppRoot.tsx<br/>createApp(buildBrowserPorts())"]
+        rnRoot["client-react-native AppRoot.tsx<br/>createApp(buildNativePorts())"]
+    end
+
+    subgraph consumers["Consumers of the SAME contract"]
+        webUI["Web components (~52 files)"]
+        rnUI["RN screens (~55 files)"]
+        fakeVm["buildFakeViewModel<br/>(visual-test harness)"]
+        worldVm["viewModelFromWorld<br/>(UI-contract-test harness)"]
+    end
+
+    webRoot --> factory
+    rnRoot --> factory
+    factory --> provider
+    provider --> accessor
+    factory --> um
+    accessor --> webUI
+    accessor --> rnUI
+    VMtype -.implemented by.-> factory
+    VMtype -.implemented by.-> fakeVm
+    VMtype -.implemented by.-> worldVm
+```
+
+How the pieces divide the work inside `createViewModel`:
+
+| Hook kind | Mechanism | Examples |
+|---|---|---|
+| Shared/global streams | react-rxjs `bind()` -- refcounted singletons | `usePrice`, `useTrades`, `useWatchlist`, `useThroughputState`, preference streams |
+| Per-mount machines | `useMachine` -- lazy `useRef` factory, StrictMode-safe microtask-deferred `dispose()` | `useTileExecution`, `useOrderTicket`, `useNotional`, `useRfqTile` |
+| One-shot commands | `firstValueFrom` wrapped inside the hook | `useAcceptQuote`, `useCancelRfq` |
+
+Three properties make this a real seam rather than a service locator:
+
+1. **Constructed once, before the tree.** Each client's `AppRoot` builds ports → `createApp` → `createViewModel` in a lazy `useRef` (surviving StrictMode double-invoke) and supplies it via `ViewModelProvider`. No per-render injection, no re-wiring on re-render.
+2. **The interface is the portability contract.** The `ViewModel` type is implemented by the production factory *and* by two test harnesses (`buildFakeViewModel` for visual goldens, `viewModelFromWorld` for UI contract tests). A SolidJS client implements the same member list with signals.
+3. **Nothing else crosses.** Injecting JSX or components through the ViewModel is forbidden (it would break the SolidJS-port contract, per ADR-004); the UI cannot reach presenters, ports, or Observables directly (gates 26--29).
 
 ---
 
@@ -751,9 +972,9 @@ The earlier `ServiceProvider` React Context is therefore retired. Its only remai
 ```mermaid
 sequenceDiagram
     participant Trader
-    participant Tile as FX Tile (React)
-    participant Hook as usePrice (react-rxjs)
-    participant Presenter as PriceStreamPresenter
+    participant Tile as FX Tile (React / RN)
+    participant Hook as usePrice (ViewModel, react-bindings)
+    participant Presenter as PriceStreamPresenter (client-core)
     participant UC as PriceStreamUseCase
     participant Adapter as Port Adapter (Simulator or WsReal)
     participant Server as WS Server (real mode only)
@@ -787,16 +1008,16 @@ sequenceDiagram
     end
 ```
 
-The React tile knows nothing about subscriptions, transports, or enrichment. It calls `usePrice(symbol)` and renders. Enrichment (`detectMovement + calculateSpread`) lives in the use case, not the hook.
+The tile — web or mobile, the flow is identical — knows nothing about subscriptions, transports, or enrichment. It calls `useViewModel().usePrice(symbol)` and renders. Enrichment (`detectMovement + calculateSpread`) lives in the use case, not the hook. In real mode the server side of the stream is the `pricing$` effect (`stream(SUBSCRIBE_PRICING, ...)` in `packages/server/src/effects/fx.effects.ts`).
 
 ### 4.2 FX Trade Execution (RPC)
 
 ```mermaid
 sequenceDiagram
     participant Trader
-    participant Tile as FX Tile (React)
-    participant Hook as useExecuteTrade (react-rxjs)
-    participant Presenter as TradeExecutionPresenter
+    participant Tile as FX Tile (React / RN)
+    participant Hook as useTileExecution (ViewModel machine)
+    participant Presenter as TradeExecutionPresenter (client-core)
     participant UC as ExecuteTradeUseCase
     participant Adapter as Port Adapter
     participant Server as WS Server
@@ -845,8 +1066,8 @@ sequenceDiagram
     participant Trader
     participant Form as New RFQ Form (React)
     participant Tiles as RFQ Tiles (React)
-    participant Hook as useRfqs (react-rxjs)
-    participant Presenter as RfqsPresenter
+    participant Hook as useRfqs (ViewModel)
+    participant Presenter as RfqsPresenter (client-core)
     participant CreateUC as CreateRfqUseCase
     participant EventsUC as WorkflowEventStreamUseCase
     participant Adapter as Port Adapter
@@ -911,6 +1132,43 @@ sequenceDiagram
     Hook-->>Tiles: RFQ Closed, accepted quote highlighted
     Tiles->>Trader: Accepted quote highlighted
 ```
+
+### 4.4 Equities Order Lifecycle
+
+Placing an equity order is the one message flow that is **both** an RPC and a stream: the `placeOrder$` effect acks the RPC with the `orderId`, then keeps streaming `ORDER_LIFECYCLE` frames for that order until it reaches a terminal state. The client-side `OrderPort.place()` Observable completes on `filled`/`cancelled`/`rejected`.
+
+```mermaid
+sequenceDiagram
+    participant Trader
+    participant Ticket as Order Ticket (React / RN)
+    participant Hook as useOrderTicket (ViewModel machine)
+    participant Machine as OrderTicketMachine (client-core)
+    participant Port as OrderPort (createOrderPort)
+    participant Effect as placeOrder$ effect (server)
+    participant OrderSim as EquityOrderSimulator
+    participant PosSim as EquityPositionSimulator
+
+    Trader->>Ticket: Sets side/qty/limit, taps Submit
+    Ticket->>Hook: submit intent
+    Hook->>Machine: dispatch(submit)
+    Machine->>Port: place(request)
+    Port->>Effect: rpc PLACE_ORDER (correlationId N)
+    Effect->>OrderSim: place(request) → shared lifecycle$
+    Effect-->>Port: PLACE_ORDER_RESPONSE ack { orderId }
+    loop until terminal state
+        OrderSim-->>Effect: lifecycle event (new → partial fills → filled)
+        Effect-->>Port: ORDER_LIFECYCLE frame
+        Port-->>Machine: emit OrderEvent
+        Machine-->>Hook: state$ update
+        Hook-->>Ticket: progress render
+    end
+    OrderSim->>PosSim: onFill(fill)
+    Note over PosSim: positions$ subscription (separate stream)<br/>updates the Positions blotter
+    Port-->>Machine: complete (terminal event)
+    Ticket->>Trader: Order filled confirmation
+```
+
+The server keeps exactly one lifecycle observable per order (`shareReplay(1)` with refcount) so the ack and the stream cannot race; `placeOrder$` carries its own `catchError → nack` so a bad order rejects that one RPC without disabling the effect.
 
 ---
 
@@ -1008,41 +1266,85 @@ stateDiagram-v2
 
 ## 6. Package Dependencies
 
+Nine workspace packages plus the `tests` package. Every arrow is a real `dependencies` entry; dependencies flow **inward only** (toward `domain`).
+
 ```mermaid
 graph TB
-    subgraph Monorepo
-        domain["@rtc/domain\nPure TypeScript + RxJS\n(entities, ports, use cases)"]
-        shared["@rtc/shared\nDTOs and Protocol\nWire-format contracts"]
-        client["@rtc/client-react\nApplication Layer + UI Layer\n(currently React 19 + Vite + RxJS)"]
-        server["@rtc/server\nNode.js\nWebSocket Server"]
-        mobile["@rtc/mobile\nReact Native\nPlanned"]
+    subgraph clients["Clients (frameworks & drivers)"]
+        webc["@rtc/client-react\nReact 19 + Vite\ndumb UI + browser adapters"]
+        rnc["@rtc/client-react-native\nExpo SDK 57 / RN 0.86\ndumb UI + native adapters"]
+        solidc["@rtc/client-solid\nSolidJS -- PLANNED"]
     end
 
-    shared --> domain
-    client --> domain
-    client --> shared
+    subgraph bridge["Bindings (framework ↔ streams)"]
+        rb["@rtc/react-bindings\ncreateViewModel · useMachine\n@react-rxjs/core"]
+        sb["@rtc/solid-bindings\nPLANNED\nObservable → signal"]
+    end
+
+    core["@rtc/client-core\nApplication Core\npresenters · machines · ports wiring\nRxJS + @rx-state/core, zero framework"]
+
+    subgraph backend["Server side"]
+        server["@rtc/server\nNode.js + ws\n24 declarative effects"]
+        wse["@rtc/ws-effects\nEffects framework\nrxjs only"]
+    end
+
+    subgraph inner["Inner circles"]
+        shared["@rtc/shared\nDTOs · wire protocol\nCLIENT_MSG / SERVER_MSG"]
+        domain["@rtc/domain\nentities · ports · use cases · simulators\nrxjs only"]
+    end
+
+    proto["@rtc/client-prototype\ndesign-comprehension island\nreact + react-dom only"]
+    tests["tests (@rtc/tests)\nbehavioural suites + gates"]
+
+    webc --> rb
+    webc --> core
+    webc --> domain
+    rnc --> rb
+    rnc --> core
+    rnc --> domain
+    solidc -.-> sb
+    solidc -.-> core
+    rb --> core
+    rb --> domain
+    sb -.-> core
+    core --> domain
+    core --> shared
     server --> domain
     server --> shared
-    mobile --> domain
-    mobile --> shared
+    server --> wse
+    shared --> domain
+    tests --> webc
+    tests --> core
+    tests --> server
+    tests --> domain
 
     style domain fill:#4CAF50,color:#fff
     style shared fill:#2196F3,color:#fff
-    style client fill:#FF9800,color:#fff
+    style core fill:#00897B,color:#fff
+    style rb fill:#FF9800,color:#fff
+    style webc fill:#FB8C00,color:#fff
+    style rnc fill:#8E24AA,color:#fff
     style server fill:#9C27B0,color:#fff
-    style mobile fill:#607D8B,color:#fff,stroke-dasharray: 5 5
+    style wse fill:#5E35B1,color:#fff
+    style proto fill:#607D8B,color:#fff
+    style solidc fill:#607D8B,color:#fff,stroke-dasharray: 5 5
+    style sb fill:#607D8B,color:#fff,stroke-dasharray: 5 5
+    style tests fill:#455A64,color:#fff
 ```
 
-**Dependency rule:** Dependencies flow inward only.
-- `domain` has **`rxjs` as its single runtime dependency** -- the explicit architectural exception, used as the boundary stream type. No other runtime deps are permitted (enforced by pnpm strict mode).
-- `shared` depends only on `domain`.
-- `client`, `mobile`, and `server` depend on `domain` + `shared` but never on each other.
+**Dependency rules** (each machine-enforced):
+- `@rtc/domain` has **`rxjs` as its single runtime dependency** -- the explicit architectural exception, used as the boundary stream type. No other runtime deps are permitted (pnpm strict mode). `@rtc/ws-effects` follows the same rxjs-only constraint.
+- `@rtc/shared` depends only on `domain`.
+- `@rtc/client-core` depends on `domain` + `shared` (+ `rxjs`, `@rx-state/core`) and on **no framework** -- no React, no DOM types, no React Native.
+- `@rtc/react-bindings` is the only package allowed to depend on both React and the core's streams.
+- Clients (`client-react`, `client-react-native`) depend on `core` + `react-bindings` + `domain`; **clients and server never import each other** (dependency-cruiser `client-not-server` / `server-not-client`).
+- `@rtc/client-prototype` is an intentional island: `react`/`react-dom` only, no `@rtc/*` imports.
 
-**Build order** (Turborepo topological): `domain` -> `shared` -> `client` | `server` | `mobile`.
+**Build order** (Turborepo topological): `domain` → `shared` | `ws-effects` → `client-core` → `react-bindings` → `client-react` | `client-react-native` | `server` (prototype builds independently).
 
-> This inward-only rule is machine-enforced by dependency-cruiser as a blocking CI gate. See [dependency-cruiser.md](./dependency-cruiser.md) for the rule-by-rule breakdown and a diagram of the allowed/forbidden edges.
+> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`. See [dependency-cruiser.md](./dependency-cruiser.md) for the rule-by-rule breakdown.
 
-> The Application Layer and UI Layer currently coexist inside `@rtc/client-react`. If the size or rate of change justifies it later, the Application Layer can be promoted to its own package (`@rtc/client-react-app`) without breaking any consumer, because UI components only ever import the hook bridge -- not RxJS or use cases.
+> **History**: the Application Layer originally lived inside `@rtc/client-react` (the doc's earlier revisions called this out as a possible future extraction). The React Native workstream forced the question, and the extraction happened: `@rtc/client-core` + `@rtc/react-bindings` are that promotion, executed without breaking UI consumers -- exactly because components only ever imported the hook bridge.
 
 ---
 
@@ -1096,125 +1398,182 @@ Ensures clients have a consistent view after (re)connection.
 
 ### Observable Pipeline
 
-RxJS `Observable<T>` is the universal streaming abstraction across the boundary -- streams *and* one-shot ops. Simulators on the server emit Observables directly; client WS adapters wrap incoming WS messages as Observables. The presenter layer applies UI-shaping operators; react-rxjs binds the resulting stream to a React hook.
+RxJS `Observable<T>` is the universal streaming abstraction across the boundary -- streams *and* one-shot ops. Simulators on the server emit Observables directly; the ws-effects layer projects them onto the wire; client WS adapters wrap incoming WS messages as Observables. The presenter layer applies UI-shaping operators; the bindings package turns the resulting stream into a hook. **The whole path, server to pixel, is one composed Observable pipeline.**
 
 ```
 Domain Port (interface)     ->  Observable<PriceTick>
   |
 Simulator (server)          ->  defer(...) + new Observable / interval / Subject
   |
-Server WS Handler           ->  port.subscribe({ next: tick => ws.send(toDto(tick)) })
+ws-effects stream()         ->  matchType(SUBSCRIBE_PRICING) -> mergeMap(project) -> out frames
   |
-Client WS Adapter           ->  new Observable<T>(sub => ws.onmessage handler)
+Client WS Adapter           ->  new Observable<T>(sub => ws.onmessage handler)   [@rtc/client-core]
   |
-Use Case                    ->  enriches Observable<PriceTick> -> Observable<Price>
+Use Case                    ->  enriches Observable<PriceTick> -> Observable<Price>   [@rtc/domain]
                                  (defer + closure for per-subscription state)
   |
-Presenter                   ->  pipe(share/shareReplay/combineLatest) -> price$
+Presenter                   ->  pipe(share/shareReplay/combineLatest) -> price$   [@rtc/client-core]
   |
-react-rxjs hook             ->  bind(price$) -> usePrice(symbol)
+ViewModel hook              ->  bind(price$) -> usePrice(symbol)   [@rtc/react-bindings]
   |
-React component             ->  const price = usePrice(symbol); render
+UI component                ->  const { usePrice } = useViewModel(); render   [client-react / client-react-native]
 ```
 
 ### Runtime Topology: What Runs When
 
-The single most confusing thing about this system if you only read the code is: **where does the ticking data actually come from when you run the app?** The answer is *"it depends on one environment variable"* — and both answers are correct, because the same simulators are hosted in two different places behind the same port interfaces.
+The single most confusing thing about this system if you only read the code is: **where does the ticking data actually come from when you run the app?** The answer is *"it depends on one environment variable per client"* — and every answer is correct, because the same simulators are hosted in different places behind the same port interfaces.
 
-**One switch decides everything.** The client's composition root (`packages/client-react/src/app/buildBrowserPorts.ts`) reads `VITE_SERVER_URL`:
+**One switch per client decides everything.** Each composition root reads its platform's env var and builds the full `AppPorts` either way:
 
 ```mermaid
 flowchart TD
-    Dev["pnpm dev (local)"] -->|VITE_SERVER_URL unset| Root
-    Deploy["Vercel deployed build"] -->|VITE_SERVER_URL set| Root
-    E2E["fullstack e2e harness"] -->|VITE_SERVER_URL set| Root
-    Root["buildBrowserPorts()"] --> Q{"url present?"}
-    Q -->|"no"| SIM["createSimulatorPorts()<br/>simulators run IN the browser tab"]
+    Dev["pnpm dev (web, local)"] -->|VITE_SERVER_URL unset| RootW
+    Deploy["Vercel deployed build"] -->|VITE_SERVER_URL set| RootW
+    E2E["fullstack e2e harness"] -->|VITE_SERVER_URL set| RootW
+    Sim["expo dev, sim toggle ON<br/>or EXPO_PUBLIC_SERVER_URL=''"] -->|simulator| RootN
+    Live["expo dev, live mode<br/>(default: wss://rtc-clone-server.fly.dev)"] -->|URL set| RootN
+
+    RootW["buildBrowserPorts()<br/>client-react"] --> Q{"url present?"}
+    RootN["buildNativePorts()<br/>client-react-native"] --> Q
+    Q -->|"no"| SIM["createSimulatorPorts()<br/>simulators run IN the tab / on the device"]
     Q -->|"yes"| WS["createWsRealPorts(ws)<br/>thin WS adapters → backend"]
-    SIM --> Ports["AppPorts — identical interface either way"]
+    SIM --> Ports["AppPorts — identical interface either way<br/>(both factories live in @rtc/client-core)"]
     WS --> Ports
-    Ports --> UI["React UI (cannot tell which transport)"]
+    Ports --> UI["UI (cannot tell which transport)"]
 ```
 
-| How it is run | `VITE_SERVER_URL` | Where prices / blotter / charts come from |
+| How it is run | Switch | Where prices / blotter / charts come from |
 |---|---|---|
-| **`pnpm dev` locally** (default) | unset | **No backend at all.** The simulators run *inside the browser tab*. The `@rtc/server` package is not even started. |
-| **Deployed site** (Vercel client → Fly server) | set (baked at build) | **Backend over WebSocket** — for FX + Credit + Admin. (Equities: see the gap below.) |
-| **Fullstack e2e** (`tests/fullstack/`) | set (harness spins up a real server) | Backend over WebSocket — this is the path that actually exercises `@rtc/server`. |
+| **`pnpm dev` locally** (web, default) | `VITE_SERVER_URL` unset | **No backend at all.** The simulators run *inside the browser tab*. The `@rtc/server` package is not even started. |
+| **Deployed site** (Vercel client → Fly server) | `VITE_SERVER_URL` set (baked at build) | **Backend over WebSocket** — all four domains: FX + Credit + Admin + Equities. |
+| **Fullstack e2e** (`tests/fullstack/`) | `VITE_SERVER_URL` set (harness spins up a real server) | Backend over WebSocket — this is the path that actually exercises `@rtc/server`. |
+| **Mobile app, live mode** (default) | `EXPO_PUBLIC_SERVER_URL` (defaults to the Fly URL) | Backend over WebSocket, token-authenticated (`?access=` from `EXPO_PUBLIC_WS_TOKEN`). |
+| **Mobile app, simulator mode** | `EXPO_PUBLIC_SERVER_URL=""` or the in-app sim toggle | Simulators run **on the device**; toggling re-mounts `AppRoot` under a new React `key`. |
 
-**The two modes share one simulator set.** This is the clean-architecture payoff: the UI depends only on port interfaces, never on a transport, so the composition root can fulfil those ports either way.
+**All modes share one simulator set.** This is the clean-architecture payoff: the UI depends only on port interfaces, never on a transport, so each composition root can fulfil those ports either way.
 
 ```mermaid
 flowchart LR
-    subgraph SimMode["MODE A — local pnpm dev (no server)"]
+    subgraph SimMode["MODE A — simulator (no server)"]
         direction TB
-        UIa["React UI"] --> VMa["ViewModel / presenters"]
+        UIa["UI (web or RN)"] --> VMa["ViewModel / presenters"]
         VMa --> SPa["Simulator ports"]
-        SPa --> Sa["domain simulators<br/>(in the browser tab)"]
+        SPa --> Sa["domain simulators<br/>(in the tab / on the device)"]
     end
 
-    subgraph WsMode["MODE B — deployed (Fly + Vercel)"]
+    subgraph WsMode["MODE B — live (Fly + Vercel / device)"]
         direction TB
-        UIb["React UI"] --> VMb["ViewModel / presenters"]
+        UIb["UI (web or RN)"] --> VMb["ViewModel / presenters"]
         VMb --> WPb["WS-real ports (thin)"]
         WPb --> Wsb["WsAdapter"]
-        Wsb <-->|"WebSocket JSON<br/>{type,payload,correlationId}"| Srv["wsHandler switch"]
-        Srv --> SCb["serviceContainer"]
+        Wsb <-->|"WebSocket JSON<br/>{type,payload,correlationId}"| Srv["combineEffects(...allEffects)"]
+        Srv --> SCb["createServices()"]
         SCb --> Sb["SAME domain simulators<br/>(on the server)"]
     end
 ```
 
-A few ports are **always browser-local**, even in Mode B: the telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) has no wire RPC, so `createWsRealPorts` instantiates those simulators in-process regardless of transport — mirroring how `preferences` is handled. Everything else in Mode B is served over the wire.
+A few ports are **always local**, even in Mode B: the telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) has no wire RPC, so `createWsRealPorts` instantiates those simulators in-process regardless of transport — mirroring how `preferences` is handled (injected per platform: localStorage on web, AsyncStorage on mobile). Note the deliberate split: the `admin` throughput port **is** WS-backed (`GET/SET_THROUGHPUT` RPC), while telemetry *sampling* uses its own local `ThroughputSimulator`. Everything else in Mode B is served over the wire.
 
 > The per-tick sequence (subscribe → stream, and RPC with correlation) is the same in both modes — see [§4.1 FX Price Streaming](#41-fx-price-streaming) and [§4.2 FX Trade Execution](#42-fx-trade-execution-rpc), whose `alt` branches already show the mock-vs-real split.
 
-### Equities Coverage Gap
+### Animated: The Life of a Price Tick
 
-The server's message router (`wsHandler.ts`) handles **16 message types — none of them equities**, and `serviceContainer` does not instantiate the equity simulators. So equities is served **only** in Mode A:
+The same story as an animation (committed SVG — GitHub plays SMIL animations in markdown-embedded images, so this renders as a small looping film right here; open the raw file if your viewer shows it static):
 
-```mermaid
-flowchart TD
-    subgraph Works["Handled by the server (Mode B)"]
-        FX["FX: pricing, blotter, analytics"]
-        Credit["Credit: RFQ workflow"]
-        Admin["Admin: throughput"]
-    end
-    subgraph Gap["NOT handled by the server"]
-        Eq["Equities: watchlist, candles,<br/>depth, orders, positions"]
-    end
-    Eq -.->|"client sends over WS,<br/>server ignores → no data"| Void["(silently dropped)"]
-```
+![Animated diagram of a price tick flowing through Mode B (server, effect, WebSocket wire, WsAdapter) and Mode A (in-browser simulator) into the shared port → use case → presenter → ViewModel → tile pipeline](architecture/tick-journey.svg)
 
-| Feature | Mode A (local sim) | Mode B (deployed WS) |
-|---|---|---|
-| FX pricing / blotter / analytics | ✅ | ✅ server streams |
-| Credit RFQ | ✅ | ✅ |
-| Admin throughput | ✅ | ✅ |
-| Telemetry / incidents | ✅ | ✅ *(browser-local even in WS mode)* |
-| **Equities** (watchlist, charts, depth, orders, positions) | ✅ | ❌ **server has no handlers** |
+Watch for the two dots: the amber one (Mode B) crosses the WebSocket wire; the green one (Mode A) goes straight from the in-process simulator to the port. From `PricingPort` onward there is only one blue path — that single path is why the UI, the behavioural tests, and the presenters can never tell the modes apart.
 
-The equities panels were built simulator-first (HUD / prototype workstreams) and the server was never extended. This is an unfinished seam, not a defect — and it is scheduled to be closed by the declarative-server work below, which also makes Mode B fully faithful.
+### The Declarative Effects Server (`@rtc/ws-effects`)
 
-### Planned: Declarative Effects Server (`@rtc/ws-effects`)
+The server's dispatch used to be an imperative `switch` in `wsHandler.ts`. That file is gone. Dispatch is now a small, declarative, RxJS-native **effects micro-framework** in its own package, `@rtc/ws-effects` (~220 LOC of production source, `rxjs` only, zero domain knowledge), with `@rtc/server` a thin app of 24 effects on top — each a stream transform `(in$, ctx) => out$`.
 
-The current server dispatch is an imperative `switch` in `wsHandler.ts`. A planned change replaces it with a small, declarative, RxJS-native **effects micro-framework** extracted into its own package, `@rtc/ws-effects` (`rxjs` only, zero domain knowledge). `@rtc/server` becomes a thin app that composes *effects* — each a stream transform `(inbound$) => outbound$` — instead of hand-routing a switch. The same change **closes the equities gap** by adding the 8 missing message types and wiring the three equity simulators into `serviceContainer`.
-
-This realises the "any framework should be replaceable by changing only its package" principle from [§1.2](#12-architectural-principles): the transport-dispatch framework becomes a genuine, swappable package with the app on top of it.
+This realises the "any framework should be replaceable by changing only its package" principle from [§1.2](#12-architectural-principles): the transport-dispatch framework is a genuine, swappable package with the app on top of it.
 
 ```mermaid
 flowchart TD
     Core["WsEffect primitive<br/>(in$, ctx) => out$   — pure, marble-tested"]
-    Sugar1["stream(type, project)"] --> Core
-    Sugar2["rpc(type, outType, handle)   (ack/nack + correlationId)"] --> Core
-    App["app effects (pricing$, executeTrade$, watchlist$ …)"] --> Sugar1
+    Sugar1["stream(type, project)<br/>subscription fan-out"] --> Core
+    Sugar2["rpc(type, outType, handle)<br/>ack/nack + correlationId"] --> Core
+    App["24 app effects<br/>FX (6) · Credit (8) · Admin (2) · Equities (8)"] --> Sugar1
     App --> Sugar2
-    Core --> Combine["combineEffects(...) → createWsListener(ctx)"]
-    Combine --> Socket["toSocket(ws) — one Socket per connection"]
+    Core --> Combine["combineEffects(...allEffects)<br/>→ createWsListener(ctx)"]
+    Combine --> Socket["toSocket(ws)<br/>one Socket per connection"]
 ```
 
-The wire protocol is unchanged (same `{ type, payload, correlationId }` envelope and message names), so the client is untouched apart from consolidating the duplicated protocol constants into `@rtc/shared`. Full design: [`docs/superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md`](superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md).
+**Error isolation is layered** — a design goal, not an accident:
 
-> **Historical note.** `@rtc/server` was originally scaffolded with `@marblejs/*` + `fp-ts` dependencies (hence the "Marble.js" mentions in `CLAUDE.md`/`README.md`), but they were **never imported** and were removed by the knip dead-code gate. `@rtc/ws-effects` is a from-scratch homage to the marblejs *pattern* — declarative RxJS effects — without the unmaintained dependency and its transitive vulnerable `ws`.
+```mermaid
+flowchart LR
+    L1["per inner stream<br/>stream(): catchError → EMPTY<br/>one bad subscription dies alone"]
+    L2["per message<br/>rpc(): error → nack reply<br/>same correlationId"]
+    L3["per effect<br/>combineEffects: catchError → EMPTY<br/>one broken effect disables only itself"]
+    L4["per connection<br/>createWsListener: takeUntil(closed$)<br/>teardown on socket close"]
+    L1 --> L2 --> L3 --> L4
+```
+
+The wire protocol survived the rewrite unchanged (same `{ type, payload, correlationId }` envelope and message names); the duplicated protocol constants were consolidated into `@rtc/shared` (`packages/shared/src/protocol/messages.ts` — the single `CLIENT_MSG`/`SERVER_MSG` source of truth for both ends). Full design: [`docs/superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md`](superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md).
+
+> **Historical note.** `@rtc/server` was originally scaffolded with `@marblejs/*` + `fp-ts` dependencies (hence old "Marble.js" mentions), but they were **never imported** and were removed by the knip dead-code gate. `@rtc/ws-effects` is a from-scratch homage to the marblejs *pattern* — declarative RxJS effects — without the unmaintained dependency and its transitive vulnerable `ws`.
+
+### Equities Over the Wire (gap closed)
+
+Earlier revisions of this document described an **equities coverage gap**: the panels were built simulator-first and the old `wsHandler` served FX + Credit + Admin only, so equities data silently vanished in Mode B. The ws-effects rewrite closed that gap — `createServices()` now instantiates the equities trio (`EquityMarketDataSimulator`, `EquityOrderSimulator`, `EquityPositionSimulator`) and eight equities effects serve the full surface:
+
+| Concern | Wire messages | Client consumer (in `@rtc/client-core`) |
+|---|---|---|
+| Watchlist | `SUBSCRIBE_WATCHLIST` → `WATCHLIST` | `createMarketDataPort(ws).watchlist()` |
+| Quotes | `SUBSCRIBE_EQ_QUOTES` → `EQ_QUOTE` | `createMarketDataPort(ws).quotes()` |
+| Candles | rpc `GET_CANDLES` → `CANDLES_RESPONSE` | `createMarketDataPort(ws).candles()` |
+| Depth ladder | `SUBSCRIBE_DEPTH` → `DEPTH` | `createMarketDataPort(ws).depth()` |
+| Orders blotter | `SUBSCRIBE_ORDERS` → `ORDERS` | `createOrderPort(ws).orders()` |
+| Place order | rpc `PLACE_ORDER` → ack **+** `ORDER_LIFECYCLE` stream | `createOrderPort(ws).place()` ([§4.4](#44-equities-order-lifecycle)) |
+| Cancel order | rpc `CANCEL_ORDER` → `CANCEL_ORDER_RESPONSE` | `createOrderPort(ws).cancel()` |
+| Positions | `SUBSCRIBE_POSITIONS` → `POSITIONS` | `createPositionPort(ws).positions()` |
+
+| Feature | Mode A (local sim) | Mode B (deployed WS) |
+|---|---|---|
+| FX pricing / blotter / analytics | ✅ | ✅ |
+| Credit RFQ | ✅ | ✅ |
+| Admin throughput | ✅ | ✅ |
+| Telemetry / incidents | ✅ | ✅ *(always in-process by design)* |
+| Equities (watchlist, charts, depth, orders, positions) | ✅ | ✅ |
+
+One deliberate asymmetry remains: equities frames carry **domain types directly** (no DTO layer in `@rtc/shared/src/` for equities yet, unlike `fx/` and `credit/`). The types are still shared via `@rtc/domain`, so both ends agree — but there is no wire-format indirection to version against. An acceptable IOU, called out here so it isn't mistaken for a rule.
+
+### Deployment Topology
+
+All deploys are **manual** (`workflow_dispatch`) — merging to `main` runs CI but deploys nothing.
+
+```mermaid
+flowchart LR
+    subgraph GH["GitHub Actions (workflow_dispatch only)"]
+        d1["deploy.yml<br/>deploy-server + deploy-client"]
+        d2["deploy-proto.yml"]
+        d3["deploy-cd-proto.yml"]
+    end
+
+    subgraph Fly["Fly.io (lhr)"]
+        srv["rtc-clone-server<br/>@rtc/server · port 4000<br/>scale-to-zero · GET /health<br/>WS upgrade token-gated"]
+    end
+
+    subgraph Vercel["Vercel (all password/Basic-Auth gated)"]
+        v1["rtc-clone<br/>@rtc/client-react<br/>VITE_SERVER_URL baked at build"]
+        v2["rtc-clone-proto<br/>@rtc/client-prototype<br/>(v2-design React port)"]
+        v3["rtc-clone-cd-proto<br/>docs/design standalone HTML"]
+    end
+
+    mob["Mobile app (EAS internal /<br/>Android APK, free path)"]
+
+    d1 --> srv
+    d1 --> v1
+    d2 --> v2
+    d3 --> v3
+    v1 -->|"wss:// + ?access= token"| srv
+    mob -->|"wss:// + ?access= token<br/>(EXPO_PUBLIC_* baked at build)"| srv
+```
+
+The client build bakes a stable Fly URL at build time, so the server and client deploy jobs are independent. The two prototype deploys serve the design-fidelity workstream, not production.
 
 ---
 
@@ -1224,21 +1583,56 @@ This is the load-bearing section: the architecture's value comes from the cost-o
 
 | Component | Currently | Cost to replace | Contract that must hold | Tests that verify |
 |---|---|---|---|---|
-| **UI framework** | React 19 | ~1 dev-week (rewrite components) | Hook signatures (`usePrice`, `useTrades`, ...) and intent callbacks. No business logic in components. | Behavioural specs (Gherkin), unchanged |
-| **State streams ↔ UI bridge** | react-rxjs | ~1 dev-day (write `solid-rxjs` etc.) | `Observable<T>` -> framework-native reactive primitive | Hook contract tests, unchanged |
-| **State streams** | RxJS | High -- swap touches ports, simulators, use cases, presenters together | Boundary stream type matches across all four layers | Use-case tests + port contract tests + presenter contract tests |
+| **UI framework** | React 19 (web) / React Native (mobile) | ~1 dev-week (rewrite one UI package) — **empirically calibrated by the RN client**, which reused core + bindings verbatim | `ViewModel` hook signatures and intent callbacks. No business logic in components. | Behavioural specs (Gherkin) + visual goldens + UI contract suite, all unchanged |
+| **State streams ↔ UI bridge** | `@rtc/react-bindings` (react-rxjs) | ~1 dev-day (write `@rtc/solid-bindings` etc.) | `Observable<T>`/`StateObservable<T>` -> framework-native reactive primitive; same `ViewModel` member list | UI contract tests, unchanged |
+| **State streams** | RxJS + `@rx-state/core` | High -- swap touches ports, simulators, use cases, presenters, machines together | Boundary stream type matches across all layers | Use-case tests + port contract tests + presenter-direct e2e peers |
 | **Use cases** | Vanilla TS + RxJS | N/A (this is the domain) | -- | Unit tests over use cases with simulator ports |
 | **Boundary stream type** | RxJS `Observable<T>` | Very high (this is the spine) | -- | -- |
-| **Port adapters (transport)** | WebSocket-backed | ~1 dev-week per adapter family | Implements port interface | Contract tests parameterised over adapter |
-| **Server framework** | Node.js + native WS | ~1 dev-week | Adapter-side: implements port. Wire format: DTOs in `@rtc/shared`. | Server integration tests against DTOs |
-| **Wire format** | JSON over WS | High (both ends change together) | DTOs in `@rtc/shared` + protocol type enums | DTO round-trip tests + e2e |
-| **Build tooling** | Vite | ~1 dev-day | Bundles `@rtc/client-react`, serves dev | -- |
-| **Unit test runner** | Vitest | ~1 dev-day | Same test files runnable | The tests themselves |
-| **E2E driver** | Playwright + Cypress | ~3 dev-days per new driver | Page Object interfaces unchanged; only implementations are added | Behavioural specs (Gherkin) drive all drivers via one shared step tree |
+| **Port adapters (transport)** | WebSocket-backed factories in `client-core` | ~1 dev-week per adapter family | Implements port interface | Contract tests parameterised over adapter (simulator + WsReal) |
+| **Server dispatch framework** | `@rtc/ws-effects` | ~1 dev-week (it is one package; effects are pure stream transforms) | `WsEffect = (in$, ctx) => out$`; wire protocol in `@rtc/shared` | Marble tests + fullstack smokes |
+| **Server host** | Node.js + `ws` | ~2 dev-days (`toSocket` is the only ws-coupled file) | `Socket` interface (`messages$`, `send`, `closed$`) | Fullstack smokes |
+| **Wire format** | JSON over WS | High (both ends change together) | DTOs + `CLIENT_MSG`/`SERVER_MSG` in `@rtc/shared` | DTO round-trip tests + wire-frame fixtures + e2e |
+| **Build tooling** | Vite (web) · Metro/Expo (mobile) | ~1 dev-day | Bundles the client package, serves dev | -- |
+| **Unit test runner** | Vitest (+ jest-expo for RN components) | ~1 dev-day | Same test files runnable | The tests themselves (proven: the presenter suite runs under cucumber-js *and* vitest) |
+| **E2E driver** | Playwright (CI) + Cypress (local) | ~3 dev-days per new driver | Page Object interfaces unchanged; only implementations are added | Behavioural specs (Gherkin) drive all drivers via one shared step tree |
 | **Behavioural spec language** | Gherkin | High (rewrite specs) | -- | -- |
-| **Build orchestration** | pnpm + Turborepo | ~1 dev-day | Build graph: domain -> shared -> client/server | -- |
+| **Build orchestration** | pnpm + Turborepo | ~1 dev-day | Build graph: domain -> shared/ws-effects -> core -> bindings -> clients/server | -- |
 
 **How this is achieved**: every "Cost" above assumes the rest of the system stays put. That is only true because (a) inner layers never import outer-layer types, (b) ports are dependency-inverted, and (c) behavioural tests are written against behaviour, not implementation.
+
+### 8.1 The Multi-Client Proof & the SolidJS Plan
+
+The replaceability matrix used to be a theory. The React Native client turned it into a measurement: **adding an entire second platform required zero changes to `@rtc/domain`, `@rtc/shared`, `@rtc/client-core`, or `@rtc/react-bindings`** — only a new UI package with two platform adapters. The animation below cycles through the three clients; note what never moves.
+
+![Animated diagram cycling React web, React Native, and planned SolidJS clients above an unchanged client-core, domain and shared stack, joined by the ViewModel contract](architecture/framework-swap.svg)
+
+**Why the RN client was cheap** — the checklist of what it actually had to build:
+
+```mermaid
+flowchart TD
+    subgraph new["What client-react-native wrote (new code)"]
+        n1["RN screens & components<br/>(dumb, react-native-svg charts)"]
+        n2["buildNativePorts.ts<br/>(EXPO_PUBLIC_SERVER_URL switch)"]
+        n3["AsyncStoragePreferencesAdapter"]
+        n4["AppearanceColorSchemeAdapter"]
+        n5["rnThemeTokens<br/>(token subset, context delivery)"]
+        n6["expo-router tabs + AppRoot"]
+    end
+    subgraph reused["What it imported verbatim"]
+        r1["@rtc/client-core — every presenter,<br/>machine, WsAdapter, port factory"]
+        r2["@rtc/react-bindings — the whole<br/>ViewModel (React is React)"]
+        r3["@rtc/domain — entities, use cases,<br/>simulators (device-local Mode A!)"]
+    end
+    new -->|"plugs into"| reused
+```
+
+**The SolidJS plan** (`@rtc/client-solid`, not yet started) follows the same recipe with one extra step — since Solid is *not* React, it needs its own bindings package:
+
+1. **`@rtc/solid-bindings`** (~1 dev-day): map `StateObservable` → Solid signal. `@rx-state/core` (already framework-neutral, already in `client-core`) is the same primitive react-rxjs's `bind()` consumes, so this is the `solid-rxjs` analogue the design always assumed. Implement the same `ViewModel` member list; `useMachine` becomes a `createMachine`-style per-component primitive with `onCleanup` instead of a StrictMode-deferred dispose.
+2. **`@rtc/client-solid`** (~1 dev-week): rewrite the dumb components. CSS Modules port verbatim — the CSS-modules migration deliberately left zero inline styles and semantic `data-*` state hooks precisely so markup/styling survives the swap.
+3. **Verification, all pre-existing**: the framework-neutral UI-contract specs (`*.contract.spec.ts` + a new `solid/` swap-trio next to `react/`), the visual goldens (`__screenshots__/react/` is the canonical cross-framework contract — a Solid render must match it), and the Gherkin behavioural suites (page objects get a Solid implementation; specs unchanged).
+
+What ADR-004 forbids exists **for** this plan: no JSX through the ViewModel, no framework types below the bindings, no `rxjs` in UI files. Every one of those bans is a gate (26--29) so the Solid port cannot be quietly invalidated between now and whenever it starts.
 
 ---
 
@@ -1266,6 +1660,9 @@ Test Runner / Driver                    - Vitest, Playwright, Cypress, ...
 | **Port contract tests** | Same suite run against simulator and WsReal adapters | Test framework only | Yes |
 | **Domain entity tests** | Pure functions over entities | Test framework only | Yes |
 | **Component tests** (optional) | Render component, assert hook contract is honoured | UI framework + test framework | Rewritten when UI framework changes |
+| **UI contract tests** (sociable RTL, [§9.8](#98-ui-contract-tier)) | Mount real components against a scripted `ViewModel`; assert behaviour | Framework-neutral specs + a thin per-framework swap layer | Specs survive; only the `react/` adapter directory is rewritten |
+| **Visual goldens** (3 tiers, [§9.7](#97-visual-golden-tiers)) | Pixel screenshots of workspaces × skins × modes | Screenshot runners | Goldens survive — they **are** the cross-framework rendering contract |
+| **RN component tests** (jest-expo + RNTL, [§9.9](#99-react-native-testing)) | Render RN screens against the ViewModel | jest-expo | Rewritten with the mobile UI |
 
 ### 9.2 Gherkin example
 
@@ -1301,9 +1698,9 @@ A single test suite is parameterised over **all** adapters that implement a port
 
 This is what makes "swap an adapter" a low-cost operation: the contract is encoded in tests and they all must pass.
 
-### 9.5 Eight-runner stack (Cucumber-JS + Cypress + native @playwright/test + native Cypress + presenter-direct × 4)
+### 9.5 Ten-suite e2e stack (4 browser peers + 4 presenter peers + 2 fullstack smokes)
 
-Eight runners exercise the same behavioural surface via six binding styles. Cucumber-JS (with Playwright) and Cypress (via cypress-cucumber-preprocessor) bind Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree. Native `@playwright/test` and native Cypress bind scenarios programmatically through their own step trees. Four presenter-direct peers — **cucumber** (real timers), **cucumber-fake-timers**, **vitest-quickpickle-fake-timers**, and **vitest-fake-timers** (plain) — bind a subset of the same scenarios (tagged `@presenter`) to the RxJS presenter layer in pure Node with no browser; the `cucumber` peer uses wall-clock waits, `cucumber-fake-timers` wraps the same bodies in `@sinonjs/fake-timers` virtual time, `vitest-quickpickle-fake-timers` reruns the same bodies under Vitest + the qpickle-loader Vite plugin for Gherkin + `vi.useFakeTimers()`, and `vitest-fake-timers` reruns the same `_shared/` scenario modules under Vitest + raw `describe`/`it` (no Gherkin loader) + `vi.useFakeTimers()` to prove the `_shared/*.ts` / `_await.ts` / `_world.ts` abstractions are useful even without a BDD step-tree. See Phase 5B.1, 5B.2, 5B.3, and 5B.4 specs for details.
+`tests/scripts/run-all.ts` orchestrates **ten suites**: eight behavioural peers exercising the same spec surface via six binding styles, plus two full-stack smokes (`tests/fullstack/`) that boot a real `@rtc/server` and a real client and assert live WS data end-to-end — the only suites that exercise the server process itself. The eight peers: Cucumber-JS (with Playwright) and Cypress (via cypress-cucumber-preprocessor) bind Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree. Native `@playwright/test` and native Cypress bind scenarios programmatically through their own step trees. Four presenter-direct peers — **cucumber** (real timers), **cucumber-fake-timers**, **vitest-quickpickle-fake-timers**, and **vitest-fake-timers** (plain) — bind a subset of the same scenarios (tagged `@presenter`) to the RxJS presenter layer in pure Node with no browser; the `cucumber` peer uses wall-clock waits, `cucumber-fake-timers` wraps the same bodies in `@sinonjs/fake-timers` virtual time, `vitest-quickpickle-fake-timers` reruns the same bodies under Vitest + the qpickle-loader Vite plugin for Gherkin + `vi.useFakeTimers()`, and `vitest-fake-timers` reruns the same `_shared/` scenario modules under Vitest + raw `describe`/`it` (no Gherkin loader) + `vi.useFakeTimers()` to prove the `_shared/*.ts` / `_await.ts` / `_world.ts` abstractions are useful even without a BDD step-tree. See Phase 5B.1, 5B.2, 5B.3, and 5B.4 specs for details.
 
 | Layer | Stack |
 |---|---|
@@ -1316,7 +1713,8 @@ Eight runners exercise the same behavioural surface via six binding styles. Cucu
 | Page-object contracts | TypeScript interfaces; `TESTIDS` and `STRINGS` SOTs |
 | Page-object impls (drivers) | `tests/browser/page-objects/playwright/` (Playwright) + `tests/browser/page-objects/cypress/` (Cypress) |
 | Per-runner support | `tests/browser/playwright-cucumber/{world,hooks}.ts` (Cucumber+Playwright) · `tests/browser/cypress-cucumber/{world,e2e}.ts` (Cucumber+Cypress) · `tests/browser/playwright/{_context,_openWorkspace}.ts` (native Playwright fixture) · `tests/browser/cypress/{_context,_openWorkspace}.ts` (native Cypress getCtx accessor) |
-| Orchestration | `tests/scripts/run-all.ts` — eight peers, one shared dev server, OR-ed exit codes |
+| Orchestration | `tests/scripts/run-all.ts` — ten suites in parallel, per-suite dev servers (`RTC_DEV_PORT` 3001+), OR-ed exit codes; `RTC_E2E_MAX_PARALLEL` cap; `RTC_E2E_SKIP_CYPRESS` opt-out |
+| Full-stack smokes | `tests/fullstack/{node-smoke,browser-smoke}.ts` + `tests/fullstack/browser/fullstack.spec.ts` — real server + real client on dedicated ports, live pricing/equities assertions |
 | Presenter-direct specs | Same `tests/specs/**/*.feature` files, scenarios tagged `@presenter` |
 | Presenter-direct step defs | `tests/presenter/steps/*.steps.ts` — bind to presenter streams; no driver imports |
 | Presenter-direct scenarios | `tests/presenter/scenarios/_shared/*.ts` — subscribe to RxJS streams with `firstValueFrom + timeout`; shared by all four presenter peers |
@@ -1355,15 +1753,64 @@ identity. Each describer is parameterised by a `makeHarness()` factory
 returning `{port, driver, teardown}`, so the same assertions run twice:
 once against the simulator implementation in `packages/domain/src/simulators/`
 and once against the WsReal implementation in
-`packages/client-react/src/app/adapters/portFactory.ts` driven by an in-memory
+`packages/client-core/src/adapters/portFactory.ts` driven by an in-memory
 `FakeWsAdapter` that scripts canonical wire frames from
-`packages/shared/src/__fixtures__/wireFrames.ts`.
+`packages/shared/src/__fixtures__/wireFrames.ts`. The equities port trio has
+the same treatment (`wsRealMarketData.contract.test.ts`, `portFactory.equities.test.ts`
+in `client-core`).
 
 The contract is happy-path only. Error semantics (RPC nack handling) are
 covered by three `wsReal<Execution|Pricing|Workflow>.errors.test.ts`
 files outside the contract, since simulators have no equivalent failure
 mode. Gate 23 (see §12) keeps the describers pure: they receive a port
 via `makeHarness`, they don't reach into either implementation.
+
+### 9.7 Visual golden tiers
+
+`packages/client-react/tests/ui/visual/` runs the same screenshot scenarios through **three independent rasterizers**, because each one draws slightly differently and each catches different regressions:
+
+| Tier | Runner | Config |
+|---|---|---|
+| 1 | Playwright Component Testing | `playwright-ct/` (also hosts the whole-app **paint smoke** — the guard against "renders in jsdom, paints empty in a real browser" bugs) |
+| 2 | Plain Playwright over a Vite host | `playwright/` |
+| 3 | Vitest browser mode (`toMatchScreenshot`) | `vitest-browser/` |
+
+Two golden sets are committed per tier: `__screenshots__/react/` (rendered on pinned x86 CI — **the canonical cross-framework contract**, regenerated only via the `update-visual-goldens` workflow) and `__screenshots__/react-local/<platform>-<arch>/` (local runs, committed for review but never compared on CI). The render target lives behind the `visual/react/` seam barrel — the directory a SolidJS port swaps.
+
+### 9.8 UI contract tier
+
+`packages/client-react/tests/ui/contract/` is the second framework-swap pillar: **sociable RTL tests** where framework-neutral specs (`specs/**/*.contract.spec.ts`, per domain) drive framework-neutral page objects (`shared/pages/`), and only the thin `react/` directory (component registry, render adapter, `viewModelFromWorld`) knows React exists. CI enforces **≥95%** statement/branch/function/line coverage on this tier (`test:ui:contract:coverage`) — the strongest single gate in the repo, because it measures how much of the UI the swap-portable suite actually pins down.
+
+### 9.9 React Native testing
+
+The RN package runs a **dual runner** (`vitest run && jest`):
+- **vitest** (node) for pure logic: chart geometry (`buildChart`, `buildCandles`, `buildGauge`, `buildSparkline`, `bubbleLayout`), port selection (`buildNativePorts`), theme tokens, the AsyncStorage adapter.
+- **jest-expo + RNTL 14** for ~50 colocated component tests (`*.test.tsx`), mapping `@rtc/*` to built `dist/`.
+
+CI additionally runs an **Expo export smoke** (Metro bundling of the real app) to catch monorepo-resolution breakage that jest never exercises. Two gaps are known and deliberate: no RN e2e yet (Maestro is the deferred plan) and no RN visual goldens — jsdom/jest cannot see paint, so whole-branch review + the live simulator remain the net for RN paint bugs.
+
+### 9.10 The CI gauntlet
+
+Everything above hangs off three parallel CI jobs (`.github/workflows/ci.yml`), triggered on PRs and pushes to `main`:
+
+```mermaid
+flowchart TD
+    subgraph checks["Job 1 — checks"]
+        c1["Biome ci"] --> c2["ESLint AST + custom rules (RuleTester)"]
+        c2 --> c3["Stylelint · actionlint · manypkg/syncpack"]
+        c3 --> c4["typecheck · unit + UI contract tests"]
+        c4 --> c5["UI contract coverage ≥ 95%"]
+        c5 --> c6["build · Expo export smoke (RN Metro)"]
+        c6 --> c7["knip dead code · dependency-cruiser"]
+        c7 --> c8["ESLint type-aware · grep gates (29) + pnpm audit"]
+    end
+    subgraph visual["Job 2 — visual"]
+        v1["3 golden tiers vs __screenshots__/react/"]
+    end
+    subgraph e2e["Job 3 — e2e"]
+        e1["Playwright browser peers + presenter peers + fullstack smokes<br/>(Cypress de-gated on CI: RTC_E2E_SKIP_CYPRESS=1 — runs locally instead)"]
+    end
+```
 
 ---
 
@@ -1385,6 +1832,14 @@ via `makeHarness`, they don't reach into either implementation.
 | **Behavioural specs in Gherkin** | One source of truth for expected behaviour, runnable from multiple test drivers. Survives driver and framework swaps. |
 | **Don't abstract React or RxJS behind portability shims** | Wrapping them produces leaky facades; instead keep their layers thin and rely on behavioural tests to make regeneration cheap. |
 | **React Compiler instead of manual memoization** | The compiler auto-memoizes at build time, so the UI carries no `useMemo`/`useCallback`. Its lint half (`eslint-plugin-react-hooks` `recommended-latest`, scoped to `src`) guards the Rules-of-React purity the compiler needs. One provisional exception: `react-hooks/refs` is scoped off for the two StrictMode build-once-ref seam files (`useMachine.ts`, `AppRoot.tsx`). Full rationale and the revisit note in [ADR-003](adr/ADR-003-react-compiler-and-manual-memoization.md). |
+| **Application core extracted to `@rtc/client-core`** | The RN client forced the "could be promoted later" IOU: presenters, machines, WsAdapter, and port factories moved out of `client-react` into a framework-free package. The extraction cost nothing at the UI call sites because components only ever imported the hook bridge — the payoff of the original layering. |
+| **One ViewModel seam, not per-service DI** ([ADR-004](adr/ADR-004-viewmodel-seam-and-feature-flags.md)) | A single flat `ViewModel` interface (~60 `use*` members) built once at each client's `AppRoot` and delivered through one context. Implemented by production code and two test harnesses; forbidden from carrying JSX. It is simultaneously the DI surface, the test seam, and the SolidJS-port contract. |
+| **`@rx-state/core` in the core, `@react-rxjs/core` in the bindings** | react-rxjs is used *split into its two halves*: the framework-neutral `state()`/`StateObservable` primitive lives in `client-core` (machines can hold defaulted shareable state with no React), while `bind()` lives only in `react-bindings`. A Solid port pairs the same core half with new bindings. |
+| **State machines as `Machine<TState, TIntents>`** | Per-component lifecycles (tile execution, order ticket, RFQ countdown, boot sequence) are framework-neutral objects `{ state$, intents, dispose }` bridged by `useMachine` — one per mount, StrictMode-safe deferred dispose. Keeps imperative choreography out of both the UI and the global stream graph. |
+| **Declarative WS effects (`@rtc/ws-effects`)** | The server's dispatch is data-flow, not control-flow: 24 pure `(in$, ctx) => out$` transforms merged over one shared inbound stream, with four layers of error isolation. The framework is rxjs-only and domain-blind, so it is itself swappable — and marble-testable without a socket. |
+| **Per-platform code = adapters only** | Adding a platform means a switch file (`buildNativePorts`), a preferences adapter, a color-scheme adapter, and dumb UI. Everything else is imported. This is the enforced definition of "thin client shell". |
+| **RN charts precompute geometry in pure functions** | `react-native-svg` draws what vitest-tested pure helpers (`buildCandles`, `buildGauge`, ...) computed. The paint layer stays dumb and the math stays unit-testable without a device. |
+| **Design prototypes are production-isolated** | `@rtc/client-prototype` (React port) and the standalone HTML artifact exist for design comprehension and fidelity comparison; neither may import `@rtc/*` runtime packages, so design iteration can never leak into the product graph. |
 
 ---
 
@@ -1392,23 +1847,30 @@ via `makeHarness`, they don't reach into either implementation.
 
 | Area | Path | Description |
 |------|------|-------------|
-| **Domain Ports** | `packages/domain/src/ports/*.ts` | 9 port interfaces (8 transport ports + `ConnectionEventsPort`) |
+| **Domain Ports** | `packages/domain/src/ports/*.ts` | Port interfaces: the 8 classic transport ports + `ConnectionEventsPort` + equities (`MarketDataPort`, `OrderPort`, `PositionPort`) + admin/preferences/telemetry families |
 | **FX Entities** | `packages/domain/src/fx/*.ts` | CurrencyPair, Price, Trade, Notional |
 | **Credit Entities** | `packages/domain/src/credit/*.ts` | Instrument, Dealer, Rfq, Quote |
 | **Connection** | `packages/domain/src/connection/*.ts` | ConnectionStatus state machine |
-| **Use Cases** | `packages/domain/src/usecases/*.ts` | Application logic; 6 use cases extracted in Phase 2 |
-| **Simulators** | `packages/domain/src/simulators/*.ts` | In-memory port impls |
+| **Use Cases** | `packages/domain/src/usecases/*.ts` | Application logic (12 use cases) |
+| **Simulators** | `packages/domain/src/simulators/*.ts` | In-memory port impls (FX, credit, equities, telemetry) |
 | **Shared DTOs** | `packages/shared/src/fx/*.ts`, `credit/*.ts` | Wire-format contracts |
-| **Protocol** | `packages/shared/src/protocol/*.ts` | RPC and SoW envelopes |
-| **Composition Root** | `packages/client-react/src/app/composition.ts` | React-free factory; returns `{ presenters, ports }` from wired-up adapters |
-| **Presenters** | `packages/client-react/src/app/presenters/*.ts` | RxJS streams, one file per area |
-| **Port Adapters** | `packages/client-react/src/app/adapters/*.ts` | WsAdapter, BrowserConnectionEventsAdapter, simulator/real port factory |
-| **react-rxjs Hooks Bridge** | `packages/client-react/src/ui/hooks/createAppHooks.ts` | `bind()` calls + `AppHooks` type; only file importing `@react-rxjs/core` |
-| **Hooks Provider** | `packages/client-react/src/ui/hooks/HooksProvider.tsx` | React Context distributing `AppHooks` |
-| **Client UI Components** | `packages/client-react/src/ui/{fx,credit,shell,admin}/**/*.tsx` | React components grouped by trading domain |
-| **Server Entry** | `packages/server/src/index.ts` | HTTP + WebSocket setup |
-| **Server WS Handler** | `packages/server/src/ws/ws-handler.ts` | Subscription & RPC routing |
-| **Server Protocol** | `packages/server/src/ws/protocol.ts` | Message type constants |
+| **Wire Protocol SoT** | `packages/shared/src/protocol/messages.ts` | `CLIENT_MSG` / `SERVER_MSG` constants for all 4 domains — single source for both ends |
+| **Protocol Envelopes** | `packages/shared/src/protocol/{rpc,sow}.ts` | `RpcResponse` ack/nack; bulk + marker SoW envelopes |
+| **Composition Root (core)** | `packages/client-core/src/composition.ts` | Framework-free `createApp(ports)` → `{ presenters, ports, commands }` + `createMachineFactories` |
+| **Presenters & Machines** | `packages/client-core/src/presenters/*.ts` | ~40 RxJS presenters/machines; `machine.ts` defines `Machine<TState, TIntents>` |
+| **Port Factory + Transport** | `packages/client-core/src/adapters/{portFactory,WsAdapter,WsConnectionEventsAdapter}.ts` | `createSimulatorPorts` / `createWsRealPorts`; the WebSocket transport |
+| **ViewModel Bridge** | `packages/react-bindings/src/{createViewModel,useMachine,useViewModel,ViewModelProvider}.ts(x)` | The only React↔RxJS meeting point; `ViewModel` interface = the seam contract |
+| **Web Composition Root** | `packages/client-react/src/AppRoot.tsx` + `src/app/buildBrowserPorts.ts` | `createApp(buildBrowserPorts())` + `createViewModel`, once per mount; `VITE_SERVER_URL` switch |
+| **Web Platform Adapters** | `packages/client-react/src/app/adapters/*.ts`, `src/app/theme/*.ts` | LocalStorage preferences, browser connection events, matchMedia color scheme |
+| **Web UI Components** | `packages/client-react/src/ui/{fx,credit,equities,admin,shell}/**/*.tsx` | React components grouped by trading domain (no rxjs — gates 26–29) |
+| **RN Composition Root** | `packages/client-react-native/src/app/{AppRoot.tsx,buildNativePorts.ts}` | Same recipe with `EXPO_PUBLIC_SERVER_URL` + sim/live toggle |
+| **RN Platform Adapters** | `packages/client-react-native/src/app/adapters/*.ts` | AsyncStorage preferences, Appearance color scheme |
+| **RN UI + Routes** | `packages/client-react-native/{app,src/ui}/**` | expo-router tabs; screens with react-native-svg charts + `src/ui/theme/tokens.ts` |
+| **WS Effects Framework** | `packages/ws-effects/src/{types,stream,rpc,combineEffects,createWsListener,operators}.ts` | `WsEffect` primitive + sugar; rxjs-only |
+| **Server Entry** | `packages/server/src/index.ts` | node:http + `ws` + token auth (`auth.ts`); 4-line effect composition |
+| **Server Effects** | `packages/server/src/effects/{fx,credit,admin,equities}.effects.ts` | The 24 effects |
+| **Server Services** | `packages/server/src/services/{serviceContainer,ThroughputService}.ts` | `createServices()` — all 12 simulators/services |
+| **Socket Adapter** | `packages/server/src/ws/toSocket.ts` | `ws.WebSocket` → transport-agnostic `Socket` |
 | **Behavioural Specs** | `tests/specs/**/*.feature` | Gherkin scenarios, framework-free; SOT for behaviour |
 | **Page Object Contracts** | `tests/browser/page-objects/contracts/**/*.ts` | Driver-free TS interfaces + `data-testid` constants; SOT for the UI surface |
 | **Page Objects (Playwright)** | `tests/browser/page-objects/playwright/**/*.ts` | Playwright implementations of the contracts |
@@ -1420,15 +1882,18 @@ via `makeHarness`, they don't reach into either implementation.
 | **Native Cypress Harness** | `tests/browser/cypress/{cypress.config,_context,_openWorkspace}.ts` | Cypress config (no preprocessor); `getCtx()` accessor with module-scoped beforeEach builder; named Background helpers |
 | **Cypress-forked Scenarios** | `tests/browser/cypress/scenarios/*.ts` (+ `_chainable.ts`) | Sync scenario fns mirroring shared `browser/scenarios/*.ts` 1:1 by name; queue-aware (use `chainable<T>` cast helper to expose Cypress Chainable under the shared `Promise<T>` PO contract); used by native Cypress only |
 | **Test World + Hooks (Cucumber)** | `tests/browser/playwright-cucumber/{world,hooks}.ts` and `tests/browser/cypress-cucumber/{world,e2e}.ts` | Per-runner World, dev-server lifecycle, hooks |
-| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based; 25 gates) |
+| **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based; 29 gates) |
+| **Visual Golden Tiers** | `packages/client-react/tests/ui/visual/{playwright-ct,playwright,vitest-browser}/` | Three screenshot runners; dual golden sets (`react/` CI-canonical + `react-local/<arch>/`); ADR-001 lives here |
+| **UI Contract Tier** | `packages/client-react/tests/ui/contract/{specs,shared,react}/` | Framework-neutral sociable RTL specs + the thin React swap layer; ≥95% coverage gate |
+| **Dependency Rules** | `.dependency-cruiser.cjs` | `no-circular`, `domain-stays-pure`, `client-not-server`, `ws-effects-stays-pure`, ... (`pnpm check:deps`) |
 | **Port Contract Describers** | `packages/domain/src/ports/__contracts__/<Port>Contract.ts` | Parameterised happy-path suites for all 8 transport ports; run against simulator + WsReal via `makeHarness()` |
-| **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and eight-peer orchestration |
+| **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and ten-suite orchestration |
 
 ---
 
 ## 12. Architectural Gates
 
-`tests/scripts/grep-gates.ts` encodes 24 import-boundary rules plus a supply-chain audit, enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
+`tests/scripts/grep-gates.ts` encodes 28 import-boundary rules plus a supply-chain audit (29 gates total), enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
 
 | Gate | Rule |
 |------|------|
@@ -1457,3 +1922,9 @@ via `makeHarness`, they don't reach into either implementation.
 | 23 | Contract describers in `packages/domain/src/ports/__contracts__/` may not import from `simulators/`, `@rtc/client-react`, or `@rtc/shared/__fixtures__/` |
 | 24 | `vitest-quickpickle-fake-timers/setup.ts` must import every step file in `tests/presenter/vitest-quickpickle-fake-timers/steps/` (barrel completeness) |
 | 25 | No high/critical advisories in production dependencies (`pnpm audit --prod`, non-blocking when the audit cannot run) |
+| 26 | No `rxjs` / `@react-rxjs` / `@rx-state` imports in `client-react/src/ui` (the dumb-UI boundary; only the bindings bridge may) |
+| 27 | No `localStorage` in `client-react/src/ui` (persistence belongs behind `PreferencesPort`) |
+| 28 | No `fetch(` / `import.meta.env` in `client-react/src/ui` (transport & config belong in the app layer) |
+| 29 | No `setTimeout` / `setInterval` in `client-react/src/ui` (time belongs in machines/presenters; custom check) |
+
+Gates 26–29 are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. They are what keeps the SolidJS-port contract ([§8.1](#81-the-multi-client-proof--the-solidjs-plan)) valid without anyone watching.
