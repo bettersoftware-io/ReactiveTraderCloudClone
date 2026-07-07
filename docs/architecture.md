@@ -292,6 +292,129 @@ flowchart TB
 
 **Key boundary**: anything inside `@rtc/client-core` may use RxJS freely. Anything in `src/ui` must not import `rxjs`, `@react-rxjs`, or `@rx-state` and must not see `Observable<T>` -- machine-enforced by grep gate 26 (plus gates 27--29 banning `localStorage`, `fetch`/`import.meta.env`, and timers in the UI). The bindings package is the only place that bridges the two worlds, and it is small (~850 LOC) precisely so a `@rtc/solid-bindings` sibling can be written in about a day.
 
+#### 2.3.1 The shape of the simplicity
+
+The web client is three moving parts, and only one of them contains logic.
+
+**All business logic lives in presenters, which are pure RxJS -- no React at all.** A presenter is a plain class exposing `Observable<T>` streams (`price$`, `status$`, `trades$`, ...). It has never heard of a component, a render, or a hook. Because the stream is the source of truth, **the presenter decides *when* and *at what granularity* React re-renders** -- a tick pushed into `price$(EURUSD)` re-renders exactly the tiles subscribed to that symbol and nothing else. React is not the thing orchestrating updates; it is downstream of the streams, repainting on demand. There is no `useMemo`, no `useCallback`, no dependency-array bookkeeping (manual memoization is additionally banned by [ADR-003](adr/ADR-003-react-compiler-and-manual-memoization.md) -- React Compiler covers what little remains), because React's re-render model isn't driving anything -- the RxJS graph is.
+
+**The components are dumb on purpose: declarative TSX, almost no imperative code, and -- below the one `useViewModel()` call -- no further abstraction.** A leaf like `SpreadDisplay` is props-in / TSX-out with zero hooks. A container like `Tile` calls `useViewModel()` once, reads the granular hooks it needs, and renders. There is nothing to memoize because there is no derived state to cache -- the presenter already did the work upstream.
+
+**The UI is fully decoupled from the wiring by a deliberate provider/context split.** Components depend only on `useViewModel()` and the `ViewModel` *type*. They never import `createViewModel` (the concrete factory) or `ViewModelProvider` (the injector) -- those are imported by exactly one file, `AppRoot`. So the entire concrete graph (which presenters, simulator vs. live transport, the react-rxjs `bind` calls) is invisible at every call site.
+
+```mermaid
+flowchart TB
+    subgraph core["@rtc/client-core — pure RxJS, zero React"]
+        direction TB
+        port["PricingPort<br/>simulator or WebSocket"]:::domain
+        uc["PriceStreamUseCase<br/>enrich · detectMovement · spread"]:::domain
+        pres["PriceStreamPresenter<br/>price$(pair) — one multicast stream per symbol"]:::coreN
+        port --> uc --> pres
+    end
+
+    subgraph seam["@rtc/react-bindings — the only React ↔ RxJS meeting point"]
+        vm["createViewModel(…)<br/>usePrice = bind(pair → price$(pair))"]:::bridge
+    end
+
+    subgraph ui["@rtc/client-react — dumb UI (no rxjs, gate 26)"]
+        direction TB
+        tile["Tile(pair)<br/>const price = usePrice(pair)"]:::uiN
+        leaf["TilePrice · SpreadDisplay<br/>props in → TSX out · no hooks"]:::uiN
+        tile --> leaf
+    end
+
+    root["AppRoot — createViewModel(…) once"]:::rootN
+    provider["ViewModelProvider<br/>imported ONLY by AppRoot"]:::split
+    ctx["ViewModelContext<br/>useViewModel() reads it"]:::split
+
+    pres -- "price$ emits a tick" --> vm
+    vm -- "re-renders ONLY tiles that<br/>called usePrice(pair)" --> tile
+    root --> provider --> ctx -. "the seam the UI depends on" .- tile
+
+    classDef domain fill:#1f2d3d,stroke:#4493f8,color:#e6edf3
+    classDef coreN  fill:#238636,stroke:#56d364,color:#ffffff
+    classDef bridge fill:#8957e5,stroke:#d2a8ff,color:#ffffff
+    classDef uiN    fill:#1f6feb,stroke:#79c0ff,color:#ffffff
+    classDef rootN  fill:#9e6a03,stroke:#e3b341,color:#ffffff
+    classDef split  fill:#30363d,stroke:#8b949e,color:#ffffff
+    style core fill:transparent,stroke:#6e7681
+    style seam fill:transparent,stroke:#6e7681
+    style ui fill:transparent,stroke:#6e7681
+    linkStyle default stroke:#6e7fa3,stroke-width:1.5px
+```
+
+The same story in motion (animated SVG, renders live on GitHub) -- one tick, one re-render, idle tiles untouched:
+
+![Animated diagram: a tick travels from PriceStreamPresenter through usePrice into only the EUR/USD tile, which flashes; the GBP/USD and USD/JPY tiles stay idle](architecture/render-granularity.svg)
+
+And in code -- these are the real files, trimmed:
+
+```typescript
+// 1 — BUSINESS LOGIC. packages/client-core/src/presenters/PriceStreamPresenter.ts
+//     A plain class of RxJS streams. No React, no hooks, no components.
+export class PriceStreamPresenter {
+  private readonly cache = new Map<string, Observable<Price>>();
+  constructor(private readonly pricing: PricingPort) {}
+
+  price$(pair: CurrencyPair): Observable<Price> {
+    const cached = this.cache.get(pair.symbol);
+    if (cached) return cached;                                   // one stream per symbol...
+    const stream = new PriceStreamUseCase(this.pricing)
+      .execute(pair)
+      .pipe(shareReplay({ bufferSize: 1, refCount: true }));     // ...multicast, latest cached
+    this.cache.set(pair.symbol, stream);
+    return stream;
+  }
+}
+```
+
+```typescript
+// 2 — THE SEAM. packages/react-bindings/src/createViewModel.ts
+//     bind (react-rxjs) turns the per-symbol Observable into a hook. Subscription
+//     granularity == the argument: usePrice(EURUSD) only ever re-renders
+//     components that called usePrice(EURUSD).
+const [usePrice] = bind((pair: CurrencyPair) => {
+  return presenters.priceStream.price$(pair);
+}, null);
+```
+
+```tsx
+// 3 — THE UI. packages/client-react/src/ui/fx/liveRates/tile/Tile.tsx (trimmed)
+//     One useViewModel() call, granular hooks, declarative return. No memo.
+export function Tile({ pair, showChart }: TileProps): ReactElement {
+  const { usePrice, usePriceHistory, useNotional, useTileExecution, useRfqTile } = useViewModel();
+  const price = usePrice(pair);                 // this tile subscribes to THIS symbol
+  const tileExecution = useTileExecution(pair); // a per-mount machine, auto-disposed
+  // ... purely declarative TSX from here down
+}
+
+// ...and the leaf is dumber still — not even a hook (SpreadDisplay.tsx, verbatim):
+export function SpreadDisplay({ spread }: SpreadDisplayProps): ReactElement {
+  return <div className={styles.spread}>{spread}</div>;
+}
+```
+
+The provider/context split is three tiny files in `@rtc/react-bindings`:
+
+```typescript
+// ViewModelContext.ts — the seam the UI reads. Just a context + the type. Nothing concrete.
+export const ViewModelContext = createContext<ViewModel | null>(null);
+
+// useViewModel.ts — what components import. Pulls in ONLY the context + type.
+export function useViewModel(): ViewModel {
+  const ctx = useContext(ViewModelContext);
+  if (!ctx) throw new Error("useViewModel must be used within ViewModelProvider");
+  return ctx;
+}
+
+// ViewModelProvider.tsx — imported by AppRoot ALONE. Supplies the concrete graph.
+export function ViewModelProvider({ viewModel, children }: ViewModelProviderProps) {
+  return <ViewModelContext.Provider value={viewModel}>{children}</ViewModelContext.Provider>;
+}
+```
+
+Because `useViewModel`/`ViewModelContext` live in different modules than `ViewModelProvider`/`createViewModel`, a component that imports the accessor **cannot** transitively reach the concrete factory, the presenters, or react-rxjs. The dependency arrow only ever points *out* of the UI toward the `ViewModel` type. That is the entire coupling surface between `src/ui` and the rest of the app -- one type and one hook. Swapping simulator↔live transport, or even React↔Solid bindings, changes `AppRoot` and nothing in `src/ui`.
+
 ### 2.4 Component Diagram -- React Native Client
 
 The mobile client (`@rtc/client-react-native`, Expo SDK 57 / RN 0.86) is deliberately boring: it is the **same architecture with different leaves**. Core and bindings are imported verbatim -- React is React on both platforms, so even the bindings package is shared. Only the UI components and two platform adapters are native-specific.
