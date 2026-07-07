@@ -74,3 +74,53 @@
    * best-priced one (the port previously scoped this to [data-best="true"]). */
   box-shadow: 0 0 10px var(--accent-positive);
 }
+
+/* PROTO QuoteRow.module.css .acceptBtn + global.css acceptIn/acceptPulse
+ * (--buy → --accent-positive): every fresh ACCEPT pops in with an overshoot
+ * glow, and the best-priced quote keeps pulsing after it lands. Gated on
+ * prefers-reduced-motion, same convention as CreditBlotter.module.css /
+ * RfqCard.module.css: the base rule carries no animation at all under
+ * reduced motion. Mount-triggered, so acceptIn self-terminates per button. */
+@media (prefers-reduced-motion: no-preference) {
+  .acceptBtn {
+    animation: acceptIn 0.42s cubic-bezier(0.2, 1.5, 0.5, 1);
+  }
+
+  .acceptBtn[data-best="true"] {
+    animation:
+      acceptIn 0.42s cubic-bezier(0.2, 1.5, 0.5, 1),
+      acceptPulse 1.7s ease-in-out 0.42s infinite;
+  }
+}
+
+@keyframes acceptIn {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.1;
+    box-shadow: 0 0 0 0 var(--accent-positive);
+  }
+
+  55% {
+    transform: scale(1.16);
+    box-shadow: 0 0 26px 4px var(--accent-positive);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 10px var(--accent-positive);
+  }
+}
+
+@keyframes acceptPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 7px var(--accent-positive);
+    transform: scale(1);
+  }
+
+  50% {
+    box-shadow: 0 0 20px 3px var(--accent-positive);
+    transform: scale(1.06);
+  }
+}
