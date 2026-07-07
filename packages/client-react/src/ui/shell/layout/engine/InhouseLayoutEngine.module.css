@@ -200,11 +200,16 @@
   }
 }
 
+/* PROTO Panel.module.css `.head`: an exact 38px chrome strip — vertical
+ * sizing lives HERE (min-height, zero vertical padding), not on the tabs or
+ * title, which instead stretch to fill it so their 2px accent underline sits
+ * flush on the head's bottom border. */
 .panelHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 13px;
+  min-height: 38px;
+  padding: 0 8px;
   background: var(--panel-head);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -219,7 +224,13 @@
  * duplicated rather than shared via CSS Modules `composes` (no precedent for
  * that feature elsewhere in this codebase). */
 .panelTitle {
-  padding: 9px 14px;
+  /* Stretches to the head's full 38px (PROTO `.label`): zero vertical padding
+   * + inline-flex centering keep the text mid-head while the accent
+   * border-bottom lands on the head's bottom edge. */
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11px;
@@ -237,6 +248,11 @@
   gap: 2px;
   flex: 1;
   min-width: 0;
+  /* Fills the 38px head vertically so registered head tabs (which themselves
+   * stretch — see PanelHeadTabs.module.css `.headTabs`/`.headTab`) can plant
+   * their accent underline on the head's bottom border, exactly like the
+   * default `.panelTitle` above. */
+  align-self: stretch;
 }
 
 .panelControls {
