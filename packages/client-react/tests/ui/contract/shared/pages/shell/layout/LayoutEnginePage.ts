@@ -144,4 +144,16 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
   handleElement(pathKey: string, i: number): HTMLElement {
     return within(this.root).getByTestId(`handle-${pathKey}-${i}`);
   }
+
+  /** True when this strip cell's strips run perpendicular to the owning
+   * split's axis (inherited orientation) and it therefore shares the split's
+   * main-axis space instead of hugging — vertical strips stacking down (and
+   * filling) the freed full-height rail. */
+  isStripFillCell(pathKey: string, i: number): boolean {
+    return (
+      within(this.root)
+        .getByTestId(`cell-${pathKey}-${i}`)
+        .getAttribute("data-strip-fill") === "true"
+    );
+  }
 }

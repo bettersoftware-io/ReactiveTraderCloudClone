@@ -68,8 +68,12 @@ export class CypressCreditRfqPanel implements CreditRfqPanelPO {
   }
 
   waitForCreditTradesHeading(timeoutMs: number): Promise<void> {
+    // The in-body "Credit Trades" title is gone (the blotter chrome moved
+    // into the panel head) — the head tab title is the loaded-marker now.
     return cy
-      .contains(STRINGS.creditRfq.creditTradesHeading, { timeout: timeoutMs })
+      .get(`[data-testid="${TESTIDS.credit.blotterHeadTitle}"]`, {
+        timeout: timeoutMs,
+      })
       .should("be.visible") as unknown as Promise<void>;
   }
 }

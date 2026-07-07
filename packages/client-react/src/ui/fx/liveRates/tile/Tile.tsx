@@ -52,6 +52,10 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
   // disabled whenever the notional requires an RFQ quote instead.
   const priceBoxDisabled =
     isLoading || isBusy || hasError || stale || notional.state.isRfq;
+  // RFQ init-state affordance: the compact ⚡ RFQ chip in the header's pair
+  // row (an existing row, so the tile's height never changes). The other RFQ
+  // lifecycle states still render through TileRfq below.
+  const showRfqChip = notional.state.isRfq && !isBusy && !isRfqFlowActive;
 
   const tickAnim =
     animIntent?.kind === "tickUp" || animIntent?.kind === "tickDown"
@@ -88,6 +92,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
           symbol={pair.symbol}
           movement={price?.movementType ?? PriceMovementType.NONE}
           movementPips={computeMovementPips(history, pair.pipsPosition)}
+          onInitiateRfq={showRfqChip ? rfqState.requestQuote : undefined}
         />
 
         <TileNotional
@@ -124,7 +129,6 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
           <TileRfq
             pair={pair}
             rfqState={rfqState}
-            onRequestQuote={rfqState.requestQuote}
             onExecute={handleExecute}
             notional={notional.state.numericValue}
           />

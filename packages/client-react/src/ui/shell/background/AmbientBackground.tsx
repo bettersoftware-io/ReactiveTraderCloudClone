@@ -6,13 +6,14 @@ import styles from "./AmbientBackground.module.css";
 
 /**
  * COSMETIC ONLY — decorative v2 aurora backdrop (two blurred radial layers, a
- * conic sweep, and a drifting dot grid) painted behind the workspace, always
- * visible at the per-skin `--aurora-opacity` token. It is gated by the
- * animated-background perf preference, which toggles `--amb-play` between
- * "running" and "paused" so the layers hold still (default) or drift. There is
- * NO port behind it beyond that preference: do NOT wire any data into this
- * component, it is intentionally dead chrome. It is aria-hidden and
- * pointer-events: none, so it never participates in interaction or a11y.
+ * conic sweep, a drifting 48px line grid, a drifting particle-dot field, and
+ * a static vignette) painted behind the workspace, always visible at the
+ * per-skin `--aurora-opacity` token. It is gated by the animated-background
+ * perf preference, which toggles `--amb-play` between "running" and "paused"
+ * so the layers hold still (default) or drift. There is NO port behind it
+ * beyond that preference: do NOT wire any data into this component, it is
+ * intentionally dead chrome. It is aria-hidden and pointer-events: none, so
+ * it never participates in interaction or a11y.
  */
 export function AmbientBackground(): ReactElement {
   const { useAnimatedBackground } = useViewModel();
@@ -28,10 +29,14 @@ export function AmbientBackground(): ReactElement {
       className={styles.wrap}
       style={vars}
     >
-      <div className={styles.layerA} />
-      <div className={styles.layerB} />
+      <div className={styles.aurora}>
+        <div className={styles.layerA} />
+        <div className={styles.layerB} />
+      </div>
       <div className={styles.sweep} />
       <div className={styles.grid} />
+      <div className={styles.dots} />
+      <div className={styles.vignette} />
     </div>
   );
 }

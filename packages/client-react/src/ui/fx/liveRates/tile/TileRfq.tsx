@@ -15,7 +15,6 @@ import styles from "./TileRfq.module.css";
 export function TileRfq({
   pair,
   rfqState,
-  onRequestQuote,
   onExecute,
   notional,
 }: TileRfqProps): ReactElement | null {
@@ -41,18 +40,8 @@ export function TileRfq({
     onExecute(direction, syntheticPrice, notional);
   }
 
-  if (state.status === "init") {
-    return (
-      <button
-        type="button"
-        onClick={onRequestQuote}
-        className={styles.initiateButton}
-      >
-        Initiate RFQ
-      </button>
-    );
-  }
-
+  // No init branch: the RFQ-initiation affordance is the compact ⚡ RFQ chip
+  // in the tile header's pair row (TileHeader), not an extra bottom row.
   if (state.status === "requested") {
     return (
       <div className={styles.requestedWrapper}>
@@ -119,7 +108,6 @@ export type TileRfqState = { state: RfqState } & RfqTileIntents;
 interface TileRfqProps {
   pair: CurrencyPair;
   rfqState: TileRfqState;
-  onRequestQuote: () => void;
   onExecute: (direction: Direction, price: Price, notional: number) => void;
   notional: number;
 }

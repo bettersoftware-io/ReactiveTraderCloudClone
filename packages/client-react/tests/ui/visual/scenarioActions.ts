@@ -47,10 +47,13 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   "connection-overlay/offline": { fullPage: true },
   "connection-overlay/idle": { fullPage: true },
   "app/fx": { fullPage: true },
+  // The credit blotter's in-body "Credit Trades" title is gone (its chrome
+  // moved into the panel head) — the head tab's full text proves the credit
+  // workspace rendered.
   "app/credit": {
     fullPage: true,
     click: "tab-credit",
-    waitForText: "Credit Trades",
+    waitForText: "▤ Credit Blotter",
   },
   "app/admin": {
     fullPage: true,
