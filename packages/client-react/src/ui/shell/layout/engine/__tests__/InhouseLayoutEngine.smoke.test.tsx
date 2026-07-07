@@ -148,6 +148,73 @@ describe("InhouseLayoutEngine", () => {
     expect(screen.queryByTestId("handle--0")).toBeNull();
   });
 
+  describe("initialPx (design-value default rail width, still draggable)", () => {
+    const initialPxState: LayoutState = {
+      root: {
+        kind: "split",
+        dir: "row",
+        sizes: [0.73, 0.27],
+        initialPx: [undefined, 360],
+        children: [
+          { kind: "panel", panelId: "a" },
+          { kind: "panel", panelId: "b" },
+        ],
+      },
+      maximized: null,
+      collapsed: [],
+    };
+    const abRegistry: PanelRegistry = {
+      a: () => {
+        return <div data-testid="a-body">A</div>;
+      },
+      b: () => {
+        return <div data-testid="b-body">B</div>;
+      },
+    };
+
+    it("renders a px-fixed cell that KEEPS its resize handle (unlike fixedPx)", () => {
+      renderEngine(initialPxState, abRegistry);
+      const cell = screen.getByTestId("panel-b").closest("[data-initial-cell]");
+      expect(cell?.getAttribute("data-initial-cell")).toBe("true");
+      expect(cell?.getAttribute("data-fixed-cell")).toBe("false");
+      // root pathKey is "" — the handle fixedPx would have suppressed
+      expect(screen.getByTestId("handle--0")).toBeTruthy();
+    });
+
+    it("dragging the handle dispatches plain fractions via onResize (the machine then clears initialPx)", () => {
+      const onResize = vi.fn();
+      render(
+        <InhouseLayoutEngine
+          state={initialPxState}
+          registry={abRegistry}
+          onMaximize={noop}
+          onRestore={noop}
+          onCollapse={noop}
+          onExpand={noop}
+          onResize={onResize}
+        />,
+      );
+      const handle = screen.getByTestId("handle--0");
+      fireEvent.pointerDown(handle, { pointerId: 3, clientX: 60, clientY: 0 });
+      fireEvent.pointerMove(handle, { clientX: 90, clientY: 0 });
+      expect(onResize).toHaveBeenCalled();
+      const [path, sizes] = onResize.mock.calls[0] as [number[], number[]];
+      expect(path).toEqual([]);
+      expect(sizes).toHaveLength(2);
+      // effective fractions: two adjacent values still summing to 1, with no
+      // NaN leaking from the px measurement (jsdom rects are zero-size, so
+      // the handler falls back to node.sizes as the baseline).
+      expect(sizes[0] + sizes[1]).toBeCloseTo(1, 5);
+      fireEvent.pointerUp(handle, { pointerId: 3, clientX: 90, clientY: 0 });
+    });
+
+    it("drops the px-fixed treatment while a panel is maximized, so the maximized panel can fill the dock", () => {
+      renderEngine({ ...initialPxState, maximized: "b" }, abRegistry);
+      const cell = screen.getByTestId("panel-b").closest("[data-initial-cell]");
+      expect(cell?.getAttribute("data-initial-cell")).toBe("false");
+    });
+  });
+
   it("confines a panel that throws during render to a scoped panel-error fallback, leaving sibling panels intact (no app-wide white screen)", () => {
     const consoleError = vi
       .spyOn(console, "error")
@@ -241,11 +308,13 @@ describe("InhouseLayoutEngine", () => {
         { ...creditShapedState, maximized: "rail" },
         creditShapedRegistry,
       );
+
       for (const id of ["b", "c"]) {
         const panel = screen.getByTestId(`panel-${id}`);
         expect(panel.getAttribute("data-strip")).toBe("true");
         expect(panel.getAttribute("data-strip-orientation")).toBe("vertical");
       }
+
       // Their cells share the freed rail's height instead of hugging.
       expect(
         screen.getByTestId("cell-1-0").getAttribute("data-strip-fill"),

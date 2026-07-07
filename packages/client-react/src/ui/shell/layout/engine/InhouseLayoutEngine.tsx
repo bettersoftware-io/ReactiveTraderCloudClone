@@ -96,6 +96,7 @@ type SplitLayoutNode = {
   readonly children: readonly LayoutNode[];
   readonly sizes: readonly number[];
   readonly fixedPx?: readonly (number | undefined)[];
+  readonly initialPx?: readonly (number | undefined)[];
 };
 
 interface SplitNodeProps extends SharedProps {
@@ -120,6 +121,32 @@ function childKey(
 ): string {
   if (child.kind === "panel") return child.panelId;
   return [...path, i].join(".");
+}
+
+/** Effective per-child fractions of a split, measured from its cells' current
+ * css px along the split axis — the drag baseline for a split whose rendered
+ * geometry is px-driven (initialPx) rather than sizes-driven. Returns null
+ * when the measurement is unusable (zero total, e.g. jsdom, or a cell-count
+ * mismatch with sizes). Handles are excluded: only `.cell` children count. */
+function measuredFractions(
+  container: HTMLDivElement,
+  node: SplitLayoutNode,
+): readonly number[] | null {
+  const cellsPx = Array.from(container.children)
+    .filter((el): el is HTMLElement => {
+      return el instanceof HTMLElement && el.classList.contains(styles.cell);
+    })
+    .map((cell) => {
+      const r = cell.getBoundingClientRect();
+      return node.dir === "row" ? r.width : r.height;
+    });
+  const cellsTotal = cellsPx.reduce((s, v) => {
+    return s + v;
+  }, 0);
+  if (cellsPx.length !== node.sizes.length || cellsTotal <= 0) return null;
+  return cellsPx.map((px) => {
+    return px / cellsTotal;
+  });
 }
 
 /** True when every panel leaf in `node`'s subtree is currently a strip
@@ -202,18 +229,30 @@ function SplitNode({
     const rect = container.getBoundingClientRect();
     const total = node.dir === "row" ? rect.width : rect.height;
     const origin = node.dir === "row" ? rect.left : rect.top;
-    const a = node.sizes[index];
-    const b = node.sizes[index + 1];
+    // Baseline fractions for the drag. A split with a design-value initialPx
+    // child renders px-fixed geometry that no longer matches node.sizes, so
+    // the first drag derives effective fractions from the cells' measured px
+    // instead and dispatches those through the normal onResize — the machine
+    // clears initialPx, and the split is a plain ratio split thereafter.
+    // Falls back to node.sizes when there is nothing to measure (jsdom's
+    // zero-size rects, or a cell-count mismatch).
+    const baseSizes = node.initialPx?.some((px) => {
+      return px !== undefined;
+    })
+      ? (measuredFractions(container, node) ?? node.sizes)
+      : node.sizes;
+    const a = baseSizes[index];
+    const b = baseSizes[index + 1];
     const pair = a + b;
 
     function move(ev: PointerEvent): void {
       const pos = (node.dir === "row" ? ev.clientX : ev.clientY) - origin;
-      const before = node.sizes.slice(0, index).reduce((s, v) => {
+      const before = baseSizes.slice(0, index).reduce((s, v) => {
         return s + v;
       }, 0);
       let fracA = pos / total - before;
       fracA = Math.max(0.05, Math.min(pair - 0.05, fracA));
-      const next = node.sizes.slice();
+      const next = baseSizes.slice();
       next[index] = fracA;
       next[index + 1] = pair - fracA;
       onResize(path, next);
@@ -271,6 +310,20 @@ function SplitNode({
         const childFixed = node.fixedPx?.[i];
         const nextFixed = node.fixedPx?.[i + 1];
         const childIsStripCell = isStripSubtree(child, state);
+        // Design-value default width (initialPx): renders px-fixed like
+        // fixedPx but KEEPS the resize handles — the first drag converts the
+        // split to plain fractions. fixedPx wins when both are set. Dropped
+        // whenever a panel is maximized (the freed geometry must flow to the
+        // maximized panel's cell chain — ratio flex-grow beside hugging strip
+        // cells — which a px-fixed rail would pin shut) and while the child's
+        // own subtree is stripped (the strip hugs its 32/38px bar, restoring
+        // the design width when it expands again).
+        const childInitial =
+          childFixed === undefined &&
+          state.maximized === null &&
+          !childIsStripCell
+            ? node.initialPx?.[i]
+            : undefined;
         const nextIsStripCell =
           nextChild !== undefined && isStripSubtree(nextChild, state);
         // The strip orientation a stripped child's subtree inherits: when
@@ -303,6 +356,7 @@ function SplitNode({
               data-dir={node.dir}
               data-pinned-cell={childPinned ? "true" : "false"}
               data-fixed-cell={childFixed !== undefined ? "true" : "false"}
+              data-initial-cell={childInitial !== undefined ? "true" : "false"}
               data-strip-cell={childIsStripCell ? "true" : "false"}
               data-strip-fill={stripFill ? "true" : "false"}
               style={
@@ -310,9 +364,13 @@ function SplitNode({
                   ? undefined
                   : childFixed !== undefined
                     ? ({ "--split-fixed": `${childFixed}px` } as CSSProperties)
-                    : ({
-                        "--split-size": String(node.sizes[i]),
-                      } as CSSProperties)
+                    : childInitial !== undefined
+                      ? ({
+                          "--split-fixed": `${childInitial}px`,
+                        } as CSSProperties)
+                      : ({
+                          "--split-size": String(node.sizes[i]),
+                        } as CSSProperties)
               }
             >
               {renderNode(

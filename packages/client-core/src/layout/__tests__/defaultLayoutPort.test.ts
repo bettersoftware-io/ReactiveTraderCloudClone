@@ -40,11 +40,13 @@ describe("createDefaultLayoutPort", () => {
     expect(initial.collapsed).toEqual([]);
   });
 
-  it("FX root has no fixedPx anywhere — every split is ratio-sized and draggable", () => {
+  it("FX root has no fixedPx anywhere — every split is ratio-sized and draggable; the rail opens at its 360px design width (initialPx)", () => {
     const { initial } = createDefaultLayoutPort("fx");
     const root = initial.root;
     if (root.kind !== "split") throw new Error("fx root must be a split");
     expect(root.fixedPx).toBeUndefined();
+    // draggable design-value default, not a handle-suppressing fixedPx
+    expect(root.initialPx).toEqual([undefined, 360]);
     const leftColumn = root.children[0];
 
     if (leftColumn.kind !== "split") {
@@ -90,11 +92,14 @@ describe("createDefaultLayoutPort", () => {
       title: "Sell Side",
     });
 
-    // root: a row split — [New RFQ rail | RFQs-over-blotter column].
+    // root: a row split — [New RFQ rail | RFQs-over-blotter column]. The
+    // rail opens at its 330px design width (draggable initialPx).
     const root = initial.root;
     if (root.kind !== "split") throw new Error("credit root must be a split");
     expect(root.dir).toBe("row");
     expect(root.sizes).toEqual([0.25, 0.75]);
+    expect(root.fixedPx).toBeUndefined();
+    expect(root.initialPx).toEqual([330, undefined]);
     expect(root.children[0]).toEqual({
       kind: "panel",
       panelId: "credit-new-rfq",
@@ -137,6 +142,10 @@ describe("createDefaultLayoutPort", () => {
 
     expect(initial.root.dir).toBe("row");
     expect(initial.root.sizes).toEqual([0.78, 0.22]);
+    // the ticket/watchlist rail opens at its 290px design width (draggable
+    // initialPx), never a handle-suppressing fixedPx.
+    expect(initial.root.fixedPx).toBeUndefined();
+    expect(initial.root.initialPx).toEqual([undefined, 290]);
 
     const leftColumn = initial.root.children[0];
 

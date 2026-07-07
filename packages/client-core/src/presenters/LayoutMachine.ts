@@ -30,14 +30,17 @@ type ResizePayload = { path: readonly number[]; sizes: readonly number[] };
 
 /** Replace the `sizes` of the split node reached by walking `path` from `node`.
  * Each path index selects a split child; a non-split target or an out-of-range
- * index returns the node unchanged (defensive no-op). Pure + immutable. */
+ * index returns the node unchanged (defensive no-op). Pure + immutable. A
+ * resize also clears the target's `initialPx` (the design-value default rail
+ * width): the engine dispatches effective fractions computed from the current
+ * px on the first drag, and the split is a plain ratio split forever after. */
 function resizeAt(
   node: LayoutNode,
   path: readonly number[],
   sizes: readonly number[],
 ): LayoutNode {
   if (node.kind !== "split") return node;
-  if (path.length === 0) return { ...node, sizes };
+  if (path.length === 0) return { ...node, sizes, initialPx: undefined };
   const [head, ...rest] = path;
   if (head < 0 || head >= node.children.length) return node;
   const child = node.children[head];

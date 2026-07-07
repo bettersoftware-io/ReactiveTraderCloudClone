@@ -126,6 +126,15 @@
   flex: 0 0 var(--split-fixed);
 }
 
+/* A design-value initial cell (initialPx — PROTO's 360/330/290px default
+ * rail widths): exact basis like fixedPx, but the resize handle stays. The
+ * engine drops this state (falling back to ratio/strip sizing) while a
+ * panel is maximized or the cell's subtree is stripped, and the first drag
+ * converts the split to plain fractions for good. */
+.cell[data-initial-cell="true"] {
+  flex: 0 0 var(--split-fixed);
+}
+
 /* Duplicates panTrans's glide onto `.cell`: the geometry that actually
  * reclaims on strip/maximize is this CELL's flex-grow (the rule above drops
  * its ratio-derived grow factor to 0) — transitioning only `.panel` (below)

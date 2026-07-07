@@ -42,11 +42,14 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
  * (analytics over positions) beside a left column where the blotter sits
  * under the tiles ONLY — it does not span the rail's width. Ratios are the
  * prototype defaults: main split 0.73/0.27, tiles/blotter 0.66/0.34,
- * analytics/positions 0.5/0.5. */
+ * analytics/positions 0.5/0.5. The rail opens at the prototype's 360px
+ * design width (initialPx — still draggable; the first drag converts the
+ * split to plain fractions). */
 const FX_ROOT: LayoutNode = {
   kind: "split",
   dir: "row",
   sizes: [0.73, 0.27],
+  initialPx: [undefined, 360],
   children: [
     {
       kind: "split",
@@ -69,10 +72,13 @@ const FX_ROOT: LayoutNode = {
   ],
 };
 
+// The New RFQ rail opens at the prototype's 330px design width (initialPx —
+// still draggable; the first drag converts the split to plain fractions).
 const CREDIT_ROOT: LayoutNode = {
   kind: "split",
   dir: "row",
   sizes: [0.25, 0.75],
+  initialPx: [330, undefined],
   children: [
     { kind: "panel", panelId: "credit-new-rfq" },
     {
@@ -89,10 +95,13 @@ const CREDIT_ROOT: LayoutNode = {
 
 const ADMIN_ROOT: LayoutNode = { kind: "panel", panelId: "admin-dashboard" };
 
+// The ticket/watchlist rail opens at the prototype's 290px design width
+// (initialPx — still draggable; the first drag converts to plain fractions).
 const EQUITIES_ROOT: LayoutNode = {
   kind: "split",
   dir: "row",
   sizes: [0.78, 0.22],
+  initialPx: [undefined, 290],
   children: [
     {
       kind: "split",
