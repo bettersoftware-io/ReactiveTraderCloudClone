@@ -1,37 +1,46 @@
-/* COSMETIC ONLY — decorative v2 aurora backdrop (PROTO L104-110/L45-46): two
- * blurred radial layers, a conic sweep, and a drifting dot grid, sitting
- * behind the workspace at the per-skin --aurora-opacity token. The
- * animated-background preference does not toggle visibility (the aurora is
- * always visible) — it toggles --amb-play between "running"/"paused" via an
- * inline style on the root, which every layer's animation-play-state reads
- * through inheritance. */
+/* COSMETIC ONLY — decorative v2 aurora backdrop (PROTO L103-112): two blurred
+ * radial layers, a conic sweep, a drifting 48px line grid, a drifting 24px
+ * particle-dot field, and a static vignette, sitting behind the workspace.
+ * Layer intensities follow the prototype: the aurora blob pair rides a
+ * wrapper at --aurora-opacity while sweep/dots multiply the token into their
+ * own opacity; the line grid and vignette are unscaled. The wrap carries a
+ * 0/1 visibility gate so the classic skin (--aurora-opacity: 0) hides the
+ * whole backdrop, grid and vignette included. The animated-background
+ * preference does not toggle visibility — it toggles --amb-play between
+ * "running"/"paused" via an inline style on the root, which every layer's
+ * animation-play-state reads through inheritance. */
 
 .wrap {
   position: absolute;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+  opacity: clamp(0, var(--aurora-opacity) * 100, 1);
+}
+
+/* PROTO line 104: aurora blob wrapper carries the shared opacity token. */
+.aurora {
+  position: absolute;
+  inset: 0;
   opacity: var(--aurora-opacity);
 }
 
-.layerA,
-.layerB {
+.layerA {
   position: absolute;
   inset: -25%;
-  will-change: transform;
-  animation-play-state: var(--amb-play, paused);
-}
-
-.layerA {
   background:
     radial-gradient(38% 38% at 28% 32%, var(--aurora-a) 0%, transparent 62%),
     radial-gradient(34% 34% at 78% 64%, var(--aurora-b) 0%, transparent 62%);
   opacity: 0.18;
   filter: blur(46px);
+  will-change: transform;
   animation: aurora-a 52s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
 }
 
 .layerB {
+  position: absolute;
+  inset: -25%;
   background:
     radial-gradient(
       30% 36% at 66% 22%,
@@ -45,7 +54,9 @@
     );
   opacity: 0.13;
   filter: blur(58px);
+  will-change: transform;
   animation: aurora-b 68s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
 }
 
 .sweep {
@@ -61,13 +72,29 @@
     var(--accent-primary) 10deg,
     transparent 34deg
   );
-  opacity: 0.06;
+  opacity: calc(var(--aurora-opacity) * 0.06);
   will-change: transform;
   animation: sweep-rot 90s linear infinite;
   animation-play-state: var(--amb-play, paused);
 }
 
+/* PROTO line 109: drifting 48px line grid. */
 .grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:
+    48px 48px,
+    48px 48px;
+  opacity: 0.4;
+  animation: grid-drift 60s linear infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+/* PROTO line 110: particle dot field. */
+.dots {
   position: absolute;
   inset: 0;
   background-image: radial-gradient(
@@ -75,9 +102,22 @@
     transparent 1.4px
   );
   background-size: 24px 24px;
-  opacity: 0.16;
+  opacity: calc(var(--aurora-opacity) * 0.16);
   animation: grid-drift 90s linear infinite;
   animation-play-state: var(--amb-play, paused);
+}
+
+/* PROTO line 112: static vignette overlay (z-index: 1 keeps it above the
+   animated layers). */
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(
+    ellipse 78% 68% at 50% 38%,
+    transparent 48%,
+    rgba(0, 0, 0, 0.58) 100%
+  );
 }
 
 /* OS-level reduced motion wins over the in-app preference: even with
@@ -87,7 +127,8 @@
   .layerA,
   .layerB,
   .sweep,
-  .grid {
+  .grid,
+  .dots {
     animation: none;
   }
 }
@@ -117,13 +158,23 @@
 }
 
 @keyframes sweep-rot {
+  from {
+    transform: rotate(0deg);
+  }
   to {
     transform: rotate(360deg);
   }
 }
 
 @keyframes grid-drift {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
   to {
-    background-position: 24px 24px;
+    background-position:
+      0 48px,
+      48px 0;
   }
 }
