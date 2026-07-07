@@ -11,10 +11,12 @@ import { ThemePicker } from "./ThemePicker";
 import styles from "./HeaderChrome.module.css";
 
 /**
- * HUD header chrome — wordmark + workspace nav + LIVE indicator + env badge +
- * theme picker (skin + mode) + notifications + account menu. Ported from the
- * prototype header (Reactive Trader.dc.html:107-217) to CSS-module markup with
- * `var(--token)` colours.
+ * HUD header chrome — animated logo + wordmark + workspace nav + LIVE
+ * indicator + env badge + theme picker (skin + mode) + notifications +
+ * account menu. Ported from the prototype header (Reactive
+ * Trader.dc.html:107-217) to CSS-module markup with `var(--token)` colours.
+ * The Preferences modal opens from the account menu's ⚙ Preferences row
+ * (prototype parity — no standalone gear button); its open state lives here.
  *
  * All four nav tabs (FX, Credit, Equities, Admin) are live workspace tabs.
  * Each renders with `data-testid="tab-{tab}"`, `data-active`, and calls
@@ -78,22 +80,13 @@ export function HeaderChrome({
         <EnvBadge />
         <ThemePicker />
         <NotificationsMenu />
-        <button
-          type="button"
-          data-testid="settings-toggle"
-          aria-label="Open preferences"
-          className={styles.iconButton}
-          onClick={() => {
-            setPrefsOpen(true);
-          }}
-        >
-          <span className={styles.gear} aria-hidden="true">
-            ⚙
-          </span>
-        </button>
         <LanguageMenu />
         <span className={styles.divider} />
-        <AccountMenu />
+        <AccountMenu
+          onOpenPrefs={() => {
+            setPrefsOpen(true);
+          }}
+        />
       </div>
       <PreferencesModal
         open={prefsOpen}

@@ -12,7 +12,7 @@ export interface HeaderChromeProps {
 }
 
 interface AccountMeta {
-  email: string;
+  id: string;
   desk: string;
   clearance: string;
 }
@@ -115,21 +115,39 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
     );
   }
 
-  /** The account panel's EMAIL / DESK / CLEARANCE identity row values.
+  /** The operator email shown in the account panel's identity head.
+   *  Assumes the account panel is already open. */
+  accountEmail(): string {
+    return (
+      within(this.root).getByTestId("account-email").textContent?.trim() ?? ""
+    );
+  }
+
+  /** The account panel's TRADER ID / DESK / CLEARANCE detail row values.
    *  Assumes the account panel is already open. */
   accountMeta(): AccountMeta {
     return {
-      email: this.accountMetaRow("email"),
+      id: this.accountMetaRow("id"),
       desk: this.accountMetaRow("desk"),
       clearance: this.accountMetaRow("clearance"),
     };
   }
 
-  private accountMetaRow(field: "email" | "desk" | "clearance"): string {
+  private accountMetaRow(field: "id" | "desk" | "clearance"): string {
     const row = within(this.root).getByTestId(`account-meta-${field}`);
     // Row is "KEY  VALUE" (two spans); the value is the second.
     const value = row.children[1];
     return value?.textContent?.trim() ?? "";
+  }
+
+  /** True when the account dropdown panel is currently open. */
+  accountPanelOpen(): boolean {
+    return within(this.root).queryByTestId("account-panel") !== null;
+  }
+
+  /** Click the invisible click-away backdrop behind an open dropdown. */
+  async clickMenuBackdrop(): Promise<void> {
+    await this.user.click(within(this.root).getByTestId("menu-backdrop"));
   }
 
   /** True when the standalone language menu control is present in the header. */
@@ -182,9 +200,9 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
     return this.commandLog().sessionLock;
   }
 
-  /** True when the ⚙ preferences control is present. */
+  /** True when the ⚙ Preferences row is present in the open account panel. */
   hasSettings(): boolean {
-    return within(this.root).queryByTestId("settings-toggle") !== null;
+    return within(this.root).queryByTestId("account-prefs") !== null;
   }
 
   /** True when the preferences modal is currently open. */
@@ -192,9 +210,14 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
     return within(this.root).queryByTestId("prefs-modal") !== null;
   }
 
-  /** Click the ⚙ control to open the preferences modal. */
+  /** Open the preferences modal via the account menu's ⚙ Preferences row
+   *  (opens the account panel first when it isn't already open). */
   async openPrefs(): Promise<void> {
-    await this.user.click(within(this.root).getByTestId("settings-toggle"));
+    if (!this.accountPanelOpen()) {
+      await this.user.click(within(this.root).getByTestId("account-toggle"));
+    }
+
+    await this.user.click(within(this.root).getByTestId("account-prefs"));
   }
 
   /** Dismiss the preferences modal via its ✕ control. */
