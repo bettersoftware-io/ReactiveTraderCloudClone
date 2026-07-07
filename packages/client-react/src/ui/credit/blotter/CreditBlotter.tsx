@@ -1,17 +1,10 @@
 import type { CSSProperties, ReactElement } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import {
-  type CreditTrade,
-  type Dealer,
-  Direction,
-  type Instrument,
-  type Quote,
-  type Rfq,
-  RfqState,
-} from "@rtc/domain";
+import { type CreditTrade, Direction } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { useCreditView } from "#/ui/credit/useCreditView";
 import { BlotterHeader } from "#/ui/fx/blotter/BlotterHeader";
 import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 import { applyFilters } from "#/ui/fx/blotter/columnFilter/filterState";
@@ -21,7 +14,6 @@ import {
   type SortState,
 } from "#/ui/fx/blotter/columnSort";
 import { exportToCsv } from "#/ui/fx/blotter/csvExport";
-import { QuickFilter } from "#/ui/fx/blotter/QuickFilter";
 
 import {
   CREDIT_COLUMNS,
@@ -29,6 +21,7 @@ import {
   CREDIT_DESC_FIRST,
   formatCreditCell,
 } from "./creditBlotterColumns";
+import { deriveCreditTrades } from "./creditTradesVm";
 
 import styles from "./CreditBlotter.module.css";
 
@@ -46,21 +39,9 @@ export function CreditBlotter(): ReactElement {
   const [filters, setFilters] = useState<
     Map<keyof CreditTrade, ColumnFilter<CreditTrade>>
   >(new Map());
-  const [quickFilter, setQuickFilter] = useState("");
+  const { quickFilter, setExportCsvHandler } = useCreditView();
 
-  const instrumentMap = new Map<number, Instrument>();
-
-  for (const i of instruments) {
-    instrumentMap.set(i.id, i);
-  }
-
-  const dealerMap = new Map<number, Dealer>();
-
-  for (const d of dealers) {
-    dealerMap.set(d.id, d);
-  }
-
-  const trades = deriveTrades(rfqs, allQuotes, instrumentMap, dealerMap);
+  const trades = deriveCreditTrades(rfqs, allQuotes, instruments, dealers);
 
   // PROTO CreditScreen newCreditId / useCreditRfqs's timer-cleared flash
   // window, re-derived without a clock: src/ui may not schedule timers or read
@@ -111,6 +92,21 @@ export function CreditBlotter(): ReactElement {
   const filtered = applyFilters(trades, filters, quickFilter);
   const processedTrades = applySort(filtered, sort);
 
+  // The CSV chip lives in CreditBlotterHead now (mirrors FxBlotter's Task 12
+  // handoff); it calls exportCsv() from context, which invokes whatever
+  // handler was last registered here — bound to the current filtered/sorted
+  // rows.
+  useEffect(() => {
+    setExportCsvHandler(() => {
+      exportToCsv(
+        processedTrades,
+        CREDIT_COLUMNS,
+        formatCreditCell,
+        CREDIT_CSV_UNFORMATTED,
+      );
+    });
+  }, [processedTrades, setExportCsvHandler]);
+
   const activeFilterLabels: string[] = [];
 
   for (const key of filters.keys()) {
@@ -122,38 +118,11 @@ export function CreditBlotter(): ReactElement {
 
   return (
     <div className={styles.blotter}>
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
-          <span className={styles.title}>Credit Trades</span>
-          <QuickFilter value={quickFilter} onChange={setQuickFilter} />
-          {activeFilterLabels.length > 0 && (
-            <span className={styles.filterLabel}>
-              Filtered: {activeFilterLabels.join(", ")}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* PROTO Blotter/CreditBlotterPanel.tsx `.controls` sub-head: trade
-       * count + the CSV export chip, over the sticky column-header row. */}
-      <div className={styles.controls}>
-        <span className={styles.count}>{processedTrades.length} trades</span>
-        <button
-          type="button"
-          data-testid="export-csv"
-          onClick={() => {
-            return exportToCsv(
-              processedTrades,
-              CREDIT_COLUMNS,
-              formatCreditCell,
-              CREDIT_CSV_UNFORMATTED,
-            );
-          }}
-          className={styles.csvBtn}
-        >
-          ⤓ CSV
-        </button>
-      </div>
+      {activeFilterLabels.length > 0 && (
+        <span className={styles.filterLabel}>
+          Filtered: {activeFilterLabels.join(", ")}
+        </span>
+      )}
 
       <div className={styles.tableWrapper}>
         <table data-testid="blotter-table" className={styles.table}>
@@ -216,45 +185,6 @@ function rowAccentVar(direction: Direction): string {
   return direction === Direction.Buy
     ? "var(--accent-positive)"
     : "var(--accent-negative)";
-}
-
-function deriveTrades(
-  rfqs: readonly Rfq[],
-  allQuotes: ReadonlyMap<number, Quote>,
-  instruments: Map<number, Instrument>,
-  dealers: Map<number, Dealer>,
-): CreditTrade[] {
-  const trades: CreditTrade[] = [];
-
-  for (const rfq of rfqs) {
-    if (rfq.state !== RfqState.Closed) continue;
-
-    // Find the accepted quote
-    for (const quote of allQuotes.values()) {
-      if (quote.rfqId !== rfq.id || quote.state.type !== "accepted") continue;
-
-      const instrument = instruments.get(rfq.instrumentId);
-      const dealer = dealers.get(quote.dealerId);
-
-      trades.push({
-        tradeId: rfq.id,
-        status: "accepted",
-        tradeDate: new Date(rfq.creationTimestamp).toISOString().slice(0, 10),
-        direction: rfq.direction,
-        counterParty: dealer?.name ?? `Dealer ${quote.dealerId}`,
-        cusip: instrument?.cusip ?? "",
-        security: instrument?.ticker ?? "",
-        quantity: rfq.quantity,
-        orderType: "AON",
-        unitPrice: quote.state.price,
-      });
-      break;
-    }
-  }
-
-  return trades.sort((a, b) => {
-    return b.tradeId - a.tradeId;
-  });
 }
 
 /** A trade-id-set snapshot, taken across renders to detect "just booked"

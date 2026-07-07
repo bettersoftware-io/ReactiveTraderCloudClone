@@ -21,6 +21,13 @@ export type LayoutNode =
        * fractional size, renders flex:0 0 Npx, and suppresses adjacent resize
        * handles (like pinned). Additive to the §5 pinned contract. */
       readonly fixedPx?: readonly (number | undefined)[];
+      /** Per-child INITIAL fixed size in css px along `dir` (the prototype's
+       * design-value rail widths). Renders like `fixedPx` but KEEPS the
+       * resize handles: the first drag converts the split to plain fractions
+       * (the resize reducer clears this field), after which it behaves like
+       * any ratio split. Ignored for a child that also has a `fixedPx`
+       * entry. Additive to the §5 contract, like `fixedPx`. */
+      readonly initialPx?: readonly (number | undefined)[];
     }
   | { readonly kind: "panel"; readonly panelId: PanelId };
 export interface LayoutState {

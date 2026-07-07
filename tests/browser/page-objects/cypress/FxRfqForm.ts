@@ -9,16 +9,20 @@ export class CypressFxRfqForm implements FxRfqFormPO {
   }
 
   waitForRfqButton(timeoutMs: number): Promise<void> {
+    // The compact ⚡ RFQ chip in the tile header; "Initiate RFQ" is its
+    // aria-label (accessible name), not visible text.
     return this.firstTile()
       .scrollIntoView()
-      .contains(/initiate rfq|request quote/i, { timeout: timeoutMs })
+      .find(`[data-testid="${TESTIDS.liveRates.rfqInitiate}"]`, {
+        timeout: timeoutMs,
+      })
       .should("be.visible") as unknown as Promise<void>;
   }
 
   clickInitiateRfq(): Promise<void> {
     return this.firstTile()
       .scrollIntoView()
-      .contains(/initiate rfq|request quote/i)
+      .find(`[data-testid="${TESTIDS.liveRates.rfqInitiate}"]`)
       .click() as unknown as Promise<void>;
   }
 

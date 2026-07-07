@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file -- two local RecordingBlob doubles in separate it() blocks */
-import { CreditBlotter } from "@ui-contract/components";
+import { CreditBlotter, CreditBlotterWorkspace } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -206,14 +206,16 @@ describe("CreditBlotter", () => {
       await blotter.clickColumnHeader("Trade ID");
       await blotter.clickColumnHeader("Trade ID");
       expect(blotter.sortIndicatorFor("Trade ID")).toBe(null);
-      // Back to deriveTrades insertion order (sorted desc by tradeId internally).
+      // Back to deriveCreditTrades insertion order (sorted desc by tradeId internally).
       expect(blotter.columnValues("Trade ID")).toEqual(["3", "2", "1"]);
     });
   });
 
+  // The quick-filter input lives in CreditBlotterHead now — head + body are
+  // mounted together (one CreditViewProvider) to exercise the seam.
   describe("quick filter", () => {
     it("filters rows to those matching the typed term", async () => {
-      const blotter = mount(CreditBlotter, {
+      const blotter = mount(CreditBlotterWorkspace, {
         hooks: {
           useInstruments: instruments,
           useDealers: dealers,
@@ -270,6 +272,9 @@ describe("CreditBlotter", () => {
     });
   });
 
+  // The CSV chip lives in CreditBlotterHead now; the body registers the
+  // export handler (bound to its filtered/sorted rows) through the
+  // CreditViewContext seam — so these mount head + body together.
   describe("CSV export", () => {
     afterEach(() => {
       vi.unstubAllGlobals();
@@ -296,7 +301,7 @@ describe("CreditBlotter", () => {
         () => {},
       );
 
-      const blotter = mount(CreditBlotter, {
+      const blotter = mount(CreditBlotterWorkspace, {
         hooks: {
           useInstruments: instruments,
           useDealers: dealers,
@@ -340,7 +345,7 @@ describe("CreditBlotter", () => {
       );
 
       // TS is a fixed 2024-03-05 UTC timestamp (already defined above).
-      const blotter = mount(CreditBlotter, {
+      const blotter = mount(CreditBlotterWorkspace, {
         hooks: {
           useInstruments: instruments,
           useDealers: dealers,
@@ -355,9 +360,11 @@ describe("CreditBlotter", () => {
     });
   });
 
-  describe("prototype chrome (controls row)", () => {
-    it("shows the trade count above the table (PROTO CreditScreen countText)", () => {
-      const blotter = mount(CreditBlotter, {
+  // The count + CSV chip live in the panel's head slot now (CreditBlotterHead,
+  // mirroring FxBlotterHead) — head + body are mounted together.
+  describe("prototype chrome (head slot: count + CSV chip)", () => {
+    it("shows the trade count in the head (PROTO CreditScreen countText)", () => {
+      const blotter = mount(CreditBlotterWorkspace, {
         hooks: {
           useInstruments: instruments,
           useDealers: dealers,
@@ -368,8 +375,8 @@ describe("CreditBlotter", () => {
       expect(blotter.tradeCountText()).toBe("2 trades");
     });
 
-    it("updates the trade count when a quick filter narrows the visible rows", async () => {
-      const blotter = mount(CreditBlotter, {
+    it("keeps the UNFILTERED count while a quick filter narrows the visible rows (like FX)", async () => {
+      const blotter = mount(CreditBlotterWorkspace, {
         hooks: {
           useInstruments: instruments,
           useDealers: dealers,
@@ -382,11 +389,12 @@ describe("CreditBlotter", () => {
       });
       expect(blotter.tradeCountText()).toBe("2 trades");
       await blotter.typeQuickFilter("Adaptive");
-      expect(blotter.tradeCountText()).toBe("1 trades");
+      expect(blotter.tradeRowCount()).toBe(1);
+      expect(blotter.tradeCountText()).toBe("2 trades");
     });
 
     it("shows the CSV export chip with its glyph label at the same export-csv testid", () => {
-      const blotter = mount(CreditBlotter, {
+      const blotter = mount(CreditBlotterWorkspace, {
         hooks: { useInstruments: instruments, useDealers: dealers },
       });
       expect(blotter.csvChipLabel()).toBe("⤓ CSV");

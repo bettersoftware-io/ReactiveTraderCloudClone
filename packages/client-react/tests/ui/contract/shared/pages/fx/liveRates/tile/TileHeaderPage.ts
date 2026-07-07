@@ -1,3 +1,6 @@
+import { within } from "@testing-library/dom";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
+
 import type { PriceMovementType } from "@rtc/domain";
 
 import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
@@ -9,9 +12,13 @@ export interface TileHeaderProps {
   movement: PriceMovementType;
   /** Pip magnitude of the last tick, or null (no badge) before two ticks. */
   movementPips: number | null;
+  /** When set, the compact ⚡ RFQ chip renders on the pair row's right side. */
+  onInitiateRfq?: () => void;
 }
 
 export class TileHeaderPage extends MountedComponent<TileHeaderProps> {
+  private readonly user: UserEvent = userEvent.setup();
+
   /** All span texts in order: [base, "/", terms, movement badge]. */
   parts(): string[] {
     // The pair name is wrapped in a span; skip that wrapper and get its 3 children (base, /, terms)
@@ -58,5 +65,37 @@ export class TileHeaderPage extends MountedComponent<TileHeaderProps> {
     const header = this.root.firstElementChild;
     const first = header?.firstElementChild;
     return first?.textContent?.trim() ?? "";
+  }
+
+  // --- compact ⚡ RFQ chip (the RFQ init-state affordance) ------------------
+
+  private rfqChip(): HTMLElement | null {
+    return within(this.root).queryByTestId("rfq-initiate");
+  }
+
+  /** True when the ⚡ RFQ chip is rendered (onInitiateRfq provided). */
+  hasRfqChip(): boolean {
+    return this.rfqChip() !== null;
+  }
+
+  /** The chip's visible glyph+label text. */
+  rfqChipText(): string {
+    return this.rfqChip()?.textContent?.trim() ?? "";
+  }
+
+  /** The chip's native-tooltip title (the house tooltip pattern). */
+  rfqChipTitle(): string | null {
+    return this.rfqChip()?.getAttribute("title") ?? null;
+  }
+
+  /** The chip's accessible name (aria-label). */
+  rfqChipAriaLabel(): string | null {
+    return this.rfqChip()?.getAttribute("aria-label") ?? null;
+  }
+
+  async clickRfqChip(): Promise<void> {
+    await this.user.click(
+      within(this.root).getByRole("button", { name: /initiate rfq/i }),
+    );
   }
 }

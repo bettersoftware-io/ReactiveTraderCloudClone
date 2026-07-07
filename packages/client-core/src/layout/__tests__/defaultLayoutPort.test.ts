@@ -5,13 +5,13 @@ import { createDefaultLayoutPort, PANEL_SPECS } from "../defaultLayoutPort";
 import type { LayoutNode, PanelId, PanelSpec } from "../layoutPort";
 
 describe("createDefaultLayoutPort", () => {
-  it("fx: rates + a resizable right column (analytics over positions) fill the content row; blotter is a resizable bottom split", () => {
+  it("fx: a tiles-over-blotter left column beside a full-height analytics/positions right rail (prototype shape, same as equities)", () => {
     const { initial } = createDefaultLayoutPort("fx");
     expect(panelIds(initial.root)).toEqual([
       "fx-rates",
+      "fx-blotter",
       "fx-analytics",
       "fx-positions",
-      "fx-blotter",
     ]);
     expect(PANEL_SPECS["fx-blotter"].pinned).toBeUndefined();
     expect(PANEL_SPECS["fx-rates"].pinned).toBeUndefined();
@@ -19,32 +19,50 @@ describe("createDefaultLayoutPort", () => {
       id: "fx-positions",
       title: "Positions",
     });
-    // the content row is a 0.74/0.26 row split (rates wider than the column)
+
+    // root: a 0.73/0.27 row split — [tiles+blotter column | right rail].
     if (initial.root.kind !== "split") throw new Error("split root");
-    const contentRow = initial.root.children[0];
-    if (contentRow.kind !== "split") throw new Error("content row split");
-    expect(contentRow.dir).toBe("row");
-    expect(contentRow.sizes).toEqual([0.74, 0.26]);
+    expect(initial.root.dir).toBe("row");
+    expect(initial.root.sizes).toEqual([0.73, 0.27]);
+
+    // left column: rates over blotter at 0.66/0.34 — the blotter sits under
+    // the tiles only, never spanning the rail's width.
+    const leftColumn = initial.root.children[0];
+    if (leftColumn.kind !== "split") throw new Error("left column split");
+    expect(leftColumn.dir).toBe("column");
+    expect(leftColumn.sizes).toEqual([0.66, 0.34]);
+    expect(leftColumn.children).toEqual([
+      { kind: "panel", panelId: "fx-rates" },
+      { kind: "panel", panelId: "fx-blotter" },
+    ]);
+
     expect(initial.maximized).toBeNull();
     expect(initial.collapsed).toEqual([]);
   });
 
-  it("FX root has no fixedPx anywhere — every split is ratio-sized and draggable", () => {
+  it("FX root has no fixedPx anywhere — every split is ratio-sized and draggable; the rail opens at its 360px design width (initialPx)", () => {
     const { initial } = createDefaultLayoutPort("fx");
     const root = initial.root;
     if (root.kind !== "split") throw new Error("fx root must be a split");
-    expect(root.sizes).toEqual([0.78, 0.22]);
     expect(root.fixedPx).toBeUndefined();
-    const topRow = root.children[0];
-    if (topRow.kind !== "split") throw new Error("fx top row must be a split");
-    expect(topRow.fixedPx).toBeUndefined();
-    const rightColumn = topRow.children[1];
+    // draggable design-value default, not a handle-suppressing fixedPx
+    expect(root.initialPx).toEqual([undefined, 360]);
+    const leftColumn = root.children[0];
+
+    if (leftColumn.kind !== "split") {
+      throw new Error("fx left column must be a split");
+    }
+
+    expect(leftColumn.fixedPx).toBeUndefined();
+    const rightColumn = root.children[1];
 
     if (rightColumn.kind !== "split") {
       throw new Error("right column must be a split");
     }
 
     expect(rightColumn.fixedPx).toBeUndefined();
+    expect(rightColumn.dir).toBe("column");
+    expect(rightColumn.sizes).toEqual([0.5, 0.5]);
     expect(rightColumn.children).toEqual([
       { kind: "panel", panelId: "fx-analytics" },
       { kind: "panel", panelId: "fx-positions" },
@@ -74,11 +92,14 @@ describe("createDefaultLayoutPort", () => {
       title: "Sell Side",
     });
 
-    // root: a row split — [New RFQ rail | RFQs-over-blotter column].
+    // root: a row split — [New RFQ rail | RFQs-over-blotter column]. The
+    // rail opens at its 330px design width (draggable initialPx).
     const root = initial.root;
     if (root.kind !== "split") throw new Error("credit root must be a split");
     expect(root.dir).toBe("row");
     expect(root.sizes).toEqual([0.25, 0.75]);
+    expect(root.fixedPx).toBeUndefined();
+    expect(root.initialPx).toEqual([330, undefined]);
     expect(root.children[0]).toEqual({
       kind: "panel",
       panelId: "credit-new-rfq",
@@ -121,6 +142,10 @@ describe("createDefaultLayoutPort", () => {
 
     expect(initial.root.dir).toBe("row");
     expect(initial.root.sizes).toEqual([0.78, 0.22]);
+    // the ticket/watchlist rail opens at its 290px design width (draggable
+    // initialPx), never a handle-suppressing fixedPx.
+    expect(initial.root.fixedPx).toBeUndefined();
+    expect(initial.root.initialPx).toEqual([undefined, 290]);
 
     const leftColumn = initial.root.children[0];
 

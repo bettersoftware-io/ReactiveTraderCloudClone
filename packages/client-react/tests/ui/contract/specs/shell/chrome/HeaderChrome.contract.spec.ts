@@ -98,11 +98,22 @@ describe("HeaderChrome", () => {
     expect(header.accountInitials()).toMatch(/AS/);
     const name = await header.openAccount();
     expect(name).toMatch(/anthony stark/i);
+    expect(header.accountEmail()).toBe("a.stark@reactivetrader.io");
     expect(header.accountMeta()).toEqual({
-      email: "a.stark@reactivetrader.io",
+      id: "TRD-0042",
       desk: "G10 Spot · London",
       clearance: "LEVEL 4 · FULL",
     });
+  });
+
+  it("closes the account menu from the click-away backdrop", async () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+    });
+    await header.openAccount();
+    expect(header.accountPanelOpen()).toBe(true);
+    await header.clickMenuBackdrop();
+    expect(header.accountPanelOpen()).toBe(false);
   });
 
   it("renders every nav tab with the uppercase outlined-pill class", () => {
@@ -138,12 +149,14 @@ describe("HeaderChrome", () => {
     expect(newLabel).toMatch(/^DE/);
   });
 
-  it("opens and dismisses the preferences modal from the ⚙ control", async () => {
+  it("opens and dismisses the preferences modal from the account menu's ⚙ Preferences row", async () => {
     const header = mount(HeaderChrome, {
       props: { activeTab: "fx", onTabChange: () => {} },
     });
-    expect(header.hasSettings()).toBe(true);
     expect(header.prefsOpen()).toBe(false);
+
+    await header.openAccount();
+    expect(header.hasSettings()).toBe(true);
 
     await header.openPrefs();
     expect(header.prefsOpen()).toBe(true);

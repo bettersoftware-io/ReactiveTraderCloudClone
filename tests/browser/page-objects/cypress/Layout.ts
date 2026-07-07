@@ -20,7 +20,7 @@ export class CypressLayout implements LayoutPO {
       }) as unknown as Promise<number>;
   }
 
-  dragFirstHandleBy(dx: number): Promise<void> {
+  dragFirstHandleBy(delta: number): Promise<void> {
     return cy
       .get(HANDLE)
       .first()
@@ -28,18 +28,23 @@ export class CypressLayout implements LayoutPO {
         const rect = $el[0].getBoundingClientRect();
         const cx = rect.x + rect.width / 2;
         const cyPos = rect.y + rect.height / 2;
+        // aria-orientation "vertical" = a row split's handle (resizes along
+        // x); "horizontal" = a column split's handle (resizes along y).
+        const vertical = $el.attr("aria-orientation") === "vertical";
+        const tx = vertical ? cx + delta : cx;
+        const ty = vertical ? cyPos : cyPos + delta;
 
         return cy
           .wrap($el)
           .trigger("pointerdown", { clientX: cx, clientY: cyPos, pointerId: 1 })
           .trigger("pointermove", {
-            clientX: cx + dx,
-            clientY: cyPos,
+            clientX: tx,
+            clientY: ty,
             pointerId: 1,
           })
           .trigger("pointerup", {
-            clientX: cx + dx,
-            clientY: cyPos,
+            clientX: tx,
+            clientY: ty,
             pointerId: 1,
           });
       }) as unknown as Promise<void>;

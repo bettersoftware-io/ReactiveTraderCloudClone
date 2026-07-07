@@ -456,10 +456,13 @@ export const scenarios: Record<string, Scenario> = {
     fixtureKey: "credit-populated",
   },
   // CreditBlotter quick-filter: type a string matching no trade →
-  // covers QuickFilter.tsx onChange (line 20), setQuickFilter in CreditBlotter,
-  // and the "No credit trades match" branch when quickFilter is non-empty.
+  // covers QuickFilter.tsx onChange (line 20), the CreditViewContext
+  // quickFilter seam, and the "No credit trades match" branch when
+  // quickFilter is non-empty. The input lives in the panel's head slot now
+  // (CreditBlotterHead), so this mounts head + body together, sharing one
+  // CreditViewProvider like the real panel header/body split.
   "credit/blotter-quick-filter": {
-    componentKey: "CreditBlotter",
+    componentKey: "CreditBlotterWorkspace",
     fixtureKey: "credit-populated",
   },
   // --- Interaction scenarios whose handler produces a visible delta (firing

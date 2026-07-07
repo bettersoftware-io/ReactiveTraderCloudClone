@@ -1,0 +1,46 @@
+/* Animated HUD hex logo (prototype Logo.module.css:1-23). The SVG fills its
+   parent — callers size it (and add the glow drop-shadow) on their own sized
+   wrapper. Keyframes are module-local (the prototype keeps them global). */
+
+.svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.spin {
+  transform-origin: 24px 24px;
+  animation: spin 16s linear infinite;
+}
+
+.spinRev {
+  transform-origin: 24px 24px;
+  animation: spin-rev 22s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-rev {
+  from {
+    transform: rotate(360deg);
+  }
+
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin,
+  .spinRev {
+    animation: none;
+  }
+}

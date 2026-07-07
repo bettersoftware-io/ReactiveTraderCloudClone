@@ -5,9 +5,11 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  /* No explicit height: the 38px logo + 11px vertical padding + 1px border
+     reproduce the prototype's 61px header (Header.module.css .header). */
   padding: 11px 18px;
-  height: 44px;
   background-color: var(--bg-header);
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent);
   border-bottom: 1px solid var(--border-primary);
 }
 
@@ -17,19 +19,15 @@
   gap: 12px;
 }
 
-.logoMark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Sized wrapper for the shared animated HudLogo (prototype Logo.module.css
+   .wrap/.svg) — the SVG fills it; the glow drop-shadow lives here. */
+.logoWrap {
+  position: relative;
+  display: block;
   width: 38px;
   height: 38px;
   flex: none;
-  border: 1px solid var(--accent-primary);
-  border-radius: 8px;
-  font-size: 20px;
-  line-height: 1;
-  color: var(--accent-primary);
-  box-shadow: var(--glow);
+  filter: drop-shadow(0 0 6px var(--accent-primary));
 }
 
 .brandText {
@@ -162,11 +160,6 @@
   height: 16px;
 }
 
-.gear {
-  font-size: 16px;
-  line-height: 1;
-}
-
 .badge {
   position: absolute;
   top: -5px;
@@ -264,6 +257,17 @@
   color: var(--accent-primary);
 }
 
+/* Invisible fixed click-away backdrop (prototype Header.module.css
+   .backdrop) — z-15 sits under the z-60 dropdown. */
+.menuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  border: none;
+  background: transparent;
+  cursor: default;
+}
+
 .dropdown {
   position: absolute;
   top: calc(100% + 10px);
@@ -273,6 +277,7 @@
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-strong);
   border-radius: 6px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
   overflow: hidden;
 }
 
@@ -378,19 +383,27 @@
   color: var(--text-primary);
 }
 
-.accountRole {
+.accountEmail {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-secondary);
 }
 
-.accountMeta {
+/* TRADER ID / DESK / CLEARANCE block (prototype AccountMenu.module.css
+   .details/.detailRow). */
+.accountDetails {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 6px;
   padding: 11px 14px;
   border-bottom: 1px solid var(--border-primary);
   font-family: var(--font-mono);
   font-size: 10px;
+}
+
+.accountMeta {
+  display: flex;
+  justify-content: space-between;
 }
 
 .accountMetaKey {
@@ -399,6 +412,10 @@
 
 .accountMetaVal {
   color: var(--text-primary);
+}
+
+.accountClearance {
+  color: var(--accent-positive);
 }
 
 .langTrigger {
@@ -459,22 +476,34 @@
   color: var(--accent-primary);
 }
 
-.lockButton {
+/* Dropdown action row (prototype AccountMenu.module.css .actionRow). */
+.actionRow {
   display: block;
   width: 100%;
   padding: 11px 14px;
   border: none;
-  border-top: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
   background-color: transparent;
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 12px;
   text-align: left;
   cursor: pointer;
-  transition: color 0.2s ease;
 }
 
-.lockButton:hover {
-  color: var(--accent-primary);
+/* Red sign-out row (prototype AccountMenu.module.css .signOut) — the app's
+   LOCK SESSION action wears the prototype's Sign Out treatment. */
+.signOut {
+  display: block;
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  background-color: transparent;
+  color: var(--accent-negative);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-align: left;
+  cursor: pointer;
 }

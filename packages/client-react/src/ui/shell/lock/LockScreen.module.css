@@ -29,17 +29,12 @@
   text-align: center;
 }
 
+/* Sized wrapper for the shared animated HudLogo — the SVG fills it. */
 .badge {
-  display: block;
   width: 64px;
   height: 64px;
   margin: 0 auto 18px;
   filter: drop-shadow(0 0 10px var(--accent-primary));
-}
-
-.spin {
-  transform-origin: 24px 24px;
-  animation: spin 16s linear infinite;
 }
 
 .title {
@@ -160,20 +155,4 @@
   font-size: 9px;
   letter-spacing: 0.3em;
   color: var(--text-muted);
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .spin {
-    animation: none;
-  }
 }

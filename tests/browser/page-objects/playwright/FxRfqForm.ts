@@ -13,7 +13,9 @@ export class PlaywrightFxRfqForm implements FxRfqFormPO {
   }
 
   private rfqButton(): Locator {
-    return this.firstTile().getByText(/initiate rfq|request quote/i);
+    // The compact ⚡ RFQ chip in the tile header; "Initiate RFQ" is its
+    // aria-label (accessible name), not visible text.
+    return this.firstTile().getByTestId(TESTIDS.liveRates.rfqInitiate);
   }
 
   private countdownOrQuote(): Locator {

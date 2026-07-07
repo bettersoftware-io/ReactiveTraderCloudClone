@@ -12,67 +12,14 @@
   min-height: 0;
 }
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-  padding: 12px 14px 0;
-}
-
-.toolbarLeft {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.title {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 18px;
-  font-family: var(--font-display);
-  color: var(--text-primary);
-}
-
+/* The blotter chrome (count + quick filter + CSV chip) lives in the panel's
+ * head slot now (CreditBlotterHead, mirroring FxBlotterHead) — the body
+ * keeps just this optional active-filter summary above the table. */
 .filterLabel {
   font-size: 11px;
   color: var(--text-muted);
-}
-
-/* PROTO Blotter/CreditBlotterPanel.module.css `.controls`: the trade-count +
- * CSV-export sub-head, over the sticky column-header row. Fixed (flex-shrink:
- * 0) above the scrolling table area, same as the prototype's `.controls`
- * sitting above its flex:1 `.table`. */
-.controls {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-}
-
-.count {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 14px;
-  color: var(--text-muted);
-}
-
-.csvBtn {
-  cursor: pointer;
-  font-family: var(--font-display);
-  font-size: 10px;
-  line-height: 14px;
-  letter-spacing: 0.1em;
-  color: var(--accent-primary);
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  padding: 4px 10px;
+  padding: 8px 14px 0;
 }
 
 /* Fills the rest of the panel and owns the internal scroll — no fixed

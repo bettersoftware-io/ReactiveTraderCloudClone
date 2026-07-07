@@ -6,6 +6,5 @@
 export const STRINGS = {
   creditRfq: {
     noRfqsMessage: "No RFQs to show",
-    creditTradesHeading: "Credit Trades",
   },
 } as const;

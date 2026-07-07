@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { CreditViewProvider } from "./credit/CreditViewProvider";
 import { FxViewProvider } from "./fx/FxViewProvider";
 import { AmbientBackground } from "./shell/background/AmbientBackground";
 import { HeaderChrome, type WorkspaceTab } from "./shell/chrome/HeaderChrome";
@@ -39,16 +40,18 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
   const { state, maximize, restore, collapse, expand, resize } = useLayout(tab);
   return (
     <FxViewProvider>
-      <InhouseLayoutEngine
-        state={state}
-        registry={appPanelRegistry}
-        headRegistry={appHeadRegistry}
-        onMaximize={maximize}
-        onRestore={restore}
-        onCollapse={collapse}
-        onExpand={expand}
-        onResize={resize}
-      />
+      <CreditViewProvider>
+        <InhouseLayoutEngine
+          state={state}
+          registry={appPanelRegistry}
+          headRegistry={appHeadRegistry}
+          onMaximize={maximize}
+          onRestore={restore}
+          onCollapse={collapse}
+          onExpand={expand}
+          onResize={resize}
+        />
+      </CreditViewProvider>
     </FxViewProvider>
   );
 }

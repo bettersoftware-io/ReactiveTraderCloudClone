@@ -4,10 +4,20 @@
   gap: 2px;
   flex: 1;
   min-width: 0;
+  /* Fills the engine's 38px `.panelHeader` vertically (via the stretched
+   * `.panelHeadContent` wrapper) so `.headTab` below can itself stretch;
+   * chips/counts stay vertically centered by the align-items above. */
+  align-self: stretch;
 }
 
 .headTab {
-  padding: 9px 14px;
+  /* Stretches to the head's full 38px (PROTO tab chrome): zero vertical
+   * padding + inline-flex centering keep the label mid-head while the active
+   * tab's 2px accent border-bottom lands on the head's bottom edge. */
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 11px;
@@ -68,7 +78,7 @@
   letter-spacing: 0.1em;
   margin-right: 4px;
   color: var(--accent-primary);
-  background: transparent;
+  background: var(--chip);
   border: 1px solid var(--border-strong);
   cursor: pointer;
 }
