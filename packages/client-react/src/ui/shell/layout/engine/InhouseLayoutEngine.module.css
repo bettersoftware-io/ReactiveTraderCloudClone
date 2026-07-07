@@ -5,19 +5,24 @@
   min-height: 0;
   overflow: hidden;
   background: transparent;
-  /* The dock's 8px inset lives here — exactly once, at the root. It must NOT
-   * sit on .split: splits nest (FX is column → [row-split, blotter]), so a
-   * per-split padding compounds with depth and insets the inner row's panels
-   * 16px while the sibling blotter sits at 8px. */
-  padding: 8px;
+  /* The dock's 10px inset (prototype-measured page padding) lives here —
+   * exactly once, at the root. It must NOT sit on .split: splits nest, so a
+   * per-split padding compounds with depth and insets the inner splits'
+   * panels deeper than their siblings. */
+  padding: 10px;
 }
 
+/* No gap of its own: the 7px drag handle IS the panel-to-panel separator
+ * (prototype-measured 7px gaps — a gap here would stack on top of the
+ * handle's 7px track and widen every separation to 15px+). Adjacent cells
+ * with NO handle between them (pinned/fixed neighbours, strip subtrees —
+ * see the engine's showHandle derivation) get the same 7px via the
+ * `.cell + .cell` fallback below instead. */
 .split {
   display: flex;
   flex: 1;
   min-height: 0;
   min-width: 0;
-  gap: 8px;
 }
 
 .split[data-dir="row"] {
@@ -66,6 +71,21 @@
 
 .cell[data-dir="column"] {
   flex-direction: column;
+}
+
+/* 7px separation fallback for handle-less adjacencies. Handles render as
+ * sibling <hr> elements BETWEEN cells, so two cells are only ever direct
+ * DOM neighbours when the engine suppressed the handle (pinned/fixed
+ * neighbours, strip subtrees) — the adjacent-sibling selector is therefore
+ * self-neutralising in the handle-present case, and the margin matches the
+ * handle's own 7px track so every separation reads identically. Keyed on
+ * the owning split's dir (margins follow the split's main axis). */
+.split[data-dir="row"] > .cell + .cell {
+  margin-left: 7px;
+}
+
+.split[data-dir="column"] > .cell + .cell {
+  margin-top: 7px;
 }
 
 /* A cell whose entire subtree is strips (every panel leaf inside it is
