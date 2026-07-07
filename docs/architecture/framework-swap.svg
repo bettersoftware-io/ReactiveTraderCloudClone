@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 470" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+  <title>Swap the UI, keep the core: React, React Native, and a future SolidJS client all plug the same framework-neutral client-core through a per-framework bindings package.</title>
+
+  <rect x="0" y="0" width="980" height="470" rx="12" fill="#0d1117"/>
+  <text x="24" y="34" fill="#e6edf3" font-size="17" font-weight="bold" font-family="ui-sans-serif, system-ui, sans-serif">Swap the UI, keep the core</text>
+  <text x="24" y="54" fill="#8b949e" font-size="12" font-family="ui-sans-serif, system-ui, sans-serif">Every client is two swappable boxes on top of the same three frozen layers. The ViewModel contract is the socket.</text>
+
+  <!-- ================= frozen core stack ================= -->
+  <g>
+    <rect x="240" y="330" width="500" height="52" rx="8" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="490" y="352" fill="#e6edf3" font-size="13" text-anchor="middle" font-weight="bold">@rtc/client-core</text>
+    <text x="490" y="368" fill="#8b949e" font-size="9" text-anchor="middle">composition root · presenters · state machines · port adapters — zero framework imports</text>
+
+    <rect x="240" y="394" width="242" height="44" rx="8" fill="#161b22" stroke="#2f81f7" stroke-width="1.2"/>
+    <text x="361" y="413" fill="#e6edf3" font-size="12" text-anchor="middle" font-weight="bold">@rtc/domain</text>
+    <text x="361" y="428" fill="#8b949e" font-size="9" text-anchor="middle">entities · ports · use cases · simulators</text>
+
+    <rect x="498" y="394" width="242" height="44" rx="8" fill="#161b22" stroke="#2f81f7" stroke-width="1.2"/>
+    <text x="619" y="413" fill="#e6edf3" font-size="12" text-anchor="middle" font-weight="bold">@rtc/shared</text>
+    <text x="619" y="428" fill="#8b949e" font-size="9" text-anchor="middle">DTOs · wire protocol (CLIENT_MSG/SERVER_MSG)</text>
+
+    <!-- UNCHANGED badge -->
+    <g>
+      <rect x="760" y="336" width="120" height="40" rx="20" fill="#0d1117" stroke="#3fb950" stroke-width="1.5">
+        <animate attributeName="stroke-width" values="1.5;3;1.5" dur="4s" repeatCount="indefinite"/>
+      </rect>
+      <text x="820" y="354" fill="#3fb950" font-size="11" text-anchor="middle" font-weight="bold">UNCHANGED</text>
+      <text x="820" y="368" fill="#8b949e" font-size="9" text-anchor="middle">across all swaps</text>
+    </g>
+  </g>
+
+  <!-- ================= socket / contract line ================= -->
+  <g>
+    <rect x="240" y="288" width="500" height="26" rx="13" fill="#1c2128" stroke="#d29922" stroke-width="1.5"/>
+    <text x="490" y="305" fill="#d29922" font-size="11" text-anchor="middle" font-weight="bold">ViewModel contract — ~60 use* hooks (streams · machines · commands · prefs)</text>
+  </g>
+  <line x1="490" y1="314" x2="490" y2="330" stroke="#30363d" stroke-width="1.2"/>
+
+  <!-- ================= swappable pair: PHASE 1 — React web (0–4s) ================= -->
+  <g>
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      values="1;1;0;0;1" keyTimes="0;0.28;0.333;0.947;1"/>
+    <rect x="240" y="90" width="500" height="120" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="2"/>
+    <text x="490" y="118" fill="#e6edf3" font-size="14" text-anchor="middle" font-weight="bold">@rtc/client-react</text>
+    <text x="490" y="136" fill="#8b949e" font-size="9" text-anchor="middle">dumb React 19 components · CSS Modules · Vite · zero rxjs imports in src/ui</text>
+    <text x="490" y="160" fill="#58a6ff" font-size="11" text-anchor="middle">▦ browser — FX · Credit · Equities · Admin workspaces</text>
+    <text x="490" y="190" fill="#8b949e" font-size="9" text-anchor="middle">browser adapters: LocalStorage prefs · matchMedia color scheme · VITE_SERVER_URL switch</text>
+
+    <rect x="240" y="222" width="500" height="52" rx="8" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="490" y="244" fill="#e6edf3" font-size="12" text-anchor="middle" font-weight="bold">@rtc/react-bindings</text>
+    <text x="490" y="260" fill="#8b949e" font-size="9" text-anchor="middle">createViewModel · useMachine · ViewModelProvider — @react-rxjs/core bind()</text>
+  </g>
+
+  <!-- ================= PHASE 2 — React Native (4–8s) ================= -->
+  <g opacity="0">
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.28;0.333;0.613;0.667;1"/>
+    <rect x="240" y="90" width="500" height="120" rx="10" fill="#161b22" stroke="#bc8cff" stroke-width="2"/>
+    <text x="490" y="118" fill="#e6edf3" font-size="14" text-anchor="middle" font-weight="bold">@rtc/client-react-native</text>
+    <text x="490" y="136" fill="#8b949e" font-size="9" text-anchor="middle">Expo SDK 57 · RN 0.86 · expo-router tabs · react-native-svg charts</text>
+    <text x="490" y="160" fill="#bc8cff" font-size="11" text-anchor="middle">▤ iOS / Android — Rates · Blotter · Analytics · Credit · Equities tabs</text>
+    <text x="490" y="190" fill="#8b949e" font-size="9" text-anchor="middle">native adapters: AsyncStorage prefs · Appearance color scheme · EXPO_PUBLIC_SERVER_URL switch</text>
+
+    <rect x="240" y="222" width="500" height="52" rx="8" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+    <text x="490" y="244" fill="#e6edf3" font-size="12" text-anchor="middle" font-weight="bold">@rtc/react-bindings</text>
+    <text x="490" y="260" fill="#8b949e" font-size="9" text-anchor="middle">SAME package as web — React is React on both platforms</text>
+  </g>
+
+  <!-- ================= PHASE 3 — SolidJS future (8–12s) ================= -->
+  <g opacity="0">
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      values="0;0;1;1;0" keyTimes="0;0.613;0.667;0.947;1"/>
+    <rect x="240" y="90" width="500" height="120" rx="10" fill="#161b22" stroke="#d29922" stroke-width="2" stroke-dasharray="8 5"/>
+    <text x="490" y="118" fill="#e6edf3" font-size="14" text-anchor="middle" font-weight="bold">@rtc/client-solid  (planned)</text>
+    <text x="490" y="136" fill="#8b949e" font-size="9" text-anchor="middle">SolidJS components — a rewrite of ONE package, verified by the existing test contract</text>
+    <text x="490" y="160" fill="#d29922" font-size="11" text-anchor="middle">▧ browser — same workspaces, same behavioural specs, same visual goldens</text>
+    <text x="490" y="190" fill="#8b949e" font-size="9" text-anchor="middle">reuses the same browser adapters pattern; nothing below the contract line changes</text>
+
+    <rect x="240" y="222" width="500" height="52" rx="8" fill="#161b22" stroke="#d29922" stroke-width="1.5" stroke-dasharray="8 5"/>
+    <text x="490" y="244" fill="#e6edf3" font-size="12" text-anchor="middle" font-weight="bold">@rtc/solid-bindings  (planned)</text>
+    <text x="490" y="260" fill="#8b949e" font-size="9" text-anchor="middle">Observable → Solid signal — pairs with the SAME @rx-state/core that react-bindings uses</text>
+  </g>
+
+  <!-- ================= phase indicator dots ================= -->
+  <g>
+    <circle cx="450" cy="452" r="5" fill="#58a6ff">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="1;1;0.25;0.25;1" keyTimes="0;0.30;0.34;0.95;1"/>
+    </circle>
+    <circle cx="490" cy="452" r="5" fill="#bc8cff" opacity="0.25">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="0.25;0.25;1;1;0.25;0.25" keyTimes="0;0.30;0.34;0.62;0.66;1"/>
+    </circle>
+    <circle cx="530" cy="452" r="5" fill="#d29922" opacity="0.25">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="0.25;0.25;1;1;0.25" keyTimes="0;0.62;0.66;0.95;1"/>
+    </circle>
+  </g>
+</svg>

@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 460" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+  <title>The life of a price tick: Mode B (server over WebSocket) and Mode A (in-browser simulator) feed the same PricingPort; everything from the port to the pixel is identical.</title>
+
+  <!-- ======== canvas ======== -->
+  <rect x="0" y="0" width="980" height="460" rx="12" fill="#0d1117"/>
+  <text x="24" y="34" fill="#e6edf3" font-size="17" font-weight="bold" font-family="ui-sans-serif, system-ui, sans-serif">The life of a price tick</text>
+  <text x="24" y="54" fill="#8b949e" font-size="12" font-family="ui-sans-serif, system-ui, sans-serif">Two sources, one port — from PricingPort onward the pipeline is identical, and the UI cannot tell the modes apart.</text>
+
+  <!-- ======== lane labels ======== -->
+  <text x="24" y="120" fill="#d29922" font-size="12" font-weight="bold">MODE B — deployed</text>
+  <text x="24" y="136" fill="#8b949e" font-size="10">server + WebSocket</text>
+  <text x="24" y="304" fill="#3fb950" font-size="12" font-weight="bold">MODE A — pnpm dev</text>
+  <text x="24" y="320" fill="#8b949e" font-size="10">simulator in the tab</text>
+
+  <!-- ======== Mode B chain (top-left) ======== -->
+  <g>
+    <rect x="170" y="90" width="130" height="56" rx="8" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+    <text x="235" y="113" fill="#e6edf3" font-size="11" text-anchor="middle">PricingSimulator</text>
+    <text x="235" y="128" fill="#8b949e" font-size="10" text-anchor="middle">@rtc/domain · on server</text>
+
+    <rect x="330" y="90" width="120" height="56" rx="8" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+    <text x="390" y="113" fill="#e6edf3" font-size="11" text-anchor="middle">pricing$ effect</text>
+    <text x="390" y="128" fill="#8b949e" font-size="10" text-anchor="middle">@rtc/ws-effects</text>
+
+    <!-- websocket wire -->
+    <line x1="450" y1="118" x2="530" y2="118" stroke="#d29922" stroke-width="1.5" stroke-dasharray="6 4">
+      <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
+    </line>
+    <text x="490" y="106" fill="#8b949e" font-size="9" text-anchor="middle">WebSocket JSON</text>
+    <text x="490" y="140" fill="#8b949e" font-size="9" text-anchor="middle">{type, payload}</text>
+
+    <rect x="530" y="90" width="110" height="56" rx="8" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+    <text x="585" y="113" fill="#e6edf3" font-size="11" text-anchor="middle">WsAdapter</text>
+    <text x="585" y="128" fill="#8b949e" font-size="10" text-anchor="middle">@rtc/client-core</text>
+  </g>
+
+  <!-- ======== Mode A source (bottom-left) ======== -->
+  <g>
+    <rect x="170" y="274" width="130" height="56" rx="8" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="235" y="297" fill="#e6edf3" font-size="11" text-anchor="middle">PricingSimulator</text>
+    <text x="235" y="312" fill="#8b949e" font-size="10" text-anchor="middle">@rtc/domain · in browser</text>
+    <text x="235" y="346" fill="#3fb950" font-size="9" text-anchor="middle">SAME class as the server runs</text>
+  </g>
+
+  <!-- ======== shared spine: port -> use case -> presenter -> bindings -> UI ======== -->
+  <g>
+    <rect x="700" y="182" width="110" height="60" rx="8" fill="#1c2128" stroke="#58a6ff" stroke-width="2"/>
+    <text x="755" y="207" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">PricingPort</text>
+    <text x="755" y="222" fill="#8b949e" font-size="10" text-anchor="middle">Observable&lt;Tick&gt;</text>
+
+    <rect x="840" y="60" width="120" height="52" rx="8" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+    <text x="900" y="82" fill="#e6edf3" font-size="11" text-anchor="middle">PriceStream</text>
+    <text x="900" y="96" fill="#8b949e" font-size="10" text-anchor="middle">UseCase · enrich</text>
+
+    <rect x="840" y="140" width="120" height="52" rx="8" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+    <text x="900" y="162" fill="#e6edf3" font-size="11" text-anchor="middle">Presenter</text>
+    <text x="900" y="176" fill="#8b949e" font-size="10" text-anchor="middle">price$ · share()</text>
+
+    <rect x="840" y="220" width="120" height="52" rx="8" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+    <text x="900" y="242" fill="#e6edf3" font-size="11" text-anchor="middle">usePrice()</text>
+    <text x="900" y="256" fill="#8b949e" font-size="10" text-anchor="middle">@rtc/react-bindings</text>
+
+    <!-- UI tile -->
+    <rect x="826" y="300" width="148" height="120" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+    <text x="900" y="324" fill="#e6edf3" font-size="12" text-anchor="middle" font-weight="bold">EUR/USD</text>
+    <text x="866" y="366" fill="#8b949e" font-size="10" text-anchor="middle">BID</text>
+    <text x="934" y="366" fill="#8b949e" font-size="10" text-anchor="middle">ASK</text>
+    <text x="866" y="388" fill="#e6edf3" font-size="13" text-anchor="middle" font-weight="bold">1.0812
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+        values="1;1;0.3;1;1;0.3;1;1" keyTimes="0;0.408;0.435;0.475;0.825;0.85;0.89;1"/>
+    </text>
+    <text x="934" y="388" fill="#e6edf3" font-size="13" text-anchor="middle" font-weight="bold">1.0815
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+        values="1;1;0.3;1;1;0.3;1;1" keyTimes="0;0.408;0.435;0.475;0.825;0.85;0.89;1"/>
+    </text>
+    <text x="900" y="410" fill="#8b949e" font-size="9" text-anchor="middle">UI — React / RN / Solid…</text>
+    <!-- tile flash -->
+    <rect x="826" y="300" width="148" height="120" rx="10" fill="#3fb950">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+        values="0;0;0.25;0;0;0.25;0;0" keyTimes="0;0.408;0.44;0.475;0.825;0.855;0.89;1"/>
+    </rect>
+  </g>
+
+  <!-- ======== static connector lines ======== -->
+  <g stroke="#30363d" stroke-width="1.2" fill="none">
+    <line x1="300" y1="118" x2="330" y2="118"/>
+    <path d="M 640 118 C 672 118 672 200 700 205"/>
+    <path d="M 300 302 C 480 302 560 232 700 220"/>
+    <path d="M 810 200 C 828 190 828 96 840 88"/>
+    <path d="M 900 112 L 900 140"/>
+    <path d="M 900 192 L 900 220"/>
+    <path d="M 900 272 L 900 300"/>
+  </g>
+  <g fill="#8b949e" font-size="9">
+    <text x="662" y="170">port impl:</text>
+    <text x="662" y="182">WS-real</text>
+    <text x="618" y="262">port impl:</text>
+    <text x="618" y="274">simulator</text>
+  </g>
+
+  <!-- ======== animated tick dots (12s master cycle) ========
+       t=0.5–3.5   Mode B dot: sim → effect → wire → adapter → port
+       t=3.5–4.9   spine dot #1: port → use case → presenter → hook → tile
+       t=4.9       tile flash 1
+       t=6.5–8.5   Mode A dot: browser sim → port
+       t=8.5–9.9   spine dot #2
+       t=9.9       tile flash 2                                        -->
+
+  <!-- Mode B tick -->
+  <circle r="6" fill="#d29922" opacity="0">
+    <animateMotion dur="12s" repeatCount="indefinite" calcMode="linear"
+      path="M 235 118 L 390 118 L 585 118 C 660 118 665 200 755 210"
+      keyPoints="0;0;1;1" keyTimes="0;0.0417;0.2917;1"/>
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.0417;0.0517;0.2817;0.2917;1"/>
+  </circle>
+
+  <!-- spine run #1 (after Mode B arrival) -->
+  <circle r="6" fill="#58a6ff" opacity="0">
+    <animateMotion dur="12s" repeatCount="indefinite" calcMode="linear"
+      path="M 755 212 C 830 200 900 60 900 86 L 900 166 L 900 246 L 900 330"
+      keyPoints="0;0;1;1" keyTimes="0;0.2917;0.4083;1"/>
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.2917;0.3017;0.3983;0.4083;1"/>
+  </circle>
+
+  <!-- Mode A tick -->
+  <circle r="6" fill="#3fb950" opacity="0">
+    <animateMotion dur="12s" repeatCount="indefinite" calcMode="linear"
+      path="M 235 302 C 480 302 600 232 755 216"
+      keyPoints="0;0;1;1" keyTimes="0;0.5417;0.7083;1"/>
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.5417;0.5517;0.6983;0.7083;1"/>
+  </circle>
+
+  <!-- spine run #2 (after Mode A arrival) -->
+  <circle r="6" fill="#58a6ff" opacity="0">
+    <animateMotion dur="12s" repeatCount="indefinite" calcMode="linear"
+      path="M 755 212 C 830 200 900 60 900 86 L 900 166 L 900 246 L 900 330"
+      keyPoints="0;0;1;1" keyTimes="0;0.7083;0.825;1"/>
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.7083;0.7183;0.815;0.825;1"/>
+  </circle>
+</svg>
