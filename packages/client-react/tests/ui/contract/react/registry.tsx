@@ -542,6 +542,7 @@ export const registry = new Map<AnyToken, ElementFor>([
           movementPips={
             p.movementPips === undefined ? 0 : (p.movementPips as number | null)
           }
+          onInitiateRfq={p.onInitiateRfq as (() => void) | undefined}
         />
       );
     },
@@ -623,7 +624,6 @@ export const registry = new Map<AnyToken, ElementFor>([
         <TileRfqComponent
           pair={p.pair as CurrencyPair}
           rfqState={p.rfqState as TileRfqState}
-          onRequestQuote={(p.onRequestQuote as () => void) ?? ((): void => {})}
           onExecute={
             (p.onExecute as (
               direction: Direction,

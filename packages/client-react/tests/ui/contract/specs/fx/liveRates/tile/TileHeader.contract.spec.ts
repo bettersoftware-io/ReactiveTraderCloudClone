@@ -68,6 +68,48 @@ describe("TileHeader", () => {
     expect(header.hasMovementBadge()).toBe(false);
     expect(header.movementText()).toBe("");
   });
+
+  describe("compact ⚡ RFQ chip (RFQ init-state affordance)", () => {
+    it("renders no chip when onInitiateRfq is not provided", () => {
+      const header = mount(TileHeader, { props: headerProps() });
+      expect(header.hasRfqChip()).toBe(false);
+    });
+
+    it("renders the chip with its glyph label and Initiate RFQ tooltip/name", () => {
+      const header = mount(TileHeader, {
+        props: headerProps({ onInitiateRfq: () => {} }),
+      });
+      expect(header.hasRfqChip()).toBe(true);
+      expect(header.rfqChipText()).toBe("⚡ RFQ");
+      expect(header.rfqChipTitle()).toBe("Initiate RFQ");
+      expect(header.rfqChipAriaLabel()).toBe("Initiate RFQ");
+    });
+
+    it("fires onInitiateRfq when the chip is clicked", async () => {
+      let initiated = 0;
+      const header = mount(TileHeader, {
+        props: headerProps({
+          onInitiateRfq: () => {
+            initiated += 1;
+          },
+        }),
+      });
+      await header.clickRfqChip();
+      expect(initiated).toBe(1);
+    });
+
+    it("renders the movement badge and the chip side by side", () => {
+      const header = mount(TileHeader, {
+        props: headerProps({
+          movement: PriceMovementType.UP,
+          movementPips: 5,
+          onInitiateRfq: () => {},
+        }),
+      });
+      expect(header.movementText()).toBe("▲ 5 pip");
+      expect(header.hasRfqChip()).toBe(true);
+    });
+  });
 });
 
 function headerProps(over: Partial<TileHeaderProps> = {}): TileHeaderProps {
