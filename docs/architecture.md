@@ -566,6 +566,10 @@ classDiagram
 
 All ports use RxJS `Observable<T>` -- streaming feeds and one-shot ops alike. RxJS is the single explicit dependency exception in `@rtc/domain` (see [§1.3](#13-layered-architecture--terminology)). No other framework types leak into the domain.
 
+The classic port surface is shown in three groups so each diagram renders at readable size (GitHub scales a diagram down to column width, so sibling count per row is the readability budget).
+
+*A — the FX trade path (pricing, execution, blotter):*
+
 ```mermaid
 classDiagram
     direction TB
@@ -575,11 +579,6 @@ classDiagram
         +getPriceUpdates(symbol) Observable~PriceTick~
         +getPriceHistory(symbol) Observable~PriceTick[]~
         +getRfqQuote(symbol, pipsPosition) Observable~RfqQuoteResult~
-    }
-
-    class ReferenceDataPort {
-        <<interface>>
-        +getCurrencyPairs() Observable~CurrencyPair[]~
     }
 
     class ExecutionPort {
@@ -592,20 +591,73 @@ classDiagram
         +getTradeStream() Observable~Trade[]~
     }
 
+    class PricingSimulator {
+        +getPriceUpdates(symbol)
+        +getPriceHistory(symbol)
+        +getRfqQuote(symbol, pipsPosition)
+    }
+
+    class WsRealPricingAdapter {
+        -WsAdapter ws
+        +getPriceUpdates(symbol)
+        +getPriceHistory(symbol)
+    }
+
+    class ExecutionSimulator {
+        +executeTrade(request)
+        +onTrade(listener) void
+    }
+
+    class WsRealExecutionAdapter {
+        -WsAdapter ws
+        +executeTrade(request)
+    }
+
+    class TradeStoreSimulator {
+        +getTradeStream()
+    }
+
+    PricingPort <|.. PricingSimulator : implements
+    PricingPort <|.. WsRealPricingAdapter : implements
+    ExecutionPort <|.. ExecutionSimulator : implements
+    ExecutionPort <|.. WsRealExecutionAdapter : implements
+    BlotterPort <|.. TradeStoreSimulator : implements
+```
+
+*B — the reference-data catalog (each also has a WsReal factory, elided for brevity):*
+
+```mermaid
+classDiagram
+    direction TB
+
+    class ReferenceDataPort {
+        <<interface>>
+        +getCurrencyPairs() Observable~CurrencyPair[]~
+    }
     class AnalyticsPort {
         <<interface>>
         +getAnalytics(currency) Observable~PositionUpdates~
     }
-
     class InstrumentPort {
         <<interface>>
         +getInstruments() Observable~Instrument[]~
     }
-
     class DealerPort {
         <<interface>>
         +getDealers() Observable~Dealer[]~
     }
+
+    ReferenceDataPort <|.. ReferenceDataSimulator : implements
+    AnalyticsPort <|.. AnalyticsSimulator : implements
+    InstrumentPort <|.. InstrumentSimulator : implements
+    DealerPort <|.. DealerSimulator : implements
+```
+
+*C — the Credit RFQ workflow and connection events:*
+
+```mermaid
+classDiagram
+    direction TB
 
     class WorkflowPort {
         <<interface>>
@@ -622,59 +674,24 @@ classDiagram
         +events() Observable~ConnectionEvent~
     }
 
-    class PricingSimulator {
-        +getPriceUpdates(symbol) Observable~PriceTick~
-        +getPriceHistory(symbol) Observable~PriceTick[]~
-        +getRfqQuote(symbol, pipsPosition) Observable~RfqQuoteResult~
-    }
-
-    class ExecutionSimulator {
-        +executeTrade(request) Observable~Trade~
-        +onTrade(listener) void
-    }
-
-    class TradeStoreSimulator {
-        +getTradeStream() Observable~Trade[]~
-    }
-
     class CreditRfqSimulator {
-        +events() Observable~RfqEvent~
-        +createRfq(request) Observable~number~
-        +cancelRfq(rfqId) Observable~void~
-        +quote(request) Observable~void~
-        +pass(quoteId) Observable~void~
-        +accept(quoteId) Observable~void~
-    }
-
-    class WsRealPricingAdapter {
-        -WsAdapter ws
-        +getPriceUpdates(symbol) Observable~PriceTick~
-        +getPriceHistory(symbol) Observable~PriceTick[]~
-    }
-
-    class WsRealExecutionAdapter {
-        -WsAdapter ws
-        +executeTrade(request) Observable~Trade~
+        +events() +createRfq() +cancelRfq()
+        +quote() +pass() +accept()
     }
 
     class ConnectionEventsSimulator {
-        +events() Observable~ConnectionEvent~
+        +events()
     }
 
     class WsConnectionEventsAdapter {
         -IWsAdapter ws
-        +events() Observable~ConnectionEvent~
+        +events()
     }
 
     class BrowserConnectionEventsAdapter {
-        +events() Observable~ConnectionEvent~
+        +events()
     }
 
-    PricingPort <|.. PricingSimulator : implements
-    PricingPort <|.. WsRealPricingAdapter : implements
-    ExecutionPort <|.. ExecutionSimulator : implements
-    ExecutionPort <|.. WsRealExecutionAdapter : implements
-    BlotterPort <|.. TradeStoreSimulator : implements
     WorkflowPort <|.. CreditRfqSimulator : implements
     ConnectionEventsPort <|.. ConnectionEventsSimulator : implements
     ConnectionEventsPort <|.. WsConnectionEventsAdapter : implements
@@ -683,7 +700,9 @@ classDiagram
 
 > **`WsReal*` adapters are factory functions, not classes.** The boxes above (`WsRealPricingAdapter`, `WsRealExecutionAdapter`, ...) are drawn as classes for diagram symmetry, but the real-mode port implementations are produced by factory functions (`createPricingPort`, `createExecutionPort`, ...) in `packages/client-core/src/adapters/portFactory.ts`, each closing over a shared `WsAdapter`. The eight classic transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](#96-port-contract-test-layer)) are shown above; the port surface has since grown the families below.
 
-**Newer port families** (added by the Equities, HUD, and Admin/telemetry workstreams; same dependency-inversion rules):
+**Newer port families** (added by the Equities, HUD, and Admin/telemetry workstreams; same dependency-inversion rules), again in two readable groups.
+
+*D — equities market data, orders, positions:*
 
 ```mermaid
 classDiagram
@@ -706,6 +725,32 @@ classDiagram
         <<interface>>
         +positions() Observable~EquityPosition[]~
     }
+
+    class WsRealEquitiesAdapters {
+        createMarketDataPort(ws)
+        createOrderPort(ws)
+        createPositionPort(ws)
+    }
+    class EquitySimulators {
+        EquityMarketDataSimulator
+        EquityOrderSimulator
+        EquityPositionSimulator
+    }
+
+    MarketDataPort <|.. WsRealEquitiesAdapters : implements
+    OrderPort <|.. WsRealEquitiesAdapters : implements
+    PositionPort <|.. WsRealEquitiesAdapters : implements
+    MarketDataPort <|.. EquitySimulators : implements
+    OrderPort <|.. EquitySimulators : implements
+    PositionPort <|.. EquitySimulators : implements
+```
+
+*E — admin, preferences, and the (simulator-only) telemetry family:*
+
+```mermaid
+classDiagram
+    direction TB
+
     class AdminPort {
         <<interface>>
         +getThroughput() Observable~number~
@@ -722,16 +767,6 @@ classDiagram
         eventLog · sessions
     }
 
-    class WsRealEquitiesAdapters {
-        createMarketDataPort(ws)
-        createOrderPort(ws)
-        createPositionPort(ws)
-    }
-    class EquitySimulators {
-        EquityMarketDataSimulator
-        EquityOrderSimulator
-        EquityPositionSimulator
-    }
     class LocalStoragePreferencesAdapter {
         web · sync localStorage
     }
@@ -739,12 +774,6 @@ classDiagram
         mobile · RN AsyncStorage
     }
 
-    MarketDataPort <|.. WsRealEquitiesAdapters : implements
-    OrderPort <|.. WsRealEquitiesAdapters : implements
-    PositionPort <|.. WsRealEquitiesAdapters : implements
-    MarketDataPort <|.. EquitySimulators : implements
-    OrderPort <|.. EquitySimulators : implements
-    PositionPort <|.. EquitySimulators : implements
     PreferencesPort <|.. LocalStoragePreferencesAdapter : implements
     PreferencesPort <|.. AsyncStoragePreferencesAdapter : implements
 ```
@@ -766,6 +795,8 @@ This pair replaced the Phase 3 `withSyntheticGatewayConnected` wrapper, which fa
 ### 3.4 Use Cases
 
 Use cases sit between ports and presenters. They take ports in their constructor (or factory), accept inputs, and return `Observable<T>` -- streams *and* one-shot ops alike. They are the home for application-specific orchestration and enrichment that today leaks into client hooks (e.g. `detectMovement + calculateSpread` for FX prices). Use cases may use RxJS operators (`map`, `scan`, `defer`, ...) but no React, no DOM.
+
+*FX use cases:*
 
 ```mermaid
 classDiagram
@@ -791,6 +822,18 @@ classDiagram
         +execute(currency) Observable~PositionUpdates~
     }
 
+    PriceStreamUseCase --> PricingPort
+    ExecuteTradeUseCase --> ExecutionPort
+    TradeBlotterUseCase --> BlotterPort
+    AnalyticsUseCase --> AnalyticsPort
+```
+
+*Credit workflow & connection use cases:*
+
+```mermaid
+classDiagram
+    direction TB
+
     class CreateRfqUseCase {
         -WorkflowPort workflow
         +execute(request) Observable~number~
@@ -806,10 +849,6 @@ classDiagram
         +execute() Observable~ConnectionStatus~
     }
 
-    PriceStreamUseCase --> PricingPort
-    ExecuteTradeUseCase --> ExecutionPort
-    TradeBlotterUseCase --> BlotterPort
-    AnalyticsUseCase --> AnalyticsPort
     CreateRfqUseCase --> WorkflowPort
     WorkflowEventStreamUseCase --> WorkflowPort
     ConnectionStatusUseCase --> ConnectionEventsPort
@@ -1791,24 +1830,28 @@ CI additionally runs an **Expo export smoke** (Metro bundling of the real app) t
 
 ### 9.10 The CI gauntlet
 
-Everything above hangs off three parallel CI jobs (`.github/workflows/ci.yml`), triggered on PRs and pushes to `main`:
+Everything above hangs off three **parallel** CI jobs (`.github/workflows/ci.yml`), triggered on PRs and pushes to `main`:
 
 ```mermaid
 flowchart TD
+    trigger["PR / push to main"]
+    trigger --> checks
+    trigger --> visual
+    trigger --> e2e
     subgraph checks["Job 1 — checks"]
-        c1["Biome ci"] --> c2["ESLint AST + custom rules (RuleTester)"]
-        c2 --> c3["Stylelint · actionlint · manypkg/syncpack"]
-        c3 --> c4["typecheck · unit + UI contract tests"]
-        c4 --> c5["UI contract coverage ≥ 95%"]
-        c5 --> c6["build · Expo export smoke (RN Metro)"]
-        c6 --> c7["knip dead code · dependency-cruiser"]
-        c7 --> c8["ESLint type-aware · grep gates (29) + pnpm audit"]
+        direction TB
+        c1["Biome ci · ESLint AST + custom rules (RuleTester)"]
+        c1 --> c3["Stylelint · actionlint · manypkg/syncpack"]
+        c3 --> c4["typecheck · unit + UI contract tests · coverage ≥ 95%"]
+        c4 --> c6["build · Expo export smoke (RN Metro)"]
+        c6 --> c7["knip · dependency-cruiser · ESLint type-aware"]
+        c7 --> c8["grep gates (29) + pnpm audit"]
     end
     subgraph visual["Job 2 — visual"]
-        v1["3 golden tiers vs __screenshots__/react/"]
+        v1["3 golden tiers vs<br/>__screenshots__/react/"]
     end
     subgraph e2e["Job 3 — e2e"]
-        e1["Playwright browser peers + presenter peers + fullstack smokes<br/>(Cypress de-gated on CI: RTC_E2E_SKIP_CYPRESS=1 — runs locally instead)"]
+        e1["Playwright browser peers<br/>+ presenter peers + fullstack smokes<br/>(Cypress de-gated on CI:<br/>RTC_E2E_SKIP_CYPRESS=1 — runs locally)"]
     end
 ```
 
