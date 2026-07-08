@@ -58,27 +58,20 @@
   color: var(--accent-negative);
 }
 
-/* PROTO decorative spin ring (22s linear); motion gated below. PROTO
- * (dc.html L522-524): a solid 1px ring in the sign colour, not dashed —
- * `color` on `.bubble[data-sign]` above supplies `currentcolor` here. */
+/* PROTO decorative spin ring. PROTO (dc.html L522-524): a solid 1px ring in
+ * the sign colour, not dashed — `color` on `.bubble[data-sign]` above
+ * supplies `currentcolor` here. The prototype's 22s rotation is deliberately
+ * NOT ported: rotating a uniform solid circle is visually a no-op, and the
+ * seven rings' main-thread animations cost real per-frame style work
+ * (~23k style invalidations per 28s measured). If the ring ever grows dashes
+ * or asymmetry, reinstate the rotation on a compositor path (HTML transform
+ * with will-change), never as-is. */
 .bubbleRing {
   position: absolute;
   inset: 0;
   border-radius: 50%;
   border: 1px solid currentcolor;
   opacity: 0.5;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .bubbleRing {
-    animation: spin 22s linear infinite;
-  }
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .bubbleCcy {

@@ -133,6 +133,7 @@ function PriceButton({
           data-testid="tile-pips"
           data-movement={movementKey(movement)}
           data-anim={anim}
+          data-pips={pips}
           className={styles.pips}
         >
           {pips}
