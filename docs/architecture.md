@@ -2084,7 +2084,7 @@ flowchart TD
 | **Server Entry** | `packages/server/src/index.ts` | node:http + `ws` + token auth (`auth.ts`); 4-line effect composition |
 | **Server Effects** | `packages/server/src/effects/{fx,credit,admin,equities}.effects.ts` | The 24 effects |
 | **Server Services** | `packages/server/src/services/{serviceContainer,ThroughputService}.ts` | `createServices()` — all 12 simulators/services |
-| **Socket Adapter** | `packages/server/src/ws/toSocket.ts` | `ws.WebSocket` → transport-agnostic `Socket` |
+| **Socket Adapter** | `packages/server/src/socket/toSocket.ts` | `ws.WebSocket` → transport-agnostic `Socket` |
 | **Behavioural Specs** | `tests/specs/**/*.feature` | Gherkin scenarios, framework-free; SOT for behaviour |
 | **Page Object Contracts** | `tests/browser/page-objects/contracts/**/*.ts` | Driver-free TS interfaces + `data-testid` constants; SOT for the UI surface |
 | **Page Objects (Playwright)** | `tests/browser/page-objects/playwright/**/*.ts` | Playwright implementations of the contracts |
