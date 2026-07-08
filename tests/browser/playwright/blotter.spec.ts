@@ -38,6 +38,14 @@ test.describe("FX trade blotter", () => {
     await blotter.expectExportCsvTextContains(ctx, "CSV");
   });
 
+  // Behavioural download oracle — Playwright-only (the Cypress driver's
+  // downloadCsvSuggestedFilename throws "not supported").
+  test("export CSV downloads as fx-trades.csv", async ({ ctx }) => {
+    await fxTrading.expectBlotterVisible(ctx);
+    await blotter.expectExportCsvVisible(ctx);
+    await blotter.expectCsvDownloadSuggestedFilename(ctx, "fx-trades.csv");
+  });
+
   test("new trade row has a non-empty background color", async ({ ctx }) => {
     await fxLiveRates.expectFirstPriceTileVisibleWithin(ctx, 5);
     await fxTrading.clickBuyOnFirstTile(ctx);

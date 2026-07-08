@@ -281,6 +281,12 @@
   overflow: hidden;
 }
 
+/* Notifications-only width override (prototype Notifications.module.css
+   .dropdown is 300px; the account/language dropdowns stay 260px). */
+.notifDropdown {
+  width: 300px;
+}
+
 .dropdownHead {
   display: flex;
   align-items: center;
@@ -308,6 +314,8 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
 }
 
 .notifRow {
@@ -358,6 +366,21 @@
   font-family: var(--font-mono);
   font-size: 9px;
   color: var(--text-muted);
+}
+
+/* Footer MARK ALL READ button (prototype Notifications.module.css .markRead). */
+.markRead {
+  width: 100%;
+  display: block;
+  text-align: center;
+  cursor: pointer;
+  padding: 9px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--accent-primary);
+  background-color: transparent;
+  border: none;
 }
 
 .accountHead {
@@ -433,6 +456,12 @@
   font-size: 11px;
   letter-spacing: 0.06em;
   color: var(--text-secondary);
+}
+
+/* Globe icon before the language code (prototype Language.module.css .globe). */
+.globe {
+  width: 15px;
+  height: 15px;
 }
 
 .langTrigger[aria-expanded="true"] {

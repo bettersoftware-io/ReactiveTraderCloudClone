@@ -128,6 +128,40 @@ describe("Tile", () => {
     expect(cmds[0].price.bid).toBe(1.0921);
   });
 
+  // PROTO RateTile bookPulse: the tile ROOT carries data-booked while the
+  // success confirmation is showing (the glow must live on the root — the
+  // overlay's own shadow is clipped by the tile's overflow:hidden). The
+  // attribute cycles back to "false" on dismiss so the CSS animation replays
+  // on the next successful trade.
+  it("flags the tile root as booked during the success confirmation, and unflags on dismiss", async () => {
+    const tile = mount(Tile, {
+      props: { pair: eurusd, showChart: false },
+      parametric: { prices: { EURUSD: price() } },
+      commands: { executeTrade: tradeResult() },
+    });
+    expect(tile.bookedFlag("EURUSD")).toBe("false");
+    await tile.clickBuy();
+    expect(tile.hasConfirmation()).toBe(true);
+    expect(tile.bookedFlag("EURUSD")).toBe("true");
+    await tile.dismissDoneConfirmation();
+    expect(tile.hasConfirmation()).toBe(false);
+    expect(tile.bookedFlag("EURUSD")).toBe("false");
+  });
+
+  it("does not flag the tile as booked when the trade is rejected", async () => {
+    const tile = mount(Tile, {
+      props: { pair: eurusd, showChart: false },
+      parametric: { prices: { EURUSD: price() } },
+      commands: {
+        executeTrade: { ...tradeResult(), status: ExecutionStatus.Rejected },
+      },
+    });
+    await tile.clickBuy();
+    expect(tile.hasConfirmation()).toBe(true);
+    expect(tile.confirmationText()).toMatch(/rejected/i);
+    expect(tile.bookedFlag("EURUSD")).toBe("false");
+  });
+
   it("falls back to a timeout confirmation when the execute command errors", async () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },

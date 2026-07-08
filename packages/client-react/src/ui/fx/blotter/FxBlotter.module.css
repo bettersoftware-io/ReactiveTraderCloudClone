@@ -1,27 +1,52 @@
-.container {
+/* The layout engine's own .panel already paints the chrome (background,
+ * blur, border, radius, --panel-shadow — InhouseLayoutEngine.module.css
+ * .panel) around a bare .panelBody. The old nested .container card here
+ * doubled that chrome AND capped the table at max-height:300px, leaving a
+ * dead engine-panel background below it — the same defect CreditBlotter
+ * fixed at final review F2. This root now just fills the panel (matching
+ * CreditBlotter.module.css .blotter). */
+.blotter {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: var(--panel);
-  backdrop-filter: blur(var(--panel-blur));
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px;
-  box-shadow: var(--glow);
+  height: 100%;
+  min-height: 0;
 }
 
+/* The blotter chrome (count + quick filter + CSV chip) lives in the panel's
+ * head slot (FxBlotterHead) — the body keeps just this optional
+ * active-filter summary above the table. */
 .filterLabel {
   font-size: 11px;
   color: var(--text-muted);
+  flex-shrink: 0;
+  padding: 8px 14px 0;
 }
 
+/* The fixed column-header region: a separate header-only table that stays
+ * put while .tableWrapper scrolls the rows, and — crucially — anchors
+ * BlotterHeader's filter popover OUTSIDE the scroll clip. (position:sticky
+ * on thead/th is NOT an option: it breaks the popover's hit-testing in real
+ * Chromium — see the note in CreditBlotter.module.css.) No overflow property
+ * here: the region must stay overflow-visible for the popover. */
+.headerRegion {
+  flex-shrink: 0;
+}
+
+/* Fills the rest of the panel and owns the internal scroll — no fixed
+ * max-height (that's what left the dead engine-panel background below the
+ * old card). */
 .tableWrapper {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  max-height: 300px;
 }
 
+/* table-layout:fixed + the shared BlotterColgroup px widths give the header
+ * and rows tables identical column edges (the flexible last column absorbs
+ * the rows region's scrollbar width). */
 .table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 12px;
   line-height: 17px;

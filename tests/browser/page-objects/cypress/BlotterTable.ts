@@ -80,6 +80,14 @@ export class CypressBlotterTable implements BlotterTablePO {
       }) as unknown as Promise<string>;
   }
 
+  downloadCsvSuggestedFilename(): Promise<string> {
+    // Cypress has no download-event API for blob-URL anchor downloads; the
+    // filename oracle lives in the Playwright-only blotter spec.
+    throw new Error(
+      "downloadCsvSuggestedFilename is not supported by the Cypress driver",
+    );
+  }
+
   hoverFirstRow(): Promise<void> {
     return this.firstRow().trigger("mouseover") as unknown as Promise<void>;
   }

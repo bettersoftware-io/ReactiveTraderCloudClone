@@ -3,16 +3,19 @@ import type { CreditTrade } from "@rtc/domain";
 import type { ColumnDef } from "#/ui/fx/blotter/blotterColumns";
 
 // rtc-original@4a31f01 client/src/apps/Credit/CoreCreditTrades/colConfig.ts:109-167 creditColDef
+// Widths follow the FX blotter's convention (ColumnDef.width): fixed px for
+// every column except the flexible last one, sized to this blotter's content
+// (there is no credit grid in the prototype to copy verbatim).
 export const CREDIT_COLUMNS: readonly ColumnDef<CreditTrade>[] = [
-  { key: "tradeId", label: "Trade ID", filterType: "number" },
-  { key: "status", label: "Status", filterType: "set" },
-  { key: "tradeDate", label: "Trade Date", filterType: "date" },
-  { key: "direction", label: "Direction", filterType: "set" },
-  { key: "counterParty", label: "Counterparty", filterType: "set" },
-  { key: "cusip", label: "CUSIP", filterType: "set" },
-  { key: "security", label: "Security", filterType: "set" },
-  { key: "quantity", label: "Quantity", filterType: "number" },
-  { key: "orderType", label: "Order Type", filterType: "set" },
+  { key: "tradeId", label: "Trade ID", filterType: "number", width: 76 },
+  { key: "status", label: "Status", filterType: "set", width: 84 },
+  { key: "tradeDate", label: "Trade Date", filterType: "date", width: 104 },
+  { key: "direction", label: "Direction", filterType: "set", width: 80 },
+  { key: "counterParty", label: "Counterparty", filterType: "set", width: 116 },
+  { key: "cusip", label: "CUSIP", filterType: "set", width: 88 },
+  { key: "security", label: "Security", filterType: "set", width: 118 },
+  { key: "quantity", label: "Quantity", filterType: "number", width: 84 },
+  { key: "orderType", label: "Order Type", filterType: "set", width: 84 },
   { key: "unitPrice", label: "Unit Price", filterType: "number" },
 ];
 

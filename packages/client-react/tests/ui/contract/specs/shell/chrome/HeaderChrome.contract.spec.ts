@@ -91,6 +91,15 @@ describe("HeaderChrome", () => {
     expect(rows.join(" ")).toMatch(/EURUSD position at 80% of desk limit/);
   });
 
+  it("closes the notifications dropdown from its MARK ALL READ footer", async () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+    });
+    await header.openNotifications();
+    expect(header.notificationsFooterLabel()).toBe("MARK ALL READ");
+    expect(await header.markAllNotificationsRead()).toBe(false);
+  });
+
   it("wires the account menu to the session seam and shows the operator's identity rows", async () => {
     const header = mount(HeaderChrome, {
       props: { activeTab: "fx", onTabChange: () => {} },
@@ -163,6 +172,19 @@ describe("HeaderChrome", () => {
 
     await header.closePrefs();
     expect(header.prefsOpen()).toBe(false);
+  });
+
+  it("replays the boot splash through the seam from the account menu's ⟳ Reboot HUD row", async () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+    });
+    await header.openAccount();
+    expect(header.hasRebootRow()).toBe(true);
+    expect(header.rebootCount()).toBe(0);
+    await header.rebootHud();
+    expect(header.rebootCount()).toBe(1);
+    // The row closes the menu after firing, like the other action rows.
+    expect(header.accountPanelOpen()).toBe(false);
   });
 
   it("locks the session through the seam from the account menu", async () => {

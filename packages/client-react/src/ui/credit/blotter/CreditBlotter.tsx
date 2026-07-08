@@ -5,6 +5,7 @@ import { type CreditTrade, Direction } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { useCreditView } from "#/ui/credit/useCreditView";
+import { BlotterColgroup } from "#/ui/fx/blotter/BlotterColgroup";
 import { BlotterHeader } from "#/ui/fx/blotter/BlotterHeader";
 import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 import { applyFilters } from "#/ui/fx/blotter/columnFilter/filterState";
@@ -98,10 +99,12 @@ export function CreditBlotter(): ReactElement {
   // rows.
   useEffect(() => {
     setExportCsvHandler(() => {
+      // PROTO useCreditRfqs.ts downloadCsv("credit-trades.csv", …).
       exportToCsv(
         processedTrades,
         CREDIT_COLUMNS,
         formatCreditCell,
+        "credit-trades.csv",
         CREDIT_CSV_UNFORMATTED,
       );
     });
@@ -116,16 +119,22 @@ export function CreditBlotter(): ReactElement {
     if (col) activeFilterLabels.push(col.label);
   }
 
+  // Split-header structure (shared with FxBlotter): the column-header table
+  // is a fixed region ABOVE the scrolling rows region — the header stays put
+  // while rows scroll, and BlotterHeader's filter popover anchors outside
+  // any scroll clip. See the sticky-header note in CreditBlotter.module.css
+  // for why position:sticky is not an option here.
   return (
-    <div className={styles.blotter}>
+    <div data-testid="blotter-table" className={styles.blotter}>
       {activeFilterLabels.length > 0 && (
         <span className={styles.filterLabel}>
           Filtered: {activeFilterLabels.join(", ")}
         </span>
       )}
 
-      <div className={styles.tableWrapper}>
-        <table data-testid="blotter-table" className={styles.table}>
+      <div className={styles.headerRegion}>
+        <table className={styles.table}>
+          <BlotterColgroup columns={CREDIT_COLUMNS} />
           <thead>
             <BlotterHeader
               sort={sort}
@@ -136,6 +145,12 @@ export function CreditBlotter(): ReactElement {
               columns={CREDIT_COLUMNS}
             />
           </thead>
+        </table>
+      </div>
+
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <BlotterColgroup columns={CREDIT_COLUMNS} />
           <tbody>
             {processedTrades.map((trade) => {
               const acc = rowAccentVar(trade.direction);

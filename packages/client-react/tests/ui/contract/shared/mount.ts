@@ -167,6 +167,11 @@ function buildContext<P>(
         return world.setCreditRfqFilter(filter);
       });
     },
+    setBootGateVisible: (visible: boolean) => {
+      return flush(() => {
+        return world.bootGate.next(visible);
+      });
+    },
   };
 }
 
