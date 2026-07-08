@@ -8,7 +8,7 @@ import { combineEffects, createWsListener } from "@rtc/ws-effects";
 import { isAuthorizedUpgrade } from "./auth.js";
 import { allEffects } from "./effects/index.js";
 import { createServices } from "./services/serviceContainer.js";
-import { toSocket } from "./ws/toSocket.js";
+import { toSocket } from "./socket/toSocket.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
 const HOSTNAME: string = process.env.HOSTNAME ?? "0.0.0.0";
