@@ -125,6 +125,137 @@ graph TB
 
 The arrows are source-code dependencies. The UI imports `useViewModel` but has no path to ports, adapters, use cases, or raw Observables. Ports are dependency-inverted -- adapters point at port interfaces, never the reverse. Each circle is now literally a package boundary, which is what makes the dependency rule machine-enforceable (dependency-cruiser + pnpm strict mode + grep gates).
 
+#### 1.3.1 Clean Architecture, concretely -- which package is which ring
+
+*A plain-English primer for readers who have never met Clean Architecture; everyone else can skim to the mapping table.*
+
+Clean Architecture draws the system as **concentric rings**. The one rule that makes it work is the **Dependency Rule: source code may only point *inward***. An outer ring can name and use an inner ring; an inner ring must not even know an outer ring exists. The centre holds the things least likely to change (what a *Trade* or a *Price* fundamentally is); the outer edge holds the things most likely to change (React, the WebSocket, the build tool). Put the volatile stuff on the outside so churn there never forces a change in the stable core.
+
+A useful mental image: the **business truth is the yolk**, and each shell around it is a *replaceable detail*. You could throw away React and keep every inner shell intact -- which is exactly what the React Native client proves ([§8.1](#81-the-multi-client-proof--the-solidjs-plan)).
+
+The trick that lets **data flow outward while every code arrow points inward** is a *port*: an interface **declared** in an inner ring and **implemented** in an outer one (dependency inversion). `PricingPort` is declared next to the use cases; `WsAdapter` and the simulators implement it further out. The use case depends on the *interface* (inward); at runtime a concrete adapter is plugged in from outside. In this repo that rule isn't a guideline -- it is **machine-enforced** by dependency-cruiser (`domain-stays-pure`, `ws-effects-stays-pure`, ...; see [dependency-cruiser.md](dependency-cruiser.md)) and by the grep gates that ban `rxjs` in the UI.
+
+![Clean Architecture rings with this repo's packages placed in each ring; an arrow marks the Dependency Rule pointing inward](architecture/clean-architecture-rings.svg)
+
+The same containment, drawn inline (nested boxes = rings):
+
+```mermaid
+flowchart TB
+  subgraph FW["④ Frameworks & Drivers — volatile, swappable"]
+    direction TB
+    subgraph IA["③ Interface Adapters — translate inner ⇄ outer"]
+      direction TB
+      subgraph UC["② Use Cases — application business rules"]
+        direction TB
+        subgraph EN["① Entities — enterprise business rules"]
+          ent["@rtc/domain · fx / credit / equities / connection<br/>Price · Trade · Rfq · Candle · ConnectionStatus"]:::en
+        end
+        uc["@rtc/domain usecases (12) + ports (interfaces)<br/>PriceStreamUseCase · ExecuteTradeUseCase · PricingPort · WorkflowPort"]:::uc
+      end
+      ia["@rtc/client-core presenters + WsAdapter · @rtc/react-bindings (ViewModel)<br/>@rtc/domain simulators (in-memory gateways) · @rtc/server effects · @rtc/shared DTOs"]:::ia
+    end
+    fw["@rtc/client-react (React UI) · @rtc/client-react-native (Expo)<br/>@rtc/ws-effects · Node http+ws · Vite · Playwright / Cypress"]:::fw
+  end
+  note["Dependency Rule: every source-code arrow points inward.<br/>Data flows back outward through ports (declared inside ②, implemented in ③).<br/>Enforced by dependency-cruiser + grep gates."]:::noteC
+  FW -.-> note
+
+  classDef en fill:#14432a,stroke:#56d364,color:#eafff2
+  classDef uc fill:#123049,stroke:#79c0ff,color:#eaf4ff
+  classDef ia fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
+  classDef fw fill:#45321b,stroke:#e3b341,color:#fff6e6
+  classDef noteC fill:#161b22,stroke:#6e7681,color:#c9d1d9
+  style EN fill:none,stroke:#56d364
+  style UC fill:none,stroke:#79c0ff
+  style IA fill:none,stroke:#d2a8ff
+  style FW fill:none,stroke:#e3b341
+```
+
+**The rings aren't a convention you have to remember -- they're compiled.** Every green arrow below is an *allowed* import; every red crossing is a layer violation that fails CI. This is the same package graph as the onion, flattened and annotated with the seven `.dependency-cruiser.cjs` rules that enforce it (full table in [dependency-cruiser.md](dependency-cruiser.md)); ring colors match the onion exactly.
+
+```mermaid
+flowchart LR
+  subgraph r4["④ Frameworks & Drivers"]
+    direction TB
+    webc["@rtc/client-react"]
+    rnc["@rtc/client-react-native"]
+    wse["@rtc/ws-effects"]
+    srv["@rtc/server"]
+  end
+  subgraph r3["③ Interface Adapters"]
+    direction TB
+    core["@rtc/client-core"]
+    rb["@rtc/react-bindings"]
+    shared["@rtc/shared (DTOs)"]
+  end
+  subgraph r12["①② Entities + Use Cases"]
+    domain["@rtc/domain<br/>entities · use cases · ports · simulators"]
+  end
+  nodeb["node:* built-ins"]:::ext
+
+  %% --- allowed inward imports (edges 0-13; keep order — linkStyle indices depend on it) ---
+  webc --> rb
+  webc --> core
+  webc --> domain
+  rnc --> rb
+  rnc --> core
+  rnc --> domain
+  rb --> core
+  rb --> domain
+  core --> shared
+  core --> domain
+  srv --> domain
+  srv --> shared
+  srv --> wse
+  shared --> domain
+
+  %% --- forbidden crossings (edges 14-19), each tagged with the rule that rejects it ---
+  domain -. "✗ domain-stays-pure" .-x shared
+  shared -. "✗ shared-no-apps" .-x srv
+  webc -. "✗ client-not-server" .-x srv
+  srv -. "✗ server-not-client" .-x webc
+  wse -. "✗ ws-effects-stays-pure" .-x domain
+  domain -. "✗ domain-no-node-builtins" .-x nodeb
+
+  classDef ext fill:#161b22,stroke:#6e7681,color:#8b949e
+  style r4 fill:none,stroke:#e3b341
+  style r3 fill:none,stroke:#d2a8ff
+  style r12 fill:none,stroke:#56d364
+  style domain fill:#14432a,stroke:#56d364,color:#eafff2
+  style core fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
+  style rb fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
+  style shared fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
+  style webc fill:#45321b,stroke:#e3b341,color:#fff6e6
+  style rnc fill:#45321b,stroke:#e3b341,color:#fff6e6
+  style wse fill:#45321b,stroke:#e3b341,color:#fff6e6
+  style srv fill:#45321b,stroke:#e3b341,color:#fff6e6
+
+  linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13 stroke:#3fb950,stroke-width:2px
+  linkStyle 14,15,16,17,18,19 stroke:#f85149,stroke-width:2px
+```
+
+> **Green** solid arrows are the allowed `dependencies` edges (they only ever point inward). **Red** dashed-✗ arrows are the crossings CI rejects. The seventh rule, `no-circular`, isn't a single arrow -- it forbids *any* import cycle anywhere in the graph (type-only edges excluded), keeping the whole onion a strict acyclic gradient from ④ inward to ①. (`@rtc/client-prototype` is omitted: as a design island with no `@rtc/*` deps it has no edges to show.)
+
+The exact mapping, ring by ring:
+
+| Ring | Clean Arch name | In one sentence | This repo |
+|---|---|---|---|
+| ① | **Entities** (Enterprise Business Rules) | What a thing *is*, independent of any app | `@rtc/domain/src/{fx,credit,equities,connection,analytics,telemetry,preferences}/` -- `Price`, `Notional`, `Trade`, `Instrument`, `Dealer`, `Rfq`, `Quote`, `EquityQuote`, `Candle`, `DepthBook`, `ConnectionStatus`, `PositionUpdates` |
+| ② | **Use Cases** (Application Business Rules) | App-specific orchestration + the interfaces it needs | `@rtc/domain/src/usecases/` (12: `PriceStreamUseCase`, `ExecuteTradeUseCase`, `CreateRfqUseCase`, `ConnectionStatusUseCase`, ...) **and** `@rtc/domain/src/ports/` (the port interfaces -- `PricingPort`, `ExecutionPort`, `WorkflowPort`, `MarketDataPort`, ...) |
+| ③ | **Interface Adapters** (presenters · gateways · controllers) | Convert between use-case shapes and the outside world | **Presenters/machines:** `@rtc/client-core/src/presenters/`. **Gateways (real):** `@rtc/client-core/src/adapters/` (`WsAdapter`, `portFactory`). **Gateways (in-memory, production -- not mocks):** `@rtc/domain/src/simulators/`. **Platform adapters:** `client-react/src/app/adapters/`, `client-react-native/src/app/adapters/`. **ViewModel bridge:** `@rtc/react-bindings`. **Server controllers/gateways:** `@rtc/server/src/effects/` + `toSocket`. **Boundary DTOs:** `@rtc/shared` |
+| ④ | **Frameworks & Drivers** | The replaceable, volatile detail | `@rtc/client-react/src/ui/` (React + DOM + CSS Modules), `@rtc/client-react-native` UI (Expo/RN + react-native-svg), `@rtc/ws-effects` (the dispatch framework), the `@rtc/server` host (`node:http` + `ws`), Vite, Metro, Vitest/Playwright/Cypress, `@rtc/client-prototype` (design island) |
+
+> **Where's the wiring?** `AppRoot.tsx` (web and RN) and `server/src/index.ts` are the **composition roots** -- they live at the very outer edge and are the *only* places that instantiate concrete adapters and inject them inward. Everything inner receives its dependencies; nothing inner constructs them.
+>
+> **Two subtleties worth internalizing:**
+> - **Ports live with the use cases; adapters live outside.** `PricingPort` (②) is *declared* beside the use cases; `WsAdapter` and `PricingSimulator` (③) *implement* it. That inversion is what lets the arrow point inward while data flows out.
+> - **Simulators are ring ③, not test doubles.** They are real in-memory gateways implementing the same ports as the WebSocket adapters, selected at the composition root -- production code, not mocks ([§10](#10-key-design-decisions)).
+
+And the whole thing in one concrete trace -- follow a single price tick across all four boundaries:
+
+> A price update arrives on the **WebSocket (④)** → `WsAdapter` / `PricingSimulator` **(③ gateway)** turns the raw frame into a domain `PriceTick` and satisfies **`PricingPort` (②)** → `PriceStreamUseCase` **(②)** enriches it (`detectMovement`, spread) into a `Price` **entity (①)** → `PriceStreamPresenter` **(③)** multicasts it as `price$` → `createViewModel`'s `usePrice(pair)` **(③ ViewModel)** hands it to the **React `Tile` (④)** to paint.
+>
+> Notice the two directions: **control** flows outward-in-and-back-out (④→③→②→①→③→④), but every **source-code import** along that path still points inward. The only place the direction "reverses" is at `PricingPort` -- the port that inverts the dependency. (This is the same journey the [animated tick diagram](#animated-the-life-of-a-price-tick) shows in motion.)
+
 ### 1.4 Technology Choices
 
 The current stack is a snapshot, not a commitment. Each row says what role is being played and what's playing it today. Cost-of-replacement is detailed in [§8 Replaceability Matrix](#8-replaceability-matrix).
