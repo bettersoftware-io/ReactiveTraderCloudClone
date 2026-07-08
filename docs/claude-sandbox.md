@@ -62,8 +62,8 @@ gap is the rest of the monorepo, which is still on the shared bind mount:
 | Path | Status |
 |---|---|
 | `node_modules` (root) | ✅ already a container-only volume |
-| `packages/*/node_modules` (domain, shared, client, server) | ❌ shared → isolate |
-| `packages/*/dist` (×4) | ❌ shared → isolate |
+| `packages/*/node_modules` (all 9 workspace packages + `tests`) | ❌ shared → isolate |
+| `packages/*/dist` (×8 — every emitting package; the RN client builds with `tsc --noEmit`, so no `dist`) | ❌ shared → isolate |
 | `.turbo` | ❌ shared → isolate |
 
 All of these are gitignored, so isolating them creates no commit noise.
@@ -98,18 +98,32 @@ project-local `.pnpm-store` fallback, and the playwright-ct vite bundle cache:
   "isolate": [
     "packages/domain/node_modules",
     "packages/shared/node_modules",
+    "packages/client-core/node_modules",
+    "packages/react-bindings/node_modules",
     "packages/client-react/node_modules",
+    "packages/client-react-native/node_modules",
+    "packages/ws-effects/node_modules",
+    "packages/client-prototype/node_modules",
     "packages/server/node_modules",
     "tests/node_modules",
     "packages/domain/dist",
     "packages/shared/dist",
+    "packages/client-core/dist",
+    "packages/react-bindings/dist",
     "packages/client-react/dist",
+    "packages/ws-effects/dist",
+    "packages/client-prototype/dist",
     "packages/server/dist",
     ".pnpm-store",
     ".turbo",
     "packages/domain/.turbo",
     "packages/shared/.turbo",
+    "packages/client-core/.turbo",
+    "packages/react-bindings/.turbo",
     "packages/client-react/.turbo",
+    "packages/client-react-native/.turbo",
+    "packages/ws-effects/.turbo",
+    "packages/client-prototype/.turbo",
     "packages/server/.turbo",
     "tests/.turbo",
     "packages/client-react/tests/ui/visual/playwright-ct/host/.cache"
@@ -142,9 +156,12 @@ client's `tsconfig.json` + `tsconfig.types.json` — colliding on one path.) If 
 ever hit an empty `dist/` after switching environments, `turbo run build --force`
 re-emits.
 
-**When a new package is added** (e.g. `packages/mobile`), add its `node_modules`
-and `dist` entries to `.claude-sandbox.json` — no launcher edit, no host-side
-change. That's the whole point of keeping the policy in the repo.
+**When a new package is added**, add its `node_modules`, its `.turbo` cache, and —
+if it emits one — its `dist` entry to `.claude-sandbox.json`; no launcher edit, no
+host-side change. (A `tsc --noEmit` package such as `@rtc/client-react-native` has
+no `dist` to isolate; a tsc-build or Vite package such as `@rtc/client-core` or
+`@rtc/client-prototype` does.) That's the whole point of keeping the policy in the
+repo.
 
 > Requires a launcher new enough to read `.claude-sandbox.json` (it parses the
 > file with `python3` right after the built-in root-`node_modules` isolation). On

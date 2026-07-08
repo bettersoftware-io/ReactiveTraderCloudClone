@@ -157,7 +157,7 @@ language js
 - Any autofix (e.g. auto-extracting an inline type to a named one).
 
 **Next step when picked up:** add arrow + param patterns to no-inline-return-type,
-run all rules against `packages/client-react/src`, decide blocking vs report-only
+run all rules across the client packages (`packages/{client-core,react-bindings,client-react,client-react-native}/src`), decide blocking vs report-only
 per hit count.
 
 ---
@@ -225,14 +225,18 @@ alarm.
 | `dpdm -T --circular` (transpiles → elides `import type`) | ✅ **0 cycles** |
 
 The 4 reported cycles are all type-only (`machine.ts` ↔ presenters via
-`import type`). **Whatever tool we pick must exclude type-only edges**, or we'll
-chase ghosts.
+`import type`; those files now live in `packages/client-core/src/presenters/`).
+**Whatever tool we pick must exclude type-only edges**, or we'll chase ghosts.
 
-Reproduce:
+> **Resolved:** dependency-cruiser was adopted and runs as the blocking
+> `pnpm check:deps` CI gate — see [dependency-cruiser.md](./dependency-cruiser.md).
+> The ranking below is the historical evaluation record.
+
+Reproduce (repointed at the package that holds those files today):
 ```bash
 pnpm dlx dpdm -T --circular --no-warning --no-tree \
-  --tsconfig packages/client-react/tsconfig.json \
-  "packages/client-react/src/**/*.{ts,tsx}"
+  --tsconfig packages/client-core/tsconfig.json \
+  "packages/client-core/src/**/*.{ts,tsx}"
 ```
 
 ### Tool ranking (2026)
