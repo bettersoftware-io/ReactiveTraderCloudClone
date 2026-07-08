@@ -62,7 +62,8 @@ export function buildBrowserPorts(): AppPorts {
     events: () => {
       // Simulator branch: idle closes are faithfully no-ops (no real socket).
       // Recovery from idle is via the Reconnect button, which pushes reconnect$
-      // → gatewayConnected to resume the state machine. browserOnline also
+      // → the real reconnect intent (IDLE_DISCONNECTED → CONNECTING) followed by
+      // a simulated gatewayConnected (CONNECTING → CONNECTED). browserOnline also
       // recovers (unchanged). userActivity no longer auto-resumes (item 1).
       // Provenance: original services/connection.ts:43-50.
       return merge(
@@ -76,7 +77,10 @@ export function buildBrowserPorts(): AppPorts {
         ),
         reconnect$.pipe(
           mergeMap(() => {
-            return of({ type: "gatewayConnected" as const });
+            return of(
+              { type: "reconnect" as const },
+              { type: "gatewayConnected" as const },
+            );
           }),
         ),
         incident$,
