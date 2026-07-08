@@ -98,10 +98,12 @@ export function CreditBlotter(): ReactElement {
   // rows.
   useEffect(() => {
     setExportCsvHandler(() => {
+      // PROTO useCreditRfqs.ts downloadCsv("credit-trades.csv", …).
       exportToCsv(
         processedTrades,
         CREDIT_COLUMNS,
         formatCreditCell,
+        "credit-trades.csv",
         CREDIT_CSV_UNFORMATTED,
       );
     });

@@ -297,8 +297,11 @@ describe("CreditBlotter", () => {
       vi.stubGlobal("Blob", RecordingBlob);
       vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock");
       vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+      let downloadName = "";
       vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-        () => {},
+        function (this: HTMLAnchorElement) {
+          downloadName = this.download;
+        },
       );
 
       const blotter = mount(CreditBlotterWorkspace, {
@@ -312,6 +315,9 @@ describe("CreditBlotter", () => {
       await blotter.clickExport();
 
       expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+      // The credit blotter downloads under its own filename (PROTO
+      // useCreditRfqs.ts downloadCsv("credit-trades.csv", …)).
+      expect(downloadName).toBe("credit-trades.csv");
       const lines = captured.split("\n");
       // Header must contain all credit columns.
       expect(lines[0]).toBe(
