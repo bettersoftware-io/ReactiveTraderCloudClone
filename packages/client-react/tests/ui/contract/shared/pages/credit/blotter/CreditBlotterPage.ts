@@ -24,6 +24,19 @@ export class CreditBlotterPage extends MountedComponent<Record<string, never>> {
       });
   }
 
+  /**
+   * True when the column-header row lives in a SEPARATE table from the rows —
+   * the split-header structure that keeps the header fixed above the scrolling
+   * rows region and the filter popover outside its scroll clip (same shape as
+   * FxBlotterPage.headerIsSplitFromRows).
+   */
+  headerIsSplitFromRows(): boolean {
+    const th = this.table().querySelector("th");
+    const tbody = this.table().querySelector("tbody");
+    if (!th || !tbody) return false;
+    return th.closest("table") !== tbody.closest("table");
+  }
+
   /** Number of trade rows (0 when only the empty-state row is showing). */
   tradeRowCount(): number {
     if (this.emptyMessage() !== null) return 0;
