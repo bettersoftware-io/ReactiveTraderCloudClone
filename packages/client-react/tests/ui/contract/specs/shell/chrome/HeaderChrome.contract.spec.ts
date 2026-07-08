@@ -174,6 +174,19 @@ describe("HeaderChrome", () => {
     expect(header.prefsOpen()).toBe(false);
   });
 
+  it("replays the boot splash through the seam from the account menu's ⟳ Reboot HUD row", async () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+    });
+    await header.openAccount();
+    expect(header.hasRebootRow()).toBe(true);
+    expect(header.rebootCount()).toBe(0);
+    await header.rebootHud();
+    expect(header.rebootCount()).toBe(1);
+    // The row closes the menu after firing, like the other action rows.
+    expect(header.accountPanelOpen()).toBe(false);
+  });
+
   it("locks the session through the seam from the account menu", async () => {
     const header = mount(HeaderChrome, {
       props: { activeTab: "fx", onTabChange: () => {} },

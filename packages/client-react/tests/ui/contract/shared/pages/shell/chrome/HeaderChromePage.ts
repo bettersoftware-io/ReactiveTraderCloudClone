@@ -209,6 +209,21 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
       });
   }
 
+  /** Click ⟳ Reboot HUD inside the account panel (replays the splash via the seam). */
+  async rebootHud(): Promise<void> {
+    await this.user.click(within(this.root).getByTestId("account-reboot"));
+  }
+
+  /** True when the ⟳ Reboot HUD row is present in the open account panel. */
+  hasRebootRow(): boolean {
+    return within(this.root).queryByTestId("account-reboot") !== null;
+  }
+
+  /** Number of times the boot-gate reboot command was invoked through the seam. */
+  rebootCount(): number {
+    return this.commandLog().bootReboot;
+  }
+
   /** Click LOCK SESSION inside the account panel (locks the session via the seam). */
   async lockSession(): Promise<void> {
     await this.user.click(within(this.root).getByTestId("account-lock"));

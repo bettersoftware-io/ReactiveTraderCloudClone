@@ -19,6 +19,7 @@ import {
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
 import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
+import { shouldPlayBootSplash } from "#/bootSplashGate";
 
 export function buildBrowserPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
@@ -26,6 +27,9 @@ export function buildBrowserPorts(): AppPorts {
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
   const colorScheme = new MediaQueryColorSchemeAdapter();
+  // One-shot boot-splash decision (webdriver/nosplash suppress it) — read at
+  // composition time to seed the BootGatePresenter.
+  const bootSplash = { shouldPlay: shouldPlayBootSplash };
 
   if (url) {
     const ws = new WsAdapter(buildWsUrl(url, token));
@@ -54,6 +58,7 @@ export function buildBrowserPorts(): AppPorts {
       ...createWsRealPorts(ws, { preferences }),
       connectionEvents,
       colorScheme,
+      bootSplash,
     };
   }
 
@@ -91,5 +96,6 @@ export function buildBrowserPorts(): AppPorts {
     ...createSimulatorPorts({ preferences }),
     connectionEvents,
     colorScheme,
+    bootSplash,
   };
 }
