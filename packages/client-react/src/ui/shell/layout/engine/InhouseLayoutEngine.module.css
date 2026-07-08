@@ -98,8 +98,10 @@
  * maximize/collapse regression this rule fixes). Computed recursively by
  * InhouseLayoutEngine's isStripSubtree — a nested split (e.g. the FX right
  * rail's analytics/positions column) only counts as all-strip when every one
- * of its own children does too. Placed before the pinned/fixed rules below so
- * those still win on the (currently hypothetical) cell that is both.
+ * of its own children does too. NOTE: the [data-strip-cell][data-dir] rules
+ * out-rank the pinned/fixed rules below on specificity, so on the (currently
+ * hypothetical) cell that is both, the strip treatment wins — strip-cell and
+ * initial/fixed cells are mutually exclusive by construction today.
  *
  * The bases are DEFINITE lengths, not `auto`: `flex-basis: 0|Npx → auto` is
  * not interpolable, so a hugging basis made the collapse/restore glide (the
