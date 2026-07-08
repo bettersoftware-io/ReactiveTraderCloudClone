@@ -22,13 +22,31 @@ afterEach(() => {
 
 const HEALTHY_TOPOLOGY: ServiceTopology = {
   nodes: [
-    { name: "pricing", status: "ok", throughput: 120, latencyMs: 5 },
-    { name: "execution", status: "ok", throughput: 80, latencyMs: 3 },
-    { name: "blotter", status: "ok", throughput: 60, latencyMs: 4 },
-    { name: "kernel", status: "ok", throughput: 200, latencyMs: 2 },
-    { name: "analytics", status: "ok", throughput: 40, latencyMs: 6 },
-    { name: "credit", status: "ok", throughput: 30, latencyMs: 7 },
-    { name: "refdata", status: "ok", throughput: 10, latencyMs: 1 },
+    {
+      name: "pricing",
+      status: "ok",
+      health: 98,
+      throughput: 120,
+      latencyMs: 5,
+    },
+    {
+      name: "execution",
+      status: "ok",
+      health: 98,
+      throughput: 80,
+      latencyMs: 3,
+    },
+    { name: "blotter", status: "ok", health: 98, throughput: 60, latencyMs: 4 },
+    { name: "kernel", status: "ok", health: 98, throughput: 200, latencyMs: 2 },
+    {
+      name: "analytics",
+      status: "ok",
+      health: 98,
+      throughput: 40,
+      latencyMs: 6,
+    },
+    { name: "credit", status: "ok", health: 98, throughput: 30, latencyMs: 7 },
+    { name: "refdata", status: "ok", health: 98, throughput: 10, latencyMs: 1 },
   ],
   edges: [
     { from: "kernel", to: "pricing", latencyMs: 3 },
@@ -39,13 +57,37 @@ const HEALTHY_TOPOLOGY: ServiceTopology = {
 
 const TOPOLOGY_WITH_DOWN: ServiceTopology = {
   nodes: [
-    { name: "pricing", status: "ok", throughput: 100, latencyMs: 5 },
-    { name: "execution", status: "down", throughput: 0, latencyMs: 0 },
-    { name: "blotter", status: "degraded", throughput: 20, latencyMs: 150 },
-    { name: "kernel", status: "ok", throughput: 200, latencyMs: 2 },
-    { name: "analytics", status: "ok", throughput: 40, latencyMs: 6 },
-    { name: "credit", status: "ok", throughput: 30, latencyMs: 7 },
-    { name: "refdata", status: "ok", throughput: 10, latencyMs: 1 },
+    {
+      name: "pricing",
+      status: "ok",
+      health: 98,
+      throughput: 100,
+      latencyMs: 5,
+    },
+    {
+      name: "execution",
+      status: "down",
+      health: 0,
+      throughput: 0,
+      latencyMs: 0,
+    },
+    {
+      name: "blotter",
+      status: "degraded",
+      health: 86,
+      throughput: 20,
+      latencyMs: 150,
+    },
+    { name: "kernel", status: "ok", health: 98, throughput: 200, latencyMs: 2 },
+    {
+      name: "analytics",
+      status: "ok",
+      health: 98,
+      throughput: 40,
+      latencyMs: 6,
+    },
+    { name: "credit", status: "ok", health: 98, throughput: 30, latencyMs: 7 },
+    { name: "refdata", status: "ok", health: 98, throughput: 10, latencyMs: 1 },
   ],
   edges: [
     { from: "kernel", to: "pricing", latencyMs: 3 },
