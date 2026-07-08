@@ -22,14 +22,6 @@ export function TileHeader({
           <span>{terms}</span>
         </span>
         <span className={styles.headerActions}>
-          {movementPips !== null && (
-            <span
-              data-movement={movementKey(movement)}
-              className={styles.movementBadge}
-            >
-              {movementArrow(movement)} {movementPips} pip
-            </span>
-          )}
           {onInitiateRfq ? (
             <button
               type="button"
@@ -42,6 +34,14 @@ export function TileHeader({
               ⚡ RFQ
             </button>
           ) : null}
+          {movementPips !== null && (
+            <span
+              data-movement={movementKey(movement)}
+              className={styles.movementBadge}
+            >
+              {movementArrow(movement)} {movementPips} pip
+            </span>
+          )}
         </span>
       </div>
     </div>

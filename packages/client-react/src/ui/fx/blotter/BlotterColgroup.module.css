@@ -1,0 +1,5 @@
+/* Column track width — set per <col> from ColumnDef.width via the
+ * --blotter-col-width custom property (see BlotterColgroup.tsx). */
+.col {
+  width: var(--blotter-col-width, auto);
+}
