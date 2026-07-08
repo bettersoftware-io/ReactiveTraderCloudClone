@@ -35,11 +35,11 @@ beforeEach(() => {
   vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
   // Anchor.click is a no-op in jsdom; capture the anchor's download name so
   // each caller's suggested filename can be asserted.
-  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-    function (this: HTMLAnchorElement) {
-      downloadName = this.download;
-    },
-  );
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    downloadName = this.download;
+  });
 });
 
 afterEach(() => {

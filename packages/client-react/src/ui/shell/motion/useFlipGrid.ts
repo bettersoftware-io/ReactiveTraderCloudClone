@@ -117,9 +117,7 @@ export function flipDeltas(
  *  them are this hook's own WAAPI glides (CSS animations — tick flashes,
  *  bookPulse — live on their descendants and don't false-positive here).
  *  Guarded optional: jsdom elements have no getAnimations. */
-function anyGlideRunning(
-  elements: ReadonlyMap<string, HTMLElement>,
-): boolean {
+function anyGlideRunning(elements: ReadonlyMap<string, HTMLElement>): boolean {
   let running = false;
   elements.forEach((el) => {
     if (el.getAnimations && el.getAnimations().length > 0) running = true;
