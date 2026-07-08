@@ -238,6 +238,12 @@
  * dir), not the wrapping cell's flex-direction: a horizontal strip is a
  * short full-width bar; a vertical one is a narrow full-height column. */
 .panel[data-strip="true"] {
+  /* The strip's 32/38px is its OUTER size (1px borders inside), matching the
+   * definite `.cell[data-strip-cell]` bases above. The app's global reset is
+   * border-box already; declaring it here keeps a strip's bar identical in
+   * harnesses that mount components without that reset (the component-level
+   * visual tiers), instead of overflowing its cell by the border width. */
+  box-sizing: border-box;
   flex: 0 0 32px;
 }
 
