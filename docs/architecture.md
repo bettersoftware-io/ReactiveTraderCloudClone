@@ -250,6 +250,27 @@ The exact mapping, ring by ring:
 > - **Ports live with the use cases; adapters live outside.** `PricingPort` (②) is *declared* beside the use cases; `WsAdapter` and `PricingSimulator` (③) *implement* it. That inversion is what lets the arrow point inward while data flows out.
 > - **Simulators are ring ③, not test doubles.** They are real in-memory gateways implementing the same ports as the WebSocket adapters, selected at the composition root -- production code, not mocks ([§10](#10-key-design-decisions)).
 
+##### Entities vs Use Cases -- and why there is no "web use case"
+
+The ①/② split is the most commonly confused boundary in Clean Architecture, so here it is in one line each, with this repo's own code:
+
+- **Entity (Enterprise Business Rule)** -- a truth about the *business* that would hold even if this software didn't exist. "A spread is ask − bid." "Buy deals in the base currency." `calculateSpread`, `detectMovement`, and the `Price`/`Trade` shapes are entities: they don't know an app exists.
+- **Use Case (Application Business Rule)** -- how *this system* behaves: orchestration of entities to fulfil a story. "Subscribe to pricing, enrich each tick with movement + spread, emit `Price`" is `PriceStreamUseCase` -- RTC's specific policy for delivering prices.
+
+The test: **would the rule survive deleting all the software?** Yes → entity. Only true because this app works this way → use case.
+
+A trap worth defusing explicitly: **"Application" does not mean "the web app" or "the mobile app".** It means the system being automated -- Reactive Trader as a product. Web and mobile are not two applications; they are **two delivery mechanisms (rings ③--④) onto the same application**. The web `Tile` and the RN `SpotTile` invoke the *same* `ExecuteTradeUseCase`; that is exactly why both clients share `@rtc/domain` + `@rtc/client-core` with zero duplication. A `WebExecuteTradeUseCase` / `MobileExecuteTradeUseCase` pair would be a smell -- a business rule leaking outward into the delivery layer.
+
+Where legitimate platform differences go instead:
+
+| Difference | Where it lives | Repo example |
+|---|---|---|
+| Same behaviour, different mechanism | One shared **port**, one adapter per platform (ring ③) | One `PreferencesPort`; `LocalStoragePreferencesAdapter` (web) vs `AsyncStoragePreferencesAdapter` (RN) |
+| Feature mounted on one platform only | A **composition/UI decision** (ring ④), not a use-case fork | Admin/telemetry workspace: presenters are platform-neutral; the web client mounts them, the RN tabs don't |
+| Genuinely different business behaviour | A real, *additional* use case in the shared core -- named by **what it does**, never `MobileFoo` | (none yet -- both clients run the same workflows) |
+
+Litmus test: if two candidate use cases differ *only because one runs in a browser and one on a phone*, it isn't a use-case difference -- push it out to an adapter or the UI and keep one use case. If the *business* does something genuinely different, it's a separate use case, available to whichever client needs it.
+
 And the whole thing in one concrete trace -- follow a single price tick across all four boundaries:
 
 > A price update arrives on the **WebSocket (④)** → `WsAdapter` / `PricingSimulator` **(③ gateway)** turns the raw frame into a domain `PriceTick` and satisfies **`PricingPort` (②)** → `PriceStreamUseCase` **(②)** enriches it (`detectMovement`, spread) into a `Price` **entity (①)** → `PriceStreamPresenter` **(③)** multicasts it as `price$` → `createViewModel`'s `usePrice(pair)` **(③ ViewModel)** hands it to the **React `Tile` (④)** to paint.
