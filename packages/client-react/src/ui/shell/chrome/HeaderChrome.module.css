@@ -458,6 +458,12 @@
   color: var(--text-secondary);
 }
 
+/* Globe icon before the language code (prototype Language.module.css .globe). */
+.globe {
+  width: 15px;
+  height: 15px;
+}
+
 .langTrigger[aria-expanded="true"] {
   border-color: var(--border-strong);
   background: var(--chip);
