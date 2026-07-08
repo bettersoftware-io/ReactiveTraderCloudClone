@@ -155,18 +155,73 @@ describe("InhouseLayoutEngine", () => {
     expect(page.isStripFillCell("0", 1)).toBe(false);
   });
 
-  it("orients strips by the reclaim axis: maximizing analytics turns the fully-stripped left column (rates + blotter) into vertical strips, while positions stays horizontal", () => {
-    const page = mount(LayoutEngine, {});
-    page.maximize("fx-analytics");
-    // The left column (rates over blotter) is fully stripped — space
-    // reclaims along the root row → both go vertical, stacking down the rail.
-    expect(page.stripOrientation("fx-rates")).toBe("vertical");
-    expect(page.stripOrientation("fx-blotter")).toBe("vertical");
-    expect(page.isStripFillCell("0", 0)).toBe(true);
-    expect(page.isStripFillCell("0", 1)).toBe(true);
-    // positions shares its column with the maximized analytics panel → its
-    // space reclaims down that column → horizontal.
-    expect(page.stripOrientation("fx-positions")).toBe("horizontal");
+  // The rail panels (fx-analytics/fx-positions in PANEL_SPECS) carry
+  // maximizeScope: "nearest-column" — the standalone design's rail
+  // semantics: the maximize is bounded by the analytics/positions column, so
+  // only the column sibling strips and everything outside stays untouched.
+  describe("nearest-column maximize (rail panels)", () => {
+    it("maximizing analytics strips ONLY positions — a horizontal bar inside the rail; rates and blotter render normally", () => {
+      const page = mount(LayoutEngine, {});
+      page.maximize("fx-analytics");
+      expect(page.isStrip("fx-positions")).toBe(true);
+      expect(page.stripOrientation("fx-positions")).toBe("horizontal");
+      expect(page.isStripFillCell("1", 1)).toBe(false);
+      // outside the boundary: untouched.
+      expect(page.isStrip("fx-rates")).toBe(false);
+      expect(page.isStrip("fx-blotter")).toBe(false);
+      expect(page.bodyText("fx-rates")).toBe("RATES");
+      expect(page.bodyText("fx-blotter")).toBe("BLOTTER");
+    });
+
+    it("marks only the stripped sibling's cell a strip cell — never the rates cell, the left column, or the rail itself", () => {
+      const page = mount(LayoutEngine, {});
+      page.maximize("fx-analytics");
+      expect(page.isStripCell("1", 1)).toBe(true);
+      expect(page.isStripCell("1", 0)).toBe(false);
+      expect(page.isStripCell("", 0)).toBe(false);
+      expect(page.isStripCell("", 1)).toBe(false);
+      expect(page.isStripCell("0", 0)).toBe(false);
+      expect(page.isStripCell("0", 1)).toBe(false);
+    });
+
+    it("keeps the main column|rail handle and the rates/blotter handle; only the rail-internal handle disappears", () => {
+      const page = mount(LayoutEngine, {});
+      page.maximize("fx-analytics");
+      expect(page.handleExists("", 0)).toBe(true);
+      expect(page.handleExists("0", 0)).toBe(true);
+      expect(page.handleExists("1", 0)).toBe(false);
+    });
+
+    it("keeps the rail's 360px initialPx design width (the rail cell sits at the boundary, not inside it)", () => {
+      const page = mount(LayoutEngine, {});
+      expect(page.isInitialCell("", 1)).toBe(true);
+      page.maximize("fx-analytics");
+      expect(page.isInitialCell("", 1)).toBe(true);
+      // contrast: a root-scope maximize drops it so the dock can flow.
+      page.maximize("fx-analytics"); // restore
+      page.maximize("fx-rates");
+      expect(page.isInitialCell("", 1)).toBe(false);
+    });
+
+    it("restores from the stripped sibling's bar: clicking positions' restore bar un-maximizes analytics", () => {
+      const page = mount(LayoutEngine, {});
+      page.maximize("fx-analytics");
+      expect(page.stripRestoreLabel("fx-positions")).toBe("Restore Positions");
+      page.expandStrip("fx-positions");
+      expect(page.isStrip("fx-positions")).toBe(false);
+      expect(page.bodyText("fx-positions")).toBe("POSITIONS");
+      expect(page.maximizeGlyph("fx-analytics")).toBe("⛶");
+    });
+
+    it("maximizing positions mirrors it: analytics strips horizontally, the main column untouched", () => {
+      const page = mount(LayoutEngine, {});
+      page.maximize("fx-positions");
+      expect(page.isStrip("fx-analytics")).toBe(true);
+      expect(page.stripOrientation("fx-analytics")).toBe("horizontal");
+      expect(page.isStrip("fx-rates")).toBe(false);
+      expect(page.isStrip("fx-blotter")).toBe(false);
+      expect(page.handleExists("", 0)).toBe(true);
+    });
   });
 
   it("orients a plainly collapsed panel (no maximize) by its immediate parent split's dir", () => {

@@ -159,6 +159,17 @@ export class TilePage extends MountedComponent<TileProps> {
     return this.q().queryByTestId("trade-confirmation") !== null;
   }
 
+  /** The tile root's data-booked flag — "true" only while the success
+   *  confirmation (Done card) is showing, driving the bookPulse glow. */
+  bookedFlag(symbol: string): string | undefined {
+    return this.tile(symbol).dataset.booked;
+  }
+
+  /** Click the Done card's DISMISS chip (the only control that dismisses it). */
+  async dismissDoneConfirmation(): Promise<void> {
+    await this.user.click(this.q().getByRole("button", { name: /^dismiss$/i }));
+  }
+
   confirmationText(): string {
     return (
       this.q().queryByTestId("trade-confirmation")?.textContent?.trim() ?? ""

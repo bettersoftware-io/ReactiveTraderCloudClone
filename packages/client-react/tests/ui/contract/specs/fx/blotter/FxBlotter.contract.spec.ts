@@ -42,6 +42,15 @@ describe("FxBlotter", () => {
     ).toBe(true);
   });
 
+  // Fixed header: the column headers live in their own table ABOVE the
+  // scrolling rows region, so they stay put while rows scroll and the
+  // filter popover anchors outside the scroll clip (position:sticky broke
+  // its hit-testing in real Chromium — see CreditBlotter.module.css).
+  it("splits the column headers out of the scrolling rows region", () => {
+    const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
+    expect(blotter.headerIsSplitFromRows()).toBe(true);
+  });
+
   it("shows an empty-state message when there are no trades", () => {
     const blotter = mount(FxBlotter, { hooks: { useTrades: [] } });
     expect(blotter.tradeRowCount()).toBe(0);

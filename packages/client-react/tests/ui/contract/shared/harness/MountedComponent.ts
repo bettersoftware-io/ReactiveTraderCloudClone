@@ -55,6 +55,8 @@ export interface PageContext<P> {
   clearIncident(): void;
   /** Push a new Credit RFQs filter (drives RfqsPanel's re-render + entrance cascade). */
   setCreditRfqFilter(filter: CreditRfqFilter): void;
+  /** Push the boot-splash visibility (useBootGate source — drives BootGate). */
+  setBootGateVisible(visible: boolean): void;
 }
 
 /** Base class for all page objects. Provides the neutral update drivers. */
@@ -158,5 +160,10 @@ export abstract class MountedComponent<P> {
   /** Push a new Credit RFQs filter → re-render the subscribing RfqsPanel. */
   setCreditRfqFilter(filter: CreditRfqFilter): void {
     this.ctx.setCreditRfqFilter(filter);
+  }
+
+  /** Push the boot-splash visibility through the seam → re-render BootGate. */
+  protected setBootGateVisible(visible: boolean): void {
+    this.ctx.setBootGateVisible(visible);
   }
 }

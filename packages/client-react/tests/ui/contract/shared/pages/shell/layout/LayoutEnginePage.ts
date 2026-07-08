@@ -145,6 +145,18 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
     return within(this.root).getByTestId(`handle-${pathKey}-${i}`);
   }
 
+  /** True when the cell still renders its initialPx design width (px-fixed
+   * with the resize handle kept). Root-scope maximize drops this everywhere;
+   * a nearest-column maximize keeps it on the rail cell, which sits at (not
+   * inside) the boundary. */
+  isInitialCell(pathKey: string, i: number): boolean {
+    return (
+      within(this.root)
+        .getByTestId(`cell-${pathKey}-${i}`)
+        .getAttribute("data-initial-cell") === "true"
+    );
+  }
+
   /** True when this strip cell's strips run perpendicular to the owning
    * split's axis (inherited orientation) and it therefore shares the split's
    * main-axis space instead of hugging — vertical strips stacking down (and

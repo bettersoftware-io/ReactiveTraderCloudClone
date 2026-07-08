@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import {
   type CurrencyPair,
   type Direction,
+  ExecutionStatus,
   type Price,
   PriceMovementType,
 } from "@rtc/domain";
@@ -56,6 +57,16 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
   // row (an existing row, so the tile's height never changes). The other RFQ
   // lifecycle states still render through TileRfq below.
   const showRfqChip = notional.state.isRfq && !isBusy && !isRfqFlowActive;
+  // PROTO RateTile data-booked: true exactly while the success confirmation
+  // (TileConfirmation's Done card) is showing, so the tile ROOT carries the
+  // bookPulse glow — the overlay's own glow is clipped by the tile's
+  // overflow:hidden, but the root's box-shadow is not. Flips back to false
+  // when the confirmation dismisses, so the animation restarts on the next
+  // successful trade (the attribute cycles).
+  const isBooked =
+    tileExecution.state.status === "finished" &&
+    tileExecution.state.executionStatus === ExecutionStatus.Done &&
+    !!tileExecution.state.trade;
 
   const tickAnim =
     animIntent?.kind === "tickUp" || animIntent?.kind === "tickDown"
@@ -84,6 +95,7 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
         data-testid={`tile-${pair.symbol}`}
         data-loading={isLoading ? "true" : "false"}
         data-busy={isBusy ? "true" : "false"}
+        data-booked={isBooked ? "true" : "false"}
         className={styles.tile}
       >
         <TileHeader
