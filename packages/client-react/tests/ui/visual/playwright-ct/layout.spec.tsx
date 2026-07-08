@@ -20,21 +20,6 @@ test("layout/fx-maximized", async ({ mount }) => {
   });
 });
 
-test("layout/fx-rail-maximized", async ({ mount }) => {
-  const c = await mount(<VisualScenario name="layout/fx-rail-maximized" />);
-  await expect(c.getByTestId("panel-fx-analytics")).toHaveAttribute(
-    "data-maximized",
-    "true",
-  );
-  await expect(c.getByTestId("panel-fx-positions")).toHaveAttribute(
-    "data-strip",
-    "true",
-  );
-  await expect(c).toHaveScreenshot("fx-rail-maximized.png", {
-    animations: "disabled",
-  });
-});
-
 test("layout/fx-collapsed", async ({ mount }) => {
   const c = await mount(<VisualScenario name="layout/fx-collapsed" />);
   await expect(c.getByTestId("panel-fx-analytics")).toHaveAttribute(

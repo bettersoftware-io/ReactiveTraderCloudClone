@@ -19,7 +19,6 @@ import {
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
 import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
-import { shouldPlayBootSplash } from "#/bootSplashGate";
 
 export function buildBrowserPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
@@ -27,9 +26,6 @@ export function buildBrowserPorts(): AppPorts {
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
   const colorScheme = new MediaQueryColorSchemeAdapter();
-  // One-shot boot-splash decision (webdriver/nosplash suppress it) — read at
-  // composition time to seed the BootGatePresenter.
-  const bootSplash = { shouldPlay: shouldPlayBootSplash };
 
   if (url) {
     const ws = new WsAdapter(buildWsUrl(url, token));
@@ -58,7 +54,6 @@ export function buildBrowserPorts(): AppPorts {
       ...createWsRealPorts(ws, { preferences }),
       connectionEvents,
       colorScheme,
-      bootSplash,
     };
   }
 
@@ -67,8 +62,7 @@ export function buildBrowserPorts(): AppPorts {
     events: () => {
       // Simulator branch: idle closes are faithfully no-ops (no real socket).
       // Recovery from idle is via the Reconnect button, which pushes reconnect$
-      // → the real reconnect intent (IDLE_DISCONNECTED → CONNECTING) followed by
-      // a simulated gatewayConnected (CONNECTING → CONNECTED). browserOnline also
+      // → gatewayConnected to resume the state machine. browserOnline also
       // recovers (unchanged). userActivity no longer auto-resumes (item 1).
       // Provenance: original services/connection.ts:43-50.
       return merge(
@@ -82,10 +76,7 @@ export function buildBrowserPorts(): AppPorts {
         ),
         reconnect$.pipe(
           mergeMap(() => {
-            return of(
-              { type: "reconnect" as const },
-              { type: "gatewayConnected" as const },
-            );
+            return of({ type: "gatewayConnected" as const });
           }),
         ),
         incident$,
@@ -96,6 +87,5 @@ export function buildBrowserPorts(): AppPorts {
     ...createSimulatorPorts({ preferences }),
     connectionEvents,
     colorScheme,
-    bootSplash,
   };
 }

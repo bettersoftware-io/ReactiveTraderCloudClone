@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-import { COLUMNS, formatFxCell } from "./blotterColumns";
-import { exportFxToCsv, exportToCsv } from "./csvExport";
+import { exportFxToCsv } from "./csvExport";
 
 /**
  * exportToCsv writes to a Blob and triggers a download via an anchor element.
@@ -11,7 +10,6 @@ import { exportFxToCsv, exportToCsv } from "./csvExport";
  * them and capture the Blob's text to assert the serialized CSV content.
  */
 let captured: string | null;
-let downloadName: string | null;
 const RealBlob: typeof Blob = globalThis.Blob;
 
 /** A real Blob subclass that records the joined text parts it was built from. */
@@ -29,17 +27,11 @@ class RecordingBlob extends RealBlob {
 
 beforeEach(() => {
   captured = null;
-  downloadName = null;
   vi.stubGlobal("Blob", RecordingBlob);
   vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock");
   vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-  // Anchor.click is a no-op in jsdom; capture the anchor's download name so
-  // each caller's suggested filename can be asserted.
-  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-    function captureDownloadName(this: HTMLAnchorElement) {
-      downloadName = this.download;
-    },
-  );
+  // Anchor.click is a no-op in jsdom; ensure it does not throw.
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -88,19 +80,6 @@ describe("exportToCsv", () => {
     exportFxToCsv([trade()]);
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock");
-  });
-
-  // Per-blotter filenames (PROTO useFxBlotter.ts / useCreditRfqs.ts) — the
-  // FX convenience pins its own, and the generic export downloads under
-  // whatever name its caller passes (CreditBlotter passes credit-trades.csv).
-  it("downloads the FX export as fx-trades.csv", () => {
-    exportFxToCsv([trade()]);
-    expect(downloadName).toBe("fx-trades.csv");
-  });
-
-  it("downloads the generic export under the caller's filename", () => {
-    exportToCsv([trade()], COLUMNS, formatFxCell, "credit-trades.csv");
-    expect(downloadName).toBe("credit-trades.csv");
   });
 });
 

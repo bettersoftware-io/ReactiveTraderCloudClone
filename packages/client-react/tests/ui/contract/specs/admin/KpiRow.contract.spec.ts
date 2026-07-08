@@ -99,7 +99,7 @@ describe("KpiRow", () => {
     expect(row.delta("sess")).toMatch(/^▲ \+/);
   });
 
-  it("renders a smoothed sparkline path for a multi-sample series", () => {
+  it("renders a non-empty sparkline for a multi-sample series", () => {
     const row = mount(KpiRow, {
       admin: {
         metrics: {
@@ -111,8 +111,7 @@ describe("KpiRow", () => {
         },
       },
     });
-    expect(row.sparkPath("tput")).toMatch(/^M/);
-    expect(row.sparkPath("tput")).toContain(" C");
+    expect(row.sparkPoints("tput")).not.toBe("");
   });
 
   it("re-renders when metric samples are pushed", () => {

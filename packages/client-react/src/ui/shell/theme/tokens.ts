@@ -49,11 +49,7 @@ export interface ThemeTokens {
   // Borders
   "--border-primary": string;
   "--border-subtle": string;
-  /**
-   * General-purpose border — full strength, same value as --border-primary
-   * per skin (the prototype has a single border strength; a previous
-   * half-strength value here washed out every panel/ladder rule).
-   */
+  /** General-purpose border (same value as --border-subtle per skin). */
   "--border": string;
   /** Active / selected border. */
   "--border-strong": string;
@@ -138,7 +134,7 @@ const darkTokens: ThemeTokens = {
 
   "--border-primary": "#334155",
   "--border-subtle": "#1e293b",
-  "--border": "#334155",
+  "--border": "#1e293b",
   "--border-strong": "#475569",
 
   "--status-connected": "#22c55e",
@@ -193,7 +189,7 @@ const lightTokens: ThemeTokens = {
 
   "--border-primary": "#e2e8f0",
   "--border-subtle": "#f1f5f9",
-  "--border": "#e2e8f0",
+  "--border": "#f1f5f9",
   "--border-strong": "#475569",
 
   "--status-connected": "#16a34a",
@@ -249,7 +245,7 @@ const holoDark: ThemeTokens = {
 
   "--border-primary": "rgba(0,224,255,0.26)",
   "--border-subtle": "rgba(0,224,255,0.12)",
-  "--border": "rgba(0,224,255,0.26)",
+  "--border": "rgba(0,224,255,0.12)",
   "--border-strong": "rgba(0,224,255,0.6)",
 
   "--status-connected": "#2bffb3",
@@ -280,12 +276,9 @@ const holoDark: ThemeTokens = {
 };
 
 /**
- * Holo light — v2 from PROTO `themesLight.holo` (Task 2 brief), with two
- * deliberate readability deviations (parity round-2 item 2, user decision):
- * `--panel` alpha raised 0.62 → 0.82 and `--panel-head` made an opaque light
- * surface (the old rgba(0,150,179,0.07) tint composited over white) so panel
- * heads and the footer read clearly over the ambient backdrop. Everything
- * else comes straight from the prototype's light theme table.
+ * Holo light — v2 verbatim from PROTO `themesLight.holo` (Task 2 brief), not
+ * derived; backgrounds/panel/border/text/accents/glow/grid/chip/auroraOp all
+ * come straight from the prototype's light theme table.
  */
 const holoLight: ThemeTokens = {
   "--bg-primary": "#e7eff3",
@@ -309,7 +302,7 @@ const holoLight: ThemeTokens = {
 
   "--border-primary": "rgba(0,150,179,0.26)",
   "--border-subtle": "rgba(0,180,204,0.15)",
-  "--border": "rgba(0,150,179,0.26)",
+  "--border": "rgba(0,180,204,0.15)",
   "--border-strong": "rgba(0,135,165,0.58)",
 
   "--status-connected": "#0a9e63",
@@ -317,8 +310,8 @@ const holoLight: ThemeTokens = {
   "--status-disconnected": "#d63d52",
   "--status-error": "#d63d52",
 
-  "--panel": "rgba(255,255,255,0.82)",
-  "--panel-head": "#edf8fa",
+  "--panel": "rgba(255,255,255,0.62)",
+  "--panel-head": "rgba(0,150,179,0.07)",
   "--panel-blur": "14px",
   "--glow": "0 0 14px rgba(0,150,179,0.2)",
   "--grid": "rgba(0,150,179,0.06)",
@@ -370,7 +363,7 @@ const holo3dDark: ThemeTokens = {
 
   "--border-primary": "rgba(0,224,255,0.30)",
   "--border-subtle": "rgba(0,224,255,0.12)",
-  "--border": "rgba(0,224,255,0.30)",
+  "--border": "rgba(0,224,255,0.12)",
   "--border-strong": "rgba(0,224,255,0.66)",
 
   "--status-connected": "#2bffb3",
@@ -405,12 +398,9 @@ const holo3dDark: ThemeTokens = {
 };
 
 /**
- * Holo 3D light — PROTO `themesLight.holo3d` (L779); derived keys follow
- * holoLight (overlay = holo3d dark bg at 0.4, white on-accent, amber aware,
- * aurora from the light accents at holoLight's opacities). Same readability
- * deviations as holoLight (parity round-2 item 2, user decision): `--panel`
- * gradient alphas raised 0.84/0.74 → 0.98/0.94 and `--panel-head` stops made
- * opaque (the old tints composited over white).
+ * Holo 3D light — PROTO `themesLight.holo3d` (L779) verbatim; derived keys
+ * follow holoLight (overlay = holo3d dark bg at 0.4, white on-accent, amber
+ * aware, aurora from the light accents at holoLight's opacities).
  */
 const holo3dLight: ThemeTokens = {
   "--bg-primary": "#e3edf2",
@@ -436,7 +426,7 @@ const holo3dLight: ThemeTokens = {
 
   "--border-primary": "rgba(0,150,179,0.3)",
   "--border-subtle": "rgba(0,180,204,0.15)",
-  "--border": "rgba(0,150,179,0.3)",
+  "--border": "rgba(0,180,204,0.15)",
   "--border-strong": "rgba(0,135,165,0.6)",
 
   "--status-connected": "#0a9e63",
@@ -445,8 +435,9 @@ const holo3dLight: ThemeTokens = {
   "--status-error": "#d63d52",
 
   "--panel":
-    "linear-gradient(157deg, rgba(255,255,255,0.98) 0%, rgba(231,243,248,0.94) 100%)",
-  "--panel-head": "linear-gradient(180deg, #e0f2f6 0%, #fafdfd 100%)",
+    "linear-gradient(157deg, rgba(255,255,255,0.84) 0%, rgba(231,243,248,0.74) 100%)",
+  "--panel-head":
+    "linear-gradient(180deg, rgba(0,150,179,0.12) 0%, rgba(0,150,179,0.02) 100%)",
   "--panel-blur": "14px",
   "--glow": "0 0 14px rgba(0,150,179,0.22)",
   "--grid": "rgba(0,150,179,0.06)",
@@ -496,7 +487,7 @@ const terminalDark: ThemeTokens = {
 
   "--border-primary": "#262b34",
   "--border-subtle": "#1a1e25",
-  "--border": "#262b34",
+  "--border": "#1a1e25",
   "--border-strong": "#3a4351",
 
   "--status-connected": "#37d27e",
@@ -551,7 +542,7 @@ const terminalLight: ThemeTokens = {
 
   "--border-primary": "#d4d8de",
   "--border-subtle": "#e2e5ea",
-  "--border": "#d4d8de",
+  "--border": "#e2e5ea",
   "--border-strong": "#a8b0bb",
 
   "--status-connected": "#1f8a52",
@@ -611,7 +602,7 @@ const terminal3dDark: ThemeTokens = {
 
   "--border-primary": "#2a303a",
   "--border-subtle": "#1a1e25",
-  "--border": "#2a303a",
+  "--border": "#1a1e25",
   "--border-strong": "#414b5a",
 
   "--status-connected": "#37d27e",
@@ -671,7 +662,7 @@ const terminal3dLight: ThemeTokens = {
 
   "--border-primary": "#d2d6dc",
   "--border-subtle": "#e2e5ea",
-  "--border": "#d2d6dc",
+  "--border": "#e2e5ea",
   "--border-strong": "#a8b0bb",
 
   "--status-connected": "#1f8a52",
@@ -730,7 +721,7 @@ const neonDark: ThemeTokens = {
 
   "--border-primary": "rgba(255,43,214,0.36)",
   "--border-subtle": "rgba(255,43,214,0.18)",
-  "--border": "rgba(255,43,214,0.36)",
+  "--border": "rgba(255,43,214,0.18)",
   "--border-strong": "rgba(255,43,214,0.72)",
 
   "--status-connected": "#00ffa3",
@@ -761,10 +752,8 @@ const neonDark: ThemeTokens = {
 };
 
 /**
- * Neon light — v2 from PROTO `themesLight.neon` (Task 2 brief), with the same
- * readability deviations as holoLight (parity round-2 item 2, user decision):
- * `--panel` alpha raised 0.62 → 0.82 and `--panel-head` made an opaque light
- * surface (the old rgba(200,0,160,0.07) tint composited over white).
+ * Neon light — v2 verbatim from PROTO `themesLight.neon` (Task 2 brief), not
+ * derived.
  */
 const neonLight: ThemeTokens = {
   "--bg-primary": "#f4ebf3",
@@ -788,7 +777,7 @@ const neonLight: ThemeTokens = {
 
   "--border-primary": "rgba(200,0,160,0.28)",
   "--border-subtle": "rgba(200,0,160,0.15)",
-  "--border": "rgba(200,0,160,0.28)",
+  "--border": "rgba(200,0,160,0.15)",
   "--border-strong": "rgba(190,0,150,0.58)",
 
   "--status-connected": "#0a9e63",
@@ -796,8 +785,8 @@ const neonLight: ThemeTokens = {
   "--status-disconnected": "#d63d52",
   "--status-error": "#d63d52",
 
-  "--panel": "rgba(255,255,255,0.82)",
-  "--panel-head": "#fbedf8",
+  "--panel": "rgba(255,255,255,0.62)",
+  "--panel-head": "rgba(200,0,160,0.07)",
   "--panel-blur": "12px",
   "--glow": "0 0 14px rgba(200,0,160,0.2)",
   "--grid": "rgba(200,0,160,0.06)",

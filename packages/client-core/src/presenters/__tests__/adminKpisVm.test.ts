@@ -9,73 +9,25 @@ import type { MetricSample } from "@rtc/domain";
 import {
   kpisVm,
   latencyBuckets,
-  smoothPath,
-  sparkPath,
+  sparkPoints,
   throughputPaths,
 } from "../adminKpisVm";
 
-describe("smoothPath", () => {
-  it("emits a Catmull-Rom cubic-Bézier path through every data point", () => {
-    const d = smoothPath(
-      [
-        { x: 0, y: 28 },
-        { x: 50, y: 15 },
-        { x: 100, y: 2 },
-      ],
-      28,
-    );
-    expect(d).toBe(
-      "M0.0,28.0 C8.3,25.8 33.3,19.3 50.0,15.0 C66.7,10.7 91.7,4.2 100.0,2.0",
-    );
-  });
-
-  it("clamps control-point y into [0, boxHeight] so sharp turns never overshoot the box", () => {
-    // A flat-bottomed V: unclamped Catmull-Rom control points at the two
-    // bottom corners would dip to y≈32.3 in a 28-high box.
-    const d = smoothPath(
-      [
-        { x: 0, y: 2 },
-        { x: 100 / 3, y: 28 },
-        { x: 200 / 3, y: 28 },
-        { x: 100, y: 2 },
-      ],
-      28,
-    );
-    const ys = [...d.matchAll(/,(-?\d+\.\d)/g)].map((m) => {
-      return Number(m[1]);
-    });
-    expect(Math.max(...ys)).toBeLessThanOrEqual(28);
-    expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
-  });
-
-  it("collapses a single point to a bare moveto", () => {
-    expect(smoothPath([{ x: 0, y: 28 }], 28)).toBe("M0.0,28.0");
-  });
-
-  it("returns an empty string for no points", () => {
-    expect(smoothPath([], 28)).toBe("");
-  });
-});
-
-describe("sparkPath", () => {
-  it("normalises a series into an inverted smoothed path over the 100×28 box", () => {
-    expect(sparkPath([10, 20, 30])).toBe(
-      "M0.0,28.0 C8.3,25.8 33.3,19.3 50.0,15.0 C66.7,10.7 91.7,4.2 100.0,2.0",
-    );
+describe("sparkPoints", () => {
+  it("normalises a series into inverted 100×28 points", () => {
+    expect(sparkPoints([10, 20, 30])).toBe("0.0,28.0 50.0,15.0 100.0,2.0");
   });
 
   it("collapses a single-value series to the origin without NaN", () => {
-    expect(sparkPath([5])).toBe("M0.0,28.0");
+    expect(sparkPoints([5])).toBe("0.0,28.0");
   });
 
   it("returns an empty string for an empty series", () => {
-    expect(sparkPath([])).toBe("");
+    expect(sparkPoints([])).toBe("");
   });
 
   it("renders a flat series at the box bottom (no divide-by-zero range)", () => {
-    expect(sparkPath([7, 7, 7])).toBe(
-      "M0.0,28.0 C8.3,28.0 33.3,28.0 50.0,28.0 C66.7,28.0 91.7,28.0 100.0,28.0",
-    );
+    expect(sparkPoints([7, 7, 7])).toBe("0.0,28.0 50.0,28.0 100.0,28.0");
   });
 });
 
@@ -212,12 +164,10 @@ describe("kpisVm", () => {
 });
 
 describe("throughputPaths", () => {
-  it("builds a 300×96 smoothed line path plus a closed gradient area", () => {
+  it("builds a 300×96 polyline plus a closed gradient area", () => {
     const paths = throughputPaths(series([600, 1200, 2200]));
-    expect(paths.line).toBe(
-      "M0.0,92.0 C25.0,86.8 100.0,74.5 150.0,60.5 C200.0,46.5 275.0,16.8 300.0,8.0",
-    );
-    expect(paths.area).toBe(`${paths.line} L300,96 L0,96 Z`);
+    expect(paths.line).toBe("0.0,92.0 150.0,60.5 300.0,8.0");
+    expect(paths.area).toBe("M0,96 0.0,92.0 150.0,60.5 300.0,8.0 L300,96 Z");
   });
 
   it("closes to a flat baseline for an empty series", () => {
@@ -228,8 +178,8 @@ describe("throughputPaths", () => {
 
   it("collapses a single-value series to the origin without NaN", () => {
     const paths = throughputPaths(series([1000]));
-    expect(paths.line).toBe("M0.0,92.0");
-    expect(paths.area).toBe("M0.0,92.0 L300,96 L0,96 Z");
+    expect(paths.line).toBe("0.0,92.0");
+    expect(paths.area).toBe("M0,96 0.0,92.0 L300,96 Z");
   });
 });
 

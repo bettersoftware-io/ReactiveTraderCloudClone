@@ -441,22 +441,6 @@ export function reactViewModel(world: World): ViewModel {
         },
       };
     },
-    // Boot gate: reactive visibility backed by the World subject; reboot
-    // re-raises (recorded so a spec can assert "⟳ Reboot HUD fires once"),
-    // dismiss lowers — mirroring the real BootGatePresenter seam.
-    useBootGate: () => {
-      const visible = useSubject(world.bootGate);
-      return {
-        visible,
-        reboot: () => {
-          world.commands.bootReboot += 1;
-          world.bootGate.next(true);
-        },
-        dismiss: () => {
-          world.bootGate.next(false);
-        },
-      };
-    },
     // Per-RFQ countdown: the REAL createRfqCountdownMachine, exercising the
     // relocated countdown logic through the same useMachine bridge the app uses.
     // Contract specs drive the countdown with fake timers.

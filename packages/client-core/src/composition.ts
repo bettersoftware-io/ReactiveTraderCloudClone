@@ -20,7 +20,6 @@ import {
   AnimatedBackgroundPresenter,
   AnimationDirector,
   BlotterPresenter,
-  BootGatePresenter,
   BootPreferencePresenter,
   CandleSeriesPresenter,
   ConnectionStatusPresenter,
@@ -115,8 +114,6 @@ export interface Presenters {
   eqBlotterViewPreference: EqBlotterViewPreferencePresenter;
   animationDirector: AnimationDirector;
   bootPreference: BootPreferencePresenter;
-  /** Boot-splash overlay visibility + the account menu's ⟳ Reboot HUD intent. */
-  bootGate: BootGatePresenter;
   session: SessionPresenter;
   watchlist: WatchlistPresenter;
   candleSeries: CandleSeriesPresenter;
@@ -278,9 +275,6 @@ export function createApp(ports: AppPorts): App {
       equityFills$: ordersBlotter.fills$,
     }),
     bootPreference: new BootPreferencePresenter(ports.preferences),
-    // Boot-splash visibility, seeded once from the platform's boot-splash
-    // decision (defaults to playing when no bootSplash port is supplied).
-    bootGate: new BootGatePresenter(ports.bootSplash?.shouldPlay() ?? true),
     // Session lock/unlock state over the static demo user (no real auth backend).
     session: new SessionPresenter(),
     watchlist,

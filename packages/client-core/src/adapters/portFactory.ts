@@ -104,12 +104,6 @@ export interface AppPorts {
   /** OS colour-scheme signal. Optional — omit in tests/simulators to default to light.
    * Browser implementation: `MediaQueryColorSchemeAdapter` (client-react). */
   colorScheme?: ColorSchemeSource;
-  /** One-shot boot-splash decision, read once at composition time to seed the
-   * BootGatePresenter. Optional — omit in tests/simulators to default to
-   * playing the splash. Browser implementation: `shouldPlayBootSplash`
-   * (client-react bootSplashGate — it reads navigator/location, which stays
-   * out of this framework-free core). */
-  bootSplash?: { shouldPlay(): boolean };
 }
 
 export type TransportPorts = Omit<AppPorts, "connectionEvents">;

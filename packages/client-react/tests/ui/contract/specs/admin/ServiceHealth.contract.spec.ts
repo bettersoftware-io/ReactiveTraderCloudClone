@@ -2,10 +2,10 @@
  * ServiceHealth contract spec (v2 Parity E Task 3).
  *
  * Verifies that ServiceHealth derives one row per useTopology() node (status
- * dot, health bar with the --health colour-ramp custom property, latency,
- * health-derived uptime), including the real-app "down" status the
- * client-prototype source never modelled (it only had ONLINE/DEGRADED), and
- * that it shows a placeholder when no topology data has arrived yet.
+ * dot, utilisation bar, latency, uptime), including the real-app "down"
+ * status the client-prototype source never modelled (it only had
+ * ONLINE/DEGRADED), and that it shows a placeholder when no topology data has
+ * arrived yet.
  */
 
 import { ServiceHealth } from "@ui-contract/components";
@@ -20,47 +20,17 @@ afterEach(() => {
 
 const HEALTHY_TOPOLOGY: ServiceTopology = {
   nodes: [
-    {
-      name: "kernel",
-      status: "ok",
-      health: 100,
-      throughput: 200,
-      latencyMs: 2,
-    },
-    {
-      name: "pricing",
-      status: "ok",
-      health: 97,
-      throughput: 100,
-      latencyMs: 5,
-    },
+    { name: "kernel", status: "ok", throughput: 200, latencyMs: 2 },
+    { name: "pricing", status: "ok", throughput: 100, latencyMs: 5 },
   ],
   edges: [],
 };
 
 const MIXED_TOPOLOGY: ServiceTopology = {
   nodes: [
-    {
-      name: "kernel",
-      status: "ok",
-      health: 100,
-      throughput: 200,
-      latencyMs: 2,
-    },
-    {
-      name: "blotter",
-      status: "degraded",
-      health: 86,
-      throughput: 20,
-      latencyMs: 150,
-    },
-    {
-      name: "execution",
-      status: "down",
-      health: 0,
-      throughput: 0,
-      latencyMs: 0,
-    },
+    { name: "kernel", status: "ok", throughput: 200, latencyMs: 2 },
+    { name: "blotter", status: "degraded", throughput: 20, latencyMs: 150 },
+    { name: "execution", status: "down", throughput: 0, latencyMs: 0 },
   ],
   edges: [],
 };
@@ -111,29 +81,20 @@ describe("ServiceHealth", () => {
     expect(health.latencyFor("pricing")).toBe("5ms");
   });
 
-  it("sizes each bar by the node's health, not relative throughput", () => {
+  it("gives the busiest node a 100% utilisation bar", () => {
     const health = mount(ServiceHealth, {
       admin: { topology: HEALTHY_TOPOLOGY },
     });
     expect(health.barPctFor("kernel")).toBe("100%");
-    expect(health.barPctFor("pricing")).toBe("97%");
+    expect(health.barPctFor("pricing")).toBe("50%");
   });
 
-  it("exposes the --health custom property that drives the fill's colour ramp", () => {
+  it("renders a deterministic uptime for ok/degraded rows and an em dash for down", () => {
     const health = mount(ServiceHealth, {
       admin: { topology: MIXED_TOPOLOGY },
     });
-    expect(health.healthFor("kernel")).toBe("100");
-    expect(health.healthFor("blotter")).toBe("86");
-    expect(health.healthFor("execution")).toBe("0");
-  });
-
-  it("renders a health-derived uptime for ok/degraded rows and an em dash for down", () => {
-    const health = mount(ServiceHealth, {
-      admin: { topology: MIXED_TOPOLOGY },
-    });
-    expect(health.uptimeFor("kernel")).toBe("99.99%");
-    expect(health.uptimeFor("blotter")).toBe("98.6%");
+    expect(health.uptimeFor("kernel")).toBe("99.91%");
+    expect(health.uptimeFor("blotter")).toBe("98.4%");
     expect(health.uptimeFor("execution")).toBe("—");
   });
 

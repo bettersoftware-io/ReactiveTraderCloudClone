@@ -6,30 +6,20 @@ export interface ColumnDef<TRow> {
   key: keyof TRow;
   label: string;
   filterType: FilterType;
-  /** Fixed px column width, rendered through BlotterColgroup in BOTH the
-   * header table and the scrolling rows table (table-layout: fixed) so the
-   * two regions' column edges align exactly. Omit on (at most) the LAST
-   * column to leave it flexible — it absorbs the rows region's vertical
-   * scrollbar width so the fixed edges never shift between the regions. */
-  width?: number;
 }
 
 export type CellFormatter<TRow> = (row: TRow, col: ColumnDef<TRow>) => string;
 
-// Widths: PROTO Blotter/TradesBlotter.module.css .headerRow
-// grid-template-columns (84 92 118 80 92 72 116 92 106 84), with the final
-// Trader column left flexible instead of the prototype's fixed 84px (see
-// ColumnDef.width above).
 export const COLUMNS: readonly ColumnDef<Trade>[] = [
-  { key: "tradeId", label: "Trade ID", filterType: "number", width: 84 },
-  { key: "status", label: "Status", filterType: "set", width: 92 },
-  { key: "tradeDate", label: "Trade Date", filterType: "date", width: 118 },
-  { key: "direction", label: "Direction", filterType: "set", width: 80 },
-  { key: "currencyPair", label: "CCYCCY", filterType: "set", width: 92 },
-  { key: "dealtCurrency", label: "Deal CCY", filterType: "set", width: 72 },
-  { key: "notional", label: "Notional", filterType: "number", width: 116 },
-  { key: "spotRate", label: "Rate", filterType: "number", width: 92 },
-  { key: "valueDate", label: "Value Date", filterType: "date", width: 106 },
+  { key: "tradeId", label: "Trade ID", filterType: "number" },
+  { key: "status", label: "Status", filterType: "set" },
+  { key: "tradeDate", label: "Trade Date", filterType: "date" },
+  { key: "direction", label: "Direction", filterType: "set" },
+  { key: "currencyPair", label: "CCYCCY", filterType: "set" },
+  { key: "dealtCurrency", label: "Deal CCY", filterType: "set" },
+  { key: "notional", label: "Notional", filterType: "number" },
+  { key: "spotRate", label: "Rate", filterType: "number" },
+  { key: "valueDate", label: "Value Date", filterType: "date" },
   { key: "tradeName", label: "Trader", filterType: "set" },
 ];
 

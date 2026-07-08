@@ -30,11 +30,10 @@ export class ThroughputChartPage extends MountedComponent<
     return this.svg()?.querySelector("path")?.getAttribute("d") ?? null;
   }
 
-  /** The `d` attribute of the smoothed glow line <path>, or null. */
-  linePath(): string | null {
+  /** The `points` attribute of the glow <polyline>, or null. */
+  linePoints(): string | null {
     return (
-      this.svg()?.querySelector("path[class*='line']")?.getAttribute("d") ??
-      null
+      this.svg()?.querySelector("polyline")?.getAttribute("points") ?? null
     );
   }
 }

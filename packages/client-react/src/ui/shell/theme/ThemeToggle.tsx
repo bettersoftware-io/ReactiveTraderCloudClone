@@ -16,7 +16,6 @@ export function ThemeToggle(): ReactElement {
       data-mode-preference={modePreference}
       onClick={cycleMode}
       aria-label={`Switch to ${nextThemeModePreference(modePreference)} theme`}
-      title={`Switch to ${nextThemeModePreference(modePreference)} theme`}
       className={styles.toggle}
     >
       {ICON[modePreference]}

@@ -16,28 +16,10 @@ export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
  * stable — the PanelRegistry (Task 5) maps them to module roots. */
 export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   "fx-rates": { id: "fx-rates", title: "Live Rates" },
-  // The rail panels (FX analytics/positions, Equities ticket/watchlist)
-  // maximize within their own column per the standalone design: only the
-  // column sibling strips; the main column and the rail width stay put.
-  "fx-analytics": {
-    id: "fx-analytics",
-    title: "Analytics",
-    maximizeScope: "nearest-column",
-  },
-  "fx-positions": {
-    id: "fx-positions",
-    title: "Positions",
-    maximizeScope: "nearest-column",
-  },
+  "fx-analytics": { id: "fx-analytics", title: "Analytics" },
+  "fx-positions": { id: "fx-positions", title: "Positions" },
   "fx-blotter": { id: "fx-blotter", title: "Blotter" },
-  // The New RFQ entry form never fills the dock itself (maximizable: false —
-  // its head keeps only the collapse control), but it still strips when a
-  // sibling maximizes, per the standalone design.
-  "credit-new-rfq": {
-    id: "credit-new-rfq",
-    title: "New RFQ",
-    maximizable: false,
-  },
+  "credit-new-rfq": { id: "credit-new-rfq", title: "New RFQ" },
   "credit-rfqs": { id: "credit-rfqs", title: "RFQs" },
   "credit-blotter": { id: "credit-blotter", title: "Credit Blotter" },
   // Registered like every other spec, but not part of CREDIT_ROOT — it has no
@@ -47,16 +29,8 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   "admin-dashboard": { id: "admin-dashboard", title: "Admin" },
   "eq-chart": { id: "eq-chart", title: "Equities" },
   "eq-blotter": { id: "eq-blotter", title: "Orders & Positions" },
-  "eq-ticket": {
-    id: "eq-ticket",
-    title: "Order Ticket",
-    maximizeScope: "nearest-column",
-  },
-  "eq-watchlist": {
-    id: "eq-watchlist",
-    title: "Watchlist",
-    maximizeScope: "nearest-column",
-  },
+  "eq-ticket": { id: "eq-ticket", title: "Order Ticket" },
+  "eq-watchlist": { id: "eq-watchlist", title: "Watchlist" },
   // Registered so the panel registries can resolve them, but not placed in
   // EQUITIES_ROOT below — both survive outside the default dock, mounted
   // directly (visual/contract specs mount them standalone; see Task 6 brief).

@@ -55,8 +55,4 @@
   font-size: 11px;
   border-bottom: 1px solid var(--border-subtle);
   white-space: nowrap;
-  /* Under table-layout:fixed a long nowrap value would paint over the next
-   * cell — truncate with an ellipsis instead. */
-  overflow: hidden;
-  text-overflow: ellipsis;
 }

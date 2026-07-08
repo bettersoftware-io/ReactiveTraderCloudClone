@@ -29,18 +29,6 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
     return within(tbody as HTMLElement).queryByText(text) !== null;
   }
 
-  /**
-   * True when the column-header row lives in a SEPARATE table from the rows —
-   * the split-header structure that keeps the header fixed above the scrolling
-   * rows region and the filter popover outside its scroll clip.
-   */
-  headerIsSplitFromRows(): boolean {
-    const th = this.table().querySelector("th");
-    const tbody = this.table().querySelector("tbody");
-    if (!th || !tbody) return false;
-    return th.closest("table") !== tbody.closest("table");
-  }
-
   /** Column header labels, in order. */
   columnHeaders(): string[] {
     return within(this.table())

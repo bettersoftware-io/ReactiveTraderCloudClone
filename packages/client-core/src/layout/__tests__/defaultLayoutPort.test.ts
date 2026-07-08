@@ -18,7 +18,6 @@ describe("createDefaultLayoutPort", () => {
     expect(PANEL_SPECS["fx-positions"]).toEqual({
       id: "fx-positions",
       title: "Positions",
-      maximizeScope: "nearest-column",
     });
 
     // root: a 0.73/0.27 row split — [tiles+blotter column | right rail].
@@ -78,12 +77,9 @@ describe("createDefaultLayoutPort", () => {
       "credit-blotter",
     ]);
     expect(PANEL_SPECS["credit-blotter"].pinned).toBeUndefined();
-    // The entry form never fills the dock itself (no maximize control), but
-    // it still strips when a sibling maximizes — see the engine smoke tests.
     expect(PANEL_SPECS["credit-new-rfq"]).toEqual({
       id: "credit-new-rfq",
       title: "New RFQ",
-      maximizable: false,
     });
     expect(PANEL_SPECS["credit-rfqs"]).toEqual({
       id: "credit-rfqs",
@@ -203,33 +199,6 @@ describe("createDefaultLayoutPort", () => {
   it("no PANEL_SPECS entry is pinned — every split is user-resizable (the pinned flag machinery stays for future use)", () => {
     for (const spec of Object.values(PANEL_SPECS)) {
       expect(spec.pinned).toBeUndefined();
-    }
-  });
-
-  it("exactly the four rail panels maximize within their nearest column; everything else is root-scope", () => {
-    const railPanels = new Set([
-      "fx-analytics",
-      "fx-positions",
-      "eq-ticket",
-      "eq-watchlist",
-    ]);
-
-    for (const [id, spec] of Object.entries(PANEL_SPECS)) {
-      if (railPanels.has(id)) {
-        expect(spec.maximizeScope).toBe("nearest-column");
-      } else {
-        expect(spec.maximizeScope).toBeUndefined();
-      }
-    }
-  });
-
-  it("credit-new-rfq is the only panel that opts out of the maximize control", () => {
-    for (const [id, spec] of Object.entries(PANEL_SPECS)) {
-      if (id === "credit-new-rfq") {
-        expect(spec.maximizable).toBe(false);
-      } else {
-        expect(spec.maximizable).toBeUndefined();
-      }
     }
   });
 

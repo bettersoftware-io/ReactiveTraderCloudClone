@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createDefaultLayoutPort, type LayoutState } from "@rtc/client-core";
+import type { LayoutState } from "@rtc/client-core";
 
 import { InhouseLayoutEngine } from "../InhouseLayoutEngine";
 import type { PanelRegistry } from "../panelRegistry";
@@ -416,118 +416,6 @@ describe("InhouseLayoutEngine", () => {
       expect(
         screen.getByTestId("cell--1").getAttribute("data-strip-fill"),
       ).toBe("false");
-    });
-  });
-
-  describe("maximizable: false (spec-gated maximize control — default PANEL_SPECS marks credit-new-rfq)", () => {
-    const creditState: LayoutState = {
-      root: {
-        kind: "split",
-        dir: "row",
-        sizes: [0.25, 0.75],
-        children: [
-          { kind: "panel", panelId: "credit-new-rfq" },
-          { kind: "panel", panelId: "credit-rfqs" },
-        ],
-      },
-      maximized: null,
-      collapsed: [],
-    };
-    const creditRegistry: PanelRegistry = {
-      "credit-new-rfq": () => {
-        return <div data-testid="new-rfq-body">NEW RFQ</div>;
-      },
-      "credit-rfqs": () => {
-        return <div data-testid="rfqs-body">RFQS</div>;
-      },
-    };
-
-    it("renders no maximize control for the opted-out panel, keeping its collapse control and its sibling's maximize", () => {
-      renderEngine(creditState, creditRegistry);
-      expect(screen.queryByTestId("panel-credit-new-rfq-maximize")).toBeNull();
-      expect(screen.getByTestId("panel-credit-new-rfq-collapse")).toBeTruthy();
-      expect(screen.getByTestId("panel-credit-rfqs-maximize")).toBeTruthy();
-    });
-
-    it("still strips the opted-out panel when a sibling maximizes (not-maximizable is not never-stripped)", () => {
-      renderEngine(
-        { ...creditState, maximized: "credit-rfqs" },
-        creditRegistry,
-      );
-      expect(
-        screen.getByTestId("panel-credit-new-rfq").getAttribute("data-strip"),
-      ).toBe("true");
-      expect(screen.queryByTestId("new-rfq-body")).toBeNull();
-    });
-  });
-
-  describe("nearest-column maximize scope (default PANEL_SPECS rail panels, equities tree)", () => {
-    const eqState = createDefaultLayoutPort("equities").initial;
-    const eqRegistry: PanelRegistry = {
-      "eq-chart": () => {
-        return <div data-testid="chart-body">CHART</div>;
-      },
-      "eq-blotter": () => {
-        return <div data-testid="eq-blotter-body">EQ BLOTTER</div>;
-      },
-      "eq-ticket": () => {
-        return <div data-testid="ticket-body">TICKET</div>;
-      },
-      "eq-watchlist": () => {
-        return <div data-testid="watchlist-body">WATCHLIST</div>;
-      },
-    };
-
-    it("maximizing eq-ticket strips only its column sibling — a horizontal bar inside the rail — leaving the main column untouched", () => {
-      renderEngine({ ...eqState, maximized: "eq-ticket" }, eqRegistry);
-      const watchlist = screen.getByTestId("panel-eq-watchlist");
-      expect(watchlist.getAttribute("data-strip")).toBe("true");
-      expect(watchlist.getAttribute("data-strip-orientation")).toBe(
-        "horizontal",
-      );
-      // outside the boundary: chart and blotter render their bodies.
-      expect(screen.getByTestId("chart-body")).toBeTruthy();
-      expect(screen.getByTestId("eq-blotter-body")).toBeTruthy();
-      expect(
-        screen.getByTestId("panel-eq-chart").getAttribute("data-strip"),
-      ).toBe("false");
-    });
-
-    it("keeps the rail's 290px initialPx design width and the main handle; only the rail-internal handle disappears", () => {
-      renderEngine({ ...eqState, maximized: "eq-ticket" }, eqRegistry);
-      const railCell = screen.getByTestId("cell--1");
-      expect(railCell.getAttribute("data-initial-cell")).toBe("true");
-      expect(railCell.getAttribute("data-strip-cell")).toBe("false");
-      expect(screen.getByTestId("handle--0")).toBeTruthy();
-      expect(screen.getByTestId("handle-0-0")).toBeTruthy();
-      expect(screen.queryByTestId("handle-1-0")).toBeNull();
-    });
-
-    it("maximizing eq-watchlist mirrors it: eq-ticket strips horizontally; the main column and rail width stay put", () => {
-      renderEngine({ ...eqState, maximized: "eq-watchlist" }, eqRegistry);
-      const ticket = screen.getByTestId("panel-eq-ticket");
-      expect(ticket.getAttribute("data-strip")).toBe("true");
-      expect(ticket.getAttribute("data-strip-orientation")).toBe("horizontal");
-      expect(
-        screen.getByTestId("panel-eq-chart").getAttribute("data-strip"),
-      ).toBe("false");
-      expect(
-        screen.getByTestId("cell--1").getAttribute("data-initial-cell"),
-      ).toBe("true");
-    });
-
-    it("root-scope maximize is unchanged: eq-chart still strips the whole dock, dropping the rail's design width", () => {
-      renderEngine({ ...eqState, maximized: "eq-chart" }, eqRegistry);
-
-      for (const id of ["eq-blotter", "eq-ticket", "eq-watchlist"]) {
-        expect(
-          screen.getByTestId(`panel-${id}`).getAttribute("data-strip"),
-        ).toBe("true");
-      }
-
-      const railCell = screen.getByTestId("cell--1");
-      expect(railCell.getAttribute("data-initial-cell")).toBe("false");
-      expect(railCell.getAttribute("data-strip-cell")).toBe("true");
     });
   });
 
