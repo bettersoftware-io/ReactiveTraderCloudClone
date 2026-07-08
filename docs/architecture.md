@@ -170,6 +170,71 @@ flowchart TB
   style FW fill:none,stroke:#e3b341
 ```
 
+**The rings aren't a convention you have to remember -- they're compiled.** Every green arrow below is an *allowed* import; every red crossing is a layer violation that fails CI. This is the same package graph as the onion, flattened and annotated with the seven `.dependency-cruiser.cjs` rules that enforce it (full table in [dependency-cruiser.md](dependency-cruiser.md)); ring colors match the onion exactly.
+
+```mermaid
+flowchart LR
+  subgraph r4["④ Frameworks & Drivers"]
+    direction TB
+    webc["@rtc/client-react"]
+    rnc["@rtc/client-react-native"]
+    wse["@rtc/ws-effects"]
+    srv["@rtc/server"]
+  end
+  subgraph r3["③ Interface Adapters"]
+    direction TB
+    core["@rtc/client-core"]
+    rb["@rtc/react-bindings"]
+    shared["@rtc/shared (DTOs)"]
+  end
+  subgraph r12["①② Entities + Use Cases"]
+    domain["@rtc/domain<br/>entities · use cases · ports · simulators"]
+  end
+  nodeb["node:* built-ins"]:::ext
+
+  %% --- allowed inward imports (edges 0-13; keep order — linkStyle indices depend on it) ---
+  webc --> rb
+  webc --> core
+  webc --> domain
+  rnc --> rb
+  rnc --> core
+  rnc --> domain
+  rb --> core
+  rb --> domain
+  core --> shared
+  core --> domain
+  srv --> domain
+  srv --> shared
+  srv --> wse
+  shared --> domain
+
+  %% --- forbidden crossings (edges 14-19), each tagged with the rule that rejects it ---
+  domain -. "✗ domain-stays-pure" .-x shared
+  shared -. "✗ shared-no-apps" .-x srv
+  webc -. "✗ client-not-server" .-x srv
+  srv -. "✗ server-not-client" .-x webc
+  wse -. "✗ ws-effects-stays-pure" .-x domain
+  domain -. "✗ domain-no-node-builtins" .-x nodeb
+
+  classDef ext fill:#161b22,stroke:#6e7681,color:#8b949e
+  style r4 fill:none,stroke:#e3b341
+  style r3 fill:none,stroke:#d2a8ff
+  style r12 fill:none,stroke:#56d364
+  style domain fill:#14432a,stroke:#56d364,color:#eafff2
+  style core fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
+  style rb fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
+  style shared fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
+  style webc fill:#45321b,stroke:#e3b341,color:#fff6e6
+  style rnc fill:#45321b,stroke:#e3b341,color:#fff6e6
+  style wse fill:#45321b,stroke:#e3b341,color:#fff6e6
+  style srv fill:#45321b,stroke:#e3b341,color:#fff6e6
+
+  linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13 stroke:#3fb950,stroke-width:2px
+  linkStyle 14,15,16,17,18,19 stroke:#f85149,stroke-width:2px
+```
+
+> **Green** solid arrows are the allowed `dependencies` edges (they only ever point inward). **Red** dashed-✗ arrows are the crossings CI rejects. The seventh rule, `no-circular`, isn't a single arrow -- it forbids *any* import cycle anywhere in the graph (type-only edges excluded), keeping the whole onion a strict acyclic gradient from ④ inward to ①. (`@rtc/client-prototype` is omitted: as a design island with no `@rtc/*` deps it has no edges to show.)
+
 The exact mapping, ring by ring:
 
 | Ring | Clean Arch name | In one sentence | This repo |
