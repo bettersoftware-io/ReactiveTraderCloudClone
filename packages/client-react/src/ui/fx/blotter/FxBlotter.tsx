@@ -7,7 +7,6 @@ import { useViewModel } from "@rtc/react-bindings";
 import { useFxView } from "#/ui/fx/useFxView";
 
 import { ActivityView } from "./ActivityView";
-import { BlotterColgroup } from "./BlotterColgroup";
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";
 import { COLUMNS, formatFxCell } from "./blotterColumns";
@@ -80,30 +79,22 @@ export function FxBlotter(): ReactElement {
 
   if (blotterTab === "activity") {
     return (
-      <div className={styles.blotter}>
+      <div className={styles.container}>
         <ActivityView entries={activity} />
       </div>
     );
   }
 
-  // Split-header structure (shared with CreditBlotter): the column-header
-  // table is a fixed region ABOVE the scrolling rows region, so the header
-  // stays put while rows scroll AND BlotterHeader's filter popover anchors
-  // outside any scroll clip (position:sticky on thead/th breaks the popover's
-  // hit-testing in real Chromium — see CreditBlotter.module.css). The shared
-  // BlotterColgroup + table-layout:fixed keep the two tables' column edges
-  // aligned exactly.
   return (
-    <div data-testid="blotter-table" className={styles.blotter}>
+    <div className={styles.container}>
       {activeFilterLabels.length > 0 && (
         <span className={styles.filterLabel}>
           Filtered: {activeFilterLabels.join(", ")}
         </span>
       )}
 
-      <div className={styles.headerRegion}>
-        <table className={styles.table}>
-          <BlotterColgroup columns={COLUMNS} />
+      <div className={styles.tableWrapper}>
+        <table data-testid="blotter-table" className={styles.table}>
           <thead>
             <BlotterHeader
               sort={sort}
@@ -114,12 +105,6 @@ export function FxBlotter(): ReactElement {
               columns={COLUMNS}
             />
           </thead>
-        </table>
-      </div>
-
-      <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <BlotterColgroup columns={COLUMNS} />
           <tbody>
             {processedTrades.map((trade) => {
               return (

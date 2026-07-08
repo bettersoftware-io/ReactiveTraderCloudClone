@@ -68,25 +68,9 @@
   border-radius: 3px;
 }
 
-/* Continuous green→yellow→orange→red ramp driven by --health (0-100), mixed
- * from the existing status tokens (no new palette entries): health ≥50 blends
- * positive↔aware (the inner mix saturates to pure aware), health <50 blends
- * aware↔negative. Width + colour ease over 600ms so movement reads smooth. */
 .fill {
   width: var(--bar-pct);
   height: 100%;
-  background: color-mix(
-    in srgb,
-    var(--accent-positive) clamp(0%, (var(--health, 100) - 50) * 2%, 100%),
-    color-mix(
-      in srgb,
-      var(--accent-aware) clamp(0%, var(--health, 100) * 2%, 100%),
-      var(--accent-negative)
-    )
-  );
-  transition:
-    width 600ms ease,
-    background-color 600ms ease;
 }
 
 .lat {
@@ -109,18 +93,21 @@
 }
 
 .row[data-status="ok"] .dot,
+.row[data-status="ok"] .fill,
 .row[data-status="ok"] .up {
   color: var(--accent-positive);
   background: var(--accent-positive);
 }
 
 .row[data-status="degraded"] .dot,
+.row[data-status="degraded"] .fill,
 .row[data-status="degraded"] .up {
   color: var(--accent-aware);
   background: var(--accent-aware);
 }
 
 .row[data-status="down"] .dot,
+.row[data-status="down"] .fill,
 .row[data-status="down"] .up {
   color: var(--accent-negative);
   background: var(--accent-negative);

@@ -35,8 +35,7 @@
   font-weight: 400;
 }
 
-/* Right side of the pair row: the ⚡ RFQ chip (when the notional needs a
- * quote) then the movement badge, which keeps its usual far-right slot. */
+/* Right side of the pair row: movement badge and/or the ⚡ RFQ chip. */
 .headerActions {
   display: flex;
   align-items: center;
@@ -46,17 +45,10 @@
 /* Compact RFQ-initiation chip — same chrome as the CHARTS head-chip
  * (PanelHeadTabs.module.css .headChip), with the active-chip accent
  * treatment on hover/focus. `background:` shorthand: --chip is a gradient
- * on 3d skins.
- *
- * Height pin: the chip's border-box (10px line + 2×3px padding + 2×1px
- * border = 18px) must not exceed the 15px pairName's ~18px line box, so the
- * chip appearing/disappearing never changes the pair row's — and therefore
- * the tile's — height (the invariant TileHeader's onInitiateRfq JSDoc
- * promises). */
+ * on 3d skins. */
 .rfqChip {
-  padding: 3px 11px;
+  padding: 4px 11px;
   border-radius: 4px;
-  line-height: 10px;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 9px;

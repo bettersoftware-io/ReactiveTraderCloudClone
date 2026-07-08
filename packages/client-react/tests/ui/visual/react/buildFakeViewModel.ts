@@ -216,11 +216,6 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         unlock: noop,
       };
     },
-    // Boot gate: hidden for screenshots (the visual tier mounts BootSequence
-    // directly when it wants the splash; BootGate itself is never framed).
-    useBootGate: () => {
-      return { visible: false, reboot: noop, dismiss: noop };
-    },
     // Countdown: static snapshot for visual goldens — returns totalMs so the bar
     // renders at 100% fill (deterministic; never wall-clock-dependent).
     useRfqCountdown: (_creationTimestamp: number, totalMs: number) => {

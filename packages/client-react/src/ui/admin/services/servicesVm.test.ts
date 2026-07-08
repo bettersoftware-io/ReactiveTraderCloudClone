@@ -10,11 +10,12 @@ describe("servicesVm", () => {
   });
 
   it("preserves topology order (no re-sorting)", () => {
-    const rows = servicesVm([
-      node({ name: "kernel" }),
-      node({ name: "refdata" }),
-      node({ name: "credit" }),
-    ]);
+    const nodes: ServiceNode[] = [
+      { name: "kernel", status: "ok", throughput: 100, latencyMs: 2 },
+      { name: "refdata", status: "ok", throughput: 10, latencyMs: 5 },
+      { name: "credit", status: "ok", throughput: 50, latencyMs: 3 },
+    ];
+    const rows = servicesVm(nodes);
     expect(
       rows.map((r) => {
         return r.name;
@@ -24,8 +25,8 @@ describe("servicesVm", () => {
 
   it("maps status to the prototype's ONLINE/DEGRADED labels", () => {
     const rows = servicesVm([
-      node({ name: "pricing", status: "ok" }),
-      node({ name: "blotter", status: "degraded", health: 86 }),
+      { name: "pricing", status: "ok", throughput: 100, latencyMs: 5 },
+      { name: "blotter", status: "degraded", throughput: 50, latencyMs: 20 },
     ]);
     expect(rows[0].statusLabel).toBe("ONLINE");
     expect(rows[1].statusLabel).toBe("DEGRADED");
@@ -33,101 +34,125 @@ describe("servicesVm", () => {
 
   it("maps a down node to the DOWN label — the real-app extra status the prototype never modelled", () => {
     const rows = servicesVm([
-      node({ name: "execution", status: "down", health: 0, throughput: 0 }),
+      { name: "execution", status: "down", throughput: 0, latencyMs: 0 },
     ]);
     expect(rows[0].statusLabel).toBe("DOWN");
   });
 
   it("formats latency as '<ms>ms'", () => {
-    const rows = servicesVm([node({ latencyMs: 37 })]);
+    const rows = servicesVm([
+      { name: "pricing", status: "ok", throughput: 10, latencyMs: 37 },
+    ]);
     expect(rows[0].latencyLabel).toBe("37ms");
   });
 
   it("rounds a fractional latencyMs (live simulator emits unrounded floats) so the label never overflows its fixed-width column", () => {
-    const rows = servicesVm([node({ latencyMs: 42.73 })]);
+    const rows = servicesVm([
+      { name: "pricing", status: "ok", throughput: 10, latencyMs: 42.73 },
+    ]);
     expect(rows[0].latencyLabel).toBe("43ms");
   });
 
-  describe("health / barPct", () => {
-    it("exposes the node's health as a whole percent, and barPct IS the health (not relative throughput)", () => {
+  describe("barPct", () => {
+    it("gives the busiest node 100%", () => {
       const rows = servicesVm([
-        node({ name: "kernel", health: 99, throughput: 200 }),
-        node({ name: "refdata", health: 86, throughput: 900 }),
+        { name: "kernel", status: "ok", throughput: 200, latencyMs: 2 },
+        { name: "pricing", status: "ok", throughput: 100, latencyMs: 5 },
       ]);
-      expect(rows[0].health).toBe(99);
-      expect(rows[0].barPct).toBe(99);
-      // The busier node no longer wins the bar — health does.
-      expect(rows[1].health).toBe(86);
-      expect(rows[1].barPct).toBe(86);
+      expect(rows[0].barPct).toBe(100);
+      expect(rows[1].barPct).toBe(50);
     });
 
-    it("rounds a fractional health to a whole percent", () => {
-      const rows = servicesVm([node({ health: 93.4 })]);
-      expect(rows[0].health).toBe(93);
-      expect(rows[0].barPct).toBe(93);
-    });
-
-    it("clamps rogue health values into [0, 100]", () => {
+    it("gives an idle node 0%", () => {
       const rows = servicesVm([
-        node({ name: "kernel", health: 104 }),
-        node({ name: "execution", status: "down", health: -3 }),
+        { name: "kernel", status: "ok", throughput: 200, latencyMs: 2 },
+        { name: "execution", status: "down", throughput: 0, latencyMs: 0 },
       ]);
-      expect(rows[0].health).toBe(100);
-      expect(rows[1].health).toBe(0);
       expect(rows[1].barPct).toBe(0);
+    });
+
+    it("stays 0 (not NaN) when every node is idle", () => {
+      const rows = servicesVm([
+        { name: "kernel", status: "down", throughput: 0, latencyMs: 0 },
+        { name: "pricing", status: "down", throughput: 0, latencyMs: 0 },
+      ]);
+      expect(rows[0].barPct).toBe(0);
+      expect(rows[1].barPct).toBe(0);
+    });
+
+    it("rounds to a whole percent", () => {
+      const rows = servicesVm([
+        { name: "kernel", status: "ok", throughput: 3, latencyMs: 2 },
+        { name: "pricing", status: "ok", throughput: 1, latencyMs: 5 },
+      ]);
+      // 1/3 * 100 = 33.33... -> rounds to 33
+      expect(rows[1].barPct).toBe(33);
     });
   });
 
   describe("uptimeLabel", () => {
-    it("ok -> 99.9x, the digit rising with health across the 95-100 band", () => {
+    // Pinned per-name digits (deterministic hash of the char codes) — a
+    // regression here means the hash function changed, which is a visible
+    // product change (every service's displayed uptime shifts), not a refactor.
+    it("ok -> 99.9x, a stable per-name digit", () => {
       const rows = servicesVm([
-        node({ name: "kernel", health: 100 }),
-        node({ name: "pricing", health: 97.5 }),
-        node({ name: "credit", health: 95 }),
+        { name: "kernel", status: "ok", throughput: 10, latencyMs: 1 },
+        { name: "pricing", status: "ok", throughput: 10, latencyMs: 1 },
+        { name: "execution", status: "ok", throughput: 10, latencyMs: 1 },
+        { name: "blotter", status: "ok", throughput: 10, latencyMs: 1 },
+        { name: "analytics", status: "ok", throughput: 10, latencyMs: 1 },
+        { name: "credit", status: "ok", throughput: 10, latencyMs: 1 },
+        { name: "refdata", status: "ok", throughput: 10, latencyMs: 1 },
       ]);
       expect(
         rows.map((r) => {
           return r.uptimeLabel;
         }),
-      ).toEqual(["99.99%", "99.95%", "99.90%"]);
+      ).toEqual([
+        "99.91%",
+        "99.98%",
+        "99.90%",
+        "99.94%",
+        "99.98%",
+        "99.95%",
+        "99.97%",
+      ]);
     });
 
-    it("degraded -> 9x.x%, formatted from live health (90 + health/10)", () => {
+    it("degraded -> 98.x, the same per-name digit as the ok case", () => {
       const rows = servicesVm([
-        node({ name: "refdata", status: "degraded", health: 86 }),
-        node({ name: "blotter", status: "degraded", health: 93 }),
-        node({ name: "credit", status: "degraded", health: 70 }),
+        { name: "kernel", status: "degraded", throughput: 10, latencyMs: 20 },
+        {
+          name: "pricing",
+          status: "degraded",
+          throughput: 10,
+          latencyMs: 20,
+        },
       ]);
       expect(
         rows.map((r) => {
           return r.uptimeLabel;
         }),
-      ).toEqual(["98.6%", "99.3%", "97.0%"]);
+      ).toEqual(["98.1%", "98.8%"]);
     });
 
     it("down -> an em dash, no uptime figure", () => {
       const rows = servicesVm([
-        node({ name: "execution", status: "down", health: 0, throughput: 0 }),
+        { name: "execution", status: "down", throughput: 0, latencyMs: 0 },
       ]);
       expect(rows[0].uptimeLabel).toBe("—");
     });
 
     it("is deterministic across repeat calls for the same input", () => {
-      const credit = node({ name: "credit", health: 98, throughput: 42 });
-      expect(servicesVm([credit])[0].uptimeLabel).toBe(
-        servicesVm([credit])[0].uptimeLabel,
+      const node: ServiceNode = {
+        name: "credit",
+        status: "ok",
+        throughput: 42,
+        latencyMs: 8,
+      };
+      expect(servicesVm([node])[0].uptimeLabel).toBe(
+        servicesVm([node])[0].uptimeLabel,
       );
     });
   });
 });
-
-function node(overrides: Partial<ServiceNode>): ServiceNode {
-  return {
-    name: "pricing",
-    status: "ok",
-    health: 99,
-    throughput: 100,
-    latencyMs: 5,
-    ...overrides,
-  };
-}

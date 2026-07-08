@@ -8,12 +8,10 @@ import styles from "./ThroughputChart.module.css";
 /**
  * Message-throughput area+line chart — an SVG gradient-glow area chart
  * replacing the earlier <canvas> draw, ported from PROTO
- * Throughput/ThroughputChart.tsx. Both the glow line and the gradient area
- * come from the shared throughputPaths vm (client-core) as smoothed
- * Catmull-Rom path `d` strings; the gradient id is per-instance via useId()
- * (PnlChart.tsx precedent), and the area fill closes to a flat baseline when
- * no data has arrived yet, which is when the "NO DATA" placeholder takes
- * over instead.
+ * Throughput/ThroughputChart.tsx. Paths come from the shared throughputPaths
+ * vm (client-core); the gradient id is per-instance via useId() (PnlChart.tsx
+ * precedent), and the area fill closes to a flat baseline when no data has
+ * arrived yet, which is when the "NO DATA" placeholder takes over instead.
  */
 export function ThroughputChart(): ReactElement {
   const { useMetrics } = useViewModel();
@@ -25,7 +23,7 @@ export function ThroughputChart(): ReactElement {
     <div data-testid="admin-throughput-chart" className={styles.card}>
       <div className={styles.head}>
         <span className={styles.title}>MESSAGE THROUGHPUT</span>
-        <span className={styles.sub}>last 60s · msg/s</span>
+        <span className={styles.sub}>last 120s · msg/s</span>
       </div>
       {throughput.length === 0 ? (
         <div className={styles.empty}>NO DATA</div>
@@ -44,7 +42,7 @@ export function ThroughputChart(): ReactElement {
             </linearGradient>
           </defs>
           <path d={area} fill={`url(#${gradientId})`} />
-          <path className={styles.line} d={line} />
+          <polyline className={styles.line} points={line} />
         </svg>
       )}
     </div>

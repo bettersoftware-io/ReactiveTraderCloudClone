@@ -489,10 +489,4 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   LayoutEngineCollapsed: () => {
     return staticEngine({ ...fxState, collapsed: ["fx-analytics"] });
   },
-  // fx-analytics carries maximizeScope: "nearest-column" in PANEL_SPECS, so
-  // this captures the rail-scoped state: positions strips inside the rail;
-  // rates/blotter and the rail's 360px width are untouched.
-  LayoutEngineRailMaximized: () => {
-    return staticEngine({ ...fxState, maximized: "fx-analytics" });
-  },
 };

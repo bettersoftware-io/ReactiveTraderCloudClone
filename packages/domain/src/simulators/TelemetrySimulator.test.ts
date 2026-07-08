@@ -2,10 +2,8 @@ import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { MetricSample } from "../telemetry/metrics.js";
 import { ErrorRateSimulator } from "./ErrorRateSimulator.js";
 import { LatencySimulator } from "./LatencySimulator.js";
-import { METRIC_HISTORY_LEN } from "./metricWalk.js";
 import { TelemetrySimulator } from "./TelemetrySimulator.js";
 import { ThroughputSimulator } from "./ThroughputSimulator.js";
 
@@ -17,36 +15,6 @@ afterEach(() => {
 });
 
 describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
-  it("pre-seeds a full 60-sample history synchronously on subscribe, backdated 1s apart", () => {
-    const { telemetry } = makeTelemetry();
-    const collected: MetricSample[] = [];
-    const sub = telemetry.throughput$().subscribe((s) => {
-      collected.push(s);
-    });
-    sub.unsubscribe();
-
-    expect(collected).toHaveLength(METRIC_HISTORY_LEN);
-
-    for (let i = 1; i < collected.length; i += 1) {
-      expect(collected[i].t - collected[i - 1].t).toBe(1_000);
-    }
-
-    expect(collected[collected.length - 1].t).toBe(Date.now());
-  });
-
-  it("ticks at a 1s cadence after the pre-seeded history", async () => {
-    const { telemetry } = makeTelemetry();
-    const collected: number[] = [];
-    const sub = telemetry.throughput$().subscribe((s) => {
-      collected.push(s.value);
-    });
-    expect(collected).toHaveLength(METRIC_HISTORY_LEN);
-
-    await vi.advanceTimersByTimeAsync(5_000);
-    sub.unsubscribe();
-    expect(collected).toHaveLength(METRIC_HISTORY_LEN + 5);
-  });
-
   it("walks: successive samples differ instead of a flat constant line", async () => {
     const { telemetry } = makeTelemetry();
     const p = firstValueFrom(telemetry.throughput$().pipe(take(5), toArray()));

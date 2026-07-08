@@ -183,8 +183,6 @@ export interface CommandLog {
    * ticket symbol): a spec asserts the last entry's `symbol` matches the
    * workspace selection at submit time, not the machine's mount-time default. */
   placedOrderRequests: PlaceOrderRequest[];
-  /** Incremented each time useBootGate().reboot() (⟳ Reboot HUD) is invoked. */
-  bootReboot: number;
   /** Each value written through useAnimatedBackground().setEnabled/toggle, in order. */
   animatedBackgroundSets: boolean[];
   /** Each incident kind injected via injectIncident(), in order. */
@@ -223,9 +221,6 @@ export interface World {
   setCreditRfqFilter(filter: CreditRfqFilter): void;
   /** Reactive session state backing useSession (drives LockScreen). */
   readonly session: BehaviorSubject<SessionState>;
-  /** Reactive boot-splash visibility backing useBootGate (drives BootGate).
-   * Defaults to true — mirrors the presenter's default-visible construction. */
-  readonly bootGate: BehaviorSubject<boolean>;
   /** Per-key subject for usePrice(pair), keyed by pair.symbol. */
   priceFor(symbol: string): BehaviorSubject<Price | null>;
   /** Per-key subject for usePriceHistory(symbol). */
@@ -505,7 +500,6 @@ export function createWorld(
     ...sessionSeed,
     user: { ...DEFAULT_SESSION.user, ...sessionSeed.user },
   });
-  const bootGate = new BehaviorSubject<boolean>(true);
 
   // Admin / telemetry subjects (Phase 5). Seeded from adminSeed; default to
   // null/empty so components render their "no data" placeholders before a spec
@@ -572,7 +566,6 @@ export function createWorld(
     reconnect: 0,
     sessionLock: 0,
     sessionUnlock: 0,
-    bootReboot: 0,
     animatedBackgroundSets: [],
     injectedIncidents: [],
     placedOrderRequests: [],
@@ -594,7 +587,6 @@ export function createWorld(
       return creditRfqFilter.next(filter);
     },
     session,
-    bootGate,
     priceFor,
     historyFor,
     quotesForRfq,

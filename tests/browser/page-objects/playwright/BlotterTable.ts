@@ -53,14 +53,6 @@ export class PlaywrightBlotterTable implements BlotterTablePO {
     );
   }
 
-  async downloadCsvSuggestedFilename(): Promise<string> {
-    // Register the wait BEFORE clicking so the download event can't race past.
-    const downloadPromise = this.page.waitForEvent("download");
-    await this.page.getByTestId(TESTIDS.blotter.exportCsv).click();
-    const download = await downloadPromise;
-    return download.suggestedFilename();
-  }
-
   async hoverFirstRow(): Promise<void> {
     await this.firstRow().hover();
   }

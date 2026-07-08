@@ -7,13 +7,6 @@ export interface BlotterTablePO {
   clearQuickFilter(): Promise<void>;
   isExportCsvVisible(): Promise<boolean>;
   exportCsvText(): Promise<string>;
-  /**
-   * Click the CSV chip and return the browser's suggested filename for the
-   * resulting download. Playwright-only: Cypress has no download-event API
-   * for blob-URL anchors, so its driver throws "not supported" — keep specs
-   * that call this in the Playwright-only spec files.
-   */
-  downloadCsvSuggestedFilename(): Promise<string>;
   hoverFirstRow(): Promise<void>;
   firstRowBackgroundColor(): Promise<string>;
   isFirstRowVisible(): Promise<boolean>;

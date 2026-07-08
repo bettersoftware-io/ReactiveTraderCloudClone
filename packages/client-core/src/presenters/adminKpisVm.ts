@@ -6,11 +6,7 @@ import type { MetricSample } from "@rtc/domain";
 // the series arrive as `readonly MetricSample[]` from the real telemetry
 // presenters, so the geometry/formatting math is ported verbatim onto
 // `.value` extraction and the latency-bucket histogram is computed from the
-// actual sample distribution instead of a fixed jittered seed. Line geometry
-// is emitted as smoothed SVG path `d` strings (Catmull-Rom through cubic
-// Béziers, PnlChart precedent) rather than raw polyline points, so the
-// charts read as the prototype's fluid glow curves instead of jagged
-// straight segments.
+// actual sample distribution instead of a fixed jittered seed.
 
 const SPARK_W = 100;
 const SPARK_H = 28;
@@ -125,69 +121,20 @@ function xAt(i: number, len: number, width: number): number {
   return (i / (len - 1)) * width;
 }
 
-/** One chart-space coordinate fed to smoothPath. */
-export interface ChartPoint {
-  readonly x: number;
-  readonly y: number;
-}
-
-function fmt(n: number): string {
-  return n.toFixed(1);
-}
-
-// Catmull-Rom-through-cubic-Bézier smoothing (standard 1/6-tension formula,
-// ported from PnlChart): each segment's control points are derived from the
-// neighbours either side of the segment's endpoints, so the curve passes
-// through every data point while staying tangent-continuous. Unlike the
-// PnlChart original, control-point y values are clamped into the chart box
-// [0, boxHeight] so the curve never overshoots below the baseline or above
-// the top at sharp turns.
-export function smoothPath(
-  points: readonly ChartPoint[],
-  boxHeight: number,
-): string {
-  if (points.length === 0) return "";
-
-  const first = points[0];
-  let d = `M${fmt(first.x)},${fmt(first.y)}`;
-
-  for (let i = 0; i < points.length - 1; i += 1) {
-    const p0 = i > 0 ? points[i - 1] : points[i];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = i + 2 < points.length ? points[i + 2] : p2;
-
-    const c1x = p1.x + (p2.x - p0.x) / 6;
-    const c1y = clampControlY(p1.y + (p2.y - p0.y) / 6, boxHeight);
-    const c2x = p2.x - (p3.x - p1.x) / 6;
-    const c2y = clampControlY(p2.y - (p3.y - p1.y) / 6, boxHeight);
-    d += ` C${fmt(c1x)},${fmt(c1y)} ${fmt(c2x)},${fmt(c2y)} ${fmt(p2.x)},${fmt(p2.y)}`;
-  }
-
-  return d;
-}
-
-// The overshoot clamp: control points stay inside the vertical chart box so
-// the smoothed curve never dips below the baseline or rises above the top.
-function clampControlY(y: number, boxHeight: number): number {
-  return Math.max(0, Math.min(boxHeight, y));
-}
-
-// PROTO adminVm.ts L1373: normalise a series over a 100×28 box, inverted so
-// peaks sit near the top, emitted as a smoothed path `d`. Empty series render
-// nothing.
-export function sparkPath(values: readonly number[]): string {
+// PROTO adminVm.ts L1373: normalise a series into "x,y x,y …" over a 100×28
+// box, inverted so peaks sit near the top. Empty series render nothing.
+export function sparkPoints(values: readonly number[]): string {
   if (values.length === 0) return "";
   const mn = Math.min(...values);
   const mx = Math.max(...values);
   const rg = mx - mn || 1;
-  const points = values.map((v, i) => {
-    return {
-      x: xAt(i, values.length, SPARK_W),
-      y: SPARK_H - ((v - mn) / rg) * SPARK_SPAN,
-    };
-  });
-  return smoothPath(points, SPARK_H);
+  return values
+    .map((v, i) => {
+      const x = xAt(i, values.length, SPARK_W).toFixed(1);
+      const y = (SPARK_H - ((v - mn) / rg) * SPARK_SPAN).toFixed(1);
+      return `${x},${y}`;
+    })
+    .join(" ");
 }
 
 // PROTO adminVm.ts L1374: current value, delta vs the lookback sample, warn
@@ -211,14 +158,13 @@ export function kpisVm(input: KpisVmInput): readonly AdminKpiVm[] {
       delta: `${deltaUp ? "▲ +" : "▼ "}${cfg.fmt(Math.abs(dl))}`,
       deltaUp,
       warn: cfg.warns(cur),
-      spark: sparkPath(values),
+      spark: sparkPoints(values),
     };
   });
 }
 
-// PROTO adminVm.ts L1380: the throughput series as a smoothed SVG line path
-// plus a closed gradient area over a 300×96 box. An empty series closes to a
-// flat baseline.
+// PROTO adminVm.ts L1380: the throughput series as an SVG polyline + a closed
+// gradient area over a 300×96 box. An empty series closes to a flat baseline.
 export function throughputPaths(
   samples: readonly MetricSample[],
 ): ThroughputPaths {
@@ -231,16 +177,14 @@ export function throughputPaths(
   const mn = Math.min(...values);
   const mx = Math.max(...values);
   const rg = mx - mn || 1;
-  const points = values.map((v, i) => {
-    return {
-      x: xAt(i, values.length, TPUT_W),
-      y: TPUT_TOP - ((v - mn) / rg) * TPUT_SPAN,
-    };
+  const pts = values.map((v, i) => {
+    const x = xAt(i, values.length, TPUT_W).toFixed(1);
+    const y = (TPUT_TOP - ((v - mn) / rg) * TPUT_SPAN).toFixed(1);
+    return `${x},${y}`;
   });
-  const line = smoothPath(points, TPUT_H);
   return {
-    line,
-    area: `${line} L${TPUT_W},${TPUT_H} L0,${TPUT_H} Z`,
+    line: pts.join(" "),
+    area: `M0,${TPUT_H} ${pts.join(" ")} L${TPUT_W},${TPUT_H} Z`,
   };
 }
 

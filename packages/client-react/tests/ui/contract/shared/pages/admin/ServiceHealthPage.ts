@@ -71,17 +71,10 @@ export class ServiceHealthPage extends MountedComponent<Record<string, never>> {
     return spans?.[5]?.textContent?.trim() ?? null;
   }
 
-  /** The --bar-pct custom property (e.g. "50%") set on the health fill. */
+  /** The --bar-pct custom property (e.g. "50%") set on the utilisation fill. */
   barPctFor(name: string): string | null {
     const row = this.rowForService(name);
     const fill = row?.querySelector<HTMLElement>("span > span");
     return fill?.style.getPropertyValue("--bar-pct") || null;
-  }
-
-  /** The --health custom property (e.g. "86") driving the fill's colour ramp. */
-  healthFor(name: string): string | null {
-    const row = this.rowForService(name);
-    const fill = row?.querySelector<HTMLElement>("span > span");
-    return fill?.style.getPropertyValue("--health") || null;
   }
 }

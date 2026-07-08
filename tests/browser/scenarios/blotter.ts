@@ -71,18 +71,6 @@ export async function expectExportCsvTextContains(
   assertContains(await ctx.po.blotterTable.exportCsvText(), expected);
 }
 
-/** Click the CSV chip and assert the download's suggested filename.
- *  Playwright-only (the Cypress driver throws "not supported"). */
-export async function expectCsvDownloadSuggestedFilename(
-  ctx: TestContext,
-  expected: string,
-): Promise<void> {
-  assertEquals(
-    await ctx.po.blotterTable.downloadCsvSuggestedFilename(),
-    expected,
-  );
-}
-
 export async function expectFirstBlotterRowVisible(
   ctx: TestContext,
 ): Promise<void> {

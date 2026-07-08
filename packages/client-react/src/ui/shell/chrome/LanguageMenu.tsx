@@ -30,17 +30,6 @@ export function LanguageMenu(): ReactElement {
           setOpen(!open);
         }}
       >
-        <svg
-          viewBox="0 0 24 24"
-          className={styles.globe}
-          aria-hidden={true}
-          fill="none"
-          stroke="var(--text-secondary)"
-          strokeWidth="1.5"
-        >
-          <circle cx="12" cy="12" r="9" />
-          <path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" />
-        </svg>
         <span>{selected}</span>
         <span className={styles.caret}>▾</span>
       </button>

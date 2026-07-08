@@ -27,12 +27,6 @@ export function useFlipGrid(deps: unknown[]): FlipGridApi {
   // in from a stale position.
   useEffect(() => {
     function resnapshot(): void {
-      // getBoundingClientRect includes in-flight WAAPI transforms, so a
-      // refresh that lands mid-glide would store a transformed rect as the
-      // next FLIP's origin (reads as a snap/jump-cut). Skip the refresh
-      // while any glide is still running — the deps-change effect re-measures
-      // from scratch anyway, so a skipped refresh self-heals on the next FLIP.
-      if (anyGlideRunning(elementsRef.current)) return;
       positionsRef.current = measurePositions(elementsRef.current);
     }
 
@@ -91,9 +85,7 @@ export function useFlipGrid(deps: unknown[]): FlipGridApi {
 
 /** Pure invert-phase math: for each key present in both position maps, the
  *  delta needed to animate FROM the previous position TO the next one. Keys
- *  that didn't move (within the sub-pixel threshold — PROTO useFlip.ts
- *  suppresses glides under ~0.5px so a re-render that barely nudges a node
- *  doesn't flicker), or that exist in only one of the two maps (added/
+ *  that didn't move, or that exist in only one of the two maps (added/
  *  removed by the filter), are omitted. */
 export function flipDeltas(
   prev: ReadonlyMap<string, Rect>,
@@ -105,24 +97,10 @@ export function flipDeltas(
     if (!prevRect) return;
     const dx = prevRect.left - nextRect.left;
     const dy = prevRect.top - nextRect.top;
-    if (Math.abs(dx) < FLIP_MIN_DELTA_PX && Math.abs(dy) < FLIP_MIN_DELTA_PX)
-      return;
+    if (dx === 0 && dy === 0) return;
     deltas.push({ key, dx, dy });
   });
   return deltas;
-}
-
-/** True while any registered element still has a running animation. The
- *  registered elements are the bare grid slots, so the only animations on
- *  them are this hook's own WAAPI glides (CSS animations — tick flashes,
- *  bookPulse — live on their descendants and don't false-positive here).
- *  Guarded optional: jsdom elements have no getAnimations. */
-function anyGlideRunning(elements: ReadonlyMap<string, HTMLElement>): boolean {
-  let running = false;
-  elements.forEach((el) => {
-    if (el.getAnimations && el.getAnimations().length > 0) running = true;
-  });
-  return running;
 }
 
 /** Snapshot each registered element's current viewport position. */
@@ -163,9 +141,6 @@ export interface FlipGridApi {
   register: (key: string) => (el: HTMLElement | null) => void;
 }
 
-// PROTO motion/useFlip.ts DEFAULT_DUR_MS / FLIP_EASING — one global glide.
-const FLIP_DURATION_MS = 440;
-const FLIP_EASING = "cubic-bezier(.22,.85,.3,1)";
-// PROTO useFlip.ts sub-pixel suppression threshold.
-const FLIP_MIN_DELTA_PX = 0.5;
+const FLIP_DURATION_MS = 340;
+const FLIP_EASING = "cubic-bezier(.2,.8,.2,1)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";

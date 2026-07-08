@@ -1,12 +1,11 @@
 /**
  * ThroughputChart contract spec (v2 Parity E Task 2).
  *
- * Verifies the SVG gradient-glow area chart renders its smoothed area+line
- * paths (Catmull-Rom `d` strings from the shared throughputPaths vm,
- * client-core) once throughput samples are seeded, and shows the "NO DATA"
- * placeholder when the series is empty. The chart was ported from a <canvas>
- * draw to SVG, so pixel output is owned by the visual (browser) tier; this
- * tier only asserts the DOM-visible paths.
+ * Verifies the SVG gradient-glow area chart renders its area+line paths (from
+ * the shared throughputPaths vm, client-core) once throughput samples are
+ * seeded, and shows the "NO DATA" placeholder when the series is empty. The
+ * chart was ported from a <canvas> draw to SVG, so pixel output is owned by
+ * the visual (browser) tier; this tier only asserts the DOM-visible paths.
  */
 
 import { ThroughputChart } from "@ui-contract/components";
@@ -55,11 +54,11 @@ describe("ThroughputChart", () => {
         },
       },
     });
-    expect(chart.areaPath()).toMatch(/^M0\.0,/);
-    expect(chart.areaPath()).toMatch(/L300,96 L0,96 Z$/);
+    expect(chart.areaPath()).toMatch(/^M0,96/);
+    expect(chart.areaPath()).toMatch(/L300,96 Z$/);
   });
 
-  it("renders the glow line as a smoothed cubic-Bézier path", () => {
+  it("renders the glow line polyline points", () => {
     const chart = mount(ThroughputChart, {
       admin: {
         metrics: {
@@ -70,8 +69,7 @@ describe("ThroughputChart", () => {
         },
       },
     });
-    expect(chart.linePath()).toMatch(/^M/);
-    expect(chart.linePath()).toContain(" C");
+    expect(chart.linePoints()).not.toBe("");
   });
 
   it("re-renders when throughput samples are pushed", () => {

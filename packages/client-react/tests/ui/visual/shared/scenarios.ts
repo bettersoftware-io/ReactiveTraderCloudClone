@@ -495,13 +495,6 @@ export const scenarios: Record<string, Scenario> = {
     componentKey: "LayoutEngineCollapsed",
     fixtureKey: "app-fx",
   },
-  // Nearest-column (rail-scoped) maximize: fx-analytics fills its rail while
-  // fx-positions strips to a horizontal bar INSIDE it; the main column and
-  // the rail's 360px design width stay untouched (standalone semantics).
-  "layout/fx-rail-maximized": {
-    componentKey: "LayoutEngineRailMaximized",
-    fixtureKey: "app-fx",
-  },
 
   // --- Phase 2: HUD shell surfaces ---
   // Boot is captured under reduced motion (canvas suppressed) so only the

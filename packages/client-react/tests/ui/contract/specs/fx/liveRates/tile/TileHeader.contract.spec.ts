@@ -109,19 +109,6 @@ describe("TileHeader", () => {
       expect(header.movementText()).toBe("▲ 5 pip");
       expect(header.hasRfqChip()).toBe(true);
     });
-
-    // PROTO parity: the chip slots in on the left, so the movement/pips badge
-    // keeps its original far-right position whether or not the chip shows.
-    it("renders the chip before the movement badge (badge keeps the far-right slot)", () => {
-      const header = mount(TileHeader, {
-        props: headerProps({
-          movement: PriceMovementType.UP,
-          movementPips: 5,
-          onInitiateRfq: () => {},
-        }),
-      });
-      expect(header.actionsOrder()).toEqual(["rfqChip", "movementBadge"]);
-    });
   });
 });
 

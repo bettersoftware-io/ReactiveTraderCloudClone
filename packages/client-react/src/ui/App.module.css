@@ -1,9 +1,5 @@
-/* isolation: isolate (PROTO AppShell.module.css L12) makes the shell its own
- * stacking context so the ambient backdrop's z-index: 0 wrap — vignette
- * included — stays behind the entire workspace on every skin/mode. */
 .app {
   position: relative;
-  isolation: isolate;
   display: flex;
   flex-direction: column;
   height: 100vh;

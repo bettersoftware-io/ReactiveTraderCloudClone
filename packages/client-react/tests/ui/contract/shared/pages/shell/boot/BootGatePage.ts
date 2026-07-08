@@ -49,14 +49,4 @@ export class BootGatePage extends MountedComponent<Record<string, never>> {
       propertyName: "width",
     });
   }
-
-  /** Re-raise the splash through the boot-gate seam (⟳ Reboot HUD equivalent). */
-  reboot(): void {
-    this.setBootGateVisible(true);
-  }
-
-  /** Seed the splash hidden through the seam (webdriver/nosplash equivalent). */
-  hideThroughSeam(): void {
-    this.setBootGateVisible(false);
-  }
 }
