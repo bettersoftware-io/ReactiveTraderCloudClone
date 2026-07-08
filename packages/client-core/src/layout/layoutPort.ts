@@ -15,6 +15,14 @@ export interface PanelSpec {
    * sibling maximizes (standalone semantics — e.g. the Credit New RFQ form,
    * which never fills the dock itself but yields to the RFQs board). */
   readonly maximizable?: boolean;
+  /** How far this panel's maximize reaches (default "root", the whole dock).
+   * "nearest-column" bounds it at the nearest ancestor column split — the
+   * standalone design's rail panels maximize WITHIN their column: only the
+   * column siblings collapse to strip bars while everything outside (the
+   * main column, the main/rail split ratio, the rail's design width) stays
+   * untouched. Render-time policy only — LayoutState.maximized stays a bare
+   * PanelId and the machine is unchanged; see maximizeBoundaryPath. */
+  readonly maximizeScope?: "root" | "nearest-column";
 }
 export type SplitDir = "row" | "column";
 export type LayoutNode =

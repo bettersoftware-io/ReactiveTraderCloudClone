@@ -18,6 +18,7 @@ describe("createDefaultLayoutPort", () => {
     expect(PANEL_SPECS["fx-positions"]).toEqual({
       id: "fx-positions",
       title: "Positions",
+      maximizeScope: "nearest-column",
     });
 
     // root: a 0.73/0.27 row split — [tiles+blotter column | right rail].
@@ -202,6 +203,23 @@ describe("createDefaultLayoutPort", () => {
   it("no PANEL_SPECS entry is pinned — every split is user-resizable (the pinned flag machinery stays for future use)", () => {
     for (const spec of Object.values(PANEL_SPECS)) {
       expect(spec.pinned).toBeUndefined();
+    }
+  });
+
+  it("exactly the four rail panels maximize within their nearest column; everything else is root-scope", () => {
+    const railPanels = new Set([
+      "fx-analytics",
+      "fx-positions",
+      "eq-ticket",
+      "eq-watchlist",
+    ]);
+
+    for (const [id, spec] of Object.entries(PANEL_SPECS)) {
+      if (railPanels.has(id)) {
+        expect(spec.maximizeScope).toBe("nearest-column");
+      } else {
+        expect(spec.maximizeScope).toBeUndefined();
+      }
     }
   });
 
