@@ -97,6 +97,25 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
       });
   }
 
+  /** The open notifications panel's MARK ALL READ footer label ("" when
+   *  absent). Assumes the notifications panel is already open. */
+  notificationsFooterLabel(): string {
+    return (
+      within(this.root)
+        .queryByTestId("notifications-mark-read")
+        ?.textContent?.trim() ?? ""
+    );
+  }
+
+  /** Click MARK ALL READ (decorative: closes the panel) and report whether
+   *  the notifications panel is still open afterwards. */
+  async markAllNotificationsRead(): Promise<boolean> {
+    await this.user.click(
+      within(this.root).getByTestId("notifications-mark-read"),
+    );
+    return within(this.root).queryByTestId("notifications-panel") !== null;
+  }
+
   /** The account trigger's initials (wired to the session seam). */
   accountInitials(): string {
     return (
