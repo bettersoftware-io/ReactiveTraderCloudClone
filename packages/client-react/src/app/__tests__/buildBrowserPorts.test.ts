@@ -39,10 +39,12 @@ describe("buildBrowserPorts (simulator branch)", () => {
 
     const statusTrail = [];
     let status = ConnectionStatus.IDLE_DISCONNECTED;
+
     for (const event of seen) {
       status = nextConnectionStatus(status, event);
       statusTrail.push(status);
     }
+
     // reconnect → CONNECTING must precede gatewayConnected → CONNECTED.
     expect(statusTrail).toContain(ConnectionStatus.CONNECTING);
     expect(status).toBe(ConnectionStatus.CONNECTED);

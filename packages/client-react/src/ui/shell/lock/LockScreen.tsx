@@ -3,7 +3,8 @@ import type { ReactElement } from "react";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
-import { BiometricChannel, BiometricDots } from "./BiometricLine";
+import { BiometricChannel } from "./BiometricChannel";
+import { BiometricDots } from "./BiometricDots";
 
 import styles from "./LockScreen.module.css";
 

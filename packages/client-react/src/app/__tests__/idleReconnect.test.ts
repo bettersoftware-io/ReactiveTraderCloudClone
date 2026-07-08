@@ -26,6 +26,7 @@ describe("idle disconnection → Reconnect button (simulator branch)", () => {
     const sub = app.presenters.connection.status$.subscribe((s) => {
       statuses.push(s);
     });
+
     unsubscribe = (): void => {
       sub.unsubscribe();
     };
