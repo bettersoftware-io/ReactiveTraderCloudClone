@@ -10,10 +10,19 @@ import { MountedComponent } from "#tests/ui/contract/shared/harness/component";
  * ConnectionOverlay, without clicking any buttons (AdminHead has none).
  */
 export class AdminHeadPage extends MountedComponent<Record<string, never>> {
-  /** The "◈ Observability" title text. */
+  /** The "◈ Observability" head-tab text. */
   titleText(): string | null {
     return (
-      within(this.root).queryByText("◈ Observability")?.textContent ?? null
+      within(this.root).queryByTestId("admin-head-title")?.textContent ?? null
+    );
+  }
+
+  /** True when the head-tab is flagged data-active="true" (always, single view). */
+  isTitleActive(): boolean {
+    return (
+      within(this.root)
+        .queryByTestId("admin-head-title")
+        ?.getAttribute("data-active") === "true"
     );
   }
 
