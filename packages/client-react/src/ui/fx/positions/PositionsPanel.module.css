@@ -58,6 +58,35 @@
   color: var(--accent-negative);
 }
 
+/* PROTO inner radial glow (ExposureBubbles.module.css `.glow` L52-66) —
+ * brightens the bubble from within, on top of the outer box-shadow above.
+ * The proto hardcodes rgba(43,255,179,0.22)/rgba(255,93,115,0.22); here the
+ * gradient colour is per-skin via color-mix on the sign accent at the same
+ * 22% strength. `currentcolor` can't be used: the mix ratio lives in the
+ * gradient stop, not the element colour. */
+.bubble::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.bubble[data-sign="pos"]::before {
+  background: radial-gradient(
+    circle at 50% 40%,
+    color-mix(in srgb, var(--accent-positive) 22%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+.bubble[data-sign="neg"]::before {
+  background: radial-gradient(
+    circle at 50% 40%,
+    color-mix(in srgb, var(--accent-negative) 22%, transparent) 0%,
+    transparent 70%
+  );
+}
+
 /* PROTO decorative spin ring (22s linear); motion gated below. PROTO
  * (dc.html L522-524): a solid 1px ring in the sign colour, not dashed —
  * `color` on `.bubble[data-sign]` above supplies `currentcolor` here. */
@@ -81,7 +110,10 @@
   }
 }
 
+/* position: relative lifts the labels above the absolute `::before` glow in
+ * paint order (PROTO wraps them in a `position: relative` `.inner`). */
 .bubbleCcy {
+  position: relative;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--bubble-label-size);
@@ -89,10 +121,12 @@
 }
 
 .bubbleAmt {
+  position: relative;
   font-family: var(--font-mono);
   font-size: 9px;
-  /* PROTO paints the bubble amount dim; sign lives in the ring/ccy colour. */
-  color: var(--text-muted);
+  /* PROTO paints the bubble amount dim (`--dim` = text-secondary tier);
+   * sign lives in the ring/ccy colour. */
+  color: var(--text-secondary);
 }
 
 .ladder {
