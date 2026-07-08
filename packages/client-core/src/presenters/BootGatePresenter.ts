@@ -20,6 +20,15 @@ export class BootGatePresenter {
     this.visible$ = this.visibleSubject$.asObservable();
   }
 
+  /**
+   * Synchronous current visibility. UI bindings seed their first-render
+   * default from this so a `?nosplash`/webdriver load never flashes the
+   * opaque splash for one frame before the stream's real value lands.
+   */
+  get visible(): boolean {
+    return this.visibleSubject$.getValue();
+  }
+
   /** Re-raise the boot splash (Reboot HUD). Splash replay only. */
   reboot(): void {
     this.visibleSubject$.next(true);

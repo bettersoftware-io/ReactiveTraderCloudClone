@@ -420,9 +420,15 @@ export function createViewModel(
   }
 
   // Global/shared boot-splash visibility → a plain bind (not a per-mount
-  // machine), mirroring useSessionState. The default matches the presenter's
-  // default-visible construction so a real user's first paint keeps the splash.
-  const [useBootGateVisible] = bind(presenters.bootGate.visible$, true);
+  // machine), mirroring useSessionState. bind() serves its DEFAULT on the
+  // first render even over a warm source (see useEqWorkspaceState below), so
+  // the default must be the presenter's ACTUAL current value — a literal
+  // `true` here would transiently mount the opaque splash for one frame on a
+  // `?nosplash`/webdriver load whose presenter was constructed hidden.
+  const [useBootGateVisible] = bind(
+    presenters.bootGate.visible$,
+    presenters.bootGate.visible,
+  );
 
   function rebootHud(): void {
     presenters.bootGate.reboot();
