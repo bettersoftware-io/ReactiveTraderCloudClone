@@ -1,6 +1,19 @@
-/* Animated HUD hex logo (prototype Logo.module.css:1-23). The SVG fills its
+/* Animated HUD hex logo (prototype Logo.module.css:1-23). The logo fills its
    parent — callers size it (and add the glow drop-shadow) on their own sized
-   wrapper. Keyframes are module-local (the prototype keeps them global). */
+   wrapper. Keyframes are module-local (the prototype keeps them global).
+
+   The rotations sit on HTML wrapper spans, NOT on SVG child elements: SVG
+   transforms are never compositor-offloaded, so animating them re-runs
+   main-thread style + layout every frame for the lifetime of the app. The
+   wrappers are square and exactly overlay the base SVG, so the default 50%
+   transform-origin equals the prototype's 24px 24px (viewBox centre). */
+
+.root {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 
 .svg {
   width: 100%;
@@ -8,13 +21,18 @@
   display: block;
 }
 
+.spin,
+.spinRev {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
 .spin {
-  transform-origin: 24px 24px;
   animation: spin 16s linear infinite;
 }
 
 .spinRev {
-  transform-origin: 24px 24px;
   animation: spin-rev 22s linear infinite;
 }
 

@@ -21,6 +21,10 @@
 .dot[data-status="CONNECTED"] {
   background-color: var(--status-connected);
   box-shadow: 0 0 8px var(--status-connected);
+  /* will-change promotes the dot to its own layer so the infinite opacity
+   * pulse runs on the compositor; without it Chrome ticked this animation on
+   * the main thread every frame for the app's whole lifetime. */
+  will-change: opacity;
   animation: pulseDot 1.8s ease-in-out infinite;
 }
 
