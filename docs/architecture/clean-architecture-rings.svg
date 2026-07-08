@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 720" font-family="ui-sans-serif, system-ui, sans-serif">
+  <title>Clean Architecture rings mapped to this repo's packages: Entities and Use Cases in @rtc/domain at the centre; Interface Adapters (client-core, react-bindings, simulators, server effects, shared DTOs) around them; Frameworks and Drivers (React, Expo, ws-effects, Node, Vite) at the volatile outer edge. Source code points inward only.</title>
+
+  <rect width="940" height="720" rx="12" fill="#0d1117"/>
+
+  <!-- rings: outermost first, each smaller on top -->
+  <circle cx="450" cy="380" r="330" fill="#45321b" stroke="#e3b341" stroke-width="2"/>
+  <circle cx="450" cy="380" r="255" fill="#3b1f47" stroke="#d2a8ff" stroke-width="2"/>
+  <circle cx="450" cy="380" r="180" fill="#123049" stroke="#79c0ff" stroke-width="2"/>
+  <circle cx="450" cy="380" r="105" fill="#14432a" stroke="#56d364" stroke-width="2"/>
+
+  <!-- ring labels (top of each band) -->
+  <text x="450" y="78"  text-anchor="middle" fill="#f0c775" font-size="19" font-weight="700">④ Frameworks &amp; Drivers</text>
+  <text x="450" y="98"  text-anchor="middle" fill="#e6d3b0" font-size="12">React · Expo/RN · Vite · Node http+ws · @rtc/ws-effects · Playwright</text>
+
+  <text x="450" y="152" text-anchor="middle" fill="#e0c0ff" font-size="19" font-weight="700">③ Interface Adapters</text>
+  <text x="450" y="172" text-anchor="middle" fill="#e6d9f5" font-size="12">presenters · gateways (WsAdapter, simulators) · ViewModel bridge · server effects · DTOs</text>
+
+  <text x="450" y="228" text-anchor="middle" fill="#9fd0ff" font-size="19" font-weight="700">② Use Cases</text>
+  <text x="450" y="248" text-anchor="middle" fill="#cfe6ff" font-size="12">@rtc/domain/usecases (12) + ports (interfaces)</text>
+
+  <text x="450" y="362" text-anchor="middle" fill="#8ff0b4" font-size="19" font-weight="700">① Entities</text>
+  <text x="450" y="384" text-anchor="middle" fill="#c8f5d8" font-size="12">@rtc/domain</text>
+  <text x="450" y="402" text-anchor="middle" fill="#c8f5d8" font-size="12">Price · Trade · Rfq · Candle</text>
+  <text x="450" y="418" text-anchor="middle" fill="#c8f5d8" font-size="12">ConnectionStatus</text>
+
+  <!-- dependency-rule arrow -->
+  <line x1="895" y1="165" x2="562" y2="338" stroke="#e3b341" stroke-width="3"/>
+  <polygon points="558,340 578,330 574,352" fill="#e3b341"/>
+  <text x="905" y="130" text-anchor="end" fill="#e3b341" font-size="14" font-weight="700">The Dependency Rule</text>
+  <text x="905" y="148" text-anchor="end" fill="#e6d3b0" font-size="12">source code points inward only</text>
+
+  <!-- ports note -->
+  <text x="450" y="708" text-anchor="middle" fill="#8b949e" font-size="13">Control flow crosses each boundary through a <tspan fill="#c9d1d9" font-weight="700">port</tspan> — an interface declared inside (② ports) and implemented outside (③ adapters).</text>
+</svg>
