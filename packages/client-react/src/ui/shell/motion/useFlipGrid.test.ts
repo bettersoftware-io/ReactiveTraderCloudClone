@@ -161,9 +161,12 @@ function makeTile(): FakeTile {
   };
 
   Object.assign(el, { animate });
+
   const tile: FakeTile = { el, rect, animate, running: [] };
+
   el.getAnimations = (): Animation[] => {
     return tile.running;
   };
+
   return tile;
 }
