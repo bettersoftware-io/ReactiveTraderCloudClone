@@ -62,7 +62,11 @@ function makeHooks(): ViewModel {
       ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
       connectionEvents: new ConnectionEventsSimulator(),
       // The nosplash/webdriver decision: seed the boot gate hidden.
-      bootSplash: { shouldPlay: () => {return false} },
+      bootSplash: {
+        shouldPlay: () => {
+          return false;
+        },
+      },
     };
   }
 }
