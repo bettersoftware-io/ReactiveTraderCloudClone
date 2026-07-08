@@ -9,6 +9,12 @@ export interface PanelSpec {
   readonly id: PanelId;
   readonly title: string;
   readonly pinned?: boolean;
+  /** False hides the panel's own maximize control (default true — like
+   * `pinned`, an optional additive flag on the §5 contract). Not-maximizable
+   * is NOT never-stripped: the panel still collapses to a strip when a
+   * sibling maximizes (standalone semantics — e.g. the Credit New RFQ form,
+   * which never fills the dock itself but yields to the RFQs board). */
+  readonly maximizable?: boolean;
 }
 export type SplitDir = "row" | "column";
 export type LayoutNode =

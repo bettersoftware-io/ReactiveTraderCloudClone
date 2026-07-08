@@ -505,19 +505,23 @@ function renderPanel(
               >
                 —
               </button>
-              <button
-                type="button"
-                data-testid={`panel-${panelId}-maximize`}
-                className={styles.panelControl}
-                aria-label={
-                  maximizedHere ? `Restore ${title}` : `Maximize ${title}`
-                }
-                onClick={() => {
-                  maximizedHere ? onRestore() : onMaximize(panelId);
-                }}
-              >
-                {maximizedHere ? "⧉" : "⛶"}
-              </button>
+              {/* maximizable: false hides only this control — the panel still
+               * strips when a sibling maximizes (spec'd on PanelSpec). */}
+              {spec?.maximizable !== false ? (
+                <button
+                  type="button"
+                  data-testid={`panel-${panelId}-maximize`}
+                  className={styles.panelControl}
+                  aria-label={
+                    maximizedHere ? `Restore ${title}` : `Maximize ${title}`
+                  }
+                  onClick={() => {
+                    maximizedHere ? onRestore() : onMaximize(panelId);
+                  }}
+                >
+                  {maximizedHere ? "⧉" : "⛶"}
+                </button>
+              ) : null}
             </div>
           </header>
           <div className={styles.panelBody}>

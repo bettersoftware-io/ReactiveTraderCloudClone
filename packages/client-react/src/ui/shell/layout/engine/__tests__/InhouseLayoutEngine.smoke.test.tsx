@@ -419,6 +419,48 @@ describe("InhouseLayoutEngine", () => {
     });
   });
 
+  describe("maximizable: false (spec-gated maximize control — default PANEL_SPECS marks credit-new-rfq)", () => {
+    const creditState: LayoutState = {
+      root: {
+        kind: "split",
+        dir: "row",
+        sizes: [0.25, 0.75],
+        children: [
+          { kind: "panel", panelId: "credit-new-rfq" },
+          { kind: "panel", panelId: "credit-rfqs" },
+        ],
+      },
+      maximized: null,
+      collapsed: [],
+    };
+    const creditRegistry: PanelRegistry = {
+      "credit-new-rfq": () => {
+        return <div data-testid="new-rfq-body">NEW RFQ</div>;
+      },
+      "credit-rfqs": () => {
+        return <div data-testid="rfqs-body">RFQS</div>;
+      },
+    };
+
+    it("renders no maximize control for the opted-out panel, keeping its collapse control and its sibling's maximize", () => {
+      renderEngine(creditState, creditRegistry);
+      expect(screen.queryByTestId("panel-credit-new-rfq-maximize")).toBeNull();
+      expect(screen.getByTestId("panel-credit-new-rfq-collapse")).toBeTruthy();
+      expect(screen.getByTestId("panel-credit-rfqs-maximize")).toBeTruthy();
+    });
+
+    it("still strips the opted-out panel when a sibling maximizes (not-maximizable is not never-stripped)", () => {
+      renderEngine(
+        { ...creditState, maximized: "credit-rfqs" },
+        creditRegistry,
+      );
+      expect(
+        screen.getByTestId("panel-credit-new-rfq").getAttribute("data-strip"),
+      ).toBe("true");
+      expect(screen.queryByTestId("new-rfq-body")).toBeNull();
+    });
+  });
+
   it("drives a column-split resize drag (vertical) and calls onResize", () => {
     const columnState: LayoutState = {
       root: {

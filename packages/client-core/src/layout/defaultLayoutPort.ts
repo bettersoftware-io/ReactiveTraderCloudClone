@@ -19,7 +19,14 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   "fx-analytics": { id: "fx-analytics", title: "Analytics" },
   "fx-positions": { id: "fx-positions", title: "Positions" },
   "fx-blotter": { id: "fx-blotter", title: "Blotter" },
-  "credit-new-rfq": { id: "credit-new-rfq", title: "New RFQ" },
+  // The New RFQ entry form never fills the dock itself (maximizable: false —
+  // its head keeps only the collapse control), but it still strips when a
+  // sibling maximizes, per the standalone design.
+  "credit-new-rfq": {
+    id: "credit-new-rfq",
+    title: "New RFQ",
+    maximizable: false,
+  },
   "credit-rfqs": { id: "credit-rfqs", title: "RFQs" },
   "credit-blotter": { id: "credit-blotter", title: "Credit Blotter" },
   // Registered like every other spec, but not part of CREDIT_ROOT — it has no
