@@ -499,6 +499,7 @@ function renderPanel(
                 data-testid={`panel-${panelId}-collapse`}
                 className={styles.panelControl}
                 aria-label={`Collapse ${title}`}
+                title={`Collapse ${title}`}
                 onClick={() => {
                   onCollapse(panelId);
                 }}
@@ -512,6 +513,7 @@ function renderPanel(
                 aria-label={
                   maximizedHere ? `Restore ${title}` : `Maximize ${title}`
                 }
+                title={maximizedHere ? `Restore ${title}` : `Maximize ${title}`}
                 onClick={() => {
                   maximizedHere ? onRestore() : onMaximize(panelId);
                 }}

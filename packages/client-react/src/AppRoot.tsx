@@ -9,7 +9,6 @@ import {
 
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 
-import { shouldPlayBootSplash } from "./bootSplashGate";
 import { BootGate } from "./ui/shell/boot/BootGate";
 import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
 
@@ -38,14 +37,13 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
     );
   }
 
+  // BootGate is always mounted; whether the splash overlay shows is the
+  // BootGatePresenter's visible$ seam (seeded from the boot-splash decision in
+  // buildBrowserPorts, re-raised by the account menu's ⟳ Reboot HUD row).
   return (
     <ViewModelProvider viewModel={viewModelRef.current}>
       <ThemeProvider>
-        {shouldPlayBootSplash() ? (
-          <BootGate>{children}</BootGate>
-        ) : (
-          <>{children}</>
-        )}
+        <BootGate>{children}</BootGate>
       </ThemeProvider>
     </ViewModelProvider>
   );

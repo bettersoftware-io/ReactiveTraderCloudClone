@@ -97,6 +97,25 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
       });
   }
 
+  /** The open notifications panel's MARK ALL READ footer label ("" when
+   *  absent). Assumes the notifications panel is already open. */
+  notificationsFooterLabel(): string {
+    return (
+      within(this.root)
+        .queryByTestId("notifications-mark-read")
+        ?.textContent?.trim() ?? ""
+    );
+  }
+
+  /** Click MARK ALL READ (decorative: closes the panel) and report whether
+   *  the notifications panel is still open afterwards. */
+  async markAllNotificationsRead(): Promise<boolean> {
+    await this.user.click(
+      within(this.root).getByTestId("notifications-mark-read"),
+    );
+    return within(this.root).queryByTestId("notifications-panel") !== null;
+  }
+
   /** The account trigger's initials (wired to the session seam). */
   accountInitials(): string {
     return (
@@ -188,6 +207,21 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
       .map((el) => {
         return el.textContent?.trim() ?? "";
       });
+  }
+
+  /** Click ⟳ Reboot HUD inside the account panel (replays the splash via the seam). */
+  async rebootHud(): Promise<void> {
+    await this.user.click(within(this.root).getByTestId("account-reboot"));
+  }
+
+  /** True when the ⟳ Reboot HUD row is present in the open account panel. */
+  hasRebootRow(): boolean {
+    return within(this.root).queryByTestId("account-reboot") !== null;
+  }
+
+  /** Number of times the boot-gate reboot command was invoked through the seam. */
+  rebootCount(): number {
+    return this.commandLog().bootReboot;
   }
 
   /** Click LOCK SESSION inside the account panel (locks the session via the seam). */
