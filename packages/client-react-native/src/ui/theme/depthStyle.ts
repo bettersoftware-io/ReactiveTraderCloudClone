@@ -11,6 +11,7 @@ export function depthStyle(d: DepthTokens): ViewStyle {
   if (d.level === 0) {
     return {};
   }
+
   return {
     shadowColor: d.shadowColor,
     shadowOpacity: d.shadowOpacity,

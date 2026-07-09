@@ -35,6 +35,7 @@ export function SpotTile({ pair }: SpotTileProps): JSX.Element {
   const label = `${pair.base} / ${pair.terms}`;
 
   let body: JSX.Element;
+
   if (price === null) {
     body = (
       <View style={styles.card}>
@@ -87,7 +88,7 @@ export function SpotTile({ pair }: SpotTileProps): JSX.Element {
       <Pressable
         testID="spot-tile"
         style={({ pressed }: PressableStateCallbackType): ViewStyle =>
-          pressed ? styles.pressed : styles.rest
+          {return pressed ? styles.pressed : styles.rest}
         }
         onPress={() => {
           setTicketVisible(true);

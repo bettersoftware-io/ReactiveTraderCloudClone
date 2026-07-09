@@ -131,15 +131,22 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
   );
 }
 
+/** The tint react-navigation passes to a `tabBarIcon` (active/inactive). */
+interface TabIconProps {
+  color: ColorValue;
+}
+
 /** A tab-bar icon factory: a monochrome unicode glyph in a themed <Text>, so
  * tabs get an icon without pulling in an icon-font dependency. The glyph takes
  * the active/inactive tint react-navigation passes via `color`. */
 function tabIcon(glyph: string, t: RnTheme) {
-  return ({ color }: { color: ColorValue }): JSX.Element => (
-    <Text style={{ color, fontSize: 16, fontFamily: t.fontDisplay }}>
-      {glyph}
-    </Text>
-  );
+  return ({ color }: TabIconProps): JSX.Element => {
+    return (
+      <Text style={{ color, fontSize: 16, fontFamily: t.fontDisplay }}>
+        {glyph}
+      </Text>
+    );
+  };
 }
 
 interface RootLayoutStyles {
