@@ -10,11 +10,12 @@ describe("RfqCountdown", () => {
     expect(cd.caption()).toBe("8s remaining");
   });
 
-  it("fills the progress bar proportionally", () => {
+  it("drains via one mount-time animation, fast-forwarded to the elapsed time", () => {
     const cd = mount(RfqCountdown, {
       props: { remainingMs: 5_000, totalMs: 10_000 },
     });
-    expect(cd.fillWidth()).toBe("50%");
+    expect(cd.fillDuration()).toBe("10000ms");
+    expect(cd.fillDelay()).toBe("-5000ms");
   });
 
   it("uses the primary colour while plenty of time remains", () => {
@@ -31,19 +32,24 @@ describe("RfqCountdown", () => {
     expect(cd.fillColor()).toBe("var(--accent-aware)");
   });
 
-  it("treats a zero total as an empty bar without dividing by zero", () => {
+  it("treats a zero total as an instantly-finished bar without dividing by zero", () => {
     const cd = mount(RfqCountdown, { props: { remainingMs: 0, totalMs: 0 } });
-    expect(cd.fillWidth()).toBe("0%");
+    expect(cd.fillDuration()).toBe("0ms");
+    expect(cd.fillDelay()).toBe("0ms");
     expect(cd.caption()).toBe("0s remaining");
   });
 
-  it("shrinks the bar as the remaining time ticks down", () => {
+  it("keeps the mount-frozen animation timing while the caption ticks down", () => {
     const cd = mount(RfqCountdown, {
       props: { remainingMs: 8_000, totalMs: 10_000 },
     });
-    expect(cd.fillWidth()).toBe("80%");
+    expect(cd.fillDuration()).toBe("10000ms");
+    expect(cd.fillDelay()).toBe("-2000ms");
     cd.setProps({ remainingMs: 3_000 });
-    expect(cd.fillWidth()).toBe("30%");
+    // Progression is owned by the CSS animation — re-renders only refresh
+    // the caption (and the warn colour below), never the animation timing.
+    expect(cd.fillDuration()).toBe("10000ms");
+    expect(cd.fillDelay()).toBe("-2000ms");
     expect(cd.caption()).toBe("3s remaining");
   });
 });

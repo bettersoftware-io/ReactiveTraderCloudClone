@@ -108,9 +108,22 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
   }
 
   async dismissConfirmation(): Promise<void> {
-    await this.firstTile()
-      .getByTestId(TESTIDS.liveRates.tradeConfirmation)
-      .click();
+    const confirmation = this.firstTile().getByTestId(
+      TESTIDS.liveRates.tradeConfirmation,
+    );
+    // A DONE confirmation is a card whose only dismiss affordance is its
+    // DISMISS chip (the overlay div has no click handler); every other
+    // terminal state renders the whole overlay as a click-anywhere button.
+    // Clicking the right target makes dismissal deterministic — previously
+    // this clicked the inert card and the test only passed when the 5s
+    // auto-dismiss timer beat the 5s hide assertion, a race the app now
+    // loses since the perf rounds made the pre-assertion steps near-instant.
+    const dismissChip = confirmation.locator('[data-action="dismiss"]');
+    if ((await dismissChip.count()) > 0) {
+      await dismissChip.click();
+    } else {
+      await confirmation.click();
+    }
   }
 
   async confirmationHidden(timeoutMs: number): Promise<void> {

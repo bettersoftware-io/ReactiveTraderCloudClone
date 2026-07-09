@@ -175,11 +175,33 @@
   overflow: hidden;
 }
 
+/* Countdown fill drains via ONE mount-time transform animation, not per-tick
+ * width/transform writes: a width transition re-ran layout every frame
+ * (width never composites — measured 3,960 layout invalidations per 12s with
+ * three cards), and a `scaleX(var(...))` transition is ALSO main-thread
+ * (var()-dependent transforms defeat the compositor). Literal keyframes over
+ * --bar-duration (the RFQ's full lifetime), fast-forwarded by a negative
+ * --bar-delay when mounting mid-countdown, run entirely on the compositor —
+ * and drain smoothly instead of the old 1s-stepped transition. Deliberately
+ * NOT reduced-motion-gated: the drain conveys state (time remaining), it is
+ * not decoration. */
 .barFill {
   height: 100%;
-  width: var(--bar-pct);
+  width: 100%;
+  transform-origin: left;
   background: var(--accent-primary);
-  transition: width 0.4s linear;
+  will-change: transform;
+  animation: barDrain var(--bar-duration) linear var(--bar-delay) forwards;
+}
+
+@keyframes barDrain {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
 }
 
 .cancelBtn {

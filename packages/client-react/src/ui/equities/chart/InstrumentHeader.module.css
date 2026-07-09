@@ -41,7 +41,10 @@
   line-height: 34px;
   letter-spacing: 0.02em;
   color: var(--text-primary);
-  transition: color 0.3s;
+  /* No color transition: the last-price colour flips on every quote tick,
+   * and a 0.3s colour transition (never compositable) kept a main-thread
+   * animation alive continuously at quote rate. The instant flip matches
+   * the FX pips treatment (PR #139). */
 }
 
 .last[data-flash="true"][data-dir="up"] {

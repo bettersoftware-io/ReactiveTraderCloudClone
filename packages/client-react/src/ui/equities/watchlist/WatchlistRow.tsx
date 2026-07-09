@@ -68,6 +68,11 @@ export function WatchlistRow({
         onSelect(symbol);
       }}
     >
+      <span
+        data-rank-glow="true"
+        aria-hidden="true"
+        className={styles.rankGlow}
+      />
       {tick.nonce > 0 && (
         <span
           key={tick.nonce}

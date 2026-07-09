@@ -24,8 +24,6 @@ const GLIDE_DUR_MS = 560;
 const GLIDE_EASING = "cubic-bezier(.34,1.28,.5,1)";
 const HIGHLIGHT_DUR_MS = 820;
 const HIGHLIGHT_EASING = "ease-out";
-const ROSE_COLOR = "rgba(43,255,179,.95)";
-const FELL_COLOR = "rgba(255,93,115,.95)";
 const FALLBACK_ROW_HEIGHT = 52;
 // Mirrors useFlipGrid.ts's house pattern for gating on the OS/browser's
 // reduced-motion preference (no reduceMotion pref seam exists in the app).
@@ -140,20 +138,25 @@ function playHighlight(
   node: HTMLElement,
   direction: RankDirection,
 ): Animation | undefined {
-  const color = direction === "rose" ? ROSE_COLOR : FELL_COLOR;
+  // The direction-coloured shadow is BAKED in CSS on a per-row overlay span
+  // (WatchlistRow.module.css .rankGlow, colour picked by data-rank-dir) and
+  // only the overlay's OPACITY animates: box-shadow keyframes can never run
+  // on the compositor, and under the default "chg" sort a re-sort commits
+  // every glide window — the previous box-shadow WAAPI animation kept the
+  // main thread re-resolving style at full frame rate for the whole tab
+  // (and dragged the composited glide transform down with it,
+  // kTargetHasIncompatibleAnimations).
+  const glow = node.querySelector<HTMLElement>("[data-rank-glow]");
+  if (!glow) return undefined;
+
+  node.dataset.rankDir = direction;
 
   try {
-    return node.animate(
+    return glow.animate(
       [
-        { boxShadow: `inset 3px 0 0 ${color},0 0 0 0 ${color}`, offset: 0 },
-        {
-          boxShadow: `inset 3px 0 0 ${color},0 0 16px -3px ${color}`,
-          offset: 0.3,
-        },
-        {
-          boxShadow: "inset 0 0 0 0 transparent,0 0 0 0 transparent",
-          offset: 1,
-        },
+        { opacity: 1, offset: 0 },
+        { opacity: 1, offset: 0.3 },
+        { opacity: 0, offset: 1 },
       ],
       { duration: HIGHLIGHT_DUR_MS, easing: HIGHLIGHT_EASING },
     );

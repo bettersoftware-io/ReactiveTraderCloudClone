@@ -484,7 +484,7 @@ describe("RfqsPanel", () => {
     expect(panel.cardAnim(2)).toBe("none");
   });
 
-  it("shows the live countdown seconds and progress-bar percentage, ticking down under fake timers", async () => {
+  it("shows ticking countdown seconds and a mount-frozen drain-bar animation timing", async () => {
     vi.useFakeTimers();
     const now = Date.now();
     const panel = mount(RfqsPanel, {
@@ -501,14 +501,20 @@ describe("RfqsPanel", () => {
       },
     });
     expect(panel.secsCaption(1)).toBe("10 secs");
-    expect(panel.barPct(1)).toBe("100%");
+    // The drain bar is ONE mount-time CSS animation (compositor-only): the
+    // full RFQ lifetime as duration, fast-forwarded by a negative delay.
+    expect(panel.barDuration(1)).toBe("10000ms");
+    expect(panel.barDelay(1)).toBe("0ms");
 
     // advanceTimersByTimeAsync yields to the microtask queue between ticks,
     // which the underlying rx-state/useSyncExternalStore bridge needs to
     // actually flush a re-render.
     await vi.advanceTimersByTimeAsync(5000);
     expect(panel.secsCaption(1)).toBe("5 secs");
-    expect(panel.barPct(1)).toBe("50%");
+    // Progression is owned by the CSS animation, not per-tick re-renders —
+    // the timing stays mount-frozen.
+    expect(panel.barDuration(1)).toBe("10000ms");
+    expect(panel.barDelay(1)).toBe("0ms");
   });
 
   it("does not offer a remove control on a live or accepted card", () => {

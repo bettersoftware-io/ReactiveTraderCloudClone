@@ -8,6 +8,7 @@
  * animates border-color onto (see .ticket[data-anim="fill"]); at rest it's
  * invisible. */
 .ticket {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -19,20 +20,36 @@
   min-height: 0;
 }
 
-/* Fill choreography: data-anim="fill" pulses border via keyframe */
-.ticket[data-anim="fill"] {
-  animation: ticketFill 0.6s ease-out forwards;
+/* Fill choreography: data-anim="fill" flashes a glow ring. The ring lives on
+ * an overlay pseudo-element faded via opacity because border-color/box-shadow
+ * keyframes can never run on the compositor — with the equities simulator
+ * filling orders continuously, the previous keyframe kept a main-thread
+ * animation alive almost permanently (48 composite failures / 12s measured),
+ * forcing style recalcs at full frame rate for the whole tab.
+ * pointer-events: none keeps the ticket's controls clickable under it. */
+.ticket::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--accent-positive);
+  border-radius: 6px;
+  box-shadow: var(--glow);
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
 }
 
-@keyframes ticketFill {
-  0% {
-    border-color: var(--accent-positive);
-    box-shadow: var(--glow);
+.ticket[data-anim="fill"]::after {
+  animation: ticketFillFade 0.6s ease-out forwards;
+}
+
+@keyframes ticketFillFade {
+  from {
+    opacity: 1;
   }
 
-  100% {
-    border-color: transparent;
-    box-shadow: none;
+  to {
+    opacity: 0;
   }
 }
 

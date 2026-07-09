@@ -27,11 +27,18 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
     return el?.textContent?.trim() ?? null;
   }
 
-  /** The live countdown bar's --bar-pct custom property, e.g. "50%". */
-  barPct(rfqId: number): string {
+  /** The bar's mount-time drain-animation duration, e.g. "10000ms". */
+  barDuration(rfqId: number): string {
     const fill =
       this.card(rfqId)?.querySelector<HTMLElement>('[class*="barFill"]');
-    return fill?.style.getPropertyValue("--bar-pct").trim() ?? "";
+    return fill?.style.getPropertyValue("--bar-duration").trim() ?? "";
+  }
+
+  /** The bar's mount-time drain fast-forward (negative delay), e.g. "-5000ms". */
+  barDelay(rfqId: number): string {
+    const fill =
+      this.card(rfqId)?.querySelector<HTMLElement>('[class*="barFill"]');
+    return fill?.style.getPropertyValue("--bar-delay").trim() ?? "";
   }
 
   /** The card root's --card-delay custom property, e.g. "45ms". */

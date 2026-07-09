@@ -11,12 +11,31 @@
   overflow: hidden;
 }
 
+/* Fill drains via ONE mount-time transform animation over the RFQ window,
+ * fast-forwarded by a negative --rfq-delay — not per-tick geometry writes: a
+ * width transition re-ran layout every frame (width never composites), and a
+ * scaleX(var(...)) transition is also main-thread (var()-dependent transforms
+ * defeat the compositor). Same treatment as the credit RfqCard bar. NOT
+ * reduced-motion-gated: the drain conveys time remaining, it is not
+ * decoration. */
 .fill {
   height: 100%;
-  width: var(--rfq-fill);
+  width: 100%;
+  transform-origin: left;
   background-color: var(--accent-primary);
-  transition: width 0.1s linear;
+  will-change: transform;
+  animation: rfqDrain var(--rfq-duration) linear var(--rfq-delay) forwards;
   border-radius: 2px;
+}
+
+@keyframes rfqDrain {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
 }
 
 .fill[data-warn="true"] {
