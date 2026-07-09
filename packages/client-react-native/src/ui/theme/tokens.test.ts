@@ -67,3 +67,29 @@ test("classic uses system fonts; the other skins bind a display + mono family", 
   expect(rnThemeTokens.holo.dark.fontDisplay).toBe("ChakraPetch_500Medium");
   expect(rnThemeTokens.terminal.dark.fontMono).toBe("IBMPlexMono_400Regular");
 });
+
+test("3d skins are distinct cells from their flat siblings with real depth", () => {
+  const pairs = [
+    ["holo", "holo3d"],
+    ["terminal", "terminal3d"],
+  ] as const;
+  for (const [flat, threeD] of pairs) {
+    for (const mode of THEME_MODES) {
+      // Not reference-equal: the alias that made "3D" look identical is gone.
+      expect(rnThemeTokens[threeD][mode]).not.toBe(rnThemeTokens[flat][mode]);
+      // The 3D cell carries physical depth; the flat one does not.
+      expect(rnThemeTokens[threeD][mode].depth.level).toBe(2);
+      expect(rnThemeTokens[flat][mode].depth.level).toBe(0);
+    }
+  }
+});
+
+test("every cell defines a depth block", () => {
+  for (const skin of THEME_SKINS) {
+    for (const mode of THEME_MODES) {
+      const { depth } = rnThemeTokens[skin][mode];
+      expect(depth, `${skin}.${mode}.depth`).toBeDefined();
+      expect(typeof depth.level).toBe("number");
+    }
+  }
+});
