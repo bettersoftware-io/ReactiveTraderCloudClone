@@ -11,6 +11,8 @@ const FLAT: DepthTokens = {
   shadowOffsetY: 0,
   elevation: 0,
   topHighlight: null,
+  tileGradient: null,
+  headGradient: null,
   glow: null,
 };
 
@@ -22,6 +24,8 @@ const PHYSICAL: DepthTokens = {
   shadowOffsetY: 8,
   elevation: 10,
   topHighlight: "rgba(255,255,255,0.07)",
+  tileGradient: ["rgba(18,52,68,0.95)", "rgba(10,30,43,0.88)"],
+  headGradient: null,
   glow: "rgba(0,224,255,0.32)",
 };
 

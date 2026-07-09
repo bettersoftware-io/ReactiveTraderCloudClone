@@ -114,6 +114,26 @@ test("paints the ask pips with the negative accent colour on a down-move", async
   );
 });
 
+test("renders a gradient tile surface on 3d skins", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(UP_PRICE)}>
+      <SpotTile pair={EURUSD} />
+    </ViewModelProvider>,
+    rnThemeTokens.holo3d.dark,
+  );
+  expect(screen.getByTestId("tile-sheen")).toBeTruthy();
+});
+
+test("flat skins render no gradient tile surface", async () => {
+  // renderWithTheme defaults to holo.dark (a flat skin, depth.level 0).
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(UP_PRICE)}>
+      <SpotTile pair={EURUSD} />
+    </ViewModelProvider>,
+  );
+  expect(screen.queryByTestId("tile-sheen")).toBeNull();
+});
+
 function fakeViewModel(price: Price | null): ViewModel {
   return {
     usePrice: () => {

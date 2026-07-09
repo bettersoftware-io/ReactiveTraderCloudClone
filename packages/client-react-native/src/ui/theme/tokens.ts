@@ -28,8 +28,16 @@ export interface DepthTokens {
   readonly shadowOffsetY: number;
   /** Android elevation (dp). */
   readonly elevation: number;
-  /** 1px top-edge inset-highlight colour; `null` = none (flat). */
+  /** 1px inset top-edge highlight (the web `--tile-shadow` inset layer); `null` = flat. */
   readonly topHighlight: string | null;
+  /** Tile-surface vertical gradient `[top, bottom]` (the web `--tile`), giving the
+   * tile a lit 3d face; `null` = flat (solid `bgTile`). */
+  readonly tileGradient: readonly [string, string] | null;
+  /** Optional header-strip vertical gradient `[top, bottom]` (the web
+   * `--panel-head`) overlaid on the tile head — used where it reads as a subtle
+   * tonal band (Terminal 3D's slate). `null` where a distinct head would clash
+   * (Holo 3D's translucent-cyan panel-head looks garish over the teal tile). */
+  readonly headGradient: readonly [string, string] | null;
   /** Glow colour for active/pressed elements; `null` = none. */
   readonly glow: string | null;
 }
@@ -93,6 +101,8 @@ const FLAT_DEPTH: DepthTokens = {
   shadowOffsetY: 0,
   elevation: 0,
   topHighlight: null,
+  tileGradient: null,
+  headGradient: null,
   glow: null,
 };
 
@@ -231,32 +241,42 @@ const holoLight: RnTheme = {
 // Holo 3D — the holo palette with real physical depth. Colours spread from the
 // flat sibling; only bgTile is deepened and a depth block is filled. Depth
 // values port the dominant layer of the web holo3d --tile-shadow/--glow.
+// On dark skins a black drop shadow is invisible against the near-black page
+// (bgPrimary #00060a). Depth here reads from (a) a lighter, more opaque raised
+// tile surface, (b) a RESTING coloured glow in the skin's accent (cyan), and
+// (c) a bright top highlight — the cues that actually show on dark. The web
+// holo3d expresses the same "physical depth" with layered/inset shadows RN
+// can't render, so this is the RN-native equivalent, tuned on-device.
 const holo3dDark: RnTheme = {
   ...holoDark,
-  bgTile: "rgba(9,34,49,0.62)",
+  bgTile: "#0c2634",
   depth: {
     level: 2,
-    shadowColor: "#000000",
-    shadowOpacity: 0.62,
-    shadowRadius: 12,
-    shadowOffsetY: 8,
-    elevation: 10,
+    shadowColor: "#00e5ff",
+    shadowOpacity: 0.14,
+    shadowRadius: 9,
+    shadowOffsetY: 5,
+    elevation: 8,
     topHighlight: "rgba(255,255,255,0.07)",
-    glow: "rgba(0,224,255,0.32)",
+    tileGradient: ["rgba(18,52,68,0.95)", "rgba(10,30,43,0.88)"],
+    headGradient: null,
+    glow: "#00e5ff",
   },
 };
 
 const holo3dLight: RnTheme = {
   ...holoLight,
-  bgTile: "#ffffff",
+  bgTile: "#e9f4f7",
   depth: {
     level: 2,
     shadowColor: "rgba(20,60,80,0.5)",
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    shadowOffsetY: 8,
-    elevation: 8,
-    topHighlight: "rgba(255,255,255,0.95)",
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffsetY: 6,
+    elevation: 6,
+    topHighlight: "rgba(255,255,255,0.9)",
+    tileGradient: ["#ffffff", "#e9f4f7"],
+    headGradient: null,
     glow: "rgba(0,150,179,0.22)",
   },
 };
@@ -329,32 +349,42 @@ const terminalLight: RnTheme = {
 
 // Terminal 3D — terminal palette + physical depth. Terminal's web --glow is
 // "none", so glow stays null here (depth is drop-shadow + top highlight only).
+// Terminal 3D dark: same dark-background problem as holo3d. The web terminal3d
+// uses gradient panels (no neon glow) for depth, which RN can't fill; on a
+// near-black page a black shadow is invisible, so this reads depth from a
+// lighter raised slab, a bright top highlight, and a restrained amber
+// under-glow in the terminal accent. (Deviates from the web's glow:none by
+// necessity — the flat-black alternative is imperceptible on device.)
 const terminal3dDark: RnTheme = {
   ...terminalDark,
-  bgTile: "#161a21",
+  bgTile: "#161b22",
   depth: {
     level: 2,
     shadowColor: "#000000",
-    shadowOpacity: 0.6,
-    shadowRadius: 11,
-    shadowOffsetY: 8,
-    elevation: 10,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    shadowOffsetY: 5,
+    elevation: 8,
     topHighlight: "rgba(255,255,255,0.05)",
+    tileGradient: ["#1f2530", "#161b22"],
+    headGradient: ["#1c212a", "#14181e"],
     glow: null,
   },
 };
 
 const terminal3dLight: RnTheme = {
   ...terminalLight,
-  bgTile: "#ffffff",
+  bgTile: "#edf0f3",
   depth: {
     level: 2,
     shadowColor: "rgba(20,24,32,0.4)",
-    shadowOpacity: 0.24,
-    shadowRadius: 11,
-    shadowOffsetY: 8,
-    elevation: 8,
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffsetY: 6,
+    elevation: 6,
     topHighlight: "rgba(255,255,255,0.9)",
+    tileGradient: ["#ffffff", "#edf0f3"],
+    headGradient: ["#f2f4f6", "#e8ebef"],
     glow: null,
   },
 };
