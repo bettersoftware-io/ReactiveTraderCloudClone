@@ -73,6 +73,7 @@ test("3d skins are distinct cells from their flat siblings with real depth", () 
     ["holo", "holo3d"],
     ["terminal", "terminal3d"],
   ] as const;
+
   for (const [flat, threeD] of pairs) {
     for (const mode of THEME_MODES) {
       // Not reference-equal: the alias that made "3D" look identical is gone.
