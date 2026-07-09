@@ -12,6 +12,7 @@ import { ConnectionStatus } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import type { RnTheme } from "#/ui/theme/tokens";
+import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 const LABEL: Record<ConnectionStatus, string> = {
@@ -22,6 +23,20 @@ const LABEL: Record<ConnectionStatus, string> = {
   [ConnectionStatus.OFFLINE_DISCONNECTED]: "Offline",
 };
 
+/** Maps each connection status to the theme token that colours the pill's
+ * status dot. Built per-render from the live theme (`useTheme()`) since the
+ * colour depends on runtime status, not a static StyleSheet value. */
+function dotColorFor(status: ConnectionStatus, t: RnTheme): string {
+  const DOT_COLOR: Record<ConnectionStatus, string> = {
+    [ConnectionStatus.CONNECTED]: t.statusConnected,
+    [ConnectionStatus.CONNECTING]: t.statusConnecting,
+    [ConnectionStatus.DISCONNECTED]: t.statusDisconnected,
+    [ConnectionStatus.IDLE_DISCONNECTED]: t.statusDisconnected,
+    [ConnectionStatus.OFFLINE_DISCONNECTED]: t.statusDisconnected,
+  };
+  return DOT_COLOR[status];
+}
+
 /** Connection status banner with a Reconnect button — the sole recovery path
  * out of an idle/offline/disconnected socket (button-only, per the
  * `useReconnect` command's provenance comment on the ViewModel). */
@@ -29,6 +44,7 @@ export function ConnectionBanner(): JSX.Element {
   const { useConnectionStatus, useReconnect } = useViewModel();
   const status = useConnectionStatus();
   const reconnect = useReconnect();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const showReconnect =
     status !== ConnectionStatus.CONNECTED &&
@@ -37,7 +53,10 @@ export function ConnectionBanner(): JSX.Element {
   return (
     <View style={styles.banner}>
       <View style={styles.pill}>
-        <View style={styles.dot} />
+        <View
+          testID="connection-dot"
+          style={[styles.dot, { backgroundColor: dotColorFor(status, theme) }]}
+        />
         <Text style={styles.label}>{LABEL[status]}</Text>
       </View>
       {showReconnect ? (
@@ -62,7 +81,6 @@ interface ConnectionBannerStyles {
 }
 
 function makeStyles(t: RnTheme): ConnectionBannerStyles {
-  const connected = t.statusConnected;
   return StyleSheet.create({
     banner: {
       flexDirection: "row",
@@ -87,7 +105,6 @@ function makeStyles(t: RnTheme): ConnectionBannerStyles {
       width: 8,
       height: 8,
       borderRadius: 4,
-      backgroundColor: connected,
     },
     label: { color: t.textPrimary, fontFamily: t.fontDisplay, fontSize: 12 },
     reconnect: { color: t.accentPrimary, fontFamily: t.fontDisplay },

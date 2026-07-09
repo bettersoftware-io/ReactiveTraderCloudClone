@@ -49,6 +49,6 @@ interface TileGridStyles {
 }
 
 const styles: TileGridStyles = StyleSheet.create({
-  content: { paddingVertical: 8 },
+  content: { paddingVertical: 8, paddingHorizontal: 12 },
   column: { gap: 12 },
 });

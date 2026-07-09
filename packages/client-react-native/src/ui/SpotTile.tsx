@@ -87,9 +87,9 @@ export function SpotTile({ pair }: SpotTileProps): JSX.Element {
     <>
       <Pressable
         testID="spot-tile"
-        style={({ pressed }: PressableStateCallbackType): ViewStyle =>
-          {return pressed ? styles.pressed : styles.rest}
-        }
+        style={({ pressed }: PressableStateCallbackType): ViewStyle => {
+          return pressed ? styles.pressed : styles.rest;
+        }}
         onPress={() => {
           setTicketVisible(true);
         }}
@@ -180,7 +180,7 @@ function makeStyles(t: RnTheme): SpotTileStyles {
     rest: {},
     pressed,
     card: {
-      marginHorizontal: 12,
+      flex: 1,
       marginVertical: 6,
       padding: 14,
       borderRadius: 12,
