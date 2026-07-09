@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   Pressable,
   type PressableStateCallbackType,
@@ -45,28 +45,34 @@ interface TileSurfaceProps {
  * Clipped to the card's rounded corners by its wrapper (`styles.sheen`) and
  * non-interactive. Flat skins pass no gradient and never render this. */
 function TileSurface({ tile, head }: TileSurfaceProps): JSX.Element {
+  // Per-instance gradient ids (useId — every tile mounts its own <Svg>, so the
+  // refs stay local; static literals trip Biome's useUniqueElementIds). Colons
+  // stripped so the `url(#…)` reference parses cleanly.
+  const gid = useId().replace(/:/g, "");
+  const tileId = `${gid}-tile`;
+  const headId = `${gid}-head`;
   return (
     <Svg width="100%" height="100%">
       <Defs>
-        <LinearGradient id="tileFill" x1="0" y1="0" x2="0" y2="1">
+        <LinearGradient id={tileId} x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor={tile[0]} stopOpacity={1} />
           <Stop offset="1" stopColor={tile[1]} stopOpacity={1} />
         </LinearGradient>
         {head ? (
-          <LinearGradient id="tileHead" x1="0" y1="0" x2="0" y2="1">
+          <LinearGradient id={headId} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={head[0]} stopOpacity={1} />
             <Stop offset="1" stopColor={head[1]} stopOpacity={1} />
           </LinearGradient>
         ) : null}
       </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill="url(#tileFill)" />
+      <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${tileId})`} />
       {head ? (
         <Rect
           x="0"
           y="0"
           width="100%"
           height={HEAD_HEIGHT}
-          fill="url(#tileHead)"
+          fill={`url(#${headId})`}
         />
       ) : null}
     </Svg>
