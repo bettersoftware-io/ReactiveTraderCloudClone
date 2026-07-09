@@ -36,7 +36,10 @@ export function ConnectionBanner(): JSX.Element {
 
   return (
     <View style={styles.banner}>
-      <Text style={styles.label}>{LABEL[status]}</Text>
+      <View style={styles.pill}>
+        <View style={styles.dot} />
+        <Text style={styles.label}>{LABEL[status]}</Text>
+      </View>
       {showReconnect ? (
         <Pressable
           onPress={() => {
@@ -52,11 +55,14 @@ export function ConnectionBanner(): JSX.Element {
 
 interface ConnectionBannerStyles {
   banner: ViewStyle;
+  pill: ViewStyle;
+  dot: ViewStyle;
   label: TextStyle;
   reconnect: TextStyle;
 }
 
 function makeStyles(t: RnTheme): ConnectionBannerStyles {
+  const connected = t.statusConnected;
   return StyleSheet.create({
     banner: {
       flexDirection: "row",
@@ -68,7 +74,22 @@ function makeStyles(t: RnTheme): ConnectionBannerStyles {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.borderSubtle,
     },
-    label: { color: t.textPrimary, fontFamily: t.fontDisplay },
+    pill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor: t.chip,
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: connected,
+    },
+    label: { color: t.textPrimary, fontFamily: t.fontDisplay, fontSize: 12 },
     reconnect: { color: t.accentPrimary, fontFamily: t.fontDisplay },
   });
 }

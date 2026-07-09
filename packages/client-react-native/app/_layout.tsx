@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import type { JSX } from "react";
 import { useState } from "react";
 import {
+  type ColorValue,
   SafeAreaView,
   StyleSheet,
   Switch,
@@ -73,8 +74,9 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
   return (
     <View style={styles.fill}>
       <View style={styles.toolbar}>
-        <Text style={styles.toolbarLabel}>Simulator</Text>
+        <Text style={styles.wordmark}>REACTIVE TRADER</Text>
         <View style={styles.toolbarRight}>
+          <Text style={styles.simLabel}>Sim</Text>
           <Switch value={simulator} onValueChange={onToggle} />
           <AppearanceButton
             onPress={() => {
@@ -97,11 +99,26 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
           tabBarInactiveTintColor: theme.textMuted,
         }}
       >
-        <Tabs.Screen name="index" options={{ title: "Rates" }} />
-        <Tabs.Screen name="blotter" options={{ title: "Blotter" }} />
-        <Tabs.Screen name="analytics" options={{ title: "Analytics" }} />
-        <Tabs.Screen name="credit" options={{ title: "Credit" }} />
-        <Tabs.Screen name="equities" options={{ title: "Equities" }} />
+        <Tabs.Screen
+          name="index"
+          options={{ title: "Rates", tabBarIcon: tabIcon("⇅", theme) }}
+        />
+        <Tabs.Screen
+          name="blotter"
+          options={{ title: "Blotter", tabBarIcon: tabIcon("▤", theme) }}
+        />
+        <Tabs.Screen
+          name="analytics"
+          options={{ title: "Analytics", tabBarIcon: tabIcon("◵", theme) }}
+        />
+        <Tabs.Screen
+          name="credit"
+          options={{ title: "Credit", tabBarIcon: tabIcon("◈", theme) }}
+        />
+        <Tabs.Screen
+          name="equities"
+          options={{ title: "Equities", tabBarIcon: tabIcon("▦", theme) }}
+        />
       </Tabs>
       <AppearanceOverlay
         open={appearanceOpen}
@@ -111,6 +128,17 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
       />
       <LockScreen />
     </View>
+  );
+}
+
+/** A tab-bar icon factory: a monochrome unicode glyph in a themed <Text>, so
+ * tabs get an icon without pulling in an icon-font dependency. The glyph takes
+ * the active/inactive tint react-navigation passes via `color`. */
+function tabIcon(glyph: string, t: RnTheme) {
+  return ({ color }: { color: ColorValue }): JSX.Element => (
+    <Text style={{ color, fontSize: 16, fontFamily: t.fontDisplay }}>
+      {glyph}
+    </Text>
   );
 }
 
@@ -126,21 +154,31 @@ interface ChromeStyles {
   fill: ViewStyle;
   toolbar: ViewStyle;
   toolbarRight: ViewStyle;
-  toolbarLabel: TextStyle;
+  wordmark: TextStyle;
+  simLabel: TextStyle;
 }
 
 function makeStyles(t: RnTheme): ChromeStyles {
   return StyleSheet.create({
     fill: { flex: 1, backgroundColor: t.bgPrimary },
     toolbar: {
+      height: 52,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: 16,
-      paddingVertical: 8,
       backgroundColor: t.bgHeader,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.borderSubtle,
     },
     toolbarRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-    toolbarLabel: { color: t.textPrimary, fontFamily: t.fontDisplay },
+    wordmark: {
+      color: t.textPrimary,
+      fontFamily: t.fontDisplay,
+      fontSize: 15,
+      fontWeight: "700",
+      letterSpacing: 1.5,
+    },
+    simLabel: { color: t.textMuted, fontFamily: t.fontDisplay, fontSize: 12 },
   });
 }
