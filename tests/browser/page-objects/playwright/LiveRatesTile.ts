@@ -119,6 +119,7 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
     // auto-dismiss timer beat the 5s hide assertion, a race the app now
     // loses since the perf rounds made the pre-assertion steps near-instant.
     const dismissChip = confirmation.locator('[data-action="dismiss"]');
+
     if ((await dismissChip.count()) > 0) {
       await dismissChip.click();
     } else {
