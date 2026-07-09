@@ -51,3 +51,15 @@ packages/
 - "Make choices, defer commitment" — any framework (React, RxJS, ws-effects, Vite, Vitest) should be replaceable by changing only its package, not the monorepo config or domain logic
 - Turborepo config is framework-blind (task names + dependency graph only)
 - Reference implementation: https://github.com/AdaptiveConsulting/ReactiveTraderCloud
+
+## Rendering Performance
+
+The app is a permanently-animated HUD over a live data stream, so per-frame
+main-thread work compounds forever. **Before writing or reviewing any CSS
+animation, transition, or WAAPI call, read `docs/performance.md`** — it
+catalogues the traps that burned ~70% of a core (only `transform`/`opacity`
+composite; no `var()` inside animated transforms; one animation per property
+per element; SVG-child transforms and large `filter`s never composite), the
+fix patterns that keep the visuals, the profiling recipe, and a pre-merge
+checklist. Steady-state animations must show zero `compositeFailed` events
+in a trace.
