@@ -17,9 +17,14 @@ export class RfqCountdownPage extends MountedComponent<RfqCountdownProps> {
     );
   }
 
-  /** The progress-bar fill width, e.g. "50%". */
-  fillWidth(): string {
-    return this.fill()?.style.getPropertyValue("--rfq-fill").trim() ?? "";
+  /** The mount-time drain-animation duration, e.g. "10000ms". */
+  fillDuration(): string {
+    return this.fill()?.style.getPropertyValue("--rfq-duration").trim() ?? "";
+  }
+
+  /** The mount-time drain fast-forward (negative delay), e.g. "-5000ms". */
+  fillDelay(): string {
+    return this.fill()?.style.getPropertyValue("--rfq-delay").trim() ?? "";
   }
 
   /** The fill colour token (switches when fraction drops below the warn threshold). */

@@ -23,6 +23,33 @@
   border-color: var(--border-strong);
 }
 
+/* Rank-glide highlight overlay: useRankGlide.ts pulses THIS element's
+ * opacity (WAAPI) instead of animating box-shadow on the row itself —
+ * box-shadow can never run on the compositor, and under the default "chg"
+ * sort a re-sort commits every glide window, which kept a main-thread
+ * animation alive almost permanently. The direction-coloured shadows are
+ * baked here; the row's data-rank-dir (set by the hook) picks the colour. */
+.rankGlow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  will-change: opacity;
+}
+
+.row[data-rank-dir="rose"] .rankGlow {
+  box-shadow:
+    inset 3px 0 0 rgba(43, 255, 179, 0.95),
+    0 0 16px -3px rgba(43, 255, 179, 0.95);
+}
+
+.row[data-rank-dir="fell"] .rankGlow {
+  box-shadow:
+    inset 3px 0 0 rgba(255, 93, 115, 0.95),
+    0 0 16px -3px rgba(255, 93, 115, 0.95);
+}
+
 /* Transient tick pulse: a freshly `key`ed overlay per genuine tick (see
  * WatchlistRow.tsx) — the animation plays once and settles invisible
  * (forwards), so no JS clearing/timer is needed. */
@@ -32,6 +59,11 @@
   border-radius: inherit;
   pointer-events: none;
   animation: rowFlashFade 0.6s ease-out forwards;
+  /* Freshly-mounted overlays are not compositor-promoted by default, so the
+   * opacity fade ran on the main thread every frame — and dragged the parent
+   * row's style with it (measured ~680 + ~340 invalidations/s while quotes
+   * tick). will-change promotes each overlay at insertion. */
+  will-change: opacity;
 }
 
 .flashPulse[data-up="true"] {

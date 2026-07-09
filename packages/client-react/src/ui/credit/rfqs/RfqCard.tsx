@@ -3,7 +3,7 @@ import type {
   AnimationEvent as ReactAnimationEvent,
   ReactElement,
 } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -61,7 +61,17 @@ export function RfqCard(props: RfqCardProps): ReactElement {
   const { useRfqCountdown } = useViewModel();
   const remainingMs = useRfqCountdown(creationTimestamp, totalMs);
   const secs = Math.ceil(remainingMs / 1000);
-  const pct = totalMs > 0 ? Math.max(0, (remainingMs / totalMs) * 100) : 0;
+  // Captured ONCE at mount (useState initializer): the drain bar is a single
+  // mount-time CSS animation over the RFQ's full lifetime, fast-forwarded to
+  // "now" via a negative animation-delay — NOT re-driven per countdown tick
+  // (per-tick geometry writes kept a main-thread animation alive every frame;
+  // see RfqCard.module.css .barFill).
+  const [barTiming] = useState<CSSProperties>(() => {
+    return {
+      "--bar-duration": `${totalMs}ms`,
+      "--bar-delay": `${Math.min(0, remainingMs - totalMs)}ms`,
+    } as CSSProperties;
+  });
   const cardRef = useRef<HTMLDivElement>(null);
 
   function handleAnimationEnd(
@@ -144,11 +154,7 @@ export function RfqCard(props: RfqCardProps): ReactElement {
           <div className={styles.liveRow}>
             <span className={styles.secs}>{secs} secs</span>
             <div className={styles.barTrack}>
-              <div
-                className={styles.barFill}
-                // eslint-disable-next-line no-restricted-syntax -- runtime geometry via CSS custom property; static CSS can't express it
-                style={{ "--bar-pct": `${pct}%` } as CSSProperties}
-              />
+              <div className={styles.barFill} style={barTiming} />
             </div>
             <button
               type="button"

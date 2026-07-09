@@ -59,6 +59,8 @@
 }
 
 .acceptBtn {
+  position: relative;
+  isolation: isolate;
   cursor: pointer;
   font-family: var(--font-display);
   font-weight: 600;
@@ -75,9 +77,35 @@
   box-shadow: 0 0 10px var(--accent-positive);
 }
 
+/* The animated glows live on overlay pseudo-elements, faded via
+ * opacity/transform, because box-shadow keyframes can never run on the
+ * compositor — the previous acceptIn/acceptPulse shadows re-ran main-thread
+ * style + paint every frame for as long as a best quote was on screen
+ * (measured ~330 invalidations/s per card). Chrome also refuses to composite
+ * an element carrying TWO animations of the same property
+ * (kTargetHasIncompatibleAnimations), so the one-shot glow-in and the
+ * infinite throb each own a separate pseudo-element, one animation apiece:
+ * ::before = intro overshoot glow, ::after = best-quote breathing glow (its
+ * single animation moves opacity AND scale — different properties compose
+ * fine together). z-index -1 keeps both under the label inside the button's
+ * isolated stacking context. */
+.acceptBtn::before,
+.acceptBtn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 3px;
+  box-shadow: 0 0 22px 3px var(--accent-positive);
+  opacity: 0;
+  will-change: opacity;
+}
+
 /* PROTO QuoteRow.module.css .acceptBtn + global.css acceptIn/acceptPulse
  * (--buy → --accent-positive): every fresh ACCEPT pops in with an overshoot
- * glow, and the best-priced quote keeps pulsing after it lands. Gated on
+ * glow, and the best-priced quote keeps pulsing after it lands (the throb
+ * lives on the glow layer; the button box itself only plays the entrance
+ * pop, keeping every element at one animation per property). Gated on
  * prefers-reduced-motion, same convention as CreditBlotter.module.css /
  * RfqCard.module.css: the base rule carries no animation at all under
  * reduced motion. Mount-triggered, so acceptIn self-terminates per button. */
@@ -86,10 +114,12 @@
     animation: acceptIn 0.42s cubic-bezier(0.2, 1.5, 0.5, 1);
   }
 
-  .acceptBtn[data-best="true"] {
-    animation:
-      acceptIn 0.42s cubic-bezier(0.2, 1.5, 0.5, 1),
-      acceptPulse 1.7s ease-in-out 0.42s infinite;
+  .acceptBtn::before {
+    animation: acceptGlowIn 0.42s cubic-bezier(0.2, 1.5, 0.5, 1);
+  }
+
+  .acceptBtn[data-best="true"]::after {
+    animation: acceptGlowPulse 1.7s ease-in-out 0.42s infinite;
   }
 }
 
@@ -97,30 +127,41 @@
   0% {
     transform: scale(0.55);
     opacity: 0.1;
-    box-shadow: 0 0 0 0 var(--accent-positive);
   }
 
   55% {
     transform: scale(1.16);
-    box-shadow: 0 0 26px 4px var(--accent-positive);
   }
 
   100% {
     transform: scale(1);
     opacity: 1;
-    box-shadow: 0 0 10px var(--accent-positive);
   }
 }
 
-@keyframes acceptPulse {
+@keyframes acceptGlowIn {
+  0% {
+    opacity: 0;
+  }
+
+  55% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes acceptGlowPulse {
   0%,
   100% {
-    box-shadow: 0 0 7px var(--accent-positive);
     transform: scale(1);
+    opacity: 0;
   }
 
   50% {
-    box-shadow: 0 0 20px 3px var(--accent-positive);
     transform: scale(1.06);
+    opacity: 0.85;
   }
 }
