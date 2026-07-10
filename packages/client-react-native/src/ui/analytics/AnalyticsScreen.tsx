@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Text,
   type TextStyle,
-  View,
   type ViewStyle,
 } from "react-native";
 
@@ -14,6 +13,8 @@ import { ExposureBubbles } from "#/ui/analytics/ExposureBubbles";
 import { PairPnlBars } from "#/ui/analytics/PairPnlBars";
 import { PnlChart } from "#/ui/analytics/PnlChart";
 import { PnlValue } from "#/ui/analytics/PnlValue";
+import { SurfaceCard } from "#/ui/SurfaceCard";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -46,21 +47,33 @@ export function AnalyticsScreen(): JSX.Element {
         </Text>
       ) : null}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Profit &amp; Loss</Text>
+      <SurfaceCard
+        variant="panel"
+        testID="analytics-widget-pnl"
+        style={styles.widget}
+      >
+        <Text style={styles.widgetTitle}>P&amp;L</Text>
         <PnlValue value={latestPnl} />
         <PnlChart history={data.history} />
-      </View>
+      </SurfaceCard>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Positions</Text>
+      <SurfaceCard
+        variant="panel"
+        testID="analytics-widget-exposure"
+        style={styles.widget}
+      >
+        <Text style={styles.widgetTitle}>Exposure</Text>
         <ExposureBubbles positions={data.currentPositions} />
-      </View>
+      </SurfaceCard>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>PnL per Currency Pair</Text>
+      <SurfaceCard
+        variant="panel"
+        testID="analytics-widget-pairs"
+        style={styles.widget}
+      >
+        <Text style={styles.widgetTitle}>Pair P&amp;L</Text>
         <PairPnlBars positions={data.currentPositions} />
-      </View>
+      </SurfaceCard>
     </ScrollView>
   );
 }
@@ -70,8 +83,8 @@ interface AnalyticsScreenStyles {
   content: ViewStyle;
   stale: ViewStyle;
   staleBadge: TextStyle;
-  section: ViewStyle;
-  sectionLabel: TextStyle;
+  widget: ViewStyle;
+  widgetTitle: TextStyle;
   loading: TextStyle;
 }
 
@@ -81,12 +94,17 @@ function makeStyles(t: RnTheme): AnalyticsScreenStyles {
     content: { padding: 16, gap: 20 },
     stale: { opacity: 0.5 },
     staleBadge: { alignSelf: "flex-start", fontSize: 11, color: t.accentAware },
-    section: { gap: 8 },
-    sectionLabel: {
+    widget: {
+      marginHorizontal: SPACING.md,
+      marginBottom: SPACING.md,
+      padding: SPACING.md,
+    },
+    widgetTitle: {
       fontSize: 12,
-      fontWeight: "600",
-      color: t.textSecondary,
+      color: t.textMuted,
       fontFamily: t.fontDisplay,
+      marginBottom: SPACING.sm,
+      letterSpacing: 0.5,
     },
     loading: { padding: 16, color: t.textMuted },
   });
