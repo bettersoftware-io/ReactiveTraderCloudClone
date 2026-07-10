@@ -9,6 +9,8 @@ import {
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { SurfaceCard } from "#/ui/SurfaceCard";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -27,7 +29,7 @@ export function OrdersBlotter(): JSX.Element {
   }
 
   return (
-    <View style={styles.blotter}>
+    <SurfaceCard variant="panel" testID="orders-panel" style={styles.blotter}>
       <View style={styles.header}>
         <Text style={styles.hCell}>SYMBOL</Text>
         <Text style={styles.hCell}>SIDE</Text>
@@ -63,7 +65,7 @@ export function OrdersBlotter(): JSX.Element {
           </View>
         );
       })}
-    </View>
+    </SurfaceCard>
   );
 }
 
@@ -79,23 +81,31 @@ interface OrdersBlotterStyles {
 }
 
 function makeStyles(t: RnTheme): OrdersBlotterStyles {
-  const rowBase: ViewStyle = {
+  const dividerBase: ViewStyle = {
     flexDirection: "row",
-    paddingHorizontal: 8,
-    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.borderSubtle,
   };
   return StyleSheet.create({
-    blotter: { backgroundColor: t.panel },
-    header: { ...rowBase, paddingVertical: 6 },
+    blotter: {},
+    header: {
+      ...dividerBase,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.xs,
+    },
     hCell: {
       flex: 1,
       fontSize: 10,
       color: t.textMuted,
       fontFamily: t.fontMono,
     },
-    row: rowBase,
+    row: {
+      ...dividerBase,
+      minHeight: 44,
+      alignItems: "center",
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.sm,
+    },
     cell: {
       flex: 1,
       fontSize: 12,

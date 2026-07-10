@@ -5,12 +5,15 @@ import {
   StyleSheet,
   Text,
   type TextStyle,
+  type ViewStyle,
 } from "react-native";
 
 import type { Trade } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { SurfaceCard } from "#/ui/SurfaceCard";
 import { TradeRow } from "#/ui/TradeRow";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -39,21 +42,25 @@ export function Blotter(): JSX.Element {
   }
 
   return (
-    <FlatList
-      testID="blotter-list"
-      data={trades}
-      keyExtractor={keyExtractor}
-      renderItem={renderItem}
-    />
+    <SurfaceCard variant="panel" testID="blotter-panel" style={styles.panel}>
+      <FlatList
+        testID="blotter-list"
+        data={trades}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+      />
+    </SurfaceCard>
   );
 }
 
 interface BlotterStyles {
   empty: TextStyle;
+  panel: ViewStyle;
 }
 
 function makeStyles(t: RnTheme): BlotterStyles {
   return StyleSheet.create({
     empty: { padding: 16, color: t.textMuted, fontFamily: t.fontDisplay },
+    panel: { flex: 1, margin: SPACING.md },
   });
 }

@@ -51,3 +51,14 @@ test("paints a Rejected status with the negative accent colour", async () => {
     rnThemeTokens.holo.dark.accentNegative,
   );
 });
+
+// Regression lock: rows are a dense list — only the Blotter's SurfaceCard
+// panel container may render the sheen SVG, never a per-row TradeRow, even
+// on a 3d skin.
+test("renders no per-row sheen SVG on a 3d skin", async () => {
+  await renderWithTheme(
+    <TradeRow trade={DONE_TRADE} />,
+    rnThemeTokens.holo3d.dark,
+  );
+  expect(screen.queryByTestId("surface-sheen")).toBeNull();
+});
