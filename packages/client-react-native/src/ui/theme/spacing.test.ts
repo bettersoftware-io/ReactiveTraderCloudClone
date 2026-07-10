@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { SPACING } from "#/ui/theme/spacing";
 
 describe("SPACING", () => {
