@@ -40,7 +40,7 @@ flowchart TB
 
 **The highest-frequency flow — FX price streaming — is deliberately not repeated here.** [§7's animated treatment](07-communication-patterns.md#animated-the-life-of-a-price-tick) already walks that exact journey (`PricingSimulator` → `pricing$` effect → `WsAdapter` → `PricingPort` → `PriceStreamUseCase` → `PriceStreamPresenter.price$` → `usePrice()` → `Tile`), frame by frame, for both Mode A and Mode B; see also [§4.1](04-sequence-diagrams.md#41-fx-price-streaming). What follows are the five flows that stream doesn't cover: connecting, executing, quoting, ordering, and observing the system itself.
 
-### 15.2 Connection Lifecycle — Gateway Up, Down, and Reconnect
+### 15.2 Connection Lifecycle -- Gateway Up, Down, and Reconnect
 
 The connection status shown in the header ([`ConnectionStatusBar.tsx`](../../packages/client-react/src/ui/shell/connection/ConnectionStatusBar.tsx), [`StatusBar.tsx`](../../packages/client-react/src/ui/shell/status/StatusBar.tsx)) and the blocking overlay ([`ConnectionOverlay.tsx`](../../packages/client-react/src/ui/shell/connection/ConnectionOverlay.tsx), or `ConnectionBanner.tsx` on RN) is a pure function of a merged event stream, not a raw socket read.
 
@@ -93,7 +93,7 @@ flowchart TB
 
 Same state machine at message level: [§5.1 Connection Status](05-state-diagrams.md#51-connection-status). The idle/offline wording split lives in `ConnectionOverlay.tsx`'s `overlayMessages` map, not in the domain layer — the domain only knows the five `ConnectionStatus` values.
 
-### 15.3 FX Trade Execution — Click to Confirmation
+### 15.3 FX Trade Execution -- Click to Confirmation
 
 ```mermaid
 flowchart TB
@@ -141,7 +141,7 @@ flowchart TB
 
 Same message exchange, and the trade also landing in the blotter via a *separate* `TradeStoreSimulator` subscription: [§4.2 FX Trade Execution (RPC)](04-sequence-diagrams.md#42-fx-trade-execution-rpc). Same state machine: [§5.4 FX Trade Execution Flow](05-state-diagrams.md#54-fx-trade-execution-flow).
 
-### 15.4 Credit RFQ — Request to Accepted Deal
+### 15.4 Credit RFQ -- Request to Accepted Deal
 
 The credit RFQ flow is the one with the richest state machine (§5.2, §5.3) and the widest fan-out (one RFQ, N dealer quotes, each independently timed) — the animated diagram below focuses on that fan-out and convergence, which a static diagram flattens.
 
@@ -200,7 +200,7 @@ Same message exchange: [§4.3 Credit RFQ Workflow](04-sequence-diagrams.md#43-cr
 
 ![Animated diagram: three dealer quote pills starting pendingWithoutPrice; two price in in parallel while the third passes; the trader then accepts one, which turns green (accepted) while the other priced quote turns red (rejectedWithPrice)](15-rfq-quote-race.svg)
 
-### 15.5 Equities Order — Ticket to Fill
+### 15.5 Equities Order -- Ticket to Fill
 
 Order placement is the one flow with **no domain use case in the client path** — `OrderTicketMachine` calls the port directly, matching `OrderPort`'s shape (`place`/`cancel`/`orders`, no enrichment step) and the "raw primitive" nature of the server's `placeOrder$` effect (§4.4).
 
@@ -248,7 +248,7 @@ flowchart TB
 
 Same message exchange, including the "ack + stream from one shared source" detail: [§4.4 Equities Order Lifecycle](04-sequence-diagrams.md#44-equities-order-lifecycle).
 
-### 15.6 Admin Telemetry — Simulated Metrics to Chart
+### 15.6 Admin Telemetry -- Simulated Metrics to Chart
 
 This flow never touches the wire in *either* mode — confirmed by grepping `packages/shared/src/protocol/messages.ts` for any `telemetry`/throughput-sampling message name and finding none. `TelemetrySimulator` is constructed directly in both `createSimulatorPorts` and `createWsRealPorts` (`packages/client-core/src/adapters/portFactory.ts`), mirroring how `preferences` is handled — see the "always local" callout in [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when). (The `admin` throughput *setpoint* is the one exception: `GET_THROUGHPUT`/`SET_THROUGHPUT` *is* WS-backed in Mode B — only the sampled telemetry series are always local.)
 
