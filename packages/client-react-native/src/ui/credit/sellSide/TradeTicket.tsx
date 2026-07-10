@@ -13,6 +13,8 @@ import {
 import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { SurfaceCard } from "#/ui/SurfaceCard";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -53,7 +55,11 @@ export function TradeTicket({
   }
 
   return (
-    <View style={styles.ticket} testID={`sell-ticket-${rfq.id}`}>
+    <SurfaceCard
+      variant="panel"
+      style={styles.ticket}
+      testID={`sell-ticket-${rfq.id}`}
+    >
       <View style={styles.info}>
         <Text style={styles.instrumentName}>
           {instrument?.name ?? `Instrument #${rfq.instrumentId}`}
@@ -96,7 +102,7 @@ export function TradeTicket({
       ) : (
         <Text style={styles.closedText}>{closedLabel(rfq.state)}</Text>
       )}
-    </View>
+    </SurfaceCard>
   );
 }
 
@@ -152,14 +158,10 @@ interface TradeTicketStyles {
 function makeStyles(t: RnTheme): TradeTicketStyles {
   return StyleSheet.create({
     ticket: {
-      gap: 8,
-      padding: 12,
-      marginHorizontal: 8,
-      marginVertical: 4,
-      borderRadius: 8,
-      backgroundColor: t.panel,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.border,
+      gap: SPACING.sm,
+      padding: SPACING.md,
+      marginHorizontal: SPACING.sm,
+      marginVertical: SPACING.xs,
     },
     info: { gap: 2 },
     instrumentName: {
@@ -179,33 +181,37 @@ function makeStyles(t: RnTheme): TradeTicketStyles {
       fontFamily: t.fontDisplay,
     },
     closedText: { fontSize: 13, color: t.textMuted, fontFamily: t.fontDisplay },
-    inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: SPACING.sm,
+    },
     priceInput: {
       flex: 1,
       borderWidth: 1,
       borderColor: t.border,
       borderRadius: 6,
-      padding: 8,
+      padding: SPACING.sm,
       color: t.textPrimary,
       fontFamily: t.fontMono,
     },
     placeholder: { color: t.textMuted },
     submitBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.sm,
       borderRadius: 6,
       backgroundColor: t.accentPositive,
     },
     submitBtnDisabled: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.sm,
       borderRadius: 6,
       backgroundColor: t.accentPositive,
       opacity: 0.5,
     },
     passBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.sm,
       borderRadius: 6,
       backgroundColor: "transparent",
       borderWidth: 1,

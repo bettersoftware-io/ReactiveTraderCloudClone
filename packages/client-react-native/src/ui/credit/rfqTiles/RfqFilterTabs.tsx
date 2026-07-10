@@ -12,6 +12,7 @@ import {
   RFQ_FILTERS,
   type RfqFilter,
 } from "#/ui/credit/rfqTiles/rfqTileFilter";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -56,7 +57,7 @@ interface RfqFilterTabsStyles {
 
 function makeStyles(t: RnTheme): RfqFilterTabsStyles {
   return StyleSheet.create({
-    tabs: { flexDirection: "row", gap: 6, padding: 8 },
+    tabs: { flexDirection: "row", gap: 6, padding: SPACING.sm },
     tab: {
       paddingHorizontal: 10,
       paddingVertical: 6,
