@@ -183,9 +183,9 @@ CI step). Check baseline noise before deciding on a gate.
 **What:** static validation of GitHub Actions workflows — YAML syntax, shell in
 `run:` blocks, expression typos.
 
-**Gap filled:** Biome never looks at YAML. We have `ci.yml` +
+**Gap filled:** Biome never looks at YAML. We have `ci.yml`, `visual.yml`, and
 `update-visual-goldens.yml` with non-trivial logic (grep-gates, the blocking
-Biome gate, parallel e2e).
+Biome gate, parallel e2e, the post-merge visual job).
 
 **Overlap:** none. Single binary, trivial to add.
 

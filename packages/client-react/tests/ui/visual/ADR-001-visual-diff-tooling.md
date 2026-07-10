@@ -241,19 +241,29 @@ vitest-browser follow-up (see below).
 the plain-Playwright tier's coverage. Options: fix its asset-loading/viewport, or
 retire the tier. Tracked; the other two tiers are the faithful reference.
 
-### Escape hatch (if the gate gets too slow)
+### Off-PR gate (taken 2026-07-10)
 
-The full matrix makes the `visual` CI job the critical path (serial per
-`RTC_VISUAL_MAX_PARALLEL=1` / CT `workers:1`). It is kept as a gate deliberately —
-coverage over speed. If gate time starts to hurt delivery, two independent levers,
+The full matrix made the `visual` job the ~20-min critical path (serial per
+`RTC_VISUAL_MAX_PARALLEL=1` / CT `workers:1`), blocking every branch push while
+the UI was still churning. Rather than curate it down, the job was moved **off
+PRs entirely**: it no longer lives in `ci.yml` but in its own
+`.github/workflows/visual.yml`, triggered on push to `main` (post-merge) plus
+manual `workflow_dispatch`. PRs and branch pushes are no longer blocked by it; a
+red post-merge run is the signal to inspect the diff and either fix the
+regression or regenerate the goldens. Coverage is unchanged — only *when* it runs
+moved. This is a stronger form of lever 2 below.
+
+**To restore it as a PR gate once the UI stabilises:** move the `visual` job back
+into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks —
+both halves, or you get a gate that runs-but-doesn't-block or
+blocks-but-doesn't-run. If PR-gate time then hurts, two independent levers exist,
 no rework:
 
 1. **Curate** — trim `MATRIX_SKINS`/`MATRIX_MODES` or add to `MATRIX_EXCLUDE`
    (e.g. matrix only the full-page app scenarios). One-line change; regenerate.
-2. **De-gate** — split `visual` into a small classic-dark smoke gate on PRs + an
-   on-demand full run (the `update-visual-goldens.yml` `workflow_dispatch` pattern
-   already exists). The full matrix then runs periodically / pre-release, not on
-   every PR.
+2. **Smoke-on-PR** — split `visual` into a small classic-dark smoke gate on PRs +
+   the full matrix staying post-merge / on-demand (the `workflow_dispatch` pattern
+   already exists in both `visual.yml` and `update-visual-goldens.yml`).
 
 ### Regeneration
 
