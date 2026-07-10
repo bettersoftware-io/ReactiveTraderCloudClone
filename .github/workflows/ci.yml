@@ -159,6 +159,13 @@ jobs:
       # @rtc/domain / @rtc/shared workspace libs via their built dist/, which a
       # fresh checkout hasn't produced. A direct `pnpm --filter` call bypasses
       # turbo's graph and fails to resolve @rtc/domain.
+      # Full theme matrix (5 skins × dark/light, ~1222 scenarios × 3 tiers, all
+      # serial per RTC_VISUAL_MAX_PARALLEL=1 / CT workers:1) makes this the
+      # critical-path job — much longer than the pre-matrix suite. It is kept as a
+      # gate deliberately (coverage over speed, for now). ESCAPE HATCH if the gate
+      # time starts to hurt delivery: split into a small classic-dark smoke gate
+      # here + an on-demand full run (the update-visual-goldens.yml workflow_dispatch
+      # pattern). See ADR-001-visual-diff-tooling.md → "Theme matrix / escape hatch".
       - name: Visual diffs (playwright-ct + playwright + vitest-browser)
         run: pnpm test:ui:visual
 
