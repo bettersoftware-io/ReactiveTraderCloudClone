@@ -16,6 +16,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import { DealerSelection } from "#/ui/credit/newRfq/DealerSelection";
 import { InstrumentSearch } from "#/ui/credit/newRfq/InstrumentSearch";
 import { QuantityInput } from "#/ui/credit/newRfq/QuantityInput";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -184,7 +185,7 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
       color: t.textSecondary,
       fontFamily: t.fontDisplay,
     },
-    directionRow: { flexDirection: "row", gap: 8 },
+    directionRow: { flexDirection: "row", gap: SPACING.sm },
     directionBtn: {
       flex: 1,
       alignItems: "center",
@@ -215,13 +216,13 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
     },
     submitBtn: {
       alignItems: "center",
-      paddingVertical: 14,
+      paddingVertical: SPACING.lg,
       borderRadius: 6,
       backgroundColor: t.accentPrimary,
     },
     submitBtnDisabled: {
       alignItems: "center",
-      paddingVertical: 14,
+      paddingVertical: SPACING.lg,
       borderRadius: 6,
       backgroundColor: t.bgSecondary,
       opacity: 0.5,
@@ -233,9 +234,12 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
     },
     confirmedCard: {
       margin: 16,
-      padding: 20,
-      borderRadius: 8,
-      gap: 8,
+      padding: SPACING.xl,
+      // Aligned to the card language's 5px radius; kept as a local style
+      // (not SurfaceCard) because the accentPositive border is a deliberate
+      // success-state signal SurfaceCard's chrome doesn't express.
+      borderRadius: 5,
+      gap: SPACING.sm,
       backgroundColor: t.panel,
       borderWidth: 1,
       borderColor: t.accentPositive,

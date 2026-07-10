@@ -1,11 +1,5 @@
 import type { JSX } from "react";
-import {
-  StyleSheet,
-  Text,
-  type TextStyle,
-  View,
-  type ViewStyle,
-} from "react-native";
+import { StyleSheet, Text, type TextStyle, type ViewStyle } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import type { EquityPosition } from "@rtc/domain";
@@ -17,6 +11,7 @@ import {
   GAUGE_PAD,
   GAUGE_R,
 } from "#/ui/equities/blotters/buildGauge";
+import { SurfaceCard } from "#/ui/SurfaceCard";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -52,7 +47,7 @@ export function DeskPnlGauge({ positions }: DeskPnlGaugeProps): JSX.Element {
   const viewBoxW = GAUGE_CX * 2 + 4;
 
   return (
-    <View testID="desk-pnl-gauge" style={styles.gauge}>
+    <SurfaceCard variant="panel" testID="desk-pnl-gauge" style={styles.gauge}>
       <Svg
         width={viewBoxW}
         height={viewBoxH}
@@ -82,7 +77,7 @@ export function DeskPnlGauge({ positions }: DeskPnlGaugeProps): JSX.Element {
         {isPositive ? "+" : ""}
         {displayPnl}
       </Text>
-    </View>
+    </SurfaceCard>
   );
 }
 

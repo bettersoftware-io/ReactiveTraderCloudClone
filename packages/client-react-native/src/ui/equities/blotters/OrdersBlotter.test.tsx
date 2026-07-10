@@ -26,6 +26,7 @@ test("renders a row per order", async () => {
       <OrdersBlotter />
     </ViewModelProvider>,
   );
+  expect(screen.getByTestId("orders-panel")).toBeTruthy();
   expect(screen.getByTestId("order-row-o1")).toBeTruthy();
   expect(screen.getByText("182.40")).toBeTruthy();
 });

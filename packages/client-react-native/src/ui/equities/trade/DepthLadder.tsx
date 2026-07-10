@@ -10,6 +10,8 @@ import {
 import type { DepthLevel } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { SurfaceCard } from "#/ui/SurfaceCard";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -47,7 +49,7 @@ export function DepthLadder({ symbol }: DepthLadderProps): JSX.Element {
     bestAsk > 0 && bestBid > 0 ? (bestAsk - bestBid).toFixed(2) : "—";
 
   return (
-    <View testID="depth-ladder" style={styles.ladder}>
+    <SurfaceCard variant="panel" testID="depth-ladder" style={styles.ladder}>
       <Text style={styles.sectionLabel}>ASKS</Text>
       {asks.map((level) => {
         return (
@@ -73,7 +75,7 @@ export function DepthLadder({ symbol }: DepthLadderProps): JSX.Element {
           />
         );
       })}
-    </View>
+    </SurfaceCard>
   );
 }
 
@@ -120,11 +122,7 @@ interface DepthLadderStyles {
 function makeStyles(t: RnTheme): DepthLadderStyles {
   return StyleSheet.create({
     ladder: {
-      backgroundColor: t.panel,
-      borderRadius: 6,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.borderSubtle,
-      padding: 8,
+      padding: SPACING.sm,
       gap: 2,
     },
     sectionLabel: { fontSize: 10, color: t.textMuted, fontFamily: t.fontMono },

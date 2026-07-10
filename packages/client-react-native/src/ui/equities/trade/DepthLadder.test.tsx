@@ -6,6 +6,7 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { DepthLadder } from "#/ui/equities/trade/DepthLadder";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
 const BOOK: DepthBook = {
   symbol: "AAPL",
@@ -40,6 +41,16 @@ test("shows an empty state when there is no depth book", async () => {
     </ViewModelProvider>,
   );
   expect(screen.getByTestId("depth-empty")).toBeTruthy();
+});
+
+test("renders no gradient tile surface even on a 3d skin (dense panel, not a hero tile)", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vmWith(BOOK)}>
+      <DepthLadder symbol="AAPL" />
+    </ViewModelProvider>,
+    rnThemeTokens.holo3d.dark,
+  );
+  expect(screen.queryByTestId("surface-sheen")).toBeNull();
 });
 
 function vmWith(book: DepthBook | null): ViewModel {

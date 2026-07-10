@@ -6,6 +6,7 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { OrderTicket } from "#/ui/equities/trade/OrderTicket";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
 const editing: OrderTicketState = {
   phase: "editing",
@@ -70,6 +71,17 @@ test("rejected phase surfaces the reason", async () => {
     "Insufficient buying power",
     { exact: false },
   );
+});
+
+test("renders no gradient tile surface even on a 3d skin (dense panel, not a hero tile)", async () => {
+  const submit = jest.fn();
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vmWith(editing, { submit })}>
+      <OrderTicket symbol="AAPL" />
+    </ViewModelProvider>,
+    rnThemeTokens.holo3d.dark,
+  );
+  expect(screen.queryByTestId("surface-sheen")).toBeNull();
 });
 
 function vmWith(

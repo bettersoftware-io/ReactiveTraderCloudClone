@@ -11,6 +11,8 @@ import {
 import { useViewModel } from "@rtc/react-bindings";
 
 import { groupBySector, heat } from "#/ui/equities/equityHeat";
+import { SurfaceCard } from "#/ui/SurfaceCard";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -34,7 +36,7 @@ export function SectorHeatmap({
   }
 
   return (
-    <View style={styles.map}>
+    <SurfaceCard variant="panel" style={styles.map}>
       {groupBySector(instruments).map((group) => {
         return (
           <View key={group.sector} style={styles.sectorRow}>
@@ -54,7 +56,7 @@ export function SectorHeatmap({
           </View>
         );
       })}
-    </View>
+    </SurfaceCard>
   );
 }
 
@@ -118,7 +120,7 @@ function makeStyles(t: RnTheme): SectorHeatmapStyles {
   const baseCell: ViewStyle = {
     minWidth: 56,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: SPACING.sm,
     borderRadius: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: t.borderSubtle,
@@ -126,7 +128,7 @@ function makeStyles(t: RnTheme): SectorHeatmapStyles {
     alignItems: "center",
   };
   return StyleSheet.create({
-    map: { padding: 12, gap: 10 },
+    map: { padding: SPACING.md, gap: 10 },
     sectorRow: { gap: 6 },
     sectorLabel: { fontSize: 10, color: t.textMuted, fontFamily: t.fontMono },
     cellGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },

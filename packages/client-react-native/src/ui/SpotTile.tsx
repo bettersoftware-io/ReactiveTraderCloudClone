@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useId, useState } from "react";
+import { useState } from "react";
 import {
   Pressable,
   type PressableStateCallbackType,
@@ -9,17 +9,16 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import type { CurrencyPair } from "@rtc/domain";
 import { PriceMovementType } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { splitPrice } from "#/ui/formatPrice";
+import { SurfaceCard } from "#/ui/SurfaceCard";
 import { TradeTicket } from "#/ui/TradeTicket";
 import { depthStyle } from "#/ui/theme/depthStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
-import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 const ARROW: Record<PriceMovementType, string> = {
@@ -28,93 +27,31 @@ const ARROW: Record<PriceMovementType, string> = {
   [PriceMovementType.NONE]: "▬",
 };
 
-/** Height (px) of the tile head strip a `headGradient` covers — content top
- * padding + the symbol row, down to the divider. */
-const HEAD_HEIGHT = 45;
-
-interface TileSurfaceProps {
-  tile: readonly [string, string];
-  head: readonly [string, string] | null;
-}
-
-/** The 3d tile surface, drawn with the already-bundled react-native-svg — a
- * faithful RN port of the web design's `--tile` gradient (lighter top → darker
- * bottom) across the whole face so the tile reads as a lit, raised card. Skins
- * whose `--panel-head` reads as a subtle tonal band (Terminal 3D) also overlay
- * it on the head strip; skins where it would clash (Holo 3D) pass `head: null`.
- * Clipped to the card's rounded corners by its wrapper (`styles.sheen`) and
- * non-interactive. Flat skins pass no gradient and never render this. */
-function TileSurface({ tile, head }: TileSurfaceProps): JSX.Element {
-  // Per-instance gradient ids (useId — every tile mounts its own <Svg>, so the
-  // refs stay local; static literals trip Biome's useUniqueElementIds). Colons
-  // stripped so the `url(#…)` reference parses cleanly.
-  const gid = useId().replace(/:/g, "");
-  const tileId = `${gid}-tile`;
-  const headId = `${gid}-head`;
-  return (
-    <Svg width="100%" height="100%">
-      <Defs>
-        <LinearGradient id={tileId} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={tile[0]} stopOpacity={1} />
-          <Stop offset="1" stopColor={tile[1]} stopOpacity={1} />
-        </LinearGradient>
-        {head ? (
-          <LinearGradient id={headId} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={head[0]} stopOpacity={1} />
-            <Stop offset="1" stopColor={head[1]} stopOpacity={1} />
-          </LinearGradient>
-        ) : null}
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${tileId})`} />
-      {head ? (
-        <Rect
-          x="0"
-          y="0"
-          width="100%"
-          height={HEAD_HEIGHT}
-          fill={`url(#${headId})`}
-        />
-      ) : null}
-    </Svg>
-  );
-}
-
 export function SpotTile({ pair }: SpotTileProps): JSX.Element {
   const { usePrice } = useViewModel();
   const price = usePrice(pair);
-  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [ticketVisible, setTicketVisible] = useState(false);
 
   const label = `${pair.base} / ${pair.terms}`;
-  const surface = theme.depth.tileGradient ? (
-    <View testID="tile-sheen" style={styles.sheen} pointerEvents="none">
-      <TileSurface
-        tile={theme.depth.tileGradient}
-        head={theme.depth.headGradient}
-      />
-    </View>
-  ) : null;
 
   let body: JSX.Element;
 
   if (price === null) {
     body = (
-      <View style={styles.card}>
-        {surface}
+      <SurfaceCard variant="tile" style={styles.tileLayout}>
         <View style={styles.content}>
           <View style={styles.headerRow}>
             <Text style={styles.symbol}>{label}</Text>
           </View>
           <Text style={styles.loading}>Loading…</Text>
         </View>
-      </View>
+      </SurfaceCard>
     );
   } else {
     const ask = splitPrice(price.ask, pair.ratePrecision, pair.pipsPosition);
     body = (
-      <View style={styles.card}>
-        {surface}
+      <SurfaceCard variant="tile" style={styles.tileLayout}>
         <View style={styles.content}>
           <View style={styles.headerRow}>
             <Text style={styles.symbol}>{label}</Text>
@@ -149,7 +86,7 @@ export function SpotTile({ pair }: SpotTileProps): JSX.Element {
             {price.movementType}
           </Text>
         </View>
-      </View>
+      </SurfaceCard>
     );
   }
 
@@ -224,8 +161,7 @@ function arrowStyle(
 interface SpotTileStyles {
   rest: ViewStyle;
   pressed: ViewStyle;
-  card: ViewStyle;
-  sheen: ViewStyle;
+  tileLayout: ViewStyle;
   content: ViewStyle;
   headerRow: ViewStyle;
   symbol: TextStyle;
@@ -263,33 +199,9 @@ function makeStyles(t: RnTheme): SpotTileStyles {
   return StyleSheet.create({
     rest: {},
     pressed,
-    // Matches the web `.tile`: 5px radius, 1px border-primary, --tile gradient
-    // (drawn by TileSurface), --tile-shadow (drop via depthStyle + the inset
-    // top highlight below).
-    card: {
-      flex: 1,
-      marginVertical: 6,
-      borderRadius: 5,
-      backgroundColor: t.bgTile,
-      borderWidth: 1,
-      borderColor: t.borderPrimary,
-      // Soft elevation for 3d skins; {} for flat.
-      ...depthStyle(t.depth),
-      // 1px inset top highlight (the web --tile-shadow inset layer); 3d only.
-      borderTopColor: t.depth.topHighlight ?? t.borderPrimary,
-    },
-    // Full-card layer that carries the --tile gradient, clipped to the card's
-    // rounded corners. Sits behind `content`; the card keeps its shadow (this
-    // layer owns the overflow clip, not the shadowed card).
-    sheen: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      borderRadius: 5,
-      overflow: "hidden",
-    },
+    // SpotTile's own layout; card chrome (radius, background, border, shadow,
+    // top highlight, gradient sheen) lives in SurfaceCard.
+    tileLayout: { flex: 1, marginVertical: 6 },
     content: { paddingHorizontal: 14, paddingTop: 13, paddingBottom: 11 },
     headerRow: {
       flexDirection: "row",
