@@ -79,8 +79,13 @@ export function RfqCard(props: RfqCardProps): ReactElement {
   ): void {
     // Ignore animations bubbling up from descendants (none currently exist,
     // but this keeps the handler correct if one is added later).
-    if (event.target !== event.currentTarget) return;
-    if (anim === "enter" || anim === "exit") onAnimationEnd(anim);
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+
+    if (anim === "enter" || anim === "exit") {
+      onAnimationEnd(anim);
+    }
   }
 
   // See the doc comment above: no React synthetic event exists for
@@ -89,11 +94,19 @@ export function RfqCard(props: RfqCardProps): ReactElement {
   // — unlike animationend, there's no vendor-prefix fallback to feature-detect.
   useEffect(() => {
     const el = cardRef.current;
-    if (!el) return;
+
+    if (!el) {
+      return;
+    }
 
     function handleAnimationCancel(event: AnimationEvent): void {
-      if (event.target !== event.currentTarget) return;
-      if (anim === "enter" || anim === "exit") onAnimationEnd(anim);
+      if (event.target !== event.currentTarget) {
+        return;
+      }
+
+      if (anim === "enter" || anim === "exit") {
+        onAnimationEnd(anim);
+      }
     }
 
     el.addEventListener("animationcancel", handleAnimationCancel);

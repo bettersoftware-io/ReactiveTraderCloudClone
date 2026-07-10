@@ -49,8 +49,14 @@ const OK_MIN_HEALTH = 95;
 const DEGRADED_MIN_HEALTH = 70;
 
 function statusForHealth(health: number): ServiceStatus {
-  if (health >= OK_MIN_HEALTH) return "ok";
-  if (health >= DEGRADED_MIN_HEALTH) return "degraded";
+  if (health >= OK_MIN_HEALTH) {
+    return "ok";
+  }
+
+  if (health >= DEGRADED_MIN_HEALTH) {
+    return "degraded";
+  }
+
   return "down";
 }
 

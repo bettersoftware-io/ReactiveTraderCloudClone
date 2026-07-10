@@ -175,15 +175,21 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
           window.HTMLInputElement.prototype,
           "value",
         );
-        if (!descriptor)
+
+        if (!descriptor) {
           throw new Error(
             "HTMLInputElement.prototype has no 'value' property descriptor",
           );
+        }
+
         const nativeSet = descriptor.set;
-        if (!nativeSet)
+
+        if (!nativeSet) {
           throw new Error(
             "HTMLInputElement.prototype 'value' descriptor has no setter",
           );
+        }
+
         nativeSet.call($input[0], value);
         $input[0].dispatchEvent(new Event("input", { bubbles: true }));
       })
@@ -201,7 +207,10 @@ export class CypressLiveRatesTile implements LiveRatesTilePO {
     // async/await with cy commands, which Cypress does not permit inside a
     // Promise returned to Cucumber's step runner.
     const loop = (remaining: number): void => {
-      if (remaining <= 0) return;
+      if (remaining <= 0) {
+        return;
+      }
+
       this.firstTile()
         .find(`[data-testid="${TESTIDS.liveRates.buyBtn}"]`)
         .click();

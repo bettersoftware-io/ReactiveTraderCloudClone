@@ -29,7 +29,9 @@ export function PreferencesModal({
   const [segments, setSegments] =
     useState<Record<string, string>>(INITIAL_SEGMENTS);
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   function toggleCosmetic(key: string): void {
     setToggles((prev) => {

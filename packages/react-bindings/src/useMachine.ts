@@ -38,7 +38,11 @@ export function useMachine<TState, TIntents extends object & { state?: never }>(
   factory: () => Machine<TState, TIntents>,
 ): MachineView<TState, TIntents> {
   const ref = useRef<Machine<TState, TIntents> | null>(null);
-  if (ref.current === null) ref.current = factory();
+
+  if (ref.current === null) {
+    ref.current = factory();
+  }
+
   const machine = ref.current;
   const keepAlive = useRef(true);
   useEffect(() => {

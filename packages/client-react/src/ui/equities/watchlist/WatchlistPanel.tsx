@@ -39,12 +39,15 @@ export function WatchlistPanel(): ReactElement {
     (symbol: string, last: number, changePct: number) => {
       setQuotes((prev) => {
         const existing = prev[symbol];
+
         if (
           existing &&
           existing.last === last &&
           existing.changePct === changePct
-        )
+        ) {
           return prev;
+        }
+
         return { ...prev, [symbol]: { last, changePct } };
       });
     },
@@ -79,10 +82,14 @@ export function WatchlistPanel(): ReactElement {
     <div className={styles.panel} ref={listRef}>
       {committedOrder.map((symbol) => {
         const name = nameBySymbol.get(symbol);
+
         // A committed symbol can briefly outlive its instrument (removed from
         // the watchlist while a glide was still in flight) — skip it rather
         // than render a nameless row; the next settled commit drops it.
-        if (name === undefined) return null;
+        if (name === undefined) {
+          return null;
+        }
+
         return (
           <WatchlistRow
             key={symbol}

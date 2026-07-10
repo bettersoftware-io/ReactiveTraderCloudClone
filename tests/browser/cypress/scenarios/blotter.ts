@@ -41,8 +41,11 @@ export function expectBlotterRowCountAtMost(
   // queued PO call resolves and miss the baseline. See Phase 5A.4 spec §3.3.
   chainable(ctx.po.blotterTable.rowCount()).then((count) => {
     const baseline = ctx.scratch.blotter.recordedRowCounts.get(key);
-    if (baseline === undefined)
+
+    if (baseline === undefined) {
       throw new Error(`no recorded row count for ${key}`);
+    }
+
     assertLte(count, baseline);
   });
 }
@@ -53,8 +56,11 @@ export function expectBlotterRowCountEquals(
 ): void {
   chainable(ctx.po.blotterTable.rowCount()).then((count) => {
     const baseline = ctx.scratch.blotter.recordedRowCounts.get(key);
-    if (baseline === undefined)
+
+    if (baseline === undefined) {
       throw new Error(`no recorded row count for ${key}`);
+    }
+
     assertEquals(count, baseline);
   });
 }
@@ -98,10 +104,15 @@ export function hoverFirstBlotterRow(ctx: TestContext): void {
 export function buyNTimesWithDismissals(ctx: TestContext, n: number): void {
   // Buy from the first tile (n-1) times, then buy from GBPJPY to guarantee
   // at least one Rejected trade (ExecutionSimulator always rejects GBPJPY).
-  if (n > 1) void ctx.po.liveRatesTile.buyNTimesWithDismissals(n - 1);
+  if (n > 1) {
+    void ctx.po.liveRatesTile.buyNTimesWithDismissals(n - 1);
+  }
+
   void ctx.po.liveRatesTile.clickBuyOnPair("GBPJPY");
   cy.wait(1_500);
   chainable(ctx.po.liveRatesTile.isConfirmationVisible()).then((visible) => {
-    if (visible) void ctx.po.liveRatesTile.dismissConfirmation();
+    if (visible) {
+      void ctx.po.liveRatesTile.dismissConfirmation();
+    }
   });
 }

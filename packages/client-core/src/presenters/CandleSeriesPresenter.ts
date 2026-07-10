@@ -18,7 +18,11 @@ export class CandleSeriesPresenter {
   ): Observable<readonly Candle[]> {
     const key = `${symbol}|${timeframe}`;
     const cached = this.candleCache.get(key);
-    if (cached) return cached;
+
+    if (cached) {
+      return cached;
+    }
+
     // An empty symbol is the eqWorkspace machine's transient "nothing
     // selected yet" state, not an actual unknown instrument — but
     // EquityMarketDataSimulator.candles() throws synchronously for any

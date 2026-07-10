@@ -28,7 +28,11 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
     const cell = this.headerCells().find((th) => {
       return (th.querySelector("span")?.textContent ?? "").includes(label);
     });
-    if (!cell) throw new Error(`No header cell with label ${label}`);
+
+    if (!cell) {
+      throw new Error(`No header cell with label ${label}`);
+    }
+
     return cell;
   }
 
@@ -42,7 +46,11 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
   /** Click a column header to drive the sort callback. */
   async clickHeader(label: string): Promise<void> {
     const span = this.cellFor(label).querySelector("span");
-    if (!span) throw new Error(`No <span> found in header cell "${label}"`);
+
+    if (!span) {
+      throw new Error(`No <span> found in header cell "${label}"`);
+    }
+
     await this.user.click(span);
   }
 
@@ -82,7 +90,11 @@ export class BlotterHeaderPage extends MountedComponent<BlotterHeaderProps> {
       .find((b) => {
         return (b.textContent ?? "").includes("▽");
       });
-    if (!toggle) throw new Error(`No filter toggle for ${label}`);
+
+    if (!toggle) {
+      throw new Error(`No filter toggle for ${label}`);
+    }
+
     await this.user.click(toggle);
   }
 

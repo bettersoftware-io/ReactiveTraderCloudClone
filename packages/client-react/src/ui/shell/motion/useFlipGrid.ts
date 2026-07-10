@@ -32,7 +32,10 @@ export function useFlipGrid(deps: unknown[]): FlipGridApi {
       // next FLIP's origin (reads as a snap/jump-cut). Skip the refresh
       // while any glide is still running — the deps-change effect re-measures
       // from scratch anyway, so a skipped refresh self-heals on the next FLIP.
-      if (anyGlideRunning(elementsRef.current)) return;
+      if (anyGlideRunning(elementsRef.current)) {
+        return;
+      }
+
       positionsRef.current = measurePositions(elementsRef.current);
     }
 
@@ -60,7 +63,10 @@ export function useFlipGrid(deps: unknown[]): FlipGridApi {
     if (prevPositions.size > 0 && !prefersReducedMotion()) {
       for (const { key, dx, dy } of flipDeltas(prevPositions, nextPositions)) {
         const el = elementsRef.current.get(key);
-        if (el) playFlip(el, dx, dy);
+
+        if (el) {
+          playFlip(el, dx, dy);
+        }
       }
     }
 
@@ -80,7 +86,11 @@ export function useFlipGrid(deps: unknown[]): FlipGridApi {
         observerRef.current?.observe(el);
       } else {
         const prev = elementsRef.current.get(key);
-        if (prev) observerRef.current?.unobserve(prev);
+
+        if (prev) {
+          observerRef.current?.unobserve(prev);
+        }
+
         elementsRef.current.delete(key);
       }
     };
@@ -102,11 +112,18 @@ export function flipDeltas(
   const deltas: FlipDelta[] = [];
   next.forEach((nextRect, key) => {
     const prevRect = prev.get(key);
-    if (!prevRect) return;
+
+    if (!prevRect) {
+      return;
+    }
+
     const dx = prevRect.left - nextRect.left;
     const dy = prevRect.top - nextRect.top;
-    if (Math.abs(dx) < FLIP_MIN_DELTA_PX && Math.abs(dy) < FLIP_MIN_DELTA_PX)
+
+    if (Math.abs(dx) < FLIP_MIN_DELTA_PX && Math.abs(dy) < FLIP_MIN_DELTA_PX) {
       return;
+    }
+
     deltas.push({ key, dx, dy });
   });
   return deltas;
@@ -120,7 +137,9 @@ export function flipDeltas(
 function anyGlideRunning(elements: ReadonlyMap<string, HTMLElement>): boolean {
   let running = false;
   elements.forEach((el) => {
-    if (el.getAnimations && el.getAnimations().length > 0) running = true;
+    if (el.getAnimations && el.getAnimations().length > 0) {
+      running = true;
+    }
   });
   return running;
 }

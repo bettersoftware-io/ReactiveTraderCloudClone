@@ -62,7 +62,10 @@ export function createNotionalMachine(
 
   const stream$ = events$.pipe(
     map((event): NotionalView => {
-      if (event.type === "reset") return initial;
+      if (event.type === "reset") {
+        return initial;
+      }
+
       const result = parseNotional(event.input);
 
       if (result.value === null) {

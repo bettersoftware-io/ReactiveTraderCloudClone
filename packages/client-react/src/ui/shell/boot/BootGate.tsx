@@ -29,15 +29,20 @@ export function BootGate({ children }: BootGateProps): ReactElement {
     const reduce = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+
     // Reduced motion: the splash jump-cuts to opacity 0 with no transition, so
     // no transitionend arrives — dismiss it directly.
-    if (reduce) dismiss();
+    if (reduce) {
+      dismiss();
+    }
   }
 
   function handleTransitionEnd(event: TransitionEvent<HTMLDivElement>): void {
     // Only the splash root animates opacity; ignore the progress-bar/skip
     // transitions that also bubble through this host.
-    if (event.propertyName === "opacity") dismiss();
+    if (event.propertyName === "opacity") {
+      dismiss();
+    }
   }
 
   return (

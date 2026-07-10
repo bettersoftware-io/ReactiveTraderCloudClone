@@ -36,9 +36,13 @@ function runPlaywright(): Promise<number> {
       "--config",
       "fullstack/browser/playwright.config.ts",
     ];
+
     // FULLSTACK_HEADED (set by the :headed script) runs the real browser
     // visibly against the real backend, so the full stack can be watched live.
-    if (process.env.FULLSTACK_HEADED) args.push("--headed");
+    if (process.env.FULLSTACK_HEADED) {
+      args.push("--headed");
+    }
+
     const child = spawn("pnpm", args, {
       cwd: MONOREPO_ROOT,
       stdio: "inherit",

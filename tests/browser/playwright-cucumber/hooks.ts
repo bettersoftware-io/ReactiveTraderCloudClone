@@ -35,7 +35,10 @@ AfterAll(async () => {
 });
 
 Before(async function openWorld(this: PlaywrightWorld) {
-  if (!browser) throw new Error("browser not initialised in BeforeAll");
+  if (!browser) {
+    throw new Error("browser not initialised in BeforeAll");
+  }
+
   await this.open(browser);
 });
 

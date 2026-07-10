@@ -53,7 +53,11 @@ export class WatchlistPanelPage extends MountedComponent<
    * or null when no pulse is currently rendered for that symbol. */
   flashDirection(symbol: string): "up" | "down" | null {
     const el = within(this.root).queryByTestId(`watch-flash-${symbol}`);
-    if (!el) return null;
+
+    if (!el) {
+      return null;
+    }
+
     return el.getAttribute("data-up") === "true" ? "up" : "down";
   }
 }

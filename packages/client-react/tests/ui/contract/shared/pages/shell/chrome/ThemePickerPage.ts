@@ -25,7 +25,10 @@ export class ThemePickerPage extends MountedComponent<Record<string, never>> {
 
   /** Open the skin dropdown via its trigger (no-op if already open). */
   async openMenu(): Promise<void> {
-    if (this.isMenuOpen()) return;
+    if (this.isMenuOpen()) {
+      return;
+    }
+
     await this.user.click(within(this.root).getByTestId("skin-picker"));
   }
 
@@ -85,7 +88,11 @@ export class ThemePickerPage extends MountedComponent<Record<string, never>> {
       .find((el) => {
         return el.getAttribute("data-skin") === skin;
       });
-    if (!row) throw new Error(`no skin row for "${skin}"`);
+
+    if (!row) {
+      throw new Error(`no skin row for "${skin}"`);
+    }
+
     await this.user.click(row);
   }
 

@@ -24,7 +24,10 @@ export function computeBubbleLayout(
   viewport: BubbleViewport,
 ): readonly PositionedBubble[] {
   const ordered = [...nodes].sort((a, b) => {
-    if (b.radius !== a.radius) return b.radius - a.radius;
+    if (b.radius !== a.radius) {
+      return b.radius - a.radius;
+    }
+
     return a.currency.localeCompare(b.currency);
   });
 

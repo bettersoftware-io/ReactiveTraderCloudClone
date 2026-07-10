@@ -32,7 +32,9 @@ export function WatchlistRow({
   const [tick, setTick] = useState<TickPulse>({ nonce: 0, up: true });
 
   useEffect(() => {
-    if (!quote) return;
+    if (!quote) {
+      return;
+    }
 
     onQuote(symbol, quote.last, quote.changePct);
 

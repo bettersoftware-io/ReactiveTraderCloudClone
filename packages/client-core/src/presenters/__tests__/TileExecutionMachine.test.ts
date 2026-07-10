@@ -25,7 +25,11 @@ import {
 const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "EURUSD";
 });
-if (!_pairOrUndef) throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
+
+if (!_pairOrUndef) {
+  throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
+}
+
 const pair: CurrencyPair = _pairOrUndef;
 
 const price: Price = {

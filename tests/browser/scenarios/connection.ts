@@ -33,7 +33,11 @@ export async function expectConnectionStatusFooterShows(
 
   while (Date.now() < deadline) {
     last = await ctx.po.footer.connectionLabel();
-    if (last.includes(expected)) return;
+
+    if (last.includes(expected)) {
+      return;
+    }
+
     await ctx.po.workspace.wait(100);
   }
 
@@ -70,7 +74,11 @@ export async function expectConnectionOverlayTextMatches(
   rawRegex: string,
 ): Promise<void> {
   const match = rawRegex.match(/^\/(.+)\/([gimsuy]*)$/);
-  if (!match) throw new Error(`bad regex literal: ${rawRegex}`);
+
+  if (!match) {
+    throw new Error(`bad regex literal: ${rawRegex}`);
+  }
+
   const re = new RegExp(match[1], match[2]);
   const text = await ctx.po.connectionOverlay.text();
 

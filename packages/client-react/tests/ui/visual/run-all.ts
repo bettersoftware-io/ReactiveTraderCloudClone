@@ -37,9 +37,15 @@ const frameworkFilter: string | undefined = process.argv[2]; // e.g. "react" | u
 // (test:ui:visual and test:ui:visual:<framework>, which are ≤4 parts).
 const runners = Object.keys(pkg.scripts).filter((name) => {
   const parts = name.split(":");
-  if (parts.length !== 5) return false;
-  if (parts[0] !== "test" || parts[1] !== "ui" || parts[2] !== "visual")
+
+  if (parts.length !== 5) {
     return false;
+  }
+
+  if (parts[0] !== "test" || parts[1] !== "ui" || parts[2] !== "visual") {
+    return false;
+  }
+
   return frameworkFilter ? parts[4] === frameworkFilter : true;
 });
 
@@ -65,7 +71,10 @@ console.log(
     maxParallel === 1 ? "serially" : `with up to ${maxParallel} in parallel`
   }:`,
 );
-for (const r of runners) console.log(`  • ${r}`);
+
+for (const r of runners) {
+  console.log(`  • ${r}`);
+}
 
 interface RunResult {
   script: string;

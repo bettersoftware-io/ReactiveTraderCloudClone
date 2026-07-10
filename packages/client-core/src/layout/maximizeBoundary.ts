@@ -15,10 +15,19 @@ export function maximizeBoundaryPath(
   maximizedId: PanelId | null,
   specs: Readonly<Record<PanelId, PanelSpec>>,
 ): readonly number[] {
-  if (maximizedId === null) return [];
-  if (specs[maximizedId]?.maximizeScope !== "nearest-column") return [];
+  if (maximizedId === null) {
+    return [];
+  }
+
+  if (specs[maximizedId]?.maximizeScope !== "nearest-column") {
+    return [];
+  }
+
   const panelPath = pathToPanel(root, maximizedId);
-  if (panelPath === null) return [];
+
+  if (panelPath === null) {
+    return [];
+  }
 
   // Nearest first: walk ancestor paths from the panel's immediate parent up.
   for (let len = panelPath.length - 1; len >= 0; len--) {
@@ -42,7 +51,10 @@ function pathToPanel(root: LayoutNode, panelId: PanelId): number[] | null {
 
   for (let i = 0; i < root.children.length; i++) {
     const childPath = pathToPanel(root.children[i], panelId);
-    if (childPath !== null) return [i, ...childPath];
+
+    if (childPath !== null) {
+      return [i, ...childPath];
+    }
   }
 
   return null;
@@ -57,9 +69,16 @@ export function nodeAtPath(
   let node: LayoutNode = root;
 
   for (const index of path) {
-    if (node.kind !== "split") return null;
+    if (node.kind !== "split") {
+      return null;
+    }
+
     const child: LayoutNode | undefined = node.children[index];
-    if (child === undefined) return null;
+
+    if (child === undefined) {
+      return null;
+    }
+
     node = child;
   }
 

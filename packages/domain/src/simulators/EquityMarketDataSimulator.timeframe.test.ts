@@ -22,7 +22,10 @@ describe("EquityMarketDataSimulator :: timeframe-parameterised candles", () => {
     const port = new EquityMarketDataSimulator(42);
     const candles = await firstValueFrom(port.candles("AAPL", tf));
     expect(candles).toHaveLength(count);
-    for (const c of candles) expect(c.high).toBeGreaterThanOrEqual(c.low);
+
+    for (const c of candles) {
+      expect(c.high).toBeGreaterThanOrEqual(c.low);
+    }
   });
 
   it("produces a monotonically increasing `time` series ending near now, for every timeframe", async () => {

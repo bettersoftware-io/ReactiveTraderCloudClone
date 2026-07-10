@@ -43,7 +43,11 @@ Then(
   "the new RFQ card appears within {int} seconds",
   function expectRfqCardWithin(this: StepContext, seconds: number) {
     const rfqId = this.ctx.scratch.creditRfq.rfqId;
-    if (rfqId == null) throw new Error("no rfqId recorded on ctx.scratch");
+
+    if (rfqId == null) {
+      throw new Error("no rfqId recorded on ctx.scratch");
+    }
+
     return creditRfq.expectRfqCardWithin(this.ctx, rfqId, seconds);
   },
 );
@@ -52,7 +56,11 @@ Then(
   "its first quote is pending",
   function expectFirstQuotePending(this: StepContext) {
     const rfqId = this.ctx.scratch.creditRfq.rfqId;
-    if (rfqId == null) throw new Error("no rfqId recorded on ctx.scratch");
+
+    if (rfqId == null) {
+      throw new Error("no rfqId recorded on ctx.scratch");
+    }
+
     return creditRfq.expectFirstQuoteStatePending(this.ctx, rfqId);
   },
 );

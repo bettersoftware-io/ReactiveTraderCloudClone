@@ -26,7 +26,11 @@ export function TradeTicket({
 
   function handleSubmit(): void {
     const num = parseFloat(price);
-    if (Number.isNaN(num) || num <= 0) return;
+
+    if (Number.isNaN(num) || num <= 0) {
+      return;
+    }
+
     submitPrice(quote.id, num);
   }
 

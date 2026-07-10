@@ -12,7 +12,10 @@ export function computeMovementPips(
   history: readonly PriceTick[],
   pipsPosition: number,
 ): number | null {
-  if (history.length < 2) return null;
+  if (history.length < 2) {
+    return null;
+  }
+
   const last = history[history.length - 1];
   const prev = history[history.length - 2];
   return Math.round(Math.abs(last.mid - prev.mid) * 10 ** pipsPosition);

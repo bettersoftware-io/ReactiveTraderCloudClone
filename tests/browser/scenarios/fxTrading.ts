@@ -9,7 +9,11 @@ function parseRegexList(raw: string): RegExp[] {
     })
     .map((literal) => {
       const m = literal.match(/^\/(.+)\/([gimsuy]*)$/);
-      if (!m) throw new Error(`bad regex literal: ${literal}`);
+
+      if (!m) {
+        throw new Error(`bad regex literal: ${literal}`);
+      }
+
       return new RegExp(m[1], m[2]);
     });
 }

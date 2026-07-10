@@ -90,14 +90,23 @@ export function createEqWorkspaceMachine(
     map((sym): Patch => {
       return (s: EqWorkspaceState): EqWorkspaceState => {
         const idx = s.openTabs.indexOf(sym);
-        if (idx === -1) return s;
-        if (s.openTabs.length === 1) return s;
+
+        if (idx === -1) {
+          return s;
+        }
+
+        if (s.openTabs.length === 1) {
+          return s;
+        }
 
         const openTabs = [
           ...s.openTabs.slice(0, idx),
           ...s.openTabs.slice(idx + 1),
         ];
-        if (s.sel !== sym) return { ...s, openTabs };
+
+        if (s.sel !== sym) {
+          return { ...s, openTabs };
+        }
 
         const neighbourIdx = Math.min(idx, openTabs.length - 1);
         return { ...s, sel: openTabs[neighbourIdx], openTabs };
@@ -122,7 +131,10 @@ export function createEqWorkspaceMachine(
     take(1),
     map((sym): Patch => {
       return (s: EqWorkspaceState): EqWorkspaceState => {
-        if (s.sel !== "") return s;
+        if (s.sel !== "") {
+          return s;
+        }
+
         return { ...s, sel: sym, openTabs: [sym] };
       };
     }),

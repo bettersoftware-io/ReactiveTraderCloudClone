@@ -51,7 +51,11 @@ const MONTHS = [
 function formatDate(dateStr: string): string {
   // dateStr is ISO date string like "2026-03-30"
   const d = new Date(`${dateStr}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return dateStr;
+
+  if (Number.isNaN(d.getTime())) {
+    return dateStr;
+  }
+
   const day = String(d.getDate()).padStart(2, "0");
   const month = MONTHS[d.getMonth()];
   const year = d.getFullYear();

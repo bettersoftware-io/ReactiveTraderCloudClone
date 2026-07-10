@@ -37,9 +37,13 @@ export function describeServiceHealthPortContract(
           expect(node.health).toBeGreaterThanOrEqual(0);
           expect(node.health).toBeLessThanOrEqual(100);
 
-          if (node.health >= 95) expect(node.status).toBe("ok");
-          else if (node.health >= 70) expect(node.status).toBe("degraded");
-          else expect(node.status).toBe("down");
+          if (node.health >= 95) {
+            expect(node.status).toBe("ok");
+          } else if (node.health >= 70) {
+            expect(node.status).toBe("degraded");
+          } else {
+            expect(node.status).toBe("down");
+          }
         }
       } finally {
         teardown();

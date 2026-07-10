@@ -121,7 +121,10 @@ function seriesFor(
 // x-position for sample `i` of `len` spread evenly across `width`; a
 // single-sample series collapses to the origin rather than dividing by zero.
 function xAt(i: number, len: number, width: number): number {
-  if (len <= 1) return 0;
+  if (len <= 1) {
+    return 0;
+  }
+
   return (i / (len - 1)) * width;
 }
 
@@ -146,7 +149,9 @@ export function smoothPath(
   points: readonly ChartPoint[],
   boxHeight: number,
 ): string {
-  if (points.length === 0) return "";
+  if (points.length === 0) {
+    return "";
+  }
 
   const first = points[0];
   let d = `M${fmt(first.x)},${fmt(first.y)}`;
@@ -177,7 +182,10 @@ function clampControlY(y: number, boxHeight: number): number {
 // peaks sit near the top, emitted as a smoothed path `d`. Empty series render
 // nothing.
 export function sparkPath(values: readonly number[]): string {
-  if (values.length === 0) return "";
+  if (values.length === 0) {
+    return "";
+  }
+
   const mn = Math.min(...values);
   const mx = Math.max(...values);
   const rg = mx - mn || 1;
@@ -262,7 +270,9 @@ const LAT_BUCKET_EDGES: readonly number[] = [10, 25, 50, 80, 150];
 
 function bucketIndexFor(value: number): number {
   for (let i = 0; i < LAT_BUCKET_EDGES.length; i += 1) {
-    if (value <= LAT_BUCKET_EDGES[i]) return i;
+    if (value <= LAT_BUCKET_EDGES[i]) {
+      return i;
+    }
   }
 
   return LAT_BUCKET_EDGES.length;

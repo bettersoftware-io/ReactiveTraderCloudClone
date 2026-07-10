@@ -63,7 +63,9 @@ export class ExecutionSimulator implements ExecutionPort {
           };
         }),
         tap((trade) => {
-          for (const listener of this.listeners) listener(trade);
+          for (const listener of this.listeners) {
+            listener(trade);
+          }
         }),
       );
     });

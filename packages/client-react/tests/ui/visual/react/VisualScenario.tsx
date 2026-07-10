@@ -48,7 +48,9 @@ export function VisualScenario({
   useEffect(() => {
     let cancelled = false;
     void document.fonts.ready.then(() => {
-      if (!cancelled) setFontsReady(true);
+      if (!cancelled) {
+        setFontsReady(true);
+      }
     });
 
     return () => {
@@ -57,13 +59,26 @@ export function VisualScenario({
   }, []);
 
   const scenario = scenarios[name];
-  if (!scenario) throw new Error(`Unknown visual scenario: ${name}`);
-  const data = fixtures[scenario.fixtureKey];
-  if (!data) throw new Error(`Unknown fixture: ${scenario.fixtureKey}`);
-  const render = registry[scenario.componentKey];
-  if (!render) throw new Error(`Unknown component: ${scenario.componentKey}`);
 
-  if (!fontsReady) return null;
+  if (!scenario) {
+    throw new Error(`Unknown visual scenario: ${name}`);
+  }
+
+  const data = fixtures[scenario.fixtureKey];
+
+  if (!data) {
+    throw new Error(`Unknown fixture: ${scenario.fixtureKey}`);
+  }
+
+  const render = registry[scenario.componentKey];
+
+  if (!render) {
+    throw new Error(`Unknown component: ${scenario.componentKey}`);
+  }
+
+  if (!fontsReady) {
+    return null;
+  }
 
   if (FULL_BLEED.has(scenario.componentKey)) {
     return (

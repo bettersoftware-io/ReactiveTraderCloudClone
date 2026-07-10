@@ -61,7 +61,9 @@ export class WsAdapter implements IWsAdapter {
   }
 
   private connect(): void {
-    if (this.disposed) return;
+    if (this.disposed) {
+      return;
+    }
 
     this.ws = new WebSocket(this.url);
 
@@ -102,7 +104,10 @@ export class WsAdapter implements IWsAdapter {
     };
 
     this.ws.onclose = (): void => {
-      if (this.disposed) return;
+      if (this.disposed) {
+        return;
+      }
+
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
 
       if (this.idleClosed) {
@@ -130,7 +135,10 @@ export class WsAdapter implements IWsAdapter {
     }
 
     this.reconnectTimer = setTimeout(() => {
-      if (this.disposed) return;
+      if (this.disposed) {
+        return;
+      }
+
       // Surface the retry so the connection state machine can show CONNECTING
       // (DISCONNECTED -> CONNECTING) while the socket is being re-established.
       this.connectionEvents$.next({ type: "reconnectAttempt" });
@@ -139,7 +147,10 @@ export class WsAdapter implements IWsAdapter {
   }
 
   send(type: string, payload?: unknown): void {
-    if (this.disposed) return;
+    if (this.disposed) {
+      return;
+    }
+
     const msg: WsMessage = { type, payload };
     const serialized = JSON.stringify(msg);
 
@@ -152,7 +163,9 @@ export class WsAdapter implements IWsAdapter {
   }
 
   private flushSendQueue(): void {
-    if (this.ws?.readyState !== WebSocket.OPEN) return;
+    if (this.ws?.readyState !== WebSocket.OPEN) {
+      return;
+    }
 
     for (const serialized of this.sendQueue) {
       this.ws.send(serialized);
@@ -192,7 +205,10 @@ export class WsAdapter implements IWsAdapter {
 
   /** Wait for the connection to open (or resolve immediately if already open) */
   waitForConnection(): Promise<void> {
-    if (this.ws?.readyState === WebSocket.OPEN) return Promise.resolve();
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      return Promise.resolve();
+    }
+
     return new Promise((resolve) => {
       const check = (): void => {
         if (this.ws?.readyState === WebSocket.OPEN) {
@@ -216,7 +232,10 @@ export class WsAdapter implements IWsAdapter {
    * sends while idle-closed are buffered rather than sent to a closing socket.
    * Provenance: original services/connection.ts:91-93. */
   closeForIdle(): void {
-    if (this.disposed || this.idleClosed) return;
+    if (this.disposed || this.idleClosed) {
+      return;
+    }
+
     this.idleClosed = true;
 
     if (this.reconnectTimer) {
@@ -231,7 +250,10 @@ export class WsAdapter implements IWsAdapter {
 
   /** Re-establish the socket after an idle close (user activity). */
   reopen(): void {
-    if (this.disposed || !this.idleClosed) return;
+    if (this.disposed || !this.idleClosed) {
+      return;
+    }
+
     this.idleClosed = false;
     this.connect();
   }

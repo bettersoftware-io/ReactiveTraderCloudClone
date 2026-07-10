@@ -31,7 +31,11 @@ export const reactDriver: UiContractDriver = {
     { propsSubject, world }: RenderArgs,
   ): MountedRoot {
     const build = registry.get(token);
-    if (!build) throw new Error("No React registry entry for the given token.");
+
+    if (!build) {
+      throw new Error("No React registry entry for the given token.");
+    }
+
     const hooks = reactViewModel(world);
     const { container, unmount } = rtlRender(
       <ViewModelProvider viewModel={hooks}>

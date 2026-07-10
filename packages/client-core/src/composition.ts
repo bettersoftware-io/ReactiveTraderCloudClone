@@ -87,8 +87,11 @@ export function routeIdleLifecycle(
   event: ConnectionEvent,
   ws: Pick<IWsAdapter, "closeForIdle" | "reopen">,
 ): void {
-  if (event.type === "idleTimeout") ws.closeForIdle();
-  else if (event.type === "reconnect") ws.reopen();
+  if (event.type === "idleTimeout") {
+    ws.closeForIdle();
+  } else if (event.type === "reconnect") {
+    ws.reopen();
+  }
 }
 
 export interface Presenters {
@@ -186,7 +189,9 @@ function peekFirstWatchlistSymbol(
 ): string {
   let first = "";
   const sub = watchlist$.subscribe((list) => {
-    if (first === "" && list.length > 0) first = list[0]?.symbol ?? "";
+    if (first === "" && list.length > 0) {
+      first = list[0]?.symbol ?? "";
+    }
   });
   sub.unsubscribe();
   return first;

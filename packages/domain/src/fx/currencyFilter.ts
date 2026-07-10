@@ -27,6 +27,9 @@ export function matchesCurrencyFilter(
   symbol: string,
   filter: CurrencyCategory,
 ): boolean {
-  if (filter === "All") return true;
+  if (filter === "All") {
+    return true;
+  }
+
   return symbol.includes(filter);
 }

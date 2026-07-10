@@ -160,16 +160,24 @@ export function createRfqTileMachine(
     state$,
     intents: {
       requestQuote: () => {
-        if (current().status === "init") requestQuote$.next();
+        if (current().status === "init") {
+          requestQuote$.next();
+        }
       },
       cancel: () => {
-        if (current().status === "requested") cancel$.next();
+        if (current().status === "requested") {
+          cancel$.next();
+        }
       },
       reject: () => {
-        if (current().status === "received") reject$.next();
+        if (current().status === "received") {
+          reject$.next();
+        }
       },
       accept: () => {
-        if (current().status === "received") accept$.next();
+        if (current().status === "received") {
+          accept$.next();
+        }
       },
     },
     dispose: () => {

@@ -21,7 +21,11 @@ export function AppearanceOverlay({
   onClose,
 }: AppearanceOverlayProps): JSX.Element | null {
   const styles = useThemedStyles(makeStyles);
-  if (!open) return null;
+
+  if (!open) {
+    return null;
+  }
+
   return (
     <View testID="appearance-overlay" style={styles.overlay}>
       <View style={styles.header}>

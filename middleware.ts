@@ -12,7 +12,10 @@ export const config = { matcher: "/(.*)" };
  */
 export default function middleware(request: Request): Response {
   const expected = process.env.SITE_PASSWORD;
-  if (!expected) return next();
+
+  if (!expected) {
+    return next();
+  }
 
   const header = request.headers.get("authorization") ?? "";
   const [scheme, encoded] = header.split(" ");
@@ -21,7 +24,10 @@ export default function middleware(request: Request): Response {
     try {
       const decoded = atob(encoded);
       const password = decoded.slice(decoded.indexOf(":") + 1);
-      if (password === expected) return next();
+
+      if (password === expected) {
+        return next();
+      }
     } catch {
       // malformed base64 → fall through to 401
     }

@@ -16,7 +16,10 @@ export class AnalyticsPanelPage extends MountedComponent<
 
   /** The loading-placeholder text, or null once data has arrived. */
   loadingMessage(): string | null {
-    if (this.isLoaded()) return null;
+    if (this.isLoaded()) {
+      return null;
+    }
+
     const el = within(this.root).queryByText(/loading analytics/i);
     return el?.textContent?.trim() ?? null;
   }
