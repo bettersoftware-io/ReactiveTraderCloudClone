@@ -72,17 +72,36 @@ const visualPanelRegistry: PanelRegistry = {
 
 function noop(): void {}
 
+// The layout engine's root (`.engine`) is `flex: 1` — it FILLS a sized flex
+// parent, exactly as it does in the real app (App.tsx nests it in the flex
+// column `.app` between the header and status bar). Mounted bare in the harness
+// it has no parent to fill, so `flex: 1` collapses to the stub panels' intrinsic
+// size and the golden is a ~596×75 sliver. Wrap it in a fixed box the size of
+// the real workspace region — 1920 wide, and 994 tall = the app's 1080 viewport
+// minus the ~60px header (38px logo + 2×11px padding + 1px border) and 26px
+// status bar — so the arrangements (default / maximized / collapsed / rail)
+// render at faithful desktop proportions. Fixed dimensions also pin the capture
+// size deterministically (the #width-flake rule).
 function staticEngine(state: LayoutState): ReactElement {
   return (
-    <InhouseLayoutEngine
-      state={state}
-      registry={visualPanelRegistry}
-      onMaximize={noop}
-      onRestore={noop}
-      onCollapse={noop}
-      onExpand={noop}
-      onResize={noop}
-    />
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: 1920,
+        height: 994,
+      }}
+    >
+      <InhouseLayoutEngine
+        state={state}
+        registry={visualPanelRegistry}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+        onResize={noop}
+      />
+    </div>
   );
 }
 
