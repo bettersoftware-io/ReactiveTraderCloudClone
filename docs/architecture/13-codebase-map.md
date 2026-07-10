@@ -85,7 +85,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **What it is** | Entities, use cases, port interfaces, and simulators -- pure TypeScript, the innermost package. |
 | **Ring** | ①② Entities & Use Cases -- the yolk |
 | **Depends on** | `rxjs` only (`packages/domain/package.json` `dependencies`) |
-| **Consumed by** | `shared`, `client-core`, `react-bindings`, `client-react`, `client-react-native`, `server` -- every other workspace package lists `@rtc/domain` |
+| **Consumed by** | `shared`, `client-core`, `react-bindings`, `client-react`, `client-react-native`, `server`, `tests` -- every workspace package except the two rxjs-only/no-`@rtc` islands (`ws-effects`, `client-prototype`) lists `@rtc/domain` directly |
 | **Non-obvious** | `src/simulators/` is ring ③ (gateways), not ring ①②, even though it lives inside this package -- and they're production code, not test doubles ([§10](10-key-design-decisions.md#10-key-design-decisions)). The single-dependency constraint (`rxjs` only) is enforced by pnpm strict mode, not just convention. |
 | **README** | [`packages/domain/README.md`](../../packages/domain/README.md) |
 
@@ -107,7 +107,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **What it is** | The framework-free application core: composition root, presenters, state machines, `WsAdapter` + `portFactory`. |
 | **Ring** | ③ Interface Adapters -- presenters, gateways, ViewModel wiring |
 | **Depends on** | `@rtc/domain`, `@rtc/shared`, `rxjs`, `@rx-state/core` (`packages/client-core/package.json` `dependencies`) |
-| **Consumed by** | `react-bindings`, `client-react`, `client-react-native` |
+| **Consumed by** | `react-bindings`, `client-react`, `client-react-native`, `tests` |
 | **Non-obvious** | Zero framework imports -- no React, no DOM types, no React Native -- despite being consumed by three UI-facing packages ([§1.3](01-overview.md#13-layered-architecture--terminology)). |
 | **README** | [`packages/client-core/README.md`](../../packages/client-core/README.md) |
 
@@ -128,7 +128,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 |---|---|
 | **What it is** | The web client: dumb React 19 UI (`src/ui`) + browser-specific platform adapters (`src/app`). |
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) |
-| **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `react`, `react-dom`, `motion`, `@fontsource/*` (`packages/client-react/package.json` `dependencies`) |
+| **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `react`, `react-dom`, `rxjs`, `motion`, `@fontsource/*` (`packages/client-react/package.json` `dependencies`) |
 | **Consumed by** | `tests` (`@rtc/tests` workspace) |
 | **Non-obvious** | Depends on `@rtc/domain` directly, not only transitively through `client-core` -- e.g. `ThemeMode`/`ThemeSkin` types are imported straight from `@rtc/domain` in `src/ui/shell/theme/tokens.ts`. `rxjs` is a listed runtime dependency but appears only in `src/app` (e.g. `MediaQueryColorSchemeAdapter`); it is machine-banned from `src/ui` by gate 26. |
 | **README** | [`packages/client-react/README.md`](../../packages/client-react/README.md) |
@@ -139,7 +139,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 |---|---|
 | **What it is** | The mobile client: dumb Expo/RN UI (`src/ui`) + native-specific platform adapters (`src/app`). |
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) |
-| **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `expo`, `expo-router`, `react-native`, `react-native-svg`, `rxjs` (`packages/client-react-native/package.json` `dependencies`) |
+| **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `react`, `react-dom`, `react-native`, `react-native-svg`, `@react-native-async-storage/async-storage`, `rxjs`, `expo` + six `expo-*` modules (router · constants · dev-client · font · linking · status-bar), `@expo-google-fonts/*`, + 2 more RN runtime packages (`react-native-screens`, `react-native-safe-area-context`) -- 22 in total (`packages/client-react-native/package.json` `dependencies`) |
 | **Consumed by** | Nothing in-workspace -- it is a leaf app, and unlike `client-react` it is *not* a `tests` dependency (`tests/package.json` lists `@rtc/client-react` but not `@rtc/client-react-native`) |
 | **Non-obvious** | `rxjs` is a listed runtime dep and appears in `src/app/adapters` (e.g. `AppearanceColorSchemeAdapter` returns `Observable<boolean>`) but never in `src/ui` -- the same dumb-UI discipline as web, just not machine-gated here (gate 26 scopes `client-react/src/ui` only). Its own suite runs vitest + jest-expo; it isn't exercised by the root `tests` e2e/presenter/fullstack suites, and RN e2e (Maestro) is a deferred workstream. |
 | **README** | [`packages/client-react-native/README.md`](../../packages/client-react-native/README.md) |
@@ -270,6 +270,7 @@ src/
 src/
 ├── types.ts             WsEffect primitive — (in$, ctx) => out$
 ├── stream.ts, rpc.ts      subscription fan-out · correlated ack/nack sugar
+├── operators.ts            out() / matchType() message helpers
 ├── combineEffects.ts       merges effects over one shared inbound stream
 └── createWsListener.ts      wires a Socket to combined effects, teardown on closed$
 ```
