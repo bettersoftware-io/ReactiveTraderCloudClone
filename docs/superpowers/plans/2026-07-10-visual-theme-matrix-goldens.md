@@ -14,7 +14,7 @@
 - **Serial visual runners.** `RTC_VISUAL_MAX_PARALLEL=1` in `ci.yml`'s `visual` job stays, and `playwright-ct.config.ts` keeps `workers: 1` — concurrent tier/worker runs let Playwright's stable-frame check capture text-dense shots one frame early. Do not parallelize to "speed up" the larger matrix.
 - **Braces mandatory (`style/useBlockStatements`, PR #145).** Every `if`/`for`/`while`/`else` needs a block body — brace-less control statements fail CI. All new spec/expander code must be fully braced.
 - **Skins:** `classic | holo | holo3d | terminal | terminal3d` (neon **excluded** by request). Modes: `dark | light`. Values verbatim from `@rtc/domain` `ThemeSkin` / `ThemeMode`.
-- **Naming:** derived scenario key = `` `${base}__${skin}-${mode}` ``; golden basename = that with `/`→`-` (e.g. `app-fx__holo3d-light.png`). `classic-dark` is NOT suffixed — the bare golden (`app-fx.png`) is the classic-dark baseline. The rewritten CT tier adopts this same scenario-derived naming (retiring the old bespoke `fx.png`/`blotter.png` names) under a single `matrix.spec.tsx/` dir.
+- **Naming & layout (user-confirmed: theme sub-folder):** derived scenario **key** = `` `${base}__${skin}-${mode}` `` (uniqueness in the map); golden **path** = `` `${skin}-${mode}/${base-with-dashes}` `` under the spec dir, e.g. `…/<specfile>/holo3d-light/app-fx.png`. There is **no bare baseline** — classic-dark is the `classic-dark/` folder. Computed by the shared `goldenPath(name, scenario)` (extension-less; each tier adds `.png` / `-<browser>.png`). All three tiers use it; the rewritten CT tier writes under a single `matrix.spec.tsx/` dir. Because every existing golden moves into a folder, Tasks 4-5 must **delete the pre-existing flat goldens** (they'd otherwise linger as orphans that `--update` never overwrites).
 - **All three tiers get the full matrix.** playwright-ct, playwright, vitest-browser each capture all 1222 scenarios (124 base + 1098 combos). CT is rewritten to data-driven for this (Task 3).
 - **Isolation:** all work in the `visual-theme-matrix` worktree; PR + green CI + merge-commit per `shipping-repo-changes`. Broad UI rounds need **user live-acceptance before merge** (spot-check a sample of new theme goldens).
 - **Escape hatch (document, don't build):** matrix scope lives in three symbols (`MATRIX_SKINS`, `MATRIX_MODES`, `MATRIX_EXCLUDE`). Curation later = editing those. De-gating later = splitting `visual` into a small smoke gate + on-demand full run (the `update-visual-goldens.yml` `workflow_dispatch` pattern already exists).
@@ -166,33 +166,66 @@ git commit -m "test(visual): theme-override seam in the scenario resolver"
 
 ---
 
-### Task 2: Theme-matrix expander + action resolver
+### Task 2: Theme-matrix expander + shared goldenPath + action resolver
 
 **Files:**
-- Modify: `packages/client-react/tests/ui/visual/shared/scenarios.ts` (rename literal to `baseScenarios`, add expander + exports)
-- Modify: `packages/client-react/tests/ui/visual/scenarioActions.ts` (add `scenarioActionFor`)
-- Modify: `packages/client-react/tests/ui/visual/playwright/visual.spec.ts:12` (use `scenarioActionFor`)
-- Modify: `packages/client-react/tests/ui/visual/vitest-browser/visual.spec.tsx:39` (use `scenarioActionFor`)
+- Modify: `packages/client-react/tests/ui/visual/shared/scenarios.ts` (add `ThemeMode` to the type import; add explicit `themeSkin`/`themeMode` to the two `MATRIX_EXCLUDE` entries; rename literal to `baseScenarios`; add expander + exports)
+- Create: `packages/client-react/tests/ui/visual/shared/goldenPath.ts` (`baseScenarioName` + `goldenPath`)
+- Modify: `packages/client-react/tests/ui/visual/scenarioActions.ts` (add `scenarioActionFor`, reusing `baseScenarioName`)
+- Modify: `packages/client-react/tests/ui/visual/playwright/visual.spec.ts` (loop `Object.entries`, use `scenarioActionFor` + `goldenPath`; delete local `goldenName`)
+- Modify: `packages/client-react/tests/ui/visual/vitest-browser/visual.spec.tsx` (same)
 - Test: `packages/client-react/tests/ui/visual/shared/scenarios.test.ts`
 
 **Interfaces:**
 - Consumes: `Scenario` (Task 1).
 - Produces:
   - `MATRIX_SKINS: readonly ThemeSkin[]`, `MATRIX_MODES: readonly ThemeMode[]`.
-  - `scenarios: Record<string, Scenario>` — base scenarios plus 9 combos each (all combos except `classic-dark`), skipping `MATRIX_EXCLUDE`.
-  - `scenarioActionFor(name: string): ScenarioAction` — maps a derived name (`app/credit__holo-dark`) back to its base action (`app/credit`).
+  - `scenarios: Record<string, Scenario>` — **every** base scenario replaced by its full 10-combo cross-product (each carrying explicit `themeSkin`/`themeMode`), except `MATRIX_EXCLUDE` scenarios which pass through with their own authored `themeSkin`/`themeMode`. No bare base keys remain.
+  - `baseScenarioName(name: string): string` — strips a `__<skin>-<mode>` suffix (`shared/goldenPath.ts`).
+  - `goldenPath(name: string, scenario: Scenario): string` — extension-less `<skin>-<mode>/<base-name>` (`shared/goldenPath.ts`); consumed by all three tier specs (playwright/CT add `.png`; vitest-browser appends `-<browser>.png`).
+  - `scenarioActionFor(name: string): ScenarioAction` — maps a matrix name (`app/credit__holo-dark`) back to its base action (`app/credit`) via `baseScenarioName`.
 
-- [ ] **Step 1: Write the failing test for the expander**
+**Layout decision (user-confirmed):** theme+mode is a **folder** under the spec dir: `…/<specfile>/<skin>-<mode>/<base-name>.png`. So every scenario carries an explicit skin+mode and there is **no bare classic-dark baseline** — classic-dark is just the `classic-dark/` folder. The two excluded scenarios route to `classic-light/` (`app/fx-light`) and `classic-system/` (`app/fx-system`) via their authored fields; setting those fields is a no-op over what their fixtures already seed (so their toggle aria-label assertions are unchanged).
+
+- [ ] **Step 1: Give the two excluded scenarios explicit theme fields**
+
+In `shared/scenarios.ts`, add `themeSkin`/`themeMode` to the two entries so `goldenPath` can route them (values match what their fixtures already seed — no behaviour change):
+
+```ts
+  "app/fx-light": {
+    componentKey: "App",
+    fixtureKey: "app-fx-light",
+    themeSkin: "classic",
+    themeMode: "light",
+  },
+```
+```ts
+  "app/fx-system": {
+    componentKey: "App",
+    fixtureKey: "app-fx-system",
+    themeSkin: "classic",
+    themeMode: "system",
+  },
+```
+
+- [ ] **Step 2: Write the failing tests (expander + goldenPath)**
 
 Create `shared/scenarios.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
 
+import { goldenPath } from "./goldenPath";
 import { MATRIX_MODES, MATRIX_SKINS, scenarios } from "./scenarios";
 
 describe("theme-matrix expansion", () => {
-  it("adds a themed combo for a non-classic-dark skin/mode", () => {
+  it("emits every skin×mode combo (incl. classic-dark) for an expandable base", () => {
+    expect(scenarios["app/fx__classic-dark"]).toEqual({
+      componentKey: "App",
+      fixtureKey: "app-fx",
+      themeSkin: "classic",
+      themeMode: "dark",
+    });
     expect(scenarios["app/fx__holo3d-light"]).toEqual({
       componentKey: "App",
       fixtureKey: "app-fx",
@@ -201,40 +234,79 @@ describe("theme-matrix expansion", () => {
     });
   });
 
-  it("keeps the bare scenario as the classic-dark baseline (no __classic-dark key)", () => {
-    expect(scenarios["app/fx"]).toEqual({ componentKey: "App", fixtureKey: "app-fx" });
-    expect(scenarios["app/fx__classic-dark"]).toBeUndefined();
+  it("replaces the bare base key with combos (no un-suffixed app/fx)", () => {
+    expect(scenarios["app/fx"]).toBeUndefined();
   });
 
-  it("does not expand mode-cycle assertion scenarios", () => {
-    expect(scenarios["app/fx-light"]).toBeDefined();
-    expect(scenarios["app/fx-light__holo-dark"]).toBeUndefined();
-  });
-
-  it("excludes neon and yields 9 combos per expandable base", () => {
+  it("yields exactly 10 combos per expandable base and excludes neon", () => {
     expect(MATRIX_SKINS).not.toContain("neon");
-    // 5 skins × 2 modes − classic-dark = 9 extra combos.
-    const combosForAppFx = Object.keys(scenarios).filter((k) =>
-      k.startsWith("app/fx__"),
+    const combos = Object.keys(scenarios).filter((k) => k.startsWith("app/fx__"));
+    expect(combos).toHaveLength(MATRIX_SKINS.length * MATRIX_MODES.length); // 5×2 = 10
+  });
+
+  it("keeps mode-cycle scenarios un-expanded but with explicit theme fields", () => {
+    expect(scenarios["app/fx-light__holo-dark"]).toBeUndefined();
+    expect(scenarios["app/fx-light"]).toEqual({
+      componentKey: "App",
+      fixtureKey: "app-fx-light",
+      themeSkin: "classic",
+      themeMode: "light",
+    });
+  });
+
+  it("routes goldens into a <skin>-<mode>/ folder by base name", () => {
+    expect(
+      goldenPath("app/fx__terminal-light", scenarios["app/fx__terminal-light"]),
+    ).toBe("terminal-light/app-fx");
+    expect(goldenPath("app/fx-light", scenarios["app/fx-light"])).toBe(
+      "classic-light/app-fx-light",
     );
-    expect(combosForAppFx).toHaveLength(MATRIX_SKINS.length * MATRIX_MODES.length - 1);
   });
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [ ] **Step 3: Run the tests to verify they fail**
 
 Run: `pnpm --filter @rtc/client-react exec vitest run tests/ui/visual/shared/scenarios.test.ts`
-Expected: FAIL — `MATRIX_SKINS`/`MATRIX_MODES` not exported; `app/fx__holo3d-light` undefined.
+Expected: FAIL — `./goldenPath` missing; `MATRIX_SKINS`/`MATRIX_MODES` not exported.
 
-- [ ] **Step 3: Add the expander to `shared/scenarios.ts`**
-
-Rename the existing `export const scenarios: Record<string, Scenario> = { … }` literal to `const baseScenarios: Record<string, Scenario> = { … }` (change only that one declaration line; leave every entry as-is). Then append, after the literal, using the `ThemeMode`/`ThemeSkin` types already imported in Task 1 (add `ThemeMode` to that import):
+- [ ] **Step 4: Create `shared/goldenPath.ts`**
 
 ```ts
-// The theme matrix: every skin except neon × dark/light. The bare (un-suffixed)
-// scenarios ARE the classic-dark baseline (default fixture skin/mode), so the
-// expander skips that combo — no duplicate golden, no churn on existing shots.
+import type { Scenario } from "./scenarios";
+
+// A matrix-expanded scenario key ends in `__<skin>-<mode>`; the `__` guard means
+// natural keys ending in `-light`/`-dark` (e.g. `app/fx-light`) are NOT stripped.
+const COMBO_SUFFIX =
+  /__(?:classic|holo|holo3d|terminal|terminal3d)-(?:dark|light)$/;
+
+/** The base scenario name for a (possibly matrix-expanded) key — strips a
+ *  trailing `__<skin>-<mode>` combo suffix. */
+export function baseScenarioName(name: string): string {
+  return name.replace(COMBO_SUFFIX, "");
+}
+
+/** Extension-less golden path for a scenario: `<skin>-<mode>/<base-name>`.
+ *  Theme+mode is a folder under the spec dir; the file is the base scenario
+ *  name with `/`→`-`. Each tier appends its own extension (playwright/CT add
+ *  `.png`; vitest-browser appends `-<browser>.png`). Every scenario carries an
+ *  explicit themeSkin/themeMode after expansion; the `?? classic/dark` fallback
+ *  only guards a hand-authored base scenario that forgot them. */
+export function goldenPath(name: string, scenario: Scenario): string {
+  const base = baseScenarioName(name).replace(/\//g, "-");
+  return `${scenario.themeSkin ?? "classic"}-${scenario.themeMode ?? "dark"}/${base}`;
+}
+```
+
+- [ ] **Step 5: Add the expander to `shared/scenarios.ts`**
+
+Add `ThemeMode` to the existing `@rtc/domain` type import. Rename the `export const scenarios: Record<string, Scenario> = { … }` literal to `const baseScenarios: Record<string, Scenario> = { … }` (change only that declaration line; entries stay as-is except Step 1's two edits). Then append:
+
+```ts
+// The theme matrix: every skin except neon × dark/light. Every base scenario is
+// REPLACED by its full 10-combo cross-product (each combo carries an explicit
+// themeSkin/themeMode), so there is no bare baseline — classic-dark is the
+// `classic-dark/` folder like any other combo.
 export const MATRIX_SKINS = [
   "classic",
   "holo",
@@ -244,20 +316,23 @@ export const MATRIX_SKINS = [
 ] as const satisfies readonly ThemeSkin[];
 export const MATRIX_MODES = ["dark", "light"] as const satisfies readonly ThemeMode[];
 
-// Base scenarios whose scenarioAction asserts a mode-cycle-specific theme-toggle
-// aria-label — expanding these across modes would break that assertion, and they
-// exist to prove the mode cycle, not the skin matrix. Left un-expanded.
+// Scenarios that assert a mode-cycle-specific theme-toggle aria-label — they
+// prove the toggle cycle, not the skin matrix, so they are NOT cross-producted.
+// They carry their own authored themeSkin/themeMode (Step 1), so goldenPath still
+// routes them to a folder (classic-light / classic-system).
 const MATRIX_EXCLUDE = new Set<string>(["app/fx-light", "app/fx-system"]);
 
 function expandThemeMatrix(
   base: Record<string, Scenario>,
 ): Record<string, Scenario> {
-  const out: Record<string, Scenario> = { ...base };
+  const out: Record<string, Scenario> = {};
   for (const [name, scenario] of Object.entries(base)) {
-    if (MATRIX_EXCLUDE.has(name)) continue;
+    if (MATRIX_EXCLUDE.has(name)) {
+      out[name] = scenario;
+      continue;
+    }
     for (const skin of MATRIX_SKINS) {
       for (const mode of MATRIX_MODES) {
-        if (skin === "classic" && mode === "dark") continue; // bare == classic-dark
         out[`${name}__${skin}-${mode}`] = {
           ...scenario,
           themeSkin: skin,
@@ -272,68 +347,65 @@ function expandThemeMatrix(
 export const scenarios: Record<string, Scenario> = expandThemeMatrix(baseScenarios);
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `pnpm --filter @rtc/client-react exec vitest run tests/ui/visual/shared/scenarios.test.ts`
-Expected: PASS (4 tests).
+Expected: PASS (5 tests).
 
-- [ ] **Step 5: Add `scenarioActionFor` to `scenarioActions.ts`**
+- [ ] **Step 7: Add `scenarioActionFor` to `scenarioActions.ts`**
 
-At the end of `scenarioActions.ts`, add (the regex skin list must match `MATRIX_SKINS`):
+At the end of `scenarioActions.ts` (import `baseScenarioName` from `./shared/goldenPath` — reuse it, do NOT re-declare the regex):
 
 ```ts
-// Matches a matrix-expanded name's `__<skin>-<mode>` suffix so derived
-// scenarios reuse their base action (interaction/waitForText). See
-// shared/scenarios.ts expandThemeMatrix.
-const COMBO_SUFFIX =
-  /__(?:classic|holo|holo3d|terminal|terminal3d)-(?:dark|light)$/;
+import { baseScenarioName } from "./shared/goldenPath";
 
 /** Resolve the capture action for a scenario, mapping matrix-expanded names
  *  (`app/credit__holo-dark`) back to their base action (`app/credit`). */
 export function scenarioActionFor(name: string): ScenarioAction {
-  return (
-    scenarioActions[name] ??
-    scenarioActions[name.replace(COMBO_SUFFIX, "")] ??
-    {}
-  );
+  return scenarioActions[name] ?? scenarioActions[baseScenarioName(name)] ?? {};
 }
 ```
 
-- [ ] **Step 6: Point both data-driven specs at `scenarioActionFor`**
+(Put the `import` with the file's other imports at the top, not literally at the end.)
 
-In `playwright/visual.spec.ts`: change the import to add `scenarioActionFor` and replace line 12:
+- [ ] **Step 8: Rewire both data-driven specs to `Object.entries` + `goldenPath`**
+
+In `playwright/visual.spec.ts`: replace the imports + the `goldenName` helper + the loop header + the `shot` line. Delete the local `goldenName` function entirely. Result:
 
 ```ts
+import { expect, test } from "@playwright/test";
+
 import { scenarioActionFor } from "../scenarioActions";
-```
-```ts
+import { goldenPath } from "../shared/goldenPath";
+import { scenarios } from "../shared/scenarios";
+
+for (const [name, scenario] of Object.entries(scenarios)) {
   const action = scenarioActionFor(name);
+
+  test(name, async ({ page }) => {
+    // ...unchanged body...
+    const shot = `${goldenPath(name, scenario)}.png`;
+    // ...unchanged toHaveScreenshot(shot, …) branches...
+  });
+}
 ```
 
-In `vitest-browser/visual.spec.tsx`: same — import `scenarioActionFor`, and replace line 39:
+In `vitest-browser/visual.spec.tsx`: same shape — swap the imports (add `scenarioActionFor` from `../scenarioActions` and `goldenPath` from `../shared/goldenPath`, drop the `scenarioActions` import), delete the local `goldenName`, change the loop to `for (const [name, scenario] of Object.entries(scenarios))`, `const action = scenarioActionFor(name);`, and the final capture to `await expect.element(target).toMatchScreenshot(goldenPath(name, scenario));`.
 
-```ts
-import { scenarioActionFor } from "../scenarioActions";
-```
-```ts
-  const action = scenarioActionFor(name);
-```
-
-(Both files currently `import { scenarioActions } from "../scenarioActions";` — swap it for the new named import; `scenarioActions` itself is no longer referenced in the specs.)
-
-- [ ] **Step 7: Typecheck + lint + commit**
+- [ ] **Step 9: Typecheck + lint + commit**
 
 Run: `pnpm --filter @rtc/client-react typecheck`
-Run: `pnpm --filter @rtc/client-react exec biome check tests/ui/visual/shared/scenarios.ts tests/ui/visual/scenarioActions.ts`
-Expected: both PASS.
+Run: `pnpm --filter @rtc/client-react exec biome check tests/ui/visual/shared/scenarios.ts tests/ui/visual/shared/goldenPath.ts tests/ui/visual/scenarioActions.ts tests/ui/visual/playwright/visual.spec.ts tests/ui/visual/vitest-browser/visual.spec.tsx`
+Expected: both PASS. (No goldens are generated in this task — that is Task 4. The `.spec` files won't run here; typecheck + the unit test prove the wiring.)
 
 ```bash
 git add packages/client-react/tests/ui/visual/shared/scenarios.ts \
         packages/client-react/tests/ui/visual/shared/scenarios.test.ts \
+        packages/client-react/tests/ui/visual/shared/goldenPath.ts \
         packages/client-react/tests/ui/visual/scenarioActions.ts \
         packages/client-react/tests/ui/visual/playwright/visual.spec.ts \
         packages/client-react/tests/ui/visual/vitest-browser/visual.spec.tsx
-git commit -m "test(visual): theme-matrix expander (5 skins × dark/light, neon excluded)"
+git commit -m "test(visual): theme-matrix expander + sub-folder goldenPath (5 skins × dark/light)"
 ```
 
 ---
@@ -347,7 +419,7 @@ git commit -m "test(visual): theme-matrix expander (5 skins × dark/light, neon 
 
 **Interfaces:**
 - Consumes: `scenarios` (Task 2), `scenarioActionFor` (Task 2), `VisualScenario` (`@ui-visual`).
-- Produces: CT goldens named `<scenario with / → ->.png` under `matrix.spec.tsx/` — same naming as the plain-Playwright tier.
+- Produces: CT goldens at `matrix.spec.tsx/<skin>-<mode>/<base-name>.png` (shared `goldenPath`) — same paths as the plain-Playwright tier.
 
 **Why safe:** every deleted CT test just mounted `VisualScenario name="<scenario-key>"`; all those keys are in `scenarios`. Tiers 2 & 3 already loop *all* scenarios (incl. `admin/panel-loading`, `equities-*`) with no `waitForText` and pass in CI — so dropping the hand-written per-spec text asserts is provably safe (`toHaveScreenshot` stability retry + `fontsReady` + `animations:disabled` are the settle barrier). The `beforeEach` below preserves the two real CT quirks (localStorage clear + the `**/throughput` stub the old `app/admin` test used).
 
@@ -360,6 +432,7 @@ import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
 
 import { scenarioActionFor } from "../scenarioActions";
+import { goldenPath } from "../shared/goldenPath";
 import { scenarios } from "../shared/scenarios";
 
 // Tier 1 — Playwright component tests, data-driven over the SAME shared scenario
@@ -367,10 +440,7 @@ import { scenarios } from "../shared/scenarios";
 // ../vitest-browser/visual.spec.tsx, so all three tiers stay behaviourally in
 // lock-step across the full theme matrix. Goldens route via playwright-ct.config.ts
 // (CI `react/` vs local `react-local/<arch>/`), under this file's `matrix.spec.tsx/`
-// dir, named `<scenario with / → ->.png`.
-function goldenName(scenario: string): string {
-  return `${scenario.replace(/\//g, "-")}.png`;
-}
+// dir, at `<skin>-<mode>/<base-name>.png` (shared goldenPath).
 
 test.beforeEach(async ({ page }) => {
   // State is seeded through the ViewModel seam, so clear any persisted prefs.
@@ -384,7 +454,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-for (const name of Object.keys(scenarios)) {
+for (const [name, scenario] of Object.entries(scenarios)) {
   const action = scenarioActionFor(name);
 
   test(name, async ({ mount, page }) => {
@@ -424,13 +494,13 @@ for (const name of Object.keys(scenarios)) {
     // Full-bleed scenarios (App/Boot/Lock/Prefs — all flagged fullPage) have no
     // scenario-root wrapper; component scenarios capture just their padded box.
     if (action.fullPage) {
-      await expect(page).toHaveScreenshot(goldenName(name), {
+      await expect(page).toHaveScreenshot(`${goldenPath(name, scenario)}.png`, {
         animations: "disabled",
         fullPage: true,
       });
     } else {
       await expect(page.getByTestId("scenario-root")).toHaveScreenshot(
-        goldenName(name),
+        `${goldenPath(name, scenario)}.png`,
         { animations: "disabled" },
       );
     }
@@ -457,7 +527,7 @@ Expected: both PASS (all control statements braced per `useBlockStatements`).
 - [ ] **Step 4: Smoke-run a subset on this arch to prove the spec drives correctly**
 
 Run: `pnpm --filter @rtc/client-react exec playwright test -c tests/ui/visual/playwright-ct/playwright-ct.config.ts -g "app/fx__terminal-light" --update-snapshots`
-Expected: PASS — writes `react-local/<arch>/matrix.spec.tsx/app-fx__terminal-light.png`. (Full CT regen happens in Task 4.)
+Expected: PASS — writes `react-local/<arch>/matrix.spec.tsx/terminal-light/app-fx.png` (confirms the shared `goldenPath` sub-folder wiring end-to-end). Then revert this single golden — `git checkout -- packages/client-react/tests/ui/visual/playwright-ct/__screenshots__` — the full CT regen happens in Task 4.
 
 - [ ] **Step 5: Commit the rewrite (goldens regenerated in Task 4)**
 
@@ -483,24 +553,35 @@ git commit -m "test(visual): data-driven playwright-ct tier (full theme matrix)"
 Run: `pnpm build`
 Expected: domain/shared/client-core build succeed.
 
-- [ ] **Step 2: Regenerate all three local tiers**
+- [ ] **Step 2: Delete the orphan-prone darwin-arm64 goldens first (folder move)**
+
+The layout moves every golden into a `<skin>-<mode>/` sub-folder, so the old flat goldens (and the retired CT spec dirs) would linger as orphans — `--update` writes new files but never deletes stale ones. Remove the darwin-arm64 trees for all three tiers so regen starts from a clean slate (linux-arm64 is left untouched — handled in the sandbox):
+
+```bash
+git rm -r -q --ignore-unmatch \
+  packages/client-react/tests/ui/visual/playwright-ct/__screenshots__/react-local/darwin-arm64 \
+  packages/client-react/tests/ui/visual/playwright/__screenshots__/react-local/darwin-arm64 \
+  packages/client-react/tests/ui/visual/vitest-browser/__screenshots__/react-local/darwin-arm64
+```
+
+- [ ] **Step 3: Regenerate all three local tiers**
 
 Run: `pnpm --filter @rtc/client-react test:ui:visual:playwright-ct:react:update`
 Run: `pnpm --filter @rtc/client-react test:ui:visual:playwright:react:update`
 Run: `pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update`
-Expected: ~1222 goldens per tier written under `react-local/darwin-arm64/` (CT now under `matrix.spec.tsx/`). Note the wall-clock of each — this is the CI-gate estimate.
+Expected: ~1222 goldens per tier written under `react-local/darwin-arm64/<specfile>/<skin>-<mode>/`. Note the wall-clock of each — this is the CI-gate estimate.
 
-- [ ] **Step 3: Sanity-check a themed golden differs from the classic-dark baseline**
+- [ ] **Step 4: Sanity-check a themed golden differs from the classic-dark one**
 
-Run: `open packages/client-react/tests/ui/visual/playwright/__screenshots__/react-local/darwin-arm64/visual.spec.ts/app-fx.png packages/client-react/tests/ui/visual/playwright/__screenshots__/react-local/darwin-arm64/visual.spec.ts/app-fx__terminal-light.png`
+Run: `open packages/client-react/tests/ui/visual/playwright/__screenshots__/react-local/darwin-arm64/visual.spec.ts/classic-dark/app-fx.png packages/client-react/tests/ui/visual/playwright/__screenshots__/react-local/darwin-arm64/visual.spec.ts/terminal-light/app-fx.png`
 Expected: visibly different skins (classic-dark blue vs terminal-light amber-on-light).
 
-- [ ] **Step 4: Confirm the local gate passes end-to-end**
+- [ ] **Step 5: Confirm the local gate passes end-to-end**
 
 Run: `pnpm --filter @rtc/client-react test:ui:visual`
 Expected: all three tiers PASS against the freshly-written darwin-arm64 goldens.
 
-- [ ] **Step 5: Commit the darwin-arm64 set + note the linux-arm64 follow-up**
+- [ ] **Step 6: Commit the darwin-arm64 set + note the linux-arm64 follow-up**
 
 The stale/orphaned `react-local/linux-arm64/` goldens (old CT spec dirs + missing matrix combos) will make the local gate red on an aarch64 box until regenerated there. Regenerate them in the sandbox with the same three `:update` commands, or leave a documented follow-up (Task 6). Stage the darwin set and the deletions of the retired CT golden dirs:
 
@@ -514,22 +595,32 @@ git commit -m "test(visual): darwin-arm64 local goldens for the theme matrix (al
 ### Task 5: Bake the canonical `react/` goldens in CI + review
 
 **Files:**
-- Modify: `.github/workflows/update-visual-goldens.yml` (header comment: note the theme matrix; no behavioural change needed)
+- Modify: `.github/workflows/update-visual-goldens.yml` (add a clean-before-regen step so the artifact has no orphans; note the theme matrix)
 - Modify: `.github/workflows/ci.yml` (comment on the larger `visual` job + escape hatch; no behavioural change)
 - Regenerate (via CI artifact): all three tiers' canonical sets — `packages/client-react/tests/ui/visual/{playwright-ct,playwright,vitest-browser}/__screenshots__/react/**` (CT now full-matrix under `matrix.spec.tsx/`, replacing the retired bespoke spec dirs)
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Annotate the workflows (documentation only)**
+- [ ] **Step 1: Clean-before-regen + annotate the workflows**
 
-In `update-visual-goldens.yml`, extend the top comment block to note it now regenerates the full theme matrix across all three tiers (CT is now data-driven under `matrix.spec.tsx`), and that the run is substantially longer.
+The folder move orphans every old flat `react/` golden, and `--update` inside the container never deletes stale files — so without this the uploaded artifact would carry orphans. In `update-visual-goldens.yml`, add a step BEFORE the three regen steps that wipes the canonical `react/` screenshot dirs so the container regenerates a clean set:
+
+```yaml
+      - name: Clean canonical react/ goldens before regen (folder-layout move)
+        run: |
+          rm -rf packages/client-react/tests/ui/visual/playwright-ct/__screenshots__/react
+          rm -rf packages/client-react/tests/ui/visual/playwright/__screenshots__/react
+          rm -rf packages/client-react/tests/ui/visual/vitest-browser/__screenshots__/react
+```
+
+Also extend the top comment block to note it now regenerates the full theme matrix across all three tiers (CT is data-driven under `matrix.spec.tsx`, goldens under `<skin>-<mode>/` folders) and that the run is substantially longer.
 
 In `ci.yml`'s `visual` job, add a comment above the `Visual diffs` step recording that the matrix makes this the critical-path job (~measure after first run) and pointing to the escape hatch (smoke-gate split) documented in ADR-001.
 
 Commit:
 ```bash
 git add .github/workflows/update-visual-goldens.yml .github/workflows/ci.yml
-git commit -m "ci(visual): document theme-matrix scope + gate-time escape hatch"
+git commit -m "ci(visual): clean-before-regen + document theme-matrix scope + escape hatch"
 ```
 
 - [ ] **Step 2: Push the branch (needed so workflow_dispatch can target it)**
@@ -563,7 +654,7 @@ rsync -a --delete /tmp/vg-artifact/packages/client-react/tests/ui/visual/playwri
 
 - [ ] **Step 5: USER REVIEW CHECKPOINT — live-accept a sample**
 
-Surface a representative sample of NEW theme goldens to the user (e.g. `app-fx__holo3d-light`, `app-credit__terminal-dark`, `app-admin__terminal3d-light`, a themed tile and blotter). Broad UI rounds require user live-acceptance BEFORE merge (memory: `project_v2_fidelity_workstream`). Do not proceed to commit until the user confirms the skins render as intended.
+Surface a representative sample of NEW theme goldens to the user (e.g. `holo3d-light/app-fx.png`, `terminal-dark/app-credit.png`, `terminal3d-light/app-admin.png`, plus a themed tile and blotter). Broad UI rounds require user live-acceptance BEFORE merge (memory: `project_v2_fidelity_workstream`). Do not proceed to commit until the user confirms the skins render as intended.
 
 - [ ] **Step 6: Commit the canonical set**
 
@@ -605,10 +696,10 @@ Then follow `shipping-repo-changes` Rules 2-6: green CI on the matching SHA → 
 
 ## Self-Review
 
-**Spec coverage:** ✅ Size/time analysis already delivered to the user; this plan implements the chosen "full matrix on all three tiers, keep as gate, document everything." Task 1 = seam; Task 2 = matrix (all scenarios × 9 combos + classic-dark baseline, neon excluded — the requested "almost all combinations"); Task 3 = CT data-driven rewrite (full matrix on CT); Task 4 = local goldens (all 3 tiers, darwin-arm64); Task 5 = canonical goldens + gate + user acceptance; Task 6 = docs + escape hatch for later curation/de-gating.
+**Spec coverage:** ✅ Size/time analysis already delivered to the user; this plan implements the chosen "full matrix on all three tiers, theme sub-folder layout, keep as gate, document everything." Task 1 = seam; Task 2 = matrix (every base scenario replaced by its full 10-combo cross-product incl. classic-dark, neon excluded — the requested "almost all combinations") + shared `goldenPath` sub-folder routing; Task 3 = CT data-driven rewrite (full matrix on CT); Task 4 = local goldens (all 3 tiers, darwin-arm64, clean-before-regen); Task 5 = canonical goldens (clean-before-regen in the container) + gate + user acceptance; Task 6 = docs + escape hatch for later curation/de-gating.
 
 **Placeholder scan:** No TBD/"handle edge cases"/uncoded steps — every code step shows the code; regen/CI steps show exact commands.
 
-**Type consistency:** `Scenario` gains `themeSkin?`/`themeMode?` (Task 1) consumed by `resolveScenarioData` (Task 1) and produced by `expandThemeMatrix` (Task 2). `MATRIX_SKINS`/`MATRIX_MODES` names consistent across scenarios.ts, its test, and the ADR. `scenarioActionFor` name consistent across scenarioActions.ts and all three tier specs (playwright, vitest-browser, and the new CT `matrix.spec.tsx`). The `COMBO_SUFFIX` skin alternation matches `MATRIX_SKINS` verbatim. The CT `goldenName`/`fullPage`/`scenario-root` capture logic mirrors `playwright/visual.spec.ts` verbatim.
+**Type consistency:** `Scenario` gains `themeSkin?`/`themeMode?` (Task 1) consumed by `resolveScenarioData` (Task 1) and produced by `expandThemeMatrix` (Task 2). `MATRIX_SKINS`/`MATRIX_MODES` names consistent across scenarios.ts, its test, and the ADR. `scenarioActionFor` name consistent across scenarioActions.ts and all three tier specs (playwright, vitest-browser, and the new CT `matrix.spec.tsx`). The `COMBO_SUFFIX` skin alternation (in the shared `goldenPath.ts`) matches `MATRIX_SKINS` verbatim and is reused by `scenarioActionFor` (no duplicate regex). All three tier specs consume the shared `goldenPath` + `scenarioActionFor`; the CT `fullPage`/`scenario-root` capture logic mirrors `playwright/visual.spec.ts` verbatim.
 
 **Known risks to watch:** (1) The artifact path prefix in Task 5 Step 4 (`gh run download` may or may not preserve `packages/client-react/...`) — the plan says verify with `find` before rsync. All three tiers now change, so all three `react/` dirs will restage. (2) CT is the slowest tier (serial `workers:1`, per-mount render) — full matrix on CT is the dominant contributor to the larger gate wall-clock; measure in Task 4 Step 2 and record in the ADR. (3) `react-local/linux-arm64` goes stale until regenerated in the aarch64 sandbox (Task 4 Step 5) — CI's `react/` gate is unaffected.
