@@ -1,3 +1,5 @@
+[◀ 1. Overview](01-overview.md) · [Architecture Document](../architecture.md) · [3. UML Class Diagrams ▶](03-uml-class-diagrams.md)
+
 ## 2. C4 Model
 
 ### 2.1 System Context Diagram
@@ -77,7 +79,7 @@ flowchart TB
     linkStyle default stroke:#6e7fa3,stroke-width:1.5px
 ```
 
-Two further packages exist **outside** the production dependency graph, as design-comprehension artifacts (see [§8.1](#81-the-multi-client-proof--the-solidjs-plan) for how they relate to the fidelity workstream):
+Two further packages exist **outside** the production dependency graph, as design-comprehension artifacts (see [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan) for how they relate to the fidelity workstream):
 
 | Package | What it is | Runtime deps |
 |---|---|---|
@@ -145,7 +147,7 @@ flowchart TB
 
 The web client is three moving parts, and only one of them contains logic.
 
-**All business logic lives in presenters, which are pure RxJS -- no React at all.** A presenter is a plain class exposing `Observable<T>` streams (`price$`, `status$`, `trades$`, ...). It has never heard of a component, a render, or a hook. Because the stream is the source of truth, **the presenter decides *when* and *at what granularity* React re-renders** -- a tick pushed into `price$(EURUSD)` re-renders exactly the tiles subscribed to that symbol and nothing else. React is not the thing orchestrating updates; it is downstream of the streams, repainting on demand. There is no `useMemo`, no `useCallback`, no dependency-array bookkeeping (manual memoization is additionally banned by [ADR-003](adr/ADR-003-react-compiler-and-manual-memoization.md) -- React Compiler covers what little remains), because React's re-render model isn't driving anything -- the RxJS graph is.
+**All business logic lives in presenters, which are pure RxJS -- no React at all.** A presenter is a plain class exposing `Observable<T>` streams (`price$`, `status$`, `trades$`, ...). It has never heard of a component, a render, or a hook. Because the stream is the source of truth, **the presenter decides *when* and *at what granularity* React re-renders** -- a tick pushed into `price$(EURUSD)` re-renders exactly the tiles subscribed to that symbol and nothing else. React is not the thing orchestrating updates; it is downstream of the streams, repainting on demand. There is no `useMemo`, no `useCallback`, no dependency-array bookkeeping (manual memoization is additionally banned by [ADR-003](../adr/ADR-003-react-compiler-and-manual-memoization.md) -- React Compiler covers what little remains), because React's re-render model isn't driving anything -- the RxJS graph is.
 
 **The components are dumb on purpose: declarative TSX, almost no imperative code, and -- below the one `useViewModel()` call -- no further abstraction.** A leaf like `SpreadDisplay` is props-in / TSX-out with zero hooks. A container like `Tile` calls `useViewModel()` once, reads the granular hooks it needs, and renders. There is nothing to memoize because there is no derived state to cache -- the presenter already did the work upstream.
 
@@ -194,7 +196,7 @@ flowchart TB
 
 The same story in motion (animated SVG, renders live on GitHub) -- one tick, one re-render, idle tiles untouched:
 
-![Animated diagram: a tick travels from PriceStreamPresenter through usePrice into only the EUR/USD tile, which flashes; the GBP/USD and USD/JPY tiles stay idle](architecture/render-granularity.svg)
+![Animated diagram: a tick travels from PriceStreamPresenter through usePrice into only the EUR/USD tile, which flashes; the GBP/USD and USD/JPY tiles stay idle](render-granularity.svg)
 
 And in code -- these are the real files, trimmed:
 
@@ -389,7 +391,7 @@ flowchart TB
 
 > **Naming**: these are **simulators**, not "mocks". They are production code that stands in for an external pricing or execution venue. *Test* mocks are a separate concept and live alongside tests.
 
-> **One thing this diagram does not show** (detailed in [§7 Runtime Topology](#runtime-topology-what-runs-when)): these same simulators also run **in the browser / on the device** in simulator mode -- the server is only in the loop when a server URL is configured. Since the ws-effects rewrite shipped, the server serves **all four domains** (FX, Credit, Admin, Equities); the old equities gap is closed ([§7](#equities-over-the-wire-gap-closed)).
+> **One thing this diagram does not show** (detailed in [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when)): these same simulators also run **in the browser / on the device** in simulator mode -- the server is only in the loop when a server URL is configured. Since the ws-effects rewrite shipped, the server serves **all four domains** (FX, Credit, Admin, Equities); the old equities gap is closed ([§7](07-communication-patterns.md#equities-over-the-wire-gap-closed)).
 
 ---
 

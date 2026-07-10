@@ -1,3 +1,5 @@
+[◀ 4. Sequence Diagrams](04-sequence-diagrams.md) · [Architecture Document](../architecture.md) · [6. Package Dependencies ▶](06-package-dependencies.md)
+
 ## 5. State Diagrams
 
 ### 5.1 Connection Status

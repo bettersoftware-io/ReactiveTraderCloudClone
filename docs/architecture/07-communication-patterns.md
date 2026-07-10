@@ -1,3 +1,5 @@
+[◀ 6. Package Dependencies](06-package-dependencies.md) · [Architecture Document](../architecture.md) · [8. Replaceability Matrix ▶](08-replaceability-matrix.md)
+
 ## 7. Communication Patterns
 
 ### WebSocket Message Format
@@ -124,13 +126,13 @@ flowchart LR
 
 A few ports are **always local**, even in Mode B: the telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) has no wire RPC, so `createWsRealPorts` instantiates those simulators in-process regardless of transport — mirroring how `preferences` is handled (injected per platform: localStorage on web, AsyncStorage on mobile). Note the deliberate split: the `admin` throughput port **is** WS-backed (`GET/SET_THROUGHPUT` RPC), while telemetry *sampling* uses its own local `ThroughputSimulator`. Everything else in Mode B is served over the wire.
 
-> The per-tick sequence (subscribe → stream, and RPC with correlation) is the same in both modes — see [§4.1 FX Price Streaming](#41-fx-price-streaming) and [§4.2 FX Trade Execution](#42-fx-trade-execution-rpc), whose `alt` branches already show the mock-vs-real split.
+> The per-tick sequence (subscribe → stream, and RPC with correlation) is the same in both modes — see [§4.1 FX Price Streaming](04-sequence-diagrams.md#41-fx-price-streaming) and [§4.2 FX Trade Execution](04-sequence-diagrams.md#42-fx-trade-execution-rpc), whose `alt` branches already show the mock-vs-real split.
 
 ### Animated: The Life of a Price Tick
 
 The same story as an animation (committed SVG — GitHub plays SMIL animations in markdown-embedded images, so this renders as a small looping film right here; open the raw file if your viewer shows it static):
 
-![Animated diagram of a price tick flowing through Mode B (server, effect, WebSocket wire, WsAdapter) and Mode A (in-browser simulator) into the shared port → use case → presenter → ViewModel → tile pipeline](architecture/tick-journey.svg)
+![Animated diagram of a price tick flowing through Mode B (server, effect, WebSocket wire, WsAdapter) and Mode A (in-browser simulator) into the shared port → use case → presenter → ViewModel → tile pipeline](tick-journey.svg)
 
 Watch for the two dots: the amber one (Mode B) crosses the WebSocket wire; the green one (Mode A) goes straight from the in-process simulator to the port. From `PricingPort` onward there is only one blue path — that single path is why the UI, the behavioural tests, and the presenters can never tell the modes apart.
 
@@ -138,7 +140,7 @@ Watch for the two dots: the amber one (Mode B) crosses the WebSocket wire; the g
 
 The server's dispatch used to be an imperative `switch` in `wsHandler.ts`. That file is gone. Dispatch is now a small, declarative, RxJS-native **effects micro-framework** in its own package, `@rtc/ws-effects` (~220 LOC of production source, `rxjs` only, zero domain knowledge), with `@rtc/server` a thin app of 24 effects on top — each a stream transform `(in$, ctx) => out$`.
 
-This realises the "any framework should be replaceable by changing only its package" principle from [§1.2](#12-architectural-principles): the transport-dispatch framework is a genuine, swappable package with the app on top of it.
+This realises the "any framework should be replaceable by changing only its package" principle from [§1.2](01-overview.md#12-architectural-principles): the transport-dispatch framework is a genuine, swappable package with the app on top of it.
 
 ```mermaid
 flowchart TD
@@ -162,7 +164,7 @@ flowchart LR
     L1 --> L2 --> L3 --> L4
 ```
 
-The wire protocol survived the rewrite unchanged (same `{ type, payload, correlationId }` envelope and message names); the duplicated protocol constants were consolidated into `@rtc/shared` (`packages/shared/src/protocol/messages.ts` — the single `CLIENT_MSG`/`SERVER_MSG` source of truth for both ends). Full design: [`docs/superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md`](superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md).
+The wire protocol survived the rewrite unchanged (same `{ type, payload, correlationId }` envelope and message names); the duplicated protocol constants were consolidated into `@rtc/shared` (`packages/shared/src/protocol/messages.ts` — the single `CLIENT_MSG`/`SERVER_MSG` source of truth for both ends). Full design: [`docs/superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md`](../superpowers/specs/2026-07-02-ws-effects-declarative-server-design.md).
 
 > **Historical note.** `@rtc/server` was originally scaffolded with `@marblejs/*` + `fp-ts` dependencies (hence old "Marble.js" mentions), but they were **never imported** and were removed by the knip dead-code gate. `@rtc/ws-effects` is a from-scratch homage to the marblejs *pattern* — declarative RxJS effects — without the unmaintained dependency and its transitive vulnerable `ws`.
 
@@ -177,7 +179,7 @@ Earlier revisions of this document described an **equities coverage gap**: the p
 | Candles | rpc `GET_CANDLES` → `CANDLES_RESPONSE` | `createMarketDataPort(ws).candles()` |
 | Depth ladder | `SUBSCRIBE_DEPTH` → `DEPTH` | `createMarketDataPort(ws).depth()` |
 | Orders blotter | `SUBSCRIBE_ORDERS` → `ORDERS` | `createOrderPort(ws).orders()` |
-| Place order | rpc `PLACE_ORDER` → ack **+** `ORDER_LIFECYCLE` stream | `createOrderPort(ws).place()` ([§4.4](#44-equities-order-lifecycle)) |
+| Place order | rpc `PLACE_ORDER` → ack **+** `ORDER_LIFECYCLE` stream | `createOrderPort(ws).place()` ([§4.4](04-sequence-diagrams.md#44-equities-order-lifecycle)) |
 | Cancel order | rpc `CANCEL_ORDER` → `CANCEL_ORDER_RESPONSE` | `createOrderPort(ws).cancel()` |
 | Positions | `SUBSCRIBE_POSITIONS` → `POSITIONS` | `createPositionPort(ws).positions()` |
 

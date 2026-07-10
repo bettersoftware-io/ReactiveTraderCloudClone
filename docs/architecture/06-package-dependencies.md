@@ -1,3 +1,5 @@
+[◀ 5. State Diagrams](05-state-diagrams.md) · [Architecture Document](../architecture.md) · [7. Communication Patterns ▶](07-communication-patterns.md)
+
 ## 6. Package Dependencies
 
 Nine workspace packages plus the `tests` package. Every arrow is a real `dependencies` entry; dependencies flow **inward only** (toward `domain`).
@@ -76,7 +78,7 @@ graph TB
 
 **Build order** (Turborepo topological): `domain` → `shared` | `ws-effects` → `client-core` → `react-bindings` → `client-react` | `client-react-native` | `server` (prototype builds independently).
 
-> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`. See [dependency-cruiser.md](./dependency-cruiser.md) for the rule-by-rule breakdown.
+> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`. See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
 
 > **History**: the Application Layer originally lived inside `@rtc/client-react` (the doc's earlier revisions called this out as a possible future extraction). The React Native workstream forced the question, and the extraction happened: `@rtc/client-core` + `@rtc/react-bindings` are that promotion, executed without breaking UI consumers -- exactly because components only ever imported the hook bridge.
 

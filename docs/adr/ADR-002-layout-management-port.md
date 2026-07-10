@@ -17,7 +17,7 @@ support. Our clone currently renders a fixed tab/grid shell
 that with a real layout/panel/window-management system **and** to keep that
 system fully decoupled from the application — a swappable "plugin", in the same
 spirit as every other outer-layer technology here (see
-[architecture.md §8 Replaceability Matrix](../architecture.md#8-replaceability-matrix)).
+[architecture.md §8 Replaceability Matrix](../architecture/08-replaceability-matrix.md#8-replaceability-matrix)).
 
 Two goals, explicitly:
 
@@ -71,7 +71,7 @@ floating groups and pop-out windows. It is a *choice*, not a *commitment*.
 ### The honest tension — this is harder than a transport port
 
 The repo's **"Don't Over-Abstract"** principle
-([architecture.md §1.2](../architecture.md#12-architectural-principles)) applies
+([architecture.md §1.2](../architecture/01-overview.md#12-architectural-principles)) applies
 with force here. A WebSocket is trivial to wrap; a layout engine is not, because
 a layout engine is a **rendering concern tightly coupled to the view framework**
 — it owns *where and how* panels mount, not just data that flows through. Wrapping
@@ -127,7 +127,7 @@ interface LayoutPort {
 - **`changes()` returns an `Observable`** to stay consistent with the repo's
   single boundary stream type — but note the UI-layer rule still holds: the shell
   consumes it through a hook bridge, never importing `rxjs` directly
-  ([architecture.md §1.3](../architecture.md#13-layered-architecture--terminology)).
+  ([architecture.md §1.3](../architecture/01-overview.md#13-layered-architecture--terminology)).
 
 ### The portability trap to avoid
 
@@ -196,7 +196,7 @@ build-block table and the Flex prior-art sidebar are in the
 
 - **`LayoutPort` contract tests**, parameterised over every adapter (Dockview,
   future Golden/free-float) — the same mechanism as the transport
-  [port contract tests](../architecture.md#94-port-contract-tests). This is what
+  [port contract tests](../architecture/09-test-strategy.md#94-port-contract-tests). This is what
   makes "swap the layout engine" low-cost: the contract is encoded and all
   adapters must pass it.
 - **Visual goldens** ([ADR-001](../../packages/client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md))
@@ -238,6 +238,6 @@ build-block table and the Flex prior-art sidebar are in the
 - **Full solution catalogue (all libraries + licences + external links):**
   [research/2026-06-22-layout-management-landscape.md](../research/2026-06-22-layout-management-landscape.md)
 - Repo cross-refs:
-  [architecture.md §1.2 principles](../architecture.md#12-architectural-principles),
-  [§8 Replaceability Matrix](../architecture.md#8-replaceability-matrix),
+  [architecture.md §1.2 principles](../architecture/01-overview.md#12-architectural-principles),
+  [§8 Replaceability Matrix](../architecture/08-replaceability-matrix.md#8-replaceability-matrix),
   [ADR-001 visual-diff tooling](../../packages/client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md)

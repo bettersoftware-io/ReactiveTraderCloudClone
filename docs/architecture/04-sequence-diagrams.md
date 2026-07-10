@@ -1,3 +1,5 @@
+[◀ 3. UML Class Diagrams](03-uml-class-diagrams.md) · [Architecture Document](../architecture.md) · [5. State Diagrams ▶](05-state-diagrams.md)
+
 ## 4. Sequence Diagrams
 
 ### 4.1 FX Price Streaming

@@ -165,7 +165,7 @@ the calculus on a revisit:
   without a per-instance machine object held in a ref.
 - Revisiting whether the per-instance machine lifetime can move to the
   composition root (it currently cannot without losing per-mount isolation —
-  see [§3.6 The ViewModel Seam](../architecture.md#36-the-viewmodel-seam)).
+  see [§3.6 The ViewModel Seam](../architecture/03-uml-class-diagrams.md#36-the-viewmodel-seam)).
 
 Until then: the exception stays scoped to those two files, with `refs` active
 everywhere else.

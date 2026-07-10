@@ -1,3 +1,5 @@
+[◀ 11. Key Files Reference](11-key-files-reference.md) · [Architecture Document](../architecture.md)
+
 ## 12. Architectural Gates
 
 `tests/scripts/grep-gates.ts` encodes 28 import-boundary rules plus a supply-chain audit (29 gates total), enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
@@ -34,4 +36,4 @@
 | 28 | No `fetch(` / `import.meta.env` in `client-react/src/ui` (transport & config belong in the app layer) |
 | 29 | No `setTimeout` / `setInterval` in `client-react/src/ui` (time belongs in machines/presenters; custom check) |
 
-Gates 26–29 are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. They are what keeps the SolidJS-port contract ([§8.1](#81-the-multi-client-proof--the-solidjs-plan)) valid without anyone watching.
+Gates 26–29 are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. They are what keeps the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)) valid without anyone watching.

@@ -13,7 +13,7 @@
 > The `Presenters` input type moved with the application-core extraction to
 > `packages/client-core/src/composition.ts`. Path references below are the ADR's
 > point-in-time record; the live description is
-> [architecture.md §3.6](../architecture.md#36-the-viewmodel-seam).
+> [architecture.md §3.6](../architecture/03-uml-class-diagrams.md#36-the-viewmodel-seam).
 
 > Sibling decision records. ADR-001 lives co-located with its concern at
 > `packages/client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md`;

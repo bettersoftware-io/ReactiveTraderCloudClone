@@ -1,3 +1,5 @@
+[◀ 10. Key Design Decisions](10-key-design-decisions.md) · [Architecture Document](../architecture.md) · [12. Architectural Gates ▶](12-architectural-gates.md)
+
 ## 11. Key Files Reference
 
 | Area | Path | Description |

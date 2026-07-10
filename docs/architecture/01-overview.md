@@ -1,3 +1,5 @@
+[Architecture Document](../architecture.md) · [2. C4 Model ▶](02-c4-model.md)
+
 ## 1. Overview
 
 ### 1.1 Purpose
@@ -6,11 +8,11 @@
 
 The codebase is organised so that any single technology -- React, RxJS, react-rxjs, Vite, the WebSocket transport, Vitest, Playwright -- can be replaced with another by changing only its layer. The rest of the system, and the behavioural test suite, continue to work unchanged.
 
-That claim is no longer hypothetical. The same application core (`@rtc/client-core`) today drives **two shipping UIs** -- a React 19 web client and an Expo/React Native mobile client -- and is designed to drive a third (SolidJS, planned) by adding one bindings package and one UI package. See [§8.1](#81-the-multi-client-proof--the-solidjs-plan).
+That claim is no longer hypothetical. The same application core (`@rtc/client-core`) today drives **two shipping UIs** -- a React 19 web client and an Expo/React Native mobile client -- and is designed to drive a third (SolidJS, planned) by adding one bindings package and one UI package. See [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan).
 
-![Animated overview: a price tick travelling from either data source through the shared port, use case, presenter and bindings layers into a UI tile](architecture/tick-journey.svg)
+![Animated overview: a price tick travelling from either data source through the shared port, use case, presenter and bindings layers into a UI tile](tick-journey.svg)
 
-*Animated overview (renders live on GitHub): the two runtime modes feed the same `PricingPort`; everything from the port to the pixel is shared. Details in [§7 Runtime Topology](#runtime-topology-what-runs-when).*
+*Animated overview (renders live on GitHub): the two runtime modes feed the same `PricingPort`; everything from the port to the pixel is shared. Details in [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when).*
 
 ### 1.2 Architectural Principles
 
@@ -20,7 +22,7 @@ These rules override individual technology choices.
 
 **2. The Dependency Rule** ([Uncle Bob, Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)). Source-code dependencies point only inward. Inner circles know nothing about outer circles. Entities know nothing about use cases; use cases know nothing about presenters; presenters know nothing about UI frameworks.
 
-**3. Dumb UI.** The UI layer renders state and emits intents. It contains no business logic, no transport awareness, and no orchestration. A complete UI rewrite from React to SolidJS (or anything else) should be tractable, given the ViewModel contract and a behavioural test suite. (The React Native client is the existence proof: same core, new leaves — [§8.1](#81-the-multi-client-proof--the-solidjs-plan).)
+**3. Dumb UI.** The UI layer renders state and emits intents. It contains no business logic, no transport awareness, and no orchestration. A complete UI rewrite from React to SolidJS (or anything else) should be tractable, given the ViewModel contract and a behavioural test suite. (The React Native client is the existence proof: same core, new leaves — [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan).)
 
 **4. Behavioural Tests as Insurance.** Tests describe *what* the system does, not *how*. They do not import React, RxJS, or Playwright internals; framework-specific glue lives in step definitions and page objects. Behavioural specs survive technology swaps and are the contract that makes a swap safe.
 
@@ -37,7 +39,7 @@ Two terms commonly conflated -- "client" and "UI" -- mean different things here.
 | **Client** | Everything that runs on the user's device -- the whole bundle/app. **Includes** the application core, the bindings bridge, *and* the UI layer. There are two shipping clients (web React, mobile React Native) plus a planned SolidJS one. |
 | **Application Core** | `@rtc/client-core` -- composition root, presenters, state machines, and port adapters (WS transport + simulator assembly). Vanilla TS + RxJS + `@rx-state/core`. **Zero framework imports** -- no React, no DOM, no React Native. Shared verbatim by every client. |
 | **Bindings** | `@rtc/react-bindings` -- the one package that knows both worlds. Maps `Observable<T>` state to framework-native reactivity: `createViewModel` (react-rxjs `bind()` for shared streams, `useMachine` for per-mount machines, `firstValueFrom` for one-shot commands). A future SolidJS client gets a sibling `@rtc/solid-bindings`. |
-| **UI Layer** | Dumb components only. Web: React 19 + CSS Modules in `@rtc/client-react/src/ui`. Mobile: React Native + `react-native-svg` in `@rtc/client-react-native/src/ui`. Consumes the core exclusively through the [ViewModel seam](#36-the-viewmodel-seam) (`useViewModel()`); **never imports `rxjs`** (machine-enforced, gate 26). |
+| **UI Layer** | Dumb components only. Web: React 19 + CSS Modules in `@rtc/client-react/src/ui`. Mobile: React Native + `react-native-svg` in `@rtc/client-react-native/src/ui`. Consumes the core exclusively through the [ViewModel seam](03-uml-class-diagrams.md#36-the-viewmodel-seam) (`useViewModel()`); **never imports `rxjs`** (machine-enforced, gate 26). |
 | **Platform Adapters** | The thin per-client leaves: web has `LocalStoragePreferencesAdapter` / `MediaQueryColorSchemeAdapter` / `buildBrowserPorts`; mobile has `AsyncStoragePreferencesAdapter` / `AppearanceColorSchemeAdapter` / `buildNativePorts`. Everything else is shared. |
 
 Note: **"no RxJS on the UI side" is not the same as "no RxJS on the client side"**. RxJS is the boundary stream type for ports and use cases (in `@rtc/domain`) and is the implementation language of `@rtc/client-core`. It is forbidden in the UI layer of both clients.
@@ -80,11 +82,11 @@ The arrows are source-code dependencies. The UI imports `useViewModel` but has n
 
 Clean Architecture draws the system as **concentric rings**. The one rule that makes it work is the **Dependency Rule: source code may only point *inward***. An outer ring can name and use an inner ring; an inner ring must not even know an outer ring exists. The centre holds the things least likely to change (what a *Trade* or a *Price* fundamentally is); the outer edge holds the things most likely to change (React, the WebSocket, the build tool). Put the volatile stuff on the outside so churn there never forces a change in the stable core.
 
-A useful mental image: the **business truth is the yolk**, and each shell around it is a *replaceable detail*. You could throw away React and keep every inner shell intact -- which is exactly what the React Native client proves ([§8.1](#81-the-multi-client-proof--the-solidjs-plan)).
+A useful mental image: the **business truth is the yolk**, and each shell around it is a *replaceable detail*. You could throw away React and keep every inner shell intact -- which is exactly what the React Native client proves ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)).
 
-The trick that lets **data flow outward while every code arrow points inward** is a *port*: an interface **declared** in an inner ring and **implemented** in an outer one (dependency inversion). `PricingPort` is declared next to the use cases; `WsAdapter` and the simulators implement it further out. The use case depends on the *interface* (inward); at runtime a concrete adapter is plugged in from outside. In this repo that rule isn't a guideline -- it is **machine-enforced** by dependency-cruiser (`domain-stays-pure`, `ws-effects-stays-pure`, ...; see [dependency-cruiser.md](dependency-cruiser.md)) and by the grep gates that ban `rxjs` in the UI.
+The trick that lets **data flow outward while every code arrow points inward** is a *port*: an interface **declared** in an inner ring and **implemented** in an outer one (dependency inversion). `PricingPort` is declared next to the use cases; `WsAdapter` and the simulators implement it further out. The use case depends on the *interface* (inward); at runtime a concrete adapter is plugged in from outside. In this repo that rule isn't a guideline -- it is **machine-enforced** by dependency-cruiser (`domain-stays-pure`, `ws-effects-stays-pure`, ...; see [dependency-cruiser.md](../dependency-cruiser.md)) and by the grep gates that ban `rxjs` in the UI.
 
-![Clean Architecture rings with this repo's packages placed in each ring; an arrow marks the Dependency Rule pointing inward](architecture/clean-architecture-rings.svg)
+![Clean Architecture rings with this repo's packages placed in each ring; an arrow marks the Dependency Rule pointing inward](clean-architecture-rings.svg)
 
 The same containment, drawn inline (nested boxes = rings):
 
@@ -119,7 +121,7 @@ flowchart TB
   style FW fill:none,stroke:#e3b341
 ```
 
-**The rings aren't a convention you have to remember -- they're compiled.** Every green arrow below is an *allowed* import; every red crossing is a layer violation that fails CI. This is the same package graph as the onion, flattened and annotated with the seven `.dependency-cruiser.cjs` rules that enforce it (full table in [dependency-cruiser.md](dependency-cruiser.md)); ring colors match the onion exactly.
+**The rings aren't a convention you have to remember -- they're compiled.** Every green arrow below is an *allowed* import; every red crossing is a layer violation that fails CI. This is the same package graph as the onion, flattened and annotated with the seven `.dependency-cruiser.cjs` rules that enforce it (full table in [dependency-cruiser.md](../dependency-cruiser.md)); ring colors match the onion exactly.
 
 ```mermaid
 flowchart LR
@@ -197,7 +199,7 @@ The exact mapping, ring by ring:
 >
 > **Two subtleties worth internalizing:**
 > - **Ports live with the use cases; adapters live outside.** `PricingPort` (②) is *declared* beside the use cases; `WsAdapter` and `PricingSimulator` (③) *implement* it. That inversion is what lets the arrow point inward while data flows out.
-> - **Simulators are ring ③, not test doubles.** They are real in-memory gateways implementing the same ports as the WebSocket adapters, selected at the composition root -- production code, not mocks ([§10](#10-key-design-decisions)).
+> - **Simulators are ring ③, not test doubles.** They are real in-memory gateways implementing the same ports as the WebSocket adapters, selected at the composition root -- production code, not mocks ([§10](10-key-design-decisions.md#10-key-design-decisions)).
 
 ##### Entities vs Use Cases -- and why there is no "web use case"
 
@@ -224,11 +226,11 @@ And the whole thing in one concrete trace -- follow a single price tick across a
 
 > A price update arrives on the **WebSocket (④)** → `WsAdapter` / `PricingSimulator` **(③ gateway)** turns the raw frame into a domain `PriceTick` and satisfies **`PricingPort` (②)** → `PriceStreamUseCase` **(②)** enriches it (`detectMovement`, spread) into a `Price` **entity (①)** → `PriceStreamPresenter` **(③)** multicasts it as `price$` → `createViewModel`'s `usePrice(pair)` **(③ ViewModel)** hands it to the **React `Tile` (④)** to paint.
 >
-> Notice the two directions: **control** flows outward-in-and-back-out (④→③→②→①→③→④), but every **source-code import** along that path still points inward. The only place the direction "reverses" is at `PricingPort` -- the port that inverts the dependency. (This is the same journey the [animated tick diagram](#animated-the-life-of-a-price-tick) shows in motion.)
+> Notice the two directions: **control** flows outward-in-and-back-out (④→③→②→①→③→④), but every **source-code import** along that path still points inward. The only place the direction "reverses" is at `PricingPort` -- the port that inverts the dependency. (This is the same journey the [animated tick diagram](07-communication-patterns.md#animated-the-life-of-a-price-tick) shows in motion.)
 
 ### 1.4 Technology Choices
 
-The current stack is a snapshot, not a commitment. Each row says what role is being played and what's playing it today. Cost-of-replacement is detailed in [§8 Replaceability Matrix](#8-replaceability-matrix).
+The current stack is a snapshot, not a commitment. Each row says what role is being played and what's playing it today. Cost-of-replacement is detailed in [§8 Replaceability Matrix](08-replaceability-matrix.md#8-replaceability-matrix).
 
 | Role | Currently | Allowed inside the layer? |
 |---|---|---|
@@ -238,7 +240,7 @@ The current stack is a snapshot, not a commitment. Each row says what role is be
 | UI ↔ stream bridge | `@rtc/react-bindings` (react-rxjs `bind` + hand-written `useMachine`) | The bridge package only; the sole place React and RxJS meet |
 | Web UI rendering | React 19 + CSS Modules | React; **no `rxjs` import** (gate 26) |
 | Mobile UI rendering | React Native 0.86 / Expo SDK 57 + `react-native-svg` | React Native; same no-`rxjs` rule |
-| UI memoization (web) | React Compiler (build-time) | No manual `useMemo`/`useCallback`; see [ADR-003](adr/ADR-003-react-compiler-and-manual-memoization.md) |
+| UI memoization (web) | React Compiler (build-time) | No manual `useMemo`/`useCallback`; see [ADR-003](../adr/ADR-003-react-compiler-and-manual-memoization.md) |
 | Build tooling | Vite (web) · Metro/Expo (mobile) | -- |
 | Server dispatch framework | `@rtc/ws-effects` (declarative RxJS effects) | rxjs only; zero domain knowledge |
 | Server host | Node.js + `ws` + native `http` | -- |

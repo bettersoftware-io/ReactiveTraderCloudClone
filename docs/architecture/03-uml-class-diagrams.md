@@ -1,3 +1,5 @@
+[◀ 2. C4 Model](02-c4-model.md) · [Architecture Document](../architecture.md) · [4. Sequence Diagrams ▶](04-sequence-diagrams.md)
+
 ## 3. UML Class Diagrams
 
 ### 3.1 FX Domain Entities
@@ -189,7 +191,7 @@ classDiagram
 
 ### 3.3 Ports & Adapters (Hexagonal Architecture)
 
-All ports use RxJS `Observable<T>` -- streaming feeds and one-shot ops alike. RxJS is the single explicit dependency exception in `@rtc/domain` (see [§1.3](#13-layered-architecture--terminology)). No other framework types leak into the domain.
+All ports use RxJS `Observable<T>` -- streaming feeds and one-shot ops alike. RxJS is the single explicit dependency exception in `@rtc/domain` (see [§1.3](01-overview.md#13-layered-architecture--terminology)). No other framework types leak into the domain.
 
 The classic port surface is shown in three groups so each diagram renders at readable size (GitHub scales a diagram down to column width, so sibling count per row is the readability budget).
 
@@ -323,7 +325,7 @@ classDiagram
     ConnectionEventsPort <|.. BrowserConnectionEventsAdapter : implements
 ```
 
-> **`WsReal*` adapters are factory functions, not classes.** The boxes above (`WsRealPricingAdapter`, `WsRealExecutionAdapter`, ...) are drawn as classes for diagram symmetry, but the real-mode port implementations are produced by factory functions (`createPricingPort`, `createExecutionPort`, ...) in `packages/client-core/src/adapters/portFactory.ts`, each closing over a shared `WsAdapter`. The eight classic transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](#96-port-contract-test-layer)) are shown above; the port surface has since grown the families below.
+> **`WsReal*` adapters are factory functions, not classes.** The boxes above (`WsRealPricingAdapter`, `WsRealExecutionAdapter`, ...) are drawn as classes for diagram symmetry, but the real-mode port implementations are produced by factory functions (`createPricingPort`, `createExecutionPort`, ...) in `packages/client-core/src/adapters/portFactory.ts`, each closing over a shared `WsAdapter`. The eight classic transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](09-test-strategy.md#96-port-contract-test-layer)) are shown above; the port surface has since grown the families below.
 
 **Newer port families** (added by the Equities, HUD, and Admin/telemetry workstreams; same dependency-inversion rules), again in two readable groups.
 
@@ -403,7 +405,7 @@ classDiagram
     PreferencesPort <|.. AsyncStoragePreferencesAdapter : implements
 ```
 
-The telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) is simulator-only by design — it has no wire protocol and stays in-process even in WS mode (see [§7 Runtime Topology](#runtime-topology-what-runs-when)).
+The telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) is simulator-only by design — it has no wire protocol and stays in-process even in WS mode (see [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when)).
 
 **Adapter selection** is performed at the **Composition Root** (single startup point), not at render time. Each client has one switch file that builds the full `AppPorts` either way:
 - **Web** — `packages/client-react/src/app/buildBrowserPorts.ts` reads `VITE_SERVER_URL`: unset → `createSimulatorPorts()` (in-process, no transport); set → `new WsAdapter(buildWsUrl(url, token))` + `createWsRealPorts(ws, ...)`.
@@ -479,7 +481,7 @@ classDiagram
     ConnectionStatusUseCase --> ConnectionEventsPort
 ```
 
-The diagram shows the use cases that carry real orchestration or enrichment. The full set in `packages/domain/src/usecases/` also includes `PriceHistoryUseCase` (rolling buffer), `CurrencyPairsUseCase`, `InstrumentsUseCase`, `DealersUseCase`, and `RfqQuoteUseCase` — twelve in total. The remaining workflow commands (`accept`, `cancel`, `pass`, `quote`) carry no application logic, so they are **not** wrapped in use cases: `RfqsPresenter` calls `WorkflowPort.accept`/`cancelRfq`/`pass`/`quote` directly. This follows the "Don't Over-Abstract" principle ([§1.2](#12-architectural-principles)) — a use case is added only when there is logic to home.
+The diagram shows the use cases that carry real orchestration or enrichment. The full set in `packages/domain/src/usecases/` also includes `PriceHistoryUseCase` (rolling buffer), `CurrencyPairsUseCase`, `InstrumentsUseCase`, `DealersUseCase`, and `RfqQuoteUseCase` — twelve in total. The remaining workflow commands (`accept`, `cancel`, `pass`, `quote`) carry no application logic, so they are **not** wrapped in use cases: `RfqsPresenter` calls `WorkflowPort.accept`/`cancelRfq`/`pass`/`quote` directly. This follows the "Don't Over-Abstract" principle ([§1.2](01-overview.md#12-architectural-principles)) — a use case is added only when there is logic to home.
 
 **Boundary type**: `Observable<T>` everywhere. No React types, no DOM types. Commands (`executeTrade`, `createRfq`, `accept`, ...) emit once and complete; callers `firstValueFrom(...)` to await imperatively when needed.
 
@@ -571,13 +573,13 @@ classDiagram
 
 The diagram shows representative presenters. The full set in `packages/client-core/src/presenters/` also includes `PriceHistoryPresenter`, `CurrencyPairsPresenter`, `InstrumentsPresenter`, `DealersPresenter`, `TradeExecutionPresenter`, `RfqQuotePresenter`, the equities set (`WatchlistPresenter`, `CandleSeriesPresenter`, `OrdersBlotterPresenter`, `DepthPresenter`), the admin/telemetry set (`ThroughputMetricPresenter`, `LatencyPresenter`, `ErrorRatePresenter`, `ServiceTopologyPresenter`, `EventLogPresenter`, `SessionsPresenter`), and shell presenters (`SessionPresenter`, `AnimationDirector`, theme/boot/view preference presenters). **Command methods return `Observable<T>`, not `Promise<T>`** — they are one-shot streams. The UI no longer calls `firstValueFrom` itself: command hooks in the bindings (`useAcceptQuote`, `useCancelRfq`, ...) wrap it, so the UI layer imports **zero** RxJS symbols.
 
-**Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)), and this repo already uses it split into its two halves: `@rx-state/core` (framework-neutral, in `client-core`) + `@react-rxjs/core` (React-facing, in `react-bindings`). To swap React -> SolidJS, write a `@rtc/solid-bindings` that maps the same `StateObservable`s to Solid signals -- presenters and below are unchanged. UI components are rewritten -- but their contracts (the ViewModel hook signatures) are mirrored 1:1, and the behavioural spec suite verifies the rewrite. See [§8.1](#81-the-multi-client-proof--the-solidjs-plan).
+**Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)), and this repo already uses it split into its two halves: `@rx-state/core` (framework-neutral, in `client-core`) + `@react-rxjs/core` (React-facing, in `react-bindings`). To swap React -> SolidJS, write a `@rtc/solid-bindings` that maps the same `StateObservable`s to Solid signals -- presenters and below are unchanged. UI components are rewritten -- but their contracts (the ViewModel hook signatures) are mirrored 1:1, and the behavioural spec suite verifies the rewrite. See [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan).
 
-**Replacing RxJS itself** (for example with effect-ts): high-cost. RxJS is the boundary stream type, so swapping it touches every port, every simulator, every use case, and every presenter. The change is mechanical -- mostly `Observable<T>` → `Stream<T>` and operator-name remapping -- and behavioural tests at the UI level don't change, but it is no longer a single-layer rewrite. This is the cost paid in exchange for the simplicity of a single boundary stream type ([§8 Replaceability Matrix](#8-replaceability-matrix) tracks the trade-off).
+**Replacing RxJS itself** (for example with effect-ts): high-cost. RxJS is the boundary stream type, so swapping it touches every port, every simulator, every use case, and every presenter. The change is mechanical -- mostly `Observable<T>` → `Stream<T>` and operator-name remapping -- and behavioural tests at the UI level don't change, but it is no longer a single-layer rewrite. This is the cost paid in exchange for the simplicity of a single boundary stream type ([§8 Replaceability Matrix](08-replaceability-matrix.md#8-replaceability-matrix) tracks the trade-off).
 
 ### 3.6 The ViewModel Seam
 
-The UI's **only** doorway into the application core is the ViewModel seam ([ADR-004](adr/ADR-004-viewmodel-seam-and-feature-flags.md)). It is deliberately a single, flat dependency-injection surface: one interface, one context, one accessor.
+The UI's **only** doorway into the application core is the ViewModel seam ([ADR-004](../adr/ADR-004-viewmodel-seam-and-feature-flags.md)). It is deliberately a single, flat dependency-injection surface: one interface, one context, one accessor.
 
 ```mermaid
 flowchart TB

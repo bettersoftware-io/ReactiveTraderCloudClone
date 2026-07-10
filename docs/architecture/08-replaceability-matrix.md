@@ -1,3 +1,5 @@
+[◀ 7. Communication Patterns](07-communication-patterns.md) · [Architecture Document](../architecture.md) · [9. Test Strategy ▶](09-test-strategy.md)
+
 ## 8. Replaceability Matrix
 
 This is the load-bearing section: the architecture's value comes from the cost-of-change for each technology being bounded and well-understood.
@@ -25,7 +27,7 @@ This is the load-bearing section: the architecture's value comes from the cost-o
 
 The replaceability matrix used to be a theory. The React Native client turned it into a measurement: **adding an entire second platform required zero changes to `@rtc/domain`, `@rtc/shared`, `@rtc/client-core`, or `@rtc/react-bindings`** — only a new UI package with two platform adapters. The animation below cycles through the three clients; note what never moves.
 
-![Animated diagram cycling React web, React Native, and planned SolidJS clients above an unchanged client-core, domain and shared stack, joined by the ViewModel contract](architecture/framework-swap.svg)
+![Animated diagram cycling React web, React Native, and planned SolidJS clients above an unchanged client-core, domain and shared stack, joined by the ViewModel contract](framework-swap.svg)
 
 **Why the RN client was cheap** — the checklist of what it actually had to build:
 
