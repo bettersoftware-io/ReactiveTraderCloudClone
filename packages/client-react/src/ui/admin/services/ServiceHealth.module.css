@@ -71,10 +71,21 @@
 /* Continuous green→yellow→orange→red ramp driven by --health (0-100), mixed
  * from the existing status tokens (no new palette entries): health ≥50 blends
  * positive↔aware (the inner mix saturates to pure aware), health <50 blends
- * aware↔negative. Width + colour ease over 600ms so movement reads smooth. */
+ * aware↔negative.
+ *
+ * The bar eases over 600ms via a transform transition, NOT width: the
+ * telemetry walk retargets it every 1s, so a width transition would be a
+ * permanent ~60%-duty-cycle main-thread layout animation across every row
+ * (docs/performance.md T1). The inline transform is a literal scaleX — a
+ * scaleX(var(--x)) transition never composites (T5). `.track`'s
+ * overflow:hidden clipping makes scaleX pixel-identical to a width change.
+ * Colour steps instantly: consecutive health values are near-identical, so
+ * the 600ms colour ease was imperceptible while forcing per-frame paints. */
 .fill {
-  width: var(--bar-pct);
+  width: 100%;
   height: 100%;
+  transform-origin: left;
+  will-change: transform;
   background: color-mix(
     in srgb,
     var(--accent-positive) clamp(0%, (var(--health, 100) - 50) * 2%, 100%),
@@ -84,9 +95,7 @@
       var(--accent-negative)
     )
   );
-  transition:
-    width 600ms ease,
-    background-color 600ms ease;
+  transition: transform 600ms ease;
 }
 
 .lat {

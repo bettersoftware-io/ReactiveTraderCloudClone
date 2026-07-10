@@ -5,8 +5,8 @@ import type { ServiceRowVm } from "./servicesVm";
 import styles from "./ServiceHealth.module.css";
 
 /**
- * One service-health row — status dot, name, health bar (--bar-pct width,
- * --health colour ramp), latency, and uptime. Dot/status colours live on
+ * One service-health row — status dot, name, health bar (literal scaleX
+ * geometry, --health colour ramp), latency, and uptime. Dot/status colours live on
  * data-status; the bar's fill blends continuously green→yellow→orange→red as
  * --health falls, all in CSS. Ported from PROTO Services/ServiceRow.tsx,
  * generalised to a real "down" status (the prototype only modelled
@@ -22,9 +22,9 @@ export function ServiceRow({ row }: ServiceRowProps): ReactElement {
         <span
           className={styles.fill}
           style={
-            // eslint-disable-next-line no-restricted-syntax -- runtime health-bar width + colour ramp via CSS custom properties; static CSS can't express per-row values
+            // eslint-disable-next-line no-restricted-syntax -- runtime health-bar geometry + colour ramp; the scaleX must be a literal (scaleX(var(--x)) transitions never composite — docs/performance.md T5)
             {
-              "--bar-pct": `${row.barPct}%`,
+              transform: `scaleX(${row.barPct / 100})`,
               "--health": String(row.health),
             } as CSSProperties
           }
