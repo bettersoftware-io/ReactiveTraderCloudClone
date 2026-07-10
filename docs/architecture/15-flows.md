@@ -29,6 +29,11 @@ flowchart TB
         d1["Adapter emits"]:::domain --> d2["Use Case enriches"]:::domain --> d3["Presenter multicasts"]:::core --> d4["Hook re-renders UI"]:::bridge
     end
 
+    %% Edge-less subgraphs tile HORIZONTALLY; these invisible links force the
+    %% three lanes to stack vertically (GitHub scales diagrams to column width,
+    %% so width — not height — is the readability budget).
+    imports ~~~ control ~~~ data
+
     classDef ui     fill:#1f6feb,stroke:#79c0ff,color:#ffffff
     classDef bridge fill:#8957e5,stroke:#d2a8ff,color:#ffffff
     classDef core   fill:#238636,stroke:#56d364,color:#ffffff
