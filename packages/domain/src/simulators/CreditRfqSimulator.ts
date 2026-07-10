@@ -155,7 +155,10 @@ export class CreditRfqSimulator implements WorkflowPort {
 
         for (const qId of quoteIds) {
           const q = this.quotes.get(qId);
-          if (q) snapshot.push({ type: "quoteCreated", payload: q });
+
+          if (q) {
+            snapshot.push({ type: "quoteCreated", payload: q });
+          }
         }
       }
 
@@ -188,7 +191,10 @@ export class CreditRfqSimulator implements WorkflowPort {
         const dealer = this.dealers.find((d) => {
           return d.id === dealerId;
         });
-        if (!dealer) continue;
+
+        if (!dealer) {
+          continue;
+        }
 
         const quoteId = this.nextQuoteId++;
         const quote: Quote = {
@@ -200,8 +206,11 @@ export class CreditRfqSimulator implements WorkflowPort {
 
         this.quotes.set(quoteId, quote);
         const rfqQuoteList = this.rfqQuotes.get(rfqId);
-        if (!rfqQuoteList)
+
+        if (!rfqQuoteList) {
           throw new Error(`Internal: no quote list for rfqId ${rfqId}`);
+        }
+
         rfqQuoteList.push(quoteId);
         this.events$.next({ type: "quoteCreated", payload: quote });
 
@@ -218,7 +227,11 @@ export class CreditRfqSimulator implements WorkflowPort {
   private scheduleExpiry(rfqId: number, expirySecs: number): void {
     const timeout = setTimeout(() => {
       const rfq = this.rfqs.get(rfqId);
-      if (!rfq || rfq.state !== RfqState.Open) return;
+
+      if (!rfq || rfq.state !== RfqState.Open) {
+        return;
+      }
+
       const expired: Rfq = { ...rfq, state: RfqState.Expired };
       this.rfqs.set(rfqId, expired);
       this.events$.next({ type: "rfqClosed", payload: expired });
@@ -232,14 +245,19 @@ export class CreditRfqSimulator implements WorkflowPort {
     _dealer: Dealer,
   ): void {
     // 70% participation rate
-    if (Math.random() <= PARTICIPATION_THRESHOLD) return;
+    if (Math.random() <= PARTICIPATION_THRESHOLD) {
+      return;
+    }
 
     const responseDelay = Math.random() * DEALER_RESPONSE_WINDOW_MS;
 
     const timeout = setTimeout(() => {
       try {
         const rfq = this.rfqs.get(rfqId);
-        if (!rfq || rfq.state !== RfqState.Open) return;
+
+        if (!rfq || rfq.state !== RfqState.Open) {
+          return;
+        }
 
         const priceChange = Math.floor(Math.random() * MAX_PRICE_CHANGE);
         const direction = Math.random() > 0.5 ? 1 : -1;
@@ -257,7 +275,10 @@ export class CreditRfqSimulator implements WorkflowPort {
   cancelRfq(rfqId: number): Observable<void> {
     return defer(() => {
       const rfq = this.rfqs.get(rfqId);
-      if (!rfq || rfq.state !== RfqState.Open) return of(undefined);
+
+      if (!rfq || rfq.state !== RfqState.Open) {
+        return of(undefined);
+      }
 
       const updated: Rfq = { ...rfq, state: RfqState.Cancelled };
       this.rfqs.set(rfqId, updated);
@@ -275,10 +296,16 @@ export class CreditRfqSimulator implements WorkflowPort {
 
   private applyQuote(request: QuoteRequest): void {
     const quote = this.quotes.get(request.quoteId);
-    if (!quote) return;
+
+    if (!quote) {
+      return;
+    }
 
     const rfq = this.rfqs.get(quote.rfqId);
-    if (!rfq || rfq.state !== RfqState.Open) return;
+
+    if (!rfq || rfq.state !== RfqState.Open) {
+      return;
+    }
 
     const updated: Quote = {
       ...quote,
@@ -291,7 +318,10 @@ export class CreditRfqSimulator implements WorkflowPort {
   pass(quoteId: number): Observable<void> {
     return defer(() => {
       const quote = this.quotes.get(quoteId);
-      if (!quote) return of(undefined);
+
+      if (!quote) {
+        return of(undefined);
+      }
 
       const updated: Quote = { ...quote, state: { type: "passed" } };
       this.quotes.set(quoteId, updated);
@@ -303,7 +333,10 @@ export class CreditRfqSimulator implements WorkflowPort {
   accept(quoteId: number): Observable<void> {
     return defer(() => {
       const quote = this.quotes.get(quoteId);
-      if (quote?.state.type !== "pendingWithPrice") return of(undefined);
+
+      if (quote?.state.type !== "pendingWithPrice") {
+        return of(undefined);
+      }
 
       const price = quote.state.price;
 
@@ -319,9 +352,15 @@ export class CreditRfqSimulator implements WorkflowPort {
       const quoteIds = this.rfqQuotes.get(quote.rfqId) ?? [];
 
       for (const otherId of quoteIds) {
-        if (otherId === quoteId) continue;
+        if (otherId === quoteId) {
+          continue;
+        }
+
         const other = this.quotes.get(otherId);
-        if (!other) continue;
+
+        if (!other) {
+          continue;
+        }
 
         let rejectedState: QuoteState | null = null;
 

@@ -78,14 +78,26 @@ interface WatchlistRowProps {
 type MovementSign = "up" | "down" | "flat";
 
 function movementSign(movement: PriceMovementType): MovementSign {
-  if (movement === PriceMovementType.UP) return "up";
-  if (movement === PriceMovementType.DOWN) return "down";
+  if (movement === PriceMovementType.UP) {
+    return "up";
+  }
+
+  if (movement === PriceMovementType.DOWN) {
+    return "down";
+  }
+
   return "flat";
 }
 
 function movementArrow(sign: MovementSign): string {
-  if (sign === "up") return "▲";
-  if (sign === "down") return "▼";
+  if (sign === "up") {
+    return "▲";
+  }
+
+  if (sign === "down") {
+    return "▼";
+  }
+
   return "–";
 }
 
@@ -135,7 +147,10 @@ function Sparkline({ history, sign }: SparklineProps): ReactElement {
 
 function buildTrendPoints(history: readonly PriceTick[]): string {
   const shown = history.slice(-TREND_POINTS_SHOWN);
-  if (shown.length < 2) return "";
+
+  if (shown.length < 2) {
+    return "";
+  }
 
   // Normalize over the FULL history buffer (like the prototype's histRange
   // and TileChart's buildPath), then plot only the sliced last-12 ticks —

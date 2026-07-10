@@ -39,13 +39,27 @@ function resizeAt(
   path: readonly number[],
   sizes: readonly number[],
 ): LayoutNode {
-  if (node.kind !== "split") return node;
-  if (path.length === 0) return { ...node, sizes, initialPx: undefined };
+  if (node.kind !== "split") {
+    return node;
+  }
+
+  if (path.length === 0) {
+    return { ...node, sizes, initialPx: undefined };
+  }
+
   const [head, ...rest] = path;
-  if (head < 0 || head >= node.children.length) return node;
+
+  if (head < 0 || head >= node.children.length) {
+    return node;
+  }
+
   const child = node.children[head];
   const nextChild = resizeAt(child, rest, sizes);
-  if (nextChild === child) return node;
+
+  if (nextChild === child) {
+    return node;
+  }
+
   const children = node.children.map((c, i) => {
     return i === head ? nextChild : c;
   });

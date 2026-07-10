@@ -41,7 +41,11 @@ describe("OrderTicketMachine", () => {
     m.intents.submit();
     const s = peek(m.state$);
     expect(s.phase).toBe("editing");
-    if (s.phase === "editing") expect(s.error).toMatch(/quantity/i);
+
+    if (s.phase === "editing") {
+      expect(s.error).toMatch(/quantity/i);
+    }
+
     m.dispose();
   });
 
@@ -86,6 +90,10 @@ describe("OrderTicketMachine", () => {
 /** Unwrap current value; throws if the machine is not warm (StatePromise). */
 function peek<T>(obs: StateObservable<T>): T {
   const v = obs.getValue();
-  if (v instanceof Promise) throw new Error("state$ not initialized");
+
+  if (v instanceof Promise) {
+    throw new Error("state$ not initialized");
+  }
+
   return v;
 }

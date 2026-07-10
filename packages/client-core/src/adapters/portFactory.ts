@@ -219,7 +219,10 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
             const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, {
               symbol,
             })) as RpcResponse<PriceHistoryDto>;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to get price history"));
@@ -227,11 +230,17 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
             }
 
             const prices = resp.payload;
-            if (!prices) throw new Error("ack response missing payload");
+
+            if (!prices) {
+              throw new Error("ack response missing payload");
+            }
+
             subscriber.next(prices.prices);
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -254,7 +263,10 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
             const resp = (await ws.rpc(CLIENT_MSG.GET_PRICE_HISTORY, {
               symbol,
             })) as RpcResponse<PriceHistoryDto>;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (
               resp.type === "nack" ||
@@ -274,7 +286,9 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
             });
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -306,7 +320,10 @@ function createExecutionPort(ws: IWsAdapter): ExecutionPort {
               CLIENT_MSG.EXECUTE_TRADE,
               dto,
             )) as RpcResponse<ExecutionResponseDto>;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Trade execution failed"));
@@ -314,7 +331,11 @@ function createExecutionPort(ws: IWsAdapter): ExecutionPort {
             }
 
             const r = resp.payload;
-            if (!r) throw new Error("ack response missing payload");
+
+            if (!r) {
+              throw new Error("ack response missing payload");
+            }
+
             subscriber.next({
               tradeId: r.tradeId,
               tradeName: r.tradeName,
@@ -329,7 +350,9 @@ function createExecutionPort(ws: IWsAdapter): ExecutionPort {
             });
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -401,15 +424,26 @@ function createInstrumentPort(ws: IWsAdapter): InstrumentPort {
               break;
             case "added":
               instruments.push(event.payload);
-              if (!inSoW) subscriber.next([...instruments]);
+
+              if (!inSoW) {
+                subscriber.next([...instruments]);
+              }
+
               break;
 
             case "removed": {
               const idx = instruments.findIndex((i) => {
                 return i.id === event.payload;
               });
-              if (idx >= 0) instruments.splice(idx, 1);
-              if (!inSoW) subscriber.next([...instruments]);
+
+              if (idx >= 0) {
+                instruments.splice(idx, 1);
+              }
+
+              if (!inSoW) {
+                subscriber.next([...instruments]);
+              }
+
               break;
             }
           }
@@ -445,15 +479,26 @@ function createDealerPort(ws: IWsAdapter): DealerPort {
               break;
             case "added":
               dealers.push(event.payload);
-              if (!inSoW) subscriber.next([...dealers]);
+
+              if (!inSoW) {
+                subscriber.next([...dealers]);
+              }
+
               break;
 
             case "removed": {
               const idx = dealers.findIndex((d) => {
                 return d.id === event.payload;
               });
-              if (idx >= 0) dealers.splice(idx, 1);
-              if (!inSoW) subscriber.next([...dealers]);
+
+              if (idx >= 0) {
+                dealers.splice(idx, 1);
+              }
+
+              if (!inSoW) {
+                subscriber.next([...dealers]);
+              }
+
               break;
             }
           }
@@ -496,7 +541,10 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
               direction: request.direction,
               expirySecs: request.expirySecs,
             })) as RpcResponse<number>;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to create RFQ"));
@@ -504,12 +552,17 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
             }
 
             const rfqId = resp.payload;
-            if (rfqId === undefined || rfqId === null)
+
+            if (rfqId === undefined || rfqId === null) {
               throw new Error("ack response missing payload");
+            }
+
             subscriber.next(rfqId);
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -528,7 +581,10 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
             const resp = (await ws.rpc(CLIENT_MSG.CANCEL_RFQ, {
               rfqId,
             })) as RpcResponse;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to cancel RFQ"));
@@ -538,7 +594,9 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -558,7 +616,10 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
               CLIENT_MSG.QUOTE,
               request,
             )) as RpcResponse;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to submit quote"));
@@ -568,7 +629,9 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -587,7 +650,10 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
             const resp = (await ws.rpc(CLIENT_MSG.PASS, {
               quoteId,
             })) as RpcResponse;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to pass on quote"));
@@ -597,7 +663,9 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -616,7 +684,10 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
             const resp = (await ws.rpc(CLIENT_MSG.ACCEPT, {
               quoteId,
             })) as RpcResponse;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to accept quote"));
@@ -626,7 +697,9 @@ function createWorkflowPort(ws: IWsAdapter): WorkflowPort {
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -649,7 +722,10 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
             const resp = (await ws.rpc(
               CLIENT_MSG.GET_THROUGHPUT,
             )) as RpcResponse<number>;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to get throughput"));
@@ -657,12 +733,17 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
             }
 
             const value = resp.payload;
-            if (value === undefined || value === null)
+
+            if (value === undefined || value === null) {
               throw new Error("ack response missing payload");
+            }
+
             subscriber.next(value);
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -681,7 +762,10 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
             const resp = (await ws.rpc(CLIENT_MSG.SET_THROUGHPUT, {
               value,
             })) as RpcResponse;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to set throughput"));
@@ -691,7 +775,9 @@ function createAdminPort(ws: IWsAdapter): AdminPort {
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -748,7 +834,10 @@ function createMarketDataPort(ws: IWsAdapter): MarketDataPort {
               symbol,
               timeframe,
             })) as RpcResponse<readonly Candle[]>;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(
@@ -758,11 +847,17 @@ function createMarketDataPort(ws: IWsAdapter): MarketDataPort {
             }
 
             const candles = resp.payload;
-            if (!candles) throw new Error("ack response missing payload");
+
+            if (!candles) {
+              throw new Error("ack response missing payload");
+            }
+
             subscriber.next(candles);
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -806,7 +901,10 @@ function createOrderPort(ws: IWsAdapter): OrderPort {
               CLIENT_MSG.PLACE_ORDER,
               req,
             )) as RpcResponse<PlaceOrderAck>;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to place order"));
@@ -814,12 +912,17 @@ function createOrderPort(ws: IWsAdapter): OrderPort {
             }
 
             const orderId = resp.payload?.orderId;
-            if (!orderId) throw new Error("ack response missing orderId");
+
+            if (!orderId) {
+              throw new Error("ack response missing orderId");
+            }
 
             unsub = ws.on(SERVER_MSG.ORDER_LIFECYCLE, (payload) => {
               const order = payload as EquityOrder;
 
-              if (order.id !== orderId) return;
+              if (order.id !== orderId) {
+                return;
+              }
 
               subscriber.next(order);
 
@@ -832,7 +935,9 @@ function createOrderPort(ws: IWsAdapter): OrderPort {
               }
             });
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 
@@ -852,7 +957,10 @@ function createOrderPort(ws: IWsAdapter): OrderPort {
             const resp = (await ws.rpc(CLIENT_MSG.CANCEL_ORDER, {
               orderId,
             })) as RpcResponse;
-            if (cancelled) return;
+
+            if (cancelled) {
+              return;
+            }
 
             if (resp.type === "nack") {
               subscriber.error(new Error("Failed to cancel order"));
@@ -862,7 +970,9 @@ function createOrderPort(ws: IWsAdapter): OrderPort {
             subscriber.next(undefined);
             subscriber.complete();
           } catch (e) {
-            if (!cancelled) subscriber.error(e);
+            if (!cancelled) {
+              subscriber.error(e);
+            }
           }
         })();
 

@@ -34,23 +34,29 @@ export class ConnectionOverlayPage extends MountedComponent<
   /** Click the Reconnect button (throws if absent). */
   clickReconnect(): void {
     const btn = this.reconnectButton();
-    if (!btn) throw new Error("Reconnect button not found");
+
+    if (!btn) {
+      throw new Error("Reconnect button not found");
+    }
+
     btn.click();
   }
 
   /** Wait until the overlay becomes visible (e.g. after an incident inject). */
   async waitUntilVisible(): Promise<void> {
     await waitFor(() => {
-      if (!this.isVisible())
+      if (!this.isVisible()) {
         throw new Error("ConnectionOverlay did not become visible");
+      }
     });
   }
 
   /** Wait until the overlay is hidden (e.g. after clear). */
   async waitUntilHidden(): Promise<void> {
     await waitFor(() => {
-      if (this.isVisible())
+      if (this.isVisible()) {
         throw new Error("ConnectionOverlay is still visible");
+      }
     });
   }
 
@@ -64,7 +70,11 @@ export class ConnectionOverlayPage extends MountedComponent<
   /** Click the "Clear incident" button on the overlay (throws if absent). */
   clearIncident(): void {
     const btn = this.clearIncidentButton();
-    if (!btn) throw new Error("Clear incident button not found on overlay");
+
+    if (!btn) {
+      throw new Error("Clear incident button not found on overlay");
+    }
+
     btn.click();
   }
 

@@ -21,14 +21,19 @@ describe("equities GBM + candle helpers (golden)", () => {
   it("mulberry32(42) is deterministic for the first 3 draws", () => {
     const rng = mulberry32(42);
     const got = [rng(), rng(), rng()];
-    for (let i = 0; i < 3; i++)
+
+    for (let i = 0; i < 3; i++) {
       expect(got[i]).toBeCloseTo(g.mulberry32Seed42First3[i] ?? Number.NaN, 12);
+    }
   });
 
   it("aggregateCandle folds a price series into one OHLC bar", () => {
     let candle = null as ReturnType<typeof aggregateCandle> | null;
-    for (const p of g.candle.prices)
+
+    for (const p of g.candle.prices) {
       candle = aggregateCandle(candle, p, g.candle.time0, g.candle.bucketMs);
+    }
+
     expect(candle).toEqual(g.candle.expected);
   });
 });

@@ -18,10 +18,17 @@ describe("layout machine factory", () => {
       seen = s;
     });
     sub.unsubscribe();
-    if (!seen) throw new Error("layout state did not emit synchronously");
+
+    if (!seen) {
+      throw new Error("layout state did not emit synchronously");
+    }
+
     // fx arrangement: a tiles+blotter column beside the analytics/positions
     // rail — a row split at the root (prototype shape, same as equities).
-    if (seen.root.kind !== "split") throw new Error("split root expected");
+    if (seen.root.kind !== "split") {
+      throw new Error("split root expected");
+    }
+
     expect(seen.root.dir).toBe("row");
     m.intents.maximize("fx-rates");
     const after = (() => {

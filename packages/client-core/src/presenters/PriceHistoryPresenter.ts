@@ -13,7 +13,11 @@ export class PriceHistoryPresenter {
 
   history$(symbol: string): Observable<readonly PriceTick[]> {
     const cached = this.cache.get(symbol);
-    if (cached) return cached;
+
+    if (cached) {
+      return cached;
+    }
+
     const stream = new PriceHistoryUseCase(this.pricing)
       .execute(symbol)
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));

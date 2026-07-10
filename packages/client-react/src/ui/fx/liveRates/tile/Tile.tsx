@@ -85,7 +85,11 @@ export function Tile({ pair, showChart }: TileProps): ReactElement {
   ): void {
     const p = priceVal ?? price;
     const n = notionalVal ?? notional.state.numericValue;
-    if (!p || hasError || stale) return;
+
+    if (!p || hasError || stale) {
+      return;
+    }
+
     tileExecution.execute(direction, p, n);
   }
 

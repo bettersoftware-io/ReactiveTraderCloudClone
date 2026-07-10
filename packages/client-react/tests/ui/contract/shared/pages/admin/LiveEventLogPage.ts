@@ -58,7 +58,11 @@ export class LiveEventLogPage extends MountedComponent<Record<string, never>> {
   /** The text content of the first row's message span. */
   firstRowMessage(): string | null {
     const row = this.rows()[0];
-    if (!row) return null;
+
+    if (!row) {
+      return null;
+    }
+
     const spans = row.querySelectorAll("span");
     // spans[0] = time, spans[1] = severity chip, spans[2] = service, spans[3] = message
     return spans[3]?.textContent?.trim() ?? null;

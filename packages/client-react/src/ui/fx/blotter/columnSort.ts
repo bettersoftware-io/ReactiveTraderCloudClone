@@ -50,11 +50,19 @@ export function nextSortDirection<TRow>(
   // Same column — cycle (mirrors original sortState.ts:46-63):
   // desc-first: DESC → ASC → none; asc-first: ASC → DESC → none.
   const isDescFirst = descFirst.has(column);
-  if (isDescFirst && current.direction === "desc")
+
+  if (isDescFirst && current.direction === "desc") {
     return { column, direction: "asc" };
-  if (!isDescFirst && current.direction === "asc")
+  }
+
+  if (!isDescFirst && current.direction === "asc") {
     return { column, direction: "desc" };
-  if (current.direction !== null) return { column: null, direction: null };
+  }
+
+  if (current.direction !== null) {
+    return { column: null, direction: null };
+  }
+
   // null -> first click
   const dir = isDescFirst ? "desc" : "asc";
   return { column, direction: dir };
@@ -65,7 +73,9 @@ export function applySort<TRow>(
   rows: readonly TRow[],
   sort: SortState<TRow>,
 ): readonly TRow[] {
-  if (!sort.column || !sort.direction) return rows;
+  if (!sort.column || !sort.direction) {
+    return rows;
+  }
 
   const col = sort.column;
   const dir = sort.direction === "asc" ? 1 : -1;

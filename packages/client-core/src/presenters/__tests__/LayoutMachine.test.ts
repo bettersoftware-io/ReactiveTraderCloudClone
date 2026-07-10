@@ -68,9 +68,17 @@ describe("createLayoutMachine", () => {
     const m = createLayoutMachine(port);
     m.intents.resize([0], [0.5, 0.5]);
     const r = current(m).root;
-    if (r.kind !== "split") throw new Error("root split expected");
+
+    if (r.kind !== "split") {
+      throw new Error("root split expected");
+    }
+
     const inner = r.children[0];
-    if (inner.kind !== "split") throw new Error("inner split expected");
+
+    if (inner.kind !== "split") {
+      throw new Error("inner split expected");
+    }
+
     expect(inner.sizes).toEqual([0.5, 0.5]);
     // the outer split (whose second child is the blotter) is untouched
     expect(r.sizes).toEqual([0.8, 0.2]);
@@ -81,7 +89,11 @@ describe("createLayoutMachine", () => {
     const m = createLayoutMachine(port);
     m.intents.resize([], [0.6, 0.4]);
     const r = current(m).root;
-    if (r.kind !== "split") throw new Error("root split expected");
+
+    if (r.kind !== "split") {
+      throw new Error("root split expected");
+    }
+
     expect(r.sizes).toEqual([0.6, 0.4]);
     m.dispose();
   });
@@ -109,7 +121,11 @@ describe("createLayoutMachine", () => {
     });
     m.intents.resize([], [0.6, 0.4]);
     const r = current(m).root;
-    if (r.kind !== "split") throw new Error("root split expected");
+
+    if (r.kind !== "split") {
+      throw new Error("root split expected");
+    }
+
     expect(r.sizes).toEqual([0.6, 0.4]);
     expect(r.initialPx).toBeUndefined();
     m.dispose();
@@ -140,11 +156,19 @@ describe("createLayoutMachine", () => {
     });
     m.intents.resize([1], [0.3, 0.7]);
     const r = current(m).root;
-    if (r.kind !== "split") throw new Error("root split expected");
+
+    if (r.kind !== "split") {
+      throw new Error("root split expected");
+    }
+
     // the untouched root keeps its design-value default…
     expect(r.initialPx).toEqual([undefined, 360]);
     const rail = r.children[1];
-    if (rail.kind !== "split") throw new Error("rail split expected");
+
+    if (rail.kind !== "split") {
+      throw new Error("rail split expected");
+    }
+
     // …while the dragged rail becomes a plain ratio split.
     expect(rail.sizes).toEqual([0.3, 0.7]);
     expect(rail.initialPx).toBeUndefined();
@@ -166,6 +190,10 @@ function current(m: ReturnType<typeof createLayoutMachine>): LayoutState {
     view = s;
   });
   sub.unsubscribe();
-  if (!view) throw new Error("LayoutMachine state$ did not emit synchronously");
+
+  if (!view) {
+    throw new Error("LayoutMachine state$ did not emit synchronously");
+  }
+
   return view;
 }

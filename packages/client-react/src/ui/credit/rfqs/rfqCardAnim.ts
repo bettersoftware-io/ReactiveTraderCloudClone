@@ -67,7 +67,13 @@ export function enterCascadeAdditions(
 /** The card's data-anim value (PROTO cardAnim): an in-flight exit always
  * wins over an in-flight entrance — a card can be dismissed mid-cascade. */
 export function cardAnim(isExiting: boolean, isEntering: boolean): CardAnim {
-  if (isExiting) return "exit";
-  if (isEntering) return "enter";
+  if (isExiting) {
+    return "exit";
+  }
+
+  if (isEntering) {
+    return "enter";
+  }
+
   return "none";
 }

@@ -18,7 +18,9 @@ export function LockScreen(): ReactElement | null {
   const { useSession } = useViewModel();
   const { state, unlock } = useSession();
 
-  if (!state.locked) return null;
+  if (!state.locked) {
+    return null;
+  }
 
   const { user } = state;
 

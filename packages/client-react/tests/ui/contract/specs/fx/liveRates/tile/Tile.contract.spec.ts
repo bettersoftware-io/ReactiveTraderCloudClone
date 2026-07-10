@@ -20,13 +20,21 @@ import {
 const _eurusd = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "EURUSD";
 });
-if (!_eurusd) throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
+
+if (!_eurusd) {
+  throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
+}
+
 const eurusd: CurrencyPair = _eurusd;
 // NZDUSD's defaultNotional is 10,000,000 (>= RFQ threshold) → starts in RFQ mode.
 const _nzdusd = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "NZDUSD";
 });
-if (!_nzdusd) throw new Error("NZDUSD not found in KNOWN_CURRENCY_PAIRS");
+
+if (!_nzdusd) {
+  throw new Error("NZDUSD not found in KNOWN_CURRENCY_PAIRS");
+}
+
 const nzdusd: CurrencyPair = _nzdusd;
 
 const history: readonly PriceTick[] = [

@@ -143,7 +143,10 @@ function childKey(
   path: readonly number[],
   i: number,
 ): string {
-  if (child.kind === "panel") return child.panelId;
+  if (child.kind === "panel") {
+    return child.panelId;
+  }
+
   return [...path, i].join(".");
 }
 
@@ -167,7 +170,11 @@ function measuredFractions(
   const cellsTotal = cellsPx.reduce((s, v) => {
     return s + v;
   }, 0);
-  if (cellsPx.length !== node.sizes.length || cellsTotal <= 0) return null;
+
+  if (cellsPx.length !== node.sizes.length || cellsTotal <= 0) {
+    return null;
+  }
+
   return cellsPx.map((px) => {
     return px / cellsTotal;
   });
@@ -209,7 +216,10 @@ function strippedPanelIds(
   state: LayoutState,
   boundaryPath: readonly number[] | null,
 ): ReadonlySet<PanelId> {
-  if (state.maximized === null || boundaryPath === null) return new Set();
+  if (state.maximized === null || boundaryPath === null) {
+    return new Set();
+  }
+
   const boundary = nodeAtPath(state.root, boundaryPath) ?? state.root;
   const ids = new Set(collectPanelIds(boundary));
   ids.delete(state.maximized);
@@ -218,7 +228,10 @@ function strippedPanelIds(
 
 /** Every panel id in `node`'s subtree, in tree order. */
 function collectPanelIds(node: LayoutNode): PanelId[] {
-  if (node.kind === "panel") return [node.panelId];
+  if (node.kind === "panel") {
+    return [node.panelId];
+  }
+
   return node.children.flatMap(collectPanelIds);
 }
 
@@ -276,7 +289,9 @@ function SplitNode({
 
     const containerOrNull = splitRef.current;
 
-    if (!containerOrNull) return;
+    if (!containerOrNull) {
+      return;
+    }
 
     // A stable non-null binding: `container` (unlike `containerOrNull`) keeps
     // its narrowed type inside the `up` closure below, which TS cannot verify

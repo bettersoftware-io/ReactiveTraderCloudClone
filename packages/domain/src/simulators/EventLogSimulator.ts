@@ -117,14 +117,26 @@ export class EventLogSimulator implements EventLogPort, MetricControl {
 
     if (p === "errorBurst") {
       // 10% info, 10% warn, 80% error
-      if (r < 0.1) return "info";
-      if (r < 0.2) return "warn";
+      if (r < 0.1) {
+        return "info";
+      }
+
+      if (r < 0.2) {
+        return "warn";
+      }
+
       return "error";
     }
 
     // 70% info, 20% warn, 10% error
-    if (r < 0.7) return "info";
-    if (r < 0.9) return "warn";
+    if (r < 0.7) {
+      return "info";
+    }
+
+    if (r < 0.9) {
+      return "warn";
+    }
+
     return "error";
   }
 

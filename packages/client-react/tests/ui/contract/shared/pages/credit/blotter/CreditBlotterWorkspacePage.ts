@@ -30,7 +30,10 @@ export class CreditBlotterWorkspacePage extends CreditBlotterPage {
   async typeQuickFilter(text: string): Promise<void> {
     const input = within(this.root).getByTestId("quick-filter");
     await this.workspaceUser.clear(input);
-    if (text) await this.workspaceUser.type(input, text);
+
+    if (text) {
+      await this.workspaceUser.type(input, text);
+    }
   }
 
   /** Export-CSV trigger, from the head's CSV chip. */

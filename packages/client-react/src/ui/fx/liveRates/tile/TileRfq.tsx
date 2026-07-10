@@ -25,7 +25,11 @@ export function TileRfq({
     // and no longer returns the quote synchronously.
     const quote = state.quote;
     rfqState.accept();
-    if (!quote) return;
+
+    if (!quote) {
+      return;
+    }
+
     // Create a synthetic Price to pass to execution
     const syntheticPrice = {
       symbol: pair.symbol,

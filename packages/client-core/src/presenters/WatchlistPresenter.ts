@@ -19,7 +19,11 @@ export class WatchlistPresenter {
 
   quote$(symbol: string): Observable<EquityQuote> {
     const cached = this.quoteCache.get(symbol);
-    if (cached) return cached;
+
+    if (cached) {
+      return cached;
+    }
+
     const stream = this.marketData
       .quotes(symbol)
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));

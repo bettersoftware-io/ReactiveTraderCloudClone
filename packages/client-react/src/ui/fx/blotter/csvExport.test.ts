@@ -122,9 +122,11 @@ function trade(over: Partial<Trade> = {}): Trade {
 
 /** Return `captured` after asserting it is non-null (set by RecordingBlob). */
 function capturedContent(): string {
-  if (captured === null)
+  if (captured === null) {
     throw new Error(
       "RecordingBlob was not invoked — exportToCsv did not create a Blob",
     );
+  }
+
   return captured;
 }

@@ -23,7 +23,9 @@ export function buildCandles(
   w: number = CANDLE_WIDTH,
   h: number = CANDLE_HEIGHT,
 ): readonly CandleGeom[] {
-  if (candles.length === 0) return [];
+  if (candles.length === 0) {
+    return [];
+  }
 
   const allPrices = candles.flatMap((c) => {
     return [c.high, c.low];

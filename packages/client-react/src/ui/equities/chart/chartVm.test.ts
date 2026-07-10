@@ -91,7 +91,10 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
     // and the lone candle's direction flips (10 -> 15 is now "up").
     const vm = chartVm(series, 15, false);
     const last = vm.candles[0];
-    if (!last) throw new Error("expected one candle");
+
+    if (!last) {
+      throw new Error("expected one candle");
+    }
 
     expect(last.up).toBe(true);
     // The plot's cmax is now 15 (not the stored high of 12): whenever a

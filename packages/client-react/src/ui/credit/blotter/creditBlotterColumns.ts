@@ -54,7 +54,11 @@ export function formatCreditCell(
 
     case "tradeDate": {
       const d = new Date(`${row.tradeDate}T00:00:00`);
-      if (Number.isNaN(d.getTime())) return row.tradeDate;
+
+      if (Number.isNaN(d.getTime())) {
+        return row.tradeDate;
+      }
+
       const day = String(d.getDate()).padStart(2, "0");
       return `${day}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
     }

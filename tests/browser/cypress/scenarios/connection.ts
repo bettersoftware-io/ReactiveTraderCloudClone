@@ -82,7 +82,11 @@ export function expectConnectionOverlayTextMatches(
   rawRegex: string,
 ): void {
   const match = rawRegex.match(/^\/(.+)\/([gimsuy]*)$/);
-  if (!match) throw new Error(`bad regex literal: ${rawRegex}`);
+
+  if (!match) {
+    throw new Error(`bad regex literal: ${rawRegex}`);
+  }
+
   const re = new RegExp(match[1], match[2]);
   chainable(ctx.po.connectionOverlay.text()).then((text) => {
     if (!re.test(text)) {

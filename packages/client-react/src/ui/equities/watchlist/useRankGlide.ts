@@ -52,7 +52,10 @@ export function computeRankDirections(
 
 /** True when two symbol orders are identical (same symbols, same sequence). */
 function sameOrder(a: readonly string[], b: readonly string[]): boolean {
-  if (a.length !== b.length) return false;
+  if (a.length !== b.length) {
+    return false;
+  }
+
   return a.every((sym, index) => {
     return sym === b[index];
   });
@@ -147,7 +150,10 @@ function playHighlight(
   // (and dragged the composited glide transform down with it,
   // kTargetHasIncompatibleAnimations).
   const glow = node.querySelector<HTMLElement>("[data-rank-glow]");
-  if (!glow) return undefined;
+
+  if (!glow) {
+    return undefined;
+  }
 
   node.dataset.rankDir = direction;
 
@@ -203,7 +209,9 @@ export function useRankGlide(
   // is a fresh array every render, so this runs every render too; the
   // `sameOrder` check below makes every no-op run cheap.
   useEffect(() => {
-    if (sameOrder(candidate, committed)) return;
+    if (sameOrder(candidate, committed)) {
+      return;
+    }
 
     const decision = coalesceOrder(
       committed,
@@ -255,12 +263,19 @@ export function useRankGlide(
           ) {
             const dy = (oldIndex - currentIndex) * rowH;
             const glideAnim = playGlide(node, dy);
-            if (glideAnim) animations.push(glideAnim);
+
+            if (glideAnim) {
+              animations.push(glideAnim);
+            }
+
             // `sym` is a member of `order` (currentIndex !== -1 above came
             // from `order.indexOf(sym)`), and computeRankDirections gives
             // every member of `order` an entry — so this is never undefined.
             const highlightAnim = playHighlight(node, directions[sym]);
-            if (highlightAnim) animations.push(highlightAnim);
+
+            if (highlightAnim) {
+              animations.push(highlightAnim);
+            }
           }
         });
       }

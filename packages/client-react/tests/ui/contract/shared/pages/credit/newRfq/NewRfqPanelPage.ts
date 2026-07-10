@@ -124,7 +124,11 @@ export class NewRfqPanelPage extends MountedComponent<NewRfqPanelProps> {
     const el = this.root.querySelector<HTMLElement>(
       `[data-testid="${testId}"]`,
     );
-    if (!el) throw new Error(`No element for data-testid="${testId}"`);
+
+    if (!el) {
+      throw new Error(`No element for data-testid="${testId}"`);
+    }
+
     return el;
   }
 }

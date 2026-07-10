@@ -58,13 +58,16 @@ export interface BootDrawCtx {
 /** hexToRgba — verbatim from prototype line 819 */
 function hexToRgba(hex: string, a: number): string {
   let h = hex.replace("#", "");
-  if (h.length === 3)
+
+  if (h.length === 3) {
     h = h
       .split("")
       .map((c) => {
         return c + c;
       })
       .join("");
+  }
+
   const n = parseInt(h, 16);
   return (
     "rgba(" +
@@ -102,8 +105,14 @@ export function drawBootCore(d: BootDrawCtx): void {
   const acc = d.accent;
   const lat: number[] = [];
   const lon: number[] = [];
-  for (let a = -80; a <= 80; a += 20) lat.push((a * Math.PI) / 180);
-  for (let b = 0; b < 360; b += 20) lon.push((b * Math.PI) / 180);
+
+  for (let a = -80; a <= 80; a += 20) {
+    lat.push((a * Math.PI) / 180);
+  }
+
+  for (let b = 0; b < 360; b += 20) {
+    lon.push((b * Math.PI) / 180);
+  }
 
   if (c.width !== c.offsetWidth) {
     c.width = c.offsetWidth;
@@ -141,8 +150,12 @@ export function drawBootCore(d: BootDrawCtx): void {
       const p = proj(lat[i], lon[j % lon.length]);
       const alpha = 0.15 + 0.5 * ((p.z + 1) / 2);
       ctx.strokeStyle = hexToRgba(acc, alpha);
-      if (j === 0) ctx.moveTo(p.x, p.y);
-      else ctx.lineTo(p.x, p.y);
+
+      if (j === 0) {
+        ctx.moveTo(p.x, p.y);
+      } else {
+        ctx.lineTo(p.x, p.y);
+      }
     }
 
     ctx.stroke();
@@ -155,8 +168,12 @@ export function drawBootCore(d: BootDrawCtx): void {
       const p = proj(lat[i], lon[j]);
       const alpha = 0.12 + 0.45 * ((p.z + 1) / 2);
       ctx.strokeStyle = hexToRgba(acc, alpha);
-      if (i === 0) ctx.moveTo(p.x, p.y);
-      else ctx.lineTo(p.x, p.y);
+
+      if (i === 0) {
+        ctx.moveTo(p.x, p.y);
+      } else {
+        ctx.lineTo(p.x, p.y);
+      }
     }
 
     ctx.stroke();
@@ -294,8 +311,12 @@ export function drawBootLaser(d: BootDrawCtx): void {
             const sx = bx + 6 + ((tw - 12) * s) / 12;
             const sy =
               by + tht * 0.78 - Math.sin(s * 0.8 + i * 2 + j) * tht * 0.13;
-            if (s === 0) bCtx.moveTo(sx, sy);
-            else bCtx.lineTo(sx, sy);
+
+            if (s === 0) {
+              bCtx.moveTo(sx, sy);
+            } else {
+              bCtx.lineTo(sx, sy);
+            }
           }
 
           bCtx.stroke();
@@ -386,7 +407,11 @@ export function drawBootLaser(d: BootDrawCtx): void {
   panels.forEach((p) => {
     const r = toRect(p);
     const frac = Math.max(0, Math.min(1, (prog - p.t0) / (p.t1 - p.t0)));
-    if (frac <= 0) return;
+
+    if (frac <= 0) {
+      return;
+    }
+
     const segs: [number, number, number, number][] = [
       [r.x, r.y, r.x + r.w, r.y],
       [r.x + r.w, r.y, r.x + r.w, r.y + r.h],
@@ -430,7 +455,10 @@ export function drawBootLaser(d: BootDrawCtx): void {
 
     ctx.stroke();
     ctx.shadowBlur = 0;
-    if (frac < 1) head = { x: hx, y: hy };
+
+    if (frac < 1) {
+      head = { x: hx, y: hy };
+    }
 
     if (prog >= p.t1 && prog < p.t1 + 0.07) {
       const fa = 1 - (prog - p.t1) / 0.07;
@@ -542,7 +570,11 @@ export function drawBootDocking(d: BootDrawCtx): void {
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = hexToRgba(acc, 0.035);
-  for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+
+  for (let y = 0; y < H; y += 3) {
+    ctx.fillRect(0, y, W, 1);
+  }
+
   const shake = (1 - E) * 1.0 + 0.22;
   const jx = (Math.sin(t * 9) * 1.4 + Math.sin(t * 17) * 0.7) * shake;
   const jy = (Math.cos(t * 7) * 1.1 + Math.sin(t * 23) * 0.5) * shake;
@@ -893,7 +925,10 @@ export function drawBootDocking(d: BootDrawCtx): void {
   ctx.lineWidth = 1;
 
   for (let p = -2; p <= 2; p++) {
-    if (p === 0) continue;
+    if (p === 0) {
+      continue;
+    }
+
     const yy = p * 46;
     ctx.beginPath();
     ctx.moveTo(-72, yy);

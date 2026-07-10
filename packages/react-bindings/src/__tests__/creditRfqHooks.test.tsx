@@ -92,6 +92,10 @@ async function createOpenRfq(hooks: ViewModel): Promise<number> {
   });
 
   const confirmed = result.current.state;
-  if (confirmed.status !== "confirmed") throw new Error("not confirmed");
+
+  if (confirmed.status !== "confirmed") {
+    throw new Error("not confirmed");
+  }
+
   return confirmed.rfqId;
 }

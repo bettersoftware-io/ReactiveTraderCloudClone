@@ -16,7 +16,9 @@ export interface PnlChartShape {
 export function buildChart(
   history: readonly HistoricPosition[],
 ): PnlChartShape {
-  if (history.length < 2) return { path: "", zeroY: null };
+  if (history.length < 2) {
+    return { path: "", zeroY: null };
+  }
 
   const values = history.map((point) => {
     return point.usdPnl;

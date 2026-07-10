@@ -132,6 +132,10 @@ function colFor(key: keyof Trade): ColumnDef<Trade> {
   const c = COLUMNS.find((c) => {
     return c.key === key;
   });
-  if (!c) throw new Error(`no column for ${String(key)}`);
+
+  if (!c) {
+    throw new Error(`no column for ${String(key)}`);
+  }
+
   return c;
 }

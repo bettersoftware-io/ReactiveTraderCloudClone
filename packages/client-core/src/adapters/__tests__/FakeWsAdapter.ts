@@ -38,7 +38,10 @@ export class FakeWsAdapter implements IWsAdapter {
   private _disposed = false;
 
   on(type: string, handler: MessageHandler): () => void {
-    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, new Set());
+    }
+
     (this.listeners.get(type) as Set<MessageHandler>).add(handler);
 
     return (): void => {
@@ -62,13 +65,19 @@ export class FakeWsAdapter implements IWsAdapter {
   }
 
   closeForIdle(): void {
-    if (this._disposed || this._idleClosed) return;
+    if (this._disposed || this._idleClosed) {
+      return;
+    }
+
     this._idleClosed = true;
     this.connectionEvents$.next({ type: "gatewayDisconnected" });
   }
 
   reopen(): void {
-    if (this._disposed || !this._idleClosed) return;
+    if (this._disposed || !this._idleClosed) {
+      return;
+    }
+
     this._idleClosed = false;
     this.connectionEvents$.next({ type: "gatewayConnected" });
   }
@@ -85,7 +94,9 @@ export class FakeWsAdapter implements IWsAdapter {
 
   /** Drive a fake server frame to all subscribers of `type`. */
   emit(type: string, payload: unknown): void {
-    for (const handler of this.listeners.get(type) ?? []) handler(payload);
+    for (const handler of this.listeners.get(type) ?? []) {
+      handler(payload);
+    }
   }
 
   /** Resolve the next pending RPC of `type` with `response`. */
@@ -99,10 +110,13 @@ export class FakeWsAdapter implements IWsAdapter {
     }
 
     const removed = this.pendingRpcs.splice(idx, 1)[0];
-    if (!removed)
+
+    if (!removed) {
       throw new Error(
         `FakeWsAdapter: splice returned no element for type "${type}"`,
       );
+    }
+
     removed.resolve(response);
   }
 
@@ -119,10 +133,13 @@ export class FakeWsAdapter implements IWsAdapter {
     }
 
     const removed = this.pendingRpcs.splice(idx, 1)[0];
-    if (!removed)
+
+    if (!removed) {
       throw new Error(
         `FakeWsAdapter: splice returned no element for type "${type}"`,
       );
+    }
+
     removed.reject(error);
   }
 

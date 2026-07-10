@@ -44,7 +44,9 @@ const CHART_HEIGHT = 48;
 const PADDING = 2;
 
 function buildPath(history: readonly PriceTick[]): string {
-  if (history.length < 2) return "";
+  if (history.length < 2) {
+    return "";
+  }
 
   const mids = history.map((t) => {
     return t.mid;

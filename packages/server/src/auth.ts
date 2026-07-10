@@ -9,8 +9,14 @@ export function isAuthorizedUpgrade(
   reqUrl: string | undefined,
   token: string | undefined,
 ): boolean {
-  if (!token) return true;
-  if (reqUrl === undefined) return false;
+  if (!token) {
+    return true;
+  }
+
+  if (reqUrl === undefined) {
+    return false;
+  }
+
   const url = new URL(reqUrl, "http://localhost");
   return url.searchParams.get("access") === token;
 }

@@ -14,7 +14,11 @@ export class PriceStreamPresenter {
 
   price$(pair: CurrencyPair): Observable<Price> {
     const cached = this.cache.get(pair.symbol);
-    if (cached) return cached;
+
+    if (cached) {
+      return cached;
+    }
+
     const stream = new PriceStreamUseCase(this.pricing)
       .execute(pair)
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));

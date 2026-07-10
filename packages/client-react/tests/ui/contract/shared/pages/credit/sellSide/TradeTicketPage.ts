@@ -46,7 +46,10 @@ export class TradeTicketPage extends MountedComponent<TradeTicketProps> {
   async setPrice(value: string): Promise<void> {
     const input = this.q().getByPlaceholderText(/price/i);
     await this.user.clear(input);
-    if (value) await this.user.type(input, value);
+
+    if (value) {
+      await this.user.type(input, value);
+    }
   }
 
   /** Whether the Submit button is disabled. */

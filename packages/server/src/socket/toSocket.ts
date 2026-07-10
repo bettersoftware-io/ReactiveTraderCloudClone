@@ -31,7 +31,9 @@ export function toSocket(ws: WebSocket): Socket {
     messages$,
     closed$,
     send: (message: Outbound): void => {
-      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message));
+      if (ws.readyState === ws.OPEN) {
+        ws.send(JSON.stringify(message));
+      }
     },
   };
 }
