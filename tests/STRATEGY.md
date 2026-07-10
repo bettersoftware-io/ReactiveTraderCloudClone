@@ -110,8 +110,9 @@ tables.
 The **load-bearing fact**: native Cypress is the one suite that *can't* reuse the
 shared async scenarios. Cypress's command-queue model and `Chainable`-vs-`Promise`
 thenable semantics make the `Promise`-shaped scenario contract unusable in a raw
-`it()` body (four combinations were tried and rejected — see `architecture.md`
-§9.5 and the `feedback_cypress_async_incompat` history). So it carries a **forked
+`it()` body (four combinations were tried and rejected — see
+`docs/architecture/09-test-strategy.md` §9.5 and the
+`feedback_cypress_async_incompat` history). So it carries a **forked
 scenario layer** that mirrors the shared one fn-for-fn but uses `cy` queue
 idioms (`_chainable.ts` casts a Chainable to the contract's `Promise<T>`). That
 fork is the price tag that proves the boundary of the async-scenario contract —
@@ -475,7 +476,7 @@ distinct jobs, no overlap.
 
 - [`README.md`](./README.md) — scripts, reports, orchestration, the Cypress
   arm64 known-issue, caching/freshness.
-- [`../docs/architecture.md`](../docs/architecture.md) §9 "Test Strategy" — the
+- [`../docs/architecture/09-test-strategy.md`](../docs/architecture/09-test-strategy.md) §9 "Test Strategy" — the
   authoritative layer model, the eight-runner stack, the bundler-alias seam, and
   the port-contract test layer.
 - [`packages/client-react/tests/ui/visual/README.md`](../packages/client-react/tests/ui/visual/README.md)
