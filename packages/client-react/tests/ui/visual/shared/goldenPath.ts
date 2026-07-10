@@ -13,10 +13,12 @@ export function baseScenarioName(name: string): string {
 
 /** Extension-less golden path for a scenario: `<skin>-<mode>/<base-name>`.
  *  Theme+mode is a folder under the spec dir; the file is the base scenario
- *  name with `/`→`-`. Each tier appends its own extension (playwright/CT add
- *  `.png`; vitest-browser appends `-<browser>.png`). Every scenario carries an
- *  explicit themeSkin/themeMode after expansion; the `?? classic/dark` fallback
- *  only guards a hand-authored base scenario that forgot them. */
+ *  name with `/`→`-`. Used by the vitest-browser tier, whose `resolveScreenshotPath`
+ *  nests this via `path.join` and appends `-<browser>.png`. The playwright /
+ *  playwright-ct tiers use `goldenPathArray` instead (a string arg's `/` flattens
+ *  in Playwright). Every scenario carries an explicit themeSkin/themeMode after
+ *  expansion; the `?? classic/dark` fallback only guards a hand-authored base
+ *  scenario that forgot them. */
 export function goldenPath(name: string, scenario: Scenario): string {
   const base = baseScenarioName(name).replace(/\//g, "-");
   return `${scenario.themeSkin ?? "classic"}-${scenario.themeMode ?? "dark"}/${base}`;

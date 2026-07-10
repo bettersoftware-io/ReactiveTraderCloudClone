@@ -10,7 +10,8 @@ import { scenarios } from "../shared/scenarios";
 // ../vitest-browser/visual.spec.tsx, so all three tiers stay behaviourally in
 // lock-step across the full theme matrix. Goldens route via playwright-ct.config.ts
 // (CI `react/` vs local `react-local/<arch>/`), under this file's `matrix.spec.tsx/`
-// dir, at `<skin>-<mode>/<base-name>.png` (shared goldenPath).
+// dir, at `<skin>-<mode>/<base-name>.png` via the shared `goldenPathArray` (the
+// array form — a string arg with `/` flattens to `-` in Playwright).
 
 test.beforeEach(async ({ page }) => {
   // State is seeded through the ViewModel seam, so clear any persisted prefs.
