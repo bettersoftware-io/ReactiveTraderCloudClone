@@ -1,9 +1,13 @@
-import type { Scenario } from "./scenarios";
+import { MATRIX_MODES, MATRIX_SKINS, type Scenario } from "./scenarios";
 
 // A matrix-expanded scenario key ends in `__<skin>-<mode>`; the `__` guard means
 // natural keys ending in `-light`/`-dark` (e.g. `app/fx-light`) are NOT stripped.
-const COMBO_SUFFIX =
-  /__(?:classic|holo|holo3d|terminal|terminal3d)-(?:dark|light)$/;
+// Derived from MATRIX_SKINS/MATRIX_MODES so the ADR-001 escape hatch (curate the
+// matrix by editing those arrays) stays correct — no second list to keep in sync.
+// All matrix values are alphanumeric, so no regex escaping is needed.
+const COMBO_SUFFIX = new RegExp(
+  `__(?:${MATRIX_SKINS.join("|")})-(?:${MATRIX_MODES.join("|")})$`,
+);
 
 /** The base scenario name for a (possibly matrix-expanded) key — strips a
  *  trailing `__<skin>-<mode>` combo suffix. */

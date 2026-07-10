@@ -1,7 +1,7 @@
 // Runner-neutral description of how each visual scenario is stabilized and
 // captured. The DOM hooks (testids, visible text) are framework-agnostic, so
-// plain-Playwright and vitest-browser share this table. CT specs do not use it —
-// they were hand-written first and stay as-is.
+// all three tiers (plain-Playwright, vitest-browser, and the data-driven
+// playwright-ct matrix.spec.tsx) share this table via `scenarioActionFor`.
 
 import { baseScenarioName } from "./shared/goldenPath";
 
