@@ -81,7 +81,12 @@ for (const rel of sources) {
       if (fence) {
         return;
       }
-      for (const m of line.matchAll(/\]\(([^)\s]+)\)/g)) {
+      // Blank out inline code spans (`...`) before scanning for links: prose
+      // that *shows* link syntax inside backticks is not a real link. Only
+      // the link scan strips spans — heading slugs (slugsOf) must be computed
+      // from the original text, since GitHub keeps inline-code text in slugs.
+      const scannable = line.replace(/`[^`]*`/g, "");
+      for (const m of scannable.matchAll(/\]\(([^)\s]+)\)/g)) {
         const target = m[1];
         if (/^[a-z][a-z0-9+.-]*:/.test(target) || target.startsWith("//")) {
           continue;
@@ -96,7 +101,11 @@ for (const rel of sources) {
           errors.push(`${rel}:${i + 1} missing file -> ${target}`);
           continue;
         }
-        if (frag && resolved.endsWith(".md") && !slugsOf(resolved).has(frag)) {
+        if (
+          frag &&
+          resolved.endsWith(".md") &&
+          !slugsOf(resolved).has(decodeURIComponent(frag))
+        ) {
           errors.push(`${rel}:${i + 1} missing anchor -> ${target}`);
         }
       }
