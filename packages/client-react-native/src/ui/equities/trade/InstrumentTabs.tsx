@@ -10,6 +10,7 @@ import {
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -66,7 +67,7 @@ interface InstrumentTabsStyles {
 
 function makeStyles(t: RnTheme): InstrumentTabsStyles {
   const baseTab: ViewStyle = {
-    paddingHorizontal: 12,
+    paddingHorizontal: SPACING.md,
     paddingVertical: 6,
     borderRadius: 4,
     borderWidth: StyleSheet.hairlineWidth,
@@ -74,7 +75,7 @@ function makeStyles(t: RnTheme): InstrumentTabsStyles {
   };
   return StyleSheet.create({
     strip: { flexGrow: 0, backgroundColor: t.bgHeader },
-    content: { gap: 6, padding: 8 },
+    content: { gap: 6, padding: SPACING.sm },
     tab: baseTab,
     tabActive: {
       ...baseTab,

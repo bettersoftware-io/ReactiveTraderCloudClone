@@ -6,6 +6,7 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { SectorHeatmap } from "#/ui/equities/markets/SectorHeatmap";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
 const INSTS: readonly EquityInstrument[] = [
   { symbol: "AAPL", name: "Apple", exchange: "NASDAQ" },
@@ -22,6 +23,16 @@ test("renders a cell per instrument grouped by sector", async () => {
   expect(screen.getByTestId("heatmap-cell-JPM")).toBeTruthy();
   expect(screen.getByText("TECHNOLOGY")).toBeTruthy();
   expect(screen.getByText("FINANCE")).toBeTruthy();
+});
+
+test("renders no gradient tile surface even on a 3d skin (dense panel, not a hero tile)", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeVM(INSTS)}>
+      <SectorHeatmap selectedSymbol={null} onSelect={(): void => {}} />
+    </ViewModelProvider>,
+    rnThemeTokens.holo3d.dark,
+  );
+  expect(screen.queryByTestId("surface-sheen")).toBeNull();
 });
 
 function fakeVM(instruments: readonly EquityInstrument[]): ViewModel {

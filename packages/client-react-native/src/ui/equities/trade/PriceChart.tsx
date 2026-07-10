@@ -1,11 +1,5 @@
 import type { JSX } from "react";
-import {
-  StyleSheet,
-  Text,
-  type TextStyle,
-  View,
-  type ViewStyle,
-} from "react-native";
+import { StyleSheet, Text, type TextStyle, type ViewStyle } from "react-native";
 import Svg, { G, Line, Rect } from "react-native-svg";
 
 import { useViewModel } from "@rtc/react-bindings";
@@ -15,6 +9,7 @@ import {
   CANDLE_HEIGHT,
   CANDLE_WIDTH,
 } from "#/ui/equities/trade/buildCandles";
+import { SurfaceCard } from "#/ui/SurfaceCard";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
@@ -29,7 +24,7 @@ export function PriceChart({ symbol }: PriceChartProps): JSX.Element {
   const geoms = buildCandles(candles);
 
   return (
-    <View style={styles.wrapper}>
+    <SurfaceCard variant="panel" style={styles.wrapper}>
       <Svg
         testID="price-chart"
         width="100%"
@@ -67,7 +62,7 @@ export function PriceChart({ symbol }: PriceChartProps): JSX.Element {
           NO DATA
         </Text>
       ) : null}
-    </View>
+    </SurfaceCard>
   );
 }
 
@@ -84,10 +79,6 @@ function makeStyles(t: RnTheme): PriceChartStyles {
   return StyleSheet.create({
     wrapper: {
       height: CANDLE_HEIGHT,
-      backgroundColor: t.panel,
-      borderRadius: 6,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.borderSubtle,
       overflow: "hidden",
       justifyContent: "center",
     },
