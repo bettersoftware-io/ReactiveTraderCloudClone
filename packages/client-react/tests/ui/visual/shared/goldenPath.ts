@@ -25,7 +25,13 @@ export function baseScenarioName(name: string): string {
  *  scenario that forgot them. */
 export function goldenPath(name: string, scenario: Scenario): string {
   const base = baseScenarioName(name).replace(/\//g, "-");
-  return `${scenario.themeSkin ?? "classic"}-${scenario.themeMode ?? "dark"}/${base}`;
+  const skin = scenario.themeSkin ?? "classic";
+  // "system" is a theme-mode PREFERENCE, not a paint mode — it resolves to dark.
+  // Fold its lone golden into the classic-dark/ folder rather than a one-file
+  // classic-system/ folder (the only scenario carrying it is app/fx-system).
+  const mode =
+    scenario.themeMode === "system" ? "dark" : (scenario.themeMode ?? "dark");
+  return `${skin}-${mode}/${base}`;
 }
 
 /** Playwright's ARRAY-arg form: `[<skin>-<mode>, <base-name>.png]`. Required for
