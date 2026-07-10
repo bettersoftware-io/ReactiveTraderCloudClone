@@ -175,9 +175,7 @@ per-workspace, so the PR #146 per-workspace meta-gate does not apply to it).
   directive). Static Mermaid + static SVG are the default carriers;
   animated SMIL SVGs where motion genuinely clarifies (flows, mode
   switches) — following the two existing examples' conventions
-  (`dur` + `repeatCount="indefinite"`, keyPoints/keyTimes loops). Every
-  animated diagram must still read correctly as a still image (the user's
-  work VDI can freeze animations).
+  (`dur` + `repeatCount="indefinite"`, keyPoints/keyTimes loops).
 - **Mermaid discipline:** §2 palette (blue UI / purple bindings / green
   core / amber server+effects / slate domain+shared / gray actors),
   dark-theme-safe saturated fills + white text, ~4–5 siblings per rank
@@ -218,7 +216,6 @@ per-workspace, so the PR #146 per-workspace meta-gate does not apply to it).
 4. Reuse matrix covers all shared layers × 4 columns.
 5. `scripts/check-doc-links.mjs` runs locally and in CI and passes on the
    final tree.
-6. Every Mermaid block validated; every animated SVG loops and reads as a
-   still.
+6. Every Mermaid block validated; every animated SVG loops correctly.
 7. Spot-audit: any 10 named files/symbols sampled from the new docs exist
    at the stated paths.
