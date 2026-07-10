@@ -190,12 +190,10 @@ function checkProductionAudit(): string[] {
  * bridge schedules disposal with queueMicrotask (not setTimeout), so no hooks
  * exception is needed. Test files are not gated here.
  */
-function checkNoUiTimer(): string[] {
-  const result = spawnSync(
-    "grep",
-    ["-rnE", "setTimeout|setInterval", "../packages/client-react/src/ui/"],
-    { encoding: "utf8" },
-  );
+function checkNoUiTimers(path: string): string[] {
+  const result = spawnSync("grep", ["-rnE", "setTimeout|setInterval", path], {
+    encoding: "utf8",
+  });
   const out = result.stdout ?? "";
   return out
     .split("\n")
@@ -432,7 +430,35 @@ const GATES: Gate[] = [
     name: "29. No setTimeout/setInterval anywhere in src/ui",
     pattern: "",
     paths: [],
-    customCheck: checkNoUiTimer,
+    customCheck: () => {
+      return checkNoUiTimers("../packages/client-react/src/ui/");
+    },
+  },
+  {
+    name: "30. No rxjs/react-rxjs imports in RN src/ui (only the bindings bridge may)",
+    pattern: 'from "rxjs"|@react-rxjs|@rx-state',
+    paths: ["../packages/client-react-native/src/ui/"],
+    excludes: ["/node_modules/", ".test.", ".spec."],
+  },
+  {
+    name: "31. No localStorage/AsyncStorage in RN src/ui (persistence belongs behind PreferencesPort)",
+    pattern: "localStorage|AsyncStorage",
+    paths: ["../packages/client-react-native/src/ui/"],
+    excludes: ["/node_modules/", ".test.", ".spec."],
+  },
+  {
+    name: "32. No fetch/process.env/expo-constants in RN src/ui (transport & config belong in the app layer)",
+    pattern: "fetch\\(|process\\.env|import\\.meta\\.env|expo-constants",
+    paths: ["../packages/client-react-native/src/ui/"],
+    excludes: ["/node_modules/", ".test.", ".spec."],
+  },
+  {
+    name: "33. No setTimeout/setInterval anywhere in RN src/ui",
+    pattern: "",
+    paths: [],
+    customCheck: () => {
+      return checkNoUiTimers("../packages/client-react-native/src/ui/");
+    },
   },
 ];
 

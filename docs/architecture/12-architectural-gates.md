@@ -37,7 +37,7 @@
 | 29 | No `setTimeout` / `setInterval` in `client-react/src/ui` (time belongs in machines/presenters; custom check) |
 | 30 | No `rxjs` / `@react-rxjs` / `@rx-state` imports in `client-react-native/src/ui` (the RN dumb-UI boundary; only `src/app/adapters` may) |
 | 31 | No `localStorage` / `AsyncStorage` in `client-react-native/src/ui` (persistence belongs behind `PreferencesPort`) |
-| 32 | No `fetch(` / `expo-constants` / `process.env` reads in `client-react-native/src/ui` (transport & config belong in the app layer) |
+| 32 | No `fetch(` / `process.env` / `import.meta.env` / `expo-constants` in `client-react-native/src/ui` (transport & config belong in the app layer) |
 | 33 | No `setTimeout` / `setInterval` in `client-react-native/src/ui` (time belongs in machines/presenters; custom check) |
 
 Gates 26–29 (web) and 30–33 (RN) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. Both shipped clients now carry the identical guardrail set on their `src/ui`, so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)) holds on either existing client, not just the one that happened to get gated first — valid without anyone watching.
