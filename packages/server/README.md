@@ -4,17 +4,17 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 
 | | |
 |---|---|
-| **Ring** | ④ Frameworks & Drivers for the host (`src/index.ts`, `src/socket/`) + ③ Interface Adapters for the effects/gateways (`src/effects/`) -- per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
+| **Ring** | ③ Interface Adapters for the controllers/gateways (`src/effects/` + `src/socket/`'s `toSocket`) + ④ Frameworks & Drivers for the host wiring (`src/index.ts`, `node:http` + `ws`) -- per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
 | **Runtime deps** | `@rtc/domain`, `@rtc/shared`, `@rtc/ws-effects`, `rxjs`, `ws` (`packages/server/package.json` `dependencies`) |
-| **Consumed by** | `tests` only -- no other workspace package lists `@rtc/server` as a dependency (`grep -rln "@rtc/server" packages/ tests/` returns only `packages/{ws-effects,domain,shared}/README.md`, `tests/README.md`, and `tests/package.json`/`tests/fullstack/_orchestration.ts`, which spawns it as a child process via `pnpm --filter @rtc/server exec tsx src/index.ts`, not an import) |
+| **Consumed by** | `tests` only -- no other workspace package lists `@rtc/server` as a dependency (`grep -rln "@rtc/server" packages/ tests/`, excluding self-references inside `packages/server/` itself, returns only `packages/{ws-effects,domain,shared}/README.md`, `tests/README.md`, and `tests/package.json`/`tests/fullstack/_orchestration.ts`, which spawns it as a child process via `pnpm --filter @rtc/server exec tsx src/index.ts`, not an import) |
 | **Must never import** | `@rtc/client-react` -- enforced by the dependency-cruiser `server-not-client` rule (`from: ^packages/server/src`, `to: ^packages/client-react/`, `.dependency-cruiser.cjs`, see [§6](../../docs/architecture/06-package-dependencies.md#6-package-dependencies)). It also never imports `@rtc/client-core` in practice (`grep -rln "@rtc/client-core" packages/server/src` returns nothing) and skips `@rtc/domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` returns nothing) -- use cases are client-side orchestration; the server drives the domain simulators directly. |
 
 ## Folder map
 
 | Path | What lives here |
 |---|---|
-| `src/effects/` | 24 declarative `WsEffect`s, one array per domain, merged by `index.ts` into the `allEffects` barrel `index.ts` (the composition root) hands to `combineEffects`. Inventory below. |
-| `src/services/` | `serviceContainer.ts` -- `createServices()`, which builds the twelve domain simulators/ports once at module load and packages them as the `ServiceContainer` (aliased `Ctx` in `effects/context.ts`) -- plus the server-only `ThroughputService`. |
+| `src/effects/` | 24 declarative `WsEffect`s, one array per domain, merged by `effects/index.ts` into the `allEffects` barrel, which `src/index.ts` (the composition root) hands to `combineEffects`. Inventory below. |
+| `src/services/` | `serviceContainer.ts` -- `createServices()`, which builds the eleven domain simulators/ports once at module load and packages them, plus the server-only `ThroughputService`, as the twelve-field `ServiceContainer` (aliased `Ctx` in `effects/context.ts`). |
 | `src/socket/` | The transport seam: `toSocket` adapts a raw `ws` `WebSocket` into `@rtc/ws-effects`'s domain-blind `Socket` shape (`messages$`/`closed$`/`send`), `protocol.ts` holds the `WsMessage` envelope, and `FakeWs.testHelpers.ts` is the in-memory test double. Named `socket`, not `ws`, on purpose -- see the note below. |
 | `src/auth.ts` | `isAuthorizedUpgrade` -- the WebSocket-upgrade token check run before a socket is ever created. |
 | `src/index.ts` | The composition root: HTTP server (`/health`) + `WebSocketServer` + `combineEffects(...allEffects)` + `createWsListener` + `httpServer.listen`. |

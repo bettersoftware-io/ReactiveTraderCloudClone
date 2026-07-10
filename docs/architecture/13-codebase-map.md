@@ -171,7 +171,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | | |
 |---|---|
 | **What it is** | The WebSocket server: a thin Node.js host composed of 24 declarative effects over `@rtc/ws-effects`. |
-| **Ring** | ④ host (`src/index.ts`, `src/socket/`) + ③ effects/gateways (`src/effects/`) |
+| **Ring** | ④ host (`src/index.ts`, `node:http` + `ws`) + ③ effects/gateways (`src/effects/`, `src/socket/`'s `toSocket`) |
 | **Depends on** | `@rtc/domain`, `@rtc/shared`, `@rtc/ws-effects`, `rxjs`, `ws` (`packages/server/package.json` `dependencies`) |
 | **Consumed by** | `tests` |
 | **Non-obvious** | Never imports `@rtc/client-core` (`grep -rln "@rtc/client-core" packages/server/src` returns nothing) -- server and clients share only `domain`/`shared`, enforced as a hard boundary by dependency-cruiser's `client-not-server`/`server-not-client` rules ([§6](06-package-dependencies.md#6-package-dependencies)). It also skips `domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` returns nothing) -- use cases are client-orchestration; the server drives simulators directly. |
