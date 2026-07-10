@@ -1,8 +1,16 @@
+import type { ThemeModePreference, ThemeSkin } from "@rtc/domain";
+
 // Neutral manifest: a scenario name maps to a component key (resolved per
 // framework by registry.tsx) and a fixture key (resolved from fixtures.ts).
 export interface Scenario {
   readonly componentKey: string;
   readonly fixtureKey: string;
+  /** Theme-skin override layered onto the fixture's AppData by VisualScenario.
+   *  Matrix-expanded scenarios set this; base scenarios omit it and fall back
+   *  to the fixture's own themeSkin (classic in the fakes). */
+  readonly themeSkin?: ThemeSkin;
+  /** Theme-mode override (see themeSkin). */
+  readonly themeMode?: ThemeModePreference;
 }
 
 export const scenarios: Record<string, Scenario> = {

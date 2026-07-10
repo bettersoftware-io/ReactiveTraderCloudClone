@@ -16,6 +16,7 @@ import "../shared/freezeClock";
 import { scenarios } from "../shared/scenarios";
 import { buildFakeViewModel } from "./buildFakeViewModel";
 import { registry } from "./registry";
+import { resolveScenarioData } from "./resolveScenarioData";
 
 // Components that paint their own full-height/viewport container and must not
 // sit inside the padded inline-block wrapper used for component-level shots.
@@ -57,11 +58,14 @@ export function VisualScenario({
   }, []);
 
   const scenario = scenarios[name];
-  if (!scenario) throw new Error(`Unknown visual scenario: ${name}`);
-  const data = fixtures[scenario.fixtureKey];
-  if (!data) throw new Error(`Unknown fixture: ${scenario.fixtureKey}`);
+  if (!scenario) {
+    throw new Error(`Unknown visual scenario: ${name}`);
+  }
+  const data = resolveScenarioData(scenario, fixtures);
   const render = registry[scenario.componentKey];
-  if (!render) throw new Error(`Unknown component: ${scenario.componentKey}`);
+  if (!render) {
+    throw new Error(`Unknown component: ${scenario.componentKey}`);
+  }
 
   if (!fontsReady) return null;
 
