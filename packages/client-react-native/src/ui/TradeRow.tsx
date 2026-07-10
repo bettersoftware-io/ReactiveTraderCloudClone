@@ -9,6 +9,7 @@ import {
 
 import { type Trade, TradeStatus } from "@rtc/domain";
 
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -66,9 +67,13 @@ function makeStyles(t: RnTheme): TradeRowStyles {
     row: {
       flexDirection: "row",
       justifyContent: "space-between",
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      alignItems: "center",
+      minHeight: 44,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.sm,
       backgroundColor: t.bgTile,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.borderSubtle,
     },
     pair: {
       fontWeight: "600",

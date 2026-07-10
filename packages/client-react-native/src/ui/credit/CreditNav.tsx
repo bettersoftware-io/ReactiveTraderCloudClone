@@ -8,6 +8,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -70,11 +71,11 @@ function makeStyles(t: RnTheme): CreditNavStyles {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.borderSubtle,
     },
-    tab: { flex: 1, alignItems: "center", paddingVertical: 12 },
+    tab: { flex: 1, alignItems: "center", paddingVertical: SPACING.md },
     tabActive: {
       flex: 1,
       alignItems: "center",
-      paddingVertical: 12,
+      paddingVertical: SPACING.md,
       borderBottomWidth: 2,
       borderBottomColor: t.accentPrimary,
     },

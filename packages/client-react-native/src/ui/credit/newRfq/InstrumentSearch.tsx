@@ -12,6 +12,7 @@ import {
 
 import type { Instrument } from "@rtc/domain";
 
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -155,7 +156,7 @@ function makeStyles(t: RnTheme): InstrumentSearchStyles {
     },
     resultCusip: { fontSize: 11, color: t.textMuted, fontFamily: t.fontMono },
     selectedInfo: {
-      gap: 4,
+      gap: SPACING.xs,
       padding: 10,
       borderRadius: 6,
       backgroundColor: t.panel,
@@ -168,7 +169,7 @@ function makeStyles(t: RnTheme): InstrumentSearchStyles {
       fontFamily: t.fontDisplay,
     },
     selectedMeta: { fontSize: 11, color: t.textMuted, fontFamily: t.fontMono },
-    changeBtn: { alignSelf: "flex-start", paddingVertical: 4 },
+    changeBtn: { alignSelf: "flex-start", paddingVertical: SPACING.xs },
     changeText: {
       fontSize: 12,
       color: t.accentPrimary,

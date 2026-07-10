@@ -39,8 +39,13 @@ test("renders the three sections when data has arrived", async () => {
     </ViewModelProvider>,
   );
   expect(screen.getByTestId("analytics-panel")).toBeTruthy();
+  expect(screen.getByTestId("analytics-widget-pnl")).toBeTruthy();
+  expect(screen.getByTestId("analytics-widget-exposure")).toBeTruthy();
+  expect(screen.getByTestId("analytics-widget-pairs")).toBeTruthy();
   expect(screen.getByTestId("pnl-value")).toBeTruthy();
   expect(screen.getByTestId("pnl-chart")).toBeTruthy();
+  expect(screen.getByTestId("exposure-bubbles")).toBeTruthy();
+  expect(screen.getByTestId("pair-pnl-bars")).toBeTruthy();
   expect(screen.getByTestId("pair-pnl-row-EURUSD")).toBeTruthy();
   expect(screen.queryByTestId("analytics-stale")).toBeNull();
 });

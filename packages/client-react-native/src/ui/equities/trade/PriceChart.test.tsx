@@ -6,6 +6,7 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { PriceChart } from "#/ui/equities/trade/PriceChart";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rnThemeTokens } from "#/ui/theme/tokens";
 
 const CANDLES: readonly Candle[] = [
   { time: 1, open: 2, high: 10, low: 0, close: 8 },
@@ -28,6 +29,16 @@ test("shows an empty state when there are no candles", async () => {
     </ViewModelProvider>,
   );
   expect(screen.getByTestId("price-chart-empty")).toBeTruthy();
+});
+
+test("renders no gradient tile surface even on a 3d skin (dense panel, not a hero tile)", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={vmWith(CANDLES)}>
+      <PriceChart symbol="AAPL" />
+    </ViewModelProvider>,
+    rnThemeTokens.holo3d.dark,
+  );
+  expect(screen.queryByTestId("surface-sheen")).toBeNull();
 });
 
 function vmWith(candles: readonly Candle[]): ViewModel {
