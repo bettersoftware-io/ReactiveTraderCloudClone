@@ -5,9 +5,9 @@
 #
 #   ./deploy/cd-proto/deploy.sh [PATH_TO_STANDALONE_HTML]
 #
-# PATH_TO_STANDALONE_HTML defaults to the v2 standalone. Pass another version's
+# PATH_TO_STANDALONE_HTML defaults to the v3 standalone. Pass another version's
 # path to ship it instead, e.g.:
-#   ./deploy/cd-proto/deploy.sh "docs/design/v3/standalone/Reactive Trader.html"
+#   ./deploy/cd-proto/deploy.sh "docs/design/v2/standalone/Reactive Trader.html"
 #
 # The gate (a tiny Basic-Auth middleware) is GENERATED here at deploy time, not
 # committed — so this is the single source of truth for both local runs and the
@@ -28,7 +28,7 @@ set -euo pipefail
 export VERCEL_ORG_ID VERCEL_PROJECT_ID
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
-SRC="${1:-docs/design/v2/standalone/Reactive Trader.html}"
+SRC="${1:-docs/design/v3/standalone/Reactive Trader.html}"
 case "$SRC" in
   /*) ABS="$SRC" ;;
   *)  ABS="$REPO_ROOT/$SRC" ;;
