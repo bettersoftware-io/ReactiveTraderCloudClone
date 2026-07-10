@@ -174,12 +174,21 @@ export function RfqsPanel(): ReactElement {
       }
     }
 
-    if (enteringChanged) setEntering(merged);
+    if (enteringChanged) {
+      setEntering(merged);
+    }
 
-    if (allChanged) setPrevAll({ key: allIdsKey, ids: new Set(allIds) });
-    if (matchingChanged)
+    if (allChanged) {
+      setPrevAll({ key: allIdsKey, ids: new Set(allIds) });
+    }
+
+    if (matchingChanged) {
       setPrevMatching({ key: matchingKey, ids: matchingIdSet });
-    if (filterChanged) setPrevFilter(filter);
+    }
+
+    if (filterChanged) {
+      setPrevFilter(filter);
+    }
   }
 
   const { register } = useFlipGrid([filter, renderedIdsKey]);
@@ -204,7 +213,10 @@ export function RfqsPanel(): ReactElement {
   function handleCardAnimationEnd(rfqId: number, kind: "enter" | "exit"): void {
     if (kind === "enter") {
       setEntering((prev) => {
-        if (!prev.has(rfqId)) return prev;
+        if (!prev.has(rfqId)) {
+          return prev;
+        }
+
         const next = new Map(prev);
         next.delete(rfqId);
         return next;
@@ -214,13 +226,19 @@ export function RfqsPanel(): ReactElement {
 
     const reason = exiting.get(rfqId);
     setExiting((prev) => {
-      if (!prev.has(rfqId)) return prev;
+      if (!prev.has(rfqId)) {
+        return prev;
+      }
+
       const next = new Map(prev);
       next.delete(rfqId);
       return next;
     });
     setEntering((prev) => {
-      if (!prev.has(rfqId)) return prev;
+      if (!prev.has(rfqId)) {
+        return prev;
+      }
+
       const next = new Map(prev);
       next.delete(rfqId);
       return next;

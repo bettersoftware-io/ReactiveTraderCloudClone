@@ -18,7 +18,8 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**"],
+      "env": ["VITE_SERVER_URL", "VITE_WS_TOKEN"]
     },
     "typecheck": {
       "dependsOn": ["^build"]

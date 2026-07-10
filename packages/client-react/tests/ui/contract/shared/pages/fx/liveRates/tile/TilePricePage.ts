@@ -55,7 +55,11 @@ export class TilePricePage extends MountedComponent<TilePriceProps> {
     const btn = this.buttons().find((b) => {
       return (b.querySelector("span")?.textContent ?? "").trim() === side;
     });
-    if (!btn) throw new Error(`No ${side} button`);
+
+    if (!btn) {
+      throw new Error(`No ${side} button`);
+    }
+
     // The numeric value lives in the second top-level <span> (after the label).
     const valueSpan = btn.querySelectorAll(":scope > span")[1];
     return (valueSpan?.textContent ?? "").trim();
@@ -66,13 +70,24 @@ export class TilePricePage extends MountedComponent<TilePriceProps> {
     const btn = this.buttons().find((b) => {
       return (b.querySelector("span")?.textContent ?? "").trim() === side;
     });
-    if (!btn) throw new Error(`No ${side} button`);
+
+    if (!btn) {
+      throw new Error(`No ${side} button`);
+    }
+
     const pips = btn.querySelector<HTMLSpanElement>(
       '[data-testid="tile-pips"]',
     );
     const movement = pips?.dataset.movement;
-    if (movement === "up") return "var(--accent-positive)";
-    if (movement === "down") return "var(--accent-negative)";
+
+    if (movement === "up") {
+      return "var(--accent-positive)";
+    }
+
+    if (movement === "down") {
+      return "var(--accent-negative)";
+    }
+
     return "var(--text-primary)";
   }
 }

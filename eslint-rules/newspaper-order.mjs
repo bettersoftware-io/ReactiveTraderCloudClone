@@ -26,17 +26,25 @@ function baseCalleeName(callee) {
 }
 
 function isPrimary(stmt) {
-  if (stmt.type !== "ExpressionStatement") return false;
+  if (stmt.type !== "ExpressionStatement") {
+    return false;
+  }
   const expr = stmt.expression;
-  if (expr?.type !== "CallExpression") return false;
+  if (expr?.type !== "CallExpression") {
+    return false;
+  }
   const name = baseCalleeName(expr.callee);
   return name !== null && PRIMARY_CALLERS.has(name);
 }
 
 function isMovableViMock(stmt) {
-  if (stmt.type !== "ExpressionStatement") return false;
+  if (stmt.type !== "ExpressionStatement") {
+    return false;
+  }
   const expr = stmt.expression;
-  if (expr?.type !== "CallExpression") return false;
+  if (expr?.type !== "CallExpression") {
+    return false;
+  }
   const callee = expr.callee;
   return (
     callee.type === "MemberExpression" &&
@@ -56,7 +64,9 @@ function declKind(stmt) {
 }
 
 function isSecondary(stmt) {
-  if (isMovableViMock(stmt)) return true;
+  if (isMovableViMock(stmt)) {
+    return true;
+  }
   const kind = declKind(stmt);
   return (
     kind === "FunctionDeclaration" ||
@@ -88,15 +98,23 @@ function create(context) {
       const body = program.body;
       let lastPrimary = -1;
       for (let i = 0; i < body.length; i++) {
-        if (isPrimary(body[i])) lastPrimary = i;
+        if (isPrimary(body[i])) {
+          lastPrimary = i;
+        }
       }
-      if (lastPrimary === -1) return;
+      if (lastPrimary === -1) {
+        return;
+      }
 
       const violations = [];
       for (let i = 0; i < lastPrimary; i++) {
-        if (isSecondary(body[i])) violations.push(body[i]);
+        if (isSecondary(body[i])) {
+          violations.push(body[i]);
+        }
       }
-      if (violations.length === 0) return;
+      if (violations.length === 0) {
+        return;
+      }
 
       context.report({
         node: violations[0],

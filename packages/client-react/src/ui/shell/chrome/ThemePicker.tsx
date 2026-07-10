@@ -32,7 +32,9 @@ export function ThemePicker(): ReactElement {
   const anchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open) {
+      return undefined;
+    }
 
     function handlePointerDown(event: MouseEvent): void {
       if (!anchorRef.current?.contains(event.target as Node)) {

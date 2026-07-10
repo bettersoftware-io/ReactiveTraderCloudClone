@@ -57,7 +57,10 @@ export function aggregatePositionsByCurrency(
   const span = maxValue - minValue;
 
   function scaleRadius(amount: number): number {
-    if (span === 0) return POSITION_MIN_RADIUS;
+    if (span === 0) {
+      return POSITION_MIN_RADIUS;
+    }
+
     const fraction = (Math.abs(amount) - minValue) / span;
     return (
       POSITION_MIN_RADIUS +

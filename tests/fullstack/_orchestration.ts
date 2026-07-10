@@ -78,7 +78,10 @@ export async function waitForHttp(
   while (Date.now() < deadline) {
     try {
       const res = await fetch(url, { method: "HEAD" });
-      if (res.status < 500) return;
+
+      if (res.status < 500) {
+        return;
+      }
     } catch {
       // not up yet
     }
@@ -93,8 +96,10 @@ export async function waitForHttp(
 export function stopProcess(child: ChildProcess | undefined): Promise<void> {
   return new Promise((resolve) => {
     const pid = child?.pid;
-    if (!child || child.exitCode !== null || pid === undefined)
+
+    if (!child || child.exitCode !== null || pid === undefined) {
       return resolve();
+    }
 
     const groupPid = pid;
 

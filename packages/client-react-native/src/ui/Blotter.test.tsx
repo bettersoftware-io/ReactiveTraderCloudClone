@@ -20,12 +20,14 @@ const TRADE: Trade = {
   valueDate: "2026-07-03",
 };
 
-test("renders a row per trade", async () => {
+test("renders a row per trade inside the panel", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel([TRADE])}>
       <Blotter />
     </ViewModelProvider>,
   );
+  expect(screen.getByTestId("blotter-panel")).toBeTruthy();
+  expect(screen.getByTestId("blotter-list")).toBeTruthy();
   expect(screen.getByTestId("trade-row-7")).toBeTruthy();
   expect(screen.getByText("USDJPY")).toBeTruthy();
 });

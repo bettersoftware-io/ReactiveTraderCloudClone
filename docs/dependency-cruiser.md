@@ -1,7 +1,7 @@
 # dependency-cruiser configuration
 
 `.dependency-cruiser.cjs` is the **executable form of the clean-architecture
-layering** described in [architecture.md §6](./architecture.md#6-package-dependencies):
+layering** described in [architecture.md §6](./architecture/06-package-dependencies.md#6-package-dependencies):
 "dependencies flow inward only." Where Biome's `noRestrictedImports` only sees a
 single literal import string, dependency-cruiser resolves the **whole module
 graph** — so it catches a forbidden layer crossing even when it happens
@@ -144,7 +144,7 @@ import *strings* tidy; dependency-cruiser keeps the dependency *graph* legal.
 
 ## See also
 
-- [architecture.md §1.3.1 — Clean Architecture, concretely](./architecture.md#131-clean-architecture-concretely----which-package-is-which-ring) (the rings these rules compile, with a green/red enforcement view of this exact config)
-- [architecture.md §6 — Package Dependencies](./architecture.md#6-package-dependencies) (the prose rule this config enforces)
-- [architecture.md §12 — Architectural Gates](./architecture.md#12-architectural-gates) (the regex-based `grep-gates` that guard import boundaries inside the test suite)
+- [architecture.md §1.3.1 — Clean Architecture, concretely](./architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) (the rings these rules compile, with a green/red enforcement view of this exact config)
+- [architecture.md §6 — Package Dependencies](./architecture/06-package-dependencies.md#6-package-dependencies) (the prose rule this config enforces)
+- [architecture.md §12 — Architectural Gates](./architecture/12-architectural-gates.md#12-architectural-gates) (the regex-based `grep-gates` that guard import boundaries inside the test suite)
 - [tooling-roadmap.md §4 — dependency-cruiser](./tooling-roadmap.md#4-dependency-cruiser----circular-deps--architecture) (adoption rationale and the type-edge cycle finding)

@@ -49,7 +49,9 @@ export function VisualScenario({
   useEffect(() => {
     let cancelled = false;
     void document.fonts.ready.then(() => {
-      if (!cancelled) setFontsReady(true);
+      if (!cancelled) {
+        setFontsReady(true);
+      }
     });
 
     return () => {
@@ -67,7 +69,9 @@ export function VisualScenario({
     throw new Error(`Unknown component: ${scenario.componentKey}`);
   }
 
-  if (!fontsReady) return null;
+  if (!fontsReady) {
+    return null;
+  }
 
   if (FULL_BLEED.has(scenario.componentKey)) {
     return (

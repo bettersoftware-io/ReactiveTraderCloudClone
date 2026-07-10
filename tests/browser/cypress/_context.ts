@@ -20,6 +20,9 @@ afterEach(() => {
 });
 
 export function getCtx(): TestContext {
-  if (!currentCtx) throw new Error("ctx not available outside it()/beforeEach");
+  if (!currentCtx) {
+    throw new Error("ctx not available outside it()/beforeEach");
+  }
+
   return currentCtx;
 }

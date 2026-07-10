@@ -87,8 +87,11 @@ export class LiveRatesWorkspacePage extends MountedComponent<
       ...this.root.querySelectorAll<HTMLElement>("[data-testid^='watch-row-']"),
     ].map((el) => {
       const testid = el.getAttribute("data-testid");
-      if (!testid)
+
+      if (!testid) {
         throw new Error("watch row element missing data-testid attribute");
+      }
+
       return testid.replace("watch-row-", "");
     });
   }

@@ -62,7 +62,11 @@ export class CypressCreditRfqPanel implements CreditRfqPanelPO {
       const quoteRow = card
         .find(`[data-testid^="${TESTIDS.credit.rfqs.quotePrefix}"][data-state]`)
         .first();
-      if (quoteRow.length === 0) return null;
+
+      if (quoteRow.length === 0) {
+        return null;
+      }
+
       return quoteRow.attr("data-state") ?? null;
     }) as unknown as Promise<string | null>;
   }

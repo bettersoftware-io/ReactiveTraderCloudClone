@@ -30,6 +30,7 @@ test("renders the desk gauge plus a row per position", async () => {
     </ViewModelProvider>,
   );
   expect(screen.getByTestId("desk-pnl-gauge")).toBeTruthy();
+  expect(screen.getByTestId("positions-panel")).toBeTruthy();
   expect(screen.getByTestId("position-row-AAPL")).toBeTruthy();
   expect(screen.getByTestId("position-row-JPM")).toBeTruthy();
 });

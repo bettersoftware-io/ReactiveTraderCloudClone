@@ -102,10 +102,16 @@ describe("ThroughputPresenter", () => {
       text: "Throughput has been set to 420",
       isError: false,
     });
+
     // Banner appears after the debounce (~301ms) and dismisses 3000ms later.
-    if (!banner) throw new Error("Expected a success banner event");
-    if (!dismissed)
+    if (!banner) {
+      throw new Error("Expected a success banner event");
+    }
+
+    if (!dismissed) {
       throw new Error("Expected a dismiss event after the banner");
+    }
+
     expect(banner.time).toBe(1 + DEBOUNCE_MS);
     expect(dismissed.time).toBe(1 + DEBOUNCE_MS + MESSAGE_DISMISS_MS);
   });
@@ -195,10 +201,19 @@ describe("ThroughputPresenter", () => {
       text: "Throughput has been set to 999",
       isError: false,
     });
-    if (!bannerA) throw new Error("Expected banner A (420) to be emitted");
-    if (!bannerB) throw new Error("Expected banner B (999) to be emitted");
-    if (!finalDismiss)
+
+    if (!bannerA) {
+      throw new Error("Expected banner A (420) to be emitted");
+    }
+
+    if (!bannerB) {
+      throw new Error("Expected banner B (999) to be emitted");
+    }
+
+    if (!finalDismiss) {
       throw new Error("Expected a final dismiss event after banner B");
+    }
+
     expect(bannerA.time).toBeLessThan(bannerB.time);
 
     // B's banner is anchored to its own debounce (t=1000+DEBOUNCE_MS=1300).

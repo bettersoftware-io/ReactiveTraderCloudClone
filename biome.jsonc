@@ -84,6 +84,12 @@
       },
       "style": {
         "useComponentExportOnlyModules": "error",
+        // Always require braces on control statements (if/else/for/while/…).
+        // Bans the brace-less single-statement form (`if (x) doThis();`) so
+        // every branch body is a block — cheaper diffs when a second statement
+        // is added, and no dangling-else / goto-fail ambiguity. Fixable: Biome
+        // rewrites the brace-less form on `check --write`.
+        "useBlockStatements": "error",
         // Force named exports everywhere we control: default exports are
         // un-discoverable by editors, invite inconsistent local names, and
         // their CJS/ESM default-import interop is fragile (a default import of

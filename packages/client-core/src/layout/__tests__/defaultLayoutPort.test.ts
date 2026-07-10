@@ -22,14 +22,21 @@ describe("createDefaultLayoutPort", () => {
     });
 
     // root: a 0.73/0.27 row split — [tiles+blotter column | right rail].
-    if (initial.root.kind !== "split") throw new Error("split root");
+    if (initial.root.kind !== "split") {
+      throw new Error("split root");
+    }
+
     expect(initial.root.dir).toBe("row");
     expect(initial.root.sizes).toEqual([0.73, 0.27]);
 
     // left column: rates over blotter at 0.66/0.34 — the blotter sits under
     // the tiles only, never spanning the rail's width.
     const leftColumn = initial.root.children[0];
-    if (leftColumn.kind !== "split") throw new Error("left column split");
+
+    if (leftColumn.kind !== "split") {
+      throw new Error("left column split");
+    }
+
     expect(leftColumn.dir).toBe("column");
     expect(leftColumn.sizes).toEqual([0.66, 0.34]);
     expect(leftColumn.children).toEqual([
@@ -44,7 +51,11 @@ describe("createDefaultLayoutPort", () => {
   it("FX root has no fixedPx anywhere — every split is ratio-sized and draggable; the rail opens at its 360px design width (initialPx)", () => {
     const { initial } = createDefaultLayoutPort("fx");
     const root = initial.root;
-    if (root.kind !== "split") throw new Error("fx root must be a split");
+
+    if (root.kind !== "split") {
+      throw new Error("fx root must be a split");
+    }
+
     expect(root.fixedPx).toBeUndefined();
     // draggable design-value default, not a handle-suppressing fixedPx
     expect(root.initialPx).toEqual([undefined, 360]);
@@ -99,7 +110,11 @@ describe("createDefaultLayoutPort", () => {
     // root: a row split — [New RFQ rail | RFQs-over-blotter column]. The
     // rail opens at its 330px design width (draggable initialPx).
     const root = initial.root;
-    if (root.kind !== "split") throw new Error("credit root must be a split");
+
+    if (root.kind !== "split") {
+      throw new Error("credit root must be a split");
+    }
+
     expect(root.dir).toBe("row");
     expect(root.sizes).toEqual([0.25, 0.75]);
     expect(root.fixedPx).toBeUndefined();
@@ -265,7 +280,9 @@ function collectHandleFlags(
   node: LayoutNode,
   specs: Readonly<Record<PanelId, PanelSpec>>,
 ): boolean[] {
-  if (node.kind !== "split") return [];
+  if (node.kind !== "split") {
+    return [];
+  }
 
   const flags: boolean[] = [];
 

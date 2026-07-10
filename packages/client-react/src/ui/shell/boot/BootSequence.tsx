@@ -19,16 +19,28 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+
+    if (!canvas) {
+      return;
+    }
+
     const reduce = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    if (reduce) return;
+
+    if (reduce) {
+      return;
+    }
+
     // Initial resize (mirrors prototype _drawBoot outer resize())
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return; // jsdom / no-GPU: render chrome only
+
+    if (!ctx) {
+      return; // jsdom / no-GPU: render chrome only
+    }
+
     const cs = getComputedStyle(document.documentElement);
     const d: BootDrawCtx = {
       canvas,
@@ -128,7 +140,9 @@ function visibleLineCount(progress: number): number {
   let count = 0;
 
   for (let i = 0; i < BOOT_LOG_LINES.length; i++) {
-    if (progress >= ((350 + i * 480) / 4200) * 100) count++;
+    if (progress >= ((350 + i * 480) / 4200) * 100) {
+      count++;
+    }
   }
 
   return count;

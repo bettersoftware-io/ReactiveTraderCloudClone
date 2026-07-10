@@ -51,8 +51,13 @@ export function FxBlotter(): ReactElement {
   ): void {
     setFilters((prev) => {
       const next = new Map(prev);
-      if (filter) next.set(column, filter);
-      else next.delete(column);
+
+      if (filter) {
+        next.set(column, filter);
+      } else {
+        next.delete(column);
+      }
+
       return next;
     });
   }
@@ -75,7 +80,10 @@ export function FxBlotter(): ReactElement {
     const col = COLUMNS.find((c) => {
       return c.key === key;
     });
-    if (col) activeFilterLabels.push(col.label);
+
+    if (col) {
+      activeFilterLabels.push(col.label);
+    }
   }
 
   if (blotterTab === "activity") {

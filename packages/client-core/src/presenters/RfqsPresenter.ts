@@ -65,9 +65,20 @@ export interface TicketSubmissionIntents {
 }
 
 function shallowArrayEquals<T>(a: readonly T[], b: readonly T[]): boolean {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  if (a === b) {
+    return true;
+  }
+
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -115,7 +126,11 @@ export class RfqsPresenter {
 
   quotesForRfq$(rfqId: number): Observable<readonly Quote[]> {
     const cached = this.quotesByRfqCache.get(rfqId);
-    if (cached) return cached;
+
+    if (cached) {
+      return cached;
+    }
+
     const stream = this.state$.pipe(
       map((s) => {
         return Array.from(s.quotes.values()).filter((q) => {

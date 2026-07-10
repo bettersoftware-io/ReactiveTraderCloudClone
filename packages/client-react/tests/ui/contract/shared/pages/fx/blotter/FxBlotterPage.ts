@@ -12,7 +12,10 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
 
   /** Number of trade rows shown (0 when the empty-state row is showing). */
   tradeRowCount(): number {
-    if (this.emptyMessage() !== null) return 0;
+    if (this.emptyMessage() !== null) {
+      return 0;
+    }
+
     return this.table().querySelectorAll("tbody tr").length;
   }
 
@@ -25,7 +28,11 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
   /** True when a body cell with the given exact text is present. */
   hasCell(text: string): boolean {
     const tbody = this.table().querySelector("tbody");
-    if (!tbody) return false;
+
+    if (!tbody) {
+      return false;
+    }
+
     return within(tbody as HTMLElement).queryByText(text) !== null;
   }
 
@@ -37,7 +44,11 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
   headerIsSplitFromRows(): boolean {
     const th = this.table().querySelector("th");
     const tbody = this.table().querySelector("tbody");
-    if (!th || !tbody) return false;
+
+    if (!th || !tbody) {
+      return false;
+    }
+
     return th.closest("table") !== tbody.closest("table");
   }
 
@@ -58,7 +69,11 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
         .trim()
         .startsWith(label);
     });
-    if (idx < 0) throw new Error(`No column header for ${label}`);
+
+    if (idx < 0) {
+      throw new Error(`No column header for ${label}`);
+    }
+
     const rows = [...this.table().querySelectorAll("tbody tr")];
     return rows
       .map((r) => {
@@ -80,21 +95,36 @@ export class FxBlotterPage extends MountedComponent<Record<string, never>> {
       .find((th) => {
         return (th.querySelector("span")?.textContent ?? "").includes(label);
       });
-    if (!cell) throw new Error(`No header cell with label ${label}`);
+
+    if (!cell) {
+      throw new Error(`No header cell with label ${label}`);
+    }
+
     return cell as HTMLTableCellElement;
   }
 
   /** Click a column header to toggle its sort. */
   async clickColumnHeader(label: string): Promise<void> {
     const span = this.headerCell(label).querySelector("span");
-    if (!span) throw new Error(`No <span> found in column header "${label}"`);
+
+    if (!span) {
+      throw new Error(`No <span> found in column header "${label}"`);
+    }
+
     await this.user.click(span);
   }
 
   sortIndicatorFor(label: string): "asc" | "desc" | null {
     const text = this.headerCell(label).textContent ?? "";
-    if (text.includes("▲")) return "asc";
-    if (text.includes("▼")) return "desc";
+
+    if (text.includes("▲")) {
+      return "asc";
+    }
+
+    if (text.includes("▼")) {
+      return "desc";
+    }
+
     return null;
   }
 

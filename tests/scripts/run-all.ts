@@ -123,7 +123,11 @@ async function mapWithLimit<T, R>(
     while (cursor < items.length) {
       const index = cursor++;
       const item = items[index];
-      if (item === undefined) break; // cursor < items.length guarantees this, but satisfies the type checker
+
+      if (item === undefined) {
+        break; // cursor < items.length guarantees this, but satisfies the type checker
+      }
+
       results[index] = await fn(item);
     }
   }

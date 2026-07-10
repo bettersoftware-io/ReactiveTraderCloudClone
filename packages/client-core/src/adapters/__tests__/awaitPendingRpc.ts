@@ -11,7 +11,10 @@ export async function awaitPendingRpc(
   maxIterations = 1000,
 ): Promise<void> {
   for (let i = 0; i < maxIterations; i++) {
-    if (ws.hasPendingRpc(name)) return;
+    if (ws.hasPendingRpc(name)) {
+      return;
+    }
+
     await Promise.resolve();
   }
 

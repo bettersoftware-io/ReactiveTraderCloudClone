@@ -25,6 +25,7 @@
     "clean:deep": "turbo run clean:deep && (rm -rf node_modules .pnpm-store .turbo 2>/dev/null || true) && find . -name .DS_Store -type f -delete",
     "lint:actions": "scripts/install-actionlint.sh && .tooling/actionlint -color",
     "check:versions": "manypkg check && syncpack lint",
+    "check:scripts": "node scripts/check-workspace-scripts.mjs",
     "lint:dead": "knip",
     "check:deps": "depcruise --config .dependency-cruiser.cjs packages tests",
     "lint:eslint": "eslint .",

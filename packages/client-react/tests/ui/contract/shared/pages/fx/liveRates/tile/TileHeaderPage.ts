@@ -80,10 +80,20 @@ export class TileHeaderPage extends MountedComponent<TileHeaderProps> {
   actionsOrder(): string[] {
     const anchor = this.rfqChip() ?? this.root.querySelector("[data-movement]");
     const container = anchor?.parentElement;
-    if (!container) return [];
+
+    if (!container) {
+      return [];
+    }
+
     return [...container.children].map((el) => {
-      if (el.getAttribute("data-testid") === "rfq-initiate") return "rfqChip";
-      if (el.hasAttribute("data-movement")) return "movementBadge";
+      if (el.getAttribute("data-testid") === "rfq-initiate") {
+        return "rfqChip";
+      }
+
+      if (el.hasAttribute("data-movement")) {
+        return "movementBadge";
+      }
+
       return "unknown";
     });
   }

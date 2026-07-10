@@ -258,7 +258,10 @@ export function OrderTicket({ symbol }: OrderTicketProps): ReactElement {
           placeholder="0"
           onChange={(e: ChangeEvent<HTMLInputElement>) => {
             const n = Number(e.target.value);
-            if (Number.isFinite(n)) ticket.setQty(n);
+
+            if (Number.isFinite(n)) {
+              ticket.setQty(n);
+            }
           }}
         />
         <button

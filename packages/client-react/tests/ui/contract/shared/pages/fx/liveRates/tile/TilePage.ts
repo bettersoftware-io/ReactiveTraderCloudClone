@@ -146,7 +146,11 @@ export class TilePage extends MountedComponent<TileProps> {
 
   async clickRfqButton(label: string): Promise<void> {
     const btn = this.rfqButton(label);
-    if (!btn) throw new Error(`No RFQ button labelled "${label}"`);
+
+    if (!btn) {
+      throw new Error(`No RFQ button labelled "${label}"`);
+    }
+
     await this.user.click(btn);
   }
 

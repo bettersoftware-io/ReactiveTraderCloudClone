@@ -24,7 +24,10 @@ export function BootEmblem(): JSX.Element {
     let loop: Animated.CompositeAnimation | undefined;
     void AccessibilityInfo.isReduceMotionEnabled()
       .then((reduce) => {
-        if (cancelled || reduce) return;
+        if (cancelled || reduce) {
+          return;
+        }
+
         loop = Animated.loop(
           Animated.sequence([
             Animated.timing(pulse, {

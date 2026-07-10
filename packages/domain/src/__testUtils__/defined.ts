@@ -9,6 +9,9 @@ export function defined<T>(
   value: T | null | undefined,
   message = "Expected value to be defined",
 ): NonNullable<T> {
-  if (value === null || value === undefined) throw new Error(message);
+  if (value === null || value === undefined) {
+    throw new Error(message);
+  }
+
   return value as NonNullable<T>;
 }

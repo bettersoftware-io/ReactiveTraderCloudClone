@@ -14,7 +14,11 @@ export class PriceHistoryUseCase {
       return this.pricing.getPriceUpdates(symbol).pipe(
         map((tick) => {
           buffer.push(tick);
-          if (buffer.length > PRICE_HISTORY_SIZE) buffer.shift();
+
+          if (buffer.length > PRICE_HISTORY_SIZE) {
+            buffer.shift();
+          }
+
           return [...buffer];
         }),
       );

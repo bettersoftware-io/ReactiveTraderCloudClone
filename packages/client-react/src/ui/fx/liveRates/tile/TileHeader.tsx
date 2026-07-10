@@ -62,13 +62,25 @@ interface TileHeaderProps {
 }
 
 function movementKey(movement: PriceMovementType): "up" | "down" | "flat" {
-  if (movement === PriceMovementType.UP) return "up";
-  if (movement === PriceMovementType.DOWN) return "down";
+  if (movement === PriceMovementType.UP) {
+    return "up";
+  }
+
+  if (movement === PriceMovementType.DOWN) {
+    return "down";
+  }
+
   return "flat";
 }
 
 function movementArrow(movement: PriceMovementType): string {
-  if (movement === PriceMovementType.UP) return "▲";
-  if (movement === PriceMovementType.DOWN) return "▼";
+  if (movement === PriceMovementType.UP) {
+    return "▲";
+  }
+
+  if (movement === PriceMovementType.DOWN) {
+    return "▼";
+  }
+
   return "–";
 }

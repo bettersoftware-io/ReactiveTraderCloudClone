@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -11,6 +11,8 @@ import {
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { SurfaceCard } from "#/ui/SurfaceCard";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -26,52 +28,52 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
 
   if (state.phase === "submitting") {
     return (
-      <View testID="order-ticket" style={styles.ticket}>
+      <Ticket styles={styles}>
         <Text style={styles.status}>SUBMITTING…</Text>
-      </View>
+      </Ticket>
     );
   }
 
   if (state.phase === "working") {
     return (
-      <View testID="order-ticket" style={styles.ticket}>
+      <Ticket styles={styles}>
         <Text style={styles.status}>
           WORKING — {state.order.filledQty}/{state.order.qty} filled
         </Text>
         <ResetButton label="RESET" onPress={ticket.reset} styles={styles} />
-      </View>
+      </Ticket>
     );
   }
 
   if (state.phase === "partiallyFilled") {
     return (
-      <View testID="order-ticket" style={styles.ticket}>
+      <Ticket styles={styles}>
         <Text style={styles.status}>
           PARTIAL — {state.order.filledQty}/{state.order.qty} @{" "}
           {state.order.avgPrice?.toFixed(2) ?? "—"}
         </Text>
         <ResetButton label="RESET" onPress={ticket.reset} styles={styles} />
-      </View>
+      </Ticket>
     );
   }
 
   if (state.phase === "filled") {
     return (
-      <View testID="order-ticket" style={styles.ticket}>
+      <Ticket styles={styles}>
         <Text style={styles.status}>
           FILLED — {state.order.qty} @ {state.order.avgPrice?.toFixed(2) ?? "—"}
         </Text>
         <ResetButton label="NEW ORDER" onPress={ticket.reset} styles={styles} />
-      </View>
+      </Ticket>
     );
   }
 
   if (state.phase === "rejected") {
     return (
-      <View testID="order-ticket" style={styles.ticket}>
+      <Ticket styles={styles}>
         <Text style={styles.status}>REJECTED — {state.reason}</Text>
         <ResetButton label="RETRY" onPress={ticket.reset} styles={styles} />
-      </View>
+      </Ticket>
     );
   }
 
@@ -80,7 +82,7 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
   const buy = form.side === "buy";
 
   return (
-    <View testID="order-ticket" style={styles.ticket}>
+    <Ticket styles={styles}>
       <View style={styles.toggleGroup}>
         <Pressable
           testID="order-ticket-side-buy"
@@ -142,7 +144,10 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
           value={form.qty === 0 ? "" : String(form.qty)}
           onChangeText={(text: string): void => {
             const n = Number(text);
-            if (Number.isFinite(n)) ticket.setQty(n);
+
+            if (Number.isFinite(n)) {
+              ticket.setQty(n);
+            }
           }}
         />
       </View>
@@ -176,12 +181,28 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
           {buy ? "BUY" : "SELL"} {symbol}
         </Text>
       </Pressable>
-    </View>
+    </Ticket>
   );
 }
 
 interface OrderTicketProps {
   symbol: string;
+}
+
+interface TicketProps {
+  styles: OrderTicketStyles;
+  children: ReactNode;
+}
+
+/** Shared `order-ticket` card shell — every phase branch (submitting/working/
+ * partiallyFilled/filled/rejected/editing) renders through this one wrapper
+ * so the SurfaceCard chrome isn't duplicated per branch. */
+function Ticket({ styles, children }: TicketProps): JSX.Element {
+  return (
+    <SurfaceCard variant="panel" testID="order-ticket" style={styles.ticket}>
+      {children}
+    </SurfaceCard>
+  );
 }
 
 interface ResetButtonProps {
@@ -239,21 +260,17 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
   };
   const baseSubmit: ViewStyle = {
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: SPACING.md,
     borderRadius: 6,
-    marginTop: 4,
+    marginTop: SPACING.xs,
   };
   return StyleSheet.create({
     ticket: {
       gap: 10,
-      padding: 12,
-      backgroundColor: t.panel,
-      borderRadius: 6,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.borderSubtle,
+      padding: SPACING.md,
     },
     status: { fontSize: 13, color: t.textPrimary, fontFamily: t.fontMono },
-    toggleGroup: { flexDirection: "row", gap: 8 },
+    toggleGroup: { flexDirection: "row", gap: SPACING.sm },
     toggle: baseToggle,
     buyActive: {
       ...baseToggle,
@@ -282,11 +299,11 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
       color: t.textOnAccent,
       fontFamily: t.fontDisplay,
     },
-    field: { gap: 4 },
+    field: { gap: SPACING.xs },
     label: { fontSize: 10, color: t.textMuted, fontFamily: t.fontMono },
     input: {
       paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingVertical: SPACING.sm,
       borderRadius: 4,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.border,
@@ -306,7 +323,7 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
     resetBtn: {
       alignSelf: "flex-start",
       paddingVertical: 6,
-      paddingHorizontal: 12,
+      paddingHorizontal: SPACING.md,
       borderRadius: 4,
       borderWidth: 1,
       borderColor: t.border,

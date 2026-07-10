@@ -42,7 +42,10 @@ export function describeAnalyticsPortContract(
         const promise = firstValueFrom(port.getAnalytics("USD"));
         await driver.emitAnalytics("USD");
         const update = await promise;
-        if (update.history.length < 2) return;
+
+        if (update.history.length < 2) {
+          return;
+        }
 
         for (let i = 1; i < update.history.length; i++) {
           const prev = new Date(

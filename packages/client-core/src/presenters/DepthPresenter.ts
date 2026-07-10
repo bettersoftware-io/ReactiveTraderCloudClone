@@ -9,7 +9,11 @@ export class DepthPresenter {
 
   depth$(symbol: string): Observable<DepthBook> {
     const cached = this.depthCache.get(symbol);
-    if (cached) return cached;
+
+    if (cached) {
+      return cached;
+    }
+
     const stream = this.marketData
       .depth(symbol)
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));

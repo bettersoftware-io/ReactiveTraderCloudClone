@@ -34,31 +34,48 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     },
     (seed) => {
       clearStorage();
-      if (seed.themeMode)
+
+      if (seed.themeMode) {
         localStorage.setItem(THEME_STORAGE_KEY, seed.themeMode);
-      if (seed.themeSkin)
+      }
+
+      if (seed.themeSkin) {
         localStorage.setItem(THEME_SKIN_STORAGE_KEY, seed.themeSkin);
-      if (seed.viewMode)
+      }
+
+      if (seed.viewMode) {
         localStorage.setItem(VIEW_MODE_STORAGE_KEY, seed.viewMode);
-      if (seed.animatedBackground !== undefined)
+      }
+
+      if (seed.animatedBackground !== undefined) {
         localStorage.setItem(
           ANIMATED_BG_STORAGE_KEY,
           seed.animatedBackground ? "true" : "false",
         );
-      if (seed.bootVariant)
+      }
+
+      if (seed.bootVariant) {
         localStorage.setItem(BOOT_VARIANT_STORAGE_KEY, seed.bootVariant);
-      if (seed.creditRfqFilter)
+      }
+
+      if (seed.creditRfqFilter) {
         localStorage.setItem(
           CREDIT_RFQ_FILTER_STORAGE_KEY,
           seed.creditRfqFilter,
         );
-      if (seed.eqWatchlistSort)
+      }
+
+      if (seed.eqWatchlistSort) {
         localStorage.setItem(
           EQ_WATCHLIST_SORT_STORAGE_KEY,
           seed.eqWatchlistSort,
         );
-      if (seed.eqBlotterView)
+      }
+
+      if (seed.eqBlotterView) {
         localStorage.setItem(EQ_BLOTTER_VIEW_STORAGE_KEY, seed.eqBlotterView);
+      }
+
       return new LocalStoragePreferencesAdapter();
     },
   );

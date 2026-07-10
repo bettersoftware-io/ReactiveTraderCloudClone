@@ -68,7 +68,9 @@ function clampHealth(health: number): number {
 // no uptime figure (em dash, matching the "NO DATA"-style placeholders used
 // elsewhere in the admin board).
 function uptimeLabelFor(health: number, status: ServiceStatus): string {
-  if (status === "down") return "—";
+  if (status === "down") {
+    return "—";
+  }
 
   if (status === "degraded") {
     return `${(90 + health / 10).toFixed(1)}%`;

@@ -15,7 +15,11 @@ import { createRfqTileMachine, type RfqState } from "../RfqTileMachine";
 const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "EURUSD";
 });
-if (!_pairOrUndef) throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
+
+if (!_pairOrUndef) {
+  throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
+}
+
 const pair: CurrencyPair = _pairOrUndef;
 
 const quoteResult: RfqQuoteResult = { bid: 1.0921, ask: 1.0925, mid: 1.0923 };
@@ -221,7 +225,11 @@ describe("createRfqTileMachine", () => {
     const rejectedEntry = seen.find((e) => {
       return e.state.status === "rejected";
     });
-    if (!rejectedEntry) throw new Error("No 'rejected' state was emitted");
+
+    if (!rejectedEntry) {
+      throw new Error("No 'rejected' state was emitted");
+    }
+
     const rejectedFrame = rejectedEntry.frame;
     const initAfterHold = seen[seen.length - 1];
     expect(initAfterHold.state).toEqual(INIT);

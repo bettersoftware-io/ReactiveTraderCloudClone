@@ -24,8 +24,11 @@ export class LiveRatesPanelPage extends MountedComponent<
       ...this.root.querySelectorAll<HTMLElement>("[data-testid^='tile-']"),
     ].map((el) => {
       const testid = el.getAttribute("data-testid");
-      if (!testid)
+
+      if (!testid) {
         throw new Error("tile element missing data-testid attribute");
+      }
+
       return testid.replace("tile-", "");
     });
   }

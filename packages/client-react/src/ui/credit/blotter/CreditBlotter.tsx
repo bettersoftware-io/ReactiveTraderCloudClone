@@ -84,8 +84,13 @@ export function CreditBlotter(): ReactElement {
   ): void {
     setFilters((prev) => {
       const next = new Map(prev);
-      if (filter) next.set(column, filter);
-      else next.delete(column);
+
+      if (filter) {
+        next.set(column, filter);
+      } else {
+        next.delete(column);
+      }
+
       return next;
     });
   }
@@ -116,7 +121,10 @@ export function CreditBlotter(): ReactElement {
     const col = CREDIT_COLUMNS.find((c) => {
       return c.key === key;
     });
-    if (col) activeFilterLabels.push(col.label);
+
+    if (col) {
+      activeFilterLabels.push(col.label);
+    }
   }
 
   // Split-header structure (shared with FxBlotter): the column-header table

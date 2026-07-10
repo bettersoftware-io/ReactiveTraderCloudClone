@@ -3,7 +3,7 @@
 - **Status:** Approved design, pending implementation plan
 - **Date:** 2026-07-02
 - **Supersedes server dispatch in:** `packages/server/src/ws/wsHandler.ts`
-- **Related:** [`docs/architecture.md` §7 (Runtime Topology & Communication Patterns)](../../architecture.md#7-communication-patterns), CLAUDE.md "Make choices, defer commitment"
+- **Related:** [`docs/architecture.md` §7 (Runtime Topology & Communication Patterns)](../../architecture/07-communication-patterns.md#7-communication-patterns), CLAUDE.md "Make choices, defer commitment"
 
 ## 1. Context & problem
 
@@ -19,7 +19,7 @@ A hand-rolled WebSocket server — `ws` + `rxjs`, no framework:
 - `ws/wsHandler.ts` — `handleConnection` → an imperative **`switch` statement** (`handleMessage`) routing a `{ type, payload, correlationId }` envelope. Two message families: `subscribe.*` (long-lived streams) and `rpc.*` (request/response matched by `correlationId`). Per-subscription teardown via a `Set<AbortController>`.
 - `services/serviceContainer.ts` — instantiates the domain **simulators** (`PricingSimulator`, `ExecutionSimulator`, `CreditRfqSimulator`, …) and exposes them as services.
 
-The simulators (24 classes, ~3,880 LOC in `packages/domain/src/simulators/`) are the real data source. They implement the domain **port interfaces** and are reused on both the server and the browser (see [architecture.md §7](../../architecture.md#7-communication-patterns) — Runtime Topology).
+The simulators (24 classes, ~3,880 LOC in `packages/domain/src/simulators/`) are the real data source. They implement the domain **port interfaces** and are reused on both the server and the browser (see [architecture.md §7](../../architecture/07-communication-patterns.md#7-communication-patterns) — Runtime Topology).
 
 ### 1.3 The showcase goal
 

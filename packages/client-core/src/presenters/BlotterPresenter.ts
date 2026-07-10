@@ -106,7 +106,10 @@ export class BlotterPresenter {
             if (!acc.seen.has(trade.tradeId)) {
               // The entire first snapshot is the initial load — nothing is
               // "new" yet. Only arrivals on later emissions are flagged.
-              if (acc.initialized) fresh.add(trade.tradeId);
+              if (acc.initialized) {
+                fresh.add(trade.tradeId);
+              }
+
               acc.seen.add(trade.tradeId);
             }
           }
@@ -135,7 +138,10 @@ export class BlotterPresenter {
           const additions: ActivityEntry[] = [];
 
           for (const trade of trades) {
-            if (acc.seen.has(trade.tradeId)) continue;
+            if (acc.seen.has(trade.tradeId)) {
+              continue;
+            }
+
             acc.seen.add(trade.tradeId);
 
             if (acc.initialized && trade.tradeName === DEFAULT_TRADER_NAME) {

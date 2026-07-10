@@ -61,7 +61,11 @@ function SellSideRfqRow({
   const abQuote = quotes.find((q) => {
     return q.dealerId === adaptiveBankId;
   });
-  if (!abQuote) return null;
+
+  if (!abQuote) {
+    return null;
+  }
+
   return (
     <TradeTicket
       rfq={rfq}

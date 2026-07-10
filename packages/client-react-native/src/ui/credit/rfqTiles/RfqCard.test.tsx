@@ -13,6 +13,7 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { RfqCard } from "#/ui/credit/rfqTiles/RfqCard";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 
 const INSTRUMENT: Instrument = {
   id: 1,
@@ -28,6 +29,7 @@ const DEALERS: readonly Dealer[] = [{ id: 7, name: "Bank A" }];
 
 test("shows instrument, direction/qty and a Live badge for an open RFQ", async () => {
   await renderCard(rfq(RfqState.Open), []);
+  expect(screen.getByTestId("rfq-card-3")).toBeTruthy();
   expect(screen.getByText("Acme 5.5% 2030")).toBeTruthy();
   expect(screen.getByText("Buy | Qty: 25")).toBeTruthy();
   expect(screen.getByTestId("rfq-badge-3")).toHaveTextContent("Live");
@@ -57,6 +59,17 @@ test("renders a quote per quote", async () => {
   expect(screen.getByTestId("quote-accept-42")).toBeTruthy();
 });
 
+test("renders a gradient tile surface on 3d skins", async () => {
+  await renderCard(rfq(RfqState.Open), [], rnThemeTokens.holo3d.dark);
+  expect(screen.getByTestId("surface-sheen")).toBeTruthy();
+});
+
+test("flat skins render no gradient tile surface", async () => {
+  // renderCard defaults to holo.dark (a flat skin, depth.level 0).
+  await renderCard(rfq(RfqState.Open), []);
+  expect(screen.queryByTestId("surface-sheen")).toBeNull();
+});
+
 function rfq(state: RfqState): Rfq {
   return {
     id: 3,
@@ -77,7 +90,11 @@ function fakeViewModel(remainingMs: number): ViewModel {
   } as unknown as ViewModel;
 }
 
-function renderCard(rfqValue: Rfq, quotes: readonly Quote[]): Promise<unknown> {
+function renderCard(
+  rfqValue: Rfq,
+  quotes: readonly Quote[],
+  theme?: RnTheme,
+): Promise<unknown> {
   return renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(60_000)}>
       <RfqCard
@@ -93,5 +110,6 @@ function renderCard(rfqValue: Rfq, quotes: readonly Quote[]): Promise<unknown> {
         }}
       />
     </ViewModelProvider>,
+    theme,
   );
 }

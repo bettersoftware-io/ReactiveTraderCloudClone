@@ -227,6 +227,6 @@ Cypress in a constrained sandbox, use `pnpm test:e2e:no-cypress` (sets
 The browser pairs and the four presenter peers intentionally implement the
 same behavior specs on different stacks — they are a comparison artifact and
 portability proof for the clean-architecture seams (see
-`docs/architecture.md` §9 "Test Strategy"). The shared layers (`specs/`,
+`docs/architecture/09-test-strategy.md` §9 "Test Strategy"). The shared layers (`specs/`,
 `steps/`, `scenarios/`, `page-objects/contracts/`) are the deliverable; the
 per-suite folders show how little each stack needs on top.

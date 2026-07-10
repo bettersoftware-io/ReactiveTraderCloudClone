@@ -39,7 +39,10 @@ export function detectMovement(
   currentMid: number,
   previousMid: number | undefined,
 ): PriceMovementType {
-  if (previousMid === undefined) return PriceMovementType.NONE;
+  if (previousMid === undefined) {
+    return PriceMovementType.NONE;
+  }
+
   return currentMid > previousMid
     ? PriceMovementType.UP
     : PriceMovementType.DOWN;

@@ -62,7 +62,11 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
    * no init is enough. */
   fireCardAnimationEnd(rfqId: number): void {
     const card = this.card(rfqId);
-    if (!card) throw new Error(`No rendered card for rfq ${rfqId}`);
+
+    if (!card) {
+      throw new Error(`No rendered card for rfq ${rfqId}`);
+    }
+
     fireEvent(
       card,
       new Event("webkitAnimationEnd", { bubbles: true, cancelable: false }),
@@ -77,7 +81,11 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
    * vendor prefix for), so the bare unprefixed event name is enough. */
   fireCardAnimationCancel(rfqId: number): void {
     const card = this.card(rfqId);
-    if (!card) throw new Error(`No rendered card for rfq ${rfqId}`);
+
+    if (!card) {
+      throw new Error(`No rendered card for rfq ${rfqId}`);
+    }
+
     fireEvent(
       card,
       new Event("animationcancel", { bubbles: true, cancelable: false }),
@@ -98,7 +106,11 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
   /** Bank names shown on a card's quote rows, in render order. */
   bankNames(rfqId: number): string[] {
     const card = this.card(rfqId);
-    if (!card) return [];
+
+    if (!card) {
+      return [];
+    }
+
     return [
       ...card.querySelectorAll<HTMLElement>('[data-testid^="rfq-quote-bank-"]'),
     ].map((el) => {
@@ -124,7 +136,11 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
   /** Click a quote's ACCEPT button. */
   async accept(quoteId: number): Promise<void> {
     const btn = this.acceptButton(quoteId);
-    if (!btn) throw new Error(`No accept button for quote ${quoteId}`);
+
+    if (!btn) {
+      throw new Error(`No accept button for quote ${quoteId}`);
+    }
+
     await this.user.click(btn);
   }
 
@@ -133,7 +149,11 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
     const btn = this.root.querySelector<HTMLElement>(
       `[data-testid="rfq-cancel-${rfqId}"]`,
     );
-    if (!btn) throw new Error(`No cancel button for rfq ${rfqId}`);
+
+    if (!btn) {
+      throw new Error(`No cancel button for rfq ${rfqId}`);
+    }
+
     await this.user.click(btn);
   }
 
@@ -149,7 +169,11 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
     const btn = this.root.querySelector<HTMLElement>(
       `[data-testid="rfq-remove-${rfqId}"]`,
     );
-    if (!btn) throw new Error(`No remove control for rfq ${rfqId}`);
+
+    if (!btn) {
+      throw new Error(`No remove control for rfq ${rfqId}`);
+    }
+
     await this.user.click(btn);
   }
 

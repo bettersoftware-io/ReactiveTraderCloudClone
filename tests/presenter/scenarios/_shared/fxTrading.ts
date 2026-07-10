@@ -37,7 +37,11 @@ async function executeOnFirstPair(
       5000,
     );
     const first = fetchedPairs[0];
-    if (!first) throw new Error("no currency pairs available");
+
+    if (!first) {
+      throw new Error("no currency pairs available");
+    }
+
     pair = first;
   }
 
@@ -115,15 +119,25 @@ export async function expectTradeConfirmationMatchesOneOf(
   patterns: RegExp[],
 ): Promise<void> {
   const status = w.scratch.lastTradeStatus;
-  if (!status) throw new Error("no trade status captured");
+
+  if (!status) {
+    throw new Error("no trade status captured");
+  }
+
   const accepted = new Set<ExecutionStatus>();
 
   for (const p of patterns) {
     for (const rule of UI_PATTERN_TO_STATUSES) {
-      if (rule.test(p)) for (const s of rule.statuses) accepted.add(s);
+      if (rule.test(p)) {
+        for (const s of rule.statuses) {
+          accepted.add(s);
+        }
+      }
     }
 
-    if (p.test(status as unknown as string)) accepted.add(status);
+    if (p.test(status as unknown as string)) {
+      accepted.add(status);
+    }
   }
 
   if (!accepted.has(status)) {
@@ -152,8 +166,11 @@ export async function buyNTimesWithDismissals(
     pairs.find((p) => {
       return p.symbol === "GBPJPY";
     }) ?? pairs[0];
-  if (!gbpjpyOrFirst)
+
+  if (!gbpjpyOrFirst) {
     throw new Error("no currency pairs available for buyNTimesWithDismissals");
+  }
+
   const gbpjpy = gbpjpyOrFirst;
 
   for (let i = 0; i < n; i++) {
@@ -179,8 +196,9 @@ export async function buyNTimesWithDismissals(
 export async function expectAtLeastOneRejection(
   w: PresenterWorld,
 ): Promise<void> {
-  if (!w.scratch.rejectedSeen)
+  if (!w.scratch.rejectedSeen) {
     throw new Error("no rejected trade observed across N attempts");
+  }
 }
 
 export async function dismissTradeConfirmation(

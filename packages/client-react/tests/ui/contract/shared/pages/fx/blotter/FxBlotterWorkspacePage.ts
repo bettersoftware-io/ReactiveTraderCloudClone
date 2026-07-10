@@ -86,7 +86,10 @@ export class FxBlotterWorkspacePage extends MountedComponent<
   async typeQuickFilter(text: string): Promise<void> {
     const input = this.q().getByTestId("quick-filter");
     await this.user.clear(input);
-    if (text) await this.user.type(input, text);
+
+    if (text) {
+      await this.user.type(input, text);
+    }
   }
 
   /** Export-CSV trigger, from the head's CSV chip. */

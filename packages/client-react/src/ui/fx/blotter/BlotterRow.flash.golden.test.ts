@@ -23,7 +23,11 @@ describe("new-row flash CSS matches rtc-original (golden)", () => {
     const c = golden.cases.find((x) => {
       return x.input === "new-row";
     });
-    if (!c) throw new Error("missing new-row golden case");
+
+    if (!c) {
+      throw new Error("missing new-row golden case");
+    }
+
     const {
       animationName,
       animationDuration,
@@ -53,7 +57,11 @@ describe("new-row flash CSS matches rtc-original (golden)", () => {
     const c = golden.cases.find((x) => {
       return x.input === "new-row";
     });
-    if (!c?.expected.keyframeStops) throw new Error("missing keyframeStops");
+
+    if (!c?.expected.keyframeStops) {
+      throw new Error("missing keyframeStops");
+    }
+
     const { animationName } = c.expected;
     const block = css.match(
       new RegExp(`@keyframes\\s+${animationName}\\s*\\{[\\s\\S]*?\\n\\}`),
@@ -77,7 +85,11 @@ describe("new-row flash CSS matches rtc-original (golden)", () => {
     const c = golden.cases.find((x) => {
       return x.input === "existing-row";
     });
-    if (!c) throw new Error("missing existing-row golden case");
+
+    if (!c) {
+      throw new Error("missing existing-row golden case");
+    }
+
     expect(c.expected.animationName).toBe("none");
     const baseRule = css.match(/\.row\s*\{[\s\S]*?\}/)?.[0] ?? "";
     expect(baseRule).not.toContain("animation");

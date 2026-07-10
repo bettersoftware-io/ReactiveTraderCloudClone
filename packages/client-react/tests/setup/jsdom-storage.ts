@@ -20,7 +20,10 @@
 
 function isWorking(storage: unknown): storage is Storage {
   try {
-    if (!storage) return false;
+    if (!storage) {
+      return false;
+    }
+
     const probe = "__rtc_storage_probe__";
     (storage as Storage).setItem(probe, "1");
     (storage as Storage).removeItem(probe);

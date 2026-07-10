@@ -60,7 +60,10 @@ export function describeMarketDataPortContract(
         await driver.ackCandles("AAPL");
         const candles = await promise;
         expect(candles.length).toBeGreaterThan(0);
-        for (const c of candles) expect(c.high).toBeGreaterThanOrEqual(c.low);
+
+        for (const c of candles) {
+          expect(c.high).toBeGreaterThanOrEqual(c.low);
+        }
       } finally {
         teardown();
       }
@@ -76,7 +79,10 @@ export function describeMarketDataPortContract(
         await driver.ackCandles("AAPL");
         const candles = await promise;
         expect(candles.length).toBeGreaterThan(0);
-        for (const c of candles) expect(c.high).toBeGreaterThanOrEqual(c.low);
+
+        for (const c of candles) {
+          expect(c.high).toBeGreaterThanOrEqual(c.low);
+        }
       } finally {
         teardown();
       }

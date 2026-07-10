@@ -10,6 +10,8 @@ import {
 
 import type { Dealer, Quote } from "@rtc/domain";
 
+import { SurfaceCard } from "#/ui/SurfaceCard";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -28,7 +30,11 @@ export function QuoteCard({
   }
 
   return (
-    <View style={styles.quoteCard}>
+    <SurfaceCard
+      variant="panel"
+      style={styles.quoteCard}
+      testID={`quote-card-${quote.id}`}
+    >
       <View style={styles.info}>
         <Text style={styles.dealerName}>
           {dealer?.name ?? `Dealer ${quote.dealerId}`}
@@ -44,7 +50,7 @@ export function QuoteCard({
           <Text style={styles.acceptLabel}>Accept</Text>
         </Pressable>
       ) : null}
-    </View>
+    </SurfaceCard>
   );
 }
 
@@ -83,10 +89,8 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingVertical: 8,
+      paddingVertical: SPACING.sm,
       paddingHorizontal: 10,
-      borderRadius: 6,
-      backgroundColor: t.bgSecondary,
     },
     info: { gap: 2 },
     dealerName: {
@@ -96,7 +100,7 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
     },
     priceText: { fontSize: 13, color: t.textSecondary, fontFamily: t.fontMono },
     acceptBtn: {
-      paddingHorizontal: 12,
+      paddingHorizontal: SPACING.md,
       paddingVertical: 6,
       borderRadius: 6,
       backgroundColor: t.accentPositive,

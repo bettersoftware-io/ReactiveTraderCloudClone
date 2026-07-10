@@ -79,6 +79,9 @@ jobs:
       - name: Version consistency (manypkg + syncpack)
         run: pnpm check:versions
 
+      - name: Workspace script coverage (every package wired to the gates)
+        run: pnpm check:scripts
+
       - name: Typecheck
         run: pnpm typecheck
 

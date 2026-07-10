@@ -88,7 +88,9 @@ interface Point {
 // Derive both the line path and the zero baseline from a single pass over the
 // history: values, min/max and the plot height are shared, so compute them once.
 function buildChart(history: readonly HistoricPosition[]): PnlChartShape {
-  if (history.length < 2) return { path: "", areaPath: "", zeroY: null };
+  if (history.length < 2) {
+    return { path: "", areaPath: "", zeroY: null };
+  }
 
   const values = history.map((h) => {
     return h.usdPnl;

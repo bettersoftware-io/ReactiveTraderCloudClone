@@ -19,6 +19,8 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { QuoteCard } from "#/ui/credit/rfqTiles/QuoteCard";
 import { RfqCountdownBar } from "#/ui/credit/rfqTiles/RfqCountdownBar";
+import { SurfaceCard } from "#/ui/SurfaceCard";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -53,7 +55,11 @@ export function RfqCard({
   const canDismiss = rfq.state !== RfqState.Open;
 
   return (
-    <View style={styles.card} testID={`rfq-card-${rfq.id}`}>
+    <SurfaceCard
+      variant="tile"
+      style={styles.card}
+      testID={`rfq-card-${rfq.id}`}
+    >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.instrumentName}>
@@ -97,7 +103,7 @@ export function RfqCard({
           );
         })}
       </View>
-    </View>
+    </SurfaceCard>
   );
 }
 
@@ -130,14 +136,10 @@ interface RfqCardStyles {
 function makeStyles(t: RnTheme): RfqCardStyles {
   return StyleSheet.create({
     card: {
-      gap: 8,
-      padding: 12,
-      marginHorizontal: 8,
-      marginVertical: 4,
-      borderRadius: 8,
-      backgroundColor: t.panel,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.border,
+      gap: SPACING.sm,
+      padding: SPACING.md,
+      marginHorizontal: SPACING.sm,
+      marginVertical: SPACING.xs,
     },
     header: {
       flexDirection: "row",
@@ -145,7 +147,11 @@ function makeStyles(t: RnTheme): RfqCardStyles {
       alignItems: "flex-start",
     },
     headerLeft: { gap: 2, flexShrink: 1 },
-    headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+    headerRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: SPACING.sm,
+    },
     instrumentName: {
       fontSize: 14,
       fontWeight: "600",

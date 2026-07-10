@@ -15,8 +15,11 @@ describe("createNotionalMachine", () => {
       view = s;
     });
     sub.unsubscribe();
-    if (!view)
+
+    if (!view) {
       throw new Error("NotionalMachine state$ did not emit synchronously");
+    }
+
     return view;
   }
 

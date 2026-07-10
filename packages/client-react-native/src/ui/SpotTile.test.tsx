@@ -121,7 +121,7 @@ test("renders a gradient tile surface on 3d skins", async () => {
     </ViewModelProvider>,
     rnThemeTokens.holo3d.dark,
   );
-  expect(screen.getByTestId("tile-sheen")).toBeTruthy();
+  expect(screen.getByTestId("surface-sheen")).toBeTruthy();
 });
 
 test("flat skins render no gradient tile surface", async () => {
@@ -131,7 +131,7 @@ test("flat skins render no gradient tile surface", async () => {
       <SpotTile pair={EURUSD} />
     </ViewModelProvider>,
   );
-  expect(screen.queryByTestId("tile-sheen")).toBeNull();
+  expect(screen.queryByTestId("surface-sheen")).toBeNull();
 });
 
 function fakeViewModel(price: Price | null): ViewModel {

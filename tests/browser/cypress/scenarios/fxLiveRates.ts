@@ -55,7 +55,11 @@ export function expectVisibleTileCountAtMost(
   // queued PO call resolves and miss the baseline. See Phase 5A.4 spec §3.3.
   chainable(ctx.po.liveRatesTile.count()).then((n) => {
     const baseline = ctx.scratch.fxLiveRates.recordedCounts.get(key);
-    if (baseline === undefined) throw new Error(`no recorded count for ${key}`);
+
+    if (baseline === undefined) {
+      throw new Error(`no recorded count for ${key}`);
+    }
+
     assertLte(n, baseline);
   });
 }
@@ -66,7 +70,11 @@ export function expectVisibleTileCountEquals(
 ): void {
   chainable(ctx.po.liveRatesTile.count()).then((n) => {
     const baseline = ctx.scratch.fxLiveRates.recordedCounts.get(key);
-    if (baseline === undefined) throw new Error(`no recorded count for ${key}`);
+
+    if (baseline === undefined) {
+      throw new Error(`no recorded count for ${key}`);
+    }
+
     assertEquals(n, baseline);
   });
 }

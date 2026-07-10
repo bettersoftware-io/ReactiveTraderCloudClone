@@ -114,7 +114,10 @@ export function createTileExecutionMachine(
             (acc: TileExecutionState, next: TileExecutionState) => {
               // Once terminal, ignore everything that follows (late result, or a
               // tooLong that fires after the run already settled).
-              if (isTerminal(acc)) return acc;
+              if (isTerminal(acc)) {
+                return acc;
+              }
+
               return next;
             },
             { status: "started" } as TileExecutionState,

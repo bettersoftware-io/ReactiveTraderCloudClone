@@ -221,7 +221,10 @@ export function mountWith<P, Page extends MountedComponent<P>>(
 export function cleanupMounted(): void {
   while (mounted.length > 0) {
     const entry = mounted.pop();
-    if (entry) entry.unmount();
+
+    if (entry) {
+      entry.unmount();
+    }
   }
 }
 

@@ -18,7 +18,10 @@ export function exportToCsv<TRow>(
   });
   const csvRows = rows.map((row) => {
     return columns.map((col) => {
-      if (unformatted?.has(col.key)) return String(row[col.key]);
+      if (unformatted?.has(col.key)) {
+        return String(row[col.key]);
+      }
+
       return format(row, col);
     });
   });

@@ -11,6 +11,8 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { DeskPnlGauge } from "#/ui/equities/blotters/DeskPnlGauge";
 import { PnlSparkline } from "#/ui/equities/blotters/PnlSparkline";
+import { SurfaceCard } from "#/ui/SurfaceCard";
+import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
@@ -35,7 +37,11 @@ export function PositionsBlotter(): JSX.Element {
           NO POSITIONS
         </Text>
       ) : (
-        <View style={styles.blotter}>
+        <SurfaceCard
+          variant="panel"
+          testID="positions-panel"
+          style={styles.blotter}
+        >
           <View style={styles.header}>
             <Text style={styles.hCell}>SYMBOL</Text>
             <Text style={styles.hCell}>QTY</Text>
@@ -68,7 +74,7 @@ export function PositionsBlotter(): JSX.Element {
               </View>
             );
           })}
-        </View>
+        </SurfaceCard>
       )}
     </View>
   );
@@ -89,18 +95,20 @@ interface PositionsBlotterStyles {
 }
 
 function makeStyles(t: RnTheme): PositionsBlotterStyles {
-  const rowBase: ViewStyle = {
+  const dividerBase: ViewStyle = {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.borderSubtle,
   };
   return StyleSheet.create({
-    wrapper: { backgroundColor: t.panel },
+    wrapper: {},
     blotter: {},
-    header: { ...rowBase, paddingVertical: 6 },
+    header: {
+      ...dividerBase,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.xs,
+    },
     hCell: {
       flex: 1,
       fontSize: 10,
@@ -113,7 +121,12 @@ function makeStyles(t: RnTheme): PositionsBlotterStyles {
       color: t.textMuted,
       fontFamily: t.fontMono,
     },
-    row: rowBase,
+    row: {
+      ...dividerBase,
+      minHeight: 44,
+      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.sm,
+    },
     cell: {
       flex: 1,
       fontSize: 12,
