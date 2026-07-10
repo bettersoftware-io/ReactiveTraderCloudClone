@@ -4,6 +4,103 @@ React + RxJS + Vite client. Clean-architecture seam: components read ALL data
 through `useHooks()` (`AppHooks` interface); production wires presenters via
 `@react-rxjs/core`, tests inject fakes through `HooksProvider`.
 
+| | |
+|---|---|
+| **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
+| **Runtime deps** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `react`, `react-dom`, `motion`, `rxjs`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` is listed but confined to `src/app` — never `src/ui` (machine-enforced, gate 26). |
+| **Consumed by** | The `tests` workspace only (`tests/package.json` lists `@rtc/client-react`; [§13.2](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)) — it is a shipping leaf app, not a library other packages import. |
+| **Must never import** | `rxjs` / `@react-rxjs` / `@rx-state` in `src/ui` (gate 26); `localStorage` in `src/ui` (gate 27); `fetch(` / `import.meta.env` in `src/ui` (gate 28); `setTimeout` / `setInterval` in `src/ui` (gate 29) — all four enforced by `tests/scripts/grep-gates.ts`, see [§12](../../docs/architecture/12-architectural-gates.md#12-architectural-gates). |
+
+## Folder map
+
+| Path | What lives here |
+|---|---|
+| `src/main.tsx` | Entry point: font imports, mounts `<AppRoot><App /></AppRoot>` into `#root` |
+| `src/AppRoot.tsx` | Composition root component — builds the app exactly once (lazy `useRef`, StrictMode-safe) and supplies `ViewModelProvider` + `ThemeProvider` + `BootGate` |
+| `src/bootSplashGate.ts` | One-shot boot-splash suppression decision (`navigator.webdriver` / `?nosplash`) |
+| `src/app/` | Browser platform adapters + composition wiring (Ring ③) — the only place in this package allowed to touch `rxjs`, `localStorage`, `fetch`/`import.meta.env` |
+| `src/app/adapters/` | `BrowserConnectionEventsAdapter`, `LocalStoragePreferencesAdapter` |
+| `src/app/theme/` | `MediaQueryColorSchemeAdapter` |
+| `src/app/buildBrowserPorts.ts` | Assembles `AppPorts` for `createApp` — switches real WS vs. simulator ports on `VITE_SERVER_URL` |
+| `src/ui/` | Dumb React 19 UI (Ring ④) — every component reads data through `useViewModel()`; gates 26–29 keep it framework-swappable |
+| `src/ui/shell/` | Chrome, layout engine, boot sequence, theme, lock screen, connection overlay, status bar |
+| `src/ui/fx/`, `src/ui/credit/`, `src/ui/equities/` | Per-domain panels, blotters, and tickets |
+| `src/ui/admin/` | Admin dashboard — health KPIs, service topology, sessions, live event log |
+| `tests/setup/` | jsdom test-environment polyfills (e.g. `localStorage` shim for Node 26) |
+| `tests/ui/contract/` | UI contract tier — framework-neutral sociable RTL specs (own [README](tests/ui/contract/README.md)) |
+| `tests/ui/visual/` | Visual tier — 3 runners × pixel goldens (own [README](tests/ui/visual/README.md)) |
+| `tests/ui/__golden__/` | Shared golden JSON fixtures loaded via `loadGolden.ts` |
+
+## Where to start reading
+
+1. `src/main.tsx` — the entry point; shows exactly what gets mounted and in what order (fonts, `AppRoot`, `App`)
+2. `src/AppRoot.tsx` — the composition root; where `@rtc/client-core`'s `createApp`/`createMachineFactories` meet React (`useRef`, not `useState`/`useMemo` — see the doc comment for why)
+3. `src/app/buildBrowserPorts.ts` — real-WS-vs-simulator port wiring, the browser-specific half of composition
+4. `src/ui/App.tsx` — the dumb top-level UI tree: `AmbientBackground`, `HeaderChrome`, the per-tab `WorkspaceEngine`, `StatusBar`, `ConnectionOverlay`, `LockScreen`
+
+## Dumb UI: the gate-enforced boundary
+
+`src/ui` follows "dumb UI" — no streams, no storage, no transport, no clocks.
+Components read every piece of data through `useViewModel()`
+(`@rtc/react-bindings`); they never import `rxjs`, touch `localStorage`,
+call `fetch`, or start a `setTimeout`/`setInterval` themselves. Four gates in
+`tests/scripts/grep-gates.ts` make this a machine-checked boundary rather than
+a convention (see [§12. Architectural Gates](../../docs/architecture/12-architectural-gates.md#12-architectural-gates)):
+
+| Gate | Rule |
+|---|---|
+| 26 | No `rxjs` / `@react-rxjs` / `@rx-state` imports in `client-react/src/ui` (only `@rtc/react-bindings` may) |
+| 27 | No `localStorage` in `client-react/src/ui` (persistence belongs behind `PreferencesPort`) |
+| 28 | No `fetch(` / `import.meta.env` in `client-react/src/ui` (transport & config belong in `src/app`) |
+| 29 | No `setTimeout` / `setInterval` in `client-react/src/ui` (time belongs in machines/presenters) |
+
+This is what keeps a future `@rtc/client-solid` port a rewrite of `src/ui`
+only — the SolidJS plan ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan))
+reuses `client-core`, `react-bindings`'s sibling, and the CSS Modules verbatim
+precisely because gates 26–29 keep `src/ui` free of anything React- or
+RxJS-specific beyond JSX and hooks.
+
+## CSS Modules policy
+
+Every component that renders markup has a co-located `<Component>.module.css`
+(e.g. `src/ui/App.tsx` / `src/ui/App.module.css`) imported as
+`import styles from "./X.module.css"` and applied via `className={styles.x}`.
+Inline `style={{…}}` object literals are banned by an ESLint AST rule scoped
+to client `src` (`eslint.config.mjs:70-79`, the `no-restricted-syntax`
+`inlineStyleProp` selector) — the only escape hatch is a runtime-computed CSS
+custom property, opted out with an explicit
+`// eslint-disable-next-line no-restricted-syntax -- <reason>`. The policy
+exists so markup/styling ports verbatim to a future framework: "CSS Modules
+port verbatim — the CSS-modules migration deliberately left zero inline
+styles and semantic `data-*` state hooks precisely so markup/styling survives
+the swap" ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)).
+
+## Where the app composes the core
+
+`src/app/` is where this package plugs the framework-free `@rtc/client-core`
+into the browser. `src/AppRoot.tsx` calls `createApp(buildBrowserPorts())` once
+(via a lazy `useRef`, StrictMode-safe) to get `{ presenters, commands }`, then
+`createViewModel(presenters, createMachineFactories(presenters), commands)`
+from `@rtc/react-bindings` to build the `ViewModel` the whole `src/ui` tree
+consumes through `useViewModel()`. `src/app/buildBrowserPorts.ts` builds the
+`AppPorts` that composition needs: real `WsAdapter`/`WsReal*` ports when
+`VITE_SERVER_URL` is set, in-process simulator ports otherwise, plus the
+browser-only adapters (`BrowserConnectionEventsAdapter`,
+`LocalStoragePreferencesAdapter`, `MediaQueryColorSchemeAdapter`) and the
+one-shot boot-splash decision from `src/bootSplashGate.ts`. Full sequence:
+[§14.3 Boot Sequences](../../docs/architecture/14-composition-and-wiring.md#143-boot-sequences).
+
+## How it's used
+
+The only in-workspace consumer is the `tests` package, which imports the real
+`WsAdapter` for its Node-socket full-stack smoke test
+(`tests/fullstack/node-smoke.ts:17-18`):
+
+```typescript
+import { createWsRealPorts } from "@rtc/client-core";
+import { WsAdapter } from "@rtc/client-react";
+```
+
 ## Scripts
 
 | script | purpose | report (under `reports/`) |
@@ -79,3 +176,11 @@ set). Full details: ADR + layout in
 
 **Browser e2e, presenter integration, and full-stack smokes** — NOT here;
 they live in the [`tests/`](../../tests/README.md) workspace package.
+
+## See also
+
+- [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
+- [§14.2 Adapter Tables Per App -- Web](../../docs/architecture/14-composition-and-wiring.md#142-adapter-tables-per-app)
+- [§14.3 Boot Sequences](../../docs/architecture/14-composition-and-wiring.md#143-boot-sequences)
+- [§8.1 The Multi-Client Proof -- The SolidJS Plan](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)
+- [§12. Architectural Gates](../../docs/architecture/12-architectural-gates.md#12-architectural-gates)
