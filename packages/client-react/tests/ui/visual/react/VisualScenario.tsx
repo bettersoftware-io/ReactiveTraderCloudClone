@@ -15,6 +15,9 @@ import { fixtures } from "../shared/fixtures";
 import "../shared/freezeClock";
 import { scenarios } from "../shared/scenarios";
 import { buildFakeViewModel } from "./buildFakeViewModel";
+// Side-effect: register the app's real @fontsource web fonts so goldens render
+// in the app's fonts, not the fallback system stack. See loadFonts.ts.
+import "./loadFonts";
 import { registry } from "./registry";
 import { resolveScenarioData } from "./resolveScenarioData";
 

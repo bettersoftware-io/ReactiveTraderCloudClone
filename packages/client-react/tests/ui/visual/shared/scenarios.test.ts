@@ -50,6 +50,16 @@ describe("theme-matrix expansion", () => {
     );
   });
 
+  it("folds the 'system' theme-mode into the classic-dark/ folder (no lone classic-system/)", () => {
+    expect(scenarios["app/fx-system"].themeMode).toBe("system");
+    expect(goldenPath("app/fx-system", scenarios["app/fx-system"])).toBe(
+      "classic-dark/app-fx-system",
+    );
+    expect(
+      goldenPathArray("app/fx-system", scenarios["app/fx-system"]),
+    ).toEqual(["classic-dark", "app-fx-system.png"]);
+  });
+
   it("goldenPathArray splits into [folder, file.png] for Playwright's array arg", () => {
     expect(
       goldenPathArray(

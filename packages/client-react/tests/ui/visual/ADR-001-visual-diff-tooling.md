@@ -212,9 +212,34 @@ subdir; the vitest-browser tier passes the string `goldenPath` (its
 
 ### Viewport — 1920×1080
 
-All three tier configs render at a realistic **1920×1080** desktop (was 1280×720,
-vitest 1280×800). The HUD is `height:100vh`, so the viewport *is* the full-page
-golden size; 720p cramped the 4-panel HUD and looked vertically squeezed.
+The two Playwright tier configs render at a realistic **1920×1080** desktop (was
+1280×720). The HUD is `height:100vh`, so the viewport *is* the full-page golden
+size; 720p cramped the 4-panel HUD and looked vertically squeezed. **Known gap:**
+the vitest-browser tier silently ignores its `viewport` config (top-level and
+per-instance both tried) and still renders at Playwright's 1280×720 default — a
+vitest-browser follow-up (see below).
+
+### Fonts & component fidelity
+
+- **Fonts:** `react/loadFonts.ts` (a side-effect import in `VisualScenario`)
+  registers the app's real `@fontsource` faces — Chakra Petch, IBM Plex
+  Mono/Sans, JetBrains Mono, Orbitron (mirrors `src/main.tsx`). Without it the
+  harness rendered in the fallback system stack and goldens didn't look like the
+  app. **Known gap:** the vitest-browser tier registers the `@font-face` rules
+  but the webfonts stay `unloaded` at capture time (`document.fonts.ready`
+  resolves on fallback; explicit `FontFace.load()` didn't change the capture) —
+  Playwright's stability-retry masks this on the other two tiers. So the
+  vitest-browser goldens render in fallback fonts. Follow-up.
+- **AdminDashboard** is captured at a fixed panel *width* (1280) but
+  content-driven *height* (was a fixed `height: 700` + `overflow: hidden`, which
+  clipped the bottom row — topology / sessions / incidents / throughput).
+- **`app/fx-system`** (the lone `system`-preference scenario) folds into the
+  `classic-dark/` folder — `goldenPath` maps `themeMode: "system"` → `dark` — so
+  there is no one-file `classic-system/` folder.
+
+**vitest-browser follow-up:** fonts don't load + viewport ignored + it duplicates
+the plain-Playwright tier's coverage. Options: fix its asset-loading/viewport, or
+retire the tier. Tracked; the other two tiers are the faithful reference.
 
 ### Escape hatch (if the gate gets too slow)
 

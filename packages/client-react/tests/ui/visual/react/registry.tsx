@@ -285,20 +285,14 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     );
   },
   // --- Phase 5 Admin dashboard components ---
-  // Full AdminDashboard at fixed 1280×700: mirrors the panel-sized container the
-  // real app provides. Fixed height prevents content overflow from unresolved
-  // canvas dimensions in headless mode.
+  // Full AdminDashboard at a fixed panel WIDTH (1280) but content-driven height,
+  // so the full dashboard is captured without the bottom row (topology / sessions
+  // / incidents / throughput) being clipped. A fixed width keeps the intrinsic
+  // capture DIMENSION deterministic (the #width-flake rule); the inner charts
+  // carry their own explicit heights, so no fixed outer height is needed.
   AdminDashboard: () => {
     return (
-      <div
-        style={{
-          width: 1280,
-          height: 700,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
+      <div style={{ width: 1280, display: "flex", flexDirection: "column" }}>
         <AdminDashboard />
       </div>
     );
