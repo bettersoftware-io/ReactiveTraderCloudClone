@@ -66,6 +66,19 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
+      # If VITE_SERVER_URL is not inlined, the client silently falls back to the
+      # in-browser simulator and never opens a WebSocket — no error, just wrong.
+      # (Root cause once: turbo strict-env mode filtered the undeclared VITE_*
+      # vars out of the vite build. See turbo.json `build.env`.) Fail loudly here
+      # BEFORE deploying, rather than ship a simulator build to production.
+      - name: Guard — server URL was inlined into the client bundle
+        run: |
+          if ! grep -rq "rtc-clone-server.fly.dev" .vercel/output/static; then
+            echo "::error::VITE_SERVER_URL absent from build output — client would run the simulator with no WebSocket. Check turbo.json build.env and the Vercel Production env vars."
+            exit 1
+          fi
+          echo "OK: Fly WS URL is present in the built client bundle."
+
       - name: Deploy prebuilt
         id: deploy
         run: |
