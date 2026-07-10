@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { CSSProperties, ReactElement } from "react";
 
 import type { LayoutState } from "@rtc/client-core";
 import { createDefaultLayoutPort } from "@rtc/client-core";
@@ -49,25 +49,45 @@ import { fixtures } from "../shared/fixtures";
 
 const fxState: LayoutState = createDefaultLayoutPort("fx").initial;
 
+// The layout/fx-* scenarios test the ENGINE's geometry, not panel content, so
+// each docked panel gets a stub body. Style it exactly like the app's own
+// empty-panel placeholders (ThroughputChart/LiveEventLog `.empty`): centred,
+// muted, in the theme mono font — so the stub reads as intentional placeholder
+// content instead of unstyled serif text. The pinned `line-height` also keeps
+// the line box font-metric-independent (the #width-flake determinism rule).
+const stubPanelStyle: CSSProperties = {
+  // `.panelBody` (the parent) is `flex: 1; overflow: auto` but NOT itself a flex
+  // container, so `flex: 1` here would be inert — fill its definite height with
+  // `height: 100%` instead, then flex-centre the label within.
+  height: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontFamily: "var(--font-mono)",
+  fontSize: 11,
+  lineHeight: "15px",
+  letterSpacing: "0.08em",
+  color: "var(--text-muted)",
+};
+
+function stubPanel(key: string, label: string): () => ReactElement {
+  return () => {
+    return (
+      <div data-testid={`${key}-body`} style={stubPanelStyle}>
+        {label}
+      </div>
+    );
+  };
+}
+
 const visualPanelRegistry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div data-testid="fx-rates-body">RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div data-testid="fx-analytics-body">ANALYTICS</div>;
-  },
-  "fx-blotter": () => {
-    return <div data-testid="fx-blotter-body">BLOTTER</div>;
-  },
-  "credit-rfqs": () => {
-    return <div data-testid="credit-rfqs-body">RFQS</div>;
-  },
-  "credit-blotter": () => {
-    return <div data-testid="credit-blotter-body">CREDIT BLOTTER</div>;
-  },
-  "admin-throughput": () => {
-    return <div data-testid="admin-throughput-body">ADMIN</div>;
-  },
+  "fx-rates": stubPanel("fx-rates", "LIVE RATES"),
+  "fx-analytics": stubPanel("fx-analytics", "ANALYTICS"),
+  "fx-positions": stubPanel("fx-positions", "POSITIONS"),
+  "fx-blotter": stubPanel("fx-blotter", "BLOTTER"),
+  "credit-rfqs": stubPanel("credit-rfqs", "RFQS"),
+  "credit-blotter": stubPanel("credit-blotter", "CREDIT BLOTTER"),
+  "admin-throughput": stubPanel("admin-throughput", "ADMIN"),
 };
 
 function noop(): void {}
