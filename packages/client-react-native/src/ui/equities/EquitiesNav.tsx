@@ -11,24 +11,6 @@ import {
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-export type EquitiesView = "markets" | "trade" | "blotters";
-
-interface EquitiesTab {
-  view: EquitiesView;
-  label: string;
-}
-
-const TABS: readonly EquitiesTab[] = [
-  { view: "markets", label: "Markets" },
-  { view: "trade", label: "Trade" },
-  { view: "blotters", label: "Blotters" },
-];
-
-interface EquitiesNavProps {
-  view: EquitiesView;
-  onChange: (view: EquitiesView) => void;
-}
-
 /** Segmented control over the three equities sub-views. Mirrors `CreditNav`. */
 export function EquitiesNav({ view, onChange }: EquitiesNavProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
@@ -53,6 +35,24 @@ export function EquitiesNav({ view, onChange }: EquitiesNavProps): JSX.Element {
       })}
     </View>
   );
+}
+
+export type EquitiesView = "markets" | "trade" | "blotters";
+
+interface EquitiesTab {
+  view: EquitiesView;
+  label: string;
+}
+
+const TABS: readonly EquitiesTab[] = [
+  { view: "markets", label: "Markets" },
+  { view: "trade", label: "Trade" },
+  { view: "blotters", label: "Blotters" },
+];
+
+interface EquitiesNavProps {
+  view: EquitiesView;
+  onChange: (view: EquitiesView) => void;
 }
 
 interface EquitiesNavStyles {

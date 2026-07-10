@@ -20,12 +20,6 @@ import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-interface NewRfqFormProps {
-  onCreated: (rfqId: number) => void;
-}
-
-const DIRECTIONS: readonly Direction[] = [Direction.Buy, Direction.Sell];
-
 export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
   const { useInstruments, useDealers, useRfqSubmission } = useViewModel();
   const instruments = useInstruments();
@@ -148,6 +142,12 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
     </ScrollView>
   );
 }
+
+interface NewRfqFormProps {
+  onCreated: (rfqId: number) => void;
+}
+
+const DIRECTIONS: readonly Direction[] = [Direction.Buy, Direction.Sell];
 
 interface NewRfqFormStyles {
   form: ViewStyle;

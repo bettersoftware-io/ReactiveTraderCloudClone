@@ -167,6 +167,27 @@ export default tseslint.config(
     rules: { "react-hooks/refs": "off" },
   },
   {
+    // Same React hook-correctness rules for React Native — parity with the web
+    // client. RN does NOT run the React Compiler (its pipeline is
+    // babel-preset-expo), so the preset's compiler-oriented rules are advisory
+    // here, but they pass clean and the core rules (rules-of-hooks,
+    // exhaustive-deps, purity, set-state) guard RN components just the same.
+    files: [
+      "packages/client-react-native/src/**/*.{ts,tsx}",
+      "packages/client-react-native/app/**/*.{ts,tsx}",
+    ],
+    plugins: { "react-hooks": reactHooks },
+    rules: {
+      ...reactHooks.configs["recommended-latest"].rules,
+      // `react-hooks/refs` fights two legitimate RN idioms that read `.current`
+      // during render by design: the ADR-003 build-once-ref VM seam (see
+      // src/app/AppRoot.tsx) and `useRef(new Animated.Value(x)).current`, the
+      // canonical way to hold a stable animated value across renders. Off for
+      // RN (stays on for the web client, where it caught FxBlotter).
+      "react-hooks/refs": "off",
+    },
+  },
+  {
     // Newspaper order for test files: type/helper/vi.mock declarations must sit
     // BELOW the describe/it blocks. Custom autofixable rule in eslint-rules/.
     // Scoped to test files only (contract specs included — reordering is
@@ -207,9 +228,15 @@ export default tseslint.config(
   {
     // One component per .tsx file: the exported component is the newspaper lede
     // (private subcomponents/helpers/types below it) and the filename matches it.
-    // Scoped to client-react source; test .tsx are excluded (they may define
-    // throwaway components and are governed by rtc/newspaper-order instead).
-    files: ["packages/client-react/src/**/*.tsx"],
+    // Scoped to client-react + client-react-native source; test .tsx are excluded
+    // (they may define throwaway components and are governed by rtc/newspaper-order
+    // instead). RN's app/** route files are out of scope (not under src/): Expo
+    // Router discovers screens by filename (index.tsx, credit.tsx, _layout.tsx),
+    // which can't match the component name.
+    files: [
+      "packages/client-react/src/**/*.tsx",
+      "packages/client-react-native/src/**/*.tsx",
+    ],
     ignores: ["**/*.{test,spec}.tsx"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/component-newspaper": "error" },

@@ -20,21 +20,6 @@ import { useViewModel } from "@rtc/react-bindings";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-const MODE_LABEL: Record<ThemeModePreference, string> = {
-  dark: "Dark",
-  light: "Light",
-  system: "System",
-};
-
-const SKIN_LABEL: Record<ThemeSkin, string> = {
-  classic: "Classic",
-  holo: "Holo",
-  holo3d: "Holo 3D",
-  terminal: "Terminal",
-  terminal3d: "Terminal 3D",
-  neon: "Neon",
-};
-
 /** The Appearance settings screen: a mode row that cycles dark → light →
  * system (reusing the ViewModel's `cycle()`), and a skin list that writes the
  * chosen skin. Both intents live behind the ViewModel; this only renders view
@@ -89,6 +74,21 @@ export function AppearanceScreen(): JSX.Element {
     </ScrollView>
   );
 }
+
+const MODE_LABEL: Record<ThemeModePreference, string> = {
+  dark: "Dark",
+  light: "Light",
+  system: "System",
+};
+
+const SKIN_LABEL: Record<ThemeSkin, string> = {
+  classic: "Classic",
+  holo: "Holo",
+  holo3d: "Holo 3D",
+  terminal: "Terminal",
+  terminal3d: "Terminal 3D",
+  neon: "Neon",
+};
 
 interface AppearanceScreenStyles {
   panel: ViewStyle;

@@ -9,12 +9,6 @@ import {
 
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 
-interface BootGateProps {
-  onFinished: () => void;
-}
-
-const FADE_MS = 320;
-
 /** Full-screen boot overlay host. Renders the BootSequence splash on top of the
  * app (which mounts underneath so its streams warm during boot). When the boot
  * machine reports done (ramp complete or SKIP), fades the overlay out and then
@@ -53,6 +47,12 @@ export function BootGate({ onFinished }: BootGateProps): JSX.Element {
     </Animated.View>
   );
 }
+
+interface BootGateProps {
+  onFinished: () => void;
+}
+
+const FADE_MS = 320;
 
 interface BootGateStyles {
   overlay: ViewStyle;

@@ -10,8 +10,6 @@ import Svg, { Circle, Polygon } from "react-native-svg";
 
 import { useTheme } from "#/ui/theme/useTheme";
 
-const SIZE = 96;
-
 /** Boot splash emblem: a themed hex badge with a gently pulsing core. Pure
  * cosmetic — the react-native-svg stand-in for the web boot <canvas>, which is
  * Expo-Go-incompatible. The pulse is disabled under reduce-motion. */
@@ -79,6 +77,8 @@ export function BootEmblem(): JSX.Element {
     </Animated.View>
   );
 }
+
+const SIZE = 96;
 
 interface BootEmblemStyles {
   wrap: ViewStyle;

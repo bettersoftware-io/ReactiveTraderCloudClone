@@ -13,14 +13,6 @@ import { useViewModel } from "@rtc/react-bindings";
 import { fxColumnCount } from "#/ui/fxColumns";
 import { SpotTile } from "#/ui/SpotTile";
 
-function keyExtractor(pair: CurrencyPair): string {
-  return pair.symbol;
-}
-
-function renderItem({ item }: ListRenderItemInfo<CurrencyPair>): JSX.Element {
-  return <SpotTile pair={item} />;
-}
-
 /** The FX spot-tile grid — a padded `FlatList` of `SpotTile` cards driven by
  * the live `useCurrencyPairs()` stream. Column count is responsive (1 on
  * phones, 2 on tablet/landscape); the list is re-keyed on the count because RN
@@ -41,6 +33,14 @@ export function TileGrid(): JSX.Element {
       columnWrapperStyle={columns > 1 ? styles.column : undefined}
     />
   );
+}
+
+function keyExtractor(pair: CurrencyPair): string {
+  return pair.symbol;
+}
+
+function renderItem({ item }: ListRenderItemInfo<CurrencyPair>): JSX.Element {
+  return <SpotTile pair={item} />;
 }
 
 interface TileGridStyles {
