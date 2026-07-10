@@ -1,0 +1,99 @@
+name: Visual diffs
+
+# The full theme-matrix visual-diff gate (5 skins × dark/light × 3 runners,
+# ~1222 scenarios/tier, all serial — ~20 min). It used to live in ci.yml as a PR
+# gate but that blocked every branch push while the UI was still churning. It now
+# runs POST-MERGE ONLY: on push to main (i.e. right after a PR merges) and on
+# manual dispatch. A red run here is the signal to inspect the diff and either fix
+# the regression or — if the change was intentional — regenerate the goldens via
+# .github/workflows/update-visual-goldens.yml. It does NOT gate merges; move it
+# back into ci.yml (as a PR job) once the UI stabilises.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Verify every main commit — don't let a newer merge cancel an in-flight run, or a
+# regression could slip past unverified. (Contrast ci.yml, which cancels stale
+# branch runs.) Serialise per-ref so runs don't stack up.
+concurrency:
+  group: visual-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # pnpm is provisioned by Corepack from the `packageManager` pin; silence its
+  # first-run download prompt so non-interactive CI never stalls.
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  visual:
+    name: visual diffs
+    runs-on: ubuntu-latest
+    # Run inside the official Playwright image so chromium + fonts + OS libs are
+    # byte-identical to where the goldens are generated. This eliminates the
+    # cross-platform rendering diffs (sandbox/ubuntu) that fail toHaveScreenshot,
+    # and makes the goldens a stable portability contract for any future UI
+    # framework swap. Browsers are preinstalled in the image (PLAYWRIGHT_BROWSERS_PATH
+    # is set by it), so no `playwright install` step is needed. The goldens are
+    # regenerated in this SAME image via .github/workflows/update-visual-goldens.yml.
+    # Tag must track the @playwright/test version in packages/client-react.
+    container: mcr.microsoft.com/playwright:v1.61.0-noble
+    env:
+      # This job doesn't exercise Cypress; skip its heavy binary download.
+      CYPRESS_INSTALL_BINARY: "0"
+      # Run the three visual runners SERIALLY, matching update-visual-goldens.yml
+      # (which regenerates each tier in its own sequential step). run-all.ts
+      # defaults to fully-concurrent under CI, and 3-tier CPU contention on the
+      # 2-core runner lets Playwright's stable-frame check capture one frame
+      # early — goldens generated unloaded then verified under load drift by
+      # ±1px / glyph metrics on text-dense captures (same class as the
+      # playwright-ct workers:1 lesson, one level up).
+      RTC_VISUAL_MAX_PARALLEL: "1"
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 26
+
+      - name: Enable Corepack (pins pnpm 11.5.2 from the packageManager field)
+        run: npm install -g corepack@0.35.0 && corepack enable
+
+      - name: Resolve pnpm store path
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
+
+      - name: Cache the pnpm content-addressable store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Invoke through turbo (NOT `pnpm --filter`) so the task's declared
+      # dependsOn ["^build"] runs first: the visual harness imports the
+      # @rtc/domain / @rtc/shared workspace libs via their built dist/, which a
+      # fresh checkout hasn't produced. A direct `pnpm --filter` call bypasses
+      # turbo's graph and fails to resolve @rtc/domain.
+      # Full theme matrix (5 skins × dark/light, ~1222 scenarios × 3 tiers, all
+      # serial per RTC_VISUAL_MAX_PARALLEL=1 / CT workers:1) makes this a long run
+      # (~20 min) — which is exactly why it's post-merge and not a PR gate.
+      - name: Visual diffs (playwright-ct + playwright + vitest-browser)
+        run: pnpm test:ui:visual
+
+      # On a mismatch, publish the actual-vs-expected images so the regression (or
+      # an intended change awaiting golden regen) can be inspected.
+      - name: Upload visual diff report on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ui-visual-report
+          path: |
+            packages/client-react/reports/
+            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-actual.png
+            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-diff.png
+            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-reference.png
+          if-no-files-found: ignore
+          retention-days: 7
