@@ -6,7 +6,7 @@ Entities, use cases, port interfaces, and simulators — pure TypeScript, the in
 |---|---|
 | **Ring** | ①② Entities & Use Cases — the yolk (`docs/architecture/01-overview.md` §1.3.1). `src/simulators/` is the one exception: it's ring ③ (gateways) even though it lives in this package — production port implementations, not test doubles. |
 | **Runtime deps** | `rxjs` only — the single permitted exception, enforced by pnpm strict mode (`packages/domain/package.json` `dependencies`) |
-| **Consumed by** | `@rtc/shared`, `@rtc/client-core`, `@rtc/react-bindings`, `@rtc/client-react`, `@rtc/client-react-native`, `@rtc/server` — every other workspace package lists `@rtc/domain` in its own `package.json` |
+| **Consumed by** | `@rtc/shared`, `@rtc/client-core`, `@rtc/react-bindings`, `@rtc/client-react`, `@rtc/client-react-native`, `@rtc/server` — every client and server package; `@rtc/ws-effects` (rxjs-only) and the isolated `@rtc/client-prototype` do not |
 | **Must never import** | `@rtc/shared`, `@rtc/client-react`, or `@rtc/server` (dependency-cruiser rule `domain-stays-pure`, `.dependency-cruiser.cjs`); any Node built-in outside test files (`domain-no-node-builtins` — the package must run in any JS environment, browser or RN). Gate 23 additionally bans `src/ports/__contracts__/` describers from importing `simulators/`, `@rtc/client-react`, or `@rtc/shared/__fixtures__/` (`docs/architecture/12-architectural-gates.md`). |
 
 ## Folder map
@@ -56,7 +56,7 @@ Every interface, its declaring file, and the shape it commits adapters to. All 1
 
 ### `src/simulators/` inventory
 
-20 classes, each a production `implements` of one port above (not a test double — these run in-process in simulator mode and are hosted behind `@rtc/ws-effects` on `@rtc/server` in live mode), plus 5 shared helper modules.
+20 classes, each a production `implements` of one port above (not a test double — these run in-process in simulator mode and are hosted behind `@rtc/ws-effects` on `@rtc/server` in live mode), plus 5 shared helper modules. Production files only: most simulators also have `.test.ts` / `.contract.test.ts` / `__golden__/` peers in the same folder, deliberately omitted here.
 
 | File | Implements / role |
 |---|---|
@@ -123,5 +123,5 @@ export class ConnectionStatusPresenter {
 ## See also
 
 - [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
-- [§15.2 Execute-Trade flow](../../docs/architecture/15-flows.md#151-control-flow-vs-imports-vs-data-flow) — traces a use case (`ExecuteTradeUseCase`) end to end through both simulator and live modes
+- [§15.3 FX Trade Execution](../../docs/architecture/15-flows.md#153-fx-trade-execution----click-to-confirmation) — traces a use case (`ExecuteTradeUseCase`) end to end through both simulator and live modes
 - [§16 Trailheads, recipes 1 and 2](../../docs/architecture/16-trailheads.md#16-trailheads) — "add a new currency pair" and "add a new port + simulator" both start in this package
