@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { scenarioActionFor } from "../scenarioActions";
-import { goldenPath } from "../shared/goldenPath";
+import { goldenPathArray } from "../shared/goldenPath";
 import { scenarios } from "../shared/scenarios";
 
 for (const [name, scenario] of Object.entries(scenarios)) {
@@ -45,7 +45,7 @@ for (const [name, scenario] of Object.entries(scenarios)) {
       );
     }
 
-    const shot = `${goldenPath(name, scenario)}.png`;
+    const shot = goldenPathArray(name, scenario);
 
     if (action.fullPage) {
       await expect(page).toHaveScreenshot(shot, {

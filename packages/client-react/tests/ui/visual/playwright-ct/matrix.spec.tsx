@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
 
 import { scenarioActionFor } from "../scenarioActions";
-import { goldenPath } from "../shared/goldenPath";
+import { goldenPathArray } from "../shared/goldenPath";
 import { scenarios } from "../shared/scenarios";
 
 // Tier 1 — Playwright component tests, data-driven over the SAME shared scenario
@@ -64,13 +64,13 @@ for (const [name, scenario] of Object.entries(scenarios)) {
     // Full-bleed scenarios (App/Boot/Lock/Prefs — all flagged fullPage) have no
     // scenario-root wrapper; component scenarios capture just their padded box.
     if (action.fullPage) {
-      await expect(page).toHaveScreenshot(`${goldenPath(name, scenario)}.png`, {
+      await expect(page).toHaveScreenshot(goldenPathArray(name, scenario), {
         animations: "disabled",
         fullPage: true,
       });
     } else {
       await expect(page.getByTestId("scenario-root")).toHaveScreenshot(
-        `${goldenPath(name, scenario)}.png`,
+        goldenPathArray(name, scenario),
         { animations: "disabled" },
       );
     }

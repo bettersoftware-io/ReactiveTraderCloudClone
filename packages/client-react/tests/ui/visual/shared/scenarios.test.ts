@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { goldenPath } from "./goldenPath";
+import { goldenPath, goldenPathArray } from "./goldenPath";
 import { MATRIX_MODES, MATRIX_SKINS, scenarios } from "./scenarios";
 
 describe("theme-matrix expansion", () => {
@@ -48,5 +48,18 @@ describe("theme-matrix expansion", () => {
     expect(goldenPath("app/fx-light", scenarios["app/fx-light"])).toBe(
       "classic-light/app-fx-light",
     );
+  });
+
+  it("goldenPathArray splits into [folder, file.png] for Playwright's array arg", () => {
+    expect(
+      goldenPathArray(
+        "app/fx__terminal-light",
+        scenarios["app/fx__terminal-light"],
+      ),
+    ).toEqual(["terminal-light", "app-fx.png"]);
+    expect(goldenPathArray("app/fx-light", scenarios["app/fx-light"])).toEqual([
+      "classic-light",
+      "app-fx-light.png",
+    ]);
   });
 });

@@ -21,3 +21,17 @@ export function goldenPath(name: string, scenario: Scenario): string {
   const base = baseScenarioName(name).replace(/\//g, "-");
   return `${scenario.themeSkin ?? "classic"}-${scenario.themeMode ?? "dark"}/${base}`;
 }
+
+/** Playwright's ARRAY-arg form: `[<skin>-<mode>, <base-name>.png]`. Required for
+ *  the playwright / playwright-ct tiers because a STRING arg containing `/` is
+ *  flattened to `-` by Playwright, whereas array path-segments nest a real subdir.
+ *  `goldenPath` always has exactly one `/` (folder and base-name are each `/`-free),
+ *  so splitting at it is safe. */
+export function goldenPathArray(
+  name: string,
+  scenario: Scenario,
+): [string, string] {
+  const p = goldenPath(name, scenario);
+  const slash = p.indexOf("/");
+  return [p.slice(0, slash), `${p.slice(slash + 1)}.png`];
+}
