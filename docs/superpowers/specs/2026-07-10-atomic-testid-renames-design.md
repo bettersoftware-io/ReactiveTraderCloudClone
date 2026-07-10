@@ -6,14 +6,16 @@
 > migration is deferred and must be executed by a future SDD session against
 > the plan file. This mirrors the plan-now / execute-later convention already
 > used for power-saver mode (`docs/superpowers/specs/2026-07-09-power-saver-mode-design.md`,
-> "approved design, implementation deferred") and feature flags
-> (`docs/superpowers/specs/2026-07-01-feature-flags-design.md`).
+> "approved design, implementation deferred") and by the feature-flags
+> workstream (PR #83 merged its spec + plan as docs only, execution deferred:
+> `docs/superpowers/plans/2026-07-01-feature-flags.md`).
 
 - **Date:** 2026-07-10
 - **Status:** Approved design, implementation deferred (plan at
   `docs/superpowers/plans/2026-07-10-atomic-testid-renames.md`).
 - **Origin:** The enforcement-gap-closure workstream
-  (`docs/superpowers/specs/2026-07-10-enforcement-gap-closure-design.md` §2.4)
+  (`docs/superpowers/specs/2026-07-10-enforcement-gap-closure-design.md` §2,
+  subsection "PR B (separate branch) — atomic test-ID renames, plan only")
   closed two cheap enforcement gaps and, for the third — grep gate 1's
   `tests/`-only scope — decided the airtight fix (atomic renames) was worth
   planning, not doing now. This is that plan's design half.
@@ -55,7 +57,9 @@ Commands are run from the repo root.
 ```bash
 # static string literals (what gate 1's `data-testid="[a-z]` pattern targets):
 grep -rn 'data-testid="' packages/client-react/src --include='*.tsx' | grep -vc '\.test\.'
-#   → 147 occurrences (all files; none reference a registry today)
+#   → 130 occurrences excluding *.test.* files, which the migration skips
+#     (147 raw across all files: 17 sit in test files; none reference a
+#      registry today)
 # dynamic / templated attributes (data-testid={ … }, e.g. `tile-${pair}`):
 grep -rn 'data-testid={' packages/client-react/src --include='*.tsx' | wc -l
 #   → 41 occurrences
@@ -76,8 +80,11 @@ which the plan uses to size the migration tasks:
 **Mobile — `@rtc/client-react-native` (in scope):**
 
 ```bash
-grep -rn 'testID="' packages/client-react-native/src | wc -l      # → 91 static
+grep -rn 'testID="' packages/client-react-native/src | wc -l      # → 91 static, raw
+#   (86 excluding *.test.* files, which the migration skips:
+#    … | grep -vc '\.test\.' → 86)
 grep -rn 'testID={'  packages/client-react-native/src | wc -l      # → 27 dynamic
+#   (all 27 are outside *.test.* files)
 ```
 
 Per-section occurrence breakdown (static + dynamic, excluding `*.test.*`):
@@ -96,13 +103,14 @@ Per-section occurrence breakdown (static + dynamic, excluding `*.test.*`):
 grep -rnE 'data-testid="[a-z]' packages/client-prototype/src | wc -l   # → 8
 ```
 
-**Total migration surface (in scope):** ~147 + 41 web + 91 + 27 RN ≈ **306
-attribute sites** across the two shipping clients. (The parent spec's round
-figure of "156 `data-testid` + 91 `testID` ≈ 247" predates this re-derivation
-and counted static web literals slightly differently; the executing session
-must trust its own fresh greps, not either number, and drive to **zero**
-remaining raw literals as the acceptance signal — the exact count is a
-sizing aid, not a contract.)
+**Total migration surface (in scope):** 130 + 41 web (= 171) plus 86 + 27 RN
+(= 113) ≈ **284 attribute sites** across the two shipping clients, excluding
+`*.test.*` files, which the migration skips (306 counting raw all-files
+occurrences). (The parent spec's round figure of "156 `data-testid` + 91
+`testID` ≈ 247" predates this re-derivation and counted static web literals
+slightly differently; the executing session must trust its own fresh greps,
+not either number, and drive to **zero** remaining raw literals as the
+acceptance signal — the exact count is a sizing aid, not a contract.)
 
 ---
 
