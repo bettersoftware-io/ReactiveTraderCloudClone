@@ -8,6 +8,13 @@ same app as navigable, idiomatic source you can read one folder at a time.
 The original stays **canonical** — when the two disagree visually or
 behaviorally, the original is right and this port has a fidelity bug.
 
+| | |
+|---|---|
+| **Ring** | None — outside the rings. A **design-comprehension island**, deliberately excluded from the Clean Architecture diagrams ([§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring), [§13.1](../../docs/architecture/13-codebase-map.md#131-l0----the-system-on-one-screen)) rather than placed in ring ④ alongside the shipping clients. |
+| **Runtime deps** | `react`, `react-dom` only (`package.json` `dependencies`) — the whole point is total isolation from `@rtc/*`, so no framework substitution here can ever leak into the product graph. |
+| **Consumed by** | Nothing. No other workspace `package.json` lists `@rtc/client-prototype`, and grepping `src/` for `@rtc/` returns zero matches — the import edge doesn't exist in either direction. |
+| **Must never import** | Any `@rtc/*` package (`domain`, `shared`, `client-core`, `react-bindings`, `client-react`, `client-react-native`, `ws-effects`, `server`). Not a numbered gate from `docs/architecture/12-architectural-gates.md` — this package sits outside `.dependency-cruiser.cjs`'s scope too — the boundary is structural: `package.json` names only `react`/`react-dom`, and pnpm's strict, per-package `node_modules` makes an unlisted `@rtc/*` import fail to resolve at build time even if someone typed it. |
+
 ## How this relates to the original
 
 Surprisingly, both are React apps. They differ in *authoring model*, not
@@ -48,6 +55,28 @@ runnable single file is `docs/design/v2/standalone/Reactive Trader.html`.
 - `src/theme/` — the 5-skin × dark/light token system.
 - `src/motion/` — FLIP glide hook and motion utilities.
 
+## Folder map
+
+| Path | What lives here |
+|---|---|
+| `src/shell/` | App chrome: boot sequence, header, status bar, lock screen, preferences, ambient background. |
+| `src/fx/` | FX screen: live rates, blotter, analytics — self-contained. |
+| `src/credit/` | Credit screen: RFQ form, RFQ/quote cards, blotter — self-contained. |
+| `src/equities/` | Equities screen: watchlist, candle chart, order ticket, blotter — self-contained. |
+| `src/admin/` | Admin screen: service health, KPIs, latency histogram, throughput chart, live events. |
+| `src/layout/` | Hand-wired dock primitives (split panels, maximize, collapse-to-strip) shared by all four screens. |
+| `src/mock/` | Seeded random-walk mock data generators (`mulberry32`) and the shared clock hook — no `@rtc/domain`, no rxjs. |
+| `src/motion/` | FLIP glide hook and motion utilities. |
+| `src/theme/` | The 5-skin × dark/light design-token system. |
+| `src/styles/` | Global CSS entry point (`global.css`), loaded once from `main.tsx`. |
+
+## Where to start reading
+
+1. `src/main.tsx` — the entry point: mounts `<App />` in `StrictMode`, nothing else.
+2. `src/App.tsx` — the whole app's shape in ~60 lines: `ThemeProvider` → `PreferencesProvider` → `AppShell` + the boot/lock/preferences overlays, wired with plain `useState`.
+3. `src/mock/rng.ts` — the seeded PRNG every screen's mock data traces back to; read this before any screen module to understand where the "live" numbers come from.
+4. `src/fx/FxScreen.tsx` (or `credit/CreditScreen.tsx`, `equities/EquitiesScreen.tsx`, `admin/AdminScreen.tsx`) — pick one screen folder and read it end to end; each is self-contained, so the pattern you learn there repeats across the other three.
+
 ## Running
 
 ```bash
@@ -71,3 +100,31 @@ rendered **completely empty** in real browsers: `.shell` used
 that class of bug. When verifying changes here, load the app in a real
 browser and check that the panels actually paint — a green test suite is
 not evidence of a rendered screen.
+
+## How it's used
+
+Nobody's `package.json` lists `@rtc/client-prototype` (verified above), so
+there's no `import` snippet to show — it's used by being *run*, not
+imported. The root `package.json` wires it to two independent dev scripts,
+one per artifact in the design pair:
+
+```json
+"dev:proto": "pnpm --filter @rtc/client-prototype dev",
+"dev:design": "node scripts/serve-design.mjs",
+```
+
+`dev:proto` starts this package's own Vite dev server on port 5273
+(`pnpm --filter @rtc/client-prototype dev`; the port is set in
+`vite.config.ts`), rendering this readable React port. `dev:design` runs a
+separate zero-dependency Node static server (`scripts/serve-design.mjs`)
+that serves the canonical, unrelated artifact this package is a port
+*of* — `docs/design/v2/standalone/Reactive Trader.html` — on port 8899.
+Run both side by side to compare the port against the source it must stay
+faithful to.
+
+## See also
+
+- [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
+- [§1.3.1 Clean Architecture rings](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) — explains why this package has no ring
+- [§10 Key Design Decisions — "Design prototypes are production-isolated"](../../docs/architecture/10-key-design-decisions.md#10-key-design-decisions)
+- [§06 Package Dependencies](../../docs/architecture/06-package-dependencies.md) — `@rtc/client-prototype` drawn as an island with no edges into the dependency graph
