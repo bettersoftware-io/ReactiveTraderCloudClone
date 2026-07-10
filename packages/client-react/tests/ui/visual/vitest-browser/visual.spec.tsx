@@ -3,7 +3,8 @@ import { expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 
-import { scenarioActions } from "../scenarioActions";
+import { scenarioActionFor } from "../scenarioActions";
+import { goldenPath } from "../shared/goldenPath";
 import { scenarios } from "../shared/scenarios";
 
 // Tier 3 — Vitest browser mode. Drives the SAME shared scenario manifest and
@@ -11,11 +12,9 @@ import { scenarios } from "../shared/scenarios";
 // so the two stay behaviourally in lock-step. Goldens are routed per-environment
 // by `vitest-browser.config.ts` (CI `react/` vs local `react-local/<arch>/`).
 //
-// Golden basename: scenario name with "/" → "-". The matcher appends the browser
-// name (e.g. `app-fx-chromium.png`); see the config's resolveScreenshotPath.
-function goldenName(scenario: string): string {
-  return scenario.replace(/\//g, "-");
-}
+// Golden basename: `<skin>-<mode>/<base-name>` (see `goldenPath`). The matcher
+// appends the browser name (e.g. `classic-dark/app-fx-chromium.png`); see the
+// config's resolveScreenshotPath.
 
 // Stub matchMedia so a query reports as matching (delegating every other query
 // to the real impl). Used for prefers-reduced-motion, which this runner cannot
@@ -35,8 +34,8 @@ function stubReducedMotion(): MediaQueryList {
   } as unknown as MediaQueryList;
 }
 
-for (const name of Object.keys(scenarios)) {
-  const action = scenarioActions[name] ?? {};
+for (const [name, scenario] of Object.entries(scenarios)) {
+  const action = scenarioActionFor(name);
 
   test(name, async () => {
     // Theme and view-mode are seeded through the seam (per-fixture data.themeMode /
@@ -96,7 +95,9 @@ for (const name of Object.keys(scenarios)) {
         ? page.elementLocator(document.body)
         : screen.getByTestId("scenario-root");
 
-      await expect.element(target).toMatchScreenshot(goldenName(name));
+      await expect
+        .element(target)
+        .toMatchScreenshot(goldenPath(name, scenario));
     } finally {
       window.matchMedia = realMatchMedia;
     }

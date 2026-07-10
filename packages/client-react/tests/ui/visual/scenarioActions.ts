@@ -1,7 +1,9 @@
 // Runner-neutral description of how each visual scenario is stabilized and
 // captured. The DOM hooks (testids, visible text) are framework-agnostic, so
-// plain-Playwright and vitest-browser share this table. CT specs do not use it —
-// they were hand-written first and stay as-is.
+// all three tiers (plain-Playwright, vitest-browser, and the data-driven
+// playwright-ct matrix.spec.tsx) share this table via `scenarioActionFor`.
+
+import { baseScenarioName } from "./shared/goldenPath";
 
 // A single ordered interaction step for multi-step scenarios (form fill, open a
 // filter popover then apply it). Runner-neutral: keyed on testids + literal
@@ -43,7 +45,9 @@ export type ScenarioAction = {
 
 // Keyed by scenario name (see shared/scenarios.ts). Absent key == a
 // component-level shot with no interaction.
-export const scenarioActions: Record<string, ScenarioAction> = {
+// Module-private: the tiers consume this table only through `scenarioActionFor`
+// below (which maps matrix-expanded names back to their base action).
+const scenarioActions: Record<string, ScenarioAction> = {
   "connection-overlay/offline": { fullPage: true },
   "connection-overlay/idle": { fullPage: true },
   "app/fx": { fullPage: true },
@@ -235,3 +239,9 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   "lock/locked": { fullPage: true, waitForText: "SESSION LOCKED" },
   "prefs/modal": { fullPage: true, waitForText: "PREFERENCES" },
 };
+
+/** Resolve the capture action for a scenario, mapping matrix-expanded names
+ *  (`app/credit__holo-dark`) back to their base action (`app/credit`). */
+export function scenarioActionFor(name: string): ScenarioAction {
+  return scenarioActions[name] ?? scenarioActions[baseScenarioName(name)] ?? {};
+}

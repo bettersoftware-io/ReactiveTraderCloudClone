@@ -58,8 +58,20 @@ jobs:
       - name: Build workspace libraries
         run: pnpm build
 
-      # Re-render and overwrite the canonical x86 `react/` goldens for all three
-      # runners (browsers are preinstalled in the image at PLAYWRIGHT_BROWSERS_PATH).
+      # The theme matrix moved every golden into a `<skin>-<mode>/` sub-folder, and
+      # `--update` writes new files but never deletes stale ones — so wipe the
+      # canonical `react/` sets first, or the uploaded artifact would carry orphaned
+      # flat goldens (and the retired hand-written CT spec dirs) alongside the fresh set.
+      - name: Clean canonical react/ goldens before regen (folder-layout move)
+        run: |
+          rm -rf packages/client-react/tests/ui/visual/playwright-ct/__screenshots__/react
+          rm -rf packages/client-react/tests/ui/visual/playwright/__screenshots__/react
+          rm -rf packages/client-react/tests/ui/visual/vitest-browser/__screenshots__/react
+
+      # Re-render the canonical x86 `react/` goldens for all three runners — now the
+      # FULL theme matrix (5 skins × dark/light, ~1222 scenarios/tier), CT data-driven
+      # via matrix.spec.tsx (browsers preinstalled at PLAYWRIGHT_BROWSERS_PATH). This
+      # run is substantially longer than the pre-matrix suite; the 6h job ceiling is ample.
       - name: Regenerate playwright-ct goldens
         run: pnpm --filter @rtc/client-react test:ui:visual:playwright-ct:react:update
 

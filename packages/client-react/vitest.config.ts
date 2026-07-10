@@ -18,6 +18,8 @@ export default defineConfig({
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
       "tests/ui/contract/specs/**/*.contract.spec.ts",
+      "tests/ui/visual/**/*.test.ts",
+      "tests/ui/visual/**/*.test.tsx",
     ],
     setupFiles: [
       "./tests/setup/jsdom-storage.ts",

@@ -67,9 +67,12 @@ export default defineConfig({
   outputDir: "../../../../reports/ui/visual/playwright/react/artifacts",
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
-    // Desktop Chrome's 1280×720 viewport applies (the device descriptor below
-    // sets it); kept consistent with the other runners.
     ...devices["Desktop Chrome"],
+    // Render at a realistic 1080p desktop (overriding Desktop Chrome's cramped
+    // 1280×720) so full-page HUD captures aren't vertically squeezed. The app is
+    // height:100vh, so this viewport IS the full-page golden size. Kept identical
+    // across all three runners (playwright-ct, playwright, vitest-browser).
+    viewport: { width: 1920, height: 1080 },
   },
   webServer: {
     // cwd for this command is the directory of THIS config file, so the host
@@ -80,5 +83,13 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1920, height: 1080 },
+      },
+    },
+  ],
 });
