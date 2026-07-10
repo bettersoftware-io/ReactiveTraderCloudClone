@@ -2,7 +2,7 @@
 
 ## 12. Architectural Gates
 
-`tests/scripts/grep-gates.ts` encodes 28 import-boundary rules plus a supply-chain audit (29 gates total), enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
+`tests/scripts/grep-gates.ts` encodes 32 import-boundary rules plus a supply-chain audit (33 gates total), enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
 
 | Gate | Rule |
 |------|------|
@@ -35,5 +35,9 @@
 | 27 | No `localStorage` in `client-react/src/ui` (persistence belongs behind `PreferencesPort`) |
 | 28 | No `fetch(` / `import.meta.env` in `client-react/src/ui` (transport & config belong in the app layer) |
 | 29 | No `setTimeout` / `setInterval` in `client-react/src/ui` (time belongs in machines/presenters; custom check) |
+| 30 | No `rxjs` / `@react-rxjs` / `@rx-state` imports in `client-react-native/src/ui` (the RN dumb-UI boundary; only `src/app/adapters` may) |
+| 31 | No `localStorage` / `AsyncStorage` in `client-react-native/src/ui` (persistence belongs behind `PreferencesPort`) |
+| 32 | No `fetch(` / `expo-constants` / `process.env` reads in `client-react-native/src/ui` (transport & config belong in the app layer) |
+| 33 | No `setTimeout` / `setInterval` in `client-react-native/src/ui` (time belongs in machines/presenters; custom check) |
 
-Gates 26–29 are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. They are what keeps the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)) valid without anyone watching.
+Gates 26–29 (web) and 30–33 (RN) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. Both shipped clients now carry the identical guardrail set on their `src/ui`, so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)) holds on either existing client, not just the one that happened to get gated first — valid without anyone watching.
