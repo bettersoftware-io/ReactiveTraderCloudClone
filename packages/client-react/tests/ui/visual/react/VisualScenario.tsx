@@ -60,11 +60,14 @@ export function VisualScenario({
   }, []);
 
   const scenario = scenarios[name];
+
   if (!scenario) {
     throw new Error(`Unknown visual scenario: ${name}`);
   }
+
   const data = resolveScenarioData(scenario, fixtures);
   const render = registry[scenario.componentKey];
+
   if (!render) {
     throw new Error(`Unknown component: ${scenario.componentKey}`);
   }

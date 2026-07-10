@@ -9,12 +9,15 @@ export function resolveScenarioData(
   fixtures: Record<string, AppData>,
 ): AppData {
   const base = fixtures[scenario.fixtureKey];
+
   if (!base) {
     throw new Error(`Unknown fixture: ${scenario.fixtureKey}`);
   }
+
   if (!scenario.themeSkin && !scenario.themeMode) {
     return base;
   }
+
   return {
     ...base,
     themeSkin: scenario.themeSkin ?? base.themeSkin,

@@ -29,8 +29,8 @@ describe("resolveScenarioData", () => {
 
   it("throws on an unknown fixture key", () => {
     const scenario: Scenario = { componentKey: "App", fixtureKey: "missing" };
-    expect(() => resolveScenarioData(scenario, fixtures)).toThrow(
-      /Unknown fixture/,
-    );
+    expect(() => {
+      return resolveScenarioData(scenario, fixtures);
+    }).toThrow(/Unknown fixture/);
   });
 });

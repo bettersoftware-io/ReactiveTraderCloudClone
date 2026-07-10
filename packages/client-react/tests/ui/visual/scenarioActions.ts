@@ -45,7 +45,9 @@ export type ScenarioAction = {
 
 // Keyed by scenario name (see shared/scenarios.ts). Absent key == a
 // component-level shot with no interaction.
-export const scenarioActions: Record<string, ScenarioAction> = {
+// Module-private: the tiers consume this table only through `scenarioActionFor`
+// below (which maps matrix-expanded names back to their base action).
+const scenarioActions: Record<string, ScenarioAction> = {
   "connection-overlay/offline": { fullPage: true },
   "connection-overlay/idle": { fullPage: true },
   "app/fx": { fullPage: true },

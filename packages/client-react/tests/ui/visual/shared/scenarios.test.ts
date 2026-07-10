@@ -25,9 +25,9 @@ describe("theme-matrix expansion", () => {
 
   it("yields exactly 10 combos per expandable base and excludes neon", () => {
     expect(MATRIX_SKINS).not.toContain("neon");
-    const combos = Object.keys(scenarios).filter((k) =>
-      k.startsWith("app/fx__"),
-    );
+    const combos = Object.keys(scenarios).filter((k) => {
+      return k.startsWith("app/fx__");
+    });
     expect(combos).toHaveLength(MATRIX_SKINS.length * MATRIX_MODES.length); // 5×2 = 10
   });
 

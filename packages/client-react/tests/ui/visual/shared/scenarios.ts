@@ -612,11 +612,13 @@ function expandThemeMatrix(
   base: Record<string, Scenario>,
 ): Record<string, Scenario> {
   const out: Record<string, Scenario> = {};
+
   for (const [name, scenario] of Object.entries(base)) {
     if (MATRIX_EXCLUDE.has(name)) {
       out[name] = scenario;
       continue;
     }
+
     for (const skin of MATRIX_SKINS) {
       for (const mode of MATRIX_MODES) {
         out[`${name}__${skin}-${mode}`] = {
@@ -627,6 +629,7 @@ function expandThemeMatrix(
       }
     }
   }
+
   return out;
 }
 
