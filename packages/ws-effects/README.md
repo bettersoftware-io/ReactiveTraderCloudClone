@@ -30,7 +30,7 @@ A small declarative RxJS effects framework for dispatching WebSocket messages --
 
 ## How it's used
 
-`@rtc/server` composes 24 effects (`fx`/`credit`/`equities`/`admin.effects.ts`) into one via `combineEffects`, then wires it to every incoming connection via `createWsListener` -- the entire dispatch layer is four lines in `packages/server/src/index.ts`:
+`@rtc/server` composes 24 effects (`fx`/`credit`/`equities`/`admin.effects.ts`) into one via `combineEffects`, then wires it to every incoming connection via `createWsListener` -- the entire dispatch layer is five lines in `packages/server/src/index.ts`:
 
 ```ts
 import { combineEffects, createWsListener } from "@rtc/ws-effects";

@@ -1,8 +1,8 @@
 # @rtc/client-react — React UI
 
 React + RxJS + Vite client. Clean-architecture seam: components read ALL data
-through `useHooks()` (`AppHooks` interface); production wires presenters via
-`@react-rxjs/core`, tests inject fakes through `HooksProvider`.
+through `useViewModel()` (`ViewModel` interface); production wires presenters via
+`@react-rxjs/core`, tests inject fakes through `ViewModelProvider`.
 
 | | |
 |---|---|
@@ -165,7 +165,7 @@ runner stays pure (neutral specs only). The HTML report lands at
 [`tests/ui/contract/README.md`](tests/ui/contract/README.md).
 
 **Visual tier (`pnpm test:ui:visual`)** — screenshots of components and full pages
-rendered against injected fake data via the `HooksProvider` seam; no server,
+rendered against injected fake data via the `ViewModelProvider` seam; no server,
 no presenters. Three runners share one scenario manifest
 (`tests/ui/visual/shared/scenarios.ts`); goldens are committed in TWO sets per runner —
 `react/` (CI, x86) and `react-local/<platform>-<arch>/` (fast local

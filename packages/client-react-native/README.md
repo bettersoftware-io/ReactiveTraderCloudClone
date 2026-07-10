@@ -9,10 +9,10 @@ Runs on **Expo SDK 57 / React Native 0.86** (see
 
 | | |
 |---|---|
-| **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ Interface Adapters (`src/app/adapters`) |
+| **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ Interface Adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
 | **Runtime deps** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `expo`, `expo-router`, `expo-constants`, `expo-dev-client`, `expo-font`, `expo-linking`, `expo-status-bar`, `@expo-google-fonts/*`, `@react-native-async-storage/async-storage`, `react`, `react-dom`, `react-native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-svg`, `rxjs` (`package.json` `dependencies`) |
 | **Consumed by** | Nothing in-workspace — it is a leaf app; unlike `client-react` it is *not* a `tests` workspace dependency (`tests/package.json` lists `@rtc/client-react` but not this package) |
-| **Must never import** | No gate machine-enforces this here — gates 26–29 in [§12 Architectural Gates](../../docs/architecture/12-architectural-gates.md) scope `client-react/src/ui` only, not `client-react-native/src/ui`. By convention `src/ui` follows the same dumb-UI discipline anyway: no `rxjs`/`@react-rxjs`/`@rx-state`, no `AsyncStorage`, no `fetch`/`expo-constants` reads, no `setTimeout`/`setInterval` (verified empty by grep at doc time). `rxjs` is a real dependency, but it appears only in `src/app/adapters` — e.g. `AppearanceColorSchemeAdapter.prefersDark$()` returns an `Observable<boolean>`. |
+| **Must never import** | No gate mechanically enforces this here — gates 26–29 in [§12 Architectural Gates](../../docs/architecture/12-architectural-gates.md) scope `client-react/src/ui` only, not `client-react-native/src/ui`. By convention `src/ui` follows the same dumb-UI discipline anyway: no `rxjs`/`@react-rxjs`/`@rx-state`, no `AsyncStorage`, no `fetch`/`expo-constants` reads, no `setTimeout`/`setInterval` (verified empty by grep at doc time). `rxjs` is a real dependency, but it appears only in `src/app/adapters` — e.g. `AppearanceColorSchemeAdapter.prefersDark$()` returns an `Observable<boolean>`. |
 
 ## Folder map
 
@@ -305,4 +305,4 @@ and everything downstream is the same code running on a different platform.
 - [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
 - [§14.2 Adapter Tables Per App — Mobile](../../docs/architecture/14-composition-and-wiring.md#142-adapter-tables-per-app) — the native adapter table and the sim/live toggle mechanics
 - [§14.3 Boot Sequences](../../docs/architecture/14-composition-and-wiring.md#143-boot-sequences) — the Expo Router mount sequence, starting from `app/_layout.tsx`
-- [§16 Trailheads, item 9](../../docs/architecture/16-trailheads.md#16-trailheads) — adding a new RN screen
+- [§16 recipe 4 (Add a UI panel), the RN step](../../docs/architecture/16-trailheads.md#16-trailheads) — adding a new RN screen

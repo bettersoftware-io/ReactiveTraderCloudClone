@@ -10,7 +10,7 @@ This document is split into one file per section under
 
 **Changing something?** Go to [Trailheads](architecture/16-trailheads.md) — it maps common tasks to the sections and files you'll need to touch.
 
-**Deep reference** The sections [C4 Model](architecture/02-c4-model.md) through [Test Strategy](architecture/09-test-strategy.md) (§2–§9), along with [Key Files Reference](architecture/11-key-files-reference.md) and [Architectural Gates](architecture/12-architectural-gates.md) (§11–§12), provide detailed diagrams, sequence flows, state machines, communication patterns, design decisions, and enforcement rules.
+**Deep reference?** The sections [C4 Model](architecture/02-c4-model.md) through [Test Strategy](architecture/09-test-strategy.md) (§2–§9), along with [Key Files Reference](architecture/11-key-files-reference.md) and [Architectural Gates](architecture/12-architectural-gates.md) (§11–§12), provide detailed diagrams, sequence flows, state machines, communication patterns, design decisions, and enforcement rules.
 
 ## Table of Contents
 

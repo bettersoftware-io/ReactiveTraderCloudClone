@@ -6,7 +6,7 @@ Entities, use cases, port interfaces, and simulators — pure TypeScript, the in
 |---|---|
 | **Ring** | ①② Entities & Use Cases — the yolk (`docs/architecture/01-overview.md` §1.3.1). `src/simulators/` is the one exception: it's ring ③ (gateways) even though it lives in this package — production port implementations, not test doubles. |
 | **Runtime deps** | `rxjs` only — the single permitted exception, enforced by pnpm strict mode (`packages/domain/package.json` `dependencies`) |
-| **Consumed by** | `@rtc/shared`, `@rtc/client-core`, `@rtc/react-bindings`, `@rtc/client-react`, `@rtc/client-react-native`, `@rtc/server` — every client and server package; `@rtc/ws-effects` (rxjs-only) and the isolated `@rtc/client-prototype` do not |
+| **Consumed by** | `@rtc/shared`, `@rtc/client-core`, `@rtc/react-bindings`, `@rtc/client-react`, `@rtc/client-react-native`, `@rtc/server`, and the `tests` workspace — every client and server package plus the behavioural test suite; `@rtc/ws-effects` (rxjs-only) and the isolated `@rtc/client-prototype` do not |
 | **Must never import** | `@rtc/shared`, `@rtc/client-react`, or `@rtc/server` (dependency-cruiser rule `domain-stays-pure`, `.dependency-cruiser.cjs`); any Node built-in outside test files (`domain-no-node-builtins` — the package must run in any JS environment, browser or RN). Gate 23 additionally bans `src/ports/__contracts__/` describers from importing `simulators/`, `@rtc/client-react`, or `@rtc/shared/__fixtures__/` (`docs/architecture/12-architectural-gates.md`). |
 
 ## Folder map
