@@ -7,6 +7,40 @@ adapters are RN-specific. See `docs/superpowers/specs/2026-06-29-react-native-ex
 Runs on **Expo SDK 57 / React Native 0.86** (see
 `docs/superpowers/specs/2026-07-06-rn-expo-sdk57-upgrade-design.md`).
 
+| | |
+|---|---|
+| **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ Interface Adapters (`src/app/adapters`) |
+| **Runtime deps** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `expo`, `expo-router`, `expo-constants`, `expo-dev-client`, `expo-font`, `expo-linking`, `expo-status-bar`, `@expo-google-fonts/*`, `@react-native-async-storage/async-storage`, `react`, `react-dom`, `react-native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-svg`, `rxjs` (`package.json` `dependencies`) |
+| **Consumed by** | Nothing in-workspace — it is a leaf app; unlike `client-react` it is *not* a `tests` workspace dependency (`tests/package.json` lists `@rtc/client-react` but not this package) |
+| **Must never import** | No gate machine-enforces this here — gates 26–29 in [§12 Architectural Gates](../../docs/architecture/12-architectural-gates.md) scope `client-react/src/ui` only, not `client-react-native/src/ui`. By convention `src/ui` follows the same dumb-UI discipline anyway: no `rxjs`/`@react-rxjs`/`@rx-state`, no `AsyncStorage`, no `fetch`/`expo-constants` reads, no `setTimeout`/`setInterval` (verified empty by grep at doc time). `rxjs` is a real dependency, but it appears only in `src/app/adapters` — e.g. `AppearanceColorSchemeAdapter.prefersDark$()` returns an `Observable<boolean>`. |
+
+## Folder map
+
+| Path | What lives here |
+|---|---|
+| `app/` | Expo Router file-based routes (`_layout.tsx`, `index.tsx`, `blotter.tsx`, `analytics.tsx`, `credit.tsx`, `equities.tsx`) — the real entry point Metro bundles from (`package.json` `"main": "expo-router/entry"`) |
+| `src/app/` | The composition root (`AppRoot.tsx`, `buildNativePorts.ts`) plus its native platform adapters (`adapters/`) — the RN analogue of `client-react/src/app` |
+| `src/app/adapters/` | `AsyncStoragePreferencesAdapter`, `AppearanceColorSchemeAdapter` — the two native-specific gateways this app supplies |
+| `src/ui/` | Dumb RN screens and components, grouped by trading domain (`credit/`, `equities/`, `analytics/`) plus shared chrome (`shell/`, `theme/`) |
+
+Note the two `app` directories are not the same thing: package-root `app/` is
+Expo Router's route tree, while `src/app/` is the composition root and
+platform adapters — mirroring `client-react`'s `src/app`, just one path
+segment shorter here because Expo Router reserves the bare `app/` name.
+
+## Where to start reading
+
+1. `app/_layout.tsx` — the real mount point: wires the sim/live toggle, wraps
+   the tab navigator in one `AppRoot` and one `ThemeProvider`.
+2. `src/app/AppRoot.tsx` — the composition root as a component; calls
+   `createApp`/`createViewModel` exactly once per real mount (StrictMode-safe
+   via a lazy ref + deferred dispose).
+3. `src/app/buildNativePorts.ts` — assembles the `AppPorts`: real-`WsAdapter`
+   branch vs. in-process simulator branch, the RN analogue of client-react's
+   `buildBrowserPorts`.
+4. `src/ui/theme/tokens.ts` — RN theme tokens delivered via React context
+   (not CSS custom properties, since RN has no stylesheet cascade).
+
 ## What the app shows
 
 The screen streams live FX spot tiles from the deployed Fly server by
@@ -229,3 +263,46 @@ The `@expo/metro-runtime` override (`pnpm-workspace.yaml`) is pinned to the
 SDK-57 line, and `@xmldom/xmldom` to `^0.8.13` — both load-bearing for native
 builds; the inline comments there explain why (do not bump xmldom to 0.9.x, it
 breaks `expo prebuild`).
+
+---
+
+## How it's used
+
+This package is a leaf app — nothing else in the workspace imports it — so
+"how it's used" means how *it* consumes `@rtc/client-core` and
+`@rtc/react-bindings`. `app/_layout.tsx` mounts the composition root exactly
+once around the tab navigator:
+
+```tsx
+<AppRoot key={simulator ? "sim" : "live"} simulator={simulator}>
+  <ThemeProvider>
+    <Chrome simulator={simulator} onToggle={setSimulator} />
+```
+
+`AppRoot` (`src/app/AppRoot.tsx`) then does the actual composition-root work,
+verbatim against the same `@rtc/client-core` / `@rtc/react-bindings` APIs the
+web client uses:
+
+```tsx
+  if (ref.current === null) {
+    const { ports, dispose } = buildNativePorts({ simulator });
+    const { presenters, commands } = createApp(ports);
+    const viewModel = createViewModel(
+      presenters,
+      createMachineFactories(presenters),
+      commands,
+    );
+    ref.current = { viewModel, dispose };
+  }
+```
+
+Only `ports` differs from `client-react` (native adapters via
+`buildNativePorts` instead of browser ones) — `createApp`, `createViewModel`,
+and everything downstream is the same code running on a different platform.
+
+## See also
+
+- [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
+- [§14.2 Adapter Tables Per App — Mobile](../../docs/architecture/14-composition-and-wiring.md#142-adapter-tables-per-app) — the native adapter table and the sim/live toggle mechanics
+- [§14.3 Boot Sequences](../../docs/architecture/14-composition-and-wiring.md#143-boot-sequences) — the Expo Router mount sequence, starting from `app/_layout.tsx`
+- [§16 Trailheads, item 9](../../docs/architecture/16-trailheads.md#16-trailheads) — adding a new RN screen
