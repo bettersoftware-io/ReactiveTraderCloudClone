@@ -447,7 +447,7 @@ const GATES: Gate[] = [
     excludes: ["/node_modules/", ".test.", ".spec."],
   },
   {
-    name: "32. No fetch/process.env/expo-constants in RN src/ui (transport & config belong in the app layer)",
+    name: "32. No fetch/process.env/import.meta.env/expo-constants in RN src/ui (transport & config belong in the app layer)",
     pattern: "fetch\\(|process\\.env|import\\.meta\\.env|expo-constants",
     paths: ["../packages/client-react-native/src/ui/"],
     excludes: ["/node_modules/", ".test.", ".spec."],
