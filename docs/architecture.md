@@ -4,6 +4,14 @@ This document is split into one file per section under
 [`docs/architecture/`](architecture/). Start with the
 [Overview](architecture/01-overview.md) if you are new to the codebase.
 
+## How to read this
+
+**New here?** Start with the [Overview](architecture/01-overview.md) to understand the system's purpose and architectural principles. Next, explore the [Codebase Map](architecture/13-codebase-map.md) to see how packages fit together and their module structure. Then, read your app's package README in `packages/<name>/` — each describes its role, dependencies, entry points, and how to start using it.
+
+**Changing something?** Go to [Trailheads](architecture/16-trailheads.md) — it maps common tasks to the sections and files you'll need to touch.
+
+**Deep reference** The sections [C4 Model](architecture/02-c4-model.md) through [Test Strategy](architecture/09-test-strategy.md) (§2–§9), along with [Key Files Reference](architecture/11-key-files-reference.md) and [Architectural Gates](architecture/12-architectural-gates.md) (§11–§12), provide detailed diagrams, sequence flows, state machines, communication patterns, design decisions, and enforcement rules.
+
 ## Table of Contents
 
 1. [Overview](architecture/01-overview.md)
@@ -50,3 +58,15 @@ This document is split into one file per section under
 10. [Key Design Decisions](architecture/10-key-design-decisions.md)
 11. [Key Files Reference](architecture/11-key-files-reference.md)
 12. [Architectural Gates](architecture/12-architectural-gates.md)
+13. [Codebase Map](architecture/13-codebase-map.md)
+   - [13.1 L0 -- The System On One Screen](architecture/13-codebase-map.md#131-l0----the-system-on-one-screen)
+   - [13.2 L1 -- The Package Line Map](architecture/13-codebase-map.md#132-l1----the-package-line-map)
+   - [13.3 L2 -- Module Maps](architecture/13-codebase-map.md#133-l2----module-maps)
+   - [13.4 The Reuse Matrix](architecture/13-codebase-map.md#134-the-reuse-matrix)
+14. [Composition & Wiring](architecture/14-composition-and-wiring.md)
+   - [14.1 The Composition Root](architecture/14-composition-and-wiring.md#141-the-composition-root)
+   - [14.2 Adapter Tables Per App](architecture/14-composition-and-wiring.md#142-adapter-tables-per-app)
+   - [14.3 Boot Sequences](architecture/14-composition-and-wiring.md#143-boot-sequences)
+15. [Flows](architecture/15-flows.md)
+   - [15.1 Control Flow vs Imports vs Data Flow](architecture/15-flows.md#151-control-flow-vs-imports-vs-data-flow)
+16. [Trailheads](architecture/16-trailheads.md)
