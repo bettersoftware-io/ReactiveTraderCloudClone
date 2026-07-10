@@ -1,10 +1,16 @@
 name: CI
 
 # Fast gates (typecheck, unit tests, build, the architecture + supply-chain
-# grep/audit gates, visual diffs) plus the full e2e suite. The e2e job is the
-# heavy one (real Cypress binary, Playwright Chromium, xvfb, the 10-way parallel
-# orchestration in tests/scripts/run-all.ts); it runs alongside the fast jobs so
-# it never slows them down.
+# grep/audit gates) plus the full e2e suite. The e2e job is the heavy one (real
+# Cypress binary, Playwright Chromium, xvfb, the 10-way parallel orchestration in
+# tests/scripts/run-all.ts); it runs alongside the fast jobs so it never slows
+# them down.
+#
+# The ~20-min visual-diff gate is DELIBERATELY NOT here: it runs post-merge only,
+# in its own workflow (.github/workflows/visual.yml, triggered on push to main),
+# so branch pushes / PRs are never blocked while the UI is churning. A post-merge
+# failure on main is the signal to inspect → fix the regression or (if intended)
+# regenerate the goldens. Restore it as a PR gate here once the UI stabilises.
 #
 # All third-party actions are pinned to immutable commit SHAs (with the human
 # version in a trailing comment). Renovate (helpers:pinGitHubActionDigests in
@@ -114,81 +120,6 @@ jobs:
 
       - name: Architecture + supply-chain gates (grep gates + pnpm audit --prod)
         run: pnpm --filter @rtc/tests gates
-
-  visual:
-    name: visual diffs
-    runs-on: ubuntu-latest
-    # Run inside the official Playwright image so chromium + fonts + OS libs are
-    # byte-identical to where the goldens are generated. This eliminates the
-    # cross-platform rendering diffs (sandbox/ubuntu) that fail toHaveScreenshot,
-    # and makes the goldens a stable portability contract for any future UI
-    # framework swap. Browsers are preinstalled in the image (PLAYWRIGHT_BROWSERS_PATH
-    # is set by it), so no `playwright install` step is needed. The goldens are
-    # regenerated in this SAME image via .github/workflows/update-visual-goldens.yml.
-    # Tag must track the @playwright/test version in packages/client-react.
-    container: mcr.microsoft.com/playwright:v1.61.0-noble
-    env:
-      CYPRESS_INSTALL_BINARY: "0"
-      # Run the three visual runners SERIALLY, matching update-visual-goldens.yml
-      # (which regenerates each tier in its own sequential step). run-all.ts
-      # defaults to fully-concurrent under CI, and 3-tier CPU contention on the
-      # 2-core runner lets Playwright's stable-frame check capture one frame
-      # early — goldens generated unloaded then verified under load drift by
-      # ±1px / glyph metrics on text-dense captures (same class as the
-      # playwright-ct workers:1 lesson, one level up).
-      RTC_VISUAL_MAX_PARALLEL: "1"
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 26
-
-      - name: Enable Corepack (pins pnpm 11.5.2 from the packageManager field)
-        run: npm install -g corepack@0.35.0 && corepack enable
-
-      - name: Resolve pnpm store path
-        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
-
-      - name: Cache the pnpm content-addressable store
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: pnpm-store-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # Invoke through turbo (NOT `pnpm --filter`) so the task's declared
-      # dependsOn ["^build"] runs first: the visual harness imports the
-      # @rtc/domain / @rtc/shared workspace libs via their built dist/, which a
-      # fresh checkout hasn't produced. A direct `pnpm --filter` call bypasses
-      # turbo's graph and fails to resolve @rtc/domain.
-      # Full theme matrix (5 skins × dark/light, ~1222 scenarios × 3 tiers, all
-      # serial per RTC_VISUAL_MAX_PARALLEL=1 / CT workers:1) makes this the
-      # critical-path job — much longer than the pre-matrix suite. It is kept as a
-      # gate deliberately (coverage over speed, for now). ESCAPE HATCH if the gate
-      # time starts to hurt delivery: split into a small classic-dark smoke gate
-      # here + an on-demand full run (the update-visual-goldens.yml workflow_dispatch
-      # pattern). See ADR-001-visual-diff-tooling.md → "Theme matrix / escape hatch".
-      - name: Visual diffs (playwright-ct + playwright + vitest-browser)
-        run: pnpm test:ui:visual
-
-      # On a mismatch, publish the actual-vs-expected images so cross-platform
-      # rendering diffs (sandbox goldens vs the ubuntu runner) can be inspected.
-      - name: Upload visual diff report on failure
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ui-visual-report
-          path: |
-            packages/client-react/reports/
-            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-actual.png
-            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-diff.png
-            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-reference.png
-          if-no-files-found: ignore
-          retention-days: 7
 
   e2e:
     name: e2e (browser · presenter · fullstack)
