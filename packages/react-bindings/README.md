@@ -15,7 +15,7 @@ react-bindings is flat — no subfolders. Every file sits directly under `src/`.
 
 | Path | What lives here |
 |---|---|
-| `src/createViewModel.ts` | The `ViewModel` factory: ~60 `use*` hooks built from `presenters`, `machines`, and `commands`, each either a `bind()`-backed shared stream or a `useMachine`-backed per-mount machine |
+| `src/createViewModel.ts` | The `ViewModel` factory: builds the full set of `use*` hooks from `presenters`, `machines`, and `commands`, each either a `bind()`-backed shared stream or a `useMachine`-backed per-mount machine |
 | `src/useMachine.ts` | The per-mount RxJS-machine → hook bridge (lifecycle glue only — see "StrictMode-safe disposal" below) |
 | `src/useViewModel.ts` | The accessor hook UI components import to read the `ViewModel` from context |
 | `src/ViewModelContext.ts` | The seam itself: a bare `React.Context<ViewModel \| null>`, kept in its own module so components importing `useViewModel` don't transitively pull in the provider |
@@ -26,7 +26,7 @@ react-bindings is flat — no subfolders. Every file sits directly under `src/`.
 1. `src/ViewModelContext.ts` — the whole seam in nine lines: a context holding a `ViewModel` or `null`.
 2. `src/useViewModel.ts` — the accessor every UI component calls; throws if used outside a `ViewModelProvider`.
 3. `src/useMachine.ts` — the lifecycle bridge that turns a per-mount RxJS `Machine` into `{ state, ...intents }`; read its doc comment before touching it, the StrictMode disposal timing is load-bearing.
-4. `src/createViewModel.ts` — the factory that wires ~60 hooks: `bind()` for global/shared streams (prices, theme, session), `useMachine` for per-component-instance machines (tile execution, RFQ tiles, order tickets).
+4. `src/createViewModel.ts` — the factory that wires the ViewModel's hooks: `bind()`-backed accessors for global/shared streams (prices, theme, session), `useMachine`-backed accessors for per-component-instance machines (tile execution, RFQ tiles, order tickets).
 
 ## How it's used
 
