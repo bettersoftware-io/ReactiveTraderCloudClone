@@ -37,7 +37,7 @@ export function NotificationsMenu(): ReactElement {
       {open ? (
         <div
           data-testid="notifications-panel"
-          className={styles.dropdown}
+          className={`${styles.dropdown} ${styles.notifDropdown}`}
           role="menu"
         >
           <div className={styles.dropdownHead}>
@@ -59,6 +59,17 @@ export function NotificationsMenu(): ReactElement {
               );
             })}
           </ul>
+          <button
+            type="button"
+            data-testid="notifications-mark-read"
+            className={styles.markRead}
+            onClick={() => {
+              // Decorative like the prototype: just closes the dropdown.
+              setOpen(false);
+            }}
+          >
+            MARK ALL READ
+          </button>
         </div>
       ) : null}
     </div>

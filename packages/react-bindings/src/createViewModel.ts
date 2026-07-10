@@ -151,6 +151,12 @@ interface UseSessionResult {
   unlock: () => void;
 }
 
+interface UseBootGateResult {
+  visible: boolean;
+  reboot: () => void;
+  dismiss: () => void;
+}
+
 export interface ViewModel {
   // Streams
   usePrice: (pair: CurrencyPair) => Price | null;
@@ -214,6 +220,10 @@ export interface ViewModel {
   /** Global session lock state plus lock/unlock (re-authenticate) intents.
    * Shared (one stream for the whole app), so a plain `bind` like the prefs. */
   useSession: () => UseSessionResult;
+  /** Global boot-splash visibility plus reboot (⟳ Reboot HUD) / dismiss
+   * intents. Shared (one stream for the whole app), so a plain `bind` like
+   * useSession. Seeded at composition time from the boot-splash decision. */
+  useBootGate: () => UseBootGateResult;
   /** Per-RFQ countdown — remainingMs, ticking every 100ms, clamped at 0.
    * Cosmetic-only; the authoritative expiry is server-driven (CreditRfqSimulator).
    * Mirrors rtc-original CreditRfqTimer (creditRfqs.ts:102-112). */
@@ -407,6 +417,25 @@ export function createViewModel(
 
   function unlockSession(): void {
     presenters.session.unlock();
+  }
+
+  // Global/shared boot-splash visibility → a plain bind (not a per-mount
+  // machine), mirroring useSessionState. bind() serves its DEFAULT on the
+  // first render even over a warm source (see useEqWorkspaceState below), so
+  // the default must be the presenter's ACTUAL current value — a literal
+  // `true` here would transiently mount the opaque splash for one frame on a
+  // `?nosplash`/webdriver load whose presenter was constructed hidden.
+  const [useBootGateVisible] = bind(
+    presenters.bootGate.visible$,
+    presenters.bootGate.visible,
+  );
+
+  function rebootHud(): void {
+    presenters.bootGate.reboot();
+  }
+
+  function dismissBootSplash(): void {
+    presenters.bootGate.dismiss();
   }
 
   // Animation intents → a parameterized bind (one per-target stream, like usePrice).
@@ -677,6 +706,13 @@ export function createViewModel(
         state: useSessionState(),
         lock: lockSession,
         unlock: unlockSession,
+      };
+    },
+    useBootGate: () => {
+      return {
+        visible: useBootGateVisible(),
+        reboot: rebootHud,
+        dismiss: dismissBootSplash,
       };
     },
     useRfqCountdown: (creationTimestamp: number, totalMs: number) => {

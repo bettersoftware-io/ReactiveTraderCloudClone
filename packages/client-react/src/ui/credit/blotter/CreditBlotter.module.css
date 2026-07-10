@@ -22,6 +22,14 @@
   padding: 8px 14px 0;
 }
 
+/* The fixed column-header region: a separate header-only table that stays
+ * put while .tableWrapper scrolls the rows, and anchors BlotterHeader's
+ * filter popover OUTSIDE the scroll clip. No overflow property here: the
+ * region must stay overflow-visible for the popover. */
+.headerRegion {
+  flex-shrink: 0;
+}
+
 /* Fills the rest of the panel and owns the internal scroll — no fixed
  * max-height (that's what left the dead engine-panel background below the
  * old card, glaring on maximize; final review F2). */
@@ -31,29 +39,30 @@
   overflow: auto;
 }
 
+/* table-layout:fixed + the shared BlotterColgroup px widths give the header
+ * and rows tables identical column edges (the flexible last column absorbs
+ * the rows region's scrollbar width). */
 .table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 12px;
   line-height: 17px;
   font-family: var(--font-mono);
 }
 
-/* A sticky column-header row (`.table thead th/tr { position: sticky }`),
- * matching the prototype's `.headerRow`, was tried here and reverted: with
- * this table's real `<thead>`/`<th>` markup, `position: sticky` on either
- * the row or its cells makes Chromium clip/hit-test the column-filter
- * popover (BlotterHeader's `.filterPanel`, absolutely positioned off a
- * `<th>`) as if it were behind `.tableWrapper`'s scroll clip — confirmed
- * live via the `credit/blotter-filtered` visual scenario, whose Apply
- * button became unclickable (hit-tested through to `scenario-root` behind
- * it) the instant sticky was added, in BOTH the row and per-cell forms.
- * The prototype's own header has no such popover to conflict with (its
- * filters are a different UI). Left non-sticky rather than risk the same
- * interaction breaking in the live docked app; a follow-up would need to
- * split the header out of the scrolling table (e.g. a fixed header table +
- * a separately-scrolling body table) rather than lean on `position: sticky`
- * against this shared BlotterHeader component. */
+/* WHY a split header rather than `position: sticky`: a sticky column-header
+ * row (`.table thead th/tr { position: sticky }`), matching the prototype's
+ * `.headerRow`, was tried here and reverted (commit c20011cc): with a real
+ * `<thead>`/`<th>` markup, `position: sticky` on either the row or its
+ * cells makes Chromium clip/hit-test the column-filter popover
+ * (BlotterHeader's `.filterPanel`, absolutely positioned off a `<th>`) as
+ * if it were behind `.tableWrapper`'s scroll clip — confirmed live via the
+ * `credit/blotter-filtered` visual scenario, whose Apply button became
+ * unclickable (hit-tested through to `scenario-root` behind it) the instant
+ * sticky was added, in BOTH the row and per-cell forms. The split header
+ * (.headerRegion above, mirrored in FxBlotter) achieves the fixed-header
+ * behaviour with the popover anchored outside any scroll clip entirely. */
 
 .headerCell {
   padding: 6px 8px;
@@ -70,6 +79,10 @@
   padding: 4px 8px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+  /* Under table-layout:fixed a long nowrap value would paint over the next
+   * cell — truncate with an ellipsis instead. */
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--text-primary);
 }
 

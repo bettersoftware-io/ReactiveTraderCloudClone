@@ -10,6 +10,8 @@ import {
   type LayoutIntents,
   type LayoutNode,
   type LayoutState,
+  maximizeBoundaryPath,
+  nodeAtPath,
   PANEL_SPECS,
   type PanelId,
   type PanelSpec,
@@ -38,11 +40,25 @@ export function InhouseLayoutEngine({
   onExpand,
   onResize,
 }: InhouseLayoutEngineProps): ReactElement {
+  // Render-time maximize policy, computed once per render: the boundary is
+  // the split the maximize reaches (the whole dock for the default "root"
+  // scope; the nearest ancestor column split for a "nearest-column" panel —
+  // the standalone's rail semantics), and strippedByMaximize is the set of
+  // panels it forces to strip bars: every leaf under the boundary except the
+  // maximized panel itself. Panels OUTSIDE the boundary render normally.
+  // Null/empty when nothing is maximized.
+  const boundaryPath =
+    state.maximized === null
+      ? null
+      : maximizeBoundaryPath(state.root, state.maximized, specs);
+  const strippedByMaximize = strippedPanelIds(state, boundaryPath);
   const sharedProps: SharedProps = {
     state,
     registry,
     specs,
     headRegistry,
+    boundaryPath,
+    strippedByMaximize,
     onMaximize,
     onRestore,
     onCollapse,
@@ -81,6 +97,14 @@ interface SharedProps {
   registry: PanelRegistry;
   specs: Readonly<Record<PanelId, PanelSpec>>;
   headRegistry?: Partial<Record<PanelId, () => ReactElement>>;
+  /** Path of the split the current maximize is bounded by (see
+   * maximizeBoundaryPath in @rtc/client-core), or null when nothing is
+   * maximized. Cells outside the boundary subtree keep their geometry —
+   * including a scoped rail's initialPx design width. */
+  boundaryPath: readonly number[] | null;
+  /** Leaves under the boundary minus the maximized panel: exactly the panels
+   * the current maximize forces to strips. Empty when nothing is maximized. */
+  strippedByMaximize: ReadonlySet<PanelId>;
   onMaximize: LayoutIntents["maximize"];
   onRestore: LayoutIntents["restore"];
   onCollapse: LayoutIntents["collapse"];
@@ -150,26 +174,67 @@ function measuredFractions(
 }
 
 /** True when every panel leaf in `node`'s subtree is currently a strip
- * (collapsed itself, or stripped as a sibling of the maximized panel further
- * up the tree) — a split node counts as an all-strip subtree only when every
- * one of its own children does too. Drives `.cell[data-strip-cell="true"]`,
- * which releases the CELL's ratio-derived flex-grow so growing siblings
- * reclaim the freed space. Without this, only the innermost
- * `.panel[data-strip="true"]` shrank to its 32px strip while the `.cell`
- * wrapping it kept its full ratio-derived size, leaving a dead background
- * gap and starving growing siblings of the space the strip gave up (the
- * maximize/collapse regression this function fixes). */
-function isStripSubtree(node: LayoutNode, state: LayoutState): boolean {
+ * (collapsed itself, or forced to a strip by the current maximize — a member
+ * of strippedByMaximize) — a split node counts as an all-strip subtree only
+ * when every one of its own children does too. Drives
+ * `.cell[data-strip-cell="true"]`, which releases the CELL's ratio-derived
+ * flex-grow so growing siblings reclaim the freed space. Without this, only
+ * the innermost `.panel[data-strip="true"]` shrank to its 32px strip while
+ * the `.cell` wrapping it kept its full ratio-derived size, leaving a dead
+ * background gap and starving growing siblings of the space the strip gave
+ * up (the maximize/collapse regression this function fixes). */
+function isStripSubtree(
+  node: LayoutNode,
+  state: LayoutState,
+  strippedByMaximize: ReadonlySet<PanelId>,
+): boolean {
   if (node.kind === "panel") {
-    const maximizedHere = state.maximized === node.panelId;
-    const isMaximized = state.maximized !== null;
-    const collapsed = state.collapsed.includes(node.panelId);
-    return (isMaximized && !maximizedHere) || collapsed;
+    return (
+      strippedByMaximize.has(node.panelId) ||
+      state.collapsed.includes(node.panelId)
+    );
   }
 
   return node.children.every((child) => {
-    return isStripSubtree(child, state);
+    return isStripSubtree(child, state, strippedByMaximize);
   });
+}
+
+/** The panels the current maximize forces to strips: every leaf under the
+ * maximize boundary except the maximized panel itself. Empty when nothing is
+ * maximized. A "root"-scope maximize (boundary `[]`) strips every other
+ * panel in the dock — today's full-dock behaviour; a "nearest-column" one
+ * strips only the maximized panel's column siblings. */
+function strippedPanelIds(
+  state: LayoutState,
+  boundaryPath: readonly number[] | null,
+): ReadonlySet<PanelId> {
+  if (state.maximized === null || boundaryPath === null) return new Set();
+  const boundary = nodeAtPath(state.root, boundaryPath) ?? state.root;
+  const ids = new Set(collectPanelIds(boundary));
+  ids.delete(state.maximized);
+  return ids;
+}
+
+/** Every panel id in `node`'s subtree, in tree order. */
+function collectPanelIds(node: LayoutNode): PanelId[] {
+  if (node.kind === "panel") return [node.panelId];
+  return node.children.flatMap(collectPanelIds);
+}
+
+/** True when `prefix` is a STRICT prefix of `path` — the node at `path` sits
+ * strictly inside the subtree rooted at `prefix` (equal paths do not count:
+ * the boundary cell itself is not inside its own subtree). */
+function isStrictPathPrefix(
+  prefix: readonly number[],
+  path: readonly number[],
+): boolean {
+  return (
+    prefix.length < path.length &&
+    prefix.every((index, i) => {
+      return path[i] === index;
+    })
+  );
 }
 
 /** A single split pane — owns the useRef for drag handles and recurses into
@@ -184,6 +249,8 @@ function SplitNode({
   registry,
   specs,
   headRegistry,
+  boundaryPath,
+  strippedByMaximize,
   onMaximize,
   onRestore,
   onCollapse,
@@ -285,6 +352,8 @@ function SplitNode({
     registry,
     specs,
     headRegistry,
+    boundaryPath,
+    strippedByMaximize,
     onMaximize,
     onRestore,
     onCollapse,
@@ -309,23 +378,32 @@ function SplitNode({
           specs[nextChild.panelId]?.pinned === true;
         const childFixed = node.fixedPx?.[i];
         const nextFixed = node.fixedPx?.[i + 1];
-        const childIsStripCell = isStripSubtree(child, state);
+        const childIsStripCell = isStripSubtree(
+          child,
+          state,
+          strippedByMaximize,
+        );
         // Design-value default width (initialPx): renders px-fixed like
         // fixedPx but KEEPS the resize handles — the first drag converts the
         // split to plain fractions. fixedPx wins when both are set. Dropped
-        // whenever a panel is maximized (the freed geometry must flow to the
-        // maximized panel's cell chain — ratio flex-grow beside hugging strip
-        // cells — which a px-fixed rail would pin shut) and while the child's
-        // own subtree is stripped (the strip hugs its 32/38px bar, restoring
-        // the design width when it expands again).
+        // while this cell sits INSIDE the maximize boundary subtree (the
+        // freed geometry must flow to the maximized panel's cell chain —
+        // ratio flex-grow beside hugging strip cells — which a px-fixed rail
+        // would pin shut) and while the child's own subtree is stripped (the
+        // strip hugs its 32/38px bar, restoring the design width when it
+        // expands again). A cell AT or ABOVE the boundary keeps its design
+        // width: a "nearest-column" rail maximize happens entirely inside
+        // the rail, whose own 360/290px cell must not move.
+        const insideBoundary =
+          boundaryPath !== null &&
+          isStrictPathPrefix(boundaryPath, [...path, i]);
         const childInitial =
-          childFixed === undefined &&
-          state.maximized === null &&
-          !childIsStripCell
+          childFixed === undefined && !insideBoundary && !childIsStripCell
             ? node.initialPx?.[i]
             : undefined;
         const nextIsStripCell =
-          nextChild !== undefined && isStripSubtree(nextChild, state);
+          nextChild !== undefined &&
+          isStripSubtree(nextChild, state, strippedByMaximize);
         // The strip orientation a stripped child's subtree inherits: when
         // THIS split is already inside a fully-stripped subtree, keep
         // propagating the ancestor dir it received; otherwise this split is
@@ -426,6 +504,7 @@ function renderPanel(
     registry,
     specs,
     headRegistry,
+    strippedByMaximize,
     onMaximize,
     onRestore,
     onCollapse,
@@ -438,8 +517,10 @@ function renderPanel(
   const title = spec?.title ?? panelId;
   const collapsed = state.collapsed.includes(panelId);
   const maximizedHere = state.maximized === panelId;
-  const isMaximized = state.maximized !== null;
-  const strip = (isMaximized && !maximizedHere) || collapsed;
+  // Strips are membership-gated, not "everything but the maximized panel":
+  // a scoped maximize only strips the leaves inside its boundary (the
+  // maximized panel's column siblings); panels outside render normally.
+  const strip = strippedByMaximize.has(panelId) || collapsed;
   const headContent = headRegistry?.[panelId];
   // A strip whose space reclaims along a row axis shrinks to a narrow,
   // full-height column (PROTO stripBar/collapsedStrip) — restoring it reads
@@ -499,25 +580,33 @@ function renderPanel(
                 data-testid={`panel-${panelId}-collapse`}
                 className={styles.panelControl}
                 aria-label={`Collapse ${title}`}
+                title={`Collapse ${title}`}
                 onClick={() => {
                   onCollapse(panelId);
                 }}
               >
                 —
               </button>
-              <button
-                type="button"
-                data-testid={`panel-${panelId}-maximize`}
-                className={styles.panelControl}
-                aria-label={
-                  maximizedHere ? `Restore ${title}` : `Maximize ${title}`
-                }
-                onClick={() => {
-                  maximizedHere ? onRestore() : onMaximize(panelId);
-                }}
-              >
-                {maximizedHere ? "⧉" : "⛶"}
-              </button>
+              {/* maximizable: false hides only this control — the panel still
+               * strips when a sibling maximizes (spec'd on PanelSpec). */}
+              {spec?.maximizable !== false ? (
+                <button
+                  type="button"
+                  data-testid={`panel-${panelId}-maximize`}
+                  className={styles.panelControl}
+                  aria-label={
+                    maximizedHere ? `Restore ${title}` : `Maximize ${title}`
+                  }
+                  title={
+                    maximizedHere ? `Restore ${title}` : `Maximize ${title}`
+                  }
+                  onClick={() => {
+                    maximizedHere ? onRestore() : onMaximize(panelId);
+                  }}
+                >
+                  {maximizedHere ? "⧉" : "⛶"}
+                </button>
+              ) : null}
             </div>
           </header>
           <div className={styles.panelBody}>

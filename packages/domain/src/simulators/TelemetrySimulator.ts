@@ -1,4 +1,4 @@
-import { concat, defer, interval, type Observable, of } from "rxjs";
+import { concat, defer, from, interval, type Observable } from "rxjs";
 import { map } from "rxjs/operators";
 
 import type { TelemetryPort } from "../ports/telemetryPort.js";
@@ -6,6 +6,7 @@ import type { MetricSample } from "../telemetry/metrics.js";
 import { mulberry32 } from "../telemetry/prng.js";
 import type { ErrorRateSimulator } from "./ErrorRateSimulator.js";
 import type { LatencySimulator } from "./LatencySimulator.js";
+import { METRIC_TICK_MS, seedHistory } from "./metricWalk.js";
 import type { ThroughputSimulator } from "./ThroughputSimulator.js";
 
 // Walk step size and clamp band, both expressed as a fraction of the current
@@ -32,7 +33,7 @@ export class TelemetrySimulator implements TelemetryPort {
     this.rng = mulberry32(seed);
   }
 
-  private sampleThroughput(): MetricSample {
+  private nextThroughputValue(): number {
     // Safe only because getThroughput() is a synchronous of(value); the subscribe resolves before this returns. If it ever becomes async, this would silently report the 100 placeholder.
     let setpoint = 100;
     this.throughputSim.getThroughput().subscribe((x) => {
@@ -53,16 +54,20 @@ export class TelemetrySimulator implements TelemetryPort {
       );
     }
 
-    return { t: Date.now(), value: Math.max(0, setpoint + this.walkOffset) };
+    return Math.max(0, setpoint + this.walkOffset);
   }
 
   throughput$(): Observable<MetricSample> {
     return defer(() => {
       return concat(
-        of(this.sampleThroughput()),
-        interval(2_000).pipe(
+        from(
+          seedHistory(() => {
+            return this.nextThroughputValue();
+          }),
+        ),
+        interval(METRIC_TICK_MS).pipe(
           map(() => {
-            return this.sampleThroughput();
+            return { t: Date.now(), value: this.nextThroughputValue() };
           }),
         ),
       );

@@ -39,7 +39,8 @@
 
 .title {
   margin-bottom: 8px;
-  font-family: var(--font-display, "Orbitron", sans-serif);
+  /* Prototype heading is Orbitron — the app's --font-logo, not --font-display. */
+  font-family: var(--font-logo, "Orbitron", sans-serif);
   font-weight: 700;
   font-size: 18px;
   letter-spacing: 0.32em;
@@ -108,7 +109,8 @@
 .authenticate {
   display: block;
   width: 100%;
-  margin-top: 22px;
+  /* No margin-top: the dots above supply the 22px gap (prototype .dots
+     margin 22px 0) — a margin here would double it. */
   padding: 12px 0;
   font-family: var(--font-display, "Chakra Petch", sans-serif);
   font-weight: 700;
@@ -122,11 +124,7 @@
   cursor: pointer;
 }
 
-/* ---- BiometricLine (decorative) ---- */
-
-.biometric {
-  margin-top: 16px;
-}
+/* ---- Biometric dots + channel line (decorative) ---- */
 
 .dots {
   display: flex;
@@ -151,6 +149,7 @@
 }
 
 .channel {
+  margin-top: 16px;
   font-family: var(--font-mono, "JetBrains Mono", monospace);
   font-size: 9px;
   letter-spacing: 0.3em;
