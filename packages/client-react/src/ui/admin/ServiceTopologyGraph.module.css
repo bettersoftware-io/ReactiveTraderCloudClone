@@ -1,8 +1,25 @@
 .wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   height: 100%;
   min-height: 160px;
+  container-type: size;
+}
+
+/* Explicit 3:2 letterbox stage replicating the SVG's old xMidYMid-meet fit.
+ * The node dots are HTML overlays, not SVG circles: the status pulse animates
+ * scale, and SVG child transforms NEVER composite (docs/performance.md T3) —
+ * as circles the pulse forced full style+layout+paint every frame (measured
+ * 120 layouts/s + 240 paints/s). Percent offsets and cqw-derived sizes keep
+ * the dots pixel-locked to the SVG's edge/label coordinate space. */
+.stage {
+  position: relative;
+  width: min(100cqw, 100cqh * 1.5);
+  height: min(100cqh, 100cqw / 1.5);
+  container-type: size;
 }
 
 .svg {
@@ -17,10 +34,44 @@
   stroke-width: 1.5;
 }
 
-.dot {
-  fill-opacity: var(--node-opacity, 1);
-  transform-box: fill-box;
-  transform-origin: center;
+/* Dot geometry: --dot-x/--dot-y are the node's viewBox coords as percentages
+ * of the stage; --dot-r is the viewBox radius, scaled to CSS px via cqw
+ * (300 viewBox units span 100cqw of the stage, uniformly — the stage is
+ * exactly 3:2). The inner fill carries colour, opacity, and the pulse, so
+ * its transform animation never collides with the wrapper's centering
+ * translate (one animation per property per element — T4). */
+.nodeDot {
+  position: absolute;
+  left: var(--dot-x);
+  top: var(--dot-y);
+  width: calc(var(--dot-r) * 2 / 300 * 100cqw);
+  height: calc(var(--dot-r) * 2 / 300 * 100cqw);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.nodeDotFill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  opacity: var(--node-opacity, 1);
+}
+
+.nodeDot[data-status="ok"] .nodeDotFill {
+  background: var(--accent-positive);
+}
+
+.nodeDot[data-status="degraded"] .nodeDotFill {
+  background: var(--accent-aware);
+  animation: pulse 1.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.nodeDot[data-status="down"] .nodeDotFill {
+  background: var(--accent-negative);
+  animation: pulse 0.8s ease-in-out infinite;
+  will-change: transform;
 }
 
 .nodeLabel {
@@ -29,27 +80,6 @@
   font-size: 8px;
   text-anchor: middle;
   letter-spacing: 0.04em;
-}
-
-/* .node is a selector scope for the data-status pulse rules below; no base styles. */
-.node {
-  /* intentionally empty: status-driven styles live in the compound rules */
-}
-
-/* Status colours + pulse. The keyframe modulates transform scale only, so the
-   throughput-driven fill-opacity stays intact. No JS timer drives any of this. */
-.node[data-status="ok"] .dot {
-  fill: var(--accent-positive);
-}
-
-.node[data-status="degraded"] .dot {
-  fill: var(--accent-aware);
-  animation: pulse 1.8s ease-in-out infinite;
-}
-
-.node[data-status="down"] .dot {
-  fill: var(--accent-negative);
-  animation: pulse 0.8s ease-in-out infinite;
 }
 
 .empty {

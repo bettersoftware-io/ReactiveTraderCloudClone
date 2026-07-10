@@ -82,6 +82,11 @@
  * Colour steps instantly: consecutive health values are near-identical, so
  * the 600ms colour ease was imperceptible while forcing per-frame paints. */
 .fill {
+  /* display:block is load-bearing twice over: as an inline box the span
+   * ignores width/height (0×0 — the bar never painted at all, a bug shipped
+   * with the original round-2 merge), and inline boxes are not transformable,
+   * so the scaleX transition could neither render nor composite. */
+  display: block;
   width: 100%;
   height: 100%;
   transform-origin: left;
