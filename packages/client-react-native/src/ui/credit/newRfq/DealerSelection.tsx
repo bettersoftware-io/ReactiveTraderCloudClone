@@ -13,12 +13,6 @@ import type { Dealer } from "@rtc/domain";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-interface DealerSelectionProps {
-  dealers: readonly Dealer[];
-  selectedIds: Set<number>;
-  onChange: (ids: Set<number>) => void;
-}
-
 export function DealerSelection({
   dealers,
   selectedIds,
@@ -61,6 +55,12 @@ export function DealerSelection({
       </View>
     </View>
   );
+}
+
+interface DealerSelectionProps {
+  dealers: readonly Dealer[];
+  selectedIds: Set<number>;
+  onChange: (ids: Set<number>) => void;
 }
 
 interface DealerSelectionStyles {

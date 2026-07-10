@@ -14,10 +14,6 @@ import { BootEmblem } from "#/ui/shell/boot/BootEmblem";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-interface BootSequenceProps {
-  onDone: () => void;
-}
-
 /** Boot splash content: emblem + wordmark + progress ramp + SKIP. All timing
  * (progress, done, variant) comes from the reused BootSequenceMachine via
  * `useBootSequence(onDone)`; this leaf only paints it and dispatches `skip`.
@@ -58,6 +54,10 @@ export function BootSequence({ onDone }: BootSequenceProps): JSX.Element {
       </Pressable>
     </View>
   );
+}
+
+interface BootSequenceProps {
+  onDone: () => void;
 }
 
 interface BootSequenceStyles {

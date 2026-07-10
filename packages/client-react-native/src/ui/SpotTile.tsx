@@ -21,12 +21,6 @@ import { depthStyle } from "#/ui/theme/depthStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-const ARROW: Record<PriceMovementType, string> = {
-  [PriceMovementType.UP]: "▲",
-  [PriceMovementType.DOWN]: "▼",
-  [PriceMovementType.NONE]: "▬",
-};
-
 export function SpotTile({ pair }: SpotTileProps): JSX.Element {
   const { usePrice } = useViewModel();
   const price = usePrice(pair);
@@ -114,6 +108,12 @@ export function SpotTile({ pair }: SpotTileProps): JSX.Element {
     </>
   );
 }
+
+const ARROW: Record<PriceMovementType, string> = {
+  [PriceMovementType.UP]: "▲",
+  [PriceMovementType.DOWN]: "▼",
+  [PriceMovementType.NONE]: "▬",
+};
 
 interface SpotTileProps {
   pair: CurrencyPair;

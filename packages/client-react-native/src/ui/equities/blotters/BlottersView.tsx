@@ -15,8 +15,6 @@ import { PositionsBlotter } from "#/ui/equities/blotters/PositionsBlotter";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-type BlotterTab = "orders" | "positions";
-
 /** Blotters sub-view: an Orders/Positions toggle over the two blotters. */
 export function BlottersView(): JSX.Element {
   const [tab, setTab] = useState<BlotterTab>("orders");
@@ -53,6 +51,8 @@ export function BlottersView(): JSX.Element {
     </View>
   );
 }
+
+type BlotterTab = "orders" | "positions";
 
 interface BlottersViewStyles {
   container: ViewStyle;

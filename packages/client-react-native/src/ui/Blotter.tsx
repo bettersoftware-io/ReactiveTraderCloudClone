@@ -17,14 +17,6 @@ import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-function keyExtractor(trade: Trade): string {
-  return String(trade.tradeId);
-}
-
-function renderItem({ item }: ListRenderItemInfo<Trade>): JSX.Element {
-  return <TradeRow trade={item} />;
-}
-
 /** The executed-trades blotter — a `FlatList` over the live `useTrades()`
  * stream from the ViewModel. Empty until the first trade executes (in both
  * simulator and live modes). */
@@ -51,6 +43,14 @@ export function Blotter(): JSX.Element {
       />
     </SurfaceCard>
   );
+}
+
+function keyExtractor(trade: Trade): string {
+  return String(trade.tradeId);
+}
+
+function renderItem({ item }: ListRenderItemInfo<Trade>): JSX.Element {
+  return <TradeRow trade={item} />;
 }
 
 interface BlotterStyles {

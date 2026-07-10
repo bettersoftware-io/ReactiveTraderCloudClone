@@ -24,15 +24,6 @@ import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-interface RfqCardProps {
-  rfq: Rfq;
-  quotes: readonly Quote[];
-  instrument: Instrument | undefined;
-  dealers: readonly Dealer[];
-  onAccept: (quoteId: number) => void | Promise<void>;
-  onDismiss: (rfqId: number) => void;
-}
-
 export function RfqCard({
   rfq,
   quotes,
@@ -105,6 +96,15 @@ export function RfqCard({
       </View>
     </SurfaceCard>
   );
+}
+
+interface RfqCardProps {
+  rfq: Rfq;
+  quotes: readonly Quote[];
+  instrument: Instrument | undefined;
+  dealers: readonly Dealer[];
+  onAccept: (quoteId: number) => void | Promise<void>;
+  onDismiss: (rfqId: number) => void;
 }
 
 function stateLabel(state: RfqState): string {

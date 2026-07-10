@@ -9,16 +9,6 @@ import {
 
 import { buildNativePorts } from "#/app/buildNativePorts";
 
-interface AppRootProps {
-  simulator: boolean;
-  children: ReactNode;
-}
-
-interface Composition {
-  viewModel: ViewModel;
-  dispose: () => void;
-}
-
 /** The RN app's composition root, as a component. Builds the presenters and the
  * ViewModel exactly once for this mount and supplies the ViewModelProvider to
  * the tree — the analogue of client-react's `AppRoot`, minus the web shell
@@ -84,4 +74,14 @@ export function AppRoot({ simulator, children }: AppRootProps): ReactElement {
       {children}
     </ViewModelProvider>
   );
+}
+
+interface AppRootProps {
+  simulator: boolean;
+  children: ReactNode;
+}
+
+interface Composition {
+  viewModel: ViewModel;
+  dispose: () => void;
 }
