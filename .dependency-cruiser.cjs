@@ -55,6 +55,57 @@ module.exports = {
       from: { path: "^packages/ws-effects/src" },
       to: { path: "^packages/(domain|shared|client-react|server)/" },
     },
+    {
+      name: "client-core-stays-inner",
+      severity: "error",
+      comment:
+        "@rtc/client-core is the shared application core — it must not depend on bindings, any client, or the server.",
+      from: { path: "^packages/client-core/src" },
+      to: {
+        path: "^packages/(react-bindings|client-react|client-react-native|client-prototype|server)/",
+      },
+    },
+    {
+      name: "client-core-framework-free",
+      severity: "error",
+      comment:
+        "@rtc/client-core is framework-free by contract (its README's headline claim) — no React/DOM/RN modules.",
+      from: { path: "^packages/client-core/src" },
+      to: { path: "node_modules/(react|react-dom|react-native)/" },
+    },
+    {
+      name: "react-bindings-no-apps",
+      severity: "error",
+      comment:
+        "@rtc/react-bindings is the React↔RxJS bridge — it may depend on client-core/domain/react, never on an app or the server.",
+      from: { path: "^packages/react-bindings/src" },
+      to: {
+        path: "^packages/(client-react|client-react-native|client-prototype|server)/",
+      },
+    },
+    {
+      name: "clients-never-import-each-other",
+      severity: "error",
+      comment:
+        "The clients are peers composed from the same core — they must never import one another (CLAUDE.md dependency rule).",
+      from: {
+        path: "^packages/(client-react|client-react-native|client-prototype)/src",
+      },
+      to: {
+        path: "^packages/(client-react|client-react-native|client-prototype)/",
+        pathNot: "^packages/$1/",
+      },
+    },
+    {
+      name: "prototype-isolated",
+      severity: "error",
+      comment:
+        "@rtc/client-prototype is a design-comprehension island — react/react-dom only, no @rtc/* imports (CLAUDE.md).",
+      from: { path: "^packages/client-prototype/src" },
+      to: {
+        path: "^packages/(domain|shared|client-core|react-bindings|client-react|client-react-native|server|ws-effects)/",
+      },
+    },
   ],
   options: {
     tsPreCompilationDeps: false,

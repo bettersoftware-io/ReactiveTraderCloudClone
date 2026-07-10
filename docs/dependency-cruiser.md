@@ -73,7 +73,7 @@ the edges the `forbidden` rules reject. `domain-stays-pure` forbids
 `ws-effects-stays-pure` keeps the effects framework domain-blind; the apps may
 reach inward but never reach across to each other.
 
-## The 7 forbidden rules
+## The 12 forbidden rules
 
 All rules are `severity: "error"` — any match fails the gate.
 
@@ -86,18 +86,28 @@ All rules are `severity: "error"` — any match fails the gate.
 | `client-not-server` | `^packages/client-react/src` | `^packages/server/` | The two apps never couple |
 | `server-not-client` | `^packages/server/src` | `^packages/client-react/` | (mirror of the above) |
 | `ws-effects-stays-pure` | `^packages/ws-effects/src` | `^packages/(domain\|shared\|client-react\|server)/` | The effects framework is domain-blind and app-agnostic (rxjs only) |
+| `client-core-stays-inner` | `^packages/client-core/src` | `^packages/(react-bindings\|client-react\|client-react-native\|client-prototype\|server)/` | The shared application core never reaches out to a bindings bridge, a client, or the server |
+| `client-core-framework-free` | `^packages/client-core/src` | `react` / `react-dom` / `react-native` (`node_modules`) | `client-core` stays framework-free by contract despite three UI-facing consumers |
+| `react-bindings-no-apps` | `^packages/react-bindings/src` | `^packages/(client-react\|client-react-native\|client-prototype\|server)/` | The React↔RxJS bridge depends only inward (core, domain), never on an app or the server |
+| `clients-never-import-each-other` | `^packages/(client-react\|client-react-native\|client-prototype)/src` | any of the other two client packages | Peer clients composed from the same core never import one another (CLAUDE.md) |
+| `prototype-isolated` | `^packages/client-prototype/src` | `^packages/(domain\|shared\|client-core\|react-bindings\|client-react\|client-react-native\|server\|ws-effects)/` | The design-comprehension island stays `react`/`react-dom` only — zero `@rtc/*` edges |
 
 **Asymmetry to note:** each rule matches the *source* against `…/src` but the
 *target* against the **bare package path** (e.g. `^packages/server/`). So
 importing a server **test** file from the client is rejected too — not only
 `server/src`.
 
-**Scope note:** the pairwise rules still name only the original apps
-(`client-react`, `server`). The newer packages are protected by `no-circular`,
-`ws-effects-stays-pure`, and pnpm strict dependencies (a package simply cannot
-resolve an undeclared `@rtc/*` import), but there are no dedicated pair rules for
-`client-core` / `react-bindings` / `client-react-native` yet — broadening the
-regexes is an open, low-priority TODO.
+**Full coverage:** all 9 workspace packages are now named by at least one
+pair rule. `client-core-stays-inner` and `client-core-framework-free` close the
+`client-core` gap (inward-only imports, and no `react`/`react-dom`/`react-native`
+despite three UI-facing consumers); `react-bindings-no-apps` does the same for
+the bridge package; `clients-never-import-each-other` protects the three peer
+clients (`client-react`, `client-react-native`, `client-prototype`) from
+importing one another; `prototype-isolated` pins the design island to
+`react`/`react-dom` only. Together with the original seven, every package still
+gets the `no-circular` and pnpm-strict-dependencies backstop (a package cannot
+resolve an undeclared `@rtc/*` import) *plus* a hand-written pair rule naming it
+directly.
 
 ## The `options` block (how the graph is built)
 
