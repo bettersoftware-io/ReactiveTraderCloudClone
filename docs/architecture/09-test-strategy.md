@@ -155,15 +155,14 @@ CI additionally runs an **Expo export smoke** (Metro bundling of the real app) t
 
 ### 9.10 The CI gauntlet
 
-Everything above hangs off three **parallel** CI jobs (`.github/workflows/ci.yml`), triggered on PRs and pushes to `main`:
+The blocking gauntlet is two **parallel** jobs in `.github/workflows/ci.yml`, triggered on PRs and pushes to `main`. The ~20-min visual-diff job is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), so branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
 
 ```mermaid
 flowchart TD
     trigger["PR / push to main"]
     trigger --> checks
-    trigger --> visual
     trigger --> e2e
-    subgraph checks["Job 1 — checks"]
+    subgraph checks["ci.yml · Job 1 — checks"]
         direction TB
         c1["Biome ci · ESLint AST + custom rules (RuleTester)"]
         c1 --> c3["Stylelint · actionlint · manypkg/syncpack"]
@@ -172,11 +171,15 @@ flowchart TD
         c6 --> c7["knip · dependency-cruiser · ESLint type-aware"]
         c7 --> c8["grep gates (29) + pnpm audit"]
     end
-    subgraph visual["Job 2 — visual"]
-        v1["3 golden tiers vs<br/>__screenshots__/react/"]
-    end
-    subgraph e2e["Job 3 — e2e"]
+    subgraph e2e["ci.yml · Job 2 — e2e"]
         e1["Playwright browser peers<br/>+ presenter peers + fullstack smokes<br/>(Cypress de-gated on CI:<br/>RTC_E2E_SKIP_CYPRESS=1 — runs locally)"]
+    end
+    checks ~~~ postmerge
+    e2e ~~~ postmerge
+    postmerge["push to main (post-merge)"]
+    postmerge --> visual
+    subgraph visual["visual.yml — visual diffs (non-blocking, post-merge)"]
+        v1["3 golden tiers vs<br/>__screenshots__/react/"]
     end
 ```
 
