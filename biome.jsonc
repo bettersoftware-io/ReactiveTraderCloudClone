@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.2/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -84,6 +84,11 @@
       },
       "style": {
         "useComponentExportOnlyModules": "error",
+        // `recommended` ships noNonNullAssertion as a warning; a `!` non-null
+        // assertion silently defeats the type checker, so we make it a hard
+        // error to match the repo's zero-findings / no-disables policy. Prefer
+        // an explicit narrowing guard (`if (x === undefined) throw …`).
+        "noNonNullAssertion": "error",
         // Always require braces on control statements (if/else/for/while/…).
         // Bans the brace-less single-statement form (`if (x) doThis();`) so
         // every branch body is a block — cheaper diffs when a second statement

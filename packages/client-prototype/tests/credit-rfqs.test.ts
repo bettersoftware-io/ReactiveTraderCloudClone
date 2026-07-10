@@ -89,9 +89,14 @@ describe("useCreditRfqs", () => {
     const priced = result.current.rfqs[0].quotes.find((q) => {
       return q.state === "priced";
     });
+
+    if (priced === undefined) {
+      throw new Error("expected a priced quote after the RFQ was quoted");
+    }
+
     const beforeTrades = result.current.creditTrades.length;
     act(() => {
-      result.current.acceptQuote(700, priced!.dealerId);
+      result.current.acceptQuote(700, priced.dealerId);
     });
     expect(result.current.rfqs[0].state).toBe("Closed");
     expect(result.current.creditTrades).toHaveLength(beforeTrades + 1);

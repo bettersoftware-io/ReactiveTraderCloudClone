@@ -13,11 +13,6 @@ import { CREDIT_QUANTITY_MULTIPLIER } from "@rtc/domain";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-interface QuantityInputProps {
-  value: string;
-  onChange: (value: string) => void;
-}
-
 export function QuantityInput({
   value,
   onChange,
@@ -39,6 +34,11 @@ export function QuantityInput({
       />
     </View>
   );
+}
+
+interface QuantityInputProps {
+  value: string;
+  onChange: (value: string) => void;
 }
 
 interface QuantityInputStyles {
