@@ -52,6 +52,18 @@ packages/
 - Turborepo config is framework-blind (task names + dependency graph only)
 - Reference implementation: https://github.com/AdaptiveConsulting/ReactiveTraderCloud
 
+## Markdown Diagrams
+
+GitHub (and most md viewers) scale every diagram down to column width, so
+**horizontal space is the scarce resource — vertical scroll is free**. Compose
+diagrams tall, not wide: ≤4–5 sibling boxes per rank, split anything wider,
+stack parallel lanes vertically. Mermaid trap: **edge-less subgraphs tile
+side-by-side** — connect them with real edges or force vertical stacking with
+invisible links (`laneA ~~~ laneB`). Sequence diagrams get wide fast: keep
+participants ≤6 or split the scenario. Heading anchors: verify slugs with the
+real `github-slugger` (` -- ` slugs to four dashes); `pnpm check:doc-links`
+gates every relative md link + anchor in CI.
+
 ## Rendering Performance
 
 The app is a permanently-animated HUD over a live data stream, so per-frame

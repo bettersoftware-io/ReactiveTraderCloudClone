@@ -8,6 +8,33 @@ import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
+/** The shared raised-surface card: the web `.tile` chrome (5px radius, 1px
+ * border-primary, tonal `bgTile`, `--tile-shadow` drop via depthStyle + the
+ * inset top highlight) extracted from SpotTile. Content padding/layout is
+ * supplied by the caller via `style` and children; this owns chrome only. The
+ * card deliberately does NOT clip overflow (that would clip the iOS shadow);
+ * only the sheen sublayer clips. */
+export function SurfaceCard({
+  variant = "panel",
+  style,
+  testID,
+  children,
+}: SurfaceCardProps): JSX.Element {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const tile = theme.depth.tileGradient;
+  return (
+    <View style={[styles.card, style]} testID={testID}>
+      {variant === "tile" && tile !== null ? (
+        <View style={styles.sheen} testID="surface-sheen" pointerEvents="none">
+          <TileSurface tile={tile} head={theme.depth.headGradient} />
+        </View>
+      ) : null}
+      {children}
+    </View>
+  );
+}
+
 /** Height (px) of the tile head strip a `headGradient` covers. */
 const HEAD_HEIGHT = 45;
 
@@ -64,33 +91,6 @@ export interface SurfaceCardProps {
   readonly style?: ViewStyle;
   readonly testID?: string;
   readonly children: ReactNode;
-}
-
-/** The shared raised-surface card: the web `.tile` chrome (5px radius, 1px
- * border-primary, tonal `bgTile`, `--tile-shadow` drop via depthStyle + the
- * inset top highlight) extracted from SpotTile. Content padding/layout is
- * supplied by the caller via `style` and children; this owns chrome only. The
- * card deliberately does NOT clip overflow (that would clip the iOS shadow);
- * only the sheen sublayer clips. */
-export function SurfaceCard({
-  variant = "panel",
-  style,
-  testID,
-  children,
-}: SurfaceCardProps): JSX.Element {
-  const theme = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  const tile = theme.depth.tileGradient;
-  return (
-    <View style={[styles.card, style]} testID={testID}>
-      {variant === "tile" && tile !== null ? (
-        <View style={styles.sheen} testID="surface-sheen" pointerEvents="none">
-          <TileSurface tile={tile} head={theme.depth.headGradient} />
-        </View>
-      ) : null}
-      {children}
-    </View>
-  );
 }
 
 interface SurfaceCardStyles {

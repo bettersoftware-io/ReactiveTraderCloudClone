@@ -119,7 +119,7 @@ options: {
   *phantom* cycles. Tools that count type edges (`madge`, `dpdm` without `-T`)
   report "4 circular dependencies" here; with type edges excluded the true count
   is **0**. (See the tool comparison in
-  [tooling-roadmap.md §4](./tooling-roadmap.md#4-dependency-cruiser----circular-deps--architecture).)
+  [tooling-roadmap.md §4](./tooling-roadmap.md#4-dependency-cruiser---circular-deps--architecture).)
 - **`tsConfig: tsconfig.base.json`** — reads the repo's TS path mappings so
   aliased imports resolve to their real files.
 - **`doNotFollow: node_modules`** — map first-party code only; don't descend
@@ -147,4 +147,4 @@ import *strings* tidy; dependency-cruiser keeps the dependency *graph* legal.
 - [architecture.md §1.3.1 — Clean Architecture, concretely](./architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) (the rings these rules compile, with a green/red enforcement view of this exact config)
 - [architecture.md §6 — Package Dependencies](./architecture/06-package-dependencies.md#6-package-dependencies) (the prose rule this config enforces)
 - [architecture.md §12 — Architectural Gates](./architecture/12-architectural-gates.md#12-architectural-gates) (the regex-based `grep-gates` that guard import boundaries inside the test suite)
-- [tooling-roadmap.md §4 — dependency-cruiser](./tooling-roadmap.md#4-dependency-cruiser----circular-deps--architecture) (adoption rationale and the type-edge cycle finding)
+- [tooling-roadmap.md §4 — dependency-cruiser](./tooling-roadmap.md#4-dependency-cruiser---circular-deps--architecture) (adoption rationale and the type-edge cycle finding)

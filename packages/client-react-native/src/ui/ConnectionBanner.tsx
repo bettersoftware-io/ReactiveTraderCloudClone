@@ -15,28 +15,6 @@ import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-const LABEL: Record<ConnectionStatus, string> = {
-  [ConnectionStatus.CONNECTING]: "Connecting…",
-  [ConnectionStatus.CONNECTED]: "Live",
-  [ConnectionStatus.DISCONNECTED]: "Disconnected",
-  [ConnectionStatus.IDLE_DISCONNECTED]: "Disconnected (idle)",
-  [ConnectionStatus.OFFLINE_DISCONNECTED]: "Offline",
-};
-
-/** Maps each connection status to the theme token that colours the pill's
- * status dot. Built per-render from the live theme (`useTheme()`) since the
- * colour depends on runtime status, not a static StyleSheet value. */
-function dotColorFor(status: ConnectionStatus, t: RnTheme): string {
-  const DOT_COLOR: Record<ConnectionStatus, string> = {
-    [ConnectionStatus.CONNECTED]: t.statusConnected,
-    [ConnectionStatus.CONNECTING]: t.statusConnecting,
-    [ConnectionStatus.DISCONNECTED]: t.statusDisconnected,
-    [ConnectionStatus.IDLE_DISCONNECTED]: t.statusDisconnected,
-    [ConnectionStatus.OFFLINE_DISCONNECTED]: t.statusDisconnected,
-  };
-  return DOT_COLOR[status];
-}
-
 /** Connection status banner with a Reconnect button — the sole recovery path
  * out of an idle/offline/disconnected socket (button-only, per the
  * `useReconnect` command's provenance comment on the ViewModel). */
@@ -70,6 +48,28 @@ export function ConnectionBanner(): JSX.Element {
       ) : null}
     </View>
   );
+}
+
+const LABEL: Record<ConnectionStatus, string> = {
+  [ConnectionStatus.CONNECTING]: "Connecting…",
+  [ConnectionStatus.CONNECTED]: "Live",
+  [ConnectionStatus.DISCONNECTED]: "Disconnected",
+  [ConnectionStatus.IDLE_DISCONNECTED]: "Disconnected (idle)",
+  [ConnectionStatus.OFFLINE_DISCONNECTED]: "Offline",
+};
+
+/** Maps each connection status to the theme token that colours the pill's
+ * status dot. Built per-render from the live theme (`useTheme()`) since the
+ * colour depends on runtime status, not a static StyleSheet value. */
+function dotColorFor(status: ConnectionStatus, t: RnTheme): string {
+  const DOT_COLOR: Record<ConnectionStatus, string> = {
+    [ConnectionStatus.CONNECTED]: t.statusConnected,
+    [ConnectionStatus.CONNECTING]: t.statusConnecting,
+    [ConnectionStatus.DISCONNECTED]: t.statusDisconnected,
+    [ConnectionStatus.IDLE_DISCONNECTED]: t.statusDisconnected,
+    [ConnectionStatus.OFFLINE_DISCONNECTED]: t.statusDisconnected,
+  };
+  return DOT_COLOR[status];
 }
 
 interface ConnectionBannerStyles {

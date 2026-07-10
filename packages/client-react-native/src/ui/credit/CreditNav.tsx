@@ -12,24 +12,6 @@ import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-export type CreditView = "tiles" | "new-rfq" | "sell-side";
-
-interface CreditTab {
-  view: CreditView;
-  label: string;
-}
-
-const TABS: readonly CreditTab[] = [
-  { view: "tiles", label: "RFQ Tiles" },
-  { view: "new-rfq", label: "New RFQ" },
-  { view: "sell-side", label: "Sell Side" },
-];
-
-interface CreditNavProps {
-  view: CreditView;
-  onChange: (view: CreditView) => void;
-}
-
 export function CreditNav({ view, onChange }: CreditNavProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
   return (
@@ -53,6 +35,24 @@ export function CreditNav({ view, onChange }: CreditNavProps): JSX.Element {
       })}
     </View>
   );
+}
+
+export type CreditView = "tiles" | "new-rfq" | "sell-side";
+
+interface CreditTab {
+  view: CreditView;
+  label: string;
+}
+
+const TABS: readonly CreditTab[] = [
+  { view: "tiles", label: "RFQ Tiles" },
+  { view: "new-rfq", label: "New RFQ" },
+  { view: "sell-side", label: "Sell Side" },
+];
+
+interface CreditNavProps {
+  view: CreditView;
+  onChange: (view: CreditView) => void;
 }
 
 interface CreditNavStyles {

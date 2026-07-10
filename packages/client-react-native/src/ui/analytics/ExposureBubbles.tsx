@@ -12,8 +12,6 @@ import {
 } from "#/ui/analytics/bubbleLayout";
 import { useTheme } from "#/ui/theme/useTheme";
 
-const AREA_WIDTH = 320;
-
 export function ExposureBubbles({
   positions,
 }: ExposureBubblesProps): JSX.Element {
@@ -66,6 +64,8 @@ export function ExposureBubbles({
     </Svg>
   );
 }
+
+const AREA_WIDTH = 320;
 
 interface ExposureBubblesProps {
   positions: readonly CurrencyPairPosition[];

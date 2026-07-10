@@ -76,6 +76,9 @@ jobs:
       - name: Workflow lint (actionlint)
         run: pnpm lint:actions
 
+      - name: Docs link check (files + anchors)
+        run: pnpm check:doc-links
+
       - name: Version consistency (manypkg + syncpack)
         run: pnpm check:versions
 

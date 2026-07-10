@@ -16,12 +16,6 @@ import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-interface InstrumentSearchProps {
-  instruments: readonly Instrument[];
-  selected: Instrument | null;
-  onSelect: (instrument: Instrument | null) => void;
-}
-
 export function InstrumentSearch({
   instruments,
   selected,
@@ -102,6 +96,12 @@ export function InstrumentSearch({
       ) : null}
     </View>
   );
+}
+
+interface InstrumentSearchProps {
+  instruments: readonly Instrument[];
+  selected: Instrument | null;
+  onSelect: (instrument: Instrument | null) => void;
 }
 
 interface InstrumentSearchStyles {

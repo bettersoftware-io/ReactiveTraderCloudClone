@@ -18,12 +18,6 @@ import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-interface TradeTicketProps {
-  rfq: Rfq;
-  quote: Quote;
-  instrument: Instrument | undefined;
-}
-
 export function TradeTicket({
   rfq,
   quote,
@@ -104,6 +98,12 @@ export function TradeTicket({
       )}
     </SurfaceCard>
   );
+}
+
+interface TradeTicketProps {
+  rfq: Rfq;
+  quote: Quote;
+  instrument: Instrument | undefined;
 }
 
 function respondedLabel(rfq: Rfq, quote: Quote): string {
