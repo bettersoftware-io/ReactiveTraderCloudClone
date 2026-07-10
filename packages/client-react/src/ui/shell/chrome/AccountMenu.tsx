@@ -14,16 +14,18 @@ import styles from "./HeaderChrome.module.css";
  * 30×30 for the trigger and 38×38 in the panel head. The panel matches the
  * prototype dropdown: identity head (name + email), a TRADER ID / DESK /
  * CLEARANCE details block, a ⚙ Preferences action row (opens the shell's
- * Preferences modal via `onOpenPrefs`), and the red sign-out-styled
- * ⏻ LOCK SESSION row (locks the session through the seam — the app's
- * equivalent of the prototype's Sign Out). The prototype's ⟳ Reboot HUD row
- * is omitted: the boot machine exposes no reboot intent. While open, an
- * invisible fixed backdrop (prototype Header.tsx:65-73) closes the menu on
- * any outside click. Opening/closing the panel is local view state.
+ * Preferences modal via `onOpenPrefs`), the prototype's ⟳ Reboot HUD row
+ * (re-raises the boot splash through the `useBootGate` seam — splash replay
+ * only, no app-state reset), and the red sign-out-styled ⏻ LOCK SESSION row
+ * (locks the session through the seam — the app's equivalent of the
+ * prototype's Sign Out). While open, an invisible fixed backdrop (prototype
+ * Header.tsx:65-73) closes the menu on any outside click. Opening/closing the
+ * panel is local view state.
  */
 export function AccountMenu({ onOpenPrefs }: AccountMenuProps): ReactElement {
-  const { useSession } = useViewModel();
+  const { useSession, useBootGate } = useViewModel();
   const { state, lock } = useSession();
+  const { reboot } = useBootGate();
   const { user } = state;
   const [open, setOpen] = useState(false);
 
@@ -113,6 +115,21 @@ export function AccountMenu({ onOpenPrefs }: AccountMenuProps): ReactElement {
               }}
             >
               ⚙ Preferences
+            </button>
+            {/* Real chrome: replays the boot splash through the `useBootGate`
+                seam (prototype account menu → ⟳ Reboot HUD) — splash replay
+                only, the app's state is untouched. */}
+            <button
+              type="button"
+              data-testid="account-reboot"
+              className={styles.actionRow}
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                reboot();
+              }}
+            >
+              ⟳ Reboot HUD
             </button>
             {/* Real chrome: locks the session through the `useSession` seam,
                 raising the LockScreen overlay (prototype account menu → lock),

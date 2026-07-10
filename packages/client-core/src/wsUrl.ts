@@ -5,7 +5,10 @@
  * custom headers. No token → the bare URL (local dev / simulator-less builds).
  */
 export function buildWsUrl(url: string, token: string | undefined): string {
-  if (!token) return url;
+  if (!token) {
+    return url;
+  }
+
   const parsed = new URL(url);
   parsed.searchParams.set("access", token);
   return parsed.toString();

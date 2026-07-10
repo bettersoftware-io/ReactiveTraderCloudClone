@@ -20,15 +20,23 @@ export function SetFilter<TRow>({
   const allValues = [...valSet].sort();
 
   const [selected, setSelected] = useState<Set<string>>(() => {
-    if (currentFilter?.type === "set") return new Set(currentFilter.values);
+    if (currentFilter?.type === "set") {
+      return new Set(currentFilter.values);
+    }
+
     return new Set(allValues);
   });
 
   function toggleValue(val: string): void {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(val)) next.delete(val);
-      else next.add(val);
+
+      if (next.has(val)) {
+        next.delete(val);
+      } else {
+        next.add(val);
+      }
+
       return next;
     });
   }

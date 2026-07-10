@@ -53,10 +53,8 @@ export class KpiRowPage extends MountedComponent<Record<string, never>> {
     );
   }
 
-  /** The sparkline polyline `points` attribute for the given KPI card. */
-  sparkPoints(key: KpiKey): string | null {
-    return (
-      this.card(key)?.querySelector("polyline")?.getAttribute("points") ?? null
-    );
+  /** The sparkline path `d` attribute for the given KPI card. */
+  sparkPath(key: KpiKey): string | null {
+    return this.card(key)?.querySelector("svg path")?.getAttribute("d") ?? null;
   }
 }

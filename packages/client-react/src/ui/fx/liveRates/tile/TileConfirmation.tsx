@@ -12,7 +12,9 @@ export function TileConfirmation({
   onDismiss,
   anim,
 }: TileConfirmationProps): ReactElement | null {
-  if (state.status === "ready") return null;
+  if (state.status === "ready") {
+    return null;
+  }
 
   if (state.status === "started") {
     return (
@@ -203,6 +205,9 @@ function statusKey(state: TileExecutionState): ConfirmationStatus {
     }
   }
 
-  if (state.status === "ready") return "unknown";
+  if (state.status === "ready") {
+    return "unknown";
+  }
+
   return state.status; // "started" | "tooLong" | "timeout"
 }

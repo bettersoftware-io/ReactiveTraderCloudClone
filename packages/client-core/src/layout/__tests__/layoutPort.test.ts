@@ -17,9 +17,12 @@ describe("LayoutPort types", () => {
     const port: LayoutPort = { initial: state };
 
     expect(port.initial.root.kind).toBe("split");
+
     // narrow the union so the test exercises the discriminant the engine reads
-    if (port.initial.root.kind !== "split")
+    if (port.initial.root.kind !== "split") {
       throw new Error("expected split root");
+    }
+
     expect(port.initial.root.dir).toBe("row");
     expect(port.initial.root.sizes).toEqual([0.7, 0.3]);
     expect(port.initial.root.children).toHaveLength(2);

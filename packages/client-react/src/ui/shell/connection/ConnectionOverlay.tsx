@@ -12,7 +12,9 @@ export function ConnectionOverlay(): ReactElement | null {
   const { state: incidentState, clear: clearIncident } = useIncident();
   const message = overlayMessages[status];
 
-  if (!message) return null;
+  if (!message) {
+    return null;
+  }
 
   const isIdle = status === ConnectionStatus.IDLE_DISCONNECTED;
   const incidentActive = incidentState.active.length > 0;

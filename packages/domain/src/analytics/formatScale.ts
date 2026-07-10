@@ -23,10 +23,23 @@ const precise2 = new Intl.NumberFormat("en-US", {
 
 export function scaleNumber(value: number): ScaledNumber {
   const magnitude = Math.abs(value);
-  if (magnitude >= t) return { value: value / t, scale: "t" };
-  if (magnitude >= b) return { value: value / b, scale: "b" };
-  if (magnitude >= m) return { value: value / m, scale: "m" };
-  if (magnitude >= k) return { value: value / k, scale: "k" };
+
+  if (magnitude >= t) {
+    return { value: value / t, scale: "t" };
+  }
+
+  if (magnitude >= b) {
+    return { value: value / b, scale: "b" };
+  }
+
+  if (magnitude >= m) {
+    return { value: value / m, scale: "m" };
+  }
+
+  if (magnitude >= k) {
+    return { value: value / k, scale: "k" };
+  }
+
   return { value, scale: "" };
 }
 

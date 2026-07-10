@@ -273,8 +273,16 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
       </div>
     );
   },
+  // Pinned wrapper: the loading arm is a single content-width text line, so
+  // its captured WIDTH tracked x86 mono-glyph advances (187↔164px observed) —
+  // a dimension flake tolerance can never absorb. 660 matches the
+  // IncidentControls admin wrapper.
   AdminPanel: () => {
-    return <AdminPanel />;
+    return (
+      <div style={{ width: 660, display: "flex", flexDirection: "column" }}>
+        <AdminPanel />
+      </div>
+    );
   },
   // --- Phase 5 Admin dashboard components ---
   // Full AdminDashboard at fixed 1280×700: mirrors the panel-sized container the
@@ -403,9 +411,13 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // above) — mounted directly with literal AAPL data matching equitiesBase, a
   // forced flashOn=true/dir="up" to pin the tick-flash accent arm that a
   // static ChartPanel capture (no live ticks) can never reach on its own.
+  // 820 (not 640): at 640 the stats block sat exactly at the flex-wrap
+  // threshold, so x86 glyph-advance drift flipped the capture between one-row
+  // and two-row layouts. 820 is decisively one-row, matching the wide chart
+  // panel the header always fills in the real app.
   EquitiesInstrumentHeader: () => {
     return (
-      <div style={{ width: 640 }}>
+      <div style={{ width: 820 }}>
         <InstrumentHeader
           symbol="AAPL"
           instrumentName="Apple Inc."
@@ -488,5 +500,11 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   LayoutEngineCollapsed: () => {
     return staticEngine({ ...fxState, collapsed: ["fx-analytics"] });
+  },
+  // fx-analytics carries maximizeScope: "nearest-column" in PANEL_SPECS, so
+  // this captures the rail-scoped state: positions strips inside the rail;
+  // rates/blotter and the rail's 360px width are untouched.
+  LayoutEngineRailMaximized: () => {
+    return staticEngine({ ...fxState, maximized: "fx-analytics" });
   },
 };

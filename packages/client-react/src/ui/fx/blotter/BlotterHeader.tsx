@@ -84,7 +84,10 @@ function ariaSortFor<TRow>(
   column: keyof TRow,
   sort: SortState<TRow>,
 ): "ascending" | "descending" | undefined {
-  if (sort.column !== column || !sort.direction) return undefined;
+  if (sort.column !== column || !sort.direction) {
+    return undefined;
+  }
+
   return sort.direction === "asc" ? "ascending" : "descending";
 }
 
@@ -97,7 +100,10 @@ function SortIndicator<TRow>({
   column,
   sort,
 }: SortIndicatorProps<TRow>): ReactElement | null {
-  if (sort.column !== column || !sort.direction) return null;
+  if (sort.column !== column || !sort.direction) {
+    return null;
+  }
+
   return (
     <span className={styles.sortIndicator}>
       {sort.direction === "asc" ? "▲" : "▼"}

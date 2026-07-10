@@ -28,7 +28,9 @@ export function LockScreen(): JSX.Element | null {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
-  if (!state.locked) return null;
+  if (!state.locked) {
+    return null;
+  }
 
   const { user } = state;
 

@@ -9,6 +9,8 @@ import styles from "./ServiceTopologyGraph.module.css";
  * Service-topology graph. Nodes sit at a FIXED layout keyed by ServiceName;
  * their radius/opacity are pure functions of `throughput`, edges redden with
  * `latencyMs`, and `data-status` drives a CSS pulse keyframe (no JS timer).
+ * Edges + labels render as SVG; the dots are HTML overlays on a 3:2 stage so
+ * the pulse composites (SVG child transforms never do — docs/performance.md).
  */
 export function ServiceTopologyGraph(): ReactElement {
   const { useTopology } = useViewModel();
@@ -37,65 +39,77 @@ export function ServiceTopologyGraph(): ReactElement {
 
   return (
     <div data-testid="admin-topology" className={styles.wrapper}>
-      <svg
-        width="100%"
-        height="100%"
-        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-        preserveAspectRatio="xMidYMid meet"
-        className={styles.svg}
-        aria-label="Service topology graph"
-      >
-        <title>Service topology</title>
-        {topology.edges.map((edge) => {
-          const a = LAYOUT[edge.from];
-          const b = LAYOUT[edge.to];
-          return (
-            <line
-              key={`${edge.from}-${edge.to}`}
-              x1={a.x}
-              y1={a.y}
-              x2={b.x}
-              y2={b.y}
-              className={styles.edge}
-              style={
-                // eslint-disable-next-line no-restricted-syntax -- runtime edge heat via CSS custom property; static CSS can't express a per-edge value
-                {
-                  "--edge-heat": edgeHeat(edge.latencyMs, peakLatency),
-                } as CSSProperties
-              }
-            />
-          );
-        })}
-        {topology.nodes.map((node) => {
-          const p = LAYOUT[node.name];
-          return (
-            <g
-              key={node.name}
-              className={styles.node}
-              data-status={node.status}
-            >
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={nodeRadius(node.throughput, peakThroughput)}
-                className={styles.dot}
+      <div className={styles.stage}>
+        <svg
+          width="100%"
+          height="100%"
+          viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+          preserveAspectRatio="xMidYMid meet"
+          className={styles.svg}
+          aria-label="Service topology graph"
+        >
+          <title>Service topology</title>
+          {topology.edges.map((edge) => {
+            const a = LAYOUT[edge.from];
+            const b = LAYOUT[edge.to];
+            return (
+              <line
+                key={`${edge.from}-${edge.to}`}
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+                className={styles.edge}
                 style={
-                  // eslint-disable-next-line no-restricted-syntax -- runtime node opacity via CSS custom property; static CSS can't express a per-node value
+                  // eslint-disable-next-line no-restricted-syntax -- runtime edge heat via CSS custom property; static CSS can't express a per-edge value
                   {
-                    "--node-opacity": nodeOpacity(
-                      node.throughput,
-                      peakThroughput,
-                    ),
+                    "--edge-heat": edgeHeat(edge.latencyMs, peakLatency),
                   } as CSSProperties
                 }
               />
-              <text x={p.x} y={p.y - 12} className={styles.nodeLabel}>
-                {node.name}
-              </text>
-            </g>
+            );
+          })}
+          {topology.nodes.map((node) => {
+            const p = LAYOUT[node.name];
+            return (
+              <g key={node.name} data-status={node.status}>
+                <text x={p.x} y={p.y - 12} className={styles.nodeLabel}>
+                  {node.name}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+        {/* Node dots live OUTSIDE the svg: the status pulse animates scale,
+            and SVG child transforms never composite (docs/performance.md T3).
+            As HTML spans the pulse runs entirely on the compositor. */}
+        {topology.nodes.map((node) => {
+          const p = LAYOUT[node.name];
+          return (
+            <span
+              key={node.name}
+              className={styles.nodeDot}
+              data-status={node.status}
+              style={
+                // eslint-disable-next-line no-restricted-syntax -- runtime node geometry + opacity via CSS custom properties; static CSS can't express per-node values
+                {
+                  "--dot-x": `${(p.x / VIEW_W) * 100}%`,
+                  "--dot-y": `${(p.y / VIEW_H) * 100}%`,
+                  "--dot-r": String(
+                    nodeRadius(node.throughput, peakThroughput),
+                  ),
+                  "--node-opacity": nodeOpacity(
+                    node.throughput,
+                    peakThroughput,
+                  ),
+                } as CSSProperties
+              }
+            >
+              <span className={styles.nodeDotFill} />
+            </span>
           );
         })}
-      </svg>
+      </div>
     </div>
   );
 }

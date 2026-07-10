@@ -75,7 +75,11 @@ function matchesFilter<TRow>(row: TRow, filter: ColumnFilter<TRow>): boolean {
 
   if (filter.type === "number") {
     const val = row[filter.column];
-    if (typeof val !== "number") return true;
+
+    if (typeof val !== "number") {
+      return true;
+    }
+
     return matchesNumber(val, filter.comparator, filter.value, filter.valueTo);
   }
 
@@ -98,7 +102,9 @@ export function applyFilters<TRow>(
   if (filters.size > 0) {
     result = result.filter((row) => {
       for (const filter of filters.values()) {
-        if (!matchesFilter(row, filter)) return false;
+        if (!matchesFilter(row, filter)) {
+          return false;
+        }
       }
 
       return true;

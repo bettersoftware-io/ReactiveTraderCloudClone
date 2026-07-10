@@ -68,7 +68,11 @@ When(
   "the operator injects a {string} incident from the admin panel",
   function operatorInjectsIncident(this: PresenterWorld, kind: string) {
     const ctx = incidentMap.get(this);
-    if (!ctx) throw new Error("incident app not initialised");
+
+    if (!ctx) {
+      throw new Error("incident app not initialised");
+    }
+
     ctx.app.presenters.incident.intents.inject(
       kind as "serviceDown" | "latencySpike" | "errorBurst",
     );
@@ -79,7 +83,11 @@ Then(
   "the connection banner shows a disconnection",
   async function connectionBannerShowsDisconnection(this: PresenterWorld) {
     const ctx = incidentMap.get(this);
-    if (!ctx) throw new Error("incident app not initialised");
+
+    if (!ctx) {
+      throw new Error("incident app not initialised");
+    }
+
     await this.awaitFirstWithin(
       ctx.app.presenters.connection.status$.pipe(
         filter((s) => {
@@ -95,7 +103,11 @@ When(
   "the operator clears the incident",
   function operatorClearsIncident(this: PresenterWorld) {
     const ctx = incidentMap.get(this);
-    if (!ctx) throw new Error("incident app not initialised");
+
+    if (!ctx) {
+      throw new Error("incident app not initialised");
+    }
+
     ctx.app.presenters.incident.intents.clear();
   },
 );
@@ -104,7 +116,11 @@ Then(
   "the connection is restored",
   async function connectionIsRestored(this: PresenterWorld) {
     const ctx = incidentMap.get(this);
-    if (!ctx) throw new Error("incident app not initialised");
+
+    if (!ctx) {
+      throw new Error("incident app not initialised");
+    }
+
     await this.awaitFirstWithin(
       ctx.app.presenters.connection.status$.pipe(
         filter((s) => {

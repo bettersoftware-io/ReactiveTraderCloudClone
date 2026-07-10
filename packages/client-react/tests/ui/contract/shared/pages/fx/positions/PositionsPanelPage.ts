@@ -16,7 +16,10 @@ export class PositionsPanelPage extends MountedComponent<
 
   /** The loading-placeholder text, or null once data has arrived. */
   loadingMessage(): string | null {
-    if (this.isLoaded()) return null;
+    if (this.isLoaded()) {
+      return null;
+    }
+
     const el = within(this.root).queryByText(/loading positions/i);
     return el?.textContent?.trim() ?? null;
   }

@@ -9,7 +9,10 @@ export async function expectAnalyticsVisibleWithin(
     w.ctx.app.presenters.analytics.position$,
     seconds * 1000,
   );
-  if (!snapshot) throw new Error("analytics emitted but value was falsy");
+
+  if (!snapshot) {
+    throw new Error("analytics emitted but value was falsy");
+  }
 }
 
 export async function expectAnalyticsEmits(

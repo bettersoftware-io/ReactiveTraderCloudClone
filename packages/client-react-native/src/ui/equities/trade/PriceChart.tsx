@@ -41,7 +41,11 @@ export function PriceChart({ symbol }: PriceChartProps): JSX.Element {
         >
           {candles.map((candle, i) => {
             const g = geoms[i];
-            if (!g) return null;
+
+            if (!g) {
+              return null;
+            }
+
             const color = g.up ? theme.accentPositive : theme.accentNegative;
             return (
               <G key={candle.time}>

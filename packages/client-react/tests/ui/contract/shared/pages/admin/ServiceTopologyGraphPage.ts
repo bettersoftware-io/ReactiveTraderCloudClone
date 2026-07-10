@@ -28,12 +28,19 @@ export class ServiceTopologyGraphPage extends MountedComponent<
    */
   nodeForService(name: string): Element | null {
     const svg = this.container().querySelector("svg");
-    if (!svg) return null;
+
+    if (!svg) {
+      return null;
+    }
+
     const gs = svg.querySelectorAll<SVGGElement>("g[data-status]");
 
     for (const g of gs) {
       const textEl = g.querySelector("text");
-      if (textEl?.textContent?.trim() === name) return g;
+
+      if (textEl?.textContent?.trim() === name) {
+        return g;
+      }
     }
 
     return null;

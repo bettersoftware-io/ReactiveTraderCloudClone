@@ -3,7 +3,8 @@ import type { ReactElement } from "react";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
-import { BiometricLine } from "./BiometricLine";
+import { BiometricChannel } from "./BiometricChannel";
+import { BiometricDots } from "./BiometricDots";
 
 import styles from "./LockScreen.module.css";
 
@@ -17,7 +18,9 @@ export function LockScreen(): ReactElement | null {
   const { useSession } = useViewModel();
   const { state, unlock } = useSession();
 
-  if (!state.locked) return null;
+  if (!state.locked) {
+    return null;
+  }
 
   const { user } = state;
 
@@ -57,6 +60,10 @@ export function LockScreen(): ReactElement | null {
         </div>
         <div className={styles.role}>{user.role}</div>
 
+        {/* Prototype order: the biometric dots sit between the role line and
+            the AUTHENTICATE button; the channel line stays below the button. */}
+        <BiometricDots />
+
         <button
           type="button"
           data-testid="lock-authenticate"
@@ -66,7 +73,7 @@ export function LockScreen(): ReactElement | null {
           AUTHENTICATE ▸
         </button>
 
-        <BiometricLine />
+        <BiometricChannel />
       </div>
     </div>
   );

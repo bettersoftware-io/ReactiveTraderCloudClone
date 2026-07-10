@@ -81,8 +81,14 @@ function splitPrice(
 }
 
 function movementKey(movement: PriceMovementType): "up" | "down" | "flat" {
-  if (movement === PriceMovementType.UP) return "up";
-  if (movement === PriceMovementType.DOWN) return "down";
+  if (movement === PriceMovementType.UP) {
+    return "up";
+  }
+
+  if (movement === PriceMovementType.DOWN) {
+    return "down";
+  }
+
   return "flat";
 }
 

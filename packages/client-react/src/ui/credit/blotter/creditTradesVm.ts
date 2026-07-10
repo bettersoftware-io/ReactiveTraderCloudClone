@@ -33,11 +33,15 @@ export function deriveCreditTrades(
   const trades: CreditTrade[] = [];
 
   for (const rfq of rfqs) {
-    if (rfq.state !== RfqState.Closed) continue;
+    if (rfq.state !== RfqState.Closed) {
+      continue;
+    }
 
     // Find the accepted quote
     for (const quote of allQuotes.values()) {
-      if (quote.rfqId !== rfq.id || quote.state.type !== "accepted") continue;
+      if (quote.rfqId !== rfq.id || quote.state.type !== "accepted") {
+        continue;
+      }
 
       const instrument = instrumentMap.get(rfq.instrumentId);
       const dealer = dealerMap.get(quote.dealerId);

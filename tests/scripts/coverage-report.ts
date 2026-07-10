@@ -136,7 +136,11 @@ export async function main(opts: MainOpts): Promise<string> {
   });
 
   const out = opts.out;
-  if (out) out.write(`${md}\n`);
+
+  if (out) {
+    out.write(`${md}\n`);
+  }
+
   return md;
 }
 
@@ -160,6 +164,9 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
   const out = fileOut ?? process.stdout;
 
   await main({ repoRoot, title, out });
+
   // Close the file stream so it flushes deterministically; never close stdout.
-  if (fileOut !== null) fileOut.end();
+  if (fileOut !== null) {
+    fileOut.end();
+  }
 }

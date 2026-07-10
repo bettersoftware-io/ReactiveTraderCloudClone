@@ -15,8 +15,14 @@ import type { Inbound, Outbound, WsEffect } from "./types.js";
 function toObservable(
   value: Observable<unknown> | Promise<unknown> | unknown,
 ): Observable<unknown> {
-  if (isObservable(value)) return value;
-  if (value instanceof Promise) return from(value);
+  if (isObservable(value)) {
+    return value;
+  }
+
+  if (value instanceof Promise) {
+    return from(value);
+  }
+
   const result: Observable<unknown> = of(value);
   return result;
 }

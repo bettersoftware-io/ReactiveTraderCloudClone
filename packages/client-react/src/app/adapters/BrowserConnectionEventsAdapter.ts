@@ -19,7 +19,10 @@ export class BrowserConnectionEventsAdapter implements ConnectionEventsPort {
       let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
       function armIdleTimer(): void {
-        if (idleTimer) clearTimeout(idleTimer);
+        if (idleTimer) {
+          clearTimeout(idleTimer);
+        }
+
         idleTimer = setTimeout(() => {
           subscriber.next({ type: "idleTimeout" });
         }, IDLE_TIMEOUT_MS);
@@ -53,7 +56,10 @@ export class BrowserConnectionEventsAdapter implements ConnectionEventsPort {
 
         window.removeEventListener("online", onOnline);
         window.removeEventListener("offline", onOffline);
-        if (idleTimer) clearTimeout(idleTimer);
+
+        if (idleTimer) {
+          clearTimeout(idleTimer);
+        }
       };
     });
   }

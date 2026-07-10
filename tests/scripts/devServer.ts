@@ -155,7 +155,11 @@ async function awaitReady(
     }
 
     const port = parseBoundPort(server.getLog());
-    if (port !== null && (await pingPort(port))) return port;
+
+    if (port !== null && (await pingPort(port))) {
+      return port;
+    }
+
     await sleep(200);
   }
 

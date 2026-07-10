@@ -97,7 +97,11 @@ export class OrderTicketPage extends MountedComponent<OrderTicketProps> {
   /** Click a side toggle (Buy / Sell). */
   async setSide(side: "buy" | "sell"): Promise<void> {
     const button = this.container().querySelector(`[data-side="${side}"]`);
-    if (!button) throw new Error(`No side toggle for ${side}`);
+
+    if (!button) {
+      throw new Error(`No side toggle for ${side}`);
+    }
+
     await this.user.click(button as HTMLElement);
   }
 
@@ -116,7 +120,10 @@ export class OrderTicketPage extends MountedComponent<OrderTicketProps> {
       "spinbutton",
     )[0] as HTMLInputElement;
     await this.user.clear(input);
-    if (qty !== 0) await this.user.type(input, String(qty));
+
+    if (qty !== 0) {
+      await this.user.type(input, String(qty));
+    }
   }
 
   /** Type a limit price into the conditional limit-price input. */
@@ -125,8 +132,11 @@ export class OrderTicketPage extends MountedComponent<OrderTicketProps> {
       "spinbutton",
     ) as HTMLInputElement[];
     const limitInput = inputs[1];
-    if (!limitInput)
+
+    if (!limitInput) {
       throw new Error("No limit-price input (not a limit order)");
+    }
+
     await this.user.clear(limitInput);
     await this.user.type(limitInput, String(price));
   }

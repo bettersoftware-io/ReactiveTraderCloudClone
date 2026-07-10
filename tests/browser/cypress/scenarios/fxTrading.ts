@@ -35,7 +35,11 @@ export function expectTradeConfirmationMatchesOneOf(
     .filter(Boolean)
     .map((token) => {
       const m = token.match(/^\/(.+)\/([gimsuy]*)$/);
-      if (!m) throw new Error(`bad regex literal: ${token}`);
+
+      if (!m) {
+        throw new Error(`bad regex literal: ${token}`);
+      }
+
       return new RegExp(m[1], m[2]);
     });
   void ctx.po.liveRatesTile.confirmationContainsAny(

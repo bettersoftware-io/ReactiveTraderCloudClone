@@ -12,7 +12,11 @@ export interface BlotterRowProps {
 export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
   private row(): HTMLTableRowElement {
     const tr = this.root.querySelector("tr");
-    if (!tr) throw new Error("BlotterRow rendered no <tr>");
+
+    if (!tr) {
+      throw new Error("BlotterRow rendered no <tr>");
+    }
+
     return tr as HTMLTableRowElement;
   }
 
@@ -48,8 +52,15 @@ export class BlotterRowPage extends MountedComponent<BlotterRowProps> {
   /** The row's current background colour (derived from data attributes). */
   backgroundColor(): string {
     const el = this.row();
-    if (el.dataset.highlight === "true") return "animation:backgroundFlash";
-    if (el.dataset.hovered === "true") return "var(--chip)";
+
+    if (el.dataset.highlight === "true") {
+      return "animation:backgroundFlash";
+    }
+
+    if (el.dataset.hovered === "true") {
+      return "var(--chip)";
+    }
+
     return "transparent";
   }
 

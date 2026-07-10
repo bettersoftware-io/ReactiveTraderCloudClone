@@ -29,9 +29,15 @@ function tryTool(
   parse: (stdout: string) => number[],
 ): number[] | null {
   const result = spawnSync(bin, args, { encoding: "utf8" });
+
   // ENOENT => tool not installed; fall through to the next finder.
-  if (result.error && (result.error as NodeJS.ErrnoException).code === "ENOENT")
+  if (
+    result.error &&
+    (result.error as NodeJS.ErrnoException).code === "ENOENT"
+  ) {
     return null;
+  }
+
   return parse(result.stdout ?? "");
 }
 
@@ -114,7 +120,11 @@ for (const pid of unique) {
     );
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
-    if (code === "ESRCH") continue; // already gone
+
+    if (code === "ESRCH") {
+      continue; // already gone
+    }
+
     console.error(`free-port: could not kill pid ${pid}: ${code ?? err}`);
   }
 }

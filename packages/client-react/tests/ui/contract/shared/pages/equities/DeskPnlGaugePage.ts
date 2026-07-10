@@ -14,7 +14,11 @@ export interface DeskPnlGaugeProps {
 export class DeskPnlGaugePage extends MountedComponent<DeskPnlGaugeProps> {
   private valueEl(): HTMLElement {
     const el = this.root.querySelector("[data-sign]");
-    if (!el) throw new Error("DeskPnlGauge value element not found");
+
+    if (!el) {
+      throw new Error("DeskPnlGauge value element not found");
+    }
+
     return el as HTMLElement;
   }
 

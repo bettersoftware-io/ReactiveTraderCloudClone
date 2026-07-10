@@ -63,7 +63,11 @@ export async function expectVisibleTileCountAtMost(
   // has landed. No behaviour change for the async (Playwright) drivers.
   const current = await ctx.po.liveRatesTile.count();
   const baseline = ctx.scratch.fxLiveRates.recordedCounts.get(key);
-  if (baseline === undefined) throw new Error(`no recorded count for ${key}`);
+
+  if (baseline === undefined) {
+    throw new Error(`no recorded count for ${key}`);
+  }
+
   assertLte(current, baseline);
 }
 
@@ -73,7 +77,11 @@ export async function expectVisibleTileCountEquals(
 ): Promise<void> {
   const current = await ctx.po.liveRatesTile.count();
   const baseline = ctx.scratch.fxLiveRates.recordedCounts.get(key);
-  if (baseline === undefined) throw new Error(`no recorded count for ${key}`);
+
+  if (baseline === undefined) {
+    throw new Error(`no recorded count for ${key}`);
+  }
+
   assertEquals(current, baseline);
 }
 

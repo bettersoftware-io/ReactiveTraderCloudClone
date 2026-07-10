@@ -17,10 +17,13 @@ export async function requestRfqQuoteOnFirstTile(
   w: PresenterWorld,
 ): Promise<void> {
   const pair = w.scratch.firstPair;
-  if (!pair)
+
+  if (!pair) {
     throw new Error(
       "firstPair not captured (run a 'price tile is visible' step first)",
     );
+  }
+
   const quote = await w.awaitFirstWithin(
     w.ctx.app.presenters.rfqQuote.requestQuote(pair.symbol, pair.pipsPosition),
     5_000,
@@ -34,9 +37,14 @@ export async function expectRfqQuoteArrivesWithin(
   _seconds: number,
 ): Promise<void> {
   const quote = w.scratch.rfqQuote;
-  if (!quote)
+
+  if (!quote) {
     throw new Error(
       "rfqQuote not captured (run 'requests an RFQ quote' step first)",
     );
-  if (!quote.mid) throw new Error("RFQ quote arrived but has no mid price");
+  }
+
+  if (!quote.mid) {
+    throw new Error("RFQ quote arrived but has no mid price");
+  }
 }

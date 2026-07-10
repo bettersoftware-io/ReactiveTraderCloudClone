@@ -4,9 +4,9 @@ import type { ServiceNode, ServiceStatus } from "@rtc/domain";
 // ServiceRow}.tsx (visual chrome only). The prototype rows are a static
 // ServiceSeed[] with a hardcoded status/up%/lv; here rows are DERIVED from the
 // live useTopology() nodes, so this vm computes the presentational fields the
-// prototype hardcoded: status label, utilisation bar %, latency label, and a
-// deterministic uptime string. NO RNG — uptime varies only by service name
-// (stable across renders and re-mounts).
+// prototype hardcoded: status label, health bar %, latency label, and an
+// uptime string formatted from the node's live health. NO RNG — every field
+// is a pure function of the node (stable across renders and re-mounts).
 
 type ServiceStatusLabel = "ONLINE" | "DEGRADED" | "DOWN";
 
@@ -14,6 +14,9 @@ export interface ServiceRowVm {
   readonly name: string;
   readonly status: ServiceStatus;
   readonly statusLabel: ServiceStatusLabel;
+  /** Live health 0-100 (whole number) — drives the bar's colour ramp. */
+  readonly health: number;
+  /** Bar width % — the node's health, not relative throughput. */
   readonly barPct: number;
   readonly latencyLabel: string;
   readonly uptimeLabel: string;
@@ -35,59 +38,44 @@ const STATUS_LABEL: Record<ServiceStatus, ServiceStatusLabel> = {
 export function servicesVm(
   nodes: readonly ServiceNode[],
 ): readonly ServiceRowVm[] {
-  const maxThroughput = Math.max(
-    0,
-    ...nodes.map((node) => {
-      return node.throughput;
-    }),
-  );
-
   return nodes.map((node) => {
+    const health = clampHealth(node.health);
     return {
       name: node.name,
       status: node.status,
       statusLabel: STATUS_LABEL[node.status],
-      barPct: barPctFor(node.throughput, maxThroughput),
+      health,
+      barPct: health,
       // The live topology simulator emits unrounded floats (e.g.
       // 11.660331597900071); every fixture/test uses whole numbers, so this
       // only surfaces live. Round to an integer — the `.lat` column is a
       // fixed 42px width sized for a short string like "12ms".
       latencyLabel: `${Math.round(node.latencyMs)}ms`,
-      uptimeLabel: uptimeLabelFor(node.name, node.status),
+      uptimeLabel: uptimeLabelFor(health, node.status),
     };
   });
 }
 
-// Utilisation bar % — throughput relative to the busiest node in the same
-// topology snapshot, clamped to [0, 100] and rounded to a whole percent. A
-// topology with every node idle (max 0) renders every bar at 0, not NaN.
-function barPctFor(throughput: number, maxThroughput: number): number {
-  if (maxThroughput <= 0) return 0;
-
-  const pct = (throughput / maxThroughput) * 100;
-  return Math.max(0, Math.min(100, Math.round(pct)));
+// The node's live health as a whole percent in [0, 100] — the simulator
+// already clamps its walk, so this only defends against rogue fixtures.
+function clampHealth(health: number): number {
+  return Math.max(0, Math.min(100, Math.round(health)));
 }
 
-// Deterministic 0-9 digit derived from the service name's char codes — pins a
-// stable per-service uptime variance without any RNG (no Math.random, no
-// simulator seed involved: two nodes named "pricing" always land on the
-// same digit).
-function nameDigit(name: string): number {
-  let hash = 0;
-
-  for (let i = 0; i < name.length; i += 1) {
-    hash = (hash * 31 + name.charCodeAt(i)) % 100;
+// Uptime formatted from live health: ok maps health 95-100 onto the
+// prototype's "99.9x%" band (99.90-99.99), degraded maps health onto a
+// "9x.x%" figure (90 + health/10, e.g. health 86 → "98.6%"), and down shows
+// no uptime figure (em dash, matching the "NO DATA"-style placeholders used
+// elsewhere in the admin board).
+function uptimeLabelFor(health: number, status: ServiceStatus): string {
+  if (status === "down") {
+    return "—";
   }
 
-  return hash % 10;
-}
+  if (status === "degraded") {
+    return `${(90 + health / 10).toFixed(1)}%`;
+  }
 
-// ok -> 99.9x (x = per-name digit, so 99.90-99.99); degraded -> 98.x (98.0-
-// 98.9); down -> no uptime figure (em dash, matching the "NO DATA"-style
-// placeholders used elsewhere in the admin board).
-function uptimeLabelFor(name: string, status: ServiceStatus): string {
-  if (status === "down") return "—";
-
-  const digit = nameDigit(name);
-  return status === "degraded" ? `98.${digit}%` : `99.9${digit}%`;
+  const digit = Math.max(0, Math.min(9, Math.round(((health - 95) / 5) * 9)));
+  return `99.9${digit}%`;
 }

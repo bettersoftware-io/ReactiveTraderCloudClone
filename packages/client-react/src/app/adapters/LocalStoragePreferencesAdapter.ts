@@ -68,7 +68,10 @@ function readStored<T extends string>(
 ): T {
   try {
     const stored = localStorage.getItem(key);
-    if (guard(stored)) return stored;
+
+    if (guard(stored)) {
+      return stored;
+    }
   } catch {
     // localStorage may be unavailable (private mode, disabled cookies, etc.)
   }
@@ -79,8 +82,14 @@ function readStored<T extends string>(
 function readBool(key: string, fallback: boolean): boolean {
   try {
     const stored = localStorage.getItem(key);
-    if (stored === "true") return true;
-    if (stored === "false") return false;
+
+    if (stored === "true") {
+      return true;
+    }
+
+    if (stored === "false") {
+      return false;
+    }
   } catch {
     // ignore — best-effort read
   }

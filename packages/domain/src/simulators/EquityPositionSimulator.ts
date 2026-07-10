@@ -50,7 +50,10 @@ export class EquityPositionSimulator implements PositionPort {
   }
 
   private ensureMarking(symbol: string): void {
-    if (this.markSubs.has(symbol)) return;
+    if (this.markSubs.has(symbol)) {
+      return;
+    }
+
     const sub = this.marketData.quotes(symbol).subscribe((q) => {
       return this.onMark(symbol, q.last);
     });
@@ -61,7 +64,10 @@ export class EquityPositionSimulator implements PositionPort {
     const positions: EquityPosition[] = [];
 
     for (const [symbol, lot] of this.lots) {
-      if (lot.qty === 0) continue;
+      if (lot.qty === 0) {
+        continue;
+      }
+
       const avgPrice = lot.cost / lot.qty;
       const markPrice = this.marks.get(symbol) ?? avgPrice;
       positions.push({

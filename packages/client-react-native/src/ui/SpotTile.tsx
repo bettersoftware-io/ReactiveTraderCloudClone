@@ -132,8 +132,14 @@ function pipsStyle(
   styles: ReturnType<typeof makeStyles>,
   movement: PriceMovementType,
 ): MovementTextStyle {
-  if (movement === PriceMovementType.UP) return styles.pipsUp;
-  if (movement === PriceMovementType.DOWN) return styles.pipsDown;
+  if (movement === PriceMovementType.UP) {
+    return styles.pipsUp;
+  }
+
+  if (movement === PriceMovementType.DOWN) {
+    return styles.pipsDown;
+  }
+
   return styles.pipsNone;
 }
 
@@ -141,8 +147,14 @@ function arrowStyle(
   styles: ReturnType<typeof makeStyles>,
   movement: PriceMovementType,
 ): MovementTextStyle {
-  if (movement === PriceMovementType.UP) return styles.arrowUp;
-  if (movement === PriceMovementType.DOWN) return styles.arrowDown;
+  if (movement === PriceMovementType.UP) {
+    return styles.arrowUp;
+  }
+
+  if (movement === PriceMovementType.DOWN) {
+    return styles.arrowDown;
+  }
+
   return styles.arrowNone;
 }
 

@@ -125,11 +125,23 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
       ]);
 
-      if (isThemeModePreference(themeMode)) this.themeMode.next(themeMode);
-      if (isThemeSkin(themeSkin)) this.themeSkin.next(themeSkin);
-      if (isViewMode(viewMode)) this.viewMode.next(viewMode);
-      if (animatedBg === "true") this.animatedBg.next(true);
-      else if (animatedBg === "false") this.animatedBg.next(false);
+      if (isThemeModePreference(themeMode)) {
+        this.themeMode.next(themeMode);
+      }
+
+      if (isThemeSkin(themeSkin)) {
+        this.themeSkin.next(themeSkin);
+      }
+
+      if (isViewMode(viewMode)) {
+        this.viewMode.next(viewMode);
+      }
+
+      if (animatedBg === "true") {
+        this.animatedBg.next(true);
+      } else if (animatedBg === "false") {
+        this.animatedBg.next(false);
+      }
 
       if (isBootVariant(bootVariant)) {
         this.bootVariantSubject.next(bootVariant);

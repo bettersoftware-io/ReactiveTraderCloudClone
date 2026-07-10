@@ -45,12 +45,17 @@ export interface OrderTicketDeps {
 type Patch = Partial<OrderTicketForm>;
 
 function validate(form: OrderTicketForm): string | null {
-  if (form.qty <= 0) return "Quantity must be greater than zero";
+  if (form.qty <= 0) {
+    return "Quantity must be greater than zero";
+  }
+
   if (
     form.type === "limit" &&
     (form.limitPrice === undefined || form.limitPrice <= 0)
-  )
+  ) {
     return "Limit price required for a limit order";
+  }
+
   return null;
 }
 
@@ -109,12 +114,15 @@ export function createOrderTicketMachine(
   const submissions$: Observable<OrderTicketState> = submit$.pipe(
     switchMap(() => {
       const error = validate(currentForm);
-      if (error)
+
+      if (error) {
         return of<OrderTicketState>({
           phase: "editing",
           form: { ...currentForm },
           error,
         });
+      }
+
       const req: PlaceOrderRequest = {
         symbol: currentForm.symbol,
         side: currentForm.side,
@@ -145,14 +153,23 @@ export function createOrderTicketMachine(
   ).pipe(
     scan(
       (acc: InFlightAcc, next: OrderTicketState): InFlightAcc => {
-        if (next.phase === "submitting") return { inFlight: true, state: next };
-        if (next.phase === "filled" || next.phase === "rejected")
+        if (next.phase === "submitting") {
+          return { inFlight: true, state: next };
+        }
+
+        if (next.phase === "filled" || next.phase === "rejected") {
           return { inFlight: false, state: next };
-        if (next.phase === "editing" && next.error !== null)
+        }
+
+        if (next.phase === "editing" && next.error !== null) {
           return { inFlight: false, state: next };
+        }
+
         // While in flight, suppress stray editing (null-error) emissions.
-        if (acc.inFlight && next.phase === "editing" && next.error === null)
+        if (acc.inFlight && next.phase === "editing" && next.error === null) {
           return acc;
+        }
+
         return { inFlight: acc.inFlight, state: next };
       },
       {

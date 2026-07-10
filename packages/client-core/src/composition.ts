@@ -20,6 +20,7 @@ import {
   AnimatedBackgroundPresenter,
   AnimationDirector,
   BlotterPresenter,
+  BootGatePresenter,
   BootPreferencePresenter,
   CandleSeriesPresenter,
   ConnectionStatusPresenter,
@@ -86,8 +87,11 @@ export function routeIdleLifecycle(
   event: ConnectionEvent,
   ws: Pick<IWsAdapter, "closeForIdle" | "reopen">,
 ): void {
-  if (event.type === "idleTimeout") ws.closeForIdle();
-  else if (event.type === "reconnect") ws.reopen();
+  if (event.type === "idleTimeout") {
+    ws.closeForIdle();
+  } else if (event.type === "reconnect") {
+    ws.reopen();
+  }
 }
 
 export interface Presenters {
@@ -114,6 +118,8 @@ export interface Presenters {
   eqBlotterViewPreference: EqBlotterViewPreferencePresenter;
   animationDirector: AnimationDirector;
   bootPreference: BootPreferencePresenter;
+  /** Boot-splash overlay visibility + the account menu's ⟳ Reboot HUD intent. */
+  bootGate: BootGatePresenter;
   session: SessionPresenter;
   watchlist: WatchlistPresenter;
   candleSeries: CandleSeriesPresenter;
@@ -183,7 +189,9 @@ function peekFirstWatchlistSymbol(
 ): string {
   let first = "";
   const sub = watchlist$.subscribe((list) => {
-    if (first === "" && list.length > 0) first = list[0]?.symbol ?? "";
+    if (first === "" && list.length > 0) {
+      first = list[0]?.symbol ?? "";
+    }
   });
   sub.unsubscribe();
   return first;
@@ -275,6 +283,9 @@ export function createApp(ports: AppPorts): App {
       equityFills$: ordersBlotter.fills$,
     }),
     bootPreference: new BootPreferencePresenter(ports.preferences),
+    // Boot-splash visibility, seeded once from the platform's boot-splash
+    // decision (defaults to playing when no bootSplash port is supplied).
+    bootGate: new BootGatePresenter(ports.bootSplash?.shouldPlay() ?? true),
     // Session lock/unlock state over the static demo user (no real auth backend).
     session: new SessionPresenter(),
     watchlist,

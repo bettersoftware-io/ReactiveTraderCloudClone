@@ -90,8 +90,11 @@ function useMachineState<T>(state$: PeekableState<T>): T {
     },
     () => {
       const v = state$.getValue();
-      if (v instanceof Promise)
+
+      if (v instanceof Promise) {
         throw new Error("eqWorkspace state$ not initialized");
+      }
+
       return v;
     },
   );
@@ -277,7 +280,11 @@ export function reactViewModel(world: World): ViewModel {
           // observe the transient "Submitting…" render; when a result IS seeded
           // the fake confirms in the same tick (editing→confirmed) as before.
           const rfqId = world.results.createRfq;
-          if (rfqId === undefined) return;
+
+          if (rfqId === undefined) {
+            return;
+          }
+
           setSubmissionState({ status: "confirmed", rfqId });
           setTimeout(() => {
             onRedirect(rfqId);
@@ -438,6 +445,22 @@ export function reactViewModel(world: World): ViewModel {
         unlock: () => {
           world.commands.sessionUnlock += 1;
           world.session.next({ ...world.session.getValue(), locked: false });
+        },
+      };
+    },
+    // Boot gate: reactive visibility backed by the World subject; reboot
+    // re-raises (recorded so a spec can assert "⟳ Reboot HUD fires once"),
+    // dismiss lowers — mirroring the real BootGatePresenter seam.
+    useBootGate: () => {
+      const visible = useSubject(world.bootGate);
+      return {
+        visible,
+        reboot: () => {
+          world.commands.bootReboot += 1;
+          world.bootGate.next(true);
+        },
+        dismiss: () => {
+          world.bootGate.next(false);
         },
       };
     },

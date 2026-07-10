@@ -15,21 +15,34 @@ export interface NotionalParseResult {
  */
 export function parseNotional(input: string): NotionalParseResult {
   const trimmed = input.trim();
-  if (trimmed === "") return { value: null, error: null };
+
+  if (trimmed === "") {
+    return { value: null, error: null };
+  }
 
   const match = trimmed.match(/^(\d+\.?\d*)\s*([kKmM]?)$/);
-  if (!match) return { value: null, error: "Invalid input" };
+
+  if (!match) {
+    return { value: null, error: "Invalid input" };
+  }
 
   const numeric = parseFloat(match[1]);
   const suffix = match[2].toLowerCase();
 
   let multiplier = 1;
-  if (suffix === "k") multiplier = 1_000;
-  else if (suffix === "m") multiplier = 1_000_000;
+
+  if (suffix === "k") {
+    multiplier = 1_000;
+  } else if (suffix === "m") {
+    multiplier = 1_000_000;
+  }
 
   const value = numeric * multiplier;
 
-  if (value > MAX_NOTIONAL) return { value, error: "Max exceeded" };
+  if (value > MAX_NOTIONAL) {
+    return { value, error: "Max exceeded" };
+  }
+
   return { value, error: null };
 }
 
@@ -38,7 +51,13 @@ export function isRfqRequired(notional: number): boolean {
 }
 
 export function validateNotional(value: number): string | null {
-  if (value > MAX_NOTIONAL) return "Max exceeded";
-  if (value <= 0) return "Invalid value";
+  if (value > MAX_NOTIONAL) {
+    return "Max exceeded";
+  }
+
+  if (value <= 0) {
+    return "Invalid value";
+  }
+
   return null;
 }

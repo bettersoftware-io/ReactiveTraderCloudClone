@@ -41,8 +41,11 @@ export async function expectBlotterRowCountAtMost(
   // count" race where the read fires before the prior record step's set lands.
   const current = await ctx.po.blotterTable.rowCount();
   const baseline = ctx.scratch.blotter.recordedRowCounts.get(key);
-  if (baseline === undefined)
+
+  if (baseline === undefined) {
     throw new Error(`no recorded row count for ${key}`);
+  }
+
   assertLte(current, baseline);
 }
 
@@ -52,8 +55,11 @@ export async function expectBlotterRowCountEquals(
 ): Promise<void> {
   const current = await ctx.po.blotterTable.rowCount();
   const baseline = ctx.scratch.blotter.recordedRowCounts.get(key);
-  if (baseline === undefined)
+
+  if (baseline === undefined) {
     throw new Error(`no recorded row count for ${key}`);
+  }
+
   assertEquals(current, baseline);
 }
 
@@ -69,6 +75,18 @@ export async function expectExportCsvTextContains(
   expected: string,
 ): Promise<void> {
   assertContains(await ctx.po.blotterTable.exportCsvText(), expected);
+}
+
+/** Click the CSV chip and assert the download's suggested filename.
+ *  Playwright-only (the Cypress driver throws "not supported"). */
+export async function expectCsvDownloadSuggestedFilename(
+  ctx: TestContext,
+  expected: string,
+): Promise<void> {
+  assertEquals(
+    await ctx.po.blotterTable.downloadCsvSuggestedFilename(),
+    expected,
+  );
 }
 
 export async function expectFirstBlotterRowVisible(
@@ -100,7 +118,10 @@ export async function buyNTimesWithDismissals(
 ): Promise<void> {
   // Buy from the first tile (n-1) times, then buy from GBPJPY to guarantee
   // at least one Rejected trade (ExecutionSimulator always rejects GBPJPY).
-  if (n > 1) await ctx.po.liveRatesTile.buyNTimesWithDismissals(n - 1);
+  if (n > 1) {
+    await ctx.po.liveRatesTile.buyNTimesWithDismissals(n - 1);
+  }
+
   await ctx.po.liveRatesTile.clickBuyOnPair("GBPJPY");
   await new Promise((r) => {
     return setTimeout(r, 1_500);

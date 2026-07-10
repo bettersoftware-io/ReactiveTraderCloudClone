@@ -32,7 +32,9 @@ export function ThemePicker(): ReactElement {
   const anchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open) {
+      return undefined;
+    }
 
     function handlePointerDown(event: MouseEvent): void {
       if (!anchorRef.current?.contains(event.target as Node)) {
@@ -135,13 +137,14 @@ export function ThemePicker(): ReactElement {
   );
 }
 
-/** Display label per skin (PROTO example: "Holo HUD ▾"); CSS uppercases both
- *  the trigger and the menu rows. */
+/** Display label per skin, rendered proper-case exactly as written (PROTO
+ *  shellData.ts `themeNames`, e.g. "Holo HUD ▾" — no CSS uppercasing).
+ *  "Classic" is app-only; the rest match the prototype verbatim. */
 const SKIN_LABEL: Record<ThemeSkin, string> = {
   classic: "Classic",
   holo: "Holo HUD",
   holo3d: "Holo HUD 3D",
   terminal: "Terminal",
   terminal3d: "Terminal 3D",
-  neon: "Neon",
+  neon: "Neon Grid",
 };

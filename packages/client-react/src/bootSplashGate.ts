@@ -13,7 +13,13 @@
  * constraints) because it reads `navigator` and `window.location`.
  */
 export function shouldPlayBootSplash(): boolean {
-  if (typeof window === "undefined") return false;
-  if (typeof navigator !== "undefined" && navigator.webdriver) return false;
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  if (typeof navigator !== "undefined" && navigator.webdriver) {
+    return false;
+  }
+
   return !new URLSearchParams(window.location.search).has("nosplash");
 }

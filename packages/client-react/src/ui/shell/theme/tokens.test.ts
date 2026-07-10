@@ -28,23 +28,31 @@ const REQUIRED_KEYS: readonly (keyof ThemeTokens)[] = [
 
 describe("themeTokens skin×mode store", () => {
   it("defines every skin×mode combination", () => {
-    for (const skin of THEME_SKINS)
-      for (const mode of THEME_MODES)
+    for (const skin of THEME_SKINS) {
+      for (const mode of THEME_MODES) {
         expect(themeTokens[skin][mode]).toBeDefined();
+      }
+    }
   });
 
   it("every combination supplies the full token surface", () => {
-    for (const skin of THEME_SKINS)
-      for (const mode of THEME_MODES)
-        for (const key of REQUIRED_KEYS)
+    for (const skin of THEME_SKINS) {
+      for (const mode of THEME_MODES) {
+        for (const key of REQUIRED_KEYS) {
           expect(themeTokens[skin][mode][key]).toBeTruthy();
+        }
+      }
+    }
   });
 
   it("every cell supplies the exact same full key surface", () => {
     const reference = Object.keys(themeTokens.holo.dark).sort();
-    for (const skin of THEME_SKINS)
-      for (const mode of THEME_MODES)
+
+    for (const skin of THEME_SKINS) {
+      for (const mode of THEME_MODES) {
         expect(Object.keys(themeTokens[skin][mode]).sort()).toEqual(reference);
+      }
+    }
   });
 
   it("holo dark carries the prototype cyan accent + glass blur", () => {

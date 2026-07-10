@@ -27,7 +27,11 @@ export class CypressBlotterTable implements BlotterTablePO {
     // Cypress viewport-visibility.
     return cy.get("body").then(($body) => {
       const found = $body.find(`[data-testid="${TESTIDS.blotter.table}"]`);
-      if (found.length === 0) return false;
+
+      if (found.length === 0) {
+        return false;
+      }
+
       const css = (found as JQuery<HTMLElement>).css("display");
       return css !== "none";
     }) as unknown as Promise<boolean>;
@@ -66,7 +70,11 @@ export class CypressBlotterTable implements BlotterTablePO {
     // used in isVisible() for the blotter table itself.
     return cy.get("body").then(($body) => {
       const found = $body.find(`[data-testid="${TESTIDS.blotter.exportCsv}"]`);
-      if (found.length === 0) return false;
+
+      if (found.length === 0) {
+        return false;
+      }
+
       const css = (found as JQuery<HTMLElement>).css("display");
       return css !== "none";
     }) as unknown as Promise<boolean>;
@@ -78,6 +86,14 @@ export class CypressBlotterTable implements BlotterTablePO {
       .then(($el) => {
         return $el.text();
       }) as unknown as Promise<string>;
+  }
+
+  downloadCsvSuggestedFilename(): Promise<string> {
+    // Cypress has no download-event API for blob-URL anchor downloads; the
+    // filename oracle lives in the Playwright-only blotter spec.
+    throw new Error(
+      "downloadCsvSuggestedFilename is not supported by the Cypress driver",
+    );
   }
 
   hoverFirstRow(): Promise<void> {
@@ -96,7 +112,10 @@ export class CypressBlotterTable implements BlotterTablePO {
     // fold so Cypress's viewport-based :visible check returns false even when
     // the row is fully rendered and interactable.
     return this.rows().then(($rows) => {
-      if ($rows.length === 0) return false;
+      if ($rows.length === 0) {
+        return false;
+      }
+
       const css = ($rows.first() as JQuery<HTMLElement>).css("display");
       return css !== "none";
     }) as unknown as Promise<boolean>;

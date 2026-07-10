@@ -43,7 +43,10 @@ function checkPresenterScenarioCounts(): string[] {
     ).length;
 
     const testPath = `presenter/vitest-fake-timers/${feat}.test.ts`;
-    if (presenterScenarios === 0 && !existsSync(testPath)) continue;
+
+    if (presenterScenarios === 0 && !existsSync(testPath)) {
+      continue;
+    }
 
     if (presenterScenarios === 0 && existsSync(testPath)) {
       failures.push(`${feat}: 0 @presenter scenarios but ${testPath} exists`);
@@ -77,14 +80,20 @@ function checkPresenterDescribePrefix(): string[] {
 
   for (const feat of FEATURE_NAMES) {
     const testPath = `presenter/vitest-fake-timers/${feat}.test.ts`;
-    if (!existsSync(testPath)) continue;
+
+    if (!existsSync(testPath)) {
+      continue;
+    }
+
     const testSrc = readFileSync(testPath, "utf8");
     const titles = [...testSrc.matchAll(/^\s*describe\(\s*"([^"]+)"/gm)].map(
       ([, title]) => {
-        if (title === undefined)
+        if (title === undefined) {
           throw new Error(
             "grep-gates: regex matched but capture group (title) is undefined",
           );
+        }
+
         return title;
       },
     );
@@ -105,7 +114,11 @@ function checkQuickpickleBarrelCompleteness(): string[] {
   const failures: string[] = [];
   const stepsDir = "presenter/vitest-quickpickle-fake-timers/steps";
   const setupPath = "presenter/vitest-quickpickle-fake-timers/setup.ts";
-  if (!existsSync(stepsDir) || !existsSync(setupPath)) return failures;
+
+  if (!existsSync(stepsDir) || !existsSync(setupPath)) {
+    return failures;
+  }
+
   const stepFiles = readdirSync(stepsDir).filter((f) => {
     return f.endsWith(".steps.ts");
   });
@@ -139,7 +152,11 @@ function checkProductionAudit(): string[] {
     ["audit", "--prod", "--audit-level", "high"],
     { cwd: resolve(process.cwd(), ".."), encoding: "utf8" },
   );
-  if (result.status === 0) return [];
+
+  if (result.status === 0) {
+    return [];
+  }
+
   const out = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
 
   // Distinguish real advisories from an audit that couldn't run (network/registry).
@@ -449,7 +466,11 @@ for (const gate of GATES) {
 
   if (lines.length > 0) {
     console.error(`FAIL ${gate.name}`);
-    for (const line of lines) console.error(`   ${line}`);
+
+    for (const line of lines) {
+      console.error(`   ${line}`);
+    }
+
     failed++;
   } else {
     console.log(`PASS ${gate.name}`);

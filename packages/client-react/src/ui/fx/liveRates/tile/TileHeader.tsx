@@ -22,14 +22,6 @@ export function TileHeader({
           <span>{terms}</span>
         </span>
         <span className={styles.headerActions}>
-          {movementPips !== null && (
-            <span
-              data-movement={movementKey(movement)}
-              className={styles.movementBadge}
-            >
-              {movementArrow(movement)} {movementPips} pip
-            </span>
-          )}
           {onInitiateRfq ? (
             <button
               type="button"
@@ -42,6 +34,14 @@ export function TileHeader({
               ⚡ RFQ
             </button>
           ) : null}
+          {movementPips !== null && (
+            <span
+              data-movement={movementKey(movement)}
+              className={styles.movementBadge}
+            >
+              {movementArrow(movement)} {movementPips} pip
+            </span>
+          )}
         </span>
       </div>
     </div>
@@ -62,13 +62,25 @@ interface TileHeaderProps {
 }
 
 function movementKey(movement: PriceMovementType): "up" | "down" | "flat" {
-  if (movement === PriceMovementType.UP) return "up";
-  if (movement === PriceMovementType.DOWN) return "down";
+  if (movement === PriceMovementType.UP) {
+    return "up";
+  }
+
+  if (movement === PriceMovementType.DOWN) {
+    return "down";
+  }
+
   return "flat";
 }
 
 function movementArrow(movement: PriceMovementType): string {
-  if (movement === PriceMovementType.UP) return "▲";
-  if (movement === PriceMovementType.DOWN) return "▼";
+  if (movement === PriceMovementType.UP) {
+    return "▲";
+  }
+
+  if (movement === PriceMovementType.DOWN) {
+    return "▼";
+  }
+
   return "–";
 }

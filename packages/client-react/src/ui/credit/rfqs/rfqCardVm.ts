@@ -99,8 +99,14 @@ function cardState(
   live: boolean,
   accepted: boolean,
 ): "live" | "accepted" | "terminated" {
-  if (live) return "live";
-  if (accepted) return "accepted";
+  if (live) {
+    return "live";
+  }
+
+  if (accepted) {
+    return "accepted";
+  }
+
   return "terminated";
 }
 
@@ -115,7 +121,10 @@ function findBestQuoteId(rfq: Rfq, quotes: readonly Quote[]): number | null {
   let best: PricedQuoteId | null = null;
 
   for (const q of quotes) {
-    if (q.state.type !== "pendingWithPrice") continue;
+    if (q.state.type !== "pendingWithPrice") {
+      continue;
+    }
+
     const price = q.state.price;
 
     if (best === null) {
@@ -125,7 +134,10 @@ function findBestQuoteId(rfq: Rfq, quotes: readonly Quote[]): number | null {
 
     const wins =
       rfq.direction === Direction.Buy ? price < best.price : price > best.price;
-    if (wins) best = { id: q.id, price };
+
+    if (wins) {
+      best = { id: q.id, price };
+    }
   }
 
   return best?.id ?? null;
@@ -202,12 +214,17 @@ function acceptedDealerName(
   dealers: readonly Dealer[],
   accepted: boolean,
 ): string {
-  if (!accepted) return "";
+  if (!accepted) {
+    return "";
+  }
 
   const acceptedQuote = quotes.find((q) => {
     return q.state.type === "accepted";
   });
-  if (!acceptedQuote) return "";
+
+  if (!acceptedQuote) {
+    return "";
+  }
 
   const dealer = dealers.find((d) => {
     return d.id === acceptedQuote.dealerId;

@@ -130,7 +130,11 @@ Then(
     regexAsString: string,
   ) {
     const m = regexAsString.match(/^\/(.+)\/([a-z]*)$/);
-    if (!m) throw new Error(`bad regex literal in: ${regexAsString}`);
+
+    if (!m) {
+      throw new Error(`bad regex literal in: ${regexAsString}`);
+    }
+
     const [, pattern, flags] = m;
     return fxLiveRates.expectFirstTileTextMatches(
       this.ctx,

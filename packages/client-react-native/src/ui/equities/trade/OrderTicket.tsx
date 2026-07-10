@@ -144,7 +144,10 @@ export function OrderTicket({ symbol }: OrderTicketProps): JSX.Element {
           value={form.qty === 0 ? "" : String(form.qty)}
           onChangeText={(text: string): void => {
             const n = Number(text);
-            if (Number.isFinite(n)) ticket.setQty(n);
+
+            if (Number.isFinite(n)) {
+              ticket.setQty(n);
+            }
           }}
         />
       </View>

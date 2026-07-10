@@ -8,7 +8,10 @@ import { ViewModelContext } from "#/ViewModelContext";
  * provider component or any concrete implementation. */
 export function useViewModel(): ViewModel {
   const ctx = useContext(ViewModelContext);
-  if (!ctx)
+
+  if (!ctx) {
     throw new Error("useViewModel must be used within ViewModelProvider");
+  }
+
   return ctx;
 }

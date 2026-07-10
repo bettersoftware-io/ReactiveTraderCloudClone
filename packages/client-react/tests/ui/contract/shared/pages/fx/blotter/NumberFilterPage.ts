@@ -56,12 +56,18 @@ export class NumberFilterPage extends MountedComponent<NumberFilterProps> {
 
   async setValue(value: string): Promise<void> {
     await this.user.clear(this.valueInput());
-    if (value) await this.user.type(this.valueInput(), value);
+
+    if (value) {
+      await this.user.type(this.valueInput(), value);
+    }
   }
 
   async setRangeTo(value: string): Promise<void> {
     await this.user.clear(this.toInput());
-    if (value) await this.user.type(this.toInput(), value);
+
+    if (value) {
+      await this.user.type(this.toInput(), value);
+    }
   }
 
   async apply(): Promise<void> {

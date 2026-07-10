@@ -125,7 +125,10 @@ export function NewRfqPanel(props: NewRfqPanelProps): ReactElement {
   }
 
   function handleSend(): void {
-    if (!canSubmit || !selectedInstrument) return;
+    if (!canSubmit || !selectedInstrument) {
+      return;
+    }
+
     submit(
       {
         instrumentId: selectedInstrument.id,

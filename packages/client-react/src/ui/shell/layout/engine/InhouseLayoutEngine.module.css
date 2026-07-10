@@ -90,18 +90,36 @@
 
 /* A cell whose entire subtree is strips (every panel leaf inside it is
  * stripped — collapsed itself, or a sibling of the maximized panel further up
- * the tree) hugs its strip content instead of keeping its ratio-derived
- * flex-grow. Without this, only the innermost `.panel[data-strip="true"]`
- * shrank to its 32px strip while THIS cell kept its full ratio-derived size
- * around it, leaving a dead background gap and starving growing siblings of
- * the space the strip gave up (the maximize/collapse regression this rule
- * fixes). Computed recursively by InhouseLayoutEngine's isStripSubtree — a
- * nested split (e.g. the FX right rail's analytics/positions column) only
- * counts as all-strip when every one of its own children does too. Placed
- * before the pinned/fixed rules below so those still win on the (currently
- * hypothetical) cell that is both. */
-.cell[data-strip-cell="true"] {
-  flex: 0 0 auto;
+ * the tree) shrinks to its strip's bar size instead of keeping its
+ * ratio-derived flex-grow. Without this, only the innermost
+ * `.panel[data-strip="true"]` shrank to its 32px strip while THIS cell kept
+ * its full ratio-derived size around it, leaving a dead background gap and
+ * starving growing siblings of the space the strip gave up (the
+ * maximize/collapse regression this rule fixes). Computed recursively by
+ * InhouseLayoutEngine's isStripSubtree — a nested split (e.g. the FX right
+ * rail's analytics/positions column) only counts as all-strip when every one
+ * of its own children does too. NOTE: the [data-strip-cell][data-dir] rules
+ * out-rank the pinned/fixed rules below on specificity, so on the (currently
+ * hypothetical) cell that is both, the strip treatment wins — strip-cell and
+ * initial/fixed cells are mutually exclusive by construction today.
+ *
+ * The bases are DEFINITE lengths, not `auto`: `flex-basis: 0|Npx → auto` is
+ * not interpolable, so a hugging basis made the collapse/restore glide (the
+ * .cell transition below) snap instead of animating — worst on the initialPx
+ * rails (360px → auto). The pixel values are exactly what `auto` used to
+ * resolve to, keyed off the owning split's axis (the cell's own data-dir; a
+ * non-fill strip cell's reclaim axis always matches it): a strip reclaiming
+ * along a column axis hugs the horizontal bar's 32px height
+ * (`.panel[data-strip="true"]` below); one reclaiming along a row axis hugs
+ * the vertical bar's 38px width — including a fully-stripped nested column
+ * whose stacked vertical strips are all 38px wide. Resting geometry is
+ * therefore unchanged; only the transition's start/end become animatable. */
+.cell[data-strip-cell="true"][data-dir="column"] {
+  flex: 0 0 32px;
+}
+
+.cell[data-strip-cell="true"][data-dir="row"] {
+  flex: 0 0 38px;
 }
 
 /* A strip cell whose strips run PERPENDICULAR to the owning split's axis —
@@ -109,7 +127,9 @@
  * ANCESTOR split's axis (e.g. the analytics/positions column stripped by a
  * row-sibling's maximize). Along its own split's main axis it shares space
  * instead of hugging, so multiple vertical strips stack down the freed
- * full-height rail (PROTO's collapsedStrip column). */
+ * full-height rail (PROTO's collapsedStrip column). Must stay AFTER the
+ * dir-keyed strip bases above: same specificity, and a fill cell matches a
+ * dir-keyed rule too, so source order is what lets fill win. */
 .cell[data-strip-cell="true"][data-strip-fill="true"] {
   flex: 1 1 auto;
 }
@@ -220,6 +240,12 @@
  * dir), not the wrapping cell's flex-direction: a horizontal strip is a
  * short full-width bar; a vertical one is a narrow full-height column. */
 .panel[data-strip="true"] {
+  /* The strip's 32/38px is its OUTER size (1px borders inside), matching the
+   * definite `.cell[data-strip-cell]` bases above. The app's global reset is
+   * border-box already; declaring it here keeps a strip's bar identical in
+   * harnesses that mount components without that reset (the component-level
+   * visual tiers), instead of overflowing its cell by the border width. */
+  box-sizing: border-box;
   flex: 0 0 32px;
 }
 

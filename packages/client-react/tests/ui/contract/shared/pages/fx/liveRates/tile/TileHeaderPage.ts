@@ -73,6 +73,31 @@ export class TileHeaderPage extends MountedComponent<TileHeaderProps> {
     return within(this.root).queryByTestId("rfq-initiate");
   }
 
+  /**
+   * The pair row's right-side actions in DOM order — the ⚡ RFQ chip sits
+   * left of the movement badge, which keeps its usual far-right slot.
+   */
+  actionsOrder(): string[] {
+    const anchor = this.rfqChip() ?? this.root.querySelector("[data-movement]");
+    const container = anchor?.parentElement;
+
+    if (!container) {
+      return [];
+    }
+
+    return [...container.children].map((el) => {
+      if (el.getAttribute("data-testid") === "rfq-initiate") {
+        return "rfqChip";
+      }
+
+      if (el.hasAttribute("data-movement")) {
+        return "movementBadge";
+      }
+
+      return "unknown";
+    });
+  }
+
   /** True when the ⚡ RFQ chip is rendered (onInitiateRfq provided). */
   hasRfqChip(): boolean {
     return this.rfqChip() !== null;

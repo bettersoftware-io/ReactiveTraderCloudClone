@@ -44,7 +44,9 @@ const PORT = Number(process.env.FULLSTACK_PORT ?? 4123);
 const FIRST_VALUE_TIMEOUT_MS = 15_000;
 
 function assert(cond: unknown, message: string): asserts cond {
-  if (!cond) throw new Error(`assertion failed: ${message}`);
+  if (!cond) {
+    throw new Error(`assertion failed: ${message}`);
+  }
 }
 
 async function runChecks(): Promise<void> {
