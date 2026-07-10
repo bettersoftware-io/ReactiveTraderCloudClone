@@ -3,6 +3,8 @@
 // plain-Playwright and vitest-browser share this table. CT specs do not use it —
 // they were hand-written first and stay as-is.
 
+import { baseScenarioName } from "./shared/goldenPath";
+
 // A single ordered interaction step for multi-step scenarios (form fill, open a
 // filter popover then apply it). Runner-neutral: keyed on testids + literal
 // text/values so plain-Playwright and vitest-browser drive them identically.
@@ -235,3 +237,9 @@ export const scenarioActions: Record<string, ScenarioAction> = {
   "lock/locked": { fullPage: true, waitForText: "SESSION LOCKED" },
   "prefs/modal": { fullPage: true, waitForText: "PREFERENCES" },
 };
+
+/** Resolve the capture action for a scenario, mapping matrix-expanded names
+ *  (`app/credit__holo-dark`) back to their base action (`app/credit`). */
+export function scenarioActionFor(name: string): ScenarioAction {
+  return scenarioActions[name] ?? scenarioActions[baseScenarioName(name)] ?? {};
+}
