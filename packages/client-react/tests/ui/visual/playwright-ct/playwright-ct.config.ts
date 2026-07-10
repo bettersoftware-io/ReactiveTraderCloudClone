@@ -83,8 +83,8 @@ export default defineConfig({
     // (gitignored).
     ctTemplateDir: "./host",
     ctCacheDir: "./host/.cache",
-    // Desktop Chrome's 1280×720 viewport (from the project's device descriptor)
-    // applies; no explicit override needed.
+    // Viewport is overridden to a realistic 1920×1080 in the project below
+    // (Desktop Chrome's default 1280×720 cramps the full-page HUD captures).
     ctViteConfig: {
       // Version-skew note (load-bearing): `react()` here is the app's
       // @vitejs/plugin-react@6 (peers vite ^8), but Playwright CT bundles this
@@ -99,5 +99,15 @@ export default defineConfig({
     },
     ctPort: 3100,
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // Realistic 1080p desktop (see viewport note above); identical across
+        // all three visual runners so full-page HUD shots aren't squeezed.
+        viewport: { width: 1920, height: 1080 },
+      },
+    },
+  ],
 });
