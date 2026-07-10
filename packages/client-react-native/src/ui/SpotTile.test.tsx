@@ -49,14 +49,17 @@ const DOWN_PRICE: Price = {
   movementType: PriceMovementType.DOWN,
 };
 
-test("renders symbol, ask split, spread and up-movement", async () => {
+test("renders pair, ask split, spread and up-movement", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(UP_PRICE)}>
       <SpotTile pair={EURUSD} />
     </ViewModelProvider>,
   );
-  expect(screen.getByText("EURUSD")).toBeTruthy();
-  expect(screen.getByText("0.6")).toBeTruthy();
+  expect(screen.getByText("EUR / USD")).toBeTruthy();
+  expect(screen.getByText("81")).toBeTruthy(); // ask pips (enlarged, coloured)
+  expect(screen.getByText("0.6")).toBeTruthy(); // spread
+  expect(screen.getByText("1.53812")).toBeTruthy(); // bid (footer)
+  expect(screen.getByText("1.53818")).toBeTruthy(); // ask (footer)
   expect(
     screen.getByTestId("spot-tile-movement", { includeHiddenElements: true })
       .props.children,
@@ -69,7 +72,7 @@ test("shows loading when price is null", async () => {
       <SpotTile pair={EURUSD} />
     </ViewModelProvider>,
   );
-  expect(screen.getByText("EURUSD")).toBeTruthy();
+  expect(screen.getByText("EUR / USD")).toBeTruthy();
   expect(screen.getByText("Loading…")).toBeTruthy();
 });
 
@@ -109,6 +112,26 @@ test("paints the ask pips with the negative accent colour on a down-move", async
   expect(screen.getByText("81").props.style.color).toBe(
     rnThemeTokens.holo.dark.accentNegative,
   );
+});
+
+test("renders a gradient tile surface on 3d skins", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(UP_PRICE)}>
+      <SpotTile pair={EURUSD} />
+    </ViewModelProvider>,
+    rnThemeTokens.holo3d.dark,
+  );
+  expect(screen.getByTestId("tile-sheen")).toBeTruthy();
+});
+
+test("flat skins render no gradient tile surface", async () => {
+  // renderWithTheme defaults to holo.dark (a flat skin, depth.level 0).
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(UP_PRICE)}>
+      <SpotTile pair={EURUSD} />
+    </ViewModelProvider>,
+  );
+  expect(screen.queryByTestId("tile-sheen")).toBeNull();
 });
 
 function fakeViewModel(price: Price | null): ViewModel {

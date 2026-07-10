@@ -8,6 +8,41 @@ import {
 } from "#/ui/theme/fontFamilies";
 
 /**
+ * Physical-depth descriptor for a skin cell. Flat skins use `level: 0` (no
+ * shadow); the 3d skins fill it with a real drop shadow + elevation, a 1px
+ * inset top-highlight colour, and an optional glow. RN cannot express the
+ * web's layered/inset box-shadows, so this ports the dominant drop-shadow
+ * layer (see packages/client-react/src/ui/shell/theme/tokens.ts --tile-shadow
+ * / --panel-shadow / --glow) into RN-native shadow + elevation values.
+ */
+export interface DepthTokens {
+  /** 0 = flat (no shadow/elevation); 2 = physical 3d. */
+  readonly level: 0 | 2;
+  /** iOS drop-shadow colour. */
+  readonly shadowColor: string;
+  /** iOS shadow opacity, 0..1. */
+  readonly shadowOpacity: number;
+  /** iOS shadow blur radius (px). */
+  readonly shadowRadius: number;
+  /** iOS shadow y-offset (px); x is always 0. */
+  readonly shadowOffsetY: number;
+  /** Android elevation (dp). */
+  readonly elevation: number;
+  /** 1px inset top-edge highlight (the web `--tile-shadow` inset layer); `null` = flat. */
+  readonly topHighlight: string | null;
+  /** Tile-surface vertical gradient `[top, bottom]` (the web `--tile`), giving the
+   * tile a lit 3d face; `null` = flat (solid `bgTile`). */
+  readonly tileGradient: readonly [string, string] | null;
+  /** Optional header-strip vertical gradient `[top, bottom]` (the web
+   * `--panel-head`) overlaid on the tile head — used where it reads as a subtle
+   * tonal band (Terminal 3D's slate). `null` where a distinct head would clash
+   * (Holo 3D's translucent-cyan panel-head looks garish over the teal tile). */
+  readonly headGradient: readonly [string, string] | null;
+  /** Glow colour for active/pressed elements; `null` = none. */
+  readonly glow: string | null;
+}
+
+/**
  * The RN-native theme surface: the plain-colour subset of the web's CSS token
  * set (packages/client-react/src/ui/shell/theme/tokens.ts), camelCased, with all
  * `var()` refs pre-resolved and the CSS-only FX keys (blur/glow/grid/aurora)
@@ -52,7 +87,24 @@ export interface RnTheme {
   readonly fontDisplay: string | undefined;
   /** Mono font family, or `undefined` for the platform default (classic). */
   readonly fontMono: string | undefined;
+
+  readonly depth: DepthTokens;
 }
+
+/** Flat skins carry no elevation — depthStyle() returns {} for level 0, so
+ * these cells paint exactly as before this depth model existed. */
+const FLAT_DEPTH: DepthTokens = {
+  level: 0,
+  shadowColor: "#000000",
+  shadowOpacity: 0,
+  shadowRadius: 0,
+  shadowOffsetY: 0,
+  elevation: 0,
+  topHighlight: null,
+  tileGradient: null,
+  headGradient: null,
+  glow: null,
+};
 
 const classicDark: RnTheme = {
   bgPrimary: "#111827",
@@ -84,6 +136,7 @@ const classicDark: RnTheme = {
   chip: "rgba(59,130,246,0.12)",
   fontDisplay: undefined,
   fontMono: undefined,
+  depth: FLAT_DEPTH,
 };
 
 const classicLight: RnTheme = {
@@ -116,6 +169,7 @@ const classicLight: RnTheme = {
   chip: "rgba(59,130,246,0.12)",
   fontDisplay: undefined,
   fontMono: undefined,
+  depth: FLAT_DEPTH,
 };
 
 const holoDark: RnTheme = {
@@ -148,6 +202,7 @@ const holoDark: RnTheme = {
   chip: "rgba(0,224,255,0.12)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
   fontMono: FONT_JETBRAINS_MONO,
+  depth: FLAT_DEPTH,
 };
 
 const holoLight: RnTheme = {
@@ -180,6 +235,50 @@ const holoLight: RnTheme = {
   chip: "rgba(0,180,204,0.14)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
   fontMono: FONT_JETBRAINS_MONO,
+  depth: FLAT_DEPTH,
+};
+
+// Holo 3D — the holo palette with real physical depth. Colours spread from the
+// flat sibling; only bgTile is deepened and a depth block is filled. Depth
+// values port the dominant layer of the web holo3d --tile-shadow/--glow.
+// On dark skins a black drop shadow is invisible against the near-black page
+// (bgPrimary #00060a). Depth here reads from (a) a lighter, more opaque raised
+// tile surface, (b) a RESTING coloured glow in the skin's accent (cyan), and
+// (c) a bright top highlight — the cues that actually show on dark. The web
+// holo3d expresses the same "physical depth" with layered/inset shadows RN
+// can't render, so this is the RN-native equivalent, tuned on-device.
+const holo3dDark: RnTheme = {
+  ...holoDark,
+  bgTile: "#0c2634",
+  depth: {
+    level: 2,
+    shadowColor: "#00e5ff",
+    shadowOpacity: 0.14,
+    shadowRadius: 9,
+    shadowOffsetY: 5,
+    elevation: 8,
+    topHighlight: "rgba(255,255,255,0.07)",
+    tileGradient: ["rgba(18,52,68,0.95)", "rgba(10,30,43,0.88)"],
+    headGradient: null,
+    glow: "#00e5ff",
+  },
+};
+
+const holo3dLight: RnTheme = {
+  ...holoLight,
+  bgTile: "#e9f4f7",
+  depth: {
+    level: 2,
+    shadowColor: "rgba(20,60,80,0.5)",
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffsetY: 6,
+    elevation: 6,
+    topHighlight: "rgba(255,255,255,0.9)",
+    tileGradient: ["#ffffff", "#e9f4f7"],
+    headGradient: null,
+    glow: "rgba(0,150,179,0.22)",
+  },
 };
 
 const terminalDark: RnTheme = {
@@ -212,6 +311,7 @@ const terminalDark: RnTheme = {
   chip: "rgba(255,176,0,0.14)",
   fontDisplay: FONT_IBM_SANS,
   fontMono: FONT_IBM_MONO,
+  depth: FLAT_DEPTH,
 };
 
 const terminalLight: RnTheme = {
@@ -244,6 +344,49 @@ const terminalLight: RnTheme = {
   chip: "rgba(179,122,0,0.12)",
   fontDisplay: FONT_IBM_SANS,
   fontMono: FONT_IBM_MONO,
+  depth: FLAT_DEPTH,
+};
+
+// Terminal 3D — terminal palette + physical depth. Terminal's web --glow is
+// "none", so glow stays null here (depth is drop-shadow + top highlight only).
+// Terminal 3D dark: same dark-background problem as holo3d. The web terminal3d
+// uses gradient panels (no neon glow) for depth, which RN can't fill; on a
+// near-black page a black shadow is invisible, so this reads depth from a
+// lighter raised slab, a bright top highlight, and a restrained amber
+// under-glow in the terminal accent. (Deviates from the web's glow:none by
+// necessity — the flat-black alternative is imperceptible on device.)
+const terminal3dDark: RnTheme = {
+  ...terminalDark,
+  bgTile: "#161b22",
+  depth: {
+    level: 2,
+    shadowColor: "#000000",
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    shadowOffsetY: 5,
+    elevation: 8,
+    topHighlight: "rgba(255,255,255,0.05)",
+    tileGradient: ["#1f2530", "#161b22"],
+    headGradient: ["#1c212a", "#14181e"],
+    glow: null,
+  },
+};
+
+const terminal3dLight: RnTheme = {
+  ...terminalLight,
+  bgTile: "#edf0f3",
+  depth: {
+    level: 2,
+    shadowColor: "rgba(20,24,32,0.4)",
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffsetY: 6,
+    elevation: 6,
+    topHighlight: "rgba(255,255,255,0.9)",
+    tileGradient: ["#ffffff", "#edf0f3"],
+    headGradient: ["#f2f4f6", "#e8ebef"],
+    glow: null,
+  },
 };
 
 const neonDark: RnTheme = {
@@ -276,6 +419,7 @@ const neonDark: RnTheme = {
   chip: "rgba(255,43,214,0.14)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
   fontMono: FONT_JETBRAINS_MONO,
+  depth: FLAT_DEPTH,
 };
 
 const neonLight: RnTheme = {
@@ -308,15 +452,14 @@ const neonLight: RnTheme = {
   chip: "rgba(200,0,160,0.12)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
   fontMono: FONT_JETBRAINS_MONO,
+  depth: FLAT_DEPTH,
 };
 
 export const rnThemeTokens: Record<ThemeSkin, Record<ThemeMode, RnTheme>> = {
   classic: { dark: classicDark, light: classicLight },
   holo: { dark: holoDark, light: holoLight },
-  // RN has no layered-shadow depth styling yet; the 3d skins render as their
-  // flat siblings until the mobile-3d phase gives them real elevation.
-  holo3d: { dark: holoDark, light: holoLight },
+  holo3d: { dark: holo3dDark, light: holo3dLight },
   terminal: { dark: terminalDark, light: terminalLight },
-  terminal3d: { dark: terminalDark, light: terminalLight },
+  terminal3d: { dark: terminal3dDark, light: terminal3dLight },
   neon: { dark: neonDark, light: neonLight },
 };

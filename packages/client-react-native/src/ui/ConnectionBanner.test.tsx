@@ -6,6 +6,26 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { rnThemeTokens } from "#/ui/theme/tokens";
+
+test("colours the status dot statusConnected when connected", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(ConnectionStatus.CONNECTED)}>
+      <ConnectionBanner />
+    </ViewModelProvider>,
+  );
+  expect(dotColor()).toBe(rnThemeTokens.holo.dark.statusConnected);
+});
+
+test("colours the status dot statusDisconnected when disconnected (not the connected green)", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel(ConnectionStatus.DISCONNECTED)}>
+      <ConnectionBanner />
+    </ViewModelProvider>,
+  );
+  expect(dotColor()).toBe(rnThemeTokens.holo.dark.statusDisconnected);
+  expect(dotColor()).not.toBe(rnThemeTokens.holo.dark.statusConnected);
+});
 
 test("shows Live and hides Reconnect when connected", async () => {
   await renderWithTheme(
@@ -55,4 +75,22 @@ function fakeViewModel(
       return reconnect;
     },
   } as unknown as ViewModel;
+}
+
+interface StyleEntryWithBackground {
+  backgroundColor: unknown;
+}
+
+function hasBackgroundColor(entry: unknown): entry is StyleEntryWithBackground {
+  return (
+    entry !== null && typeof entry === "object" && "backgroundColor" in entry
+  );
+}
+
+/** The dot's rendered style is `[staticDotStyle, { backgroundColor }]`; find
+ * the dynamic backgroundColor entry regardless of array position. */
+function dotColor(): unknown {
+  const style = screen.getByTestId("connection-dot").props.style as unknown;
+  const styles = Array.isArray(style) ? style : [style];
+  return styles.find(hasBackgroundColor)?.backgroundColor;
 }
