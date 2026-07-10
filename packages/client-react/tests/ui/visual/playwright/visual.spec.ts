@@ -1,15 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { scenarioActions } from "../scenarioActions";
+import { scenarioActionFor } from "../scenarioActions";
+import { goldenPathArray } from "../shared/goldenPath";
 import { scenarios } from "../shared/scenarios";
 
-// Golden filename: scenario name with "/" → "-" (path-safe, stable).
-function goldenName(scenario: string): string {
-  return `${scenario.replace(/\//g, "-")}.png`;
-}
-
-for (const name of Object.keys(scenarios)) {
-  const action = scenarioActions[name] ?? {};
+for (const [name, scenario] of Object.entries(scenarios)) {
+  const action = scenarioActionFor(name);
 
   test(name, async ({ page }) => {
     // Theme and view-mode are seeded through the seam (per-fixture data.themeMode /
@@ -49,7 +45,7 @@ for (const name of Object.keys(scenarios)) {
       );
     }
 
-    const shot = goldenName(name);
+    const shot = goldenPathArray(name, scenario);
 
     if (action.fullPage) {
       await expect(page).toHaveScreenshot(shot, {

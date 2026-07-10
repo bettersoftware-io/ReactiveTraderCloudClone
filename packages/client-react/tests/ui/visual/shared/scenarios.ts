@@ -1,11 +1,19 @@
+import type { ThemeMode, ThemeModePreference, ThemeSkin } from "@rtc/domain";
+
 // Neutral manifest: a scenario name maps to a component key (resolved per
 // framework by registry.tsx) and a fixture key (resolved from fixtures.ts).
 export interface Scenario {
   readonly componentKey: string;
   readonly fixtureKey: string;
+  /** Theme-skin override layered onto the fixture's AppData by VisualScenario.
+   *  Matrix-expanded scenarios set this; base scenarios omit it and fall back
+   *  to the fixture's own themeSkin (classic in the fakes). */
+  readonly themeSkin?: ThemeSkin;
+  /** Theme-mode override (see themeSkin). */
+  readonly themeMode?: ThemeModePreference;
 }
 
-export const scenarios: Record<string, Scenario> = {
+const baseScenarios: Record<string, Scenario> = {
   "connection-status/connected": {
     componentKey: "ConnectionStatusBar",
     fixtureKey: "connection-connected",
@@ -132,9 +140,19 @@ export const scenarios: Record<string, Scenario> = {
   // Admin tab — App with the throughput fetch stubbed by the spec.
   "app/admin": { componentKey: "App", fixtureKey: "app-fx" },
   // Light-theme variant of the FX page (fixture seeds theme "light" through the seam).
-  "app/fx-light": { componentKey: "App", fixtureKey: "app-fx-light" },
+  "app/fx-light": {
+    componentKey: "App",
+    fixtureKey: "app-fx-light",
+    themeSkin: "classic",
+    themeMode: "light",
+  },
   // System mode-preference variant: pins the third (🖥️) toggle icon (resolves to dark).
-  "app/fx-system": { componentKey: "App", fixtureKey: "app-fx-system" },
+  "app/fx-system": {
+    componentKey: "App",
+    fixtureKey: "app-fx-system",
+    themeSkin: "classic",
+    themeMode: "system",
+  },
 
   // --- Phase V deterministic golden scenarios ---
   // FX tiles: TilePrice DOWN / NONE colour arms + TileChart down/empty arms.
@@ -567,3 +585,53 @@ export const scenarios: Record<string, Scenario> = {
     fixtureKey: "admin-incident-active",
   },
 };
+
+// The theme matrix: every skin except neon × dark/light. Every base scenario is
+// REPLACED by its full 10-combo cross-product (each combo carries an explicit
+// themeSkin/themeMode), so there is no bare baseline — classic-dark is the
+// `classic-dark/` folder like any other combo.
+export const MATRIX_SKINS: readonly ThemeSkin[] = [
+  "classic",
+  "holo",
+  "holo3d",
+  "terminal",
+  "terminal3d",
+] as const satisfies readonly ThemeSkin[];
+export const MATRIX_MODES: readonly ThemeMode[] = [
+  "dark",
+  "light",
+] as const satisfies readonly ThemeMode[];
+
+// Scenarios that assert a mode-cycle-specific theme-toggle aria-label — they
+// prove the toggle cycle, not the skin matrix, so they are NOT cross-producted.
+// They carry their own authored themeSkin/themeMode (Step 1), so goldenPath still
+// routes them to a folder (classic-light / classic-system).
+const MATRIX_EXCLUDE = new Set<string>(["app/fx-light", "app/fx-system"]);
+
+function expandThemeMatrix(
+  base: Record<string, Scenario>,
+): Record<string, Scenario> {
+  const out: Record<string, Scenario> = {};
+
+  for (const [name, scenario] of Object.entries(base)) {
+    if (MATRIX_EXCLUDE.has(name)) {
+      out[name] = scenario;
+      continue;
+    }
+
+    for (const skin of MATRIX_SKINS) {
+      for (const mode of MATRIX_MODES) {
+        out[`${name}__${skin}-${mode}`] = {
+          ...scenario,
+          themeSkin: skin,
+          themeMode: mode,
+        };
+      }
+    }
+  }
+
+  return out;
+}
+
+export const scenarios: Record<string, Scenario> =
+  expandThemeMatrix(baseScenarios);

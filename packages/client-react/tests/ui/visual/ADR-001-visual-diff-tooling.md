@@ -170,3 +170,72 @@ Official Playwright CT adapter status (checked 2026-06):
 slightly different DOM/CSS (wrapper nodes, attribute order, hydration markers)
 that occasionally shift a pixel. The first run's diffs against the shared goldens
 *are* the parity report.
+
+## Theme matrix (5 skins × dark/light)
+
+Every visual scenario is captured across the full theme matrix: **Classic, Holo,
+Holo-3D, Terminal, Terminal-3D × dark, light = 10 combos**. Neon is **excluded**
+(the sixth skin) by product decision — its high-contrast cyberpunk grid is not a
+supported showcase surface. That's **1222 scenarios per tier** (122 expandable
+base scenarios × 10, plus 2 un-expanded mode-cycle scenarios), **× 3 tiers =
+3666 goldens per architecture set**, ~**109 MB** on disk per set (full-page shots
+grow with the viewport; the ~1100 component shots are content-sized and don't).
+
+### How it works
+
+- **Resolver seam** (`react/resolveScenarioData.ts`): the `Scenario` type carries
+  optional `themeSkin`/`themeMode`; `VisualScenario` layers them onto the fixture's
+  `AppData` before building the fake ViewModel, so the theme is seeded through the
+  same port the app uses (`useThemeSkinPreference`/`useThemePreference`) — no
+  localStorage, no per-scenario React.
+- **Matrix expander** (`shared/scenarios.ts`): `expandThemeMatrix` REPLACES each
+  base scenario with its full 10-combo cross-product, each carrying an explicit
+  `themeSkin`/`themeMode`. There is **no bare baseline** — classic-dark is the
+  `classic-dark/` folder like any other combo. Scope lives in three symbols:
+  `MATRIX_SKINS`, `MATRIX_MODES`, `MATRIX_EXCLUDE`.
+- **All three tiers are data-driven.** The `playwright-ct` tier was rewritten from
+  15 hand-written per-component specs into one `matrix.spec.tsx` that loops the
+  shared manifest exactly like the plain-Playwright tier — so all three derive
+  identically and every combo is captured everywhere.
+
+### Golden layout — theme sub-folder
+
+Goldens are stored **one PNG per combo** under a `<skin>-<mode>/` sub-folder:
+`…/<specfile>/holo3d-light/app-fx.png`. This keeps each theme reviewable/diffable
+in isolation on GitHub and lets you regenerate one theme at a time. The shared
+`shared/goldenPath.ts` computes the path. **Load-bearing quirk:** Playwright
+flattens a *string* screenshot arg containing `/` to `-` (verified: `"a/b.png"`
+→ `a-b.png`), so the two Playwright tiers pass the **array form**
+`goldenPathArray(name, scenario)` → `[<skin>-<mode>, <base>.png]` to nest a real
+subdir; the vitest-browser tier passes the string `goldenPath` (its
+`resolveScreenshotPath` nests via `path.join`).
+
+### Viewport — 1920×1080
+
+All three tier configs render at a realistic **1920×1080** desktop (was 1280×720,
+vitest 1280×800). The HUD is `height:100vh`, so the viewport *is* the full-page
+golden size; 720p cramped the 4-panel HUD and looked vertically squeezed.
+
+### Escape hatch (if the gate gets too slow)
+
+The full matrix makes the `visual` CI job the critical path (serial per
+`RTC_VISUAL_MAX_PARALLEL=1` / CT `workers:1`). It is kept as a gate deliberately —
+coverage over speed. If gate time starts to hurt delivery, two independent levers,
+no rework:
+
+1. **Curate** — trim `MATRIX_SKINS`/`MATRIX_MODES` or add to `MATRIX_EXCLUDE`
+   (e.g. matrix only the full-page app scenarios). One-line change; regenerate.
+2. **De-gate** — split `visual` into a small classic-dark smoke gate on PRs + an
+   on-demand full run (the `update-visual-goldens.yml` `workflow_dispatch` pattern
+   already exists). The full matrix then runs periodically / pre-release, not on
+   every PR.
+
+### Regeneration
+
+Same dual-set discipline as the rest of this ADR: the canonical `react/` set is
+baked in the Playwright container via `update-visual-goldens.yml` (which now
+**cleans the `react/` dirs before regen**, since the folder move orphans the old
+flat goldens that `--update` never deletes); the per-arch `react-local/<arch>/`
+set is regenerated on the dev machine. Local gen is ~11 min/arch; the container
+run is comparable. (`react-local/linux-arm64` must be regenerated in the aarch64
+sandbox — no darwin box reproduces its pixels.)

@@ -56,7 +56,9 @@ export default defineConfig({
       provider: playwright(),
       headless: true,
       instances: [{ browser: "chromium" }],
-      viewport: { width: 1280, height: 800 },
+      // Realistic 1080p desktop, identical to the two Playwright runners
+      // (was 1280×800) so full-page HUD captures aren't vertically squeezed.
+      viewport: { width: 1920, height: 1080 },
       // `toMatchScreenshot`'s built-in `screenshotDirectory` plumbing resolves a
       // custom value to an absolute path and then mis-joins it under the spec's
       // directory (producing a mangled `…/Users/…/…` path). Bypass it with our
