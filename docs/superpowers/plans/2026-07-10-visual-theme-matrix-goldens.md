@@ -14,7 +14,7 @@
 - **Serial visual runners.** `RTC_VISUAL_MAX_PARALLEL=1` in `ci.yml`'s `visual` job stays, and `playwright-ct.config.ts` keeps `workers: 1` — concurrent tier/worker runs let Playwright's stable-frame check capture text-dense shots one frame early. Do not parallelize to "speed up" the larger matrix.
 - **Braces mandatory (`style/useBlockStatements`, PR #145).** Every `if`/`for`/`while`/`else` needs a block body — brace-less control statements fail CI. All new spec/expander code must be fully braced.
 - **Skins:** `classic | holo | holo3d | terminal | terminal3d` (neon **excluded** by request). Modes: `dark | light`. Values verbatim from `@rtc/domain` `ThemeSkin` / `ThemeMode`.
-- **Naming & layout (user-confirmed: theme sub-folder):** derived scenario **key** = `` `${base}__${skin}-${mode}` `` (uniqueness in the map); golden **path** = `` `${skin}-${mode}/${base-with-dashes}` `` under the spec dir, e.g. `…/<specfile>/holo3d-light/app-fx.png`. There is **no bare baseline** — classic-dark is the `classic-dark/` folder. Computed by the shared `goldenPath(name, scenario)` (extension-less; each tier adds `.png` / `-<browser>.png`). All three tiers use it; the rewritten CT tier writes under a single `matrix.spec.tsx/` dir. Because every existing golden moves into a folder, Tasks 4-5 must **delete the pre-existing flat goldens** (they'd otherwise linger as orphans that `--update` never overwrites).
+- **Naming & layout (user-confirmed: theme sub-folder):** derived scenario **key** = `` `${base}__${skin}-${mode}` `` (uniqueness in the map); golden **path** = `` `${skin}-${mode}/${base-with-dashes}` `` under the spec dir, e.g. `…/<specfile>/holo3d-light/app-fx.png`. There is **no bare baseline** — classic-dark is the `classic-dark/` folder. Computed by the shared `goldenPath` module. **Playwright flattens a string arg containing `/` to `-` (verified empirically), so the playwright + playwright-ct tiers MUST pass the array form `goldenPathArray(name, scenario)` → `[<skin>-<mode>, <base>.png]` to nest the subdir; the vitest-browser tier passes the string `goldenPath(name, scenario)` (its `resolveScreenshotPath` nests via `path.join`).** The rewritten CT tier writes under a single `matrix.spec.tsx/` dir. Because every existing golden moves into a folder, Tasks 4-5 must **delete the pre-existing flat goldens** (they'd otherwise linger as orphans that `--update` never overwrites).
 - **All three tiers get the full matrix.** playwright-ct, playwright, vitest-browser each capture all 1222 scenarios (124 base + 1098 combos). CT is rewritten to data-driven for this (Task 3).
 - **Isolation:** all work in the `visual-theme-matrix` worktree; PR + green CI + merge-commit per `shipping-repo-changes`. Broad UI rounds need **user live-acceptance before merge** (spot-check a sample of new theme goldens).
 - **Escape hatch (document, don't build):** matrix scope lives in three symbols (`MATRIX_SKINS`, `MATRIX_MODES`, `MATRIX_EXCLUDE`). Curation later = editing those. De-gating later = splitting `visual` into a small smoke gate + on-demand full run (the `update-visual-goldens.yml` `workflow_dispatch` pattern already exists).
@@ -182,7 +182,8 @@ git commit -m "test(visual): theme-override seam in the scenario resolver"
   - `MATRIX_SKINS: readonly ThemeSkin[]`, `MATRIX_MODES: readonly ThemeMode[]`.
   - `scenarios: Record<string, Scenario>` — **every** base scenario replaced by its full 10-combo cross-product (each carrying explicit `themeSkin`/`themeMode`), except `MATRIX_EXCLUDE` scenarios which pass through with their own authored `themeSkin`/`themeMode`. No bare base keys remain.
   - `baseScenarioName(name: string): string` — strips a `__<skin>-<mode>` suffix (`shared/goldenPath.ts`).
-  - `goldenPath(name: string, scenario: Scenario): string` — extension-less `<skin>-<mode>/<base-name>` (`shared/goldenPath.ts`); consumed by all three tier specs (playwright/CT add `.png`; vitest-browser appends `-<browser>.png`).
+  - `goldenPath(name: string, scenario: Scenario): string` — extension-less `<skin>-<mode>/<base-name>` (`shared/goldenPath.ts`); consumed by the vitest-browser tier (its `resolveScreenshotPath` nests via `path.join` and appends `-<browser>.png`).
+  - `goldenPathArray(name: string, scenario: Scenario): [string, string]` — `[<skin>-<mode>, <base-name>.png]` (`shared/goldenPath.ts`); consumed by the playwright + playwright-ct tiers because Playwright flattens a string arg's `/` (array segments nest a real subdir).
   - `scenarioActionFor(name: string): ScenarioAction` — maps a matrix name (`app/credit__holo-dark`) back to its base action (`app/credit`) via `baseScenarioName`.
 
 **Layout decision (user-confirmed):** theme+mode is a **folder** under the spec dir: `…/<specfile>/<skin>-<mode>/<base-name>.png`. So every scenario carries an explicit skin+mode and there is **no bare classic-dark baseline** — classic-dark is just the `classic-dark/` folder. The two excluded scenarios route to `classic-light/` (`app/fx-light`) and `classic-system/` (`app/fx-system`) via their authored fields; setting those fields is a no-op over what their fixtures already seed (so their toggle aria-label assertions are unchanged).
@@ -215,7 +216,7 @@ Create `shared/scenarios.test.ts`:
 ```ts
 import { describe, expect, it } from "vitest";
 
-import { goldenPath } from "./goldenPath";
+import { goldenPath, goldenPathArray } from "./goldenPath";
 import { MATRIX_MODES, MATRIX_SKINS, scenarios } from "./scenarios";
 
 describe("theme-matrix expansion", () => {
@@ -262,6 +263,16 @@ describe("theme-matrix expansion", () => {
       "classic-light/app-fx-light",
     );
   });
+
+  it("goldenPathArray splits into [folder, file.png] for Playwright's array arg", () => {
+    expect(
+      goldenPathArray("app/fx__terminal-light", scenarios["app/fx__terminal-light"]),
+    ).toEqual(["terminal-light", "app-fx.png"]);
+    expect(goldenPathArray("app/fx-light", scenarios["app/fx-light"])).toEqual([
+      "classic-light",
+      "app-fx-light.png",
+    ]);
+  });
 });
 ```
 
@@ -288,13 +299,27 @@ export function baseScenarioName(name: string): string {
 
 /** Extension-less golden path for a scenario: `<skin>-<mode>/<base-name>`.
  *  Theme+mode is a folder under the spec dir; the file is the base scenario
- *  name with `/`→`-`. Each tier appends its own extension (playwright/CT add
- *  `.png`; vitest-browser appends `-<browser>.png`). Every scenario carries an
- *  explicit themeSkin/themeMode after expansion; the `?? classic/dark` fallback
- *  only guards a hand-authored base scenario that forgot them. */
+ *  name with `/`→`-`. Used by the vitest-browser tier, whose `resolveScreenshotPath`
+ *  joins this into a real subdir and appends `-<browser>.png`. Every scenario
+ *  carries an explicit themeSkin/themeMode after expansion; the `?? classic/dark`
+ *  fallback only guards a hand-authored base scenario that forgot them. */
 export function goldenPath(name: string, scenario: Scenario): string {
   const base = baseScenarioName(name).replace(/\//g, "-");
   return `${scenario.themeSkin ?? "classic"}-${scenario.themeMode ?? "dark"}/${base}`;
+}
+
+/** Playwright's ARRAY-arg form: `[<skin>-<mode>, <base-name>.png]`. Required for
+ *  the playwright / playwright-ct tiers because a STRING arg containing `/` is
+ *  flattened to `-` by Playwright (verified: `"a/b.png"` → `a-b.png`), whereas
+ *  array path-segments nest a real subdir. `goldenPath` always has exactly one
+ *  `/` (folder and base-name are each `/`-free), so splitting at it is safe. */
+export function goldenPathArray(
+  name: string,
+  scenario: Scenario,
+): [string, string] {
+  const p = goldenPath(name, scenario);
+  const slash = p.indexOf("/");
+  return [p.slice(0, slash), `${p.slice(slash + 1)}.png`];
 }
 ```
 
@@ -350,7 +375,7 @@ export const scenarios: Record<string, Scenario> = expandThemeMatrix(baseScenari
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `pnpm --filter @rtc/client-react exec vitest run tests/ui/visual/shared/scenarios.test.ts`
-Expected: PASS (5 tests).
+Expected: PASS (6 tests).
 
 - [ ] **Step 7: Add `scenarioActionFor` to `scenarioActions.ts`**
 
@@ -370,13 +395,13 @@ export function scenarioActionFor(name: string): ScenarioAction {
 
 - [ ] **Step 8: Rewire both data-driven specs to `Object.entries` + `goldenPath`**
 
-In `playwright/visual.spec.ts`: replace the imports + the `goldenName` helper + the loop header + the `shot` line. Delete the local `goldenName` function entirely. Result:
+In `playwright/visual.spec.ts`: replace the imports + the `goldenName` helper + the loop header + the `shot` line. Delete the local `goldenName` function entirely. Use the **array** form `goldenPathArray` (a string arg with `/` flattens in Playwright — verified), passing it directly to both `toHaveScreenshot` branches:
 
 ```ts
 import { expect, test } from "@playwright/test";
 
 import { scenarioActionFor } from "../scenarioActions";
-import { goldenPath } from "../shared/goldenPath";
+import { goldenPathArray } from "../shared/goldenPath";
 import { scenarios } from "../shared/scenarios";
 
 for (const [name, scenario] of Object.entries(scenarios)) {
@@ -384,13 +409,13 @@ for (const [name, scenario] of Object.entries(scenarios)) {
 
   test(name, async ({ page }) => {
     // ...unchanged body...
-    const shot = `${goldenPath(name, scenario)}.png`;
+    const shot = goldenPathArray(name, scenario); // [<skin>-<mode>, <base>.png]
     // ...unchanged toHaveScreenshot(shot, …) branches...
   });
 }
 ```
 
-In `vitest-browser/visual.spec.tsx`: same shape — swap the imports (add `scenarioActionFor` from `../scenarioActions` and `goldenPath` from `../shared/goldenPath`, drop the `scenarioActions` import), delete the local `goldenName`, change the loop to `for (const [name, scenario] of Object.entries(scenarios))`, `const action = scenarioActionFor(name);`, and the final capture to `await expect.element(target).toMatchScreenshot(goldenPath(name, scenario));`.
+In `vitest-browser/visual.spec.tsx`: same shape but the **string** form (vitest's `resolveScreenshotPath` nests via `path.join`) — swap the imports (add `scenarioActionFor` from `../scenarioActions` and `goldenPath` from `../shared/goldenPath`, drop the `scenarioActions` import), delete the local `goldenName`, change the loop to `for (const [name, scenario] of Object.entries(scenarios))`, `const action = scenarioActionFor(name);`, and the final capture to `await expect.element(target).toMatchScreenshot(goldenPath(name, scenario));`.
 
 - [ ] **Step 9: Typecheck + lint + commit**
 
@@ -432,7 +457,7 @@ import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
 
 import { scenarioActionFor } from "../scenarioActions";
-import { goldenPath } from "../shared/goldenPath";
+import { goldenPathArray } from "../shared/goldenPath";
 import { scenarios } from "../shared/scenarios";
 
 // Tier 1 — Playwright component tests, data-driven over the SAME shared scenario
@@ -440,7 +465,8 @@ import { scenarios } from "../shared/scenarios";
 // ../vitest-browser/visual.spec.tsx, so all three tiers stay behaviourally in
 // lock-step across the full theme matrix. Goldens route via playwright-ct.config.ts
 // (CI `react/` vs local `react-local/<arch>/`), under this file's `matrix.spec.tsx/`
-// dir, at `<skin>-<mode>/<base-name>.png` (shared goldenPath).
+// dir, at `<skin>-<mode>/<base-name>.png` via the shared goldenPathArray (the
+// array form — a string arg with `/` flattens in Playwright).
 
 test.beforeEach(async ({ page }) => {
   // State is seeded through the ViewModel seam, so clear any persisted prefs.
@@ -494,13 +520,13 @@ for (const [name, scenario] of Object.entries(scenarios)) {
     // Full-bleed scenarios (App/Boot/Lock/Prefs — all flagged fullPage) have no
     // scenario-root wrapper; component scenarios capture just their padded box.
     if (action.fullPage) {
-      await expect(page).toHaveScreenshot(`${goldenPath(name, scenario)}.png`, {
+      await expect(page).toHaveScreenshot(goldenPathArray(name, scenario), {
         animations: "disabled",
         fullPage: true,
       });
     } else {
       await expect(page.getByTestId("scenario-root")).toHaveScreenshot(
-        `${goldenPath(name, scenario)}.png`,
+        goldenPathArray(name, scenario),
         { animations: "disabled" },
       );
     }
