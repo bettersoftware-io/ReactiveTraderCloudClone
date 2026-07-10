@@ -31,12 +31,12 @@ deploy time it:
 ### 1. The button (GitHub Actions — recommended)
 
 Actions tab → **Deploy Claude Design Prototype** → **Run workflow**. The form has
-one field, **Path to the standalone prototype HTML**, pre-filled with the v2 path.
-To ship a future version, change it to e.g.
-`docs/design/v3/standalone/Reactive Trader.html` and run. Or from the CLI:
+one field, **Path to the standalone prototype HTML**, pre-filled with the v3 path.
+To ship a different version, change it to e.g.
+`docs/design/v2/standalone/Reactive Trader.html` and run. Or from the CLI:
 
 ```bash
-gh workflow run deploy-cd-proto.yml -f prototype_path="docs/design/v3/standalone/Reactive Trader.html"
+gh workflow run deploy-cd-proto.yml -f prototype_path="docs/design/v2/standalone/Reactive Trader.html"
 ```
 
 ### 2. Locally
@@ -45,8 +45,8 @@ Requires the Vercel CLI logged in (`vercel login`) with access to the
 `nasantsogt-baasanjavs-projects` scope.
 
 ```bash
-./deploy/cd-proto/deploy.sh                                                    # v2 (default)
-./deploy/cd-proto/deploy.sh "docs/design/v3/standalone/Reactive Trader.html"   # v3
+./deploy/cd-proto/deploy.sh                                                    # v3 (default)
+./deploy/cd-proto/deploy.sh "docs/design/v2/standalone/Reactive Trader.html"   # v2
 ```
 
 ## The password

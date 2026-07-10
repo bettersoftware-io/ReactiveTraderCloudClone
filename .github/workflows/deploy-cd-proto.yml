@@ -7,14 +7,14 @@ name: Deploy Claude Design Prototype
 # workflow (which ships the @rtc/client-prototype React port) — this never
 # auto-runs and touches only the cd-proto project. Run it from the Actions tab
 # ("Run workflow", pick which prototype via the path input) or:
-#   gh workflow run deploy-cd-proto.yml -f prototype_path="docs/design/v3/standalone/Reactive Trader.html"
+#   gh workflow run deploy-cd-proto.yml -f prototype_path="docs/design/v2/standalone/Reactive Trader.html"
 on:
   workflow_dispatch:
     inputs:
       prototype_path:
         description: "Path to the standalone prototype HTML to deploy"
         required: true
-        default: "docs/design/v2/standalone/Reactive Trader.html"
+        default: "docs/design/v3/standalone/Reactive Trader.html"
 
 concurrency:
   group: deploy-cd-proto

@@ -19,12 +19,12 @@ pnpm test        # vitest run in all packages
 pnpm test:e2e    # Playwright (client only)
 pnpm dev         # Vite dev server (client) + tsx watch (server)
 pnpm dev:proto   # @rtc/client-prototype only — the v2 design React port (Vite) → http://localhost:5273
-pnpm dev:design  # standalone v2 design prototype HTML, served by a zero-dep Node script → http://localhost:8899
+pnpm dev:design  # standalone v3 design prototype HTML, served by a zero-dep Node script → http://localhost:8899
 pnpm dev:ios     # @rtc/client-react-native on the iOS simulator (expo run:ios: build → install dev client → launch → Metro)
 pnpm clean       # Remove dist/ in all packages
 ```
 
-`dev:design` serves `docs/design/v2/standalone/Reactive Trader.html` (a self-contained design artifact, not app code) via `scripts/serve-design.mjs`. `dev:proto` runs its React re-implementation in `packages/client-prototype`. `dev:ios` delegates to the RN package's `ios` script (`expo run:ios`); it compiles the native dev client if missing, installs it on the booted simulator, and starts Metro — idempotent, so it's quick on later runs. The native `ios/` folder is gitignored and lives only where you run it (a removed worktree loses it), so run `dev:ios` once from your primary checkout to (re)create the dev build.
+`dev:design` serves `docs/design/v3/standalone/Reactive Trader.html` (a self-contained design artifact, not app code) via `scripts/serve-design.mjs`. `dev:proto` runs its React re-implementation in `packages/client-prototype`. `dev:ios` delegates to the RN package's `ios` script (`expo run:ios`); it compiles the native dev client if missing, installs it on the booted simulator, and starts Metro — idempotent, so it's quick on later runs. The native `ios/` folder is gitignored and lives only where you run it (a removed worktree loses it), so run `dev:ios` once from your primary checkout to (re)create the dev build.
 
 ## Package Structure
 
