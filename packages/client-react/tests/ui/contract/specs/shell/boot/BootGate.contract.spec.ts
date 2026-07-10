@@ -41,6 +41,24 @@ describe("BootGate", () => {
     expect(page.hasSplash()).toBe(false);
     expect(page.hasContent()).toBe(true);
   });
+
+  it("re-raises the splash when the seam reboots after a dismissal", async () => {
+    const page = mount(BootGate, {});
+    await page.skip();
+    page.endFade();
+    expect(page.hasSplash()).toBe(false);
+
+    page.reboot();
+    expect(page.hasSplash()).toBe(true);
+    expect(page.hasContent()).toBe(true);
+  });
+
+  it("stays hidden when the seam seeds the splash invisible (webdriver/nosplash)", () => {
+    const page = mount(BootGate, {});
+    page.hideThroughSeam();
+    expect(page.hasSplash()).toBe(false);
+    expect(page.hasContent()).toBe(true);
+  });
 });
 
 /** Install a window.matchMedia stub for one test (jsdom omits it). */

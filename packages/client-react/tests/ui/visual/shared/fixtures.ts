@@ -1571,13 +1571,37 @@ fixtures["equities-ticket-filled"] = makeAppData({
 
 const adminTopology: ServiceTopology = {
   nodes: [
-    { name: "kernel", status: "ok", throughput: 250, latencyMs: 8 },
-    { name: "pricing", status: "ok", throughput: 180, latencyMs: 5 },
-    { name: "execution", status: "ok", throughput: 90, latencyMs: 12 },
-    { name: "blotter", status: "ok", throughput: 60, latencyMs: 6 },
-    { name: "analytics", status: "ok", throughput: 40, latencyMs: 9 },
-    { name: "credit", status: "degraded", throughput: 30, latencyMs: 45 },
-    { name: "refdata", status: "ok", throughput: 20, latencyMs: 4 },
+    { name: "kernel", status: "ok", health: 98, throughput: 250, latencyMs: 8 },
+    {
+      name: "pricing",
+      status: "ok",
+      health: 98,
+      throughput: 180,
+      latencyMs: 5,
+    },
+    {
+      name: "execution",
+      status: "ok",
+      health: 98,
+      throughput: 90,
+      latencyMs: 12,
+    },
+    { name: "blotter", status: "ok", health: 98, throughput: 60, latencyMs: 6 },
+    {
+      name: "analytics",
+      status: "ok",
+      health: 98,
+      throughput: 40,
+      latencyMs: 9,
+    },
+    {
+      name: "credit",
+      status: "degraded",
+      health: 86,
+      throughput: 30,
+      latencyMs: 45,
+    },
+    { name: "refdata", status: "ok", health: 98, throughput: 20, latencyMs: 4 },
   ],
   edges: [
     { from: "kernel", to: "pricing", latencyMs: 5 },
@@ -1722,9 +1746,21 @@ fixtures["admin-kpi-warn"] = makeAppData({
 // emit that PROTO never modelled (servicesVm's em-dash uptime + red row).
 const adminTopologyMixed: ServiceTopology = {
   nodes: [
-    { name: "kernel", status: "ok", throughput: 250, latencyMs: 8 },
-    { name: "credit", status: "degraded", throughput: 30, latencyMs: 45 },
-    { name: "execution", status: "down", throughput: 0, latencyMs: 0 },
+    { name: "kernel", status: "ok", health: 98, throughput: 250, latencyMs: 8 },
+    {
+      name: "credit",
+      status: "degraded",
+      health: 86,
+      throughput: 30,
+      latencyMs: 45,
+    },
+    {
+      name: "execution",
+      status: "down",
+      health: 0,
+      throughput: 0,
+      latencyMs: 0,
+    },
   ],
   edges: [],
 };

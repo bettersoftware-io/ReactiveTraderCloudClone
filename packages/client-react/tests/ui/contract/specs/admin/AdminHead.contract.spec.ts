@@ -1,8 +1,9 @@
 /**
  * AdminHead contract spec (v2 Parity E Task 4).
  *
- * The admin-dashboard panel's registered head slot: a static "◈ Observability"
- * title plus a status pill wired to the SAME useIncident() seam
+ * The admin-dashboard panel's registered head slot: a single always-active
+ * "◈ Observability" head tab (shared PanelHeadTabs chrome, single view so
+ * nothing toggles it) plus a status pill wired to the SAME useIncident() seam
  * IncidentControls drives (real IncidentMachine, not a fake) — nominal when
  * no incident kind is active, incident-active otherwise. Drives the shared
  * World's injectIncident()/clearIncident() directly (no buttons on this
@@ -19,10 +20,11 @@ afterEach(() => {
 });
 
 describe("AdminHead", () => {
-  it("renders the observability title", () => {
+  it("renders the observability title as an always-active head tab", () => {
     const world = createWorld();
     const head = mountWith(world, AdminHead);
     expect(head.titleText()).toBe("◈ Observability");
+    expect(head.isTitleActive()).toBe(true);
   });
 
   it("shows the all-clear pill when no incident is active", () => {

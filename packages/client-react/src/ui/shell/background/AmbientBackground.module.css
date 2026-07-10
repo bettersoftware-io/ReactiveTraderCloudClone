@@ -14,9 +14,15 @@
  * "running"/"paused" via an inline style on the root, which every layer's
  * animation-play-state reads through inheritance. */
 
+/* z-index: 0 pins the whole backdrop (PROTO AmbientBackground L8) to the
+ * bottom of the shell's stacking context (`.app` isolates — App.module.css):
+ * without it the wrap creates no stacking context when its opacity computes
+ * to 1, so the z-index: 1 vignette below escaped and painted over the
+ * z-auto workspace panels. */
 .wrap {
   position: absolute;
   inset: 0;
+  z-index: 0;
   overflow: hidden;
   pointer-events: none;
   opacity: clamp(0, var(--aurora-opacity) * 100, 1);

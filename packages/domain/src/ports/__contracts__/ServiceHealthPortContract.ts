@@ -27,6 +27,25 @@ export function describeServiceHealthPortContract(
       }
     });
 
+    it("topology$ nodes carry a health in [0, 100] consistent with their status thresholds", async () => {
+      const { port, teardown } = makeHarness();
+
+      try {
+        const topology = await firstValueFrom(port.topology$());
+
+        for (const node of topology.nodes) {
+          expect(node.health).toBeGreaterThanOrEqual(0);
+          expect(node.health).toBeLessThanOrEqual(100);
+
+          if (node.health >= 95) expect(node.status).toBe("ok");
+          else if (node.health >= 70) expect(node.status).toBe("degraded");
+          else expect(node.status).toBe("down");
+        }
+      } finally {
+        teardown();
+      }
+    });
+
     it("topology$ keeps emitting on the simulator cadence", async () => {
       const { port, advance, teardown } = makeHarness();
 

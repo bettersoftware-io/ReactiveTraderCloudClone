@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ServiceTopology } from "../telemetry/topology.js";
 import { ServiceTopologySimulator } from "./ServiceTopologySimulator.js";
 
 beforeEach(() => {
@@ -31,7 +32,45 @@ describe("ServiceTopologySimulator golden", () => {
     ]);
   });
 
-  it("perturb(serviceDown) sets pricing to down", async () => {
+  it("emits per-service health walks: calm ~99 fleet, refdata low+choppy, blotter mid (golden)", async () => {
+    const sim = new ServiceTopologySimulator(3);
+    const collected: ServiceTopology[] = [];
+    const sub = sim.topology$().subscribe((t) => {
+      collected.push(t);
+    });
+    await vi.advanceTimersByTimeAsync(20_000);
+    sub.unsubscribe();
+
+    const last = collected[collected.length - 1];
+    const byName = new Map(
+      last.nodes.map((n) => {
+        return [n.name, n] as const;
+      }),
+    );
+
+    // Calm high services stay in the ok band…
+    expect(byName.get("pricing")?.health).toBeGreaterThanOrEqual(97);
+    expect(byName.get("kernel")?.health).toBeGreaterThanOrEqual(98);
+    expect(byName.get("pricing")?.status).toBe("ok");
+    // …refdata walks a visibly lower, choppier band (76-94 → degraded)…
+    const refdata = byName.get("refdata");
+    expect(refdata?.health).toBeGreaterThanOrEqual(76);
+    expect(refdata?.health).toBeLessThanOrEqual(94);
+    expect(refdata?.status).toBe("degraded");
+    // …and blotter sits mid (88-98), straddling the ok/degraded threshold.
+    expect(byName.get("blotter")?.health).toBeGreaterThanOrEqual(88);
+    expect(byName.get("blotter")?.health).toBeLessThanOrEqual(98);
+
+    // The walk moves: refdata's health is not a constant across ticks.
+    const refdataSeries = collected.map((t) => {
+      return t.nodes.find((n) => {
+        return n.name === "refdata";
+      })?.health;
+    });
+    expect(new Set(refdataSeries).size).toBeGreaterThan(1);
+  });
+
+  it("perturb(serviceDown) sets pricing to down with health 0", async () => {
     const sim = new ServiceTopologySimulator(3);
     sim.perturb("serviceDown");
     const p = firstValueFrom(sim.topology$());
@@ -41,6 +80,7 @@ describe("ServiceTopologySimulator golden", () => {
       return n.name === "pricing";
     });
     expect(pricing?.status).toBe("down");
+    expect(pricing?.health).toBe(0);
   });
 
   it("perturb(serviceDown) raises pricing edge latencyMs to 800, distinct from baseline (golden)", async () => {

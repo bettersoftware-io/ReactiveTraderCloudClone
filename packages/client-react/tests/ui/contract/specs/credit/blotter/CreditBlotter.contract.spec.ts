@@ -53,6 +53,22 @@ describe("CreditBlotter", () => {
     expect(headers).toContain("Unit Price");
   });
 
+  // Fixed header: the column headers live in their own table ABOVE the
+  // scrolling rows region (same split-header structure as FxBlotter), so
+  // they stay put while rows scroll and the filter popover anchors outside
+  // the scroll clip — see the sticky-header note in CreditBlotter.module.css.
+  it("splits the column headers out of the scrolling rows region", () => {
+    const blotter = mount(CreditBlotter, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [rfq(1)],
+        useAllQuotes: quoteMap(acceptedQuote(900, 1)),
+      },
+    });
+    expect(blotter.headerIsSplitFromRows()).toBe(true);
+  });
+
   it("shows the empty state when there are no closed-and-accepted RFQs", () => {
     const blotter = mount(CreditBlotter, {
       hooks: { useInstruments: instruments, useDealers: dealers },
@@ -297,8 +313,11 @@ describe("CreditBlotter", () => {
       vi.stubGlobal("Blob", RecordingBlob);
       vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock");
       vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+      let downloadName = "";
       vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-        () => {},
+        function captureDownloadName(this: HTMLAnchorElement) {
+          downloadName = this.download;
+        },
       );
 
       const blotter = mount(CreditBlotterWorkspace, {
@@ -312,6 +331,9 @@ describe("CreditBlotter", () => {
       await blotter.clickExport();
 
       expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+      // The credit blotter downloads under its own filename (PROTO
+      // useCreditRfqs.ts downloadCsv("credit-trades.csv", …)).
+      expect(downloadName).toBe("credit-trades.csv");
       const lines = captured.split("\n");
       // Header must contain all credit columns.
       expect(lines[0]).toBe(

@@ -3,6 +3,7 @@ export * from "#/presenters/AnimatedBackgroundPresenter";
 export * from "#/presenters/AnimationDirector";
 export * from "#/presenters/adminKpisVm";
 export * from "#/presenters/BlotterPresenter";
+export * from "#/presenters/BootGatePresenter";
 export * from "#/presenters/BootPreferencePresenter";
 export * from "#/presenters/BootSequenceMachine";
 export * from "#/presenters/CandleSeriesPresenter";
