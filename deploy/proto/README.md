@@ -4,9 +4,10 @@ Deploys the **`@rtc/client-prototype` React port** — the readable, self-contai
 React port of the v2 design — to its own Vercel project, `rtc-clone-proto` →
 **https://rtc-clone-proto.vercel.app**, behind a shared password.
 
-This is the *running code* prototype. The hand-authored HTML design mockup ships
+This is the *running code* prototype. The hand-authored HTML design mockups ship
 separately via the **Deploy Claude Design Prototype** workflow →
-`rtc-clone-cd-proto`; see [`deploy/cd-proto/README.md`](../cd-proto/README.md).
+`rtc-clone-web-cd-proto` / `rtc-clone-mobile-cd-proto`; see
+[`deploy/cd-proto/README.md`](../cd-proto/README.md).
 
 Completely separate from the main FX app: different Vercel project, no Git
 auto-deploy, on-demand only. Updating one never touches the other.

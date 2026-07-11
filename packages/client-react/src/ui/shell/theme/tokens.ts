@@ -11,9 +11,9 @@
  *   neon     — high-contrast cyberpunk (magenta / cyan, aurora FX)
  *
  * Dark values for holo / terminal / neon are mapped 1-to-1 from
- * docs/design/v1/dev-handoff/theme-tokens.css.  Light variants for holo /
+ * docs/design/web/v1/dev-handoff/theme-tokens.css.  Light variants for holo /
  * terminal / neon are mapped 1-to-1 from the v2 prototype's `themesLight`
- * table (docs/design/v2/dev-handoff/prototype/source/Reactive Trader.dc.html)
+ * table (docs/design/web/v2/dev-handoff/prototype/source/Reactive Trader.dc.html)
  * — verbatim, not derived. Classic (both modes) stays the pre-redesign
  * palette, neutral on the aurora/blur/glow/tile/panel-shadow keys.
  */

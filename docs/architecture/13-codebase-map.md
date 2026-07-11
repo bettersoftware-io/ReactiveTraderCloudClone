@@ -148,7 +148,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | A readable React 19 port of the `docs/design/v2` standalone design artifact -- a comprehension aid, not a shipping client. |
+| **What it is** | A readable React 19 port of the `docs/design/web/v2` standalone design artifact -- a comprehension aid, not a shipping client. |
 | **Ring** | None -- a design island, explicitly excluded from the ring diagrams ([§1.3.1](01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring)) |
 | **Depends on** | `react`, `react-dom` only (`packages/client-prototype/package.json` `dependencies`) -- zero `@rtc/*` imports, machine-enforced by dependency-cruiser's `prototype-isolated` rule ([§6](06-package-dependencies.md#6-package-dependencies)) |
 | **Consumed by** | Nothing -- no other `package.json` in the workspace lists `@rtc/client-prototype` |
