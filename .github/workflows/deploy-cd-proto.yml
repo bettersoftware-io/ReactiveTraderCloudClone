@@ -1,23 +1,37 @@
 name: Deploy Claude Design Prototype
 
 # On-demand deploy of a standalone Claude Design prototype (the hand-authored
-# HTML mockup under docs/design/<version>/standalone/) to the rtc-clone-cd-proto
-# Vercel project (https://rtc-clone-cd-proto.vercel.app), behind a Basic-Auth gate.
+# HTML mockups under docs/design/web/<version>/standalone/ and
+# docs/design/mobile/<version>/standalone/) to one of two Vercel projects, each
+# behind a Basic-Auth gate:
+#   - target: web    → rtc-clone-web-cd-proto    (default; ships web v4 unless a path is given)
+#   - target: mobile → rtc-clone-mobile-cd-proto (ships mobile v1 unless a path is given)
 # Separate from the main app's Deploy workflow AND from the "Deploy Prototype"
 # workflow (which ships the @rtc/client-prototype React port) — this never
-# auto-runs and touches only the cd-proto project. Run it from the Actions tab
-# ("Run workflow", pick which prototype via the path input) or:
-#   gh workflow run deploy-cd-proto.yml -f prototype_path="docs/design/v2/standalone/Reactive Trader.html"
+# auto-runs and touches only the cd-proto projects. Run it from the Actions tab
+# ("Run workflow", pick target + optional path) or:
+#   gh workflow run deploy-cd-proto.yml -f target=mobile
+#   gh workflow run deploy-cd-proto.yml -f prototype_path="docs/design/web/v3/standalone/Reactive Trader.html"
+#
+# The mobile target needs the repo secret VERCEL_CD_PROTO_MOBILE_PROJECT_ID
+# (the rtc-clone-mobile-cd-proto project's prj_… id) — see deploy/cd-proto/README.md.
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: "Which cd-proto project to deploy to"
+        type: choice
+        options:
+          - web
+          - mobile
+        default: web
       prototype_path:
-        description: "Path to the standalone prototype HTML to deploy"
-        required: true
-        default: "docs/design/v3/standalone/Reactive Trader.html"
+        description: "Path to the standalone prototype HTML (blank = the target's default)"
+        required: false
+        default: ""
 
 concurrency:
-  group: deploy-cd-proto
+  group: deploy-cd-proto-${{ inputs.target }}
   cancel-in-progress: true
 
 permissions:
@@ -25,7 +39,7 @@ permissions:
 
 jobs:
   deploy-cd-proto:
-    name: cd-proto → vercel
+    name: cd-proto (${{ inputs.target }}) → vercel
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -37,10 +51,40 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
-      - name: Deploy chosen prototype (generate gate, copy HTML, deploy, smoke)
-        # prototype_path is bound via env and passed as a quoted argument — never
-        # interpolated into the script body — to avoid dispatch-input injection.
+      - name: Guard mobile project id
+        if: ${{ inputs.target == 'mobile' }}
         env:
-          SRC: ${{ inputs.prototype_path }}
+          PID: ${{ secrets.VERCEL_CD_PROTO_MOBILE_PROJECT_ID }}
+        run: |
+          if [ -z "$PID" ]; then
+            echo "::error::VERCEL_CD_PROTO_MOBILE_PROJECT_ID is not set. Keep the rtc-clone-mobile-cd-proto project, then add its prj_… id as that repo secret." >&2
+            exit 1
+          fi
+
+      - name: Resolve prototype path
+        id: resolve
+        env:
+          TARGET: ${{ inputs.target }}
+          RAW_PATH: ${{ inputs.prototype_path }}
+        run: |
+          if [ -n "$RAW_PATH" ]; then
+            src="$RAW_PATH"
+          elif [ "$TARGET" = "mobile" ]; then
+            src="docs/design/mobile/v1/standalone/Reactive Trader Mobile.html"
+          else
+            src="docs/design/web/v4/standalone/Reactive Trader.html"
+          fi
+          printf 'src=%s\n' "$src" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy chosen prototype (generate gate, copy HTML, deploy, smoke)
+        # The resolved path is bound via env and passed as a quoted argument —
+        # never interpolated into the script body — to avoid dispatch-input
+        # injection. VERCEL_PROJECT_ID: empty for web (deploy.sh's default is the
+        # web project) or the mobile secret for mobile; CD_PROTO_ALIAS selects
+        # which project alias the post-deploy smoke check hits.
+        env:
+          SRC: ${{ steps.resolve.outputs.src }}
+          VERCEL_PROJECT_ID: ${{ inputs.target == 'mobile' && secrets.VERCEL_CD_PROTO_MOBILE_PROJECT_ID || '' }}
+          CD_PROTO_ALIAS: ${{ inputs.target == 'mobile' && 'https://rtc-clone-mobile-cd-proto.vercel.app' || 'https://rtc-clone-web-cd-proto.vercel.app' }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: bash deploy/cd-proto/deploy.sh "$SRC"

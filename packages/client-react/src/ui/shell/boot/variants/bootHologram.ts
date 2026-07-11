@@ -3,7 +3,7 @@
 // of the market core: an orbiting 3D bar-column grid that assembles from
 // scattered particles inside a rising light cone, ringed by an emitter pad,
 // gyroscopic segmented rings and dust motes, with floating FX/Risk/Order-flow
-// callout panels on leader lines (see docs/design/v3/CHANGELOG.md entry 4,
+// callout panels on leader lines (see docs/design/web/v3/CHANGELOG.md entry 4,
 // "hologram — Volumetric market core").
 
 import {

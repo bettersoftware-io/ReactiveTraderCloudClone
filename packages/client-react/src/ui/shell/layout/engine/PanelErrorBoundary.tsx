@@ -3,7 +3,7 @@ import { Component, type ReactNode } from "react";
 import styles from "./PanelErrorBoundary.module.css";
 
 interface PanelErrorBoundaryProps {
-  /** The panel's own display title (renderPanel already computes this for
+  /** The panel's own display title (PanelLeaf already computes this for
    * the header), reused here so the fallback names the same panel a working
    * one would. */
   readonly title: string;
