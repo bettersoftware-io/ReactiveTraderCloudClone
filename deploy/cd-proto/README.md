@@ -31,9 +31,12 @@ deploy time it:
 4. `vercel deploy --prod` to the project named by `VERCEL_PROJECT_ID`, then
    smoke-tests that an unauthenticated request to `CD_PROTO_ALIAS` is gated (`401`).
 
-The web project id is `deploy.sh`'s default; the mobile project id comes from the
-repo secret `VERCEL_CD_PROTO_MOBILE_PROJECT_ID`. Both live in the same Vercel team
-(`nasantsogt-baasanjavs-projects`), so `VERCEL_ORG_ID` is shared.
+In CI the workflow passes `VERCEL_PROJECT_ID` from the target's project-id secret
+— `VERCEL_CD_PROTO_WEB_PROJECT_ID` or `VERCEL_CD_PROTO_MOBILE_PROJECT_ID`. For
+local runs `deploy.sh` still carries the web project id as a hardcoded default (a
+project id isn't sensitive — it shows in dashboard URLs), so `./deploy.sh` works
+without env; the mobile project id must be passed explicitly. Both projects live in
+the same Vercel team (`nasantsogt-baasanjavs-projects`), so `VERCEL_ORG_ID` is shared.
 
 ## Deploy it (two ways)
 
@@ -67,16 +70,19 @@ CD_PROTO_ALIAS=https://rtc-clone-mobile-cd-proto.vercel.app \
   ./deploy/cd-proto/deploy.sh "docs/design/mobile/v1/standalone/Reactive Trader Mobile.html"
 ```
 
-## One-time setup for the mobile project
+## One-time setup (project-id secrets)
 
-The `rtc-clone-mobile-cd-proto` project already exists in the team. To make its
-deploys work:
+Both projects live in the team already; the workflow reads each project id from a
+repo secret (Settings → Secrets and variables → Actions). A project id isn't
+sensitive, but it's kept a Secret to match the other deploy workflows' convention.
 
-1. **Repo secret** — add `VERCEL_CD_PROTO_MOBILE_PROJECT_ID` =
-   `prj_aWczPu0wohwQT9tcbkONTL0bh9wj` (Settings → Secrets and variables → Actions).
-   A project id isn't sensitive, but it's kept a Secret to match the other deploy
-   workflows' convention.
-2. **Password** — set `SITE_PASSWORD` on the project (see below).
+1. **Web** — `VERCEL_CD_PROTO_WEB_PROJECT_ID` = `prj_VxG4x6dsstNbG3cEnhrZjZZM2Ayl`
+   (the `rtc-clone-web-cd-proto` project). If unset, CI falls back to the same id
+   hardcoded in `deploy.sh`.
+2. **Mobile** — `VERCEL_CD_PROTO_MOBILE_PROJECT_ID` =
+   `prj_aWczPu0wohwQT9tcbkONTL0bh9wj` (the `rtc-clone-mobile-cd-proto` project). A
+   guard step fails the mobile deploy if this is unset (no hardcoded fallback).
+3. **Password** — set `SITE_PASSWORD` on each project (see below).
 
 ## The password
 
