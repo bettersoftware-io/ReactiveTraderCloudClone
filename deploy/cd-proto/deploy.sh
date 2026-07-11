@@ -24,8 +24,11 @@
 # committed (it is an 835 KB duplicate of the standalone).
 #
 # Auth/targeting:
-#   - Project is selected via VERCEL_ORG_ID + VERCEL_PROJECT_ID (not secrets — a
-#     project ID appears in dashboard URLs); defaults below point at the web proto.
+#   - Project is selected via VERCEL_ORG_ID + VERCEL_PROJECT_ID. In CI the
+#     workflow passes VERCEL_PROJECT_ID from the target's project-id secret
+#     (VERCEL_CD_PROTO_WEB_PROJECT_ID / _MOBILE_PROJECT_ID); the default below is a
+#     local-run fallback = the web project (a project ID appears in dashboard URLs,
+#     so it isn't sensitive).
 #   - CD_PROTO_ALIAS is the canonical alias the post-deploy smoke check hits;
 #     defaults to the web project, override it for the mobile project.
 #   - Locally: relies on `vercel login`. In CI: set VERCEL_TOKEN and it is used.

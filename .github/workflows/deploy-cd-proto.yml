@@ -79,12 +79,13 @@ jobs:
       - name: Deploy chosen prototype (generate gate, copy HTML, deploy, smoke)
         # The resolved path is bound via env and passed as a quoted argument —
         # never interpolated into the script body — to avoid dispatch-input
-        # injection. VERCEL_PROJECT_ID: empty for web (deploy.sh's default is the
-        # web project) or the mobile secret for mobile; CD_PROTO_ALIAS selects
-        # which project alias the post-deploy smoke check hits.
+        # injection. VERCEL_PROJECT_ID comes from the target's project-id secret
+        # (VERCEL_CD_PROTO_WEB_PROJECT_ID / _MOBILE_PROJECT_ID); if the web secret
+        # is somehow unset, the empty string falls back to deploy.sh's hardcoded
+        # web default. CD_PROTO_ALIAS selects which alias the smoke check hits.
         env:
           SRC: ${{ steps.resolve.outputs.src }}
-          VERCEL_PROJECT_ID: ${{ inputs.target == 'mobile' && secrets.VERCEL_CD_PROTO_MOBILE_PROJECT_ID || '' }}
+          VERCEL_PROJECT_ID: ${{ inputs.target == 'mobile' && secrets.VERCEL_CD_PROTO_MOBILE_PROJECT_ID || secrets.VERCEL_CD_PROTO_WEB_PROJECT_ID }}
           CD_PROTO_ALIAS: ${{ inputs.target == 'mobile' && 'https://rtc-clone-mobile-cd-proto.vercel.app' || 'https://rtc-clone-web-cd-proto.vercel.app' }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: bash deploy/cd-proto/deploy.sh "$SRC"
