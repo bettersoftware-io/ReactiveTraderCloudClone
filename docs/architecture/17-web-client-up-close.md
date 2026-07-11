@@ -155,7 +155,7 @@ const FX_ROOT: LayoutNode = {
 │ fx-rates               │ fx-analytics    │
 │ (left column, 0.66)    │ (rail, 0.5)     │
 ├────────────────────────┼─────────────────┤
-│ fx-blotter              │ fx-positions   │
+│ fx-blotter             │ fx-positions    │
 │ (left column, 0.34)    │ (rail, 0.5)     │
 └────────────────────────┴─────────────────┘
  left column: row-sizes[0] = 0.73     rail: row-sizes[1] = 0.27, initialPx 360px
