@@ -86,7 +86,7 @@
   <text x="333" y="220" text-anchor="middle" class="chip-label">Equities</text>
   <rect x="372" y="206" width="50" height="20" rx="10" class="chip"/>
   <text x="397" y="220" text-anchor="middle" class="chip-label">Admin</text>
-  <text x="812" y="220" text-anchor="end" class="note mono">onClick → setActiveTab (host &lt;button&gt;s from a renderTab helper)</text>
+  <text x="812" y="220" text-anchor="end" class="note mono">4 × NavTab · onClick → setActiveTab</text>
 
   <!-- ======== WorkspaceEngine ======== -->
   <rect x="76" y="242" width="744" height="376" rx="6" class="ui-box"/>
@@ -285,7 +285,7 @@
   <rect x="340" y="716" width="12" height="12" rx="2" class="split-box"/>
   <text x="358" y="726" class="note">layout engine — one green box per kind:"split" node</text>
   <rect x="622" y="716" width="12" height="12" rx="2" class="leaf-head"/>
-  <text x="640" y="726" class="note">panel component resolved from the registries</text>
+  <text x="640" y="726" class="note">panel — one PanelLeaf per amber box, resolved from the registries</text>
   <rect x="32" y="738" width="12" height="12" rx="2" class="overlay-sheet"/>
   <text x="50" y="748" class="note">full-viewport overlay (renders null until active)</text>
   <line x1="290" y1="744" x2="318" y2="744" class="handle"/>

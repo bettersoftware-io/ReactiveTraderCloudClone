@@ -22,14 +22,15 @@ export function TileExecOverlay(
     return null;
   }
 
-  return <div className={styles.overlay}>{renderBody(tile, meta, now)}</div>;
+  return (
+    <div className={styles.overlay}>
+      <ExecBody tile={tile} meta={meta} now={now} />
+    </div>
+  );
 }
 
-function renderBody(
-  tile: TileState,
-  meta: PairMeta,
-  now: number,
-): ReactElement | null {
+/** Stage dispatcher: picks the overlay body for the tile's execution stage. */
+function ExecBody({ tile, meta, now }: ExecBodyProps): ReactElement | null {
   switch (tile.stage) {
     case "executing":
     case "rfqReq":
@@ -43,6 +44,12 @@ function renderBody(
     default:
       return null;
   }
+}
+
+interface ExecBodyProps {
+  tile: TileState;
+  meta: PairMeta;
+  now: number;
 }
 
 interface BusyBodyProps {

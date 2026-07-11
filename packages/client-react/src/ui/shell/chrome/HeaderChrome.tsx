@@ -5,6 +5,7 @@ import { PreferencesModal } from "../prefs/PreferencesModal";
 import { AccountMenu } from "./AccountMenu";
 import { EnvBadge } from "./EnvBadge";
 import { LanguageMenu } from "./LanguageMenu";
+import { NavTab, type WorkspaceTab } from "./NavTab";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { ThemePicker } from "./ThemePicker";
 
@@ -18,10 +19,9 @@ import styles from "./HeaderChrome.module.css";
  * The Preferences modal opens from the account menu's ⚙ Preferences row
  * (prototype parity — no standalone gear button); its open state lives here.
  *
- * All four nav tabs (FX, Credit, Equities, Admin) are live workspace tabs.
- * Each renders with `data-testid="tab-{tab}"`, `data-active`, and calls
- * `onTabChange` on click — keeping the Cypress workspace contract intact for
- * all four workspaces. Equities was added as a full tab in Phase 4.
+ * All four nav tabs (FX, Credit, Equities, Admin) are live workspace tabs —
+ * one NavTab component each (see NavTab.tsx for the testid/data-active
+ * contract). Equities was added as a full tab in Phase 4.
  */
 export function HeaderChrome({
   activeTab,
@@ -30,24 +30,6 @@ export function HeaderChrome({
   // Local view-state only (which UI panel is open) — not business logic, so a
   // plain useState is correct here, no port involved.
   const [prefsOpen, setPrefsOpen] = useState(false);
-
-  function renderTab(tab: WorkspaceTab): ReactElement {
-    const active = activeTab === tab;
-    return (
-      <button
-        key={tab}
-        type="button"
-        data-testid={`tab-${tab}`}
-        data-active={active ? "true" : "false"}
-        className={styles.navButton}
-        onClick={() => {
-          onTabChange(tab);
-        }}
-      >
-        {TAB_LABEL[tab]}
-      </button>
-    );
-  }
 
   return (
     <header data-testid="header" className={styles.header}>
@@ -64,10 +46,22 @@ export function HeaderChrome({
       </div>
 
       <nav className={styles.nav} aria-label="Workspace">
-        {renderTab("fx")}
-        {renderTab("credit")}
-        {renderTab("equities")}
-        {renderTab("admin")}
+        <NavTab tab="fx" active={activeTab === "fx"} onSelect={onTabChange} />
+        <NavTab
+          tab="credit"
+          active={activeTab === "credit"}
+          onSelect={onTabChange}
+        />
+        <NavTab
+          tab="equities"
+          active={activeTab === "equities"}
+          onSelect={onTabChange}
+        />
+        <NavTab
+          tab="admin"
+          active={activeTab === "admin"}
+          onSelect={onTabChange}
+        />
       </nav>
 
       <div className={styles.spacer} />
@@ -98,16 +92,9 @@ export function HeaderChrome({
   );
 }
 
-/** The four real workspace tabs the shell switches between. Equities added in
- *  Phase 4; the e2e Workspace page object clicks `tab-${tab}`. */
-export type WorkspaceTab = "fx" | "credit" | "admin" | "equities";
-
-const TAB_LABEL: Record<WorkspaceTab, string> = {
-  fx: "FX",
-  credit: "Credit",
-  admin: "Admin",
-  equities: "Equities",
-};
+// Re-exported so existing consumers (App.tsx) keep importing the workspace-tab
+// type from the header, while its definition lives beside NavTab.
+export type { WorkspaceTab } from "./NavTab";
 
 interface HeaderChromeProps {
   activeTab: WorkspaceTab;

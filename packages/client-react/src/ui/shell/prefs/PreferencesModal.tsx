@@ -45,36 +45,6 @@ export function PreferencesModal({
     });
   }
 
-  function renderToggle(def: ToggleDef): ReactElement {
-    return (
-      <PrefToggle
-        key={def.key}
-        label={def.label}
-        description={def.description}
-        on={toggles[def.key]}
-        onToggle={() => {
-          toggleCosmetic(def.key);
-        }}
-        testid={`pref-toggle-${def.key}`}
-      />
-    );
-  }
-
-  function renderSegment(def: SegmentDef): ReactElement {
-    return (
-      <PrefSegment
-        key={def.key}
-        label={def.label}
-        options={def.options}
-        value={segments[def.key]}
-        onChange={(value: string) => {
-          selectSegment(def.key, value);
-        }}
-        testid={`pref-segment-${def.key}`}
-      />
-    );
-  }
-
   return (
     <div data-testid="prefs-modal" className={styles.overlay}>
       <div role="dialog" aria-label="Preferences" className={styles.dialog}>
@@ -107,21 +77,49 @@ export function PreferencesModal({
                 onToggle={toggleAnimatedBg}
                 testid="pref-toggle-animatedBg"
               />
-              {DISPLAY_TOGGLES.map(renderToggle)}
-              {DISPLAY_SEGMENTS.map(renderSegment)}
+              <ToggleGroup
+                defs={DISPLAY_TOGGLES}
+                values={toggles}
+                onToggle={toggleCosmetic}
+              />
+              <SegmentGroup
+                defs={DISPLAY_SEGMENTS}
+                values={segments}
+                onSelect={selectSegment}
+              />
 
               <div className={styles.sectionHead}>TRADING</div>
-              {TRADING_TOGGLES.map(renderToggle)}
-              {TRADING_SEGMENTS.map(renderSegment)}
+              <ToggleGroup
+                defs={TRADING_TOGGLES}
+                values={toggles}
+                onToggle={toggleCosmetic}
+              />
+              <SegmentGroup
+                defs={TRADING_SEGMENTS}
+                values={segments}
+                onSelect={selectSegment}
+              />
             </div>
 
             <div className={styles.column}>
               <div className={styles.sectionHead}>NOTIFICATIONS</div>
-              {NOTIFICATION_TOGGLES.map(renderToggle)}
+              <ToggleGroup
+                defs={NOTIFICATION_TOGGLES}
+                values={toggles}
+                onToggle={toggleCosmetic}
+              />
 
               <div className={styles.sectionHead}>DATA &amp; PRIVACY</div>
-              {DATA_SEGMENTS.map(renderSegment)}
-              {DATA_TOGGLES.map(renderToggle)}
+              <SegmentGroup
+                defs={DATA_SEGMENTS}
+                values={segments}
+                onSelect={selectSegment}
+              />
+              <ToggleGroup
+                defs={DATA_TOGGLES}
+                values={toggles}
+                onToggle={toggleCosmetic}
+              />
             </div>
           </div>
         </div>
@@ -144,11 +142,76 @@ export function PreferencesModal({
   );
 }
 
+/** A run of cosmetic PrefToggle rows driven by one defs catalogue — the state
+ * lookup and handler binding live here so the call sites stay declarative. */
+function ToggleGroup({
+  defs,
+  values,
+  onToggle,
+}: ToggleGroupProps): ReactElement {
+  return (
+    <>
+      {defs.map((def) => {
+        return (
+          <PrefToggle
+            key={def.key}
+            label={def.label}
+            description={def.description}
+            on={values[def.key]}
+            onToggle={() => {
+              onToggle(def.key);
+            }}
+            testid={`pref-toggle-${def.key}`}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+/** A run of cosmetic PrefSegment rows driven by one defs catalogue. */
+function SegmentGroup({
+  defs,
+  values,
+  onSelect,
+}: SegmentGroupProps): ReactElement {
+  return (
+    <>
+      {defs.map((def) => {
+        return (
+          <PrefSegment
+            key={def.key}
+            label={def.label}
+            options={def.options}
+            value={values[def.key]}
+            onChange={(value: string) => {
+              onSelect(def.key, value);
+            }}
+            testid={`pref-segment-${def.key}`}
+          />
+        );
+      })}
+    </>
+  );
+}
+
 interface PreferencesModalProps {
   /** The modal renders only when `open` is true. */
   open: boolean;
   /** Fired when the modal is dismissed (✕ or DONE). */
   onClose: () => void;
+}
+
+interface ToggleGroupProps {
+  defs: readonly ToggleDef[];
+  values: Record<string, boolean>;
+  onToggle: (key: string) => void;
+}
+
+interface SegmentGroupProps {
+  defs: readonly SegmentDef[];
+  values: Record<string, string>;
+  onSelect: (group: string, value: string) => void;
 }
 
 interface ToggleDef {
