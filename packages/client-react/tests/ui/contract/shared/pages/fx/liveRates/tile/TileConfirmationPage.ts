@@ -47,7 +47,7 @@ export class TileConfirmationPage extends MountedComponent<TileConfirmationProps
       case "creditExceeded":
         return "var(--accent-aware)";
       case "started":
-        return "transparent";
+        return "var(--bg-secondary)";
       case undefined:
         return "";
       default:

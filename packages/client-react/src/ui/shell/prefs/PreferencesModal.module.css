@@ -31,7 +31,9 @@
 }
 
 .title {
-  font-family: var(--font-display);
+  /* PROTO hardcodes 'Orbitron' here (not fontD) — the logo face gives the
+   * dialog chrome its display-grade weight. */
+  font-family: var(--font-logo);
   font-weight: 800;
   font-size: 15px;
   letter-spacing: 0.18em;
@@ -202,7 +204,8 @@
   border: none;
   background-color: var(--accent-positive);
   color: var(--bg-primary);
-  font-family: var(--font-display);
+  /* PROTO: 'Orbitron' like the dialog title, not fontD. */
+  font-family: var(--font-logo);
   font-weight: 700;
   font-size: 12px;
   letter-spacing: 0.14em;

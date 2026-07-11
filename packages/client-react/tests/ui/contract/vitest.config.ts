@@ -61,6 +61,9 @@ export default defineConfig({
         // Complex multi-variant canvas draw functions — no DOM-assertable API;
         // the pixel output is validated by the visual (browser) tier.
         "src/ui/shell/boot/bootCanvas.ts",
+        // The v3 3D boot scenes (hologram/geo/layers/jarvis/topo): same
+        // canvas-only shape as bootCanvas.ts above.
+        "src/ui/shell/boot/variants/**",
       ],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/ui/contract/coverage",

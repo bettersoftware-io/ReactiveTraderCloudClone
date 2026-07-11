@@ -643,7 +643,9 @@ function PanelLeaf({
               ) : null}
             </div>
           </header>
-          <div className={styles.panelBody}>
+          {/* data-flip-stage: the scroll container owning the panel's visible
+              height — useFlipGrid's enter sweep anchors to its corner. */}
+          <div className={styles.panelBody} data-flip-stage>
             <PanelErrorBoundary title={title}>
               {registry[panelId]?.()}
             </PanelErrorBoundary>

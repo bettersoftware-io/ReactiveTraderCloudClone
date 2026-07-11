@@ -6,12 +6,12 @@ import { flipDeltas, useFlipGrid } from "./useFlipGrid";
 describe("flipDeltas", () => {
   it("computes inverse deltas for moved items and skips unmoved ones", () => {
     const prev = new Map([
-      ["EURUSD", { left: 0, top: 0 }],
-      ["GBPUSD", { left: 320, top: 0 }],
+      ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
+      ["GBPUSD", { left: 320, top: 0, width: 0, height: 0 }],
     ]);
     const next = new Map([
-      ["EURUSD", { left: 320, top: 0 }],
-      ["GBPUSD", { left: 320, top: 0 }],
+      ["EURUSD", { left: 320, top: 0, width: 0, height: 0 }],
+      ["GBPUSD", { left: 320, top: 0, width: 0, height: 0 }],
     ]);
     expect(flipDeltas(prev, next)).toEqual([
       { key: "EURUSD", dx: -320, dy: 0 },
@@ -19,39 +19,57 @@ describe("flipDeltas", () => {
   });
 
   it("omits keys that only exist in one of the two maps", () => {
-    const prev = new Map([["EURUSD", { left: 0, top: 0 }]]);
+    const prev = new Map([
+      ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
+    ]);
     const next = new Map([
-      ["EURUSD", { left: 0, top: 0 }],
-      ["GBPUSD", { left: 300, top: 0 }],
+      ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
+      ["GBPUSD", { left: 300, top: 0, width: 0, height: 0 }],
     ]);
     expect(flipDeltas(prev, next)).toEqual([]);
   });
 
   it("computes both axes when an item moves diagonally", () => {
-    const prev = new Map([["EURUSD", { left: 0, top: 0 }]]);
-    const next = new Map([["EURUSD", { left: 300, top: 120 }]]);
+    const prev = new Map([
+      ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
+    ]);
+    const next = new Map([
+      ["EURUSD", { left: 300, top: 120, width: 0, height: 0 }],
+    ]);
     expect(flipDeltas(prev, next)).toEqual([
       { key: "EURUSD", dx: -300, dy: -120 },
     ]);
   });
 
   it("returns an empty array when nothing moved", () => {
-    const prev = new Map([["EURUSD", { left: 10, top: 10 }]]);
-    const next = new Map([["EURUSD", { left: 10, top: 10 }]]);
+    const prev = new Map([
+      ["EURUSD", { left: 10, top: 10, width: 0, height: 0 }],
+    ]);
+    const next = new Map([
+      ["EURUSD", { left: 10, top: 10, width: 0, height: 0 }],
+    ]);
     expect(flipDeltas(prev, next)).toEqual([]);
   });
 
   // PROTO useFlip.ts parity: sub-pixel nudges (< 0.5px on both axes) don't
   // glide — a re-render that barely moves a node shouldn't flicker.
   it("suppresses sub-pixel deltas on both axes", () => {
-    const prev = new Map([["EURUSD", { left: 0, top: 0 }]]);
-    const next = new Map([["EURUSD", { left: 0.3, top: -0.4 }]]);
+    const prev = new Map([
+      ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
+    ]);
+    const next = new Map([
+      ["EURUSD", { left: 0.3, top: -0.4, width: 0, height: 0 }],
+    ]);
     expect(flipDeltas(prev, next)).toEqual([]);
   });
 
   it("keeps a delta when either axis moved at least half a pixel", () => {
-    const prev = new Map([["EURUSD", { left: 0, top: 0 }]]);
-    const next = new Map([["EURUSD", { left: 0.2, top: 12 }]]);
+    const prev = new Map([
+      ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
+    ]);
+    const next = new Map([
+      ["EURUSD", { left: 0.2, top: 12, width: 0, height: 0 }],
+    ]);
     expect(flipDeltas(prev, next)).toEqual([
       { key: "EURUSD", dx: -0.2, dy: -12 },
     ]);
@@ -123,6 +141,199 @@ describe("useFlipGrid", () => {
       expect.objectContaining({ duration: 440 }),
     );
   });
+
+  // PROTO _flip enter branch: an item with no previous rect pops in — from
+  // the stage's right border (dx = stage.right - item.right), fading and
+  // scaling up, with the glide's duration/easing.
+  it("plays the enter animation for newly-appearing items when enabled", () => {
+    const stage = makeStage({ right: 900, bottom: 600 });
+    const first = makeTile();
+    stage.el.appendChild(first.el);
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useFlipGrid([props.dep], { enter: true });
+      },
+      { initialProps: { dep: "All" } },
+    );
+    result.current.register("EURUSD")(first.el);
+    rerender({ dep: "EUR" });
+
+    // A second tile appears at left=300 (right edge also 300 — zero-size
+    // fake rects) with no stored origin: it must slide in from the stage's
+    // right border (900 - 300 = 600px) with the scale/fade keyframes.
+    const entering = makeTile();
+    entering.rect.left = 300;
+    stage.el.appendChild(entering.el);
+    result.current.register("GBPUSD")(entering.el);
+    rerender({ dep: "USD" });
+
+    expect(entering.animate).toHaveBeenCalledWith(
+      [
+        { opacity: 0, transform: "translate(600px, 0) scale(0.78)" },
+        { opacity: 1, transform: "none" },
+      ],
+      expect.objectContaining({ duration: 440 }),
+    );
+  });
+
+  // Fallback arms: no [data-flip-stage] ancestor and no parent → entering
+  // items drift a fixed 32px; exiting ghosts fall the same fixed distance
+  // when no surviving element can locate a stage either.
+  it("falls back to the fixed drift when no stage exists", async () => {
+    const first = makeTile();
+    const leaving = makeTile();
+
+    leaving.animate.mockReturnValue({ finished: Promise.resolve() });
+
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useFlipGrid([props.dep], { enter: true, exit: true });
+      },
+      { initialProps: { dep: "All" } },
+    );
+    result.current.register("EURUSD")(first.el);
+    result.current.register("GBPUSD")(leaving.el);
+    rerender({ dep: "EUR" });
+
+    // GBPUSD leaves; a fresh EURJPY enters. Neither element is inside a
+    // [data-flip-stage] container (detached nodes), so both use DRIFT_PX.
+    result.current.register("GBPUSD")(null);
+    const entering = makeTile();
+    result.current.register("EURJPY")(entering.el);
+    rerender({ dep: "USD" });
+
+    expect(entering.animate).toHaveBeenCalledWith(
+      [
+        { opacity: 0, transform: "translate(32px, 0) scale(0.78)" },
+        { opacity: 1, transform: "none" },
+      ],
+      expect.objectContaining({ duration: 440 }),
+    );
+    expect(leaving.animate).toHaveBeenCalledWith(
+      [
+        { opacity: 1, transform: "translate(0, 0) scale(1)" },
+        { opacity: 0, transform: "translate(0, 32px) scale(0.78)" },
+      ],
+      expect.objectContaining({ duration: 340 }),
+    );
+    await Promise.resolve();
+  });
+
+  it("tolerates unregistering a key that never had an element", () => {
+    const { result } = renderHook(() => {
+      return useFlipGrid(["All"]);
+    });
+
+    expect(() => {
+      result.current.register("EURUSD")(null);
+    }).not.toThrow();
+  });
+
+  it("works without ResizeObserver (older engines)", () => {
+    const original = globalThis.ResizeObserver;
+    // @ts-expect-error deliberately removing the global for the fallback arm
+    delete globalThis.ResizeObserver;
+
+    const tile = makeTile();
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useFlipGrid([props.dep]);
+      },
+      { initialProps: { dep: "All" } },
+    );
+    result.current.register("EURUSD")(tile.el);
+    rerender({ dep: "EUR" });
+
+    tile.rect.left = 80;
+    rerender({ dep: "USD" });
+    expect(tile.animate).toHaveBeenCalled();
+
+    globalThis.ResizeObserver = original;
+  });
+
+  it("does not play enter animations when the option is off", () => {
+    const first = makeTile();
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useFlipGrid([props.dep]);
+      },
+      { initialProps: { dep: "All" } },
+    );
+    result.current.register("EURUSD")(first.el);
+    rerender({ dep: "EUR" });
+
+    const entering = makeTile();
+    result.current.register("GBPUSD")(entering.el);
+    rerender({ dep: "USD" });
+
+    expect(entering.animate).not.toHaveBeenCalled();
+  });
+
+  // An item removed by the filter is already unmounted when the FLIP pass
+  // runs; its last DOM node is re-appended to <body> as a fixed-position
+  // ghost at its old rect and falls to the stage's bottom border while
+  // fading (PROTO cardOut geometry).
+  it("fades a body-appended ghost out at the old position when exit is enabled", async () => {
+    const stage = makeStage({ right: 900, bottom: 600 });
+    const survivor = makeTile();
+    const leaving = makeTile();
+    leaving.rect.left = 300;
+    leaving.rect.top = 100;
+    leaving.el.setAttribute("data-testid", "tile-GBPUSD");
+    const leavingChild = document.createElement("span");
+    leavingChild.setAttribute("data-testid", "tile-GBPUSD-price");
+    leaving.el.appendChild(leavingChild);
+    stage.el.appendChild(survivor.el);
+    stage.el.appendChild(leaving.el);
+
+    let finishGhost: (() => void) | undefined;
+    leaving.animate.mockReturnValue({
+      finished: new Promise<void>((resolve) => {
+        finishGhost = resolve;
+      }),
+    });
+
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useFlipGrid([props.dep], { exit: true });
+      },
+      { initialProps: { dep: "All" } },
+    );
+    result.current.register("EURUSD")(survivor.el);
+    result.current.register("GBPUSD")(leaving.el);
+    rerender({ dep: "EUR" });
+
+    // The filter drops GBPUSD: React unmounts it (ref cleanup) and the node
+    // leaves the DOM before the next FLIP pass.
+    leaving.el.remove();
+    result.current.register("GBPUSD")(null);
+    rerender({ dep: "USD" });
+
+    // Ghost: re-appended to body, pinned at its old rect, falling to the
+    // stage's bottom border (600 - (100 + 0 height) = 500px) while fading.
+    expect(leaving.el.parentElement).toBe(document.body);
+    expect(leaving.el.style.position).toBe("fixed");
+    expect(leaving.el.style.left).toBe("300px");
+    expect(leaving.el.style.top).toBe("100px");
+
+    // Visual chrome only: hidden from assistive tech, and stripped of every
+    // test id so e2e tile counts don't see it during its 340ms fade.
+    expect(leaving.el.getAttribute("aria-hidden")).toBe("true");
+    expect(leaving.el.hasAttribute("data-testid")).toBe(false);
+    expect(leaving.el.querySelectorAll("[data-testid]").length).toBe(0);
+    expect(leaving.animate).toHaveBeenCalledWith(
+      [
+        { opacity: 1, transform: "translate(0, 0) scale(1)" },
+        { opacity: 0, transform: "translate(0, 500px) scale(0.78)" },
+      ],
+      expect.objectContaining({ duration: 340, fill: "forwards" }),
+    );
+
+    // The ghost removes itself once the fade settles.
+    finishGhost?.();
+    await Promise.resolve();
+    expect(leaving.el.parentElement).toBeNull();
+  });
 });
 
 interface HookProps {
@@ -135,6 +346,43 @@ interface FakeTile {
   animate: ReturnType<typeof vi.fn>;
   /** Animations getAnimations() reports as running on the element. */
   running: Animation[];
+}
+
+interface StageRect {
+  right: number;
+  bottom: number;
+}
+
+interface FakeStage {
+  el: HTMLElement;
+}
+
+/** A [data-flip-stage] container with a stubbed rect — the panel body whose
+ *  borders the enter/exit travel is measured against. Appended to the body so
+ *  closest() finds it from registered tiles. */
+function makeStage(rect: StageRect): FakeStage {
+  const el = document.createElement("div");
+  el.setAttribute("data-flip-stage", "");
+
+  el.getBoundingClientRect = (): DOMRect => {
+    return {
+      left: 0,
+      top: 0,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.right,
+      height: rect.bottom,
+      x: 0,
+      y: 0,
+      toJSON: (): unknown => {
+        return {};
+      },
+    } as DOMRect;
+  };
+
+  document.body.appendChild(el);
+
+  return { el };
 }
 
 /** A registered grid item whose viewport position the test can move; jsdom

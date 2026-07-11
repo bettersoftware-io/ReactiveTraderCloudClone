@@ -36,7 +36,6 @@
   max-height: 220px;
   overflow-y: auto;
   background: var(--panel);
-  backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--border-strong);
   border-radius: 5px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);

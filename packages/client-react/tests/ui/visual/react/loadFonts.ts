@@ -20,6 +20,7 @@ import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "@fontsource/jetbrains-mono/700.css";
 import "@fontsource/orbitron/700.css";
+import "@fontsource/orbitron/800.css";
 
 // The exact (weight, family) pairs the imports above register, as CSS
 // font-shorthand strings for `document.fonts.load()`. Registering an @font-face
@@ -46,4 +47,5 @@ export const FONT_LOAD_SPECS: readonly string[] = [
   '500 16px "JetBrains Mono"',
   '700 16px "JetBrains Mono"',
   '700 16px "Orbitron"',
+  '800 16px "Orbitron"',
 ];

@@ -1,14 +1,21 @@
 import type { CSSProperties, ReactElement } from "react";
 import { useEffect, useRef } from "react";
 
+import type { BootVariant } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import {
   type BootDrawCtx,
+  type BootFrameFn,
   drawBootCore,
   drawBootDocking,
   drawBootLaser,
 } from "./bootCanvas";
+import { createBootGeo } from "./variants/bootGeo";
+import { createBootHologram } from "./variants/bootHologram";
+import { createBootJarvis } from "./variants/bootJarvis";
+import { createBootLayers } from "./variants/bootLayers";
+import { createBootTopo } from "./variants/bootTopo";
 
 import styles from "./BootSequence.module.css";
 
@@ -50,18 +57,33 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       accent2: cs.getPropertyValue("--accent-2").trim() || "#00b0ff",
       buy: cs.getPropertyValue("--accent-positive").trim() || "#00e676",
       sell: cs.getPropertyValue("--accent-negative").trim() || "#ff1744",
+      pointer: { mx: 0, my: 0 },
     };
-    const draw = DRAW[state.variant];
+
+    // PROTO: the cursor-tracked variants (layers/jarvis/topo) listen on
+    // window mousemove and normalize to -1..1. One listener here feeds the
+    // shared pointer for whichever variant reads it; removed with the loop.
+    function onMove(e: MouseEvent): void {
+      d.pointer.mx = (e.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
+      d.pointer.my = (e.clientY / Math.max(1, window.innerHeight)) * 2 - 1;
+    }
+
+    window.addEventListener("mousemove", onMove);
+
+    // Factories run once per boot (geo/topo precompute geometry here); the
+    // returned closure draws one frame.
+    const frame = DRAW[state.variant](d);
     let raf = 0;
 
     function loop(): void {
-      draw(d);
+      frame();
       raf = requestAnimationFrame(loop);
     }
 
     loop();
 
     return () => {
+      window.removeEventListener("mousemove", onMove);
       cancelAnimationFrame(raf);
     };
   }, [state.variant]);
@@ -148,11 +170,30 @@ function visibleLineCount(progress: number): number {
   return count;
 }
 
-const DRAW = {
-  core: drawBootCore,
-  laser: drawBootLaser,
-  docking: drawBootDocking,
-} as const;
+// v2 draws are stateless per-frame functions; wrap them into the v3 factory
+// shape (factory-per-boot → frame closure) so one map drives the loop.
+const DRAW: Record<BootVariant, (d: BootDrawCtx) => BootFrameFn> = {
+  core: (d: BootDrawCtx): BootFrameFn => {
+    return (): void => {
+      drawBootCore(d);
+    };
+  },
+  laser: (d: BootDrawCtx): BootFrameFn => {
+    return (): void => {
+      drawBootLaser(d);
+    };
+  },
+  docking: (d: BootDrawCtx): BootFrameFn => {
+    return (): void => {
+      drawBootDocking(d);
+    };
+  },
+  hologram: createBootHologram,
+  geo: createBootGeo,
+  layers: createBootLayers,
+  jarvis: createBootJarvis,
+  topo: createBootTopo,
+};
 
 interface BootSequenceProps {
   onDone: () => void;

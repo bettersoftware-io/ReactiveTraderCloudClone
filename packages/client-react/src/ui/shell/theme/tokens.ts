@@ -72,8 +72,6 @@ export interface ThemeTokens {
   "--panel": string;
   /** Panel header strip fill. */
   "--panel-head": string;
-  /** backdrop-filter blur radius — "0" for solid skins, "14px" for holo, "12px" for neon. */
-  "--panel-blur": string;
   /** box-shadow used on active/glowing elements — "none" for solid skins. */
   "--glow": string;
   /** Faint HUD grid line colour. */
@@ -148,7 +146,6 @@ const darkTokens: ThemeTokens = {
 
   "--panel": "var(--bg-tile)",
   "--panel-head": "var(--bg-secondary)",
-  "--panel-blur": "0",
   "--glow": "none",
   "--grid": "rgba(148,163,184,0.06)",
   "--chip": "rgba(59,130,246,0.12)",
@@ -203,7 +200,6 @@ const lightTokens: ThemeTokens = {
 
   "--panel": "var(--bg-tile)",
   "--panel-head": "var(--bg-secondary)",
-  "--panel-blur": "0",
   "--glow": "none",
   "--grid": "rgba(148,163,184,0.06)",
   "--chip": "rgba(59,130,246,0.12)",
@@ -230,7 +226,9 @@ const lightTokens: ThemeTokens = {
 const holoDark: ThemeTokens = {
   "--bg-primary": "#00060a",
   "--bg-secondary": "#02121d",
-  "--bg-header": "#02121d",
+  // PROTO header: linear-gradient over TRANSPARENT — the ambient backdrop
+  // (aurora/grid/dots) shows through the chrome, like every proto theme.
+  "--bg-header": "transparent",
   "--bg-footer": "#02121d",
   "--bg-tile": "rgba(6,26,38,0.5)",
   "--bg-overlay": "rgba(0,6,10,0.78)",
@@ -259,7 +257,6 @@ const holoDark: ThemeTokens = {
 
   "--panel": "rgba(6,26,38,0.5)",
   "--panel-head": "rgba(0,224,255,0.06)",
-  "--panel-blur": "14px",
   "--glow": "0 0 16px rgba(0,224,255,0.3)",
   "--grid": "rgba(0,224,255,0.05)",
   "--chip": "rgba(0,224,255,0.12)",
@@ -319,7 +316,6 @@ const holoLight: ThemeTokens = {
 
   "--panel": "rgba(255,255,255,0.82)",
   "--panel-head": "#edf8fa",
-  "--panel-blur": "14px",
   "--glow": "0 0 14px rgba(0,150,179,0.2)",
   "--grid": "rgba(0,150,179,0.06)",
   "--chip": "rgba(0,150,179,0.12)",
@@ -349,7 +345,8 @@ const holoLight: ThemeTokens = {
 const holo3dDark: ThemeTokens = {
   "--bg-primary": "#00080e",
   "--bg-secondary": "#04161f",
-  "--bg-header": "#04161f",
+  // PROTO header: gradient over transparent (see holoDark note).
+  "--bg-header": "transparent",
   "--bg-footer": "#04161f",
   // holo's flat sibling's solid --bg-tile — a gradient can't fill
   // --bg-tile's color positions.
@@ -382,7 +379,6 @@ const holo3dDark: ThemeTokens = {
     "linear-gradient(157deg, rgba(13,44,60,0.66) 0%, rgba(6,22,33,0.52) 54%, rgba(3,14,22,0.5) 100%)",
   "--panel-head":
     "linear-gradient(180deg, rgba(0,224,255,0.13) 0%, rgba(0,224,255,0.02) 100%)",
-  "--panel-blur": "14px",
   "--glow": "0 0 16px rgba(0,224,255,0.32)",
   "--grid": "rgba(0,224,255,0.05)",
   "--chip":
@@ -447,7 +443,6 @@ const holo3dLight: ThemeTokens = {
   "--panel":
     "linear-gradient(157deg, rgba(255,255,255,0.98) 0%, rgba(231,243,248,0.94) 100%)",
   "--panel-head": "linear-gradient(180deg, #e0f2f6 0%, #fafdfd 100%)",
-  "--panel-blur": "14px",
   "--glow": "0 0 14px rgba(0,150,179,0.22)",
   "--grid": "rgba(0,150,179,0.06)",
   "--chip":
@@ -506,7 +501,6 @@ const terminalDark: ThemeTokens = {
 
   "--panel": "#13161c",
   "--panel-head": "#171b22",
-  "--panel-blur": "0",
   "--glow": "none",
   "--grid": "rgba(255,255,255,0.022)",
   "--chip": "rgba(255,176,0,0.14)",
@@ -561,7 +555,6 @@ const terminalLight: ThemeTokens = {
 
   "--panel": "#ffffff",
   "--panel-head": "#eef1f4",
-  "--panel-blur": "0",
   "--glow": "none",
   "--grid": "rgba(0,0,0,0.03)",
   "--chip": "rgba(182,119,0,0.13)",
@@ -621,7 +614,6 @@ const terminal3dDark: ThemeTokens = {
 
   "--panel": "linear-gradient(160deg, #181c24 0%, #11141a 100%)",
   "--panel-head": "linear-gradient(180deg, #1c212a 0%, #14181e 100%)",
-  "--panel-blur": "0",
   "--glow": "none",
   "--grid": "rgba(255,255,255,0.02)",
   "--chip":
@@ -681,7 +673,6 @@ const terminal3dLight: ThemeTokens = {
 
   "--panel": "linear-gradient(160deg, #ffffff 0%, #eef0f3 100%)",
   "--panel-head": "linear-gradient(180deg, #f2f4f6 0%, #e8ebef 100%)",
-  "--panel-blur": "0",
   "--glow": "none",
   "--grid": "rgba(0,0,0,0.03)",
   "--chip":
@@ -740,7 +731,6 @@ const neonDark: ThemeTokens = {
 
   "--panel": "rgba(28,6,46,0.52)",
   "--panel-head": "rgba(255,43,214,0.08)",
-  "--panel-blur": "12px",
   "--glow": "0 0 18px rgba(255,43,214,0.4)",
   "--grid": "rgba(255,43,214,0.07)",
   "--chip": "rgba(255,43,214,0.14)",
@@ -798,7 +788,6 @@ const neonLight: ThemeTokens = {
 
   "--panel": "rgba(255,255,255,0.82)",
   "--panel-head": "#fbedf8",
-  "--panel-blur": "12px",
   "--glow": "0 0 14px rgba(200,0,160,0.2)",
   "--grid": "rgba(200,0,160,0.06)",
   "--chip": "rgba(200,0,160,0.12)",

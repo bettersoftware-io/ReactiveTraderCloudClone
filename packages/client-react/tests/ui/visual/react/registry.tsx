@@ -160,7 +160,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     const pairs = fixtures[fixtureKey].currencyPairs;
     return (
       <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
-        <WatchlistView pairs={pairs} />
+        <WatchlistView pairs={pairs} filter="All" />
       </div>
     );
   },

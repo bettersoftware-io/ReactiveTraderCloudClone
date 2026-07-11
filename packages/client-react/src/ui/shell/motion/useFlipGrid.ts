@@ -15,10 +15,19 @@ import { useEffect, useLayoutEffect, useRef } from "react";
  * motion — the same `matchMedia("(prefers-reduced-motion: reduce)")` seam
  * BootGate/BootSequence already consult.
  */
-export function useFlipGrid(deps: unknown[]): FlipGridApi {
+export function useFlipGrid(
+  deps: unknown[],
+  options: FlipGridOptions = {},
+): FlipGridApi {
+  const { enter = false, exit = false } = options;
   const elementsRef = useRef(new Map<string, HTMLElement>());
   const positionsRef = useRef(new Map<string, Rect>());
   const observerRef = useRef<ResizeObserver | null>(null);
+  // Last DOM node seen for each key, captured in register()'s cleanup. When a
+  // deps change unmounts an item, this is what lets the exit ghost re-appear
+  // at its old position and fade out (PROTO keeps no exit for tiles — the
+  // ghost matches its credit-card `cardOut` treatment instead).
+  const exitedNodesRef = useRef(new Map<string, HTMLElement>());
 
   // The deps-change effect below is the only writer that ANIMATES; everything
   // else that moves the grid (window resize, a dock panel being dragged or
@@ -68,16 +77,49 @@ export function useFlipGrid(deps: unknown[]): FlipGridApi {
           playFlip(el, dx, dy);
         }
       }
+
+      // PROTO _flip: an item with no previous rect just appeared (the filter
+      // now includes it) — pop it in with the same easing the glide uses.
+      if (enter) {
+        nextPositions.forEach((_rect, key) => {
+          if (!prevPositions.has(key)) {
+            const el = elementsRef.current.get(key);
+
+            if (el) {
+              playEnter(el);
+            }
+          }
+        });
+      }
+
+      // An item with no next rect was filtered out. React already unmounted
+      // it, so fade a ghost of its last DOM node out at its old position.
+      // The stage rect comes from a surviving element — the ghost itself is
+      // detached, so closest() can't walk up from it.
+      if (exit) {
+        const stageRect = stageRectFromElements(elementsRef.current);
+        prevPositions.forEach((rect, key) => {
+          if (!nextPositions.has(key)) {
+            const node = exitedNodesRef.current.get(key);
+
+            if (node) {
+              playExitGhost(node, rect, stageRect);
+            }
+          }
+        });
+      }
     }
 
+    exitedNodesRef.current.clear();
     positionsRef.current = nextPositions;
     // deps is an opaque caller-supplied dependency list (the whole point of
-    // this hook is to run the FLIP measure/animate pass whenever it changes).
-    // Spread into a literal array so Biome's exhaustive-deps rule recognizes
-    // it as a dependency list; ESLint's equivalent still can't verify a
-    // spread's contents statically, which is expected here.
+    // this hook is to run the FLIP measure/animate pass whenever it changes);
+    // enter/exit join it so Biome's exhaustive-deps rule sees the options the
+    // effect reads (they're constant per call site in practice). ESLint's
+    // equivalent still can't verify a spread's contents statically, which is
+    // expected here.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deps is intentionally caller-supplied, not statically enumerable
-  }, [...deps]);
+  }, [enter, exit, ...deps]);
 
   function register(key: string): (el: HTMLElement | null) => void {
     return (el: HTMLElement | null): void => {
@@ -89,6 +131,7 @@ export function useFlipGrid(deps: unknown[]): FlipGridApi {
 
         if (prev) {
           observerRef.current?.unobserve(prev);
+          exitedNodesRef.current.set(key, prev);
         }
 
         elementsRef.current.delete(key);
@@ -151,7 +194,12 @@ function measurePositions(
   const positions = new Map<string, Rect>();
   elements.forEach((el, key) => {
     const rect = el.getBoundingClientRect();
-    positions.set(key, { left: rect.left, top: rect.top });
+    positions.set(key, {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    });
   });
   return positions;
 }
@@ -163,6 +211,97 @@ function playFlip(el: HTMLElement, dx: number, dy: number): void {
   );
 }
 
+// PROTO _flip enter branch: `{opacity:0, scale(.78)} → {opacity:1, scale(1)}`
+// with the glide's duration + easing — sliding in horizontally from the right
+// border of the nearest [data-flip-stage] ancestor (the panel body, so the
+// travel spans the full visible panel width). Falls back to the immediate
+// grid container, then to a fixed drift.
+function playEnter(el: HTMLElement): void {
+  // jsdom elements have no animate() — same guard as playExitGhost.
+  if (typeof el.animate !== "function") {
+    return;
+  }
+
+  const rect = el.getBoundingClientRect();
+  const stage = (el.closest("[data-flip-stage]") ??
+    el.parentElement) as HTMLElement | null;
+  const stageRect = stage?.getBoundingClientRect();
+  const dx = stageRect ? stageRect.right - rect.right : DRIFT_PX;
+
+  el.animate(
+    [
+      { opacity: 0, transform: `translate(${dx}px, 0) scale(0.78)` },
+      { opacity: 1, transform: "none" },
+    ],
+    { duration: FLIP_DURATION_MS, easing: FLIP_EASING },
+  );
+}
+
+/** First [data-flip-stage] ancestor found from any live element — the panel
+ *  body whose borders the enter/exit travel spans. */
+function stageRectFromElements(
+  elements: ReadonlyMap<string, HTMLElement>,
+): DOMRect | null {
+  for (const el of elements.values()) {
+    const stage = el.closest("[data-flip-stage]");
+
+    if (stage) {
+      return stage.getBoundingClientRect();
+    }
+  }
+
+  return null;
+}
+
+/** Re-append the unmounted node as a fixed-position ghost at its last
+ *  measured rect and fade it out while it falls to the stage's bottom border
+ *  (PROTO cardOut geometry: 340ms shrink to .78). The node is detached —
+ *  React no longer owns it — and theme custom properties live on
+ *  documentElement, so a body-appended ghost keeps its full styling. Both
+ *  animated properties composite (transform/opacity). */
+function playExitGhost(
+  node: HTMLElement,
+  rect: Rect,
+  stageRect: DOMRect | null,
+): void {
+  if (typeof node.animate !== "function") {
+    return;
+  }
+
+  node.style.position = "fixed";
+  node.style.left = `${rect.left}px`;
+  node.style.top = `${rect.top}px`;
+  node.style.width = `${rect.width}px`;
+  node.style.height = `${rect.height}px`;
+  node.style.margin = "0";
+  node.style.pointerEvents = "none";
+  // The ghost is pure visual chrome: it must not read as real UI to
+  // assistive tech or to tests that count live tiles by test id (the e2e
+  // filter specs run their assertions inside the ghost's 340ms lifetime).
+  node.setAttribute("aria-hidden", "true");
+  node.removeAttribute("data-testid");
+  node.querySelectorAll("[data-testid]").forEach((el) => {
+    el.removeAttribute("data-testid");
+  });
+  document.body.appendChild(node);
+
+  const ghostBottom = rect.top + rect.height;
+  const dy = stageRect ? stageRect.bottom - ghostBottom : DRIFT_PX;
+  const animation = node.animate(
+    [
+      { opacity: 1, transform: "translate(0, 0) scale(1)" },
+      { opacity: 0, transform: `translate(0, ${dy}px) scale(0.78)` },
+    ],
+    { duration: EXIT_DURATION_MS, easing: EXIT_EASING, fill: "forwards" },
+  );
+
+  function remove(): void {
+    node.remove();
+  }
+
+  animation.finished.then(remove, remove);
+}
+
 function prefersReducedMotion(): boolean {
   return window.matchMedia?.(REDUCED_MOTION_QUERY).matches ?? false;
 }
@@ -170,6 +309,9 @@ function prefersReducedMotion(): boolean {
 export interface Rect {
   left: number;
   top: number;
+  /** Only read by exit ghosts; flipDeltas ignores them. */
+  width: number;
+  height: number;
 }
 
 export interface FlipDelta {
@@ -182,9 +324,24 @@ export interface FlipGridApi {
   register: (key: string) => (el: HTMLElement | null) => void;
 }
 
+export interface FlipGridOptions {
+  /** Pop newly-appearing items in (fade + scale from .78). PROTO _flip does
+   *  this by default; opt-in here so RfqsPanel's own cardIn keeps sole
+   *  ownership of its entry animation (PROTO passes enter:false there). */
+  enter?: boolean;
+  /** Fade just-removed items out in place via a detached-node ghost. */
+  exit?: boolean;
+}
+
 // PROTO motion/useFlip.ts DEFAULT_DUR_MS / FLIP_EASING — one global glide.
 const FLIP_DURATION_MS = 440;
 const FLIP_EASING = "cubic-bezier(.22,.85,.3,1)";
+// PROTO cardOut: .34s cubic-bezier(.4,0,.7,1).
+const EXIT_DURATION_MS = 340;
+const EXIT_EASING = "cubic-bezier(.4,0,.7,1)";
+// Fallback travel distance when no [data-flip-stage] ancestor is found to
+// measure the real panel borders against.
+const DRIFT_PX = 32;
 // PROTO useFlip.ts sub-pixel suppression threshold.
 const FLIP_MIN_DELTA_PX = 0.5;
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";

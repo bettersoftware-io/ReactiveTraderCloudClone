@@ -11,7 +11,6 @@ const REQUIRED_KEYS: readonly (keyof ThemeTokens)[] = [
   "--border-strong",
   "--panel",
   "--panel-head",
-  "--panel-blur",
   "--glow",
   "--grid",
   "--chip",
@@ -55,19 +54,16 @@ describe("themeTokens skin×mode store", () => {
     }
   });
 
-  it("holo dark carries the prototype cyan accent + glass blur", () => {
+  it("holo dark carries the prototype cyan accent", () => {
     expect(themeTokens.holo.dark["--accent-primary"]).toBe("#00e5ff");
-    expect(themeTokens.holo.dark["--panel-blur"]).toBe("14px");
   });
 
-  it("terminal is solid (no blur, no glow)", () => {
-    expect(themeTokens.terminal.dark["--panel-blur"]).toBe("0");
+  it("terminal is solid (no glow)", () => {
     expect(themeTokens.terminal.dark["--glow"]).toBe("none");
   });
 
   it("classic preserves the pre-redesign accent and stays neutral on new keys", () => {
     expect(themeTokens.classic.dark["--accent-primary"]).toBe("#3b82f6");
-    expect(themeTokens.classic.dark["--panel-blur"]).toBe("0");
     expect(themeTokens.classic.dark["--glow"]).toBe("none");
   });
 

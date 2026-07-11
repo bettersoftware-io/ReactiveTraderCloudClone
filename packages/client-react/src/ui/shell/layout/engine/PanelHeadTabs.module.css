@@ -76,6 +76,9 @@
   font-weight: 600;
   font-size: 10px;
   letter-spacing: 0.1em;
+  /* PROTO wraps count/filter/CSV in a gap:10px flex row; with the shared
+   * .headTabs 2px gap this margin reproduces the 10px filter→CSV spacing. */
+  margin-left: 8px;
   margin-right: 4px;
   color: var(--accent-primary);
   background: var(--chip);

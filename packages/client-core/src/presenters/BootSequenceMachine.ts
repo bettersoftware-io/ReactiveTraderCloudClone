@@ -2,16 +2,15 @@ import { type StateObservable, state } from "@rx-state/core";
 import { merge, Subject, timer } from "rxjs";
 import { filter, map, take, takeUntil, takeWhile } from "rxjs/operators";
 
-import type { BootVariant } from "@rtc/domain";
+import { BOOT_VARIANTS, type BootVariant } from "@rtc/domain";
 
 import type { Machine } from "./machine";
 
 export type { BootVariant };
-export const BOOT_VARIANTS: readonly BootVariant[] = [
-  "core",
-  "laser",
-  "docking",
-];
+// Cycle order lives in domain (PROTO _startBoot v3 list: core → laser →
+// docking → hologram → geo → layers → jarvis → topo); re-exported for
+// existing consumers.
+export { BOOT_VARIANTS };
 export const BOOT_DURATION_MS = 4200;
 const BOOT_TICK_MS = 90;
 
