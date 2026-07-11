@@ -15,9 +15,10 @@ import { fixtures } from "../shared/fixtures";
 import "../shared/freezeClock";
 import { scenarios } from "../shared/scenarios";
 import { buildFakeViewModel } from "./buildFakeViewModel";
-// Side-effect: register the app's real @fontsource web fonts so goldens render
-// in the app's fonts, not the fallback system stack. See loadFonts.ts.
-import "./loadFonts";
+// Register the app's real @fontsource web fonts so goldens render in the app's
+// fonts, not the fallback system stack, and pull in the (weight, family) list we
+// force-load below. See loadFonts.ts.
+import { FONT_LOAD_SPECS } from "./loadFonts";
 import { registry } from "./registry";
 import { resolveScenarioData } from "./resolveScenarioData";
 
@@ -43,19 +44,36 @@ export function VisualScenario({
   // font's metrics. If the screenshot is taken before the web fonts finish
   // loading, the fallback font's wider/narrower glyphs change the measured
   // width non-deterministically (observed: fx-blotter scenarios drifting
-  // ~46-66px between otherwise-identical x86 runs, which a dimension mismatch
-  // — unlike AA jitter — cannot absorb via maxDiffPixelRatio). Gate rendering
-  // on document.fonts.ready so every capture is taken in the fonts-loaded
-  // state; Playwright's toHaveScreenshot stability retry waits out the
-  // null→content transition.
+  // ~46-66px, and chrome-header measured 1139px fallback vs 1180px real,
+  // between otherwise-identical x86 runs — a dimension mismatch, unlike AA
+  // jitter, cannot be absorbed via maxDiffPixelRatio).
+  //
+  // `document.fonts.ready` alone is insufficient: an @font-face is only
+  // *declared* until a laid-out element uses it, so `ready` resolves
+  // immediately in the fallback state whenever no face has been triggered yet,
+  // and the real glyphs swap in after the shot. Whether a face happens to be
+  // triggered in time is pure run-timing luck (a heavier neighbouring scenario
+  // was enough to tip chrome-header from fallback to real). So instead
+  // force-trigger every face the app uses via document.fonts.load(), await
+  // them all, then await ready — only then render. Every capture is now in the
+  // fonts-loaded state regardless of timing; toHaveScreenshot's stability
+  // retry waits out the null→content transition.
   const [fontsReady, setFontsReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    void document.fonts.ready.then(() => {
-      if (!cancelled) {
-        setFontsReady(true);
-      }
-    });
+    void Promise.all(
+      FONT_LOAD_SPECS.map((spec) => {
+        return document.fonts.load(spec);
+      }),
+    )
+      .then(() => {
+        return document.fonts.ready;
+      })
+      .then(() => {
+        if (!cancelled) {
+          setFontsReady(true);
+        }
+      });
 
     return () => {
       cancelled = true;
