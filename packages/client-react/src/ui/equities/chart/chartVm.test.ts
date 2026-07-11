@@ -82,6 +82,35 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
     expect(notGlowing.candles[0]?.glow).toBe(false);
   });
 
+  it("falls back to a range of 1 when every OHLC value is flat (cmax === cmin)", () => {
+    const series: readonly Candle[] = [
+      { time: 0, open: 10, high: 10, low: 10, close: 10 },
+      { time: 60, open: 10, high: 10, low: 10, close: 10 },
+    ];
+
+    // liveRate === the flat price too, so withLiveLast is also a no-op: cmax
+    // and cmin both stay 10, and `crng = cmax - cmin || 1` must fall back to
+    // 1 rather than dividing yPct by zero.
+    const vm = chartVm(series, 10, false);
+
+    expect(vm.candles).toHaveLength(2);
+
+    for (const candle of vm.candles) {
+      // yPct(10) = ((10 - 10) / 1) * Y_SPAN + Y_TOP = Y_TOP = 6%.
+      expect(pct(candle.style, "--top")).toBeCloseTo(6, 5);
+      expect(pct(candle.wickStyle, "--wtop")).toBeCloseTo(6, 5);
+      expect(pct(candle.wickStyle, "--wh")).toBeCloseTo(0, 5);
+      expect(Number.isFinite(pct(candle.style, "--top"))).toBe(true);
+    }
+
+    // Labels are likewise finite (no NaN/Infinity leaking from a /0).
+    expect(
+      vm.labels.every((l) => {
+        return Number.isFinite(Number.parseFloat(l.txt));
+      }),
+    ).toBe(true);
+  });
+
   it("overlays the live price onto the last candle: close=liveRate, high/low stretch to include it", () => {
     const series: readonly Candle[] = [
       { time: 0, open: 10, high: 12, low: 8, close: 11 },

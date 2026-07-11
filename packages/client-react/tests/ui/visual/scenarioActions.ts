@@ -176,6 +176,9 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // active-button arm (DirButton data-dir="sell" data-active="true").
   "credit/new-rfq-sell": { click: "new-rfq-dir-sell" },
 
+  // ThemePicker skin listbox open — the dropdown is the distinct pixel state.
+  "chrome/theme-picker-open": { click: "skin-picker" },
+
   // --- Coverage-gap pass: behaviour-sync'd components (Step 5) ---
 
   // CreditBlotter sort: click the Quantity column sort button -> ▼ appears.

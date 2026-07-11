@@ -290,6 +290,41 @@ describe("Tile", () => {
     expect(tile.isStale()).toBe(false);
   });
 
+  // Tile.tsx's handleExecute guard (`if (!p || hasError || stale) return;`)
+  // gates every execution path, not just the market price boxes — TileRfq's
+  // accept buttons carry no `disabled` attribute of their own, so this proves
+  // the guard (not the DOM) is what blocks execution once the tile goes stale
+  // mid-RFQ.
+  it("blocks execution via the RFQ accept path once the tile goes stale", async () => {
+    const quoteResult: RfqQuoteResult = {
+      bid: 1.0921,
+      ask: 1.0925,
+      mid: 1.0923,
+    };
+    const tile = mount(Tile, {
+      props: { pair: eurusd, showChart: false },
+      parametric: { prices: { EURUSD: price() } },
+      commands: { requestRfqQuote: quoteResult, executeTrade: tradeResult() },
+      hooks: { useConnectionStatus: ConnectionStatus.CONNECTED },
+    });
+    tile.setNotional("20m");
+    await tile.clickInitiateRfq();
+    expect(tile.hasRfqButton("Buy 1.09250")).toBe(true);
+
+    // Disconnect/reconnect with no fresh price tick — same recipe as "shows
+    // the stale overlay..." above — flips the tile stale without touching
+    // the in-flight RFQ quote.
+    tile.emit({ useConnectionStatus: ConnectionStatus.DISCONNECTED });
+    tile.emit({ useConnectionStatus: ConnectionStatus.CONNECTED });
+    expect(tile.isStale()).toBe(true);
+    expect(tile.hasRfqButton("Buy 1.09250")).toBe(true);
+
+    await tile.clickRfqButton("Buy 1.09250");
+    // TileRfq's accept() still fires (resets the RFQ machine), but Tile's
+    // handleExecute guard blocks the execute() call while stale.
+    expect(tile.executedTrades()).toHaveLength(0);
+  });
+
   it("disables the Buy/Sell buttons while the tile is stale", () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
