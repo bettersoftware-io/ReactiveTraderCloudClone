@@ -505,7 +505,7 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
     // screen-space calibration ticks
     for (let i = 0; i < 48; i++) {
       const a = (i / 48) * Math.PI * 2;
-      const on = ((t * 14) % 48) > i;
+      const on = (t * 14) % 48 > i;
       ctx.strokeStyle = hexToRgba(acc, on ? 0.5 : 0.08);
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -524,11 +524,7 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
     ctx.textAlign = "right";
     ctx.fillText(`YAW ${((yaw * 57.29) % 360).toFixed(1)}°`, W - 20, 28);
     ctx.fillStyle = hexToRgba(ac2, 0.7);
-    ctx.fillText(
-      `LINKS ${arcCount} · LIVE ${arcs.length}`,
-      W - 20,
-      44,
-    );
+    ctx.fillText(`LINKS ${arcCount} · LIVE ${arcs.length}`, W - 20, 44);
     let stt = "SPINNING UP CORE";
     let sc = acc;
 
