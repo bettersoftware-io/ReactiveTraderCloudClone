@@ -32,9 +32,18 @@ export type ViewMode = "chart" | "price";
 export type CreditRfqFilter = "live" | "closed" | "all";
 
 /** The boot sequence visual variant. Cycles across sessions — each run advances
- * to the next entry in the fixed order (core → laser → docking → core …).
- * Mirrors `localStorage['rt_bootSeq']` from the prototype. */
-export type BootVariant = "core" | "laser" | "docking";
+ * to the next entry in the fixed order (core → laser → docking → hologram →
+ * geo → layers → jarvis → topo → core …). Mirrors `localStorage['rt_bootSeq']`
+ * from the prototype; the last five are the v3 3D scenes. */
+export type BootVariant =
+  | "core"
+  | "laser"
+  | "docking"
+  | "hologram"
+  | "geo"
+  | "layers"
+  | "jarvis"
+  | "topo";
 
 /** The equities Watchlist's sort mode — symbol (A–Z), % change, or last price.
  * Driven by the watchlist head's ⇅ cycle control. */
@@ -42,6 +51,18 @@ export type EqWatchlistSort = "sym" | "chg" | "price";
 
 /** The equities Blotter panel's active tab — Orders or Positions. */
 export type EqBlotterView = "orders" | "positions";
+
+/** Boot-variant cycle order (PROTO _startBoot `variants` list, v3). */
+export const BOOT_VARIANTS: readonly BootVariant[] = [
+  "core",
+  "laser",
+  "docking",
+  "hologram",
+  "geo",
+  "layers",
+  "jarvis",
+  "topo",
+];
 
 export const DEFAULT_THEME_MODE: ThemeMode = "dark";
 export const DEFAULT_THEME_SKIN: ThemeSkin = "holo"; // showcase default; "classic" preserves the pre-redesign look

@@ -55,6 +55,44 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     expect(ctxStub.clearRect).toHaveBeenCalled();
   });
 
+  it("runs the laser and docking draws through the same factory loop", () => {
+    for (const variant of ["laser", "docking"] as const) {
+      const { unmount } = render(
+        wrap(<BootSequence onDone={vi.fn()} />, {
+          useBootSequence: (_onDone: () => void) => {
+            return {
+              state: { variant, progress: 10, done: false },
+              skip: vi.fn(),
+            };
+          },
+        } as unknown as Partial<ViewModel>),
+      );
+      unmount();
+    }
+
+    expect(ctxStub.clearRect).toHaveBeenCalled();
+  });
+
+  it("tracks the cursor into the shared pointer while booting", () => {
+    render(wrap(<BootSequence onDone={vi.fn()} />));
+    // The listener normalizes clientX/Y to -1..1; it must not throw and the
+    // canvas keeps drawing afterwards (the pointer feeds the v3 variants).
+    window.dispatchEvent(new MouseEvent("mousemove", { clientX: 5 }));
+    expect(ctxStub.clearRect).toHaveBeenCalled();
+  });
+
+  it("skips the canvas loop entirely under prefers-reduced-motion", () => {
+    // jsdom has no matchMedia at all (the component optional-chains it), so
+    // stub one on the window rather than spying.
+    const original = window.matchMedia;
+    window.matchMedia = (() => {
+      return { matches: true };
+    }) as unknown as typeof window.matchMedia;
+    render(wrap(<BootSequence onDone={vi.fn()} />));
+    expect(rafSpy).not.toHaveBeenCalled();
+    window.matchMedia = original;
+  });
+
   it("draws using CSS-var values when custom properties are set", () => {
     document.documentElement.style.setProperty("--accent-primary", "#c0ffee");
     document.documentElement.style.setProperty("--accent-2", "#facade");

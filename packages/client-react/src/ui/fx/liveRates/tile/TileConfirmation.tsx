@@ -78,7 +78,14 @@ function ConfirmationContent({
   state,
 }: ConfirmationContentProps): ReactElement | null {
   if (state.status === "started") {
-    return <span>Executing...</span>;
+    // PROTO parity: a spinning ring + monospace EXECUTING… label on a dimmed
+    // panel, not bare text.
+    return (
+      <>
+        <div className={styles.spinner} />
+        <div className={styles.busyLabel}>EXECUTING…</div>
+      </>
+    );
   }
 
   if (state.status === "tooLong") {

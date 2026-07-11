@@ -1,11 +1,14 @@
-import type { ReactElement } from "react";
+import type { ReactElement, Ref } from "react";
 
 import {
+  type CurrencyCategory,
   type CurrencyPair,
   PriceMovementType,
   type PriceTick,
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
+
+import { useFlipGrid } from "#/ui/shell/motion/useFlipGrid";
 
 import { computeMovementPips } from "./movementPips";
 
@@ -18,7 +21,16 @@ import styles from "./WatchlistView.module.css";
  * (usePrice/usePriceHistory) the tile grid's Tile.tsx does, so the two views
  * always agree on price/movement — only the layout differs.
  */
-export function WatchlistView({ pairs }: WatchlistViewProps): ReactElement {
+export function WatchlistView({
+  pairs,
+  filter,
+}: WatchlistViewProps): ReactElement {
+  // Same isotope choreography as the tile grid (PROTO flips
+  // '[data-tile-sym]' in BOTH the rates and watch views): surviving rows
+  // glide, appearing rows slide in from the panel's right border,
+  // filtered-out rows fall to its bottom border.
+  const { register } = useFlipGrid([filter], { enter: true, exit: true });
+
   return (
     <div data-testid="watchlist-view" className={styles.table}>
       <div className={styles.header}>
@@ -29,7 +41,13 @@ export function WatchlistView({ pairs }: WatchlistViewProps): ReactElement {
         <span>Trend</span>
       </div>
       {pairs.map((pair) => {
-        return <WatchlistRow key={pair.symbol} pair={pair} />;
+        return (
+          <WatchlistRow
+            key={pair.symbol}
+            pair={pair}
+            rowRef={register(pair.symbol)}
+          />
+        );
       })}
     </div>
   );
@@ -37,11 +55,12 @@ export function WatchlistView({ pairs }: WatchlistViewProps): ReactElement {
 
 interface WatchlistViewProps {
   pairs: readonly CurrencyPair[];
+  filter: CurrencyCategory;
 }
 
 const NO_VALUE = "—";
 
-function WatchlistRow({ pair }: WatchlistRowProps): ReactElement {
+function WatchlistRow({ pair, rowRef }: WatchlistRowProps): ReactElement {
   const { usePrice, usePriceHistory } = useViewModel();
   const price = usePrice(pair);
   const history = usePriceHistory(pair.symbol);
@@ -55,7 +74,11 @@ function WatchlistRow({ pair }: WatchlistRowProps): ReactElement {
   const spreadText = price ? price.spread : NO_VALUE;
 
   return (
-    <div data-testid={`watch-row-${pair.symbol}`} className={styles.row}>
+    <div
+      ref={rowRef}
+      data-testid={`watch-row-${pair.symbol}`}
+      className={styles.row}
+    >
       <span className={styles.pair}>{pair.symbol}</span>
       <span data-testid="watch-mid" data-sign={sign} className={styles.mid}>
         {midText}
@@ -73,6 +96,7 @@ function WatchlistRow({ pair }: WatchlistRowProps): ReactElement {
 
 interface WatchlistRowProps {
   pair: CurrencyPair;
+  rowRef: Ref<HTMLDivElement>;
 }
 
 type MovementSign = "up" | "down" | "flat";

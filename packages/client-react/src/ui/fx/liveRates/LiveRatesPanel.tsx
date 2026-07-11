@@ -29,8 +29,9 @@ export function LiveRatesPanel(): ReactElement {
   });
 
   // Tiles glide (FLIP) to their new grid position whenever the filter changes
-  // which pairs are shown.
-  const { register } = useFlipGrid([filter]);
+  // which pairs are shown; appearing tiles pop in, filtered-out ones fade out
+  // in place (isotope-style).
+  const { register } = useFlipGrid([filter], { enter: true, exit: true });
 
   return (
     <div className={styles.panel}>
@@ -41,7 +42,7 @@ export function LiveRatesPanel(): ReactElement {
       {pairs.length === 0 ? (
         <div className={styles.empty}>Loading currency pairs...</div>
       ) : ratesTab === "watchlist" ? (
-        <WatchlistView pairs={filteredPairs} />
+        <WatchlistView pairs={filteredPairs} filter={filter} />
       ) : (
         <div className={styles.grid}>
           {filteredPairs.map((pair) => {

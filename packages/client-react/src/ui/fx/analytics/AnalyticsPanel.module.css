@@ -1,6 +1,5 @@
 .loading {
   background: var(--panel);
-  backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 16px;
