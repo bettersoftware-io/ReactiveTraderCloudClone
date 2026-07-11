@@ -92,6 +92,42 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
     );
   }
 
+  /** Fire a bubbling webkitAnimationEnd event that originates on a
+   * DESCENDANT of the card (its ticker span in the header), not the card
+   * root itself — exercises RfqCard's `event.target !== event.currentTarget`
+   * early-return guard in its onAnimationEnd handler. The event still
+   * bubbles up through the card, but React sets `event.currentTarget` to the
+   * card (where the JSX handler lives) while `event.target` stays the
+   * descendant, so a correct guard implementation must ignore it. */
+  fireCardAnimationEndFromDescendant(rfqId: number): void {
+    const descendant = this.cardTicker(rfqId);
+
+    if (!descendant) {
+      throw new Error(`No descendant element for rfq ${rfqId}`);
+    }
+
+    fireEvent(
+      descendant,
+      new Event("webkitAnimationEnd", { bubbles: true, cancelable: false }),
+    );
+  }
+
+  /** Descendant-originated counterpart of fireCardAnimationCancel — exercises
+   * the same `event.target !== event.currentTarget` guard on the native
+   * "animationcancel" listener RfqCard attaches directly to its root ref. */
+  fireCardAnimationCancelFromDescendant(rfqId: number): void {
+    const descendant = this.cardTicker(rfqId);
+
+    if (!descendant) {
+      throw new Error(`No descendant element for rfq ${rfqId}`);
+    }
+
+    fireEvent(
+      descendant,
+      new Event("animationcancel", { bubbles: true, cancelable: false }),
+    );
+  }
+
   /** The empty-state message, or null when cards are present. */
   emptyMessage(): string | null {
     const el = within(this.root).queryByText(/no rfqs to show/i);
@@ -190,6 +226,15 @@ export class RfqsPanelPage extends MountedComponent<Record<string, never>> {
   private card(rfqId: number): HTMLElement | null {
     return this.root.querySelector<HTMLElement>(
       `[data-testid="rfq-card-${rfqId}"]`,
+    );
+  }
+
+  /** The card's ticker span (always rendered, in every card state) — used as
+   * a stand-in DESCENDANT for the animation-event target/currentTarget
+   * guard specs. */
+  private cardTicker(rfqId: number): HTMLElement | null {
+    return (
+      this.card(rfqId)?.querySelector<HTMLElement>('[class*="ticker"]') ?? null
     );
   }
 

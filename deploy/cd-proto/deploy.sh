@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
-# Deploy a standalone Claude Design prototype to the rtc-clone-cd-proto Vercel
-# project (https://rtc-clone-cd-proto.vercel.app), behind a shared-password
-# Basic-Auth gate.
+# Deploy a standalone Claude Design prototype to a cd-proto Vercel project,
+# behind a shared-password Basic-Auth gate. There are two such projects, both
+# in the same team, selected by env (see below):
+#   - web    → rtc-clone-web-cd-proto    (https://rtc-clone-web-cd-proto.vercel.app)
+#   - mobile → rtc-clone-mobile-cd-proto (https://rtc-clone-mobile-cd-proto.vercel.app)
 #
 #   ./deploy/cd-proto/deploy.sh [PATH_TO_STANDALONE_HTML]
 #
-# PATH_TO_STANDALONE_HTML defaults to the v3 standalone. Pass another version's
+# PATH_TO_STANDALONE_HTML defaults to the current web design (v4). Pass another
 # path to ship it instead, e.g.:
-#   ./deploy/cd-proto/deploy.sh "docs/design/v2/standalone/Reactive Trader.html"
+#   ./deploy/cd-proto/deploy.sh "docs/design/web/v3/standalone/Reactive Trader.html"
+#
+# To ship the MOBILE prototype, also point VERCEL_PROJECT_ID + CD_PROTO_ALIAS at
+# the mobile project (the GitHub Action does this for you via its `target` input):
+#   VERCEL_PROJECT_ID=prj_aWczPu0wohwQT9tcbkONTL0bh9wj \
+#   CD_PROTO_ALIAS=https://rtc-clone-mobile-cd-proto.vercel.app \
+#     ./deploy/cd-proto/deploy.sh "docs/design/mobile/v1/standalone/Reactive Trader Mobile.html"
 #
 # The gate (a tiny Basic-Auth middleware) is GENERATED here at deploy time, not
 # committed — so this is the single source of truth for both local runs and the
@@ -17,7 +25,9 @@
 #
 # Auth/targeting:
 #   - Project is selected via VERCEL_ORG_ID + VERCEL_PROJECT_ID (not secrets — a
-#     project ID appears in dashboard URLs); defaults below point at the proto.
+#     project ID appears in dashboard URLs); defaults below point at the web proto.
+#   - CD_PROTO_ALIAS is the canonical alias the post-deploy smoke check hits;
+#     defaults to the web project, override it for the mobile project.
 #   - Locally: relies on `vercel login`. In CI: set VERCEL_TOKEN and it is used.
 #   - The password (SITE_PASSWORD) is an env var ON the Vercel project, set once
 #     in the dashboard and reused every deploy — it never passes through here.
@@ -28,7 +38,7 @@ set -euo pipefail
 export VERCEL_ORG_ID VERCEL_PROJECT_ID
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
-SRC="${1:-docs/design/v3/standalone/Reactive Trader.html}"
+SRC="${1:-docs/design/web/v4/standalone/Reactive Trader.html}"
 case "$SRC" in
   /*) ABS="$SRC" ;;
   *)  ABS="$REPO_ROOT/$SRC" ;;
@@ -78,7 +88,7 @@ EOF
 
 cat > "$BUILD/package.json" <<'EOF'
 {
-  "name": "rtc-clone-cd-proto",
+  "name": "rtc-clone-cd-proto-gate",
   "private": true,
   "version": "0.0.0",
   "dependencies": { "@vercel/edge": "^1.3.1" }
@@ -94,7 +104,7 @@ cp "$ABS" "$BUILD/index.html"
 TOKEN_ARG=()
 [ -n "${VERCEL_TOKEN:-}" ] && TOKEN_ARG=(--token "$VERCEL_TOKEN")
 
-echo "Deploying to rtc-clone-cd-proto (production)…"
+echo "Deploying to $VERCEL_PROJECT_ID (production)…"
 URL="$(cd "$BUILD" && vercel deploy --prod --yes "${TOKEN_ARG[@]}")"
 echo "Deployed: $URL"
 
@@ -102,7 +112,7 @@ echo "Deployed: $URL"
 # `vercel deploy` prints: Vercel Deployment Protection guards generated
 # *.vercel.app deployment URLs with a 302 (redirect to Vercel login) but exempts
 # the project alias, so only the alias reaches our SITE_PASSWORD gate → 401.
-ALIAS="https://rtc-clone-cd-proto.vercel.app"
+ALIAS="${CD_PROTO_ALIAS:-https://rtc-clone-web-cd-proto.vercel.app}"
 echo "Smoke — unauthenticated request to $ALIAS must be gated (401)…"
 CODE=""
 for attempt in 1 2 3 4 5; do

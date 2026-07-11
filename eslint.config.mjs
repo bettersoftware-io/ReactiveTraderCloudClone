@@ -105,6 +105,9 @@ export default tseslint.config(
       "**/__screenshots__/**",
       "**/.turbo/**",
       ".tooling/**",
+      // Design-handoff prototypes are self-contained artifacts, not app code —
+      // excluded from lint (matches biome.jsonc `!docs/design` + knip's ignore).
+      "docs/design/**",
     ],
   },
   {

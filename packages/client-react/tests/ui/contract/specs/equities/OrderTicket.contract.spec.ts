@@ -223,6 +223,42 @@ describe("OrderTicket — Est. Cost", () => {
     await ticket.setLimitPrice(150);
     expect(ticket.estCost()).toBe("$15,000");
   });
+
+  // OrderTicket.tsx's limit-price onChange: `e.target.value === "" ?
+  // undefined : Number(...)` then `ticket.setLimitPrice(undefined)` — clearing
+  // the field back to empty must fall back to pricing off the live last again,
+  // not freeze at the last-entered limit price.
+  it("reverts to pricing off the live last once a set limit price is cleared", async () => {
+    const ticket = mount(OrderTicket, {
+      props: { symbol: "AAPL" },
+      equities: { quotes: { AAPL: makeQuote(200) } },
+    });
+
+    await ticket.setType("limit");
+    await ticket.setQty(100);
+    await ticket.setLimitPrice(150);
+    expect(ticket.estCost()).toBe("$15,000");
+
+    await ticket.clearLimitPrice();
+    expect(ticket.estCost()).toBe("$20,000");
+  });
+});
+
+describe("OrderTicket — fill animation", () => {
+  // OrderTicket.tsx: `animIntent?.kind === "fill" ? "fill" : undefined` —
+  // pushed via the shared AnimationIntent seam (useAnimationIntents(`ticket:
+  // ${symbol}`)), keyed exactly as the component reads it.
+  it('paints data-anim="fill" while a fill AnimationIntent is active for this ticket\'s target', () => {
+    const ticket = mount(OrderTicket, { props: { symbol: "AAPL" } });
+
+    expect(ticket.animAttr()).toBeNull();
+
+    ticket.setIntent("ticket:AAPL", { target: "ticket:AAPL", kind: "fill" });
+    expect(ticket.animAttr()).toBe("fill");
+
+    ticket.setIntent("ticket:AAPL", null);
+    expect(ticket.animAttr()).toBeNull();
+  });
 });
 
 function makeQuote(last: number): EquityQuote {

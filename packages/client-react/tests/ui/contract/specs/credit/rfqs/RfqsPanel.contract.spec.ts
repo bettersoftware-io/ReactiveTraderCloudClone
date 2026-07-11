@@ -268,6 +268,55 @@ describe("RfqsPanel", () => {
     expect(panel.emptyMessage()).toBe("No RFQs to show");
   });
 
+  // RfqCard's onAnimationEnd handler ignores events that bubble up from a
+  // descendant (event.target !== event.currentTarget) — defensive today
+  // since no descendant currently animates, but load-bearing the moment one
+  // is added. Drive it from a genuine descendant (the ticker span) instead
+  // of the card root and confirm the exit is NOT cleared by it.
+  it("ignores an animationend event that bubbles from a descendant of the card, not the card itself", async () => {
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [rfq(1, { state: RfqState.Expired })],
+      },
+      creditRfqFilter: "all",
+    });
+    await panel.remove(1);
+    expect(panel.cardAnim(1)).toBe("exit");
+
+    panel.fireCardAnimationEndFromDescendant(1);
+    // A descendant-sourced event must NOT clear the exit bookkeeping.
+    expect(panel.cardCount()).toBe(1);
+    expect(panel.cardAnim(1)).toBe("exit");
+
+    // The card's OWN animationend still clears it correctly.
+    panel.fireCardAnimationEnd(1);
+    expect(panel.cardCount()).toBe(0);
+  });
+
+  // Same descendant guard, but for the native "animationcancel" listener
+  // (final review M-a) rather than the React-synthetic onAnimationEnd.
+  it("ignores an animationcancel event that bubbles from a descendant of the card, not the card itself", async () => {
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [rfq(1, { state: RfqState.Expired })],
+      },
+      creditRfqFilter: "all",
+    });
+    await panel.remove(1);
+    expect(panel.cardAnim(1)).toBe("exit");
+
+    panel.fireCardAnimationCancelFromDescendant(1);
+    expect(panel.cardCount()).toBe(1);
+    expect(panel.cardAnim(1)).toBe("exit");
+
+    panel.fireCardAnimationCancel(1);
+    expect(panel.cardCount()).toBe(0);
+  });
+
   // PROTO cardAnim: a STATE change revealing an RFQ while the filter is
   // unchanged shows it plain, never entering (rfqCardAnim.ts:43-45). A stale
   // `entering` entry orphaned by an EARLIER filter switch — the card's
@@ -531,6 +580,56 @@ describe("RfqsPanel", () => {
     });
     expect(panel.hasRemoveControl(1)).toBe(false);
     expect(panel.hasRemoveControl(2)).toBe(false);
+  });
+
+  // An in-flight exit always wins over an in-flight entrance (rfqCardAnim.ts
+  // cardAnim): a card can auto-exit via a STATE change before its own
+  // entrance animation ever fires animationend, leaving a stale `entering`
+  // entry underneath the now-showing "exit" keyframe. The exit's own
+  // animationend must clear BOTH maps in the same handler call.
+  it("clears a stale entrance-cascade entry when a card auto-exits before its entrance animation ends", () => {
+    const panel = mount(RfqsPanel, {
+      hooks: {
+        useInstruments: instruments,
+        useDealers: dealers,
+        useRfqs: [rfq(1, { state: RfqState.Open })],
+      },
+      creditRfqFilter: "live",
+    });
+    expect(panel.cardCount()).toBe(1);
+
+    // id 2 arrives as a genuinely new (0ms) entrance while viewing "live".
+    panel.emit({
+      useRfqs: [
+        rfq(1, { state: RfqState.Open }),
+        rfq(2, {
+          state: RfqState.Open,
+          creationTimestamp: 1_700_000_001_000,
+        }),
+      ],
+    });
+    expect(panel.cardAnim(2)).toBe("enter");
+
+    // Before that entrance animation ever ends, id 2 transitions out of the
+    // "live" filter via a STATE change (not a filter switch) — the
+    // auto-exit path kicks in, and "exit" wins the display.
+    panel.emit({
+      useRfqs: [
+        rfq(1, { state: RfqState.Open }),
+        rfq(2, {
+          state: RfqState.Closed,
+          creationTimestamp: 1_700_000_001_000,
+        }),
+      ],
+    });
+    expect(panel.cardCount()).toBe(2);
+    expect(panel.cardAnim(2)).toBe("exit");
+
+    // The card's own animationend reports "exit" (whichever keyframe is
+    // currently selected) — clearing both the exiting AND the orphaned
+    // entering entry for id 2.
+    panel.fireCardAnimationEnd(2);
+    expect(panel.cardCount()).toBe(1);
   });
 });
 

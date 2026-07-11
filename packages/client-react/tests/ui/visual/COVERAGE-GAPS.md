@@ -1,5 +1,104 @@
 # Visual coverage gaps — snapshot 2026-06-30 (HUD redesign Phase 6)
 
+## Pre-SolidJS-port audit (2026-07-11) — full-tier re-verification
+
+Taken after the v3 design sync (PR #164: exec spinner, isotope filter motion,
+ambient dots, Orbitron dialog chrome, five new 3D boot scenes) with the goal of
+**no undocumented gaps** before `client-solid` replicates `client-react`. The
+contract specs + both golden sets are the portability contract (ADR-001 /
+test-strategy §9): a solid port must pass the same neutral `*.contract.spec.ts`
+suite through its own registry and byte-match the same goldens.
+
+### Headline numbers (2026-07-11)
+
+| Tier | Stmts | Branch | Funcs | Lines |
+|------|-------|--------|-------|-------|
+| **Contract tier (ENFORCED ≥95% `src/ui` gate, 807 tests)** | **98.52%** | **97.04%** | **97.57%** | **98.52%** |
+| Visual tier (istanbul, `src/ui/**/*.tsx`) | 76.92% | 68.44% | 72.32% | 76.89% |
+| Domain (report-only) | 96.23% | 84.34% | 96.18% | 96.20% |
+| Server (report-only) | 99.34% | 81.48% | 100% | 99.34% |
+| Client app layer (report-only) | 92.66% | 84.21% | 93.18% | 92.66% |
+| client-core (report-only) | 93.07% | 83.33% | 96.22% | 91.72% |
+| react-bindings (report-only) | 64.39% | 83.33% | 41.33% | 64.39% |
+
+Goldens: 1,242 scenarios × 3 tiers × 2 arches (react/ x86 + react-local/
+darwin-arm64), full 5-skin × dark/light matrix, real app fonts, @1920×1080.
+
+### Closed by this audit
+
+- `equities/chart/useTickFlash.ts` (was 12.5% branch — the whole value-changed
+  path): dedicated unit test, all direction/null arms.
+- `fx/useFxView.ts` + `credit/useCreditView.ts` outside-provider throws: covered
+  (the sibling `useViewModel`/`useTheme` guards stay documented-open below).
+- `equities/chart/chartVm.ts` flat-range `|| 1` arm; `ChartPanel` null-quote arm;
+  `watchlistVm` null-`last` price-sort arm; `DeskPnlGauge` NaN-P&L guard;
+  `OrderTicket` limit-price-clear → undefined arm + fill animIntent arm.
+- `credit/newRfq/NewRfqPanel.tsx` dealer-deselect arm; `credit/rfqs/RfqCard.tsx`
+  descendant-animation-bubble guards (animationend + native animationcancel);
+  `credit/rfqs/RfqsPanel.tsx` exit-clears-orphaned-enter path.
+- `fx/blotter/FxBlotter.tsx` "no trades match the current filters" arm;
+  `fx/liveRates/tile/Tile.tsx` stale-tile execute guard (handler-level proof);
+  `shell/chrome/ThemePicker.tsx` non-Escape-key arm.
+- **Visual**: two genuinely-unsnapshotted states got scenarios —
+  `equities/depth-dock-empty` (EqDepthDock was 0% visual: its own pixels are the
+  SELECT-AN-INSTRUMENT placeholder; the selected arm delegates to the pinned
+  `equities/depth-ladder`) and `chrome/theme-picker-open` (the skin listbox via a
+  `skin-picker` click action; the closed trigger is in every chrome golden).
+
+### Newly documented as intentionally open (verified, not assumed)
+
+| File / lines | Class | Evidence |
+|---|---|---|
+| `NewRfqPanel.tsx` 129 (`!canSubmit` guard in handleSend) | disabled-button guard | SEND carries a real `disabled` attr; native disabled buttons never dispatch click. |
+| `RfqCard.tsx` 99 (`if (!el)` in animationcancel effect) | ref-null defensive | root div unconditionally rendered; React populates refs before effects. |
+| `RfqsPanel.tsx` 217, 230 (`!prev.has(rfqId)` dup-event guards) | animation-lifecycle defensive | empirically probed: RfqCard's own `anim` check blocks a second dispatch through any real DOM path; guards a browser duplicate-delivery race. |
+| `OrderTicket.tsx` 262 (qty `Number.isFinite` guard) | input-type sanitization | `<input type="number">` sanitizes `.value` before any event in browsers AND jsdom — `Number()` can never see a non-finite string here. |
+| `TileRfq.tsx` 30 (`if (!quote)` after accept) | structurally unreachable | same guard previously documented at its old line number (45); buttons only render when `state.quote` is truthy. |
+| `shell/motion/useFlipGrid.ts` 76, 88, 105 (`if (el)/if (node)` false arms) | unregistered-mid-pass defensive | an element would have to unregister between the same layout-effect's measure and animate calls — single-threaded-impossible. |
+
+### v3 additions — tier ownership
+
+- **Five 3D boot scenes** (`shell/boot/variants/*.ts`, 3,432 LOC canvas): same
+  policy as `bootCanvas.ts` — excluded from the contract denominator and NOT
+  golden'd (`boot/chrome` captures reduced-motion chrome only; rAF/time-driven
+  canvas art is not freezable). Wrappers/loop/pointer covered by
+  `BootSequence.test.tsx`; rotation covered by `BootSequenceMachine` tests
+  against domain `BOOT_VARIANTS`; scenes smoke-verified live at merge.
+- **`useFlipGrid` enter/exit** (isotope filter motion): transient WAAPI
+  animations — unit-tested (keyframes, stage geometry, ghost lifecycle,
+  testid-stripping); e2e filter specs assert live counts during the fade.
+- **Executing spinner / ambient dots / Orbitron chrome / blotter gap**: pure
+  pixel changes — carried by the regenerated goldens (`tile/execution-started`,
+  every full-app + chrome scenario, `chrome/theme-picker-open`, blotter heads).
+
+### Visual-tier 0%/low files — ownership (istanbul, 2026-07-11)
+
+| File | Visual % | Owner |
+|---|---|---|
+| `shell/boot/BootGate.tsx` | 0 | contract (`BootGate.contract.spec.ts`) + `bootSplashGate` unit tests; it renders either boot or app — no pixels of its own. |
+| `equities/chart/EqDepthDock.tsx` | 0 → covered | new `equities/depth-dock-empty` golden (above). |
+| `shell/boot/BootSequence.tsx` | 38.6 | reduced-motion chrome golden by design (canvas policy above). |
+| `shell/chrome/ThemePicker.tsx` | 34.6 → improved | new `chrome/theme-picker-open` golden; remaining arms are the runtime skin-switch handlers (contract-covered). |
+
+The visual-tier headline (76.92% st) is LOWER than 2026-06-30's 82.22% because
+the denominator grew with the v2-round-2 + v3 surface (positions bubbles,
+admin topology HTML overlay, boot chrome, equities docks) while the metric's
+meaning is unchanged: every sub-100% row above traces to an interaction-only
+handler, a timer state, or a documented canvas policy — each with a named
+owning tier. **No undocumented visual gaps remain.**
+
+### Port-relevant observation: react-bindings at 64% stmts / 41% funcs
+
+`@rtc/react-bindings` (`createViewModel.ts`) is the ONE package a solid port
+re-implements wholesale (solid-bindings: signals instead of hooks). Its
+uncovered functions are seam-hook bodies exercised only through the running
+app (e2e) — fine for React, but they are the **behavioural spec** solid-bindings
+must match. Recommendation for the port: before writing solid-bindings, add a
+framework-neutral bridge contract (mirroring the PortContract pattern) that
+both binding packages run, covering every `ViewModel` seam method — then the
+port inherits an executable spec instead of prose. Tracked as the first task of
+the client-solid workstream, not this audit.
+
 One-time inventory of `src/ui` components and conditional branches the **visual**
 tier does not render, i.e. that have **no golden snapshot**. Produced by reading
 the istanbul report from

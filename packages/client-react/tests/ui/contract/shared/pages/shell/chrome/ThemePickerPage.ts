@@ -37,6 +37,12 @@ export class ThemePickerPage extends MountedComponent<Record<string, never>> {
     await this.user.keyboard("{Escape}");
   }
 
+  /** Press a non-Escape key at document scope — proves the keydown handler's
+   *  `event.key === "Escape"` guard leaves every other key alone. */
+  async pressNonEscapeKey(): Promise<void> {
+    await this.user.keyboard("a");
+  }
+
   /** Close the open skin dropdown by clicking outside it (document.body). */
   async closeMenuWithOutsideClick(): Promise<void> {
     await this.user.click(document.body);

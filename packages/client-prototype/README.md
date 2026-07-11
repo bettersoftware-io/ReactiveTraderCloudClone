@@ -1,6 +1,6 @@
 # @rtc/client-prototype
 
-A **readable React port of the Claude Design prototype** at `docs/design/v2`.
+A **readable React port of the Claude Design prototype** at `docs/design/web/v2`.
 Its sole purpose is comprehension: the original prototype is a high-fidelity
 design spec whose source is very hard to read; this package re-expresses the
 same app as navigable, idiomatic source you can read one folder at a time.
@@ -20,7 +20,7 @@ behaviorally, the original is right and this port has a fidelity bug.
 Surprisingly, both are React apps. They differ in *authoring model*, not
 rendering technology:
 
-| | Original (`docs/design/v2`) | This port |
+| | Original (`docs/design/web/v2`) | This port |
 |---|---|---|
 | Delivery | One self-contained ~836KB HTML file (offline, fonts + code + React embedded) | Vite app (`pnpm dev` / `pnpm build`) |
 | Authoring | `<x-dc>` HTML template with `{{ moustache }}` bindings | 100+ TS/TSX modules, one folder per screen |
@@ -30,10 +30,10 @@ rendering technology:
 | Build step | None — the template *is* the program | Vite + TypeScript |
 
 The original's editable source lives at
-`docs/design/v2/dev-handoff/prototype/source/` (`Reactive Trader.dc.html`
+`docs/design/web/v2/dev-handoff/prototype/source/` (`Reactive Trader.dc.html`
 ~1.4k lines + `support.js` ~1.6k lines — the whole app in two files). The
-runnable single file is `docs/design/v2/standalone/Reactive Trader.html`.
-`docs/design/v2/dev-handoff/HANDOFF.md` describes the design spec itself.
+runnable single file is `docs/design/web/v2/standalone/Reactive Trader.html`.
+`docs/design/web/v2/dev-handoff/HANDOFF.md` describes the design spec itself.
 
 ## Tech stack (deliberately minimal)
 
@@ -87,7 +87,7 @@ pnpm --filter @rtc/client-prototype test    # vitest (jsdom)
 
 The built site deploys on demand to <https://rtc-clone-proto.vercel.app>
 (password-gated) via the **Deploy Prototype** GitHub Action; the original
-HTML deploys to <https://rtc-clone-cd-proto.vercel.app> via **Deploy Claude
+HTML deploys to <https://rtc-clone-web-cd-proto.vercel.app> via **Deploy Claude
 Design Prototype**. See `deploy/proto/README.md`.
 
 ## A hard-won testing lesson
@@ -118,7 +118,7 @@ one per artifact in the design pair:
 `vite.config.ts`), rendering this readable React port. `dev:design` runs a
 separate zero-dependency Node static server (`scripts/serve-design.mjs`)
 that serves the canonical, unrelated artifact this package is a port
-*of* — `docs/design/v2/standalone/Reactive Trader.html` — on port 8899.
+*of* — `docs/design/web/v2/standalone/Reactive Trader.html` — on port 8899.
 Run both side by side to compare the port against the source it must stay
 faithful to.
 
