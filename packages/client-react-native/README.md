@@ -185,6 +185,10 @@ only works if it matches the server. If the live tiles show "Disconnected"
 while the Simulator works, a token mismatch (or a missing token against a
 gated server) is the most likely cause.
 
+> For the full picture of every `.env` file in the repo (this one, the web
+> client's, and the Vercel CLI artifacts) and a token-rotation checklist, see
+> [`docs/env-files.md`](../../docs/env-files.md).
+
 ### Step 1 — decide the server side (you own the Fly app)
 
 ```bash
