@@ -4,13 +4,6 @@
 
 export const BOOT_DURATION_MS = 4200;
 
-/** Projected point in 3D globe rendering */
-interface Projected {
-  x: number;
-  y: number;
-  z: number;
-}
-
 /** Canvas rectangle used in laser and docking draws */
 interface Rect {
   x: number;
@@ -103,115 +96,6 @@ export function ease(k: number): number {
 /** Zero-pad a number to two digits. Verbatim from prototype _drawBootDocking. */
 function pad2(n: number): string {
   return String(Math.abs(Math.floor(n))).padStart(2, "0");
-}
-
-/**
- * drawBootCore — verbatim inner draw() from prototype _drawBoot (lines 857-872).
- * Draws one frame of the spinning globe boot animation.
- */
-export function drawBootCore(d: BootDrawCtx): void {
-  const c = d.canvas;
-  const ctx = d.ctx;
-  const acc = d.accent;
-  const lat: number[] = [];
-  const lon: number[] = [];
-
-  for (let a = -80; a <= 80; a += 20) {
-    lat.push((a * Math.PI) / 180);
-  }
-
-  for (let b = 0; b < 360; b += 20) {
-    lon.push((b * Math.PI) / 180);
-  }
-
-  if (c.width !== c.offsetWidth) {
-    c.width = c.offsetWidth;
-    c.height = c.offsetHeight;
-  }
-
-  const t = (performance.now() - d.start) / 1000;
-  const prog = Math.min(1, (performance.now() - d.start) / BOOT_DURATION_MS);
-  ctx.clearRect(0, 0, c.width, c.height);
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
-  ctx.fillRect(0, 0, c.width, c.height);
-  const cx = c.width / 2;
-  const cy = c.height / 2 - 30;
-  const R = Math.min(c.width, c.height) * 0.18 * Math.min(1, prog * 1.6 + 0.2);
-  const yaw = t * 0.7;
-  const pitch = 0.5;
-
-  function proj(la: number, lo: number): Projected {
-    const px = Math.cos(la) * Math.cos(lo);
-    const py = Math.sin(la);
-    const pz = Math.cos(la) * Math.sin(lo);
-    const x2 = px * Math.cos(yaw) - pz * Math.sin(yaw);
-    const z2 = px * Math.sin(yaw) + pz * Math.cos(yaw);
-    const y2 = py * Math.cos(pitch) - z2 * Math.sin(pitch);
-    const z3 = py * Math.sin(pitch) + z2 * Math.cos(pitch);
-    return { x: cx + x2 * R, y: cy + y2 * R, z: z3 };
-  }
-
-  ctx.lineWidth = 1;
-
-  for (let i = 0; i < lat.length; i++) {
-    ctx.beginPath();
-
-    for (let j = 0; j <= lon.length; j++) {
-      const p = proj(lat[i], lon[j % lon.length]);
-      const alpha = 0.15 + 0.5 * ((p.z + 1) / 2);
-      ctx.strokeStyle = hexToRgba(acc, alpha);
-
-      if (j === 0) {
-        ctx.moveTo(p.x, p.y);
-      } else {
-        ctx.lineTo(p.x, p.y);
-      }
-    }
-
-    ctx.stroke();
-  }
-
-  for (let j = 0; j < lon.length; j += 1) {
-    ctx.beginPath();
-
-    for (let i = 0; i < lat.length; i++) {
-      const p = proj(lat[i], lon[j]);
-      const alpha = 0.12 + 0.45 * ((p.z + 1) / 2);
-      ctx.strokeStyle = hexToRgba(acc, alpha);
-
-      if (i === 0) {
-        ctx.moveTo(p.x, p.y);
-      } else {
-        ctx.lineTo(p.x, p.y);
-      }
-    }
-
-    ctx.stroke();
-  }
-
-  for (let r = 0; r < 3; r++) {
-    const rad = R * 1.5 + ((t * 60 + r * 70) % 200);
-    ctx.beginPath();
-    ctx.strokeStyle = hexToRgba(
-      acc,
-      Math.max(0, 0.4 - ((rad - R * 1.5) / 200) * 0.4),
-    );
-    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  ctx.strokeStyle = hexToRgba(acc, 0.25);
-  ctx.beginPath();
-  ctx.moveTo(cx - c.width, cy);
-  ctx.lineTo(cx + c.width, cy);
-  ctx.moveTo(cx, cy - c.height);
-  ctx.lineTo(cx, cy + c.height);
-  ctx.stroke();
-  ctx.strokeStyle = hexToRgba(acc, 0.8);
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(cx, cy, R * 1.35, t * 2, t * 2 + 1.2);
-  ctx.stroke();
 }
 
 /**
