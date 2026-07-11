@@ -66,10 +66,10 @@
       <animate attributeName="height" dur="12s" repeatCount="indefinite" values="22;22;184;184;22;22" keyTimes="0;0.15;0.35;0.65;0.85;1"/>
     </rect>
     <text x="440" y="56" class="label" opacity="1">ANALYTICS
-      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="1;1;0;0;1;1" keyTimes="0;0.15;0.35;0.65;0.85;1"/>
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="1;1;0;0;0;0;1;1" keyTimes="0;0.15;0.17;0.35;0.65;0.85;0.87;1"/>
     </text>
     <text x="684" y="132" text-anchor="middle" dominant-baseline="middle" transform="rotate(-90,684,132)" class="label-strip" opacity="0">ANALYTICS
-      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.15;0.35;0.65;0.85;1"/>
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="0;0;0;1;1;0;0;0" keyTimes="0;0.15;0.32;0.35;0.65;0.68;0.85;1"/>
     </text>
   </g>
 
@@ -88,10 +88,10 @@
       <animate attributeName="height" dur="12s" repeatCount="indefinite" values="22;22;184;184;22;22" keyTimes="0;0.15;0.35;0.65;0.85;1"/>
     </rect>
     <text x="440" y="216" class="label" opacity="1">POSITIONS
-      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="1;1;0;0;1;1" keyTimes="0;0.15;0.35;0.65;0.85;1"/>
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="1;1;0;0;0;0;1;1" keyTimes="0;0.15;0.17;0.35;0.65;0.85;0.87;1"/>
     </text>
     <text x="684" y="316" text-anchor="middle" dominant-baseline="middle" transform="rotate(-90,684,316)" class="label-strip" opacity="0">POSITIONS
-      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.15;0.35;0.65;0.85;1"/>
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="0;0;0;1;1;0;0;0" keyTimes="0;0.15;0.32;0.35;0.65;0.68;0.85;1"/>
     </text>
   </g>
 
@@ -106,10 +106,10 @@
       <animate attributeName="height" dur="12s" repeatCount="indefinite" values="22;22;32;32;22;22" keyTimes="0;0.15;0.35;0.65;0.85;1"/>
     </rect>
     <text x="32" y="376" class="label" opacity="1">BLOTTER
-      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="1;1;0;0;1;1" keyTimes="0;0.15;0.35;0.65;0.85;1"/>
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="1;1;0;0;0;0;1;1" keyTimes="0;0.15;0.17;0.35;0.65;0.85;0.87;1"/>
     </text>
     <text x="360" y="428" text-anchor="middle" class="label-strip" opacity="0">BLOTTER
-      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="0;0;1;1;0;0" keyTimes="0;0.15;0.35;0.65;0.85;1"/>
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="0;0;0;1;1;0;0;0" keyTimes="0;0.15;0.32;0.35;0.65;0.68;0.85;1"/>
     </text>
   </g>
 </svg>
