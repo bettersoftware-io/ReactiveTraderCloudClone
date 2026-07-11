@@ -69,5 +69,13 @@ watch live prices tick. Share the URL + password with friends.
 ## Rotating the password / token
 
 - Password: change `SITE_PASSWORD` in Vercel → redeploy (re-run the workflow).
-- Token: set a new value in BOTH `VITE_WS_TOKEN` (Vercel) and `WS_ACCESS_TOKEN`
-  (Fly: `fly secrets set ...`) → redeploy both.
+- Token: set the same new value **everywhere the token lives**, or a client
+  silently stops connecting:
+  - `WS_ACCESS_TOKEN` (Fly, the source of truth: `fly secrets set ...`)
+  - `VITE_WS_TOKEN` (Vercel) → redeploy the web client
+  - `EXPO_PUBLIC_WS_TOKEN` (`packages/client-react-native/.env`) → **restart
+    Metro** — the mobile app's copy is easy to forget, and `EXPO_PUBLIC_*` is
+    baked into the bundle at start.
+
+See [env-files.md](./env-files.md) for the full inventory of `.env` files and a
+step-by-step rotation checklist.
