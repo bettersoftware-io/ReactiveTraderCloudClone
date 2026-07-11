@@ -1,4 +1,4 @@
-[◀ 15. Flows](15-flows.md) · [Architecture Document](../architecture.md)
+[◀ 15. Flows](15-flows.md) · [Architecture Document](../architecture.md) · [17. The Web Client, Up Close ▶](17-web-client-up-close.md)
 
 ## 16. Trailheads
 
