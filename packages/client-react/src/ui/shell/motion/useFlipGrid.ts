@@ -275,6 +275,14 @@ function playExitGhost(
   node.style.height = `${rect.height}px`;
   node.style.margin = "0";
   node.style.pointerEvents = "none";
+  // The ghost is pure visual chrome: it must not read as real UI to
+  // assistive tech or to tests that count live tiles by test id (the e2e
+  // filter specs run their assertions inside the ghost's 340ms lifetime).
+  node.setAttribute("aria-hidden", "true");
+  node.removeAttribute("data-testid");
+  node.querySelectorAll("[data-testid]").forEach((el) => {
+    el.removeAttribute("data-testid");
+  });
   document.body.appendChild(node);
 
   const ghostBottom = rect.top + rect.height;

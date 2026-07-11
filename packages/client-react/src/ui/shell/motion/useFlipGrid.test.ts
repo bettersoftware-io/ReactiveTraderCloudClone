@@ -279,6 +279,10 @@ describe("useFlipGrid", () => {
     const leaving = makeTile();
     leaving.rect.left = 300;
     leaving.rect.top = 100;
+    leaving.el.setAttribute("data-testid", "tile-GBPUSD");
+    const leavingChild = document.createElement("span");
+    leavingChild.setAttribute("data-testid", "tile-GBPUSD-price");
+    leaving.el.appendChild(leavingChild);
     stage.el.appendChild(survivor.el);
     stage.el.appendChild(leaving.el);
 
@@ -311,6 +315,12 @@ describe("useFlipGrid", () => {
     expect(leaving.el.style.position).toBe("fixed");
     expect(leaving.el.style.left).toBe("300px");
     expect(leaving.el.style.top).toBe("100px");
+
+    // Visual chrome only: hidden from assistive tech, and stripped of every
+    // test id so e2e tile counts don't see it during its 340ms fade.
+    expect(leaving.el.getAttribute("aria-hidden")).toBe("true");
+    expect(leaving.el.hasAttribute("data-testid")).toBe(false);
+    expect(leaving.el.querySelectorAll("[data-testid]").length).toBe(0);
     expect(leaving.animate).toHaveBeenCalledWith(
       [
         { opacity: 1, transform: "translate(0, 0) scale(1)" },
