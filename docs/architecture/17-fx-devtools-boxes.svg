@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 790" font-family="ui-sans-serif, system-ui, sans-serif">
+  <title>The FX tab drawn as nested boxes, Thinking-in-React style: every box is labeled with the component name React DevTools shows. App contains AmbientBackground, HeaderChrome, WorkspaceEngine (key fx), StatusBar, and the ConnectionOverlay/LockScreen overlay sheets. WorkspaceEngine nests FxViewProvider, CreditViewProvider, then InhouseLayoutEngine, whose SplitNode boxes are drawn to FX_ROOT's sizes ratios: a 0.73/0.27 row split, the left column holding fx-rates over fx-blotter (0.66/0.34), the right rail holding fx-analytics over fx-positions (0.5/0.5) at initialPx 360px. Each amber panel shows its head component from appHeadRegistry and its body component wrapped in PanelErrorBoundary from appPanelRegistry.</title>
+
+  <!-- ======== canvas ======== -->
+  <rect x="2" y="2" width="956" height="786" rx="14" fill="#0a1420" stroke="#173049" stroke-width="2"/>
+
+  <style>
+    .title    { fill:#8fefff; font-size:15px; font-weight:700; letter-spacing:0.02em; }
+    .name     { fill:#e6edf3; font-size:12px; font-weight:700; }
+    .name-sm  { fill:#e6edf3; font-size:10.5px; font-weight:700; }
+    .note     { fill:#9ba9bd; font-size:10px; }
+    .mono     { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .data     { fill:#7ee787; font-size:10px; }
+    .reg      { fill:#e3b341; font-size:9.5px; }
+    .cap      { fill:#9ba9bd; font-size:12px; }
+    .ui-box       { fill:#0f2440; stroke:#79c0ff; stroke-width:1.5; }
+    .bridge-box   { fill:none; stroke:#d2a8ff; stroke-width:1.25; stroke-dasharray:5 3; }
+    .core-box     { fill:#0c2818; stroke:#56d364; stroke-width:1.5; }
+    .split-box    { fill:none; stroke:#56d364; stroke-width:1; }
+    .leaf-head    { fill:#3a2a05; stroke:#e3b341; stroke-width:1.25; }
+    .leaf-body    { fill:#241c07; stroke:#9e6a03; stroke-width:1.25; }
+    .overlay-sheet{ fill:#0d1117; stroke:#8b949e; stroke-width:1.25; stroke-dasharray:6 4; }
+    .ambient      { fill:#0d1b2e; stroke:#30363d; stroke-width:1; stroke-dasharray:3 3; }
+    .handle       { stroke:#2f4b6e; stroke-width:3; stroke-linecap:round; }
+    .deco         { stroke:#1c3350; stroke-width:1; fill:none; opacity:0.6; }
+  </style>
+
+  <text x="20" y="24" class="title">The FX tab as nested components — every label is the name React DevTools shows</text>
+
+  <!-- ======== overlay sheets (behind App; topmost z-order sits furthest back-right) ======== -->
+  <rect x="112" y="38" width="828" height="568" rx="10" class="overlay-sheet"/>
+  <text x="930" y="54" text-anchor="end" class="name-sm">LockScreen <tspan class="note">— null until locked (§17.5)</tspan></text>
+  <rect x="96" y="56" width="828" height="568" rx="10" class="overlay-sheet"/>
+  <text x="914" y="72" text-anchor="end" class="name-sm">ConnectionOverlay <tspan class="note">— null while connected</tspan></text>
+
+  <!-- ======== App ======== -->
+  <rect x="20" y="74" width="844" height="568" rx="10" class="ui-box"/>
+  <text x="32" y="94" class="name">App <tspan class="note mono">App.tsx — the shell's six children; its only useState: activeTab = "fx"</tspan></text>
+
+  <!-- AmbientBackground fills the interior behind everything below -->
+  <rect x="30" y="102" width="824" height="528" rx="8" class="ambient"/>
+  <text x="38" y="118" class="name-sm">AmbientBackground <tspan class="note">— full-bleed backdrop behind everything below</tspan></text>
+
+  <!-- HeaderChrome -->
+  <rect x="44" y="128" width="796" height="34" rx="6" class="ui-box"/>
+  <text x="54" y="149" class="name-sm">HeaderChrome</text>
+  <text x="830" y="149" text-anchor="end" class="note mono">workspace tabs → setActiveTab</text>
+
+  <!-- WorkspaceEngine -->
+  <rect x="44" y="172" width="796" height="410" rx="6" class="ui-box"/>
+  <text x="54" y="190" class="name-sm">WorkspaceEngine <tspan class="mono data">key="fx"</tspan></text>
+  <text x="830" y="190" text-anchor="end" class="mono data">useLayout("fx") → state + 5 intents</text>
+
+  <!-- Provider frames -->
+  <rect x="54" y="198" width="776" height="376" rx="6" class="bridge-box"/>
+  <text x="62" y="212" class="name-sm" fill="#d2a8ff">FxViewProvider <tspan class="note">— rates/blotter tab, quick filter (consumed by the amber FX boxes below)</tspan></text>
+  <rect x="64" y="220" width="756" height="346" rx="6" class="bridge-box"/>
+  <text x="72" y="234" class="name-sm" fill="#d2a8ff">CreditViewProvider <tspan class="note">— mounted for every tab; its consumers live in the credit dock</tspan></text>
+
+  <!-- InhouseLayoutEngine -->
+  <rect x="74" y="242" width="736" height="316" rx="6" class="core-box"/>
+  <text x="84" y="260" class="name-sm">InhouseLayoutEngine <tspan class="note mono">&lt;main data-testid="layout-engine"&gt; · geometry = --split-size · state = data-*</tspan></text>
+
+  <!-- root SplitNode: dir row, 0.73 / 0.27 -->
+  <rect x="84" y="268" width="716" height="276" rx="4" class="split-box"/>
+  <text x="92" y="283" class="name-sm mono">SplitNode <tspan class="data">dir:"row" · sizes:[0.73, 0.27] · initialPx:[—, 360]</tspan></text>
+  <text x="792" y="283" text-anchor="end" class="mono data">state.root = FX_ROOT</text>
+
+  <!-- left cell: SplitNode dir column, 0.66 / 0.34 -->
+  <rect x="92" y="290" width="502" height="246" rx="4" class="split-box"/>
+  <text x="100" y="305" class="name-sm mono">SplitNode <tspan class="data">dir:"column" · sizes:[0.66, 0.34]</tspan></text>
+
+  <!-- fx-rates panel -->
+  <rect x="100" y="312" width="486" height="22" rx="3" class="leaf-head"/>
+  <text x="108" y="327" class="name-sm">LiveRatesHead</text>
+  <text x="578" y="327" text-anchor="end" class="mono reg">appHeadRegistry["fx-rates"]</text>
+  <rect x="100" y="334" width="486" height="118" rx="3" class="leaf-body"/>
+  <rect x="112" y="344" width="86" height="18" rx="3" class="deco"/>
+  <rect x="206" y="344" width="86" height="18" rx="3" class="deco"/>
+  <rect x="300" y="344" width="86" height="18" rx="3" class="deco"/>
+  <rect x="394" y="344" width="86" height="18" rx="3" class="deco"/>
+  <rect x="488" y="344" width="86" height="18" rx="3" class="deco"/>
+  <text x="343" y="400" text-anchor="middle" class="name">PanelErrorBoundary ▸ LiveRatesPanel</text>
+  <text x="343" y="418" text-anchor="middle" class="mono reg">appPanelRegistry["fx-rates"]</text>
+
+  <!-- horizontal handle between fx-rates and fx-blotter -->
+  <line x1="104" y1="459" x2="582" y2="459" class="handle"/>
+
+  <!-- fx-blotter panel -->
+  <rect x="100" y="466" width="486" height="20" rx="3" class="leaf-head"/>
+  <text x="108" y="480" class="name-sm">FxBlotterHead</text>
+  <text x="578" y="480" text-anchor="end" class="mono reg">appHeadRegistry["fx-blotter"]</text>
+  <rect x="100" y="486" width="486" height="42" rx="3" class="leaf-body"/>
+  <line x1="112" y1="508" x2="574" y2="508" class="deco"/>
+  <line x1="112" y1="518" x2="574" y2="518" class="deco"/>
+  <text x="343" y="503" text-anchor="middle" class="name-sm">PanelErrorBoundary ▸ FxBlotter <tspan class="mono reg">appPanelRegistry["fx-blotter"]</tspan></text>
+
+  <!-- vertical handle between the two columns -->
+  <line x1="598" y1="294" x2="598" y2="532" class="handle"/>
+
+  <!-- right cell: SplitNode dir column, 0.5 / 0.5, initialPx 360 -->
+  <rect x="602" y="290" width="190" height="246" rx="4" class="split-box"/>
+  <text x="610" y="305" class="name-sm mono">SplitNode</text>
+  <text x="786" y="305" text-anchor="end" class="mono data">↔ 360px</text>
+  <text x="610" y="317" class="mono data">dir:"column" · [0.5, 0.5]</text>
+
+  <!-- fx-analytics panel -->
+  <rect x="610" y="324" width="174" height="20" rx="3" class="leaf-head"/>
+  <text x="618" y="338" class="name-sm">AnalyticsHead</text>
+  <rect x="610" y="344" width="174" height="76" rx="3" class="leaf-body"/>
+  <path d="M 622 384 L 646 368 L 668 376 L 694 358 L 718 366 L 744 352 L 770 358" class="deco"/>
+  <text x="697" y="400" text-anchor="middle" class="name-sm">PanelErrorBoundary ▸</text>
+  <text x="697" y="412" text-anchor="middle" class="name-sm">AnalyticsPanel</text>
+
+  <!-- horizontal handle in the rail -->
+  <line x1="618" y1="427" x2="776" y2="427" class="handle"/>
+
+  <!-- fx-positions panel -->
+  <rect x="610" y="434" width="174" height="20" rx="3" class="leaf-head"/>
+  <text x="618" y="448" class="name-sm">PositionsHead</text>
+  <rect x="610" y="454" width="174" height="74" rx="3" class="leaf-body"/>
+  <rect x="622" y="464" width="64" height="8" rx="2" class="deco"/>
+  <rect x="622" y="476" width="104" height="8" rx="2" class="deco"/>
+  <text x="697" y="504" text-anchor="middle" class="name-sm">PanelErrorBoundary ▸</text>
+  <text x="697" y="516" text-anchor="middle" class="name-sm">PositionsPanel</text>
+
+  <!-- StatusBar -->
+  <rect x="44" y="592" width="796" height="30" rx="6" class="ui-box"/>
+  <text x="54" y="611" class="name-sm">StatusBar</text>
+
+  <!-- ======== legend ======== -->
+  <rect x="32" y="656" width="12" height="12" rx="2" class="ui-box"/>
+  <text x="50" y="666" class="note">shell component (§17.1)</text>
+  <rect x="212" y="656" width="12" height="12" rx="2" class="bridge-box"/>
+  <text x="230" y="666" class="note">tab-scoped context provider</text>
+  <rect x="416" y="656" width="12" height="12" rx="2" class="split-box"/>
+  <text x="434" y="666" class="note">layout engine — one green box per kind:"split" node</text>
+  <rect x="32" y="678" width="12" height="12" rx="2" class="leaf-head"/>
+  <text x="50" y="688" class="note">panel component resolved from the registries</text>
+  <rect x="330" y="678" width="12" height="12" rx="2" class="overlay-sheet"/>
+  <text x="348" y="688" class="note">full-viewport overlay (renders null until active)</text>
+  <line x1="626" y1="684" x2="654" y2="684" class="handle"/>
+  <text x="662" y="688" class="note">resize handle (an &lt;hr&gt; host element — hidden in DevTools)</text>
+
+  <!-- ======== caption ======== -->
+  <text x="32" y="716" class="cap">Every green box renders one kind:"split" node of FX_ROOT, drawn here to its sizes ratios — the rail's width is the root split's initialPx: 360px.</text>
+  <text x="32" y="734" class="cap">Every amber box is a kind:"panel" leaf: InhouseLayoutEngine looks its panelId up in appHeadRegistry (title bar) and appPanelRegistry (body) —</text>
+  <text x="32" y="752" class="cap">the only place a panel id ever becomes a React component. Clicking maximize/collapse or dragging a handle dispatches an intent to the</text>
+  <text x="32" y="770" class="cap">LayoutMachine, which reduces a new LayoutState — and React re-renders this same picture from the new numbers.</text>
+</svg>
