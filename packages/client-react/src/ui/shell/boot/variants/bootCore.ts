@@ -68,6 +68,15 @@ interface ProjPoint {
   f: number;
 }
 
+/** Unit-sphere cartesian vector [x, y, z] for a hub node. */
+function hubVec(n: HubNode): [number, number, number] {
+  return [
+    Math.cos(n.la) * Math.cos(n.lo),
+    Math.sin(n.la),
+    Math.cos(n.la) * Math.sin(n.lo),
+  ];
+}
+
 /** Ten global trading hubs: [latitude°, longitude°, code]. */
 const HUBS: ReadonlyArray<readonly [number, number, string]> = [
   [51.5, -0.1, "LON"],
@@ -159,7 +168,8 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
     const yaw = t * 0.42 + 0.6;
     const cp = Math.cos(0.38);
     const sp = Math.sin(0.38);
-    const P3 = (x: number, y: number, z: number): ProjPoint => {
+
+    function P3(x: number, y: number, z: number): ProjPoint {
       const cyw = Math.cos(yaw);
       const syw = Math.sin(yaw);
       const x1 = x * cyw - z * syw;
@@ -168,14 +178,31 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
       const z2 = y * sp + z1 * cp;
       const f = 1 / (1 + z2 * 0.28);
       return { x: cx + x1 * S * f, y: cy - y1 * S * f, z: z2, f };
-    };
-    const SPH = (la: number, lo: number): ProjPoint => {
+    }
+
+    function SPH(la: number, lo: number): ProjPoint {
       return P3(
         Math.cos(la) * Math.cos(lo),
         Math.sin(la),
         Math.cos(la) * Math.sin(lo),
       );
-    };
+    }
+
+    // Point at fraction w along the great-circle arc between hub vectors va/vb,
+    // lifted off the sphere by a sine bulge so the arc bows outward.
+    function arcPoint(
+      w: number,
+      va: [number, number, number],
+      vb: [number, number, number],
+    ): ProjPoint {
+      const x = va[0] + (vb[0] - va[0]) * w;
+      const y = va[1] + (vb[1] - va[1]) * w;
+      const z = va[2] + (vb[2] - va[2]) * w;
+      const L = Math.hypot(x, y, z) || 1;
+      const r = 1 + 0.28 * Math.sin(Math.PI * w);
+      return P3((x / L) * r, (y / L) * r, (z / L) * r);
+    }
+
     // nucleus glow
     const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, S * 1.15);
     cg.addColorStop(0, hexToRgba(acc, 0.16));
@@ -184,9 +211,11 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
     ctx.fillStyle = cg;
     ctx.fillRect(cx - S * 1.3, cy - S * 1.3, S * 2.6, S * 2.6);
     const reveal = ease(prog / 0.32);
-    const segAlpha = (z: number): number => {
+
+    function segAlpha(z: number): number {
       return 0.1 + 0.4 * clamp((0.55 - z) / 1.1);
-    };
+    }
+
     ctx.lineWidth = 1;
     // meridians sweep in pole-to-pole, each with a bright draw head
     const NM = 12;
@@ -284,20 +313,22 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
 
       ctx.lineWidth = 1;
     }
+
     // gyroscopic segmented rings
     const rk = ease((prog - 0.18) / 0.25);
 
     if (rk > 0) {
       ctx.save();
       ctx.globalAlpha = ga * rk;
-      const gyro = (
+
+      function gyro(
         r: number,
         tilt: number,
         spin: number,
         colr: string,
         alpha: number,
         lw: number,
-      ): void => {
+      ): void {
         const ct2 = Math.cos(tilt);
         const st2 = Math.sin(tilt);
         const cs2 = Math.cos(spin);
@@ -331,7 +362,8 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
 
           ctx.stroke();
         }
-      };
+      }
+
       gyro(1.5, 1.05, t * 0.6, acc, 0.5, 1.2);
       gyro(1.66, -0.85, -t * 0.45, ac2, 0.3, 1);
       ctx.restore();
@@ -423,14 +455,6 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
       arcCount++;
     }
 
-    const v3 = (n: HubNode): [number, number, number] => {
-      return [
-        Math.cos(n.la) * Math.cos(n.lo),
-        Math.sin(n.la),
-        Math.cos(n.la) * Math.sin(n.lo),
-      ];
-    };
-
     for (let i = arcs.length - 1; i >= 0; i--) {
       const ar = arcs[i];
       const u = (t - ar.t0) / ar.dur;
@@ -440,23 +464,15 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
         continue;
       }
 
-      const va = v3(nodes[ar.a]);
-      const vb = v3(nodes[ar.b]);
+      const va = hubVec(nodes[ar.a]);
+      const vb = hubVec(nodes[ar.b]);
       const col = ar.buy ? buy : sell;
-      const at = (w: number): ProjPoint => {
-        const x = va[0] + (vb[0] - va[0]) * w;
-        const y = va[1] + (vb[1] - va[1]) * w;
-        const z = va[2] + (vb[2] - va[2]) * w;
-        const L = Math.hypot(x, y, z) || 1;
-        const r = 1 + 0.28 * Math.sin(Math.PI * w);
-        return P3((x / L) * r, (y / L) * r, (z / L) * r);
-      };
       ctx.strokeStyle = hexToRgba(col, 0.16);
       ctx.lineWidth = 1;
       ctx.beginPath();
 
       for (let s2 = 0; s2 <= 20; s2++) {
-        const p = at(s2 / 20);
+        const p = arcPoint(s2 / 20, va, vb);
 
         if (s2 === 0) {
           ctx.moveTo(p.x, p.y);
@@ -472,7 +488,7 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
       const u0 = Math.max(0, u - 0.18);
 
       for (let s2 = 0; s2 <= 8; s2++) {
-        const p = at(u0 + ((u - u0) * s2) / 8);
+        const p = arcPoint(u0 + ((u - u0) * s2) / 8, va, vb);
 
         if (s2 === 0) {
           ctx.moveTo(p.x, p.y);
@@ -482,7 +498,7 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
       }
 
       ctx.stroke();
-      const hd = at(u);
+      const hd = arcPoint(u, va, vb);
       ctx.fillStyle = "#fff";
       ctx.shadowColor = col;
       ctx.shadowBlur = 10;
@@ -492,7 +508,7 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
       ctx.shadowBlur = 0;
 
       if (u > 0.88) {
-        const p = at(1);
+        const p = arcPoint(1, va, vb);
         const rr = (u - 0.88) / 0.12;
         ctx.strokeStyle = hexToRgba(col, 0.7 * (1 - rr));
         ctx.lineWidth = 1.3;
