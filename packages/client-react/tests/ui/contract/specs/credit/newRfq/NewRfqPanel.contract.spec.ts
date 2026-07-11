@@ -112,6 +112,22 @@ describe("NewRfqPanel", () => {
     expect(panel.isAllDealersChecked()).toBe(true);
   });
 
+  it("toggling a single dealer's checkbox twice leaves it unselected", async () => {
+    const panel = ready();
+    await panel.chooseInstrument(2);
+    await panel.setQuantity(5);
+    expect(panel.isDealerChecked(2)).toBe(false);
+
+    await panel.toggleDealer(2);
+    expect(panel.isDealerChecked(2)).toBe(true);
+    expect(panel.isSendEnabled()).toBe(true);
+
+    // Second click hits the deselect arm (filters the id back out).
+    await panel.toggleDealer(2);
+    expect(panel.isDealerChecked(2)).toBe(false);
+    expect(panel.isSendEnabled()).toBe(false);
+  });
+
   it("marks the Adaptive Bank row as the house dealer", () => {
     const panel = ready();
     expect(panel.isHouseDealer(1)).toBe(true);

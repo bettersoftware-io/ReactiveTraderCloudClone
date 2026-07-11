@@ -45,6 +45,24 @@ describe("DeskPnlGauge", () => {
     expect(gauge.value()).toBe("+0");
     expect(gauge.fillArcCount()).toBe(1);
   });
+
+  // buildGaugePaths' `maxAbsPnl > 0 ? maxAbsPnl : 1` guard is unreachable
+  // through ordinary (even all-zero) positions: `Math.max(...abs, 1)` always
+  // floors at 1, so `maxAbsPnl > 0` is already true before this ternary runs.
+  // The only way to make `maxAbsPnl` fail that check — without touching
+  // production code to export buildGaugePaths for a direct unit test — is a
+  // row whose unrealisedPnl is NaN (`Math.abs(NaN)` poisons the whole
+  // `Math.max` call to NaN, and `NaN > 0` is false): a defensive fallback
+  // against corrupt upstream P&L data. It must still render without throwing
+  // (the resulting NaN geometry is a separate, pre-existing display quirk —
+  // not something this coverage pass is asked to fix).
+  it("does not throw when a position's P&L is NaN (falls back the divisor, not the degenerate-arc check)", () => {
+    expect(() => {
+      mount(DeskPnlGauge, {
+        props: { positions: [position("AAPL", Number.NaN)] },
+      });
+    }).not.toThrow();
+  });
 });
 
 function position(symbol: string, unrealisedPnl: number): EquityPosition {

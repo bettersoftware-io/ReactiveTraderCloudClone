@@ -286,6 +286,12 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "EquitiesDepthLadder",
     fixtureKey: "equities-loaded",
   },
+  // EqDepthDock's own arm: no instrument selected -> placeholder text (its
+  // selected arm just delegates to DepthLadder, pinned above).
+  "equities/depth-dock-empty": {
+    componentKey: "EquitiesDepthDock",
+    fixtureKey: "equities-no-selection",
+  },
   "equities/ticket-editing": {
     componentKey: "EquitiesOrderTicket",
     fixtureKey: "equities-ticket-editing",
@@ -530,6 +536,12 @@ const baseScenarios: Record<string, Scenario> = {
   "lock/locked": { componentKey: "LockScreen", fixtureKey: "session-locked" },
   "chrome/header": {
     componentKey: "HeaderChrome",
+    fixtureKey: "app-connected",
+  },
+  // The skin listbox open (click action) — swatch rows per skin; the closed
+  // trigger is already in every chrome/header golden.
+  "chrome/theme-picker-open": {
+    componentKey: "ChromeThemePicker",
     fixtureKey: "app-connected",
   },
   "status/bar": { componentKey: "StatusBar", fixtureKey: "app-connected" },

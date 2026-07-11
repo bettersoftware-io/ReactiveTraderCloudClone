@@ -57,6 +57,19 @@ describe("FxBlotter", () => {
     expect(blotter.emptyMessage()).toMatch(/no trades yet/i);
   });
 
+  // Twin of the above: trades EXIST but a column filter excludes all of
+  // them — a distinct empty-state message from the "no trades at all" arm.
+  it("shows a filtered empty-state message when trades exist but none match the active filters", async () => {
+    const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
+    await blotter.openColumnFilter("Notional");
+    // t1 = 1,000,000 ; t2 = 5,000,000 — both fall below this threshold.
+    await blotter.applyNumberFilter("gt", "999999999");
+    expect(blotter.tradeRowCount()).toBe(0);
+    expect(blotter.emptyMessage()).toMatch(
+      /no trades match the current filters/i,
+    );
+  });
+
   it("appends a newly streamed trade to the same blotter", () => {
     const blotter = mount(FxBlotter, { hooks: { useTrades: [t1, t2] } });
     expect(blotter.tradeRowCount()).toBe(2);

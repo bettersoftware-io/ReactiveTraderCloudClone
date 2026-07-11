@@ -38,6 +38,22 @@ describe("ChartPanel", () => {
     expect(panel.bid()).toBe("103.90");
     expect(panel.candleCount()).toBe(2);
   });
+
+  // ChartPanel.tsx: `chartVm(candles, quote?.last ?? 0, flashOn)` — an
+  // instrument can be selected (from the watchlist) before its first quote
+  // tick arrives, leaving `useEquityQuote(sel)` at its pre-tick `null`. The
+  // panel must still render (0 as the live-last overlay) instead of crashing.
+  it("renders without crashing when the selected instrument has no quote yet", () => {
+    const panel = mount(ChartPanel, {
+      equities: {
+        watchlist: INSTRUMENTS,
+        candles: { AAPL: CANDLES },
+      },
+    });
+
+    expect(panel.isEmpty()).toBe(false);
+    expect(panel.candleCount()).toBe(2);
+  });
 });
 
 function quote(overrides: Partial<EquityQuote> = {}): EquityQuote {

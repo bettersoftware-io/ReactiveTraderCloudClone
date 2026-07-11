@@ -59,6 +59,17 @@ describe("ThemePicker", () => {
     expect(picker.documentSkin()).toBe("holo");
   });
 
+  it("keeps the dropdown open on a non-Escape key press", async () => {
+    const picker = mount(ThemePicker, { themeSkin: "holo", themeMode: "dark" });
+
+    await picker.openMenu();
+    expect(picker.isMenuOpen()).toBe(true);
+
+    await picker.pressNonEscapeKey();
+    expect(picker.isMenuOpen()).toBe(true);
+    expect(picker.documentSkin()).toBe("holo");
+  });
+
   it("closes the dropdown on an outside click without changing the skin", async () => {
     const picker = mount(ThemePicker, { themeSkin: "holo", themeMode: "dark" });
 

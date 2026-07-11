@@ -1538,6 +1538,12 @@ const orderTicketFilled: OrderTicketState = {
 // relative to the `export const fixtures = {…}` object literal, so they are
 // added via index assignment after the object is closed).
 fixtures["equities-loaded"] = makeAppData(equitiesBase);
+// No instrument selected — the dock wrappers' "SELECT AN INSTRUMENT"
+// placeholder arm (EqDepthDock; the seam's own sel:"" fallback).
+fixtures["equities-no-selection"] = makeAppData({
+  ...equitiesBase,
+  equityWorkspace: { sel: "", openTabs: [], timeframe: "1D" },
+});
 fixtures["equities-ticket-editing"] = makeAppData({
   ...equitiesBase,
   equityOrderTicket: orderTicketEditing,
