@@ -127,5 +127,17 @@
 
 **Cost accepted.** Ten suites is real CI wall-clock and maintenance surface — mitigated by `RTC_E2E_MAX_PARALLEL`, a Cypress de-gate on CI (`RTC_E2E_SKIP_CYPRESS=1`), and the presenter-direct fake-timer peers running ~19× faster than their real-timer counterpart, but every new scenario still touches multiple step-definition trees.
 
+### 10.11 Continuous UI without fighting the framework
+
+**Problem.** A permanently-animated HUD over a live data stream needs two things a transactional-store architecture makes miserable once business logic lives inside components: per-frame values (a drag delta, a glide position) that can't afford a dispatched render on every tick, and components that must keep existing past their own logical removal — a panel stays mounted while it maximizes away, a strip stays interactive while it glides shut.
+
+**Choice.** `createLayoutMachine` (`packages/client-core/src/presenters/LayoutMachine.ts:98-100`) folds five layout intents through an rxjs `scan` reducer (`LayoutMachine.ts:135`) and exposes the result as a `state$` stream; its own doc comment calls it a mirror of "the NotionalMachine intent-driven precedent" (`LayoutMachine.ts:94-97`). `InhouseLayoutEngine` (`packages/client-react/src/ui/shell/layout/engine/InhouseLayoutEngine.tsx`) only renders that state, resolving panels through a `PanelRegistry` id→component map (`panelRegistry.ts:5-8`) instead of importing them directly — the registry is the UI↔engine seam. Steady-state motion (the maximize glide, the FLIP grid reflow in `useFlipGrid.ts:4-12`) stays compositor-only `transform`/`opacity` per [`docs/performance.md`](../performance.md)'s one-sentence rule, so continuous motion never re-enters the render loop the machine already keeps quiet. The store is Redux-*shaped* — `LayoutMachine`'s own reducer looks like one — but the *surface* it exposes is a stream, so render granularity belongs to the renderer, not the store.
+
+**Alternatives rejected.** Redux with the reducer logic embedded in components was rejected — it's the shape LayoutMachine's own reducer resembles, but keeping that logic in components ties render granularity back to store dispatch. Driving continuous motion through an animation library that writes React state every frame was rejected for the same reason gates 26–29 exist ([§12](12-architectural-gates.md)): state, streams, and clocks belong in machines/presenters, not components — a per-frame `setState` is a render storm by another name. Keeping layout state in component state was rejected outright — a panel removed from its parent's JSX during dispatch can't finish gliding shut, forcing the ghost-component hacks this design avoids.
+
+**Cost accepted.** Two packages to touch for one shell feature — a machine change in `client-core`, a renderer change in `client-react` — instead of one component file. `InhouseLayoutEngine.tsx` names its own exception: "the ONE framework-coupled spot in the app" (`InhouseLayoutEngine.tsx:26-31`), confined there so a SolidJS port re-implements only this file, and the split holds only as long as gates 26–33 ([§12](12-architectural-gates.md)) keep enforcing it. The advice to colocate state with the component that renders it is, for this shell, backwards on purpose.
+
+See [§17](17-web-client-up-close.md#17-the-web-client-up-close) for the mechanism-level walkthrough — the component tree, the layout system, and the motion toolbox this decision produced.
+
 ---
 

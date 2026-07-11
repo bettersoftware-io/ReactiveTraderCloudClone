@@ -6,7 +6,7 @@ This document is split into one file per section under
 
 ## How to read this
 
-**New here?** Start with the [Overview](architecture/01-overview.md) to understand the system's purpose and architectural principles. Next, explore the [Codebase Map](architecture/13-codebase-map.md) to see how packages fit together and their module structure. Then, read your app's package README in `packages/<name>/` — each describes its role, dependencies, entry points, and how to start using it.
+**New here?** Start with the [Overview](architecture/01-overview.md) to understand the system's purpose and architectural principles. Next, explore the [Codebase Map](architecture/13-codebase-map.md) to see how packages fit together and their module structure. Then, read your app's package README in `packages/<name>/` — each describes its role, dependencies, entry points, and how to start using it. If you work on the web client's shell — layout, animation, boot, lock — finish with [The Web Client, Up Close](architecture/17-web-client-up-close.md).
 
 **Changing something?** Go to [Trailheads](architecture/16-trailheads.md) — it maps common tasks to the sections and files you'll need to touch.
 
@@ -70,3 +70,9 @@ This document is split into one file per section under
 15. [Flows](architecture/15-flows.md)
    - [15.1 Control Flow vs Imports vs Data Flow](architecture/15-flows.md#151-control-flow-vs-imports-vs-data-flow)
 16. [Trailheads](architecture/16-trailheads.md)
+17. [The Web Client, Up Close](architecture/17-web-client-up-close.md)
+   - [17.1 The Component Tree and the Provider Stack](architecture/17-web-client-up-close.md#171-the-component-tree-and-the-provider-stack)
+   - [17.2 The Layout System](architecture/17-web-client-up-close.md#172-the-layout-system)
+   - [17.3 The Motion Toolbox](architecture/17-web-client-up-close.md#173-the-motion-toolbox)
+   - [17.4 The Boot Splash](architecture/17-web-client-up-close.md#174-the-boot-splash)
+   - [17.5 The Session Lock](architecture/17-web-client-up-close.md#175-the-session-lock)

@@ -24,6 +24,10 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 | `src/app/buildBrowserPorts.ts` | Assembles `AppPorts` for `createApp` — switches real WS vs. simulator ports on `VITE_SERVER_URL` |
 | `src/ui/` | Dumb React 19 UI (Ring ④) — every component reads data through `useViewModel()`; gates 26–29 keep it framework-swappable |
 | `src/ui/shell/` | Chrome, layout engine, boot sequence, theme, lock screen, connection overlay, status bar |
+| `src/ui/shell/layout/` | The layout engine — maximize/collapse/resize — see [§17.2 The Layout System](../../docs/architecture/17-web-client-up-close.md#172-the-layout-system) |
+| `src/ui/shell/motion/` | Shared motion primitives panels animate with — see [§17.3 The Motion Toolbox](../../docs/architecture/17-web-client-up-close.md#173-the-motion-toolbox) |
+| `src/ui/shell/boot/` | Boot splash overlay — see [§17.4 The Boot Splash](../../docs/architecture/17-web-client-up-close.md#174-the-boot-splash) |
+| `src/ui/shell/lock/` | Session lock screen overlay — see [§17.5 The Session Lock](../../docs/architecture/17-web-client-up-close.md#175-the-session-lock) |
 | `src/ui/fx/`, `src/ui/credit/`, `src/ui/equities/` | Per-domain panels, blotters, and tickets |
 | `src/ui/admin/` | Admin dashboard — health KPIs, service topology, sessions, live event log |
 | `tests/setup/` | jsdom test-environment polyfills (e.g. `localStorage` shim for Node 26) |
@@ -184,3 +188,4 @@ they live in the [`tests/`](../../tests/README.md) workspace package.
 - [§14.3 Boot Sequences](../../docs/architecture/14-composition-and-wiring.md#143-boot-sequences)
 - [§8.1 The Multi-Client Proof -- The SolidJS Plan](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)
 - [§12. Architectural Gates](../../docs/architecture/12-architectural-gates.md#12-architectural-gates)
+- [§17. The Web Client, Up Close](../../docs/architecture/17-web-client-up-close.md) — layout engine, motion toolbox, boot splash, session lock, up close
