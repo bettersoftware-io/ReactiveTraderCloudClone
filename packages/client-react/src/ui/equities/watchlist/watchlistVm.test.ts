@@ -53,4 +53,21 @@ describe("sortWatchlistRows", () => {
       "AMZN",
     );
   });
+
+  // Both rows are unquoted so the comparator's `b.last ?? …` arm resolves to
+  // the NEGATIVE_INFINITY default on EVERY call under "price" (not just when
+  // paired against a quoted row) — pins the null-last default independent of
+  // which row the sort engine happens to pass as `a` vs `b`.
+  it("keeps stable order when every row's last is null under 'price'", () => {
+    const bothUnquoted: readonly WatchlistRowInput[] = [
+      { symbol: "AMZN", name: "Amazon.com", last: null, changePct: null },
+      { symbol: "NFLX", name: "Netflix Inc", last: null, changePct: null },
+    ];
+
+    expect(
+      sortWatchlistRows(bothUnquoted, "price").map((r) => {
+        return r.symbol;
+      }),
+    ).toEqual(["AMZN", "NFLX"]);
+  });
 });

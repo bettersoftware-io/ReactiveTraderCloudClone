@@ -141,6 +141,27 @@ export class OrderTicketPage extends MountedComponent<OrderTicketProps> {
     await this.user.type(limitInput, String(price));
   }
 
+  /** Clear the limit-price input down to empty (form.limitPrice → undefined). */
+  async clearLimitPrice(): Promise<void> {
+    const inputs = within(this.root).getAllByRole(
+      "spinbutton",
+    ) as HTMLInputElement[];
+    const limitInput = inputs[1];
+
+    if (!limitInput) {
+      throw new Error("No limit-price input (not a limit order)");
+    }
+
+    await this.user.clear(limitInput);
+  }
+
+  /** The `data-anim` attribute the fill-choreography seam paints on the
+   * ticket container (present only while an AnimationIntent of kind "fill"
+   * is active for this ticket's target). */
+  animAttr(): string | null {
+    return this.container().getAttribute("data-anim");
+  }
+
   /** Click the reset/new-order control shown in a terminal phase. */
   async reset(): Promise<void> {
     await this.user.click(

@@ -22,6 +22,7 @@ import { SellSidePanel } from "#/ui/credit/sellSide/SellSidePanel";
 import { EqBlotterPanel } from "#/ui/equities/blotter/EqBlotterPanel";
 import { ChartPanel } from "#/ui/equities/chart/ChartPanel";
 import { DepthLadder } from "#/ui/equities/chart/DepthLadder";
+import { EqDepthDock } from "#/ui/equities/chart/EqDepthDock";
 import { InstrumentHeader } from "#/ui/equities/chart/InstrumentHeader";
 import { OrderTicket } from "#/ui/equities/ticket/OrderTicket";
 import { SectorHeatmap } from "#/ui/equities/watchlist/SectorHeatmap";
@@ -37,6 +38,7 @@ import { WatchlistView } from "#/ui/fx/liveRates/WatchlistView";
 import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
+import { ThemePicker } from "#/ui/shell/chrome/ThemePicker";
 import { ConnectionOverlay } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar } from "#/ui/shell/connection/ConnectionStatusBar";
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
@@ -416,6 +418,32 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <div style={{ width: 260 }}>
         <DepthLadder symbol="AAPL" />
+      </div>
+    );
+  },
+  // The dock wrapper's OWN pixels are its unselected placeholder — the
+  // selected arm delegates to DepthLadder (equities/depth-ladder above).
+  EquitiesDepthDock: () => {
+    return (
+      <div style={{ width: 260 }}>
+        <EqDepthDock />
+      </div>
+    );
+  },
+  // Sized stage so the absolutely-positioned skin listbox falls inside the
+  // captured scenario-root box once the click action opens it.
+  ChromeThemePicker: () => {
+    return (
+      <div
+        style={{
+          width: 340,
+          height: 320,
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "flex-start",
+        }}
+      >
+        <ThemePicker />
       </div>
     );
   },
