@@ -346,15 +346,18 @@ the shared password/token) and how the gating works.
 
 ### Design prototypes
 
-Two prototypes deploy separately from the main app, each to its own Vercel
-project, on demand, behind a shared password:
+The hand-authored Claude Design mockups (web + mobile) and the readable React
+port deploy separately from the main app, each to its own Vercel project, on
+demand, behind a shared password:
 
-- **Claude Design Prototype** — the hand-authored standalone HTML mockup under
-  `docs/design/<version>/standalone/`. **Actions tab → "Deploy Claude Design
-  Prototype" → Run workflow** — a path input selects which version (defaults to
-  v2). Or `gh workflow run deploy-cd-proto.yml -f prototype_path="…"`. →
-  `rtc-clone-cd-proto.vercel.app`. See
-  [`deploy/cd-proto/README.md`](deploy/cd-proto/README.md).
+- **Claude Design Prototype (web + mobile)** — the hand-authored standalone HTML
+  mockups under `docs/design/web/<version>/standalone/` and
+  `docs/design/mobile/<version>/standalone/`. **Actions tab → "Deploy Claude
+  Design Prototype" → Run workflow** — pick a **target** (`web` or `mobile`);
+  leave the path blank for that target's default (web v4 / mobile v1) or set it
+  to a specific version. Or `gh workflow run deploy-cd-proto.yml -f target=mobile`.
+  → `rtc-clone-web-cd-proto.vercel.app` / `rtc-clone-mobile-cd-proto.vercel.app`.
+  See [`deploy/cd-proto/README.md`](deploy/cd-proto/README.md).
 - **Prototype (React port)** — the readable `@rtc/client-prototype` React port.
   **Actions tab → "Deploy Prototype" → Run workflow** (no inputs). Or
   `gh workflow run deploy-proto.yml`. → `rtc-clone-proto.vercel.app`. See

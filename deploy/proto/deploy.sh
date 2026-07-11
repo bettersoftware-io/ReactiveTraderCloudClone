@@ -5,9 +5,9 @@
 #
 #   ./deploy/proto/deploy.sh
 #
-# This is the *running code* prototype. The hand-authored HTML design mockup
-# ships separately via the "Deploy Claude Design Prototype" workflow →
-# rtc-clone-cd-proto; see ../cd-proto/README.md.
+# This is the *running code* prototype. The hand-authored HTML design mockups
+# ship separately via the "Deploy Claude Design Prototype" workflow →
+# rtc-clone-web-cd-proto / rtc-clone-mobile-cd-proto; see ../cd-proto/README.md.
 #
 # The gate (a tiny Basic-Auth middleware) is GENERATED here at deploy time, not
 # committed — so this is the single source of truth for both local runs and the

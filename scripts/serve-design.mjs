@@ -1,25 +1,30 @@
-// Serves the self-contained v3 design prototype over http:// with zero
+// Serves a self-contained Claude Design prototype over http:// with zero
 // dependencies — Node built-ins only (the monorepo already runs on Node).
-// The standalone HTML has every script/style/font inlined and does no
+// Each standalone HTML has every script/style/font inlined and does no
 // network I/O, so we can read it once and return it for every request.
+//
+// Which prototype: pass a repo-relative path as the first CLI arg. Defaults to
+// the current web design (v4). Examples:
+//   node scripts/serve-design.mjs                                   # web v4
+//   node scripts/serve-design.mjs "docs/design/mobile/v1/standalone/Reactive Trader Mobile.html"
 
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const DEFAULT_HTML = "docs/design/web/v4/standalone/Reactive Trader.html";
+
 const port = Number(process.env.PORT) || 8899;
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const htmlPath = join(
-  repoRoot,
-  "docs/design/v3/standalone/Reactive Trader.html",
-);
-const html = readFileSync(htmlPath);
+const relPath = process.argv[2] || DEFAULT_HTML;
+const html = readFileSync(join(repoRoot, relPath));
 
 createServer((_req, res) => {
   res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
   res.end(html);
 }).listen(port, () => {
-  console.log(`\n  Reactive Trader — v3 design prototype`);
+  console.log(`\n  Reactive Trader — design prototype`);
+  console.log(`  serving ${relPath}`);
   console.log(`  → http://localhost:${port}/\n`);
 });

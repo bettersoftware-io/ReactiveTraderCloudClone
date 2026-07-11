@@ -212,7 +212,8 @@ flowchart LR
     subgraph Vercel["Vercel (all password/Basic-Auth gated)"]
         v1["rtc-clone<br/>@rtc/client-react<br/>VITE_SERVER_URL baked at build"]
         v2["rtc-clone-proto<br/>@rtc/client-prototype<br/>(v2-design React port)"]
-        v3["rtc-clone-cd-proto<br/>docs/design standalone HTML"]
+        v3["rtc-clone-web-cd-proto<br/>docs/design/web standalone HTML"]
+        v4["rtc-clone-mobile-cd-proto<br/>docs/design/mobile standalone HTML"]
     end
 
     mob["Mobile app (EAS internal /<br/>Android APK, free path)"]
@@ -221,6 +222,7 @@ flowchart LR
     d1 --> v1
     d2 --> v2
     d3 --> v3
+    d3 --> v4
     v1 -->|"wss:// + ?access= token"| srv
     mob -->|"wss:// + ?access= token<br/>(EXPO_PUBLIC_* baked at build)"| srv
 ```
