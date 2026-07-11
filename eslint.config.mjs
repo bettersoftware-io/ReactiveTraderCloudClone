@@ -5,6 +5,7 @@ import tseslint from "typescript-eslint";
 import { classFilenameMatch } from "./eslint-rules/class-filename-match.mjs";
 import { componentNewspaper } from "./eslint-rules/component-newspaper.mjs";
 import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
+import { noRenderFunctions } from "./eslint-rules/no-render-functions.mjs";
 
 // Structural `no-restricted-syntax` bans shared between the repo-wide block and
 // the client-`src` block (which appends the inline-style ban). Flat config
@@ -89,6 +90,7 @@ const rtcPlugin = {
     "newspaper-order": newspaperOrder,
     "class-filename-match": classFilenameMatch,
     "component-newspaper": componentNewspaper,
+    "no-render-functions": noRenderFunctions,
   },
 };
 
@@ -195,6 +197,16 @@ export default tseslint.config(
     files: ["**/*.{spec,test}.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/newspaper-order": "error" },
+  },
+  {
+    // JSX belongs in components: `render*`-named functions must not return JSX
+    // (write a standalone component instead). Applies to every .tsx in the
+    // repo; RTL-style helpers returning a render(...) CALL and anonymous
+    // arrows in render-prop position stay legal by construction (see the
+    // rule's header comment).
+    files: ["**/*.tsx"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-render-functions": "error" },
   },
   {
     // One class per file: a top-level class must live in a file named after it

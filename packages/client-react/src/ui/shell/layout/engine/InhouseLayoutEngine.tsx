@@ -72,7 +72,21 @@ export function InhouseLayoutEngine({
       className={styles.engine}
       data-maximized={state.maximized ?? ""}
     >
-      {renderNode(state.root, [], sharedProps, null, null)}
+      {state.root.kind === "panel" ? (
+        <PanelLeaf
+          panelId={state.root.panelId}
+          parentDir={null}
+          stripDir={null}
+          {...sharedProps}
+        />
+      ) : (
+        <SplitNode
+          node={state.root}
+          path={[]}
+          stripDir={null}
+          {...sharedProps}
+        />
+      )}
     </main>
   );
 }
@@ -130,7 +144,7 @@ interface SplitNodeProps extends SharedProps {
    * nearest ancestor split that is not itself fully stripped — the split
    * along whose axis the collapsed space actually reclaims. Propagated to
    * every descendant so their strips orient against that axis rather than
-   * their immediate parent's (see renderPanel). */
+   * their immediate parent's (see PanelLeaf). */
   stripDir: SplitDir | null;
 }
 
@@ -251,9 +265,8 @@ function isStrictPathPrefix(
 }
 
 /** A single split pane — owns the useRef for drag handles and recurses into
- * children. Extracted as a real named component so hooks live at component
- * top-level (rules-of-hooks). Panel leaves are rendered by renderPanel which
- * has no hooks. */
+ * children (nested splits render a nested SplitNode; panel leaves render a
+ * PanelLeaf, which has no hooks). */
 function SplitNode({
   node,
   path,
@@ -466,12 +479,20 @@ function SplitNode({
                         } as CSSProperties)
               }
             >
-              {renderNode(
-                child,
-                [...path, i],
-                sharedProps,
-                node.dir,
-                childStripDir,
+              {child.kind === "panel" ? (
+                <PanelLeaf
+                  panelId={child.panelId}
+                  parentDir={node.dir}
+                  stripDir={childStripDir}
+                  {...sharedProps}
+                />
+              ) : (
+                <SplitNode
+                  node={child}
+                  path={[...path, i]}
+                  stripDir={childStripDir}
+                  {...sharedProps}
+                />
               )}
             </div>
             {showHandle ? (
@@ -506,28 +527,26 @@ function SplitNode({
   );
 }
 
-/** Renders a panel leaf — no hooks, plain function helper. `parentDir` is the
- * `dir` of the split whose cell holds this panel (null at the tree root, for
- * a single-panel tab like Admin); `stripDir`, when non-null, is the dir of
- * the nearest ancestor split that is NOT itself fully stripped — the axis
- * along which this panel's collapsed space actually reclaims. Together they
- * decide the strip's restore-bar orientation below. */
-function renderPanel(
-  panelId: PanelId,
-  {
-    state,
-    registry,
-    specs,
-    headRegistry,
-    strippedByMaximize,
-    onMaximize,
-    onRestore,
-    onCollapse,
-    onExpand,
-  }: SharedProps,
-  parentDir: SplitDir | null,
-  stripDir: SplitDir | null,
-): ReactElement {
+/** A panel leaf — a hookless component. `parentDir` is the `dir` of the split
+ * whose cell holds this panel (null at the tree root, for a single-panel tab
+ * like Admin); `stripDir`, when non-null, is the dir of the nearest ancestor
+ * split that is NOT itself fully stripped — the axis along which this panel's
+ * collapsed space actually reclaims. Together they decide the strip's
+ * restore-bar orientation below. */
+function PanelLeaf({
+  panelId,
+  parentDir,
+  stripDir,
+  state,
+  registry,
+  specs,
+  headRegistry,
+  strippedByMaximize,
+  onMaximize,
+  onRestore,
+  onCollapse,
+  onExpand,
+}: PanelLeafProps): ReactElement {
   const spec = specs[panelId];
   const title = spec?.title ?? panelId;
   const collapsed = state.collapsed.includes(panelId);
@@ -637,26 +656,8 @@ function renderPanel(
   );
 }
 
-/** Recursively renders a LayoutNode tree. Panel leaves use renderPanel (no
- * hooks); split nodes delegate to SplitNode (a real component with useRef). */
-function renderNode(
-  node: LayoutNode,
-  path: readonly number[],
-  sharedProps: SharedProps,
-  parentDir: SplitDir | null,
-  stripDir: SplitDir | null,
-): ReactElement {
-  if (node.kind === "panel") {
-    return renderPanel(node.panelId, sharedProps, parentDir, stripDir);
-  }
-
-  return (
-    <SplitNode
-      key={path.join(".") || "root"}
-      node={node}
-      path={path}
-      stripDir={stripDir}
-      {...sharedProps}
-    />
-  );
+interface PanelLeafProps extends SharedProps {
+  panelId: PanelId;
+  parentDir: SplitDir | null;
+  stripDir: SplitDir | null;
 }

@@ -27,7 +27,9 @@ export function TileGrid(): JSX.Element {
       key={`cols-${columns}`}
       data={pairs}
       keyExtractor={keyExtractor}
-      renderItem={renderItem}
+      renderItem={({ item }: ListRenderItemInfo<CurrencyPair>) => {
+        return <SpotTile pair={item} />;
+      }}
       numColumns={columns}
       contentContainerStyle={styles.content}
       columnWrapperStyle={columns > 1 ? styles.column : undefined}
@@ -37,10 +39,6 @@ export function TileGrid(): JSX.Element {
 
 function keyExtractor(pair: CurrencyPair): string {
   return pair.symbol;
-}
-
-function renderItem({ item }: ListRenderItemInfo<CurrencyPair>): JSX.Element {
-  return <SpotTile pair={item} />;
 }
 
 interface TileGridStyles {

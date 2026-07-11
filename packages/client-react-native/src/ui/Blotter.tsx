@@ -39,7 +39,9 @@ export function Blotter(): JSX.Element {
         testID="blotter-list"
         data={trades}
         keyExtractor={keyExtractor}
-        renderItem={renderItem}
+        renderItem={({ item }: ListRenderItemInfo<Trade>) => {
+          return <TradeRow trade={item} />;
+        }}
       />
     </SurfaceCard>
   );
@@ -47,10 +49,6 @@ export function Blotter(): JSX.Element {
 
 function keyExtractor(trade: Trade): string {
   return String(trade.tradeId);
-}
-
-function renderItem({ item }: ListRenderItemInfo<Trade>): JSX.Element {
-  return <TradeRow trade={item} />;
 }
 
 interface BlotterStyles {
