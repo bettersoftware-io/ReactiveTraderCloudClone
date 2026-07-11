@@ -7,10 +7,10 @@ import { useViewModel } from "@rtc/react-bindings";
 import {
   type BootDrawCtx,
   type BootFrameFn,
-  drawBootCore,
   drawBootDocking,
   drawBootLaser,
 } from "./bootCanvas";
+import { createBootCore } from "./variants/bootCore";
 import { createBootGeo } from "./variants/bootGeo";
 import { createBootHologram } from "./variants/bootHologram";
 import { createBootJarvis } from "./variants/bootJarvis";
@@ -173,11 +173,7 @@ function visibleLineCount(progress: number): number {
 // v2 draws are stateless per-frame functions; wrap them into the v3 factory
 // shape (factory-per-boot → frame closure) so one map drives the loop.
 const DRAW: Record<BootVariant, (d: BootDrawCtx) => BootFrameFn> = {
-  core: (d: BootDrawCtx): BootFrameFn => {
-    return (): void => {
-      drawBootCore(d);
-    };
-  },
+  core: createBootCore,
   laser: (d: BootDrawCtx): BootFrameFn => {
     return (): void => {
       drawBootLaser(d);
