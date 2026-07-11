@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 460" font-family="ui-sans-serif, system-ui, sans-serif">
-  <title>The layout engine's maximize/strip/restore cycle: the FX dock's Live Rates panel maximizes to fill the workspace while Analytics, Positions and Blotter glide into thin strips, then restores to the normal four-panel dock.</title>
+  <title>The layout engine's maximize/strip/restore cycle: a dock's Live Rates panel maximizes to fill the workspace while Analytics, Positions and Blotter glide into thin strips, then restores to the normal four-panel dock. Topology is stylized for exposition — see docs/architecture/17-web-client-up-close.md §17.1 for the real FX dock's panel arrangement.</title>
 
   <!-- ======== canvas ======== -->
   <rect x="2" y="2" width="716" height="456" rx="14" fill="#0a1420" stroke="#173049" stroke-width="2"/>
