@@ -254,8 +254,8 @@ narrative numbering/heading style in the file):
 - Hub `docs/architecture.md`: TOC entry for §17; "How to read this" entry
   paths updated where §17 is a natural stop (e.g. the "New here" path gains
   "…then §17 if you work on the web shell").
-- `docs/architecture/16-trailheads.md`: nav line gains `[17 — The Web
-  Client, Up Close ▶](17-web-client-up-close.md)`; §17's nav points back.
+- `docs/architecture/16-trailheads.md`: nav line gains a forward link to
+  `17-web-client-up-close.md`; §17's nav points back.
 - `packages/client-react/README.md`: additions-only pointer(s) to §17 from
   the relevant folder-map rows (shell/layout/engine, shell/motion,
   shell/boot, shell/lock) or a single "deep dive" line — writer's choice,
