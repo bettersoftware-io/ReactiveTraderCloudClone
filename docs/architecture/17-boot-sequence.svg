@@ -1,0 +1,254 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 460" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+  <title>Boot sequence over the warm app: BootGate mounts the app immediately (it warms underneath); BootSequence overlays a globe, then laser-draws the panel outlines, then a docking-target converges, then the overlay fades out to reveal the already-live app.</title>
+
+  <style>
+    .lbl { font-family: ui-sans-serif, system-ui, sans-serif; }
+  </style>
+
+  <!-- ======== canvas ======== -->
+  <rect x="0" y="0" width="720" height="460" rx="14" fill="#050b14"/>
+
+  <!-- ======== static caption ======== -->
+  <text class="lbl" x="20" y="30" fill="#e8f6ff" font-size="15" font-weight="bold">Boot sequence over the warm app</text>
+  <text class="lbl" x="20" y="46" fill="#6f93ab" font-size="10">BootGate mounts the app right away; BootSequence overlays globe → laser draw → docking, then fades to reveal it.</text>
+
+  <!-- ================================================================= -->
+  <!-- APP LAYER — already running underneath the boot overlay           -->
+  <!-- ================================================================= -->
+  <g id="app-layer">
+    <!-- header strip -->
+    <rect x="40" y="60" width="641" height="30" rx="4" fill="#0f1b2a" stroke="#1c3347" stroke-width="1"/>
+    <circle cx="54" cy="75" r="4" fill="#00e676">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.5;1" values="1;0.35;1"/>
+    </circle>
+    <text class="lbl" x="66" y="79" fill="#e8f6ff" font-size="10" font-weight="bold">REACTIVE TRADER</text>
+    <text class="lbl" x="655" y="79" fill="#6f93ab" font-size="9" text-anchor="end">LIVE</text>
+
+    <!-- main price panel -->
+    <rect x="40" y="98" width="403" height="210" rx="4" fill="#0f1b2a" stroke="#1c3347" stroke-width="1"/>
+    <text class="lbl" x="52" y="114" fill="#6f93ab" font-size="9">EUR/USD</text>
+    <g stroke="#16283a" stroke-width="1">
+      <line x1="52" y1="140" x2="431" y2="140"/>
+      <line x1="52" y1="180" x2="431" y2="180"/>
+      <line x1="52" y1="220" x2="431" y2="220"/>
+      <line x1="52" y1="260" x2="431" y2="260"/>
+    </g>
+    <polyline points="52,230 90,210 130,225 170,190 210,205 250,170 290,195 330,160 370,180 410,150 431,165"
+      fill="none" stroke="#00e5ff" stroke-width="2">
+      <animate attributeName="stroke-opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.25;0.5;0.75;1" values="0.55;1;0.55;1;0.55"/>
+    </polyline>
+    <circle r="3.5" fill="#ffffff">
+      <animateMotion dur="12s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear"
+        path="M52,230 90,210 130,225 170,190 210,205 250,170 290,195 330,160 370,180 410,150 431,165"/>
+    </circle>
+
+    <!-- watchlist rail -->
+    <rect x="457" y="98" width="223" height="210" rx="4" fill="#0f1b2a" stroke="#1c3347" stroke-width="1"/>
+    <text class="lbl" x="469" y="114" fill="#6f93ab" font-size="9">WATCHLIST</text>
+    <g fill="#173147">
+      <rect x="469" y="122" width="199" height="16"/>
+      <rect x="469" y="144" width="199" height="16"/>
+      <rect x="469" y="166" width="199" height="16"/>
+      <rect x="469" y="188" width="199" height="16"/>
+      <rect x="469" y="210" width="199" height="16"/>
+    </g>
+    <g class="lbl" font-size="8" text-anchor="end">
+      <text x="640" y="134" fill="#00e676">+0.12%</text>
+      <text x="640" y="156" fill="#00e676">+0.04%</text>
+      <text x="640" y="178" fill="#ff1744">-0.08%</text>
+      <text x="640" y="200" fill="#ff1744">-0.02%</text>
+      <text x="640" y="222" fill="#00e676">+0.01%</text>
+    </g>
+
+    <!-- blotter -->
+    <rect x="40" y="318" width="641" height="102" rx="4" fill="#0f1b2a" stroke="#1c3347" stroke-width="1"/>
+    <text class="lbl" x="52" y="334" fill="#6f93ab" font-size="9">BLOTTER</text>
+    <g stroke="#16283a" stroke-width="1">
+      <line x1="52" y1="344" x2="669" y2="344"/>
+      <line x1="52" y1="366" x2="669" y2="366"/>
+      <line x1="52" y1="388" x2="669" y2="388"/>
+      <line x1="52" y1="410" x2="669" y2="410"/>
+    </g>
+    <g fill="#173147">
+      <rect x="52" y="350" width="120" height="10"/>
+      <rect x="190" y="350" width="90" height="10"/>
+      <rect x="52" y="372" width="120" height="10"/>
+      <rect x="190" y="372" width="90" height="10"/>
+      <rect x="52" y="394" width="120" height="10"/>
+      <rect x="190" y="394" width="90" height="10"/>
+    </g>
+  </g>
+
+  <!-- ================================================================= -->
+  <!-- BOOT OVERLAY — fades out as one unit for the reveal               -->
+  <!-- ================================================================= -->
+  <g id="overlay">
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      keyTimes="0;0.71;0.80;1" values="1;1;0;0"/>
+
+    <rect x="0" y="0" width="720" height="460" rx="14" fill="#00030a" opacity="0.85"/>
+
+    <!-- ==== phase: globe ==== -->
+    <g id="phase-globe">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+        keyTimes="0;0.19;0.20;1" values="1;1;0;0"/>
+
+      <g stroke="#00e5ff" fill="none">
+        <animateTransform attributeName="transform" type="rotate" dur="12s" repeatCount="indefinite"
+          keyTimes="0;1" values="0 360 185;360 360 185"/>
+        <ellipse cx="360" cy="185" rx="65" ry="24" stroke-width="1" stroke-opacity="0.75" transform="rotate(0 360 185)"/>
+        <ellipse cx="360" cy="185" rx="65" ry="24" stroke-width="1" stroke-opacity="0.6" transform="rotate(36 360 185)"/>
+        <ellipse cx="360" cy="185" rx="65" ry="24" stroke-width="1" stroke-opacity="0.6" transform="rotate(72 360 185)"/>
+        <ellipse cx="360" cy="185" rx="65" ry="24" stroke-width="1" stroke-opacity="0.6" transform="rotate(108 360 185)"/>
+        <ellipse cx="360" cy="185" rx="65" ry="24" stroke-width="1" stroke-opacity="0.6" transform="rotate(144 360 185)"/>
+        <circle cx="360" cy="185" r="65" stroke="#00b0ff" stroke-width="1.5" stroke-opacity="0.85"/>
+      </g>
+
+      <!-- scanning arc -->
+      <circle cx="360" cy="185" r="80" fill="none" stroke="#00e5ff" stroke-width="2"
+        pathLength="1" stroke-dasharray="0.18 0.82">
+        <animateTransform attributeName="transform" type="rotate" dur="12s" repeatCount="indefinite"
+          keyTimes="0;1" values="0 360 185;360 360 185"/>
+      </circle>
+
+      <!-- radar pulse rings -->
+      <circle cx="360" cy="185" r="0" fill="none" stroke="#00e5ff" stroke-width="1.5">
+        <animate attributeName="r" dur="12s" repeatCount="indefinite" keyTimes="0;0.19;1" values="0;95;95"/>
+        <animate attributeName="stroke-opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.19;1" values="0.5;0;0"/>
+      </circle>
+      <circle cx="360" cy="185" r="0" fill="none" stroke="#00e5ff" stroke-width="1.5">
+        <animate attributeName="r" dur="12s" repeatCount="indefinite" keyTimes="0;0.06;0.19;1" values="0;0;95;95"/>
+        <animate attributeName="stroke-opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.06;0.19;1" values="0;0.5;0;0"/>
+      </circle>
+    </g>
+
+    <!-- ==== phase: laser draw ==== -->
+    <g id="phase-laser">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+        keyTimes="0;0.19;0.21;1" values="0;0;1;1"/>
+
+      <!-- header rect, drawn 0.21-0.25 -->
+      <g>
+        <rect x="40" y="60" width="641" height="30" rx="4" fill="none" stroke="#00e5ff" stroke-width="1.8"
+          pathLength="1" stroke-dasharray="1">
+          <animate attributeName="stroke-dashoffset" dur="12s" repeatCount="indefinite"
+            keyTimes="0;0.21;0.25;1" values="1;1;0;0"/>
+        </rect>
+        <g fill="#00b0ff">
+          <rect x="52" y="70" width="30" height="10"/>
+          <rect x="90" y="70" width="30" height="10"/>
+          <rect x="128" y="70" width="30" height="10"/>
+          <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.25;0.27;1" values="0;0;1;1"/>
+        </g>
+      </g>
+
+      <!-- main panel rect, drawn 0.24-0.33 -->
+      <g>
+        <rect x="40" y="98" width="403" height="210" rx="4" fill="none" stroke="#00e5ff" stroke-width="1.8"
+          pathLength="1" stroke-dasharray="1">
+          <animate attributeName="stroke-dashoffset" dur="12s" repeatCount="indefinite"
+            keyTimes="0;0.24;0.33;1" values="1;1;0;0"/>
+        </rect>
+        <g stroke="#00b0ff" fill="none" stroke-width="1.5">
+          <polyline points="52,230 90,210 130,225 170,190 210,205 250,170 290,195 330,160 370,180 410,150 431,165"/>
+          <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.33;0.35;1" values="0;0;1;1"/>
+        </g>
+      </g>
+
+      <!-- watchlist rect, drawn 0.32-0.43 -->
+      <g>
+        <rect x="457" y="98" width="223" height="210" rx="4" fill="none" stroke="#00e5ff" stroke-width="1.8"
+          pathLength="1" stroke-dasharray="1">
+          <animate attributeName="stroke-dashoffset" dur="12s" repeatCount="indefinite"
+            keyTimes="0;0.32;0.43;1" values="1;1;0;0"/>
+        </rect>
+        <g fill="#00b0ff">
+          <rect x="469" y="122" width="199" height="10"/>
+          <rect x="469" y="144" width="199" height="10"/>
+          <rect x="469" y="166" width="199" height="10"/>
+          <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.43;0.45;1" values="0;0;1;1"/>
+        </g>
+      </g>
+
+      <!-- blotter rect, drawn 0.42-0.47 -->
+      <g>
+        <rect x="40" y="318" width="641" height="102" rx="4" fill="none" stroke="#00e5ff" stroke-width="1.8"
+          pathLength="1" stroke-dasharray="1">
+          <animate attributeName="stroke-dashoffset" dur="12s" repeatCount="indefinite"
+            keyTimes="0;0.42;0.47;1" values="1;1;0;0"/>
+        </rect>
+        <g fill="#00b0ff">
+          <rect x="52" y="350" width="120" height="10"/>
+          <rect x="190" y="350" width="90" height="10"/>
+          <rect x="52" y="372" width="120" height="10"/>
+          <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.47;0.49;1" values="0;0;1;1"/>
+        </g>
+      </g>
+    </g>
+
+    <!-- ==== phase: docking ==== -->
+    <g id="phase-docking">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+        keyTimes="0;0.49;0.51;1" values="0;0;1;1"/>
+
+      <!-- three converging rectangles -->
+      <rect fill="none" stroke="#00b0ff" stroke-width="1.5">
+        <animate attributeName="x" dur="12s" repeatCount="indefinite" keyTimes="0;0.51;0.63;1" values="140;140;300;300"/>
+        <animate attributeName="y" dur="12s" repeatCount="indefinite" keyTimes="0;0.51;0.63;1" values="55;55;135;135"/>
+        <animate attributeName="width" dur="12s" repeatCount="indefinite" keyTimes="0;0.51;0.63;1" values="440;440;120;120"/>
+        <animate attributeName="height" dur="12s" repeatCount="indefinite" keyTimes="0;0.51;0.63;1" values="295;295;100;100"/>
+        <animate attributeName="stroke-opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.51;0.63;0.71;1" values="0.35;0.35;0.7;0.7;0.7"/>
+      </rect>
+      <rect fill="none" stroke="#00e5ff" stroke-width="1.5">
+        <animate attributeName="x" dur="12s" repeatCount="indefinite" keyTimes="0;0.54;0.66;1" values="200;200;310;310"/>
+        <animate attributeName="y" dur="12s" repeatCount="indefinite" keyTimes="0;0.54;0.66;1" values="55;55;145;145"/>
+        <animate attributeName="width" dur="12s" repeatCount="indefinite" keyTimes="0;0.54;0.66;1" values="320;320;100;100"/>
+        <animate attributeName="height" dur="12s" repeatCount="indefinite" keyTimes="0;0.54;0.66;1" values="275;275;80;80"/>
+        <animate attributeName="stroke-opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.54;0.66;0.71;1" values="0.5;0.5;0.85;0.85;0.85"/>
+      </rect>
+      <rect fill="none" stroke="#00e5ff" stroke-width="2">
+        <animate attributeName="x" dur="12s" repeatCount="indefinite" keyTimes="0;0.57;0.69;1" values="260;260;320;320"/>
+        <animate attributeName="y" dur="12s" repeatCount="indefinite" keyTimes="0;0.57;0.69;1" values="70;70;150;150"/>
+        <animate attributeName="width" dur="12s" repeatCount="indefinite" keyTimes="0;0.57;0.69;1" values="200;200;80;80"/>
+        <animate attributeName="height" dur="12s" repeatCount="indefinite" keyTimes="0;0.57;0.69;1" values="220;220;70;70"/>
+        <animate attributeName="stroke-opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.57;0.69;0.71;1" values="0.6;0.6;1;1;1"/>
+      </rect>
+
+      <!-- centre crosshair, appears once docked -->
+      <g stroke="#00e676" stroke-width="1.6" opacity="0">
+        <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.66;0.68;1" values="0;0;1;1"/>
+        <line x1="360" y1="165" x2="360" y2="205"/>
+        <line x1="340" y1="185" x2="380" y2="185"/>
+        <circle cx="360" cy="185" r="8" fill="none"/>
+      </g>
+
+      <!-- lock flash just before reveal -->
+      <circle cx="360" cy="185" r="0" fill="#ffffff">
+        <animate attributeName="r" dur="12s" repeatCount="indefinite" keyTimes="0;0.685;0.70;1" values="0;0;140;140"/>
+        <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.685;0.70;0.71;1" values="0;0.4;0;0;0"/>
+      </circle>
+    </g>
+  </g>
+
+  <!-- ================================================================= -->
+  <!-- PHASE LABELS — stay legible independent of the overlay fade       -->
+  <!-- ================================================================= -->
+  <g class="lbl" text-anchor="middle" font-size="14" font-weight="bold">
+    <text x="360" y="447" fill="#00e5ff">
+      globe
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.19;0.20;1" values="1;1;0;0"/>
+    </text>
+    <text x="360" y="447" fill="#00e5ff" opacity="0">
+      laser draw
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.20;0.21;0.49;0.50;1" values="0;0;1;1;0;0"/>
+    </text>
+    <text x="360" y="447" fill="#00e5ff" opacity="0">
+      docking
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.50;0.51;0.71;0.72;1" values="0;0;1;1;0;0"/>
+    </text>
+    <text x="360" y="447" fill="#00e676" opacity="0">
+      reveal
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.71;0.72;0.88;0.90;1" values="0;0;1;1;0;0"/>
+    </text>
+  </g>
+</svg>
