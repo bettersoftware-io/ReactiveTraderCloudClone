@@ -1,7 +1,6 @@
 .card {
   position: relative;
   background: var(--tile);
-  backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--border);
   border-radius: 5px;
   padding: 14px 15px;

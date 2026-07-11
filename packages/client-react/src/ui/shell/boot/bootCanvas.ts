@@ -2,7 +2,7 @@
 // (Reactive Trader.dc.html:819, 852-1045). No React, no DOM-owning state,
 // no requestAnimationFrame (the rAF loop lives in BootSequence.tsx).
 
-const BOOT_DURATION_MS = 4200;
+export const BOOT_DURATION_MS = 4200;
 
 /** Projected point in 3D globe rendering */
 interface Projected {
@@ -53,10 +53,20 @@ export interface BootDrawCtx {
   readonly buy: string;
   /** Resolved --accent-negative CSS token */
   readonly sell: string;
+  /** Live cursor position, normalized to -1..1 per axis (0,0 = viewport
+   *  centre). BootSequence owns the window mousemove listener and mutates
+   *  this shared object; the v3 cursor-tracked variants (layers/jarvis/topo)
+   *  read it each frame. */
+  readonly pointer: { mx: number; my: number };
 }
 
+/** Per-frame draw closure returned by the v3 variant factories — the factory
+ *  runs once per boot (precomputing geometry: coastlines, heightfield
+ *  contours), the closure runs every rAF frame. */
+export type BootFrameFn = () => void;
+
 /** hexToRgba — verbatim from prototype line 819 */
-function hexToRgba(hex: string, a: number): string {
+export function hexToRgba(hex: string, a: number): string {
   let h = hex.replace("#", "");
 
   if (h.length === 3) {
@@ -86,7 +96,7 @@ function hexToRgba(hex: string, a: number): string {
  * Cubic ease-out used by laser and docking variants.
  * Verbatim from prototype (both _drawBootLaser and _drawBootDocking).
  */
-function ease(k: number): number {
+export function ease(k: number): number {
   return 1 - (1 - Math.max(0, Math.min(1, k))) ** 3;
 }
 
@@ -618,7 +628,10 @@ export function drawBootDocking(d: BootDrawCtx): void {
   ctx.restore();
   ctx.strokeStyle = hexToRgba(acc, 0.06);
   ctx.lineWidth = 1;
-  const gs = Math.round(W / 16);
+  // Floor at 1px: on a zero-width canvas (hidden panel, jsdom) a 0 step
+  // would never advance the loops below — an infinite loop, not just a
+  // wasted frame.
+  const gs = Math.max(1, Math.round(W / 16));
 
   for (let x = 0; x <= W; x += gs) {
     ctx.beginPath();
