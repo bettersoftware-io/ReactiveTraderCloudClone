@@ -33,7 +33,7 @@ export class CreditRfqSimulator implements WorkflowPort {
 
   private readonly events$ = new Subject<RfqEvent>();
 
-  private readonly pendingTimeouts: ReturnType<typeof setTimeout>[] = [];
+  private readonly pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
   constructor(dealers: readonly Dealer[]) {
     this.dealers = dealers;
@@ -224,8 +224,23 @@ export class CreditRfqSimulator implements WorkflowPort {
     });
   }
 
-  private scheduleExpiry(rfqId: number, expirySecs: number): void {
+  /**
+   * Schedule a one-shot timer that removes its own handle from `pendingTimeouts`
+   * the moment it fires. Without the self-removal a long-lived simulator would
+   * accumulate every already-fired handle for the process lifetime (they were
+   * only ever bulk-cleared in `dispose()`), an unbounded memory growth that
+   * scales with RFQ volume.
+   */
+  private schedule(run: () => void, delayMs: number): void {
     const timeout = setTimeout(() => {
+      this.pendingTimeouts.delete(timeout);
+      run();
+    }, delayMs);
+    this.pendingTimeouts.add(timeout);
+  }
+
+  private scheduleExpiry(rfqId: number, expirySecs: number): void {
+    this.schedule(() => {
       const rfq = this.rfqs.get(rfqId);
 
       if (!rfq || rfq.state !== RfqState.Open) {
@@ -236,7 +251,6 @@ export class CreditRfqSimulator implements WorkflowPort {
       this.rfqs.set(rfqId, expired);
       this.events$.next({ type: "rfqClosed", payload: expired });
     }, expirySecs * 1000);
-    this.pendingTimeouts.push(timeout);
   }
 
   private scheduleDealerResponse(
@@ -251,7 +265,7 @@ export class CreditRfqSimulator implements WorkflowPort {
 
     const responseDelay = Math.random() * DEALER_RESPONSE_WINDOW_MS;
 
-    const timeout = setTimeout(() => {
+    this.schedule(() => {
       try {
         const rfq = this.rfqs.get(rfqId);
 
@@ -268,8 +282,6 @@ export class CreditRfqSimulator implements WorkflowPort {
         console.error("Error submitting simulated quote:", e);
       }
     }, responseDelay);
-
-    this.pendingTimeouts.push(timeout);
   }
 
   cancelRfq(rfqId: number): Observable<void> {
@@ -400,6 +412,6 @@ export class CreditRfqSimulator implements WorkflowPort {
       clearTimeout(timeout);
     }
 
-    this.pendingTimeouts.length = 0;
+    this.pendingTimeouts.clear();
   }
 }

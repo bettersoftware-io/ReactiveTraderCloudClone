@@ -823,6 +823,10 @@ function createMarketDataPort(ws: IWsAdapter): MarketDataPort {
 
         return () => {
           unsub();
+          // Release the server-side stream on teardown; without it a symbol
+          // re-subscribe (instrument-tab churn) would stack another stream.
+          // See getPriceUpdates / keyedStream.
+          ws.send(CLIENT_MSG.UNSUBSCRIBE_EQ_QUOTES, { symbol });
         };
       });
     },
@@ -886,6 +890,9 @@ function createMarketDataPort(ws: IWsAdapter): MarketDataPort {
 
         return () => {
           unsub();
+          // Release the server-side stream on teardown (per-symbol churn); see
+          // getEquityQuote / getPriceUpdates.
+          ws.send(CLIENT_MSG.UNSUBSCRIBE_DEPTH, { symbol });
         };
       });
     },
