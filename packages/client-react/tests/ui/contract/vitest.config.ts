@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import react from "@vitejs/plugin-react";
@@ -7,11 +8,29 @@ import { defineConfig } from "vitest/config";
 // import.meta.url inside golden/helper modules gets a real filesystem URL.
 const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
+// Specs live in @rtc/ui-contract now (extracted in Task 3). vitest 4's default
+// `test.exclude` always drops anything matching `**/node_modules/**`, which
+// wins over a matching `include` glob — so the node_modules workspace-symlink
+// form (`node_modules/@rtc/ui-contract/src/specs/**`) is silently filtered out
+// ("No test files found"), verified empirically. An absolute path built with
+// path.resolve that walks the real sibling-package directory directly (never
+// touching the node_modules symlink) sidesteps that exclude entirely.
+const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@ui-contract": fileURLToPath(new URL("./shared", import.meta.url)),
+      // The framework-neutral harness now lives in @rtc/ui-contract; resolve
+      // through the workspace symlink (node_modules), not a deep relative
+      // path, so this stays a package-name import (Biome bans ≥2-up relative
+      // imports in source; config files are exempt but consistency matters).
+      "@ui-contract": fileURLToPath(
+        new URL(
+          "../../../node_modules/@rtc/ui-contract/src/shared",
+          import.meta.url,
+        ),
+      ),
       // Mirror package.json "imports" so that helper/golden modules imported by
       // the harness (e.g. loadGolden, setup utilities) receive a real filesystem
       // import.meta.url rather than a vitest jsdom virtual URL — enabling
@@ -27,7 +46,7 @@ export default defineConfig({
     // include/setup/report paths are stable regardless of invocation cwd.
     root: fileURLToPath(new URL("../../..", import.meta.url)),
     environment: "jsdom",
-    include: ["tests/ui/contract/specs/**/*.contract.spec.ts"],
+    include: [`${specsDir}/**/*.contract.spec.ts`],
     setupFiles: [
       "./tests/setup/jsdom-storage.ts",
       "./tests/ui/contract/react/setup.ts",

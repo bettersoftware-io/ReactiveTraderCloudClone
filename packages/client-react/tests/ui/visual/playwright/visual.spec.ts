@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { goldenPathArray } from "@ui-visual-shared/goldenPath";
+import { scenarios } from "@ui-visual-shared/scenarios";
 
 import { scenarioActionFor } from "../scenarioActions";
-import { goldenPathArray } from "../shared/goldenPath";
-import { scenarios } from "../shared/scenarios";
 
 for (const [name, scenario] of Object.entries(scenarios)) {
   const action = scenarioActionFor(name);

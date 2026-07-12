@@ -11,7 +11,10 @@ colour or layout (that stays the visual tier's job).
   (`specs/fx/analytics/PnlValue.contract.spec.ts`). Import only
   `@ui-contract/mount`, `@ui-contract/components` (tokens), and `@rtc/domain` types.
   **No React / testing-library imports.**
-- `shared/` — framework-neutral harness:
+- `@rtc/ui-contract` (`packages/ui-contract/src/shared/`) — the framework-neutral
+  harness, extracted to its own workspace package so a future `client-solid`
+  package can consume it without depending on `client-react`. The `@ui-contract`
+  alias (see `vitest.config.ts`) resolves into it through the workspace symlink:
   - `harness/world.ts` — a `BehaviorSubject` per hook (the controllable "World")
     plus a command log; `createWorld()`.
   - `harness/component.ts` — `ComponentToken`, the `MountedComponent` page-object
@@ -20,7 +23,7 @@ colour or layout (that stays the visual tier's job).
   - `mount.ts` — `mount(token, { props, hooks, commands })`.
   - `components.ts` — the neutral tokens.
   - `pages/` — page objects querying raw DOM via `@testing-library/dom`.
-- `react/` — **the only framework-specific surface**:
+- `react/` — **the only framework-specific surface** (still lives in this package):
   - `registry.tsx` — token → React element.
   - `viewModelFromWorld.ts` — `reactViewModel(world)` via `useSyncExternalStore`
     (re-renders the consuming component on each `emit`/`setProps`).
@@ -61,9 +64,9 @@ Drive updates via the returned page object: `page.setProps({...})`,
    queries), and `setup.ts`.
 2. Point the vitest config's `setupFiles` at `solid/setup.ts`.
 
-`specs/`, `shared/components.ts` (tokens), `shared/pages/**`, `shared/harness/**`,
-and `shared/mount.ts` are untouched. The first Solid run's failures are the
-behavioural-parity punch-list.
+`specs/`, and everything in `@rtc/ui-contract` (`components.ts` (tokens),
+`pages/**`, `harness/**`, `mount.ts`) are untouched. The first Solid run's
+failures are the behavioural-parity punch-list.
 
 ## Dual use: sociable unit and integration
 

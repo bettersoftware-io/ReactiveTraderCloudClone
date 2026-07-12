@@ -1,121 +1,3 @@
-import type { ReactElement } from "react";
-
-import type {
-  NotionalIntents,
-  NotionalView,
-  PanelId,
-  TileExecutionState,
-} from "@rtc/client-core";
-import type {
-  Candle,
-  CandleTimeframe,
-  CreditRfqFilter,
-  CurrencyCategory,
-  CurrencyPair,
-  CurrencyPairPosition,
-  Direction,
-  EquityOrder,
-  EquityPosition,
-  EquityQuote,
-  HistoricPosition,
-  Instrument,
-  Price,
-  PriceMovementType,
-  Quote,
-  Rfq,
-  Trade,
-} from "@rtc/domain";
-
-import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
-import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
-import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
-import { IncidentControls as IncidentControlsComponent } from "#/ui/admin/IncidentControls";
-import { KpiRow as KpiRowComponent } from "#/ui/admin/kpis/KpiRow";
-import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/admin/LatencyHistogram";
-import { LiveEventLog as LiveEventLogComponent } from "#/ui/admin/LiveEventLog";
-import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/admin/ServiceTopologyGraph";
-import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPanel";
-import { ServiceHealth as ServiceHealthComponent } from "#/ui/admin/services/ServiceHealth";
-import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
-import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
-import { CreditBlotterHead as CreditBlotterHeadComponent } from "#/ui/credit/blotter/CreditBlotterHead";
-import { NewRfqHead as NewRfqHeadComponent } from "#/ui/credit/newRfq/NewRfqHead";
-import { NewRfqPanel as NewRfqPanelComponent } from "#/ui/credit/newRfq/NewRfqPanel";
-import { RfqFilterPills as RfqFilterPillsComponent } from "#/ui/credit/rfqs/RfqFilterPills";
-import { RfqsHead as RfqsHeadComponent } from "#/ui/credit/rfqs/RfqsHead";
-import { RfqsPanel as RfqsPanelComponent } from "#/ui/credit/rfqs/RfqsPanel";
-import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
-import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
-import { DeskPnlGauge as DeskPnlGaugeComponent } from "#/ui/equities/blotter/DeskPnlGauge";
-import { EqBlotterHead as EqBlotterHeadComponent } from "#/ui/equities/blotter/EqBlotterHead";
-import { EqBlotterPanel as EqBlotterPanelComponent } from "#/ui/equities/blotter/EqBlotterPanel";
-import { OrdersTable as OrdersTableComponent } from "#/ui/equities/blotter/OrdersTable";
-import { PnlSparkline as PnlSparklineComponent } from "#/ui/equities/blotter/PnlSparkline";
-import { PositionsTable as PositionsTableComponent } from "#/ui/equities/blotter/PositionsTable";
-import { CandleChart as CandleChartComponent } from "#/ui/equities/chart/CandleChart";
-import { ChartPanel as ChartPanelComponent } from "#/ui/equities/chart/ChartPanel";
-import type { ChartVm } from "#/ui/equities/chart/chartVm";
-import { DepthLadder as DepthLadderComponent } from "#/ui/equities/chart/DepthLadder";
-import { EqChartHead as EqChartHeadComponent } from "#/ui/equities/chart/EqChartHead";
-import { EqDepthDock as EqDepthDockComponent } from "#/ui/equities/chart/EqDepthDock";
-import { InstrumentHeader as InstrumentHeaderComponent } from "#/ui/equities/chart/InstrumentHeader";
-import { TimeframePills as TimeframePillsComponent } from "#/ui/equities/chart/TimeframePills";
-import { InstrumentTabs as InstrumentTabsComponent } from "#/ui/equities/tabs/InstrumentTabs";
-import { EqTicketHead as EqTicketHeadComponent } from "#/ui/equities/ticket/EqTicketHead";
-import { OrderTicket as OrderTicketComponent } from "#/ui/equities/ticket/OrderTicket";
-import { EqSectorsDock as EqSectorsDockComponent } from "#/ui/equities/watchlist/EqSectorsDock";
-import { EqWatchlistHead as EqWatchlistHeadComponent } from "#/ui/equities/watchlist/EqWatchlistHead";
-import { SectorHeatmap as SectorHeatmapComponent } from "#/ui/equities/watchlist/SectorHeatmap";
-import { WatchlistPanel as WatchlistPanelComponent } from "#/ui/equities/watchlist/WatchlistPanel";
-import { AnalyticsHead as AnalyticsHeadComponent } from "#/ui/fx/analytics/AnalyticsHead";
-import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
-import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
-import { PnlChart as PnlChartComponent } from "#/ui/fx/analytics/PnlChart";
-import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
-import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/BlotterHeader";
-import { BlotterRow as BlotterRowComponent } from "#/ui/fx/blotter/BlotterRow";
-import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
-import { DateFilter as DateFilterComponent } from "#/ui/fx/blotter/columnFilter/DateFilter";
-import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
-import { NumberFilter as NumberFilterComponent } from "#/ui/fx/blotter/columnFilter/NumberFilter";
-import { SetFilter as SetFilterComponent } from "#/ui/fx/blotter/columnFilter/SetFilter";
-import type { SortState } from "#/ui/fx/blotter/columnSort";
-import { FxBlotter as FxBlotterComponent } from "#/ui/fx/blotter/FxBlotter";
-import { FxBlotterHead as FxBlotterHeadComponent } from "#/ui/fx/blotter/FxBlotterHead";
-import { QuickFilter as QuickFilterComponent } from "#/ui/fx/blotter/QuickFilter";
-import { CurrencyFilter as CurrencyFilterComponent } from "#/ui/fx/liveRates/CurrencyFilter";
-import { LiveRatesHead as LiveRatesHeadComponent } from "#/ui/fx/liveRates/LiveRatesHead";
-import { LiveRatesPanel as LiveRatesPanelComponent } from "#/ui/fx/liveRates/LiveRatesPanel";
-import { RfqCountdown as RfqCountdownComponent } from "#/ui/fx/liveRates/tile/RfqCountdown";
-import { SpreadDisplay as SpreadDisplayComponent } from "#/ui/fx/liveRates/tile/SpreadDisplay";
-import { Tile as TileComponent } from "#/ui/fx/liveRates/tile/Tile";
-import { TileConfirmation as TileConfirmationComponent } from "#/ui/fx/liveRates/tile/TileConfirmation";
-import { TileFooter as TileFooterComponent } from "#/ui/fx/liveRates/tile/TileFooter";
-import { TileHeader as TileHeaderComponent } from "#/ui/fx/liveRates/tile/TileHeader";
-import { TileNotional as TileNotionalComponent } from "#/ui/fx/liveRates/tile/TileNotional";
-import { TilePrice as TilePriceComponent } from "#/ui/fx/liveRates/tile/TilePrice";
-import {
-  TileRfq as TileRfqComponent,
-  type TileRfqState,
-} from "#/ui/fx/liveRates/tile/TileRfq";
-import { PositionsHead as PositionsHeadComponent } from "#/ui/fx/positions/PositionsHead";
-import { PositionsPanel as PositionsPanelComponent } from "#/ui/fx/positions/PositionsPanel";
-import { AmbientBackground as AmbientBackgroundComponent } from "#/ui/shell/background/AmbientBackground";
-import { BootGate as BootGateComponent } from "#/ui/shell/boot/BootGate";
-import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
-import {
-  HeaderChrome as HeaderChromeComponent,
-  type WorkspaceTab,
-} from "#/ui/shell/chrome/HeaderChrome";
-import { ThemePicker as ThemePickerComponent } from "#/ui/shell/chrome/ThemePicker";
-import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
-import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
-import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
-import { PreferencesModal as PreferencesModalComponent } from "#/ui/shell/prefs/PreferencesModal";
-import { StaleIndicator as StaleIndicatorComponent } from "#/ui/shell/stale/StaleIndicator";
-import { StatusBar as StatusBarComponent } from "#/ui/shell/status/StatusBar";
-import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggle";
-
 import {
   AdminDashboard,
   AdminHead,
@@ -199,11 +81,129 @@ import {
   TimeframePills,
   TradeTicket,
   WatchlistPanel,
-} from "../shared/components";
+} from "@ui-contract/components";
 import type {
   ComponentToken,
   MountedComponent,
-} from "../shared/harness/component";
+} from "@ui-contract/harness/component";
+import type { ReactElement } from "react";
+
+import type {
+  NotionalIntents,
+  NotionalView,
+  PanelId,
+  TileExecutionState,
+} from "@rtc/client-core";
+import type {
+  Candle,
+  CandleTimeframe,
+  CreditRfqFilter,
+  CurrencyCategory,
+  CurrencyPair,
+  CurrencyPairPosition,
+  Direction,
+  EquityOrder,
+  EquityPosition,
+  EquityQuote,
+  HistoricPosition,
+  Instrument,
+  Price,
+  PriceMovementType,
+  Quote,
+  Rfq,
+  Trade,
+} from "@rtc/domain";
+import type { ChartVm } from "@rtc/motion-core";
+
+import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
+import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
+import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
+import { IncidentControls as IncidentControlsComponent } from "#/ui/admin/IncidentControls";
+import { KpiRow as KpiRowComponent } from "#/ui/admin/kpis/KpiRow";
+import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/admin/LatencyHistogram";
+import { LiveEventLog as LiveEventLogComponent } from "#/ui/admin/LiveEventLog";
+import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/admin/ServiceTopologyGraph";
+import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPanel";
+import { ServiceHealth as ServiceHealthComponent } from "#/ui/admin/services/ServiceHealth";
+import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
+import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
+import { CreditBlotterHead as CreditBlotterHeadComponent } from "#/ui/credit/blotter/CreditBlotterHead";
+import { NewRfqHead as NewRfqHeadComponent } from "#/ui/credit/newRfq/NewRfqHead";
+import { NewRfqPanel as NewRfqPanelComponent } from "#/ui/credit/newRfq/NewRfqPanel";
+import { RfqFilterPills as RfqFilterPillsComponent } from "#/ui/credit/rfqs/RfqFilterPills";
+import { RfqsHead as RfqsHeadComponent } from "#/ui/credit/rfqs/RfqsHead";
+import { RfqsPanel as RfqsPanelComponent } from "#/ui/credit/rfqs/RfqsPanel";
+import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
+import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
+import { DeskPnlGauge as DeskPnlGaugeComponent } from "#/ui/equities/blotter/DeskPnlGauge";
+import { EqBlotterHead as EqBlotterHeadComponent } from "#/ui/equities/blotter/EqBlotterHead";
+import { EqBlotterPanel as EqBlotterPanelComponent } from "#/ui/equities/blotter/EqBlotterPanel";
+import { OrdersTable as OrdersTableComponent } from "#/ui/equities/blotter/OrdersTable";
+import { PnlSparkline as PnlSparklineComponent } from "#/ui/equities/blotter/PnlSparkline";
+import { PositionsTable as PositionsTableComponent } from "#/ui/equities/blotter/PositionsTable";
+import { CandleChart as CandleChartComponent } from "#/ui/equities/chart/CandleChart";
+import { ChartPanel as ChartPanelComponent } from "#/ui/equities/chart/ChartPanel";
+import { DepthLadder as DepthLadderComponent } from "#/ui/equities/chart/DepthLadder";
+import { EqChartHead as EqChartHeadComponent } from "#/ui/equities/chart/EqChartHead";
+import { EqDepthDock as EqDepthDockComponent } from "#/ui/equities/chart/EqDepthDock";
+import { InstrumentHeader as InstrumentHeaderComponent } from "#/ui/equities/chart/InstrumentHeader";
+import { TimeframePills as TimeframePillsComponent } from "#/ui/equities/chart/TimeframePills";
+import { InstrumentTabs as InstrumentTabsComponent } from "#/ui/equities/tabs/InstrumentTabs";
+import { EqTicketHead as EqTicketHeadComponent } from "#/ui/equities/ticket/EqTicketHead";
+import { OrderTicket as OrderTicketComponent } from "#/ui/equities/ticket/OrderTicket";
+import { EqSectorsDock as EqSectorsDockComponent } from "#/ui/equities/watchlist/EqSectorsDock";
+import { EqWatchlistHead as EqWatchlistHeadComponent } from "#/ui/equities/watchlist/EqWatchlistHead";
+import { SectorHeatmap as SectorHeatmapComponent } from "#/ui/equities/watchlist/SectorHeatmap";
+import { WatchlistPanel as WatchlistPanelComponent } from "#/ui/equities/watchlist/WatchlistPanel";
+import { AnalyticsHead as AnalyticsHeadComponent } from "#/ui/fx/analytics/AnalyticsHead";
+import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
+import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
+import { PnlChart as PnlChartComponent } from "#/ui/fx/analytics/PnlChart";
+import { PnlValue as PnlValueComponent } from "#/ui/fx/analytics/PnlValue";
+import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/BlotterHeader";
+import { BlotterRow as BlotterRowComponent } from "#/ui/fx/blotter/BlotterRow";
+import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
+import { DateFilter as DateFilterComponent } from "#/ui/fx/blotter/columnFilter/DateFilter";
+import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
+import { NumberFilter as NumberFilterComponent } from "#/ui/fx/blotter/columnFilter/NumberFilter";
+import { SetFilter as SetFilterComponent } from "#/ui/fx/blotter/columnFilter/SetFilter";
+import type { SortState } from "#/ui/fx/blotter/columnSort";
+import { FxBlotter as FxBlotterComponent } from "#/ui/fx/blotter/FxBlotter";
+import { FxBlotterHead as FxBlotterHeadComponent } from "#/ui/fx/blotter/FxBlotterHead";
+import { QuickFilter as QuickFilterComponent } from "#/ui/fx/blotter/QuickFilter";
+import { CurrencyFilter as CurrencyFilterComponent } from "#/ui/fx/liveRates/CurrencyFilter";
+import { LiveRatesHead as LiveRatesHeadComponent } from "#/ui/fx/liveRates/LiveRatesHead";
+import { LiveRatesPanel as LiveRatesPanelComponent } from "#/ui/fx/liveRates/LiveRatesPanel";
+import { RfqCountdown as RfqCountdownComponent } from "#/ui/fx/liveRates/tile/RfqCountdown";
+import { SpreadDisplay as SpreadDisplayComponent } from "#/ui/fx/liveRates/tile/SpreadDisplay";
+import { Tile as TileComponent } from "#/ui/fx/liveRates/tile/Tile";
+import { TileConfirmation as TileConfirmationComponent } from "#/ui/fx/liveRates/tile/TileConfirmation";
+import { TileFooter as TileFooterComponent } from "#/ui/fx/liveRates/tile/TileFooter";
+import { TileHeader as TileHeaderComponent } from "#/ui/fx/liveRates/tile/TileHeader";
+import { TileNotional as TileNotionalComponent } from "#/ui/fx/liveRates/tile/TileNotional";
+import { TilePrice as TilePriceComponent } from "#/ui/fx/liveRates/tile/TilePrice";
+import {
+  TileRfq as TileRfqComponent,
+  type TileRfqState,
+} from "#/ui/fx/liveRates/tile/TileRfq";
+import { PositionsHead as PositionsHeadComponent } from "#/ui/fx/positions/PositionsHead";
+import { PositionsPanel as PositionsPanelComponent } from "#/ui/fx/positions/PositionsPanel";
+import { AmbientBackground as AmbientBackgroundComponent } from "#/ui/shell/background/AmbientBackground";
+import { BootGate as BootGateComponent } from "#/ui/shell/boot/BootGate";
+import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
+import {
+  HeaderChrome as HeaderChromeComponent,
+  type WorkspaceTab,
+} from "#/ui/shell/chrome/HeaderChrome";
+import { ThemePicker as ThemePickerComponent } from "#/ui/shell/chrome/ThemePicker";
+import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
+import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
+import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
+import { PreferencesModal as PreferencesModalComponent } from "#/ui/shell/prefs/PreferencesModal";
+import { StaleIndicator as StaleIndicatorComponent } from "#/ui/shell/stale/StaleIndicator";
+import { StatusBar as StatusBarComponent } from "#/ui/shell/status/StatusBar";
+import { ThemeToggle as ThemeToggleComponent } from "#/ui/shell/theme/ThemeToggle";
+
 import { AnimationProbe as AnimationProbeComponent } from "./AnimationProbe";
 import { LayoutEngineHost } from "./LayoutEngineHost";
 

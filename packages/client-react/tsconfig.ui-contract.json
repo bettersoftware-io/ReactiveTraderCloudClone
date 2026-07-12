@@ -9,12 +9,16 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node"],
     "paths": {
-      "@ui-contract": ["./tests/ui/contract/shared"],
-      "@ui-contract/*": ["./tests/ui/contract/shared/*"],
+      "@ui-contract": ["../ui-contract/src/shared"],
+      "@ui-contract/*": ["../ui-contract/src/shared/*"],
       "#/*": ["./src/*"],
       "#tests/*": ["./tests/*"]
     }
   },
   "include": ["src", "tests/ui/contract"],
-  "references": [{ "path": "../domain" }, { "path": "../shared" }]
+  "references": [
+    { "path": "../domain" },
+    { "path": "../shared" },
+    { "path": "../ui-contract" }
+  ]
 }

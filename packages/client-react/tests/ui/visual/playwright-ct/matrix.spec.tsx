@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/experimental-ct-react";
 import { VisualScenario } from "@ui-visual";
+import { goldenPathArray } from "@ui-visual-shared/goldenPath";
+import { scenarios } from "@ui-visual-shared/scenarios";
 
 import { scenarioActionFor } from "../scenarioActions";
-import { goldenPathArray } from "../shared/goldenPath";
-import { scenarios } from "../shared/scenarios";
 
 // Tier 1 — Playwright component tests, data-driven over the SAME shared scenario
 // manifest + interaction table as ../playwright/visual.spec.ts and

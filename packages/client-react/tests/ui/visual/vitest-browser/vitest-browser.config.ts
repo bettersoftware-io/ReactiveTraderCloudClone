@@ -34,6 +34,13 @@ export default defineConfig({
   resolve: {
     alias: {
       "@ui-visual": fileURLToPath(new URL("../react", import.meta.url)),
+      // The shared scenario/goldenPath matrix, extracted to @rtc/ui-contract
+      // (Task 3). Distinct name from `@ui-visual` above (that alias is the
+      // framework-swap seam for the render target — see ../README.md — and
+      // must not be repurposed for this unrelated, always-shared module).
+      "@ui-visual-shared": fileURLToPath(
+        new URL("../../../../../ui-contract/src/visual", import.meta.url),
+      ),
     },
   },
   test: {

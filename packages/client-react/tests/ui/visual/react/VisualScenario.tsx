@@ -1,3 +1,4 @@
+import { scenarios } from "@ui-visual-shared/scenarios";
 import { type ReactElement, useEffect, useState } from "react";
 
 import { ViewModelProvider } from "@rtc/react-bindings";
@@ -13,7 +14,6 @@ import { fixtures } from "../shared/fixtures";
 // import VisualScenario via "@ui-visual" → react/index.ts → here), so freezing
 // the clock here freezes it identically in all three — see freezeClock.ts.
 import "../shared/freezeClock";
-import { scenarios } from "../shared/scenarios";
 import { buildFakeViewModel } from "./buildFakeViewModel";
 // Register the app's real @fontsource web fonts so goldens render in the app's
 // fonts, not the fallback system stack, and pull in the (weight, family) list we

@@ -1,6 +1,15 @@
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { defineConfig, mergeConfig } from "vitest/config";
 
 import base from "./vitest.config";
+
+// Same absolute-path resolution as vitest.config.ts (its node_modules-relative
+// `include` glob is filtered by vitest 4's default `test.exclude` for
+// **/node_modules/**, verified empirically — see the comment there).
+const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
+const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 
 // The coverage gate over the whole src/ui surface. It runs BOTH the neutral
 // sociable contract specs AND the co-located src/ui unit tests (hook/util
@@ -12,7 +21,7 @@ export default mergeConfig(
   defineConfig({
     test: {
       include: [
-        "tests/ui/contract/specs/**/*.contract.spec.ts",
+        `${specsDir}/**/*.contract.spec.ts`,
         "src/ui/**/*.test.ts",
         "src/ui/**/*.test.tsx",
       ],

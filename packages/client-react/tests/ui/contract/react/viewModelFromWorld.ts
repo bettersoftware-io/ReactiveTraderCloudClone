@@ -1,3 +1,4 @@
+import type { World } from "@ui-contract/harness/world";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import type { BehaviorSubject } from "rxjs";
 import { EMPTY, type Observable, of, throwError } from "rxjs";
@@ -39,8 +40,6 @@ import {
 } from "@rtc/domain";
 import type { ViewModel } from "@rtc/react-bindings";
 import { useMachine } from "@rtc/react-bindings";
-
-import type { World } from "../shared/harness/world";
 
 /** Mirror of RfqsPresenter's presenter-local redirect delay. The contract spec
  * drives this with fake timers (advanceTimersByTimeAsync(1500)), so the fake

@@ -1,7 +1,7 @@
+import { setDriver } from "@ui-contract/harness/activeDriver";
+import { cleanupMounted } from "@ui-contract/mount";
 import { afterEach } from "vitest";
 
-import { setDriver } from "../shared/harness/activeDriver";
-import { cleanupMounted } from "../shared/mount";
 import { reactDriver } from "./render";
 
 setDriver(reactDriver);
