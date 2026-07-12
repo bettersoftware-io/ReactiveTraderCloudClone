@@ -29,7 +29,8 @@ import {
 // glide) starts overlapping animations and corrupts rowHeight()'s mid-glide
 // measurement — rows visibly stack/overlap. The hook now COALESCES: only ONE
 // order is "committed" (and returned, for the caller to actually render/key
-// off) per glide window — see `coalesceOrder` below and its use in the effect.
+// off) per glide window — see `coalesceOrder` (imported from `@rtc/motion-core`)
+// and its use in the effect.
 
 // Exported so the length<2 fallback is directly unit-testable (see
 // useRankGlide.test.ts) — a real DOM/effect scenario can't exercise it, since
