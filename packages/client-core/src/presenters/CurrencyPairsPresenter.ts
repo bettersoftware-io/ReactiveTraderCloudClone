@@ -1,4 +1,4 @@
-import { type Observable, shareReplay } from "rxjs";
+import type { Observable } from "rxjs";
 
 import {
   type CurrencyPair,
@@ -6,12 +6,14 @@ import {
   type ReferenceDataPort,
 } from "@rtc/domain";
 
+import { warmReplay } from "./warmReplay.js";
+
 export class CurrencyPairsPresenter {
   readonly pairs$: Observable<readonly CurrencyPair[]>;
 
   constructor(referenceData: ReferenceDataPort) {
     this.pairs$ = new CurrencyPairsUseCase(referenceData)
       .execute()
-      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+      .pipe(warmReplay());
   }
 }

@@ -27,6 +27,7 @@ import {
 } from "@rtc/domain";
 
 import type { Machine } from "./machine";
+import { warmReplay } from "./warmReplay.js";
 
 /** Delay between confirming a freshly-created RFQ and redirecting the user back
  * to the RFQ list. Presenter-local — a UI cadence concern, not a domain
@@ -102,9 +103,13 @@ export class RfqsPresenter {
   >();
 
   constructor(private readonly workflow: WorkflowPort) {
+    // state$ holds the workflow WS subscription that rfqs$/allQuotes$/
+    // quotesForRfq$ all derive from → warm across tab remounts (singleton per
+    // connection), so those derived streams re-read its buffer on remount
+    // without re-subscribing the wire.
     this.state$ = new WorkflowEventStreamUseCase(workflow)
       .execute()
-      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+      .pipe(warmReplay());
     this.rfqs$ = this.state$.pipe(
       map((s) => {
         return Array.from(s.rfqs.values());
@@ -119,9 +124,9 @@ export class RfqsPresenter {
       distinctUntilChanged(),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
-    this.events$ = workflow
-      .events()
-      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    // Second, independent workflow subscription (raw events for animation
+    // signals) → also warm, so it isn't re-subscribed on remount.
+    this.events$ = workflow.events().pipe(warmReplay());
   }
 
   quotesForRfq$(rfqId: number): Observable<readonly Quote[]> {
