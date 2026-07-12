@@ -1,7 +1,9 @@
-import { type Observable, shareReplay } from "rxjs";
+import type { Observable } from "rxjs";
 import { scan, startWith } from "rxjs/operators";
 
 import type { MetricSample } from "@rtc/domain";
+
+import { warmReplay } from "./warmReplay.js";
 
 /** Rolling window size — number of MetricSamples retained per chart series. */
 export const WINDOW = 60;
@@ -17,6 +19,9 @@ export function windowedSamples(
       [] as readonly MetricSample[],
     ),
     startWith([] as readonly MetricSample[]),
-    shareReplay({ bufferSize: 1, refCount: true }),
+    // Warm across the Admin tab's key={activeTab} remount so the rolling chart
+    // window survives a tab switch instead of resetting to the seed. Matches
+    // EventLogPresenter / SessionsKpiPresenter, which already keep warm.
+    warmReplay(),
   );
 }
