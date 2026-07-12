@@ -29,7 +29,7 @@
     },
     "packages/client-solid": {
       "entry": ["src/main.tsx", "index.html", "vite.config.ts"],
-      "project": ["src/**/*.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
       "ignoreDependencies": ["@rtc/motion-core"]
     },
     "packages/ui-contract": {

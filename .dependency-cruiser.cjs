@@ -62,7 +62,7 @@ module.exports = {
         "@rtc/motion-core is zero-dependency pure view-layer math — it must not depend on domain/shared/client-core/bindings/any client/server/ws-effects.",
       from: { path: "^packages/motion-core/src" },
       to: {
-        path: "^packages/(domain|shared|client-core|react-bindings|client-react|client-react-native|client-prototype|server|ws-effects)/",
+        path: "^packages/(domain|shared|client-core|react-bindings|solid-bindings|client-react|client-react-native|client-prototype|client-solid|server|ws-effects)/",
       },
     },
     {
