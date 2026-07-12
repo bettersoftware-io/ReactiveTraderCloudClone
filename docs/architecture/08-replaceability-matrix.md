@@ -4,23 +4,25 @@
 
 This is the load-bearing section: the architecture's value comes from the cost-of-change for each technology being bounded and well-understood.
 
-| Component | Currently | Cost to replace | Contract that must hold | Tests that verify |
-|---|---|---|---|---|
-| **UI framework** | React 19 (web) / React Native (mobile) | ~1 dev-week (rewrite one UI package) — **empirically calibrated by the RN client**, which reused core + bindings verbatim | `ViewModel` hook signatures and intent callbacks. No business logic in components. | Behavioural specs (Gherkin) + visual goldens + UI contract suite, all unchanged |
-| **State streams ↔ UI bridge** | `@rtc/react-bindings` (react-rxjs) | ~1 dev-day (write `@rtc/solid-bindings` etc.) | `Observable<T>`/`StateObservable<T>` -> framework-native reactive primitive; same `ViewModel` member list | UI contract tests, unchanged |
-| **State streams** | RxJS + `@rx-state/core` | High -- swap touches ports, simulators, use cases, presenters, machines together | Boundary stream type matches across all layers | Use-case tests + port contract tests + presenter-direct e2e peers |
-| **Use cases** | Vanilla TS + RxJS | N/A (this is the domain) | -- | Unit tests over use cases with simulator ports |
-| **Boundary stream type** | RxJS `Observable<T>` | Very high (this is the spine) | -- | -- |
-| **Port adapters (transport)** | WebSocket-backed factories in `client-core` | ~1 dev-week per adapter family | Implements port interface | Contract tests parameterised over adapter (simulator + WsReal) |
-| **Server dispatch framework** | `@rtc/ws-effects` | ~1 dev-week (it is one package; effects are pure stream transforms) | `WsEffect = (in$, ctx) => out$`; wire protocol in `@rtc/shared` | Marble tests + fullstack smokes |
-| **View-layer motion math** | `@rtc/motion-core` | ~1 dev-day per consumer (pure functions; no framework/DOM coupling to unwind) | `flipDeltas`/`coalesceOrder`/`computeRankDirections`/`sameOrder` signatures + easing/duration constants | Unit tests in `packages/motion-core` (`flip.test.ts`, `rankGlide.test.ts`) |
-| **Server host** | Node.js + `ws` | ~2 dev-days (`toSocket` is the only ws-coupled file) | `Socket` interface (`messages$`, `send`, `closed$`) | Fullstack smokes |
-| **Wire format** | JSON over WS | High (both ends change together) | DTOs + `CLIENT_MSG`/`SERVER_MSG` in `@rtc/shared` | DTO round-trip tests + wire-frame fixtures + e2e |
-| **Build tooling** | Vite (web) · Metro/Expo (mobile) | ~1 dev-day | Bundles the client package, serves dev | -- |
-| **Unit test runner** | Vitest (+ jest-expo for RN components) | ~1 dev-day | Same test files runnable | The tests themselves (proven: the presenter suite runs under cucumber-js *and* vitest) |
-| **E2E driver** | Playwright (CI) + Cypress (local) | ~3 dev-days per new driver | Page Object interfaces unchanged; only implementations are added | Behavioural specs (Gherkin) drive all drivers via one shared step tree |
-| **Behavioural spec language** | Gherkin | High (rewrite specs) | -- | -- |
-| **Build orchestration** | pnpm + Turborepo | ~1 dev-day | Build graph: domain -> shared/ws-effects/motion-core -> core -> bindings -> clients/server | -- |
+Columns folded to three so the table stays readable at GitHub's narrow column width (`Currently` is merged into the component name; `Contract that must hold` and `Tests that verify` share one cell under *Verified:*).
+
+| Component (current) | Cost to replace | Contract & verification |
+|---|---|---|
+| **UI framework**<br>React 19 (web) / React Native (mobile) | ~1 dev-week (rewrite one UI package) — **empirically calibrated by the RN client**, which reused core + bindings verbatim | `ViewModel` hook signatures and intent callbacks. No business logic in components.<br>*Verified:* Behavioural specs (Gherkin) + visual goldens + UI contract suite, all unchanged |
+| **State streams ↔ UI bridge**<br>`@rtc/react-bindings` (react-rxjs) | ~1 dev-day (write `@rtc/solid-bindings` etc.) | `Observable<T>`/`StateObservable<T>` -> framework-native reactive primitive; same `ViewModel` member list.<br>*Verified:* UI contract tests, unchanged |
+| **State streams**<br>RxJS + `@rx-state/core` | High -- swap touches ports, simulators, use cases, presenters, machines together | Boundary stream type matches across all layers.<br>*Verified:* Use-case tests + port contract tests + presenter-direct e2e peers |
+| **Use cases**<br>Vanilla TS + RxJS | N/A (this is the domain) | *Verified:* Unit tests over use cases with simulator ports |
+| **Boundary stream type**<br>RxJS `Observable<T>` | Very high (this is the spine) | -- |
+| **Port adapters (transport)**<br>WebSocket-backed factories in `client-core` | ~1 dev-week per adapter family | Implements port interface.<br>*Verified:* Contract tests parameterised over adapter (simulator + WsReal) |
+| **Server dispatch framework**<br>`@rtc/ws-effects` | ~1 dev-week (it is one package; effects are pure stream transforms) | `WsEffect = (in$, ctx) => out$`; wire protocol in `@rtc/shared`.<br>*Verified:* Marble tests + fullstack smokes |
+| **View-layer motion math**<br>`@rtc/motion-core` | ~1 dev-day per consumer (pure functions; no framework/DOM coupling to unwind) | `flipDeltas`/`coalesceOrder`/`computeRankDirections`/`sameOrder` signatures + easing/duration constants.<br>*Verified:* Unit tests in `packages/motion-core` (`flip.test.ts`, `rankGlide.test.ts`) |
+| **Server host**<br>Node.js + `ws` | ~2 dev-days (`toSocket` is the only ws-coupled file) | `Socket` interface (`messages$`, `send`, `closed$`).<br>*Verified:* Fullstack smokes |
+| **Wire format**<br>JSON over WS | High (both ends change together) | DTOs + `CLIENT_MSG`/`SERVER_MSG` in `@rtc/shared`.<br>*Verified:* DTO round-trip tests + wire-frame fixtures + e2e |
+| **Build tooling**<br>Vite (web) · Metro/Expo (mobile) | ~1 dev-day | Bundles the client package, serves dev |
+| **Unit test runner**<br>Vitest (+ jest-expo for RN components) | ~1 dev-day | Same test files runnable.<br>*Verified:* The tests themselves (proven: the presenter suite runs under cucumber-js *and* vitest) |
+| **E2E driver**<br>Playwright (CI) + Cypress (local) | ~3 dev-days per new driver | Page Object interfaces unchanged; only implementations are added.<br>*Verified:* Behavioural specs (Gherkin) drive all drivers via one shared step tree |
+| **Behavioural spec language**<br>Gherkin | High (rewrite specs) | -- |
+| **Build orchestration**<br>pnpm + Turborepo | ~1 dev-day | Build graph: domain -> shared/ws-effects/motion-core -> core -> bindings -> clients/server |
 
 **How this is achieved**: every "Cost" above assumes the rest of the system stays put. That is only true because (a) inner layers never import outer-layer types, (b) ports are dependency-inverted, and (c) behavioural tests are written against behaviour, not implementation.
 
