@@ -1,8 +1,7 @@
 import { HeaderChrome } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
+import type { WorkspaceTab } from "@ui-contract/pages/shell/chrome/HeaderChromePage";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
-import type { WorkspaceTab } from "#tests/ui/contract/shared/pages/shell/chrome/HeaderChromePage";
 
 beforeEach(() => {
   delete document.documentElement.dataset.mode;

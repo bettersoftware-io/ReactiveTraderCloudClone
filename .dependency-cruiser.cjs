@@ -66,6 +66,16 @@ module.exports = {
       },
     },
     {
+      name: "ui-contract-stays-neutral",
+      severity: "error",
+      comment:
+        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and, later, client-solid) — it may depend only on client-core/domain/rxjs, never on a concrete client or the server.",
+      from: { path: "^packages/ui-contract/src" },
+      to: {
+        path: "^packages/(client-react|client-react-native|client-prototype|react-bindings|server|ws-effects)/",
+      },
+    },
+    {
       name: "client-core-stays-inner",
       severity: "error",
       comment:

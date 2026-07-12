@@ -23,6 +23,10 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/ui-contract": {
+      "entry": ["src/shared/components.ts", "src/shared/mount.ts"],
+      "project": "src/**/*.ts"
+    },
     "packages/server": {
       "entry": ["src/index.ts"],
       "project": "src/**/*.ts"
@@ -37,7 +41,8 @@
         "tests/ui/visual/playwright/host/main.tsx",
         "tests/ui/visual/playwright/host/vite.config.ts"
       ],
-      "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["@rtc/ui-contract"]
     },
     "packages/client-react-native": {
       "entry": [

@@ -1,4 +1,13 @@
 import { act, render as rtlRender } from "@testing-library/react";
+import type {
+  MountedRoot,
+  UiContractDriver,
+} from "@ui-contract/harness/activeDriver";
+import type {
+  ComponentToken,
+  MountedComponent,
+} from "@ui-contract/harness/component";
+import type { World } from "@ui-contract/harness/world";
 import type { BehaviorSubject } from "rxjs";
 
 import { ViewModelProvider } from "@rtc/react-bindings";
@@ -7,15 +16,6 @@ import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
 import { FxViewProvider } from "#/ui/fx/FxViewProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
-import type {
-  MountedRoot,
-  UiContractDriver,
-} from "../shared/harness/activeDriver";
-import type {
-  ComponentToken,
-  MountedComponent,
-} from "../shared/harness/component";
-import type { World } from "../shared/harness/world";
 import { PropsHost } from "./PropsHost";
 import { registry } from "./registry";
 import { reactViewModel } from "./viewModelFromWorld";

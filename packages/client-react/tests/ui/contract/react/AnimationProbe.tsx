@@ -1,8 +1,7 @@
+import type { AnimationProbeProps } from "@ui-contract/pages/shell/motion/AnimationProbePage";
 import type { JSX } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
-
-import type { AnimationProbeProps } from "#tests/ui/contract/shared/pages/shell/motion/AnimationProbePage";
 
 /**
  * Minimal dumb probe that maps useAnimationIntents(target) → data-anim.

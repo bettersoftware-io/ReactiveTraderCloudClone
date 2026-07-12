@@ -11,7 +11,16 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@ui-contract": fileURLToPath(new URL("./shared", import.meta.url)),
+      // The framework-neutral harness now lives in @rtc/ui-contract; resolve
+      // through the workspace symlink (node_modules), not a deep relative
+      // path, so this stays a package-name import (Biome bans ≥2-up relative
+      // imports in source; config files are exempt but consistency matters).
+      "@ui-contract": fileURLToPath(
+        new URL(
+          "../../../node_modules/@rtc/ui-contract/src/shared",
+          import.meta.url,
+        ),
+      ),
       // Mirror package.json "imports" so that helper/golden modules imported by
       // the harness (e.g. loadGolden, setup utilities) receive a real filesystem
       // import.meta.url rather than a vitest jsdom virtual URL — enabling
