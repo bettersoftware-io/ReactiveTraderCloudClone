@@ -2,7 +2,7 @@
 
 ## 6. Package Dependencies
 
-Nine workspace packages plus the `tests` package. Every arrow is a real `dependencies` entry; dependencies flow **inward only** (toward `domain`).
+Ten workspace packages plus the `tests` package. Every arrow is a real `dependencies` entry; dependencies flow **inward only** (toward `domain`).
 
 ```mermaid
 graph TB
@@ -30,16 +30,19 @@ graph TB
     end
 
     proto["@rtc/client-prototype\ndesign-comprehension island\nreact + react-dom only"]
+    motion["@rtc/motion-core\nView-layer motion math\npure, zero-dep"]
     tests["tests (@rtc/tests)\nbehavioural suites + gates"]
 
     webc --> rb
     webc --> core
     webc --> domain
+    webc --> motion
     rnc --> rb
     rnc --> core
     rnc --> domain
     solidc -.-> sb
     solidc -.-> core
+    solidc -.-> motion
     rb --> core
     rb --> domain
     sb -.-> core
@@ -63,6 +66,7 @@ graph TB
     style server fill:#9C27B0,color:#fff
     style wse fill:#5E35B1,color:#fff
     style proto fill:#607D8B,color:#fff
+    style motion fill:#607D8B,color:#fff
     style solidc fill:#607D8B,color:#fff,stroke-dasharray: 5 5
     style sb fill:#607D8B,color:#fff,stroke-dasharray: 5 5
     style tests fill:#455A64,color:#fff
@@ -75,10 +79,11 @@ graph TB
 - `@rtc/react-bindings` is the only package allowed to depend on both React and the core's streams.
 - Clients (`client-react`, `client-react-native`) depend on `core` + `react-bindings` + `domain`; **clients and server never import each other** (dependency-cruiser `client-not-server` / `server-not-client`).
 - `@rtc/client-prototype` is an intentional island: `react`/`react-dom` only, no `@rtc/*` imports.
+- `@rtc/motion-core` is a zero-runtime-dependency leaf (no `rxjs`, no DOM, no React) consumed directly by a client's animation shell -- today `client-react`; the planned `client-solid` adds the same `client-solid → motion-core` edge, never a `client-core`/`react-bindings` one.
 
-**Build order** (Turborepo topological): `domain` → `shared` | `ws-effects` → `client-core` → `react-bindings` → `client-react` | `client-react-native` | `server` (prototype builds independently).
+**Build order** (Turborepo topological): `domain` → `shared` | `ws-effects` | `motion-core` → `client-core` → `react-bindings` → `client-react` | `client-react-native` | `server` (prototype builds independently; `motion-core` has no upstream deps so it builds in the first wave alongside `domain`).
 
-> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`. See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
+> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`, `motion-core-stays-pure`. See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
 
 > **History**: the Application Layer originally lived inside `@rtc/client-react` (the doc's earlier revisions called this out as a possible future extraction). The React Native workstream forced the question, and the extraction happened: `@rtc/client-core` + `@rtc/react-bindings` are that promotion, executed without breaking UI consumers -- exactly because components only ever imported the hook bridge.
 

@@ -6,7 +6,7 @@
 
 ### 13.1 L0 -- The System On One Screen
 
-Nine workspace packages plus `tests`, drawn as five "buildings": two shipping client apps, one planned client, the shared floors every client stands on, and the server. `@rtc/client-prototype` is omitted here too (as in [§1.3.1](01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring)) -- it is a design-comprehension island with zero `@rtc/*` edges into this graph.
+Ten workspace packages plus `tests`, drawn as five "buildings": two shipping client apps, one planned client, the shared floors every client stands on, and the server. `@rtc/client-prototype` is omitted here too (as in [§1.3.1](01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring)) -- it is a design-comprehension island with zero `@rtc/*` edges into this graph. `@rtc/motion-core` *does* appear (as `motion`) since `client-react` genuinely depends on it.
 
 ```mermaid
 flowchart TB
@@ -34,6 +34,7 @@ flowchart TB
         core["client-core<br/>presenters · machines · WsAdapter · portFactory"]:::core
         domain["domain<br/>entities · use cases · ports · simulators"]:::domain
         shared["shared<br/>DTOs · CLIENT_MSG / SERVER_MSG"]:::domain
+        motion["motion-core<br/>view-layer motion math<br/>pure, zero-dep"]:::domain
     end
 
     subgraph Server["Server — @rtc/server (shipping)"]
@@ -43,10 +44,12 @@ flowchart TB
     end
 
     webUi --> rb
+    webUi --> motion
     webAdapt --> core
     rnUi --> rb
     rnAdapt --> core
     solidUi -.-> sb
+    solidUi -.-> motion
     rb --> core
     sb -.-> core
     core --> domain
@@ -85,7 +88,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **What it is** | Entities, use cases, port interfaces, and simulators -- pure TypeScript, the innermost package. |
 | **Ring** | ①② Entities & Use Cases -- the yolk |
 | **Depends on** | `rxjs` only (`packages/domain/package.json` `dependencies`) |
-| **Consumed by** | `shared`, `client-core`, `react-bindings`, `client-react`, `client-react-native`, `server`, `tests` -- every workspace package except the two rxjs-only/no-`@rtc` islands (`ws-effects`, `client-prototype`) lists `@rtc/domain` directly |
+| **Consumed by** | `shared`, `client-core`, `react-bindings`, `client-react`, `client-react-native`, `server`, `tests` -- every workspace package except the three zero-`@rtc`-dependency islands (`ws-effects`, `client-prototype`, `motion-core`) lists `@rtc/domain` directly |
 | **Non-obvious** | `src/simulators/` is ring ③ (gateways), not ring ①②, even though it lives inside this package -- and they're production code, not test doubles ([§10](10-key-design-decisions.md#10-key-design-decisions)). The single-dependency constraint (`rxjs` only) is enforced by pnpm strict mode, not just convention. |
 | **README** | [`packages/domain/README.md`](../../packages/domain/README.md) |
 
@@ -128,9 +131,9 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 |---|---|
 | **What it is** | The web client: dumb React 19 UI (`src/ui`) + browser-specific platform adapters (`src/app`). |
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) |
-| **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `react`, `react-dom`, `rxjs`, `motion`, `@fontsource/*` (`packages/client-react/package.json` `dependencies`) |
+| **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/react-bindings`, `react`, `react-dom`, `rxjs`, `motion`, `@fontsource/*` (`packages/client-react/package.json` `dependencies`) |
 | **Consumed by** | `tests` (`@rtc/tests` workspace) |
-| **Non-obvious** | Depends on `@rtc/domain` directly, not only transitively through `client-core` -- e.g. `ThemeMode`/`ThemeSkin` types are imported straight from `@rtc/domain` in `src/ui/shell/theme/tokens.ts`. `rxjs` is a listed runtime dependency but appears only in `src/app` (e.g. `MediaQueryColorSchemeAdapter`); it is machine-banned from `src/ui` by gate 26. |
+| **Non-obvious** | Depends on `@rtc/domain` directly, not only transitively through `client-core` -- e.g. `ThemeMode`/`ThemeSkin` types are imported straight from `@rtc/domain` in `src/ui/shell/theme/tokens.ts`. `rxjs` is a listed runtime dependency but appears only in `src/app` (e.g. `MediaQueryColorSchemeAdapter`); it is machine-banned from `src/ui` by gate 26. `@rtc/motion-core` (pure FLIP/rank-glide math) and `motion` (the third-party animation library) are two distinct dependencies despite the similar name -- don't confuse them. |
 | **README** | [`packages/client-react/README.md`](../../packages/client-react/README.md) |
 
 #### `@rtc/client-react-native`
@@ -155,6 +158,17 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Non-obvious** | Its `src/mock/` folder generates data via seeded random walks; it never touches `@rtc/domain`'s simulators, so it can drift visually from the real app without breaking anything -- the tradeoff for total framework isolation. |
 | **README** | [`packages/client-prototype/README.md`](../../packages/client-prototype/README.md) |
 
+#### `@rtc/motion-core`
+
+| | |
+|---|---|
+| **What it is** | Framework-free, zero-dependency view-layer motion math: FLIP deltas (`flipDeltas`), rank-glide coalescing (`coalesceOrder`, `computeRankDirections`, `sameOrder`), and easing/duration constants. |
+| **Ring** | ④ Frameworks & Drivers -- a pure utility consumed directly by a UI shell, not the domain/use-case layer |
+| **Depends on** | Nothing -- no runtime `dependencies` at all (`packages/motion-core/package.json`), stricter than the `rxjs`-only exception `domain` and `ws-effects` get |
+| **Consumed by** | `client-react` (`src/ui/shell/motion/useFlipGrid.ts`, `src/ui/equities/watchlist/useRankGlide.ts`); `client-solid` is planned to add the same edge |
+| **Non-obvious** | Machine-enforced purity via dependency-cruiser's `motion-core-stays-pure` rule ([§6](06-package-dependencies.md#6-package-dependencies)); see [ADR-005](../adr/ADR-005-ui-logic-placement.md) for why this animation math lives here rather than behind the ViewModel. |
+| **README** | [`packages/motion-core/README.md`](../../packages/motion-core/README.md) |
+
 #### `@rtc/ws-effects`
 
 | | |
@@ -177,7 +191,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Non-obvious** | Never imports `@rtc/client-core` (`grep -rln "@rtc/client-core" packages/server/src` returns nothing) -- server and clients share only `domain`/`shared`, enforced as a hard boundary by dependency-cruiser's `client-not-server`/`server-not-client` rules ([§6](06-package-dependencies.md#6-package-dependencies)). It also skips `domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` returns nothing) -- use cases are client-orchestration; the server drives simulators directly. |
 | **README** | [`packages/server/README.md`](../../packages/server/README.md) |
 
-#### `tests` (the 10th card -- not a package, the behavioural-insurance layer)
+#### `tests` (the 11th card -- not a package, the behavioural-insurance layer)
 
 | | |
 |---|---|
@@ -265,6 +279,14 @@ src/
 └── theme/                               design tokens
 ```
 
+`@rtc/motion-core` (flat -- no subfolders):
+```
+src/
+├── flip.ts            flipDeltas + FLIP_*/EXIT_* easing/duration constants
+├── rankGlide.ts        coalesceOrder · computeRankDirections · sameOrder + GLIDE_*/HIGHLIGHT_* constants
+└── reducedMotion.ts     REDUCED_MOTION_QUERY -- shared prefers-reduced-motion media query string
+```
+
 `@rtc/ws-effects` (flat -- no subfolders):
 ```
 src/
@@ -310,6 +332,7 @@ What's shared verbatim, what's adapted per platform, and what doesn't apply -- v
 | Theme (skin/mode preference + tokens) | 🔧[^1] | 🔧[^1] | 🔧[^1] | — |
 | Wire protocol (`shared/src/protocol/`) | ✅[^2] | ✅[^2] | ✅[^2] | ✅ |
 | ws-effects framework (`@rtc/ws-effects`) | — | — | — | ✅ |
+| View-layer motion math (`@rtc/motion-core`) | ✅ | — | ✅ | — |
 | ViewModel bindings (`createViewModel`/`useMachine`/`useViewModel`) | ✅ | ✅ | 🔧[^3] | — |
 
 [^1]: The preference presenter (`ThemeSkinPreferencePresenter`/`ThemePreferencePresenter`, `packages/client-core/src/presenters/`) is shared verbatim by every UI. What's adapted is the token *rendering*: `client-react` applies CSS custom properties from `packages/client-react/src/ui/shell/theme/tokens.ts` via `:root`; `client-react-native` delivers a plain-object `rnThemeTokens` tree (plus an RN-only `DepthTokens` shadow/elevation descriptor, since RN can't express layered/inset box-shadows) from `packages/client-react-native/src/ui/theme/tokens.ts` via React context. A planned `client-solid` would need the same third rendering strategy.

@@ -31,10 +31,12 @@ graph TD
     shared["@rtc/shared<br/>(DTOs / wire protocol)"]
     domain["@rtc/domain<br/>(entities, ports, use cases, simulators)<br/>runtime dep: rxjs only"]
     proto["@rtc/client-prototype<br/>(design island — no @rtc/* deps)"]
+    motion["@rtc/motion-core<br/>(view-layer motion math — zero deps)"]
 
     webc -->|allowed| rb
     webc -->|allowed| core
     webc -->|allowed| domain
+    webc -->|allowed| motion
     rnc -->|allowed| rb
     rnc -->|allowed| core
     rnc -->|allowed| domain
@@ -52,6 +54,7 @@ graph TD
     shared -. "forbidden:<br/>shared-no-apps" .-x server
     domain -. "forbidden:<br/>domain-stays-pure" .-x shared
     wse -. "forbidden:<br/>ws-effects-stays-pure" .-x domain
+    motion -. "forbidden:<br/>motion-core-stays-pure" .-x domain
 
     classDef pure fill:#4CAF50,color:#fff;
     classDef dto fill:#2196F3,color:#fff;
@@ -64,16 +67,18 @@ graph TD
     class core,rb coreC;
     class webc,rnc app;
     class server,wse srv;
-    class proto isle;
+    class proto,motion isle;
 ```
 
 Solid arrows are permitted imports; dashed crossed (`-.-x`) arrows are examples of
 the edges the `forbidden` rules reject. `domain-stays-pure` forbids
 `domain → shared` (and by extension `domain → client/server`);
-`ws-effects-stays-pure` keeps the effects framework domain-blind; the apps may
+`ws-effects-stays-pure` keeps the effects framework domain-blind;
+`motion-core-stays-pure` keeps the view-layer motion-math package zero-dependency
+-- stricter than the rxjs-only exception, since it forbids `rxjs` too; the apps may
 reach inward but never reach across to each other.
 
-## The 12 forbidden rules
+## The 13 forbidden rules
 
 All rules are `severity: "error"` — any match fails the gate.
 
@@ -91,23 +96,25 @@ All rules are `severity: "error"` — any match fails the gate.
 | `react-bindings-no-apps` | `^packages/react-bindings/src` | `^packages/(client-react\|client-react-native\|client-prototype\|server)/` | The React↔RxJS bridge depends only inward (core, domain), never on an app or the server |
 | `clients-never-import-each-other` | `^packages/(client-react\|client-react-native\|client-prototype)/src` | any of the other two client packages | Peer clients composed from the same core never import one another (CLAUDE.md) |
 | `prototype-isolated` | `^packages/client-prototype/src` | `^packages/(domain\|shared\|client-core\|react-bindings\|client-react\|client-react-native\|server\|ws-effects)/` | The design-comprehension island stays `react`/`react-dom` only — zero `@rtc/*` edges |
+| `motion-core-stays-pure` | `^packages/motion-core/src` | `^packages/(domain\|shared\|client-core\|react-bindings\|client-react\|client-react-native\|client-prototype\|server\|ws-effects)/` | The view-layer motion-math package stays a zero-dependency pure leaf — no `@rtc/*` edges |
 
 **Asymmetry to note:** each rule matches the *source* against `…/src` but the
 *target* against the **bare package path** (e.g. `^packages/server/`). So
 importing a server **test** file from the client is rejected too — not only
 `server/src`.
 
-**Full coverage:** all 9 workspace packages are now named by at least one
+**Full coverage:** all 10 workspace packages are now named by at least one
 pair rule. `client-core-stays-inner` and `client-core-framework-free` close the
 `client-core` gap (inward-only imports, and no `react`/`react-dom`/`react-native`
 despite three UI-facing consumers); `react-bindings-no-apps` does the same for
 the bridge package; `clients-never-import-each-other` protects the three peer
 clients (`client-react`, `client-react-native`, `client-prototype`) from
 importing one another; `prototype-isolated` pins the design island to
-`react`/`react-dom` only. Together with the original seven, every package still
-gets the `no-circular` and pnpm-strict-dependencies backstop (a package cannot
-resolve an undeclared `@rtc/*` import) *plus* a hand-written pair rule naming it
-directly.
+`react`/`react-dom` only; `motion-core-stays-pure` pins the view-layer
+motion-math package to zero `@rtc/*` (and zero runtime) dependencies. Together
+with the original seven, every package still gets the `no-circular` and
+pnpm-strict-dependencies backstop (a package cannot resolve an undeclared
+`@rtc/*` import) *plus* a hand-written pair rule naming it directly.
 
 ## The `options` block (how the graph is built)
 
