@@ -43,7 +43,7 @@ export type ScenarioAction = {
     }
 );
 
-// Keyed by scenario name (see shared/scenarios.ts). Absent key == a
+// Keyed by scenario name (see @rtc/ui-contract's src/visual/scenarios.ts). Absent key == a
 // component-level shot with no interaction.
 // Module-private: the tiers consume this table only through `scenarioActionFor`
 // below (which maps matrix-expanded names back to their base action).

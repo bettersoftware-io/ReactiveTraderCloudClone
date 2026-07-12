@@ -60,14 +60,16 @@ tests/ui/visual/
   shared/            — Framework-neutral core (no React imports)
     appData.ts       — AppData type: the injectable data contract
     fixtures.ts      — Named fixture data sets
-    scenarios.ts     — scenario name → { componentKey, fixture } manifest
   react/             — React render target (the @ui-visual alias barrel)
     buildFakeViewModel.ts — AppData → ViewModel adapter
     registry.tsx      — componentKey → React element map
     VisualScenario.tsx — theme + provider + backdrop wrapper
     index.ts          — barrel export (the @ui-visual alias target)
   scenarioActions.ts — Runner-neutral per-scenario interaction table (used by
-                       URL-driven runners to click/hover before screenshotting)
+                       URL-driven runners to click/hover before screenshotting;
+                       pairs with @rtc/ui-contract's src/visual/scenarios.ts —
+                       the scenario name → { componentKey, fixture } manifest,
+                       extracted there in Task 3)
   playwright-ct/     — Tier 1: Playwright Component Testing specs + goldens
     playwright-ct.config.ts — in-suite runner config
     __screenshots__/react/
@@ -125,7 +127,7 @@ are three layers, and "sharing" happens at one of them but not the others:
 
 | Layer | Shared across all 3? | What it is |
 |---|---|---|
-| **Scenario manifest** (`shared/scenarios.ts` + `scenarioActions.ts`) | ✅ **Yes** — one source of truth | "What to render and what to click" — the named scenarios, with zero React/runner code |
+| **Scenario manifest** (`@rtc/ui-contract`'s `src/visual/scenarios.ts` + this package's `scenarioActions.ts`) | ✅ **Yes** — one source of truth | "What to render and what to click" — the named scenarios, with zero React/runner code |
 | **Test bodies** (the `*.spec` files) | ⚠️ **Two of three** | Tier 2 + Tier 3 _auto-derive_ their tests by looping over the manifest. Tier 1 is _hand-written_ |
 | **Goldens** (`__screenshots__/`) | ❌ **No — each tier owns its own set** | Three separate PNG directories, one per runner |
 

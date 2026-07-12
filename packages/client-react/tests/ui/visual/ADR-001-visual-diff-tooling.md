@@ -188,7 +188,7 @@ grow with the viewport; the ~1100 component shots are content-sized and don't).
   `AppData` before building the fake ViewModel, so the theme is seeded through the
   same port the app uses (`useThemeSkinPreference`/`useThemePreference`) — no
   localStorage, no per-scenario React.
-- **Matrix expander** (`shared/scenarios.ts`): `expandThemeMatrix` REPLACES each
+- **Matrix expander** (`@rtc/ui-contract`'s `src/visual/scenarios.ts`): `expandThemeMatrix` REPLACES each
   base scenario with its full 10-combo cross-product, each carrying an explicit
   `themeSkin`/`themeMode`. There is **no bare baseline** — classic-dark is the
   `classic-dark/` folder like any other combo. Scope lives in three symbols:
@@ -203,7 +203,7 @@ grow with the viewport; the ~1100 component shots are content-sized and don't).
 Goldens are stored **one PNG per combo** under a `<skin>-<mode>/` sub-folder:
 `…/<specfile>/holo3d-light/app-fx.png`. This keeps each theme reviewable/diffable
 in isolation on GitHub and lets you regenerate one theme at a time. The shared
-`shared/goldenPath.ts` computes the path. **Load-bearing quirk:** Playwright
+`@rtc/ui-contract`'s `src/visual/goldenPath.ts` computes the path. **Load-bearing quirk:** Playwright
 flattens a *string* screenshot arg containing `/` to `-` (verified: `"a/b.png"`
 → `a-b.png`), so the two Playwright tiers pass the **array form**
 `goldenPathArray(name, scenario)` → `[<skin>-<mode>, <base>.png]` to nest a real
