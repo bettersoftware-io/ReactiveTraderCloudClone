@@ -1,10 +1,9 @@
 import { SetFilter } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
+import type { ColumnFilter } from "@ui-contract/pages/fx/blotter/filterTypes";
 import { describe, expect, it } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
-
-import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 
 const trades = [
   trade({ currencyPair: "EURUSD" }),

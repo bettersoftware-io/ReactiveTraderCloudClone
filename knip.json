@@ -24,7 +24,12 @@
       "project": "src/**/*.ts"
     },
     "packages/ui-contract": {
-      "entry": ["src/shared/components.ts", "src/shared/mount.ts"],
+      "entry": [
+        "src/shared/components.ts",
+        "src/shared/mount.ts",
+        "src/specs/**/*.contract.spec.ts",
+        "src/visual/scenarios.test.ts"
+      ],
       "project": "src/**/*.ts"
     },
     "packages/server": {

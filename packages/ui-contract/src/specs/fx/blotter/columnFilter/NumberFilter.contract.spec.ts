@@ -1,8 +1,7 @@
 import { NumberFilter } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
+import type { ColumnFilter } from "@ui-contract/pages/fx/blotter/filterTypes";
 import { describe, expect, it } from "vitest";
-
-import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 
 describe("NumberFilter", () => {
   it("defaults to the equals comparator with an empty value", () => {
