@@ -7,4 +7,15 @@ export {
   FLIP_EASING,
   flipDeltas,
 } from "./flip.js";
+export type { CoalesceDecision, RankDirection } from "./rankGlide.js";
+export {
+  coalesceOrder,
+  computeRankDirections,
+  FALLBACK_ROW_HEIGHT,
+  GLIDE_DUR_MS,
+  GLIDE_EASING,
+  HIGHLIGHT_DUR_MS,
+  HIGHLIGHT_EASING,
+  sameOrder,
+} from "./rankGlide.js";
 export { REDUCED_MOTION_QUERY } from "./reducedMotion.js";
