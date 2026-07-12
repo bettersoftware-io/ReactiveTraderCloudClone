@@ -2,6 +2,7 @@ import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import { Direction, type PreferencesPort } from "@rtc/domain";
+import { CLIENT_MSG } from "@rtc/shared";
 import { rpcNack } from "@rtc/shared/__fixtures__/wireFrames";
 
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
@@ -35,6 +36,28 @@ describe("createSimulatorPorts", () => {
     const ports = createSimulatorPorts({ preferences: fakePreferences });
     const first = await firstValueFrom(ports.blotter.getTradeStream());
     expect(Array.isArray(first)).toBe(true);
+  });
+});
+
+describe("wsReal pricing :: subscription lifecycle", () => {
+  it("sends subscribe.pricing on subscribe and unsubscribe.pricing on teardown", () => {
+    const ws = new FakeWsAdapter();
+    const ports = createWsRealPorts(ws, {
+      preferences: {} as PreferencesPort,
+    });
+
+    const sub = ports.pricing.getPriceUpdates("EURUSD").subscribe();
+    expect(ws.sentMessages()).toEqual([
+      { type: CLIENT_MSG.SUBSCRIBE_PRICING, payload: { symbol: "EURUSD" } },
+    ]);
+
+    // Teardown must tell the server to stop — otherwise a later re-subscribe
+    // (filter toggle re-mounting the tile) stacks another server-side stream.
+    sub.unsubscribe();
+    expect(ws.sentMessages()).toEqual([
+      { type: CLIENT_MSG.SUBSCRIBE_PRICING, payload: { symbol: "EURUSD" } },
+      { type: CLIENT_MSG.UNSUBSCRIBE_PRICING, payload: { symbol: "EURUSD" } },
+    ]);
   });
 });
 
