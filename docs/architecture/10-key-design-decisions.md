@@ -89,13 +89,13 @@
 
 ### 10.7 pnpm workspaces + Turborepo for the monorepo
 
-**Problem.** Nine packages plus a `tests` workspace share a strict dependency graph (`domain` → `shared`/`ws-effects` → `client-core` → `react-bindings` → clients/`server`) that must build in topological order, and the single-runtime-dependency rule on `@rtc/domain` needs enforcement at install time, not just code review.
+**Problem.** Ten packages plus a `tests` workspace share a strict dependency graph (`domain` → `shared`/`ws-effects` → `client-core` → `react-bindings` → clients (← `motion-core`)/`server`) that must build in topological order, and the single-runtime-dependency rule on `@rtc/domain` needs enforcement at install time, not just code review.
 
 **Choice.** pnpm workspaces (`pnpm-workspace.yaml`: `packages/*` + `tests`) for install/linking, with Turborepo (`turbo.json`) driving topological `build`/`typecheck`/`test` across the graph. pnpm's strict, non-hoisted `node_modules` is what makes "the only entry in `@rtc/domain/package.json` `dependencies` is `rxjs`" a real, install-time-enforced guarantee rather than a convention that a stray transitive import could quietly violate.
 
 **Alternatives rejected.** A single flat package (no workspace boundaries) would have made the "only `rxjs` in domain" rule unenforceable — anything importable anywhere is importable in domain. Nx was the natural workspace-tooling alternative to Turborepo; it wasn't adopted, and CLAUDE.md's requirement that Turborepo stay "framework-blind (task names + dependency graph only)" reflects a preference for the lighter of the two orchestrators available at the time this was set up.
 
-**Cost accepted.** Nine packages means nine `package.json`s, nine `tsconfig`s, and cross-package changes that ripple through the build graph in dependency order rather than landing in one file — more ceremony than a single-package repo for the sake of a graph the dependency rule can actually be enforced against.
+**Cost accepted.** Ten packages means ten `package.json`s, ten `tsconfig`s, and cross-package changes that ripple through the build graph in dependency order rather than landing in one file — more ceremony than a single-package repo for the sake of a graph the dependency rule can actually be enforced against.
 
 ### 10.8 CSS Modules, with inline styles banned by lint
 
@@ -138,6 +138,15 @@
 **Cost accepted.** Two packages to touch for one shell feature — a machine change in `client-core`, a renderer change in `client-react` — instead of one component file. `InhouseLayoutEngine.tsx` names its own exception: "the ONE framework-coupled spot in the app" (`InhouseLayoutEngine.tsx:26-31`), confined there so a SolidJS port re-implements only this file, and the split holds only as long as gates 26–33 ([§12](12-architectural-gates.md)) keep enforcing it. The advice to colocate state with the component that renders it is, for this shell, backwards on purpose.
 
 See [§17](17-web-client-up-close.md#17-the-web-client-up-close) for the mechanism-level walkthrough — the component tree, the layout system, and the motion toolbox this decision produced.
+
+### UI logic placement (ADR-005)
+
+Where UI-adjacent logic lives is a decision tree: application state/behavior →
+an RxJS machine (or port + presenter) in `client-core` behind the ViewModel;
+DOM-frame-driven animation → a framework hook/directive over pure math shared in
+`@rtc/motion-core`; pure derived state → a plain hook; context read → a trivial
+reader. See [ADR-005](../adr/ADR-005-ui-logic-placement.md) for the full tree,
+litmus, and worked examples.
 
 ---
 

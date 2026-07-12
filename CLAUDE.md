@@ -8,7 +8,7 @@ This project aims to recreate [ReactiveTraderCloud](https://github.com/AdaptiveC
 
 ## Current Status
 
-Monorepo with pnpm workspaces + Turborepo; nine packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; `docs/architecture.md` is the authoritative architecture reference.
+Monorepo with pnpm workspaces + Turborepo; ten packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; `docs/architecture.md` is the authoritative architecture reference.
 
 ## Build Commands
 
@@ -38,11 +38,12 @@ packages/
   client-react/        @rtc/client-react        — Web client: dumb React 19 UI + browser adapters (Vite). Depends on client-core, react-bindings, domain.
   client-react-native/ @rtc/client-react-native — Mobile client: Expo SDK 57 / RN 0.86, dumb RN UI + native adapters. Depends on client-core, react-bindings, domain.
   client-prototype/    @rtc/client-prototype    — Readable React port of the docs/design/web/v2 prototype. Isolated: react/react-dom only, no @rtc/* imports.
+  motion-core/         @rtc/motion-core         — Framework-free, zero-dependency view-layer motion math (FLIP deltas, rank-glide coalescing, easing/duration constants). No DOM, no rxjs, no React. Shared by client animation shells (React now, Solid next).
   ws-effects/          @rtc/ws-effects          — Small declarative RxJS effects framework. Pure TS, depends only on rxjs at runtime.
   server/              @rtc/server              — Native WebSocket + @rtc/ws-effects (24 effects: FX/Credit/Admin/Equities). Depends on domain, shared, ws-effects.
 ```
 
-**Dependency rule:** dependencies flow inward only. `domain` has only `rxjs` as a runtime dep. `shared` depends only on `domain`. `client-core` is the shared application layer; the client packages and `server` never import each other. `server` additionally depends on `ws-effects`, which itself depends on nothing but `rxjs`. See `docs/architecture/06-package-dependencies.md` (§6) for the full graph.
+**Dependency rule:** dependencies flow inward only. `domain` has only `rxjs` as a runtime dep. `shared` depends only on `domain`. `client-core` is the shared application layer; the client packages and `server` never import each other. `server` additionally depends on `ws-effects`, which itself depends on nothing but `rxjs`. `@rtc/motion-core` is a zero-runtime-dependency leaf consumed directly by the clients (`client-react` today, `client-solid` later) for view-layer motion math -- stricter than the rxjs-only exception since it has no runtime deps at all. See `docs/architecture/06-package-dependencies.md` (§6) for the full graph.
 
 **Single-dep constraint on `@rtc/domain`:** Domain may depend on `rxjs` at runtime — and only on `rxjs`. RxJS is the explicit architectural exception, chosen for its declarative stream operators and the team's familiarity with it. No other runtime dependencies are permitted. pnpm strict mode enforces this at install time. `@rtc/ws-effects` follows the same rxjs-only constraint.
 
@@ -76,3 +77,13 @@ per element; SVG-child transforms and large `filter`s never composite), the
 fix patterns that keep the visuals, the profiling recipe, and a pre-merge
 checklist. Steady-state animations must show zero `compositeFailed` events
 in a trace.
+
+## UI Logic Placement
+
+Before adding a UI hook or moving logic behind the ViewModel, consult
+**`docs/adr/ADR-005-ui-logic-placement.md`** — the decision tree for choosing
+between an RxJS machine in `client-core`, a plain React hook, and a pure
+function in `@rtc/motion-core` + a thin framework shell. The rule of thumb:
+RxJS machines are for autonomous async folds decoupled from the view; per-frame
+DOM-edge-driven computation is a pure function + injected signal, shared via
+`@rtc/motion-core`.

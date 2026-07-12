@@ -1,5 +1,16 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 
+import {
+  DRIFT_PX,
+  EXIT_DURATION_MS,
+  EXIT_EASING,
+  FLIP_DURATION_MS,
+  FLIP_EASING,
+  flipDeltas,
+  REDUCED_MOTION_QUERY,
+  type Rect,
+} from "@rtc/motion-core";
+
 /**
  * FLIP (First-Last-Invert-Play) glide for a keyed grid. Consumers register
  * each item's root element via `register(key)`; whenever any of `deps`
@@ -142,36 +153,6 @@ export function useFlipGrid(
   return { register };
 }
 
-/** Pure invert-phase math: for each key present in both position maps, the
- *  delta needed to animate FROM the previous position TO the next one. Keys
- *  that didn't move (within the sub-pixel threshold — PROTO useFlip.ts
- *  suppresses glides under ~0.5px so a re-render that barely nudges a node
- *  doesn't flicker), or that exist in only one of the two maps (added/
- *  removed by the filter), are omitted. */
-export function flipDeltas(
-  prev: ReadonlyMap<string, Rect>,
-  next: ReadonlyMap<string, Rect>,
-): FlipDelta[] {
-  const deltas: FlipDelta[] = [];
-  next.forEach((nextRect, key) => {
-    const prevRect = prev.get(key);
-
-    if (!prevRect) {
-      return;
-    }
-
-    const dx = prevRect.left - nextRect.left;
-    const dy = prevRect.top - nextRect.top;
-
-    if (Math.abs(dx) < FLIP_MIN_DELTA_PX && Math.abs(dy) < FLIP_MIN_DELTA_PX) {
-      return;
-    }
-
-    deltas.push({ key, dx, dy });
-  });
-  return deltas;
-}
-
 /** True while any registered element still has a running animation. The
  *  registered elements are the bare grid slots, so the only animations on
  *  them are this hook's own WAAPI glides (CSS animations — tick flashes,
@@ -306,20 +287,6 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia?.(REDUCED_MOTION_QUERY).matches ?? false;
 }
 
-export interface Rect {
-  left: number;
-  top: number;
-  /** Only read by exit ghosts; flipDeltas ignores them. */
-  width: number;
-  height: number;
-}
-
-export interface FlipDelta {
-  key: string;
-  dx: number;
-  dy: number;
-}
-
 export interface FlipGridApi {
   register: (key: string) => (el: HTMLElement | null) => void;
 }
@@ -332,16 +299,3 @@ export interface FlipGridOptions {
   /** Fade just-removed items out in place via a detached-node ghost. */
   exit?: boolean;
 }
-
-// PROTO motion/useFlip.ts DEFAULT_DUR_MS / FLIP_EASING — one global glide.
-const FLIP_DURATION_MS = 440;
-const FLIP_EASING = "cubic-bezier(.22,.85,.3,1)";
-// PROTO cardOut: .34s cubic-bezier(.4,0,.7,1).
-const EXIT_DURATION_MS = 340;
-const EXIT_EASING = "cubic-bezier(.4,0,.7,1)";
-// Fallback travel distance when no [data-flip-stage] ancestor is found to
-// measure the real panel borders against.
-const DRIFT_PX = 32;
-// PROTO useFlip.ts sub-pixel suppression threshold.
-const FLIP_MIN_DELTA_PX = 0.5;
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";

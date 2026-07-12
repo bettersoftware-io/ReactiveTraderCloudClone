@@ -33,6 +33,7 @@ packages/
                            simulators. Only runtime dependency: rxjs.
   shared/    @rtc/shared   DTOs and wire-format contracts. Depends on domain.
   client-react/  @rtc/client-react   React + RxJS + Vite web app. Depends on domain + shared.
+  motion-core/  @rtc/motion-core   Framework-free view-layer motion math (FLIP deltas, rank-glide coalescing, easing/duration constants). Depends on nothing.
   ws-effects/  @rtc/ws-effects   Small declarative RxJS effects framework (rxjs-only). Depends on nothing but rxjs.
   server/    @rtc/server   Native WebSocket + @rtc/ws-effects backend. Depends on domain + shared + ws-effects.
   mobile/    @rtc/mobile   React Native client (planned). Depends on domain + shared.

@@ -34,7 +34,7 @@ C4Context
     UpdateRelStyle(rtc, oms, $textColor="#6e7fa3", $lineColor="#6e7fa3")
 ```
 
-> **Diagram theming note.** GitHub serves one SVG to readers on both light and dark themes, and Mermaid's default C4 palette (pale fills, faint gray arrows) is nearly invisible on the dark one. All §2 diagrams therefore use self-contained colors that contrast on both backgrounds, with one consistent scheme: **blue = UI**, **purple = bindings bridge**, **green = application core / the system**, **amber = server & effects framework**, **slate = domain & shared contracts**, **gray = actors/external**.
+> **Diagram theming note.** GitHub serves one SVG to readers on both light and dark themes, and Mermaid's default C4 palette (pale fills, faint gray arrows) is nearly invisible on the dark one. All §2 diagrams therefore use self-contained colors that contrast on both backgrounds, with one consistent scheme: **blue = UI**, **purple = bindings bridge**, **green = application core / the system**, **amber = server & effects framework**, **slate = domain & shared contracts**, **gray = actors/external**, **slate-gray = standalone pure-utility leaves** (`@rtc/motion-core`).
 
 ### 2.2 Container Diagram
 
@@ -54,12 +54,14 @@ flowchart TB
         wsEffects["<b>WS Effects Framework</b><br/>@rtc/ws-effects · rxjs only<br/>WsEffect · stream()/rpc() · combineEffects"]:::server
         domain["<b>Domain Library</b><br/>@rtc/domain · pure TS + rxjs<br/>entities · use cases · ports · simulators"]:::domain
         shared["<b>Shared Contracts</b><br/>@rtc/shared<br/>DTOs · CLIENT_MSG / SERVER_MSG"]:::domain
+        motionCore["<b>Motion Core</b><br/>@rtc/motion-core · pure TS, zero deps<br/>FLIP deltas · rank-glide coalescing · easing"]:::leaf
     end
 
     trader -->|"HTTPS / Browser"| webClient
     trader -->|"iOS / Android"| rnClient
     webClient -->|"renders through ViewModel"| bindings
     rnClient -->|"renders through ViewModel"| bindings
+    webClient -->|"view-layer motion math"| motionCore
     bindings -->|"binds presenters & machines"| core
     core --> domain
     core --> shared
@@ -75,6 +77,7 @@ flowchart TB
     classDef core   fill:#238636,stroke:#56d364,color:#ffffff
     classDef server fill:#9e6a03,stroke:#e3b341,color:#ffffff
     classDef domain fill:#1f2d3d,stroke:#4493f8,color:#e6edf3
+    classDef leaf   fill:#607d8b,stroke:#8b949e,color:#ffffff
     style rtc fill:transparent,stroke:#6e7681
     linkStyle default stroke:#6e7fa3,stroke-width:1.5px
 ```

@@ -131,6 +131,7 @@ flowchart LR
     rnc["@rtc/client-react-native"]
     wse["@rtc/ws-effects"]
     srv["@rtc/server"]
+    motion["@rtc/motion-core"]
   end
   subgraph r3["③ Interface Adapters"]
     direction TB
@@ -143,7 +144,7 @@ flowchart LR
   end
   nodeb["node:* built-ins"]:::ext
 
-  %% --- allowed inward imports (edges 0-13; keep order — linkStyle indices depend on it) ---
+  %% --- allowed inward imports (edges 0-14; keep order — linkStyle indices depend on it) ---
   webc --> rb
   webc --> core
   webc --> domain
@@ -158,8 +159,9 @@ flowchart LR
   srv --> shared
   srv --> wse
   shared --> domain
+  webc --> motion
 
-  %% --- forbidden crossings (edges 14-19), each tagged with the rule that rejects it ---
+  %% --- forbidden crossings (edges 15-20), each tagged with the rule that rejects it ---
   domain -. "✗ domain-stays-pure" .-x shared
   shared -. "✗ shared-no-apps" .-x srv
   webc -. "✗ client-not-server" .-x srv
@@ -179,9 +181,10 @@ flowchart LR
   style rnc fill:#45321b,stroke:#e3b341,color:#fff6e6
   style wse fill:#45321b,stroke:#e3b341,color:#fff6e6
   style srv fill:#45321b,stroke:#e3b341,color:#fff6e6
+  style motion fill:#45321b,stroke:#e3b341,color:#fff6e6
 
-  linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13 stroke:#3fb950,stroke-width:2px
-  linkStyle 14,15,16,17,18,19 stroke:#f85149,stroke-width:2px
+  linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14 stroke:#3fb950,stroke-width:2px
+  linkStyle 15,16,17,18,19,20 stroke:#f85149,stroke-width:2px
 ```
 
 > **Green** solid arrows are the allowed `dependencies` edges (they only ever point inward). **Red** dashed-✗ arrows are the crossings CI rejects. The seventh rule, `no-circular`, isn't a single arrow -- it forbids *any* import cycle anywhere in the graph (type-only edges excluded), keeping the whole onion a strict acyclic gradient from ④ inward to ①. (`@rtc/client-prototype` is omitted: as a design island with no `@rtc/*` deps it has no edges to show.)
@@ -193,7 +196,7 @@ The exact mapping, ring by ring:
 | ① | **Entities** (Enterprise Business Rules) | What a thing *is*, independent of any app | `@rtc/domain/src/{fx,credit,equities,connection,analytics,telemetry,preferences}/` -- `Price`, `Notional`, `Trade`, `Instrument`, `Dealer`, `Rfq`, `Quote`, `EquityQuote`, `Candle`, `DepthBook`, `ConnectionStatus`, `PositionUpdates` |
 | ② | **Use Cases** (Application Business Rules) | App-specific orchestration + the interfaces it needs | `@rtc/domain/src/usecases/` (12: `PriceStreamUseCase`, `ExecuteTradeUseCase`, `CreateRfqUseCase`, `ConnectionStatusUseCase`, ...) **and** `@rtc/domain/src/ports/` (the port interfaces -- `PricingPort`, `ExecutionPort`, `WorkflowPort`, `MarketDataPort`, ...) |
 | ③ | **Interface Adapters** (presenters · gateways · controllers) | Convert between use-case shapes and the outside world | **Presenters/machines:** `@rtc/client-core/src/presenters/`. **Gateways (real):** `@rtc/client-core/src/adapters/` (`WsAdapter`, `portFactory`). **Gateways (in-memory, production -- not mocks):** `@rtc/domain/src/simulators/`. **Platform adapters:** `client-react/src/app/adapters/`, `client-react-native/src/app/adapters/`. **ViewModel bridge:** `@rtc/react-bindings`. **Server controllers/gateways:** `@rtc/server/src/effects/` + `toSocket`. **Boundary DTOs:** `@rtc/shared` |
-| ④ | **Frameworks & Drivers** | The replaceable, volatile detail | `@rtc/client-react/src/ui/` (React + DOM + CSS Modules), `@rtc/client-react-native` UI (Expo/RN + react-native-svg), `@rtc/ws-effects` (the dispatch framework), the `@rtc/server` host (`node:http` + `ws`), Vite, Metro, Vitest/Playwright/Cypress, `@rtc/client-prototype` (design island) |
+| ④ | **Frameworks & Drivers** | The replaceable, volatile detail | `@rtc/client-react/src/ui/` (React + DOM + CSS Modules), `@rtc/client-react-native` UI (Expo/RN + react-native-svg), `@rtc/ws-effects` (the dispatch framework), `@rtc/motion-core` (view-layer motion math), the `@rtc/server` host (`node:http` + `ws`), Vite, Metro, Vitest/Playwright/Cypress, `@rtc/client-prototype` (design island) |
 
 > **Where's the wiring?** `AppRoot.tsx` (web and RN) and `server/src/index.ts` are the **composition roots** -- they live at the very outer edge and are the *only* places that instantiate concrete adapters and inject them inward. Everything inner receives its dependencies; nothing inner constructs them.
 >
@@ -243,6 +246,7 @@ The current stack is a snapshot, not a commitment. Each row says what role is be
 | UI memoization (web) | React Compiler (build-time) | No manual `useMemo`/`useCallback`; see [ADR-003](../adr/ADR-003-react-compiler-and-manual-memoization.md) |
 | Build tooling | Vite (web) · Metro/Expo (mobile) | -- |
 | Server dispatch framework | `@rtc/ws-effects` (declarative RxJS effects) | rxjs only; zero domain knowledge |
+| View-layer motion math | `@rtc/motion-core` (pure TS, zero runtime deps) | No framework, no DOM, no rxjs; consumed directly by a client's UI shell (see [ADR-005](../adr/ADR-005-ui-logic-placement.md)) |
 | Server host | Node.js + `ws` + native `http` | -- |
 | Wire format | JSON over WebSocket | DTOs + `CLIENT_MSG`/`SERVER_MSG` in `@rtc/shared` |
 | Unit test runner | Vitest (all packages) + jest-expo (RN components) | -- |

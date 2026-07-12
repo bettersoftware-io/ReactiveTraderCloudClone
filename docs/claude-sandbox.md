@@ -62,8 +62,8 @@ gap is the rest of the monorepo, which is still on the shared bind mount:
 | Path | Status |
 |---|---|
 | `node_modules` (root) | ✅ already a container-only volume |
-| `packages/*/node_modules` (all 9 workspace packages + `tests`) | ❌ shared → isolate |
-| `packages/*/dist` (×8 — every emitting package; the RN client builds with `tsc --noEmit`, so no `dist`) | ❌ shared → isolate |
+| `packages/*/node_modules` (all 10 workspace packages + `tests`) | ❌ shared → isolate |
+| `packages/*/dist` (×9 — every emitting package; the RN client builds with `tsc --noEmit`, so no `dist`) | ❌ shared → isolate |
 | `.turbo` | ❌ shared → isolate |
 
 All of these are gitignored, so isolating them creates no commit noise.

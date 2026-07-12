@@ -24,6 +24,7 @@
 | **RN Platform Adapters** | `packages/client-react-native/src/app/adapters/*.ts` | AsyncStorage preferences, Appearance color scheme |
 | **RN UI + Routes** | `packages/client-react-native/{app,src/ui}/**` | expo-router tabs; screens with react-native-svg charts + `src/ui/theme/tokens.ts` |
 | **WS Effects Framework** | `packages/ws-effects/src/{types,stream,rpc,combineEffects,createWsListener,operators}.ts` | `WsEffect` primitive + sugar; rxjs-only |
+| **Motion Core** | `packages/motion-core/src/{flip,rankGlide,reducedMotion}.ts` | `flipDeltas`, `coalesceOrder`/`computeRankDirections`/`sameOrder`, easing/duration constants; zero runtime deps |
 | **Server Entry** | `packages/server/src/index.ts` | node:http + `ws` + token auth (`auth.ts`); 4-line effect composition |
 | **Server Effects** | `packages/server/src/effects/{fx,credit,admin,equities}.effects.ts` | The 24 effects |
 | **Server Services** | `packages/server/src/services/{serviceContainer,ThroughputService}.ts` | `createServices()` — all 12 simulators/services |
@@ -42,7 +43,7 @@
 | **Architectural Gates** | `tests/scripts/grep-gates.ts` | CI import-boundary enforcement (grep-based; 29 gates) |
 | **Visual Golden Tiers** | `packages/client-react/tests/ui/visual/{playwright-ct,playwright,vitest-browser}/` | Three screenshot runners; dual golden sets (`react/` CI-canonical + `react-local/<arch>/`); ADR-001 lives here |
 | **UI Contract Tier** | `packages/client-react/tests/ui/contract/{specs,shared,react}/` | Framework-neutral sociable RTL specs + the thin React swap layer; ≥95% coverage gate |
-| **Dependency Rules** | `.dependency-cruiser.cjs` | `no-circular`, `domain-stays-pure`, `client-not-server`, `ws-effects-stays-pure`, ... (`pnpm check:deps`) |
+| **Dependency Rules** | `.dependency-cruiser.cjs` | `no-circular`, `domain-stays-pure`, `client-not-server`, `ws-effects-stays-pure`, `motion-core-stays-pure`, ... (`pnpm check:deps`) |
 | **Port Contract Describers** | `packages/domain/src/ports/__contracts__/<Port>Contract.ts` | Parameterised happy-path suites for all 8 transport ports; run against simulator + WsReal via `makeHarness()` |
 | **Umbrella Scripts** | `tests/scripts/{with-server,run-all}.ts` | Dev-server lifecycle wrapper and ten-suite orchestration |
 
