@@ -139,5 +139,14 @@
 
 See [§17](17-web-client-up-close.md#17-the-web-client-up-close) for the mechanism-level walkthrough — the component tree, the layout system, and the motion toolbox this decision produced.
 
+### UI logic placement (ADR-005)
+
+Where UI-adjacent logic lives is a decision tree: application state/behavior →
+an RxJS machine (or port + presenter) in `client-core` behind the ViewModel;
+DOM-frame-driven animation → a framework hook/directive over pure math shared in
+`@rtc/motion-core`; pure derived state → a plain hook; context read → a trivial
+reader. See [ADR-005](../adr/ADR-005-ui-logic-placement.md) for the full tree,
+litmus, and worked examples.
+
 ---
 

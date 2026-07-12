@@ -76,3 +76,13 @@ per element; SVG-child transforms and large `filter`s never composite), the
 fix patterns that keep the visuals, the profiling recipe, and a pre-merge
 checklist. Steady-state animations must show zero `compositeFailed` events
 in a trace.
+
+## UI Logic Placement
+
+Before adding a UI hook or moving logic behind the ViewModel, consult
+**`docs/adr/ADR-005-ui-logic-placement.md`** — the decision tree for choosing
+between an RxJS machine in `client-core`, a plain React hook, and a pure
+function in `@rtc/motion-core` + a thin framework shell. The rule of thumb:
+RxJS machines are for autonomous async folds decoupled from the view; per-frame
+DOM-edge-driven computation is a pure function + injected signal, shared via
+`@rtc/motion-core`.
