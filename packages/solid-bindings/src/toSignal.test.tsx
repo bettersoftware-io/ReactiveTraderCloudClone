@@ -29,6 +29,22 @@ describe("toSignal", () => {
     expect(st.getRefCount()).toBe(0);
   });
 
+  it("throws on a cold source and releases its subscription (no leak)", () => {
+    const src = new Subject<number>();
+    const st = state(src); // no default, never emitted → cold
+    createRoot((dispose) => {
+      expect(() => {
+        toSignal(st);
+      }).toThrowError(
+        "toSignal requires a warm or defaulted StateObservable (no synchronous emission received)",
+      );
+      dispose();
+    });
+
+    // The eager subscription made before the throw must not leak.
+    expect(st.getRefCount()).toBe(0);
+  });
+
   it("holds function-shaped state values without invoking them", () => {
     const src = new Subject<() => string>();
     const st = state(src, () => {

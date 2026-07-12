@@ -23,6 +23,11 @@ export function toSignal<T>(state$: StateObservable<T>): Accessor<T> {
   });
 
   if (!seeded) {
+    // Release the eager subscription before propagating: the onCleanup
+    // registration below is unreachable from this branch, so without this
+    // the cold source's subscription would leak.
+    sub.unsubscribe();
+
     throw new Error(
       "toSignal requires a warm or defaulted StateObservable (no synchronous emission received)",
     );
