@@ -21,15 +21,21 @@ export function toSignal<T>(state$: StateObservable<T>): Accessor<T> {
       write(v);
     }
   });
+
   if (!seeded) {
     throw new Error(
       "toSignal requires a warm or defaulted StateObservable (no synchronous emission received)",
     );
   }
+
   const [value, setValue] = createSignal<T>(seed);
-  write = (v) => {
-    setValue(() => v);
+
+  write = (v: T): void => {
+    setValue(() => {
+      return v;
+    });
   };
+
   onCleanup(() => {
     sub.unsubscribe();
   });

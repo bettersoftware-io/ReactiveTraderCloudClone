@@ -26,12 +26,7 @@
     "packages/solid-bindings": {
       "entry": "src/index.ts",
       "project": "src/**/*.{ts,tsx}",
-      "ignoreDependencies": [
-        "@rtc/client-core",
-        "@rtc/domain",
-        "@rx-state/core",
-        "rxjs"
-      ]
+      "ignoreDependencies": ["@rtc/domain"]
     },
     "packages/ui-contract": {
       "entry": [
