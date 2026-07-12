@@ -214,7 +214,7 @@ describe("createViewModel — preferences", () => {
     expect(result.view()).toBe("positions");
   });
 
-  it("useThroughput reads value/loading/message and setValue writes value", () => {
+  it("useThroughput reads value/loading/message and setValue echoes optimistically", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {
       return vm.useThroughput();
@@ -222,7 +222,15 @@ describe("createViewModel — preferences", () => {
 
     expect(typeof result.value()).toBe("number");
     expect(typeof result.loading()).toBe("boolean");
+    expect(result.message()).toBeNull();
+
+    // ThroughputPresenter reflects setValue optimistically (synchronous echo
+    // via its setValue$ Subject, before the debounced write fires — see
+    // "reflects setValue optimistically before the write resolves" in
+    // client-core's ThroughputPresenter.test.ts), so the accessor must show
+    // the new value immediately after the intent.
     result.setValue(250);
+    expect(result.value()).toBe(250);
   });
 
   it("useSession reads locked state plus lock/unlock intents", () => {
@@ -238,16 +246,31 @@ describe("createViewModel — preferences", () => {
     expect(result.state().locked).toBe(false);
   });
 
-  it("useBootGate reads visibility plus reboot/dismiss intents", () => {
-    const vm = makeViewModel();
+  // Mirrors react-bindings' createViewModel.bootGate.firstRender.test.tsx: on
+  // a `?nosplash`/webdriver load the presenter is constructed hidden, and the
+  // very FIRST read of visible() must already be false — proving the binding
+  // reads the presenter's live seeded value, never a literal `true` default
+  // (the one-frame-splash regression the react test pins down).
+  it("useBootGate's FIRST read reports the presenter's seeded visibility (false when constructed hidden)", () => {
+    const vm = makeViewModel({ bootSplashHidden: true });
     const { result } = renderHook(() => {
       return vm.useBootGate();
     });
 
-    expect(typeof result.visible()).toBe("boolean");
-    expect(() => {
-      result.dismiss();
-    }).not.toThrow();
+    expect(result.visible()).toBe(false);
+  });
+
+  it("useBootGate's reboot() re-raises the splash and dismiss() lowers it", () => {
+    const vm = makeViewModel({ bootSplashHidden: true });
+    const { result } = renderHook(() => {
+      return vm.useBootGate();
+    });
+
+    expect(result.visible()).toBe(false);
+    result.reboot();
+    expect(result.visible()).toBe(true);
+    result.dismiss();
+    expect(result.visible()).toBe(false);
   });
 
   it("useIncident reads active incidents plus inject/clear intents", () => {
@@ -415,8 +438,14 @@ describe("createViewModel — Task 7 stubs (machine-backed members)", () => {
   });
 });
 
-function makeViewModel(): ViewModel {
-  const { presenters, commands } = createApp(createSimPorts());
+interface MakeViewModelOptions {
+  /** Seed the boot gate hidden (the `?nosplash`/webdriver decision), like
+   * react-bindings' bootGate first-render regression fixture. */
+  bootSplashHidden?: boolean;
+}
+
+function makeViewModel(options: MakeViewModelOptions = {}): ViewModel {
+  const { presenters, commands } = createApp(createSimPorts(options));
 
   return createViewModel(
     presenters,
@@ -425,9 +454,18 @@ function makeViewModel(): ViewModel {
   );
 }
 
-function createSimPorts(): AppPorts {
+function createSimPorts(options: MakeViewModelOptions): AppPorts {
   return {
     ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
     connectionEvents: new ConnectionEventsSimulator(),
+    ...(options.bootSplashHidden
+      ? {
+          bootSplash: {
+            shouldPlay: (): boolean => {
+              return false;
+            },
+          },
+        }
+      : {}),
   };
 }
