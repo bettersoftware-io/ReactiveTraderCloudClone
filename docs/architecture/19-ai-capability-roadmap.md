@@ -88,60 +88,70 @@ next to MCP, but memorable one-off theater: the AI uses the app the way a human 
 ## 19.4 The capability-to-seam map
 
 Every capability attaches to a seam that already exists (or, for sentinels, to the one
-new use case). Read left to right: the seams are the investment; the capabilities are
-the interest.
+new use case). The seams are the investment; the capabilities are the interest. One
+diagram per tier keeps each rank at four boxes (the house diagram rule) — and notice
+the tool-registry seam appearing in every tier: that is why slice 1 is the
+load-bearing primitive.
+
+**Tier 1 — jaw-droppers**
 
 ```mermaid
-flowchart LR
-    subgraph seams["The seams — the investment"]
-        direction TB
-        S4["Tool registry + agent loop<br/>(slice 1)"]
-        S1["Stream ports<br/>(live Observables everywhere)"]
-        S2["UI state machines<br/>(explicit intents)"]
-        S3["Simulators behind ports"]
-        S5["Event-shaped protocol +<br/>devtools observe bus"]
-        S6["Framework-free client-core"]
-    end
+flowchart TD
+    S1["Stream ports<br/>(live Observables)"]
+    S2["UI state machines<br/>(explicit intents)"]
+    S3["Simulators<br/>behind ports"]
+    S4["Tool registry +<br/>agent loop (slice 1)"]
 
-    subgraph caps1["Tier 1 — jaw-droppers"]
-        direction TB
-        C1["1 Generative live-bound UI"]
-        C2["2 Jarvis drives the app"]
-        C3["3 LLM market participants"]
-        C4["4 NL backtesting"]
-    end
+    C1["1 Generative live-bound UI"]
+    C2["2 Jarvis drives the app"]
+    C3["3 LLM market participants"]
+    C4["4 NL backtesting"]
 
-    subgraph caps2["Tier 2 — deep-cut engineering wow"]
-        direction TB
-        C5["5 Self-introspection"]
-        C6["6 Time travel + explain"]
-        C7["7 Sentinels"]
-        C8["8 Cross-device continuity"]
-    end
-
-    subgraph caps3["Tier 3 — atmosphere and stagecraft"]
-        direction TB
-        C9["9 Proactive narrator"]
-        C10["10 Voice + wake word"]
-        C11["11 War-game drills"]
-        C12["12 Ghost trader"]
-    end
-
-    S4 --> C1
-    S4 --> C2
-    S4 --> C4
-    S4 --> C7
-    S4 --> C10
-    S4 --> C12
     S1 --> C1
-    S1 --> C9
     S2 --> C2
     S3 --> C3
     S3 --> C4
-    S3 --> C11
+    S4 --> C1
+    S4 --> C2
+    S4 --> C4
+```
+
+**Tier 2 — deep-cut engineering wow**
+
+```mermaid
+flowchart TD
+    S5["Event-shaped protocol +<br/>devtools observe bus"]
+    S4["Tool registry +<br/>agent loop (slice 1)"]
+    S6["Framework-free<br/>client-core"]
+
+    C5["5 Self-introspection"]
+    C6["6 Time travel + explain"]
+    C7["7 Sentinels"]
+    C8["8 Cross-device continuity"]
+
     S5 --> C5
     S5 --> C6
+    S4 --> C7
     S6 --> C8
+```
+
+**Tier 3 — atmosphere and stagecraft**
+
+```mermaid
+flowchart TD
+    S1["Stream ports<br/>(live Observables)"]
+    S4["Tool registry +<br/>agent loop (slice 1)"]
+    S3["Simulators<br/>behind ports"]
+
+    C9["9 Proactive narrator"]
+    C10["10 Voice + wake word"]
+    C11["11 War-game drills"]
+    C12["12 Ghost trader"]
+
+    S1 --> C9
+    S4 --> C10
+    S4 --> C12
+    S3 --> C11
 ```
 
 ## 19.5 Suggested phase progression
