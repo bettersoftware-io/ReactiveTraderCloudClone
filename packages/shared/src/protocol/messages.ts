@@ -42,8 +42,14 @@ export const CLIENT_MSG = {
   // Equities
   SUBSCRIBE_WATCHLIST: "subscribe.watchlist",
   SUBSCRIBE_EQ_QUOTES: "subscribe.eqQuotes",
+  // Per-symbol churn (instrument tabs / symbol selection re-mount the quote and
+  // depth panels), so both need an explicit unsubscribe like pricing — paired
+  // with keyedStream's refcount on the server (equities.effects.ts). See
+  // UNSUBSCRIBE_PRICING for the full rationale.
+  UNSUBSCRIBE_EQ_QUOTES: "unsubscribe.eqQuotes",
   GET_CANDLES: "rpc.getCandles",
   SUBSCRIBE_DEPTH: "subscribe.depth",
+  UNSUBSCRIBE_DEPTH: "unsubscribe.depth",
   PLACE_ORDER: "rpc.placeOrder",
   CANCEL_ORDER: "rpc.cancelOrder",
   SUBSCRIBE_ORDERS: "subscribe.orders",

@@ -61,6 +61,40 @@ describe("wsReal pricing :: subscription lifecycle", () => {
   });
 });
 
+describe("wsReal equities :: per-symbol subscription lifecycle", () => {
+  it("eqQuotes sends subscribe on subscribe and unsubscribe on teardown", () => {
+    const ws = new FakeWsAdapter();
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
+
+    const sub = ports.marketData.quotes("AAPL").subscribe();
+    expect(ws.sentMessages()).toEqual([
+      { type: CLIENT_MSG.SUBSCRIBE_EQ_QUOTES, payload: { symbol: "AAPL" } },
+    ]);
+
+    sub.unsubscribe();
+    expect(ws.sentMessages()).toEqual([
+      { type: CLIENT_MSG.SUBSCRIBE_EQ_QUOTES, payload: { symbol: "AAPL" } },
+      { type: CLIENT_MSG.UNSUBSCRIBE_EQ_QUOTES, payload: { symbol: "AAPL" } },
+    ]);
+  });
+
+  it("depth sends subscribe on subscribe and unsubscribe on teardown", () => {
+    const ws = new FakeWsAdapter();
+    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
+
+    const sub = ports.marketData.depth("AAPL").subscribe();
+    expect(ws.sentMessages()).toEqual([
+      { type: CLIENT_MSG.SUBSCRIBE_DEPTH, payload: { symbol: "AAPL" } },
+    ]);
+
+    sub.unsubscribe();
+    expect(ws.sentMessages()).toEqual([
+      { type: CLIENT_MSG.SUBSCRIBE_DEPTH, payload: { symbol: "AAPL" } },
+      { type: CLIENT_MSG.UNSUBSCRIBE_DEPTH, payload: { symbol: "AAPL" } },
+    ]);
+  });
+});
+
 describe("wsReal workflow :: quote/pass error paths", () => {
   const fakePreferences = {} as PreferencesPort;
 

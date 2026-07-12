@@ -22,6 +22,7 @@ import type {
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import {
   type Inbound,
+  keyedStream,
   matchType,
   type Outbound,
   out,
@@ -57,9 +58,16 @@ const watchlist$: WsEffect<Ctx> = stream(
   },
 );
 
-// eqQuotes — 1:1 tick → EquityQuote, forwarded as-is.
-const eqQuotes$: WsEffect<Ctx> = stream(
+// eqQuotes — 1:1 tick → EquityQuote, forwarded as-is. keyedStream (not stream)
+// because the client re-subscribes a symbol on instrument-tab / selection churn
+// and could not otherwise unsubscribe — refcount per symbol so re-subscribes
+// coalesce and an unsubscribe tears down. See fx.effects.ts pricing$.
+const eqQuotes$: WsEffect<Ctx> = keyedStream(
   CLIENT_MSG.SUBSCRIBE_EQ_QUOTES,
+  CLIENT_MSG.UNSUBSCRIBE_EQ_QUOTES,
+  (payload) => {
+    return (payload as SymbolPayload).symbol;
+  },
   (payload, ctx) => {
     const { symbol } = payload as SymbolPayload;
     return ctx.marketData.quotes(symbol).pipe(
@@ -70,9 +78,14 @@ const eqQuotes$: WsEffect<Ctx> = stream(
   },
 );
 
-// depth — 1:1 book update → DepthBook, forwarded as-is.
-const depth$: WsEffect<Ctx> = stream(
+// depth — 1:1 book update → DepthBook, forwarded as-is. keyedStream for the same
+// per-symbol churn reason as eqQuotes above.
+const depth$: WsEffect<Ctx> = keyedStream(
   CLIENT_MSG.SUBSCRIBE_DEPTH,
+  CLIENT_MSG.UNSUBSCRIBE_DEPTH,
+  (payload) => {
+    return (payload as SymbolPayload).symbol;
+  },
   (payload, ctx) => {
     const { symbol } = payload as SymbolPayload;
     return ctx.marketData.depth(symbol).pipe(

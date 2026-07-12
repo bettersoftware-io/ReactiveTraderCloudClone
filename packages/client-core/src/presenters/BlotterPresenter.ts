@@ -7,6 +7,8 @@ import {
   TradeBlotterUseCase,
 } from "@rtc/domain";
 
+import { warmReplay } from "./warmReplay.js";
+
 interface NewTradeScan {
   readonly seen: Set<number>;
   readonly fresh: ReadonlySet<number>;
@@ -93,9 +95,12 @@ export class BlotterPresenter {
   readonly activity$: Observable<readonly ActivityEntry[]>;
 
   constructor(blotter: BlotterPort) {
+    // Singleton (one blotter per connection) → warm across tab remounts, so
+    // the blotter table keeps its rows and doesn't re-subscribe. activity$
+    // below already relies on trades$ staying alive (see its comment).
     this.trades$ = new TradeBlotterUseCase(blotter)
       .execute()
-      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+      .pipe(warmReplay());
 
     this.newTradeIds$ = this.trades$.pipe(
       scan(

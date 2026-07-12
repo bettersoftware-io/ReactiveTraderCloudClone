@@ -1,13 +1,8 @@
-import {
-  type Observable,
-  Subject,
-  shareReplay,
-  startWith,
-  switchMap,
-  tap,
-} from "rxjs";
+import { type Observable, Subject, startWith, switchMap, tap } from "rxjs";
 
 import type { EquityOrder, OrderPort, PlaceOrderRequest } from "@rtc/domain";
+
+import { warmReplay } from "./warmReplay.js";
 
 /** Minimal fill-signal emitted on OrdersBlotterPresenter.fills$ — one per filled order. */
 export interface EquityFillSignal {
@@ -32,12 +27,13 @@ export class OrdersBlotterPresenter {
   readonly orders$: Observable<readonly EquityOrder[]>;
 
   constructor(private readonly orderPort: OrderPort) {
+    // Singleton (one order book per connection) → warm across tab remounts.
     this.orders$ = this.refresh.pipe(
       startWith(undefined),
       switchMap(() => {
         return this.orderPort.orders();
       }),
-      shareReplay({ bufferSize: 1, refCount: true }),
+      warmReplay(),
     );
   }
 

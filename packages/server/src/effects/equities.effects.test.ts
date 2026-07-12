@@ -76,6 +76,100 @@ describe("equities effects", () => {
     expect(ctx.marketData.depth).toHaveBeenCalledWith("AAPL");
   });
 
+  it("coalesces a duplicate SUBSCRIBE_EQ_QUOTES for the same symbol into ONE stream", () => {
+    const quotes$ = new Subject<unknown>();
+    const ctx = {
+      marketData: {
+        quotes: vi.fn(() => {
+          return quotes$;
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    const sub = {
+      type: CLIENT_MSG.SUBSCRIBE_EQ_QUOTES,
+      payload: { symbol: "AAPL" },
+    };
+    messages$.next(sub);
+    messages$.next(sub);
+    expect(ctx.marketData.quotes).toHaveBeenCalledTimes(1);
+
+    const quote = {
+      symbol: "AAPL",
+      bid: 1,
+      ask: 2,
+      last: 1.5,
+      changePct: 0,
+      timestamp: 1,
+    };
+    quotes$.next(quote);
+    expect(sent).toEqual([{ type: SERVER_MSG.EQ_QUOTE, payload: quote }]);
+  });
+
+  it("stops the eqQuotes stream after UNSUBSCRIBE_EQ_QUOTES", () => {
+    const quotes$ = new Subject<unknown>();
+    const ctx = {
+      marketData: {
+        quotes: vi.fn(() => {
+          return quotes$;
+        }),
+      },
+    };
+    const { messages$ } = harness(ctx as unknown as Partial<Ctx>);
+    messages$.next({
+      type: CLIENT_MSG.SUBSCRIBE_EQ_QUOTES,
+      payload: { symbol: "AAPL" },
+    });
+    expect(quotes$.observed).toBe(true);
+    messages$.next({
+      type: CLIENT_MSG.UNSUBSCRIBE_EQ_QUOTES,
+      payload: { symbol: "AAPL" },
+    });
+    expect(quotes$.observed).toBe(false);
+  });
+
+  it("coalesces a duplicate SUBSCRIBE_DEPTH for the same symbol into ONE stream", () => {
+    const depth$ = new Subject<unknown>();
+    const ctx = {
+      marketData: {
+        depth: vi.fn(() => {
+          return depth$;
+        }),
+      },
+    };
+    const { messages$ } = harness(ctx as unknown as Partial<Ctx>);
+    const sub = {
+      type: CLIENT_MSG.SUBSCRIBE_DEPTH,
+      payload: { symbol: "AAPL" },
+    };
+    messages$.next(sub);
+    messages$.next(sub);
+    expect(ctx.marketData.depth).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops the depth stream after UNSUBSCRIBE_DEPTH", () => {
+    const depth$ = new Subject<unknown>();
+    const ctx = {
+      marketData: {
+        depth: vi.fn(() => {
+          return depth$;
+        }),
+      },
+    };
+    const { messages$ } = harness(ctx as unknown as Partial<Ctx>);
+    messages$.next({
+      type: CLIENT_MSG.SUBSCRIBE_DEPTH,
+      payload: { symbol: "AAPL" },
+    });
+    expect(depth$.observed).toBe(true);
+    messages$.next({
+      type: CLIENT_MSG.UNSUBSCRIBE_DEPTH,
+      payload: { symbol: "AAPL" },
+    });
+    expect(depth$.observed).toBe(false);
+  });
+
   it("streams the order book as-is on SUBSCRIBE_ORDERS", () => {
     const order = {
       id: "o1",
