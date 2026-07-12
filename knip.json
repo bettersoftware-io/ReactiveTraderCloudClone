@@ -25,8 +25,7 @@
     },
     "packages/solid-bindings": {
       "entry": "src/index.ts",
-      "project": "src/**/*.{ts,tsx}",
-      "ignoreDependencies": ["@rtc/domain"]
+      "project": "src/**/*.{ts,tsx}"
     },
     "packages/ui-contract": {
       "entry": [

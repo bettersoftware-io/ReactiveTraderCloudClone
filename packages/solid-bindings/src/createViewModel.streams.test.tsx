@@ -1,0 +1,433 @@
+// TDD — RED: written before createViewModel.ts existed in @rtc/solid-bindings.
+//   pnpm --filter @rtc/solid-bindings test -- createViewModel.streams  → FAIL (module not found)
+// GREEN: createViewModel.ts (part 1 — streams/commands/preferences) lands.
+//
+// Covers only the part-1 members (streams, commands, preference bundles, plus
+// the shared-singleton state+intent bundles — session/bootGate/incident).
+// Machine-backed members (useMachine bridge) and useEqWorkspace are Task 7 —
+// this task's stub ("implemented in Task 7") is exercised minimally below so
+// the wiring is proven, not the real machine behaviour.
+
+import { renderHook, waitFor } from "@solidjs/testing-library";
+import { describe, expect, it } from "vitest";
+
+import {
+  type AppPorts,
+  createApp,
+  createMachineFactories,
+  createSimulatorPorts,
+} from "@rtc/client-core";
+import {
+  ConnectionEventsSimulator,
+  KNOWN_CURRENCY_PAIRS,
+  PreferencesSimulator,
+} from "@rtc/domain";
+
+import { createViewModel, type ViewModel } from "#/createViewModel";
+
+describe("createViewModel — streams", () => {
+  // The composition root seeds the blotter/price/RFQ presenters with warm
+  // synchronous history (mirrors the bootGate/eqWorkspace warm-value pattern
+  // documented in react-bindings createViewModel.ts), so these read real
+  // seeded data on the very first read rather than the `state()` default.
+  it("useTrades reads the seeded trade history", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useTrades();
+    });
+
+    expect(Array.isArray(result())).toBe(true);
+    expect(result().length).toBeGreaterThan(0);
+  });
+
+  it("useConnectionStatus starts CONNECTED", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useConnectionStatus();
+    });
+
+    expect(result()).toBe("CONNECTED");
+  });
+
+  it("usePrice(pair) reads the seeded quote for that pair", () => {
+    const vm = makeViewModel();
+    const eurusd = KNOWN_CURRENCY_PAIRS[0];
+
+    if (!eurusd) {
+      throw new Error("KNOWN_CURRENCY_PAIRS is unexpectedly empty");
+    }
+
+    const { result } = renderHook(() => {
+      return vm.usePrice(eurusd);
+    });
+
+    expect(result()?.symbol).toBe(eurusd.symbol);
+  });
+
+  it("useQuotesForRfq(rfqId) starts empty for an unknown rfqId", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useQuotesForRfq(-1);
+    });
+
+    expect(result()).toEqual([]);
+  });
+
+  it("useAllQuotes reads the seeded quotes as a Map", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useAllQuotes();
+    });
+
+    expect(result()).toBeInstanceOf(Map);
+    expect(result().size).toBeGreaterThan(0);
+  });
+
+  it("useNewTradeIds starts as an empty Set", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useNewTradeIds();
+    });
+
+    expect(result().size).toBe(0);
+  });
+
+  it("useAnimationIntents(target) starts null", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useAnimationIntents("tile:EURUSD");
+    });
+
+    expect(result()).toBeNull();
+  });
+});
+
+describe("createViewModel — commands", () => {
+  it("useAcceptQuote returns a stable callback that resolves via firstValueFrom", async () => {
+    const vm = makeViewModel();
+    const { result: accept } = renderHook(() => {
+      return vm.useAcceptQuote();
+    });
+
+    await expect(accept(999)).resolves.toBeUndefined();
+  });
+
+  it("useCancelRfq returns a stable callback that resolves via firstValueFrom", async () => {
+    const vm = makeViewModel();
+    const { result: cancel } = renderHook(() => {
+      return vm.useCancelRfq();
+    });
+
+    await expect(cancel(999)).resolves.toBeUndefined();
+  });
+
+  it("useReconnect returns the composition-root reconnect command", () => {
+    const vm = makeViewModel();
+    const { result: reconnect } = renderHook(() => {
+      return vm.useReconnect();
+    });
+
+    expect(typeof reconnect).toBe("function");
+    expect(() => {
+      reconnect();
+    }).not.toThrow();
+  });
+});
+
+describe("createViewModel — preferences", () => {
+  it("useThemePreference reads mode/modePreference and cycle() advances the stored preference", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useThemePreference();
+    });
+
+    expect(result.mode()).toBe("dark");
+    expect(result.modePreference()).toBe("dark");
+
+    result.cycle();
+    expect(result.modePreference()).toBe("light");
+  });
+
+  it("useThemeSkinPreference reads skin and setSkin writes it", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useThemeSkinPreference();
+    });
+
+    expect(result.skin()).toBe("holo");
+    result.setSkin("classic");
+    expect(result.skin()).toBe("classic");
+  });
+
+  it("useAnimatedBackground reads enabled and toggle() flips it", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useAnimatedBackground();
+    });
+
+    expect(result.enabled()).toBe(false);
+    result.toggle();
+    expect(result.enabled()).toBe(true);
+  });
+
+  it("useViewModePreference reads viewMode and setViewMode writes it", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useViewModePreference();
+    });
+
+    expect(result.viewMode()).toBe("chart");
+    result.setViewMode("price");
+    expect(result.viewMode()).toBe("price");
+  });
+
+  it("useCreditRfqFilterPreference reads filter and setFilter writes it", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useCreditRfqFilterPreference();
+    });
+
+    expect(result.filter()).toBe("live");
+    result.setFilter("closed");
+    expect(result.filter()).toBe("closed");
+  });
+
+  it("useEqWatchlistSort reads sort and cycle() advances it", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useEqWatchlistSort();
+    });
+
+    expect(result.sort()).toBe("chg");
+    result.cycle();
+    expect(result.sort()).toBe("price");
+  });
+
+  it("useEqBlotterView reads view and setView writes it", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useEqBlotterView();
+    });
+
+    expect(result.view()).toBe("orders");
+    result.setView("positions");
+    expect(result.view()).toBe("positions");
+  });
+
+  it("useThroughput reads value/loading/message and setValue writes value", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useThroughput();
+    });
+
+    expect(typeof result.value()).toBe("number");
+    expect(typeof result.loading()).toBe("boolean");
+    result.setValue(250);
+  });
+
+  it("useSession reads locked state plus lock/unlock intents", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useSession();
+    });
+
+    expect(result.state().locked).toBe(false);
+    result.lock();
+    expect(result.state().locked).toBe(true);
+    result.unlock();
+    expect(result.state().locked).toBe(false);
+  });
+
+  it("useBootGate reads visibility plus reboot/dismiss intents", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useBootGate();
+    });
+
+    expect(typeof result.visible()).toBe("boolean");
+    expect(() => {
+      result.dismiss();
+    }).not.toThrow();
+  });
+
+  it("useIncident reads active incidents plus inject/clear intents", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useIncident();
+    });
+
+    expect(result.state().active).toEqual([]);
+    result.inject("errorBurst");
+    expect(result.state().active).toEqual(["errorBurst"]);
+    result.clear();
+    expect(result.state().active).toEqual([]);
+  });
+});
+
+describe("createViewModel — equities streams", () => {
+  it("useWatchlist starts with the simulator's watchlist", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useWatchlist();
+    });
+
+    expect(Array.isArray(result())).toBe(true);
+    expect(result().length).toBeGreaterThan(0);
+  });
+
+  it("useEquityQuote reads the seeded quote for that symbol", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useEquityQuote("AAPL");
+    });
+
+    expect(result()?.symbol).toBe("AAPL");
+  });
+
+  it("useCandles defaults to '1D' (60 one-minute candles) when timeframe is omitted", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useCandles("AAPL");
+    });
+
+    expect(result()).toHaveLength(60);
+  });
+
+  it("useCandles threads an explicit timeframe through to a distinct series length", () => {
+    const vm = makeViewModel();
+    const { result: oneWeek } = renderHook(() => {
+      return vm.useCandles("AAPL", "1W");
+    });
+    const { result: oneMonth } = renderHook(() => {
+      return vm.useCandles("AAPL", "1M");
+    });
+
+    expect(oneWeek()).toHaveLength(44);
+    expect(oneMonth()).toHaveLength(48);
+  });
+
+  it("useDepth reads the seeded depth book for that symbol", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useDepth("AAPL");
+    });
+
+    expect(result()?.symbol).toBe("AAPL");
+  });
+
+  it("useEquityOrders starts empty", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useEquityOrders();
+    });
+
+    expect(result()).toEqual([]);
+  });
+
+  it("useEquityPositions starts empty", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useEquityPositions();
+    });
+
+    expect(result()).toEqual([]);
+  });
+});
+
+describe("createViewModel — admin/telemetry streams", () => {
+  it("useMetrics exposes throughput/latency/errorRate as accessors over the seeded rolling windows", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useMetrics();
+    });
+
+    expect(result.throughput().length).toBeGreaterThan(0);
+    expect(result.latency().length).toBeGreaterThan(0);
+    expect(result.errorRate().length).toBeGreaterThan(0);
+  });
+
+  it("useTopology reads the seeded service-topology graph", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useTopology();
+    });
+
+    expect(result()).not.toBeNull();
+    expect(Array.isArray(result()?.nodes)).toBe(true);
+  });
+
+  it("useEventLog reads the seeded rolling event log", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useEventLog();
+    });
+
+    expect(Array.isArray(result())).toBe(true);
+    expect(result().length).toBeGreaterThan(0);
+  });
+
+  it("useSessions is an array of active trader sessions", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useSessions();
+    });
+
+    expect(Array.isArray(result())).toBe(true);
+  });
+
+  it("useSessionCountSeries accumulates a sample once the sessions port emits", async () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useSessionCountSeries();
+    });
+
+    await waitFor(() => {
+      expect(result().length).toBeGreaterThan(0);
+    });
+    expect(result().at(-1)?.value).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("createViewModel — Task 7 stubs (machine-backed members)", () => {
+  it("useTileExecution throws the Task 7 stub error", () => {
+    const vm = makeViewModel();
+    const eurusd = KNOWN_CURRENCY_PAIRS[0];
+
+    if (!eurusd) {
+      throw new Error("KNOWN_CURRENCY_PAIRS is unexpectedly empty");
+    }
+
+    expect(() => {
+      renderHook(() => {
+        return vm.useTileExecution(eurusd);
+      });
+    }).toThrow("implemented in Task 7");
+  });
+
+  it("useEqWorkspace throws the Task 7 stub error", () => {
+    const vm = makeViewModel();
+
+    expect(() => {
+      renderHook(() => {
+        return vm.useEqWorkspace();
+      });
+    }).toThrow("implemented in Task 7");
+  });
+});
+
+function makeViewModel(): ViewModel {
+  const { presenters, commands } = createApp(createSimPorts());
+
+  return createViewModel(
+    presenters,
+    createMachineFactories(presenters),
+    commands,
+  );
+}
+
+function createSimPorts(): AppPorts {
+  return {
+    ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
+    connectionEvents: new ConnectionEventsSimulator(),
+  };
+}
