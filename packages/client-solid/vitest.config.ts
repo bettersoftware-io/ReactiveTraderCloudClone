@@ -1,0 +1,20 @@
+import solid from "vite-plugin-solid";
+import { defineConfig } from "vitest/config";
+
+// @testing-library/jest-dom is a devDependency even though no test here calls
+// its matchers directly: vite-plugin-solid auto-injects a jest-dom vitest
+// setup file, and pnpm's strict linking fails at install time if the package
+// isn't an explicit dependency of this workspace (see solid-bindings'
+// vitest.config.ts for the full explanation).
+export default defineConfig({
+  plugins: [solid()],
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // Node 26 ships a native (experimental, flag-gated) localStorage/
+    // sessionStorage accessor pair that shadows jsdom's own Storage inside
+    // vitest — see the shim's header comment for the full story.
+    setupFiles: ["./tests/setup/jsdom-storage.ts"],
+    passWithNoTests: true,
+  },
+});

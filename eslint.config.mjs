@@ -1,5 +1,6 @@
 import prettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
+import solid from "eslint-plugin-solid";
 import tseslint from "typescript-eslint";
 
 import { classFilenameMatch } from "./eslint-rules/class-filename-match.mjs";
@@ -143,6 +144,7 @@ export default tseslint.config(
     files: [
       "packages/client-react/src/**/*.tsx",
       "packages/client-prototype/src/**/*.tsx",
+      "packages/client-solid/src/**/*.tsx",
     ],
     rules: {
       "no-restricted-syntax": ["error", ...restrictedSyntax, inlineStyleProp],
@@ -251,10 +253,23 @@ export default tseslint.config(
     files: [
       "packages/client-react/src/**/*.tsx",
       "packages/client-react-native/src/**/*.tsx",
+      "packages/client-solid/src/**/*.tsx",
     ],
     ignores: ["**/*.{test,spec}.tsx"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/component-newspaper": "error" },
+  },
+  {
+    // eslint-plugin-solid's recommended rules — Solid's JSX has different
+    // reactivity semantics than React's (no re-render on prop/state change;
+    // props are getters backed by a proxy), so it needs its own lint pass
+    // (no-destructure, reactivity, jsx-uses-vars, …) rather than reusing the
+    // react-hooks block above. Scoped to the two Solid packages only.
+    files: [
+      "packages/client-solid/**/*.{ts,tsx}",
+      "packages/solid-bindings/**/*.{ts,tsx}",
+    ],
+    ...solid.configs["flat/recommended"],
   },
   prettier,
 );

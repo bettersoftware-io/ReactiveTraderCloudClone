@@ -8,7 +8,7 @@ This project aims to recreate [ReactiveTraderCloud](https://github.com/AdaptiveC
 
 ## Current Status
 
-Monorepo with pnpm workspaces + Turborepo; ten packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; `docs/architecture.md` is the authoritative architecture reference.
+Monorepo with pnpm workspaces + Turborepo; twelve packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; a third, `@rtc/client-solid`, is a walking skeleton (boots in simulator mode, renders live connection status) built on the parallel `@rtc/solid-bindings` bridge. `docs/architecture.md` is the authoritative architecture reference.
 
 ## Build Commands
 
@@ -22,6 +22,7 @@ pnpm dev:proto   # @rtc/client-prototype only — the v2 design React port (Vite
 pnpm dev:design  # standalone web design prototype HTML (v4), served by a zero-dep Node script → http://localhost:8899
 pnpm dev:design:mobile  # same server, but the standalone mobile design prototype (mobile v1) → http://localhost:8899
 pnpm dev:ios     # @rtc/client-react-native on the iOS simulator (expo run:ios: build → install dev client → launch → Metro)
+pnpm dev:solid   # @rtc/client-solid (Vite) → http://localhost:5473 — walking skeleton, simulator ports only
 pnpm clean       # Remove dist/ in all packages
 ```
 
@@ -35,9 +36,11 @@ packages/
   shared/              @rtc/shared              — DTOs, wire protocol (CLIENT_MSG/SERVER_MSG), envelopes. Depends on domain.
   client-core/         @rtc/client-core         — Framework-free application core: composition root, presenters, state machines, WsAdapter + port factories. Depends on domain, shared (+ rxjs, @rx-state/core). No React/DOM/RN imports.
   react-bindings/      @rtc/react-bindings      — The React↔RxJS bridge: createViewModel, useMachine, ViewModelProvider/useViewModel. Depends on client-core, domain (+ @react-rxjs/core, react).
+  solid-bindings/      @rtc/solid-bindings      — The Solid↔RxJS bridge (parallel to react-bindings): createViewModel, useMachine, ViewModelProvider/useViewModel. Depends on client-core, domain (+ @rx-state/core, rxjs, solid-js). No React.
   client-react/        @rtc/client-react        — Web client: dumb React 19 UI + browser adapters (Vite). Depends on client-core, react-bindings, domain.
   client-react-native/ @rtc/client-react-native — Mobile client: Expo SDK 57 / RN 0.86, dumb RN UI + native adapters. Depends on client-core, react-bindings, domain.
   client-prototype/    @rtc/client-prototype    — Readable React port of the docs/design/web/v2 prototype. Isolated: react/react-dom only, no @rtc/* imports.
+  client-solid/        @rtc/client-solid        — Web client, SolidJS port of client-react (walking skeleton so far). Dumb Solid UI + browser adapters (Vite, port 5473). Depends on client-core, solid-bindings, domain.
   motion-core/         @rtc/motion-core         — Framework-free, zero-dependency view-layer motion math (FLIP deltas, rank-glide coalescing, easing/duration constants). No DOM, no rxjs, no React. Shared by client animation shells (React now, Solid next).
   ws-effects/          @rtc/ws-effects          — Small declarative RxJS effects framework. Pure TS, depends only on rxjs at runtime.
   server/              @rtc/server              — Native WebSocket + @rtc/ws-effects (24 effects: FX/Credit/Admin/Equities). Depends on domain, shared, ws-effects.

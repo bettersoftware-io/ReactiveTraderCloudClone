@@ -7,9 +7,10 @@
 // Smoke coverage only — the machines themselves are exhaustively unit-tested
 // in @rtc/client-core (presenters/__tests__/*Machine.test.ts); this proves the
 // seam wiring (factory called once, state readable as an Accessor, intents
-// forward to the machine, dispose on cleanup) mirroring how react-bindings'
+// forward to the machine) mirroring how react-bindings'
 // __tests__/creditRfqHooks.test.tsx exercises useRfqSubmission/useCancelRfq
-// through the full create→confirm flow.
+// through the full create→confirm flow. Disposal-on-unmount is proven
+// separately in useMachine.test.tsx, not here.
 
 import { renderHook, waitFor } from "@solidjs/testing-library";
 import { describe, expect, it } from "vitest";

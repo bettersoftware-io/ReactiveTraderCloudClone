@@ -27,6 +27,11 @@
       "entry": "src/index.ts",
       "project": "src/**/*.{ts,tsx}"
     },
+    "packages/client-solid": {
+      "entry": ["src/main.tsx", "index.html", "vite.config.ts"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["@rtc/motion-core"]
+    },
     "packages/ui-contract": {
       "entry": [
         "src/shared/components.ts",
