@@ -58,5 +58,28 @@ flowchart TD
 
 What ADR-004 forbids exists **for** this plan: no JSX through the ViewModel, no framework types below the bindings, no `rxjs` in UI files. Every one of those bans is a gate (26--29) so the Solid port cannot be quietly invalidated between now and whenever it starts.
 
+### 8.2 The Custom-Hook Surface
+
+The "~1 dev-week to swap the UI framework" figure in the matrix above rests on a claim worth making explicit and measurable, because it is where a React codebase most often leaks framework lock-in. **A React hook is a React-only primitive** — `useState`, `useEffect`, `useLayoutEffect`, the rules-of-hooks call ordering — with no equivalent concept in Solid, Svelte, or Vue (Solid runs its logic once and tracks signals; there is no re-render, no dependency array, no hook ordering). So *every genuine custom hook is React-specific code a framework swap must re-author*. The swap is bounded only if that surface is deliberately kept small. It is.
+
+A component in this app calls two kinds of `useX`, and only one of them is React-specific work:
+
+- **ViewModel-provided hooks** — `useLayout`, `useOrderTicket`, `useBootSequence`, `useSession`, `useBootGate`, `useMetrics`, and their siblings all arrive through `useViewModel()` from `@rtc/react-bindings`. Each is a *thin binding* over a framework-free RxJS machine or presenter in `@rtc/client-core` (e.g. `useLayout` is one line: `useMachine(() => machines.layout(tab))`). The behaviour lives outside React entirely, so the Solid port re-implements only the ~1-line binding once in `@rtc/solid-bindings` (§8.1 step 1) — never the logic. These do not count against the swap budget.
+- **Standalone UI hooks** — hooks actually *defined* inside `@rtc/client-react/src/ui`. This is the whole React-specific surface a Solid port must re-author, and the entire set is **seven**:
+
+| Hook | Lines | Kind | What a Solid port re-writes |
+|---|---:|---|---|
+| `useFxView` | 17 | Context reader | Trivial — reads a tab-scoped context seam (Solid `useContext` equivalent) |
+| `useCreditView` | 20 | Context reader | Trivial — same |
+| `useTheme` | 13 | Context reader | Trivial — same |
+| `useTickFlash` | 43 | Pure derived state | Low — a value derived from current vs previous input; the pure logic ports verbatim |
+| `useNewestOrderId` | 62 | Pure derived state | Low — an id-set diff; the pure `newestUnseenId` helper ports verbatim |
+| `useFlipGrid` | 301 | DOM-imperative animation | Average — a thin WAAPI/`ResizeObserver` shell; its FLIP math already lives in `@rtc/motion-core` |
+| `useRankGlide` | 244 | DOM-imperative animation | Average — same shape; `coalesceOrder`/`computeRankDirections` already live in `@rtc/motion-core` |
+
+Read the table by kind, not by line count. **Three of the seven are thin context readers** — no logic at all, just a `useContext` call plus a provider-presence guard. **Two more are small pure-derived-state helpers** (`useTickFlash`, `useNewestOrderId`) whose actual computation is framework-agnostic and moves to Solid untouched. That leaves **only two hooks of genuine complexity** — the FLIP animation pair — and even their line counts overstate the port cost: those are mostly DOM plumbing and doc comments, because the *algorithms* (`flipDeltas`, `coalesceOrder`, `computeRankDirections`, `sameOrder`) were extracted into the framework-free `@rtc/motion-core` package precisely so both clients share one implementation ([ADR-005](../adr/ADR-005-ui-logic-placement.md)). What a Solid port rewrites for those two is a thin imperative shell over identical shared functions, not the motion logic itself.
+
+So the React-specific hook surface a framework swap confronts is: three trivial readers, two small pure helpers, and two thin animation shells over shared math. That deliberately-tiny surface — not optimism — is why the React Native client reused `client-core` and `react-bindings` verbatim, and why the "UI framework — ~1 dev-week" row is a measurement rather than a hope.
+
 ---
 
