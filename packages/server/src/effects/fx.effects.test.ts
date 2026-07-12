@@ -1,6 +1,7 @@
 import { from, of, Subject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
+import type { PriceTick } from "@rtc/domain";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
@@ -89,6 +90,65 @@ describe("fx effects", () => {
       payload: { symbol: "EURUSD" },
     });
     expect(sent).toEqual([{ type: SERVER_MSG.PRICE_TICK, payload: tick }]);
+  });
+
+  it("coalesces a duplicate subscribe.pricing for the same symbol into ONE stream", () => {
+    // The client re-sends subscribe.pricing whenever a filter toggle re-mounts
+    // a tile/row; a second subscribe for an already-live symbol must NOT open a
+    // second price stream (the accumulation bug that made ticks accelerate).
+    const ticks$ = new Subject<PriceTick>();
+    const ctx = {
+      pricing: {
+        getPriceUpdates: vi.fn(() => {
+          return ticks$;
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({
+      type: CLIENT_MSG.SUBSCRIBE_PRICING,
+      payload: { symbol: "EURUSD" },
+    });
+    messages$.next({
+      type: CLIENT_MSG.SUBSCRIBE_PRICING,
+      payload: { symbol: "EURUSD" },
+    });
+
+    expect(ctx.pricing.getPriceUpdates).toHaveBeenCalledTimes(1);
+
+    ticks$.next(makeTick("EURUSD"));
+    expect(sent).toEqual([
+      { type: SERVER_MSG.PRICE_TICK, payload: makeTick("EURUSD") },
+    ]);
+  });
+
+  it("stops a symbol's stream after unsubscribe.pricing releases the last subscriber", () => {
+    const ticks$ = new Subject<PriceTick>();
+    const ctx = {
+      pricing: {
+        getPriceUpdates: vi.fn(() => {
+          return ticks$;
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({
+      type: CLIENT_MSG.SUBSCRIBE_PRICING,
+      payload: { symbol: "EURUSD" },
+    });
+    ticks$.next(makeTick("EURUSD"));
+    expect(sent).toHaveLength(1);
+
+    messages$.next({
+      type: CLIENT_MSG.UNSUBSCRIBE_PRICING,
+      payload: { symbol: "EURUSD" },
+    });
+    expect(ticks$.observed).toBe(false); // inner torn down at refcount 0
+
+    ticks$.next(makeTick("EURUSD")); // post-teardown tick is dropped
+    expect(sent).toHaveLength(1);
   });
 
   it("streams trades as BlotterMessage with SoW flag true only on the first emission", () => {
@@ -228,6 +288,17 @@ describe("fx effects", () => {
     expect(ctx.pricing.getPriceHistory).toHaveBeenCalledWith("EURUSD");
   });
 });
+
+function makeTick(symbol: string): PriceTick {
+  return {
+    symbol,
+    bid: 1.1,
+    ask: 1.1002,
+    mid: 1.1001,
+    valueDate: "2026-07-02",
+    creationTimestamp: 1,
+  };
+}
 
 interface Harness {
   readonly messages$: Subject<Inbound>;

@@ -14,6 +14,13 @@ export const CLIENT_MSG = {
   // FX subscriptions
   SUBSCRIBE_REFERENCE_DATA: "subscribe.referenceData",
   SUBSCRIBE_PRICING: "subscribe.pricing",
+  // Releases one subscriber of a per-symbol pricing stream. Pricing is the one
+  // subscription that churns (tiles/rows mount and unmount as the currency
+  // filter changes), so unlike the app-level singletons it needs an explicit
+  // teardown signal — without it the server accumulates a fresh price interval
+  // per re-subscribe and ticks visibly accelerate. Paired with keyedStream's
+  // refcount on the server (see fx.effects.ts).
+  UNSUBSCRIBE_PRICING: "unsubscribe.pricing",
   SUBSCRIBE_BLOTTER: "subscribe.blotter",
   SUBSCRIBE_ANALYTICS: "subscribe.analytics",
   // Credit subscriptions

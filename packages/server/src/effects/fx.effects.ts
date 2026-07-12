@@ -19,6 +19,7 @@ import type {
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import {
+  keyedStream,
   type Outbound,
   out,
   rpc,
@@ -64,9 +65,18 @@ const referenceData$: WsEffect<Ctx> = stream(
   },
 );
 
-// pricing — 1:1 tick → PriceTickDto.
-const pricing$: WsEffect<Ctx> = stream(
+// pricing — 1:1 tick → PriceTickDto. Uses keyedStream (not stream): pricing is
+// the one subscription the client re-sends for an already-live symbol whenever
+// a currency-filter toggle re-mounts a tile/row. keyedStream refcounts per
+// symbol, so a duplicate subscribe coalesces into the SAME stream and an
+// unsubscribe tears it down at zero — without this the server merged a fresh
+// price interval per re-subscribe and ticks accelerated on every toggle.
+const pricing$: WsEffect<Ctx> = keyedStream(
   CLIENT_MSG.SUBSCRIBE_PRICING,
+  CLIENT_MSG.UNSUBSCRIBE_PRICING,
+  (payload) => {
+    return (payload as SymbolPayload).symbol;
+  },
   (payload, ctx) => {
     const { symbol } = payload as SymbolPayload;
     return ctx.pricing.getPriceUpdates(symbol).pipe(

@@ -206,6 +206,12 @@ function createPricingPort(ws: IWsAdapter): PricingPort {
 
         return () => {
           unsub();
+          // Tell the server to release this subscriber. Pricing streams churn
+          // (a currency-filter toggle unmounts and re-mounts tiles/rows), and
+          // the server refcounts per symbol (keyedStream) — without this
+          // unsubscribe every re-subscribe would stack another price interval
+          // and ticks would accelerate.
+          ws.send(CLIENT_MSG.UNSUBSCRIBE_PRICING, { symbol });
         };
       });
     },
