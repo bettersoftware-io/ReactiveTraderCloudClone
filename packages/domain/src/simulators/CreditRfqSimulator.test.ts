@@ -345,6 +345,23 @@ describe("CreditRfqSimulator", () => {
     );
   });
 
+  it("removes each timer handle from pendingTimeouts once it fires (no unbounded growth)", async () => {
+    vi.useFakeTimers();
+    const sim = new CreditRfqSimulator(DEALERS_CATALOG);
+    const pending = (sim as unknown as WithPendingTimeouts).pendingTimeouts;
+
+    const before = pending.size;
+    await createRfqAndQuoteId(sim); // schedules an expiry + dealer-response timers
+    expect(pending.size).toBeGreaterThan(before);
+
+    // Fire every scheduled one-shot timer; each must delete its own handle, so
+    // the set drains to empty rather than retaining fired handles forever.
+    await vi.advanceTimersByTimeAsync(CREDIT_RFQ_EXPIRY_SECONDS * 1000 + 1000);
+    expect(pending.size).toBe(0);
+
+    sim.dispose();
+  });
+
   it("dispose cancels a pending expiry (RFQ never reaches Expired)", async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, "random").mockReturnValue(0);
@@ -447,6 +464,11 @@ describe("CreditRfqSimulator", () => {
     expect(id).toBe(240);
   });
 });
+
+/** Test-only view onto the simulator's private pending-timer set. */
+interface WithPendingTimeouts {
+  pendingTimeouts: Set<unknown>;
+}
 
 type QuoteCreatedMatcher = { type: "quoteCreated" };
 

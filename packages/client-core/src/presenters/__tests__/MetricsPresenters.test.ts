@@ -19,6 +19,28 @@ describe("ThroughputMetricPresenter", () => {
     expect(first).toEqual([]);
   });
 
+  it("keeps its rolling window warm across a refCount cycle (survives the Admin tab remount)", () => {
+    const subject = new Subject<MetricSample>();
+    const presenter = new ThroughputMetricPresenter(fakePort(subject));
+
+    const first = presenter.samples$.subscribe();
+    subject.next(sample(1, 10));
+    subject.next(sample(2, 20));
+    first.unsubscribe(); // Admin tab away → last UI subscriber unmounts
+
+    // warmReplay (refCount:false) keeps the source subscribed with no observer…
+    expect(subject.observed).toBe(true);
+
+    // …so a remount reads the retained window immediately (refCount:true would
+    // have torn the scan down and reset it to the empty startWith value).
+    let latest: readonly MetricSample[] = [];
+    const second = presenter.samples$.subscribe((s) => {
+      latest = s;
+    });
+    expect(latest).toEqual([sample(1, 10), sample(2, 20)]);
+    second.unsubscribe();
+  });
+
   it("accumulates samples oldest-first", () => {
     const subject = new Subject<MetricSample>();
     const presenter = new ThroughputMetricPresenter(fakePort(subject));
