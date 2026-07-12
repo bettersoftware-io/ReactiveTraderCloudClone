@@ -81,7 +81,7 @@ graph TB
 - `@rtc/client-prototype` is an intentional island: `react`/`react-dom` only, no `@rtc/*` imports.
 - `@rtc/motion-core` is a zero-runtime-dependency leaf (no `rxjs`, no DOM, no React) consumed directly by a client's animation shell -- today `client-react`; the planned `client-solid` adds the same `client-solid → motion-core` edge, never a `client-core`/`react-bindings` one.
 
-**Build order** (Turborepo topological): `domain` → `shared` | `ws-effects` | `motion-core` → `client-core` → `react-bindings` → `client-react` | `client-react-native` | `server` (prototype builds independently; `motion-core` has no upstream deps so it builds in the first wave alongside `domain`).
+**Build order** (Turborepo topological): `domain` | `ws-effects` | `motion-core` → `shared` → `client-core` → `react-bindings` → `client-react` | `client-react-native` | `server` (prototype builds independently).
 
 > The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`, `motion-core-stays-pure`. See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
 
