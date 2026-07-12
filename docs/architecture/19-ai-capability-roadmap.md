@@ -88,52 +88,60 @@ next to MCP, but memorable one-off theater: the AI uses the app the way a human 
 ## 19.4 The capability-to-seam map
 
 Every capability attaches to a seam that already exists (or, for sentinels, to the one
-new use case). Read bottom-up: the seams are the investment; the capabilities are the
-interest.
+new use case). Read left to right: the seams are the investment; the capabilities are
+the interest.
 
 ```mermaid
-flowchart TD
-    subgraph caps1["Tier 1"]
+flowchart LR
+    subgraph seams["The seams — the investment"]
+        direction TB
+        S4["Tool registry + agent loop<br/>(slice 1)"]
+        S1["Stream ports<br/>(live Observables everywhere)"]
+        S2["UI state machines<br/>(explicit intents)"]
+        S3["Simulators behind ports"]
+        S5["Event-shaped protocol +<br/>devtools observe bus"]
+        S6["Framework-free client-core"]
+    end
+
+    subgraph caps1["Tier 1 — jaw-droppers"]
+        direction TB
         C1["1 Generative live-bound UI"]
         C2["2 Jarvis drives the app"]
         C3["3 LLM market participants"]
         C4["4 NL backtesting"]
     end
-    subgraph caps2["Tier 2"]
+
+    subgraph caps2["Tier 2 — deep-cut engineering wow"]
+        direction TB
         C5["5 Self-introspection"]
         C6["6 Time travel + explain"]
         C7["7 Sentinels"]
         C8["8 Cross-device continuity"]
     end
-    subgraph caps3["Tier 3"]
+
+    subgraph caps3["Tier 3 — atmosphere and stagecraft"]
+        direction TB
         C9["9 Proactive narrator"]
         C10["10 Voice + wake word"]
         C11["11 War-game drills"]
         C12["12 Ghost trader"]
     end
 
-    S1["Seam: stream ports<br/>(live Observables everywhere)"]
-    S2["Seam: UI state machines<br/>(explicit intents)"]
-    S3["Seam: simulators behind ports"]
-    S4["Seam: tool registry + agent loop<br/>(slice 1)"]
-    S5["Seam: event-shaped protocol +<br/>devtools observe bus"]
-    S6["Seam: framework-free client-core"]
-
+    S4 --> C1
+    S4 --> C2
+    S4 --> C4
+    S4 --> C7
+    S4 --> C10
+    S4 --> C12
     S1 --> C1
     S1 --> C9
     S2 --> C2
     S3 --> C3
     S3 --> C4
     S3 --> C11
-    S4 --> C1
-    S4 --> C2
-    S4 --> C4
-    S4 --> C7
-    S4 --> C10
     S5 --> C5
     S5 --> C6
     S6 --> C8
-    S4 --> C12
 ```
 
 ## 19.5 Suggested phase progression
