@@ -1,11 +1,11 @@
 import { VisualScenario } from "@ui-visual";
+import { goldenPath } from "@ui-visual-shared/goldenPath";
+import { scenarios } from "@ui-visual-shared/scenarios";
 import { expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 
 import { scenarioActionFor } from "../scenarioActions";
-import { goldenPath } from "../shared/goldenPath";
-import { scenarios } from "../shared/scenarios";
 
 // Tier 3 — Vitest browser mode. Drives the SAME shared scenario manifest and
 // interaction table as the plain-Playwright tier (`../playwright/visual.spec.ts`),

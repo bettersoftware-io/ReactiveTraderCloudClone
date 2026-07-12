@@ -19,6 +19,11 @@
     "paths": {
       "@ui-visual": ["./tests/ui/visual/react"],
       "@ui-visual/*": ["./tests/ui/visual/react/*"],
+      // The shared scenario/goldenPath matrix, extracted to @rtc/ui-contract
+      // (Task 3) — distinct from @ui-visual above (the framework-swap
+      // render-target seam).
+      "@ui-visual-shared": ["../ui-contract/src/visual"],
+      "@ui-visual-shared/*": ["../ui-contract/src/visual/*"],
       "#/*": ["./src/*"],
       "#tests/*": ["./tests/*"]
     }
@@ -31,5 +36,9 @@
     "tests/ui/visual/playwright-ct/playwright-ct.config.ts",
     "tests/ui/contract"
   ],
-  "references": [{ "path": "../domain" }, { "path": "../shared" }]
+  "references": [
+    { "path": "../domain" },
+    { "path": "../shared" },
+    { "path": "../ui-contract" }
+  ]
 }

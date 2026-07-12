@@ -5,6 +5,12 @@ import { defineConfig, devices } from "@playwright/experimental-ct-react";
 import react from "@vitejs/plugin-react";
 
 const uiVisual = fileURLToPath(new URL("../react", import.meta.url));
+// The shared scenario/goldenPath matrix, extracted to @rtc/ui-contract (Task
+// 3) — distinct from `@ui-visual` above, which is the framework-swap render
+// target seam and must not be repurposed for this unrelated module.
+const uiVisualShared = fileURLToPath(
+  new URL("../../../../../ui-contract/src/visual", import.meta.url),
+);
 
 // Goldens live under a per-framework subdir (`react/`) so a future Solid run can
 // write `solid/` alongside without colliding — that per-framework split is the
@@ -95,7 +101,9 @@ export default defineConfig({
       // vite-8-only build API, or a Playwright CT bump moves its bundled vite,
       // this runner can break with no package.json/lockfile change to warn you.
       plugins: [react()],
-      resolve: { alias: { "@ui-visual": uiVisual } },
+      resolve: {
+        alias: { "@ui-visual": uiVisual, "@ui-visual-shared": uiVisualShared },
+      },
     },
     ctPort: 3100,
   },

@@ -11,6 +11,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@ui-visual": fileURLToPath(new URL("../../react", import.meta.url)),
+      // The shared scenario/goldenPath matrix (@rtc/ui-contract, Task 3) —
+      // VisualScenario.tsx (behind @ui-visual above) imports it.
+      "@ui-visual-shared": fileURLToPath(
+        new URL("../../../../../../ui-contract/src/visual", import.meta.url),
+      ),
     },
   },
   server: { host: "127.0.0.1", port: 3200 },
