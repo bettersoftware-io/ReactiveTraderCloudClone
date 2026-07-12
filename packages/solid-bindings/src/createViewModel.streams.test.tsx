@@ -4,9 +4,8 @@
 //
 // Covers only the part-1 members (streams, commands, preference bundles, plus
 // the shared-singleton state+intent bundles — session/bootGate/incident).
-// Machine-backed members (useMachine bridge) and useEqWorkspace are Task 7 —
-// this task's stub ("implemented in Task 7") is exercised minimally below so
-// the wiring is proven, not the real machine behaviour.
+// Machine-backed members (useMachine bridge) and useEqWorkspace are covered
+// in createViewModel.machines.test.tsx / createViewModel.eqWorkspace.firstRender.test.tsx.
 
 import { renderHook, waitFor } from "@solidjs/testing-library";
 import { describe, expect, it } from "vitest";
@@ -408,33 +407,6 @@ describe("createViewModel — admin/telemetry streams", () => {
       expect(result().length).toBeGreaterThan(0);
     });
     expect(result().at(-1)?.value).toBeGreaterThanOrEqual(0);
-  });
-});
-
-describe("createViewModel — Task 7 stubs (machine-backed members)", () => {
-  it("useTileExecution throws the Task 7 stub error", () => {
-    const vm = makeViewModel();
-    const eurusd = KNOWN_CURRENCY_PAIRS[0];
-
-    if (!eurusd) {
-      throw new Error("KNOWN_CURRENCY_PAIRS is unexpectedly empty");
-    }
-
-    expect(() => {
-      renderHook(() => {
-        return vm.useTileExecution(eurusd);
-      });
-    }).toThrow("implemented in Task 7");
-  });
-
-  it("useEqWorkspace throws the Task 7 stub error", () => {
-    const vm = makeViewModel();
-
-    expect(() => {
-      renderHook(() => {
-        return vm.useEqWorkspace();
-      });
-    }).toThrow("implemented in Task 7");
   });
 });
 

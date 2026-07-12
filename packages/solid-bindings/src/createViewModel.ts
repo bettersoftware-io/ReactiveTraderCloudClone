@@ -7,6 +7,7 @@ import {
   type AnimationIntent,
   type BootSequenceIntents,
   type BootSequenceState,
+  createRfqCountdownMachine,
   DEMO_USER,
   type EqWorkspaceIntents,
   type EqWorkspaceState,
@@ -71,12 +72,13 @@ import {
 } from "@rtc/domain";
 
 import { toSignal } from "#/toSignal";
+import { useMachine } from "#/useMachine";
 
 // Machine-backed bundle types (state + intents). Solid transformation of the
 // react-bindings shape `{ state: S } & I` → `{ state: Accessor<S> } & I` — the
 // intents themselves are plain functions, unchanged. These 9 (plus
-// UseEqWorkspaceResult below) back members that are STUBBED in this task
-// (Task 7 wires the real `useMachine` bridge).
+// UseEqWorkspaceResult below) back members wired to the real `useMachine`
+// bridge in this task.
 type UseBootSequenceResult = {
   state: Accessor<BootSequenceState>;
 } & BootSequenceIntents;
@@ -95,8 +97,12 @@ type UseTicketSubmissionResult = {
 type UseOrderTicketResult = {
   state: Accessor<OrderTicketState>;
 } & OrderTicketIntents;
-/** Machine-adjacent (reads presenters.eqWorkspace.state$ directly rather than
- * a per-mount `useMachine`) — still Task 7 territory per the brief, stubbed here. */
+/** Machine-adjacent: reads `presenters.eqWorkspace.state$` directly via
+ * `toSignal` rather than a per-mount `useMachine` — the machine is warm by
+ * construction (a composition-root singleton, not per-mount), so rebinding it
+ * through another layer would only reintroduce the cold-wrapper trap
+ * `toSignal` itself exists to avoid; see react-bindings' createViewModel.ts:539-567
+ * for the full CRITICAL bug this shape was chosen to prevent. */
 type UseEqWorkspaceResult = {
   state: Accessor<EqWorkspaceState>;
 } & EqWorkspaceIntents;
@@ -303,11 +309,7 @@ export interface ViewModel {
 
 export function createViewModel(
   presenters: Presenters,
-  // Unused in part 1 — every member that would call a machine factory is a
-  // "implemented in Task 7" stub below. Underscore-prefixed to satisfy
-  // Biome's noUnusedFunctionParameters without dropping it from the
-  // signature (Task 7 restores real use and can drop the prefix).
-  _machines: MachineFactories,
+  machines: MachineFactories,
   commands: AppCommands,
 ): ViewModel {
   const priceState = state(
@@ -562,6 +564,19 @@ export function createViewModel(
     presenters.incident.intents.clear();
   }
 
+  // Stable callbacks for eqWorkspace intents.
+  function selectEqSymbol(sym: string): void {
+    presenters.eqWorkspace.intents.select(sym);
+  }
+
+  function closeEqTab(sym: string): void {
+    presenters.eqWorkspace.intents.closeTab(sym);
+  }
+
+  function setEqTimeframe(tf: CandleTimeframe): void {
+    presenters.eqWorkspace.intents.setTimeframe(tf);
+  }
+
   return {
     usePrice: (pair: CurrencyPair) => {
       return toSignal(priceState(pair));
@@ -611,29 +626,45 @@ export function createViewModel(
     useReconnect: () => {
       return commands.reconnect;
     },
-    useTileExecution: () => {
-      throw new Error("implemented in Task 7");
+    useTileExecution: (pair: CurrencyPair) => {
+      return useMachine(() => {
+        return machines.tileExecution(pair);
+      });
     },
-    useRfqTile: () => {
-      throw new Error("implemented in Task 7");
+    useRfqTile: (pair: CurrencyPair) => {
+      return useMachine(() => {
+        return machines.rfqTile(pair);
+      });
     },
-    useStaleFlag: () => {
-      throw new Error("implemented in Task 7");
+    useStaleFlag: (pair: CurrencyPair) => {
+      return useMachine(() => {
+        return machines.staleFlag(pair);
+      }).state;
     },
     useAnalyticsStaleFlag: () => {
-      throw new Error("implemented in Task 7");
+      return useMachine(() => {
+        return machines.analyticsStaleFlag();
+      }).state;
     },
-    useRowHighlight: () => {
-      throw new Error("implemented in Task 7");
+    useRowHighlight: (isNew: boolean) => {
+      return useMachine(() => {
+        return machines.rowHighlight(isNew);
+      }).state;
     },
-    useNotional: () => {
-      throw new Error("implemented in Task 7");
+    useNotional: (defaultNotional: number) => {
+      return useMachine(() => {
+        return machines.notional(defaultNotional);
+      });
     },
     useRfqSubmission: () => {
-      throw new Error("implemented in Task 7");
+      return useMachine(() => {
+        return machines.rfqSubmission();
+      });
     },
     useTicketSubmission: () => {
-      throw new Error("implemented in Task 7");
+      return useMachine(() => {
+        return machines.ticketSubmission();
+      });
     },
     useThroughput: () => {
       const throughput = toSignal(throughputState);
@@ -720,17 +751,23 @@ export function createViewModel(
         dismiss: dismissBootSplash,
       };
     },
-    useRfqCountdown: () => {
-      throw new Error("implemented in Task 7");
+    useRfqCountdown: (creationTimestamp: number, totalMs: number) => {
+      return useMachine(() => {
+        return createRfqCountdownMachine(creationTimestamp, totalMs);
+      }).state;
     },
     useAnimationIntents: (target: string) => {
       return toSignal(animationIntentsState(target));
     },
-    useLayout: () => {
-      throw new Error("implemented in Task 7");
+    useLayout: (tab: WorkspaceTab) => {
+      return useMachine(() => {
+        return machines.layout(tab);
+      });
     },
-    useBootSequence: () => {
-      throw new Error("implemented in Task 7");
+    useBootSequence: (onDone: () => void) => {
+      return useMachine(() => {
+        return machines.boot(onDone);
+      });
     },
     useWatchlist: () => {
       return toSignal(watchlistState);
@@ -750,11 +787,18 @@ export function createViewModel(
     useEquityPositions: () => {
       return toSignal(equityPositionsState);
     },
-    useOrderTicket: () => {
-      throw new Error("implemented in Task 7");
+    useOrderTicket: (defaultSymbol: string) => {
+      return useMachine(() => {
+        return machines.orderTicket(defaultSymbol);
+      });
     },
     useEqWorkspace: () => {
-      throw new Error("implemented in Task 7");
+      return {
+        state: toSignal(presenters.eqWorkspace.state$),
+        select: selectEqSymbol,
+        closeTab: closeEqTab,
+        setTimeframe: setEqTimeframe,
+      };
     },
     useMetrics: () => {
       return {
