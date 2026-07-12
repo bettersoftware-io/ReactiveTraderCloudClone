@@ -23,6 +23,16 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/solid-bindings": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.{ts,tsx}",
+      "ignoreDependencies": [
+        "@rtc/client-core",
+        "@rtc/domain",
+        "@rx-state/core",
+        "rxjs"
+      ]
+    },
     "packages/ui-contract": {
       "entry": [
         "src/shared/components.ts",

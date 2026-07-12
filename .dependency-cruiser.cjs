@@ -104,6 +104,34 @@ module.exports = {
       },
     },
     {
+      name: "solid-bindings-no-apps",
+      severity: "error",
+      comment:
+        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend on client-core/domain/solid-js/@rx-state/core/rxjs, never on an app or the server.",
+      from: { path: "^packages/solid-bindings/src" },
+      to: {
+        path: "^packages/(client-react|client-react-native|client-prototype|react-bindings|server)/",
+      },
+    },
+    {
+      name: "solid-stays-react-free",
+      severity: "error",
+      comment:
+        "@rtc/solid-bindings must never depend on React — it exists precisely so client-solid never needs react-bindings.",
+      from: { path: "^packages/solid-bindings/src" },
+      to: { path: "node_modules/(react|react-dom|react-native)/" },
+    },
+    {
+      name: "react-clients-stay-solid-free",
+      severity: "error",
+      comment:
+        "The mirror of solid-stays-react-free — React clients/bindings must never depend on SolidJS; @rtc/solid-bindings is the parallel bridge for the future client-solid.",
+      from: {
+        path: "^packages/(client-react|client-react-native|client-prototype|react-bindings)/src",
+      },
+      to: { path: "node_modules/solid-js/" },
+    },
+    {
       name: "clients-never-import-each-other",
       severity: "error",
       comment:
