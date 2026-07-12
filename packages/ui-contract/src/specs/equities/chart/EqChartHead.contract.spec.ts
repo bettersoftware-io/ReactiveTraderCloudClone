@@ -1,4 +1,3 @@
-import { act } from "@testing-library/react";
 import { EqChartHead } from "@ui-contract/components";
 import {
   cleanupMounted,
@@ -54,9 +53,7 @@ describe("EqChartHead", () => {
     );
     const head = mountWith(world, EqChartHead, {});
 
-    act(() => {
-      world.eqWorkspace.intents.select("MSFT");
-    });
+    head.selectInstrument("MSFT");
 
     expect(head.tabs()).toEqual(["AAPL", "MSFT"]);
     expect(head.activeTab()).toBe("MSFT");

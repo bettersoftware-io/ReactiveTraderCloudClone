@@ -113,6 +113,7 @@ import type {
   Rfq,
   Trade,
 } from "@rtc/domain";
+import type { ChartVm } from "@rtc/motion-core";
 
 import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
 import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
@@ -142,7 +143,6 @@ import { PnlSparkline as PnlSparklineComponent } from "#/ui/equities/blotter/Pnl
 import { PositionsTable as PositionsTableComponent } from "#/ui/equities/blotter/PositionsTable";
 import { CandleChart as CandleChartComponent } from "#/ui/equities/chart/CandleChart";
 import { ChartPanel as ChartPanelComponent } from "#/ui/equities/chart/ChartPanel";
-import type { ChartVm } from "#/ui/equities/chart/chartVm";
 import { DepthLadder as DepthLadderComponent } from "#/ui/equities/chart/DepthLadder";
 import { EqChartHead as EqChartHeadComponent } from "#/ui/equities/chart/EqChartHead";
 import { EqDepthDock as EqDepthDockComponent } from "#/ui/equities/chart/EqDepthDock";

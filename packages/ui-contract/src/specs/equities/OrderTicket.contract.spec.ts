@@ -1,4 +1,3 @@
-import { act } from "@testing-library/react";
 import { OrderTicket } from "@ui-contract/components";
 import {
   cleanupMounted,
@@ -121,9 +120,7 @@ describe("OrderTicket — symbol defaults to the shared eqWorkspace selection", 
 
     expect(ticket.submitLabel()).toMatch(/buy aapl/i);
 
-    act(() => {
-      world.eqWorkspace.intents.select("MSFT");
-    });
+    ticket.selectInstrument("MSFT");
 
     // The CTA (and every other affordance) already tracked the new symbol
     // before the fix — the bug was invisible until you looked at what
@@ -159,9 +156,7 @@ describe("OrderTicket — symbol defaults to the shared eqWorkspace selection", 
 
     // Selection changes while the AAPL order is still in flight (submitting)
     // — must not clobber the in-flight state or its already-captured request.
-    act(() => {
-      world.eqWorkspace.intents.select("MSFT");
-    });
+    ticket.selectInstrument("MSFT");
     expect(ticket.phase()).toBe("submitting");
 
     ticket.pushLifecycle({ status: "working", filledQty: 0 });

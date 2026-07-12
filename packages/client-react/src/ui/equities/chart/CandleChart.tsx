@@ -1,7 +1,8 @@
 import type { ReactElement } from "react";
 
+import type { ChartVm } from "@rtc/motion-core";
+
 import { CandleBars } from "./CandleBars";
-import type { ChartVm } from "./chartVm";
 
 import styles from "./CandleChart.module.css";
 

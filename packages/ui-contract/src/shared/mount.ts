@@ -8,7 +8,9 @@ import type {
 } from "@rtc/client-core";
 import type {
   CreditRfqFilter,
+  EquityInstrument,
   EquityOrder,
+  EquityQuote,
   LogEvent,
   MetricSample,
   Price,
@@ -171,6 +173,33 @@ function buildContext<P>(
       return flush(() => {
         return world.bootGate.next(visible);
       });
+    },
+    // Equities drivers (flush-wrapped, mirroring setPrice/setTopology above).
+    setWatchlist: (value: readonly EquityInstrument[]) => {
+      return flush(() => {
+        return world.setWatchlist(value);
+      });
+    },
+    setEquityOrders: (value: readonly EquityOrder[]) => {
+      return flush(() => {
+        return world.setEquityOrders(value);
+      });
+    },
+    setEquityQuote: (symbol: string, value: EquityQuote | null) => {
+      return flush(() => {
+        return world.setEquityQuote(symbol, value);
+      });
+    },
+    selectInstrument: (symbol: string) => {
+      return flush(() => {
+        return world.eqWorkspace.intents.select(symbol);
+      });
+    },
+    flushAsync: (fn: () => Promise<void>) => {
+      // Use the driver's async flush (React: act(async …)) when provided so
+      // state applied by awaited .then() chains re-renders before the caller's
+      // next assertion; otherwise just await the mutation.
+      return rendered.flushAsync ? rendered.flushAsync(fn) : fn();
     },
   };
 }

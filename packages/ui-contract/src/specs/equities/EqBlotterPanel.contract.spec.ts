@@ -1,4 +1,3 @@
-import { act } from "@testing-library/react";
 import { EqBlotterPanel } from "@ui-contract/components";
 import {
   cleanupMounted,
@@ -71,20 +70,16 @@ describe("EqBlotterPanel — data-new flash (id-set diff)", () => {
 
     expect(panel.isNewOrder("eq-1")).toBe(false);
 
-    act(() => {
-      world.setEquityOrders([order({ id: "eq-1" }), order({ id: "eq-2" })]);
-    });
+    panel.setEquityOrders([order({ id: "eq-1" }), order({ id: "eq-2" })]);
 
     expect(panel.isNewOrder("eq-1")).toBe(false);
     expect(panel.isNewOrder("eq-2")).toBe(true);
 
-    act(() => {
-      world.setEquityOrders([
-        order({ id: "eq-1" }),
-        order({ id: "eq-2" }),
-        order({ id: "eq-3" }),
-      ]);
-    });
+    panel.setEquityOrders([
+      order({ id: "eq-1" }),
+      order({ id: "eq-2" }),
+      order({ id: "eq-3" }),
+    ]);
 
     expect(panel.isNewOrder("eq-2")).toBe(false);
     expect(panel.isNewOrder("eq-3")).toBe(true);
@@ -105,9 +100,7 @@ describe("EqBlotterPanel — data-new flash (id-set diff)", () => {
     );
     const panel = mountWith(world, EqBlotterPanel, {});
 
-    act(() => {
-      world.setEquityOrders([order({ id: "eq-1", status: "filled" })]);
-    });
+    panel.setEquityOrders([order({ id: "eq-1", status: "filled" })]);
 
     expect(panel.isNewOrder("eq-1")).toBe(false);
   });

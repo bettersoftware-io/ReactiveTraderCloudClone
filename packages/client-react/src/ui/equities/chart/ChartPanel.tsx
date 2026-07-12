@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
 
+import { chartVm } from "@rtc/motion-core";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { CandleChart } from "./CandleChart";
-import { chartVm } from "./chartVm";
 import { InstrumentHeader } from "./InstrumentHeader";
 import { useTickFlash } from "./useTickFlash";
 

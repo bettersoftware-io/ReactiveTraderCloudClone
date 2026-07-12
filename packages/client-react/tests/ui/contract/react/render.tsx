@@ -56,6 +56,14 @@ export const reactDriver: UiContractDriver = {
       flushSync: (fn: () => void) => {
         act(fn);
       },
+      // Async counterpart: lets specs resolve promises whose .then() chains
+      // apply buffered state (e.g. the watchlist glide settling) with React
+      // still flushing every re-render before the awaiting caller resumes.
+      flushAsync: async (fn: () => Promise<void>) => {
+        await act(async () => {
+          await fn();
+        });
+      },
     };
   },
 };

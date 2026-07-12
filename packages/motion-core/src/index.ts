@@ -1,3 +1,5 @@
+export type { ChartCandle, ChartVarStyle, ChartVm } from "./chartVm.js";
+export { chartVm } from "./chartVm.js";
 export type { FlipDelta, Rect } from "./flip.js";
 export {
   DRIFT_PX,

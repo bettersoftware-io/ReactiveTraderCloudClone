@@ -3,8 +3,7 @@ import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { Candle } from "@rtc/domain";
-
-import { chartVm } from "#/ui/equities/chart/chartVm";
+import { chartVm } from "@rtc/motion-core";
 
 afterEach(() => {
   cleanupMounted();

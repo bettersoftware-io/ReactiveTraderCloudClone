@@ -19,6 +19,14 @@ export interface MountedRoot {
    * driver wraps mutations with `act()`; other drivers leave this undefined.
    */
   readonly flushSync?: (fn: () => void) => void;
+  /**
+   * Async counterpart to flushSync: runs an async mutation (e.g. resolving
+   * promises whose .then() chains apply buffered state) and flushes the
+   * re-renders it triggers before resolving. The React driver wraps it with
+   * `act(async …)`; other drivers leave this undefined and the harness simply
+   * awaits the fn.
+   */
+  readonly flushAsync?: (fn: () => Promise<void>) => Promise<void>;
 }
 
 /** A framework adapter that knows how to render a token into the DOM. */

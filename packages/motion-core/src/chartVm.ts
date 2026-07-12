@@ -1,6 +1,25 @@
-import type { CSSProperties } from "react";
+/**
+ * Structural stand-in for a framework style object carrying only CSS custom
+ * properties (`--x`, `--top`, …). @rtc/motion-core is zero-dependency, so it
+ * cannot import React's `CSSProperties` (the type the chartVm styles were
+ * originally cast to); a `--*`-keyed record is what the values actually are,
+ * and every framework's style prop (React's `CSSProperties`, Solid's
+ * `JSX.CSSProperties`) accepts it structurally.
+ */
+export type ChartVarStyle = Readonly<Record<`--${string}`, string>>;
 
-import type { Candle } from "@rtc/domain";
+/**
+ * The candle fields chartVm reads — a structural subset of @rtc/domain's
+ * `Candle` (which motion-core, being zero-dependency, cannot import). Domain
+ * `Candle` values satisfy it as-is; its extra `time` field is unused here
+ * (candles are keyed by array index).
+ */
+export interface ChartCandle {
+  readonly open: number;
+  readonly high: number;
+  readonly low: number;
+  readonly close: number;
+}
 
 const Y_SPAN = 86;
 const Y_TOP = 6;
@@ -15,19 +34,19 @@ interface CandleVm {
   up: boolean;
   last: boolean;
   glow: boolean;
-  style: CSSProperties;
-  wickStyle: CSSProperties;
+  style: ChartVarStyle;
+  wickStyle: ChartVarStyle;
 }
 
 interface GridLineVm {
   key: number;
-  style: CSSProperties;
+  style: ChartVarStyle;
 }
 
 interface PriceLabelVm {
   key: number;
   txt: string;
-  style: CSSProperties;
+  style: ChartVarStyle;
 }
 
 export interface ChartVm {
@@ -48,7 +67,7 @@ interface LiveCandle {
 // overlaid with the live price"): close = liveRate, high/low stretch to
 // include it. Ported to the domain Candle's open/high/low/close field names.
 function withLiveLast(
-  series: readonly Candle[],
+  series: readonly ChartCandle[],
   liveRate: number,
 ): readonly LiveCandle[] {
   return series.map((candle, i) => {
@@ -68,7 +87,7 @@ function withLiveLast(
 // PROTO L1343-1345: y maps a price into [6%, 92%] of the plot, inverted (high
 // at the top); each candle body is 64% of a column wide, its wick 1px.
 export function chartVm(
-  series: readonly Candle[],
+  series: readonly ChartCandle[],
   liveRate: number,
   flashOn: boolean,
 ): ChartVm {
@@ -110,25 +129,25 @@ export function chartVm(
       "--h": `${bodyH}%`,
       "--w": `${cw * BODY_FRAC}%`,
       "--wleft-offset": `${cw * HALF_BODY_FRAC}%`,
-    } as CSSProperties;
+    } as ChartVarStyle;
     const wickStyle = {
       "--wx": `calc(${x}% - 0.5px)`,
       "--wtop": `${yPct(cd.high)}%`,
       "--wh": `${yPct(cd.low) - yPct(cd.high)}%`,
-    } as CSSProperties;
+    } as ChartVarStyle;
 
     return { key: i, up, last: isLast, glow, style, wickStyle };
   });
 
   const grid: GridLineVm[] = GRID_FRACTIONS.map((f, i) => {
-    return { key: i, style: { "--gtop": `${f * 100}%` } as CSSProperties };
+    return { key: i, style: { "--gtop": `${f * 100}%` } as ChartVarStyle };
   });
 
   const labels: PriceLabelVm[] = LABEL_FRACTIONS.map((f, i) => {
     return {
       key: i,
       txt: (cmax - f * crng).toFixed(2),
-      style: { "--ltop": `calc(${f * 100}% - 6px)` } as CSSProperties,
+      style: { "--ltop": `calc(${f * 100}% - 6px)` } as ChartVarStyle,
     };
   });
 

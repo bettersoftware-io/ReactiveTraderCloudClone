@@ -5,7 +5,9 @@ import type {
 } from "@rtc/client-core";
 import type {
   CreditRfqFilter,
+  EquityInstrument,
   EquityOrder,
+  EquityQuote,
   LogEvent,
   MetricSample,
   Price,
@@ -57,6 +59,25 @@ export interface PageContext<P> {
   setCreditRfqFilter(filter: CreditRfqFilter): void;
   /** Push the boot-splash visibility (useBootGate source — drives BootGate). */
   setBootGateVisible(visible: boolean): void;
+  // Equities drivers (flush-wrapped, mirroring setPrice/setTopology — added so
+  // the equities specs need no direct framework `act()` around raw World
+  // mutations; the framework driver's flushSync does the flushing).
+  /** Push a new watchlist (useWatchlist source). */
+  setWatchlist(value: readonly EquityInstrument[]): void;
+  /** Push new equity orders (useEquityOrders source). */
+  setEquityOrders(value: readonly EquityOrder[]): void;
+  /** Push a new equity quote for one symbol (useEquityQuote source). */
+  setEquityQuote(symbol: string, value: EquityQuote | null): void;
+  /** Drive the shared eqWorkspace machine's select intent (tab/selection). */
+  selectInstrument(symbol: string): void;
+  /**
+   * Run an async mutation (e.g. resolving animation-finished promises whose
+   * .then() chains apply buffered state) with the framework driver's async
+   * flush (React: `act(async …)`), so the re-renders it triggers are applied
+   * before the caller's next assertion. Falls back to plainly awaiting the fn
+   * when the driver supplies no async flush.
+   */
+  flushAsync(fn: () => Promise<void>): Promise<void>;
 }
 
 /** Base class for all page objects. Provides the neutral update drivers. */
@@ -165,5 +186,32 @@ export abstract class MountedComponent<P> {
   /** Push the boot-splash visibility through the seam → re-render BootGate. */
   protected setBootGateVisible(visible: boolean): void {
     this.ctx.setBootGateVisible(visible);
+  }
+
+  // Equities drivers (flush-wrapped; see the PageContext docs above).
+
+  /** Push a new watchlist → re-render the watchlist-backed panels. */
+  setWatchlist(value: readonly EquityInstrument[]): void {
+    this.ctx.setWatchlist(value);
+  }
+
+  /** Push new equity orders → re-render the OrdersTable. */
+  setEquityOrders(value: readonly EquityOrder[]): void {
+    this.ctx.setEquityOrders(value);
+  }
+
+  /** Push a new equity quote for one symbol → re-render the subscribing row. */
+  setEquityQuote(symbol: string, value: EquityQuote | null): void {
+    this.ctx.setEquityQuote(symbol, value);
+  }
+
+  /** Select an instrument on the shared eqWorkspace machine. */
+  selectInstrument(symbol: string): void {
+    this.ctx.selectInstrument(symbol);
+  }
+
+  /** Run an async mutation inside the driver's async flush (React: act). */
+  flushAsync(fn: () => Promise<void>): Promise<void> {
+    return this.ctx.flushAsync(fn);
   }
 }

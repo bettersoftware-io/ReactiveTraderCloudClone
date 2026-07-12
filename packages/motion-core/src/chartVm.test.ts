@@ -1,9 +1,6 @@
-import type { CSSProperties } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { Candle } from "@rtc/domain";
-
-import { chartVm } from "./chartVm";
+import { type ChartCandle, type ChartVarStyle, chartVm } from "./chartVm";
 
 describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
   it("returns empty candles/grid/labels for an empty series", () => {
@@ -141,14 +138,17 @@ describe("chartVm (PROTO chartVm, y in [6%, 92%] inverted)", () => {
   });
 });
 
+/** Domain-Candle-shaped fixture rows (motion-core cannot import @rtc/domain;
+ * ChartCandle is the structural subset chartVm reads, and the extra `time`
+ * field mirrors how real domain Candles satisfy it with fields to spare). */
+type Candle = ChartCandle & { readonly time: number };
+
 /** Every geometry value rides in as a `"NN.NN%"` (or `calc(...)`) string
- * custom property — CSSProperties has no index signature for them, so reads
- * (unlike the sanctioned write-only `as CSSProperties` cast) need this one
- * escape hatch to pull a named custom property back out for assertions. */
-function cssVar(style: CSSProperties, name: string): unknown {
+ * custom property; pull a named one back out for assertions. */
+function cssVar(style: ChartVarStyle, name: string): unknown {
   return (style as Record<string, unknown>)[name];
 }
 
-function pct(style: CSSProperties, name: string): number {
+function pct(style: ChartVarStyle, name: string): number {
   return Number.parseFloat(String(cssVar(style, name)));
 }

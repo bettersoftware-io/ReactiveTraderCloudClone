@@ -12,5 +12,9 @@
     }
   },
   "include": ["src"],
-  "references": [{ "path": "../client-core" }, { "path": "../domain" }]
+  "references": [
+    { "path": "../client-core" },
+    { "path": "../domain" },
+    { "path": "../motion-core" }
+  ]
 }

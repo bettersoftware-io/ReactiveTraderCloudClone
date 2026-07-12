@@ -25,6 +25,7 @@
   "dependencies": {
     "@rtc/client-core": "workspace:*",
     "@rtc/domain": "workspace:*",
+    "@rtc/motion-core": "workspace:*",
     "rxjs": "^7.8"
   },
   "devDependencies": {

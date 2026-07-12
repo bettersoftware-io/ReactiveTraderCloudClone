@@ -1,4 +1,3 @@
-import { act } from "@testing-library/react";
 import { EqWatchlistHead, WatchlistPanel } from "@ui-contract/components";
 import {
   cleanupMounted,
@@ -88,9 +87,7 @@ describe("WatchlistPanel — rows", () => {
 
     expect(panel.rows()).toEqual(["AAPL"]);
 
-    act(() => {
-      world.setEquityQuote("AAPL", quote("AAPL", 240, 4.6));
-    });
+    panel.setEquityQuote("AAPL", quote("AAPL", 240, 4.6));
 
     expect(panel.rows()).toEqual(["AAPL"]);
   });
@@ -116,14 +113,10 @@ describe("WatchlistPanel — tick pulse", () => {
     // to diff against, so no pulse yet.
     expect(panel.flashDirection("AAPL")).toBeNull();
 
-    act(() => {
-      world.setEquityQuote("AAPL", quote("AAPL", 235, 3.2));
-    });
+    panel.setEquityQuote("AAPL", quote("AAPL", 235, 3.2));
     expect(panel.flashDirection("AAPL")).toBe("up");
 
-    act(() => {
-      world.setEquityQuote("AAPL", quote("AAPL", 220, -3.6));
-    });
+    panel.setEquityQuote("AAPL", quote("AAPL", 220, -3.6));
     expect(panel.flashDirection("AAPL")).toBe("down");
   });
 
@@ -142,16 +135,12 @@ describe("WatchlistPanel — tick pulse", () => {
     );
     const panel = mountWith(world, WatchlistPanel, {});
 
-    act(() => {
-      world.setEquityQuote("AAPL", quote("AAPL", 235, 3.2));
-    });
+    panel.setEquityQuote("AAPL", quote("AAPL", 235, 3.2));
     expect(panel.rows()).toEqual(["AAPL", "MSFT", "TSLA"]);
 
     // Same last/changePct values (a fresh object, but the panel dedupes on
     // value equality) — the sort order is unaffected.
-    act(() => {
-      world.setEquityQuote("AAPL", quote("AAPL", 235, 3.2));
-    });
+    panel.setEquityQuote("AAPL", quote("AAPL", 235, 3.2));
     expect(panel.rows()).toEqual(["AAPL", "MSFT", "TSLA"]);
   });
 });
@@ -229,10 +218,10 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
     }
   });
 
-  async function settleGlide(): Promise<void> {
+  async function settleGlide(panel: GlideFlusher): Promise<void> {
     const toResolve = resolveFns;
     resolveFns = [];
-    await act(async () => {
+    await panel.flushAsync(async () => {
       toResolve.forEach((resolve) => {
         resolve();
       });
@@ -262,28 +251,24 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
     // each row's own useEquityQuote effect reports its seeded quote — that
     // settling already kicks off a (fake) glide. Drain it so the test
     // exercises a clean idle→gliding→buffered→settled cycle from here.
-    await settleGlide();
+    await settleGlide(panel);
     expect(panel.rows()).toEqual(["MSFT", "AAPL", "TSLA"]);
 
     // First reorder: TSLA's chg jumps to the top. Idle → commits immediately
     // and kicks off the (fake) glide.
-    act(() => {
-      world.setEquityQuote("TSLA", quote("TSLA", 260, 5.0));
-    });
+    panel.setEquityQuote("TSLA", quote("TSLA", 260, 5.0));
     expect(panel.rows()).toEqual(["TSLA", "MSFT", "AAPL"]);
     expect(resolveFns.length).toBeGreaterThan(0);
 
     // Second reorder arrives WHILE the first glide is still in flight: AAPL's
     // chg jumps above everything. Must be BUFFERED — rows stay exactly as
     // the first commit left them; the intermediate churn never renders.
-    act(() => {
-      world.setEquityQuote("AAPL", quote("AAPL", 300, 10.0));
-    });
+    panel.setEquityQuote("AAPL", quote("AAPL", 300, 10.0));
     expect(panel.rows()).toEqual(["TSLA", "MSFT", "AAPL"]);
 
     // Settle the first glide — the buffered (second) order applies now, in
     // one step, directly to the final coalesced order.
-    await settleGlide();
+    await settleGlide(panel);
     expect(panel.rows()).toEqual(["AAPL", "TSLA", "MSFT"]);
   });
 
@@ -301,13 +286,11 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
       { watchlist: INSTRUMENTS, quotes: QUOTES },
     );
     const panel = mountWith(world, WatchlistPanel, {});
-    await settleGlide();
+    await settleGlide(panel);
     expect(panel.rows()).toEqual(["MSFT", "AAPL", "TSLA"]);
 
     // Kick off a glide (idle → commits immediately).
-    act(() => {
-      world.setEquityQuote("TSLA", quote("TSLA", 260, 5.0));
-    });
+    panel.setEquityQuote("TSLA", quote("TSLA", 260, 5.0));
     expect(panel.rows()).toEqual(["TSLA", "MSFT", "AAPL"]);
     expect(resolveFns.length).toBeGreaterThan(0);
 
@@ -315,17 +298,15 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
     // in flight — the committed order still lists it (buffered, not yet
     // re-evaluated), but its instrument is gone, so the row must be skipped
     // rather than rendered with no name.
-    act(() => {
-      world.setWatchlist(
-        INSTRUMENTS.filter((inst) => {
-          return inst.symbol !== "AAPL";
-        }),
-      );
-    });
+    panel.setWatchlist(
+      INSTRUMENTS.filter((inst) => {
+        return inst.symbol !== "AAPL";
+      }),
+    );
     expect(panel.rows()).toEqual(["TSLA", "MSFT"]);
 
     // Once the glide settles, the next commit reflects AAPL's removal for good.
-    await settleGlide();
+    await settleGlide(panel);
     expect(panel.rows()).toEqual(["TSLA", "MSFT"]);
   });
 });
@@ -381,4 +362,10 @@ function quote(symbol: string, last: number, changePct: number): EquityQuote {
  * restore). */
 interface MaybeAnimateProp {
   animate?: unknown;
+}
+
+/** The one page capability settleGlide needs: the harness's driver-backed
+ * async flush (see MountedComponent.flushAsync). */
+interface GlideFlusher {
+  flushAsync(fn: () => Promise<void>): Promise<void>;
 }
