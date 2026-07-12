@@ -89,9 +89,11 @@ import type {
 import type { ReactElement } from "react";
 
 import type {
+  ColumnFilter,
   NotionalIntents,
   NotionalView,
   PanelId,
+  SortState,
   TileExecutionState,
 } from "@rtc/client-core";
 import type {
@@ -164,10 +166,8 @@ import { BlotterHeader as BlotterHeaderComponent } from "#/ui/fx/blotter/Blotter
 import { BlotterRow as BlotterRowComponent } from "#/ui/fx/blotter/BlotterRow";
 import { COLUMNS, formatFxCell } from "#/ui/fx/blotter/blotterColumns";
 import { DateFilter as DateFilterComponent } from "#/ui/fx/blotter/columnFilter/DateFilter";
-import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
 import { NumberFilter as NumberFilterComponent } from "#/ui/fx/blotter/columnFilter/NumberFilter";
 import { SetFilter as SetFilterComponent } from "#/ui/fx/blotter/columnFilter/SetFilter";
-import type { SortState } from "#/ui/fx/blotter/columnSort";
 import { FxBlotter as FxBlotterComponent } from "#/ui/fx/blotter/FxBlotter";
 import { FxBlotterHead as FxBlotterHeadComponent } from "#/ui/fx/blotter/FxBlotterHead";
 import { QuickFilter as QuickFilterComponent } from "#/ui/fx/blotter/QuickFilter";
