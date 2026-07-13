@@ -1,4 +1,5 @@
 import type { JSX } from "solid-js";
+import { createMemo } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -18,16 +19,25 @@ import styles from "./AmbientBackground.module.css";
 export function AmbientBackground(): JSX.Element {
   const { useAnimatedBackground } = useViewModel();
   const { enabled } = useAnimatedBackground();
-  const vars: JSX.CSSProperties = {
-    "--amb-play": enabled() ? "running" : "paused",
-  };
+
+  // --amb-play is the SOLE driver of animation-play-state on all five layers
+  // (the CSS has no data-animated selector), so it must stay reactive: a
+  // plain component-body const would read enabled() exactly once at mount
+  // (Solid components run once — the react file's per-render const only
+  // works because React re-executes the body), freezing the preference for
+  // the whole session. createMemo keeps the read tracked; `style={vars()}`
+  // re-applies on change.
+  const vars = createMemo((): JSX.CSSProperties => {
+    return { "--amb-play": enabled() ? "running" : "paused" };
+  });
+
   return (
     <div
       data-testid="ambient-background"
       aria-hidden="true"
       data-animated={enabled() ? "true" : "false"}
       class={styles.wrap}
-      style={vars}
+      style={vars()}
     >
       <div class={styles.aurora}>
         <div class={styles.layerA} />
