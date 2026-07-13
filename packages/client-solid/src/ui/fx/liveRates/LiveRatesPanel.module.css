@@ -1,0 +1,37 @@
+/* PROTO LiveRatesPanel.module.css .body (padding 14px) + FilterChips
+ * margin-bottom 13px: the engine's .panelBody is bare, so this shared rail
+ * root (Live Rates AND Watchlist head-tab views render inside it) owns the
+ * inset; the 13px gap is the prototype's chips-row bottom margin. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  flex: 1;
+  padding: 14px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.tileSlot {
+  min-width: 0;
+}

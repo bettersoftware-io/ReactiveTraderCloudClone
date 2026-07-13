@@ -1,0 +1,97 @@
+.header {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.symbolCode {
+  position: absolute;
+  top: -9px;
+  right: -4px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+}
+
+.pairRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+
+.pairName {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.separator {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Right side of the pair row: the ⚡ RFQ chip (when the notional needs a
+ * quote) then the movement badge, which keeps its usual far-right slot. */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Compact RFQ-initiation chip — same chrome as the CHARTS head-chip
+ * (PanelHeadTabs.module.css .headChip), with the active-chip accent
+ * treatment on hover/focus. `background:` shorthand: --chip is a gradient
+ * on 3d skins.
+ *
+ * Height pin: the chip's border-box (10px line + 2×3px padding + 2×1px
+ * border = 18px) must not exceed the 15px pairName's ~18px line box, so the
+ * chip appearing/disappearing never changes the pair row's — and therefore
+ * the tile's — height (the invariant TileHeader's onInitiateRfq JSDoc
+ * promises). */
+.rfqChip {
+  padding: 3px 11px;
+  border-radius: 4px;
+  line-height: 10px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+}
+
+.rfqChip:hover,
+.rfqChip:focus-visible {
+  color: var(--accent-primary);
+  background: var(--chip);
+  border-color: var(--border-strong);
+}
+
+.pairRow .movementBadge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: normal;
+}
+
+.movementBadge[data-movement="up"] {
+  color: var(--accent-positive);
+}
+
+.movementBadge[data-movement="down"] {
+  color: var(--accent-negative);
+}
+
+.movementBadge[data-movement="flat"] {
+  color: var(--text-muted);
+}

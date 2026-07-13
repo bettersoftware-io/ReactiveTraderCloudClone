@@ -1,0 +1,64 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.currencyLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  min-width: 28px;
+}
+
+.inputArea {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 5px 26px 5px 9px;
+  outline: none;
+  text-align: left;
+}
+
+.input[data-error="true"] {
+  border-color: var(--accent-negative);
+}
+
+.resetButton {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  line-height: 1;
+}
+
+.maxTag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--accent-negative);
+}
+
+.errorMessage {
+  position: absolute;
+  bottom: -14px;
+  right: 0;
+  font-size: 10px;
+  color: var(--accent-negative);
+}

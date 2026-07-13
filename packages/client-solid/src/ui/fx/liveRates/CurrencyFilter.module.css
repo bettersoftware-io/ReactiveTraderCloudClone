@@ -1,0 +1,32 @@
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.chip[data-active="true"] {
+  border-color: var(--border-strong);
+  color: var(--accent-primary);
+  background: var(--chip);
+}
