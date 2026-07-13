@@ -1,0 +1,68 @@
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-secondary);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  background-color: var(--status-disconnected);
+}
+
+.dot[data-status="CONNECTING"] {
+  background-color: var(--status-connecting);
+  box-shadow: 0 0 8px var(--status-connecting);
+}
+
+.dot[data-status="CONNECTED"] {
+  background-color: var(--status-connected);
+  box-shadow: 0 0 8px var(--status-connected);
+  /* will-change promotes the dot to its own layer so the infinite opacity
+   * pulse runs on the compositor; without it Chrome ticked this animation on
+   * the main thread every frame for the app's whole lifetime. */
+  will-change: opacity;
+  animation: pulseDot 1.8s ease-in-out infinite;
+}
+
+.dot[data-status="DISCONNECTED"],
+.dot[data-status="IDLE_DISCONNECTED"],
+.dot[data-status="OFFLINE_DISCONNECTED"] {
+  background-color: var(--status-disconnected);
+}
+
+.label[data-status="CONNECTED"] {
+  color: var(--status-connected);
+}
+
+.label[data-status="CONNECTING"] {
+  color: var(--status-connecting);
+}
+
+.label[data-status="DISCONNECTED"],
+.label[data-status="IDLE_DISCONNECTED"],
+.label[data-status="OFFLINE_DISCONNECTED"] {
+  color: var(--status-disconnected);
+}
+
+/* Pulses opacity only (not scale/box-shadow), matching the PROTO footer dot
+ * (Reactive Trader.dc.html:728) — a subtle "live" heartbeat on CONNECTED. */
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+}

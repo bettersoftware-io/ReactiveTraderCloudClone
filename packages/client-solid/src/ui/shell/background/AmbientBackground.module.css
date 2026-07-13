@@ -1,0 +1,223 @@
+/* COSMETIC ONLY — decorative v2 aurora backdrop (PROTO L103-112): two soft
+ * radial layers (the prototype's blur is baked into the gradient falloff —
+ * see .layerA), a conic sweep, a drifting 48px line grid, a drifting 24px
+ * particle-dot field, and a static vignette, sitting behind the workspace.
+ * Every animated layer here must stay compositor-only (transform/opacity):
+ * this backdrop is permanently on screen, so any main-thread or per-frame
+ * GPU-filter work multiplies with every frame the trading surface produces.
+ * Layer intensities follow the prototype: the aurora blob pair rides a
+ * wrapper at --aurora-opacity while sweep/dots multiply the token into their
+ * own opacity; the line grid and vignette are unscaled. The wrap carries a
+ * 0/1 visibility gate so the classic skin (--aurora-opacity: 0) hides the
+ * whole backdrop, grid and vignette included. The animated-background
+ * preference does not toggle visibility — it toggles --amb-play between
+ * "running"/"paused" via an inline style on the root, which every layer's
+ * animation-play-state reads through inheritance. */
+
+/* z-index: 0 pins the whole backdrop (PROTO AmbientBackground L8) to the
+ * bottom of the shell's stacking context (`.app` isolates — App.module.css):
+ * without it the wrap creates no stacking context when its opacity computes
+ * to 1, so the z-index: 1 vignette below escaped and painted over the
+ * z-auto workspace panels. */
+.wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: clamp(0, var(--aurora-opacity) * 100, 1);
+}
+
+/* PROTO line 104: aurora blob wrapper carries the shared opacity token. */
+.aurora {
+  position: absolute;
+  inset: 0;
+  opacity: var(--aurora-opacity);
+}
+
+/* The prototype blurred these blob layers (blur 46/58px), but a viewport-
+ * sized `filter` is re-evaluated by the GPU on EVERY composited frame the
+ * app produces — measured at ~7% of a core of steady-state GPU burn while
+ * prices stream. The blur's visible effect on an already-smooth radial
+ * gradient is just a softer outer falloff, so the falloff is baked into the
+ * gradient stops instead (slightly larger radius + a mid stop easing into
+ * transparent) and the filter is dropped. */
+.layerA {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(
+      44% 44% at 28% 32%,
+      var(--aurora-a) 0%,
+      color-mix(in srgb, var(--aurora-a) 40%, transparent) 46%,
+      transparent 76%
+    ),
+    radial-gradient(
+      40% 40% at 78% 64%,
+      var(--aurora-b) 0%,
+      color-mix(in srgb, var(--aurora-b) 40%, transparent) 46%,
+      transparent 76%
+    );
+  opacity: 0.18;
+  will-change: transform;
+  animation: aurora-a 52s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+.layerB {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(
+      36% 42% at 66% 22%,
+      var(--accent-positive) 0%,
+      color-mix(in srgb, var(--accent-positive) 40%, transparent) 44%,
+      transparent 75%
+    ),
+    radial-gradient(
+      46% 46% at 22% 82%,
+      var(--accent-primary) 0%,
+      color-mix(in srgb, var(--accent-primary) 40%, transparent) 44%,
+      transparent 75%
+    );
+  opacity: 0.13;
+  will-change: transform;
+  animation: aurora-b 68s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+.sweep {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 170vmax;
+  height: 170vmax;
+  margin: -85vmax 0 0 -85vmax;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--accent-primary) 10deg,
+    transparent 34deg
+  );
+  opacity: calc(var(--aurora-opacity) * 0.06);
+  will-change: transform;
+  animation: sweep-rot 90s linear infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+/* PROTO line 109: drifting 48px line grid. The prototype drifted
+ * `background-position` (h-lines down, v-lines right, one 48px tile per
+ * loop), but background-position is a paint property — Chrome repainted this
+ * full-viewport layer on every frame, on the main thread. Translating the
+ * whole layer diagonally by one tile is visually identical (each line set is
+ * invariant along its own axis: v-lines moving down and h-lines moving right
+ * don't show) and runs entirely on the compositor. The layer is oversized by
+ * one tile up/left so its edges never enter the viewport mid-drift. */
+.grid {
+  position: absolute;
+  inset: -48px 0 0 -48px;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:
+    48px 48px,
+    48px 48px;
+  opacity: 0.4;
+  will-change: transform;
+  animation: grid-drift 60s linear infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+/* PROTO line 110: particle dot field. Same compositor-only drift treatment
+ * as .grid — the prototype's background-position keyframes moved this layer's
+ * single image straight down 48px (two 24px tiles) per loop. */
+.dots {
+  position: absolute;
+  inset: -48px 0 0 0;
+  background-image: radial-gradient(
+    var(--accent-primary) 1.1px,
+    transparent 1.4px
+  );
+  background-size: 24px 24px;
+  opacity: calc(var(--aurora-opacity) * 0.16);
+  will-change: transform;
+  animation: dots-drift 90s linear infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+/* PROTO line 112: static vignette overlay (z-index: 1 keeps it above the
+   animated layers). */
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(
+    ellipse 78% 68% at 50% 38%,
+    transparent 48%,
+    rgba(0, 0, 0, 0.58) 100%
+  );
+}
+
+/* OS-level reduced motion wins over the in-app preference: even with
+ * --amb-play: running, the layers hold still. Same mechanism as the previous
+ * revision (animation: none). */
+@media (prefers-reduced-motion: reduce) {
+  .layerA,
+  .layerB,
+  .sweep,
+  .grid,
+  .dots {
+    animation: none;
+  }
+}
+
+@keyframes aurora-a {
+  0% {
+    transform: translate3d(-7%, -4%, 0) scale(1.08);
+  }
+  50% {
+    transform: translate3d(7%, 5%, 0) scale(1.28);
+  }
+  100% {
+    transform: translate3d(-7%, -4%, 0) scale(1.08);
+  }
+}
+
+@keyframes aurora-b {
+  0% {
+    transform: translate3d(6%, 4%, 0) scale(1.22);
+  }
+  50% {
+    transform: translate3d(-6%, -4%, 0) scale(1.04);
+  }
+  100% {
+    transform: translate3d(6%, 4%, 0) scale(1.22);
+  }
+}
+
+@keyframes sweep-rot {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes grid-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(48px, 48px, 0);
+  }
+}
+
+@keyframes dots-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 48px, 0);
+  }
+}

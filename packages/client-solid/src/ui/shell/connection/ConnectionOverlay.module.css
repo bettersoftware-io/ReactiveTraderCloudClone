@@ -1,0 +1,44 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--bg-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 32px 48px;
+  text-align: center;
+  color: var(--text-primary);
+  max-width: 400px;
+}
+
+.message {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Reconnect button — outline style, matches original variant="outline".
+ * Provenance: original components/DisconnectionOverlay.tsx:33 (variant="outline"). */
+.reconnectButton {
+  margin-top: 20px;
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.reconnectButton:hover {
+  opacity: 0.8;
+}

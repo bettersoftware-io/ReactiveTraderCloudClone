@@ -1,0 +1,213 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: rgba(0, 0, 0, 0.62);
+  font-family: var(--font-display);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(800px, 96vw);
+  max-height: 86vh;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.62);
+}
+
+.head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--panel-head);
+}
+
+.title {
+  /* PROTO hardcodes 'Orbitron' here (not fontD) — the logo face gives the
+   * dialog chrome its display-grade weight. */
+  font-family: var(--font-logo);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+.closeButton {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-primary);
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 22px 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 30px;
+}
+
+.column {
+  min-width: 0;
+}
+
+.sectionHead {
+  margin-top: 16px;
+  padding-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--accent-primary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.rowText {
+  min-width: 0;
+}
+
+.rowLabel {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.rowDesc {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sw {
+  flex: none;
+  position: relative;
+  width: 38px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  background: var(--chip);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.sw::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--text-secondary);
+  transition:
+    transform 0.15s,
+    background-color 0.15s;
+}
+
+.sw[data-on="true"] {
+  /* Shorthand (not background-color): the base rule sets a gradient
+     background-image on the 3d skins, and background-color alone would
+     leave it showing through instead of clearing it. */
+  background: color-mix(in srgb, var(--accent-positive) 26%, transparent);
+  border-color: var(--accent-positive);
+}
+
+.sw[data-on="true"]::after {
+  transform: translateX(18px);
+  background-color: var(--accent-positive);
+  box-shadow: 0 0 6px var(--accent-positive);
+}
+
+.seg {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.segButton {
+  padding: 5px 11px;
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.segButton[data-on="true"] {
+  background-color: color-mix(in srgb, var(--accent-primary) 16%, transparent);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 22px;
+  border-top: 1px solid var(--border-primary);
+  background: var(--panel-head);
+}
+
+.footNote {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.doneButton {
+  padding: 8px 24px;
+  border: none;
+  background-color: var(--accent-positive);
+  color: var(--bg-primary);
+  /* PROTO: 'Orbitron' like the dialog title, not fontD. */
+  font-family: var(--font-logo);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}

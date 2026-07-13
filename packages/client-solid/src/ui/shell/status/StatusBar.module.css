@@ -1,0 +1,62 @@
+.statusBar {
+  position: relative;
+  z-index: 5;
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 14px;
+  gap: 0;
+  background: var(--panel-head);
+  border-top: 1px solid var(--border-primary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.operator {
+  color: var(--text-muted);
+}
+
+.metrics {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 0;
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+}
+
+.metricSep {
+  color: var(--text-muted);
+  margin: 0 9px;
+}
+
+.metricLabel {
+  color: var(--text-muted);
+  margin-right: 5px;
+}
+
+.metricValue {
+  color: var(--text-secondary);
+}
+
+.metricValue[data-tone="positive"] {
+  color: var(--accent-positive);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.build {
+  color: var(--text-muted);
+}
+
+.clock {
+  color: var(--accent-primary);
+}
