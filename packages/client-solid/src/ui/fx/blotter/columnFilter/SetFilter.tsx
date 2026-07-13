@@ -1,23 +1,31 @@
 import type { JSX } from "solid-js";
-import { createSignal, For } from "solid-js";
+import { createMemo, createSignal, For } from "solid-js";
 
 import type { ColumnFilter } from "@rtc/client-core";
 
 import styles from "./SetFilter.module.css";
 
 export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
-  const valSet = new Set<string>();
+  // Reactive over `props.rows`: the filter popover stays mounted while new
+  // trades keep arriving (BlotterRow's live subscription doesn't unmount
+  // it), so the option list must track the current row set, not just
+  // whatever existed the instant the popover opened. A plain top-level
+  // const here would freeze at mount (Solid components run their setup body
+  // once) — the react original recomputes this every render for free.
+  const allValues = createMemo((): string[] => {
+    const valSet = new Set<string>();
 
-  for (const row of props.rows) {
-    valSet.add(String(row[props.column]));
-  }
+    for (const row of props.rows) {
+      valSet.add(String(row[props.column]));
+    }
 
-  const allValues = [...valSet].sort();
+    return [...valSet].sort();
+  });
 
   const [selected, setSelected] = createSignal<Set<string>>(
     props.currentFilter?.type === "set"
       ? new Set(props.currentFilter.values)
-      : new Set(allValues),
+      : new Set(allValues()),
   );
 
   function toggleValue(val: string): void {
@@ -35,7 +43,7 @@ export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
   }
 
   function handleApply(): void {
-    if (selected().size === allValues.length) {
+    if (selected().size === allValues().length) {
       props.onApply(null); // all selected = no filter
     } else {
       props.onApply({ type: "set", column: props.column, values: selected() });
@@ -44,7 +52,7 @@ export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
 
   return (
     <div class={styles.container}>
-      <For each={allValues}>
+      <For each={allValues()}>
         {(val: string) => {
           return (
             <label class={styles.option}>
