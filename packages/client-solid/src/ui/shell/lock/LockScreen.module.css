@@ -1,0 +1,157 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary, #00060a);
+}
+
+/* Decorative HUD grid backdrop (prototype line 78). */
+.grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 46px 46px;
+  opacity: 0.5;
+}
+
+.panel {
+  position: relative;
+  z-index: 2;
+  width: 360px;
+  max-width: 86vw;
+  text-align: center;
+}
+
+/* Sized wrapper for the shared animated HudLogo — the SVG fills it. */
+.badge {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  filter: drop-shadow(0 0 10px var(--accent-primary));
+}
+
+.title {
+  margin-bottom: 8px;
+  /* Prototype heading is Orbitron — the app's --font-logo, not --font-display. */
+  font-family: var(--font-logo, "Orbitron", sans-serif);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.32em;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin-bottom: 24px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--text-muted);
+}
+
+.avatar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 10px;
+}
+
+.avatarHex {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * --chip is a gradient on the 3d skins, and SVG `fill` cannot take a CSS
+ * gradient — it falls back to black. Derive the same solid tint from the
+ * accent instead. On classic DARK --accent-primary is #3b82f6 and --chip is
+ * rgba(59,130,246,0.12); color-mix at exactly 12% reproduces that value
+ * bit-for-bit. Other skin×mode cells shift sub-perceptually (their chip
+ * base wasn't exactly accent@12%) — verified under the golden budget.
+ */
+.avatarChip {
+  fill: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+}
+
+.initials {
+  position: relative;
+  font-family: var(--font-display, "Chakra Petch", sans-serif);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent-primary);
+}
+
+.name {
+  font-family: var(--font-display, sans-serif);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.role {
+  margin-top: 3px;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.authenticate {
+  display: block;
+  width: 100%;
+  /* No margin-top: the dots above supply the 22px gap (prototype .dots
+     margin 22px 0) — a margin here would double it. */
+  padding: 12px 0;
+  font-family: var(--font-display, "Chakra Petch", sans-serif);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--text-on-accent);
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 4px;
+  box-shadow: var(--glow);
+  cursor: pointer;
+}
+
+/* ---- Biometric dots + channel line (decorative) ---- */
+
+.dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 22px 0;
+}
+
+.dotOn {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  box-shadow: 0 0 8px var(--accent-primary);
+}
+
+.dotOff {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--border-primary);
+}
+
+.channel {
+  margin-top: 16px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  color: var(--text-muted);
+}
