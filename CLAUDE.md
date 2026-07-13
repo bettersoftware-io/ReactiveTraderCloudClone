@@ -8,7 +8,7 @@ This project aims to recreate [ReactiveTraderCloud](https://github.com/AdaptiveC
 
 ## Current Status
 
-Monorepo with pnpm workspaces + Turborepo; twelve packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; a third, `@rtc/client-solid`, is a walking skeleton (boots in simulator mode, renders live connection status) built on the parallel `@rtc/solid-bindings` bridge. `docs/architecture.md` is the authoritative architecture reference.
+Monorepo with pnpm workspaces + Turborepo; thirteen packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; a third, `@rtc/client-solid`, is a walking skeleton (boots in simulator mode, renders live connection status) built on the parallel `@rtc/solid-bindings` bridge. `docs/architecture.md` is the authoritative architecture reference.
 
 ## Build Commands
 
@@ -42,6 +42,7 @@ packages/
   client-prototype/    @rtc/client-prototype    — Readable React port of the docs/design/web/v2 prototype. Isolated: react/react-dom only, no @rtc/* imports.
   client-solid/        @rtc/client-solid        — Web client, SolidJS port of client-react (walking skeleton so far). Dumb Solid UI + browser adapters (Vite, port 5473). Depends on client-core, solid-bindings, domain.
   motion-core/         @rtc/motion-core         — Framework-free, zero-dependency view-layer motion math (FLIP deltas, rank-glide coalescing, easing/duration constants). No DOM, no rxjs, no React. Shared by client animation shells (React now, Solid next).
+  ui-contract/         @rtc/ui-contract         — Framework-neutral UI test contract: shared harness + contract specs + visual scenario matrix, extracted from client-react's test tree. Depends on client-core, domain, motion-core (+ rxjs); consumed by clients as a devDependency, never from src.
   ws-effects/          @rtc/ws-effects          — Small declarative RxJS effects framework. Pure TS, depends only on rxjs at runtime.
   server/              @rtc/server              — Native WebSocket + @rtc/ws-effects (24 effects: FX/Credit/Admin/Equities). Depends on domain, shared, ws-effects.
 ```

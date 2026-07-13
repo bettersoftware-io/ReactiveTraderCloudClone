@@ -2,7 +2,7 @@
 
 ## 6. Package Dependencies
 
-Twelve workspace packages plus the `tests` package. Every arrow is a real `dependencies` entry; dependencies flow **inward only** (toward `domain`).
+Thirteen workspace packages plus the `tests` package. Every arrow is a real `dependencies` entry; dependencies flow **inward only** (toward `domain`).
 
 ```mermaid
 graph TB
@@ -31,6 +31,7 @@ graph TB
 
     proto["@rtc/client-prototype\ndesign-comprehension island\nreact + react-dom only"]
     motion["@rtc/motion-core\nView-layer motion math\npure, zero-dep"]
+    uic["@rtc/ui-contract\nframework-neutral UI contract\nspecs · harness · visual matrix"]
     tests["tests (@rtc/tests)\nbehavioural suites + gates"]
 
     webc --> rb
@@ -53,6 +54,9 @@ graph TB
     server --> shared
     server --> wse
     shared --> domain
+    uic --> core
+    uic --> domain
+    uic --> motion
     tests --> webc
     tests --> core
     tests --> server
@@ -68,6 +72,7 @@ graph TB
     style wse fill:#5E35B1,color:#fff
     style proto fill:#607D8B,color:#fff
     style motion fill:#607D8B,color:#fff
+    style uic fill:#607D8B,color:#fff
     style solidc fill:#673AB7,color:#fff
     style sb fill:#FFB300,color:#fff
     style tests fill:#455A64,color:#fff
@@ -81,8 +86,9 @@ graph TB
 - Clients (`client-react`, `client-react-native`) depend on `core` + `react-bindings` + `domain`; `client-solid` depends on `core` + `solid-bindings` + `domain` the same way. **Clients and server never import each other** (dependency-cruiser `client-not-server` / `server-not-client`).
 - `@rtc/client-prototype` is an intentional island: `react`/`react-dom` only, no `@rtc/*` imports.
 - `@rtc/motion-core` is a zero-runtime-dependency leaf (no `rxjs`, no DOM, no React) consumed directly by a client's animation shell -- `client-react` and `client-solid` each depend on it the same way (`client-solid → motion-core`), never through `client-core`/`react-bindings`/`solid-bindings`.
+- `@rtc/ui-contract` is the framework-neutral UI test contract (shared harness + contract specs + visual scenario matrix, extracted from client-react's test tree). It depends on `client-core` + `domain` + `motion-core` (+ `rxjs`) and is framework-free; clients consume it as a **devDependency** for their contract/visual suites -- it never appears in any `src/` import.
 
-**Build order** (Turborepo topological): `domain` | `ws-effects` | `motion-core` → `shared` → `client-core` → `react-bindings` | `solid-bindings` → `client-react` | `client-react-native` | `client-solid` | `server` (prototype builds independently).
+**Build order** (Turborepo topological): `domain` | `ws-effects` | `motion-core` → `shared` → `client-core` → `react-bindings` | `solid-bindings` | `ui-contract` → `client-react` | `client-react-native` | `client-solid` | `server` (prototype builds independently).
 
 > The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`, `motion-core-stays-pure`. See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
 
