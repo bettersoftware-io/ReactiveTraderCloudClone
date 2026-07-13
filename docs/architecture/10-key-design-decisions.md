@@ -89,13 +89,13 @@
 
 ### 10.7 pnpm workspaces + Turborepo for the monorepo
 
-**Problem.** Ten packages plus a `tests` workspace share a strict dependency graph (`domain` → `shared`/`ws-effects` → `client-core` → `react-bindings` → clients (← `motion-core`)/`server`) that must build in topological order, and the single-runtime-dependency rule on `@rtc/domain` needs enforcement at install time, not just code review.
+**Problem.** Twelve packages plus a `tests` workspace share a strict dependency graph (`domain` → `shared`/`ws-effects` → `client-core` → `react-bindings`/`solid-bindings` → clients (← `motion-core`)/`server`) that must build in topological order, and the single-runtime-dependency rule on `@rtc/domain` needs enforcement at install time, not just code review.
 
 **Choice.** pnpm workspaces (`pnpm-workspace.yaml`: `packages/*` + `tests`) for install/linking, with Turborepo (`turbo.json`) driving topological `build`/`typecheck`/`test` across the graph. pnpm's strict, non-hoisted `node_modules` is what makes "the only entry in `@rtc/domain/package.json` `dependencies` is `rxjs`" a real, install-time-enforced guarantee rather than a convention that a stray transitive import could quietly violate.
 
 **Alternatives rejected.** A single flat package (no workspace boundaries) would have made the "only `rxjs` in domain" rule unenforceable — anything importable anywhere is importable in domain. Nx was the natural workspace-tooling alternative to Turborepo; it wasn't adopted, and CLAUDE.md's requirement that Turborepo stay "framework-blind (task names + dependency graph only)" reflects a preference for the lighter of the two orchestrators available at the time this was set up.
 
-**Cost accepted.** Ten packages means ten `package.json`s, ten `tsconfig`s, and cross-package changes that ripple through the build graph in dependency order rather than landing in one file — more ceremony than a single-package repo for the sake of a graph the dependency rule can actually be enforced against.
+**Cost accepted.** Twelve packages means twelve `package.json`s, twelve `tsconfig`s, and cross-package changes that ripple through the build graph in dependency order rather than landing in one file — more ceremony than a single-package repo for the sake of a graph the dependency rule can actually be enforced against.
 
 ### 10.8 CSS Modules, with inline styles banned by lint
 
