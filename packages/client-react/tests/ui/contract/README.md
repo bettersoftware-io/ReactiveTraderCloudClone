@@ -7,8 +7,9 @@ colour or layout (that stays the visual tier's job).
 
 ## Layers
 
-- `specs/` — the tests. Mirror `src/ui/` (minus `ui/`) with component PascalCase
-  (`specs/fx/analytics/PnlValue.contract.spec.ts`). Import only
+- `specs/` (now `packages/ui-contract/src/specs/`, extracted alongside the
+  harness in Task 3) — the tests. Mirror `src/ui/` (minus `ui/`) with component
+  PascalCase (`specs/fx/analytics/PnlValue.contract.spec.ts`). Import only
   `@ui-contract/mount`, `@ui-contract/components` (tokens), and `@rtc/domain` types.
   **No React / testing-library imports.**
 - `@rtc/ui-contract` (`packages/ui-contract/src/shared/`) — the framework-neutral
@@ -64,8 +65,8 @@ Drive updates via the returned page object: `page.setProps({...})`,
    queries), and `setup.ts`.
 2. Point the vitest config's `setupFiles` at `solid/setup.ts`.
 
-`specs/`, and everything in `@rtc/ui-contract` (`components.ts` (tokens),
-`pages/**`, `harness/**`, `mount.ts`) are untouched. The first Solid run's
+Everything in `@rtc/ui-contract` (`specs/`, `components.ts` (tokens),
+`pages/**`, `harness/**`, `mount.ts`) is untouched. The first Solid run's
 failures are the behavioural-parity punch-list.
 
 ## Dual use: sociable unit and integration

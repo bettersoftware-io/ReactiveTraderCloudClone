@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import type { ColumnFilter } from "./filterState";
+import type { ColumnFilter } from "@rtc/client-core";
 
 import styles from "./SetFilter.module.css";
 

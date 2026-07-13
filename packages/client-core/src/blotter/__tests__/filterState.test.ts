@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-import { applyFilters, type ColumnFilter } from "./filterState";
+import { applyFilters, type ColumnFilter } from "../filterState";
 
 describe("applyFilters — no filters", () => {
   it("returns all trades when no column filter and empty quick filter", () => {

@@ -6,7 +6,7 @@ import {
   applySortToTrades,
   nextSortDirection,
   type SortState,
-} from "./columnSort";
+} from "../columnSort";
 
 describe("nextSortDirection", () => {
   it("starts a date/ID column descending on first click", () => {

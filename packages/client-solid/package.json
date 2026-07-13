@@ -1,0 +1,39 @@
+{
+  "name": "@rtc/client-solid",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "dev": "vite",
+    "clean": "(rm -rf dist .turbo *.tsbuildinfo reports 2>/dev/null || true)",
+    "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
+  },
+  "dependencies": {
+    "@fontsource/chakra-petch": "^5.2.7",
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/orbitron": "^5.2.8",
+    "@rtc/client-core": "workspace:*",
+    "@rtc/domain": "workspace:*",
+    "@rtc/motion-core": "workspace:*",
+    "@rtc/solid-bindings": "workspace:*",
+    "rxjs": "^7.8",
+    "solid-js": "^1.9.14"
+  },
+  "devDependencies": {
+    "@solidjs/testing-library": "^0.8.10",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@types/node": "^26.0.0",
+    "jsdom": "^29",
+    "vite": "^8",
+    "vite-plugin-solid": "^2.11.12",
+    "vitest": "^4"
+  }
+}

@@ -460,6 +460,32 @@ const GATES: Gate[] = [
       return checkNoUiTimers("../packages/client-react-native/src/ui/");
     },
   },
+  {
+    name: "34. No rxjs/@rx-state imports in client-solid src/ui (only the solid-bindings bridge may)",
+    pattern: 'from "rxjs"|@react-rxjs|@rx-state',
+    paths: ["../packages/client-solid/src/ui/"],
+    excludes: ["/node_modules/", ".test.", ".spec."],
+  },
+  {
+    name: "35. No localStorage in client-solid src/ui (persistence belongs behind PreferencesPort)",
+    pattern: "localStorage",
+    paths: ["../packages/client-solid/src/ui/"],
+    excludes: ["/node_modules/", ".test.", ".spec."],
+  },
+  {
+    name: "36. No fetch/import.meta.env in client-solid src/ui (transport/config belongs in the app layer)",
+    pattern: "fetch\\(|import\\.meta\\.env",
+    paths: ["../packages/client-solid/src/ui/"],
+    excludes: ["/node_modules/", ".test.", ".spec."],
+  },
+  {
+    name: "37. No setTimeout/setInterval anywhere in client-solid src/ui",
+    pattern: "",
+    paths: [],
+    customCheck: () => {
+      return checkNoUiTimers("../packages/client-solid/src/ui/");
+    },
+  },
 ];
 
 let failed = 0;

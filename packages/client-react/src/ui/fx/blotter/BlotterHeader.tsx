@@ -1,12 +1,12 @@
 import type { MouseEvent, ReactElement } from "react";
 import { useState } from "react";
 
+import type { ColumnFilter, SortState } from "@rtc/client-core";
+
 import type { ColumnDef } from "./blotterColumns";
 import { DateFilter } from "./columnFilter/DateFilter";
-import type { ColumnFilter } from "./columnFilter/filterState";
 import { NumberFilter } from "./columnFilter/NumberFilter";
 import { SetFilter } from "./columnFilter/SetFilter";
-import type { SortState } from "./columnSort";
 
 import styles from "./BlotterHeader.module.css";
 

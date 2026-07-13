@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "paths": { "#/*": ["./src/*"] }
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../domain" },
+    { "path": "../client-core" },
+    { "path": "../motion-core" },
+    { "path": "../solid-bindings" }
+  ]
+}

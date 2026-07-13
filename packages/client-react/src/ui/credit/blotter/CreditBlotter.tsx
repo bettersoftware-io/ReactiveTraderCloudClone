@@ -1,19 +1,19 @@
 import type { CSSProperties, ReactElement } from "react";
 import { useEffect, useState } from "react";
 
+import {
+  applyFilters,
+  applySort,
+  type ColumnFilter,
+  nextSortDirection,
+  type SortState,
+} from "@rtc/client-core";
 import { type CreditTrade, Direction } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { useCreditView } from "#/ui/credit/useCreditView";
 import { BlotterColgroup } from "#/ui/fx/blotter/BlotterColgroup";
 import { BlotterHeader } from "#/ui/fx/blotter/BlotterHeader";
-import type { ColumnFilter } from "#/ui/fx/blotter/columnFilter/filterState";
-import { applyFilters } from "#/ui/fx/blotter/columnFilter/filterState";
-import {
-  applySort,
-  nextSortDirection,
-  type SortState,
-} from "#/ui/fx/blotter/columnSort";
 import { exportToCsv } from "#/ui/fx/blotter/csvExport";
 
 import {

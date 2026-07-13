@@ -1,6 +1,13 @@
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
+import {
+  applyFilters,
+  applySortToTrades,
+  type ColumnFilter,
+  nextSortDirection,
+  type SortState,
+} from "@rtc/client-core";
 import type { Trade } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -11,12 +18,6 @@ import { BlotterColgroup } from "./BlotterColgroup";
 import { BlotterHeader } from "./BlotterHeader";
 import { BlotterRow } from "./BlotterRow";
 import { COLUMNS, formatFxCell } from "./blotterColumns";
-import { applyFilters, type ColumnFilter } from "./columnFilter/filterState";
-import {
-  applySortToTrades,
-  nextSortDirection,
-  type SortState,
-} from "./columnSort";
 import { exportFxToCsv } from "./csvExport";
 
 import styles from "./FxBlotter.module.css";
