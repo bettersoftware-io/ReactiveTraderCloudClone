@@ -4,16 +4,19 @@
 // network I/O, so we can read it once and return it for every request.
 //
 // Which prototype: pass a repo-relative path as the first CLI arg. Defaults to
-// the current web design (v4). Examples:
-//   node scripts/serve-design.mjs                                   # web v4
+// the current web design (v5). Examples:
+//   node scripts/serve-design.mjs                                   # web v5
 //   node scripts/serve-design.mjs "docs/design/mobile/v1/standalone/Reactive Trader Mobile.html"
+//
+// v5's standalone HTML is Git LFS-tracked, so a fresh clone needs `git lfs pull`
+// before this can serve real bytes (otherwise it would serve the LFS pointer).
 
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_HTML = "docs/design/web/v4/standalone/Reactive Trader.html";
+const DEFAULT_HTML = "docs/design/web/v5/standalone/Reactive Trader.html";
 
 const port = Number(process.env.PORT) || 8899;
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");

@@ -87,7 +87,7 @@ Two further packages exist **outside** the production dependency graph, as desig
 | Package | What it is | Runtime deps |
 |---|---|---|
 | `@rtc/client-prototype` | A readable React 19 re-implementation of the `docs/design/web/v2` standalone design prototype. Mock data via seeded random walks; no domain, no rxjs. `pnpm dev:proto` → port 5273. | `react`, `react-dom` only |
-| `docs/design/web/v4/standalone/` | Not a package -- a single self-contained ~950 KB HTML file (the canonical web design artifact, superseding `docs/design/web/v3/standalone/`). Served by `scripts/serve-design.mjs` (`pnpm dev:design` → port 8899). | none |
+| `docs/design/web/v5/standalone/` | Not a package -- a single self-contained ~14 MB HTML file (the canonical web design artifact, superseding `docs/design/web/v4/standalone/`; v5 base64-embeds boot audio + intro video, hence the size, and is Git LFS-tracked). Served by `scripts/serve-design.mjs` (`pnpm dev:design` → port 8899). | none |
 | `docs/design/mobile/v1/standalone/` | Not a package -- the self-contained mobile design prototype (the React Native UI/UX overhaul mockup). Served by `pnpm dev:design:mobile` → port 8899. | none |
 
 ### 2.3 Component Diagram -- Web Client
