@@ -1,0 +1,397 @@
+.engine {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
+  /* The dock's 10px inset (prototype-measured page padding) lives here —
+   * exactly once, at the root. It must NOT sit on .split: splits nest, so a
+   * per-split padding compounds with depth and insets the inner splits'
+   * panels deeper than their siblings. */
+  padding: 10px;
+}
+
+/* No gap of its own: the 7px drag handle IS the panel-to-panel separator
+ * (prototype-measured 7px gaps — a gap here would stack on top of the
+ * handle's 7px track and widen every separation to 15px+). Adjacent cells
+ * with NO handle between them (pinned/fixed neighbours, strip subtrees —
+ * see the engine's showHandle derivation) get the same 7px via the
+ * `.cell + .cell` fallback below instead. */
+.split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.split[data-dir="row"] {
+  flex-direction: row;
+}
+
+.split[data-dir="column"] {
+  flex-direction: column;
+}
+
+.cell {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  /* A pinned sibling always renders with flex-grow:0 (never contributes a
+   * --split-size), so a growing split can end up with a grow-factor SUM
+   * below 1 (e.g. the FX root split is [0.78 growing, 0 pinned]). Per the
+   * flexbox spec, free space is distributed as `own-factor / line-sum`, but
+   * when that sum is < 1 the growing item only consumes `own-factor` of the
+   * free space and leaves the rest unfilled — a real, observable browser
+   * behaviour (verified: a solo flex-grow:0.78 item in an 800px column only
+   * grows to 624px, not 800px), not a CSS authoring mistake here. Scaling by
+   * a large constant pushes the line's grow-factor sum comfortably above 1
+   * in every case while leaving the *ratio* between growing siblings (e.g.
+   * the 0.7/0.3 rates|analytics split, which has no pinned sibling and was
+   * already unaffected) unchanged, so it fully consumes the split's height
+   * with no dead band above the pinned blotter strip. */
+  flex-grow: calc(var(--split-size, 1) * 1000);
+  flex-shrink: 1;
+  flex-basis: 0;
+  position: relative;
+}
+
+/* Matches the owning split's own direction (the flex default is row, which
+ * is only right for a row split's cells). This decides which axis a strip
+ * panel's `.panel[data-strip="true"] { flex: 0 0 32px }` below shrinks
+ * along: cells in a row split stretch to the cell's full height and shrink
+ * to a narrow width (a "column child of a row split", PROTO's vertical
+ * stripBar); cells in a column split stretch to full width and shrink to a
+ * short height instead. Without this, every strip shrinks to a narrow
+ * column regardless of split direction, leaving a dead gap in a column
+ * split's wider cell. */
+.cell[data-dir="row"] {
+  flex-direction: row;
+}
+
+.cell[data-dir="column"] {
+  flex-direction: column;
+}
+
+/* 7px separation fallback for handle-less adjacencies. Handles render as
+ * sibling <hr> elements BETWEEN cells, so two cells are only ever direct
+ * DOM neighbours when the engine suppressed the handle (pinned/fixed
+ * neighbours, strip subtrees) — the adjacent-sibling selector is therefore
+ * self-neutralising in the handle-present case, and the margin matches the
+ * handle's own 7px track so every separation reads identically. Keyed on
+ * the owning split's dir (margins follow the split's main axis). */
+.split[data-dir="row"] > .cell + .cell {
+  margin-left: 7px;
+}
+
+.split[data-dir="column"] > .cell + .cell {
+  margin-top: 7px;
+}
+
+/* A cell whose entire subtree is strips (every panel leaf inside it is
+ * stripped — collapsed itself, or a sibling of the maximized panel further up
+ * the tree) shrinks to its strip's bar size instead of keeping its
+ * ratio-derived flex-grow. Without this, only the innermost
+ * `.panel[data-strip="true"]` shrank to its 32px strip while THIS cell kept
+ * its full ratio-derived size around it, leaving a dead background gap and
+ * starving growing siblings of the space the strip gave up (the
+ * maximize/collapse regression this rule fixes). Computed recursively by
+ * InhouseLayoutEngine's isStripSubtree — a nested split (e.g. the FX right
+ * rail's analytics/positions column) only counts as all-strip when every one
+ * of its own children does too. NOTE: the [data-strip-cell][data-dir] rules
+ * out-rank the pinned/fixed rules below on specificity, so on the (currently
+ * hypothetical) cell that is both, the strip treatment wins — strip-cell and
+ * initial/fixed cells are mutually exclusive by construction today.
+ *
+ * The bases are DEFINITE lengths, not `auto`: `flex-basis: 0|Npx → auto` is
+ * not interpolable, so a hugging basis made the collapse/restore glide (the
+ * .cell transition below) snap instead of animating — worst on the initialPx
+ * rails (360px → auto). The pixel values are exactly what `auto` used to
+ * resolve to, keyed off the owning split's axis (the cell's own data-dir; a
+ * non-fill strip cell's reclaim axis always matches it): a strip reclaiming
+ * along a column axis hugs the horizontal bar's 32px height
+ * (`.panel[data-strip="true"]` below); one reclaiming along a row axis hugs
+ * the vertical bar's 38px width — including a fully-stripped nested column
+ * whose stacked vertical strips are all 38px wide. Resting geometry is
+ * therefore unchanged; only the transition's start/end become animatable. */
+.cell[data-strip-cell="true"][data-dir="column"] {
+  flex: 0 0 32px;
+}
+
+.cell[data-strip-cell="true"][data-dir="row"] {
+  flex: 0 0 38px;
+}
+
+/* A strip cell whose strips run PERPENDICULAR to the owning split's axis —
+ * an inherited orientation: its whole subtree collapsed sideways along an
+ * ANCESTOR split's axis (e.g. the analytics/positions column stripped by a
+ * row-sibling's maximize). Along its own split's main axis it shares space
+ * instead of hugging, so multiple vertical strips stack down the freed
+ * full-height rail (PROTO's collapsedStrip column). Must stay AFTER the
+ * dir-keyed strip bases above: same specificity, and a fill cell matches a
+ * dir-keyed rule too, so source order is what lets fill win. */
+.cell[data-strip-cell="true"][data-strip-fill="true"] {
+  flex: 1 1 auto;
+}
+
+/* A pinned cell takes content height only and never grows. */
+.cell[data-pinned-cell="true"] {
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: auto;
+}
+
+/* A fixed-px cell (PROTO's 360px FX aside): exact basis, never grows/shrinks. */
+.cell[data-fixed-cell="true"] {
+  flex: 0 0 var(--split-fixed);
+}
+
+/* A design-value initial cell (initialPx — PROTO's 360/330/290px default
+ * rail widths): exact basis like fixedPx, but the resize handle stays. The
+ * engine drops this state (falling back to ratio/strip sizing) while a
+ * panel is maximized or the cell's subtree is stripped, and the first drag
+ * converts the split to plain fractions for good. */
+.cell[data-initial-cell="true"] {
+  flex: 0 0 var(--split-fixed);
+}
+
+/* Duplicates panTrans's glide onto `.cell`: the geometry that actually
+ * reclaims on strip/maximize is this CELL's flex-grow (the rule above drops
+ * its ratio-derived grow factor to 0) — transitioning only `.panel` (below)
+ * animates the panel's own 32px shrink but not the reclaim of the cell
+ * around it, so growing siblings would snap to their new size instantly.
+ * Unconditional on `.cell` would also retarget on every `--split-size` update
+ * during an interactive resize drag (the same flex-grow property), visibly
+ * lagging behind the pointer — SplitNode's pointer handlers set
+ * `data-dragging` on the split imperatively (not via React state, so a
+ * mid-drag re-render can't clobber it) for exactly the drag's duration, and
+ * the rule below disables the transition while it's set. */
+@media (prefers-reduced-motion: no-preference) {
+  .cell {
+    transition:
+      flex-grow 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      flex-basis 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .split[data-dragging="true"] .cell {
+    transition: none;
+  }
+}
+
+/* Ported from client-prototype's SplitHandle (7px track, 2x30px centered
+ * grip bar) — the track itself stays transparent; only the grip bar reads.
+ * The bar is an ::after (not a nested element) because the handle stays an
+ * `<hr>`, which has no content model for a real child. */
+.handle {
+  flex: 0 0 7px;
+  align-self: stretch;
+  position: relative;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.handle[data-orientation="horizontal"] {
+  cursor: row-resize;
+}
+
+.handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.handle[data-orientation="vertical"]::after {
+  width: 2px;
+  height: 30px;
+}
+
+.handle[data-orientation="horizontal"]::after {
+  width: 30px;
+  height: 2px;
+}
+
+.handle:hover::after,
+.handle:active::after {
+  background: var(--border-strong);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+  overflow: hidden;
+}
+
+/* Strip sizing follows the strip's OWN orientation (data-strip-orientation,
+ * stamped from the reclaim axis — the nearest non-stripped ancestor split's
+ * dir), not the wrapping cell's flex-direction: a horizontal strip is a
+ * short full-width bar; a vertical one is a narrow full-height column. */
+.panel[data-strip="true"] {
+  /* The strip's 32/38px is its OUTER size (1px borders inside), matching the
+   * definite `.cell[data-strip-cell]` bases above. The app's global reset is
+   * border-box already; declaring it here keeps a strip's bar identical in
+   * harnesses that mount components without that reset (the component-level
+   * visual tiers), instead of overflowing its cell by the border width. */
+  box-sizing: border-box;
+  flex: 0 0 32px;
+}
+
+/* Vertical strip (PROTO FxScreen `.collapsedStrip`/`.stripBtn`, 38px-wide
+ * rail): fixed width, and flex 1 1 auto along the wrapping cell's axis so
+ * multiple vertical strips stack down — and share — the full-height rail
+ * (their cells release space via `.cell[data-strip-fill]` above). */
+.panel[data-strip="true"][data-strip-orientation="vertical"] {
+  flex: 1 1 auto;
+  width: 38px;
+}
+
+.panel[data-maximized="true"] {
+  flex: 1;
+}
+
+/* PROTO's `panTrans` (dc.html panelBase): flex-grow/flex-basis/width/height
+ * all glide at 0.34s on the same easing when a panel enters/leaves a strip
+ * or becomes maximized. Scoped to `.panel` only (not `.cell`, whose
+ * flex-grow tracks `--split-size` during an interactive resize drag — an
+ * unconditional transition there would make the split visibly lag behind
+ * the pointer). Gated on `prefers-reduced-motion` per the interfaces doc. */
+@media (prefers-reduced-motion: no-preference) {
+  .panel {
+    transition:
+      flex-grow 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      flex-basis 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      width 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+      height 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* PROTO Panel.module.css `.head`: an exact 38px chrome strip — vertical
+ * sizing lives HERE (min-height, zero vertical padding), not on the tabs or
+ * title, which instead stretch to fill it so their 2px accent underline sits
+ * flush on the head's bottom border. */
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 0 8px;
+  background: var(--panel-head);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Icon-less default title — harmonizes with the FX panels' registered heads
+ * (PanelHeadTabs.module.css's `.headTab[data-active="true"]`, itself ported
+ * from PROTO's tabStyleObj): every panel without its own head slot (Credit,
+ * Equities, Admin, Credit Blotter — until their own restructures) now reads
+ * as the same single accent tab instead of a plain label. There is only ever
+ * one "tab" here, so it always renders active; the declarations are
+ * duplicated rather than shared via CSS Modules `composes` (no precedent for
+ * that feature elsewhere in this codebase). */
+.panelTitle {
+  /* Stretches to the head's full 38px (PROTO `.label`): zero vertical padding
+   * + inline-flex centering keep the text mid-head while the accent
+   * border-bottom lands on the head's bottom edge. */
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 15px; /* x86 font-metric determinism for visual golden stability */
+  letter-spacing: 0.06em;
+  color: var(--accent-primary);
+  background: var(--panel);
+  border-bottom: 2px solid var(--accent-primary);
+  cursor: default;
+}
+
+.panelHeadContent {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  /* Fills the 38px head vertically so registered head tabs (which themselves
+   * stretch — see PanelHeadTabs.module.css `.headTabs`/`.headTab`) can plant
+   * their accent underline on the head's bottom border, exactly like the
+   * default `.panelTitle` above. */
+  align-self: stretch;
+}
+
+.panelControls {
+  display: flex;
+  gap: 4px;
+}
+
+/* Ported from client-prototype's Panel.module.css `.maxBtn` (dc.html's
+ * `mxBtn`): a flat dim glyph, not a bordered chip — shared by the collapse
+ * ("—") and maximize (⛶/⧉) controls, which is why the hover accent below
+ * applies to both. */
+.panelControl {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 6px;
+}
+
+.panelControl:hover {
+  color: var(--accent-primary);
+}
+
+.panelBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* PROTO's stripBar (dc.html `stripBar`): the entire strip is one clickable
+ * restore control — no separate header/body while stripped. */
+.stripBar {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  padding: 0;
+  background: var(--panel-head);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.stripBar[data-orientation="vertical"] {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.stripGlyph {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.stripLabel {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}

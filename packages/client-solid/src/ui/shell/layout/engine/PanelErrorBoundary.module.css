@@ -1,0 +1,26 @@
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  min-height: 120px;
+  padding: 14px;
+  text-align: center;
+}
+
+.errorLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0.1em;
+  color: var(--accent-negative);
+}
+
+.errorTitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--text-muted);
+}

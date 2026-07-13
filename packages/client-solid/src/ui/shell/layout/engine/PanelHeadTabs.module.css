@@ -1,0 +1,87 @@
+.headTabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  /* Fills the engine's 38px `.panelHeader` vertically (via the stretched
+   * `.panelHeadContent` wrapper) so `.headTab` below can itself stretch;
+   * chips/counts stay vertically centered by the align-items above. */
+  align-self: stretch;
+}
+
+.headTab {
+  /* Stretches to the head's full 38px (PROTO tab chrome): zero vertical
+   * padding + inline-flex centering keep the label mid-head while the active
+   * tab's 2px accent border-bottom lands on the head's bottom edge. */
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 15px; /* x86 font-metric determinism for visual golden stability */
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.headTab[data-active="true"] {
+  color: var(--accent-primary);
+  background: var(--panel);
+  border-bottom-color: var(--accent-primary);
+}
+
+.headSpacer {
+  flex: 1;
+}
+
+.headChip {
+  padding: 4px 11px;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  margin-right: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+}
+
+.headChip[data-active="true"] {
+  color: var(--accent-primary);
+  background: var(--chip);
+  border-color: var(--border-strong);
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+/* CSV export chip (PROTO L478) — always accent-colored, unlike .headChip's
+ * toggle-driven data-active state; it triggers an action, not a mode. */
+.csvChip {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  /* PROTO wraps count/filter/CSV in a gap:10px flex row; with the shared
+   * .headTabs 2px gap this margin reproduces the 10px filter→CSV spacing. */
+  margin-left: 8px;
+  margin-right: 4px;
+  color: var(--accent-primary);
+  background: var(--chip);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+}
