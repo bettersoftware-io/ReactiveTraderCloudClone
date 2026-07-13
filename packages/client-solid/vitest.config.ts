@@ -17,7 +17,11 @@ export default defineConfig({
     // between tests (a `pending-panel`/`header` double-render collision is
     // exactly what an unregistered cleanup produces).
     globals: true,
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: [
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+      "tests/parity/**/*.test.ts",
+    ],
     // Node 26 ships a native (experimental, flag-gated) localStorage/
     // sessionStorage accessor pair that shadows jsdom's own Storage inside
     // vitest — see the shim's header comment for the full story.
