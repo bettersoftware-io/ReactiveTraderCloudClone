@@ -388,6 +388,12 @@ importers:
         specifier: ^1.9.14
         version: 1.9.14
     devDependencies:
+      '@rtc/ui-contract':
+        specifier: workspace:*
+        version: link:../ui-contract
+      '@rx-state/core':
+        specifier: ^0.1.4
+        version: 0.1.4(rxjs@7.8.2)
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.14)
@@ -397,6 +403,9 @@ importers:
       '@types/node':
         specifier: ^26.0.0
         version: 26.1.0
+      '@vitest/ui':
+        specifier: ^4.1.8
+        version: 4.1.9(vitest@4.1.9)
       jsdom:
         specifier: ^29
         version: 29.1.1

@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "paths": {
+      "@ui-contract": ["../ui-contract/src/shared"],
+      "@ui-contract/*": ["../ui-contract/src/shared/*"],
+      "#/*": ["./src/*"],
+      "#tests/*": ["./tests/*"]
+    }
+  },
+  "include": ["src", "tests/ui/contract"],
+  "references": [
+    { "path": "../domain" },
+    { "path": "../client-core" },
+    { "path": "../solid-bindings" },
+    { "path": "../ui-contract" }
+  ]
+}
