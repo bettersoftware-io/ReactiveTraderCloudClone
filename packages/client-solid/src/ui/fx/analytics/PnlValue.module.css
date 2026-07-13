@@ -1,0 +1,19 @@
+.value {
+  margin: 3px 0 2px;
+}
+
+.value[data-sign="pos"] {
+  color: var(--accent-positive);
+}
+
+.value[data-sign="neg"] {
+  color: var(--accent-negative);
+}
+
+.amount {
+  font-family: var(--font-logo);
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 18px currentColor;
+}

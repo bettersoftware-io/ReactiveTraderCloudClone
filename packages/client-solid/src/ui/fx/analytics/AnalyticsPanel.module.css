@@ -1,0 +1,43 @@
+.loading {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* No --panel fill here: the layout engine already paints
+ * `background: var(--panel)` + blur on every panel it hosts
+ * (InhouseLayoutEngine.module.css `.panel`); repeating it inside
+ * double-filled the translucent skins (PROTO's analytics body is
+ * transparent inside its panel chrome). */
+.panel {
+  border: 1px solid var(--border);
+  box-shadow: var(--glow);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 280px;
+}
+
+/* Parity round-2 item 22a: the flat terminal skin's --panel is opaque
+ * #13161c, so the chart backdrop read FLAT where the prototype's
+ * transparent body shows the shell bg + ambient as a subtle grey gradient.
+ * Paint the skin's --tile gradient (token-driven; terminal3d's --panel is
+ * already a gradient, and the translucent skins show the ambient through
+ * the engine fill, so only flat terminal needs the gate). */
+:root[data-skin="terminal"] .panel {
+  background: var(--tile);
+}
+
+.sectionLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
