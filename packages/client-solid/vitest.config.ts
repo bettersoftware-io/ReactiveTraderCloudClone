@@ -10,6 +10,13 @@ export default defineConfig({
   plugins: [solid()],
   test: {
     environment: "jsdom",
+    // @solidjs/testing-library's `render()` only auto-registers its
+    // afterEach(cleanup) when a global `afterEach` exists at import time
+    // (see its dist/index.js) — matches solid-bindings' vitest.config.ts, so
+    // multiple `render()` calls across `it`s in one file don't leak DOM
+    // between tests (a `pending-panel`/`header` double-render collision is
+    // exactly what an unregistered cleanup produces).
+    globals: true,
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     // Node 26 ships a native (experimental, flag-gated) localStorage/
     // sessionStorage accessor pair that shadows jsdom's own Storage inside
