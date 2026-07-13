@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./toSignal": {
+      "types": "./dist/toSignal.d.ts",
+      "import": "./dist/toSignal.js"
     }
   },
   "imports": {

@@ -1,0 +1,136 @@
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+}
+
+.priceBox {
+  flex: 1;
+  cursor: pointer;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  padding: 7px 11px;
+  transition: all 0.15s;
+  text-align: left;
+  color: var(--text-primary);
+}
+
+.priceBox[data-side="ask"] {
+  text-align: right;
+}
+
+.priceBox:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  box-shadow: var(--glow);
+}
+
+.priceBox:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.boxLabel {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  margin-bottom: 3px;
+}
+
+.priceBox[data-side="bid"] .boxLabel {
+  color: var(--accent-negative);
+}
+
+.priceBox[data-side="ask"] .boxLabel {
+  color: var(--accent-positive);
+}
+
+.value {
+  display: flex;
+  align-items: baseline;
+  font-family: var(--font-mono);
+}
+
+.priceBox[data-side="ask"] .value {
+  justify-content: flex-end;
+}
+
+.big {
+  font-size: 15px;
+}
+
+.frac {
+  font-size: 12px;
+  align-self: flex-start;
+}
+
+.pips {
+  position: relative;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 0.9;
+  border-radius: 3px;
+}
+
+.pips[data-movement="up"] {
+  color: var(--accent-positive);
+}
+
+.pips[data-movement="down"] {
+  color: var(--accent-negative);
+}
+
+/* Tick flash = the prototype's filled big-figure block, held for 650ms then
+ * released back to the steady state over 250ms (PROTO source L1266-1281).
+ * Rendered as an overlay that mirrors the digits (content: attr(data-pips))
+ * in the inverted colour and fades as ONE opacity layer: animating the span's
+ * own background/color/padding cannot run on the compositor (Chrome ticks it
+ * on the main thread, forcing style + layout every frame — measured at ~50k
+ * invalidations/28s under continuous streaming), while an opacity-only
+ * animation is compositor-offloaded and free for the main thread. Two
+ * identical keyframe sets are kept deliberately: a direction change must swap
+ * the animation NAME or the flash would not restart on up→down ticks. */
+.pips[data-anim]::before {
+  /* The trailing / "" is the content alt-text: it hides the mirrored digits
+   * from the accessibility tree so buttons don't announce the pips twice. */
+  content: attr(data-pips) / "";
+  position: absolute;
+  inset: 0 -2px;
+  padding: 0 2px;
+  border-radius: 3px;
+  color: var(--bg-primary);
+  opacity: 0;
+  will-change: opacity;
+}
+
+.pips[data-anim="tickUp"]::before {
+  background: var(--accent-positive);
+  animation: v2TickUp 0.9s ease-out;
+}
+
+.pips[data-anim="tickDown"]::before {
+  background: var(--accent-negative);
+  animation: v2TickDown 0.9s ease-out;
+}
+
+@keyframes v2TickUp {
+  0%,
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes v2TickDown {
+  0%,
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

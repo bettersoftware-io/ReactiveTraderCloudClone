@@ -1,0 +1,61 @@
+.headerCell {
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: left;
+  border-bottom: 1px solid var(--border-primary);
+  white-space: nowrap;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  background: var(--panel-head);
+}
+
+.sortIndicator {
+  margin-left: 2px;
+}
+
+.filterDot {
+  color: var(--accent-primary);
+  margin-left: 2px;
+}
+
+/* PROTO Blotter/TradesBlotter chrome parity: the header stays plain dim
+ * uppercase text by default (only the active sort column carries a glyph,
+ * via .sortIndicator above) — the filter caret is a real-app-only affordance
+ * layered on top of that, so it stays out of the resting look and reveals
+ * only on hover/focus, matching the "only the active column shows a glyph"
+ * intent without dropping the per-column filter feature. */
+.filterToggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  margin-left: 4px;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.headerCell:hover .filterToggle,
+.headerCell:focus-within .filterToggle {
+  opacity: 1;
+}
+
+.filterPanel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  min-width: 160px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

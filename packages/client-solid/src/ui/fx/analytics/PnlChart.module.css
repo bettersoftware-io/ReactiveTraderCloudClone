@@ -1,0 +1,21 @@
+.chart {
+  display: block;
+}
+
+/* Gradient area fill: currentColor drives the <linearGradient> stop-color. */
+.area[data-sign="positive"] {
+  color: var(--accent-positive);
+}
+
+.area[data-sign="negative"] {
+  color: var(--accent-negative);
+}
+
+/* Line glow matches the sign colour set on the <path> stroke. */
+.line[data-sign="positive"] {
+  filter: drop-shadow(0 0 5px var(--accent-positive));
+}
+
+.line[data-sign="negative"] {
+  filter: drop-shadow(0 0 5px var(--accent-negative));
+}

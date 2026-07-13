@@ -1,0 +1,56 @@
+.tile {
+  position: relative;
+  background: var(--tile);
+  border: 1px solid var(--border-primary);
+  border-radius: 5px;
+  padding: 13px 14px 11px;
+  overflow: hidden;
+  box-shadow: var(--tile-shadow);
+  opacity: 1;
+  transition: opacity 0.3s;
+  min-width: 280px;
+}
+
+.tile[data-loading="true"] {
+  opacity: 0.5;
+}
+
+.tile[data-busy="true"] {
+  border-color: var(--border-strong);
+}
+
+/* Trade-executed glow — PROTO global.css bookPulse, ported onto the tile
+ * ROOT (the confirmation overlay's own shadow is clipped by this element's
+ * overflow:hidden; the root's box-shadow is not). data-booked cycles back to
+ * false when the Done confirmation dismisses, so the animation replays on
+ * the next successful trade. */
+@media (prefers-reduced-motion: no-preference) {
+  .tile[data-booked="true"] {
+    animation: bookPulse 1s ease;
+  }
+}
+
+@keyframes bookPulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent-primary);
+  }
+
+  60% {
+    box-shadow:
+      0 0 0 3px transparent,
+      0 0 34px var(--accent-primary);
+  }
+
+  100% {
+    box-shadow: none;
+  }
+}
+
+.loadingPlaceholder {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}

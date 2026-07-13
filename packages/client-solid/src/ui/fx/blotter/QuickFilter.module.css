@@ -1,0 +1,16 @@
+/* Styled like the tile notional field — TileNotional.module.css .input. */
+.input {
+  padding: 5px 9px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text-primary);
+  outline: none;
+  width: 200px;
+}
+
+.input:focus {
+  border-color: var(--border-strong);
+}

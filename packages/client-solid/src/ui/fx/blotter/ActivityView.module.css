@@ -1,0 +1,65 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 64px 56px 1fr;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 17px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.time {
+  color: var(--text-muted);
+}
+
+.tag {
+  display: inline-block;
+  width: fit-content;
+  padding: 1px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--border-primary);
+  background: var(--chip);
+  font-size: 10px;
+  line-height: 15px;
+  letter-spacing: 0.06em;
+  color: var(--accent-2);
+}
+
+.row[data-tag="reject"] .tag {
+  color: var(--accent-negative);
+}
+
+.message {
+  color: var(--text-secondary);
+}
+
+.direction {
+  font-weight: 600;
+}
+
+.direction[data-direction="buy"] {
+  color: var(--accent-positive);
+}
+
+.direction[data-direction="sell"] {
+  color: var(--accent-negative);
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-muted);
+}
