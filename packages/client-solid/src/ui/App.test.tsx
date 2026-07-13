@@ -35,7 +35,7 @@ describe("App (shell chrome)", () => {
     expect(label?.getAttribute("data-status")).toBe("CONNECTED");
   });
 
-  it("renders the header nav, status bar, and the live FX layout engine with placeholder panel bodies", () => {
+  it("renders the header nav, status bar, and the live FX layout engine with real FX panel bodies", () => {
     render(() => {
       return (
         <AppRoot>
@@ -48,15 +48,20 @@ describe("App (shell chrome)", () => {
     expect(screen.getByTestId("tab-fx").getAttribute("data-active")).toBe(
       "true",
     );
-    // The FX tab is live (Task 10): the real layout-engine grid renders, with
-    // all four FX panels present — their BODIES are still `pending-panel`
-    // placeholders (one per panel) until Task 13 ports the real FX subtree.
+    // The FX tab is fully live (Task 13): the layout-engine grid renders with
+    // all four FX panels present, and their bodies are the REAL FX subtree
+    // (liveRates/analytics/positions/blotter) — no more `pending-panel`
+    // placeholders anywhere in the FX tab.
     expect(screen.getByTestId("layout-engine")).toBeTruthy();
     expect(screen.getByTestId("panel-fx-rates")).toBeTruthy();
     expect(screen.getByTestId("panel-fx-analytics")).toBeTruthy();
     expect(screen.getByTestId("panel-fx-positions")).toBeTruthy();
     expect(screen.getByTestId("panel-fx-blotter")).toBeTruthy();
-    expect(screen.getAllByTestId("pending-panel")).toHaveLength(4);
+    expect(screen.queryAllByTestId("pending-panel")).toHaveLength(0);
+    // Spot-check one stable element per panel body — these render
+    // unconditionally regardless of how much simulator data has arrived yet.
+    expect(screen.getByTestId("currency-filter")).toBeTruthy();
+    expect(screen.getByTestId("blotter-table")).toBeTruthy();
   });
 
   it("switches to a not-yet-ported tab and shows the plain placeholder instead of the layout engine", () => {
