@@ -18,17 +18,14 @@ const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
 // node_modules symlink) sidesteps that exclude entirely.
 const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 
-// Domains not yet ported to @rtc/client-solid (Task 12+ lands FX, then
-// Credit/Equities/Admin) — excluded so the included set (shell + layout)
-// stays 100% green. Re-narrow as each domain's components land.
+// Domains not yet ported to @rtc/client-solid (Task 13 landed FX + the
+// StaleIndicator it depends on; Tasks 14-16 land Credit/Equities/Admin) —
+// excluded so the included set (shell + layout + FX) stays 100% green.
+// Re-narrow as each remaining domain's components land.
 const notYetPortedSpecs = [
-  `${specsDir}/fx/**/*.contract.spec.ts`,
   `${specsDir}/credit/**/*.contract.spec.ts`,
   `${specsDir}/equities/**/*.contract.spec.ts`,
   `${specsDir}/admin/**/*.contract.spec.ts`,
-  // StaleIndicator (src/ui/shell/stale) hasn't been ported — every other
-  // shell + layout component has.
-  `${specsDir}/shell/stale/**/*.contract.spec.ts`,
 ];
 
 export default defineConfig({

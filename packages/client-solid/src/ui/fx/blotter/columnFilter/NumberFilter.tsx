@@ -64,6 +64,14 @@ export function NumberFilter<TRow>(
         type="number"
         data-testid="number-filter-value"
         value={value()}
+        // React's onChange fires per keystroke (native `input` event);
+        // Solid's onChange maps to native `change` only (fires on blur) —
+        // both wired here so real typing (`input`) and a programmatic
+        // `change` dispatch both narrow live (wiring both is idempotent,
+        // see TileNotional's identical comment).
+        onInput={(e: InputChangeEvent): void => {
+          setValue(e.currentTarget.value);
+        }}
         onChange={(e: InputChangeEvent): void => {
           setValue(e.currentTarget.value);
         }}
@@ -75,6 +83,9 @@ export function NumberFilter<TRow>(
           type="number"
           data-testid="number-filter-value-to"
           value={valueTo()}
+          onInput={(e: InputChangeEvent): void => {
+            setValueTo(e.currentTarget.value);
+          }}
           onChange={(e: InputChangeEvent): void => {
             setValueTo(e.currentTarget.value);
           }}

@@ -55,6 +55,14 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
         type="date"
         data-testid="date-filter-value"
         value={value()}
+        // Native date inputs report edits via `change` (browsers don't fire
+        // `input` reliably per keystroke for them, and the contract spec's
+        // DateFilterPage drives them with `fireEvent.change` for exactly
+        // that reason) — `onInput` wired too for real-typing UX parity;
+        // wiring both is idempotent (see TileNotional's identical comment).
+        onInput={(e: InputChangeEvent): void => {
+          setValue(e.currentTarget.value);
+        }}
         onChange={(e: InputChangeEvent): void => {
           setValue(e.currentTarget.value);
         }}
@@ -65,6 +73,9 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
           type="date"
           data-testid="date-filter-value-to"
           value={valueTo()}
+          onInput={(e: InputChangeEvent): void => {
+            setValueTo(e.currentTarget.value);
+          }}
           onChange={(e: InputChangeEvent): void => {
             setValueTo(e.currentTarget.value);
           }}

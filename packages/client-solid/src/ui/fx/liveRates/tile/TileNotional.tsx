@@ -8,7 +8,16 @@ import styles from "./TileNotional.module.css";
 export function TileNotional(props: TileNotionalProps): JSX.Element {
   let inputRef!: HTMLInputElement;
 
-  function handleChange(e: InputChangeEvent): void {
+  // React's onChange fires on every keystroke via the native `input` event
+  // (real typing) but its synthetic event system also normalizes a plain
+  // native `change` event to the same handler (the contract spec's
+  // `changeInput` helper fires `change` directly, not `input`, to drive this
+  // deterministically) — Solid has no such normalization, so both native
+  // events are wired to the same handler here to cover real typing AND the
+  // test double's programmatic `change` dispatch. Wiring both is idempotent:
+  // a later `change` firing after `input` already applied the same value is
+  // a no-op.
+  function handleInput(e: InputChangeEvent): void {
     props.notional.change(e.currentTarget.value);
   }
 
@@ -33,7 +42,8 @@ export function TileNotional(props: TileNotionalProps): JSX.Element {
         <input
           ref={inputRef}
           value={props.notional.state().displayValue}
-          onChange={handleChange}
+          onInput={handleInput}
+          onChange={handleInput}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
           disabled={props.disabled}
