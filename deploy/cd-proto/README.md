@@ -7,7 +7,7 @@ each behind a shared password:
 
 | Target   | Vercel project              | URL                                          | Default prototype                                    |
 | -------- | --------------------------- | -------------------------------------------- | ---------------------------------------------------- |
-| `web`    | `rtc-clone-web-cd-proto`    | https://rtc-clone-web-cd-proto.vercel.app    | `docs/design/web/v4/standalone/Reactive Trader.html` |
+| `web`    | `rtc-clone-web-cd-proto`    | https://rtc-clone-web-cd-proto.vercel.app    | `docs/design/web/v5/standalone/Reactive Trader.html` |
 | `mobile` | `rtc-clone-mobile-cd-proto` | https://rtc-clone-mobile-cd-proto.vercel.app | `docs/design/mobile/v1/standalone/Reactive Trader Mobile.html` |
 
 These are the *design mockups*. The readable **React port** (`@rtc/client-prototype`)

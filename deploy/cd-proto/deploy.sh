@@ -7,9 +7,13 @@
 #
 #   ./deploy/cd-proto/deploy.sh [PATH_TO_STANDALONE_HTML]
 #
-# PATH_TO_STANDALONE_HTML defaults to the current web design (v4). Pass another
+# PATH_TO_STANDALONE_HTML defaults to the current web design (v5). Pass another
 # path to ship it instead, e.g.:
-#   ./deploy/cd-proto/deploy.sh "docs/design/web/v3/standalone/Reactive Trader.html"
+#   ./deploy/cd-proto/deploy.sh "docs/design/web/v4/standalone/Reactive Trader.html"
+#
+# v5's standalone HTML is Git LFS-tracked, so the checkout must have the real
+# bytes (the CI workflow sets `lfs: true`; locally, run `git lfs pull` first) —
+# otherwise the LFS pointer gets deployed instead of the page.
 #
 # To ship the MOBILE prototype, also point VERCEL_PROJECT_ID + CD_PROTO_ALIAS at
 # the mobile project (the GitHub Action does this for you via its `target` input):
@@ -21,7 +25,7 @@
 # committed — so this is the single source of truth for both local runs and the
 # Deploy Claude Design Prototype GitHub Action, and the strict monorepo linters
 # never see a stray middleware.ts / package.json. The HTML is copied, never
-# committed (it is an 835 KB duplicate of the standalone).
+# committed (it is a duplicate of the standalone — ~14 MB for web v5).
 #
 # Auth/targeting:
 #   - Project is selected via VERCEL_ORG_ID + VERCEL_PROJECT_ID. In CI the
@@ -41,7 +45,7 @@ set -euo pipefail
 export VERCEL_ORG_ID VERCEL_PROJECT_ID
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
-SRC="${1:-docs/design/web/v4/standalone/Reactive Trader.html}"
+SRC="${1:-docs/design/web/v5/standalone/Reactive Trader.html}"
 case "$SRC" in
   /*) ABS="$SRC" ;;
   *)  ABS="$REPO_ROOT/$SRC" ;;
