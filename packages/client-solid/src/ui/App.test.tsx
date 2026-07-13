@@ -35,7 +35,7 @@ describe("App (shell chrome)", () => {
     expect(label?.getAttribute("data-status")).toBe("CONNECTED");
   });
 
-  it("renders the header nav, status bar, and a placeholder for the not-yet-ported workspace", () => {
+  it("renders the header nav, status bar, and the live FX layout engine with placeholder panel bodies", () => {
     render(() => {
       return (
         <AppRoot>
@@ -48,6 +48,32 @@ describe("App (shell chrome)", () => {
     expect(screen.getByTestId("tab-fx").getAttribute("data-active")).toBe(
       "true",
     );
-    expect(screen.getByTestId("pending-panel")).toBeTruthy();
+    // The FX tab is live (Task 10): the real layout-engine grid renders, with
+    // all four FX panels present — their BODIES are still `pending-panel`
+    // placeholders (one per panel) until Task 13 ports the real FX subtree.
+    expect(screen.getByTestId("layout-engine")).toBeTruthy();
+    expect(screen.getByTestId("panel-fx-rates")).toBeTruthy();
+    expect(screen.getByTestId("panel-fx-analytics")).toBeTruthy();
+    expect(screen.getByTestId("panel-fx-positions")).toBeTruthy();
+    expect(screen.getByTestId("panel-fx-blotter")).toBeTruthy();
+    expect(screen.getAllByTestId("pending-panel")).toHaveLength(4);
+  });
+
+  it("switches to a not-yet-ported tab and shows the plain placeholder instead of the layout engine", () => {
+    render(() => {
+      return (
+        <AppRoot>
+          <App />
+        </AppRoot>
+      );
+    });
+
+    screen.getByTestId("tab-credit").click();
+
+    expect(screen.getByTestId("tab-credit").getAttribute("data-active")).toBe(
+      "true",
+    );
+    expect(screen.queryByTestId("layout-engine")).toBeNull();
+    expect(screen.getAllByTestId("pending-panel")).toHaveLength(1);
   });
 });
