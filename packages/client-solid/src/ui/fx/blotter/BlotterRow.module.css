@@ -1,0 +1,62 @@
+.row {
+  background-color: transparent;
+  color: var(--text-primary);
+}
+
+.row[data-hovered="true"] {
+  background: var(--chip);
+}
+
+/* New-row flash — Phase 3 HUD reskin: calm entrance via hudRowIn.
+ * The 3 s hold is still owned by createRowHighlightMachine (HIGHLIGHT_MS=3000),
+ * which removes data-highlight after the keyframe completes; only the look changes. */
+@keyframes hudRowIn {
+  0% {
+    background-color: var(--accent-2);
+    opacity: 0;
+  }
+  100% {
+    background-color: transparent;
+    opacity: 1;
+  }
+}
+
+.row[data-highlight="true"] {
+  animation: hudRowIn 0.6s ease-out;
+}
+
+/* PROTO Blotter/BlotterRow parity: rejected trades are a slightly muted row
+ * (no line-through — the earlier whole-row strike-through read as "deleted"
+ * rather than "declined"), with only the status cell recoloured red below. */
+.row[data-state="rejected"] {
+  color: var(--text-muted);
+}
+
+/* Status is the 2nd column (blotterColumns.ts COLUMNS[1]) — colour just that
+ * cell by the actual trade status (data-status = lowercased TradeStatus).
+ * Pending gets the warning accent (matching the RN client's amber Pending
+ * treatment); Rejected gets the negative accent, overriding the muted row
+ * color above via the extra nth-child specificity. */
+.row[data-status="done"] .cell:nth-child(2) {
+  color: var(--accent-positive);
+}
+
+.row[data-status="pending"] .cell:nth-child(2) {
+  color: var(--accent-aware);
+}
+
+.row[data-status="rejected"] .cell:nth-child(2) {
+  color: var(--accent-negative);
+}
+
+.cell {
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+  /* Under table-layout:fixed a long nowrap value would paint over the next
+   * cell — truncate with an ellipsis instead. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
