@@ -43,8 +43,7 @@ import {
 } from "@rtc/domain";
 import type { ViewModel } from "@rtc/solid-bindings";
 import { useMachine } from "@rtc/solid-bindings";
-
-import { toSignal } from "./toSignal";
+import { toSignal } from "@rtc/solid-bindings/toSignal";
 
 /** Mirror of RfqsPresenter's presenter-local redirect delay. The contract spec
  * drives this with fake timers (advanceTimersByTimeAsync(1500)), so the fake
@@ -70,7 +69,7 @@ interface UseTicketSubmissionFake {
 
 /** Wrap a warm (BehaviorSubject-backed) World stream as a Solid accessor.
  * `state()` (from `@rx-state/core`) turns any Observable into the
- * `StateObservable` the local `toSignal` (./toSignal.ts) requires — the same
+ * `StateObservable` `@rtc/solid-bindings/toSignal` requires — the same
  * "hot-observable → accessor" idiom `@rtc/solid-bindings`'s own
  * `createViewModel.ts` uses everywhere (e.g. `toSignal(state(presenters.
  * priceStream.price$(pair), null))`), applied here to World subjects instead

@@ -25,33 +25,10 @@ const PARITY_COMPLETE = false;
 // treating `base` (a real `file:` URL) as the resolution root — silently
 // producing an `http://localhost:3000/...` URL instead of throwing, so the
 // bug is easy to miss without an explicit import.
-const solidUiRoot = fileURLToPath(
-  new NodeURL("../../src/ui", import.meta.url),
-);
+const solidUiRoot = fileURLToPath(new NodeURL("../../src/ui", import.meta.url));
 const reactUiRoot = fileURLToPath(
   new NodeURL("../../../client-react/src/ui", import.meta.url),
 );
-
-/** Recursively collect every `*.module.css` file under `root`, returned as
- * paths relative to `root` (so the two trees can be compared/keyed by a
- * root-independent identity). */
-function findModuleCssFiles(root: string): string[] {
-  const out: string[] = [];
-
-  function walk(dir: string): void {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(full);
-      } else if (entry.isFile() && entry.name.endsWith(".module.css")) {
-        out.push(relative(root, full));
-      }
-    }
-  }
-
-  walk(root);
-  return out;
-}
 
 const reactRelPaths = findModuleCssFiles(reactUiRoot);
 const solidRelPaths = findModuleCssFiles(solidUiRoot);
@@ -67,29 +44,56 @@ describe("CSS module parity: client-solid vs client-react (docs/adr — copied, 
     expect(reactRelPaths.length).toBeGreaterThan(0);
   });
 
-  it.each(reactRelPaths.filter((rel) => solidRelPathSet.has(rel)))(
-    "%s is byte-identical between client-solid and client-react",
-    (rel) => {
-      const reactBytes = readFileSync(join(reactUiRoot, rel));
-      const solidBytes = readFileSync(join(solidUiRoot, rel));
-      expect(solidBytes.equals(reactBytes)).toBe(true);
-    },
-  );
+  it.each(
+    reactRelPaths.filter((rel) => {
+      return solidRelPathSet.has(rel);
+    }),
+  )("%s is byte-identical between client-solid and client-react", (rel) => {
+    const reactBytes = readFileSync(join(reactUiRoot, rel));
+    const solidBytes = readFileSync(join(solidUiRoot, rel));
+    expect(solidBytes.equals(reactBytes)).toBe(true);
+  });
 
   // A Solid-only module.css (no react counterpart at the mirrored path)
   // would be a port INVENTION — the port's whole contract is "copied, not
   // retyped" — so this direction is enforced unconditionally, independent of
   // PARITY_COMPLETE.
   it("every solid module.css has a react counterpart (no port inventions)", () => {
-    const orphans = solidRelPaths.filter((rel) => !reactRelPathSet.has(rel));
+    const orphans = solidRelPaths.filter((rel) => {
+      return !reactRelPathSet.has(rel);
+    });
     expect(orphans).toEqual([]);
   });
 
   it.runIf(PARITY_COMPLETE)(
     "every react module.css has a ported solid twin (file sets are identical)",
     () => {
-      const missing = reactRelPaths.filter((rel) => !solidRelPathSet.has(rel));
+      const missing = reactRelPaths.filter((rel) => {
+        return !solidRelPathSet.has(rel);
+      });
       expect(missing).toEqual([]);
     },
   );
 });
+
+/** Recursively collect every `*.module.css` file under `root`, returned as
+ * paths relative to `root` (so the two trees can be compared/keyed by a
+ * root-independent identity). */
+function findModuleCssFiles(root: string): string[] {
+  const out: string[] = [];
+
+  function walk(dir: string): void {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile() && entry.name.endsWith(".module.css")) {
+        out.push(relative(root, full));
+      }
+    }
+  }
+
+  walk(root);
+  return out;
+}

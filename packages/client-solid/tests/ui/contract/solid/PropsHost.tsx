@@ -2,7 +2,7 @@ import { state } from "@rx-state/core";
 import type { BehaviorSubject } from "rxjs";
 import type { Accessor, JSX } from "solid-js";
 
-import { toSignal } from "./toSignal";
+import { toSignal } from "@rtc/solid-bindings/toSignal";
 
 interface PropsHostProps<P> {
   subject: BehaviorSubject<Partial<P>>;
@@ -22,7 +22,7 @@ interface PropsHostProps<P> {
  *
  * `subject` (a BehaviorSubject) is already warm — it always emits
  * synchronously on subscribe — so wrapping it through `@rx-state/core`'s
- * `state()` and the local `toSignal` (./toSignal.ts) reuses the exact same
+ * `state()` and `@rtc/solid-bindings/toSignal` reuses the exact same
  * "hot-observable → accessor" idiom `viewModelFromWorld.ts` uses (and that
  * `@rtc/solid-bindings`'s own `createViewModel` uses internally), rather
  * than hand-rolling a second subscribe/cleanup pair for this one host. */
