@@ -17,6 +17,12 @@ import "@fontsource/jetbrains-mono/500.css";
 import "@fontsource/jetbrains-mono/700.css";
 import "@fontsource/orbitron/700.css";
 import "@fontsource/orbitron/800.css";
+// Solid Devtools runtime: registers this app with the browser extension.
+// Static import per the package's own docs — the vite plugin's `apply()` gate
+// (see vite.config.ts) resolves this to a real no-op module at build time
+// (the package's export map falls back to `index_noop.js` once the plugin
+// isn't intercepting the specifier), so it's safe to leave unguarded here.
+import "solid-devtools";
 import { render } from "solid-js/web";
 
 import { AppRoot } from "./AppRoot";
