@@ -24,8 +24,21 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
   const { state, skip } = useBootSequence(props.onDone);
   let canvasEl!: HTMLCanvasElement;
 
+  // The machine emits a FRESH state object every 90ms tick (~47 per boot)
+  // with only `progress` changing. The canvas effect below must re-run on
+  // VARIANT changes only (the React original's dep array `[state.variant]`),
+  // so it reads the variant through this memo: createMemo re-evaluates per
+  // emission but — default === equality on the string — only notifies its
+  // dependents when the variant actually changes. Reading `state().variant`
+  // directly inside the effect would subscribe it to every tick, restarting
+  // the rAF loop and resetting `d.start` (the elapsed-time origin of every
+  // scene's animation math) ~47× per boot.
+  const variant = createMemo((): BootVariant => {
+    return state().variant;
+  });
+
   createEffect(() => {
-    const variant = state().variant;
+    const currentVariant = variant();
     const canvas = canvasEl;
 
     const reduce = window.matchMedia?.(
@@ -69,7 +82,7 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
 
     // Factories run once per boot (geo/topo precompute geometry here); the
     // returned closure draws one frame.
-    const frame = DRAW[variant](d);
+    const frame = DRAW[currentVariant](d);
     let raf = 0;
 
     function loop(): void {

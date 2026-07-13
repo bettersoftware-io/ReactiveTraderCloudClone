@@ -18,13 +18,14 @@ import { BootSequence } from "./BootSequence";
 describe("BootSequence — canvas rAF loop (mocked context)", () => {
   let rafSpy: ReturnType<typeof vi.spyOn>;
   let cafSpy: ReturnType<typeof vi.spyOn>;
+  let getContextSpy: ReturnType<typeof vi.spyOn>;
   let ctxStub: CanvasRenderingContext2D;
 
   beforeEach(() => {
     ctxStub = makeCtxStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-      ctxStub,
-    );
+    getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue(ctxStub);
     rafSpy = vi.spyOn(window, "requestAnimationFrame").mockReturnValue(42);
     cafSpy = vi
       .spyOn(window, "cancelAnimationFrame")
@@ -156,6 +157,47 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
     expect(ctxStub.clearRect).toHaveBeenCalled();
   });
+
+  it("runs canvas setup exactly once across progress-only state emissions", () => {
+    // The real BootSequenceMachine emits a FRESH state object every 90ms
+    // (~47 per boot) with only `progress` changing. The canvas effect must
+    // track the VARIANT alone — re-running setup per tick would remove/
+    // re-add the mousemove listener, reset d.start (breaking elapsed-time
+    // animation math), re-run the DRAW factory, and restart the rAF loop
+    // ~47× per boot. getContext is called exactly once per setup run, so
+    // its call count IS the setup-execution count.
+    const [state, setState] = createSignal<TestBootState>({
+      variant: "core",
+      progress: 0,
+      done: false,
+    });
+
+    render(() => {
+      return (
+        <ViewModelContext.Provider
+          value={makeHooks({
+            useBootSequence: (_onDone: () => void) => {
+              return { state, skip: vi.fn() };
+            },
+          } as unknown as Partial<ViewModel>)}
+        >
+          <BootSequence onDone={vi.fn()} />
+        </ViewModelContext.Provider>
+      );
+    });
+
+    expect(getContextSpy).toHaveBeenCalledTimes(1);
+
+    // Simulate the machine's tick stream: fresh object per emission,
+    // progress-only changes, same variant throughout.
+    for (const progress of [10, 25, 40, 55, 70, 85, 100]) {
+      setState({ variant: "core", progress, done: false });
+    }
+
+    expect(getContextSpy).toHaveBeenCalledTimes(1);
+    // And the rAF loop was started exactly once, not restarted per tick.
+    expect(cafSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe("BootSequence — boot log lines (visibility by progress)", () => {
@@ -266,17 +308,32 @@ function makeCtxStub(): CanvasRenderingContext2D {
  * pre-built and threaded through a helper), so the Solid compiler defers its
  * construction until the Provider's own render — a plain function taking an
  * already-evaluated JSX.Element argument would run BootSequence's body (and
- * its useViewModel() call) before the Provider exists. */
+ * its useViewModel() call) before the Provider exists.
+ *
+ * The default `state` is a REAL Solid signal (matching the production shape:
+ * `toSignal` returns a tracked accessor), NOT a plain closure — a plain
+ * function is invisible to Solid's dependency tracking, so effects that
+ * over-subscribe to the whole state object would never re-run in tests and
+ * the over-tracking bug class stays masked. */
 function makeHooks(partialHooks: Partial<ViewModel> = {}): ViewModel {
+  const [state] = createSignal<TestBootState>({
+    variant: "core",
+    progress: 0,
+    done: false,
+  });
+
   return {
     useBootSequence: (_onDone: () => void) => {
-      return {
-        state: () => {
-          return { variant: "core" as const, progress: 0, done: false };
-        },
-        skip: vi.fn(),
-      };
+      return { state, skip: vi.fn() };
     },
     ...partialHooks,
   } as unknown as ViewModel;
+}
+
+/** The BootSequenceState shape the mocked machine emits (variant pinned to
+ * "core" — these tests never rotate it). */
+interface TestBootState {
+  variant: "core";
+  progress: number;
+  done: boolean;
 }
