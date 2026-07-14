@@ -235,14 +235,23 @@ describe("InspectorClient", () => {
     vi.useRealTimers();
   });
 
-  it("sends hello on start, pings every 2s, and stops pinging after dispose", () => {
-    const { channel, sent } = fakeChannel();
+  it("re-sends hello every 2s until connected, then pings, then stops after dispose", () => {
+    const { channel, sent, inbound$ } = fakeChannel();
     const store = new InspectorStore();
     const client = new InspectorClient(channel, store);
 
     client.start();
     expect(sent[0]).toEqual({ kind: "hello", v: PROTOCOL_VERSION });
 
+    // Disconnected: each tick re-announces with hello (order-independent connect).
+    vi.advanceTimersByTime(2000);
+    expect(hellos(sent)).toBe(2); // initial hello + one tick
+    vi.advanceTimersByTime(2000);
+    expect(hellos(sent)).toBe(3);
+    expect(pings(sent)).toBe(0);
+
+    // App answers → connected → subsequent ticks become pings (the heartbeat).
+    inbound$.next({ kind: "welcome", v: PROTOCOL_VERSION, appId: "app1" });
     vi.advanceTimersByTime(2000);
     expect(pings(sent)).toBe(1);
     vi.advanceTimersByTime(2000);
@@ -253,6 +262,24 @@ describe("InspectorClient", () => {
 
     vi.advanceTimersByTime(4000);
     expect(pings(sent)).toBe(2); // timer cleared — no further pings
+  });
+
+  it("reverts to hello after a bye so it reconnects when the app returns", () => {
+    const { channel, sent, inbound$ } = fakeChannel();
+    const store = new InspectorStore();
+    const client = new InspectorClient(channel, store);
+
+    client.start();
+    inbound$.next({ kind: "welcome", v: PROTOCOL_VERSION, appId: "app1" });
+    vi.advanceTimersByTime(2000);
+    expect(pings(sent)).toBe(1); // connected → ping
+
+    inbound$.next({ kind: "bye" }); // app reloaded / went away
+    expect(store.getSnapshot().connected).toBe(false);
+    const hellosBefore = hellos(sent);
+    vi.advanceTimersByTime(2000);
+    expect(hellos(sent)).toBe(hellosBefore + 1); // re-announcing again
+    expect(pings(sent)).toBe(1); // no new ping while disconnected
   });
 
   it("pipes inbound AppToInspector messages into the store", () => {
@@ -298,6 +325,12 @@ interface FakeChannel {
 function pings(sent: readonly InspectorToApp[]): number {
   return sent.filter((m) => {
     return m.kind === "ping";
+  }).length;
+}
+
+function hellos(sent: readonly InspectorToApp[]): number {
+  return sent.filter((m) => {
+    return m.kind === "hello";
   }).length;
 }
 
