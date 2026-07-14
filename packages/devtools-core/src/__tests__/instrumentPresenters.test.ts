@@ -114,4 +114,41 @@ describe("instrumentPresenters", () => {
     }).not.toThrow();
     expect(result).toBeDefined();
   });
+
+  it("guards the props loop: a throwing registerStream for one prop doesn't stop instrumentation, skip sibling props, or reach the app", () => {
+    const hub = new DevtoolsHub();
+    const reportError = vi.spyOn(hub, "reportError");
+    vi.spyOn(hub, "registerStream").mockImplementation((streamId) => {
+      if (streamId === "blotter.trades$") {
+        throw new Error("boom");
+      }
+    });
+    const blotter = new FakeBlotter();
+    const manifest: PresenterManifest = {
+      blotter: { props: ["trades$", "untracked$"] },
+    };
+
+    let out: BlotterPresenters | undefined;
+    expect(() => {
+      out = instrumentPresenters<BlotterPresenters>({ blotter }, manifest, hub);
+    }).not.toThrow();
+
+    // instrumentPresenters is best-effort here: registration for the bad prop
+    // is reported rather than swallowed silently, and the sibling prop still
+    // got registered (per-prop granularity — one bad prop doesn't skip others).
+    expect(reportError).toHaveBeenCalledWith(
+      "instrumentPresenters:prop",
+      expect.any(Error),
+    );
+    expect(hub.registerStream).toHaveBeenCalledWith(
+      "blotter.untracked$",
+      blotter.untracked$,
+    );
+
+    // The presenters bag is still fully usable afterward.
+    expect(out?.blotter.trades$).toBe(blotter.trades$);
+    expect(out?.blotter.untracked$).toBe(blotter.untracked$);
+  });
 });
+
+type BlotterPresenters = { blotter: FakeBlotter };

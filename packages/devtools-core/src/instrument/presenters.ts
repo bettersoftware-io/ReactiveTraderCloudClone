@@ -59,8 +59,12 @@ export function instrumentPresenters<T extends object>(
     for (const prop of entry.props ?? []) {
       const source = (target as Record<string, unknown>)[prop];
 
-      if (isObservable(source)) {
-        hub.registerStream(`${key}.${prop}`, source);
+      try {
+        if (isObservable(source)) {
+          hub.registerStream(`${key}.${prop}`, source);
+        }
+      } catch (error) {
+        hub.reportError("instrumentPresenters:prop", error);
       }
     }
 
