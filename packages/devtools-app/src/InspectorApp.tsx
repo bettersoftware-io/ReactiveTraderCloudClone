@@ -4,12 +4,13 @@ import { useState } from "react";
 import type { InspectorState, InspectorStore } from "@rtc/devtools-core";
 
 import styles from "#/InspectorApp.module.css";
+import { MachinesPanel } from "#/panels/MachinesPanel";
+import { StateTreePanel } from "#/panels/StateTreePanel";
 import { useInspectorState } from "#/useInspectorState";
 
 /** The devtools panel shell: connection rail + tab strip + active panel.
- * Tasks 9–10 replace the placeholder panels with the real state/machines/log/
- * wire views; this task only wires the store subscription and the chrome
- * around them. */
+ * Task 9 wires up the real state-tree and machine-registry panels; Task 10
+ * replaces the remaining log/wire placeholders. */
 export function InspectorApp({ store }: InspectorAppProps): ReactElement {
   const state = useInspectorState(store);
   const [tab, setTab] = useState<InspectorTab>("state");
@@ -20,7 +21,7 @@ export function InspectorApp({ store }: InspectorAppProps): ReactElement {
       <div className={styles.main}>
         <TabStrip active={tab} onSelect={setTab} />
         <div className={styles.panel}>
-          <TabPanel tab={tab} />
+          <TabPanel tab={tab} state={state} />
         </div>
       </div>
     </div>
@@ -45,9 +46,7 @@ const TABS: readonly TabDescriptor[] = [
   { id: "wire", label: "Wire" },
 ];
 
-const PLACEHOLDER: Record<InspectorTab, string> = {
-  state: "state tree — coming in Task 9",
-  machines: "machine list — coming in Task 9",
+const PLACEHOLDER: Record<"log" | "wire", string> = {
   log: "event log — coming in Task 10",
   wire: "raw wire traffic — coming in Task 10",
 };
@@ -131,8 +130,17 @@ function TabStrip({ active, onSelect }: TabStripProps): ReactElement {
 
 interface TabPanelProps {
   tab: InspectorTab;
+  state: InspectorState;
 }
 
-function TabPanel({ tab }: TabPanelProps): ReactElement {
+function TabPanel({ tab, state }: TabPanelProps): ReactElement {
+  if (tab === "state") {
+    return <StateTreePanel streams={state.streams} />;
+  }
+
+  if (tab === "machines") {
+    return <MachinesPanel machines={state.machines} />;
+  }
+
   return <p className={styles.placeholder}>{PLACEHOLDER[tab]}</p>;
 }
