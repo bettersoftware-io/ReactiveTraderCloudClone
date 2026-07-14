@@ -1,0 +1,23 @@
+/* Global reset for the devtools panel. Without this the browser's default 8px
+   body margin and white page background show as a light border around the dark
+   HUD (.app is 100vw/100vh but #root sits inside the margined body). Kept
+   minimal — the panel's look lives in the CSS Modules; this only strips the
+   default chrome and paints the page dark edge-to-edge. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #0a0e14;
+}
+
+#root {
+  height: 100%;
+}
