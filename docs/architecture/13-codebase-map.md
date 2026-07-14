@@ -180,6 +180,28 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Non-obvious** | Follows the exact same single-dependency (`rxjs`-only) constraint as `@rtc/domain`, per `CLAUDE.md`, despite living in the outermost ring -- purity isn't reserved for the domain. |
 | **README** | [`packages/ws-effects/README.md`](../../packages/ws-effects/README.md) |
 
+#### `@rtc/devtools-core`
+
+| | |
+|---|---|
+| **What it is** | The devtools event protocol, the `DevtoolsHub` collector (registry, dormancy, coalescing, ring buffer), the three composition-root decorators (`instrumentPresenters`, `instrumentMachineFactories`, `instrumentWsAdapter`), and the `BroadcastChannelDuplex` transport adapter. |
+| **Ring** | ④ Frameworks & Drivers -- a leaf instrumentation framework, structurally analogous to `ws-effects` |
+| **Depends on** | `rxjs` only (`packages/devtools-core/package.json` `dependencies`) |
+| **Consumed by** | `devtools-app`, `client-react` |
+| **Non-obvious** | Never imports `@rtc/client-core` or any other `@rtc/*` package -- it decorates by *structural* shape (`InstrumentableMachine`, `WsAdapterLike`), machine-enforced by dependency-cruiser's `devtools-core-stays-pure` rule ([§6](06-package-dependencies.md#6-package-dependencies)). Dormant cost is one boolean check per tapped emission: `registerStream`/`machineCreated` only write to a registry `Map` until an inspector's `hello` flips the hub live and subscribes everything ([§20.3](20-devtools.md#203-the-dormancy-contract)). |
+| **README** | [`packages/devtools-core/README.md`](../../packages/devtools-core/README.md) |
+
+#### `@rtc/devtools-app`
+
+| | |
+|---|---|
+| **What it is** | The inspector SPA: a Vite + React 19 app with four panels (state tree, machine registry, event log, wire tap) driven entirely by the wire protocol. |
+| **Ring** | ④ Frameworks & Drivers -- a leaf tool, not part of the app's own client stack |
+| **Depends on** | `@rtc/devtools-core`, `react`, `react-dom` (`packages/devtools-app/package.json` `dependencies`) |
+| **Consumed by** | Nothing in-workspace as a source dependency -- `client-react` only takes a `devDependency` build-order/dist-path edge to it (§6), never imports its source |
+| **Non-obvious** | Never imports `@rtc/client-core` or `@rtc/domain` -- it understands only the protocol types from `devtools-core` (dependency-cruiser's `devtools-app-protocol-only` rule, [§6](06-package-dependencies.md#6-package-dependencies)), which is what makes a future Chrome-extension shell a thin wrapper around the same bundle ([§20.8](20-devtools.md#208-future-extensions)). Its own dev server (port 5280) has no same-origin hub to pair with and always renders "disconnected" by design -- the real inspector is served at `/devtools/` from the app's own origin. |
+| **README** | [`packages/devtools-app/README.md`](../../packages/devtools-app/README.md) |
+
 #### `@rtc/server`
 
 | | |
@@ -295,6 +317,28 @@ src/
 ├── operators.ts            out() / matchType() message helpers
 ├── combineEffects.ts       merges effects over one shared inbound stream
 └── createWsListener.ts      wires a Socket to combined effects, teardown on closed$
+```
+
+`@rtc/devtools-core`:
+```
+src/
+├── protocol.ts               DevtoolsEvent / AppToInspector / InspectorToApp / PresenterManifest
+├── serialize.ts                depth/array/string caps + Map/Set tagged encodings
+├── DevtoolsHub.ts               registry · dormancy · coalescing · ring buffer · flush loop
+├── transport.ts, channel.ts       DevtoolsTransport port · Duplex · in-memory pair
+├── BroadcastChannelDuplex.ts       same-origin v1 transport adapter
+├── instrument/                     instrumentPresenters · instrumentMachineFactories · instrumentWsAdapter
+├── InspectorClient.ts, InspectorStore.ts   panel-side: wraps a Duplex, rebuilds InspectorState
+└── index.ts                          public export surface
+```
+
+`@rtc/devtools-app`:
+```
+src/
+├── main.tsx, InspectorApp.tsx     entry point + shell (connection rail, tab switcher)
+├── inspectorSession.ts             wires an InspectorClient to React state
+├── useInspectorState.ts             hook exposing the live InspectorState
+└── panels/                           StateTreePanel · MachinesPanel · EventLogPanel · WirePanel · ValueView
 ```
 
 `@rtc/server`:

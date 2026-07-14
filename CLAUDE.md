@@ -8,7 +8,7 @@ This project aims to recreate [ReactiveTraderCloud](https://github.com/AdaptiveC
 
 ## Current Status
 
-Monorepo with pnpm workspaces + Turborepo; thirteen packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; a third, `@rtc/client-solid`, is a walking skeleton (boots in simulator mode, renders live connection status) built on the parallel `@rtc/solid-bindings` bridge. `docs/architecture.md` is the authoritative architecture reference.
+Monorepo with pnpm workspaces + Turborepo; fifteen packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; a third, `@rtc/client-solid`, is a walking skeleton (boots in simulator mode, renders live connection status) built on the parallel `@rtc/solid-bindings` bridge. A custom devtools pair (`@rtc/devtools-core` + `@rtc/devtools-app`) gives the non-Redux state layer live state inspection, dormant until an inspector attaches. `docs/architecture.md` is the authoritative architecture reference.
 
 ## Build Commands
 
@@ -44,12 +44,16 @@ packages/
   motion-core/         @rtc/motion-core         — Framework-free, zero-dependency view-layer motion math (FLIP deltas, rank-glide coalescing, easing/duration constants). No DOM, no rxjs, no React. Shared by client animation shells (React now, Solid next).
   ui-contract/         @rtc/ui-contract         — Framework-neutral UI test contract: shared harness + contract specs + visual scenario matrix, extracted from client-react's test tree. Depends on client-core, domain, motion-core (+ rxjs); consumed by clients as a devDependency, never from src.
   ws-effects/          @rtc/ws-effects          — Small declarative RxJS effects framework. Pure TS, depends only on rxjs at runtime.
+  devtools-core/       @rtc/devtools-core       — Devtools event protocol, DevtoolsHub (dormancy/coalescing/ring buffer), the three composition-root decorators (instrumentPresenters, instrumentMachineFactories, instrumentWsAdapter), BroadcastChannel transport. Pure TS, depends only on rxjs at runtime.
+  devtools-app/        @rtc/devtools-app        — Inspector SPA (four panels: state tree, machine registry, event log, wire tap), served same-origin at /devtools/. Depends on devtools-core (+ react, react-dom).
   server/              @rtc/server              — Native WebSocket + @rtc/ws-effects (24 effects: FX/Credit/Admin/Equities). Depends on domain, shared, ws-effects.
 ```
 
 **Dependency rule:** dependencies flow inward only. `domain` has only `rxjs` as a runtime dep. `shared` depends only on `domain`. `client-core` is the shared application layer; the client packages and `server` never import each other. `server` additionally depends on `ws-effects`, which itself depends on nothing but `rxjs`. `@rtc/motion-core` is a zero-runtime-dependency leaf consumed directly by the clients (`client-react` today, `client-solid` later) for view-layer motion math -- stricter than the rxjs-only exception since it has no runtime deps at all. See `docs/architecture/06-package-dependencies.md` (§6) for the full graph.
 
 **Single-dep constraint on `@rtc/domain`:** Domain may depend on `rxjs` at runtime — and only on `rxjs`. RxJS is the explicit architectural exception, chosen for its declarative stream operators and the team's familiarity with it. No other runtime dependencies are permitted. pnpm strict mode enforces this at install time. `@rtc/ws-effects` follows the same rxjs-only constraint.
+
+**Devtools dependency rule:** `@rtc/devtools-core` is an `rxjs`-only leaf like `ws-effects` — it decorates by structural shape and imports no other `@rtc/*` package; `@rtc/devtools-app` depends only on `devtools-core`, and nothing in the workspace imports `devtools-app` as source — `client-react` takes only a dev-only build-order/asset edge to it (to serve `/devtools/`), never a source import. See `docs/architecture/20-devtools.md` (§20).
 
 ## Architecture Goals
 
