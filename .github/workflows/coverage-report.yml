@@ -4,8 +4,8 @@ name: Coverage Report
 # On-demand only. Run from the GitHub mobile app: Actions -> Coverage Report ->
 # Run workflow -> pick any branch. Produces TWO views of the same run:
 #   1. A job summary (sanitized markdown: test pass/fail + per-package coverage
-#      with collapsible per-file diff snippets). Readable on mobile web; the
-#      mobile APP surfaces the link via a ::notice:: annotation.
+#      with collapsible per-file diff snippets). Readable on mobile web from the
+#      run's Summary page.
 #   2. The FULL istanbul HTML report (colored, click-through, file-by-file) for
 #      all five tiers, published to GitHub Pages at a stable URL you can open
 #      and browse immediately on any device — no download, no unzip. The repo is
