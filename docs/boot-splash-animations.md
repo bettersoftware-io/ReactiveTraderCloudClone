@@ -29,24 +29,49 @@ The splash is an **overlay**, not a loading screen. The real `<App/>` mounts
 splash is a `<canvas>` plus some chrome sitting on top. Dismissing it just
 reveals an app that was live the whole time; nothing waits for the animation.
 
+```mermaid
+flowchart TD
+    G["shouldPlayBootSplash() — one-shot env read"] -->|seeds| P["BootGatePresenter.visible$ — BehaviorSubject(boolean)"]
+    P -->|drives| BG["BootGate — always renders the App; overlays the splash while visible"]
+    BG -->|mounts| S["BootSequence — canvas + requestAnimationFrame loop + chrome"]
+    S -->|reads| M["BootSequenceMachine — ~4.2s progress ramp; picks this boot's variant; advances the pointer to the next"]
+    M -->|selects| D["DRAW[variant] scene — one per-frame draw closure"]
+    R["Account menu ⟳ Reboot HUD"] -.->|reboot| P
 ```
-shouldPlayBootSplash()            ── one-shot environment read (composition layer)
-        │  seeds
-        ▼
-BootGatePresenter.visible$        ── BehaviorSubject<boolean>: reboot() / dismiss()
-        │  drives
-        ▼
-BootGate  ─────────────── renders {children} (the app) always,
-        │                  and the splash overlay only while visible
-        ▼
-BootSequence  ──────────── canvas + rAF loop + chrome (wordmark, log, progress, SKIP)
-        │  reads
-        ▼
-BootSequenceMachine       ── ~4.2 s progress ramp; picks THIS boot's variant;
-        │                     advances the persisted pointer to the NEXT variant
-        ▼
-DRAW[variant](scene)      ── builds one per-frame draw closure for the chosen scene
+
+The same lifecycle laid out over *time* — from page load to the overlay fading
+out — as a sequence:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Load as Page load / Reboot
+    participant Pres as BootGatePresenter
+    participant Gate as BootGate
+    participant Seq as BootSequence (rAF)
+    participant Mac as BootSequenceMachine
+    participant Prefs as PreferencesPort (localStorage)
+    Load->>Pres: seed visible = shouldPlayBootSplash()
+    Pres-->>Gate: visible = true
+    Note over Gate: renders the real App underneath (warm) + the overlay
+    Gate->>Seq: mount overlay
+    Seq->>Mac: create(variant = current, advance, onDone)
+    Mac->>Prefs: read current variant
+    Mac->>Prefs: setBootVariant(next) — advance pointer at boot START
+    loop every rAF frame (~4.2s)
+        Seq->>Seq: DRAW[variant](scene) — draw one frame
+    end
+    Mac-->>Seq: done = true (ramp hits 100% or SKIP)
+    Seq-->>Gate: CSS fades opacity to 0
+    Gate->>Pres: dismiss() on opacity transitionend
+    Note over Gate,Pres: reduced motion — no transition, so onDone calls dismiss() directly
+    Pres-->>Gate: visible = false — overlay unmounts, warm app revealed
 ```
+
+(The composition-wiring view of this same boot lives in
+[§14.3](architecture/14-composition-and-wiring.md#143-boot-sequences); the one
+above is the splash's own lifecycle — variant selection, the draw loop, and
+dismissal.)
 
 Key facts that surprise people:
 
@@ -101,6 +126,24 @@ remounts `BootSequence`) and you get the next one; after `topo` it wraps back to
 `core`. There is no timer, no randomness, and no server involvement — just
 `indexOf + 1 mod length` over a list, persisted in `localStorage`.
 
+```mermaid
+stateDiagram-v2
+    [*] --> core
+    core --> laser
+    laser --> docking
+    docking --> hologram
+    hologram --> geo
+    geo --> layers
+    layers --> jarvis
+    jarvis --> topo
+    topo --> core
+    note right of core
+      Pointer = index into BOOT_VARIANTS, persisted in
+      localStorage (rt_bootSeq). Advanced (index+1) mod 8
+      at boot START, so each reload / reboot shows the next.
+    end note
+```
+
 **Progress is derived, not wall-clock-timed per scene.** The machine runs a
 90 ms `timer` and computes `progress = round(tickIndex / totalTicks * 100)` over
 `BOOT_DURATION_MS = 4200`. When `progress` hits 100 (or `SKIP ▸` fires, which
@@ -145,6 +188,24 @@ factory so the frame closure only has to *project and stroke* them.
 | `scene.accent`, `scene.accentAlt` | theme colours (`--accent-primary`, `--accent-2`), read once from CSS |
 | `scene.buy`, `scene.sell` | positive/negative colours (`--accent-positive/-negative`) |
 | `scene.pointer` | `{ mx, my }` — live cursor position, normalized to −1..1 per axis |
+
+The whole frame closure is one dataflow — two clocks fan out into continuous
+motion and phase-gated reveals, which build world points, which get projected and
+drawn. The subsections below detail each box:
+
+```mermaid
+flowchart TD
+    Now["performance.now() − scene.start"] --> El["elapsedSec — free-running seconds"]
+    Now --> Pr["progress 0 to 1 over ~4.2s"]
+    El --> Motion["continuous motion: spin, orbit, scan, twinkle"]
+    Pr --> Gates["phase gates: ease((progress − t0) / span)"]
+    Gates --> Reveal["reveal / assemble each element"]
+    Motion --> World["world points (x, y, z)"]
+    Reveal --> World
+    World --> Proj["project() → screen x,y + depth"]
+    Proj --> Draw["canvas ops: stroke / fill / arc / fillText"]
+    Draw --> Flick["× flickerAlpha via globalAlpha → this frame"]
+```
 
 ### 3.2 Two clocks: `elapsedSec` and `progress`
 
@@ -258,6 +319,20 @@ Two things every scene does with the returned point:
 - **Depth cues.** `perspective` sizes dots and line widths; and alpha is faded
   by depth (`0.1 + 0.4 * clamp((0.55 - z) / 1.1)`) so the far side of a sphere
   is dimmer than the near side.
+
+The whole pipeline for one point — and where the cursor plugs in (the dashed
+edges, detailed in §3.7):
+
+```mermaid
+flowchart TD
+    W["world point (x, y, z)"] --> Y["yaw — rotate spin left/right"]
+    Y --> Pi["pitch — tilt camera down"]
+    Pi --> Pe["perspective = 1 / (1 + depth · 0.28)"]
+    Pe --> Sc["screen x,y = center + rotated · scale · perspective"]
+    Pe --> De["keep depth z → painter's sort (far → near)"]
+    Cur["cursor mx, my (−1 to 1)"] -.->|adds to| Y
+    Cur -.->|adds to| Pi
+```
 
 ### 3.7 Cursor tracking (the "it follows my mouse" effect)
 
