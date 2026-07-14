@@ -35,7 +35,7 @@ interface Projected3 {
   x: number;
   y: number;
   z: number;
-  f: number;
+  perspective: number;
 }
 
 /** World-space rect (post z-explode / pull offset) for one panel. */
@@ -54,8 +54,9 @@ interface OrderEntry {
   cP: Projected3;
 }
 
-function rnd(i: number): number {
-  const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+// Deterministic hash-noise in [0,1) — used only for the occasional flicker dip.
+function hashRandom(seed: number): number {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 }
 
@@ -68,15 +69,15 @@ function clamp(v: number): number {
  * returns the per-frame draw closure. No self-scheduling: BootSequence.tsx
  * owns the rAF loop and calls the returned function every frame.
  */
-export function createBootLayers(d: BootDrawCtx): BootFrameFn {
-  const c = d.canvas;
-  const ctx = d.ctx;
-  const acc = d.accent;
-  const ac2 = d.accent2 !== "" ? d.accent2 : d.accent;
+export function createBootLayers(scene: BootDrawCtx): BootFrameFn {
+  const canvas = scene.canvas;
+  const ctx = scene.ctx;
+  const accent = scene.accent;
+  const accentAlt = scene.accent2 !== "" ? scene.accent2 : scene.accent;
 
   function resize(): void {
-    c.width = c.offsetWidth;
-    c.height = c.offsetHeight;
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
   }
 
   resize();
@@ -155,118 +156,159 @@ export function createBootLayers(d: BootDrawCtx): BootFrameFn {
     },
   ];
 
-  const pullables = panels.filter((p) => {
-    return p.pull;
+  const pullables = panels.filter((panel) => {
+    return panel.pull;
   });
 
   return function drawBootLayers(): void {
-    if (c.width !== c.offsetWidth) {
+    if (canvas.width !== canvas.offsetWidth) {
       resize();
     }
 
-    const t = (performance.now() - d.start) / 1000;
-    const prog = Math.min(1, (performance.now() - d.start) / BOOT_DURATION_MS);
-    const W = c.width;
-    const H = c.height;
-    const cx = W / 2;
-    const cy = H / 2;
-    ctx.clearRect(0, 0, W, H);
+    const elapsedSec = (performance.now() - scene.start) / 1000;
+    const progress = Math.min(
+      1,
+      (performance.now() - scene.start) / BOOT_DURATION_MS,
+    );
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = "rgba(0,3,6,0.55)";
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, width, height);
 
     // phases: draw-in → explode → orbit/pull → recomposite
-    const ek = ease((prog - 0.14) / 0.2);
-    const ck = ease((prog - 0.93) / 0.07);
-    const E = ek * (1 - ck);
-    const mx = d.pointer.mx;
-    const my = d.pointer.my;
-    const yaw = (0.5 + Math.sin(t * 0.5) * 0.2 + mx * 0.45) * E;
-    const pitch = (0.15 + my * 0.22) * E;
-    const cyw = Math.cos(yaw);
-    const syw = Math.sin(yaw);
-    const cp = Math.cos(pitch);
-    const sp = Math.sin(pitch);
-    const S = Math.min(W, H) * 0.42;
+    const explodePhase = ease((progress - 0.14) / 0.2);
+    const recompositePhase = ease((progress - 0.93) / 0.07);
+    const spread = explodePhase * (1 - recompositePhase);
+    const pointerX = scene.pointer.mx;
+    const pointerY = scene.pointer.my;
+    const yaw =
+      (0.5 + Math.sin(elapsedSec * 0.5) * 0.2 + pointerX * 0.45) * spread;
+    const pitch = (0.15 + pointerY * 0.22) * spread;
+    const cosYaw = Math.cos(yaw);
+    const sinYaw = Math.sin(yaw);
+    const cosPitch = Math.cos(pitch);
+    const sinPitch = Math.sin(pitch);
+    const projScale = Math.min(width, height) * 0.42;
 
-    function P(x: number, y: number, z: number): Projected3 {
-      const x1 = x * cyw - z * syw;
-      const z1 = x * syw + z * cyw;
-      const y1 = y * cp - z1 * sp;
-      const z2 = y * sp + z1 * cp;
-      const f = 1 / Math.max(0.4, 1 + z2 * 0.24);
-      return { x: cx + x1 * S * f, y: cy + y1 * S * f, z: z2, f };
+    // yaw/pitch-rotate then perspective-divide one world point onto the canvas
+    function project(x: number, y: number, z: number): Projected3 {
+      const x1 = x * cosYaw - z * sinYaw;
+      const z1 = x * sinYaw + z * cosYaw;
+      const y1 = y * cosPitch - z1 * sinPitch;
+      const z2 = y * sinPitch + z1 * cosPitch;
+      const perspective = 1 / Math.max(0.4, 1 + z2 * 0.24);
+      return {
+        x: centerX + x1 * projScale * perspective,
+        y: centerY + y1 * projScale * perspective,
+        z: z2,
+        perspective,
+      };
     }
 
-    let ga = 0.88 + 0.12 * Math.sin(t * 34 + Math.sin(t * 8) * 4);
+    let flickerAlpha =
+      0.88 + 0.12 * Math.sin(elapsedSec * 34 + Math.sin(elapsedSec * 8) * 4);
 
-    if (rnd(Math.floor(t * 6) + 7) > 0.94) {
-      ga *= 0.55;
+    if (hashRandom(Math.floor(elapsedSec * 6) + 7) > 0.94) {
+      flickerAlpha *= 0.55;
     }
 
     ctx.save();
-    ctx.globalAlpha = ga;
+    ctx.globalAlpha = flickerAlpha;
 
     // arc rings behind the stack
-    ctx.strokeStyle = hexToRgba(acc, 0.1);
+    ctx.strokeStyle = hexToRgba(accent, 0.1);
     ctx.lineWidth = 1;
     ctx.setLineDash([10, 14]);
     ctx.beginPath();
-    ctx.arc(cx, cy, S * 1.18, t * 0.2, t * 0.2 + 5.4);
+    ctx.arc(
+      centerX,
+      centerY,
+      projScale * 1.18,
+      elapsedSec * 0.2,
+      elapsedSec * 0.2 + 5.4,
+    );
     ctx.stroke();
     ctx.setLineDash([2, 9]);
     ctx.beginPath();
-    ctx.arc(cx, cy, S * 1.3, -t * 0.13, -t * 0.13 + 5.8);
+    ctx.arc(
+      centerX,
+      centerY,
+      projScale * 1.3,
+      -elapsedSec * 0.13,
+      -elapsedSec * 0.13 + 5.8,
+    );
     ctx.stroke();
     ctx.setLineDash([]);
 
     // which panel is pulled out right now
-    const pullOn = prog > 0.38 && prog < 0.92;
-    const cyc = Math.max(0, t - (BOOT_DURATION_MS / 1000) * 0.38);
-    const pi2 = Math.floor(cyc / 1.05) % pullables.length;
-    const ph2 = (cyc % 1.05) / 1.05;
-    const pk = pullOn ? Math.sin(Math.PI * ph2) : 0;
+    const pullOn = progress > 0.38 && progress < 0.92;
+    const pullCycleSec = Math.max(
+      0,
+      elapsedSec - (BOOT_DURATION_MS / 1000) * 0.38,
+    );
+    const pulledIdx = Math.floor(pullCycleSec / 1.05) % pullables.length;
+    const pullPhase = (pullCycleSec % 1.05) / 1.05;
+    const pullAmount = pullOn ? Math.sin(Math.PI * pullPhase) : 0;
 
     // world mapping + painter sort
-    function wp(p: LayerPanel): WorldRect {
+    function toWorldRect(panel: LayerPanel): WorldRect {
       const zz =
-        p.z * E * 1.15 + (pullOn && pullables[pi2] === p ? -0.85 * pk : 0);
+        panel.z * spread * 1.15 +
+        (pullOn && pullables[pulledIdx] === panel ? -0.85 * pullAmount : 0);
       return {
-        x0: (p.x - 0.5) * 2.6,
-        y0: (p.y - 0.5) * 1.7,
-        ww: p.w * 2.6,
-        wh: p.h * 1.7,
+        x0: (panel.x - 0.5) * 2.6,
+        y0: (panel.y - 0.5) * 1.7,
+        ww: panel.w * 2.6,
+        wh: panel.h * 1.7,
         zz,
       };
     }
 
-    const order: OrderEntry[] = panels
-      .map((p) => {
-        const w = wp(p);
-        const cP = P(w.x0 + w.ww / 2, w.y0 + w.wh / 2, w.zz);
-        return { p, w, cP };
+    const paintOrder: OrderEntry[] = panels
+      .map((panel) => {
+        const worldRect = toWorldRect(panel);
+        const centerProj = project(
+          worldRect.x0 + worldRect.ww / 2,
+          worldRect.y0 + worldRect.wh / 2,
+          worldRect.zz,
+        );
+        return { p: panel, w: worldRect, cP: centerProj };
       })
-      .sort((a, b) => {
-        return b.cP.z - a.cP.z;
+      .sort((entryA, entryB) => {
+        return entryB.cP.z - entryA.cP.z;
       });
 
-    order.forEach((o) => {
-      const p = o.p;
-      const w = o.w;
-      const ik = clamp((prog - 0.02 - panels.indexOf(p) * 0.014) / 0.09);
+    paintOrder.forEach((entry) => {
+      const panel = entry.p;
+      const worldRect = entry.w;
+      const panelDrawPhase = clamp(
+        (progress - 0.02 - panels.indexOf(panel) * 0.014) / 0.09,
+      );
 
-      if (ik <= 0) {
+      if (panelDrawPhase <= 0) {
         return;
       }
 
-      function M(u: number, v: number): Projected3 {
-        return P(w.x0 + u * w.ww, w.y0 + v * w.wh, w.zz);
+      // map a panel-local UV coord onto the canvas at this panel's z-depth
+      function panelUV(u: number, v: number): Projected3 {
+        return project(
+          worldRect.x0 + u * worldRect.ww,
+          worldRect.y0 + v * worldRect.wh,
+          worldRect.zz,
+        );
       }
 
-      const pulled = pullOn && pullables[pi2] === p && pk > 0.05;
-      const al =
-        (0.35 + 0.45 * clamp((0.6 - o.cP.z) / 1.2)) * ik * (pulled ? 1.15 : 1);
+      const pulled =
+        pullOn && pullables[pulledIdx] === panel && pullAmount > 0.05;
+      const alpha =
+        (0.35 + 0.45 * clamp((0.6 - entry.cP.z) / 1.2)) *
+        panelDrawPhase *
+        (pulled ? 1.15 : 1);
 
-      function quad(
+      function fillQuad(
         u0: number,
         v0: number,
         u1: number,
@@ -274,15 +316,15 @@ export function createBootLayers(d: BootDrawCtx): BootFrameFn {
         fill?: string,
         fa?: number,
       ): void {
-        const a = M(u0, v0);
-        const b = M(u1, v0);
-        const c2 = M(u1, v1);
-        const dd = M(u0, v1);
+        const cornerA = panelUV(u0, v0);
+        const cornerB = panelUV(u1, v0);
+        const cornerC = panelUV(u1, v1);
+        const cornerD = panelUV(u0, v1);
         ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.lineTo(c2.x, c2.y);
-        ctx.lineTo(dd.x, dd.y);
+        ctx.moveTo(cornerA.x, cornerA.y);
+        ctx.lineTo(cornerB.x, cornerB.y);
+        ctx.lineTo(cornerC.x, cornerC.y);
+        ctx.lineTo(cornerD.x, cornerD.y);
         ctx.closePath();
 
         if (fill !== undefined) {
@@ -291,7 +333,7 @@ export function createBootLayers(d: BootDrawCtx): BootFrameFn {
         }
       }
 
-      function strokeQ(
+      function strokeQuad(
         u0: number,
         v0: number,
         u1: number,
@@ -300,92 +342,97 @@ export function createBootLayers(d: BootDrawCtx): BootFrameFn {
         sa: number,
         lw?: number,
       ): void {
-        quad(u0, v0, u1, v1);
+        fillQuad(u0, v0, u1, v1);
         ctx.strokeStyle = hexToRgba(col, sa);
         ctx.lineWidth = lw ?? 1;
         ctx.stroke();
       }
 
       // ghost frame + corner tethers back to the flat plane
-      if (E > 0.05 && p.kind !== "bg") {
-        function G(u: number, v: number): Projected3 {
-          return P(w.x0 + u * w.ww, w.y0 + v * w.wh, 0);
+      if (spread > 0.05 && panel.kind !== "bg") {
+        // same UV mapper, but pinned to the flat plane (z = 0)
+        function flatPanelUV(u: number, v: number): Projected3 {
+          return project(
+            worldRect.x0 + u * worldRect.ww,
+            worldRect.y0 + v * worldRect.wh,
+            0,
+          );
         }
 
         ctx.setLineDash([4, 6]);
-        const g0 = G(0, 0);
-        const g1 = G(1, 0);
-        const g2 = G(1, 1);
-        const g3 = G(0, 1);
-        ctx.strokeStyle = hexToRgba(acc, 0.13 * E);
+        const flatTL = flatPanelUV(0, 0);
+        const flatTR = flatPanelUV(1, 0);
+        const flatBR = flatPanelUV(1, 1);
+        const flatBL = flatPanelUV(0, 1);
+        ctx.strokeStyle = hexToRgba(accent, 0.13 * spread);
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(g0.x, g0.y);
-        ctx.lineTo(g1.x, g1.y);
-        ctx.lineTo(g2.x, g2.y);
-        ctx.lineTo(g3.x, g3.y);
+        ctx.moveTo(flatTL.x, flatTL.y);
+        ctx.lineTo(flatTR.x, flatTR.y);
+        ctx.lineTo(flatBR.x, flatBR.y);
+        ctx.lineTo(flatBL.x, flatBL.y);
         ctx.closePath();
         ctx.stroke();
         ctx.setLineDash([]);
 
         (
           [
-            [0, 0, g0],
-            [1, 0, g1],
-            [1, 1, g2],
-            [0, 1, g3],
+            [0, 0, flatTL],
+            [1, 0, flatTR],
+            [1, 1, flatBR],
+            [0, 1, flatBL],
           ] as [number, number, Projected3][]
-        ).forEach((q) => {
-          const a = M(q[0], q[1]);
-          ctx.strokeStyle = hexToRgba(acc, 0.1 * E);
+        ).forEach((corner) => {
+          const cornerPoint = panelUV(corner[0], corner[1]);
+          ctx.strokeStyle = hexToRgba(accent, 0.1 * spread);
           ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(q[2].x, q[2].y);
+          ctx.moveTo(cornerPoint.x, cornerPoint.y);
+          ctx.lineTo(corner[2].x, corner[2].y);
           ctx.stroke();
         });
       }
 
       // panel face + border
-      if (p.kind === "bg") {
-        ctx.strokeStyle = hexToRgba(acc, 0.08 * ik * E);
+      if (panel.kind === "bg") {
+        ctx.strokeStyle = hexToRgba(accent, 0.08 * panelDrawPhase * spread);
         ctx.lineWidth = 1;
 
         for (let u = 0; u <= 1.001; u += 0.125) {
-          const a = M(u, 0);
-          const b = M(u, 1);
+          const pointA = panelUV(u, 0);
+          const pointB = panelUV(u, 1);
           ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
+          ctx.moveTo(pointA.x, pointA.y);
+          ctx.lineTo(pointB.x, pointB.y);
           ctx.stroke();
         }
 
         for (let v = 0; v <= 1.001; v += 0.125) {
-          const a = M(0, v);
-          const b = M(1, v);
+          const pointA = panelUV(0, v);
+          const pointB = panelUV(1, v);
           ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
+          ctx.moveTo(pointA.x, pointA.y);
+          ctx.lineTo(pointB.x, pointB.y);
           ctx.stroke();
         }
 
-        strokeQ(0, 0, 1, 1, acc, 0.15 * ik * E, 1);
+        strokeQuad(0, 0, 1, 1, accent, 0.15 * panelDrawPhase * spread, 1);
         return;
       }
 
-      quad(0, 0, 1, 1, "#04141d", 0.42 * al);
+      fillQuad(0, 0, 1, 1, "#04141d", 0.42 * alpha);
 
       if (pulled) {
-        ctx.shadowColor = acc;
-        ctx.shadowBlur = 18 * pk;
+        ctx.shadowColor = accent;
+        ctx.shadowBlur = 18 * pullAmount;
       }
 
-      strokeQ(
+      strokeQuad(
         0,
         0,
         1,
         1,
-        pulled ? ac2 : acc,
-        Math.min(1, al + 0.25),
+        pulled ? accentAlt : accent,
+        Math.min(1, alpha + 0.25),
         pulled ? 1.8 : 1.2,
       );
       ctx.shadowBlur = 0;
@@ -398,150 +445,153 @@ export function createBootLayers(d: BootDrawCtx): BootFrameFn {
           [1, 1],
           [0, 1],
         ] as [number, number][]
-      ).forEach((q) => {
-        const a = M(q[0], q[1]);
-        ctx.fillStyle = hexToRgba(pulled ? ac2 : acc, al);
-        ctx.fillRect(a.x - 1.5, a.y - 1.5, 3, 3);
+      ).forEach((corner) => {
+        const cornerPoint = panelUV(corner[0], corner[1]);
+        ctx.fillStyle = hexToRgba(pulled ? accentAlt : accent, alpha);
+        ctx.fillRect(cornerPoint.x - 1.5, cornerPoint.y - 1.5, 3, 3);
       });
 
       // panel content, drawn in-plane
-      const ca = al * 0.9;
+      const contentAlpha = alpha * 0.9;
 
-      if (p.kind === "header") {
+      if (panel.kind === "header") {
         for (let i = 0; i < 5; i++) {
-          quad(
+          fillQuad(
             0.02 + i * 0.09,
             0.28,
             0.09 + i * 0.09,
             0.72,
-            i === 0 ? ac2 : acc,
-            ca * 0.5,
+            i === 0 ? accentAlt : accent,
+            contentAlpha * 0.5,
           );
         }
 
-        quad(0.78, 0.25, 0.98, 0.75, acc, ca * 0.25);
-      } else if (p.kind === "main") {
+        fillQuad(0.78, 0.25, 0.98, 0.75, accent, contentAlpha * 0.25);
+      } else if (panel.kind === "main") {
         for (let i = 0; i < 2; i++) {
           for (let j = 0; j < 2; j++) {
             const u0 = 0.03 + i * 0.5;
             const v0 = 0.04 + j * 0.5;
             const u1 = u0 + 0.44;
             const v1 = v0 + 0.42;
-            strokeQ(u0, v0, u1, v1, acc, ca * 0.6, 1);
-            quad(u0, v0, u1, v0 + 0.12, acc, ca * 0.18);
-            ctx.strokeStyle = hexToRgba(ac2, ca * 0.85);
+            strokeQuad(u0, v0, u1, v1, accent, contentAlpha * 0.6, 1);
+            fillQuad(u0, v0, u1, v0 + 0.12, accent, contentAlpha * 0.18);
+            ctx.strokeStyle = hexToRgba(accentAlt, contentAlpha * 0.85);
             ctx.lineWidth = 1.4;
             ctx.beginPath();
 
-            for (let s2 = 0; s2 <= 10; s2++) {
-              const u = u0 + 0.02 + (u1 - u0 - 0.04) * (s2 / 10);
+            for (let sample = 0; sample <= 10; sample++) {
+              const u = u0 + 0.02 + (u1 - u0 - 0.04) * (sample / 10);
               const v =
                 v1 -
                 0.06 -
-                Math.abs(Math.sin(s2 * 0.9 + i * 2 + j + t * 0.7)) *
+                Math.abs(
+                  Math.sin(sample * 0.9 + i * 2 + j + elapsedSec * 0.7),
+                ) *
                   (v1 - v0) *
                   0.24;
-              const a = M(u, v);
+              const point = panelUV(u, v);
 
-              if (s2 === 0) {
-                ctx.moveTo(a.x, a.y);
+              if (sample === 0) {
+                ctx.moveTo(point.x, point.y);
               } else {
-                ctx.lineTo(a.x, a.y);
+                ctx.lineTo(point.x, point.y);
               }
             }
 
             ctx.stroke();
           }
         }
-      } else if (p.kind === "list") {
+      } else if (panel.kind === "list") {
         for (let i = 0; i < 4; i++) {
-          quad(
+          fillQuad(
             0.04,
             0.08 + i * 0.24,
-            0.04 + (0.9 - i * 0.13) * (0.8 + 0.2 * Math.sin(t * 1.3 + i)),
+            0.04 +
+              (0.9 - i * 0.13) * (0.8 + 0.2 * Math.sin(elapsedSec * 1.3 + i)),
             0.22 + i * 0.24,
-            acc,
-            ca * (0.45 - i * 0.07),
+            accent,
+            contentAlpha * (0.45 - i * 0.07),
           );
         }
-      } else if (p.kind === "blotter") {
-        quad(0.02, 0.06, 0.98, 0.24, ac2, ca * 0.4);
+      } else if (panel.kind === "blotter") {
+        fillQuad(0.02, 0.06, 0.98, 0.24, accentAlt, contentAlpha * 0.4);
 
         for (let i = 1; i < 4; i++) {
           const v = 0.24 + i * 0.24;
-          ctx.strokeStyle = hexToRgba(acc, ca * 0.3);
+          ctx.strokeStyle = hexToRgba(accent, contentAlpha * 0.3);
           ctx.lineWidth = 1;
-          const a = M(0.02, v);
-          const b = M(0.98, v);
+          const pointA = panelUV(0.02, v);
+          const pointB = panelUV(0.98, v);
           ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
+          ctx.moveTo(pointA.x, pointA.y);
+          ctx.lineTo(pointB.x, pointB.y);
           ctx.stroke();
 
-          for (let cI = 0; cI < 5; cI++) {
-            quad(
-              0.03 + cI * 0.19,
+          for (let cell = 0; cell < 5; cell++) {
+            fillQuad(
+              0.03 + cell * 0.19,
               v - 0.16,
-              0.15 + cI * 0.19,
+              0.15 + cell * 0.19,
               v - 0.04,
-              acc,
-              ca * 0.3,
+              accent,
+              contentAlpha * 0.3,
             );
           }
         }
-      } else if (p.kind === "status") {
+      } else if (panel.kind === "status") {
         for (let i = 0; i < 9; i++) {
-          quad(
+          fillQuad(
             0.02 + i * 0.11,
             0.25,
             0.08 + i * 0.11,
             0.75,
-            i % 3 === 0 ? ac2 : acc,
-            ca * 0.5,
+            i % 3 === 0 ? accentAlt : accent,
+            contentAlpha * 0.5,
           );
         }
       }
 
       // layer id tag on the left edge
-      if (E > 0.3) {
-        const a = M(-0.005, 0.5);
+      if (spread > 0.3) {
+        const labelPoint = panelUV(-0.005, 0.5);
         ctx.font = `9px ${MONO}`;
         ctx.textAlign = "right";
         ctx.textBaseline = "middle";
-        ctx.fillStyle = hexToRgba(acc, 0.65 * E);
-        ctx.fillText(p.label.slice(0, 3), a.x - 6, a.y);
+        ctx.fillStyle = hexToRgba(accent, 0.65 * spread);
+        ctx.fillText(panel.label.slice(0, 3), labelPoint.x - 6, labelPoint.y);
       }
 
       // pulled panel: scan sweep + callout
       if (pulled) {
-        const sv = (t * 1.4) % 1;
-        ctx.strokeStyle = hexToRgba(ac2, 0.5 * pk);
+        const scanV = (elapsedSec * 1.4) % 1;
+        ctx.strokeStyle = hexToRgba(accentAlt, 0.5 * pullAmount);
         ctx.lineWidth = 1.2;
-        const a = M(0, sv);
-        const b = M(1, sv);
+        const scanA = panelUV(0, scanV);
+        const scanB = panelUV(1, scanV);
         ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
+        ctx.moveTo(scanA.x, scanA.y);
+        ctx.lineTo(scanB.x, scanB.y);
         ctx.stroke();
 
-        const tr = M(1, 0);
-        ctx.strokeStyle = hexToRgba(ac2, 0.7 * pk);
+        const topRight = panelUV(1, 0);
+        ctx.strokeStyle = hexToRgba(accentAlt, 0.7 * pullAmount);
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(tr.x, tr.y);
-        ctx.lineTo(tr.x + 26, tr.y - 20);
-        ctx.lineTo(tr.x + 190, tr.y - 20);
+        ctx.moveTo(topRight.x, topRight.y);
+        ctx.lineTo(topRight.x + 26, topRight.y - 20);
+        ctx.lineTo(topRight.x + 190, topRight.y - 20);
         ctx.stroke();
         ctx.font = `11px ${MONO}`;
         ctx.textAlign = "left";
         ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = hexToRgba(ac2, 0.95 * pk);
-        ctx.fillText(p.label, tr.x + 32, tr.y - 25);
-        ctx.fillStyle = hexToRgba(acc, 0.7 * pk);
+        ctx.fillStyle = hexToRgba(accentAlt, 0.95 * pullAmount);
+        ctx.fillText(panel.label, topRight.x + 32, topRight.y - 25);
+        ctx.fillStyle = hexToRgba(accent, 0.7 * pullAmount);
         ctx.fillText(
-          `Z ${(w.zz * 100).toFixed(0)}  ·  COMPOSITE OK`,
-          tr.x + 32,
-          tr.y - 11,
+          `Z ${(worldRect.zz * 100).toFixed(0)}  ·  COMPOSITE OK`,
+          topRight.x + 32,
+          topRight.y - 11,
         );
       }
     });
@@ -550,36 +600,37 @@ export function createBootLayers(d: BootDrawCtx): BootFrameFn {
     ctx.font = `11px ${MONO}`;
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = hexToRgba(acc, 0.7);
+    ctx.fillStyle = hexToRgba(accent, 0.7);
     ctx.fillText("◉ UI COMPOSITOR · LAYER VIEW", 20, 28);
-    ctx.fillText(`LAYERS 07 · Z-SPREAD ${Math.round(E * 100)}%`, 20, 44);
+    ctx.fillText(`LAYERS 07 · Z-SPREAD ${Math.round(spread * 100)}%`, 20, 44);
     ctx.textAlign = "right";
     ctx.fillText(
       `YAW ${(yaw * 57.29).toFixed(1)}°  PITCH ${(pitch * 57.29).toFixed(1)}°`,
-      W - 20,
+      width - 20,
       28,
     );
-    ctx.fillStyle = hexToRgba(ac2, 0.7);
-    ctx.fillText("CURSOR TRACK · LIVE", W - 20, 44);
+    ctx.fillStyle = hexToRgba(accentAlt, 0.7);
+    ctx.fillText("CURSOR TRACK · LIVE", width - 20, 44);
 
-    let stt = "COMPILING INTERFACE";
-    let sc = acc;
+    let statusText = "COMPILING INTERFACE";
+    let statusColor = accent;
 
-    if (prog >= 0.14 && prog < 0.38) {
-      stt = "DECOMPOSING LAYERS";
-    } else if (prog >= 0.38 && prog < 0.92) {
-      stt = `LAYER INSPECTION ▸ ${pullables[pi2].label.slice(6)}`;
-      sc = ac2;
-    } else if (prog >= 0.92) {
-      stt = "RECOMPOSITING ▸ LAUNCH";
-      sc = d.buy;
+    if (progress >= 0.14 && progress < 0.38) {
+      statusText = "DECOMPOSING LAYERS";
+    } else if (progress >= 0.38 && progress < 0.92) {
+      statusText = `LAYER INSPECTION ▸ ${pullables[pulledIdx].label.slice(6)}`;
+      statusColor = accentAlt;
+    } else if (progress >= 0.92) {
+      statusText = "RECOMPOSITING ▸ LAUNCH";
+      statusColor = scene.buy;
     }
 
-    const bk2 = prog < 0.14 ? 0.55 + 0.45 * Math.abs(Math.sin(t * 5)) : 1;
+    const blink =
+      progress < 0.14 ? 0.55 + 0.45 * Math.abs(Math.sin(elapsedSec * 5)) : 1;
     ctx.font = `bold 12px ${MONO}`;
     ctx.textAlign = "center";
-    ctx.fillStyle = hexToRgba(sc, 0.9 * bk2);
-    ctx.fillText(`▸ ${stt} ◂`, cx, 72);
+    ctx.fillStyle = hexToRgba(statusColor, 0.9 * blink);
+    ctx.fillText(`▸ ${statusText} ◂`, centerX, 72);
     ctx.textAlign = "left";
     ctx.restore();
   };
