@@ -76,6 +76,16 @@ module.exports = {
       to: { dependencyTypes: ["core"] },
     },
     {
+      name: "devtools-app-protocol-only",
+      severity: "error",
+      comment:
+        "@rtc/devtools-app understands only the wire protocol — devtools-core is its sole @rtc dependency.",
+      from: { path: "^packages/devtools-app/src" },
+      to: {
+        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects)/",
+      },
+    },
+    {
       name: "motion-core-stays-pure",
       severity: "error",
       comment:

@@ -23,6 +23,10 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/devtools-app": {
+      "entry": ["src/main.tsx", "index.html", "vite.config.ts"],
+      "project": "src/**/*.{ts,tsx}"
+    },
     "packages/motion-core": {
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
