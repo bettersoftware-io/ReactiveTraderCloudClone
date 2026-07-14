@@ -13,9 +13,10 @@ name: Coverage Report
 on:
   workflow_dispatch:
 
-# Least privilege, split across the two jobs:
-#   build   needs pages:write only to let configure-pages enable Pages.
-#   deploy  needs pages:write + id-token:write for the OIDC Pages deployment.
+concurrency:
+  group: pages-write
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
@@ -24,9 +25,7 @@ jobs:
     name: coverage + untested lines
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pages: write
-      id-token: write
+      contents: write
     # Same Playwright image as the `visual` job: the client visual coverage tier
     # renders in a real browser; the Node-based tiers run fine here too. Tag must
     # track @playwright/test in packages/client-react.
@@ -195,49 +194,15 @@ jobs:
           echo "Assembled Pages site:"
           ls -1 "$site"
 
-      - name: Configure Pages
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
-        with:
-          enablement: true
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
-        with:
-          path: _site
-
-      # The rendered markdown report lives on the run's Summary page, which the
-      # GitHub mobile APP does not render (mobile web does). Surface a direct link
-      # both in the step log AND as a ::notice:: annotation (the app shows
-      # annotations) so the summary is one tap away. The live HTML report's URL is
-      # annotated by the deploy job below.
-      - name: Coverage summary link
-        if: always()
+      - name: Publish coverage to gh-pages
         run: |
-          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          echo "Markdown summary — open this in a browser to view the rendered report:"
-          echo "  $url"
-          echo "::notice title=Coverage summary (markdown)::Open in a browser → $url"
-
-  # Separate job on a plain runner (not the Playwright container) following the
-  # canonical Pages pattern: the OIDC-based deploy is isolated from the build.
-  deploy:
-    name: publish to GitHub Pages
-    needs: coverage
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5
+          rm -rf _stage
+          mkdir -p _stage
+          cp -R _site _stage/coverage
+          node scripts/pages/publish-to-pages.mjs --source _stage --message "publish coverage @ ${GITHUB_SHA}"
 
       - name: Live report link
-        env:
-          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          echo "Live HTML coverage report: $PAGE_URL"
-          echo "::notice title=Coverage report (live HTML)::Browse the full report → $PAGE_URL"
+          url="https://bettersoftware-io.github.io/ReactiveTraderCloudClone/coverage/"
+          echo "Live HTML coverage report: $url"
+          echo "::notice title=Coverage report (live HTML)::Browse the full report → $url"
