@@ -225,6 +225,57 @@ describe("InspectorStore", () => {
     store.apply({ kind: "bye" });
     expect(store.getSnapshot().connected).toBe(false);
   });
+
+  it("coalesces a burst into one throttled flush; snapshot stable between flushes", () => {
+    // Matches InspectorStore.FRAMES_PER_FLUSH — a flush lands after this many
+    // rAF ticks, so a stream of applies repaints ~15×/s, not 60×/s.
+    const FRAMES_PER_FLUSH = 4;
+    const frames: Array<() => void> = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: () => void): number => {
+      frames.push(cb);
+
+      return frames.length;
+    });
+
+    try {
+      const store = new InspectorStore();
+      const before = store.getSnapshot();
+      let notifications = 0;
+      store.subscribe(() => {
+        notifications += 1;
+      });
+
+      // A burst of applies before the flush lands…
+      store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "app1" });
+      store.apply({
+        kind: "batch",
+        events: [wireEvent(1), wireEvent(2)],
+      });
+      store.apply({ kind: "batch", events: [wireEvent(3)] });
+
+      // …notifies nobody yet and starts exactly ONE rAF chain for the burst.
+      expect(notifications).toBe(0);
+      expect(frames).toHaveLength(1);
+      // The public snapshot is UNCHANGED until the flush — this stability is
+      // what stops useSyncExternalStore from render-storming on a live stream.
+      expect(store.getSnapshot()).toBe(before);
+      expect(store.getSnapshot().connected).toBe(false);
+
+      // Draining the throttled chain flushes once: fresh snapshot + one notify.
+      let next = drainOneFlush(frames, 0, FRAMES_PER_FLUSH);
+      expect(notifications).toBe(1);
+      expect(store.getSnapshot().connected).toBe(true);
+      expect(store.getSnapshot().log).toHaveLength(3);
+
+      // A later apply starts a fresh chain (not stuck) and coalesces again.
+      store.apply({ kind: "batch", events: [wireEvent(4)] });
+      next = drainOneFlush(frames, next, FRAMES_PER_FLUSH);
+      expect(notifications).toBe(2);
+      expect(store.getSnapshot().log).toHaveLength(4);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe("InspectorClient", () => {
@@ -332,6 +383,24 @@ function hellos(sent: readonly InspectorToApp[]): number {
   return sent.filter((m) => {
     return m.kind === "hello";
   }).length;
+}
+
+function wireEvent(seq: number): DevtoolsEvent {
+  return { kind: "wire:in", msgType: "tick", payload: seq, seq, ts: seq };
+}
+
+/** Fire the captured rAF chain that produces exactly one throttled flush,
+ * starting at `start`; returns the index where the next chain begins. */
+function drainOneFlush(
+  frames: ReadonlyArray<() => void>,
+  start: number,
+  framesPerFlush: number,
+): number {
+  for (let i = start; i < start + framesPerFlush; i += 1) {
+    frames[i]?.();
+  }
+
+  return start + framesPerFlush;
 }
 
 function fakeChannel(): FakeChannel {

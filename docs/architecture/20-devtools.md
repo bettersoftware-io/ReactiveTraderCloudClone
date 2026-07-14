@@ -409,23 +409,32 @@ harder — it owns none of the app's frame budget).
 The "inspector tab is allowed to work harder" allowance above has a known
 sharp edge. The `InspectorStore` folds each `DevtoolsHub` flush (~33 ms
 cadence, so ~30 batches/s) synchronously and notifies `useSyncExternalStore`
-on every apply, so the whole `InspectorApp` re-renders ~30×/s — and while the
-State tab is active, `StateTreePanel` remounts a change-flash `<span>` per
-stream per emission and `ConnectionRail` re-filters the full log for its wire
-count. When a single apply+render exceeds the 33 ms production interval (as it
-does under heavy CPU throttling, e.g. a slow 2-core CI runner), the inspector
-falls behind the incoming batch rate and its main thread never idles. Measured
-under a 4× CPU throttle: a no-op `page.evaluate` round-trip on the inspector
-tab took ~7.8 s (vs ~14 ms on the app tab), and a Playwright tab-switch click —
-whose actionability polling needs that same main thread — took 12–31 s. This
-does not affect the *app* tab's frame budget (the whole point of dormancy +
-tab isolation), but it makes the inspector itself sluggish under load and makes
-inspector-driving e2e slow. The `tests/browser/playwright/devtools.spec.ts`
-e2e mitigates it with a generous whole-test timeout + a bounded per-step click
-timeout (not a fix). The durable fix is to decouple the store→React
-notification from the apply rate — coalesce notifications to at most one per
-animation frame — plus memoize the panels and drop the per-render full-log
-scans; deferred, tracked here.
+on every apply, so the whole `InspectorApp` re-rendered ~30×/s. When a single
+apply+render exceeded the 33 ms production interval (as it does under heavy CPU
+throttling, e.g. a slow 2-core CI runner), the inspector fell behind the
+incoming batch rate and its main thread never idled. Measured under a 4× CPU
+throttle: a no-op `page.evaluate` round-trip on the inspector tab took ~7.8 s
+(vs ~14 ms on the app tab), and a Playwright tab-switch click — whose
+actionability polling needs that same main thread — took 12–31 s. Worse, a
+naive "rebuild eagerly on `getSnapshot()`" fix makes it *hang*:
+`useSyncExternalStore`'s post-commit consistency check sees a new snapshot on
+every read while the stream flows and re-renders in a tight loop.
+
+**Fix (`InspectorStore`).** The store now decouples React notification from the
+apply rate. `apply()` only mutates the internal maps and marks the store dirty;
+the public `InspectorState` rebuild **and** the subscriber notification are
+coalesced into a single flush, throttled to ~15 Hz
+(`FRAMES_PER_FLUSH`) and driven by `requestAnimationFrame` — so it self-limits
+under CPU pressure and pauses entirely while the panel tab is hidden.
+Critically, `this.state` is reassigned **only** at the flush, so `getSnapshot()`
+is stable between flushes and the `useSyncExternalStore` render-storm cannot
+occur. In a non-DOM environment (tests, SSR) there is no frame loop, so the
+flush runs synchronously and reads stay immediately fresh. This eliminated the
+renderer freeze and let `tests/browser/playwright/devtools.spec.ts` drop its
+whole-test timeout from 120 s back to 45 s. Further per-render cost (memoizing
+individual rows, reworking the change-flash so it doesn't remount a
+`will-change` span per emission) is a smaller, optional follow-up on top of
+this.
 
 ### 20.8 Future extensions
 
