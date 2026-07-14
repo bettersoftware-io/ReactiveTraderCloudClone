@@ -107,4 +107,14 @@ export const TESTIDS = {
     // owns the full id, so consumers match on this stable prefix.
     handlePrefix: "handle-",
   },
+  /**
+   * The same-origin DevTools inspector SPA (@rtc/devtools-app), served at
+   * `/devtools/`. These ids live in the inspector's own components
+   * (InspectorApp / StateTreePanel / MachinesPanel), not in the app under test.
+   */
+  devtools: {
+    connectionBadge: "connection-badge",
+    streamRow: "devtools-stream-row",
+    machineRow: "devtools-machine-row",
+  },
 } as const;

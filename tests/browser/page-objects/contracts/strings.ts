@@ -7,4 +7,8 @@ export const STRINGS = {
   creditRfq: {
     noRfqsMessage: "No RFQs to show",
   },
+  devtools: {
+    /** Accessible name of the inspector's Machines tab button. */
+    machinesTab: "Machines",
+  },
 } as const;
