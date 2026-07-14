@@ -5,7 +5,7 @@
 > see git log; for the clean-architecture phase log see
 > [superpowers/STATUS.md](superpowers/STATUS.md).
 >
-> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-07-14**
+> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-07-15**
 
 ## 🟡 In progress
 
@@ -17,6 +17,7 @@
 - **Login + server-side auth (Phase 1)** — not built; Phase 2 not yet spec'd. Plan: [superpowers/plans/2026-07-12-phase1-login-and-server-auth.md](superpowers/plans/2026-07-12-phase1-login-and-server-auth.md)
 - **Feature flags** — OpenFeature + Flagsmith. Plan: [superpowers/plans/2026-07-01-feature-flags.md](superpowers/plans/2026-07-01-feature-flags.md)
 - **Power-saver mode** — Plan: [superpowers/plans/2026-07-09-power-saver-mode.md](superpowers/plans/2026-07-09-power-saver-mode.md)
+- **Devtools MV3 Chrome extension** — third `Duplex` transport (ChromeRuntimeDuplex + content-script bridge + tab-keyed background router + RTC devtools panel); observe-only, zero app-side changes. Plan: [superpowers/plans/2026-07-14-devtools-chrome-extension.md](superpowers/plans/2026-07-14-devtools-chrome-extension.md)
 
 ## 🟠 Planned but gated / not executed
 
@@ -25,4 +26,4 @@
 
 ## ⚪ Optional / next step (no plan file yet)
 
-- **Devtools MV3 Chrome extension** — second BroadcastChannel/Duplex transport for the custom devtools; design drafted on an unmerged branch, no plan yet.
+_None currently._
