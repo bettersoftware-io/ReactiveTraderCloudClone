@@ -8,6 +8,7 @@ import { PlaywrightCreditRfqForm } from "./CreditRfqForm";
 import { PlaywrightCreditRfqPanel } from "./CreditRfqPanel";
 import { PlaywrightFooter } from "./Footer";
 import { PlaywrightFxRfqForm } from "./FxRfqForm";
+import { PlaywrightInspector } from "./Inspector";
 import { PlaywrightLayout } from "./Layout";
 import { PlaywrightLiveRatesTile } from "./LiveRatesTile";
 import { PlaywrightPositionsPanel } from "./PositionsPanel";
@@ -28,5 +29,6 @@ export function buildPlaywrightPageObjects(page: Page): PageObjects {
     creditRfqPanel: new PlaywrightCreditRfqPanel(page),
     blotterTable: new PlaywrightBlotterTable(page),
     layout: new PlaywrightLayout(page),
+    inspector: new PlaywrightInspector(page),
   };
 }

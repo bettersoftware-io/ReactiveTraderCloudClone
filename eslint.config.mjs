@@ -145,6 +145,7 @@ export default tseslint.config(
       "packages/client-react/src/**/*.tsx",
       "packages/client-prototype/src/**/*.tsx",
       "packages/client-solid/src/**/*.tsx",
+      "packages/devtools-app/src/**/*.tsx",
     ],
     rules: {
       "no-restricted-syntax": ["error", ...restrictedSyntax, inlineStyleProp],
@@ -254,6 +255,7 @@ export default tseslint.config(
       "packages/client-react/src/**/*.tsx",
       "packages/client-react-native/src/**/*.tsx",
       "packages/client-solid/src/**/*.tsx",
+      "packages/devtools-app/src/**/*.tsx",
     ],
     ignores: ["**/*.{test,spec}.tsx"],
     plugins: { rtc: rtcPlugin },

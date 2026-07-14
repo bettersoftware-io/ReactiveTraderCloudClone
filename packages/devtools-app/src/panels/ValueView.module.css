@@ -1,0 +1,73 @@
+/* Recursive SerializedValue renderer. Font/color tokens (--fg, --dim,
+   --accent, --danger, --font-mono) are declared on the shell root in
+   InspectorApp.module.css and cascade down via normal CSS custom-property
+   inheritance — every node below inherits them without redeclaration. */
+
+.literal {
+  color: var(--accent);
+}
+
+.string {
+  --string-color: #a3e635;
+
+  color: var(--string-color);
+}
+
+.keyword,
+.marker {
+  color: var(--dim);
+  font-style: italic;
+}
+
+.fn {
+  --fn-color: #c084fc;
+
+  color: var(--fn-color);
+}
+
+.error {
+  color: var(--danger);
+}
+
+.unknown {
+  color: var(--dim);
+}
+
+.arrow {
+  color: var(--dim);
+}
+
+.node {
+  display: inline-block;
+  vertical-align: top;
+}
+
+.summary {
+  cursor: pointer;
+  color: var(--dim);
+  list-style-position: outside;
+}
+
+.summary::marker {
+  color: var(--dim);
+}
+
+.children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+.entry {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.key {
+  color: var(--fg);
+  font-weight: 600;
+}

@@ -56,6 +56,36 @@ module.exports = {
       to: { path: "^packages/(domain|shared|client-react|server)/" },
     },
     {
+      name: "devtools-core-stays-pure",
+      severity: "error",
+      comment:
+        "@rtc/devtools-core decorates by structural shape — it must not import any @rtc package.",
+      from: { path: "^packages/devtools-core/src" },
+      to: {
+        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects|devtools-app)/",
+      },
+    },
+    {
+      name: "devtools-core-no-node-builtins",
+      severity: "error",
+      comment: "@rtc/devtools-core must run in any JS environment.",
+      from: {
+        path: "^packages/devtools-core/src",
+        pathNot: "(\\.test\\.ts$|/__tests__/)",
+      },
+      to: { dependencyTypes: ["core"] },
+    },
+    {
+      name: "devtools-app-protocol-only",
+      severity: "error",
+      comment:
+        "@rtc/devtools-app understands only the wire protocol — devtools-core is its sole @rtc dependency.",
+      from: { path: "^packages/devtools-app/src" },
+      to: {
+        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects)/",
+      },
+    },
+    {
       name: "motion-core-stays-pure",
       severity: "error",
       comment:

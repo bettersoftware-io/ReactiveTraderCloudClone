@@ -5,6 +5,7 @@ import type { CreditRfqFormPO } from "./CreditRfqForm";
 import type { CreditRfqPanelPO } from "./CreditRfqPanel";
 import type { FooterPO } from "./Footer";
 import type { FxRfqFormPO } from "./FxRfqForm";
+import type { InspectorPO } from "./Inspector";
 import type { LayoutPO } from "./Layout";
 import type { LiveRatesTilePO } from "./LiveRatesTile";
 import type { PositionsPanelPO } from "./PositionsPanel";
@@ -24,4 +25,8 @@ export interface PageObjects {
   creditRfqPanel: CreditRfqPanelPO;
   blotterTable: BlotterTablePO;
   layout: LayoutPO;
+  /** Optional: the same-origin DevTools inspector (a second page). Only the
+   *  Playwright factory provides it — Cypress cannot drive a second same-origin
+   *  tab, so it is absent there. */
+  inspector?: InspectorPO;
 }
