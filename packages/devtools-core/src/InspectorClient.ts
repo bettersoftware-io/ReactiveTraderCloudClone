@@ -7,9 +7,11 @@ import { PROTOCOL_VERSION } from "./protocol";
 
 const PING_INTERVAL_MS = 2000;
 
-/** Panel-side handshake driver. Sends hello on `start()`, pings the app every
- * 2s (the hub's heartbeat), and pipes every inbound `AppToInspector` message
- * into the store. `dispose()` sends bye and stops pinging. */
+/** Panel-side handshake driver. Sends hello on `start()`, then every 2s
+ * re-announces with hello while disconnected (so connecting is order-
+ * independent and survives an app reload) or pings once connected (the hub's
+ * heartbeat). Pipes every inbound `AppToInspector` message into the store.
+ * `dispose()` sends bye and stops the timer. */
 export class InspectorClient {
   private readonly channel: Duplex<InspectorToApp, AppToInspector>;
 
@@ -37,7 +39,16 @@ export class InspectorClient {
     });
     this.channel.send({ kind: "hello", v: PROTOCOL_VERSION });
     this.pingTimer = setInterval(() => {
-      this.channel.send({ kind: "ping" });
+      // Until the app answers (store.connected flips on `welcome`), keep
+      // re-announcing so connecting is order-independent: the panel can be
+      // opened before the app is ready, and it auto-reconnects after an app
+      // reload (which sends `bye` via pagehide, flipping us back to hello).
+      // Once connected, `ping` is the heartbeat the hub's 10s timeout watches.
+      if (this.store.getSnapshot().connected) {
+        this.channel.send({ kind: "ping" });
+      } else {
+        this.channel.send({ kind: "hello", v: PROTOCOL_VERSION });
+      }
     }, PING_INTERVAL_MS);
   }
 

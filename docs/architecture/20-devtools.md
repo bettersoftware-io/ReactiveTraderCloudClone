@@ -293,6 +293,16 @@ inbound surface actually shipped is exactly `hello` / `ping` / `bye`
 (`InspectorToApp` above), which is also the smaller, more honest security
 surface referenced in [§20.6](#206-serving-topology).
 
+**Order-independent handshake:** the panel's `InspectorClient` re-sends `hello`
+every 2 s while disconnected (rather than a single one-shot `hello`), and
+switches to `ping` only once the app answers with `welcome`. This makes
+connecting order-independent — the panel can be opened before the app is
+ready — and lets it auto-reconnect after an app reload (which sends `bye` via
+`pagehide`, flipping the panel back into hello mode). While the panel tab is
+backgrounded the browser throttles this timer, so reconnection completes once
+the panel is foregrounded; an abrupt app crash with no `pagehide` remains the
+documented v1 limitation.
+
 ### 20.5 Serialization & error isolation
 
 One serializer in `devtools-core` (`packages/devtools-core/src/serialize.ts`)
