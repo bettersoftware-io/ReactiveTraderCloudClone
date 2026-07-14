@@ -23,22 +23,6 @@ afterEach(() => {
   }
 });
 
-function fixture(): string {
-  tmp = mkdtempSync(join(tmpdir(), "pi-"));
-  mkdirSync(join(tmp, "2026-07-14"), { recursive: true });
-  writeFileSync(
-    join(tmp, "2026-07-14", "Clean-Architecture-case-study.html"),
-    "x",
-  );
-  writeFileSync(
-    join(tmp, "2026-07-14", "Clean-Architecture-case-study.pdf"),
-    "x",
-  );
-  mkdirSync(join(tmp, "2026-06-01"), { recursive: true });
-  writeFileSync(join(tmp, "2026-06-01", "Intro_Talk.html"), "x");
-  return tmp;
-}
-
 describe("build-presentations-index", () => {
   it("derives titles from filenames, lists newest first, links the PDF", () => {
     const dir = fixture();
@@ -71,3 +55,19 @@ describe("build-presentations-index", () => {
     );
   });
 });
+
+function fixture(): string {
+  tmp = mkdtempSync(join(tmpdir(), "pi-"));
+  mkdirSync(join(tmp, "2026-07-14"), { recursive: true });
+  writeFileSync(
+    join(tmp, "2026-07-14", "Clean-Architecture-case-study.html"),
+    "x",
+  );
+  writeFileSync(
+    join(tmp, "2026-07-14", "Clean-Architecture-case-study.pdf"),
+    "x",
+  );
+  mkdirSync(join(tmp, "2026-06-01"), { recursive: true });
+  writeFileSync(join(tmp, "2026-06-01", "Intro_Talk.html"), "x");
+  return tmp;
+}

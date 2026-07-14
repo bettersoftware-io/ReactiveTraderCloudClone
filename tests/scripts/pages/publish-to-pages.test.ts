@@ -23,31 +23,6 @@ afterEach(() => {
   }
 });
 
-function git(cwd: string, ...args: string[]): string {
-  return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
-}
-
-function stage(
-  base: string,
-  name: string,
-  files: Record<string, string>,
-): string {
-  const dir = join(base, name);
-  for (const [rel, content] of Object.entries(files)) {
-    const full = join(dir, rel);
-    mkdirSync(join(full, ".."), { recursive: true });
-    writeFileSync(full, content);
-  }
-  return dir;
-}
-
-function publish(cwd: string, source: string, message: string): void {
-  execFileSync("node", [SCRIPT, "--source", source, "--message", message], {
-    cwd,
-    encoding: "utf8",
-  });
-}
-
 describe("publish-to-pages", () => {
   it("keeps two producers' subtrees side by side and preserves shared root files", () => {
     root = mkdtempSync(join(tmpdir(), "pp-"));
@@ -78,7 +53,9 @@ describe("publish-to-pages", () => {
     const verify = join(root, "verify");
     execFileSync("git", ["clone", "-b", "gh-pages", bare, verify]);
     const top = readdirSync(verify)
-      .filter((f) => f !== ".git")
+      .filter((f) => {
+        return f !== ".git";
+      })
       .sort();
 
     expect(top).toContain("alpha"); // producer A subtree survived producer B's publish
@@ -110,3 +87,30 @@ describe("publish-to-pages", () => {
     expect(after).toBe(before); // no new commit
   });
 });
+
+function git(cwd: string, ...args: string[]): string {
+  return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+}
+
+function stage(
+  base: string,
+  name: string,
+  files: Record<string, string>,
+): string {
+  const dir = join(base, name);
+
+  for (const [rel, content] of Object.entries(files)) {
+    const full = join(dir, rel);
+    mkdirSync(join(full, ".."), { recursive: true });
+    writeFileSync(full, content);
+  }
+
+  return dir;
+}
+
+function publish(cwd: string, source: string, message: string): void {
+  execFileSync("node", [SCRIPT, "--source", source, "--message", message], {
+    cwd,
+    encoding: "utf8",
+  });
+}
