@@ -14,5 +14,17 @@
       "Bash(pnpm --filter @rtc/client-react test:e2e)",
       "Bash(pnpm --filter @rtc/client-react typecheck)"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/status-drift-check.sh"
+          }
+        ]
+      }
+    ]
   }
 }
