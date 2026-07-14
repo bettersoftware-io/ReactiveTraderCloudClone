@@ -2,6 +2,7 @@ import { BehaviorSubject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
 import { DevtoolsHub } from "../DevtoolsHub";
+import type { InstrumentableMachine } from "../instrument/machines";
 import { instrumentMachineFactories } from "../instrument/machines";
 
 describe("instrumentMachineFactories", () => {
@@ -47,6 +48,31 @@ describe("instrumentMachineFactories", () => {
       return machine.intents.submit();
     }).not.toThrow();
     expect(submitSpy).toHaveBeenCalledOnce();
+  });
+
+  it("does not throw when a factory returns a machine whose .intents is undefined (misconfigured factory)", () => {
+    const hub = new DevtoolsHub();
+    const state$ = new BehaviorSubject({ phase: "editing" });
+    const dispose = vi.fn();
+    const factories = {
+      // Structurally NOT a machine — `intents` is missing. `state$`/`dispose`
+      // are present so `hub.machineCreated` succeeds and the intents loop is
+      // reached and throws on `Object.entries(undefined)`.
+      broken: (): InstrumentableMachine => {
+        return { state$, dispose } as unknown as InstrumentableMachine;
+      },
+    };
+
+    const wrapped = instrumentMachineFactories(factories, hub);
+
+    let machine: InstrumentableMachine | undefined;
+    expect(() => {
+      machine = wrapped.broken();
+    }).not.toThrow();
+
+    // Falls back to the raw, unwrapped machine rather than crashing the
+    // composition root.
+    expect(machine?.state$).toBe(state$);
   });
 });
 

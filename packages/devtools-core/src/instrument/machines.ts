@@ -38,38 +38,45 @@ export function instrumentMachineFactories<F extends object>(
         return machine; // devtools failed — hand back the raw machine
       }
 
-      const intents: Record<string, unknown> = {};
+      try {
+        const intents: Record<string, unknown> = {};
 
-      for (const [name, fn] of Object.entries(machine.intents)) {
-        if (typeof fn !== "function") {
-          intents[name] = fn;
-          continue;
+        for (const [name, fn] of Object.entries(machine.intents)) {
+          if (typeof fn !== "function") {
+            intents[name] = fn;
+            continue;
+          }
+
+          intents[name] = (...intentArgs: unknown[]): unknown => {
+            try {
+              hub.machineIntent(machineId, name, intentArgs);
+            } catch {
+              // never block the real intent
+            }
+
+            return fn(...intentArgs);
+          };
         }
 
-        intents[name] = (...intentArgs: unknown[]): unknown => {
-          try {
-            hub.machineIntent(machineId, name, intentArgs);
-          } catch {
-            // never block the real intent
-          }
+        return {
+          state$: machine.state$,
+          intents,
+          dispose: () => {
+            try {
+              hub.machineDisposed(machineId);
+            } catch {
+              // never block disposal
+            }
 
-          return fn(...intentArgs);
+            machine.dispose();
+          },
         };
+      } catch {
+        // machine.intents was nullish/non-iterable (misconfigured factory
+        // result) — hand back the raw machine rather than throwing into the
+        // app's composition root.
+        return machine;
       }
-
-      return {
-        state$: machine.state$,
-        intents,
-        dispose: () => {
-          try {
-            hub.machineDisposed(machineId);
-          } catch {
-            // never block disposal
-          }
-
-          machine.dispose();
-        },
-      };
     };
   }
 

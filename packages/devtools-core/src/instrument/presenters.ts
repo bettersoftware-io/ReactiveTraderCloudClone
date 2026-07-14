@@ -122,22 +122,28 @@ function instrumentSharedMachine(
     return machine;
   }
 
-  const intents: Record<string, unknown> = {};
+  try {
+    const intents: Record<string, unknown> = {};
 
-  for (const [name, fn] of Object.entries(machine.intents)) {
-    intents[name] =
-      typeof fn === "function"
-        ? (...args: unknown[]): unknown => {
-            try {
-              hub.machineIntent(machineId, name, args);
-            } catch {
-              // never block the real intent
+    for (const [name, fn] of Object.entries(machine.intents)) {
+      intents[name] =
+        typeof fn === "function"
+          ? (...args: unknown[]): unknown => {
+              try {
+                hub.machineIntent(machineId, name, args);
+              } catch {
+                // never block the real intent
+              }
+
+              return (fn as (...a: unknown[]) => unknown)(...args);
             }
+          : fn;
+    }
 
-            return (fn as (...a: unknown[]) => unknown)(...args);
-          }
-        : fn;
+    return { state$: machine.state$, intents, dispose: machine.dispose };
+  } catch {
+    // machine.intents was nullish/non-iterable (misconfigured manifest entry)
+    // — hand back the raw machine rather than throwing into the app.
+    return machine;
   }
-
-  return { state$: machine.state$, intents, dispose: machine.dispose };
 }

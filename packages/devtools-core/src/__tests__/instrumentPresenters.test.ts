@@ -1,7 +1,8 @@
-import type { Observable } from "rxjs";
+import { BehaviorSubject, type Observable } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
 import { DevtoolsHub } from "../DevtoolsHub";
+import type { InstrumentableMachine } from "../instrument/machines";
 import { instrumentPresenters } from "../instrument/presenters";
 import type { PresenterManifest } from "../protocol";
 import { FakeBlotter } from "./FakeBlotter.testHelpers";
@@ -149,6 +150,37 @@ describe("instrumentPresenters", () => {
     expect(out?.blotter.trades$).toBe(blotter.trades$);
     expect(out?.blotter.untracked$).toBe(blotter.untracked$);
   });
+
+  it("does not throw when a machine: true entry has no .intents (misconfigured manifest)", () => {
+    const hub = new DevtoolsHub();
+    const state$ = new BehaviorSubject({ phase: "editing" });
+    const dispose = vi.fn();
+    // Structurally NOT a machine — `intents` is missing, simulating a
+    // presenter mis-marked `machine: true` in the manifest. Cast is
+    // deliberate: this is exactly the misconfiguration the hardening guards.
+    const misconfigured = {
+      state$,
+      dispose,
+    } as unknown as InstrumentableMachine;
+    const manifest: PresenterManifest = { broken: { machine: true } };
+
+    let out: BrokenPresenters | undefined;
+    expect(() => {
+      out = instrumentPresenters<BrokenPresenters>(
+        { broken: misconfigured },
+        manifest,
+        hub,
+      );
+    }).not.toThrow();
+
+    // Falls back to the raw, unwrapped presenter rather than crashing the
+    // composition root.
+    expect(out?.broken.state$).toBe(state$);
+  });
 });
 
 type BlotterPresenters = { blotter: FakeBlotter };
+
+interface BrokenPresenters {
+  broken: InstrumentableMachine;
+}

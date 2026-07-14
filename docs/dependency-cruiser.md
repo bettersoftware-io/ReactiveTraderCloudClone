@@ -78,7 +78,7 @@ the edges the `forbidden` rules reject. `domain-stays-pure` forbids
 -- stricter than the rxjs-only exception, since it forbids `rxjs` too; the apps may
 reach inward but never reach across to each other.
 
-## The 13 forbidden rules
+## The 20 forbidden rules
 
 All rules are `severity: "error"` — any match fails the gate.
 
@@ -91,6 +91,9 @@ All rules are `severity: "error"` — any match fails the gate.
 | `client-not-server` | `^packages/client-react/src` | `^packages/server/` | The two apps never couple |
 | `server-not-client` | `^packages/server/src` | `^packages/client-react/` | (mirror of the above) |
 | `ws-effects-stays-pure` | `^packages/ws-effects/src` | `^packages/(domain\|shared\|client-react\|server)/` | The effects framework is domain-blind and app-agnostic (rxjs only) |
+| `devtools-core-stays-pure` | `^packages/devtools-core/src` | `^packages/(domain\|shared\|client-core\|client-react\|client-react-native\|client-prototype\|react-bindings\|solid-bindings\|client-solid\|motion-core\|ui-contract\|server\|ws-effects\|devtools-app)/` | `@rtc/devtools-core` decorates by structural shape — it imports no other `@rtc/*` package, siblings (incl. `devtools-app`) included |
+| `devtools-core-no-node-builtins` | `^packages/devtools-core/src` (tests and `__tests__/` excepted) | Node built-ins (`dependencyTypes: ["core"]`) | `@rtc/devtools-core` must run in any JS environment |
+| `devtools-app-protocol-only` | `^packages/devtools-app/src` | `^packages/(domain\|shared\|client-core\|client-react\|client-react-native\|client-prototype\|react-bindings\|solid-bindings\|client-solid\|motion-core\|ui-contract\|server\|ws-effects)/` | `@rtc/devtools-app` understands only the wire protocol — `@rtc/devtools-core` is its sole `@rtc/*` dependency |
 | `client-core-stays-inner` | `^packages/client-core/src` | `^packages/(react-bindings\|client-react\|client-react-native\|client-prototype\|server)/` | The shared application core never reaches out to a bindings bridge, a client, or the server |
 | `client-core-framework-free` | `^packages/client-core/src` | `react` / `react-dom` / `react-native` (`node_modules`) | `client-core` stays framework-free by contract despite three UI-facing consumers |
 | `react-bindings-no-apps` | `^packages/react-bindings/src` | `^packages/(client-react\|client-react-native\|client-prototype\|server)/` | The React↔RxJS bridge depends only inward (core, domain), never on an app or the server |
