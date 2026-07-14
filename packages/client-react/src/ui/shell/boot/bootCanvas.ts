@@ -59,28 +59,28 @@ export interface BootDrawCtx {
 export type BootFrameFn = () => void;
 
 /** hexToRgba — verbatim from prototype line 819 */
-export function hexToRgba(hex: string, a: number): string {
-  let h = hex.replace("#", "");
+export function hexToRgba(hex: string, alpha: number): string {
+  let normalizedHex = hex.replace("#", "");
 
-  if (h.length === 3) {
-    h = h
+  if (normalizedHex.length === 3) {
+    normalizedHex = normalizedHex
       .split("")
-      .map((c) => {
-        return c + c;
+      .map((digit) => {
+        return digit + digit;
       })
       .join("");
   }
 
-  const n = parseInt(h, 16);
+  const intValue = parseInt(normalizedHex, 16);
   return (
     "rgba(" +
-    ((n >> 16) & 255) +
+    ((intValue >> 16) & 255) +
     "," +
-    ((n >> 8) & 255) +
+    ((intValue >> 8) & 255) +
     "," +
-    (n & 255) +
+    (intValue & 255) +
     "," +
-    a +
+    alpha +
     ")"
   );
 }
@@ -89,13 +89,13 @@ export function hexToRgba(hex: string, a: number): string {
  * Cubic ease-out used by laser and docking variants.
  * Verbatim from prototype (both _drawBootLaser and _drawBootDocking).
  */
-export function ease(k: number): number {
-  return 1 - (1 - Math.max(0, Math.min(1, k))) ** 3;
+export function ease(t: number): number {
+  return 1 - (1 - Math.max(0, Math.min(1, t))) ** 3;
 }
 
 /** Zero-pad a number to two digits. Verbatim from prototype _drawBootDocking. */
-function pad2(n: number): string {
-  return String(Math.abs(Math.floor(n))).padStart(2, "0");
+function padTwo(value: number): string {
+  return String(Math.abs(Math.floor(value))).padStart(2, "0");
 }
 
 /**
@@ -103,11 +103,11 @@ function pad2(n: number): string {
  * plus _bootContent (lines 1038-1045), inlined as a local helper.
  * Draws one frame of the UI-draw-in laser animation.
  */
-export function drawBootLaser(d: BootDrawCtx): void {
-  const c = d.canvas;
-  const ctx = d.ctx;
-  const acc = d.accent;
-  const ac2 = d.accent2 !== "" ? d.accent2 : d.accent;
+export function drawBootLaser(scene: BootDrawCtx): void {
+  const canvas = scene.canvas;
+  const ctx = scene.ctx;
+  const accent = scene.accent;
+  const accentAlt = scene.accent2 !== "" ? scene.accent2 : scene.accent;
 
   const panels = [
     {
@@ -166,183 +166,207 @@ export function drawBootLaser(d: BootDrawCtx): void {
     },
   ];
 
-  function bootContent(
-    bCtx: CanvasRenderingContext2D,
-    p: LaserPanel,
-    r: Rect,
-    bAcc: string,
-    bAc2: string,
+  function drawPanelContent(
+    panelCtx: CanvasRenderingContext2D,
+    panel: LaserPanel,
+    rect: Rect,
+    panelAccent: string,
+    panelAccentAlt: string,
   ): void {
-    const pad = Math.min(r.w, r.h) * 0.11;
-    const x = r.x + pad;
-    const y = r.y + pad;
-    const w = r.w - pad * 2;
-    const h = r.h - pad * 2;
+    const pad = Math.min(rect.w, rect.h) * 0.11;
+    const innerX = rect.x + pad;
+    const innerY = rect.y + pad;
+    const innerW = rect.w - pad * 2;
+    const innerH = rect.h - pad * 2;
 
-    if (p.kind === "header") {
+    if (panel.kind === "header") {
       for (let i = 0; i < 4; i++) {
-        bCtx.fillStyle = hexToRgba(i === 0 ? bAc2 : bAcc, 0.55);
-        bCtx.fillRect(x + i * 72, y + h * 0.3, 54, h * 0.4);
+        panelCtx.fillStyle = hexToRgba(
+          i === 0 ? panelAccentAlt : panelAccent,
+          0.55,
+        );
+        panelCtx.fillRect(
+          innerX + i * 72,
+          innerY + innerH * 0.3,
+          54,
+          innerH * 0.4,
+        );
       }
-    } else if (p.kind === "main") {
-      const tw = (w - 14) / 2;
-      const tht = (h - 14) / 2;
+    } else if (panel.kind === "main") {
+      const tileW = (innerW - 14) / 2;
+      const tileH = (innerH - 14) / 2;
 
       for (let i = 0; i < 2; i++) {
         for (let j = 0; j < 2; j++) {
-          const bx = x + i * (tw + 14);
-          const by = y + j * (tht + 14);
-          bCtx.strokeStyle = hexToRgba(bAcc, 0.5);
-          bCtx.lineWidth = 1;
-          bCtx.strokeRect(bx, by, tw, tht);
-          bCtx.fillStyle = hexToRgba(bAcc, 0.16);
-          bCtx.fillRect(bx, by, tw, tht * 0.34);
-          bCtx.strokeStyle = hexToRgba(bAc2, 0.7);
-          bCtx.lineWidth = 1.4;
-          bCtx.beginPath();
+          const tileX = innerX + i * (tileW + 14);
+          const tileY = innerY + j * (tileH + 14);
+          panelCtx.strokeStyle = hexToRgba(panelAccent, 0.5);
+          panelCtx.lineWidth = 1;
+          panelCtx.strokeRect(tileX, tileY, tileW, tileH);
+          panelCtx.fillStyle = hexToRgba(panelAccent, 0.16);
+          panelCtx.fillRect(tileX, tileY, tileW, tileH * 0.34);
+          panelCtx.strokeStyle = hexToRgba(panelAccentAlt, 0.7);
+          panelCtx.lineWidth = 1.4;
+          panelCtx.beginPath();
 
-          for (let s = 0; s <= 12; s++) {
-            const sx = bx + 6 + ((tw - 12) * s) / 12;
-            const sy =
-              by + tht * 0.78 - Math.sin(s * 0.8 + i * 2 + j) * tht * 0.13;
+          for (let sampleIdx = 0; sampleIdx <= 12; sampleIdx++) {
+            const sampleX = tileX + 6 + ((tileW - 12) * sampleIdx) / 12;
+            const sampleY =
+              tileY +
+              tileH * 0.78 -
+              Math.sin(sampleIdx * 0.8 + i * 2 + j) * tileH * 0.13;
 
-            if (s === 0) {
-              bCtx.moveTo(sx, sy);
+            if (sampleIdx === 0) {
+              panelCtx.moveTo(sampleX, sampleY);
             } else {
-              bCtx.lineTo(sx, sy);
+              panelCtx.lineTo(sampleX, sampleY);
             }
           }
 
-          bCtx.stroke();
+          panelCtx.stroke();
         }
       }
-    } else if (p.kind === "list") {
+    } else if (panel.kind === "list") {
       const rows = 4;
-      const rh = h / rows;
+      const rowH = innerH / rows;
 
       for (let i = 0; i < rows; i++) {
-        bCtx.fillStyle = hexToRgba(bAcc, 0.42 - i * 0.06);
-        bCtx.fillRect(
-          x,
-          y + i * rh + rh * 0.25,
-          w * (0.92 - i * 0.14),
-          rh * 0.4,
+        panelCtx.fillStyle = hexToRgba(panelAccent, 0.42 - i * 0.06);
+        panelCtx.fillRect(
+          innerX,
+          innerY + i * rowH + rowH * 0.25,
+          innerW * (0.92 - i * 0.14),
+          rowH * 0.4,
         );
       }
-    } else if (p.kind === "blotter") {
+    } else if (panel.kind === "blotter") {
       const rows = 4;
-      const rh = h / rows;
-      bCtx.fillStyle = hexToRgba(bAc2, 0.5);
-      bCtx.fillRect(x, y, w, rh * 0.45);
+      const rowH = innerH / rows;
+      panelCtx.fillStyle = hexToRgba(panelAccentAlt, 0.5);
+      panelCtx.fillRect(innerX, innerY, innerW, rowH * 0.45);
 
       for (let i = 1; i < rows; i++) {
-        bCtx.strokeStyle = hexToRgba(bAcc, 0.3);
-        bCtx.beginPath();
-        bCtx.moveTo(x, y + i * rh);
-        bCtx.lineTo(x + w, y + i * rh);
-        bCtx.stroke();
+        panelCtx.strokeStyle = hexToRgba(panelAccent, 0.3);
+        panelCtx.beginPath();
+        panelCtx.moveTo(innerX, innerY + i * rowH);
+        panelCtx.lineTo(innerX + innerW, innerY + i * rowH);
+        panelCtx.stroke();
 
-        for (let cI = 0; cI < 5; cI++) {
-          bCtx.fillStyle = hexToRgba(bAcc, 0.3);
-          bCtx.fillRect(
-            x + cI * (w / 5) + 5,
-            y + i * rh + rh * 0.3,
-            (w / 5) * 0.6,
-            rh * 0.34,
+        for (let col = 0; col < 5; col++) {
+          panelCtx.fillStyle = hexToRgba(panelAccent, 0.3);
+          panelCtx.fillRect(
+            innerX + col * (innerW / 5) + 5,
+            innerY + i * rowH + rowH * 0.3,
+            (innerW / 5) * 0.6,
+            rowH * 0.34,
           );
         }
       }
-    } else if (p.kind === "status") {
+    } else if (panel.kind === "status") {
       for (let i = 0; i < 9; i++) {
-        bCtx.fillStyle = hexToRgba(i % 3 === 0 ? bAc2 : bAcc, 0.5);
-        bCtx.fillRect(x + i * (w / 9), y + h * 0.3, (w / 9) * 0.55, h * 0.4);
+        panelCtx.fillStyle = hexToRgba(
+          i % 3 === 0 ? panelAccentAlt : panelAccent,
+          0.5,
+        );
+        panelCtx.fillRect(
+          innerX + i * (innerW / 9),
+          innerY + innerH * 0.3,
+          (innerW / 9) * 0.55,
+          innerH * 0.4,
+        );
       }
     }
   }
 
-  if (c.width !== c.offsetWidth) {
-    c.width = c.offsetWidth;
-    c.height = c.offsetHeight;
+  if (canvas.width !== canvas.offsetWidth) {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
   }
 
-  const prog = Math.min(1, (performance.now() - d.start) / BOOT_DURATION_MS);
-  const W = c.width;
-  const H = c.height;
-  ctx.clearRect(0, 0, W, H);
+  const progress = Math.min(
+    1,
+    (performance.now() - scene.start) / BOOT_DURATION_MS,
+  );
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "rgba(0,0,0,0.42)";
-  ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = hexToRgba(acc, 0.045);
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = hexToRgba(accent, 0.045);
   ctx.lineWidth = 1;
 
-  for (let x = 0; x < W; x += 44) {
+  for (let x = 0; x < width; x += 44) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, H);
+    ctx.lineTo(x, height);
     ctx.stroke();
   }
 
-  for (let y = 0; y < H; y += 44) {
+  for (let y = 0; y < height; y += 44) {
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
+    ctx.lineTo(width, y);
     ctx.stroke();
   }
 
-  function toRect(p: PanelNorm): Rect {
+  function toPixelRect(panel: PanelNorm): Rect {
     return {
-      x: p.nx * W,
-      y: p.ny * H,
-      w: p.nw * W,
-      h: p.nh * H,
+      x: panel.nx * width,
+      y: panel.ny * height,
+      w: panel.nw * width,
+      h: panel.nh * height,
     };
   }
 
   let head: HeadPos | null = null;
-  panels.forEach((p) => {
-    const r = toRect(p);
-    const frac = Math.max(0, Math.min(1, (prog - p.t0) / (p.t1 - p.t0)));
+  panels.forEach((panel) => {
+    const rect = toPixelRect(panel);
+    const drawFrac = Math.max(
+      0,
+      Math.min(1, (progress - panel.t0) / (panel.t1 - panel.t0)),
+    );
 
-    if (frac <= 0) {
+    if (drawFrac <= 0) {
       return;
     }
 
-    const segs: [number, number, number, number][] = [
-      [r.x, r.y, r.x + r.w, r.y],
-      [r.x + r.w, r.y, r.x + r.w, r.y + r.h],
-      [r.x + r.w, r.y + r.h, r.x, r.y + r.h],
-      [r.x, r.y + r.h, r.x, r.y],
+    const segments: [number, number, number, number][] = [
+      [rect.x, rect.y, rect.x + rect.w, rect.y],
+      [rect.x + rect.w, rect.y, rect.x + rect.w, rect.y + rect.h],
+      [rect.x + rect.w, rect.y + rect.h, rect.x, rect.y + rect.h],
+      [rect.x, rect.y + rect.h, rect.x, rect.y],
     ];
-    const lens = segs.map((s) => {
-      return Math.hypot(s[2] - s[0], s[3] - s[1]);
+    const segLengths = segments.map((segment) => {
+      return Math.hypot(segment[2] - segment[0], segment[3] - segment[1]);
     });
-    const P = lens.reduce((a, b) => {
+    const perimeter = segLengths.reduce((a, b) => {
       return a + b;
     }, 0);
-    let target = frac * P;
+    let remaining = drawFrac * perimeter;
     ctx.lineWidth = 1.6;
     ctx.lineJoin = "round";
-    ctx.shadowColor = acc;
-    ctx.shadowBlur = frac < 1 ? 16 : 7;
-    ctx.strokeStyle = hexToRgba(acc, frac < 1 ? 0.98 : 0.62);
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = drawFrac < 1 ? 16 : 7;
+    ctx.strokeStyle = hexToRgba(accent, drawFrac < 1 ? 0.98 : 0.62);
     ctx.beginPath();
-    ctx.moveTo(segs[0][0], segs[0][1]);
-    let hx = segs[0][0];
-    let hy = segs[0][1];
+    ctx.moveTo(segments[0][0], segments[0][1]);
+    let headX = segments[0][0];
+    let headY = segments[0][1];
 
-    for (let i = 0; i < segs.length; i++) {
-      const s = segs[i];
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
 
-      if (target >= lens[i]) {
-        ctx.lineTo(s[2], s[3]);
-        hx = s[2];
-        hy = s[3];
-        target -= lens[i];
+      if (remaining >= segLengths[i]) {
+        ctx.lineTo(segment[2], segment[3]);
+        headX = segment[2];
+        headY = segment[3];
+        remaining -= segLengths[i];
       } else {
-        const u = lens[i] ? target / lens[i] : 0;
-        hx = s[0] + (s[2] - s[0]) * u;
-        hy = s[1] + (s[3] - s[1]) * u;
-        ctx.lineTo(hx, hy);
-        target = 0;
+        const segFrac = segLengths[i] ? remaining / segLengths[i] : 0;
+        headX = segment[0] + (segment[2] - segment[0]) * segFrac;
+        headY = segment[1] + (segment[3] - segment[1]) * segFrac;
+        ctx.lineTo(headX, headY);
+        remaining = 0;
         break;
       }
     }
@@ -350,75 +374,77 @@ export function drawBootLaser(d: BootDrawCtx): void {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    if (frac < 1) {
-      head = { x: hx, y: hy };
+    if (drawFrac < 1) {
+      head = { x: headX, y: headY };
     }
 
-    if (prog >= p.t1 && prog < p.t1 + 0.07) {
-      const fa = 1 - (prog - p.t1) / 0.07;
-      ctx.fillStyle = hexToRgba(acc, 0.2 * fa);
-      ctx.fillRect(r.x, r.y, r.w, r.h);
+    if (progress >= panel.t1 && progress < panel.t1 + 0.07) {
+      const flashAlpha = 1 - (progress - panel.t1) / 0.07;
+      ctx.fillStyle = hexToRgba(accent, 0.2 * flashAlpha);
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     }
 
-    if (frac > 0.985) {
-      ctx.strokeStyle = hexToRgba(ac2, 0.85);
+    if (drawFrac > 0.985) {
+      ctx.strokeStyle = hexToRgba(accentAlt, 0.85);
       ctx.lineWidth = 1.4;
-      const tk = 8;
+      const tickLen = 8;
       (
         [
-          [r.x, r.y, 1, 1],
-          [r.x + r.w, r.y, -1, 1],
-          [r.x, r.y + r.h, 1, -1],
-          [r.x + r.w, r.y + r.h, -1, -1],
+          [rect.x, rect.y, 1, 1],
+          [rect.x + rect.w, rect.y, -1, 1],
+          [rect.x, rect.y + rect.h, 1, -1],
+          [rect.x + rect.w, rect.y + rect.h, -1, -1],
         ] as [number, number, number, number][]
-      ).forEach((q) => {
+      ).forEach((corner) => {
         ctx.beginPath();
-        ctx.moveTo(q[0], q[1] + q[3] * tk);
-        ctx.lineTo(q[0], q[1]);
-        ctx.lineTo(q[0] + q[2] * tk, q[1]);
+        ctx.moveTo(corner[0], corner[1] + corner[3] * tickLen);
+        ctx.lineTo(corner[0], corner[1]);
+        ctx.lineTo(corner[0] + corner[2] * tickLen, corner[1]);
         ctx.stroke();
       });
     }
 
-    const cs = p.t1;
-    const ce = Math.min(1, p.t1 + 0.24);
-    const k = ease((prog - cs) / (ce - cs));
+    const contentStart = panel.t1;
+    const contentEnd = Math.min(1, panel.t1 + 0.24);
+    const contentEase = ease(
+      (progress - contentStart) / (contentEnd - contentStart),
+    );
 
-    if (k > 0) {
-      const cxp = r.x + r.w / 2;
-      const cyp = r.y + r.h / 2;
-      const sc = 0.32 + 0.68 * k;
+    if (contentEase > 0) {
+      const panelCenterX = rect.x + rect.w / 2;
+      const panelCenterY = rect.y + rect.h / 2;
+      const contentScale = 0.32 + 0.68 * contentEase;
       ctx.save();
-      ctx.globalAlpha = k;
-      ctx.translate(cxp, cyp);
-      ctx.scale(sc, sc);
-      ctx.translate(-cxp, -cyp);
-      bootContent(ctx, p, r, acc, ac2);
+      ctx.globalAlpha = contentEase;
+      ctx.translate(panelCenterX, panelCenterY);
+      ctx.scale(contentScale, contentScale);
+      ctx.translate(-panelCenterX, -panelCenterY);
+      drawPanelContent(ctx, panel, rect, accent, accentAlt);
       ctx.restore();
       ctx.globalAlpha = 1;
     }
   });
 
   if (head !== null) {
-    const hd = head as HeadPos;
-    const ex = W * 0.5;
-    const ey = -24;
-    ctx.strokeStyle = hexToRgba(ac2, 0.45);
+    const headPos = head as HeadPos;
+    const emitterX = width * 0.5;
+    const emitterY = -24;
+    ctx.strokeStyle = hexToRgba(accentAlt, 0.45);
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(ex, ey);
-    ctx.lineTo(hd.x, hd.y);
+    ctx.moveTo(emitterX, emitterY);
+    ctx.lineTo(headPos.x, headPos.y);
     ctx.stroke();
-    ctx.fillStyle = hexToRgba(acc, 0.45);
-    ctx.shadowColor = acc;
+    ctx.fillStyle = hexToRgba(accent, 0.45);
+    ctx.shadowColor = accent;
     ctx.shadowBlur = 22;
     ctx.beginPath();
-    ctx.arc(hd.x, hd.y, 7, 0, Math.PI * 2);
+    ctx.arc(headPos.x, headPos.y, 7, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#fff";
     ctx.shadowBlur = 14;
     ctx.beginPath();
-    ctx.arc(hd.x, hd.y, 3, 0, Math.PI * 2);
+    ctx.arc(headPos.x, headPos.y, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
   }
@@ -428,326 +454,356 @@ export function drawBootLaser(d: BootDrawCtx): void {
  * drawBootDocking — verbatim inner draw() from prototype _drawBootDocking (lines 931-1036).
  * Draws one frame of the docking-HUD boot animation.
  */
-export function drawBootDocking(d: BootDrawCtx): void {
-  const c = d.canvas;
-  const ctx = d.ctx;
-  const acc = d.accent;
-  const ac2 = d.accent2 !== "" ? d.accent2 : d.accent;
+export function drawBootDocking(scene: BootDrawCtx): void {
+  const canvas = scene.canvas;
+  const ctx = scene.ctx;
+  const accent = scene.accent;
+  const accentAlt = scene.accent2 !== "" ? scene.accent2 : scene.accent;
 
   const MONO = "'JetBrains Mono','IBM Plex Mono',monospace";
 
-  if (c.width !== c.offsetWidth) {
-    c.width = c.offsetWidth;
-    c.height = c.offsetHeight;
+  if (canvas.width !== canvas.offsetWidth) {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
   }
 
-  const t = (performance.now() - d.start) / 1000;
-  const prog = Math.min(1, (performance.now() - d.start) / BOOT_DURATION_MS);
-  const W = c.width;
-  const H = c.height;
-  const cx = W / 2;
-  const cy = H / 2;
-  const E = ease(prog);
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = "rgba(0,2,4,0.64)";
-  ctx.fillRect(0, 0, W, H);
-  const vg = ctx.createRadialGradient(
-    cx,
-    cy,
-    Math.min(W, H) * 0.18,
-    cx,
-    cy,
-    Math.max(W, H) * 0.62,
+  const elapsedSec = (performance.now() - scene.start) / 1000;
+  const progress = Math.min(
+    1,
+    (performance.now() - scene.start) / BOOT_DURATION_MS,
   );
-  vg.addColorStop(0, "rgba(0,0,0,0)");
-  vg.addColorStop(1, "rgba(0,0,0,0.55)");
-  ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = hexToRgba(acc, 0.035);
+  const width = canvas.width;
+  const height = canvas.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const easedProgress = ease(progress);
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "rgba(0,2,4,0.64)";
+  ctx.fillRect(0, 0, width, height);
+  const vignetteGradient = ctx.createRadialGradient(
+    centerX,
+    centerY,
+    Math.min(width, height) * 0.18,
+    centerX,
+    centerY,
+    Math.max(width, height) * 0.62,
+  );
+  vignetteGradient.addColorStop(0, "rgba(0,0,0,0)");
+  vignetteGradient.addColorStop(1, "rgba(0,0,0,0.55)");
+  ctx.fillStyle = vignetteGradient;
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = hexToRgba(accent, 0.035);
 
-  for (let y = 0; y < H; y += 3) {
-    ctx.fillRect(0, y, W, 1);
+  for (let y = 0; y < height; y += 3) {
+    ctx.fillRect(0, y, width, 1);
   }
 
-  const shake = (1 - E) * 1.0 + 0.22;
-  const jx = (Math.sin(t * 9) * 1.4 + Math.sin(t * 17) * 0.7) * shake;
-  const jy = (Math.cos(t * 7) * 1.1 + Math.sin(t * 23) * 0.5) * shake;
+  const shake = (1 - easedProgress) * 1.0 + 0.22;
+  const shakeX =
+    (Math.sin(elapsedSec * 9) * 1.4 + Math.sin(elapsedSec * 17) * 0.7) * shake;
+  const shakeY =
+    (Math.cos(elapsedSec * 7) * 1.1 + Math.sin(elapsedSec * 23) * 0.5) * shake;
   ctx.save();
-  ctx.translate(jx, jy);
+  ctx.translate(shakeX, shakeY);
   ctx.lineWidth = 1;
-  ctx.strokeStyle = hexToRgba(acc, 0.1);
+  ctx.strokeStyle = hexToRgba(accent, 0.1);
 
   for (let i = -6; i <= 6; i++) {
-    const ex = cx + i * (W / 12);
+    const ex = centerX + i * (width / 12);
     ctx.beginPath();
     ctx.moveTo(ex, 0);
-    ctx.lineTo(cx, cy);
+    ctx.lineTo(centerX, centerY);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(ex, H);
-    ctx.lineTo(cx, cy);
+    ctx.moveTo(ex, height);
+    ctx.lineTo(centerX, centerY);
     ctx.stroke();
   }
 
   for (let i = -4; i <= 4; i++) {
-    const ey = cy + i * (H / 8);
+    const ey = centerY + i * (height / 8);
     ctx.beginPath();
     ctx.moveTo(0, ey);
-    ctx.lineTo(cx, cy);
+    ctx.lineTo(centerX, centerY);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(W, ey);
-    ctx.lineTo(cx, cy);
+    ctx.moveTo(width, ey);
+    ctx.lineTo(centerX, centerY);
     ctx.stroke();
   }
 
-  ctx.strokeStyle = hexToRgba(ac2, 0.16);
+  ctx.strokeStyle = hexToRgba(accentAlt, 0.16);
 
-  for (let r = 1; r <= 5; r++) {
+  for (let ring = 1; ring <= 5; ring++) {
     ctx.beginPath();
-    ctx.arc(cx, cy, r * Math.min(W, H) * 0.08, 0, Math.PI * 2);
+    ctx.arc(
+      centerX,
+      centerY,
+      ring * Math.min(width, height) * 0.08,
+      0,
+      Math.PI * 2,
+    );
     ctx.stroke();
   }
 
   ctx.restore();
-  ctx.strokeStyle = hexToRgba(acc, 0.06);
+  ctx.strokeStyle = hexToRgba(accent, 0.06);
   ctx.lineWidth = 1;
   // Floor at 1px: on a zero-width canvas (hidden panel, jsdom) a 0 step
   // would never advance the loops below — an infinite loop, not just a
   // wasted frame.
-  const gs = Math.max(1, Math.round(W / 16));
+  const gridStep = Math.max(1, Math.round(width / 16));
 
-  for (let x = 0; x <= W; x += gs) {
+  for (let x = 0; x <= width; x += gridStep) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, H);
+    ctx.lineTo(x, height);
     ctx.stroke();
   }
 
-  for (let y = 0; y <= H; y += gs) {
+  for (let y = 0; y <= height; y += gridStep) {
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
+    ctx.lineTo(width, y);
     ctx.stroke();
   }
 
-  const wob = 1 - E;
-  const tgx = cx + jx + Math.sin(t * 1.3) * 6 * wob;
-  const tgy = cy + jy + Math.cos(t * 1.1) * 5 * wob;
-  const craftR = 12 + E * 92;
-  const R0 = craftR;
+  const wobble = 1 - easedProgress;
+  const targetX = centerX + shakeX + Math.sin(elapsedSec * 1.3) * 6 * wobble;
+  const targetY = centerY + shakeY + Math.cos(elapsedSec * 1.1) * 5 * wobble;
+  const craftRadius = 12 + easedProgress * 92;
+  const radius = craftRadius;
   ctx.save();
-  ctx.translate(tgx, tgy);
+  ctx.translate(targetX, targetY);
   ctx.fillStyle = "rgba(8,16,22,0.5)";
-  ctx.fillRect(-R0 * 3.6, -R0 * 1.6, R0 * 7.2, R0 * 3.2);
-  ctx.strokeStyle = hexToRgba(acc, 0.12);
+  ctx.fillRect(-radius * 3.6, -radius * 1.6, radius * 7.2, radius * 3.2);
+  ctx.strokeStyle = hexToRgba(accent, 0.12);
   ctx.lineWidth = 1;
 
   for (let i = -3; i <= 3; i++) {
     ctx.beginPath();
-    ctx.moveTo(i * R0 * 1.15, -R0 * 1.6);
-    ctx.lineTo(i * R0 * 1.15, R0 * 1.6);
+    ctx.moveTo(i * radius * 1.15, -radius * 1.6);
+    ctx.lineTo(i * radius * 1.15, radius * 1.6);
     ctx.stroke();
   }
 
   for (let i = -1; i <= 1; i++) {
     ctx.beginPath();
-    ctx.moveTo(-R0 * 3.6, i * R0 * 0.95);
-    ctx.lineTo(R0 * 3.6, i * R0 * 0.95);
+    ctx.moveTo(-radius * 3.6, i * radius * 0.95);
+    ctx.lineTo(radius * 3.6, i * radius * 0.95);
     ctx.stroke();
   }
 
-  ctx.strokeStyle = hexToRgba(acc, 0.18);
-  ctx.strokeRect(-R0 * 3.4, -R0 * 0.55, R0 * 0.95, R0 * 1.1);
-  ctx.strokeRect(R0 * 2.45, -R0 * 0.55, R0 * 0.95, R0 * 1.1);
+  ctx.strokeStyle = hexToRgba(accent, 0.18);
+  ctx.strokeRect(-radius * 3.4, -radius * 0.55, radius * 0.95, radius * 1.1);
+  ctx.strokeRect(radius * 2.45, -radius * 0.55, radius * 0.95, radius * 1.1);
   ctx.restore();
   ctx.save();
-  ctx.translate(tgx, tgy);
-  ctx.rotate(Math.sin(t * 0.2) * 0.05);
-  ctx.strokeStyle = hexToRgba(acc, 0.85);
+  ctx.translate(targetX, targetY);
+  ctx.rotate(Math.sin(elapsedSec * 0.2) * 0.05);
+  ctx.strokeStyle = hexToRgba(accent, 0.85);
   ctx.lineWidth = 2.4;
   ctx.beginPath();
-  ctx.arc(0, 0, R0 * 1.15, 0, Math.PI * 2);
+  ctx.arc(0, 0, radius * 1.15, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.strokeStyle = hexToRgba(acc, 0.4);
+  ctx.strokeStyle = hexToRgba(accent, 0.4);
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(0, 0, R0 * 1.34, 0, Math.PI * 2);
+  ctx.arc(0, 0, radius * 1.34, 0, Math.PI * 2);
   ctx.stroke();
 
   for (let i = 0; i < 36; i++) {
-    const a = (i / 36) * Math.PI * 2;
-    const r1 = R0 * 1.15;
-    const r2 = R0 * (i % 3 === 0 ? 1.32 : 1.24);
-    ctx.strokeStyle = hexToRgba(acc, i % 3 === 0 ? 0.6 : 0.28);
+    const angle = (i / 36) * Math.PI * 2;
+    const spokeInner = radius * 1.15;
+    const spokeOuter = radius * (i % 3 === 0 ? 1.32 : 1.24);
+    ctx.strokeStyle = hexToRgba(accent, i % 3 === 0 ? 0.6 : 0.28);
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
-    ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
+    ctx.moveTo(Math.cos(angle) * spokeInner, Math.sin(angle) * spokeInner);
+    ctx.lineTo(Math.cos(angle) * spokeOuter, Math.sin(angle) * spokeOuter);
     ctx.stroke();
   }
 
-  ctx.strokeStyle = hexToRgba(acc, 0.6);
+  ctx.strokeStyle = hexToRgba(accent, 0.6);
   ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.arc(0, 0, R0 * 0.84, 0, Math.PI * 2);
+  ctx.arc(0, 0, radius * 0.84, 0, Math.PI * 2);
   ctx.stroke();
 
   for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
-    ctx.fillStyle = hexToRgba(acc, 0.5);
+    const angle = (i / 12) * Math.PI * 2;
+    ctx.fillStyle = hexToRgba(accent, 0.5);
     ctx.beginPath();
     ctx.arc(
-      Math.cos(a) * R0 * 0.84,
-      Math.sin(a) * R0 * 0.84,
-      R0 * 0.045,
+      Math.cos(angle) * radius * 0.84,
+      Math.sin(angle) * radius * 0.84,
+      radius * 0.045,
       0,
       Math.PI * 2,
     );
     ctx.fill();
   }
 
-  ctx.fillStyle = hexToRgba(ac2, 0.1);
-  ctx.strokeStyle = hexToRgba(ac2, 0.55);
+  ctx.fillStyle = hexToRgba(accentAlt, 0.1);
+  ctx.strokeStyle = hexToRgba(accentAlt, 0.55);
   ctx.lineWidth = 1.4;
 
-  for (let k = 0; k < 4; k++) {
-    const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+  for (let vane = 0; vane < 4; vane++) {
+    const angle = (vane / 4) * Math.PI * 2 + Math.PI / 4;
     ctx.save();
-    ctx.rotate(a);
+    ctx.rotate(angle);
     ctx.beginPath();
-    ctx.moveTo(-R0 * 0.22, -R0 * 0.64);
-    ctx.lineTo(R0 * 0.22, -R0 * 0.64);
-    ctx.lineTo(R0 * 0.12, -R0 * 0.34);
-    ctx.lineTo(-R0 * 0.12, -R0 * 0.34);
+    ctx.moveTo(-radius * 0.22, -radius * 0.64);
+    ctx.lineTo(radius * 0.22, -radius * 0.64);
+    ctx.lineTo(radius * 0.12, -radius * 0.34);
+    ctx.lineTo(-radius * 0.12, -radius * 0.34);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
     ctx.restore();
   }
 
-  ctx.strokeStyle = hexToRgba(acc, 0.7);
+  ctx.strokeStyle = hexToRgba(accent, 0.7);
   ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.arc(0, 0, R0 * 0.5, 0, Math.PI * 2);
+  ctx.arc(0, 0, radius * 0.5, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.strokeStyle = hexToRgba(acc, 0.45);
+  ctx.strokeStyle = hexToRgba(accent, 0.45);
   ctx.beginPath();
-  ctx.arc(0, 0, R0 * 0.28, 0, Math.PI * 2);
+  ctx.arc(0, 0, radius * 0.28, 0, Math.PI * 2);
   ctx.stroke();
 
   for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2;
-    ctx.strokeStyle = hexToRgba(acc, 0.4);
+    const angle = (i / 4) * Math.PI * 2;
+    ctx.strokeStyle = hexToRgba(accent, 0.4);
     ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * R0 * 0.28, Math.sin(a) * R0 * 0.28);
-    ctx.lineTo(Math.cos(a) * R0 * 0.5, Math.sin(a) * R0 * 0.5);
+    ctx.moveTo(
+      Math.cos(angle) * radius * 0.28,
+      Math.sin(angle) * radius * 0.28,
+    );
+    ctx.lineTo(Math.cos(angle) * radius * 0.5, Math.sin(angle) * radius * 0.5);
     ctx.stroke();
   }
 
-  ctx.fillStyle = hexToRgba(ac2, 0.9);
+  ctx.fillStyle = hexToRgba(accentAlt, 0.9);
   ctx.beginPath();
-  ctx.arc(0, 0, R0 * 0.06, 0, Math.PI * 2);
+  ctx.arc(0, 0, radius * 0.06, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  const misx = -W * 0.05 * wob + Math.sin(t * 1.1) * R0 * 0.5 * wob;
-  const misy = -H * 0.05 * wob + Math.cos(t * 0.9) * R0 * 0.45 * wob;
+  const markerX =
+    -width * 0.05 * wobble + Math.sin(elapsedSec * 1.1) * radius * 0.5 * wobble;
+  const markerY =
+    -height * 0.05 * wobble +
+    Math.cos(elapsedSec * 0.9) * radius * 0.45 * wobble;
   ctx.save();
-  ctx.translate(tgx + misx, tgy + misy);
-  ctx.strokeStyle = hexToRgba(d.buy, 0.9);
+  ctx.translate(targetX + markerX, targetY + markerY);
+  ctx.strokeStyle = hexToRgba(scene.buy, 0.9);
   ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.arc(0, 0, R0 * 0.15, 0, Math.PI * 2);
+  ctx.arc(0, 0, radius * 0.15, 0, Math.PI * 2);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(0, -R0 * 0.26);
-  ctx.lineTo(0, R0 * 0.26);
-  ctx.moveTo(-R0 * 0.26, 0);
-  ctx.lineTo(R0 * 0.26, 0);
+  ctx.moveTo(0, -radius * 0.26);
+  ctx.lineTo(0, radius * 0.26);
+  ctx.moveTo(-radius * 0.26, 0);
+  ctx.lineTo(radius * 0.26, 0);
   ctx.stroke();
   ctx.restore();
-  const RR = Math.min(W, H) * 0.36;
-  const rng = Math.max(0, Math.round(4820 * (1 - E)));
-  ctx.strokeStyle = hexToRgba(acc, 0.5);
+  const rangeRadius = Math.min(width, height) * 0.36;
+  const rangeMeters = Math.max(0, Math.round(4820 * (1 - easedProgress)));
+  ctx.strokeStyle = hexToRgba(accent, 0.5);
   ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.arc(cx, cy, RR, 0, Math.PI * 2);
+  ctx.arc(centerX, centerY, rangeRadius, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.strokeStyle = hexToRgba(acc, 0.2);
+  ctx.strokeStyle = hexToRgba(accent, 0.2);
   ctx.beginPath();
-  ctx.arc(cx, cy, RR + 8, 0, Math.PI * 2);
+  ctx.arc(centerX, centerY, rangeRadius + 8, 0, Math.PI * 2);
   ctx.stroke();
   ctx.font = `11px ${MONO}`;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = hexToRgba(d.buy, 0.85);
+  ctx.fillStyle = hexToRgba(scene.buy, 0.85);
   ctx.fillText(
-    `${(Math.sin(t * 0.6) * 3.1 * wob).toFixed(1)}°`,
-    cx - RR + 20,
-    cy - 14,
+    `${(Math.sin(elapsedSec * 0.6) * 3.1 * wobble).toFixed(1)}°`,
+    centerX - rangeRadius + 20,
+    centerY - 14,
   );
   ctx.fillText(
-    `${(Math.cos(t * 0.5) * 2.3 * wob).toFixed(1)}°`,
-    cx - RR + 20,
-    cy,
+    `${(Math.cos(elapsedSec * 0.5) * 2.3 * wobble).toFixed(1)}°`,
+    centerX - rangeRadius + 20,
+    centerY,
   );
   ctx.fillText(
-    `${(Math.sin(t * 0.4) * 0.6 * wob).toFixed(1)}°`,
-    cx - RR + 20,
-    cy + 14,
+    `${(Math.sin(elapsedSec * 0.4) * 0.6 * wobble).toFixed(1)}°`,
+    centerX - rangeRadius + 20,
+    centerY + 14,
   );
   ctx.save();
-  ctx.translate(cx - RR + 8, cy);
+  ctx.translate(centerX - rangeRadius + 8, centerY);
   ctx.rotate(-Math.PI / 2);
-  ctx.fillStyle = hexToRgba(acc, 0.5);
+  ctx.fillStyle = hexToRgba(accent, 0.5);
   ctx.textAlign = "center";
   ctx.fillText("P Y R", 0, 0);
   ctx.restore();
   ctx.textAlign = "right";
-  ctx.fillStyle = hexToRgba(d.buy, 0.85);
+  ctx.fillStyle = hexToRgba(scene.buy, 0.85);
   ctx.fillText(
-    `${(Math.sin(t * 0.5) * 0.1).toFixed(1)}°`,
-    cx + RR - 18,
-    cy - 8,
+    `${(Math.sin(elapsedSec * 0.5) * 0.1).toFixed(1)}°`,
+    centerX + rangeRadius - 18,
+    centerY - 8,
   );
-  ctx.fillStyle = hexToRgba(ac2, 0.7);
+  ctx.fillStyle = hexToRgba(accentAlt, 0.7);
   ctx.fillText(
-    `${(Math.sin(t * 0.7) * 0.6 * wob).toFixed(1)}°/m`,
-    cx + RR - 18,
-    cy + 8,
+    `${(Math.sin(elapsedSec * 0.7) * 0.6 * wobble).toFixed(1)}°/m`,
+    centerX + rangeRadius - 18,
+    centerY + 8,
   );
   ctx.save();
-  ctx.translate(cx + RR - 6, cy);
+  ctx.translate(centerX + rangeRadius - 6, centerY);
   ctx.rotate(Math.PI / 2);
-  ctx.fillStyle = hexToRgba(acc, 0.5);
+  ctx.fillStyle = hexToRgba(accent, 0.5);
   ctx.textAlign = "center";
   ctx.fillText("P I T C H", 0, 0);
   ctx.restore();
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = hexToRgba(acc, 0.5);
+  ctx.fillStyle = hexToRgba(accent, 0.5);
   ctx.font = `9px ${MONO}`;
-  ctx.fillText("RANGE", cx - RR * 0.42, cy + RR - 28);
-  ctx.fillText("RANGE RATE", cx + RR * 0.42, cy + RR - 28);
-  ctx.fillStyle = hexToRgba(acc, 0.95);
-  ctx.font = `bold 18px ${MONO}`;
-  ctx.fillText(`${rng} m`, cx - RR * 0.42, cy + RR - 9);
-  ctx.fillStyle = hexToRgba(ac2, 0.95);
   ctx.fillText(
-    `-0.${pad2(34 - Math.round(prog * 6))} m/s`,
-    cx + RR * 0.42,
-    cy + RR - 9,
+    "RANGE",
+    centerX - rangeRadius * 0.42,
+    centerY + rangeRadius - 28,
+  );
+  ctx.fillText(
+    "RANGE RATE",
+    centerX + rangeRadius * 0.42,
+    centerY + rangeRadius - 28,
+  );
+  ctx.fillStyle = hexToRgba(accent, 0.95);
+  ctx.font = `bold 18px ${MONO}`;
+  ctx.fillText(
+    `${rangeMeters} m`,
+    centerX - rangeRadius * 0.42,
+    centerY + rangeRadius - 9,
+  );
+  ctx.fillStyle = hexToRgba(accentAlt, 0.95);
+  ctx.fillText(
+    `-0.${padTwo(34 - Math.round(progress * 6))} m/s`,
+    centerX + rangeRadius * 0.42,
+    centerY + rangeRadius - 9,
   );
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
-  const lock = ease(Math.min(1, (prog - 0.18) / 0.5));
-  const acq = prog < 0.25;
-  const box = craftR * 1.45 + (1 - lock) * Math.min(W, H) * 0.18;
-  const blink = acq ? 0.4 + 0.6 * Math.abs(Math.sin(t * 9)) : 1;
-  const lc = prog > 0.55 ? ac2 : acc;
-  ctx.strokeStyle = hexToRgba(lc, 0.92 * blink);
+  const lockPhase = ease(Math.min(1, (progress - 0.18) / 0.5));
+  const acquiring = progress < 0.25;
+  const lockBox =
+    craftRadius * 1.45 + (1 - lockPhase) * Math.min(width, height) * 0.18;
+  const blink = acquiring ? 0.4 + 0.6 * Math.abs(Math.sin(elapsedSec * 9)) : 1;
+  const lockColor = progress > 0.55 ? accentAlt : accent;
+  ctx.strokeStyle = hexToRgba(lockColor, 0.92 * blink);
   ctx.lineWidth = 1.8;
-  const tk = Math.max(10, box * 0.22);
+  const tickLen = Math.max(10, lockBox * 0.22);
   (
     [
       [-1, -1],
@@ -755,183 +811,207 @@ export function drawBootDocking(d: BootDrawCtx): void {
       [-1, 1],
       [1, 1],
     ] as [number, number][]
-  ).forEach((q) => {
-    const qx = tgx + q[0] * box;
-    const qy = tgy + q[1] * box;
+  ).forEach((corner) => {
+    const cornerX = targetX + corner[0] * lockBox;
+    const cornerY = targetY + corner[1] * lockBox;
     ctx.beginPath();
-    ctx.moveTo(qx, qy - q[1] * tk);
-    ctx.lineTo(qx, qy);
-    ctx.lineTo(qx - q[0] * tk, qy);
+    ctx.moveTo(cornerX, cornerY - corner[1] * tickLen);
+    ctx.lineTo(cornerX, cornerY);
+    ctx.lineTo(cornerX - corner[0] * tickLen, cornerY);
     ctx.stroke();
   });
 
-  if (prog < 0.6) {
+  if (progress < 0.6) {
     ctx.save();
-    ctx.translate(tgx, tgy);
-    ctx.rotate(t * 1.4);
-    ctx.strokeStyle = hexToRgba(acc, 0.5 * blink);
+    ctx.translate(targetX, targetY);
+    ctx.rotate(elapsedSec * 1.4);
+    ctx.strokeStyle = hexToRgba(accent, 0.5 * blink);
     ctx.setLineDash([8, 7]);
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.arc(0, 0, box * 1.25, 0, Math.PI * 2);
+    ctx.arc(0, 0, lockBox * 1.25, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
   }
 
-  ctx.strokeStyle = hexToRgba(lc, 0.5);
+  ctx.strokeStyle = hexToRgba(lockColor, 0.5);
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(tgx + box, tgy - box);
-  ctx.lineTo(tgx + box + 34, tgy - box - 24);
-  ctx.lineTo(tgx + box + 200, tgy - box - 24);
+  ctx.moveTo(targetX + lockBox, targetY - lockBox);
+  ctx.lineTo(targetX + lockBox + 34, targetY - lockBox - 24);
+  ctx.lineTo(targetX + lockBox + 200, targetY - lockBox - 24);
   ctx.stroke();
   ctx.font = `11px ${MONO}`;
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
-  ctx.fillStyle = hexToRgba(lc, 0.9);
-  ctx.fillText("AC-417 ▸ EUR/USD ESCORT", tgx + box + 40, tgy - box - 28);
-  ctx.strokeStyle = hexToRgba(ac2, 0.55);
+  ctx.fillStyle = hexToRgba(lockColor, 0.9);
+  ctx.fillText(
+    "AC-417 ▸ EUR/USD ESCORT",
+    targetX + lockBox + 40,
+    targetY - lockBox - 28,
+  );
+  ctx.strokeStyle = hexToRgba(accentAlt, 0.55);
   ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.moveTo(tgx, tgy);
-  ctx.lineTo(tgx + (cx - tgx) * 0.5, tgy + (cy - tgy) * 0.5);
+  ctx.moveTo(targetX, targetY);
+  ctx.lineTo(
+    targetX + (centerX - targetX) * 0.5,
+    targetY + (centerY - targetY) * 0.5,
+  );
   ctx.stroke();
-  ctx.strokeStyle = hexToRgba(acc, 0.6);
+  ctx.strokeStyle = hexToRgba(accent, 0.6);
   ctx.lineWidth = 1.4;
-  const gp = 14;
+  const crossGap = 14;
   ctx.beginPath();
-  ctx.moveTo(cx - 46, cy);
-  ctx.lineTo(cx - gp, cy);
-  ctx.moveTo(cx + gp, cy);
-  ctx.lineTo(cx + 46, cy);
-  ctx.moveTo(cx, cy - 46);
-  ctx.lineTo(cx, cy - gp);
-  ctx.moveTo(cx, cy + gp);
-  ctx.lineTo(cx, cy + 46);
+  ctx.moveTo(centerX - 46, centerY);
+  ctx.lineTo(centerX - crossGap, centerY);
+  ctx.moveTo(centerX + crossGap, centerY);
+  ctx.lineTo(centerX + 46, centerY);
+  ctx.moveTo(centerX, centerY - 46);
+  ctx.lineTo(centerX, centerY - crossGap);
+  ctx.moveTo(centerX, centerY + crossGap);
+  ctx.lineTo(centerX, centerY + 46);
   ctx.stroke();
-  ctx.strokeStyle = hexToRgba(acc, 0.3);
+  ctx.strokeStyle = hexToRgba(accent, 0.3);
   ctx.beginPath();
-  ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+  ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
   ctx.stroke();
   ctx.save();
-  ctx.translate(cx, cy + Math.sin(t * 0.8) * 10);
-  ctx.strokeStyle = hexToRgba(acc, 0.22);
-  ctx.fillStyle = hexToRgba(acc, 0.4);
+  ctx.translate(centerX, centerY + Math.sin(elapsedSec * 0.8) * 10);
+  ctx.strokeStyle = hexToRgba(accent, 0.22);
+  ctx.fillStyle = hexToRgba(accent, 0.4);
   ctx.font = `9px ${MONO}`;
   ctx.lineWidth = 1;
 
-  for (let p = -2; p <= 2; p++) {
-    if (p === 0) {
+  for (let pip = -2; pip <= 2; pip++) {
+    if (pip === 0) {
       continue;
     }
 
-    const yy = p * 46;
+    const tickY = pip * 46;
     ctx.beginPath();
-    ctx.moveTo(-72, yy);
-    ctx.lineTo(-32, yy);
-    ctx.moveTo(32, yy);
-    ctx.lineTo(72, yy);
+    ctx.moveTo(-72, tickY);
+    ctx.lineTo(-32, tickY);
+    ctx.moveTo(32, tickY);
+    ctx.lineTo(72, tickY);
     ctx.stroke();
-    ctx.fillText(pad2(p * 5), -92, yy + 3);
+    ctx.fillText(padTwo(pip * 5), -92, tickY + 3);
   }
 
   ctx.restore();
-  const ssy = ((t * 0.35) % 1) * H;
-  const sg = ctx.createLinearGradient(0, ssy - 30, 0, ssy + 30);
-  sg.addColorStop(0, "rgba(0,0,0,0)");
-  sg.addColorStop(0.5, hexToRgba(ac2, 0.1));
-  sg.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = sg;
-  ctx.fillRect(0, ssy - 30, W, 60);
-  const range = Math.max(0, Math.round(4820 * (1 - E)));
+  const scanY = ((elapsedSec * 0.35) % 1) * height;
+  const scanGradient = ctx.createLinearGradient(0, scanY - 30, 0, scanY + 30);
+  scanGradient.addColorStop(0, "rgba(0,0,0,0)");
+  scanGradient.addColorStop(0.5, hexToRgba(accentAlt, 0.1));
+  scanGradient.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = scanGradient;
+  ctx.fillRect(0, scanY - 30, width, 60);
+  const range = Math.max(0, Math.round(4820 * (1 - easedProgress)));
   const closure = Math.max(
     0,
-    Math.round((58 + 22 * Math.sin(t * 2)) * (1 - prog) + 3),
+    Math.round((58 + 22 * Math.sin(elapsedSec * 2)) * (1 - progress) + 3),
   );
-  const bearing = (271.4 + Math.sin(t * 0.7) * 0.6).toFixed(1);
-  const az = (Math.sin(t * 0.9) * 2.4 * wob).toFixed(2);
-  const el = (Math.cos(t * 0.8) * 1.8 * wob).toFixed(2);
-  const dX = (((tgx - cx) / W) * 100).toFixed(2);
-  const dY = (((tgy - cy) / H) * 100).toFixed(2);
+  const bearing = (271.4 + Math.sin(elapsedSec * 0.7) * 0.6).toFixed(1);
+  const az = (Math.sin(elapsedSec * 0.9) * 2.4 * wobble).toFixed(2);
+  const el = (Math.cos(elapsedSec * 0.8) * 1.8 * wobble).toFixed(2);
+  const dX = (((targetX - centerX) / width) * 100).toFixed(2);
+  const dY = (((targetY - centerY) / height) * 100).toFixed(2);
   const dZ = (range / 100).toFixed(2);
-  const tc = `${pad2(t / 60)}:${pad2(t % 60)}:${pad2((t * 100) % 100)}`;
+  const timecode = `${padTwo(elapsedSec / 60)}:${padTwo(elapsedSec % 60)}:${padTwo((elapsedSec * 100) % 100)}`;
 
-  function lbl(x: number, y: number, a: string[], col?: string): void {
+  function drawLabel(
+    x: number,
+    y: number,
+    lines: string[],
+    color?: string,
+  ): void {
     ctx.font = `11px ${MONO}`;
-    ctx.fillStyle = hexToRgba(col ?? acc, 0.85);
-    a.forEach((ln, i) => {
-      ctx.fillText(ln, x, y + i * 15);
+    ctx.fillStyle = hexToRgba(color ?? accent, 0.85);
+    lines.forEach((line, i) => {
+      ctx.fillText(line, x, y + i * 15);
     });
   }
 
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
-  lbl(20, 28, ["◉ CAM-04  DOCK BAY 07", "GIMBAL TRACK · AUTO", `TC ${tc}`]);
-  ctx.fillStyle = hexToRgba(d.sell, 0.9);
+  drawLabel(20, 28, [
+    "◉ CAM-04  DOCK BAY 07",
+    "GIMBAL TRACK · AUTO",
+    `TC ${timecode}`,
+  ]);
+  ctx.fillStyle = hexToRgba(scene.sell, 0.9);
   ctx.font = `11px ${MONO}`;
   ctx.fillText("● REC", 20, 73);
   ctx.textAlign = "right";
-  lbl(W - 20, 28, [
+  drawLabel(width - 20, 28, [
     `RANGE   ${range} m`,
     `CLOSURE ${closure} m/s`,
     `BEARING ${bearing}°`,
   ]);
-  lbl(W - 20, 73, [`AZ ${az}   EL ${el}`], ac2);
-  lbl(W - 20, H - 58, ["LINK  SECURE · AES-256", "AUTH  OK ▸ TRD-0042"], ac2);
+  drawLabel(width - 20, 73, [`AZ ${az}   EL ${el}`], accentAlt);
+  drawLabel(
+    width - 20,
+    height - 58,
+    ["LINK  SECURE · AES-256", "AUTH  OK ▸ TRD-0042"],
+    accentAlt,
+  );
   ctx.textAlign = "left";
-  lbl(20, H - 58, [
+  drawLabel(20, height - 58, [
     `ALIGN  dX ${dX}  dY ${dY}`,
-    `       dZ ${dZ}  ROLL ${(Math.sin(t * 1.7) * 1.2).toFixed(1)}`,
-    `THRUST ${Math.round(8 + 12 * (1 - prog))}%   MASS 42.6t`,
+    `       dZ ${dZ}  ROLL ${(Math.sin(elapsedSec * 1.7) * 1.2).toFixed(1)}`,
+    `THRUST ${Math.round(8 + 12 * (1 - progress))}%   MASS 42.6t`,
   ]);
   const bars = 5;
 
   for (let i = 0; i < bars; i++) {
-    const on = i < 3 + Math.round(1.4 * Math.sin(t * 4 + i) + 1.2);
-    ctx.fillStyle = hexToRgba(on ? ac2 : acc, on ? 0.85 : 0.2);
-    ctx.fillRect(W - 20 - (bars - i) * 9, H - 26, 6, 4 + i * 3);
+    const lit = i < 3 + Math.round(1.4 * Math.sin(elapsedSec * 4 + i) + 1.2);
+    ctx.fillStyle = hexToRgba(lit ? accentAlt : accent, lit ? 0.85 : 0.2);
+    ctx.fillRect(width - 20 - (bars - i) * 9, height - 26, 6, 4 + i * 3);
   }
 
-  let stt = "ACQUIRING";
-  let sc = acc;
+  let statusText = "ACQUIRING";
+  let statusColor = accent;
 
-  if (prog >= 0.25 && prog < 0.55) {
-    stt = "TRACKING";
-    sc = acc;
-  } else if (prog >= 0.55 && prog < 0.8) {
-    stt = "TARGET LOCKED";
-    sc = ac2;
-  } else if (prog >= 0.8 && prog < 0.96) {
-    stt = "DOCKING SEQUENCE";
-    sc = ac2;
-  } else if (prog >= 0.96) {
-    stt = "CLAMP ENGAGED";
-    sc = d.buy;
+  if (progress >= 0.25 && progress < 0.55) {
+    statusText = "TRACKING";
+    statusColor = accent;
+  } else if (progress >= 0.55 && progress < 0.8) {
+    statusText = "TARGET LOCKED";
+    statusColor = accentAlt;
+  } else if (progress >= 0.8 && progress < 0.96) {
+    statusText = "DOCKING SEQUENCE";
+    statusColor = accentAlt;
+  } else if (progress >= 0.96) {
+    statusText = "CLAMP ENGAGED";
+    statusColor = scene.buy;
   }
 
-  const bk = stt === "ACQUIRING" ? 0.45 + 0.55 * Math.abs(Math.sin(t * 7)) : 1;
+  const statusBlink =
+    statusText === "ACQUIRING"
+      ? 0.45 + 0.55 * Math.abs(Math.sin(elapsedSec * 7))
+      : 1;
   ctx.font = `bold 13px ${MONO}`;
   ctx.textAlign = "center";
-  ctx.fillStyle = hexToRgba(sc, 0.95 * bk);
-  ctx.fillText(`▸ ${stt} ◂`, cx, cy - 66);
+  ctx.fillStyle = hexToRgba(statusColor, 0.95 * statusBlink);
+  ctx.fillText(`▸ ${statusText} ◂`, centerX, centerY - 66);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
 
-  if (prog > 0.92) {
-    const fa = (prog - 0.92) / 0.08;
-    const fg = ctx.createRadialGradient(
-      cx,
-      cy,
+  if (progress > 0.92) {
+    const fadeAlpha = (progress - 0.92) / 0.08;
+    const flashGradient = ctx.createRadialGradient(
+      centerX,
+      centerY,
       0,
-      cx,
-      cy,
-      Math.max(W, H) * 0.5,
+      centerX,
+      centerY,
+      Math.max(width, height) * 0.5,
     );
-    fg.addColorStop(0, hexToRgba("#ffffff", 0.4 * fa));
-    fg.addColorStop(0.35, hexToRgba(ac2, 0.3 * fa));
-    fg.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = fg;
-    ctx.fillRect(0, 0, W, H);
+    flashGradient.addColorStop(0, hexToRgba("#ffffff", 0.4 * fadeAlpha));
+    flashGradient.addColorStop(0.35, hexToRgba(accentAlt, 0.3 * fadeAlpha));
+    flashGradient.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = flashGradient;
+    ctx.fillRect(0, 0, width, height);
   }
 }

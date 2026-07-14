@@ -30,8 +30,8 @@ function clamp(v: number): number {
  * prototype's `rnd` helper — a sine-based hash, not Math.random, so the star
  * field and arc scheduling are stable across renders.
  */
-function rnd(i: number): number {
-  const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+function hashRandom(seed: number): number {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 }
 
@@ -39,41 +39,41 @@ function rnd(i: number): number {
 interface Star {
   x: number;
   y: number;
-  s: number;
-  p: number;
+  size: number;
+  phase: number;
 }
 
 /** A trading-hub node in spherical coords, with a ping-ripple phase offset. */
 interface HubNode {
-  la: number;
-  lo: number;
-  k: string;
-  ph: number;
+  lat: number;
+  lon: number;
+  code: string;
+  phase: number;
 }
 
 /** An in-flight order-flow arc between two hubs. */
 interface FlowArc {
-  a: number;
-  b: number;
-  t0: number;
-  dur: number;
+  fromHub: number;
+  toHub: number;
+  startSec: number;
+  durationSec: number;
   buy: boolean;
 }
 
-/** 3D-projected screen point with depth (z) and perspective foreshortening (f). */
+/** 3D-projected screen point with depth (z) and perspective foreshortening. */
 interface ProjPoint {
   x: number;
   y: number;
   z: number;
-  f: number;
+  perspective: number;
 }
 
 /** Unit-sphere cartesian vector [x, y, z] for a hub node. */
-function hubVec(n: HubNode): [number, number, number] {
+function hubToVector(hub: HubNode): [number, number, number] {
   return [
-    Math.cos(n.la) * Math.cos(n.lo),
-    Math.sin(n.la),
-    Math.cos(n.la) * Math.sin(n.lo),
+    Math.cos(hub.lat) * Math.cos(hub.lon),
+    Math.sin(hub.lat),
+    Math.cos(hub.lat) * Math.sin(hub.lon),
   ];
 }
 
@@ -96,245 +96,277 @@ const HUBS: ReadonlyArray<readonly [number, number, string]> = [
  * The factory runs once per boot (star field, hub node seeding); the returned
  * closure is the prototype's inner `draw()`, called every rAF frame by the caller.
  */
-export function createBootCore(d: BootDrawCtx): BootFrameFn {
-  const c = d.canvas;
-  const ctx = d.ctx;
-  const acc = d.accent;
-  const ac2 = d.accent2 !== "" ? d.accent2 : d.accent;
-  const buy = d.buy;
-  const sell = d.sell;
+export function createBootCore(scene: BootDrawCtx): BootFrameFn {
+  const canvas = scene.canvas;
+  const ctx = scene.ctx;
+  const accent = scene.accent;
+  const accentAlt = scene.accent2 !== "" ? scene.accent2 : scene.accent;
+  const buyColor = scene.buy;
+  const sellColor = scene.sell;
 
-  if (c.width !== c.offsetWidth) {
-    c.width = c.offsetWidth;
-    c.height = c.offsetHeight;
+  if (canvas.width !== canvas.offsetWidth) {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
   }
 
   const stars: Star[] = [];
 
   for (let i = 0; i < 52; i++) {
     stars.push({
-      x: rnd(i * 7 + 1),
-      y: rnd(i * 11 + 2) * 0.85,
-      s: 0.5 + rnd(i * 13 + 3) * 1.5,
-      p: rnd(i * 17 + 4) * 6.283,
+      x: hashRandom(i * 7 + 1),
+      y: hashRandom(i * 11 + 2) * 0.85,
+      size: 0.5 + hashRandom(i * 13 + 3) * 1.5,
+      phase: hashRandom(i * 17 + 4) * 6.283,
     });
   }
 
   const nodes: HubNode[] = HUBS.map((h, i) => {
     return {
-      la: (h[0] * Math.PI) / 180,
-      lo: (h[1] * Math.PI) / 180,
-      k: h[2],
-      ph: rnd(i * 19 + 5) * 6.283,
+      lat: (h[0] * Math.PI) / 180,
+      lon: (h[1] * Math.PI) / 180,
+      code: h[2],
+      phase: hashRandom(i * 19 + 5) * 6.283,
     };
   });
 
   const arcs: FlowArc[] = [];
-  let lastArc = 0;
+  let lastArcSec = 0;
   let arcSeed = 7;
   let arcCount = 0;
 
   return () => {
-    if (c.width !== c.offsetWidth) {
-      c.width = c.offsetWidth;
-      c.height = c.offsetHeight;
+    if (canvas.width !== canvas.offsetWidth) {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
     }
 
-    const t = (performance.now() - d.start) / 1000;
-    const prog = Math.min(1, (performance.now() - d.start) / BOOT_DURATION_MS);
-    const W = c.width;
-    const H = c.height;
-    const cx = W / 2;
-    const cy = H / 2 - 20;
-    const S = Math.min(W, H) * 0.24;
-    ctx.clearRect(0, 0, W, H);
+    const elapsedSec = (performance.now() - scene.start) / 1000;
+    const progress = Math.min(
+      1,
+      (performance.now() - scene.start) / BOOT_DURATION_MS,
+    );
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 2 - 20;
+    const globeRadius = Math.min(width, height) * 0.24;
+    ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = "rgba(0,3,6,0.5)";
-    ctx.fillRect(0, 0, W, H);
-    let ga = 0.88 + 0.12 * Math.sin(t * 36 + Math.sin(t * 9) * 4);
+    ctx.fillRect(0, 0, width, height);
+    let flickerAlpha =
+      0.88 + 0.12 * Math.sin(elapsedSec * 36 + Math.sin(elapsedSec * 9) * 4);
 
-    if (rnd(Math.floor(t * 6) + 2) > 0.94) {
-      ga *= 0.55;
+    if (hashRandom(Math.floor(elapsedSec * 6) + 2) > 0.94) {
+      flickerAlpha *= 0.55;
     }
 
     ctx.save();
-    ctx.globalAlpha = ga;
+    ctx.globalAlpha = flickerAlpha;
     // star drift backdrop
-    stars.forEach((s) => {
-      const tw = 0.25 + 0.55 * Math.abs(Math.sin(t * s.s + s.p));
-      ctx.fillStyle = hexToRgba(acc, 0.08 + 0.2 * tw);
-      ctx.fillRect(s.x * W, s.y * H, 1.3, 1.3);
+    stars.forEach((star) => {
+      const twinkle =
+        0.25 + 0.55 * Math.abs(Math.sin(elapsedSec * star.size + star.phase));
+      ctx.fillStyle = hexToRgba(accent, 0.08 + 0.2 * twinkle);
+      ctx.fillRect(star.x * width, star.y * height, 1.3, 1.3);
     });
     // 3D projection (yaw spin + fixed tilt)
-    const yaw = t * 0.42 + 0.6;
-    const cp = Math.cos(0.38);
-    const sp = Math.sin(0.38);
+    const yaw = elapsedSec * 0.42 + 0.6;
+    const cosTilt = Math.cos(0.38);
+    const sinTilt = Math.sin(0.38);
 
-    function P3(x: number, y: number, z: number): ProjPoint {
-      const cyw = Math.cos(yaw);
-      const syw = Math.sin(yaw);
-      const x1 = x * cyw - z * syw;
-      const z1 = x * syw + z * cyw;
-      const y1 = y * cp - z1 * sp;
-      const z2 = y * sp + z1 * cp;
-      const f = 1 / (1 + z2 * 0.28);
-      return { x: cx + x1 * S * f, y: cy - y1 * S * f, z: z2, f };
+    function project(x: number, y: number, z: number): ProjPoint {
+      const cosYaw = Math.cos(yaw);
+      const sinYaw = Math.sin(yaw);
+      const rotX = x * cosYaw - z * sinYaw;
+      const rotZ = x * sinYaw + z * cosYaw;
+      const tiltedY = y * cosTilt - rotZ * sinTilt;
+      const depthZ = y * sinTilt + rotZ * cosTilt;
+      const perspective = 1 / (1 + depthZ * 0.28);
+      return {
+        x: centerX + rotX * globeRadius * perspective,
+        y: centerY - tiltedY * globeRadius * perspective,
+        z: depthZ,
+        perspective,
+      };
     }
 
-    function SPH(la: number, lo: number): ProjPoint {
-      return P3(
-        Math.cos(la) * Math.cos(lo),
-        Math.sin(la),
-        Math.cos(la) * Math.sin(lo),
+    function projectLatLon(lat: number, lon: number): ProjPoint {
+      return project(
+        Math.cos(lat) * Math.cos(lon),
+        Math.sin(lat),
+        Math.cos(lat) * Math.sin(lon),
       );
     }
 
-    // Point at fraction w along the great-circle arc between hub vectors va/vb,
-    // lifted off the sphere by a sine bulge so the arc bows outward.
-    function arcPoint(
-      w: number,
-      va: [number, number, number],
-      vb: [number, number, number],
+    // Point at fraction along the great-circle arc between hub vectors
+    // fromVec/toVec, lifted off the sphere by a sine bulge so the arc bows out.
+    function projectArcPoint(
+      fraction: number,
+      fromVec: [number, number, number],
+      toVec: [number, number, number],
     ): ProjPoint {
-      const x = va[0] + (vb[0] - va[0]) * w;
-      const y = va[1] + (vb[1] - va[1]) * w;
-      const z = va[2] + (vb[2] - va[2]) * w;
-      const L = Math.hypot(x, y, z) || 1;
-      const r = 1 + 0.28 * Math.sin(Math.PI * w);
-      return P3((x / L) * r, (y / L) * r, (z / L) * r);
+      const x = fromVec[0] + (toVec[0] - fromVec[0]) * fraction;
+      const y = fromVec[1] + (toVec[1] - fromVec[1]) * fraction;
+      const z = fromVec[2] + (toVec[2] - fromVec[2]) * fraction;
+      const length = Math.hypot(x, y, z) || 1;
+      const bulge = 1 + 0.28 * Math.sin(Math.PI * fraction);
+      return project(
+        (x / length) * bulge,
+        (y / length) * bulge,
+        (z / length) * bulge,
+      );
     }
 
     // nucleus glow
-    const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, S * 1.15);
-    cg.addColorStop(0, hexToRgba(acc, 0.16));
-    cg.addColorStop(0.55, hexToRgba(acc, 0.05));
-    cg.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = cg;
-    ctx.fillRect(cx - S * 1.3, cy - S * 1.3, S * 2.6, S * 2.6);
-    const reveal = ease(prog / 0.32);
+    const nucleusGrad = ctx.createRadialGradient(
+      centerX,
+      centerY,
+      0,
+      centerX,
+      centerY,
+      globeRadius * 1.15,
+    );
+    nucleusGrad.addColorStop(0, hexToRgba(accent, 0.16));
+    nucleusGrad.addColorStop(0.55, hexToRgba(accent, 0.05));
+    nucleusGrad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = nucleusGrad;
+    ctx.fillRect(
+      centerX - globeRadius * 1.3,
+      centerY - globeRadius * 1.3,
+      globeRadius * 2.6,
+      globeRadius * 2.6,
+    );
+    const reveal = ease(progress / 0.32);
 
-    function segAlpha(z: number): number {
+    function segmentAlpha(z: number): number {
       return 0.1 + 0.4 * clamp((0.55 - z) / 1.1);
     }
 
     ctx.lineWidth = 1;
     // meridians sweep in pole-to-pole, each with a bright draw head
-    const NM = 12;
+    const meridianCount = 12;
 
-    for (let m = 0; m < NM; m++) {
-      const k = clamp(reveal * NM - m);
+    for (let meridian = 0; meridian < meridianCount; meridian++) {
+      const meridianPhase = clamp(reveal * meridianCount - meridian);
 
-      if (k <= 0) {
+      if (meridianPhase <= 0) {
         break;
       }
 
-      const lo = (m / NM) * Math.PI * 2;
-      const maxLa = -Math.PI / 2 + Math.PI * k;
-      let prev: ProjPoint | null = null;
+      const lon = (meridian / meridianCount) * Math.PI * 2;
+      const maxLat = -Math.PI / 2 + Math.PI * meridianPhase;
+      let prevPoint: ProjPoint | null = null;
 
       for (let i = 0; i <= 28; i++) {
-        const la = -Math.PI / 2 + (Math.PI * i) / 28;
+        const lat = -Math.PI / 2 + (Math.PI * i) / 28;
 
-        if (la > maxLa) {
+        if (lat > maxLat) {
           break;
         }
 
-        const p = SPH(la, lo);
+        const point = projectLatLon(lat, lon);
 
-        if (prev) {
-          ctx.strokeStyle = hexToRgba(acc, segAlpha((p.z + prev.z) / 2));
+        if (prevPoint) {
+          ctx.strokeStyle = hexToRgba(
+            accent,
+            segmentAlpha((point.z + prevPoint.z) / 2),
+          );
           ctx.beginPath();
-          ctx.moveTo(prev.x, prev.y);
-          ctx.lineTo(p.x, p.y);
+          ctx.moveTo(prevPoint.x, prevPoint.y);
+          ctx.lineTo(point.x, point.y);
           ctx.stroke();
         }
 
-        prev = p;
+        prevPoint = point;
       }
 
-      if (k < 1 && prev) {
-        ctx.fillStyle = hexToRgba(ac2, 0.9);
-        ctx.shadowColor = ac2;
+      if (meridianPhase < 1 && prevPoint) {
+        ctx.fillStyle = hexToRgba(accentAlt, 0.9);
+        ctx.shadowColor = accentAlt;
         ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.arc(prev.x, prev.y, 1.8, 0, 6.283);
+        ctx.arc(prevPoint.x, prevPoint.y, 1.8, 0, 6.283);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
     }
 
     // parallels
-    for (let q = -2; q <= 2; q++) {
-      const k = clamp(reveal * 5 - (q + 2));
+    for (let parallelIdx = -2; parallelIdx <= 2; parallelIdx++) {
+      const parallelPhase = clamp(reveal * 5 - (parallelIdx + 2));
 
-      if (k <= 0) {
+      if (parallelPhase <= 0) {
         continue;
       }
 
-      const la = (q * Math.PI) / 6;
-      let prev: ProjPoint | null = null;
+      const lat = (parallelIdx * Math.PI) / 6;
+      let prevPoint: ProjPoint | null = null;
 
-      for (let i = 0; i <= Math.floor(40 * k); i++) {
-        const p = SPH(la, (i / 40) * Math.PI * 2);
+      for (let i = 0; i <= Math.floor(40 * parallelPhase); i++) {
+        const point = projectLatLon(lat, (i / 40) * Math.PI * 2);
 
-        if (prev) {
-          ctx.strokeStyle = hexToRgba(acc, segAlpha((p.z + prev.z) / 2) * 0.85);
+        if (prevPoint) {
+          ctx.strokeStyle = hexToRgba(
+            accent,
+            segmentAlpha((point.z + prevPoint.z) / 2) * 0.85,
+          );
           ctx.beginPath();
-          ctx.moveTo(prev.x, prev.y);
-          ctx.lineTo(p.x, p.y);
+          ctx.moveTo(prevPoint.x, prevPoint.y);
+          ctx.lineTo(point.x, point.y);
           ctx.stroke();
         }
 
-        prev = p;
+        prevPoint = point;
       }
     }
 
     // latitude scan ring sweeping south → north
     {
-      const scanLa = -Math.PI / 2 + ((t * 0.3) % 1) * Math.PI;
-      let prev: ProjPoint | null = null;
+      const scanLat = -Math.PI / 2 + ((elapsedSec * 0.3) % 1) * Math.PI;
+      let prevPoint: ProjPoint | null = null;
       ctx.lineWidth = 1.4;
 
       for (let i = 0; i <= 40; i++) {
-        const p = SPH(scanLa, (i / 40) * Math.PI * 2);
+        const point = projectLatLon(scanLat, (i / 40) * Math.PI * 2);
 
-        if (prev) {
+        if (prevPoint) {
           ctx.strokeStyle = hexToRgba(
-            ac2,
-            0.08 + 0.38 * clamp((0.55 - p.z) / 1.1),
+            accentAlt,
+            0.08 + 0.38 * clamp((0.55 - point.z) / 1.1),
           );
           ctx.beginPath();
-          ctx.moveTo(prev.x, prev.y);
-          ctx.lineTo(p.x, p.y);
+          ctx.moveTo(prevPoint.x, prevPoint.y);
+          ctx.lineTo(point.x, point.y);
           ctx.stroke();
         }
 
-        prev = p;
+        prevPoint = point;
       }
 
       ctx.lineWidth = 1;
     }
 
     // gyroscopic segmented rings
-    const rk = ease((prog - 0.18) / 0.25);
+    const ringsPhase = ease((progress - 0.18) / 0.25);
 
-    if (rk > 0) {
+    if (ringsPhase > 0) {
       ctx.save();
-      ctx.globalAlpha = ga * rk;
+      ctx.globalAlpha = flickerAlpha * ringsPhase;
 
-      function gyro(
-        r: number,
+      function drawGyroRing(
+        radius: number,
         tilt: number,
         spin: number,
-        colr: string,
+        color: string,
         alpha: number,
-        lw: number,
+        lineWidth: number,
       ): void {
-        const ct2 = Math.cos(tilt);
-        const st2 = Math.sin(tilt);
-        const cs2 = Math.cos(spin);
-        const ss2 = Math.sin(spin);
-        ctx.strokeStyle = hexToRgba(colr, alpha);
-        ctx.lineWidth = lw;
+        const cosRingTilt = Math.cos(tilt);
+        const sinRingTilt = Math.sin(tilt);
+        const cosSpin = Math.cos(spin);
+        const sinSpin = Math.sin(spin);
+        ctx.strokeStyle = hexToRgba(color, alpha);
+        ctx.lineWidth = lineWidth;
 
         for (let seg = 0; seg < 8; seg++) {
           if (seg % 4 === 3) {
@@ -343,20 +375,20 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
 
           ctx.beginPath();
 
-          for (let k2 = 0; k2 <= 10; k2++) {
-            const an = ((seg * 10 + k2) / 80) * 6.283;
-            const x = Math.cos(an) * r;
-            const z = Math.sin(an) * r;
-            const y2 = -z * st2;
-            const z2 = z * ct2;
-            const x3 = x * cs2 - y2 * ss2;
-            const y3 = x * ss2 + y2 * cs2;
-            const p = P3(x3, y3, z2);
+          for (let sample = 0; sample <= 10; sample++) {
+            const angle = ((seg * 10 + sample) / 80) * 6.283;
+            const ringX = Math.cos(angle) * radius;
+            const ringZ = Math.sin(angle) * radius;
+            const tiltedY = -ringZ * sinRingTilt;
+            const tiltedZ = ringZ * cosRingTilt;
+            const spunX = ringX * cosSpin - tiltedY * sinSpin;
+            const spunY = ringX * sinSpin + tiltedY * cosSpin;
+            const point = project(spunX, spunY, tiltedZ);
 
-            if (k2 === 0) {
-              ctx.moveTo(p.x, p.y);
+            if (sample === 0) {
+              ctx.moveTo(point.x, point.y);
             } else {
-              ctx.lineTo(p.x, p.y);
+              ctx.lineTo(point.x, point.y);
             }
           }
 
@@ -364,169 +396,182 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
         }
       }
 
-      gyro(1.5, 1.05, t * 0.6, acc, 0.5, 1.2);
-      gyro(1.66, -0.85, -t * 0.45, ac2, 0.3, 1);
+      drawGyroRing(1.5, 1.05, elapsedSec * 0.6, accent, 0.5, 1.2);
+      drawGyroRing(1.66, -0.85, -elapsedSec * 0.45, accentAlt, 0.3, 1);
       ctx.restore();
     }
 
     // hub nodes with ping ripples (front side only)
-    const nk0 = ease((prog - 0.28) / 0.22);
-    const nodePts = nodes.map((n) => {
-      return { n, p: SPH(n.la, n.lo) };
+    const nodesPhase = ease((progress - 0.28) / 0.22);
+    const nodePoints = nodes.map((hub) => {
+      return { hub, point: projectLatLon(hub.lat, hub.lon) };
     });
-    nodePts.forEach((o, i) => {
-      const k = clamp(nk0 * nodes.length - i * 0.5);
+    nodePoints.forEach((entry, i) => {
+      const nodePhase = clamp(nodesPhase * nodes.length - i * 0.5);
 
-      if (k <= 0) {
+      if (nodePhase <= 0) {
         return;
       }
 
-      const p = o.p;
+      const point = entry.point;
 
-      if (p.z > 0.12) {
+      if (point.z > 0.12) {
         return;
       }
 
-      const al = (0.4 + 0.55 * clamp(0.3 - p.z)) * k;
-      ctx.fillStyle = hexToRgba(ac2, al);
+      const alpha = (0.4 + 0.55 * clamp(0.3 - point.z)) * nodePhase;
+      ctx.fillStyle = hexToRgba(accentAlt, alpha);
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 2 * p.f, 0, 6.283);
+      ctx.arc(point.x, point.y, 2 * point.perspective, 0, 6.283);
       ctx.fill();
-      const ring = (t * 0.8 + o.n.ph) % 1;
-      ctx.strokeStyle = hexToRgba(ac2, (1 - ring) * 0.5 * k);
+      const ring = (elapsedSec * 0.8 + entry.hub.phase) % 1;
+      ctx.strokeStyle = hexToRgba(accentAlt, (1 - ring) * 0.5 * nodePhase);
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, (2 + ring * 10) * p.f, 0, 6.283);
+      ctx.arc(point.x, point.y, (2 + ring * 10) * point.perspective, 0, 6.283);
       ctx.stroke();
     });
 
     // rotating spotlight callout on a front-facing hub
-    if (nk0 >= 1) {
-      const li = Math.floor(t / 2.2) % nodes.length;
-      const lp = nodePts[li];
+    if (nodesPhase >= 1) {
+      const spotlightIdx = Math.floor(elapsedSec / 2.2) % nodes.length;
+      const spotlightNode = nodePoints[spotlightIdx];
 
-      if (lp.p.z < 0) {
-        const p = lp.p;
-        const lx = Math.min(Math.max(p.x + 14, 16), W - 130);
-        ctx.strokeStyle = hexToRgba(acc, 0.45);
+      if (spotlightNode.point.z < 0) {
+        const point = spotlightNode.point;
+        const labelX = Math.min(Math.max(point.x + 14, 16), width - 130);
+        ctx.strokeStyle = hexToRgba(accent, 0.45);
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x + 12, p.y - 14);
-        ctx.lineTo(lx + 110, p.y - 14);
+        ctx.moveTo(point.x, point.y);
+        ctx.lineTo(point.x + 12, point.y - 14);
+        ctx.lineTo(labelX + 110, point.y - 14);
         ctx.stroke();
         ctx.font = `10px ${MONO}`;
         ctx.textAlign = "left";
         ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = hexToRgba(ac2, 0.9);
+        ctx.fillStyle = hexToRgba(accentAlt, 0.9);
         ctx.fillText(
-          `${lp.n.k} · NODE ${String(li + 1).padStart(2, "0")}`,
-          lx + 2,
-          p.y - 20,
+          `${spotlightNode.hub.code} · NODE ${String(spotlightIdx + 1).padStart(2, "0")}`,
+          labelX + 2,
+          point.y - 20,
         );
-        ctx.fillStyle = hexToRgba(acc, 0.7);
+        ctx.fillStyle = hexToRgba(accent, 0.7);
         ctx.fillText(
           "FLOW " +
-            (120 + Math.round(90 * Math.sin(t * 0.7 + lp.n.ph) + 90)) +
+            (120 +
+              Math.round(
+                90 * Math.sin(elapsedSec * 0.7 + spotlightNode.hub.phase) + 90,
+              )) +
             "M/S",
-          lx + 2,
-          p.y - 7,
+          labelX + 2,
+          point.y - 7,
         );
       }
     }
 
     // order-flow arcs between hubs
-    if (prog > 0.36 && t - lastArc > 0.5 && arcs.length < 6) {
-      lastArc = t;
-      const a = Math.floor(rnd(arcSeed++) * nodes.length);
-      let b = Math.floor(rnd(arcSeed++) * nodes.length);
+    if (progress > 0.36 && elapsedSec - lastArcSec > 0.5 && arcs.length < 6) {
+      lastArcSec = elapsedSec;
+      const fromHub = Math.floor(hashRandom(arcSeed++) * nodes.length);
+      let toHub = Math.floor(hashRandom(arcSeed++) * nodes.length);
 
-      if (b === a) {
-        b = (b + 4) % nodes.length;
+      if (toHub === fromHub) {
+        toHub = (toHub + 4) % nodes.length;
       }
 
       arcs.push({
-        a,
-        b,
-        t0: t,
-        dur: 1.5 + rnd(arcSeed++) * 0.8,
-        buy: rnd(arcSeed++) > 0.45,
+        fromHub,
+        toHub,
+        startSec: elapsedSec,
+        durationSec: 1.5 + hashRandom(arcSeed++) * 0.8,
+        buy: hashRandom(arcSeed++) > 0.45,
       });
       arcCount++;
     }
 
     for (let i = arcs.length - 1; i >= 0; i--) {
-      const ar = arcs[i];
-      const u = (t - ar.t0) / ar.dur;
+      const arc = arcs[i];
+      const arcProgress = (elapsedSec - arc.startSec) / arc.durationSec;
 
-      if (u >= 1) {
+      if (arcProgress >= 1) {
         arcs.splice(i, 1);
         continue;
       }
 
-      const va = hubVec(nodes[ar.a]);
-      const vb = hubVec(nodes[ar.b]);
-      const col = ar.buy ? buy : sell;
-      ctx.strokeStyle = hexToRgba(col, 0.16);
+      const fromVec = hubToVector(nodes[arc.fromHub]);
+      const toVec = hubToVector(nodes[arc.toHub]);
+      const color = arc.buy ? buyColor : sellColor;
+      ctx.strokeStyle = hexToRgba(color, 0.16);
       ctx.lineWidth = 1;
       ctx.beginPath();
 
-      for (let s2 = 0; s2 <= 20; s2++) {
-        const p = arcPoint(s2 / 20, va, vb);
+      for (let sample = 0; sample <= 20; sample++) {
+        const point = projectArcPoint(sample / 20, fromVec, toVec);
 
-        if (s2 === 0) {
-          ctx.moveTo(p.x, p.y);
+        if (sample === 0) {
+          ctx.moveTo(point.x, point.y);
         } else {
-          ctx.lineTo(p.x, p.y);
+          ctx.lineTo(point.x, point.y);
         }
       }
 
       ctx.stroke();
-      ctx.strokeStyle = hexToRgba(col, 0.8);
+      ctx.strokeStyle = hexToRgba(color, 0.8);
       ctx.lineWidth = 1.7;
       ctx.beginPath();
-      const u0 = Math.max(0, u - 0.18);
+      const tailStart = Math.max(0, arcProgress - 0.18);
 
-      for (let s2 = 0; s2 <= 8; s2++) {
-        const p = arcPoint(u0 + ((u - u0) * s2) / 8, va, vb);
+      for (let sample = 0; sample <= 8; sample++) {
+        const point = projectArcPoint(
+          tailStart + ((arcProgress - tailStart) * sample) / 8,
+          fromVec,
+          toVec,
+        );
 
-        if (s2 === 0) {
-          ctx.moveTo(p.x, p.y);
+        if (sample === 0) {
+          ctx.moveTo(point.x, point.y);
         } else {
-          ctx.lineTo(p.x, p.y);
+          ctx.lineTo(point.x, point.y);
         }
       }
 
       ctx.stroke();
-      const hd = arcPoint(u, va, vb);
+      const head = projectArcPoint(arcProgress, fromVec, toVec);
       ctx.fillStyle = "#fff";
-      ctx.shadowColor = col;
+      ctx.shadowColor = color;
       ctx.shadowBlur = 10;
       ctx.beginPath();
-      ctx.arc(hd.x, hd.y, 1.9, 0, 6.283);
+      ctx.arc(head.x, head.y, 1.9, 0, 6.283);
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      if (u > 0.88) {
-        const p = arcPoint(1, va, vb);
-        const rr = (u - 0.88) / 0.12;
-        ctx.strokeStyle = hexToRgba(col, 0.7 * (1 - rr));
+      if (arcProgress > 0.88) {
+        const point = projectArcPoint(1, fromVec, toVec);
+        const ripple = (arcProgress - 0.88) / 0.12;
+        ctx.strokeStyle = hexToRgba(color, 0.7 * (1 - ripple));
         ctx.lineWidth = 1.3;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 2 + rr * 9, 0, 6.283);
+        ctx.arc(point.x, point.y, 2 + ripple * 9, 0, 6.283);
         ctx.stroke();
       }
     }
 
     // screen-space calibration ticks
     for (let i = 0; i < 48; i++) {
-      const a = (i / 48) * Math.PI * 2;
-      const on = (t * 14) % 48 > i;
-      ctx.strokeStyle = hexToRgba(acc, on ? 0.5 : 0.08);
+      const angle = (i / 48) * Math.PI * 2;
+      const on = (elapsedSec * 14) % 48 > i;
+      ctx.strokeStyle = hexToRgba(accent, on ? 0.5 : 0.08);
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(a) * S * 1.86, cy + Math.sin(a) * S * 1.86);
-      ctx.lineTo(cx + Math.cos(a) * S * 1.93, cy + Math.sin(a) * S * 1.93);
+      ctx.moveTo(
+        centerX + Math.cos(angle) * globeRadius * 1.86,
+        centerY + Math.sin(angle) * globeRadius * 1.86,
+      );
+      ctx.lineTo(
+        centerX + Math.cos(angle) * globeRadius * 1.93,
+        centerY + Math.sin(angle) * globeRadius * 1.93,
+      );
       ctx.stroke();
     }
 
@@ -534,28 +579,29 @@ export function createBootCore(d: BootDrawCtx): BootFrameFn {
     ctx.font = `11px ${MONO}`;
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = hexToRgba(acc, 0.7);
+    ctx.fillStyle = hexToRgba(accent, 0.7);
     ctx.fillText("◉ CORE SYNC · GLOBAL MESH", 20, 28);
-    ctx.fillText(`NODES 10 · UPLINK ${Math.round(prog * 100)}%`, 20, 44);
+    ctx.fillText(`NODES 10 · UPLINK ${Math.round(progress * 100)}%`, 20, 44);
     ctx.textAlign = "right";
-    ctx.fillText(`YAW ${((yaw * 57.29) % 360).toFixed(1)}°`, W - 20, 28);
-    ctx.fillStyle = hexToRgba(ac2, 0.7);
-    ctx.fillText(`LINKS ${arcCount} · LIVE ${arcs.length}`, W - 20, 44);
-    let stt = "SPINNING UP CORE";
-    let sc = acc;
+    ctx.fillText(`YAW ${((yaw * 57.29) % 360).toFixed(1)}°`, width - 20, 28);
+    ctx.fillStyle = hexToRgba(accentAlt, 0.7);
+    ctx.fillText(`LINKS ${arcCount} · LIVE ${arcs.length}`, width - 20, 44);
+    let statusText = "SPINNING UP CORE";
+    let statusColor = accent;
 
-    if (prog >= 0.32 && prog < 0.7) {
-      stt = "LINKING GLOBAL NODES";
-    } else if (prog >= 0.7) {
-      stt = "MESH ONLINE ▸ HANDOFF";
-      sc = ac2;
+    if (progress >= 0.32 && progress < 0.7) {
+      statusText = "LINKING GLOBAL NODES";
+    } else if (progress >= 0.7) {
+      statusText = "MESH ONLINE ▸ HANDOFF";
+      statusColor = accentAlt;
     }
 
-    const bk = prog < 0.32 ? 0.55 + 0.45 * Math.abs(Math.sin(t * 5)) : 1;
+    const bannerBlink =
+      progress < 0.32 ? 0.55 + 0.45 * Math.abs(Math.sin(elapsedSec * 5)) : 1;
     ctx.font = `bold 12px ${MONO}`;
     ctx.textAlign = "center";
-    ctx.fillStyle = hexToRgba(sc, 0.9 * bk);
-    ctx.fillText(`▸ ${stt} ◂`, cx, 72);
+    ctx.fillStyle = hexToRgba(statusColor, 0.9 * bannerBlink);
+    ctx.fillText(`▸ ${statusText} ◂`, centerX, 72);
     ctx.textAlign = "left";
     ctx.restore();
   };

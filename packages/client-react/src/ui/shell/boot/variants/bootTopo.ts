@@ -18,25 +18,25 @@ const MONO = "'JetBrains Mono','IBM Plex Mono',monospace";
 interface Peak {
   x: number;
   z: number;
-  h: number;
-  sg: number;
+  height: number;
+  sigma: number;
   pair: string;
   base: number;
-  dp: number;
+  decimals: number;
   step: number;
-  lastIdx: number;
+  lastTickIdx: number;
   val: number;
   dir: number;
-  flashT: number;
-  t0: number;
+  flashStart: number;
+  revealAt: number;
 }
 
 /** Drifting survey mote (position anchored to a peak + phase/speed). */
 interface Mote {
   x: number;
   z: number;
-  o: number;
-  s: number;
+  phase: number;
+  speed: number;
 }
 
 /** Sparse wireframe-mesh vertex: world x, height, world z. */
@@ -47,11 +47,11 @@ interface Projected3 {
   x: number;
   y: number;
   z: number;
-  f: number;
+  perspective: number;
 }
 
 /** Marching-squares edge-pair table, keyed by the 4-bit corner mask. */
-const TBL: Record<number, Array<[number, number]>> = {
+const MARCHING_SQUARES: Record<number, Array<[number, number]>> = {
   1: [[3, 0]],
   2: [[0, 1]],
   3: [[3, 1]],
@@ -79,13 +79,13 @@ function clamp(v: number): number {
 }
 
 /** Deterministic pseudo-random in [0,1) from an index seed. */
-function rnd(i: number): number {
+function hashRandom(i: number): number {
   const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 }
 
 /** Zero-pad an already-integer number to two digits. Verbatim from prototype. */
-function pad2(n: number): string {
+function padTwo(n: number): string {
   return String(n).padStart(2, "0");
 }
 
@@ -94,17 +94,17 @@ function pad2(n: number): string {
  * heightfield and the marching-squares contour segments (11 iso levels) a
  * single time; the returned closure only projects + draws each frame.
  */
-export function createBootTopo(d: BootDrawCtx): BootFrameFn {
-  const c = d.canvas;
-  const ctx = d.ctx;
-  const acc = d.accent;
-  const ac2 = d.accent2 !== "" ? d.accent2 : d.accent;
-  const buy = d.buy;
-  const sell = d.sell;
+export function createBootTopo(scene: BootDrawCtx): BootFrameFn {
+  const canvas = scene.canvas;
+  const ctx = scene.ctx;
+  const accent = scene.accent;
+  const accentAlt = scene.accent2 !== "" ? scene.accent2 : scene.accent;
+  const buyColor = scene.buy;
+  const sellColor = scene.sell;
 
   function resize(): void {
-    c.width = c.offsetWidth;
-    c.height = c.offsetHeight;
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
   }
 
   resize();
@@ -114,360 +114,379 @@ export function createBootTopo(d: BootDrawCtx): BootFrameFn {
     {
       x: 0.1,
       z: -0.15,
-      h: 0.55,
-      sg: 0.2,
+      height: 0.55,
+      sigma: 0.2,
       pair: "EUR/USD",
       base: 1.0917,
-      dp: 4,
+      decimals: 4,
       step: 0.0004,
-      lastIdx: -1,
+      lastTickIdx: -1,
       val: 1.0917,
       dir: 1,
-      flashT: -9,
-      t0: 0.44,
+      flashStart: -9,
+      revealAt: 0.44,
     },
     {
       x: -0.55,
       z: 0.1,
-      h: 0.42,
-      sg: 0.16,
+      height: 0.42,
+      sigma: 0.16,
       pair: "GBP/USD",
       base: 1.2744,
-      dp: 4,
+      decimals: 4,
       step: 0.0005,
-      lastIdx: -1,
+      lastTickIdx: -1,
       val: 1.2744,
       dir: 1,
-      flashT: -9,
-      t0: 0.495,
+      flashStart: -9,
+      revealAt: 0.495,
     },
     {
       x: 0.55,
       z: 0.25,
-      h: 0.38,
-      sg: 0.15,
+      height: 0.38,
+      sigma: 0.15,
       pair: "USD/JPY",
       base: 157.32,
-      dp: 2,
+      decimals: 2,
       step: 0.05,
-      lastIdx: -1,
+      lastTickIdx: -1,
       val: 157.32,
       dir: 1,
-      flashT: -9,
-      t0: 0.55,
+      flashStart: -9,
+      revealAt: 0.55,
     },
     {
       x: -0.15,
       z: 0.45,
-      h: 0.3,
-      sg: 0.13,
+      height: 0.3,
+      sigma: 0.13,
       pair: "AUD/USD",
       base: 0.6621,
-      dp: 4,
+      decimals: 4,
       step: 0.0003,
-      lastIdx: -1,
+      lastTickIdx: -1,
       val: 0.6621,
       dir: 1,
-      flashT: -9,
-      t0: 0.605,
+      flashStart: -9,
+      revealAt: 0.605,
     },
     {
       x: 0.75,
       z: -0.35,
-      h: 0.26,
-      sg: 0.12,
+      height: 0.26,
+      sigma: 0.12,
       pair: "EUR/GBP",
       base: 0.8567,
-      dp: 4,
+      decimals: 4,
       step: 0.0002,
-      lastIdx: -1,
+      lastTickIdx: -1,
       val: 0.8567,
       dir: 1,
-      flashT: -9,
-      t0: 0.66,
+      flashStart: -9,
+      revealAt: 0.66,
     },
     {
       x: -0.75,
       z: -0.4,
-      h: 0.24,
-      sg: 0.12,
+      height: 0.24,
+      sigma: 0.12,
       pair: "USD/CHF",
       base: 0.8842,
-      dp: 4,
+      decimals: 4,
       step: 0.0003,
-      lastIdx: -1,
+      lastTickIdx: -1,
       val: 0.8842,
       dir: 1,
-      flashT: -9,
-      t0: 0.715,
+      flashStart: -9,
+      revealAt: 0.715,
     },
   ];
 
-  function hfn(x: number, z: number): number {
-    let h = 0;
+  function heightAt(x: number, z: number): number {
+    let height = 0;
 
-    peaks.forEach((p) => {
-      const dx = x - p.x;
-      const dz = z - p.z;
-      h += p.h * Math.exp(-(dx * dx + dz * dz) / (p.sg * p.sg * 2));
+    peaks.forEach((peak) => {
+      const dx = x - peak.x;
+      const dz = z - peak.z;
+      height +=
+        peak.height *
+        Math.exp(-(dx * dx + dz * dz) / (peak.sigma * peak.sigma * 2));
     });
 
-    h +=
+    height +=
       0.045 * Math.sin(3.1 * x + 1.7 * z) +
       0.035 * Math.sin(5.3 * z - 2.2 * x) +
       0.05;
     const fall =
       (1 - (Math.abs(x) / 1.32) ** 4) * (1 - (Math.abs(z) / 1.02) ** 4);
-    return Math.max(0, h * Math.max(0, fall));
+    return Math.max(0, height * Math.max(0, fall));
   }
 
   // heightfield + marching-squares contours (precomputed in world space)
-  const NX = 52;
-  const NZ = 36;
-  const X0 = -1.3;
-  const X1 = 1.3;
-  const Z0 = -1.0;
-  const Z1 = 1.0;
-  const DX = (X1 - X0) / (NX - 1);
-  const DZ = (Z1 - Z0) / (NZ - 1);
-  const Hh: number[][] = [];
+  const gridCols = 52;
+  const gridRows = 36;
+  const worldMinX = -1.3;
+  const worldMaxX = 1.3;
+  const worldMinZ = -1.0;
+  const worldMaxZ = 1.0;
+  const stepX = (worldMaxX - worldMinX) / (gridCols - 1);
+  const stepZ = (worldMaxZ - worldMinZ) / (gridRows - 1);
+  const heights: number[][] = [];
 
-  for (let i = 0; i < NX; i++) {
-    Hh[i] = [];
+  for (let i = 0; i < gridCols; i++) {
+    heights[i] = [];
 
-    for (let j = 0; j < NZ; j++) {
-      Hh[i][j] = hfn(X0 + i * DX, Z0 + j * DZ);
+    for (let j = 0; j < gridRows; j++) {
+      heights[i][j] = heightAt(worldMinX + i * stepX, worldMinZ + j * stepZ);
     }
   }
 
-  const LV: number[] = [];
+  const levels: number[] = [];
 
   for (let li = 0; li < 11; li++) {
-    LV.push(0.055 + li * 0.052);
+    levels.push(0.055 + li * 0.052);
   }
 
-  const contours: number[][] = LV.map((L) => {
-    const segs: number[] = [];
+  const contours: number[][] = levels.map((level) => {
+    const contourSegs: number[] = [];
 
-    for (let i = 0; i < NX - 1; i++) {
-      for (let j = 0; j < NZ - 1; j++) {
-        const v00 = Hh[i][j];
-        const v10 = Hh[i + 1][j];
-        const v01 = Hh[i][j + 1];
-        const v11 = Hh[i + 1][j + 1];
+    for (let i = 0; i < gridCols - 1; i++) {
+      for (let j = 0; j < gridRows - 1; j++) {
+        const v00 = heights[i][j];
+        const v10 = heights[i + 1][j];
+        const v01 = heights[i][j + 1];
+        const v11 = heights[i + 1][j + 1];
         const bits =
-          (v00 > L ? 1 : 0) |
-          (v10 > L ? 2 : 0) |
-          (v11 > L ? 4 : 0) |
-          (v01 > L ? 8 : 0);
-        const e = TBL[bits];
+          (v00 > level ? 1 : 0) |
+          (v10 > level ? 2 : 0) |
+          (v11 > level ? 4 : 0) |
+          (v01 > level ? 8 : 0);
+        const edges = MARCHING_SQUARES[bits];
 
-        if (!e) {
+        if (!edges) {
           continue;
         }
 
-        const x0 = X0 + i * DX;
-        const z0 = Z0 + j * DZ;
+        const x0 = worldMinX + i * stepX;
+        const z0 = worldMinZ + j * stepZ;
 
-        function ep(ei: number): [number, number] {
-          let t2: number;
+        function edgePoint(edgeId: number): [number, number] {
+          let frac: number;
 
-          if (ei === 0) {
-            t2 = clamp((L - v00) / (v10 - v00 || 1e-9));
-            return [x0 + t2 * DX, z0];
+          if (edgeId === 0) {
+            frac = clamp((level - v00) / (v10 - v00 || 1e-9));
+            return [x0 + frac * stepX, z0];
           }
 
-          if (ei === 1) {
-            t2 = clamp((L - v10) / (v11 - v10 || 1e-9));
-            return [x0 + DX, z0 + t2 * DZ];
+          if (edgeId === 1) {
+            frac = clamp((level - v10) / (v11 - v10 || 1e-9));
+            return [x0 + stepX, z0 + frac * stepZ];
           }
 
-          if (ei === 2) {
-            t2 = clamp((L - v01) / (v11 - v01 || 1e-9));
-            return [x0 + t2 * DX, z0 + DZ];
+          if (edgeId === 2) {
+            frac = clamp((level - v01) / (v11 - v01 || 1e-9));
+            return [x0 + frac * stepX, z0 + stepZ];
           }
 
-          t2 = clamp((L - v00) / (v01 - v00 || 1e-9));
-          return [x0, z0 + t2 * DZ];
+          frac = clamp((level - v00) / (v01 - v00 || 1e-9));
+          return [x0, z0 + frac * stepZ];
         }
 
-        e.forEach((pr) => {
-          const a = ep(pr[0]);
-          const b = ep(pr[1]);
-          segs.push(a[0], a[1], b[0], b[1]);
+        edges.forEach((edgePair) => {
+          const ptA = edgePoint(edgePair[0]);
+          const ptB = edgePoint(edgePair[1]);
+          contourSegs.push(ptA[0], ptA[1], ptB[0], ptB[1]);
         });
       }
     }
 
-    return segs;
+    return contourSegs;
   });
 
   // sparse mesh polylines
-  const meshR: MeshPoint[][] = [];
+  const meshLines: MeshPoint[][] = [];
 
-  for (let j = 0; j < NZ; j += 7) {
+  for (let j = 0; j < gridRows; j += 7) {
     const row: MeshPoint[] = [];
 
-    for (let i = 0; i < NX; i += 2) {
-      row.push([X0 + i * DX, Hh[i][j], Z0 + j * DZ]);
+    for (let i = 0; i < gridCols; i += 2) {
+      row.push([worldMinX + i * stepX, heights[i][j], worldMinZ + j * stepZ]);
     }
 
-    meshR.push(row);
+    meshLines.push(row);
   }
 
-  for (let i = 0; i < NX; i += 8) {
+  for (let i = 0; i < gridCols; i += 8) {
     const col: MeshPoint[] = [];
 
-    for (let j = 0; j < NZ; j += 2) {
-      col.push([X0 + i * DX, Hh[i][j], Z0 + j * DZ]);
+    for (let j = 0; j < gridRows; j += 2) {
+      col.push([worldMinX + i * stepX, heights[i][j], worldMinZ + j * stepZ]);
     }
 
-    meshR.push(col);
+    meshLines.push(col);
   }
 
   const motes: Mote[] = [];
 
   for (let i = 0; i < 26; i++) {
-    const pk = peaks[i % 6];
+    const peak = peaks[i % 6];
     motes.push({
-      x: pk.x + (rnd(i * 7 + 2) - 0.5) * 0.5,
-      z: pk.z + (rnd(i * 11 + 3) - 0.5) * 0.5,
-      o: rnd(i * 13 + 4),
-      s: 0.06 + rnd(i * 17 + 5) * 0.1,
+      x: peak.x + (hashRandom(i * 7 + 2) - 0.5) * 0.5,
+      z: peak.z + (hashRandom(i * 11 + 3) - 0.5) * 0.5,
+      phase: hashRandom(i * 13 + 4),
+      speed: 0.06 + hashRandom(i * 17 + 5) * 0.1,
     });
   }
 
-  const GY = 0.35;
+  const groundY = 0.35;
 
   return function drawBootTopoFrame(): void {
-    if (c.width !== c.offsetWidth) {
+    if (canvas.width !== canvas.offsetWidth) {
       resize();
     }
 
     // Cursor steering: BootSequence owns the window mousemove listener and
-    // writes normalized -1..1 values into d.pointer each frame (prototype
+    // writes normalized -1..1 values into scene.pointer each frame (prototype
     // read its own module-local mx/my, updated by its own listener — no
     // smoothing was applied there, so none is applied here either).
-    const mx = d.pointer.mx;
-    const my = d.pointer.my;
+    const pointerX = scene.pointer.mx;
+    const pointerY = scene.pointer.my;
 
-    const t = (performance.now() - d.start) / 1000;
-    const prog = Math.min(1, (performance.now() - d.start) / BOOT_DURATION_MS);
-    const W = c.width;
-    const H = c.height;
-    const cx = W / 2;
-    const cy = H / 2 + 10;
-    ctx.clearRect(0, 0, W, H);
+    const elapsedSec = (performance.now() - scene.start) / 1000;
+    const progress = Math.min(
+      1,
+      (performance.now() - scene.start) / BOOT_DURATION_MS,
+    );
+    const width = canvas.width;
+    const height = canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 2 + 10;
+    ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = "rgba(0,3,6,0.55)";
-    ctx.fillRect(0, 0, W, H);
-    const yaw = 0.5 + t * 0.16 + mx * 0.35;
-    const pitch = 0.55 + 0.05 * Math.sin(t * 0.3) + my * 0.15;
+    ctx.fillRect(0, 0, width, height);
+    const yaw = 0.5 + elapsedSec * 0.16 + pointerX * 0.35;
+    const pitch = 0.55 + 0.05 * Math.sin(elapsedSec * 0.3) + pointerY * 0.15;
     const cyw = Math.cos(yaw);
     const syw = Math.sin(yaw);
     const cp = Math.cos(pitch);
     const sp = Math.sin(pitch);
-    const S = Math.min(W, H) * 0.44;
+    const projScale = Math.min(width, height) * 0.44;
 
-    function P(x: number, y: number, z: number): Projected3 {
+    function project(x: number, y: number, z: number): Projected3 {
       const x1 = x * cyw - z * syw;
       const z1 = x * syw + z * cyw;
       const y1 = y * cp - z1 * sp;
       const z2 = y * sp + z1 * cp;
-      const f = 1 / Math.max(0.4, 1 + z2 * 0.26);
-      return { x: cx + x1 * S * f, y: cy + y1 * S * f, z: z2, f };
+      const perspective = 1 / Math.max(0.4, 1 + z2 * 0.26);
+      return {
+        x: centerX + x1 * projScale * perspective,
+        y: centerY + y1 * projScale * perspective,
+        z: z2,
+        perspective,
+      };
     }
 
-    const E = ease(prog / 0.4);
-    let ga = 0.88 + 0.12 * Math.sin(t * 35 + Math.sin(t * 8) * 4);
+    const rise = ease(progress / 0.4);
+    let flickerAlpha =
+      0.88 + 0.12 * Math.sin(elapsedSec * 35 + Math.sin(elapsedSec * 8) * 4);
 
-    if (rnd(Math.floor(t * 6) + 11) > 0.94) {
-      ga *= 0.55;
+    if (hashRandom(Math.floor(elapsedSec * 6) + 11) > 0.94) {
+      flickerAlpha *= 0.55;
     }
 
     ctx.save();
-    ctx.globalAlpha = ga;
+    ctx.globalAlpha = flickerAlpha;
 
     // survey table frame
-    const B: Array<[number, number]> = [
-      [X0, Z0],
-      [X1, Z0],
-      [X1, Z1],
-      [X0, Z1],
+    const frameCorners: Array<[number, number]> = [
+      [worldMinX, worldMinZ],
+      [worldMaxX, worldMinZ],
+      [worldMaxX, worldMaxZ],
+      [worldMinX, worldMaxZ],
     ];
     ctx.setLineDash([6, 8]);
-    ctx.strokeStyle = hexToRgba(acc, 0.28);
+    ctx.strokeStyle = hexToRgba(accent, 0.28);
     ctx.lineWidth = 1;
     ctx.beginPath();
-    B.forEach((q, i) => {
-      const p = P(q[0], GY, q[1]);
+    frameCorners.forEach((corner, i) => {
+      const point = project(corner[0], groundY, corner[1]);
 
       if (i === 0) {
-        ctx.moveTo(p.x, p.y);
+        ctx.moveTo(point.x, point.y);
       } else {
-        ctx.lineTo(p.x, p.y);
+        ctx.lineTo(point.x, point.y);
       }
     });
     ctx.closePath();
     ctx.stroke();
     ctx.setLineDash([]);
-    B.forEach((q) => {
-      const p = P(q[0], GY, q[1]);
-      ctx.strokeStyle = hexToRgba(ac2, 0.7);
+    frameCorners.forEach((corner) => {
+      const point = project(corner[0], groundY, corner[1]);
+      ctx.strokeStyle = hexToRgba(accentAlt, 0.7);
       ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.moveTo(p.x - 7, p.y);
-      ctx.lineTo(p.x, p.y);
-      ctx.lineTo(p.x, p.y - 7);
+      ctx.moveTo(point.x - 7, point.y);
+      ctx.lineTo(point.x, point.y);
+      ctx.lineTo(point.x, point.y - 7);
       ctx.stroke();
     });
 
     // sparse wireframe mesh
     ctx.lineWidth = 1;
-    meshR.forEach((row) => {
-      ctx.strokeStyle = hexToRgba(acc, 0.1 * E);
+    meshLines.forEach((row) => {
+      ctx.strokeStyle = hexToRgba(accent, 0.1 * rise);
       ctx.beginPath();
-      row.forEach((q, i) => {
-        const p = P(q[0], GY - q[1] * E, q[2]);
+      row.forEach((vertex, i) => {
+        const point = project(vertex[0], groundY - vertex[1] * rise, vertex[2]);
 
         if (i === 0) {
-          ctx.moveTo(p.x, p.y);
+          ctx.moveTo(point.x, point.y);
         } else {
-          ctx.lineTo(p.x, p.y);
+          ctx.lineTo(point.x, point.y);
         }
       });
       ctx.stroke();
     });
 
     // contour levels, revealed bottom-up
-    contours.forEach((segs, li) => {
-      const L = LV[li];
-      const k = ease((prog - 0.06 - li * 0.032) / 0.1);
+    contours.forEach((contourSegs, li) => {
+      const level = levels[li];
+      const contourPhase = ease((progress - 0.06 - li * 0.032) / 0.1);
 
-      if (k <= 0) {
+      if (contourPhase <= 0) {
         return;
       }
 
-      const newest = k < 1;
+      const newest = contourPhase < 1;
       const hot = li >= 8;
       ctx.strokeStyle = hexToRgba(
-        hot ? ac2 : acc,
-        (newest ? 0.95 : 0.22 + li * 0.045) * Math.max(k, 0.4),
+        hot ? accentAlt : accent,
+        (newest ? 0.95 : 0.22 + li * 0.045) * Math.max(contourPhase, 0.4),
       );
       ctx.lineWidth = newest ? 1.8 : hot ? 1.3 : 1;
 
       if (newest) {
-        ctx.shadowColor = hot ? ac2 : acc;
+        ctx.shadowColor = hot ? accentAlt : accent;
         ctx.shadowBlur = 10;
       }
 
       ctx.beginPath();
-      const yy = GY - L * E;
+      const contourY = groundY - level * rise;
 
-      for (let s2 = 0; s2 < segs.length; s2 += 4) {
-        const a = P(segs[s2], yy, segs[s2 + 1]);
-        const b = P(segs[s2 + 2], yy, segs[s2 + 3]);
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
+      for (let segIdx = 0; segIdx < contourSegs.length; segIdx += 4) {
+        const projA = project(
+          contourSegs[segIdx],
+          contourY,
+          contourSegs[segIdx + 1],
+        );
+        const projB = project(
+          contourSegs[segIdx + 2],
+          contourY,
+          contourSegs[segIdx + 3],
+        );
+        ctx.moveTo(projA.x, projA.y);
+        ctx.lineTo(projB.x, projB.y);
       }
 
       ctx.stroke();
@@ -475,61 +494,72 @@ export function createBootTopo(d: BootDrawCtx): BootFrameFn {
     });
 
     // route linking the summits
-    const rk = ease((prog - 0.62) / 0.15);
+    const routePhase = ease((progress - 0.62) / 0.15);
 
-    if (rk > 0) {
-      ctx.strokeStyle = hexToRgba(ac2, 0.4 * rk);
+    if (routePhase > 0) {
+      ctx.strokeStyle = hexToRgba(accentAlt, 0.4 * routePhase);
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      peaks.forEach((pk, i) => {
-        const p = P(pk.x, GY - hfn(pk.x, pk.z) * E, pk.z);
+      peaks.forEach((peak, i) => {
+        const point = project(
+          peak.x,
+          groundY - heightAt(peak.x, peak.z) * rise,
+          peak.z,
+        );
 
         if (i === 0) {
-          ctx.moveTo(p.x, p.y);
+          ctx.moveTo(point.x, point.y);
         } else {
-          ctx.lineTo(p.x, p.y);
+          ctx.lineTo(point.x, point.y);
         }
       });
       ctx.stroke();
     }
 
     // summit beacons + pair labels + ticking prices
-    const ord = peaks
-      .map((pk) => {
-        return { pk, s: P(pk.x, GY - hfn(pk.x, pk.z) * E, pk.z) };
+    const ordered = peaks
+      .map((peak) => {
+        return {
+          peak,
+          summit: project(
+            peak.x,
+            groundY - heightAt(peak.x, peak.z) * rise,
+            peak.z,
+          ),
+        };
       })
       .sort((a, b) => {
-        return b.s.z - a.s.z;
+        return b.summit.z - a.summit.z;
       });
 
-    ord.forEach((o) => {
-      const pk = o.pk;
-      const k = ease((prog - pk.t0) / 0.12);
+    ordered.forEach((entry) => {
+      const peak = entry.peak;
+      const phase = ease((progress - peak.revealAt) / 0.12);
 
-      if (k <= 0) {
+      if (phase <= 0) {
         return;
       }
 
-      const sm = o.s;
-      const hgt = 0.3 * k;
+      const summitPoint = entry.summit;
+      const beaconHeight = 0.3 * phase;
       // dashed halo ring on the terrain
       ctx.setLineDash([3, 5]);
-      ctx.strokeStyle = hexToRgba(acc, 0.45 * k);
+      ctx.strokeStyle = hexToRgba(accent, 0.45 * phase);
       ctx.lineWidth = 1;
       ctx.beginPath();
 
-      for (let k2 = 0; k2 <= 36; k2++) {
-        const an = (k2 / 36) * 6.283 + t * 0.5;
-        const p = P(
-          pk.x + Math.cos(an) * 0.1,
-          GY - hfn(pk.x, pk.z) * E,
-          pk.z + Math.sin(an) * 0.1,
+      for (let ringStep = 0; ringStep <= 36; ringStep++) {
+        const angle = (ringStep / 36) * 6.283 + elapsedSec * 0.5;
+        const point = project(
+          peak.x + Math.cos(angle) * 0.1,
+          groundY - heightAt(peak.x, peak.z) * rise,
+          peak.z + Math.sin(angle) * 0.1,
         );
 
-        if (k2 === 0) {
-          ctx.moveTo(p.x, p.y);
+        if (ringStep === 0) {
+          ctx.moveTo(point.x, point.y);
         } else {
-          ctx.lineTo(p.x, p.y);
+          ctx.lineTo(point.x, point.y);
         }
       }
 
@@ -537,82 +567,102 @@ export function createBootTopo(d: BootDrawCtx): BootFrameFn {
       ctx.setLineDash([]);
 
       // beacon
-      const tp = P(pk.x, GY - hfn(pk.x, pk.z) * E - hgt, pk.z);
-      ctx.strokeStyle = hexToRgba(ac2, 0.75 * k);
+      const topPoint = project(
+        peak.x,
+        groundY - heightAt(peak.x, peak.z) * rise - beaconHeight,
+        peak.z,
+      );
+      ctx.strokeStyle = hexToRgba(accentAlt, 0.75 * phase);
       ctx.lineWidth = 1.4;
       ctx.beginPath();
-      ctx.moveTo(sm.x, sm.y);
-      ctx.lineTo(tp.x, tp.y);
+      ctx.moveTo(summitPoint.x, summitPoint.y);
+      ctx.lineTo(topPoint.x, topPoint.y);
       ctx.stroke();
-      ctx.fillStyle = hexToRgba(ac2, 0.9 * k);
+      ctx.fillStyle = hexToRgba(accentAlt, 0.9 * phase);
       ctx.beginPath();
-      ctx.moveTo(tp.x, tp.y - 4);
-      ctx.lineTo(tp.x + 4, tp.y);
-      ctx.lineTo(tp.x, tp.y + 4);
-      ctx.lineTo(tp.x - 4, tp.y);
+      ctx.moveTo(topPoint.x, topPoint.y - 4);
+      ctx.lineTo(topPoint.x + 4, topPoint.y);
+      ctx.lineTo(topPoint.x, topPoint.y + 4);
+      ctx.lineTo(topPoint.x - 4, topPoint.y);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = hexToRgba("#ffffff", 0.8 * k);
+      ctx.fillStyle = hexToRgba("#ffffff", 0.8 * phase);
       ctx.beginPath();
-      ctx.arc(sm.x, sm.y, 1.8, 0, 6.283);
+      ctx.arc(summitPoint.x, summitPoint.y, 1.8, 0, 6.283);
       ctx.fill();
 
       // live tick
-      const idx = Math.floor(t / 0.3 + rnd(pk.base * 97) * 7);
+      const tickIdx = Math.floor(
+        elapsedSec / 0.3 + hashRandom(peak.base * 97) * 7,
+      );
 
-      if (idx !== pk.lastIdx) {
-        pk.lastIdx = idx;
-        const nv =
-          pk.base + (rnd(idx * 7.3 + pk.base * 31) - 0.5) * pk.step * 14;
-        pk.dir = nv >= pk.val ? 1 : -1;
-        pk.val = nv;
-        pk.flashT = t;
+      if (tickIdx !== peak.lastTickIdx) {
+        peak.lastTickIdx = tickIdx;
+        const newVal =
+          peak.base +
+          (hashRandom(tickIdx * 7.3 + peak.base * 31) - 0.5) * peak.step * 14;
+        peak.dir = newVal >= peak.val ? 1 : -1;
+        peak.val = newVal;
+        peak.flashStart = elapsedSec;
       }
 
-      const fl = clamp(1 - (t - pk.flashT) / 0.22);
-      const pc = pk.dir > 0 ? buy : sell;
-      const txt = pk.val.toFixed(pk.dp);
+      const flash = clamp(1 - (elapsedSec - peak.flashStart) / 0.22);
+      const tickColor = peak.dir > 0 ? buyColor : sellColor;
+      const priceText = peak.val.toFixed(peak.decimals);
       ctx.font = `bold 12px ${MONO}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "alphabetic";
 
-      if (fl > 0) {
-        const tw = ctx.measureText(txt).width;
-        ctx.fillStyle = hexToRgba(pc, 0.22 * fl * k);
-        ctx.fillRect(tp.x - tw / 2 - 5, tp.y - 36, tw + 10, 14);
+      if (flash > 0) {
+        const textWidth = ctx.measureText(priceText).width;
+        ctx.fillStyle = hexToRgba(tickColor, 0.22 * flash * phase);
+        ctx.fillRect(
+          topPoint.x - textWidth / 2 - 5,
+          topPoint.y - 36,
+          textWidth + 10,
+          14,
+        );
       }
 
-      ctx.fillStyle = hexToRgba(acc, 0.95 * k);
-      ctx.fillText(pk.pair, tp.x, tp.y - 40);
+      ctx.fillStyle = hexToRgba(accent, 0.95 * phase);
+      ctx.fillText(peak.pair, topPoint.x, topPoint.y - 40);
       ctx.font = `12px ${MONO}`;
-      ctx.fillStyle = hexToRgba(pc, (0.75 + 0.25 * fl) * k);
-      ctx.fillText(`${pk.dir > 0 ? "▴ " : "▾ "}${txt}`, tp.x, tp.y - 25);
-      ctx.strokeStyle = hexToRgba(acc, 0.35 * k);
+      ctx.fillStyle = hexToRgba(tickColor, (0.75 + 0.25 * flash) * phase);
+      ctx.fillText(
+        `${peak.dir > 0 ? "▴ " : "▾ "}${priceText}`,
+        topPoint.x,
+        topPoint.y - 25,
+      );
+      ctx.strokeStyle = hexToRgba(accent, 0.35 * phase);
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(tp.x, tp.y - 8);
-      ctx.lineTo(tp.x, tp.y - 21);
+      ctx.moveTo(topPoint.x, topPoint.y - 8);
+      ctx.lineTo(topPoint.x, topPoint.y - 21);
       ctx.stroke();
     });
 
     // drifting survey motes
-    motes.forEach((m) => {
-      const u = (t * m.s + m.o) % 1;
-      const p = P(m.x, GY - hfn(m.x, m.z) * E - u * 0.22, m.z);
-      ctx.fillStyle = hexToRgba(acc, 0.3 * (1 - u) * E);
-      ctx.fillRect(p.x, p.y, 1.4, 1.4);
+    motes.forEach((mote) => {
+      const drift = (elapsedSec * mote.speed + mote.phase) % 1;
+      const point = project(
+        mote.x,
+        groundY - heightAt(mote.x, mote.z) * rise - drift * 0.22,
+        mote.z,
+      );
+      ctx.fillStyle = hexToRgba(accent, 0.3 * (1 - drift) * rise);
+      ctx.fillRect(point.x, point.y, 1.4, 1.4);
     });
 
     // legend + telemetry
     ctx.font = `11px ${MONO}`;
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = hexToRgba(acc, 0.7);
+    ctx.fillStyle = hexToRgba(accent, 0.7);
     ctx.fillText("◉ VOL SURFACE · 3DSCAN", 20, 28);
     ctx.fillText("GRID RZ_5.19.24 · σ ALTITUDE", 20, 44);
 
     for (let i = 0; i < 4; i++) {
-      ctx.strokeStyle = hexToRgba(i > 2 ? ac2 : acc, 0.3 + i * 0.18);
+      ctx.strokeStyle = hexToRgba(i > 2 ? accentAlt : accent, 0.3 + i * 0.18);
       ctx.lineWidth = 1.6;
       ctx.beginPath();
       ctx.moveTo(20, 58 + i * 7);
@@ -621,34 +671,39 @@ export function createBootTopo(d: BootDrawCtx): BootFrameFn {
     }
 
     ctx.textAlign = "right";
-    ctx.fillText(`YAW ${((yaw * 57.29) % 360).toFixed(1)}°`, W - 20, 28);
-    ctx.fillStyle = hexToRgba(ac2, 0.7);
-    ctx.fillText(`PEAKS 6 · FEED ${prog > 0.5 ? "LIVE" : "SYNC"}`, W - 20, 44);
-    const dt = new Date();
-    ctx.textAlign = "left";
-    ctx.fillStyle = hexToRgba(acc, 0.5);
+    ctx.fillText(`YAW ${((yaw * 57.29) % 360).toFixed(1)}°`, width - 20, 28);
+    ctx.fillStyle = hexToRgba(accentAlt, 0.7);
     ctx.fillText(
-      `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())} ${pad2(dt.getHours())}:${pad2(dt.getMinutes())}:${pad2(dt.getSeconds())}`,
+      `PEAKS 6 · FEED ${progress > 0.5 ? "LIVE" : "SYNC"}`,
+      width - 20,
+      44,
+    );
+    const now = new Date();
+    ctx.textAlign = "left";
+    ctx.fillStyle = hexToRgba(accent, 0.5);
+    ctx.fillText(
+      `${now.getFullYear()}-${padTwo(now.getMonth() + 1)}-${padTwo(now.getDate())} ${padTwo(now.getHours())}:${padTwo(now.getMinutes())}:${padTwo(now.getSeconds())}`,
       20,
-      H - 20,
+      height - 20,
     );
     ctx.textAlign = "right";
-    ctx.fillText(".// MAP/VOLSCAN", W - 20, H - 20);
-    let stt = "SCANNING VOLATILITY TERRAIN";
-    let sc = acc;
+    ctx.fillText(".// MAP/VOLSCAN", width - 20, height - 20);
+    let statusText = "SCANNING VOLATILITY TERRAIN";
+    let statusColor = accent;
 
-    if (prog >= 0.44 && prog < 0.75) {
-      stt = "RESOLVING SUMMITS";
-    } else if (prog >= 0.75) {
-      stt = "PRICE FEED LIVE ▸ HANDOFF";
-      sc = ac2;
+    if (progress >= 0.44 && progress < 0.75) {
+      statusText = "RESOLVING SUMMITS";
+    } else if (progress >= 0.75) {
+      statusText = "PRICE FEED LIVE ▸ HANDOFF";
+      statusColor = accentAlt;
     }
 
-    const bk2 = prog < 0.44 ? 0.55 + 0.45 * Math.abs(Math.sin(t * 5)) : 1;
+    const blinkPhase =
+      progress < 0.44 ? 0.55 + 0.45 * Math.abs(Math.sin(elapsedSec * 5)) : 1;
     ctx.font = `bold 12px ${MONO}`;
     ctx.textAlign = "center";
-    ctx.fillStyle = hexToRgba(sc, 0.9 * bk2);
-    ctx.fillText(`▸ ${stt} ◂`, cx, 72);
+    ctx.fillStyle = hexToRgba(statusColor, 0.9 * blinkPhase);
+    ctx.fillText(`▸ ${statusText} ◂`, centerX, 72);
     ctx.textAlign = "left";
     ctx.restore();
   };
