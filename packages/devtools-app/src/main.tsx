@@ -1,8 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import "#/index.css";
 import { InspectorApp } from "#/InspectorApp";
+import "#/index.css";
 import { createInspectorSession } from "#/inspectorSession";
 
 const rootEl = document.getElementById("root");
