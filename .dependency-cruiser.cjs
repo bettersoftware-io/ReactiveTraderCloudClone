@@ -56,6 +56,26 @@ module.exports = {
       to: { path: "^packages/(domain|shared|client-react|server)/" },
     },
     {
+      name: "devtools-core-stays-pure",
+      severity: "error",
+      comment:
+        "@rtc/devtools-core decorates by structural shape — it must not import any @rtc package.",
+      from: { path: "^packages/devtools-core/src" },
+      to: {
+        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|server|ws-effects|devtools-app)/",
+      },
+    },
+    {
+      name: "devtools-core-no-node-builtins",
+      severity: "error",
+      comment: "@rtc/devtools-core must run in any JS environment.",
+      from: {
+        path: "^packages/devtools-core/src",
+        pathNot: "(\\.test\\.ts$|/__tests__/)",
+      },
+      to: { dependencyTypes: ["core"] },
+    },
+    {
       name: "motion-core-stays-pure",
       severity: "error",
       comment:

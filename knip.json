@@ -19,6 +19,11 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/devtools-core": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts",
+      "ignoreDependencies": ["rxjs"]
+    },
     "packages/motion-core": {
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
