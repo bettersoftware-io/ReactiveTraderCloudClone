@@ -14,21 +14,17 @@ test.describe("DevTools inspector (same-origin)", () => {
   test("connects to the same-origin app and lists its streams and machines", async ({
     ctx,
   }) => {
-    // This test needs a much longer budget than the 30s suite default. It is
-    // uniquely expensive: it drives TWO pages (the boot-gated app HUD + a second
-    // inspector page), waits out the app's boot gate + live-tile render, the
-    // devtools hello/welcome handshake, a live blotter stream row, and finally a
-    // heartbeat-driven "disconnected" transition after the app page closes. On a
-    // slow CI runner (2 cores) the inspector — a permanently-rendering live-stream
-    // view — keeps its own main thread busy enough that Playwright's click
-    // actionability polling on it is slow (measured ~30s under a 4x CPU throttle),
-    // so the cumulative flow can approach a minute. 120s gives honest headroom
-    // without masking a genuine hang (each step below still carries its own
-    // bounded per-step timeout, so a real hang fails fast and diagnostically).
-    // NOTE: the inspector's under-load render cost is a tracked perf item — see
-    // docs/architecture/20-devtools.md; this timeout is the CI-robustness
-    // mitigation, not a fix for that.
-    test.setTimeout(120_000);
+    // A longer budget than the 30s suite default: this test drives TWO pages
+    // (the boot-gated app HUD + a second inspector page), waiting out the app's
+    // boot gate + live-tile render, the devtools hello/welcome handshake, a live
+    // blotter stream row, and a "disconnected" transition after the app closes.
+    // The inspector now coalesces + throttles its repaint to ~15 Hz
+    // (InspectorStore.FRAMES_PER_FLUSH), so it no longer starves its own main
+    // thread under a live stream — the actionability-polling stall that used to
+    // dominate this test (~30s under a 4x CPU throttle) is gone, and 45s is
+    // ample even on a slow 2-core runner. Each step still carries its own
+    // bounded per-step timeout so a genuine hang fails fast and diagnostically.
+    test.setTimeout(45_000);
 
     // Open the app on the FX workspace and wait for a live tile: mounting the FX
     // tiles is what births the `tileExecution` machines the inspector will show.
@@ -46,11 +42,10 @@ test.describe("DevTools inspector (same-origin)", () => {
     await devtools.expectStreamRow(ctx, "blotter.trades$");
 
     // Machines tab: at least one row of kind "tileExecution", born from the FX
-    // tiles mounted above. Generous click budget (60s): under CPU pressure the
-    // inspector's live-stream rendering starves the click's actionability
-    // polling (the slowest step by far — see the timeout note above), but this
-    // still bounds a genuine hang below the whole-test timeout.
-    await devtools.openMachinesTab(ctx, 60);
+    // tiles mounted above. With the inspector's repaint now throttled, this
+    // click is no longer starved of actionability polling; 15s bounds a genuine
+    // hang well below the whole-test timeout.
+    await devtools.openMachinesTab(ctx, 15);
     await devtools.expectMachineOfKind(ctx, "tileExecution");
 
     // Closing the app view fires `pagehide` on its window, which the app-side

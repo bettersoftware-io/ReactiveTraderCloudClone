@@ -94,9 +94,18 @@ const INITIAL_STATE: InspectorState = {
 
 /** Panel-side reducer: consumes `AppToInspector` messages and folds them into
  * a render-ready `InspectorState`. Copy-on-write and `useSyncExternalStore`-
- * ready: `apply()` mutates internal maps, then rebuilds the public state
- * object (a new top-level reference every apply) and notifies subscribers.
- * `getSnapshot()` returns the SAME reference until the next `apply()`. */
+ * ready. `apply()` mutates internal maps (cheap) and marks the store dirty;
+ * the expensive public `InspectorState` rebuild AND the subscriber
+ * notification are COALESCED into a single flush per animation frame. The app
+ * streams ~30 batches/s, but the panel's React tree only needs to repaint once
+ * per frame, and rAF naturally throttles under CPU pressure instead of letting
+ * renders stack up and starve the main thread. Crucially, `getSnapshot()`
+ * returns the last-flushed state and is STABLE between flushes — a snapshot
+ * that changed on every apply would make `useSyncExternalStore` re-render in a
+ * tight loop as its post-commit consistency check kept seeing new data. In a
+ * non-DOM environment (tests, SSR) there is no frame loop, so the flush runs
+ * synchronously on apply — reads are immediately fresh and coalescing is a
+ * no-op (it only matters against a real 60 Hz render loop). */
 export class InspectorStore {
   private readonly streamEntries = new Map<string, StreamEntry>();
 
@@ -113,6 +122,18 @@ export class InspectorStore {
   private protocolMismatch: number | null = null;
 
   private state: InspectorState = INITIAL_STATE;
+
+  private dirty = false;
+
+  private flushScheduled = false;
+
+  private framesWaited = 0;
+
+  /** Repaint the whole tree at most ~15×/s (once per this many 60 Hz frames)
+   * rather than on every frame. A human-read state inspector gains nothing
+   * from 60 fps, and rebuilding + re-rendering the full tree that often is what
+   * saturates the main thread under a live stream. */
+  private static readonly FRAMES_PER_FLUSH = 4;
 
   getSnapshot(): InspectorState {
     return this.state;
@@ -154,7 +175,10 @@ export class InspectorStore {
       }
     }
 
-    this.rebuild();
+    // Mutations landed in the maps above; the public snapshot rebuild + the
+    // subscriber notification are coalesced into one flush for this frame.
+    this.dirty = true;
+    this.scheduleFlush();
   }
 
   private applySnapshot(
@@ -326,7 +350,57 @@ export class InspectorStore {
     }
   }
 
-  private rebuild(): void {
+  /** Coalesce the rebuild + notify into one throttled flush (~15 Hz). Repeated
+   * applies before the flush fires collapse into a single flush — the whole
+   * point. Driven by rAF (not setInterval) so it throttles under load and
+   * pauses while the tab is hidden; with no frame loop (tests, SSR) there is
+   * nothing to coalesce against, so the flush runs synchronously and reads stay
+   * fresh. */
+  private scheduleFlush(): void {
+    if (typeof requestAnimationFrame !== "function") {
+      this.flush();
+
+      return;
+    }
+
+    if (this.flushScheduled) {
+      return;
+    }
+
+    this.flushScheduled = true;
+    this.framesWaited = 0;
+
+    const step = (): void => {
+      this.framesWaited += 1;
+
+      if (this.framesWaited < InspectorStore.FRAMES_PER_FLUSH) {
+        requestAnimationFrame(step);
+
+        return;
+      }
+
+      this.flushScheduled = false;
+      this.flush();
+    };
+
+    requestAnimationFrame(step);
+  }
+
+  /** Rebuild the public snapshot (only if dirty) and notify subscribers. This
+   * is the ONLY place `this.state` is reassigned, so getSnapshot() is stable
+   * between flushes. */
+  private flush(): void {
+    if (this.dirty) {
+      this.rebuildState();
+      this.dirty = false;
+    }
+
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
+
+  private rebuildState(): void {
     const streams = [...this.streamEntries.values()]
       .map((e): StreamRow => {
         return {
@@ -362,10 +436,6 @@ export class InspectorStore {
       machines,
       log: this.logAll.slice(),
     };
-
-    for (const listener of this.listeners) {
-      listener();
-    }
   }
 }
 
