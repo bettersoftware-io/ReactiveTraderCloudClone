@@ -47,6 +47,29 @@ export interface ValueViewProps {
   depth?: number;
 }
 
+/** The serializer (`devtools-core/serialize.ts`) appends a `{$t:"truncated",
+ * count}` marker as the LAST entry of an overflowed array/map-entries/set-
+ * values list, once it hits the 50-entry cap. That marker is a real list
+ * element (it renders inline as the "…+N" overflow row via `ValueView`'s own
+ * "truncated" tag handling) but it is NOT one of the original entries — so
+ * `Array`/`Map`/`Set` headers must count `entries.length - 1 + marker.count`,
+ * not `entries.length`, to show the true pre-truncation size. */
+function truncationMarker(
+  items: readonly SerializedValue[],
+): Record<string, SerializedValue> | null {
+  const last = items.at(-1);
+
+  return last !== undefined && isTaggedRecord(last, "truncated") ? last : null;
+}
+
+function trueCount(items: readonly SerializedValue[]): number {
+  const marker = truncationMarker(items);
+
+  return marker
+    ? items.length - 1 + numberField(marker, "count")
+    : items.length;
+}
+
 interface ArrayNodeProps {
   items: readonly SerializedValue[];
   depth: number;
@@ -55,7 +78,9 @@ interface ArrayNodeProps {
 function ArrayNode({ items, depth }: ArrayNodeProps): ReactElement {
   return (
     <details className={styles.node} open={depth === 0}>
-      <summary className={styles.summary}>{`Array(${items.length})`}</summary>
+      <summary
+        className={styles.summary}
+      >{`Array(${trueCount(items)})`}</summary>
       <div className={styles.children}>
         {withPositionalKeys(items).map((entry) => {
           return (
@@ -185,7 +210,9 @@ interface MapNodeProps {
 function MapNode({ entries, depth }: MapNodeProps): ReactElement {
   return (
     <details className={styles.node} open={depth === 0}>
-      <summary className={styles.summary}>{`Map(${entries.length})`}</summary>
+      <summary
+        className={styles.summary}
+      >{`Map(${trueCount(entries)})`}</summary>
       <div className={styles.children}>
         {withPositionalKeys(entries).map((positioned) => {
           return (
@@ -226,7 +253,9 @@ interface SetNodeProps {
 function SetNode({ values, depth }: SetNodeProps): ReactElement {
   return (
     <details className={styles.node} open={depth === 0}>
-      <summary className={styles.summary}>{`Set(${values.length})`}</summary>
+      <summary
+        className={styles.summary}
+      >{`Set(${trueCount(values)})`}</summary>
       <div className={styles.children}>
         {withPositionalKeys(values).map((entry) => {
           return (
