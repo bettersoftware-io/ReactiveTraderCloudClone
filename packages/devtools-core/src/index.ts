@@ -13,6 +13,10 @@ export type {
   StreamRow,
 } from "./InspectorStore";
 export { InspectorStore } from "./InspectorStore";
+export {
+  type InstrumentableMachine,
+  instrumentMachineFactories,
+} from "./instrument/machines";
 export * from "./protocol";
 export { type SerializedValue, serializeValue } from "./serialize";
 export type { DevtoolsTransport } from "./transport";
