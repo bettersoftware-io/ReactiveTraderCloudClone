@@ -20,7 +20,7 @@
 
 ## 🟠 Planned but gated / not executed
 
-- **RN visual snapshot testing / Maestro e2e** — gate (v3 design rehaul) now lifted. Plan: [superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md](superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md)
+- **RN visual snapshot testing / Maestro e2e** — was gated on the v3 design rehaul (now landed); still not executed. Plan: [superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md](superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md)
 - **Atomic test-ID renames** — plan written, never executed. Plan: [superpowers/plans/2026-07-10-atomic-testid-renames.md](superpowers/plans/2026-07-10-atomic-testid-renames.md)
 
 ## ⚪ Optional / next step (no plan file yet)
