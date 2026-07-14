@@ -48,6 +48,7 @@
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/orbitron": "^5.2.8",
     "@rtc/client-core": "workspace:*",
+    "@rtc/devtools-core": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/motion-core": "workspace:*",
     "@rtc/react-bindings": "workspace:*",

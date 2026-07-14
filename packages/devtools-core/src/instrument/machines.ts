@@ -14,10 +14,17 @@ type AnyMachineFactory = (...args: never[]) => InstrumentableMachine;
 
 /** Wraps every factory so each machine instance reports created / state /
  * intents / disposed to the hub. One generic wrapper covers every current and
- * future factory. Instrumentation failures never block the wrapped call. */
-export function instrumentMachineFactories<
-  F extends Record<string, AnyMachineFactory>,
->(factories: F, hub: DevtoolsHub): F {
+ * future factory. Instrumentation failures never block the wrapped call.
+ *
+ * Constrained to `object` (not `Record<string, AnyMachineFactory>`) so a
+ * factory bag typed as a named interface — e.g. client-core's
+ * `MachineFactories`, which has no index signature — satisfies it, mirroring
+ * `instrumentPresenters`'s `<T extends object>`. The values are read
+ * structurally at runtime regardless. */
+export function instrumentMachineFactories<F extends object>(
+  factories: F,
+  hub: DevtoolsHub,
+): F {
   const wrapped: Record<string, AnyMachineFactory> = {};
 
   for (const [kind, factory] of Object.entries(factories)) {

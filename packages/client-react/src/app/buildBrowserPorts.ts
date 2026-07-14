@@ -11,6 +11,7 @@ import {
   WsAdapter,
   WsConnectionEventsAdapter,
 } from "@rtc/client-core";
+import { instrumentWsAdapter } from "@rtc/devtools-core";
 import {
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
@@ -18,6 +19,7 @@ import {
 
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
+import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
 import { shouldPlayBootSplash } from "#/bootSplashGate";
 
@@ -32,7 +34,13 @@ export function buildBrowserPorts(): AppPorts {
   const bootSplash = { shouldPlay: shouldPlayBootSplash };
 
   if (url) {
-    const ws = new WsAdapter(buildWsUrl(url, token));
+    // Wrap the transport in the devtools wire tap at construction so every
+    // send/on/rpc is mirrored to the hub (dormant until an inspector attaches).
+    // The simulator branch below has no adapter — its wire panel is simply empty.
+    const ws = instrumentWsAdapter(
+      new WsAdapter(buildWsUrl(url, token)),
+      devtoolsHub,
+    );
     const gateway = new WsConnectionEventsAdapter(ws);
     const connectionEvents: ConnectionEventsPort = {
       events: () => {

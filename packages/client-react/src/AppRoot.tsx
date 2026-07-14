@@ -2,12 +2,18 @@ import { type ReactElement, type ReactNode, useRef } from "react";
 
 import { createApp, createMachineFactories } from "@rtc/client-core";
 import {
+  instrumentMachineFactories,
+  instrumentPresenters,
+} from "@rtc/devtools-core";
+import {
   createViewModel,
   type ViewModel,
   ViewModelProvider,
 } from "@rtc/react-bindings";
 
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { devtoolsHub } from "#/app/devtools/devtoolsHub";
+import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 
 import { BootGate } from "./ui/shell/boot/BootGate";
 import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
@@ -30,9 +36,17 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
 
   if (viewModelRef.current === null) {
     const { presenters, commands } = createApp(buildBrowserPorts());
-    viewModelRef.current = createViewModel(
+    const instrumented = instrumentPresenters(
       presenters,
-      createMachineFactories(presenters),
+      PRESENTER_MANIFEST,
+      devtoolsHub,
+    );
+    viewModelRef.current = createViewModel(
+      instrumented,
+      instrumentMachineFactories(
+        createMachineFactories(instrumented),
+        devtoolsHub,
+      ),
       commands,
     );
   }
