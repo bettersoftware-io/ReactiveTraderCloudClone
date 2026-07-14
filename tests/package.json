@@ -30,6 +30,7 @@
     "test:presenter:vitest-quickpickle-fake-timers": "vitest run --config presenter/vitest-quickpickle-fake-timers/vitest.config.ts",
     "coverage:report": "tsx scripts/coverage-report.ts",
     "test:report": "vitest run scripts/lib",
+    "test:pages": "vitest run scripts/pages",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
