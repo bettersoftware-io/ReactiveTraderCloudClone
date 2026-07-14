@@ -118,10 +118,14 @@ export class DevtoolsHub {
     this.streams.set(streamId, entry);
 
     if (this.isLive) {
-      this.pendingDiscrete.push(
-        this.event({ kind: "stream:registered", streamId }),
-      );
-      this.subscribeStream(streamId, entry);
+      try {
+        this.pendingDiscrete.push(
+          this.event({ kind: "stream:registered", streamId }),
+        );
+        this.subscribeStream(streamId, entry);
+      } catch (error) {
+        this.reportError("registerStream", error);
+      }
     }
   }
 
@@ -144,15 +148,19 @@ export class DevtoolsHub {
     this.machines.set(machineId, entry);
 
     if (this.isLive) {
-      this.pendingDiscrete.push(
-        this.event({
-          kind: "machine:created",
-          machineId,
-          machineKind,
-          args: serializeValue(args),
-        }),
-      );
-      this.subscribeMachine(machineId, entry);
+      try {
+        this.pendingDiscrete.push(
+          this.event({
+            kind: "machine:created",
+            machineId,
+            machineKind,
+            args: serializeValue(args),
+          }),
+        );
+        this.subscribeMachine(machineId, entry);
+      } catch (error) {
+        this.reportError("machineCreated", error);
+      }
     }
 
     return machineId;
@@ -167,40 +175,48 @@ export class DevtoolsHub {
       return;
     }
 
-    this.pendingDiscrete.push(
-      this.event({
-        kind: "machine:intent",
-        machineId,
-        name,
-        args: serializeValue(args),
-      }),
-    );
+    try {
+      this.pendingDiscrete.push(
+        this.event({
+          kind: "machine:intent",
+          machineId,
+          name,
+          args: serializeValue(args),
+        }),
+      );
+    } catch (error) {
+      this.reportError("machineIntent", error);
+    }
   }
 
   machineDisposed(machineId: string): void {
-    const entry = this.machines.get(machineId);
+    try {
+      const entry = this.machines.get(machineId);
 
-    if (!entry || entry.disposed) {
-      return;
-    }
-
-    entry.disposed = true;
-    entry.sub?.unsubscribe();
-    entry.sub = null;
-    this.disposedOrder.push(machineId);
-
-    if (this.disposedOrder.length > MAX_DISPOSED_RETAINED) {
-      const evict = this.disposedOrder.shift();
-
-      if (evict !== undefined) {
-        this.machines.delete(evict);
+      if (!entry || entry.disposed) {
+        return;
       }
-    }
 
-    if (this.isLive) {
-      this.pendingDiscrete.push(
-        this.event({ kind: "machine:disposed", machineId }),
-      );
+      entry.disposed = true;
+      entry.sub?.unsubscribe();
+      entry.sub = null;
+      this.disposedOrder.push(machineId);
+
+      if (this.disposedOrder.length > MAX_DISPOSED_RETAINED) {
+        const evict = this.disposedOrder.shift();
+
+        if (evict !== undefined) {
+          this.machines.delete(evict);
+        }
+      }
+
+      if (this.isLive) {
+        this.pendingDiscrete.push(
+          this.event({ kind: "machine:disposed", machineId }),
+        );
+      }
+    } catch (error) {
+      this.reportError("machineDisposed", error);
     }
   }
 

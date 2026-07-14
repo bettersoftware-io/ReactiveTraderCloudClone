@@ -1,3 +1,4 @@
+import type { Observable } from "rxjs";
 import { Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -92,6 +93,28 @@ describe("DevtoolsHub", () => {
       msgType: "price_tick",
     });
   });
+
+  it("never lets a hostile source$ throw out of registerStream while live", () => {
+    const { hub, inbound$ } = harness();
+    inbound$.next({ kind: "hello", v: 1 });
+    expect(() => {
+      hub.registerStream("hostile", throwingObservable());
+    }).not.toThrow();
+  });
+
+  it("machineCreated still returns a machineId when state$ throws on subscribe while live", () => {
+    const { hub, inbound$ } = harness();
+    inbound$.next({ kind: "hello", v: 1 });
+    let id = "";
+    expect(() => {
+      id = hub.machineCreated(
+        "tileExecution",
+        ["EURUSD"],
+        throwingObservable(),
+      );
+    }).not.toThrow();
+    expect(id).toMatch(/^m\d+$/);
+  });
 });
 
 interface Harness {
@@ -132,6 +155,16 @@ function snapshotMachines(
   }
 
   return msg.machines;
+}
+
+/** An Observable whose subscribe() throws synchronously — simulates a hostile
+ * or buggy source$/state$ to prove the tap never lets that reach the app. */
+function throwingObservable(): Observable<unknown> {
+  return {
+    subscribe: (): never => {
+      throw new Error("boom");
+    },
+  } as unknown as Observable<unknown>;
 }
 
 function harness(): Harness {
