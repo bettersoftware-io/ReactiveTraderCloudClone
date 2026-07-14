@@ -62,7 +62,7 @@ module.exports = {
         "@rtc/devtools-core decorates by structural shape — it must not import any @rtc package.",
       from: { path: "^packages/devtools-core/src" },
       to: {
-        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|server|ws-effects|devtools-app)/",
+        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects|devtools-app)/",
       },
     },
     {
