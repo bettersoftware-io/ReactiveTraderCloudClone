@@ -1,0 +1,106 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+}
+
+.empty {
+  margin: 0;
+  color: var(--dim);
+}
+
+.controls {
+  display: flex;
+  flex: none;
+}
+
+.filterInput {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-panel);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.countStrip {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.countChip {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--dim) 18%, transparent);
+  color: var(--fg);
+  font-size: 10px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+}
+
+.row {
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  list-style-position: outside;
+  color: var(--fg);
+}
+
+.summary::marker {
+  color: var(--dim);
+}
+
+.directionOut,
+.directionIn {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.directionOut {
+  color: var(--accent);
+}
+
+.directionIn {
+  color: var(--danger);
+}
+
+.time {
+  flex: none;
+  color: var(--dim);
+  font-size: 10px;
+}
+
+.msgType {
+  flex: none;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.text {
+  overflow: hidden;
+  min-width: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.detail {
+  padding: 4px 0 4px 16px;
+}

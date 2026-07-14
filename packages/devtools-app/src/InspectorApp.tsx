@@ -4,13 +4,16 @@ import { useState } from "react";
 import type { InspectorState, InspectorStore } from "@rtc/devtools-core";
 
 import styles from "#/InspectorApp.module.css";
+import { EventLogPanel } from "#/panels/EventLogPanel";
 import { MachinesPanel } from "#/panels/MachinesPanel";
 import { StateTreePanel } from "#/panels/StateTreePanel";
+import { WirePanel } from "#/panels/WirePanel";
 import { useInspectorState } from "#/useInspectorState";
 
-/** The devtools panel shell: connection rail + tab strip + active panel.
- * Task 9 wires up the real state-tree and machine-registry panels; Task 10
- * replaces the remaining log/wire placeholders. */
+/** The devtools panel shell: connection rail + tab strip + active panel. All
+ * four tabs render real panels — state tree, machine registry (Task 9), and
+ * the event log + wire tap (Task 10), the latter both reading the same
+ * `InspectorState.log`. */
 export function InspectorApp({ store }: InspectorAppProps): ReactElement {
   const state = useInspectorState(store);
   const [tab, setTab] = useState<InspectorTab>("state");
@@ -45,11 +48,6 @@ const TABS: readonly TabDescriptor[] = [
   { id: "log", label: "Log" },
   { id: "wire", label: "Wire" },
 ];
-
-const PLACEHOLDER: Record<"log" | "wire", string> = {
-  log: "event log — coming in Task 10",
-  wire: "raw wire traffic — coming in Task 10",
-};
 
 interface ConnectionRailProps {
   state: InspectorState;
@@ -142,5 +140,9 @@ function TabPanel({ tab, state }: TabPanelProps): ReactElement {
     return <MachinesPanel machines={state.machines} />;
   }
 
-  return <p className={styles.placeholder}>{PLACEHOLDER[tab]}</p>;
+  if (tab === "log") {
+    return <EventLogPanel log={state.log} />;
+  }
+
+  return <WirePanel log={state.log} />;
 }
