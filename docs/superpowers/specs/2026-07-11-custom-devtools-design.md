@@ -90,9 +90,15 @@ knip, tests) per the all-gates-cover-every-package policy.
 
 **Integration touch-points (existing packages):** a few lines at the
 `client-react` composition call site applying the decorators (always
-compiled in, dormant by default), plus serving the panel: a second Vite dev
-server locally, and a `/devtools` route on the deployed app (static
-`devtools-app` build output, same origin).
+compiled in, dormant by default), plus serving the panel **from the app's own
+origin** — load-bearing, because the transport is a same-origin
+BroadcastChannel that a separate dev server (different port ⇒ different origin)
+can never pair with. A tiny Vite plugin in `client-react` (`devtoolsPanel()`)
+serves the built `devtools-app` at `/devtools/` via dev middleware and copies
+it into `dist/devtools` at build time, so `/devtools/` works identically in
+`pnpm dev` and on the deployed app. The standalone `devtools-app` dev server
+(port 5280) is for disconnected panel-UI iteration only — with no same-origin
+hub it renders the "disconnected" state by design.
 
 ## 4. Instrumentation layer
 
@@ -164,9 +170,28 @@ interface DevtoolsTransport {
 ```
 
 V1 adapter: **BroadcastChannel** (`rtc-devtools`), same origin, zero
-infrastructure, works both in dev and against the deployed app (the panel is
-served from the same origin — §3). A WebSocket-relay adapter is future work
-(needed for React Native); the port exists now so that is adapter-only work.
+infrastructure, works both in dev and against the deployed app **because the
+panel is served from the same origin** (§3) — a `/devtools/` route wired by a
+Vite plugin in `client-react` (dev middleware) and copied into `dist/devtools`
+at build time. Same-origin is a hard requirement, not a convenience:
+BroadcastChannel is scoped to an origin, so a panel served from any other
+origin (e.g. the standalone `devtools-app` dev server on port 5280) simply has
+no hub to pair with and stays disconnected. A WebSocket-relay adapter is future
+work (needed for React Native); the port exists now so that is adapter-only work.
+
+**Refinements vs this spec (as built in the implementation plan):** the
+inbound surface is trimmed to `hello` and `bye` only — `subscribe {filters}`
+was dropped (the hub sends the full registry; the panel filters client-side),
+so inbound also carries just `ping` for the liveness heartbeat. Protocol
+version rides the `hello`/`welcome` handshake fields only (no per-event `v`).
+The transport port as implemented is `send` + `inbound$` only — `status$` was
+dropped; connection state is derived panel-side from `welcome`/`bye`. One
+consequence worth noting: with no inspector-side liveness timeout, the panel
+flips to "disconnected" only on an explicit `bye` (the 10s heartbeat timeout is
+hub-side, detecting the inspector's pings stopping); an abruptly closed *app*
+page therefore leaves the panel showing "connected" until reload — surfacing
+app-gone would need an app-side `pagehide → hub.dispose()` or a panel-side
+welcome-freshness timer (future work).
 
 ## 6. Inspector app (four panels)
 

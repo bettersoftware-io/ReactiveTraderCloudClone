@@ -54,7 +54,7 @@ interface StreamRowViewProps {
 
 function StreamRowView({ row }: StreamRowViewProps): ReactElement {
   return (
-    <div className={styles.row}>
+    <div data-testid="devtools-stream-row" className={styles.row}>
       <span className={styles.streamId}>{row.streamId}</span>
       {/* Remounting on a new lastSeq restarts the 300ms opacity-only
        * @keyframes below — compositor-safe per docs/performance.md (P2):

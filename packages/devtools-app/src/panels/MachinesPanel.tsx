@@ -96,6 +96,7 @@ function MachineTableRow({
 
   return (
     <tr
+      data-testid="devtools-machine-row"
       className={rowClassName}
       data-selected={selected}
       onClick={() => {
