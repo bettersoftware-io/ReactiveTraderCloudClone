@@ -47,9 +47,14 @@ export async function expectStreamRow(
   await inspector(ctx).waitStreamRow(streamId, 10_000);
 }
 
-/** Switch the inspector to its Machines tab. */
-export async function openMachinesTab(ctx: TestContext): Promise<void> {
-  await inspector(ctx).openMachinesTab();
+/** Switch the inspector to its Machines tab, allowing the click up to
+ *  `seconds` (the inspector's main thread is busy rendering the live stream, so
+ *  the click's actionability polling needs a generous, explicit budget). */
+export async function openMachinesTab(
+  ctx: TestContext,
+  seconds: number,
+): Promise<void> {
+  await inspector(ctx).openMachinesTab(seconds * 1_000);
 }
 
 /** Assert a machine row of the given `kind` is visible within 10s. */

@@ -47,10 +47,10 @@ export class PlaywrightInspector implements InspectorPO {
     ).toBeVisible({ timeout: timeoutMs });
   }
 
-  async openMachinesTab(): Promise<void> {
+  async openMachinesTab(timeoutMs: number): Promise<void> {
     await this.page()
       .getByRole("button", { name: STRINGS.devtools.machinesTab })
-      .click();
+      .click({ timeout: timeoutMs });
   }
 
   async waitMachineRowOfKind(kind: string, timeoutMs: number): Promise<void> {

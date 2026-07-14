@@ -22,8 +22,11 @@ export interface InspectorPO {
   /** Wait until a State-tab stream row whose text contains `streamId` is
    *  visible. */
   waitStreamRow(streamId: string, timeoutMs: number): Promise<void>;
-  /** Switch to the Machines tab. */
-  openMachinesTab(): Promise<void>;
+  /** Switch to the Machines tab. Takes an explicit click timeout because the
+   *  inspector is a live-stream view whose main thread is busy under load —
+   *  the click's actionability polling needs a bounded-but-generous budget
+   *  (see the devtools spec's timing note). */
+  openMachinesTab(timeoutMs: number): Promise<void>;
   /** Wait until a machine row whose text contains `kind` is visible. */
   waitMachineRowOfKind(kind: string, timeoutMs: number): Promise<void>;
   /** Close the primary app page. This fires `pagehide` on the app window, the

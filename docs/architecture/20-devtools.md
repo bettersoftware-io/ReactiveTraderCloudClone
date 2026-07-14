@@ -395,6 +395,28 @@ companion tab is the live-cost sanity check: the *app* tab should stay within
 ~2% renderer-main of the dormant trace (the inspector tab is allowed to work
 harder — it owns none of the app's frame budget).
 
+**Tracked perf item — inspector-side render saturation under CPU pressure.**
+The "inspector tab is allowed to work harder" allowance above has a known
+sharp edge. The `InspectorStore` folds each `DevtoolsHub` flush (~33 ms
+cadence, so ~30 batches/s) synchronously and notifies `useSyncExternalStore`
+on every apply, so the whole `InspectorApp` re-renders ~30×/s — and while the
+State tab is active, `StateTreePanel` remounts a change-flash `<span>` per
+stream per emission and `ConnectionRail` re-filters the full log for its wire
+count. When a single apply+render exceeds the 33 ms production interval (as it
+does under heavy CPU throttling, e.g. a slow 2-core CI runner), the inspector
+falls behind the incoming batch rate and its main thread never idles. Measured
+under a 4× CPU throttle: a no-op `page.evaluate` round-trip on the inspector
+tab took ~7.8 s (vs ~14 ms on the app tab), and a Playwright tab-switch click —
+whose actionability polling needs that same main thread — took 12–31 s. This
+does not affect the *app* tab's frame budget (the whole point of dormancy +
+tab isolation), but it makes the inspector itself sluggish under load and makes
+inspector-driving e2e slow. The `tests/browser/playwright/devtools.spec.ts`
+e2e mitigates it with a generous whole-test timeout + a bounded per-step click
+timeout (not a fix). The durable fix is to decouple the store→React
+notification from the apply rate — coalesce notifications to at most one per
+animation frame — plus memoize the panels and drop the per-render full-log
+scans; deferred, tracked here.
+
 ### 20.8 Future extensions
 
 Summarized from spec [§9](../superpowers/specs/2026-07-11-custom-devtools-design.md#9-future-extensions-designed-for-explicitly-out-of-v1) — designed for, explicitly deferred from v1:
