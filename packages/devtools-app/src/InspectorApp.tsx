@@ -6,12 +6,6 @@ import type { InspectorState, InspectorStore } from "@rtc/devtools-core";
 import styles from "#/InspectorApp.module.css";
 import { useInspectorState } from "#/useInspectorState";
 
-type InspectorTab = "state" | "machines" | "log" | "wire";
-
-export interface InspectorAppProps {
-  store: InspectorStore;
-}
-
 /** The devtools panel shell: connection rail + tab strip + active panel.
  * Tasks 9–10 replace the placeholder panels with the real state/machines/log/
  * wire views; this task only wires the store subscription and the chrome
@@ -31,6 +25,12 @@ export function InspectorApp({ store }: InspectorAppProps): ReactElement {
       </div>
     </div>
   );
+}
+
+type InspectorTab = "state" | "machines" | "log" | "wire";
+
+export interface InspectorAppProps {
+  store: InspectorStore;
 }
 
 interface TabDescriptor {
