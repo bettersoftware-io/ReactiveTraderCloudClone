@@ -1,0 +1,50 @@
+name: Publish Site
+
+# Publishes the root hub (docs/pages/) and all presentation decks
+# (docs/presentations/) to the gh-pages branch, which GitHub Pages serves.
+# Coverage is published separately by coverage-report.yml; each workflow owns a
+# disjoint subtree via scripts/pages/publish-to-pages.mjs, so neither clobbers
+# the other. Shares the `pages-write` concurrency group with coverage so the two
+# writers serialise.
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/presentations/**
+      - docs/pages/**
+  workflow_dispatch:
+
+concurrency:
+  group: pages-write
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      # lfs: true materialises the real deck bytes, not the 3-line LFS pointer.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          lfs: true
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 26
+
+      - name: Stage hub + presentations
+        run: |
+          rm -rf _stage
+          mkdir -p _stage/presentations
+          cp docs/pages/index.html _stage/index.html
+          cp docs/pages/.nojekyll _stage/.nojekyll
+          cp -R docs/presentations/. _stage/presentations/
+          node scripts/pages/build-presentations-index.mjs docs/presentations _stage/presentations/index.html
+
+      - name: Publish to gh-pages
+        run: >
+          node scripts/pages/publish-to-pages.mjs
+          --source _stage
+          --message "publish site: hub + presentations @ ${GITHUB_SHA}"
