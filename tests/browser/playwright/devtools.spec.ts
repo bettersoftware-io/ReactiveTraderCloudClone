@@ -48,13 +48,17 @@ test.describe("DevTools inspector (same-origin)", () => {
         .first(),
     ).toBeVisible();
 
-    // NB no "app closes ⇒ inspector shows disconnected" assertion: in the v1
-    // (observe-only) protocol the inspector flips to "disconnected" ONLY on an
-    // explicit `bye`, and the 10s heartbeat timeout lives on the HUB (it detects
-    // the inspector's pings stopping, then it sends the `bye`). An abruptly
-    // closed APP page emits no `bye`, and the panel has no independent liveness
-    // timer, so the badge would stay "connected". Surfacing an app-gone state
-    // would need an app-side pagehide→hub.dispose() (or an inspector-side welcome
-    // freshness timeout) — a protocol/lifecycle change outside this serving task.
+    // Closing the app page fires `pagehide` on its window, which the app-side
+    // devtoolsHub (packages/client-react/src/app/devtools/devtoolsHub.ts)
+    // handles by calling `dispose()` → `goDormant()` → sends `bye` over the
+    // BroadcastChannel. The inspector has no independent liveness timer (an
+    // abrupt crash with no `pagehide` is a documented v1 limitation — see
+    // design spec §5), but a graceful close is exactly this path. Generous
+    // timeout: page teardown + channel delivery + the panel's flush cadence.
+    await page.close();
+    await expect(inspector.getByTestId("connection-badge")).toHaveText(
+      "disconnected",
+      { timeout: 15000 },
+    );
   });
 });

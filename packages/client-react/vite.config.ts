@@ -1,6 +1,6 @@
 import { cpSync, createReadStream, existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 
 import babel from "@rolldown/plugin-babel";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
@@ -53,9 +53,18 @@ function devtoolsPanel(): Plugin {
         // Connect strips the "/devtools" mount prefix from req.url, so "/" here
         // maps to the built index.html and "/assets/x.js" to that asset.
         const url = (req.url ?? "/").split("?")[0];
-        const file = join(appDist, url === "/" ? "index.html" : url);
+        // Leading "." keeps the joined path relative before resolve() collapses
+        // any ".." segments — resolve() (unlike join()) is then verified below
+        // to stay within appDist, so a crafted "/devtools/../../etc/passwd"
+        // request can't escape the served directory.
+        const rel = url === "/" ? "index.html" : `.${url}`;
+        const file = resolve(appDist, rel);
 
-        if (existsSync(file) && !file.endsWith("/")) {
+        if (
+          (file === appDist || file.startsWith(appDist + sep)) &&
+          existsSync(file) &&
+          !file.endsWith(sep)
+        ) {
           res.setHeader("content-type", contentType(file));
           createReadStream(file).pipe(res);
           return;

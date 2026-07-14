@@ -185,13 +185,18 @@ was dropped (the hub sends the full registry; the panel filters client-side),
 so inbound also carries just `ping` for the liveness heartbeat. Protocol
 version rides the `hello`/`welcome` handshake fields only (no per-event `v`).
 The transport port as implemented is `send` + `inbound$` only — `status$` was
-dropped; connection state is derived panel-side from `welcome`/`bye`. One
-consequence worth noting: with no inspector-side liveness timeout, the panel
-flips to "disconnected" only on an explicit `bye` (the 10s heartbeat timeout is
-hub-side, detecting the inspector's pings stopping); an abruptly closed *app*
-page therefore leaves the panel showing "connected" until reload — surfacing
-app-gone would need an app-side `pagehide → hub.dispose()` or a panel-side
-welcome-freshness timer (future work).
+dropped; connection state is derived panel-side from `welcome`/`bye`. The
+panel flips to "disconnected" only on an explicit `bye`, so the app side is
+responsible for sending one on the way out: the app disposes its hub
+(`devtoolsHub.dispose()` in `packages/client-react/src/app/devtools/
+devtoolsHub.ts`) on `window`'s `pagehide` event, which calls `goDormant()` and
+sends `bye` over the BroadcastChannel — so a graceful close, reload, or
+navigation cleanly disconnects the panel. Abrupt termination with no
+`pagehide` (e.g. a renderer crash) sends no `bye` and is a documented v1
+limitation: the panel has no independent liveness timeout, so it keeps
+showing "connected" until the inspector itself reloads. A panel-side
+welcome-freshness timer is listed as a future extension (§9) to close that
+gap.
 
 ## 6. Inspector app (four panels)
 
@@ -291,6 +296,11 @@ Follows the repo's existing tiers:
    reconstructing past state-tree views. Honest framing: viewing recorded
    history, not rewinding the app (live RxJS streams over a socket cannot be
    replayed the way Redux replays reducers).
+6. **Panel-side liveness timeout** — closes the abrupt-app-termination gap
+   noted in §5: a welcome-freshness timer in the inspector that flips to
+   "disconnected" if no traffic (including pings) arrives for a bounded
+   window, covering the case where the app disappears without firing
+   `pagehide` (e.g. a renderer crash).
 
 ## 10. Architecture-docs updates (land with implementation)
 
