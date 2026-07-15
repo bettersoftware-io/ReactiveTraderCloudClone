@@ -7,10 +7,18 @@ Start here when you're not sure where something lives.
 
 Ideas flow through a small pipeline; each document owns one stage:
 
-```
-IDEAS.md  →  (brainstorm / spec / plan)  →  STATUS.md  →  shipped  →  removed
-  icebox      docs/superpowers/{specs,plans}   committed      git log
- (may never)                                   pending work    is history
+```mermaid
+flowchart TD
+    I["💡 <b>IDEAS.md</b><br/><i>icebox — may never happen</i>"]
+    S["📝 spec / plan<br/><i>docs/superpowers/{specs,plans}</i>"]
+    T["🗂️ <b>STATUS.md</b><br/><i>committed, pending work</i>"]
+    D["🚀 shipped"]
+    G["🗑️ removed<br/><i>git log is the history</i>"]
+
+    I -->|earns a spec/plan| S
+    S --> T
+    T -->|merged to main| D
+    D --> G
 ```
 
 - [`IDEAS.md`](IDEAS.md) — **icebox.** Speculative ideas and wishlist items with
