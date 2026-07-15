@@ -14,7 +14,14 @@
 //        [--remote origin] [--message <commit message>]
 
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -43,6 +50,10 @@ function main() {
     console.error(
       "usage: publish-to-pages.mjs --source <dir> [--branch gh-pages] [--remote origin] [--message <msg>]",
     );
+    process.exit(2);
+  }
+  if (!existsSync(source) || !statSync(source).isDirectory()) {
+    console.error(`publish-to-pages: --source is not a directory: ${source}`);
     process.exit(2);
   }
 
@@ -123,4 +134,15 @@ function main() {
   }
 }
 
-main();
+try {
+  main();
+} catch (error) {
+  // Surface git's own stderr (e.g. auth, dubious-ownership, rejected push)
+  // as a clean message for CI triage, rather than a raw Node error dump.
+  const stderr = error?.stderr ? String(error.stderr).trim() : "";
+  if (stderr !== "") {
+    console.error(stderr);
+  }
+  console.error(error?.message ?? String(error));
+  process.exit(1);
+}
