@@ -67,6 +67,13 @@ export const BOOT_VARIANTS: readonly BootVariant[] = [
 export const DEFAULT_THEME_MODE: ThemeMode = "dark";
 export const DEFAULT_THEME_SKIN: ThemeSkin = "holo"; // showcase default; "classic" preserves the pre-redesign look
 export const DEFAULT_VIEW_MODE: ViewMode = "chart";
+/** Ambient animated-background perf gate default. ON: the backdrop is entirely
+ * compositor-only CSS (transform/opacity, blur removed — see
+ * client-react/src/ui/shell/background/README.md), so the drift is effectively
+ * free on the main thread and ships enabled. Users who turn it off keep that
+ * choice (persisted under `rtc-animated-bg`); OS `prefers-reduced-motion` still
+ * overrides it to static regardless. */
+export const DEFAULT_ANIMATED_BACKGROUND = true;
 export const DEFAULT_CREDIT_RFQ_FILTER: CreditRfqFilter = "live";
 export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
 export const DEFAULT_EQ_WATCHLIST_SORT: EqWatchlistSort = "chg";

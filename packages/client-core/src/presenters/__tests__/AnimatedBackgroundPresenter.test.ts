@@ -5,7 +5,7 @@ import { PreferencesSimulator } from "@rtc/domain";
 import { AnimatedBackgroundPresenter } from "../AnimatedBackgroundPresenter";
 
 describe("AnimatedBackgroundPresenter", () => {
-  it("defaults to off and toggles", () => {
+  it("defaults to on and toggles", () => {
     const presenter = new AnimatedBackgroundPresenter(
       new PreferencesSimulator(),
     );
@@ -13,9 +13,9 @@ describe("AnimatedBackgroundPresenter", () => {
     const sub = presenter.enabled$.subscribe((on) => {
       return seen.push(on);
     });
-    presenter.toggle(false);
-    presenter.set(false);
+    presenter.toggle(true); // → set(false)
+    presenter.set(true);
     sub.unsubscribe();
-    expect(seen).toEqual([false, true, false]);
+    expect(seen).toEqual([true, false, true]);
   });
 });
