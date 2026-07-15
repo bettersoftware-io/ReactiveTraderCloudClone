@@ -3,18 +3,26 @@
 > Speculative ideas and wishlist items — things worth writing down before they're
 > forgotten, but **not yet committed to**. No spec, no plan, may never happen.
 >
-> This is the *upstream* of [`STATUS.md`](STATUS.md). An idea's lifecycle:
->
-> ```
-> IDEAS.md  →  (brainstorm / spec / plan)  →  STATUS.md  →  shipped  →  removed
->  (here)         under docs/superpowers/      (committed     (git log
->                                               pending work)   is history)
-> ```
->
-> When an idea earns a spec or plan, **move** it out of here into `STATUS.md`
-> (with a link to its plan) — don't leave it in both places. This file only ever
-> holds things that have *not* graduated. For the full document map, see
-> [`README.md`](README.md).
+> This is the *upstream* of [`STATUS.md`](STATUS.md). When an idea earns a spec
+> or plan, **move** it out of here into `STATUS.md` (with a link to its plan) —
+> don't leave it in both places. This file only ever holds things that have *not*
+> graduated. For the full document map, see [`README.md`](README.md).
+
+An idea's lifecycle:
+
+```mermaid
+flowchart TD
+    I["💡 <b>IDEAS.md</b><br/><i>icebox — may never happen</i>"]
+    S["📝 spec / plan<br/><i>docs/superpowers/{specs,plans}</i>"]
+    T["🗂️ <b>STATUS.md</b><br/><i>committed, pending work</i>"]
+    D["🚀 shipped"]
+    G["🗑️ removed<br/><i>git log is the history</i>"]
+
+    I -->|earns a spec/plan| S
+    S --> T
+    T -->|merged to main| D
+    D --> G
+```
 
 ---
 
