@@ -196,6 +196,10 @@ jobs:
 
       - name: Publish coverage to gh-pages
         run: |
+          # This job runs in the Playwright container, where the checkout is
+          # owned by a different user than git runs as — git's dubious-ownership
+          # guard otherwise aborts the `git worktree add` inside publish-to-pages.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           rm -rf _stage
           mkdir -p _stage
           cp -R _site _stage/coverage
