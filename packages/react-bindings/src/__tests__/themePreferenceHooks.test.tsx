@@ -24,16 +24,16 @@ describe("theme/skin/animated-bg hooks", () => {
     expect(result.current.skin).toBe("terminal");
   });
 
-  it("useAnimatedBackground defaults off and toggles on", () => {
+  it("useAnimatedBackground defaults on and toggles off", () => {
     const hooks = makeHooks();
     const { result } = renderHook(() => {
       return hooks.useAnimatedBackground();
     });
-    expect(result.current.enabled).toBe(false);
+    expect(result.current.enabled).toBe(true);
     act(() => {
       result.current.toggle();
     });
-    expect(result.current.enabled).toBe(true);
+    expect(result.current.enabled).toBe(false);
   });
 });
 

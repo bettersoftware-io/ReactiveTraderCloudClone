@@ -99,7 +99,7 @@ The backdrop's motion is gated by the **`animatedBackground` preference**:
   `@rtc/domain` (`preferences/preferences.ts`). New users get the drift; it is
   cheap enough to ship on. (The React Native client intentionally overrides this
   to **off** — a native, non-compositor backdrop is a battery cost on device.)
-- **Persisted in localStorage,** exactly like theme / mode / boot-variant. The
+- **Persisted in local storage,** exactly like theme / mode / boot-variant. The
   browser build's `LocalStoragePreferencesAdapter` reads/writes the key
   **`rtc-animated-bg`** (`"true"`/`"false"`), seeding synchronously on load. So a
   user's choice **survives reload** — flip it off and it stays off next time.
