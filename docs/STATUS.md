@@ -5,6 +5,10 @@
 > see git log; for the clean-architecture phase log see
 > [superpowers/STATUS.md](superpowers/STATUS.md).
 >
+> Speculative, not-yet-planned ideas live in [IDEAS.md](IDEAS.md) (the icebox);
+> they move here once they earn a spec or plan. See [README.md](README.md) for
+> the full document map.
+>
 > Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-07-15**
 
 ## 🟡 In progress
