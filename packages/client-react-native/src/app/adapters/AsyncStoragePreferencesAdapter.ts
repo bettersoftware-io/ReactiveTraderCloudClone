@@ -83,6 +83,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly viewMode = new BehaviorSubject<ViewMode>(DEFAULT_VIEW_MODE);
 
+  // Intentionally off by default on mobile, overriding the web-oriented
+  // DEFAULT_ANIMATED_BACKGROUND (true): the native RN backdrop is not the
+  // compositor-only CSS the web ships, and an always-animating layer is a
+  // battery cost on device. A user's explicit choice still persists.
   private readonly animatedBg = new BehaviorSubject<boolean>(false);
 
   private readonly bootVariantSubject = new BehaviorSubject<BootVariant>(

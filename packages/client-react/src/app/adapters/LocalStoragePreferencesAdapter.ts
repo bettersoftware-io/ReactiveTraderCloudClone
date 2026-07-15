@@ -4,6 +4,7 @@ import {
   BOOT_VARIANTS,
   type BootVariant,
   type CreditRfqFilter,
+  DEFAULT_ANIMATED_BACKGROUND,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
@@ -147,7 +148,7 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
       readStored(VIEW_MODE_STORAGE_KEY, isViewMode, DEFAULT_VIEW_MODE),
     );
     this.animatedBg = new BehaviorSubject<boolean>(
-      readBool(ANIMATED_BG_STORAGE_KEY, false),
+      readBool(ANIMATED_BG_STORAGE_KEY, DEFAULT_ANIMATED_BACKGROUND),
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       readStored(BOOT_VARIANT_STORAGE_KEY, isBootVariant, DEFAULT_BOOT_VARIANT),

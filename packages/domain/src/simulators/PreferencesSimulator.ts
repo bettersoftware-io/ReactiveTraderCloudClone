@@ -4,6 +4,7 @@ import type { PreferencesPort } from "../ports/preferencesPort.js";
 import {
   type BootVariant,
   type CreditRfqFilter,
+  DEFAULT_ANIMATED_BACKGROUND,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
@@ -62,7 +63,7 @@ export class PreferencesSimulator implements PreferencesPort {
       seed.viewMode ?? DEFAULT_VIEW_MODE,
     );
     this.animatedBg = new BehaviorSubject<boolean>(
-      seed.animatedBackground ?? false,
+      seed.animatedBackground ?? DEFAULT_ANIMATED_BACKGROUND,
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       seed.bootVariant ?? DEFAULT_BOOT_VARIANT,

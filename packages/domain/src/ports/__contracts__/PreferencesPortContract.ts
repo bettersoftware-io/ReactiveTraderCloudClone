@@ -125,10 +125,10 @@ export function describePreferencesPortContract(
       expect(await firstValueFrom(port.viewMode$())).toBe(DEFAULT_VIEW_MODE);
     });
 
-    it("empty store emits the default skin and animatedBackground=false", async () => {
+    it("empty store emits the default skin and animatedBackground=true", async () => {
       const port = makeEmpty();
       expect(await firstValueFrom(port.themeSkin$())).toBe(DEFAULT_THEME_SKIN);
-      expect(await firstValueFrom(port.animatedBackground$())).toBe(false);
+      expect(await firstValueFrom(port.animatedBackground$())).toBe(true);
     });
 
     it("setThemeSkin persists and pushes to existing subscribers", () => {
@@ -148,9 +148,10 @@ export function describePreferencesPortContract(
       const sub = port.animatedBackground$().subscribe((on) => {
         return seen.push(on);
       });
-      port.setAnimatedBackground(true);
+      // Default is true (empty store), so flip to false to observe a change.
+      port.setAnimatedBackground(false);
       sub.unsubscribe();
-      expect(seen).toEqual([false, true]);
+      expect(seen).toEqual([true, false]);
     });
 
     it("reads back a seeded skin + animatedBackground", async () => {

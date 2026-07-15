@@ -164,9 +164,9 @@ describe("createViewModel — preferences", () => {
       return vm.useAnimatedBackground();
     });
 
-    expect(result.enabled()).toBe(false);
-    result.toggle();
     expect(result.enabled()).toBe(true);
+    result.toggle();
+    expect(result.enabled()).toBe(false);
   });
 
   it("useViewModePreference reads viewMode and setViewMode writes it", () => {

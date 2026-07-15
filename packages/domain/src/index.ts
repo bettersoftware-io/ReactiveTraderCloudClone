@@ -138,6 +138,7 @@ export type {
 } from "./preferences/preferences.js";
 export {
   BOOT_VARIANTS,
+  DEFAULT_ANIMATED_BACKGROUND,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,

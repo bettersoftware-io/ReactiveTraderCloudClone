@@ -18,7 +18,8 @@ import type {
  *
  * Theming spans two orthogonal axes — `themeMode` (light/dark) and `themeSkin`
  * (visual identity). `animatedBackground` is the perf gate for ambient motion
- * (off by default).
+ * (on by default — the backdrop is compositor-only CSS; see
+ * client-react/src/ui/shell/background/README.md).
  */
 export interface PreferencesPort {
   /** Replay-current theme-mode preference stream; emits synchronously on
@@ -33,7 +34,7 @@ export interface PreferencesPort {
   /** Replay-current view-mode stream; emits synchronously on subscribe. */
   viewMode$(): Observable<ViewMode>;
   setViewMode(viewMode: ViewMode): void;
-  /** Ambient-motion perf gate; default false. */
+  /** Ambient-motion perf gate; default true (compositor-only CSS backdrop). */
   animatedBackground$(): Observable<boolean>;
   setAnimatedBackground(on: boolean): void;
   /** Replay-current boot-sequence variant stream; emits synchronously on subscribe.
