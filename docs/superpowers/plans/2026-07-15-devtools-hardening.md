@@ -12,7 +12,7 @@
 
 - **Observe-only, protocol-frozen:** no change to `protocol.ts`'s `DevtoolsEvent`/`AppToInspector`/`InspectorToApp` shapes, and no new app-side behaviour. These are internal hardening changes.
 - **`@rtc/devtools-core` is an rxjs-only leaf** — no new runtime deps, no `@rtc/*` imports, no node built-ins in `src` (dep-cruiser `devtools-core-no-node-builtins`). Tests may use node built-ins.
-- **`@rtc/devtools-app` may depend only on `@rtc/devtools-core`** (dep-cruiser `devtools-app-protocol-only`). Task 5/6 add **no** new dependency — `React.memo` and the Web Animations API are already available (React 19 + DOM).
+- **`@rtc/devtools-app` may depend only on `@rtc/devtools-core`** for its *source* (dep-cruiser `devtools-app-protocol-only` governs source imports). Task 5 adds React Compiler **build tooling** (`@babel/core`, `@rolldown/plugin-babel`, `babel-plugin-react-compiler`) as **devDependencies** only — build-time, no source import, so the dep-cruiser rule is unaffected. Task 6 adds no dependency (the Web Animations API is DOM-native).
 - **Perf discipline (`docs/performance.md`):** any change to an animation must stay compositor-only — `transform`/`opacity` only, one animation per property per element, literal keyframe values, no `var()` in an animated property. Task 6 must keep the flash on `opacity` alone.
 - **Repo lint/style rules (CI-enforced):** run `biome ci` (not just `biome check` — it enforces `assist/organizeImports`); base + typed ESLint; `rtc/class-filename-match`; `func-style` (function declarations over top-level const arrows); `useBlockStatements` (braces everywhere); `padding-line-between-statements`; `#/*` subpath alias (Biome bans ≥2-up relative imports); knip; `check:deps`; `check:doc-links`.
 - **Test env:** `@rtc/devtools-core` tests run in the **node** environment; a test needing the DOM (Task 6 WAAPI, Task 4 if it renders) sets `// @vitest-environment jsdom` at the top of the file. Remember the store's flush is rAF-coalesced — in jsdom (which has `requestAnimationFrame`) await it; in node it flushes synchronously.
@@ -23,10 +23,11 @@
 - `packages/devtools-core/src/InspectorStore.ts` — Task 1 (evict disposed machines + cap streams).
 - `packages/devtools-core/src/DevtoolsHub.ts` — Task 2 (type-safe `event()` builder).
 - `packages/devtools-core/src/InspectorClient.ts` — Task 4 (welcome-freshness liveness timer).
+- `packages/devtools-core/src/InspectorStore.ts` — Task 5 also (identity-stable rows in `rebuildState`).
 - `scripts/check-devtools-dist.mjs` + root `package.json` — Task 3 (prod `/devtools/` copy-path check).
-- `packages/devtools-app/src/panels/StateTreePanel.tsx` — Tasks 5 (memo row) + 6 (WAAPI flash).
+- `packages/devtools-app/vite.config.ts` + `packages/devtools-app/package.json` — Task 5 (enable React Compiler).
+- `packages/devtools-app/src/panels/StateTreePanel.tsx` — Task 6 (WAAPI flash).
 - `packages/devtools-app/src/panels/StateTreePanel.module.css` — Task 6 (drop permanent `will-change`).
-- `packages/devtools-app/src/panels/MachinesPanel.tsx` — Task 5 (memo table row).
 - Tests colocated: `packages/devtools-core/src/__tests__/*.test.ts`, `packages/devtools-app/src/panels/__tests__/*.test.tsx`.
 
 Existing constants to mirror/reference: `DevtoolsHub` has `const MAX_DISPOSED_RETAINED = 500;` (app-side disposed-machine eviction) and `InspectorStore` has `const LOG_CAP = 5000;` (log ring). Task 1 gives the inspector the machine/stream equivalent.
@@ -503,102 +504,194 @@ git commit -m "feat(devtools-core): panel-side liveness timeout for abrupt app t
 
 ---
 
-## Task 5: Memoize inspector rows
+## Task 5: Identity-stable rows + React Compiler auto-memoization
 
-**Problem:** `@rtc/devtools-app` does not use React Compiler (unlike the app — ADR-003), so every store flush re-renders every `StreamRowView` and every machine table row even when that row's data is unchanged. The perf fix throttled flushes to ~15 Hz, but with many rows the per-flush cost is still linear in row count. Memoize the leaf rows so only rows whose render-affecting fields changed re-render. Dependency-free (`React.memo`, already available).
+**Problem:** `@rtc/devtools-app` does not use React Compiler (unlike the app — ADR-003), so every store flush re-renders every row. But adding a compiler (or hand-rolled `React.memo`) is *useless on its own* here: `InspectorStore.rebuildState()` allocates a **fresh `StreamRow`/`MachineRow` object for every row on every flush**, so the row prop's identity always changes and no props-based bailout can ever fire. The fix is two-part: (1) make unchanged rows **identity-stable** in the store — reuse the previous row object when its render-affecting fields haven't changed; then (2) enable **React Compiler** in devtools-app (the repo's blessed memoization strategy, ADR-003) so the compiled components skip rows whose props are referentially equal. No hand-written `memo` comparators.
 
 **Files:**
-- Modify: `packages/devtools-app/src/panels/StateTreePanel.tsx`
-- Modify: `packages/devtools-app/src/panels/MachinesPanel.tsx`
-- Test: `packages/devtools-app/src/panels/__tests__/rowMemo.test.tsx` (jsdom)
+- Modify: `packages/devtools-core/src/InspectorStore.ts` (identity-stable rows in `rebuildState`)
+- Modify: `packages/devtools-app/vite.config.ts` (add React Compiler)
+- Modify: `packages/devtools-app/package.json` (babel toolchain devDeps)
+- Test: `packages/devtools-core/src/__tests__/rowIdentity.test.ts` (node)
 
 **Interfaces:**
-- `StreamRowView` and the machine table row become `React.memo` components with an explicit comparator on the fields that affect their output (`StreamRow`: `lastSeq`, `lastValue`, `ratePerSec`; machine row: `machineId`, `machineKind`, `state`, `disposed`, `transitions`, plus the `selected` flag). `InspectorStore.rebuildState()` rebuilds row objects fresh each flush, so identity-based memo would never hit — the comparator must compare fields, not references.
+- `rebuildState()` returns the **same** `StreamRow`/`MachineRow` reference across flushes when that row's fields are unchanged, and a new object only when a field changed. This is what makes React Compiler's (and any) referential-equality bailout effective. No public API change; `getSnapshot()`'s top-level `InspectorState` identity still changes per flush (Task's perf invariant), only the *row* objects inside it are reused.
 
 - [ ] **Step 1: Write the failing test**
 
-Render the panel, apply an update touching one row, and assert the untouched row's render function ran only once. Instrument by wrapping `ValueView` render counting via a spy on a shared counter keyed by streamId.
+Row identity is a store-level property, so the test lives in devtools-core (node env — no DOM needed) and asserts reference stability directly.
 
-`packages/devtools-app/src/panels/__tests__/rowMemo.test.tsx`:
+`packages/devtools-core/src/__tests__/rowIdentity.test.ts`:
 
-```tsx
-// @vitest-environment jsdom
-import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+```ts
+import { describe, expect, it } from "vitest";
 
-import type { StreamRow } from "@rtc/devtools-core";
+import type { DevtoolsEvent } from "../protocol";
+import { PROTOCOL_VERSION } from "../protocol";
+import { InspectorStore } from "../InspectorStore";
 
-import { StateTreePanel } from "#/panels/StateTreePanel";
-
-afterEach(cleanup);
-
-function row(streamId: string, lastSeq: number): StreamRow {
-  return { streamId, lastValue: lastSeq, lastSeq, totalEmissions: lastSeq, ratePerSec: 0 };
+function evt(kind: string, extra: Record<string, unknown>, seq: number): DevtoolsEvent {
+  return { kind, seq, ts: seq, ...extra } as unknown as DevtoolsEvent;
 }
 
-describe("StateTreePanel row memoization", () => {
-  it("does not re-render a row whose fields are unchanged", () => {
-    const spy = vi.fn();
-    // A render probe: ValueView is called per row render. Instead of mocking it,
-    // count DOM mutations on the untouched row via its stable text.
-    const first = [row("a.x$", 1), row("b.y$", 1)];
-    const { rerender, getByText } = render(<StateTreePanel streams={first} />);
-    const untouched = getByText("a.x$").parentElement;
+describe("InspectorStore identity-stable rows", () => {
+  it("reuses a stream row object when its fields are unchanged, new object when they change", () => {
+    const store = new InspectorStore();
+    store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "a" });
+    store.apply({ kind: "batch", events: [
+      evt("stream:emission", { streamId: "a.x$", value: 1, seq: 1, coalesced: 1, ts: 1 }, 1),
+      evt("stream:emission", { streamId: "b.y$", value: 1, seq: 1, coalesced: 1, ts: 1 }, 2),
+    ] });
 
-    // Second render: only b.y$ advances. a.x$ is a NEW object (rebuilt) but same fields.
-    const second = [row("a.x$", 1), row("b.y$", 2)];
-    rerender(<StateTreePanel streams={second} />);
+    const first = store.getSnapshot().streams;
+    const ax1 = first.find((s) => s.streamId === "a.x$");
+    const by1 = first.find((s) => s.streamId === "b.y$");
 
-    // The untouched row element is the same node (not replaced) — memo held.
-    expect(getByText("a.x$").parentElement).toBe(untouched);
-    expect(spy).not.toHaveBeenCalled();
+    // Only b.y$ emits again.
+    store.apply({ kind: "batch", events: [
+      evt("stream:emission", { streamId: "b.y$", value: 2, seq: 2, coalesced: 1, ts: 2 }, 3),
+    ] });
+
+    const second = store.getSnapshot().streams;
+    const ax2 = second.find((s) => s.streamId === "a.x$");
+    const by2 = second.find((s) => s.streamId === "b.y$");
+
+    expect(ax2).toBe(ax1); // unchanged → same reference
+    expect(by2).not.toBe(by1); // changed → new reference
   });
 });
 ```
 
-Note: the assertion `parentElement` identity is a proxy for "React reused the element". If it proves brittle, switch to counting renders by wrapping the row body in a tiny probe component that increments a `Map<string, number>` on each render and asserting the untouched streamId's count stayed at 1.
-
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm --filter @rtc/devtools-app test rowMemo`
-Expected: FAIL — without memo, the rebuilt `a.x$` row object re-renders.
+Run: `pnpm --filter @rtc/devtools-core test rowIdentity`
+Expected: FAIL — `ax2` is a fresh object each rebuild, so `ax2 === ax1` is false.
 
-- [ ] **Step 3: Memoize `StreamRowView`**
+- [ ] **Step 3: Make rows identity-stable in `rebuildState()`**
 
-In `packages/devtools-app/src/panels/StateTreePanel.tsx`, add the `memo` import and wrap the row. Because `func-style`/component-newspaper rules prefer a named function, keep the render function as a declaration and export a memoized wrapper:
+In `packages/devtools-core/src/InspectorStore.ts`, add two caches as fields:
 
-```tsx
-import { memo, type ReactElement } from "react";
+```ts
+  private readonly streamRowCache = new Map<string, StreamRow>();
+
+  private readonly machineRowCache = new Map<string, MachineRow>();
 ```
 
-Rename the existing `function StreamRowView(...)` body to `function StreamRowViewImpl(...)` and add below it:
+In `rebuildState()`, replace the plain `.map((e): StreamRow => { … })` for streams with a cache-aware build that reuses the previous row when every render-affecting field matches:
 
-```tsx
-const StreamRowView = memo(StreamRowViewImpl, (prev, next): boolean => {
-  return (
-    prev.row.lastSeq === next.row.lastSeq &&
-    prev.row.ratePerSec === next.row.ratePerSec &&
-    prev.row.lastValue === next.row.lastValue
-  );
+```ts
+    const streams = [...this.streamEntries.values()]
+      .map((e): StreamRow => {
+        const prev = this.streamRowCache.get(e.streamId);
+
+        if (
+          prev &&
+          prev.lastSeq === e.lastSeq &&
+          prev.lastValue === e.lastValue &&
+          prev.totalEmissions === e.totalEmissions &&
+          prev.ratePerSec === e.ratePerSec
+        ) {
+          return prev;
+        }
+
+        const row: StreamRow = {
+          streamId: e.streamId,
+          lastValue: e.lastValue,
+          lastSeq: e.lastSeq,
+          totalEmissions: e.totalEmissions,
+          ratePerSec: e.ratePerSec,
+        };
+        this.streamRowCache.set(e.streamId, row);
+
+        return row;
+      })
+      .sort((a, b) => {
+        return a.streamId < b.streamId ? -1 : a.streamId > b.streamId ? 1 : 0;
+      });
+```
+
+Do the same for machines — reuse the cached `MachineRow` when `state`, `disposed`, `transitions`, `intents`, `args`, `machineKind`, and `createdAt` all match (compare `intents` by reference, since `applyEvent` replaces the array only when it changes):
+
+```ts
+    const machines = [...this.machineEntries.values()].map((e): MachineRow => {
+      const prev = this.machineRowCache.get(e.machineId);
+
+      if (
+        prev &&
+        prev.state === e.state &&
+        prev.disposed === e.disposed &&
+        prev.transitions === e.transitions &&
+        prev.intents === e.intents &&
+        prev.args === e.args &&
+        prev.machineKind === e.machineKind &&
+        prev.createdAt === e.createdAt
+      ) {
+        return prev;
+      }
+
+      const row: MachineRow = {
+        machineId: e.machineId,
+        machineKind: e.machineKind,
+        args: e.args,
+        state: e.state,
+        disposed: e.disposed,
+        createdAt: e.createdAt,
+        intents: e.intents,
+        transitions: e.transitions,
+      };
+      this.machineRowCache.set(e.machineId, row);
+
+      return row;
+    });
+```
+
+(When Task 1's eviction removes an entry, its stale cache line is harmless — it is simply never read again; optionally delete from the caches in `evictDisposedMachines`/`capStreams` for tidiness.)
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pnpm --filter @rtc/devtools-core test rowIdentity && pnpm --filter @rtc/devtools-core test`
+Expected: the identity test passes; all existing store tests stay green (the top-level snapshot identity still changes per flush — only rows are reused).
+
+- [ ] **Step 5: Enable React Compiler in devtools-app**
+
+Add the babel toolchain to `packages/devtools-app/package.json` `devDependencies` (mirror client-react's versions — verify against `packages/client-react/package.json` at implementation time and take the latest acceptable per the repo's dependency-freshness policy):
+
+```jsonc
+    "@babel/core": "^8.0.0",
+    "@rolldown/plugin-babel": "^0.2.3",
+    "@types/babel__core": "^7.20.5",
+    "babel-plugin-react-compiler": "^1.0.0",
+```
+
+Run `pnpm install`, then update `packages/devtools-app/vite.config.ts` to add the compiler exactly as client-react does:
+
+```ts
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  // React Compiler auto-memoizes components (ADR-003), so the inspector's rows
+  // — now identity-stable from InspectorStore — skip re-render when their props
+  // are referentially equal. No manual React.memo. On React 19 the compiler
+  // emits `react/compiler-runtime`; no extra runtime package needed.
+  plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
+  base: "/devtools/",
+  server: { host: "127.0.0.1", port: 5280 },
+  build: { outDir: "dist" },
 });
 ```
 
-(The `PresenterSection` map already keys rows by `row.streamId`, so memo composes with stable keys.)
+- [ ] **Step 6: Verify the compiler builds clean**
 
-- [ ] **Step 4: Memoize the machine table row**
+Run: `pnpm --filter @rtc/devtools-app build && pnpm --filter @rtc/devtools-app test`
+Expected: the build runs the compiler with no errors (React Compiler bails out of any component it can't safely optimize rather than failing); all tests stay green. If the compiler logs a bailout on a panel component, that is acceptable — it just isn't memoized — but investigate any hard error.
 
-In `packages/devtools-app/src/panels/MachinesPanel.tsx`, locate the row component rendered inside `MachineTable` (read the file for its name — likely `MachineTableRow` or an inline `.map`). If the rows are an inline `.map`, extract a `MachineRowView` component taking `{ machine, selected, onSelect }`, then wrap it with `memo` comparing `machineId`, `machineKind`, `state`, `disposed`, `transitions`, and `selected`. Keep `onSelect` stable (it comes from `useState`'s setter, which React guarantees stable).
-
-- [ ] **Step 5: Run the test + full app tests**
-
-Run: `pnpm --filter @rtc/devtools-app test`
-Expected: the memo test passes and all existing panel tests stay green.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add packages/devtools-app/src/panels/StateTreePanel.tsx packages/devtools-app/src/panels/MachinesPanel.tsx packages/devtools-app/src/panels/__tests__/rowMemo.test.tsx
-git commit -m "perf(devtools-app): memoize stream + machine rows on their render fields"
+git add packages/devtools-core/src/InspectorStore.ts packages/devtools-core/src/__tests__/rowIdentity.test.ts packages/devtools-app/vite.config.ts packages/devtools-app/package.json pnpm-lock.yaml
+git commit -m "perf(devtools): identity-stable inspector rows + React Compiler in devtools-app"
 ```
 
 ---
@@ -672,16 +765,16 @@ Expected: FAIL — the current CSS-animation approach never calls `element.anima
 
 - [ ] **Step 3: Rework the flash to WAAPI**
 
-In `StateTreePanel.tsx`, update `StreamRowViewImpl` (from Task 5) to use a ref + effect. Add imports:
+In `StateTreePanel.tsx`, update `StreamRowView` to use a ref + effect (React Compiler from Task 5 memoizes it — no manual wrapper). Add imports:
 
 ```tsx
-import { memo, useEffect, useRef, type ReactElement } from "react";
+import { useEffect, useRef, type ReactElement } from "react";
 ```
 
 Replace the keyed flash span with a stable ref'd span:
 
 ```tsx
-function StreamRowViewImpl({ row }: StreamRowViewProps): ReactElement {
+function StreamRowView({ row }: StreamRowViewProps): ReactElement {
   const flashRef = useRef<HTMLSpanElement>(null);
 
   useEffect((): void => {
@@ -752,10 +845,10 @@ Per the `tracking-workstream-status` skill, this is a completing workstream — 
 
 ## Self-Review
 
-**Spec coverage** (the six tracked items): b1 registry caps → Task 1 ✓; b2 typed event-builder → Task 2 ✓; b3 prod-serving coverage → Task 3 ✓; A6 panel-side liveness → Task 4 ✓; b4 row memoization → Task 5 ✓; b5 change-flash rework → Task 6 ✓.
+**Spec coverage** (the six tracked items): b1 registry caps → Task 1 ✓; b2 typed event-builder → Task 2 ✓; b3 prod-serving coverage → Task 3 ✓; A6 panel-side liveness → Task 4 ✓; b4 row memoization → Task 5 (identity-stable rows + React Compiler, per the user's preference over hand-rolled `React.memo`) ✓; b5 change-flash rework → Task 6 ✓.
 
-**Placeholder scan:** every code step shows the actual code; commands have expected output. Two steps ask the executor to *read* a file to confirm an identifier before editing (Task 2 Step 1's registration method, Task 4 Step 1's inbound handler, Task 5 Step 4's machine row) — these are deliberate "match the real name" guards, not placeholders, because the exact private member names live in files not fully quoted here.
+**Placeholder scan:** every code step shows the actual code; commands have expected output. Some steps ask the executor to *read* a file to confirm an identifier before editing (Task 2 Step 1's registration method, Task 4 Step 1's inbound handler) — these are deliberate "match the real name" guards, not placeholders, because the exact private member names live in files not fully quoted here.
 
-**Type consistency:** `MAX_DISPOSED_MACHINES`/`MAX_STREAMS` (Task 1) and `LIVENESS_TIMEOUT_MS` (Task 4) are new module constants, each defined once. `StreamRowViewImpl` is introduced in Task 5 and further edited in Task 6 (consistent name). `event<E extends DevtoolsEvent>` (Task 2) matches the `DevtoolsEvent` union from `protocol.ts`. `check:devtools-dist` script name consistent between Task 3's `package.json` entry and the Final gauntlet.
+**Type consistency:** `MAX_DISPOSED_MACHINES`/`MAX_STREAMS` (Task 1) and `LIVENESS_TIMEOUT_MS` (Task 4) are new module constants, each defined once. `streamRowCache`/`machineRowCache` (Task 5) are new `InspectorStore` fields. `StreamRowView` keeps its original name — Task 5 memoizes it via the compiler (no rename), Task 6 edits its body. `event<E extends DevtoolsEvent>` (Task 2) matches the `DevtoolsEvent` union from `protocol.ts`. `check:devtools-dist` script name consistent between Task 3's `package.json` entry and the Final gauntlet.
 
-**Ordering note:** Task 6 edits `StreamRowViewImpl`, which Task 5 creates — Task 5 must land before Task 6. Tasks 1–4 are mutually independent and independent of 5/6.
+**Ordering note:** Tasks 1–4 are mutually independent. Task 5 touches `InspectorStore.ts` (so does Task 1 — trivially compatible: Task 1 edits the `machine:disposed` case + adds eviction helpers, Task 5 edits `rebuildState`; land Task 1 first to avoid a merge nudge) plus devtools-app's build config. Task 6 touches only `StateTreePanel.tsx` + its CSS — different files from Task 5, so no file conflict; the only coupling is conceptual (Task 5 turns on the compiler that memoizes the `StreamRowView` Task 6 edits, and React Compiler handles the added `useEffect` fine). Recommended order: 1 → 2 → 3 → 4 → 5 → 6.
