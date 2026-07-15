@@ -47,8 +47,10 @@ constraint on the domain at install time.
 
 For the full picture, see:
 
+- [`docs/README.md`](docs/README.md) — **documentation map**: every doc grouped by purpose, and how work flows from ideas to shipped. Start here.
 - [`docs/architecture.md`](docs/architecture.md) — layers, ports, data flow, sequence diagrams.
 - [`docs/implementation-plan.md`](docs/implementation-plan.md) — the phased plan the build followed.
+- [`docs/STATUS.md`](docs/STATUS.md) — cross-workstream **pending-work backlog** (what's not done yet); [`docs/IDEAS.md`](docs/IDEAS.md) is the upstream icebox of not-yet-planned ideas.
 - [`docs/superpowers/STATUS.md`](docs/superpowers/STATUS.md) — authoritative status of each phase, including the current test topology.
 - [`docs/superpowers/`](docs/superpowers/) — the per-phase specs and plans, including the design of the multi-runner verification stack (phases 5a–5e).
 - [`docs/claude-sandbox.md`](docs/claude-sandbox.md) — running this repo from macOS WebStorm + the Linux claude-sandbox container at once: volume-isolating `node_modules`/`dist` so both work without interfering, and fixing WebStorm module resolution.
