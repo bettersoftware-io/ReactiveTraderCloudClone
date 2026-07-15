@@ -54,6 +54,19 @@ describe("build-presentations-index", () => {
       "No presentations published yet",
     );
   });
+
+  it("links a PDF sibling case-insensitively, preserving its real filename", () => {
+    tmp = mkdtempSync(join(tmpdir(), "pi-"));
+    mkdirSync(join(tmp, "2026-08-01"), { recursive: true });
+    writeFileSync(join(tmp, "2026-08-01", "Big-Talk.html"), "x");
+    writeFileSync(join(tmp, "2026-08-01", "Big-Talk.PDF"), "x");
+    const out = join(tmp, "index.html");
+    execFileSync("node", [SCRIPT, tmp, out]);
+    // Uppercase .PDF sibling is still linked, with its actual filename.
+    expect(readFileSync(out, "utf8")).toContain(
+      'href="./2026-08-01/Big-Talk.PDF"',
+    );
+  });
 });
 
 function fixture(): string {

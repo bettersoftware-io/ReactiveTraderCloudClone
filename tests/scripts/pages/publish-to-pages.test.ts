@@ -86,7 +86,50 @@ describe("publish-to-pages", () => {
     const after = git(work, "rev-parse", "refs/remotes/origin/gh-pages");
     expect(after).toBe(before); // no new commit
   });
+
+  it("exits 2 with a friendly message when --source is not a directory", () => {
+    root = mkdtempSync(join(tmpdir(), "pp-"));
+    let status = 0;
+    let stderr = "";
+
+    try {
+      execFileSync("node", [SCRIPT, "--source", join(root, "does-not-exist")], {
+        encoding: "utf8",
+      });
+    } catch (error) {
+      const e = error as ExecError;
+      status = e.status ?? 0;
+      stderr = String(e.stderr ?? "");
+    }
+
+    expect(status).toBe(2);
+    expect(stderr).toContain("not a directory");
+  });
+
+  it("surfaces git's stderr and exits non-zero on a git failure", () => {
+    root = mkdtempSync(join(tmpdir(), "pp-"));
+    const source = stage(root, "stageA", { "alpha/a.txt": "A" });
+    let status = 0;
+    let stderr = "";
+
+    // cwd is not a git repository, so `git worktree add` inside the script fails.
+    try {
+      execFileSync("node", [SCRIPT, "--source", source], {
+        cwd: root,
+        encoding: "utf8",
+      });
+    } catch (error) {
+      const e = error as ExecError;
+      status = e.status ?? 0;
+      stderr = String(e.stderr ?? "");
+    }
+
+    expect(status).not.toBe(0);
+    expect(stderr.toLowerCase()).toMatch(/not a git repository|fatal/);
+  });
 });
+
+type ExecError = { status?: number; stderr?: string };
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();

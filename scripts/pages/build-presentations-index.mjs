@@ -48,12 +48,15 @@ function scanPresentations(dir) {
         continue;
       }
       const base = file.replace(/\.html$/i, "");
-      const hasPdf = files.includes(`${base}.pdf`);
+      // Match the PDF sibling case-insensitively, but link its real filename.
+      const pdfFile = files.find(
+        (sibling) => sibling.toLowerCase() === `${base.toLowerCase()}.pdf`,
+      );
       entries.push({
         date,
         title: deriveTitle(file),
         htmlHref: `./${date}/${file}`,
-        pdfHref: hasPdf ? `./${date}/${base}.pdf` : null,
+        pdfHref: pdfFile ? `./${date}/${pdfFile}` : null,
       });
     }
   }
