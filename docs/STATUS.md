@@ -23,6 +23,9 @@
 - **Power-saver mode** — Plan: [superpowers/plans/2026-07-09-power-saver-mode.md](superpowers/plans/2026-07-09-power-saver-mode.md)
 - **Devtools MV3 Chrome extension** — third `Duplex` transport (ChromeRuntimeDuplex + content-script bridge + tab-keyed background router + RTC devtools panel); observe-only, zero app-side changes. Plan: [superpowers/plans/2026-07-14-devtools-chrome-extension.md](superpowers/plans/2026-07-14-devtools-chrome-extension.md)
 - **Devtools hardening & liveness** — six tracked follow-ups: inspector registry caps, type-safe event builder, prod `/devtools/` copy-path check, panel-side liveness timeout, row memoization, WAAPI change-flash. Plan: [superpowers/plans/2026-07-15-devtools-hardening.md](superpowers/plans/2026-07-15-devtools-hardening.md)
+- **Devtools intent injection** — panel→app intent invocation (first inbound write), dev-build-only gate. Spec: [superpowers/specs/2026-07-15-devtools-intent-injection-design.md](superpowers/specs/2026-07-15-devtools-intent-injection-design.md) (no plan file yet)
+- **Devtools record / replay / time-scrub** — panel-only flight recorder + JSON export/import + scrub slider over the recorded buffer. Spec: [superpowers/specs/2026-07-15-devtools-record-replay-design.md](superpowers/specs/2026-07-15-devtools-record-replay-design.md) (no plan file yet)
+- **Devtools RN inspection** — WebSocket-relay transport (`WsRelayDuplex`) + standalone dev-machine relay + decorators at the RN composition root. Spec: [superpowers/specs/2026-07-15-devtools-rn-inspection-design.md](superpowers/specs/2026-07-15-devtools-rn-inspection-design.md) (no plan file yet)
 
 ## 🟠 Planned but gated / not executed
 
