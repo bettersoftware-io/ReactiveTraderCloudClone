@@ -188,9 +188,11 @@ describe("AuthPresenter", () => {
     });
   });
 
-  it("unlock() with the correct password clears the lock", () => {
+  it("unlock() with the correct password clears the lock, refreshes the stored session, and calls the port with the remembered username", () => {
+    let currentNow = 4_000_000;
+
     function now(): number {
-      return 4_000_000;
+      return currentNow;
     }
 
     const store = new InMemorySessionStore();
@@ -198,15 +200,13 @@ describe("AuthPresenter", () => {
       token: "tok-4",
       user: USER,
       username: "astark",
-      exp: now() + 1000,
+      exp: currentNow + 1000,
     });
-    const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: true, token: "tok-4", user: USER }),
-      store,
-      now,
-    );
+    const auth = fakeAuthPort({ ok: true, token: "tok-4", user: USER });
+    const presenter = new AuthPresenter(auth, store, now);
 
     presenter.lock();
+    currentNow += 60_000;
     presenter.unlock("correct-horse");
 
     expect(latest(presenter)).toEqual({
@@ -215,9 +215,18 @@ describe("AuthPresenter", () => {
       locked: false,
       error: null,
     });
+
+    expect(auth.calls.at(-1)).toEqual(["astark", "correct-horse"]);
+
+    expect(store.read()).toEqual<StoredSession>({
+      token: "tok-4",
+      user: USER,
+      username: "astark",
+      exp: currentNow + SESSION_TTL_MS,
+    });
   });
 
-  it("unlock() with the wrong password stays locked and sets an error", () => {
+  it("unlock() with the wrong password stays locked, sets an error, and calls the port with the remembered username", () => {
     function now(): number {
       return 5_000_000;
     }
@@ -229,11 +238,8 @@ describe("AuthPresenter", () => {
       username: "astark",
       exp: now() + 1000,
     });
-    const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: false, reason: "invalid" }),
-      store,
-      now,
-    );
+    const auth = fakeAuthPort({ ok: false, reason: "invalid" });
+    const presenter = new AuthPresenter(auth, store, now);
 
     presenter.lock();
     presenter.unlock("wrong-password");
@@ -243,6 +249,37 @@ describe("AuthPresenter", () => {
       user: USER,
       locked: true,
       error: "Invalid credentials",
+    });
+
+    expect(auth.calls.at(-1)).toEqual(["astark", "wrong-password"]);
+  });
+
+  it("unlock() with an unavailable auth service stays locked and reports service unavailability", () => {
+    function now(): number {
+      return 5_500_000;
+    }
+
+    const store = new InMemorySessionStore();
+    store.write({
+      token: "tok-5b",
+      user: USER,
+      username: "astark",
+      exp: now() + 1000,
+    });
+    const presenter = new AuthPresenter(
+      fakeAuthPort({ ok: false, reason: "unavailable" }),
+      store,
+      now,
+    );
+
+    presenter.lock();
+    presenter.unlock("whatever-password");
+
+    expect(latest(presenter)).toEqual({
+      status: "authenticated",
+      user: USER,
+      locked: true,
+      error: "Service unavailable",
     });
   });
 
@@ -281,10 +318,19 @@ interface AuthStatusSnapshot {
   readonly user: AuthViewState["user"];
 }
 
-/** A stub `AuthPort` that resolves every `login()` call with the same preprogrammed outcome. */
-function fakeAuthPort(outcome: AuthOutcome): AuthPort {
+/** An `AuthPort` stub whose `login()` calls are recorded for later assertion. */
+interface FakeAuthPort extends AuthPort {
+  readonly calls: ReadonlyArray<readonly [username: string, password: string]>;
+}
+
+/** A stub `AuthPort` that resolves every `login()` call with the same preprogrammed outcome, recording its args. */
+function fakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
+  const calls: Array<readonly [string, string]> = [];
+
   return {
-    login(): ReturnType<AuthPort["login"]> {
+    calls,
+    login(username: string, password: string): ReturnType<AuthPort["login"]> {
+      calls.push([username, password]);
       return of(outcome);
     },
   };

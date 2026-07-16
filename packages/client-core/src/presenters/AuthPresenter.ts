@@ -145,7 +145,7 @@ export class AuthPresenter {
     this.subject.next({
       ...current,
       locked: true,
-      error: "Invalid credentials",
+      error: describeAuthFailure(outcome.reason),
     });
   }
 
