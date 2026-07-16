@@ -1,6 +1,6 @@
 import { type Accessor, createMemo } from "solid-js";
 
-export type TickDirection = "up" | "down";
+type TickDirection = "up" | "down";
 
 export interface TickFlash {
   readonly flashOn: boolean;
