@@ -19,8 +19,12 @@ export function DeskPnlGauge(props: DeskPnlGaugeProps): JSX.Element {
     );
   });
 
-  const isPositive = createMemo((): boolean => totalPnl() >= 0);
-  const sign = createMemo((): "pos" | "neg" => (isPositive() ? "pos" : "neg"));
+  const isPositive = createMemo((): boolean => {
+    return totalPnl() >= 0;
+  });
+  const sign = createMemo((): "pos" | "neg" => {
+    return isPositive() ? "pos" : "neg";
+  });
   const paths = createMemo((): GaugePaths => {
     return buildGaugePaths(totalPnl(), maxAbsPnl());
   });

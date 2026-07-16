@@ -280,8 +280,12 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
     const s = props.state();
     return s.phase === "editing" ? s.error : null;
   });
-  const isLimit = createMemo((): boolean => form()?.type === "limit");
-  const live = createMemo((): number => props.quote()?.last ?? 0);
+  const isLimit = createMemo((): boolean => {
+    return form()?.type === "limit";
+  });
+  const live = createMemo((): number => {
+    return props.quote()?.last ?? 0;
+  });
   // PROTO Ticket/OrderTicketPanel.tsx:24 — a limit order costs at the limit
   // price ONLY once one has actually been entered; a blank/zero limit still
   // prices off the live last (matches the prototype's `limitN ? limitN : last`).
@@ -289,7 +293,9 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
     const f = form();
     return isLimit() && f?.limitPrice ? f.limitPrice : live();
   });
-  const estCost = createMemo((): number => (form()?.qty ?? 0) * unitPrice());
+  const estCost = createMemo((): number => {
+    return (form()?.qty ?? 0) * unitPrice();
+  });
 
   function stepQty(delta: number): void {
     const f = form();

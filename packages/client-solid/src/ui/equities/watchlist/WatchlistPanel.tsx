@@ -68,7 +68,9 @@ export function WatchlistPanel(): JSX.Element {
       return row.symbol;
     });
   });
-  const committedOrder = useRankGlide(() => listEl ?? null, candidateOrder);
+  const committedOrder = useRankGlide(() => {
+    return listEl ?? null;
+  }, candidateOrder);
 
   const nameBySymbol = createMemo((): ReadonlyMap<string, string> => {
     return new Map(

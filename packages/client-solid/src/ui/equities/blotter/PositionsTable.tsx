@@ -70,12 +70,12 @@ interface PositionsRowProps {
 }
 
 function PositionsRow(props: PositionsRowProps): JSX.Element {
-  const mv = createMemo(
-    (): number => props.position.qty * props.position.markPrice,
-  );
-  const isPositive = createMemo(
-    (): boolean => props.position.unrealisedPnl >= 0,
-  );
+  const mv = createMemo((): number => {
+    return props.position.qty * props.position.markPrice;
+  });
+  const isPositive = createMemo((): boolean => {
+    return props.position.unrealisedPnl >= 0;
+  });
   const plColor = createMemo((): string => {
     return isPositive() ? "var(--accent-positive)" : "var(--accent-negative)";
   });

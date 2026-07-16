@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js";
+import { createMemo, type JSX } from "solid-js";
 
 import type { Candle, EquityQuote } from "@rtc/domain";
 
@@ -13,17 +13,25 @@ import styles from "./InstrumentHeader.module.css";
  * fl/flashOn computed once in EquitiesScreen and threaded to both).
  */
 export function InstrumentHeader(props: InstrumentHeaderProps): JSX.Element {
-  const last = (): number | null => props.quote?.last ?? null;
-  const changePct = (): number | null => props.quote?.changePct ?? null;
-  const up = (): boolean => (changePct() ?? 0) >= 0;
-  const chgAbs = (): number | null => {
+  const last = createMemo((): number | null => {
+    return props.quote?.last ?? null;
+  });
+  const changePct = createMemo((): number | null => {
+    return props.quote?.changePct ?? null;
+  });
+  const up = createMemo((): boolean => {
+    return (changePct() ?? 0) >= 0;
+  });
+
+  const chgAbs = createMemo((): number | null => {
     const l = last();
     const c = changePct();
     return l !== null && c !== null ? changeAbsFromPct(l, c) : null;
-  };
-  const dayRange = (): DayRange | null => {
+  });
+
+  const dayRange = createMemo((): DayRange | null => {
     return computeDayRange(props.candles, last());
-  };
+  });
 
   return (
     <div class={styles.header} data-testid="instrument-header">
