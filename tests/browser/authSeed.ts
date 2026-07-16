@@ -17,7 +17,7 @@
  */
 export const E2E_SESSION_KEY = "rtc-session";
 
-export const E2E_STORED_SESSION = {
+const E2E_STORED_SESSION = {
   token: "e2e-sim-token",
   username: "demo",
   user: {
