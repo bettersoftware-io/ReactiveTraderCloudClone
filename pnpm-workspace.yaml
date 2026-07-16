@@ -64,3 +64,20 @@ overrides:
   # ESM import, matching RN 0.86 by construction. Without this override the
   # peer re-resolves to 4.0.1 on every install.
   "@expo/metro-runtime": ~57.0.3
+  # react-native-worklets@0.10.0's babel plugin runs a NESTED babel transform
+  # (via its own @babel/preset-typescript@^7.28.5) the instant it meets a real
+  # `'worklet'` directive. That preset asserts the CALLER's @babel/core is ^7,
+  # but worklets declares @babel/core as peer `*`, so pnpm satisfies it with the
+  # workspace-hoisted @babel/core@8.0.1 (pulled in at ^8 by client-react and
+  # devtools-app, which need Babel 8 for React Compiler). The mismatch throws
+  # `Requires Babel "^7.0.0-0", but was loaded with "8.0.1"` and breaks the RN
+  # native Metro bundle as soon as any worklet is transformed (MotionProbe's
+  # useAnimatedStyle, react-native-gesture-handler's worklet files) — a native-
+  # only failure the jest/vitest suite cannot see (worklets is disabled under
+  # jest). Scope @babel/core to the 7.x line INSIDE the worklets subtree only,
+  # so the RN native babel toolchain (a Babel-7 ecosystem) is self-consistent
+  # while the web packages keep @babel/core@8. 7.29.7 is already in the tree.
+  # This targets the RN package's direct worklets@0.10.0 dep — the instance the
+  # `react-native-worklets/plugin` babel plugin resolves from the app context at
+  # bundle time (verified via require.resolve), which is where the throw occurs.
+  "react-native-worklets>@babel/core": 7.29.7
