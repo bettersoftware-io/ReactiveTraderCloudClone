@@ -4,14 +4,6 @@ import { InspectorStore } from "../InspectorStore";
 import type { DevtoolsEvent } from "../protocol";
 import { PROTOCOL_VERSION } from "../protocol";
 
-function createEvent(
-  kind: string,
-  extra: Record<string, unknown>,
-  seq: number,
-): DevtoolsEvent {
-  return { kind, seq, ts: seq, ...extra } as unknown as DevtoolsEvent;
-}
-
 describe("InspectorStore registry caps", () => {
   it("evicts the oldest disposed machines beyond the cap", () => {
     const store = new InspectorStore();
@@ -40,8 +32,16 @@ describe("InspectorStore registry caps", () => {
     const machines = store.getSnapshot().machines;
     expect(machines.length).toBe(500);
     // Oldest (m0..m99) evicted; newest retained.
-    expect(machines.some((m) => m.machineId === "m0")).toBe(false);
-    expect(machines.some((m) => m.machineId === "m599")).toBe(true);
+    expect(
+      machines.some((m) => {
+        return m.machineId === "m0";
+      }),
+    ).toBe(false);
+    expect(
+      machines.some((m) => {
+        return m.machineId === "m599";
+      }),
+    ).toBe(true);
   });
 
   it("keeps live machines regardless of the disposed cap", () => {
@@ -58,6 +58,7 @@ describe("InspectorStore registry caps", () => {
         ),
       ],
     });
+
     for (let i = 0; i < 600; i++) {
       store.apply({
         kind: "batch",
@@ -78,7 +79,17 @@ describe("InspectorStore registry caps", () => {
     }
 
     expect(
-      store.getSnapshot().machines.some((m) => m.machineId === "live"),
+      store.getSnapshot().machines.some((m) => {
+        return m.machineId === "live";
+      }),
     ).toBe(true);
   });
 });
+
+function createEvent(
+  kind: string,
+  extra: Record<string, unknown>,
+  seq: number,
+): DevtoolsEvent {
+  return { kind, seq, ts: seq, ...extra } as unknown as DevtoolsEvent;
+}
