@@ -3,52 +3,6 @@ import { describe, expect, it } from "vitest";
 import { createPortRouter } from "#/portRouter";
 import type { RuntimePort } from "#/ports";
 
-function fakePort(name: string): {
-  port: RuntimePort;
-  emit(msg: unknown): void;
-  fireDisconnect(): void;
-  sent: unknown[];
-  disconnected: boolean;
-} {
-  let onMsg: (m: unknown) => void = (): void => {};
-  let onDis: () => void = (): void => {};
-  const sent: unknown[] = [];
-  const state = { disconnected: false };
-  const port: RuntimePort = {
-    name,
-    postMessage: (m: unknown): void => {
-      sent.push(m);
-    },
-    onMessage: {
-      addListener: (cb: (m: unknown) => void): void => {
-        onMsg = cb;
-      },
-    },
-    onDisconnect: {
-      addListener: (cb: () => void): void => {
-        onDis = cb;
-      },
-    },
-    disconnect: (): void => {
-      state.disconnected = true;
-    },
-  };
-
-  return {
-    port,
-    emit: (m: unknown): void => {
-      onMsg(m);
-    },
-    fireDisconnect: (): void => {
-      onDis();
-    },
-    sent,
-    get disconnected(): boolean {
-      return state.disconnected;
-    },
-  };
-}
-
 describe("createPortRouter", () => {
   it("relays panel→content and content→panel for the same tab", () => {
     const router = createPortRouter();
@@ -94,3 +48,51 @@ describe("createPortRouter", () => {
     expect(content.disconnected).toBe(true);
   });
 });
+
+interface FakePort {
+  port: RuntimePort;
+  emit(msg: unknown): void;
+  fireDisconnect(): void;
+  sent: unknown[];
+  disconnected: boolean;
+}
+
+function fakePort(name: string): FakePort {
+  let onMsg: ((m: unknown) => void) | undefined;
+  let onDis: (() => void) | undefined;
+  const sent: unknown[] = [];
+  const state = { disconnected: false };
+  const port: RuntimePort = {
+    name,
+    postMessage: (m: unknown): void => {
+      sent.push(m);
+    },
+    onMessage: {
+      addListener: (cb: (m: unknown) => void): void => {
+        onMsg = cb;
+      },
+    },
+    onDisconnect: {
+      addListener: (cb: () => void): void => {
+        onDis = cb;
+      },
+    },
+    disconnect: (): void => {
+      state.disconnected = true;
+    },
+  };
+
+  return {
+    port,
+    emit: (m: unknown): void => {
+      onMsg?.(m);
+    },
+    fireDisconnect: (): void => {
+      onDis?.();
+    },
+    sent,
+    get disconnected(): boolean {
+      return state.disconnected;
+    },
+  };
+}

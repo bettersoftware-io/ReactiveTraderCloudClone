@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const pkgRoot = fileURLToPath(new URL("../../", import.meta.url));
-const dist = (p: string): string => `${pkgRoot}dist/${p}`;
 
 describe("extension build", () => {
   it("produces a loadable unpacked MV3 bundle", () => {
@@ -38,3 +37,7 @@ describe("extension build", () => {
     expect(manifest.background.service_worker).toBe("background.js");
   }, 120_000);
 });
+
+function dist(p: string): string {
+  return `${pkgRoot}dist/${p}`;
+}

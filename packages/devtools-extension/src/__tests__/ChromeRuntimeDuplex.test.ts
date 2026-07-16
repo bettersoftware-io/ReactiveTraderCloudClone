@@ -3,56 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import { ChromeRuntimeDuplex } from "#/ChromeRuntimeDuplex";
 import type { RuntimePort } from "#/ports";
 
-function makeFakePort(name = "p"): {
-  port: RuntimePort;
-  emit(msg: unknown): void;
-  disconnect(): void;
-  sent: unknown[];
-  disconnected: boolean;
-} {
-  let onMsg: (m: unknown) => void = (): void => {};
-  let onDis: () => void = (): void => {};
-  const sent: unknown[] = [];
-  const state = { disconnected: false };
-  const port: RuntimePort = {
-    name,
-    postMessage: (m: unknown): void => {
-      sent.push(m);
-    },
-    onMessage: {
-      addListener: (cb: (m: unknown) => void): void => {
-        onMsg = cb;
-      },
-    },
-    onDisconnect: {
-      addListener: (cb: () => void): void => {
-        onDis = cb;
-      },
-    },
-    disconnect: (): void => {
-      state.disconnected = true;
-    },
-  };
-
-  return {
-    port,
-    emit: (m: unknown): void => {
-      onMsg(m);
-    },
-    disconnect: (): void => {
-      onDis();
-    },
-    sent,
-    get disconnected(): boolean {
-      return state.disconnected;
-    },
-  };
-}
-
 describe("ChromeRuntimeDuplex", () => {
   it("sends via the port and surfaces inbound messages on inbound$", () => {
     const f = makeFakePort();
-    const connect = vi.fn(() => f.port);
+    const connect = vi.fn(() => {
+      return f.port;
+    });
     const duplex = new ChromeRuntimeDuplex<string, number>(connect);
 
     const got: number[] = [];
@@ -118,3 +74,51 @@ describe("ChromeRuntimeDuplex", () => {
     expect(connect).toHaveBeenCalledTimes(1);
   });
 });
+
+interface FakePort {
+  port: RuntimePort;
+  emit(msg: unknown): void;
+  disconnect(): void;
+  sent: unknown[];
+  disconnected: boolean;
+}
+
+function makeFakePort(name = "p"): FakePort {
+  let onMsg: ((m: unknown) => void) | undefined;
+  let onDis: (() => void) | undefined;
+  const sent: unknown[] = [];
+  const state = { disconnected: false };
+  const port: RuntimePort = {
+    name,
+    postMessage: (m: unknown): void => {
+      sent.push(m);
+    },
+    onMessage: {
+      addListener: (cb: (m: unknown) => void): void => {
+        onMsg = cb;
+      },
+    },
+    onDisconnect: {
+      addListener: (cb: () => void): void => {
+        onDis = cb;
+      },
+    },
+    disconnect: (): void => {
+      state.disconnected = true;
+    },
+  };
+
+  return {
+    port,
+    emit: (m: unknown): void => {
+      onMsg?.(m);
+    },
+    disconnect: (): void => {
+      onDis?.();
+    },
+    sent,
+    get disconnected(): boolean {
+      return state.disconnected;
+    },
+  };
+}
