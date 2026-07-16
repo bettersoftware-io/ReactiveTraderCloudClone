@@ -29,7 +29,13 @@ export function conflateWhen<T>(
   ms: number,
 ): (source: Observable<T>) => Observable<T> {
   return (source: Observable<T>): Observable<T> => {
-    const shared = source.pipe(share({ resetOnRefCountZero: () => timer(0) }));
+    const shared = source.pipe(
+      share({
+        resetOnRefCountZero: () => {
+          return timer(0);
+        },
+      }),
+    );
     return flag$.pipe(
       distinctUntilChanged(),
       switchMap((on) => {

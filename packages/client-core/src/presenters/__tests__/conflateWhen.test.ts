@@ -15,9 +15,9 @@ describe("conflateWhen", () => {
     const flag$ = new Subject<boolean>();
     const source$ = new Subject<number>();
     const seen: number[] = [];
-    const sub = source$
-      .pipe(conflateWhen(flag$, 250))
-      .subscribe((v) => seen.push(v));
+    const sub = source$.pipe(conflateWhen(flag$, 250)).subscribe((v) => {
+      return seen.push(v);
+    });
     flag$.next(false);
     source$.next(1);
     source$.next(2);
@@ -30,9 +30,9 @@ describe("conflateWhen", () => {
     const flag$ = new Subject<boolean>();
     const source$ = new Subject<number>();
     const seen: number[] = [];
-    const sub = source$
-      .pipe(conflateWhen(flag$, 250))
-      .subscribe((v) => seen.push(v));
+    const sub = source$.pipe(conflateWhen(flag$, 250)).subscribe((v) => {
+      return seen.push(v);
+    });
     flag$.next(true);
     source$.next(1); // leading — emitted immediately
     source$.next(2);
@@ -47,9 +47,9 @@ describe("conflateWhen", () => {
     const flag$ = new Subject<boolean>();
     const source$ = new Subject<number>();
     const seen: number[] = [];
-    const sub = source$
-      .pipe(conflateWhen(flag$, 250))
-      .subscribe((v) => seen.push(v));
+    const sub = source$.pipe(conflateWhen(flag$, 250)).subscribe((v) => {
+      return seen.push(v);
+    });
     flag$.next(true);
     source$.next(1);
     flag$.next(false); // conflation off — passthrough resumes
@@ -85,7 +85,9 @@ describe("conflateWhen", () => {
         conflateWhen(flag$, 250),
         shareReplay({ bufferSize: 1, refCount: true }),
       )
-      .subscribe((v) => seen.push(v));
+      .subscribe((v) => {
+        return seen.push(v);
+      });
 
     flag$.next(false);
     innerSource$.next(1);
