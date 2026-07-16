@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { AppRoot } from "#/app/AppRoot";
 import { shouldPlayBootSplash } from "#/app/bootSplashGate";
+import { MotionProbe } from "#/ui/_probe/MotionProbe";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
@@ -61,6 +62,7 @@ export default function RootLayout(): JSX.Element {
             ) : null}
           </ThemeProvider>
         </AppRoot>
+        {process.env.EXPO_PUBLIC_MOTION_PROBE === "1" ? <MotionProbe /> : null}
       </SafeAreaView>
     </GestureHandlerRootView>
   );

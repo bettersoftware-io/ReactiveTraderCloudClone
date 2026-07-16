@@ -1,5 +1,10 @@
 module.exports = {
   preset: "jest-expo",
+  // See jest.resolver.js: composes @react-native/jest-preset's resolver
+  // (which this `resolver` key would otherwise silently replace) with
+  // react-native-worklets' `.native.` extension filtering, so reanimated's
+  // jest mock can load without pulling in the real JSI binding.
+  resolver: "<rootDir>/jest.resolver.js",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   testMatch: ["**/*.test.tsx"],
   // jest-expo's first non-trivial component mount is very slow on the shared
