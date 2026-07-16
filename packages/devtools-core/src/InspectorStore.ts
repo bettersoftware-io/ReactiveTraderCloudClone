@@ -8,6 +8,8 @@ import { PROTOCOL_VERSION } from "./protocol";
 import type { SerializedValue } from "./serialize";
 
 const LOG_CAP = 5000;
+const MAX_DISPOSED_MACHINES = 500;
+const MAX_STREAMS = 2000;
 const SUMMARY_VALUE_MAX = 120;
 const RATE_WINDOW_MS = 2000;
 
@@ -135,6 +137,50 @@ export class InspectorStore {
    * saturates the main thread under a live stream. */
   private static readonly FRAMES_PER_FLUSH = 4;
 
+  /** Bound retained disposed machines the way the hub does (MAX_DISPOSED_RETAINED)
+   * so a long session's machine table and memory stay flat. Insertion order in a
+   * Map is stable, so the first disposed entries found are the oldest. */
+  private evictDisposedMachines(): void {
+    const disposedIds: string[] = [];
+
+    for (const [id, entry] of this.machineEntries) {
+      if (entry.disposed) {
+        disposedIds.push(id);
+      }
+    }
+
+    const overflow = disposedIds.length - MAX_DISPOSED_MACHINES;
+
+    for (let i = 0; i < overflow; i++) {
+      const id = disposedIds[i];
+
+      if (id) {
+        this.machineEntries.delete(id);
+      }
+    }
+  }
+
+  /** Oldest-inserted stream eviction — a safety bound; the real app has a finite
+   * set of presenter/parameterized streams, so this only fires on pathological
+   * churn. */
+  private capStreams(): void {
+    const overflow = this.streamEntries.size - MAX_STREAMS;
+
+    if (overflow <= 0) {
+      return;
+    }
+
+    const it = this.streamEntries.keys();
+
+    for (let i = 0; i < overflow; i++) {
+      const next = it.next();
+
+      if (!next.done) {
+        this.streamEntries.delete(next.value);
+      }
+    }
+  }
+
   getSnapshot(): InspectorState {
     return this.state;
   }
@@ -226,6 +272,7 @@ export class InspectorStore {
             ratePerSec: 0,
             rate: { windowStart: null, windowCount: 0 },
           });
+          this.capStreams();
         }
 
         break;
@@ -283,6 +330,7 @@ export class InspectorStore {
 
         if (entry) {
           entry.disposed = true;
+          this.evictDisposedMachines();
         }
 
         break;
@@ -315,6 +363,7 @@ export class InspectorStore {
       rate: { windowStart: null, windowCount: 0 },
     };
     this.streamEntries.set(streamId, entry);
+    this.capStreams();
 
     return entry;
   }
