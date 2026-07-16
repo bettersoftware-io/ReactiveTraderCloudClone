@@ -1,0 +1,138 @@
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 10px;
+  margin-bottom: 2px;
+  font: inherit;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background-color: transparent;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+
+.row[data-selected="true"] {
+  /* `background:` shorthand, NOT `background-color:` — `--chip` is a
+     gradient in the 3d skins (holo3d/terminal3d) and `background-color:
+     <gradient>` is invalid CSS, silently dropped (I2 fix). */
+  background: var(--chip);
+  border-color: var(--border-strong);
+}
+
+/* Rank-glide highlight overlay: useRankGlide.ts pulses THIS element's
+ * opacity (WAAPI) instead of animating box-shadow on the row itself —
+ * box-shadow can never run on the compositor, and under the default "chg"
+ * sort a re-sort commits every glide window, which kept a main-thread
+ * animation alive almost permanently. The direction-coloured shadows are
+ * baked here; the row's data-rank-dir (set by the hook) picks the colour. */
+.rankGlow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  will-change: opacity;
+}
+
+.row[data-rank-dir="rose"] .rankGlow {
+  box-shadow:
+    inset 3px 0 0 rgba(43, 255, 179, 0.95),
+    0 0 16px -3px rgba(43, 255, 179, 0.95);
+}
+
+.row[data-rank-dir="fell"] .rankGlow {
+  box-shadow:
+    inset 3px 0 0 rgba(255, 93, 115, 0.95),
+    0 0 16px -3px rgba(255, 93, 115, 0.95);
+}
+
+/* Transient tick pulse: a freshly `key`ed overlay per genuine tick (see
+ * WatchlistRow.tsx) — the animation plays once and settles invisible
+ * (forwards), so no JS clearing/timer is needed. */
+.flashPulse {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: rowFlashFade 0.6s ease-out forwards;
+  /* Freshly-mounted overlays are not compositor-promoted by default, so the
+   * opacity fade ran on the main thread every frame — and dragged the parent
+   * row's style with it (measured ~680 + ~340 invalidations/s while quotes
+   * tick). will-change promotes each overlay at insertion. */
+  will-change: opacity;
+}
+
+.flashPulse[data-up="true"] {
+  background-color: rgba(34, 197, 94, 0.14);
+}
+
+.flashPulse[data-up="false"] {
+  background-color: rgba(239, 68, 68, 0.14);
+}
+
+@keyframes rowFlashFade {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.sym {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--text-primary);
+}
+
+.name {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 13px;
+  color: var(--text-muted);
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.last,
+.chg {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.last {
+  font-size: 13px;
+  line-height: 17px;
+}
+
+.chg {
+  font-size: 9px;
+  line-height: 13px;
+}
+
+.last[data-up="true"],
+.chg[data-up="true"] {
+  color: var(--accent-positive);
+}
+
+.last[data-up="false"],
+.chg[data-up="false"] {
+  color: var(--accent-negative);
+}
