@@ -7,26 +7,44 @@ import {
   BlotterRow,
   BootGate,
   BootSequence,
+  CandleChart,
+  ChartPanel,
   ConnectionOverlay,
   ConnectionStatusBar,
   CurrencyFilter,
   DateFilter,
+  DepthLadder,
+  DeskPnlGauge,
+  EqBlotterHead,
+  EqBlotterPanel,
+  EqChartHead,
+  EqDepthDock,
+  EqSectorsDock,
+  EqTicketHead,
+  EqWatchlistHead,
   FxBlotter,
   FxBlotterWorkspace,
   HeaderChrome,
+  InstrumentHeader,
+  InstrumentTabs,
   LayoutEngine,
   LiveRatesPanel,
   LiveRatesWorkspace,
   LockScreen,
   NumberFilter,
+  OrdersTable,
+  OrderTicket,
   PairPnlBars,
   PnlChart,
+  PnlSparkline,
   PnlValue,
   PositionsHead,
   PositionsPanel,
+  PositionsTable,
   PreferencesModal,
   QuickFilter,
   RfqCountdown,
+  SectorHeatmap,
   SetFilter,
   SpreadDisplay,
   StaleIndicator,
@@ -40,6 +58,8 @@ import {
   TileNotional,
   TilePrice,
   TileRfq,
+  TimeframePills,
+  WatchlistPanel,
 } from "@ui-contract/components";
 import type {
   ComponentToken,
@@ -58,16 +78,42 @@ import type {
   TileExecutionState,
 } from "@rtc/client-core";
 import type {
+  Candle,
+  CandleTimeframe,
   CurrencyCategory,
   CurrencyPair,
   CurrencyPairPosition,
   Direction,
+  EquityOrder,
+  EquityPosition,
+  EquityQuote,
   HistoricPosition,
   Price,
   PriceMovementType,
   Trade,
 } from "@rtc/domain";
+import type { ChartVm } from "@rtc/motion-core";
 
+import { DeskPnlGauge as DeskPnlGaugeComponent } from "#/ui/equities/blotter/DeskPnlGauge";
+import { EqBlotterHead as EqBlotterHeadComponent } from "#/ui/equities/blotter/EqBlotterHead";
+import { EqBlotterPanel as EqBlotterPanelComponent } from "#/ui/equities/blotter/EqBlotterPanel";
+import { OrdersTable as OrdersTableComponent } from "#/ui/equities/blotter/OrdersTable";
+import { PnlSparkline as PnlSparklineComponent } from "#/ui/equities/blotter/PnlSparkline";
+import { PositionsTable as PositionsTableComponent } from "#/ui/equities/blotter/PositionsTable";
+import { CandleChart as CandleChartComponent } from "#/ui/equities/chart/CandleChart";
+import { ChartPanel as ChartPanelComponent } from "#/ui/equities/chart/ChartPanel";
+import { DepthLadder as DepthLadderComponent } from "#/ui/equities/chart/DepthLadder";
+import { EqChartHead as EqChartHeadComponent } from "#/ui/equities/chart/EqChartHead";
+import { EqDepthDock as EqDepthDockComponent } from "#/ui/equities/chart/EqDepthDock";
+import { InstrumentHeader as InstrumentHeaderComponent } from "#/ui/equities/chart/InstrumentHeader";
+import { TimeframePills as TimeframePillsComponent } from "#/ui/equities/chart/TimeframePills";
+import { InstrumentTabs as InstrumentTabsComponent } from "#/ui/equities/tabs/InstrumentTabs";
+import { EqTicketHead as EqTicketHeadComponent } from "#/ui/equities/ticket/EqTicketHead";
+import { OrderTicket as OrderTicketComponent } from "#/ui/equities/ticket/OrderTicket";
+import { EqSectorsDock as EqSectorsDockComponent } from "#/ui/equities/watchlist/EqSectorsDock";
+import { EqWatchlistHead as EqWatchlistHeadComponent } from "#/ui/equities/watchlist/EqWatchlistHead";
+import { SectorHeatmap as SectorHeatmapComponent } from "#/ui/equities/watchlist/SectorHeatmap";
+import { WatchlistPanel as WatchlistPanelComponent } from "#/ui/equities/watchlist/WatchlistPanel";
 import { AnalyticsHead as AnalyticsHeadComponent } from "#/ui/fx/analytics/AnalyticsHead";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
 import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
@@ -638,6 +684,168 @@ export const registry = new Map<AnyToken, ElementFor>([
           onClose={(p().onClose as () => void) ?? ((): void => {})}
         />
       );
+    },
+  ],
+  [
+    OrderTicket,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return <OrderTicketComponent symbol={p().symbol as string | undefined} />;
+    },
+  ],
+  [
+    InstrumentTabs,
+    (): JSX.Element => {
+      return <InstrumentTabsComponent />;
+    },
+  ],
+  [
+    ChartPanel,
+    (): JSX.Element => {
+      return <ChartPanelComponent />;
+    },
+  ],
+  [
+    InstrumentHeader,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <InstrumentHeaderComponent
+          symbol={(p().symbol as string) ?? ""}
+          instrumentName={p().instrumentName as string | undefined}
+          exchange={p().exchange as string | undefined}
+          quote={(p().quote as EquityQuote | null) ?? null}
+          candles={(p().candles as readonly Candle[]) ?? []}
+          flashOn={(p().flashOn as boolean) ?? false}
+          flashDir={(p().flashDir as "up" | "down") ?? "up"}
+        />
+      );
+    },
+  ],
+  [
+    CandleChart,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return <CandleChartComponent vm={p().vm as ChartVm} />;
+    },
+  ],
+  [
+    TimeframePills,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <TimeframePillsComponent
+          tf={(p().tf as CandleTimeframe) ?? "1D"}
+          onSet={
+            (p().onSet as (tf: CandleTimeframe) => void) ?? ((): void => {})
+          }
+        />
+      );
+    },
+  ],
+  [
+    EqChartHead,
+    (): JSX.Element => {
+      return <EqChartHeadComponent />;
+    },
+  ],
+  [
+    WatchlistPanel,
+    (): JSX.Element => {
+      return <WatchlistPanelComponent />;
+    },
+  ],
+  [
+    EqWatchlistHead,
+    (): JSX.Element => {
+      return <EqWatchlistHeadComponent />;
+    },
+  ],
+  [
+    EqTicketHead,
+    (): JSX.Element => {
+      return <EqTicketHeadComponent />;
+    },
+  ],
+  [
+    SectorHeatmap,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <SectorHeatmapComponent
+          selectedSymbol={(p().selectedSymbol as string | null) ?? null}
+          onSelect={
+            (p().onSelect as (symbol: string) => void) ?? ((): void => {})
+          }
+        />
+      );
+    },
+  ],
+  [
+    DepthLadder,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return <DepthLadderComponent symbol={(p().symbol as string) ?? "AAPL"} />;
+    },
+  ],
+  [
+    EqDepthDock,
+    (): JSX.Element => {
+      return <EqDepthDockComponent />;
+    },
+  ],
+  [
+    EqSectorsDock,
+    (): JSX.Element => {
+      return <EqSectorsDockComponent />;
+    },
+  ],
+  [
+    DeskPnlGauge,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <DeskPnlGaugeComponent
+          positions={(p().positions as readonly EquityPosition[]) ?? []}
+        />
+      );
+    },
+  ],
+  [
+    PnlSparkline,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <PnlSparklineComponent
+          pnl={(p().pnl as number) ?? 0}
+          maxAbsPnl={p().maxAbsPnl as number | undefined}
+        />
+      );
+    },
+  ],
+  [
+    OrdersTable,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <OrdersTableComponent
+          orders={(p().orders as readonly EquityOrder[]) ?? []}
+          newOrderId={(p().newOrderId as string | null) ?? null}
+        />
+      );
+    },
+  ],
+  [
+    PositionsTable,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <PositionsTableComponent
+          positions={(p().positions as readonly EquityPosition[]) ?? []}
+        />
+      );
+    },
+  ],
+  [
+    EqBlotterPanel,
+    (): JSX.Element => {
+      return <EqBlotterPanelComponent />;
+    },
+  ],
+  [
+    EqBlotterHead,
+    (): JSX.Element => {
+      return <EqBlotterHeadComponent />;
     },
   ],
 ]);

@@ -2,6 +2,10 @@ import type { JSX } from "solid-js";
 
 import type { PanelId } from "@rtc/client-core";
 
+import { EqBlotterHead } from "#/ui/equities/blotter/EqBlotterHead";
+import { EqChartHead } from "#/ui/equities/chart/EqChartHead";
+import { EqTicketHead } from "#/ui/equities/ticket/EqTicketHead";
+import { EqWatchlistHead } from "#/ui/equities/watchlist/EqWatchlistHead";
 import { AnalyticsHead } from "#/ui/fx/analytics/AnalyticsHead";
 import { FxBlotterHead } from "#/ui/fx/blotter/FxBlotterHead";
 import { LiveRatesHead } from "#/ui/fx/liveRates/LiveRatesHead";
@@ -9,8 +13,8 @@ import { PositionsHead } from "#/ui/fx/positions/PositionsHead";
 
 /** The real id→head-slot map, passed to InhouseLayoutEngine's headRegistry
  * prop. Panel ids without an entry fall back to the engine's default title
- * span. FX-only so far (Task 13) — mirrors `appPanelRegistry.tsx`'s scope;
- * Credit/Equities/Admin entries land with Tasks 14-16. */
+ * span. FX + Equities so far (Tasks 13/15) — mirrors `appPanelRegistry.tsx`'s
+ * scope; Credit/Admin entries land with Tasks 14/16. */
 export const appHeadRegistry: Partial<Record<PanelId, () => JSX.Element>> = {
   "fx-rates": () => {
     return <LiveRatesHead />;
@@ -23,5 +27,17 @@ export const appHeadRegistry: Partial<Record<PanelId, () => JSX.Element>> = {
   },
   "fx-blotter": () => {
     return <FxBlotterHead />;
+  },
+  "eq-chart": () => {
+    return <EqChartHead />;
+  },
+  "eq-blotter": () => {
+    return <EqBlotterHead />;
+  },
+  "eq-ticket": () => {
+    return <EqTicketHead />;
+  },
+  "eq-watchlist": () => {
+    return <EqWatchlistHead />;
   },
 };
