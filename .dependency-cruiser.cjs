@@ -86,6 +86,16 @@ module.exports = {
       },
     },
     {
+      name: "devtools-extension-is-a-leaf",
+      severity: "error",
+      comment:
+        "@rtc/devtools-extension is a leaf consumer of the devtools pair — it may import only devtools-core (transport/protocol/store) and devtools-app (InspectorApp), never a client/server/domain package.",
+      from: { path: "^packages/devtools-extension/src" },
+      to: {
+        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects)/",
+      },
+    },
+    {
       name: "motion-core-stays-pure",
       severity: "error",
       comment:
