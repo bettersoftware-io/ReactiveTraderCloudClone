@@ -2,6 +2,7 @@ export const TESTIDS = {
   shell: {
     header: "header",
     themeToggle: "theme-toggle",
+    powerSaverToggle: "power-saver-toggle",
     tab: (tab: "fx" | "credit" | "admin") => {
       return `tab-${tab}`;
     },

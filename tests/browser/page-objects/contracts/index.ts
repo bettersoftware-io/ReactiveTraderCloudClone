@@ -10,6 +10,7 @@ import type { LayoutPO } from "./Layout";
 import type { LiveRatesTilePO } from "./LiveRatesTile";
 import type { LoginScreenPO } from "./LoginScreen";
 import type { PositionsPanelPO } from "./PositionsPanel";
+import type { PowerSaverPO } from "./PowerSaver";
 import type { ThemeTogglePO } from "./ThemeToggle";
 import type { WorkspacePO } from "./Workspace";
 
@@ -34,4 +35,7 @@ export interface PageObjects {
    *  context. Only the Playwright factory provides it — every OTHER page
    *  object relies on the pre-authenticated seeded context. */
   login?: LoginScreenPO;
+  /** Optional: the header power-saver quick toggle + document flag. Only the
+   *  Playwright factory provides it (see {@link PowerSaverPO}). */
+  powerSaver?: PowerSaverPO;
 }
