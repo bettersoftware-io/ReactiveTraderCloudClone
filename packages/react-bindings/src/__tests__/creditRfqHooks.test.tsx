@@ -6,8 +6,10 @@ import {
   createApp,
   createMachineFactories,
   createSimulatorPorts,
+  InMemorySessionStore,
 } from "@rtc/client-core";
 import {
+  AuthSimulator,
   ConnectionEventsSimulator,
   Direction,
   PreferencesSimulator,
@@ -62,7 +64,11 @@ function makeHooks(): ViewModel {
 
   function createSimPorts(): AppPorts {
     return {
-      ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
+      ...createSimulatorPorts({
+        preferences: new PreferencesSimulator(),
+        auth: new AuthSimulator({}),
+        sessionStore: new InMemorySessionStore(),
+      }),
       connectionEvents: new ConnectionEventsSimulator(),
     };
   }
