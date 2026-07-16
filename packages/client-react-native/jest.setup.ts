@@ -1,5 +1,5 @@
+import { jest } from "@jest/globals";
 import "@testing-library/react-native";
-
 // Gesture-handler ships an official jest setup (stubs the native gesture module).
 import "react-native-gesture-handler/jestSetup";
 
