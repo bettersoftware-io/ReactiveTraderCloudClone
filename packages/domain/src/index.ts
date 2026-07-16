@@ -1,3 +1,9 @@
+// Auth
+
+export type { SessionUser } from "./auth/sessionUser.js";
+export type { RosterEntry } from "./auth/roster.js";
+export { findRosterUser, ROSTER } from "./auth/roster.js";
+
 // FX
 
 export type { CurrencyPositionNode } from "./analytics/aggregatePositions.js";
@@ -103,6 +109,7 @@ export {
 } from "./fx/trade.js";
 export type { AdminPort } from "./ports/adminPort.js";
 export type { AnalyticsPort } from "./ports/analyticsPort.js";
+export type { AuthOutcome, AuthPort } from "./ports/authPort.js";
 export type { BlotterPort } from "./ports/blotterPort.js";
 export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
 export type { DealerPort } from "./ports/dealerPort.js";
