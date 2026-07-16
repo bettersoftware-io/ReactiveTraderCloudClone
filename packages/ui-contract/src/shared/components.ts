@@ -160,6 +160,7 @@ import {
 } from "./pages/fx/liveRates/tile/TileRfqPage";
 import { PositionsHeadPage } from "./pages/fx/positions/PositionsHeadPage";
 import { PositionsPanelPage } from "./pages/fx/positions/PositionsPanelPage";
+import { AuthGatePage } from "./pages/shell/auth/AuthGatePage";
 import { LoginScreenPage } from "./pages/shell/auth/LoginScreenPage";
 import { AmbientBackgroundPage } from "./pages/shell/background/AmbientBackgroundPage";
 import { BootGatePage } from "./pages/shell/boot/BootGatePage";
@@ -485,6 +486,12 @@ export const LockScreen = component<Record<string, never>, LockScreenPage>(
 export const LoginScreen = component<Record<string, never>, LoginScreenPage>(
   (ctx) => {
     return new LoginScreenPage(ctx);
+  },
+);
+
+export const AuthGate = component<Record<string, never>, AuthGatePage>(
+  (ctx) => {
+    return new AuthGatePage(ctx);
   },
 );
 
