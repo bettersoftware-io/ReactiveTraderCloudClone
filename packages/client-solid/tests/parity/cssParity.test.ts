@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 // exist on both sides); once flipped it additionally asserts the file SETS
 // are identical, so a component landing in client-react's src/ui without a
 // Solid counterpart (or vice versa) fails the build.
-const PARITY_COMPLETE = false;
+const PARITY_COMPLETE = true;
 
 // Both roots resolved from this file's own location (not cwd) so the test
 // works regardless of the invoking directory. This is a test file — reading
