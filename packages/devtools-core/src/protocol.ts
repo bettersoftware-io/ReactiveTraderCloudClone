@@ -1,6 +1,6 @@
 import type { SerializedValue } from "./serialize";
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 interface EventBase {
   /** Monotonic per-hub sequence number. */
@@ -85,7 +85,7 @@ export interface SnapshotMachine {
 }
 
 export type AppToInspector =
-  | { kind: "welcome"; v: number; appId: string }
+  | { kind: "welcome"; v: number; appId: string; dev?: boolean }
   | {
       kind: "snapshot";
       streams: readonly SnapshotStream[];
@@ -97,6 +97,15 @@ export type AppToInspector =
 export type InspectorToApp =
   | { kind: "hello"; v: number }
   | { kind: "ping" }
+  | {
+      /** DevTools' first inbound WRITE: fire a live machine's intent from the
+       * inspector. Handled only in dev builds (compiled out of prod — see
+       * DevtoolsHub.attachTransport). `args` is the intent's argument tuple. */
+      kind: "intent:invoke";
+      machineId: string;
+      name: string;
+      args: readonly unknown[];
+    }
   | { kind: "bye" };
 
 /** Which members of a presenter the instrumentation should register.
