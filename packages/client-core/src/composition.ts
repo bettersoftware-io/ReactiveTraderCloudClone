@@ -53,6 +53,7 @@ import {
   type MachineFactories,
   OrdersBlotterPresenter,
   PositionsPresenter,
+  PowerSaverPresenter,
   PriceHistoryPresenter,
   PriceStreamPresenter,
   RfqQuotePresenter,
@@ -110,6 +111,7 @@ export interface Presenters {
   themePreference: ThemePreferencePresenter;
   themeSkinPreference: ThemeSkinPreferencePresenter;
   animatedBackground: AnimatedBackgroundPresenter;
+  powerSaver: PowerSaverPresenter;
   viewModePreference: ViewModePreferencePresenter;
   creditRfqFilterPreference: CreditRfqFilterPreferencePresenter;
   /** Equities watchlist sort-mode preference (the head's ⇅ cycle control). */
@@ -262,6 +264,7 @@ export function createApp(ports: AppPorts): App {
     ),
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
+    powerSaver: new PowerSaverPresenter(ports.preferences),
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
     creditRfqFilterPreference: new CreditRfqFilterPreferencePresenter(
       ports.preferences,

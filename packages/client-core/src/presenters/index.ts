@@ -29,6 +29,7 @@ export * from "#/presenters/NotionalMachine";
 export * from "#/presenters/OrdersBlotterPresenter";
 export * from "#/presenters/OrderTicketMachine";
 export * from "#/presenters/PositionsPresenter";
+export * from "#/presenters/PowerSaverPresenter";
 export * from "#/presenters/PriceHistoryPresenter";
 export * from "#/presenters/PriceStreamPresenter";
 export * from "#/presenters/RfqCountdownMachine";
