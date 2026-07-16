@@ -195,4 +195,14 @@ describe("HeaderChrome", () => {
     await header.lockSession();
     expect(header.lockCount()).toBe(1);
   });
+
+  it("logs out through the seam from the account menu's SIGN OUT row", async () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+    });
+    await header.openAccount();
+    expect(header.logoutCount()).toBe(0);
+    await header.clickLogout();
+    expect(header.logoutCount()).toBe(1);
+  });
 });
