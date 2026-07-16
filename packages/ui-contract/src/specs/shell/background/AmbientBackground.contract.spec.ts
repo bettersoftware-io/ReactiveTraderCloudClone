@@ -23,4 +23,22 @@ describe("AmbientBackground", () => {
     const page = mount(AmbientBackground, { animatedBackground: true });
     expect(page.ariaHidden()).toBe("true");
   });
+
+  it("keeps only the static grid+vignette when power saver is on", () => {
+    const page = mount(AmbientBackground, {
+      animatedBackground: true,
+      powerSaver: true,
+    });
+    expect(page.powerSaverFlag()).toBe("true");
+    expect(page.hasAuroraLayers()).toBe(false);
+  });
+
+  it("renders the full aurora stack when power saver is off", () => {
+    const page = mount(AmbientBackground, {
+      animatedBackground: true,
+      powerSaver: false,
+    });
+    expect(page.powerSaverFlag()).toBe("false");
+    expect(page.hasAuroraLayers()).toBe(true);
+  });
 });
