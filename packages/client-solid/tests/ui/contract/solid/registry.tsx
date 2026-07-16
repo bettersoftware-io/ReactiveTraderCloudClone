@@ -9,6 +9,9 @@ import {
   BootSequence,
   ConnectionOverlay,
   ConnectionStatusBar,
+  CreditBlotter,
+  CreditBlotterHead,
+  CreditBlotterWorkspace,
   CurrencyFilter,
   DateFilter,
   FxBlotter,
@@ -18,6 +21,8 @@ import {
   LiveRatesPanel,
   LiveRatesWorkspace,
   LockScreen,
+  NewRfqHead,
+  NewRfqPanel,
   NumberFilter,
   PairPnlBars,
   PnlChart,
@@ -27,6 +32,10 @@ import {
   PreferencesModal,
   QuickFilter,
   RfqCountdown,
+  RfqFilterPills,
+  RfqsHead,
+  RfqsPanel,
+  SellSidePanel,
   SetFilter,
   SpreadDisplay,
   StaleIndicator,
@@ -40,6 +49,7 @@ import {
   TileNotional,
   TilePrice,
   TileRfq,
+  TradeTicket,
 } from "@ui-contract/components";
 import type {
   ComponentToken,
@@ -58,16 +68,29 @@ import type {
   TileExecutionState,
 } from "@rtc/client-core";
 import type {
+  CreditRfqFilter,
   CurrencyCategory,
   CurrencyPair,
   CurrencyPairPosition,
   Direction,
   HistoricPosition,
+  Instrument,
   Price,
   PriceMovementType,
+  Quote,
+  Rfq,
   Trade,
 } from "@rtc/domain";
 
+import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
+import { CreditBlotterHead as CreditBlotterHeadComponent } from "#/ui/credit/blotter/CreditBlotterHead";
+import { NewRfqHead as NewRfqHeadComponent } from "#/ui/credit/newRfq/NewRfqHead";
+import { NewRfqPanel as NewRfqPanelComponent } from "#/ui/credit/newRfq/NewRfqPanel";
+import { RfqFilterPills as RfqFilterPillsComponent } from "#/ui/credit/rfqs/RfqFilterPills";
+import { RfqsHead as RfqsHeadComponent } from "#/ui/credit/rfqs/RfqsHead";
+import { RfqsPanel as RfqsPanelComponent } from "#/ui/credit/rfqs/RfqsPanel";
+import { SellSidePanel as SellSidePanelComponent } from "#/ui/credit/sellSide/SellSidePanel";
+import { TradeTicket as TradeTicketComponent } from "#/ui/credit/sellSide/TradeTicket";
 import { AnalyticsHead as AnalyticsHeadComponent } from "#/ui/fx/analytics/AnalyticsHead";
 import { AnalyticsPanel as AnalyticsPanelComponent } from "#/ui/fx/analytics/AnalyticsPanel";
 import { PairPnlBars as PairPnlBarsComponent } from "#/ui/fx/analytics/PairPnlBars";
@@ -379,6 +402,91 @@ export const registry = new Map<AnyToken, ElementFor>([
             noopFilter
           }
         />
+      );
+    },
+  ],
+  [
+    NewRfqPanel,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <NewRfqPanelComponent
+          onCreated={
+            (p().onCreated as (id: number) => void) ?? ((): void => {})
+          }
+        />
+      );
+    },
+  ],
+  [
+    NewRfqHead,
+    (): JSX.Element => {
+      return <NewRfqHeadComponent />;
+    },
+  ],
+  [
+    RfqsPanel,
+    (): JSX.Element => {
+      return <RfqsPanelComponent />;
+    },
+  ],
+  [
+    RfqsHead,
+    (): JSX.Element => {
+      return <RfqsHeadComponent />;
+    },
+  ],
+  [
+    RfqFilterPills,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <RfqFilterPillsComponent
+          filter={(p().filter as CreditRfqFilter) ?? "live"}
+          liveCount={(p().liveCount as string) ?? ""}
+          onFilter={
+            (p().onFilter as (f: CreditRfqFilter) => void) ?? ((): void => {})
+          }
+        />
+      );
+    },
+  ],
+  [
+    SellSidePanel,
+    (): JSX.Element => {
+      return <SellSidePanelComponent />;
+    },
+  ],
+  [
+    TradeTicket,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <TradeTicketComponent
+          rfq={p().rfq as Rfq}
+          quote={p().quote as Quote}
+          instrument={p().instrument as Instrument | undefined}
+        />
+      );
+    },
+  ],
+  [
+    CreditBlotter,
+    (): JSX.Element => {
+      return <CreditBlotterComponent />;
+    },
+  ],
+  [
+    CreditBlotterHead,
+    (): JSX.Element => {
+      return <CreditBlotterHeadComponent />;
+    },
+  ],
+  [
+    CreditBlotterWorkspace,
+    (): JSX.Element => {
+      return (
+        <>
+          <CreditBlotterHeadComponent />
+          <CreditBlotterComponent />
+        </>
       );
     },
   ],

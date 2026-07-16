@@ -1,8 +1,9 @@
 import type { JSX } from "solid-js";
-import { createSignal, Show } from "solid-js";
+import { createSignal, Match, Switch } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
+import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
 import { FxViewProvider } from "#/ui/fx/FxViewProvider";
 
 import { AmbientBackground } from "./shell/background/AmbientBackground";
@@ -17,13 +18,14 @@ import { StatusBar } from "./shell/status/StatusBar";
 import styles from "./App.module.css";
 
 /** Shell chrome wired to the real ViewModel (Task 9 — theme/chrome/boot/lock)
- * plus the FX tab's live layout engine (Task 10 — layout-engine cluster) and
- * the real FX panel subtree (Task 13 — liveRates/tiles/blotter/analytics/
- * positions via `appPanelRegistry`/`appHeadRegistry`). Credit/Equities/Admin
- * stay the plain placeholder div until their own subtrees land (Tasks
- * 14-16), at which point they join the FX tab under one shared
- * WorkspaceEngine (mirroring the react `App.tsx`'s single unconditional
- * `WorkspaceEngine` for every tab) instead of this per-tab `<Show>` gate. */
+ * plus the FX tab's live layout engine (Task 10 — layout-engine cluster), the
+ * real FX panel subtree (Task 13), and the real Credit panel subtree (Task
+ * 14 — rfqs/newRfq/sellSide/blotter via the SAME `appPanelRegistry`/
+ * `appHeadRegistry`, keyed by panel id). Equities/Admin stay the plain
+ * placeholder div until their own subtrees land (Tasks 15-16), at which
+ * point every tab joins under one shared WorkspaceEngine (mirroring the
+ * react `App.tsx`'s single unconditional `WorkspaceEngine` for every tab)
+ * instead of this per-tab `<Switch>` gate. */
 export function App(): JSX.Element {
   const [activeTab, setActiveTab] = createSignal<WorkspaceTab>("fx");
 
@@ -31,12 +33,14 @@ export function App(): JSX.Element {
     <div class={styles.app}>
       <AmbientBackground />
       <HeaderChrome activeTab={activeTab()} onTabChange={setActiveTab} />
-      <Show
-        when={activeTab() === "fx"}
-        fallback={<div data-testid="pending-panel" />}
-      >
-        <FxWorkspace />
-      </Show>
+      <Switch fallback={<div data-testid="pending-panel" />}>
+        <Match when={activeTab() === "fx"}>
+          <FxWorkspace />
+        </Match>
+        <Match when={activeTab() === "credit"}>
+          <CreditWorkspace />
+        </Match>
+      </Switch>
       <StatusBar />
       <ConnectionOverlay />
       <LockScreen />
@@ -70,5 +74,36 @@ function FxWorkspace(): JSX.Element {
         onResize={resize}
       />
     </FxViewProvider>
+  );
+}
+
+/** Owns the credit tab's `useLayout("credit")` machine and the
+ * CreditViewContext seam (quick filter, CSV export handoff) consumed by the
+ * credit-blotter panel's head/body below it — the same per-tab-mount/
+ * unmount lifecycle as FxWorkspace above. Only `<CreditViewProvider>` wraps
+ * it (not also `<FxViewProvider>`): none of the credit panels read
+ * `useFxView`, so nesting the FX seam here would be a no-op wrapper implying
+ * a relationship that doesn't exist — the react `App.tsx`'s single shared
+ * `WorkspaceEngine` nests both providers for EVERY tab only because it is
+ * one component instance serving all tabs at once; this per-tab `<Switch>`
+ * doesn't have that constraint. */
+function CreditWorkspace(): JSX.Element {
+  const { useLayout } = useViewModel();
+  const { state, maximize, restore, collapse, expand, resize } =
+    useLayout("credit");
+
+  return (
+    <CreditViewProvider>
+      <InhouseLayoutEngine
+        state={state()}
+        registry={appPanelRegistry}
+        headRegistry={appHeadRegistry}
+        onMaximize={maximize}
+        onRestore={restore}
+        onCollapse={collapse}
+        onExpand={expand}
+        onResize={resize}
+      />
+    </CreditViewProvider>
   );
 }

@@ -12,6 +12,7 @@ import type { BehaviorSubject } from "rxjs";
 
 import { ViewModelProvider } from "@rtc/solid-bindings";
 
+import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
 import { FxViewProvider } from "#/ui/fx/FxViewProvider";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
@@ -26,11 +27,8 @@ interface RenderArgs {
 
 /**
  * The Solid counterpart of the react driver's `reactDriver`. Provider stack
- * mirrors the react driver's (`ViewModelProvider → ThemeProvider →
- * FxViewProvider → …`) minus `CreditViewProvider`, which doesn't exist in
- * `@rtc/client-solid` yet (Task 14 ports it alongside the Credit component
- * tree — nest it here the same way the react driver does, right where its
- * `<CreditViewProvider>` sits, once it lands). BootGate is NOT part of this
+ * mirrors the react driver's exactly (`ViewModelProvider → ThemeProvider →
+ * FxViewProvider → CreditViewProvider → …`). BootGate is NOT part of this
  * stack, mirroring the react driver — it is a registry entry like every
  * other mounted component, not a global wrapper, so the harness can mount it
  * standalone with the `boot-gate-child` test double).
@@ -61,7 +59,9 @@ export const solidDriver: UiContractDriver = {
         <ViewModelProvider viewModel={viewModel}>
           <ThemeProvider>
             <FxViewProvider>
-              <PropsHost subject={propsSubject} build={build} />
+              <CreditViewProvider>
+                <PropsHost subject={propsSubject} build={build} />
+              </CreditViewProvider>
             </FxViewProvider>
           </ThemeProvider>
         </ViewModelProvider>
