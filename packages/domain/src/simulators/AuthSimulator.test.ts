@@ -1,5 +1,6 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
+
 import { AuthSimulator } from "#/simulators/AuthSimulator";
 
 const sim = new AuthSimulator({ demo: "localpass", astark: "localpass" });

@@ -1,8 +1,8 @@
 // Auth
 
-export type { SessionUser } from "./auth/sessionUser.js";
 export type { RosterEntry } from "./auth/roster.js";
 export { findRosterUser, ROSTER } from "./auth/roster.js";
+export type { SessionUser } from "./auth/sessionUser.js";
 
 // FX
 
@@ -174,8 +174,8 @@ export type {
 // Simulators (in-memory port implementations)
 export {
   AnalyticsSimulator,
-  aggregateCandle,
   AuthSimulator,
+  aggregateCandle,
   ConnectionEventsSimulator,
   CreditRfqSimulator,
   DEALERS_CATALOG,

@@ -7,7 +7,10 @@ export interface RateLimiter {
   hit(key: string, now: number): boolean;
 }
 
-export function createRateLimiter(maxPerWindow: number, windowMs: number): RateLimiter {
+export function createRateLimiter(
+  maxPerWindow: number,
+  windowMs: number,
+): RateLimiter {
   const windows = new Map<string, WindowState>();
 
   return {

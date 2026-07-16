@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { signToken, verifyToken } from "#/auth/token";
 
 const SECRET = "test-secret";
@@ -15,7 +16,7 @@ describe("token", () => {
   });
   it("rejects a tampered payload", () => {
     const t = signToken("demo", SECRET, 60_000, NOW);
-    const [payload, sig] = t.split(".");
+    const [, sig] = t.split(".");
     const forged = `${Buffer.from('{"u":"admin","exp":9e15}').toString("base64url")}.${sig}`;
     expect(verifyToken(forged, SECRET, NOW)).toBeNull();
   });

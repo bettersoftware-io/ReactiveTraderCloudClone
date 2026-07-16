@@ -1,6 +1,7 @@
 import { type Observable, of } from "rxjs";
-import type { AuthOutcome, AuthPort } from "../ports/authPort.js";
+
 import { findRosterUser } from "../auth/roster.js";
+import type { AuthOutcome, AuthPort } from "../ports/authPort.js";
 
 export interface DevCredentials {
   readonly [username: string]: string;

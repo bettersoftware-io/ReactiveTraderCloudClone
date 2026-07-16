@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { isLoginRequestDto } from "#/protocol/auth";
 
 describe("isLoginRequestDto", () => {
