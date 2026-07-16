@@ -55,7 +55,7 @@ Flow: `app.config.ts` reads these into `extra.wsToken` / `extra.serverUrl` →
 > connect" trap.
 
 Full walkthrough (server side + client side): the RN package README,
-[Live data & the WebSocket access token](../packages/client-react-native/README.md#live-data--the-websocket-access-token-expo_public_ws_token).
+[Live data, auto-login & the demo credential](../packages/client-react-native/README.md#live-data-auto-login--the-demo-credential-expo_public_demo_userexpo_public_demo_pass).
 
 ### `.env.local` (repo root) — a Vercel CLI artifact, not app config
 
@@ -127,5 +127,5 @@ EXPO_PUBLIC_WS_TOKEN=<candidate> pnpm --filter @rtc/client-react-native smoke:ws
 
 - [DEPLOY.md](./DEPLOY.md) — Fly + Vercel setup, the deploy workflow, and
   password/token rotation.
-- [client-react-native README](../packages/client-react-native/README.md#live-data--the-websocket-access-token-expo_public_ws_token) —
+- [client-react-native README](../packages/client-react-native/README.md#live-data-auto-login--the-demo-credential-expo_public_demo_userexpo_public_demo_pass) —
   the mobile token walkthrough end to end.
