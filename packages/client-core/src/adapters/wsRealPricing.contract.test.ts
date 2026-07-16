@@ -1,4 +1,4 @@
-import type { PreferencesPort } from "@rtc/domain";
+import { AuthSimulator, type PreferencesPort } from "@rtc/domain";
 import { describePricingPortContract } from "@rtc/domain/ports/__contracts__/PricingPortContract";
 import {
   priceHistoryResponse,
@@ -7,11 +7,16 @@ import {
 
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { InMemorySessionStore } from "./InMemorySessionStore";
 import { createWsRealPorts } from "./portFactory";
 
 describePricingPortContract("wsRealPricing", () => {
   const ws = new FakeWsAdapter();
-  const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
+  const ports = createWsRealPorts(ws, {
+    preferences: {} as PreferencesPort,
+    auth: new AuthSimulator({}),
+    sessionStore: new InMemorySessionStore(),
+  });
   return {
     port: ports.pricing,
     driver: {

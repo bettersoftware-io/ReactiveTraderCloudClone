@@ -1,14 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { ConnectionEventsSimulator, PreferencesSimulator } from "@rtc/domain";
+import {
+  AuthSimulator,
+  ConnectionEventsSimulator,
+  PreferencesSimulator,
+} from "@rtc/domain";
 
+import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp, createMachineFactories } from "#/composition";
 
 describe("layout machine factory", () => {
   it("builds a layout machine seeded with the tab's default arrangement", () => {
     const { presenters } = createApp({
-      ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
+      ...createSimulatorPorts({
+        preferences: new PreferencesSimulator(),
+        auth: new AuthSimulator({}),
+        sessionStore: new InMemorySessionStore(),
+      }),
       connectionEvents: new ConnectionEventsSimulator(),
     });
     const machines = createMachineFactories(presenters);

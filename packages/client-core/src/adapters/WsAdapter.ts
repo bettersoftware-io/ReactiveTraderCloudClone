@@ -8,6 +8,7 @@ import { type Observable, ReplaySubject } from "rxjs";
 import type { ConnectionEvent } from "@rtc/domain";
 
 import type { IWsAdapter, MessageHandler } from "#/adapters/IWsAdapter";
+import { buildWsUrl } from "#/wsUrl";
 
 interface WsMessage {
   readonly type: string;
@@ -31,6 +32,8 @@ export class WsAdapter implements IWsAdapter {
 
   private readonly url: string;
 
+  private readonly tokenProvider: () => string | undefined;
+
   private readonly reconnectDelayMs: number;
 
   private readonly handlers = new Map<string, Set<MessageHandler>>();
@@ -53,8 +56,13 @@ export class WsAdapter implements IWsAdapter {
 
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
-  constructor(url: string, options: WsAdapterOptions = {}) {
+  constructor(
+    url: string,
+    tokenProvider: () => string | undefined,
+    options: WsAdapterOptions = {},
+  ) {
     this.url = url;
+    this.tokenProvider = tokenProvider;
     this.reconnectDelayMs =
       options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
     this.connect();
@@ -65,7 +73,11 @@ export class WsAdapter implements IWsAdapter {
       return;
     }
 
-    this.ws = new WebSocket(this.url);
+    // Read the token fresh on every (re)connect — never baked into `url` — so
+    // a token that changes between disconnects (e.g. re-login) is picked up
+    // without recreating the adapter.
+    const target = buildWsUrl(this.url, this.tokenProvider());
+    this.ws = new WebSocket(target);
 
     this.ws.onopen = (): void => {
       console.log("[WsAdapter] Connected to", this.url.split("?")[0]);

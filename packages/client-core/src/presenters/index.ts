@@ -1,3 +1,5 @@
+export type { SessionUser } from "@rtc/domain";
+
 export * from "#/presenters/AnalyticsPresenter";
 export * from "#/presenters/AnimatedBackgroundPresenter";
 export * from "#/presenters/AnimationDirector";
@@ -35,7 +37,6 @@ export * from "#/presenters/RfqsPresenter";
 export * from "#/presenters/RfqTileMachine";
 export * from "#/presenters/RowHighlightMachine";
 export * from "#/presenters/ServiceTopologyPresenter";
-export * from "#/presenters/SessionPresenter";
 export * from "#/presenters/SessionsKpiPresenter";
 export * from "#/presenters/SessionsPresenter";
 export * from "#/presenters/StaleFlagMachine";
