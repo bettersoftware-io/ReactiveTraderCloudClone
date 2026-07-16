@@ -1,4 +1,7 @@
 import {
+  AdminDashboard,
+  AdminHead,
+  AdminPanel,
   AmbientBackground,
   AnalyticsHead,
   AnalyticsPanel,
@@ -28,9 +31,13 @@ import {
   FxBlotter,
   FxBlotterWorkspace,
   HeaderChrome,
+  IncidentControls,
   InstrumentHeader,
   InstrumentTabs,
+  KpiRow,
+  LatencyHistogram,
   LayoutEngine,
+  LiveEventLog,
   LiveRatesPanel,
   LiveRatesWorkspace,
   LockScreen,
@@ -54,12 +61,16 @@ import {
   RfqsPanel,
   SectorHeatmap,
   SellSidePanel,
+  ServiceHealth,
+  ServiceTopologyGraph,
+  SessionsPanel,
   SetFilter,
   SpreadDisplay,
   StaleIndicator,
   StatusBar,
   ThemePicker,
   ThemeToggle,
+  ThroughputChart,
   Tile,
   TileConfirmation,
   TileFooter,
@@ -108,6 +119,17 @@ import type {
 } from "@rtc/domain";
 import type { ChartVm } from "@rtc/motion-core";
 
+import { AdminDashboard as AdminDashboardComponent } from "#/ui/admin/AdminDashboard";
+import { AdminHead as AdminHeadComponent } from "#/ui/admin/AdminHead";
+import { AdminPanel as AdminPanelComponent } from "#/ui/admin/AdminPanel";
+import { IncidentControls as IncidentControlsComponent } from "#/ui/admin/IncidentControls";
+import { KpiRow as KpiRowComponent } from "#/ui/admin/kpis/KpiRow";
+import { LatencyHistogram as LatencyHistogramComponent } from "#/ui/admin/LatencyHistogram";
+import { LiveEventLog as LiveEventLogComponent } from "#/ui/admin/LiveEventLog";
+import { ServiceTopologyGraph as ServiceTopologyGraphComponent } from "#/ui/admin/ServiceTopologyGraph";
+import { SessionsPanel as SessionsPanelComponent } from "#/ui/admin/SessionsPanel";
+import { ServiceHealth as ServiceHealthComponent } from "#/ui/admin/services/ServiceHealth";
+import { ThroughputChart as ThroughputChartComponent } from "#/ui/admin/ThroughputChart";
 import { CreditBlotter as CreditBlotterComponent } from "#/ui/credit/blotter/CreditBlotter";
 import { CreditBlotterHead as CreditBlotterHeadComponent } from "#/ui/credit/blotter/CreditBlotterHead";
 import { NewRfqHead as NewRfqHeadComponent } from "#/ui/credit/newRfq/NewRfqHead";
@@ -751,6 +773,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     },
   ],
   [
+    AdminPanel,
+    (): JSX.Element => {
+      return <AdminPanelComponent />;
+    },
+  ],
+  [
     LayoutEngine,
     (p: Accessor<Record<string, unknown>>): JSX.Element => {
       const customHeadPanelIds =
@@ -954,6 +982,67 @@ export const registry = new Map<AnyToken, ElementFor>([
     EqBlotterHead,
     (): JSX.Element => {
       return <EqBlotterHeadComponent />;
+    },
+  ],
+  // Admin / telemetry components (Task 16)
+  [
+    IncidentControls,
+    (): JSX.Element => {
+      return <IncidentControlsComponent />;
+    },
+  ],
+  [
+    ServiceHealth,
+    (): JSX.Element => {
+      return <ServiceHealthComponent />;
+    },
+  ],
+  [
+    ServiceTopologyGraph,
+    (): JSX.Element => {
+      return <ServiceTopologyGraphComponent />;
+    },
+  ],
+  [
+    LiveEventLog,
+    (): JSX.Element => {
+      return <LiveEventLogComponent />;
+    },
+  ],
+  [
+    KpiRow,
+    (): JSX.Element => {
+      return <KpiRowComponent />;
+    },
+  ],
+  [
+    ThroughputChart,
+    (): JSX.Element => {
+      return <ThroughputChartComponent />;
+    },
+  ],
+  [
+    LatencyHistogram,
+    (): JSX.Element => {
+      return <LatencyHistogramComponent />;
+    },
+  ],
+  [
+    SessionsPanel,
+    (): JSX.Element => {
+      return <SessionsPanelComponent />;
+    },
+  ],
+  [
+    AdminDashboard,
+    (): JSX.Element => {
+      return <AdminDashboardComponent />;
+    },
+  ],
+  [
+    AdminHead,
+    (): JSX.Element => {
+      return <AdminHeadComponent />;
     },
   ],
 ]);

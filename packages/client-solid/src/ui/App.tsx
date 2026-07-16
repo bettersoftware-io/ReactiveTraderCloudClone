@@ -18,15 +18,14 @@ import { StatusBar } from "./shell/status/StatusBar";
 import styles from "./App.module.css";
 
 /** Shell chrome wired to the real ViewModel (Task 9 — theme/chrome/boot/lock)
- * plus the FX tab's live layout engine (Task 10 — layout-engine cluster), the
- * real FX panel subtree (Task 13), the real Credit panel subtree (Task 14 —
- * rfqs/newRfq/sellSide/blotter), and the real Equities panel subtree (Task
- * 15 — watchlist/chart/ticket/blotter), all via the SAME `appPanelRegistry`/
- * `appHeadRegistry`, keyed by panel id. Admin stays the plain placeholder
- * div until its own subtree lands (Task 16), at which point every tab joins
- * under one shared WorkspaceEngine (mirroring the react `App.tsx`'s single
- * unconditional `WorkspaceEngine` for every tab) instead of this per-tab
- * `<Switch>` gate. */
+ * plus every tab's live layout engine and panel subtree: FX (Tasks 10/13),
+ * Credit (Task 14 — rfqs/newRfq/sellSide/blotter), Equities (Task 15 —
+ * watchlist/chart/ticket/blotter), and Admin (Task 16 — KPIs/charts/topology/
+ * event-log/sessions/incident controls), all via the SAME `appPanelRegistry`/
+ * `appHeadRegistry`, keyed by panel id. With all four domains ported, the
+ * per-tab `<Switch>` gate collapses into one shared WorkspaceEngine
+ * (mirroring the react `App.tsx`'s single unconditional `WorkspaceEngine`
+ * for every tab) in the Phase 3 integration step. */
 export function App(): JSX.Element {
   const [activeTab, setActiveTab] = createSignal<WorkspaceTab>("fx");
 
@@ -43,6 +42,9 @@ export function App(): JSX.Element {
         </Match>
         <Match when={activeTab() === "equities"}>
           <EqWorkspace />
+        </Match>
+        <Match when={activeTab() === "admin"}>
+          <AdminWorkspace />
         </Match>
       </Switch>
       <StatusBar />
@@ -137,5 +139,31 @@ function CreditWorkspace(): JSX.Element {
         onResize={resize}
       />
     </CreditViewProvider>
+  );
+}
+
+/** Owns the Admin tab's `useLayout("admin")` machine. No view-context seam of
+ * its own (unlike FX's FxViewContext) — the admin-dashboard panel reads
+ * straight off the ViewModel (useMetrics/useTopology/useEventLog/etc.), so
+ * there is nothing to provide here beyond the layout machine itself.
+ * Mounted (and its machine constructed) only while the Admin tab is active —
+ * the `<Switch>` above genuinely unmounts this component on switching away,
+ * running the machine's `onCleanup` disposal, mirroring `FxWorkspace`. */
+function AdminWorkspace(): JSX.Element {
+  const { useLayout } = useViewModel();
+  const { state, maximize, restore, collapse, expand, resize } =
+    useLayout("admin");
+
+  return (
+    <InhouseLayoutEngine
+      state={state()}
+      registry={appPanelRegistry}
+      headRegistry={appHeadRegistry}
+      onMaximize={maximize}
+      onRestore={restore}
+      onCollapse={collapse}
+      onExpand={expand}
+      onResize={resize}
+    />
   );
 }

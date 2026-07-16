@@ -1,3 +1,4 @@
+import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";
 import { NewRfqPanel } from "#/ui/credit/newRfq/NewRfqPanel";
 import { RfqsPanel } from "#/ui/credit/rfqs/RfqsPanel";
@@ -28,11 +29,9 @@ function noop(): void {}
 /** The real id→module-root map. Panel ids are owned by defaultLayoutPort;
  * each maps to the same module root the react `appPanelRegistry.tsx` uses.
  *
- * FX + Credit + Equities so far (Tasks 13-15): the Admin panel module doesn't
- * exist in `@rtc/client-solid` yet — its entry lands with Task 16, mirroring
- * the react registry's full id set at that point. Until then, App.tsx keeps
- * the admin tab on its own `pending-panel` placeholder rather than mounting
- * this registry for it. */
+ * All four domains present (Tasks 13-16) — the full id set mirrors the react
+ * registry's exactly; every tab mounts this registry through its own
+ * workspace in App.tsx. */
 export const appPanelRegistry: PanelRegistry = {
   "fx-rates": () => {
     return <LiveRatesPanel />;
@@ -57,6 +56,9 @@ export const appPanelRegistry: PanelRegistry = {
   },
   "credit-sell-side": () => {
     return <SellSidePanel />;
+  },
+  "admin-dashboard": () => {
+    return <AdminDashboard />;
   },
   "eq-chart": () => {
     return <ChartPanel />;

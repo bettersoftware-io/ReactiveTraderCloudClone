@@ -18,11 +18,11 @@ const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
 // node_modules symlink) sidesteps that exclude entirely.
 const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 
-// Domains not yet ported to @rtc/client-solid (Task 13 landed FX + the
-// StaleIndicator it depends on; Tasks 14/15 landed Credit/Equities; Task 16
-// lands Admin) — excluded so the included set stays 100% green. Re-narrow
-// as each remaining domain's components land.
-const notYetPortedSpecs = [`${specsDir}/admin/**/*.contract.spec.ts`];
+// Every domain is now ported (Tasks 13-16: FX, Credit, Equities, Admin) —
+// the full @rtc/ui-contract spec set runs against Solid with nothing
+// excluded. The empty list stays (rather than deleting the wiring) so any
+// future spec-dir addition has an obvious, pre-plumbed staging mechanism.
+const notYetPortedSpecs: string[] = [];
 
 export default defineConfig({
   plugins: [solid()],

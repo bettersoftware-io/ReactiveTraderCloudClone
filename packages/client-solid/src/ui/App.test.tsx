@@ -64,7 +64,7 @@ describe("App (shell chrome)", () => {
     expect(screen.getByTestId("blotter-table")).toBeTruthy();
   });
 
-  it("switches to a not-yet-ported tab and shows the plain placeholder instead of the layout engine", () => {
+  it("switches to the admin tab and shows the live layout engine with the real admin dashboard", () => {
     render(() => {
       return (
         <AppRoot>
@@ -78,8 +78,13 @@ describe("App (shell chrome)", () => {
     expect(screen.getByTestId("tab-admin").getAttribute("data-active")).toBe(
       "true",
     );
-    expect(screen.queryByTestId("layout-engine")).toBeNull();
-    expect(screen.getAllByTestId("pending-panel")).toHaveLength(1);
+    // The admin tab is fully live (Task 16): the layout engine renders with
+    // the single admin-dashboard panel, whose body is the REAL admin subtree —
+    // no more `pending-panel` placeholders anywhere in the app (all four
+    // domains are ported as of Phase 3).
+    expect(screen.getByTestId("layout-engine")).toBeTruthy();
+    expect(screen.getByTestId("panel-admin-dashboard")).toBeTruthy();
+    expect(screen.queryAllByTestId("pending-panel")).toHaveLength(0);
   });
 
   it("switches to the credit tab and shows the live layout engine with real credit panel bodies", () => {
