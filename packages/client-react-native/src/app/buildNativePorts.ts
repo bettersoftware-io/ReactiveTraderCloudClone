@@ -3,22 +3,26 @@ import { merge, mergeMap, of, tap } from "rxjs";
 
 import {
   type AppPorts,
-  buildWsUrl,
   createSimulatorPorts,
   createWsRealPorts,
+  HttpAuthAdapter,
+  InMemorySessionStore,
   incident$,
   reconnect$,
   routeIdleLifecycle,
   WsAdapter,
   WsConnectionEventsAdapter,
+  wsUrlToHttpBase,
 } from "@rtc/client-core";
 import {
+  AuthSimulator,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
 } from "@rtc/domain";
 
 import { AppearanceColorSchemeAdapter } from "#/app/adapters/AppearanceColorSchemeAdapter";
 import { AsyncStoragePreferencesAdapter } from "#/app/adapters/AsyncStoragePreferencesAdapter";
+import { DEMO_PASSWORD, DEMO_USERNAME } from "#/app/nativeAuthConfig";
 
 interface BuildNativePortsOptions {
   simulator?: boolean;
@@ -43,6 +47,14 @@ export interface NativeComposition {
  * connectivity source is dropped; `colorScheme` is supplied by an
  * `Appearance`-backed adapter so "system" mode follows the device setting.
  *
+ * `sessionStore` is an `InMemorySessionStore` (not AsyncStorage-backed):
+ * `SessionStore` is synchronous but AsyncStorage is async, and RN auto-logs-in
+ * on every launch (`AppRoot`, Task 18) — so persisting a session across app
+ * restarts would be redundant work for no benefit. The real-WS branch drops
+ * the old static `wsToken` query-param gate for genuine session auth: the
+ * `WsAdapter` now reads its token fresh from `sessionStore` on every
+ * (re)connect, matching `buildBrowserPorts`.
+ *
  * The `simulator` option forces the simulator branch regardless of config — the
  * demo toggle (Task 6) drives it. */
 export function buildNativePorts(
@@ -52,12 +64,15 @@ export function buildNativePorts(
   const url = opts.simulator
     ? undefined
     : (extra.serverUrl as string | undefined);
-  const token = extra.wsToken as string | undefined;
+  const sessionStore = new InMemorySessionStore();
   const preferences = new AsyncStoragePreferencesAdapter();
   const colorScheme = new AppearanceColorSchemeAdapter();
 
   if (url) {
-    const ws = new WsAdapter(buildWsUrl(url, token));
+    const auth = new HttpAuthAdapter(wsUrlToHttpBase(url));
+    const ws = new WsAdapter(url, () => {
+      return sessionStore.read()?.token;
+    });
     const gateway = new WsConnectionEventsAdapter(ws);
     const connectionEvents: ConnectionEventsPort = {
       events: () => {
@@ -74,7 +89,7 @@ export function buildNativePorts(
     };
     return {
       ports: {
-        ...createWsRealPorts(ws, { preferences }),
+        ...createWsRealPorts(ws, { preferences, auth, sessionStore }),
         connectionEvents,
         colorScheme,
       },
@@ -101,9 +116,10 @@ export function buildNativePorts(
       );
     },
   };
+  const auth = new AuthSimulator({ [DEMO_USERNAME]: DEMO_PASSWORD });
   return {
     ports: {
-      ...createSimulatorPorts({ preferences }),
+      ...createSimulatorPorts({ preferences, auth, sessionStore }),
       connectionEvents,
       colorScheme,
     },

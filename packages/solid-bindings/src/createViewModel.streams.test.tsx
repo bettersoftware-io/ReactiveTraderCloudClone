@@ -8,6 +8,7 @@
 // in createViewModel.machines.test.tsx / createViewModel.eqWorkspace.firstRender.test.tsx.
 
 import { renderHook, waitFor } from "@solidjs/testing-library";
+import { type Observable, of } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -15,11 +16,16 @@ import {
   createApp,
   createMachineFactories,
   createSimulatorPorts,
+  InMemorySessionStore,
 } from "@rtc/client-core";
 import {
+  type AuthOutcome,
+  type AuthPort,
+  AuthSimulator,
   ConnectionEventsSimulator,
   KNOWN_CURRENCY_PAIRS,
   PreferencesSimulator,
+  type SessionUser,
 } from "@rtc/domain";
 
 import { createViewModel, type ViewModel } from "#/createViewModel";
@@ -232,17 +238,36 @@ describe("createViewModel — preferences", () => {
     expect(result.value()).toBe(250);
   });
 
-  it("useSession reads locked state plus lock/unlock intents", () => {
+  it("useAuth starts unauthenticated with no user", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {
-      return vm.useSession();
+      return vm.useAuth();
     });
 
-    expect(result.state().locked).toBe(false);
+    expect(result.state().status).toBe("unauthenticated");
+    expect(result.state().user).toBeNull();
+  });
+
+  it("useAuth login transitions to authenticated and sets the user, then lock/unlock/logout drive the rest of the lifecycle", () => {
+    const vm = makeViewModel({ authPort: createFakeAuthPort() });
+    const { result } = renderHook(() => {
+      return vm.useAuth();
+    });
+
+    result.login("demo", "pw");
+
+    expect(result.state().status).toBe("authenticated");
+    expect(result.state().user).toEqual(DEMO_USER);
+
     result.lock();
     expect(result.state().locked).toBe(true);
-    result.unlock();
+
+    result.unlock("pw");
     expect(result.state().locked).toBe(false);
+
+    result.logout();
+    expect(result.state().status).toBe("unauthenticated");
+    expect(result.state().user).toBeNull();
   });
 
   // Mirrors react-bindings' createViewModel.bootGate.firstRender.test.tsx: on
@@ -414,6 +439,9 @@ interface MakeViewModelOptions {
   /** Seed the boot gate hidden (the `?nosplash`/webdriver decision), like
    * react-bindings' bootGate first-render regression fixture. */
   bootSplashHidden?: boolean;
+  /** Override the AuthPort — used by the useAuth login-transition test to
+   * inject a deterministic fake instead of the real AuthSimulator. */
+  authPort?: AuthPort;
 }
 
 function makeViewModel(options: MakeViewModelOptions = {}): ViewModel {
@@ -428,7 +456,11 @@ function makeViewModel(options: MakeViewModelOptions = {}): ViewModel {
 
 function createSimPorts(options: MakeViewModelOptions): AppPorts {
   return {
-    ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
+    ...createSimulatorPorts({
+      preferences: new PreferencesSimulator(),
+      auth: options.authPort ?? new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    }),
     connectionEvents: new ConnectionEventsSimulator(),
     ...(options.bootSplashHidden
       ? {
@@ -439,5 +471,30 @@ function createSimPorts(options: MakeViewModelOptions): AppPorts {
           },
         }
       : {}),
+  };
+}
+
+const DEMO_USER: SessionUser = {
+  name: "Demo Trader",
+  initials: "DT",
+  role: "Trader",
+  id: "demo-1",
+  email: "demo@example.com",
+  desk: "FX",
+  clearance: "standard",
+};
+
+/** Deterministic fake AuthPort — resolves synchronously so `login`'s effect
+ * lands within the same render tick (mirrors `of(...)`'s synchronous
+ * emission), matching react-bindings' authHooks.test.tsx fixture. */
+function createFakeAuthPort(): AuthPort {
+  return {
+    login(username: string, password: string): Observable<AuthOutcome> {
+      if (username === "demo" && password === "pw") {
+        return of({ ok: true, token: "t", user: DEMO_USER });
+      }
+
+      return of({ ok: false, reason: "invalid" });
+    },
   };
 }

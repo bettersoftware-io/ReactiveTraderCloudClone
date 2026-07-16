@@ -4,6 +4,7 @@ import {
   type AdminPort,
   type AnalyticsPort,
   AnalyticsSimulator,
+  type AuthPort,
   type BlotterPort,
   type Candle,
   type CandleTimeframe,
@@ -79,6 +80,7 @@ import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
 
 import type { IWsAdapter } from "./IWsAdapter";
+import type { SessionStore } from "./sessionStore.js";
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
@@ -99,6 +101,8 @@ export interface AppPorts {
   serviceHealth: ServiceHealthPort;
   eventLog: EventLogPort;
   sessions: SessionsPort;
+  auth: AuthPort;
+  sessionStore: SessionStore;
   /** Perturbable controls passed to IncidentMachine — latency, errorRate, topology, eventLog sims. */
   metricControls: readonly MetricControl[];
   /** OS colour-scheme signal. Optional — omit in tests/simulators to default to light.
@@ -117,6 +121,8 @@ export type TransportPorts = Omit<AppPorts, "connectionEvents">;
 /** Dependencies injected by the platform layer into both simulator and WS-real port factories. */
 export interface PortFactoryDeps {
   preferences: PreferencesPort;
+  auth: AuthPort;
+  sessionStore: SessionStore;
 }
 
 export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
@@ -157,6 +163,8 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
     eventLog,
     sessions: new SessionSimulator(5),
     metricControls: [latency, errorRate, topology, eventLog],
+    auth: deps.auth,
+    sessionStore: deps.sessionStore,
   };
 }
 
@@ -1060,5 +1068,7 @@ export function createWsRealPorts(
     eventLog,
     sessions: new SessionSimulator(5),
     metricControls: [latency, errorRate, topology, eventLog],
+    auth: deps.auth,
+    sessionStore: deps.sessionStore,
   };
 }

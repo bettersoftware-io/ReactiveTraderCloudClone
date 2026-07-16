@@ -114,6 +114,12 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Prod /devtools/ bundle check
+        run: pnpm check:devtools-dist
+
+      - name: Prod app bundle has no intent injection
+        run: pnpm check:devtools-no-inject
+
       - name: Expo bundle smoke (Metro monorepo resolution)
         run: pnpm --filter @rtc/client-react-native export
 

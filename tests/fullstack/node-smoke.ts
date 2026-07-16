@@ -14,12 +14,17 @@
  */
 import { firstValueFrom, timeout } from "rxjs";
 
-import { createWsRealPorts } from "@rtc/client-core";
+import {
+  createWsRealPorts,
+  HttpAuthAdapter,
+  InMemorySessionStore,
+} from "@rtc/client-core";
 import { WsAdapter } from "@rtc/client-react";
 import type { Direction } from "@rtc/domain";
 import { PreferencesSimulator } from "@rtc/domain";
 
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.js";
+import { loginForToken } from "./loginForToken.js";
 
 // Direction is a `const enum` in @rtc/domain, inaccessible under
 // verbatimModuleSyntax; use the underlying string literal (same pattern as
@@ -50,9 +55,27 @@ function assert(cond: unknown, message: string): asserts cond {
 }
 
 async function runChecks(): Promise<void> {
-  const ws = new WsAdapter(`ws://${HOST}:${PORT}`);
+  // The WS upgrade is token-gated (packages/server/src/http/loginHandler.ts
+  // authorizeUpgrade — no open-when-empty fallback), so a real POST /login
+  // round-trip must happen before the socket connects. The server is started
+  // with AUTH_SECRET + AUTH_USERS="demo:demo" (see ./_orchestration.ts).
+  const httpBase = `http://${HOST}:${PORT}`;
+  const login = await loginForToken(httpBase);
+  const sessionStore = new InMemorySessionStore();
+  sessionStore.write({
+    token: login.token,
+    user: login.user,
+    username: "demo",
+    exp: login.exp,
+  });
+
+  const ws = new WsAdapter(`ws://${HOST}:${PORT}`, () => {
+    return sessionStore.read()?.token;
+  });
   const ports = createWsRealPorts(ws, {
     preferences: new PreferencesSimulator(),
+    auth: new HttpAuthAdapter(httpBase),
+    sessionStore,
   });
 
   try {

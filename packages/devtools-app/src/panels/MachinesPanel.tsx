@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ChangeEvent, ReactElement } from "react";
 import { useState } from "react";
 
 import type {
@@ -15,7 +15,11 @@ import { ValueView } from "#/panels/ValueView";
  * pane for the selected machine (full state via `ValueView`, transition
  * count, intent history newest-first). Selection lives in local component
  * state — it is view-only navigation, not application state. */
-export function MachinesPanel({ machines }: MachinesPanelProps): ReactElement {
+export function MachinesPanel({
+  machines,
+  dev = false,
+  onInvokeIntent,
+}: MachinesPanelProps): ReactElement {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected =
     machines.find((machine) => {
@@ -29,7 +33,11 @@ export function MachinesPanel({ machines }: MachinesPanelProps): ReactElement {
         selectedId={selectedId}
         onSelect={setSelectedId}
       />
-      <MachineDetail machine={selected} />
+      <MachineDetail
+        machine={selected}
+        dev={dev}
+        onInvokeIntent={onInvokeIntent}
+      />
     </div>
   );
 }
@@ -38,6 +46,12 @@ const COMPACT_MAX = 60;
 
 export interface MachinesPanelProps {
   machines: readonly MachineRow[];
+  dev?: boolean;
+  onInvokeIntent?: (
+    machineId: string,
+    name: string,
+    args: readonly unknown[],
+  ) => void;
 }
 
 interface MachineTableProps {
@@ -121,9 +135,19 @@ function MachineTableRow({
 
 interface MachineDetailProps {
   machine: MachineRow | null;
+  dev: boolean;
+  onInvokeIntent?: (
+    machineId: string,
+    name: string,
+    args: readonly unknown[],
+  ) => void;
 }
 
-function MachineDetail({ machine }: MachineDetailProps): ReactElement {
+function MachineDetail({
+  machine,
+  dev,
+  onInvokeIntent,
+}: MachineDetailProps): ReactElement {
   if (machine === null) {
     return (
       <div className={styles.detail}>
@@ -149,6 +173,13 @@ function MachineDetail({ machine }: MachineDetailProps): ReactElement {
         className={styles.sectionTitle}
       >{`Intents (${machine.intents.length})`}</h4>
       <IntentList intents={machine.intents} />
+      {dev ? (
+        <IntentInjector
+          key={machine.machineId}
+          machine={machine}
+          onInvokeIntent={onInvokeIntent}
+        />
+      ) : null}
     </div>
   );
 }
@@ -188,6 +219,145 @@ function IntentList({ intents }: IntentListProps): ReactElement {
       })}
     </ul>
   );
+}
+
+interface IntentInjectorProps {
+  machine: MachineRow;
+  onInvokeIntent?: (
+    machineId: string,
+    name: string,
+    args: readonly unknown[],
+  ) => void;
+}
+
+/** Dev-only, confirm-gated intent injection. Buttons come from the DISTINCT
+ * intent names observed on this machine (the only place names reach the panel
+ * under the v1 protocol); a future protocol addition could surface the full
+ * name set up front. Confirming parses the JSON textarea to an array and hands
+ * it to `onInvokeIntent`, which the session forwards over `intent:invoke`. */
+function IntentInjector({
+  machine,
+  onInvokeIntent,
+}: IntentInjectorProps): ReactElement {
+  const names = distinctIntentNames(machine.intents);
+  const [pending, setPending] = useState<string | null>(null);
+  const [argsText, setArgsText] = useState("[]");
+  const [error, setError] = useState<string | null>(null);
+
+  function arm(name: string): void {
+    setPending(name);
+    setError(null);
+  }
+
+  function cancel(): void {
+    setPending(null);
+    setError(null);
+  }
+
+  function confirm(): void {
+    if (pending === null) {
+      return;
+    }
+
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(argsText);
+    } catch {
+      setError("Args must be valid JSON.");
+
+      return;
+    }
+
+    if (!Array.isArray(parsed)) {
+      setError('Args must be a JSON array, e.g. ["EURUSD", 1000000].');
+
+      return;
+    }
+
+    onInvokeIntent?.(machine.machineId, pending, parsed as readonly unknown[]);
+    setPending(null);
+    setError(null);
+  }
+
+  return (
+    <section data-testid="intent-injector" className={styles.inject}>
+      <h4 className={styles.sectionTitle}>Inject intent (dev)</h4>
+      {names.length === 0 ? (
+        <p className={styles.empty}>
+          No intents observed yet — trigger one from the app to enable
+          injection.
+        </p>
+      ) : (
+        <div className={styles.injectButtons}>
+          {names.map((name) => {
+            return (
+              <button
+                key={name}
+                type="button"
+                data-testid="intent-invoke-button"
+                className={styles.injectButton}
+                onClick={() => {
+                  arm(name);
+                }}
+              >
+                {name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <label className={styles.injectLabel}>
+        Args (JSON array)
+        <textarea
+          className={styles.injectArgs}
+          value={argsText}
+          onChange={(event: ChangeEvent<HTMLTextAreaElement>): void => {
+            setArgsText(event.target.value);
+          }}
+        />
+      </label>
+      {error !== null ? (
+        <p data-testid="intent-error" className={styles.injectError}>
+          {error}
+        </p>
+      ) : null}
+      {pending !== null ? (
+        <div data-testid="intent-confirm" className={styles.injectConfirm}>
+          <span className={styles.injectConfirmText}>
+            {`Fire ${pending}(${argsText}) on ${machine.machineId}?`}
+          </span>
+          <button
+            type="button"
+            data-testid="intent-confirm-yes"
+            className={styles.injectButton}
+            onClick={confirm}
+          >
+            Confirm
+          </button>
+          <button
+            type="button"
+            className={styles.injectButton}
+            onClick={cancel}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function distinctIntentNames(
+  intents: readonly MachineIntentRow[],
+): readonly string[] {
+  const seen = new Set<string>();
+
+  for (const intent of intents) {
+    seen.add(intent.name);
+  }
+
+  return [...seen];
 }
 
 function compactValue(value: SerializedValue | null): string {

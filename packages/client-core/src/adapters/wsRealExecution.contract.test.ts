@@ -1,9 +1,10 @@
-import type { PreferencesPort } from "@rtc/domain";
+import { AuthSimulator, type PreferencesPort } from "@rtc/domain";
 import { describeExecutionPortContract } from "@rtc/domain/ports/__contracts__/ExecutionPortContract";
 import { executionResponseAck } from "@rtc/shared/__fixtures__/wireFrames";
 
 import { awaitPendingRpc } from "./__tests__/awaitPendingRpc";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { InMemorySessionStore } from "./InMemorySessionStore";
 import { createWsRealPorts } from "./portFactory";
 
 interface ExecuteTradePayload {
@@ -16,7 +17,11 @@ interface ExecuteTradePayload {
 
 describeExecutionPortContract("wsRealExecution", () => {
   const ws = new FakeWsAdapter();
-  const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
+  const ports = createWsRealPorts(ws, {
+    preferences: {} as PreferencesPort,
+    auth: new AuthSimulator({}),
+    sessionStore: new InMemorySessionStore(),
+  });
   return {
     port: ports.execution,
     driver: {

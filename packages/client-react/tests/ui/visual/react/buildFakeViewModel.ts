@@ -14,17 +14,31 @@ import {
 // Phase 3 regenerates them for the new skins.
 const DEFAULT_THEME_SKIN_FOR_FIXTURES = "classic" as const;
 
-import type { BootSequenceState, NotionalView } from "@rtc/client-core";
-import {
-  createDefaultLayoutPort,
-  DEMO_USER,
-  type WorkspaceTab,
+import type {
+  BootSequenceState,
+  NotionalView,
+  SessionUser,
 } from "@rtc/client-core";
+import { createDefaultLayoutPort, type WorkspaceTab } from "@rtc/client-core";
 import type { ViewModel } from "@rtc/react-bindings";
 
 import type { AppData } from "../shared/appData";
 
 function noop(): void {}
+
+// Fixture operator identity for visual goldens — the real DEMO_USER fixture
+// was retired with the login/auth workstream; this local stand-in keeps the
+// existing goldens' identity fields (name/initials/id/email/desk/clearance)
+// pixel-identical.
+const DEMO_USER: SessionUser = {
+  name: "Anthony Stark",
+  initials: "AS",
+  role: "Senior FX Trader",
+  id: "TRD-0042",
+  email: "a.stark@reactivetrader.io",
+  desk: "G10 Spot · London",
+  clearance: "LEVEL 4 · FULL",
+};
 
 export function buildFakeViewModel(data: AppData): ViewModel {
   return {
@@ -207,13 +221,29 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         setView: noop,
       };
     },
-    // Session: static snapshot for screenshots. Defaults to unlocked, so the
-    // LockScreen overlay renders nothing and existing goldens are unchanged.
-    useSession: () => {
+    // Auth: static snapshot for screenshots. Defaults to authenticated +
+    // unlocked, so the LockScreen overlay renders nothing and existing
+    // goldens are unchanged.
+    useAuth: () => {
       return {
-        state: { locked: data.sessionLocked ?? false, user: DEMO_USER },
-        lock: noop,
-        unlock: noop,
+        state: {
+          status: "authenticated",
+          user: DEMO_USER,
+          locked: data.sessionLocked ?? false,
+          error: null,
+        },
+        login: (): void => {
+          return;
+        },
+        unlock: (): void => {
+          return;
+        },
+        lock: (): void => {
+          return;
+        },
+        logout: (): void => {
+          return;
+        },
       };
     },
     // Boot gate: hidden for screenshots (the visual tier mounts BootSequence

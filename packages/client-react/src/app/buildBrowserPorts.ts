@@ -2,43 +2,78 @@ import { merge, mergeMap, of, tap } from "rxjs";
 
 import {
   type AppPorts,
-  buildWsUrl,
   createSimulatorPorts,
   createWsRealPorts,
+  HttpAuthAdapter,
   incident$,
   reconnect$,
   routeIdleLifecycle,
   WsAdapter,
   WsConnectionEventsAdapter,
+  wsUrlToHttpBase,
 } from "@rtc/client-core";
 import { instrumentWsAdapter } from "@rtc/devtools-core";
 import {
+  AuthSimulator,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
 } from "@rtc/domain";
 
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
+import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
 import { shouldPlayBootSplash } from "#/bootSplashGate";
 
+/**
+ * Parses `VITE_DEV_AUTH` (a JSON object of username -> password used only in
+ * simulator mode) — tolerant of missing/malformed values, returning `{}`
+ * rather than throwing so a bad/absent env var degrades to "no dev logins
+ * work" instead of a boot crash. Never logs the raw value (it's credentials).
+ */
+function parseDevAuth(raw: string | undefined): Record<string, string> {
+  if (raw === undefined) {
+    return {};
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+
+    if (typeof parsed !== "object" || parsed === null) {
+      return {};
+    }
+
+    const entries = Object.entries(parsed as Record<string, unknown>).filter(
+      (entry): entry is [string, string] => {
+        return typeof entry[1] === "string";
+      },
+    );
+    return Object.fromEntries(entries);
+  } catch {
+    return {};
+  }
+}
+
 export function buildBrowserPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
-  const token = import.meta.env.VITE_WS_TOKEN as string | undefined;
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
+  const sessionStore = new LocalStorageSessionStore();
   const colorScheme = new MediaQueryColorSchemeAdapter();
   // One-shot boot-splash decision (webdriver/nosplash suppress it) — read at
   // composition time to seed the BootGatePresenter.
   const bootSplash = { shouldPlay: shouldPlayBootSplash };
 
   if (url) {
+    const auth = new HttpAuthAdapter(wsUrlToHttpBase(url));
     // Wrap the transport in the devtools wire tap at construction so every
     // send/on/rpc is mirrored to the hub (dormant until an inspector attaches).
     // The simulator branch below has no adapter — its wire panel is simply empty.
     const ws = instrumentWsAdapter(
-      new WsAdapter(buildWsUrl(url, token)),
+      new WsAdapter(url, () => {
+        return sessionStore.read()?.token;
+      }),
       devtoolsHub,
     );
     const gateway = new WsConnectionEventsAdapter(ws);
@@ -63,13 +98,16 @@ export function buildBrowserPorts(): AppPorts {
       },
     };
     return {
-      ...createWsRealPorts(ws, { preferences }),
+      ...createWsRealPorts(ws, { preferences, auth, sessionStore }),
       connectionEvents,
       colorScheme,
       bootSplash,
     };
   }
 
+  const auth = new AuthSimulator(
+    parseDevAuth(import.meta.env.VITE_DEV_AUTH as string | undefined),
+  );
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
     events: () => {
@@ -101,7 +139,7 @@ export function buildBrowserPorts(): AppPorts {
     },
   };
   return {
-    ...createSimulatorPorts({ preferences }),
+    ...createSimulatorPorts({ preferences, auth, sessionStore }),
     connectionEvents,
     colorScheme,
     bootSplash,

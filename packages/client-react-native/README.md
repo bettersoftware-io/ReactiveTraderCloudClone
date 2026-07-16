@@ -166,48 +166,37 @@ build) — OTA only ships the JS bundle, not the native shell.
 
 ---
 
-## Live data & the WebSocket access token (`EXPO_PUBLIC_WS_TOKEN`)
+## Live data, auto-login & the demo credential (`EXPO_PUBLIC_DEMO_USER`/`EXPO_PUBLIC_DEMO_PASS`)
 
 The live tiles come from the deployed Fly server `rtc-clone-server` over a
-WebSocket. That server can be **gated by a shared access token**:
+WebSocket, gated by genuine session auth rather than a shared static token:
 
-- The server reads a secret env var `WS_ACCESS_TOKEN`
-  (`packages/server/src/auth.ts`).
-  - **If it is unset → the gate is OFF**: anyone can connect, no token needed.
-  - **If it is set → every client must send a matching `?access=<token>`** or
-    the connection is refused (WebSocket close code `1006`).
-- The client appends that query param automatically (`buildWsUrl`), reading
-  the token from `app.config.ts` → `extra.wsToken: process.env.EXPO_PUBLIC_WS_TOKEN`.
+- The server validates credentials against its `AUTH_USERS` secret
+  (`packages/server/src/auth/AuthService.ts`) and issues a signed session
+  token from `POST /login`. The WS upgrade then requires that token.
+- This app has **no login UI yet** (deferred) — instead, `AppRoot` auto-logs-in
+  on every launch with a baked demo credential (`nativeAuthConfig.ts`), read
+  from `app.config.ts` → `extra.demoUser`/`extra.demoPass`
+  (`EXPO_PUBLIC_DEMO_USER`/`EXPO_PUBLIC_DEMO_PASS`), defaulting to the public
+  "demo" roster account when unset. `LockScreen`'s AUTHENTICATE control
+  re-auths with the same credential to clear the lock — there's no password
+  input on RN either.
+- `buildNativePorts` then feeds the resulting session token to `WsAdapter`
+  (read fresh on every reconnect from an `InMemorySessionStore` — synchronous,
+  not AsyncStorage-backed, since auto-login on every launch makes persisting a
+  session across restarts pointless).
 
-**So `EXPO_PUBLIC_WS_TOKEN` (this app) must equal `WS_ACCESS_TOKEN` (the Fly
-server).** It is a shared password, not a value you invent independently — it
-only works if it matches the server. If the live tiles show "Disconnected"
-while the Simulator works, a token mismatch (or a missing token against a
-gated server) is the most likely cause.
+**So this pair must exist in the Fly server's `AUTH_USERS` secret** for the
+real-WS branch to authenticate — it is not a value you invent independently.
+If the live tiles show "Disconnected" while the Simulator works, a credential
+mismatch (or an unset/wrong pair against the deployed server) is the most
+likely cause.
 
 > For the full picture of every `.env` file in the repo (this one, the web
-> client's, and the Vercel CLI artifacts) and a token-rotation checklist, see
+> client's, and the Vercel CLI artifacts), see
 > [`docs/env-files.md`](../../docs/env-files.md).
 
-### Step 1 — decide the server side (you own the Fly app)
-
-```bash
-fly secrets list -a rtc-clone-server      # shows whether WS_ACCESS_TOKEN exists (value is masked)
-```
-
-Then pick one:
-
-| Situation | Do this |
-|---|---|
-| You know the token value | Use it on the client (Step 2). |
-| Token is set but you don't know the value | Reset it: `fly secrets set WS_ACCESS_TOKEN=some-demo-secret -a rtc-clone-server`, then use `some-demo-secret` on the client. |
-| You just want the demo to work | Disable the gate: `fly secrets unset WS_ACCESS_TOKEN -a rtc-clone-server` → then **no client token is needed at all**. |
-
-(`fly secrets set/unset` triggers a redeploy; give it a few seconds. The
-server also scales to zero when idle, so the very first connection after a
-while cold-starts — allow ~10s.)
-
-### Step 2 — set the token on the client
+### Set the demo credential on the client
 
 `EXPO_PUBLIC_*` variables are read by Expo and **inlined into the app
 bundle**. The easiest way is a `.env` file in this package. Copy the
@@ -216,43 +205,46 @@ template and fill it in:
 ```bash
 cp packages/client-react-native/.env.example packages/client-react-native/.env
 # then edit packages/client-react-native/.env:
-#   EXPO_PUBLIC_WS_TOKEN=some-demo-secret
+#   EXPO_PUBLIC_DEMO_USER=demo
+#   EXPO_PUBLIC_DEMO_PASS=some-demo-secret
 ```
 
 Then run as usual (`pnpm --filter @rtc/client-react-native start`). Or set it
 just for one run, without a file:
 
 ```bash
-EXPO_PUBLIC_WS_TOKEN=some-demo-secret pnpm --filter @rtc/client-react-native start
+EXPO_PUBLIC_DEMO_USER=demo EXPO_PUBLIC_DEMO_PASS=some-demo-secret pnpm --filter @rtc/client-react-native start
 ```
 
 Optional companion var: `EXPO_PUBLIC_SERVER_URL` overrides the WS endpoint
 (defaults to `wss://rtc-clone-server.fly.dev`; set it to an empty string to
-force the in-process simulator branch — see Running the app).
+force the in-process simulator branch — see Running the app). In simulator
+mode the same credential pair is validated in-process by `AuthSimulator`
+against the public roster, so it still must be a valid roster username.
 
 > ⚠️ **Two caveats.**
-> 1. `.env` is git-ignored on purpose — **never commit a real token**. Keep
->    secrets out of the repo; share them out-of-band.
-> 2. Because `EXPO_PUBLIC_*` is baked into the JS bundle, this token is
->    visible to anyone who has the bundle. It is a *soft* gate for a demo,
->    not a real secret (the web client uses the same design, behind its
->    hosting password wall). Don't reuse a sensitive value here.
+> 1. `.env` is git-ignored on purpose — **never commit a real credential**.
+>    Keep secrets out of the repo; share them out-of-band.
+> 2. Because `EXPO_PUBLIC_*` is baked into the JS bundle, this credential is
+>    visible to anyone who has the bundle. It is a *soft* gate for a demo, not
+>    a real secret — use a low-privilege demo account only (the web client's
+>    equivalent is behind its own hosting password wall).
 
 ### Live-WS smoke (optional connectivity check, no phone)
 
-A manual (not CI) script that opens a real `WsAdapter` connection to the Fly
-server and asserts a price tick arrives within 15s:
+A manual (not CI) script that logs in against the deployed server, then opens
+a real `WsAdapter` connection and asserts a price tick arrives within 15s:
 
 ```bash
 pnpm build
-EXPO_PUBLIC_WS_TOKEN=some-demo-secret pnpm --filter @rtc/client-react-native smoke:ws
+EXPO_PUBLIC_DEMO_USER=demo EXPO_PUBLIC_DEMO_PASS=some-demo-secret pnpm --filter @rtc/client-react-native smoke:ws
 ```
 
 Prints e.g. `live tick: EURUSD 1.xxxxx 1.xxxxx` on success. It is excluded
 from `test`/CI on purpose: the server scales to zero, so a cold start or a
 network blip would flake a gate. Run it by hand to confirm connectivity
-before a demo. A `close 1006` / timeout here means the token gate rejected
-the connection (see Step 1).
+before a demo. A login failure or a `close`/timeout here means the credential
+was rejected — verify it against the Fly server's `AUTH_USERS` secret.
 
 ---
 

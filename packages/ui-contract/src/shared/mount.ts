@@ -2,8 +2,8 @@ import { BehaviorSubject } from "rxjs";
 
 import type {
   AnimationIntent,
+  AuthViewState,
   IncidentKind,
-  SessionState,
   ThroughputView,
 } from "@rtc/client-core";
 import type {
@@ -56,8 +56,8 @@ export interface MountOptions<P> {
   animatedBackground?: boolean;
   /** Seed the initial view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE. */
   viewMode?: ViewMode;
-  /** Seed the initial session state (useSession); defaults to unlocked + demo user. */
-  session?: Partial<SessionState>;
+  /** Seed the initial auth view-state (useAuth); defaults to authenticated + demo user. */
+  auth?: Partial<AuthViewState>;
   /** Seed the equities streams (useWatchlist / useEquityQuote / useEquityOrders / …). */
   equities?: EquitiesSeed;
   /** Seed the admin / telemetry streams (useTopology / useEventLog / useSessions / useMetrics). */
@@ -217,7 +217,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.viewMode,
     opts.themeSkin,
     opts.animatedBackground,
-    opts.session,
+    opts.auth,
     opts.equities,
     opts.admin,
     opts.creditRfqFilter,

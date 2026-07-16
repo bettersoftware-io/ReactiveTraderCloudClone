@@ -2,6 +2,8 @@ import { expect, jest, test } from "@jest/globals";
 import { render, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
 
+import { useViewModel } from "@rtc/react-bindings";
+
 import { AppRoot } from "#/app/AppRoot";
 
 // AsyncStorage has no native module under jest, so importing the real one
@@ -36,3 +38,32 @@ test("mount then unmount of simulator AppRoot does not throw", async () => {
   expect(screen.getByText("child")).toBeTruthy();
   await expect(view.unmount()).resolves.toBeUndefined();
 });
+
+// AppRoot has no login UI (deferred) — on mount it auto-logs-in with the
+// baked demo credential so the app boots authenticated. The simulator
+// branch's AuthSimulator resolves login synchronously (`of(...)`), so by the
+// time this child renders, the auth presenter has already flipped from
+// "unauthenticated" straight to "authenticated" (never observed mid-flight).
+test("auto-login authenticates on mount (simulator, demo credential)", async () => {
+  await renderAuthProbe();
+  expect(screen.getByTestId("auth-status").props.children).toBe(
+    "authenticated",
+  );
+});
+
+// Probe lives nested inside the helper (not at module scope) so the file has
+// no unexported top-level component — mirrors ThemeProvider.test.tsx and
+// satisfies Biome's useComponentExportOnlyModules.
+function renderAuthProbe(): Promise<unknown> {
+  function AuthProbe(): React.JSX.Element {
+    const { useAuth } = useViewModel();
+    const { state } = useAuth();
+    return <Text testID="auth-status">{state.status}</Text>;
+  }
+
+  return render(
+    <AppRoot simulator>
+      <AuthProbe />
+    </AppRoot>,
+  );
+}

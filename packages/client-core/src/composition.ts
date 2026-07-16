@@ -19,6 +19,7 @@ import {
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
   AnimationDirector,
+  AuthPresenter,
   BlotterPresenter,
   BootGatePresenter,
   BootPreferencePresenter,
@@ -57,7 +58,6 @@ import {
   RfqQuotePresenter,
   RfqsPresenter,
   ServiceTopologyPresenter,
-  SessionPresenter,
   SessionsKpiPresenter,
   SessionsPresenter,
   ThemePreferencePresenter,
@@ -120,7 +120,7 @@ export interface Presenters {
   bootPreference: BootPreferencePresenter;
   /** Boot-splash overlay visibility + the account menu's ⟳ Reboot HUD intent. */
   bootGate: BootGatePresenter;
-  session: SessionPresenter;
+  auth: AuthPresenter;
   watchlist: WatchlistPresenter;
   candleSeries: CandleSeriesPresenter;
   depth: DepthPresenter;
@@ -286,8 +286,8 @@ export function createApp(ports: AppPorts): App {
     // Boot-splash visibility, seeded once from the platform's boot-splash
     // decision (defaults to playing when no bootSplash port is supplied).
     bootGate: new BootGatePresenter(ports.bootSplash?.shouldPlay() ?? true),
-    // Session lock/unlock state over the static demo user (no real auth backend).
-    session: new SessionPresenter(),
+    // Login/lock/logout lifecycle over the injected AuthPort + SessionStore.
+    auth: new AuthPresenter(ports.auth, ports.sessionStore),
     watchlist,
     candleSeries: new CandleSeriesPresenter(ports.marketData),
     depth: new DepthPresenter(ports.marketData),

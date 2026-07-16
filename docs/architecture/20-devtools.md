@@ -300,8 +300,8 @@ connecting order-independent — the panel can be opened before the app is
 ready — and lets it auto-reconnect after an app reload (which sends `bye` via
 `pagehide`, flipping the panel back into hello mode). While the panel tab is
 backgrounded the browser throttles this timer, so reconnection completes once
-the panel is foregrounded; an abrupt app crash with no `pagehide` remains the
-documented v1 limitation.
+the panel is foregrounded; an abrupt app crash with no `pagehide` is caught
+instead by the liveness timer described in [§20.6](#206-serving-topology).
 
 ### 20.5 Serialization & error isolation
 
@@ -363,11 +363,29 @@ if (typeof BroadcastChannel !== "undefined") {
 `pagehide` (not `beforeunload`) survives bfcache and mobile Safari;
 `dispose()` calls `goDormant()`, which sends a `bye` — flipping the panel to
 "disconnected" — and is idempotent, so it's safe to call even if the hub
-never went live. **v1 limitation, documented, not silently accepted:** an
-abrupt renderer crash fires no `pagehide`, so no `bye` is sent; the panel has
-no independent liveness timeout and keeps showing "connected" until the
-inspector itself reloads. A panel-side welcome-freshness timer that closes
-this gap is listed as a future extension ([§20.8](#208-future-extensions)).
+never went live. An abrupt renderer crash fires no `pagehide`, so no `bye` is
+sent that way — but the panel's `InspectorClient` also runs its own
+liveness timer (`LIVENESS_TIMEOUT_MS = 6000`,
+`packages/devtools-core/src/InspectorClient.ts`), reset on every inbound
+`AppToInspector` message (`welcome`, `snapshot`, or `batch` — `ping` only
+flows panel-to-app, so it isn't one of these). If it expires while
+connected — 6 s with no inbound traffic at all — the client applies a
+synthetic `bye` itself, flipping to "disconnected" without waiting on the
+app; the existing re-`hello` loop keeps announcing underneath, so the
+handshake re-runs and reconnects if the app comes back.
+
+#### 20.6.1 Chrome extension transport
+
+The same-origin `/devtools/` inspector is one transport; the Chrome extension
+(`@rtc/devtools-extension`) is a second, added without touching the protocol,
+hub, store/client, or panels. A DevTools **RTC** panel mounts the existing
+`InspectorApp` with a `ChromeRuntimeDuplex` (a reconnecting `chrome.runtime`
+port) instead of a `BroadcastChannelDuplex`. A content script injected into the
+app tab bridges the page's `rtc-devtools` BroadcastChannel to `chrome.runtime`;
+a background service worker routes messages between the panel port and the
+content port, keyed by tab id. This lets the inspector attach to the deployed
+app, and is the port/adapter payoff the v1 design anticipated — a new transport,
+nothing else. Dormancy holds: only the panel opening sends `hello`.
 
 ### 20.7 Perf
 
@@ -440,11 +458,11 @@ this.
 
 Summarized from spec [§9](../superpowers/specs/2026-07-11-custom-devtools-design.md#9-future-extensions-designed-for-explicitly-out-of-v1) — designed for, explicitly deferred from v1:
 
-1. **Intent injection** — protocol gains `intent:invoke {machineId | presenter, name, args}`; the hub already holds live instance refs, so this is mostly wiring plus an opt-in gate (dev flag or token) since it would be the first inbound surface with a write.
+1. ~~**Intent injection**~~ — **shipped** (machine-level): the protocol gained `intent:invoke {machineId, name, args}` (v2) and the hub fires the *wrapped* intent it already taps, so an injected call is auditable exactly like a UI-driven one. It is **dev-build-only** — the handler is wired solely inside `import.meta.env.DEV`, so a production build dead-code-eliminates it (asserted by `check:devtools-no-inject`) — and **confirm-gated** in the panel's Machines tab. See the [intent-injection design](../superpowers/specs/2026-07-15-devtools-intent-injection-design.md). Presenter-level injection and a full intent-name catalogue (beyond observed history) remain future work.
 2. **Record & replay** — persist `snapshot + event stream` (already event-sourced); a replay mode feeds a recording back into the panel with no app involvement ("flight recorder"). Full *app* replay (recorded port inputs into a fresh composition root) is a separately scoped, larger step needing seeded time/timers.
-3. **Chrome extension shell** — an MV3 wrapper: content script bridges `BroadcastChannel` ↔ background ↔ a devtools-panel page hosting the *same* `devtools-app` bundle. Protocol and UI untouched; packaging work only.
+3. ~~**Chrome extension shell**~~ — **shipped**: `@rtc/devtools-extension`, an MV3 wrapper — content script bridges `BroadcastChannel` ↔ background ↔ a devtools-panel page hosting the *same* `devtools-app` bundle. Protocol and UI untouched; see [§20.6.1](#2061-chrome-extension-transport) and the [package README](../../packages/devtools-extension/README.md).
 4. **React Native support** — a WebSocket-relay `DevtoolsTransport` adapter (the port already exists for this) plus the same three decorators applied at the RN composition root; the panel runs on the developer's machine, inspecting the device over the relay.
 5. **Time-scrubbing UI** — a panel-side slider over the ring buffer reconstructing past state-tree views. Honest framing: viewing recorded history, not rewinding the live app — RxJS streams over a socket cannot be replayed the way Redux replays pure reducers.
-6. **Panel-side liveness timeout** — closes the abrupt-crash gap noted in [§20.6](#206-serving-topology): a welcome-freshness timer in the inspector that flips to "disconnected" if no traffic (including `ping`s) arrives within a bounded window, covering the case where the app disappears without firing `pagehide`.
+6. ~~**Panel-side liveness timeout**~~ — **shipped**: see the liveness timer described in [§20.6](#206-serving-topology).
 
 ---

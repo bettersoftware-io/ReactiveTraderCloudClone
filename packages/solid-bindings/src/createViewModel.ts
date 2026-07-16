@@ -5,10 +5,10 @@ import type { Accessor } from "solid-js";
 import type { ActivityEntry, AppCommands, Presenters } from "@rtc/client-core";
 import {
   type AnimationIntent,
+  type AuthViewState,
   type BootSequenceIntents,
   type BootSequenceState,
   createRfqCountdownMachine,
-  DEMO_USER,
   type EqWorkspaceIntents,
   type EqWorkspaceState,
   type IncidentIntents,
@@ -25,7 +25,6 @@ import {
   type RfqSubmissionIntents,
   type RfqSubmissionState,
   type RfqTileIntents,
-  type SessionState,
   type ThroughputView,
   type TicketSubmissionIntents,
   type TicketSubmissionState,
@@ -107,7 +106,7 @@ type UseEqWorkspaceResult = {
   state: Accessor<EqWorkspaceState>;
 } & EqWorkspaceIntents;
 /** Shared incident-machine bundle — IMPLEMENTED here: a plain `state()` read
- * of the singleton `presenters.incident.state$` (mirrors useSession/useBootGate
+ * of the singleton `presenters.incident.state$` (mirrors useAuth/useBootGate
  * below, not a per-mount `useMachine`), so it belongs to part 1. */
 type UseIncidentResult = { state: Accessor<IncidentState> } & IncidentIntents;
 
@@ -171,10 +170,12 @@ interface UseEqBlotterViewResult {
   setView: (view: EqBlotterView) => void;
 }
 
-interface UseSessionResult {
-  state: Accessor<SessionState>;
+interface UseAuthResult {
+  state: Accessor<AuthViewState>;
+  login: (username: string, password: string) => void;
+  unlock: (password: string) => void;
   lock: () => void;
-  unlock: () => void;
+  logout: () => void;
 }
 
 interface UseBootGateResult {
@@ -243,12 +244,13 @@ export interface ViewModel {
   /** Equities blotter tab preference (Orders/Positions) — current view plus
    * the write intent. Plumbed here; Task 5's Blotter panel consumes it. */
   useEqBlotterView: () => UseEqBlotterViewResult;
-  /** Global session lock state plus lock/unlock (re-authenticate) intents.
-   * Shared (one stream for the whole app), so a plain `state()` like the prefs. */
-  useSession: () => UseSessionResult;
+  /** Global auth/session state (login/lock/logout lifecycle) plus its
+   * login/unlock/lock/logout intents. Shared (one stream for the whole app),
+   * so a plain `state()` like the prefs. */
+  useAuth: () => UseAuthResult;
   /** Global boot-splash visibility plus reboot (⟳ Reboot HUD) / dismiss
    * intents. Shared (one stream for the whole app), so a plain `state()` like
-   * useSession. Seeded at composition time from the boot-splash decision. */
+   * useAuth. Seeded at composition time from the boot-splash decision. */
   useBootGate: () => UseBootGateResult;
   /** Per-RFQ countdown — remainingMs, ticking every 100ms, clamped at 0.
    * Cosmetic-only; the authoritative expiry is server-driven (CreditRfqSimulator).
@@ -434,22 +436,33 @@ export function createViewModel(
     presenters.eqBlotterViewPreference.setView(view);
   }
 
-  // Global/shared session lock state → a plain `state()` (not a per-mount machine).
-  const sessionState = state(presenters.session.state$, {
+  // Global/shared auth state → a plain `state()` (not a per-mount machine).
+  const authState = state(presenters.auth.state$, {
+    status: "unauthenticated",
+    user: null,
     locked: false,
-    user: DEMO_USER,
-  } as SessionState);
+    error: null,
+  } as AuthViewState);
 
-  function lockSession(): void {
-    presenters.session.lock();
+  // Stable command callbacks (the presenter methods touch `this`).
+  function loginAuth(username: string, password: string): void {
+    presenters.auth.login(username, password);
   }
 
-  function unlockSession(): void {
-    presenters.session.unlock();
+  function unlockAuth(password: string): void {
+    presenters.auth.unlock(password);
+  }
+
+  function lockAuth(): void {
+    presenters.auth.lock();
+  }
+
+  function logoutAuth(): void {
+    presenters.auth.logout();
   }
 
   // Global/shared boot-splash visibility → a plain `state()` (not a per-mount
-  // machine), mirroring sessionState. `state()` serves its DEFAULT on a cold
+  // machine), mirroring authState. `state()` serves its DEFAULT on a cold
   // source, so the default must be the presenter's ACTUAL current value (see
   // react-bindings createViewModel.ts:422-431 for the full warm-value trap
   // this avoids) — a literal `true` here would transiently seed the opaque
@@ -737,11 +750,13 @@ export function createViewModel(
         setView: setEqBlotterView,
       };
     },
-    useSession: () => {
+    useAuth: () => {
       return {
-        state: toSignal(sessionState),
-        lock: lockSession,
-        unlock: unlockSession,
+        state: toSignal(authState),
+        login: loginAuth,
+        unlock: unlockAuth,
+        lock: lockAuth,
+        logout: logoutAuth,
       };
     },
     useBootGate: () => {

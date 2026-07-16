@@ -28,6 +28,13 @@ jobs:
           curl -L https://fly.io/install.sh | sh
           echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
 
+      # AUTH_SECRET (HMAC signing secret) and AUTH_USERS (the "user:pass,..."
+      # credential roster) are Fly secrets set BY HAND (`flyctl secrets set`) —
+      # this deploy PAT/token can't set secrets, only deploy code. The old
+      # Vercel-side SITE_PASSWORD Basic-Auth wall and the shared WS_ACCESS_TOKEN
+      # / VITE_WS_TOKEN query-string gate are gone: the server now validates
+      # real per-user credentials (POST /login) and issues a signed token that
+      # gates the WS upgrade (see docs/env-files.md, packages/server/README.md).
       - name: Deploy
         run: flyctl deploy --remote-only
         env:
@@ -61,7 +68,7 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-      - name: Build (Vercel bakes VITE_SERVER_URL + VITE_WS_TOKEN from pulled env)
+      - name: Build (Vercel bakes VITE_SERVER_URL from pulled env)
         run: vercel build --prod --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -87,8 +94,11 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-      - name: Smoke — unauthenticated request is gated (401)
+      # The old Vercel Basic-Auth wall (SITE_PASSWORD, 401-gated) is gone — the
+      # deployed SPA is reachable directly and gates access via real login
+      # (POST /login against the Fly server), not a static edge password.
+      - name: Smoke — deployed client responds
         run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.url }}")
           echo "Got HTTP $code"
-          test "$code" = "401"
+          test "$code" = "200"

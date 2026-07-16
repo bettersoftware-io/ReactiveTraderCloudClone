@@ -15,6 +15,7 @@ import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 
+import { AuthGate } from "./ui/shell/auth/AuthGate";
 import { BootGate } from "./ui/shell/boot/BootGate";
 import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
 
@@ -54,10 +55,15 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
   // BootGate is always mounted; whether the splash overlay shows is the
   // BootGatePresenter's visible$ seam (seeded from the boot-splash decision in
   // buildBrowserPorts, re-raised by the account menu's ⟳ Reboot HUD row).
+  // AuthGate nests inside BootGate so the splash still plays over the login
+  // screen; it renders LoginScreen until useAuth() reports "authenticated",
+  // then renders the app (children).
   return (
     <ViewModelProvider viewModel={viewModelRef.current}>
       <ThemeProvider>
-        <BootGate>{children}</BootGate>
+        <BootGate>
+          <AuthGate>{children}</AuthGate>
+        </BootGate>
       </ThemeProvider>
     </ViewModelProvider>
   );

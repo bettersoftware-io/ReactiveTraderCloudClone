@@ -21,7 +21,9 @@ afterEach(() => {
 
 describe("WsAdapter.connectionEvents()", () => {
   it("emits gatewayConnected when the WebSocket opens", () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     const events: ConnectionEvent[] = [];
     adapter.connectionEvents().subscribe((e) => {
       return events.push(e);
@@ -34,7 +36,9 @@ describe("WsAdapter.connectionEvents()", () => {
   });
 
   it("emits gatewayDisconnected when the WebSocket closes", () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     const events: ConnectionEvent[] = [];
     adapter.connectionEvents().subscribe((e) => {
       return events.push(e);
@@ -47,7 +51,9 @@ describe("WsAdapter.connectionEvents()", () => {
   });
 
   it("replays the last lifecycle event to late subscribers", () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     lastMock.onopen?.(new Event("open"));
 
     const lateEvents: ConnectionEvent[] = [];
@@ -60,7 +66,9 @@ describe("WsAdapter.connectionEvents()", () => {
   });
 
   it("dispose() completes the subject", () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     let completed = false;
     adapter.connectionEvents().subscribe({
       complete: () => {
@@ -72,7 +80,9 @@ describe("WsAdapter.connectionEvents()", () => {
   });
 
   it("does not emit gatewayDisconnected when onclose fires after dispose", () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     const events: ConnectionEvent[] = [];
     adapter.connectionEvents().subscribe((e) => {
       return events.push(e);
@@ -83,7 +93,15 @@ describe("WsAdapter.connectionEvents()", () => {
   });
 
   it("emits reconnectAttempt when the reconnect timer fires", () => {
-    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      {
+        reconnectDelayMs: 50,
+      },
+    );
     const events: ConnectionEvent[] = [];
     adapter.connectionEvents().subscribe((e) => {
       return events.push(e);
@@ -104,7 +122,9 @@ describe("WsAdapter.connectionEvents()", () => {
   });
 
   it("buffers a message sent before the socket opens and flushes it on connect", () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     // Socket is still CONNECTING (readyState 0) — the subscribe must not be lost.
     adapter.send("subscribe.pricing", { symbol: "EURUSD" });
     expect(lastMock.send).not.toHaveBeenCalled();
@@ -124,7 +144,9 @@ describe("WsAdapter.connectionEvents()", () => {
   });
 
   it("sends immediately when the socket is already open", () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     lastMock.readyState = MockWebSocket.OPEN;
     lastMock.onopen?.(new Event("open"));
 
@@ -137,7 +159,15 @@ describe("WsAdapter.connectionEvents()", () => {
   });
 
   it("uses the configured reconnectDelayMs for scheduling reconnect", () => {
-    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      {
+        reconnectDelayMs: 50,
+      },
+    );
     // Initial construction => 1 socket built
     expect(MockWebSocket.constructed).toBe(1);
 
@@ -160,7 +190,15 @@ describe("WsAdapter.connectionEvents()", () => {
     // The adapter opens, closes (schedules timer@50ms), reconnects immediately,
     // then closes again (a second timer is scheduled, cancelling the first).
     // Only ONE extra socket is built — not two.
-    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      {
+        reconnectDelayMs: 50,
+      },
+    );
     const firstMock = lastMock;
     const events: ConnectionEvent[] = [];
     adapter.connectionEvents().subscribe((e) => {
@@ -197,9 +235,56 @@ describe("WsAdapter.connectionEvents()", () => {
   });
 });
 
+describe("WsAdapter token-at-connect", () => {
+  it("appends ?access=<token> to the connected socket URL when the provider returns a token", () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return "tok-abc";
+    });
+    expect(lastMock.url).toBe("ws://test/?access=tok-abc");
+    adapter.dispose();
+  });
+
+  it("connects to the bare URL (no ?access=) when the provider returns undefined", () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+    expect(lastMock.url).toBe("ws://test");
+    expect(lastMock.url).not.toContain("?access=");
+    adapter.dispose();
+  });
+
+  it("reads the token fresh on every reconnect", () => {
+    let token: string | undefined = "tok-1";
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return token;
+      },
+      { reconnectDelayMs: 50 },
+    );
+    expect(lastMock.url).toBe("ws://test/?access=tok-1");
+
+    token = "tok-2";
+    lastMock.onopen?.(new Event("open"));
+    lastMock.onclose?.(new CloseEvent("close"));
+    vi.advanceTimersByTime(50);
+
+    expect(lastMock.url).toBe("ws://test/?access=tok-2");
+    adapter.dispose();
+  });
+});
+
 describe("WsAdapter.closeForIdle() / reopen()", () => {
   it("(a) closeForIdle() closes the socket and suppresses auto-reconnect", () => {
-    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      {
+        reconnectDelayMs: 50,
+      },
+    );
     const events: ConnectionEvent[] = [];
     adapter.connectionEvents().subscribe((e) => {
       return events.push(e);
@@ -220,7 +305,15 @@ describe("WsAdapter.closeForIdle() / reopen()", () => {
   });
 
   it("(b) reopen() constructs a fresh socket and flushes a subscription buffered while idle-closed", () => {
-    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      {
+        reconnectDelayMs: 50,
+      },
+    );
 
     lastMock.readyState = MockWebSocket.OPEN;
     lastMock.onopen?.(new Event("open"));
@@ -253,7 +346,15 @@ describe("WsAdapter.closeForIdle() / reopen()", () => {
   });
 
   it("(c) dispose() after closeForIdle() is terminal; reopen() is then a permanent no-op", () => {
-    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      {
+        reconnectDelayMs: 50,
+      },
+    );
     lastMock.onopen?.(new Event("open"));
     adapter.closeForIdle();
     lastMock.onclose?.(new CloseEvent("close"));
@@ -269,7 +370,15 @@ describe("WsAdapter.closeForIdle() / reopen()", () => {
     // Scenario: socket disconnects naturally → reconnect timer is pending →
     // user goes idle → closeForIdle() must cancel the timer so no auto-reconnect
     // fires later. This exercises the clearTimeout/null branch in closeForIdle().
-    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      {
+        reconnectDelayMs: 50,
+      },
+    );
     const events: ConnectionEvent[] = [];
     adapter.connectionEvents().subscribe((e) => {
       return events.push(e);
@@ -300,7 +409,15 @@ describe("WsAdapter.closeForIdle() / reopen()", () => {
   it("(e) second closeForIdle() while already idle-closed is a no-op (idleClosed guard, line 216)", () => {
     // After the first idle close the adapter must ignore a duplicate call —
     // defensive guard against BrowserConnectionEventsAdapter re-emitting idleTimeout.
-    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      {
+        reconnectDelayMs: 50,
+      },
+    );
     lastMock.onopen?.(new Event("open"));
 
     adapter.closeForIdle();
@@ -323,7 +440,15 @@ describe("WsAdapter misc guards", () => {
     // new socket and no reconnectAttempt. dispose() is terminal even when called
     // between onclose() and the timer firing. (The in-callback `if (this.disposed)
     // return` guard is defence-in-depth, not reached here since the timer is cancelled.)
-    const adapter = new WsAdapter("ws://test", { reconnectDelayMs: 50 });
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      {
+        reconnectDelayMs: 50,
+      },
+    );
     const events: ConnectionEvent[] = [];
     adapter.connectionEvents().subscribe((e) => {
       return events.push(e);
@@ -349,7 +474,9 @@ describe("WsAdapter misc guards", () => {
   it("on() called twice for the same type adds both handlers (existing-set branch, line 178)", () => {
     // The false-branch of `if (!this.handlers.has(type))` skips `handlers.set`.
     // Both handlers must still receive messages because they share the same Set.
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     const receivedA: unknown[] = [];
     const receivedB: unknown[] = [];
 
@@ -385,7 +512,9 @@ describe("WsAdapter.rpc() + message routing", () => {
   }
 
   it("ignores a malformed (non-JSON) inbound frame without throwing", () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     const received: unknown[] = [];
     adapter.on("stream.priceTick", (p) => {
       return received.push(p);
@@ -400,7 +529,9 @@ describe("WsAdapter.rpc() + message routing", () => {
     adapter.dispose();
   });
   it("routes a response with an unknown correlationId to the stream handler", () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     const received: unknown[] = [];
     adapter.on("stream.priceTick", (p) => {
       return received.push(p);
@@ -419,7 +550,9 @@ describe("WsAdapter.rpc() + message routing", () => {
     adapter.dispose();
   });
   it("rejects rpc() when the socket is not open", async () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     await expect(adapter.rpc("rpc.executeTrade", { foo: 1 })).rejects.toThrow(
       /WebSocket not connected/,
     );
@@ -427,7 +560,9 @@ describe("WsAdapter.rpc() + message routing", () => {
     adapter.dispose();
   });
   it("resolves an in-flight rpc() when its correlated response arrives", async () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     open(adapter);
     const promise = adapter.rpc("rpc.executeTrade", { foo: 1 });
     lastMock.onmessage?.(
@@ -443,21 +578,27 @@ describe("WsAdapter.rpc() + message routing", () => {
     adapter.dispose();
   });
   it("dispose() rejects every pending rpc()", async () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     open(adapter);
     const pending = adapter.rpc("rpc.executeTrade", { foo: 1 });
     adapter.dispose();
     await expect(pending).rejects.toThrow(/WsAdapter disposed/);
   });
   it("waitForConnection() resolves immediately when already open", async () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     lastMock.readyState = MockWebSocket.OPEN;
     lastMock.onopen?.(new Event("open"));
     await expect(adapter.waitForConnection()).resolves.toBeUndefined();
     adapter.dispose();
   });
   it("waitForConnection() resolves once the socket transitions to open", async () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     const waited = adapter.waitForConnection();
     lastMock.readyState = MockWebSocket.OPEN;
     await vi.advanceTimersByTimeAsync(100);
@@ -465,7 +606,9 @@ describe("WsAdapter.rpc() + message routing", () => {
     adapter.dispose();
   });
   it("on() disposer stops the handler from receiving further messages of that type", () => {
-    const adapter = new WsAdapter("ws://test");
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
     const received: unknown[] = [];
     const dispose = adapter.on("stream.priceTick", (p) => {
       return received.push(p);

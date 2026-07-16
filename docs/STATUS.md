@@ -9,7 +9,7 @@
 > they move here once they earn a spec or plan. See [README.md](README.md) for
 > the full document map.
 >
-> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-07-15**
+> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-07-16**
 
 ## 🟡 In progress
 
@@ -22,11 +22,13 @@
 - **Feature flags** — OpenFeature + Flagsmith. Plan: [superpowers/plans/2026-07-01-feature-flags.md](superpowers/plans/2026-07-01-feature-flags.md)
 - **Power-saver mode** — Plan: [superpowers/plans/2026-07-09-power-saver-mode.md](superpowers/plans/2026-07-09-power-saver-mode.md)
 - **Devtools MV3 Chrome extension** — third `Duplex` transport (ChromeRuntimeDuplex + content-script bridge + tab-keyed background router + RTC devtools panel); observe-only, zero app-side changes. Plan: [superpowers/plans/2026-07-14-devtools-chrome-extension.md](superpowers/plans/2026-07-14-devtools-chrome-extension.md)
-- **Devtools hardening & liveness** — six tracked follow-ups: inspector registry caps, type-safe event builder, prod `/devtools/` copy-path check, panel-side liveness timeout, row memoization, WAAPI change-flash. Plan: [superpowers/plans/2026-07-15-devtools-hardening.md](superpowers/plans/2026-07-15-devtools-hardening.md)
+- **Devtools record / replay / time-scrub** — panel-only flight recorder + JSON export/import + scrub slider over the recorded buffer. Plan: [superpowers/plans/2026-07-15-devtools-record-replay.md](superpowers/plans/2026-07-15-devtools-record-replay.md)
+- **Devtools RN inspection** — WebSocket-relay transport (`WsRelayDuplex`) + standalone dev-machine relay + decorators at the RN composition root. Plan: [superpowers/plans/2026-07-15-devtools-rn-inspection.md](superpowers/plans/2026-07-15-devtools-rn-inspection.md)
+- **RN mobile-v1 UI rehaul** — total HUD redesign of `@rtc/client-react-native` (native motion/render stack, radial command-dock nav, ambient background, event-driven motion, incremental Skia boot suite). Phased master spec; **Phase 0 (native foundation) plan ready**, Phases 1–7 planned as predecessors land. Spec: [superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md](superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md); Phase 0 plan: [superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md](superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md)
 
 ## 🟠 Planned but gated / not executed
 
-- **RN visual snapshot testing / Maestro e2e** — was gated on the v3 design rehaul (now landed); still not executed. Plan: [superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md](superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md)
+- **RN visual snapshot testing / Maestro e2e** — now scheduled as **Phase 1** of the RN mobile-v1 rehaul (above); this standalone plan is the reference for that phase. Plan: [superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md](superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md)
 - **Atomic test-ID renames** — plan written, never executed. Plan: [superpowers/plans/2026-07-10-atomic-testid-renames.md](superpowers/plans/2026-07-10-atomic-testid-renames.md)
 
 ## ⚪ Optional / next step (no plan file yet)

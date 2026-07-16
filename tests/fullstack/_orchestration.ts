@@ -39,6 +39,12 @@ export function startServer(port: number, host = "127.0.0.1"): ChildProcess {
         PORT: String(port),
         HOSTNAME: host,
         NODE_OPTIONS: "",
+        // The WS upgrade is token-gated (packages/server/src/http/loginHandler.ts
+        // authorizeUpgrade — no open-when-empty fallback), so both smokes need a
+        // real signed token from POST /login before they can connect. A fixed
+        // test-only secret + the `demo` roster credential (never a real secret).
+        AUTH_SECRET: "e2e-secret",
+        AUTH_USERS: "demo:demo",
       },
     },
   );

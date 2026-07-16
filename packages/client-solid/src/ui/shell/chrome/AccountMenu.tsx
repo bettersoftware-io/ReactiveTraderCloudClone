@@ -1,14 +1,15 @@
-import type { JSX } from "solid-js";
+import type { Accessor, JSX } from "solid-js";
 import { createSignal, Show } from "solid-js";
 
+import type { SessionUser } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import styles from "./HeaderChrome.module.css";
 
 /**
- * Account menu — the account section is REAL chrome wired to the session seam
- * (`useSession`): it shows the signed-in operator's identity (initials, name,
- * email, trader id, desk, clearance) from the SessionPresenter. The trigger +
+ * Account menu — the account section is REAL chrome wired to the auth seam
+ * (`useAuth`): it shows the signed-in operator's identity (initials, name,
+ * email, trader id, desk, clearance) from the AuthPresenter. The trigger +
  * dropdown-head avatar is the PROTO hexagon chip (AccountMenu.tsx:26-36,42-56)
  * — an inline SVG hexagon with the operator's initials laid over it, sized
  * 30×30 for the trigger and 38×38 in the panel head. The panel matches the
@@ -16,127 +17,159 @@ import styles from "./HeaderChrome.module.css";
  * CLEARANCE details block, a ⚙ Preferences action row (opens the shell's
  * Preferences modal via `onOpenPrefs`), the prototype's ⟳ Reboot HUD row
  * (re-raises the boot splash through the `useBootGate` seam — splash replay
- * only, no app-state reset), and the red sign-out-styled ⏻ LOCK SESSION row
- * (locks the session through the seam — the app's equivalent of the
- * prototype's Sign Out). While open, an invisible fixed backdrop (prototype
- * Header.tsx:65-73) closes the menu on any outside click. Opening/closing the
- * panel is local view state.
+ * only, no app-state reset), the red sign-out-styled ⏻ LOCK SESSION row
+ * (locks the session through the seam, raising the LockScreen overlay), and
+ * a ⏻ SIGN OUT row below it (logs the session out through the seam — the
+ * app's equivalent of the prototype's Sign Out). While open, an invisible
+ * fixed backdrop (prototype Header.tsx:65-73) closes the menu on any
+ * outside click. Opening/closing the panel is local view state. Renders
+ * nothing without a signed-in user (`Show when={state().user}` guard).
  */
 export function AccountMenu(props: AccountMenuProps): JSX.Element {
-  const { useSession, useBootGate } = useViewModel();
-  const { state, lock } = useSession();
+  const { useAuth, useBootGate } = useViewModel();
+  const { state, lock, logout } = useAuth();
   const { reboot } = useBootGate();
   const [open, setOpen] = createSignal(false);
 
   return (
-    <div class={styles.menuAnchor}>
-      <button
-        type="button"
-        data-testid="account-toggle"
-        aria-label="Account"
-        aria-expanded={open()}
-        class={styles.accountTrigger}
-        onClick={() => {
-          setOpen(!open());
-        }}
-      >
-        <span class={styles.avatarWrap}>
-          <HexAvatarSvg class={styles.avatarHex} />
-          <span class={styles.avatarInitials}>{state().user.initials}</span>
-        </span>
-        <span class={styles.caret}>▾</span>
-      </button>
-      <Show when={open()}>
-        {/* Invisible click-away backdrop (prototype Header.tsx:65-73),
-            z-15 under the z-60 dropdown. */}
-        <button
-          type="button"
-          data-testid="menu-backdrop"
-          aria-label="Close menu"
-          class={styles.menuBackdrop}
-          onClick={() => {
-            setOpen(false);
-          }}
-        />
-        <div data-testid="account-panel" class={styles.dropdown} role="menu">
-          <div class={styles.accountHead}>
-            <span class={styles.avatarWrapLarge}>
-              <HexAvatarSvg class={styles.avatarHexLarge} />
-              <span class={styles.avatarInitialsLarge}>
-                {state().user.initials}
-              </span>
-            </span>
-            <span class={styles.accountIdentity}>
-              <span class={styles.accountName}>{state().user.name}</span>
-              <span class={styles.accountEmail} data-testid="account-email">
-                {state().user.email}
-              </span>
-            </span>
-          </div>
-          <div class={styles.accountDetails}>
-            <div class={styles.accountMeta} data-testid="account-meta-id">
-              <span class={styles.accountMetaKey}>TRADER ID</span>
-              <span class={styles.accountMetaVal}>{state().user.id}</span>
-            </div>
-            <div class={styles.accountMeta} data-testid="account-meta-desk">
-              <span class={styles.accountMetaKey}>DESK</span>
-              <span class={styles.accountMetaVal}>{state().user.desk}</span>
-            </div>
-            <div
-              class={styles.accountMeta}
-              data-testid="account-meta-clearance"
+    <Show when={state().user}>
+      {(user: Accessor<SessionUser>) => {
+        return (
+          <div class={styles.menuAnchor}>
+            <button
+              type="button"
+              data-testid="account-toggle"
+              aria-label="Account"
+              aria-expanded={open()}
+              class={styles.accountTrigger}
+              onClick={() => {
+                setOpen(!open());
+              }}
             >
-              <span class={styles.accountMetaKey}>CLEARANCE</span>
-              <span class={styles.accountClearance}>
-                {state().user.clearance}
+              <span class={styles.avatarWrap}>
+                <HexAvatarSvg class={styles.avatarHex} />
+                <span class={styles.avatarInitials}>{user().initials}</span>
               </span>
-            </div>
+              <span class={styles.caret}>▾</span>
+            </button>
+            <Show when={open()}>
+              {/* Invisible click-away backdrop (prototype Header.tsx:65-73),
+                  z-15 under the z-60 dropdown. */}
+              <button
+                type="button"
+                data-testid="menu-backdrop"
+                aria-label="Close menu"
+                class={styles.menuBackdrop}
+                onClick={() => {
+                  setOpen(false);
+                }}
+              />
+              <div
+                data-testid="account-panel"
+                class={styles.dropdown}
+                role="menu"
+              >
+                <div class={styles.accountHead}>
+                  <span class={styles.avatarWrapLarge}>
+                    <HexAvatarSvg class={styles.avatarHexLarge} />
+                    <span class={styles.avatarInitialsLarge}>
+                      {user().initials}
+                    </span>
+                  </span>
+                  <span class={styles.accountIdentity}>
+                    <span class={styles.accountName}>{user().name}</span>
+                    <span
+                      class={styles.accountEmail}
+                      data-testid="account-email"
+                    >
+                      {user().email}
+                    </span>
+                  </span>
+                </div>
+                <div class={styles.accountDetails}>
+                  <div class={styles.accountMeta} data-testid="account-meta-id">
+                    <span class={styles.accountMetaKey}>TRADER ID</span>
+                    <span class={styles.accountMetaVal}>{user().id}</span>
+                  </div>
+                  <div
+                    class={styles.accountMeta}
+                    data-testid="account-meta-desk"
+                  >
+                    <span class={styles.accountMetaKey}>DESK</span>
+                    <span class={styles.accountMetaVal}>{user().desk}</span>
+                  </div>
+                  <div
+                    class={styles.accountMeta}
+                    data-testid="account-meta-clearance"
+                  >
+                    <span class={styles.accountMetaKey}>CLEARANCE</span>
+                    <span class={styles.accountClearance}>
+                      {user().clearance}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  data-testid="account-prefs"
+                  class={styles.actionRow}
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    props.onOpenPrefs();
+                  }}
+                >
+                  ⚙ Preferences
+                </button>
+                {/* Real chrome: replays the boot splash through the
+                    `useBootGate` seam (prototype account menu → ⟳ Reboot
+                    HUD) — splash replay only, the app's state is untouched. */}
+                <button
+                  type="button"
+                  data-testid="account-reboot"
+                  class={styles.actionRow}
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    reboot();
+                  }}
+                >
+                  ⟳ Reboot HUD
+                </button>
+                {/* Real chrome: locks the session through the `useAuth`
+                    seam, raising the LockScreen overlay (prototype account
+                    menu → lock), styled as the prototype's red Sign Out row. */}
+                <button
+                  type="button"
+                  data-testid="account-lock"
+                  class={styles.signOut}
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    lock();
+                  }}
+                >
+                  ⏻ LOCK SESSION
+                </button>
+                {/* Real chrome: logs the session out through the `useAuth`
+                    seam (the app's equivalent of the prototype's Sign Out). */}
+                <button
+                  type="button"
+                  data-testid="account-logout"
+                  class={styles.signOut}
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                >
+                  ⏻ SIGN OUT
+                </button>
+              </div>
+            </Show>
           </div>
-          <button
-            type="button"
-            data-testid="account-prefs"
-            class={styles.actionRow}
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              props.onOpenPrefs();
-            }}
-          >
-            ⚙ Preferences
-          </button>
-          {/* Real chrome: replays the boot splash through the `useBootGate`
-              seam (prototype account menu → ⟳ Reboot HUD) — splash replay
-              only, the app's state is untouched. */}
-          <button
-            type="button"
-            data-testid="account-reboot"
-            class={styles.actionRow}
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              reboot();
-            }}
-          >
-            ⟳ Reboot HUD
-          </button>
-          {/* Real chrome: locks the session through the `useSession` seam,
-              raising the LockScreen overlay (prototype account menu → lock),
-              styled as the prototype's red Sign Out row. */}
-          <button
-            type="button"
-            data-testid="account-lock"
-            class={styles.signOut}
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              lock();
-            }}
-          >
-            ⏻ LOCK SESSION
-          </button>
-        </div>
-      </Show>
-    </div>
+        );
+      }}
+    </Show>
   );
 }
 

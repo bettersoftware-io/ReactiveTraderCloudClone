@@ -3,8 +3,10 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
 /**
- * Page object for LockScreen. Hook-driven (reads `useSession`): renders nothing
- * when the session is unlocked, and the full identity overlay when locked.
+ * Page object for LockScreen. Hook-driven (reads `useAuth`): renders nothing
+ * unless the session is locked with a known user, and while locked shows the
+ * full identity overlay plus a password-gated AUTHENTICATE control that
+ * re-authenticates (unlock) against the real credentials seam.
  */
 export class LockScreenPage extends MountedComponent<Record<string, never>> {
   private readonly user: UserEvent = userEvent.setup();
@@ -34,13 +36,30 @@ export class LockScreenPage extends MountedComponent<Record<string, never>> {
     return within(this.root).queryByTestId("lock-authenticate") !== null;
   }
 
-  /** Click AUTHENTICATE → re-authenticate (unlock). */
+  /** Type into the password field. */
+  async typePassword(value: string): Promise<void> {
+    await this.user.type(within(this.root).getByTestId("lock-password"), value);
+  }
+
+  /** Click AUTHENTICATE → re-authenticate (unlock) with the typed password. */
   async authenticate(): Promise<void> {
     await this.user.click(within(this.root).getByTestId("lock-authenticate"));
   }
 
+  /** The rendered error text; "" when no error is present. */
+  error(): string {
+    return (
+      within(this.root).queryByTestId("lock-error")?.textContent?.trim() ?? ""
+    );
+  }
+
   /** Number of times AUTHENTICATE (unlock) was invoked through the seam. */
   unlockCount(): number {
-    return this.commandLog().sessionUnlock;
+    return this.commandLog().authUnlock;
+  }
+
+  /** Each password `unlock()` was invoked with, through the seam, in order. */
+  unlockArgs(): readonly string[] {
+    return this.commandLog().authUnlockArgs;
   }
 }

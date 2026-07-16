@@ -3,10 +3,6 @@
   "ignore": [".remember/**", "docs/design/**"],
   "ignoreBinaries": ["scripts/install-actionlint.sh"],
   "workspaces": {
-    ".": {
-      "entry": ["middleware.ts"],
-      "project": ["middleware.ts"]
-    },
     "packages/domain": {
       "entry": ["src/index.ts", "src/ports/__contracts__/*.ts"],
       "project": "src/**/*.ts"
@@ -25,6 +21,16 @@
     },
     "packages/devtools-app": {
       "entry": ["src/main.tsx", "index.html", "vite.config.ts"],
+      "project": "src/**/*.{ts,tsx}"
+    },
+    "packages/devtools-extension": {
+      "entry": [
+        "src/background.ts",
+        "src/contentBridge.ts",
+        "src/devtools.ts",
+        "src/panel/panel.tsx",
+        "vite.config.ts"
+      ],
       "project": "src/**/*.{ts,tsx}"
     },
     "packages/motion-core": {

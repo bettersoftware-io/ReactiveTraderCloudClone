@@ -1,6 +1,6 @@
 import type { SerializedValue } from "./serialize";
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 interface EventBase {
   /** Monotonic per-hub sequence number. */
@@ -9,40 +9,66 @@ interface EventBase {
   ts: number;
 }
 
+export type StreamRegisteredEvent = EventBase & {
+  kind: "stream:registered";
+  streamId: string;
+};
+
+export type StreamEmissionEvent = EventBase & {
+  kind: "stream:emission";
+  streamId: string;
+  value: SerializedValue;
+  /** Emissions coalesced into this event within the flush window (≥1). */
+  coalesced: number;
+};
+
+export type MachineCreatedEvent = EventBase & {
+  kind: "machine:created";
+  machineId: string;
+  machineKind: string;
+  args: SerializedValue;
+};
+
+export type MachineStateEvent = EventBase & {
+  kind: "machine:state";
+  machineId: string;
+  state: SerializedValue;
+  coalesced: number;
+};
+
+export type MachineIntentEvent = EventBase & {
+  kind: "machine:intent";
+  machineId: string;
+  name: string;
+  args: SerializedValue;
+};
+
+export type MachineDisposedEvent = EventBase & {
+  kind: "machine:disposed";
+  machineId: string;
+};
+
+export type WireEvent = EventBase & {
+  kind: "wire:in" | "wire:out";
+  msgType: string;
+  payload: SerializedValue;
+};
+
+export type DevtoolsErrorEvent = EventBase & {
+  kind: "devtools:error";
+  context: string;
+  message: string;
+};
+
 export type DevtoolsEvent =
-  | (EventBase & { kind: "stream:registered"; streamId: string })
-  | (EventBase & {
-      kind: "stream:emission";
-      streamId: string;
-      value: SerializedValue;
-      /** Emissions coalesced into this event within the flush window (≥1). */
-      coalesced: number;
-    })
-  | (EventBase & {
-      kind: "machine:created";
-      machineId: string;
-      machineKind: string;
-      args: SerializedValue;
-    })
-  | (EventBase & {
-      kind: "machine:state";
-      machineId: string;
-      state: SerializedValue;
-      coalesced: number;
-    })
-  | (EventBase & {
-      kind: "machine:intent";
-      machineId: string;
-      name: string;
-      args: SerializedValue;
-    })
-  | (EventBase & { kind: "machine:disposed"; machineId: string })
-  | (EventBase & {
-      kind: "wire:in" | "wire:out";
-      msgType: string;
-      payload: SerializedValue;
-    })
-  | (EventBase & { kind: "devtools:error"; context: string; message: string });
+  | StreamRegisteredEvent
+  | StreamEmissionEvent
+  | MachineCreatedEvent
+  | MachineStateEvent
+  | MachineIntentEvent
+  | MachineDisposedEvent
+  | WireEvent
+  | DevtoolsErrorEvent;
 
 export interface SnapshotStream {
   streamId: string;
@@ -59,7 +85,7 @@ export interface SnapshotMachine {
 }
 
 export type AppToInspector =
-  | { kind: "welcome"; v: number; appId: string }
+  | { kind: "welcome"; v: number; appId: string; dev?: boolean }
   | {
       kind: "snapshot";
       streams: readonly SnapshotStream[];
@@ -71,6 +97,15 @@ export type AppToInspector =
 export type InspectorToApp =
   | { kind: "hello"; v: number }
   | { kind: "ping" }
+  | {
+      /** DevTools' first inbound WRITE: fire a live machine's intent from the
+       * inspector. Handled only in dev builds (compiled out of prod — see
+       * DevtoolsHub.attachTransport). `args` is the intent's argument tuple. */
+      kind: "intent:invoke";
+      machineId: string;
+      name: string;
+      args: readonly unknown[];
+    }
   | { kind: "bye" };
 
 /** Which members of a presenter the instrumentation should register.

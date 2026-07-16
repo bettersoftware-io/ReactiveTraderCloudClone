@@ -1,11 +1,18 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import type { StreamRow } from "@rtc/devtools-core";
 
 import { StateTreePanel } from "#/panels/StateTreePanel";
 
 afterEach(cleanup);
+
+beforeEach(() => {
+  // jsdom lacks a real WAAPI; the change-flash effect calls element.animate().
+  Element.prototype.animate = vi.fn(() => {
+    return { cancel: () => {} };
+  }) as unknown as typeof Element.prototype.animate;
+});
 
 test("groups streams from different presenters under separate sections", () => {
   const streams: StreamRow[] = [

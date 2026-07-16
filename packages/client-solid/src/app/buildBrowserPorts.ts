@@ -2,16 +2,19 @@ import { merge, mergeMap, of, tap } from "rxjs";
 
 import {
   type AppPorts,
-  buildWsUrl,
   createSimulatorPorts,
   createWsRealPorts,
+  HttpAuthAdapter,
+  InMemorySessionStore,
   incident$,
   reconnect$,
   routeIdleLifecycle,
   WsAdapter,
   WsConnectionEventsAdapter,
+  wsUrlToHttpBase,
 } from "@rtc/client-core";
 import {
+  AuthSimulator,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
 } from "@rtc/domain";
@@ -23,16 +26,22 @@ import { shouldPlayBootSplash } from "#/bootSplashGate";
 
 export function buildBrowserPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
-  const token = import.meta.env.VITE_WS_TOKEN as string | undefined;
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
+  // The skeleton needs no persistence across reloads — an in-memory session
+  // store is enough for the auto-login (see AppRoot.tsx) to keep the shell
+  // authenticated for the tab's lifetime.
+  const sessionStore = new InMemorySessionStore();
   const colorScheme = new MediaQueryColorSchemeAdapter();
   // One-shot boot-splash decision (webdriver/nosplash suppress it) — read at
   // composition time to seed the BootGatePresenter.
   const bootSplash = { shouldPlay: shouldPlayBootSplash };
 
   if (url) {
-    const ws = new WsAdapter(buildWsUrl(url, token));
+    const auth = new HttpAuthAdapter(wsUrlToHttpBase(url));
+    const ws = new WsAdapter(url, () => {
+      return sessionStore.read()?.token;
+    });
     const gateway = new WsConnectionEventsAdapter(ws);
     const connectionEvents: ConnectionEventsPort = {
       events: () => {
@@ -55,13 +64,17 @@ export function buildBrowserPorts(): AppPorts {
       },
     };
     return {
-      ...createWsRealPorts(ws, { preferences }),
+      ...createWsRealPorts(ws, { preferences, auth, sessionStore }),
       connectionEvents,
       colorScheme,
       bootSplash,
     };
   }
 
+  // Baked skeleton credential — the walking skeleton has no login UI, so the
+  // simulator branch only needs to accept the one demo/demo pair used by
+  // AppRoot's auto-login.
+  const auth = new AuthSimulator({ demo: "demo" });
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
     events: () => {
@@ -93,7 +106,7 @@ export function buildBrowserPorts(): AppPorts {
     },
   };
   return {
-    ...createSimulatorPorts({ preferences }),
+    ...createSimulatorPorts({ preferences, auth, sessionStore }),
     connectionEvents,
     colorScheme,
     bootSplash,

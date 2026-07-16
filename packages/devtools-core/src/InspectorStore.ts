@@ -8,6 +8,8 @@ import { PROTOCOL_VERSION } from "./protocol";
 import type { SerializedValue } from "./serialize";
 
 const LOG_CAP = 5000;
+const MAX_DISPOSED_MACHINES = 500;
+const MAX_STREAMS = 2000;
 const SUMMARY_VALUE_MAX = 120;
 const RATE_WINDOW_MS = 2000;
 
@@ -49,6 +51,9 @@ export interface LogRow {
 
 export interface InspectorState {
   connected: boolean;
+  /** True when the connected app is a dev build (welcome.dev). Gates the
+   * panel's intent-injection affordance. */
+  dev: boolean;
   appId: string | null;
   /** The app's version when it differs from PROTOCOL_VERSION; null when matched. */
   protocolMismatch: number | null;
@@ -85,6 +90,7 @@ interface MachineEntry {
 
 const INITIAL_STATE: InspectorState = {
   connected: false,
+  dev: false,
   appId: null,
   protocolMismatch: null,
   streams: [],
@@ -113,9 +119,15 @@ export class InspectorStore {
 
   private readonly logAll: LogRow[] = [];
 
+  private readonly streamRowCache = new Map<string, StreamRow>();
+
+  private readonly machineRowCache = new Map<string, MachineRow>();
+
   private readonly listeners = new Set<() => void>();
 
   private connected = false;
+
+  private dev = false;
 
   private appId: string | null = null;
 
@@ -135,6 +147,52 @@ export class InspectorStore {
    * saturates the main thread under a live stream. */
   private static readonly FRAMES_PER_FLUSH = 4;
 
+  /** Bound retained disposed machines the way the hub does (MAX_DISPOSED_RETAINED)
+   * so a long session's machine table and memory stay flat. Insertion order in a
+   * Map is stable, so the first disposed entries found are the oldest. */
+  private evictDisposedMachines(): void {
+    const disposedIds: string[] = [];
+
+    for (const [id, entry] of this.machineEntries) {
+      if (entry.disposed) {
+        disposedIds.push(id);
+      }
+    }
+
+    const overflow = disposedIds.length - MAX_DISPOSED_MACHINES;
+
+    for (let i = 0; i < overflow; i++) {
+      const id = disposedIds[i];
+
+      if (id) {
+        this.machineEntries.delete(id);
+        this.machineRowCache.delete(id);
+      }
+    }
+  }
+
+  /** Oldest-inserted stream eviction — a safety bound; the real app has a finite
+   * set of presenter/parameterized streams, so this only fires on pathological
+   * churn. */
+  private capStreams(): void {
+    const overflow = this.streamEntries.size - MAX_STREAMS;
+
+    if (overflow <= 0) {
+      return;
+    }
+
+    const it = this.streamEntries.keys();
+
+    for (let i = 0; i < overflow; i++) {
+      const next = it.next();
+
+      if (!next.done) {
+        this.streamEntries.delete(next.value);
+        this.streamRowCache.delete(next.value);
+      }
+    }
+  }
+
   getSnapshot(): InspectorState {
     return this.state;
   }
@@ -151,6 +209,7 @@ export class InspectorStore {
     switch (msg.kind) {
       case "welcome": {
         this.connected = true;
+        this.dev = msg.dev === true;
         this.appId = msg.appId;
         this.protocolMismatch = msg.v === PROTOCOL_VERSION ? null : msg.v;
         break;
@@ -186,6 +245,7 @@ export class InspectorStore {
     machines: readonly SnapshotMachine[],
   ): void {
     this.streamEntries.clear();
+    this.streamRowCache.clear();
 
     for (const s of streams) {
       this.streamEntries.set(s.streamId, {
@@ -199,6 +259,7 @@ export class InspectorStore {
     }
 
     this.machineEntries.clear();
+    this.machineRowCache.clear();
 
     for (const m of machines) {
       this.machineEntries.set(m.machineId, {
@@ -212,6 +273,9 @@ export class InspectorStore {
         transitions: 0,
       });
     }
+
+    this.capStreams();
+    this.evictDisposedMachines();
   }
 
   private applyEvent(event: DevtoolsEvent): void {
@@ -226,6 +290,7 @@ export class InspectorStore {
             ratePerSec: 0,
             rate: { windowStart: null, windowCount: 0 },
           });
+          this.capStreams();
         }
 
         break;
@@ -283,6 +348,7 @@ export class InspectorStore {
 
         if (entry) {
           entry.disposed = true;
+          this.evictDisposedMachines();
         }
 
         break;
@@ -315,6 +381,7 @@ export class InspectorStore {
       rate: { windowStart: null, windowCount: 0 },
     };
     this.streamEntries.set(streamId, entry);
+    this.capStreams();
 
     return entry;
   }
@@ -403,20 +470,50 @@ export class InspectorStore {
   private rebuildState(): void {
     const streams = [...this.streamEntries.values()]
       .map((e): StreamRow => {
-        return {
+        const prev = this.streamRowCache.get(e.streamId);
+
+        if (
+          prev &&
+          prev.lastSeq === e.lastSeq &&
+          prev.lastValue === e.lastValue &&
+          prev.totalEmissions === e.totalEmissions &&
+          prev.ratePerSec === e.ratePerSec
+        ) {
+          return prev;
+        }
+
+        const row: StreamRow = {
           streamId: e.streamId,
           lastValue: e.lastValue,
           lastSeq: e.lastSeq,
           totalEmissions: e.totalEmissions,
           ratePerSec: e.ratePerSec,
         };
+        this.streamRowCache.set(e.streamId, row);
+
+        return row;
       })
       .sort((a, b) => {
         return a.streamId < b.streamId ? -1 : a.streamId > b.streamId ? 1 : 0;
       });
 
     const machines = [...this.machineEntries.values()].map((e): MachineRow => {
-      return {
+      const prev = this.machineRowCache.get(e.machineId);
+
+      if (
+        prev &&
+        prev.state === e.state &&
+        prev.disposed === e.disposed &&
+        prev.transitions === e.transitions &&
+        prev.intents === e.intents &&
+        prev.args === e.args &&
+        prev.machineKind === e.machineKind &&
+        prev.createdAt === e.createdAt
+      ) {
+        return prev;
+      }
+
+      const row: MachineRow = {
         machineId: e.machineId,
         machineKind: e.machineKind,
         args: e.args,
@@ -426,10 +523,14 @@ export class InspectorStore {
         intents: e.intents,
         transitions: e.transitions,
       };
+      this.machineRowCache.set(e.machineId, row);
+
+      return row;
     });
 
     this.state = {
       connected: this.connected,
+      dev: this.dev,
       appId: this.appId,
       protocolMismatch: this.protocolMismatch,
       streams,

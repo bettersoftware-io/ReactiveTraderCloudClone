@@ -2,9 +2,17 @@ import type { Observable, Subscription } from "rxjs";
 
 import type {
   AppToInspector,
+  DevtoolsErrorEvent,
   DevtoolsEvent,
+  MachineCreatedEvent,
+  MachineDisposedEvent,
+  MachineIntentEvent,
+  MachineStateEvent,
   SnapshotMachine,
   SnapshotStream,
+  StreamEmissionEvent,
+  StreamRegisteredEvent,
+  WireEvent,
 } from "./protocol";
 import { PROTOCOL_VERSION } from "./protocol";
 import { serializeValue } from "./serialize";
@@ -12,6 +20,7 @@ import type { DevtoolsTransport } from "./transport";
 
 export interface DevtoolsHubOptions {
   appId?: string;
+  dev?: boolean;
   flushIntervalMs?: number;
   heartbeatTimeoutMs?: number;
   ringBufferSize?: number;
@@ -31,6 +40,10 @@ interface MachineEntry {
   hasState: boolean;
   disposed: boolean;
   createdAt: number;
+  /** The wrapped intents map (the ones tapped for `machine:intent`), stored so
+   * the dev-only inbound handler can invoke one by name. Populated by reference
+   * by the instrumentation right after machineCreated returns. */
+  intents?: Readonly<Record<string, unknown>>;
 }
 
 interface Pending {
@@ -46,6 +59,8 @@ const MAX_DISPOSED_RETAINED = 500;
  * points are exception-safe: a devtools failure must never reach the app. */
 export class DevtoolsHub {
   private readonly appId: string;
+
+  private readonly dev: boolean;
 
   private readonly flushIntervalMs: number;
 
@@ -83,6 +98,7 @@ export class DevtoolsHub {
 
   constructor(options: DevtoolsHubOptions = {}) {
     this.appId = options.appId ?? "rtc";
+    this.dev = options.dev ?? false;
     this.flushIntervalMs = options.flushIntervalMs ?? 33;
     this.heartbeatTimeoutMs = options.heartbeatTimeoutMs ?? 10_000;
     this.ringBufferSize = options.ringBufferSize ?? 10_000;
@@ -102,6 +118,29 @@ export class DevtoolsHub {
           this.lastPingAt = Date.now();
         } else if (msg.kind === "bye") {
           this.goDormant();
+        } else if (import.meta.env.DEV && msg.kind === "intent:invoke") {
+          // FIRST INBOUND WRITE — wired ONLY in dev builds. With
+          // `import.meta.env.DEV` statically false in a production bundle, the
+          // bundler dead-code-eliminates this whole branch, so the machine-
+          // invocation code (and the "intent:invoke" literal) are physically
+          // absent from shipped JS — the tap stays strictly observe-only where
+          // it matters. The stored wrapped intent self-reports a machine:intent
+          // event, so an injected call is auditable like a UI-driven one.
+          const entry = this.machines.get(msg.machineId);
+          const intent = entry?.intents?.[msg.name];
+
+          if (typeof intent === "function") {
+            (intent as (...intentArgs: readonly unknown[]) => unknown)(
+              ...msg.args,
+            );
+          } else {
+            this.reportError(
+              "intent:invoke",
+              new Error(
+                `no injectable intent "${msg.name}" on machine "${msg.machineId}"`,
+              ),
+            );
+          }
         }
       } catch (error) {
         this.reportError("transport.inbound", error);
@@ -120,7 +159,10 @@ export class DevtoolsHub {
     if (this.isLive) {
       try {
         this.pendingDiscrete.push(
-          this.event({ kind: "stream:registered", streamId }),
+          this.event<StreamRegisteredEvent>({
+            kind: "stream:registered",
+            streamId,
+          }),
         );
         this.subscribeStream(streamId, entry);
       } catch (error) {
@@ -133,6 +175,7 @@ export class DevtoolsHub {
     machineKind: string,
     args: readonly unknown[],
     state$: Observable<unknown>,
+    intents?: Readonly<Record<string, unknown>>,
   ): string {
     const machineId = `m${this.nextMachineId++}`;
     const entry: MachineEntry = {
@@ -144,13 +187,14 @@ export class DevtoolsHub {
       hasState: false,
       disposed: false,
       createdAt: Date.now(),
+      intents,
     };
     this.machines.set(machineId, entry);
 
     if (this.isLive) {
       try {
         this.pendingDiscrete.push(
-          this.event({
+          this.event<MachineCreatedEvent>({
             kind: "machine:created",
             machineId,
             machineKind,
@@ -177,7 +221,7 @@ export class DevtoolsHub {
 
     try {
       this.pendingDiscrete.push(
-        this.event({
+        this.event<MachineIntentEvent>({
           kind: "machine:intent",
           machineId,
           name,
@@ -212,7 +256,10 @@ export class DevtoolsHub {
 
       if (this.isLive) {
         this.pendingDiscrete.push(
-          this.event({ kind: "machine:disposed", machineId }),
+          this.event<MachineDisposedEvent>({
+            kind: "machine:disposed",
+            machineId,
+          }),
         );
       }
     } catch (error) {
@@ -235,7 +282,11 @@ export class DevtoolsHub {
 
     try {
       this.pendingDiscrete.push(
-        this.event({ kind: "devtools:error", context, message: String(error) }),
+        this.event<DevtoolsErrorEvent>({
+          kind: "devtools:error",
+          context,
+          message: String(error),
+        }),
       );
     } catch {
       // deliberately unreachable-in-practice; never rethrow toward the app
@@ -260,21 +311,28 @@ export class DevtoolsHub {
 
     try {
       this.pendingDiscrete.push(
-        this.event({ kind, msgType, payload: serializeValue(payload) }),
+        this.event<WireEvent>({
+          kind,
+          msgType,
+          payload: serializeValue(payload),
+        }),
       );
     } catch (error) {
       this.reportError("wire", error);
     }
   }
 
-  private event<T extends Omit<DevtoolsEvent, "seq" | "ts">>(
-    body: T,
-  ): DevtoolsEvent {
+  /** Stamp `seq`/`ts` onto a specific event member. Generic over `E extends
+   * DevtoolsEvent` so each call site is checked against one union member — the
+   * body must be exactly that member minus the stamped fields. Only `seq`/`ts`
+   * are added (both accounted for by the `Omit`), so a single `as E` is sound
+   * without the former `as unknown as` escape hatch. */
+  private event<E extends DevtoolsEvent>(body: Omit<E, "seq" | "ts">): E {
     return {
       ...body,
       seq: this.seq++,
       ts: Date.now(),
-    } as unknown as DevtoolsEvent;
+    } as E;
   }
 
   private goLive(): void {
@@ -411,7 +469,12 @@ export class DevtoolsHub {
     // The synchronous first emissions became the snapshot — don't re-send them.
     this.pendingStreams.clear();
     this.pendingMachineStates.clear();
-    this.send({ kind: "welcome", v: PROTOCOL_VERSION, appId: this.appId });
+    this.send({
+      kind: "welcome",
+      v: PROTOCOL_VERSION,
+      appId: this.appId,
+      dev: this.dev,
+    });
     this.send({ kind: "snapshot", streams, machines });
   }
 
@@ -429,7 +492,7 @@ export class DevtoolsHub {
 
     for (const [streamId, p] of this.pendingStreams) {
       events.push(
-        this.event({
+        this.event<StreamEmissionEvent>({
           kind: "stream:emission",
           streamId,
           value: serializeValue(p.value),
@@ -442,7 +505,7 @@ export class DevtoolsHub {
 
     for (const [machineId, p] of this.pendingMachineStates) {
       events.push(
-        this.event({
+        this.event<MachineStateEvent>({
           kind: "machine:state",
           machineId,
           state: serializeValue(p.value),

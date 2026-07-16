@@ -19,8 +19,9 @@ function devtoolsPanel(): Plugin {
   const require = createRequire(import.meta.url);
   // Resolve the workspace package root without importing its source (dep-cruiser
   // forbids a source import; this is a build-order + dist-path edge only).
-  // @rtc/devtools-app declares no `exports`, so deep-resolving its package.json
-  // is permitted.
+  // @rtc/devtools-app's `exports` map includes a "./package.json": "./package.json"
+  // self-entry specifically so this deep-resolve keeps working — don't remove it
+  // from devtools-app's package.json or this require.resolve breaks.
   const appDist = join(
     dirname(require.resolve("@rtc/devtools-app/package.json")),
     "dist",

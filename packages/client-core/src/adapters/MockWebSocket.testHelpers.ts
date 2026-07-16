@@ -21,7 +21,10 @@ export class MockWebSocket {
 
   close: Mock = vi.fn();
 
-  constructor() {
+  readonly url: string;
+
+  constructor(url: string) {
+    this.url = url;
     MockWebSocket.constructed++;
     // Capture the most recently constructed socket so tests can drive its
     // event handlers. WsAdapter does `new WebSocket(url)`, so a constructable

@@ -230,7 +230,17 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
 
   /** Number of times the session-lock command was invoked through the seam. */
   lockCount(): number {
-    return this.commandLog().sessionLock;
+    return this.commandLog().authLock;
+  }
+
+  /** Click SIGN OUT inside the account panel (logs the session out via the seam). */
+  async clickLogout(): Promise<void> {
+    await this.user.click(within(this.root).getByTestId("account-logout"));
+  }
+
+  /** Number of times the logout command was invoked through the seam. */
+  logoutCount(): number {
+    return this.commandLog().authLogout;
   }
 
   /** True when the ⚙ Preferences row is present in the open account panel. */

@@ -20,8 +20,10 @@ import {
   createApp,
   createMachineFactories,
   createSimulatorPorts,
+  InMemorySessionStore,
 } from "@rtc/client-core";
 import {
+  AuthSimulator,
   ConnectionEventsSimulator,
   Direction,
   KNOWN_CURRENCY_PAIRS,
@@ -242,7 +244,11 @@ function makeViewModel(): ViewModel {
 
 function createSimPorts(): AppPorts {
   return {
-    ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
+    ...createSimulatorPorts({
+      preferences: new PreferencesSimulator(),
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    }),
     connectionEvents: new ConnectionEventsSimulator(),
   };
 }

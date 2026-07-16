@@ -4,6 +4,7 @@ import { fireEvent, screen } from "@testing-library/react-native";
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
 
+import { DEMO_PASSWORD } from "#/app/nativeAuthConfig";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
@@ -39,7 +40,7 @@ test("shows the operator identity when locked", async () => {
   expect(screen.getByText("Senior FX Trader")).toBeTruthy();
 });
 
-test("AUTHENTICATE press calls unlock", async () => {
+test("AUTHENTICATE press calls unlock with the demo credential", async () => {
   const unlock = jest.fn();
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(true, unlock)}>
@@ -48,17 +49,68 @@ test("AUTHENTICATE press calls unlock", async () => {
   );
   await fireEvent.press(screen.getByTestId("lock-authenticate"));
   expect(unlock).toHaveBeenCalledTimes(1);
+  expect(unlock).toHaveBeenCalledWith(DEMO_PASSWORD);
 });
 
-function fakeViewModel(locked: boolean, unlock: () => void): ViewModel {
+test("renders nothing when locked but no user is present", async () => {
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModelNoUser()}>
+      <LockScreen />
+    </ViewModelProvider>,
+  );
+  expect(screen.queryByTestId("lock-screen")).toBeNull();
+});
+
+function fakeViewModel(
+  locked: boolean,
+  unlock: (password: string) => void,
+): ViewModel {
   return {
-    useSession: () => {
+    useAuth: () => {
       return {
-        state: { locked, user: USER },
-        lock: () => {
+        state: {
+          status: "authenticated",
+          locked,
+          error: null,
+          user: USER,
+        },
+        login: () => {
           return undefined;
         },
         unlock,
+        lock: () => {
+          return undefined;
+        },
+        logout: () => {
+          return undefined;
+        },
+      };
+    },
+  } as unknown as ViewModel;
+}
+
+function fakeViewModelNoUser(): ViewModel {
+  return {
+    useAuth: () => {
+      return {
+        state: {
+          status: "unauthenticated",
+          locked: true,
+          error: null,
+          user: null,
+        },
+        login: () => {
+          return undefined;
+        },
+        unlock: () => {
+          return undefined;
+        },
+        lock: () => {
+          return undefined;
+        },
+        logout: () => {
+          return undefined;
+        },
       };
     },
   } as unknown as ViewModel;
