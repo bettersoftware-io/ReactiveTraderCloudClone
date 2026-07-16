@@ -17,6 +17,7 @@ import {
   EQ_BLOTTER_VIEW_STORAGE_KEY,
   EQ_WATCHLIST_SORT_STORAGE_KEY,
   LocalStoragePreferencesAdapter,
+  POWER_SAVER_STORAGE_KEY,
   THEME_SKIN_STORAGE_KEY,
   THEME_STORAGE_KEY,
   VIEW_MODE_STORAGE_KEY,
@@ -135,6 +136,31 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
       DEFAULT_EQ_BLOTTER_VIEW,
     );
   });
+
+  it("powerSaver defaults false, persists to rtc-power-saver, and replays current", () => {
+    const adapter = new LocalStoragePreferencesAdapter();
+    let current = true;
+    adapter
+      .powerSaver$()
+      .subscribe((on) => {
+        current = on;
+      })
+      .unsubscribe();
+    expect(current).toBe(false);
+
+    adapter.setPowerSaver(true);
+    expect(localStorage.getItem("rtc-power-saver")).toBe("true");
+
+    const rehydrated = new LocalStoragePreferencesAdapter();
+    let stored = false;
+    rehydrated
+      .powerSaver$()
+      .subscribe((on) => {
+        stored = on;
+      })
+      .unsubscribe();
+    expect(stored).toBe(true);
+  });
 });
 
 function clearStorage(): void {
@@ -146,4 +172,5 @@ function clearStorage(): void {
   localStorage.removeItem(CREDIT_RFQ_FILTER_STORAGE_KEY);
   localStorage.removeItem(EQ_WATCHLIST_SORT_STORAGE_KEY);
   localStorage.removeItem(EQ_BLOTTER_VIEW_STORAGE_KEY);
+  localStorage.removeItem(POWER_SAVER_STORAGE_KEY);
 }
