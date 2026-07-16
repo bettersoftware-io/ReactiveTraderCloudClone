@@ -1,5 +1,38 @@
 import { expect, test } from "@playwright/test";
 
+import {
+  E2E_SESSION_KEY,
+  seedSessionLocalStorage,
+} from "#/browser/authSeed.js";
+
+import { loginForToken } from "../loginForToken.js";
+
+// The server's HTTP base (forwarded by fullstack/browser-smoke.ts as
+// FULLSTACK_PORT — the SAME real server the client under test connects its
+// WsReal adapters to, not the client's own Vite port).
+const SERVER_PORT = Number(process.env.FULLSTACK_PORT ?? 4124);
+const SERVER_BASE = `http://127.0.0.1:${SERVER_PORT}`;
+
+// AuthGate now gates the app on a real signed session: before any spec here
+// loads the app, do a genuine POST /login round-trip against the real server
+// (WS-real mode — the WS upgrade itself is token-gated, "no
+// open-when-empty fallback", see packages/server/src/http/loginHandler.ts)
+// and seed the resulting token into localStorage via addInitScript, so it's
+// present before the app's own scripts run on the FIRST navigation.
+test.beforeEach(async ({ page }) => {
+  const login = await loginForToken(SERVER_BASE);
+  const session = {
+    token: login.token,
+    username: "demo",
+    user: login.user,
+    exp: login.exp,
+  };
+  await page.addInitScript(seedSessionLocalStorage, {
+    key: E2E_SESSION_KEY,
+    value: JSON.stringify(session),
+  });
+});
+
 /**
  * Full-stack browser happy path.
  *
