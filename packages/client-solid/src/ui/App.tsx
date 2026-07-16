@@ -17,13 +17,15 @@ import { StatusBar } from "./shell/status/StatusBar";
 import styles from "./App.module.css";
 
 /** Shell chrome wired to the real ViewModel (Task 9 — theme/chrome/boot/lock)
- * plus the FX tab's live layout engine (Task 10 — layout-engine cluster) and
- * the real FX panel subtree (Task 13 — liveRates/tiles/blotter/analytics/
- * positions via `appPanelRegistry`/`appHeadRegistry`). Credit/Equities/Admin
- * stay the plain placeholder div until their own subtrees land (Tasks
- * 14-16), at which point they join the FX tab under one shared
- * WorkspaceEngine (mirroring the react `App.tsx`'s single unconditional
- * `WorkspaceEngine` for every tab) instead of this per-tab `<Show>` gate. */
+ * plus the FX tab's live layout engine (Task 10 — layout-engine cluster), the
+ * real FX panel subtree (Task 13 — liveRates/tiles/blotter/analytics/
+ * positions via `appPanelRegistry`/`appHeadRegistry`), and the real Admin
+ * panel subtree (Task 16 — KPIs/charts/topology/event-log/sessions/incident
+ * controls). Credit/Equities stay the plain placeholder div until their own
+ * subtrees land (Tasks 14-15), at which point every tab joins under one
+ * shared WorkspaceEngine (mirroring the react `App.tsx`'s single
+ * unconditional `WorkspaceEngine` for every tab) instead of this per-tab
+ * `<Show>` gate. */
 export function App(): JSX.Element {
   const [activeTab, setActiveTab] = createSignal<WorkspaceTab>("fx");
 
@@ -31,11 +33,14 @@ export function App(): JSX.Element {
     <div class={styles.app}>
       <AmbientBackground />
       <HeaderChrome activeTab={activeTab()} onTabChange={setActiveTab} />
-      <Show
-        when={activeTab() === "fx"}
-        fallback={<div data-testid="pending-panel" />}
-      >
+      <Show when={activeTab() === "fx"}>
         <FxWorkspace />
+      </Show>
+      <Show when={activeTab() === "admin"}>
+        <AdminWorkspace />
+      </Show>
+      <Show when={activeTab() !== "fx" && activeTab() !== "admin"}>
+        <div data-testid="pending-panel" />
       </Show>
       <StatusBar />
       <ConnectionOverlay />
@@ -70,5 +75,31 @@ function FxWorkspace(): JSX.Element {
         onResize={resize}
       />
     </FxViewProvider>
+  );
+}
+
+/** Owns the Admin tab's `useLayout("admin")` machine. No view-context seam of
+ * its own (unlike FX's FxViewContext) — the admin-dashboard panel reads
+ * straight off the ViewModel (useMetrics/useTopology/useEventLog/etc.), so
+ * there is nothing to provide here beyond the layout machine itself.
+ * Mounted (and its machine constructed) only while the Admin tab is active —
+ * `<Show>` above genuinely unmounts this component on switching away,
+ * running the machine's `onCleanup` disposal, mirroring `FxWorkspace`. */
+function AdminWorkspace(): JSX.Element {
+  const { useLayout } = useViewModel();
+  const { state, maximize, restore, collapse, expand, resize } =
+    useLayout("admin");
+
+  return (
+    <InhouseLayoutEngine
+      state={state()}
+      registry={appPanelRegistry}
+      headRegistry={appHeadRegistry}
+      onMaximize={maximize}
+      onRestore={restore}
+      onCollapse={collapse}
+      onExpand={expand}
+      onResize={resize}
+    />
   );
 }

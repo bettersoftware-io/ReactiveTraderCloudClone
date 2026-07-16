@@ -1,3 +1,4 @@
+import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { AnalyticsPanel } from "#/ui/fx/analytics/AnalyticsPanel";
 import { FxBlotter } from "#/ui/fx/blotter/FxBlotter";
 import { LiveRatesPanel } from "#/ui/fx/liveRates/LiveRatesPanel";
@@ -8,11 +9,11 @@ import type { PanelRegistry } from "./panelRegistry";
 /** The real id→module-root map. Panel ids are owned by defaultLayoutPort;
  * each maps to the same module root the react `appPanelRegistry.tsx` uses.
  *
- * FX-only so far (Task 13): Credit/Equities/Admin panel modules don't exist
- * in `@rtc/client-solid` yet — their entries land with Tasks 14-16, mirroring
+ * FX + Admin so far (Tasks 13, 16): Credit/Equities panel modules don't exist
+ * in `@rtc/client-solid` yet — their entries land with Tasks 14-15, mirroring
  * the react registry's full id set at that point. Until then, App.tsx keeps
- * every non-FX tab on its own `pending-panel` placeholder rather than
- * mounting this registry for them. */
+ * every non-FX/non-Admin tab on its own `pending-panel` placeholder rather
+ * than mounting this registry for them. */
 export const appPanelRegistry: PanelRegistry = {
   "fx-rates": () => {
     return <LiveRatesPanel />;
@@ -25,5 +26,8 @@ export const appPanelRegistry: PanelRegistry = {
   },
   "fx-blotter": () => {
     return <FxBlotter />;
+  },
+  "admin-dashboard": () => {
+    return <AdminDashboard />;
   },
 };
