@@ -1,7 +1,7 @@
 # RTC DevTools — Intent Injection
 
 **Date:** 2026-07-15
-**Status:** Design approved (gate decision: dev-build-only), implementation plan to follow
+**Status:** Implemented (dev-build-only gate) — see the [implementation plan](../plans/2026-07-15-devtools-intent-injection.md)
 **Depends on:** [2026-07-11-custom-devtools-design.md](2026-07-11-custom-devtools-design.md) (v1 shipped) — this realises future-extension §9.1
 **Scope decisions (locked):**
 - **Dev-build-only gate.** Injection is compiled out of production bundles entirely (`import.meta.env.DEV`); it is not merely disabled at runtime. The first inbound *write* surface cannot exist in a deployed build. A token gate is documented as a future add-on, not built.

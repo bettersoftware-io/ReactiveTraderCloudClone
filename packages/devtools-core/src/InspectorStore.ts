@@ -51,6 +51,9 @@ export interface LogRow {
 
 export interface InspectorState {
   connected: boolean;
+  /** True when the connected app is a dev build (welcome.dev). Gates the
+   * panel's intent-injection affordance. */
+  dev: boolean;
   appId: string | null;
   /** The app's version when it differs from PROTOCOL_VERSION; null when matched. */
   protocolMismatch: number | null;
@@ -87,6 +90,7 @@ interface MachineEntry {
 
 const INITIAL_STATE: InspectorState = {
   connected: false,
+  dev: false,
   appId: null,
   protocolMismatch: null,
   streams: [],
@@ -122,6 +126,8 @@ export class InspectorStore {
   private readonly listeners = new Set<() => void>();
 
   private connected = false;
+
+  private dev = false;
 
   private appId: string | null = null;
 
@@ -203,6 +209,7 @@ export class InspectorStore {
     switch (msg.kind) {
       case "welcome": {
         this.connected = true;
+        this.dev = msg.dev === true;
         this.appId = msg.appId;
         this.protocolMismatch = msg.v === PROTOCOL_VERSION ? null : msg.v;
         break;
@@ -523,6 +530,7 @@ export class InspectorStore {
 
     this.state = {
       connected: this.connected,
+      dev: this.dev,
       appId: this.appId,
       protocolMismatch: this.protocolMismatch,
       streams,

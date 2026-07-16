@@ -14,7 +14,10 @@ import { useInspectorState } from "#/useInspectorState";
  * four tabs render real panels — state tree, machine registry (Task 9), and
  * the event log + wire tap (Task 10), the latter both reading the same
  * `InspectorState.log`. */
-export function InspectorApp({ store }: InspectorAppProps): ReactElement {
+export function InspectorApp({
+  store,
+  onInvokeIntent,
+}: InspectorAppProps): ReactElement {
   const state = useInspectorState(store);
   const [tab, setTab] = useState<InspectorTab>("state");
 
@@ -24,7 +27,7 @@ export function InspectorApp({ store }: InspectorAppProps): ReactElement {
       <div className={styles.main}>
         <TabStrip active={tab} onSelect={setTab} />
         <div className={styles.panel}>
-          <TabPanel tab={tab} state={state} />
+          <TabPanel tab={tab} state={state} onInvokeIntent={onInvokeIntent} />
         </div>
       </div>
     </div>
@@ -35,6 +38,11 @@ type InspectorTab = "state" | "machines" | "log" | "wire";
 
 export interface InspectorAppProps {
   store: InspectorStore;
+  onInvokeIntent?: (
+    machineId: string,
+    name: string,
+    args: readonly unknown[],
+  ) => void;
 }
 
 interface TabDescriptor {
@@ -129,15 +137,26 @@ function TabStrip({ active, onSelect }: TabStripProps): ReactElement {
 interface TabPanelProps {
   tab: InspectorTab;
   state: InspectorState;
+  onInvokeIntent?: (
+    machineId: string,
+    name: string,
+    args: readonly unknown[],
+  ) => void;
 }
 
-function TabPanel({ tab, state }: TabPanelProps): ReactElement {
+function TabPanel({ tab, state, onInvokeIntent }: TabPanelProps): ReactElement {
   if (tab === "state") {
     return <StateTreePanel streams={state.streams} />;
   }
 
   if (tab === "machines") {
-    return <MachinesPanel machines={state.machines} />;
+    return (
+      <MachinesPanel
+        machines={state.machines}
+        dev={state.dev}
+        onInvokeIntent={onInvokeIntent}
+      />
+    );
   }
 
   if (tab === "log") {

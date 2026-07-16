@@ -20,6 +20,7 @@ import type { DevtoolsTransport } from "./transport";
 
 export interface DevtoolsHubOptions {
   appId?: string;
+  dev?: boolean;
   flushIntervalMs?: number;
   heartbeatTimeoutMs?: number;
   ringBufferSize?: number;
@@ -39,6 +40,10 @@ interface MachineEntry {
   hasState: boolean;
   disposed: boolean;
   createdAt: number;
+  /** The wrapped intents map (the ones tapped for `machine:intent`), stored so
+   * the dev-only inbound handler can invoke one by name. Populated by reference
+   * by the instrumentation right after machineCreated returns. */
+  intents?: Readonly<Record<string, unknown>>;
 }
 
 interface Pending {
@@ -54,6 +59,8 @@ const MAX_DISPOSED_RETAINED = 500;
  * points are exception-safe: a devtools failure must never reach the app. */
 export class DevtoolsHub {
   private readonly appId: string;
+
+  private readonly dev: boolean;
 
   private readonly flushIntervalMs: number;
 
@@ -91,6 +98,7 @@ export class DevtoolsHub {
 
   constructor(options: DevtoolsHubOptions = {}) {
     this.appId = options.appId ?? "rtc";
+    this.dev = options.dev ?? false;
     this.flushIntervalMs = options.flushIntervalMs ?? 33;
     this.heartbeatTimeoutMs = options.heartbeatTimeoutMs ?? 10_000;
     this.ringBufferSize = options.ringBufferSize ?? 10_000;
@@ -110,6 +118,29 @@ export class DevtoolsHub {
           this.lastPingAt = Date.now();
         } else if (msg.kind === "bye") {
           this.goDormant();
+        } else if (import.meta.env.DEV && msg.kind === "intent:invoke") {
+          // FIRST INBOUND WRITE — wired ONLY in dev builds. With
+          // `import.meta.env.DEV` statically false in a production bundle, the
+          // bundler dead-code-eliminates this whole branch, so the machine-
+          // invocation code (and the "intent:invoke" literal) are physically
+          // absent from shipped JS — the tap stays strictly observe-only where
+          // it matters. The stored wrapped intent self-reports a machine:intent
+          // event, so an injected call is auditable like a UI-driven one.
+          const entry = this.machines.get(msg.machineId);
+          const intent = entry?.intents?.[msg.name];
+
+          if (typeof intent === "function") {
+            (intent as (...intentArgs: readonly unknown[]) => unknown)(
+              ...msg.args,
+            );
+          } else {
+            this.reportError(
+              "intent:invoke",
+              new Error(
+                `no injectable intent "${msg.name}" on machine "${msg.machineId}"`,
+              ),
+            );
+          }
         }
       } catch (error) {
         this.reportError("transport.inbound", error);
@@ -144,6 +175,7 @@ export class DevtoolsHub {
     machineKind: string,
     args: readonly unknown[],
     state$: Observable<unknown>,
+    intents?: Readonly<Record<string, unknown>>,
   ): string {
     const machineId = `m${this.nextMachineId++}`;
     const entry: MachineEntry = {
@@ -155,6 +187,7 @@ export class DevtoolsHub {
       hasState: false,
       disposed: false,
       createdAt: Date.now(),
+      intents,
     };
     this.machines.set(machineId, entry);
 
@@ -436,7 +469,12 @@ export class DevtoolsHub {
     // The synchronous first emissions became the snapshot — don't re-send them.
     this.pendingStreams.clear();
     this.pendingMachineStates.clear();
-    this.send({ kind: "welcome", v: PROTOCOL_VERSION, appId: this.appId });
+    this.send({
+      kind: "welcome",
+      v: PROTOCOL_VERSION,
+      appId: this.appId,
+      dev: this.dev,
+    });
     this.send({ kind: "snapshot", streams, machines });
   }
 

@@ -75,6 +75,7 @@ describe("instrumentPresenters", () => {
       "orderTicket",
       [],
       orderTicket.state$,
+      expect.anything(),
     );
     expect(out.orderTicket.state$).toBe(orderTicket.state$);
 
