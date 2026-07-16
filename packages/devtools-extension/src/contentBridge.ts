@@ -23,6 +23,12 @@ const channel: BridgeChannel = {
   },
 };
 
-const port = chrome.runtime.connect({ name: "rtc-content" });
+function connect(): void {
+  const port = chrome.runtime.connect({
+    name: "rtc-content",
+  }) as unknown as RuntimePort;
 
-createBridgeRelay({ channel, port: port as unknown as RuntimePort });
+  createBridgeRelay({ channel, port, onPortDisconnect: connect });
+}
+
+connect();

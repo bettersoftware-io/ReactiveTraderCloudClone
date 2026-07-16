@@ -25,14 +25,52 @@ describe("createBridgeRelay", () => {
     expect(ch.posted).toEqual([{ kind: "hello" }]);
   });
 
-  it("closes the channel when the port disconnects", () => {
+  it("invokes onPortDisconnect and does not close the channel when the port disconnects", () => {
     const ch = fakeChannel();
     const p = fakePort();
-    createBridgeRelay({ channel: ch.channel, port: p.port });
+    let disconnectCount = 0;
+    createBridgeRelay({
+      channel: ch.channel,
+      port: p.port,
+      onPortDisconnect: (): void => {
+        disconnectCount += 1;
+      },
+    });
 
     p.fireDisconnect();
 
+    expect(disconnectCount).toBe(1);
+    expect(ch.closed).toBe(false);
+  });
+
+  it("closes the channel on dispose()", () => {
+    const ch = fakeChannel();
+    const p = fakePort();
+    const handle = createBridgeRelay({ channel: ch.channel, port: p.port });
+
+    handle.dispose();
+
     expect(ch.closed).toBe(true);
+  });
+
+  it("reconnects to a new port after a disconnect, keeping the same channel alive", () => {
+    const ch = fakeChannel();
+    const portA = fakePort();
+    const portB = fakePort();
+
+    createBridgeRelay({
+      channel: ch.channel,
+      port: portA.port,
+      onPortDisconnect: (): void => {
+        createBridgeRelay({ channel: ch.channel, port: portB.port });
+      },
+    });
+
+    portA.fireDisconnect();
+    ch.emit({ kind: "welcome" });
+
+    expect(portB.sent).toEqual([{ kind: "welcome" }]);
+    expect(portA.sent).toEqual([]);
   });
 });
 

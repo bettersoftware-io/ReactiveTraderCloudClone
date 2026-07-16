@@ -12,6 +12,11 @@ export interface BridgeChannel {
 interface BridgeRelayDeps {
   channel: BridgeChannel;
   port: RuntimePort;
+  /** Invoked when the runtime port disconnects (e.g. the MV3 service worker
+   * was cycled). The content bridge uses this to reconnect a fresh port while
+   * keeping the same BroadcastChannel open; if omitted, a disconnect is a
+   * no-op (the channel stays open and is only closed by dispose()). */
+  onPortDisconnect?: () => void;
 }
 
 interface BridgeRelayHandle {
@@ -20,12 +25,13 @@ interface BridgeRelayHandle {
 
 /** Relays a same-origin `rtc-devtools` BroadcastChannel (from the app hub) to a
  * `chrome.runtime` port (to the panel, via the background router) and back.
- * When the port disconnects — the panel closed, or the router tore the pair
- * down — the channel is closed so the content script stops listening. Purely a
+ * The channel is never closed on port disconnect — only `dispose()` closes it
+ * (or the page unloading tears it down) — so a caller can reconnect a fresh
+ * port via `onPortDisconnect` and keep relaying on the same channel. Purely a
  * forwarder: it never inspects or mutates messages, and never originates a
  * `hello`, so injecting it does not wake the dormant hub. */
 export function createBridgeRelay(deps: BridgeRelayDeps): BridgeRelayHandle {
-  const { channel, port } = deps;
+  const { channel, port, onPortDisconnect } = deps;
 
   channel.addMessageListener((msg: unknown): void => {
     port.postMessage(msg);
@@ -36,7 +42,7 @@ export function createBridgeRelay(deps: BridgeRelayDeps): BridgeRelayHandle {
   });
 
   port.onDisconnect.addListener((): void => {
-    channel.close();
+    onPortDisconnect?.();
   });
 
   return {

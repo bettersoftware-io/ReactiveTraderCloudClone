@@ -17,6 +17,5 @@
       "run_at": "document_start"
     }
   ],
-  "permissions": ["scripting"],
   "host_permissions": ["http://localhost:*/*", "https://*.vercel.app/*"]
 }
