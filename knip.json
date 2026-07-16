@@ -75,6 +75,7 @@
         "vitest.config.ts",
         "jest.config.js",
         "jest.setup.ts",
+        "jest.resolver.js",
         "expo-env.d.ts",
         "scripts/liveWsSmoke.ts"
       ],
@@ -82,7 +83,16 @@
       "ignoreDependencies": [
         "expo-status-bar",
         "babel-plugin-module-resolver",
-        "babel-preset-expo"
+        "babel-preset-expo",
+        // Phase-0 native-stack installs (docs/superpowers/... RN mobile-v1
+        // rehaul) not yet imported by src — later phases consume them, then
+        // this ignore should be removed as each is wired in:
+        //   expo-blur    -> radial-dock scrim/panels
+        //   expo-haptics -> lock/ceremonies
+        //   expo-sensors -> boot gyro parallax
+        "expo-blur",
+        "expo-haptics",
+        "expo-sensors"
       ]
     },
     "tests": {

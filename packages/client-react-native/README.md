@@ -129,6 +129,20 @@ fetch `http://localhost:8081/.expo/.virtual-metro-entry.bundle?platform=ios&dev=
 
 ---
 
+## Native motion/render stack
+
+The client uses `react-native-reanimated`, `@shopify/react-native-skia`,
+`react-native-gesture-handler`, `expo-blur`, `expo-haptics`, and `expo-sensors`.
+Because these are native modules, adding or upgrading them requires rebuilding
+the dev client (`pnpm dev:ios`) — a JS reload is not enough.
+
+**Diagnostic:** launch with `EXPO_PUBLIC_MOTION_PROBE=1 pnpm dev:ios` to render a
+flag-gated probe (`src/ui/_probe/MotionProbe.tsx`) — a pulsing Skia circle that
+confirms the Reanimated worklet runtime and the Skia canvas both render on
+device. It never appears in a normal run.
+
+---
+
 ## Distribution options
 
 This app is wired for **free-path distribution** — no paid Apple Developer
