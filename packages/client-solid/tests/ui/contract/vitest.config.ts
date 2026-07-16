@@ -19,13 +19,10 @@ const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 
 // Domains not yet ported to @rtc/client-solid (Task 13 landed FX + the
-// StaleIndicator it depends on; Task 15 landed Equities; Tasks 14/16 land
-// Credit/Admin) — excluded so the included set stays 100% green. Re-narrow
+// StaleIndicator it depends on; Tasks 14/15 landed Credit/Equities; Task 16
+// lands Admin) — excluded so the included set stays 100% green. Re-narrow
 // as each remaining domain's components land.
-const notYetPortedSpecs = [
-  `${specsDir}/credit/**/*.contract.spec.ts`,
-  `${specsDir}/admin/**/*.contract.spec.ts`,
-];
+const notYetPortedSpecs = [`${specsDir}/admin/**/*.contract.spec.ts`];
 
 export default defineConfig({
   plugins: [solid()],

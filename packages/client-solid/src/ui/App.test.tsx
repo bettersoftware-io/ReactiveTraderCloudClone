@@ -73,12 +73,43 @@ describe("App (shell chrome)", () => {
       );
     });
 
+    screen.getByTestId("tab-admin").click();
+
+    expect(screen.getByTestId("tab-admin").getAttribute("data-active")).toBe(
+      "true",
+    );
+    expect(screen.queryByTestId("layout-engine")).toBeNull();
+    expect(screen.getAllByTestId("pending-panel")).toHaveLength(1);
+  });
+
+  it("switches to the credit tab and shows the live layout engine with real credit panel bodies", () => {
+    render(() => {
+      return (
+        <AppRoot>
+          <App />
+        </AppRoot>
+      );
+    });
+
     screen.getByTestId("tab-credit").click();
 
     expect(screen.getByTestId("tab-credit").getAttribute("data-active")).toBe(
       "true",
     );
-    expect(screen.queryByTestId("layout-engine")).toBeNull();
-    expect(screen.getAllByTestId("pending-panel")).toHaveLength(1);
+    // The credit tab is fully live (Task 14): the layout-engine grid renders
+    // with the three default credit panels present (credit-sell-side is
+    // registered but not part of the default three-panel tree — mirrors
+    // eq-depth/eq-sectors, see defaultLayoutPort.ts), and their bodies are
+    // the REAL credit subtree (newRfq/rfqs/blotter) — no more
+    // `pending-panel` placeholders anywhere in the credit tab.
+    expect(screen.getByTestId("layout-engine")).toBeTruthy();
+    expect(screen.getByTestId("panel-credit-new-rfq")).toBeTruthy();
+    expect(screen.getByTestId("panel-credit-rfqs")).toBeTruthy();
+    expect(screen.getByTestId("panel-credit-blotter")).toBeTruthy();
+    expect(screen.queryAllByTestId("pending-panel")).toHaveLength(0);
+    // Spot-check one stable element per panel body — these render
+    // unconditionally regardless of how much simulator data has arrived yet.
+    expect(screen.getByTestId("new-rfq-send")).toBeTruthy();
+    expect(screen.getByTestId("blotter-table")).toBeTruthy();
   });
 });

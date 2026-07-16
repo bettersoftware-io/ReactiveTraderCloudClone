@@ -1,0 +1,167 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+}
+
+.row[data-state="passed"],
+.row[data-state="rejected"] {
+  opacity: 0.5;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.star {
+  font-size: 9px;
+  line-height: 9px;
+  color: var(--accent-positive);
+}
+
+.bank {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.bank[data-house="true"] {
+  color: var(--accent-primary);
+}
+
+.priceWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.price {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--text-primary);
+}
+
+.price[data-state="pending"],
+.price[data-state="passed"],
+.price[data-state="rejected"] {
+  color: var(--text-muted);
+}
+
+.price[data-state="priced"][data-best="true"],
+.price[data-state="accepted"] {
+  color: var(--accent-positive);
+}
+
+.acceptBtn {
+  position: relative;
+  isolation: isolate;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 9px;
+  line-height: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text-on-accent);
+  background: var(--accent-positive);
+  border: none;
+  border-radius: 3px;
+  padding: 4px 11px;
+  /* PROTO QuoteRow.module.css: every ACCEPT button glows, not only the
+   * best-priced one (the port previously scoped this to [data-best="true"]). */
+  box-shadow: 0 0 10px var(--accent-positive);
+}
+
+/* The animated glows live on overlay pseudo-elements, faded via
+ * opacity/transform, because box-shadow keyframes can never run on the
+ * compositor — the previous acceptIn/acceptPulse shadows re-ran main-thread
+ * style + paint every frame for as long as a best quote was on screen
+ * (measured ~330 invalidations/s per card). Chrome also refuses to composite
+ * an element carrying TWO animations of the same property
+ * (kTargetHasIncompatibleAnimations), so the one-shot glow-in and the
+ * infinite throb each own a separate pseudo-element, one animation apiece:
+ * ::before = intro overshoot glow, ::after = best-quote breathing glow (its
+ * single animation moves opacity AND scale — different properties compose
+ * fine together). z-index -1 keeps both under the label inside the button's
+ * isolated stacking context. */
+.acceptBtn::before,
+.acceptBtn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 3px;
+  box-shadow: 0 0 22px 3px var(--accent-positive);
+  opacity: 0;
+  will-change: opacity;
+}
+
+/* PROTO QuoteRow.module.css .acceptBtn + global.css acceptIn/acceptPulse
+ * (--buy → --accent-positive): every fresh ACCEPT pops in with an overshoot
+ * glow, and the best-priced quote keeps pulsing after it lands (the throb
+ * lives on the glow layer; the button box itself only plays the entrance
+ * pop, keeping every element at one animation per property). Gated on
+ * prefers-reduced-motion, same convention as CreditBlotter.module.css /
+ * RfqCard.module.css: the base rule carries no animation at all under
+ * reduced motion. Mount-triggered, so acceptIn self-terminates per button. */
+@media (prefers-reduced-motion: no-preference) {
+  .acceptBtn {
+    animation: acceptIn 0.42s cubic-bezier(0.2, 1.5, 0.5, 1);
+  }
+
+  .acceptBtn::before {
+    animation: acceptGlowIn 0.42s cubic-bezier(0.2, 1.5, 0.5, 1);
+  }
+
+  .acceptBtn[data-best="true"]::after {
+    animation: acceptGlowPulse 1.7s ease-in-out 0.42s infinite;
+  }
+}
+
+@keyframes acceptIn {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.1;
+  }
+
+  55% {
+    transform: scale(1.16);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes acceptGlowIn {
+  0% {
+    opacity: 0;
+  }
+
+  55% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes acceptGlowPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.06);
+    opacity: 0.85;
+  }
+}

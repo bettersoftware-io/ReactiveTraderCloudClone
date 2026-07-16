@@ -2,6 +2,9 @@ import type { JSX } from "solid-js";
 
 import type { PanelId } from "@rtc/client-core";
 
+import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";
+import { NewRfqHead } from "#/ui/credit/newRfq/NewRfqHead";
+import { RfqsHead } from "#/ui/credit/rfqs/RfqsHead";
 import { EqBlotterHead } from "#/ui/equities/blotter/EqBlotterHead";
 import { EqChartHead } from "#/ui/equities/chart/EqChartHead";
 import { EqTicketHead } from "#/ui/equities/ticket/EqTicketHead";
@@ -13,8 +16,10 @@ import { PositionsHead } from "#/ui/fx/positions/PositionsHead";
 
 /** The real id→head-slot map, passed to InhouseLayoutEngine's headRegistry
  * prop. Panel ids without an entry fall back to the engine's default title
- * span. FX + Equities so far (Tasks 13/15) — mirrors `appPanelRegistry.tsx`'s
- * scope; Credit/Admin entries land with Tasks 14/16. */
+ * span (Sell Side has no entry here, matching the react registry — it reads
+ * as one family with the FX panels via the engine's default title chrome).
+ * FX + Credit + Equities so far (Tasks 13-15) — mirrors
+ * `appPanelRegistry.tsx`'s scope; the Admin entry lands with Task 16. */
 export const appHeadRegistry: Partial<Record<PanelId, () => JSX.Element>> = {
   "fx-rates": () => {
     return <LiveRatesHead />;
@@ -39,5 +44,14 @@ export const appHeadRegistry: Partial<Record<PanelId, () => JSX.Element>> = {
   },
   "eq-watchlist": () => {
     return <EqWatchlistHead />;
+  },
+  "credit-new-rfq": () => {
+    return <NewRfqHead />;
+  },
+  "credit-rfqs": () => {
+    return <RfqsHead />;
+  },
+  "credit-blotter": () => {
+    return <CreditBlotterHead />;
   },
 };
