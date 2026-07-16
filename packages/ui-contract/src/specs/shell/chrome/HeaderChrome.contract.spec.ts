@@ -80,6 +80,16 @@ describe("HeaderChrome", () => {
     expect(header.hasThemeToggle()).toBe(true);
   });
 
+  it("exposes a power-saver quick toggle that flips aria-pressed", async () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+      powerSaver: false,
+    });
+    expect(header.powerSaverPressed()).toBe("false");
+    await header.clickPowerSaver();
+    expect(header.powerSaverPressed()).toBe("true");
+  });
+
   it("opens the decorative notifications dropdown with its seed rows", async () => {
     const header = mount(HeaderChrome, {
       props: { activeTab: "fx", onTabChange: () => {} },

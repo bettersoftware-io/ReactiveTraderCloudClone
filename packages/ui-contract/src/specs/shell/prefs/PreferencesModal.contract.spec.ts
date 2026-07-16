@@ -28,6 +28,19 @@ describe("PreferencesModal", () => {
     expect(page.animatedBgOn()).toBe(true);
   });
 
+  it("reflects the power-saver preference and writes it on toggle", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      powerSaver: false,
+    });
+    expect(page.powerSaverOn()).toBe(false);
+
+    await page.togglePowerSaver();
+    expect(page.powerSaverSets()).toEqual([true]);
+    // The seam pushed the new value back, so the switch now reflects it.
+    expect(page.powerSaverOn()).toBe(true);
+  });
+
   it("closes on the dismiss (✕) control", async () => {
     let closed = 0;
     const page = mount(PreferencesModal, {
