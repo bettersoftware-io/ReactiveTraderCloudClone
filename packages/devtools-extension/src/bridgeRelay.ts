@@ -9,16 +9,22 @@ export interface BridgeChannel {
   close(): void;
 }
 
+interface BridgeRelayDeps {
+  channel: BridgeChannel;
+  port: RuntimePort;
+}
+
+interface BridgeRelayHandle {
+  dispose(): void;
+}
+
 /** Relays a same-origin `rtc-devtools` BroadcastChannel (from the app hub) to a
  * `chrome.runtime` port (to the panel, via the background router) and back.
  * When the port disconnects — the panel closed, or the router tore the pair
  * down — the channel is closed so the content script stops listening. Purely a
  * forwarder: it never inspects or mutates messages, and never originates a
  * `hello`, so injecting it does not wake the dormant hub. */
-export function createBridgeRelay(deps: {
-  channel: BridgeChannel;
-  port: RuntimePort;
-}): { dispose(): void } {
+export function createBridgeRelay(deps: BridgeRelayDeps): BridgeRelayHandle {
   const { channel, port } = deps;
 
   channel.addMessageListener((msg: unknown): void => {

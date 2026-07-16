@@ -17,9 +17,9 @@ const tabId: number = chrome.devtools.inspectedWindow.tabId;
 
 const session = createPanelSession(
   (): RuntimePort =>
-    chrome.runtime.connect({
+    {return chrome.runtime.connect({
       name: `rtc-panel:${tabId}`,
-    }) as unknown as RuntimePort,
+    }) as unknown as RuntimePort},
 );
 
 createRoot(rootEl).render(
