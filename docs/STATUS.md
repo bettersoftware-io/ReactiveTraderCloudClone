@@ -22,6 +22,7 @@
 - **Feature flags** — OpenFeature + Flagsmith. Plan: [superpowers/plans/2026-07-01-feature-flags.md](superpowers/plans/2026-07-01-feature-flags.md)
 - **Power-saver mode** — Plan: [superpowers/plans/2026-07-09-power-saver-mode.md](superpowers/plans/2026-07-09-power-saver-mode.md)
 - **Devtools MV3 Chrome extension** — third `Duplex` transport (ChromeRuntimeDuplex + content-script bridge + tab-keyed background router + RTC devtools panel); observe-only, zero app-side changes. Plan: [superpowers/plans/2026-07-14-devtools-chrome-extension.md](superpowers/plans/2026-07-14-devtools-chrome-extension.md)
+- **Devtools hardening & liveness** — six tracked follow-ups: inspector registry caps, type-safe event builder, prod `/devtools/` copy-path check, panel-side liveness timeout, row memoization, WAAPI change-flash. Plan: [superpowers/plans/2026-07-15-devtools-hardening.md](superpowers/plans/2026-07-15-devtools-hardening.md)
 
 ## 🟠 Planned but gated / not executed
 
