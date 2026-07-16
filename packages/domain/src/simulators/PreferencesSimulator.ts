@@ -24,6 +24,7 @@ export interface PreferencesSeed {
   themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
   animatedBackground?: boolean;
+  powerSaver?: boolean;
   bootVariant?: BootVariant;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
@@ -43,6 +44,8 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly viewMode: BehaviorSubject<ViewMode>;
 
   private readonly animatedBg: BehaviorSubject<boolean>;
+
+  private readonly powerSaverSubject: BehaviorSubject<boolean>;
 
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
@@ -64,6 +67,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.animatedBg = new BehaviorSubject<boolean>(
       seed.animatedBackground ?? DEFAULT_ANIMATED_BACKGROUND,
+    );
+    this.powerSaverSubject = new BehaviorSubject<boolean>(
+      seed.powerSaver ?? false,
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       seed.bootVariant ?? DEFAULT_BOOT_VARIANT,
@@ -109,6 +115,14 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setAnimatedBackground(on: boolean): void {
     this.animatedBg.next(on);
+  }
+
+  powerSaver$(): Observable<boolean> {
+    return this.powerSaverSubject.pipe(distinctUntilChanged());
+  }
+
+  setPowerSaver(on: boolean): void {
+    this.powerSaverSubject.next(on);
   }
 
   bootVariant$(): Observable<BootVariant> {
