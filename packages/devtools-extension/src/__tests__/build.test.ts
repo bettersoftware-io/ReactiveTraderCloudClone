@@ -9,7 +9,17 @@ const dist = (p: string): string => `${pkgRoot}dist/${p}`;
 
 describe("extension build", () => {
   it("produces a loadable unpacked MV3 bundle", () => {
-    execFileSync("pnpm", ["run", "build"], { cwd: pkgRoot, stdio: "inherit" });
+    // Force a production build: vitest runs with NODE_ENV=test, which the
+    // child would inherit and hand to @vitejs/plugin-react, emitting a
+    // dev-mode React bundle (~2x size, console warnings) into dist/. Since
+    // this test overwrites dist/ in place, that would leave a non-canonical
+    // dev bundle on disk for anyone who loads the unpacked extension after
+    // running the suite. Pin NODE_ENV so the shipped artifact stays prod.
+    execFileSync("pnpm", ["run", "build"], {
+      cwd: pkgRoot,
+      stdio: "inherit",
+      env: { ...process.env, NODE_ENV: "production" },
+    });
 
     for (const f of [
       "manifest.json",
