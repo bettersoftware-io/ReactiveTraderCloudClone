@@ -1,6 +1,7 @@
 export * from "#/presenters/AnalyticsPresenter";
 export * from "#/presenters/AnimatedBackgroundPresenter";
 export * from "#/presenters/AnimationDirector";
+export * from "#/presenters/AuthPresenter";
 export * from "#/presenters/adminKpisVm";
 export * from "#/presenters/BlotterPresenter";
 export * from "#/presenters/BootGatePresenter";

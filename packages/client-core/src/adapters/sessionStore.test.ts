@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { StoredSession } from "#/adapters/sessionStore";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
+import type { StoredSession } from "#/adapters/sessionStore";
 
 describe("InMemorySessionStore", () => {
   it("returns null on initial read", () => {
@@ -23,6 +23,7 @@ describe("InMemorySessionStore", () => {
         desk: "FX",
         clearance: "level-2",
       },
+      username: "jdoe",
       exp: Math.floor(Date.now() / 1000) + 3600,
     };
 
@@ -45,6 +46,7 @@ describe("InMemorySessionStore", () => {
         desk: "FX",
         clearance: "level-2",
       },
+      username: "jdoe",
       exp: Math.floor(Date.now() / 1000) + 3600,
     };
 
@@ -68,6 +70,7 @@ describe("InMemorySessionStore", () => {
         desk: "Credit",
         clearance: "level-1",
       },
+      username: "jsmith",
       exp: Math.floor(Date.now() / 1000) - 3600,
     };
 

@@ -3,6 +3,7 @@ import type { SessionUser } from "@rtc/domain";
 export interface StoredSession {
   readonly token: string;
   readonly user: SessionUser;
+  readonly username: string;
   readonly exp: number;
 }
 
