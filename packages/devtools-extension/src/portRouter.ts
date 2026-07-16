@@ -53,7 +53,9 @@ export function createPortRouter(): PortRouter {
     connectPanel(tabId: number, port: RuntimePort): void {
       const pairing = pairingFor(tabId);
       pairing.panel = port;
-      relay(port, (): RuntimePort | undefined => {return pairings.get(tabId)?.content});
+      relay(port, (): RuntimePort | undefined => {
+        return pairings.get(tabId)?.content;
+      });
       port.onDisconnect.addListener((): void => {
         teardown(tabId);
       });
@@ -62,7 +64,9 @@ export function createPortRouter(): PortRouter {
     connectContent(tabId: number, port: RuntimePort): void {
       const pairing = pairingFor(tabId);
       pairing.content = port;
-      relay(port, (): RuntimePort | undefined => {return pairings.get(tabId)?.panel});
+      relay(port, (): RuntimePort | undefined => {
+        return pairings.get(tabId)?.panel;
+      });
       port.onDisconnect.addListener((): void => {
         teardown(tabId);
       });

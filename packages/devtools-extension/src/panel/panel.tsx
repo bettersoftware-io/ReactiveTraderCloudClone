@@ -15,12 +15,11 @@ if (!rootEl) {
 
 const tabId: number = chrome.devtools.inspectedWindow.tabId;
 
-const session = createPanelSession(
-  (): RuntimePort =>
-    {return chrome.runtime.connect({
-      name: `rtc-panel:${tabId}`,
-    }) as unknown as RuntimePort},
-);
+const session = createPanelSession((): RuntimePort => {
+  return chrome.runtime.connect({
+    name: `rtc-panel:${tabId}`,
+  }) as unknown as RuntimePort;
+});
 
 createRoot(rootEl).render(
   <StrictMode>
