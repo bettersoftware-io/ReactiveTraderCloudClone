@@ -33,7 +33,7 @@ function hashPassword(password: string, salt: Buffer): Buffer {
 
 export class AuthService {
   private readonly secret: string;
-  private readonly ttlMs: number;
+  readonly ttlMs: number;
   private readonly now: () => number;
   private readonly table: Map<string, CredentialRecord>;
 
