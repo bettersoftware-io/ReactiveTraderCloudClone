@@ -106,11 +106,50 @@
   color: var(--text-secondary);
 }
 
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+}
+
+.input {
+  padding: 10px 12px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-secondary, #060c12);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+}
+
+.error {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--accent-negative, #ef4444);
+}
+
 .authenticate {
   display: block;
   width: 100%;
   /* No margin-top: the dots above supply the 22px gap (prototype .dots
-     margin 22px 0) — a margin here would double it. */
+     margin 22px 0) — a margin here would double it. Inside .form now, so
+     the 14px form gap is the only spacing between the password field
+     (or error line) and the button. */
   padding: 12px 0;
   font-family: var(--font-display, "Chakra Petch", sans-serif);
   font-weight: 700;
