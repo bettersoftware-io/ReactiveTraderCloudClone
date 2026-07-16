@@ -19,6 +19,10 @@ module.exports = {
     "^@rtc/react-bindings$": "<rootDir>/../react-bindings/dist/index.js",
   },
   transformIgnorePatterns: [
-    "node_modules/(?!(\\.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@testing-library/react-native|@react-rxjs/.*|@rx-state/.*|react-native-svg|@expo-google-fonts/.*))",
+    // `standard-navigation` is a pure-ESM ("type": "module") transitive dep of
+    // expo-router's `Tabs` — untranspiled, so it must be transformed like the
+    // other RN-ecosystem packages here (matches jest-expo's own preset default,
+    // which this list otherwise narrows).
+    "node_modules/(?!(\\.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@testing-library/react-native|@react-rxjs/.*|@rx-state/.*|react-native-svg|@expo-google-fonts/.*|standard-navigation))",
   ],
 };

@@ -11,6 +11,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { AppRoot } from "#/app/AppRoot";
 import { shouldPlayBootSplash } from "#/app/bootSplashGate";
@@ -36,26 +37,32 @@ export default function RootLayout(): JSX.Element {
   const fontsLoaded = useAppFonts();
 
   if (!fontsLoaded) {
-    return <SafeAreaView style={styles.screen} testID="fonts-loading" />;
+    return (
+      <GestureHandlerRootView style={styles.screen}>
+        <SafeAreaView style={styles.screen} testID="fonts-loading" />
+      </GestureHandlerRootView>
+    );
   }
 
   const playSplash = shouldPlayBootSplash();
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <AppRoot key={simulator ? "sim" : "live"} simulator={simulator}>
-        <ThemeProvider>
-          <Chrome simulator={simulator} onToggle={setSimulator} />
-          {playSplash && !bootDone ? (
-            <BootGate
-              onFinished={(): void => {
-                setBootDone(true);
-              }}
-            />
-          ) : null}
-        </ThemeProvider>
-      </AppRoot>
-    </SafeAreaView>
+    <GestureHandlerRootView style={styles.screen}>
+      <SafeAreaView style={styles.screen}>
+        <AppRoot key={simulator ? "sim" : "live"} simulator={simulator}>
+          <ThemeProvider>
+            <Chrome simulator={simulator} onToggle={setSimulator} />
+            {playSplash && !bootDone ? (
+              <BootGate
+                onFinished={(): void => {
+                  setBootDone(true);
+                }}
+              />
+            ) : null}
+          </ThemeProvider>
+        </AppRoot>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
