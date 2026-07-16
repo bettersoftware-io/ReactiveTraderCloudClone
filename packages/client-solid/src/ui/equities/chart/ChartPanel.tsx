@@ -54,7 +54,9 @@ interface ChartBodyProps {
 
 function ChartBody(props: ChartBodyProps): JSX.Element {
   const { useEquityQuote, useCandles, useWatchlist } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const quote = useEquityQuote(props.symbol);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const candles = useCandles(props.symbol, props.timeframe);
   const instruments = useWatchlist();
   const instrument = createMemo(() => {

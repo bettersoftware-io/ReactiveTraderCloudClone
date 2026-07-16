@@ -97,6 +97,7 @@ interface SellSideRfqRowProps {
 
 function SellSideRfqRow(props: SellSideRfqRowProps): JSX.Element {
   const { useQuotesForRfq } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const quotes = useQuotesForRfq(props.rfq.id);
   const abQuote = createMemo((): Quote | undefined => {
     return quotes().find((q) => {

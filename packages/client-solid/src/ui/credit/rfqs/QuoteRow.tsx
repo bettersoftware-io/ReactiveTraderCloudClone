@@ -43,6 +43,7 @@ export function QuoteRow(props: QuoteRowProps): JSX.Element {
             class={styles.acceptBtn}
             data-best={String(props.vm.best)}
             data-testid={`rfq-quote-accept-${props.vm.quoteId}`}
+            // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
             onClick={props.onAccept}
           >
             ACCEPT

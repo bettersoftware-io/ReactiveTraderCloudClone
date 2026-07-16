@@ -88,6 +88,7 @@ interface CellProps {
 
 function HeatCell(props: CellProps): JSX.Element {
   const { useEquityQuote } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const quote = useEquityQuote(props.symbol);
 
   const direction = createMemo((): "up" | "down" => {

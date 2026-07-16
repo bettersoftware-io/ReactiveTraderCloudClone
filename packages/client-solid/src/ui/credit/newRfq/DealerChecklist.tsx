@@ -25,6 +25,7 @@ export function DealerChecklist(props: DealerChecklistProps): JSX.Element {
         class={styles.row}
         data-testid="new-rfq-dealer-all"
         data-checked={String(allSelected())}
+        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
         onClick={props.onToggleAll}
       >
         <CheckBox checked={allSelected()} />

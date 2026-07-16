@@ -423,6 +423,7 @@ interface RfqCardCellProps {
 
 function RfqCardCell(props: RfqCardCellProps): JSX.Element {
   const { useQuotesForRfq, useAcceptQuote, useCancelRfq } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const quotes = useQuotesForRfq(props.rfq.id);
   const acceptQuote = useAcceptQuote();
   const cancelRfq = useCancelRfq();

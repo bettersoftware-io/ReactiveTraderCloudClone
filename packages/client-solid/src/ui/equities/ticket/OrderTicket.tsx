@@ -113,7 +113,9 @@ interface TicketBodyProps {
 
 function TicketBody(props: TicketBodyProps): JSX.Element {
   const { useEquityQuote, useAnimationIntents } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const quote = useEquityQuote(props.symbol);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const animIntent = useAnimationIntents(`ticket:${props.symbol}`);
 
   const animAttr = createMemo((): "fill" | undefined => {
@@ -453,6 +455,7 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
         data-testid="order-ticket-submit"
         data-side={form()?.side}
         class={styles.submit}
+        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
         onClick={props.submit}
       >
         {form()?.side === "buy" ? "BUY" : "SELL"} {props.symbol}

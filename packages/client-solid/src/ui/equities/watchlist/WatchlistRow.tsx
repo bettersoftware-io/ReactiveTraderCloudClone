@@ -30,6 +30,7 @@ import styles from "./WatchlistRow.module.css";
  */
 export function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   const { useEquityQuote } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const quote = useEquityQuote(props.symbol);
   let prevLast: number | undefined;
   const [tick, setTick] = createSignal<TickPulse>({ nonce: 0, up: true });

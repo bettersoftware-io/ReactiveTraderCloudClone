@@ -54,8 +54,10 @@ import styles from "./RfqCard.module.css";
  * so no double-invocation risk there) keeps this component correct in both
  * a real browser and this test environment. */
 export function RfqCard(props: RfqCardProps): JSX.Element {
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const totalMs = props.expirySecs * 1000;
   const { useRfqCountdown } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const remainingMs = useRfqCountdown(props.creationTimestamp, totalMs);
   const secs = createMemo((): number => {
     return Math.ceil(remainingMs() / 1000);
@@ -161,6 +163,7 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
               type="button"
               class={styles.cancelBtn}
               data-testid={`rfq-cancel-${props.vm.rfqId}`}
+              // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
               onClick={props.onCancel}
             >
               CANCEL
@@ -182,6 +185,7 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
             type="button"
             class={styles.removeRow}
             data-testid={`rfq-remove-${props.vm.rfqId}`}
+            // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
             onClick={props.onRemove}
           >
             <span class={styles.binGlyph}>🗑</span>

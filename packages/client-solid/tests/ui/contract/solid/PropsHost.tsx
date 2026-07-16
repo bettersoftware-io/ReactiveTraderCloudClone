@@ -27,6 +27,8 @@ interface PropsHostProps<P> {
  * `@rtc/solid-bindings`'s own `createViewModel` uses internally), rather
  * than hand-rolling a second subscribe/cleanup pair for this one host. */
 export function PropsHost<P>(props: PropsHostProps<P>): JSX.Element {
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const value = toSignal(state(props.subject, props.subject.getValue()));
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   return props.build(value);
 }

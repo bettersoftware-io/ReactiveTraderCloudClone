@@ -56,8 +56,8 @@ interface WorkspaceEngineProps {
  * component can never see a different tab within one lifetime. */
 function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
   const { useLayout } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see doc comment)
   const { state, maximize, restore, collapse, expand, resize } = useLayout(
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is correct under the keyed-<Show> remount (see doc comment)
     props.tab,
   );
 

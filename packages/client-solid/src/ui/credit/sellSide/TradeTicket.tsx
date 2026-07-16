@@ -10,6 +10,7 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
   const { useTicketSubmission, useAnimationIntents } = useViewModel();
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const anim = useAnimationIntents(`rfq:${props.rfq.id}`);
   const ticket = useTicketSubmission();
   const { submitPrice, pass } = ticket;

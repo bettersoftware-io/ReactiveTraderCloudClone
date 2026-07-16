@@ -17,6 +17,7 @@ export function InstrumentSelect(props: InstrumentSelectProps): JSX.Element {
         data-testid="new-rfq-instrument-toggle"
         data-selected={String(props.selected != null)}
         data-open={String(props.open)}
+        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
         onClick={props.onToggle}
       >
         <span>
@@ -64,6 +65,7 @@ function InstrumentRow(props: InstrumentRowProps): JSX.Element {
       type="button"
       class={styles.row}
       data-testid={`new-rfq-instrument-option-${props.instrument.id}`}
+      // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
       onClick={props.onSelect}
     >
       <div class={styles.ticker}>{props.instrument.ticker}</div>

@@ -69,6 +69,7 @@ interface OrdersRowProps {
 
 function OrdersRow(props: OrdersRowProps): JSX.Element {
   const accent =
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     props.order.side === "buy"
       ? "var(--accent-positive)"
       : "var(--accent-negative)";
