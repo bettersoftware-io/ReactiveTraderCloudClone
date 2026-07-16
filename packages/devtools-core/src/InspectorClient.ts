@@ -7,11 +7,23 @@ import { PROTOCOL_VERSION } from "./protocol";
 
 const PING_INTERVAL_MS = 2000;
 
+/** No inbound `AppToInspector` traffic at all (`welcome`, `snapshot`, or
+ * `batch` — `ping` only flows the other way, panel to app) for this long
+ * while connected means the app is gone without a `bye` (crashed or killed
+ * tab, no pagehide). Set to 3x this client's own `PING_INTERVAL_MS` so a
+ * couple of quiet flush cycles don't cause a false positive. */
+const LIVENESS_TIMEOUT_MS = 6000;
+
 /** Panel-side handshake driver. Sends hello on `start()`, then every 2s
  * re-announces with hello while disconnected (so connecting is order-
  * independent and survives an app reload) or pings once connected (the hub's
  * heartbeat). Pipes every inbound `AppToInspector` message into the store.
- * `dispose()` sends bye and stops the timer. */
+ * Also runs a liveness timer, reset on every inbound message: if it expires
+ * while connected (no inbound traffic at all within the window), applies a
+ * synthetic `bye` to flip the store to disconnected; the hello loop above
+ * keeps re-announcing, so the handshake re-runs and reconnects if the app
+ * returns.
+ * `dispose()` sends bye and stops both timers. */
 export class InspectorClient {
   private readonly channel: Duplex<InspectorToApp, AppToInspector>;
 
@@ -20,6 +32,8 @@ export class InspectorClient {
   private inboundSub: Subscription | null = null;
 
   private pingTimer: ReturnType<typeof setInterval> | null = null;
+
+  private livenessTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     channel: Duplex<InspectorToApp, AppToInspector>,
@@ -35,9 +49,11 @@ export class InspectorClient {
     // synchronously, and a plain Subject drops next() calls with no
     // subscriber yet — subscribing first guarantees that reply isn't lost.
     this.inboundSub = this.channel.inbound$.subscribe((msg) => {
+      this.resetLiveness();
       this.store.apply(msg);
     });
     this.channel.send({ kind: "hello", v: PROTOCOL_VERSION });
+    this.resetLiveness();
     this.pingTimer = setInterval(() => {
       // Until the app answers (store.connected flips on `welcome`), keep
       // re-announcing so connecting is order-independent: the panel can be
@@ -58,8 +74,25 @@ export class InspectorClient {
       this.pingTimer = null;
     }
 
+    if (this.livenessTimer !== null) {
+      clearTimeout(this.livenessTimer);
+      this.livenessTimer = null;
+    }
+
     this.channel.send({ kind: "bye" });
     this.inboundSub?.unsubscribe();
     this.inboundSub = null;
+  }
+
+  private resetLiveness(): void {
+    if (this.livenessTimer !== null) {
+      clearTimeout(this.livenessTimer);
+    }
+
+    this.livenessTimer = setTimeout((): void => {
+      if (this.store.getSnapshot().connected) {
+        this.store.apply({ kind: "bye" });
+      }
+    }, LIVENESS_TIMEOUT_MS);
   }
 }

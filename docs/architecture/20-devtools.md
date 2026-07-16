@@ -300,8 +300,8 @@ connecting order-independent — the panel can be opened before the app is
 ready — and lets it auto-reconnect after an app reload (which sends `bye` via
 `pagehide`, flipping the panel back into hello mode). While the panel tab is
 backgrounded the browser throttles this timer, so reconnection completes once
-the panel is foregrounded; an abrupt app crash with no `pagehide` remains the
-documented v1 limitation.
+the panel is foregrounded; an abrupt app crash with no `pagehide` is caught
+instead by the liveness timer described in [§20.6](#206-serving-topology).
 
 ### 20.5 Serialization & error isolation
 
@@ -363,11 +363,16 @@ if (typeof BroadcastChannel !== "undefined") {
 `pagehide` (not `beforeunload`) survives bfcache and mobile Safari;
 `dispose()` calls `goDormant()`, which sends a `bye` — flipping the panel to
 "disconnected" — and is idempotent, so it's safe to call even if the hub
-never went live. **v1 limitation, documented, not silently accepted:** an
-abrupt renderer crash fires no `pagehide`, so no `bye` is sent; the panel has
-no independent liveness timeout and keeps showing "connected" until the
-inspector itself reloads. A panel-side welcome-freshness timer that closes
-this gap is listed as a future extension ([§20.8](#208-future-extensions)).
+never went live. An abrupt renderer crash fires no `pagehide`, so no `bye` is
+sent that way — but the panel's `InspectorClient` also runs its own
+liveness timer (`LIVENESS_TIMEOUT_MS = 6000`,
+`packages/devtools-core/src/InspectorClient.ts`), reset on every inbound
+`AppToInspector` message (`welcome`, `snapshot`, or `batch` — `ping` only
+flows panel-to-app, so it isn't one of these). If it expires while
+connected — 6 s with no inbound traffic at all — the client applies a
+synthetic `bye` itself, flipping to "disconnected" without waiting on the
+app; the existing re-`hello` loop keeps announcing underneath, so the
+handshake re-runs and reconnects if the app comes back.
 
 ### 20.7 Perf
 
@@ -445,6 +450,6 @@ Summarized from spec [§9](../superpowers/specs/2026-07-11-custom-devtools-desig
 3. **Chrome extension shell** — an MV3 wrapper: content script bridges `BroadcastChannel` ↔ background ↔ a devtools-panel page hosting the *same* `devtools-app` bundle. Protocol and UI untouched; packaging work only.
 4. **React Native support** — a WebSocket-relay `DevtoolsTransport` adapter (the port already exists for this) plus the same three decorators applied at the RN composition root; the panel runs on the developer's machine, inspecting the device over the relay.
 5. **Time-scrubbing UI** — a panel-side slider over the ring buffer reconstructing past state-tree views. Honest framing: viewing recorded history, not rewinding the live app — RxJS streams over a socket cannot be replayed the way Redux replays pure reducers.
-6. **Panel-side liveness timeout** — closes the abrupt-crash gap noted in [§20.6](#206-serving-topology): a welcome-freshness timer in the inspector that flips to "disconnected" if no traffic (including `ping`s) arrives within a bounded window, covering the case where the app disappears without firing `pagehide`.
+6. ~~**Panel-side liveness timeout**~~ — **shipped**: see the liveness timer described in [§20.6](#206-serving-topology).
 
 ---
