@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { StoredSession } from "#/adapters/sessionStore";
-import { InMemorySessionStore } from "#/adapters/sessionStore";
+import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 
 describe("InMemorySessionStore", () => {
   it("returns null on initial read", () => {
