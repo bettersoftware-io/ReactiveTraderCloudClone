@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "RTC DevTools",
+  "version": "0.1.0",
+  "description": "Live inspector for the Reactive Trader Cloud state layer.",
+  "minimum_chrome_version": "116",
+  "devtools_page": "devtools.html",
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost:*/*",
+        "http://127.0.0.1:*/*",
+        "https://*.vercel.app/*"
+      ],
+      "js": ["contentBridge.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "permissions": ["scripting"],
+  "host_permissions": ["http://localhost:*/*", "https://*.vercel.app/*"]
+}
