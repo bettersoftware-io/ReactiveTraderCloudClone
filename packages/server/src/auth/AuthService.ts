@@ -3,6 +3,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { findRosterUser } from "@rtc/domain";
 import type { SessionUserDto } from "@rtc/shared";
 
+import type { VerifiedToken } from "./token.js";
 import { signToken, verifyToken } from "./token.js";
 
 export { parseAuthUsers } from "./loadUsers.js";
@@ -33,14 +34,25 @@ function hashPassword(password: string, salt: Buffer): Buffer {
 
 export class AuthService {
   private readonly secret: string;
+
   readonly ttlMs: number;
+
   private readonly now: () => number;
+
   private readonly table: Map<string, CredentialRecord>;
 
   constructor(opts: AuthServiceOptions) {
+    if (opts.credentials.size > 0 && !opts.secret) {
+      throw new Error("AUTH_SECRET must be set when AUTH_USERS is configured");
+    }
+
     this.secret = opts.secret;
     this.ttlMs = opts.ttlMs;
-    this.now = opts.now ?? ((): number => Date.now());
+    this.now =
+      opts.now ??
+      ((): number => {
+        return Date.now();
+      });
     this.table = new Map<string, CredentialRecord>();
 
     for (const [username, password] of opts.credentials) {
@@ -78,7 +90,7 @@ export class AuthService {
     };
   }
 
-  verifyToken(token: string): { username: string } | null {
+  verifyToken(token: string): VerifiedToken | null {
     return verifyToken(token, this.secret, this.now());
   }
 }

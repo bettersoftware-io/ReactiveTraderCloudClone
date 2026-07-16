@@ -6,7 +6,9 @@ const svc = new AuthService({
   secret: "s",
   ttlMs: 60_000,
   credentials: parseAuthUsers("demo:localpass,astark:hunter2"),
-  now: (): number => 1_000_000,
+  now: (): number => {
+    return 1_000_000;
+  },
 });
 
 describe("AuthService", () => {
@@ -34,5 +36,25 @@ describe("AuthService", () => {
     expect(m.get("a")).toBe("1");
     expect(m.get("b")).toBe("2");
     expect(m.size).toBe(2);
+  });
+
+  it("throws when constructed with an empty secret but configured users", () => {
+    expect(() => {
+      return new AuthService({
+        secret: "",
+        ttlMs: 60_000,
+        credentials: parseAuthUsers("demo:x"),
+      });
+    }).toThrow("AUTH_SECRET must be set when AUTH_USERS is configured");
+  });
+
+  it("does not throw when constructed with a non-empty secret and configured users", () => {
+    expect(() => {
+      return new AuthService({
+        secret: "s",
+        ttlMs: 60_000,
+        credentials: parseAuthUsers("demo:x"),
+      });
+    }).not.toThrow();
   });
 });

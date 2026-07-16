@@ -5,6 +5,10 @@ interface Payload {
   readonly exp: number;
 }
 
+export interface VerifiedToken {
+  readonly username: string;
+}
+
 function sign(payload: string, secret: string): string {
   return createHmac("sha256", secret).update(payload).digest("base64url");
 }
@@ -24,7 +28,7 @@ export function verifyToken(
   token: string,
   secret: string,
   now: number,
-): { username: string } | null {
+): VerifiedToken | null {
   const dot = token.indexOf(".");
 
   if (dot < 0) {

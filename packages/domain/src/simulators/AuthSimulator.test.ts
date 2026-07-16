@@ -9,6 +9,7 @@ describe("AuthSimulator", () => {
   it("returns ok + roster profile + a token on correct dev credentials", async () => {
     const r = await firstValueFrom(sim.login("demo", "localpass"));
     expect(r.ok).toBe(true);
+
     if (r.ok) {
       expect(r.user.name).toBe("Demo Operator");
       expect(typeof r.token).toBe("string");
