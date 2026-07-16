@@ -30,7 +30,7 @@ export function App(): JSX.Element {
       <AmbientBackground />
       <HeaderChrome activeTab={activeTab()} onTabChange={setActiveTab} />
       <Show when={activeTab()} keyed>
-        {(tab) => {
+        {(tab: WorkspaceTab) => {
           return <WorkspaceEngine tab={tab} />;
         }}
       </Show>
