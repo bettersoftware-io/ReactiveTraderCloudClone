@@ -238,6 +238,7 @@ export class InspectorStore {
     machines: readonly SnapshotMachine[],
   ): void {
     this.streamEntries.clear();
+    this.streamRowCache.clear();
 
     for (const s of streams) {
       this.streamEntries.set(s.streamId, {
@@ -251,6 +252,7 @@ export class InspectorStore {
     }
 
     this.machineEntries.clear();
+    this.machineRowCache.clear();
 
     for (const m of machines) {
       this.machineEntries.set(m.machineId, {
@@ -264,6 +266,9 @@ export class InspectorStore {
         transitions: 0,
       });
     }
+
+    this.capStreams();
+    this.evictDisposedMachines();
   }
 
   private applyEvent(event: DevtoolsEvent): void {
