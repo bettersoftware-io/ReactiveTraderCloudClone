@@ -7,7 +7,15 @@ import { BroadcastChannelDuplex, DevtoolsHub } from "@rtc/devtools-core";
  * inspector must be served from this origin (/devtools route or dev
  * middleware). Guarded so jsdom/StrictMode double-mounts and non-browser
  * environments never throw. */
-export const devtoolsHub = new DevtoolsHub({ appId: "rtc-web" });
+// `dev: import.meta.env.DEV` tells the inspector whether this is a dev build so
+// the panel shows the intent-injection affordance only when it will work. Vite
+// statically replaces `import.meta.env.DEV` (true on the dev server, false in a
+// production build), which — together with the hub's compiled-out handler —
+// keeps the write surface dev-only.
+export const devtoolsHub = new DevtoolsHub({
+  appId: "rtc-web",
+  dev: import.meta.env.DEV,
+});
 
 if (typeof BroadcastChannel !== "undefined") {
   devtoolsHub.attachTransport(new BroadcastChannelDuplex("rtc-devtools"));
