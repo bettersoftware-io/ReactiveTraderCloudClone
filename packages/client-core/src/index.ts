@@ -1,5 +1,6 @@
 export * from "#/adapters/IWsAdapter";
 export * from "#/adapters/portFactory";
+export * from "#/adapters/sessionStore";
 export * from "#/adapters/WsAdapter";
 export * from "#/adapters/WsConnectionEventsAdapter";
 export * from "#/blotter/index";
