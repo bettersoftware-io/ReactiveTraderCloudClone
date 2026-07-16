@@ -1,7 +1,12 @@
-import { firstValueFrom, of, take } from "rxjs";
-import { describe, expect, it } from "vitest";
+import { BehaviorSubject, firstValueFrom, of, take } from "rxjs";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { CurrencyPair, PriceTick, PricingPort } from "@rtc/domain";
+import {
+  type CurrencyPair,
+  type PriceTick,
+  type PricingPort,
+  PricingSimulator,
+} from "@rtc/domain";
 
 import { PriceStreamPresenter } from "../PriceStreamPresenter";
 
@@ -29,7 +34,7 @@ describe("PriceStreamPresenter", () => {
         return of({ bid: 0, ask: 0, mid: 0 });
       },
     };
-    const presenter = new PriceStreamPresenter(port);
+    const presenter = new PriceStreamPresenter(port, of(false));
     const first = await firstValueFrom(presenter.price$(EURUSD).pipe(take(1)));
     expect(first.mid).toBe(1.1);
     expect(typeof first.spread).toBe("string");
@@ -47,8 +52,50 @@ describe("PriceStreamPresenter", () => {
         return of({ bid: 0, ask: 0, mid: 0 });
       },
     };
-    const presenter = new PriceStreamPresenter(port);
+    const presenter = new PriceStreamPresenter(port, of(false));
     expect(presenter.price$(EURUSD)).toBe(presenter.price$(EURUSD));
+  });
+});
+
+describe("PriceStreamPresenter power-saver conflation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("conflates ticks to at most one per 250ms while power saver is on", () => {
+    const powerSaver$ = new BehaviorSubject<boolean>(true);
+    const presenter = new PriceStreamPresenter(
+      new PricingSimulator(),
+      powerSaver$,
+    );
+    let count = 0;
+    const sub = presenter.price$(EURUSD).subscribe(() => {
+      count += 1;
+    });
+    vi.advanceTimersByTime(2_000);
+    // 250ms buckets over 2s: at most 1 leading + floor(2000/250) trailing emissions.
+    expect(count).toBeLessThanOrEqual(1 + Math.floor(2_000 / 250));
+    sub.unsubscribe();
+  });
+
+  it("passes ticks through untouched (unconflated) while power saver is off", () => {
+    const powerSaver$ = new BehaviorSubject<boolean>(false);
+    const presenter = new PriceStreamPresenter(
+      new PricingSimulator(),
+      powerSaver$,
+    );
+    let count = 0;
+    const sub = presenter.price$(EURUSD).subscribe(() => {
+      count += 1;
+    });
+    vi.advanceTimersByTime(2_000);
+    // Unconflated simulator rate observed over 2s comfortably exceeds the
+    // conflated ceiling of 9 (1 leading + 8 trailing 250ms buckets).
+    expect(count).toBeGreaterThan(1 + Math.floor(2_000 / 250));
+    sub.unsubscribe();
   });
 });
 
