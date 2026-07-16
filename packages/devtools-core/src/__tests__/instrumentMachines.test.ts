@@ -30,6 +30,7 @@ describe("instrumentMachineFactories", () => {
       "orderTicket",
       ["AAPL"],
       expect.anything(),
+      expect.anything(),
     );
     machine.intents.submit();
     expect(intent).toHaveBeenCalledWith(expect.any(String), "submit", []);

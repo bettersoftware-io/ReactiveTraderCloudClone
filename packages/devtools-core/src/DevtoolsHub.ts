@@ -39,6 +39,10 @@ interface MachineEntry {
   hasState: boolean;
   disposed: boolean;
   createdAt: number;
+  /** The wrapped intents map (the ones tapped for `machine:intent`), stored so
+   * the dev-only inbound handler can invoke one by name. Populated by reference
+   * by the instrumentation right after machineCreated returns. */
+  intents?: Readonly<Record<string, unknown>>;
 }
 
 interface Pending {
@@ -144,6 +148,7 @@ export class DevtoolsHub {
     machineKind: string,
     args: readonly unknown[],
     state$: Observable<unknown>,
+    intents?: Readonly<Record<string, unknown>>,
   ): string {
     const machineId = `m${this.nextMachineId++}`;
     const entry: MachineEntry = {
@@ -155,6 +160,7 @@ export class DevtoolsHub {
       hasState: false,
       disposed: false,
       createdAt: Date.now(),
+      intents,
     };
     this.machines.set(machineId, entry);
 
