@@ -22,10 +22,14 @@ const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 // StaleIndicator it depends on; Tasks 14-16 land Credit/Equities/Admin) —
 // excluded so the included set (shell + layout + FX) stays 100% green.
 // Re-narrow as each remaining domain's components land.
+// shell/auth (LoginScreen, AuthGate) is React-only: the Solid client is a
+// walking skeleton that auto-logs-in and has no sign-in/gate UI yet, so its
+// contract specs stay React-only until Solid grows those components.
 const notYetPortedSpecs = [
   `${specsDir}/credit/**/*.contract.spec.ts`,
   `${specsDir}/equities/**/*.contract.spec.ts`,
   `${specsDir}/admin/**/*.contract.spec.ts`,
+  `${specsDir}/shell/auth/**/*.contract.spec.ts`,
 ];
 
 export default defineConfig({
