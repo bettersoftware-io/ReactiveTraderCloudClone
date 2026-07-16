@@ -7,22 +7,19 @@ import { createRateLimiter } from "#/auth/rateLimit";
 
 import { authorizeUpgrade, handleLogin } from "./loginHandler.js";
 
-const TTL_MS = 60_000;
-
-function makeAuth(now: () => number): AuthService {
-  return new AuthService({
-    secret: "s3cret",
-    ttlMs: TTL_MS,
-    credentials: parseAuthUsers("demo:localpass"),
-    now,
-  });
-}
-
 describe("handleLogin", () => {
   it("returns 429 when the caller is rate-limited", () => {
-    const auth = makeAuth((): number => 1_000);
+    const auth = makeAuth((): number => {
+      return 1_000;
+    });
     const rateLimit = createRateLimiter(1, 60_000);
-    const deps = { auth, rateLimit, now: (): number => 1_000 };
+    const deps = {
+      auth,
+      rateLimit,
+      now: (): number => {
+        return 1_000;
+      },
+    };
     const body = JSON.stringify({ username: "demo", password: "localpass" });
 
     expect(handleLogin(body, "1.2.3.4", deps).status).toBe(200);
@@ -30,18 +27,34 @@ describe("handleLogin", () => {
   });
 
   it("returns 400 on malformed JSON", () => {
-    const auth = makeAuth((): number => 1_000);
+    const auth = makeAuth((): number => {
+      return 1_000;
+    });
     const rateLimit = createRateLimiter(10, 60_000);
-    const deps = { auth, rateLimit, now: (): number => 1_000 };
+    const deps = {
+      auth,
+      rateLimit,
+      now: (): number => {
+        return 1_000;
+      },
+    };
 
     const result = handleLogin("{not json", "1.2.3.4", deps);
     expect(result.status).toBe(400);
   });
 
   it("returns 400 on a well-formed but invalid shape", () => {
-    const auth = makeAuth((): number => 1_000);
+    const auth = makeAuth((): number => {
+      return 1_000;
+    });
     const rateLimit = createRateLimiter(10, 60_000);
-    const deps = { auth, rateLimit, now: (): number => 1_000 };
+    const deps = {
+      auth,
+      rateLimit,
+      now: (): number => {
+        return 1_000;
+      },
+    };
 
     const result = handleLogin(
       JSON.stringify({ username: "demo" }),
@@ -52,9 +65,17 @@ describe("handleLogin", () => {
   });
 
   it("returns 401 on bad credentials", () => {
-    const auth = makeAuth((): number => 1_000);
+    const auth = makeAuth((): number => {
+      return 1_000;
+    });
     const rateLimit = createRateLimiter(10, 60_000);
-    const deps = { auth, rateLimit, now: (): number => 1_000 };
+    const deps = {
+      auth,
+      rateLimit,
+      now: (): number => {
+        return 1_000;
+      },
+    };
 
     const body = JSON.stringify({ username: "demo", password: "wrong" });
     const result = handleLogin(body, "1.2.3.4", deps);
@@ -62,9 +83,17 @@ describe("handleLogin", () => {
   });
 
   it("returns 200 with a valid LoginResponseDto on success, with CORS headers", () => {
-    const auth = makeAuth((): number => 1_000);
+    const auth = makeAuth((): number => {
+      return 1_000;
+    });
     const rateLimit = createRateLimiter(10, 60_000);
-    const deps = { auth, rateLimit, now: (): number => 1_000 };
+    const deps = {
+      auth,
+      rateLimit,
+      now: (): number => {
+        return 1_000;
+      },
+    };
 
     const body = JSON.stringify({ username: "demo", password: "localpass" });
     const result = handleLogin(body, "1.2.3.4", deps);
@@ -82,7 +111,9 @@ describe("handleLogin", () => {
 
 describe("authorizeUpgrade", () => {
   it("accepts a freshly-signed token", () => {
-    const auth = makeAuth((): number => 1_000);
+    const auth = makeAuth((): number => {
+      return 1_000;
+    });
     const login = auth.login("demo", "localpass");
 
     if (login === null) {
@@ -93,13 +124,28 @@ describe("authorizeUpgrade", () => {
   });
 
   it("rejects a garbage token", () => {
-    const auth = makeAuth((): number => 1_000);
+    const auth = makeAuth((): number => {
+      return 1_000;
+    });
     expect(authorizeUpgrade("/?access=garbage", auth)).toBe(false);
   });
 
   it("rejects a missing token or url", () => {
-    const auth = makeAuth((): number => 1_000);
+    const auth = makeAuth((): number => {
+      return 1_000;
+    });
     expect(authorizeUpgrade("/", auth)).toBe(false);
     expect(authorizeUpgrade(undefined, auth)).toBe(false);
   });
 });
+
+const TTL_MS = 60_000;
+
+function makeAuth(now: () => number): AuthService {
+  return new AuthService({
+    secret: "s3cret",
+    ttlMs: TTL_MS,
+    credentials: parseAuthUsers("demo:localpass"),
+    now,
+  });
+}

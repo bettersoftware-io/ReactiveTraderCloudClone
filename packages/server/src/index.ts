@@ -84,7 +84,9 @@ const httpServer = createServer((req, res) => {
         const result = handleLogin(bodyText, clientIp(req), {
           auth,
           rateLimit: loginRateLimit,
-          now: (): number => Date.now(),
+          now: (): number => {
+            return Date.now();
+          },
         });
         res.writeHead(result.status, result.headers);
         res.end(result.body);
