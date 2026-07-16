@@ -75,6 +75,27 @@ test("rejects invalid / non-array JSON args without invoking", () => {
   expect(screen.getByTestId("intent-error")).toBeTruthy();
 });
 
+test("rejects valid JSON that is not an array without invoking", () => {
+  const onInvokeIntent = vi.fn();
+  render(
+    <MachinesPanel
+      machines={[machineRow({})]}
+      dev
+      onInvokeIntent={onInvokeIntent}
+    />,
+  );
+  fireEvent.click(screen.getByText("m1"));
+
+  fireEvent.click(screen.getByTestId("intent-invoke-button"));
+  fireEvent.change(screen.getByLabelText("Args (JSON array)"), {
+    target: { value: "{}" },
+  });
+  fireEvent.click(screen.getByTestId("intent-confirm-yes"));
+
+  expect(onInvokeIntent).not.toHaveBeenCalled();
+  expect(screen.getByTestId("intent-error")).toBeTruthy();
+});
+
 function machineRow(overrides: Partial<MachineRow>): MachineRow {
   return {
     machineId: "m1",

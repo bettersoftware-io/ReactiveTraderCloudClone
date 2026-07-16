@@ -174,7 +174,11 @@ function MachineDetail({
       >{`Intents (${machine.intents.length})`}</h4>
       <IntentList intents={machine.intents} />
       {dev ? (
-        <IntentInjector machine={machine} onInvokeIntent={onInvokeIntent} />
+        <IntentInjector
+          key={machine.machineId}
+          machine={machine}
+          onInvokeIntent={onInvokeIntent}
+        />
       ) : null}
     </div>
   );
