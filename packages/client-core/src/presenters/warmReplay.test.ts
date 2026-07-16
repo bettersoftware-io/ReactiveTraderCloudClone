@@ -1,10 +1,11 @@
 import { Observable, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { PreferencesPort } from "@rtc/domain";
+import { AuthSimulator, type PreferencesPort } from "@rtc/domain";
 import { CLIENT_MSG } from "@rtc/shared";
 
 import { FakeWsAdapter } from "../adapters/__tests__/FakeWsAdapter";
+import { InMemorySessionStore } from "../adapters/InMemorySessionStore";
 import { createWsRealPorts } from "../adapters/portFactory";
 import { CurrencyPairsPresenter } from "./CurrencyPairsPresenter";
 import { warmReplay } from "./warmReplay.js";
@@ -51,7 +52,11 @@ describe("warmReplay", () => {
 
   it("a singleton presenter re-subscribed after teardown sends ONE wire subscribe, not one per cycle", () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
+    const ports = createWsRealPorts(ws, {
+      preferences: {} as PreferencesPort,
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    });
     const presenter = new CurrencyPairsPresenter(ports.referenceData);
 
     presenter.pairs$.subscribe().unsubscribe(); // tab switch away + back

@@ -38,8 +38,7 @@
     "packages/client-react-native/scripts/**/*.ts",
     "packages/*/*.config.ts",
     "eslint-rules/*.ts",
-    "tests/**/*.ts",
-    "middleware.ts"
+    "tests/**/*.ts"
   ],
   "exclude": ["**/node_modules/**", "**/dist/**"]
 }

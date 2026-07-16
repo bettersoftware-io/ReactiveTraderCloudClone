@@ -7,8 +7,10 @@ import {
   type AppPorts,
   createApp,
   createSimulatorPorts,
+  InMemorySessionStore,
 } from "@rtc/client-core";
 import {
+  AuthSimulator,
   type ConnectionEvent,
   ConnectionEventsSimulator,
   PreferencesSimulator,
@@ -23,7 +25,14 @@ export function buildPresenterApp(): PresenterCtx {
   const connectionEvents$ = new Subject<ConnectionEvent>();
   const gateway = new ConnectionEventsSimulator();
   const ports: AppPorts = {
-    ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
+    ...createSimulatorPorts({
+      preferences: new PreferencesSimulator(),
+      // No presenter scenario drives login/lock — AuthSimulator with no dev
+      // credentials and a fresh in-memory store are inert stand-ins that
+      // satisfy PortFactoryDeps.
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    }),
     connectionEvents: {
       events: () => {
         return merge(gateway.events(), connectionEvents$.asObservable());
@@ -68,7 +77,11 @@ export function buildIncidentPresenterApp(): IncidentPresenterCtx {
   const gateway = new ConnectionEventsSimulator();
 
   const ports: AppPorts = {
-    ...createSimulatorPorts({ preferences: new PreferencesSimulator() }),
+    ...createSimulatorPorts({
+      preferences: new PreferencesSimulator(),
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    }),
     connectionEvents: {
       events: () => {
         return merge(gateway.events(), myIncident$.asObservable());

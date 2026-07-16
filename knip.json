@@ -3,10 +3,6 @@
   "ignore": [".remember/**", "docs/design/**"],
   "ignoreBinaries": ["scripts/install-actionlint.sh"],
   "workspaces": {
-    ".": {
-      "entry": ["middleware.ts"],
-      "project": ["middleware.ts"]
-    },
     "packages/domain": {
       "entry": ["src/index.ts", "src/ports/__contracts__/*.ts"],
       "project": "src/**/*.ts"

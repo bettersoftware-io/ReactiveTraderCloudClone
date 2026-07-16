@@ -30,6 +30,7 @@ export type {
   CurrencyPairUpdateDto,
   ReferenceDataMessage,
 } from "./fx/referenceDataDto.js";
+export * from "./protocol/auth.js";
 export { CLIENT_MSG, SERVER_MSG } from "./protocol/messages.js";
 export type { RpcResponse } from "./protocol/rpc.js";
 export type { BulkSoWMessage, MarkerEvent } from "./protocol/sow.js";

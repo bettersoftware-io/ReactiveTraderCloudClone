@@ -196,11 +196,14 @@ sequenceDiagram
     SC-->>Idx: ServiceContainer (12 services, ctx) - built once
     Idx->>WSE: createWsListener(combineEffects(...allEffects), services)
     WSE-->>Idx: listen(socket) closure (24 effects merged, ctx captured)
-    Idx->>HTTP: createServer(...) handling GET /health
-    Idx->>WSS: new WebSocketServer({ server, verifyClient: isAuthorizedUpgrade })
+    Idx->>Idx: new AuthService({ secret: AUTH_SECRET, ttlMs, credentials: parseAuthUsers(AUTH_USERS) })
+    Idx->>HTTP: createServer(...) handling GET /health, POST /login
+    Idx->>WSS: new WebSocketServer({ server, verifyClient: authorizeUpgrade })
     Idx->>Idx: httpServer.listen(PORT, HOSTNAME) -> "Server listening"
-    Client->>WSS: WS upgrade request (?access= token)
-    WSS->>WSS: verifyClient -> auth.ts isAuthorizedUpgrade()
+    Client->>HTTP: POST /login {username, password}
+    HTTP-->>Client: 200 {token, user, exp} (or 401/429)
+    Client->>WSS: WS upgrade request (?access=<token>)
+    WSS->>WSS: verifyClient -> authorizeUpgrade(url, auth) -> auth.verifyToken()
     WSS->>Idx: on("connection", ws)
     Idx->>Client: listen(toSocket(ws)) subscribes the 24 effects to this socket
     Client->>Idx: first CLIENT_MSG (e.g. SUBSCRIBE_REFERENCE_DATA)
@@ -209,9 +212,9 @@ sequenceDiagram
 
 1. `createServices()` builds the `ServiceContainer` — all twelve simulators/services — exactly once, at module load (`index.ts:17`, `serviceContainer.ts:37-72`).
 2. `createWsListener(combineEffects(...allEffects), services)` (`index.ts:18`) merges the 24 effects — `fxEffects`, `creditEffects`, `adminEffects`, `equitiesEffects` (`effects/index.ts:9-14`) — into one `WsEffect<Ctx>` via `combineEffects` (error-isolated per effect, `ws-effects/src/combineEffects.ts`), and returns a `(socket) => void` closure that captures `services` as `ctx`.
-3. `createServer(...)` builds the HTTP server, handling only `GET /health` with a permissive CORS header (`index.ts:25-37`); everything else 404s.
-4. `new WebSocketServer({ server: httpServer, verifyClient: ... })` (`:41-49`) wires `verifyClient` to `isAuthorizedUpgrade(info.req.url, WS_ACCESS_TOKEN)` (`auth.ts:8-22`), which 401s an unauthorized upgrade **before a socket exists** — `listen()` only ever runs for authorized connections.
-5. `httpServer.listen(PORT, HOSTNAME, ...)` starts accepting connections and logs the listening addresses (`:57-61`).
+3. `createServer(...)` builds the HTTP server, handling `GET /health` (token-free Fly probe) and a rate-limited `POST /login` with a permissive CORS header (`index.ts`); `/login` delegates to `handleLogin` (`http/loginHandler.ts`), which validates the request shape then `AuthService.login(username, password)` — scrypt-hashes the candidate password and `timingSafeEqual`-compares it against the roster built from `AUTH_USERS`, returning a signed session token on success. Everything else 404s.
+4. `new WebSocketServer({ server: httpServer, verifyClient: ... })` wires `verifyClient` to `authorizeUpgrade(info.req.url, auth)` (`http/loginHandler.ts`), which reads the `?access=` query param and calls `AuthService.verifyToken` — a missing param, bad signature, wrong secret, or expired token is always rejected (no open-when-empty fallback) — 401ing an unauthorized upgrade **before a socket exists**, so `listen()` only ever runs for authorized connections. The old shared `WS_ACCESS_TOKEN`/`isAuthorizedUpgrade` static-token gate (`src/auth.ts`) is gone.
+5. `httpServer.listen(PORT, HOSTNAME, ...)` starts accepting connections and logs the listening addresses.
 6. On each successful upgrade, `wss.on("connection", ws => listen(toSocket(ws)))` (`:51-53`) wraps the raw `ws.WebSocket` into a transport-agnostic `Socket` (`toSocket.ts:6-39`: `{ messages$, closed$, send }`), and `listen` subscribes the merged effect's output to that socket, `takeUntil(socket.closed$)` (`ws-effects/src/createWsListener.ts:19-31`).
 7. The first tick for that connection is whichever effect reacts first to the client's first `CLIENT_MSG` — e.g. a `SUBSCRIBE_REFERENCE_DATA` triggering the reference-data effect's first `SERVER_MSG.REFERENCE_DATA` push.
 

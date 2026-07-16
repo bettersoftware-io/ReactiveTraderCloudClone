@@ -85,7 +85,7 @@ export interface AppData {
   viewMode?: ViewMode;
   /** Credit RFQs panel filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER ("live"). */
   creditRfqFilter?: CreditRfqFilter;
-  /** Session lock state (useSession); defaults to false → LockScreen renders nothing. */
+  /** Session lock state (useAuth's `state.locked`); defaults to false → LockScreen renders nothing. */
   sessionLocked?: boolean;
   // ── Admin / telemetry fields (Phase 5) ───────────────────────────────────
   /** Metric windows for the radial gauges / charts (useMetrics); defaults to empty series. */

@@ -38,6 +38,7 @@
     "@rtc/client-react": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/server": "workspace:*",
+    "@rtc/shared": "workspace:*",
     "rxjs": "^7.8",
     "ws": "^8.21.0"
   },

@@ -3,8 +3,9 @@
   "globalPassThroughEnv": [
     "PORT",
     "HOSTNAME",
-    "SITE_PASSWORD",
-    "WS_ACCESS_TOKEN",
+    "AUTH_SECRET",
+    "AUTH_USERS",
+    "AUTH_TTL_MS",
     "RTC_DEV_PORT",
     "RTC_VISUAL_MAX_PARALLEL",
     "PWCUCUMBER_HEADED",
@@ -19,7 +20,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"],
-      "env": ["VITE_SERVER_URL", "VITE_WS_TOKEN"]
+      "env": ["VITE_SERVER_URL"]
     },
     "typecheck": {
       "dependsOn": ["^build"]

@@ -3,17 +3,17 @@ import { BehaviorSubject, Subject } from "rxjs";
 import type {
   ActivityEntry,
   AnimationIntent,
+  AuthViewState,
   EqWorkspaceState,
   IncidentKind,
   IncidentState,
+  SessionUser,
   ThroughputView,
 } from "@rtc/client-core";
 import {
   createEqWorkspaceMachine,
-  DEMO_USER,
   type EqWorkspaceIntents,
   type Machine,
-  type SessionState,
 } from "@rtc/client-core";
 import {
   type Candle,
@@ -172,10 +172,16 @@ export interface CommandLog {
   quoteRfq: QuoteRequest[];
   /** Incremented each time useReconnect() callback is invoked. */
   reconnect: number;
-  /** Incremented each time useSession().lock() is invoked. */
-  sessionLock: number;
-  /** Incremented each time useSession().unlock() (re-authenticate) is invoked. */
-  sessionUnlock: number;
+  /** Incremented each time useAuth().lock() is invoked. */
+  authLock: number;
+  /** Incremented each time useAuth().unlock() (re-authenticate) is invoked. */
+  authUnlock: number;
+  /** Incremented each time useAuth().logout() is invoked. */
+  authLogout: number;
+  /** Each [username, password] pair useAuth().login() was invoked with, in order. */
+  authLoginArgs: Array<[string, string]>;
+  /** Each password useAuth().unlock() was invoked with, in order. */
+  authUnlockArgs: string[];
   /** Each PlaceOrderRequest the OrderTicketMachine's place() dep was invoked
    * with, in order — captures what symbol/side/qty was ACTUALLY submitted,
    * independent of pushOrderLifecycle's canned lifecycle order (which the
@@ -198,8 +204,25 @@ const DEFAULT_THROUGHPUT: ThroughputView = {
   message: null,
 };
 
-/** The default session a fresh World reports: unlocked, static demo user. */
-const DEFAULT_SESSION: SessionState = { locked: false, user: DEMO_USER };
+/** The default operator identity a fresh World reports — matches the retired
+ *  DEMO_USER fixture exactly so existing name-based assertions still hold. */
+const DEFAULT_AUTH_USER: SessionUser = {
+  name: "Anthony Stark",
+  initials: "AS",
+  role: "Senior FX Trader",
+  id: "TRD-0042",
+  email: "a.stark@reactivetrader.io",
+  desk: "G10 Spot · London",
+  clearance: "LEVEL 4 · FULL",
+};
+
+/** The default auth state a fresh World reports: authenticated, unlocked, no error. */
+const DEFAULT_AUTH: AuthViewState = {
+  status: "authenticated",
+  user: DEFAULT_AUTH_USER,
+  locked: false,
+  error: null,
+};
 
 export interface World {
   readonly sources: { [K in keyof HookValues]: BehaviorSubject<HookValues[K]> };
@@ -221,8 +244,8 @@ export interface World {
   readonly creditRfqFilter: BehaviorSubject<CreditRfqFilter>;
   /** Push a new Credit RFQs filter (drives RfqsPanel's re-render + entrance cascade). */
   setCreditRfqFilter(filter: CreditRfqFilter): void;
-  /** Reactive session state backing useSession (drives LockScreen). */
-  readonly session: BehaviorSubject<SessionState>;
+  /** Reactive auth view-state backing useAuth (drives LoginScreen/LockScreen). */
+  readonly auth: BehaviorSubject<AuthViewState>;
   /** Reactive boot-splash visibility backing useBootGate (drives BootGate).
    * Defaults to true — mirrors the presenter's default-visible construction. */
   readonly bootGate: BehaviorSubject<boolean>;
@@ -323,7 +346,7 @@ export function createWorld(
   viewModeSeed?: ViewMode,
   themeSkinSeed?: ThemeSkin,
   animatedBackgroundSeed?: boolean,
-  sessionSeed: Partial<SessionState> = {},
+  authSeed: Partial<AuthViewState> = {},
   equitiesSeed: EquitiesSeed = {},
   adminSeed: AdminSeed = {},
   creditRfqFilterSeed?: CreditRfqFilter,
@@ -500,10 +523,16 @@ export function createWorld(
   const creditRfqFilter = new BehaviorSubject<CreditRfqFilter>(
     creditRfqFilterSeed ?? DEFAULT_CREDIT_RFQ_FILTER,
   );
-  const session = new BehaviorSubject<SessionState>({
-    ...DEFAULT_SESSION,
-    ...sessionSeed,
-    user: { ...DEFAULT_SESSION.user, ...sessionSeed.user },
+  const authUser: SessionUser | null =
+    authSeed.user === undefined
+      ? DEFAULT_AUTH_USER
+      : authSeed.user === null
+        ? null
+        : { ...DEFAULT_AUTH_USER, ...authSeed.user };
+  const auth = new BehaviorSubject<AuthViewState>({
+    ...DEFAULT_AUTH,
+    ...authSeed,
+    user: authUser,
   });
   const bootGate = new BehaviorSubject<boolean>(true);
 
@@ -570,8 +599,11 @@ export function createWorld(
     passQuote: [],
     quoteRfq: [],
     reconnect: 0,
-    sessionLock: 0,
-    sessionUnlock: 0,
+    authLock: 0,
+    authUnlock: 0,
+    authLogout: 0,
+    authLoginArgs: [],
+    authUnlockArgs: [],
     bootReboot: 0,
     animatedBackgroundSets: [],
     injectedIncidents: [],
@@ -593,7 +625,7 @@ export function createWorld(
     setCreditRfqFilter: (filter: CreditRfqFilter) => {
       return creditRfqFilter.next(filter);
     },
-    session,
+    auth,
     bootGate,
     priceFor,
     historyFor,

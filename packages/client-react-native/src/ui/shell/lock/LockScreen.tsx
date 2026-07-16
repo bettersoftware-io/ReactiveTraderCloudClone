@@ -11,6 +11,7 @@ import Svg, { Circle, Polygon } from "react-native-svg";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { DEMO_PASSWORD } from "#/app/nativeAuthConfig";
 import { BiometricLine } from "#/ui/shell/lock/BiometricLine";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
@@ -19,16 +20,18 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 /** Full-screen session-lock overlay. Renders nothing unless the session is
  * locked; while locked it covers the whole shell — an absolute-fill <View>
  * (NOT an RN Modal: Modal-via-press segfaults under x86 jest) — and shows the
- * operator identity plus an AUTHENTICATE control that re-authenticates (unlock).
- * All state arrives through the reused `useSession` seam; only BiometricLine is
- * decorative. */
+ * operator identity plus an AUTHENTICATE control that re-authenticates
+ * (unlock). RN has no login UI (deferred), so AUTHENTICATE re-auths with the
+ * same baked demo credential `AppRoot` auto-logs-in with, rather than a typed
+ * password. All state arrives through the reused `useAuth` seam; only
+ * BiometricLine is decorative. */
 export function LockScreen(): JSX.Element | null {
-  const { useSession } = useViewModel();
-  const { state, unlock } = useSession();
+  const { useAuth } = useViewModel();
+  const { state, unlock } = useAuth();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
-  if (!state.locked) {
+  if (!state.locked || !state.user) {
     return null;
   }
 
@@ -78,7 +81,7 @@ export function LockScreen(): JSX.Element | null {
       <Pressable
         testID="lock-authenticate"
         onPress={() => {
-          unlock();
+          unlock(DEMO_PASSWORD);
         }}
       >
         <Text style={styles.authenticate}>AUTHENTICATE ▸</Text>

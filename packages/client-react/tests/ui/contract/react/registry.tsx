@@ -6,6 +6,7 @@ import {
   AnalyticsHead,
   AnalyticsPanel,
   AnimationProbe,
+  AuthGate,
   BlotterHeader,
   BlotterRow,
   BootGate,
@@ -41,6 +42,7 @@ import {
   LiveRatesPanel,
   LiveRatesWorkspace,
   LockScreen,
+  LoginScreen,
   NewRfqHead,
   NewRfqPanel,
   NumberFilter,
@@ -188,6 +190,8 @@ import {
 } from "#/ui/fx/liveRates/tile/TileRfq";
 import { PositionsHead as PositionsHeadComponent } from "#/ui/fx/positions/PositionsHead";
 import { PositionsPanel as PositionsPanelComponent } from "#/ui/fx/positions/PositionsPanel";
+import { AuthGate as AuthGateComponent } from "#/ui/shell/auth/AuthGate";
+import { LoginScreen as LoginScreenComponent } from "#/ui/shell/auth/LoginScreen";
 import { AmbientBackground as AmbientBackgroundComponent } from "#/ui/shell/background/AmbientBackground";
 import { BootGate as BootGateComponent } from "#/ui/shell/boot/BootGate";
 import { BootSequence as BootSequenceComponent } from "#/ui/shell/boot/BootSequence";
@@ -237,6 +241,16 @@ export const registry = new Map<AnyToken, ElementFor>([
         <BootGateComponent>
           <div data-testid="boot-gate-child" />
         </BootGateComponent>
+      );
+    },
+  ],
+  [
+    AuthGate,
+    (): ReactElement => {
+      return (
+        <AuthGateComponent>
+          <div data-testid="auth-gate-child" />
+        </AuthGateComponent>
       );
     },
   ],
@@ -726,6 +740,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     LockScreen,
     (): ReactElement => {
       return <LockScreenComponent />;
+    },
+  ],
+  [
+    LoginScreen,
+    (): ReactElement => {
+      return <LoginScreenComponent />;
     },
   ],
   [
