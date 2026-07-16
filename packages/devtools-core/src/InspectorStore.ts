@@ -115,6 +115,10 @@ export class InspectorStore {
 
   private readonly logAll: LogRow[] = [];
 
+  private readonly streamRowCache = new Map<string, StreamRow>();
+
+  private readonly machineRowCache = new Map<string, MachineRow>();
+
   private readonly listeners = new Set<() => void>();
 
   private connected = false;
@@ -156,6 +160,7 @@ export class InspectorStore {
 
       if (id) {
         this.machineEntries.delete(id);
+        this.machineRowCache.delete(id);
       }
     }
   }
@@ -177,6 +182,7 @@ export class InspectorStore {
 
       if (!next.done) {
         this.streamEntries.delete(next.value);
+        this.streamRowCache.delete(next.value);
       }
     }
   }
@@ -452,20 +458,50 @@ export class InspectorStore {
   private rebuildState(): void {
     const streams = [...this.streamEntries.values()]
       .map((e): StreamRow => {
-        return {
+        const prev = this.streamRowCache.get(e.streamId);
+
+        if (
+          prev &&
+          prev.lastSeq === e.lastSeq &&
+          prev.lastValue === e.lastValue &&
+          prev.totalEmissions === e.totalEmissions &&
+          prev.ratePerSec === e.ratePerSec
+        ) {
+          return prev;
+        }
+
+        const row: StreamRow = {
           streamId: e.streamId,
           lastValue: e.lastValue,
           lastSeq: e.lastSeq,
           totalEmissions: e.totalEmissions,
           ratePerSec: e.ratePerSec,
         };
+        this.streamRowCache.set(e.streamId, row);
+
+        return row;
       })
       .sort((a, b) => {
         return a.streamId < b.streamId ? -1 : a.streamId > b.streamId ? 1 : 0;
       });
 
     const machines = [...this.machineEntries.values()].map((e): MachineRow => {
-      return {
+      const prev = this.machineRowCache.get(e.machineId);
+
+      if (
+        prev &&
+        prev.state === e.state &&
+        prev.disposed === e.disposed &&
+        prev.transitions === e.transitions &&
+        prev.intents === e.intents &&
+        prev.args === e.args &&
+        prev.machineKind === e.machineKind &&
+        prev.createdAt === e.createdAt
+      ) {
+        return prev;
+      }
+
+      const row: MachineRow = {
         machineId: e.machineId,
         machineKind: e.machineKind,
         args: e.args,
@@ -475,6 +511,9 @@ export class InspectorStore {
         intents: e.intents,
         transitions: e.transitions,
       };
+      this.machineRowCache.set(e.machineId, row);
+
+      return row;
     });
 
     this.state = {
