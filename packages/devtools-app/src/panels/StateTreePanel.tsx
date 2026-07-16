@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { type ReactElement, useEffect, useRef } from "react";
 
 import type { StreamRow } from "@rtc/devtools-core";
 
@@ -53,13 +53,25 @@ interface StreamRowViewProps {
 }
 
 function StreamRowView({ row }: StreamRowViewProps): ReactElement {
+  const flashRef = useRef<HTMLSpanElement>(null);
+
+  useEffect((): void => {
+    // Retrigger the flash on each new emission WITHOUT remounting the span.
+    // WAAPI promotes the element only for the animation's lifetime, so there is
+    // no permanent will-change layer (docs/performance.md). Opacity-only keeps
+    // it compositor-safe under sustained streaming.
+    if (row.lastSeq > 0) {
+      flashRef.current?.animate([{ opacity: 0.35 }, { opacity: 1 }], {
+        duration: 300,
+        easing: "ease-out",
+      });
+    }
+  }, [row.lastSeq]);
+
   return (
     <div data-testid="devtools-stream-row" className={styles.row}>
       <span className={styles.streamId}>{row.streamId}</span>
-      {/* Remounting on a new lastSeq restarts the 300ms opacity-only
-       * @keyframes below — compositor-safe per docs/performance.md (P2):
-       * never animate width/color/box-shadow/transform-with-var here. */}
-      <span key={row.lastSeq} className={styles.flash}>
+      <span ref={flashRef} className={styles.flash}>
         <ValueView value={row.lastValue} />
       </span>
       {row.ratePerSec > 0.5 ? (

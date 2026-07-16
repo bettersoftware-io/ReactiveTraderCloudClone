@@ -109,6 +109,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Prod /devtools/ bundle check
+        run: pnpm check:devtools-dist
+
       - name: Expo bundle smoke (Metro monorepo resolution)
         run: pnpm --filter @rtc/client-react-native export
 

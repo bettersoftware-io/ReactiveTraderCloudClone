@@ -46,24 +46,6 @@
   font-size: 10px;
 }
 
-/* Change-flash: remounting the span on a new lastSeq restarts this 300ms
- * opacity-only animation. Steady-state streaming can restart this many times
- * a second, so per docs/performance.md it MUST stay compositor-only: one
- * animation, one property (opacity), literal keyframe values, no var() in
- * the animated property. `will-change` gives the freshly-inserted span a
- * fighting chance at being promoted before the first frame (T9). */
-@keyframes stateTreeFlash {
-  from {
-    opacity: 0.35;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
 .flash {
   display: inline-block;
-  animation: stateTreeFlash 300ms ease-out;
-  will-change: opacity;
 }
