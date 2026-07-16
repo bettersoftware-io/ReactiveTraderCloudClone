@@ -1,0 +1,106 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary, #00060a);
+}
+
+/* Decorative HUD grid backdrop, matching LockScreen. */
+.grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 46px 46px;
+  opacity: 0.5;
+}
+
+.panel {
+  position: relative;
+  z-index: 2;
+  width: 360px;
+  max-width: 86vw;
+  text-align: center;
+}
+
+/* Sized wrapper for the shared animated HudLogo — the SVG fills it. */
+.badge {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  filter: drop-shadow(0 0 10px var(--accent-primary));
+}
+
+.title {
+  margin-bottom: 24px;
+  font-family: var(--font-logo, "Orbitron", sans-serif);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.28em;
+  color: var(--text-primary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+}
+
+.input {
+  padding: 10px 12px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-secondary, #060c12);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+}
+
+.error {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--accent-negative, #ef4444);
+}
+
+.submit {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px 0;
+  font-family: var(--font-display, "Chakra Petch", sans-serif);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--text-on-accent);
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 4px;
+  box-shadow: var(--glow);
+  cursor: pointer;
+}
+
+.submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
