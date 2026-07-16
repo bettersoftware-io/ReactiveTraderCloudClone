@@ -10,9 +10,7 @@ import type { ConnectFn, RuntimePort } from "#/ports";
  * disposed — it transparently reconnects a fresh port via the injected
  * `ConnectFn`. It buffers nothing: the `InspectorClient` re-sends `hello` while
  * disconnected (PR #189), so a reconnected port resynchronises on its own. */
-export class ChromeRuntimeDuplex<TSend, TRecv>
-  implements Duplex<TSend, TRecv>
-{
+export class ChromeRuntimeDuplex<TSend, TRecv> implements Duplex<TSend, TRecv> {
   private readonly inboundSubject = new Subject<TRecv>();
 
   readonly inbound$: Observable<TRecv> = this.inboundSubject.asObservable();

@@ -10,40 +10,40 @@ function makeFakePort(name = "p"): {
   sent: unknown[];
   disconnected: boolean;
 } {
-  let onMsg: (m: unknown) => void = () => {};
-  let onDis: () => void = () => {};
+  let onMsg: (m: unknown) => void = (): void => {};
+  let onDis: () => void = (): void => {};
   const sent: unknown[] = [];
   const state = { disconnected: false };
   const port: RuntimePort = {
     name,
-    postMessage: (m) => {
+    postMessage: (m: unknown): void => {
       sent.push(m);
     },
     onMessage: {
-      addListener: (cb) => {
+      addListener: (cb: (m: unknown) => void): void => {
         onMsg = cb;
       },
     },
     onDisconnect: {
-      addListener: (cb) => {
+      addListener: (cb: () => void): void => {
         onDis = cb;
       },
     },
-    disconnect: () => {
+    disconnect: (): void => {
       state.disconnected = true;
     },
   };
 
   return {
     port,
-    emit: (m) => {
+    emit: (m: unknown): void => {
       onMsg(m);
     },
-    disconnect: () => {
+    disconnect: (): void => {
       onDis();
     },
     sent,
-    get disconnected() {
+    get disconnected(): boolean {
       return state.disconnected;
     },
   };
@@ -71,9 +71,16 @@ describe("ChromeRuntimeDuplex", () => {
   it("reconnects on disconnect and keeps delivering inbound", () => {
     const first = makeFakePort("first");
     const second = makeFakePort("second");
-    const ports = [first, second];
-    let i = 0;
-    const connect = vi.fn(() => ports[i++]!.port);
+    const queue = [first.port, second.port];
+    const connect = vi.fn((): RuntimePort => {
+      const next = queue.shift();
+
+      if (!next) {
+        throw new Error("connect called more times than ports available");
+      }
+
+      return next;
+    });
     const duplex = new ChromeRuntimeDuplex<string, number>(connect);
 
     const got: number[] = [];
@@ -92,9 +99,16 @@ describe("ChromeRuntimeDuplex", () => {
   it("does not reconnect after dispose", () => {
     const first = makeFakePort("first");
     const second = makeFakePort("second");
-    const ports = [first, second];
-    let i = 0;
-    const connect = vi.fn(() => ports[i++]!.port);
+    const queue = [first.port, second.port];
+    const connect = vi.fn((): RuntimePort => {
+      const next = queue.shift();
+
+      if (!next) {
+        throw new Error("connect called more times than ports available");
+      }
+
+      return next;
+    });
     const duplex = new ChromeRuntimeDuplex<string, number>(connect);
 
     duplex.dispose();
