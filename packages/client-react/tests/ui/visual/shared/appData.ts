@@ -81,6 +81,8 @@ export interface AppData {
   themeSkin?: ThemeSkin;
   /** Animated-background preference (useAnimatedBackground); defaults to false. */
   animatedBackground?: boolean;
+  /** Power-saver master-override preference (usePowerSaver); defaults to false. */
+  powerSaver?: boolean;
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
   /** Credit RFQs panel filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER ("live"). */

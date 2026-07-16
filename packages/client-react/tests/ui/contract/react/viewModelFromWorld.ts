@@ -374,6 +374,24 @@ export function reactViewModel(world: World): ViewModel {
         },
       };
     },
+    // Power-saver master override: reactive boolean backed by the World subject;
+    // setEnabled/toggle push back so a click through the seam flips the rendered
+    // flag, and each written value is recorded, mirroring useAnimatedBackground.
+    usePowerSaver: () => {
+      const enabled = useSubject(world.powerSaver);
+      return {
+        enabled,
+        setEnabled: (on: boolean) => {
+          world.commands.powerSaverSets.push(on);
+          world.powerSaver.next(on);
+        },
+        toggle: () => {
+          const next = !enabled;
+          world.commands.powerSaverSets.push(next);
+          world.powerSaver.next(next);
+        },
+      };
+    },
     // Global view-mode: reactive view backed by the World subject; setViewMode
     // pushes back so a toggle through the seam flips the rendered mode.
     useViewModePreference: () => {
