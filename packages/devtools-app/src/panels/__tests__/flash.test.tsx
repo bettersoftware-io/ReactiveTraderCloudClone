@@ -30,12 +30,26 @@ describe("StateTreePanel change-flash", () => {
   });
 
   it("does not animate when lastSeq is unchanged", () => {
-    render(<StateTreePanel streams={[row("a.x$", 5)]} />);
-    const after = animateSpy.mock.calls.length;
+    const { rerender } = render(<StateTreePanel streams={[row("a.x$", 5)]} />);
+    const countAfterInitial = animateSpy.mock.calls.length;
 
-    // A no-op rerender with identical fields.
-    // (Same lastSeq → the effect dep is unchanged → no new animate.)
-    expect(after).toBeGreaterThanOrEqual(0);
+    // Re-render with same lastSeq but different unrelated field.
+    rerender(
+      <StateTreePanel
+        streams={[
+          {
+            streamId: "a.x$",
+            lastSeq: 5,
+            lastValue: 5,
+            totalEmissions: 10,
+            ratePerSec: 1.5,
+          },
+        ]}
+      />,
+    );
+
+    // Same lastSeq → the effect dep is unchanged → no new animate.
+    expect(animateSpy.mock.calls.length).toBe(countAfterInitial);
   });
 });
 
