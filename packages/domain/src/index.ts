@@ -175,11 +175,13 @@ export type {
 export {
   AnalyticsSimulator,
   aggregateCandle,
+  AuthSimulator,
   ConnectionEventsSimulator,
   CreditRfqSimulator,
   DEALERS_CATALOG,
   DEFAULT_TRADER_NAME,
   DealerSimulator,
+  type DevCredentials,
   EquityMarketDataSimulator,
   EquityOrderSimulator,
   EquityPositionSimulator,
