@@ -3,9 +3,12 @@ packages:
   - "tests"
 # Install-script allowlist (pnpm 11 strictDepBuilds): pnpm blocks dependency
 # lifecycle scripts by default; only the packages set to `true` here may execute
-# code at install time. Both are trusted build/test tooling that need native
-# binaries — esbuild (the bundler under vite/vitest/tsx) and cypress (e2e runner).
+# code at install time. All three are trusted build/test tooling that need
+# native binaries — esbuild (the bundler under vite/vitest/tsx), cypress (e2e
+# runner), and @shopify/react-native-skia (its postinstall fetches Skia's
+# prebuilt native libs, required for the native iOS/Android build later).
 allowBuilds:
+  '@shopify/react-native-skia': true
   cypress: true
   esbuild: true
 
