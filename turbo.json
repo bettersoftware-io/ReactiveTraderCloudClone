@@ -3,7 +3,6 @@
   "globalPassThroughEnv": [
     "PORT",
     "HOSTNAME",
-    "SITE_PASSWORD",
     "AUTH_SECRET",
     "AUTH_USERS",
     "AUTH_TTL_MS",
@@ -21,7 +20,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"],
-      "env": ["VITE_SERVER_URL", "VITE_WS_TOKEN"]
+      "env": ["VITE_SERVER_URL"]
     },
     "typecheck": {
       "dependsOn": ["^build"]

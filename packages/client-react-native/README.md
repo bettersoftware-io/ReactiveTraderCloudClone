@@ -194,8 +194,7 @@ likely cause.
 
 > For the full picture of every `.env` file in the repo (this one, the web
 > client's, and the Vercel CLI artifacts), see
-> [`docs/env-files.md`](../../docs/env-files.md) — note it still documents the
-> now-removed `WS_ACCESS_TOKEN`/`*_WS_TOKEN` gate and needs a follow-up sync.
+> [`docs/env-files.md`](../../docs/env-files.md).
 
 ### Set the demo credential on the client
 
