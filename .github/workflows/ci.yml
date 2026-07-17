@@ -19,6 +19,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Manual escape hatch (mirrors visual.yml): lets a branch re-verify when a
+  # pull_request synchronize event fails to materialize a run.
+  workflow_dispatch:
 
 # A newer push to the same branch/PR cancels the in-flight run.
 concurrency:
