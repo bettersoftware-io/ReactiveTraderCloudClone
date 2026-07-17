@@ -44,7 +44,7 @@
     "packages/client-solid": {
       "entry": ["src/main.tsx", "index.html", "vite.config.ts"],
       "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
-      "ignoreDependencies": ["@rtc/ui-contract"]
+      "ignoreDependencies": ["@rtc/ui-contract", "@vitest/browser"]
     },
     "packages/ui-contract": {
       "entry": [

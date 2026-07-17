@@ -1,2 +1,8 @@
 reports/
 coverage/
+
+# vitest-browser visual tier failure artifacts (actual/diff PNGs) — routed
+# here by vitest-browser.config.ts's resolveDiffPath, kept OUT of any
+# __screenshots__-shaped dir so it can never be mistaken for a golden this
+# package doesn't own (see the tier's assert-only design doc comment).
+tests/ui/visual/vitest-browser/__diffs__/
