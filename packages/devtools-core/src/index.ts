@@ -24,5 +24,11 @@ export {
   type WsAdapterLike,
 } from "./instrument/wsAdapter";
 export * from "./protocol";
+export {
+  parseRecording,
+  RECORDING_VERSION,
+  type Recording,
+  serializeRecording,
+} from "./recording";
 export { type SerializedValue, serializeValue } from "./serialize";
 export type { DevtoolsTransport } from "./transport";
