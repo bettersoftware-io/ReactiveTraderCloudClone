@@ -10,6 +10,7 @@ export function tickDirection(
   if (prev == null || Math.abs(next - prev) <= TICK_FLASH_EPSILON) {
     return "flat";
   }
+
   return next > prev ? "up" : "down";
 }
 
@@ -18,10 +19,15 @@ export interface TickFlashState {
   nonce: number;
 }
 
+export interface TickFlashResult {
+  dir: TickDirection;
+  state: TickFlashState;
+}
+
 export function nextTickFlash(
   state: TickFlashState,
   next: number,
-): { dir: TickDirection; state: TickFlashState } {
+): TickFlashResult {
   const dir = tickDirection(state.value, next);
   const nonce = dir === "flat" ? state.nonce : state.nonce + 1;
   return { dir, state: { value: next, nonce } };

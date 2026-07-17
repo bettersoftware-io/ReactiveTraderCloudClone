@@ -7,13 +7,17 @@ export function countdownProgress(
   if (totalMs <= 0) {
     return 0;
   }
+
   const frac = remainingMs / totalMs;
+
   if (frac <= 0) {
     return 0;
   }
+
   if (frac >= 1) {
     return 1;
   }
+
   return frac;
 }
 
