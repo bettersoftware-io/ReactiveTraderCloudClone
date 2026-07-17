@@ -1,11 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  FROZEN_LIVE_METRICS,
-  LiveMetricsContext,
-} from "./LiveMetricsContext";
+import { FROZEN_LIVE_METRICS, LiveMetricsContext } from "./LiveMetricsContext";
 import { useLiveMetrics } from "./useLiveMetrics";
 
 describe("useLiveMetrics", () => {
@@ -37,14 +34,16 @@ describe("useLiveMetrics", () => {
   }
 
   it("returns the frozen value and never starts a loop when a provider is present", () => {
-    const wrapper = ({ children }: { children: ReactNode }) => {
+    function Wrapper({ children }: { children: ReactNode }): ReactElement {
       return (
         <LiveMetricsContext.Provider value={FROZEN_LIVE_METRICS}>
           {children}
         </LiveMetricsContext.Provider>
       );
-    };
-    const { result } = renderHook(() => useLiveMetrics(), { wrapper });
+    }
+    const { result } = renderHook(() => useLiveMetrics(), {
+      wrapper: Wrapper,
+    });
 
     expect(result.current).toEqual(FROZEN_LIVE_METRICS);
     expect(window.requestAnimationFrame).not.toHaveBeenCalled();
