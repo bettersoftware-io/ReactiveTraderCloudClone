@@ -11,7 +11,8 @@ import {
 // The visual fakes pin the skin to "classic" by default (NOT the app's "holo"
 // showcase default): classic's tokens are byte-identical to the pre-redesign
 // single-axis tokens, so the deferred goldens stay pixel-identical until
-// Phase 3 regenerates them for the new skins.
+// Phase 3 regenerates them for the new skins. Mirrors the react driver's
+// buildFakeViewModel.ts constant exactly.
 const DEFAULT_THEME_SKIN_FOR_FIXTURES = "classic" as const;
 
 import type { AppData } from "@ui-visual-shared/appData";
@@ -22,14 +23,23 @@ import type {
   SessionUser,
 } from "@rtc/client-core";
 import { createDefaultLayoutPort, type WorkspaceTab } from "@rtc/client-core";
-import type { ViewModel } from "@rtc/react-bindings";
+import type { ViewModel } from "@rtc/solid-bindings";
 
 function noop(): void {}
+
+/** Wrap a static value as a zero-arg Solid accessor — every AppData field
+ * below is a plain constant (no reactivity needed for a static screenshot),
+ * so this is the whole "signal" layer this fake needs. */
+function at<T>(value: T): () => T {
+  return () => {
+    return value;
+  };
+}
 
 // Fixture operator identity for visual goldens — the real DEMO_USER fixture
 // was retired with the login/auth workstream; this local stand-in keeps the
 // existing goldens' identity fields (name/initials/id/email/desk/clearance)
-// pixel-identical.
+// pixel-identical. Mirrors the react driver's DEMO_USER exactly.
 const DEMO_USER: SessionUser = {
   name: "Anthony Stark",
   initials: "AS",
@@ -40,46 +50,54 @@ const DEMO_USER: SessionUser = {
   clearance: "LEVEL 4 · FULL",
 };
 
+/** Build a static, accessor-based ViewModel from a fixture snapshot — the
+ * Solid counterpart of the react driver's `buildFakeViewModel`. Member-by-
+ * member this mirrors that file (same AppData mapping, same defaults); only
+ * the accessor mechanics differ: react hooks re-run per render and return
+ * plain values, Solid instead hands back a zero-arg `Accessor` per field
+ * (`at()` below) — the value never changes within one scenario's lifetime
+ * (no interaction re-seeds the fixture), so a constant closure is sufficient;
+ * no `createSignal` is needed anywhere in this file. */
 export function buildFakeViewModel(data: AppData): ViewModel {
   return {
     usePrice: (pair: CurrencyPair) => {
-      return data.prices[pair.symbol] ?? null;
+      return at(data.prices[pair.symbol] ?? null);
     },
     usePriceHistory: (symbol: string) => {
-      return data.priceHistory[symbol] ?? [];
+      return at(data.priceHistory[symbol] ?? []);
     },
     useTrades: () => {
-      return data.trades;
+      return at(data.trades);
     },
     useNewTradeIds: () => {
-      return data.newTradeIds ?? new Set<number>();
+      return at(data.newTradeIds ?? new Set<number>());
     },
     useActivity: () => {
-      return data.activity ?? [];
+      return at(data.activity ?? []);
     },
     useAnalytics: () => {
-      return data.analytics;
+      return at(data.analytics);
     },
     useRfqs: () => {
-      return data.rfqs;
+      return at(data.rfqs);
     },
     useQuotesForRfq: (rfqId: number) => {
-      return data.quotesForRfq[rfqId] ?? [];
+      return at(data.quotesForRfq[rfqId] ?? []);
     },
     useAllQuotes: () => {
-      return data.allQuotes;
+      return at(data.allQuotes);
     },
     useCurrencyPairs: () => {
-      return data.currencyPairs;
+      return at(data.currencyPairs);
     },
     useInstruments: () => {
-      return data.instruments;
+      return at(data.instruments);
     },
     useDealers: () => {
-      return data.dealers;
+      return at(data.dealers);
     },
     useConnectionStatus: () => {
-      return data.connectionStatus;
+      return at(data.connectionStatus);
     },
     // Commands: async no-op. Not exercised by static screenshots.
     useAcceptQuote: () => {
@@ -97,18 +115,20 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // initially ("ready" / "init"), so existing goldens are unchanged.
     useTileExecution: (pair: CurrencyPair) => {
       return {
-        state: data.tileExecution[pair.symbol] ?? { status: "ready" },
+        state: at(data.tileExecution[pair.symbol] ?? { status: "ready" }),
         execute: noop,
         dismiss: noop,
       };
     },
     useRfqTile: (pair: CurrencyPair) => {
       return {
-        state: data.rfqTile[pair.symbol] ?? {
-          status: "init",
-          quote: null,
-          remainingMs: 0,
-        },
+        state: at(
+          data.rfqTile[pair.symbol] ?? {
+            status: "init",
+            quote: null,
+            remainingMs: 0,
+          },
+        ),
         requestQuote: noop,
         cancel: noop,
         reject: noop,
@@ -118,28 +138,28 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // Submission machines: static snapshots for screenshots; intents are no-ops.
     useRfqSubmission: () => {
       return {
-        state: data.rfqSubmission ?? { status: "editing" },
+        state: at(data.rfqSubmission ?? { status: "editing" }),
         submit: noop,
       };
     },
     useTicketSubmission: () => {
       return {
-        state: data.ticketSubmission ?? { submitted: false },
+        state: at(data.ticketSubmission ?? { submitted: false }),
         submitPrice: noop,
         pass: noop,
       };
     },
     // Intent-free derived flags: static snapshot for screenshots.
     useStaleFlag: (pair: CurrencyPair) => {
-      return data.stale[pair.symbol] ?? false;
+      return at(data.stale[pair.symbol] ?? false);
     },
     useAnalyticsStaleFlag: () => {
-      return data.analyticsStale ?? false;
+      return at(data.analyticsStale ?? false);
     },
     // New-row highlight: deterministic — the highlight tracks isNew instantly (no
     // timer), so the highlighted (isNew) branch is snapshotted with no waiting.
     useRowHighlight: (isNew: boolean) => {
-      return isNew;
+      return at(isNew);
     },
     // Machine: static snapshot for screenshots; intents are no-ops.
     useNotional: (defaultNotional: number) => {
@@ -151,13 +171,13 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           useGrouping: true,
         });
       return {
-        state: {
+        state: at({
           displayValue,
           numericValue: override?.numericValue ?? defaultNotional,
           error: override?.error ?? null,
           isRfq: override?.isRfq ?? false,
           isDefault: override?.isDefault ?? true,
-        },
+        }),
         change: noop,
         reset: noop,
       };
@@ -166,9 +186,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // to a loaded value of 100 (loading:false) so the slider renders.
     useThroughput: () => {
       return {
-        value: data.throughput?.value ?? 100,
-        loading: data.throughput?.loading ?? false,
-        message: data.throughput?.message ?? null,
+        value: at(data.throughput?.value ?? 100),
+        loading: at(data.throughput?.loading ?? false),
+        message: at(data.throughput?.message ?? null),
         setValue: noop,
       };
     },
@@ -178,53 +198,53 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useThemePreference: () => {
       const modePreference = data.themeMode ?? DEFAULT_THEME_MODE_PREFERENCE;
       return {
-        mode: resolveThemeMode(modePreference, true),
-        modePreference,
+        mode: at(resolveThemeMode(modePreference, true)),
+        modePreference: at(modePreference),
         cycle: noop,
       };
     },
     useThemeSkinPreference: () => {
       return {
-        skin: data.themeSkin ?? DEFAULT_THEME_SKIN_FOR_FIXTURES,
+        skin: at(data.themeSkin ?? DEFAULT_THEME_SKIN_FOR_FIXTURES),
         setSkin: noop,
       };
     },
     useAnimatedBackground: () => {
       return {
-        enabled: data.animatedBackground ?? false,
+        enabled: at(data.animatedBackground ?? false),
         setEnabled: noop,
         toggle: noop,
       };
     },
     usePowerSaver: () => {
       return {
-        enabled: data.powerSaver ?? false,
+        enabled: at(data.powerSaver ?? false),
         setEnabled: noop,
         toggle: noop,
       };
     },
     useViewModePreference: () => {
       return {
-        viewMode: data.viewMode ?? DEFAULT_VIEW_MODE,
+        viewMode: at(data.viewMode ?? DEFAULT_VIEW_MODE),
         setViewMode: noop,
       };
     },
     useCreditRfqFilterPreference: () => {
       return {
-        filter: data.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER,
+        filter: at(data.creditRfqFilter ?? DEFAULT_CREDIT_RFQ_FILTER),
         setFilter: noop,
       };
     },
     useEqWatchlistSort: () => {
       return {
-        sort: data.eqWatchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
+        sort: at(data.eqWatchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT),
         setSort: noop,
         cycle: noop,
       };
     },
     useEqBlotterView: () => {
       return {
-        view: data.eqBlotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
+        view: at(data.eqBlotterView ?? DEFAULT_EQ_BLOTTER_VIEW),
         setView: noop,
       };
     },
@@ -233,12 +253,12 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // goldens are unchanged.
     useAuth: () => {
       return {
-        state: {
-          status: "authenticated",
+        state: at({
+          status: "authenticated" as const,
           user: DEMO_USER,
           locked: data.sessionLocked ?? false,
           error: null,
-        },
+        }),
         login: (): void => {
           return;
         },
@@ -256,23 +276,23 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // Boot gate: hidden for screenshots (the visual tier mounts BootSequence
     // directly when it wants the splash; BootGate itself is never framed).
     useBootGate: () => {
-      return { visible: false, reboot: noop, dismiss: noop };
+      return { visible: at(false), reboot: noop, dismiss: noop };
     },
     // Countdown: static snapshot for visual goldens — returns totalMs so the bar
     // renders at 100% fill (deterministic; never wall-clock-dependent).
     useRfqCountdown: (_creationTimestamp: number, totalMs: number) => {
-      return totalMs;
+      return at(totalMs);
     },
     // Animation intents: static screenshots never fire intents, so the bar
     // renders in its neutral, un-animated state.
     useAnimationIntents: (_target: string) => {
-      return null;
+      return at(null);
     },
     // Layout: static snapshot for screenshots — returns the tab's default
     // arrangement with noop intents (no drag, no maximize during capture).
     useLayout: (tab: WorkspaceTab) => {
       return {
-        state: createDefaultLayoutPort(tab).initial,
+        state: at(createDefaultLayoutPort(tab).initial),
         maximize: noop,
         restore: noop,
         collapse: noop,
@@ -289,28 +309,28 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         progress: 0,
         done: false,
       };
-      return { state, skip: noop };
+      return { state: at(state), skip: noop };
     },
     // Equities: data-driven fakes reading from the AppData equities fields.
     // Fixtures that don't set these fields return the same empty defaults as
     // the old no-op stubs, so all pre-equities goldens stay pixel-identical.
     useWatchlist: () => {
-      return data.equityWatchlist ?? [];
+      return at(data.equityWatchlist ?? []);
     },
     useEquityQuote: (symbol: string) => {
-      return data.equityQuotes?.[symbol] ?? null;
+      return at(data.equityQuotes?.[symbol] ?? null);
     },
     useCandles: (symbol: string) => {
-      return data.equityCandles?.[symbol] ?? [];
+      return at(data.equityCandles?.[symbol] ?? []);
     },
     useDepth: (symbol: string) => {
-      return data.equityDepth?.[symbol] ?? null;
+      return at(data.equityDepth?.[symbol] ?? null);
     },
     useEquityOrders: () => {
-      return data.equityOrders ?? [];
+      return at(data.equityOrders ?? []);
     },
     useEquityPositions: () => {
-      return data.equityPositions ?? [];
+      return at(data.equityPositions ?? []);
     },
     useOrderTicket: (defaultSymbol: string) => {
       const state = data.equityOrderTicket ?? {
@@ -324,7 +344,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         error: null,
       };
       return {
-        state,
+        state: at(state),
         setSymbol: noop,
         setSide: noop,
         setType: noop,
@@ -338,25 +358,27 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // fields. Fixtures that don't set these fields return the same empty defaults
     // as the old no-op stubs, so all pre-admin goldens stay pixel-identical.
     useMetrics: () => {
-      return (
-        data.adminMetrics ?? { throughput: [], latency: [], errorRate: [] }
-      );
+      return {
+        throughput: at(data.adminMetrics?.throughput ?? []),
+        latency: at(data.adminMetrics?.latency ?? []),
+        errorRate: at(data.adminMetrics?.errorRate ?? []),
+      };
     },
     useTopology: () => {
-      return data.adminTopology ?? null;
+      return at(data.adminTopology ?? null);
     },
     useEventLog: () => {
-      return data.adminEventLog ?? [];
+      return at(data.adminEventLog ?? []);
     },
     useSessions: () => {
-      return data.adminSessions ?? [];
+      return at(data.adminSessions ?? []);
     },
     useSessionCountSeries: () => {
-      return data.adminSessionCountSeries ?? [];
+      return at(data.adminSessionCountSeries ?? []);
     },
     useIncident: () => {
       return {
-        state: data.adminIncident ?? { active: [] },
+        state: at(data.adminIncident ?? { active: [] }),
         inject: noop,
         clear: noop,
       };
@@ -365,11 +387,13 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // tab switch/close/timeframe change during capture).
     useEqWorkspace: () => {
       return {
-        state: data.equityWorkspace ?? {
-          sel: "",
-          openTabs: [],
-          timeframe: "1D",
-        },
+        state: at(
+          data.equityWorkspace ?? {
+            sel: "",
+            openTabs: [],
+            timeframe: "1D" as const,
+          },
+        ),
         select: noop,
         closeTab: noop,
         setTimeframe: noop,

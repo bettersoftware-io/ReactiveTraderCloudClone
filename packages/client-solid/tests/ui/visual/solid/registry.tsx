@@ -1,5 +1,5 @@
 import { fixtures } from "@ui-visual-shared/fixtures";
-import type { CSSProperties, ReactElement } from "react";
+import type { JSX } from "solid-js";
 
 import type { LayoutState } from "@rtc/client-core";
 import { createDefaultLayoutPort } from "@rtc/client-core";
@@ -48,30 +48,28 @@ import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
 
-const fxState: LayoutState = createDefaultLayoutPort("fx").initial;
-
 // The layout/fx-* scenarios test the ENGINE's geometry, not panel content, so
-// each docked panel gets a stub body. Style it exactly like the app's own
-// empty-panel placeholders (ThroughputChart/LiveEventLog `.empty`): centred,
-// muted, in the theme mono font — so the stub reads as intentional placeholder
-// content instead of unstyled serif text. The pinned `line-height` also keeps
-// the line box font-metric-independent (the #width-flake determinism rule).
-const stubPanelStyle: CSSProperties = {
-  // `.panelBody` (the parent) is `flex: 1; overflow: auto` but NOT itself a flex
-  // container, so `flex: 1` here would be inert — fill its definite height with
-  // `height: 100%` instead, then flex-centre the label within.
+// each docked panel gets a stub body. Styled exactly like the app's own
+// empty-panel placeholders (react registry parity): centred, muted, mono
+// font, pinned line-height (the #width-flake determinism rule). Inline
+// `style` is fine here — the src/ui inline-style ban is scoped to
+// `packages/client-solid/src/**/*.tsx` only (see eslint.config.mjs), not this
+// test harness. Solid's `style` prop takes kebab-case CSS property keys
+// (unlike React's camelCase JSX.CSSProperties), and numeric lengths need an
+// explicit unit string (Solid does not auto-append "px").
+const stubPanelStyle: JSX.CSSProperties = {
   height: "100%",
   display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontFamily: "var(--font-mono)",
-  fontSize: 11,
-  lineHeight: "15px",
-  letterSpacing: "0.08em",
+  "align-items": "center",
+  "justify-content": "center",
+  "font-family": "var(--font-mono)",
+  "font-size": "11px",
+  "line-height": "15px",
+  "letter-spacing": "0.08em",
   color: "var(--text-muted)",
 };
 
-function stubPanel(key: string, label: string): () => ReactElement {
+function stubPanel(key: string, label: string): () => JSX.Element {
   return () => {
     return (
       <div data-testid={`${key}-body`} style={stubPanelStyle}>
@@ -94,23 +92,18 @@ const visualPanelRegistry: PanelRegistry = {
 function noop(): void {}
 
 // The layout engine's root (`.engine`) is `flex: 1` — it FILLS a sized flex
-// parent, exactly as it does in the real app (App.tsx nests it in the flex
-// column `.app` between the header and status bar). Mounted bare in the harness
-// it has no parent to fill, so `flex: 1` collapses to the stub panels' intrinsic
-// size and the golden is a ~596×75 sliver. Wrap it in a fixed box the size of
-// the real workspace region — 1920 wide, and 994 tall = the app's 1080 viewport
-// minus the ~60px header (38px logo + 2×11px padding + 1px border) and 26px
-// status bar — so the arrangements (default / maximized / collapsed / rail)
-// render at faithful desktop proportions. Fixed dimensions also pin the capture
-// size deterministically (the #width-flake rule).
-function staticEngine(state: LayoutState): ReactElement {
+// parent, exactly as it does in the real app. Wrap it in a fixed box the size
+// of the real workspace region — 1920 wide, 994 tall (the app's 1080 viewport
+// minus header/status-bar) — so the arrangements render at faithful desktop
+// proportions and the capture size is deterministic (the #width-flake rule).
+function staticEngine(state: LayoutState): JSX.Element {
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: "column",
-        width: 1920,
-        height: 994,
+        "flex-direction": "column",
+        width: "1920px",
+        height: "994px",
       }}
     >
       <InhouseLayoutEngine
@@ -126,10 +119,17 @@ function staticEngine(state: LayoutState): ReactElement {
   );
 }
 
-// Maps a neutral componentKey to a concrete React element, given the scenario's
-// fixture key so prop-bearing components can pull their props from the data.
-// The SolidJS port supplies its own registry with the same keys.
-export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
+const fxState: LayoutState = createDefaultLayoutPort("fx").initial;
+
+function panelWidth(px: number): JSX.CSSProperties {
+  return { width: `${px}px`, display: "flex", "flex-direction": "column" };
+}
+
+// Maps a neutral componentKey to a concrete Solid element, given the
+// scenario's fixture key so prop-bearing components can pull their props from
+// the data. SAME componentKey set as the react registry — the framework-swap
+// seam @ui-visual resolves to this file instead of react's.
+export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
   ConnectionStatusBar: () => {
     return <ConnectionStatusBar />;
   },
@@ -160,7 +160,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   FxWatchlist: (fixtureKey: string) => {
     const pairs = fixtures[fixtureKey].currencyPairs;
     return (
-      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(920)}>
         <WatchlistView pairs={pairs} filter="All" />
       </div>
     );
@@ -168,13 +168,8 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   FxBlotter: () => {
     // Render filling a representative panel width (test-only), like the real
     // app where the blotter fills its layout panel — NOT shrink-to-content.
-    // The blotter table is width:100%, so a fixed-width wrapper pins the
-    // captured dimension deterministically; without it the intrinsic
-    // content-width resolved non-deterministically on x86 (~46-66px drift),
-    // a size mismatch maxDiffPixelRatio cannot absorb. The FxBlotter component
-    // itself is untouched and stays fully responsive.
     return (
-      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(920)}>
         <FxBlotter />
       </div>
     );
@@ -187,7 +182,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   FxActivityView: (fixtureKey: string) => {
     const entries = fixtures[fixtureKey].activity ?? [];
     return (
-      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(920)}>
         <ActivityView entries={entries} />
       </div>
     );
@@ -198,7 +193,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   BlotterRowHighlighted: (fixtureKey: string) => {
     const trade = fixtures[fixtureKey].trades[0];
     return (
-      <table style={{ borderCollapse: "collapse" }}>
+      <table style={{ "border-collapse": "collapse" }}>
         <tbody>
           <BlotterRow
             trade={trade}
@@ -216,7 +211,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   BlotterRowDefault: (fixtureKey: string) => {
     const trade = fixtures[fixtureKey].trades[0];
     return (
-      <table style={{ borderCollapse: "collapse" }}>
+      <table style={{ "border-collapse": "collapse" }}>
         <tbody>
           <BlotterRow
             trade={trade}
@@ -231,11 +226,9 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   CreditBlotter: () => {
     // Render filling a representative panel width (test-only) — the credit
     // blotter table is width:100%, so a fixed-width wrapper pins the captured
-    // dimension deterministically; without it the intrinsic content-width
-    // resolves non-deterministically on x86 (~80-150px drift), a size
-    // mismatch maxDiffPixelRatio cannot absorb. Component stays responsive.
+    // dimension deterministically. Component stays responsive.
     return (
-      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(920)}>
         <CreditBlotter />
       </div>
     );
@@ -245,7 +238,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // body's rows — same fixed-width rationale as CreditBlotter above.
   CreditBlotterWorkspace: () => {
     return (
-      <div style={{ width: 920, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(920)}>
         <CreditBlotterHead />
         <CreditBlotter />
       </div>
@@ -259,7 +252,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // dock's fixed "RFQs" column. Component stays responsive.
   RfqsPanel: () => {
     return (
-      <div style={{ width: 400, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(400)}>
         <RfqsPanel />
       </div>
     );
@@ -269,7 +262,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // app it sits inside the dock's fixed "New RFQ" column, never shrink-to-fit.
   NewRfqPanel: () => {
     return (
-      <div style={{ width: 280, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(280)}>
         <NewRfqPanel onCreated={() => {}} />
       </div>
     );
@@ -284,7 +277,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     const quotes = data.quotesForRfq[rfq.id] ?? [];
     const vm = rfqCardVm(rfq, quotes, data.instruments, data.dealers);
     return (
-      <div style={{ width: 300, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(300)}>
         <RfqCard
           vm={vm}
           creationTimestamp={rfq.creationTimestamp}
@@ -302,37 +295,34 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   SellSidePanel: () => {
     // Render at a fixed width (test-only) — the sell-side panel is a flex
     // column with no parent width constraint; instrument-name and ticket text
-    // widths vary by OS/arch font metrics, causing a ±24px dimension flake on
-    // x86 CI (observed: 352↔328px run-to-run). Wrapping at 380px stabilises
-    // the captured dimension without touching the component; in the real app it
-    // sits inside a fixed credit-dock column (Task 4's three-panel layout).
-    // Component stays responsive.
+    // widths vary by OS/arch font metrics, causing a dimension flake on x86
+    // CI. Wrapping at 380px stabilises the captured dimension without
+    // touching the component; in the real app it sits inside a fixed
+    // credit-dock column. Component stays responsive.
     return (
-      <div style={{ width: 380, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(380)}>
         <SellSidePanel />
       </div>
     );
   },
   // Pinned wrapper: the loading arm is a single content-width text line, so
-  // its captured WIDTH tracked x86 mono-glyph advances (187↔164px observed) —
-  // a dimension flake tolerance can never absorb. 660 matches the
-  // IncidentControls admin wrapper.
+  // its captured WIDTH tracks x86 mono-glyph advances — a dimension flake
+  // tolerance can never absorb. 660 matches the IncidentControls admin wrapper.
   AdminPanel: () => {
     return (
-      <div style={{ width: 660, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(660)}>
         <AdminPanel />
       </div>
     );
   },
   // --- Phase 5 Admin dashboard components ---
   // Full AdminDashboard at a fixed panel WIDTH (1280) but content-driven height,
-  // so the full dashboard is captured without the bottom row (topology / sessions
-  // / incidents / throughput) being clipped. A fixed width keeps the intrinsic
-  // capture DIMENSION deterministic (the #width-flake rule); the inner charts
-  // carry their own explicit heights, so no fixed outer height is needed.
+  // so the full dashboard is captured without the bottom row being clipped. A
+  // fixed width keeps the intrinsic capture DIMENSION deterministic (the
+  // #width-flake rule); the inner charts carry their own explicit heights.
   AdminDashboard: () => {
     return (
-      <div style={{ width: 1280, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(1280)}>
         <AdminDashboard />
       </div>
     );
@@ -341,7 +331,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // viewBox fills the wrapper deterministically.
   ServiceTopologyGraph: () => {
     return (
-      <div style={{ width: 300, height: 200 }}>
+      <div style={{ width: "300px", height: "200px" }}>
         <ServiceTopologyGraph />
       </div>
     );
@@ -350,7 +340,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // would flake a content-sized wrapper; pinning the width stabilises it.
   LiveEventLog: () => {
     return (
-      <div style={{ width: 400, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(400)}>
         <LiveEventLog />
       </div>
     );
@@ -360,11 +350,11 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // has data-active="true" without any click interaction.
   // Render at a fixed width (test-only) — the controls are a content-width flex
   // row of buttons whose total width is driven by button label glyph-advance,
-  // which varies by OS/arch font metrics (±68px dimension flake on x86 — 613↔545).
-  // Pinning the wrapper at 660px (> max observed content) captures a stable size.
+  // which varies by OS/arch font metrics. Pinning the wrapper at 660px (> max
+  // observed content) captures a stable size.
   IncidentControls: () => {
     return (
-      <div style={{ width: 660, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(660)}>
         <IncidentControls />
       </div>
     );
@@ -375,7 +365,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // representative share of the dashboard's 1280px width.
   KpiRow: () => {
     return (
-      <div style={{ width: 900, display: "flex", flexDirection: "column" }}>
+      <div style={panelWidth(900)}>
         <KpiRow />
       </div>
     );
@@ -384,7 +374,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // so an isolated shot needs an explicit parent height to resolve.
   ServiceHealth: () => {
     return (
-      <div style={{ width: 360, height: 280 }}>
+      <div style={{ width: "360px", height: "280px" }}>
         <ServiceHealth />
       </div>
     );
@@ -394,7 +384,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // stabilises the title/pill spacing for an isolated shot.
   AdminHead: () => {
     return (
-      <div style={{ width: 480, display: "flex" }}>
+      <div style={{ width: "480px", display: "flex" }}>
         <AdminHead />
       </div>
     );
@@ -403,19 +393,19 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return <App />;
   },
   // --- Phase 4: Equities sub-components (fixed-size wrappers for x86 stability) ---
-  // SectorHeatmap and DepthLadder survive outside the four-panel dock (Task 6):
-  // eq-sectors/eq-depth are registered but not placed in the default tree, so
+  // SectorHeatmap and DepthLadder survive outside the four-panel dock: eq-
+  // sectors/eq-depth are registered but not placed in the default tree, so
   // these scenarios mount them directly with fixed props, same as before.
   EquitiesSectorHeatmap: () => {
     return (
-      <div style={{ width: 280 }}>
+      <div style={{ width: "280px" }}>
         <SectorHeatmap selectedSymbol="AAPL" onSelect={() => {}} />
       </div>
     );
   },
   EquitiesDepthLadder: () => {
     return (
-      <div style={{ width: 260 }}>
+      <div style={{ width: "260px" }}>
         <DepthLadder symbol="AAPL" />
       </div>
     );
@@ -424,7 +414,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // selected arm delegates to DepthLadder (equities/depth-ladder above).
   EquitiesDepthDock: () => {
     return (
-      <div style={{ width: 260 }}>
+      <div style={{ width: "260px" }}>
         <EqDepthDock />
       </div>
     );
@@ -435,11 +425,11 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     return (
       <div
         style={{
-          width: 340,
-          height: 320,
+          width: "340px",
+          height: "320px",
           display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "flex-start",
+          "justify-content": "flex-end",
+          "align-items": "flex-start",
         }}
       >
         <ThemePicker />
@@ -448,7 +438,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   EquitiesOrderTicket: () => {
     return (
-      <div style={{ width: 280 }}>
+      <div style={{ width: "280px" }}>
         <OrderTicket symbol="AAPL" />
       </div>
     );
@@ -462,7 +452,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // non-"SELECT AN INSTRUMENT" render.
   EquitiesChartPanel: () => {
     return (
-      <div style={{ width: 760, height: 460, display: "flex" }}>
+      <div style={{ width: "760px", height: "460px", display: "flex" }}>
         <ChartPanel />
       </div>
     );
@@ -477,7 +467,7 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   // panel the header always fills in the real app.
   EquitiesInstrumentHeader: () => {
     return (
-      <div style={{ width: 820 }}>
+      <div style={{ width: "820px" }}>
         <InstrumentHeader
           symbol="AAPL"
           instrumentName="Apple Inc."
@@ -499,14 +489,14 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   EquitiesWatchlistPanel: () => {
     return (
-      <div style={{ width: 280, height: 420, display: "flex" }}>
+      <div style={{ width: "280px", height: "420px", display: "flex" }}>
         <WatchlistPanel />
       </div>
     );
   },
   EquitiesBlotterPanel: () => {
     return (
-      <div style={{ width: 720, height: 360, display: "flex" }}>
+      <div style={{ width: "720px", height: "360px", display: "flex" }}>
         <EqBlotterPanel />
       </div>
     );
@@ -528,11 +518,13 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
     // scenario-root shrink it to content. StatusBar text uses var(--font-mono);
     // its content width resolves non-deterministically under x86 headless
     // (glyph-advance metrics vary run-to-run), so a content-sized golden flakes
-    // on WIDTH (871<->811). Pinning the width makes the snapshot dimensions
-    // deterministic; residual sub-pixel text jitter is absorbed by the tier's
-    // maxDiffPixelRatio. flex-column so the child stretches to this width.
+    // on WIDTH. Pinning the width makes the snapshot dimensions deterministic;
+    // residual sub-pixel text jitter is absorbed by the tier's maxDiffPixelRatio.
+    // flex-column so the child stretches to this width.
     return (
-      <div style={{ display: "flex", flexDirection: "column", width: 880 }}>
+      <div
+        style={{ display: "flex", "flex-direction": "column", width: "880px" }}
+      >
         <StatusBar />
       </div>
     );
@@ -544,8 +536,8 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
       <div
         style={{
           position: "fixed",
-          inset: 0,
-          backgroundColor: "var(--bg-primary)",
+          inset: "0",
+          "background-color": "var(--bg-primary)",
         }}
       >
         <PreferencesModal open={true} onClose={() => {}} />

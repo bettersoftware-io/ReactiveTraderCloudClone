@@ -8,6 +8,7 @@ import { EnvBadge } from "./EnvBadge";
 import { LanguageMenu } from "./LanguageMenu";
 import { NavTab, type WorkspaceTab } from "./NavTab";
 import { NotificationsMenu } from "./NotificationsMenu";
+import { PowerSaverToggle } from "./PowerSaverToggle";
 import { ThemePicker } from "./ThemePicker";
 
 import styles from "./HeaderChrome.module.css";
@@ -74,6 +75,7 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
           <span class={styles.liveLabel}>LIVE</span>
         </div>
         <EnvBadge />
+        <PowerSaverToggle />
         <ThemePicker />
         <NotificationsMenu />
         <LanguageMenu />

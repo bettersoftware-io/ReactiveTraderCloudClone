@@ -145,6 +145,12 @@ interface UseAnimatedBackgroundResult {
   toggle: () => void;
 }
 
+interface UsePowerSaverResult {
+  enabled: Accessor<boolean>;
+  setEnabled: (on: boolean) => void;
+  toggle: () => void;
+}
+
 interface UseViewModePreferenceResult {
   viewMode: Accessor<ViewMode>;
   setViewMode: (viewMode: ViewMode) => void;
@@ -232,6 +238,8 @@ export interface ViewModel {
   useThemeSkinPreference: () => UseThemeSkinPreferenceResult;
   /** Global animated-background preference — enabled flag plus write/toggle intents. */
   useAnimatedBackground: () => UseAnimatedBackgroundResult;
+  /** Global power-saver master override — enabled flag plus write/toggle intents. */
+  usePowerSaver: () => UsePowerSaverResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
   /** Credit RFQs panel LIVE/CLOSED/ALL filter preference — current filter plus
@@ -398,6 +406,12 @@ export function createViewModel(
 
   function setAnimatedBg(on: boolean): void {
     presenters.animatedBackground.set(on);
+  }
+
+  const powerSaverState = state(presenters.powerSaver.enabled$, false);
+
+  function setPowerSaver(on: boolean): void {
+    presenters.powerSaver.set(on);
   }
 
   const viewModeState = state(
@@ -720,6 +734,17 @@ export function createViewModel(
         setEnabled: setAnimatedBg,
         toggle: () => {
           presenters.animatedBackground.toggle(enabled());
+        },
+      };
+    },
+    usePowerSaver: () => {
+      const enabled = toSignal(powerSaverState);
+
+      return {
+        enabled,
+        setEnabled: setPowerSaver,
+        toggle: () => {
+          presenters.powerSaver.toggle(enabled());
         },
       };
     },

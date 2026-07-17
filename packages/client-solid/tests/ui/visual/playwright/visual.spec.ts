@@ -3,6 +3,14 @@ import { goldenPathArray } from "@ui-visual-shared/goldenPath";
 import { scenarioActionFor } from "@ui-visual-shared/scenarioActions";
 import { scenarios } from "@ui-visual-shared/scenarios";
 
+// Framework-agnostic URL-navigation spec — byte-identical to react's own
+// (../../../../client-react/tests/ui/visual/playwright/visual.spec.ts). Per
+// its README's "porting to another framework" section, this file needs ZERO
+// changes for a port: only the host (./host/) and this config's golden
+// routing differ. Kept as a verbatim copy (not an import) so the two remain
+// independently reviewable and this package never depends on client-react's
+// source at runtime.
+
 for (const [name, scenario] of Object.entries(scenarios)) {
   const action = scenarioActionFor(name);
 
