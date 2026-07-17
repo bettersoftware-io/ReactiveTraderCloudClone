@@ -109,5 +109,7 @@ test("every skin×mode set carries gridC/aurora/glowC", () => {
 });
 
 test("classic is the calmest (aurora ~0), neon/holo brighter", () => {
-  expect(rnThemeTokens.classic.dark.aurora).toBeLessThanOrEqual(rnThemeTokens.neon.dark.aurora);
+  expect(rnThemeTokens.classic.dark.aurora).toBeLessThanOrEqual(
+    rnThemeTokens.neon.dark.aurora,
+  );
 });
