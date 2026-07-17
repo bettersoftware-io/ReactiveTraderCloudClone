@@ -3,7 +3,12 @@ import type { Observable } from "rxjs";
 import type { SessionUser } from "../auth/sessionUser.js";
 
 export type AuthOutcome =
-  | { readonly ok: true; readonly token: string; readonly user: SessionUser }
+  | {
+      readonly ok: true;
+      readonly token: string;
+      readonly user: SessionUser;
+      readonly exp: number;
+    }
   | { readonly ok: false; readonly reason: "invalid" | "unavailable" };
 
 export interface AuthPort {

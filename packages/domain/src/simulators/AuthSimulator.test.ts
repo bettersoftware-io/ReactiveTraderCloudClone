@@ -24,4 +24,17 @@ describe("AuthSimulator", () => {
     const r = await firstValueFrom(sim.login("ghost", "x"));
     expect(r).toEqual({ ok: false, reason: "invalid" });
   });
+  it("stamps exp = now() + ttlMs on a successful login", async () => {
+    function now(): number {
+      return 1_000;
+    }
+
+    const withClock = new AuthSimulator({ astark: "pw" }, 5_000, now);
+    const r = await firstValueFrom(withClock.login("astark", "pw"));
+
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.exp).toBe(6_000);
+    }
+  });
 });

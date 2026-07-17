@@ -15,9 +15,6 @@ export interface AuthViewState {
   readonly error: string | null;
 }
 
-/** How long a written session stays valid before {@link AuthPresenter} treats it as expired on resume. */
-export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
-
 const UNAUTHENTICATED_STATE: AuthViewState = {
   status: "unauthenticated",
   user: null,
@@ -86,7 +83,7 @@ export class AuthPresenter {
   private handleLoginOutcome(username: string, outcome: AuthOutcome): void {
     if (outcome.ok) {
       this.currentUsername = username;
-      this.writeSession(username, outcome.token, outcome.user);
+      this.writeSession(username, outcome.token, outcome.user, outcome.exp);
       this.subject.next({
         status: "authenticated",
         user: outcome.user,
@@ -132,7 +129,7 @@ export class AuthPresenter {
     const current = this.subject.value;
 
     if (outcome.ok) {
-      this.writeSession(username, outcome.token, outcome.user);
+      this.writeSession(username, outcome.token, outcome.user, outcome.exp);
       this.subject.next({
         ...current,
         user: outcome.user,
@@ -160,13 +157,9 @@ export class AuthPresenter {
     username: string,
     token: string,
     user: SessionUser,
+    exp: number,
   ): void {
-    const session: StoredSession = {
-      token,
-      user,
-      username,
-      exp: this.now() + SESSION_TTL_MS,
-    };
+    const session: StoredSession = { token, user, username, exp };
     this.store.write(session);
   }
 }
