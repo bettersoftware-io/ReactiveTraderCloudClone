@@ -175,6 +175,17 @@ describe("createViewModel — preferences", () => {
     expect(result.enabled()).toBe(false);
   });
 
+  it("usePowerSaver defaults off and toggle() flips it", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.usePowerSaver();
+    });
+
+    expect(result.enabled()).toBe(false);
+    result.toggle();
+    expect(result.enabled()).toBe(true);
+  });
+
   it("useViewModePreference reads viewMode and setViewMode writes it", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {
