@@ -7,7 +7,7 @@ import { fixtures } from "@ui-visual-shared/fixtures";
 import "@ui-visual-shared/freezeClock";
 import { scenarios } from "@ui-visual-shared/scenarios";
 import type { JSX } from "solid-js";
-import { createSignal, onMount, Show } from "solid-js";
+import { createSignal, onCleanup, onMount, Show } from "solid-js";
 
 import { ViewModelProvider } from "@rtc/solid-bindings";
 
@@ -80,9 +80,11 @@ export function VisualScenario(props: VisualScenarioProps): JSX.Element {
         }
       });
 
-    return () => {
+    // Solid's onMount ignores returned functions (unlike react's useEffect);
+    // the disposal guard must register via onCleanup.
+    onCleanup(() => {
       cancelled = true;
-    };
+    });
   });
 
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: `name` never changes within one scenario's mounted lifetime (a fresh VisualScenario is mounted per test)
