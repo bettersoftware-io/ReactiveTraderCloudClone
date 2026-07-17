@@ -1,0 +1,40 @@
+{
+  "name": "@rtc/devtools-relay",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "rtc-devtools-relay": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "build": "tsc --build && tsc-alias -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "dev": "tsx src/bin.ts",
+    "start": "node dist/bin.js",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo reports 2>/dev/null || true",
+    "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
+  },
+  "dependencies": {
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "@types/ws": "^8.18.1",
+    "tsc-alias": "1.9.0",
+    "tsx": "^4",
+    "vitest": "^4"
+  }
+}
