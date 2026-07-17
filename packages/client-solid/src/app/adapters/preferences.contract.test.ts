@@ -55,6 +55,13 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
         );
       }
 
+      if (seed.powerSaver !== undefined) {
+        localStorage.setItem(
+          POWER_SAVER_STORAGE_KEY,
+          seed.powerSaver ? "true" : "false",
+        );
+      }
+
       if (seed.bootVariant) {
         localStorage.setItem(BOOT_VARIANT_STORAGE_KEY, seed.bootVariant);
       }
@@ -97,12 +104,14 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     expect(localStorage.getItem(VIEW_MODE_STORAGE_KEY)).toBe("price");
   });
 
-  it("persists skin and animatedBackground to their own keys", () => {
+  it("persists skin, animatedBackground, and powerSaver to their own keys", () => {
     const port = new LocalStoragePreferencesAdapter();
     port.setThemeSkin("terminal");
     port.setAnimatedBackground(true);
+    port.setPowerSaver(true);
     expect(localStorage.getItem(THEME_SKIN_STORAGE_KEY)).toBe("terminal");
     expect(localStorage.getItem(ANIMATED_BG_STORAGE_KEY)).toBe("true");
+    expect(localStorage.getItem(POWER_SAVER_STORAGE_KEY)).toBe("true");
   });
 
   it("keeps reading the legacy rtc-theme key as the mode (back-compat)", async () => {
@@ -135,31 +144,6 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     expect(await firstValueFrom(port.eqBlotterView$())).toBe(
       DEFAULT_EQ_BLOTTER_VIEW,
     );
-  });
-
-  it("powerSaver defaults false, persists to rtc-power-saver, and replays current", () => {
-    const adapter = new LocalStoragePreferencesAdapter();
-    let current = true;
-    adapter
-      .powerSaver$()
-      .subscribe((on) => {
-        current = on;
-      })
-      .unsubscribe();
-    expect(current).toBe(false);
-
-    adapter.setPowerSaver(true);
-    expect(localStorage.getItem("rtc-power-saver")).toBe("true");
-
-    const rehydrated = new LocalStoragePreferencesAdapter();
-    let stored = false;
-    rehydrated
-      .powerSaver$()
-      .subscribe((on) => {
-        stored = on;
-      })
-      .unsubscribe();
-    expect(stored).toBe(true);
   });
 });
 

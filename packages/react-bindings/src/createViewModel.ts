@@ -119,7 +119,7 @@ interface UseAnimatedBackgroundResult {
   toggle: () => void;
 }
 
-export interface UsePowerSaverResult {
+interface UsePowerSaverResult {
   enabled: boolean;
   setEnabled: (on: boolean) => void;
   toggle: () => void;

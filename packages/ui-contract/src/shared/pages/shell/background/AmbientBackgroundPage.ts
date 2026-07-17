@@ -39,6 +39,6 @@ export class AmbientBackgroundPage extends MountedComponent<
 
   /** True when the aurora/sweep/dots animated layers are in the DOM. */
   hasAuroraLayers(): boolean {
-    return this.el()?.querySelector('[data-layer="aurora"]') !== null;
+    return Boolean(this.el()?.querySelector('[data-layer="aurora"]'));
   }
 }
