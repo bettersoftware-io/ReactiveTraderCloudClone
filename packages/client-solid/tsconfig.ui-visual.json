@@ -1,0 +1,38 @@
+{
+  // Type-checks the visual harness (tests/ui/visual/) together with the
+  // src files it mounts. The main tsconfig.json restricts rootDir to src, so
+  // the visual tier — which lives outside src and imports both @rtc/domain
+  // and ../../../../src — needs its own no-emit program for `pnpm typecheck`
+  // to catch drift between buildFakeViewModel and the ViewModel interface.
+  // Mirrors client-react's tsconfig.ui-visual.json exactly, but Solid's JSX
+  // pragma instead of react-jsx.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "paths": {
+      "@ui-visual": ["./tests/ui/visual/solid"],
+      "@ui-visual/*": ["./tests/ui/visual/solid/*"],
+      // The shared scenario/goldenPath matrix, extracted to @rtc/ui-contract —
+      // distinct from @ui-visual above (the framework-swap render-target seam).
+      "@ui-visual-shared": ["../ui-contract/src/visual"],
+      "@ui-visual-shared/*": ["../ui-contract/src/visual/*"],
+      "#/*": ["./src/*"],
+      "#tests/*": ["./tests/*"]
+    }
+  },
+  "include": ["src", "tests"],
+  "exclude": ["tests/ui/contract"],
+  "references": [
+    { "path": "../domain" },
+    { "path": "../client-core" },
+    { "path": "../solid-bindings" },
+    { "path": "../ui-contract" }
+  ]
+}

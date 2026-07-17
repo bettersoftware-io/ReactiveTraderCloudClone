@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import solid from "vite-plugin-solid";
 import { defineConfig } from "vitest/config";
 
@@ -8,6 +10,16 @@ import { defineConfig } from "vitest/config";
 // vitest.config.ts for the full explanation).
 export default defineConfig({
   plugins: [solid()],
+  resolve: {
+    alias: {
+      // The shared scenario/goldenPath matrix (@rtc/ui-contract) —
+      // resolveScenarioData.test.ts imports the Scenario/AppData types from
+      // it. Mirrors client-react's root vitest.config.ts alias.
+      "@ui-visual-shared": fileURLToPath(
+        new URL("../ui-contract/src/visual", import.meta.url),
+      ),
+    },
+  },
   test: {
     environment: "jsdom",
     // @solidjs/testing-library's `render()` only auto-registers its
@@ -21,6 +33,8 @@ export default defineConfig({
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
       "tests/parity/**/*.test.ts",
+      "tests/ui/visual/**/*.test.ts",
+      "tests/ui/visual/**/*.test.tsx",
     ],
     // Node 26 ships a native (experimental, flag-gated) localStorage/
     // sessionStorage accessor pair that shadows jsdom's own Storage inside
