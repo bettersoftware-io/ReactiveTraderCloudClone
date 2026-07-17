@@ -18,10 +18,16 @@ const PORT = 3300;
 // snapshotPathTemplate below, so refuse outright rather than silently
 // clobbering another package's golden set. Mirrors the vitest-browser
 // tier's `--update`/`-u` argv guard (../vitest-browser/vitest-browser.config.ts).
+// Also covers playwright's short alias `-u` (equivalent to
+// `--update-snapshots`) — without this, `-u` would slip past the guard and
+// still flip `updateSnapshots` at runtime.
 if (
   process.argv.some((arg) => {
     return (
-      arg === "--update-snapshots" || arg.startsWith("--update-snapshots=")
+      arg === "--update-snapshots" ||
+      arg.startsWith("--update-snapshots=") ||
+      arg === "-u" ||
+      arg.startsWith("-u=")
     );
   })
 ) {

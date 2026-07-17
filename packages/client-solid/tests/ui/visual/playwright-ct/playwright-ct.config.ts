@@ -47,6 +47,16 @@ import { defineConfig, devices } from "@playwright/test";
 // "fix properly later" so much as a stable, intentional substitute; the two
 // approaches converge on the same golden contract by construction (both
 // target react's playwright-ct/__screenshots__/ tree).
+//
+// NOT INHERITED: react's playwright-ct.config.ts pins `workers: 1` because
+// each CT worker there is its own Chromium mounting components through a
+// privately-bundled per-worker Vite dev server — under CPU contention that
+// per-worker bundling dimension drifted a scenario's layout by 1-7px before
+// "stable frame" fired. This fallback has no per-worker bundling to drift:
+// like ../playwright/playwright.config.ts, it drives one SHARED webServer
+// (a single Vite instance) via plain URL navigation, so react's root cause
+// for the pin doesn't apply here — default parallelism is used, same as the
+// ../playwright/ tier.
 // ============================================================================
 
 // Port map — see ../playwright/playwright.config.ts's header for the full
@@ -56,11 +66,15 @@ const PORT = 3400;
 
 // Assert-only tier: see ../playwright/playwright.config.ts for the full
 // rationale (byte-identical guard) — this package owns NO goldens, and
-// `--update-snapshots` must never be able to write into client-react's tree.
+// `--update-snapshots` (nor its short alias `-u`) must never be able to
+// write into client-react's tree.
 if (
   process.argv.some((arg) => {
     return (
-      arg === "--update-snapshots" || arg.startsWith("--update-snapshots=")
+      arg === "--update-snapshots" ||
+      arg.startsWith("--update-snapshots=") ||
+      arg === "-u" ||
+      arg.startsWith("-u=")
     );
   })
 ) {

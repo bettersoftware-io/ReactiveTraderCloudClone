@@ -18,6 +18,15 @@ import { scenarios } from "@ui-visual-shared/scenarios";
 // the host's page-level reset (./host/main.tsx's minimal reset, matching
 // react's own CT host instead of the fuller app-equivalent reset in
 // ../playwright/host/main.tsx).
+//
+// INTENTIONAL OMISSION: react's Tier 1 (../../../../../client-react/tests/ui/
+// visual/playwright-ct/matrix.spec.tsx:12-21) has a `test.beforeEach` that
+// clears `window.localStorage` and stubs the `**/throughput` route. This
+// fallback has neither: it mirrors Tier 2's URL-navigation body (../playwright/
+// visual.spec.ts), where state is seeded entirely through per-fixture seam data
+// (data.themeMode / data.viewMode, see below), never localStorage — and
+// throughput here is fixture-fed via the scenario/action matrix, not fetched
+// over the network, so there is no route to stub.
 
 for (const [name, scenario] of Object.entries(scenarios)) {
   const action = scenarioActionFor(name);
