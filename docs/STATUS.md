@@ -14,7 +14,7 @@
 ## 🟡 In progress
 
 - **SolidJS port** — Phases 4–5 remaining (visual parity vs react goldens; e2e + CI symmetry + docs). Phase 3 shipped PR #216: full contract parity, all 82 spec files green on Solid. Plan: [superpowers/plans/2026-07-12-solidjs-port.md](superpowers/plans/2026-07-12-solidjs-port.md)
-- **RN mobile-v1 UI rehaul** — total HUD redesign of `@rtc/client-react-native`. **Phase 0 (native foundation) built** (reanimated/skia/gesture-handler/expo-blur/haptics/sensors + babel/jest wiring + `GestureHandlerRootView` + flag-gated `MotionProbe`; zero visual change, verified on the iOS simulator). Phases 1–7 (visual redesign) remaining, planned as predecessors land. **Known follow-up:** the CI "Expo bundle smoke" tolerates a react-native-worklets@0.10.0 x86-only Babel-plugin crash (arm64 builds fine) — remove the tolerance in `.github/workflows/ci.yml` once worklets ships an x86 fix / an Expo SDK bump lands. Spec: [superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md](superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md); Phase 0 plan: [superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md](superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md)
+- **RN mobile-v1 UI rehaul** — total HUD redesign of `@rtc/client-react-native`. **Phase 0 (native foundation) built** (reanimated/skia/gesture-handler/expo-blur/haptics/sensors + babel/jest wiring + `GestureHandlerRootView` + flag-gated `MotionProbe`; zero visual change, verified on the iOS simulator). **Phase 1 (visual harness) & Phase 2 (theme/ambient/motion primitives) plans written** — independent tracks off Phase 0, designed to execute **in parallel**; not yet built. Phases 3–7 (shell/dock, modules, boot, polish) remaining, planned as predecessors land. **Known follow-up:** the CI "Expo bundle smoke" tolerates a react-native-worklets@0.10.0 x86-only Babel-plugin crash (arm64 builds fine) — remove the tolerance in `.github/workflows/ci.yml` once worklets ships an x86 fix / an Expo SDK bump lands. Spec: [superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md](superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md); plans: [Phase 0](superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md), [Phase 1](superpowers/plans/2026-07-17-rn-mobile-v1-rehaul-phase-1-visual-harness.md), [Phase 2](superpowers/plans/2026-07-17-rn-mobile-v1-rehaul-phase-2-theme-ambient-motion.md)
 
 ## 🔴 Designed, not built (plan/spec merged, no implementation)
 
@@ -25,7 +25,7 @@
 
 ## 🟠 Planned but gated / not executed
 
-- **RN visual snapshot testing / Maestro e2e** — now scheduled as **Phase 1** of the RN mobile-v1 rehaul (above); this standalone plan is the reference for that phase. Plan: [superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md](superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md)
+- **RN visual snapshot testing / Maestro e2e** — the detailed task source for **Phase 1** of the RN mobile-v1 rehaul (above); the [Phase 1 plan](superpowers/plans/2026-07-17-rn-mobile-v1-rehaul-phase-1-visual-harness.md) adopts it with reconciliation amendments (real bundle id, provisional shell-only goldens). Base plan: [superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md](superpowers/plans/2026-07-10-rn-visual-snapshot-testing.md)
 - **Atomic test-ID renames** — plan written, never executed. Plan: [superpowers/plans/2026-07-10-atomic-testid-renames.md](superpowers/plans/2026-07-10-atomic-testid-renames.md)
 
 ## ⚪ Optional / next step (no plan file yet)
