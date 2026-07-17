@@ -24,6 +24,7 @@ import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 import { AuthGate } from "#/ui/shell/auth/AuthGate";
+import { LogoutButton } from "#/ui/shell/auth/LogoutButton";
 import { BootGate } from "#/ui/shell/boot/BootGate";
 import { LockButton } from "#/ui/shell/lock/LockButton";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
@@ -127,6 +128,7 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
             }}
           />
           <LockButton />
+          <LogoutButton />
         </View>
       </View>
       <ConnectionBanner />
