@@ -12,7 +12,7 @@ import { downloadRecording } from "#/recording/downloadRecording";
 
 const PLAY_STEP_MS = 200;
 
-export type RecordingMode = "live" | "replay";
+type RecordingMode = "live" | "replay";
 
 export interface RecordingModel {
   mode: RecordingMode;
