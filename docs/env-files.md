@@ -9,7 +9,9 @@ rest are local-only or CLI-generated artifacts.
 > `"user:pass,user2:pass2"`) is the only source of truth for real credentials.
 > Nothing in this repo — committed or local — holds a real password; local
 > dev and the mobile demo use their own throwaway/placeholder credentials
-> instead. See [Auth environment variables](#auth-environment-variables).
+> instead. See [Auth environment variables](#auth-environment-variables) below
+> and [`docs/authentication.md`](authentication.md) for the full end-to-end
+> flow and per-platform setup.
 
 ## Inventory
 
@@ -140,6 +142,8 @@ production — login always happens live against the server.)
 
 ## Related docs
 
+- [authentication.md](./authentication.md) — the full auth flow (login,
+  resume-on-boot, lock/unlock, the roster) and per-platform credential setup.
 - [DEPLOY.md](./DEPLOY.md) — Fly + Vercel setup, the deploy workflow, and
   credential management.
 - [client-react-native README](../packages/client-react-native/README.md#live-data--signing-in) —
