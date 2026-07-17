@@ -12,6 +12,12 @@
     "test": "vitest run",
     "test:ui:contract": "vitest run -c tests/ui/contract/vitest.config.ts",
     "test:ui:contract:coverage": "vitest run -c tests/ui/contract/vitest.coverage.config.ts --coverage",
+    "test:ui:visual": "tsx tests/ui/visual/run-all.ts",
+    "test:ui:visual:solid": "tsx tests/ui/visual/run-all.ts solid",
+    "test:ui:visual:playwright-ct:solid": "playwright test -c tests/ui/visual/playwright-ct/playwright-ct.config.ts",
+    "test:ui:visual:playwright-ct:solid:ui": "playwright test -c tests/ui/visual/playwright-ct/playwright-ct.config.ts --ui",
+    "test:ui:visual:playwright:solid": "playwright test -c tests/ui/visual/playwright/playwright.config.ts",
+    "test:ui:visual:playwright:solid:ui": "playwright test -c tests/ui/visual/playwright/playwright.config.ts --ui",
     "test:ui:visual:vitest-browser:solid": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts",
     "dev": "vite",
     "clean": "(rm -rf dist .turbo *.tsbuildinfo reports .vitest-attachments 2>/dev/null || true)",
@@ -31,6 +37,7 @@
     "solid-js": "^1.9.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@rtc/ui-contract": "workspace:*",
     "@rx-state/core": "^0.1.4",
     "@solidjs/testing-library": "^0.8.10",
@@ -42,6 +49,7 @@
     "jsdom": "^29",
     "playwright": "^1.60.0",
     "solid-devtools": "^0.34.5",
+    "tsx": "^4",
     "vite": "^8",
     "vite-plugin-solid": "^2.11.12",
     "vitest": "^4"

@@ -42,7 +42,15 @@
       "project": "src/**/*.{ts,tsx}"
     },
     "packages/client-solid": {
-      "entry": ["src/main.tsx", "index.html", "vite.config.ts"],
+      "entry": [
+        "src/main.tsx",
+        "index.html",
+        "vite.config.ts",
+        "tests/ui/visual/playwright-ct/host/main.tsx",
+        "tests/ui/visual/playwright-ct/host/vite.config.ts",
+        "tests/ui/visual/playwright/host/main.tsx",
+        "tests/ui/visual/playwright/host/vite.config.ts"
+      ],
       "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
       "ignoreDependencies": ["@rtc/ui-contract", "@vitest/browser"]
     },
