@@ -1,0 +1,295 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e26]:
+        - generic [ref=e27]: REACTIVE TRADER
+        - generic [ref=e28]: FX · CREDIT · EQUITIES · HUD TERMINAL
+      - navigation "Workspace" [ref=e29]:
+        - button "FX" [ref=e30] [cursor=pointer]
+        - button "Credit" [ref=e31] [cursor=pointer]
+        - button "Equities" [ref=e32] [cursor=pointer]
+        - button "Admin" [ref=e33] [cursor=pointer]
+      - generic [ref=e34]:
+        - generic [ref=e35]: LIVE
+        - generic [ref=e38]: PROD
+        - generic [ref=e39]:
+          - button "Switch to light theme" [ref=e40] [cursor=pointer]: ☀️
+          - button "Theme skin" [ref=e42] [cursor=pointer]:
+            - generic [ref=e46]: Holo HUD
+            - generic [ref=e47]: ▾
+        - button "Notifications" [ref=e49] [cursor=pointer]:
+          - generic [ref=e53]: "3"
+        - button "Language" [ref=e55] [cursor=pointer]:
+          - generic [ref=e59]: EN
+          - generic [ref=e60]: ▾
+        - button "Account" [ref=e63] [cursor=pointer]:
+          - generic [ref=e64]: DO
+          - generic [ref=e68]: ▾
+    - main [ref=e69]:
+      - generic [ref=e70]:
+        - generic [ref=e72]:
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - generic [ref=e77]:
+                - button "◧ Live Rates" [ref=e78] [cursor=pointer]
+                - button "☰ Watchlist" [ref=e79] [cursor=pointer]
+                - button "CHARTS" [ref=e80] [cursor=pointer]
+              - generic [ref=e81]:
+                - button "Collapse Live Rates" [ref=e82] [cursor=pointer]: —
+                - button "Maximize Live Rates" [ref=e83] [cursor=pointer]: ⛶
+            - generic [ref=e85]:
+              - generic [ref=e87]:
+                - generic [ref=e88]: FILTER
+                - button "All" [ref=e89] [cursor=pointer]
+                - button "EUR" [ref=e90] [cursor=pointer]
+                - button "USD" [ref=e91] [cursor=pointer]
+                - button "GBP" [ref=e92] [cursor=pointer]
+                - button "AUD" [ref=e93] [cursor=pointer]
+                - button "NZD" [ref=e94] [cursor=pointer]
+                - button "JPY" [ref=e95] [cursor=pointer]
+                - button "CAD" [ref=e96] [cursor=pointer]
+              - generic [ref=e97]: Loading currency pairs...
+          - separator [ref=e98]
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - generic [ref=e103]:
+                - button "▤ FX Blotter" [ref=e104] [cursor=pointer]
+                - button "⚡ Activity" [ref=e105] [cursor=pointer]
+                - generic [ref=e106]: 5 trades
+                - textbox "Quick filter..." [ref=e107]
+                - button "⤓ CSV" [ref=e108] [cursor=pointer]
+              - generic [ref=e109]:
+                - button "Collapse Blotter" [ref=e110] [cursor=pointer]: —
+                - button "Maximize Blotter" [ref=e111] [cursor=pointer]: ⛶
+            - generic [ref=e113]:
+              - table [ref=e115]:
+                - rowgroup [ref=e126]:
+                  - row "Trade ID ▽ Status ▽ Trade Date ▽ Direction ▽ CCYCCY ▽ Deal CCY ▽ Notional ▽ Rate ▽ Value Date ▽ Trader ▽" [ref=e127]:
+                    - columnheader "Trade ID ▽" [ref=e128] [cursor=pointer]:
+                      - generic [ref=e129]: Trade ID
+                      - button "▽" [ref=e130]
+                    - columnheader "Status ▽" [ref=e131] [cursor=pointer]:
+                      - generic [ref=e132]: Status
+                      - button "▽" [ref=e133]
+                    - columnheader "Trade Date ▽" [ref=e134] [cursor=pointer]:
+                      - generic [ref=e135]: Trade Date
+                      - button "▽" [ref=e136]
+                    - columnheader "Direction ▽" [ref=e137] [cursor=pointer]:
+                      - generic [ref=e138]: Direction
+                      - button "▽" [ref=e139]
+                    - columnheader "CCYCCY ▽" [ref=e140] [cursor=pointer]:
+                      - generic [ref=e141]: CCYCCY
+                      - button "▽" [ref=e142]
+                    - columnheader "Deal CCY ▽" [ref=e143] [cursor=pointer]:
+                      - generic [ref=e144]: Deal CCY
+                      - button "▽" [ref=e145]
+                    - columnheader "Notional ▽" [ref=e146] [cursor=pointer]:
+                      - generic [ref=e147]: Notional
+                      - button "▽" [ref=e148]
+                    - columnheader "Rate ▽" [ref=e149] [cursor=pointer]:
+                      - generic [ref=e150]: Rate
+                      - button "▽" [ref=e151]
+                    - columnheader "Value Date ▽" [ref=e152] [cursor=pointer]:
+                      - generic [ref=e153]: Value Date
+                      - button "▽" [ref=e154]
+                    - columnheader "Trader ▽":
+                      - generic [ref=e155] [cursor=pointer]: Trader
+                      - button "▽" [ref=e156] [cursor=pointer]
+              - table [ref=e158]:
+                - rowgroup [ref=e169]:
+                  - row [ref=e170]:
+                    - cell "1042" [ref=e171]
+                    - cell "Done" [ref=e172]
+                    - cell "13-Jul-2026" [ref=e173]
+                    - cell "Buy" [ref=e174]
+                    - cell "EURUSD" [ref=e175]
+                    - cell "EUR" [ref=e176]
+                    - cell "1,000,000" [ref=e177]
+                    - cell "1.09213" [ref=e178]
+                    - cell "15-Jul-2026" [ref=e179]
+                    - cell "A.Stark"
+                  - row [ref=e180]:
+                    - cell "1041" [ref=e181]
+                    - cell "Done" [ref=e182]
+                    - cell "13-Jul-2026" [ref=e183]
+                    - cell "Sell" [ref=e184]
+                    - cell "USDJPY" [ref=e185]
+                    - cell "USD" [ref=e186]
+                    - cell "2,000,000" [ref=e187]
+                    - cell "151.203" [ref=e188]
+                    - cell "15-Jul-2026" [ref=e189]
+                    - cell "A.Stark"
+                  - row [ref=e190]:
+                    - cell "1040" [ref=e191]
+                    - cell "Rejected" [ref=e192]
+                    - cell "12-Jul-2026" [ref=e193]
+                    - cell "Buy" [ref=e194]
+                    - cell "GBPUSD" [ref=e195]
+                    - cell "GBP" [ref=e196]
+                    - cell "500,000" [ref=e197]
+                    - cell "1.26414" [ref=e198]
+                    - cell "14-Jul-2026" [ref=e199]
+                    - cell "N.Romanoff"
+                  - row [ref=e200]:
+                    - cell "1039" [ref=e201]
+                    - cell "Done" [ref=e202]
+                    - cell "11-Jul-2026" [ref=e203]
+                    - cell "Sell" [ref=e204]
+                    - cell "EURJPY" [ref=e205]
+                    - cell "EUR" [ref=e206]
+                    - cell "1,500,000" [ref=e207]
+                    - cell "165.142" [ref=e208]
+                    - cell "13-Jul-2026" [ref=e209]
+                    - cell "S.Rogers"
+                  - row [ref=e210]:
+                    - cell "1038" [ref=e211]
+                    - cell "Done" [ref=e212]
+                    - cell "10-Jul-2026" [ref=e213]
+                    - cell "Buy" [ref=e214]
+                    - cell "AUDUSD" [ref=e215]
+                    - cell "AUD" [ref=e216]
+                    - cell "3,000,000" [ref=e217]
+                    - cell "0.661210" [ref=e218]
+                    - cell "12-Jul-2026" [ref=e219]
+                    - cell "B.Banner"
+        - separator [ref=e220]
+        - generic [ref=e222]:
+          - generic [ref=e224]:
+            - generic [ref=e225]:
+              - generic [ref=e226]: ◉ Analytics
+              - generic [ref=e229]:
+                - button "Collapse Analytics" [ref=e230] [cursor=pointer]: —
+                - button "Maximize Analytics" [ref=e231] [cursor=pointer]: ⛶
+            - generic [ref=e234]:
+              - generic [ref=e235]:
+                - text: Profit & Loss · Today
+                - generic [ref=e236]: +$16.8k
+                - img "P&L chart" [ref=e237]
+              - generic [ref=e240]:
+                - text: PnL per Currency Pair
+                - generic [ref=e241]:
+                  - generic [ref=e242]:
+                    - generic [ref=e243]: EURUSD
+                    - button "+13k" [ref=e247]
+                  - generic [ref=e248]:
+                    - generic [ref=e249]: USDJPY
+                    - button "-4k" [ref=e253]
+                  - generic [ref=e254]:
+                    - generic [ref=e255]: GBPUSD
+                    - button "+9k" [ref=e259]
+                  - generic [ref=e260]:
+                    - generic [ref=e261]: GBPJPY
+                    - button "-1k" [ref=e265]
+                  - generic [ref=e266]:
+                    - generic [ref=e267]: EURJPY
+                    - button "+5k" [ref=e271]
+                  - generic [ref=e272]:
+                    - generic [ref=e273]: AUDUSD
+                    - button "+6k" [ref=e277]
+                  - generic [ref=e278]:
+                    - generic [ref=e279]: NZDUSD
+                    - button "+1k" [ref=e283]
+                  - generic [ref=e284]:
+                    - generic [ref=e285]: EURCAD
+                    - button "-2k" [ref=e289]
+                  - generic [ref=e290]:
+                    - generic [ref=e291]: EURAUD
+                    - button "-1k" [ref=e295]
+          - separator [ref=e296]
+          - generic [ref=e298]:
+            - generic [ref=e299]:
+              - generic [ref=e300]: ◎ Positions
+              - generic [ref=e303]:
+                - button "Collapse Positions" [ref=e304] [cursor=pointer]: —
+                - button "Maximize Positions" [ref=e305] [cursor=pointer]: ⛶
+            - generic [ref=e308]:
+              - generic [ref=e309]: Net Exposure
+              - generic [ref=e310]:
+                - generic [ref=e311]:
+                  - generic [ref=e313]: EUR
+                  - generic [ref=e314]: +15.2M
+                - generic [ref=e315]:
+                  - generic [ref=e317]: USD
+                  - generic [ref=e318]: "-22.8M"
+                - generic [ref=e319]:
+                  - generic [ref=e321]: JPY
+                  - generic [ref=e322]: +8.4M
+                - generic [ref=e323]:
+                  - generic [ref=e325]: GBP
+                  - generic [ref=e326]: "-6.1M"
+                - generic [ref=e327]:
+                  - generic [ref=e329]: AUD
+                  - generic [ref=e330]: +4.7M
+                - generic [ref=e331]:
+                  - generic [ref=e333]: NZD
+                  - generic [ref=e334]: +2.1M
+                - generic [ref=e335]:
+                  - generic [ref=e337]: CAD
+                  - generic [ref=e338]: "-3.2M"
+              - generic [ref=e339]:
+                - generic [ref=e340]:
+                  - generic [ref=e341]: EUR
+                  - generic [ref=e342]: +15.2M
+                - generic [ref=e343]:
+                  - generic [ref=e344]: USD
+                  - generic [ref=e345]: "-22.8M"
+                - generic [ref=e346]:
+                  - generic [ref=e347]: JPY
+                  - generic [ref=e348]: +8.4M
+                - generic [ref=e349]:
+                  - generic [ref=e350]: GBP
+                  - generic [ref=e351]: "-6.1M"
+                - generic [ref=e352]:
+                  - generic [ref=e353]: AUD
+                  - generic [ref=e354]: +4.7M
+                - generic [ref=e355]:
+                  - generic [ref=e356]: NZD
+                  - generic [ref=e357]: +2.1M
+                - generic [ref=e358]:
+                  - generic [ref=e359]: CAD
+                  - generic [ref=e360]: "-3.2M"
+    - contentinfo [ref=e361]:
+      - generic [ref=e362]: Connected
+      - generic [ref=e365]: │
+      - generic [ref=e366]: TRD-0000
+      - generic [ref=e367]:
+        - generic [ref=e368]:
+          - generic [ref=e369]: │
+          - generic [ref=e370]: GW
+          - generic [ref=e371]: eu-west-1
+        - generic [ref=e372]:
+          - generic [ref=e373]: │
+          - generic [ref=e374]: LAT
+          - generic [ref=e375]: 12ms
+        - generic [ref=e376]:
+          - generic [ref=e377]: │
+          - generic [ref=e378]: TPUT
+          - generic [ref=e379]: 1.24k/s
+        - generic [ref=e380]:
+          - generic [ref=e381]: │
+          - generic [ref=e382]: FPS
+          - generic [ref=e383]: "60"
+        - generic [ref=e384]:
+          - generic [ref=e385]: │
+          - generic [ref=e386]: MEM
+          - generic [ref=e387]: 248MB
+        - generic [ref=e388]:
+          - generic [ref=e389]: │
+          - generic [ref=e390]: POS
+          - generic [ref=e391]: "8"
+        - generic [ref=e392]:
+          - generic [ref=e393]: │
+          - generic [ref=e394]: P&L
+          - generic [ref=e395]: +$17.1k
+        - generic [ref=e396]:
+          - generic [ref=e397]: │
+          - generic [ref=e398]: SES
+          - generic [ref=e399]: "1284"
+        - generic [ref=e400]: BUILD v4.0.1
+        - generic [ref=e401]: │
+        - generic [ref=e402]: 09:47:03 UTC
+  - generic [ref=e406]:
+    - generic [ref=e407]: REACTIVE TRADER
+    - generic [ref=e408]: TACTICAL TRADING OPERATING SYSTEM · v4.0
+    - generic [ref=e410]: 0%
+    - button "SKIP ▸" [ref=e413] [cursor=pointer]

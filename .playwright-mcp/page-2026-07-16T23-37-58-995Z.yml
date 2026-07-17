@@ -1,0 +1,200 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e26]:
+      - generic [ref=e27]: REACTIVE TRADER
+      - generic [ref=e28]: FX · CREDIT · EQUITIES · HUD TERMINAL
+    - navigation "Workspace" [ref=e29]:
+      - button "FX" [ref=e30] [cursor=pointer]
+      - button "Credit" [ref=e31] [cursor=pointer]
+      - button "Equities" [ref=e32] [cursor=pointer]
+      - button "Admin" [ref=e33] [cursor=pointer]
+    - generic [ref=e34]:
+      - generic [ref=e35]: LIVE
+      - generic [ref=e38]: PROD
+      - generic [ref=e39]:
+        - button "Switch to light theme" [ref=e40] [cursor=pointer]: ☀️
+        - button "Theme skin" [ref=e42] [cursor=pointer]:
+          - generic [ref=e46]: Holo HUD
+          - generic [ref=e47]: ▾
+      - button "Notifications" [ref=e49] [cursor=pointer]:
+        - generic [ref=e53]: "3"
+      - button "Language" [ref=e55] [cursor=pointer]:
+        - generic [ref=e59]: EN
+        - generic [ref=e60]: ▾
+      - button "Account" [ref=e63] [cursor=pointer]:
+        - generic [ref=e64]: DO
+        - generic [ref=e68]: ▾
+  - main [ref=e1800]:
+    - generic [ref=e1801]:
+      - generic [ref=e1803]:
+        - generic [ref=e1805]:
+          - generic [ref=e1806]:
+            - generic [ref=e1808]:
+              - navigation "Instrument tabs" [ref=e1809]:
+                - button "AAPL" [ref=e1810] [cursor=pointer]:
+                  - text: AAPL
+                  - generic [ref=e1811]: ✕
+              - generic [ref=e1812]:
+                - button "1D" [ref=e1813] [cursor=pointer]
+                - button "1W" [ref=e1814] [cursor=pointer]
+                - button "1M" [ref=e1815] [cursor=pointer]
+                - button "3M" [ref=e1816] [cursor=pointer]
+            - generic [ref=e1817]:
+              - button "Collapse Equities" [ref=e1818] [cursor=pointer]: —
+              - button "Maximize Equities" [ref=e1819] [cursor=pointer]: ⛶
+          - generic [ref=e1822]:
+            - generic [ref=e1823]:
+              - generic [ref=e1824]:
+                - generic [ref=e1825]: AAPL
+                - generic [ref=e1826]: Apple Inc. · NASDAQ
+              - generic [ref=e1827]:
+                - generic [ref=e1828]: "190.33"
+                - generic [ref=e1829]: +0.33 (+0.17%)
+              - generic [ref=e1830]:
+                - generic [ref=e1831]:
+                  - generic [ref=e1832]: BID
+                  - generic [ref=e1833]: "190.23"
+                - generic [ref=e1834]:
+                  - generic [ref=e1835]: ASK
+                  - generic [ref=e1836]: "190.42"
+                - generic [ref=e1837]:
+                  - generic [ref=e1838]: DAY RANGE
+                  - generic [ref=e1839]: 178.93 – 191.66
+                - generic [ref=e1840]:
+                  - generic [ref=e1841]: VOL
+                  - generic [ref=e1842]: 2.6M
+            - generic [ref=e1843]:
+              - generic [ref=e2217]: "190.14"
+              - generic [ref=e2218]: "186.95"
+              - generic [ref=e2219]: "183.77"
+              - generic [ref=e2220]: "180.58"
+        - separator [ref=e1972]
+        - generic [ref=e1974]:
+          - generic [ref=e1975]:
+            - generic [ref=e1977]:
+              - button "▤ Orders" [ref=e1978] [cursor=pointer]
+              - button "◴ Positions" [ref=e1979] [cursor=pointer]
+              - generic [ref=e1980]: 1 orders
+            - generic [ref=e1981]:
+              - button "Collapse Orders & Positions" [ref=e1982] [cursor=pointer]: —
+              - button "Maximize Orders & Positions" [ref=e1983] [cursor=pointer]: ⛶
+          - generic [ref=e2341]:
+            - generic [ref=e2342]:
+              - generic [ref=e2343]: Time
+              - generic [ref=e2344]: Symbol
+              - generic [ref=e2345]: Side
+              - generic [ref=e2346]: Type
+              - generic [ref=e2347]: Qty
+              - generic [ref=e2348]: Price
+              - generic [ref=e2349]: Status
+            - generic [ref=e2350]:
+              - generic [ref=e2351]: 00:37:58
+              - generic [ref=e2352]: AAPL
+              - generic [ref=e2353]: Buy
+              - generic [ref=e2354]: Market
+              - generic [ref=e2355]: "10"
+              - generic [ref=e2356]: —
+              - generic [ref=e2357]: Working
+      - separator [ref=e1987]
+      - generic [ref=e1989]:
+        - generic [ref=e1991]:
+          - generic [ref=e1992]:
+            - generic [ref=e1993]: ✚ Order Ticket
+            - generic [ref=e1996]:
+              - button "Collapse Order Ticket" [ref=e1997] [cursor=pointer]: —
+              - button "Maximize Order Ticket" [ref=e1998] [cursor=pointer]: ⛶
+          - generic [ref=e2358]:
+            - generic [ref=e2359]: WORKING — 0/10 filled
+            - button "RESET" [ref=e2360] [cursor=pointer]
+        - separator [ref=e2024]
+        - generic [ref=e2026]:
+          - generic [ref=e2027]:
+            - generic [ref=e2029]:
+              - generic [ref=e2030] [cursor=pointer]: ☰ Watchlist
+              - button "% CHG" [ref=e2031] [cursor=pointer]: ⇅ % CHG
+            - generic [ref=e2032]:
+              - button "Collapse Watchlist" [ref=e2033] [cursor=pointer]: —
+              - button "Maximize Watchlist" [ref=e2034] [cursor=pointer]: ⛶
+          - generic [ref=e2036]:
+            - button "AMZN Amazon.com Inc. 181.56 +0.87%" [ref=e2361] [cursor=pointer]:
+              - generic [ref=e2045]:
+                - generic [ref=e2046]: AMZN
+                - generic [ref=e2047]: Amazon.com Inc.
+              - generic [ref=e2048]:
+                - generic [ref=e2049]: "181.56"
+                - generic [ref=e2050]: +0.87%
+            - button "TSLA Tesla Inc. 251.82 +0.73%" [ref=e2362] [cursor=pointer]:
+              - generic [ref=e2059]:
+                - generic [ref=e2060]: TSLA
+                - generic [ref=e2061]: Tesla Inc.
+              - generic [ref=e2062]:
+                - generic [ref=e2063]: "251.82"
+                - generic [ref=e2064]: +0.73%
+            - button "MSFT Microsoft Corp. 422.82 +0.67%" [ref=e2363] [cursor=pointer]:
+              - generic [ref=e2066]:
+                - generic [ref=e2067]: MSFT
+                - generic [ref=e2068]: Microsoft Corp.
+              - generic [ref=e2069]:
+                - generic [ref=e2070]: "422.82"
+                - generic [ref=e2071]: +0.67%
+            - button "JPM JPMorgan Chase 200.95 +0.47%" [ref=e2364] [cursor=pointer]:
+              - generic [ref=e2052]:
+                - generic [ref=e2053]: JPM
+                - generic [ref=e2054]: JPMorgan Chase
+              - generic [ref=e2055]:
+                - generic [ref=e2056]: "200.95"
+                - generic [ref=e2057]: +0.47%
+            - button "AAPL Apple Inc. 190.33 +0.17%" [ref=e2365] [cursor=pointer]:
+              - generic [ref=e2073]:
+                - generic [ref=e2074]: AAPL
+                - generic [ref=e2075]: Apple Inc.
+              - generic [ref=e2076]:
+                - generic [ref=e2077]: "190.33"
+                - generic [ref=e2078]: +0.17%
+            - button "XOM Exxon Mobil 109.83 -0.16%" [ref=e2366] [cursor=pointer]:
+              - generic [ref=e2038]:
+                - generic [ref=e2039]: XOM
+                - generic [ref=e2040]: Exxon Mobil
+              - generic [ref=e2041]:
+                - generic [ref=e2042]: "109.83"
+                - generic [ref=e2043]: "-0.16%"
+  - contentinfo [ref=e361]:
+    - generic [ref=e362]: Connected
+    - generic [ref=e365]: │
+    - generic [ref=e366]: TRD-0000
+    - generic [ref=e367]:
+      - generic [ref=e368]:
+        - generic [ref=e369]: │
+        - generic [ref=e370]: GW
+        - generic [ref=e371]: eu-west-1
+      - generic [ref=e372]:
+        - generic [ref=e373]: │
+        - generic [ref=e374]: LAT
+        - generic [ref=e375]: 12ms
+      - generic [ref=e376]:
+        - generic [ref=e377]: │
+        - generic [ref=e378]: TPUT
+        - generic [ref=e379]: 1.24k/s
+      - generic [ref=e380]:
+        - generic [ref=e381]: │
+        - generic [ref=e382]: FPS
+        - generic [ref=e383]: "60"
+      - generic [ref=e384]:
+        - generic [ref=e385]: │
+        - generic [ref=e386]: MEM
+        - generic [ref=e387]: 248MB
+      - generic [ref=e388]:
+        - generic [ref=e389]: │
+        - generic [ref=e390]: POS
+        - generic [ref=e391]: "8"
+      - generic [ref=e392]:
+        - generic [ref=e393]: │
+        - generic [ref=e394]: P&L
+        - generic [ref=e395]: +$17.1k
+      - generic [ref=e396]:
+        - generic [ref=e397]: │
+        - generic [ref=e398]: SES
+        - generic [ref=e399]: "1284"
+      - generic [ref=e400]: BUILD v4.0.1
+      - generic [ref=e401]: │
+      - generic [ref=e402]: 09:47:03 UTC
