@@ -4,6 +4,7 @@ import type { JSX } from "react";
 import { useEffect } from "react";
 import { StyleSheet, useWindowDimensions } from "react-native";
 import {
+  cancelAnimation,
   type SharedValue,
   useDerivedValue,
   useSharedValue,
@@ -14,23 +15,6 @@ import {
 import { useAmbientEnabled } from "#/ui/ambient/useAmbientEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
-
-const DRIFT_DURATION_MS = 18_000;
-const GRID_CELL_PX = 56;
-const BLOB_BASE_OPACITY = 0.35;
-const BLOB_DRIFT_PX = 36;
-
-interface AuroraBlobSpec {
-  readonly id: string;
-  readonly baseX: number;
-  readonly baseY: number;
-  readonly radius: number;
-  readonly color: string;
-  /** Travel direction relative to the shared `progress` value (1 = with it,
-   * -1 = against it) — gives each blob a distinct phase off ONE shared
-   * animation instead of a second animated value per blob. */
-  readonly sign: 1 | -1;
-}
 
 /**
  * Ambient background: a full-bleed Skia canvas mounted BEHIND the app's
@@ -56,13 +40,23 @@ export function AmbientBackground(): JSX.Element | null {
 
   useEffect(() => {
     if (!enabled) {
+      // Stop the drift loop (toggle off / reduced-motion) — returning null
+      // below unmounts the Canvas but would leave a withRepeat(-1) worklet
+      // running forever on the UI thread. Cancel and rest at a static frame.
+      cancelAnimation(progress);
+      progress.value = 0;
       return;
     }
+
     progress.value = withRepeat(
       withTiming(1, { duration: DRIFT_DURATION_MS }),
       -1,
       true,
     );
+
+    return () => {
+      cancelAnimation(progress);
+    };
   }, [enabled, progress]);
 
   if (!enabled) {
@@ -90,6 +84,23 @@ export function AmbientBackground(): JSX.Element | null {
       })}
     </Canvas>
   );
+}
+
+const DRIFT_DURATION_MS = 18_000;
+const GRID_CELL_PX = 56;
+const BLOB_BASE_OPACITY = 0.35;
+const BLOB_DRIFT_PX = 36;
+
+interface AuroraBlobSpec {
+  readonly id: string;
+  readonly baseX: number;
+  readonly baseY: number;
+  readonly radius: number;
+  readonly color: string;
+  /** Travel direction relative to the shared `progress` value (1 = with it,
+   * -1 = against it) — gives each blob a distinct phase off ONE shared
+   * animation instead of a second animated value per blob. */
+  readonly sign: 1 | -1;
 }
 
 interface AuroraBlobProps {
