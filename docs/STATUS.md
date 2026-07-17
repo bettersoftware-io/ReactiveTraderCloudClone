@@ -14,6 +14,7 @@
 ## 🟡 In progress
 
 - **SolidJS port** — Phases 4–5 remaining (visual parity vs react goldens; e2e + CI symmetry + docs). Phase 3 shipped PR #216: full contract parity, all 82 spec files green on Solid. Plan: [superpowers/plans/2026-07-12-solidjs-port.md](superpowers/plans/2026-07-12-solidjs-port.md)
+- **RN mobile-v1 UI rehaul** — total HUD redesign of `@rtc/client-react-native`. **Phase 0 (native foundation) built** (reanimated/skia/gesture-handler/expo-blur/haptics/sensors + babel/jest wiring + `GestureHandlerRootView` + flag-gated `MotionProbe`; zero visual change, verified on the iOS simulator). Phases 1–7 (visual redesign) remaining, planned as predecessors land. **Known follow-up:** the CI "Expo bundle smoke" tolerates a react-native-worklets@0.10.0 x86-only Babel-plugin crash (arm64 builds fine) — remove the tolerance in `.github/workflows/ci.yml` once worklets ships an x86 fix / an Expo SDK bump lands. Spec: [superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md](superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md); Phase 0 plan: [superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md](superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md)
 
 ## 🔴 Designed, not built (plan/spec merged, no implementation)
 
@@ -21,7 +22,6 @@
 - **Login + server-side auth (Phase 1)** — not built; Phase 2 not yet spec'd. Plan: [superpowers/plans/2026-07-12-phase1-login-and-server-auth.md](superpowers/plans/2026-07-12-phase1-login-and-server-auth.md)
 - **Feature flags** — OpenFeature + Flagsmith. Plan: [superpowers/plans/2026-07-01-feature-flags.md](superpowers/plans/2026-07-01-feature-flags.md)
 - **Devtools RN inspection** — WebSocket-relay transport (`WsRelayDuplex`) + standalone dev-machine relay + decorators at the RN composition root. Plan: [superpowers/plans/2026-07-15-devtools-rn-inspection.md](superpowers/plans/2026-07-15-devtools-rn-inspection.md)
-- **RN mobile-v1 UI rehaul** — total HUD redesign of `@rtc/client-react-native` (native motion/render stack, radial command-dock nav, ambient background, event-driven motion, incremental Skia boot suite). Phased master spec; **Phase 0 (native foundation) plan ready**, Phases 1–7 planned as predecessors land. Spec: [superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md](superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md); Phase 0 plan: [superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md](superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md)
 
 ## 🟠 Planned but gated / not executed
 

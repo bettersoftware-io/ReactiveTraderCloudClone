@@ -1,5 +1,10 @@
 module.exports = {
   preset: "jest-expo",
+  // See jest.resolver.js: composes @react-native/jest-preset's resolver
+  // (which this `resolver` key would otherwise silently replace) with
+  // react-native-worklets' `.native.` extension filtering, so reanimated's
+  // jest mock can load without pulling in the real JSI binding.
+  resolver: "<rootDir>/jest.resolver.js",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   testMatch: ["**/*.test.tsx"],
   // jest-expo's first non-trivial component mount is very slow on the shared
@@ -19,6 +24,10 @@ module.exports = {
     "^@rtc/react-bindings$": "<rootDir>/../react-bindings/dist/index.js",
   },
   transformIgnorePatterns: [
-    "node_modules/(?!(\\.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@testing-library/react-native|@react-rxjs/.*|@rx-state/.*|react-native-svg|@expo-google-fonts/.*))",
+    // `standard-navigation` is a pure-ESM ("type": "module") transitive dep of
+    // expo-router's `Tabs` — untranspiled, so it must be transformed like the
+    // other RN-ecosystem packages here (matches jest-expo's own preset default,
+    // which this list otherwise narrows).
+    "node_modules/(?!(\\.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@testing-library/react-native|@react-rxjs/.*|@rx-state/.*|react-native-svg|@expo-google-fonts/.*|standard-navigation))",
   ],
 };
