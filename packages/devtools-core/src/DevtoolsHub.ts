@@ -118,14 +118,18 @@ export class DevtoolsHub {
           this.lastPingAt = Date.now();
         } else if (msg.kind === "bye") {
           this.goDormant();
-        } else if (import.meta.env.DEV && msg.kind === "intent:invoke") {
-          // FIRST INBOUND WRITE — wired ONLY in dev builds. With
-          // `import.meta.env.DEV` statically false in a production bundle, the
-          // bundler dead-code-eliminates this whole branch, so the machine-
-          // invocation code (and the "intent:invoke" literal) are physically
-          // absent from shipped JS — the tap stays strictly observe-only where
-          // it matters. The stored wrapped intent self-reports a machine:intent
-          // event, so an injected call is auditable like a UI-driven one.
+        } else if (this.dev && msg.kind === "intent:invoke") {
+          // THE INBOUND WRITE — gated on the runtime `dev` flag each composition
+          // root passes at construction (web: `import.meta.env?.DEV === true`;
+          // React Native: `__DEV__`). Both resolve `false` in a production
+          // build, so the branch is unreachable there and the tap stays
+          // observe-only where it matters. The gate is a runtime flag rather
+          // than a bundler-static literal because one shared source line cannot
+          // be dead-code-eliminated by both Vite and Metro at once; the
+          // "a non-dev hub ignores intent:invoke" invariant is pinned by unit
+          // test instead. The stored wrapped intent self-reports a
+          // machine:intent event, so an injected call is auditable like a
+          // UI-driven one.
           const entry = this.machines.get(msg.machineId);
           const intent = entry?.intents?.[msg.name];
 

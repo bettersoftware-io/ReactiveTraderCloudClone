@@ -14,6 +14,10 @@ import { ViewModelProvider } from "@rtc/react-bindings";
 
 import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
 import { FxViewProvider } from "#/ui/fx/FxViewProvider";
+import {
+  FROZEN_LIVE_METRICS,
+  LiveMetricsContext,
+} from "#/ui/shell/status/LiveMetricsContext";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import { PropsHost } from "./PropsHost";
@@ -39,13 +43,15 @@ export const reactDriver: UiContractDriver = {
     const hooks = reactViewModel(world);
     const { container, unmount } = rtlRender(
       <ViewModelProvider viewModel={hooks}>
-        <ThemeProvider>
-          <FxViewProvider>
-            <CreditViewProvider>
-              <PropsHost subject={propsSubject} build={build} />
-            </CreditViewProvider>
-          </FxViewProvider>
-        </ThemeProvider>
+        <LiveMetricsContext.Provider value={FROZEN_LIVE_METRICS}>
+          <ThemeProvider>
+            <FxViewProvider>
+              <CreditViewProvider>
+                <PropsHost subject={propsSubject} build={build} />
+              </CreditViewProvider>
+            </FxViewProvider>
+          </ThemeProvider>
+        </LiveMetricsContext.Provider>
       </ViewModelProvider>,
     );
     return {

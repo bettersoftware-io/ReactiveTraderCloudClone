@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@rtc/client-core";
 import {
   type AppToInspector,
-  DevtoolsHub,
+  type DevtoolsHub,
   InspectorClient,
   InspectorStore,
   type InspectorToApp,
@@ -13,6 +13,7 @@ import {
 import { createRelayServer, type RelayServer } from "@rtc/devtools-relay";
 
 import { buildNativePorts } from "#/app/buildNativePorts";
+import { createNativeDevtoolsHub } from "#/app/devtools/nativeDevtoolsHub";
 import { NATIVE_PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 
 describe("RN inspection end-to-end over the relay", () => {
@@ -32,7 +33,7 @@ describe("RN inspection end-to-end over the relay", () => {
     relay = null;
   });
 
-  it("delivers the RN app's manifest streams to the panel store", async () => {
+  it("delivers the RN app's manifest streams to the panel store and advertises a dev build", async () => {
     relay = createRelayServer({
       port: 0,
       log: () => {},
@@ -40,11 +41,9 @@ describe("RN inspection end-to-end over the relay", () => {
     const port = await relay.whenReady;
     const url = `ws://127.0.0.1:${port}`;
 
-    // App side — exactly what AppRoot builds under __DEV__.
-    hub = new DevtoolsHub({ appId: "rtc-native" });
-    hub.attachTransport(
-      new WsRelayDuplex<AppToInspector, InspectorToApp>(url, "app"),
-    );
+    // App side — exactly what AppRoot builds under __DEV__ (dev:true hub +
+    // app-tagged relay transport), via the real factory.
+    hub = createNativeDevtoolsHub(url);
     const { presenters } = createApp(
       buildNativePorts({ simulator: true }).ports,
     );
@@ -60,6 +59,10 @@ describe("RN inspection end-to-end over the relay", () => {
       () => {
         const snapshot = store.getSnapshot();
         expect(snapshot.connected).toBe(true);
+        // dev:true from the native hub reaches the panel via welcome.dev — this
+        // is the flag that opens the hub's inbound intent-injection gate and
+        // enables the panel's injection affordance (RN write-parity with web).
+        expect(snapshot.dev).toBe(true);
         expect(
           snapshot.streams.map((s) => {
             return s.streamId;

@@ -12,6 +12,10 @@ import { ViewModelProvider } from "@rtc/react-bindings";
 
 import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
 import { FxViewProvider } from "#/ui/fx/FxViewProvider";
+import {
+  FROZEN_LIVE_METRICS,
+  LiveMetricsContext,
+} from "#/ui/shell/status/LiveMetricsContext";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import { buildFakeViewModel } from "./buildFakeViewModel";
@@ -100,46 +104,50 @@ export function VisualScenario({
   if (FULL_BLEED.has(scenario.componentKey)) {
     return (
       <ViewModelProvider viewModel={buildFakeViewModel(data)}>
-        <ThemeProvider>
-          {/* App.tsx nests its own Fx/CreditViewProviders inside
-              WorkspaceEngine; these outer ones are harmless no-ops for that
-              path and cover every other full-bleed component that might read
-              useFxView/useCreditView. */}
-          <FxViewProvider>
-            <CreditViewProvider>
-              {render(scenario.fixtureKey)}
-            </CreditViewProvider>
-          </FxViewProvider>
-        </ThemeProvider>
+        <LiveMetricsContext.Provider value={FROZEN_LIVE_METRICS}>
+          <ThemeProvider>
+            {/* App.tsx nests its own Fx/CreditViewProviders inside
+                WorkspaceEngine; these outer ones are harmless no-ops for that
+                path and cover every other full-bleed component that might read
+                useFxView/useCreditView. */}
+            <FxViewProvider>
+              <CreditViewProvider>
+                {render(scenario.fixtureKey)}
+              </CreditViewProvider>
+            </FxViewProvider>
+          </ThemeProvider>
+        </LiveMetricsContext.Provider>
       </ViewModelProvider>
     );
   }
 
   return (
     <ViewModelProvider viewModel={buildFakeViewModel(data)}>
-      <ThemeProvider>
-        {/* FxBlotter/LiveRatesPanel/CreditBlotter (and any future FX/credit
-            panel) read useFxView()/useCreditView() for their tab/filter
-            state; standalone component-level shots need the same providers
-            App.tsx supplies via WorkspaceEngine. */}
-        <FxViewProvider>
-          <CreditViewProvider>
-            <div
-              data-testid="scenario-root"
-              style={{
-                // ThemeProvider sets CSS vars on <html>; paint a real backdrop so
-                // component-level shots aren't on default white.
-                backgroundColor: "var(--bg-primary)",
-                color: "var(--text-primary)",
-                padding: 24,
-                display: "inline-block",
-              }}
-            >
-              {render(scenario.fixtureKey)}
-            </div>
-          </CreditViewProvider>
-        </FxViewProvider>
-      </ThemeProvider>
+      <LiveMetricsContext.Provider value={FROZEN_LIVE_METRICS}>
+        <ThemeProvider>
+          {/* FxBlotter/LiveRatesPanel/CreditBlotter (and any future FX/credit
+              panel) read useFxView()/useCreditView() for their tab/filter
+              state; standalone component-level shots need the same providers
+              App.tsx supplies via WorkspaceEngine. */}
+          <FxViewProvider>
+            <CreditViewProvider>
+              <div
+                data-testid="scenario-root"
+                style={{
+                  // ThemeProvider sets CSS vars on <html>; paint a real backdrop so
+                  // component-level shots aren't on default white.
+                  backgroundColor: "var(--bg-primary)",
+                  color: "var(--text-primary)",
+                  padding: 24,
+                  display: "inline-block",
+                }}
+              >
+                {render(scenario.fixtureKey)}
+              </div>
+            </CreditViewProvider>
+          </FxViewProvider>
+        </ThemeProvider>
+      </LiveMetricsContext.Provider>
     </ViewModelProvider>
   );
 }

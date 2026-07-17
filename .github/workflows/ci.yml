@@ -88,6 +88,9 @@ jobs:
       - name: Docs link check (files + anchors)
         run: pnpm check:doc-links
 
+      - name: Presenter manifest drift (web ↔ React Native)
+        run: pnpm check:manifest-drift
+
       - name: Version consistency (manypkg + syncpack)
         run: pnpm check:versions
 
@@ -121,9 +124,6 @@ jobs:
 
       - name: Prod /devtools/ bundle check
         run: pnpm check:devtools-dist
-
-      - name: Prod app bundle has no intent injection
-        run: pnpm check:devtools-no-inject
 
       - name: Expo bundle smoke (Metro monorepo resolution)
         # KNOWN ISSUE (tracked in docs/STATUS.md): react-native-worklets@0.10.0's

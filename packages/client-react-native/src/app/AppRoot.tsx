@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
 
-import { createApp } from "@rtc/client-core";
+import { createApp, type SessionStore } from "@rtc/client-core";
 import {
   createViewModel,
   type ViewModel,
@@ -55,11 +55,15 @@ import { resolveRelayUrl } from "#/app/devtools/resolveRelayUrl";
  * The `simulator` prop is fixed per mount; Task 6's demo toggle re-mounts this
  * component with a React `key` to switch branches — no branch-switching logic
  * lives here. */
-export function AppRoot({ simulator, children }: AppRootProps): ReactElement {
+export function AppRoot({
+  simulator,
+  sessionStore,
+  children,
+}: AppRootProps): ReactElement {
   const ref = useRef<Composition | null>(null);
 
   if (ref.current === null) {
-    const { ports, dispose } = buildNativePorts({ simulator });
+    const { ports, dispose } = buildNativePorts({ simulator, sessionStore });
     const { presenters, commands } = createApp(ports);
 
     const devtools = createNativeDevtools();
@@ -103,6 +107,7 @@ export function AppRoot({ simulator, children }: AppRootProps): ReactElement {
 
 interface AppRootProps {
   simulator: boolean;
+  sessionStore?: SessionStore;
   children: ReactNode;
 }
 

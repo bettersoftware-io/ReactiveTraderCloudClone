@@ -13,6 +13,10 @@ import { ViewModelProvider } from "@rtc/solid-bindings";
 
 import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
 import { FxViewProvider } from "#/ui/fx/FxViewProvider";
+import {
+  FROZEN_LIVE_METRICS,
+  LiveMetricsContext,
+} from "#/ui/shell/status/LiveMetricsContext";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import { buildFakeViewModel } from "./buildFakeViewModel";
@@ -114,34 +118,39 @@ export function VisualScenario(props: VisualScenarioProps): JSX.Element {
   return (
     <Show when={fontsReady()}>
       <ViewModelProvider viewModel={buildFakeViewModel(data)}>
-        <ThemeProvider>
-          {/* FxBlotter/LiveRatesPanel/CreditBlotter (and any future FX/credit
-              panel) read useFxView()/useCreditView() for their tab/filter
-              state; every scenario needs the same providers App.tsx supplies
-              via WorkspaceEngine — including full-bleed App itself, which
-              nests its own (harmless no-op) copies inside. */}
-          <FxViewProvider>
-            <CreditViewProvider>
-              {fullBleed ? (
-                render(scenario.fixtureKey)
-              ) : (
-                <div
-                  data-testid="scenario-root"
-                  style={{
-                    // ThemeProvider sets CSS vars on <html>; paint a real backdrop so
-                    // component-level shots aren't on default white.
-                    "background-color": "var(--bg-primary)",
-                    color: "var(--text-primary)",
-                    padding: "24px",
-                    display: "inline-block",
-                  }}
-                >
-                  {render(scenario.fixtureKey)}
-                </div>
-              )}
-            </CreditViewProvider>
-          </FxViewProvider>
-        </ThemeProvider>
+        {/* Freeze the cosmetic FPS/MEM readouts (PR #231) so status-bar crops
+            are deterministic — mirrors react's VisualScenario and the contract
+            tier's render harness. */}
+        <LiveMetricsContext.Provider value={FROZEN_LIVE_METRICS}>
+          <ThemeProvider>
+            {/* FxBlotter/LiveRatesPanel/CreditBlotter (and any future FX/credit
+                panel) read useFxView()/useCreditView() for their tab/filter
+                state; every scenario needs the same providers App.tsx supplies
+                via WorkspaceEngine — including full-bleed App itself, which
+                nests its own (harmless no-op) copies inside. */}
+            <FxViewProvider>
+              <CreditViewProvider>
+                {fullBleed ? (
+                  render(scenario.fixtureKey)
+                ) : (
+                  <div
+                    data-testid="scenario-root"
+                    style={{
+                      // ThemeProvider sets CSS vars on <html>; paint a real backdrop so
+                      // component-level shots aren't on default white.
+                      "background-color": "var(--bg-primary)",
+                      color: "var(--text-primary)",
+                      padding: "24px",
+                      display: "inline-block",
+                    }}
+                  >
+                    {render(scenario.fixtureKey)}
+                  </div>
+                )}
+              </CreditViewProvider>
+            </FxViewProvider>
+          </ThemeProvider>
+        </LiveMetricsContext.Provider>
       </ViewModelProvider>
     </Show>
   );

@@ -1,5 +1,11 @@
 export type { ChartCandle, ChartVarStyle, ChartVm } from "./chartVm.js";
 export { chartVm } from "./chartVm.js";
+export {
+  COUNTDOWN_URGENT_FRACTION,
+  countdownProgress,
+  ringCircumference,
+  ringDashOffset,
+} from "./countdownRing.js";
 export type { FlipDelta, Rect } from "./flip.js";
 export {
   DRIFT_PX,
@@ -9,6 +15,14 @@ export {
   FLIP_EASING,
   flipDeltas,
 } from "./flip.js";
+export type { MetricTone } from "./frameRate.js";
+export {
+  computeFps,
+  FPS_GOOD,
+  FPS_WARN,
+  formatHeapMb,
+  fpsTone,
+} from "./frameRate.js";
 export type { CoalesceDecision, RankDirection } from "./rankGlide.js";
 export {
   coalesceOrder,
@@ -21,3 +35,14 @@ export {
   sameOrder,
 } from "./rankGlide.js";
 export { REDUCED_MOTION_QUERY } from "./reducedMotion.js";
+export type {
+  TickDirection,
+  TickFlashResult,
+  TickFlashState,
+} from "./tickFlash.js";
+export {
+  nextTickFlash,
+  TICK_FLASH_DURATION_MS,
+  TICK_FLASH_EPSILON,
+  tickDirection,
+} from "./tickFlash.js";

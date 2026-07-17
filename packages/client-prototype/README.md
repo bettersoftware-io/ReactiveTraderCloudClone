@@ -22,7 +22,7 @@ rendering technology:
 
 | | Original (`docs/design/web/v2`) | This port |
 |---|---|---|
-| Delivery | One self-contained ~836KB HTML file (offline, fonts + code + React embedded) | Vite app (`pnpm dev` / `pnpm build`) |
+| Delivery | One self-contained ~836KB HTML file (offline, fonts + code + React embedded) | Vite app (`pnpm dev:proto` / `pnpm --filter @rtc/client-prototype build`) |
 | Authoring | `<x-dc>` HTML template with `{{ moustache }}` bindings | 100+ TS/TSX modules, one folder per screen |
 | Logic | One ~750-line `class Component` holding the entire app | Hooks + pure view-model functions per feature |
 | Styling | Inline `style="…"` attributes in the template | Co-located CSS Modules |
@@ -105,8 +105,8 @@ not evidence of a rendered screen.
 
 Nobody's `package.json` lists `@rtc/client-prototype` (verified above), so
 there's no `import` snippet to show — it's used by being *run*, not
-imported. The root `package.json` wires it to two independent dev scripts,
-one per artifact in the design pair:
+imported. The root `package.json` wires it to two independent dev scripts —
+this port, and the standalone design server:
 
 ```json
 "dev:proto": "pnpm --filter @rtc/client-prototype dev",
@@ -116,11 +116,13 @@ one per artifact in the design pair:
 `dev:proto` starts this package's own Vite dev server on port 5273
 (`pnpm --filter @rtc/client-prototype dev`; the port is set in
 `vite.config.ts`), rendering this readable React port. `dev:design:web` runs a
-separate zero-dependency Node static server (`scripts/serve-design.mjs`)
-that serves the canonical, unrelated artifact this package is a port
-*of* — `docs/design/web/v2/standalone/Reactive Trader.html` — on port 8899.
-Run both side by side to compare the port against the source it must stay
-faithful to.
+separate zero-dependency Node static server (`scripts/serve-design.mjs`) that
+serves the **current** canonical web design (v5) on port 8899. Note that this
+port mirrors the **v2** design, which v5 has since moved past — so to serve the
+exact artifact this package is a port *of*, pass its path to the same server:
+`node scripts/serve-design.mjs "docs/design/web/v2/standalone/Reactive Trader.html"`.
+Run that side by side with `dev:proto` to compare the port against the source
+it must stay faithful to.
 
 ## See also
 

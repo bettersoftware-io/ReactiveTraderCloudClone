@@ -1,5 +1,6 @@
 import { type Observable, of } from "rxjs";
 
+import { DEFAULT_AUTH_TTL_MS } from "../auth/authTtl.js";
 import { findRosterUser } from "../auth/roster.js";
 import type { AuthOutcome, AuthPort } from "../ports/authPort.js";
 
@@ -14,7 +15,13 @@ export interface DevCredentials {
  * but the flow is identical to the real HttpAuthAdapter.
  */
 export class AuthSimulator implements AuthPort {
-  constructor(private readonly devCredentials: DevCredentials) {}
+  constructor(
+    private readonly devCredentials: DevCredentials,
+    private readonly ttlMs: number = DEFAULT_AUTH_TTL_MS,
+    private readonly now: () => number = (): number => {
+      return Date.now();
+    },
+  ) {}
 
   login(username: string, password: string): Observable<AuthOutcome> {
     const entry = findRosterUser(username);
@@ -25,6 +32,11 @@ export class AuthSimulator implements AuthPort {
     }
 
     const token = `sim.${username}.${entry.user.id}`;
-    return of({ ok: true, token, user: entry.user });
+    return of({
+      ok: true,
+      token,
+      user: entry.user,
+      exp: this.now() + this.ttlMs,
+    });
   }
 }
