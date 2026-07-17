@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppRoot } from "#/app/AppRoot";
 import { shouldPlayBootSplash } from "#/app/bootSplashGate";
 import { MotionProbe } from "#/ui/_probe/MotionProbe";
+import { AmbientBackground } from "#/ui/ambient/AmbientBackground";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
@@ -74,7 +75,10 @@ interface ChromeProps {
 }
 
 /** Themed shell inside the providers — reads the theme for the toolbar and tab
- * bar and renders the connection banner + tab navigator. */
+ * bar and renders the connection banner + tab navigator. `AmbientBackground`
+ * mounts first inside `styles.fill` so it paints in front of the View's own
+ * `bgPrimary` background but behind every routed/toolbar sibling — the
+ * backmost layer, spanning every tab since `Chrome` is the persistent shell. */
 function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -82,6 +86,7 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
 
   return (
     <View style={styles.fill}>
+      <AmbientBackground />
       <View style={styles.toolbar}>
         <Text style={styles.wordmark}>REACTIVE TRADER</Text>
         <View style={styles.toolbarRight}>
