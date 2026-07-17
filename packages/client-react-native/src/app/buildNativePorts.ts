@@ -10,6 +10,7 @@ import {
   incident$,
   reconnect$,
   routeIdleLifecycle,
+  type SessionStore,
   WsAdapter,
   WsConnectionEventsAdapter,
   wsUrlToHttpBase,
@@ -26,6 +27,7 @@ import { DEV_CREDENTIALS } from "#/app/nativeAuthConfig";
 
 interface BuildNativePortsOptions {
   simulator?: boolean;
+  sessionStore?: SessionStore;
 }
 
 /** The assembled `AppPorts` plus a `dispose` that tears down any transport the
@@ -47,12 +49,12 @@ export interface NativeComposition {
  * connectivity source is dropped; `colorScheme` is supplied by an
  * `Appearance`-backed adapter so "system" mode follows the device setting.
  *
- * `sessionStore` is an `InMemorySessionStore` (not AsyncStorage-backed):
- * `SessionStore` is synchronous but AsyncStorage is async, and RN shows a
- * login screen on every launch (`AppRoot` + `AuthGate`) rather than persisting
- * a session — so AsyncStorage-backed persistence would be redundant work for
- * no benefit today (a future follow-up). The real-WS branch drops
- * the old static `wsToken` query-param gate for genuine session auth: the
+ * `sessionStore` defaults to an `InMemorySessionStore` but is injected by the
+ * composition root: `_layout.tsx` hydrates an `AsyncStorageSessionStore`
+ * (`SessionStore` is synchronous, AsyncStorage is async — so it seeds an
+ * in-memory mirror once at boot, before `AppRoot` mounts) and passes it here,
+ * so a persisted session survives a cold launch. The real-WS branch drops the
+ * old static `wsToken` query-param gate for genuine session auth: the
  * `WsAdapter` now reads its token fresh from `sessionStore` on every
  * (re)connect, matching `buildBrowserPorts`.
  *
@@ -65,7 +67,7 @@ export function buildNativePorts(
   const url = opts.simulator
     ? undefined
     : (extra.serverUrl as string | undefined);
-  const sessionStore = new InMemorySessionStore();
+  const sessionStore = opts.sessionStore ?? new InMemorySessionStore();
   const preferences = new AsyncStoragePreferencesAdapter();
   const colorScheme = new AppearanceColorSchemeAdapter();
 
