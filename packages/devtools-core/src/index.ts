@@ -24,6 +24,7 @@ export {
   type WsAdapterLike,
 } from "./instrument/wsAdapter";
 export * from "./protocol";
+export { Recorder, type RecorderOptions } from "./Recorder";
 export {
   parseRecording,
   RECORDING_VERSION,
