@@ -45,9 +45,11 @@ export interface DepthTokens {
 /**
  * The RN-native theme surface: the plain-colour subset of the web's CSS token
  * set (packages/client-react/src/ui/shell/theme/tokens.ts), camelCased, with all
- * `var()` refs pre-resolved and the CSS-only FX keys (blur/glow/grid/aurora)
- * dropped — those belong to the deferred animation phase. Font fields hold a
- * bundled family name (or `undefined` = RN system default, for `classic`).
+ * `var()` refs pre-resolved. The FX keys (`gridC`/`aurora`/`glowC`) are now
+ * populated, ported verbatim from `docs/design/mobile/v1/dev-handoff/theme-tokens.ts`
+ * — they back the Skia ambient background (grid + aurora) and glow shadows. Font
+ * fields hold a bundled family name (or `undefined` = RN system default, for
+ * `classic`).
  */
 export interface RnTheme {
   readonly bgPrimary: string;
@@ -87,6 +89,13 @@ export interface RnTheme {
   readonly fontDisplay: string | undefined;
   /** Mono font family, or `undefined` for the platform default (classic). */
   readonly fontMono: string | undefined;
+
+  /** HUD grid line colour (the ambient background's faint grid overlay). */
+  readonly gridC: string;
+  /** Ambient background intensity, 0..1 (`classic` ≈ calmest, `neon`/`holo` brightest). */
+  readonly aurora: number;
+  /** Glow shadow colour for active/pressed elements and the ambient aurora; `null` = no glow. */
+  readonly glowC: string | null;
 
   readonly depth: DepthTokens;
 }
@@ -131,11 +140,14 @@ const classicDark: RnTheme = {
   statusConnecting: "#f59e0b",
   statusDisconnected: "#ef4444",
   statusError: "#d32f2f",
-  panel: "#1e293b",
+  panel: "rgba(30,41,59,0.92)",
   panelHead: "#1f2937",
   chip: "rgba(59,130,246,0.12)",
   fontDisplay: undefined,
   fontMono: undefined,
+  gridC: "rgba(148,163,184,0.05)",
+  aurora: 0.15,
+  glowC: null,
   depth: FLAT_DEPTH,
 };
 
@@ -164,11 +176,14 @@ const classicLight: RnTheme = {
   statusConnecting: "#d97706",
   statusDisconnected: "#dc2626",
   statusError: "#d32f2f",
-  panel: "#ffffff",
+  panel: "rgba(255,255,255,0.95)",
   panelHead: "#f1f5f9",
   chip: "rgba(59,130,246,0.12)",
   fontDisplay: undefined,
   fontMono: undefined,
+  gridC: "rgba(15,23,42,0.03)",
+  aurora: 0.1,
+  glowC: null,
   depth: FLAT_DEPTH,
 };
 
@@ -197,11 +212,14 @@ const holoDark: RnTheme = {
   statusConnecting: "#ffb000",
   statusDisconnected: "#ff5d73",
   statusError: "#ff5d73",
-  panel: "rgba(6,26,38,0.5)",
+  panel: "rgba(6,26,38,0.85)",
   panelHead: "rgba(0,224,255,0.06)",
   chip: "rgba(0,224,255,0.12)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
   fontMono: FONT_JETBRAINS_MONO,
+  gridC: "rgba(0,224,255,0.05)",
+  aurora: 0.6,
+  glowC: "rgba(0,224,255,0.3)",
   depth: FLAT_DEPTH,
 };
 
@@ -230,11 +248,14 @@ const holoLight: RnTheme = {
   statusConnecting: "#cc8800",
   statusDisconnected: "#e8304a",
   statusError: "#e8304a",
-  panel: "rgba(200,240,250,0.7)",
+  panel: "rgba(255,255,255,0.9)",
   panelHead: "rgba(0,180,204,0.08)",
   chip: "rgba(0,180,204,0.14)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
   fontMono: FONT_JETBRAINS_MONO,
+  gridC: "rgba(0,120,150,0.06)",
+  aurora: 0.3,
+  glowC: "rgba(0,180,204,0.25)",
   depth: FLAT_DEPTH,
 };
 
@@ -250,6 +271,7 @@ const holoLight: RnTheme = {
 const holo3dDark: RnTheme = {
   ...holoDark,
   bgTile: "#0c2634",
+  glowC: "rgba(0,229,255,0.4)",
   depth: {
     level: 2,
     shadowColor: "#00e5ff",
@@ -267,6 +289,7 @@ const holo3dDark: RnTheme = {
 const holo3dLight: RnTheme = {
   ...holoLight,
   bgTile: "#e9f4f7",
+  glowC: "rgba(0,150,179,0.22)",
   depth: {
     level: 2,
     shadowColor: "rgba(20,60,80,0.5)",
@@ -306,11 +329,14 @@ const terminalDark: RnTheme = {
   statusConnecting: "#ffb000",
   statusDisconnected: "#ff5b52",
   statusError: "#ff5b52",
-  panel: "#13161c",
+  panel: "rgba(19,22,28,0.97)",
   panelHead: "#171b22",
   chip: "rgba(255,176,0,0.14)",
   fontDisplay: FONT_IBM_SANS,
   fontMono: FONT_IBM_MONO,
+  gridC: "rgba(255,255,255,0.022)",
+  aurora: 0.22,
+  glowC: null,
   depth: FLAT_DEPTH,
 };
 
@@ -339,11 +365,14 @@ const terminalLight: RnTheme = {
   statusConnecting: "#b37a00",
   statusDisconnected: "#d93a33",
   statusError: "#d93a33",
-  panel: "#ffffff",
+  panel: "rgba(255,255,255,0.97)",
   panelHead: "#f0f2f5",
   chip: "rgba(179,122,0,0.12)",
   fontDisplay: FONT_IBM_SANS,
   fontMono: FONT_IBM_MONO,
+  gridC: "rgba(18,21,28,0.03)",
+  aurora: 0.1,
+  glowC: null,
   depth: FLAT_DEPTH,
 };
 
@@ -414,11 +443,14 @@ const neonDark: RnTheme = {
   statusConnecting: "#ffb000",
   statusDisconnected: "#ff3864",
   statusError: "#ff3864",
-  panel: "rgba(28,6,46,0.52)",
+  panel: "rgba(28,6,46,0.88)",
   panelHead: "rgba(255,43,214,0.08)",
   chip: "rgba(255,43,214,0.14)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
   fontMono: FONT_JETBRAINS_MONO,
+  gridC: "rgba(255,43,214,0.07)",
+  aurora: 0.7,
+  glowC: "rgba(255,43,214,0.4)",
   depth: FLAT_DEPTH,
 };
 
@@ -447,11 +479,14 @@ const neonLight: RnTheme = {
   statusConnecting: "#cc8800",
   statusDisconnected: "#e8304a",
   statusError: "#e8304a",
-  panel: "rgba(240,210,255,0.65)",
+  panel: "rgba(255,255,255,0.92)",
   panelHead: "rgba(200,0,160,0.08)",
   chip: "rgba(200,0,160,0.12)",
   fontDisplay: FONT_CHAKRA_DISPLAY,
   fontMono: FONT_JETBRAINS_MONO,
+  gridC: "rgba(150,0,120,0.05)",
+  aurora: 0.35,
+  glowC: "rgba(200,0,160,0.25)",
   depth: FLAT_DEPTH,
 };
 

@@ -94,3 +94,20 @@ test("every cell defines a depth block", () => {
     }
   }
 });
+
+test("every skin×mode set carries gridC/aurora/glowC", () => {
+  for (const skin of THEME_SKINS) {
+    for (const mode of THEME_MODES) {
+      const t = rnThemeTokens[skin][mode];
+      expect(typeof t.gridC).toBe("string");
+      expect(t.aurora).toBeGreaterThanOrEqual(0);
+      expect(t.aurora).toBeLessThanOrEqual(1);
+      // glowC is string|null — flat skins may be null, 3D/neon carry a color
+      expect(t.glowC === null || typeof t.glowC === "string").toBe(true);
+    }
+  }
+});
+
+test("classic is the calmest (aurora ~0), neon/holo brighter", () => {
+  expect(rnThemeTokens.classic.dark.aurora).toBeLessThanOrEqual(rnThemeTokens.neon.dark.aurora);
+});
