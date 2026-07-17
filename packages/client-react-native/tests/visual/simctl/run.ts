@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { argv, env, exit } from "node:process";
 
-import { SCENARIOS } from "../scenarios";
+import { SCENARIO_IDS } from "../scenarioIds";
 import { compareToGolden } from "../shared/diff";
 import { goldenPath } from "../shared/goldens";
 import { createSimctlDriver } from "./capture";
@@ -33,28 +33,24 @@ async function main(): Promise<void> {
 
   let failures = 0;
 
-  for (const scenario of SCENARIOS) {
-    const png = await driver.capture(scenario.id);
-    const gp = goldenPath("simctl", scenario.id);
+  for (const id of SCENARIO_IDS) {
+    const png = await driver.capture(id);
+    const gp = goldenPath("simctl", id);
 
     if (update) {
       await mkdir(dirname(gp), { recursive: true });
       await writeFile(gp, png);
-      console.log(`updated  ${scenario.id}`);
+      console.log(`updated  ${id}`);
       continue;
     }
 
     const result = await compareToGolden(png, gp);
 
     if (result.pass) {
-      console.log(
-        `pass     ${scenario.id}  (${(result.ratio * 100).toFixed(2)}%)`,
-      );
+      console.log(`pass     ${id}  (${(result.ratio * 100).toFixed(2)}%)`);
     } else {
       failures += 1;
-      console.error(
-        `FAIL     ${scenario.id}  (${(result.ratio * 100).toFixed(2)}%)`,
-      );
+      console.error(`FAIL     ${id}  (${(result.ratio * 100).toFixed(2)}%)`);
     }
   }
 
