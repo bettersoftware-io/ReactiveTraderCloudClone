@@ -1,8 +1,8 @@
 import { filter, firstValueFrom } from "rxjs";
-import { expect, test, vi } from "vitest";
+import { describe, expect, it, test, vi } from "vitest";
 
 import { createApp } from "@rtc/client-core";
-import { ConnectionStatus } from "@rtc/domain";
+import { type AuthOutcome, ConnectionStatus } from "@rtc/domain";
 
 import { buildNativePorts } from "#/app/buildNativePorts";
 
@@ -36,6 +36,37 @@ test("simulator branch dispose is a no-op function (no socket to close)", () => 
   expect(() => {
     dispose();
   }).not.toThrow();
+});
+
+// With no `extra.devAuth` configured (the stubbed `expo-constants` below sets
+// `extra: {}`), `nativeAuthConfig`'s `DEV_CREDENTIALS` falls back to all four
+// roster usernames at the shared dev password — so offline simulator mode can
+// log in as any of them, not just a single baked demo user.
+describe("simulator branch auth accepts every fallback roster credential", () => {
+  const fallbackCredentials: ReadonlyArray<[string, string]> = [
+    ["astark", "demo"],
+    ["nromanoff", "demo"],
+    ["tchalla", "demo"],
+    ["demo", "demo"],
+  ];
+
+  it.each(
+    fallbackCredentials,
+  )("login(%s, %s) succeeds", async (username, password) => {
+    const { ports } = buildNativePorts({ simulator: true });
+    const outcome: AuthOutcome = await firstValueFrom(
+      ports.auth.login(username, password),
+    );
+    expect(outcome.ok).toBe(true);
+  });
+
+  it("rejects a wrong password for a valid roster username", async () => {
+    const { ports } = buildNativePorts({ simulator: true });
+    const outcome: AuthOutcome = await firstValueFrom(
+      ports.auth.login("astark", "wrong-password"),
+    );
+    expect(outcome.ok).toBe(false);
+  });
 });
 
 // expo-constants has no runtime `expoConfig` under vitest-node; stub it so the

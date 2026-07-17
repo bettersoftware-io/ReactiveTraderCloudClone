@@ -110,12 +110,12 @@ one per artifact in the design pair:
 
 ```json
 "dev:proto": "pnpm --filter @rtc/client-prototype dev",
-"dev:design": "node scripts/serve-design.mjs",
+"dev:design:web": "node scripts/serve-design.mjs",
 ```
 
 `dev:proto` starts this package's own Vite dev server on port 5273
 (`pnpm --filter @rtc/client-prototype dev`; the port is set in
-`vite.config.ts`), rendering this readable React port. `dev:design` runs a
+`vite.config.ts`), rendering this readable React port. `dev:design:web` runs a
 separate zero-dependency Node static server (`scripts/serve-design.mjs`)
 that serves the canonical, unrelated artifact this package is a port
 *of* — `docs/design/web/v2/standalone/Reactive Trader.html` — on port 8899.

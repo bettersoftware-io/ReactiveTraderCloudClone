@@ -63,6 +63,14 @@ export interface InspectorState {
   log: readonly LogRow[];
 }
 
+export interface InspectorStoreOptions {
+  /** When false, every apply() flushes synchronously (rebuild + notify)
+   * instead of coalescing onto the rAF chain. The live panel uses the default
+   * (true); the replay store uses false so getSnapshot() is fresh the moment a
+   * frame is folded, even in a browser where requestAnimationFrame exists. */
+  coalesce?: boolean;
+}
+
 interface RateWindow {
   windowStart: number | null;
   windowCount: number;
@@ -141,11 +149,19 @@ export class InspectorStore {
 
   private framesWaited = 0;
 
+  private readonly coalesce: boolean;
+
+  private readonly messageListeners = new Set<(msg: AppToInspector) => void>();
+
   /** Repaint the whole tree at most ~15×/s (once per this many 60 Hz frames)
    * rather than on every frame. A human-read state inspector gains nothing
    * from 60 fps, and rebuilding + re-rendering the full tree that often is what
    * saturates the main thread under a live stream. */
   private static readonly FRAMES_PER_FLUSH = 4;
+
+  constructor(options?: InspectorStoreOptions) {
+    this.coalesce = options?.coalesce ?? true;
+  }
 
   /** Bound retained disposed machines the way the hub does (MAX_DISPOSED_RETAINED)
    * so a long session's machine table and memory stay flat. Insertion order in a
@@ -205,7 +221,50 @@ export class InspectorStore {
     };
   }
 
+  /** Observe every message passed to apply() — the recorder's tee point. Fires
+   * synchronously inside apply(), independent of the flush; returns an
+   * unsubscribe. */
+  tap(listener: (msg: AppToInspector) => void): () => void {
+    this.messageListeners.add(listener);
+
+    return (): void => {
+      this.messageListeners.delete(listener);
+    };
+  }
+
+  /** An independent, synchronous copy of the current fold state. Used by the
+   * replay checkpoint cache: a checkpoint is cloned and advanced forward
+   * without corrupting the cached original. Deep-copies the internal entries
+   * and log (all JSON-safe SerializedValue data) via structuredClone. */
+  clone(): InspectorStore {
+    const copy = new InspectorStore({ coalesce: false });
+
+    for (const [id, entry] of this.streamEntries) {
+      copy.streamEntries.set(id, structuredClone(entry));
+    }
+
+    for (const [id, entry] of this.machineEntries) {
+      copy.machineEntries.set(id, structuredClone(entry));
+    }
+
+    for (const row of this.logAll) {
+      copy.logAll.push(structuredClone(row));
+    }
+
+    copy.connected = this.connected;
+    copy.dev = this.dev;
+    copy.appId = this.appId;
+    copy.protocolMismatch = this.protocolMismatch;
+    copy.rebuildState();
+
+    return copy;
+  }
+
   apply(msg: AppToInspector): void {
+    for (const listener of this.messageListeners) {
+      listener(msg);
+    }
+
     switch (msg.kind) {
       case "welcome": {
         this.connected = true;
@@ -424,7 +483,7 @@ export class InspectorStore {
    * nothing to coalesce against, so the flush runs synchronously and reads stay
    * fresh. */
   private scheduleFlush(): void {
-    if (typeof requestAnimationFrame !== "function") {
+    if (!this.coalesce || typeof requestAnimationFrame !== "function") {
       this.flush();
 
       return;

@@ -7,6 +7,7 @@ export { DevtoolsHub, type DevtoolsHubOptions } from "./DevtoolsHub";
 export { InspectorClient } from "./InspectorClient";
 export type {
   InspectorState,
+  InspectorStoreOptions,
   LogRow,
   MachineIntentRow,
   MachineRow,
@@ -23,5 +24,22 @@ export {
   type WsAdapterLike,
 } from "./instrument/wsAdapter";
 export * from "./protocol";
+export { Recorder, type RecorderOptions } from "./Recorder";
+export {
+  ReplayController,
+  type ReplayControllerOptions,
+} from "./ReplayController";
+export {
+  parseRecording,
+  RECORDING_VERSION,
+  type Recording,
+  serializeRecording,
+} from "./recording";
 export { type SerializedValue, serializeValue } from "./serialize";
 export type { DevtoolsTransport } from "./transport";
+export {
+  type WebSocketFactory,
+  type WebSocketLike,
+  type WebSocketMessageEvent,
+  WsRelayDuplex,
+} from "./WsRelayDuplex";

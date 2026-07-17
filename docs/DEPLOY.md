@@ -82,10 +82,13 @@ the team), and watch live prices tick.
   map of `username` → `password`, e.g. `{"demo":"localpass"}`) seeds an
   in-process `AuthSimulator` so the login screen works with no backend at all.
   See `packages/client-react/.env.example`.
-- The mobile app has no login UI yet; it auto-logs-in with a baked demo
-  credential (`EXPO_PUBLIC_DEMO_USER`/`EXPO_PUBLIC_DEMO_PASS`, expo `extra`)
-  that must also exist in the deployed server's `AUTH_USERS` roster. See the
-  [client-react-native README](../packages/client-react-native/README.md#live-data-auto-login--the-demo-credential-expo_public_demo_userexpo_public_demo_pass).
+- The mobile app shows a login screen on every launch (no auto-login); in
+  **live** mode the operator signs in with any credential that exists in the
+  deployed server's `AUTH_USERS` roster. In **simulator** mode
+  (`EXPO_PUBLIC_DEV_AUTH`, expo `extra.devAuth`), a JSON `username -> password`
+  map seeds an in-process `AuthSimulator`, falling back to all four roster
+  usernames at a shared dev password when unset. See the
+  [client-react-native README](../packages/client-react-native/README.md#live-data--signing-in).
 
 ## Rotating / managing credentials
 

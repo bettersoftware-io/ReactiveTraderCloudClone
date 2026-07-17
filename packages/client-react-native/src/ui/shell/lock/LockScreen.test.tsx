@@ -4,7 +4,6 @@ import { fireEvent, screen } from "@testing-library/react-native";
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
 
-import { DEMO_PASSWORD } from "#/app/nativeAuthConfig";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
@@ -40,16 +39,33 @@ test("shows the operator identity when locked", async () => {
   expect(screen.getByText("Senior FX Trader")).toBeTruthy();
 });
 
-test("AUTHENTICATE press calls unlock with the demo credential", async () => {
+test("AUTHENTICATE press calls unlock with the typed password", async () => {
   const unlock = jest.fn();
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel(true, unlock)}>
       <LockScreen />
     </ViewModelProvider>,
   );
+  await fireEvent.changeText(
+    screen.getByTestId("lock-password"),
+    "correct-horse-battery-staple",
+  );
   await fireEvent.press(screen.getByTestId("lock-authenticate"));
   expect(unlock).toHaveBeenCalledTimes(1);
-  expect(unlock).toHaveBeenCalledWith(DEMO_PASSWORD);
+  expect(unlock).toHaveBeenCalledWith("correct-horse-battery-staple");
+});
+
+test("renders the auth error when unlock fails", async () => {
+  await renderWithTheme(
+    <ViewModelProvider
+      viewModel={fakeViewModel(true, noop, "Invalid credentials")}
+    >
+      <LockScreen />
+    </ViewModelProvider>,
+  );
+  expect(screen.getByTestId("lock-error").props.children).toBe(
+    "Invalid credentials",
+  );
 });
 
 test("renders nothing when locked but no user is present", async () => {
@@ -64,6 +80,7 @@ test("renders nothing when locked but no user is present", async () => {
 function fakeViewModel(
   locked: boolean,
   unlock: (password: string) => void,
+  error: string | null = null,
 ): ViewModel {
   return {
     useAuth: () => {
@@ -71,7 +88,7 @@ function fakeViewModel(
         state: {
           status: "authenticated",
           locked,
-          error: null,
+          error,
           user: USER,
         },
         login: () => {

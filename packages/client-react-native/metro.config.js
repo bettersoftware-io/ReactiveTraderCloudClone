@@ -20,4 +20,16 @@ config.resolver.nodeModulesPaths = [
 config.resolver.unstable_enableSymlinks = true;
 config.resolver.unstable_enablePackageExports = true;
 
+// 4. Keep test files out of the native bundle. Expo Router's route context is a
+// `require.context(app/, /* recursive */ true, /.*\.[tj]sx?$/)` that matches ANY
+// source file in `app/` except `+api`/`+html` — so a co-located `app/*.test.tsx`
+// (e.g. `_layout.test.tsx`) is treated as a route and pulls
+// `@testing-library/react-native` (which requires Node's `console`/`util`) into
+// the bundle, breaking `expo export`/`run:ios`. jest does NOT use Metro, so this
+// only affects bundling. Preserve any default blockList Expo set.
+const testFilePattern = /.*\.(test|spec)\.[jt]sx?$/;
+config.resolver.blockList = config.resolver.blockList
+  ? [].concat(config.resolver.blockList, testFilePattern)
+  : testFilePattern;
+
 module.exports = config;
