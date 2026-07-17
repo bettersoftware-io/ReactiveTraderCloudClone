@@ -7,3 +7,7 @@ web-build/
 # Native
 /ios
 /android
+
+# transient Maestro visual-tier capture output (goldens live in tests/visual/__screenshots__)
+/shots/
+.maestro/

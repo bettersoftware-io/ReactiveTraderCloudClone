@@ -12,6 +12,9 @@
 export const SCENARIO_IDS = [
   "blotter/seeded",
   "shell/connection-banner",
+  // Phase 2 Task 9: the pinned Appearance sheet — ambient frozen via
+  // VisualScenarioHost's `forceReduceMotion`.
+  "shell/appearance",
   // NB: `credit/rfq-tiles-empty` was dropped after on-device golden
   // verification — it is NON-deterministic. `CreditRfqSimulator` emits new
   // Live RFQs over time, so the default "No RFQs to display" view is only

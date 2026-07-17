@@ -10,6 +10,7 @@ test("has unique ids and covers the chosen prove-the-harness surfaces", () => {
   expect(new Set(ids).size).toBe(ids.length);
   expect(ids).toContain("blotter/seeded");
   expect(ids).toContain("shell/connection-banner");
+  expect(ids).toContain("shell/appearance");
 });
 
 test("registry ids stay in sync with the pure SCENARIO_IDS runner list", () => {
