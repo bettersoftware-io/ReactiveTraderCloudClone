@@ -40,8 +40,10 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   pinned open via `AppearanceOverlay`'s own `open`/`onClose` props (not the
  *   host). It reads only theme/motion/power-saver preference presenters, all
  *   seeded synchronously by `VisualScenarioHost`'s `PreferencesSimulator` —
- *   no live-ticking source. The Skia ambient background it composes over is
- *   frozen by the host's default `forceReduceMotion`.
+ *   no live-ticking source. The overlay is an opaque full-screen sheet (no
+ *   ambient layer beneath it here), and `forceReduceMotion` seeds
+ *   `animatedBackground: false` so the Ambient toggle deterministically reads
+ *   OFF — both keep the shot stable.
  *
  * Explicitly avoided: the Rates tab (`PricingSimulator` ticks with
  * `Math.random`) and Analytics (`AnalyticsSimulator`'s P&L history is seeded

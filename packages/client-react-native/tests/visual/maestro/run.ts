@@ -18,13 +18,16 @@ const exec = promisify(execFile);
  *   pnpm --filter @rtc/client-react-native test:rn:visual:maestro
  *   pnpm --filter @rtc/client-react-native test:rn:visual:maestro:update
  *
- * Env: `MAESTRO_METRO_PORT` (default `8083`, substituted into the flow's
- * dev-client link), `RTC_VISUAL_MAESTRO_SHOTS` (Maestro's screenshot output
- * dir, default `<cwd>/.maestro-shots`).
+ * Env: `MAESTRO_METRO_PORT` (default `8083`, injected into the flow's
+ * dev-client link — the `MAESTRO_` prefix is what makes Maestro interpolate
+ * `${MAESTRO_METRO_PORT}`), `RTC_VISUAL_MAESTRO_SHOTS` (where the flows'
+ * `takeScreenshot: shots/<id>` PNGs land). Maestro writes a relative
+ * `takeScreenshot` path against ITS cwd, which is this runner's cwd (the RN
+ * package root, since pnpm runs the script there), so the default read dir
+ * must be `<cwd>/shots` to match `takeScreenshot: shots/<id>` in the flows.
  */
 const FLOWS_DIR = "tests/visual/maestro/flows";
-const SHOTS: string =
-  env.RTC_VISUAL_MAESTRO_SHOTS ?? join(cwd(), ".maestro-shots");
+const SHOTS: string = env.RTC_VISUAL_MAESTRO_SHOTS ?? join(cwd(), "shots");
 
 async function main(): Promise<void> {
   const update = argv.includes("--update");
