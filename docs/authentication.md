@@ -155,7 +155,7 @@ card, and the web `AccountMenu` panel all read this data verbatim from
 Notes:
 
 - **The username is the roster key** that drives the displayed identity —
-  `findRosterUser(username)` (`roster.ts:56-60`) looks the entry up by exact
+  `findRosterUser(username)` (`roster.ts:61-65`) looks the entry up by exact
   match on `entry.username`.
 - **The password is validation-only and never displayed.** It lives entirely
   in `AUTH_USERS` (server) or a dev-credentials map (simulator) — never in
