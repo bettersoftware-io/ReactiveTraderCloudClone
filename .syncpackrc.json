@@ -4,11 +4,6 @@
       "label": "Private workspace root has no version field by design",
       "packages": ["@rtc/root"],
       "isIgnored": true
-    },
-    {
-      "label": "@babel/core majors intentionally differ: client-react-native (reanimated 4 / worklets) is a Babel-7 toolchain; client-react + devtools-app need Babel 8 for React Compiler",
-      "dependencies": ["@babel/core"],
-      "isIgnored": true
     }
   ]
 }

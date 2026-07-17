@@ -12,6 +12,8 @@ overrides:
   react-native-worklets: 0.10.1
   react-native-worklets>@babel/core: 7.29.7
 
+packageExtensionsChecksum: sha256-KJDG7ZwHu2PcMbmA0oWmQrA/jstLWwlwddNQQ/bWuWo=
+
 importers:
 
   .:
@@ -344,9 +346,6 @@ importers:
         specifier: ^7.8
         version: 7.8.2
     devDependencies:
-      '@babel/core':
-        specifier: ^7.29.0
-        version: 7.29.7
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0

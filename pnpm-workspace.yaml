@@ -87,3 +87,21 @@ overrides:
   # and syncpack is unaffected (an override is not a package.json dep). 7.29.7 is
   # already in the tree.
   "react-native-worklets>@babel/core": 7.29.7
+
+# Force @babel/core@7 for the RN Metro babel toolchain. The main Metro transform
+# runs through @expo/metro-config's babel-transformer, whose `require("@babel/core")`
+# otherwise resolves the workspace-hoisted @babel/core@8.0.1 (pulled at ^8 by
+# client-react/devtools-app for React Compiler). That made the MAIN pass Babel 8
+# while worklets' nested pass ran the scoped Babel 7 above — cross-version AST
+# mixing that crashed the x86 Metro bundle (`reading 'length'` in worklets'
+# plugin on reanimated's Easing.ts; invisible to the jest/vitest suite and to
+# arm64-local, only caught by CI's `expo export`). Giving @expo/metro-config its
+# own @babel/core@7.29.7 makes the whole RN transform uniformly Babel 7.
+# This is done via packageExtensions (NOT a client-react-native devDependency) so
+# neither manypkg nor syncpack sees an @babel/core version split — the web packages
+# keep @babel/core@8. @expo/metro-config is RN-only (web builds with Vite), so this
+# cannot affect the web bundles.
+packageExtensions:
+  "@expo/metro-config":
+    dependencies:
+      "@babel/core": "7.29.7"
