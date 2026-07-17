@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node", "chrome"],
+    "paths": { "#/*": ["./src/*", "../devtools-app/src/*"] }
+  },
+  "include": ["src"],
+  "exclude": ["dist"]
+}

@@ -23,9 +23,12 @@ export function SetFilter<TRow>(props: SetFilterProps<TRow>): JSX.Element {
   });
 
   const [selected, setSelected] = createSignal<Set<string>>(
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     props.currentFilter?.type === "set"
-      ? new Set(props.currentFilter.values)
-      : new Set(allValues()),
+      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+        new Set(props.currentFilter.values)
+      : // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+        new Set(allValues()),
   );
 
   function toggleValue(val: string): void {

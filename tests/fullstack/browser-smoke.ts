@@ -49,6 +49,9 @@ function runPlaywright(): Promise<number> {
       env: {
         ...process.env,
         FULLSTACK_CLIENT_PORT: String(CLIENT_PORT),
+        // The spec needs the REAL server's HTTP base to POST /login before
+        // seeding the session (see fullstack/browser/fullstack.spec.ts).
+        FULLSTACK_PORT: String(SERVER_PORT),
         NODE_OPTIONS: "",
       },
     });

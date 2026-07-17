@@ -13,7 +13,7 @@
 
 ## 🟡 In progress
 
-- **SolidJS port** — Phase 3 remaining (credit / equities / admin). Plan: [superpowers/plans/2026-07-12-solidjs-port.md](superpowers/plans/2026-07-12-solidjs-port.md)
+- **SolidJS port** — Phases 4–5 remaining (visual parity vs react goldens; e2e + CI symmetry + docs). Phase 3 shipped PR #216: full contract parity, all 82 spec files green on Solid. Plan: [superpowers/plans/2026-07-12-solidjs-port.md](superpowers/plans/2026-07-12-solidjs-port.md)
 
 ## 🔴 Designed, not built (plan/spec merged, no implementation)
 
@@ -21,8 +21,6 @@
 - **Login + server-side auth (Phase 1)** — not built; Phase 2 not yet spec'd. Plan: [superpowers/plans/2026-07-12-phase1-login-and-server-auth.md](superpowers/plans/2026-07-12-phase1-login-and-server-auth.md)
 - **Feature flags** — OpenFeature + Flagsmith. Plan: [superpowers/plans/2026-07-01-feature-flags.md](superpowers/plans/2026-07-01-feature-flags.md)
 - **Power-saver mode** — Plan: [superpowers/plans/2026-07-09-power-saver-mode.md](superpowers/plans/2026-07-09-power-saver-mode.md)
-- **Devtools MV3 Chrome extension** — third `Duplex` transport (ChromeRuntimeDuplex + content-script bridge + tab-keyed background router + RTC devtools panel); observe-only, zero app-side changes. Plan: [superpowers/plans/2026-07-14-devtools-chrome-extension.md](superpowers/plans/2026-07-14-devtools-chrome-extension.md)
-- **Devtools intent injection** — panel→app intent invocation (first inbound write), dev-build-only gate. Plan: [superpowers/plans/2026-07-15-devtools-intent-injection.md](superpowers/plans/2026-07-15-devtools-intent-injection.md)
 - **Devtools record / replay / time-scrub** — panel-only flight recorder + JSON export/import + scrub slider over the recorded buffer. Plan: [superpowers/plans/2026-07-15-devtools-record-replay.md](superpowers/plans/2026-07-15-devtools-record-replay.md)
 - **Devtools RN inspection** — WebSocket-relay transport (`WsRelayDuplex`) + standalone dev-machine relay + decorators at the RN composition root. Plan: [superpowers/plans/2026-07-15-devtools-rn-inspection.md](superpowers/plans/2026-07-15-devtools-rn-inspection.md)
 - **RN mobile-v1 UI rehaul** — total HUD redesign of `@rtc/client-react-native` (native motion/render stack, radial command-dock nav, ambient background, event-driven motion, incremental Skia boot suite). Phased master spec; **Phase 0 (native foundation) plan ready**, Phases 1–7 planned as predecessors land. Spec: [superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md](superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md); Phase 0 plan: [superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md](superpowers/plans/2026-07-16-rn-mobile-v1-rehaul-phase-0-native-foundation.md)

@@ -415,21 +415,37 @@ export function solidViewModel(world: World): ViewModel {
         },
       };
     },
-    // Session lock: reactive state backed by the World subject; lock/unlock
-    // push back so the seam transition re-renders the overlay. unlock
-    // (re-authenticate) also records the invocation so specs can assert
-    // "AUTHENTICATE fires once".
-    useSession: () => {
-      const stateAccessor = wrapSubject(world.session);
+    // Auth: reactive state backed by the World subject; login/unlock/lock/logout
+    // push back so the seam transition re-renders LoginScreen/LockScreen, mirroring
+    // AuthPresenter's lifecycle just closely enough for component specs.
+    useAuth: () => {
+      const authState = wrapSubject(world.auth);
       return {
-        state: stateAccessor,
-        lock: () => {
-          world.commands.sessionLock += 1;
-          world.session.next({ ...world.session.getValue(), locked: true });
+        state: authState,
+        login: (username: string, password: string) => {
+          world.commands.authLoginArgs.push([username, password]);
         },
-        unlock: () => {
-          world.commands.sessionUnlock += 1;
-          world.session.next({ ...world.session.getValue(), locked: false });
+        unlock: (password: string) => {
+          world.commands.authUnlock += 1;
+          world.commands.authUnlockArgs.push(password);
+          world.auth.next({
+            ...world.auth.getValue(),
+            locked: false,
+            error: null,
+          });
+        },
+        lock: () => {
+          world.commands.authLock += 1;
+          world.auth.next({ ...world.auth.getValue(), locked: true });
+        },
+        logout: () => {
+          world.commands.authLogout += 1;
+          world.auth.next({
+            status: "unauthenticated",
+            user: null,
+            locked: false,
+            error: null,
+          });
         },
       };
     },

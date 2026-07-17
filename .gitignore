@@ -40,3 +40,4 @@ packages/client/tests/ui/visual/**/__screenshots__/*.spec.tsx/
 .env
 .env.local
 .env.*.local
+.playwright-mcp/

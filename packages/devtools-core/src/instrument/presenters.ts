@@ -115,16 +115,15 @@ function instrumentSharedMachine(
   hub: DevtoolsHub,
 ): InstrumentableMachine {
   let machineId = "";
+  const intents: Record<string, unknown> = {};
 
   try {
-    machineId = hub.machineCreated(key, [], machine.state$);
+    machineId = hub.machineCreated(key, [], machine.state$, intents);
   } catch {
     return machine;
   }
 
   try {
-    const intents: Record<string, unknown> = {};
-
     for (const [name, fn] of Object.entries(machine.intents)) {
       intents[name] =
         typeof fn === "function"

@@ -8,10 +8,10 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
 /** Toolbar affordance that locks the session. RN has no header AccountMenu, so
  * the toolbar carries the lock control; it raises the LockScreen overlay via
- * the reused `useSession().lock()` seam. */
+ * the reused `useAuth().lock()` seam. */
 export function LockButton(): JSX.Element {
-  const { useSession } = useViewModel();
-  const { lock } = useSession();
+  const { useAuth } = useViewModel();
+  const { lock } = useAuth();
   const styles = useThemedStyles(makeStyles);
   return (
     <Pressable

@@ -4,10 +4,10 @@ import { firstValueFrom } from "rxjs";
 import type { ActivityEntry, AppCommands, Presenters } from "@rtc/client-core";
 import {
   type AnimationIntent,
+  type AuthViewState,
   type BootSequenceIntents,
   type BootSequenceState,
   createRfqCountdownMachine,
-  DEMO_USER,
   type EqWorkspaceIntents,
   type EqWorkspaceState,
   type IncidentIntents,
@@ -24,7 +24,6 @@ import {
   type RfqSubmissionIntents,
   type RfqSubmissionState,
   type RfqTileIntents,
-  type SessionState,
   type ThroughputView,
   type TicketSubmissionIntents,
   type TicketSubmissionState,
@@ -145,10 +144,12 @@ interface UseEqBlotterViewResult {
   setView: (view: EqBlotterView) => void;
 }
 
-interface UseSessionResult {
-  state: SessionState;
+interface UseAuthResult {
+  state: AuthViewState;
+  login: (username: string, password: string) => void;
+  unlock: (password: string) => void;
   lock: () => void;
-  unlock: () => void;
+  logout: () => void;
 }
 
 interface UseBootGateResult {
@@ -217,12 +218,13 @@ export interface ViewModel {
   /** Equities blotter tab preference (Orders/Positions) — current view plus
    * the write intent. Plumbed here; Task 5's Blotter panel consumes it. */
   useEqBlotterView: () => UseEqBlotterViewResult;
-  /** Global session lock state plus lock/unlock (re-authenticate) intents.
-   * Shared (one stream for the whole app), so a plain `bind` like the prefs. */
-  useSession: () => UseSessionResult;
+  /** Global auth/session state (login/lock/logout lifecycle) plus its
+   * login/unlock/lock/logout intents. Shared (one stream for the whole app),
+   * so a plain `bind` like the prefs. */
+  useAuth: () => UseAuthResult;
   /** Global boot-splash visibility plus reboot (⟳ Reboot HUD) / dismiss
    * intents. Shared (one stream for the whole app), so a plain `bind` like
-   * useSession. Seeded at composition time from the boot-splash decision. */
+   * useAuth. Seeded at composition time from the boot-splash decision. */
   useBootGate: () => UseBootGateResult;
   /** Per-RFQ countdown — remainingMs, ticking every 100ms, clamped at 0.
    * Cosmetic-only; the authoritative expiry is server-driven (CreditRfqSimulator).
@@ -404,23 +406,33 @@ export function createViewModel(
     presenters.eqBlotterViewPreference.setView(view);
   }
 
-  // Global/shared session lock state → a plain bind (not a per-mount machine).
-  const [useSessionState] = bind(presenters.session.state$, {
+  // Global/shared auth state → a plain bind (not a per-mount machine).
+  const [useAuthState] = bind(presenters.auth.state$, {
+    status: "unauthenticated",
+    user: null,
     locked: false,
-    user: DEMO_USER,
-  } as SessionState);
+    error: null,
+  } as AuthViewState);
 
   // Stable, this-bound command callbacks (the presenter methods touch `this`).
-  function lockSession(): void {
-    presenters.session.lock();
+  function loginAuth(username: string, password: string): void {
+    presenters.auth.login(username, password);
   }
 
-  function unlockSession(): void {
-    presenters.session.unlock();
+  function unlockAuth(password: string): void {
+    presenters.auth.unlock(password);
+  }
+
+  function lockAuth(): void {
+    presenters.auth.lock();
+  }
+
+  function logoutAuth(): void {
+    presenters.auth.logout();
   }
 
   // Global/shared boot-splash visibility → a plain bind (not a per-mount
-  // machine), mirroring useSessionState. bind() serves its DEFAULT on the
+  // machine), mirroring useAuthState. bind() serves its DEFAULT on the
   // first render even over a warm source (see useEqWorkspaceState below), so
   // the default must be the presenter's ACTUAL current value — a literal
   // `true` here would transiently mount the opaque splash for one frame on a
@@ -701,11 +713,13 @@ export function createViewModel(
         setView: setEqBlotterView,
       };
     },
-    useSession: () => {
+    useAuth: () => {
       return {
-        state: useSessionState(),
-        lock: lockSession,
-        unlock: unlockSession,
+        state: useAuthState(),
+        login: loginAuth,
+        unlock: unlockAuth,
+        lock: lockAuth,
+        logout: logoutAuth,
       };
     },
     useBootGate: () => {

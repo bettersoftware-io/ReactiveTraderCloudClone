@@ -41,6 +41,7 @@ const layoutTestRegistry: PanelRegistry = {
 };
 
 export function LayoutEngineHost(props: LayoutEngineHostProps): JSX.Element {
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const port: LayoutPort = props.pinnedFixture
     ? pinnedFixtureLayoutPort
     : createDefaultLayoutPort("fx");

@@ -6,9 +6,9 @@ import { useViewModel } from "@rtc/react-bindings";
 import styles from "./HeaderChrome.module.css";
 
 /**
- * Account menu — the account section is REAL chrome wired to the session seam
- * (`useSession`): it shows the signed-in operator's identity (initials, name,
- * email, trader id, desk, clearance) from the SessionPresenter. The trigger +
+ * Account menu — the account section is REAL chrome wired to the auth seam
+ * (`useAuth`): it shows the signed-in operator's identity (initials, name,
+ * email, trader id, desk, clearance) from the AuthPresenter. The trigger +
  * dropdown-head avatar is the PROTO hexagon chip (AccountMenu.tsx:26-36,42-56)
  * — an inline SVG hexagon with the operator's initials laid over it, sized
  * 30×30 for the trigger and 38×38 in the panel head. The panel matches the
@@ -16,18 +16,26 @@ import styles from "./HeaderChrome.module.css";
  * CLEARANCE details block, a ⚙ Preferences action row (opens the shell's
  * Preferences modal via `onOpenPrefs`), the prototype's ⟳ Reboot HUD row
  * (re-raises the boot splash through the `useBootGate` seam — splash replay
- * only, no app-state reset), and the red sign-out-styled ⏻ LOCK SESSION row
- * (locks the session through the seam — the app's equivalent of the
- * prototype's Sign Out). While open, an invisible fixed backdrop (prototype
- * Header.tsx:65-73) closes the menu on any outside click. Opening/closing the
- * panel is local view state.
+ * only, no app-state reset), the red sign-out-styled ⏻ LOCK SESSION row
+ * (locks the session through the seam, raising the LockScreen overlay), and
+ * a ⏻ SIGN OUT row below it (logs the session out through the seam,
+ * returning to LoginScreen — the app's equivalent of the prototype's Sign
+ * Out). While open, an invisible fixed backdrop (prototype Header.tsx:65-73)
+ * closes the menu on any outside click. Opening/closing the panel is local
+ * view state. Renders nothing when unauthenticated (no `user`).
  */
-export function AccountMenu({ onOpenPrefs }: AccountMenuProps): ReactElement {
-  const { useSession, useBootGate } = useViewModel();
-  const { state, lock } = useSession();
+export function AccountMenu({
+  onOpenPrefs,
+}: AccountMenuProps): ReactElement | null {
+  const { useAuth, useBootGate } = useViewModel();
+  const { state, lock, logout } = useAuth();
   const { reboot } = useBootGate();
   const { user } = state;
   const [open, setOpen] = useState(false);
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className={styles.menuAnchor}>
@@ -131,7 +139,7 @@ export function AccountMenu({ onOpenPrefs }: AccountMenuProps): ReactElement {
             >
               ⟳ Reboot HUD
             </button>
-            {/* Real chrome: locks the session through the `useSession` seam,
+            {/* Real chrome: locks the session through the `useAuth` seam,
                 raising the LockScreen overlay (prototype account menu → lock),
                 styled as the prototype's red Sign Out row. */}
             <button
@@ -145,6 +153,21 @@ export function AccountMenu({ onOpenPrefs }: AccountMenuProps): ReactElement {
               }}
             >
               ⏻ LOCK SESSION
+            </button>
+            {/* Real chrome: logs the session out through the `useAuth` seam,
+                returning to LoginScreen (the app's equivalent of the
+                prototype's Sign Out). */}
+            <button
+              type="button"
+              data-testid="account-logout"
+              className={styles.signOut}
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                logout();
+              }}
+            >
+              ⏻ SIGN OUT
             </button>
           </div>
         </>

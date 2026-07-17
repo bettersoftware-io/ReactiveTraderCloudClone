@@ -1,0 +1,171 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 14px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+}
+
+.title {
+  flex: none;
+  margin-bottom: 12px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0.12em;
+  color: var(--accent-primary);
+}
+
+.empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-muted);
+}
+
+.row {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.name {
+  flex: none;
+  width: 96px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.track {
+  flex: 1;
+  height: 6px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+/* Continuous green→yellow→orange→red ramp driven by --health (0-100), mixed
+ * from the existing status tokens (no new palette entries): health ≥50 blends
+ * positive↔aware (the inner mix saturates to pure aware), health <50 blends
+ * aware↔negative.
+ *
+ * The bar eases over 600ms via a transform transition, NOT width: the
+ * telemetry walk retargets it every 1s, so a width transition would be a
+ * permanent ~60%-duty-cycle main-thread layout animation across every row
+ * (docs/performance.md T1). The inline transform is a literal scaleX — a
+ * scaleX(var(--x)) transition never composites (T5). `.track`'s
+ * overflow:hidden clipping makes scaleX pixel-identical to a width change.
+ * Colour steps instantly: consecutive health values are near-identical, so
+ * the 600ms colour ease was imperceptible while forcing per-frame paints. */
+.fill {
+  /* display:block is load-bearing twice over: as an inline box the span
+   * ignores width/height (0×0 — the bar never painted at all, a bug shipped
+   * with the original round-2 merge), and inline boxes are not transformable,
+   * so the scaleX transition could neither render nor composite. */
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: left;
+  will-change: transform;
+  background: color-mix(
+    in srgb,
+    var(--accent-positive) clamp(0%, (var(--health, 100) - 50) * 2%, 100%),
+    color-mix(
+      in srgb,
+      var(--accent-aware) clamp(0%, var(--health, 100) * 2%, 100%),
+      var(--accent-negative)
+    )
+  );
+  transition: transform 600ms ease;
+}
+
+.lat {
+  flex: none;
+  width: 42px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.up {
+  flex: none;
+  width: 48px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  text-align: right;
+}
+
+.row[data-status="ok"] .dot,
+.row[data-status="ok"] .up {
+  color: var(--accent-positive);
+  background: var(--accent-positive);
+}
+
+.row[data-status="degraded"] .dot,
+.row[data-status="degraded"] .up {
+  color: var(--accent-aware);
+  background: var(--accent-aware);
+}
+
+.row[data-status="down"] .dot,
+.row[data-status="down"] .up {
+  color: var(--accent-negative);
+  background: var(--accent-negative);
+}
+
+.row[data-status="ok"] .dot {
+  box-shadow: 0 0 8px var(--accent-positive);
+}
+
+.row[data-status="degraded"] .dot {
+  box-shadow: 0 0 8px var(--accent-aware);
+}
+
+.row[data-status="down"] .dot {
+  box-shadow: 0 0 8px var(--accent-negative);
+}
+
+.row[data-status="ok"] .track {
+  box-shadow: 0 0 8px var(--accent-positive);
+}
+
+.row[data-status="degraded"] .track {
+  box-shadow: 0 0 8px var(--accent-aware);
+}
+
+.row[data-status="down"] .track {
+  box-shadow: 0 0 8px var(--accent-negative);
+}
+
+.row[data-status="ok"] .up,
+.row[data-status="degraded"] .up,
+.row[data-status="down"] .up {
+  background: none;
+}

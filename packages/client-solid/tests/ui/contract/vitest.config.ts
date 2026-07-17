@@ -18,15 +18,12 @@ const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
 // node_modules symlink) sidesteps that exclude entirely.
 const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 
-// Domains not yet ported to @rtc/client-solid (Task 13 landed FX + the
-// StaleIndicator it depends on; Tasks 14-16 land Credit/Equities/Admin) —
-// excluded so the included set (shell + layout + FX) stays 100% green.
-// Re-narrow as each remaining domain's components land.
-const notYetPortedSpecs = [
-  `${specsDir}/credit/**/*.contract.spec.ts`,
-  `${specsDir}/equities/**/*.contract.spec.ts`,
-  `${specsDir}/admin/**/*.contract.spec.ts`,
-];
+// Every DOMAIN is ported (Tasks 13-16: FX, Credit, Equities, Admin) — the
+// full @rtc/ui-contract spec set runs against Solid with one exception:
+// shell/auth (LoginScreen, AuthGate) is React-only. The Solid client has no
+// sign-in/gate UI yet, so its contract specs stay React-only until Solid
+// grows those components.
+const notYetPortedSpecs = [`${specsDir}/shell/auth/**/*.contract.spec.ts`];
 
 export default defineConfig({
   plugins: [solid()],

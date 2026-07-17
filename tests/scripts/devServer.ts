@@ -80,7 +80,18 @@ function spawnDevServer(preferredPort: number): SpawnedServer {
     cwd: MONOREPO_ROOT,
     // PORT is the preferred port; Vite auto-increments if taken (we parse the
     // real one). Omit NODE_OPTIONS so Vite doesn't inherit tsx hooks.
-    env: { ...process.env, PORT: String(preferredPort), NODE_OPTIONS: "" },
+    // VITE_DEV_AUTH seeds a simulator-mode dev credential (demo/demo, matching
+    // the `demo` roster identity — see packages/domain/src/auth/roster.ts) so
+    // the login-form e2e spec (browser/playwright/login.spec.ts) can drive the
+    // real LoginScreen. Every OTHER browser spec seeds an authenticated
+    // session directly (see tests/browser/authSeed.ts) and never touches this
+    // form, so the value is unused there.
+    env: {
+      ...process.env,
+      PORT: String(preferredPort),
+      NODE_OPTIONS: "",
+      VITE_DEV_AUTH: '{"demo":"demo"}',
+    },
   });
   let log = "";
 

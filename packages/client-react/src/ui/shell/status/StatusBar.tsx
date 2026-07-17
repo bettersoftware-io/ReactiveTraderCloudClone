@@ -11,20 +11,20 @@ import styles from "./StatusBar.module.css";
  * HUD bottom status bar — ported from the prototype footer
  * (Reactive Trader.dc.html:720-730). The connection segment reuses the real
  * `ConnectionStatusBar` (carries the `connection-status` e2e testid, driven by
- * `useConnectionStatus`); the operator segment is wired to the session seam
- * (`useSession`); the latency/FPS/MEM/POS/P&L + build + clock readouts are
+ * `useConnectionStatus`); the operator segment is wired to the auth seam
+ * (`useAuth`); the latency/FPS/MEM/POS/P&L + build + clock readouts are
  * decorative (see CosmeticMetrics).
  */
 export function StatusBar(): ReactElement {
-  const { useSession } = useViewModel();
-  const { state } = useSession();
+  const { useAuth } = useViewModel();
+  const { state } = useAuth();
 
   return (
     <footer className={styles.statusBar}>
       <ConnectionStatusBar />
       <span className={styles.metricSep}>│</span>
       <span className={styles.operator} data-testid="status-operator">
-        {state.user.id}
+        {state.user?.id ?? ""}
       </span>
       <CosmeticMetrics />
     </footer>

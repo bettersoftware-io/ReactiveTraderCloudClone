@@ -68,6 +68,18 @@ export class InspectorClient {
     }, PING_INTERVAL_MS);
   }
 
+  /** Fire a live machine's intent from the inspector. The app-side hub only
+   * acts on this in a dev build (the handler is compiled out of production —
+   * see DevtoolsHub.attachTransport); against a prod app it is a silent no-op.
+   * Independent of the handshake/heartbeat loop — just a send. */
+  invokeIntent(
+    machineId: string,
+    name: string,
+    args: readonly unknown[],
+  ): void {
+    this.channel.send({ kind: "intent:invoke", machineId, name, args });
+  }
+
   dispose(): void {
     if (this.pingTimer !== null) {
       clearInterval(this.pingTimer);

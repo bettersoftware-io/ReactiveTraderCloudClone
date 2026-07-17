@@ -1,0 +1,14 @@
+.pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+}
+
+.pill[data-incident="false"] {
+  color: var(--accent-positive);
+}
+
+.pill[data-incident="true"] {
+  color: var(--accent-negative);
+}

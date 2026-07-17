@@ -20,10 +20,12 @@ test("press locks the session", async () => {
 
 function fakeViewModel(lock: () => void): ViewModel {
   return {
-    useSession: () => {
+    useAuth: () => {
       return {
         state: {
+          status: "authenticated",
           locked: false,
+          error: null,
           user: {
             name: "",
             initials: "",
@@ -34,8 +36,14 @@ function fakeViewModel(lock: () => void): ViewModel {
             clearance: "",
           },
         },
-        lock,
+        login: () => {
+          return undefined;
+        },
         unlock: () => {
+          return undefined;
+        },
+        lock,
+        logout: () => {
           return undefined;
         },
       };

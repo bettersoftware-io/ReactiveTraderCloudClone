@@ -108,6 +108,18 @@ export const TESTIDS = {
     handlePrefix: "handle-",
   },
   /**
+   * LoginScreen (packages/client-react/src/ui/shell/auth/LoginScreen.tsx),
+   * rendered by AuthGate whenever `useAuth().state.status !== "authenticated"`.
+   */
+  auth: {
+    loginScreen: "login-screen",
+    loginTitle: "login-title",
+    loginUsername: "login-username",
+    loginPassword: "login-password",
+    loginSubmit: "login-submit",
+    loginError: "login-error",
+  },
+  /**
    * The same-origin DevTools inspector SPA (@rtc/devtools-app), served at
    * `/devtools/`. These ids live in the inspector's own components
    * (InspectorApp / StateTreePanel / MachinesPanel), not in the app under test.

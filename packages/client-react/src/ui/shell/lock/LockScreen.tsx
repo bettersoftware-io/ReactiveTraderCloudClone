@@ -1,4 +1,5 @@
-import type { ReactElement } from "react";
+import type { ChangeEvent, FormEvent, ReactElement } from "react";
+import { useState } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -11,18 +12,31 @@ import styles from "./LockScreen.module.css";
 /**
  * Full-screen session-lock overlay (prototype Reactive Trader.dc.html:76-91).
  * Renders nothing unless the session is locked; while locked it shows the
- * operator identity and an AUTHENTICATE control that re-authenticates (unlock).
- * Dumb component: all state arrives through the `useSession` hook seam.
+ * operator identity and a password-gated AUTHENTICATE control that
+ * re-authenticates (unlock) against the real credentials seam. Dumb
+ * component: all state arrives through the `useAuth` hook seam; the typed
+ * password lives in local component state only and is never logged.
  */
 export function LockScreen(): ReactElement | null {
-  const { useSession } = useViewModel();
-  const { state, unlock } = useSession();
+  const { useAuth } = useViewModel();
+  const { state, unlock } = useAuth();
 
-  if (!state.locked) {
+  const [password, setPassword] = useState("");
+
+  if (!state.locked || !state.user) {
     return null;
   }
 
   const { user } = state;
+
+  function handlePasswordChange(event: ChangeEvent<HTMLInputElement>): void {
+    setPassword(event.target.value);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    unlock(password);
+  }
 
   return (
     <div data-testid="lock-screen" className={styles.overlay}>
@@ -64,14 +78,33 @@ export function LockScreen(): ReactElement | null {
             the AUTHENTICATE button; the channel line stays below the button. */}
         <BiometricDots />
 
-        <button
-          type="button"
-          data-testid="lock-authenticate"
-          className={styles.authenticate}
-          onClick={unlock}
-        >
-          AUTHENTICATE ▸
-        </button>
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <label className={styles.field}>
+            <span className={styles.label}>Password</span>
+            <input
+              data-testid="lock-password"
+              className={styles.input}
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={handlePasswordChange}
+            />
+          </label>
+
+          {state.error !== null ? (
+            <div data-testid="lock-error" className={styles.error}>
+              {state.error}
+            </div>
+          ) : null}
+
+          <button
+            type="submit"
+            data-testid="lock-authenticate"
+            className={styles.authenticate}
+          >
+            AUTHENTICATE ▸
+          </button>
+        </form>
 
         <BiometricChannel />
       </div>

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { Dealer, Instrument, PreferencesPort } from "@rtc/domain";
+import {
+  AuthSimulator,
+  type Dealer,
+  type Instrument,
+  type PreferencesPort,
+} from "@rtc/domain";
 import {
   dealerAdded,
   dealerEndOfSoW,
@@ -13,6 +18,7 @@ import {
 } from "@rtc/shared/__fixtures__/wireFrames";
 
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
+import { InMemorySessionStore } from "./InMemorySessionStore";
 import { createWsRealPorts } from "./portFactory";
 
 /**
@@ -25,7 +31,11 @@ import { createWsRealPorts } from "./portFactory";
 describe("wsReal reference data :: removed event drops the entry", () => {
   it("instruments: a removed instrument disappears from the next emitted list", () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
+    const ports = createWsRealPorts(ws, {
+      preferences: {} as PreferencesPort,
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    });
     const emissions: (readonly Instrument[])[] = [];
     const sub = ports.instruments.getInstruments().subscribe((list) => {
       return emissions.push(list);
@@ -57,7 +67,11 @@ describe("wsReal reference data :: removed event drops the entry", () => {
 
   it("instruments: removing an unknown id leaves the list unchanged but still re-emits", () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
+    const ports = createWsRealPorts(ws, {
+      preferences: {} as PreferencesPort,
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    });
     const emissions: (readonly Instrument[])[] = [];
     const sub = ports.instruments.getInstruments().subscribe((list) => {
       return emissions.push(list);
@@ -80,7 +94,11 @@ describe("wsReal reference data :: removed event drops the entry", () => {
 
   it("dealers: a removed dealer disappears from the next emitted list", () => {
     const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws, { preferences: {} as PreferencesPort });
+    const ports = createWsRealPorts(ws, {
+      preferences: {} as PreferencesPort,
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    });
     const emissions: (readonly Dealer[])[] = [];
     const sub = ports.dealers.getDealers().subscribe((list) => {
       return emissions.push(list);
