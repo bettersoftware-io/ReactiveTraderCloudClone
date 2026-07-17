@@ -23,6 +23,10 @@
       "entry": ["src/main.tsx", "index.html", "vite.config.ts"],
       "project": "src/**/*.{ts,tsx}"
     },
+    "packages/devtools-relay": {
+      "entry": ["src/index.ts", "src/bin.ts"],
+      "project": "src/**/*.ts"
+    },
     "packages/devtools-extension": {
       "entry": [
         "src/background.ts",
@@ -81,6 +85,7 @@
         "vitest.config.ts",
         "jest.config.js",
         "jest.setup.ts",
+        "jest.resolver.js",
         "expo-env.d.ts",
         "scripts/liveWsSmoke.ts"
       ],
@@ -88,7 +93,10 @@
       "ignoreDependencies": [
         "expo-status-bar",
         "babel-plugin-module-resolver",
-        "babel-preset-expo"
+        "babel-preset-expo",
+        "expo-blur",
+        "expo-haptics",
+        "expo-sensors"
       ]
     },
     "tests": {

@@ -31,10 +31,31 @@ test("shows the appearance panel when open and closes on request", async () => {
 function vm(): ViewModel {
   return {
     useThemePreference: () => {
-      return { modePreference: "dark", cycle: (): void => {} };
+      return { mode: "dark", modePreference: "dark", cycle: (): void => {} };
     },
     useThemeSkinPreference: () => {
       return { skin: "holo", setSkin: (): void => {} };
+    },
+    useAnimatedBackground: () => {
+      return {
+        enabled: false,
+        setEnabled: (): void => {},
+        toggle: (): void => {},
+      };
+    },
+    usePowerSaver: () => {
+      return {
+        enabled: false,
+        setEnabled: (): void => {},
+        toggle: (): void => {},
+      };
+    },
+    useBootGate: () => {
+      return {
+        visible: false,
+        reboot: (): void => {},
+        dismiss: (): void => {},
+      };
     },
   } as unknown as ViewModel;
 }

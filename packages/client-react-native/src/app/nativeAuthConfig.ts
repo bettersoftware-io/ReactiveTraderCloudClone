@@ -1,19 +1,62 @@
 import Constants from "expo-constants";
 
 /**
- * The baked demo credential this app auto-logs-in with — the RN analogue of
- * the removed `EXPO_PUBLIC_WS_TOKEN` WS gate. RN has no login UI (deferred),
- * so `AppRoot` authenticates with this credential on every launch instead of
- * prompting; `LockScreen`'s AUTHENTICATE control re-auths with the same
- * credential to clear the lock. Low-privilege demo account only (roster
- * "demo" / read-only), read from Expo config `extra` (baked at build time via
- * `EXPO_PUBLIC_DEMO_USER`/`EXPO_PUBLIC_DEMO_PASS`, see `app.config.ts`) with
- * safe fallbacks so the app still boots authenticated with no env set.
+ * Simulator-only dev credentials: a `username -> password` map that seeds
+ * `AuthSimulator` so offline **simulator** mode (the `Sim` toggle) can log in
+ * as any of the four roster users. This never runs against the real deployed
+ * server — the real-WS branch (`buildNativePorts`) uses `HttpAuthAdapter`
+ * against the server's own `AUTH_USERS` secret, with no baked credentials of
+ * any kind. Never log this value.
+ *
+ * Read from Expo config `extra.devAuth`, baked at build time from
+ * `EXPO_PUBLIC_DEV_AUTH` (see `app.config.ts`) as a JSON `username -> password`
+ * object — the RN analogue of client-react's `VITE_DEV_AUTH` / `parseDevAuth`
+ * (`buildBrowserPorts.ts`). Parsing is tolerant of a missing, malformed, or
+ * non-object (e.g. array) value, falling back to all four roster usernames at
+ * a shared local dev password so the app still boots into a working simulator
+ * login with no env set at all.
  */
+const FALLBACK_DEV_CREDENTIALS: Record<string, string> = {
+  astark: "demo",
+  nromanoff: "demo",
+  tchalla: "demo",
+  demo: "demo",
+};
+
+function parseDevAuth(raw: string | undefined): Record<string, string> {
+  if (raw === undefined || raw === "") {
+    return {};
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return {};
+    }
+
+    const entries = Object.entries(parsed as Record<string, unknown>).filter(
+      (entry): entry is [string, string] => {
+        return typeof entry[1] === "string";
+      },
+    );
+    return Object.fromEntries(entries);
+  } catch {
+    return {};
+  }
+}
+
 const extra: Record<string, unknown> = Constants.expoConfig?.extra ?? {};
 
-export const DEMO_USERNAME: string =
-  (extra.demoUser as string | undefined) ?? "demo";
+const parsedDevAuth: Record<string, string> = parseDevAuth(
+  extra.devAuth as string | undefined,
+);
 
-export const DEMO_PASSWORD: string =
-  (extra.demoPass as string | undefined) ?? "demo";
+export const DEV_CREDENTIALS: Record<string, string> =
+  Object.keys(parsedDevAuth).length > 0
+    ? parsedDevAuth
+    : FALLBACK_DEV_CREDENTIALS;

@@ -1,5 +1,11 @@
 export type { ChartCandle, ChartVarStyle, ChartVm } from "./chartVm.js";
 export { chartVm } from "./chartVm.js";
+export {
+  COUNTDOWN_URGENT_FRACTION,
+  countdownProgress,
+  ringCircumference,
+  ringDashOffset,
+} from "./countdownRing.js";
 export type { FlipDelta, Rect } from "./flip.js";
 export {
   DRIFT_PX,
@@ -29,3 +35,14 @@ export {
   formatHeapMb,
   fpsTone,
 } from "./frameRate.js";
+export type {
+  TickDirection,
+  TickFlashResult,
+  TickFlashState,
+} from "./tickFlash.js";
+export {
+  nextTickFlash,
+  TICK_FLASH_DURATION_MS,
+  TICK_FLASH_EPSILON,
+  tickDirection,
+} from "./tickFlash.js";

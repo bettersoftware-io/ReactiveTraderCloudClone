@@ -62,7 +62,7 @@ module.exports = {
         "@rtc/devtools-core decorates by structural shape — it must not import any @rtc package.",
       from: { path: "^packages/devtools-core/src" },
       to: {
-        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects|devtools-app)/",
+        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects|devtools-app|devtools-relay)/",
       },
     },
     {
@@ -82,7 +82,17 @@ module.exports = {
         "@rtc/devtools-app understands only the wire protocol — devtools-core is its sole @rtc dependency.",
       from: { path: "^packages/devtools-app/src" },
       to: {
-        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects)/",
+        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects|devtools-relay)/",
+      },
+    },
+    {
+      name: "devtools-relay-standalone",
+      severity: "error",
+      comment:
+        "@rtc/devtools-relay is a standalone ws-only relay — it holds no protocol knowledge and must not import any @rtc package.",
+      from: { path: "^packages/devtools-relay/src" },
+      to: {
+        path: "^packages/(domain|shared|client-core|client-react|client-react-native|client-prototype|react-bindings|solid-bindings|client-solid|motion-core|ui-contract|server|ws-effects|devtools-core|devtools-app)/",
       },
     },
     {

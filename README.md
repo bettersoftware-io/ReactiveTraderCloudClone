@@ -87,8 +87,8 @@ pnpm build       # Topological build: domain → shared → client + server
 ## Run
 
 ```bash
-pnpm dev                          # everything: Vite client + tsx-watch server, concurrently
-pnpm --filter @rtc/client-react dev     # frontend only (Vite, http://localhost:5173)
+pnpm dev                          # @rtc/client-react, simulator mode — alias of dev:react, zero setup, no backend (Vite, http://localhost:5173)
+pnpm dev:react:fs                 # full stack: WS server + @rtc/client-react wired to it (ws://localhost:4000)
 pnpm --filter @rtc/server dev     # backend only (native WebSocket + @rtc/ws-effects, tsx watch)
 ```
 
@@ -230,7 +230,7 @@ No — every step boots whatever it needs and tears it down afterwards, so
 > **The target port must be free.** A browser runner refuses to reuse a server
 > it didn't start: if something is already on its port it fails immediately
 > rather than running the tests against an unknown server (a leftover dev server,
-> or a hand-started `pnpm dev` that may be in WS-real mode) — which otherwise
+> or a hand-started dev server such as `dev:react:fs` in WS-real mode) — which otherwise
 > causes confusing, misattributed failures. `pnpm test:e2e` sidesteps contention
 > by giving each browser suite its own port (`:3001`–`:3004`); a standalone
 > runner uses `:3000` unless you set `RTC_DEV_PORT`. Within the Cucumber+Playwright

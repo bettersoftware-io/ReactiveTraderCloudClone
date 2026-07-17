@@ -17,17 +17,30 @@ pnpm build       # Topological: domain → shared → client + server
 pnpm typecheck   # tsc --noEmit in all packages
 pnpm test        # vitest run in all packages
 pnpm test:e2e    # Playwright (client only)
-pnpm dev         # Vite dev server (client) + tsx watch (server)
+pnpm dev         # Alias of `dev:react` — @rtc/client-react in simulator mode, zero setup, no server (see the future-direction note below)
+pnpm dev:ws      # @rtc/server only — native WS + login on ws://localhost:4000 (tsx watch)
+pnpm dev:watch   # Rebuild-watch every pure-TS library (domain, shared, ws-effects, motion-core, ui-contract, devtools-core) — run alongside a client to hot-rebuild lib edits
+pnpm dev:react       # @rtc/client-react only (Vite) → http://localhost:5173 — simulator mode (no server)
+pnpm dev:react:ws    # @rtc/client-react only, connected to an already-running `dev:ws` (ws://localhost:4000)
+pnpm dev:react:fs    # Full stack: start the WS server + @rtc/client-react connected to it
+pnpm dev:solid       # @rtc/client-solid only (Vite) → http://localhost:5473 — simulator mode (no server)
+pnpm dev:solid:ws    # @rtc/client-solid only, connected to an already-running `dev:ws`
+pnpm dev:solid:fs    # Full stack: start the WS server + @rtc/client-solid connected to it
 pnpm dev:proto   # @rtc/client-prototype only — the v2 design React port (Vite) → http://localhost:5273
-pnpm dev:design  # standalone web design prototype HTML (v5), served by a zero-dep Node script → http://localhost:8899
+pnpm dev:design:web     # standalone web design prototype HTML (v5), served by a zero-dep Node script → http://localhost:8899
 pnpm dev:design:mobile  # same server, but the standalone mobile design prototype (mobile v1) → http://localhost:8899
 pnpm dev:ios     # @rtc/client-react-native on the iOS simulator (expo run:ios: build → install dev client → launch → Metro)
-pnpm dev:solid   # @rtc/client-solid (Vite) → http://localhost:5473 — walking skeleton, simulator ports only
-pnpm dev:ext     # @rtc/devtools-extension — build the unpacked MV3 bundle → packages/devtools-extension/dist (load via chrome://extensions → Load unpacked → RTC panel)
+pnpm dev:devtools     # @rtc/devtools-app — the standalone inspector SPA (Vite), served same-origin at /devtools/
+pnpm dev:devtools:ext # @rtc/devtools-extension — watch-build the unpacked MV3 bundle → packages/devtools-extension/dist (load via chrome://extensions → Load unpacked → RTC panel)
+pnpm dev:devtools:relay # @rtc/devtools-relay — the standalone dev-machine WebSocket relay (ws://localhost:8790) bridging the browser inspector to the React Native client; open the panel at /devtools/?relay=ws://localhost:8790
 pnpm clean       # Remove dist/ in all packages
 ```
 
-`dev:design` serves `docs/design/web/v5/standalone/Reactive Trader.html` (a self-contained design artifact, not app code) via `scripts/serve-design.mjs`; `dev:design:mobile` serves the mobile counterpart under `docs/design/mobile/v1/standalone/`. The design prototypes are organized as `docs/design/web/{v1..v5}` (web iterations, v5 current) and `docs/design/mobile/v1` (mobile). v5's HTML and media are Git LFS-tracked (scoped to `docs/design/web/v5/**` in `.gitattributes`), so a fresh clone needs `git lfs pull` before `dev:design` can serve it. `dev:proto` runs its React re-implementation in `packages/client-prototype`. `dev:ios` delegates to the RN package's `ios` script (`expo run:ios`); it compiles the native dev client if missing, installs it on the booted simulator, and starts Metro — idempotent, so it's quick on later runs. The native `ios/` folder is gitignored and lives only where you run it (a removed worktree loses it), so run `dev:ios` once from your primary checkout to (re)create the dev build.
+**Client dev matrix.** Both web clients pick their data source at composition time from `VITE_SERVER_URL` (`packages/client-*/src/app/buildBrowserPorts.ts`): set → real `WsAdapter`; unset → in-browser simulator. The scripts encode that as an orthogonal matrix — a bare client (`dev:react` / `dev:solid`) runs simulator-only; the `:ws` suffix points the client at an already-running `dev:ws` server (start it in another terminal); the `:fs` suffix starts the WS server **and** the client together (the reconnecting `WsAdapter` tolerates the server coming up moments later, so parallel start is fine). `dev:ws` and `dev:watch` are the reusable building blocks (server alone; library rebuild-watchers alone). Bare `pnpm dev` is a plain **alias of `dev:react`** — `@rtc/client-react` in simulator mode, so `pnpm dev` stays zero-setup (no server, no auth env, simulated prices in-browser). Full-stack live data is the opt-in `dev:react:fs` / `dev:solid:fs`. The turbo-routed scripts (the `*:fs` pair) rely on `VITE_SERVER_URL` being declared on turbo's `dev` task (turbo's env mode is strict — an undeclared var would be stripped and silently drop the client back to simulator mode).
+
+**Future direction (not yet built).** `pnpm dev` is deliberately ambiguous today — "the default web client" — and currently resolves to React. The plan is to rename it to **`dev:web`** and have it select the client implementation (React vs Solid) from a feature flag, so `dev:web` boots whichever web client the flag points at while `dev:react` / `dev:solid` stay as the explicit per-implementation entry points. Until that lands, treat `pnpm dev` as "the React web client, simulator mode."
+
+`dev:design:web` serves `docs/design/web/v5/standalone/Reactive Trader.html` (a self-contained design artifact, not app code) via `scripts/serve-design.mjs`; `dev:design:mobile` serves the mobile counterpart under `docs/design/mobile/v1/standalone/`. The design prototypes are organized as `docs/design/web/{v1..v5}` (web iterations, v5 current) and `docs/design/mobile/v1` (mobile). v5's HTML and media are Git LFS-tracked (scoped to `docs/design/web/v5/**` in `.gitattributes`), so a fresh clone needs `git lfs pull` before `dev:design:web` can serve it. `dev:proto` runs its React re-implementation in `packages/client-prototype`. `dev:ios` delegates to the RN package's `ios` script (`expo run:ios`); it compiles the native dev client if missing, installs it on the booted simulator, and starts Metro — idempotent, so it's quick on later runs. The native `ios/` folder is gitignored and lives only where you run it (a removed worktree loses it), so run `dev:ios` once from your primary checkout to (re)create the dev build.
 
 ## Package Structure
 
@@ -47,6 +60,7 @@ packages/
   ws-effects/          @rtc/ws-effects          — Small declarative RxJS effects framework. Pure TS, depends only on rxjs at runtime.
   devtools-core/       @rtc/devtools-core       — Devtools event protocol, DevtoolsHub (dormancy/coalescing/ring buffer), the three composition-root decorators (instrumentPresenters, instrumentMachineFactories, instrumentWsAdapter), BroadcastChannel transport. Pure TS, depends only on rxjs at runtime.
   devtools-app/        @rtc/devtools-app        — Inspector SPA (four panels: state tree, machine registry, event log, wire tap), served same-origin at /devtools/. Depends on devtools-core (+ react, react-dom).
+  devtools-relay/      @rtc/devtools-relay      — Standalone dev-machine WebSocket relay bridging the browser inspector to the React Native client (WsRelayDuplex "app" ↔ relay ↔ "panel"). Dev-only, carries only devtools frames. Depends on `ws` at runtime; imports no @rtc package. Pure ws-only leaf.
   devtools-extension/  @rtc/devtools-extension  — MV3 Chrome DevTools extension: a third Duplex (ChromeRuntimeDuplex + reconnecting content-script bridge + tab-keyed background router) that mounts the existing InspectorApp in an "RTC" DevTools panel, attaching the inspector to any running app incl. the deployed build. Leaf consumer: depends on devtools-core + devtools-app (+ react, react-dom, rxjs). Unpacked-dev only.
   server/              @rtc/server              — Native WebSocket + @rtc/ws-effects (24 effects: FX/Credit/Admin/Equities). Depends on domain, shared, ws-effects.
 ```
@@ -55,7 +69,7 @@ packages/
 
 **Single-dep constraint on `@rtc/domain`:** Domain may depend on `rxjs` at runtime — and only on `rxjs`. RxJS is the explicit architectural exception, chosen for its declarative stream operators and the team's familiarity with it. No other runtime dependencies are permitted. pnpm strict mode enforces this at install time. `@rtc/ws-effects` follows the same rxjs-only constraint.
 
-**Devtools dependency rule:** `@rtc/devtools-core` is an `rxjs`-only leaf like `ws-effects` — it decorates by structural shape and imports no other `@rtc/*` package; `@rtc/devtools-app` depends only on `devtools-core`. `@rtc/devtools-extension` is itself a leaf consumer that may import only `devtools-core` (transport/protocol/store) and `devtools-app` (the `InspectorApp`), never a client/server/domain package (dependency-cruiser `devtools-extension-is-a-leaf`). Within the app workspace `client-react` takes only a dev-only build-order/asset edge to `devtools-app` (to serve `/devtools/`), never a source import; the extension package is the one workspace consumer that imports `devtools-app` as source (transpiled by its own Vite build). See `docs/architecture/20-devtools.md` (§20).
+**Devtools dependency rule:** `@rtc/devtools-core` is an `rxjs`-only leaf like `ws-effects` — it decorates by structural shape and imports no other `@rtc/*` package; `@rtc/devtools-app` depends only on `devtools-core`. `@rtc/devtools-extension` is itself a leaf consumer that may import only `devtools-core` (transport/protocol/store) and `devtools-app` (the `InspectorApp`), never a client/server/domain package (dependency-cruiser `devtools-extension-is-a-leaf`). Within the app workspace `client-react` takes only a dev-only build-order/asset edge to `devtools-app` (to serve `/devtools/`), never a source import; the extension package is the one workspace consumer that imports `devtools-app` as source (transpiled by its own Vite build). `@rtc/devtools-relay` is a standalone `ws`-only leaf that imports no `@rtc` package (a dep-cruiser rule pins it); `WsRelayDuplex` (in `devtools-core`) is the RN/cross-machine transport that pairs with it, and `client-react-native` applies the same three decorators under `__DEV__` only. See `docs/architecture/20-devtools.md` (§20).
 
 ## Architecture Goals
 
