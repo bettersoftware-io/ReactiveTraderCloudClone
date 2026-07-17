@@ -1,6 +1,7 @@
+import Constants from "expo-constants";
 import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
 
-import { createApp, createMachineFactories } from "@rtc/client-core";
+import { createApp } from "@rtc/client-core";
 import {
   createViewModel,
   type ViewModel,
@@ -8,6 +9,13 @@ import {
 } from "@rtc/react-bindings";
 
 import { buildNativePorts } from "#/app/buildNativePorts";
+import {
+  buildViewModelInputs,
+  type NativeDevtools,
+} from "#/app/devtools/buildViewModelInputs";
+import { createNativeDevtoolsHub } from "#/app/devtools/nativeDevtoolsHub";
+import { NATIVE_PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
+import { resolveRelayUrl } from "#/app/devtools/resolveRelayUrl";
 
 /** The RN app's composition root, as a component. Builds the presenters and the
  * ViewModel exactly once for this mount and supplies the ViewModelProvider to
@@ -53,12 +61,22 @@ export function AppRoot({ simulator, children }: AppRootProps): ReactElement {
   if (ref.current === null) {
     const { ports, dispose } = buildNativePorts({ simulator });
     const { presenters, commands } = createApp(ports);
+
+    const devtools = createNativeDevtools();
+    const inputs = buildViewModelInputs(presenters, devtools);
     const viewModel = createViewModel(
-      presenters,
-      createMachineFactories(presenters),
+      inputs.presenters,
+      inputs.factories,
       commands,
     );
-    ref.current = { viewModel, dispose };
+
+    ref.current = {
+      viewModel,
+      dispose: (): void => {
+        devtools?.hub.dispose();
+        dispose();
+      },
+    };
   }
 
   const keepAlive = useRef(true);
@@ -91,4 +109,26 @@ interface AppRootProps {
 interface Composition {
   viewModel: ViewModel;
   dispose: () => void;
+}
+
+/** Dev-only devtools wiring. In a production RN build (`__DEV__` false) this is
+ * null — no decorators, no relay socket, dormant-and-disconnected by
+ * construction. Wrapped in try/catch because the tap must never break app boot:
+ * if the relay transport can't be constructed (e.g. no global WebSocket), the
+ * app ships without devtools rather than crashing. */
+function createNativeDevtools(): NativeDevtools | null {
+  if (!__DEV__) {
+    return null;
+  }
+
+  try {
+    return {
+      hub: createNativeDevtoolsHub(
+        resolveRelayUrl(Constants.expoConfig?.hostUri),
+      ),
+      manifest: NATIVE_PRESENTER_MANIFEST,
+    };
+  } catch {
+    return null;
+  }
 }

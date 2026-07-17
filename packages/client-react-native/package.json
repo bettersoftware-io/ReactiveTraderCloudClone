@@ -32,6 +32,7 @@
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@rtc/client-core": "workspace:*",
+    "@rtc/devtools-core": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/react-bindings": "workspace:*",
     "@shopify/react-native-skia": "2.6.2",
@@ -58,6 +59,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@rtc/devtools-relay": "workspace:*",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^29.5.14",
     "@types/react": "^19",
