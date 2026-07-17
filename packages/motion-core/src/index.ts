@@ -15,6 +15,14 @@ export {
   FLIP_EASING,
   flipDeltas,
 } from "./flip.js";
+export type { MetricTone } from "./frameRate.js";
+export {
+  computeFps,
+  FPS_GOOD,
+  FPS_WARN,
+  formatHeapMb,
+  fpsTone,
+} from "./frameRate.js";
 export type { CoalesceDecision, RankDirection } from "./rankGlide.js";
 export {
   coalesceOrder,
@@ -27,14 +35,6 @@ export {
   sameOrder,
 } from "./rankGlide.js";
 export { REDUCED_MOTION_QUERY } from "./reducedMotion.js";
-export type { MetricTone } from "./frameRate.js";
-export {
-  computeFps,
-  FPS_GOOD,
-  FPS_WARN,
-  formatHeapMb,
-  fpsTone,
-} from "./frameRate.js";
 export type {
   TickDirection,
   TickFlashResult,
