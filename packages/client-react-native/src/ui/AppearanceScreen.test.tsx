@@ -41,16 +41,131 @@ test("marks the active skin selected", async () => {
   expect(screen.getByTestId("appearance-skin-holo-active")).toBeTruthy();
 });
 
+test("shows an ambient toggle wired to useAnimatedBackground", async () => {
+  const setEnabled = jest.fn();
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+      { ambient: { enabled: false, setEnabled, toggle: () => {} } },
+    ),
+  );
+  await fireEvent.press(screen.getByTestId("appearance-ambient-toggle"));
+  expect(setEnabled).toHaveBeenCalledWith(true);
+});
+
+test("shows a power-saver toggle wired to usePowerSaver", async () => {
+  const setEnabled = jest.fn();
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+      { powerSaver: { enabled: false, setEnabled, toggle: () => {} } },
+    ),
+  );
+  await fireEvent.press(screen.getByTestId("appearance-powersaver-toggle"));
+  expect(setEnabled).toHaveBeenCalledWith(true);
+});
+
+test("power-saver caption explains its effect", async () => {
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+    ),
+  );
+  expect(screen.getByText(/reduces motion & re-renders/i)).toBeTruthy();
+});
+
+test("segmented dark/light control presses light and drives cycle() the right number of steps from the live preference", async () => {
+  // modePreference defaults to "system" in the stub; the ViewModel exposes no
+  // direct mode setter (createViewModel.ts UseThemePreferenceResult is
+  // { mode, modePreference, cycle } only), so the segmented control must
+  // express "jump to light" as N zero-arg cycle() calls, each of which the
+  // real presenter resolves against the true live state (dark→light→system).
+  // From "system", reaching "light" is two steps: system→dark→light.
+  const cycle = jest.fn();
+  await renderScreen(fakeViewModel(cycle, () => {}));
+  await fireEvent.press(screen.getByTestId("appearance-mode-light"));
+  expect(cycle).toHaveBeenCalledTimes(2);
+});
+
+test("segmented dark/light control presses dark and drives cycle() the right number of steps from the live preference", async () => {
+  // From "system", reaching "dark" is one step: system→dark.
+  const cycle = jest.fn();
+  await renderScreen(fakeViewModel(cycle, () => {}));
+  await fireEvent.press(screen.getByTestId("appearance-mode-dark"));
+  expect(cycle).toHaveBeenCalledTimes(1);
+});
+
+test("replay-boot triggers the boot-replay seam (useBootGate().reboot())", async () => {
+  const reboot = jest.fn();
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+      { reboot },
+    ),
+  );
+  await fireEvent.press(screen.getByTestId("appearance-replay-boot"));
+  expect(reboot).toHaveBeenCalledTimes(1);
+});
+
+interface FakeViewModelOverrides {
+  modePreference?: "dark" | "light" | "system";
+  ambient?: {
+    enabled: boolean;
+    setEnabled: (v: boolean) => void;
+    toggle: () => void;
+  };
+  powerSaver?: {
+    enabled: boolean;
+    setEnabled: (v: boolean) => void;
+    toggle: () => void;
+  };
+  reboot?: () => void;
+}
+
 function fakeViewModel(
   cycle: () => void,
   setSkin: (s: string) => void,
+  overrides: FakeViewModelOverrides = {},
 ): ViewModel {
   return {
     useThemePreference: () => {
-      return { mode: "dark", modePreference: "system", cycle };
+      return {
+        mode: "dark",
+        modePreference: overrides.modePreference ?? "system",
+        cycle,
+      };
     },
     useThemeSkinPreference: () => {
       return { skin: "holo", setSkin };
+    },
+    useAnimatedBackground: () => {
+      return (
+        overrides.ambient ?? {
+          enabled: false,
+          setEnabled: () => {},
+          toggle: () => {},
+        }
+      );
+    },
+    usePowerSaver: () => {
+      return (
+        overrides.powerSaver ?? {
+          enabled: false,
+          setEnabled: () => {},
+          toggle: () => {},
+        }
+      );
+    },
+    useBootGate: () => {
+      return {
+        visible: false,
+        reboot: overrides.reboot ?? (() => {}),
+        dismiss: () => {},
+      };
     },
   } as unknown as ViewModel;
 }
