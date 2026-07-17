@@ -37,6 +37,11 @@ export interface PreferencesPort {
   /** Ambient-motion perf gate; default true (compositor-only CSS backdrop). */
   animatedBackground$(): Observable<boolean>;
   setAnimatedBackground(on: boolean): void;
+  /** Power-saver master override; default false. While on, the client forces
+   * the cheap rendering path (still ambience, conflated price re-renders)
+   * WITHOUT mutating any other stored preference. */
+  powerSaver$(): Observable<boolean>;
+  setPowerSaver(on: boolean): void;
   /** Replay-current boot-sequence variant stream; emits synchronously on subscribe.
    * The cycle pointer (core → laser → docking → core …) is advanced by
    * BootSequenceMachine at each boot start via setBootVariant. */

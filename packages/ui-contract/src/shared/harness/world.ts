@@ -193,6 +193,8 @@ export interface CommandLog {
   bootReboot: number;
   /** Each value written through useAnimatedBackground().setEnabled/toggle, in order. */
   animatedBackgroundSets: boolean[];
+  /** Each value written through usePowerSaver().setEnabled/toggle, in order. */
+  powerSaverSets: boolean[];
   /** Each incident kind injected via injectIncident(), in order. */
   injectedIncidents: IncidentKind[];
 }
@@ -238,6 +240,8 @@ export interface World {
   readonly themeSkin: BehaviorSubject<ThemeSkin>;
   /** Reactive animated-background preference backing useAnimatedBackground. */
   readonly animatedBackground: BehaviorSubject<boolean>;
+  /** Reactive power-saver master-override preference backing usePowerSaver. */
+  readonly powerSaver: BehaviorSubject<boolean>;
   /** Reactive view-mode preference backing useViewModePreference (drives LiveRatesPanel). */
   readonly viewMode: BehaviorSubject<ViewMode>;
   /** Reactive Credit RFQs filter preference backing useCreditRfqFilterPreference (drives RfqsPanel). */
@@ -350,6 +354,7 @@ export function createWorld(
   equitiesSeed: EquitiesSeed = {},
   adminSeed: AdminSeed = {},
   creditRfqFilterSeed?: CreditRfqFilter,
+  powerSaverSeed?: boolean,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -517,6 +522,7 @@ export function createWorld(
   const animatedBackground = new BehaviorSubject<boolean>(
     animatedBackgroundSeed ?? false,
   );
+  const powerSaver = new BehaviorSubject<boolean>(powerSaverSeed ?? false);
   const viewMode = new BehaviorSubject<ViewMode>(
     viewModeSeed ?? DEFAULT_VIEW_MODE,
   );
@@ -606,6 +612,7 @@ export function createWorld(
     authUnlockArgs: [],
     bootReboot: 0,
     animatedBackgroundSets: [],
+    powerSaverSets: [],
     injectedIncidents: [],
     placedOrderRequests: [],
   };
@@ -620,6 +627,7 @@ export function createWorld(
     themeMode,
     themeSkin,
     animatedBackground,
+    powerSaver,
     viewMode,
     creditRfqFilter,
     setCreditRfqFilter: (filter: CreditRfqFilter) => {

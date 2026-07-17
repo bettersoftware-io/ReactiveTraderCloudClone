@@ -13,6 +13,7 @@ import { PlaywrightLayout } from "./Layout";
 import { PlaywrightLiveRatesTile } from "./LiveRatesTile";
 import { PlaywrightLoginScreen } from "./LoginScreen";
 import { PlaywrightPositionsPanel } from "./PositionsPanel";
+import { PlaywrightPowerSaver } from "./PowerSaver";
 import { PlaywrightThemeToggle } from "./ThemeToggle";
 import { PlaywrightWorkspace } from "./Workspace";
 
@@ -32,5 +33,6 @@ export function buildPlaywrightPageObjects(page: Page): PageObjects {
     layout: new PlaywrightLayout(page),
     inspector: new PlaywrightInspector(page),
     login: new PlaywrightLoginScreen(page),
+    powerSaver: new PlaywrightPowerSaver(page),
   };
 }

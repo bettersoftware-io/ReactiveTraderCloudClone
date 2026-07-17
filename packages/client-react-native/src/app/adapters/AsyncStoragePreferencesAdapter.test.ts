@@ -59,6 +59,29 @@ test("hydrates a stored boolean animated-background value", async () => {
   expect(hydrated).toBe(true);
 });
 
+test("emits the default powerSaver (false) synchronously", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const first = await firstValueFrom(prefs.powerSaver$());
+  expect(first).toBe(false);
+});
+
+test("hydrates a stored boolean powerSaver value", async () => {
+  store.set("rtc-power-saver", "true");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydrated = await firstValueFrom(
+    prefs.powerSaver$().pipe(skip(1), take(1)),
+  );
+  expect(hydrated).toBe(true);
+});
+
+test("setPowerSaver writes through to AsyncStorage and emits", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setPowerSaver(true);
+  const next = await firstValueFrom(prefs.powerSaver$());
+  expect(next).toBe(true);
+  expect(store.get("rtc-power-saver")).toBe("true");
+});
+
 test("hydrates a stored theme mode", async () => {
   store.set("rtc-theme", "light");
   const prefs = new AsyncStoragePreferencesAdapter();

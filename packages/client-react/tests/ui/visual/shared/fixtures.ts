@@ -911,6 +911,18 @@ export const fixtures: Record<string, AppData> = {
     // so the AdminPanel slider/input render deterministically through the seam.
     throughput: { value: 250, loading: false, message: null },
   }),
+  // Power-saver variant of the FX page: same data as app-fx, but with the
+  // power-saver master override on. The seam-fed usePowerSaver fake flips
+  // enabled to true, which the real App wiring uses to suppress the aurora
+  // glow / drifting ambient-background layers — grid + vignette stay static.
+  "app-fx-power-saver": makeAppData({
+    currencyPairs: [eurusd, gbpusd, usdjpy],
+    prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
+    analytics: analyticsData,
+    connectionStatus: ConnectionStatus.CONNECTED,
+    throughput: { value: 250, loading: false, message: null },
+    powerSaver: true,
+  }),
   // Light-theme variant of the FX page. The theme now lives behind
   // PreferencesPort, so the light arm is reached by seeding theme mode "light"
   // rather than clicking the toggle — the rendered output is identical to the old

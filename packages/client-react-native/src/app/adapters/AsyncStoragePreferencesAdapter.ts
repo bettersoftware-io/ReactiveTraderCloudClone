@@ -25,6 +25,7 @@ export const THEME_STORAGE_KEY = "rtc-theme"; // stores the theme mode
 export const THEME_SKIN_STORAGE_KEY = "rtc-theme-skin";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
+export const POWER_SAVER_STORAGE_KEY = "rtc-power-saver";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
@@ -89,6 +90,8 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   // battery cost on device. A user's explicit choice still persists.
   private readonly animatedBg = new BehaviorSubject<boolean>(false);
 
+  private readonly powerSaverSubject = new BehaviorSubject<boolean>(false);
+
   private readonly bootVariantSubject = new BehaviorSubject<BootVariant>(
     DEFAULT_BOOT_VARIANT,
   );
@@ -114,6 +117,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         themeSkin,
         viewMode,
         animatedBg,
+        powerSaver,
         bootVariant,
         creditRfqFilter,
         eqWatchlistSort,
@@ -123,6 +127,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
         AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
         AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
+        AsyncStorage.getItem(POWER_SAVER_STORAGE_KEY),
         AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
         AsyncStorage.getItem(CREDIT_RFQ_FILTER_STORAGE_KEY),
         AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
@@ -145,6 +150,12 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         this.animatedBg.next(true);
       } else if (animatedBg === "false") {
         this.animatedBg.next(false);
+      }
+
+      if (powerSaver === "true") {
+        this.powerSaverSubject.next(true);
+      } else if (powerSaver === "false") {
+        this.powerSaverSubject.next(false);
       }
 
       if (isBootVariant(bootVariant)) {
@@ -204,6 +215,18 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       on ? "true" : "false",
     ).catch(() => {});
     this.animatedBg.next(on);
+  }
+
+  powerSaver$(): Observable<boolean> {
+    return this.powerSaverSubject.pipe(distinctUntilChanged());
+  }
+
+  setPowerSaver(on: boolean): void {
+    void AsyncStorage.setItem(
+      POWER_SAVER_STORAGE_KEY,
+      on ? "true" : "false",
+    ).catch(() => {});
+    this.powerSaverSubject.next(on);
   }
 
   bootVariant$(): Observable<BootVariant> {

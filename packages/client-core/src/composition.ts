@@ -53,6 +53,7 @@ import {
   type MachineFactories,
   OrdersBlotterPresenter,
   PositionsPresenter,
+  PowerSaverPresenter,
   PriceHistoryPresenter,
   PriceStreamPresenter,
   RfqQuotePresenter,
@@ -110,6 +111,7 @@ export interface Presenters {
   themePreference: ThemePreferencePresenter;
   themeSkinPreference: ThemeSkinPreferencePresenter;
   animatedBackground: AnimatedBackgroundPresenter;
+  powerSaver: PowerSaverPresenter;
   viewModePreference: ViewModePreferencePresenter;
   creditRfqFilterPreference: CreditRfqFilterPreferencePresenter;
   /** Equities watchlist sort-mode preference (the head's ⇅ cycle control). */
@@ -223,8 +225,14 @@ export function createApp(ports: AppPorts): App {
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
   const connection = new ConnectionStatusPresenter(ports.connectionEvents);
+  // Hoisted so priceStream/priceHistory can gate their conflation behind the
+  // same power-saver flag stream the record also exposes as `powerSaver`.
+  const powerSaver = new PowerSaverPresenter(ports.preferences);
   // Hoisted so the AnimationDirector can consume their streams directly.
-  const priceStream = new PriceStreamPresenter(ports.pricing);
+  const priceStream = new PriceStreamPresenter(
+    ports.pricing,
+    powerSaver.enabled$,
+  );
   const execution = new TradeExecutionPresenter(ports.execution);
   const rfqs = new RfqsPresenter(ports.workflow);
   const currencyPairs = new CurrencyPairsPresenter(ports.referenceData);
@@ -245,7 +253,7 @@ export function createApp(ports: AppPorts): App {
 
   const presenters: Presenters = {
     priceStream,
-    priceHistory: new PriceHistoryPresenter(ports.pricing),
+    priceHistory: new PriceHistoryPresenter(ports.pricing, powerSaver.enabled$),
     execution,
     blotter: new BlotterPresenter(ports.blotter),
     analytics: new AnalyticsPresenter(ports.analytics),
@@ -262,6 +270,7 @@ export function createApp(ports: AppPorts): App {
     ),
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
+    powerSaver,
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
     creditRfqFilterPreference: new CreditRfqFilterPreferencePresenter(
       ports.preferences,

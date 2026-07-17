@@ -26,6 +26,7 @@ export interface PreferencesSeed {
   themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
   animatedBackground?: boolean;
+  powerSaver?: boolean;
   bootVariant?: BootVariant;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
@@ -158,6 +159,28 @@ export function describePreferencesPortContract(
       const port = makeSeeded({ themeSkin: "neon", animatedBackground: true });
       expect(await firstValueFrom(port.themeSkin$())).toBe("neon");
       expect(await firstValueFrom(port.animatedBackground$())).toBe(true);
+    });
+
+    it("empty store emits the default powerSaver=false", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.powerSaver$())).toBe(false);
+    });
+
+    it("setPowerSaver persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: boolean[] = [];
+      const sub = port.powerSaver$().subscribe((on) => {
+        return seen.push(on);
+      });
+      // Default is false (empty store), so flip to true to observe a change.
+      port.setPowerSaver(true);
+      sub.unsubscribe();
+      expect(seen).toEqual([false, true]);
+    });
+
+    it("reads back a seeded powerSaver", async () => {
+      const port = makeSeeded({ powerSaver: true });
+      expect(await firstValueFrom(port.powerSaver$())).toBe(true);
     });
 
     it("empty store emits the default bootVariant", async () => {

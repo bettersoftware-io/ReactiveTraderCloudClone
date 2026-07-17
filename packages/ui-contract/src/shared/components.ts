@@ -181,6 +181,7 @@ import {
   AnimationProbePage,
   type AnimationProbeProps,
 } from "./pages/shell/motion/AnimationProbePage";
+import { PowerSaverRootPage } from "./pages/shell/power/PowerSaverRootPage";
 import {
   PreferencesModalPage,
   type PreferencesModalProps,
@@ -500,6 +501,13 @@ export const AmbientBackground = component<
   AmbientBackgroundPage
 >((ctx) => {
   return new AmbientBackgroundPage(ctx);
+});
+
+export const PowerSaverRoot = component<
+  Record<string, never>,
+  PowerSaverRootPage
+>((ctx) => {
+  return new PowerSaverRootPage(ctx);
 });
 
 export const PreferencesModal = component<

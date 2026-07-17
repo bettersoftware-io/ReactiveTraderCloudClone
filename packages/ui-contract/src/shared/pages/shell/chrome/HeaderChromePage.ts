@@ -78,6 +78,20 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
     return within(this.root).queryByTestId("theme-toggle") !== null;
   }
 
+  /** The header quick toggle's current `aria-pressed` (wired to usePowerSaver). */
+  powerSaverPressed(): string | null {
+    return (
+      within(this.root)
+        .queryByTestId("power-saver-toggle")
+        ?.getAttribute("aria-pressed") ?? null
+    );
+  }
+
+  /** Click the header power-saver quick toggle. */
+  async clickPowerSaver(): Promise<void> {
+    await this.user.click(within(this.root).getByTestId("power-saver-toggle"));
+  }
+
   /** True when the notifications control is present (decorative). */
   hasNotifications(): boolean {
     return within(this.root).queryByTestId("notifications-toggle") !== null;

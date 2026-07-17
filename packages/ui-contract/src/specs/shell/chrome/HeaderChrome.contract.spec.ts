@@ -80,6 +80,9 @@ describe("HeaderChrome", () => {
     expect(header.hasThemeToggle()).toBe(true);
   });
 
+  // Power-saver assertions live in shell/power/PowerSaverSurfaces.contract.spec.ts
+  // (react-only; excluded from the Solid contract run).
+
   it("opens the decorative notifications dropdown with its seed rows", async () => {
     const header = mount(HeaderChrome, {
       props: { activeTab: "fx", onTabChange: () => {} },
