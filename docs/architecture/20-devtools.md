@@ -25,9 +25,10 @@ every piece of state crosses one of three seams:
 A devtools here therefore costs **a decorator at the composition root**, not
 a bespoke framework integration. The devtools is also a live demonstration of
 the port/adapter discipline it documents: the same instrumentation core
-(`@rtc/devtools-core`) drives a standalone inspector today and, later, a
-Chrome-extension shell and a React Native relay ([§20.8](#208-future-extensions))
-by swapping only a transport adapter.
+(`@rtc/devtools-core`) drives a standalone inspector, a Chrome-extension shell
+([§20.6.1](#2061-chrome-extension-transport)), and a React Native relay
+([§20.9](#209-websocket-relay-transport-react-native)) by swapping only a
+transport adapter each time.
 
 ### 20.2 Architecture
 
@@ -469,7 +470,7 @@ Summarized from spec [§9](../superpowers/specs/2026-07-11-custom-devtools-desig
 1. ~~**Intent injection**~~ — **shipped** (machine-level): the protocol gained `intent:invoke {machineId, name, args}` (v2) and the hub fires the *wrapped* intent it already taps, so an injected call is auditable exactly like a UI-driven one. It is **dev-build-only** — the handler is wired solely inside `import.meta.env.DEV`, so a production build dead-code-eliminates it (asserted by `check:devtools-no-inject`) — and **confirm-gated** in the panel's Machines tab. See the [intent-injection design](../superpowers/specs/2026-07-15-devtools-intent-injection-design.md). Presenter-level injection and a full intent-name catalogue (beyond observed history) remain future work.
 2. ~~**Record & replay**~~ — **shipped** (panel-side): a `Recorder` tees `InspectorStore.tap()` into a bounded, seeded frame buffer, and a recording (appId + injected `startedAt` + the ordered `AppToInspector` frames) exports/imports as JSON — observe-only, no protocol or app change. Replay re-folds the captured frames through a *synchronous* `InspectorStore` clone (`{ coalesce: false }`) with periodic checkpoints, so a reconstructed `stateAt(k)` is byte-identical to a live fold by construction. Full *app* replay (recorded port inputs into a fresh composition root) is a separately scoped, larger step needing seeded time/timers.
 3. ~~**Chrome extension shell**~~ — **shipped**: `@rtc/devtools-extension`, an MV3 wrapper — content script bridges `BroadcastChannel` ↔ background ↔ a devtools-panel page hosting the *same* `devtools-app` bundle. Protocol and UI untouched; see [§20.6.1](#2061-chrome-extension-transport) and the [package README](../../packages/devtools-extension/README.md).
-4. **React Native support** — a WebSocket-relay `DevtoolsTransport` adapter (the port already exists for this) plus the same three decorators applied at the RN composition root; the panel runs on the developer's machine, inspecting the device over the relay.
+4. ~~**React Native support**~~ — **shipped**: a WebSocket-relay `DevtoolsTransport` adapter (`WsRelayDuplex` in `@rtc/devtools-core`) plus a standalone dev-machine relay (`@rtc/devtools-relay`), with the same three decorators applied `__DEV__`-gated at the RN composition root; the browser panel attaches via `?relay=<ws-url>`, inspecting the device over the relay on the developer's machine. See [§20.9](#209-websocket-relay-transport-react-native) and the [relay README](../../packages/devtools-relay/README.md).
 5. ~~**Time-scrubbing UI**~~ — **shipped** with record & replay (item 2): a `ReplayController` exposes `stateAt(frameIndex)`/`tsAt(frameIndex)`, and the panel's recording toolbar renders a Live|Replay toggle plus a scrubber (step/play + a `+Δs` timestamp readout). In Replay mode the four panels — already pure functions of `InspectorState` — receive `replay.stateAt(frameIndex)` instead of the live snapshot; that single lifted value is the whole seam. Honest framing: viewing recorded history, not rewinding the live app — RxJS streams over a socket cannot be replayed the way Redux replays pure reducers.
 6. ~~**Panel-side liveness timeout**~~ — **shipped**: see the liveness timer described in [§20.6](#206-serving-topology).
 
