@@ -6,6 +6,7 @@ import { createViewModel, ViewModelProvider } from "@rtc/solid-bindings";
 
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 import { BootGate } from "#/ui/shell/boot/BootGate";
+import { PowerSaverRoot } from "#/ui/shell/power/PowerSaverRoot";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 /** The app's composition root, as a component. Builds the presenters and the
@@ -44,6 +45,7 @@ export function AppRoot(props: ParentProps): JSX.Element {
   return (
     <ViewModelProvider viewModel={viewModel}>
       <ThemeProvider>
+        <PowerSaverRoot />
         <BootGate>{props.children}</BootGate>
       </ThemeProvider>
     </ViewModelProvider>

@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo } from "solid-js";
+import { createMemo, Show } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 
@@ -15,20 +15,28 @@ import styles from "./AmbientBackground.module.css";
  * beyond that preference: do NOT wire any data into this component, it is
  * intentionally dead chrome. It is aria-hidden and pointer-events: none, so
  * it never participates in interaction or a11y.
+ *
+ * Power saver is a master override on top of that preference: when it is on,
+ * the animated aurora/sweep/dots layers are omitted from the DOM outright
+ * (an absent layer costs no compositing, unlike one merely paused) — only
+ * the static grid + vignette remain. `data-animated` still reflects the
+ * user's own animated-background preference unchanged; it is not rewritten
+ * by power saver.
  */
 export function AmbientBackground(): JSX.Element {
-  const { useAnimatedBackground } = useViewModel();
+  const { useAnimatedBackground, usePowerSaver } = useViewModel();
   const { enabled } = useAnimatedBackground();
+  const { enabled: powerSaver } = usePowerSaver();
 
   // --amb-play is the SOLE driver of animation-play-state on all five layers
   // (the CSS has no data-animated selector), so it must stay reactive: a
-  // plain component-body const would read enabled() exactly once at mount
-  // (Solid components run once — the react file's per-render const only
-  // works because React re-executes the body), freezing the preference for
-  // the whole session. createMemo keeps the read tracked; `style={vars()}`
-  // re-applies on change.
+  // plain component-body const would read enabled()/powerSaver() exactly
+  // once at mount (Solid components run once — the react file's per-render
+  // const only works because React re-executes the body), freezing the
+  // preference for the whole session. createMemo keeps the read tracked;
+  // `style={vars()}` re-applies on change.
   const vars = createMemo((): JSX.CSSProperties => {
-    return { "--amb-play": enabled() ? "running" : "paused" };
+    return { "--amb-play": enabled() && !powerSaver() ? "running" : "paused" };
   });
 
   return (
@@ -36,16 +44,21 @@ export function AmbientBackground(): JSX.Element {
       data-testid="ambient-background"
       aria-hidden="true"
       data-animated={enabled() ? "true" : "false"}
+      data-power-saver={powerSaver() ? "true" : "false"}
       class={styles.wrap}
       style={vars()}
     >
-      <div class={styles.aurora}>
-        <div class={styles.layerA} />
-        <div class={styles.layerB} />
-      </div>
-      <div class={styles.sweep} />
+      <Show when={!powerSaver()}>
+        <div data-layer="aurora" class={styles.aurora}>
+          <div class={styles.layerA} />
+          <div class={styles.layerB} />
+        </div>
+        <div class={styles.sweep} />
+      </Show>
       <div class={styles.grid} />
-      <div class={styles.dots} />
+      <Show when={!powerSaver()}>
+        <div class={styles.dots} />
+      </Show>
       <div class={styles.vignette} />
     </div>
   );
