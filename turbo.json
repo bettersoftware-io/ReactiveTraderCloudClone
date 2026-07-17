@@ -58,7 +58,8 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": ["VITE_SERVER_URL"]
     },
     "clean": {
       "cache": false
