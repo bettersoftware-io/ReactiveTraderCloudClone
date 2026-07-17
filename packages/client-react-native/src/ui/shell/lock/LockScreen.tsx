@@ -1,8 +1,10 @@
 import type { JSX } from "react";
+import { useState } from "react";
 import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   type TextStyle,
   View,
   type ViewStyle,
@@ -11,7 +13,6 @@ import Svg, { Circle, Polygon } from "react-native-svg";
 
 import { useViewModel } from "@rtc/react-bindings";
 
-import { DEMO_PASSWORD } from "#/app/nativeAuthConfig";
 import { BiometricLine } from "#/ui/shell/lock/BiometricLine";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
@@ -20,16 +21,18 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 /** Full-screen session-lock overlay. Renders nothing unless the session is
  * locked; while locked it covers the whole shell — an absolute-fill <View>
  * (NOT an RN Modal: Modal-via-press segfaults under x86 jest) — and shows the
- * operator identity plus an AUTHENTICATE control that re-authenticates
- * (unlock). RN has no login UI (deferred), so AUTHENTICATE re-auths with the
- * same baked demo credential `AppRoot` auto-logs-in with, rather than a typed
- * password. All state arrives through the reused `useAuth` seam; only
+ * operator identity plus a password-gated AUTHENTICATE control that
+ * re-authenticates (unlock) against the real credentials seam. Dumb
+ * component: all state arrives through the reused `useAuth` seam; the typed
+ * password lives in local component state only and is never logged. Only
  * BiometricLine is decorative. */
 export function LockScreen(): JSX.Element | null {
   const { useAuth } = useViewModel();
   const { state, unlock } = useAuth();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
+
+  const [password, setPassword] = useState("");
 
   if (!state.locked || !state.user) {
     return null;
@@ -78,10 +81,31 @@ export function LockScreen(): JSX.Element | null {
       </Text>
       <Text style={styles.role}>{user.role}</Text>
 
+      <View style={styles.field}>
+        <Text style={styles.label}>Password</Text>
+        <TextInput
+          testID="lock-password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="Enter password..."
+          placeholderTextColor={styles.placeholder.color}
+          style={styles.input}
+        />
+      </View>
+
+      {state.error !== null ? (
+        <Text testID="lock-error" style={styles.error}>
+          {state.error}
+        </Text>
+      ) : null}
+
       <Pressable
         testID="lock-authenticate"
         onPress={() => {
-          unlock(DEMO_PASSWORD);
+          unlock(password);
         }}
       >
         <Text style={styles.authenticate}>AUTHENTICATE ▸</Text>
@@ -100,6 +124,11 @@ interface LockScreenStyles {
   initials: TextStyle;
   name: TextStyle;
   role: TextStyle;
+  field: ViewStyle;
+  label: TextStyle;
+  input: TextStyle;
+  placeholder: TextStyle;
+  error: TextStyle;
   authenticate: TextStyle;
 }
 
@@ -139,6 +168,28 @@ function makeStyles(t: RnTheme): LockScreenStyles {
     },
     name: { color: t.textPrimary, fontFamily: t.fontDisplay, fontSize: 16 },
     role: { color: t.textMuted, fontFamily: t.fontMono, fontSize: 11 },
+    field: { width: "100%", maxWidth: 320, gap: 4, marginTop: 8 },
+    label: {
+      color: t.textSecondary,
+      fontFamily: t.fontDisplay,
+      fontSize: 12,
+      letterSpacing: 1,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: t.border,
+      borderRadius: 6,
+      padding: 10,
+      color: t.textPrimary,
+      fontFamily: t.fontMono,
+    },
+    placeholder: { color: t.textMuted },
+    error: {
+      color: t.accentNegative,
+      fontFamily: t.fontMono,
+      fontSize: 12,
+      marginTop: 4,
+    },
     authenticate: {
       color: t.accentPrimary,
       fontFamily: t.fontDisplay,
