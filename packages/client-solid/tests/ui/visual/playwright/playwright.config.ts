@@ -20,14 +20,17 @@ const PORT = 3300;
 // tier's `--update`/`-u` argv guard (../vitest-browser/vitest-browser.config.ts).
 // Also covers playwright's short alias `-u` (equivalent to
 // `--update-snapshots`) — without this, `-u` would slip past the guard and
-// still flip `updateSnapshots` at runtime.
+// still flip `updateSnapshots` at runtime. `startsWith("-u")` catches every
+// Commander-CLI short-flag shape: bare `-u`, `-u=X`, and the concatenated
+// `-uX` form (e.g. `-uall`, `-umissing`) — playwright's `--help` confirms
+// `-u` is the only short flag beginning with "u" in its whole CLI, so this
+// has zero false-positive risk against any other flag.
 if (
   process.argv.some((arg) => {
     return (
       arg === "--update-snapshots" ||
       arg.startsWith("--update-snapshots=") ||
-      arg === "-u" ||
-      arg.startsWith("-u=")
+      arg.startsWith("-u")
     );
   })
 ) {

@@ -66,15 +66,15 @@ const PORT = 3400;
 
 // Assert-only tier: see ../playwright/playwright.config.ts for the full
 // rationale (byte-identical guard) — this package owns NO goldens, and
-// `--update-snapshots` (nor its short alias `-u`) must never be able to
-// write into client-react's tree.
+// `--update-snapshots` (nor its short alias `-u`, in any of its bare/`-u=X`/
+// concatenated `-uX` forms — e.g. `-uall`, `-umissing`) must never be able
+// to write into client-react's tree.
 if (
   process.argv.some((arg) => {
     return (
       arg === "--update-snapshots" ||
       arg.startsWith("--update-snapshots=") ||
-      arg === "-u" ||
-      arg.startsWith("-u=")
+      arg.startsWith("-u")
     );
   })
 ) {
