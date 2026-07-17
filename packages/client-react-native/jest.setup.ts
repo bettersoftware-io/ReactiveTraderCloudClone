@@ -5,8 +5,18 @@ import "react-native-gesture-handler/jestSetup";
 
 // Reanimated ships an official mock (stable across v3/v4). It replaces the
 // worklet runtime with synchronous JS so animated components render in jsdom.
+// The official mock deliberately omits `useReducedMotion` ("ADD ME IF
+// NEEDED" in its source) — Task 6's `useAmbientEnabled` calls it, so it's
+// added here, pinned to `false` (no test exercises reduced-motion directly;
+// that's an on-device concern per the perf doctrine).
 jest.mock("react-native-reanimated", () => {
-  return require("react-native-reanimated/mock");
+  const officialMock = require("react-native-reanimated/mock");
+  return {
+    ...officialMock,
+    useReducedMotion: () => {
+      return false;
+    },
+  };
 });
 
 interface HostElementProps {
@@ -34,6 +44,12 @@ jest.mock("@shopify/react-native-skia", () => {
     Path: passthrough("SkiaPath"),
     Line: passthrough("SkiaLine"),
     Paint: passthrough("SkiaPaint"),
+    // Task 6 (AmbientBackground): a blur filter node (child of a shape) and
+    // the `vec(x, y)` point-constructor helper Line's p1/p2 need.
+    Blur: passthrough("SkiaBlur"),
+    vec: (x: number, y: number) => {
+      return { x, y };
+    },
   };
 });
 

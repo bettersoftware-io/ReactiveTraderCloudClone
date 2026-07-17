@@ -32,6 +32,7 @@
     "dev:ios": "pnpm --filter @rtc/client-react-native ios",
     "dev:devtools": "pnpm --filter @rtc/devtools-app dev",
     "dev:devtools:ext": "pnpm --filter @rtc/devtools-extension dev",
+    "dev:devtools:relay": "pnpm --filter @rtc/devtools-relay dev",
     "clean": "turbo run clean && (rm -rf .turbo 2>/dev/null || true)",
     "clean:deep": "turbo run clean:deep && (rm -rf node_modules .pnpm-store .turbo 2>/dev/null || true) && find . -name .DS_Store -type f -delete",
     "lint:actions": "scripts/install-actionlint.sh && .tooling/actionlint -color",
