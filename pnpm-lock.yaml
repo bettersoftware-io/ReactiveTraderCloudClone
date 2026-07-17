@@ -269,6 +269,9 @@ importers:
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../client-core
+      '@rtc/devtools-core':
+        specifier: workspace:*
+        version: link:../devtools-core
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
