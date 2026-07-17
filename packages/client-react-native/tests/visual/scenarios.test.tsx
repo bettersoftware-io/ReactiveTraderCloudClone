@@ -16,7 +16,11 @@ test("registry ids stay in sync with the pure SCENARIO_IDS runner list", () => {
   // The Node/tsx runners iterate SCENARIO_IDS (no RN import); the registry
   // builds RN scenarios. They must not drift, or a runner would silently skip
   // (or fail to find) a scenario.
-  expect(SCENARIOS.map((s) => {return s.id}).sort()).toEqual([...SCENARIO_IDS].sort());
+  expect(
+    SCENARIOS.map((s) => {
+      return s.id;
+    }).sort(),
+  ).toEqual([...SCENARIO_IDS].sort());
 });
 
 test("resolves by id", () => {
