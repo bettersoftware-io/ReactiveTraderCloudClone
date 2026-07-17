@@ -20,7 +20,6 @@
 - **Jarvis AI assistant** — impl deferred. Spec: [superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md](superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md) (no plan file yet)
 - **Login + server-side auth (Phase 1)** — not built; Phase 2 not yet spec'd. Plan: [superpowers/plans/2026-07-12-phase1-login-and-server-auth.md](superpowers/plans/2026-07-12-phase1-login-and-server-auth.md)
 - **Feature flags** — OpenFeature + Flagsmith. Plan: [superpowers/plans/2026-07-01-feature-flags.md](superpowers/plans/2026-07-01-feature-flags.md)
-- **Power-saver mode** — Plan: [superpowers/plans/2026-07-09-power-saver-mode.md](superpowers/plans/2026-07-09-power-saver-mode.md)
 - **Devtools MV3 Chrome extension** — third `Duplex` transport (ChromeRuntimeDuplex + content-script bridge + tab-keyed background router + RTC devtools panel); observe-only, zero app-side changes. Plan: [superpowers/plans/2026-07-14-devtools-chrome-extension.md](superpowers/plans/2026-07-14-devtools-chrome-extension.md)
 - **Devtools intent injection** — panel→app intent invocation (first inbound write), dev-build-only gate. Plan: [superpowers/plans/2026-07-15-devtools-intent-injection.md](superpowers/plans/2026-07-15-devtools-intent-injection.md)
 - **Devtools record / replay / time-scrub** — panel-only flight recorder + JSON export/import + scrub slider over the recorded buffer. Plan: [superpowers/plans/2026-07-15-devtools-record-replay.md](superpowers/plans/2026-07-15-devtools-record-replay.md)
