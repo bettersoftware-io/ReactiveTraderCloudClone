@@ -63,6 +63,10 @@ Credentials are never committed to this repo; see
 [docs/DEPLOY.md](../../docs/DEPLOY.md) and
 [docs/env-files.md](../../docs/env-files.md) for how they're provisioned.
 
+For the full end-to-end auth flow across both clients (login, resume-on-boot,
+lock/unlock, the roster, and per-platform credential configuration), see
+[docs/authentication.md](../../docs/authentication.md).
+
 ## How it's used
 
 The server has no simulator/real-transport split -- it *is* the thing WS-real clients connect to. Its own composition root builds the services once, combines the 24 effects into one listener, wires up `/login` + the token-gated WS upgrade, and wires every incoming connection through it (`packages/server/src/index.ts`):

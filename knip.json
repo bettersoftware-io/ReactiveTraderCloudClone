@@ -85,6 +85,7 @@
         "vitest.config.ts",
         "jest.config.js",
         "jest.setup.ts",
+        "jest.resolver.js",
         "expo-env.d.ts",
         "scripts/liveWsSmoke.ts"
       ],
@@ -92,7 +93,10 @@
       "ignoreDependencies": [
         "expo-status-bar",
         "babel-plugin-module-resolver",
-        "babel-preset-expo"
+        "babel-preset-expo",
+        "expo-blur",
+        "expo-haptics",
+        "expo-sensors"
       ]
     },
     "tests": {

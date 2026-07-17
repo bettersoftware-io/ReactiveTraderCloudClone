@@ -66,15 +66,14 @@ test("mount then unmount of simulator AppRoot does not throw", async () => {
   await expect(view.unmount()).resolves.toBeUndefined();
 });
 
-// AppRoot has no login UI (deferred) — on mount it auto-logs-in with the
-// baked demo credential so the app boots authenticated. The simulator
-// branch's AuthSimulator resolves login synchronously (`of(...)`), so by the
-// time this child renders, the auth presenter has already flipped from
-// "unauthenticated" straight to "authenticated" (never observed mid-flight).
-test("auto-login authenticates on mount (simulator, demo credential)", async () => {
+// AppRoot no longer auto-logs-in on mount — the app is now gated behind
+// AuthGate/LoginScreen (wired in _layout.tsx), so the composition boots with
+// no credential submitted and the auth presenter stays "unauthenticated"
+// until the operator signs in.
+test("does not auto-login on mount; auth state stays unauthenticated", async () => {
   await renderAuthProbe();
   expect(screen.getByTestId("auth-status").props.children).toBe(
-    "authenticated",
+    "unauthenticated",
   );
 });
 

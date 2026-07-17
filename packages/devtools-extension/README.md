@@ -34,7 +34,7 @@ See [`docs/architecture/20-devtools.md`](../../docs/architecture/20-devtools.md)
 
 ## Build & load
 
-    pnpm dev:ext            # build the unpacked bundle to packages/devtools-extension/dist
+    pnpm dev:devtools:ext   # watch-build the unpacked bundle to packages/devtools-extension/dist
 
 Then in Chrome: `chrome://extensions` → enable Developer mode → **Load unpacked**
 → select `packages/devtools-extension/dist`. Open the app, open DevTools, select

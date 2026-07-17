@@ -3,9 +3,12 @@ packages:
   - "tests"
 # Install-script allowlist (pnpm 11 strictDepBuilds): pnpm blocks dependency
 # lifecycle scripts by default; only the packages set to `true` here may execute
-# code at install time. Both are trusted build/test tooling that need native
-# binaries — esbuild (the bundler under vite/vitest/tsx) and cypress (e2e runner).
+# code at install time. All three are trusted build/test tooling that need
+# native binaries — esbuild (the bundler under vite/vitest/tsx), cypress (e2e
+# runner), and @shopify/react-native-skia (its postinstall fetches Skia's
+# prebuilt native libs, required for the native iOS/Android build later).
 allowBuilds:
+  '@shopify/react-native-skia': true
   cypress: true
   esbuild: true
 
@@ -61,3 +64,45 @@ overrides:
   # ESM import, matching RN 0.86 by construction. Without this override the
   # peer re-resolves to 4.0.1 on every install.
   "@expo/metro-runtime": ~57.0.3
+  # react-native-reanimated@4.5.0 + react-native-worklets: two overrides keep
+  # the RN native Metro bundle compiling. Neither failure is visible to the
+  # jest/vitest suite — worklets is disabled under jest and Metro is never run;
+  # the CI `expo export` step (ci.yml) is the only exerciser.
+  #
+  # (1) VERSION: pin worklets to the SDK-57-blessed 0.10.0 that reanimated@4.5.0
+  # was BUILT against (its own devDependency is react-native-worklets@0.10.0, and
+  # expo's bundledNativeModules for SDK 57 pins 0.10.0). The worklets babel plugin
+  # and the worklets runtime must be the SAME version or the transform emits code
+  # the runtime mis-reads (`Cannot read properties of undefined (reading 'length')`
+  # while transforming reanimated's own Easing.ts) — see the Reanimated
+  # troubleshooting guide. reanimated peers `0.10.x`, so a natural install lets
+  # pnpm float the peer to 0.10.1 (a MISMATCH vs the 0.10.0 plugin); force 0.10.0
+  # everywhere so plugin == runtime == the tested pair.
+  react-native-worklets: 0.10.0
+  # (2) BABEL: worklets' nested babel transform (its @babel/preset-typescript@^7)
+  # hard-asserts the caller's @babel/core is ^7, but worklets declares @babel/core
+  # peer `*` so pnpm otherwise hands it the workspace-hoisted @babel/core@8.0.1
+  # (pulled at ^8 by client-react/devtools-app for React Compiler) → throws
+  # `Requires Babel "^7.0.0-0", but was loaded with "8.0.1"`. Scope @babel/core to
+  # 7.29.7 INSIDE the worklets subtree only — the web packages keep @babel/core@8,
+  # and syncpack is unaffected (an override is not a package.json dep). 7.29.7 is
+  # already in the tree.
+  "react-native-worklets>@babel/core": 7.29.7
+
+# Force @babel/core@7 for the RN Metro babel toolchain. The main Metro transform
+# runs through @expo/metro-config's babel-transformer, whose `require("@babel/core")`
+# otherwise resolves the workspace-hoisted @babel/core@8.0.1 (pulled at ^8 by
+# client-react/devtools-app for React Compiler). That made the MAIN pass Babel 8
+# while worklets' nested pass ran the scoped Babel 7 above — cross-version AST
+# mixing that crashed the x86 Metro bundle (`reading 'length'` in worklets'
+# plugin on reanimated's Easing.ts; invisible to the jest/vitest suite and to
+# arm64-local, only caught by CI's `expo export`). Giving @expo/metro-config its
+# own @babel/core@7.29.7 makes the whole RN transform uniformly Babel 7.
+# This is done via packageExtensions (NOT a client-react-native devDependency) so
+# neither manypkg nor syncpack sees an @babel/core version split — the web packages
+# keep @babel/core@8. @expo/metro-config is RN-only (web builds with Vite), so this
+# cannot affect the web bundles.
+packageExtensions:
+  "@expo/metro-config":
+    dependencies:
+      "@babel/core": "7.29.7"
