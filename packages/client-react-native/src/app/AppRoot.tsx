@@ -1,6 +1,5 @@
 import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
 
-import type { AuthPresenter } from "@rtc/client-core";
 import { createApp, createMachineFactories } from "@rtc/client-core";
 import {
   createViewModel,
@@ -9,18 +8,16 @@ import {
 } from "@rtc/react-bindings";
 
 import { buildNativePorts } from "#/app/buildNativePorts";
-import { DEMO_PASSWORD, DEMO_USERNAME } from "#/app/nativeAuthConfig";
 
 /** The RN app's composition root, as a component. Builds the presenters and the
  * ViewModel exactly once for this mount and supplies the ViewModelProvider to
  * the tree — the analogue of client-react's `AppRoot`, minus the web shell
  * (ThemeProvider / BootGate / boot-splash gate).
  *
- * RN has no login UI yet (deferred): once mounted, the effect below auto-logs
- * in with a baked demo credential (`nativeAuthConfig.ts`) so the app boots
- * authenticated and stays connected — the RN analogue of the web client's
- * LoginScreen. `LockScreen`'s AUTHENTICATE control re-auths with the same
- * credential to clear the lock.
+ * RN now has a login UI (`AuthGate` + `LoginScreen`, wired in `_layout.tsx`)
+ * gating the app until the operator authenticates — no baked auto-login here.
+ * `LockScreen`'s AUTHENTICATE control still re-auths with the baked demo
+ * credential (`nativeAuthConfig.ts`) to clear the lock.
  *
  * The build runs in a lazy ref, not useState/useMemo: React StrictMode
  * double-invokes the render body (and state/memo initializers) in dev to
@@ -59,23 +56,12 @@ export function AppRoot({ simulator, children }: AppRootProps): ReactElement {
       createMachineFactories(presenters),
       commands,
     );
-    ref.current = { viewModel, auth: presenters.auth, dispose };
+    ref.current = { viewModel, dispose };
   }
 
   const keepAlive = useRef(true);
-  // Guards the auto-login call to fire exactly once per mount, including
-  // under StrictMode's synchronous setup->cleanup->setup double-invoke: the
-  // ref cell (unlike effect-local state) survives that cycle, so the second
-  // setup sees `current === true` and skips re-calling `login`.
-  const autoLoginAttempted = useRef(false);
   useEffect(() => {
     keepAlive.current = true; // a re-setup (StrictMode remount) cancels a pending disposal
-
-    if (!autoLoginAttempted.current) {
-      autoLoginAttempted.current = true;
-      // Never log the credential itself.
-      ref.current?.auth.login(DEMO_USERNAME, DEMO_PASSWORD);
-    }
 
     return (): void => {
       keepAlive.current = false;
@@ -102,6 +88,5 @@ interface AppRootProps {
 
 interface Composition {
   viewModel: ViewModel;
-  auth: AuthPresenter;
   dispose: () => void;
 }
