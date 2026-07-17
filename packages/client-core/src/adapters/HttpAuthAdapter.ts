@@ -46,7 +46,7 @@ export class HttpAuthAdapter implements AuthPort {
 
     if (response.status === 200) {
       const dto: LoginResponseDto = await response.json();
-      return { ok: true, token: dto.token, user: dto.user };
+      return { ok: true, token: dto.token, user: dto.user, exp: dto.exp };
     }
 
     if (response.status === 401) {

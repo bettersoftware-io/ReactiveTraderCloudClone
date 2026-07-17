@@ -80,7 +80,7 @@ function createFakeAuthPort(): AuthPort {
   return {
     login(username: string, password: string): Observable<AuthOutcome> {
       if (username === "demo" && password === "pw") {
-        return of({ ok: true, token: "t", user: DEMO_USER });
+        return of({ ok: true, token: "t", user: DEMO_USER, exp: 9_000_000 });
       }
 
       return of({ ok: false, reason: "invalid" });

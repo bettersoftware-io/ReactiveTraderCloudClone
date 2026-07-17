@@ -6,11 +6,7 @@ import type { AuthOutcome, AuthPort, SessionUser } from "@rtc/domain";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { StoredSession } from "#/adapters/sessionStore";
 
-import {
-  AuthPresenter,
-  type AuthViewState,
-  SESSION_TTL_MS,
-} from "../AuthPresenter";
+import { AuthPresenter, type AuthViewState } from "../AuthPresenter";
 
 const USER: SessionUser = {
   name: "Anthony Stark",
@@ -38,7 +34,7 @@ describe("AuthPresenter", () => {
     store.write(session);
 
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: true, token: "tok-1", user: USER }),
+      fakeAuthPort({ ok: true, token: "tok-1", user: USER, exp: 9_000_000 }),
       store,
       now,
     );
@@ -102,7 +98,7 @@ describe("AuthPresenter", () => {
 
     const store = new InMemorySessionStore();
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: true, token: "tok-2", user: USER }),
+      fakeAuthPort({ ok: true, token: "tok-2", user: USER, exp: 9_000_000 }),
       store,
       now,
     );
@@ -126,7 +122,7 @@ describe("AuthPresenter", () => {
       token: "tok-2",
       user: USER,
       username: "astark",
-      exp: now() + SESSION_TTL_MS,
+      exp: 9_000_000,
     });
   });
 
@@ -173,7 +169,7 @@ describe("AuthPresenter", () => {
       exp: now() + 1000,
     });
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: true, token: "tok-3", user: USER }),
+      fakeAuthPort({ ok: true, token: "tok-3", user: USER, exp: 9_000_000 }),
       store,
       now,
     );
@@ -202,7 +198,12 @@ describe("AuthPresenter", () => {
       username: "astark",
       exp: currentNow + 1000,
     });
-    const auth = fakeAuthPort({ ok: true, token: "tok-4", user: USER });
+    const auth = fakeAuthPort({
+      ok: true,
+      token: "tok-4",
+      user: USER,
+      exp: 9_500_000,
+    });
     const presenter = new AuthPresenter(auth, store, now);
 
     presenter.lock();
@@ -222,7 +223,7 @@ describe("AuthPresenter", () => {
       token: "tok-4",
       user: USER,
       username: "astark",
-      exp: currentNow + SESSION_TTL_MS,
+      exp: 9_500_000,
     });
   });
 
@@ -296,7 +297,7 @@ describe("AuthPresenter", () => {
       exp: now() + 1000,
     });
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: true, token: "tok-6", user: USER }),
+      fakeAuthPort({ ok: true, token: "tok-6", user: USER, exp: 9_000_000 }),
       store,
       now,
     );

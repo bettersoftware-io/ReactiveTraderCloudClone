@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import type { JSX } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   type ColorValue,
   SafeAreaView,
@@ -13,7 +13,10 @@ import {
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import type { SessionStore } from "@rtc/client-core";
+
 import { AppRoot } from "#/app/AppRoot";
+import { AsyncStorageSessionStore } from "#/app/adapters/AsyncStorageSessionStore";
 import { shouldPlayBootSplash } from "#/app/bootSplashGate";
 import { MotionProbe } from "#/ui/_probe/MotionProbe";
 import { AmbientBackground } from "#/ui/ambient/AmbientBackground";
@@ -21,6 +24,7 @@ import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 import { AuthGate } from "#/ui/shell/auth/AuthGate";
+import { LogoutButton } from "#/ui/shell/auth/LogoutButton";
 import { BootGate } from "#/ui/shell/boot/BootGate";
 import { LockButton } from "#/ui/shell/lock/LockButton";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
@@ -33,13 +37,33 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 /** Root layout: owns the simulator/live toggle, wraps the tab navigator in one
  * `AppRoot` (one composition, one WS, one blotter presenter) and one
  * `ThemeProvider` (one resolved skin×mode shared by every tab). First paint is
- * gated on the bundled fonts so no leaf renders a not-yet-loaded family. */
+ * gated on both the bundled fonts (so no leaf renders a not-yet-loaded family)
+ * and a hydrated `AsyncStorageSessionStore` — `AuthPresenter.resume()` reads
+ * the store synchronously at construction, so the persisted session must be
+ * loaded into the in-memory mirror before `AppRoot` mounts, else a cold launch
+ * would always fall back to the login screen. The store is created once and
+ * kept stable across the sim/live `key`-remount, so a session survives a
+ * toggle; `logout()` clears it (and AsyncStorage) through the same instance. */
 export default function RootLayout(): JSX.Element {
   const [simulator, setSimulator] = useState(false);
   const [bootDone, setBootDone] = useState(false);
+  const [sessionStore, setSessionStore] = useState<SessionStore | null>(null);
   const fontsLoaded = useAppFonts();
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    let alive = true;
+    void AsyncStorageSessionStore.hydrate().then((store) => {
+      if (alive) {
+        setSessionStore(store);
+      }
+    });
+
+    return (): void => {
+      alive = false;
+    };
+  }, []);
+
+  if (!fontsLoaded || sessionStore === null) {
     return (
       <GestureHandlerRootView style={styles.screen}>
         <SafeAreaView style={styles.screen} testID="fonts-loading" />
@@ -52,7 +76,11 @@ export default function RootLayout(): JSX.Element {
   return (
     <GestureHandlerRootView style={styles.screen}>
       <SafeAreaView style={styles.screen}>
-        <AppRoot key={simulator ? "sim" : "live"} simulator={simulator}>
+        <AppRoot
+          key={simulator ? "sim" : "live"}
+          simulator={simulator}
+          sessionStore={sessionStore}
+        >
           <ThemeProvider>
             <AuthGate simulator={simulator} onToggleSimulator={setSimulator}>
               <Chrome simulator={simulator} onToggle={setSimulator} />
@@ -101,6 +129,7 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
             }}
           />
           <LockButton />
+          <LogoutButton />
         </View>
       </View>
       <ConnectionBanner />
