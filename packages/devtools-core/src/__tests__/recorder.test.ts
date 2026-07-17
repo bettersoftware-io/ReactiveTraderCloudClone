@@ -7,31 +7,6 @@ import { PROTOCOL_VERSION } from "../protocol";
 import { Recorder } from "../Recorder";
 import { RECORDING_VERSION } from "../recording";
 
-function emission(
-  streamId: string,
-  value: number,
-  seq: number,
-  ts: number,
-): DevtoolsEvent {
-  return { kind: "stream:emission", streamId, value, coalesced: 1, seq, ts };
-}
-
-function batch(seq: number): AppToInspector {
-  return { kind: "batch", events: [emission("s.a$", seq, seq, seq * 10)] };
-}
-
-function seededState(): InspectorState {
-  const store = new InspectorStore({ coalesce: false });
-  store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc" });
-  store.apply({
-    kind: "snapshot",
-    streams: [{ streamId: "s.a$", value: 1 }],
-    machines: [],
-  });
-
-  return store.getSnapshot();
-}
-
 describe("Recorder", () => {
   it("seeds frame 0 with a snapshot from live state and appends frames in order", () => {
     const recorder = new Recorder();
@@ -87,6 +62,33 @@ describe("Recorder", () => {
   it("capture is a no-op when not recording; toRecording throws with nothing captured", () => {
     const recorder = new Recorder();
     recorder.capture(batch(1)); // ignored — never started
-    expect(() => recorder.toRecording()).toThrow(/nothing recorded/);
+    expect(() => {
+      return recorder.toRecording();
+    }).toThrow(/nothing recorded/);
   });
 });
+
+function emission(
+  streamId: string,
+  value: number,
+  seq: number,
+  ts: number,
+): DevtoolsEvent {
+  return { kind: "stream:emission", streamId, value, coalesced: 1, seq, ts };
+}
+
+function batch(seq: number): AppToInspector {
+  return { kind: "batch", events: [emission("s.a$", seq, seq, seq * 10)] };
+}
+
+function seededState(): InspectorState {
+  const store = new InspectorStore({ coalesce: false });
+  store.apply({ kind: "welcome", v: PROTOCOL_VERSION, appId: "rtc" });
+  store.apply({
+    kind: "snapshot",
+    streams: [{ streamId: "s.a$", value: 1 }],
+    machines: [],
+  });
+
+  return store.getSnapshot();
+}
