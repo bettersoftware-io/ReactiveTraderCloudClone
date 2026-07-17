@@ -10,3 +10,4 @@ export const FONT_CHAKRA_DISPLAY = "ChakraPetch_500Medium";
 export const FONT_JETBRAINS_MONO = "JetBrainsMono_400Regular";
 export const FONT_IBM_SANS = "IBMPlexSans_400Regular";
 export const FONT_IBM_MONO = "IBMPlexMono_400Regular";
+export const FONT_ORBITRON_WORDMARK = "Orbitron_700Bold";
