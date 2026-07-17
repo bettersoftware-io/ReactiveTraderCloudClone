@@ -34,7 +34,7 @@ env); it is git-ignored via `.vercel/` and safe to delete — `vercel link` /
 | `AUTH_USERS` | Fly secret (by hand) | The real credential roster, `"user:pass,user2:pass2"` | `parseAuthUsers` (`packages/server/src/auth/loadUsers.ts`) — never committed; ask the team |
 | `AUTH_TTL_MS` | Fly secret (by hand, optional) | Session-token lifetime in ms (defaults to 8h) | `AuthService` |
 | `VITE_DEV_AUTH` | `packages/client-react/.env.local` (local only) | JSON `username -> password` map for **local simulator-mode dev only**, e.g. `{"demo":"localpass"}` | `AuthSimulator` via `buildBrowserPorts.ts`'s `parseDevAuth` |
-| `EXPO_PUBLIC_DEMO_USER` / `EXPO_PUBLIC_DEMO_PASS` | `packages/client-react-native/.env` | The baked demo credential the mobile app auto-logs-in with (no login UI yet) | `nativeAuthConfig.ts` → `buildNativePorts.ts` |
+| `EXPO_PUBLIC_DEV_AUTH` | `packages/client-react-native/.env` | JSON `username -> password` map for **local simulator-mode dev only** (mobile analogue of `VITE_DEV_AUTH`), falling back to all four roster usernames at a shared dev password when unset | `AuthSimulator` via `nativeAuthConfig.ts`'s `DEV_CREDENTIALS` → `buildNativePorts.ts` |
 
 None of these hold a real production credential in a committed file —
 `VITE_DEV_AUTH`'s example and the RN `.env.example` both ship placeholder
@@ -57,18 +57,20 @@ cp packages/client-react-native/.env.example packages/client-react-native/.env
 
 Per-developer, git-ignored. Keys:
 
-- `EXPO_PUBLIC_DEMO_USER` / `EXPO_PUBLIC_DEMO_PASS` — the demo credential the
-  app auto-logs-in with on every launch; both default to the public "demo"
-  roster account when unset. Against a **real deployed server**, this pair
-  must exist in its `AUTH_USERS` secret — ask the team for real credentials.
+- `EXPO_PUBLIC_DEV_AUTH` — **simulator-mode only** JSON `username -> password`
+  map; unset/malformed falls back to all four roster usernames at a shared
+  local dev password. The app shows a login screen on every launch (no
+  auto-login) — in **live** mode, sign in with any credential that exists in
+  the real deployed server's `AUTH_USERS` secret instead (ask the team).
 - `EXPO_PUBLIC_SERVER_URL` — optional; overrides the WS endpoint (defaults to
   `wss://rtc-clone-server.fly.dev`; set to `""` to force the in-process
   simulator).
 
-Flow: `app.config.ts` reads these into `extra.demoUser`/`extra.demoPass` /
-`extra.serverUrl` → `nativeAuthConfig.ts` supplies the credential to
-`buildNativePorts.ts`, which logs in via `HttpAuthAdapter` (or `AuthSimulator`
-in simulator mode) and feeds the resulting session token to `WsAdapter`.
+Flow: `app.config.ts` reads these into `extra.devAuth` / `extra.serverUrl` →
+`nativeAuthConfig.ts` supplies the simulator-only credential map to
+`buildNativePorts.ts`, which logs in via `HttpAuthAdapter` (live) or
+`AuthSimulator` (simulator) and feeds the resulting session token to
+`WsAdapter`.
 
 > ⚠️ **`EXPO_PUBLIC_*` is inlined into the JS bundle when Metro starts** — it is
 > not hot-reloaded. After editing this file you must **restart Metro**
@@ -77,7 +79,7 @@ in simulator mode) and feeds the resulting session token to `WsAdapter`.
 > connect" trap.
 
 Full walkthrough (server side + client side): the RN package README,
-[Live data, auto-login & the demo credential](../packages/client-react-native/README.md#live-data-auto-login--the-demo-credential-expo_public_demo_userexpo_public_demo_pass).
+[Live data & signing in](../packages/client-react-native/README.md#live-data--signing-in).
 
 ### `packages/client-react/.env.example` — the tracked web template
 
@@ -140,8 +142,8 @@ production — login always happens live against the server.)
 
 - [DEPLOY.md](./DEPLOY.md) — Fly + Vercel setup, the deploy workflow, and
   credential management.
-- [client-react-native README](../packages/client-react-native/README.md#live-data-auto-login--the-demo-credential-expo_public_demo_userexpo_public_demo_pass) —
-  the mobile demo-credential walkthrough end to end.
+- [client-react-native README](../packages/client-react-native/README.md#live-data--signing-in) —
+  the mobile sign-in walkthrough end to end.
 - [`@rtc/server` README](../packages/server/README.md) — `POST /login`,
   `AuthService`, and the `AUTH_SECRET`/`AUTH_USERS`/`AUTH_TTL_MS` server-side
   env vars.

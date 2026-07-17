@@ -16,8 +16,10 @@ import { buildNativePorts } from "#/app/buildNativePorts";
  *
  * RN now has a login UI (`AuthGate` + `LoginScreen`, wired in `_layout.tsx`)
  * gating the app until the operator authenticates — no baked auto-login here.
- * `LockScreen`'s AUTHENTICATE control still re-auths with the baked demo
- * credential (`nativeAuthConfig.ts`) to clear the lock.
+ * `LockScreen`'s AUTHENTICATE control re-auths with a typed password (the
+ * real credentials seam via `useAuth().unlock`) to clear the lock — no baked
+ * credential involved. `nativeAuthConfig.ts` now only supplies simulator-mode
+ * dev credentials to `buildNativePorts`, never consumed directly by UI.
  *
  * The build runs in a lazy ref, not useState/useMemo: React StrictMode
  * double-invokes the render body (and state/memo initializers) in dev to
