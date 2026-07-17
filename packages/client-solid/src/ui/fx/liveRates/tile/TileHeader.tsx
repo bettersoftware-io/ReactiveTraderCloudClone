@@ -23,6 +23,7 @@ export function TileHeader(props: TileHeaderProps): JSX.Element {
               title="Initiate RFQ"
               aria-label="Initiate RFQ"
               class={styles.rfqChip}
+              // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
               onClick={props.onInitiateRfq}
             >
               ⚡ RFQ

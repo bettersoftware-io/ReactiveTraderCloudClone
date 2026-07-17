@@ -7,16 +7,21 @@ import styles from "./DateFilter.module.css";
 
 export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
   const [comparator, setComparator] = createSignal<Comparator>(
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     props.currentFilter?.type === "date"
-      ? props.currentFilter.comparator
+      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+        props.currentFilter.comparator
       : "eq",
   );
   const [value, setValue] = createSignal(
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     props.currentFilter?.type === "date" ? props.currentFilter.value : "",
   );
   const [valueTo, setValueTo] = createSignal(
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     props.currentFilter?.type === "date" && props.currentFilter.valueTo
-      ? props.currentFilter.valueTo
+      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+        props.currentFilter.valueTo
       : "",
   );
 

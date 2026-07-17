@@ -9,19 +9,26 @@ export function NumberFilter<TRow>(
   props: NumberFilterProps<TRow>,
 ): JSX.Element {
   const [comparator, setComparator] = createSignal<Comparator>(
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     props.currentFilter?.type === "number"
-      ? props.currentFilter.comparator
+      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+        props.currentFilter.comparator
       : "eq",
   );
   const [value, setValue] = createSignal(
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     props.currentFilter?.type === "number"
-      ? String(props.currentFilter.value)
+      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+        String(props.currentFilter.value)
       : "",
   );
   const [valueTo, setValueTo] = createSignal(
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     props.currentFilter?.type === "number" &&
+      // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
       props.currentFilter.valueTo != null
-      ? String(props.currentFilter.valueTo)
+      ? // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
+        String(props.currentFilter.valueTo)
       : "",
   );
 

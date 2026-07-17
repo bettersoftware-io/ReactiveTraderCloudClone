@@ -57,6 +57,7 @@ export function TileConfirmation(props: TileConfirmationProps): JSX.Element {
           data-testid="trade-confirmation"
           data-status={statusKey(props.state())}
           data-anim={props.anim}
+          // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
           onClick={props.onDismiss}
           class={styles.overlay}
         >
@@ -143,6 +144,7 @@ function DoneBody(props: DoneBodyProps): JSX.Element {
         type="button"
         class={styles.dismiss}
         data-action="dismiss"
+        // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
         onClick={props.onDismiss}
       >
         DISMISS

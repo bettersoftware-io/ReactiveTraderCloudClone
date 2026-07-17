@@ -15,6 +15,7 @@ export function BlotterRow<TRow extends { status: string }>(
   // in the app-layer createRowHighlightMachine behind the seam, so this row holds
   // no timer. Hover stays here — it's pure interaction view state, no timer.
   const { useRowHighlight } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const highlight = useRowHighlight(props.isNew);
   const [hovered, setHovered] = createSignal(false);
 

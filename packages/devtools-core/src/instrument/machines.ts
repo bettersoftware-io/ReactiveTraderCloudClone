@@ -31,16 +31,15 @@ export function instrumentMachineFactories<F extends object>(
     wrapped[kind] = (...args: never[]): InstrumentableMachine => {
       const machine = factory(...args);
       let machineId = "";
+      const intents: Record<string, unknown> = {};
 
       try {
-        machineId = hub.machineCreated(kind, args, machine.state$);
+        machineId = hub.machineCreated(kind, args, machine.state$, intents);
       } catch {
         return machine; // devtools failed — hand back the raw machine
       }
 
       try {
-        const intents: Record<string, unknown> = {};
-
         for (const [name, fn] of Object.entries(machine.intents)) {
           if (typeof fn !== "function") {
             intents[name] = fn;

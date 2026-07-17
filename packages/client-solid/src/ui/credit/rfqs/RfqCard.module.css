@@ -1,0 +1,260 @@
+.card {
+  position: relative;
+  background: var(--tile);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 14px 15px;
+  box-shadow: var(--tile-shadow);
+}
+
+.card[data-state="live"] {
+  border-color: var(--border-strong);
+}
+
+/* PROTO Rfqs/RfqCard.tsx cardAnim + global.css cardInA/cardInB/cardOut:
+ * entrance (alternating by rfq-id parity, staggered per-card via
+ * --card-delay) and exit keyframes. Gated on prefers-reduced-motion, same
+ * convention as PositionsPanel.module.css/InhouseLayoutEngine.module.css —
+ * the base rule carries no animation at all under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .card[data-anim="enter"][data-parity="a"] {
+    animation: cardInA 0.46s cubic-bezier(0.2, 0.8, 0.3, 1)
+      var(--card-delay, 0ms) both;
+  }
+
+  .card[data-anim="enter"][data-parity="b"] {
+    animation: cardInB 0.46s cubic-bezier(0.2, 0.8, 0.3, 1)
+      var(--card-delay, 0ms) both;
+  }
+
+  .card[data-anim="exit"] {
+    animation: cardOut 0.34s cubic-bezier(0.4, 0, 0.7, 1) forwards;
+  }
+}
+
+@keyframes cardInA {
+  0% {
+    opacity: 0;
+    transform: translateY(-13px) scale(0.95);
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cardInB {
+  0% {
+    opacity: 0;
+    transform: translateY(-13px) scale(0.95);
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cardOut {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--border);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dirChip {
+  font-family: var(--font-display);
+  font-size: 10px;
+  line-height: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 1px 7px;
+  border-radius: 3px;
+}
+
+.dirChip[data-dir="buy"] {
+  color: var(--accent-positive);
+  border: 1px solid var(--accent-positive);
+}
+
+.dirChip[data-dir="sell"] {
+  color: var(--accent-negative);
+  border: 1px solid var(--accent-negative);
+}
+
+.ticker {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--text-primary);
+}
+
+.subline {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 13px;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+.stateLabel {
+  font-family: var(--font-display);
+  font-size: 10px;
+  line-height: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.stateLabel[data-state="live"] {
+  color: var(--accent-positive);
+}
+
+.stateLabel[data-state="accepted"] {
+  color: var(--accent-primary);
+}
+
+.quotes {
+  padding: 4px 0;
+}
+
+.footer {
+  padding-top: 11px;
+  border-top: 1px solid var(--border);
+}
+
+.liveRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.secs {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.barTrack {
+  flex: 1;
+  height: 5px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+/* Countdown fill drains via ONE mount-time transform animation, not per-tick
+ * width/transform writes: a width transition re-ran layout every frame
+ * (width never composites — measured 3,960 layout invalidations per 12s with
+ * three cards), and a `scaleX(var(...))` transition is ALSO main-thread
+ * (var()-dependent transforms defeat the compositor). Literal keyframes over
+ * --bar-duration (the RFQ's full lifetime), fast-forwarded by a negative
+ * --bar-delay when mounting mid-countdown, run entirely on the compositor —
+ * and drain smoothly instead of the old 1s-stepped transition. Deliberately
+ * NOT reduced-motion-gated: the drain conveys state (time remaining), it is
+ * not decoration. */
+.barFill {
+  height: 100%;
+  width: 100%;
+  transform-origin: left;
+  background: var(--accent-primary);
+  will-change: transform;
+  animation: barDrain var(--bar-duration) linear var(--bar-delay) forwards;
+}
+
+@keyframes barDrain {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.cancelBtn {
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 9px;
+  line-height: 12px;
+  letter-spacing: 0.1em;
+  color: var(--accent-primary);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  padding: 4px 11px;
+}
+
+.acceptedRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkGlyph {
+  color: var(--accent-positive);
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.acceptedText {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--accent-positive);
+}
+
+.removeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.binGlyph {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 15px;
+}
+
+.removeText {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-secondary);
+}

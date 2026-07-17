@@ -13,10 +13,10 @@ if (!rootEl) {
 
 // One session for the module's lifetime — the panel never remounts the
 // underlying BroadcastChannel/InspectorClient, only the view over its store.
-const { store } = createInspectorSession();
+const { store, invokeIntent } = createInspectorSession();
 
 createRoot(rootEl).render(
   <StrictMode>
-    <InspectorApp store={store} />
+    <InspectorApp store={store} onInvokeIntent={invokeIntent} />
   </StrictMode>,
 );

@@ -17,6 +17,7 @@ interface ViewModelProviderProps {
  * value once instead of tracking it. */
 export function ViewModelProvider(props: ViewModelProviderProps): JSX.Element {
   return (
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     <ViewModelContext.Provider value={props.viewModel}>
       {props.children}
     </ViewModelContext.Provider>

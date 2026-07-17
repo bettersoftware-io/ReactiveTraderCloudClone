@@ -106,11 +106,21 @@ jobs:
       - name: UI contract coverage gate (≥95%)
         run: pnpm --filter @rtc/client-react test:ui:contract:coverage
 
+      # Same gate, same neutral specs, second framework: proves the Solid port
+      # carries the react coverage bar (replaceability §8.1 full-parity).
+      # Branches gate at 85 (not 95) — Solid's compiled reactive-effect guards
+      # inflate v8's branch denominator; rationale in the coverage config.
+      - name: UI contract coverage gate — solid (≥95%, branches ≥85%)
+        run: pnpm --filter @rtc/client-solid test:ui:contract:coverage
+
       - name: Build
         run: pnpm build
 
       - name: Prod /devtools/ bundle check
         run: pnpm check:devtools-dist
+
+      - name: Prod app bundle has no intent injection
+        run: pnpm check:devtools-no-inject
 
       - name: Expo bundle smoke (Metro monorepo resolution)
         run: pnpm --filter @rtc/client-react-native export

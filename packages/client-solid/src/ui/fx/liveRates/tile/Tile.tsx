@@ -34,12 +34,19 @@ export function Tile(props: TileProps): JSX.Element {
     useRfqTile,
     useAnimationIntents,
   } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const price = usePrice(props.pair);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const stale = useStaleFlag(props.pair);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const history = usePriceHistory(props.pair.symbol);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const notional = useNotional(props.pair.defaultNotional);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const tileExecution = useTileExecution(props.pair);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const rfqState = useRfqTile(props.pair);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const animIntent = useAnimationIntents(`tile:${props.pair.symbol}`);
 
   // Every derived flag below reads one or more machine-state accessors — each

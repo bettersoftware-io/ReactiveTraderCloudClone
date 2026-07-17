@@ -65,7 +65,9 @@ const NO_VALUE = "—";
 
 function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   const { usePrice, usePriceHistory } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const price = usePrice(props.pair);
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const history = usePriceHistory(props.pair.symbol);
   const movementPips = createMemo((): number | null => {
     return computeMovementPips(history(), props.pair.pipsPosition);

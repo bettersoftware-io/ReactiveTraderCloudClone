@@ -8,6 +8,7 @@ import {
 
 export interface InspectorSession {
   store: InspectorStore;
+  invokeIntent(machineId: string, name: string, args: readonly unknown[]): void;
   dispose(): void;
 }
 
@@ -25,7 +26,7 @@ export function createInspectorSession(): InspectorSession {
   const store = new InspectorStore();
 
   if (typeof BroadcastChannel === "undefined") {
-    return { store, dispose: (): void => {} };
+    return { store, invokeIntent: (): void => {}, dispose: (): void => {} };
   }
 
   const channel = new BroadcastChannelDuplex<InspectorToApp, AppToInspector>(
@@ -36,6 +37,13 @@ export function createInspectorSession(): InspectorSession {
 
   return {
     store,
+    invokeIntent: (
+      machineId: string,
+      name: string,
+      args: readonly unknown[],
+    ): void => {
+      client.invokeIntent(machineId, name, args);
+    },
     dispose: (): void => {
       client.dispose();
       channel.dispose();

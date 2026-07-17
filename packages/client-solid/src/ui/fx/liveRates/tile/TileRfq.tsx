@@ -47,6 +47,7 @@ export function TileRfq(props: TileRfqProps): JSX.Element {
           <div class={styles.awaitingText}>Awaiting Price...</div>
           <button
             type="button"
+            // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
             onClick={props.rfqState.cancel}
             class={styles.cancelButton}
           >
@@ -95,6 +96,7 @@ export function TileRfq(props: TileRfqProps): JSX.Element {
           />
           <button
             type="button"
+            // eslint-disable-next-line solid/reactivity -- native event-handler binding of a props callback is a live reference in Solid JSX
             onClick={props.rfqState.reject}
             class={styles.rejectButton}
           >

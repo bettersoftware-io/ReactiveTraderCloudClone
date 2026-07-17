@@ -20,7 +20,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"],
-      "env": ["VITE_SERVER_URL"]
+      "env": ["VITE_SERVER_URL", "DEV"]
     },
     "typecheck": {
       "dependsOn": ["^build"]

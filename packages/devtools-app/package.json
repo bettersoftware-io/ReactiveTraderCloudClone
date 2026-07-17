@@ -6,6 +6,11 @@
   "imports": {
     "#/*": "./src/*"
   },
+  "exports": {
+    ".": "./src/index.ts",
+    "./InspectorApp.module.css": "./src/InspectorApp.module.css",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "build": "vite build",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",

@@ -23,6 +23,16 @@
       "entry": ["src/main.tsx", "index.html", "vite.config.ts"],
       "project": "src/**/*.{ts,tsx}"
     },
+    "packages/devtools-extension": {
+      "entry": [
+        "src/background.ts",
+        "src/contentBridge.ts",
+        "src/devtools.ts",
+        "src/panel/panel.tsx",
+        "vite.config.ts"
+      ],
+      "project": "src/**/*.{ts,tsx}"
+    },
     "packages/motion-core": {
       "entry": "src/index.ts",
       "project": "src/**/*.ts"

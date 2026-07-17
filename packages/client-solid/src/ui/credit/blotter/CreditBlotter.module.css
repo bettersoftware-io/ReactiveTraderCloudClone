@@ -1,0 +1,153 @@
+/* The layout engine's own .panel already paints the chrome (background,
+ * blur, border, radius, --panel-shadow — InhouseLayoutEngine.module.css
+ * .panel) around a bare .panelBody. Nesting a second card here doubled the
+ * chrome AND capped the table at a fixed height, leaving dead engine-panel
+ * background below it (glaring on maximize) — final review F2. This root
+ * now just fills the panel and lets the table area do the scrolling,
+ * matching the prototype (CreditBlotterPanel.module.css .body). */
+.blotter {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* The blotter chrome (count + quick filter + CSV chip) lives in the panel's
+ * head slot now (CreditBlotterHead, mirroring FxBlotterHead) — the body
+ * keeps just this optional active-filter summary above the table. */
+.filterLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  padding: 8px 14px 0;
+}
+
+/* The fixed column-header region: a separate header-only table that stays
+ * put while .tableWrapper scrolls the rows, and anchors BlotterHeader's
+ * filter popover OUTSIDE the scroll clip. No overflow property here: the
+ * region must stay overflow-visible for the popover. */
+.headerRegion {
+  flex-shrink: 0;
+}
+
+/* Fills the rest of the panel and owns the internal scroll — no fixed
+ * max-height (that's what left the dead engine-panel background below the
+ * old card, glaring on maximize; final review F2). */
+.tableWrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* table-layout:fixed + the shared BlotterColgroup px widths give the header
+ * and rows tables identical column edges (the flexible last column absorbs
+ * the rows region's scrollbar width). */
+.table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 17px;
+  font-family: var(--font-mono);
+}
+
+/* WHY a split header rather than `position: sticky`: a sticky column-header
+ * row (`.table thead th/tr { position: sticky }`), matching the prototype's
+ * `.headerRow`, was tried here and reverted (commit c20011cc): with a real
+ * `<thead>`/`<th>` markup, `position: sticky` on either the row or its
+ * cells makes Chromium clip/hit-test the column-filter popover
+ * (BlotterHeader's `.filterPanel`, absolutely positioned off a `<th>`) as
+ * if it were behind `.tableWrapper`'s scroll clip — confirmed live via the
+ * `credit/blotter-filtered` visual scenario, whose Apply button became
+ * unclickable (hit-tested through to `scenario-root` behind it) the instant
+ * sticky was added, in BOTH the row and per-cell forms. The split header
+ * (.headerRegion above, mirrored in FxBlotter) achieves the fixed-header
+ * behaviour with the popover anchored outside any scroll clip entirely. */
+
+.headerCell {
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  background: var(--panel-head);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.cell {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  /* Under table-layout:fixed a long nowrap value would paint over the next
+   * cell — truncate with an ellipsis instead. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.row {
+  background-color: transparent;
+}
+
+/* Direction column (CREDIT_COLUMNS[3], 1-based nth-child(4)) coloured by the
+ * trade's own Buy/Sell direction — PROTO Blotter/CreditBlotterPanel.module.css
+ * `.dir[data-dir="Buy"|"Sell"]`, same nth-child convention as
+ * BlotterRow.module.css's status-cell colouring. */
+.row[data-dir="Buy"] .cell:nth-child(4) {
+  color: var(--accent-positive);
+}
+
+.row[data-dir="Sell"] .cell:nth-child(4) {
+  color: var(--accent-negative);
+}
+
+/* New-trade entrance flash — PROTO global.css rowIn/rowFlashA, re-keyed off
+ * this row's own --row-acc (set from the trade's direction, see
+ * rowAccentVar() in CreditBlotter.tsx). Gated on prefers-reduced-motion, same
+ * convention as RfqCard.module.css/PositionsPanel.module.css: the base rule
+ * carries no animation at all under reduced motion. */
+@keyframes creditRowIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes creditRowFlash {
+  0% {
+    background: color-mix(in srgb, var(--row-acc) 55%, transparent);
+    box-shadow:
+      inset 3px 0 0 var(--row-acc),
+      0 0 22px -6px var(--row-acc);
+  }
+
+  14% {
+    background: color-mix(in srgb, var(--row-acc) 48%, transparent);
+  }
+
+  100% {
+    background: transparent;
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .row[data-new="true"] {
+    animation:
+      creditRowIn 0.45s ease,
+      creditRowFlash 1.5s ease-out;
+  }
+}
+
+.emptyCell {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}

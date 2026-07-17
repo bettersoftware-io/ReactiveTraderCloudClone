@@ -8,7 +8,7 @@ This project aims to recreate [ReactiveTraderCloud](https://github.com/AdaptiveC
 
 ## Current Status
 
-Monorepo with pnpm workspaces + Turborepo; fifteen packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; a third, `@rtc/client-solid`, is a walking skeleton (boots in simulator mode, renders live connection status) built on the parallel `@rtc/solid-bindings` bridge. A custom devtools pair (`@rtc/devtools-core` + `@rtc/devtools-app`) gives the non-Redux state layer live state inspection, dormant until an inspector attaches. `docs/architecture.md` is the authoritative architecture reference.
+Monorepo with pnpm workspaces + Turborepo; sixteen packages plus the `tests` workspace. All packages build, typecheck, and pass tests. Two shipping clients (web React, RN/Expo) share the framework-free `@rtc/client-core`; a third, `@rtc/client-solid`, is a walking skeleton (boots in simulator mode, renders live connection status) built on the parallel `@rtc/solid-bindings` bridge. A custom devtools trio (`@rtc/devtools-core` + `@rtc/devtools-app` + `@rtc/devtools-extension`) gives the non-Redux state layer live state inspection, dormant until an inspector attaches — served same-origin at `/devtools/`, or attached to any running app (including the deployed build) via the MV3 Chrome extension. `docs/architecture.md` is the authoritative architecture reference.
 
 ## Build Commands
 
@@ -23,6 +23,7 @@ pnpm dev:design  # standalone web design prototype HTML (v5), served by a zero-d
 pnpm dev:design:mobile  # same server, but the standalone mobile design prototype (mobile v1) → http://localhost:8899
 pnpm dev:ios     # @rtc/client-react-native on the iOS simulator (expo run:ios: build → install dev client → launch → Metro)
 pnpm dev:solid   # @rtc/client-solid (Vite) → http://localhost:5473 — walking skeleton, simulator ports only
+pnpm dev:ext     # @rtc/devtools-extension — build the unpacked MV3 bundle → packages/devtools-extension/dist (load via chrome://extensions → Load unpacked → RTC panel)
 pnpm clean       # Remove dist/ in all packages
 ```
 
@@ -46,6 +47,7 @@ packages/
   ws-effects/          @rtc/ws-effects          — Small declarative RxJS effects framework. Pure TS, depends only on rxjs at runtime.
   devtools-core/       @rtc/devtools-core       — Devtools event protocol, DevtoolsHub (dormancy/coalescing/ring buffer), the three composition-root decorators (instrumentPresenters, instrumentMachineFactories, instrumentWsAdapter), BroadcastChannel transport. Pure TS, depends only on rxjs at runtime.
   devtools-app/        @rtc/devtools-app        — Inspector SPA (four panels: state tree, machine registry, event log, wire tap), served same-origin at /devtools/. Depends on devtools-core (+ react, react-dom).
+  devtools-extension/  @rtc/devtools-extension  — MV3 Chrome DevTools extension: a third Duplex (ChromeRuntimeDuplex + reconnecting content-script bridge + tab-keyed background router) that mounts the existing InspectorApp in an "RTC" DevTools panel, attaching the inspector to any running app incl. the deployed build. Leaf consumer: depends on devtools-core + devtools-app (+ react, react-dom, rxjs). Unpacked-dev only.
   server/              @rtc/server              — Native WebSocket + @rtc/ws-effects (24 effects: FX/Credit/Admin/Equities). Depends on domain, shared, ws-effects.
 ```
 
@@ -53,7 +55,7 @@ packages/
 
 **Single-dep constraint on `@rtc/domain`:** Domain may depend on `rxjs` at runtime — and only on `rxjs`. RxJS is the explicit architectural exception, chosen for its declarative stream operators and the team's familiarity with it. No other runtime dependencies are permitted. pnpm strict mode enforces this at install time. `@rtc/ws-effects` follows the same rxjs-only constraint.
 
-**Devtools dependency rule:** `@rtc/devtools-core` is an `rxjs`-only leaf like `ws-effects` — it decorates by structural shape and imports no other `@rtc/*` package; `@rtc/devtools-app` depends only on `devtools-core`, and nothing in the workspace imports `devtools-app` as source — `client-react` takes only a dev-only build-order/asset edge to it (to serve `/devtools/`), never a source import. See `docs/architecture/20-devtools.md` (§20).
+**Devtools dependency rule:** `@rtc/devtools-core` is an `rxjs`-only leaf like `ws-effects` — it decorates by structural shape and imports no other `@rtc/*` package; `@rtc/devtools-app` depends only on `devtools-core`. `@rtc/devtools-extension` is itself a leaf consumer that may import only `devtools-core` (transport/protocol/store) and `devtools-app` (the `InspectorApp`), never a client/server/domain package (dependency-cruiser `devtools-extension-is-a-leaf`). Within the app workspace `client-react` takes only a dev-only build-order/asset edge to `devtools-app` (to serve `/devtools/`), never a source import; the extension package is the one workspace consumer that imports `devtools-app` as source (transpiled by its own Vite build). See `docs/architecture/20-devtools.md` (§20).
 
 ## Architecture Goals
 
