@@ -53,6 +53,7 @@ import {
   PositionsHead,
   PositionsPanel,
   PositionsTable,
+  PowerSaverRoot,
   PreferencesModal,
   QuickFilter,
   RfqCountdown,
@@ -201,6 +202,7 @@ import { ThemePicker as ThemePickerComponent } from "#/ui/shell/chrome/ThemePick
 import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
 import { LockScreen as LockScreenComponent } from "#/ui/shell/lock/LockScreen";
+import { PowerSaverRoot as PowerSaverRootComponent } from "#/ui/shell/power/PowerSaverRoot";
 import { PreferencesModal as PreferencesModalComponent } from "#/ui/shell/prefs/PreferencesModal";
 import { StaleIndicator as StaleIndicatorComponent } from "#/ui/shell/stale/StaleIndicator";
 import { StatusBar as StatusBarComponent } from "#/ui/shell/status/StatusBar";
@@ -809,6 +811,12 @@ export const registry = new Map<AnyToken, ElementFor>([
     AmbientBackground,
     (): JSX.Element => {
       return <AmbientBackgroundComponent />;
+    },
+  ],
+  [
+    PowerSaverRoot,
+    (): JSX.Element => {
+      return <PowerSaverRootComponent />;
     },
   ],
   [

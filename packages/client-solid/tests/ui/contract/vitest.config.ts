@@ -19,19 +19,14 @@ const pkgRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const specsDir = resolve(pkgRoot, "../ui-contract/src/specs");
 
 // Every DOMAIN is ported (Tasks 13-16: FX, Credit, Equities, Admin) — the
-// full @rtc/ui-contract spec set runs against Solid with two exceptions:
-// shell/auth (LoginScreen, AuthGate) and shell/power (power saver) are
-// React-only. The Solid client has no sign-in/gate UI yet, so its contract
-// specs stay React-only until Solid grows those components. Power saver is
-// React-only by design for this PR: the Solid walking skeleton has no
-// power-saver UI (AmbientBackground/PreferencesModal/HeaderChrome have no
-// power-saver affordance there) — only its LocalStorage adapter persists the
-// preference. This also excludes PowerSaverRoot.contract.spec.ts, which
-// already lives under shell/power/.
-const notYetPortedSpecs = [
-  `${specsDir}/shell/auth/**/*.contract.spec.ts`,
-  `${specsDir}/shell/power/**/*.contract.spec.ts`,
-];
+// full @rtc/ui-contract spec set runs against Solid with one exception:
+// shell/auth (LoginScreen, AuthGate) is React-only. The Solid client has no
+// sign-in/gate UI yet, so its contract specs stay React-only until Solid
+// grows those components. Power saver (shell/power — PowerSaverRoot +
+// PowerSaverSurfaces) is now ported: PowerSaverToggle/PowerSaverRoot exist in
+// `@rtc/client-solid`, and AmbientBackground/PreferencesModal/HeaderChrome
+// all wire the power-saver affordance, so those specs run here too.
+const notYetPortedSpecs = [`${specsDir}/shell/auth/**/*.contract.spec.ts`];
 
 export default defineConfig({
   plugins: [solid()],
