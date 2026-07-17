@@ -8,6 +8,8 @@ import { EventLogPanel } from "#/panels/EventLogPanel";
 import { MachinesPanel } from "#/panels/MachinesPanel";
 import { StateTreePanel } from "#/panels/StateTreePanel";
 import { WirePanel } from "#/panels/WirePanel";
+import { RecordingToolbar } from "#/recording/RecordingToolbar";
+import { useRecording } from "#/recording/useRecording";
 import { useInspectorState } from "#/useInspectorState";
 
 /** The devtools panel shell: connection rail + tab strip + active panel. All
@@ -18,13 +20,23 @@ export function InspectorApp({
   store,
   onInvokeIntent,
 }: InspectorAppProps): ReactElement {
-  const state = useInspectorState(store);
+  const liveState = useInspectorState(store);
+  const recording = useRecording(store);
   const [tab, setTab] = useState<InspectorTab>("state");
+
+  // The panels are pure functions of InspectorState: in Live mode they get the
+  // store's live snapshot; in Replay mode, the state reconstructed from the
+  // recording at the scrubbed frame. This is the whole seam.
+  const state =
+    recording.mode === "replay" && recording.replay
+      ? recording.replay.stateAt(recording.frameIndex)
+      : liveState;
 
   return (
     <div className={styles.app}>
       <ConnectionRail state={state} />
       <div className={styles.main}>
+        <RecordingToolbar model={recording} />
         <TabStrip active={tab} onSelect={setTab} />
         <div className={styles.panel}>
           <TabPanel tab={tab} state={state} onInvokeIntent={onInvokeIntent} />
