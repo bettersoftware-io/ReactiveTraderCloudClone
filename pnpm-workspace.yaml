@@ -69,15 +69,16 @@ overrides:
   # jest/vitest suite — worklets is disabled under jest and Metro is never run;
   # the CI `expo export` step (ci.yml) is the only exerciser.
   #
-  # (1) VERSION: reanimated 4.5.0 peers worklets `0.10.x` and is built against
-  # 0.10.1 — its babel plugin transforms reanimated's own sources (e.g.
-  # Easing.ts) cleanly. worklets 0.10.0's plugin CRASHES on reanimated 4.5.0
-  # (`Cannot read properties of undefined (reading 'length')`). `expo install`
-  # had pinned the RN direct dep to 0.10.0, and on a CLEAN install pnpm deduped
-  # reanimated's peer onto that incompatible 0.10.0 — so force 0.10.1 everywhere
-  # to keep the one compatible pair. (arm64-local masked this: it linked
-  # reanimated→0.10.1 and passed; x86 CI's clean install exposed the collapse.)
-  react-native-worklets: 0.10.1
+  # (1) VERSION: pin worklets to the SDK-57-blessed 0.10.0 that reanimated@4.5.0
+  # was BUILT against (its own devDependency is react-native-worklets@0.10.0, and
+  # expo's bundledNativeModules for SDK 57 pins 0.10.0). The worklets babel plugin
+  # and the worklets runtime must be the SAME version or the transform emits code
+  # the runtime mis-reads (`Cannot read properties of undefined (reading 'length')`
+  # while transforming reanimated's own Easing.ts) — see the Reanimated
+  # troubleshooting guide. reanimated peers `0.10.x`, so a natural install lets
+  # pnpm float the peer to 0.10.1 (a MISMATCH vs the 0.10.0 plugin); force 0.10.0
+  # everywhere so plugin == runtime == the tested pair.
+  react-native-worklets: 0.10.0
   # (2) BABEL: worklets' nested babel transform (its @babel/preset-typescript@^7)
   # hard-asserts the caller's @babel/core is ^7, but worklets declares @babel/core
   # peer `*` so pnpm otherwise hands it the workspace-hoisted @babel/core@8.0.1
