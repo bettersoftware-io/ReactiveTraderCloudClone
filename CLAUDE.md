@@ -17,17 +17,27 @@ pnpm build       # Topological: domain → shared → client + server
 pnpm typecheck   # tsc --noEmit in all packages
 pnpm test        # vitest run in all packages
 pnpm test:e2e    # Playwright (client only)
-pnpm dev         # Vite dev server (client) + tsx watch (server)
+pnpm dev         # Flagship full stack: React client + WS server + library watchers (turbo); client → live local server (ws://localhost:4000)
+pnpm dev:ws      # @rtc/server only — native WS + login on ws://localhost:4000 (tsx watch)
+pnpm dev:watch   # Rebuild-watch every pure-TS library (domain, shared, ws-effects, motion-core, ui-contract, devtools-core) — run alongside a client to hot-rebuild lib edits
+pnpm dev:react       # @rtc/client-react only (Vite) → http://localhost:5173 — simulator mode (no server)
+pnpm dev:react:ws    # @rtc/client-react only, connected to an already-running `dev:ws` (ws://localhost:4000)
+pnpm dev:react:fs    # Full stack: start the WS server + @rtc/client-react connected to it
+pnpm dev:solid       # @rtc/client-solid only (Vite) → http://localhost:5473 — simulator mode (no server)
+pnpm dev:solid:ws    # @rtc/client-solid only, connected to an already-running `dev:ws`
+pnpm dev:solid:fs    # Full stack: start the WS server + @rtc/client-solid connected to it
 pnpm dev:proto   # @rtc/client-prototype only — the v2 design React port (Vite) → http://localhost:5273
-pnpm dev:design  # standalone web design prototype HTML (v5), served by a zero-dep Node script → http://localhost:8899
+pnpm dev:design:web     # standalone web design prototype HTML (v5), served by a zero-dep Node script → http://localhost:8899
 pnpm dev:design:mobile  # same server, but the standalone mobile design prototype (mobile v1) → http://localhost:8899
 pnpm dev:ios     # @rtc/client-react-native on the iOS simulator (expo run:ios: build → install dev client → launch → Metro)
-pnpm dev:solid   # @rtc/client-solid (Vite) → http://localhost:5473 — walking skeleton, simulator ports only
-pnpm dev:ext     # @rtc/devtools-extension — build the unpacked MV3 bundle → packages/devtools-extension/dist (load via chrome://extensions → Load unpacked → RTC panel)
+pnpm dev:devtools     # @rtc/devtools-app — the standalone inspector SPA (Vite), served same-origin at /devtools/
+pnpm dev:devtools:ext # @rtc/devtools-extension — watch-build the unpacked MV3 bundle → packages/devtools-extension/dist (load via chrome://extensions → Load unpacked → RTC panel)
 pnpm clean       # Remove dist/ in all packages
 ```
 
-`dev:design` serves `docs/design/web/v5/standalone/Reactive Trader.html` (a self-contained design artifact, not app code) via `scripts/serve-design.mjs`; `dev:design:mobile` serves the mobile counterpart under `docs/design/mobile/v1/standalone/`. The design prototypes are organized as `docs/design/web/{v1..v5}` (web iterations, v5 current) and `docs/design/mobile/v1` (mobile). v5's HTML and media are Git LFS-tracked (scoped to `docs/design/web/v5/**` in `.gitattributes`), so a fresh clone needs `git lfs pull` before `dev:design` can serve it. `dev:proto` runs its React re-implementation in `packages/client-prototype`. `dev:ios` delegates to the RN package's `ios` script (`expo run:ios`); it compiles the native dev client if missing, installs it on the booted simulator, and starts Metro — idempotent, so it's quick on later runs. The native `ios/` folder is gitignored and lives only where you run it (a removed worktree loses it), so run `dev:ios` once from your primary checkout to (re)create the dev build.
+**Client dev matrix.** Both web clients pick their data source at composition time from `VITE_SERVER_URL` (`packages/client-*/src/app/buildBrowserPorts.ts`): set → real `WsAdapter`; unset → in-browser simulator. The scripts encode that as an orthogonal matrix — a bare client (`dev:react` / `dev:solid`) runs simulator-only; the `:ws` suffix points the client at an already-running `dev:ws` server (start it in another terminal); the `:fs` suffix starts the WS server **and** the client together (the reconnecting `WsAdapter` tolerates the server coming up moments later, so parallel start is fine). `dev:ws` and `dev:watch` are the reusable building blocks (server alone; library rebuild-watchers alone). Bare `pnpm dev` is the batteries-included flagship = `client-react` + server + watchers, wired to the live local server. The turbo-routed scripts (`dev`, `*:fs`) rely on `VITE_SERVER_URL` being declared on turbo's `dev` task (turbo's env mode is strict — an undeclared var would be stripped and silently drop the client back to simulator mode).
+
+`dev:design:web` serves `docs/design/web/v5/standalone/Reactive Trader.html` (a self-contained design artifact, not app code) via `scripts/serve-design.mjs`; `dev:design:mobile` serves the mobile counterpart under `docs/design/mobile/v1/standalone/`. The design prototypes are organized as `docs/design/web/{v1..v5}` (web iterations, v5 current) and `docs/design/mobile/v1` (mobile). v5's HTML and media are Git LFS-tracked (scoped to `docs/design/web/v5/**` in `.gitattributes`), so a fresh clone needs `git lfs pull` before `dev:design:web` can serve it. `dev:proto` runs its React re-implementation in `packages/client-prototype`. `dev:ios` delegates to the RN package's `ios` script (`expo run:ios`); it compiles the native dev client if missing, installs it on the booted simulator, and starts Metro — idempotent, so it's quick on later runs. The native `ios/` folder is gitignored and lives only where you run it (a removed worktree loses it), so run `dev:ios` once from your primary checkout to (re)create the dev build.
 
 ## Package Structure
 
