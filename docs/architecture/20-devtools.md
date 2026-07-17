@@ -473,4 +473,23 @@ Summarized from spec [§9](../superpowers/specs/2026-07-11-custom-devtools-desig
 5. ~~**Time-scrubbing UI**~~ — **shipped** with record & replay (item 2): a `ReplayController` exposes `stateAt(frameIndex)`/`tsAt(frameIndex)`, and the panel's recording toolbar renders a Live|Replay toggle plus a scrubber (step/play + a `+Δs` timestamp readout). In Replay mode the four panels — already pure functions of `InspectorState` — receive `replay.stateAt(frameIndex)` instead of the live snapshot; that single lifted value is the whole seam. Honest framing: viewing recorded history, not rewinding the live app — RxJS streams over a socket cannot be replayed the way Redux replays pure reducers.
 6. ~~**Panel-side liveness timeout**~~ — **shipped**: see the liveness timer described in [§20.6](#206-serving-topology).
 
+### 20.9 WebSocket relay transport (React Native)
+
+React Native has no same-origin `BroadcastChannel`, so RN inspection uses a
+third transport adapter, `WsRelayDuplex` (in `@rtc/devtools-core`), plus a
+standalone dev-machine relay (`@rtc/devtools-relay`). The RN app — dev build
+only, `__DEV__`-gated at the composition root — opens `WsRelayDuplex(url,
+"app")` as its `DevtoolsHub` transport and applies the same three decorators
+`client-react` applies; the browser `devtools-app` opens `WsRelayDuplex(url,
+"panel")` via a `?relay=<ws-url>` query; the relay forwards frames between them
+(broadcast app→panels, single panel→app), identifying each connection by its
+`?role=` query and holding no protocol knowledge. Frames are JSON; the duplex
+buffers pre-open sends and reconnects on drop, so a device reconnect or relay
+restart recovers via the v1 `InspectorClient` re-hello / hub re-welcome path
+(and the panel-side liveness timer covers an abrupt device loss). Devtools
+traffic stays entirely off the app's data socket and the production
+`@rtc/server`. A production RN build applies no decorators and opens no socket
+— dormant-and-disconnected by construction, exactly like the web app ships
+dormant.
+
 ---
