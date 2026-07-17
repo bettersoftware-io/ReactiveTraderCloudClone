@@ -40,5 +40,6 @@ export type { DevtoolsTransport } from "./transport";
 export {
   type WebSocketFactory,
   type WebSocketLike,
+  type WebSocketMessageEvent,
   WsRelayDuplex,
 } from "./WsRelayDuplex";

@@ -14,9 +14,15 @@ export interface WebSocketLike {
   send(data: string): void;
   close(): void;
   onopen: (() => void) | null;
-  onmessage: ((event: { data: unknown }) => void) | null;
+  onmessage: ((event: WebSocketMessageEvent) => void) | null;
   onclose: (() => void) | null;
   onerror: (() => void) | null;
+}
+
+/** The shape of the `MessageEvent` this adapter reads — just the `data` field
+ * carried across the structural `WebSocketLike.onmessage` handler. */
+export interface WebSocketMessageEvent {
+  data: unknown;
 }
 
 /** Opens a socket to `url`. Injected so tests supply a fake; the default reaches
@@ -26,12 +32,13 @@ export type WebSocketFactory = (url: string) => WebSocketLike;
 const WS_OPEN = 1;
 const DEFAULT_RECONNECT_DELAY_MS = 1000;
 
+/** `globalThis`, narrowed to the one member this module reads off it. */
+interface GlobalWithWebSocket {
+  WebSocket?: new (url: string) => WebSocketLike;
+}
+
 function defaultWebSocketFactory(url: string): WebSocketLike {
-  const Ctor = (
-    globalThis as {
-      WebSocket?: new (url: string) => WebSocketLike;
-    }
-  ).WebSocket;
+  const Ctor = (globalThis as GlobalWithWebSocket).WebSocket;
 
   if (!Ctor) {
     throw new Error(
@@ -98,7 +105,7 @@ export class WsRelayDuplex<TSend, TRecv> implements Duplex<TSend, TRecv> {
       this.flushSendQueue();
     };
 
-    socket.onmessage = (event: { data: unknown }): void => {
+    socket.onmessage = (event: WebSocketMessageEvent): void => {
       let parsed: TRecv;
 
       try {

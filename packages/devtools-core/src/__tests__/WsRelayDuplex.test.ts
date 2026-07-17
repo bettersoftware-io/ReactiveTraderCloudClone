@@ -2,67 +2,23 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { WebSocketLike } from "../WsRelayDuplex";
 import { WsRelayDuplex } from "../WsRelayDuplex";
-
-class FakeSocket implements WebSocketLike {
-  readyState = 0; // CONNECTING
-
-  readonly sent: string[] = [];
-
-  onopen: (() => void) | null = null;
-
-  onmessage: ((event: { data: unknown }) => void) | null = null;
-
-  onclose: (() => void) | null = null;
-
-  onerror: (() => void) | null = null;
-
-  constructor(readonly url: string) {}
-
-  send(data: string): void {
-    this.sent.push(data);
-  }
-
-  close(): void {
-    this.readyState = 3; // CLOSED
-  }
-
-  open(): void {
-    this.readyState = 1; // OPEN
-    this.onopen?.();
-  }
-
-  receive(msg: unknown): void {
-    this.onmessage?.({ data: JSON.stringify(msg) });
-  }
-
-  drop(): void {
-    this.readyState = 3;
-    this.onclose?.();
-  }
-}
-
-function trackingFactory(sink: FakeSocket[]): (url: string) => WebSocketLike {
-  return (url: string): WebSocketLike => {
-    const socket = new FakeSocket(url);
-    sink.push(socket);
-
-    return socket;
-  };
-}
+import { FakeSocket } from "./FakeSocket.testHelpers";
 
 describe("WsRelayDuplex", () => {
   it("tags the role, buffers pre-open sends, and flushes them JSON-encoded on open", () => {
     const sockets: FakeSocket[] = [];
-    const duplex = new WsRelayDuplex<{ kind: string }, unknown>(
+    const duplex = new WsRelayDuplex<KindMessage, unknown>(
       "ws://localhost:8790",
       "app",
       trackingFactory(sockets),
     );
 
     const socket = sockets[0];
+
     if (socket === undefined) {
       throw new Error("expected a socket");
     }
+
     expect(socket.url).toBe("ws://localhost:8790?role=app");
 
     duplex.send({ kind: "hello" });
@@ -83,9 +39,11 @@ describe("WsRelayDuplex", () => {
     );
 
     const socket = sockets[0];
+
     if (socket === undefined) {
       throw new Error("expected a socket");
     }
+
     expect(socket.url).toBe("ws://host/relay?x=1&role=panel");
 
     duplex.dispose();
@@ -93,20 +51,22 @@ describe("WsRelayDuplex", () => {
 
   it("parses inbound socket frames onto inbound$", () => {
     const sockets: FakeSocket[] = [];
-    const duplex = new WsRelayDuplex<unknown, { kind: string }>(
+    const duplex = new WsRelayDuplex<unknown, KindMessage>(
       "ws://host",
       "panel",
       trackingFactory(sockets),
     );
-    const got: Array<{ kind: string }> = [];
+    const got: KindMessage[] = [];
     duplex.inbound$.subscribe((m) => {
       got.push(m);
     });
 
     const socket = sockets[0];
+
     if (socket === undefined) {
       throw new Error("expected a socket");
     }
+
     socket.open();
     socket.receive({ kind: "welcome" });
 
@@ -126,9 +86,11 @@ describe("WsRelayDuplex", () => {
     );
 
     const socket = sockets[0];
+
     if (socket === undefined) {
       throw new Error("expected a socket");
     }
+
     socket.open();
     socket.drop();
     expect(sockets).toHaveLength(1); // reconnect is scheduled, not immediate
@@ -143,16 +105,18 @@ describe("WsRelayDuplex", () => {
   it("stops reconnecting and drops sends after dispose", () => {
     vi.useFakeTimers();
     const sockets: FakeSocket[] = [];
-    const duplex = new WsRelayDuplex<{ n: number }, unknown>(
+    const duplex = new WsRelayDuplex<CountMessage, unknown>(
       "ws://host",
       "app",
       trackingFactory(sockets),
       1000,
     );
     const socket = sockets[0];
+
     if (socket === undefined) {
       throw new Error("expected a socket");
     }
+
     socket.open();
 
     duplex.dispose();
@@ -166,3 +130,20 @@ describe("WsRelayDuplex", () => {
     vi.useRealTimers();
   });
 });
+
+function trackingFactory(sink: FakeSocket[]): (url: string) => WebSocketLike {
+  return (url: string): WebSocketLike => {
+    const socket = new FakeSocket(url);
+    sink.push(socket);
+
+    return socket;
+  };
+}
+
+interface KindMessage {
+  kind: string;
+}
+
+interface CountMessage {
+  n: number;
+}
