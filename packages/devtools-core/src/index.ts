@@ -37,3 +37,8 @@ export {
 } from "./recording";
 export { type SerializedValue, serializeValue } from "./serialize";
 export type { DevtoolsTransport } from "./transport";
+export {
+  type WebSocketFactory,
+  type WebSocketLike,
+  WsRelayDuplex,
+} from "./WsRelayDuplex";
