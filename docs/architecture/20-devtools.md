@@ -392,9 +392,10 @@ Because the extension mounts the existing `InspectorApp` verbatim, it carries th
 same **intent injection** affordance as the same-origin inspector (§20.8): the
 panel wires `onInvokeIntent` over the `chrome.runtime` transport, dev-gated by
 the connected app's `welcome.dev` flag and confirm-gated in the Machines tab. It
-is not a new capability — the app-side handler is dead-code-eliminated from
-production, so an injected `intent:invoke` reaching a deployed app is a silent
-no-op. The `@rtc/devtools-extension` package README documents build-and-load.
+is not a new capability — the app-side handler is gated on the hub's runtime
+`dev` flag, which every composition root resolves `false` in a production build,
+so an injected `intent:invoke` reaching a deployed app is a silent no-op. The
+`@rtc/devtools-extension` package README documents build-and-load.
 
 ### 20.7 Perf
 
@@ -467,7 +468,7 @@ this.
 
 Summarized from spec [§9](../superpowers/specs/2026-07-11-custom-devtools-design.md#9-future-extensions-designed-for-explicitly-out-of-v1) — designed for, explicitly deferred from v1:
 
-1. ~~**Intent injection**~~ — **shipped** (machine-level): the protocol gained `intent:invoke {machineId, name, args}` (v2) and the hub fires the *wrapped* intent it already taps, so an injected call is auditable exactly like a UI-driven one. It is **dev-build-only** — the handler is wired solely inside `import.meta.env.DEV`, so a production build dead-code-eliminates it (asserted by `check:devtools-no-inject`) — and **confirm-gated** in the panel's Machines tab. See the [intent-injection design](../superpowers/specs/2026-07-15-devtools-intent-injection-design.md). Presenter-level injection and a full intent-name catalogue (beyond observed history) remain future work.
+1. ~~**Intent injection**~~ — **shipped** (machine-level, web **and** React Native): the protocol gained `intent:invoke {machineId, name, args}` (v2) and the hub fires the *wrapped* intent it already taps, so an injected call is auditable exactly like a UI-driven one. It is **dev-build-only** — the handler is gated on the hub's runtime `dev` flag, which every composition root resolves `false` in a production build (web `import.meta.env?.DEV`, RN `__DEV__`) — and **confirm-gated** in the panel's Machines tab. The gate is a runtime flag rather than a bundler-static `import.meta.env.DEV` literal because one shared `devtools-core` source line cannot be dead-code-eliminated by both Vite and Metro at once; the "a non-dev hub ignores `intent:invoke`" invariant is pinned by a `DevtoolsHub` unit test (a `dev:false` hub drops the frame) rather than by grepping the built bundle. See the [intent-injection design](../superpowers/specs/2026-07-15-devtools-intent-injection-design.md). Presenter-level injection and a full intent-name catalogue (beyond observed history) remain future work.
 2. ~~**Record & replay**~~ — **shipped** (panel-side): a `Recorder` tees `InspectorStore.tap()` into a bounded, seeded frame buffer, and a recording (appId + injected `startedAt` + the ordered `AppToInspector` frames) exports/imports as JSON — observe-only, no protocol or app change. Replay re-folds the captured frames through a *synchronous* `InspectorStore` clone (`{ coalesce: false }`) with periodic checkpoints, so a reconstructed `stateAt(k)` is byte-identical to a live fold by construction. Full *app* replay (recorded port inputs into a fresh composition root) is a separately scoped, larger step needing seeded time/timers.
 3. ~~**Chrome extension shell**~~ — **shipped**: `@rtc/devtools-extension`, an MV3 wrapper — content script bridges `BroadcastChannel` ↔ background ↔ a devtools-panel page hosting the *same* `devtools-app` bundle. Protocol and UI untouched; see [§20.6.1](#2061-chrome-extension-transport) and the [package README](../../packages/devtools-extension/README.md).
 4. ~~**React Native support**~~ — **shipped**: a WebSocket-relay `DevtoolsTransport` adapter (`WsRelayDuplex` in `@rtc/devtools-core`) plus a standalone dev-machine relay (`@rtc/devtools-relay`), with the same three decorators applied `__DEV__`-gated at the RN composition root; the browser panel attaches via `?relay=<ws-url>`, inspecting the device over the relay on the developer's machine. See [§20.9](#209-websocket-relay-transport-react-native) and the [relay README](../../packages/devtools-relay/README.md).

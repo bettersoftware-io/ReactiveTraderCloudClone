@@ -8,6 +8,12 @@ import type {
   InspectorToApp,
 } from "../protocol";
 
+// The inbound intent-injection write path is gated on the hub's runtime `dev`
+// flag (set by each composition root: web `import.meta.env?.DEV === true`, RN
+// `__DEV__`). It replaced a bundler-static `import.meta.env.DEV` gate, so the
+// "a production (non-dev) hub ignores intent:invoke" invariant — once asserted
+// by grepping the built web bundle (`check:devtools-no-inject`) — now lives in
+// the `dev: false` test below, which exercises the actual runtime gate.
 describe("DevtoolsHub intent injection", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -15,12 +21,10 @@ describe("DevtoolsHub intent injection", () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.unstubAllEnvs();
   });
 
   it("in a dev build, intent:invoke calls the wrapped intent and echoes a machine:intent event", () => {
-    vi.stubEnv("DEV", true);
-    const { hub, sent, inbound$ } = harness();
+    const { hub, sent, inbound$ } = harness(true);
     const state$ = new Subject<string>();
     const submit = vi.fn();
 
@@ -52,8 +56,7 @@ describe("DevtoolsHub intent injection", () => {
   });
 
   it("reports a devtools:error (no throw) for an unknown machine or unknown intent", () => {
-    vi.stubEnv("DEV", true);
-    const { hub, sent, inbound$ } = harness();
+    const { hub, sent, inbound$ } = harness(true);
     const state$ = new Subject<string>();
     const intents: Record<string, unknown> = { submit: vi.fn() };
     const id = hub.machineCreated("orderTicket", [], state$, intents);
@@ -82,9 +85,8 @@ describe("DevtoolsHub intent injection", () => {
     expect(errors.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("in a production build, intent:invoke is a runtime no-op (gate off)", () => {
-    vi.stubEnv("DEV", false);
-    const { hub, inbound$ } = harness();
+  it("in a production (non-dev) build, intent:invoke is a runtime no-op (gate off)", () => {
+    const { hub, inbound$ } = harness(false);
     const state$ = new Subject<string>();
     const submit = vi.fn();
     const intents: Record<string, unknown> = { submit };
@@ -102,17 +104,7 @@ describe("DevtoolsHub intent injection", () => {
   });
 
   it("sends welcome.dev reflecting the hub's dev option", () => {
-    vi.stubEnv("DEV", true);
-    const sent: AppToInspector[] = [];
-    const inbound$ = new Subject<InspectorToApp>();
-    const hub = new DevtoolsHub({ appId: "test-app", dev: true });
-    hub.attachTransport({
-      send: (m: AppToInspector): void => {
-        sent.push(m);
-      },
-      inbound$,
-      dispose: (): void => {},
-    });
+    const { sent, inbound$ } = harness(true);
 
     inbound$.next({ kind: "hello", v: 2 });
 
@@ -129,10 +121,10 @@ interface Harness {
   inbound$: Subject<InspectorToApp>;
 }
 
-function harness(): Harness {
+function harness(dev: boolean): Harness {
   const sent: AppToInspector[] = [];
   const inbound$ = new Subject<InspectorToApp>();
-  const hub = new DevtoolsHub({ appId: "test-app" });
+  const hub = new DevtoolsHub({ appId: "test-app", dev });
   hub.attachTransport({
     send: (m: AppToInspector): void => {
       sent.push(m);
