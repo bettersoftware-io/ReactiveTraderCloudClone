@@ -18,6 +18,20 @@ hub, `InspectorStore`/`InspectorClient`, or the four panels changes:
 Dormancy is preserved: only opening the RTC panel sends `hello`; an installed,
 unopened extension costs the app nothing.
 
+## Intent injection (parity with the same-origin inspector)
+
+The panel reuses `InspectorApp` verbatim, so it carries the same **intent
+injection** affordance as the same-origin `/devtools/` inspector (Machines tab):
+firing a live machine's intent from the panel to reproduce state. It is
+**dev-gated** — the panel only shows the injector when the connected app reports
+`welcome.dev` (a dev build), and the app-side handler is dead-code-eliminated
+from production, so an injected `intent:invoke` against a deployed app is a
+silent no-op — and **confirm-gated** in the UI. The extension adds no new
+capability: it wires the existing `onInvokeIntent` over the `chrome.runtime`
+transport, exactly as the same-origin inspector wires it over BroadcastChannel.
+See [`docs/architecture/20-devtools.md`](../../docs/architecture/20-devtools.md)
+§20.6.1 (this transport) and §20.8 (the intent-injection design).
+
 ## Build & load
 
     pnpm dev:ext            # build the unpacked bundle to packages/devtools-extension/dist

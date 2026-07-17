@@ -387,6 +387,14 @@ content port, keyed by tab id. This lets the inspector attach to the deployed
 app, and is the port/adapter payoff the v1 design anticipated — a new transport,
 nothing else. Dormancy holds: only the panel opening sends `hello`.
 
+Because the extension mounts the existing `InspectorApp` verbatim, it carries the
+same **intent injection** affordance as the same-origin inspector (§20.8): the
+panel wires `onInvokeIntent` over the `chrome.runtime` transport, dev-gated by
+the connected app's `welcome.dev` flag and confirm-gated in the Machines tab. It
+is not a new capability — the app-side handler is dead-code-eliminated from
+production, so an injected `intent:invoke` reaching a deployed app is a silent
+no-op. The `@rtc/devtools-extension` package README documents build-and-load.
+
 ### 20.7 Perf
 
 **Structural argument, not a claimed measurement.** Dormancy is
