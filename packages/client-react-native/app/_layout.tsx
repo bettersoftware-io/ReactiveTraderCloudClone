@@ -165,6 +165,12 @@ function Chrome({ simulator, onToggle }: ChromeProps): JSX.Element {
           name="equities"
           options={{ title: "Equities", tabBarIcon: tabIcon("▦", theme) }}
         />
+        {/* Dev-only visual-harness route. expo-router hoists routes without a
+            local _layout into this <Tabs>, so it would otherwise show as a 6th
+            tab in EVERY build (the EXPO_PUBLIC_VISUAL_HARNESS flag only gates
+            the rendered content, not the tab's existence). href:null removes
+            the tab while keeping the route deep-linkable for the harness. */}
+        <Tabs.Screen name="__visual/[...id]" options={{ href: null }} />
       </Tabs>
       <AppearanceOverlay
         open={appearanceOpen}

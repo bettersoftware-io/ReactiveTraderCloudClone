@@ -49,6 +49,14 @@
   color: var(--accent-positive);
 }
 
+.metricValue[data-tone="aware"] {
+  color: var(--accent-aware);
+}
+
+.metricValue[data-tone="negative"] {
+  color: var(--accent-negative);
+}
+
 .spacer {
   flex: 1;
 }
