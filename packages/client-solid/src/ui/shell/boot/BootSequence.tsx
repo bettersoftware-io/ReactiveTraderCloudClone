@@ -21,6 +21,7 @@ import styles from "./BootSequence.module.css";
 
 export function BootSequence(props: BootSequenceProps): JSX.Element {
   const { useBootSequence } = useViewModel();
+  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const { state, skip } = useBootSequence(props.onDone);
   let canvasEl!: HTMLCanvasElement;
 

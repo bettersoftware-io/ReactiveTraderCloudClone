@@ -10,7 +10,15 @@ import { describe, expect, it } from "vitest";
 // exist on both sides); once flipped it additionally asserts the file SETS
 // are identical, so a component landing in client-react's src/ui without a
 // Solid counterpart (or vice versa) fails the build.
-const PARITY_COMPLETE = false;
+const PARITY_COMPLETE = true;
+
+// React-only surfaces the Solid client deliberately does not have yet.
+// Mirrors the `shell/auth` contract-spec exclusion in
+// tests/ui/contract/vitest.config.ts (LoginScreen/AuthGate landed on main as
+// React-only; the Solid client auto-logs-in with no sign-in/gate UI). Every
+// entry here must be deleted when the Solid twin is ported — the reverse-
+// orphan check below skips exactly these paths and nothing else.
+const REACT_ONLY_MODULE_CSS = new Set(["shell/auth/LoginScreen.module.css"]);
 
 // Both roots resolved from this file's own location (not cwd) so the test
 // works regardless of the invoking directory. This is a test file — reading
@@ -69,9 +77,21 @@ describe("CSS module parity: client-solid vs client-react (docs/adr — copied, 
     "every react module.css has a ported solid twin (file sets are identical)",
     () => {
       const missing = reactRelPaths.filter((rel) => {
-        return !solidRelPathSet.has(rel);
+        return !solidRelPathSet.has(rel) && !REACT_ONLY_MODULE_CSS.has(rel);
       });
       expect(missing).toEqual([]);
+    },
+  );
+
+  // The allowlist must stay honest: an entry that gains a Solid twin (or
+  // whose react file disappears) is stale and must be removed.
+  it.runIf(PARITY_COMPLETE)(
+    "REACT_ONLY_MODULE_CSS entries are real react files without solid twins",
+    () => {
+      const stale = [...REACT_ONLY_MODULE_CSS].filter((rel) => {
+        return !reactRelPathSet.has(rel) || solidRelPathSet.has(rel);
+      });
+      expect(stale).toEqual([]);
     },
   );
 });

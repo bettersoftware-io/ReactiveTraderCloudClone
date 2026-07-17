@@ -1,0 +1,281 @@
+/* Bare root (I3 fix): the eq-ticket dock panel mounts this flush inside the
+ * layout engine's own `.panel` (InhouseLayoutEngine.module.css), which
+ * already paints the border/radius/background/shadow — re-adding them here
+ * doubled the chrome (a stacked border ring, and in the 3d skins a visibly
+ * denser stacked-gradient panel). Mirrors the prototype's bare
+ * `OrderTicketPanel.module.css .body { padding: 16px; }`. The transparent
+ * border below is NOT chrome — it's the substrate the fill-flash keyframe
+ * animates border-color onto (see .ticket[data-anim="fill"]); at rest it's
+ * invisible. */
+.ticket {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  overflow: auto;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Fill choreography: data-anim="fill" flashes a glow ring. The ring lives on
+ * an overlay pseudo-element faded via opacity because border-color/box-shadow
+ * keyframes can never run on the compositor — with the equities simulator
+ * filling orders continuously, the previous keyframe kept a main-thread
+ * animation alive almost permanently (48 composite failures / 12s measured),
+ * forcing style recalcs at full frame rate for the whole tab.
+ * pointer-events: none keeps the ticket's controls clickable under it. */
+.ticket::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--accent-positive);
+  border-radius: 6px;
+  box-shadow: var(--glow);
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+.ticket[data-anim="fill"]::after {
+  animation: ticketFillFade 0.6s ease-out forwards;
+}
+
+@keyframes ticketFillFade {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+.sideToggle {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.side {
+  flex: 1;
+  padding: 8px 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.1em;
+  border: none;
+  border-radius: 3px;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
+}
+
+.side[data-side="buy"][data-active="true"] {
+  background-color: var(--accent-positive);
+  color: var(--text-on-accent);
+}
+
+.side[data-side="sell"][data-active="true"] {
+  background-color: var(--accent-negative);
+  color: var(--text-on-accent);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 13px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.typeRow {
+  display: flex;
+  gap: 6px;
+}
+
+.type {
+  flex: 1;
+  padding: 6px 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.type[data-active="true"] {
+  color: var(--accent-primary);
+  /* `background:` shorthand, NOT `background-color:` — `--chip` is a
+     gradient in the 3d skins (holo3d/terminal3d) and `background-color:
+     <gradient>` is invalid CSS, silently dropped (I2 fix). */
+  background: var(--chip);
+  border-color: var(--border-strong);
+}
+
+.qtyRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step {
+  width: 30px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background-color: var(--bg-secondary);
+  color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.qtyInput,
+.input {
+  width: 100%;
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 17px;
+  background-color: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-primary);
+}
+
+.qtyInput {
+  flex: 1;
+  text-align: center;
+}
+
+.input:focus,
+.qtyInput:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.error {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--accent-negative);
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+}
+
+.summaryLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-muted);
+}
+
+.summaryValue {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-primary);
+}
+
+.summaryValue[data-dim="true"] {
+  color: var(--text-muted);
+}
+
+.submit {
+  width: 100%;
+  padding: 12px 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 17px;
+  letter-spacing: 0.1em;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-on-accent);
+  cursor: pointer;
+}
+
+.submit[data-side="buy"] {
+  background-color: var(--accent-positive);
+}
+
+.submit[data-side="sell"] {
+  background-color: var(--accent-negative);
+}
+
+.submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Phase-driven status states */
+.status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  text-align: center;
+  padding: 6px 0;
+}
+
+.ticket[data-phase="submitting"] .status {
+  color: var(--text-muted);
+}
+
+.ticket[data-phase="working"] .status {
+  color: var(--accent-primary);
+}
+
+.ticket[data-phase="partiallyFilled"] .status {
+  color: var(--accent-2);
+}
+
+.ticket[data-phase="filled"] .status {
+  color: var(--accent-positive);
+}
+
+.ticket[data-phase="rejected"] .status {
+  color: var(--accent-negative);
+}
+
+.resetBtn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.08em;
+  border: none;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}

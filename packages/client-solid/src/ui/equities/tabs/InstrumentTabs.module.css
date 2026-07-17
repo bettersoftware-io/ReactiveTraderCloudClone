@@ -1,0 +1,54 @@
+.tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0.06em;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+  white-space: nowrap;
+}
+
+.tab[data-active="true"] {
+  color: var(--accent-primary);
+  /* `background:` shorthand, NOT `background-color:` — `--panel` is a
+     gradient in the 3d skins (holo3d/terminal3d) and `background-color:
+     <gradient>` is invalid CSS, silently dropped (I2 fix). */
+  background: var(--panel);
+  border-bottom-color: var(--accent-primary);
+}
+
+.tab:hover:not([data-active="true"]) {
+  color: var(--text-secondary);
+}
+
+.close {
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.close:hover {
+  opacity: 1;
+}

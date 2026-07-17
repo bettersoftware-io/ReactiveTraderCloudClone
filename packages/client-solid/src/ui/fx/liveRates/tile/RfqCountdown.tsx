@@ -17,7 +17,9 @@ export function RfqCountdown(props: RfqCountdownProps): JSX.Element {
   // per tick (per-tick geometry writes kept a main-thread animation alive
   // every frame; see RfqCountdown.module.css .fill).
   const drainTiming: JSX.CSSProperties = {
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     "--rfq-duration": `${props.totalMs}ms`,
+    // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     "--rfq-delay": `${Math.min(0, props.remainingMs - props.totalMs)}ms`,
   };
 

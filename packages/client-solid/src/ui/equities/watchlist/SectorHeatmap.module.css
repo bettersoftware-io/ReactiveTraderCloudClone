@@ -1,0 +1,83 @@
+.heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+
+.sectorRow {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sectorLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 13px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  padding: 1px 4px;
+}
+
+.cellGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 32px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  /* Heat tint controlled by --heat, direction by data-direction */
+  background-color: transparent;
+  color: var(--text-secondary);
+  transition: opacity 0.15s;
+  /* Button UA reset */
+  padding: 0;
+  appearance: none;
+}
+
+.cell[data-direction="up"] {
+  color: var(--accent-positive);
+  background-color: color-mix(
+    in srgb,
+    var(--accent-positive) calc(var(--heat) * 20%),
+    transparent
+  );
+}
+
+.cell[data-direction="down"] {
+  color: var(--accent-negative);
+  background-color: color-mix(
+    in srgb,
+    var(--accent-negative) calc(var(--heat) * 20%),
+    transparent
+  );
+}
+
+.cell[data-active="true"] {
+  border-color: var(--accent-primary);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-muted);
+}
