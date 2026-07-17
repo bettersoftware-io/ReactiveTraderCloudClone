@@ -21,7 +21,6 @@
 - **Jarvis AI assistant** — impl deferred. Spec: [superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md](superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md) (no plan file yet)
 - **Login + server-side auth (Phase 1)** — not built; Phase 2 not yet spec'd. Plan: [superpowers/plans/2026-07-12-phase1-login-and-server-auth.md](superpowers/plans/2026-07-12-phase1-login-and-server-auth.md)
 - **Feature flags** — OpenFeature + Flagsmith. Plan: [superpowers/plans/2026-07-01-feature-flags.md](superpowers/plans/2026-07-01-feature-flags.md)
-- **Devtools RN inspection** — WebSocket-relay transport (`WsRelayDuplex`) + standalone dev-machine relay + decorators at the RN composition root. Plan: [superpowers/plans/2026-07-15-devtools-rn-inspection.md](superpowers/plans/2026-07-15-devtools-rn-inspection.md)
 
 ## 🟠 Planned but gated / not executed
 
@@ -31,3 +30,4 @@
 ## ⚪ Optional / next step (no plan file yet)
 
 - **Power-saver UI on Solid + RN** — power-saver mode shipped for the web React client (PR #218; ref [power-saver-mode.md](power-saver-mode.md)). The Solid and RN clients **persist** the `powerSaver` preference via their adapters but have **no UI** for it — no header ⌁ toggle, no ambient-layer gating, no `--fx-play` motion pausing. Fold the Solid UI into the SolidJS-port workstream (its contract specs currently allowlist power-saver as React-only until ported) and the RN UI into the RN mobile-v1 rehaul. Neither is spec'd yet.
+- **`pnpm dev` → `dev:web` with feature-flag client selection** — `pnpm dev` is currently a plain alias of `dev:react` (React web client, simulator mode). The intended end state is to rename it to `dev:web` and have it pick the web client implementation (React vs Solid) from a feature flag, while `dev:react` / `dev:solid` remain the explicit per-implementation entry points. Documented in [CLAUDE.md](../CLAUDE.md) (Build Commands → "Future direction"); not spec'd or built. Naturally pairs with the SolidJS-port workstream reaching client parity.

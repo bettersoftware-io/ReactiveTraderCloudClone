@@ -180,37 +180,43 @@ build) — OTA only ships the JS bundle, not the native shell.
 
 ---
 
-## Live data, auto-login & the demo credential (`EXPO_PUBLIC_DEMO_USER`/`EXPO_PUBLIC_DEMO_PASS`)
+## Live data & signing in
 
-The live tiles come from the deployed Fly server `rtc-clone-server` over a
-WebSocket, gated by genuine session auth rather than a shared static token:
+The app shows a login screen on every launch (`AuthGate` + `LoginScreen`, no
+auto-login) and gates the rest of the UI behind it. What counts as a valid
+credential depends on which branch `buildNativePorts` selects:
 
-- The server validates credentials against its `AUTH_USERS` secret
-  (`packages/server/src/auth/AuthService.ts`) and issues a signed session
-  token from `POST /login`. The WS upgrade then requires that token.
-- This app has **no login UI yet** (deferred) — instead, `AppRoot` auto-logs-in
-  on every launch with a baked demo credential (`nativeAuthConfig.ts`), read
-  from `app.config.ts` → `extra.demoUser`/`extra.demoPass`
-  (`EXPO_PUBLIC_DEMO_USER`/`EXPO_PUBLIC_DEMO_PASS`), defaulting to the public
-  "demo" roster account when unset. `LockScreen`'s AUTHENTICATE control
-  re-auths with the same credential to clear the lock — there's no password
-  input on RN either.
-- `buildNativePorts` then feeds the resulting session token to `WsAdapter`
-  (read fresh on every reconnect from an `InMemorySessionStore` — synchronous,
-  not AsyncStorage-backed, since auto-login on every launch makes persisting a
-  session across restarts pointless).
+- **Live mode** (`extra.serverUrl` set — the default, deployed Fly server
+  `rtc-clone-server`): the WebSocket is gated by genuine session auth, not a
+  shared static token. The server validates credentials against its
+  `AUTH_USERS` secret (`packages/server/src/auth/AuthService.ts`) and issues a
+  signed session token from `POST /login`; the WS upgrade then requires that
+  token. Sign in with **any** username/password pair that exists in the
+  deployed server's `AUTH_USERS` secret — ask the team for real deployed
+  credentials, it is not a value you invent independently. `buildNativePorts`
+  feeds the resulting session token to `WsAdapter` (read fresh on every
+  reconnect from an `InMemorySessionStore` — synchronous, not
+  AsyncStorage-backed, since the login screen on every launch makes persisting
+  a session across restarts pointless today; a future follow-up).
+- **Simulator mode** (the `Sim` toggle): there is no real server, so
+  credentials are validated in-process by `AuthSimulator` against a
+  `DEV_CREDENTIALS` map (`nativeAuthConfig.ts`), read from `app.config.ts` →
+  `extra.devAuth` (`EXPO_PUBLIC_DEV_AUTH`, a JSON `username -> password`
+  object — the RN analogue of the web client's `VITE_DEV_AUTH`). Unset or
+  malformed falls back to all four roster usernames at a shared local dev
+  password (`demo`), so simulator mode always has a working login with no env
+  set at all: `astark`, `nromanoff`, `tchalla`, `demo`. **Simulator-only —
+  never a deployed secret; live mode never baked-in credentials.**
 
-**So this pair must exist in the Fly server's `AUTH_USERS` secret** for the
-real-WS branch to authenticate — it is not a value you invent independently.
 If the live tiles show "Disconnected" while the Simulator works, a credential
-mismatch (or an unset/wrong pair against the deployed server) is the most
-likely cause.
+mismatch against the deployed server (or the pair not existing in its
+`AUTH_USERS` secret) is the most likely cause.
 
 > For the full picture of every `.env` file in the repo (this one, the web
 > client's, and the Vercel CLI artifacts), see
 > [`docs/env-files.md`](../../docs/env-files.md).
 
-### Set the demo credential on the client
+### Set the simulator dev credentials on the client
 
 `EXPO_PUBLIC_*` variables are read by Expo and **inlined into the app
 bundle**. The easiest way is a `.env` file in this package. Copy the
@@ -219,35 +225,37 @@ template and fill it in:
 ```bash
 cp packages/client-react-native/.env.example packages/client-react-native/.env
 # then edit packages/client-react-native/.env:
-#   EXPO_PUBLIC_DEMO_USER=demo
-#   EXPO_PUBLIC_DEMO_PASS=some-demo-secret
+#   EXPO_PUBLIC_DEV_AUTH={"astark":"demo","demo":"demo"}
 ```
 
 Then run as usual (`pnpm --filter @rtc/client-react-native start`). Or set it
 just for one run, without a file:
 
 ```bash
-EXPO_PUBLIC_DEMO_USER=demo EXPO_PUBLIC_DEMO_PASS=some-demo-secret pnpm --filter @rtc/client-react-native start
+EXPO_PUBLIC_DEV_AUTH='{"astark":"demo","demo":"demo"}' pnpm --filter @rtc/client-react-native start
 ```
 
 Optional companion var: `EXPO_PUBLIC_SERVER_URL` overrides the WS endpoint
 (defaults to `wss://rtc-clone-server.fly.dev`; set it to an empty string to
-force the in-process simulator branch — see Running the app). In simulator
-mode the same credential pair is validated in-process by `AuthSimulator`
-against the public roster, so it still must be a valid roster username.
+force the in-process simulator branch — see Running the app).
 
 > ⚠️ **Two caveats.**
 > 1. `.env` is git-ignored on purpose — **never commit a real credential**.
 >    Keep secrets out of the repo; share them out-of-band.
-> 2. Because `EXPO_PUBLIC_*` is baked into the JS bundle, this credential is
+> 2. Because `EXPO_PUBLIC_*` is baked into the JS bundle, this value is
 >    visible to anyone who has the bundle. It is a *soft* gate for a demo, not
->    a real secret — use a low-privilege demo account only (the web client's
->    equivalent is behind its own hosting password wall).
+>    a real secret, and it only ever unlocks the offline simulator — the web
+>    client's equivalent is behind its own hosting password wall, and live
+>    mode always requires the real server's `AUTH_USERS` secret regardless.
 
 ### Live-WS smoke (optional connectivity check, no phone)
 
 A manual (not CI) script that logs in against the deployed server, then opens
-a real `WsAdapter` connection and asserts a price tick arrives within 15s:
+a real `WsAdapter` connection and asserts a price tick arrives within 15s. It
+reads `EXPO_PUBLIC_DEMO_USER`/`EXPO_PUBLIC_DEMO_PASS` directly (not
+`nativeAuthConfig.ts`/`DEV_CREDENTIALS` — those are simulator-only) as a real
+credential pair against the live server's `AUTH_USERS` secret, so they're not
+in `.env.example`; set them ad hoc for this one script:
 
 ```bash
 pnpm build

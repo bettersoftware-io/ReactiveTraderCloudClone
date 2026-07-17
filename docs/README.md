@@ -63,6 +63,9 @@ flowchart TD
 
 - [`DEPLOY.md`](DEPLOY.md) — deployment topology and one-time setup (accounts,
   secrets, the on-demand deploy workflows).
+- [`authentication.md`](authentication.md) — genuine per-user server-side
+  login: the end-to-end flow, the four-user roster, and per-platform
+  credential configuration (Fly, Vercel, RN, local dev).
 - [`env-files.md`](env-files.md) — environment-variable / `.env` conventions.
 - [`claude-sandbox.md`](claude-sandbox.md) — running the repo from macOS WebStorm
   and the Linux claude-sandbox container simultaneously.

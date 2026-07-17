@@ -23,6 +23,33 @@ jest.mock("@react-native-async-storage/async-storage", () => {
   };
 });
 
+// __DEV__ is true under jest; stub the relay-backed hub so mounting opens no
+// socket. Every hub method is a no-op (machineCreated returns an id string),
+// so buildViewModelInputs' decorators run harmlessly and unmount's
+// hub.dispose() is a no-op.
+jest.mock("#/app/devtools/nativeDevtoolsHub", () => {
+  const noopHub = new Proxy(
+    {},
+    {
+      get: (_target: object, prop: string | symbol): unknown => {
+        if (prop === "machineCreated") {
+          return (): string => {
+            return "m0";
+          };
+        }
+
+        return (): void => {};
+      },
+    },
+  );
+
+  return {
+    createNativeDevtoolsHub: (): unknown => {
+      return noopHub;
+    },
+  };
+});
+
 // The simulator branch owns no socket, so its `dispose` is a no-op — mounting
 // then unmounting exercises the effect's deferred-teardown path without any
 // network. We assert the child mounts, then that unmount resolves without
@@ -39,15 +66,14 @@ test("mount then unmount of simulator AppRoot does not throw", async () => {
   await expect(view.unmount()).resolves.toBeUndefined();
 });
 
-// AppRoot has no login UI (deferred) — on mount it auto-logs-in with the
-// baked demo credential so the app boots authenticated. The simulator
-// branch's AuthSimulator resolves login synchronously (`of(...)`), so by the
-// time this child renders, the auth presenter has already flipped from
-// "unauthenticated" straight to "authenticated" (never observed mid-flight).
-test("auto-login authenticates on mount (simulator, demo credential)", async () => {
+// AppRoot no longer auto-logs-in on mount — the app is now gated behind
+// AuthGate/LoginScreen (wired in _layout.tsx), so the composition boots with
+// no credential submitted and the auth presenter stays "unauthenticated"
+// until the operator signs in.
+test("does not auto-login on mount; auth state stays unauthenticated", async () => {
   await renderAuthProbe();
   expect(screen.getByTestId("auth-status").props.children).toBe(
-    "authenticated",
+    "unauthenticated",
   );
 });
 

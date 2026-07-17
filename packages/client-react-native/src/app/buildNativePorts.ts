@@ -22,7 +22,7 @@ import {
 
 import { AppearanceColorSchemeAdapter } from "#/app/adapters/AppearanceColorSchemeAdapter";
 import { AsyncStoragePreferencesAdapter } from "#/app/adapters/AsyncStoragePreferencesAdapter";
-import { DEMO_PASSWORD, DEMO_USERNAME } from "#/app/nativeAuthConfig";
+import { DEV_CREDENTIALS } from "#/app/nativeAuthConfig";
 
 interface BuildNativePortsOptions {
   simulator?: boolean;
@@ -48,9 +48,10 @@ export interface NativeComposition {
  * `Appearance`-backed adapter so "system" mode follows the device setting.
  *
  * `sessionStore` is an `InMemorySessionStore` (not AsyncStorage-backed):
- * `SessionStore` is synchronous but AsyncStorage is async, and RN auto-logs-in
- * on every launch (`AppRoot`, Task 18) — so persisting a session across app
- * restarts would be redundant work for no benefit. The real-WS branch drops
+ * `SessionStore` is synchronous but AsyncStorage is async, and RN shows a
+ * login screen on every launch (`AppRoot` + `AuthGate`) rather than persisting
+ * a session — so AsyncStorage-backed persistence would be redundant work for
+ * no benefit today (a future follow-up). The real-WS branch drops
  * the old static `wsToken` query-param gate for genuine session auth: the
  * `WsAdapter` now reads its token fresh from `sessionStore` on every
  * (re)connect, matching `buildBrowserPorts`.
@@ -116,7 +117,7 @@ export function buildNativePorts(
       );
     },
   };
-  const auth = new AuthSimulator({ [DEMO_USERNAME]: DEMO_PASSWORD });
+  const auth = new AuthSimulator(DEV_CREDENTIALS);
   return {
     ports: {
       ...createSimulatorPorts({ preferences, auth, sessionStore }),

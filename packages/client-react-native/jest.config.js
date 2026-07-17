@@ -22,6 +22,7 @@ module.exports = {
     "^@rtc/shared$": "<rootDir>/../shared/dist/index.js",
     "^@rtc/client-core$": "<rootDir>/../client-core/dist/index.js",
     "^@rtc/react-bindings$": "<rootDir>/../react-bindings/dist/index.js",
+    "^@rtc/devtools-core$": "<rootDir>/../devtools-core/dist/index.js",
   },
   transformIgnorePatterns: [
     // `standard-navigation` is a pure-ESM ("type": "module") transitive dep of
