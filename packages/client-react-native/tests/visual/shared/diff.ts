@@ -1,5 +1,6 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 
@@ -27,6 +28,7 @@ export async function compareToGolden(
   const actual = PNG.sync.read(actualPng);
 
   let goldenBytes = opts.inlineGolden ?? null;
+
   if (!goldenBytes) {
     try {
       goldenBytes = await readFile(goldenPath);
@@ -36,21 +38,45 @@ export async function compareToGolden(
         await writeFile(goldenPath, actualPng);
         return { pass: true, mismatchedPixels: 0, ratio: 0, diffPng: null };
       }
-      return { pass: false, mismatchedPixels: actual.width * actual.height, ratio: 1, diffPng: null };
+
+      return {
+        pass: false,
+        mismatchedPixels: actual.width * actual.height,
+        ratio: 1,
+        diffPng: null,
+      };
     }
   }
 
   const golden = PNG.sync.read(goldenBytes);
+
   if (golden.width !== actual.width || golden.height !== actual.height) {
     // Dimension mismatch can never be absorbed by tolerance (web suite lesson).
-    return { pass: false, mismatchedPixels: actual.width * actual.height, ratio: 1, diffPng: null };
+    return {
+      pass: false,
+      mismatchedPixels: actual.width * actual.height,
+      ratio: 1,
+      diffPng: null,
+    };
   }
 
   const diff = new PNG({ width: actual.width, height: actual.height });
-  const mismatched = pixelmatch(actual.data, golden.data, diff.data, actual.width, actual.height, {
-    threshold: 0.1,
-  });
+  const mismatched = pixelmatch(
+    actual.data,
+    golden.data,
+    diff.data,
+    actual.width,
+    actual.height,
+    {
+      threshold: 0.1,
+    },
+  );
   const ratio = mismatched / (actual.width * actual.height);
   const pass = ratio <= tolerance;
-  return { pass, mismatchedPixels: mismatched, ratio, diffPng: pass ? null : PNG.sync.write(diff) };
+  return {
+    pass,
+    mismatchedPixels: mismatched,
+    ratio,
+    diffPng: pass ? null : PNG.sync.write(diff),
+  };
 }
