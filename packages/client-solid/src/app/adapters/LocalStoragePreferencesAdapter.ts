@@ -26,6 +26,7 @@ export const THEME_STORAGE_KEY = "rtc-theme"; // legacy key → mode (back-compa
 export const THEME_SKIN_STORAGE_KEY = "rtc-theme-skin";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
+export const POWER_SAVER_STORAGE_KEY = "rtc-power-saver";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
@@ -125,6 +126,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly animatedBg: BehaviorSubject<boolean>;
 
+  private readonly powerSaverSubject: BehaviorSubject<boolean>;
+
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
   private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
@@ -149,6 +152,9 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
     );
     this.animatedBg = new BehaviorSubject<boolean>(
       readBool(ANIMATED_BG_STORAGE_KEY, DEFAULT_ANIMATED_BACKGROUND),
+    );
+    this.powerSaverSubject = new BehaviorSubject<boolean>(
+      readBool(POWER_SAVER_STORAGE_KEY, false),
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       readStored(BOOT_VARIANT_STORAGE_KEY, isBootVariant, DEFAULT_BOOT_VARIANT),
@@ -210,6 +216,15 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setAnimatedBackground(on: boolean): void {
     writeStored(ANIMATED_BG_STORAGE_KEY, on ? "true" : "false");
     this.animatedBg.next(on);
+  }
+
+  powerSaver$(): Observable<boolean> {
+    return this.powerSaverSubject.pipe(distinctUntilChanged());
+  }
+
+  setPowerSaver(on: boolean): void {
+    writeStored(POWER_SAVER_STORAGE_KEY, on ? "true" : "false");
+    this.powerSaverSubject.next(on);
   }
 
   bootVariant$(): Observable<BootVariant> {

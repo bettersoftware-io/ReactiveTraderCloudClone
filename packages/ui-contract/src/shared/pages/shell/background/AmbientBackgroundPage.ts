@@ -31,4 +31,14 @@ export class AmbientBackgroundPage extends MountedComponent<
   ariaHidden(): string | null {
     return this.el()?.getAttribute("aria-hidden") ?? null;
   }
+
+  /** The `data-power-saver` flag string; null when absent. */
+  powerSaverFlag(): string | null {
+    return this.el()?.dataset.powerSaver ?? null;
+  }
+
+  /** True when the aurora/sweep/dots animated layers are in the DOM. */
+  hasAuroraLayers(): boolean {
+    return Boolean(this.el()?.querySelector('[data-layer="aurora"]'));
+  }
 }

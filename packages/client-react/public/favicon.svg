@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Reactive Trader favicon — a static snapshot of the animated HUD hex logo
+  (src/ui/shell/logo/HudLogo.tsx): double hexagon + compass ticks, dashed
+  orbit ring, counter-rotating triangle pair, and the solid core + ring.
+
+  The live mark tints from the accent-primary / accent-2 theme tokens; a
+  favicon has no theme, so the colours are resolved to the default skin
+  (holo dark): cyan #00e5ff + teal #19ffd0 on a near-black #00060a tile.
+  The dark rounded tile gives the thin HUD strokes contrast on light AND
+  dark browser tabs. Rotating layers are frozen at their rest pose.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Reactive Trader">
+  <defs>
+    <radialGradient id="tile" cx="50%" cy="42%" r="70%">
+      <stop offset="0%" stop-color="#02121d"/>
+      <stop offset="100%" stop-color="#00060a"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.1" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- dark tile so the thin strokes read on any tab colour -->
+  <rect x="0" y="0" width="48" height="48" rx="11" fill="url(#tile)"/>
+  <rect x="0.6" y="0.6" width="46.8" height="46.8" rx="10.4" fill="none"
+        stroke="#00e5ff" stroke-width="0.8" opacity="0.22"/>
+
+  <g filter="url(#glow)">
+    <!-- double hexagon -->
+    <g fill="none" stroke="#00e5ff" stroke-width="1.4" stroke-linejoin="round">
+      <polygon points="24,3 40.6,13.5 40.6,34.5 24,45 7.4,34.5 7.4,13.5" opacity="0.9"/>
+      <polygon points="24,8 36.3,15.75 36.3,31.25 24,39 11.7,31.25 11.7,15.75"
+               stroke="#19ffd0" stroke-width="1" opacity="0.6"/>
+    </g>
+
+    <!-- compass ticks -->
+    <g stroke="#00e5ff" stroke-width="1.6" stroke-linecap="round" opacity="0.85">
+      <line x1="24" y1="2" x2="24" y2="6"/>
+      <line x1="24" y1="42" x2="24" y2="46"/>
+      <line x1="5" y1="13" x2="8.5" y2="15"/>
+      <line x1="43" y1="13" x2="39.5" y2="15"/>
+      <line x1="5" y1="35" x2="8.5" y2="33"/>
+      <line x1="43" y1="35" x2="39.5" y2="33"/>
+    </g>
+
+    <!-- dashed orbit ring -->
+    <circle cx="24" cy="24" r="11" fill="none" stroke="#19ffd0"
+            stroke-width="1" stroke-dasharray="3 5" opacity="0.85"/>
+
+    <!-- counter-rotating triangle pair -->
+    <path d="M24 15 L31.8 28.5 L16.2 28.5 Z" fill="none" stroke="#00e5ff"
+          stroke-width="1.2" stroke-linejoin="round" opacity="0.8"/>
+    <path d="M24 33 L16.2 19.5 L31.8 19.5 Z" fill="none" stroke="#00e5ff"
+          stroke-width="1.2" stroke-linejoin="round" opacity="0.5"/>
+
+    <!-- solid core + ring -->
+    <circle cx="24" cy="24" r="6.4" fill="none" stroke="#00e5ff" stroke-width="1"/>
+    <circle cx="24" cy="24" r="3.4" fill="#00e5ff"/>
+  </g>
+</svg>

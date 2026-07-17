@@ -8,10 +8,11 @@ export interface PreferencesModalProps {
 }
 
 /**
- * Page object for PreferencesModal. The single REAL control is the
- * Animated-background toggle (wired to useAnimatedBackground); the seam records
- * each written value, asserted via `animatedBgSets()`. Cosmetic rows are checked
- * for presence only.
+ * Page object for PreferencesModal. TWO rows are REAL controls: the
+ * Animated-background toggle (wired to useAnimatedBackground) and the Power
+ * saver toggle (wired to usePowerSaver); each seam records its written values,
+ * asserted via `animatedBgSets()` / `powerSaverSets()`. Cosmetic rows are
+ * checked for presence only.
  */
 export class PreferencesModalPage extends MountedComponent<PreferencesModalProps> {
   private readonly user: UserEvent = userEvent.setup();
@@ -40,6 +41,27 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
   /** The values written to the animated-background seam, in order. */
   animatedBgSets(): boolean[] {
     return this.commandLog().animatedBackgroundSets;
+  }
+
+  /** Current state of the real Power saver switch (its `data-on`). */
+  powerSaverOn(): boolean {
+    return (
+      within(this.root)
+        .getByTestId("pref-toggle-powerSaver")
+        .getAttribute("data-on") === "true"
+    );
+  }
+
+  /** Toggle the real Power saver switch through the seam. */
+  async togglePowerSaver(): Promise<void> {
+    await this.user.click(
+      within(this.root).getByTestId("pref-toggle-powerSaver"),
+    );
+  }
+
+  /** The values written to the power-saver seam, in order. */
+  powerSaverSets(): boolean[] {
+    return this.commandLog().powerSaverSets;
   }
 
   /** Click the ✕ dismiss control. */

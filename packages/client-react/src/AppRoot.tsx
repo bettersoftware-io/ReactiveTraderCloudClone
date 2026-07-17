@@ -17,6 +17,7 @@ import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 
 import { AuthGate } from "./ui/shell/auth/AuthGate";
 import { BootGate } from "./ui/shell/boot/BootGate";
+import { PowerSaverRoot } from "./ui/shell/power/PowerSaverRoot";
 import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
 
 /** The app's composition root, as a component. Builds the presenters and the
@@ -61,6 +62,7 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
   return (
     <ViewModelProvider viewModel={viewModelRef.current}>
       <ThemeProvider>
+        <PowerSaverRoot />
         <BootGate>
           <AuthGate>{children}</AuthGate>
         </BootGate>

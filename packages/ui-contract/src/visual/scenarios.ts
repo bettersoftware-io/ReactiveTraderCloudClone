@@ -49,6 +49,13 @@ const baseScenarios: Record<string, Scenario> = {
     fixtureKey: "watchlist-populated",
   },
   "app/fx": { componentKey: "App", fixtureKey: "app-fx" },
+  // Power-saver variant: same App scenario, seeded with powerSaver: true so the
+  // aurora glow / drifting ambient-background layers are suppressed (static
+  // grid + vignette only). See fixtures.ts's "app-fx-power-saver".
+  "app/fx-power-saver": {
+    componentKey: "App",
+    fixtureKey: "app-fx-power-saver",
+  },
   // FX blotter populated with trades (the app/fx page only ever shows it empty).
   "fx-blotter/populated": {
     componentKey: "FxBlotter",

@@ -196,6 +196,13 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         toggle: noop,
       };
     },
+    usePowerSaver: () => {
+      return {
+        enabled: data.powerSaver ?? false,
+        setEnabled: noop,
+        toggle: noop,
+      };
+    },
     useViewModePreference: () => {
       return {
         viewMode: data.viewMode ?? DEFAULT_VIEW_MODE,

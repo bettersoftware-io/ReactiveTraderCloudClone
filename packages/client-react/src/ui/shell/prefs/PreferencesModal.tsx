@@ -10,19 +10,20 @@ import styles from "./PreferencesModal.module.css";
 /**
  * Preferences catalogue modal (prototype Reactive Trader.dc.html:218-716). A
  * two-column DISPLAY / TRADING / NOTIFICATIONS / DATA grid of toggle + segment
- * rows. Only the Animated-background toggle is wired to a real port
- * (`useAnimatedBackground`); every other row is decorative (see the comment on
- * the catalogue above). Dumb component: consumes `useViewModel()` destructured only,
- * holds no app-layer state / persistence / transport / timers, and renders only
- * when `open`.
+ * rows. TWO rows are wired to real ports — Animated background
+ * (`useAnimatedBackground`) and Power saver (`usePowerSaver`); every other row
+ * is decorative (see the comment on the catalogue above). Dumb component:
+ * consumes `useViewModel()` destructured only, holds no app-layer state /
+ * persistence / transport / timers, and renders only when `open`.
  */
 export function PreferencesModal({
   open,
   onClose,
 }: PreferencesModalProps): ReactElement | null {
-  const { useAnimatedBackground } = useViewModel();
+  const { useAnimatedBackground, usePowerSaver } = useViewModel();
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
+  const { enabled: powerSaver, toggle: togglePowerSaver } = usePowerSaver();
 
   const [toggles, setToggles] =
     useState<Record<string, boolean>>(INITIAL_TOGGLES);
@@ -70,6 +71,13 @@ export function PreferencesModal({
           <div className={styles.grid}>
             <div className={styles.column}>
               <div className={styles.sectionHead}>DISPLAY</div>
+              <PrefToggle
+                label="Power saver"
+                description="Stills ambience & calms price updates. Best on slower hardware."
+                on={powerSaver}
+                onToggle={togglePowerSaver}
+                testid="pref-toggle-powerSaver"
+              />
               <PrefToggle
                 label="Animated background"
                 description="Drifting aurora & grid. Static is lighter on CPU/GPU."

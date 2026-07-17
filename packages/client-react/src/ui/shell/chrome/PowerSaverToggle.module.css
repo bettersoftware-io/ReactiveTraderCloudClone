@@ -1,0 +1,33 @@
+/* Mirrors the header's icon-button idiom (see HeaderChrome.module.css
+   .iconButton, used by the notifications bell): 32px square, hairline
+   border, transparent background, secondary-text glyph colour. */
+.button {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-primary);
+  border-radius: 5px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.button:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.button[data-active="true"] {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  box-shadow: var(--glow);
+}

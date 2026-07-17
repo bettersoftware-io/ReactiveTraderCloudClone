@@ -17,6 +17,7 @@ import {
   EQ_BLOTTER_VIEW_STORAGE_KEY,
   EQ_WATCHLIST_SORT_STORAGE_KEY,
   LocalStoragePreferencesAdapter,
+  POWER_SAVER_STORAGE_KEY,
   THEME_SKIN_STORAGE_KEY,
   THEME_STORAGE_KEY,
   VIEW_MODE_STORAGE_KEY,
@@ -51,6 +52,13 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
         localStorage.setItem(
           ANIMATED_BG_STORAGE_KEY,
           seed.animatedBackground ? "true" : "false",
+        );
+      }
+
+      if (seed.powerSaver !== undefined) {
+        localStorage.setItem(
+          POWER_SAVER_STORAGE_KEY,
+          seed.powerSaver ? "true" : "false",
         );
       }
 
@@ -96,12 +104,14 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     expect(localStorage.getItem(VIEW_MODE_STORAGE_KEY)).toBe("price");
   });
 
-  it("persists skin and animatedBackground to their own keys", () => {
+  it("persists skin, animatedBackground, and powerSaver to their own keys", () => {
     const port = new LocalStoragePreferencesAdapter();
     port.setThemeSkin("terminal");
     port.setAnimatedBackground(true);
+    port.setPowerSaver(true);
     expect(localStorage.getItem(THEME_SKIN_STORAGE_KEY)).toBe("terminal");
     expect(localStorage.getItem(ANIMATED_BG_STORAGE_KEY)).toBe("true");
+    expect(localStorage.getItem(POWER_SAVER_STORAGE_KEY)).toBe("true");
   });
 
   it("keeps reading the legacy rtc-theme key as the mode (back-compat)", async () => {
@@ -146,4 +156,5 @@ function clearStorage(): void {
   localStorage.removeItem(CREDIT_RFQ_FILTER_STORAGE_KEY);
   localStorage.removeItem(EQ_WATCHLIST_SORT_STORAGE_KEY);
   localStorage.removeItem(EQ_BLOTTER_VIEW_STORAGE_KEY);
+  localStorage.removeItem(POWER_SAVER_STORAGE_KEY);
 }

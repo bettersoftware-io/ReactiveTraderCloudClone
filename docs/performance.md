@@ -163,9 +163,10 @@ names.
 - **The residual cost is a product decision.** After both rounds the
   steady-state floor is the ambient backdrop compositing (~5-8% GPU per
   tab) plus tick-driven React rendering — that's the wow-effect and the
-  live stream, by design. The approved (unimplemented) power-saver mode
-  plan for trading that floor away on slow hardware lives at
-  `docs/superpowers/plans/2026-07-09-power-saver-mode.md`.
+  live stream, by design. The **power-saver mode** trades that floor away on
+  slow hardware (one toggle → still ambience + conflated price re-renders);
+  what it disables vs keeps is documented in
+  [power-saver-mode.md](power-saver-mode.md).
 
 ---
 

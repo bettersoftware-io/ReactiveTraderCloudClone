@@ -28,6 +28,9 @@ describe("PreferencesModal", () => {
     expect(page.animatedBgOn()).toBe(true);
   });
 
+  // Power-saver assertions live in shell/power/PowerSaverSurfaces.contract.spec.ts
+  // (react-only; excluded from the Solid contract run).
+
   it("closes on the dismiss (✕) control", async () => {
     let closed = 0;
     const page = mount(PreferencesModal, {

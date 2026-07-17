@@ -23,4 +23,7 @@ describe("AmbientBackground", () => {
     const page = mount(AmbientBackground, { animatedBackground: true });
     expect(page.ariaHidden()).toBe("true");
   });
+
+  // Power-saver assertions live in shell/power/PowerSaverSurfaces.contract.spec.ts
+  // (react-only; excluded from the Solid contract run).
 });
