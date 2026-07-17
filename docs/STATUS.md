@@ -9,7 +9,7 @@
 > they move here once they earn a spec or plan. See [README.md](README.md) for
 > the full document map.
 >
-> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-07-16**
+> Maintained via the `tracking-workstream-status` skill. **Last updated: 2026-07-17**
 
 ## 🟡 In progress
 
@@ -31,4 +31,4 @@
 
 ## ⚪ Optional / next step (no plan file yet)
 
-_None currently._
+- **Power-saver UI on Solid + RN** — power-saver mode shipped for the web React client (PR #218; ref [power-saver-mode.md](power-saver-mode.md)). The Solid and RN clients **persist** the `powerSaver` preference via their adapters but have **no UI** for it — no header ⌁ toggle, no ambient-layer gating, no `--fx-play` motion pausing. Fold the Solid UI into the SolidJS-port workstream (its contract specs currently allowlist power-saver as React-only until ported) and the RN UI into the RN mobile-v1 rehaul. Neither is spec'd yet.

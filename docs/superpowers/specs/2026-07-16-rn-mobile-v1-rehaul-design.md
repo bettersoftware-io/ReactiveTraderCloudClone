@@ -77,6 +77,13 @@ existing, correct model — not a rebuild. The 6 skin keys, the mode toggle, the
   shell. Boot math, FLIP, rank-glide, countdown are pure-fn.
 - **Reduced motion & ambient toggle:** honor the existing ambient toggle and a
   reduced-motion setting everywhere (skip to static splash, disable aurora/loops).
+- **Power-saver mode (React-only today):** the web React client shipped power-saver
+  (PR #218; `docs/power-saver-mode.md`) — one toggle that removes the ambient layers,
+  stills logo/connection-dot motion, and conflates price re-renders. RN persists the
+  `powerSaver` preference via its adapter but has **no UI** for it. This rehaul should
+  surface it — a toggle (header/command-dock or appearance settings) plus ambient +
+  motion gating — composing with the ambient/reduced-motion toggle above rather than
+  duplicating it.
 - **All gates cover the package:** Biome, ESLint (base + typed), stylelint N/A, typecheck,
   knip, jest. New native deps require **jest mocks** so the suite stays green. Dep adds
   follow the freshness policy (`pnpm outdated -r`, 24h cooldown, syncpack single range).

@@ -18,6 +18,8 @@
 4. Pre-merge x86 golden check for Phase 4: `visual.yml` has `workflow_dispatch`, so dispatch it on the branch before merging rather than discovering x86 diffs post-merge.
 5. The spec's `bindSignal(source$, default)` helper is implemented as `toSignal(state$)` — defaulting lives in the `state()` call sites (matching how react-rxjs splits `bind(source$, default)` into wrapper + read), so the helper takes an already-defaulted/warm `StateObservable`.
 
+**Follow-on surface not covered by Phases 0–5 — power-saver UI:** power-saver mode landed React-only after this plan (PR #218; `docs/power-saver-mode.md`): a `powerSaver` preference + header ⌁ toggle, `PowerSaverRoot` (writes `--fx-play` to pause decorative motion), and `AmbientBackground` layer-gating. The Solid **adapter** persists the preference, but there is **no Solid UI**. Until it is ported, the shared contract specs allowlist `shell/power/**` as React-only in `packages/client-solid/tests/ui/contract/vitest.config.ts`, and `shell/chrome/PowerSaverToggle.module.css` is in that suite's `REACT_ONLY_MODULE_CSS`. Porting is a discrete follow-up (Solid `usePowerSaver`, `PowerSaverRoot`, the toggle, AmbientBackground gating) — **delete those two allowlist entries when done**.
+
 ## Global Constraints
 
 - Follow `.claude/skills/shipping-repo-changes` — worktree first, PR + CI green (`gh run list`, never `gh pr checks`), merge commit, cleanup. **One PR per phase** (six PRs: 0–5), full gauntlet before each PR.
