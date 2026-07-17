@@ -7,6 +7,7 @@ export { DevtoolsHub, type DevtoolsHubOptions } from "./DevtoolsHub";
 export { InspectorClient } from "./InspectorClient";
 export type {
   InspectorState,
+  InspectorStoreOptions,
   LogRow,
   MachineIntentRow,
   MachineRow,
