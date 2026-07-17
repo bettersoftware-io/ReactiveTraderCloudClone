@@ -17,7 +17,7 @@
     "lint": "biome lint .",
     "check": "biome check .",
     "check:fix": "biome check --write .",
-    "dev": "VITE_SERVER_URL=ws://localhost:4000 turbo run dev --filter=@rtc/client-react... --filter=@rtc/server...",
+    "dev": "pnpm run dev:react",
     "dev:ws": "pnpm --filter @rtc/server dev",
     "dev:watch": "turbo run dev --filter=@rtc/client-react^... --filter=@rtc/client-solid^... --filter=@rtc/server^... --filter=!@rtc/devtools-app",
     "dev:react": "pnpm --filter @rtc/client-react dev",
