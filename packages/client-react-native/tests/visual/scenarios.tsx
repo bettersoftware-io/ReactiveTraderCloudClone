@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Blotter } from "#/ui/Blotter";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
+import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
 
 import type { Scenario } from "./driver";
 import { VisualScenarioHost } from "./VisualScenarioHost";
@@ -35,10 +36,16 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  * (static analysis had wrongly assumed the seed RFQs stay terminal). Restore a
  * Credit fixture only behind a frozen-clock / cascade-disabled harness variant.
  *
+ * - `shell/appearance` — the rebuilt Appearance sheet (Phase 2 Task 7),
+ *   pinned open via `AppearanceOverlay`'s own `open`/`onClose` props (not the
+ *   host). It reads only theme/motion/power-saver preference presenters, all
+ *   seeded synchronously by `VisualScenarioHost`'s `PreferencesSimulator` —
+ *   no live-ticking source. The Skia ambient background it composes over is
+ *   frozen by the host's default `forceReduceMotion`.
+ *
  * Explicitly avoided: the Rates tab (`PricingSimulator` ticks with
- * `Math.random`), Analytics (`AnalyticsSimulator`'s P&L history is seeded with
- * a `Math.random` walk at construction), and the Appearance sheet (owned by
- * the parallel Phase 2's Task 9, not this phase — A4).
+ * `Math.random`) and Analytics (`AnalyticsSimulator`'s P&L history is seeded
+ * with a `Math.random` walk at construction).
  */
 export const SCENARIOS: readonly Scenario[] = [
   {
@@ -61,6 +68,18 @@ export const SCENARIOS: readonly Scenario[] = [
       return (
         <VisualScenarioHost skin="classic" mode="light">
           <ConnectionBanner />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "shell/appearance",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost skin="holo3d" mode="dark">
+          <AppearanceOverlay open onClose={(): void => {}} />
         </VisualScenarioHost>
       );
     },
