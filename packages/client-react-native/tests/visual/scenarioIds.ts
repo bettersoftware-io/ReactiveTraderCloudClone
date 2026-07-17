@@ -19,5 +19,3 @@ export const SCENARIO_IDS = [
   // fixtures above are rock-stable (0.02%). Restore a Credit fixture only with
   // a frozen-clock / cascade-disabled harness variant.
 ] as const;
-
-export type ScenarioId = (typeof SCENARIO_IDS)[number];
