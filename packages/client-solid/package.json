@@ -14,7 +14,7 @@
     "test:ui:contract:coverage": "vitest run -c tests/ui/contract/vitest.coverage.config.ts --coverage",
     "test:ui:visual:vitest-browser:solid": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts",
     "dev": "vite",
-    "clean": "(rm -rf dist .turbo *.tsbuildinfo reports 2>/dev/null || true)",
+    "clean": "(rm -rf dist .turbo *.tsbuildinfo reports .vitest-attachments 2>/dev/null || true)",
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {

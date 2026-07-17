@@ -1,5 +1,6 @@
 reports/
 coverage/
+.vitest-attachments/
 
 # vitest-browser visual tier failure artifacts (actual/diff PNGs) — routed
 # here by vitest-browser.config.ts's resolveDiffPath, kept OUT of any

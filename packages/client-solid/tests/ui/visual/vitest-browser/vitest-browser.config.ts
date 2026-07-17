@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import os from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,7 +22,13 @@ interface ScreenshotPathArgs {
 // its own (assert-only by construction): a pass proves pixel-level framework
 // swappability between the react and solid render targets. There is
 // deliberately no `:update` script wired for this config (see the
-// `--update` guard below) — regenerating goldens is react's job.
+// `--update` guard below) — regenerating goldens is react's job. The
+// assert-only invariant is enforced mechanically, not just by convention:
+// `resolveScreenshotPath` below refuses (throws) whenever the resolved
+// golden doesn't already exist on disk, so vitest-browser's own
+// auto-create-on-missing behavior for `toMatchScreenshot` can never write
+// into client-react's tree from this config — a missing/renamed golden is a
+// hard failure here, never a silent new file.
 //
 // CROSS-PACKAGE DESIGN: every other tier config in this repo resolves
 // `resolveScreenshotPath` under its OWN package's `root`. This one is the one
@@ -131,12 +138,30 @@ export default defineConfig({
             // Deliberately ignores `root`/`testFileDirectory` (this
             // package's own paths) — resolves into client-react's committed
             // tree instead. See the module-level comment above.
-            return resolve(
+            const screenshotPath = resolve(
               REACT_SCREENSHOTS_ROOT,
               baseline,
               testFileName,
               `${arg}-${browserName}${ext}`,
             );
+
+            // Assert-only guard, part two: without this check,
+            // toMatchScreenshot auto-creates a missing reference screenshot
+            // even without `--update` ("No existing reference screenshot
+            // found; a new one was created") — which would silently write a
+            // new golden into client-react's committed tree the moment a
+            // scenario's baseline goes missing (matrix drift, a react-side
+            // rename). Refuse instead of ever creating one from here.
+            if (!existsSync(screenshotPath)) {
+              throw new Error(
+                `assert-only tier: golden missing at ${screenshotPath} — ` +
+                  "goldens are owned by client-react; refusing to auto-create " +
+                  "one from the solid tier. Regenerate it via " +
+                  "`pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update`.",
+              );
+            }
+
+            return screenshotPath;
           },
           resolveDiffPath: ({
             root,
