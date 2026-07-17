@@ -8,7 +8,7 @@ import { HttpAuthAdapter, wsUrlToHttpBase } from "./HttpAuthAdapter";
 const BASE_URL = "http://localhost:4000";
 
 describe("HttpAuthAdapter", () => {
-  it("resolves { ok:true, token, user } on a 200 response", async () => {
+  it("resolves { ok:true, token, user, exp } on a 200 response", async () => {
     const dto: LoginResponseDto = {
       token: "tok.abc",
       user: {
@@ -29,7 +29,12 @@ describe("HttpAuthAdapter", () => {
 
     const outcome = await firstValueFrom(adapter.login("ada", "hunter2"));
 
-    expect(outcome).toEqual({ ok: true, token: dto.token, user: dto.user });
+    expect(outcome).toEqual({
+      ok: true,
+      token: dto.token,
+      user: dto.user,
+      exp: dto.exp,
+    });
   });
 
   it("POSTs to the base URL's /login path with a JSON body and Content-Type header", async () => {
