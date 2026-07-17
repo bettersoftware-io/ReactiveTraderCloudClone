@@ -53,7 +53,7 @@ export default function RootLayout(): JSX.Element {
       <SafeAreaView style={styles.screen}>
         <AppRoot key={simulator ? "sim" : "live"} simulator={simulator}>
           <ThemeProvider>
-            <AuthGate>
+            <AuthGate simulator={simulator} onToggleSimulator={setSimulator}>
               <Chrome simulator={simulator} onToggle={setSimulator} />
             </AuthGate>
             {playSplash && !bootDone ? (

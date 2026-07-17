@@ -11,7 +11,7 @@ import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 test("unauthenticated: renders LoginScreen, not the children", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel("unauthenticated")}>
-      <AuthGate>
+      <AuthGate simulator={false} onToggleSimulator={noop}>
         <Text testID="child-marker">child</Text>
       </AuthGate>
     </ViewModelProvider>,
@@ -24,7 +24,7 @@ test("unauthenticated: renders LoginScreen, not the children", async () => {
 test("authenticating: renders LoginScreen, not the children", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel("authenticating")}>
-      <AuthGate>
+      <AuthGate simulator={false} onToggleSimulator={noop}>
         <Text testID="child-marker">child</Text>
       </AuthGate>
     </ViewModelProvider>,
@@ -37,7 +37,7 @@ test("authenticating: renders LoginScreen, not the children", async () => {
 test("authenticated: renders the children, not LoginScreen", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel("authenticated")}>
-      <AuthGate>
+      <AuthGate simulator={false} onToggleSimulator={noop}>
         <Text testID="child-marker">child</Text>
       </AuthGate>
     </ViewModelProvider>,
@@ -46,6 +46,10 @@ test("authenticated: renders the children, not LoginScreen", async () => {
   expect(screen.getByTestId("child-marker")).toBeTruthy();
   expect(screen.queryByTestId("login-screen")).toBeNull();
 });
+
+function noop(): undefined {
+  return undefined;
+}
 
 function fakeViewModel(
   status: "unauthenticated" | "authenticating" | "authenticated",

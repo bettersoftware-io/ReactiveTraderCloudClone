@@ -1,8 +1,12 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   type TextStyle,
@@ -22,8 +26,17 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * unconditionally while mounted; `AuthGate` is expected to mount it only for
  * the non-"authenticated" branch of the auth lifecycle. Dumb component: all
  * state arrives through the `useAuth` hook seam, the typed credentials live
- * in local component state only, and the password is never logged. */
-export function LoginScreen(): JSX.Element {
+ * in local component state only, and the password is never logged.
+ * `simulator`/`onToggleSimulator` surface the same Sim/Live toggle `Chrome`
+ * renders post-auth, so it's reachable before signing in — the only such
+ * toggle when the app boots against a sleeping or credential-less live
+ * server. Wrapped in `KeyboardAvoidingView` + a `ScrollView` with
+ * `keyboardShouldPersistTaps="handled"` so the soft keyboard never strands
+ * the submit control on a real device. */
+export function LoginScreen({
+  simulator,
+  onToggleSimulator,
+}: LoginScreenProps): JSX.Element {
   const { useAuth } = useViewModel();
   const { state, login } = useAuth();
   const theme = useTheme();
@@ -35,82 +48,111 @@ export function LoginScreen(): JSX.Element {
   const authenticating = state.status === "authenticating";
 
   return (
-    <View testID="login-screen" style={styles.overlay}>
-      <Svg width={72} height={72} viewBox="0 0 48 48">
-        <Polygon
-          points="24,3 40.6,13.5 40.6,34.5 24,45 7.4,34.5 7.4,13.5"
-          fill="none"
-          stroke={theme.accentPrimary}
-          strokeWidth={1.3}
-        />
-        <Polygon
-          points="24,8 36.3,15.75 36.3,31.25 24,39 11.7,31.25 11.7,15.75"
-          fill="none"
-          stroke={theme.accent2}
-          strokeWidth={1}
-          opacity={0.6}
-        />
-        <Circle cx={24} cy={24} r={3.4} fill={theme.accentPrimary} />
-      </Svg>
-
-      <Text testID="login-title" style={styles.title}>
-        REACTIVE TRADER OS · SIGN IN
-      </Text>
-
-      <View style={styles.field}>
-        <Text style={styles.label}>Username</Text>
-        <TextInput
-          testID="login-username"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholder="Enter username..."
-          placeholderTextColor={styles.placeholder.color}
-          style={styles.input}
-        />
-      </View>
-
-      <View style={styles.field}>
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          testID="login-password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholder="Enter password..."
-          placeholderTextColor={styles.placeholder.color}
-          style={styles.input}
-        />
-      </View>
-
-      {state.error !== null ? (
-        <Text testID="login-error" style={styles.error}>
-          {state.error}
-        </Text>
-      ) : null}
-
-      <Pressable
-        testID="login-submit"
-        disabled={authenticating}
-        onPress={() => {
-          login(username, password);
-        }}
+    <KeyboardAvoidingView
+      testID="login-screen"
+      style={styles.overlay}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text
-          style={[styles.submit, authenticating ? styles.submitDisabled : null]}
-        >
-          AUTHENTICATE ▸
+        <Svg width={72} height={72} viewBox="0 0 48 48">
+          <Polygon
+            points="24,3 40.6,13.5 40.6,34.5 24,45 7.4,34.5 7.4,13.5"
+            fill="none"
+            stroke={theme.accentPrimary}
+            strokeWidth={1.3}
+          />
+          <Polygon
+            points="24,8 36.3,15.75 36.3,31.25 24,39 11.7,31.25 11.7,15.75"
+            fill="none"
+            stroke={theme.accent2}
+            strokeWidth={1}
+            opacity={0.6}
+          />
+          <Circle cx={24} cy={24} r={3.4} fill={theme.accentPrimary} />
+        </Svg>
+
+        <Text testID="login-title" style={styles.title}>
+          REACTIVE TRADER OS · SIGN IN
         </Text>
-      </Pressable>
-    </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Username</Text>
+          <TextInput
+            testID="login-username"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="Enter username..."
+            placeholderTextColor={styles.placeholder.color}
+            style={styles.input}
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            testID="login-password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="Enter password..."
+            placeholderTextColor={styles.placeholder.color}
+            style={styles.input}
+          />
+        </View>
+
+        {state.error !== null ? (
+          <Text testID="login-error" style={styles.error}>
+            {state.error}
+          </Text>
+        ) : null}
+
+        <Pressable
+          testID="login-submit"
+          disabled={authenticating}
+          onPress={() => {
+            login(username, password);
+          }}
+        >
+          <Text
+            style={[
+              styles.submit,
+              authenticating ? styles.submitDisabled : null,
+            ]}
+          >
+            AUTHENTICATE ▸
+          </Text>
+        </Pressable>
+
+        <View style={styles.simRow}>
+          <Text style={styles.simLabel}>Simulator mode</Text>
+          <Switch
+            testID="login-sim-toggle"
+            value={simulator}
+            onValueChange={onToggleSimulator}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
+}
+
+interface LoginScreenProps {
+  simulator: boolean;
+  onToggleSimulator: (value: boolean) => void;
 }
 
 interface LoginScreenStyles {
   overlay: ViewStyle;
+  scroll: ViewStyle;
+  scrollContent: ViewStyle;
   title: TextStyle;
   field: ViewStyle;
   label: TextStyle;
@@ -119,16 +161,22 @@ interface LoginScreenStyles {
   error: TextStyle;
   submit: TextStyle;
   submitDisabled: TextStyle;
+  simRow: ViewStyle;
+  simLabel: TextStyle;
 }
 
 function makeStyles(t: RnTheme): LoginScreenStyles {
   return StyleSheet.create({
     overlay: {
       ...StyleSheet.absoluteFill,
+      backgroundColor: t.bgPrimary,
+    },
+    scroll: { flex: 1 },
+    scrollContent: {
+      flexGrow: 1,
       alignItems: "center",
       justifyContent: "center",
       gap: 10,
-      backgroundColor: t.bgPrimary,
       padding: 24,
     },
     title: {
@@ -169,5 +217,12 @@ function makeStyles(t: RnTheme): LoginScreenStyles {
       marginTop: 12,
     },
     submitDisabled: { color: t.textMuted },
+    simRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 20,
+    },
+    simLabel: { color: t.textMuted, fontFamily: t.fontDisplay, fontSize: 12 },
   });
 }

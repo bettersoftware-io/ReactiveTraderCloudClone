@@ -11,7 +11,7 @@ test("typing credentials then pressing AUTHENTICATE calls login with them", asyn
   const login = jest.fn();
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel("unauthenticated", login)}>
-      <LoginScreen />
+      <LoginScreen simulator={false} onToggleSimulator={noop} />
     </ViewModelProvider>,
   );
 
@@ -28,7 +28,7 @@ test("renders the seeded error message", async () => {
     <ViewModelProvider
       viewModel={fakeViewModel("unauthenticated", noop, "Invalid credentials")}
     >
-      <LoginScreen />
+      <LoginScreen simulator={false} onToggleSimulator={noop} />
     </ViewModelProvider>,
   );
 
@@ -40,7 +40,7 @@ test("renders the seeded error message", async () => {
 test("renders no error node when state.error is null", async () => {
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel("unauthenticated", noop)}>
-      <LoginScreen />
+      <LoginScreen simulator={false} onToggleSimulator={noop} />
     </ViewModelProvider>,
   );
 
@@ -51,13 +51,27 @@ test("submit is disabled while authenticating, and pressing it does not call log
   const login = jest.fn();
   await renderWithTheme(
     <ViewModelProvider viewModel={fakeViewModel("authenticating", login)}>
-      <LoginScreen />
+      <LoginScreen simulator={false} onToggleSimulator={noop} />
     </ViewModelProvider>,
   );
 
   const submit = screen.getByTestId("login-submit");
   await fireEvent.press(submit);
   expect(login).not.toHaveBeenCalled();
+});
+
+test("toggling the sim switch calls onToggleSimulator with the new value", async () => {
+  const onToggleSimulator = jest.fn();
+  await renderWithTheme(
+    <ViewModelProvider viewModel={fakeViewModel("unauthenticated", noop)}>
+      <LoginScreen simulator={false} onToggleSimulator={onToggleSimulator} />
+    </ViewModelProvider>,
+  );
+
+  await fireEvent(screen.getByTestId("login-sim-toggle"), "valueChange", true);
+
+  expect(onToggleSimulator).toHaveBeenCalledTimes(1);
+  expect(onToggleSimulator).toHaveBeenCalledWith(true);
 });
 
 function fakeViewModel(

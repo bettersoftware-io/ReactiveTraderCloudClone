@@ -10,13 +10,26 @@ import { LoginScreen } from "#/ui/shell/auth/LoginScreen";
  * authenticated, `children` (the app) renders; `LockScreen` is not rendered
  * here — it stays mounted inside `Chrome` and self-hides unless locked, so an
  * authenticated-but-locked session still shows the app underneath its
- * overlay. Dumb component: all state arrives through the `useAuth` seam. */
-export function AuthGate({ children }: AuthGateProps): JSX.Element {
+ * overlay. Dumb component: all state arrives through the `useAuth` seam.
+ * `simulator`/`onToggleSimulator` are forwarded verbatim to `LoginScreen` so
+ * the Sim/Live toggle is reachable pre-auth — a fresh live-mode boot against
+ * a sleeping or credential-less server would otherwise strand the operator
+ * on a login form with no way to switch to simulator mode. */
+export function AuthGate({
+  children,
+  simulator,
+  onToggleSimulator,
+}: AuthGateProps): JSX.Element {
   const { useAuth } = useViewModel();
   const { state } = useAuth();
 
   if (state.status !== "authenticated") {
-    return <LoginScreen />;
+    return (
+      <LoginScreen
+        simulator={simulator}
+        onToggleSimulator={onToggleSimulator}
+      />
+    );
   }
 
   return <>{children}</>;
@@ -24,4 +37,6 @@ export function AuthGate({ children }: AuthGateProps): JSX.Element {
 
 interface AuthGateProps {
   children: ReactNode;
+  simulator: boolean;
+  onToggleSimulator: (value: boolean) => void;
 }
