@@ -20,14 +20,8 @@ const SETTLE_MS = 2500;
  * sim), let it settle, then snapshot. Requires the harness native build
  * (`EXPO_PUBLIC_VISUAL_HARNESS=1`) — see `owl.config.json`.
  */
-async function openScenario(id: string): Promise<void> {
-  await exec("xcrun", ["simctl", "openurl", "booted", `${APP_SCHEME}://__visual/${id}`]);
-  await new Promise((r) => setTimeout(r, SETTLE_MS));
-}
-
 describe("rn-visual (owl)", () => {
   for (const id of SCENARIO_IDS) {
-    // biome-ignore lint/suspicious/noSkippedTests: owl requires a native build (Task T2, native session)
     it(`matches ${id}`, async () => {
       await openScenario(id);
       const screen = await takeScreenshot(id.replace(/\//g, "_"));
@@ -35,3 +29,15 @@ describe("rn-visual (owl)", () => {
     });
   }
 });
+
+async function openScenario(id: string): Promise<void> {
+  await exec("xcrun", [
+    "simctl",
+    "openurl",
+    "booted",
+    `${APP_SCHEME}://__visual/${id}`,
+  ]);
+  await new Promise((r) => {
+    setTimeout(r, SETTLE_MS);
+  });
+}

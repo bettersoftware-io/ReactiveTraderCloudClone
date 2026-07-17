@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { flowYaml } from "./generateFlows";
 import { SCENARIO_IDS } from "../scenarioIds";
+import { flowYaml } from "./generateFlows";
 
 describe("flowYaml", () => {
   it("emits a two-step dev-client flow that screenshots the scenario", () => {

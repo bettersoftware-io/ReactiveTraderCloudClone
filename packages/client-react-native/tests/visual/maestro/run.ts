@@ -23,7 +23,8 @@ const exec = promisify(execFile);
  * dir, default `<cwd>/.maestro-shots`).
  */
 const FLOWS_DIR = "tests/visual/maestro/flows";
-const SHOTS = env.RTC_VISUAL_MAESTRO_SHOTS ?? join(cwd(), ".maestro-shots");
+const SHOTS: string =
+  env.RTC_VISUAL_MAESTRO_SHOTS ?? join(cwd(), ".maestro-shots");
 
 async function main(): Promise<void> {
   const update = argv.includes("--update");
@@ -50,6 +51,7 @@ async function main(): Promise<void> {
     }
 
     const result = await compareToGolden(png, gp);
+
     if (result.pass) {
       console.log(`pass     ${id}  (${(result.ratio * 100).toFixed(2)}%)`);
     } else {
@@ -62,6 +64,7 @@ async function main(): Promise<void> {
     console.error(`${failures} scenario(s) failed`);
     exit(1);
   }
+
   exit(0);
 }
 
