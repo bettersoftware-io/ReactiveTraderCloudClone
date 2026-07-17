@@ -80,15 +80,8 @@ describe("HeaderChrome", () => {
     expect(header.hasThemeToggle()).toBe(true);
   });
 
-  it("exposes a power-saver quick toggle that flips aria-pressed", async () => {
-    const header = mount(HeaderChrome, {
-      props: { activeTab: "fx", onTabChange: () => {} },
-      powerSaver: false,
-    });
-    expect(header.powerSaverPressed()).toBe("false");
-    await header.clickPowerSaver();
-    expect(header.powerSaverPressed()).toBe("true");
-  });
+  // Power-saver assertions live in shell/power/PowerSaverSurfaces.contract.spec.ts
+  // (react-only; excluded from the Solid contract run).
 
   it("opens the decorative notifications dropdown with its seed rows", async () => {
     const header = mount(HeaderChrome, {
