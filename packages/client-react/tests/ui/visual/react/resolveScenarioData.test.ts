@@ -1,7 +1,7 @@
+import type { AppData } from "@ui-visual-shared/appData";
 import type { Scenario } from "@ui-visual-shared/scenarios";
 import { describe, expect, it } from "vitest";
 
-import type { AppData } from "../shared/appData";
 import { resolveScenarioData } from "./resolveScenarioData";
 
 const fixtures: Record<string, AppData> = {

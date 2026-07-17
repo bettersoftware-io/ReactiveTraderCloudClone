@@ -1,6 +1,5 @@
+import type { AppData } from "@ui-visual-shared/appData";
 import type { Scenario } from "@ui-visual-shared/scenarios";
-
-import type { AppData } from "../shared/appData";
 
 /** Resolve a scenario's fixture into AppData, layering the scenario's optional
  *  themeSkin/themeMode override on top. Returns the fixture object unchanged

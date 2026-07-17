@@ -51,7 +51,10 @@
         "src/shared/components.ts",
         "src/shared/mount.ts",
         "src/specs/**/*.contract.spec.ts",
-        "src/visual/scenarios.test.ts"
+        "src/visual/scenarios.test.ts",
+        "src/visual/fixtures.ts",
+        "src/visual/freezeClock.ts",
+        "src/visual/scenarioActions.ts"
       ],
       "project": "src/**/*.ts"
     },
