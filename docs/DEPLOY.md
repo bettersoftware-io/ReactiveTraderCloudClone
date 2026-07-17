@@ -98,9 +98,10 @@ the team), and watch live prices tick.
 - **Session-signing secret:** `fly secrets set AUTH_SECRET=<new> -a rtc-clone-server`
   invalidates every outstanding session token immediately (users must log in
   again) — useful if a token were ever compromised.
-- Credentials are **not published in this repo** — ask the team for the real
-  roster rather than inventing one; only placeholder values (`demo`/`localpass`,
-  `user:pass`) ever belong in committed files.
+- This is a **demo app**, so the demo login password (`mcdc2026`) is committed
+  for local dev (`.env.development` + the `dev:*` scripts) — throwaway and
+  rotatable. The **`AUTH_SECRET`** token-signing key is the credential that
+  never belongs in a committed file: it stays a Fly secret set by hand.
 
 See [env-files.md](./env-files.md) for the full inventory of `.env` files and
 the auth-related environment variables.
