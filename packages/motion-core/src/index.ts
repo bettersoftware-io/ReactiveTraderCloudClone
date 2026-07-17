@@ -21,3 +21,10 @@ export {
   sameOrder,
 } from "./rankGlide.js";
 export { REDUCED_MOTION_QUERY } from "./reducedMotion.js";
+export type { TickDirection, TickFlashState } from "./tickFlash.js";
+export {
+  nextTickFlash,
+  TICK_FLASH_DURATION_MS,
+  TICK_FLASH_EPSILON,
+  tickDirection,
+} from "./tickFlash.js";
