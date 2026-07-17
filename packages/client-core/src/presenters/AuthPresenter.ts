@@ -153,6 +153,12 @@ export class AuthPresenter {
     this.subject.next(UNAUTHENTICATED_STATE);
   }
 
+  // `exp` is the expiry the AuthPort reported (the server's real token expiry
+  // over HTTP, or the simulator's `now() + ttlMs`), persisted verbatim rather
+  // than recomputed from a local TTL — so `resume()`'s `exp > now()` check
+  // tracks the token's actual lifetime instead of drifting from it. The signed
+  // token remains the real gate at the WS upgrade; this only decides when to
+  // stop offering a stored session client-side.
   private writeSession(
     username: string,
     token: string,
