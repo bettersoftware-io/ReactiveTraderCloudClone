@@ -16,6 +16,7 @@ export function computeFps(frameCount: number, elapsedMs: number): number {
   if (elapsedMs <= 0) {
     return 0;
   }
+
   return Math.round((frameCount * 1000) / elapsedMs);
 }
 
@@ -24,9 +25,11 @@ export function fpsTone(fps: number): MetricTone {
   if (fps >= FPS_GOOD) {
     return "positive";
   }
+
   if (fps >= FPS_WARN) {
     return "aware";
   }
+
   return "negative";
 }
 

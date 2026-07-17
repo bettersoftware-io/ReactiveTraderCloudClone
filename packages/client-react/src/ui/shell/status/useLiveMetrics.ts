@@ -37,13 +37,15 @@ export function useLiveMetrics(): LiveMetrics {
     if (frozen) {
       return;
     }
+
     let raf = 0;
     let frames = 0;
     let windowStart = performance.now();
 
-    const loop = (now: number): void => {
+    function loop(now: number): void {
       frames += 1;
       const elapsed = now - windowStart;
+
       if (elapsed >= PUBLISH_MS) {
         const fps = computeFps(frames, elapsed);
         const heap = readHeapBytes();
@@ -55,10 +57,12 @@ export function useLiveMetrics(): LiveMetrics {
         frames = 0;
         windowStart = now;
       }
+
       raf = requestAnimationFrame(loop);
-    };
+    }
 
     raf = requestAnimationFrame(loop);
+
     return () => {
       cancelAnimationFrame(raf);
     };

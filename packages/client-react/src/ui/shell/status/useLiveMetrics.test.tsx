@@ -34,23 +34,31 @@ describe("useLiveMetrics", () => {
   }
 
   it("returns the frozen value and never starts a loop when a provider is present", () => {
-    function Wrapper({ children }: { children: ReactNode }): ReactElement {
+    function Wrapper({ children }: WrapperProps): ReactElement {
       return (
         <LiveMetricsContext.Provider value={FROZEN_LIVE_METRICS}>
           {children}
         </LiveMetricsContext.Provider>
       );
     }
-    const { result } = renderHook(() => useLiveMetrics(), {
-      wrapper: Wrapper,
-    });
+
+    const { result } = renderHook(
+      () => {
+        return useLiveMetrics();
+      },
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     expect(result.current).toEqual(FROZEN_LIVE_METRICS);
     expect(window.requestAnimationFrame).not.toHaveBeenCalled();
   });
 
   it("starts null, then publishes fps + tone counted over the ~1s window", () => {
-    const { result } = renderHook(() => useLiveMetrics());
+    const { result } = renderHook(() => {
+      return useLiveMetrics();
+    });
 
     expect(result.current.fps).toBeNull();
     expect(result.current.fpsTone).toBe("dim");
@@ -59,6 +67,7 @@ describe("useLiveMetrics", () => {
     for (let i = 1; i <= 59; i += 1) {
       frame(i);
     }
+
     expect(result.current.fps).toBeNull();
 
     // 60th frame lands the window at exactly 1000ms → publish 60fps.
@@ -72,24 +81,34 @@ describe("useLiveMetrics", () => {
       configurable: true,
       value: { usedJSHeapSize: 260 * 1024 * 1024 },
     });
-    const { result } = renderHook(() => useLiveMetrics());
+    const { result } = renderHook(() => {
+      return useLiveMetrics();
+    });
 
     for (let i = 1; i <= 59; i += 1) {
       frame(i);
     }
+
     frame(1000);
 
     expect(result.current.mem).toBe("260MB");
   });
 
   it("reports null memory when performance.memory is unavailable", () => {
-    const { result } = renderHook(() => useLiveMetrics());
+    const { result } = renderHook(() => {
+      return useLiveMetrics();
+    });
 
     for (let i = 1; i <= 59; i += 1) {
       frame(i);
     }
+
     frame(1000);
 
     expect(result.current.mem).toBeNull();
   });
 });
+
+interface WrapperProps {
+  children: ReactNode;
+}
