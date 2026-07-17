@@ -19,12 +19,15 @@ describe("RN inspection end-to-end over the relay", () => {
   let relay: RelayServer | null = null;
   let hub: DevtoolsHub | null = null;
   let client: InspectorClient | null = null;
+  let channel: WsRelayDuplex<InspectorToApp, AppToInspector> | null = null;
 
   afterEach(async () => {
     client?.dispose();
+    channel?.dispose();
     hub?.dispose();
     await relay?.close();
     client = null;
+    channel = null;
     hub = null;
     relay = null;
   });
@@ -49,10 +52,8 @@ describe("RN inspection end-to-end over the relay", () => {
 
     // Panel side — exactly what createRelayInspectorSession builds.
     const store = new InspectorStore();
-    client = new InspectorClient(
-      new WsRelayDuplex<InspectorToApp, AppToInspector>(url, "panel"),
-      store,
-    );
+    channel = new WsRelayDuplex<InspectorToApp, AppToInspector>(url, "panel");
+    client = new InspectorClient(channel, store);
     client.start();
 
     await vi.waitFor(
