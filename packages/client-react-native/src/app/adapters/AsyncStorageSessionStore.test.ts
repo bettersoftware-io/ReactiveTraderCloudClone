@@ -15,24 +15,6 @@ beforeEach(() => {
   store.clear();
 });
 
-vi.mock("@react-native-async-storage/async-storage", () => {
-  return {
-    default: {
-      getItem: (key: string) => {
-        return Promise.resolve(store.get(key) ?? null);
-      },
-      setItem: (key: string, value: string) => {
-        store.set(key, value);
-        return Promise.resolve();
-      },
-      removeItem: (key: string) => {
-        store.delete(key);
-        return Promise.resolve();
-      },
-    },
-  };
-});
-
 const USER: SessionUser = {
   name: "Anthony Stark",
   initials: "AS",
@@ -104,4 +86,22 @@ describe("AsyncStorageSessionStore", () => {
 
     expect(session.read()).toBeNull();
   });
+});
+
+vi.mock("@react-native-async-storage/async-storage", () => {
+  return {
+    default: {
+      getItem: (key: string) => {
+        return Promise.resolve(store.get(key) ?? null);
+      },
+      setItem: (key: string, value: string) => {
+        store.set(key, value);
+        return Promise.resolve();
+      },
+      removeItem: (key: string) => {
+        store.delete(key);
+        return Promise.resolve();
+      },
+    },
+  };
 });

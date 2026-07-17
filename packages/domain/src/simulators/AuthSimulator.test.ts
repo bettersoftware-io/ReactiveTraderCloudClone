@@ -33,6 +33,7 @@ describe("AuthSimulator", () => {
     const r = await firstValueFrom(withClock.login("astark", "pw"));
 
     expect(r.ok).toBe(true);
+
     if (r.ok) {
       expect(r.exp).toBe(6_000);
     }

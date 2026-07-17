@@ -15,8 +15,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import type { SessionStore } from "@rtc/client-core";
 
-import { AsyncStorageSessionStore } from "#/app/adapters/AsyncStorageSessionStore";
 import { AppRoot } from "#/app/AppRoot";
+import { AsyncStorageSessionStore } from "#/app/adapters/AsyncStorageSessionStore";
 import { shouldPlayBootSplash } from "#/app/bootSplashGate";
 import { MotionProbe } from "#/ui/_probe/MotionProbe";
 import { AmbientBackground } from "#/ui/ambient/AmbientBackground";
@@ -57,6 +57,7 @@ export default function RootLayout(): JSX.Element {
         setSessionStore(store);
       }
     });
+
     return (): void => {
       alive = false;
     };
