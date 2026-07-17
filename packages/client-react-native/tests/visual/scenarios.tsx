@@ -15,9 +15,16 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  * each is a leaf whose default sim-port state carries no `Math.random()` or
  * live-ticking data (verified against the domain simulators):
  *
- * - `blotter/empty` — the Blotter tab with zero executed trades. Sim ports
- *   never auto-execute a trade, so this is always the static "No trades yet"
- *   state.
+ * - `blotter/seeded` — the Blotter tab on sim ports. On-device capture
+ *   (rehaul Phase 1 driver-tier verification) found this is NOT empty:
+ *   `TradeStoreSimulator` (`packages/domain/src/simulators/TradeStoreSimulator.ts`)
+ *   pre-seeds 5 trades at construction time — EURUSD Buy Done, USDJPY Sell
+ *   Done, GBPUSD Buy Rejected, EURJPY Sell Done, AUDUSD Buy Done — so the
+ *   default state is always the populated list, not "No trades yet". The
+ *   seed is a static literal array (no `Math.random`, no live ticking), so
+ *   the populated list is exactly as deterministic as an empty one would
+ *   have been — renamed to match reality rather than forcing an artificial
+ *   empty premise.
  * - `shell/connection-banner` — the connection-status pill. The simulator's
  *   `ConnectionEventsPort` (built fresh per host mount, not the shared
  *   `ConnectionEventsSimulator` used by the real app) emits a single
@@ -35,7 +42,7 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  */
 export const SCENARIOS: readonly Scenario[] = [
   {
-    id: "blotter/empty",
+    id: "blotter/seeded",
     skin: "holo3d",
     mode: "dark",
     build: (): ReactNode => {

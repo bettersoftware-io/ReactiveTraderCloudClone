@@ -22,6 +22,8 @@
     "build": "tsc --noEmit",
     "export": "expo export --platform ios --output-dir dist",
     "smoke:ws": "tsx scripts/liveWsSmoke.ts",
+    "test:rn:visual:simctl": "tsx tests/visual/simctl/run.ts",
+    "test:rn:visual:simctl:update": "tsx tests/visual/simctl/run.ts --update",
     "clean": "rm -rf dist .turbo .expo *.tsbuildinfo node_modules/.cache 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules ios android 2>/dev/null || true)"
   },
