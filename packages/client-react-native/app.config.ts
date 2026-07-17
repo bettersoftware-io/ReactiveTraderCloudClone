@@ -24,7 +24,7 @@ const config: ExpoConfig = {
   updates: { enabled: false },
   // `eas.projectId` is already set in the EXISTING `extra` object below (done —
   // no future step needed there; do NOT add a second `extra` key, that would
-  // clobber `serverUrl`/`demoUser`/`demoPass`).
+  // clobber `serverUrl`/`devAuth`).
   // EAS Update / OTA (top-level `updates.url` + the `expo-updates` package) is
   // intentionally OUT OF SCOPE under this workstream's free-path distribution
   // policy; the `updates: { enabled: false }` above encodes that. If OTA is ever
@@ -40,13 +40,14 @@ const config: ExpoConfig = {
     // `serverUrl` defaults to the deployed Fly endpoint so the demo streams
     // with no env set. The old shared `wsToken` query-param gate is gone —
     // the WS connection now authenticates with a genuine session token
-    // (`buildNativePorts`), obtained by auto-login (Task 18) against
-    // `demoUser`/`demoPass` below. Both default to the public "demo" roster
-    // account so the app boots authenticated with no env set; a real
-    // deployed server still requires that pair to exist in its `AUTH_USERS`
-    // secret (see the package README) for the real-WS branch to succeed.
-    demoUser: process.env.EXPO_PUBLIC_DEMO_USER,
-    demoPass: process.env.EXPO_PUBLIC_DEMO_PASS,
+    // (`buildNativePorts`), obtained by signing in through the login screen
+    // (`AuthGate` + `LoginScreen`) against the real server's `AUTH_USERS`
+    // secret — no credentials are baked for the real-WS branch.
+    // `devAuth` is simulator-mode only: a JSON `username -> password` map
+    // (mirroring client-react's `VITE_DEV_AUTH`) so the offline `Sim` toggle
+    // can log in as any roster user; see `nativeAuthConfig.ts`, which falls
+    // back to all four roster usernames at a shared dev password when unset.
+    devAuth: process.env.EXPO_PUBLIC_DEV_AUTH,
     eas: { projectId: "ec0ee21b-52af-4375-bb5d-70c6c52b8c1a" },
   },
   plugins: ["expo-router"],

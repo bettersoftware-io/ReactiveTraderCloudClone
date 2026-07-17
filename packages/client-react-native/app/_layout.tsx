@@ -19,6 +19,7 @@ import { MotionProbe } from "#/ui/_probe/MotionProbe";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
 import { AppearanceButton } from "#/ui/shell/appearance/AppearanceButton";
 import { AppearanceOverlay } from "#/ui/shell/appearance/AppearanceOverlay";
+import { AuthGate } from "#/ui/shell/auth/AuthGate";
 import { BootGate } from "#/ui/shell/boot/BootGate";
 import { LockButton } from "#/ui/shell/lock/LockButton";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
@@ -52,7 +53,9 @@ export default function RootLayout(): JSX.Element {
       <SafeAreaView style={styles.screen}>
         <AppRoot key={simulator ? "sim" : "live"} simulator={simulator}>
           <ThemeProvider>
-            <Chrome simulator={simulator} onToggle={setSimulator} />
+            <AuthGate simulator={simulator} onToggleSimulator={setSimulator}>
+              <Chrome simulator={simulator} onToggle={setSimulator} />
+            </AuthGate>
             {playSplash && !bootDone ? (
               <BootGate
                 onFinished={(): void => {

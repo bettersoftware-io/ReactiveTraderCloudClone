@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   type TextStyle,
@@ -16,38 +17,39 @@ import Svg, { Circle, Polygon } from "react-native-svg";
 
 import { useViewModel } from "@rtc/react-bindings";
 
-import { BiometricLine } from "#/ui/shell/lock/BiometricLine";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-/** Full-screen session-lock overlay. Renders nothing unless the session is
- * locked; while locked it covers the whole shell — an absolute-fill <View>
- * (NOT an RN Modal: Modal-via-press segfaults under x86 jest) — and shows the
- * operator identity plus a password-gated AUTHENTICATE control that
- * re-authenticates (unlock) against the real credentials seam. Dumb
- * component: all state arrives through the reused `useAuth` seam; the typed
- * password lives in local component state only and is never logged. Only
- * BiometricLine is decorative. Wrapped in `KeyboardAvoidingView` + a
- * `ScrollView` with `keyboardShouldPersistTaps="handled"` so the soft
- * keyboard never strands the AUTHENTICATE control on a real device. */
-export function LockScreen(): JSX.Element | null {
+/** Full-screen sign-in form — the RN analogue of the web client's
+ * `LoginScreen`, styled to match `LockScreen`'s hex-emblem overlay. Renders
+ * unconditionally while mounted; `AuthGate` is expected to mount it only for
+ * the non-"authenticated" branch of the auth lifecycle. Dumb component: all
+ * state arrives through the `useAuth` hook seam, the typed credentials live
+ * in local component state only, and the password is never logged.
+ * `simulator`/`onToggleSimulator` surface the same Sim/Live toggle `Chrome`
+ * renders post-auth, so it's reachable before signing in — the only such
+ * toggle when the app boots against a sleeping or credential-less live
+ * server. Wrapped in `KeyboardAvoidingView` + a `ScrollView` with
+ * `keyboardShouldPersistTaps="handled"` so the soft keyboard never strands
+ * the submit control on a real device. */
+export function LoginScreen({
+  simulator,
+  onToggleSimulator,
+}: LoginScreenProps): JSX.Element {
   const { useAuth } = useViewModel();
-  const { state, unlock } = useAuth();
+  const { state, login } = useAuth();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  if (!state.locked || !state.user) {
-    return null;
-  }
-
-  const { user } = state;
+  const authenticating = state.status === "authenticating";
 
   return (
     <KeyboardAvoidingView
-      testID="lock-screen"
+      testID="login-screen"
       style={styles.overlay}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
@@ -73,32 +75,28 @@ export function LockScreen(): JSX.Element | null {
           <Circle cx={24} cy={24} r={3.4} fill={theme.accentPrimary} />
         </Svg>
 
-        <Text testID="lock-title" style={styles.title}>
-          SESSION LOCKED
+        <Text testID="login-title" style={styles.title}>
+          REACTIVE TRADER OS · SIGN IN
         </Text>
-        <Text style={styles.subtitle}>REACTIVE TRADER OS · {user.id}</Text>
 
-        <View style={styles.avatar}>
-          <Svg width={40} height={40} viewBox="0 0 28 28">
-            <Polygon
-              points="14,1.5 25,7.75 25,20.25 14,26.5 3,20.25 3,7.75"
-              fill={theme.chip}
-              stroke={theme.accentPrimary}
-              strokeWidth={1.3}
-            />
-          </Svg>
-          <Text style={styles.initials}>{user.initials}</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Username</Text>
+          <TextInput
+            testID="login-username"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="Enter username..."
+            placeholderTextColor={styles.placeholder.color}
+            style={styles.input}
+          />
         </View>
-
-        <Text testID="lock-user-name" style={styles.name}>
-          {user.name}
-        </Text>
-        <Text style={styles.role}>{user.role}</Text>
 
         <View style={styles.field}>
           <Text style={styles.label}>Password</Text>
           <TextInput
-            testID="lock-password"
+            testID="login-password"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -111,54 +109,66 @@ export function LockScreen(): JSX.Element | null {
         </View>
 
         {state.error !== null ? (
-          <Text testID="lock-error" style={styles.error}>
+          <Text testID="login-error" style={styles.error}>
             {state.error}
           </Text>
         ) : null}
 
         <Pressable
-          testID="lock-authenticate"
+          testID="login-submit"
+          disabled={authenticating}
           onPress={() => {
-            unlock(password);
+            login(username, password);
           }}
         >
-          <Text style={styles.authenticate}>AUTHENTICATE ▸</Text>
+          <Text
+            style={[
+              styles.submit,
+              authenticating ? styles.submitDisabled : null,
+            ]}
+          >
+            AUTHENTICATE ▸
+          </Text>
         </Pressable>
 
-        <BiometricLine />
+        <View style={styles.simRow}>
+          <Text style={styles.simLabel}>Simulator mode</Text>
+          <Switch
+            testID="login-sim-toggle"
+            value={simulator}
+            onValueChange={onToggleSimulator}
+          />
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-interface LockScreenStyles {
+interface LoginScreenProps {
+  simulator: boolean;
+  onToggleSimulator: (value: boolean) => void;
+}
+
+interface LoginScreenStyles {
   overlay: ViewStyle;
   scroll: ViewStyle;
   scrollContent: ViewStyle;
   title: TextStyle;
-  subtitle: TextStyle;
-  avatar: ViewStyle;
-  initials: TextStyle;
-  name: TextStyle;
-  role: TextStyle;
   field: ViewStyle;
   label: TextStyle;
   input: TextStyle;
   placeholder: TextStyle;
   error: TextStyle;
-  authenticate: TextStyle;
+  submit: TextStyle;
+  submitDisabled: TextStyle;
+  simRow: ViewStyle;
+  simLabel: TextStyle;
 }
 
-function makeStyles(t: RnTheme): LockScreenStyles {
+function makeStyles(t: RnTheme): LoginScreenStyles {
   return StyleSheet.create({
     overlay: {
       ...StyleSheet.absoluteFill,
-      // zIndex 200 orders LockScreen within Chrome; BootGate's 100 lives in a
-      // different parent (sibling of Chrome) and paints above the whole Chrome
-      // subtree regardless. The two overlays never coexist — the session starts
-      // unlocked, so LockScreen is null throughout cold-start boot.
-      zIndex: 200,
-      elevation: 200,
       backgroundColor: t.bgPrimary,
     },
     scroll: { flex: 1 },
@@ -167,29 +177,17 @@ function makeStyles(t: RnTheme): LockScreenStyles {
       alignItems: "center",
       justifyContent: "center",
       gap: 10,
+      padding: 24,
     },
     title: {
       color: t.textPrimary,
       fontFamily: t.fontDisplay,
-      fontSize: 20,
+      fontSize: 18,
       letterSpacing: 3,
+      marginBottom: 8,
+      textAlign: "center",
     },
-    subtitle: {
-      color: t.textMuted,
-      fontFamily: t.fontMono,
-      fontSize: 11,
-      letterSpacing: 1,
-    },
-    avatar: { alignItems: "center", justifyContent: "center" },
-    initials: {
-      position: "absolute",
-      color: t.textPrimary,
-      fontFamily: t.fontDisplay,
-      fontSize: 12,
-    },
-    name: { color: t.textPrimary, fontFamily: t.fontDisplay, fontSize: 16 },
-    role: { color: t.textMuted, fontFamily: t.fontMono, fontSize: 11 },
-    field: { width: "100%", maxWidth: 320, gap: 4, marginTop: 8 },
+    field: { width: "100%", maxWidth: 320, gap: 4 },
     label: {
       color: t.textSecondary,
       fontFamily: t.fontDisplay,
@@ -211,12 +209,20 @@ function makeStyles(t: RnTheme): LockScreenStyles {
       fontSize: 12,
       marginTop: 4,
     },
-    authenticate: {
+    submit: {
       color: t.accentPrimary,
       fontFamily: t.fontDisplay,
       fontSize: 14,
       letterSpacing: 1,
-      marginTop: 8,
+      marginTop: 12,
     },
+    submitDisabled: { color: t.textMuted },
+    simRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 20,
+    },
+    simLabel: { color: t.textMuted, fontFamily: t.fontDisplay, fontSize: 12 },
   });
 }
