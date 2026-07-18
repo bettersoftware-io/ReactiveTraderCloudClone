@@ -19,20 +19,20 @@ describe("DEV_CREDENTIALS", () => {
   it("falls back to the four roster users when extra.devAuth is unset", async () => {
     const { DEV_CREDENTIALS } = await loadWithExtra({});
     expect(DEV_CREDENTIALS).toEqual({
-      astark: "demo",
-      nromanoff: "demo",
-      tchalla: "demo",
-      demo: "demo",
+      astark: "mcdc2026",
+      nromanoff: "mcdc2026",
+      tchalla: "mcdc2026",
+      demo: "mcdc2026",
     });
   });
 
   it("falls back to the roster default when extra.devAuth is an empty string", async () => {
     const { DEV_CREDENTIALS } = await loadWithExtra({ devAuth: "" });
     expect(DEV_CREDENTIALS).toEqual({
-      astark: "demo",
-      nromanoff: "demo",
-      tchalla: "demo",
-      demo: "demo",
+      astark: "mcdc2026",
+      nromanoff: "mcdc2026",
+      tchalla: "mcdc2026",
+      demo: "mcdc2026",
     });
   });
 
@@ -41,10 +41,10 @@ describe("DEV_CREDENTIALS", () => {
       devAuth: "{not valid json",
     });
     expect(DEV_CREDENTIALS).toEqual({
-      astark: "demo",
-      nromanoff: "demo",
-      tchalla: "demo",
-      demo: "demo",
+      astark: "mcdc2026",
+      nromanoff: "mcdc2026",
+      tchalla: "mcdc2026",
+      demo: "mcdc2026",
     });
   });
 
@@ -53,10 +53,10 @@ describe("DEV_CREDENTIALS", () => {
       devAuth: JSON.stringify(["astark", "demo"]),
     });
     expect(DEV_CREDENTIALS).toEqual({
-      astark: "demo",
-      nromanoff: "demo",
-      tchalla: "demo",
-      demo: "demo",
+      astark: "mcdc2026",
+      nromanoff: "mcdc2026",
+      tchalla: "mcdc2026",
+      demo: "mcdc2026",
     });
     expect(DEV_CREDENTIALS).not.toHaveProperty("0");
   });

@@ -79,9 +79,10 @@ the team), and watch live prices tick.
   control is now real per-user authentication on the server, not a static
   edge secret.
 - For **local** simulator-mode dev (no real server), `VITE_DEV_AUTH` (a JSON
-  map of `username` → `password`, e.g. `{"demo":"localpass"}`) seeds an
+  map of `username` → `password`, e.g. `{"demo":"mcdc2026"}`) seeds an
   in-process `AuthSimulator` so the login screen works with no backend at all.
-  See `packages/client-react/.env.example`.
+  `pnpm dev` already reads the committed demo roster from `.env.development`;
+  see `packages/client-react/.env.example` to override.
 - The mobile app shows a login screen on every launch (no auto-login); in
   **live** mode the operator signs in with any credential that exists in the
   deployed server's `AUTH_USERS` roster. In **simulator** mode

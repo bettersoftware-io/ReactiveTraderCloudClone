@@ -72,9 +72,10 @@ export function buildBrowserPorts(): AppPorts {
   }
 
   // Baked skeleton credential — the walking skeleton has no login UI, so the
-  // simulator branch only needs to accept the one demo/demo pair used by
-  // AppRoot's auto-login.
-  const auth = new AuthSimulator({ demo: "demo" });
+  // simulator branch only needs to accept the one demo pair used by
+  // AppRoot's auto-login. Password is the shared committed demo password
+  // (see roster.ts / CLAUDE.md "Demo accounts").
+  const auth = new AuthSimulator({ demo: "mcdc2026" });
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
     events: () => {
