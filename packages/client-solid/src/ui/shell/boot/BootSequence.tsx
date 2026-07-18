@@ -20,9 +20,10 @@ import { createBootTopo } from "./variants/bootTopo";
 import styles from "./BootSequence.module.css";
 
 export function BootSequence(props: BootSequenceProps): JSX.Element {
-  const { useBootSequence } = useViewModel();
+  const { useBootSequence, useForceBootAnimation } = useViewModel();
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const { state, skip } = useBootSequence(props.onDone);
+  const { enabled: forced } = useForceBootAnimation();
   let canvasEl!: HTMLCanvasElement;
 
   // The machine emits a FRESH state object every 90ms tick (~47 per boot)
@@ -42,11 +43,11 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
     const currentVariant = variant();
     const canvas = canvasEl;
 
-    const reduce = window.matchMedia?.(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const prefersReduced =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
+      false;
 
-    if (reduce) {
+    if (prefersReduced && !forced()) {
       return;
     }
 
@@ -108,6 +109,7 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
       data-testid="boot-sequence"
       data-done={state().done ? "true" : "false"}
       data-variant={state().variant}
+      data-force-anim={forced() ? "true" : "false"}
       class={styles.boot}
     >
       <canvas ref={canvasEl} class={styles.canvas} />

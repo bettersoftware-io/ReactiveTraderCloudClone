@@ -20,8 +20,9 @@ import { createBootTopo } from "./variants/bootTopo";
 import styles from "./BootSequence.module.css";
 
 export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
-  const { useBootSequence } = useViewModel();
+  const { useBootSequence, useForceBootAnimation } = useViewModel();
   const { state, skip } = useBootSequence(onDone);
+  const forced = useForceBootAnimation().enabled;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -31,11 +32,11 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       return;
     }
 
-    const reduce = window.matchMedia?.(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const prefersReduced =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
+      false;
 
-    if (reduce) {
+    if (prefersReduced && !forced) {
       return;
     }
 
@@ -86,13 +87,14 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       window.removeEventListener("mousemove", onMove);
       cancelAnimationFrame(raf);
     };
-  }, [state.variant]);
+  }, [state.variant, forced]);
 
   return (
     <div
       data-testid="boot-sequence"
       data-done={state.done ? "true" : "false"}
       data-variant={state.variant}
+      data-force-anim={forced ? "true" : "false"}
       className={styles.boot}
     >
       <canvas ref={canvasRef} className={styles.canvas} />

@@ -93,6 +93,35 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     window.matchMedia = original;
   });
 
+  it("runs the rAF loop under reduced motion when forced", () => {
+    // jsdom has no matchMedia at all (the component optional-chains it), so
+    // stub one on the window rather than spying. Restore via `finally` so a
+    // failing assertion here can't leak the stub into later tests.
+    const original = window.matchMedia;
+    window.matchMedia = (() => {
+      return { matches: true }; // prefers-reduced-motion: reduce
+    }) as unknown as typeof window.matchMedia;
+    try {
+      renderBootSequence({ forceBootAnimation: true });
+      expect(rafSpy).toHaveBeenCalled();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("does NOT run the rAF loop under reduced motion when not forced", () => {
+    const original = window.matchMedia;
+    window.matchMedia = (() => {
+      return { matches: true };
+    }) as unknown as typeof window.matchMedia;
+    try {
+      renderBootSequence({ forceBootAnimation: false });
+      expect(rafSpy).not.toHaveBeenCalled();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it("draws using CSS-var values when custom properties are set", () => {
     document.documentElement.style.setProperty("--accent-primary", "#c0ffee");
     document.documentElement.style.setProperty("--accent-2", "#facade");
@@ -229,6 +258,9 @@ function wrap(
         skip: vi.fn(),
       };
     },
+    useForceBootAnimation: () => {
+      return { enabled: false, setEnabled: vi.fn(), toggle: vi.fn() };
+    },
     ...partialHooks,
   } as unknown as ViewModel;
 
@@ -236,5 +268,22 @@ function wrap(
     <ViewModelContext.Provider value={defaultHooks}>
       {el}
     </ViewModelContext.Provider>
+  );
+}
+
+/** Renders `<BootSequence>` with `useForceBootAnimation().enabled` stubbed to
+ * the given flag — the seam Task 4 wires into the effective reduced-motion
+ * decision. */
+function renderBootSequence({
+  forceBootAnimation,
+}: {
+  forceBootAnimation: boolean;
+}): void {
+  render(
+    wrap(<BootSequence onDone={vi.fn()} />, {
+      useForceBootAnimation: () => {
+        return { enabled: forceBootAnimation, setEnabled: vi.fn(), toggle: vi.fn() };
+      },
+    } as unknown as Partial<ViewModel>),
   );
 }
