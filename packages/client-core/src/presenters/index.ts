@@ -2,6 +2,7 @@ export type { SessionUser } from "@rtc/domain";
 
 export * from "#/presenters/AnalyticsPresenter";
 export * from "#/presenters/AnimatedBackgroundPresenter";
+export * from "#/presenters/ForceBootAnimationPresenter";
 export * from "#/presenters/AnimationDirector";
 export * from "#/presenters/AuthPresenter";
 export * from "#/presenters/adminKpisVm";
