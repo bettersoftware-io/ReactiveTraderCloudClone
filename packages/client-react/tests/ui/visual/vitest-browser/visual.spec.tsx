@@ -54,6 +54,30 @@ for (const [name, scenario] of Object.entries(scenarios)) {
       // vitest-browser-react v2: render() is async (wraps React's async act).
       const screen = await render(<VisualScenario name={name} />);
 
+      // VisualScenario renders null until document.fonts.load() resolves (the
+      // font-determinism gate). The first test in a fresh page pays that cold
+      // latency, so an eager getByTestId(...).element() for the first
+      // interaction throws "Cannot find element" against an empty <div/> before
+      // the content mounts — which makes any -t-filtered / single-scenario run
+      // fail its first test. Await the first interaction target visible to wait
+      // the gate out. The final toMatchScreenshot auto-retries on its own, so
+      // non-interaction scenarios need no gate here.
+      const firstStep = action.steps?.[0];
+      const firstInteractionTestId =
+        action.click ??
+        (firstStep &&
+          ("click" in firstStep
+            ? firstStep.click
+            : "type" in firstStep
+              ? firstStep.type
+              : firstStep.select));
+
+      if (firstInteractionTestId) {
+        await expect
+          .element(screen.getByTestId(firstInteractionTestId))
+          .toBeVisible();
+      }
+
       if (action.click) {
         await userEvent.click(screen.getByTestId(action.click).element());
       }
