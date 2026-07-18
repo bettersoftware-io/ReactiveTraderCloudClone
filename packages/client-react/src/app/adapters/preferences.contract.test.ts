@@ -2,6 +2,7 @@ import { firstValueFrom } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_AMBIENT_STYLE,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
@@ -148,6 +149,14 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     );
     expect(await firstValueFrom(port.eqBlotterView$())).toBe(
       DEFAULT_EQ_BLOTTER_VIEW,
+    );
+  });
+
+  it("falls back to defaults for an invalid stored ambientStyle", async () => {
+    localStorage.setItem(AMBIENT_STYLE_STORAGE_KEY, "nonsense");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.ambientStyle$())).toBe(
+      DEFAULT_AMBIENT_STYLE,
     );
   });
 });
