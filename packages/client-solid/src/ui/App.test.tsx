@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { AppRoot } from "#/AppRoot";
+import { SESSION_STORAGE_KEY } from "#/app/adapters/LocalStorageSessionStore";
 import { App } from "#/ui/App";
 
 // Smoke test: mounts the REAL composition root (AppRoot →
@@ -14,6 +15,55 @@ import { App } from "#/ui/App";
 // walking-skeleton auto-login), so every test signs in with the committed
 // demo credentials before asserting on shell chrome.
 describe("App (shell chrome)", () => {
+  // The session store is now localStorage-backed (parity with client-react), so
+  // it persists across renders within a file. Clear it between tests so each one
+  // starts from the LoginScreen rather than resuming a prior test's session.
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  // Regression (the SolidJS e2e outage): the browser e2e suites boot past the
+  // AuthGate by seeding an authenticated session under `rtc-session` in
+  // localStorage (tests/browser/authSeed.ts) — exactly this shape. When the
+  // Solid client wired an InMemorySessionStore it ignored that seed and left
+  // every e2e scenario stranded on LoginScreen. This asserts the composition
+  // root now resumes the seeded session and renders the shell WITHOUT driving
+  // the login form. It fails against an in-memory store and passes against the
+  // localStorage-backed one.
+  it("boots straight past the login screen when an authenticated session is seeded in localStorage", async () => {
+    localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({
+        token: "seeded-token",
+        username: "demo",
+        user: {
+          name: "Demo Operator",
+          initials: "DO",
+          role: "Read-Only Guest",
+          id: "TRD-0000",
+          email: "demo@reactivetrader.io",
+          desk: "Demo · Cloud",
+          clearance: "LEVEL 1 · VIEW",
+        },
+        // Year 2100 — never treated as expired during the test run.
+        exp: 4_102_444_800_000,
+      }),
+    );
+
+    render(() => {
+      return (
+        <AppRoot>
+          <App />
+        </AppRoot>
+      );
+    });
+
+    // Shell chrome appears with no sign-in interaction; the LoginScreen never
+    // renders because AuthPresenter.resume() picked up the seeded session.
+    expect(await screen.findByTestId("header")).toBeTruthy();
+    expect(screen.queryByTestId("login-screen")).toBeNull();
+  });
+
   it("mounts and renders the live connection status from the simulator ports", async () => {
     render(() => {
       return (
