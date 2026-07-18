@@ -48,11 +48,14 @@
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
 }
 
-/* Power saver / freeze tier: a backdrop-filter is a per-frame composite-time
-   cost that is catastrophic on GPU-less VDI/Citrix. Shed it — fall back to an
-   opaque surface (--bg-secondary is solid in every skin). Keyed off the
-   `data-power-saver` flag PowerSaverRoot writes on <html>. */
-:root[data-power-saver="true"] .list {
+/* Power saver: a backdrop-filter is GPU composite-time work, so shed it whenever
+   power saver is active (Calm OR Freeze) — mirroring how AmbientBackground drops
+   its aurora/dot layers at Calm (level !== "off") — and fall back to an opaque
+   surface (--bg-secondary is solid in every skin). This matters most on the
+   Freeze tier's GPU-less VDI/Citrix target, where there is no compositor at all.
+   Keyed off the level PowerSaverRoot writes as `data-power-saver` on <html>. */
+:root[data-power-saver="calm"] .list,
+:root[data-power-saver="freeze"] .list {
   background: var(--bg-secondary);
   backdrop-filter: none;
 }

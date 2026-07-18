@@ -63,8 +63,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* Power saver / freeze tier: shed the filter, fall back to an opaque surface. */
-:root[data-power-saver="true"] .filterPanel {
+/* Power saver (Calm OR Freeze): shed the GPU filter, fall back to an opaque
+   surface — see InstrumentSelect.module.css for the rationale. */
+:root[data-power-saver="calm"] .filterPanel,
+:root[data-power-saver="freeze"] .filterPanel {
   background: var(--bg-secondary);
   backdrop-filter: none;
 }
