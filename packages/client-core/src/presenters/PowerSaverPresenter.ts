@@ -1,27 +1,58 @@
-import { type Observable, shareReplay } from "rxjs";
+import { map, type Observable, shareReplay } from "rxjs";
 
-import type { PreferencesPort } from "@rtc/domain";
+import type { PowerSaverLevel, PreferencesPort } from "@rtc/domain";
 
 /**
  * App-layer presenter for the power-saver master override. Exposes the
- * replay-current enabled flag and the write/toggle operations. While enabled
- * the client forces the cheap rendering path everywhere; it never mutates
- * other preferences (master-override semantics).
+ * replay-current level plus derived predicates: `isCalm$` (level !== "off",
+ * drives ambient removal / --fx-play / price conflation) and `isFreeze$`
+ * (level === "freeze", drives the view layer's motion catch-all + JS gates).
+ * Never mutates other preferences (master-override semantics).
+ *
+ * `enabled$` / `set` / `toggle` are a temporary compat shim kept until the
+ * framework bindings adopt the level surface (removed in Task 2).
  */
 export class PowerSaverPresenter {
-  readonly enabled$: Observable<boolean>;
+  readonly level$: Observable<PowerSaverLevel>;
+
+  readonly isCalm$: Observable<boolean>;
+
+  readonly isFreeze$: Observable<boolean>;
 
   constructor(private readonly preferences: PreferencesPort) {
-    this.enabled$ = preferences
-      .powerSaver$()
+    this.level$ = preferences
+      .powerSaverLevel$()
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    this.isCalm$ = this.level$.pipe(
+      map((level) => {
+        return level !== "off";
+      }),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
+    this.isFreeze$ = this.level$.pipe(
+      map((level) => {
+        return level === "freeze";
+      }),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
   }
 
+  setLevel(level: PowerSaverLevel): void {
+    this.preferences.setPowerSaverLevel(level);
+  }
+
+  // --- compat shim (removed in Task 2 once both bindings adopt the level surface) ---
+  /** @deprecated use isCalm$ */
+  get enabled$(): Observable<boolean> {
+    return this.isCalm$;
+  }
+
+  /** @deprecated use setLevel */
   set(on: boolean): void {
-    this.preferences.setPowerSaver(on);
+    this.setLevel(on ? "calm" : "off");
   }
 
-  /** Flip on↔off relative to the supplied current value. */
+  /** @deprecated use setLevel(nextPowerSaverLevel(...)) */
   toggle(current: boolean): void {
     this.set(!current);
   }
