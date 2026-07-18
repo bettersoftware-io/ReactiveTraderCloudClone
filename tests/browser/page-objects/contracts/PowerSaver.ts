@@ -13,4 +13,14 @@ export interface PowerSaverPO {
   click(): Promise<void>;
   /** The document root's `data-power-saver` attribute value ("off" | "calm" | "freeze"). */
   documentFlag(): Promise<string>;
+  /**
+   * The computed `animation-duration` of the connection-status dot (an
+   * infinite `pulseDot` animation while CONNECTED). Proves the Freeze
+   * tier's CSS catch-all (`[data-power-saver="freeze"] * { animation-duration:
+   * 0.01ms !important; }` in index.css) actually fires in a real browser —
+   * jsdom never loads index.css or resolves the `!important` cascade, so
+   * this is deliberately real-browser-only, unlike the cycle/persistence
+   * assertions above which are DOM-flag reads.
+   */
+  connectionDotAnimationDuration(): Promise<string>;
 }
