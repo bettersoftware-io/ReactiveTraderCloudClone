@@ -23,6 +23,7 @@ describe("OrderTicketPanel", () => {
     const { result } = renderHook(() => {
       return useEqTicket("AAPL", RATES);
     });
+
     const { getByText } = render(
       <OrderTicketPanel api={result.current} sel="AAPL" last={230} />,
     );

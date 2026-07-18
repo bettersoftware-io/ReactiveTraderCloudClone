@@ -52,6 +52,7 @@ describe("FxBlotterPanel", () => {
     const { result } = renderHook(() => {
       return useFxBlotter(SEED_TRADES);
     });
+
     const { getByText, queryAllByText } = render(
       <FxBlotterPanel
         api={result.current}

@@ -50,6 +50,7 @@ export function RfqsPanel(): ReactElement {
   const [exiting, setExiting] = useState<ReadonlyMap<number, ExitReason>>(
     new Map(),
   );
+
   const [entering, setEntering] = useState<ReadonlyMap<number, number>>(
     new Map(),
   );
@@ -61,6 +62,7 @@ export function RfqsPanel(): ReactElement {
   const matching = rfqs.filter((r) => {
     return matchesFilter(r.state, filter) && !dismissed.has(r.id);
   });
+
   const matchingIdSet = new Set(
     matching.map((r) => {
       return r.id;
@@ -71,6 +73,7 @@ export function RfqsPanel(): ReactElement {
   const [prevAll, setPrevAll] = useState<IdSnapshot>(() => {
     return { key: allIdsKey, ids: new Set(allIds) };
   });
+
   const [prevMatching, setPrevMatching] = useState<IdSnapshot>(() => {
     return { key: matchingKey, ids: matchingIdSet };
   });
@@ -131,6 +134,7 @@ export function RfqsPanel(): ReactElement {
     .sort((a, b) => {
       return b.creationTimestamp - a.creationTimestamp;
     });
+
   const renderedIds = rendered.map((r) => {
     return r.id;
   });

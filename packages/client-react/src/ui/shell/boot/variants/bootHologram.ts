@@ -301,6 +301,7 @@ export function createBootHologram(scene: BootDrawCtx): BootFrameFn {
         0.62,
         Math.sin(angle) * 1.52,
       );
+
       const outerPoint = project(
         Math.cos(angle) * 1.6,
         0.62,
@@ -542,6 +543,7 @@ export function createBootHologram(scene: BootDrawCtx): BootFrameFn {
         centerX + projScale * 1.55,
         centerX + projScale * 1.75,
       ][tagIndex];
+
       const panelY = [
         centerY - projScale * 1.0,
         centerY - projScale * 1.2,

@@ -108,6 +108,7 @@ function buildScenarioViewModel(
       return of({ type: "gatewayConnected" as const });
     },
   };
+
   const { presenters, commands } = createApp({
     ...createSimulatorPorts({ preferences, auth, sessionStore }),
     connectionEvents,

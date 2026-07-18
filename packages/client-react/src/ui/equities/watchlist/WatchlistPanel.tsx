@@ -63,6 +63,7 @@ export function WatchlistPanel(): ReactElement {
       changePct: q?.changePct ?? null,
     };
   });
+
   const candidateOrder = sortWatchlistRows(rowInputs, sort).map((row) => {
     return row.symbol;
   });

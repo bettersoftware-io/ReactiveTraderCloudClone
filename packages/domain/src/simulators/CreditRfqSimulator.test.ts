@@ -396,6 +396,7 @@ describe("CreditRfqSimulator", () => {
         toArray(),
       ),
     );
+
     const rfqs = events
       .filter((e) => {
         return e.type === "rfqCreated";
@@ -431,6 +432,7 @@ describe("CreditRfqSimulator", () => {
       .map((e) => {
         return (e as Extract<RfqEvent, QuoteCreatedMatcher>).payload;
       });
+
     const accepted238 = quotes.find((q) => {
       return q.rfqId === 238 && q.state.type === "accepted";
     });

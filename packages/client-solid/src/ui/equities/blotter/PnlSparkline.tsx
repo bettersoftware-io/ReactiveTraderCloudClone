@@ -8,9 +8,11 @@ export function PnlSparkline(props: PnlSparklineProps): JSX.Element {
       ? props.maxAbsPnl
       : Math.abs(props.pnl);
   });
+
   const path = createMemo((): string => {
     return buildSparkPath(props.pnl, safe());
   });
+
   const isPositive = createMemo((): boolean => {
     return props.pnl >= 0;
   });

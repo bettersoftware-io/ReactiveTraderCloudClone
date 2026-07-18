@@ -16,9 +16,11 @@ export function InstrumentHeader(props: InstrumentHeaderProps): JSX.Element {
   const last = createMemo((): number | null => {
     return props.quote?.last ?? null;
   });
+
   const changePct = createMemo((): number | null => {
     return props.quote?.changePct ?? null;
   });
+
   const up = createMemo((): boolean => {
     return (changePct() ?? 0) >= 0;
   });
@@ -154,6 +156,7 @@ function computeDayRange(
   const highs = candles.map((c) => {
     return c.high;
   });
+
   const lows = candles.map((c) => {
     return c.low;
   });

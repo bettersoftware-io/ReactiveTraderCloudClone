@@ -8,9 +8,11 @@ export class CypressCreditRfqPanel implements CreditRfqPanelPO {
       const form = $body.find(
         `[data-testid="${TESTIDS.credit.newRfq.headTitle}"]`,
       );
+
       const rfqs = $body.find(
         `[data-testid="${TESTIDS.credit.rfqs.headTitle}"]`,
       );
+
       const blotter = $body.find(
         `[data-testid="${TESTIDS.credit.blotterHeadTitle}"]`,
       );
@@ -59,6 +61,7 @@ export class CypressCreditRfqPanel implements CreditRfqPanelPO {
       const card = $body.find(
         `[data-testid="${TESTIDS.credit.rfqs.card(rfqId)}"]`,
       );
+
       const quoteRow = card
         .find(`[data-testid^="${TESTIDS.credit.rfqs.quotePrefix}"][data-state]`)
         .first();

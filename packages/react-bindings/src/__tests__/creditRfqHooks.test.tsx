@@ -46,6 +46,7 @@ describe("credit RFQ hooks", () => {
       const rfqsHook = renderHook(() => {
         return hooks.useRfqs();
       });
+
       const rfq = rfqsHook.result.current.find((r) => {
         return r.id === rfqId;
       });

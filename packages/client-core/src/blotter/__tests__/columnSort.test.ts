@@ -110,6 +110,7 @@ describe("applySortToTrades", () => {
       trade({ tradeId: 1, notional: 100 }),
       trade({ tradeId: 2, notional: 200 }),
     ];
+
     const asc = applySortToTrades(trades, {
       column: "notional",
       direction: "asc",
@@ -136,6 +137,7 @@ describe("applySortToTrades", () => {
       trade({ tradeName: "Alice" }),
       trade({ tradeName: "bob" }),
     ];
+
     const asc = applySortToTrades(trades, {
       column: "tradeName",
       direction: "asc",
@@ -162,6 +164,7 @@ describe("applySortToTrades", () => {
       trade({ tradeId: 2, tradeDate: "2026-01-01" }),
       trade({ tradeId: 3, tradeDate: "2026-02-01" }),
     ];
+
     const asc = applySortToTrades(trades, {
       column: "tradeDate",
       direction: "asc",

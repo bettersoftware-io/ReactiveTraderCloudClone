@@ -24,6 +24,7 @@ describe("aggregatePositionsByCurrency (golden: original Positions/data.ts)", ()
       const got = [...aggregatePositionsByCurrency(input)].sort((a, b) => {
         return a.currency.localeCompare(b.currency);
       });
+
       const want = [...expected].sort((a, b) => {
         return a.currency.localeCompare(b.currency);
       });

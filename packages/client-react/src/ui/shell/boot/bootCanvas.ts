@@ -336,9 +336,11 @@ export function drawBootLaser(scene: BootDrawCtx): void {
       [rect.x + rect.w, rect.y + rect.h, rect.x, rect.y + rect.h],
       [rect.x, rect.y + rect.h, rect.x, rect.y],
     ];
+
     const segLengths = segments.map((segment) => {
       return Math.hypot(segment[2] - segment[0], segment[3] - segment[1]);
     });
+
     const perimeter = segLengths.reduce((a, b) => {
       return a + b;
     }, 0);
@@ -501,6 +503,7 @@ export function drawBootDocking(scene: BootDrawCtx): void {
   const shake = (1 - easedProgress) * 1.0 + 0.22;
   const shakeX =
     (Math.sin(elapsedSec * 9) * 1.4 + Math.sin(elapsedSec * 17) * 0.7) * shake;
+
   const shakeY =
     (Math.cos(elapsedSec * 7) * 1.1 + Math.sin(elapsedSec * 23) * 0.5) * shake;
   ctx.save();
@@ -692,6 +695,7 @@ export function drawBootDocking(scene: BootDrawCtx): void {
   ctx.restore();
   const markerX =
     -width * 0.05 * wobble + Math.sin(elapsedSec * 1.1) * radius * 0.5 * wobble;
+
   const markerY =
     -height * 0.05 * wobble +
     Math.cos(elapsedSec * 0.9) * radius * 0.45 * wobble;

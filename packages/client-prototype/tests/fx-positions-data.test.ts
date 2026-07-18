@@ -15,6 +15,7 @@ describe("positionsData", () => {
     const eur = EXPOSURE.find((e) => {
       return e.ccy === "EUR";
     });
+
     const nzd = EXPOSURE.find((e) => {
       return e.ccy === "NZD";
     });

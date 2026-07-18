@@ -23,6 +23,7 @@ describe("DateFilter", () => {
       comparator: "lt",
       value: "2026-02-01",
     };
+
     const filter = mount(DateFilter, {
       props: { column: "tradeDate", currentFilter: current, onApply: () => {} },
     });
@@ -38,6 +39,7 @@ describe("DateFilter", () => {
       value: "2026-01-01",
       valueTo: "2026-03-01",
     };
+
     const filter = mount(DateFilter, {
       props: { column: "tradeDate", currentFilter: current, onApply: () => {} },
     });

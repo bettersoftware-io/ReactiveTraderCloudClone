@@ -235,6 +235,7 @@ describe("Tile", () => {
       ask: 1.0925,
       mid: 1.0923,
     };
+
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
       parametric: { prices: { EURUSD: price() } },
@@ -256,6 +257,7 @@ describe("Tile", () => {
       ask: 1.2005,
       mid: 1.2003,
     };
+
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
       parametric: { prices: { EURUSD: price() } },
@@ -301,6 +303,7 @@ describe("Tile", () => {
       ask: 1.0925,
       mid: 1.0923,
     };
+
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
       parametric: { prices: { EURUSD: price() } },

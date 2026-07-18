@@ -58,6 +58,7 @@ describe("useAdminMetrics", () => {
       },
       { wrapper: StrictMode },
     );
+
     const fresh = renderHook(() => {
       return useAdminMetrics({ rng: mulberry32(4) });
     });

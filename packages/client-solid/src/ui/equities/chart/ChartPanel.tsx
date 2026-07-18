@@ -64,6 +64,7 @@ function ChartBody(props: ChartBodyProps): JSX.Element {
       return i.symbol === props.symbol;
     });
   });
+
   // Derived once here (no timers) and shared by the header's flash colour
   // and the candle plot's last-bar glow — mirrors the prototype's single
   // fl/flashOn computed in EquitiesScreen and threaded to both.

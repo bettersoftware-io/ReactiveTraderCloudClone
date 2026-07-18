@@ -74,9 +74,11 @@ export function RfqsPanel(): JSX.Element {
   const [dismissed, setDismissed] = createSignal<ReadonlySet<number>>(
     new Set(),
   );
+
   const [exiting, setExiting] = createSignal<ReadonlyMap<number, ExitReason>>(
     new Map(),
   );
+
   const [entering, setEntering] = createSignal<ReadonlyMap<number, number>>(
     new Map(),
   );
@@ -86,9 +88,11 @@ export function RfqsPanel(): JSX.Element {
       return r.id;
     });
   });
+
   const allIdsKey = createMemo((): string => {
     return allIds().join(",");
   });
+
   const matchingIds = createMemo((): number[] => {
     const currentDismissed = dismissed();
     return rfqs()
@@ -99,6 +103,7 @@ export function RfqsPanel(): JSX.Element {
         return r.id;
       });
   });
+
   const matchingKey = createMemo((): string => {
     return matchingIds().join(",");
   });
@@ -255,11 +260,13 @@ export function RfqsPanel(): JSX.Element {
         return b.creationTimestamp - a.creationTimestamp;
       });
   });
+
   const renderedIds = createMemo((): number[] => {
     return rendered().map((r) => {
       return r.id;
     });
   });
+
   const renderedIdsKey = createMemo((): string => {
     return renderedIds().join(",");
   });
