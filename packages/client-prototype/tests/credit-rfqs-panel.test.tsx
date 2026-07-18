@@ -22,6 +22,7 @@ describe("RfqsPanel", () => {
     const { result } = renderHook(() => {
       return useCreditRfqs({ rng: mulberry32(1) });
     });
+
     const view = render(
       <PreferencesProvider>
         <RfqFilterPills
@@ -57,6 +58,7 @@ describe("RfqsPanel", () => {
     const { result } = renderHook(() => {
       return useCreditRfqs({ rng: mulberry32(1) });
     });
+
     const view = render(
       <PreferencesProvider>
         <RfqsPanel rfqs={result.current} />
@@ -72,6 +74,7 @@ describe("RfqsPanel", () => {
     const { result } = renderHook(() => {
       return useCreditRfqs({ rng: mulberry32(1) });
     });
+
     const view = render(
       <PreferencesProvider>
         <RfqsPanel rfqs={result.current} />

@@ -32,6 +32,7 @@ import {
   type LogEvent,
   type MetricSample,
   type PositionUpdates,
+  type PowerSaverLevel,
   type Price,
   type PriceTick,
   type Quote,
@@ -86,8 +87,8 @@ export interface AppData {
   ambientStyle?: AmbientStyle;
   /** Animated-background preference (useAnimatedBackground); defaults to false. */
   animatedBackground?: boolean;
-  /** Power-saver master-override preference (usePowerSaver); defaults to false. */
-  powerSaver?: boolean;
+  /** Power-saver master-override level (usePowerSaver); defaults to "off". */
+  powerSaverLevel?: PowerSaverLevel;
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
   /** Credit RFQs panel filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER ("live"). */

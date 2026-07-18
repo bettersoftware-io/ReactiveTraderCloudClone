@@ -73,6 +73,7 @@ export function chartVm(
       return c.l;
     }),
   );
+
   const cmax = Math.max(
     ...candlesIn.map((c) => {
       return c.h;
@@ -102,6 +103,7 @@ export function chartVm(
       "--w": `${cw * BODY_FRAC}%`,
       "--wleft-offset": `${cw * HALF_BODY_FRAC}%`,
     } as CSSProperties;
+
     const wickStyle = {
       "--wx": `calc(${x}% - 0.5px)`,
       "--wtop": `${yPct(cd.h)}%`,

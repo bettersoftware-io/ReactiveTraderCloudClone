@@ -122,6 +122,7 @@ describe("SessionsKpiPresenter", () => {
     const subA = presenter.countSeries$.subscribe((s) => {
       a.push(s);
     });
+
     const subB = presenter.countSeries$.subscribe((s) => {
       b.push(s);
     });

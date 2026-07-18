@@ -5,7 +5,6 @@ import {
   createSimulatorPorts,
   createWsRealPorts,
   HttpAuthAdapter,
-  InMemorySessionStore,
   incident$,
   reconnect$,
   routeIdleLifecycle,
@@ -21,6 +20,7 @@ import {
 
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
+import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
 import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
 import { shouldPlayBootSplash } from "#/bootSplashGate";
 
@@ -28,10 +28,12 @@ export function buildBrowserPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
-  // An in-memory session store (no persistence across reloads): after the
-  // AuthGate sign-in the session lasts the tab's lifetime, and a reload
-  // returns to the login screen.
-  const sessionStore = new InMemorySessionStore();
+  // localStorage-backed session store (parity with client-react): the AuthGate
+  // sign-in persists under the shared `rtc-session` key, so the session
+  // survives a reload — and the browser e2e suites can boot straight past the
+  // login screen by seeding that same key (tests/browser/authSeed.ts). An
+  // in-memory store would ignore that seed and strand every e2e on LoginScreen.
+  const sessionStore = new LocalStorageSessionStore();
   const colorScheme = new MediaQueryColorSchemeAdapter();
   // One-shot boot-splash decision (webdriver/nosplash suppress it) — read at
   // composition time to seed the BootGatePresenter.

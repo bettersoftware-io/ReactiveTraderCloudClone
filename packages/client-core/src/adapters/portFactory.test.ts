@@ -132,6 +132,7 @@ describe("wsReal workflow :: quote/pass error paths", () => {
       auth: new AuthSimulator({}),
       sessionStore: new InMemorySessionStore(),
     });
+
     const promise = firstValueFrom(
       ports.workflow.quote({ quoteId: 1, price: 100 }),
     );
@@ -168,6 +169,7 @@ describe("wsReal createRfq :: null-payload guard (line 472)", () => {
       auth: new AuthSimulator({}),
       sessionStore: new InMemorySessionStore(),
     });
+
     const promise = firstValueFrom(
       ports.workflow.createRfq({
         instrumentId: 1,

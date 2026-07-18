@@ -178,6 +178,7 @@ function RaysBlob({ blob, progress, aurora }: RaysBlobProps): JSX.Element {
   const cx = useDerivedValue(() => {
     return blob.baseX + blob.sign * (progress.value - 0.5) * RAYS_BLOB_DRIFT_PX;
   });
+
   const cy = useDerivedValue(() => {
     return blob.baseY + blob.sign * (0.5 - progress.value) * RAYS_BLOB_DRIFT_PX;
   });

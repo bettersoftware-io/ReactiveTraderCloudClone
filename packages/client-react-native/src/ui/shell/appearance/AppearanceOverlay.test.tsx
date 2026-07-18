@@ -45,9 +45,11 @@ function vm(): ViewModel {
     },
     usePowerSaver: () => {
       return {
-        enabled: false,
-        setEnabled: (): void => {},
-        toggle: (): void => {},
+        level: "off",
+        isCalm: false,
+        isFreeze: false,
+        setLevel: (): void => {},
+        cycle: (): void => {},
       };
     },
     useAmbientStyle: () => {

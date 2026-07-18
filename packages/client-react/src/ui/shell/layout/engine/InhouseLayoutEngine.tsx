@@ -181,6 +181,7 @@ function measuredFractions(
       const r = cell.getBoundingClientRect();
       return node.dir === "row" ? r.width : r.height;
     });
+
   const cellsTotal = cellsPx.reduce((s, v) => {
     return s + v;
   }, 0);
@@ -411,6 +412,7 @@ function SplitNode({
           state,
           strippedByMaximize,
         );
+
         // Design-value default width (initialPx): renders px-fixed like
         // fixedPx but KEEPS the resize handles — the first drag converts the
         // split to plain fractions. fixedPx wins when both are set. Dropped
@@ -425,10 +427,12 @@ function SplitNode({
         const insideBoundary =
           boundaryPath !== null &&
           isStrictPathPrefix(boundaryPath, [...path, i]);
+
         const childInitial =
           childFixed === undefined && !insideBoundary && !childIsStripCell
             ? node.initialPx?.[i]
             : undefined;
+
         const nextIsStripCell =
           nextChild !== undefined &&
           isStripSubtree(nextChild, state, strippedByMaximize);

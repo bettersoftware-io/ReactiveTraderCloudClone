@@ -11,11 +11,13 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type PowerSaverLevel,
   type ThemeModePreference,
   type ThemeSkin,
   type ViewMode,
@@ -27,7 +29,7 @@ export interface PreferencesSeed {
   viewMode?: ViewMode;
   animatedBackground?: boolean;
   ambientStyle?: AmbientStyle;
-  powerSaver?: boolean;
+  powerSaverLevel?: PowerSaverLevel;
   bootVariant?: BootVariant;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
@@ -50,7 +52,7 @@ export class PreferencesSimulator implements PreferencesPort {
 
   private readonly ambientStyleSubject: BehaviorSubject<AmbientStyle>;
 
-  private readonly powerSaverSubject: BehaviorSubject<boolean>;
+  private readonly powerSaverSubject: BehaviorSubject<PowerSaverLevel>;
 
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
@@ -76,8 +78,8 @@ export class PreferencesSimulator implements PreferencesPort {
     this.ambientStyleSubject = new BehaviorSubject<AmbientStyle>(
       seed.ambientStyle ?? DEFAULT_AMBIENT_STYLE,
     );
-    this.powerSaverSubject = new BehaviorSubject<boolean>(
-      seed.powerSaver ?? false,
+    this.powerSaverSubject = new BehaviorSubject<PowerSaverLevel>(
+      seed.powerSaverLevel ?? DEFAULT_POWER_SAVER_LEVEL,
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       seed.bootVariant ?? DEFAULT_BOOT_VARIANT,
@@ -133,12 +135,12 @@ export class PreferencesSimulator implements PreferencesPort {
     this.ambientStyleSubject.next(style);
   }
 
-  powerSaver$(): Observable<boolean> {
+  powerSaverLevel$(): Observable<PowerSaverLevel> {
     return this.powerSaverSubject.pipe(distinctUntilChanged());
   }
 
-  setPowerSaver(on: boolean): void {
-    this.powerSaverSubject.next(on);
+  setPowerSaverLevel(level: PowerSaverLevel): void {
+    this.powerSaverSubject.next(level);
   }
 
   bootVariant$(): Observable<BootVariant> {

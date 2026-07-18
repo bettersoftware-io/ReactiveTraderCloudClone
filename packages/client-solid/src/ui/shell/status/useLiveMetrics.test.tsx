@@ -1,7 +1,10 @@
 import { renderHook } from "@solidjs/testing-library";
 import type { JSX } from "solid-js";
-import { createComponent } from "solid-js";
+import { createComponent, createSignal } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { ViewModel } from "@rtc/solid-bindings";
+import { ViewModelContext } from "@rtc/solid-bindings";
 
 import { FROZEN_LIVE_METRICS, LiveMetricsContext } from "./LiveMetricsContext";
 import { useLiveMetrics } from "./useLiveMetrics";
@@ -33,10 +36,15 @@ describe("useLiveMetrics (solid)", () => {
   it("returns the frozen value and starts no loop under a provider", () => {
     const { result } = renderHook(useLiveMetrics, {
       wrapper: (props: WrapperProps): JSX.Element => {
-        return createComponent(LiveMetricsContext.Provider, {
-          value: FROZEN_LIVE_METRICS,
+        return createComponent(ViewModelContext.Provider, {
+          value: viewModelWith(false),
           get children(): JSX.Element {
-            return props.children;
+            return createComponent(LiveMetricsContext.Provider, {
+              value: FROZEN_LIVE_METRICS,
+              get children(): JSX.Element {
+                return props.children;
+              },
+            });
           },
         });
       },
@@ -47,7 +55,9 @@ describe("useLiveMetrics (solid)", () => {
   });
 
   it("publishes fps + tone over the ~1s window", () => {
-    const { result } = renderHook(useLiveMetrics);
+    const { result } = renderHook(useLiveMetrics, {
+      wrapper: withPowerSaver(false),
+    });
 
     expect(result().fps).toBeNull();
 
@@ -60,8 +70,58 @@ describe("useLiveMetrics (solid)", () => {
     expect(result().fps).toBe(60);
     expect(result().fpsTone).toBe("positive");
   });
+
+  // Power-saver's Freeze tier pauses the rAF loop the same way the
+  // LiveMetricsContext harness override does — no context override here,
+  // just `usePowerSaver().isFreeze` reached through the real ViewModel seam.
+  it("never starts the loop and holds the last value when power-saver is frozen", () => {
+    const { result } = renderHook(useLiveMetrics, {
+      wrapper: withPowerSaver(true),
+    });
+
+    expect(result().fps).toBeNull();
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+
+    frame(1000);
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+  });
 });
 
 interface WrapperProps {
   children: JSX.Element;
+}
+
+/** Minimal ViewModel stub — useLiveMetrics only reads `usePowerSaver().isFreeze`.
+ *  `isFreeze` is a real Solid signal (matching production's `Accessor<boolean>`
+ *  shape), not a plain closure — the hook reads it inside a tracked
+ *  `createEffect`, so a plain-function double would still work for these
+ *  fixed-value tests, but a signal keeps the double honest with production. */
+function viewModelWith(isFreeze: boolean): ViewModel {
+  const [freeze] = createSignal(isFreeze);
+  return {
+    usePowerSaver: () => {
+      return {
+        level: () => {
+          return isFreeze ? "freeze" : "off";
+        },
+        isCalm: freeze,
+        isFreeze: freeze,
+        setLevel: vi.fn(),
+        cycle: vi.fn(),
+      };
+    },
+  } as unknown as ViewModel;
+}
+
+function withPowerSaver(
+  isFreeze: boolean,
+): (props: WrapperProps) => JSX.Element {
+  return function Wrapper(props: WrapperProps): JSX.Element {
+    return createComponent(ViewModelContext.Provider, {
+      value: viewModelWith(isFreeze),
+      get children(): JSX.Element {
+        return props.children;
+      },
+    });
+  };
 }

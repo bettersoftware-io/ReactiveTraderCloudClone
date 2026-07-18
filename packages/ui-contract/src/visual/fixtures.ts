@@ -100,6 +100,7 @@ const gbpusd: CurrencyPair = {
   baseMid: 1.26414,
   typicalSpreadPips: 1.8,
 };
+
 const usdjpy: CurrencyPair = {
   symbol: "USDJPY",
   ratePrecision: 3,
@@ -110,6 +111,7 @@ const usdjpy: CurrencyPair = {
   baseMid: 151.203,
   typicalSpreadPips: 1.6,
 };
+
 const gbpusdPrice: Price = {
   symbol: "GBPUSD",
   bid: 1.2641,
@@ -120,6 +122,7 @@ const gbpusdPrice: Price = {
   movementType: PriceMovementType.DOWN,
   spread: "1.8",
 };
+
 const usdjpyPrice: Price = {
   symbol: "USDJPY",
   bid: 151.203,
@@ -137,6 +140,7 @@ const eurusdPriceDown: Price = {
   ...eurusdPrice,
   movementType: PriceMovementType.DOWN,
 };
+
 const eurusdPriceFlat: Price = {
   ...eurusdPrice,
   movementType: PriceMovementType.NONE,
@@ -178,6 +182,7 @@ const eurusdHistoryDown: readonly PriceTick[] = [
     creationTimestamp: 1_750_000_003_000,
   },
 ];
+
 const eurusdHistoryEmpty: readonly PriceTick[] = [
   {
     symbol: "EURUSD",
@@ -188,6 +193,7 @@ const eurusdHistoryEmpty: readonly PriceTick[] = [
     creationTimestamp: 1_750_000_000_000,
   },
 ];
+
 // Ascending series: last mid > prev mid → the green (isUp true) sparkline arm.
 const eurusdHistoryUp: readonly PriceTick[] = [
   {
@@ -223,6 +229,7 @@ const eurusdHistoryUp: readonly PriceTick[] = [
     creationTimestamp: 1_750_000_003_000,
   },
 ];
+
 // All-equal mids (>=2 points): range collapses to 0 → the `max - min || 1`
 // fallback arm; renders a flat horizontal sparkline.
 const eurusdHistoryFlat: readonly PriceTick[] = [
@@ -281,6 +288,7 @@ const gbpusdHistoryDown: readonly PriceTick[] = [
     creationTimestamp: 1_750_000_002_000,
   },
 ];
+
 const usdjpyHistoryFlat: readonly PriceTick[] = [
   {
     symbol: "USDJPY",
@@ -353,6 +361,7 @@ const analyticsMillions: PositionUpdates = {
     { timestamp: "2026-06-06T12:00:00Z", usdPnl: 1_250_000 },
   ],
 };
+
 const analyticsFlat: PositionUpdates = {
   currentPositions: [
     {
@@ -379,6 +388,7 @@ const analyticsFlat: PositionUpdates = {
     { timestamp: "2026-06-06T10:00:00Z", usdPnl: 0 },
   ],
 };
+
 // PositionsPanel "USD dominates negative" arm: two positions both short USD
 // (long EUR / long GBP against it) so netExposureByCurrency nets USD to the
 // largest-magnitude negative bubble, with EUR/GBP as smaller positive ones.
@@ -505,12 +515,14 @@ const creditInstruments: readonly Instrument[] = [
     refPrice: 99.8,
   },
 ];
+
 const creditDealers: readonly Dealer[] = [
   { id: 1, name: ADAPTIVE_BANK_NAME },
   { id: 2, name: "Citi" },
   { id: 3, name: "JP Morgan" },
   { id: 4, name: "Goldman Sachs" },
 ];
+
 const creditRfqs: readonly Rfq[] = [
   {
     id: 101,
@@ -531,6 +543,7 @@ const creditRfqs: readonly Rfq[] = [
     creationTimestamp: 1_750_000_200_000,
   },
 ];
+
 const creditQuotes101: readonly Quote[] = [
   {
     id: 1001,
@@ -546,6 +559,7 @@ const creditQuotes101: readonly Quote[] = [
   },
   { id: 1003, rfqId: 101, dealerId: 3, state: { type: "pendingWithoutPrice" } },
 ];
+
 const creditQuotes102: readonly Quote[] = [
   {
     id: 2001,
@@ -554,6 +568,7 @@ const creditQuotes102: readonly Quote[] = [
     state: { type: "accepted", price: 101.2 },
   },
 ];
+
 const creditAllQuotes: ReadonlyMap<number, Quote> = new Map(
   [...creditQuotes101, ...creditQuotes102].map((q) => {
     return [q.id, q];
@@ -575,6 +590,7 @@ const creditTerminatedRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_100_000,
 };
+
 const creditTerminatedQuote: Quote = {
   id: 3001,
   rfqId: 103,
@@ -596,12 +612,14 @@ const creditCardPassedRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 const creditCardPassedQuote: Quote = {
   id: 1101,
   rfqId: 111,
   dealerId: 2,
   state: { type: "passed" },
 };
+
 const creditCardRejectedRfq: Rfq = {
   id: 112,
   instrumentId: 2,
@@ -611,12 +629,14 @@ const creditCardRejectedRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 const creditCardRejectedQuote: Quote = {
   id: 1102,
   rfqId: 112,
   dealerId: 3,
   state: { type: "rejectedWithPrice", price: 97.1 },
 };
+
 const creditCardExpiredRfq: Rfq = {
   id: 113,
   instrumentId: 1,
@@ -626,6 +646,7 @@ const creditCardExpiredRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_100_000,
 };
+
 const creditCardExpiredQuote: Quote = {
   id: 1103,
   rfqId: 113,
@@ -645,6 +666,7 @@ const creditBlotterUnresolvedRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_200_000,
 };
+
 const creditBlotterUnresolvedQuote: Quote = {
   id: 5001,
   rfqId: 401,
@@ -664,9 +686,11 @@ const sellSideActiveRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 const sellSideActiveQuotes: readonly Quote[] = [
   { id: 4001, rfqId: 301, dealerId: 1, state: { type: "pendingWithoutPrice" } },
 ];
+
 const sellSideRespondedRfq: Rfq = {
   id: 302,
   instrumentId: 2,
@@ -676,6 +700,7 @@ const sellSideRespondedRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 const sellSideRespondedQuotes: readonly Quote[] = [
   {
     id: 4101,
@@ -721,6 +746,7 @@ const sellSidePassedRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 //   responded quote on a Cancelled rfq → "RFQ Cancelled" (also opacity 0.6)
 const sellSideRfqCancelledRfq: Rfq = {
   id: 312,
@@ -731,6 +757,7 @@ const sellSideRfqCancelledRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 //   responded quote on an Expired rfq → "RFQ Expired"
 const sellSideRfqExpiredRfq: Rfq = {
   id: 313,
@@ -741,6 +768,7 @@ const sellSideRfqExpiredRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 //   responded (accepted) quote on an Open rfq → the "Responded" fallback
 const sellSideRespondedFallbackRfq: Rfq = {
   id: 314,
@@ -751,6 +779,7 @@ const sellSideRespondedFallbackRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 // Else-arm labels (AB quote still pendingWithoutPrice, rfq no longer Open):
 //   Closed / Cancelled / Expired rfq → "Closed" / "Cancelled" / "Expired"
 const sellSideClosedRfq: Rfq = {
@@ -762,6 +791,7 @@ const sellSideClosedRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 const sellSideCancelledPendingRfq: Rfq = {
   id: 316,
   instrumentId: 2,
@@ -771,6 +801,7 @@ const sellSideCancelledPendingRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 const sellSideExpiredPendingRfq: Rfq = {
   id: 317,
   instrumentId: 1,
@@ -780,6 +811,7 @@ const sellSideExpiredPendingRfq: Rfq = {
   expirySecs: 120,
   creationTimestamp: 1_750_000_300_000,
 };
+
 // Instrument-name fallback: instrumentId 999 has no matching instrument →
 // the "Instrument #999" branch (rendered with an active price-entry ticket).
 const sellSideNoInstrumentRfq: Rfq = {
@@ -816,6 +848,7 @@ const eurusdDoneTrade: Trade = {
   tradeDate: "2026-06-08",
   valueDate: "2026-06-10",
 };
+
 // A Sell-direction completed Trade → the TileConfirmation "You Sold" verb arm
 // (the Buy trade above renders "You Bought").
 const eurusdDoneTradeSell: Trade = {
@@ -912,16 +945,19 @@ export const fixtures: Record<string, AppData> = {
     throughput: { value: 250, loading: false, message: null },
   }),
   // Power-saver variant of the FX page: same data as app-fx, but with the
-  // power-saver master override on. The seam-fed usePowerSaver fake flips
-  // enabled to true, which the real App wiring uses to suppress the aurora
-  // glow / drifting ambient-background layers — grid + vignette stay static.
+  // power-saver master override at "calm". The seam-fed usePowerSaver fake
+  // flips isCalm to true, which the real App wiring uses to suppress the
+  // aurora glow / drifting ambient-background layers — grid + vignette stay
+  // static. (Freeze behaves identically to Calm in this task — no separate
+  // Freeze visual scenario yet; the motion-killing visuals land in a later
+  // task.)
   "app-fx-power-saver": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
     analytics: analyticsData,
     connectionStatus: ConnectionStatus.CONNECTED,
     throughput: { value: 250, loading: false, message: null },
-    powerSaver: true,
+    powerSaverLevel: "calm",
   }),
   // Aurora ambient-style variant of the FX page: same data as app-fx, but with
   // ambientStyle "aurora" instead of the fixtures' default "rays". Snapshots

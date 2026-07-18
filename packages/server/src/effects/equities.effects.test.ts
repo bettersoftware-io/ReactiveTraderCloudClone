@@ -15,6 +15,7 @@ describe("equities effects", () => {
       name: "Apple Inc.",
       exchange: "NASDAQ",
     };
+
     const ctx = {
       marketData: {
         watchlist: vi.fn(() => {
@@ -38,6 +39,7 @@ describe("equities effects", () => {
       changePct: 0.5,
       timestamp: 1,
     };
+
     const ctx = {
       marketData: {
         quotes: vi.fn(() => {
@@ -60,6 +62,7 @@ describe("equities effects", () => {
       bids: [{ price: 100, size: 10 }],
       asks: [{ price: 100.1, size: 5 }],
     };
+
     const ctx = {
       marketData: {
         depth: vi.fn(() => {
@@ -181,6 +184,7 @@ describe("equities effects", () => {
       filledQty: 10,
       createdAt: 1,
     };
+
     const ctx = {
       orders: {
         orders: vi.fn(() => {
@@ -201,6 +205,7 @@ describe("equities effects", () => {
       markPrice: 101,
       unrealisedPnl: 10,
     };
+
     const ctx = {
       positions: {
         positions: vi.fn(() => {
@@ -300,6 +305,7 @@ describe("equities effects", () => {
       filledQty: 10,
       createdAt: 1,
     };
+
     const ctx = {
       orders: {
         place: vi.fn(() => {
@@ -343,6 +349,7 @@ describe("equities effects", () => {
       filledQty: 5,
       createdAt: 2,
     };
+
     const place = vi
       .fn()
       .mockReturnValueOnce(

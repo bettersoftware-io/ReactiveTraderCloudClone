@@ -49,9 +49,11 @@ describe("createViewModel — equities hooks", () => {
     const { result: oneWeek } = renderHook(() => {
       return hooks.useCandles("AAPL", "1W");
     });
+
     const { result: oneMonth } = renderHook(() => {
       return hooks.useCandles("AAPL", "1M");
     });
+
     const { result: threeMonths } = renderHook(() => {
       return hooks.useCandles("AAPL", "3M");
     });
@@ -111,6 +113,7 @@ describe("createViewModel — equities hooks", () => {
     const first = renderHook(() => {
       return hooks.useEqWorkspace();
     });
+
     const second = renderHook(() => {
       return hooks.useEqWorkspace();
     });

@@ -8,18 +8,31 @@ import type { PricingPort } from "../ports/pricingPort.js";
 export class PriceHistoryUseCase {
   constructor(private readonly pricing: PricingPort) {}
 
-  execute(symbol: string): Observable<readonly PriceTick[]> {
+  /**
+   * Folds live ticks into a capped rolling window.
+   *
+   * `window` is the mutable accumulation buffer. It defaults to a fresh array,
+   * giving the usual cold semantics (each subscription starts empty). Callers
+   * that need the window to SURVIVE a resubscription — e.g. a LiveRates tile
+   * that unmounts on a filter toggle and later remounts — pass in a persistent
+   * array they own; the fold then continues appending to it instead of
+   * restarting from zero. The cap (drop-oldest at `PRICE_HISTORY_SIZE`) is
+   * applied here regardless, so a supplied window can never grow unbounded.
+   */
+  execute(
+    symbol: string,
+    window: PriceTick[] = [],
+  ): Observable<readonly PriceTick[]> {
     return defer(() => {
-      const buffer: PriceTick[] = [];
       return this.pricing.getPriceUpdates(symbol).pipe(
         map((tick) => {
-          buffer.push(tick);
+          window.push(tick);
 
-          if (buffer.length > PRICE_HISTORY_SIZE) {
-            buffer.shift();
+          if (window.length > PRICE_HISTORY_SIZE) {
+            window.shift();
           }
 
-          return [...buffer];
+          return [...window];
         }),
       );
     });

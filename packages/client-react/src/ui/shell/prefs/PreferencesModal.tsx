@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from "react";
 
-import type { AmbientStyle } from "@rtc/domain";
+import type { AmbientStyle, PowerSaverLevel } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
@@ -13,11 +13,11 @@ import styles from "./PreferencesModal.module.css";
  * Preferences catalogue modal (prototype Reactive Trader.dc.html:218-716). A
  * two-column DISPLAY / TRADING / NOTIFICATIONS / DATA grid of toggle + segment
  * rows. THREE rows are wired to real ports — Animated background
- * (`useAnimatedBackground`), Power saver (`usePowerSaver`), and Ambient style
- * (`useAmbientStyle`); every other row is decorative (see the comment on the
- * catalogue above). Dumb component: consumes `useViewModel()` destructured
- * only, holds no app-layer state / persistence / transport / timers, and
- * renders only when `open`.
+ * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
+ * Off/Calm/Freeze segment), and Ambient style (`useAmbientStyle`); every
+ * other row is decorative (see the comment on the catalogue above). Dumb
+ * component: consumes `useViewModel()` destructured only, holds no app-layer
+ * state / persistence / transport / timers, and renders only when `open`.
  */
 export function PreferencesModal({
   open,
@@ -25,13 +25,17 @@ export function PreferencesModal({
 }: PreferencesModalProps): ReactElement | null {
   const { useAnimatedBackground, usePowerSaver, useAmbientStyle } =
     useViewModel();
+
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
-  const { enabled: powerSaver, toggle: togglePowerSaver } = usePowerSaver();
+
+  const { level: powerSaverLevel, setLevel: setPowerSaverLevel } =
+    usePowerSaver();
   const { style: ambientStyle, setStyle: setAmbientStyle } = useAmbientStyle();
 
   const [toggles, setToggles] =
     useState<Record<string, boolean>>(INITIAL_TOGGLES);
+
   const [segments, setSegments] =
     useState<Record<string, string>>(INITIAL_SEGMENTS);
   const { dialogRef, headerProps, dialogStyle } = useDraggableDialog({ open });
@@ -84,12 +88,14 @@ export function PreferencesModal({
           <div className={styles.grid}>
             <div className={styles.column}>
               <div className={styles.sectionHead}>DISPLAY</div>
-              <PrefToggle
+              <PrefSegment
                 label="Power saver"
-                description="Stills ambience & calms price updates. Best on slower hardware."
-                on={powerSaver}
-                onToggle={togglePowerSaver}
-                testid="pref-toggle-powerSaver"
+                options={POWER_SAVER_OPTIONS}
+                value={powerSaverLevel}
+                onChange={(value: string) => {
+                  setPowerSaverLevel(value as PowerSaverLevel);
+                }}
+                testid="pref-segment-powerSaver"
               />
               <PrefToggle
                 label="Animated background"
@@ -262,6 +268,12 @@ interface SegmentDef {
 const AMBIENT_STYLE_OPTIONS: readonly PrefSegmentOption[] = [
   { value: "aurora", label: "Aurora" },
   { value: "rays", label: "Rays" },
+];
+
+const POWER_SAVER_OPTIONS: readonly PrefSegmentOption[] = [
+  { value: "off", label: "Off" },
+  { value: "calm", label: "Calm" },
+  { value: "freeze", label: "Freeze" },
 ];
 
 // DECORATIVE — cosmetic HUD setting, intentionally not wired to any port (spec:

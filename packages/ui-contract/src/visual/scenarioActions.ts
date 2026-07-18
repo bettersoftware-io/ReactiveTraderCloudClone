@@ -51,9 +51,9 @@ const scenarioActions: Record<string, ScenarioAction> = {
   "connection-overlay/offline": { fullPage: true },
   "connection-overlay/idle": { fullPage: true },
   "app/fx": { fullPage: true },
-  // Power-saver: same full-page capture as app/fx — the seeded powerSaver
-  // preference suppresses the aurora/drift layers, so the diff is entirely in
-  // the background, not the interaction.
+  // Power-saver: same full-page capture as app/fx — the seeded powerSaverLevel
+  // "calm" suppresses the aurora/drift layers, so the diff is entirely in the
+  // background, not the interaction.
   "app/fx-power-saver": { fullPage: true },
   // The credit blotter's in-body "Credit Trades" title is gone (its chrome
   // moved into the panel head) — the head tab's full text proves the credit
@@ -166,6 +166,11 @@ const scenarioActions: Record<string, ScenarioAction> = {
   "credit/sell-side-price-entered": {
     steps: [{ type: "trade-ticket-price", text: "98.5" }],
   },
+  // NewRfqPanel instrument dropdown open: click the toggle and STOP — unlike
+  // new-rfq-filled (which selects an option and closes the list), this leaves
+  // the floating popover open so its frosted-glass backing is the captured
+  // pixel state.
+  "credit/new-rfq-open": { click: "new-rfq-instrument-toggle" },
   // NewRfqPanel filled arm: select an instrument, fill qty, select all
   // dealers -> validation passes, SEND RFQ becomes enabled (data-enabled=true).
   "credit/new-rfq-filled": {

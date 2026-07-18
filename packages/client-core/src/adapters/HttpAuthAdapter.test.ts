@@ -22,6 +22,7 @@ describe("HttpAuthAdapter", () => {
       },
       exp: 1_800_000_000,
     };
+
     const fetchImpl = vi.fn(async () => {
       return jsonResponse(dto, 200);
     });
@@ -51,6 +52,7 @@ describe("HttpAuthAdapter", () => {
       },
       exp: 1_800_000_000,
     };
+
     const fetchImpl = vi.fn<typeof fetch>(async () => {
       return jsonResponse(dto, 200);
     });

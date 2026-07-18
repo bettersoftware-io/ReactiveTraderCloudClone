@@ -9,16 +9,18 @@ export interface PreferencesModalProps {
   onClose: () => void;
 }
 
+const POWER_SAVER_LEVELS = ["off", "calm", "freeze"] as const;
+
 /**
  * Page object for PreferencesModal. THREE rows are REAL controls: the
  * Animated-background toggle (wired to useAnimatedBackground), the Power
- * saver toggle (wired to usePowerSaver), and the Ambient style segment
- * (wired to useAmbientStyle); the two toggles' seams record their written
- * values, asserted via `animatedBgSets()` / `powerSaverSets()` — the
- * ambient-style segment is backed by the shared World subject instead (like
- * themeSkin), so it's asserted by reading the reflected value back, exactly
- * like ThemePicker's `documentSkin()` idiom. Cosmetic rows are checked for
- * presence only.
+ * saver segment (wired to usePowerSaver, 3-state Off/Calm/Freeze), and the
+ * Ambient style segment (wired to useAmbientStyle); the toggle + power-saver
+ * seams record their written values, asserted via `animatedBgSets()` /
+ * `powerSaverLevelSets()` — the ambient-style segment is backed by the shared
+ * World subject instead (like themeSkin), so it's asserted by reading the
+ * reflected value back, exactly like ThemePicker's `documentSkin()` idiom.
+ * Cosmetic rows are checked for presence only.
  */
 export class PreferencesModalPage extends MountedComponent<PreferencesModalProps> {
   private readonly user: UserEvent = userEvent.setup();
@@ -49,25 +51,28 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     return this.commandLog().animatedBackgroundSets;
   }
 
-  /** Current state of the real Power saver switch (its `data-on`). */
-  powerSaverOn(): boolean {
-    return (
-      within(this.root)
-        .getByTestId("pref-toggle-powerSaver")
-        .getAttribute("data-on") === "true"
-    );
+  /** The Power saver segment's currently-active level ("off" | "calm" | "freeze"). */
+  powerSaverLevel(): string {
+    const active = POWER_SAVER_LEVELS.find((value) => {
+      return (
+        within(this.root)
+          .getByTestId(`pref-segment-powerSaver-${value}`)
+          .getAttribute("data-on") === "true"
+      );
+    });
+    return active ?? "";
   }
 
-  /** Toggle the real Power saver switch through the seam. */
-  async togglePowerSaver(): Promise<void> {
+  /** Select a Power saver segment option through the seam. */
+  async selectPowerSaverLevel(level: "off" | "calm" | "freeze"): Promise<void> {
     await this.user.click(
-      within(this.root).getByTestId("pref-toggle-powerSaver"),
+      within(this.root).getByTestId(`pref-segment-powerSaver-${level}`),
     );
   }
 
-  /** The values written to the power-saver seam, in order. */
-  powerSaverSets(): boolean[] {
-    return this.commandLog().powerSaverSets;
+  /** The levels written to the power-saver seam, in order. */
+  powerSaverLevelSets(): string[] {
+    return this.commandLog().powerSaverLevelSets;
   }
 
   /** Click the ✕ dismiss control. */

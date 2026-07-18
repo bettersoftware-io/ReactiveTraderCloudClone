@@ -49,9 +49,11 @@ const baseScenarios: Record<string, Scenario> = {
     fixtureKey: "watchlist-populated",
   },
   "app/fx": { componentKey: "App", fixtureKey: "app-fx" },
-  // Power-saver variant: same App scenario, seeded with powerSaver: true so the
-  // aurora glow / drifting ambient-background layers are suppressed (static
-  // grid + vignette only). See fixtures.ts's "app-fx-power-saver".
+  // Power-saver variant: same App scenario, seeded with powerSaverLevel: "calm"
+  // so the aurora glow / drifting ambient-background layers are suppressed
+  // (static grid + vignette only). Freeze behaves identically to Calm here —
+  // no separate Freeze visual scenario yet. See fixtures.ts's
+  // "app-fx-power-saver".
   "app/fx-power-saver": {
     componentKey: "App",
     fixtureKey: "app-fx-power-saver",
@@ -136,6 +138,14 @@ const baseScenarios: Record<string, Scenario> = {
     fixtureKey: "credit-card-expired",
   },
   "credit/new-rfq": {
+    componentKey: "NewRfqPanel",
+    fixtureKey: "credit-populated",
+  },
+  // Instrument dropdown open — the floating popover is the distinct pixel
+  // state (its frosted-glass backing over the form; see
+  // InstrumentSelect.module.css). Pins the open dropdown so the translucent
+  // --panel can't silently regress to a see-through menu again.
+  "credit/new-rfq-open": {
     componentKey: "NewRfqPanel",
     fixtureKey: "credit-populated",
   },

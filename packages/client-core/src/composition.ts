@@ -233,7 +233,7 @@ export function createApp(ports: AppPorts): App {
   // Hoisted so the AnimationDirector can consume their streams directly.
   const priceStream = new PriceStreamPresenter(
     ports.pricing,
-    powerSaver.enabled$,
+    powerSaver.isCalm$,
   );
   const execution = new TradeExecutionPresenter(ports.execution);
   const rfqs = new RfqsPresenter(ports.workflow);
@@ -255,7 +255,7 @@ export function createApp(ports: AppPorts): App {
 
   const presenters: Presenters = {
     priceStream,
-    priceHistory: new PriceHistoryPresenter(ports.pricing, powerSaver.enabled$),
+    priceHistory: new PriceHistoryPresenter(ports.pricing, powerSaver.isCalm$),
     execution,
     blotter: new BlotterPresenter(ports.blotter),
     analytics: new AnalyticsPresenter(ports.analytics),
@@ -323,6 +323,7 @@ export function createApp(ports: AppPorts): App {
     sessions: new SessionsPresenter(ports.sessions),
     sessionsKpi: new SessionsKpiPresenter(ports.sessions),
   };
+
   const commands: AppCommands = {
     reconnect: () => {
       reconnect$.next({ type: "reconnect" });

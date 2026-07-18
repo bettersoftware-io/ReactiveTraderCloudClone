@@ -24,33 +24,33 @@ import styles from "./AmbientBackground.module.css";
  * interaction or a11y.
  *
  * Power saver is a master override on top of the animated-background
- * preference: when it is on, the active style's animated layers (rays or
- * aurora-curtains) and the dots layer are omitted from the DOM outright
- * (an absent layer costs no compositing, unlike one merely paused) — only
- * the static grid + vignette remain. `data-animated` still reflects the
- * user's own animated-background preference unchanged; it is not rewritten
- * by power saver.
+ * preference: whenever the level is Calm or Freeze (`isCalm`, level !== "off"
+ * — Freeze ⊇ Calm), the active style's animated layers (rays or
+ * aurora-curtains) and the dots layer are omitted from the DOM outright (an
+ * absent layer costs no compositing, unlike one merely paused) — only the
+ * static grid + vignette remain. `data-animated` still reflects the user's own
+ * animated-background preference unchanged; it is not rewritten by power saver.
  */
 export function AmbientBackground(): ReactElement {
   const { useAnimatedBackground, usePowerSaver, useAmbientStyle } =
     useViewModel();
   const { enabled } = useAnimatedBackground();
-  const { enabled: powerSaver } = usePowerSaver();
+  const { isCalm } = usePowerSaver();
   const { style } = useAmbientStyle();
   const vars = {
-    "--amb-play": enabled && !powerSaver ? "running" : "paused",
+    "--amb-play": enabled && !isCalm ? "running" : "paused",
   } as CSSProperties;
   return (
     <div
       data-testid="ambient-background"
       aria-hidden="true"
       data-animated={enabled ? "true" : "false"}
-      data-power-saver={powerSaver ? "true" : "false"}
+      data-power-saver={isCalm ? "on" : "off"}
       data-ambient-style={style}
       className={styles.wrap}
       style={vars}
     >
-      {!powerSaver && style === "rays" && (
+      {!isCalm && style === "rays" && (
         <div data-layer="rays">
           <div className={styles.aurora}>
             <div className={styles.layerA} />
@@ -59,7 +59,7 @@ export function AmbientBackground(): ReactElement {
           <div className={styles.sweep} />
         </div>
       )}
-      {!powerSaver && style === "aurora" && (
+      {!isCalm && style === "aurora" && (
         <div data-layer="aurora-curtains">
           <div className={styles.auroraWrap}>
             <div className={styles.auroraBlobA} />
@@ -72,7 +72,7 @@ export function AmbientBackground(): ReactElement {
         </div>
       )}
       <div className={styles.grid} />
-      {!powerSaver && <div className={styles.dots} />}
+      {!isCalm && <div className={styles.dots} />}
       <div className={styles.vignette} />
     </div>
   );

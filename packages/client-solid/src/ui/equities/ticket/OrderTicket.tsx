@@ -121,22 +121,27 @@ function TicketBody(props: TicketBodyProps): JSX.Element {
   const animAttr = createMemo((): "fill" | undefined => {
     return animIntent()?.kind === "fill" ? "fill" : undefined;
   });
+
   const workingOrder = createMemo((): EquityOrder | undefined => {
     const s = props.ticket.state();
     return s.phase === "working" ? s.order : undefined;
   });
+
   const partialOrder = createMemo((): EquityOrder | undefined => {
     const s = props.ticket.state();
     return s.phase === "partiallyFilled" ? s.order : undefined;
   });
+
   const filledOrder = createMemo((): EquityOrder | undefined => {
     const s = props.ticket.state();
     return s.phase === "filled" ? s.order : undefined;
   });
+
   const rejectedReason = createMemo((): string | undefined => {
     const s = props.ticket.state();
     return s.phase === "rejected" ? s.reason : undefined;
   });
+
   const editing = createMemo((): boolean => {
     return props.ticket.state().phase === "editing";
   });
@@ -278,16 +283,20 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
     const s = props.state();
     return s.phase === "editing" ? s.form : undefined;
   });
+
   const error = createMemo(() => {
     const s = props.state();
     return s.phase === "editing" ? s.error : null;
   });
+
   const isLimit = createMemo((): boolean => {
     return form()?.type === "limit";
   });
+
   const live = createMemo((): number => {
     return props.quote()?.last ?? 0;
   });
+
   // PROTO Ticket/OrderTicketPanel.tsx:24 — a limit order costs at the limit
   // price ONLY once one has actually been entered; a blank/zero limit still
   // prices off the live last (matches the prototype's `limitN ? limitN : last`).
@@ -295,6 +304,7 @@ function EditingTicket(props: EditingTicketProps): JSX.Element {
     const f = form();
     return isLimit() && f?.limitPrice ? f.limitPrice : live();
   });
+
   const estCost = createMemo((): number => {
     return (form()?.qty ?? 0) * unitPrice();
   });

@@ -57,11 +57,8 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
         );
       }
 
-      if (seed.powerSaver !== undefined) {
-        localStorage.setItem(
-          POWER_SAVER_STORAGE_KEY,
-          seed.powerSaver ? "true" : "false",
-        );
+      if (seed.powerSaverLevel !== undefined) {
+        localStorage.setItem(POWER_SAVER_STORAGE_KEY, seed.powerSaverLevel);
       }
 
       if (seed.bootVariant) {
@@ -110,14 +107,26 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
     expect(localStorage.getItem(VIEW_MODE_STORAGE_KEY)).toBe("price");
   });
 
-  it("persists skin, animatedBackground, and powerSaver to their own keys", () => {
+  it("persists skin, animatedBackground, and powerSaverLevel to their own keys", () => {
     const port = new LocalStoragePreferencesAdapter();
     port.setThemeSkin("terminal");
     port.setAnimatedBackground(true);
-    port.setPowerSaver(true);
+    port.setPowerSaverLevel("calm");
     expect(localStorage.getItem(THEME_SKIN_STORAGE_KEY)).toBe("terminal");
     expect(localStorage.getItem(ANIMATED_BG_STORAGE_KEY)).toBe("true");
-    expect(localStorage.getItem(POWER_SAVER_STORAGE_KEY)).toBe("true");
+    expect(localStorage.getItem(POWER_SAVER_STORAGE_KEY)).toBe("calm");
+  });
+
+  it('migrates a legacy powerSaver="true" to level "calm"', async () => {
+    localStorage.setItem(POWER_SAVER_STORAGE_KEY, "true");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.powerSaverLevel$())).toBe("calm");
+  });
+
+  it("reads a stored freeze level back", async () => {
+    localStorage.setItem(POWER_SAVER_STORAGE_KEY, "freeze");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.powerSaverLevel$())).toBe("freeze");
   });
 
   it("keeps reading the legacy rtc-theme key as the mode (back-compat)", async () => {

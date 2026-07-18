@@ -44,6 +44,7 @@ describe("watchlistVm", () => {
       META: 100,
       SPY: 100,
     };
+
     const prev: Record<EqSym, number> = {
       AAPL: 100,
       MSFT: 100,

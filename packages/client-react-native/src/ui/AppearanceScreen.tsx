@@ -41,7 +41,11 @@ export function AppearanceScreen(): JSX.Element {
   const { skin, setSkin } = useThemeSkinPreference();
   const { enabled: ambientEnabled, setEnabled: setAmbientEnabled } =
     useAnimatedBackground();
-  const { enabled: powerSaverEnabled, setEnabled: setPowerSaverEnabled } =
+
+  // The mobile screen stays a 2-state toggle (Off/On) — it never reaches
+  // Freeze (deferred to a later mobile-UI phase); `isCalm` (level !== "off")
+  // is the boolean it needs, and toggling flips between "off" and "calm".
+  const { isCalm: powerSaverEnabled, setLevel: setPowerSaverLevel } =
     usePowerSaver();
   const { style: ambientStyle, setStyle } = useAmbientStyle();
   const { reboot } = useBootGate();
@@ -211,7 +215,7 @@ export function AppearanceScreen(): JSX.Element {
             testID="appearance-powersaver-toggle"
             style={powerSaverEnabled ? styles.toggleRowOn : styles.toggleRow}
             onPress={() => {
-              setPowerSaverEnabled(!powerSaverEnabled);
+              setPowerSaverLevel(powerSaverEnabled ? "off" : "calm");
             }}
           >
             <Text style={styles.toggleLabel}>Power saver</Text>

@@ -59,27 +59,36 @@ test("hydrates a stored boolean animated-background value", async () => {
   expect(hydrated).toBe(true);
 });
 
-test("emits the default powerSaver (false) synchronously", async () => {
+test("emits the default powerSaverLevel (off) synchronously", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
-  const first = await firstValueFrom(prefs.powerSaver$());
-  expect(first).toBe(false);
+  const first = await firstValueFrom(prefs.powerSaverLevel$());
+  expect(first).toBe("off");
 });
 
-test("hydrates a stored boolean powerSaver value", async () => {
+test("hydrates a stored powerSaverLevel value", async () => {
+  store.set("rtc-power-saver", "freeze");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydrated = await firstValueFrom(
+    prefs.powerSaverLevel$().pipe(skip(1), take(1)),
+  );
+  expect(hydrated).toBe("freeze");
+});
+
+test('hydrates a legacy powerSaver="true" value as level "calm"', async () => {
   store.set("rtc-power-saver", "true");
   const prefs = new AsyncStoragePreferencesAdapter();
   const hydrated = await firstValueFrom(
-    prefs.powerSaver$().pipe(skip(1), take(1)),
+    prefs.powerSaverLevel$().pipe(skip(1), take(1)),
   );
-  expect(hydrated).toBe(true);
+  expect(hydrated).toBe("calm");
 });
 
-test("setPowerSaver writes through to AsyncStorage and emits", async () => {
+test("setPowerSaverLevel writes through to AsyncStorage and emits", async () => {
   const prefs = new AsyncStoragePreferencesAdapter();
-  prefs.setPowerSaver(true);
-  const next = await firstValueFrom(prefs.powerSaver$());
-  expect(next).toBe(true);
-  expect(store.get("rtc-power-saver")).toBe("true");
+  prefs.setPowerSaverLevel("freeze");
+  const next = await firstValueFrom(prefs.powerSaverLevel$());
+  expect(next).toBe("freeze");
+  expect(store.get("rtc-power-saver")).toBe("freeze");
 });
 
 test("hydrates a stored theme mode", async () => {
@@ -158,6 +167,7 @@ test("hydrates a stored eqWatchlistSort and eqBlotterView after construction", a
   const hydratedSort$ = firstValueFrom(
     prefs.eqWatchlistSort$().pipe(skip(1), take(1)),
   );
+
   const hydratedView$ = firstValueFrom(
     prefs.eqBlotterView$().pipe(skip(1), take(1)),
   );

@@ -54,6 +54,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
     const values = (await p).map((s) => {
       return s.value;
     });
+
     const unique = new Set(
       values.map((v) => {
         return Math.round(v * 1000);
@@ -113,6 +114,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
     const valuesA = (await pa).map((s) => {
       return s.value;
     });
+
     const valuesB = (await pb).map((s) => {
       return s.value;
     });
@@ -131,6 +133,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
     const latencyP = firstValueFrom(
       telemetry.latency$().pipe(take(2), toArray()),
     );
+
     const errorP = firstValueFrom(
       telemetry.errorRate$().pipe(take(2), toArray()),
     );
@@ -139,6 +142,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
     const latencyVals = (await latencyP).map((s) => {
       return s.value;
     });
+
     const errorVals = (await errorP).map((s) => {
       return s.value;
     });

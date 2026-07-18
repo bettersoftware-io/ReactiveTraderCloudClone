@@ -61,12 +61,13 @@ function renderWithVm(
     animatedBackground = true,
     powerSaver = false,
   } = options;
+
   const hooks = {
     useAnimatedBackground: () => {
       return { enabled: animatedBackground };
     },
     usePowerSaver: () => {
-      return { enabled: powerSaver };
+      return { isCalm: powerSaver };
     },
     useAmbientStyle: () => {
       return { style: ambientStyle, setStyle: vi.fn() };

@@ -18,6 +18,7 @@ export class PlaywrightCreditRfqForm implements CreditRfqFormPO {
     const buyVisible = await this.page
       .getByTestId(TESTIDS.credit.newRfq.dirButton("buy"))
       .isVisible();
+
     const sellVisible = await this.page
       .getByTestId(TESTIDS.credit.newRfq.dirButton("sell"))
       .isVisible();

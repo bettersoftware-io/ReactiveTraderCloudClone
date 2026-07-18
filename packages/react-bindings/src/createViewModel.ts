@@ -57,7 +57,9 @@ import {
   type Instrument,
   type LogEvent,
   type MetricSample,
+  nextPowerSaverLevel,
   type PositionUpdates,
+  type PowerSaverLevel,
   type Price,
   type PriceTick,
   type Quote,
@@ -127,9 +129,11 @@ interface UseAmbientStyleResult {
 }
 
 interface UsePowerSaverResult {
-  enabled: boolean;
-  setEnabled: (on: boolean) => void;
-  toggle: () => void;
+  level: PowerSaverLevel;
+  isCalm: boolean;
+  isFreeze: boolean;
+  setLevel: (level: PowerSaverLevel) => void;
+  cycle: () => void;
 }
 
 interface UseViewModePreferenceResult {
@@ -222,7 +226,8 @@ export interface ViewModel {
   /** Global ambient-background style preference (aurora | rays) — current
    * style plus the write intent. */
   useAmbientStyle: () => UseAmbientStyleResult;
-  /** Global power-saver master override — enabled flag plus write/toggle intents. */
+  /** Global power-saver master override — 3-state level (off/calm/freeze)
+   * plus derived isCalm/isFreeze flags and setLevel/cycle intents. */
   usePowerSaver: () => UsePowerSaverResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
@@ -306,6 +311,7 @@ export function createViewModel(
   const [usePrice] = bind((pair: CurrencyPair) => {
     return presenters.priceStream.price$(pair);
   }, null);
+
   const [usePriceHistory] = bind(
     (symbol: string) => {
       return presenters.priceHistory.history$(symbol);
@@ -317,10 +323,12 @@ export function createViewModel(
     presenters.blotter.newTradeIds$,
     new Set<number>() as ReadonlySet<number>,
   );
+
   const [useActivity] = bind(
     presenters.blotter.activity$,
     [] as readonly ActivityEntry[],
   );
+
   const [useAnalytics] = bind(
     presenters.analytics.position$,
     null as PositionUpdates | null,
@@ -332,14 +340,17 @@ export function createViewModel(
     },
     [] as readonly Quote[],
   );
+
   const [useAllQuotes] = bind(
     presenters.rfqs.allQuotes$,
     new Map() as ReadonlyMap<number, Quote>,
   );
+
   const [useCurrencyPairs] = bind(
     presenters.currencyPairs.pairs$,
     [] as readonly CurrencyPair[],
   );
+
   const [useInstruments] = bind(
     presenters.instruments.list$,
     [] as readonly Instrument[],
@@ -349,6 +360,7 @@ export function createViewModel(
     presenters.connection.status$,
     ConnectionStatus.CONNECTING,
   );
+
   // Global/shared throughput state → a plain bind (not a per-mount machine).
   const [useThroughputState] = bind(presenters.throughput.state$, {
     value: 100,
@@ -365,6 +377,7 @@ export function createViewModel(
     presenters.themePreference.mode$,
     DEFAULT_THEME_MODE,
   );
+
   const [useThemeModePreferenceValue] = bind(
     presenters.themePreference.modePreference$,
     DEFAULT_THEME_MODE_PREFERENCE,
@@ -397,10 +410,10 @@ export function createViewModel(
     presenters.animatedBackground.set(on);
   }
 
-  const [usePowerSaverValue] = bind(presenters.powerSaver.enabled$, false);
+  const [usePowerSaverLevel] = bind(presenters.powerSaver.level$, "off");
 
-  function setPowerSaver(on: boolean): void {
-    presenters.powerSaver.set(on);
+  function setPowerSaverLevel(level: PowerSaverLevel): void {
+    presenters.powerSaver.setLevel(level);
   }
 
   const [useViewModeValue] = bind(
@@ -510,28 +523,33 @@ export function createViewModel(
     presenters.watchlist.watchlist$,
     [] as readonly EquityInstrument[],
   );
+
   const [useEquityQuote] = bind(
     (symbol: string) => {
       return presenters.watchlist.quote$(symbol);
     },
     null as EquityQuote | null,
   );
+
   const [useCandles] = bind(
     (symbol: string, timeframe?: CandleTimeframe) => {
       return presenters.candleSeries.candles$(symbol, timeframe);
     },
     [] as readonly Candle[],
   );
+
   const [useDepth] = bind(
     (symbol: string) => {
       return presenters.depth.depth$(symbol);
     },
     null as DepthBook | null,
   );
+
   const [useEquityOrders] = bind(
     presenters.ordersBlotter.orders$,
     [] as readonly EquityOrder[],
   );
+
   const [useEquityPositions] = bind(
     presenters.positions.positions$,
     [] as readonly EquityPosition[],
@@ -542,26 +560,32 @@ export function createViewModel(
     presenters.throughputMetric.samples$,
     [] as readonly MetricSample[],
   );
+
   const [useLatencySamples] = bind(
     presenters.latencyMetric.samples$,
     [] as readonly MetricSample[],
   );
+
   const [useErrorRateSamples] = bind(
     presenters.errorRateMetric.samples$,
     [] as readonly MetricSample[],
   );
+
   const [useTopologyValue] = bind(
     presenters.topology.topology$,
     null as ServiceTopology | null,
   );
+
   const [useEventLogValue] = bind(
     presenters.eventLog.events$,
     [] as readonly LogEvent[],
   );
+
   const [useSessionsValue] = bind(
     presenters.sessions.sessions$,
     [] as readonly SessionInfo[],
   );
+
   const [useSessionCountSeriesValue] = bind(
     presenters.sessionsKpi.countSeries$,
     [] as readonly MetricSample[],
@@ -723,12 +747,14 @@ export function createViewModel(
       };
     },
     usePowerSaver: () => {
-      const enabled = usePowerSaverValue();
+      const level = usePowerSaverLevel();
       return {
-        enabled,
-        setEnabled: setPowerSaver,
-        toggle: () => {
-          return presenters.powerSaver.toggle(enabled);
+        level,
+        isCalm: level !== "off",
+        isFreeze: level === "freeze",
+        setLevel: setPowerSaverLevel,
+        cycle: () => {
+          return setPowerSaverLevel(nextPowerSaverLevel(level));
         },
       };
     },

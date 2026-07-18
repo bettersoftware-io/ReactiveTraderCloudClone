@@ -17,6 +17,7 @@ export class CypressCreditRfqForm implements CreditRfqFormPO {
       const buy = $body.find(
         `[data-testid="${TESTIDS.credit.newRfq.dirButton("buy")}"]`,
       );
+
       const sell = $body.find(
         `[data-testid="${TESTIDS.credit.newRfq.dirButton("sell")}"]`,
       );

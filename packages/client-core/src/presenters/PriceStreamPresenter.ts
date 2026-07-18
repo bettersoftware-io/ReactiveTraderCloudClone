@@ -30,6 +30,7 @@ export class PriceStreamPresenter {
     const raw = new PriceStreamUseCase(this.pricing)
       .execute(pair)
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+
     const stream = raw.pipe(
       conflateWhen(this.powerSaver$, PRICE_CONFLATION_MS),
       shareReplay({ bufferSize: 1, refCount: true }),

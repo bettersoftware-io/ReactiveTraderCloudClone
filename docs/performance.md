@@ -187,7 +187,10 @@ names.
   **power-saver mode** trades that floor away on
   slow hardware (one toggle → still ambience + conflated price re-renders);
   what it disables vs keeps is documented in
-  [power-saver-mode.md](power-saver-mode.md).
+  [power-saver-mode.md](power-saver-mode.md). On GPU-less Citrix/VDI hardware
+  even that residual per-frame cost is CPU-rasterised and streamed as pixels
+  (no compositor to absorb it) — the **Freeze** level is the hard floor for
+  that case; see ["Why a Freeze tier exists"](power-saver-mode.md#why-a-freeze-tier-exists).
 
 ---
 

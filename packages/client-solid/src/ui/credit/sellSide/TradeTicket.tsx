@@ -22,12 +22,15 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
       props.quote.state.type === "pendingWithoutPrice"
     );
   });
+
   const hasResponded = createMemo((): boolean => {
     return props.quote.state.type !== "pendingWithoutPrice";
   });
+
   const animKind = createMemo((): "fill" | undefined => {
     return anim()?.kind === "fill" ? "fill" : undefined;
   });
+
   const submitted = createMemo((): boolean => {
     return ticket.state().submitted;
   });

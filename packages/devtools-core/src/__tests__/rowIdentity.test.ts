@@ -28,6 +28,7 @@ describe("InspectorStore identity-stable rows", () => {
     const ax1 = first.find((s) => {
       return s.streamId === "a.x$";
     });
+
     const by1 = first.find((s) => {
       return s.streamId === "b.y$";
     });
@@ -48,6 +49,7 @@ describe("InspectorStore identity-stable rows", () => {
     const ax2 = second.find((s) => {
       return s.streamId === "a.x$";
     });
+
     const by2 = second.find((s) => {
       return s.streamId === "b.y$";
     });

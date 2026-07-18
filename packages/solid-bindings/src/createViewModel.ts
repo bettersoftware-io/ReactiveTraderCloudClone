@@ -58,7 +58,9 @@ import {
   type Instrument,
   type LogEvent,
   type MetricSample,
+  nextPowerSaverLevel,
   type PositionUpdates,
+  type PowerSaverLevel,
   type Price,
   type PriceTick,
   type Quote,
@@ -153,9 +155,11 @@ interface UseAmbientStyleResult {
 }
 
 interface UsePowerSaverResult {
-  enabled: Accessor<boolean>;
-  setEnabled: (on: boolean) => void;
-  toggle: () => void;
+  level: Accessor<PowerSaverLevel>;
+  isCalm: Accessor<boolean>;
+  isFreeze: Accessor<boolean>;
+  setLevel: (level: PowerSaverLevel) => void;
+  cycle: () => void;
 }
 
 interface UseViewModePreferenceResult {
@@ -248,7 +252,8 @@ export interface ViewModel {
   /** Global ambient-background style preference (aurora | rays) — current
    * style plus the write intent. */
   useAmbientStyle: () => UseAmbientStyleResult;
-  /** Global power-saver master override — enabled flag plus write/toggle intents. */
+  /** Global power-saver master override — 3-state level (off/calm/freeze)
+   * plus derived isCalm/isFreeze flags and setLevel/cycle intents. */
   usePowerSaver: () => UsePowerSaverResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
@@ -338,6 +343,7 @@ export function createViewModel(
     },
     null as Price | null,
   );
+
   const priceHistoryState = state(
     (symbol: string) => {
       return presenters.priceHistory.history$(symbol);
@@ -349,10 +355,12 @@ export function createViewModel(
     presenters.blotter.newTradeIds$,
     new Set<number>() as ReadonlySet<number>,
   );
+
   const activityState = state(
     presenters.blotter.activity$,
     [] as readonly ActivityEntry[],
   );
+
   const analyticsState = state(
     presenters.analytics.position$,
     null as PositionUpdates | null,
@@ -364,14 +372,17 @@ export function createViewModel(
     },
     [] as readonly Quote[],
   );
+
   const allQuotesState = state(
     presenters.rfqs.allQuotes$,
     new Map() as ReadonlyMap<number, Quote>,
   );
+
   const currencyPairsState = state(
     presenters.currencyPairs.pairs$,
     [] as readonly CurrencyPair[],
   );
+
   const instrumentsState = state(
     presenters.instruments.list$,
     [] as readonly Instrument[],
@@ -398,6 +409,7 @@ export function createViewModel(
     presenters.themePreference.mode$,
     DEFAULT_THEME_MODE,
   );
+
   const themeModePreferenceState = state(
     presenters.themePreference.modePreference$,
     DEFAULT_THEME_MODE_PREFERENCE,
@@ -427,10 +439,10 @@ export function createViewModel(
     presenters.animatedBackground.set(on);
   }
 
-  const powerSaverState = state(presenters.powerSaver.enabled$, false);
+  const powerSaverState = state(presenters.powerSaver.level$, "off");
 
-  function setPowerSaver(on: boolean): void {
-    presenters.powerSaver.set(on);
+  function setPowerSaverLevel(level: PowerSaverLevel): void {
+    presenters.powerSaver.setLevel(level);
   }
 
   const viewModeState = state(
@@ -539,28 +551,33 @@ export function createViewModel(
     presenters.watchlist.watchlist$,
     [] as readonly EquityInstrument[],
   );
+
   const equityQuoteState = state(
     (symbol: string) => {
       return presenters.watchlist.quote$(symbol);
     },
     null as EquityQuote | null,
   );
+
   const candlesState = state(
     (symbol: string, timeframe?: CandleTimeframe) => {
       return presenters.candleSeries.candles$(symbol, timeframe);
     },
     [] as readonly Candle[],
   );
+
   const depthState = state(
     (symbol: string) => {
       return presenters.depth.depth$(symbol);
     },
     null as DepthBook | null,
   );
+
   const equityOrdersState = state(
     presenters.ordersBlotter.orders$,
     [] as readonly EquityOrder[],
   );
+
   const equityPositionsState = state(
     presenters.positions.positions$,
     [] as readonly EquityPosition[],
@@ -571,26 +588,32 @@ export function createViewModel(
     presenters.throughputMetric.samples$,
     [] as readonly MetricSample[],
   );
+
   const latencySamplesState = state(
     presenters.latencyMetric.samples$,
     [] as readonly MetricSample[],
   );
+
   const errorRateSamplesState = state(
     presenters.errorRateMetric.samples$,
     [] as readonly MetricSample[],
   );
+
   const topologyState = state(
     presenters.topology.topology$,
     null as ServiceTopology | null,
   );
+
   const eventLogState = state(
     presenters.eventLog.events$,
     [] as readonly LogEvent[],
   );
+
   const sessionsState = state(
     presenters.sessions.sessions$,
     [] as readonly SessionInfo[],
   );
+
   const sessionCountSeriesState = state(
     presenters.sessionsKpi.countSeries$,
     [] as readonly MetricSample[],
@@ -760,13 +783,19 @@ export function createViewModel(
       };
     },
     usePowerSaver: () => {
-      const enabled = toSignal(powerSaverState);
+      const level = toSignal(powerSaverState);
 
       return {
-        enabled,
-        setEnabled: setPowerSaver,
-        toggle: () => {
-          presenters.powerSaver.toggle(enabled());
+        level,
+        isCalm: () => {
+          return level() !== "off";
+        },
+        isFreeze: () => {
+          return level() === "freeze";
+        },
+        setLevel: setPowerSaverLevel,
+        cycle: () => {
+          setPowerSaverLevel(nextPowerSaverLevel(level()));
         },
       };
     },

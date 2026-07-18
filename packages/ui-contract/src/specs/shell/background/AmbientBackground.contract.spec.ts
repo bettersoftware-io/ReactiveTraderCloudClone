@@ -45,7 +45,7 @@ describe("AmbientBackground", () => {
     it("omits both styles' layer groups under power saver, regardless of style", () => {
       const page = mount(AmbientBackground, {
         ambientStyle: "aurora",
-        powerSaver: true,
+        powerSaverLevel: "calm",
       });
       expect(page.hasLayer("aurora-curtains")).toBe(false);
       expect(page.hasLayer("rays")).toBe(false);

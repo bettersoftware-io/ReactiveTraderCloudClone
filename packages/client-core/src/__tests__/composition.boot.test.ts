@@ -68,6 +68,7 @@ describe("boot machine factory", () => {
     let seen:
       | import("#/presenters/BootSequenceMachine").BootSequenceState
       | undefined;
+
     const sub = m.state$.subscribe((s) => {
       seen = s;
     });
