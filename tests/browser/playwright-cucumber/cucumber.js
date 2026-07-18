@@ -14,6 +14,14 @@
 // - All paths below are CWD-relative (cucumber-js runs from tests/),
 //   not config-file-relative.
 
+// The solid variant (tests/package.json test:browser:playwright-cucumber:solid)
+// reuses this SAME config with RTC_CLIENT_PKG=@rtc/client-solid, and run-all.ts
+// runs every browser suite concurrently by default — so suffix the HTML report
+// path by client to avoid two runs writing the same file at once. Empty for
+// the react default keeps its report path byte-identical to before.
+const reportSuffix =
+  process.env.RTC_CLIENT_PKG === "@rtc/client-solid" ? "-solid" : "";
+
 export default {
   paths: ["specs/**/*.feature"],
   import: [
@@ -23,7 +31,7 @@ export default {
   ],
   format: [
     "progress-bar",
-    "html:reports/browser/playwright-cucumber/report/index.html",
+    `html:reports/browser/playwright-cucumber${reportSuffix}/report/index.html`,
     "summary",
   ],
   // PWCUCUMBER_HEADED (the :headed script) forces a single worker so the run

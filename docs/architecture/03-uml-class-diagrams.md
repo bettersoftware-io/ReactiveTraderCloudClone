@@ -395,7 +395,9 @@ classDiagram
     }
 
     class LocalStoragePreferencesAdapter {
-        web · sync localStorage
+        web · sync local storage
+        (own impl per client:
+        client-react + client-solid)
     }
     class AsyncStoragePreferencesAdapter {
         mobile · RN AsyncStorage
@@ -408,10 +410,11 @@ classDiagram
 The telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) is simulator-only by design — it has no wire protocol and stays in-process even in WS mode (see [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when)).
 
 **Adapter selection** is performed at the **Composition Root** (single startup point), not at render time. Each client has one switch file that builds the full `AppPorts` either way:
-- **Web** — `packages/client-react/src/app/buildBrowserPorts.ts` reads `VITE_SERVER_URL`: unset → `createSimulatorPorts()` (in-process, no transport); set → `new WsAdapter(buildWsUrl(url, token))` + `createWsRealPorts(ws, ...)`.
+- **Web (React)** — `packages/client-react/src/app/buildBrowserPorts.ts` reads `VITE_SERVER_URL`: unset → `createSimulatorPorts()` (in-process, no transport); set → `new WsAdapter(buildWsUrl(url, token))` + `createWsRealPorts(ws, ...)`.
+- **Web (Solid)** — `packages/client-solid/src/app/buildBrowserPorts.ts` reads the *same* `VITE_SERVER_URL` switch, byte-for-byte the same logic as React's.
 - **Mobile** — `packages/client-react-native/src/app/buildNativePorts.ts` reads `EXPO_PUBLIC_SERVER_URL` via `expo-constants`; an in-app sim/live toggle re-mounts `AppRoot` with a React `key` to switch branches without any branch logic in the tree.
 
-Both factories (`createSimulatorPorts`, `createWsRealPorts`) live in `@rtc/client-core` and are shared; only the ~100-line switch file is per-platform.
+Both factories (`createSimulatorPorts`, `createWsRealPorts`) live in `@rtc/client-core` and are shared; only each client's own ~100-line switch file is per-client.
 
 **Gateway-events adapter pair.** `ConnectionEventsPort` is supplied by one of two transport-specific adapters chosen at the composition root: `WsConnectionEventsAdapter` (wraps `IWsAdapter.connectionEvents()` so `WsAdapter`'s `onopen`/`onclose` lifecycle reaches the state machine) in WS-real mode, or `ConnectionEventsSimulator` (one-shot `of(gatewayConnected)`) in simulator mode. Either choice is then merged with `BrowserConnectionEventsAdapter` (the source of `browserOnline`/`browserOffline`/`idleTimeout`/`userActivity`) via a plain `merge(...)` in `composition.ts`.
 
@@ -573,7 +576,7 @@ classDiagram
 
 The diagram shows representative presenters. The full set in `packages/client-core/src/presenters/` also includes `PriceHistoryPresenter`, `CurrencyPairsPresenter`, `InstrumentsPresenter`, `DealersPresenter`, `TradeExecutionPresenter`, `RfqQuotePresenter`, the equities set (`WatchlistPresenter`, `CandleSeriesPresenter`, `OrdersBlotterPresenter`, `DepthPresenter`), the admin/telemetry set (`ThroughputMetricPresenter`, `LatencyPresenter`, `ErrorRatePresenter`, `ServiceTopologyPresenter`, `EventLogPresenter`, `SessionsPresenter`), and shell presenters (`SessionPresenter`, `AnimationDirector`, theme/boot/view preference presenters). **Command methods return `Observable<T>`, not `Promise<T>`** — they are one-shot streams. The UI no longer calls `firstValueFrom` itself: command hooks in the bindings (`useAcceptQuote`, `useCancelRfq`, ...) wrap it, so the UI layer imports **zero** RxJS symbols.
 
-**Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)), and this repo already uses it split into its two halves: `@rx-state/core` (framework-neutral, in `client-core`) + `@react-rxjs/core` (React-facing, in `react-bindings`). To swap React -> SolidJS, write a `@rtc/solid-bindings` that maps the same `StateObservable`s to Solid signals -- presenters and below are unchanged. UI components are rewritten -- but their contracts (the ViewModel hook signatures) are mirrored 1:1, and the behavioural spec suite verifies the rewrite. See [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan).
+**Replacing react-rxjs (or React itself)**: react-rxjs is a small library (a few hundred lines, see [re-rxjs/react-rxjs](https://github.com/re-rxjs/react-rxjs)), and this repo already uses it split into its two halves: `@rx-state/core` (framework-neutral, in `client-core`) + `@react-rxjs/core` (React-facing, in `react-bindings`). This is exactly what the SolidJS port did: `@rtc/solid-bindings` maps the same `StateObservable`s to Solid signals -- presenters and below were unchanged. The UI components were rewritten -- but their contracts (the ViewModel hook signatures) are mirrored 1:1, and the behavioural spec suite verified the rewrite. See [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port).
 
 **Replacing RxJS itself** (for example with effect-ts): high-cost. RxJS is the boundary stream type, so swapping it touches every port, every simulator, every use case, and every presenter. The change is mechanical -- mostly `Observable<T>` → `Stream<T>` and operator-name remapping -- and behavioural tests at the UI level don't change, but it is no longer a single-layer rewrite. This is the cost paid in exchange for the simplicity of a single boundary stream type ([§8 Replaceability Matrix](08-replaceability-matrix.md#8-replaceability-matrix) tracks the trade-off).
 
@@ -615,6 +618,8 @@ flowchart TB
     VMtype -.implemented by.-> worldVm
 ```
 
+`@rtc/solid-bindings` mirrors this diagram shape exactly, one level over: swap the `bindings` subgraph for `@rtc/solid-bindings` (Solid's `useMachine` uses `onCleanup` in place of the microtask-deferred dispose), the `roots` subgraph for `client-solid`'s own `AppRoot.tsx` calling `createApp(buildBrowserPorts())`, and the `consumers` subgraph for `client-solid`'s ~52+ components. It is omitted from the diagram above only because it is a second, structurally identical instance, not a variant.
+
 How the pieces divide the work inside `createViewModel`:
 
 | Hook kind | Mechanism | Examples |
@@ -626,8 +631,8 @@ How the pieces divide the work inside `createViewModel`:
 Three properties make this a real seam rather than a service locator:
 
 1. **Constructed once, before the tree.** Each client's `AppRoot` builds ports → `createApp` → `createViewModel` in a lazy `useRef` (surviving StrictMode double-invoke) and supplies it via `ViewModelProvider`. No per-render injection, no re-wiring on re-render.
-2. **The interface is the portability contract.** The `ViewModel` type is implemented by the production factory *and* by two test harnesses (`buildFakeViewModel` for visual goldens, `viewModelFromWorld` for UI contract tests). A SolidJS client implements the same member list with signals.
-3. **Nothing else crosses.** Injecting JSX or components through the ViewModel is forbidden (it would break the SolidJS-port contract, per ADR-004); the UI cannot reach presenters, ports, or Observables directly (gates 26--29).
+2. **The interface is the portability contract.** The `ViewModel` type is implemented by the production factory *and* by two test harnesses (`buildFakeViewModel` for visual goldens, `viewModelFromWorld` for UI contract tests). `@rtc/client-solid` implements the same member list over Solid signals, via `@rtc/solid-bindings`.
+3. **Nothing else crosses.** Injecting JSX or components through the ViewModel is forbidden (it would have broken the SolidJS port, per ADR-004); the UI cannot reach presenters, ports, or Observables directly (gates 26--29).
 
 ---
 

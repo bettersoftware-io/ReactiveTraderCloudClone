@@ -2,7 +2,7 @@
 
 ## 12. Architectural Gates
 
-`tests/scripts/grep-gates.ts` encodes 32 import-boundary rules plus a supply-chain audit (33 gates total), enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
+`tests/scripts/grep-gates.ts` encodes 36 import-boundary rules plus a supply-chain audit (37 gates total), enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
 
 | Gate | Rule |
 |------|------|
@@ -39,5 +39,9 @@
 | 31 | No `localStorage` / `AsyncStorage` in `client-react-native/src/ui` (persistence belongs behind `PreferencesPort`) |
 | 32 | No `fetch(` / `process.env` / `import.meta.env` / `expo-constants` in `client-react-native/src/ui` (transport & config belong in the app layer) |
 | 33 | No `setTimeout` / `setInterval` in `client-react-native/src/ui` (time belongs in machines/presenters; custom check) |
+| 34 | No `rxjs` / `@rx-state` imports in `client-solid/src/ui` (the Solid dumb-UI boundary; only the `solid-bindings` bridge may) |
+| 35 | No `local storage` in `client-solid/src/ui` (persistence belongs behind `PreferencesPort`) |
+| 36 | No `fetch(` / `import.meta.env` in `client-solid/src/ui` (transport & config belong in the app layer) |
+| 37 | No `setTimeout` / `setInterval` in `client-solid/src/ui` (time belongs in machines/presenters; custom check) |
 
-Gates 26–29 (web) and 30–33 (RN) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. Both shipped clients now carry the same four categories of guardrail on their `src/ui` (the RN patterns are a strict superset, adding platform APIs like `AsyncStorage` and `process.env`), so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)) holds on either existing client, not just the one that happened to get gated first — valid without anyone watching.
+Gates 26–29 (web), 30–33 (RN), and 34–37 (Solid) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. All three shipped clients now carry the same four categories of guardrail on their `src/ui` (the RN patterns are a strict superset, adding platform APIs like `AsyncStorage` and `process.env`), so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)) held on the existing clients throughout the port, not just the one that happened to get gated first — proven, not merely valid, since the Solid client passed its own 34–37 from day one.
