@@ -141,6 +141,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     window.matchMedia = (() => {
       return { matches: true }; // prefers-reduced-motion: reduce
     }) as unknown as typeof window.matchMedia;
+
     try {
       renderBootSequence({ forceBootAnimation: true });
       expect(rafSpy).toHaveBeenCalled();
@@ -154,6 +155,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     window.matchMedia = (() => {
       return { matches: true };
     }) as unknown as typeof window.matchMedia;
+
     try {
       renderBootSequence({ forceBootAnimation: false });
       expect(rafSpy).not.toHaveBeenCalled();
@@ -368,14 +370,16 @@ function makeHooks(partialHooks: Partial<ViewModel> = {}): ViewModel {
   } as unknown as ViewModel;
 }
 
+interface RenderBootSequenceOpts {
+  forceBootAnimation: boolean;
+}
+
 /** Renders `<BootSequence>` with `useForceBootAnimation().enabled` stubbed to
  * the given flag — the seam Task 4 wires into the effective reduced-motion
  * decision. */
 function renderBootSequence({
   forceBootAnimation,
-}: {
-  forceBootAnimation: boolean;
-}): void {
+}: RenderBootSequenceOpts): void {
   render(() => {
     return (
       <ViewModelContext.Provider
