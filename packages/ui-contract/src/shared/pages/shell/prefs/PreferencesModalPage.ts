@@ -8,11 +8,12 @@ export interface PreferencesModalProps {
 }
 
 /**
- * Page object for PreferencesModal. TWO rows are REAL controls: the
- * Animated-background toggle (wired to useAnimatedBackground) and the Power
- * saver toggle (wired to usePowerSaver); each seam records its written values,
- * asserted via `animatedBgSets()` / `powerSaverSets()`. Cosmetic rows are
- * checked for presence only.
+ * Page object for PreferencesModal. THREE rows are REAL controls: the
+ * Animated-background toggle (wired to useAnimatedBackground), the Power
+ * saver toggle (wired to usePowerSaver), and the Always-play-boot-animation
+ * toggle (wired to useForceBootAnimation); each seam records its written
+ * values, asserted via `animatedBgSets()` / `powerSaverSets()` /
+ * `forceBootAnimationSets()`. Cosmetic rows are checked for presence only.
  */
 export class PreferencesModalPage extends MountedComponent<PreferencesModalProps> {
   private readonly user: UserEvent = userEvent.setup();
@@ -62,6 +63,27 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
   /** The values written to the power-saver seam, in order. */
   powerSaverSets(): boolean[] {
     return this.commandLog().powerSaverSets;
+  }
+
+  /** Current state of the real Always-play-boot-animation switch (its `data-on`). */
+  forceBootAnimationOn(): boolean {
+    return (
+      within(this.root)
+        .getByTestId("pref-toggle-forceBootAnimation")
+        .getAttribute("data-on") === "true"
+    );
+  }
+
+  /** Toggle the real Always-play-boot-animation switch through the seam. */
+  async toggleForceBootAnimation(): Promise<void> {
+    await this.user.click(
+      within(this.root).getByTestId("pref-toggle-forceBootAnimation"),
+    );
+  }
+
+  /** The values written to the force-boot-animation seam, in order. */
+  forceBootAnimationSets(): boolean[] {
+    return this.commandLog().forceBootAnimationSets;
   }
 
   /** Click the ✕ dismiss control. */

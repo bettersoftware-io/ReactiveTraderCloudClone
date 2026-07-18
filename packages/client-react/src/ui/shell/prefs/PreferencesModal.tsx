@@ -10,9 +10,10 @@ import styles from "./PreferencesModal.module.css";
 /**
  * Preferences catalogue modal (prototype Reactive Trader.dc.html:218-716). A
  * two-column DISPLAY / TRADING / NOTIFICATIONS / DATA grid of toggle + segment
- * rows. TWO rows are wired to real ports — Animated background
- * (`useAnimatedBackground`) and Power saver (`usePowerSaver`); every other row
- * is decorative (see the comment on the catalogue above). Dumb component:
+ * rows. THREE rows are wired to real ports — Animated background
+ * (`useAnimatedBackground`), Power saver (`usePowerSaver`), and Always play
+ * boot animation (`useForceBootAnimation`); every other row is decorative (see
+ * the comment on the catalogue above). Dumb component:
  * consumes `useViewModel()` destructured only, holds no app-layer state /
  * persistence / transport / timers, and renders only when `open`.
  */
@@ -20,10 +21,13 @@ export function PreferencesModal({
   open,
   onClose,
 }: PreferencesModalProps): ReactElement | null {
-  const { useAnimatedBackground, usePowerSaver } = useViewModel();
+  const { useAnimatedBackground, usePowerSaver, useForceBootAnimation } =
+    useViewModel();
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
   const { enabled: powerSaver, toggle: togglePowerSaver } = usePowerSaver();
+  const { enabled: forceBootAnimation, toggle: toggleForceBootAnimation } =
+    useForceBootAnimation();
 
   const [toggles, setToggles] =
     useState<Record<string, boolean>>(INITIAL_TOGGLES);
@@ -84,6 +88,13 @@ export function PreferencesModal({
                 on={animatedBg}
                 onToggle={toggleAnimatedBg}
                 testid="pref-toggle-animatedBg"
+              />
+              <PrefToggle
+                label="Always play boot animation"
+                description="Plays the startup animation even when your system asks for reduced motion (e.g. remote desktops / VDI)."
+                on={forceBootAnimation}
+                onToggle={toggleForceBootAnimation}
+                testid="pref-toggle-forceBootAnimation"
               />
               <ToggleGroup
                 defs={DISPLAY_TOGGLES}
