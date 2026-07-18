@@ -172,10 +172,12 @@ Notes:
 - **Adding a user** requires two separate edits, in two separate places, by
   design: (1) add a `RosterEntry` to `ROSTER` in `roster.ts` — this is code,
   committed to the repo, since profiles are public — and (2) add a matching
-  credential to `AUTH_USERS` (deployed) and/or a dev-credentials map
-  (simulator) — this is a secret, never committed. A roster entry with no
-  credential can never log in; a credential for a username with no roster
-  entry also can never log in.
+  credential to `AUTH_USERS` (deployed / local full-stack) and/or a
+  dev-credentials map (simulator). For this **demo app** the local credentials
+  are committed (`.env.development` + the `dev:*` scripts, see §5); the deployed
+  password is a Fly `AUTH_USERS` secret. A roster entry with no credential can
+  never log in; a credential for a username with no roster entry also can never
+  log in.
 
 ## 4. Configuring passwords — per platform
 
@@ -233,35 +235,40 @@ hot-reloaded — after editing `.env` you must restart Metro
 
 ### Local web dev (`pnpm dev`, simulator mode)
 
-A fresh clone has no local env file, so the web `LoginScreen` rejects every
-credential until you create one:
+`packages/client-react/.env.development` is **committed** with the demo roster,
+so a fresh clone signs in out of the box — no setup. Vite loads it in dev only
+(never in a production build). Sign in as any roster user — `astark`,
+`nromanoff`, `tchalla`, or `demo` — with password `mcdc2026`.
 
-```bash
-cp packages/client-react/.env.example packages/client-react/.env.local
-```
+Without `VITE_SERVER_URL` set, `buildBrowserPorts.ts` takes the simulator branch
+and parses `VITE_DEV_AUTH` via its own `parseDevAuth`, tolerant of a
+missing/malformed value (degrading to "no dev logins work" rather than a boot
+crash) — unlike the RN client it has no built-in fallback roster in code, so
+the committed `.env.development` is what makes web logins work locally. To use
+your own credentials instead, override `VITE_DEV_AUTH` in an untracked
+`.env.local` (Vite gives `.local` files precedence).
 
-then edit `VITE_DEV_AUTH` (already seeded with a placeholder) — for example:
+Full-stack local dev (`dev:react:fs` / `dev:ws`) is WS-real, so it ignores
+`VITE_DEV_AUTH` and authenticates against the **server's** `AUTH_USERS` instead
+— a different format, `"user:pass,..."`, plus `AUTH_SECRET`. The `dev:ws` /
+`dev:*:fs` scripts bake in the same demo roster, so full-stack also works out of
+the box.
 
-```
-VITE_DEV_AUTH={"demo":"localpass"}
-```
+## 5. What's committed vs. what stays secret
 
-and sign in as `demo` / `localpass`. Without `VITE_SERVER_URL` set,
-`buildBrowserPorts.ts` takes the simulator branch and parses `VITE_DEV_AUTH`
-via its own `parseDevAuth`, tolerant of a missing/malformed value (degrading
-to "no dev logins work" rather than a boot crash) — it just never falls back
-to a built-in roster map the way the RN client does, so an unset/empty
-`VITE_DEV_AUTH` really does mean nobody can sign in locally until you create
-the file.
+This is a **demo app**, so the demo *login* credentials are intentionally
+committed — the roster password (`mcdc2026` for `astark` / `nromanoff` /
+`tchalla` / `demo`) lives in `packages/client-react/.env.development`
+(simulator) and in the `dev:ws` / `dev:*:fs` scripts' `AUTH_USERS` (full-stack).
+They're throwaway and rotatable: change the password in those two places (and
+the Fly `AUTH_USERS` secret) if it ever matters.
 
-## 5. Credentials are never committed
-
-Every file tracked in this repo holds only placeholder values:
-`packages/client-react/.env.example` ships `VITE_DEV_AUTH={"demo":"localpass"}`;
-`packages/client-react-native/.env.example` ships an empty
-`EXPO_PUBLIC_DEV_AUTH=`. Real deployed credentials exist only as Fly secrets,
-set by hand, outside version control — **ask the team** for them rather than
-inventing or committing one. See [`docs/env-files.md`](env-files.md) for the
-full inventory of every `.env*` file in the repo, what each one holds, and
-who reads it, and [`docs/DEPLOY.md`](DEPLOY.md) for the deploy-time setup
-walkthrough.
+What still stays **out of version control** is the thing that actually protects
+the deployed app: the server's **`AUTH_SECRET`** — the HMAC key that signs and
+verifies session tokens. It's a Fly secret set by hand (dev uses a throwaway
+`dev-local-secret` in the scripts). Public demo logins only let someone sign in
+as the roster's `Read-Only Guest`; without `AUTH_SECRET` nobody can forge a
+token. The `.env.example` templates still ship placeholder values, and an
+untracked `.env.local` overrides the committed demo creds. See
+[`docs/env-files.md`](env-files.md) for the full inventory of every `.env*`
+file, and [`docs/DEPLOY.md`](DEPLOY.md) for the deploy-time setup walkthrough.
