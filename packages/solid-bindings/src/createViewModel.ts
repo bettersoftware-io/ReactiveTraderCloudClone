@@ -33,11 +33,13 @@ import {
   type WorkspaceTab,
 } from "@rtc/client-core";
 import {
+  type AmbientStyle,
   type Candle,
   type CandleTimeframe,
   ConnectionStatus,
   type CreditRfqFilter,
   type CurrencyPair,
+  DEFAULT_AMBIENT_STYLE,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
@@ -145,6 +147,11 @@ interface UseAnimatedBackgroundResult {
   toggle: () => void;
 }
 
+interface UseAmbientStyleResult {
+  style: Accessor<AmbientStyle>;
+  setStyle: (style: AmbientStyle) => void;
+}
+
 interface UsePowerSaverResult {
   enabled: Accessor<boolean>;
   setEnabled: (on: boolean) => void;
@@ -238,6 +245,9 @@ export interface ViewModel {
   useThemeSkinPreference: () => UseThemeSkinPreferenceResult;
   /** Global animated-background preference — enabled flag plus write/toggle intents. */
   useAnimatedBackground: () => UseAnimatedBackgroundResult;
+  /** Global ambient-background style preference (aurora | rays) — current
+   * style plus the write intent. */
+  useAmbientStyle: () => UseAmbientStyleResult;
   /** Global power-saver master override — enabled flag plus write/toggle intents. */
   usePowerSaver: () => UsePowerSaverResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
@@ -400,6 +410,15 @@ export function createViewModel(
 
   function setThemeSkin(skin: ThemeSkin): void {
     presenters.themeSkinPreference.setSkin(skin);
+  }
+
+  const ambientStyleState = state(
+    presenters.ambientStyle.style$,
+    DEFAULT_AMBIENT_STYLE,
+  );
+
+  function setAmbientStyle(style: AmbientStyle): void {
+    presenters.ambientStyle.setStyle(style);
   }
 
   const animatedBgState = state(presenters.animatedBackground.enabled$, false);
@@ -725,6 +744,9 @@ export function createViewModel(
     },
     useThemeSkinPreference: () => {
       return { skin: toSignal(themeSkinState), setSkin: setThemeSkin };
+    },
+    useAmbientStyle: () => {
+      return { style: toSignal(ambientStyleState), setStyle: setAmbientStyle };
     },
     useAnimatedBackground: () => {
       const enabled = toSignal(animatedBgState);
