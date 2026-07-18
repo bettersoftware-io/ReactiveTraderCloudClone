@@ -20,7 +20,7 @@ export async function clickQuickToggle(ctx: TestContext): Promise<void> {
 
 export async function expectDocumentFlag(
   ctx: TestContext,
-  value: "true" | "false",
+  value: "off" | "calm" | "freeze",
 ): Promise<void> {
   const flag = await powerSaverPO(ctx).documentFlag();
   assertEquals(

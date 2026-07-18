@@ -6,15 +6,21 @@ import { withWorkspaceOpen } from "./_openWorkspace";
 test.describe("Power saver", () => {
   withWorkspaceOpen();
 
-  test("quick toggle flips the document flag", async ({ ctx }) => {
-    await powerSaver.expectDocumentFlag(ctx, "false");
+  test("cycling control advances the document flag off -> calm -> freeze -> off", async ({
+    ctx,
+  }) => {
+    await powerSaver.expectDocumentFlag(ctx, "off");
     await powerSaver.clickQuickToggle(ctx);
-    await powerSaver.expectDocumentFlag(ctx, "true");
+    await powerSaver.expectDocumentFlag(ctx, "calm");
+    await powerSaver.clickQuickToggle(ctx);
+    await powerSaver.expectDocumentFlag(ctx, "freeze");
+    await powerSaver.clickQuickToggle(ctx);
+    await powerSaver.expectDocumentFlag(ctx, "off");
   });
 
   test("power saver persists across reload", async ({ ctx }) => {
     await powerSaver.clickQuickToggle(ctx);
     await common.reloadPage(ctx);
-    await powerSaver.expectDocumentFlag(ctx, "true");
+    await powerSaver.expectDocumentFlag(ctx, "calm");
   });
 });

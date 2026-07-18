@@ -8,9 +8,6 @@ import type { PowerSaverLevel, PreferencesPort } from "@rtc/domain";
  * drives ambient removal / --fx-play / price conflation) and `isFreeze$`
  * (level === "freeze", drives the view layer's motion catch-all + JS gates).
  * Never mutates other preferences (master-override semantics).
- *
- * `enabled$` / `set` / `toggle` are a temporary compat shim kept until the
- * framework bindings adopt the level surface (removed in Task 2).
  */
 export class PowerSaverPresenter {
   readonly level$: Observable<PowerSaverLevel>;
@@ -39,21 +36,5 @@ export class PowerSaverPresenter {
 
   setLevel(level: PowerSaverLevel): void {
     this.preferences.setPowerSaverLevel(level);
-  }
-
-  // --- compat shim (removed in Task 2 once both bindings adopt the level surface) ---
-  /** @deprecated use isCalm$ */
-  get enabled$(): Observable<boolean> {
-    return this.isCalm$;
-  }
-
-  /** @deprecated use setLevel */
-  set(on: boolean): void {
-    this.setLevel(on ? "calm" : "off");
-  }
-
-  /** @deprecated use setLevel(nextPowerSaverLevel(...)) */
-  toggle(current: boolean): void {
-    this.set(!current);
   }
 }

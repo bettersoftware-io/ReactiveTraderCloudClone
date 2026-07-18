@@ -1,6 +1,7 @@
 import type { Accessor, JSX } from "solid-js";
 import { createSignal, For, Show } from "solid-js";
 
+import type { PowerSaverLevel } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
@@ -12,16 +13,18 @@ import styles from "./PreferencesModal.module.css";
  * Preferences catalogue modal (prototype Reactive Trader.dc.html:218-716). A
  * two-column DISPLAY / TRADING / NOTIFICATIONS / DATA grid of toggle + segment
  * rows. TWO rows are wired to real ports — Animated background
- * (`useAnimatedBackground`) and Power saver (`usePowerSaver`); every other row
- * is decorative (see the comment on the catalogue above). Dumb component:
- * consumes `useViewModel()` destructured only, holds no app-layer state /
- * persistence / transport / timers, and renders only when `open`.
+ * (`useAnimatedBackground`) and Power saver (`usePowerSaver`, a 3-state
+ * Off/Calm/Freeze segment); every other row is decorative (see the comment on
+ * the catalogue above). Dumb component: consumes `useViewModel()`
+ * destructured only, holds no app-layer state / persistence / transport /
+ * timers, and renders only when `open`.
  */
 export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
   const { useAnimatedBackground, usePowerSaver } = useViewModel();
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
-  const { enabled: powerSaver, toggle: togglePowerSaver } = usePowerSaver();
+  const { level: powerSaverLevel, setLevel: setPowerSaverLevel } =
+    usePowerSaver();
 
   const [toggles, setToggles] =
     createSignal<Record<string, boolean>>(INITIAL_TOGGLES);
@@ -68,12 +71,14 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
             <div class={styles.grid}>
               <div class={styles.column}>
                 <div class={styles.sectionHead}>DISPLAY</div>
-                <PrefToggle
+                <PrefSegment
                   label="Power saver"
-                  description="Stills ambience & calms price updates. Best on slower hardware."
-                  on={powerSaver()}
-                  onToggle={togglePowerSaver}
-                  testid="pref-toggle-powerSaver"
+                  options={POWER_SAVER_OPTIONS}
+                  value={powerSaverLevel()}
+                  onChange={(value: string) => {
+                    setPowerSaverLevel(value as PowerSaverLevel);
+                  }}
+                  testid="pref-segment-powerSaver"
                 />
                 <PrefToggle
                   label="Animated background"
@@ -223,6 +228,12 @@ interface SegmentDef {
   readonly label: string;
   readonly options: readonly PrefSegmentOption[];
 }
+
+const POWER_SAVER_OPTIONS: readonly PrefSegmentOption[] = [
+  { value: "off", label: "Off" },
+  { value: "calm", label: "Calm" },
+  { value: "freeze", label: "Freeze" },
+];
 
 // DECORATIVE — cosmetic HUD setting, intentionally not wired to any port (spec:
 // decorative-but-dead is allowed and explicit). The single REAL control in this
