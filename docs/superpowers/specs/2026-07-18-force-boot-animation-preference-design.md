@@ -246,11 +246,14 @@ guard still degrades gracefully to chrome-only if no 2D context exists.
   the observable is the attribute, not pixels). With the flag OFF, assert it is
   absent.
 - **e2e (Playwright) — the real proof:** a spec that emulates
-  `prefers-reduced-motion: reduce`, sets `forceBootAnimation`, triggers a
-  reboot/reload, and asserts the boot canvas is **rendered** (not
-  `display:none`). Runs against both React and Solid. A companion assertion
-  confirms that with the pref OFF under emulated reduced-motion, the canvas is
-  hidden (current behaviour preserved).
+  `prefers-reduced-motion: reduce`, sets `forceBootAnimation`, and asserts the
+  boot canvas is **rendered** (not `display:none`). Runs against both React and
+  Solid. A companion assertion confirms that with the pref OFF under emulated
+  reduced-motion, the canvas is hidden (current behaviour preserved).
+  *Enabler:* the boot splash is normally suppressed under `navigator.webdriver`,
+  so this adds a symmetric **`?splash` force-on** override to `bootSplashGate.ts`
+  (mirroring the existing `?nosplash` force-off) that the e2e drives via
+  `/?splash` — pre-auth, so it runs identically on both clients.
 - **No visual goldens:** default-off preserves current output; a
   forced-animation golden would be time-based and flaky, so none is added.
 

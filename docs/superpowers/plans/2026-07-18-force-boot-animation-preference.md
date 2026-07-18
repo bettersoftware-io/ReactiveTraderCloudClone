@@ -724,58 +724,116 @@ git commit -m "feat(prefs): wired 'Always play boot animation' toggle (react + s
 
 ---
 
-### Task 6: Playwright e2e — reduced-motion proof (both web clients)
+### Task 6: `?splash` force-on override + Playwright e2e reduced-motion proof (both web clients)
 
 The real end-to-end witness: with `prefers-reduced-motion: reduce` emulated, the pref forces the boot canvas to render. This is exactly the tier that caught PR #241's Solid boot/auth regression, so it is treated as first-class.
 
+**Blocker this task resolves:** the boot splash is suppressed under `navigator.webdriver` (`shouldPlayBootSplash()` in `bootSplashGate.ts`), so Playwright never mounts the splash. There is an existing `?nosplash` *force-off* override but no *force-on* override, and the webdriver check short-circuits before it. So this task first adds a symmetric **`?splash` force-on override** (a production affordance for previewing/QA-ing the splash under automation), then drives the e2e through it — pre-auth, so it runs identically on react and solid without touching the divergent login flow.
+
 **Files:**
-- Create: `tests/browser/playwright/specs/force-boot-animation.spec.ts` (match the repo's actual spec dir/layout — confirm against a sibling boot/prefs spec before writing)
-- Possibly modify: `tests/browser/playwright/playwright.config.ts` (only if the new spec must be listed; Solid runs must NOT be excluded — this spec must pass on both)
+- Modify: `packages/client-react/src/bootSplashGate.ts` (add the `?splash` branch)
+- Modify: `packages/client-solid/src/bootSplashGate.ts` (identical)
+- Test: `packages/client-react/src/bootSplashGate.test.ts` + `packages/client-solid/src/bootSplashGate.test.ts` (new cases)
+- Create: the e2e spec under the repo's Playwright spec dir — **confirm the exact dir + how the orchestrator runs it against BOTH react and solid** (`tests/scripts/run-all.ts`, `tests/browser/playwright/playwright.config.ts`), and confirm the new spec is **not** added to any Solid `testIgnore`/exclusion list (it must pass on both)
+- Possibly modify: the Playwright config only if a new spec must be registered
 
 **Interfaces:**
-- Consumes: the running client with `forceBootAnimation` persisted in localStorage under `rtc-force-boot-animation`, and the `data-force-anim` / `[data-testid="boot-sequence"] canvas` DOM produced by Task 4.
+- Consumes: `?splash` forces `shouldPlayBootSplash()` true even under webdriver; the `data-force-anim` attribute + `[data-testid="boot-sequence"] canvas` DOM from Task 4; the preference persisted in localStorage under `rtc-force-boot-animation`.
+- Produces: `shouldPlayBootSplash()` returns true when the URL carries `?splash`, overriding the webdriver suppression.
 
-- [ ] **Step 1: Write the e2e spec.** Emulate reduced motion, seed the preference in localStorage before load, reload, and assert the boot canvas is visible; then assert the inverse (pref off → canvas hidden). Use the repo's existing boot-spec helpers (how it waits for `[data-testid="boot-sequence"]`, how it seeds localStorage — mirror a sibling spec):
+- [ ] **Step 1: Write the failing `bootSplashGate` unit cases** (react + solid `bootSplashGate.test.ts`), mirroring the existing `?nosplash` / webdriver cases:
+
+```ts
+  it("?splash forces the splash ON even under webdriver automation", () => {
+    setWebdriver(true); // however the existing tests stub navigator.webdriver
+    setSearch("?splash");
+    expect(shouldPlayBootSplash()).toBe(true);
+  });
+```
+
+(Match the file's real stubs for `navigator.webdriver` and `window.location.search`.)
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `pnpm --filter @rtc/client-react test -- bootSplashGate`
+Expected: FAIL — `?splash` currently returns false under webdriver (webdriver check wins).
+
+- [ ] **Step 3: Add the `?splash` branch** to both `bootSplashGate.ts` files. Read `URLSearchParams` once and check `?splash` BEFORE the webdriver suppression so it takes precedence:
+
+```ts
+export function shouldPlayBootSplash(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+
+  // Explicit force-on: overrides the automation (navigator.webdriver)
+  // suppression below, so an e2e run — or a human — can exercise the splash
+  // that automation otherwise hides. Symmetric to `?nosplash` (force-off).
+  if (params.has("splash")) {
+    return true;
+  }
+
+  if (typeof navigator !== "undefined" && navigator.webdriver) {
+    return false;
+  }
+
+  return !params.has("nosplash");
+}
+```
+
+Update the file's doc comment to document the new `?splash` case (a third bullet).
+
+- [ ] **Step 4: Run the unit cases to green**
+
+Run: `pnpm --filter @rtc/client-react test -- bootSplashGate && pnpm --filter @rtc/client-solid test -- bootSplashGate`
+Expected: PASS (new force-on cases + existing cases).
+
+- [ ] **Step 5: Write the e2e spec.** Emulate reduced motion, drive `/?splash` so the splash plays under automation, and assert canvas behavior. Confirm the spec's placement + base-URL + boot-wait idioms against an existing Playwright spec first. Assert the FORCED-ON positive case robustly (the essential proof), and the not-forced negative case while the boot-sequence root is present (so `display:none` is asserted on a real element, not a removed one):
 
 ```ts
 import { expect, test } from "@playwright/test";
 
-test.describe("force boot animation", () => {
+test.describe("force boot animation (reduced motion)", () => {
   test.use({ reducedMotion: "reduce" });
 
-  test("pref OFF under reduced motion: canvas is hidden", async ({ page }) => {
-    await page.goto("/"); // splash plays
-    const canvas = page.locator('[data-testid="boot-sequence"] canvas');
-    // Under reduced motion + not forced, the canvas is display:none.
-    await expect(canvas).toBeHidden();
-  });
-
-  test("pref ON under reduced motion: canvas renders", async ({ page }) => {
+  test("pref ON: the boot canvas renders even under reduced motion", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("rtc-force-boot-animation", "true");
     });
-    await page.goto("/");
+    await page.goto("/?splash");
     const boot = page.locator('[data-testid="boot-sequence"]');
     await expect(boot).toHaveAttribute("data-force-anim", "true");
-    await expect(
-      page.locator('[data-testid="boot-sequence"] canvas'),
-    ).toBeVisible();
+    await expect(boot.locator("canvas")).toBeVisible();
+  });
+
+  test("pref OFF: the boot canvas stays hidden under reduced motion", async ({
+    page,
+  }) => {
+    await page.goto("/?splash");
+    const boot = page.locator('[data-testid="boot-sequence"]');
+    await expect(boot).toHaveAttribute("data-force-anim", "false");
+    // Real element present, but the reduced-motion CSS hides it.
+    await expect(boot.locator("canvas")).toHaveCSS("display", "none");
   });
 });
 ```
 
-(Confirm the base URL / boot-visibility waiting idioms against an existing spec — e.g. how `?nosplash` or a boot spec drives the splash — and adjust selectors accordingly.)
+**Timing note:** the boot machine runs for a few seconds before the splash dismisses; a single prompt assertion after `goto` resolves well within that window. If the negative case proves flaky against dismissal, prefer asserting `data-force-anim="false"` + the canvas `display:none` immediately, and keep the FORCED-ON case as the non-negotiable proof.
 
-- [ ] **Step 2: Run the e2e for both clients**
+- [ ] **Step 6: Run the e2e for both clients**
 
-Run: `pnpm test:e2e` (or the repo's react+solid e2e entry — confirm how a single new spec is run against both client targets; the orchestrator lives in `tests/`).
-Expected: PASS on both react and solid targets.
+Run: the repo's react+solid e2e entry (confirm via `tests/scripts/run-all.ts` how a single spec runs against both targets).
+Expected: PASS on both react and solid.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add tests/browser/playwright
-git commit -m "test(e2e): forceBootAnimation renders the splash canvas under reduced motion (react + solid)"
+git add packages/client-react/src/bootSplashGate.ts packages/client-react/src/bootSplashGate.test.ts packages/client-solid/src/bootSplashGate.ts packages/client-solid/src/bootSplashGate.test.ts tests/browser/playwright
+git commit -m "feat(boot): ?splash force-on override + e2e proof of forced boot animation under reduced motion"
 ```
 
 ---
