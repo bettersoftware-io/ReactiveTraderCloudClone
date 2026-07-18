@@ -69,6 +69,41 @@ just still and calm.
 > tear down and re-subscribe the underlying stream — the price-history rolling
 > buffer survives a flip. See the operator's tests for the regression guard.
 
+## On GPU-less / VDI / Citrix hardware
+
+The ambient backdrop is **pure CSS** — gradient layers animated only with
+`transform`/`opacity` (`AmbientBackground.module.css`). This is unlike the
+**boot splash**, which draws on a 2D `<canvas>` and falls back to a static
+frame when `getContext("2d")` is unavailable *or* `prefers-reduced-motion` is
+set (`BootSequence.tsx`). So on a locked-down VDI/Citrix image the backdrop
+still **paints** even when the boot animation doesn't — but what it *costs*
+depends on two independent brakes:
+
+- **Automatic — `prefers-reduced-motion: reduce`.** The
+  `@media (prefers-reduced-motion: reduce)` block in
+  `AmbientBackground.module.css` sets `animation: none` on every animated layer
+  (Aurora curtains `.auroraCurtainA`/`B`/`C` + blobs, rays blobs + `.sweep`,
+  `.grid`, `.dots`). The backdrop still paints but is **frozen static** —
+  visually identical to turning **Animated background** off. Many enterprise
+  VDI/Citrix images set this flag, which is also the usual reason the boot
+  splash doesn't play.
+- **Manual — power saver.** Removes the active style's animated layers from the
+  DOM entirely (see [What it changes](#what-it-changes)) — cheaper than
+  freezing, and the intended lever for slow hardware. **Default off; nothing
+  enables it automatically.**
+
+**The gap to know about:** there is **no automatic no-GPU detection**. A
+GPU-less box that does *not* report reduced-motion (and does not have power
+saver on) will still run the backdrop's `transform`/`opacity` animations —
+which fall to the **CPU software compositor** without a GPU, so they are no
+longer "free." The Aurora **curtain bands** are the heaviest case: they keep a
+small `filter: blur()` (the one deliberately-retained filter in the backdrop —
+see [performance.md](performance.md) pattern P6b), and a software-rasterised
+per-frame blur is costly. On such hardware, either the image should set
+`prefers-reduced-motion` (freezes it) or the user should turn **power saver**
+on (drops the layers). Auto-degrading this from a hardware probe is tracked
+under [Future iterations](#future-iterations).
+
 ## Non-goals (current design)
 
 - **No auto-detection.** Manual toggle only — no Battery/`deviceMemory`
@@ -93,6 +128,15 @@ track them rather than re-discovering them:
   slice of render cost. This is a deliberate scope extension beyond the
   current "keep the market visible" design, gated on real measurements from
   those environments.
+- **Auto-degrade on GPU-less hardware.** Today only `prefers-reduced-motion`
+  freezes the backdrop automatically; a box with no GPU that doesn't set that
+  flag still animates on the CPU (see [On GPU-less / VDI / Citrix
+  hardware](#on-gpu-less--vdi--citrix-hardware)). A boot-time probe
+  (`hardwareConcurrency`, a WebGL-context check, or a first-frame timing
+  sample) could auto-enable power saver — or at least auto-pause the ambient —
+  on such devices, closing the gap without a user toggle. Deliberately not
+  built yet: heuristics misfire, and the current design prefers an explicit
+  toggle.
 - **Instant refresh on toggle.** After the `conflateWhen` resubscribe fix,
   flipping power saver *on* no longer emits an instant "leading" replay of the
   current price — the first throttled emission waits for the next real tick.

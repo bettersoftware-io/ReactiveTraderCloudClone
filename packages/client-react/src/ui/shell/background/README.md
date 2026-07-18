@@ -179,6 +179,15 @@ whether it drifts:
   `animation: none` on every layer of both styles regardless of the
   preference, so reduced-motion users get a static backdrop even with the
   setting on.
+- **GPU-less / VDI / Citrix boxes.** This backdrop is pure CSS, so it *paints*
+  even where the canvas-based boot splash falls back to a static frame — but on
+  hardware with no GPU its `transform`/`opacity` animations run on the CPU
+  software compositor and stop being free (the Aurora curtain bands' small
+  `filter: blur()` is the priciest part there). Only `prefers-reduced-motion`
+  freezes it automatically; otherwise **power saver** is the manual lever. The
+  full degradation model — and why there is no automatic no-GPU detection — is
+  documented in [`docs/power-saver-mode.md` → *On GPU-less / VDI / Citrix
+  hardware*](../../../../../../docs/power-saver-mode.md#on-gpu-less--vdi--citrix-hardware).
 
 ### Visibility is a per-skin theme decision (separate from the style/motion toggles)
 
