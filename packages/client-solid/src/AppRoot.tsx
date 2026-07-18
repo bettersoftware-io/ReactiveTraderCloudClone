@@ -26,7 +26,7 @@ import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
  *
  * Skeleton auto-login: this walking skeleton has no login UI yet (that's
  * `client-react`'s `AuthGate`/`LoginScreen` — Solid parity is future work),
- * so it logs in as the baked demo/demo operator on mount instead of gating
+ * so it logs in as the baked demo operator on mount instead of gating
  * the tree behind a real sign-in screen. `presenters.auth.login` is
  * idempotent enough for this purpose (a fresh `InMemorySessionStore` per
  * load means there's never an already-authenticated session to clobber). */
@@ -39,7 +39,7 @@ export function AppRoot(props: ParentProps): JSX.Element {
   );
 
   onMount(() => {
-    presenters.auth.login("demo", "demo");
+    presenters.auth.login("demo", "mcdc2026");
   });
 
   return (

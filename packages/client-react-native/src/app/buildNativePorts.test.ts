@@ -44,10 +44,10 @@ test("simulator branch dispose is a no-op function (no socket to close)", () => 
 // log in as any of them, not just a single baked demo user.
 describe("simulator branch auth accepts every fallback roster credential", () => {
   const fallbackCredentials: ReadonlyArray<[string, string]> = [
-    ["astark", "demo"],
-    ["nromanoff", "demo"],
-    ["tchalla", "demo"],
-    ["demo", "demo"],
+    ["astark", "mcdc2026"],
+    ["nromanoff", "mcdc2026"],
+    ["tchalla", "mcdc2026"],
+    ["demo", "mcdc2026"],
   ];
 
   it.each(
