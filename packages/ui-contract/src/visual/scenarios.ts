@@ -561,6 +561,15 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "ChromeThemePicker",
     fixtureKey: "app-connected",
   },
+  // The account dropdown open (click action) — identity head + TRADER ID/DESK/
+  // CLEARANCE block + the four action rows (Preferences / Reboot HUD / Lock
+  // Session / Sign Out). The closed trigger avatar is already in every
+  // chrome/header golden; this pins the panel interior so the action-row
+  // styling + casing is regression-guarded.
+  "chrome/account-menu-open": {
+    componentKey: "ChromeAccountMenu",
+    fixtureKey: "app-connected",
+  },
   "status/bar": { componentKey: "StatusBar", fixtureKey: "app-connected" },
   "prefs/modal": { componentKey: "PreferencesModal", fixtureKey: "prefs-open" },
 

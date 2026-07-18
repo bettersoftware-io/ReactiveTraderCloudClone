@@ -38,6 +38,7 @@ import { Tile } from "#/ui/fx/liveRates/tile/Tile";
 import { WatchlistView } from "#/ui/fx/liveRates/WatchlistView";
 import { PositionsPanel } from "#/ui/fx/positions/PositionsPanel";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
+import { AccountMenu } from "#/ui/shell/chrome/AccountMenu";
 import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
 import { ThemePicker } from "#/ui/shell/chrome/ThemePicker";
 import { ConnectionOverlay } from "#/ui/shell/connection/ConnectionOverlay";
@@ -433,6 +434,26 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
         }}
       >
         <ThemePicker />
+      </div>
+    );
+  },
+  // Sized stage so the absolutely-positioned account dropdown (260px wide, hung
+  // below-right of the trigger at `top: calc(100% + 10px); right: 0`) falls
+  // inside the captured scenario-root box once the click action opens it. Same
+  // right-aligned/top-aligned rationale as ChromeThemePicker, taller for the
+  // full identity + details + four action rows.
+  ChromeAccountMenu: () => {
+    return (
+      <div
+        style={{
+          width: "320px",
+          height: "440px",
+          display: "flex",
+          "justify-content": "flex-end",
+          "align-items": "flex-start",
+        }}
+      >
+        <AccountMenu onOpenPrefs={() => {}} />
       </div>
     );
   },
