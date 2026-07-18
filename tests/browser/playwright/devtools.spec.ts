@@ -1,6 +1,17 @@
 import * as devtools from "../scenarios/devtools";
 import { test } from "./_context";
 
+// Same client-selection env var playwright.config.ts branches on. The two
+// app-side devtoolsHub.ts files intentionally use different appId values
+// (packages/client-react/src/app/devtools/devtoolsHub.ts: "rtc-web";
+// packages/client-solid/src/app/devtools/devtoolsHub.ts: "rtc-web-solid") so
+// two same-origin inspectors from different clients are distinguishable —
+// the connection badge the app-side hub reports is client-specific too.
+const expectedAppId =
+  process.env.RTC_CLIENT_PKG === "@rtc/client-solid"
+    ? "rtc-web-solid"
+    : "rtc-web";
+
 // The inspector is served at /devtools/ FROM the app's own origin (client-react
 // Vite middleware in dev, dist/devtools in prod). That is load-bearing: the
 // devtools transport is a same-origin BroadcastChannel, so a second view in the
@@ -36,7 +47,7 @@ test.describe("DevTools inspector (same-origin)", () => {
 
     // Connection rail badge shows the app id once the hello/welcome handshake
     // completes (it renders "disconnected" until then).
-    await devtools.expectInspectorBadge(ctx, "rtc-web", 10);
+    await devtools.expectInspectorBadge(ctx, expectedAppId, 10);
 
     // State tab (default): a stream row for the blotter trades stream.
     await devtools.expectStreamRow(ctx, "blotter.trades$");

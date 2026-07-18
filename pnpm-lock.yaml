@@ -421,6 +421,9 @@ importers:
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../client-core
+      '@rtc/devtools-core':
+        specifier: workspace:*
+        version: link:../devtools-core
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
@@ -440,6 +443,9 @@ importers:
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.61.1
+      '@rtc/devtools-app':
+        specifier: workspace:*
+        version: link:../devtools-app
       '@rtc/ui-contract':
         specifier: workspace:*
         version: link:../ui-contract

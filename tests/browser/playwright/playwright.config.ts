@@ -12,18 +12,14 @@ const reportSuffix = isSolid ? "-solid" : "";
 
 // Mirrors client-solid's tests/ui/contract/vitest.config.ts
 // `notYetPortedSpecs` — same rationale, same exclusion mechanism, one level
-// up the test pyramid. Both are React-only, not port gaps:
+// up the test pyramid. React-only, not a port gap:
 //   - login.spec.ts: drives the real LoginScreen/AuthGate. Solid has no
 //     sign-in/gate UI yet (AppRoot.tsx auto-logs in as demo/demo on mount) —
 //     the same shell/auth deviation the ui-contract tier already excludes.
-//   - devtools.spec.ts: connects to the same-origin /devtools/ inspector.
-//     Solid's vite.config.ts never wires that dev-only asset edge (only
-//     client-react's does — see its devtoolsPanel() plugin), so there is no
-//     panel for Solid to serve.
-// Both are tracked as pending follow-ups in docs/STATUS.md, not silently
-// dropped. React (the default client) is unaffected — this array is empty
-// unless RTC_CLIENT_PKG=@rtc/client-solid.
-const notYetPortedSpecs = isSolid ? ["login.spec.ts", "devtools.spec.ts"] : [];
+// Tracked as a pending follow-up in docs/STATUS.md, not silently dropped.
+// React (the default client) is unaffected — this array is empty unless
+// RTC_CLIENT_PKG=@rtc/client-solid.
+const notYetPortedSpecs = isSolid ? ["login.spec.ts"] : [];
 
 export default defineConfig({
   testDir: ".",
