@@ -55,6 +55,11 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // "calm" suppresses the aurora/drift layers, so the diff is entirely in the
   // background, not the interaction.
   "app/fx-power-saver": { fullPage: true },
+  // The aurora ambient-style variant of the FX page — a full-bleed App scenario
+  // like app/fx, so it must capture full-page (App renders no scenario-root
+  // wrapper). #259 added the scenario without this action, so the harness fell
+  // through to the element-capture branch and timed out waiting for scenario-root.
+  "app/fx-aurora": { fullPage: true },
   // The credit blotter's in-body "Credit Trades" title is gone (its chrome
   // moved into the panel head) — the head tab's full text proves the credit
   // workspace rendered.
