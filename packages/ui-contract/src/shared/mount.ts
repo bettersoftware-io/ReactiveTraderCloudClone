@@ -7,6 +7,7 @@ import type {
   ThroughputView,
 } from "@rtc/client-core";
 import type {
+  AmbientStyle,
   CreditRfqFilter,
   EquityInstrument,
   EquityOrder,
@@ -52,6 +53,8 @@ export interface MountOptions<P> {
   themeMode?: ThemeModePreference;
   /** Seed the initial theme-skin preference (useThemeSkinPreference); defaults to "classic". */
   themeSkin?: ThemeSkin;
+  /** Seed the initial ambient-style preference (useAmbientStyle); defaults to "rays". */
+  ambientStyle?: AmbientStyle;
   /** Seed the initial animated-background preference (useAnimatedBackground); defaults to false. */
   animatedBackground?: boolean;
   /** Seed the initial power-saver master-override preference (usePowerSaver); defaults to false. */
@@ -224,6 +227,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.admin,
     opts.creditRfqFilter,
     opts.powerSaver,
+    opts.ambientStyle,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

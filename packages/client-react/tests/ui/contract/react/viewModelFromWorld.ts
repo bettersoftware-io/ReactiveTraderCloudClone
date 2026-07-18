@@ -393,14 +393,18 @@ export function reactViewModel(world: World): ViewModel {
         },
       };
     },
-    // Ambient style: NOT yet backed by the shared World subject (that lands
-    // with the ambient-style shared contract spec) — local component state
-    // is enough to satisfy the ViewModel shape for every other contract spec
-    // that mounts AmbientBackground incidentally. Pinned to "rays" (not the
-    // app's "aurora" default) so today's contract assertions are unaffected.
+    // Ambient style: reactive view backed by the World subject (mirrors
+    // useThemeSkinPreference above); setStyle pushes back so a click through
+    // the seam (PreferencesModal's "Ambient style" segment) flips the
+    // rendered AmbientBackground branch.
     useAmbientStyle: () => {
-      const [style, setStyle] = useState<AmbientStyle>("rays");
-      return { style, setStyle };
+      const style = useSubject(world.ambientStyle);
+      return {
+        style,
+        setStyle: (next: AmbientStyle) => {
+          world.ambientStyle.next(next);
+        },
+      };
     },
     // Global view-mode: reactive view backed by the World subject; setViewMode
     // pushes back so a toggle through the seam flips the rendered mode.

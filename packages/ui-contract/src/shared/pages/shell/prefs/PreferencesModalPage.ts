@@ -2,17 +2,23 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
+import type { AmbientStyle } from "@rtc/domain";
+
 export interface PreferencesModalProps {
   open: boolean;
   onClose: () => void;
 }
 
 /**
- * Page object for PreferencesModal. TWO rows are REAL controls: the
- * Animated-background toggle (wired to useAnimatedBackground) and the Power
- * saver toggle (wired to usePowerSaver); each seam records its written values,
- * asserted via `animatedBgSets()` / `powerSaverSets()`. Cosmetic rows are
- * checked for presence only.
+ * Page object for PreferencesModal. THREE rows are REAL controls: the
+ * Animated-background toggle (wired to useAnimatedBackground), the Power
+ * saver toggle (wired to usePowerSaver), and the Ambient style segment
+ * (wired to useAmbientStyle); the two toggles' seams record their written
+ * values, asserted via `animatedBgSets()` / `powerSaverSets()` — the
+ * ambient-style segment is backed by the shared World subject instead (like
+ * themeSkin), so it's asserted by reading the reflected value back, exactly
+ * like ThemePicker's `documentSkin()` idiom. Cosmetic rows are checked for
+ * presence only.
  */
 export class PreferencesModalPage extends MountedComponent<PreferencesModalProps> {
   private readonly user: UserEvent = userEvent.setup();
@@ -112,5 +118,17 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     await this.user.click(
       within(this.root).getByTestId(`pref-segment-${group}-${value}`),
     );
+  }
+
+  /** True when the given ambient-style option is the active one in the REAL
+   * "Ambient style" segment row (its `data-on`). */
+  ambientStyleActive(style: AmbientStyle): boolean {
+    return this.segmentActive("ambientStyle", style);
+  }
+
+  /** Select an ambient-style option through the REAL "Ambient style" segment,
+   * writing through the useAmbientStyle seam. */
+  async selectAmbientStyle(style: AmbientStyle): Promise<void> {
+    await this.selectSegment("ambientStyle", style);
   }
 }

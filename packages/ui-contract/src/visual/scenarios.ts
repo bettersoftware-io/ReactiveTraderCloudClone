@@ -56,6 +56,13 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "App",
     fixtureKey: "app-fx-power-saver",
   },
+  // Aurora ambient-style variant: same App scenario, seeded with ambientStyle
+  // "aurora" so the backdrop renders the northern-lights curtains instead of
+  // the default rays. See fixtures.ts's "app-fx-aurora".
+  "app/fx-aurora": {
+    componentKey: "App",
+    fixtureKey: "app-fx-aurora",
+  },
   // FX blotter populated with trades (the app/fx page only ever shows it empty).
   "fx-blotter/populated": {
     componentKey: "FxBlotter",

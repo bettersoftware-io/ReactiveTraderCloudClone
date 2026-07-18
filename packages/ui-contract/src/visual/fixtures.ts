@@ -923,6 +923,18 @@ export const fixtures: Record<string, AppData> = {
     throughput: { value: 250, loading: false, message: null },
     powerSaver: true,
   }),
+  // Aurora ambient-style variant of the FX page: same data as app-fx, but with
+  // ambientStyle "aurora" instead of the fixtures' default "rays". Snapshots
+  // the northern-lights-curtains backdrop (data-layer="aurora-curtains")
+  // instead of the original blobs+sweep (data-layer="rays").
+  "app-fx-aurora": makeAppData({
+    currencyPairs: [eurusd, gbpusd, usdjpy],
+    prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
+    analytics: analyticsData,
+    connectionStatus: ConnectionStatus.CONNECTED,
+    throughput: { value: 250, loading: false, message: null },
+    ambientStyle: "aurora",
+  }),
   // Light-theme variant of the FX page. The theme now lives behind
   // PreferencesPort, so the light arm is reached by seeding theme mode "light"
   // rather than clicking the toggle — the rendered output is identical to the old

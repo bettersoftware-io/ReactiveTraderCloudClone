@@ -16,6 +16,7 @@ import {
   type Machine,
 } from "@rtc/client-core";
 import {
+  type AmbientStyle,
   type Candle,
   ConnectionStatus,
   type CreateRfqInput,
@@ -238,6 +239,9 @@ export interface World {
   readonly themeMode: BehaviorSubject<ThemeModePreference>;
   /** Reactive theme-skin preference backing useThemeSkinPreference (drives ThemeProvider). */
   readonly themeSkin: BehaviorSubject<ThemeSkin>;
+  /** Reactive ambient-style preference backing useAmbientStyle (drives AmbientBackground's
+   * Aurora/Rays branch + PreferencesModal's "Ambient style" segment). */
+  readonly ambientStyle: BehaviorSubject<AmbientStyle>;
   /** Reactive animated-background preference backing useAnimatedBackground. */
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive power-saver master-override preference backing usePowerSaver. */
@@ -355,6 +359,7 @@ export function createWorld(
   adminSeed: AdminSeed = {},
   creditRfqFilterSeed?: CreditRfqFilter,
   powerSaverSeed?: boolean,
+  ambientStyleSeed?: AmbientStyle,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -519,6 +524,13 @@ export function createWorld(
   // single-axis tokens, so existing contract snapshots and deferred visual
   // goldens stay stable until Phase 3 regenerates them for the new skins.
   const themeSkin = new BehaviorSubject<ThemeSkin>(themeSkinSeed ?? "classic");
+  // Same pin rationale as the skin above: the harness defaults ambientStyle to
+  // "rays" (the pre-existing backdrop), NOT the app's "aurora" default, so
+  // every contract/visual fixture that mounts AmbientBackground incidentally
+  // stays unaffected until a spec explicitly seeds "aurora".
+  const ambientStyle = new BehaviorSubject<AmbientStyle>(
+    ambientStyleSeed ?? "rays",
+  );
   const animatedBackground = new BehaviorSubject<boolean>(
     animatedBackgroundSeed ?? false,
   );
@@ -626,6 +638,7 @@ export function createWorld(
     },
     themeMode,
     themeSkin,
+    ambientStyle,
     animatedBackground,
     powerSaver,
     viewMode,
