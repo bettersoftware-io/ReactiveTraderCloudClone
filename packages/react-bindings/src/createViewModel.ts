@@ -125,6 +125,12 @@ interface UsePowerSaverResult {
   toggle: () => void;
 }
 
+interface UseForceBootAnimationResult {
+  enabled: boolean;
+  setEnabled: (on: boolean) => void;
+  toggle: () => void;
+}
+
 interface UseViewModePreferenceResult {
   viewMode: ViewMode;
   setViewMode: (viewMode: ViewMode) => void;
@@ -214,6 +220,8 @@ export interface ViewModel {
   useAnimatedBackground: () => UseAnimatedBackgroundResult;
   /** Global power-saver master override — enabled flag plus write/toggle intents. */
   usePowerSaver: () => UsePowerSaverResult;
+  /** Force the boot-splash animation to play under reduced motion — enabled flag plus write/toggle intents. */
+  useForceBootAnimation: () => UseForceBootAnimationResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
   /** Credit RFQs panel LIVE/CLOSED/ALL filter preference — current filter plus
@@ -382,6 +390,15 @@ export function createViewModel(
 
   function setPowerSaver(on: boolean): void {
     presenters.powerSaver.set(on);
+  }
+
+  const [useForceBootAnimationValue] = bind(
+    presenters.forceBootAnimation.enabled$,
+    false,
+  );
+
+  function setForceBootAnimation(on: boolean): void {
+    presenters.forceBootAnimation.set(on);
   }
 
   const [useViewModeValue] = bind(
@@ -707,6 +724,16 @@ export function createViewModel(
         setEnabled: setPowerSaver,
         toggle: () => {
           return presenters.powerSaver.toggle(enabled);
+        },
+      };
+    },
+    useForceBootAnimation: () => {
+      const enabled = useForceBootAnimationValue();
+      return {
+        enabled,
+        setEnabled: setForceBootAnimation,
+        toggle: () => {
+          return presenters.forceBootAnimation.toggle(enabled);
         },
       };
     },
