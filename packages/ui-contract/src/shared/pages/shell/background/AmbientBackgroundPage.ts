@@ -37,8 +37,26 @@ export class AmbientBackgroundPage extends MountedComponent<
     return this.el()?.dataset.powerSaver ?? null;
   }
 
-  /** True when the aurora/sweep/dots animated layers are in the DOM. */
+  /**
+   * True when the active ambient style's animated layer group is in the DOM
+   * — `[data-layer="rays"]` (blobs+sweep) or `[data-layer="aurora-curtains"]`
+   * (northern-lights curtains), whichever `ambientStyle` selected. Power
+   * saver omits both groups outright, so this is `false` regardless of style
+   * when it's on. `[data-layer="aurora"]` is the pre-branch selector, kept
+   * here only until @rtc/client-solid ports the same Aurora/Rays branch
+   * (its AmbientBackground still emits the old unconditional layer as of
+   * this writing) — drop it once both frameworks agree.
+   */
   hasAuroraLayers(): boolean {
-    return Boolean(this.el()?.querySelector('[data-layer="aurora"]'));
+    return Boolean(
+      this.el()?.querySelector(
+        '[data-layer="rays"], [data-layer="aurora-curtains"], [data-layer="aurora"]',
+      ),
+    );
+  }
+
+  /** The `data-ambient-style` attribute value ("aurora" | "rays"); null when absent. */
+  ambientStyle(): string | null {
+    return this.el()?.dataset.ambientStyle ?? null;
   }
 }

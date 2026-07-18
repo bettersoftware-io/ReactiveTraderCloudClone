@@ -21,6 +21,7 @@ import {
   type WorkspaceTab,
 } from "@rtc/client-core";
 import type {
+  AmbientStyle,
   CreateRfqInput,
   CreditRfqFilter,
   CurrencyPair,
@@ -391,6 +392,15 @@ export function reactViewModel(world: World): ViewModel {
           world.powerSaver.next(next);
         },
       };
+    },
+    // Ambient style: NOT yet backed by the shared World subject (that lands
+    // with the ambient-style shared contract spec) — local component state
+    // is enough to satisfy the ViewModel shape for every other contract spec
+    // that mounts AmbientBackground incidentally. Pinned to "rays" (not the
+    // app's "aurora" default) so today's contract assertions are unaffected.
+    useAmbientStyle: () => {
+      const [style, setStyle] = useState<AmbientStyle>("rays");
+      return { style, setStyle };
     },
     // Global view-mode: reactive view backed by the World subject; setViewMode
     // pushes back so a toggle through the seam flips the rendered mode.
