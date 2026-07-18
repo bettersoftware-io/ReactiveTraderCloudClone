@@ -149,6 +149,38 @@ describe("PriceHistoryPresenter buffer retention across remount", () => {
     expect(latestAfter.length).toBe(3);
     sub2.unsubscribe();
   });
+
+  it("repaints the retained window on the FIRST frame of a remount, before any new tick", () => {
+    const price$ = new Subject<PriceTick>();
+    const port: PricingPort = {
+      getPriceUpdates: () => {
+        return price$;
+      },
+      getPriceHistory: () => {
+        return of([]);
+      },
+      getRfqQuote: () => {
+        return of({ bid: 0, ask: 0, mid: 0 });
+      },
+    };
+    const presenter = new PriceHistoryPresenter(port, of(false));
+    const history$ = presenter.history$("EURUSD");
+
+    const sub1 = history$.subscribe();
+    price$.next(tick(1.1, 1));
+    price$.next(tick(1.1001, 2));
+    sub1.unsubscribe();
+    vi.advanceTimersByTime(10);
+
+    // Remount: the very first emission (synchronous, before any new tick) must
+    // already carry the retained history — no empty-chart frame.
+    let firstAfterRemount: readonly PriceTick[] | undefined;
+    const sub2 = history$.subscribe((h) => {
+      firstAfterRemount ??= h;
+    });
+    expect(firstAfterRemount?.length).toBe(2);
+    sub2.unsubscribe();
+  });
 });
 
 function tick(mid: number, ts: number): PriceTick {

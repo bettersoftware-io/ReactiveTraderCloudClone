@@ -1,4 +1,4 @@
-import { type Observable, shareReplay } from "rxjs";
+import { defer, type Observable, shareReplay, startWith } from "rxjs";
 
 import {
   PriceHistoryUseCase,
@@ -50,13 +50,30 @@ export class PriceHistoryPresenter {
       this.windows.set(symbol, window);
     }
 
+    const retained = window;
     const raw = new PriceHistoryUseCase(this.pricing)
-      .execute(symbol, window)
+      .execute(symbol, retained)
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));
-    const stream = raw.pipe(
+    const shared = raw.pipe(
       conflateWhen(this.powerSaver$, HISTORY_CONFLATION_MS),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
+    // Seed the retained window at the OUTERMOST layer — after all sharing — so
+    // a remounted tile (e.g. a pair filtered back into LiveRates) paints its
+    // accumulated sparkline on the first delivered value, without waiting for
+    // the next price tick. `defer` snapshots the window at subscribe time (each
+    // remount re-runs it), and the `startWith` sits downstream of every
+    // `share`/`shareReplay` so its synchronous emission can't be swallowed by
+    // `conflateWhen`'s internal `share` during re-subscription. An empty window
+    // emits no seed, preserving cold semantics for a never-mounted symbol.
+    const stream = defer(() => {
+      if (retained.length === 0) {
+        return shared;
+      }
+
+      const seed: readonly PriceTick[] = [...retained];
+      return shared.pipe(startWith(seed));
+    });
     this.cache.set(symbol, stream);
     return stream;
   }
