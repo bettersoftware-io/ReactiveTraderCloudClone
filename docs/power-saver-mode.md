@@ -35,7 +35,9 @@ in sync with the implementation when the behaviour changes.
 | Sparkline / price-history redraw | every tick | **conflated** to ≤ ~1/s (1000 ms) |
 
 **Net effect:** roughly 3–5 % GPU / ~3 % renderer at steady state (down from
-~35 % of one core on a 120 Hz display), while the app stays fully functional
+~35 % of one core on a 120 Hz display; measured on the **rays** style, but the
+**aurora** style now shares that same floor since its curtain `filter: blur()`
+was removed — see [performance.md](performance.md) P6b), while the app stays fully functional
 and visually recognisable — dark HUD, glows, and tick-flashes remain; it is
 just still and calm.
 

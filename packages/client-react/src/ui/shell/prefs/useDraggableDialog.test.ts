@@ -70,9 +70,11 @@ describe("useDraggableDialog", () => {
       );
     });
 
+    // Exact clamped range = (viewport - dialog) / 2 - DRAG_MARGIN:
+    //   x: (1000 - 400) / 2 - 24 = 276 ;  y: (800 - 300) / 2 - 24 = 226
     const { offset } = result.current;
-    expect(offset.x).toBeLessThan(400);
-    expect(offset.y).toBeLessThan(400);
+    expect(offset.x).toBe(276);
+    expect(offset.y).toBe(226);
   });
 
   it("ignores a pointerdown that originates on a data-nodrag element", () => {
