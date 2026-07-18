@@ -55,6 +55,7 @@ export function createIncidentMachine(
       };
     }),
   );
+
   const clearPatch$ = clear$.pipe(
     map((): Patch => {
       for (const c of deps.controls) {

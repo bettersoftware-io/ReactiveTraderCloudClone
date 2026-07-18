@@ -11,6 +11,7 @@ describe("NewRfqPanel", () => {
     const { result } = renderHook(() => {
       return useCreditForm();
     });
+
     const { getByText, getByPlaceholderText } = render(
       <NewRfqPanel form={result.current} onSend={vi.fn()} />,
     );

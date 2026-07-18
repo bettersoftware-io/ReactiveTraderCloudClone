@@ -62,12 +62,14 @@ export function FxScreen(): ReactElement {
     initial: LEFT_SPLIT_INITIAL,
     containerRef: leftColRef,
   });
+
   const mainSplit = useSplit({
     storageKey: "fxAsideR",
     orientation: "v",
     initial: MAIN_SPLIT_INITIAL,
     containerRef: screenRef,
   });
+
   const asideSplit = useSplit({
     storageKey: "fxRightR",
     orientation: "h",

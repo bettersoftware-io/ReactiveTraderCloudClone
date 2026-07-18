@@ -10,6 +10,7 @@ export function DeskPnlGauge(props: DeskPnlGaugeProps): JSX.Element {
       return acc + p.unrealisedPnl;
     }, 0);
   });
+
   const maxAbsPnl = createMemo((): number => {
     return Math.max(
       ...props.positions.map((p) => {
@@ -22,9 +23,11 @@ export function DeskPnlGauge(props: DeskPnlGaugeProps): JSX.Element {
   const isPositive = createMemo((): boolean => {
     return totalPnl() >= 0;
   });
+
   const sign = createMemo((): "pos" | "neg" => {
     return isPositive() ? "pos" : "neg";
   });
+
   const paths = createMemo((): GaugePaths => {
     return buildGaugePaths(totalPnl(), maxAbsPnl());
   });

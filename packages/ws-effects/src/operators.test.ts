@@ -29,6 +29,7 @@ describe("matchType", () => {
       { type: "b", payload: 2 },
       { type: "a", payload: 3 },
     );
+
     const kept = await new Promise((resolve) => {
       in$.pipe(matchType("a"), toArray()).subscribe(resolve);
     });

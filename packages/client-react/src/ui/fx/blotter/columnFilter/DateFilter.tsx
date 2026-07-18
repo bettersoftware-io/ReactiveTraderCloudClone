@@ -13,9 +13,11 @@ export function DateFilter<TRow>({
   const [comparator, setComparator] = useState<Comparator>(
     currentFilter?.type === "date" ? currentFilter.comparator : "eq",
   );
+
   const [value, setValue] = useState(
     currentFilter?.type === "date" ? currentFilter.value : "",
   );
+
   const [valueTo, setValueTo] = useState(
     currentFilter?.type === "date" && currentFilter.valueTo
       ? currentFilter.valueTo

@@ -53,6 +53,7 @@ const referenceData$: WsEffect<Ctx> = stream(
             typicalSpreadPips: p.typicalSpreadPips,
           };
         });
+
         const message: ReferenceDataMessage = {
           updates,
           isStateOfTheWorld: isFirst,
@@ -116,6 +117,7 @@ const blotter$: WsEffect<Ctx> = stream(
             valueDate: t.valueDate,
           };
         });
+
         const message: BlotterMessage = {
           updates,
           isStateOfTheWorld: isFirst,

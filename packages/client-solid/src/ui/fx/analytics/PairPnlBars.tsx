@@ -28,15 +28,19 @@ export function PairPnlBars(props: PairPnlBarsProps): JSX.Element {
           const fraction = createMemo((): number => {
             return pos.basePnl / maxAbsPnl();
           });
+
           const sign = createMemo((): "pos" | "neg" => {
             return pos.basePnl >= 0 ? "pos" : "neg";
           });
+
           const barWidth = createMemo((): string => {
             return `${Math.abs(fraction()) * 50}%`;
           });
+
           const hovering = createMemo((): boolean => {
             return hoveredSymbol() === pos.symbol;
           });
+
           const label = createMemo((): string => {
             return hovering()
               ? formatPrecise2(pos.basePnl)

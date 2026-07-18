@@ -44,6 +44,7 @@ export function CreditScreen(): ReactElement {
     initial: MAIN_SPLIT_INITIAL,
     containerRef: screenRef,
   });
+
   const stackSplit = useSplit({
     storageKey: "creditStackR",
     orientation: "h",

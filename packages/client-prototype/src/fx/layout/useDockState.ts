@@ -27,6 +27,7 @@ export function useDockState(): DockApi {
     "rt_dock_maxPanel",
     PANEL_IDS,
   );
+
   const [asideCollapsed, setAsideCollapsed] =
     useState<boolean>(readAsideCollapsed);
 

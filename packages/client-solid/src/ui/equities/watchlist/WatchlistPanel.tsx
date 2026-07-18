@@ -63,11 +63,13 @@ export function WatchlistPanel(): JSX.Element {
       };
     });
   });
+
   const candidateOrder = createMemo((): readonly string[] => {
     return sortWatchlistRows(rowInputs(), sort()).map((row) => {
       return row.symbol;
     });
   });
+
   const committedOrder = useRankGlide(() => {
     return listEl ?? null;
   }, candidateOrder);

@@ -89,6 +89,7 @@ describe("createViewModel — machine-backed members", () => {
     const { result: newRow } = renderHook(() => {
       return vm.useRowHighlight(true);
     });
+
     const { result: existingRow } = renderHook(() => {
       return vm.useRowHighlight(false);
     });

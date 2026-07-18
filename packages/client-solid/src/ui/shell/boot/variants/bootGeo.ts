@@ -219,6 +219,7 @@ const MAIN: readonly LonLat[] = [
   [10.5, 56.2],
   [10.3, 56.7],
 ];
+
 const GB: readonly LonLat[] = [
   [-5.7, 50.1],
   [-5.0, 50.1],
@@ -280,6 +281,7 @@ const GB: readonly LonLat[] = [
   [-4.5, 50.9],
   [-5.7, 50.1],
 ];
+
 const IRE: readonly LonLat[] = [
   [-6.1, 52.1],
   [-6.0, 52.9],
@@ -307,6 +309,7 @@ const IRE: readonly LonLat[] = [
   [-8.0, 51.75],
   [-7.0, 52.1],
 ];
+
 const DKZ: readonly LonLat[] = [
   [10.9, 55.7],
   [11.3, 55.95],
@@ -317,6 +320,7 @@ const DKZ: readonly LonLat[] = [
   [11.3, 55.2],
   [10.9, 55.4],
 ];
+
 const SIC: readonly LonLat[] = [
   [12.4, 37.8],
   [13.1, 38.1],
@@ -331,6 +335,7 @@ const SIC: readonly LonLat[] = [
   [13.5, 37.1],
   [12.6, 37.6],
 ];
+
 const SAR: readonly LonLat[] = [
   [8.2, 40.9],
   [8.5, 41.2],
@@ -343,6 +348,7 @@ const SAR: readonly LonLat[] = [
   [8.4, 39.7],
   [8.15, 40.3],
 ];
+
 const COR: readonly LonLat[] = [
   [8.6, 42.4],
   [9.0, 42.7],
@@ -437,12 +443,15 @@ export function createBootGeo(d: BootDrawCtx): BootFrameFn {
       const hAl =
         0.22 *
         Math.exp(-((X - 0.41) * (X - 0.41) + (Z - 0.15) * (Z - 0.15)) / 0.016);
+
       const hPy =
         0.11 *
         Math.exp(-((X + 0.24) * (X + 0.24) + (Z - 0.52) * (Z - 0.52)) / 0.006);
+
       const hHi =
         0.09 *
         Math.exp(-((X + 0.58) * (X + 0.58) + (Z + 0.9) * (Z + 0.9)) / 0.006);
+
       const n =
         0.03 * Math.sin(X * 9.1 + Z * 5.3) +
         0.025 * Math.sin(X * 4.2 - Z * 7.7);

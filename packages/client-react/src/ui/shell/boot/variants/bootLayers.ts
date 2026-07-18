@@ -303,6 +303,7 @@ export function createBootLayers(scene: BootDrawCtx): BootFrameFn {
 
       const pulled =
         pullOn && pullables[pulledIdx] === panel && pullAmount > 0.05;
+
       const alpha =
         (0.35 + 0.45 * clamp((0.6 - entry.cP.z) / 1.2)) *
         panelDrawPhase *

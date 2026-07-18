@@ -11,6 +11,7 @@ const INSTS: readonly EquityInstrument[] = [
   { symbol: "AAPL", name: "Apple", exchange: "NASDAQ" },
   { symbol: "JPM", name: "JPMorgan", exchange: "NYSE" },
 ];
+
 const QUOTES: Record<string, EquityQuote> = {
   AAPL: {
     symbol: "AAPL",

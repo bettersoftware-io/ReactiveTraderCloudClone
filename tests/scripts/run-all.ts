@@ -95,6 +95,7 @@ const suites: Suite[] = [
 const skipCypress = ["1", "true"].includes(
   (process.env.RTC_E2E_SKIP_CYPRESS ?? "").toLowerCase(),
 );
+
 const droppedCypress = skipCypress
   ? suites
       .filter((s) => {
@@ -104,6 +105,7 @@ const droppedCypress = skipCypress
         return s.script;
       })
   : [];
+
 const activeSuites: Suite[] = skipCypress
   ? suites.filter((s) => {
       return !s.script.includes("cypress");

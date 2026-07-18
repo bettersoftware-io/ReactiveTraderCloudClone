@@ -40,6 +40,7 @@ export function AppearanceScreen(): JSX.Element {
   const { skin, setSkin } = useThemeSkinPreference();
   const { enabled: ambientEnabled, setEnabled: setAmbientEnabled } =
     useAnimatedBackground();
+
   const { enabled: powerSaverEnabled, setEnabled: setPowerSaverEnabled } =
     usePowerSaver();
   const { reboot } = useBootGate();

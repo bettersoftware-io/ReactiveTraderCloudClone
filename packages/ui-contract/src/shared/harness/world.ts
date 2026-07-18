@@ -435,9 +435,11 @@ export function createWorld(
   const watchlist = new BehaviorSubject<readonly EquityInstrument[]>(
     equitiesSeed.watchlist ?? [],
   );
+
   const equityOrders = new BehaviorSubject<readonly EquityOrder[]>(
     equitiesSeed.orders ?? [],
   );
+
   const equityPositions = new BehaviorSubject<readonly EquityPosition[]>(
     equitiesSeed.positions ?? [],
   );
@@ -446,9 +448,11 @@ export function createWorld(
     initialSymbol:
       equitiesSeed.initialSymbol ?? equitiesSeed.watchlist?.[0]?.symbol ?? "",
   });
+
   const eqWatchlistSort = new BehaviorSubject<EqWatchlistSort>(
     equitiesSeed.watchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
   );
+
   const eqBlotterView = new BehaviorSubject<EqBlotterView>(
     equitiesSeed.blotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
   );
@@ -526,15 +530,18 @@ export function createWorld(
   const viewMode = new BehaviorSubject<ViewMode>(
     viewModeSeed ?? DEFAULT_VIEW_MODE,
   );
+
   const creditRfqFilter = new BehaviorSubject<CreditRfqFilter>(
     creditRfqFilterSeed ?? DEFAULT_CREDIT_RFQ_FILTER,
   );
+
   const authUser: SessionUser | null =
     authSeed.user === undefined
       ? DEFAULT_AUTH_USER
       : authSeed.user === null
         ? null
         : { ...DEFAULT_AUTH_USER, ...authSeed.user };
+
   const auth = new BehaviorSubject<AuthViewState>({
     ...DEFAULT_AUTH,
     ...authSeed,
@@ -548,15 +555,19 @@ export function createWorld(
   const topology$ = new BehaviorSubject<ServiceTopology | null>(
     adminSeed.topology !== undefined ? adminSeed.topology : null,
   );
+
   const eventLog$ = new BehaviorSubject<readonly LogEvent[]>(
     adminSeed.eventLog ?? [],
   );
+
   const sessions$ = new BehaviorSubject<readonly SessionInfo[]>(
     adminSeed.sessions ?? [],
   );
+
   const sessionCountSeries$ = new BehaviorSubject<readonly MetricSample[]>(
     adminSeed.sessionCountSeries ?? [],
   );
+
   const metrics$ = new BehaviorSubject<MetricsView>({
     ...DEFAULT_METRICS_VIEW,
     ...adminSeed.metrics,

@@ -52,6 +52,7 @@ describe("devtools integration — composition root ↔ inspector", () => {
       PRESENTER_MANIFEST,
       hub,
     );
+
     const factories = instrumentMachineFactories(
       createMachineFactories(instrumented),
       hub,

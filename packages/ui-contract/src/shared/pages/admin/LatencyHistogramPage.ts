@@ -38,6 +38,7 @@ export class LatencyHistogramPage extends MountedComponent<
     const cols = Array.from(
       this.container().querySelectorAll("[class*='col']"),
     );
+
     const accented = cols.find((col) => {
       return col.querySelector("[data-accent='true']") !== null;
     });
