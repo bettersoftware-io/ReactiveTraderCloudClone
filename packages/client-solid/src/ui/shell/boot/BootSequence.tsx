@@ -46,8 +46,7 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
     const canvas = canvasEl;
 
     const prefersReduced =
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
-      false;
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
     // Read both signals unconditionally so each is tracked: the effect (a
     // plain createEffect, not `on()`-wrapped) re-runs when either flips

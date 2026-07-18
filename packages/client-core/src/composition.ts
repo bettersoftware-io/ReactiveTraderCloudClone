@@ -18,7 +18,6 @@ import {
 import {
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
-  ForceBootAnimationPresenter,
   AnimationDirector,
   AuthPresenter,
   BlotterPresenter,
@@ -46,6 +45,7 @@ import {
   type EqWorkspaceState,
   ErrorRatePresenter,
   EventLogPresenter,
+  ForceBootAnimationPresenter,
   type IncidentIntents,
   type IncidentState,
   InstrumentsPresenter,

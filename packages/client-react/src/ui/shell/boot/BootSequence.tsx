@@ -35,8 +35,7 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
     }
 
     const prefersReduced =
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
-      false;
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
     // Freeze (a persisted power-saver opt-out of all motion) always skips the
     // boot canvas rAF loop. Otherwise honour prefers-reduced-motion — unless

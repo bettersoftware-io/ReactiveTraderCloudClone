@@ -316,7 +316,11 @@ function renderBootSequence({
   render(
     wrap(<BootSequence onDone={vi.fn()} />, {
       useForceBootAnimation: () => {
-        return { enabled: forceBootAnimation, setEnabled: vi.fn(), toggle: vi.fn() };
+        return {
+          enabled: forceBootAnimation,
+          setEnabled: vi.fn(),
+          toggle: vi.fn(),
+        };
       },
     } as unknown as Partial<ViewModel>),
   );

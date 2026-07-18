@@ -2,7 +2,6 @@ export type { SessionUser } from "@rtc/domain";
 
 export * from "#/presenters/AnalyticsPresenter";
 export * from "#/presenters/AnimatedBackgroundPresenter";
-export * from "#/presenters/ForceBootAnimationPresenter";
 export * from "#/presenters/AnimationDirector";
 export * from "#/presenters/AuthPresenter";
 export * from "#/presenters/adminKpisVm";
@@ -21,6 +20,7 @@ export * from "#/presenters/EqWatchlistSortPreferencePresenter";
 export * from "#/presenters/EqWorkspaceMachine";
 export * from "#/presenters/ErrorRatePresenter";
 export * from "#/presenters/EventLogPresenter";
+export * from "#/presenters/ForceBootAnimationPresenter";
 export * from "#/presenters/IncidentMachine";
 export * from "#/presenters/InstrumentsPresenter";
 export * from "#/presenters/LatencyPresenter";
