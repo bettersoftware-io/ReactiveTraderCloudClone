@@ -1,9 +1,15 @@
 import type { JSX, ParentProps } from "solid-js";
 
 import { createApp, createMachineFactories } from "@rtc/client-core";
+import {
+  instrumentMachineFactories,
+  instrumentPresenters,
+} from "@rtc/devtools-core";
 import { createViewModel, ViewModelProvider } from "@rtc/solid-bindings";
 
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { devtoolsHub } from "#/app/devtools/devtoolsHub";
+import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 import { AuthGate } from "#/ui/shell/auth/AuthGate";
 import { BootGate } from "#/ui/shell/boot/BootGate";
 import { PowerSaverRoot } from "#/ui/shell/power/PowerSaverRoot";
@@ -28,9 +34,18 @@ import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
  * (children). */
 export function AppRoot(props: ParentProps): JSX.Element {
   const { presenters, commands } = createApp(buildBrowserPorts());
-  const viewModel = createViewModel(
+  const instrumented = instrumentPresenters(
     presenters,
-    createMachineFactories(presenters),
+    PRESENTER_MANIFEST,
+    devtoolsHub,
+  );
+
+  const viewModel = createViewModel(
+    instrumented,
+    instrumentMachineFactories(
+      createMachineFactories(instrumented),
+      devtoolsHub,
+    ),
     commands,
   );
 
