@@ -1,0 +1,7 @@
+{
+  "framework": "vite",
+  "buildCommand": "pnpm turbo run build --filter=@rtc/client-solid",
+  "outputDirectory": "packages/client-solid/dist",
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
+  "git": { "deploymentEnabled": false }
+}
