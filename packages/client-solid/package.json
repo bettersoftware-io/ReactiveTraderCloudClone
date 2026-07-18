@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@rtc/devtools-app": "workspace:*",
     "@rtc/ui-contract": "workspace:*",
     "@rx-state/core": "^0.1.4",
     "@solidjs/testing-library": "^0.8.10",
