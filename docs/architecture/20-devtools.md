@@ -494,4 +494,53 @@ traffic stays entirely off the app's data socket and the production
 — dormant-and-disconnected by construction, exactly like the web app ships
 dormant.
 
+### 20.10 Relationship to the framework DevTools (React DevTools / Solid DevTools)
+
+The RTC inspector is **not** a replacement for the browser's framework
+DevTools — they inspect different layers, and both are useful:
+
+- **Framework DevTools** (the React DevTools and Solid DevTools browser
+  extensions) inspect the **view** layer — the component tree, props, and, for
+  Solid, the reactive graph of signals/memos/effects.
+- **The RTC inspector** inspects the **state** layer — presenter streams,
+  per-mount machines, and wire traffic — the choke-point state that no
+  off-the-shelf extension can see ([§20.1](#201-why)).
+
+**Production behaviour is asymmetric across the two frameworks**, which is a
+common point of confusion ("I can inspect the deployed React app but not the
+deployed Solid app"):
+
+- **React DevTools works against the deployed React client.** It is a framework
+  *default*: React installs a global hook (`__REACT_DEVTOOLS_GLOBAL_HOOK__`)
+  even in a production build, so the extension can walk the (minified) tree with
+  **no build-time wiring**.
+- **Official Solid DevTools does _not_ work against the deployed Solid client.**
+  It requires the `solid-devtools` package plus its Vite plugin, and this repo
+  wires that **dev-only**: `client-solid/vite.config.ts`'s `devtools()` plugin
+  (`solid-devtools/vite`) has an `apply()` gate that skips production, and
+  `client-solid/src/main.tsx`'s `import "solid-devtools"` resolves to a **no-op
+  module** (`index_noop.js`) in a production build. So the production Solid
+  bundle ships **no** solid-devtools runtime, and the extension has nothing to
+  hook.
+
+**Why solid-devtools stays dev-only — the perf reason.** It instruments Solid's
+reactive graph (the owner tree, every signal/memo/effect) and reports
+continuously; that tracking is **always on**, not dormant. Shipping it to
+production would add real steady-state overhead to reactivity plus bundle
+weight. Contrast the RTC inspector's **dormancy contract**
+([§20.3](#203-the-dormancy-contract)): the hub costs nothing per emission until
+an inspector attaches. That is exactly why the RTC inspector — unlike
+solid-devtools — is safe to ship to production. **Both** web clients ship it
+dormant and are inspectable in prod via the same-origin `/devtools/` panel or
+the MV3 extension ([§20.6](#206-serving-topology)): React under app id
+`rtc-web`, Solid under `rtc-web-solid`.
+
+**If official Solid DevTools in production is ever wanted** (e.g. to inspect the
+reactive graph of a deployed build), un-gate `solid-devtools/vite` so it also
+applies on `build` and ships the real runtime instead of the no-op — accepting
+the always-on reactivity cost above. Prefer gating that behind a separate,
+opt-in "inspectable" build rather than the default production bundle. Not
+planned: for deployed-build inspection the dormant RTC inspector is the
+intended path.
+
 ---
