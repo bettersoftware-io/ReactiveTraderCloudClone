@@ -23,6 +23,7 @@ import {
   createTileExecutionMachine,
 } from "@rtc/client-core";
 import type {
+  AmbientStyle,
   CandleTimeframe,
   CreateRfqInput,
   CreditRfqFilter,
@@ -388,6 +389,16 @@ export function solidViewModel(world: World): ViewModel {
           world.powerSaver.next(next);
         },
       };
+    },
+    // Ambient style: NOT yet backed by the shared World subject (that lands
+    // with the ambient-style shared contract spec) — local component state
+    // is enough to satisfy the ViewModel shape for every other contract spec
+    // that mounts AmbientBackground incidentally. Pinned to "rays" (not the
+    // app's "aurora" default) so today's contract assertions are unaffected.
+    // Mirrors the react driver's useAmbientStyle exactly.
+    useAmbientStyle: () => {
+      const [style, setStyle] = createSignal<AmbientStyle>("rays");
+      return { style, setStyle };
     },
     // Global view-mode: reactive view backed by the World subject; setViewMode
     // pushes back so a toggle through the seam flips the rendered mode.
