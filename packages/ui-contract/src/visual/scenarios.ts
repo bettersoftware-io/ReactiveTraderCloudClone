@@ -134,6 +134,14 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "NewRfqPanel",
     fixtureKey: "credit-populated",
   },
+  // Instrument dropdown open — the floating popover is the distinct pixel
+  // state (its frosted-glass backing over the form; see
+  // InstrumentSelect.module.css). Pins the open dropdown so the translucent
+  // --panel can't silently regress to a see-through menu again.
+  "credit/new-rfq-open": {
+    componentKey: "NewRfqPanel",
+    fixtureKey: "credit-populated",
+  },
   "credit/new-rfq-filled": {
     componentKey: "NewRfqPanel",
     fixtureKey: "credit-populated",
