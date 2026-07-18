@@ -20,9 +20,10 @@ import { createBootTopo } from "./variants/bootTopo";
 import styles from "./BootSequence.module.css";
 
 export function BootSequence(props: BootSequenceProps): JSX.Element {
-  const { useBootSequence } = useViewModel();
+  const { useBootSequence, usePowerSaver } = useViewModel();
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const { state, skip } = useBootSequence(props.onDone);
+  const { isFreeze } = usePowerSaver();
   let canvasEl!: HTMLCanvasElement;
 
   // The machine emits a FRESH state object every 90ms tick (~47 per boot)
@@ -46,7 +47,13 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
       "(prefers-reduced-motion: reduce)",
     ).matches;
 
-    if (reduce) {
+    // A persisted Freeze preference must never run the boot splash's canvas
+    // rAF loop — same early-return as prefers-reduced-motion, since Freeze is
+    // a stricter opt-in of the same "no imperative motion" contract. Tracked
+    // (this whole callback is a plain createEffect, not `on()`-wrapped), so
+    // toggling power saver mid-boot tears the loop down via the onCleanup
+    // below instead of leaving it running.
+    if (reduce || isFreeze()) {
       return;
     }
 
