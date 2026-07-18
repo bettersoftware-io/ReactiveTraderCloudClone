@@ -1,5 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// run-all.ts runs every browser suite concurrently by default (no
+// RTC_E2E_MAX_PARALLEL cap), and the solid variant of this suite (see
+// tests/package.json test:browser:playwright:solid) reuses this SAME config
+// file with RTC_CLIENT_PKG=@rtc/client-solid — so react's and solid's runs of
+// "this" suite can be mid-flight at once. Suffix the report/artifact dirs by
+// client so they never write to the same path concurrently; empty for the
+// react default keeps its output path byte-identical to before.
+const reportSuffix =
+  process.env.RTC_CLIENT_PKG === "@rtc/client-solid" ? "-solid" : "";
+
 export default defineConfig({
   testDir: ".",
   testMatch: "**/*.spec.ts",
@@ -15,12 +25,12 @@ export default defineConfig({
     [
       "html",
       {
-        outputFolder: "../../reports/browser/playwright/report",
+        outputFolder: `../../reports/browser/playwright${reportSuffix}/report`,
         open: "never",
       },
     ],
   ],
-  outputDir: "../../reports/browser/playwright/artifacts",
+  outputDir: `../../reports/browser/playwright${reportSuffix}/artifacts`,
   timeout: 30_000,
   use: {
     // Per-suite port via RTC_DEV_PORT (parallel runners); defaults to 3000.
