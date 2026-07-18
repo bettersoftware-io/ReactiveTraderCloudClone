@@ -1,10 +1,10 @@
 # @rtc/motion-core
 
 Framework-free, **zero-runtime-dependency** view-layer motion math. Pure
-functions and constants shared by every client's animation shells (React today,
-SolidJS next) so the *logic* is written once and only the imperative DOM shell
-(`getBoundingClientRect` / `Element.animate` / `useLayoutEffect` / directives)
-differs per framework.
+functions and constants shared by both web clients' animation shells
+(`@rtc/client-react` and `@rtc/client-solid`) so the *logic* is written once
+and only the imperative DOM shell (`getBoundingClientRect` / `Element.animate`
+/ `useLayoutEffect`-or-equivalent / directives) differs per framework.
 
 No DOM, no RxJS, no React. See
 [ADR-005](../../docs/adr/ADR-005-ui-logic-placement.md) for why animation math
