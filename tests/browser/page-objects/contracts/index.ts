@@ -1,5 +1,6 @@
 import type { AnalyticsDashboardPO } from "./AnalyticsDashboard";
 import type { BlotterTablePO } from "./BlotterTable";
+import type { BootPO } from "./Boot";
 import type { ConnectionOverlayPO } from "./ConnectionOverlay";
 import type { CreditRfqFormPO } from "./CreditRfqForm";
 import type { CreditRfqPanelPO } from "./CreditRfqPanel";
@@ -38,4 +39,8 @@ export interface PageObjects {
   /** Optional: the header power-saver quick toggle + document flag. Only the
    *  Playwright factory provides it (see {@link PowerSaverPO}). */
   powerSaver?: PowerSaverPO;
+  /** Optional: the full-screen boot splash + the `forceBootAnimation`
+   *  preference's real-browser effect on it. Only the Playwright factory
+   *  provides it (see {@link BootPO}). */
+  boot?: BootPO;
 }
