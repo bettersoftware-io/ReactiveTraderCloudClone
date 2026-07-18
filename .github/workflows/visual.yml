@@ -1,13 +1,16 @@
 name: Visual diffs
 
-# The full theme-matrix visual-diff gate (5 skins × dark/light × 3 runners,
-# ~1222 scenarios/tier, all serial — ~20 min). It used to live in ci.yml as a PR
-# gate but that blocked every branch push while the UI was still churning. It now
-# runs POST-MERGE ONLY: on push to main (i.e. right after a PR merges) and on
-# manual dispatch. A red run here is the signal to inspect the diff and either fix
-# the regression or — if the change was intentional — regenerate the goldens via
-# .github/workflows/update-visual-goldens.yml. It does NOT gate merges; move it
-# back into ci.yml (as a PR job) once the UI stabilises.
+# The full theme-matrix visual-diff gate (5 skins × dark/light × 3 tiers,
+# ~1222 scenarios/tier, all serial — ~20 min) run for BOTH clients: react (which
+# owns the committed goldens) and solid (which asserts the same scenarios
+# against react's goldens, owning none of its own) — 6 tier-runs total. It used
+# to live in ci.yml as a PR gate but that blocked every branch push while the UI
+# was still churning. It now runs POST-MERGE ONLY: on push to main (i.e. right
+# after a PR merges) and on manual dispatch. A red run here is the signal to
+# inspect the diff and either fix the regression or — if the change was
+# intentional — regenerate the goldens via .github/workflows/update-visual-goldens.yml
+# (react-only; see that workflow). It does NOT gate merges; move it back into
+# ci.yml (as a PR job) once the UI stabilises.
 on:
   push:
     branches: [main]

@@ -10,6 +10,13 @@ name: Coverage Report
 #      all five tiers, published to GitHub Pages at a stable URL you can open
 #      and browse immediately on any device — no download, no unzip. The repo is
 #      public, so the report (which shows source lines) leaks nothing new.
+#
+# All five tiers are @rtc/client-react (+ domain/server) ONLY, BY DESIGN — this
+# is a report-only convenience tool (no CI gates; see docs/STATUS.md), not the
+# coverage GATE. Solid's ui:contract coverage is already gated separately in
+# ci.yml ("UI contract coverage gate — solid"); adding solid's own
+# app/contract/visual istanbul tiers here (mirroring the react ones below) is
+# a nice-to-have left for a future pass, not required for this workstream.
 on:
   workflow_dispatch:
 
