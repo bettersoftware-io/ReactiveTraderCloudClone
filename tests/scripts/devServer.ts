@@ -23,6 +23,13 @@ export const DEV_PORT = Number(process.env.RTC_DEV_PORT ?? 3000);
 // actual chosen port, also passed down as RTC_DEV_PORT) instead of each starting
 // their own.
 export const SHARED_DEV_SERVER_ENV = "RTC_DEV_SERVER_SHARED";
+// Which client package's dev server to spawn. Defaults to the web React
+// client; solid browser suites set this to "@rtc/client-solid" (see
+// tests/scripts/run-all.ts) to prove the same Gherkin contracts against the
+// SolidJS client. Both packages' vite.config.ts read PORT/host the same way,
+// so no other server-lifecycle assumption here is client-specific.
+export const CLIENT_PKG: string =
+  process.env.RTC_CLIENT_PKG ?? "@rtc/client-react";
 // Resolve the monorepo root (two levels up from tests/scripts/)
 const MONOREPO_ROOT = join(fileURLToPath(import.meta.url), "..", "..", "..");
 
@@ -69,7 +76,7 @@ interface SpawnedServer {
 }
 
 function spawnDevServer(preferredPort: number): SpawnedServer {
-  const child = spawn("pnpm", ["--filter", "@rtc/client-react", "dev"], {
+  const child = spawn("pnpm", ["--filter", CLIENT_PKG, "dev"], {
     // Capture output so we can read the actual bound port from Vite's banner and
     // surface startup failures in the thrown message (not a blind timeout).
     stdio: ["ignore", "pipe", "pipe"],
@@ -85,7 +92,11 @@ function spawnDevServer(preferredPort: number): SpawnedServer {
     // the login-form e2e spec (browser/playwright/login.spec.ts) can drive the
     // real LoginScreen. Every OTHER browser spec seeds an authenticated
     // session directly (see tests/browser/authSeed.ts) and never touches this
-    // form, so the value is unused there.
+    // form, so the value is unused there. client-react reads it via
+    // `import.meta.env.VITE_DEV_AUTH` (see buildBrowserPorts.ts); client-solid
+    // has no LoginScreen yet (AppRoot.tsx auto-logs in as demo/demo on mount —
+    // documented there as pending Solid parity work), so this env var is
+    // inert — harmless, just unread — when CLIENT_PKG is @rtc/client-solid.
     env: {
       ...process.env,
       PORT: String(preferredPort),
