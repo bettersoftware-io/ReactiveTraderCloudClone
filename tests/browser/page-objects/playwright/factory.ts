@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import type { PageObjects } from "../contracts";
 import { PlaywrightAnalyticsDashboard } from "./AnalyticsDashboard";
 import { PlaywrightBlotterTable } from "./BlotterTable";
+import { PlaywrightBoot } from "./Boot";
 import { PlaywrightConnectionOverlay } from "./ConnectionOverlay";
 import { PlaywrightCreditRfqForm } from "./CreditRfqForm";
 import { PlaywrightCreditRfqPanel } from "./CreditRfqPanel";
@@ -34,5 +35,6 @@ export function buildPlaywrightPageObjects(page: Page): PageObjects {
     inspector: new PlaywrightInspector(page),
     login: new PlaywrightLoginScreen(page),
     powerSaver: new PlaywrightPowerSaver(page),
+    boot: new PlaywrightBoot(page),
   };
 }

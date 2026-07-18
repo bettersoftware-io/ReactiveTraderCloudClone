@@ -57,6 +57,8 @@ export interface MountOptions<P> {
   animatedBackground?: boolean;
   /** Seed the initial power-saver master-override level (usePowerSaver); defaults to "off". */
   powerSaverLevel?: PowerSaverLevel;
+  /** Seed the initial force-boot-animation preference (useForceBootAnimation); defaults to false. */
+  forceBootAnimation?: boolean;
   /** Seed the initial view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE. */
   viewMode?: ViewMode;
   /** Seed the initial auth view-state (useAuth); defaults to authenticated + demo user. */
@@ -225,6 +227,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.admin,
     opts.creditRfqFilter,
     opts.powerSaverLevel,
+    opts.forceBootAnimation,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

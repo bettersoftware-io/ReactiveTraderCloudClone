@@ -10,11 +10,13 @@ export interface PreferencesModalProps {
 const POWER_SAVER_LEVELS = ["off", "calm", "freeze"] as const;
 
 /**
- * Page object for PreferencesModal. TWO rows are REAL controls: the
- * Animated-background toggle (wired to useAnimatedBackground) and the Power
- * saver segment (wired to usePowerSaver, 3-state Off/Calm/Freeze); each seam
- * records its written values, asserted via `animatedBgSets()` /
- * `powerSaverLevelSets()`. Cosmetic rows are checked for presence only.
+ * Page object for PreferencesModal. THREE rows are REAL controls: the
+ * Animated-background toggle (wired to useAnimatedBackground), the Power
+ * saver segment (wired to usePowerSaver, 3-state Off/Calm/Freeze), and the
+ * Always-play-boot-animation toggle (wired to useForceBootAnimation); each
+ * seam records its written values, asserted via `animatedBgSets()` /
+ * `powerSaverLevelSets()` / `forceBootAnimationSets()`. Cosmetic rows are
+ * checked for presence only.
  */
 export class PreferencesModalPage extends MountedComponent<PreferencesModalProps> {
   private readonly user: UserEvent = userEvent.setup();
@@ -67,6 +69,27 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
   /** The levels written to the power-saver seam, in order. */
   powerSaverLevelSets(): string[] {
     return this.commandLog().powerSaverLevelSets;
+  }
+
+  /** Current state of the real Always-play-boot-animation switch (its `data-on`). */
+  forceBootAnimationOn(): boolean {
+    return (
+      within(this.root)
+        .getByTestId("pref-toggle-forceBootAnimation")
+        .getAttribute("data-on") === "true"
+    );
+  }
+
+  /** Toggle the real Always-play-boot-animation switch through the seam. */
+  async toggleForceBootAnimation(): Promise<void> {
+    await this.user.click(
+      within(this.root).getByTestId("pref-toggle-forceBootAnimation"),
+    );
+  }
+
+  /** The values written to the force-boot-animation seam, in order. */
+  forceBootAnimationSets(): boolean[] {
+    return this.commandLog().forceBootAnimationSets;
   }
 
   /** Click the ✕ dismiss control. */

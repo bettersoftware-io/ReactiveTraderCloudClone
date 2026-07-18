@@ -196,6 +196,52 @@ extend the script:
       using the Account-menu **⟳ Reboot** row (the variant advances each time).
       This is the only real test the pixels get.
 
+## Reduced-motion gates and the `forceBootAnimation` override
+
+The boot splash is **suppressed** in two accessibility cases:
+
+1. **`prefers-reduced-motion: reduce`** — the standard OS/browser setting for
+   motion-sensitive users and remote desktop / VDI environments (e.g. Citrix,
+   which can't composite canvas fast enough). The splash skips canvas draw
+   entirely and the opacity transition disables via `BootSequence.module.css`
+   `@media (prefers-reduced-motion: reduce)` rules.
+
+2. **`!ctx` — no 2D graphics context** — when `canvas.getContext("2d")` returns
+   null (jsdom in tests, Chrome GPU-less). The canvas never starts the rAF loop;
+   only the text chrome renders.
+
+Both gates are **hardcoded safety floors** — they cannot be overridden by URL or
+preference to prevent jank on inaccessible setups.
+
+### The `forceBootAnimation` preference
+
+Users who disable reduced motion in their OS but still want the boot splash can
+override reduced-motion via a persisted **`forceBootAnimation`** boolean (default
+off). The toggle is wired as a checkbox in the Preferences dialog's **DISPLAY**
+column: "Always play boot animation".
+
+When enabled, reduced-motion's suppression is bypassed: the effective
+reduced-motion state becomes `prefersReduced && !forced` (`BootSequence.tsx`
+line 39, `BootGate.tsx` line 38). The CSS restores the animation via a
+`data-force-anim="true"` attribute on the boot root (`.boot` in
+`BootSequence.module.css`), which the `@media` rule's `:not([data-force-anim="true"])`
+selector carves out — negating the suppression rules only when forced.
+
+The preference takes effect on the **next page reload**, since the splash paints
+during composition before the user can open Preferences. Alternatively, the
+account menu's **⟳ Reboot HUD** row calls `BootGatePresenter.reboot()` to
+re-raise the boot gate and remount `BootSequence` immediately, advancing the
+boot variant with each call.
+
+The `!ctx` floor **cannot be forced** — there is no 2D surface to draw on.
+
+### The `?splash` URL override
+
+URL parameter `?splash` forces the splash ON even under `navigator.webdriver`
+(browser automation in Playwright / Cypress). Symmetric to the existing `?nosplash`
+force-off for humans. Used by e2e tests that want to exercise the splash under
+automation (in `bootSplashGate.ts`).
+
 ## Glossary (the readable names, so edits stay consistent)
 
 `scene` = the `BootDrawCtx` · `ctx` = 2D context · `elapsedSec` = free-running

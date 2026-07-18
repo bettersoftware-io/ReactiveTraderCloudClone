@@ -20,8 +20,10 @@ import { createBootTopo } from "./variants/bootTopo";
 import styles from "./BootSequence.module.css";
 
 export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
-  const { useBootSequence, usePowerSaver } = useViewModel();
+  const { useBootSequence, useForceBootAnimation, usePowerSaver } =
+    useViewModel();
   const { state, skip } = useBootSequence(onDone);
+  const forced = useForceBootAnimation().enabled;
   const { isFreeze } = usePowerSaver();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -32,14 +34,14 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       return;
     }
 
-    const reduce = window.matchMedia?.(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const prefersReduced =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
-    // A persisted Freeze preference must never run the boot splash's canvas
-    // rAF loop — same early-return as prefers-reduced-motion, since Freeze is
-    // a stricter opt-in of the same "no imperative motion" contract.
-    if (reduce || isFreeze) {
+    // Freeze (a persisted power-saver opt-out of all motion) always skips the
+    // boot canvas rAF loop. Otherwise honour prefers-reduced-motion — unless
+    // forceBootAnimation is on, which overrides only the accessibility signal,
+    // never an explicit Freeze.
+    if (isFreeze || (prefersReduced && !forced)) {
       return;
     }
 
@@ -90,13 +92,14 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       window.removeEventListener("mousemove", onMove);
       cancelAnimationFrame(raf);
     };
-  }, [state.variant, isFreeze]);
+  }, [state.variant, forced, isFreeze]);
 
   return (
     <div
       data-testid="boot-sequence"
       data-done={state.done ? "true" : "false"}
       data-variant={state.variant}
+      data-force-anim={forced ? "true" : "false"}
       className={styles.boot}
     >
       <canvas ref={canvasRef} className={styles.canvas} />
