@@ -13,9 +13,12 @@ const reportSuffix = isSolid ? "-solid" : "";
 // Mirrors client-solid's tests/ui/contract/vitest.config.ts
 // `notYetPortedSpecs` — same rationale, same exclusion mechanism, one level
 // up the test pyramid. Both are React-only, not port gaps:
-//   - login.spec.ts: drives the real LoginScreen/AuthGate. Solid has no
-//     sign-in/gate UI yet (AppRoot.tsx auto-logs in as demo/demo on mount) —
-//     the same shell/auth deviation the ui-contract tier already excludes.
+//   - login.spec.ts: drives the real LoginScreen/AuthGate by signing in with
+//     demo/demo (the dev server seeds VITE_DEV_AUTH='{"demo":"demo"}', which
+//     only client-react reads). client-solid now HAS the ported gate, but its
+//     simulator AuthSimulator is seeded with the mcdc2026 roster password and
+//     doesn't read VITE_DEV_AUTH — so enabling this spec for Solid needs those
+//     dev credentials aligned first (a tracked follow-up), not a UI gap.
 //   - devtools.spec.ts: connects to the same-origin /devtools/ inspector.
 //     Solid's vite.config.ts never wires that dev-only asset edge (only
 //     client-react's does — see its devtoolsPanel() plugin), so there is no

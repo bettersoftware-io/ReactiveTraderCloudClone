@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { AppRoot } from "#/AppRoot";
 import { App } from "#/ui/App";
@@ -14,6 +14,13 @@ import { App } from "#/ui/App";
 // walking-skeleton auto-login), so every test signs in with the committed
 // demo credentials before asserting on shell chrome.
 describe("App (shell chrome)", () => {
+  // The session store is now localStorage-backed (parity with client-react), so
+  // a sign-in in one test would otherwise persist into the next and skip the
+  // gate. Clear it so every test starts unauthenticated and drives the form.
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it("mounts and renders the live connection status from the simulator ports", async () => {
     render(() => {
       return (
