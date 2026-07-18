@@ -135,6 +135,7 @@ function makeStyles(t: RnTheme): WatchlistStyles {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.borderSubtle,
   };
+
   const headerCell: TextStyle = {
     fontSize: 10,
     color: t.textMuted,

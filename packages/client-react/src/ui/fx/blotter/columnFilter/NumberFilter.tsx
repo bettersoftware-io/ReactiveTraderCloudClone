@@ -13,9 +13,11 @@ export function NumberFilter<TRow>({
   const [comparator, setComparator] = useState<Comparator>(
     currentFilter?.type === "number" ? currentFilter.comparator : "eq",
   );
+
   const [value, setValue] = useState(
     currentFilter?.type === "number" ? String(currentFilter.value) : "",
   );
+
   const [valueTo, setValueTo] = useState(
     currentFilter?.type === "number" && currentFilter.valueTo != null
       ? String(currentFilter.valueTo)

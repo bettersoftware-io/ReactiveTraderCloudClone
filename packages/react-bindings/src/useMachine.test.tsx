@@ -15,6 +15,7 @@ describe("useMachine", () => {
     const factory = vi.fn(() => {
       return makeTestMachine(new BehaviorSubject(0)).machine;
     });
+
     const { rerender } = renderHook(() => {
       return useMachine(factory);
     });

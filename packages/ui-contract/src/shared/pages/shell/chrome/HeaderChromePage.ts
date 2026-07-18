@@ -78,17 +78,17 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
     return within(this.root).queryByTestId("theme-toggle") !== null;
   }
 
-  /** The header quick toggle's current `aria-pressed` (wired to usePowerSaver). */
-  powerSaverPressed(): string | null {
+  /** The header cycler's current `data-level` (wired to usePowerSaver: off | calm | freeze). */
+  powerSaverLevel(): string | null {
     return (
       within(this.root)
         .queryByTestId("power-saver-toggle")
-        ?.getAttribute("aria-pressed") ?? null
+        ?.getAttribute("data-level") ?? null
     );
   }
 
-  /** Click the header power-saver quick toggle. */
-  async clickPowerSaver(): Promise<void> {
+  /** Click the header power-saver cycling control (advances off → calm → freeze → off). */
+  async cyclePowerSaver(): Promise<void> {
     await this.user.click(within(this.root).getByTestId("power-saver-toggle"));
   }
 

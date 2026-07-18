@@ -64,19 +64,27 @@ import styles from "./RfqsPanel.module.css";
  * would be equally wrong; id-keying is the correct middle ground, the
  * direct analogue of React's `key={rfq.id}`. */
 export function RfqsPanel(): JSX.Element {
-  const { useRfqs, useInstruments, useDealers, useCreditRfqFilterPreference } =
-    useViewModel();
+  const {
+    useRfqs,
+    useInstruments,
+    useDealers,
+    useCreditRfqFilterPreference,
+    usePowerSaver,
+  } = useViewModel();
   const rfqs = useRfqs();
   const instruments = useInstruments();
   const dealers = useDealers();
   const { filter } = useCreditRfqFilterPreference();
+  const { isFreeze } = usePowerSaver();
 
   const [dismissed, setDismissed] = createSignal<ReadonlySet<number>>(
     new Set(),
   );
+
   const [exiting, setExiting] = createSignal<ReadonlyMap<number, ExitReason>>(
     new Map(),
   );
+
   const [entering, setEntering] = createSignal<ReadonlyMap<number, number>>(
     new Map(),
   );
@@ -86,9 +94,11 @@ export function RfqsPanel(): JSX.Element {
       return r.id;
     });
   });
+
   const allIdsKey = createMemo((): string => {
     return allIds().join(",");
   });
+
   const matchingIds = createMemo((): number[] => {
     const currentDismissed = dismissed();
     return rfqs()
@@ -99,6 +109,7 @@ export function RfqsPanel(): JSX.Element {
         return r.id;
       });
   });
+
   const matchingKey = createMemo((): string => {
     return matchingIds().join(",");
   });
@@ -255,18 +266,23 @@ export function RfqsPanel(): JSX.Element {
         return b.creationTimestamp - a.creationTimestamp;
       });
   });
+
   const renderedIds = createMemo((): number[] => {
     return rendered().map((r) => {
       return r.id;
     });
   });
+
   const renderedIdsKey = createMemo((): string => {
     return renderedIds().join(",");
   });
 
-  const { register } = useFlipGrid(() => {
-    return [filter(), renderedIdsKey()];
-  });
+  const { register } = useFlipGrid(
+    () => {
+      return [filter(), renderedIdsKey()];
+    },
+    { freeze: isFreeze },
+  );
 
   function handleRemove(rfqId: number): void {
     if (prefersReducedMotion()) {

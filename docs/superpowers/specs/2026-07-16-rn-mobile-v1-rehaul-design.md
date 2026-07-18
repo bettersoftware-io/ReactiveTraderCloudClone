@@ -77,13 +77,18 @@ existing, correct model — not a rebuild. The 6 skin keys, the mode toggle, the
   shell. Boot math, FLIP, rank-glide, countdown are pure-fn.
 - **Reduced motion & ambient toggle:** honor the existing ambient toggle and a
   reduced-motion setting everywhere (skip to static splash, disable aurora/loops).
-- **Power-saver mode (React-only today):** the web React client shipped power-saver
-  (PR #218; `docs/power-saver-mode.md`) — one toggle that removes the ambient layers,
-  stills logo/connection-dot motion, and conflates price re-renders. RN persists the
-  `powerSaver` preference via its adapter but has **no UI** for it. This rehaul should
-  surface it — a toggle (header/command-dock or appearance settings) plus ambient +
-  motion gating — composing with the ambient/reduced-motion toggle above rather than
-  duplicating it.
+- **Power-saver mode (three-state ladder, React + Solid today):** the web clients ship
+  an ordered Off → Calm → Freeze power-saver ladder (`Freeze ⊇ Calm`; PR #218 for Calm,
+  `docs/power-saver-mode.md`, design: `docs/superpowers/specs/2026-07-18-power-saver-freeze-tier-design.md`).
+  Calm removes the ambient layers, stills logo/connection-dot motion, and conflates price
+  re-renders; Freeze additionally kills the tick-flash, FLIP/rank-glide, and every CSS
+  transition/keyframe for GPU-less Citrix/VDI hardware. RN has the `PowerSaverLevel`
+  preference plumbed (persisted via its adapter) and Phase 2 already added a power-saver
+  toggle to the rebuilt Appearance sheet, but that toggle only reaches Calm — RN renders
+  Freeze the same as Calm today (no CSS-catch-all equivalent, no RN-side motion gating).
+  **Follow-up for this rehaul:** the Appearance sheet's power-saver control should gain
+  the Freeze level (segmented Off/Calm/Freeze, mirroring the web Preferences control) and
+  wire Freeze's motion gating into RN's animation primitives. Tracked in `docs/STATUS.md`.
 - **All gates cover the package:** Biome, ESLint (base + typed), stylelint N/A, typecheck,
   knip, jest. New native deps require **jest mocks** so the suite stays green. Dep adds
   follow the freshness policy (`pnpm outdated -r`, 24h cooldown, syncpack single range).

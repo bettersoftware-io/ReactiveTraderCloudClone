@@ -42,6 +42,7 @@ export function NewRfqForm({ onCreated }: NewRfqFormProps): JSX.Element {
       return d.id;
     }),
   );
+
   const selectedDealerIds =
     dealerOverride && dealerOverride.size > 0 ? dealerOverride : allDealerIds;
 

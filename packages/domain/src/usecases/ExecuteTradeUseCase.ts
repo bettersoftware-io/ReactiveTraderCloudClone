@@ -30,10 +30,12 @@ export class ExecuteTradeUseCase {
   execute(input: ExecuteTradeInput): Observable<ExecuteTradeResult> {
     const spotRate =
       input.direction === Direction.Buy ? input.price.ask : input.price.bid;
+
     const dealtCurrency = deriveDealtCurrency(
       input.pair.symbol,
       input.direction,
     );
+
     const request: ExecutionRequest = {
       currencyPair: input.pair.symbol,
       spotRate,

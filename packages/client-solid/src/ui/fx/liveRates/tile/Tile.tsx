@@ -57,21 +57,26 @@ export function Tile(props: TileProps): JSX.Element {
   const isLoading = createMemo((): boolean => {
     return !price();
   });
+
   const isBusy = createMemo((): boolean => {
     return tileExecution.state().status !== "ready";
   });
+
   const hasError = createMemo((): boolean => {
     return !!notional.state().error;
   });
+
   // "Mid-flow" RFQ state (a quote has been requested/received/rejected) —
   // distinct from notional.state().isRfq, which just says the CURRENT
   // notional value requires the RFQ path (before the flow has even started).
   const isRfqFlowActive = createMemo((): boolean => {
     return rfqState.state().status !== "init";
   });
+
   const notionalDisabled = createMemo((): boolean => {
     return isLoading() || isBusy() || isRfqFlowActive();
   });
+
   // The price boxes execute at the live market price, so they must be
   // disabled whenever the notional requires an RFQ quote instead.
   const priceBoxDisabled = createMemo((): boolean => {
@@ -79,12 +84,14 @@ export function Tile(props: TileProps): JSX.Element {
       isLoading() || isBusy() || hasError() || stale() || notional.state().isRfq
     );
   });
+
   // RFQ init-state affordance: the compact ⚡ RFQ chip in the header's pair
   // row (an existing row, so the tile's height never changes). The other RFQ
   // lifecycle states still render through TileRfq below.
   const showRfqChip = createMemo((): boolean => {
     return notional.state().isRfq && !isBusy() && !isRfqFlowActive();
   });
+
   // PROTO RateTile data-booked: true exactly while the success confirmation
   // (TileConfirmation's Done card) is showing, so the tile ROOT carries the
   // bookPulse glow — the overlay's own glow is clipped by the tile's
@@ -99,18 +106,21 @@ export function Tile(props: TileProps): JSX.Element {
       !!state.trade
     );
   });
+
   const tickAnim = createMemo((): "tickUp" | "tickDown" | undefined => {
     const intent = animIntent();
     return intent?.kind === "tickUp" || intent?.kind === "tickDown"
       ? intent.kind
       : undefined;
   });
+
   const confirmAnim = createMemo((): "fill" | "reject" | undefined => {
     const intent = animIntent();
     return intent?.kind === "fill" || intent?.kind === "reject"
       ? intent.kind
       : undefined;
   });
+
   const movementPips = createMemo((): number | null => {
     return computeMovementPips(history(), props.pair.pipsPosition);
   });

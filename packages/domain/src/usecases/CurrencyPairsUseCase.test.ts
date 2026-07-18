@@ -19,6 +19,7 @@ describe("CurrencyPairsUseCase", () => {
         typicalSpreadPips: 1.4,
       },
     ];
+
     const port: ReferenceDataPort = {
       getCurrencyPairs: () => {
         return of(pairs);

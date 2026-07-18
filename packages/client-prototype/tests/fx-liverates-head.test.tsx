@@ -36,6 +36,7 @@ describe("LiveRatesPanel", () => {
     const { result } = renderHook(() => {
       return useFxRates();
     });
+
     const { queryByText } = render(
       <PreferencesProvider>
         <LiveRatesPanel

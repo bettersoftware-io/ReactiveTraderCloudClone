@@ -201,12 +201,13 @@ turbo outputs) — `--force` regenerates them.
 
 `pnpm test:ui:visual` is a separate tier that screenshots
 `@rtc/client-react` UI components and pages rendered against **injected fake data**.
-It mounts only `src/ui/**` behind the `HooksProvider` seam — no presenters, no
+It mounts only `src/ui/**` behind the `ViewModelProvider` seam — no presenters, no
 domain use cases, no server, no live streams, no timers — so it tests *rendering
-only*, the exact layer a future SolidJS port would replace. The fixtures,
-scenario manifest, and golden PNGs live in a React-free
-`tests/ui/visual/shared/` core so the same baselines can later gate that
-reimplementation.
+only*, the exact layer the SolidJS port replaced. The fixtures, scenario
+manifest, and golden PNGs live in a React-free `@rtc/ui-contract`'s
+`src/visual/` core (a separate package, consumed as a devDependency) so the
+same baselines gate that reimplementation — `@rtc/client-solid`'s three visual
+tiers assert against these goldens directly, owning none of their own.
 
 ```bash
 pnpm test:ui:visual                                              # all 3 runners vs committed goldens
@@ -217,8 +218,8 @@ pnpm --filter @rtc/client-react test:ui:visual:playwright:react:update
 pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update
 ```
 
-See `packages/client-react/tests/ui/visual/README.md` for the layout and the SolidJS porting
-recipe.
+See `packages/client-react/tests/ui/visual/README.md` for the layout and the SolidJS port's
+execution record (`@rtc/client-solid` runs the same three tiers, assert-only against these goldens).
 
 ### Do I need to start the servers first?
 

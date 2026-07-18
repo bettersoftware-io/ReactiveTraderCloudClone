@@ -480,6 +480,7 @@ export function createBootTopo(scene: BootDrawCtx): BootFrameFn {
           contourY,
           contourSegs[segIdx + 1],
         );
+
         const projB = project(
           contourSegs[segIdx + 2],
           contourY,

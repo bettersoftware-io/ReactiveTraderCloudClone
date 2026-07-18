@@ -5,7 +5,6 @@ import {
   createSimulatorPorts,
   createWsRealPorts,
   HttpAuthAdapter,
-  InMemorySessionStore,
   incident$,
   reconnect$,
   routeIdleLifecycle,
@@ -21,6 +20,7 @@ import {
 
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
+import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
 import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
 import { shouldPlayBootSplash } from "#/bootSplashGate";
 
@@ -28,10 +28,12 @@ export function buildBrowserPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
-  // The skeleton needs no persistence across reloads — an in-memory session
-  // store is enough for the auto-login (see AppRoot.tsx) to keep the shell
-  // authenticated for the tab's lifetime.
-  const sessionStore = new InMemorySessionStore();
+  // localStorage-backed session store (parity with client-react): the AuthGate
+  // sign-in persists under the shared `rtc-session` key, so the session
+  // survives a reload — and the browser e2e suites can boot straight past the
+  // login screen by seeding that same key (tests/browser/authSeed.ts). An
+  // in-memory store would ignore that seed and strand every e2e on LoginScreen.
+  const sessionStore = new LocalStorageSessionStore();
   const colorScheme = new MediaQueryColorSchemeAdapter();
   // One-shot boot-splash decision (webdriver/nosplash suppress it) — read at
   // composition time to seed the BootGatePresenter.
@@ -71,11 +73,14 @@ export function buildBrowserPorts(): AppPorts {
     };
   }
 
-  // Baked skeleton credential — the walking skeleton has no login UI, so the
-  // simulator branch only needs to accept the one demo pair used by
-  // AppRoot's auto-login. Password is the shared committed demo password
-  // (see roster.ts / CLAUDE.md "Demo accounts").
-  const auth = new AuthSimulator({ demo: "mcdc2026" });
+  // Committed demo roster (see roster.ts / CLAUDE.md "Demo accounts"): all four
+  // operators share the demo password so the real LoginScreen accepts any of them.
+  const auth = new AuthSimulator({
+    astark: "mcdc2026",
+    nromanoff: "mcdc2026",
+    tchalla: "mcdc2026",
+    demo: "mcdc2026",
+  });
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
     events: () => {

@@ -55,6 +55,7 @@ describe("createRfqCountdownMachine", () => {
         i === 0 || e.frame !== arr[i - 1].frame || e.value !== arr[i - 1].value
       );
     });
+
     // Expected sequence: 500 @ 0, 400 @ 100, 300 @ 200, 200 @ 300, 100 @ 400
     // (0 is also emitted inclusively but the 0-clamp test covers it separately).
     const ticks = unique.filter((e) => {

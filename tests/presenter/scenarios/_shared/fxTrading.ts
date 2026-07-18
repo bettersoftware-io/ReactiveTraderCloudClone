@@ -49,6 +49,7 @@ async function executeOnFirstPair(
   const price = await firstValueFrom(
     w.ctx.app.presenters.priceStream.price$(pair),
   );
+
   const result = await w.awaitFirstWithin(
     w.ctx.app.presenters.execution.execute({
       pair,
@@ -162,6 +163,7 @@ export async function buyNTimesWithDismissals(
     w.ctx.app.presenters.currencyPairs.pairs$,
     5000,
   );
+
   const gbpjpyOrFirst =
     pairs.find((p) => {
       return p.symbol === "GBPJPY";
@@ -177,6 +179,7 @@ export async function buyNTimesWithDismissals(
     const price = await firstValueFrom(
       w.ctx.app.presenters.priceStream.price$(gbpjpy),
     );
+
     const result = await w.awaitFirstWithin(
       w.ctx.app.presenters.execution.execute({
         pair: gbpjpy,

@@ -34,6 +34,7 @@ describe("new-row flash CSS matches rtc-original (golden)", () => {
       animationTimingFunction,
       animationIterationCount,
     } = c.expected;
+
     // Build shorthand from only the defined fields so optional iteration count
     // (default 1, omitted from shorthand) does not produce a literal "undefined".
     const parts = [

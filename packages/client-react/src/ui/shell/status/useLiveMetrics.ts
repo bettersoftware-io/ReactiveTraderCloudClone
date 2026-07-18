@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 
 import { computeFps, formatHeapMb, fpsTone } from "@rtc/motion-core";
+import { useViewModel } from "@rtc/react-bindings";
 
 import { type LiveMetrics, LiveMetricsContext } from "./LiveMetricsContext";
 
@@ -27,14 +28,19 @@ function readHeapBytes(): number | null {
  * time-gated inside the loop via `performance.now()` — no polling-interval
  * timer, per grep-gate 29). When `LiveMetricsContext` supplies a frozen value
  * (harnesses), the loop never starts and the frozen value is returned — see
- * ADR-005 §②.
+ * ADR-005 §②. Power-saver's Freeze tier (`usePowerSaver().isFreeze`) is
+ * treated the same way: the rAF loop never starts and the readout holds
+ * whatever it last published (there's no meaningful FPS to report while the
+ * app's own animation loops are frozen).
  */
 export function useLiveMetrics(): LiveMetrics {
   const frozen = useContext(LiveMetricsContext);
+  const { usePowerSaver } = useViewModel();
+  const { isFreeze } = usePowerSaver();
   const [live, setLive] = useState<LiveMetrics>(INITIAL);
 
   useEffect(() => {
-    if (frozen) {
+    if (frozen || isFreeze) {
       return;
     }
 
@@ -66,7 +72,7 @@ export function useLiveMetrics(): LiveMetrics {
     return () => {
       cancelAnimationFrame(raf);
     };
-  }, [frozen]);
+  }, [frozen, isFreeze]);
 
   return frozen ?? live;
 }

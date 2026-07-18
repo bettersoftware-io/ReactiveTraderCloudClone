@@ -107,6 +107,7 @@ export class AnalyticsSimulator implements AnalyticsPort {
         currentPositions: STATIC_POSITIONS,
         history: [...this.history],
       };
+
       const updates$ = interval(UPDATE_INTERVAL_MS).pipe(
         map<number, PositionUpdates>(() => {
           this.currentPrice = randomWalkStep(this.currentPrice);

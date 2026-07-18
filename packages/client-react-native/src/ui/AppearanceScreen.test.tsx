@@ -55,16 +55,24 @@ test("shows an ambient toggle wired to useAnimatedBackground", async () => {
 });
 
 test("shows a power-saver toggle wired to usePowerSaver", async () => {
-  const setEnabled = jest.fn();
+  const setLevel = jest.fn();
   await renderScreen(
     fakeViewModel(
       () => {},
       () => {},
-      { powerSaver: { enabled: false, setEnabled, toggle: () => {} } },
+      {
+        powerSaver: {
+          level: "off",
+          isCalm: false,
+          isFreeze: false,
+          setLevel,
+          cycle: () => {},
+        },
+      },
     ),
   );
   await fireEvent.press(screen.getByTestId("appearance-powersaver-toggle"));
-  expect(setEnabled).toHaveBeenCalledWith(true);
+  expect(setLevel).toHaveBeenCalledWith("calm");
 });
 
 test("power-saver caption explains its effect", async () => {
@@ -119,9 +127,11 @@ interface FakeViewModelOverrides {
     toggle: () => void;
   };
   powerSaver?: {
-    enabled: boolean;
-    setEnabled: (v: boolean) => void;
-    toggle: () => void;
+    level: "off" | "calm" | "freeze";
+    isCalm: boolean;
+    isFreeze: boolean;
+    setLevel: (level: "off" | "calm" | "freeze") => void;
+    cycle: () => void;
   };
   reboot?: () => void;
 }
@@ -154,9 +164,11 @@ function fakeViewModel(
     usePowerSaver: () => {
       return (
         overrides.powerSaver ?? {
-          enabled: false,
-          setEnabled: () => {},
-          toggle: () => {},
+          level: "off",
+          isCalm: false,
+          isFreeze: false,
+          setLevel: () => {},
+          cycle: () => {},
         }
       );
     },

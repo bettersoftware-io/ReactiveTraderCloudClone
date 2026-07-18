@@ -80,12 +80,14 @@ describe("rfqCardVm", () => {
         state: { type: "pendingWithPrice", price: 98 },
       },
     ];
+
     const vm = rfqCardVm(
       rfq({ direction: Direction.Buy }),
       quotes,
       [instrument],
       dealers,
     );
+
     const best = vm.quotes.filter((q) => {
       return q.best;
     });
@@ -114,12 +116,14 @@ describe("rfqCardVm", () => {
         state: { type: "pendingWithPrice", price: 101 },
       },
     ];
+
     const vm = rfqCardVm(
       rfq({ direction: Direction.Sell }),
       quotes,
       [instrument],
       dealers,
     );
+
     const best = vm.quotes.filter((q) => {
       return q.best;
     });
@@ -131,6 +135,7 @@ describe("rfqCardVm", () => {
     const quotes: Quote[] = [
       { id: 10, rfqId: 1, dealerId: 2, state: { type: "accepted", price: 97 } },
     ];
+
     const vm = rfqCardVm(
       rfq({ state: RfqState.Closed }),
       quotes,
@@ -183,6 +188,7 @@ describe("rfqCardVm", () => {
       { id: 11, rfqId: 1, dealerId: 2, state: { type: "pendingWithoutPrice" } },
       { id: 12, rfqId: 1, dealerId: 3, state: { type: "passed" } },
     ];
+
     const vm = rfqCardVm(
       rfq({ state: RfqState.Open }),
       quotes,
@@ -215,6 +221,7 @@ describe("rfqCardVm", () => {
         state: { type: "pendingWithPrice", price: 99 },
       },
     ];
+
     const vm = rfqCardVm(
       rfq({ state: RfqState.Cancelled }),
       quotes,
@@ -260,6 +267,7 @@ describe("rfqCardVm", () => {
         state: { type: "rejectedWithPrice", price: 98 },
       },
     ];
+
     const vm = rfqCardVm(
       rfq({ state: RfqState.Closed }),
       quotes,
@@ -278,6 +286,7 @@ describe("rfqCardVm", () => {
         state: { type: "accepted", price: 97 },
       },
     ];
+
     const vm = rfqCardVm(
       rfq({ state: RfqState.Closed }),
       quotes,

@@ -2,27 +2,28 @@ import { describe, expect, it } from "vitest";
 
 import { PreferencesSimulator } from "./PreferencesSimulator.js";
 
-describe("PreferencesSimulator powerSaver", () => {
+describe("PreferencesSimulator powerSaverLevel", () => {
   it("defaults off, replays current, and honours the seed", () => {
-    const seen: boolean[] = [];
+    const seen: string[] = [];
     const sim = new PreferencesSimulator();
-    const sub = sim.powerSaver$().subscribe((on) => {
-      seen.push(on);
+    const sub = sim.powerSaverLevel$().subscribe((level) => {
+      seen.push(level);
     });
-    sim.setPowerSaver(true);
-    sim.setPowerSaver(true); // distinctUntilChanged: no re-emit
-    sim.setPowerSaver(false);
+    sim.setPowerSaverLevel("calm");
+    sim.setPowerSaverLevel("calm"); // distinctUntilChanged: no re-emit
+    sim.setPowerSaverLevel("freeze");
+    sim.setPowerSaverLevel("off");
     sub.unsubscribe();
-    expect(seen).toEqual([false, true, false]);
+    expect(seen).toEqual(["off", "calm", "freeze", "off"]);
 
-    const seeded = new PreferencesSimulator({ powerSaver: true });
-    let current = false;
+    const seeded = new PreferencesSimulator({ powerSaverLevel: "freeze" });
+    let current = "off";
     seeded
-      .powerSaver$()
-      .subscribe((on) => {
-        current = on;
+      .powerSaverLevel$()
+      .subscribe((level) => {
+        current = level;
       })
       .unsubscribe();
-    expect(current).toBe(true);
+    expect(current).toBe("freeze");
   });
 });

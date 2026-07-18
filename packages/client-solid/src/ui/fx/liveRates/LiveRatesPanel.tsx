@@ -18,8 +18,10 @@ import { WatchlistView } from "./WatchlistView";
 import styles from "./LiveRatesPanel.module.css";
 
 export function LiveRatesPanel(): JSX.Element {
-  const { useCurrencyPairs, useViewModePreference } = useViewModel();
+  const { useCurrencyPairs, useViewModePreference, usePowerSaver } =
+    useViewModel();
   const pairs = useCurrencyPairs();
+  const { isFreeze } = usePowerSaver();
   // ViewMode persistence lives behind the seam (PreferencesPort); the CHARTS
   // chip in LiveRatesHead is the only writer. The category filter stays
   // local — it's transient view state, not a persisted preference.
@@ -40,7 +42,7 @@ export function LiveRatesPanel(): JSX.Element {
     () => {
       return [filter()];
     },
-    { enter: true, exit: true },
+    { enter: true, exit: true, freeze: isFreeze },
   );
 
   return (

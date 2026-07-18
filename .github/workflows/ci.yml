@@ -2,9 +2,10 @@ name: CI
 
 # Fast gates (typecheck, unit tests, build, the architecture + supply-chain
 # grep/audit gates) plus the full e2e suite. The e2e job is the heavy one (real
-# Cypress binary, Playwright Chromium, xvfb, the 10-way parallel orchestration in
-# tests/scripts/run-all.ts); it runs alongside the fast jobs so it never slows
-# them down.
+# Cypress binary, Playwright Chromium, xvfb, the 12-way parallel orchestration in
+# tests/scripts/run-all.ts — 6 non-browser suites + 6 browser suites, the last
+# two of which are the Solid client's playwright/playwright-cucumber peers);
+# it runs alongside the fast jobs so it never slows them down.
 #
 # The ~20-min visual-diff gate is DELIBERATELY NOT here: it runs post-merge only,
 # in its own workflow (.github/workflows/visual.yml, triggered on push to main),
@@ -91,6 +92,9 @@ jobs:
       - name: Presenter manifest drift (web ↔ React Native)
         run: pnpm check:manifest-drift
 
+      - name: Lint-warnings ledger drift (docs/lint-warnings.md)
+        run: pnpm check:lint-warnings-drift
+
       - name: Version consistency (manypkg + syncpack)
         run: pnpm check:versions
 
@@ -165,7 +169,7 @@ jobs:
     name: e2e (browser · presenter · fullstack)
     runs-on: ubuntu-latest
     env:
-      # The 2-vCPU runner can't sustain the 10-way parallel orchestration (it
+      # The 2-vCPU runner can't sustain the 12-way parallel orchestration (it
       # starves the timing-sensitive WS smoke + cypress into timeouts). Cap the
       # pool to 2 suites at a time — slower wall-clock, but reliable. run-all.ts
       # defaults to fully parallel when this is unset (multi-core dev boxes).
@@ -216,7 +220,7 @@ jobs:
       # Invoke through turbo (root script = `turbo run test:e2e`, NOT
       # `pnpm --filter`) so the task's dependsOn ["build"] builds every workspace
       # lib first — the suites import @rtc/{domain,shared,client,server} via their
-      # dist/. turbo then runs `pnpm gates` + the 10-way parallel orchestrator.
+      # dist/. turbo then runs `pnpm gates` + the 12-way parallel orchestrator.
       #
       # RTC_E2E_SKIP_CYPRESS=1 excludes the two Cypress suites from the CI GATE.
       # Cypress's command-queue model is fundamentally mismatched with this app's

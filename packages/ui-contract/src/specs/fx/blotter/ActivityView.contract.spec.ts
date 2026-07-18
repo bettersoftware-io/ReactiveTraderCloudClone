@@ -32,6 +32,7 @@ describe("Activity feed (FX Blotter's Activity tab)", () => {
       notional: 1_000_000,
       spotRate: 1.09205,
     });
+
     const page = mount(FxBlotterWorkspace, {
       hooks: { useActivity: [entry] },
     });
@@ -51,6 +52,7 @@ describe("Activity feed (FX Blotter's Activity tab)", () => {
       notional: 2_000_000,
       spotRate: 151.203,
     });
+
     const page = mount(FxBlotterWorkspace, {
       hooks: { useActivity: [buy] },
     });
@@ -66,6 +68,7 @@ describe("Activity feed (FX Blotter's Activity tab)", () => {
       status: TradeStatus.Rejected,
       currencyPair: "GBPJPY",
     });
+
     const page = mount(FxBlotterWorkspace, {
       hooks: { useActivity: [entry] },
     });

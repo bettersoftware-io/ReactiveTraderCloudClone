@@ -43,6 +43,7 @@ export class ExecutionSimulator implements ExecutionPort {
         request.currencyPair === REJECTED_PAIR
           ? TradeStatus.Rejected
           : TradeStatus.Done;
+
       const delayMs =
         request.currencyPair === DELAYED_PAIR
           ? DELAYED_PAIR_MS

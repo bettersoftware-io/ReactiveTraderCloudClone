@@ -54,10 +54,12 @@ export class PriceHistoryPresenter {
     const raw = new PriceHistoryUseCase(this.pricing)
       .execute(symbol, retained)
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+
     const shared = raw.pipe(
       conflateWhen(this.powerSaver$, HISTORY_CONFLATION_MS),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
+
     // Seed the retained window at the OUTERMOST layer — after all sharing — so
     // a remounted tile (e.g. a pair filtered back into LiveRates) paints its
     // accumulated sparkline on the first delivered value, without waiting for

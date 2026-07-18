@@ -38,6 +38,7 @@ export function CreditBlotter(): JSX.Element {
     column: null,
     direction: null,
   });
+
   const [filters, setFilters] = createSignal<
     Map<keyof CreditTrade, ColumnFilter<CreditTrade>>
   >(new Map());
@@ -64,6 +65,7 @@ export function CreditBlotter(): JSX.Element {
       return t.tradeId;
     });
   });
+
   const tradeIdsKey = createMemo((): string => {
     return tradeIds().join(",");
   });
@@ -72,6 +74,7 @@ export function CreditBlotter(): JSX.Element {
     key: tradeIdsKey(),
     ids: new Set(tradeIds()),
   };
+
   const [newTradeIds, setNewTradeIds] = createSignal<ReadonlySet<number>>(
     new Set(),
   );
@@ -117,9 +120,11 @@ export function CreditBlotter(): JSX.Element {
   const filtered = createMemo((): readonly CreditTrade[] => {
     return applyFilters(trades(), filters(), quickFilter());
   });
+
   const processedTrades = createMemo((): readonly CreditTrade[] => {
     return applySort(filtered(), sort());
   });
+
   // Keyed by trade id, not the CreditTrade object itself: deriveCreditTrades
   // is a pure function that rebuilds every row as a brand-new object on each
   // recompute (even when only an unrelated RFQ changed), and `<For>` keys by

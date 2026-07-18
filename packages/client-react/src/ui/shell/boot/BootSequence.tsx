@@ -20,8 +20,9 @@ import { createBootTopo } from "./variants/bootTopo";
 import styles from "./BootSequence.module.css";
 
 export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
-  const { useBootSequence } = useViewModel();
+  const { useBootSequence, usePowerSaver } = useViewModel();
   const { state, skip } = useBootSequence(onDone);
+  const { isFreeze } = usePowerSaver();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -35,7 +36,10 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       "(prefers-reduced-motion: reduce)",
     ).matches;
 
-    if (reduce) {
+    // A persisted Freeze preference must never run the boot splash's canvas
+    // rAF loop — same early-return as prefers-reduced-motion, since Freeze is
+    // a stricter opt-in of the same "no imperative motion" contract.
+    if (reduce || isFreeze) {
       return;
     }
 
@@ -86,7 +90,7 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       window.removeEventListener("mousemove", onMove);
       cancelAnimationFrame(raf);
     };
-  }, [state.variant]);
+  }, [state.variant, isFreeze]);
 
   return (
     <div

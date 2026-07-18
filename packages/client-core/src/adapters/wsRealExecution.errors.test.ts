@@ -17,6 +17,7 @@ describe("wsRealExecution :: error paths", () => {
       auth: new AuthSimulator({}),
       sessionStore: new InMemorySessionStore(),
     });
+
     const promise = firstValueFrom(
       ports.execution.executeTrade({
         currencyPair: "EURUSD",

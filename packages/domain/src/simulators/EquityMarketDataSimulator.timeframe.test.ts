@@ -102,6 +102,7 @@ describe("EquityMarketDataSimulator :: timeframe-parameterised candles", () => {
     const hasRealBody = candles.some((c) => {
       return c.open !== c.close;
     });
+
     const hasRealWick = candles.some((c) => {
       return c.high > c.low;
     });

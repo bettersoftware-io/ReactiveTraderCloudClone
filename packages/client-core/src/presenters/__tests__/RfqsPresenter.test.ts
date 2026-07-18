@@ -141,6 +141,7 @@ describe("RfqsPresenter", () => {
     const emissions = await firstValueFrom(
       presenter.quotesForRfq$(5).pipe(toArray()),
     );
+
     const lenOne = emissions.filter((e) => {
       return e.length === 1;
     });

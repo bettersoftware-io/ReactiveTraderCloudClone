@@ -47,6 +47,7 @@ describe("buildViewModelInputs", () => {
     const { presenters } = createApp(
       buildNativePorts({ simulator: true }).ports,
     );
+
     const inputs = buildViewModelInputs(presenters, {
       hub,
       manifest: NATIVE_PRESENTER_MANIFEST,

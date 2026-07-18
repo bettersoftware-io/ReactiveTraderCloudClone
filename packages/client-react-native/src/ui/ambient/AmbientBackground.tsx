@@ -116,6 +116,7 @@ function AuroraBlob({ blob, progress, aurora }: AuroraBlobProps): JSX.Element {
   const cx = useDerivedValue(() => {
     return blob.baseX + blob.sign * (progress.value - 0.5) * BLOB_DRIFT_PX;
   });
+
   const cy = useDerivedValue(() => {
     return blob.baseY + blob.sign * (0.5 - progress.value) * BLOB_DRIFT_PX;
   });

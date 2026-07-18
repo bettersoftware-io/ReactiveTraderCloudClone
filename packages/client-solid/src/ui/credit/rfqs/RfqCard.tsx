@@ -62,6 +62,7 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
   const secs = createMemo((): number => {
     return Math.ceil(remainingMs() / 1000);
   });
+
   // Captured ONCE at component setup (Solid components run their body once
   // per mount, the direct analogue of React's `useState(() => ...)`
   // initializer): the drain bar is a single mount-time CSS animation over

@@ -88,6 +88,7 @@ describe("RateTile", () => {
         overlay={null}
       />,
     );
+
     const flashed = container.querySelector(
       '[data-flash="true"]',
     ) as HTMLElement | null;

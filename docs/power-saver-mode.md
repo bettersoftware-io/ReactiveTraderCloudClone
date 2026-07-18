@@ -1,96 +1,178 @@
 # Power-Saver Mode
 
-One persisted toggle that trades the app's ambient GPU load and price-driven
-re-render rate for headroom on slow hardware — **without** changing any
-functional behaviour or the app's still visuals. It is off by default; the
-full "wow-effect" experience stays the default.
+A persisted, ordered ladder — **Off → Calm → Freeze** — that trades the app's
+ambient GPU load, price-driven re-render rate, and (at the top step) every
+last piece of decorative motion for headroom on slow hardware, **without**
+changing any functional behaviour: the market stays live and readable at
+every step. Off by default; the full "wow-effect" experience stays the
+default. `Freeze ⊇ Calm` — Freeze does everything Calm does, plus more.
 
-- **Toggle it:** the compact `⌁` button in the header control cluster, or the
-  **Preferences → DISPLAY → "Power saver"** row. Both drive the same
-  preference.
-- **Persisted** under the `rtc-power-saver` localStorage key (AsyncStorage on
-  RN), replayed on load with no flash.
-- **Master override:** while on, the cheap path is forced everywhere; your
-  other preferences (animated background, theme skin/mode) are **not**
-  rewritten and return intact when you toggle it back off.
+- **Toggle it:** the compact `⌁` button in the header control cluster cycles
+  `off → calm → freeze → off`; its fill glyph shows the current level
+  (`○` off, `◐` calm, `●` freeze). The **Preferences → DISPLAY → "Power
+  saver"** row is a segmented control `Off | Calm | Freeze` that jumps
+  straight to any level — the back-stop for the cycler's "can't skip a step"
+  limitation, and the screen-reader-friendly path. Both drive the same
+  `powerSaverLevel` preference.
+- **Persisted** under the `rtc-power-saver` key (localStorage on web,
+  AsyncStorage on RN) as the level string, replayed on load with no flash.
+  Legacy stored values from before the Freeze tier are migrated on read:
+  `"true"` → `"calm"`, `"false"` / absent → `"off"`.
+- **Master override:** at any level above Off, the cheap path is forced
+  everywhere; your other preferences (animated background, theme skin/mode)
+  are **not** rewritten and return intact when you drop back to Off.
 
 See also the [rendering performance guide](performance.md) for why this floor
-exists, and the [design spec](superpowers/specs/2026-07-09-power-saver-mode-design.md)
-for the original rationale.
+exists, the [original design spec](superpowers/specs/2026-07-09-power-saver-mode-design.md)
+for the Calm-level rationale, and the
+[Freeze-tier design spec](superpowers/specs/2026-07-18-power-saver-freeze-tier-design.md)
+for the decisions behind this rewrite.
 
 ## What it changes
 
-This table is the maintained source of truth for what the button does. Keep it
-in sync with the implementation when the behaviour changes.
+This table is the maintained source of truth for what each level does. Keep
+it in sync with the implementation when the behaviour changes.
 
-| Element | Full experience (OFF) | Power saver (ON) |
-|---|---|---|
-| Aurora layers, conic sweep, particle dots | rendered, drifting (per the animated-background preference) | **not rendered at all** — the layers are removed from the DOM (absent layers cost no compositing, unlike paused ones) |
-| Background grid + vignette | rendered | **rendered** (static, cheap — keeps the HUD identity) |
-| HUD logo orbit / triangle rotations | spinning | **held still** (`animation-play-state: paused`) |
-| Connection-status dot pulse | pulsing | **held still** (same mechanism) |
-| Neon glows / shadows / gradients | on | **unchanged** (static paint, zero per-frame cost) |
-| Price tick-flash | on | **unchanged** — kept as functional market feedback (compositor-only since the perf round) |
-| Price update rate (tiles) | every tick (~2–4/s per tile) | **conflated** to ≤ ~4/s per tile (250 ms, leading + trailing) |
-| Sparkline / price-history redraw | every tick | **conflated** to ≤ ~1/s (1000 ms) |
+| Element | Off | Calm | **Freeze** |
+|---|---|---|---|
+| Ambient aurora / sweep / dots | rendered | removed from DOM | removed from DOM |
+| Logo spin, connection-dot pulse (`--fx-play`) | animating | paused | frozen |
+| **Price tick-flash** | on | on | **frozen** |
+| Price *number* + directional tint | live | conflated | conflated (same rate as Calm), **tint kept** |
+| **CSS transitions** (panel maximize/restore, hover, modal, chrome) | on | on | **~instant (0.01ms)** |
+| **FLIP tile/row reorder, rank-glide** (WAAPI) | glide | glide | **snap, no glide** |
+| **Spinners, infinite pulses, row-flash keyframes** | on | on | **frozen** |
+| FPS-meter `rAF` loop | running | running | **paused** |
+| Boot splash canvas | plays | plays | **skipped** (persisted Freeze) |
+| Static neon (box/text-shadow), grid, vignette | on | on | **kept** |
+| Countdown fill bars (RFQ / credit) | animate | animate | **frozen bar — expiry still fires** |
 
-**Net effect:** roughly 3–5 % GPU / ~3 % renderer at steady state (down from
-~35 % of one core on a 120 Hz display), while the app stays fully functional
-and visually recognisable — dark HUD, glows, and tick-flashes remain; it is
-just still and calm.
+**Countdown-bar trade-off:** the RFQ/credit countdown *fill bar* stops
+sweeping under Freeze — the one accepted feedback loss. The expiry itself is
+timer/data-driven, not tied to the visual sweep, so it **still fires on
+time**; only the visual countdown is lost.
+
+**Net effect (Calm, measured):** roughly 3–5 % GPU / ~3 % renderer at steady
+state (down from ~35 % of one core on a 120 Hz display), while the app stays
+fully functional and visually recognisable. Freeze removes the app's
+remaining per-frame work on top of that — see below for why that matters on
+hardware Calm alone doesn't fix.
+
+## Why a Freeze tier exists
+
+Calm was built on a "compositor-friendly" premise: `opacity`/`transform`
+animations — the tick-flash, FLIP glides, panel transitions — are handed to
+the GPU compositor and cost the main thread nothing, so Calm left them
+running. That premise holds on any machine with a GPU. It does **not** hold
+on a GPU-less Citrix / VDI thin client.
+
+On a normal machine, the browser's compositor thread composites animated
+layers directly on the GPU — the CPU is not involved once the layer exists.
+On a GPU-less VDI box **there is no compositor**: the whole desktop,
+including every "compositor-only" animation, is rasterised on the **CPU**,
+then that rasterised frame is encoded (e.g. H.264) and streamed over the
+network to the thin client as pixels. A tick-flash that is free on a laptop
+becomes, on Citrix, a continuous **CPU-rasterise-plus-encode tax** — repeated
+for every tile, on every tick, for as long as the market moves. Calm's
+conflation slows the *rate* of that work; it does not remove it. Multiplied
+across a blotter full of tiles, that residual per-frame cost is what still
+makes the app "very junky" on real GPU-less hardware even with Calm on.
+
+The fix isn't to make the motion cheaper — there's no cheaper primitive to
+fall back to once you're off the compositor. The fix is to **stop the
+per-frame work from happening at all**, which is what Freeze opts into.
+
+Two things Freeze deliberately does *not* take away:
+
+- **The numbers stay live.** A tile carries three signals on a price change:
+  the number (plain text), a directional tint (static colour), and the
+  tick-flash (a fading colour overlay). Freeze stops only the tick-flash — a
+  pure animation — and reuses Calm's conflation for the number and keeps the
+  tint. You lose the shimmer, not the market.
+- **Static neon stays.** Once the UI is frozen and prices are conflated,
+  repaints are rare — so a static `box-shadow` / `text-shadow` glow costs
+  almost nothing to keep painted, and it's what makes the HUD still look like
+  Reactive Trader rather than a plain data grid.
 
 ## How it works
 
-- **Preference:** a `powerSaver` boolean on `PreferencesPort`
-  (domain), persisted by each client adapter, exposed to the app layer by
-  `PowerSaverPresenter` and to React by the `usePowerSaver()` view-model hook.
-- **Visual gating (two mechanisms):**
-  - `PowerSaverRoot` (a document-effect component) writes
-    `data-power-saver` and the inherited `--fx-play` custom property
-    (`paused` / `running`) on `<html>`. Every decorative CSS animation reads
-    `animation-play-state: var(--fx-play, running)`, so they all still
-    together from one place — the same idiom as the ambient-background
-    `--amb-play` variable.
-  - `AmbientBackground` reads `usePowerSaver()` directly and **removes** the
-    aurora / sweep / dots layers from the DOM (cheaper than pausing them).
-- **Data-rate gating:** a small `conflateWhen(flag$, ms)` RxJS operator wraps
-  the cached price and price-history streams in `client-core`. While the flag
-  is on it throttles (leading + trailing) to one emission per `ms`; while off
-  it passes through untouched, switching live on toggle. Because the
-  `AnimationDirector` derives tick intents from the same conflated stream,
-  flash frequency conflates automatically — no separate wiring.
+- **Preference:** `PowerSaverLevel` (`"off" | "calm" | "freeze"`, an ordered
+  enum) on `PreferencesPort` (domain), persisted by each client adapter,
+  exposed to the app layer by `PowerSaverPresenter` as two derived streams:
+  `isCalm$` (`level !== "off"`, drives everything Calm does today — unchanged
+  behaviour, unchanged rates) and `isFreeze$` (`level === "freeze"`, drives
+  everything below). Freeze reuses Calm's conflation verbatim; there is no
+  separate Freeze-specific throttle.
+- **`PowerSaverRoot`** (a document-effect component, React and Solid) writes
+  the level string to `data-power-saver` on `<html>`, plus the inherited
+  `--fx-play` custom property (`paused`/`running`) that Calm already used.
+- **Global CSS catch-all (Approach A — not per-file gating):** each web
+  client's non-module global stylesheet (`index.css`) carries:
 
-> **Note:** `conflateWhen` multicasts its source with a deferred refcount reset
-> (`share({ resetOnRefCountZero: () => timer(0) })`) so a toggle does **not**
-> tear down and re-subscribe the underlying stream — the price-history rolling
-> buffer survives a flip. See the operator's tests for the regression guard.
+  ```css
+  [data-power-saver="freeze"] *,
+  [data-power-saver="freeze"] *::before,
+  [data-power-saver="freeze"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  ```
 
-## Non-goals (current design)
+  This is the deliberate choice over per-file gating: the whole point of
+  "freeze *everything*" is that motion added to the app **later** is frozen
+  automatically, which only a catch-all guarantees.
 
-- **No auto-detection.** Manual toggle only — no Battery/`deviceMemory`
-  heuristics.
-- **Live prices stay visible.** Power saver calms the *rate* of price updates
-  and stills *decorative* motion, but deliberately keeps the price tick-flash
-  and the moving numbers — the point is to cut GPU load, not to blind you to
-  the market. (See "Future iterations" for when we might revisit this.)
-- **No new low-power theme skin** — it composes with every skin.
-- **No server/protocol changes** — conflation is client-side, in the
-  presenters.
+  **`0.01ms`, not `none`.** Setting the duration to (near-)zero rather than
+  disabling animation entirely keeps two things working that `animation: none`
+  would break: `forwards`-filled animations still resolve to their end state
+  (fill confirmations, a countdown bar landing on "done"), and
+  `animationend` / `transitionend` still fire — so any JS choreography
+  waiting on those events does not hang.
+- **JS gates (CSS can't reach imperative motion):**
+  - **WAAPI** — `useFlipGrid` (tile/row FLIP glide, enter/exit) and
+    `useRankGlide` (watchlist rank glide + highlight) already contained a
+    `prefersReducedMotion()` no-op branch that snaps elements to their final
+    position instead of calling `element.animate()`. Freeze threads `isFreeze`
+    into that same branch — it reuses the reduced-motion no-op rather than
+    adding a parallel code path.
+  - **rAF** — `useLiveMetrics`'s permanent `requestAnimationFrame` loop for
+    the FPS/MEM HUD readout is paused under Freeze; it shows the last sampled
+    value instead of continuing to sample every frame.
+  - **Boot** — `BootSequence` already skips its `rAF` canvas splash under
+    `prefers-reduced-motion`. Because a persisted Freeze level is read before
+    first paint (no flash), `PowerSaverRoot` sets the attribute early enough
+    that `BootSequence` reuses the same skip path — a Freeze session never
+    runs the boot animation.
+  - Solid has the parallel gates in its hook/binding equivalents; the same
+    global CSS block is duplicated in Solid's `index.css`.
+
+## Non-goals
+
+- **No auto-detection.** Every level is a manual choice — no Battery /
+  `deviceMemory` heuristics select Calm or Freeze automatically.
+- **No further price slowdown in Freeze.** Freeze reuses Calm's conflation
+  rates as-is; it removes the *flash*, not the *data* — prices update at the
+  same conflated cadence as Calm.
+- **No new low-power theme skin.** Every level composes with every skin.
+- **No server/protocol changes.** Both conflation and the Freeze gates are
+  client-side, in the presenters and the UI shell.
+- **RN Freeze visuals are deferred.** React Native accepts and persists the
+  `PowerSaverLevel` enum (parity on the preference plumbing) but currently
+  renders Freeze the same as Calm — no CSS-catch-all equivalent, no RN-side
+  motion gating yet. Tracked in [STATUS.md](STATUS.md) and the
+  [RN mobile-v1 rehaul spec](superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md).
 
 ## Future iterations
 
-Ideas we may pursue if the current mode isn't enough — captured here so we
-track them rather than re-discovering them:
-
-- **Aggressive "freeze everything" tier.** If performance on GPU-less VDI /
-  Citrix boxes is still poor with power saver on, add a stronger step that
-  *also* stills the price tick-flash and further conflates (or pauses) price
-  motion — accepting reduced live-market feedback in exchange for the last
-  slice of render cost. This is a deliberate scope extension beyond the
-  current "keep the market visible" design, gated on real measurements from
-  those environments.
-- **Instant refresh on toggle.** After the `conflateWhen` resubscribe fix,
-  flipping power saver *on* no longer emits an instant "leading" replay of the
-  current price — the first throttled emission waits for the next real tick.
-  This is arguably more correct, but if a future UX wants an immediate refresh
-  when toggling, it would need an explicit replay-on-flip.
+- **Aggressive "freeze everything" tier — SHIPPED.** This is that tier: on
+  top of Calm, Freeze also stills the price tick-flash, snaps FLIP/rank-glide
+  instead of animating it, and collapses every CSS transition/keyframe to a
+  near-zero duration — trading the last slice of decorative feedback for the
+  render cost that still hurt GPU-less Citrix/VDI boxes with only Calm on.
+- **Instant refresh on toggle.** *(still open)* After the `conflateWhen`
+  resubscribe fix, flipping power saver on no longer emits an instant
+  "leading" replay of the current price — the first throttled emission waits
+  for the next real tick. This is arguably more correct, but if a future UX
+  wants an immediate refresh when jumping to Calm or Freeze, it would need an
+  explicit replay-on-flip.

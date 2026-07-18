@@ -19,13 +19,23 @@ import { AmbientBackground } from "./AmbientBackground";
 describe("AmbientBackground — animated-background preference", () => {
   it("flips --amb-play (and data-animated) live when the preference toggles after mount", () => {
     const [enabled, setEnabled] = createSignal(false);
-    const [powerSaver] = createSignal(false);
+    const [level] = createSignal("off");
     const hooks = {
       useAnimatedBackground: () => {
         return { enabled, setEnabled: vi.fn(), toggle: vi.fn() };
       },
       usePowerSaver: () => {
-        return { enabled: powerSaver, setEnabled: vi.fn(), toggle: vi.fn() };
+        return {
+          level,
+          isCalm: () => {
+            return level() !== "off";
+          },
+          isFreeze: () => {
+            return level() === "freeze";
+          },
+          setLevel: vi.fn(),
+          cycle: vi.fn(),
+        };
       },
     } as unknown as ViewModel;
 

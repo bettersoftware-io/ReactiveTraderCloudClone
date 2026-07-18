@@ -16,6 +16,7 @@ export function useMenus(): MenusApi {
       return prev === name ? null : name;
     });
   }, []);
+
   const close = useCallback(() => {
     setOpen(null);
   }, []);

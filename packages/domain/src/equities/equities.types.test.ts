@@ -22,6 +22,7 @@ describe("equities entities", () => {
       name: "Apple Inc.",
       exchange: "NASDAQ",
     };
+
     const quote: EquityQuote = {
       symbol: "AAPL",
       bid: 189.9,
@@ -30,6 +31,7 @@ describe("equities entities", () => {
       changePct: 0.42,
       timestamp: 1_700_000_000_000,
     };
+
     const candle: Candle = {
       time: 1_700_000_000_000,
       open: 189.5,
@@ -47,6 +49,7 @@ describe("equities entities", () => {
       "cancelled",
       "rejected",
     ];
+
     const order: EquityOrder = {
       id: "o-1",
       symbol: "AAPL",
@@ -58,6 +61,7 @@ describe("equities entities", () => {
       filledQty: 0,
       createdAt: 1_700_000_000_000,
     };
+
     const position: EquityPosition = {
       symbol: "AAPL",
       qty: 100,
