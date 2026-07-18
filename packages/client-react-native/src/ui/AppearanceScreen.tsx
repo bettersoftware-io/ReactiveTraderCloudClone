@@ -34,6 +34,7 @@ export function AppearanceScreen(): JSX.Element {
     useThemeSkinPreference,
     useAnimatedBackground,
     usePowerSaver,
+    useAmbientStyle,
     useBootGate,
   } = useViewModel();
   const { mode, modePreference, cycle } = useThemePreference();
@@ -42,6 +43,7 @@ export function AppearanceScreen(): JSX.Element {
     useAnimatedBackground();
   const { enabled: powerSaverEnabled, setEnabled: setPowerSaverEnabled } =
     usePowerSaver();
+  const { style: ambientStyle, setStyle } = useAmbientStyle();
   const { reboot } = useBootGate();
   const styles = useThemedStyles(makeStyles);
 
@@ -175,6 +177,34 @@ export function AppearanceScreen(): JSX.Element {
               {ambientEnabled ? "ON" : "OFF"}
             </Text>
           </Pressable>
+        </BlurCard>
+        <BlurCard mode={mode}>
+          <View style={styles.segmented}>
+            <Pressable
+              testID="appearance-ambient-aurora"
+              style={
+                ambientStyle === "aurora"
+                  ? styles.segmentActive
+                  : styles.segment
+              }
+              onPress={() => {
+                setStyle("aurora");
+              }}
+            >
+              <Text style={styles.segmentLabel}>Aurora</Text>
+            </Pressable>
+            <Pressable
+              testID="appearance-ambient-rays"
+              style={
+                ambientStyle === "rays" ? styles.segmentActive : styles.segment
+              }
+              onPress={() => {
+                setStyle("rays");
+              }}
+            >
+              <Text style={styles.segmentLabel}>Rays</Text>
+            </Pressable>
+          </View>
         </BlurCard>
         <BlurCard mode={mode}>
           <Pressable

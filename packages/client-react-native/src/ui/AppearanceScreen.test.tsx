@@ -98,6 +98,21 @@ test("segmented dark/light control presses dark and drives cycle() the right num
   expect(cycle).toHaveBeenCalledTimes(1);
 });
 
+test("shows an ambient style segmented control wired to useAmbientStyle", async () => {
+  const setStyle = jest.fn();
+  await renderScreen(
+    fakeViewModel(
+      () => {},
+      () => {},
+      { ambientStyle: { style: "aurora", setStyle } },
+    ),
+  );
+  expect(screen.getByTestId("appearance-ambient-aurora")).toBeTruthy();
+  expect(screen.getByTestId("appearance-ambient-rays")).toBeTruthy();
+  await fireEvent.press(screen.getByTestId("appearance-ambient-rays"));
+  expect(setStyle).toHaveBeenCalledWith("rays");
+});
+
 test("replay-boot triggers the boot-replay seam (useBootGate().reboot())", async () => {
   const reboot = jest.fn();
   await renderScreen(
@@ -122,6 +137,10 @@ interface FakeViewModelOverrides {
     enabled: boolean;
     setEnabled: (v: boolean) => void;
     toggle: () => void;
+  };
+  ambientStyle?: {
+    style: "aurora" | "rays";
+    setStyle: (s: "aurora" | "rays") => void;
   };
   reboot?: () => void;
 }
@@ -159,6 +178,9 @@ function fakeViewModel(
           toggle: () => {},
         }
       );
+    },
+    useAmbientStyle: () => {
+      return overrides.ambientStyle ?? { style: "aurora", setStyle: () => {} };
     },
     useBootGate: () => {
       return {
