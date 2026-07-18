@@ -1,0 +1,23 @@
+appId: io.bettersoftware.rtcmobile
+---
+# Step 1: load the Metro bundle via the dev client (two-step deep link).
+- openLink:
+    link: "exp+rtc-mobile://expo-development-client/?url=http://localhost:${MAESTRO_METRO_PORT}"
+- extendedWaitUntil:
+    visible:
+      id: "visual-pending|visual-ready"
+    timeout: 20000
+# Step 2: in-app navigation to the scenario route (release scheme).
+- openLink:
+    link: "rtcmobile://__visual/shell/connection-banner"
+# Dismiss the iOS 'Open in RTC Mobile?' confirmation if it appears.
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+# Maestro CAN query the a11y tree (XCUITest) — unlike simctl/idb. If this
+# assert proves flaky on-device, fall back to a fixed wait (bake-off note).
+- assertVisible:
+    id: "visual-ready"
+- takeScreenshot: shots/shell_connection-banner

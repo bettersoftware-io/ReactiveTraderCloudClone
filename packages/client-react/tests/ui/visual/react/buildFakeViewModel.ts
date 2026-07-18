@@ -14,6 +14,8 @@ import {
 // Phase 3 regenerates them for the new skins.
 const DEFAULT_THEME_SKIN_FOR_FIXTURES = "classic" as const;
 
+import type { AppData } from "@ui-visual-shared/appData";
+
 import type {
   BootSequenceState,
   NotionalView,
@@ -21,8 +23,6 @@ import type {
 } from "@rtc/client-core";
 import { createDefaultLayoutPort, type WorkspaceTab } from "@rtc/client-core";
 import type { ViewModel } from "@rtc/react-bindings";
-
-import type { AppData } from "../shared/appData";
 
 function noop(): void {}
 

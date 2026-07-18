@@ -24,6 +24,10 @@
     "smoke:ws": "tsx scripts/liveWsSmoke.ts",
     "test:rn:visual:simctl": "tsx tests/visual/simctl/run.ts",
     "test:rn:visual:simctl:update": "tsx tests/visual/simctl/run.ts --update",
+    "test:rn:visual:maestro": "tsx tests/visual/maestro/run.ts",
+    "test:rn:visual:maestro:update": "tsx tests/visual/maestro/run.ts --update",
+    "test:rn:visual:owl": "owl build --platform ios && owl test --platform ios",
+    "test:rn:visual:owl:update": "owl test --platform ios --update",
     "clean": "rm -rf dist .turbo .expo *.tsbuildinfo node_modules/.cache 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules ios android 2>/dev/null || true)"
   },
@@ -73,6 +77,7 @@
     "jest-expo": "^57.0.1",
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0",
+    "react-native-owl": "^1.5.0",
     "test-renderer": "^1.2.0",
     "tsx": "^4",
     "typescript": "^6",

@@ -76,15 +76,40 @@ jobs:
       # dependsOn ["^build"] runs first: the visual harness imports the
       # @rtc/domain / @rtc/shared workspace libs via their built dist/, which a
       # fresh checkout hasn't produced. A direct `pnpm --filter` call bypasses
-      # turbo's graph and fails to resolve @rtc/domain.
-      # Full theme matrix (5 skins × dark/light, ~1222 scenarios × 3 tiers, all
-      # serial per RTC_VISUAL_MAX_PARALLEL=1 / CT workers:1) makes this a long run
-      # (~20 min) — which is exactly why it's post-merge and not a PR gate.
-      - name: Visual diffs (playwright-ct + playwright + vitest-browser)
-        run: pnpm test:ui:visual
+      # turbo's graph and fails to resolve @rtc/domain. `--filter=@rtc/...`
+      # HERE is turbo's own package-scoping flag (forwarded through the root
+      # `test:ui:visual` script to `turbo run test:ui:visual`), not pnpm's —
+      # it still goes through turbo, so dependsOn still runs first.
+      #
+      # React and solid run as TWO separate steps (not one unfiltered
+      # `pnpm test:ui:visual`, which would let turbo schedule both packages'
+      # browser stacks concurrently) — each tier stands up its own
+      # Chromium + Vite dev server(s), and this job's RTC_VISUAL_MAX_PARALLEL=1
+      # only bounds a single package's OWN run-all.ts, not cross-package turbo
+      # scheduling. Splitting into two filtered, sequential steps keeps the
+      # whole job's browser-stack concurrency at exactly one, matching the
+      # same oversubscription lesson as RTC_VISUAL_MAX_PARALLEL and the CT
+      # workers:1 pin.
+      # Full theme matrix (5 skins × dark/light, ~1222 scenarios × 3 tiers per
+      # package, all serial per RTC_VISUAL_MAX_PARALLEL=1) makes each step a
+      # long run (~20 min) — which is exactly why this job is post-merge and
+      # not a PR gate.
+      - name: Visual diffs — react (playwright-ct + playwright + vitest-browser)
+        run: pnpm test:ui:visual --filter=@rtc/client-react
+
+      # Solid owns NO goldens of its own — every scenario here asserts against
+      # react's COMMITTED goldens (see each solid tier's config header). A red
+      # run here means either a solid-side rendering/framing regression or a
+      # react-side golden that hasn't been regenerated yet for a recent
+      # scenario change — never a signal to add a solid golden.
+      - name: Visual diffs — solid (playwright-ct fallback + playwright + vitest-browser)
+        run: pnpm test:ui:visual --filter=@rtc/client-solid
 
       # On a mismatch, publish the actual-vs-expected images so the regression (or
-      # an intended change awaiting golden regen) can be inspected.
+      # an intended change awaiting golden regen) can be inspected. Solid's own
+      # diff/report artifacts stay inside its own reports/ tree (its tiers never
+      # write into client-react's __screenshots__/, so react's actual/diff/
+      # reference globs below are exhaustive for that package).
       - name: Upload visual diff report on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -95,5 +120,6 @@ jobs:
             packages/client-react/tests/ui/visual/**/__screenshots__/**/*-actual.png
             packages/client-react/tests/ui/visual/**/__screenshots__/**/*-diff.png
             packages/client-react/tests/ui/visual/**/__screenshots__/**/*-reference.png
+            packages/client-solid/reports/
           if-no-files-found: ignore
           retention-days: 7

@@ -1,3 +1,4 @@
+import { fixtures } from "@ui-visual-shared/fixtures";
 import type { CSSProperties, ReactElement } from "react";
 
 import type { LayoutState } from "@rtc/client-core";
@@ -46,8 +47,6 @@ import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
-
-import { fixtures } from "../shared/fixtures";
 
 const fxState: LayoutState = createDefaultLayoutPort("fx").initial;
 

@@ -3,7 +3,7 @@
 // all three tiers (plain-Playwright, vitest-browser, and the data-driven
 // playwright-ct matrix.spec.tsx) share this table via `scenarioActionFor`.
 
-import { baseScenarioName } from "@ui-visual-shared/goldenPath";
+import { baseScenarioName } from "./goldenPath";
 
 // A single ordered interaction step for multi-step scenarios (form fill, open a
 // filter popover then apply it). Runner-neutral: keyed on testids + literal

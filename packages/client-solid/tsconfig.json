@@ -9,7 +9,16 @@
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "paths": { "#/*": ["./src/*"] }
+    // "@ui-visual-shared" is unused by anything under `include` (src/ only) —
+    // it's here solely so knip's TypeScript path resolution (which discovers
+    // this default tsconfig.json, not the extra no-emit
+    // tsconfig.ui-visual.json) can resolve it for the vitest-browser tier's
+    // harness files. Mirrors client-react's tsconfig.json exactly.
+    "paths": {
+      "#/*": ["./src/*"],
+      "@ui-visual-shared": ["../ui-contract/src/visual"],
+      "@ui-visual-shared/*": ["../ui-contract/src/visual/*"]
+    }
   },
   "include": ["src"],
   "references": [

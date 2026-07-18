@@ -1,3 +1,10 @@
+import { fixtures } from "@ui-visual-shared/fixtures";
+// Side-effect import: pins the wall clock before anything below renders. This
+// module is the single import surface every tier routes through (vitest-
+// browser's spec, the plain-Playwright host, and every playwright-ct spec all
+// import VisualScenario via "@ui-visual" → react/index.ts → here), so freezing
+// the clock here freezes it identically in all three — see freezeClock.ts.
+import "@ui-visual-shared/freezeClock";
 import { scenarios } from "@ui-visual-shared/scenarios";
 import { type ReactElement, useEffect, useState } from "react";
 
@@ -11,13 +18,6 @@ import {
 } from "#/ui/shell/status/LiveMetricsContext";
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
-import { fixtures } from "../shared/fixtures";
-// Side-effect import: pins the wall clock before anything below renders. This
-// module is the single import surface every tier routes through (vitest-
-// browser's spec, the plain-Playwright host, and every playwright-ct spec all
-// import VisualScenario via "@ui-visual" → react/index.ts → here), so freezing
-// the clock here freezes it identically in all three — see freezeClock.ts.
-import "../shared/freezeClock";
 import { buildFakeViewModel } from "./buildFakeViewModel";
 // Register the app's real @fontsource web fonts so goldens render in the app's
 // fonts, not the fallback system stack, and pull in the (weight, family) list we
