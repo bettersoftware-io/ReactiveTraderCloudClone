@@ -206,6 +206,13 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         cycle: noop,
       };
     },
+    useForceBootAnimation: () => {
+      return {
+        enabled: false,
+        setEnabled: noop,
+        toggle: noop,
+      };
+    },
     useViewModePreference: () => {
       return {
         viewMode: data.viewMode ?? DEFAULT_VIEW_MODE,

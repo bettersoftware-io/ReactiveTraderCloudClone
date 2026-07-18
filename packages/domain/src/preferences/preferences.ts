@@ -74,6 +74,9 @@ export const DEFAULT_VIEW_MODE: ViewMode = "chart";
  * choice (persisted under `rtc-animated-bg`); OS `prefers-reduced-motion` still
  * overrides it to static regardless. */
 export const DEFAULT_ANIMATED_BACKGROUND = true;
+/** Force the boot-splash animation to play even under prefers-reduced-motion.
+ * Default false: absent an explicit opt-in, honour the accessibility signal. */
+export const DEFAULT_FORCE_BOOT_ANIMATION = false;
 export const DEFAULT_CREDIT_RFQ_FILTER: CreditRfqFilter = "live";
 export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
 export const DEFAULT_EQ_WATCHLIST_SORT: EqWatchlistSort = "chg";
