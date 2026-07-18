@@ -219,6 +219,7 @@ const MAIN: readonly LonLat[] = [
   [10.5, 56.2],
   [10.3, 56.7],
 ];
+
 const GB: readonly LonLat[] = [
   [-5.7, 50.1],
   [-5.0, 50.1],
@@ -280,6 +281,7 @@ const GB: readonly LonLat[] = [
   [-4.5, 50.9],
   [-5.7, 50.1],
 ];
+
 const IRE: readonly LonLat[] = [
   [-6.1, 52.1],
   [-6.0, 52.9],
@@ -307,6 +309,7 @@ const IRE: readonly LonLat[] = [
   [-8.0, 51.75],
   [-7.0, 52.1],
 ];
+
 const DKZ: readonly LonLat[] = [
   [10.9, 55.7],
   [11.3, 55.95],
@@ -317,6 +320,7 @@ const DKZ: readonly LonLat[] = [
   [11.3, 55.2],
   [10.9, 55.4],
 ];
+
 const SIC: readonly LonLat[] = [
   [12.4, 37.8],
   [13.1, 38.1],
@@ -331,6 +335,7 @@ const SIC: readonly LonLat[] = [
   [13.5, 37.1],
   [12.6, 37.6],
 ];
+
 const SAR: readonly LonLat[] = [
   [8.2, 40.9],
   [8.5, 41.2],
@@ -343,6 +348,7 @@ const SAR: readonly LonLat[] = [
   [8.4, 39.7],
   [8.15, 40.3],
 ];
+
 const COR: readonly LonLat[] = [
   [8.6, 42.4],
   [9.0, 42.7],
@@ -444,18 +450,21 @@ export function createBootGeo(scene: BootDrawCtx): BootFrameFn {
           -((gridX - 0.41) * (gridX - 0.41) + (gridZ - 0.15) * (gridZ - 0.15)) /
             0.016,
         );
+
       const pyreneesHeight =
         0.11 *
         Math.exp(
           -((gridX + 0.24) * (gridX + 0.24) + (gridZ - 0.52) * (gridZ - 0.52)) /
             0.006,
         );
+
       const highlandsHeight =
         0.09 *
         Math.exp(
           -((gridX + 0.58) * (gridX + 0.58) + (gridZ + 0.9) * (gridZ + 0.9)) /
             0.006,
         );
+
       const noise =
         0.03 * Math.sin(gridX * 9.1 + gridZ * 5.3) +
         0.025 * Math.sin(gridX * 4.2 - gridZ * 7.7);
@@ -777,6 +786,7 @@ export function createBootGeo(scene: BootDrawCtx): BootFrameFn {
       function arcPoint(frac: number): GeoProjected {
         const worldX =
           fromCity.worldX + (toCity.worldX - fromCity.worldX) * frac;
+
         const worldZ =
           fromCity.worldZ + (toCity.worldZ - fromCity.worldZ) * frac;
         const y = GY - 4 * lift * frac * (1 - frac);

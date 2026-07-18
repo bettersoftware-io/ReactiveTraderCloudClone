@@ -23,11 +23,13 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
   const { useAnimatedBackground, usePowerSaver } = useViewModel();
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
+
   const { level: powerSaverLevel, setLevel: setPowerSaverLevel } =
     usePowerSaver();
 
   const [toggles, setToggles] =
     createSignal<Record<string, boolean>>(INITIAL_TOGGLES);
+
   const [segments, setSegments] =
     createSignal<Record<string, string>>(INITIAL_SEGMENTS);
 

@@ -59,17 +59,21 @@ export function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   const changePct = createMemo((): number | undefined => {
     return quote()?.changePct;
   });
+
   const rowUp = createMemo((): boolean => {
     return (changePct() ?? 0) >= 0;
   });
+
   const lastText = createMemo((): string => {
     const last = quote()?.last;
     return last !== undefined ? last.toFixed(2) : "—";
   });
+
   const changeText = createMemo((): string => {
     const pct = changePct();
     return pct !== undefined ? `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%` : "—";
   });
+
   const pulseKey = createMemo((): number | false => {
     const t = tick();
     return t.nonce > 0 ? t.nonce : false;

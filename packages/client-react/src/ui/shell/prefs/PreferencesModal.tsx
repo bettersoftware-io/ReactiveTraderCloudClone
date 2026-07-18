@@ -25,11 +25,13 @@ export function PreferencesModal({
   const { useAnimatedBackground, usePowerSaver } = useViewModel();
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
+
   const { level: powerSaverLevel, setLevel: setPowerSaverLevel } =
     usePowerSaver();
 
   const [toggles, setToggles] =
     useState<Record<string, boolean>>(INITIAL_TOGGLES);
+
   const [segments, setSegments] =
     useState<Record<string, string>>(INITIAL_SEGMENTS);
 

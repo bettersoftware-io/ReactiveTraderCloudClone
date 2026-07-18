@@ -45,6 +45,7 @@ export function LayoutEngineHost(props: LayoutEngineHostProps): JSX.Element {
   const port: LayoutPort = props.pinnedFixture
     ? pinnedFixtureLayoutPort
     : createDefaultLayoutPort("fx");
+
   const { state, maximize, restore, collapse, expand, resize } = useMachine(
     () => {
       return createLayoutMachine(port);

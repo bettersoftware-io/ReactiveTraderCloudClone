@@ -167,6 +167,7 @@ test("hydrates a stored eqWatchlistSort and eqBlotterView after construction", a
   const hydratedSort$ = firstValueFrom(
     prefs.eqWatchlistSort$().pipe(skip(1), take(1)),
   );
+
   const hydratedView$ = firstValueFrom(
     prefs.eqBlotterView$().pipe(skip(1), take(1)),
   );

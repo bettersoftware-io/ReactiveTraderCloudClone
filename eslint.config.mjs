@@ -129,6 +129,17 @@ export default tseslint.config(
         { blankLine: "always", prev: "function", next: "*" },
         { blankLine: "always", prev: "multiline-block-like", next: "*" },
         { blankLine: "always", prev: "*", next: "multiline-block-like" },
+        // Multiline variable declarations (e.g. a run of `const x =
+        // createMemo(() => {…})`) are VariableDeclarations, not block-like, so
+        // the rules above miss them — they pack together with no separator.
+        // Require one blank line between adjacent multiline declarations so
+        // each stands as its own paragraph. The "no MORE than one" half is
+        // handled by Biome's formatter, which collapses blank-line runs to one.
+        {
+          blankLine: "always",
+          prev: ["multiline-const", "multiline-let", "multiline-var"],
+          next: ["multiline-const", "multiline-let", "multiline-var"],
+        },
       ],
       "no-restricted-syntax": ["error", ...restrictedSyntax],
       "max-classes-per-file": ["error", 1],

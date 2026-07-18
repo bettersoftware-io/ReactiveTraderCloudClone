@@ -71,6 +71,7 @@ const instruments$: WsEffect<Ctx> = stream(
         type: "startOfStateOfTheWorld",
       } satisfies InstrumentEvent),
     );
+
     const events$: Observable<Outbound> = ctx.instruments.getInstruments().pipe(
       map((instruments: readonly Instrument[]): Outbound[] => {
         const added = instruments.map((inst): Outbound => {
@@ -89,6 +90,7 @@ const instruments$: WsEffect<Ctx> = stream(
             payload: dto,
           } satisfies InstrumentEvent);
         });
+
         const frames = isFirst
           ? [
               ...added,
@@ -118,6 +120,7 @@ const dealers$: WsEffect<Ctx> = stream(
         type: "startOfStateOfTheWorld",
       } satisfies DealerEvent),
     );
+
     const events$: Observable<Outbound> = ctx.dealers.getDealers().pipe(
       map((dealers: readonly Dealer[]): Outbound[] => {
         const added = dealers.map((dealer): Outbound => {
@@ -127,6 +130,7 @@ const dealers$: WsEffect<Ctx> = stream(
             payload: dto,
           } satisfies DealerEvent);
         });
+
         const frames = isFirst
           ? [
               ...added,

@@ -271,9 +271,11 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
     const inst = INSTRUMENTS.find((i) => {
       return i.id === r.instrumentId;
     });
+
     const dealer = DEALERS.find((d) => {
       return d.id === dealerId;
     });
+
     const q = r.quotes.find((x) => {
       return x.dealerId === dealerId;
     });
@@ -410,6 +412,7 @@ export function useCreditRfqs(opts: UseCreditRfqsOptions = {}): CreditRfqsApi {
       autoExitRfqIds.includes(r.id)
     );
   });
+
   const liveRfqs = rfqs.filter((r) => {
     return r.state === "Open";
   });

@@ -9,6 +9,7 @@ export function TileChart(props: TileChartProps): JSX.Element {
   const path = createMemo((): string => {
     return buildPath(props.history);
   });
+
   const isUp = createMemo((): boolean => {
     const history = props.history;
     const lastTick = history.length > 1 ? history[history.length - 1] : null;

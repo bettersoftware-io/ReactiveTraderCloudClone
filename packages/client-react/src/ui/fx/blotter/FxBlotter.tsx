@@ -36,6 +36,7 @@ export function FxBlotter(): ReactElement {
     column: null,
     direction: null,
   });
+
   const [filters, setFilters] = useState<Map<keyof Trade, ColumnFilter<Trade>>>(
     new Map(),
   );

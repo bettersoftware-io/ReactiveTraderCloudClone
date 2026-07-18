@@ -13,10 +13,12 @@ export function DateFilter<TRow>(props: DateFilterProps<TRow>): JSX.Element {
         props.currentFilter.comparator
       : "eq",
   );
+
   const [value, setValue] = createSignal(
     // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     props.currentFilter?.type === "date" ? props.currentFilter.value : "",
   );
+
   const [valueTo, setValueTo] = createSignal(
     // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
     props.currentFilter?.type === "date" && props.currentFilter.valueTo

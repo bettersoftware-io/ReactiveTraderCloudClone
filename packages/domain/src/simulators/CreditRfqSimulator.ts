@@ -77,6 +77,7 @@ export class CreditRfqSimulator implements WorkflowPort {
         creationTimestamp: Date.now() - 6 * DAY_MS,
       },
     ];
+
     // dealer ids: 0 Adaptive Bank, 1 Citi, 2 JP Morgan, 3 Goldman Sachs
     const seedQuotes: readonly Quote[] = [
       {

@@ -8,6 +8,7 @@ export function DeskPnlGauge({ positions }: DeskPnlGaugeProps): ReactElement {
   const totalPnl = positions.reduce((acc, p) => {
     return acc + p.unrealisedPnl;
   }, 0);
+
   const maxAbsPnl = Math.max(
     ...positions.map((p) => {
       return Math.abs(p.unrealisedPnl);

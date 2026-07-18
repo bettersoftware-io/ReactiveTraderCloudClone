@@ -38,6 +38,7 @@ const FILL: Record<PowerSaverLevel, string> = {
   calm: "◐",
   freeze: "●",
 };
+
 const LABEL: Record<PowerSaverLevel, string> = {
   off: "Off",
   calm: "Calm",

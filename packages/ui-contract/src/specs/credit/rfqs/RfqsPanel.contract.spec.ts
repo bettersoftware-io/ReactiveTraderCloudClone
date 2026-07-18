@@ -142,6 +142,7 @@ describe("RfqsPanel", () => {
         state: { type: "pendingWithPrice", price: 97 },
       },
     ];
+
     const panel = mount(RfqsPanel, {
       hooks: {
         useInstruments: instruments,
@@ -165,6 +166,7 @@ describe("RfqsPanel", () => {
         state: { type: "pendingWithPrice", price: 99 },
       },
     ];
+
     const panel = mount(RfqsPanel, {
       hooks: {
         useInstruments: instruments,
@@ -187,6 +189,7 @@ describe("RfqsPanel", () => {
         state: { type: "pendingWithPrice", price: 99 },
       },
     ];
+
     const panel = mount(RfqsPanel, {
       hooks: {
         useInstruments: instruments,
@@ -215,6 +218,7 @@ describe("RfqsPanel", () => {
     const quotes: Quote[] = [
       { id: 10, rfqId: 1, dealerId: 3, state: { type: "accepted", price: 97 } },
     ];
+
     const panel = mount(RfqsPanel, {
       hooks: {
         useInstruments: instruments,

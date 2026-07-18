@@ -271,6 +271,7 @@ export function reactViewModel(world: World): ViewModel {
         useState<RfqSubmissionState>({
           status: "editing",
         });
+
       const submit = useCallback(
         (input: CreateRfqInput, onRedirect: (rfqId: number) => void) => {
           world.commands.createRfq.push(input);
@@ -303,10 +304,12 @@ export function reactViewModel(world: World): ViewModel {
       const [ticketState, setTicketState] = useState<TicketSubmissionState>({
         submitted: false,
       });
+
       const submitPrice = useCallback((quoteId: number, price: number) => {
         world.commands.quoteRfq.push({ quoteId, price });
         setTicketState({ submitted: true });
       }, []);
+
       const pass = useCallback((quoteId: number) => {
         world.commands.passQuote.push(quoteId);
         setTicketState({ submitted: true });

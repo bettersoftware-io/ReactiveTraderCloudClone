@@ -380,6 +380,7 @@ describe("createViewModel — equities streams", () => {
     const { result: oneWeek } = renderHook(() => {
       return vm.useCandles("AAPL", "1W");
     });
+
     const { result: oneMonth } = renderHook(() => {
       return vm.useCandles("AAPL", "1M");
     });

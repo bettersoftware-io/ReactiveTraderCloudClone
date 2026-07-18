@@ -75,17 +75,21 @@ function WatchlistRow(props: WatchlistRowProps): JSX.Element {
   const movementPips = createMemo((): number | null => {
     return computeMovementPips(history(), props.pair.pipsPosition);
   });
+
   const sign = createMemo((): MovementSign => {
     return movementSign(price()?.movementType ?? PriceMovementType.NONE);
   });
+
   const midText = createMemo((): string => {
     const p = price();
     return p ? p.mid.toFixed(props.pair.ratePrecision) : NO_VALUE;
   });
+
   const moveText = createMemo((): string => {
     const pips = movementPips();
     return pips === null ? NO_VALUE : `${movementArrow(sign())} ${pips} pip`;
   });
+
   const spreadText = createMemo((): string => {
     const p = price();
     return p ? p.spread : NO_VALUE;

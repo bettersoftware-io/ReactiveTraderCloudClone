@@ -291,6 +291,7 @@ function collectHandleFlags(
     const nextChild = node.children[i + 1];
     const childPinned =
       child.kind === "panel" && specs[child.panelId]?.pinned === true;
+
     const nextChildPinned =
       nextChild.kind === "panel" && specs[nextChild.panelId]?.pinned === true;
     const childFixed = node.fixedPx?.[i];

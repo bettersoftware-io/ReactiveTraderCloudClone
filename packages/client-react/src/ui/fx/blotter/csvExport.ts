@@ -16,6 +16,7 @@ export function exportToCsv<TRow>(
   const headers = columns.map((c) => {
     return c.label;
   });
+
   const csvRows = rows.map((row) => {
     return columns.map((col) => {
       if (unformatted?.has(col.key)) {

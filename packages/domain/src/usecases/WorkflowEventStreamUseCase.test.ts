@@ -70,10 +70,12 @@ describe("reduceRfqEvent", () => {
       ...pending,
       state: { type: "pendingWithPrice", price: 100 },
     };
+
     const start: RfqStreamState = {
       rfqs: new Map(),
       quotes: new Map([[5, pending]]),
     };
+
     const next = reduceRfqEvent(start, {
       type: "quoteQuoted",
       payload: priced,
@@ -91,6 +93,7 @@ describe("reduceRfqEvent", () => {
       dealerId: 1,
       state: { type: "passed" },
     };
+
     const next = reduceRfqEvent(emptyState(), {
       type: "quotePassed",
       payload: passed,
@@ -105,6 +108,7 @@ describe("reduceRfqEvent", () => {
       dealerId: 1,
       state: { type: "accepted", price: 100 },
     };
+
     const next = reduceRfqEvent(emptyState(), {
       type: "quoteAccepted",
       payload: accepted,
@@ -119,6 +123,7 @@ describe("reduceRfqEvent", () => {
       dealerId: 1,
       state: { type: "rejectedWithPrice", price: 105 },
     };
+
     const next = reduceRfqEvent(emptyState(), {
       type: "quoteRejected",
       payload: rejected,
@@ -136,6 +141,7 @@ describe("reduceRfqEvent", () => {
       dealerId: 1,
       state: { type: "rejectedWithoutPrice" },
     };
+
     const next = reduceRfqEvent(emptyState(), {
       type: "quoteRejected",
       payload: rejected,
@@ -186,6 +192,7 @@ describe("reduceRfqEvent quoteRejected", () => {
         },
       },
     ];
+
     const state = events.reduce(reduceRfqEvent, {
       rfqs: new Map(),
       quotes: new Map(),

@@ -78,6 +78,7 @@ export function useSplit(opts: UseSplitOptions): SplitApi {
     min = DEFAULT_MIN,
     containerRef,
   } = opts;
+
   const [ratio, setRatio] = useState(() => {
     return clamp(readStoredRatio(storageKey, initial), min, 1 - min);
   });

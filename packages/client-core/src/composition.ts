@@ -320,6 +320,7 @@ export function createApp(ports: AppPorts): App {
     sessions: new SessionsPresenter(ports.sessions),
     sessionsKpi: new SessionsKpiPresenter(ports.sessions),
   };
+
   const commands: AppCommands = {
     reconnect: () => {
       reconnect$.next({ type: "reconnect" });

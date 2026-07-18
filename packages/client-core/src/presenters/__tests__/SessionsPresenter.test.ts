@@ -39,6 +39,7 @@ describe("SessionsPresenter", () => {
     const subA = presenter.sessions$.subscribe((s) => {
       a.push(s);
     });
+
     const subB = presenter.sessions$.subscribe((s) => {
       b.push(s);
     });

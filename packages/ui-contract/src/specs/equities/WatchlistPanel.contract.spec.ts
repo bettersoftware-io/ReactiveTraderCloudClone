@@ -61,6 +61,7 @@ describe("WatchlistPanel — rows", () => {
       ...INSTRUMENTS,
       { symbol: "AMZN", name: "Amazon.com", exchange: "NASDAQ" },
     ];
+
     const panel = mount(WatchlistPanel, {
       equities: { watchlist: withUnquoted, quotes: QUOTES },
     });

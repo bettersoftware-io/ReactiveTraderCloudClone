@@ -16,6 +16,7 @@ describe("ConnectionStatusPresenter", () => {
         return of<ConnectionEvent>({ type: "gatewayConnected" });
       },
     };
+
     const all = await firstValueFrom(
       new ConnectionStatusPresenter(port).status$.pipe(toArray()),
     );
@@ -40,6 +41,7 @@ describe("ConnectionStatusPresenter", () => {
     const subA = presenter.status$.subscribe((s) => {
       return a.push(s);
     });
+
     const subB = presenter.status$.subscribe((s) => {
       return b.push(s);
     });

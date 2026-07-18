@@ -28,13 +28,16 @@ export function DepthLadder(props: DepthLadderProps): JSX.Element {
           ];
           return Math.max(...allSizes, 1);
         });
+
         // Show asks in reverse order (lowest ask at bottom, closest to mid)
         const asks = createMemo((): DepthLevel[] => {
           return [...currentBook().asks].slice(0, 8).reverse();
         });
+
         const bids = createMemo((): DepthLevel[] => {
           return currentBook().bids.slice(0, 8);
         });
+
         const spread = createMemo((): string => {
           const b = currentBook();
           const bestAsk = b.asks[0]?.price ?? 0;
