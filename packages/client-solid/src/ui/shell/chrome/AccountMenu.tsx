@@ -17,10 +17,11 @@ import styles from "./HeaderChrome.module.css";
  * CLEARANCE details block, a ⚙ Preferences action row (opens the shell's
  * Preferences modal via `onOpenPrefs`), the prototype's ⟳ Reboot HUD row
  * (re-raises the boot splash through the `useBootGate` seam — splash replay
- * only, no app-state reset), the red sign-out-styled ⏻ LOCK SESSION row
- * (locks the session through the seam, raising the LockScreen overlay), and
- * a ⏻ SIGN OUT row below it (logs the session out through the seam — the
- * app's equivalent of the prototype's Sign Out). While open, an invisible
+ * only, no app-state reset), a neutral ⏻ LOCK SESSION action row (locks the
+ * session through the seam, raising the LockScreen overlay), and the single
+ * red ⏻ SIGN OUT row below it (logs the session out through the seam — the
+ * app's equivalent of the prototype's Sign Out, and the panel's one
+ * destructive accent). While open, an invisible
  * fixed backdrop (prototype Header.tsx:65-73) closes the menu on any
  * outside click. Opening/closing the panel is local view state. Renders
  * nothing without a signed-in user (`Show when={state().user}` guard).
@@ -137,11 +138,12 @@ export function AccountMenu(props: AccountMenuProps): JSX.Element {
                 </button>
                 {/* Real chrome: locks the session through the `useAuth`
                     seam, raising the LockScreen overlay (prototype account
-                    menu → lock), styled as the prototype's red Sign Out row. */}
+                    menu → lock). A neutral action row — Sign Out is the
+                    panel's one red accent. */}
                 <button
                   type="button"
                   data-testid="account-lock"
-                  class={styles.signOut}
+                  class={styles.actionRow}
                   role="menuitem"
                   onClick={() => {
                     setOpen(false);

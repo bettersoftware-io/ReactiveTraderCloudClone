@@ -520,8 +520,11 @@
   cursor: pointer;
 }
 
-/* Red sign-out row (prototype AccountMenu.module.css .signOut) — the app's
-   LOCK SESSION action wears the prototype's Sign Out treatment. */
+/* Sign-out row — shares .actionRow's layout (mono, 12px, no letter-spacing)
+   so it lines up with the rest of the menu; only the red tint sets it apart
+   as the panel's single destructive accent. As the panel's last child it
+   carries no bottom border (the separator above it comes from LOCK SESSION's
+   .actionRow border). Prototype AccountMenu.module.css .signOut. */
 .signOut {
   display: block;
   width: 100%;
@@ -529,10 +532,8 @@
   border: none;
   background-color: transparent;
   color: var(--accent-negative);
-  font-family: var(--font-display);
-  font-weight: 600;
+  font-family: var(--font-mono);
   font-size: 12px;
-  letter-spacing: 0.08em;
   text-align: left;
   cursor: pointer;
 }
