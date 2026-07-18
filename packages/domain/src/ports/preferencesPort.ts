@@ -50,6 +50,11 @@ export interface PreferencesPort {
    * kills all decorative motion. Never mutates any other stored preference. */
   powerSaverLevel$(): Observable<PowerSaverLevel>;
   setPowerSaverLevel(level: PowerSaverLevel): void;
+  /** Force the boot-splash animation to run even under
+   * `prefers-reduced-motion: reduce`; default false. Boot-splash-scoped — does
+   * not affect the ambient background or any other reduced-motion path. */
+  forceBootAnimation$(): Observable<boolean>;
+  setForceBootAnimation(on: boolean): void;
   /** Replay-current boot-sequence variant stream; emits synchronously on subscribe.
    * The cycle pointer (core → laser → docking → core …) is advanced by
    * BootSequenceMachine at each boot start via setBootVariant. */

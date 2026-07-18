@@ -85,6 +85,9 @@ export const DEFAULT_ANIMATED_BACKGROUND = true;
  * curtains). Users who pick "rays" keep that choice (persisted under
  * `rtc-ambient-style`). */
 export const DEFAULT_AMBIENT_STYLE: AmbientStyle = "aurora";
+/** Force the boot-splash animation to play even under prefers-reduced-motion.
+ * Default false: absent an explicit opt-in, honour the accessibility signal. */
+export const DEFAULT_FORCE_BOOT_ANIMATION = false;
 export const DEFAULT_CREDIT_RFQ_FILTER: CreditRfqFilter = "live";
 export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
 export const DEFAULT_EQ_WATCHLIST_SORT: EqWatchlistSort = "chg";

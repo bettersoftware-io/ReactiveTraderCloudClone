@@ -28,6 +28,18 @@ describe("shouldPlayBootSplash", () => {
     setWebdriver(true);
     expect(shouldPlayBootSplash()).toBe(false);
   });
+
+  it("?splash forces the splash ON even under webdriver automation", () => {
+    setWebdriver(true);
+    setSearch("?splash");
+    expect(shouldPlayBootSplash()).toBe(true);
+  });
+
+  it("?splash forces the splash ON even alongside ?nosplash", () => {
+    setWebdriver(true);
+    setSearch("?splash&nosplash");
+    expect(shouldPlayBootSplash()).toBe(true);
+  });
 });
 
 /** Drive window.location.search via the History API (jsdom-supported). */

@@ -46,6 +46,7 @@ import {
   type EqWorkspaceState,
   ErrorRatePresenter,
   EventLogPresenter,
+  ForceBootAnimationPresenter,
   type IncidentIntents,
   type IncidentState,
   InstrumentsPresenter,
@@ -113,6 +114,7 @@ export interface Presenters {
   themeSkinPreference: ThemeSkinPreferencePresenter;
   animatedBackground: AnimatedBackgroundPresenter;
   ambientStyle: AmbientStylePresenter;
+  forceBootAnimation: ForceBootAnimationPresenter;
   powerSaver: PowerSaverPresenter;
   viewModePreference: ViewModePreferencePresenter;
   creditRfqFilterPreference: CreditRfqFilterPreferencePresenter;
@@ -273,6 +275,7 @@ export function createApp(ports: AppPorts): App {
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
     ambientStyle: new AmbientStylePresenter(ports.preferences),
+    forceBootAnimation: new ForceBootAnimationPresenter(ports.preferences),
     powerSaver,
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),
     creditRfqFilterPreference: new CreditRfqFilterPreferencePresenter(

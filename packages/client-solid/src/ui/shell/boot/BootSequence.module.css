@@ -114,15 +114,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .boot {
+  .boot:not([data-force-anim="true"]) {
     transition: none;
   }
 
-  .canvas {
+  .boot:not([data-force-anim="true"]) .canvas {
     display: none;
   }
 
-  .fill {
+  .boot:not([data-force-anim="true"]) .fill {
     transition: none;
   }
 }

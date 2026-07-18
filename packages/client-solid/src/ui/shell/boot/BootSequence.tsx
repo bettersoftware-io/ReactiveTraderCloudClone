@@ -20,9 +20,11 @@ import { createBootTopo } from "./variants/bootTopo";
 import styles from "./BootSequence.module.css";
 
 export function BootSequence(props: BootSequenceProps): JSX.Element {
-  const { useBootSequence, usePowerSaver } = useViewModel();
+  const { useBootSequence, useForceBootAnimation, usePowerSaver } =
+    useViewModel();
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const { state, skip } = useBootSequence(props.onDone);
+  const { enabled: forced } = useForceBootAnimation();
   const { isFreeze } = usePowerSaver();
   let canvasEl!: HTMLCanvasElement;
 
@@ -43,17 +45,20 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
     const currentVariant = variant();
     const canvas = canvasEl;
 
-    const reduce = window.matchMedia?.(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const prefersReduced =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
-    // A persisted Freeze preference must never run the boot splash's canvas
-    // rAF loop — same early-return as prefers-reduced-motion, since Freeze is
-    // a stricter opt-in of the same "no imperative motion" contract. Tracked
-    // (this whole callback is a plain createEffect, not `on()`-wrapped), so
-    // toggling power saver mid-boot tears the loop down via the onCleanup
-    // below instead of leaving it running.
-    if (reduce || isFreeze()) {
+    // Read both signals unconditionally so each is tracked: the effect (a
+    // plain createEffect, not `on()`-wrapped) re-runs when either flips
+    // mid-boot, tearing the loop down via the onCleanup below. Freeze (an
+    // explicit power-saver opt-out of all motion) always skips the boot
+    // canvas rAF loop; otherwise honour prefers-reduced-motion unless
+    // forceBootAnimation overrides it — it overrides only the accessibility
+    // signal, never an explicit Freeze.
+    const freeze = isFreeze();
+    const forceOn = forced();
+
+    if (freeze || (prefersReduced && !forceOn)) {
       return;
     }
 
@@ -115,6 +120,7 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
       data-testid="boot-sequence"
       data-done={state().done ? "true" : "false"}
       data-variant={state().variant}
+      data-force-anim={forced() ? "true" : "false"}
       class={styles.boot}
     >
       <canvas ref={canvasEl} class={styles.canvas} />

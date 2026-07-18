@@ -18,6 +18,7 @@ import {
   CREDIT_RFQ_FILTER_STORAGE_KEY,
   EQ_BLOTTER_VIEW_STORAGE_KEY,
   EQ_WATCHLIST_SORT_STORAGE_KEY,
+  FORCE_BOOT_ANIMATION_STORAGE_KEY,
   LocalStoragePreferencesAdapter,
   POWER_SAVER_STORAGE_KEY,
   THEME_SKIN_STORAGE_KEY,
@@ -59,6 +60,13 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
 
       if (seed.powerSaverLevel !== undefined) {
         localStorage.setItem(POWER_SAVER_STORAGE_KEY, seed.powerSaverLevel);
+      }
+
+      if (seed.forceBootAnimation !== undefined) {
+        localStorage.setItem(
+          FORCE_BOOT_ANIMATION_STORAGE_KEY,
+          seed.forceBootAnimation ? "true" : "false",
+        );
       }
 
       if (seed.bootVariant) {
@@ -181,4 +189,5 @@ function clearStorage(): void {
   localStorage.removeItem(EQ_BLOTTER_VIEW_STORAGE_KEY);
   localStorage.removeItem(POWER_SAVER_STORAGE_KEY);
   localStorage.removeItem(AMBIENT_STYLE_STORAGE_KEY);
+  localStorage.removeItem(FORCE_BOOT_ANIMATION_STORAGE_KEY);
 }

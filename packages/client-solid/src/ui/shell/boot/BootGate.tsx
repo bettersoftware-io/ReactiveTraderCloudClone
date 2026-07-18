@@ -23,17 +23,20 @@ import styles from "./BootGate.module.css";
  * so its per-mount machine replays fresh (advancing the variant pointer).
  */
 export function BootGate(props: ParentProps): JSX.Element {
-  const { useBootGate } = useViewModel();
+  const { useBootGate, useForceBootAnimation } = useViewModel();
   const { visible, dismiss } = useBootGate();
+  const { enabled: forced } = useForceBootAnimation();
 
   function handleDone(): void {
     const reduce = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches;
 
-    // Reduced motion: the splash jump-cuts to opacity 0 with no transition, so
-    // no transitionend arrives — dismiss it directly.
-    if (reduce) {
+    // Reduced motion (and NOT forced): the splash jump-cuts to opacity 0 with
+    // no transition, so no transitionend arrives — dismiss it directly. When
+    // forced, the transition is restored (see BootSequence.module.css) and
+    // handleTransitionEnd dismisses instead.
+    if (reduce && !forced()) {
       dismiss();
     }
   }

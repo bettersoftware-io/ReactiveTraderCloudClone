@@ -31,6 +31,16 @@ describe("PreferencesModal", () => {
   // Power-saver assertions live in shell/power/PowerSaverSurfaces.contract.spec.ts
   // (react-only; excluded from the Solid contract run).
 
+  it("force-boot-animation toggle reflects the preference and writes it on toggle", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      forceBootAnimation: true,
+    });
+    expect(page.forceBootAnimationOn()).toBe(true);
+    await page.toggleForceBootAnimation();
+    expect(page.forceBootAnimationSets()).toEqual([false]);
+  });
+
   it("closes on the dismiss (✕) control", async () => {
     let closed = 0;
     const page = mount(PreferencesModal, {

@@ -93,9 +93,41 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     window.matchMedia = original;
   });
 
+  it("runs the rAF loop under reduced motion when forced", () => {
+    // jsdom has no matchMedia at all (the component optional-chains it), so
+    // stub one on the window rather than spying. Restore via `finally` so a
+    // failing assertion here can't leak the stub into later tests.
+    const original = window.matchMedia;
+    window.matchMedia = (() => {
+      return { matches: true }; // prefers-reduced-motion: reduce
+    }) as unknown as typeof window.matchMedia;
+
+    try {
+      renderBootSequence({ forceBootAnimation: true });
+      expect(rafSpy).toHaveBeenCalled();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("does NOT run the rAF loop under reduced motion when not forced", () => {
+    const original = window.matchMedia;
+    window.matchMedia = (() => {
+      return { matches: true };
+    }) as unknown as typeof window.matchMedia;
+
+    try {
+      renderBootSequence({ forceBootAnimation: false });
+      expect(rafSpy).not.toHaveBeenCalled();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   // A persisted power-saver "freeze" preference must skip the boot splash's
   // canvas rAF the same way prefers-reduced-motion does — a Freeze box
-  // should never run the boot animation, even on first paint.
+  // should never run the boot animation, even on first paint. Freeze wins
+  // even over forceBootAnimation (which overrides only prefers-reduced-motion).
   it("skips the canvas loop entirely under power-saver freeze", () => {
     render(
       wrap(<BootSequence onDone={vi.fn()} />, {
@@ -249,6 +281,9 @@ function wrap(
         skip: vi.fn(),
       };
     },
+    useForceBootAnimation: () => {
+      return { enabled: false, setEnabled: vi.fn(), toggle: vi.fn() };
+    },
     usePowerSaver: () => {
       return {
         level: "off" as const,
@@ -265,5 +300,28 @@ function wrap(
     <ViewModelContext.Provider value={defaultHooks}>
       {el}
     </ViewModelContext.Provider>
+  );
+}
+
+interface RenderBootSequenceOpts {
+  forceBootAnimation: boolean;
+}
+
+/** Renders `<BootSequence>` with `useForceBootAnimation().enabled` stubbed to
+ * the given flag — the seam Task 4 wires into the effective reduced-motion
+ * decision. */
+function renderBootSequence({
+  forceBootAnimation,
+}: RenderBootSequenceOpts): void {
+  render(
+    wrap(<BootSequence onDone={vi.fn()} />, {
+      useForceBootAnimation: () => {
+        return {
+          enabled: forceBootAnimation,
+          setEnabled: vi.fn(),
+          toggle: vi.fn(),
+        };
+      },
+    } as unknown as Partial<ViewModel>),
   );
 }

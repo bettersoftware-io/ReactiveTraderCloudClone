@@ -411,6 +411,24 @@ export function solidViewModel(world: World): ViewModel {
         },
       };
     },
+    // Global force-boot-animation preference: reactive flag backed by the World
+    // subject; setEnabled/toggle push back so a click through the seam flips
+    // the rendered flag, and each written value is recorded, mirroring usePowerSaver.
+    useForceBootAnimation: () => {
+      const enabled = wrapSubject(world.forceBootAnimation);
+      return {
+        enabled,
+        setEnabled: (on: boolean) => {
+          world.commands.forceBootAnimationSets.push(on);
+          world.forceBootAnimation.next(on);
+        },
+        toggle: () => {
+          const next = !enabled();
+          world.commands.forceBootAnimationSets.push(next);
+          world.forceBootAnimation.next(next);
+        },
+      };
+    },
     // Global view-mode: reactive view backed by the World subject; setViewMode
     // pushes back so a toggle through the seam flips the rendered mode.
     useViewModePreference: () => {

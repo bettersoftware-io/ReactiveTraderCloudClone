@@ -197,6 +197,8 @@ export interface CommandLog {
   animatedBackgroundSets: boolean[];
   /** Each level written through usePowerSaver().setLevel/cycle, in order. */
   powerSaverLevelSets: PowerSaverLevel[];
+  /** Each value written through useForceBootAnimation().setEnabled/toggle, in order. */
+  forceBootAnimationSets: boolean[];
   /** Each incident kind injected via injectIncident(), in order. */
   injectedIncidents: IncidentKind[];
 }
@@ -247,6 +249,8 @@ export interface World {
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive power-saver master-override preference backing usePowerSaver. */
   readonly powerSaverLevel: BehaviorSubject<PowerSaverLevel>;
+  /** Reactive force-boot-animation preference backing useForceBootAnimation. */
+  readonly forceBootAnimation: BehaviorSubject<boolean>;
   /** Reactive view-mode preference backing useViewModePreference (drives LiveRatesPanel). */
   readonly viewMode: BehaviorSubject<ViewMode>;
   /** Reactive Credit RFQs filter preference backing useCreditRfqFilterPreference (drives RfqsPanel). */
@@ -361,6 +365,7 @@ export function createWorld(
   creditRfqFilterSeed?: CreditRfqFilter,
   powerSaverLevelSeed?: PowerSaverLevel,
   ambientStyleSeed?: AmbientStyle,
+  forceBootAnimationSeed?: boolean,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -545,6 +550,10 @@ export function createWorld(
     powerSaverLevelSeed ?? "off",
   );
 
+  const forceBootAnimation = new BehaviorSubject<boolean>(
+    forceBootAnimationSeed ?? false,
+  );
+
   const viewMode = new BehaviorSubject<ViewMode>(
     viewModeSeed ?? DEFAULT_VIEW_MODE,
   );
@@ -642,6 +651,7 @@ export function createWorld(
     bootReboot: 0,
     animatedBackgroundSets: [],
     powerSaverLevelSets: [],
+    forceBootAnimationSets: [],
     injectedIncidents: [],
     placedOrderRequests: [],
   };
@@ -658,6 +668,7 @@ export function createWorld(
     ambientStyle,
     animatedBackground,
     powerSaverLevel,
+    forceBootAnimation,
     viewMode,
     creditRfqFilter,
     setCreditRfqFilter: (filter: CreditRfqFilter) => {

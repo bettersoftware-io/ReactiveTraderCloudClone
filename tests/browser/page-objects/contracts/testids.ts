@@ -130,4 +130,12 @@ export const TESTIDS = {
     streamRow: "devtools-stream-row",
     machineRow: "devtools-machine-row",
   },
+  /**
+   * The full-screen boot splash (BootSequence), mounted by BootGate OUTSIDE
+   * AuthGate (see AppRoot.tsx) — visible pre-auth, identically on react and
+   * solid.
+   */
+  boot: {
+    sequence: "boot-sequence",
+  },
 } as const;
