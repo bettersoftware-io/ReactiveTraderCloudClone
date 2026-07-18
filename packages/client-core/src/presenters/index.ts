@@ -1,5 +1,6 @@
 export type { SessionUser } from "@rtc/domain";
 
+export * from "#/presenters/AmbientStylePresenter";
 export * from "#/presenters/AnalyticsPresenter";
 export * from "#/presenters/AnimatedBackgroundPresenter";
 export * from "#/presenters/AnimationDirector";
