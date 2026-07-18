@@ -42,6 +42,20 @@ do — nothing here requires the DOM.
 | **Lock screen** | Hold-to-unlock progress ring with decay | `Gesture.LongPress`/`onPressIn` driving a shared value; SVG ring `strokeDashoffset`; add `expo-haptics` on unlock |
 | **Safe areas** | iOS status-bar/home-indicator spacers, Android in-flow status bar | `react-native-safe-area-context` |
 
+> **Follow-up (Task 12, ambient-style workstream):** the "Ambient background" row above
+> predates the later `ambientStyle` preference (`"rays"` vs `"aurora"`), which the web
+> client (`client-react`/`client-solid`) implements as northern-lights curtains built
+> from CSS `repeating-linear-gradient` "comb" bands clipped by a `mask-image` fade. RN's
+> `AmbientBackground.tsx` (`packages/client-react-native/src/ui/ambient/`) intentionally
+> does **not** reproduce that comb/mask combination — Skia has no repeating-gradient
+> primitive and reproducing the CSS mask needs an extra `<Mask>`/nested-`<Group>` layer
+> per band, which was judged too much unverifiable risk for a task with no on-device
+> access. Instead each "aurora" curtain band is ONE smooth `<LinearGradient>`-filled
+> `<Rect>` whose colour stops already carry the fixed aurora palette and fade to
+> transparent by the final stop (baking the CSS mask's top→bottom fade directly into the
+> gradient's own alpha ramp). This is a documented, deliberate simplification — pending
+> the on-device review + Opus paint pass this task's brief calls for — not a bug.
+
 ## 3. Theme system
 
 `theme-tokens.ts` mirrors the shape already used by `src/ui/theme/tokens.ts` and the

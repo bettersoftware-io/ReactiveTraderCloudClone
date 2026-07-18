@@ -47,6 +47,9 @@ jest.mock("@shopify/react-native-skia", () => {
     // Task 6 (AmbientBackground): a blur filter node (child of a shape) and
     // the `vec(x, y)` point-constructor helper Line's p1/p2 need.
     Blur: passthrough("SkiaBlur"),
+    // Task 12 (AmbientBackground aurora curtains): a gradient shader node
+    // (child of a Rect), filling the curtain bands.
+    LinearGradient: passthrough("SkiaLinearGradient"),
     vec: (x: number, y: number) => {
       return { x, y };
     },
