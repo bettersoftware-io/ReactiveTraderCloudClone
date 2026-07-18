@@ -10,6 +10,7 @@ import styles from "./PreferencesModal.module.css";
  */
 export function PrefSegment({
   label,
+  description,
   options,
   value,
   onChange,
@@ -19,6 +20,9 @@ export function PrefSegment({
     <div className={styles.row}>
       <div className={styles.rowText}>
         <div className={styles.rowLabel}>{label}</div>
+        {description ? (
+          <div className={styles.rowDesc}>{description}</div>
+        ) : null}
       </div>
       <div className={styles.seg}>
         {options.map((option) => {
@@ -54,6 +58,8 @@ export interface PrefSegmentOption {
 interface PrefSegmentProps {
   /** Row label (the setting name). */
   label: string;
+  /** Optional secondary description line. */
+  description?: string;
   /** The selectable options, in render order. */
   options: readonly PrefSegmentOption[];
   /** The currently-selected option value (reflected via `data-on`). */

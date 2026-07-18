@@ -21,6 +21,7 @@ import {
   type WorkspaceTab,
 } from "@rtc/client-core";
 import type {
+  AmbientStyle,
   CreateRfqInput,
   CreditRfqFilter,
   CurrencyPair,
@@ -397,6 +398,19 @@ export function reactViewModel(world: World): ViewModel {
           const next = nextPowerSaverLevel(level);
           world.commands.powerSaverLevelSets.push(next);
           world.powerSaverLevel.next(next);
+        },
+      };
+    },
+    // Ambient style: reactive view backed by the World subject (mirrors
+    // useThemeSkinPreference above); setStyle pushes back so a click through
+    // the seam (PreferencesModal's "Ambient style" segment) flips the
+    // rendered AmbientBackground branch.
+    useAmbientStyle: () => {
+      const style = useSubject(world.ambientStyle);
+      return {
+        style,
+        setStyle: (next: AmbientStyle) => {
+          world.ambientStyle.next(next);
         },
       };
     },

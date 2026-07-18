@@ -2,8 +2,10 @@ import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
+  type AmbientStyle,
   type BootVariant,
   type CreditRfqFilter,
+  DEFAULT_AMBIENT_STYLE,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
@@ -33,6 +35,7 @@ export interface PreferencesSeed {
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
   eqBlotterView?: EqBlotterView;
+  ambientStyle?: AmbientStyle;
 }
 
 /**
@@ -292,6 +295,33 @@ export function describePreferencesPortContract(
       });
       expect(await firstValueFrom(port.eqWatchlistSort$())).toBe("price");
       expect(await firstValueFrom(port.eqBlotterView$())).toBe("positions");
+    });
+
+    it("defaults ambientStyle to aurora and round-trips a write", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.ambientStyle$())).toBe(
+        DEFAULT_AMBIENT_STYLE,
+      );
+      port.setAmbientStyle("rays");
+      expect(await firstValueFrom(port.ambientStyle$())).toBe("rays");
+      // late subscriber sees the current value synchronously (replay-current)
+      expect(await firstValueFrom(port.ambientStyle$())).toBe("rays");
+    });
+
+    it("setAmbientStyle persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: AmbientStyle[] = [];
+      const sub = port.ambientStyle$().subscribe((s) => {
+        return seen.push(s);
+      });
+      port.setAmbientStyle("rays");
+      sub.unsubscribe();
+      expect(seen).toEqual([DEFAULT_AMBIENT_STYLE, "rays"]);
+    });
+
+    it("reads back a seeded ambientStyle", async () => {
+      const port = makeSeeded({ ambientStyle: "rays" });
+      expect(await firstValueFrom(port.ambientStyle$())).toBe("rays");
     });
   });
 }

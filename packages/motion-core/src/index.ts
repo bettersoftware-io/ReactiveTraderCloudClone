@@ -1,5 +1,7 @@
 export type { ChartCandle, ChartVarStyle, ChartVm } from "./chartVm.js";
 export { chartVm } from "./chartVm.js";
+export type { DragOffset, Size } from "./clampDragOffset.js";
+export { clampDragOffset } from "./clampDragOffset.js";
 export {
   COUNTDOWN_URGENT_FRACTION,
   countdownProgress,

@@ -23,6 +23,7 @@ import {
   createTileExecutionMachine,
 } from "@rtc/client-core";
 import type {
+  AmbientStyle,
   CandleTimeframe,
   CreateRfqInput,
   CreditRfqFilter,
@@ -394,6 +395,19 @@ export function solidViewModel(world: World): ViewModel {
           const next = nextPowerSaverLevel(level());
           world.commands.powerSaverLevelSets.push(next);
           world.powerSaverLevel.next(next);
+        },
+      };
+    },
+    // Ambient style: reactive view backed by the World subject (mirrors
+    // useThemeSkinPreference above); setStyle pushes back so a click through
+    // the seam (PreferencesModal's "Ambient style" segment) flips the
+    // rendered AmbientBackground branch. Mirrors the react driver's
+    // useAmbientStyle exactly.
+    useAmbientStyle: () => {
+      return {
+        style: wrapSubject(world.ambientStyle),
+        setStyle: (next: AmbientStyle) => {
+          world.ambientStyle.next(next);
         },
       };
     },

@@ -166,7 +166,12 @@
   .layerB,
   .sweep,
   .grid,
-  .dots {
+  .dots,
+  .auroraBlobA,
+  .auroraBlobB,
+  .auroraCurtainA,
+  .auroraCurtainB,
+  .auroraCurtainC {
     animation: none;
   }
 }
@@ -219,5 +224,214 @@
   }
   to {
     transform: translate3d(0, 48px, 0);
+  }
+}
+
+/* AURORA STYLE (v5 "Aurora"): fixed-palette northern-lights curtains.
+   Palette is intentionally NOT theme-tinted so it reads as an aurora in every
+   skin. Master opacity rides the wrapper at --aurora-opacity (same token that
+   gates the rays style). NO layer carries a `filter` — blobs bake their
+   softness into the gradient falloff, and the curtain bands rely on the
+   repeating-gradient's wide transparent runs plus the top-down mask for their
+   soft shafts (per docs/performance.md P6/P6b). The whole backdrop is thus
+   compositor-only: every animated layer transforms a once-rasterised texture,
+   with zero per-frame filter re-evaluation. Curtains animate transform only. */
+.auroraWrap {
+  position: absolute;
+  inset: 0;
+  opacity: var(--aurora-opacity);
+}
+
+.auroraBlobA {
+  position: absolute;
+  inset: -12% -6%;
+  background:
+    radial-gradient(
+      120% 30% at 50% 12%,
+      rgba(61, 255, 171, 0.42) 0%,
+      rgba(45, 212, 191, 0.2) 46%,
+      transparent 74%
+    ),
+    radial-gradient(
+      90% 24% at 30% 26%,
+      rgba(56, 189, 248, 0.3) 0%,
+      transparent 68%
+    ),
+    radial-gradient(
+      80% 22% at 74% 6%,
+      rgba(168, 85, 247, 0.38) 0%,
+      rgba(217, 70, 239, 0.14) 52%,
+      transparent 76%
+    );
+  opacity: 0.26;
+  will-change: transform;
+  animation: aurora-a 52s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+.auroraBlobB {
+  position: absolute;
+  inset: -12% -6%;
+  background:
+    radial-gradient(
+      70% 18% at 62% 20%,
+      rgba(217, 70, 239, 0.3) 0%,
+      transparent 64%
+    ),
+    radial-gradient(
+      95% 26% at 18% 10%,
+      rgba(45, 212, 191, 0.34) 0%,
+      transparent 66%
+    );
+  opacity: 0.2;
+  will-change: transform;
+  animation: aurora-b 68s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+.auroraCurtainA {
+  position: absolute;
+  left: -18%;
+  right: -18%;
+  top: -6%;
+  height: 46%;
+  background: repeating-linear-gradient(
+    94deg,
+    transparent 0px,
+    rgba(61, 255, 171, 0.1) 14px,
+    rgba(61, 255, 171, 0.42) 26px,
+    rgba(45, 212, 191, 0.18) 40px,
+    transparent 58px,
+    transparent 92px,
+    rgba(56, 189, 248, 0.3) 110px,
+    rgba(61, 255, 171, 0.12) 126px,
+    transparent 148px,
+    transparent 205px
+  );
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
+  mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.95) 6%,
+    rgba(0, 0, 0, 0.6) 45%,
+    rgba(0, 0, 0, 0.18) 75%,
+    transparent 100%
+  );
+  opacity: 0.3;
+  will-change: transform;
+  animation: aurora-c 44s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+.auroraCurtainB {
+  position: absolute;
+  left: -18%;
+  right: -18%;
+  top: -4%;
+  height: 40%;
+  background: repeating-linear-gradient(
+    86deg,
+    transparent 0px,
+    transparent 44px,
+    rgba(168, 85, 247, 0.36) 66px,
+    rgba(217, 70, 239, 0.16) 84px,
+    transparent 106px,
+    transparent 170px,
+    rgba(61, 255, 171, 0.22) 192px,
+    transparent 216px,
+    transparent 275px
+  );
+  border-radius: 0 0 60% 40% / 0 0 100% 100%;
+  mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.9) 4%,
+    rgba(0, 0, 0, 0.5) 42%,
+    rgba(0, 0, 0, 0.12) 72%,
+    transparent 100%
+  );
+  opacity: 0.24;
+  will-change: transform;
+  animation: aurora-d 61s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+.auroraCurtainC {
+  position: absolute;
+  left: -14%;
+  right: -14%;
+  top: 2%;
+  height: 30%;
+  background: repeating-linear-gradient(
+    91deg,
+    transparent 0px,
+    transparent 26px,
+    rgba(255, 255, 255, 0.16) 34px,
+    rgba(61, 255, 171, 0.3) 42px,
+    transparent 54px,
+    transparent 120px
+  );
+  border-radius: 0 0 45% 55% / 0 0 100% 100%;
+  mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.9) 8%,
+    rgba(0, 0, 0, 0.35) 55%,
+    transparent 92%
+  );
+  opacity: 0.22;
+  will-change: transform;
+  animation: aurora-e 27s ease-in-out infinite;
+  animation-play-state: var(--amb-play, paused);
+}
+
+.auroraWash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 52%;
+  background: linear-gradient(
+    180deg,
+    rgba(168, 85, 247, 0.14) 0%,
+    rgba(56, 189, 248, 0.06) 55%,
+    transparent 100%
+  );
+  opacity: 0.5;
+}
+
+@keyframes aurora-c {
+  0% {
+    transform: translate3d(-4%, -2%, 0) skewX(-4deg) scaleY(1.05);
+  }
+  50% {
+    transform: translate3d(5%, 2%, 0) skewX(5deg) scaleY(1.18);
+  }
+  100% {
+    transform: translate3d(-4%, -2%, 0) skewX(-4deg) scaleY(1.05);
+  }
+}
+
+@keyframes aurora-d {
+  0% {
+    transform: translate3d(4%, 1%, 0) skewX(6deg) scaleY(1.14);
+  }
+  50% {
+    transform: translate3d(-5%, -2%, 0) skewX(-5deg) scaleY(1.02);
+  }
+  100% {
+    transform: translate3d(4%, 1%, 0) skewX(6deg) scaleY(1.14);
+  }
+}
+
+@keyframes aurora-e {
+  0% {
+    transform: translate3d(-2%, 0, 0) skewX(-2deg) scaleY(1);
+  }
+  33% {
+    transform: translate3d(3%, 1%, 0) skewX(4deg) scaleY(1.22);
+  }
+  66% {
+    transform: translate3d(-1%, -1%, 0) skewX(-3deg) scaleY(1.08);
+  }
+  100% {
+    transform: translate3d(-2%, 0, 0) skewX(-2deg) scaleY(1);
   }
 }

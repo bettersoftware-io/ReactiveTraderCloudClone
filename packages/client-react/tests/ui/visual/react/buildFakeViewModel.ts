@@ -14,6 +14,14 @@ import {
 // Phase 3 regenerates them for the new skins.
 const DEFAULT_THEME_SKIN_FOR_FIXTURES = "classic" as const;
 
+// Same pin as the skin above: the visual fakes DEFAULT ambientStyle to "rays"
+// (the pre-existing backdrop), NOT the app's new "aurora" default, so every
+// existing golden that frames AmbientBackground stays pixel-identical. A
+// fixture opts into the aurora style explicitly (see "app-fx-aurora" in
+// fixtures.ts / "app/fx-aurora" in scenarios.ts) — data.ambientStyle wins
+// over this default when a fixture sets it.
+const DEFAULT_AMBIENT_STYLE_FOR_FIXTURES = "rays" as const;
+
 import type { AppData } from "@ui-visual-shared/appData";
 
 import type {
@@ -204,6 +212,12 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         isFreeze: level === "freeze",
         setLevel: noop,
         cycle: noop,
+      };
+    },
+    useAmbientStyle: () => {
+      return {
+        style: data.ambientStyle ?? DEFAULT_AMBIENT_STYLE_FOR_FIXTURES,
+        setStyle: noop,
       };
     },
     useForceBootAnimation: () => {

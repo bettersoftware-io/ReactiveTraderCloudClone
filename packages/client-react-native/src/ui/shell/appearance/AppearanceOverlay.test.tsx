@@ -52,6 +52,9 @@ function vm(): ViewModel {
         cycle: (): void => {},
       };
     },
+    useAmbientStyle: () => {
+      return { style: "aurora", setStyle: (): void => {} };
+    },
     useBootGate: () => {
       return {
         visible: false,

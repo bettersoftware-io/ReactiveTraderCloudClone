@@ -41,6 +41,18 @@ describe("theme/skin/animated-bg hooks", () => {
     expect(result.current.enabled).toBe(false);
   });
 
+  it("useAmbientStyle reads default aurora and sets rays", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.useAmbientStyle();
+    });
+    expect(result.current.style).toBe("aurora");
+    act(() => {
+      result.current.setStyle("rays");
+    });
+    expect(result.current.style).toBe("rays");
+  });
+
   it("usePowerSaver defaults off and cycle() advances off -> calm -> freeze -> off", () => {
     const hooks = makeHooks();
     const { result } = renderHook(() => {

@@ -28,6 +28,12 @@
   padding: 16px 22px;
   border-bottom: 1px solid var(--border-primary);
   background: var(--panel-head);
+  cursor: grab;
+  touch-action: none;
+}
+
+.head:active {
+  cursor: grabbing;
 }
 
 .title {

@@ -2,6 +2,7 @@ import { firstValueFrom } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_AMBIENT_STYLE,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
@@ -11,6 +12,7 @@ import {
 import { describePreferencesPortContract } from "@rtc/domain/ports/__contracts__/PreferencesPortContract";
 
 import {
+  AMBIENT_STYLE_STORAGE_KEY,
   ANIMATED_BG_STORAGE_KEY,
   BOOT_VARIANT_STORAGE_KEY,
   CREDIT_RFQ_FILTER_STORAGE_KEY,
@@ -89,6 +91,10 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
         localStorage.setItem(EQ_BLOTTER_VIEW_STORAGE_KEY, seed.eqBlotterView);
       }
 
+      if (seed.ambientStyle) {
+        localStorage.setItem(AMBIENT_STYLE_STORAGE_KEY, seed.ambientStyle);
+      }
+
       return new LocalStoragePreferencesAdapter();
     },
   );
@@ -162,6 +168,14 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
       DEFAULT_EQ_BLOTTER_VIEW,
     );
   });
+
+  it("falls back to defaults for an invalid stored ambientStyle", async () => {
+    localStorage.setItem(AMBIENT_STYLE_STORAGE_KEY, "nonsense");
+    const port = new LocalStoragePreferencesAdapter();
+    expect(await firstValueFrom(port.ambientStyle$())).toBe(
+      DEFAULT_AMBIENT_STYLE,
+    );
+  });
 });
 
 function clearStorage(): void {
@@ -174,5 +188,6 @@ function clearStorage(): void {
   localStorage.removeItem(EQ_WATCHLIST_SORT_STORAGE_KEY);
   localStorage.removeItem(EQ_BLOTTER_VIEW_STORAGE_KEY);
   localStorage.removeItem(POWER_SAVER_STORAGE_KEY);
+  localStorage.removeItem(AMBIENT_STYLE_STORAGE_KEY);
   localStorage.removeItem(FORCE_BOOT_ANIMATION_STORAGE_KEY);
 }

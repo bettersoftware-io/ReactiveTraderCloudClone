@@ -208,6 +208,23 @@ test("setEqWatchlistSort/setEqBlotterView write through to AsyncStorage and emit
   expect(store.get("eq-blotter-view")).toBe("positions");
 });
 
+test("hydrates a stored, non-default ambientStyle after construction", async () => {
+  store.set("rtc-ambient-style", "rays");
+  const prefs = new AsyncStoragePreferencesAdapter();
+  const hydrated = await firstValueFrom(
+    prefs.ambientStyle$().pipe(skip(1), take(1)),
+  );
+  expect(hydrated).toBe("rays");
+});
+
+test("setAmbientStyle writes through to AsyncStorage and emits", async () => {
+  const prefs = new AsyncStoragePreferencesAdapter();
+  prefs.setAmbientStyle("rays");
+  const next = await firstValueFrom(prefs.ambientStyle$());
+  expect(next).toBe("rays");
+  expect(store.get("rtc-ambient-style")).toBe("rays");
+});
+
 vi.mock("@react-native-async-storage/async-storage", () => {
   return {
     default: {

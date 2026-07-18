@@ -164,6 +164,17 @@ describe("createViewModel — preferences", () => {
     expect(result.skin()).toBe("classic");
   });
 
+  it("useAmbientStyle reads style and setStyle writes it", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.useAmbientStyle();
+    });
+
+    expect(result.style()).toBe("aurora");
+    result.setStyle("rays");
+    expect(result.style()).toBe("rays");
+  });
+
   it("useAnimatedBackground reads enabled and toggle() flips it", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {

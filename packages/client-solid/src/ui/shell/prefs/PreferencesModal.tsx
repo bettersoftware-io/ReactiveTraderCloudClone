@@ -1,34 +1,40 @@
 import type { Accessor, JSX } from "solid-js";
 import { createSignal, For, Show } from "solid-js";
 
-import type { PowerSaverLevel } from "@rtc/domain";
+import type { AmbientStyle, PowerSaverLevel } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
 import { PrefToggle } from "./PrefToggle";
+import { useDraggableDialog } from "./useDraggableDialog";
 
 import styles from "./PreferencesModal.module.css";
 
 /**
  * Preferences catalogue modal (prototype Reactive Trader.dc.html:218-716). A
  * two-column DISPLAY / TRADING / NOTIFICATIONS / DATA grid of toggle + segment
- * rows. THREE rows are wired to real ports — Animated background
+ * rows. FOUR rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
- * Off/Calm/Freeze segment), and Always play boot animation
- * (`useForceBootAnimation`); every other row is decorative (see the comment on
- * the catalogue above). Dumb component: consumes `useViewModel()`
- * destructured only, holds no app-layer state / persistence / transport /
- * timers, and renders only when `open`.
+ * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), and Always
+ * play boot animation (`useForceBootAnimation`); every other row is
+ * decorative (see the comment on the catalogue above). Dumb component:
+ * consumes `useViewModel()` destructured only, holds no app-layer state /
+ * persistence / transport / timers, and renders only when `open`.
  */
 export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
-  const { useAnimatedBackground, usePowerSaver, useForceBootAnimation } =
-    useViewModel();
+  const {
+    useAnimatedBackground,
+    usePowerSaver,
+    useAmbientStyle,
+    useForceBootAnimation,
+  } = useViewModel();
 
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
 
   const { level: powerSaverLevel, setLevel: setPowerSaverLevel } =
     usePowerSaver();
+  const { style: ambientStyle, setStyle: setAmbientStyle } = useAmbientStyle();
 
   const { enabled: forceBootAnimation, toggle: toggleForceBootAnimation } =
     useForceBootAnimation();
@@ -38,6 +44,12 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
 
   const [segments, setSegments] =
     createSignal<Record<string, string>>(INITIAL_SEGMENTS);
+
+  const { dialogRef, headerProps, dialogStyle } = useDraggableDialog({
+    open: () => {
+      return props.open;
+    },
+  });
 
   function toggleCosmetic(key: string): void {
     setToggles((prev) => {
@@ -54,8 +66,14 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
   return (
     <Show when={props.open}>
       <div data-testid="prefs-modal" class={styles.overlay}>
-        <div role="dialog" aria-label="Preferences" class={styles.dialog}>
-          <header class={styles.head}>
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-label="Preferences"
+          class={styles.dialog}
+          style={dialogStyle()}
+        >
+          <header class={styles.head} {...headerProps}>
             <div>
               <div class={styles.title}>PREFERENCES</div>
               <div class={styles.subtitle}>
@@ -65,6 +83,7 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
             <button
               type="button"
               data-testid="prefs-close"
+              data-nodrag=""
               aria-label="Close preferences"
               class={styles.closeButton}
               onClick={() => {
@@ -94,6 +113,16 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
                   on={animatedBg()}
                   onToggle={toggleAnimatedBg}
                   testid="pref-toggle-animatedBg"
+                />
+                <PrefSegment
+                  label="Ambient style"
+                  description="Northern-lights curtains or the original accent rays."
+                  options={AMBIENT_STYLE_OPTIONS}
+                  value={ambientStyle()}
+                  onChange={(value: string) => {
+                    setAmbientStyle(value as AmbientStyle);
+                  }}
+                  testid="pref-segment-ambientStyle"
                 />
                 <PrefToggle
                   label="Always play boot animation"
@@ -244,6 +273,13 @@ interface SegmentDef {
   readonly options: readonly PrefSegmentOption[];
 }
 
+// The options for the real "Ambient style" segment row, wired to
+// useAmbientStyle (not decorative — see PrefSegment call site above).
+const AMBIENT_STYLE_OPTIONS: readonly PrefSegmentOption[] = [
+  { value: "aurora", label: "Aurora" },
+  { value: "rays", label: "Rays" },
+];
+
 const POWER_SAVER_OPTIONS: readonly PrefSegmentOption[] = [
   { value: "off", label: "Off" },
   { value: "calm", label: "Calm" },
@@ -251,10 +287,11 @@ const POWER_SAVER_OPTIONS: readonly PrefSegmentOption[] = [
 ];
 
 // DECORATIVE — cosmetic HUD setting, intentionally not wired to any port (spec:
-// decorative-but-dead is allowed and explicit). The single REAL control in this
-// modal is the Animated-background toggle (wired to useAnimatedBackground); the
-// rows below hold throwaway local state purely so the switches/segments respond
-// to clicks for the golden + contract tiers.
+// decorative-but-dead is allowed and explicit). The REAL controls in this
+// modal are the Animated-background toggle (useAnimatedBackground), Power
+// saver toggle (usePowerSaver), and Ambient style segment (useAmbientStyle);
+// the rows below hold throwaway local state purely so the switches/segments
+// respond to clicks for the golden + contract tiers.
 const DISPLAY_TOGGLES: readonly ToggleDef[] = [
   {
     key: "reduceMotion",

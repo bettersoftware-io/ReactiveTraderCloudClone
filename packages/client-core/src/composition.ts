@@ -16,6 +16,7 @@ import {
   type WorkspaceTab,
 } from "#/layout/defaultLayoutPort";
 import {
+  AmbientStylePresenter,
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
   AnimationDirector,
@@ -112,6 +113,7 @@ export interface Presenters {
   themePreference: ThemePreferencePresenter;
   themeSkinPreference: ThemeSkinPreferencePresenter;
   animatedBackground: AnimatedBackgroundPresenter;
+  ambientStyle: AmbientStylePresenter;
   forceBootAnimation: ForceBootAnimationPresenter;
   powerSaver: PowerSaverPresenter;
   viewModePreference: ViewModePreferencePresenter;
@@ -272,6 +274,7 @@ export function createApp(ports: AppPorts): App {
     ),
     themeSkinPreference: new ThemeSkinPreferencePresenter(ports.preferences),
     animatedBackground: new AnimatedBackgroundPresenter(ports.preferences),
+    ambientStyle: new AmbientStylePresenter(ports.preferences),
     forceBootAnimation: new ForceBootAnimationPresenter(ports.preferences),
     powerSaver,
     viewModePreference: new ViewModePreferencePresenter(ports.preferences),

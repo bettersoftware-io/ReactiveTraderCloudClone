@@ -26,4 +26,29 @@ describe("AmbientBackground", () => {
 
   // Power-saver assertions live in shell/power/PowerSaverSurfaces.contract.spec.ts
   // (react-only; excluded from the Solid contract run).
+
+  describe("ambient style branch (aurora vs rays)", () => {
+    it("reflects the aurora style and mounts ONLY the aurora-curtains layer group", () => {
+      const page = mount(AmbientBackground, { ambientStyle: "aurora" });
+      expect(page.ambientStyle()).toBe("aurora");
+      expect(page.hasLayer("aurora-curtains")).toBe(true);
+      expect(page.hasLayer("rays")).toBe(false);
+    });
+
+    it("reflects the rays style and mounts ONLY the rays layer group", () => {
+      const page = mount(AmbientBackground, { ambientStyle: "rays" });
+      expect(page.ambientStyle()).toBe("rays");
+      expect(page.hasLayer("rays")).toBe(true);
+      expect(page.hasLayer("aurora-curtains")).toBe(false);
+    });
+
+    it("omits both styles' layer groups under power saver, regardless of style", () => {
+      const page = mount(AmbientBackground, {
+        ambientStyle: "aurora",
+        powerSaverLevel: "calm",
+      });
+      expect(page.hasLayer("aurora-curtains")).toBe(false);
+      expect(page.hasLayer("rays")).toBe(false);
+    });
+  });
 });
