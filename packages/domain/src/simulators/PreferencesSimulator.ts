@@ -2,8 +2,10 @@ import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
 import type { PreferencesPort } from "../ports/preferencesPort.js";
 import {
+  type AmbientStyle,
   type BootVariant,
   type CreditRfqFilter,
+  DEFAULT_AMBIENT_STYLE,
   DEFAULT_ANIMATED_BACKGROUND,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
@@ -24,6 +26,7 @@ export interface PreferencesSeed {
   themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
   animatedBackground?: boolean;
+  ambientStyle?: AmbientStyle;
   powerSaver?: boolean;
   bootVariant?: BootVariant;
   creditRfqFilter?: CreditRfqFilter;
@@ -44,6 +47,8 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly viewMode: BehaviorSubject<ViewMode>;
 
   private readonly animatedBg: BehaviorSubject<boolean>;
+
+  private readonly ambientStyleSubject: BehaviorSubject<AmbientStyle>;
 
   private readonly powerSaverSubject: BehaviorSubject<boolean>;
 
@@ -67,6 +72,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.animatedBg = new BehaviorSubject<boolean>(
       seed.animatedBackground ?? DEFAULT_ANIMATED_BACKGROUND,
+    );
+    this.ambientStyleSubject = new BehaviorSubject<AmbientStyle>(
+      seed.ambientStyle ?? DEFAULT_AMBIENT_STYLE,
     );
     this.powerSaverSubject = new BehaviorSubject<boolean>(
       seed.powerSaver ?? false,
@@ -115,6 +123,14 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setAnimatedBackground(on: boolean): void {
     this.animatedBg.next(on);
+  }
+
+  ambientStyle$(): Observable<AmbientStyle> {
+    return this.ambientStyleSubject.pipe(distinctUntilChanged());
+  }
+
+  setAmbientStyle(style: AmbientStyle): void {
+    this.ambientStyleSubject.next(style);
   }
 
   powerSaver$(): Observable<boolean> {

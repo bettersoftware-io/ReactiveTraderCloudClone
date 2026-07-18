@@ -1,6 +1,7 @@
 import type { Observable } from "rxjs";
 
 import type {
+  AmbientStyle,
   BootVariant,
   CreditRfqFilter,
   EqBlotterView,
@@ -37,6 +38,11 @@ export interface PreferencesPort {
   /** Ambient-motion perf gate; default true (compositor-only CSS backdrop). */
   animatedBackground$(): Observable<boolean>;
   setAnimatedBackground(on: boolean): void;
+  /** Replay-current ambient-style stream; emits synchronously on subscribe.
+   * Selects Aurora (curtains) vs Rays (blobs + sweep). Orthogonal to the
+   * animatedBackground motion gate. */
+  ambientStyle$(): Observable<AmbientStyle>;
+  setAmbientStyle(style: AmbientStyle): void;
   /** Power-saver master override; default false. While on, the client forces
    * the cheap rendering path (still ambience, conflated price re-renders)
    * WITHOUT mutating any other stored preference. */

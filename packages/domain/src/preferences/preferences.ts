@@ -52,6 +52,13 @@ export type EqWatchlistSort = "sym" | "chg" | "price";
 /** The equities Blotter panel's active tab — Orders or Positions. */
 export type EqBlotterView = "orders" | "positions";
 
+/** The ambient backdrop style. `aurora` is the v5 default — fixed-palette
+ * northern-lights curtains; `rays` is the original accent-tinted blobs +
+ * rotating conic sweep. Orthogonal to `animatedBackground` (the motion gate)
+ * and to the per-skin `--aurora-opacity` master opacity, which gates whichever
+ * style is active. */
+export type AmbientStyle = "aurora" | "rays";
+
 /** Boot-variant cycle order (PROTO _startBoot `variants` list, v3). */
 export const BOOT_VARIANTS: readonly BootVariant[] = [
   "core",
@@ -74,6 +81,10 @@ export const DEFAULT_VIEW_MODE: ViewMode = "chart";
  * choice (persisted under `rtc-animated-bg`); OS `prefers-reduced-motion` still
  * overrides it to static regardless. */
 export const DEFAULT_ANIMATED_BACKGROUND = true;
+/** Ambient backdrop style default. Matches the v5 design (northern-lights
+ * curtains). Users who pick "rays" keep that choice (persisted under
+ * `rtc-ambient-style`). */
+export const DEFAULT_AMBIENT_STYLE: AmbientStyle = "aurora";
 export const DEFAULT_CREDIT_RFQ_FILTER: CreditRfqFilter = "live";
 export const DEFAULT_BOOT_VARIANT: BootVariant = "core";
 export const DEFAULT_EQ_WATCHLIST_SORT: EqWatchlistSort = "chg";
@@ -95,6 +106,9 @@ export const THEME_SKINS: readonly ThemeSkin[] = [
   "neon",
 ];
 export const THEME_MODES: readonly ThemeMode[] = ["dark", "light"];
+
+/** The Preferences "Ambient style" segmented control renders these in order. */
+export const AMBIENT_STYLES: readonly AmbientStyle[] = ["aurora", "rays"];
 
 /** Default stored mode preference. Equal in value to DEFAULT_THEME_MODE, so
  * existing users (who have a concrete "dark"/"light" persisted) and the visual
