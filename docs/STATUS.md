@@ -17,6 +17,7 @@
 
 ## 🔴 Designed, not built (plan/spec merged, no implementation)
 
+- **Force boot animation preference** — new `forceBootAnimation` boolean pref (default off) that plays the boot splash even under `prefers-reduced-motion: reduce` (the real gate behind "no splash on Citrix/VDIs"; there is no hardware auto-detection). Boot-splash-scoped override; full domain→4-adapters→presenter→both-bindings→both-dialogs→ui-contract plumbing; RN adapter implements the port but gets no RN UI. Spec: [superpowers/specs/2026-07-18-force-boot-animation-preference-design.md](superpowers/specs/2026-07-18-force-boot-animation-preference-design.md) (no plan file yet)
 - **Jarvis AI assistant** — impl deferred. Spec: [superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md](superpowers/specs/2026-07-12-jarvis-ai-assistant-design.md) (no plan file yet)
 - **Feature flags** — OpenFeature + Flagsmith. Plan: [superpowers/plans/2026-07-01-feature-flags.md](superpowers/plans/2026-07-01-feature-flags.md)
 
