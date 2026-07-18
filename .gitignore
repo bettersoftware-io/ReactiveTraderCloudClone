@@ -23,8 +23,8 @@ test-results/
 # app-credit-1.png) — never a golden, must never be committed. Real goldens
 # always have react/ or react-local/<arch>/ between __screenshots__ and the spec
 # dir, so this can't match them.
-packages/client/tests/ui/visual/**/__screenshots__/*.spec.ts/
-packages/client/tests/ui/visual/**/__screenshots__/*.spec.tsx/
+packages/*/tests/ui/visual/**/__screenshots__/*.spec.ts/
+packages/*/tests/ui/visual/**/__screenshots__/*.spec.tsx/
 
 # actionlint binary (downloaded via scripts/install-actionlint.sh)
 .tooling/
