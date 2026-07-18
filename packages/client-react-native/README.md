@@ -203,8 +203,8 @@ credential depends on which branch `buildNativePorts` selects:
   `DEV_CREDENTIALS` map (`nativeAuthConfig.ts`), read from `app.config.ts` →
   `extra.devAuth` (`EXPO_PUBLIC_DEV_AUTH`, a JSON `username -> password`
   object — the RN analogue of the web client's `VITE_DEV_AUTH`). Unset or
-  malformed falls back to all four roster usernames at a shared local dev
-  password (`demo`), so simulator mode always has a working login with no env
+  malformed falls back to all four roster usernames at the shared committed
+  demo password (`mcdc2026`), so simulator mode always has a working login with no env
   set at all: `astark`, `nromanoff`, `tchalla`, `demo`. **Simulator-only —
   never a deployed secret; live mode never baked-in credentials.**
 
@@ -225,14 +225,14 @@ template and fill it in:
 ```bash
 cp packages/client-react-native/.env.example packages/client-react-native/.env
 # then edit packages/client-react-native/.env:
-#   EXPO_PUBLIC_DEV_AUTH={"astark":"demo","demo":"demo"}
+#   EXPO_PUBLIC_DEV_AUTH={"astark":"mcdc2026","demo":"mcdc2026"}
 ```
 
 Then run as usual (`pnpm --filter @rtc/client-react-native start`). Or set it
 just for one run, without a file:
 
 ```bash
-EXPO_PUBLIC_DEV_AUTH='{"astark":"demo","demo":"demo"}' pnpm --filter @rtc/client-react-native start
+EXPO_PUBLIC_DEV_AUTH='{"astark":"mcdc2026","demo":"mcdc2026"}' pnpm --filter @rtc/client-react-native start
 ```
 
 Optional companion var: `EXPO_PUBLIC_SERVER_URL` overrides the WS endpoint

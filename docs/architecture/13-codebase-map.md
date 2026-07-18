@@ -6,7 +6,7 @@
 
 ### 13.1 L0 -- The System On One Screen
 
-Ten workspace packages plus `tests`, drawn as five "buildings": two shipping client apps, one planned client, the shared floors every client stands on, and the server. `@rtc/client-prototype` is omitted here too (as in [§1.3.1](01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring)) -- it is a design-comprehension island with zero `@rtc/*` edges into this graph. `@rtc/motion-core` *does* appear (as `motion`) since `client-react` genuinely depends on it.
+Eleven workspace packages plus `tests`, drawn as five "buildings": three shipping client apps, the shared floors every client stands on, and the server. `@rtc/client-prototype` is omitted here too (as in [§1.3.1](01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring)) -- it is a design-comprehension island with zero `@rtc/*` edges into this graph. `@rtc/motion-core` *does* appear (as `motion`) since `client-react` and `client-solid` both genuinely depend on it. `@rtc/ui-contract` and the devtools packages are omitted from this L0 view for the same reason as `client-prototype` -- they exist to test/instrument the graph below, not to run inside it; both get their own L1 cards.
 
 ```mermaid
 flowchart TB
@@ -22,15 +22,15 @@ flowchart TB
         rnAdapt["Native adapters<br/>buildNativePorts · AsyncStorage · Appearance"]:::ui
     end
 
-    subgraph SolidApp["Solid app — @rtc/client-solid (PLANNED)"]
+    subgraph SolidApp["Solid app — @rtc/client-solid (shipping)"]
         direction TB
-        solidUi["UI — SolidJS, dumb<br/>not yet built"]:::uiPlanned
+        solidUi["UI — SolidJS, dumb<br/>src/ui -- full parity w/ client-react"]:::ui
     end
 
     subgraph SharedFloors["Shared floors — one core for every client"]
         direction TB
         rb["react-bindings<br/>createViewModel · useMachine"]:::bridge
-        sb["solid-bindings (PLANNED)<br/>Observable → signal"]:::bridgePlanned
+        sb["solid-bindings<br/>Observable → signal"]:::bridge
         core["client-core<br/>presenters · machines · WsAdapter · portFactory"]:::core
         domain["domain<br/>entities · use cases · ports · simulators"]:::domain
         shared["shared<br/>DTOs · CLIENT_MSG / SERVER_MSG"]:::domain
@@ -48,10 +48,10 @@ flowchart TB
     webAdapt --> core
     rnUi --> rb
     rnAdapt --> core
-    solidUi -.-> sb
-    solidUi -.-> motion
+    solidUi --> sb
+    solidUi --> motion
     rb --> core
-    sb -.-> core
+    sb --> core
     core --> domain
     core --> shared
     core -. "live mode: WS JSON" .-> srv
@@ -61,15 +61,13 @@ flowchart TB
     srv --> shared
 
     classDef ui fill:#1f6feb,stroke:#79c0ff,color:#ffffff
-    classDef uiPlanned fill:#1f6feb,stroke:#79c0ff,color:#ffffff,stroke-dasharray: 5 5
     classDef bridge fill:#8957e5,stroke:#d2a8ff,color:#ffffff
-    classDef bridgePlanned fill:#8957e5,stroke:#d2a8ff,color:#ffffff,stroke-dasharray: 5 5
     classDef core fill:#238636,stroke:#56d364,color:#ffffff
     classDef server fill:#9e6a03,stroke:#e3b341,color:#ffffff
     classDef domain fill:#1f2d3d,stroke:#4493f8,color:#e6edf3
     style WebApp fill:transparent,stroke:#6e7681
     style MobileApp fill:transparent,stroke:#6e7681
-    style SolidApp fill:transparent,stroke:#6e7681,stroke-dasharray: 5 5
+    style SolidApp fill:transparent,stroke:#6e7681
     style SharedFloors fill:transparent,stroke:#6e7681
     style Server fill:transparent,stroke:#6e7681
     linkStyle default stroke:#6e7fa3,stroke-width:1.5px
@@ -122,8 +120,19 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Ring** | ③ Interface Adapters -- ViewModel bridge |
 | **Depends on** | `@react-rxjs/core`, `@rtc/client-core`, `@rtc/domain`, `react`, `rxjs` (`packages/react-bindings/package.json` `dependencies`) |
 | **Consumed by** | `client-react`, `client-react-native` |
-| **Non-obvious** | The *only* package permitted to depend on both React and the core's RxJS streams ([§6](06-package-dependencies.md#6-package-dependencies)) -- kept small (~850 LOC, [§2.3](02-c4-model.md#23-component-diagram----web-client)) precisely so a `@rtc/solid-bindings` sibling is roughly a day's work. |
+| **Non-obvious** | The *only* package permitted to depend on both React and the core's RxJS streams ([§6](06-package-dependencies.md#6-package-dependencies)) -- kept small (~850 LOC, [§2.3](02-c4-model.md#23-component-diagram----web-client)) precisely so a `@rtc/solid-bindings` sibling was roughly a day's work, which it was. |
 | **README** | [`packages/react-bindings/README.md`](../../packages/react-bindings/README.md) |
+
+#### `@rtc/solid-bindings`
+
+| | |
+|---|---|
+| **What it is** | The Solid↔RxJS bridge, parallel to `react-bindings`: `createViewModel`, `useMachine`, `ViewModelProvider`/`useViewModel`, implementing the exact same `ViewModel` member list over Solid signals instead of React hooks. |
+| **Ring** | ③ Interface Adapters -- ViewModel bridge |
+| **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rx-state/core`, `rxjs`, `solid-js` (`packages/solid-bindings/package.json` `dependencies`) |
+| **Consumed by** | `client-solid` (the only client on this bridge -- `react-bindings` and `solid-bindings` never share a client) |
+| **Non-obvious** | Not a reuse of `react-bindings` -- a sibling package binding the *same*, unmodified `client-core` (the multi-client proof in miniature, [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)). `useMachine`'s Solid counterpart uses `onCleanup` instead of react-bindings' StrictMode-safe microtask-deferred `dispose()` -- Solid has no StrictMode double-invoke to guard against, so the lifecycle bridge is simpler here, not just differently spelled. At ~980 LOC it lands within the same order of magnitude as `react-bindings`' ~850--930. |
+| **README** | [`packages/solid-bindings/README.md`](../../packages/solid-bindings/README.md) |
 
 #### `@rtc/client-react`
 
@@ -147,6 +156,17 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Non-obvious** | `rxjs` is a listed runtime dep and appears in `src/app/adapters` (e.g. `AppearanceColorSchemeAdapter` returns `Observable<boolean>`) but never in `src/ui` -- the same dumb-UI discipline as web, now machine-gated here too by gates 30–33, the RN counterpart of gates 26–29 on `client-react/src/ui`. Its own suite runs vitest + jest-expo; it isn't exercised by the root `tests` e2e/presenter/fullstack suites, and RN e2e (Maestro) is a deferred workstream. |
 | **README** | [`packages/client-react-native/README.md`](../../packages/client-react-native/README.md) |
 
+#### `@rtc/client-solid`
+
+| | |
+|---|---|
+| **What it is** | The SolidJS web client: dumb Solid UI (`src/ui`) + browser-specific platform adapters (`src/app`), at full parity with `@rtc/client-react` -- same contract specs, same visual goldens, same behavioural suites. |
+| **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) |
+| **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/solid-bindings`, `solid-js`, `rxjs`, `@fontsource/*` (`packages/client-solid/package.json` `dependencies`) |
+| **Consumed by** | Nothing in-workspace -- like `client-react-native`, it is a leaf app and *not* a `tests` (`@rtc/tests`) dependency; its own suite (contract + three visual tiers) runs in-package |
+| **Non-obvious** | Asserts against `client-react`'s own visual goldens rather than owning any of its own (`packages/client-react/tests/ui/visual/__screenshots__/`) -- a passing Solid visual run is a direct cross-framework pixel match, not a self-comparison ([its README](../../packages/client-solid/README.md)). `@rx-state/core` and `@rtc/ui-contract` are `devDependencies`, not runtime deps -- the former backs `solid-bindings`' streams in tests, the latter supplies the shared contract specs and visual scenario manifest. |
+| **README** | [`packages/client-solid/README.md`](../../packages/client-solid/README.md) |
+
 #### `@rtc/client-prototype`
 
 | | |
@@ -165,9 +185,20 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **What it is** | Framework-free, zero-dependency view-layer motion math: FLIP deltas (`flipDeltas`), rank-glide coalescing (`coalesceOrder`, `computeRankDirections`, `sameOrder`), and easing/duration constants. |
 | **Ring** | ④ Frameworks & Drivers -- a pure utility consumed directly by a UI shell, not the domain/use-case layer |
 | **Depends on** | Nothing -- no runtime `dependencies` at all (`packages/motion-core/package.json`), stricter than the `rxjs`-only exception `domain` and `ws-effects` get |
-| **Consumed by** | `client-react` (`src/ui/shell/motion/useFlipGrid.ts`, `src/ui/equities/watchlist/useRankGlide.ts`); `client-solid` is planned to add the same edge |
+| **Consumed by** | `client-react` (`src/ui/shell/motion/useFlipGrid.ts`, `src/ui/equities/watchlist/useRankGlide.ts`) and `client-solid` (`src/ui/shell/motion/useFlipGrid.ts`, `src/ui/equities/watchlist/useRankGlide.ts`, `src/ui/shell/status/useLiveMetrics.ts`, the equities chart components) -- the same math, two thin per-framework shells |
 | **Non-obvious** | Machine-enforced purity via dependency-cruiser's `motion-core-stays-pure` rule ([§6](06-package-dependencies.md#6-package-dependencies)); see [ADR-005](../adr/ADR-005-ui-logic-placement.md) for why this animation math lives here rather than behind the ViewModel. |
 | **README** | [`packages/motion-core/README.md`](../../packages/motion-core/README.md) |
+
+#### `@rtc/ui-contract`
+
+| | |
+|---|---|
+| **What it is** | The framework-neutral UI test contract: the shared sociable-RTL harness, the `*.contract.spec.ts` specs, and the visual scenario/fixture manifest -- extracted from `client-react`'s test tree so a second UI framework's test suites can depend on it without depending on `client-react`. |
+| **Ring** | ④ Frameworks & Drivers -- a test-only leaf, not part of either client's runtime bundle |
+| **Depends on** | `@rtc/client-core`, `@rtc/domain`, `@rtc/motion-core`, `rxjs` (`packages/ui-contract/package.json` `dependencies`) |
+| **Consumed by** | `client-react` and `client-solid`, both as a **devDependency** -- it never appears in either client's `src/` (only their `tests/`) |
+| **Non-obvious** | `src/visual/` is the piece with the highest leverage: `scenarios.ts`, `scenarioActions.ts`, `fixtures.ts`, `appData.ts`, `goldenPath.ts`, and `freezeClock.ts` are the single source of truth both clients' three visual tiers loop over -- adding a scenario here gives all six tier-runners (three per client) the test for free. `src/specs/` holds the 80+ shared contract spec files (fx/credit/equities/admin/shell); each client supplies only its own render-target "swap trio" (`react/` vs `solid/`) that the specs mount against. |
+| **README** | [`packages/ui-contract/README.md`](../../packages/ui-contract/README.md) |
 
 #### `@rtc/ws-effects`
 
@@ -213,7 +244,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Non-obvious** | Never imports `@rtc/client-core` (`grep -rln "@rtc/client-core" packages/server/src` returns nothing) -- server and clients share only `domain`/`shared`, enforced as a hard boundary by dependency-cruiser's `client-not-server`/`server-not-client` rules ([§6](06-package-dependencies.md#6-package-dependencies)). It also skips `domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` returns nothing) -- use cases are client-orchestration; the server drives simulators directly. |
 | **README** | [`packages/server/README.md`](../../packages/server/README.md) |
 
-#### `tests` (the 11th card -- not a package, the behavioural-insurance layer)
+#### `tests` (the 16th card -- not a package, the behavioural-insurance layer)
 
 | | |
 |---|---|
@@ -267,6 +298,17 @@ src/
 └── useViewModel.ts        the accessor components import
 ```
 
+`@rtc/solid-bindings` (flat -- no subfolders):
+```
+src/
+├── createViewModel.ts    the same ~60 use* accessor factory, over Solid signals
+├── useMachine.ts          per-mount RxJS machine → Solid primitive bridge (onCleanup, not microtask-deferred dispose)
+├── toSignal.ts            Observable/StateObservable → Solid signal, the @rx-state/core → signal seam
+├── ViewModelContext.ts    the seam: context + type only
+├── ViewModelProvider.tsx  injector — imported ONLY by AppRoot
+└── useViewModel.ts        the accessor components import
+```
+
 `@rtc/client-react`:
 ```
 src/
@@ -290,6 +332,17 @@ src/
 └── ui/theme/              rnThemeTokens · ThemeProvider · DepthTokens
 ```
 
+`@rtc/client-solid`:
+```
+src/
+├── app/            composition root — AppRoot, buildBrowserPorts, adapters/, theme/
+├── ui/fx/          tiles · blotter · analytics · positions
+├── ui/credit/      RFQ form · RFQ tiles · sell-side panel
+├── ui/equities/    watchlist · candles · depth · ticket · blotters
+├── ui/admin/       KPIs · throughput · latency · topology · event log
+└── ui/shell/       layout engine · header · boot gate · lock screen · power-saver
+```
+
 `@rtc/client-prototype`:
 ```
 src/
@@ -307,6 +360,16 @@ src/
 ├── flip.ts            flipDeltas + FLIP_*/EXIT_* easing/duration constants
 ├── rankGlide.ts        coalesceOrder · computeRankDirections · sameOrder + GLIDE_*/HIGHLIGHT_* constants
 └── reducedMotion.ts     REDUCED_MOTION_QUERY -- shared prefers-reduced-motion media query string
+```
+
+`@rtc/ui-contract`:
+```
+src/
+├── specs/fx/ credit/ equities/ admin/ shell/    80+ shared *.contract.spec.ts files, sociable RTL over a render-target prop
+├── shared/harness/, shared/pages/                mount helper + Page-Object-ish query helpers, framework-neutral
+├── shared/components.ts, shared/mount.ts          the render-target seam each client's swap-trio implements
+└── visual/     scenarios.ts · scenarioActions.ts · fixtures.ts · appData.ts · goldenPath.ts · freezeClock.ts
+                 — the manifest + interaction table + fixture data both clients' visual tiers loop over
 ```
 
 `@rtc/ws-effects` (flat -- no subfolders):
@@ -365,7 +428,7 @@ tests/
 
 What's shared verbatim, what's adapted per platform, and what doesn't apply -- verified by grepping each app's actual imports, not by reading intent off a diagram.
 
-| Concern | `client-react` | `client-react-native` | `client-solid` (planned) | `server` |
+| Concern | `client-react` | `client-react-native` | `client-solid` | `server` |
 |---|---|---|---|---|
 | Ports (`domain/src/ports/`) | ✅ | ✅ | ✅ | ✅ |
 | Use cases (`domain/src/usecases/`) | ✅ | ✅ | ✅ | — |
@@ -378,15 +441,18 @@ What's shared verbatim, what's adapted per platform, and what doesn't apply -- v
 | ws-effects framework (`@rtc/ws-effects`) | — | — | — | ✅ |
 | View-layer motion math (`@rtc/motion-core`) | ✅ | — | ✅ | — |
 | ViewModel bindings (`createViewModel`/`useMachine`/`useViewModel`) | ✅ | ✅ | 🔧[^3] | — |
+| UI contract + visual scenario manifest (`@rtc/ui-contract`) | 🔧[^4] | — | 🔧[^4] | — |
 
-[^1]: The preference presenter (`ThemeSkinPreferencePresenter`/`ThemePreferencePresenter`, `packages/client-core/src/presenters/`) is shared verbatim by every UI. What's adapted is the token *rendering*: `client-react` applies CSS custom properties from `packages/client-react/src/ui/shell/theme/tokens.ts` via `:root`; `client-react-native` delivers a plain-object `rnThemeTokens` tree (plus an RN-only `DepthTokens` shadow/elevation descriptor, since RN can't express layered/inset box-shadows) from `packages/client-react-native/src/ui/theme/tokens.ts` via React context. A planned `client-solid` would need the same third rendering strategy.
-[^2]: Consumed transitively, not directly: neither `client-react` nor `client-react-native` lists `@rtc/shared` as a dependency or imports `CLIENT_MSG`/`SERVER_MSG` anywhere in `src/` (`grep -rln "@rtc/shared" packages/client-react/src packages/client-react-native/src` returns nothing) -- only `client-core`'s `WsAdapter`/`wsReal*` adapters touch it. A planned `client-solid` would inherit the same indirection by reusing `client-core`.
-[^3]: `client-solid` is planned to get a sibling package `@rtc/solid-bindings` (Observable → signal), not a reuse of `@rtc/react-bindings` -- `docs/architecture/06-package-dependencies.md` draws `solidc -.-> sb` and `sb -.-> core`, i.e. a new framework-specific bridge binding the *same*, unmodified `client-core`. This is the multi-client proof in miniature: only the bridge and the UI change; everything below stays put ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)).
+[^1]: The preference presenter (`ThemeSkinPreferencePresenter`/`ThemePreferencePresenter`, `packages/client-core/src/presenters/`) is shared verbatim by every UI. What's adapted is the token *rendering*: `client-react` applies CSS custom properties from `packages/client-react/src/ui/shell/theme/tokens.ts` via `:root`; `client-react-native` delivers a plain-object `rnThemeTokens` tree (plus an RN-only `DepthTokens` shadow/elevation descriptor, since RN can't express layered/inset box-shadows) from `packages/client-react-native/src/ui/theme/tokens.ts` via React context; `client-solid` applies the same CSS custom properties as `client-react` (the CSS Modules ported byte-for-byte), a third instance of the same rendering strategy, not a third design.
+[^2]: Consumed transitively, not directly: neither `client-react` nor `client-react-native` nor `client-solid` lists `@rtc/shared` as a dependency or imports `CLIENT_MSG`/`SERVER_MSG` anywhere in `src/` (`grep -rln "@rtc/shared" packages/client-react/src packages/client-react-native/src packages/client-solid/src` returns nothing) -- only `client-core`'s `WsAdapter`/`wsReal*` adapters touch it. `client-solid` inherits the same indirection by reusing `client-core`.
+[^3]: `client-solid` uses the sibling package `@rtc/solid-bindings` (`@rx-state/core` → Solid signal), not a reuse of `@rtc/react-bindings` -- `docs/architecture/06-package-dependencies.md` draws `solidc --> sb` and `sb --> core`, i.e. a separate framework-specific bridge binding the *same*, unmodified `client-core`. This is the multi-client proof in miniature: only the bridge and the UI change; everything below stays put ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)).
+[^4]: Both web clients consume `@rtc/ui-contract` as a **devDependency only** -- it never appears in either client's `src/`, only in `tests/`. Each supplies its own render-target "swap trio" (`react/` vs `solid/`) that the shared contract specs and visual scenarios mount against; `client-react-native` has no equivalent because the shared contract/visual tiers are web-only (RN's own suite runs vitest + jest-expo, per its own §13.2 card).
 
 **What each app adds on top of the shared floors:**
 
 - **Web** (`client-react`): browser platform adapters (`buildBrowserPorts`, `LocalStoragePreferencesAdapter`, `MediaQueryColorSchemeAdapter`), the CSS-Modules-driven HUD, Vite as the build tool.
 - **Mobile** (`client-react-native`): native platform adapters (`buildNativePorts`, `AsyncStoragePreferencesAdapter`, `AppearanceColorSchemeAdapter`), `react-native-svg`-rendered skins, Expo/`expo-router` for build and navigation.
+- **Solid web** (`client-solid`): the same browser platform adapters as `client-react` (`buildBrowserPorts`, `LocalStoragePreferencesAdapter`, `MediaQueryColorSchemeAdapter`), the same CSS Modules, Vite as the build tool -- the smallest possible delta from `client-react`, by design.
 - **Server** (`server`): the 24 `@rtc/ws-effects` effects and their `serviceContainer` services -- the one place the domain simulators are wired to a live network socket instead of an in-process port.
 
 ---

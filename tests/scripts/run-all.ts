@@ -40,21 +40,32 @@ const hasXvfbRun =
     0;
 
 // Browser suites: one dev server each, on consecutive ports from here.
+// The two playwright-driver suites are duplicated for the Solid client (same
+// Gherkin features/steps/page-objects, RTC_CLIENT_PKG=@rtc/client-solid — see
+// tests/package.json) so the shared contract is proven against both clients.
+// Cypress stays react-only (see the RTC_E2E_SKIP_CYPRESS note below — Cypress
+// busy-spins in some virtualized environments), so no cypress:solid entries
+// exist to add here.
 const BROWSER_BASE_PORT = 3001;
 const browserScripts = [
   "test:browser:playwright",
   "test:browser:playwright-cucumber",
   "test:browser:cypress",
   "test:browser:cypress-cucumber",
+  "test:browser:playwright:solid",
+  "test:browser:playwright-cucumber:solid",
 ];
 
 // Order matters when a concurrency cap is in effect (see MAX_PARALLEL below):
 // the pool starts suites in array order. Front-load the light, in-process
 // presenter suites and the timing-sensitive full-stack smokes (their WS
 // connection to the real server is starved if it competes with a heavy browser
-// suite on a small CI runner) so they run first, uncontended. The four heavy
+// suite on a small CI runner) so they run first, uncontended. The six heavy
 // browser suites (each = a dev server + a real browser) run last. Browser-suite
-// dev-server ports stay fixed regardless of order (baked in via the map index).
+// dev-server ports stay fixed regardless of order (baked in via the map index):
+// react playwright/playwright-cucumber/cypress/cypress-cucumber get
+// 3001-3004 as before; the two solid suites continue the same block at
+// 3005-3006.
 const suites: Suite[] = [
   // Full-stack smokes — self-contained on their own ports; quick but timing-sensitive.
   { script: "test:fullstack:node" },

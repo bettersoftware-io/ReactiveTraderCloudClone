@@ -28,9 +28,9 @@ export function buildBrowserPorts(): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL as string | undefined;
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
-  // The skeleton needs no persistence across reloads — an in-memory session
-  // store is enough for the auto-login (see AppRoot.tsx) to keep the shell
-  // authenticated for the tab's lifetime.
+  // An in-memory session store (no persistence across reloads): after the
+  // AuthGate sign-in the session lasts the tab's lifetime, and a reload
+  // returns to the login screen.
   const sessionStore = new InMemorySessionStore();
   const colorScheme = new MediaQueryColorSchemeAdapter();
   // One-shot boot-splash decision (webdriver/nosplash suppress it) — read at
@@ -71,10 +71,14 @@ export function buildBrowserPorts(): AppPorts {
     };
   }
 
-  // Baked skeleton credential — the walking skeleton has no login UI, so the
-  // simulator branch only needs to accept the one demo/demo pair used by
-  // AppRoot's auto-login.
-  const auth = new AuthSimulator({ demo: "demo" });
+  // Committed demo roster (see roster.ts / CLAUDE.md "Demo accounts"): all four
+  // operators share the demo password so the real LoginScreen accepts any of them.
+  const auth = new AuthSimulator({
+    astark: "mcdc2026",
+    nromanoff: "mcdc2026",
+    tchalla: "mcdc2026",
+    demo: "mcdc2026",
+  });
   const gateway = new ConnectionEventsSimulator();
   const connectionEvents: ConnectionEventsPort = {
     events: () => {

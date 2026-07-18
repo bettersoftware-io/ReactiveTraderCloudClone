@@ -55,21 +55,23 @@ These states have **no golden** on purpose (see
 
 ## Layout
 
+The framework-neutral core — scenario manifest, interaction table, and fixture
+data — lives one package over, in `@rtc/ui-contract`'s `src/visual/`
+(`scenarios.ts`, `scenarioActions.ts`, `fixtures.ts`, `appData.ts`,
+`goldenPath.ts`, `freezeClock.ts`), aliased here as `@ui-visual-shared`. It was
+extracted out of this package's former `tests/ui/visual/shared/` folder so a
+second framework's visual suite (`@rtc/client-solid`'s) could depend on it as
+a devDependency without depending on `@rtc/client-react`. Nothing under
+`tests/ui/visual/` in this package is framework-neutral any more — everything
+below is React-specific or runner glue:
+
 ```
 tests/ui/visual/
-  shared/            — Framework-neutral core (no React imports)
-    appData.ts       — AppData type: the injectable data contract
-    fixtures.ts      — Named fixture data sets
   react/             — React render target (the @ui-visual alias barrel)
     buildFakeViewModel.ts — AppData → ViewModel adapter
     registry.tsx      — componentKey → React element map
     VisualScenario.tsx — theme + provider + backdrop wrapper
     index.ts          — barrel export (the @ui-visual alias target)
-  scenarioActions.ts — Runner-neutral per-scenario interaction table (used by
-                       URL-driven runners to click/hover before screenshotting;
-                       pairs with @rtc/ui-contract's src/visual/scenarios.ts —
-                       the scenario name → { componentKey, fixture } manifest,
-                       extracted there in Task 3)
   playwright-ct/     — Tier 1: Playwright Component Testing specs + goldens
     playwright-ct.config.ts — in-suite runner config
     __screenshots__/react/
@@ -94,10 +96,13 @@ tests/ui/visual/
   README.md          — this file
 ```
 
-`shared/` is what a SolidJS UI reuses verbatim — it has zero React imports.
-The contract is the data (`shared/`) and the goldens (`__screenshots__/`) — not
-the React-shaped `ViewModel` interface, which each framework adapts to its own
-model.
+`@rtc/ui-contract`'s `src/visual/` is what `@rtc/client-solid` reuses
+verbatim as a devDependency — it has zero React imports. The contract is the
+data (`src/visual/`) and the goldens (`__screenshots__/`) — not the
+React-shaped `ViewModel` interface, which each framework adapts to its own
+model. `client-solid`'s three visual tiers point their `snapshotDir` at
+*these* `__screenshots__/react/` (and `react-local/<arch>/`) trees — it
+asserts against them and owns no golden images of its own.
 
 ### Goldens: two committed sets (CI vs local)
 
@@ -127,23 +132,21 @@ are three layers, and "sharing" happens at one of them but not the others:
 
 | Layer | Shared across all 3? | What it is |
 |---|---|---|
-| **Scenario manifest** (`@rtc/ui-contract`'s `src/visual/scenarios.ts` + this package's `scenarioActions.ts`) | ✅ **Yes** — one source of truth | "What to render and what to click" — the named scenarios, with zero React/runner code |
-| **Test bodies** (the `*.spec` files) | ⚠️ **Two of three** | Tier 2 + Tier 3 _auto-derive_ their tests by looping over the manifest. Tier 1 is _hand-written_ |
+| **Scenario manifest** (`@rtc/ui-contract`'s `src/visual/scenarios.ts` + `scenarioActions.ts`) | ✅ **Yes** — one source of truth | "What to render and what to click" — the named scenarios, with zero React/runner code |
+| **Test bodies** (the `*.spec` files) | ✅ **Yes** | All three tiers now _auto-derive_ their tests by looping over the manifest (Tier 1's `matrix.spec.tsx` joined Tiers 2/3 on this — see below) |
 | **Goldens** (`__screenshots__/`) | ❌ **No — each tier owns its own set** | Three separate PNG directories, one per runner |
 
 So when we say the runners "share tests," what's actually shared is the
 **scenario list and the interaction steps** — not the spec files, and not the
 golden images:
 
-- **Tier 2 & 3 are data-driven.** Each spec is a ~50-line
-  `for (const name of Object.keys(scenarios))` loop that also reads
-  `scenarioActions[name]`. Add a scenario to the manifest → both tiers get the
-  test for free, in lock-step.
-- **Tier 1 is hand-written.** `tile.spec.tsx` et al. each call
-  `mount(<VisualScenario name="…"/>)` literally, one `test()` per scenario. It
-  uses the _same scenario names_ but nothing forces it to stay complete — a new
-  manifest entry does **not** automatically get a CT test. That is the drift risk
-  Tier 1 carries and the data-driven tiers don't.
+- **All three tiers are data-driven.** Each spec is a
+  `for (const [name, scenario] of Object.entries(scenarios))` loop that also
+  reads `scenarioActionFor(name)`. Add a scenario to the manifest → all three
+  tiers get the test for free, in lock-step. (Tier 1's `matrix.spec.tsx`
+  replaced the original hand-written per-file specs — `tile.spec.tsx` et
+  al. — precisely to close this drift risk: a new manifest entry no longer
+  needs a matching hand-authored CT test.)
 - **Goldens are physically separate per tier** because each runner rasterizes
   differently (CT mounts the component in isolation; Tier 2 navigates a URL and
   shoots `scenario-root`; Tier 3 renders via `vitest-browser-react`). They encode
@@ -154,13 +157,13 @@ golden images:
 
 ```mermaid
 flowchart TB
-    subgraph CORE["shared/ — framework-neutral, zero React imports"]
+    subgraph CORE["@rtc/ui-contract src/visual/ — framework-neutral, zero React imports"]
         SC["scenarios.ts<br/>name → componentKey + fixtureKey"]
         SA["scenarioActions.ts<br/>name → click / type / select steps"]
         FX["fixtures.ts + appData.ts<br/>the injectable data contract"]
     end
 
-    subgraph REACT["react/ — the @ui-visual seam (swap this for SolidJS)"]
+    subgraph REACT["react/ — the @ui-visual seam (client-solid has its own solid/ seam)"]
         REG["registry.tsx<br/>componentKey → React element"]
         VS["VisualScenario.tsx<br/>theme + ViewModelProvider + backdrop"]
     end
@@ -168,7 +171,7 @@ flowchart TB
     CORE --> REACT
 
     subgraph T1["Tier 1 · playwright-ct"]
-        T1S["HAND-WRITTEN specs<br/>mount(VisualScenario)"]
+        T1S["DATA-DRIVEN matrix.spec.tsx<br/>loops scenarios, mount(VisualScenario)"]
         T1G["__screenshots__/react/<br/>(own goldens)"]
     end
     subgraph T2["Tier 2 · playwright"]
@@ -196,11 +199,11 @@ flowchart TB
 | | **Tier 1 — playwright-ct** | **Tier 2 — playwright (URL host)** | **Tier 3 — vitest-browser** |
 |---|---|---|---|
 | **How it mounts** | Playwright CT adapter mounts the component directly | Vite app serves `/?scenario=x`; Playwright navigates to it | `vitest-browser-react`'s `render()` |
-| **Test source** | Hand-written, one `test()` per scenario | Auto-derived from the manifest | Auto-derived from the manifest |
+| **Test source** | Data-driven (`matrix.spec.tsx` loops the manifest) | Auto-derived from the manifest | Auto-derived from the manifest |
 | **Matcher** | `toHaveScreenshot` (AA-tolerant) | `toHaveScreenshot` (AA-tolerant) | `toMatchScreenshot` (Vitest 4; needs the AA cushion set in its config) |
 | **Framework coupling** | High — needs a CT adapter that tracks Playwright versions | **Lowest** — the spec only knows URLs; the host is the only React bit | Medium — needs a render shim, but no lagging adapter to track |
 | **Strength** | Closest to "mount one component in isolation"; explicit and readable | Most portable; production-like (real navigation, routing, `page.route` stubs) | Runs under Vitest → produces the **istanbul coverage report** (the gap-finder); shares Tier 2's actions for free |
-| **Weakness** | Can silently drift from the manifest; CT-adapter lag is the documented Solid-port blocker | Needs a Vite host app to maintain | Newest matcher (experimental); zero-tolerance by default (hence the AA cushion) |
+| **Weakness** | CT-adapter version lag can block a real CT mount for a new framework (`client-solid`'s Tier 1 ships as a URL-navigation fallback for exactly this reason — see `packages/client-solid`) | Needs a Vite host app to maintain | Newest matcher (experimental); zero-tolerance by default (hence the AA cushion) |
 | **Best for** | Component-level intent on today's React | The framework-swap contract | Coverage + behavioural lock-step with Tier 2 |
 
 ### Why keep all three
@@ -208,8 +211,8 @@ flowchart TB
 They are a defence-in-depth triangle, not redundancy:
 
 - **Tier 2** is the _portability contract_ — it proves the goldens can be
-  reproduced by something that knows nothing about React, so a SolidJS port reuses
-  its URL spec verbatim.
+  reproduced by something that knows nothing about React, which is exactly why
+  `client-solid`'s Tier 2 reuses `visual.spec.ts` verbatim.
 - **Tier 3** is the _coverage instrument_ — only it runs under Vitest, so it is
   what produces `reports/ui/visual/coverage/` and reveals which component states
   still lack a golden.
@@ -347,95 +350,86 @@ them). The ui-visual tsconfig covers both `src` and `tests` (the whole
 visual suite, including `run-all.ts` — minus
 `playwright-ct/playwright-ct.config.ts`, see the comment in the tsconfig).
 
-## Porting to another UI framework (e.g. SolidJS)
+## Porting to another UI framework — executed once, for SolidJS
 
-The goal: run the **same** scenarios and match the **same** goldens.
+The goal was always: run the **same** scenarios and match the **same**
+goldens. The plan below was written before the port started; `@rtc/client-solid`
+then executed it, and shipped it **assert-only** — `client-solid` owns none of
+its own golden images, it points all three tiers' `snapshotDir` at *this*
+package's `__screenshots__/` trees, so a passing Solid run is a direct pixel
+match against React, not a self-comparison. The one place reality deviated
+from the original plan is Tier 1 (below): the predicted CT-adapter blocker
+did materialize, but the resolution was a fallback tier, not a stalled port.
 
-**What to reuse verbatim:**
+**What was reused verbatim:**
 
-- `shared/` — untouched (or extracted to a shared package)
-- `playwright/visual.spec.ts` — URL-driven, zero framework assumptions
+- `@rtc/ui-contract`'s `src/visual/` (by then already extracted from this
+  package's `shared/`) — consumed as a devDependency, unmodified
+- `playwright/visual.spec.ts` — URL-driven, zero framework assumptions;
+  `client-solid`'s Tier 2 is this file, copied without a behavioural change
 - `playwright-ct/__screenshots__/react/` and
   `playwright/__screenshots__/react/` — the canonical (CI-enforced)
   golden contract (see "Goldens: two committed sets" above; the per-arch
   `react-local/` sets are local-feedback only)
 
-**What to implement for the new framework:**
+**What was implemented for Solid:**
 
-1. A new `<framework>/` folder with:
-   - `buildFakeViewModel.ts` (or equivalent) — AppData fed into that framework's
-     context/store model
-   - `registry` — same `componentKey`s mapped to the new components
-   - `VisualScenario` wrapper (theme + provider + backdrop)
-   - `index.ts` barrel (the `@ui-visual` alias target)
-2. A new `playwright-ct/` CT config if a stable CT adapter exists for
-   the framework; otherwise use the plain-Playwright host (Tier 2).
-3. New scripts `test:ui:visual:playwright-ct:<framework>` /
-   `test:ui:visual:playwright:<framework>` in `package.json`. They are discovered
-   automatically by `run-all.ts`.
+1. A new `solid/` folder (under `packages/client-solid/tests/ui/visual/`) with
+   `buildFakeViewModel.ts`, `registry.tsx`, `VisualScenario.tsx`, and an
+   `index.ts` barrel — the `@ui-visual` alias target, same shape as this
+   package's `react/`.
+2. `playwright/` and `vitest-browser/` tiers, built as planned below.
+3. A `playwright-ct/` tier that is a **URL-navigation fallback**, not a real
+   CT mount — see Tier 1 below for why.
 
-**The single framework seam:**
+### Per-tier porting effort (as planned, and as it actually landed)
 
-The `@ui-visual` alias is declared in each runner's Vite config and in
-`tsconfig.ui-visual.json`'s `paths`. Pointing it at
-`tests/ui/visual/<new-framework>` is
-the only structural change. The plain-Playwright `visual.spec.ts` needs **no
-change at all** — it only navigates URLs.
+Building the `<framework>/` seam above was a one-time cost that **all three
+tiers consume** — not a per-tier cost. Each tier needed a different amount of
+glue, and the ranking held: **Tier 2 was the easiest, Tier 3 a close second,
+Tier 1 the one that didn't go as planned.**
 
-### Per-tier porting effort
-
-Building the `<framework>/` seam above is a one-time cost that **all three tiers
-consume** — it is not per-tier. On top of it, each tier needs a different amount
-of glue, and they rank clearly. **Tier 2 is the easiest, Tier 3 a close second,
-Tier 1 materially more work _and_ subject to an external blocker.**
-
-**Tier 2 — plain Playwright (smallest):**
+**Tier 2 — plain Playwright (smallest, as planned):**
 
 - `visual.spec.ts`: **zero changes** — it only navigates `/?scenario=…` and
-  screenshots, so the framework lives entirely behind the host boundary. This is
-  the only spec that is genuinely framework-agnostic.
-- `playwright/host/main.tsx`: swap React's
-  `createRoot(...).render(<VisualScenario/>)` for the framework's mount (e.g.
-  Solid's `render(() => <VisualScenario name={name}/>, root)`) — ~10 lines.
-- `playwright/host/vite.config.ts`: swap `@vitejs/plugin-react` for the
-  framework's Vite plugin and re-point the `@ui-visual` alias.
-- Add the `test:ui:visual:playwright:<framework>` script; regenerate goldens.
+  screenshots, so the framework lives entirely behind the host boundary. This
+  is the only spec that is genuinely framework-agnostic, and `client-solid`
+  reused it unmodified.
+- `playwright/host/main.tsx`: React's `createRoot(...).render(<VisualScenario/>)`
+  swapped for Solid's `render(() => <VisualScenario name={name}/>, root)`.
+- `playwright/host/vite.config.ts`: `@vitejs/plugin-react` swapped for
+  `vite-plugin-solid`, `@ui-visual` re-pointed at `solid/`.
 
-**Tier 3 — vitest-browser (low; one extra spec edit vs Tier 2):**
+**Tier 3 — vitest-browser (low, as planned):**
 
-- `visual.spec.tsx`: swap the render shim import (`vitest-browser-react` → the
-  framework's `render`). The JSX and the scenario/`scenarioActions` loop body are
-  unchanged (the framework's Vite plugin compiles the JSX).
+- `visual.spec.tsx`: render shim swapped (`vitest-browser-react` →
+  `@solidjs/testing-library`'s `render`). The scenario/`scenarioActions` loop
+  body carried over unchanged.
 - `vitest-browser.config.ts`: plugin swap + alias + golden routing.
-- Add the script; regenerate goldens.
-- **No version-tracking adapter** — this is why it is the recommended driver for a
-  new framework.
+- No version-tracking adapter needed — as predicted, this made Tier 3 the
+  straightforward second tier.
 
-**Tier 1 — playwright-ct (high, two parts + a hard dependency):**
+**Tier 1 — playwright-ct (the blocker materialized; the fix was a fallback, not a rewrite):**
 
-- _Structural:_ swap `@playwright/experimental-ct-<framework>` in the config
-  **and in every spec file** (each spec imports `test`/`expect` from the CT
-  adapter), swap the Vite plugin + alias in `ctViteConfig`, add scripts.
-- _Hand-written test bodies:_ unlike Tiers 2/3, the CT specs do **not** read
-  `scenarios.ts`/`scenarioActions.ts` — every test and every interaction is typed
-  out by hand. Today that is ~10 spec files, ~88 `test()` blocks, and ~38 manual
-  interaction calls (e.g. `fxBlotter.spec.tsx` alone hand-codes the
-  filter/sort click-fill-apply sequences). Porting Tier 1 means re-authoring all
-  of them against the new component tree.
-- _Hard blocker:_ Tier 1 needs a stable CT adapter that **matches the Playwright
-  version**. The official Solid CT adapter lags core Playwright (see ADR-001), so
-  Tier 1 may be **unportable without forking/pinning the adapter** — whereas
-  Tiers 2/3 depend only on a (mature) Vite plugin for the framework.
-
-| Tier | Spec changes | Glue changes | External risk | Effort |
-|---|---|---|---|---|
-| **Tier 2** (playwright) | none | host main (~10 lines) + vite config + script | none | **lowest** |
-| **Tier 3** (vitest-browser) | 1-line render-shim swap | config + script | none | **low** |
-| **Tier 1** (playwright-ct) | rewrite ~88 tests (~38 interactions) across ~10 files | CT adapter + config + scripts | **CT adapter must exist & version-match** | **high / may be blocked** |
-
-**Recommended port order:** do **Tier 2 first** (proves the goldens reproduce
-with zero spec changes), **add Tier 3** for the coverage report, and treat
-**Tier 1 as optional** — bring it along only once a compatible CT adapter exists.
+- The predicted hard blocker was real: `@playwright/experimental-ct-solid` was
+  stuck several minor versions behind this repo's pinned `@playwright/test` at
+  port time (see the decision header in
+  `packages/client-solid/tests/ui/visual/playwright-ct/playwright-ct.config.ts`).
+  Forcing the mismatched adapter in was rejected.
+- The resolution: Tier 1 for Solid is a **second URL-navigation config**,
+  structurally identical to Tier 2, asserting against react's *own*
+  `playwright-ct/__screenshots__/` tree by matching its `{testFileName}`
+  golden-path segment — not a real `mount()`-based CT test. It is data-driven
+  over the same manifest (matching this package's own `matrix.spec.tsx`, not
+  the old hand-written per-file specs the original plan below still
+  described), just navigated instead of mounted.
+- This also means the "rewrite ~88 hand-written tests" cost the original plan
+  predicted never had to be paid on either side: this package's own Tier 1
+  became data-driven (`matrix.spec.tsx`) before the Solid port needed to touch
+  it, so there were no hand-written specs left to re-author.
+- **Revisit condition**: once a version-matched `@playwright/experimental-ct-solid`
+  ships, swapping in a real CT mount (matching this package's Tier 1
+  approach) is the documented follow-up — not a blocker on anything today.
 
 For the full rationale, the adapter-status table, and guidance on choosing a
 driver per target (CT adapter vs. vitest-browser vs. plain Playwright), see

@@ -6,6 +6,11 @@ name: Deploy
 # The two jobs are independent — the Fly URL is a stable constant baked into the
 # client at build time, so the client build does not wait on the server deploy.
 # Both must go green.
+#
+# "the client" here is @rtc/client-react ONLY, BY DESIGN — the build command is
+# pinned in the root vercel.json (`--filter=@rtc/client-react`). @rtc/client-solid
+# is still a walking skeleton (see CLAUDE.md) and has no deployment of its own
+# this workstream; revisit once it reaches parity with the deployed react client.
 on:
   workflow_dispatch:
 

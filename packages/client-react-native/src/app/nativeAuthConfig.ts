@@ -17,10 +17,10 @@ import Constants from "expo-constants";
  * login with no env set at all.
  */
 const FALLBACK_DEV_CREDENTIALS: Record<string, string> = {
-  astark: "demo",
-  nromanoff: "demo",
-  tchalla: "demo",
-  demo: "demo",
+  astark: "mcdc2026",
+  nromanoff: "mcdc2026",
+  tchalla: "mcdc2026",
+  demo: "mcdc2026",
 };
 
 function parseDevAuth(raw: string | undefined): Record<string, string> {

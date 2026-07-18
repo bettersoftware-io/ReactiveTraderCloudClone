@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@solidjs/testing-library";
+import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
 import { describe, expect, it } from "vitest";
 
 import { AppRoot } from "#/AppRoot";
@@ -9,6 +9,10 @@ import { App } from "#/ui/App";
 // and asserts the live connection status renders through the real shell
 // chrome (StatusBar → ConnectionStatusBar) — the Solid↔ViewModel bridge,
 // end to end, exactly as a user would see it in `pnpm dev:solid`.
+//
+// AppRoot now gates the shell behind the real AuthGate/LoginScreen (no more
+// walking-skeleton auto-login), so every test signs in with the committed
+// demo credentials before asserting on shell chrome.
 describe("App (shell chrome)", () => {
   it("mounts and renders the live connection status from the simulator ports", async () => {
     render(() => {
@@ -18,6 +22,7 @@ describe("App (shell chrome)", () => {
         </AppRoot>
       );
     });
+    await signIn();
 
     const status = await screen.findByTestId("connection-status");
 
@@ -35,7 +40,7 @@ describe("App (shell chrome)", () => {
     expect(label?.getAttribute("data-status")).toBe("CONNECTED");
   });
 
-  it("renders the header nav, status bar, and the live FX layout engine with real FX panel bodies", () => {
+  it("renders the header nav, status bar, and the live FX layout engine with real FX panel bodies", async () => {
     render(() => {
       return (
         <AppRoot>
@@ -43,6 +48,7 @@ describe("App (shell chrome)", () => {
         </AppRoot>
       );
     });
+    await signIn();
 
     expect(screen.getByTestId("header")).toBeTruthy();
     expect(screen.getByTestId("tab-fx").getAttribute("data-active")).toBe(
@@ -64,7 +70,7 @@ describe("App (shell chrome)", () => {
     expect(screen.getByTestId("blotter-table")).toBeTruthy();
   });
 
-  it("switches to the admin tab and shows the live layout engine with the real admin dashboard", () => {
+  it("switches to the admin tab and shows the live layout engine with the real admin dashboard", async () => {
     render(() => {
       return (
         <AppRoot>
@@ -72,6 +78,7 @@ describe("App (shell chrome)", () => {
         </AppRoot>
       );
     });
+    await signIn();
 
     screen.getByTestId("tab-admin").click();
 
@@ -87,7 +94,7 @@ describe("App (shell chrome)", () => {
     expect(screen.queryAllByTestId("pending-panel")).toHaveLength(0);
   });
 
-  it("switches to the credit tab and shows the live layout engine with real credit panel bodies", () => {
+  it("switches to the credit tab and shows the live layout engine with real credit panel bodies", async () => {
     render(() => {
       return (
         <AppRoot>
@@ -95,6 +102,7 @@ describe("App (shell chrome)", () => {
         </AppRoot>
       );
     });
+    await signIn();
 
     screen.getByTestId("tab-credit").click();
 
@@ -118,3 +126,16 @@ describe("App (shell chrome)", () => {
     expect(screen.getByTestId("blotter-table")).toBeTruthy();
   });
 });
+
+async function signIn(): Promise<void> {
+  fireEvent.input(screen.getByTestId("login-username"), {
+    target: { value: "demo" },
+  });
+  fireEvent.input(screen.getByTestId("login-password"), {
+    target: { value: "mcdc2026" },
+  });
+  fireEvent.click(screen.getByTestId("login-submit"));
+  await waitFor(() => {
+    expect(screen.queryByTestId("login-screen")).toBeNull();
+  });
+}
