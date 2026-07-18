@@ -2,6 +2,9 @@ import { act, renderHook } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ViewModel } from "@rtc/react-bindings";
+import { ViewModelContext } from "@rtc/react-bindings";
+
 import { FROZEN_LIVE_METRICS, LiveMetricsContext } from "./LiveMetricsContext";
 import { useLiveMetrics } from "./useLiveMetrics";
 
@@ -36,9 +39,11 @@ describe("useLiveMetrics", () => {
   it("returns the frozen value and never starts a loop when a provider is present", () => {
     function Wrapper({ children }: WrapperProps): ReactElement {
       return (
-        <LiveMetricsContext.Provider value={FROZEN_LIVE_METRICS}>
-          {children}
-        </LiveMetricsContext.Provider>
+        <ViewModelContext.Provider value={viewModelWith(false)}>
+          <LiveMetricsContext.Provider value={FROZEN_LIVE_METRICS}>
+            {children}
+          </LiveMetricsContext.Provider>
+        </ViewModelContext.Provider>
       );
     }
 
@@ -55,10 +60,31 @@ describe("useLiveMetrics", () => {
     expect(window.requestAnimationFrame).not.toHaveBeenCalled();
   });
 
+  // Power-saver's Freeze tier pauses the rAF loop the same way the
+  // LiveMetricsContext harness override does — no context override here,
+  // just `usePowerSaver().isFreeze` reached through the real ViewModel seam.
+  it("never starts the loop and holds the last value when power-saver is frozen", () => {
+    const { result, rerender } = renderHook(
+      () => {
+        return useLiveMetrics();
+      },
+      { wrapper: withPowerSaver(true) },
+    );
+
+    expect(result.current.fps).toBeNull();
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+
+    rerender();
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+  });
+
   it("starts null, then publishes fps + tone counted over the ~1s window", () => {
-    const { result } = renderHook(() => {
-      return useLiveMetrics();
-    });
+    const { result } = renderHook(
+      () => {
+        return useLiveMetrics();
+      },
+      { wrapper: withPowerSaver(false) },
+    );
 
     expect(result.current.fps).toBeNull();
     expect(result.current.fpsTone).toBe("dim");
@@ -81,9 +107,12 @@ describe("useLiveMetrics", () => {
       configurable: true,
       value: { usedJSHeapSize: 260 * 1024 * 1024 },
     });
-    const { result } = renderHook(() => {
-      return useLiveMetrics();
-    });
+    const { result } = renderHook(
+      () => {
+        return useLiveMetrics();
+      },
+      { wrapper: withPowerSaver(false) },
+    );
 
     for (let i = 1; i <= 59; i += 1) {
       frame(i);
@@ -95,9 +124,12 @@ describe("useLiveMetrics", () => {
   });
 
   it("reports null memory when performance.memory is unavailable", () => {
-    const { result } = renderHook(() => {
-      return useLiveMetrics();
-    });
+    const { result } = renderHook(
+      () => {
+        return useLiveMetrics();
+      },
+      { wrapper: withPowerSaver(false) },
+    );
 
     for (let i = 1; i <= 59; i += 1) {
       frame(i);
@@ -111,4 +143,29 @@ describe("useLiveMetrics", () => {
 
 interface WrapperProps {
   children: ReactNode;
+}
+
+/** Minimal ViewModel stub — useLiveMetrics only reads `usePowerSaver().isFreeze`. */
+function viewModelWith(isFreeze: boolean): ViewModel {
+  return {
+    usePowerSaver: () => {
+      return {
+        level: isFreeze ? "freeze" : "off",
+        isCalm: isFreeze,
+        isFreeze,
+        setLevel: vi.fn(),
+        cycle: vi.fn(),
+      };
+    },
+  } as unknown as ViewModel;
+}
+
+function withPowerSaver(isFreeze: boolean) {
+  return function Wrapper({ children }: WrapperProps): ReactElement {
+    return (
+      <ViewModelContext.Provider value={viewModelWith(isFreeze)}>
+        {children}
+      </ViewModelContext.Provider>
+    );
+  };
 }

@@ -63,6 +63,7 @@ test("shows the true pre-truncation size for an overflowed map, not the marker-i
   const pairs: SerializedValue[] = Array.from({ length: 50 }, (_, i) => {
     return [`k${i}`, i];
   });
+
   const value: SerializedValue = {
     $t: "map",
     entries: [...pairs, { $t: "truncated", count: 10 }],
@@ -78,6 +79,7 @@ test("shows the true pre-truncation size for an overflowed set, not the marker-i
   const values: SerializedValue[] = Array.from({ length: 50 }, (_, i) => {
     return i;
   });
+
   const value: SerializedValue = {
     $t: "set",
     values: [...values, { $t: "truncated", count: 10 }],

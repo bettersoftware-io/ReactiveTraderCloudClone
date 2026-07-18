@@ -197,10 +197,13 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       };
     },
     usePowerSaver: () => {
+      const level = data.powerSaverLevel ?? "off";
       return {
-        enabled: data.powerSaver ?? false,
-        setEnabled: noop,
-        toggle: noop,
+        level,
+        isCalm: level !== "off",
+        isFreeze: level === "freeze",
+        setLevel: noop,
+        cycle: noop,
       };
     },
     useForceBootAnimation: () => {

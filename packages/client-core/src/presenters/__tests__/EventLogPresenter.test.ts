@@ -94,6 +94,7 @@ describe("EventLogPresenter", () => {
     const subA = presenter.events$.subscribe((e) => {
       a.push(e);
     });
+
     const subB = presenter.events$.subscribe((e) => {
       b.push(e);
     });

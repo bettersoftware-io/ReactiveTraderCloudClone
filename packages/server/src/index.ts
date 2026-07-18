@@ -27,6 +27,7 @@ const auth = new AuthService({
   ttlMs: AUTH_TTL_MS,
   credentials: parseAuthUsers(process.env.AUTH_USERS),
 });
+
 const loginRateLimit = createRateLimiter(
   LOGIN_RATE_LIMIT_MAX,
   LOGIN_RATE_LIMIT_WINDOW_MS,

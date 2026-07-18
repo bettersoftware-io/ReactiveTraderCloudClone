@@ -38,6 +38,7 @@ export function SellSidePanel(): JSX.Element {
   const showEmpty = createMemo((): boolean => {
     return adaptiveBankId() === undefined || rfqs().length === 0;
   });
+
   // Keyed by rfq id, not by the Rfq object itself (mirrors RfqsPanel's own
   // id-keyed `<For>`): an RFQ's state mutating (Open → Closed, a quote
   // arriving) is a fresh object reference for the SAME logical row, and

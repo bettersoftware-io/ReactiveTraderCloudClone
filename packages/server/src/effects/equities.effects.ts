@@ -155,6 +155,7 @@ function placeOrder$(in$: Observable<Inbound>, ctx: Ctx): Observable<Outbound> {
       const lifecycle$ = ctx.orders
         .place(msg.payload as PlaceOrderRequest)
         .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+
       const ack$ = lifecycle$.pipe(
         take(1),
         map((order: EquityOrder) => {
@@ -165,6 +166,7 @@ function placeOrder$(in$: Observable<Inbound>, ctx: Ctx): Observable<Outbound> {
           );
         }),
       );
+
       const stream$ = lifecycle$.pipe(
         map((order: EquityOrder) => {
           return out(SERVER_MSG.ORDER_LIFECYCLE, order);

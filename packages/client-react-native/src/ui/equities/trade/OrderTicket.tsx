@@ -258,6 +258,7 @@ function makeStyles(t: RnTheme): OrderTicketStyles {
     borderColor: t.borderSubtle,
     backgroundColor: t.bgSecondary,
   };
+
   const baseSubmit: ViewStyle = {
     alignItems: "center",
     paddingVertical: SPACING.md,

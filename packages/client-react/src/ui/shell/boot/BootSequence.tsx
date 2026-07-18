@@ -20,9 +20,11 @@ import { createBootTopo } from "./variants/bootTopo";
 import styles from "./BootSequence.module.css";
 
 export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
-  const { useBootSequence, useForceBootAnimation } = useViewModel();
+  const { useBootSequence, useForceBootAnimation, usePowerSaver } =
+    useViewModel();
   const { state, skip } = useBootSequence(onDone);
   const forced = useForceBootAnimation().enabled;
+  const { isFreeze } = usePowerSaver();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -36,7 +38,11 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
       false;
 
-    if (prefersReduced && !forced) {
+    // Freeze (a persisted power-saver opt-out of all motion) always skips the
+    // boot canvas rAF loop. Otherwise honour prefers-reduced-motion — unless
+    // forceBootAnimation is on, which overrides only the accessibility signal,
+    // never an explicit Freeze.
+    if (isFreeze || (prefersReduced && !forced)) {
       return;
     }
 
@@ -87,7 +93,7 @@ export function BootSequence({ onDone }: BootSequenceProps): ReactElement {
       window.removeEventListener("mousemove", onMove);
       cancelAnimationFrame(raf);
     };
-  }, [state.variant, forced]);
+  }, [state.variant, forced, isFreeze]);
 
   return (
     <div

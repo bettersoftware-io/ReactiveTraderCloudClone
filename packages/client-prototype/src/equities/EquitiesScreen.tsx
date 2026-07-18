@@ -61,12 +61,14 @@ export function EquitiesScreen(): ReactElement {
     initial: MAIN_SPLIT_INITIAL,
     containerRef: screenRef,
   });
+
   const centerSplit = useSplit({
     storageKey: "eqCenterR",
     orientation: "h",
     initial: CENTER_SPLIT_INITIAL,
     containerRef: centerColRef,
   });
+
   const asideSplit = useSplit({
     storageKey: "eqRightR",
     orientation: "h",

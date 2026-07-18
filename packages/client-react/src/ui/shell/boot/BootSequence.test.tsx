@@ -124,6 +124,27 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     }
   });
 
+  // A persisted power-saver "freeze" preference must skip the boot splash's
+  // canvas rAF the same way prefers-reduced-motion does — a Freeze box
+  // should never run the boot animation, even on first paint. Freeze wins
+  // even over forceBootAnimation (which overrides only prefers-reduced-motion).
+  it("skips the canvas loop entirely under power-saver freeze", () => {
+    render(
+      wrap(<BootSequence onDone={vi.fn()} />, {
+        usePowerSaver: () => {
+          return {
+            level: "freeze" as const,
+            isCalm: true,
+            isFreeze: true,
+            setLevel: vi.fn(),
+            cycle: vi.fn(),
+          };
+        },
+      } as unknown as Partial<ViewModel>),
+    );
+    expect(rafSpy).not.toHaveBeenCalled();
+  });
+
   it("draws using CSS-var values when custom properties are set", () => {
     document.documentElement.style.setProperty("--accent-primary", "#c0ffee");
     document.documentElement.style.setProperty("--accent-2", "#facade");
@@ -262,6 +283,15 @@ function wrap(
     },
     useForceBootAnimation: () => {
       return { enabled: false, setEnabled: vi.fn(), toggle: vi.fn() };
+    },
+    usePowerSaver: () => {
+      return {
+        level: "off" as const,
+        isCalm: false,
+        isFreeze: false,
+        setLevel: vi.fn(),
+        cycle: vi.fn(),
+      };
     },
     ...partialHooks,
   } as unknown as ViewModel;

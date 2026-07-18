@@ -5,6 +5,7 @@ import type {
   CreditRfqFilter,
   EqBlotterView,
   EqWatchlistSort,
+  PowerSaverLevel,
   ThemeModePreference,
   ThemeSkin,
   ViewMode,
@@ -37,11 +38,12 @@ export interface PreferencesPort {
   /** Ambient-motion perf gate; default true (compositor-only CSS backdrop). */
   animatedBackground$(): Observable<boolean>;
   setAnimatedBackground(on: boolean): void;
-  /** Power-saver master override; default false. While on, the client forces
-   * the cheap rendering path (still ambience, conflated price re-renders)
-   * WITHOUT mutating any other stored preference. */
-  powerSaver$(): Observable<boolean>;
-  setPowerSaver(on: boolean): void;
+  /** Power-saver level; default "off". Ordered ladder off → calm → freeze
+   * (Freeze ⊇ Calm). While not "off" the client forces the cheap rendering
+   * path (still ambience, conflated price re-renders); "freeze" additionally
+   * kills all decorative motion. Never mutates any other stored preference. */
+  powerSaverLevel$(): Observable<PowerSaverLevel>;
+  setPowerSaverLevel(level: PowerSaverLevel): void;
   /** Force the boot-splash animation to run even under
    * `prefers-reduced-motion: reduce`; default false. Boot-splash-scoped — does
    * not affect the ambient background or any other reduced-motion path. */

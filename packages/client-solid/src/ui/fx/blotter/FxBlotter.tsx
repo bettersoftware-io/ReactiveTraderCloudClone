@@ -36,6 +36,7 @@ export function FxBlotter(): JSX.Element {
     column: null,
     direction: null,
   });
+
   const [filters, setFilters] = createSignal<
     Map<keyof Trade, ColumnFilter<Trade>>
   >(new Map());
@@ -66,6 +67,7 @@ export function FxBlotter(): JSX.Element {
   const filtered = createMemo((): readonly Trade[] => {
     return applyFilters(trades(), filters(), quickFilter());
   });
+
   const processedTrades = createMemo((): readonly Trade[] => {
     return applySortToTrades(filtered(), sort());
   });

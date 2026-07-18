@@ -24,6 +24,7 @@ describe("NumberFilter", () => {
       comparator: "gt",
       value: 1000,
     };
+
     const filter = mount(NumberFilter, {
       props: { column: "notional", currentFilter: current, onApply: () => {} },
     });
@@ -39,6 +40,7 @@ describe("NumberFilter", () => {
       value: 100,
       valueTo: 500,
     };
+
     const filter = mount(NumberFilter, {
       props: { column: "notional", currentFilter: current, onApply: () => {} },
     });

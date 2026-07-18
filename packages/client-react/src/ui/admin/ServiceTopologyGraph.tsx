@@ -30,6 +30,7 @@ export function ServiceTopologyGraph(): ReactElement {
       return n.throughput;
     }),
   );
+
   const peakLatency = Math.max(
     1,
     ...topology.edges.map((e) => {

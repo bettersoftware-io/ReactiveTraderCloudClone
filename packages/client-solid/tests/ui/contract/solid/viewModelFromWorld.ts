@@ -32,12 +32,14 @@ import type {
   ExecuteTradeInput,
   ExecuteTradeResult,
   PlaceOrderRequest,
+  PowerSaverLevel,
   RfqQuoteResult,
   ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
 import {
   nextEqWatchlistSort,
+  nextPowerSaverLevel,
   nextThemeModePreference,
   resolveThemeMode,
 } from "@rtc/domain";
@@ -370,22 +372,28 @@ export function solidViewModel(world: World): ViewModel {
         },
       };
     },
-    // Power saver: reactive boolean backed by the World subject;
-    // setEnabled/toggle push back so a click through the seam flips the
-    // rendered flag, and each written value is recorded, mirroring
-    // useAnimatedBackground.
+    // Power saver: reactive 3-state level (off/calm/freeze) backed by the
+    // World subject; setLevel/cycle push back so a click through the seam
+    // advances the rendered level, and each written level is recorded,
+    // mirroring useAnimatedBackground.
     usePowerSaver: () => {
-      const enabled = wrapSubject(world.powerSaver);
+      const level = wrapSubject(world.powerSaverLevel);
       return {
-        enabled,
-        setEnabled: (on: boolean) => {
-          world.commands.powerSaverSets.push(on);
-          world.powerSaver.next(on);
+        level,
+        isCalm: () => {
+          return level() !== "off";
         },
-        toggle: () => {
-          const next = !enabled();
-          world.commands.powerSaverSets.push(next);
-          world.powerSaver.next(next);
+        isFreeze: () => {
+          return level() === "freeze";
+        },
+        setLevel: (next: PowerSaverLevel) => {
+          world.commands.powerSaverLevelSets.push(next);
+          world.powerSaverLevel.next(next);
+        },
+        cycle: () => {
+          const next = nextPowerSaverLevel(level());
+          world.commands.powerSaverLevelSets.push(next);
+          world.powerSaverLevel.next(next);
         },
       };
     },

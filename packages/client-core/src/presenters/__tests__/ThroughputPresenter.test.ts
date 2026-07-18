@@ -38,6 +38,7 @@ describe("ThroughputPresenter", () => {
         ts.schedule(() => {}, 100); // no-op; flush() advances past debounce AND the dismiss timer, so the last state's message is null because MESSAGE_DISMISS_MS elapses — not because the debounce was cut short
       },
     );
+
     // last observed value within the first 100ms is the optimistic 420
     const valuesSeen = states.map((s) => {
       return s.value;
@@ -95,6 +96,7 @@ describe("ThroughputPresenter", () => {
     const banner = events.find((e) => {
       return e.message?.isError === false;
     });
+
     const dismissed = events.find((e) => {
       return e.message === null && e.time > (banner?.time ?? 0);
     });
@@ -132,6 +134,7 @@ describe("ThroughputPresenter", () => {
         }, 1);
       },
     );
+
     const errorBanner = states.find((s) => {
       return s.message?.isError === true;
     });
@@ -185,9 +188,11 @@ describe("ThroughputPresenter", () => {
     const bannerA = events.find((e) => {
       return e.message?.isError === false && e.message.text.includes("420");
     });
+
     const bannerB = events.find((e) => {
       return e.message?.isError === false && e.message.text.includes("999");
     });
+
     const finalDismiss = [...events].reverse().find((e) => {
       return e.message === null && e.time > (bannerB?.time ?? 0);
     });

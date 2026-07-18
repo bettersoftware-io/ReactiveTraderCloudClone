@@ -44,6 +44,7 @@ describe("ConnectionStatusUseCase", () => {
         return of();
       },
     };
+
     const useCase = new ConnectionStatusUseCase(
       port,
       ConnectionStatus.CONNECTED,
@@ -59,6 +60,7 @@ describe("ConnectionStatusUseCase", () => {
         return subject.asObservable();
       },
     };
+
     const useCase = new ConnectionStatusUseCase(
       port,
       ConnectionStatus.CONNECTED,

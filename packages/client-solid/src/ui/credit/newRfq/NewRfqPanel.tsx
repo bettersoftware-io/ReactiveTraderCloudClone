@@ -27,6 +27,7 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
   const status = createMemo(() => {
     return submission.state().status;
   });
+
   const submitting = createMemo((): boolean => {
     return status() === "submitting";
   });
@@ -62,9 +63,11 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
       }) ?? null
     );
   });
+
   const quantity = createMemo((): number => {
     return Number.parseFloat(value().qty);
   });
+
   const valid = createMemo((): boolean => {
     return (
       selectedInstrument() !== null &&
@@ -73,9 +76,11 @@ export function NewRfqPanel(props: NewRfqPanelProps): JSX.Element {
       value().dealerIds.length > 0
     );
   });
+
   const canSubmit = createMemo((): boolean => {
     return valid() && !submitting();
   });
+
   const confirmedRfqId = createMemo((): number | null => {
     const currentState = submission.state();
     return currentState.status === "confirmed" ? currentState.rfqId : null;

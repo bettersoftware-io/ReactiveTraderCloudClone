@@ -20,10 +20,12 @@ import { createBootTopo } from "./variants/bootTopo";
 import styles from "./BootSequence.module.css";
 
 export function BootSequence(props: BootSequenceProps): JSX.Element {
-  const { useBootSequence, useForceBootAnimation } = useViewModel();
+  const { useBootSequence, useForceBootAnimation, usePowerSaver } =
+    useViewModel();
   // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
   const { state, skip } = useBootSequence(props.onDone);
   const { enabled: forced } = useForceBootAnimation();
+  const { isFreeze } = usePowerSaver();
   let canvasEl!: HTMLCanvasElement;
 
   // The machine emits a FRESH state object every 90ms tick (~47 per boot)
@@ -47,7 +49,17 @@ export function BootSequence(props: BootSequenceProps): JSX.Element {
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
       false;
 
-    if (prefersReduced && !forced()) {
+    // Read both signals unconditionally so each is tracked: the effect (a
+    // plain createEffect, not `on()`-wrapped) re-runs when either flips
+    // mid-boot, tearing the loop down via the onCleanup below. Freeze (an
+    // explicit power-saver opt-out of all motion) always skips the boot
+    // canvas rAF loop; otherwise honour prefers-reduced-motion unless
+    // forceBootAnimation overrides it — it overrides only the accessibility
+    // signal, never an explicit Freeze.
+    const freeze = isFreeze();
+    const forceOn = forced();
+
+    if (freeze || (prefersReduced && !forceOn)) {
       return;
     }
 

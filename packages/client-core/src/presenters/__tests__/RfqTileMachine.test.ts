@@ -207,6 +207,7 @@ describe("createRfqTileMachine", () => {
           );
         },
       });
+
       const sub = machine.state$.subscribe((state) => {
         return seen.push({ frame: ts.now(), state });
       });
@@ -415,6 +416,7 @@ function run(
     const machine = createRfqTileMachine(pair, {
       requestQuote: buildRequestQuote(ts),
     });
+
     const sub = machine.state$.subscribe((s) => {
       return states.push(s);
     });

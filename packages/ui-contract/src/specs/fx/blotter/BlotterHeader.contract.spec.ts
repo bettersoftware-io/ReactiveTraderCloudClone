@@ -194,6 +194,7 @@ describe("BlotterHeader", () => {
         { type: "set", column: "currencyPair", values: new Set(["EURUSD"]) },
       ],
     ]);
+
     const header = mount(BlotterHeader, {
       props: {
         sort: noSort,

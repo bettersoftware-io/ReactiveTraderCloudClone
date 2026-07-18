@@ -142,3 +142,36 @@ export function nextEqWatchlistSort(current: EqWatchlistSort): EqWatchlistSort {
     DEFAULT_EQ_WATCHLIST_SORT
   );
 }
+
+/** Power-saver level. Ordered ladder Off → Calm → Freeze; Freeze ⊇ Calm.
+ *  - off:    full "wow-effect" experience.
+ *  - calm:   ambient backdrop removed, decorative loops paused, prices conflated.
+ *  - freeze: everything Calm does PLUS all remaining motion killed (tick-flash,
+ *            FLIP/rank-glide, transitions, spinners) for GPU-less Citrix/VDI boxes. */
+export type PowerSaverLevel = "off" | "calm" | "freeze";
+
+export const DEFAULT_POWER_SAVER_LEVEL: PowerSaverLevel = "off";
+
+/** The header ⌁ button cycles through these in order: off → calm → freeze → off. */
+export const POWER_SAVER_LEVELS: readonly PowerSaverLevel[] = [
+  "off",
+  "calm",
+  "freeze",
+];
+
+/** The next level in the header cycle (wraps around). */
+export function nextPowerSaverLevel(current: PowerSaverLevel): PowerSaverLevel {
+  const i = POWER_SAVER_LEVELS.indexOf(current);
+  return (
+    POWER_SAVER_LEVELS[(i + 1) % POWER_SAVER_LEVELS.length] ??
+    DEFAULT_POWER_SAVER_LEVEL
+  );
+}
+
+/** Storage/type guard — a valid stored level string. Legacy boolean migration
+ *  (`"true"` → `"calm"`) is handled by each adapter, not here. */
+export function isPowerSaverLevel(
+  value: string | null,
+): value is PowerSaverLevel {
+  return value === "off" || value === "calm" || value === "freeze";
+}

@@ -121,6 +121,7 @@ describe("InhouseLayoutEngine", () => {
       maximized: null,
       collapsed: [],
     };
+
     const fixedRegistry: PanelRegistry = {
       a: () => {
         return <div data-testid="a-body">A</div>;
@@ -163,6 +164,7 @@ describe("InhouseLayoutEngine", () => {
       maximized: null,
       collapsed: [],
     };
+
     const abRegistry: PanelRegistry = {
       a: () => {
         return <div data-testid="a-body">A</div>;
@@ -237,12 +239,14 @@ describe("InhouseLayoutEngine", () => {
         maximized: null,
         collapsed: [],
       };
+
       const measuredRegistry: PanelRegistry = {
         ...abRegistry,
         c: () => {
           return <div data-testid="c-body">C</div>;
         },
       };
+
       // jsdom's real rects are zero-size (which is exactly why every other
       // drag test falls back to node.sizes) — stub them so the split
       // container and its cells report the widths above.
@@ -309,6 +313,7 @@ describe("InhouseLayoutEngine", () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
+
     // Registry entries are always `() => <RealComponent />` (see
     // appPanelRegistry.tsx) — a JSX element descriptor, not an eagerly-invoked
     // plain function. The crash this guards against happens when REACT
@@ -363,6 +368,7 @@ describe("InhouseLayoutEngine", () => {
       maximized: null,
       collapsed: [],
     };
+
     const creditShapedRegistry: PanelRegistry = {
       rail: () => {
         return <div data-testid="rail-body">RAIL</div>;
@@ -433,6 +439,7 @@ describe("InhouseLayoutEngine", () => {
       maximized: null,
       collapsed: [],
     };
+
     const creditRegistry: PanelRegistry = {
       "credit-new-rfq": () => {
         return <div data-testid="new-rfq-body">NEW RFQ</div>;

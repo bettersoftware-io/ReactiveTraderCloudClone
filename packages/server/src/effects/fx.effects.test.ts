@@ -23,6 +23,7 @@ describe("fx effects", () => {
         typicalSpreadPips: 1.4,
       },
     ];
+
     const ctx = {
       referenceData: {
         getCurrencyPairs: vi.fn(() => {
@@ -77,6 +78,7 @@ describe("fx effects", () => {
       valueDate: "2026-07-02",
       creationTimestamp: 1,
     };
+
     const ctx = {
       pricing: {
         getPriceUpdates: vi.fn(() => {
@@ -164,6 +166,7 @@ describe("fx effects", () => {
       tradeDate: "2026-07-02",
       valueDate: "2026-07-04",
     };
+
     const ctx = {
       blotter: {
         getTradeStream: vi.fn(() => {
@@ -197,6 +200,7 @@ describe("fx effects", () => {
       ],
       history: [{ timestamp: "2026-07-02T00:00:00Z", usdPnl: 100 }],
     };
+
     const ctx = {
       analytics: {
         getAnalytics: vi.fn(() => {
@@ -226,6 +230,7 @@ describe("fx effects", () => {
       tradeDate: "2026-07-02",
       valueDate: "2026-07-04",
     };
+
     const ctx = {
       execution: {
         executeTrade: vi.fn(() => {
@@ -265,6 +270,7 @@ describe("fx effects", () => {
         creationTimestamp: 1,
       },
     ];
+
     const ctx = {
       pricing: {
         getPriceHistory: vi.fn(() => {

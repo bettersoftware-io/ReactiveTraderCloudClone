@@ -29,12 +29,14 @@ import type {
   ExecuteTradeInput,
   ExecuteTradeResult,
   PlaceOrderRequest,
+  PowerSaverLevel,
   RfqQuoteResult,
   ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
 import {
   nextEqWatchlistSort,
+  nextPowerSaverLevel,
   nextThemeModePreference,
   resolveThemeMode,
 } from "@rtc/domain";
@@ -269,6 +271,7 @@ export function reactViewModel(world: World): ViewModel {
         useState<RfqSubmissionState>({
           status: "editing",
         });
+
       const submit = useCallback(
         (input: CreateRfqInput, onRedirect: (rfqId: number) => void) => {
           world.commands.createRfq.push(input);
@@ -301,10 +304,12 @@ export function reactViewModel(world: World): ViewModel {
       const [ticketState, setTicketState] = useState<TicketSubmissionState>({
         submitted: false,
       });
+
       const submitPrice = useCallback((quoteId: number, price: number) => {
         world.commands.quoteRfq.push({ quoteId, price });
         setTicketState({ submitted: true });
       }, []);
+
       const pass = useCallback((quoteId: number) => {
         world.commands.passQuote.push(quoteId);
         setTicketState({ submitted: true });
@@ -374,21 +379,24 @@ export function reactViewModel(world: World): ViewModel {
         },
       };
     },
-    // Power-saver master override: reactive boolean backed by the World subject;
-    // setEnabled/toggle push back so a click through the seam flips the rendered
-    // flag, and each written value is recorded, mirroring useAnimatedBackground.
+    // Power-saver master override: reactive 3-state level (off/calm/freeze)
+    // backed by the World subject; setLevel/cycle push back so a click through
+    // the seam advances the rendered level, and each written level is
+    // recorded, mirroring useAnimatedBackground.
     usePowerSaver: () => {
-      const enabled = useSubject(world.powerSaver);
+      const level = useSubject(world.powerSaverLevel);
       return {
-        enabled,
-        setEnabled: (on: boolean) => {
-          world.commands.powerSaverSets.push(on);
-          world.powerSaver.next(on);
+        level,
+        isCalm: level !== "off",
+        isFreeze: level === "freeze",
+        setLevel: (next: PowerSaverLevel) => {
+          world.commands.powerSaverLevelSets.push(next);
+          world.powerSaverLevel.next(next);
         },
-        toggle: () => {
-          const next = !enabled;
-          world.commands.powerSaverSets.push(next);
-          world.powerSaver.next(next);
+        cycle: () => {
+          const next = nextPowerSaverLevel(level);
+          world.commands.powerSaverLevelSets.push(next);
+          world.powerSaverLevel.next(next);
         },
       };
     },

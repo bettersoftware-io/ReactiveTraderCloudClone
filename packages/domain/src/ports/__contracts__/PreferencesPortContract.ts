@@ -13,6 +13,7 @@ import {
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type PowerSaverLevel,
   type ThemeModePreference,
   type ThemeSkin,
   type ViewMode,
@@ -26,7 +27,7 @@ export interface PreferencesSeed {
   themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
   animatedBackground?: boolean;
-  powerSaver?: boolean;
+  powerSaverLevel?: PowerSaverLevel;
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
   creditRfqFilter?: CreditRfqFilter;
@@ -162,26 +163,27 @@ export function describePreferencesPortContract(
       expect(await firstValueFrom(port.animatedBackground$())).toBe(true);
     });
 
-    it("empty store emits the default powerSaver=false", async () => {
+    it("empty store emits the default powerSaverLevel=off", async () => {
       const port = makeEmpty();
-      expect(await firstValueFrom(port.powerSaver$())).toBe(false);
+      expect(await firstValueFrom(port.powerSaverLevel$())).toBe("off");
     });
 
-    it("setPowerSaver persists and pushes to existing subscribers", () => {
+    it("setPowerSaverLevel persists and pushes each level to subscribers", () => {
       const port = makeEmpty();
-      const seen: boolean[] = [];
-      const sub = port.powerSaver$().subscribe((on) => {
-        return seen.push(on);
+      const seen: string[] = [];
+      const sub = port.powerSaverLevel$().subscribe((level) => {
+        return seen.push(level);
       });
-      // Default is false (empty store), so flip to true to observe a change.
-      port.setPowerSaver(true);
+      port.setPowerSaverLevel("calm");
+      port.setPowerSaverLevel("freeze");
+      port.setPowerSaverLevel("off");
       sub.unsubscribe();
-      expect(seen).toEqual([false, true]);
+      expect(seen).toEqual(["off", "calm", "freeze", "off"]);
     });
 
-    it("reads back a seeded powerSaver", async () => {
-      const port = makeSeeded({ powerSaver: true });
-      expect(await firstValueFrom(port.powerSaver$())).toBe(true);
+    it("reads back a seeded powerSaverLevel", async () => {
+      const port = makeSeeded({ powerSaverLevel: "freeze" });
+      expect(await firstValueFrom(port.powerSaverLevel$())).toBe("freeze");
     });
 
     it("empty store emits the default forceBootAnimation=false", async () => {

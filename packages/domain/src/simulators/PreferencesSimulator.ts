@@ -10,11 +10,13 @@ import {
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_FORCE_BOOT_ANIMATION,
+  DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type EqBlotterView,
   type EqWatchlistSort,
+  type PowerSaverLevel,
   type ThemeModePreference,
   type ThemeSkin,
   type ViewMode,
@@ -25,7 +27,7 @@ export interface PreferencesSeed {
   themeSkin?: ThemeSkin;
   viewMode?: ViewMode;
   animatedBackground?: boolean;
-  powerSaver?: boolean;
+  powerSaverLevel?: PowerSaverLevel;
   forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
   creditRfqFilter?: CreditRfqFilter;
@@ -47,7 +49,7 @@ export class PreferencesSimulator implements PreferencesPort {
 
   private readonly animatedBg: BehaviorSubject<boolean>;
 
-  private readonly powerSaverSubject: BehaviorSubject<boolean>;
+  private readonly powerSaverSubject: BehaviorSubject<PowerSaverLevel>;
 
   private readonly forceBootAnimationSubject: BehaviorSubject<boolean>;
 
@@ -72,8 +74,8 @@ export class PreferencesSimulator implements PreferencesPort {
     this.animatedBg = new BehaviorSubject<boolean>(
       seed.animatedBackground ?? DEFAULT_ANIMATED_BACKGROUND,
     );
-    this.powerSaverSubject = new BehaviorSubject<boolean>(
-      seed.powerSaver ?? false,
+    this.powerSaverSubject = new BehaviorSubject<PowerSaverLevel>(
+      seed.powerSaverLevel ?? DEFAULT_POWER_SAVER_LEVEL,
     );
     this.forceBootAnimationSubject = new BehaviorSubject<boolean>(
       seed.forceBootAnimation ?? DEFAULT_FORCE_BOOT_ANIMATION,
@@ -124,12 +126,12 @@ export class PreferencesSimulator implements PreferencesPort {
     this.animatedBg.next(on);
   }
 
-  powerSaver$(): Observable<boolean> {
+  powerSaverLevel$(): Observable<PowerSaverLevel> {
     return this.powerSaverSubject.pipe(distinctUntilChanged());
   }
 
-  setPowerSaver(on: boolean): void {
-    this.powerSaverSubject.next(on);
+  setPowerSaverLevel(level: PowerSaverLevel): void {
+    this.powerSaverSubject.next(level);
   }
 
   forceBootAnimation$(): Observable<boolean> {

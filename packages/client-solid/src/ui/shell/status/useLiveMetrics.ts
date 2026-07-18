@@ -1,7 +1,8 @@
 import type { Accessor } from "solid-js";
-import { createSignal, onCleanup, useContext } from "solid-js";
+import { createEffect, createSignal, onCleanup, useContext } from "solid-js";
 
 import { computeFps, formatHeapMb, fpsTone } from "@rtc/motion-core";
+import { useViewModel } from "@rtc/solid-bindings";
 
 import { type LiveMetrics, LiveMetricsContext } from "./LiveMetricsContext";
 
@@ -27,9 +28,24 @@ function readHeapBytes(): number | null {
  * per ~1s (throttle time-gated inside the loop via `performance.now()` — no
  * polling-interval timer, per grep-gate 37). Returns a frozen accessor when
  * LiveMetricsContext supplies a value.
+ *
+ * Power-saver's Freeze tier (`usePowerSaver().isFreeze`) is treated the same
+ * way: the rAF loop never starts (or is torn down, if already running) and
+ * the readout holds whatever it last published — there's no meaningful FPS
+ * to report while the app's own animation loops are frozen. The gate lives
+ * inside a `createEffect` (not a one-time setup check) so it reacts live to
+ * the preference toggling mid-session, mirroring `isFreeze()`'s accessor
+ * nature (a plain boolean read at setup would freeze at mount — the same
+ * trap AmbientBackground.tsx's `vars` memo comment documents).
  */
 export function useLiveMetrics(): Accessor<LiveMetrics> {
+  // Both context reads happen unconditionally, ahead of the `frozen` early
+  // return below (Biome's useHookAtTopLevel flags any `use*`-named call
+  // reached only through a conditional branch, React's rules-of-hooks
+  // applied by name even though Solid has no such ordering constraint).
   const frozen = useContext(LiveMetricsContext);
+  const { usePowerSaver } = useViewModel();
+  const { isFreeze } = usePowerSaver();
 
   if (frozen) {
     return () => {
@@ -38,31 +54,39 @@ export function useLiveMetrics(): Accessor<LiveMetrics> {
   }
 
   const [live, setLive] = createSignal<LiveMetrics>(INITIAL);
-  let frames = 0;
-  let windowStart = performance.now();
 
-  function loop(now: number): void {
-    frames += 1;
-    const elapsed = now - windowStart;
-
-    if (elapsed >= PUBLISH_MS) {
-      const fps = computeFps(frames, elapsed);
-      const heap = readHeapBytes();
-      setLive({
-        fps,
-        fpsTone: fpsTone(fps),
-        mem: heap === null ? null : formatHeapMb(heap),
-      });
-      frames = 0;
-      windowStart = now;
+  createEffect(() => {
+    if (isFreeze()) {
+      return;
     }
 
-    raf = requestAnimationFrame(loop);
-  }
+    let frames = 0;
+    let windowStart = performance.now();
 
-  let raf = requestAnimationFrame(loop);
-  onCleanup(() => {
-    cancelAnimationFrame(raf);
+    function loop(now: number): void {
+      frames += 1;
+      const elapsed = now - windowStart;
+
+      if (elapsed >= PUBLISH_MS) {
+        const fps = computeFps(frames, elapsed);
+        const heap = readHeapBytes();
+        setLive({
+          fps,
+          fpsTone: fpsTone(fps),
+          mem: heap === null ? null : formatHeapMb(heap),
+        });
+        frames = 0;
+        windowStart = now;
+      }
+
+      raf = requestAnimationFrame(loop);
+    }
+
+    let raf = requestAnimationFrame(loop);
+
+    onCleanup(() => {
+      cancelAnimationFrame(raf);
+    });
   });
 
   return live;

@@ -41,6 +41,7 @@ import {
   type MetricSample,
   type PlaceOrderRequest,
   type PositionUpdates,
+  type PowerSaverLevel,
   type Price,
   type PriceTick,
   type Quote,
@@ -193,8 +194,8 @@ export interface CommandLog {
   bootReboot: number;
   /** Each value written through useAnimatedBackground().setEnabled/toggle, in order. */
   animatedBackgroundSets: boolean[];
-  /** Each value written through usePowerSaver().setEnabled/toggle, in order. */
-  powerSaverSets: boolean[];
+  /** Each level written through usePowerSaver().setLevel/cycle, in order. */
+  powerSaverLevelSets: PowerSaverLevel[];
   /** Each value written through useForceBootAnimation().setEnabled/toggle, in order. */
   forceBootAnimationSets: boolean[];
   /** Each incident kind injected via injectIncident(), in order. */
@@ -243,7 +244,7 @@ export interface World {
   /** Reactive animated-background preference backing useAnimatedBackground. */
   readonly animatedBackground: BehaviorSubject<boolean>;
   /** Reactive power-saver master-override preference backing usePowerSaver. */
-  readonly powerSaver: BehaviorSubject<boolean>;
+  readonly powerSaverLevel: BehaviorSubject<PowerSaverLevel>;
   /** Reactive force-boot-animation preference backing useForceBootAnimation. */
   readonly forceBootAnimation: BehaviorSubject<boolean>;
   /** Reactive view-mode preference backing useViewModePreference (drives LiveRatesPanel). */
@@ -358,7 +359,7 @@ export function createWorld(
   equitiesSeed: EquitiesSeed = {},
   adminSeed: AdminSeed = {},
   creditRfqFilterSeed?: CreditRfqFilter,
-  powerSaverSeed?: boolean,
+  powerSaverLevelSeed?: PowerSaverLevel,
   forceBootAnimationSeed?: boolean,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
@@ -440,9 +441,11 @@ export function createWorld(
   const watchlist = new BehaviorSubject<readonly EquityInstrument[]>(
     equitiesSeed.watchlist ?? [],
   );
+
   const equityOrders = new BehaviorSubject<readonly EquityOrder[]>(
     equitiesSeed.orders ?? [],
   );
+
   const equityPositions = new BehaviorSubject<readonly EquityPosition[]>(
     equitiesSeed.positions ?? [],
   );
@@ -451,9 +454,11 @@ export function createWorld(
     initialSymbol:
       equitiesSeed.initialSymbol ?? equitiesSeed.watchlist?.[0]?.symbol ?? "",
   });
+
   const eqWatchlistSort = new BehaviorSubject<EqWatchlistSort>(
     equitiesSeed.watchlistSort ?? DEFAULT_EQ_WATCHLIST_SORT,
   );
+
   const eqBlotterView = new BehaviorSubject<EqBlotterView>(
     equitiesSeed.blotterView ?? DEFAULT_EQ_BLOTTER_VIEW,
   );
@@ -527,22 +532,27 @@ export function createWorld(
   const animatedBackground = new BehaviorSubject<boolean>(
     animatedBackgroundSeed ?? false,
   );
-  const powerSaver = new BehaviorSubject<boolean>(powerSaverSeed ?? false);
+  const powerSaverLevel = new BehaviorSubject<PowerSaverLevel>(
+    powerSaverLevelSeed ?? "off",
+  );
   const forceBootAnimation = new BehaviorSubject<boolean>(
     forceBootAnimationSeed ?? false,
   );
   const viewMode = new BehaviorSubject<ViewMode>(
     viewModeSeed ?? DEFAULT_VIEW_MODE,
   );
+
   const creditRfqFilter = new BehaviorSubject<CreditRfqFilter>(
     creditRfqFilterSeed ?? DEFAULT_CREDIT_RFQ_FILTER,
   );
+
   const authUser: SessionUser | null =
     authSeed.user === undefined
       ? DEFAULT_AUTH_USER
       : authSeed.user === null
         ? null
         : { ...DEFAULT_AUTH_USER, ...authSeed.user };
+
   const auth = new BehaviorSubject<AuthViewState>({
     ...DEFAULT_AUTH,
     ...authSeed,
@@ -556,15 +566,19 @@ export function createWorld(
   const topology$ = new BehaviorSubject<ServiceTopology | null>(
     adminSeed.topology !== undefined ? adminSeed.topology : null,
   );
+
   const eventLog$ = new BehaviorSubject<readonly LogEvent[]>(
     adminSeed.eventLog ?? [],
   );
+
   const sessions$ = new BehaviorSubject<readonly SessionInfo[]>(
     adminSeed.sessions ?? [],
   );
+
   const sessionCountSeries$ = new BehaviorSubject<readonly MetricSample[]>(
     adminSeed.sessionCountSeries ?? [],
   );
+
   const metrics$ = new BehaviorSubject<MetricsView>({
     ...DEFAULT_METRICS_VIEW,
     ...adminSeed.metrics,
@@ -620,7 +634,7 @@ export function createWorld(
     authUnlockArgs: [],
     bootReboot: 0,
     animatedBackgroundSets: [],
-    powerSaverSets: [],
+    powerSaverLevelSets: [],
     forceBootAnimationSets: [],
     injectedIncidents: [],
     placedOrderRequests: [],
@@ -636,7 +650,7 @@ export function createWorld(
     themeMode,
     themeSkin,
     animatedBackground,
-    powerSaver,
+    powerSaverLevel,
     forceBootAnimation,
     viewMode,
     creditRfqFilter,

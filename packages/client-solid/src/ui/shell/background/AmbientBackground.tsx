@@ -16,27 +16,28 @@ import styles from "./AmbientBackground.module.css";
  * intentionally dead chrome. It is aria-hidden and pointer-events: none, so
  * it never participates in interaction or a11y.
  *
- * Power saver is a master override on top of that preference: when it is on,
- * the animated aurora/sweep/dots layers are omitted from the DOM outright
- * (an absent layer costs no compositing, unlike one merely paused) — only
- * the static grid + vignette remain. `data-animated` still reflects the
- * user's own animated-background preference unchanged; it is not rewritten
- * by power saver.
+ * Power saver is a master override on top of that preference: whenever the
+ * level is Calm or Freeze (`isCalm`, level !== "off" — Freeze ⊇ Calm), the
+ * animated aurora/sweep/dots layers are omitted from the DOM outright (an
+ * absent layer costs no compositing, unlike one merely paused) — only the
+ * static grid + vignette remain. `data-animated` still reflects the user's
+ * own animated-background preference unchanged; it is not rewritten by power
+ * saver.
  */
 export function AmbientBackground(): JSX.Element {
   const { useAnimatedBackground, usePowerSaver } = useViewModel();
   const { enabled } = useAnimatedBackground();
-  const { enabled: powerSaver } = usePowerSaver();
+  const { isCalm } = usePowerSaver();
 
   // --amb-play is the SOLE driver of animation-play-state on all five layers
   // (the CSS has no data-animated selector), so it must stay reactive: a
-  // plain component-body const would read enabled()/powerSaver() exactly
+  // plain component-body const would read enabled()/isCalm() exactly
   // once at mount (Solid components run once — the react file's per-render
   // const only works because React re-executes the body), freezing the
   // preference for the whole session. createMemo keeps the read tracked;
   // `style={vars()}` re-applies on change.
   const vars = createMemo((): JSX.CSSProperties => {
-    return { "--amb-play": enabled() && !powerSaver() ? "running" : "paused" };
+    return { "--amb-play": enabled() && !isCalm() ? "running" : "paused" };
   });
 
   return (
@@ -44,11 +45,11 @@ export function AmbientBackground(): JSX.Element {
       data-testid="ambient-background"
       aria-hidden="true"
       data-animated={enabled() ? "true" : "false"}
-      data-power-saver={powerSaver() ? "true" : "false"}
+      data-power-saver={isCalm() ? "on" : "off"}
       class={styles.wrap}
       style={vars()}
     >
-      <Show when={!powerSaver()}>
+      <Show when={!isCalm()}>
         <div data-layer="aurora" class={styles.aurora}>
           <div class={styles.layerA} />
           <div class={styles.layerB} />
@@ -56,7 +57,7 @@ export function AmbientBackground(): JSX.Element {
         <div class={styles.sweep} />
       </Show>
       <div class={styles.grid} />
-      <Show when={!powerSaver()}>
+      <Show when={!isCalm()}>
         <div class={styles.dots} />
       </Show>
       <div class={styles.vignette} />

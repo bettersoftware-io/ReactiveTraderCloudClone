@@ -92,6 +92,9 @@ jobs:
       - name: Presenter manifest drift (web ↔ React Native)
         run: pnpm check:manifest-drift
 
+      - name: Lint-warnings ledger drift (docs/lint-warnings.md)
+        run: pnpm check:lint-warnings-drift
+
       - name: Version consistency (manypkg + syncpack)
         run: pnpm check:versions
 

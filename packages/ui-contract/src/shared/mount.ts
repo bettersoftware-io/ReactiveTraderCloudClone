@@ -13,6 +13,7 @@ import type {
   EquityQuote,
   LogEvent,
   MetricSample,
+  PowerSaverLevel,
   Price,
   PriceTick,
   Quote,
@@ -54,8 +55,8 @@ export interface MountOptions<P> {
   themeSkin?: ThemeSkin;
   /** Seed the initial animated-background preference (useAnimatedBackground); defaults to false. */
   animatedBackground?: boolean;
-  /** Seed the initial power-saver master-override preference (usePowerSaver); defaults to false. */
-  powerSaver?: boolean;
+  /** Seed the initial power-saver master-override level (usePowerSaver); defaults to "off". */
+  powerSaverLevel?: PowerSaverLevel;
   /** Seed the initial force-boot-animation preference (useForceBootAnimation); defaults to false. */
   forceBootAnimation?: boolean;
   /** Seed the initial view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE. */
@@ -225,7 +226,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.equities,
     opts.admin,
     opts.creditRfqFilter,
-    opts.powerSaver,
+    opts.powerSaverLevel,
     opts.forceBootAnimation,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});

@@ -35,10 +35,29 @@
   z-index: 30;
   max-height: 220px;
   overflow-y: auto;
+  /* --panel is deliberately translucent on the glass skins (holo/holo3d/neon
+     sit at ~0.5 alpha), so a floating popover over other UI needs its own
+     backing. The blur frosts the content behind into a soft wash — small,
+     transient (only in the DOM while open), so unlike the always-on
+     viewport-sized aurora it is not the T6 offender docs/performance.md warns
+     of. Power saver drops it to an opaque surface anyway (see below). */
   background: var(--panel);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border-strong);
   border-radius: 5px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* Power saver: a backdrop-filter is GPU composite-time work, so shed it whenever
+   power saver is active (Calm OR Freeze) — mirroring how AmbientBackground drops
+   its aurora/dot layers at Calm (level !== "off") — and fall back to an opaque
+   surface (--bg-secondary is solid in every skin). This matters most on the
+   Freeze tier's GPU-less VDI/Citrix target, where there is no compositor at all.
+   Keyed off the level PowerSaverRoot writes as `data-power-saver` on <html>. */
+:root[data-power-saver="calm"] .list,
+:root[data-power-saver="freeze"] .list {
+  background: var(--bg-secondary);
+  backdrop-filter: none;
 }
 
 .row {
