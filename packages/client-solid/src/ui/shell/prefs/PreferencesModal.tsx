@@ -29,7 +29,6 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
     useForceBootAnimation,
   } = useViewModel();
 
-
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
 

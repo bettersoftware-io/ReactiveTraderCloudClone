@@ -31,7 +31,6 @@ export function PreferencesModal({
     useForceBootAnimation,
   } = useViewModel();
 
-
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
 

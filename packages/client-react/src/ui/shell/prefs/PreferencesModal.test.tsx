@@ -66,10 +66,13 @@ function renderModal(
       return { enabled: true, toggle: vi.fn() };
     },
     usePowerSaver: () => {
-      return { enabled: false, toggle: vi.fn() };
+      return { level: "off", setLevel: vi.fn() };
     },
     useAmbientStyle: () => {
       return { style: ambientStyle, setStyle: setAmbientStyle };
+    },
+    useForceBootAnimation: () => {
+      return { enabled: false, toggle: vi.fn() };
     },
   } as unknown as ViewModel;
 
