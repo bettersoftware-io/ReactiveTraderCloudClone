@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 470" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-  <title>Swap the UI, keep the core: React, React Native, and a future SolidJS client all plug the same framework-neutral client-core through a per-framework bindings package.</title>
+  <title>Swap the UI, keep the core: React, React Native, and SolidJS clients all plug the same framework-neutral client-core through a per-framework bindings package.</title>
 
   <rect x="0" y="0" width="980" height="470" rx="12" fill="#0d1117"/>
   <text x="24" y="34" fill="#e6edf3" font-size="17" font-weight="bold" font-family="ui-sans-serif, system-ui, sans-serif">Swap the UI, keep the core</text>
@@ -66,18 +66,18 @@
     <text x="490" y="260" fill="#8b949e" font-size="9" text-anchor="middle">SAME package as web — React is React on both platforms</text>
   </g>
 
-  <!-- ================= PHASE 3 — SolidJS future (8–12s) ================= -->
+  <!-- ================= PHASE 3 — SolidJS (8–12s) ================= -->
   <g opacity="0">
     <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
       values="0;0;1;1;0" keyTimes="0;0.613;0.667;0.947;1"/>
-    <rect x="240" y="90" width="500" height="120" rx="10" fill="#161b22" stroke="#d29922" stroke-width="2" stroke-dasharray="8 5"/>
-    <text x="490" y="118" fill="#e6edf3" font-size="14" text-anchor="middle" font-weight="bold">@rtc/client-solid  (planned)</text>
+    <rect x="240" y="90" width="500" height="120" rx="10" fill="#161b22" stroke="#d29922" stroke-width="2"/>
+    <text x="490" y="118" fill="#e6edf3" font-size="14" text-anchor="middle" font-weight="bold">@rtc/client-solid</text>
     <text x="490" y="136" fill="#8b949e" font-size="9" text-anchor="middle">SolidJS components — a rewrite of ONE package, verified by the existing test contract</text>
     <text x="490" y="160" fill="#d29922" font-size="11" text-anchor="middle">▧ browser — same workspaces, same behavioural specs, same visual goldens</text>
-    <text x="490" y="190" fill="#8b949e" font-size="9" text-anchor="middle">reuses the same browser adapters pattern; nothing below the contract line changes</text>
+    <text x="490" y="190" fill="#8b949e" font-size="9" text-anchor="middle">reuses the same browser adapters pattern; nothing below the contract line changed</text>
 
-    <rect x="240" y="222" width="500" height="52" rx="8" fill="#161b22" stroke="#d29922" stroke-width="1.5" stroke-dasharray="8 5"/>
-    <text x="490" y="244" fill="#e6edf3" font-size="12" text-anchor="middle" font-weight="bold">@rtc/solid-bindings  (planned)</text>
+    <rect x="240" y="222" width="500" height="52" rx="8" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+    <text x="490" y="244" fill="#e6edf3" font-size="12" text-anchor="middle" font-weight="bold">@rtc/solid-bindings</text>
     <text x="490" y="260" fill="#8b949e" font-size="9" text-anchor="middle">Observable → Solid signal — pairs with the SAME @rx-state/core that react-bindings uses</text>
   </g>
 
