@@ -5,6 +5,7 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
 import { PrefToggle } from "./PrefToggle";
+import { useDraggableDialog } from "./useDraggableDialog";
 
 import styles from "./PreferencesModal.module.css";
 
@@ -33,6 +34,7 @@ export function PreferencesModal({
     useState<Record<string, boolean>>(INITIAL_TOGGLES);
   const [segments, setSegments] =
     useState<Record<string, string>>(INITIAL_SEGMENTS);
+  const { dialogRef, headerProps, dialogStyle } = useDraggableDialog({ open });
 
   if (!open) {
     return null;
@@ -52,8 +54,14 @@ export function PreferencesModal({
 
   return (
     <div data-testid="prefs-modal" className={styles.overlay}>
-      <div role="dialog" aria-label="Preferences" className={styles.dialog}>
-        <header className={styles.head}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-label="Preferences"
+        className={styles.dialog}
+        style={dialogStyle}
+      >
+        <header className={styles.head} {...headerProps}>
           <div>
             <div className={styles.title}>PREFERENCES</div>
             <div className={styles.subtitle}>
@@ -63,6 +71,7 @@ export function PreferencesModal({
           <button
             type="button"
             data-testid="prefs-close"
+            data-nodrag=""
             aria-label="Close preferences"
             className={styles.closeButton}
             onClick={onClose}
