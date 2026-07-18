@@ -25,10 +25,13 @@ export function PreferencesModal({
 }: PreferencesModalProps): ReactElement | null {
   const { useAnimatedBackground, usePowerSaver, useForceBootAnimation } =
     useViewModel();
+
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
+
   const { level: powerSaverLevel, setLevel: setPowerSaverLevel } =
     usePowerSaver();
+
   const { enabled: forceBootAnimation, toggle: toggleForceBootAnimation } =
     useForceBootAnimation();
 

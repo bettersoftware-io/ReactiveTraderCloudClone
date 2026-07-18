@@ -532,12 +532,15 @@ export function createWorld(
   const animatedBackground = new BehaviorSubject<boolean>(
     animatedBackgroundSeed ?? false,
   );
+
   const powerSaverLevel = new BehaviorSubject<PowerSaverLevel>(
     powerSaverLevelSeed ?? "off",
   );
+
   const forceBootAnimation = new BehaviorSubject<boolean>(
     forceBootAnimationSeed ?? false,
   );
+
   const viewMode = new BehaviorSubject<ViewMode>(
     viewModeSeed ?? DEFAULT_VIEW_MODE,
   );

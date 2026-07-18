@@ -23,10 +23,13 @@ import styles from "./PreferencesModal.module.css";
 export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
   const { useAnimatedBackground, usePowerSaver, useForceBootAnimation } =
     useViewModel();
+
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
+
   const { level: powerSaverLevel, setLevel: setPowerSaverLevel } =
     usePowerSaver();
+
   const { enabled: forceBootAnimation, toggle: toggleForceBootAnimation } =
     useForceBootAnimation();
 
