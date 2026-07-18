@@ -15,6 +15,7 @@ import type {
   TileExecutionState,
 } from "@rtc/client-core";
 import {
+  type AmbientStyle,
   type Candle,
   ConnectionStatus,
   type CreditRfqFilter,
@@ -80,6 +81,10 @@ export interface AppData {
   themeMode?: ThemeModePreference;
   /** Theme-skin preference (useThemeSkinPreference); defaults to "classic" in the fakes. */
   themeSkin?: ThemeSkin;
+  /** Ambient-style preference (useAmbientStyle); defaults to "rays" in the fakes
+   * (NOT the app's "aurora" default — see DEFAULT_AMBIENT_STYLE_FOR_FIXTURES in
+   * each client's buildFakeViewModel.ts). */
+  ambientStyle?: AmbientStyle;
   /** Animated-background preference (useAnimatedBackground); defaults to false. */
   animatedBackground?: boolean;
   /** Power-saver master-override level (usePowerSaver); defaults to "off". */

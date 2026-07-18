@@ -9,8 +9,8 @@ name: Deploy
 #
 # "the client" here is @rtc/client-react ONLY, BY DESIGN — the build command is
 # pinned in the root vercel.json (`--filter=@rtc/client-react`). @rtc/client-solid
-# is still a walking skeleton (see CLAUDE.md) and has no deployment of its own
-# this workstream; revisit once it reaches parity with the deployed react client.
+# is deployed separately by the `Deploy Solid` workflow (deploy-solid.yml), which
+# ships it to rtc-clone-solid.vercel.app against this same shared Fly WS server.
 on:
   workflow_dispatch:
 

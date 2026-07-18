@@ -104,4 +104,18 @@ describe("PreferencesModal", () => {
     expect(page.segmentActive("density", "compact")).toBe(true);
     expect(page.segmentActive("density", "comfortable")).toBe(false);
   });
+
+  it("shows the REAL Ambient style segment reflecting the active option, and writes through the seam on select", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      ambientStyle: "aurora",
+    });
+    expect(page.ambientStyleActive("aurora")).toBe(true);
+    expect(page.ambientStyleActive("rays")).toBe(false);
+
+    await page.selectAmbientStyle("rays");
+    // The seam pushed the new value back, so the segment now reflects it.
+    expect(page.ambientStyleActive("rays")).toBe(true);
+    expect(page.ambientStyleActive("aurora")).toBe(false);
+  });
 });

@@ -135,6 +135,7 @@ export type {
 } from "./ports/workflowPort.js";
 // Preferences
 export type {
+  AmbientStyle,
   BootVariant,
   CreditRfqFilter,
   EqBlotterView,
@@ -146,7 +147,9 @@ export type {
   ViewMode,
 } from "./preferences/preferences.js";
 export {
+  AMBIENT_STYLES,
   BOOT_VARIANTS,
+  DEFAULT_AMBIENT_STYLE,
   DEFAULT_ANIMATED_BACKGROUND,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,

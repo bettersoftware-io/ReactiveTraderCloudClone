@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { For } from "solid-js";
+import { For, Show } from "solid-js";
 
 import styles from "./PreferencesModal.module.css";
 
@@ -14,6 +14,9 @@ export function PrefSegment(props: PrefSegmentProps): JSX.Element {
     <div class={styles.row}>
       <div class={styles.rowText}>
         <div class={styles.rowLabel}>{props.label}</div>
+        <Show when={props.description}>
+          <div class={styles.rowDesc}>{props.description}</div>
+        </Show>
       </div>
       <div class={styles.seg}>
         <For each={props.options}>
@@ -53,6 +56,8 @@ export interface PrefSegmentOption {
 interface PrefSegmentProps {
   /** Row label (the setting name). */
   label: string;
+  /** Optional secondary description line. */
+  description?: string;
   /** The selectable options, in render order. */
   options: readonly PrefSegmentOption[];
   /** The currently-selected option value (reflected via `data-on`). */

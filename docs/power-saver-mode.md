@@ -35,7 +35,7 @@ it in sync with the implementation when the behaviour changes.
 
 | Element | Off | Calm | **Freeze** |
 |---|---|---|---|
-| Ambient aurora / sweep / dots | rendered | removed from DOM | removed from DOM |
+| Ambient-style layers (aurora curtains or rays blobs+sweep) + dots | rendered | removed from DOM | removed from DOM |
 | Logo spin, connection-dot pulse (`--fx-play`) | animating | paused | frozen |
 | **Price tick-flash** | on | on | **frozen** |
 | Price *number* + directional tint | live | conflated | conflated (same rate as Calm), **tint kept** |
@@ -53,10 +53,12 @@ timer/data-driven, not tied to the visual sweep, so it **still fires on
 time**; only the visual countdown is lost.
 
 **Net effect (Calm, measured):** roughly 3–5 % GPU / ~3 % renderer at steady
-state (down from ~35 % of one core on a 120 Hz display), while the app stays
-fully functional and visually recognisable. Freeze removes the app's
-remaining per-frame work on top of that — see below for why that matters on
-hardware Calm alone doesn't fix.
+state (down from ~35 % of one core on a 120 Hz display; measured on the **rays**
+ambient style, but **aurora** now shares that floor since its curtain
+`filter: blur()` was removed — see [performance.md](performance.md) P6b), while
+the app stays fully functional and visually recognisable. Freeze removes the
+app's remaining per-frame work on top of that — see below for why that matters
+on hardware Calm alone doesn't fix.
 
 ## Why a Freeze tier exists
 
@@ -147,6 +149,37 @@ Two things Freeze deliberately does *not* take away:
   - Solid has the parallel gates in its hook/binding equivalents; the same
     global CSS block is duplicated in Solid's `index.css`.
 
+## On GPU-less / VDI / Citrix hardware
+
+[Why a Freeze tier exists](#why-a-freeze-tier-exists) covers the app-wide motion
+cost on these boxes. The **ambient backdrop** has its own story worth calling
+out. It is **pure CSS** — gradient layers animated only with
+`transform`/`opacity` (`AmbientBackground.module.css`) — unlike the **boot
+splash**, which draws on a 2D `<canvas>` and falls back to a static frame when
+`getContext("2d")` is unavailable *or* `prefers-reduced-motion` is set
+(`BootSequence.tsx`). So on a locked-down VDI/Citrix image the backdrop still
+**paints** even when the boot animation doesn't — and what it *costs* has two
+independent brakes:
+
+- **Automatic — `prefers-reduced-motion: reduce`.** An `@media` block in
+  `AmbientBackground.module.css` sets `animation: none` on every animated layer
+  (aurora curtains + blobs, rays blobs + sweep, grid, dots), so the backdrop
+  paints but is **frozen static** — the same visual as turning **Animated
+  background** off. Many enterprise VDI/Citrix images set this flag (also the
+  usual reason the boot splash doesn't play).
+- **Manual — power saver (Calm or Freeze).** Removes the active style's animated
+  layers from the DOM entirely (see [What it changes](#what-it-changes)).
+
+**The gap to know about:** there is **no automatic no-GPU detection** (see the
+No-auto-detection non-goal below). A GPU-less box that does *not* set
+reduced-motion and does not have power saver on still runs the backdrop's
+`transform`/`opacity` animations on the **CPU software compositor**. The backdrop
+carries **no `filter`s** — the aurora curtain bands' `filter: blur()` was removed
+(see [performance.md](performance.md) P6b) — so that is plain compositing, not
+per-frame filter re-evaluation: cheaper than it once was, but still not free on
+a permanently-animated full-viewport layer. Fix: the image sets
+`prefers-reduced-motion`, or the user picks Calm/Freeze.
+
 ## Non-goals
 
 - **No auto-detection.** Every level is a manual choice — no Battery /
@@ -176,3 +209,11 @@ Two things Freeze deliberately does *not* take away:
   for the next real tick. This is arguably more correct, but if a future UX
   wants an immediate refresh when jumping to Calm or Freeze, it would need an
   explicit replay-on-flip.
+- **Auto-degrade on GPU-less hardware.** Today only `prefers-reduced-motion`
+  freezes the backdrop automatically; a GPU-less box that doesn't set that flag
+  still animates on the CPU (see [On GPU-less / VDI / Citrix
+  hardware](#on-gpu-less--vdi--citrix-hardware)). A boot-time probe
+  (`hardwareConcurrency`, a WebGL-context check, or a first-frame timing sample)
+  could auto-select Calm/Freeze — closing the gap without a user toggle.
+  Deliberately not built yet (see the No-auto-detection non-goal); heuristics
+  misfire, and the current design prefers an explicit choice.

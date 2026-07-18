@@ -37,8 +37,35 @@ export class AmbientBackgroundPage extends MountedComponent<
     return this.el()?.dataset.powerSaver ?? null;
   }
 
-  /** True when the aurora/sweep/dots animated layers are in the DOM. */
+  /**
+   * True when the active ambient style's animated layer group is in the DOM
+   * — `[data-layer="rays"]` (blobs+sweep) or `[data-layer="aurora-curtains"]`
+   * (northern-lights curtains), whichever `ambientStyle` selected. Power
+   * saver omits both groups outright, so this is `false` regardless of style
+   * when it's on. Both frameworks now agree on the two `data-layer` values
+   * (the ambient-style parity task retired the legacy unbranched `"aurora"`
+   * value on both sides).
+   */
   hasAuroraLayers(): boolean {
-    return Boolean(this.el()?.querySelector('[data-layer="aurora"]'));
+    return Boolean(
+      this.el()?.querySelector(
+        '[data-layer="rays"], [data-layer="aurora-curtains"]',
+      ),
+    );
+  }
+
+  /**
+   * True when the given style's `data-layer` group is in the DOM —
+   * `"rays"` (blobs+sweep) or `"aurora-curtains"` (northern-lights
+   * curtains). Unlike {@link hasAuroraLayers}, this checks ONE specific
+   * group, so a spec can assert the OTHER style's group is absent.
+   */
+  hasLayer(layer: "rays" | "aurora-curtains"): boolean {
+    return this.el()?.querySelector(`[data-layer="${layer}"]`) !== null;
+  }
+
+  /** The `data-ambient-style` attribute value ("aurora" | "rays"); null when absent. */
+  ambientStyle(): string | null {
+    return this.el()?.dataset.ambientStyle ?? null;
   }
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AMBIENT_STYLES,
+  DEFAULT_AMBIENT_STYLE,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
   DEFAULT_THEME_MODE,
@@ -74,5 +76,15 @@ describe("equities watchlist-sort preference", () => {
 describe("equities blotter-view preference", () => {
   it("defaults to orders", () => {
     expect(DEFAULT_EQ_BLOTTER_VIEW).toBe("orders");
+  });
+});
+
+describe("ambient style preference", () => {
+  it("defaults to aurora", () => {
+    expect(DEFAULT_AMBIENT_STYLE).toBe("aurora");
+  });
+
+  it("enumerates aurora and rays in selector order", () => {
+    expect(AMBIENT_STYLES).toEqual(["aurora", "rays"]);
   });
 });
