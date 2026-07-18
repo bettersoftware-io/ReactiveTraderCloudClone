@@ -11,6 +11,7 @@ import {
 import { describePreferencesPortContract } from "@rtc/domain/ports/__contracts__/PreferencesPortContract";
 
 import {
+  AMBIENT_STYLE_STORAGE_KEY,
   ANIMATED_BG_STORAGE_KEY,
   BOOT_VARIANT_STORAGE_KEY,
   CREDIT_RFQ_FILTER_STORAGE_KEY,
@@ -82,6 +83,10 @@ describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
 
       if (seed.eqBlotterView) {
         localStorage.setItem(EQ_BLOTTER_VIEW_STORAGE_KEY, seed.eqBlotterView);
+      }
+
+      if (seed.ambientStyle) {
+        localStorage.setItem(AMBIENT_STYLE_STORAGE_KEY, seed.ambientStyle);
       }
 
       return new LocalStoragePreferencesAdapter();
@@ -157,4 +162,5 @@ function clearStorage(): void {
   localStorage.removeItem(EQ_WATCHLIST_SORT_STORAGE_KEY);
   localStorage.removeItem(EQ_BLOTTER_VIEW_STORAGE_KEY);
   localStorage.removeItem(POWER_SAVER_STORAGE_KEY);
+  localStorage.removeItem(AMBIENT_STYLE_STORAGE_KEY);
 }

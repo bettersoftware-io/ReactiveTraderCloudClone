@@ -2,8 +2,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
 import {
+  AMBIENT_STYLES,
+  type AmbientStyle,
   type BootVariant,
   type CreditRfqFilter,
+  DEFAULT_AMBIENT_STYLE,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
@@ -30,6 +33,13 @@ export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
+export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
+
+function isAmbientStyle(value: string | null): value is AmbientStyle {
+  return (
+    value !== null && (AMBIENT_STYLES as readonly string[]).includes(value)
+  );
+}
 
 function isThemeModePreference(
   value: string | null,
@@ -106,6 +116,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     DEFAULT_EQ_BLOTTER_VIEW,
   );
 
+  private readonly ambientStyle = new BehaviorSubject<AmbientStyle>(
+    DEFAULT_AMBIENT_STYLE,
+  );
+
   constructor() {
     void this.hydrate();
   }
@@ -122,6 +136,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         creditRfqFilter,
         eqWatchlistSort,
         eqBlotterView,
+        ambientStyle,
       ] = await Promise.all([
         AsyncStorage.getItem(THEME_STORAGE_KEY),
         AsyncStorage.getItem(THEME_SKIN_STORAGE_KEY),
@@ -132,6 +147,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         AsyncStorage.getItem(CREDIT_RFQ_FILTER_STORAGE_KEY),
         AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
         AsyncStorage.getItem(EQ_BLOTTER_VIEW_STORAGE_KEY),
+        AsyncStorage.getItem(AMBIENT_STYLE_STORAGE_KEY),
       ]);
 
       if (isThemeModePreference(themeMode)) {
@@ -172,6 +188,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
       if (isEqBlotterView(eqBlotterView)) {
         this.eqBlotterViewSubject.next(eqBlotterView);
+      }
+
+      if (isAmbientStyle(ambientStyle)) {
+        this.ambientStyle.next(ambientStyle);
       }
     } catch {
       // AsyncStorage may be unavailable — keep the seeded defaults.
@@ -271,5 +291,14 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       () => {},
     );
     this.eqBlotterViewSubject.next(view);
+  }
+
+  ambientStyle$(): Observable<AmbientStyle> {
+    return this.ambientStyle.pipe(distinctUntilChanged());
+  }
+
+  setAmbientStyle(style: AmbientStyle): void {
+    void AsyncStorage.setItem(AMBIENT_STYLE_STORAGE_KEY, style).catch(() => {});
+    this.ambientStyle.next(style);
   }
 }

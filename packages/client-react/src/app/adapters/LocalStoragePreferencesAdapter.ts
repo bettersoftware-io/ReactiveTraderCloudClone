@@ -1,9 +1,12 @@
 import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
 import {
+  AMBIENT_STYLES,
+  type AmbientStyle,
   BOOT_VARIANTS,
   type BootVariant,
   type CreditRfqFilter,
+  DEFAULT_AMBIENT_STYLE,
   DEFAULT_ANIMATED_BACKGROUND,
   DEFAULT_BOOT_VARIANT,
   DEFAULT_CREDIT_RFQ_FILTER,
@@ -31,11 +34,18 @@ export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
 export const EQ_BLOTTER_VIEW_STORAGE_KEY = "eq-blotter-view";
+export const AMBIENT_STYLE_STORAGE_KEY = "rtc-ambient-style";
 
 function isThemeModePreference(
   value: string | null,
 ): value is ThemeModePreference {
   return value === "dark" || value === "light" || value === "system";
+}
+
+function isAmbientStyle(value: string | null): value is AmbientStyle {
+  return (
+    value !== null && (AMBIENT_STYLES as readonly string[]).includes(value)
+  );
 }
 
 function isThemeSkin(value: string | null): value is ThemeSkin {
@@ -136,6 +146,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly eqBlotterViewSubject: BehaviorSubject<EqBlotterView>;
 
+  private readonly ambientStyle: BehaviorSubject<AmbientStyle>;
+
   constructor() {
     this.themeMode = new BehaviorSubject<ThemeModePreference>(
       readStored(
@@ -178,6 +190,13 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
         EQ_BLOTTER_VIEW_STORAGE_KEY,
         isEqBlotterView,
         DEFAULT_EQ_BLOTTER_VIEW,
+      ),
+    );
+    this.ambientStyle = new BehaviorSubject<AmbientStyle>(
+      readStored(
+        AMBIENT_STYLE_STORAGE_KEY,
+        isAmbientStyle,
+        DEFAULT_AMBIENT_STYLE,
       ),
     );
   }
@@ -261,5 +280,14 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setEqBlotterView(view: EqBlotterView): void {
     writeStored(EQ_BLOTTER_VIEW_STORAGE_KEY, view);
     this.eqBlotterViewSubject.next(view);
+  }
+
+  ambientStyle$(): Observable<AmbientStyle> {
+    return this.ambientStyle.pipe(distinctUntilChanged());
+  }
+
+  setAmbientStyle(style: AmbientStyle): void {
+    writeStored(AMBIENT_STYLE_STORAGE_KEY, style);
+    this.ambientStyle.next(style);
   }
 }
