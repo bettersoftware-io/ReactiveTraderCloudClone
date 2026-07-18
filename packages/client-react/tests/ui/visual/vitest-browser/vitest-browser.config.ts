@@ -48,6 +48,12 @@ export default defineConfig({
     // `include` and screenshot paths are stable regardless of invocation cwd.
     root: fileURLToPath(new URL("../../../..", import.meta.url)),
     include: ["tests/ui/visual/vitest-browser/**/*.spec.tsx"],
+    // Optional scenario filter — parity with the Playwright tiers' `grep`.
+    // SCENARIO_PATTERN (update-visual-goldens.yml's scenario_pattern input, or
+    // local) narrows to matching test names; empty/unset = the full matrix. A
+    // config value rather than the -t CLI flag so all three tiers read the one
+    // env var (and -t wouldn't forward cleanly through `pnpm run <script> --`).
+    testNamePattern: process.env.SCENARIO_PATTERN || undefined,
     // HTML report (additive): test:ui:visual:vitest-browser:react =>
     // reports/ui/visual/vitest-browser/react/. outputFile is root-relative
     // (root is pinned to the package dir above). On failure the html reporter
