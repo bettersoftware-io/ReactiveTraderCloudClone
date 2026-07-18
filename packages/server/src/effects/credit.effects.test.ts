@@ -20,6 +20,7 @@ describe("credit effects", () => {
       benchmark: "10Y UST 4.000 08/2030",
       refPrice: 98.4,
     };
+
     const ctx = {
       instruments: {
         getInstruments: vi.fn(() => {
@@ -53,6 +54,7 @@ describe("credit effects", () => {
       benchmark: "10Y UST 4.000 08/2030",
       refPrice: 98.4,
     };
+
     const ctx = {
       instruments: {
         getInstruments: vi.fn(() => {
@@ -104,6 +106,7 @@ describe("credit effects", () => {
       expirySecs: 120,
       creationTimestamp: 1,
     };
+
     const ctx = {
       workflow: {
         events: vi.fn(() => {
@@ -128,6 +131,7 @@ describe("credit effects", () => {
       dealerId: 0,
       state: { type: "pendingWithPrice", price: 101 },
     };
+
     const ctx = {
       workflow: {
         events: vi.fn(() => {

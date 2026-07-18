@@ -29,6 +29,7 @@ export function createInMemoryDuplexPair<TA, TB>(): [
       closed = true;
     },
   };
+
   const b: Duplex<TB, TA> = {
     send: (msg: TB): void => {
       if (!closed) {

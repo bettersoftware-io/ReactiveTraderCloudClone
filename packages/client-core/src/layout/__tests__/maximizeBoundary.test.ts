@@ -66,6 +66,7 @@ describe("maximizeBoundaryPath", () => {
         },
       ],
     };
+
     const specs: Readonly<Record<PanelId, PanelSpec>> = {
       a: { id: "a", title: "A", maximizeScope: "nearest-column" },
     };
@@ -82,6 +83,7 @@ describe("maximizeBoundaryPath", () => {
         { kind: "panel", panelId: "b" },
       ],
     };
+
     const specs: Readonly<Record<PanelId, PanelSpec>> = {
       a: { id: "a", title: "A", maximizeScope: "nearest-column" },
     };

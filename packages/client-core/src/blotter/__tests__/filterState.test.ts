@@ -23,6 +23,7 @@ describe("applyFilters — set filter", () => {
       trade({ tradeId: 2, currencyPair: "USDJPY" }),
       trade({ tradeId: 3, currencyPair: "GBPUSD" }),
     ];
+
     const f = filters({
       type: "set",
       column: "currencyPair",
@@ -236,6 +237,7 @@ describe("applyFilters — multiple column filters (AND)", () => {
       trade({ tradeId: 2, currencyPair: "EURUSD", notional: 300 }),
       trade({ tradeId: 3, currencyPair: "USDJPY", notional: 100 }),
     ];
+
     const f = filters(
       { type: "set", column: "currencyPair", values: new Set(["EURUSD"]) },
       { type: "number", column: "notional", comparator: "lt", value: 200 },
@@ -278,6 +280,7 @@ describe("applyFilters — quick filter", () => {
       trade({ tradeId: 1, currencyPair: "EURUSD", tradeName: "Alice" }),
       trade({ tradeId: 2, currencyPair: "USDJPY", tradeName: "Alice" }),
     ];
+
     const f = filters({
       type: "set",
       column: "currencyPair",

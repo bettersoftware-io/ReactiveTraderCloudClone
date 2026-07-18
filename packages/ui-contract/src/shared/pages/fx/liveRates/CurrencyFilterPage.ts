@@ -38,6 +38,7 @@ export class CurrencyFilterPage extends MountedComponent<CurrencyFilterProps> {
         "[data-testid^='filter-']",
       ),
     ];
+
     const active = buttons.find((b) => {
       return b.dataset.active === "true";
     });

@@ -35,6 +35,7 @@ describe("FxBlotterHeadControls", () => {
     const { result } = renderHook(() => {
       return useFxBlotter(SEED_TRADES);
     });
+
     const { queryByPlaceholderText } = render(
       <FxBlotterHeadControls
         api={result.current}
@@ -50,6 +51,7 @@ describe("FxBlotterHeadControls", () => {
     const { result } = renderHook(() => {
       return useFxBlotter(SEED_TRADES);
     });
+
     const { getByText } = render(
       <FxBlotterHeadControls
         api={result.current}
@@ -67,6 +69,7 @@ describe("FxBlotterPanel", () => {
     const { result } = renderHook(() => {
       return useFxBlotter(SEED_TRADES);
     });
+
     const { queryByText } = render(
       <FxBlotterPanel
         api={result.current}

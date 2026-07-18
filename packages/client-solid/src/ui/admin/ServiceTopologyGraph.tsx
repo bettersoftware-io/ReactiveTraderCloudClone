@@ -37,6 +37,7 @@ export function ServiceTopologyGraph(): JSX.Element {
               }),
             );
           });
+
           const peakLatency = createMemo((): number => {
             return Math.max(
               1,

@@ -60,6 +60,7 @@ const instruments: readonly Instrument[] = [
     refPrice: 98.4,
   },
 ];
+
 const dealers: readonly Dealer[] = [
   { id: 1, name: "Adaptive Bank" },
   { id: 2, name: "Citi" },

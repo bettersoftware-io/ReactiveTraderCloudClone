@@ -47,6 +47,7 @@ export function LayoutEngineHost({
   const port: LayoutPort = pinnedFixture
     ? pinnedFixtureLayoutPort
     : createDefaultLayoutPort("fx");
+
   const { state, maximize, restore, collapse, expand, resize } = useMachine(
     () => {
       return createLayoutMachine(port);

@@ -102,6 +102,7 @@ function seedSnapshot(state: InspectorState): AppToInspector {
   const streams: SnapshotStream[] = state.streams.map((s) => {
     return { streamId: s.streamId, value: s.lastValue };
   });
+
   const machines: SnapshotMachine[] = state.machines.map((m) => {
     return {
       machineId: m.machineId,

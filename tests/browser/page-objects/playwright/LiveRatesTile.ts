@@ -96,6 +96,7 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
     const confirmation = this.firstTile().getByTestId(
       TESTIDS.liveRates.tradeConfirmation,
     );
+
     const combined = new RegExp(
       patterns
         .map((p) => {

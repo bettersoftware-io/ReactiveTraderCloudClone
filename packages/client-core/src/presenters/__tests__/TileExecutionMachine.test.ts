@@ -110,6 +110,7 @@ describe("createTileExecutionMachine", () => {
       status: ExecutionStatus.Rejected,
       trade: { ...trade, status: TradeStatus.Rejected },
     };
+
     const states = run(
       (ts) => {
         return (): Observable<ExecuteTradeResult> => {
@@ -381,6 +382,7 @@ function run(
     const machine = createTileExecutionMachine(pair, {
       execute: buildExecute(ts),
     });
+
     const sub = machine.state$.subscribe((s) => {
       return states.push(s);
     });

@@ -72,6 +72,7 @@ async function runChecks(): Promise<void> {
   const ws = new WsAdapter(`ws://${HOST}:${PORT}`, () => {
     return sessionStore.read()?.token;
   });
+
   const ports = createWsRealPorts(ws, {
     preferences: new PreferencesSimulator(),
     auth: new HttpAuthAdapter(httpBase),

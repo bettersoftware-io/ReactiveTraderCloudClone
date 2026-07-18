@@ -27,6 +27,7 @@ export function PreferencesModal({
 
   const [toggles, setToggles] =
     useState<Record<string, boolean>>(INITIAL_TOGGLES);
+
   const [segments, setSegments] =
     useState<Record<string, string>>(INITIAL_SEGMENTS);
 

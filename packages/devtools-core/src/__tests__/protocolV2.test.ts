@@ -25,6 +25,7 @@ describe("protocol v2", () => {
       appId: "rtc-web",
       dev: true,
     };
+
     const withoutDev: AppToInspector = {
       kind: "welcome",
       v: PROTOCOL_VERSION,

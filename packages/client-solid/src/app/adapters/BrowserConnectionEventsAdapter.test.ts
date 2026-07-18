@@ -92,6 +92,7 @@ describe("BrowserConnectionEventsAdapter", () => {
     const subA = adapter.events().subscribe((e) => {
       return eventsA.push(e);
     });
+
     const subB = adapter.events().subscribe((e) => {
       return eventsB.push(e);
     });

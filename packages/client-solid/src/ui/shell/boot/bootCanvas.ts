@@ -312,9 +312,11 @@ export function drawBootLaser(d: BootDrawCtx): void {
       [r.x + r.w, r.y + r.h, r.x, r.y + r.h],
       [r.x, r.y + r.h, r.x, r.y],
     ];
+
     const lens = segs.map((s) => {
       return Math.hypot(s[2] - s[0], s[3] - s[1]);
     });
+
     const P = lens.reduce((a, b) => {
       return a + b;
     }, 0);
