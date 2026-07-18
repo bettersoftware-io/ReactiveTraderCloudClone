@@ -25,11 +25,18 @@ export function WatchlistView({
   pairs,
   filter,
 }: WatchlistViewProps): ReactElement {
+  const { usePowerSaver } = useViewModel();
+  const { isFreeze } = usePowerSaver();
+
   // Same isotope choreography as the tile grid (PROTO flips
   // '[data-tile-sym]' in BOTH the rates and watch views): surviving rows
   // glide, appearing rows slide in from the panel's right border,
   // filtered-out rows fall to its bottom border.
-  const { register } = useFlipGrid([filter], { enter: true, exit: true });
+  const { register } = useFlipGrid([filter], {
+    enter: true,
+    exit: true,
+    freeze: isFreeze,
+  });
 
   return (
     <div data-testid="watchlist-view" className={styles.table}>

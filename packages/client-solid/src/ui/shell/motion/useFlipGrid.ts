@@ -1,3 +1,4 @@
+import type { Accessor } from "solid-js";
 import { createEffect, on, onCleanup, onMount } from "solid-js";
 
 import {
@@ -34,13 +35,25 @@ import {
  *
  * No-ops (skips measuring/animating) when the browser/OS prefers reduced
  * motion — the same `matchMedia("(prefers-reduced-motion: reduce)")` seam
- * BootGate/BootSequence already consult.
+ * BootGate/BootSequence already consult — or when `options.freeze` (power-
+ * saver's Freeze tier) reads true.
+ *
+ * `freeze` is threaded as an ACCESSOR (`usePowerSaver().isFreeze`), not a
+ * plain boolean like `enter`/`exit`: those are constant per call site, but
+ * freeze can flip live over the app's lifetime, and Solid components run
+ * their setup body exactly once — a plain boolean captured at the call site
+ * (`freeze: isFreeze()`) would read the preference once at mount and never
+ * see a later toggle (the same trap AmbientBackground.tsx's `vars` memo
+ * comment documents). Reading it via a call INSIDE the deps-change callback
+ * below (an untracked read inside `on()`'s callback) picks up the CURRENT
+ * value at the moment of the next FLIP pass, which is the only moment it
+ * matters.
  */
 export function useFlipGrid(
   deps: () => unknown[],
   options: FlipGridOptions = {},
 ): FlipGridApi {
-  const { enter = false, exit = false } = options;
+  const { enter = false, exit = false, freeze } = options;
   const elements = new Map<string, HTMLElement>();
   let positions = new Map<string, Rect>();
   let observer: ResizeObserver | null = null;
@@ -91,7 +104,11 @@ export function useFlipGrid(
       const nextPositions = measurePositions(elements);
       const prevPositions = positions;
 
-      if (prevPositions.size > 0 && !prefersReducedMotion()) {
+      if (
+        prevPositions.size > 0 &&
+        !prefersReducedMotion() &&
+        !(freeze?.() ?? false)
+      ) {
         for (const { key, dx, dy } of flipDeltas(
           prevPositions,
           nextPositions,
@@ -307,4 +324,11 @@ export interface FlipGridOptions {
   enter?: boolean;
   /** Fade just-removed items out in place via a detached-node ghost. */
   exit?: boolean;
+  /** Power-saver "freeze" tier accessor (`usePowerSaver().isFreeze`): when it
+   *  reads true, skip the whole measure/animate pass — no WAAPI glide/enter/
+   *  exit — leaving the grid to jump-cut to its new layout. The CSS catch-all
+   *  (`[data-power-saver="freeze"] *`) only reaches declarative animations/
+   *  transitions, not raw `Element.animate()`, so this hook gates itself.
+   *  Undefined behaves as `false` so existing callers are unaffected. */
+  freeze?: Accessor<boolean>;
 }

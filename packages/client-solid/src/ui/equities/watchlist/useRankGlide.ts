@@ -121,18 +121,24 @@ function prefersReducedMotion(): boolean {
  * moment the current glide settles, so a burst of quote-driven re-sorts
  * (~12/sec under the default "chg" sort) collapses into at most one reorder
  * per glide window instead of restarting overlapping animations (I4 fix).
- * No-ops under reduced motion or before a previous rank has been recorded
- * (the first run never glides).
+ * No-ops under reduced motion, under power-saver's Freeze tier
+ * (`options.freeze`, since the CSS catch-all can't reach raw
+ * `Element.animate()`), or before a previous rank has been recorded (the
+ * first run never glides).
  *
  * SOLID PORT NOTE: both `root` and `candidate` are THUNKS, mirroring
  * useFlipGrid's `deps` thunk — Solid components run their setup body once, so
  * a plain ref/array captured at the call site would freeze at mount. Passing
  * accessors lets the effects below re-read the caller's current ref/array
- * fresh every run. */
+ * fresh every run. `options.freeze` follows the same accessor shape for the
+ * same reason (see useFlipGrid's doc comment) — a plain boolean captured at
+ * the call site would never see a later power-saver toggle. */
 export function useRankGlide(
   root: Accessor<HTMLElement | null>,
   candidate: Accessor<readonly string[]>,
+  options: UseRankGlideOptions = {},
 ): Accessor<readonly string[]> {
+  const { freeze } = options;
   let prevRank: Record<string, number> | undefined;
   let gliding = false;
   let pending: readonly string[] | null = null;
@@ -176,7 +182,12 @@ export function useRankGlide(
         );
         const animations: Animation[] = [];
 
-        if (!prefersReducedMotion() && prevRank != null && nodes.length > 0) {
+        if (
+          !prefersReducedMotion() &&
+          !(freeze?.() ?? false) &&
+          prevRank != null &&
+          nodes.length > 0
+        ) {
           const directions = computeRankDirections(prevRank, order);
           const rowH = rowHeight(nodes);
 
@@ -253,4 +264,12 @@ export function useRankGlide(
   });
 
   return committed;
+}
+
+export interface UseRankGlideOptions {
+  /** Power-saver "freeze" tier accessor (`usePowerSaver().isFreeze`): when it
+   *  reads true, skip the glide/highlight WAAPI pass entirely — rows jump-cut
+   *  straight to their new rank. Undefined behaves as `false` so existing
+   *  callers are unaffected. */
+  freeze?: Accessor<boolean>;
 }

@@ -1,0 +1,230 @@
+// Collects every outstanding ESLint *warning* (severity: warn) across both
+// lint configs and renders the committed ledger at docs/lint-warnings.md.
+//
+// Warnings are non-blocking as code in this repo (biome/CI gate on errors
+// only) — deliberately. The failure mode is that a warning can then linger
+// forever untracked. This ledger, guarded by `pnpm check:lint-warnings-drift`
+// in CI, makes that impossible: a new warning turns the drift gate red until
+// it is either fixed or recorded here, so every outstanding warning stays a
+// visible to-do until someone clears it.
+//
+// Run directly (`pnpm sync:lint-warnings`) to regenerate the ledger. The
+// collect/render functions are also imported by check-lint-warnings-drift.mjs
+// so the gate compares against the *exact* same rendering — the two can never
+// diverge.
+
+import { execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+export const LEDGER_PATH = "docs/lint-warnings.md";
+
+// The two lint passes CI runs (see `lint:eslint` / `lint:eslint:types`). The
+// default config is applied when `--config` is omitted; the typed config is a
+// second, separate pass. We union the warnings from both.
+const ESLINT_CONFIGS = [null, "eslint.config.typed.mjs"];
+
+/** Run ESLint once with `-f json` and return the parsed results array. ESLint
+ * exits non-zero when it finds *errors*; it still writes the JSON report to
+ * stdout, so we read stdout regardless of exit code. */
+function runEslint(configPath) {
+  const args = [
+    "eslint",
+    ".",
+    "--format",
+    "json",
+    ...(configPath === null ? [] : ["--config", configPath]),
+  ];
+
+  let stdout;
+
+  try {
+    stdout = execFileSync("npx", args, {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  } catch (error) {
+    // Non-zero exit (lint errors present) — the JSON report is still on stdout.
+    if (typeof error.stdout === "string" && error.stdout.length > 0) {
+      stdout = error.stdout;
+    } else {
+      throw error;
+    }
+  }
+
+  return JSON.parse(stdout);
+}
+
+/** Collect the de-duplicated set of warnings across all configs.
+ *
+ * Physical-warning identity is (file, rule, line, column, message) — used only
+ * to drop the SAME warning reported by both configs. The returned ledger groups
+ * are keyed by (rule, file, message) with a count of distinct physical
+ * occurrences; line/column never reach the ledger, so unrelated edits that
+ * merely shift lines don't cause drift, while a genuinely new warning does.
+ *
+ * Map keys are JSON.stringify of the identity tuple — unambiguous (no delimiter
+ * can collide with field contents) and plain ASCII (a raw separator byte would
+ * make git treat this script as binary). */
+export function collectWarnings() {
+  const physical = new Map();
+
+  for (const config of ESLINT_CONFIGS) {
+    for (const result of runEslint(config)) {
+      const file = toRepoRelative(result.filePath);
+
+      for (const message of result.messages) {
+        if (message.severity !== 1) {
+          continue; // 1 = warn; 2 = error (errors already fail lint)
+        }
+
+        const rule = message.ruleId ?? "(no-rule)";
+        const key = JSON.stringify([
+          file,
+          rule,
+          message.line,
+          message.column,
+          message.message,
+        ]);
+        physical.set(key, { file, rule, message: message.message });
+      }
+    }
+  }
+
+  // Group physical warnings into ledger rows keyed by (rule, file, message).
+  const groups = new Map();
+
+  for (const w of physical.values()) {
+    const key = JSON.stringify([w.rule, w.file, w.message]);
+    const existing = groups.get(key);
+
+    if (existing === undefined) {
+      groups.set(key, { ...w, count: 1 });
+    } else {
+      existing.count += 1;
+    }
+  }
+
+  return [...groups.values()];
+}
+
+function toRepoRelative(absPath) {
+  const cwd = process.cwd();
+  return absPath.startsWith(cwd)
+    ? absPath
+        .slice(cwd.length)
+        .replace(/^[/\\]/, "")
+        .replaceAll("\\", "/")
+    : absPath.replaceAll("\\", "/");
+}
+
+/** Render the canonical ledger markdown from collected warnings. Deterministic:
+ * groups are sorted by rule, then file, then message, so regeneration is
+ * byte-stable regardless of ESLint's traversal order. Contains NO timestamps —
+ * the output is a pure function of the warning set (a date would cause drift). */
+export function renderLedger(warnings) {
+  const sorted = [...warnings].sort((a, b) => {
+    return (
+      a.rule.localeCompare(b.rule) ||
+      a.file.localeCompare(b.file) ||
+      a.message.localeCompare(b.message)
+    );
+  });
+
+  const total = sorted.reduce((sum, w) => {
+    return sum + w.count;
+  }, 0);
+  const rules = new Set(
+    sorted.map((w) => {
+      return w.rule;
+    }),
+  );
+  const files = new Set(
+    sorted.map((w) => {
+      return w.file;
+    }),
+  );
+
+  const lines = [
+    "<!-- GENERATED by scripts/sync-lint-warnings.mjs — do NOT edit by hand.",
+    "     Regenerate with `pnpm sync:lint-warnings`; guarded in CI by",
+    "     `pnpm check:lint-warnings-drift`. -->",
+    "",
+    "# Lint Warnings Ledger",
+    "",
+    "> Machine-generated inventory of every outstanding ESLint **warning**",
+    "> (severity `warn`) across both lint configs. Warnings are non-blocking as",
+    "> code on purpose — this ledger keeps them tracked so they get fixed rather",
+    "> than lingering forever. Line numbers are omitted deliberately (they churn",
+    "> on unrelated edits); locate each warning by its file plus the identifier",
+    "> named in the message.",
+    ">",
+    `> **Total: ${total} ${total === 1 ? "warning" : "warnings"}** across ` +
+      `${rules.size} ${rules.size === 1 ? "rule" : "rules"}, ` +
+      `${files.size} ${files.size === 1 ? "file" : "files"}.`,
+    "",
+  ];
+
+  if (sorted.length === 0) {
+    lines.push("_No outstanding lint warnings. 🎉_", "");
+    return `${lines.join("\n")}\n`;
+  }
+
+  let currentRule = null;
+  let currentFile = null;
+
+  for (const w of sorted) {
+    if (w.rule !== currentRule) {
+      if (currentRule !== null) {
+        lines.push(""); // separate the previous section's entries from this header
+      }
+
+      const ruleTotal = sorted
+        .filter((x) => {
+          return x.rule === w.rule;
+        })
+        .reduce((sum, x) => {
+          return sum + x.count;
+        }, 0);
+      lines.push(`## \`${w.rule}\` (${ruleTotal})`, "");
+      currentRule = w.rule;
+      currentFile = null;
+    }
+
+    if (w.file !== currentFile) {
+      if (currentFile !== null) {
+        lines.push(""); // separate the previous file's entries from this header
+      }
+
+      lines.push(`### ${w.file}`, "");
+      currentFile = w.file;
+    }
+
+    const prefix = w.count === 1 ? "" : `(×${w.count}) `;
+    lines.push(`- ${prefix}${w.message}`);
+  }
+
+  lines.push("");
+  return `${lines.join("\n")}\n`;
+}
+
+// --- Run-as-script guard: only write the file when executed directly. ---
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const ledger = renderLedger(collectWarnings());
+  let previous = null;
+
+  try {
+    previous = readFileSync(LEDGER_PATH, "utf8");
+  } catch {
+    // First run — no existing ledger.
+  }
+
+  writeFileSync(LEDGER_PATH, ledger);
+
+  if (previous === ledger) {
+    console.log(`sync-lint-warnings: ${LEDGER_PATH} already up to date`);
+  } else {
+    console.log(`sync-lint-warnings: wrote ${LEDGER_PATH}`);
+  }
+}

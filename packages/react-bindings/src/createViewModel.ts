@@ -55,7 +55,9 @@ import {
   type Instrument,
   type LogEvent,
   type MetricSample,
+  nextPowerSaverLevel,
   type PositionUpdates,
+  type PowerSaverLevel,
   type Price,
   type PriceTick,
   type Quote,
@@ -120,9 +122,11 @@ interface UseAnimatedBackgroundResult {
 }
 
 interface UsePowerSaverResult {
-  enabled: boolean;
-  setEnabled: (on: boolean) => void;
-  toggle: () => void;
+  level: PowerSaverLevel;
+  isCalm: boolean;
+  isFreeze: boolean;
+  setLevel: (level: PowerSaverLevel) => void;
+  cycle: () => void;
 }
 
 interface UseViewModePreferenceResult {
@@ -212,7 +216,8 @@ export interface ViewModel {
   useThemeSkinPreference: () => UseThemeSkinPreferenceResult;
   /** Global animated-background preference — enabled flag plus write/toggle intents. */
   useAnimatedBackground: () => UseAnimatedBackgroundResult;
-  /** Global power-saver master override — enabled flag plus write/toggle intents. */
+  /** Global power-saver master override — 3-state level (off/calm/freeze)
+   * plus derived isCalm/isFreeze flags and setLevel/cycle intents. */
   usePowerSaver: () => UsePowerSaverResult;
   /** Global live-rates view-mode preference — current mode plus the write intent. */
   useViewModePreference: () => UseViewModePreferenceResult;
@@ -386,10 +391,10 @@ export function createViewModel(
     presenters.animatedBackground.set(on);
   }
 
-  const [usePowerSaverValue] = bind(presenters.powerSaver.enabled$, false);
+  const [usePowerSaverLevel] = bind(presenters.powerSaver.level$, "off");
 
-  function setPowerSaver(on: boolean): void {
-    presenters.powerSaver.set(on);
+  function setPowerSaverLevel(level: PowerSaverLevel): void {
+    presenters.powerSaver.setLevel(level);
   }
 
   const [useViewModeValue] = bind(
@@ -720,12 +725,14 @@ export function createViewModel(
       };
     },
     usePowerSaver: () => {
-      const enabled = usePowerSaverValue();
+      const level = usePowerSaverLevel();
       return {
-        enabled,
-        setEnabled: setPowerSaver,
-        toggle: () => {
-          return presenters.powerSaver.toggle(enabled);
+        level,
+        isCalm: level !== "off",
+        isFreeze: level === "freeze",
+        setLevel: setPowerSaverLevel,
+        cycle: () => {
+          return setPowerSaverLevel(nextPowerSaverLevel(level));
         },
       };
     },

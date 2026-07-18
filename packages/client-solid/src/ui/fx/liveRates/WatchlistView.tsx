@@ -23,6 +23,9 @@ import styles from "./WatchlistView.module.css";
  * always agree on price/movement — only the layout differs.
  */
 export function WatchlistView(props: WatchlistViewProps): JSX.Element {
+  const { usePowerSaver } = useViewModel();
+  const { isFreeze } = usePowerSaver();
+
   // Same isotope choreography as the tile grid (PROTO flips
   // '[data-tile-sym]' in BOTH the rates and watch views): surviving rows
   // glide, appearing rows slide in from the panel's right border,
@@ -31,7 +34,7 @@ export function WatchlistView(props: WatchlistViewProps): JSX.Element {
     () => {
       return [props.filter];
     },
-    { enter: true, exit: true },
+    { enter: true, exit: true, freeze: isFreeze },
   );
 
   return (

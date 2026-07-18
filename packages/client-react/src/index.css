@@ -16,3 +16,16 @@ body,
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Power-saver "freeze" tier: neutralise ALL decorative motion at once for
+ * GPU-less Citrix/VDI boxes. 0.01ms (not `none`) keeps `forwards` end-states
+ * resolving and animationend/transitionend events firing, so JS choreography
+ * waiting on them does not hang. Imperative motion (WAAPI, rAF) is gated in TS.
+ * The static neon HUD (box/text-shadow) is deliberately kept. */
+[data-power-saver="freeze"] *,
+[data-power-saver="freeze"] *::before,
+[data-power-saver="freeze"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

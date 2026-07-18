@@ -64,12 +64,18 @@ import styles from "./RfqsPanel.module.css";
  * would be equally wrong; id-keying is the correct middle ground, the
  * direct analogue of React's `key={rfq.id}`. */
 export function RfqsPanel(): JSX.Element {
-  const { useRfqs, useInstruments, useDealers, useCreditRfqFilterPreference } =
-    useViewModel();
+  const {
+    useRfqs,
+    useInstruments,
+    useDealers,
+    useCreditRfqFilterPreference,
+    usePowerSaver,
+  } = useViewModel();
   const rfqs = useRfqs();
   const instruments = useInstruments();
   const dealers = useDealers();
   const { filter } = useCreditRfqFilterPreference();
+  const { isFreeze } = usePowerSaver();
 
   const [dismissed, setDismissed] = createSignal<ReadonlySet<number>>(
     new Set(),
@@ -271,9 +277,12 @@ export function RfqsPanel(): JSX.Element {
     return renderedIds().join(",");
   });
 
-  const { register } = useFlipGrid(() => {
-    return [filter(), renderedIdsKey()];
-  });
+  const { register } = useFlipGrid(
+    () => {
+      return [filter(), renderedIdsKey()];
+    },
+    { freeze: isFreeze },
+  );
 
   function handleRemove(rfqId: number): void {
     if (prefersReducedMotion()) {

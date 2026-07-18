@@ -178,6 +178,53 @@ describe("useFlipGrid", () => {
     globalThis.ResizeObserver = original;
   });
 
+  // Power-saver "freeze" tier: the CSS catch-all neutralises declarative
+  // animations/transitions, but the FLIP glide/enter/exit paths run through
+  // raw WAAPI (Element.animate), which the CSS can't reach — this hook must
+  // gate it itself. Installed on the PROTOTYPE (jsdom has no `animate` at
+  // all, so there's nothing to spyOn — a per-tile own-property stub, as the
+  // other tests use, would shadow it and make the assertion unreachable
+  // either way) so the assertion proves the hook never calls animate() on
+  // ANY element, freeze or not.
+  it("does not call animate when freeze is true, even though deps change", () => {
+    const animateSpy = vi.fn().mockReturnValue({} as Animation);
+    HTMLElement.prototype.animate = animateSpy;
+    const el = document.createElement("div");
+    const rect = { left: 0, top: 0 };
+
+    el.getBoundingClientRect = (): DOMRect => {
+      return {
+        left: rect.left,
+        top: rect.top,
+        right: rect.left,
+        bottom: rect.top,
+        width: 0,
+        height: 0,
+        x: rect.left,
+        y: rect.top,
+        toJSON: (): unknown => {
+          return {};
+        },
+      } as DOMRect;
+    };
+
+    const { result, rerender } = renderHook(
+      (props: HookProps) => {
+        return useFlipGrid([props.dep], { freeze: true });
+      },
+      { initialProps: { dep: "All" } },
+    );
+    result.current.register("EURUSD")(el);
+    rerender({ dep: "EUR" });
+
+    rect.left = 150;
+    rerender({ dep: "USD" });
+
+    expect(animateSpy).not.toHaveBeenCalled();
+    // @ts-expect-error jsdom has no native `animate` — undo the stub install
+    delete HTMLElement.prototype.animate;
+  });
+
   it("does not play enter animations when the option is off", () => {
     const first = makeTile();
     const { result, rerender } = renderHook(
