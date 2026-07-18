@@ -16,21 +16,21 @@ name: Update visual goldens
 #
 # It then AUTO-COMMITS the regenerated goldens straight to the dispatched branch
 # (scoped to the canonical react/ trees only — never the vitest failure-debris
-# dir or a partial react-local/ set) using the workflow's GITHUB_TOKEN, so there
+# dir or any other non-react/ path) using the workflow's GITHUB_TOKEN, so there
 # is no artifact → download → cherry-pick → commit round-trip. The artifact is
 # still uploaded as a fallback. The commit is `[skip ci]` (and GITHUB_TOKEN
 # pushes don't retrigger workflows anyway), so it never loops.
 #
-# SCOPE: refreshes ONLY the canonical x86 `react/` set (the CI-enforced baseline)
-# — react-only BY DESIGN. The goldens are react-owned; the Solid client
+# SCOPE: refreshes the `react/` set — the SINGLE container-canonical golden set,
+# react-only BY DESIGN. The goldens are react-owned; the Solid client
 # (@rtc/client-solid) never gets its own set — its visual tiers assert the SAME
 # scenarios against these react goldens (see visual.yml), so regenerating here is
-# sufficient for both clients. It does NOT touch the per-arch
-# `react-local/<platform>-<arch>/` sets used for local feedback — those never
-# match the x86 pixels and no CI runner reproduces them. After an intentional UI
-# change you must ALSO regenerate your local set on your own machine and commit
-# it (see packages/client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md,
-# "Cross-platform pixel drift").
+# sufficient for both clients. There is no per-arch `react-local/` set any more:
+# every architecture regenerates/verifies through this same pinned x86 container
+# (locally via the `pnpm goldens:regen` / `pnpm goldens:verify` wrapper, which is
+# byte-identical to this run). A native `pnpm test:ui:visual` on a non-x86 host
+# will not match `react/`; use the wrapper. See
+# packages/client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md.
 on:
   workflow_dispatch:
     inputs:
@@ -115,9 +115,8 @@ jobs:
 
       # Commit the regenerated goldens straight to the dispatched branch. Scope the
       # stage to the canonical react/ trees ONLY — a bare `git add` would also catch
-      # the vitest failure-debris dir (…/__screenshots__/visual.spec.tsx/) or a
-      # partial react-local/ set. The grep guard hard-fails if anything outside
-      # react/ somehow staged.
+      # the vitest failure-debris dir (…/__screenshots__/visual.spec.tsx/). The
+      # grep guard hard-fails if anything outside react/ somehow staged.
       - name: Commit regenerated react/ goldens to the branch
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
