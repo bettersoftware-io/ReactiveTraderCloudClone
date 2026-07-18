@@ -230,9 +230,12 @@
 /* AURORA STYLE (v5 "Aurora"): fixed-palette northern-lights curtains.
    Palette is intentionally NOT theme-tinted so it reads as an aurora in every
    skin. Master opacity rides the wrapper at --aurora-opacity (same token that
-   gates the rays style). Blob layers bake their softness into the gradient
-   falloff (no filter, per docs/performance.md P6); curtain bands keep a small
-   blur (they need the comb softened) but animate transform only. */
+   gates the rays style). NO layer carries a `filter` — blobs bake their
+   softness into the gradient falloff, and the curtain bands rely on the
+   repeating-gradient's wide transparent runs plus the top-down mask for their
+   soft shafts (per docs/performance.md P6/P6b). The whole backdrop is thus
+   compositor-only: every animated layer transforms a once-rasterised texture,
+   with zero per-frame filter re-evaluation. Curtains animate transform only. */
 .auroraWrap {
   position: absolute;
   inset: 0;
@@ -314,7 +317,6 @@
     transparent 100%
   );
   opacity: 0.3;
-  filter: blur(9px);
   will-change: transform;
   animation: aurora-c 44s ease-in-out infinite;
   animation-play-state: var(--amb-play, paused);
@@ -347,7 +349,6 @@
     transparent 100%
   );
   opacity: 0.24;
-  filter: blur(13px);
   will-change: transform;
   animation: aurora-d 61s ease-in-out infinite;
   animation-play-state: var(--amb-play, paused);
@@ -376,7 +377,6 @@
     transparent 92%
   );
   opacity: 0.22;
-  filter: blur(5px);
   will-change: transform;
   animation: aurora-e 27s ease-in-out infinite;
   animation-play-state: var(--amb-play, paused);

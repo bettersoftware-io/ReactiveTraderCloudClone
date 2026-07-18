@@ -96,12 +96,13 @@ depends on two independent brakes:
 GPU-less box that does *not* report reduced-motion (and does not have power
 saver on) will still run the backdrop's `transform`/`opacity` animations —
 which fall to the **CPU software compositor** without a GPU, so they are no
-longer "free." The Aurora **curtain bands** are the heaviest case: they keep a
-small `filter: blur()` (the one deliberately-retained filter in the backdrop —
-see [performance.md](performance.md) pattern P6b), and a software-rasterised
-per-frame blur is costly. On such hardware, either the image should set
-`prefers-reduced-motion` (freezes it) or the user should turn **power saver**
-on (drops the layers). Auto-degrading this from a hardware probe is tracked
+longer "free." The backdrop carries **no `filter`s** — the Aurora curtain
+bands' `filter: blur()` was removed (see [performance.md](performance.md)
+pattern P6b), so this is plain `transform`/`opacity` compositing rather than
+per-frame filter re-evaluation: cheaper than it once was, but still not free
+on a permanently-animated full-viewport backdrop. On such hardware, either the
+image should set `prefers-reduced-motion` (freezes it) or the user should turn
+**power saver** on (drops the layers). Auto-degrading this from a hardware probe is tracked
 under [Future iterations](#future-iterations).
 
 ## Non-goals (current design)

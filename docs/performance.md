@@ -28,7 +28,7 @@ layout and paint) on **every frame** for the animation's whole lifetime.
 | T3 | Animating `transform` on **SVG child elements** (`circle`, `g`, `path`) | SVG-internal transforms are *never* compositor-offloaded. | HudLogo orbit/triangle rotations |
 | T4 | `transform: scaleX(var(--x))` (or any var()-dependent transform) in a transition/animation | The compositor cannot resolve `var()`; the animation silently falls back to the main thread. **Timing** vars (`animation-duration: var(--d)`) are fine — they resolve once at creation. | RfqCard bar, first fix attempt |
 | T5 | Two animations of the **same property** on one element | Chrome refuses to composite the element wholesale (`kTargetHasIncompatibleAnimations`, `compositeFailed` bit 64) — even if both properties are compositable, even if they don't overlap in time (a comma-separated `animation` list counts). | accept button `acceptIn` + `acceptPulse` |
-| T6 | `filter: blur()` (or any filter) on large layers | Filters are re-evaluated at **composite time**: every frame produced by *anything else* re-pays the filter, even when the filtered layer itself is static or its animation is paused. | AmbientBackground aurora layers (viewport-sized blur 46/58px) |
+| T6 | `filter: blur()` (or any filter) on large layers | Filters are re-evaluated at **composite time**: every frame produced by *anything else* re-pays the filter, even when the filtered layer itself is static or its animation is paused. | (all backdrop `filter`s since **removed** via P6/P6b — AmbientBackground no longer applies) |
 | T7 | Animating `background-position` | Paint property on the whole element — a full-viewport grid repainted every frame. | AmbientBackground grid/dot drift |
 | T8 | JS/WAAPI `element.animate()` with non-compositable properties | Same rules as CSS — `boxShadow` keyframes via WAAPI are main-thread, and (per T5) they drag sibling compositable animations on the same element down with them. | watchlist rank-glide highlight |
 | T9 | Freshly-inserted animated overlays without `will-change` | Chrome may not promote a just-mounted element in time; even an opacity-only animation then ticks on the main thread. | watchlist `.flashPulse`, connection-dot pulse |
@@ -95,24 +95,22 @@ radius and an eased mid-stop in the gradient itself — visually
 indistinguishable on already-smooth radial gradients, and it eliminates the
 per-frame composite-time filter cost.
 
-**P6b — Aurora curtain bands: keep a small `filter: blur()`, but transform-only.**
-The Aurora ambient style's three comb bands (`.auroraCurtainA`/`B`/`C` in
-`AmbientBackground.module.css`) can't fully apply P6 — a `repeating-linear-
-gradient` comb needs real blur to read as soft aurora light rather than hard
-stripes, so each band keeps a small `filter: blur(5–13px)` (T6 still applies:
-this is paid at composite time on every frame, even when the band itself is
-static). The mitigation is everything *around* the filter: each band is a
-fraction of the viewport, not full-bleed like the old aurora blobs were
-before P6; and every band's sway (`@keyframes aurora-c`/`aurora-d`/`aurora-e`)
-animates `transform` only (`translate3d` + `skewX` + `scaleY` combined in one
-animation, `will-change: transform`) — never a second property, never a
-second animation on the same element (T5). The blob layers underneath the
-curtains (`.auroraBlobA`/`.auroraBlobB`) do apply P6 in full: no `filter` at
-all, softness baked into the gradient stops, same as the rays-style blobs.
-Verifying this design holds under trace — a steady-state Aurora-style capture
-showing zero `compositeFailed` events — is a pending human checkpoint (needs
-a real browser); until that trace is captured and recorded here, treat the
-curtain bands' cost as *expected-clean by design*, not yet measured.
+**P6b — Aurora curtain bands: no filter either — softness from the gradient + mask.**
+The Aurora style's three comb bands (`.auroraCurtainA`/`B`/`C` in
+`AmbientBackground.module.css`) originally kept a small `filter: blur(5–13px)`
+to melt the `repeating-linear-gradient` comb into soft aurora light. That blur
+was **removed**: the comb's wide transparent runs plus each band's top-down
+`mask-image` fade already read as soft, separated light shafts — crisper than
+a blurred curtain, but nowhere near hard stripes — so the filter bought too
+little to justify its composite-time cost (T6) on a HUD that never idles. With
+it gone, *every* backdrop layer (blobs via P6, curtains via gradient + mask) is
+a once-rasterised texture the compositor only **transforms** — zero per-frame
+filter re-evaluation anywhere in the backdrop. Each band's sway
+(`@keyframes aurora-c`/`aurora-d`/`aurora-e`) still animates `transform` only
+(`translate3d` + `skewX` + `scaleY` in one animation, `will-change: transform`;
+never a second property or a second animation on the same element — T5). The
+whole Aurora backdrop is thus compositor-only, matching the rays style's cost
+profile — a steady-state capture should show zero `compositeFailed`.
 
 **P7 — One animation per property per element (T5).**
 When an element needs an intro pop *and* an infinite throb, split them:
@@ -183,10 +181,10 @@ names.
   steady-state floor is the ambient backdrop compositing (~5-8% GPU per
   tab, measured on the **rays** style) plus tick-driven React rendering —
   that's the wow-effect and the live stream, by design. The default ambient
-  style is now **aurora** (see P6b above); its curtain bands keep a small
-  `filter: blur()` that rays never paid, so this number is pending
-  re-measurement against aurora specifically — do not read it as aurora's
-  floor until it is. The **power-saver mode** trades that floor away on
+  style is now **aurora**, but it carries **no extra filter cost** over rays:
+  the curtain bands' `filter: blur()` was removed (see P6b above), so both
+  styles are pure `transform`/`opacity` compositing and share this floor. The
+  **power-saver mode** trades that floor away on
   slow hardware (one toggle → still ambience + conflated price re-renders);
   what it disables vs keeps is documented in
   [power-saver-mode.md](power-saver-mode.md).

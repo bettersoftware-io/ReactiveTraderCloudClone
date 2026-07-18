@@ -121,13 +121,12 @@ avoid that:
   the rays blobs while prices stream, so the softness is baked into the
   gradient stops instead (see `docs/performance.md` pattern P6). The aurora
   blobs (`.auroraBlobA`/`.auroraBlobB`) follow the same rule.
-- **The aurora curtain bands are the one exception that keeps a `filter:
-  blur()`** — the repeating comb needs real blur to read as soft light rather
-  than hard stripes, and each band is a small fraction of the viewport rather
-  than a full-bleed layer. They pay the composite-time filter cost, but keep
-  every other rule: `transform`-only animation, `will-change: transform`, one
-  animation per element. See `docs/performance.md` §2 pattern note for the
-  curtain-specific trade-off and the pending steady-state trace verification.
+- **The aurora curtain bands carry no `filter` either.** They originally kept
+  a small `filter: blur()` to soften the comb, but it was **removed** — the
+  gradient's wide transparent runs plus the top-down `mask-image` already read
+  as soft, separated light shafts, so the whole backdrop is now filter-free and
+  purely `transform`/`opacity`-composited (`will-change: transform`, one
+  animation per element). See `docs/performance.md` pattern P6b.
 - **The grid/dots drift was moved off `background-position`.** That is a *paint*
   property (full-layer main-thread repaint every frame); translating the whole
   oversized layer by one tile is visually identical and runs entirely on the
@@ -182,8 +181,9 @@ whether it drifts:
 - **GPU-less / VDI / Citrix boxes.** This backdrop is pure CSS, so it *paints*
   even where the canvas-based boot splash falls back to a static frame — but on
   hardware with no GPU its `transform`/`opacity` animations run on the CPU
-  software compositor and stop being free (the Aurora curtain bands' small
-  `filter: blur()` is the priciest part there). Only `prefers-reduced-motion`
+  software compositor and stop being free — though with **no `filter`s** left
+  in the backdrop, that's plain compositing, not per-frame filter re-evaluation.
+  Only `prefers-reduced-motion`
   freezes it automatically; otherwise **power saver** is the manual lever. The
   full degradation model — and why there is no automatic no-GPU detection — is
   documented in [`docs/power-saver-mode.md` → *On GPU-less / VDI / Citrix
