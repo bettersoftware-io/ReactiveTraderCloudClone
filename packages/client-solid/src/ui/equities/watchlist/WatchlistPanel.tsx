@@ -28,10 +28,12 @@ import styles from "./WatchlistPanel.module.css";
  * the glide is animating.
  */
 export function WatchlistPanel(): JSX.Element {
-  const { useWatchlist, useEqWorkspace, useEqWatchlistSort } = useViewModel();
+  const { useWatchlist, useEqWorkspace, useEqWatchlistSort, usePowerSaver } =
+    useViewModel();
   const instruments = useWatchlist();
   const workspace = useEqWorkspace();
   const { sort } = useEqWatchlistSort();
+  const { isFreeze } = usePowerSaver();
   const [quotes, setQuotes] = createSignal<Record<string, QuoteSnapshot>>({});
   let listEl: HTMLDivElement | undefined;
 
@@ -70,9 +72,13 @@ export function WatchlistPanel(): JSX.Element {
     });
   });
 
-  const committedOrder = useRankGlide(() => {
-    return listEl ?? null;
-  }, candidateOrder);
+  const committedOrder = useRankGlide(
+    () => {
+      return listEl ?? null;
+    },
+    candidateOrder,
+    { freeze: isFreeze },
+  );
 
   const nameBySymbol = createMemo((): ReadonlyMap<string, string> => {
     return new Map(

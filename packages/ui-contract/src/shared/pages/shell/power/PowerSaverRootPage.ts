@@ -3,14 +3,14 @@ import { MountedComponent } from "@ui-contract/harness/component";
 /**
  * Page object for PowerSaverRoot. Like ThemeProvider, the component renders
  * null and its whole effect is writing flags onto `document.documentElement`
- * (the `data-power-saver` dataset flag + the `--fx-play` custom property every
- * decorative animation reads). There is no rendered root to query through
- * `within(this.root)` — the page reads the document element directly.
+ * (the `data-power-saver` dataset attribute + the `--fx-play` custom property
+ * every decorative animation reads). There is no rendered root to query
+ * through `within(this.root)` — the page reads the document element directly.
  */
 export class PowerSaverRootPage extends MountedComponent<
   Record<string, never>
 > {
-  /** The `data-power-saver` flag stamped on the document root ("true" | "false"). */
+  /** The `data-power-saver` level stamped on the document root ("off" | "calm" | "freeze"). */
   powerSaverFlag(): string {
     return document.documentElement.dataset.powerSaver ?? "";
   }

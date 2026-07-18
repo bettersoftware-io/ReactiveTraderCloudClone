@@ -945,16 +945,19 @@ export const fixtures: Record<string, AppData> = {
     throughput: { value: 250, loading: false, message: null },
   }),
   // Power-saver variant of the FX page: same data as app-fx, but with the
-  // power-saver master override on. The seam-fed usePowerSaver fake flips
-  // enabled to true, which the real App wiring uses to suppress the aurora
-  // glow / drifting ambient-background layers — grid + vignette stay static.
+  // power-saver master override at "calm". The seam-fed usePowerSaver fake
+  // flips isCalm to true, which the real App wiring uses to suppress the
+  // aurora glow / drifting ambient-background layers — grid + vignette stay
+  // static. (Freeze behaves identically to Calm in this task — no separate
+  // Freeze visual scenario yet; the motion-killing visuals land in a later
+  // task.)
   "app-fx-power-saver": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],
     prices: { EURUSD: eurusdPrice, GBPUSD: gbpusdPrice, USDJPY: usdjpyPrice },
     analytics: analyticsData,
     connectionStatus: ConnectionStatus.CONNECTED,
     throughput: { value: 250, loading: false, message: null },
-    powerSaver: true,
+    powerSaverLevel: "calm",
   }),
   // Light-theme variant of the FX page. The theme now lives behind
   // PreferencesPort, so the light arm is reached by seeding theme mode "light"

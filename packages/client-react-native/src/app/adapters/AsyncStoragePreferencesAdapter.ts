@@ -8,12 +8,15 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   EQ_WATCHLIST_SORTS,
   type EqBlotterView,
   type EqWatchlistSort,
+  isPowerSaverLevel,
+  type PowerSaverLevel,
   type PreferencesPort,
   THEME_SKINS,
   type ThemeModePreference,
@@ -90,7 +93,9 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
   // battery cost on device. A user's explicit choice still persists.
   private readonly animatedBg = new BehaviorSubject<boolean>(false);
 
-  private readonly powerSaverSubject = new BehaviorSubject<boolean>(false);
+  private readonly powerSaverSubject = new BehaviorSubject<PowerSaverLevel>(
+    DEFAULT_POWER_SAVER_LEVEL,
+  );
 
   private readonly bootVariantSubject = new BehaviorSubject<BootVariant>(
     DEFAULT_BOOT_VARIANT,
@@ -152,10 +157,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         this.animatedBg.next(false);
       }
 
-      if (powerSaver === "true") {
-        this.powerSaverSubject.next(true);
-      } else if (powerSaver === "false") {
-        this.powerSaverSubject.next(false);
+      if (isPowerSaverLevel(powerSaver)) {
+        this.powerSaverSubject.next(powerSaver);
+      } else if (powerSaver === "true") {
+        this.powerSaverSubject.next("calm");
       }
 
       if (isBootVariant(bootVariant)) {
@@ -217,16 +222,13 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
     this.animatedBg.next(on);
   }
 
-  powerSaver$(): Observable<boolean> {
+  powerSaverLevel$(): Observable<PowerSaverLevel> {
     return this.powerSaverSubject.pipe(distinctUntilChanged());
   }
 
-  setPowerSaver(on: boolean): void {
-    void AsyncStorage.setItem(
-      POWER_SAVER_STORAGE_KEY,
-      on ? "true" : "false",
-    ).catch(() => {});
-    this.powerSaverSubject.next(on);
+  setPowerSaverLevel(level: PowerSaverLevel): void {
+    void AsyncStorage.setItem(POWER_SAVER_STORAGE_KEY, level).catch(() => {});
+    this.powerSaverSubject.next(level);
   }
 
   bootVariant$(): Observable<BootVariant> {

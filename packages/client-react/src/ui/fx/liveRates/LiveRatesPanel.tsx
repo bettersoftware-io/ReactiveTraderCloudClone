@@ -14,8 +14,10 @@ import { WatchlistView } from "./WatchlistView";
 import styles from "./LiveRatesPanel.module.css";
 
 export function LiveRatesPanel(): ReactElement {
-  const { useCurrencyPairs, useViewModePreference } = useViewModel();
+  const { useCurrencyPairs, useViewModePreference, usePowerSaver } =
+    useViewModel();
   const pairs = useCurrencyPairs();
+  const { isFreeze } = usePowerSaver();
   // ViewMode persistence lives behind the seam (PreferencesPort); the CHARTS
   // chip in LiveRatesHead is the only writer now (Task 11 moved it out of the
   // body). The category filter stays local — it's transient view state, not a
@@ -31,7 +33,11 @@ export function LiveRatesPanel(): ReactElement {
   // Tiles glide (FLIP) to their new grid position whenever the filter changes
   // which pairs are shown; appearing tiles pop in, filtered-out ones fade out
   // in place (isotope-style).
-  const { register } = useFlipGrid([filter], { enter: true, exit: true });
+  const { register } = useFlipGrid([filter], {
+    enter: true,
+    exit: true,
+    freeze: isFreeze,
+  });
 
   return (
     <div className={styles.panel}>

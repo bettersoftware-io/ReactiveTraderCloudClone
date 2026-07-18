@@ -187,6 +187,35 @@ describe("useFlipGrid", () => {
     globalThis.ResizeObserver = original;
   });
 
+  // Power-saver "freeze" tier: the CSS catch-all neutralises declarative
+  // animations/transitions, but the FLIP glide path runs through raw WAAPI
+  // (Element.animate), which the CSS can't reach — this hook must gate it
+  // itself. `freeze` is an accessor (mirroring `deps`), so a fixed `() =>
+  // true` proves the hook never calls animate() even across deps changes.
+  it("does not call animate when freeze is true, even though deps change", () => {
+    const tile = makeTile();
+    const [dep, setDep] = createSignal("All");
+    const { result } = renderHook(() => {
+      return useFlipGrid(
+        () => {
+          return [dep()];
+        },
+        {
+          freeze: () => {
+            return true;
+          },
+        },
+      );
+    });
+    result.register("EURUSD")(tile.el);
+    setDep("EUR");
+
+    tile.rect.left = 150;
+    setDep("USD");
+
+    expect(tile.animate).not.toHaveBeenCalled();
+  });
+
   it("does not play enter animations when the option is off", () => {
     const first = makeTile();
     const [dep, setDep] = createSignal("All");

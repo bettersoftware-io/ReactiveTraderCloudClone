@@ -116,12 +116,16 @@ function prefersReducedMotion(): boolean {
  * moment the current glide settles, so a burst of quote-driven re-sorts
  * (~12/sec under the default "chg" sort) collapses into at most one reorder
  * per glide window instead of restarting overlapping animations (I4 fix).
- * No-ops under reduced motion or before a previous rank has been recorded
- * (the first render never glides). */
+ * No-ops under reduced motion, under power-saver's Freeze tier
+ * (`options.freeze`, since the CSS catch-all can't reach raw
+ * `Element.animate()`), or before a previous rank has been recorded (the
+ * first render never glides). */
 export function useRankGlide(
   rootRef: RefObject<HTMLElement | null>,
   candidate: readonly string[],
+  options: UseRankGlideOptions = {},
 ): readonly string[] {
+  const { freeze = false } = options;
   const prevRankRef = useRef<Record<string, number> | undefined>(undefined);
   const glidingRef = useRef(false);
   const pendingRef = useRef<readonly string[] | null>(null);
@@ -167,6 +171,7 @@ export function useRankGlide(
 
       if (
         !prefersReducedMotion() &&
+        !freeze &&
         prevRankRef.current != null &&
         nodes.length > 0
       ) {
@@ -238,8 +243,17 @@ export function useRankGlide(
     // Keyed on `committed` (not `candidate`): this effect's whole job is to
     // glide from the PREVIOUS committed order to the current one, so it must
     // fire exactly when `committed` actually changes — never for a candidate
-    // that got buffered instead (nothing moved in the DOM yet).
-  }, [committed, rootRef]);
+    // that got buffered instead (nothing moved in the DOM yet). `freeze`
+    // joins the deps because it gates the effect's own animate calls above
+    // and can flip live (usePowerSaver().isFreeze).
+  }, [committed, freeze, rootRef]);
 
   return committed;
+}
+
+export interface UseRankGlideOptions {
+  /** Power-saver "freeze" tier (`usePowerSaver().isFreeze`): skip the glide/
+   *  highlight WAAPI pass entirely — rows jump-cut straight to their new
+   *  rank. Defaults to `false` so existing callers are unaffected. */
+  freeze?: boolean;
 }

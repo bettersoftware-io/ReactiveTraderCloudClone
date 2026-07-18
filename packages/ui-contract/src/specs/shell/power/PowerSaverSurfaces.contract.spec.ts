@@ -10,55 +10,76 @@ afterEach(() => {
   cleanupMounted();
 });
 
-// Power-saver surfaces are react-only for now: the Solid walking skeleton
-// has no power-saver UI (see packages/client-solid/tests/ui/contract/vitest.config.ts,
-// which excludes this whole shell/power/ directory). These assertions were
-// relocated out of the mixed AmbientBackground/PreferencesModal/HeaderChrome
-// specs so the file-level exclusion can isolate them cleanly.
-
 describe("AmbientBackground power saver", () => {
-  it("keeps only the static grid+vignette when power saver is on", () => {
+  it("keeps only the static grid+vignette when the level is calm", () => {
     const page = mount(AmbientBackground, {
       animatedBackground: true,
-      powerSaver: true,
+      powerSaverLevel: "calm",
     });
-    expect(page.powerSaverFlag()).toBe("true");
+    expect(page.powerSaverFlag()).toBe("on");
     expect(page.hasAuroraLayers()).toBe(false);
   });
 
-  it("renders the full aurora stack when power saver is off", () => {
+  it("keeps only the static grid+vignette when the level is freeze (Freeze ⊇ Calm)", () => {
     const page = mount(AmbientBackground, {
       animatedBackground: true,
-      powerSaver: false,
+      powerSaverLevel: "freeze",
     });
-    expect(page.powerSaverFlag()).toBe("false");
+    expect(page.powerSaverFlag()).toBe("on");
+    expect(page.hasAuroraLayers()).toBe(false);
+  });
+
+  it("renders the full aurora stack when the level is off", () => {
+    const page = mount(AmbientBackground, {
+      animatedBackground: true,
+      powerSaverLevel: "off",
+    });
+    expect(page.powerSaverFlag()).toBe("off");
     expect(page.hasAuroraLayers()).toBe(true);
   });
 });
 
 describe("PreferencesModal power saver", () => {
-  it("reflects the power-saver preference and writes it on toggle", async () => {
+  it("reflects the power-saver level and writes it on selection", async () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
-      powerSaver: false,
+      powerSaverLevel: "off",
     });
-    expect(page.powerSaverOn()).toBe(false);
+    expect(page.powerSaverLevel()).toBe("off");
 
-    await page.togglePowerSaver();
-    expect(page.powerSaverSets()).toEqual([true]);
-    // The seam pushed the new value back, so the switch now reflects it.
-    expect(page.powerSaverOn()).toBe(true);
+    await page.selectPowerSaverLevel("freeze");
+    expect(page.powerSaverLevelSets()).toEqual(["freeze"]);
+    // The seam pushed the new value back, so the segment now reflects it.
+    expect(page.powerSaverLevel()).toBe("freeze");
+  });
+
+  it("selects calm from the segment", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      powerSaverLevel: "off",
+    });
+
+    await page.selectPowerSaverLevel("calm");
+    expect(page.powerSaverLevelSets()).toEqual(["calm"]);
+    expect(page.powerSaverLevel()).toBe("calm");
   });
 });
 
 describe("HeaderChrome power saver", () => {
-  it("exposes a power-saver quick toggle that flips aria-pressed", async () => {
+  it("exposes a power-saver control that cycles off -> calm -> freeze -> off", async () => {
     const header = mount(HeaderChrome, {
       props: { activeTab: "fx", onTabChange: () => {} },
-      powerSaver: false,
+      powerSaverLevel: "off",
     });
-    expect(header.powerSaverPressed()).toBe("false");
-    await header.clickPowerSaver();
-    expect(header.powerSaverPressed()).toBe("true");
+    expect(header.powerSaverLevel()).toBe("off");
+
+    await header.cyclePowerSaver();
+    expect(header.powerSaverLevel()).toBe("calm");
+
+    await header.cyclePowerSaver();
+    expect(header.powerSaverLevel()).toBe("freeze");
+
+    await header.cyclePowerSaver();
+    expect(header.powerSaverLevel()).toBe("off");
   });
 });

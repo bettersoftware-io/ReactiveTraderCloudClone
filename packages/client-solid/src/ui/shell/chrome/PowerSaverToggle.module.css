@@ -31,3 +31,17 @@
   border-color: var(--accent-primary);
   box-shadow: var(--glow);
 }
+
+.glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7em;
+  opacity: 0.85;
+}
