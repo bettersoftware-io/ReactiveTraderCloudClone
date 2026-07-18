@@ -32,6 +32,7 @@ describe("SetFilter", () => {
       column: "currencyPair",
       values: new Set(["USDJPY"]),
     };
+
     const filter = mount(SetFilter, {
       props: {
         column: "currencyPair",

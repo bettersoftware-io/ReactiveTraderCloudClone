@@ -197,6 +197,7 @@ function measuredFractions(
       const r = cell.getBoundingClientRect();
       return node.dir === "row" ? r.width : r.height;
     });
+
   const cellsTotal = cellsPx.reduce((s, v) => {
     return s + v;
   }, 0);

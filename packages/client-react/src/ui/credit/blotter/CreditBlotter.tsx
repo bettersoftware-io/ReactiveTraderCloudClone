@@ -37,6 +37,7 @@ export function CreditBlotter(): ReactElement {
     column: null,
     direction: null,
   });
+
   const [filters, setFilters] = useState<
     Map<keyof CreditTrade, ColumnFilter<CreditTrade>>
   >(new Map());
@@ -60,6 +61,7 @@ export function CreditBlotter(): ReactElement {
   const [prevTradeIds, setPrevTradeIds] = useState<TradeIdSnapshot>(() => {
     return { key: tradeIdsKey, ids: new Set(tradeIds) };
   });
+
   const [newTradeIds, setNewTradeIds] = useState<ReadonlySet<number>>(
     new Set(),
   );

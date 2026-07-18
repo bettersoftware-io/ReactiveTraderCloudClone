@@ -95,6 +95,7 @@ describe("keyedStream", () => {
       const effect = keyedStream<unknown>(SUB, UNSUB, keyOf, (payload) => {
         return cold("x--x|", { x: out("tick", keyOf(payload)) });
       });
+
       const in$ = hot("ab", {
         a: { type: SUB, payload: { symbol: "A" } } as Inbound,
         b: { type: SUB, payload: { symbol: "B" } } as Inbound,
@@ -142,6 +143,7 @@ describe("keyedStream", () => {
       const effect = keyedStream<unknown>(SUB, UNSUB, keyOf, () => {
         return cold("x|", { x: out("tick", 1) });
       });
+
       const in$ = hot("b|", {
         b: { type: "subscribe.other", payload: { symbol: "A" } } as Inbound,
       });

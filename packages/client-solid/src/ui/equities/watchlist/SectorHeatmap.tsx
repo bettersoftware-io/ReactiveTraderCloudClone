@@ -94,6 +94,7 @@ function HeatCell(props: CellProps): JSX.Element {
   const direction = createMemo((): "up" | "down" => {
     return (quote()?.changePct ?? 0) >= 0 ? "up" : "down";
   });
+
   const heat = createMemo((): number => {
     return Math.min(1, Math.abs(quote()?.changePct ?? 0) / 10);
   });

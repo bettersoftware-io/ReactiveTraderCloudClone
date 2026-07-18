@@ -8,6 +8,7 @@ describe("flipDeltas", () => {
       ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
       ["GBPUSD", { left: 320, top: 0, width: 0, height: 0 }],
     ]);
+
     const next = new Map([
       ["EURUSD", { left: 320, top: 0, width: 0, height: 0 }],
       ["GBPUSD", { left: 320, top: 0, width: 0, height: 0 }],
@@ -21,6 +22,7 @@ describe("flipDeltas", () => {
     const prev = new Map([
       ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
     ]);
+
     const next = new Map([
       ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
       ["GBPUSD", { left: 300, top: 0, width: 0, height: 0 }],
@@ -32,6 +34,7 @@ describe("flipDeltas", () => {
     const prev = new Map([
       ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
     ]);
+
     const next = new Map([
       ["EURUSD", { left: 300, top: 120, width: 0, height: 0 }],
     ]);
@@ -44,6 +47,7 @@ describe("flipDeltas", () => {
     const prev = new Map([
       ["EURUSD", { left: 10, top: 10, width: 0, height: 0 }],
     ]);
+
     const next = new Map([
       ["EURUSD", { left: 10, top: 10, width: 0, height: 0 }],
     ]);
@@ -56,6 +60,7 @@ describe("flipDeltas", () => {
     const prev = new Map([
       ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
     ]);
+
     const next = new Map([
       ["EURUSD", { left: 0.3, top: -0.4, width: 0, height: 0 }],
     ]);
@@ -66,6 +71,7 @@ describe("flipDeltas", () => {
     const prev = new Map([
       ["EURUSD", { left: 0, top: 0, width: 0, height: 0 }],
     ]);
+
     const next = new Map([
       ["EURUSD", { left: 0.2, top: 12, width: 0, height: 0 }],
     ]);

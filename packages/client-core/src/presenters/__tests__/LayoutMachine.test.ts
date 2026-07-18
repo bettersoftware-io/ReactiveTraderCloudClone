@@ -116,6 +116,7 @@ describe("createLayoutMachine", () => {
         { kind: "panel", panelId: "fx-analytics" },
       ],
     };
+
     const m = createLayoutMachine({
       initial: { root: initialPxRoot, maximized: null, collapsed: [] },
     });
@@ -151,6 +152,7 @@ describe("createLayoutMachine", () => {
         },
       ],
     };
+
     const m = createLayoutMachine({
       initial: { root: nestedRoot, maximized: null, collapsed: [] },
     });

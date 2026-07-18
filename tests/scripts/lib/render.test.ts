@@ -110,6 +110,7 @@ describe("render", () => {
     const files = Array.from({ length: N }, (_, i) => {
       return fileStat(`/r/src/f${i}.ts`, cov([{ line: 1, hits: 0 }]));
     });
+
     const many: PackageStat = {
       name: "pkg",
       total: N,

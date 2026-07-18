@@ -29,6 +29,7 @@ export class PriceHistoryPresenter {
     const raw = new PriceHistoryUseCase(this.pricing)
       .execute(symbol)
       .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+
     const stream = raw.pipe(
       conflateWhen(this.powerSaver$, HISTORY_CONFLATION_MS),
       shareReplay({ bufferSize: 1, refCount: true }),

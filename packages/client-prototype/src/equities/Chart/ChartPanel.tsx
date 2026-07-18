@@ -60,6 +60,7 @@ export function ChartPanel(props: ChartPanelProps): ReactElement {
       return c.h;
     }),
   );
+
   const seriesLow = Math.min(
     ...chart.series.map((c) => {
       return c.l;

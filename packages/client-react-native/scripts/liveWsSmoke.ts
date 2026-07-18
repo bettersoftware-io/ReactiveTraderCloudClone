@@ -44,6 +44,7 @@ async function main(): Promise<void> {
   const ws = new WsAdapter(url, () => {
     return sessionStore.read()?.token;
   });
+
   const ports = createWsRealPorts(ws, {
     preferences: new PreferencesSimulator(),
     auth,

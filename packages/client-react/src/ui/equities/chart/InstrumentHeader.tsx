@@ -145,6 +145,7 @@ function computeDayRange(
   const highs = candles.map((c) => {
     return c.high;
   });
+
   const lows = candles.map((c) => {
     return c.low;
   });

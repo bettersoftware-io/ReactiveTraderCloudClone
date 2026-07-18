@@ -9,6 +9,7 @@ export function PnlChart(props: PnlChartProps): JSX.Element {
   const chart = createMemo((): PnlChartShape => {
     return buildChart(props.history);
   });
+
   const isPositive = createMemo((): boolean => {
     const lastValue =
       props.history.length > 0

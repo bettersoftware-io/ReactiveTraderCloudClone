@@ -41,6 +41,7 @@ describe("smoothPath", () => {
       ],
       28,
     );
+
     const ys = [...d.matchAll(/,(-?\d+\.\d)/g)].map((m) => {
       return Number(m[1]);
     });

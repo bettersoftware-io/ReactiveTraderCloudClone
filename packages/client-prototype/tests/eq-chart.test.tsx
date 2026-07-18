@@ -28,6 +28,7 @@ function renderChart(): ReturnType<typeof render> {
   const chart = renderHook(() => {
     return useEqChart({ rng: mulberry32(1) });
   }).result.current;
+
   const eng = renderHook(() => {
     return useEquities({ rng: mulberry32(1) });
   }).result.current;

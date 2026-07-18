@@ -29,6 +29,7 @@ export function ThemeProvider(props: ThemeProviderProps): ReactElement {
   const [skin, setSkinState] = useState<Skin>(() => {
     return readSkin(initialSkin);
   });
+
   const [mode, setMode] = useState<Mode>(() => {
     return readMode();
   });

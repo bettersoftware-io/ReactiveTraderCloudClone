@@ -30,9 +30,11 @@ function testSection(results: TierResult[]): string {
   const passed = results.reduce((a, r) => {
     return a + r.passed;
   }, 0);
+
   const failed = results.reduce((a, r) => {
     return a + r.failed;
   }, 0);
+
   const skipped = results.reduce((a, r) => {
     return a + r.skipped;
   }, 0);
