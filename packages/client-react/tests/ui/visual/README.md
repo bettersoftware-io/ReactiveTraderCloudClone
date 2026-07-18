@@ -299,6 +299,27 @@ pnpm test:ui:visual:vitest-browser:react         # Tier 3: Vitest browser mode
 pnpm test:ui:visual:vitest-browser:react:update  # regenerate Tier 3 goldens
 ```
 
+### Regenerate / verify the canonical `react/` set in the container (any architecture)
+
+The `:update` scripts above write the **local** `react-local/<arch>` set (see
+"two committed sets" below), which never matches the CI `react/` baseline on a
+non-x86 machine. To produce or check the **canonical `react/` set** — CI-exact,
+byte-for-byte — on *any* architecture, run it inside the pinned Playwright
+container instead (requires Docker):
+
+```
+pnpm goldens:verify   # assert the committed react/ set (the local CI-exact gate)
+pnpm goldens:regen    # rewrite react/ into the working tree, ready to commit
+```
+
+Both run all three tiers with `CI=1` inside `mcr.microsoft.com/playwright` via
+`--platform linux/amd64`; the emulated container reproduces CI's x86 pixels
+byte-for-byte (measured 2026-07-18), so an arm64 dev can regenerate and commit
+the canonical goldens locally — no `update-visual-goldens` workflow round-trip.
+This is the first step of the migration to a single container-canonical set that
+retires `react-local/<arch>` entirely — see
+[the design spec](../../../../../docs/superpowers/specs/2026-07-18-single-container-golden-set-design.md).
+
 `test:ui:visual` and `test:ui:visual:react` are wired to
 `tsx tests/ui/visual/run-all.ts`. The orchestrator reads `package.json`
 scripts and discovers every entry matching

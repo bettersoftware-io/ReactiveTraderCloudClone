@@ -41,3 +41,7 @@ packages/client/tests/ui/visual/**/__screenshots__/*.spec.tsx/
 .env.local
 .env.*.local
 .playwright-mcp/
+
+# Temp dir used by scripts/goldens-in-container.mjs to shuttle container-rendered
+# goldens back into the working tree; never committed.
+.golden-out/

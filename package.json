@@ -12,6 +12,8 @@
     "test:e2e": "turbo run test:e2e",
     "test:e2e:no-cypress": "RTC_E2E_SKIP_CYPRESS=1 turbo run test:e2e",
     "test:ui:visual": "turbo run test:ui:visual",
+    "goldens:regen": "node scripts/goldens-in-container.mjs regen",
+    "goldens:verify": "node scripts/goldens-in-container.mjs verify",
     "test:rules": "vitest run --config eslint-rules/vitest.config.ts",
     "format": "biome format --write .",
     "lint": "biome lint .",
