@@ -79,9 +79,10 @@ the team), and watch live prices tick.
   control is now real per-user authentication on the server, not a static
   edge secret.
 - For **local** simulator-mode dev (no real server), `VITE_DEV_AUTH` (a JSON
-  map of `username` → `password`, e.g. `{"demo":"localpass"}`) seeds an
+  map of `username` → `password`, e.g. `{"demo":"mcdc2026"}`) seeds an
   in-process `AuthSimulator` so the login screen works with no backend at all.
-  See `packages/client-react/.env.example`.
+  `pnpm dev` already reads the committed demo roster from `.env.development`;
+  see `packages/client-react/.env.example` to override.
 - The mobile app shows a login screen on every launch (no auto-login); in
   **live** mode the operator signs in with any credential that exists in the
   deployed server's `AUTH_USERS` roster. In **simulator** mode
@@ -98,9 +99,10 @@ the team), and watch live prices tick.
 - **Session-signing secret:** `fly secrets set AUTH_SECRET=<new> -a rtc-clone-server`
   invalidates every outstanding session token immediately (users must log in
   again) — useful if a token were ever compromised.
-- Credentials are **not published in this repo** — ask the team for the real
-  roster rather than inventing one; only placeholder values (`demo`/`localpass`,
-  `user:pass`) ever belong in committed files.
+- This is a **demo app**, so the demo login password (`mcdc2026`) is committed
+  for local dev (`.env.development` + the `dev:*` scripts) — throwaway and
+  rotatable. The **`AUTH_SECRET`** token-signing key is the credential that
+  never belongs in a committed file: it stays a Fly secret set by hand.
 
 See [env-files.md](./env-files.md) for the full inventory of `.env` files and
 the auth-related environment variables.

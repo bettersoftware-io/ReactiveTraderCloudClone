@@ -5,13 +5,14 @@ tracked in git. Two files are committed as templates (`*.env.example`); the
 rest are local-only or CLI-generated artifacts.
 
 > **The golden rule:** access is gated by genuine per-user login, not a shared
-> secret. The server's `AUTH_USERS` roster (a Fly secret, format
-> `"user:pass,user2:pass2"`) is the only source of truth for real credentials.
-> Nothing in this repo — committed or local — holds a real password; local
-> dev and the mobile demo use their own throwaway/placeholder credentials
-> instead. See [Auth environment variables](#auth-environment-variables) below
-> and [`docs/authentication.md`](authentication.md) for the full end-to-end
-> flow and per-platform setup.
+> secret. This is a **demo app**, so the demo *login* password is committed
+> (`mcdc2026`, rotatable — the roster lives in
+> [`docs/authentication.md`](authentication.md)); what is **never** committed is
+> the server's `AUTH_SECRET` — the HMAC key that signs session tokens and
+> actually protects the deployed app. See
+> [Auth environment variables](#auth-environment-variables) below and
+> [`docs/authentication.md`](authentication.md) for the full end-to-end flow and
+> per-platform setup.
 
 ## Inventory
 
@@ -20,7 +21,8 @@ rest are local-only or CLI-generated artifacts.
 | `packages/client-react-native/.env.example` | ✅ tracked | hand-written template | humans — copy it to `.env` |
 | `packages/client-react-native/.env` | 🚫 git-ignored | you (copy of the template) | Expo at Metro start → mobile app |
 | `packages/client-react/.env.example` | ✅ tracked | hand-written template | humans — copy it to `.env.local` |
-| `packages/client-react/.env.local` | 🚫 git-ignored | you (optional; not present by default) | Vite at dev/build → web app |
+| `packages/client-react/.env.development` | ✅ tracked | committed demo credentials (`VITE_DEV_AUTH`) | Vite in **dev only** → web app simulator login |
+| `packages/client-react/.env.local` | 🚫 git-ignored | you (optional; not present by default) | Vite at dev/build → web app (overrides `.env.development`) |
 | `.env.local` (repo root) | 🚫 git-ignored | Vercel CLI (`vercel pull` / `vercel dev`) | Vercel CLI only — **not** app code |
 | `.vercel/.env.production.local` | 🚫 git-ignored | Vercel CLI (`vercel pull`) | `vercel build --prod` in the deploy pipeline |
 
@@ -33,15 +35,17 @@ env); it is git-ignored via `.vercel/` and safe to delete — `vercel link` /
 | Var | Set where | Holds | Used by |
 |---|---|---|---|
 | `AUTH_SECRET` | Fly secret (by hand) | HMAC secret that signs session tokens | `AuthService` (`packages/server/src/auth/AuthService.ts`) |
-| `AUTH_USERS` | Fly secret (by hand) | The real credential roster, `"user:pass,user2:pass2"` | `parseAuthUsers` (`packages/server/src/auth/loadUsers.ts`) — never committed; ask the team |
+| `AUTH_USERS` | Fly secret (deployed); the committed `dev:ws` / `dev:*:fs` scripts embed the demo roster for local full-stack | The credential roster, `"user:pass,user2:pass2"` | `parseAuthUsers` (`packages/server/src/auth/loadUsers.ts`) |
 | `AUTH_TTL_MS` | Fly secret (by hand, optional) | Session-token lifetime in ms (defaults to 8h) | `AuthService` |
-| `VITE_DEV_AUTH` | `packages/client-react/.env.local` (local only) | JSON `username -> password` map for **local simulator-mode dev only**, e.g. `{"demo":"localpass"}` | `AuthSimulator` via `buildBrowserPorts.ts`'s `parseDevAuth` |
+| `VITE_DEV_AUTH` | committed `packages/client-react/.env.development` (override in `.env.local`) | JSON `username -> password` map for **local simulator-mode dev only** — the committed demo roster at `mcdc2026` | `AuthSimulator` via `buildBrowserPorts.ts`'s `parseDevAuth` |
 | `EXPO_PUBLIC_DEV_AUTH` | `packages/client-react-native/.env` | JSON `username -> password` map for **local simulator-mode dev only** (mobile analogue of `VITE_DEV_AUTH`), falling back to all four roster usernames at a shared dev password when unset | `AuthSimulator` via `nativeAuthConfig.ts`'s `DEV_CREDENTIALS` → `buildNativePorts.ts` |
 
-None of these hold a real production credential in a committed file —
-`VITE_DEV_AUTH`'s example and the RN `.env.example` both ship placeholder
-values only (`demo`/`localpass`). **Ask the team for real credentials** to run
-against the deployed server; never invent or commit one.
+The **demo login password is committed** (`mcdc2026`) — this is a demo app, and
+those credentials are throwaway and rotatable. The one credential that stays out
+of git is the server's **`AUTH_SECRET`** (the token-signing key); dev uses a
+throwaway `dev-local-secret` baked into the `dev:*` scripts, and the deployed
+value is a Fly secret set by hand. The `.env.example` templates still ship
+overridable placeholder values.
 
 ## The files, in detail
 

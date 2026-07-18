@@ -98,6 +98,14 @@ root selects live WebSocket adapters or in-process simulators based on the
 against domain simulators, **no backend required**. Point it at a running
 backend by setting `VITE_SERVER_URL` before starting the client.
 
+**Sign in** at the login screen as any demo account — `astark`, `nromanoff`,
+`tchalla`, or `demo` — password `mcdc2026`. These are committed demo credentials
+(this is a demo app); the full-stack `dev:*:fs` scripts and the simulator both
+work out of the box. See [`docs/authentication.md`](docs/authentication.md) for
+the roster and how credentials are wired. (If `pnpm dev` renders a blank page
+after a dependency change, clear the stale Vite cache:
+`rm -rf packages/client-react/node_modules/.vite`.)
+
 ## Checks & tests
 
 Everything below is wired through Turborepo, so runs are cached and incremental.
