@@ -1,4 +1,3 @@
-import os from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,14 +19,11 @@ interface ScreenshotPathArgs {
 // harness in a real Chromium via the Playwright provider and diffs against the
 // SAME committed goldens as the other tiers.
 //
-// Goldens are routed by environment exactly like the Playwright tiers (see
-// ../playwright/playwright.config.ts): CI (x86 Linux container) owns the
-// canonical `react/` set; a local dev machine writes its own committed
-// `react-local/<plat>-<arch>/` set, because font rasterization differs by
-// OS/arch. See ../ADR-001-visual-diff-tooling.md.
-const baseline = process.env.CI
-  ? "react"
-  : `react-local/${os.platform()}-${os.arch()}`;
+// Goldens use the SAME single container-canonical `react/` set as the other
+// tiers (see ../playwright/playwright.config.ts): every arch regenerates/verifies
+// through the pinned x86 container (`pnpm goldens:*`), byte-identical to CI, so
+// there is no per-arch `react-local/<arch>/` set. See ../ADR-001-visual-diff-tooling.md.
+const baseline = "react";
 
 export default defineConfig({
   plugins: [react()],

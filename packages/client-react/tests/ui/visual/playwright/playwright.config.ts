@@ -1,22 +1,15 @@
-import os from "node:os";
-
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3200;
 
-// Two committed golden sets, routed by environment. CI renders on x86 Linux in
-// the pinned Playwright container and owns the canonical `react/` baseline — the
-// cross-framework portability contract. A local dev machine (e.g. Apple Silicon,
-// linux-arm64) rasterizes fonts differently (FreeType/HarfBuzz + arch), so its
-// pixels never match the x86 set; it gets its OWN committed baseline under
-// `react-local/<platform>-<arch>/`. Both sets are versioned and reviewed at
-// commit time, but only the x86 `react/` set is additionally re-rendered and
-// enforced by the CI visual job (no CI runner reproduces a dev arch). So an
-// intentional UI change means updating BOTH: `:update` locally for the arm64 set
-// AND the update-visual-goldens workflow for the x86 set. See ../ADR-001-visual-diff-tooling.md.
-const baseline = process.env.CI
-  ? "react"
-  : `react-local/${os.platform()}-${os.arch()}`;
+// A single container-canonical golden set: `react/`, rendered on x86 Linux in
+// the pinned Playwright container. Every architecture regenerates/verifies
+// through that same container (`pnpm goldens:regen` / `pnpm goldens:verify`),
+// whose emulated output is byte-identical to CI — so there is no per-arch
+// `react-local/<arch>/` set. A native run on a non-x86 host will NOT match
+// `react/` (font rasterization differs by CPU); verify via the container. See
+// ../ADR-001-visual-diff-tooling.md.
+const baseline = "react";
 
 export default defineConfig({
   testDir: ".",
@@ -50,9 +43,9 @@ export default defineConfig({
   // byte-identical pinned Playwright container. A small pixel-ratio tolerance is
   // the standard, correct way to compare pixel goldens across machines — it is
   // the SOLUTION here, not a shortcut. The "fix it for good" alternative (force
-  // Chromium font-hinting off via launch flags, then regenerate BOTH committed
-  // golden sets — x86 `react/` via the update-visual-goldens workflow AND the
-  // local `react-local/<arch>/` set — and re-stabilise over several CI cycles)
+  // Chromium font-hinting off via launch flags, then regenerate the `react/`
+  // set via the update-visual-goldens workflow and re-stabilise over several
+  // CI cycles)
   // was evaluated and deliberately rejected: those flags only REDUCE, not
   // eliminate, cross-microarch AA variance, so the payoff is a marginally
   // tighter threshold at a high, CI-only, golden-churning cost. If AA jitter

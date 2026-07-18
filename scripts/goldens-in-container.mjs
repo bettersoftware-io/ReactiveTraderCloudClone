@@ -4,12 +4,13 @@
 // architecture.
 //
 // Why: native rendering drifts across CPU architectures (measured ~30% of pixels
-// arm64 vs x86 — font rasterisation, not availability), which is the whole reason
-// the repo committed a second `react-local/<arch>` set. But the SAME container,
-// emulated via `--platform linux/amd64`, reproduces CI's x86 output byte-for-byte
-// (proven 2026-07-18, 30/30 across all three tiers). So any machine with Docker
-// can regenerate or verify the canonical set locally — no CI round-trip, no
-// artifact download, no cherry-pick. See
+// arm64 vs x86 — font rasterisation, not availability), which is why the repo
+// once committed a second per-arch `react-local/<arch>` set. But the SAME
+// container, emulated via `--platform linux/amd64`, reproduces CI's x86 output
+// byte-for-byte (proven 2026-07-18, 30/30 across all three tiers), so that
+// second set was removed — this wrapper IS how any machine with Docker
+// regenerates or verifies the single canonical set locally, with no CI
+// round-trip, no artifact download, no cherry-pick. See
 // docs/superpowers/specs/2026-07-18-single-container-golden-set-design.md.
 //
 //   pnpm goldens:verify   # assert the committed react/ set (the local CI-exact gate)

@@ -1,4 +1,3 @@
-import os from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { defineConfig, devices } from "@playwright/experimental-ct-react";
@@ -12,17 +11,13 @@ const uiVisualShared = fileURLToPath(
   new URL("../../../../../ui-contract/src/visual", import.meta.url),
 );
 
-// Goldens live under a per-framework subdir (`react/`) so a future Solid run can
-// write `solid/` alongside without colliding — that per-framework split is the
-// cross-framework contract. Orthogonally, the leading segment is routed by
-// environment: CI (x86 Linux container) owns the canonical `react/` set; a local
-// dev machine writes its own committed `react-local/<platform>-<arch>/` set,
-// because font rasterization differs by OS/arch and never matches the x86 set.
-// See ../playwright/playwright.config.ts and ../ADR-001-visual-diff-tooling.md
-// for the full rationale.
-const baseline = process.env.CI
-  ? "react"
-  : `react-local/${os.platform()}-${os.arch()}`;
+// Goldens live under a per-framework subdir (`react/`) so a Solid run can write
+// `solid/` alongside without colliding — that per-framework split is the
+// cross-framework contract. A single container-canonical set: every arch
+// regenerates/verifies through the pinned x86 container (`pnpm goldens:*`),
+// byte-identical to CI, so there is no per-arch `react-local/<arch>/` set. See
+// ../playwright/playwright.config.ts and ../ADR-001-visual-diff-tooling.md.
+const baseline = "react";
 
 export default defineConfig({
   testDir: ".",
