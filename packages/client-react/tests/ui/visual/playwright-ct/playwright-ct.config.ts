@@ -32,6 +32,14 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
+  // Optional scenario filter. SCENARIO_PATTERN (set by update-visual-goldens.yml's
+  // scenario_pattern input, or locally) narrows the run to matching test titles;
+  // empty/unset = the full theme matrix. Applied here as `grep` rather than via a
+  // CLI `-g` arg because `pnpm run <script> -- -g X` double-dashes the arg and
+  // playwright ignores it (so a targeted golden regen can't forward through pnpm).
+  ...(process.env.SCENARIO_PATTERN
+    ? { grep: new RegExp(process.env.SCENARIO_PATTERN) }
+    : {}),
   // Serial worker pin — everywhere, not just locally. Each CT worker is its
   // own Chromium instance mounting components through a live-compiling Vite
   // dev server; under CPU contention a handful of scenarios' "wait for stable

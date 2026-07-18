@@ -98,35 +98,20 @@ jobs:
 
       # Re-render the canonical x86 react/ goldens for all three runners — the full
       # theme matrix (5 skins × dark/light) unless SCENARIO_PATTERN narrows it.
-      # Invoked directly (not via the pnpm :update scripts) so the -g/-t filter
-      # forwards cleanly. `pnpm --filter … exec` runs in the client-react dir, so
-      # the config paths resolve there.
+      # These are the exact proven pnpm :update scripts (unchanged), so the
+      # plain-playwright tier's vite webServer spawns in the same context it always
+      # has. The filter is applied INSIDE each config from $SCENARIO_PATTERN
+      # (playwright `grep`, vitest `testNamePattern`) rather than via CLI args,
+      # because `pnpm run <script> -- -g X` double-dashes the arg and playwright
+      # ignores it. Empty pattern = no filter = full matrix.
       - name: Regenerate playwright-ct goldens
-        run: |
-          CFG=tests/ui/visual/playwright-ct/playwright-ct.config.ts
-          if [ -n "$SCENARIO_PATTERN" ]; then
-            pnpm --filter @rtc/client-react exec playwright test -c "$CFG" --update-snapshots -g "$SCENARIO_PATTERN"
-          else
-            pnpm --filter @rtc/client-react exec playwright test -c "$CFG" --update-snapshots
-          fi
+        run: pnpm --filter @rtc/client-react test:ui:visual:playwright-ct:react:update
 
       - name: Regenerate playwright goldens
-        run: |
-          CFG=tests/ui/visual/playwright/playwright.config.ts
-          if [ -n "$SCENARIO_PATTERN" ]; then
-            pnpm --filter @rtc/client-react exec playwright test -c "$CFG" --update-snapshots -g "$SCENARIO_PATTERN"
-          else
-            pnpm --filter @rtc/client-react exec playwright test -c "$CFG" --update-snapshots
-          fi
+        run: pnpm --filter @rtc/client-react test:ui:visual:playwright:react:update
 
       - name: Regenerate vitest-browser goldens
-        run: |
-          CFG=tests/ui/visual/vitest-browser/vitest-browser.config.ts
-          if [ -n "$SCENARIO_PATTERN" ]; then
-            pnpm --filter @rtc/client-react exec vitest run -c "$CFG" --update -t "$SCENARIO_PATTERN"
-          else
-            pnpm --filter @rtc/client-react exec vitest run -c "$CFG" --update
-          fi
+        run: pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update
 
       # Commit the regenerated goldens straight to the dispatched branch. Scope the
       # stage to the canonical react/ trees ONLY — a bare `git add` would also catch

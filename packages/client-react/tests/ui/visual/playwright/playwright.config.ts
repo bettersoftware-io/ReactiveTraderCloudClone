@@ -26,6 +26,14 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
+  // Optional scenario filter. SCENARIO_PATTERN (set by update-visual-goldens.yml's
+  // scenario_pattern input, or locally) narrows the run to matching test titles;
+  // empty/unset = the full theme matrix. Applied here as `grep` rather than via a
+  // CLI `-g` arg because `pnpm run <script> -- -g X` double-dashes the arg and
+  // playwright ignores it (so a targeted golden regen can't forward through pnpm).
+  ...(process.env.SCENARIO_PATTERN
+    ? { grep: new RegExp(process.env.SCENARIO_PATTERN) }
+    : {}),
   // Tolerate cross-CI-runner anti-aliasing jitter (~1-4% of pixels, byte-identical
   // layout) the same way the playwright-ct tier does: glyph-edge AA varies between
   // the runner that renders the goldens (update-visual-goldens workflow) and the
