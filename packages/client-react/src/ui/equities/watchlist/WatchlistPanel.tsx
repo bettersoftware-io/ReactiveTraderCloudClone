@@ -28,10 +28,12 @@ import styles from "./WatchlistPanel.module.css";
  * the glide is animating.
  */
 export function WatchlistPanel(): ReactElement {
-  const { useWatchlist, useEqWorkspace, useEqWatchlistSort } = useViewModel();
+  const { useWatchlist, useEqWorkspace, useEqWatchlistSort, usePowerSaver } =
+    useViewModel();
   const instruments = useWatchlist();
   const workspace = useEqWorkspace();
   const { sort } = useEqWatchlistSort();
+  const { isFreeze } = usePowerSaver();
   const [quotes, setQuotes] = useState<Record<string, QuoteSnapshot>>({});
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -66,7 +68,9 @@ export function WatchlistPanel(): ReactElement {
   const candidateOrder = sortWatchlistRows(rowInputs, sort).map((row) => {
     return row.symbol;
   });
-  const committedOrder = useRankGlide(listRef, candidateOrder);
+  const committedOrder = useRankGlide(listRef, candidateOrder, {
+    freeze: isFreeze,
+  });
 
   if (instruments.length === 0) {
     return <div className={styles.empty}>NO INSTRUMENTS</div>;

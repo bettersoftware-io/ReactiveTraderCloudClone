@@ -40,12 +40,18 @@ import styles from "./RfqsPanel.module.css";
  * longer rendered; switching to CLOSED shows it again). Under
  * prefers-reduced-motion both flavours skip the animation entirely. */
 export function RfqsPanel(): ReactElement {
-  const { useRfqs, useInstruments, useDealers, useCreditRfqFilterPreference } =
-    useViewModel();
+  const {
+    useRfqs,
+    useInstruments,
+    useDealers,
+    useCreditRfqFilterPreference,
+    usePowerSaver,
+  } = useViewModel();
   const rfqs = useRfqs();
   const instruments = useInstruments();
   const dealers = useDealers();
   const { filter } = useCreditRfqFilterPreference();
+  const { isFreeze } = usePowerSaver();
   const [dismissed, setDismissed] = useState<ReadonlySet<number>>(new Set());
   const [exiting, setExiting] = useState<ReadonlyMap<number, ExitReason>>(
     new Map(),
@@ -191,7 +197,9 @@ export function RfqsPanel(): ReactElement {
     }
   }
 
-  const { register } = useFlipGrid([filter, renderedIdsKey]);
+  const { register } = useFlipGrid([filter, renderedIdsKey], {
+    freeze: isFreeze,
+  });
 
   function handleRemove(rfqId: number): void {
     if (prefersReducedMotion()) {

@@ -24,13 +24,14 @@ import {
  *
  * No-ops (skips measuring/animating) when the browser/OS prefers reduced
  * motion — the same `matchMedia("(prefers-reduced-motion: reduce)")` seam
- * BootGate/BootSequence already consult.
+ * BootGate/BootSequence already consult — or when the caller passes
+ * `freeze: true` (power-saver's Freeze tier).
  */
 export function useFlipGrid(
   deps: unknown[],
   options: FlipGridOptions = {},
 ): FlipGridApi {
-  const { enter = false, exit = false } = options;
+  const { enter = false, exit = false, freeze = false } = options;
   const elementsRef = useRef(new Map<string, HTMLElement>());
   const positionsRef = useRef(new Map<string, Rect>());
   const observerRef = useRef<ResizeObserver | null>(null);
@@ -80,7 +81,7 @@ export function useFlipGrid(
     const nextPositions = measurePositions(elementsRef.current);
     const prevPositions = positionsRef.current;
 
-    if (prevPositions.size > 0 && !prefersReducedMotion()) {
+    if (prevPositions.size > 0 && !prefersReducedMotion() && !freeze) {
       for (const { key, dx, dy } of flipDeltas(prevPositions, nextPositions)) {
         const el = elementsRef.current.get(key);
 
@@ -125,12 +126,13 @@ export function useFlipGrid(
     positionsRef.current = nextPositions;
     // deps is an opaque caller-supplied dependency list (the whole point of
     // this hook is to run the FLIP measure/animate pass whenever it changes);
-    // enter/exit join it so Biome's exhaustive-deps rule sees the options the
-    // effect reads (they're constant per call site in practice). ESLint's
+    // enter/exit/freeze join it so Biome's exhaustive-deps rule sees the
+    // options the effect reads (they're constant per call site in practice,
+    // except freeze — usePowerSaver().isFreeze can flip live). ESLint's
     // equivalent still can't verify a spread's contents statically, which is
     // expected here.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deps is intentionally caller-supplied, not statically enumerable
-  }, [enter, exit, ...deps]);
+  }, [enter, exit, freeze, ...deps]);
 
   function register(key: string): (el: HTMLElement | null) => void {
     return (el: HTMLElement | null): void => {
@@ -298,4 +300,11 @@ export interface FlipGridOptions {
   enter?: boolean;
   /** Fade just-removed items out in place via a detached-node ghost. */
   exit?: boolean;
+  /** Power-saver "freeze" tier (`usePowerSaver().isFreeze`): skip the whole
+   *  measure/animate pass — no WAAPI glide/enter/exit — leaving the grid to
+   *  jump-cut to its new layout. The CSS catch-all
+   *  (`[data-power-saver="freeze"] *`) only reaches declarative
+   *  animations/transitions, not raw `Element.animate()`, so this hook gates
+   *  itself. Defaults to `false` so existing callers are unaffected. */
+  freeze?: boolean;
 }
