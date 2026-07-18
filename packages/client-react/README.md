@@ -58,9 +58,9 @@ a convention (see [§12. Architectural Gates](../../docs/architecture/12-archite
 | 28 | No `fetch(` / `import.meta.env` in `client-react/src/ui` (transport & config belong in `src/app`) |
 | 29 | No `setTimeout` / `setInterval` in `client-react/src/ui` (time belongs in machines/presenters) |
 
-This is what keeps a future `@rtc/client-solid` port a rewrite of `src/ui`
-only — the SolidJS plan ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan))
-reuses `client-core`, `react-bindings`'s sibling, and the CSS Modules verbatim
+This is what kept `@rtc/client-solid` a rewrite of `src/ui`
+only — the SolidJS port ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port))
+reused `client-core`, `react-bindings`'s sibling `solid-bindings`, and the CSS Modules verbatim
 precisely because gates 26–29 keep `src/ui` free of anything React- or
 RxJS-specific beyond JSX and hooks.
 
@@ -74,10 +74,11 @@ to client `src` (`eslint.config.mjs:70-79`, the `no-restricted-syntax`
 `inlineStyleProp` selector) — the only escape hatch is a runtime-computed CSS
 custom property, opted out with an explicit
 `// eslint-disable-next-line no-restricted-syntax -- <reason>`. The policy
-exists so markup/styling ports verbatim to a future framework: "CSS Modules
+exists so markup/styling ports verbatim to another framework — proven by the
+SolidJS port, which byte-copied the CSS Modules unchanged: "CSS Modules
 port verbatim — the CSS-modules migration deliberately left zero inline
-styles and semantic `data-*` state hooks precisely so markup/styling survives
-the swap" ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)).
+styles and semantic `data-*` state hooks precisely so markup/styling survived
+the swap" ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)).
 
 ## Where the app composes the core
 
@@ -126,10 +127,12 @@ import { WsAdapter } from "@rtc/client-react";
 | `clean` / `clean:deep` | remove build/test artifacts (/ + node_modules) | — |
 
 Script naming: `test:ui:visual:<runner>:<framework>` — the framework axis exists
-because the goldens + `tests/ui/visual/shared/` fixtures are the portability contract
-for re-implementing this UI in another framework (e.g. SolidJS) with
-pixel-parity; a future `:solid` runner is discovered by `tests/ui/visual/run-all.ts`
-automatically.
+because the goldens + the framework-neutral fixtures in `@rtc/ui-contract`'s
+`src/visual/` (aliased here as `@ui-visual-shared`) are the portability contract
+for re-implementing this UI in another framework with pixel-parity.
+`@rtc/client-solid` is exactly that: its `:solid` runners assert against these
+same goldens (owned by this package — `client-solid` writes none of its own)
+and were discovered by `tests/ui/visual/run-all.ts` with no edit to that file.
 
 Caching: from the repo root, `pnpm test` runs through Turborepo and is
 **cached** — an instant `>>> FULL TURBO` pass is a log replay because no input
@@ -171,12 +174,14 @@ runner stays pure (neutral specs only). The HTML report lands at
 **Visual tier (`pnpm test:ui:visual`)** — screenshots of components and full pages
 rendered against injected fake data via the `ViewModelProvider` seam; no server,
 no presenters. Three runners share one scenario manifest
-(`tests/ui/visual/shared/scenarios.ts`); goldens are committed in TWO sets per runner —
+(`@rtc/ui-contract`'s `src/visual/scenarios.ts`, aliased here as
+`@ui-visual-shared/scenarios`); goldens are committed in TWO sets per runner —
 `react/` (CI, x86) and `react-local/<platform>-<arch>/` (fast local
 feedback). UI changes require regenerating BOTH sets
 (`:update` scripts locally; the `update-visual-goldens` workflow for the CI
-set). Full details: ADR + layout in
-[`tests/ui/visual/README.md`](tests/ui/visual/README.md).
+set). These are the goldens `@rtc/client-solid`'s three visual tiers assert
+against (assert-only — it owns no golden set of its own). Full details: ADR +
+layout in [`tests/ui/visual/README.md`](tests/ui/visual/README.md).
 
 **Browser e2e, presenter integration, and full-stack smokes** — NOT here;
 they live in the [`tests/`](../../tests/README.md) workspace package.
@@ -186,6 +191,6 @@ they live in the [`tests/`](../../tests/README.md) workspace package.
 - [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
 - [§14.2 Adapter Tables Per App -- Web](../../docs/architecture/14-composition-and-wiring.md#142-adapter-tables-per-app)
 - [§14.3 Boot Sequences](../../docs/architecture/14-composition-and-wiring.md#143-boot-sequences)
-- [§8.1 The Multi-Client Proof -- The SolidJS Plan](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)
+- [§8.1 The Multi-Client Proof -- The SolidJS Port](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)
 - [§12. Architectural Gates](../../docs/architecture/12-architectural-gates.md#12-architectural-gates)
 - [§17. The Web Client, Up Close](../../docs/architecture/17-web-client-up-close.md) — layout engine, motion toolbox, boot splash, session lock, up close

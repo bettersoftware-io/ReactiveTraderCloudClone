@@ -53,7 +53,7 @@ This document is split into one file per section under
    - [Equities Over the Wire](architecture/07-communication-patterns.md#equities-over-the-wire-gap-closed)
    - [Deployment Topology](architecture/07-communication-patterns.md#deployment-topology)
 8. [Replaceability Matrix](architecture/08-replaceability-matrix.md)
-   - [The Multi-Client Proof & the SolidJS Plan](architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)
+   - [The Multi-Client Proof & the SolidJS Port](architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)
 9. [Test Strategy](architecture/09-test-strategy.md)
 10. [Key Design Decisions](architecture/10-key-design-decisions.md)
 11. [Key Files Reference](architecture/11-key-files-reference.md)

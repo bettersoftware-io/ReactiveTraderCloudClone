@@ -8,7 +8,7 @@
 
 The codebase is organised so that any single technology -- React, RxJS, react-rxjs, Vite, the WebSocket transport, Vitest, Playwright -- can be replaced with another by changing only its layer. The rest of the system, and the behavioural test suite, continue to work unchanged.
 
-That claim is no longer hypothetical. The same application core (`@rtc/client-core`) today drives **two shipping UIs** -- a React 19 web client and an Expo/React Native mobile client -- and is designed to drive a third (SolidJS, planned) by adding one bindings package and one UI package. See [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan).
+That claim is no longer hypothetical. The same application core (`@rtc/client-core`) today drives **three shipping UIs** -- a React 19 web client, an Expo/React Native mobile client, and a SolidJS web client -- each added by writing one bindings package and one UI package, nothing else. See [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port).
 
 ![Animated overview: a price tick travelling from either data source through the shared port, use case, presenter and bindings layers into a UI tile](tick-journey.svg)
 
@@ -22,7 +22,7 @@ These rules override individual technology choices.
 
 **2. The Dependency Rule** ([Uncle Bob, Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)). Source-code dependencies point only inward. Inner circles know nothing about outer circles. Entities know nothing about use cases; use cases know nothing about presenters; presenters know nothing about UI frameworks.
 
-**3. Dumb UI.** The UI layer renders state and emits intents. It contains no business logic, no transport awareness, and no orchestration. A complete UI rewrite from React to SolidJS (or anything else) should be tractable, given the ViewModel contract and a behavioural test suite. (The React Native client is the existence proof: same core, new leaves — [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan).)
+**3. Dumb UI.** The UI layer renders state and emits intents. It contains no business logic, no transport awareness, and no orchestration. A complete UI rewrite from React to SolidJS (or anything else) should be tractable, given the ViewModel contract and a behavioural test suite. (The React Native client is the existence proof: same core, new leaves — [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port).)
 
 **4. Behavioural Tests as Insurance.** Tests describe *what* the system does, not *how*. They do not import React, RxJS, or Playwright internals; framework-specific glue lives in step definitions and page objects. Behavioural specs survive technology swaps and are the contract that makes a swap safe.
 
@@ -36,11 +36,11 @@ Two terms commonly conflated -- "client" and "UI" -- mean different things here.
 |---|---|
 | **Domain** | Pure-TypeScript entities, value objects, ports, use cases, and simulators. Lives in `@rtc/domain`. RxJS is the single permitted runtime dependency (used as the boundary stream type). Knows nothing about UI or transport. |
 | **Server** | Process that hosts the domain simulators behind declarative WebSocket effects (`@rtc/ws-effects`) and serves data to clients. |
-| **Client** | Everything that runs on the user's device -- the whole bundle/app. **Includes** the application core, the bindings bridge, *and* the UI layer. There are two shipping clients (web React, mobile React Native) plus a planned SolidJS one. |
-| **Application Core** | `@rtc/client-core` -- composition root, presenters, state machines, and port adapters (WS transport + simulator assembly). Vanilla TS + RxJS + `@rx-state/core`. **Zero framework imports** -- no React, no DOM, no React Native. Shared verbatim by every client. |
-| **Bindings** | `@rtc/react-bindings` -- the one package that knows both worlds. Maps `Observable<T>` state to framework-native reactivity: `createViewModel` (react-rxjs `bind()` for shared streams, `useMachine` for per-mount machines, `firstValueFrom` for one-shot commands). A future SolidJS client gets a sibling `@rtc/solid-bindings`. |
-| **UI Layer** | Dumb components only. Web: React 19 + CSS Modules in `@rtc/client-react/src/ui`. Mobile: React Native + `react-native-svg` in `@rtc/client-react-native/src/ui`. Consumes the core exclusively through the [ViewModel seam](03-uml-class-diagrams.md#36-the-viewmodel-seam) (`useViewModel()`); **never imports `rxjs`** (machine-enforced, gate 26). |
-| **Platform Adapters** | The thin per-client leaves: web has `LocalStoragePreferencesAdapter` / `MediaQueryColorSchemeAdapter` / `buildBrowserPorts`; mobile has `AsyncStoragePreferencesAdapter` / `AppearanceColorSchemeAdapter` / `buildNativePorts`. Everything else is shared. |
+| **Client** | Everything that runs on the user's device -- the whole bundle/app. **Includes** the application core, the bindings bridge, *and* the UI layer. There are three shipping clients: web React, mobile React Native, and web SolidJS. |
+| **Application Core** | `@rtc/client-core` -- composition root, presenters, state machines, and port adapters (WS transport + simulator assembly). Vanilla TS + RxJS + `@rx-state/core`. **Zero framework imports** -- no React, no DOM, no React Native, no Solid. Shared verbatim by every client. |
+| **Bindings** | `@rtc/react-bindings` -- the package that knows both React and RxJS. Maps `Observable<T>` state to framework-native reactivity: `createViewModel` (react-rxjs `bind()` for shared streams, `useMachine` for per-mount machines, `firstValueFrom` for one-shot commands). The SolidJS client has its own sibling, `@rtc/solid-bindings`, implementing the identical `ViewModel` member list over Solid signals. |
+| **UI Layer** | Dumb components only. Web (React): React 19 + CSS Modules in `@rtc/client-react/src/ui`. Mobile: React Native + `react-native-svg` in `@rtc/client-react-native/src/ui`. Web (Solid): SolidJS + the same CSS Modules, byte-copied, in `@rtc/client-solid/src/ui`. Consumes the core exclusively through the [ViewModel seam](03-uml-class-diagrams.md#36-the-viewmodel-seam) (`useViewModel()`); **never imports `rxjs`** (machine-enforced, gate 26 for React web, gate 34 for Solid web). |
+| **Platform Adapters** | The thin per-client leaves: web (React) and web (Solid) both have `LocalStoragePreferencesAdapter` / `MediaQueryColorSchemeAdapter` / `buildBrowserPorts` (Solid's are separate files, same design); mobile has `AsyncStoragePreferencesAdapter` / `AppearanceColorSchemeAdapter` / `buildNativePorts`. Everything else is shared. |
 
 Note: **"no RxJS on the UI side" is not the same as "no RxJS on the client side"**. RxJS is the boundary stream type for ports and use cases (in `@rtc/domain`) and is the implementation language of `@rtc/client-core`. It is forbidden in the UI layer of both clients.
 
@@ -82,7 +82,7 @@ The arrows are source-code dependencies. The UI imports `useViewModel` but has n
 
 Clean Architecture draws the system as **concentric rings**. The one rule that makes it work is the **Dependency Rule: source code may only point *inward***. An outer ring can name and use an inner ring; an inner ring must not even know an outer ring exists. The centre holds the things least likely to change (what a *Trade* or a *Price* fundamentally is); the outer edge holds the things most likely to change (React, the WebSocket, the build tool). Put the volatile stuff on the outside so churn there never forces a change in the stable core.
 
-A useful mental image: the **business truth is the yolk**, and each shell around it is a *replaceable detail*. You could throw away React and keep every inner shell intact -- which is exactly what the React Native client proves ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-plan)).
+A useful mental image: the **business truth is the yolk**, and each shell around it is a *replaceable detail*. You could throw away React and keep every inner shell intact -- which is exactly what the React Native client proves ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)).
 
 The trick that lets **data flow outward while every code arrow points inward** is a *port*: an interface **declared** in an inner ring and **implemented** in an outer one (dependency inversion). `PricingPort` is declared next to the use cases; `WsAdapter` and the simulators implement it further out. The use case depends on the *interface* (inward); at runtime a concrete adapter is plugged in from outside. In this repo that rule isn't a guideline -- it is **machine-enforced** by dependency-cruiser (`domain-stays-pure`, `ws-effects-stays-pure`, ...; see [dependency-cruiser.md](../dependency-cruiser.md)) and by the grep gates that ban `rxjs` in the UI.
 
@@ -129,6 +129,7 @@ flowchart LR
     direction TB
     webc["@rtc/client-react"]
     rnc["@rtc/client-react-native"]
+    solidc["@rtc/client-solid"]
     wse["@rtc/ws-effects"]
     srv["@rtc/server"]
     motion["@rtc/motion-core"]
@@ -137,6 +138,7 @@ flowchart LR
     direction TB
     core["@rtc/client-core"]
     rb["@rtc/react-bindings"]
+    sb["@rtc/solid-bindings"]
     shared["@rtc/shared (DTOs)"]
   end
   subgraph r12["①② Entities + Use Cases"]
@@ -169,6 +171,15 @@ flowchart LR
   wse -. "✗ ws-effects-stays-pure" .-x domain
   domain -. "✗ domain-no-node-builtins" .-x nodeb
 
+  %% --- allowed inward imports, part 2 (edges 21-26; appended, NOT interleaved,
+  %% so the linkStyle indices for edges 0-20 above stay valid) ---
+  solidc --> sb
+  solidc --> core
+  solidc --> domain
+  solidc --> motion
+  sb --> core
+  sb --> domain
+
   classDef ext fill:#161b22,stroke:#6e7681,color:#8b949e
   style r4 fill:none,stroke:#e3b341
   style r3 fill:none,stroke:#d2a8ff
@@ -176,14 +187,16 @@ flowchart LR
   style domain fill:#14432a,stroke:#56d364,color:#eafff2
   style core fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
   style rb fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
+  style sb fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
   style shared fill:#3b1f47,stroke:#d2a8ff,color:#f6ecff
   style webc fill:#45321b,stroke:#e3b341,color:#fff6e6
   style rnc fill:#45321b,stroke:#e3b341,color:#fff6e6
+  style solidc fill:#45321b,stroke:#e3b341,color:#fff6e6
   style wse fill:#45321b,stroke:#e3b341,color:#fff6e6
   style srv fill:#45321b,stroke:#e3b341,color:#fff6e6
   style motion fill:#45321b,stroke:#e3b341,color:#fff6e6
 
-  linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14 stroke:#3fb950,stroke-width:2px
+  linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,21,22,23,24,25,26 stroke:#3fb950,stroke-width:2px
   linkStyle 15,16,17,18,19,20 stroke:#f85149,stroke-width:2px
 ```
 
@@ -195,8 +208,8 @@ The exact mapping, ring by ring:
 |---|---|---|---|
 | ① | **Entities** (Enterprise Business Rules) | What a thing *is*, independent of any app | `@rtc/domain/src/{fx,credit,equities,connection,analytics,telemetry,preferences}/` -- `Price`, `Notional`, `Trade`, `Instrument`, `Dealer`, `Rfq`, `Quote`, `EquityQuote`, `Candle`, `DepthBook`, `ConnectionStatus`, `PositionUpdates` |
 | ② | **Use Cases** (Application Business Rules) | App-specific orchestration + the interfaces it needs | `@rtc/domain/src/usecases/` (12: `PriceStreamUseCase`, `ExecuteTradeUseCase`, `CreateRfqUseCase`, `ConnectionStatusUseCase`, ...) **and** `@rtc/domain/src/ports/` (the port interfaces -- `PricingPort`, `ExecutionPort`, `WorkflowPort`, `MarketDataPort`, ...) |
-| ③ | **Interface Adapters** (presenters · gateways · controllers) | Convert between use-case shapes and the outside world | **Presenters/machines:** `@rtc/client-core/src/presenters/`. **Gateways (real):** `@rtc/client-core/src/adapters/` (`WsAdapter`, `portFactory`). **Gateways (in-memory, production -- not mocks):** `@rtc/domain/src/simulators/`. **Platform adapters:** `client-react/src/app/adapters/`, `client-react-native/src/app/adapters/`. **ViewModel bridge:** `@rtc/react-bindings`. **Server controllers/gateways:** `@rtc/server/src/effects/` + `toSocket`. **Boundary DTOs:** `@rtc/shared` |
-| ④ | **Frameworks & Drivers** | The replaceable, volatile detail | `@rtc/client-react/src/ui/` (React + DOM + CSS Modules), `@rtc/client-react-native` UI (Expo/RN + react-native-svg), `@rtc/ws-effects` (the dispatch framework), `@rtc/motion-core` (view-layer motion math), the `@rtc/server` host (`node:http` + `ws`), Vite, Metro, Vitest/Playwright/Cypress, `@rtc/client-prototype` (design island) |
+| ③ | **Interface Adapters** (presenters · gateways · controllers) | Convert between use-case shapes and the outside world | **Presenters/machines:** `@rtc/client-core/src/presenters/`. **Gateways (real):** `@rtc/client-core/src/adapters/` (`WsAdapter`, `portFactory`). **Gateways (in-memory, production -- not mocks):** `@rtc/domain/src/simulators/`. **Platform adapters:** `client-react/src/app/adapters/`, `client-react-native/src/app/adapters/`, `client-solid/src/app/adapters/`. **ViewModel bridge:** `@rtc/react-bindings` (React) and `@rtc/solid-bindings` (Solid). **Server controllers/gateways:** `@rtc/server/src/effects/` + `toSocket`. **Boundary DTOs:** `@rtc/shared` |
+| ④ | **Frameworks & Drivers** | The replaceable, volatile detail | `@rtc/client-react/src/ui/` (React + DOM + CSS Modules), `@rtc/client-react-native` UI (Expo/RN + react-native-svg), `@rtc/client-solid/src/ui/` (SolidJS + DOM + the same CSS Modules), `@rtc/ws-effects` (the dispatch framework), `@rtc/motion-core` (view-layer motion math), the `@rtc/server` host (`node:http` + `ws`), Vite, Metro, Vitest/Playwright/Cypress, `@rtc/client-prototype` (design island) |
 
 > **Where's the wiring?** `AppRoot.tsx` (web and RN) and `server/src/index.ts` are the **composition roots** -- they live at the very outer edge and are the *only* places that instantiate concrete adapters and inject them inward. Everything inner receives its dependencies; nothing inner constructs them.
 >
