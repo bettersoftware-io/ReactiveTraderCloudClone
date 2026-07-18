@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import { nextPowerSaverLevel, type PowerSaverLevel } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./PowerSaverToggle.module.css";
@@ -16,7 +17,7 @@ export function PowerSaverToggle(): ReactElement {
     <button
       type="button"
       data-testid="power-saver-toggle"
-      aria-label={`Power saver: ${level}. Activate to switch to ${NEXT_LABEL[level]}.`}
+      aria-label={`Power saver: ${LABEL[level]}. Activate to switch to ${LABEL[nextPowerSaverLevel(level)]}.`}
       data-level={level}
       data-active={level === "off" ? "false" : "true"}
       className={styles.button}
@@ -32,9 +33,13 @@ export function PowerSaverToggle(): ReactElement {
   );
 }
 
-const FILL: Record<string, string> = { off: "○", calm: "◐", freeze: "●" };
-const NEXT_LABEL: Record<string, string> = {
-  off: "Calm",
-  calm: "Freeze",
-  freeze: "Off",
+const FILL: Record<PowerSaverLevel, string> = {
+  off: "○",
+  calm: "◐",
+  freeze: "●",
+};
+const LABEL: Record<PowerSaverLevel, string> = {
+  off: "Off",
+  calm: "Calm",
+  freeze: "Freeze",
 };
