@@ -9,12 +9,15 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_POWER_SAVER_LEVEL,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   EQ_WATCHLIST_SORTS,
   type EqBlotterView,
   type EqWatchlistSort,
+  isPowerSaverLevel,
+  type PowerSaverLevel,
   type PreferencesPort,
   THEME_SKINS,
   type ThemeModePreference,
@@ -100,6 +103,25 @@ function readBool(key: string, fallback: boolean): boolean {
   return fallback;
 }
 
+function readPowerSaverLevel(key: string): PowerSaverLevel {
+  try {
+    const stored = localStorage.getItem(key);
+
+    if (isPowerSaverLevel(stored)) {
+      return stored;
+    }
+
+    // Legacy boolean value from the pre-Freeze single toggle.
+    if (stored === "true") {
+      return "calm";
+    }
+  } catch {
+    // ignore — best-effort read
+  }
+
+  return DEFAULT_POWER_SAVER_LEVEL;
+}
+
 function writeStored(key: string, value: string): void {
   try {
     localStorage.setItem(key, value);
@@ -126,7 +148,7 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly animatedBg: BehaviorSubject<boolean>;
 
-  private readonly powerSaverSubject: BehaviorSubject<boolean>;
+  private readonly powerSaverSubject: BehaviorSubject<PowerSaverLevel>;
 
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
@@ -153,8 +175,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
     this.animatedBg = new BehaviorSubject<boolean>(
       readBool(ANIMATED_BG_STORAGE_KEY, DEFAULT_ANIMATED_BACKGROUND),
     );
-    this.powerSaverSubject = new BehaviorSubject<boolean>(
-      readBool(POWER_SAVER_STORAGE_KEY, false),
+    this.powerSaverSubject = new BehaviorSubject<PowerSaverLevel>(
+      readPowerSaverLevel(POWER_SAVER_STORAGE_KEY),
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       readStored(BOOT_VARIANT_STORAGE_KEY, isBootVariant, DEFAULT_BOOT_VARIANT),
@@ -218,13 +240,13 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
     this.animatedBg.next(on);
   }
 
-  powerSaver$(): Observable<boolean> {
+  powerSaverLevel$(): Observable<PowerSaverLevel> {
     return this.powerSaverSubject.pipe(distinctUntilChanged());
   }
 
-  setPowerSaver(on: boolean): void {
-    writeStored(POWER_SAVER_STORAGE_KEY, on ? "true" : "false");
-    this.powerSaverSubject.next(on);
+  setPowerSaverLevel(level: PowerSaverLevel): void {
+    writeStored(POWER_SAVER_STORAGE_KEY, level);
+    this.powerSaverSubject.next(level);
   }
 
   bootVariant$(): Observable<BootVariant> {

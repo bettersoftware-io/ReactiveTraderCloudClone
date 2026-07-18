@@ -40,6 +40,47 @@ describe("theme/skin/animated-bg hooks", () => {
     });
     expect(result.current.enabled).toBe(false);
   });
+
+  it("usePowerSaver defaults off and cycle() advances off -> calm -> freeze -> off", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.usePowerSaver();
+    });
+    expect(result.current.level).toBe("off");
+    expect(result.current.isCalm).toBe(false);
+    expect(result.current.isFreeze).toBe(false);
+
+    act(() => {
+      result.current.cycle();
+    });
+    expect(result.current.level).toBe("calm");
+    expect(result.current.isCalm).toBe(true);
+    expect(result.current.isFreeze).toBe(false);
+
+    act(() => {
+      result.current.cycle();
+    });
+    expect(result.current.level).toBe("freeze");
+    expect(result.current.isCalm).toBe(true);
+    expect(result.current.isFreeze).toBe(true);
+
+    act(() => {
+      result.current.cycle();
+    });
+    expect(result.current.level).toBe("off");
+  });
+
+  it("usePowerSaver setLevel jumps directly to freeze", () => {
+    const hooks = makeHooks();
+    const { result } = renderHook(() => {
+      return hooks.usePowerSaver();
+    });
+    act(() => {
+      result.current.setLevel("freeze");
+    });
+    expect(result.current.level).toBe("freeze");
+    expect(result.current.isFreeze).toBe(true);
+  });
 });
 
 function makeHooks(): ViewModel {

@@ -51,9 +51,9 @@ const scenarioActions: Record<string, ScenarioAction> = {
   "connection-overlay/offline": { fullPage: true },
   "connection-overlay/idle": { fullPage: true },
   "app/fx": { fullPage: true },
-  // Power-saver: same full-page capture as app/fx — the seeded powerSaver
-  // preference suppresses the aurora/drift layers, so the diff is entirely in
-  // the background, not the interaction.
+  // Power-saver: same full-page capture as app/fx — the seeded powerSaverLevel
+  // "calm" suppresses the aurora/drift layers, so the diff is entirely in the
+  // background, not the interaction.
   "app/fx-power-saver": { fullPage: true },
   // The credit blotter's in-body "Credit Trades" title is gone (its chrome
   // moved into the panel head) — the head tab's full text proves the credit

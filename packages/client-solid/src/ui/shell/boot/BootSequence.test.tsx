@@ -133,6 +133,37 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     window.matchMedia = original;
   });
 
+  // A persisted power-saver "freeze" preference must skip the boot splash's
+  // canvas rAF the same way prefers-reduced-motion does — a Freeze box
+  // should never run the boot animation, even on first paint.
+  it("skips the canvas loop entirely under power-saver freeze", () => {
+    render(() => {
+      return (
+        <ViewModelContext.Provider
+          value={makeHooks({
+            usePowerSaver: () => {
+              const [level] = createSignal("freeze" as const);
+              return {
+                level,
+                isCalm: () => {
+                  return true;
+                },
+                isFreeze: () => {
+                  return true;
+                },
+                setLevel: vi.fn(),
+                cycle: vi.fn(),
+              };
+            },
+          } as unknown as Partial<ViewModel>)}
+        >
+          <BootSequence onDone={vi.fn()} />
+        </ViewModelContext.Provider>
+      );
+    });
+    expect(rafSpy).not.toHaveBeenCalled();
+  });
+
   it("draws using CSS-var values when custom properties are set", () => {
     document.documentElement.style.setProperty("--accent-primary", "#c0ffee");
     document.documentElement.style.setProperty("--accent-2", "#facade");
@@ -325,6 +356,20 @@ function makeHooks(partialHooks: Partial<ViewModel> = {}): ViewModel {
   return {
     useBootSequence: (_onDone: () => void) => {
       return { state, skip: vi.fn() };
+    },
+    usePowerSaver: () => {
+      const [level] = createSignal("off" as const);
+      return {
+        level,
+        isCalm: () => {
+          return false;
+        },
+        isFreeze: () => {
+          return false;
+        },
+        setLevel: vi.fn(),
+        cycle: vi.fn(),
+      };
     },
     ...partialHooks,
   } as unknown as ViewModel;

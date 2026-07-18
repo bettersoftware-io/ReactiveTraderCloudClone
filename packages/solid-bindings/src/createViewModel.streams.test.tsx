@@ -175,15 +175,39 @@ describe("createViewModel — preferences", () => {
     expect(result.enabled()).toBe(false);
   });
 
-  it("usePowerSaver defaults off and toggle() flips it", () => {
+  it("usePowerSaver defaults off and cycle() advances off -> calm -> freeze -> off", () => {
     const vm = makeViewModel();
     const { result } = renderHook(() => {
       return vm.usePowerSaver();
     });
 
-    expect(result.enabled()).toBe(false);
-    result.toggle();
-    expect(result.enabled()).toBe(true);
+    expect(result.level()).toBe("off");
+    expect(result.isCalm()).toBe(false);
+    expect(result.isFreeze()).toBe(false);
+
+    result.cycle();
+    expect(result.level()).toBe("calm");
+    expect(result.isCalm()).toBe(true);
+    expect(result.isFreeze()).toBe(false);
+
+    result.cycle();
+    expect(result.level()).toBe("freeze");
+    expect(result.isCalm()).toBe(true);
+    expect(result.isFreeze()).toBe(true);
+
+    result.cycle();
+    expect(result.level()).toBe("off");
+  });
+
+  it("usePowerSaver setLevel jumps directly to freeze", () => {
+    const vm = makeViewModel();
+    const { result } = renderHook(() => {
+      return vm.usePowerSaver();
+    });
+
+    result.setLevel("freeze");
+    expect(result.level()).toBe("freeze");
+    expect(result.isFreeze()).toBe(true);
   });
 
   it("useViewModePreference reads viewMode and setViewMode writes it", () => {
