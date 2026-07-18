@@ -133,7 +133,7 @@ export interface UseDraggableDialogResult {
   dialogStyle: Accessor<JSX.CSSProperties>;
 }
 
-export interface DraggableDialogHeaderProps {
+interface DraggableDialogHeaderProps {
   onPointerDown: (event: PointerEvent) => void;
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;

@@ -123,7 +123,7 @@ export interface UseDraggableDialogResult {
   dialogStyle: CSSProperties;
 }
 
-export interface DraggableDialogHeaderProps {
+interface DraggableDialogHeaderProps {
   onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
