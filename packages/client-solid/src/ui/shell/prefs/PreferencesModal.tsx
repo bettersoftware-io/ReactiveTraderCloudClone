@@ -6,6 +6,7 @@ import { useViewModel } from "@rtc/solid-bindings";
 
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
 import { PrefToggle } from "./PrefToggle";
+import { useDraggableDialog } from "./useDraggableDialog";
 
 import styles from "./PreferencesModal.module.css";
 
@@ -31,6 +32,11 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
     createSignal<Record<string, boolean>>(INITIAL_TOGGLES);
   const [segments, setSegments] =
     createSignal<Record<string, string>>(INITIAL_SEGMENTS);
+  const { dialogRef, headerProps, dialogStyle } = useDraggableDialog({
+    open: () => {
+      return props.open;
+    },
+  });
 
   function toggleCosmetic(key: string): void {
     setToggles((prev) => {
@@ -47,8 +53,14 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
   return (
     <Show when={props.open}>
       <div data-testid="prefs-modal" class={styles.overlay}>
-        <div role="dialog" aria-label="Preferences" class={styles.dialog}>
-          <header class={styles.head}>
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-label="Preferences"
+          class={styles.dialog}
+          style={dialogStyle()}
+        >
+          <header class={styles.head} {...headerProps}>
             <div>
               <div class={styles.title}>PREFERENCES</div>
               <div class={styles.subtitle}>
@@ -58,6 +70,7 @@ export function PreferencesModal(props: PreferencesModalProps): JSX.Element {
             <button
               type="button"
               data-testid="prefs-close"
+              data-nodrag=""
               aria-label="Close preferences"
               class={styles.closeButton}
               onClick={() => {
