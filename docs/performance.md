@@ -95,6 +95,25 @@ radius and an eased mid-stop in the gradient itself — visually
 indistinguishable on already-smooth radial gradients, and it eliminates the
 per-frame composite-time filter cost.
 
+**P6b — Aurora curtain bands: keep a small `filter: blur()`, but transform-only.**
+The Aurora ambient style's three comb bands (`.auroraCurtainA`/`B`/`C` in
+`AmbientBackground.module.css`) can't fully apply P6 — a `repeating-linear-
+gradient` comb needs real blur to read as soft aurora light rather than hard
+stripes, so each band keeps a small `filter: blur(5–13px)` (T6 still applies:
+this is paid at composite time on every frame, even when the band itself is
+static). The mitigation is everything *around* the filter: each band is a
+fraction of the viewport, not full-bleed like the old aurora blobs were
+before P6; and every band's sway (`@keyframes aurora-c`/`aurora-d`/`aurora-e`)
+animates `transform` only (`translate3d` + `skewX` + `scaleY` combined in one
+animation, `will-change: transform`) — never a second property, never a
+second animation on the same element (T5). The blob layers underneath the
+curtains (`.auroraBlobA`/`.auroraBlobB`) do apply P6 in full: no `filter` at
+all, softness baked into the gradient stops, same as the rays-style blobs.
+Verifying this design holds under trace — a steady-state Aurora-style capture
+showing zero `compositeFailed` events — is a pending human checkpoint (needs
+a real browser); until that trace is captured and recorded here, treat the
+curtain bands' cost as *expected-clean by design*, not yet measured.
+
 **P7 — One animation per property per element (T5).**
 When an element needs an intro pop *and* an infinite throb, split them:
 intro on the element (or `::before`), throb on `::after`. A single animation
@@ -162,8 +181,12 @@ names.
   static state regressed — fix the code, don't regenerate.
 - **The residual cost is a product decision.** After both rounds the
   steady-state floor is the ambient backdrop compositing (~5-8% GPU per
-  tab) plus tick-driven React rendering — that's the wow-effect and the
-  live stream, by design. The **power-saver mode** trades that floor away on
+  tab, measured on the **rays** style) plus tick-driven React rendering —
+  that's the wow-effect and the live stream, by design. The default ambient
+  style is now **aurora** (see P6b above); its curtain bands keep a small
+  `filter: blur()` that rays never paid, so this number is pending
+  re-measurement against aurora specifically — do not read it as aurora's
+  floor until it is. The **power-saver mode** trades that floor away on
   slow hardware (one toggle → still ambience + conflated price re-renders);
   what it disables vs keeps is documented in
   [power-saver-mode.md](power-saver-mode.md).

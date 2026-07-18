@@ -63,3 +63,12 @@ checked per tick in `_jvCheck`; widgets are computed in `renderVals` from live s
   Only the first line per session is voiced, by design.
 - **Preferences → AUDIO:** "Sound effects" and "J.A.R.V.I.S voice" switches
   (persisted; also `sound` / `voice` props).
+
+## 3. App-parity note (post-v5)
+
+The `Aurora` / `Rays` ambient-background selector — present in the prototype since v4
+(§3 of `HANDOFF.md`) — now also ships in the real app: the `ambientStyle` preference
+(default **`"aurora"`**, persisted under `rtc-ambient-style`) drives a **Preferences →
+Display → "Ambient style"** segment in `client-react` / `client-solid`, and an
+equivalent Appearance → Motion segment in the RN client. This is a design→app catch-up,
+not a new prototype feature — see `dev-handoff/HANDOFF.md` §3 for the mapping.

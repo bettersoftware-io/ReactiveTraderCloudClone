@@ -49,6 +49,15 @@ Semantic tokens to preserve: `accent` / `accent2`, `buy` / `sell`, `panel`, `glo
 `auroraOp`, depth tokens `tile` / `tileShadow` / `panelShadow`. Fonts: Chakra Petch +
 JetBrains Mono (holo/neon), IBM Plex Sans/Mono (terminal), Orbitron (wordmark).
 
+**Design → app parity:** the real client now ships this selector. `client-react` /
+`client-solid` expose the `ambientStyle` preference (`AmbientStyle = "aurora" | "rays"`,
+default **`"aurora"`**, persisted under `rtc-ambient-style`) from a **Preferences →
+Display → "Ambient style"** segmented control (`Aurora` / `Rays`), matching the
+prototype's row above; the RN client exposes the same preference from its Appearance →
+Motion segmented control. The `"aurora"` style is a fixed-palette northern-lights
+curtain treatment (not theme-tinted, unlike `auroraOp`'s theme-tinted original) — see
+`packages/client-react/src/ui/shell/background/README.md` for the implementation.
+
 ## 4. Boot sequence
 
 Pure `<canvas>` 2D, no dependencies; 8 variants, one draw function each; sequential

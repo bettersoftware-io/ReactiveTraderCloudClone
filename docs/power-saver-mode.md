@@ -25,7 +25,7 @@ in sync with the implementation when the behaviour changes.
 
 | Element | Full experience (OFF) | Power saver (ON) |
 |---|---|---|
-| Aurora layers, conic sweep, particle dots | rendered, drifting (per the animated-background preference) | **not rendered at all** — the layers are removed from the DOM (absent layers cost no compositing, unlike paused ones) |
+| Ambient-style layers (whichever of Aurora curtains / rays blobs+sweep is selected), particle dots | rendered, drifting (per the animated-background preference) | **not rendered at all** — the layers are removed from the DOM (absent layers cost no compositing, unlike paused ones); this applies to either `ambientStyle` equally — the Aurora curtain bands (`.auroraCurtainA`/`B`/`C`) and blobs are omitted just like the rays blobs/sweep are |
 | Background grid + vignette | rendered | **rendered** (static, cheap — keeps the HUD identity) |
 | HUD logo orbit / triangle rotations | spinning | **held still** (`animation-play-state: paused`) |
 | Connection-status dot pulse | pulsing | **held still** (same mechanism) |
@@ -51,8 +51,12 @@ just still and calm.
     `animation-play-state: var(--fx-play, running)`, so they all still
     together from one place — the same idiom as the ambient-background
     `--amb-play` variable.
-  - `AmbientBackground` reads `usePowerSaver()` directly and **removes** the
-    aurora / sweep / dots layers from the DOM (cheaper than pausing them).
+  - `AmbientBackground` reads `usePowerSaver()` directly and **removes**
+    whichever `ambientStyle` layer group is active (Aurora curtains or rays
+    blobs+sweep) plus the dots layer from the DOM (cheaper than pausing
+    them). The `ambientStyle` preference itself is unaffected — power saver
+    only decides whether the selected style's animated layers mount, not
+    which style is selected.
 - **Data-rate gating:** a small `conflateWhen(flag$, ms)` RxJS operator wraps
   the cached price and price-history streams in `client-core`. While the flag
   is on it throttles (leading + trailing) to one emission per `ms`; while off
