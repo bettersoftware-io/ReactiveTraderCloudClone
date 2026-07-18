@@ -53,9 +53,18 @@
   top: 100%;
   left: 0;
   z-index: 10;
+  /* Floating popover over the blotter — see InstrumentSelect.module.css for why
+     the translucent --panel needs a frost, and why it is not a T6 offender. */
   background: var(--panel);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: 4px;
   min-width: 160px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Power saver / freeze tier: shed the filter, fall back to an opaque surface. */
+:root[data-power-saver="true"] .filterPanel {
+  background: var(--bg-secondary);
+  backdrop-filter: none;
 }
