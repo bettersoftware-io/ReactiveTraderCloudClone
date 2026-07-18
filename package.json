@@ -42,6 +42,7 @@
     "check:scripts": "node scripts/check-workspace-scripts.mjs",
     "check:doc-links": "node scripts/check-doc-links.mjs",
     "check:manifest-drift": "node scripts/check-manifest-drift.mjs",
+    "check:image-tag-drift": "node scripts/check-image-tag-drift.mjs",
     "check:lint-warnings-drift": "node scripts/check-lint-warnings-drift.mjs",
     "sync:lint-warnings": "node scripts/sync-lint-warnings.mjs",
     "check:devtools-dist": "node scripts/check-devtools-dist.mjs",
