@@ -53,6 +53,26 @@ Loop until the run **whose `headSha` equals `$HEAD_SHA`** has `status == "comple
 
 Match on `headSha` so you never read a stale run from an earlier push. Poll on a sensible interval (CI here takes ~10 min); don't merge while the matching run is still `in_progress`/`queued`.
 
+### Don't poll forever — budget, then diagnose
+
+Passive polling has a **wall-clock budget**. A normal full run here is ~10 min; the e2e job is the long pole and can stretch a run to ~20 min. **Once the matching run passes ~25 min (≈2× normal), STOP polling and diagnose — never poll for hours waiting on a hang.** "The run is slow" is not a diagnosis; find the *specific stuck step*:
+
+```bash
+gh run view <run-id> --json jobs   # find the in_progress job, then ITS in_progress step
+```
+
+Then classify the stuck step and act — don't just keep waiting:
+
+| Stuck step | Meaning | Action |
+|---|---|---|
+| A **setup/infra** step — `Set up job`, checkout, `setup-node`, **`Cache the … store`**, `Install dependencies` | GitHub-Actions hang, **not your code** (the real checks haven't even run) | Re-trigger on a fresh runner: `gh run cancel <id>` then `gh run rerun <id> --failed`. If cancel wedges (the hung step resists for minutes), `git commit --allow-empty -m "ci: re-trigger"` && `git push` to start a clean run. |
+| A **real check** — `Typecheck`, `Tests`, e2e | Genuinely slow, maybe legit | Allow the known ceiling (e2e ~15–20 min) before treating as hung; below it, keep waiting. |
+| A step already **failed** (job red, later steps skipped) | Real failure | `gh run view <id> --log-failed`, then fix forward per Rule 2. |
+
+**If the same infra step hangs again after a re-trigger,** it's likely a live GitHub-Actions/cache outage — stop re-running and tell the user rather than burn cycles.
+
+**Red flag:** you've polled past the budget without once running `gh run view --json jobs`. Drill in the moment the budget is blown, not after another hour.
+
 ## Rule 3 — Assess catch-up risk before merging
 
 Rule 2 proves your branch green against the base it *branched from*. But `main` auto-pushes and concurrent sessions land commits, so by the time you're green that base may have moved on — and `gh pr merge --merge` would then produce a `main` state (latest `main` + your changes) that **CI never tested**. Git blocks *textual* conflicts, so the only silent risk is a **semantic** conflict: a renamed export, a tightened lint rule, a changed fixture — each side fine alone, broken together.
@@ -123,6 +143,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 | Isolate before editing | `git fetch origin main` first, then `EnterWorktree` (native) or `superpowers:using-git-worktrees` — base off latest `origin/main` |
 | Read CI status | `gh run list --branch <b> --workflow CI --json status,conclusion,headSha` |
 | ❌ Never for CI status | `gh pr checks` / `statusCheckRollup` (403 with this PAT) |
+| Run stuck >~25 min → diagnose | `gh run view <id> --json jobs` → find the stuck step; infra/cache step = cancel + `rerun --failed` (or empty-commit re-trigger), real check = wait its ceiling, failed = `--log-failed` |
 | Is the branch current? | `git merge-base --is-ancestor origin/main HEAD` (exit 0 = current; if "behind" → triage per Rule 3, catch up only on overlap / too-broad diff) |
 | What landed on `main`? | `git diff --name-only HEAD...origin/main` vs. `git diff --name-only origin/main...HEAD` — disjoint → merge as-is |
 | Update a stale branch | `git merge origin/main` (✅ merge in) — **never** rebase/force-push |
@@ -145,6 +166,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 | "CI will obviously pass, I'll merge now." | Loop until the run for *your SHA* is `completed`+`success`. No merging on assumption. |
 | "I'll set `--auto` and walk away." | Read CI explicitly and confirm green, then merge. Don't delegate the gate to a flag. |
 | "I read a green run, good enough." | Verify its `headSha` is your latest commit, not a stale run. |
+| "It's still running, I'll just keep polling." | Past ~25 min, polling is negligence, not patience. `gh run view --json jobs`, find the stuck step, act (infra hang → re-trigger; real failure → fix). |
 
 ## Red Flags — STOP
 
@@ -154,6 +176,7 @@ Never bulk-remove or prune other worktrees — concurrent sessions own them.
 - About to type `gh pr merge` with `--squash`, `--rebase`, or `--auto`.
 - About to merge without having seen a `completed`/`success` run for your current `HEAD_SHA`.
 - Reaching for `gh pr checks` to read CI.
+- Polling a run past ~25 min without once running `gh run view --json jobs` to find the stuck step.
 - PR is merged but your worktree is still on disk — Rule 6 isn't done until it's removed.
 
 **Each of these means: stop and follow the rule above.**
