@@ -27,6 +27,7 @@ export interface PreferencesSeed {
   viewMode?: ViewMode;
   animatedBackground?: boolean;
   powerSaver?: boolean;
+  forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
@@ -181,6 +182,27 @@ export function describePreferencesPortContract(
     it("reads back a seeded powerSaver", async () => {
       const port = makeSeeded({ powerSaver: true });
       expect(await firstValueFrom(port.powerSaver$())).toBe(true);
+    });
+
+    it("empty store emits the default forceBootAnimation=false", async () => {
+      const port = makeEmpty();
+      expect(await firstValueFrom(port.forceBootAnimation$())).toBe(false);
+    });
+
+    it("setForceBootAnimation persists and pushes to existing subscribers", () => {
+      const port = makeEmpty();
+      const seen: boolean[] = [];
+      const sub = port.forceBootAnimation$().subscribe((on) => {
+        return seen.push(on);
+      });
+      port.setForceBootAnimation(true);
+      sub.unsubscribe();
+      expect(seen).toEqual([false, true]);
+    });
+
+    it("reads back a seeded forceBootAnimation", async () => {
+      const port = makeSeeded({ forceBootAnimation: true });
+      expect(await firstValueFrom(port.forceBootAnimation$())).toBe(true);
     });
 
     it("empty store emits the default bootVariant", async () => {

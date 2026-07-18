@@ -8,6 +8,7 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -26,6 +27,7 @@ export const THEME_SKIN_STORAGE_KEY = "rtc-theme-skin";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
 export const POWER_SAVER_STORAGE_KEY = "rtc-power-saver";
+export const FORCE_BOOT_ANIMATION_STORAGE_KEY = "rtc-force-boot-animation";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
@@ -92,6 +94,10 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly powerSaverSubject = new BehaviorSubject<boolean>(false);
 
+  private readonly forceBootAnimationSubject = new BehaviorSubject<boolean>(
+    DEFAULT_FORCE_BOOT_ANIMATION,
+  );
+
   private readonly bootVariantSubject = new BehaviorSubject<BootVariant>(
     DEFAULT_BOOT_VARIANT,
   );
@@ -118,6 +124,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         viewMode,
         animatedBg,
         powerSaver,
+        forceBootAnimation,
         bootVariant,
         creditRfqFilter,
         eqWatchlistSort,
@@ -128,6 +135,7 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         AsyncStorage.getItem(VIEW_MODE_STORAGE_KEY),
         AsyncStorage.getItem(ANIMATED_BG_STORAGE_KEY),
         AsyncStorage.getItem(POWER_SAVER_STORAGE_KEY),
+        AsyncStorage.getItem(FORCE_BOOT_ANIMATION_STORAGE_KEY),
         AsyncStorage.getItem(BOOT_VARIANT_STORAGE_KEY),
         AsyncStorage.getItem(CREDIT_RFQ_FILTER_STORAGE_KEY),
         AsyncStorage.getItem(EQ_WATCHLIST_SORT_STORAGE_KEY),
@@ -156,6 +164,12 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
         this.powerSaverSubject.next(true);
       } else if (powerSaver === "false") {
         this.powerSaverSubject.next(false);
+      }
+
+      if (forceBootAnimation === "true") {
+        this.forceBootAnimationSubject.next(true);
+      } else if (forceBootAnimation === "false") {
+        this.forceBootAnimationSubject.next(false);
       }
 
       if (isBootVariant(bootVariant)) {
@@ -227,6 +241,18 @@ export class AsyncStoragePreferencesAdapter implements PreferencesPort {
       on ? "true" : "false",
     ).catch(() => {});
     this.powerSaverSubject.next(on);
+  }
+
+  forceBootAnimation$(): Observable<boolean> {
+    return this.forceBootAnimationSubject.pipe(distinctUntilChanged());
+  }
+
+  setForceBootAnimation(on: boolean): void {
+    void AsyncStorage.setItem(
+      FORCE_BOOT_ANIMATION_STORAGE_KEY,
+      on ? "true" : "false",
+    ).catch(() => {});
+    this.forceBootAnimationSubject.next(on);
   }
 
   bootVariant$(): Observable<BootVariant> {

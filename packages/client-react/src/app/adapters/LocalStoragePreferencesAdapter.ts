@@ -9,6 +9,7 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -27,6 +28,7 @@ export const THEME_SKIN_STORAGE_KEY = "rtc-theme-skin";
 export const VIEW_MODE_STORAGE_KEY = "rtc-view-mode";
 export const ANIMATED_BG_STORAGE_KEY = "rtc-animated-bg";
 export const POWER_SAVER_STORAGE_KEY = "rtc-power-saver";
+export const FORCE_BOOT_ANIMATION_STORAGE_KEY = "rtc-force-boot-animation";
 export const BOOT_VARIANT_STORAGE_KEY = "rt-boot-variant";
 export const CREDIT_RFQ_FILTER_STORAGE_KEY = "credit-rfqs-filter";
 export const EQ_WATCHLIST_SORT_STORAGE_KEY = "eq-watchlist-sort";
@@ -128,6 +130,8 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
 
   private readonly powerSaverSubject: BehaviorSubject<boolean>;
 
+  private readonly forceBootAnimationSubject: BehaviorSubject<boolean>;
+
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
   private readonly creditRfqFilterSubject: BehaviorSubject<CreditRfqFilter>;
@@ -155,6 +159,9 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
     );
     this.powerSaverSubject = new BehaviorSubject<boolean>(
       readBool(POWER_SAVER_STORAGE_KEY, false),
+    );
+    this.forceBootAnimationSubject = new BehaviorSubject<boolean>(
+      readBool(FORCE_BOOT_ANIMATION_STORAGE_KEY, DEFAULT_FORCE_BOOT_ANIMATION),
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       readStored(BOOT_VARIANT_STORAGE_KEY, isBootVariant, DEFAULT_BOOT_VARIANT),
@@ -225,6 +232,15 @@ export class LocalStoragePreferencesAdapter implements PreferencesPort {
   setPowerSaver(on: boolean): void {
     writeStored(POWER_SAVER_STORAGE_KEY, on ? "true" : "false");
     this.powerSaverSubject.next(on);
+  }
+
+  forceBootAnimation$(): Observable<boolean> {
+    return this.forceBootAnimationSubject.pipe(distinctUntilChanged());
+  }
+
+  setForceBootAnimation(on: boolean): void {
+    writeStored(FORCE_BOOT_ANIMATION_STORAGE_KEY, on ? "true" : "false");
+    this.forceBootAnimationSubject.next(on);
   }
 
   bootVariant$(): Observable<BootVariant> {

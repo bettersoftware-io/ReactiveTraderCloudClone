@@ -9,6 +9,7 @@ import {
   DEFAULT_CREDIT_RFQ_FILTER,
   DEFAULT_EQ_BLOTTER_VIEW,
   DEFAULT_EQ_WATCHLIST_SORT,
+  DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
@@ -25,6 +26,7 @@ export interface PreferencesSeed {
   viewMode?: ViewMode;
   animatedBackground?: boolean;
   powerSaver?: boolean;
+  forceBootAnimation?: boolean;
   bootVariant?: BootVariant;
   creditRfqFilter?: CreditRfqFilter;
   eqWatchlistSort?: EqWatchlistSort;
@@ -46,6 +48,8 @@ export class PreferencesSimulator implements PreferencesPort {
   private readonly animatedBg: BehaviorSubject<boolean>;
 
   private readonly powerSaverSubject: BehaviorSubject<boolean>;
+
+  private readonly forceBootAnimationSubject: BehaviorSubject<boolean>;
 
   private readonly bootVariantSubject: BehaviorSubject<BootVariant>;
 
@@ -70,6 +74,9 @@ export class PreferencesSimulator implements PreferencesPort {
     );
     this.powerSaverSubject = new BehaviorSubject<boolean>(
       seed.powerSaver ?? false,
+    );
+    this.forceBootAnimationSubject = new BehaviorSubject<boolean>(
+      seed.forceBootAnimation ?? DEFAULT_FORCE_BOOT_ANIMATION,
     );
     this.bootVariantSubject = new BehaviorSubject<BootVariant>(
       seed.bootVariant ?? DEFAULT_BOOT_VARIANT,
@@ -123,6 +130,14 @@ export class PreferencesSimulator implements PreferencesPort {
 
   setPowerSaver(on: boolean): void {
     this.powerSaverSubject.next(on);
+  }
+
+  forceBootAnimation$(): Observable<boolean> {
+    return this.forceBootAnimationSubject.pipe(distinctUntilChanged());
+  }
+
+  setForceBootAnimation(on: boolean): void {
+    this.forceBootAnimationSubject.next(on);
   }
 
   bootVariant$(): Observable<BootVariant> {
