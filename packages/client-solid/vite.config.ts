@@ -10,11 +10,18 @@ import solid from "vite-plugin-solid";
  * middleware) and copy it into dist/devtools at build time. Same-origin is
  * load-bearing: the devtools BroadcastChannel cannot cross origins, so the
  * inspector can only pair with the app's hub when served from this origin.
- * Requires @rtc/devtools-app to be built first — the devDependency gives turbo
- * the topological build edge. Verbatim port of client-react's devtoolsPanel().
- * Dependency-free: node:fs/node:path/node:module only. */
+ * Requires @rtc/devtools-app to be built first — the devDependency gives
+ * turbo the topological build edge, so `pnpm build`/`pnpm dev` order it
+ * correctly. The devtools-app is built with `base: "/devtools/"`, so its
+ * index.html references absolute `/devtools/assets/*` URLs that this same
+ * middleware serves. Dependency-free: node:fs/node:path/node:module only. */
 function devtoolsPanel(): Plugin {
   const require = createRequire(import.meta.url);
+  // Resolve the workspace package root without importing its source (dep-cruiser
+  // forbids a source import; this is a build-order + dist-path edge only).
+  // @rtc/devtools-app's `exports` map includes a "./package.json": "./package.json"
+  // self-entry specifically so this deep-resolve keeps working — don't remove it
+  // from devtools-app's package.json or this require.resolve breaks.
   const appDist = join(
     dirname(require.resolve("@rtc/devtools-app/package.json")),
     "dist",
@@ -44,7 +51,13 @@ function devtoolsPanel(): Plugin {
     name: "rtc-devtools-panel",
     configureServer(server: ViteDevServer): void {
       server.middlewares.use("/devtools", (req, res, next): void => {
+        // Connect strips the "/devtools" mount prefix from req.url, so "/" here
+        // maps to the built index.html and "/assets/x.js" to that asset.
         const url = (req.url ?? "/").split("?")[0];
+        // Leading "." keeps the joined path relative before resolve() collapses
+        // any ".." segments — resolve() (unlike join()) is then verified below
+        // to stay within appDist, so a crafted "/devtools/../../etc/passwd"
+        // request can't escape the served directory.
         const rel = url === "/" ? "index.html" : `.${url}`;
         const file = resolve(appDist, rel);
 
