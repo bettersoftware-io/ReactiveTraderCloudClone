@@ -1,5 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
+import { guardGoldenUpdate } from "../guardGoldenUpdate";
+
+// Preflight: block a native `--update-snapshots` on a non-x86 host (would
+// corrupt the x86-only react/ set). No-op when asserting or on x64.
+guardGoldenUpdate();
+
 const PORT = 3200;
 
 // A single container-canonical golden set: `react/`, rendered on x86 Linux in
