@@ -16,9 +16,9 @@ import styles from "./HeaderChrome.module.css";
  * CLEARANCE details block, a ⚙ Preferences action row (opens the shell's
  * Preferences modal via `onOpenPrefs`), the prototype's ⟳ Reboot HUD row
  * (re-raises the boot splash through the `useBootGate` seam — splash replay
- * only, no app-state reset), a neutral ⏻ LOCK SESSION action row (locks the
+ * only, no app-state reset), a neutral ⏻ Lock Session action row (locks the
  * session through the seam, raising the LockScreen overlay), and the single
- * red ⏻ SIGN OUT row below it (logs the session out through the seam,
+ * red ⏻ Sign Out row below it (logs the session out through the seam,
  * returning to LoginScreen — the app's equivalent of the prototype's Sign
  * Out, and the panel's one destructive accent). While open, an invisible fixed backdrop (prototype Header.tsx:65-73)
  * closes the menu on any outside click. Opening/closing the panel is local
@@ -152,7 +152,7 @@ export function AccountMenu({
                 lock();
               }}
             >
-              ⏻ LOCK SESSION
+              ⏻ Lock Session
             </button>
             {/* Real chrome: logs the session out through the `useAuth` seam,
                 returning to LoginScreen (the app's equivalent of the
@@ -167,7 +167,7 @@ export function AccountMenu({
                 logout();
               }}
             >
-              ⏻ SIGN OUT
+              ⏻ Sign Out
             </button>
           </div>
         </>

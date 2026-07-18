@@ -188,6 +188,15 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // ThemePicker skin listbox open — the dropdown is the distinct pixel state.
   "chrome/theme-picker-open": { click: "skin-picker" },
 
+  // Account dropdown open — click the avatar trigger and STOP; the open panel
+  // (identity/details/action-rows) is the captured pixel state. Wait for the
+  // static "CLEARANCE" details key (unique to the open panel, casing-stable) to
+  // confirm the dropdown rendered before capture.
+  "chrome/account-menu-open": {
+    click: "account-toggle",
+    waitForText: "CLEARANCE",
+  },
+
   // --- Coverage-gap pass: behaviour-sync'd components (Step 5) ---
 
   // CreditBlotter sort: click the Quantity column sort button -> ▼ appears.
