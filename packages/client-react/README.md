@@ -177,11 +177,12 @@ no presenters. Three runners share one scenario manifest
 (`@rtc/ui-contract`'s `src/visual/scenarios.ts`, aliased here as
 `@ui-visual-shared/scenarios`); goldens are committed in TWO sets per runner —
 `react/` (CI, x86) and `react-local/<platform>-<arch>/` (fast local
-feedback). UI changes require regenerating BOTH sets
-(`:update` scripts locally; the `update-visual-goldens` workflow for the CI
-set). These are the goldens `@rtc/client-solid`'s three visual tiers assert
-against (assert-only — it owns no golden set of its own). Full details: ADR +
-layout in [`tests/ui/visual/README.md`](tests/ui/visual/README.md).
+feedback). UI changes require regenerating BOTH sets. These are the goldens
+`@rtc/client-solid`'s three visual tiers assert against (assert-only — it owns
+no golden set of its own). **How to update them** (which command for a
+regression vs. a deliberate change vs. a new scenario):
+[`tests/ui/visual/UPDATING-GOLDENS.md`](tests/ui/visual/UPDATING-GOLDENS.md).
+Full ADR + layout: [`tests/ui/visual/README.md`](tests/ui/visual/README.md).
 
 **Browser e2e, presenter integration, and full-stack smokes** — NOT here;
 they live in the [`tests/`](../../tests/README.md) workspace package.

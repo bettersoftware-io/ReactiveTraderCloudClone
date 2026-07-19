@@ -42,6 +42,11 @@ Drive updates via the returned page object: `page.setProps({...})`,
 `page.emit({ useTrades: [...] })`; read recorded commands via accessors like
 `page.createdRfq()`.
 
+> **Sibling tier:** the [visual (pixel-golden) tier](../visual/README.md) covers
+> colour/layout this tier deliberately ignores. Updating its goldens has its own
+> [runbook](../visual/UPDATING-GOLDENS.md) — this contract tier, being
+> behavioural, has **no** per-arch golden sets to regenerate.
+
 ## Running
 
 - `pnpm --filter @rtc/client-react test` — runs these with the unit suite (jsdom).

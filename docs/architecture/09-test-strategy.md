@@ -139,7 +139,9 @@ via `makeHarness`, they don't reach into either implementation.
 | 2 | Plain Playwright over a Vite host | `playwright/` |
 | 3 | Vitest browser mode (`toMatchScreenshot`) | `vitest-browser/` |
 
-Two golden sets are committed per tier: `__screenshots__/react/` (rendered on pinned x86 CI — **the canonical cross-framework contract**, regenerated only via the `update-visual-goldens` workflow) and `__screenshots__/react-local/<platform>-<arch>/` (local runs, committed for review but never compared on CI). The render target lives behind the `visual/react/` seam barrel — the directory a SolidJS port swaps.
+Two golden sets are committed per tier: `__screenshots__/react/` (rendered on pinned x86 CI — **the canonical cross-framework contract**) and `__screenshots__/react-local/<platform>-<arch>/` (local runs, committed for review but never compared on CI). The render target lives behind the `visual/react/` seam barrel — the directory a SolidJS port swaps.
+
+**Updating goldens** is its own operational runbook — the two sets, the three update routes (dispatch the CI workflow / regenerate locally in Docker / the native fast loop), and which to run for a regression vs. a deliberate change vs. a new scenario: [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md).
 
 ### 9.8 UI contract tier
 
