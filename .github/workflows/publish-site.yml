@@ -1,16 +1,17 @@
 name: Publish Site
 
-# Publishes the root hub (docs/pages/) and all presentation decks
-# (docs/presentations/) to the gh-pages branch, which GitHub Pages serves.
-# Coverage is published separately by coverage-report.yml; each workflow owns a
-# disjoint subtree via scripts/pages/publish-to-pages.mjs, so neither clobbers
-# the other. Shares the `pages-write` concurrency group with coverage so the two
-# writers serialise.
+# Publishes the root hub (docs/pages/), all presentation decks
+# (docs/presentations/), and the showcase artifacts (docs/showcase/) to the
+# gh-pages branch, which GitHub Pages serves. Coverage is published separately by
+# coverage-report.yml; each workflow owns a disjoint subtree via
+# scripts/pages/publish-to-pages.mjs, so neither clobbers the other. Shares the
+# `pages-write` concurrency group with coverage so the two writers serialise.
 on:
   push:
     branches: [main]
     paths:
       - docs/presentations/**
+      - docs/showcase/**
       - docs/pages/**
   workflow_dispatch:
 
@@ -34,17 +35,21 @@ jobs:
         with:
           node-version: 26
 
-      - name: Stage hub + presentations
+      - name: Stage hub + presentations + showcase
         run: |
           rm -rf _stage
-          mkdir -p _stage/presentations
+          mkdir -p _stage/presentations _stage/showcase
           cp docs/pages/index.html _stage/index.html
           cp docs/pages/.nojekyll _stage/.nojekyll
           cp -R docs/presentations/. _stage/presentations/
           node scripts/pages/build-presentations-index.mjs docs/presentations _stage/presentations/index.html
+          # Showcase: publish the generated HTML artifacts only (not the README);
+          # the index is (re)generated, so a stale committed one can't leak in.
+          cp docs/showcase/*.html _stage/showcase/
+          node scripts/pages/build-showcase-index.mjs docs/showcase _stage/showcase/index.html
 
       - name: Publish to gh-pages
         run: >
           node scripts/pages/publish-to-pages.mjs
           --source _stage
-          --message "publish site: hub + presentations @ ${GITHUB_SHA}"
+          --message "publish site: hub + presentations + showcase @ ${GITHUB_SHA}"
