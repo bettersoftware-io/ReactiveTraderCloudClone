@@ -1,5 +1,5 @@
 // packages/client-react-native/src/ui/shell/hud/useShellTelemetry.ts
-import { useContext, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import {
   runOnJS,
   useFrameCallback,
@@ -34,6 +34,17 @@ export function useShellTelemetry(): ShellTelemetry {
   const windowStartSv = useSharedValue(0);
   const active = frozen === null && enabled;
 
+  // `computeFps` is a plain @rtc/motion-core function — a Reanimated "Remote
+  // Function" from the worklet's perspective. Calling it inside the worklet
+  // (even in a `runOnJS(...)` argument, which is evaluated on the UI runtime)
+  // crashes with "Tried to synchronously call a Remote Function on the UI
+  // Runtime". Hand the raw frame count + elapsed to the JS thread and compute
+  // there. Jest can't catch this — it mocks reanimated, so the worklet runs as
+  // ordinary JS where `computeFps` is directly callable.
+  const publishFps = useCallback((frames: number, elapsedMs: number): void => {
+    setFps(computeFps(frames, elapsedMs));
+  }, []);
+
   useFrameCallback((frame) => {
     "worklet";
 
@@ -50,7 +61,7 @@ export function useShellTelemetry(): ShellTelemetry {
     const elapsed = frame.timeSinceFirstFrame - windowStartSv.value;
 
     if (elapsed >= PUBLISH_MS) {
-      runOnJS(setFps)(computeFps(framesSv.value, elapsed));
+      runOnJS(publishFps)(framesSv.value, elapsed);
       framesSv.value = 0;
       windowStartSv.value = frame.timeSinceFirstFrame;
     }
