@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const VISUAL_ROOT = join(HERE, "..");
 
-export const DEVICE_PIN = "ios-iphone15-18";
+export const DEVICE_PIN = "ios-iphone17-26";
 
 export type Tier = "simctl" | "maestro";
 

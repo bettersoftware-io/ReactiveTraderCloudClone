@@ -21,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/status-drift-check.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/status-drift-check.sh\""
           }
         ]
       }

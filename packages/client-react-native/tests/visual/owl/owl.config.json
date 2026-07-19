@@ -3,7 +3,7 @@
     "workspace": "ios/RTCMobile.xcworkspace",
     "scheme": "RTCMobile",
     "configuration": "Debug",
-    "device": "iPhone 15",
+    "device": "iPhone 17",
     "buildCommand": "EXPO_PUBLIC_VISUAL_HARNESS=1 xcodebuild"
   },
   "report": true

@@ -23,14 +23,14 @@ const APP_SCHEME = "rtcmobile";
 
 const DEFAULT_METRO_PORT = "8083";
 const DEFAULT_IDB_PATH = "idb";
-const DEFAULT_IDB_TAP_X = 264;
-const DEFAULT_IDB_TAP_Y = 469;
+const DEFAULT_IDB_TAP_X = 274;
+const DEFAULT_IDB_TAP_Y = 474;
 const DEFAULT_METRO_LOAD_DELAY_MS = 4000;
 const DEFAULT_SETTLE_DELAY_MS = 2500;
 
 export interface SimctlDriverConfig {
   /** Target simulator UDID (`xcrun simctl list devices`), pinned to iPhone
-   * 15 / iOS 18.x for golden captures. */
+   * 17 / iOS 26.x for golden captures. */
   udid: string;
   /** Metro dev-server port on the host. The simulator reaches the host's
    * loopback directly (unlike a physical device), so `localhost` is correct
@@ -44,7 +44,7 @@ export interface SimctlDriverConfig {
    * pixels, `idb ui tap` takes points, i.e. pixels / scale factor) of the
    * "Open" button in iOS's "Open in RTC Mobile?" confirmation dialog that
    * `simctl openurl` raises for the custom-scheme scenario deep link.
-   * Defaults to the iPhone 15 pin's on-device-measured coordinates. */
+   * Defaults to the iPhone 17 pin's on-device-measured coordinates. */
   idbTapX?: number;
   idbTapY?: number;
   /** Delay after loading the Metro base URL, before deep-linking into the
