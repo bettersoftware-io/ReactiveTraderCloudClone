@@ -557,7 +557,8 @@ updateSnapshots: <span class="cm">"none"</span>,  <span class="cm">// a missing 
   <span class="kw">throw new</span> Error(
     <span class="cm">`assert-only tier: golden missing at ${screenshotPath} — `</span> +
     <span class="cm">"goldens are owned by client-react; refusing to auto-create " +</span>
-    <span class="cm">"one from the solid tier."</span>,
+    <span class="cm">"one from the solid tier. Regenerate it via "</span> +
+    <span class="cm">"`pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update`."</span>,
   );
 }</pre>
           </div>
