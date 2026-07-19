@@ -90,14 +90,17 @@ function devtoolsPanel(): Plugin {
 // esbuild dep pre-bundle drops the libs' own .js.map). Empty in a lean build, so
 // production output is unchanged. See docs/superpowers/specs/2026-07-19-debuggable-deploy-design.md.
 const debugBuild = process.env.RTC_SOURCEMAPS === "1";
-const pkgSrc = (name: string): string =>
-  resolve(
+
+function pkgSrc(name: string): string {
+  return resolve(
     dirname(fileURLToPath(import.meta.url)),
     "..",
     name,
     "src",
     "index.ts",
   );
+}
+
 // Bare package specifiers only. Every @rtc/* package currently exports just "."
 // (imported as `@rtc/client-core`, never `@rtc/client-core/sub`), so mapping the
 // specifier straight to src/index.ts is correct. If a production `src` file ever
