@@ -149,7 +149,7 @@ sequenceDiagram
     participant Host as your machine (no Docker)
     You->>Host: pnpm ...:react:update (CI unset · optional SCENARIO_PATTERN)
     Host->>Host: render natively
-    Host-->>You: write react-local/&lt;arch&gt;
+    Host-->>You: write react-local/<arch>
     Note over You,Host: pnpm test:ui:visual is green locally again — commit the local set
 ```
 
@@ -208,7 +208,7 @@ sequenceDiagram
     participant Native as Route 3 (native)
     participant CI as Route 1 (workflow)
     You->>Native: run :update — learn which scenarios moved
-    Native-->>You: react-local/&lt;arch&gt; refreshed → commit
+    Native-->>You: react-local/<arch> refreshed, commit
     You->>CI: dispatch scenario_pattern = those scenarios
     CI-->>You: react/ regenerated & pushed to your branch
     Note over You,CI: both sets updated — visual.yml stays green on main
@@ -240,7 +240,7 @@ sequenceDiagram
     You->>CI: dispatch scenario_pattern = my-new-scenario
     CI->>CI: --update writes the MISSING react/ goldens
     CI-->>Branch: auto-commit the new PNGs
-    Note over You,Branch: then run Route 3 native to add it to react-local/&lt;arch&gt;
+    Note over You,Branch: then run Route 3 native to add it to react-local/<arch>
 ```
 
 ---
