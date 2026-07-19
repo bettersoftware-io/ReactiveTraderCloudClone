@@ -118,7 +118,14 @@ jobs:
       # the vitest failure-debris dir (…/__screenshots__/visual.spec.tsx/) or a
       # partial react-local/ set. The grep guard hard-fails if anything outside
       # react/ somehow staged.
+      # Auto-commit is for PR-branch dispatches only. On main, pushing directly
+      # would (a) race concurrent merges (main moves during the ~30-min container
+      # run — observed rejected non-fast-forward 2026-07-19) and (b) land
+      # unreviewed [skip ci] binary changes outside the repo's PR/merge-commit
+      # discipline and the post-merge visual backstop. Main dispatches get the
+      # artifact below instead — sync it via a normal PR.
       - name: Commit regenerated react/ goldens to the branch
+        if: github.ref_name != 'main'
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
