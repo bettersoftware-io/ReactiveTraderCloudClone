@@ -223,6 +223,15 @@ flowchart TB
 
     CONTRACTS -. "data-testid + strings<br/>(swap point A: UI lib)" .-> BROWSER
     CONTRACTS -.-> F2
+
+    %% Layout only — invisible links stack the lanes vertically so GitHub
+    %% doesn't tile the subgraphs side-by-side and shrink the whole diagram.
+    FEAT ~~~ CONTRACTS
+    FEAT ~~~ BCTX
+    B1 ~~~ BUILD
+    B2 ~~~ AWAIT
+    P2 ~~~ F1
+    P3 ~~~ F2
 ```
 
 The two dotted edges are the **two migration seams** the rest of this doc is
