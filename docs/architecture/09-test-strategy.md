@@ -143,9 +143,13 @@ Two golden sets are committed per tier: `__screenshots__/react/` (rendered on pi
 
 **Updating goldens** is its own operational runbook — the two sets, the three update routes (dispatch the CI workflow / regenerate locally in Docker / the native fast loop), and which to run for a regression vs. a deliberate change vs. a new scenario: [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md).
 
+How `client-solid` runs these same three tiers **assert-only** against these goldens — never writing one of its own — is [§21 Mechanism 2 — assert-only visual tiers](21-cross-framework-testing.md#mechanism-2--assert-only-visual-tiers).
+
 ### 9.8 UI contract tier
 
 `packages/client-react/tests/ui/contract/` is the second framework-swap pillar: **sociable RTL tests** where framework-neutral specs (`specs/**/*.contract.spec.ts`, per domain) drive framework-neutral page objects (`shared/pages/`), and only the thin `react/` directory (component registry, render adapter, `viewModelFromWorld`) knows React exists. CI enforces **≥95%** statement/branch/function/line coverage on this tier (`test:ui:contract:coverage`) — the strongest single gate in the repo, because it measures how much of the UI the swap-portable suite actually pins down.
+
+The `UiContractDriver` seam that lets the same specs run against `client-solid`'s Solid render target instead of React's is [§21 Mechanism 1 — the contract swap-trio](21-cross-framework-testing.md#mechanism-1--the-contract-swap-trio).
 
 ### 9.9 React Native testing
 

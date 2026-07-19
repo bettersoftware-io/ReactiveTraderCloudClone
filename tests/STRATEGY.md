@@ -382,6 +382,32 @@ the Solid port is behaviour-equivalent to React.
    [`UPDATING-GOLDENS.md`](../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md)
    runbook. e2e does not.)
 
+**How it actually runs (already shipped).** The steps above are the general
+recipe; this repo has already executed it for `client-solid`, so the seam is
+live, not hypothetical:
+
+- `RTC_CLIENT_PKG` (default `@rtc/client-react`) is the one env var that
+  re-targets which client's dev server the shared suites drive —
+  `tests/scripts/devServer.ts`'s `CLIENT_PKG` constant reads it and hands the
+  value straight to `spawn("pnpm", ["--filter", CLIENT_PKG, "dev"])`.
+- `run-all.ts` adds two Solid entries to the concurrent pool —
+  `test:browser:playwright:solid` and `test:browser:playwright-cucumber:solid`
+  — the *same* two config files as their React counterparts, just invoked
+  with `RTC_CLIENT_PKG=@rtc/client-solid` and their own port block
+  (3005–3006, vs. React's 3001–3004) and `-solid` report suffixes.
+- One spec, `login.spec.ts`, stays in `playwright.config.ts`'s `testIgnore`
+  for the Solid run — not because Solid lacks sign-in UI (`LoginScreen` /
+  `AuthGate` ship, and the UI-contract tier's `shell/auth` specs already pass
+  on Solid), but because the spec drives a `demo`/`demo` credential that only
+  `client-react`'s `VITE_DEV_AUTH`-reading path accepts; `client-solid`
+  hardcodes the `mcdc2026` demo roster instead. See
+  [`docs/STATUS.md`](../docs/STATUS.md) ("Solid `login.spec` e2e") for the
+  tracked follow-up.
+
+Deep dive on the full mechanism — env var → `devServer.ts` → `run-all.ts`
+wiring, plus the two real incidents this cross-framework net has caught:
+[§21 Mechanism 3 — e2e via RTC_CLIENT_PKG](../docs/architecture/21-cross-framework-testing.md#mechanism-3--e2e-via-rtc_client_pkg).
+
 ### Axis B — swap the test framework / driver (Playwright → something new)
 
 Here the seam is the **page-object impls** (browser) or the **world/runner glue**
