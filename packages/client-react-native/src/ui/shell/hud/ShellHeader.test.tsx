@@ -102,7 +102,7 @@ test("tapping the env badge toggles the simulator flag", async () => {
       onOpenAppearance={(): void => {}}
     />,
   );
-  fireEvent.press(screen.getByTestId("hud-env-badge"));
+  await fireEvent.press(screen.getByTestId("hud-env-badge"));
   expect(onToggle).toHaveBeenCalledWith(true);
 });
 
