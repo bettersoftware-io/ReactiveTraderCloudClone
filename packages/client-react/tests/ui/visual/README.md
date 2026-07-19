@@ -3,6 +3,12 @@
 Screenshots of the UI layer rendered against injected fake data. No server,
 no presenters, no live streams — the dependency graph stops at `ViewModelProvider`.
 
+> **Just need to update a golden after a UI change?** Jump to the operational
+> runbook: [**UPDATING-GOLDENS.md**](./UPDATING-GOLDENS.md) — the two sets, the
+> three routes, and which command to run for a regression vs. a deliberate change
+> vs. a brand-new scenario. This README is the *layout & rationale*; that file is
+> the *how-to*.
+
 ## Coverage
 
 - **Shell** — connection status bar, offline overlay, header/footer/tabs, theme.
@@ -321,9 +327,17 @@ Both run all three tiers with `CI=1` inside `mcr.microsoft.com/playwright` via
 `--platform linux/amd64`; the emulated container reproduces CI's x86 pixels
 byte-for-byte (measured 2026-07-18), so an arm64 dev can regenerate and commit
 the canonical goldens locally — no `update-visual-goldens` workflow round-trip.
-This is the first step of the migration to a single container-canonical set that
-retires `react-local/<arch>` entirely — see
-[the design spec](../../../../../docs/superpowers/specs/2026-07-18-single-container-golden-set-design.md).
+This is **Route 2** in the update runbook; for the full picture (the CI workflow,
+the native fast loop, and when to reach for each) see
+[**UPDATING-GOLDENS.md**](./UPDATING-GOLDENS.md).
+
+> The byte-identity of the emulated container to CI once motivated a proposal to
+> **collapse to a single container-canonical set** and retire `react-local/<arch>`
+> (spec: [2026-07-18-single-container-golden-set-design.md](../../../../../docs/superpowers/specs/2026-07-18-single-container-golden-set-design.md)).
+> That collapse was **tried and reverted** — it destroyed the instant, Docker-free
+> native loop. The per-platform sets stay by design; the container path is a
+> *convenience for producing `react/` locally*, not a replacement for the local
+> set. See [ADR-001](./ADR-001-visual-diff-tooling.md) for the decision.
 
 `test:ui:visual` and `test:ui:visual:react` are wired to
 `tsx tests/ui/visual/run-all.ts`. The orchestrator reads `package.json`

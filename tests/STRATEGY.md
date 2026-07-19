@@ -378,7 +378,9 @@ the Solid port is behaviour-equivalent to React.
 4. **Run the e2e suites unchanged.** Red → the port changed behaviour; green →
    it's equivalent. **No test edits.**
 5. (Visual goldens are the separate pixel contract and *do* get regenerated —
-   see the visual README. e2e does not.)
+   see the visual tier's
+   [`UPDATING-GOLDENS.md`](../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md)
+   runbook. e2e does not.)
 
 ### Axis B — swap the test framework / driver (Playwright → something new)
 
@@ -481,3 +483,5 @@ distinct jobs, no overlap.
   the port-contract test layer.
 - [`packages/client-react/tests/ui/visual/README.md`](../packages/client-react/tests/ui/visual/README.md)
   — the visual-tier sibling of this document (one axis; pixel goldens).
+- [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md)
+  — the operational runbook for **updating** those pixel goldens (two sets, three routes).

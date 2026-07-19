@@ -19,7 +19,12 @@
       // Design-artifact prototype (hand-authored HUD redesign mock). Not
       // production code — "shares no code with the real app" per its README —
       // so it is out of scope for the formatter/linter, like dist/reports.
-      "!docs/design"
+      "!docs/design",
+      // Self-contained showcase artifacts — single-file HTML generated on the
+      // fly to visualize a doc (inline CSS/JS by design). Not production code;
+      // out of scope for the formatter/linter, same rationale as docs/design.
+      // The dir's README.md stays in scope — only the generated HTML is excluded.
+      "!docs/showcase/**/*.html"
     ]
   },
   "formatter": {
