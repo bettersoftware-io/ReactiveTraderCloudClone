@@ -8,7 +8,8 @@
 // Usage:
 //   node scripts/pages/build-visual-report.mjs --out <dir> \
 //     [--react <pkgDir>] [--solid <pkgDir>] \
-//     [--branch <b>] [--sha <s>] [--run-url <u>]
+//     [--branch <b>] [--sha <s>] [--run-url <u>] \
+//     [--failed "<space-separated package labels that failed>"]
 
 import {
   cpSync,
@@ -85,7 +86,7 @@ function scanPackage(label, pkgDir) {
   const files = [
     ...walk(join(pkgDir, "reports/ui/visual")),
     ...walk(join(pkgDir, "tests/ui/visual")),
-  ];
+  ].sort();
   const failures = [];
   for (const diffPath of files) {
     if (!diffPath.endsWith("-diff.png")) {
@@ -116,8 +117,9 @@ function scanPackage(label, pkgDir) {
 }
 
 // Copy a source PNG into <out>/assets/<label>/<relPathInsidePkg>, returning the
-// site-relative href. Sanitizes only characters illegal on disk; keeps the path
-// shape so assets never collide across tiers/themes.
+// site-relative href. Normalizes backslashes to `/` so the copied asset's href
+// is a valid forward-slash URL path; keeps the path shape so assets never
+// collide across tiers/themes.
 function copyAsset(out, label, pkgDir, srcPath) {
   if (!srcPath) {
     return null;
@@ -133,7 +135,7 @@ function copyAsset(out, label, pkgDir, srcPath) {
 // copy it to <out>/reports/<label>/<tier>/, returning { "label/tier": href }.
 function copyTierReports(out, label, pkgDir) {
   const reports = {};
-  for (const file of walk(join(pkgDir, "reports/ui/visual"))) {
+  for (const file of walk(join(pkgDir, "reports/ui/visual")).sort()) {
     if (!file.endsWith("/report/index.html")) {
       continue;
     }
@@ -216,6 +218,46 @@ ${reportList}    </ul>
 `;
 }
 
+// An honest page for the "a tier crashed before producing any -diff.png"
+// case: distinct from renderGreen (nothing to compare, but NOT all green)
+// and from renderWall (no per-scenario image trips to show). Still links
+// every native tier report found, so a report that did render (e.g. a
+// sibling package's) stays reachable.
+function renderNoDiff(failedLabels, reports, meta) {
+  let reportList = "";
+  for (const [key, href] of Object.entries(reports)) {
+    reportList += `      <li><a href="${escapeHtml(href)}">${escapeHtml(key)}</a></li>\n`;
+  }
+  const failedList = failedLabels.map((label) => escapeHtml(label)).join(", ");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>⚠ Visual tiers failed — no snapshot diffs — ${escapeHtml(meta.branch)} @ ${escapeHtml(meta.shortSha)}</title>
+  <style>${PAGE_STYLE}</style>
+</head>
+<body>
+  <h1>⚠ Visual tiers failed — no snapshot diffs</h1>
+  <p class="meta">${escapeHtml(meta.branch)} @ ${escapeHtml(meta.shortSha)} · generated ${escapeHtml(meta.generated)}</p>
+  <p>One or more visual tiers failed (<strong>${failedList}</strong>) without producing
+  any snapshot diff images — likely a build error, timeout, or crash rather than
+  a pixel mismatch. This page cannot show a before/after/diff wall because no
+  such images exist.</p>
+  <p>Check the workflow run's uploaded artifact and the linked native tier
+  report(s) below for the actual failure.</p>
+  <footer>
+    <h2>Full tier reports</h2>
+    <ul>
+${reportList}    </ul>
+    <a href="${escapeHtml(meta.runUrl)}">↩ workflow run</a>
+  </footer>
+</body>
+</html>
+`;
+}
+
 function renderGreen(meta) {
   return `<!doctype html>
 <html lang="en">
@@ -239,7 +281,7 @@ function main() {
   const out = flag("out");
   if (!out) {
     console.error(
-      "usage: build-visual-report.mjs --out <dir> [--react <dir>] [--solid <dir>] [--branch <b>] [--sha <s>] [--run-url <u>]",
+      "usage: build-visual-report.mjs --out <dir> [--react <dir>] [--solid <dir>] [--branch <b>] [--sha <s>] [--run-url <u>] [--failed <labels>]",
     );
     process.exit(2);
   }
@@ -250,6 +292,9 @@ function main() {
     generated: `${new Date().toISOString().replace("T", " ").slice(0, 16)} UTC`,
     runUrl: flag("run-url", "#"),
   };
+  const failedLabels = flag("failed", "")
+    .split(/\s+/)
+    .filter((label) => label !== "");
 
   mkdirSync(out, { recursive: true });
 
@@ -269,6 +314,24 @@ function main() {
   }
 
   if (scanned.length === 0) {
+    if (failedLabels.length > 0) {
+      // A tier failed (build error, timeout, crash) without producing any
+      // -diff.png — an "all green" page would misrepresent a red job. Copy
+      // every requested package's tier reports (so native report links
+      // still work) and render an honest failure page instead.
+      const reports = {};
+      for (const [label, dir] of packages) {
+        Object.assign(reports, copyTierReports(out, label, dir));
+      }
+      writeFileSync(
+        join(out, "index.html"),
+        renderNoDiff(failedLabels, reports, meta),
+      );
+      console.log(
+        `wrote ${join(out, "index.html")} (${failedLabels.length} tier(s) failed, no diff images)`,
+      );
+      return;
+    }
     writeFileSync(join(out, "index.html"), renderGreen(meta));
     console.log(`wrote ${join(out, "index.html")} (all green)`);
     return;

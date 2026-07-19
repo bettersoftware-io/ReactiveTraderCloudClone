@@ -125,11 +125,15 @@ jobs:
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           rm -rf _stage
           mkdir -p _stage/visual
+          FAILED=""
+          [ "${{ steps.visual_react.outcome }}" = "failure" ] && FAILED="$FAILED client-react"
+          [ "${{ steps.visual_solid.outcome }}" = "failure" ] && FAILED="$FAILED client-solid"
           node scripts/pages/build-visual-report.mjs \
             --out _stage/visual \
             --react packages/client-react \
             --solid packages/client-solid \
-            --branch "${GITHUB_REF_NAME}" --sha "${GITHUB_SHA}" --run-url "$RUN_URL"
+            --branch "${GITHUB_REF_NAME}" --sha "${GITHUB_SHA}" --run-url "$RUN_URL" \
+            --failed "$FAILED"
 
       - name: Publish visual report to gh-pages
         if: always()

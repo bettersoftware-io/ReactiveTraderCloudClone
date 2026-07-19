@@ -54,6 +54,37 @@ describe("build-visual-report — green path", () => {
     expect(existsSync(join(out, "assets"))).toBe(false);
     expect(existsSync(join(out, "reports"))).toBe(false);
   });
+
+  it("renders an honest failure page (not green) when a tier fails without producing diff images", () => {
+    tmp = mkdtempSync(join(tmpdir(), "vr-"));
+    const out = join(tmp, "visual");
+    const react = join(tmp, "client-react");
+    // A tier crashed (build error/timeout) before writing any -diff.png, but
+    // it did manage to write its native report.
+    put(join(react, "reports/ui/visual/playwright/react/report/index.html"));
+
+    execFileSync("node", [
+      SCRIPT,
+      "--out",
+      out,
+      "--react",
+      react,
+      "--sha",
+      "abc1234",
+      "--branch",
+      "main",
+      "--failed",
+      "client-react",
+    ]);
+
+    const html = readFileSync(join(out, "index.html"), "utf8");
+    expect(html).not.toContain("All visual tiers green");
+    expect(html).toContain("failed");
+    expect(html).toContain("reports/client-react/playwright/index.html");
+    expect(
+      existsSync(join(out, "reports/client-react/playwright/index.html")),
+    ).toBe(true);
+  });
 });
 
 describe("build-visual-report — failure wall", () => {
