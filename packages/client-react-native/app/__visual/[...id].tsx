@@ -22,13 +22,13 @@ import { visualHarnessEnabled } from "#/app/visualHarnessGate";
  * `getScenario`/the leaves it composes is fine even when disabled, since the
  * gate short-circuits before anything renders.
  *
- * Open question for the driver-tier tasks: the root `_layout.tsx` renders a
- * fixed five-tab `<Tabs>` (Rates/Blotter/Analytics/Credit/Equities) with no
- * generic `<Slot/>` outlet; whether this nested route needs
- * `Tabs.Screen name="__visual" options={{ href: null }}` (or similar) to be
- * reachable via `router.push`/a deep link without also surfacing as a sixth
- * tab is unverified here — confirm empirically when wiring Task 1.1's deep
- * link (mirrors amendment A2's "confirm empirically" note).
+ * The `(app)` route group (the authed shell) renders its active route via a
+ * generic `<Slot/>` plus a `RadialCommandDock` for module navigation — there
+ * is no tab navigator. `__visual/[...id]` is a top-level sibling of `(app)`
+ * (registered directly under this root `_layout.tsx`, outside the group), so
+ * it is unaffected by the dock or `(app)`'s `<Slot/>` and reachable via
+ * `router.push`/a deep link without surfacing anywhere in the app's own
+ * navigation.
  */
 type VisualHarnessParams = {
   id: string | string[];

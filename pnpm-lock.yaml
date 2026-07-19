@@ -282,6 +282,9 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
+      '@rtc/motion-core':
+        specifier: workspace:*
+        version: link:../motion-core
       '@rtc/react-bindings':
         specifier: workspace:*
         version: link:../react-bindings

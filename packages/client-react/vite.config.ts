@@ -108,6 +108,13 @@ export default defineConfig({
     // RTC_SOURCEMAPS=1 (declared in turbo.json build.env so strict-mode Turbo
     // passes it through) so a profiled deploy shows real component names in the
     // flamechart. Unset/"" → false, i.e. today's minified build.
-    sourcemap: process.env.RTC_SOURCEMAPS === "1",
+    //
+    // "inline" (not true/external): Vercel's edge returns 403 for served .map
+    // files by design (source-exposure protection), so an external map is
+    // generated + linked but never fetchable in prod. An inline map is embedded
+    // in the bundle as a data: URI — no separate .map request to block — so
+    // DevTools resolves real source in the deployed app. The bundle is larger,
+    // which is fine for an opt-in debug build. See docs/DEPLOY.md.
+    sourcemap: process.env.RTC_SOURCEMAPS === "1" ? "inline" : false,
   },
 });
