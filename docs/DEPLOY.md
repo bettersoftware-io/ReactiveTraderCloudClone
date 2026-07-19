@@ -84,6 +84,8 @@ of a larger bundle — fine for an opt-in debug deploy. The wiring is
 `vite.config.ts` (`build.sourcemap: "inline"`); the deploy job asserts the
 inline map is present when requested, so a regression fails loudly.
 
+The debug build also resolves the `@rtc/*` libraries to their **original TypeScript**: when `RTC_SOURCEMAPS=1`, Vite aliases those workspace packages to their `src` (compiling them from source rather than consuming `dist/*.js`, whose sourcemap chain Vite's dep pre-bundle would otherwise drop), and emits distinct `-dbg-` filenames so the debug and lean builds never collide in a cache. So a profiled deploy resolves the whole flamechart — app components and presenters/machines — to source.
+
 ## How it works
 
 - The client is a static Vite SPA. When `VITE_SERVER_URL` is set, its login
