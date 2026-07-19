@@ -98,6 +98,11 @@ const pkgSrc = (name: string): string =>
     "src",
     "index.ts",
   );
+// Bare package specifiers only. Every @rtc/* package currently exports just "."
+// (imported as `@rtc/client-core`, never `@rtc/client-core/sub`), so mapping the
+// specifier straight to src/index.ts is correct. If a production `src` file ever
+// adds an `@rtc/*/subpath` import, add its own alias entry — a prefix match would
+// otherwise rewrite it to `.../src/index.ts/subpath` and break the debug build.
 const rtcSourceAlias: Record<string, string> = debugBuild
   ? {
       "@rtc/client-core": pkgSrc("client-core"),
