@@ -114,6 +114,18 @@ tree, so **new** golden files are committed too, not just changed ones.
 The same pinned image under `--platform linux/amd64` reproduces CI's x86 pixels
 byte-for-byte, so any machine with Docker can produce or check `react/` locally.
 
+```mermaid
+sequenceDiagram
+    participant You
+    participant Container as pinned x86 container
+    participant Tree as your working tree
+    You->>Container: pnpm goldens:regen (CI=1 · --platform linux/amd64)
+    Container->>Container: render all scenarios × 3 tiers
+    Container-->>Tree: write react/ (byte-identical to CI)
+    You->>Tree: review & commit
+    Note over You,Tree: goldens:verify asserts react/ instead of writing — a CI-exact local gate
+```
+
 ```bash
 pnpm goldens:regen    # rewrite react/ into the working tree — review & commit
 pnpm goldens:verify   # assert the committed react/ set passes (a CI-exact gate)
@@ -130,6 +142,16 @@ store. **Full-set only today** (~20–30 min) — see [gaps](#known-gaps).
 Plain Playwright / Vitest on your host, writing your native `react-local/<arch>`
 set. Instant, no container. Run it after a deliberate UI change so
 `pnpm test:ui:visual` goes green again locally.
+
+```mermaid
+sequenceDiagram
+    participant You
+    participant Host as your machine (no Docker)
+    You->>Host: pnpm ...:react:update (CI unset · optional SCENARIO_PATTERN)
+    Host->>Host: render natively
+    Host-->>You: write react-local/&lt;arch&gt;
+    Note over You,Host: pnpm test:ui:visual is green locally again — commit the local set
+```
 
 ```bash
 # one tier:
@@ -151,6 +173,19 @@ Your change broke the UI; the golden did its job. **Fix the bug. Touch no
 goldens.** No route needed — the red is correct, and it should go green once the
 bug is fixed.
 
+```mermaid
+sequenceDiagram
+    participant You
+    participant Tests as visual tests
+    participant Golden as committed golden
+    You->>Tests: change UI (unintended break)
+    Tests->>Golden: compare render vs golden
+    Golden-->>Tests: mismatch
+    Tests-->>You: RED — regression caught
+    You->>You: fix the bug (do NOT touch goldens)
+    Tests-->>You: GREEN again
+```
+
 ### B · You made a deliberate UI change, so some snapshots *should* change
 
 This is Route 1's home turf — with one wrinkle: `visual.yml` runs **post-merge
@@ -166,6 +201,18 @@ machine, not from a PR check.
    `pnpm goldens:regen` locally.
 4. **(Optional) prove it** — `pnpm goldens:verify` reproduces CI's exact gate
    before you push.
+
+```mermaid
+sequenceDiagram
+    participant You
+    participant Native as Route 3 (native)
+    participant CI as Route 1 (workflow)
+    You->>Native: run :update — learn which scenarios moved
+    Native-->>You: react-local/&lt;arch&gt; refreshed → commit
+    You->>CI: dispatch scenario_pattern = those scenarios
+    CI-->>You: react/ regenerated & pushed to your branch
+    Note over You,CI: both sets updated — visual.yml stays green on main
+```
 
 ### C · You added a brand-new component / scenario (no golden exists yet)
 
@@ -183,6 +230,18 @@ gh workflow run "Update visual goldens" --ref my-branch -f scenario_pattern=my-n
 
 Then run Route 3 native locally to add the same new scenario to your
 `react-local/<arch>` set.
+
+```mermaid
+sequenceDiagram
+    participant You
+    participant Branch as your branch
+    participant CI as Route 1 (workflow)
+    You->>Branch: register scenario (scenarios.ts + registry) then push
+    You->>CI: dispatch scenario_pattern = my-new-scenario
+    CI->>CI: --update writes the MISSING react/ goldens
+    CI-->>Branch: auto-commit the new PNGs
+    Note over You,Branch: then run Route 3 native to add it to react-local/&lt;arch&gt;
+```
 
 ---
 
