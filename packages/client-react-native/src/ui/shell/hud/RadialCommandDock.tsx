@@ -38,6 +38,10 @@ export function RadialCommandDock(): JSX.Element {
   const router = useRouter();
   const pathname = usePathname();
   const sats = radialDockLayout(MODULE_ROUTES.length);
+  const active =
+    MODULE_ROUTES.find((mod) => {
+      return mod.path === pathname;
+    }) ?? MODULE_ROUTES[0];
 
   return (
     <View pointerEvents="box-none" style={styles.root}>
@@ -79,7 +83,7 @@ export function RadialCommandDock(): JSX.Element {
         }}
         style={styles.fab}
       >
-        <FabHex />
+        <FabHex glyph={open ? "✕" : active.glyph} />
       </Pressable>
     </View>
   );
@@ -88,25 +92,50 @@ export function RadialCommandDock(): JSX.Element {
 const FAB = 58;
 const HEX_POINTS = "29,0 54,14.5 54,43.5 29,58 4,43.5 4,14.5";
 
-/** The hex FAB face — an accent→accent2 gradient hexagon (SVG). */
-function FabHex(): JSX.Element {
+interface FabHexProps {
+  readonly glyph: string;
+}
+
+/** The hex FAB face — an accent→accent2 gradient hexagon (SVG) with a
+ * centred glyph: the active module's glyph when closed, `✕` when open
+ * (prototype .dc.html `dockGlyph = dockOpen ? '✕' : cur.g`). */
+function FabHex({ glyph }: FabHexProps): JSX.Element {
   const t = useTheme();
   // Per-instance gradient id (useId — static literals trip Biome's
   // useUniqueElementIds). Colons stripped so `url(#…)` parses cleanly.
   const gradientId = useId().replace(/:/g, "");
 
   return (
-    <Svg width={FAB} height={FAB} viewBox="0 0 58 58">
-      <Defs>
-        <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={t.accentPrimary} />
-          <Stop offset="1" stopColor={t.accent2} />
-        </LinearGradient>
-      </Defs>
-      <Polygon points={HEX_POINTS} fill={`url(#${gradientId})`} />
-    </Svg>
+    <View style={fabHexStyles.wrap}>
+      <Svg width={FAB} height={FAB} viewBox="0 0 58 58">
+        <Defs>
+          <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={t.accentPrimary} />
+            <Stop offset="1" stopColor={t.accent2} />
+          </LinearGradient>
+        </Defs>
+        <Polygon points={HEX_POINTS} fill={`url(#${gradientId})`} />
+      </Svg>
+      <Text style={[fabHexStyles.glyph, { color: t.textOnAccent }]}>
+        {glyph}
+      </Text>
+    </View>
   );
 }
+
+const fabHexStyles = StyleSheet.create({
+  wrap: {
+    width: FAB,
+    height: FAB,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  glyph: {
+    position: "absolute",
+    fontSize: 21,
+    fontWeight: "600",
+  },
+});
 
 interface SatelliteProps {
   readonly module: (typeof MODULE_ROUTES)[number];

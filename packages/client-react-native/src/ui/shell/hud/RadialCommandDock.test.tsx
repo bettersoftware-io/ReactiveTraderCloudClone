@@ -1,6 +1,11 @@
 // packages/client-react-native/src/ui/shell/hud/RadialCommandDock.test.tsx
 import { expect, jest, test } from "@jest/globals";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react-native";
 import type { JSX } from "react";
 
 const mockNavigate = jest.fn();
@@ -63,6 +68,15 @@ test("selecting a satellite navigates to its route and closes", async () => {
   await fireEvent.press(screen.getByTestId("hud-dock-sat-credit"));
   expect(mockNavigate).toHaveBeenCalledWith("/credit");
   expect(screen.queryByTestId("hud-dock-sat-credit")).toBeNull();
+});
+
+test("shows the active module's glyph on the FAB, then ✕ while open", async () => {
+  await render(<RadialCommandDock />);
+  const fab = within(screen.getByTestId("hud-dock-fab"));
+  expect(fab.getByText("⇅")).toBeTruthy();
+
+  await fireEvent.press(screen.getByTestId("hud-dock-fab"));
+  expect(fab.getByText("✕")).toBeTruthy();
 });
 
 interface RadialCommandDockModule {
