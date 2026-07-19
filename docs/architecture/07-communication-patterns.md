@@ -200,7 +200,7 @@ All deploys are **manual** (`workflow_dispatch`) — merging to `main` runs CI b
 ```mermaid
 flowchart LR
     subgraph GH["GitHub Actions (workflow_dispatch only)"]
-        d1["deploy.yml<br/>deploy-server + deploy-client"]
+        d1["deploy.yml<br/>server + react + solid (checkboxes)"]
         d2["deploy-proto.yml"]
         d3["deploy-cd-proto.yml"]
     end
@@ -210,7 +210,8 @@ flowchart LR
     end
 
     subgraph Vercel["Vercel (all password/Basic-Auth gated)"]
-        v1["rtc-clone<br/>@rtc/client-react<br/>VITE_SERVER_URL baked at build"]
+        v1["rtc-clone-react<br/>@rtc/client-react<br/>VITE_SERVER_URL baked at build"]
+        v1s["rtc-clone-solid<br/>@rtc/client-solid<br/>VITE_SERVER_URL baked at build"]
         v2["rtc-clone-proto<br/>@rtc/client-prototype<br/>(v2-design React port)"]
         v3["rtc-clone-web-cd-proto<br/>docs/design/web standalone HTML"]
         v4["rtc-clone-mobile-cd-proto<br/>docs/design/mobile standalone HTML"]
