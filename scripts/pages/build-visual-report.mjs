@@ -56,12 +56,22 @@ function walk(dir, out = []) {
   return out;
 }
 
-// The tier is the path segment immediately after ".../ui/visual/".
+// The tier is the path segment immediately after either ".../ui/visual/"
+// (the legacy shape, still current for a package's own `reports/ui/visual/`
+// native-report tree, and for client-solid's local vitest-browser `__diffs__/`
+// scratch) or ".../goldens/" (the shared @rtc/ui-contract goldens tree that
+// `extraDirs` walks — see scanPackage's doc comment). Checked in that order
+// so a path containing both (there are none today, but "goldens" is the more
+// specific/newer anchor) still resolves correctly.
 function tierOf(path) {
   const parts = path.split("/");
-  const index = parts.lastIndexOf("visual");
-  if (index >= 0 && parts[index + 1]) {
-    return parts[index + 1];
+  const goldensIndex = parts.lastIndexOf("goldens");
+  if (goldensIndex >= 0 && parts[goldensIndex + 1]) {
+    return parts[goldensIndex + 1];
+  }
+  const visualIndex = parts.lastIndexOf("visual");
+  if (visualIndex >= 0 && parts[visualIndex + 1]) {
+    return parts[visualIndex + 1];
   }
   return "unknown";
 }

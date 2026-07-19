@@ -143,11 +143,15 @@ describe("build-visual-report — failure wall", () => {
     expect(html).toContain("fx-tile-stale");
     expect(html).toContain("analytics-empty");
     expect(html).toContain("app-fx-system");
-    // Grouped by package + tier.
-    expect(html).toContain("client-react");
-    expect(html).toContain("client-solid");
-    expect(html).toContain("playwright");
-    expect(html).toContain("vitest-browser");
+    // Grouped by package + tier — assert the rendered `<h2>` tier-label
+    // headings themselves (not just substring presence anywhere in the page,
+    // which the scenario `group` field — a relative path that can itself
+    // contain a tier name, e.g. the extraDirs-discovered
+    // `../ui-contract/goldens/vitest-browser/__screenshots__/...` — would
+    // also satisfy even if `tierOf()` mislabeled the heading as "unknown").
+    expect(html).toContain("<h2>client-react · playwright ");
+    expect(html).toContain("<h2>client-react · vitest-browser ");
+    expect(html).toContain("<h2>client-solid · playwright ");
     // before/after/diff labels present.
     expect(html).toContain("reference");
     expect(html).toContain("actual");
