@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 700" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+  <title>One shared source of truth — 86 contract spec files, 1282 visual scenarios, one Gherkin feature tree — proved independently against @rtc/client-react and @rtc/client-solid: same contract specs into both trios, 1282 scenarios converging on one react-owned golden tree, and RTC_CLIENT_PKG flipping which client the same e2e suites drive.</title>
+
+  <rect x="0" y="0" width="980" height="700" rx="12" fill="#0d1117"/>
+  <text x="24" y="32" fill="#e6edf3" font-size="17" font-weight="bold" font-family="ui-sans-serif, system-ui, sans-serif">One shared source, two frameworks</text>
+  <text x="24" y="50" fill="#8b949e" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">86 contract specs · 1282 visual scenarios · one .feature tree — proved independently against @rtc/client-react AND @rtc/client-solid</text>
+
+  <!-- ================= static skeleton: shared source ================= -->
+  <g>
+    <rect x="70" y="68" width="840" height="118" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="2"/>
+    <text x="490" y="88" fill="#e6edf3" font-size="13" text-anchor="middle" font-weight="bold" font-family="ui-sans-serif, system-ui, sans-serif">ONE shared source of truth</text>
+
+    <!-- UNCHANGED badge -->
+    <rect x="800" y="72" width="100" height="26" rx="13" fill="#0d1117" stroke="#3fb950" stroke-width="1.5">
+      <animate attributeName="stroke-width" values="1.5;3;1.5" dur="4s" repeatCount="indefinite"/>
+    </rect>
+    <text x="850" y="89" fill="#3fb950" font-size="9" text-anchor="middle" font-weight="bold">UNCHANGED</text>
+
+    <rect x="90" y="104" width="250" height="72" rx="6" fill="#0d1117" stroke="#21262d" stroke-width="1"/>
+    <text x="215" y="126" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">86 *.contract.spec.ts</text>
+    <text x="215" y="144" fill="#8b949e" font-size="9" text-anchor="middle">sociable RTL specs</text>
+    <text x="215" y="160" fill="#8b949e" font-size="9" text-anchor="middle">framework-neutral</text>
+
+    <rect x="365" y="104" width="250" height="72" rx="6" fill="#0d1117" stroke="#21262d" stroke-width="1"/>
+    <text x="490" y="126" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">scenarios.ts</text>
+    <text x="490" y="144" fill="#8b949e" font-size="9" text-anchor="middle">1282 visual scenarios</text>
+    <text x="490" y="160" fill="#8b949e" font-size="9" text-anchor="middle">theme-matrix expanded</text>
+
+    <rect id="featBox" x="640" y="104" width="250" height="72" rx="6" fill="#0d1117" stroke="#21262d" stroke-width="1"/>
+    <text x="765" y="126" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">.feature + step defs</text>
+    <text x="765" y="144" fill="#8b949e" font-size="9" text-anchor="middle">+ page-object contracts</text>
+    <text x="765" y="160" fill="#8b949e" font-size="9" text-anchor="middle">Gherkin behavioural</text>
+
+    <!-- phase-C emphasis: the feature box flashes UNCHANGED while the toggle flips beneath it -->
+    <animate href="#featBox" attributeName="stroke" dur="12s" repeatCount="indefinite"
+      values="#21262d;#21262d;#3fb950;#3fb950;#21262d" keyTimes="0;0.66;0.71;0.9;1"/>
+    <animate href="#featBox" attributeName="stroke-width" dur="12s" repeatCount="indefinite"
+      values="1;1;2.5;2.5;1" keyTimes="0;0.66;0.71;0.9;1"/>
+  </g>
+
+  <!-- ================= static skeleton: two lanes ================= -->
+  <text x="245" y="210" fill="#58a6ff" font-size="13" text-anchor="middle" font-weight="bold" font-family="ui-sans-serif, system-ui, sans-serif">@rtc/client-react</text>
+  <text x="735" y="210" fill="#c678dd" font-size="13" text-anchor="middle" font-weight="bold" font-family="ui-sans-serif, system-ui, sans-serif">@rtc/client-solid</text>
+
+  <g>
+    <!-- react lane -->
+    <rect x="70" y="228" width="350" height="56" rx="8" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="245" y="250" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">contract trio</text>
+    <text x="245" y="266" fill="#8b949e" font-size="9" text-anchor="middle">86 files → 622 tests passing</text>
+
+    <rect x="70" y="296" width="350" height="56" rx="8" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="245" y="318" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">3 visual tiers</text>
+    <text x="245" y="334" fill="#8b949e" font-size="9" text-anchor="middle">owns the golden tree (may :update)</text>
+
+    <rect x="70" y="364" width="350" height="56" rx="8" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="245" y="386" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">e2e · ports 3001-3004</text>
+    <text x="245" y="402" fill="#8b949e" font-size="9" text-anchor="middle">4 browser suites</text>
+
+    <!-- solid lane -->
+    <rect x="560" y="228" width="350" height="56" rx="8" fill="#161b22" stroke="#c678dd" stroke-width="1.5"/>
+    <text x="735" y="250" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">contract trio</text>
+    <text x="735" y="266" fill="#8b949e" font-size="9" text-anchor="middle">86 files → 622 tests passing</text>
+
+    <rect x="560" y="296" width="350" height="56" rx="8" fill="#161b22" stroke="#c678dd" stroke-width="1.5"/>
+    <text x="735" y="318" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">3 visual tiers</text>
+    <text x="735" y="334" fill="#8b949e" font-size="9" text-anchor="middle">assert-only — owns 0 goldens</text>
+
+    <rect x="560" y="364" width="350" height="56" rx="8" fill="#161b22" stroke="#c678dd" stroke-width="1.5"/>
+    <text x="735" y="386" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">e2e · ports 3005-3006</text>
+    <text x="735" y="402" fill="#8b949e" font-size="9" text-anchor="middle">2 suites (login.spec excluded)</text>
+  </g>
+
+  <!-- ================= static connector lines (always visible) ================= -->
+  <g fill="none" stroke-width="1.2">
+    <line x1="490" y1="186" x2="245" y2="228" stroke="#3fb950" opacity="0.35"/>
+    <line x1="490" y1="186" x2="735" y2="228" stroke="#3fb950" opacity="0.35"/>
+    <line x1="245" y1="352" x2="340" y2="460" stroke="#58a6ff" opacity="0.35"/>
+    <line x1="735" y1="352" x2="640" y2="460" stroke="#c678dd" opacity="0.35"/>
+    <line x1="420" y1="392" x2="560" y2="392" stroke="#d29922" opacity="0.55" stroke-dasharray="4 4"/>
+  </g>
+  <polygon points="420,392 430,386 430,398" fill="#d29922" opacity="0.55"/>
+  <polygon points="560,392 550,386 550,398" fill="#d29922" opacity="0.55"/>
+  <rect x="430" y="372" width="120" height="20" rx="10" fill="#0d1117" stroke="#d29922" stroke-width="1"/>
+  <text x="490" y="386" fill="#d29922" font-size="9" text-anchor="middle" font-weight="bold">RTC_CLIENT_PKG</text>
+
+  <!-- ================= static skeleton: golden tree + badge + verdict ================= -->
+  <g>
+    <rect x="420" y="436" width="140" height="24" rx="12" fill="#0d1117" stroke="#3fb950" stroke-width="1.5">
+      <animate attributeName="stroke-width" values="1.5;3;1.5" dur="4s" repeatCount="indefinite"/>
+    </rect>
+    <text x="490" y="452" fill="#3fb950" font-size="9" text-anchor="middle" font-weight="bold">SOLID OWNS 0 GOLDENS</text>
+
+    <rect x="290" y="460" width="400" height="100" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="2"/>
+    <text x="490" y="490" fill="#e6edf3" font-size="13" text-anchor="middle" font-weight="bold" font-family="ui-sans-serif, system-ui, sans-serif">ONE golden tree</text>
+    <text x="490" y="508" fill="#8b949e" font-size="9" text-anchor="middle">client-react/…/__screenshots__ — react writes + asserts</text>
+    <text x="490" y="524" fill="#8b949e" font-size="9" text-anchor="middle">solid asserts only — never writes, owns none of its own</text>
+
+    <rect x="390" y="572" width="200" height="38" rx="19" fill="#0d1117" stroke="#3fb950" stroke-width="2"/>
+    <text x="490" y="591" fill="#3fb950" font-size="13" text-anchor="middle" font-weight="bold">PASS</text>
+    <text x="490" y="604" fill="#3fb950" font-size="8" text-anchor="middle">pixel-for-pixel, both clients</text>
+  </g>
+
+  <!-- ================= PHASE A (0-4s): same contract specs into both trios ================= -->
+  <g>
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      values="1;1;0;0;1" keyTimes="0;0.28;0.333;0.947;1"/>
+    <circle r="6" fill="#3fb950">
+      <animate attributeName="cx" dur="12s" repeatCount="indefinite" values="490;490;245;245" keyTimes="0;0;0.333;1"/>
+      <animate attributeName="cy" dur="12s" repeatCount="indefinite" values="186;186;228;228" keyTimes="0;0;0.333;1"/>
+    </circle>
+    <circle r="6" fill="#3fb950">
+      <animate attributeName="cx" dur="12s" repeatCount="indefinite" values="490;490;735;735" keyTimes="0;0;0.333;1"/>
+      <animate attributeName="cy" dur="12s" repeatCount="indefinite" values="186;186;228;228" keyTimes="0;0;0.333;1"/>
+    </circle>
+    <text x="490" y="636" fill="#3fb950" font-size="12" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif">Mechanism 1 — the same 86 contract specs stream into both trios (622/622 tests, both clients)</text>
+  </g>
+
+  <!-- ================= PHASE B (4-8s): 1282 scenarios converge on the golden tree ================= -->
+  <g opacity="0">
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.28;0.333;0.613;0.667;1"/>
+    <circle r="6" fill="#d29922">
+      <animate attributeName="cx" dur="12s" repeatCount="indefinite" values="245;245;340;340" keyTimes="0;0.333;0.613;1"/>
+      <animate attributeName="cy" dur="12s" repeatCount="indefinite" values="352;352;460;460" keyTimes="0;0.333;0.613;1"/>
+    </circle>
+    <circle r="6" fill="#d29922">
+      <animate attributeName="cx" dur="12s" repeatCount="indefinite" values="735;735;640;640" keyTimes="0;0.333;0.613;1"/>
+      <animate attributeName="cy" dur="12s" repeatCount="indefinite" values="352;352;460;460" keyTimes="0;0.333;0.613;1"/>
+    </circle>
+    <text x="490" y="636" fill="#d29922" font-size="12" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif">Mechanism 2 — 1282 scenarios × 3 tiers converge on ONE golden tree, pixel-for-pixel</text>
+  </g>
+
+  <!-- ================= PHASE C (8-12s): RTC_CLIENT_PKG flips the e2e target ================= -->
+  <g opacity="0">
+    <animate attributeName="opacity" dur="12s" repeatCount="indefinite"
+      values="0;0;1;1;0" keyTimes="0;0.613;0.667;0.947;1"/>
+    <circle cy="392" r="7" fill="#d29922">
+      <animate attributeName="cx" dur="12s" repeatCount="indefinite" values="420;420;560;560" keyTimes="0;0.667;0.947;1"/>
+    </circle>
+    <text x="490" y="636" fill="#58a6ff" font-size="12" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif">Mechanism 3 — RTC_CLIENT_PKG flips which client's dev server the SAME e2e suites drive</text>
+  </g>
+
+  <!-- ================= phase indicator dots ================= -->
+  <g>
+    <circle cx="450" cy="662" r="5" fill="#3fb950">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="1;1;0.25;0.25;1" keyTimes="0;0.30;0.34;0.95;1"/>
+    </circle>
+    <circle cx="490" cy="662" r="5" fill="#d29922" opacity="0.25">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="0.25;0.25;1;1;0.25;0.25" keyTimes="0;0.30;0.34;0.62;0.66;1"/>
+    </circle>
+    <circle cx="530" cy="662" r="5" fill="#58a6ff" opacity="0.25">
+      <animate attributeName="opacity" dur="12s" repeatCount="indefinite" values="0.25;0.25;1;1;0.25" keyTimes="0;0.62;0.66;0.95;1"/>
+    </circle>
+  </g>
+
+  <text x="490" y="684" fill="#8b949e" font-size="9" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif">green = shared/frozen · blue = react · orchid = solid · amber = env toggle</text>
+</svg>

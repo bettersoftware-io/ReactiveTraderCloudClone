@@ -20,6 +20,8 @@ would fool both clients' contract runs identically, but it can't also forge a
 pixel-identical screenshot or fake a real-browser `fill()` event sequence, so
 the three tiers fail on different axes when something is actually wrong.
 
+![Animated: one shared test source proving two frameworks — contract specs into both trios, screenshots converging on one golden tree, RTC_CLIENT_PKG flipping the e2e target](./one-suite-two-frameworks.svg)
+
 ```mermaid
 flowchart TB
     subgraph shared["ONE shared source of truth (@rtc/ui-contract + tests/)"]
