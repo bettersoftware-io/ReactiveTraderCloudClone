@@ -28,7 +28,7 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 
 | script | what it runs | server | report (under `reports/`) |
 |---|---|---|---|
-| `test:e2e` | gates, then ALL 10 suites below in parallel via `scripts/run-all.ts` | per-suite | — (each suite writes its own) |
+| `test:e2e` | gates, then ALL 12 suites below in parallel via `scripts/run-all.ts` | per-suite | — (each suite writes its own) |
 | `test:browser:playwright` | native `@playwright/test` specs, `browser/playwright/` | dev server | `browser/playwright/` |
 | `test:browser:playwright:headed` | ↑ in a visible browser (`playwright test --headed`, one window at a time) | dev server | `browser/playwright/` |
 | `test:browser:playwright:ui` | ↑ in Playwright UI mode (`playwright test --ui`: test-tree sidebar, watch mode, time-travel/trace) | dev server | — (interactive) |

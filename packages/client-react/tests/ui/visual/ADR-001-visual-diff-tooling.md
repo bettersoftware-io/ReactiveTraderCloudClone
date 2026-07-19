@@ -209,9 +209,9 @@ that occasionally shift a pixel. The first run's diffs against the shared golden
 Every visual scenario is captured across the full theme matrix: **Classic, Holo,
 Holo-3D, Terminal, Terminal-3D × dark, light = 10 combos**. Neon is **excluded**
 (the sixth skin) by product decision — its high-contrast cyberpunk grid is not a
-supported showcase surface. That's **1222 scenarios per tier** (122 expandable
+supported showcase surface. That's **1282 scenarios per tier** (128 expandable
 base scenarios × 10, plus 2 un-expanded mode-cycle scenarios), **× 3 tiers =
-3666 goldens per architecture set**, ~**109 MB** on disk per set (full-page shots
+3846 goldens per architecture set**, ~**162 MB** on disk per set (full-page shots
 grow with the viewport; the ~1100 component shots are content-sized and don't).
 
 ### How it works

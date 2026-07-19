@@ -53,15 +53,17 @@ process from the runner. Coverage lives in the in-process tiers; see
 
 ---
 
-## 2. The suite map: 10 suites, 3 families, 2 variation axes
+## 2. The suite map: 12 suites, 3 families, 2 variation axes
 
 ```
 FAMILY        SUITE                                          varies by…
 ────────────  ─────────────────────────────────────────────  ─────────────────────────────────────────────
 Browser       test:browser:playwright                        driver=Playwright       style=native
-(4)           test:browser:cypress                           driver=Cypress          style=native
+(6)           test:browser:cypress                           driver=Cypress          style=native
               test:browser:playwright-cucumber               driver=Playwright       style=Gherkin
               test:browser:cypress-cucumber                  driver=Cypress          style=Gherkin
+              test:browser:playwright:solid                  driver=Playwright       style=native, client=Solid
+              test:browser:playwright-cucumber:solid         driver=Playwright       style=Gherkin, client=Solid
 
 Presenter     test:presenter:cucumber                        runner=cucumber         time=REAL (reference)
 (4)           test:presenter:cucumber-fake-timers            runner=cucumber         time=virtual
