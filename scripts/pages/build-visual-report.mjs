@@ -82,10 +82,23 @@ const PAGE_STYLE = `
 
 // One failed scenario, normalized across tiers.
 // { package, tier, scenario, group, referencePath, actualPath, diffPath }
-function scanPackage(label, pkgDir) {
+//
+// `extraDirs` covers the shared @rtc/ui-contract goldens tree
+// (packages/ui-contract/goldens/<tier>/__screenshots__/): every tier writes
+// its failure debris (-actual.png / -diff.png) next to the golden it
+// compared against, and BOTH clients' playwright/playwright-ct tiers (plus
+// react's own vitest-browser tier) resolve their snapshotDir/screenshot path
+// there — only client-solid's vitest-browser tier keeps its diffs local
+// (tests/ui/visual/vitest-browser/__diffs__/, walked via pkgDir above). The
+// caller passes this only for the "client-react" scan (see main()), mirroring
+// the pre-relocation behavior where solid's cross-package writes into
+// client-react's own tree were likewise reported under the "client-react"
+// label.
+function scanPackage(label, pkgDir, extraDirs = []) {
   const files = [
     ...walk(join(pkgDir, "reports/ui/visual")),
     ...walk(join(pkgDir, "tests/ui/visual")),
+    ...extraDirs.flatMap((dir) => walk(dir)),
   ].sort();
   const failures = [];
   for (const diffPath of files) {
@@ -308,7 +321,14 @@ function main() {
   // package has been scanned.
   const scanned = [];
   for (const [label, dir] of packages) {
-    for (const f of scanPackage(label, dir)) {
+    // The shared @rtc/ui-contract goldens tree is a workspace sibling of
+    // client-react (../ui-contract/goldens relative to --react's dir) — see
+    // scanPackage's doc comment for why only the "client-react" scan walks it.
+    const extraDirs =
+      label === "client-react"
+        ? [join(dirname(dir), "ui-contract/goldens")]
+        : [];
+    for (const f of scanPackage(label, dir, extraDirs)) {
       scanned.push([label, dir, f]);
     }
   }

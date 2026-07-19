@@ -154,8 +154,9 @@ jobs:
       # On a mismatch, publish the actual-vs-expected images so the regression (or
       # an intended change awaiting golden regen) can be inspected. Solid's own
       # diff/report artifacts stay inside its own reports/ tree (its tiers never
-      # write into client-react's __screenshots__/, so react's actual/diff/
-      # reference globs below are exhaustive for that package).
+      # write into the ui-contract goldens tree, so the actual/diff/reference
+      # glob below — which now covers both clients' debris, since both write
+      # next to the shared ui-contract goldens — is exhaustive for that package).
       - name: Upload visual diff report on failure
         if: ${{ always() && (steps.visual_react.outcome == 'failure' || steps.visual_solid.outcome == 'failure') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -163,9 +164,7 @@ jobs:
           name: ui-visual-report
           path: |
             packages/client-react/reports/
-            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-actual.png
-            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-diff.png
-            packages/client-react/tests/ui/visual/**/__screenshots__/**/*-reference.png
+            packages/ui-contract/goldens/**/__screenshots__/**/*-{actual,diff,reference}.png
             packages/client-solid/reports/
           if-no-files-found: ignore
           retention-days: 7

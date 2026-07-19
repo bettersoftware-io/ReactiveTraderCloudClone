@@ -22,9 +22,13 @@ test-results/
 # DIRECTLY under __screenshots__/ (e.g. __screenshots__/visual.spec.tsx/
 # app-credit-1.png) — never a golden, must never be committed. Real goldens
 # always have react/ or react-local/<arch>/ between __screenshots__ and the spec
-# dir, so this can't match them.
+# dir, so this can't match them. The goldens themselves live under
+# packages/ui-contract/goldens/ (generated exclusively from client-react's
+# renders) — this same debris-dir shape can appear there too.
 packages/*/tests/ui/visual/**/__screenshots__/*.spec.ts/
 packages/*/tests/ui/visual/**/__screenshots__/*.spec.tsx/
+packages/ui-contract/goldens/**/__screenshots__/*.spec.ts/
+packages/ui-contract/goldens/**/__screenshots__/*.spec.tsx/
 
 # actionlint binary (downloaded via scripts/install-actionlint.sh)
 .tooling/

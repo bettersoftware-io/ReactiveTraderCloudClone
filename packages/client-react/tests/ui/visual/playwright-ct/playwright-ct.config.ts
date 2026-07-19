@@ -24,10 +24,21 @@ const baseline = process.env.CI
   ? "react"
   : `react-local/${os.platform()}-${os.arch()}`;
 
+// Goldens live in @rtc/ui-contract, beside the pixel-contract spec they assert
+// against — generated exclusively from THIS package's renders (react is the
+// reference renderer; solid's tiers assert against this same tree, never
+// write it).
+const GOLDENS_DIR = fileURLToPath(
+  new URL(
+    "../../../../../ui-contract/goldens/playwright-ct/__screenshots__",
+    import.meta.url,
+  ),
+);
+
 export default defineConfig({
   testDir: ".",
   testMatch: "**/*.spec.tsx",
-  snapshotDir: "./__screenshots__",
+  snapshotDir: GOLDENS_DIR,
   snapshotPathTemplate: `{snapshotDir}/${baseline}/{testFileName}/{arg}{ext}`,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

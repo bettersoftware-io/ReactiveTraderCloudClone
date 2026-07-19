@@ -1,8 +1,20 @@
 import os from "node:os";
+import { fileURLToPath } from "node:url";
 
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3200;
+
+// Goldens live in @rtc/ui-contract, beside the pixel-contract spec they assert
+// against (scenarios.ts / scenarioActions.ts / fixtures.ts / goldenPath.ts) —
+// generated exclusively from THIS package's renders (react is the reference
+// renderer; solid's tiers assert against this same tree, never write it).
+const GOLDENS_DIR = fileURLToPath(
+  new URL(
+    "../../../../../ui-contract/goldens/playwright/__screenshots__",
+    import.meta.url,
+  ),
+);
 
 // Two committed golden sets, routed by environment. CI renders on x86 Linux in
 // the pinned Playwright container and owns the canonical `react/` baseline — the
@@ -21,7 +33,7 @@ const baseline = process.env.CI
 export default defineConfig({
   testDir: ".",
   testMatch: "**/*.spec.ts",
-  snapshotDir: "./__screenshots__",
+  snapshotDir: GOLDENS_DIR,
   snapshotPathTemplate: `{snapshotDir}/${baseline}/{testFileName}/{arg}{ext}`,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

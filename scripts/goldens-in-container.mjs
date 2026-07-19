@@ -68,7 +68,7 @@ const inner = [
   `echo '[playwright-ct]' && npx playwright test -c tests/ui/visual/playwright-ct/playwright-ct.config.ts ${flag}`,
   `echo '[vitest-browser]' && npx vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts ${vitestFlag}`,
   update
-    ? 'for t in playwright playwright-ct vitest-browser; do d="tests/ui/visual/$t/__screenshots__/react"; if [ -d "$d" ]; then mkdir -p "/out/$t"; cp -r "$d/." "/out/$t/"; fi; done'
+    ? 'for t in playwright playwright-ct vitest-browser; do d="../ui-contract/goldens/$t/__screenshots__/react"; if [ -d "$d" ]; then mkdir -p "/out/$t"; cp -r "$d/." "/out/$t/"; fi; done'
     : 'echo "[verify] all tiers passed against the committed react/ set"',
 ].join("\n");
 
@@ -108,7 +108,7 @@ if (update) {
     const from = resolve(outDir, tier);
     const to = resolve(
       repoRoot,
-      "packages/client-react/tests/ui/visual",
+      "packages/ui-contract/goldens",
       tier,
       "__screenshots__/react",
     );
