@@ -317,17 +317,12 @@ Both run all three tiers with `CI=1` inside `mcr.microsoft.com/playwright` via
 byte-for-byte (measured 2026-07-18), so an arm64 dev can regenerate and commit
 the canonical goldens locally — no `update-visual-goldens` workflow round-trip.
 
-> ⚠️ **The `:update` scripts refuse to run on a non-x86 host — by design.** Now
-> that `baseline` is the constant `react`, a native `…:react:update` would write
-> your host's (arm64) pixels straight into `react/` and corrupt the canonical
-> set. A preflight guard (`guardGoldenUpdate.ts`, called from all three tier
-> configs) hard-fails any `--update` / `--update-snapshots` off `x64` — so
-> regenerate only through `pnpm goldens:regen` (container) or the
-> `update-visual-goldens` workflow, both of which render as `x64` and pass the
-> guard. (Deliberate throwaway experiment that won't match CI?
-> `RTC_ALLOW_NATIVE_GOLDEN_UPDATE=1` overrides it.) The bare `:update` scripts
-> are correct only *inside* the container — which is exactly what `goldens:regen`
-> invokes.
+> ⚠️ **Do NOT run the bare `:update` scripts to regenerate goldens on a non-x86
+> host.** Now that `baseline` is the constant `react`, a native `…:react:update`
+> run writes your host's (arm64) pixels straight into `react/`, corrupting the
+> canonical set. Regenerate only through `pnpm goldens:regen` (container) or the
+> `update-visual-goldens` workflow. The bare `:update` scripts are correct only
+> *inside* the container — which is exactly what `goldens:regen` invokes.
 
 No Docker (e.g. the claude-sandbox)? Push a branch and dispatch
 `update-visual-goldens.yml` (optionally with a `scenario_pattern`) — it

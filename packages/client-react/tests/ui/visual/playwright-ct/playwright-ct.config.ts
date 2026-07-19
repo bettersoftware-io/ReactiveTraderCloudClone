@@ -3,12 +3,6 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/experimental-ct-react";
 import react from "@vitejs/plugin-react";
 
-import { guardGoldenUpdate } from "../guardGoldenUpdate";
-
-// Preflight: block a native `--update-snapshots` on a non-x86 host (would
-// corrupt the x86-only react/ set). No-op when asserting or on x64.
-guardGoldenUpdate();
-
 const uiVisual = fileURLToPath(new URL("../react", import.meta.url));
 // The shared scenario/goldenPath matrix, extracted to @rtc/ui-contract (Task
 // 3) — distinct from `@ui-visual` above, which is the framework-swap render
