@@ -21,6 +21,7 @@ module.exports = {
     "^@rtc/domain$": "<rootDir>/../domain/dist/index.js",
     "^@rtc/shared$": "<rootDir>/../shared/dist/index.js",
     "^@rtc/client-core$": "<rootDir>/../client-core/dist/index.js",
+    "^@rtc/motion-core$": "<rootDir>/../motion-core/dist/index.js",
     "^@rtc/react-bindings$": "<rootDir>/../react-bindings/dist/index.js",
     "^@rtc/devtools-core$": "<rootDir>/../devtools-core/dist/index.js",
   },
