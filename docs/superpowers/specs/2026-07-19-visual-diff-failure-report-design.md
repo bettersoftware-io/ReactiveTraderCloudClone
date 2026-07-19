@@ -68,7 +68,9 @@ the site hub, using the same publish primitive; none clobbers the others.
   on disk — so a tier that failed for a **non-visual** reason (compile error,
   timeout) with no diff images is still reachable through its own report and is
   never silently dropped, without the generator having to parse per-tier result
-  JSON.
+  JSON. When such a crash is the *only* failure (no diffs at all), the page is
+  the honest "tiers failed — no snapshot diffs" variant (see §5 below), never
+  the green one.
 
 Everything published is failures-only *by construction*: passing scenarios
 produce no `actual`/`diff` images at all.
@@ -100,9 +102,20 @@ file-driven, no dependencies. Responsibilities:
 3. **Emit `_site/visual/index.html`** — the grouped thumbnail wall + drill-through
    links + run metadata, styled to match the coverage landing page
    (`color-scheme: light dark`, system font, mobile-friendly).
-4. **Green case** — if zero failure records are found, emit the "all green"
-   placeholder page instead (no assets, no reports subtree).
-5. Print a summary line (failure count, or "all green").
+4. **Green case** — if zero failure records are found AND no tier was reported
+   failed (via `--failed`, below), emit the "all green" placeholder page (no
+   assets, no reports subtree).
+5. **Failed-but-no-diffs case** — if zero failure records are found BUT the
+   workflow signalled a failed tier (a crash/timeout/build error can red the
+   job without producing any `-diff.png`), emit an honest "tiers failed — no
+   snapshot diffs" page instead of the green one: it names the failed packages
+   and links every native tier report found, so a red job never publishes a
+   page that claims green. The workflow passes which tiers failed via a
+   `--failed "<space-separated labels>"` flag computed from the step outcomes
+   (`steps.visual_*.outcome`) — no per-tier result-JSON parsing.
+6. Print a summary line (failure count / "all green" / "N tier(s) failed, no
+   diff images"). Output is deterministic: discovery sorts its file list, so
+   identical inputs yield a byte-identical `index.html`.
 
 CLI shape mirrors the sibling scripts, e.g.:
 
