@@ -274,20 +274,20 @@ function main() {
     return;
   }
 
-  // Failures exist: now copy assets per record, and each package's tier
-  // reports at most once.
+  // Failures exist somewhere: copy per-scenario assets, and every requested
+  // package's tier reports (not just the ones with failures — a fully-green
+  // sibling package's report must still be copied + linked so nothing is
+  // silently dropped from the "Full tier reports" footer).
   const failures = [];
   const reports = {};
-  const reportedLabels = new Set();
   for (const [label, dir, f] of scanned) {
     f.reference = copyAsset(out, label, dir, f.referencePath);
     f.actual = copyAsset(out, label, dir, f.actualPath);
     f.diff = copyAsset(out, label, dir, f.diffPath);
     failures.push(f);
-    if (!reportedLabels.has(label)) {
-      reportedLabels.add(label);
-      Object.assign(reports, copyTierReports(out, label, dir));
-    }
+  }
+  for (const [label, dir] of packages) {
+    Object.assign(reports, copyTierReports(out, label, dir));
   }
 
   writeFileSync(join(out, "index.html"), renderWall(failures, reports, meta));

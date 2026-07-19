@@ -154,6 +154,44 @@ describe("build-visual-report — failure wall", () => {
     );
     expect(readFileSync(refAsset, "utf8")).toBe("REF");
   });
+
+  it("still copies + links a fully-green sibling package's tier report", () => {
+    tmp = mkdtempSync(join(tmpdir(), "vr-"));
+    const out = join(tmp, "visual");
+    const react = join(tmp, "client-react");
+    const solid = join(tmp, "client-solid");
+
+    // react: one failing scenario.
+    const pwArt = join(
+      react,
+      "reports/ui/visual/playwright/react/artifacts/fx",
+    );
+    put(join(pwArt, "fx-tile-stale-expected.png"));
+    put(join(pwArt, "fx-tile-stale-actual.png"));
+    put(join(pwArt, "fx-tile-stale-diff.png"));
+    put(join(react, "reports/ui/visual/playwright/react/report/index.html"));
+
+    // solid: fully green — a valid report, but no -diff.png anywhere.
+    put(join(solid, "reports/ui/visual/playwright/solid/report/index.html"));
+
+    execFileSync("node", [
+      SCRIPT,
+      "--out",
+      out,
+      "--react",
+      react,
+      "--solid",
+      solid,
+    ]);
+
+    const html = readFileSync(join(out, "index.html"), "utf8");
+    // The green sibling's report is still linked in the "Full tier reports" footer.
+    expect(html).toContain("reports/client-solid/playwright/index.html");
+    // ...and was physically copied.
+    expect(
+      existsSync(join(out, "reports/client-solid/playwright/index.html")),
+    ).toBe(true);
+  });
 });
 
 // Writes a file (and any parent dirs), returning its path. Content is a tiny
