@@ -29,6 +29,19 @@ const baseline = process.env.CI
   ? "react"
   : `react-local/${os.platform()}-${os.arch()}`;
 
+// Goldens live in @rtc/ui-contract, beside the pixel-contract spec they
+// assert against — generated exclusively from THIS package's renders (react
+// is the reference renderer; solid's tiers assert against this same tree,
+// never write it). Same 5-levels-up depth as the `@ui-visual-shared` alias
+// below (both climb from this tests/ui/visual/vitest-browser/ leaf to
+// `packages/`, then descend into ui-contract).
+const GOLDENS_ROOT = fileURLToPath(
+  new URL(
+    "../../../../../ui-contract/goldens/vitest-browser/__screenshots__",
+    import.meta.url,
+  ),
+);
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -76,7 +89,7 @@ export default defineConfig({
       // custom value to an absolute path and then mis-joins it under the spec's
       // directory (producing a mangled `…/Users/…/…` path). Bypass it with our
       // own resolver, which deterministically yields:
-      //   tests/ui/visual/vitest-browser/__screenshots__/<baseline>/<spec>/<arg>-<browser>.png
+      //   packages/ui-contract/goldens/vitest-browser/__screenshots__/<baseline>/<spec>/<arg>-<browser>.png
       // Arch lives in <baseline>, so the filename needs no platform suffix.
       expect: {
         toMatchScreenshot: {
@@ -98,17 +111,13 @@ export default defineConfig({
           comparatorName: "pixelmatch",
           comparatorOptions: { allowedMismatchedPixelRatio: 0.06 },
           resolveScreenshotPath: ({
-            root,
-            testFileDirectory,
             testFileName,
             arg,
             browserName,
             ext,
           }: ScreenshotPathArgs) => {
             return resolve(
-              root,
-              testFileDirectory,
-              "__screenshots__",
+              GOLDENS_ROOT,
               baseline,
               testFileName,
               `${arg}-${browserName}${ext}`,
@@ -127,17 +136,13 @@ export default defineConfig({
           // On mismatch Vitest writes ONLY the actual+diff here — the golden
           // path is written solely on --update or when a golden is missing.
           resolveDiffPath: ({
-            root,
-            testFileDirectory,
             testFileName,
             arg,
             browserName,
             ext,
           }: ScreenshotPathArgs) => {
             return resolve(
-              root,
-              testFileDirectory,
-              "__screenshots__",
+              GOLDENS_ROOT,
               baseline,
               testFileName,
               `${arg.replace(/-(reference|actual|diff)$/, `-${browserName}-$1`)}${ext}`,

@@ -3,6 +3,18 @@
 **Status:** Accepted (retrospective — the choice was made in the implementation
 plan; this records the rationale and the framework-migration guidance).
 
+> **2026-07-19 relocation note.** The committed `__screenshots__/` trees this
+> ADR discusses — `playwright-ct/`, `playwright/`, and `vitest-browser/`, each
+> with its `react/` + `react-local/<platform>-<arch>/` baselines — moved out of
+> this package to `packages/ui-contract/goldens/<tier>/__screenshots__/` (a pure
+> `git mv`, byte-identical). The decisions below (per-platform sets, per-tier
+> sets, the reverted single-set collapse) are unaffected: only the tree
+> **root** changed, not the rationale, the routing, or the ownership rule —
+> goldens are still generated exclusively from `client-react` renders. The
+> `__screenshots__/`-relative paths quoted throughout this document describe
+> that historical decision and are accurate below the (now relocated) tier
+> root; read them as `packages/ui-contract/goldens/<tier>/__screenshots__/…`.
+
 ## Context
 
 We want a deterministic visual-regression tier that screenshots `@rtc/client-react`

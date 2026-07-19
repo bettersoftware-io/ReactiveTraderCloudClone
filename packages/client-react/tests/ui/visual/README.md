@@ -78,49 +78,55 @@ tests/ui/visual/
     registry.tsx      — componentKey → React element map
     VisualScenario.tsx — theme + provider + backdrop wrapper
     index.ts          — barrel export (the @ui-visual alias target)
-  playwright-ct/     — Tier 1: Playwright Component Testing specs + goldens
+  playwright-ct/     — Tier 1: Playwright Component Testing specs
     playwright-ct.config.ts — in-suite runner config
-    __screenshots__/react/
     *.spec.tsx
     host/            — CT bootstrap template (generated .cache/ is gitignored)
       index.html
       index.tsx
-  playwright/        — Tier 2: plain Playwright over a Vite host + goldens
+  playwright/        — Tier 2: plain Playwright over a Vite host
     playwright.config.ts — in-suite runner config
-    __screenshots__/react/
     host/            — Tiny Vite app served at /?scenario=<name>
       index.html
       main.tsx
       vite.config.ts
     visual.spec.ts   — Framework-agnostic URL-navigation spec
-  vitest-browser/    — Tier 3: Vitest browser mode (toMatchScreenshot) + goldens
+  vitest-browser/    — Tier 3: Vitest browser mode (toMatchScreenshot)
     vitest-browser.config.ts — in-suite runner config
-    __screenshots__/react/
     visual.spec.tsx  — Data-driven spec (shares scenarioActions with Tier 2)
   run-all.ts         — Parallel orchestrator (reads package.json scripts)
   ADR-001-visual-diff-tooling.md
   README.md          — this file
+
+packages/ui-contract/goldens/   — the committed golden trees for all 3 tiers,
+                                   generated only from these React renders
+                                   (a sibling package — see "Goldens" below)
+  playwright-ct/__screenshots__/react/    (+ react-local/<platform>-<arch>/)
+  playwright/__screenshots__/react/       (+ react-local/<platform>-<arch>/)
+  vitest-browser/__screenshots__/react/   (+ react-local/<platform>-<arch>/)
 ```
 
 `@rtc/ui-contract`'s `src/visual/` is what `@rtc/client-solid` reuses
 verbatim as a devDependency — it has zero React imports. The contract is the
-data (`src/visual/`) and the goldens (`__screenshots__/`) — not the
-React-shaped `ViewModel` interface, which each framework adapts to its own
+data (`src/visual/`) and the goldens (`packages/ui-contract/goldens/`) — not
+the React-shaped `ViewModel` interface, which each framework adapts to its own
 model. `client-solid`'s three visual tiers point their `snapshotDir` at
-*these* `__screenshots__/react/` (and `react-local/<arch>/`) trees — it
-asserts against them and owns no golden images of its own.
+*these same* `ui-contract/goldens/<tier>/__screenshots__/react/` (and
+`react-local/<arch>/`) trees — generated only from this package's renders —
+and assert against them; `client-solid` owns no golden images of its own.
 
 ### Goldens: two committed sets (CI vs local)
 
 Screenshot pixels depend on OS/arch font rasterization, so one golden set is not
 portable across machines. Both configs route `snapshotPathTemplate` by
-environment:
+environment, into the committed tree at
+`packages/ui-contract/goldens/<tier>/__screenshots__/`:
 
-- **`__screenshots__/react/`** — rendered by CI on x86 Linux in the pinned
+- **`react/`** — rendered by CI on x86 Linux in the pinned
   Playwright container. This is the **canonical, enforced** set and the
   cross-framework contract. Regenerate it via the `update-visual-goldens`
   GitHub workflow (it runs in that container); never hand-edit it locally.
-- **`__screenshots__/react-local/<platform>-<arch>/`** — written by a local
+- **`react-local/<platform>-<arch>/`** — written by a local
   `:update` run for a fast inner loop on your own machine (e.g.
   `react-local/linux-arm64/`). Committed and reviewed, but **not** re-rendered
   by CI, so it's your responsibility to regenerate it when the UI changes.
@@ -162,7 +168,7 @@ golden images:
   differently (CT mounts the component in isolation; Tier 2 navigates a URL and
   shoots `scenario-root`; Tier 3 renders via `vitest-browser-react`). They encode
   the _same intent_ but are not byte-identical, so each tier diffs against its own
-  `__screenshots__/react/` (+ `react-local/<arch>/`) set.
+  `ui-contract/goldens/<tier>/__screenshots__/react/` (+ `react-local/<arch>/`) set.
 
 ### Architecture at a glance
 
@@ -183,15 +189,15 @@ flowchart TB
 
     subgraph T1["Tier 1 · playwright-ct"]
         T1S["DATA-DRIVEN matrix.spec.tsx<br/>loops scenarios, mount(VisualScenario)"]
-        T1G["__screenshots__/react/<br/>(own goldens)"]
+        T1G["ui-contract/goldens/playwright-ct/<br/>__screenshots__/react/ (own goldens)"]
     end
     subgraph T2["Tier 2 · playwright"]
         T2S["DATA-DRIVEN visual.spec.ts<br/>loops scenarios, nav ?scenario=…"]
-        T2G["__screenshots__/react/<br/>(own goldens)"]
+        T2G["ui-contract/goldens/playwright/<br/>__screenshots__/react/ (own goldens)"]
     end
     subgraph T3["Tier 3 · vitest-browser"]
         T3S["DATA-DRIVEN visual.spec.tsx<br/>loops scenarios, render()"]
-        T3G["__screenshots__/react/<br/>(own goldens)"]
+        T3G["ui-contract/goldens/vitest-browser/<br/>__screenshots__/react/ (own goldens)"]
     end
 
     REACT --> T1S
@@ -241,7 +247,7 @@ Config: `playwright-ct/playwright-ct.config.ts`. Uses `@playwright/experimental-
 to mount `VisualScenario` directly inside a Chromium process via the CT adapter.
 Each spec imports `@ui-visual` (the alias pointing at `react/`) and
 calls `mount(...)` + `expect(component).toHaveScreenshot(...)`. Goldens live in
-`playwright-ct/__screenshots__/react/`.
+`packages/ui-contract/goldens/playwright-ct/__screenshots__/react/`.
 
 For a framework port, the `@ui-visual` alias in `playwright-ct.config.ts`'s
 `ctViteConfig` is the single re-point: swap `react/` for `solid/`
@@ -255,7 +261,8 @@ Config: `playwright/playwright.config.ts`. Serves a tiny Vite page (`playwright/
 that reads `?scenario=<name>` from the URL, looks up the scenario in `registry`,
 and mounts `VisualScenario`. Playwright then navigates to `/?scenario=<name>`,
 applies any per-scenario interactions from `scenarioActions.ts`, and calls
-`toHaveScreenshot(...)`. Goldens live in `playwright/__screenshots__/react/`.
+`toHaveScreenshot(...)`. Goldens live in
+`packages/ui-contract/goldens/playwright/__screenshots__/react/`.
 
 `playwright/visual.spec.ts` is **fully framework-agnostic** — it only
 navigates URLs and takes screenshots. A SolidJS port reuses this spec verbatim;
@@ -270,7 +277,7 @@ provider, then diffs with Vitest 4's experimental
 `expect.element(...).toMatchScreenshot(...)`. `vitest-browser/visual.spec.tsx`
 is data-driven and **shares the `scenarioActions.ts` table with Tier 2**, so the
 two stay behaviourally in lock-step. Goldens live in
-`vitest-browser/__screenshots__/react/`.
+`packages/ui-contract/goldens/vitest-browser/__screenshots__/react/`.
 
 This tier was originally blocked on the Vitest 3→4 upgrade (its matcher is
 v4-only) and was deferred; once Plan A upgraded the repo to Vitest 4 — and the
@@ -395,8 +402,9 @@ visual suite, including `run-all.ts` — minus
 The goal was always: run the **same** scenarios and match the **same**
 goldens. The plan below was written before the port started; `@rtc/client-solid`
 then executed it, and shipped it **assert-only** — `client-solid` owns none of
-its own golden images, it points all three tiers' `snapshotDir` at *this*
-package's `__screenshots__/` trees, so a passing Solid run is a direct pixel
+its own golden images, it points all three tiers' `snapshotDir` at the
+`packages/ui-contract/goldens/<tier>/__screenshots__/` trees generated only
+from this package's renders, so a passing Solid run is a direct pixel
 match against React, not a self-comparison. The one place reality deviated
 from the original plan is Tier 1 (below): the predicted CT-adapter blocker
 did materialize, but the resolution was a fallback tier, not a stalled port.
@@ -407,10 +415,10 @@ did materialize, but the resolution was a fallback tier, not a stalled port.
   package's `shared/`) — consumed as a devDependency, unmodified
 - `playwright/visual.spec.ts` — URL-driven, zero framework assumptions;
   `client-solid`'s Tier 2 is this file, copied without a behavioural change
-- `playwright-ct/__screenshots__/react/` and
-  `playwright/__screenshots__/react/` — the canonical (CI-enforced)
-  golden contract (see "Goldens: two committed sets" above; the per-arch
-  `react-local/` sets are local-feedback only)
+- `ui-contract/goldens/playwright-ct/__screenshots__/react/` and
+  `ui-contract/goldens/playwright/__screenshots__/react/` — the canonical
+  (CI-enforced) golden contract (see "Goldens: two committed sets" above;
+  the per-arch `react-local/` sets are local-feedback only)
 
 **What was implemented for Solid:**
 
@@ -457,8 +465,9 @@ Tier 1 the one that didn't go as planned.**
   `packages/client-solid/tests/ui/visual/playwright-ct/playwright-ct.config.ts`).
   Forcing the mismatched adapter in was rejected.
 - The resolution: Tier 1 for Solid is a **second URL-navigation config**,
-  structurally identical to Tier 2, asserting against react's *own*
-  `playwright-ct/__screenshots__/` tree by matching its `{testFileName}`
+  structurally identical to Tier 2, asserting against the
+  `ui-contract/goldens/playwright-ct/__screenshots__/` tree (generated only
+  from react's renders) by matching its `{testFileName}`
   golden-path segment — not a real `mount()`-based CT test. It is data-driven
   over the same manifest (matching this package's own `matrix.spec.tsx`, not
   the old hand-written per-file specs the original plan below still

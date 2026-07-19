@@ -1,0 +1,17 @@
+# Visual golden trees (see ./goldens/): only the curated react/ (CI x86) and
+# react-local/<arch>/ (local feedback) sets are committed — generated
+# exclusively from client-react's renders via its three `:update` scripts and
+# update-visual-goldens.yml. Everything else the three visual tiers (react's
+# own + solid's assert-only runs) drop next to a golden on mismatch is
+# transient debris and must never be committed:
+#   - failure artifacts written alongside the compared golden
+#     (`<name>-actual.png` / `<name>-diff.png`)
+#   - a spec-named dir written DIRECTLY under `__screenshots__/` (e.g.
+#     `__screenshots__/visual.spec.tsx/app-credit-1.png`) when a scenario's
+#     baseline routing doesn't apply — never a golden; real goldens always
+#     have `react/` or `react-local/<arch>/` between `__screenshots__` and the
+#     spec dir, so this can't match them.
+goldens/**/__screenshots__/**/*-actual.png
+goldens/**/__screenshots__/**/*-diff.png
+goldens/**/__screenshots__/*.spec.ts/
+goldens/**/__screenshots__/*.spec.tsx/

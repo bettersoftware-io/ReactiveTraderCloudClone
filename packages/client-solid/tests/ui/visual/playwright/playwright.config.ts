@@ -48,17 +48,19 @@ const baseline = process.env.CI
   ? "react"
   : `react-local/${os.platform()}-${os.arch()}`;
 
-// CROSS-PACKAGE: unlike react's own config (which owns its `__screenshots__`
-// tree), this tier's snapshotDir is anchored INSIDE packages/client-react —
+// CROSS-PACKAGE: unlike react's own config (which owns its slice of the
+// shared tree), this tier's snapshotDir is anchored INSIDE @rtc/ui-contract —
 // this package writes and owns no goldens of its own (assert-only by
 // construction, same design as ../vitest-browser/vitest-browser.config.ts).
-// `updateSnapshots: "none"` below is the mechanical enforcement: Playwright's
-// own default (`"missing"`) would silently CREATE a missing reference
-// screenshot into this same cross-package path the first time a scenario
-// name drifts — "none" makes that a hard failure instead, never a write.
+// Goldens are generated exclusively from client-react's renders; solid only
+// ever reads them. `updateSnapshots: "none"` below is the mechanical
+// enforcement: Playwright's own default (`"missing"`) would silently CREATE a
+// missing reference screenshot into this same cross-package path the first
+// time a scenario name drifts — "none" makes that a hard failure instead,
+// never a write.
 const REACT_SNAPSHOT_DIR = fileURLToPath(
   new URL(
-    "../../../../../client-react/tests/ui/visual/playwright/__screenshots__",
+    "../../../../../ui-contract/goldens/playwright/__screenshots__",
     import.meta.url,
   ),
 );
@@ -72,7 +74,7 @@ export default defineConfig({
   // `--update-snapshots` somehow reached this config (e.g. a future CLI
   // default change), "none" means Playwright never writes a snapshot from
   // this run — a missing/renamed golden is always a hard failure here, never
-  // a silent new file under client-react's tree. NOT the repo default
+  // a silent new file under the ui-contract goldens tree. NOT the repo default
   // ("missing") — that default is exactly the auto-create hazard this tier
   // must not have.
   updateSnapshots: "none",

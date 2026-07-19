@@ -436,7 +436,7 @@
     <span class="eyebrow">Start here</span>
     <div class="tldr">
       <p><strong>Contract tier:</strong> the same <code>*.contract.spec.ts</code> files run twice, once per framework, through a driver seam (<code>setDriver</code>/<code>getDriver</code>) that swaps out only the rendering adapter.</p>
-      <p><strong>Visual tier:</strong> Solid's Playwright and vitest-browser configs point their snapshot directory <em>into</em> <code>client-react</code>'s own committed <code>__screenshots__</code> tree and refuse to write — Solid owns zero goldens of its own, so a pixel match is a real cross-framework proof, not a tautology.</p>
+      <p><strong>Visual tier:</strong> Solid's Playwright and vitest-browser configs point their snapshot directory <em>into</em> <code>@rtc/ui-contract</code>'s committed <code>goldens/</code> tree — generated only from <code>client-react</code> renders — and refuse to write. Solid owns zero goldens of its own, so a pixel match is a real cross-framework proof, not a tautology.</p>
       <p><strong>e2e tier:</strong> the same Gherkin features drive whichever client <code>RTC_CLIENT_PKG</code> names, spawned by the same <code>devServer.ts</code> — Solid's runs just point the dev-server spawn and the ports somewhere else.</p>
     </div>
   </div>
@@ -543,32 +543,34 @@
           <div>
             <p class="code-path">packages/client-solid/tests/ui/visual/playwright/playwright.config.ts</p>
             <pre class="code"><span class="cm">// Assert-only tier: this package owns NO goldens — anchored</span>
-<span class="cm">// cross-package into client-react's committed tree.</span>
+<span class="cm">// cross-package into @rtc/ui-contract's committed tree (generated</span>
+<span class="cm">// exclusively from client-react's renders).</span>
 <span class="kw">const</span> REACT_SNAPSHOT_DIR = fileURLToPath(<span class="kw">new</span> URL(
-  <span class="cm">"../../../../../client-react/tests/ui/visual/playwright/__screenshots__"</span>,
+  <span class="cm">"../../../../../ui-contract/goldens/playwright/__screenshots__"</span>,
   import.meta.url,
 ));
 snapshotDir: REACT_SNAPSHOT_DIR,
 updateSnapshots: <span class="cm">"none"</span>,  <span class="cm">// a missing golden is a hard failure, never a write</span>
 <span class="cm">// argv guard: refuses to run under --update-snapshots / -u at all</span></pre>
-            <p class="code-path">…/vitest-browser/vitest-browser.config.ts:155</p>
+            <p class="code-path">…/vitest-browser/vitest-browser.config.ts:158</p>
             <pre class="code"><span class="kw">if</span> (!existsSync(screenshotPath)) {
   <span class="kw">throw new</span> Error(
     <span class="cm">`assert-only tier: golden missing at ${screenshotPath} — `</span> +
     <span class="cm">"goldens are owned by client-react; refusing to auto-create " +</span>
-    <span class="cm">"one from the solid tier."</span>,
+    <span class="cm">"one from the solid tier. Regenerate it via "</span> +
+    <span class="cm">"`pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update`."</span>,
   );
 }</pre>
           </div>
           <div class="diagram">
-            <h4>Solid's config reads FROM react's tree — never writes TO it</h4>
+            <h4>Solid's config reads FROM the ui-contract tree — never writes TO it</h4>
             <div class="ownership">
               <div class="owner-row">
                 <div class="owner-box solid-box">client-solid<br>playwright.config.ts</div>
                 <div class="owner-arrow">— snapshotDir points at → <div class="lbl"></div></div>
               </div>
               <div class="owner-row">
-                <div class="owner-box react-box">client-react<br>tests/ui/visual/playwright/__screenshots__/</div>
+                <div class="owner-box react-box">ui-contract<br>goldens/playwright/__screenshots__/ (generated only from client-react)</div>
                 <div class="owner-arrow"></div>
               </div>
               <div class="zero-goldens">0 files committed under client-solid's own __screenshots__ — a pixel match here IS the cross-framework proof</div>

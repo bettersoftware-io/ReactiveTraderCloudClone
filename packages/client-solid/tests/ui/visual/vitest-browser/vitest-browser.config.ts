@@ -18,7 +18,7 @@ interface ScreenshotPathArgs {
 
 // Tier 3: Vitest browser mode, SolidJS side. Mounts the Solid harness in a
 // real Chromium via the Playwright provider and diffs against
-// packages/client-react's COMMITTED goldens — this package owns NO goldens of
+// packages/ui-contract's COMMITTED goldens — this package owns NO goldens of
 // its own (assert-only by construction): a pass proves pixel-level framework
 // swappability between the react and solid render targets. There is
 // deliberately no `:update` script wired for this config (see the
@@ -27,19 +27,20 @@ interface ScreenshotPathArgs {
 // `resolveScreenshotPath` below refuses (throws) whenever the resolved
 // golden doesn't already exist on disk, so vitest-browser's own
 // auto-create-on-missing behavior for `toMatchScreenshot` can never write
-// into client-react's tree from this config — a missing/renamed golden is a
-// hard failure here, never a silent new file.
+// into the ui-contract goldens tree from this config — a missing/renamed
+// golden is a hard failure here, never a silent new file.
 //
 // CROSS-PACKAGE DESIGN: every other tier config in this repo resolves
 // `resolveScreenshotPath` under its OWN package's `root`. This one is the one
 // exception — its screenshot (golden) path is anchored at
-// REACT_SCREENSHOTS_ROOT (packages/client-react/tests/ui/visual/vitest-browser/
+// REACT_SCREENSHOTS_ROOT (packages/ui-contract/goldens/vitest-browser/
 // __screenshots__), completely ignoring the `root` toMatchScreenshot hands it
 // (which is THIS package's root). `resolveDiffPath`, by contrast, stays on the
 // local `root` — failure artifacts (actual/diff PNGs) must never be written
-// into client-react's tree. This split is intentional and is the crux of the
-// "solid owns no goldens" design: never change resolveScreenshotPath to use
-// the local root, and never write a golden from this config.
+// into the ui-contract goldens tree. This split is intentional and is the
+// crux of the "solid owns no goldens" design: never change
+// resolveScreenshotPath to use the local root, and never write a golden from
+// this config.
 //
 // Baseline routed by environment exactly like the react tier's own config
 // (see ../../../../client-react/tests/ui/visual/vitest-browser/vitest-browser.config.ts
@@ -55,19 +56,20 @@ const baseline = process.env.CI
 
 // Anchored at THIS config file's own location (packages/client-solid/tests/ui/
 // visual/vitest-browser/), five levels up to `packages/`, then into
-// client-react's committed screenshot tree — same depth as the
-// `@ui-visual-shared` alias below (both climb from a tests/ui/visual/
-// vitest-browser/ leaf to packages/, then descend into a sibling package).
+// ui-contract's committed screenshot tree (generated exclusively from
+// client-react's renders) — same depth as the `@ui-visual-shared` alias below
+// (both climb from a tests/ui/visual/vitest-browser/ leaf to packages/, then
+// descend into a sibling package).
 const REACT_SCREENSHOTS_ROOT = fileURLToPath(
   new URL(
-    "../../../../../client-react/tests/ui/visual/vitest-browser/__screenshots__",
+    "../../../../../ui-contract/goldens/vitest-browser/__screenshots__",
     import.meta.url,
   ),
 );
 
 // Assert-only guard: this tier must never write a golden. `vitest --update`
 // (or `-u`) flips toMatchScreenshot into write mode, which would silently
-// create/overwrite files under client-react's committed tree via
+// create/overwrite files under the ui-contract committed tree via
 // resolveScreenshotPath above — refuse to even start instead.
 if (process.argv.includes("--update") || process.argv.includes("-u")) {
   throw new Error(
@@ -105,7 +107,8 @@ export default defineConfig({
     // (root is pinned to the package dir above). On failure the html reporter
     // also embeds the actual/diff PNGs into report/data/, so the report is
     // self-contained; the on-disk failure PNGs are routed next to the LOCAL
-    // diff dir by `resolveDiffPath` below (never into client-react's tree).
+    // diff dir by `resolveDiffPath` below (never into the ui-contract goldens
+    // tree).
     reporters: ["default", "html"],
     outputFile: {
       html: "reports/ui/visual/vitest-browser/solid/report/index.html",
@@ -136,7 +139,7 @@ export default defineConfig({
             ext,
           }: ScreenshotPathArgs) => {
             // Deliberately ignores `root`/`testFileDirectory` (this
-            // package's own paths) — resolves into client-react's committed
+            // package's own paths) — resolves into ui-contract's committed
             // tree instead. See the module-level comment above.
             const screenshotPath = resolve(
               REACT_SCREENSHOTS_ROOT,
@@ -149,7 +152,7 @@ export default defineConfig({
             // toMatchScreenshot auto-creates a missing reference screenshot
             // even without `--update` ("No existing reference screenshot
             // found; a new one was created") — which would silently write a
-            // new golden into client-react's committed tree the moment a
+            // new golden into ui-contract's committed tree the moment a
             // scenario's baseline goes missing (matrix drift, a react-side
             // rename). Refuse instead of ever creating one from here.
             if (!existsSync(screenshotPath)) {
@@ -172,7 +175,7 @@ export default defineConfig({
             ext,
           }: ScreenshotPathArgs) => {
             // Local root (THIS package) — failure artifacts never land in
-            // client-react's tree. Kind suffix (`-reference`/`-actual`/
+            // the ui-contract goldens tree. Kind suffix (`-reference`/`-actual`/
             // `-diff`) arrives pre-appended to `arg`; re-order it after the
             // browser name to mirror the golden's filename, mirroring react's
             // own resolveDiffPath exactly (just rooted locally).

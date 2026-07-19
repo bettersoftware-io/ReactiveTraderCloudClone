@@ -20,7 +20,8 @@ import { defineConfig, devices } from "@playwright/test";
 // Playwright config + host (structurally identical to ../playwright/), driving
 // the SAME shared scenario matrix via URL navigation instead of a CT `mount()`
 // call, asserting against react's REAL playwright-ct golden tree
-// (../../../../../client-react/tests/ui/visual/playwright-ct/__screenshots__/).
+// (../../../../../ui-contract/goldens/playwright-ct/__screenshots__/ —
+// generated exclusively from client-react's renders).
 // No `@playwright/experimental-ct-*` package is a dependency of this package —
 // do not add one.
 //
@@ -46,7 +47,7 @@ import { defineConfig, devices } from "@playwright/test";
 // Tier 1 mount-based approach) — until then, this config is not a stopgap to
 // "fix properly later" so much as a stable, intentional substitute; the two
 // approaches converge on the same golden contract by construction (both
-// target react's playwright-ct/__screenshots__/ tree).
+// target ui-contract's playwright-ct/__screenshots__/ tree).
 //
 // NOT INHERITED: react's playwright-ct.config.ts pins `workers: 1` because
 // each CT worker there is its own Chromium mounting components through a
@@ -68,7 +69,7 @@ const PORT = 3400;
 // rationale (byte-identical guard) — this package owns NO goldens, and
 // `--update-snapshots` (nor its short alias `-u`, in any of its bare/`-u=X`/
 // concatenated `-uX` forms — e.g. `-uall`, `-umissing`) must never be able
-// to write into client-react's tree.
+// to write into the ui-contract goldens tree.
 if (
   process.argv.some((arg) => {
     return (
@@ -90,13 +91,14 @@ const baseline = process.env.CI
   ? "react"
   : `react-local/${os.platform()}-${os.arch()}`;
 
-// CROSS-PACKAGE: anchored at react's playwright-ct golden tree — the fallback
-// tier's whole point is to assert against the SAME golden set a real Solid CT
+// CROSS-PACKAGE: anchored at ui-contract's playwright-ct golden tree
+// (generated exclusively from client-react's renders) — the fallback tier's
+// whole point is to assert against the SAME golden set a real Solid CT
 // adapter would (see the decision header above). This package owns no
 // goldens of its own.
 const REACT_SNAPSHOT_DIR = fileURLToPath(
   new URL(
-    "../../../../../client-react/tests/ui/visual/playwright-ct/__screenshots__",
+    "../../../../../ui-contract/goldens/playwright-ct/__screenshots__",
     import.meta.url,
   ),
 );

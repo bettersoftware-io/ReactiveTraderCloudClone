@@ -92,9 +92,9 @@ jobs:
       - name: Clean canonical react/ goldens before full regen
         if: ${{ inputs.scenario_pattern == '' }}
         run: |
-          rm -rf packages/client-react/tests/ui/visual/playwright-ct/__screenshots__/react
-          rm -rf packages/client-react/tests/ui/visual/playwright/__screenshots__/react
-          rm -rf packages/client-react/tests/ui/visual/vitest-browser/__screenshots__/react
+          rm -rf packages/ui-contract/goldens/playwright-ct/__screenshots__/react
+          rm -rf packages/ui-contract/goldens/playwright/__screenshots__/react
+          rm -rf packages/ui-contract/goldens/vitest-browser/__screenshots__/react
 
       # Re-render the canonical x86 react/ goldens for all three runners — the full
       # theme matrix (5 skins × dark/light) unless SCENARIO_PATTERN narrows it.
@@ -124,9 +124,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            packages/client-react/tests/ui/visual/playwright-ct/__screenshots__/react \
-            packages/client-react/tests/ui/visual/playwright/__screenshots__/react \
-            packages/client-react/tests/ui/visual/vitest-browser/__screenshots__/react
+            packages/ui-contract/goldens/playwright-ct/__screenshots__/react \
+            packages/ui-contract/goldens/playwright/__screenshots__/react \
+            packages/ui-contract/goldens/vitest-browser/__screenshots__/react
           if git diff --cached --name-only | grep -v '__screenshots__/react/' | grep -q .; then
             echo "Refusing to commit paths outside the canonical react/ trees:"
             git diff --cached --name-only | grep -v '__screenshots__/react/'
@@ -148,8 +148,8 @@ jobs:
         with:
           name: visual-goldens
           path: |
-            packages/client-react/tests/ui/visual/playwright-ct/__screenshots__/react/
-            packages/client-react/tests/ui/visual/playwright/__screenshots__/react/
-            packages/client-react/tests/ui/visual/vitest-browser/__screenshots__/react/
+            packages/ui-contract/goldens/playwright-ct/__screenshots__/react/
+            packages/ui-contract/goldens/playwright/__screenshots__/react/
+            packages/ui-contract/goldens/vitest-browser/__screenshots__/react/
           if-no-files-found: error
           retention-days: 7

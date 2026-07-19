@@ -104,10 +104,12 @@ describe("build-visual-report — failure wall", () => {
     put(join(pwArt, "fx-tile-stale-diff.png"));
     put(join(react, "reports/ui/visual/playwright/react/report/index.html"));
 
-    // vitest-browser tier (react): -actual/-diff sit next to the golden <base>.png.
+    // vitest-browser tier (react): -actual/-diff sit next to the golden
+    // <base>.png, under the shared @rtc/ui-contract goldens tree (a workspace
+    // sibling of client-react — see scanPackage's extraDirs doc comment).
     const vbShots = join(
-      react,
-      "tests/ui/visual/vitest-browser/__screenshots__/react/visual.spec.tsx",
+      tmp,
+      "ui-contract/goldens/vitest-browser/__screenshots__/react/visual.spec.tsx",
     );
     put(join(vbShots, "analytics-empty.png")); // golden = reference
     put(join(vbShots, "analytics-empty-actual.png"));
@@ -141,11 +143,15 @@ describe("build-visual-report — failure wall", () => {
     expect(html).toContain("fx-tile-stale");
     expect(html).toContain("analytics-empty");
     expect(html).toContain("app-fx-system");
-    // Grouped by package + tier.
-    expect(html).toContain("client-react");
-    expect(html).toContain("client-solid");
-    expect(html).toContain("playwright");
-    expect(html).toContain("vitest-browser");
+    // Grouped by package + tier — assert the rendered `<h2>` tier-label
+    // headings themselves (not just substring presence anywhere in the page,
+    // which the scenario `group` field — a relative path that can itself
+    // contain a tier name, e.g. the extraDirs-discovered
+    // `../ui-contract/goldens/vitest-browser/__screenshots__/...` — would
+    // also satisfy even if `tierOf()` mislabeled the heading as "unknown").
+    expect(html).toContain("<h2>client-react · playwright ");
+    expect(html).toContain("<h2>client-react · vitest-browser ");
+    expect(html).toContain("<h2>client-solid · playwright ");
     // before/after/diff labels present.
     expect(html).toContain("reference");
     expect(html).toContain("actual");
@@ -168,9 +174,11 @@ describe("build-visual-report — failure wall", () => {
     tmp = mkdtempSync(join(tmpdir(), "vr-"));
     const out = join(tmp, "visual");
     const react = join(tmp, "client-react");
+    // Shared @rtc/ui-contract goldens tree — a workspace sibling of
+    // client-react (see scanPackage's extraDirs doc comment).
     const vbShots = join(
-      react,
-      "tests/ui/visual/vitest-browser/__screenshots__/react/visual.spec.tsx",
+      tmp,
+      "ui-contract/goldens/vitest-browser/__screenshots__/react/visual.spec.tsx",
     );
     put(join(vbShots, "tile-loading.png"), "REF");
     put(join(vbShots, "tile-loading-actual.png"), "ACT");
@@ -178,10 +186,13 @@ describe("build-visual-report — failure wall", () => {
 
     execFileSync("node", [SCRIPT, "--out", out, "--react", react]);
 
-    // The golden <base>.png was copied as the reference asset.
+    // The golden <base>.png was copied as the reference asset. `relative()`
+    // climbs out of client-react into the sibling ui-contract dir, and
+    // `join(label, "../ui-contract/...")` cancels the label prefix back out —
+    // see copyAsset/scanPackage.
     const refAsset = join(
       out,
-      "assets/client-react/tests/ui/visual/vitest-browser/__screenshots__/react/visual.spec.tsx/tile-loading.png",
+      "assets/ui-contract/goldens/vitest-browser/__screenshots__/react/visual.spec.tsx/tile-loading.png",
     );
     expect(readFileSync(refAsset, "utf8")).toBe("REF");
   });
