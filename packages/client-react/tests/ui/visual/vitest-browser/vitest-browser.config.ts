@@ -5,6 +5,12 @@ import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
+import { guardGoldenUpdate } from "../guardGoldenUpdate";
+
+// Preflight: block a native `--update` on a non-x86 host (would corrupt the
+// x86-only react/ set). No-op when asserting or on x64.
+guardGoldenUpdate();
+
 interface ScreenshotPathArgs {
   root: string;
   testFileDirectory: string;
