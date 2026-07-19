@@ -1,6 +1,7 @@
 import { cpSync, createReadStream, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import babel from "@rolldown/plugin-babel";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
@@ -82,6 +83,32 @@ function devtoolsPanel(): Plugin {
   };
 }
 
+// When the Deploy workflow requests a debuggable build (RTC_SOURCEMAPS=1),
+// resolve the @rtc/* workspace libraries from their TypeScript SOURCE instead of
+// their prebuilt dist/*.js, so Vite compiles them into the bundle and the inline
+// map points at the original .ts. Consuming dist breaks the map chain (Vite's
+// esbuild dep pre-bundle drops the libs' own .js.map). Empty in a lean build, so
+// production output is unchanged. See docs/superpowers/specs/2026-07-19-debuggable-deploy-design.md.
+const debugBuild = process.env.RTC_SOURCEMAPS === "1";
+const pkgSrc = (name: string): string =>
+  resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    name,
+    "src",
+    "index.ts",
+  );
+const rtcSourceAlias: Record<string, string> = debugBuild
+  ? {
+      "@rtc/client-core": pkgSrc("client-core"),
+      "@rtc/domain": pkgSrc("domain"),
+      "@rtc/shared": pkgSrc("shared"),
+      "@rtc/motion-core": pkgSrc("motion-core"),
+      "@rtc/devtools-core": pkgSrc("devtools-core"),
+      "@rtc/react-bindings": pkgSrc("react-bindings"),
+    }
+  : {};
+
 export default defineConfig({
   // React Compiler auto-memoizes components and hooks at build time, making
   // manual useMemo/useCallback redundant (see docs/adr/ADR-003). @vitejs/
@@ -94,6 +121,7 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     devtoolsPanel(),
   ],
+  resolve: { alias: rtcSourceAlias },
   server: {
     host: "127.0.0.1",
     // PORT is the PREFERRED port; Vite auto-increments to the next free one if
@@ -106,15 +134,24 @@ export default defineConfig({
     outDir: "dist",
     // On-demand debuggable production build: the Deploy workflow sets
     // RTC_SOURCEMAPS=1 (declared in turbo.json build.env so strict-mode Turbo
-    // passes it through) so a profiled deploy shows real component names in the
-    // flamechart. Unset/"" → false, i.e. today's minified build.
-    //
-    // "inline" (not true/external): Vercel's edge returns 403 for served .map
-    // files by design (source-exposure protection), so an external map is
-    // generated + linked but never fetchable in prod. An inline map is embedded
-    // in the bundle as a data: URI — no separate .map request to block — so
-    // DevTools resolves real source in the deployed app. The bundle is larger,
-    // which is fine for an opt-in debug build. See docs/DEPLOY.md.
-    sourcemap: process.env.RTC_SOURCEMAPS === "1" ? "inline" : false,
+    // passes it through). "inline" (not external): Vercel's edge 403s served
+    // .map files, so an external map is generated + linked but never fetchable;
+    // an inline data: URI has no separate request to block. See docs/DEPLOY.md.
+    sourcemap: debugBuild ? "inline" : false,
+    // Debug builds emit distinct `-dbg-` filenames so the sourcemap build and the
+    // lean build can never collide at the same hashed URL (Vite hashes code, not
+    // the appended map) — which previously let a stale lean bundle serve in place
+    // of a sourcemap deploy. Lean build keeps Vite's default names.
+    ...(debugBuild
+      ? {
+          rollupOptions: {
+            output: {
+              entryFileNames: "assets/[name]-dbg-[hash].js",
+              chunkFileNames: "assets/[name]-dbg-[hash].js",
+              assetFileNames: "assets/[name]-dbg-[hash][extname]",
+            },
+          },
+        }
+      : {}),
   },
 });
