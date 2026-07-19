@@ -28,7 +28,7 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 
 | script | what it runs | server | report (under `reports/`) |
 |---|---|---|---|
-| `test:e2e` | gates, then ALL 10 suites below in parallel via `scripts/run-all.ts` | per-suite | — (each suite writes its own) |
+| `test:e2e` | gates, then ALL 12 suites below in parallel via `scripts/run-all.ts` | per-suite | — (each suite writes its own) |
 | `test:browser:playwright` | native `@playwright/test` specs, `browser/playwright/` | dev server | `browser/playwright/` |
 | `test:browser:playwright:headed` | ↑ in a visible browser (`playwright test --headed`, one window at a time) | dev server | `browser/playwright/` |
 | `test:browser:playwright:ui` | ↑ in Playwright UI mode (`playwright test --ui`: test-tree sidebar, watch mode, time-travel/trace) | dev server | — (interactive) |
@@ -36,6 +36,8 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 | `test:browser:cypress:headed` | ↑ in the interactive Cypress runner (`cypress open`) | dev server | — (interactive) |
 | `test:browser:playwright-cucumber` | cucumber-js driving Playwright, `specs/*.feature` + `browser/steps/` | dev server | `browser/playwright-cucumber/` |
 | `test:browser:playwright-cucumber:headed` | ↑ in a visible browser (headed Chromium + slowMo) | dev server | `browser/playwright-cucumber/` |
+| `test:browser:playwright:solid` | same config + specs as `test:browser:playwright`, driven against `@rtc/client-solid` (`RTC_CLIENT_PKG=@rtc/client-solid`), ports 3005/3006 | dev server | `browser/playwright-solid/` |
+| `test:browser:playwright-cucumber:solid` | same config + `.feature`/steps as `test:browser:playwright-cucumber`, driven against `@rtc/client-solid`, ports 3005/3006 | dev server | `browser/playwright-cucumber-solid/` |
 | `test:browser:cypress-cucumber` | Cypress + @badeball preprocessor, same features/steps | dev server | `browser/cypress-cucumber/` |
 | `test:browser:cypress-cucumber:headed` | ↑ in the interactive Cypress runner (`cypress open`) | dev server | — (interactive) |
 | `test:presenter:cucumber` | cucumber-js against live presenters (in-process simulators), real timers | none | `presenter/cucumber/` |
@@ -47,6 +49,12 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 | `test:fullstack:browser:headed` | ↑ in a visible browser (`--headed`) | own server + client | `fullstack/browser/` |
 | `gates` | 25 grep/custom architecture gates (`scripts/grep-gates.ts`) | none | — |
 | `port:free` | frees the dev-server port (`RTC_DEV_PORT`, default 3000) | — | — |
+
+The two `:solid` rows are not a separate suite family — they run the *same*
+config, specs, steps, and page objects as their React counterparts, only
+re-pointed at `@rtc/client-solid` via `RTC_CLIENT_PKG`. See
+[`docs/architecture/21-cross-framework-testing.md`](../docs/architecture/21-cross-framework-testing.md#mechanism-3--e2e-via-rtc_client_pkg)
+§21 Mechanism 3 for the full env-var → `devServer.ts` → `run-all.ts` wiring.
 
 Utility scripts (`clean`, `clean:deep`, `typecheck`) are not included in the
 table — they are not part of the test pipeline. The `:headed` and `:ui` variants

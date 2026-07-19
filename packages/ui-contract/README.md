@@ -42,6 +42,22 @@ Neither client keeps its render-target adapter in this package — each owns its
 
 A spec under `src/specs/` never imports either trio directly — it only sees `ComponentToken`s and the `Page` interface `mount()` returns. Running the same spec file against both trios (via each client's own `vitest.config.ts`, which points at its own swap-trio's `setup.ts`) *is* the contract-parity proof: 80+ shared spec files, unmodified, pass against two structurally different render targets.
 
+```mermaid
+flowchart TB
+    SPEC["*.contract.spec.ts — framework-neutral"]
+    HARNESS["shared harness<br/>mount() → getDriver().render(token, inputs)"]
+    SEAM["UiContractDriver seam<br/>activeDriver.ts — setDriver / getDriver"]
+    SPEC --> HARNESS --> SEAM
+    SEAM --> RSETUP["react/setup.ts<br/>setDriver(reactDriver)"]
+    SEAM --> SSETUP["solid/setup.ts<br/>setDriver(solidDriver)"]
+    RSETUP --> RDOM["render via @rtc/react-bindings"]
+    SSETUP --> SDOM["render via @rtc/solid-bindings"]
+    RDOM --> V["same assertions,<br/>two independent verdicts"]
+    SDOM --> V
+```
+
+Full write-up of this seam, plus the other two cross-framework mechanisms (assert-only visual tiers, `RTC_CLIENT_PKG` e2e): [§21 Mechanism 1 — the contract swap-trio](../../docs/architecture/21-cross-framework-testing.md#mechanism-1--the-contract-swap-trio).
+
 ## How it's used
 
 ```ts

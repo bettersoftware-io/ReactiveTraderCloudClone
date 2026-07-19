@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>One Suite, Two Frameworks</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* ============================ tokens ============================ */
+  :root {
+    --ground: #f4f6f9;
+    --panel: #ffffff;
+    --panel-2: #eef1f6;
+    --ink: #1a2230;
+    --ink-soft: #4a5567;
+    --ink-faint: #798197;
+    --line: #d9dfe8;
+    --line-soft: #e7ebf1;
+
+    /* react = blue, solid = teal, verdict = green, spec = gold */
+    --gold: #a9791f;
+    --gold-bg: #f6ecd4;
+    --gold-line: #e3c887;
+    --blue: #2f5fd0;
+    --blue-bg: #e3eafc;
+    --blue-line: #b9caf3;
+    --teal: #0f7c82;
+    --teal-bg: #dcf1f1;
+    --teal-line: #a9d7d8;
+    --green: #1f8a5b;
+    --green-bg: #dcf1e6;
+    --amber: #b5731a;
+    --amber-bg: #f8ecd8;
+
+    --shadow: 0 1px 2px rgba(20,34,48,.05), 0 8px 24px rgba(20,34,48,.06);
+    --radius: 12px;
+    --maxw: 980px;
+
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0d1016;
+      --panel: #141a22;
+      --panel-2: #1b222c;
+      --ink: #e8edf4;
+      --ink-soft: #a7b2c2;
+      --ink-faint: #6f7b8d;
+      --line: #262f3b;
+      --line-soft: #1f2731;
+      --gold: #e0b455;
+      --gold-bg: #2a2312;
+      --gold-line: #4c3f1c;
+      --blue: #7da2f5;
+      --blue-bg: #172236;
+      --blue-line: #2a3a5a;
+      --teal: #59c2c6;
+      --teal-bg: #10272a;
+      --teal-line: #204b4d;
+      --green: #4bc48b;
+      --green-bg: #123024;
+      --amber: #e0a24e;
+      --amber-bg: #2c2110;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground:#f4f6f9;--panel:#fff;--panel-2:#eef1f6;--ink:#1a2230;--ink-soft:#4a5567;--ink-faint:#798197;
+    --line:#d9dfe8;--line-soft:#e7ebf1;--gold:#a9791f;--gold-bg:#f6ecd4;--gold-line:#e3c887;
+    --blue:#2f5fd0;--blue-bg:#e3eafc;--blue-line:#b9caf3;--teal:#0f7c82;--teal-bg:#dcf1f1;--teal-line:#a9d7d8;
+    --green:#1f8a5b;--green-bg:#dcf1e6;--amber:#b5731a;--amber-bg:#f8ecd8;
+    --shadow:0 1px 2px rgba(20,34,48,.05),0 8px 24px rgba(20,34,48,.06);
+  }
+  :root[data-theme="dark"] {
+    --ground:#0d1016;--panel:#141a22;--panel-2:#1b222c;--ink:#e8edf4;--ink-soft:#a7b2c2;--ink-faint:#6f7b8d;
+    --line:#262f3b;--line-soft:#1f2731;--gold:#e0b455;--gold-bg:#2a2312;--gold-line:#4c3f1c;
+    --blue:#7da2f5;--blue-bg:#172236;--blue-line:#2a3a5a;--teal:#59c2c6;--teal-bg:#10272a;--teal-line:#204b4d;
+    --green:#4bc48b;--green-bg:#123024;--amber:#e0a24e;--amber-bg:#2c2110;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "kern" 1;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
+  a { color: var(--blue); }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  code, .mono { font-family: var(--mono); }
+  code {
+    background: var(--panel-2);
+    border: 1px solid var(--line-soft);
+    border-radius: 5px;
+    padding: .08em .4em;
+    font-size: .88em;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  /* ============================ header ============================ */
+  header {
+    border-bottom: 1px solid var(--line);
+    background:
+      radial-gradient(120% 120% at 88% -10%, var(--teal-bg) 0%, transparent 46%),
+      radial-gradient(90% 90% at 4% 110%, var(--blue-bg) 0%, transparent 50%),
+      var(--panel);
+    position: relative;
+    overflow: hidden;
+  }
+  header .wrap { padding-top: 46px; padding-bottom: 40px; position: relative; z-index: 1; }
+  h1 {
+    font-size: clamp(30px, 5vw, 46px);
+    line-height: 1.08;
+    letter-spacing: -.02em;
+    margin: 14px 0 12px;
+    text-wrap: balance;
+    font-weight: 720;
+  }
+  h1 .accent-b { color: var(--blue); }
+  h1 .accent-t { color: var(--teal); }
+  h1 .accent-g { color: var(--green); }
+  .dek {
+    font-size: clamp(16px, 2.4vw, 19px);
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+  }
+  .topline { display: flex; align-items: center; gap: 10px; }
+  .swatch { width: 22px; height: 14px; border-radius: 3px; border: 1px solid var(--gold-line); background: repeating-linear-gradient(45deg, var(--gold) 0 3px, transparent 3px 6px), var(--gold-bg); }
+
+  .toggle {
+    position: absolute; top: 18px; right: 22px; z-index: 3;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    background: var(--panel-2); color: var(--ink-soft);
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer;
+  }
+  .toggle:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+  section { padding: 44px 0; }
+  section + section { border-top: 1px solid var(--line-soft); }
+  h2 {
+    font-size: clamp(22px, 3.2vw, 28px);
+    letter-spacing: -.01em;
+    margin: 0 0 6px;
+    font-weight: 700;
+  }
+  .kicker { margin: 0 0 22px; color: var(--ink-soft); max-width: 66ch; }
+
+  .tldr {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--teal);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px 24px;
+  }
+  .tldr p { margin: 0 0 10px; }
+  .tldr p:last-child { margin-bottom: 0; }
+  .tldr strong { color: var(--ink); }
+
+  /* ============================ hero animation ============================ */
+  .hero {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 34px 26px 30px;
+    overflow: hidden;
+  }
+  .hero-stage {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+    min-height: 190px;
+  }
+  @media (max-width: 640px) { .hero-stage { grid-template-columns: 1fr; min-height: 320px; } }
+  .hero-col { display: grid; gap: 14px; justify-items: center; }
+  .hero-spec {
+    grid-column: 1 / -1;
+    justify-self: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    background: var(--gold-bg);
+    border: 1px solid var(--gold-line);
+    border-radius: 10px;
+    padding: 10px 18px;
+    letter-spacing: .02em;
+  }
+  @media (min-width: 641px) {
+    .hero-spec { grid-column: 2; grid-row: 1; }
+    .hero-fw-react { grid-column: 1; grid-row: 2; }
+    .hero-fw-solid { grid-column: 3; grid-row: 2; }
+    .hero-verdict { grid-column: 2; grid-row: 3; }
+    .hero-stage { grid-template-rows: auto auto auto; }
+  }
+  .hero-fw {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 12px 20px;
+    border: 1px solid;
+    position: relative;
+  }
+  .hero-fw-react { color: var(--blue); background: var(--blue-bg); border-color: var(--blue-line); }
+  .hero-fw-solid { color: var(--teal); background: var(--teal-bg); border-color: var(--teal-line); }
+  .hero-verdict {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--green);
+    background: var(--green-bg);
+    border: 1px solid color-mix(in srgb, var(--green) 40%, var(--line));
+    border-radius: 10px;
+    padding: 10px 20px;
+  }
+  .hero-beam {
+    position: absolute;
+    left: 50%; top: 34px;
+    width: 2px; height: 108px;
+    background: linear-gradient(var(--gold), transparent 70%);
+    transform-origin: top center;
+  }
+  .hero-beam.left { transform: translateX(-50%) rotate(-28deg); }
+  .hero-beam.right { transform: translateX(-50%) rotate(28deg); }
+  @media (max-width: 640px) { .hero-beam { display: none; } }
+  .hero-token {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-bg);
+    top: 40px; left: 50%;
+    transform: translate(-50%, 0);
+    animation: token-react 3.6s ease-in-out infinite;
+  }
+  .hero-token.second { animation-name: token-solid; animation-delay: .15s; background: var(--teal); box-shadow: 0 0 0 3px var(--teal-bg); }
+  @keyframes token-react {
+    0%   { top: 40px;  left: 50%;  opacity: 0; }
+    8%   { opacity: 1; }
+    38%  { top: 118px; left: 16%;  opacity: 1; }
+    46%  { top: 118px; left: 16%;  opacity: 0; }
+    100% { top: 118px; left: 16%;  opacity: 0; }
+  }
+  @keyframes token-solid {
+    0%   { top: 40px;  left: 50%;  opacity: 0; }
+    8%   { opacity: 1; }
+    38%  { top: 118px; left: 84%;  opacity: 1; }
+    46%  { top: 118px; left: 84%;  opacity: 0; }
+    100% { top: 118px; left: 84%;  opacity: 0; }
+  }
+  .hero-fw-react.pulse { animation: fw-pulse-b 3.6s ease-in-out infinite; }
+  .hero-fw-solid.pulse { animation: fw-pulse-t 3.6s ease-in-out infinite; }
+  @keyframes fw-pulse-b { 0%,34%{box-shadow:none;} 40%,58%{ box-shadow: 0 0 0 3px var(--blue-line);} 66%,100%{box-shadow:none;} }
+  @keyframes fw-pulse-t { 0%,34%{box-shadow:none;} 40%,58%{ box-shadow: 0 0 0 3px var(--teal-line);} 66%,100%{box-shadow:none;} }
+  .hero-verdict.pulse { animation: verdict-pop 3.6s ease-in-out infinite; }
+  @keyframes verdict-pop {
+    0%, 60% { transform: scale(1); box-shadow: none; }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 30%, transparent); }
+    82%, 100% { transform: scale(1); box-shadow: none; }
+  }
+  .hero-caption { text-align: center; margin-top: 18px; color: var(--ink-faint); font-size: 13px; font-family: var(--mono); }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-token { animation: none; opacity: 0; }
+    .hero-fw-react.pulse, .hero-fw-solid.pulse, .hero-verdict.pulse { animation: none; }
+  }
+  body.force-pause .hero-token,
+  body.force-pause .hero-fw-react.pulse,
+  body.force-pause .hero-fw-solid.pulse,
+  body.force-pause .hero-verdict.pulse { animation: none; }
+
+  /* ============================ tabs (radio-driven, no JS needed) ======= */
+  .tabbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .tabbar label {
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink-soft); cursor: pointer;
+    transition: color .12s ease, border-color .12s ease, background .12s ease;
+  }
+  .tabbar label .n { color: var(--ink-faint); margin-right: 6px; }
+  input.tabradio { position: absolute; opacity: 0; pointer-events: none; }
+  .tabpane { display: none; }
+  #t1:checked ~ .tabbar label[for="t1"],
+  #t2:checked ~ .tabbar label[for="t2"],
+  #t3:checked ~ .tabbar label[for="t3"] {
+    background: var(--panel-2); border-color: var(--ink-faint); color: var(--ink);
+  }
+  #t1:checked ~ .tabpanes .pane-1,
+  #t2:checked ~ .tabpanes .pane-2,
+  #t3:checked ~ .tabpanes .pane-3 { display: block; }
+
+  .pane-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 780px) { .pane-grid { grid-template-columns: 1fr; } }
+
+  pre.code {
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
+    background: var(--panel-2); border: 1px solid var(--line-soft);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    margin: 0 0 10px;
+  }
+  pre.code .cm { color: var(--ink-faint); font-style: italic; }
+  pre.code .kw { color: var(--teal); }
+  pre.code .id { color: var(--ink); }
+  .code-path { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin: 0 0 6px; }
+
+  .diagram {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+  }
+  .diagram h4 { margin: 0 0 12px; font-size: 13px; color: var(--ink-soft); font-weight: 600; }
+
+  /* Contract-pane diagram: shared specs -> driver seam -> two trios */
+  .fanout { display: grid; gap: 10px; justify-items: center; }
+  .fanout .spec-box {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    background: var(--gold-bg); color: var(--gold); border: 1px solid var(--gold-line);
+    border-radius: 8px; padding: 8px 14px;
+  }
+  .fanout .seam {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-soft);
+    border: 1px dashed var(--line); border-radius: 8px; padding: 6px 12px;
+  }
+  .fanout .trios { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+  .trio-card {
+    border-radius: 8px; padding: 10px 12px; font-family: var(--mono); font-size: 10.8px;
+    border: 1px solid; display: grid; gap: 3px;
+  }
+  .trio-card.react { background: var(--blue-bg); border-color: var(--blue-line); color: var(--blue); }
+  .trio-card.solid { background: var(--teal-bg); border-color: var(--teal-line); color: var(--teal); }
+  .trio-card .hd { font-weight: 700; margin-bottom: 2px; }
+  .trio-card .file { color: var(--ink-soft); }
+  .trio-card .file.diff { color: inherit; font-weight: 700; }
+  .down-arrow { color: var(--ink-faint); font-family: var(--mono); }
+
+  /* Visual-pane diagram: solid config points at react's owned tree */
+  .ownership { display: grid; gap: 10px; }
+  .owner-row { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
+  .owner-box {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 700;
+    border-radius: 8px; padding: 8px 12px; text-align: center; white-space: nowrap;
+  }
+  .owner-box.solid-box { background: var(--teal-bg); color: var(--teal); border: 1px solid var(--teal-line); }
+  .owner-box.react-box { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-line); }
+  .owner-arrow { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); position: relative; }
+  .owner-arrow .lbl { position: absolute; top: -18px; left: 0; font-size: 10px; white-space: nowrap; }
+  .zero-goldens {
+    margin-top: 4px; text-align: center; font-family: var(--mono); font-size: 11px;
+    color: var(--amber); background: var(--amber-bg); border-radius: 8px; padding: 8px;
+  }
+
+  /* e2e-pane diagram: env var -> spawn -> ports */
+  .pipe2 { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 6px; align-items: stretch; }
+  @media (max-width: 500px) { .pipe2 { grid-template-columns: 1fr; } .pipe2 .conn2 { display: none; } }
+  .stage2 {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px; text-align: center;
+  }
+  .stage2 .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px; }
+  .stage2 .big { font-size: 12px; font-weight: 600; color: var(--ink); font-family: var(--mono); }
+  .conn2 { display: flex; align-items: center; justify-content: center; color: var(--ink-faint); font-family: var(--mono); font-size: 16px; }
+  .portrow { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+  .portchip { font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-soft); }
+  .portchip.solid-port { border-color: var(--teal-line); color: var(--teal); background: var(--teal-bg); }
+  .excl-note {
+    margin-top: 14px; font-size: 12.5px; color: var(--ink-soft);
+    background: var(--panel-2); border-left: 3px solid var(--amber); border-radius: 6px; padding: 10px 12px;
+  }
+
+  /* ============================ fine print ============================ */
+  .fineprint {
+    background: var(--panel-2);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .fineprint .wrap { padding: 30px 22px; }
+  .fp-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (max-width: 700px) { .fp-grid { grid-template-columns: 1fr; } }
+  .fp-item {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; font-size: 13px; color: var(--ink-soft);
+  }
+  .fp-item b { color: var(--ink); }
+  .fp-item .fp-tag {
+    display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--amber); background: var(--amber-bg);
+    border-radius: 999px; padding: 2px 8px; margin-bottom: 6px;
+  }
+
+  /* ============================ reference ============================ */
+  .files { display: grid; gap: 8px; }
+  .file {
+    display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+    font-family: var(--mono); font-size: 12.5px;
+    background: var(--panel); border: 1px solid var(--line-soft); border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .file .path { color: var(--ink); overflow-x: auto; }
+  .file .role { color: var(--ink-faint); font-size: 11px; text-align: right; white-space: nowrap; }
+
+  footer { border-top: 1px solid var(--line); color: var(--ink-faint); font-size: 12.5px; }
+  footer .wrap { padding: 26px 22px 44px; }
+</style>
+</head>
+<body>
+<button class="toggle" id="tg" aria-label="Toggle light or dark theme">Theme</button>
+
+<header>
+  <div class="wrap">
+    <div class="topline"><span class="swatch" aria-hidden="true"></span><span class="eyebrow">Cross-framework testing · how the Solid port is proven, not just built</span></div>
+    <h1>One suite. <span class="accent-b">React</span> and <span class="accent-t">Solid</span>. <span class="accent-g">One verdict.</span></h1>
+    <p class="dek"><code>@rtc/client-solid</code> doesn't get its own test suite written twice — it gets proven against the <em>same</em> specs, the <em>same</em> goldens, and the <em>same</em> Gherkin features that already govern <code>@rtc/client-react</code>. Three mechanisms make that possible without either client importing the other.</p>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">Start here</span>
+    <div class="tldr">
+      <p><strong>Contract tier:</strong> the same <code>*.contract.spec.ts</code> files run twice, once per framework, through a driver seam (<code>setDriver</code>/<code>getDriver</code>) that swaps out only the rendering adapter.</p>
+      <p><strong>Visual tier:</strong> Solid's Playwright and vitest-browser configs point their snapshot directory <em>into</em> <code>client-react</code>'s own committed <code>__screenshots__</code> tree and refuse to write — Solid owns zero goldens of its own, so a pixel match is a real cross-framework proof, not a tautology.</p>
+      <p><strong>e2e tier:</strong> the same Gherkin features drive whichever client <code>RTC_CLIENT_PKG</code> names, spawned by the same <code>devServer.ts</code> — Solid's runs just point the dev-server spawn and the ports somewhere else.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">The shape of it</span>
+    <h2>One spec, two frameworks, one verdict</h2>
+    <p class="kicker">A spec (contract assertion, golden screenshot, or Gherkin scenario) never mentions React or Solid. It travels down two rendering paths and lands on the same pass/fail line either way.</p>
+    <div class="hero">
+      <div class="hero-stage">
+        <div class="hero-spec">spec / golden / feature</div>
+        <div class="hero-beam left" aria-hidden="true"></div>
+        <div class="hero-beam right" aria-hidden="true"></div>
+        <div class="hero-token" aria-hidden="true"></div>
+        <div class="hero-token second" aria-hidden="true"></div>
+        <div class="hero-fw hero-fw-react pulse">@rtc/client-react</div>
+        <div class="hero-fw hero-fw-solid pulse">@rtc/client-solid</div>
+        <div class="hero-verdict pulse">✓ same verdict</div>
+      </div>
+      <div class="hero-caption">no import from one client to the other — only a shared spec and a shared expectation</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">The three mechanisms</span>
+    <h2>Pick a tier</h2>
+    <p class="kicker">Same story, three different swap points — a driver interface, a cross-package snapshot path, and an environment variable.</p>
+
+    <input class="tabradio" type="radio" name="tab" id="t1" checked>
+    <input class="tabradio" type="radio" name="tab" id="t2">
+    <input class="tabradio" type="radio" name="tab" id="t3">
+    <div class="tabbar">
+      <label for="t1"><span class="n">01</span>Contract</label>
+      <label for="t2"><span class="n">02</span>Visual</label>
+      <label for="t3"><span class="n">03</span>e2e</label>
+    </div>
+
+    <div class="tabpanes">
+      <div class="tabpane pane-1">
+        <div class="pane-grid">
+          <div>
+            <p class="code-path">packages/ui-contract/src/shared/harness/activeDriver.ts</p>
+            <pre class="code"><span class="cm">// A framework adapter that knows how to render a token into the DOM.</span>
+<span class="kw">export interface</span> <span class="id">UiContractDriver</span> {
+  render&lt;P, Page <span class="kw">extends</span> MountedComponent&lt;P&gt;&gt;(
+    token: ComponentToken&lt;P, Page&gt;,
+    inputs: RenderInputs&lt;P&gt;,
+  ): MountedRoot;
+}
+
+<span class="kw">let</span> active: UiContractDriver | <span class="kw">null</span> = <span class="kw">null</span>;
+
+<span class="kw">export function</span> setDriver(driver: UiContractDriver): <span class="kw">void</span> { active = driver; }
+<span class="kw">export function</span> getDriver(): UiContractDriver { <span class="cm">/* throws if unset */</span> }</pre>
+            <p class="code-path">the only divergence between the two runs — packages/client-*/tests/ui/contract/vitest.config.ts</p>
+            <pre class="code">setupFiles: [
+  <span class="cm">"./tests/setup/jsdom-storage.ts"</span>,
+  <span class="cm">"./tests/ui/contract/<span class="id">react</span>/setup.ts"</span>,  <span class="cm">// client-react: registers the React driver</span>
+]
+<span class="cm">// client-solid's own config: identical, except .../<span class="id">solid</span>/setup.ts</span></pre>
+          </div>
+          <div class="diagram">
+            <h4>Shared specs → driver seam → matching 8-file trios</h4>
+            <div class="fanout">
+              <div class="spec-box">*.contract.spec.ts (shared, @rtc/ui-contract)</div>
+              <div class="down-arrow">↓ imports only the seam ↓</div>
+              <div class="seam">setDriver / getDriver — UiContractDriver</div>
+              <div class="down-arrow">↓</div>
+              <div class="trios">
+                <div class="trio-card react">
+                  <div class="hd">react/</div>
+                  <div class="file diff">setup.ts ← registers React driver</div>
+                  <div class="file">render.tsx</div>
+                  <div class="file">registry.tsx</div>
+                  <div class="file">PropsHost.tsx</div>
+                  <div class="file">LayoutEngineHost.tsx</div>
+                  <div class="file">AnimationProbe.tsx</div>
+                  <div class="file">viewModelFromWorld.ts</div>
+                  <div class="file">pinnedFixtureLayoutPort.ts</div>
+                </div>
+                <div class="trio-card solid">
+                  <div class="hd">solid/</div>
+                  <div class="file diff">setup.ts ← registers Solid driver</div>
+                  <div class="file">render.tsx</div>
+                  <div class="file">registry.tsx</div>
+                  <div class="file">PropsHost.tsx</div>
+                  <div class="file">LayoutEngineHost.tsx</div>
+                  <div class="file">AnimationProbe.tsx</div>
+                  <div class="file">viewModelFromWorld.ts</div>
+                  <div class="file">pinnedFixtureLayoutPort.ts</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpane pane-2">
+        <div class="pane-grid">
+          <div>
+            <p class="code-path">packages/client-solid/tests/ui/visual/playwright/playwright.config.ts</p>
+            <pre class="code"><span class="cm">// Assert-only tier: this package owns NO goldens — anchored</span>
+<span class="cm">// cross-package into client-react's committed tree.</span>
+<span class="kw">const</span> REACT_SNAPSHOT_DIR = fileURLToPath(<span class="kw">new</span> URL(
+  <span class="cm">"../../../../../client-react/tests/ui/visual/playwright/__screenshots__"</span>,
+  import.meta.url,
+));
+snapshotDir: REACT_SNAPSHOT_DIR,
+updateSnapshots: <span class="cm">"none"</span>,  <span class="cm">// a missing golden is a hard failure, never a write</span>
+<span class="cm">// argv guard: refuses to run under --update-snapshots / -u at all</span></pre>
+            <p class="code-path">…/vitest-browser/vitest-browser.config.ts:155</p>
+            <pre class="code"><span class="kw">if</span> (!existsSync(screenshotPath)) {
+  <span class="kw">throw new</span> Error(
+    <span class="cm">`assert-only tier: golden missing at ${screenshotPath} — `</span> +
+    <span class="cm">"goldens are owned by client-react; refusing to auto-create " +</span>
+    <span class="cm">"one from the solid tier."</span>,
+  );
+}</pre>
+          </div>
+          <div class="diagram">
+            <h4>Solid's config reads FROM react's tree — never writes TO it</h4>
+            <div class="ownership">
+              <div class="owner-row">
+                <div class="owner-box solid-box">client-solid<br>playwright.config.ts</div>
+                <div class="owner-arrow">— snapshotDir points at → <div class="lbl"></div></div>
+              </div>
+              <div class="owner-row">
+                <div class="owner-box react-box">client-react<br>tests/ui/visual/playwright/__screenshots__/</div>
+                <div class="owner-arrow"></div>
+              </div>
+              <div class="zero-goldens">0 files committed under client-solid's own __screenshots__ — a pixel match here IS the cross-framework proof</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpane pane-3">
+        <div class="pane-grid">
+          <div>
+            <p class="code-path">tests/scripts/devServer.ts</p>
+            <pre class="code"><span class="cm">// Which client package's dev server to spawn. Defaults to React;</span>
+<span class="cm">// solid browser suites set this to prove the same Gherkin</span>
+<span class="cm">// contracts against the SolidJS client.</span>
+<span class="kw">export const</span> CLIENT_PKG: string =
+  process.env.RTC_CLIENT_PKG ?? <span class="cm">"@rtc/client-react"</span>;
+
+spawn(<span class="cm">"pnpm"</span>, [<span class="cm">"--filter"</span>, CLIENT_PKG, <span class="cm">"dev"</span>], { … });</pre>
+            <p class="code-path">tests/scripts/run-all.ts</p>
+            <pre class="code"><span class="cm">// react playwright/playwright-cucumber/cypress/cypress-cucumber get</span>
+<span class="cm">// 3001-3004; the two solid suites continue the same block at 3005-3006.</span>
+<span class="kw">const</span> browserScripts = [
+  <span class="cm">"test:browser:playwright"</span>, <span class="cm">"test:browser:playwright-cucumber"</span>,
+  <span class="cm">"test:browser:cypress"</span>, <span class="cm">"test:browser:cypress-cucumber"</span>,
+  <span class="cm">"test:browser:playwright:solid"</span>, <span class="cm">"test:browser:playwright-cucumber:solid"</span>,
+];</pre>
+          </div>
+          <div class="diagram">
+            <h4>Same features, same steps, same page objects — different env var</h4>
+            <div class="pipe2">
+              <div class="stage2"><div class="lbl">env var</div><div class="big">RTC_CLIENT_PKG=<br>@rtc/client-solid</div></div>
+              <div class="conn2">→</div>
+              <div class="stage2"><div class="lbl">devServer.ts</div><div class="big">spawn(pnpm --filter<br>CLIENT_PKG dev)</div></div>
+              <div class="conn2">→</div>
+              <div class="stage2"><div class="lbl">run-all.ts</div><div class="big">2 solid suites,<br>same features/</div></div>
+            </div>
+            <div class="portrow">
+              <span class="portchip">3001 playwright</span>
+              <span class="portchip">3002 pw-cucumber</span>
+              <span class="portchip">3003 cypress</span>
+              <span class="portchip">3004 cy-cucumber</span>
+              <span class="portchip solid-port">3005 playwright · solid</span>
+              <span class="portchip solid-port">3006 pw-cucumber · solid</span>
+            </div>
+            <div class="excl-note"><b>One exclusion:</b> <code>login.spec.ts</code> is Solid-excluded — not because Solid lacks sign-in UI, but because the dev server's demo credential (<code>VITE_DEV_AUTH</code>) isn't yet read by <code>client-solid</code>. Credential wiring, tracked in <code>docs/STATUS.md</code>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="fineprint">
+  <div class="wrap">
+    <span class="eyebrow">Fine print</span>
+    <h2>Where the proof has edges</h2>
+    <p class="kicker">The honest exceptions to "same suite, same verdict" — each one tracked, none of them silent.</p>
+    <div class="fp-grid">
+      <div class="fp-item">
+        <span class="fp-tag">e2e</span>
+        <b>login.spec is Solid-excluded.</b> Credential-wiring gap (client-solid doesn't read <code>VITE_DEV_AUTH</code> yet), not a missing LoginScreen — <code>@rtc/client-solid</code> shipped its own LoginScreen/AuthGate. See <code>docs/STATUS.md</code>.
+      </div>
+      <div class="fp-item">
+        <span class="fp-tag">Visual · CT</span>
+        <b>4 classic-skin CT assertions are CI-skipped.</b> GitHub-hosted runners resolve classic's OS-generic font tokens non-deterministically across runs — a runner-environment issue, not a Solid rendering bug. Still verified by the other two x86 tiers and all darwin tiers.
+      </div>
+      <div class="fp-item">
+        <span class="fp-tag">Visual · CT tier</span>
+        <b>Solid's "CT tier" is a full-page Playwright fallback.</b> <code>@playwright/experimental-ct-solid</code> is frozen at 1.48.2 (its own component-test runner), so the fallback exercises the same scenarios through full-page Playwright instead.
+      </div>
+      <div class="fp-item">
+        <span class="fp-tag">Bindings</span>
+        <b><code>useMachine</code> disposes eagerly in Solid, deferred in React.</b> React's version defers cleanup a microtask to survive StrictMode's dev-only double-invoke; Solid has no such double-invoke, so eager disposal is correct there — not a shortcut. See <code>packages/solid-bindings/README.md</code>.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">Reference</span>
+    <h2>Where this lives</h2>
+    <p class="kicker">The moving parts, if you want to read the source — and the authoritative chapter that goes deeper than an animated page can.</p>
+    <div class="files">
+      <div class="file"><span class="path">packages/ui-contract/src/shared/harness/activeDriver.ts</span><span class="role">the driver seam — setDriver / getDriver</span></div>
+      <div class="file"><span class="path">packages/client-{react,solid}/tests/ui/contract/{react,solid}/*</span><span class="role">the matching 8-file trios</span></div>
+      <div class="file"><span class="path">packages/client-solid/tests/ui/visual/playwright/playwright.config.ts</span><span class="role">cross-package snapshotDir, updateSnapshots: "none"</span></div>
+      <div class="file"><span class="path">packages/client-solid/tests/ui/visual/vitest-browser/vitest-browser.config.ts</span><span class="role">the existsSync throw, assert-only guard</span></div>
+      <div class="file"><span class="path">tests/scripts/devServer.ts</span><span class="role">RTC_CLIENT_PKG → CLIENT_PKG → spawn</span></div>
+      <div class="file"><span class="path">tests/scripts/run-all.ts</span><span class="role">the two Solid suites, ports 3005/3006</span></div>
+      <div class="file"><span class="path">docs/architecture/21-cross-framework-testing.md</span><span class="role">authoritative doc — read this next</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    This page visualizes <a href="../architecture/21-cross-framework-testing.md">§21 — Cross-framework testing</a> in <code>docs/architecture.md</code>; that chapter is the source of truth, this is a companion. <code>@rtc/client-solid</code> reached full parity with <code>@rtc/client-react</code> across all three tiers (SolidJS-port workstream, PRs #180–#262).
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById("tg");
+    function cur() {
+      var t = root.getAttribute("data-theme");
+      if (t) return t;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    btn.addEventListener("click", function () {
+      var next = cur() === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      btn.textContent = next === "dark" ? "☾ Dark" : "☀ Light";
+    });
+    btn.textContent = cur() === "dark" ? "☾ Dark" : "☀ Light";
+  })();
+</script>
+</body>
+</html>
