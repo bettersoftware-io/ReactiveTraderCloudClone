@@ -258,23 +258,38 @@ function main() {
     ["client-solid", flag("solid")],
   ].filter(([, dir]) => Boolean(dir));
 
-  const failures = [];
-  const reports = {};
+  // Scan every package first, WITHOUT copying anything. A green run must
+  // leave <out>/assets and <out>/reports untouched — only known once every
+  // package has been scanned.
+  const scanned = [];
   for (const [label, dir] of packages) {
     for (const f of scanPackage(label, dir)) {
-      f.reference = copyAsset(out, label, dir, f.referencePath);
-      f.actual = copyAsset(out, label, dir, f.actualPath);
-      f.diff = copyAsset(out, label, dir, f.diffPath);
-      failures.push(f);
+      scanned.push([label, dir, f]);
     }
-    Object.assign(reports, copyTierReports(out, label, dir));
   }
 
-  if (failures.length === 0) {
+  if (scanned.length === 0) {
     writeFileSync(join(out, "index.html"), renderGreen(meta));
     console.log(`wrote ${join(out, "index.html")} (all green)`);
     return;
   }
+
+  // Failures exist: now copy assets per record, and each package's tier
+  // reports at most once.
+  const failures = [];
+  const reports = {};
+  const reportedLabels = new Set();
+  for (const [label, dir, f] of scanned) {
+    f.reference = copyAsset(out, label, dir, f.referencePath);
+    f.actual = copyAsset(out, label, dir, f.actualPath);
+    f.diff = copyAsset(out, label, dir, f.diffPath);
+    failures.push(f);
+    if (!reportedLabels.has(label)) {
+      reportedLabels.add(label);
+      Object.assign(reports, copyTierReports(out, label, dir));
+    }
+  }
+
   writeFileSync(join(out, "index.html"), renderWall(failures, reports, meta));
   console.log(
     `wrote ${join(out, "index.html")} (${failures.length} failing scenario(s))`,

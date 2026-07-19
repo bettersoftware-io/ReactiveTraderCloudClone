@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -48,6 +49,10 @@ describe("build-visual-report — green path", () => {
     expect(html).toContain("All visual tiers green");
     expect(html).toContain("abc1234");
     expect(html).not.toContain("assets/");
+    // A green run must not physically copy anything — no assets, no
+    // (potentially multi-MB) native tier report bundles.
+    expect(existsSync(join(out, "assets"))).toBe(false);
+    expect(existsSync(join(out, "reports"))).toBe(false);
   });
 });
 
