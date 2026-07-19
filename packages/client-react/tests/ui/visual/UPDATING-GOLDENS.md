@@ -12,6 +12,12 @@ For *why* two sets exist (and why we did **not** collapse to one), see
 [ADR-001 → "Cross-platform pixel drift"](./ADR-001-visual-diff-tooling.md). This
 file is the *how*.
 
+> **Prefer an interactive view?** A self-contained, animated companion to this
+> runbook lives at
+> [`docs/showcase/updating-goldens.html`](../../../../../docs/showcase/updating-goldens.html)
+> — open it in a browser. The markdown here is authoritative; that page is the
+> visual twin.
+
 ---
 
 ## Where you are

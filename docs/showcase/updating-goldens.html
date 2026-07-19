@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Updating the Visual Goldens</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* ============================ tokens ============================ */
+  :root {
+    /* neutrals — cool slate with a faint blue bias (chosen, not pure grey) */
+    --ground: #f4f6f9;
+    --panel: #ffffff;
+    --panel-2: #eef1f6;
+    --ink: #1a2230;
+    --ink-soft: #4a5567;
+    --ink-faint: #798197;
+    --line: #d9dfe8;
+    --line-soft: #e7ebf1;
+
+    /* accents — gold is the star (the "golden" set, literally) */
+    --gold: #a9791f;        /* canonical react/ — text-safe on light */
+    --gold-bg: #f6ecd4;
+    --gold-line: #e3c887;
+    --blue: #2f5fd0;        /* react-local / native */
+    --blue-bg: #e3eafc;
+    --blue-line: #b9caf3;
+    --green: #1f8a5b;       /* gate / pass */
+    --green-bg: #dcf1e6;
+    --amber: #b5731a;       /* fast / local */
+
+    --shadow: 0 1px 2px rgba(20,34,48,.05), 0 8px 24px rgba(20,34,48,.06);
+    --radius: 12px;
+    --maxw: 940px;
+
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0d1016;
+      --panel: #141a22;
+      --panel-2: #1b222c;
+      --ink: #e8edf4;
+      --ink-soft: #a7b2c2;
+      --ink-faint: #6f7b8d;
+      --line: #262f3b;
+      --line-soft: #1f2731;
+      --gold: #e0b455;
+      --gold-bg: #2a2312;
+      --gold-line: #4c3f1c;
+      --blue: #7da2f5;
+      --blue-bg: #172236;
+      --blue-line: #2a3a5a;
+      --green: #4bc48b;
+      --green-bg: #123024;
+      --amber: #e0a24e;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground:#f4f6f9;--panel:#fff;--panel-2:#eef1f6;--ink:#1a2230;--ink-soft:#4a5567;--ink-faint:#798197;
+    --line:#d9dfe8;--line-soft:#e7ebf1;--gold:#a9791f;--gold-bg:#f6ecd4;--gold-line:#e3c887;
+    --blue:#2f5fd0;--blue-bg:#e3eafc;--blue-line:#b9caf3;--green:#1f8a5b;--green-bg:#dcf1e6;--amber:#b5731a;
+    --shadow:0 1px 2px rgba(20,34,48,.05),0 8px 24px rgba(20,34,48,.06);
+  }
+  :root[data-theme="dark"] {
+    --ground:#0d1016;--panel:#141a22;--panel-2:#1b222c;--ink:#e8edf4;--ink-soft:#a7b2c2;--ink-faint:#6f7b8d;
+    --line:#262f3b;--line-soft:#1f2731;--gold:#e0b455;--gold-bg:#2a2312;--gold-line:#4c3f1c;
+    --blue:#7da2f5;--blue-bg:#172236;--blue-line:#2a3a5a;--green:#4bc48b;--green-bg:#123024;--amber:#e0a24e;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "kern" 1;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
+  a { color: var(--blue); }
+
+  /* eyebrow / labels use the mono voice = "the machine speaking" */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  code, .mono { font-family: var(--mono); }
+  code {
+    background: var(--panel-2);
+    border: 1px solid var(--line-soft);
+    border-radius: 5px;
+    padding: .08em .4em;
+    font-size: .88em;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  /* ============================ header ============================ */
+  header {
+    border-bottom: 1px solid var(--line);
+    background:
+      radial-gradient(120% 120% at 88% -10%, var(--gold-bg) 0%, transparent 46%),
+      var(--panel);
+    position: relative;
+    overflow: hidden;
+  }
+  header .wrap { padding-top: 46px; padding-bottom: 40px; position: relative; z-index: 1; }
+  h1 {
+    font-size: clamp(30px, 5vw, 46px);
+    line-height: 1.08;
+    letter-spacing: -.02em;
+    margin: 14px 0 12px;
+    text-wrap: balance;
+    font-weight: 720;
+  }
+  h1 .accent { color: var(--gold); }
+  .dek {
+    font-size: clamp(16px, 2.4vw, 19px);
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0;
+  }
+  .topline { display: flex; align-items: center; gap: 10px; }
+  .swatch { width: 22px; height: 14px; border-radius: 3px; border: 1px solid var(--gold-line); background: repeating-linear-gradient(45deg, var(--gold) 0 3px, transparent 3px 6px), var(--gold-bg); }
+
+  /* theme toggle */
+  .toggle {
+    position: absolute; top: 18px; right: 22px; z-index: 3;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    background: var(--panel-2); color: var(--ink-soft);
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer;
+  }
+  .toggle:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+  /* ============================ tl;dr ============================ */
+  section { padding: 44px 0; }
+  section + section { border-top: 1px solid var(--line-soft); }
+  h2 {
+    font-size: clamp(22px, 3.2vw, 28px);
+    letter-spacing: -.01em;
+    margin: 0 0 6px;
+    font-weight: 700;
+  }
+  .kicker { margin: 0 0 22px; color: var(--ink-soft); max-width: 62ch; }
+
+  .tldr {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--gold);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px 24px;
+  }
+  .tldr p { margin: 0 0 10px; }
+  .tldr p:last-child { margin-bottom: 0; }
+  .tldr strong { color: var(--ink); }
+
+  /* ============================ two sets ============================ */
+  .sets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 680px) { .sets { grid-template-columns: 1fr; } }
+  .set-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .set-card.gold { border-top: 3px solid var(--gold); }
+  .set-card.blue { border-top: 3px solid var(--blue); }
+  .set-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .set-name { font-family: var(--mono); font-size: 17px; font-weight: 600; }
+  .set-card.gold .set-name { color: var(--gold); }
+  .set-card.blue .set-name { color: var(--blue); }
+  .pill {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px; white-space: nowrap; font-weight: 600;
+  }
+  .pill.gate { background: var(--green-bg); color: var(--green); }
+  .pill.fast { background: var(--blue-bg); color: var(--blue); }
+  .set-role { font-size: 14.5px; color: var(--ink-soft); margin: 8px 0 14px; }
+  .set-meta { list-style: none; padding: 0; margin: 0; display: grid; gap: 7px; }
+  .set-meta li { display: grid; grid-template-columns: 84px 1fr; gap: 10px; font-size: 13.5px; align-items: baseline; }
+  .set-meta .k { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-faint); }
+  .set-meta .v { color: var(--ink); }
+
+  /* the diff-shimmer visual between the two sets */
+  .diff-strip {
+    margin-top: 26px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 18px;
+    align-items: center;
+    box-shadow: var(--shadow);
+  }
+  @media (max-width: 620px){ .diff-strip{ grid-template-columns:1fr; text-align:center;} .diff-arrow{ transform:rotate(90deg);} }
+  .screenshot {
+    aspect-ratio: 16/10;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, var(--panel-2), var(--panel));
+  }
+  .screenshot::before {
+    content: "";
+    position: absolute; inset: 12% 10% auto 10%; height: 8px; border-radius: 4px;
+    background: var(--gold); opacity: .55;
+    box-shadow: 0 16px 0 -1px var(--blue), 0 32px 0 -2px var(--ink-faint);
+  }
+  .screenshot .caption { position: absolute; bottom: 8px; left: 10px; font-family: var(--mono); font-size: 10px; color: var(--ink-faint); }
+  .screenshot.shimmer::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(100deg, transparent 40%, rgba(255,255,255,.35) 50%, transparent 60%);
+    transform: translateX(-100%);
+    animation: sweep 3.2s ease-in-out infinite;
+  }
+  @keyframes sweep { 0%,20%{transform:translateX(-100%);} 60%,100%{transform:translateX(100%);} }
+  .diff-arrow { font-family: var(--mono); color: var(--ink-faint); font-size: 13px; text-align: center; }
+  .diff-arrow b { display:block; color: var(--green); font-size: 22px; line-height: 1; }
+
+  /* ============================ routes / flow ============================ */
+  .flow {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px;
+    margin-bottom: 26px;
+  }
+  .flow-title { display:flex; align-items:center; gap:10px; margin-bottom: 4px; }
+  .flow-title .n { font-family: var(--mono); font-weight:700; color: var(--green); font-size: 13px; border:1px solid var(--green); border-radius:6px; padding:1px 7px; }
+  .flow-title h3 { margin:0; font-size: 17px; }
+  .flow-sub { color: var(--ink-soft); font-size: 14px; margin: 0 0 20px; }
+
+  .pipe {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 6px;
+    align-items: stretch;
+  }
+  @media (max-width: 720px){ .pipe{ grid-template-columns:1fr; } .pipe .conn{ display:none;} }
+  .stage {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    position: relative;
+  }
+  .stage .lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing:.06em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 8px; }
+  .stage .big { font-size: 13px; color: var(--ink); font-weight: 600; }
+  .stage .small { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+  .conn { display:flex; align-items:center; justify-content:center; color: var(--ink-faint); font-family: var(--mono); font-size: 18px; position: relative; padding: 0 2px; }
+
+  /* the scenario grid that narrows to one */
+  .grid-dots { display:grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin: 4px auto 8px; max-width: 150px; }
+  .grid-dots i { aspect-ratio:1; border-radius: 2px; background: var(--line); transition: none; }
+  .grid-dots i.hit { background: var(--gold); box-shadow: 0 0 0 2px var(--gold-line); animation: pop 3.4s ease-in-out infinite; }
+  @keyframes pop { 0%,30%{ transform:scale(1); background:var(--line);} 42%,72%{ transform:scale(1.25); background:var(--gold);} 84%,100%{ transform:scale(1); background:var(--line);} }
+
+  /* the commit token travelling back to the branch */
+  .branch-line { position: relative; height: 30px; margin-top: 6px; border-top: 2px dashed var(--line); }
+  .branch-line .commit {
+    position: absolute; top: -9px; left: 6%;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--green); border: 3px solid var(--panel-2);
+    animation: travel 3.4s ease-in-out infinite;
+  }
+  @keyframes travel { 0%,55%{ left: 90%; opacity:0;} 62%{opacity:1;} 100%{ left: 6%; opacity:1;} }
+  .branch-line .tag { position:absolute; right:0; top:-22px; font-family:var(--mono); font-size:10px; color:var(--green); }
+
+  /* route cards */
+  .routes { display: grid; gap: 14px; }
+  .route {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+    transition: transform .15s ease, border-color .15s ease;
+  }
+  .route:hover { transform: translateY(-2px); border-color: var(--ink-faint); }
+  .route .num {
+    font-family: var(--mono); font-weight: 700; font-size: 15px;
+    width: 34px; height: 34px; display: grid; place-items: center;
+    border-radius: 9px; color: #fff;
+  }
+  .route.r1 .num { background: var(--green); }
+  .route.r2 .num { background: var(--gold); color: #1a1400; }
+  .route.r3 .num { background: var(--blue); }
+  .route h3 { margin: 0 0 2px; font-size: 16px; }
+  .route .where { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); margin-bottom: 10px; }
+  .route p { margin: 0 0 10px; font-size: 14px; color: var(--ink-soft); }
+  .route .cmd {
+    font-family: var(--mono); font-size: 12.5px;
+    background: var(--panel-2); border: 1px solid var(--line-soft);
+    border-radius: 8px; padding: 9px 12px; color: var(--ink);
+    overflow-x: auto; white-space: pre;
+  }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em;
+    padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line);
+    color: var(--ink-soft); background: var(--panel);
+  }
+  .tag.yes { color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, var(--line)); }
+  .tag.no  { color: var(--ink-faint); }
+  .tag.set-gold { color: var(--gold); border-color: var(--gold-line); }
+  .tag.set-blue { color: var(--blue); border-color: var(--blue-line); }
+
+  /* ============================ decision guide ============================ */
+  .guide { display: grid; gap: 12px; }
+  .g-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 18px; box-shadow: var(--shadow);
+  }
+  @media (max-width:600px){ .g-row{ grid-template-columns:1fr; } }
+  .g-row .q { font-size: 14.5px; }
+  .g-row .q b { color: var(--ink); }
+  .g-row .a { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .chip {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+    padding: 5px 11px; border-radius: 8px; white-space: nowrap;
+  }
+  .chip.r1 { background: var(--green-bg); color: var(--green); }
+  .chip.r2 { background: var(--gold-bg); color: var(--gold); }
+  .chip.r3 { background: var(--blue-bg); color: var(--blue); }
+  .chip.both { background: var(--panel-2); color: var(--ink); border:1px dashed var(--line); }
+
+  .callout {
+    margin-top: 22px;
+    background: var(--gold-bg);
+    border: 1px solid var(--gold-line);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    font-size: 14.5px;
+    color: var(--ink);
+  }
+  .callout b { color: var(--gold); }
+
+  /* ============================ reference ============================ */
+  .files { display: grid; gap: 8px; }
+  .file {
+    display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+    font-family: var(--mono); font-size: 12.5px;
+    background: var(--panel); border: 1px solid var(--line-soft); border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .file .path { color: var(--ink); overflow-x: auto; }
+  .file .role { color: var(--ink-faint); font-size: 11px; text-align: right; white-space: nowrap; }
+
+  footer { border-top: 1px solid var(--line); color: var(--ink-faint); font-size: 12.5px; }
+  footer .wrap { padding: 26px 22px 44px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .screenshot.shimmer::after, .grid-dots i.hit, .branch-line .commit { animation: none; }
+    .grid-dots i.hit { background: var(--gold); box-shadow: 0 0 0 2px var(--gold-line); }
+    .branch-line .commit { left: 6%; opacity: 1; }
+    .route { transition: none; }
+  }
+</style>
+</head>
+<body>
+<button class="toggle" id="tg" aria-label="Toggle light or dark theme">Theme</button>
+
+<header>
+  <div class="wrap">
+    <div class="topline"><span class="swatch" aria-hidden="true"></span><span class="eyebrow">Visual goldens · operations runbook</span></div>
+    <h1>Updating the <span class="accent">golden screenshots</span>, without the confusion</h1>
+    <p class="dek">Two golden sets exist for different reasons, and three routes update them. Here is which one to reach for, when — and why “run it on CI and let it push” and “regenerate locally through Docker” are both valid answers to the same question.</p>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">Start here</span>
+    <div class="tldr">
+      <p><strong>The goldens come in two sets, not one.</strong> <code>react/</code> is the x86 set CI enforces; <code>react-local/&lt;arch&gt;</code> is your machine’s native set for the instant local loop. An intentional UI change usually means updating <em>both</em>.</p>
+      <p><strong>To refresh the CI set <code>react/</code>, pick a route</strong> — dispatch the GitHub workflow and let CI render &amp; push it back (selective), <em>or</em> regenerate it locally in Docker and commit it yourself. Same bytes either way.</p>
+      <p><strong>To refresh your local set <code>react-local/&lt;arch&gt;</code></strong>, run the native <code>:update</code> script on your own machine. No Docker, instant — this is the loop the single-set experiment broke, and why we kept it.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">Part 1 · the map</span>
+    <h2>Two sets, two jobs</h2>
+    <p class="kicker">They render the same scenarios but live in different worlds. Font rasterisation drifts ~30% across CPU architectures, so an arm64 Mac cannot reproduce x86 pixels natively — hence a set for each.</p>
+
+    <div class="sets">
+      <div class="set-card gold">
+        <div class="set-head">
+          <span class="set-name">react/</span>
+          <span class="pill gate">gates CI</span>
+        </div>
+        <p class="set-role">The canonical x86 baseline. Rendered in the pinned Playwright container, checked by <code>visual.yml</code> on every push to <code>main</code>.</p>
+        <ul class="set-meta">
+          <li><span class="k">pixels</span><span class="v">x86 / linux-amd64</span></li>
+          <li><span class="k">renders in</span><span class="v">playwright:v1.61.0-noble container</span></li>
+          <li><span class="k">baseline when</span><span class="v"><code>CI=1</code></span></li>
+          <li><span class="k">tolerance</span><span class="v">maxDiffPixelRatio 0.06</span></li>
+        </ul>
+      </div>
+
+      <div class="set-card blue">
+        <div class="set-head">
+          <span class="set-name">react-local/&lt;arch&gt;</span>
+          <span class="pill fast">fast local loop</span>
+        </div>
+        <p class="set-role">Your machine’s native pixels — <code>darwin-arm64</code> on your Mac, <code>linux-arm64</code> in the sandbox. Powers instant <code>pnpm test:ui:visual</code>. Never gates.</p>
+        <ul class="set-meta">
+          <li><span class="k">pixels</span><span class="v">native to your host arch</span></li>
+          <li><span class="k">renders in</span><span class="v">your machine — no Docker</span></li>
+          <li><span class="k">baseline when</span><span class="v"><code>CI</code> unset</span></li>
+          <li><span class="k">gates</span><span class="v">nothing — feedback only</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="diff-strip">
+      <div class="screenshot shimmer"><span class="caption">candidate render</span></div>
+      <div class="diff-arrow"><b>≟</b>pixel<br/>compare</div>
+      <div class="screenshot"><span class="caption">committed golden</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">Part 2 · the routes</span>
+    <h2>Three ways to update</h2>
+    <p class="kicker">Routes 1 and 2 both write the canonical <code>react/</code> set — interchangeable, byte-for-byte. Route 3 writes your local set. Route 1 is the one that solved the 45-minute bottleneck.</p>
+
+    <div class="flow">
+      <div class="flow-title"><span class="n">Route 1</span><h3>Selective CI refresh — and it pushes the commit for you</h3></div>
+      <p class="flow-sub">Dispatch <code>update-visual-goldens.yml</code> with a <code>scenario_pattern</code>. CI renders only the matching goldens in the pinned container, then auto-commits them straight back to your branch. One changed scenario costs about a minute, not thirty.</p>
+      <div class="pipe">
+        <div class="stage">
+          <div class="lbl">1 · you dispatch</div>
+          <div class="grid-dots" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i class="hit"></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="small mono">pattern: “aurora”</div>
+        </div>
+        <div class="conn">→</div>
+        <div class="stage">
+          <div class="lbl">2 · CI renders</div>
+          <div class="big">pinned x86 container</div>
+          <div class="small">only the 1 match · all 3 tiers · <code>CI=1</code> → react/</div>
+        </div>
+        <div class="conn">→</div>
+        <div class="stage">
+          <div class="lbl">3 · CI pushes back</div>
+          <div class="big">auto-commit</div>
+          <div class="branch-line" aria-hidden="true"><span class="commit"></span><span class="tag">[skip ci] → your branch</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="routes">
+      <div class="route r1">
+        <span class="num">1</span>
+        <div>
+          <h3>CI workflow — selective &amp; self-committing</h3>
+          <div class="where">runs on: GitHub Actions · writes: react/</div>
+          <p>Trigger from the Actions tab (<em>Run workflow</em>) or the CLI. Empty pattern = full wipe &amp; re-render; a pattern = targeted, no wipe. CI commits the result to your branch with <code>[skip ci]</code>.</p>
+          <div class="cmd">gh workflow run "Update visual goldens" \
+  --ref my-branch -f scenario_pattern=aurora</div>
+          <div class="tags">
+            <span class="tag set-gold">→ react/</span>
+            <span class="tag yes">selective ✓</span>
+            <span class="tag yes">CI commits &amp; pushes ✓</span>
+            <span class="tag">no local Docker</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="route r2">
+        <span class="num">2</span>
+        <div>
+          <h3>Local Docker — regenerate &amp; verify by hand</h3>
+          <div class="where">runs on: your machine (Docker) · writes: react/</div>
+          <p>The same pinned image under <code>--platform linux/amd64</code> renders <code>react/</code> byte-identical to CI, into your working tree — you review and commit. <code>verify</code> asserts the committed set: a CI-exact gate you can run before pushing.</p>
+          <div class="cmd">pnpm goldens:regen    # rewrite react/ into the tree
+pnpm goldens:verify   # assert react/ passes (CI-exact)</div>
+          <div class="tags">
+            <span class="tag set-gold">→ react/</span>
+            <span class="tag no">full set only (today)</span>
+            <span class="tag">you commit</span>
+            <span class="tag">needs Docker daemon</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="route r3">
+        <span class="num">3</span>
+        <div>
+          <h3>Local native — keep your fast loop green</h3>
+          <div class="where">runs on: your machine (no Docker) · writes: react-local/&lt;arch&gt;</div>
+          <p>Plain Playwright / Vitest on your host writes your native set. Instant, no container. Run it after an intentional UI change so <code>pnpm test:ui:visual</code> goes green again locally. Narrow it with the <code>SCENARIO_PATTERN</code> env var.</p>
+          <div class="cmd">pnpm --filter @rtc/client-react \
+  test:ui:visual:playwright:react:update
+# tiers: playwright · playwright-ct · vitest-browser</div>
+          <div class="tags">
+            <span class="tag set-blue">→ react-local/&lt;arch&gt;</span>
+            <span class="tag yes">instant ✓</span>
+            <span class="tag yes">env filter ✓</span>
+            <span class="tag">you commit</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">Part 3 · the decision</span>
+    <h2>Which do I run?</h2>
+    <p class="kicker">Match the situation to the route. The common one — an intentional UI change — needs two sets updated, so it needs two routes.</p>
+
+    <div class="guide">
+      <div class="g-row">
+        <div class="q"><b>I made an intentional UI change</b> and both local and CI goldens are now stale.</div>
+        <div class="a"><span class="chip both">Route 3 + (1 or 2)</span></div>
+      </div>
+      <div class="g-row">
+        <div class="q">Just my <b>local</b> <code>pnpm test:ui:visual</code> is red and I want it green again — nothing to push to CI yet.</div>
+        <div class="a"><span class="chip r3">Route 3</span></div>
+      </div>
+      <div class="g-row">
+        <div class="q">One or a few scenarios changed and I want <b>CI to regenerate &amp; commit</b> the <code>react/</code> set for me.</div>
+        <div class="a"><span class="chip r1">Route 1</span></div>
+      </div>
+      <div class="g-row">
+        <div class="q">I want the <code>react/</code> set refreshed <b>locally</b>, no CI round-trip — or to reproduce a CI visual failure on my machine.</div>
+        <div class="a"><span class="chip r2">Route 2</span></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>The trap to avoid:</b> updating only your <code>react-local</code> set (Route 3) and assuming CI is happy. CI checks <code>react/</code>, which Route 3 never touches. After an intentional visual change, refresh <code>react/</code> too — via Route 1 or 2 — or <code>visual.yml</code> will redden on the next push to <code>main</code>.
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <span class="eyebrow">Reference</span>
+    <h2>Where this lives</h2>
+    <p class="kicker">The moving parts, if you want to read the source. Keep the container tag identical across all four.</p>
+    <div class="files">
+      <div class="file"><span class="path">.github/workflows/update-visual-goldens.yml</span><span class="role">Route 1 — dispatch, filter, auto-commit</span></div>
+      <div class="file"><span class="path">scripts/goldens-in-container.mjs</span><span class="role">Route 2 — regen / verify wrapper</span></div>
+      <div class="file"><span class="path">packages/client-react/package.json → test:ui:visual:*</span><span class="role">Route 3 — native :update scripts</span></div>
+      <div class="file"><span class="path">…/tests/ui/visual/*/​*.config.ts</span><span class="role">baseline routing · SCENARIO_PATTERN filter</span></div>
+      <div class="file"><span class="path">…/tests/ui/visual/ADR-001-visual-diff-tooling.md</span><span class="role">why two sets exist</span></div>
+      <div class="file"><span class="path">.github/workflows/visual.yml</span><span class="role">the gate — checks react/ on push:main</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Container image pinned to <code class="mono">mcr.microsoft.com/playwright:v1.61.0-noble</code> · tolerance maxDiffPixelRatio 0.06 · three tiers: playwright, playwright-ct, vitest-browser. The single container-canonical collapse was tried (PRs #272–274) and reverted (#275) because it cost the instant native loop; the per-platform sets stay by design.
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById("tg");
+    function cur() {
+      var t = root.getAttribute("data-theme");
+      if (t) return t;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    btn.addEventListener("click", function () {
+      var next = cur() === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      btn.textContent = next === "dark" ? "☾ Dark" : "☀ Light";
+    });
+    btn.textContent = cur() === "dark" ? "☾ Dark" : "☀ Light";
+  })();
+</script>
+</body>
+</html>
