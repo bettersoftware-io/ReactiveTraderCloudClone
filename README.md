@@ -336,12 +336,12 @@ pnpm --filter @rtc/client-react dev
 
 ## Deploy
 
-A public, password-gated demo can be deployed to **Vercel** (the client) +
+A public, login-gated demo can be deployed to **Vercel** (the web clients) +
 **Fly.io** (the WebSocket server, London `lhr`). **Deploys are on-demand only —
 nothing auto-deploys on a push or merge, on any branch** (Vercel's Git
-integration is disabled via `"git": { "deploymentEnabled": false }` in
-`vercel.json`). There is exactly **one official way** to deploy each app: its
-GitHub Actions workflow, triggered manually.
+integration is disabled via `"git": { "deploymentEnabled": false }` in each
+client's `vercel.<client>.json`). There is exactly **one official way** to deploy
+each app: its GitHub Actions workflow, triggered manually.
 
 ### Main app (clients + server)
 
