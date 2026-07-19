@@ -1,12 +1,17 @@
 # Deploy
 
-The client deploys to **Vercel**, the WebSocket server to **Fly.io** (London,
-`lhr`). Deploys are **on-demand only** — the single official way is to run
-`.github/workflows/deploy.yml` manually (Actions tab → "Deploy" → Run workflow,
-or `gh workflow run deploy.yml`). It deploys both in parallel and smoke-checks
-each. Nothing auto-deploys on a push or merge, on any branch: Vercel's Git
-integration is turned off by `"git": { "deploymentEnabled": false }` in
-`vercel.json`, so the workflow is the only path. Access is gated by genuine
+The web clients deploy to **Vercel**, the WebSocket server to **Fly.io**
+(London, `lhr`). Deploys are **on-demand only** — the single official way is to
+run `.github/workflows/deploy.yml` manually (Actions tab → "Deploy" → Run
+workflow, or `gh workflow run deploy.yml`). One workflow deploys any subset of
+three independent targets via checkboxes — `deploy_react` (→
+`rtc-clone-react.vercel.app`), `deploy_solid` (→ `rtc-clone-solid.vercel.app`),
+and `deploy_server` (→ Fly) — plus `include_sourcemaps` to ship a debuggable
+client build. Each ticked target is smoke-checked. Nothing auto-deploys on a
+push or merge, on any branch: Vercel's Git integration is turned off by
+`"git": { "deploymentEnabled": false }` in each client's `vercel.<client>.json`
+(`vercel.react.json` / `vercel.solid.json`), so the workflow is the only path.
+Access is gated by genuine
 per-user login, not a shared password or token: the client POSTs credentials
 to the Fly server's `/login`, which validates them against its `AUTH_USERS`
 roster and returns a signed session token that gates the WebSocket upgrade.
@@ -45,22 +50,28 @@ server.
 
 Settings → Secrets and variables → Actions → New repository secret:
 
-    FLY_API_TOKEN      = <from `fly tokens create deploy`>
-    VERCEL_TOKEN       = <vercel.com/account/tokens>
-    VERCEL_ORG_ID      = <from `vercel link` / .vercel/project.json>
-    VERCEL_PROJECT_ID  = <from `vercel link` / .vercel/project.json>
+    FLY_API_TOKEN            = <from `fly tokens create deploy`>
+    VERCEL_TOKEN             = <vercel.com/account/tokens>
+    VERCEL_ORG_ID            = <from `vercel link` / .vercel/project.json>
+    VERCEL_PROJECT_ID        = <the rtc-clone-react project's id> (or the symmetric
+                               VERCEL_REACT_PROJECT_ID — the react job prefers it and
+                               falls back to VERCEL_PROJECT_ID)
+    VERCEL_SOLID_PROJECT_ID  = <the rtc-clone-solid project's id>
 
 ## Deploying
 
-Run the **Deploy** workflow manually — Actions tab → "Deploy" → Run workflow, or
-`gh workflow run deploy.yml`. (Merging to `main` does **not** deploy.) The
-workflow deploys both and smoke-checks:
+Run the **Deploy** workflow manually — Actions tab → "Deploy" → Run workflow,
+tick the targets you want (`deploy_react` / `deploy_solid` / `deploy_server`,
+plus optional `include_sourcemaps`), or e.g.
+`gh workflow run deploy.yml -f deploy_react=true -f deploy_server=true`.
+(Merging to `main` does **not** deploy; ticking nothing fails the run's `guard`
+job.) Each ticked target is smoke-checked:
 - server `/health` → 200
-- client responds → 200 (the deployed SPA renders its own login screen; there
-  is no edge-level password wall to smoke-check anymore)
+- each client → 200 on its canonical alias (the deployed SPA renders its own
+  login screen; there is no edge-level password wall to smoke-check anymore)
 
-Open `https://<your-project>.vercel.app`, log in with a real credential (ask
-the team), and watch live prices tick.
+Open `https://rtc-clone-react.vercel.app` (or `https://rtc-clone-solid.vercel.app`),
+log in with a real credential (ask the team), and watch live prices tick.
 
 ## How it works
 

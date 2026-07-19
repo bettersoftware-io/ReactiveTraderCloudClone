@@ -104,5 +104,10 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    // On-demand debuggable production build: the Deploy workflow sets
+    // RTC_SOURCEMAPS=1 (declared in turbo.json build.env so strict-mode Turbo
+    // passes it through) so a profiled deploy shows real component names in the
+    // flamechart. Unset/"" → false, i.e. today's minified build.
+    sourcemap: process.env.RTC_SOURCEMAPS === "1",
   },
 });

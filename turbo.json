@@ -23,7 +23,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"],
-      "env": ["VITE_SERVER_URL", "DEV"]
+      "env": ["VITE_SERVER_URL", "DEV", "RTC_SOURCEMAPS"]
     },
     "typecheck": {
       "dependsOn": ["^build"]
