@@ -28,7 +28,15 @@ flowchart TB
 
 They render the same scenarios but live in different worlds. Font rasterization
 drifts ~30% across CPU architectures, so an arm64 Mac cannot reproduce x86
-pixels natively — hence one set per world.
+pixels natively — hence one set per world. Which set a given run reads and writes
+is decided purely by the `CI` env var:
+
+```mermaid
+flowchart TB
+    RUN["a visual test runs"] --> Q{"CI env set?"}
+    Q -->|"CI=1 · container / visual.yml"| RCI["react/<br/>canonical x86 · gates on push to main"]
+    Q -->|"unset · your machine"| RLOC["react-local/&lt;arch&gt;<br/>native pixels · fast loop · never gates"]
+```
 
 | Set | What it is | Gates? | Rendered where | Baseline when |
 |---|---|---|---|---|
@@ -50,12 +58,39 @@ Routes **1 and 2 produce the byte-identical `react/` set** — pick 1 to let CI 
 the compute and push for you, or 2 to do it locally with no round-trip. Route 3
 is separate: it keeps *your machine's* fast-feedback set in sync.
 
+```mermaid
+flowchart TB
+    R1["Route 1 · CI workflow<br/>update-visual-goldens.yml<br/>selective · CI auto-commits"]
+    R2["Route 2 · local Docker<br/>goldens:regen / verify<br/>full-set today · you commit"]
+    R3["Route 3 · native :update<br/>SCENARIO_PATTERN · instant · no Docker<br/>you commit"]
+    RCI["react/ (canonical x86)"]
+    RLOC["react-local/&lt;arch&gt;"]
+    R1 --> RCI
+    R2 --> RCI
+    R3 --> RLOC
+    RCI --> GATE["visual.yml gate · push to main"]
+    RLOC --> LOOP["pnpm test:ui:visual · local loop"]
+```
+
 ### Route 1 — selective CI refresh (and it commits for you)
 
 The lever that killed the old "regenerate everything for one changed pixel"
 bottleneck. An empty pattern does a full wipe + re-render (~all scenarios × 3
 tiers, ~30 min); a pattern re-renders **only matching scenarios, no wipe**
 (~1 min), then CI commits the result back to your branch with `[skip ci]`.
+
+```mermaid
+sequenceDiagram
+    participant You
+    participant GH as GitHub Actions
+    participant Runner as pinned x86 container
+    participant Branch as your branch
+    You->>GH: dispatch (scenario_pattern="aurora")
+    GH->>Runner: render only matching scenarios × 3 tiers
+    Runner-->>GH: new / updated react/ PNGs
+    GH->>Branch: commit "[skip ci]" + push
+    Note over Branch: react/ refreshed — no round-trip
+```
 
 ```bash
 # From the Actions tab: "Update visual goldens" → Run workflow → set scenario_pattern.
