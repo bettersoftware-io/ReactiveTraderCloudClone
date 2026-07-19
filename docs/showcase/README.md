@@ -13,6 +13,11 @@ markdown they visualize.
 |---|---|---|
 | [`updating-goldens.html`](./updating-goldens.html) | The visual-golden update workflow: two golden sets, three update routes, an animated view of the selective CI refresh | [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md) |
 | [`aurora-blur-comparison.html`](./aurora-blur-comparison.html) | The live Aurora backdrop (holo-dark skin), with a Current / Reduced / None toggle showing the per-frame GPU cost of the curtain `filter: blur()` — the compositor trap the app removed | [`docs/performance.md`](../performance.md) (trap T6) |
+| [`cross-framework-testing.html`](./cross-framework-testing.html) | The one-suite-two-frameworks story: contract swap-trio, assert-only visual tiers, `RTC_CLIENT_PKG` e2e — animated | [`../architecture/21-cross-framework-testing.md`](../architecture/21-cross-framework-testing.md) |
 
-> Nothing here is deployed or built — this directory is outside every CI/deploy
-> glob. To share one, open it locally, or publish it deliberately.
+> Since PR #277, `.github/workflows/publish-site.yml` auto-publishes this
+> directory: on every push to `main` that touches `docs/showcase/**` (or a
+> manual `workflow_dispatch`), it copies the generated `*.html` files here
+> (not this README) into `_stage/showcase/`, builds a fresh index over them,
+> and pushes the result to the `gh-pages` branch alongside the docs hub and
+> the presentation decks — GitHub Pages then serves it from there.
