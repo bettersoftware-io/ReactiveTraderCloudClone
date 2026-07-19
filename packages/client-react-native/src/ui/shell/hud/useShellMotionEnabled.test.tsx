@@ -5,25 +5,6 @@ import { Text } from "react-native";
 const mockReducedMotion = jest.fn<() => boolean>();
 const mockPowerSaver = jest.fn<() => MockPowerSaverResult>();
 
-jest.mock("react-native-reanimated", () => {
-  return {
-    useReducedMotion: (): boolean => {
-      return mockReducedMotion();
-    },
-  };
-});
-jest.mock("@rtc/react-bindings", () => {
-  return {
-    useViewModel: () => {
-      return {
-        usePowerSaver: () => {
-          return mockPowerSaver();
-        },
-      };
-    },
-  };
-});
-
 // Imported after the mocks are registered.
 const { useShellMotionEnabled } =
   require("./useShellMotionEnabled") as ShellMotionModule;
@@ -68,3 +49,23 @@ function renderProbe(): Promise<unknown> {
 
   return render(<Probe />);
 }
+
+jest.mock("react-native-reanimated", () => {
+  return {
+    useReducedMotion: (): boolean => {
+      return mockReducedMotion();
+    },
+  };
+});
+
+jest.mock("@rtc/react-bindings", () => {
+  return {
+    useViewModel: () => {
+      return {
+        usePowerSaver: () => {
+          return mockPowerSaver();
+        },
+      };
+    },
+  };
+});

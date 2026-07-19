@@ -8,20 +8,6 @@ import { SpotTile } from "#/ui/SpotTile";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 
-// Stub out TradeTicket (an RN Modal) so the press test mounts a lightweight
-// marker instead of the real Modal — mounting Modal via an awaited RNTL event
-// hangs jest-expo on x86 CI (TradeTicket.test.tsx covers the real Modal by
-// rendering it directly on initial render, which does not hang).
-jest.mock("#/ui/TradeTicket", () => {
-  const react = require("react");
-  const { View } = require("react-native");
-  return {
-    TradeTicket: (): unknown => {
-      return react.createElement(View, { testID: "trade-ticket" });
-    },
-  };
-});
-
 const EURUSD: CurrencyPair = {
   symbol: "EURUSD",
   ratePrecision: 5,
@@ -169,3 +155,17 @@ function fakeViewModel(price: Price | null): ViewModel {
     },
   } as unknown as ViewModel;
 }
+
+// Stub out TradeTicket (an RN Modal) so the press test mounts a lightweight
+// marker instead of the real Modal — mounting Modal via an awaited RNTL event
+// hangs jest-expo on x86 CI (TradeTicket.test.tsx covers the real Modal by
+// rendering it directly on initial render, which does not hang).
+jest.mock("#/ui/TradeTicket", () => {
+  const react = require("react");
+  const { View } = require("react-native");
+  return {
+    TradeTicket: (): unknown => {
+      return react.createElement(View, { testID: "trade-ticket" });
+    },
+  };
+});

@@ -6,50 +6,6 @@ import { useViewModel } from "@rtc/react-bindings";
 
 import { AppRoot } from "#/app/AppRoot";
 
-// AsyncStorage has no native module under jest, so importing the real one
-// throws at require time. Stub the two methods the preferences adapter uses
-// (getItem/setItem) so the simulator composition builds without a native host.
-jest.mock("@react-native-async-storage/async-storage", () => {
-  return {
-    __esModule: true,
-    default: {
-      getItem: (): Promise<null> => {
-        return Promise.resolve(null);
-      },
-      setItem: (): Promise<void> => {
-        return Promise.resolve();
-      },
-    },
-  };
-});
-
-// __DEV__ is true under jest; stub the relay-backed hub so mounting opens no
-// socket. Every hub method is a no-op (machineCreated returns an id string),
-// so buildViewModelInputs' decorators run harmlessly and unmount's
-// hub.dispose() is a no-op.
-jest.mock("#/app/devtools/nativeDevtoolsHub", () => {
-  const noopHub = new Proxy(
-    {},
-    {
-      get: (_target: object, prop: string | symbol): unknown => {
-        if (prop === "machineCreated") {
-          return (): string => {
-            return "m0";
-          };
-        }
-
-        return (): void => {};
-      },
-    },
-  );
-
-  return {
-    createNativeDevtoolsHub: (): unknown => {
-      return noopHub;
-    },
-  };
-});
-
 // The simulator branch owns no socket, so its `dispose` is a no-op — mounting
 // then unmounting exercises the effect's deferred-teardown path without any
 // network. We assert the child mounts, then that unmount resolves without
@@ -93,3 +49,47 @@ function renderAuthProbe(): Promise<unknown> {
     </AppRoot>,
   );
 }
+
+// AsyncStorage has no native module under jest, so importing the real one
+// throws at require time. Stub the two methods the preferences adapter uses
+// (getItem/setItem) so the simulator composition builds without a native host.
+jest.mock("@react-native-async-storage/async-storage", () => {
+  return {
+    __esModule: true,
+    default: {
+      getItem: (): Promise<null> => {
+        return Promise.resolve(null);
+      },
+      setItem: (): Promise<void> => {
+        return Promise.resolve();
+      },
+    },
+  };
+});
+
+// __DEV__ is true under jest; stub the relay-backed hub so mounting opens no
+// socket. Every hub method is a no-op (machineCreated returns an id string),
+// so buildViewModelInputs' decorators run harmlessly and unmount's
+// hub.dispose() is a no-op.
+jest.mock("#/app/devtools/nativeDevtoolsHub", () => {
+  const noopHub = new Proxy(
+    {},
+    {
+      get: (_target: object, prop: string | symbol): unknown => {
+        if (prop === "machineCreated") {
+          return (): string => {
+            return "m0";
+          };
+        }
+
+        return (): void => {};
+      },
+    },
+  );
+
+  return {
+    createNativeDevtoolsHub: (): unknown => {
+      return noopHub;
+    },
+  };
+});

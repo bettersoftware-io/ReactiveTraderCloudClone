@@ -207,10 +207,12 @@ export default tseslint.config(
     },
   },
   {
-    // Newspaper order for test files: type/helper/vi.mock declarations must sit
-    // BELOW the describe/it blocks. Custom autofixable rule in eslint-rules/.
-    // Scoped to test files only (contract specs included — reordering is
-    // behaviour-preserving). class/enum/vi.doMock/vi.hoisted stay put.
+    // Newspaper order for test files: type/helper/vi.mock/jest.mock declarations
+    // must sit BELOW the describe/it blocks. Custom autofixable rule in
+    // eslint-rules/. Scoped to test files only (contract specs included —
+    // reordering is behaviour-preserving; both vi.mock and jest.mock are hoisted
+    // above imports by their runners). class/enum/vi.doMock/jest.doMock/vi.hoisted
+    // stay put.
     files: ["**/*.{spec,test}.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/newspaper-order": "error" },

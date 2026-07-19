@@ -66,6 +66,15 @@ describe("x", () => {
 `,
     },
     {
+      name: "jest.doMock before describe is left in place (not hoisted)",
+      code: `jest.doMock("./dep", () => ({ default: 1 }));
+
+describe("x", () => {
+  it("works", () => {});
+});
+`,
+    },
+    {
       name: "const after a test is not policed",
       code: `import { describe, it } from "vitest";
 
@@ -147,6 +156,22 @@ describe("x", () => {
 });
 
 vi.mock("./dep");
+`,
+      errors: [{ messageId: "moveDown", data: { count: "1" } }],
+    },
+    {
+      name: "jest.mock before describe is moved down (jest hoists it anyway)",
+      code: `jest.mock("./dep");
+
+describe("x", () => {
+  it("works", () => {});
+});
+`,
+      output: `describe("x", () => {
+  it("works", () => {});
+});
+
+jest.mock("./dep");
 `,
       errors: [{ messageId: "moveDown", data: { count: "1" } }],
     },

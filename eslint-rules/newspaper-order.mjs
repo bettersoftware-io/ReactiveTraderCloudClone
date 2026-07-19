@@ -37,7 +37,12 @@ function isPrimary(stmt) {
   return name !== null && PRIMARY_CALLERS.has(name);
 }
 
-function isMovableViMock(stmt) {
+// `vi.mock`/`vi.unmock` (Vitest) and `jest.mock`/`jest.unmock` (Jest) are all
+// hoisted above the imports by their respective transforms, so their physical
+// position is irrelevant to behaviour and they can sit below the tests like any
+// other helper. The non-hoisted variants (`vi.doMock`, `jest.doMock`) run in
+// place and must NOT be moved — they are deliberately excluded here.
+function isMovableMock(stmt) {
   if (stmt.type !== "ExpressionStatement") {
     return false;
   }
@@ -49,7 +54,7 @@ function isMovableViMock(stmt) {
   return (
     callee.type === "MemberExpression" &&
     callee.object.type === "Identifier" &&
-    callee.object.name === "vi" &&
+    (callee.object.name === "vi" || callee.object.name === "jest") &&
     callee.property.type === "Identifier" &&
     (callee.property.name === "mock" || callee.property.name === "unmock")
   );
@@ -64,7 +69,7 @@ function declKind(stmt) {
 }
 
 function isSecondary(stmt) {
-  if (isMovableViMock(stmt)) {
+  if (isMovableMock(stmt)) {
     return true;
   }
   const kind = declKind(stmt);
