@@ -53,9 +53,7 @@ Settings → Secrets and variables → Actions → New repository secret:
     FLY_API_TOKEN            = <from `fly tokens create deploy`>
     VERCEL_TOKEN             = <vercel.com/account/tokens>
     VERCEL_ORG_ID            = <from `vercel link` / .vercel/project.json>
-    VERCEL_PROJECT_ID        = <the rtc-clone-react project's id> (or the symmetric
-                               VERCEL_REACT_PROJECT_ID — the react job prefers it and
-                               falls back to VERCEL_PROJECT_ID)
+    VERCEL_REACT_PROJECT_ID  = <the rtc-clone-react project's id>
     VERCEL_SOLID_PROJECT_ID  = <the rtc-clone-solid project's id>
 
 ## Deploying
@@ -72,6 +70,19 @@ job.) Each ticked target is smoke-checked:
 
 Open `https://rtc-clone-react.vercel.app` (or `https://rtc-clone-solid.vercel.app`),
 log in with a real credential (ask the team), and watch live prices tick.
+
+### Debuggable (sourcemap) builds
+
+Tick `include_sourcemaps` to ship a build you can profile with real component
+names in the DevTools flamechart. The maps are **inline** (embedded in each JS
+bundle as a `data:` URI), not external `.map` files — because Vercel's edge
+returns **403 for served `.map` files** by design (source-exposure protection),
+so an external map would be generated and linked but never fetchable in
+production. Inline maps sidestep that (no separate `.map` request), at the cost
+of a larger bundle — fine for an opt-in debug deploy. The wiring is
+`RTC_SOURCEMAPS=1` (workflow) → `turbo.json` `build.env` → each client's
+`vite.config.ts` (`build.sourcemap: "inline"`); the deploy job asserts the
+inline map is present when requested, so a regression fails loudly.
 
 ## How it works
 
