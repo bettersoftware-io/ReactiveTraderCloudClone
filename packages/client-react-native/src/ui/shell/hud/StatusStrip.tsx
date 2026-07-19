@@ -7,6 +7,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ConnectionStatus } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
@@ -14,7 +15,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-import { MODULE_ROUTES } from "./moduleRoutes";
+import { resolveActiveModule } from "./moduleRoutes";
 import { useShellTelemetry } from "./useShellTelemetry";
 
 /** HUD status strip (prototype .dc.html:447-464): a telemetry line
@@ -23,21 +24,18 @@ import { useShellTelemetry } from "./useShellTelemetry";
  * dock and deep links both drive it. */
 export function StatusStrip(): JSX.Element {
   const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const { useConnectionStatus } = useViewModel();
   const status = useConnectionStatus();
   const { fps, latencyMs, clock, build } = useShellTelemetry();
-  const active =
-    MODULE_ROUTES.find((m) => {
-      return m.path === pathname;
-    }) ??
-    MODULE_ROUTES.find((m) => {
-      return m.path !== "/" && pathname.startsWith(m.path);
-    }) ??
-    MODULE_ROUTES[0];
+  const active = resolveActiveModule(pathname);
 
   return (
-    <View testID="hud-status-strip" style={styles.wrap}>
+    <View
+      testID="hud-status-strip"
+      style={[styles.wrap, { paddingBottom: insets.bottom }]}
+    >
       <View style={styles.telemetry}>
         <Text style={styles.conn}>{CONN_LABEL[status]}</Text>
         <Text style={styles.cell}>{latencyMs}MS</Text>

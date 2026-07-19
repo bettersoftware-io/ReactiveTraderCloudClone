@@ -37,7 +37,7 @@ export function useShellTelemetry(): ShellTelemetry {
   useFrameCallback((frame) => {
     "worklet";
 
-    if (!active) {
+    if (frozen !== null || !enabled) {
       return;
     }
 
@@ -54,7 +54,7 @@ export function useShellTelemetry(): ShellTelemetry {
       framesSv.value = 0;
       windowStartSv.value = frame.timeSinceFirstFrame;
     }
-  });
+  }, active);
 
   if (frozen !== null) {
     return {

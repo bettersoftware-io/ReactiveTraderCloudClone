@@ -35,6 +35,13 @@ jest.mock("./useShellMotionEnabled", () => {
     },
   };
 });
+jest.mock("react-native-safe-area-context", () => {
+  return {
+    useSafeAreaInsets: (): unknown => {
+      return { top: 47, bottom: 34, left: 0, right: 0 };
+    },
+  };
+});
 jest.mock("#/ui/theme/useTheme", () => {
   const { rnThemeTokens } = require("#/ui/theme/tokens");
   return {

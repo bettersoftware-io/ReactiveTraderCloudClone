@@ -16,3 +16,19 @@ export const MODULE_ROUTES: readonly ModuleRoute[] = [
   { key: "credit", glyph: "◈", label: "CREDIT", path: "/credit" },
   { key: "equities", glyph: "▦", label: "EQUITIES", path: "/equities" },
 ];
+
+/** The single active-module matcher shared by the status strip and the
+ * radial dock: an exact pathname match first, then a non-root prefix match
+ * (so a nested route like `/credit/detail` still resolves to CREDIT), then
+ * falling back to the first module (Rates). */
+export function resolveActiveModule(pathname: string): ModuleRoute {
+  return (
+    MODULE_ROUTES.find((m) => {
+      return m.path === pathname;
+    }) ??
+    MODULE_ROUTES.find((m) => {
+      return m.path !== "/" && pathname.startsWith(m.path);
+    }) ??
+    MODULE_ROUTES[0]
+  );
+}

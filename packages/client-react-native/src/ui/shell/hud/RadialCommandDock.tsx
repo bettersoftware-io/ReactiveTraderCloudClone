@@ -17,13 +17,14 @@ import Animated, {
   withDelay,
   withSpring,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Polygon, Stop } from "react-native-svg";
 
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-import { MODULE_ROUTES } from "./moduleRoutes";
+import { MODULE_ROUTES, resolveActiveModule } from "./moduleRoutes";
 import { radialDockLayout } from "./radialDockLayout";
 import { useShellMotionEnabled } from "./useShellMotionEnabled";
 
@@ -34,14 +35,12 @@ import { useShellMotionEnabled } from "./useShellMotionEnabled";
  * `expo-router` (deep-link-compatible) and collapses the dock. */
 export function RadialCommandDock(): JSX.Element {
   const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const sats = radialDockLayout(MODULE_ROUTES.length);
-  const active =
-    MODULE_ROUTES.find((mod) => {
-      return mod.path === pathname;
-    }) ?? MODULE_ROUTES[0];
+  const active = resolveActiveModule(pathname);
 
   return (
     <View pointerEvents="box-none" style={styles.root}>
@@ -64,6 +63,7 @@ export function RadialCommandDock(): JSX.Element {
                 module={mod}
                 layout={sats[i]}
                 active={mod.path === pathname}
+                insetBottom={insets.bottom}
                 onSelect={() => {
                   router.navigate(mod.path);
                   setOpen(false);
@@ -81,7 +81,7 @@ export function RadialCommandDock(): JSX.Element {
             return !v;
           });
         }}
-        style={styles.fab}
+        style={[styles.fab, { bottom: 26 + insets.bottom }]}
       >
         <FabHex glyph={open ? "✕" : active.glyph} />
       </Pressable>
@@ -145,6 +145,7 @@ interface SatelliteProps {
     readonly delayMs: number;
   };
   readonly active: boolean;
+  readonly insetBottom: number;
   readonly onSelect: () => void;
 }
 
@@ -154,6 +155,7 @@ function Satellite({
   module,
   layout,
   active,
+  insetBottom,
   onSelect,
 }: SatelliteProps): JSX.Element {
   const styles = useThemedStyles(makeStyles);
@@ -186,7 +188,7 @@ function Satellite({
 
   return (
     <Animated.View
-      style={[styles.satelliteAnchor, animStyle]}
+      style={[styles.satelliteAnchor, { bottom: 78 + insetBottom }, animStyle]}
       pointerEvents="box-none"
     >
       <Pressable

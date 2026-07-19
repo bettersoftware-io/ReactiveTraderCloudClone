@@ -81,6 +81,7 @@ export function ShellHeader({
         <Pressable
           testID="hud-env-badge"
           accessibilityLabel="Toggle simulator"
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           onPress={() => {
             onToggleSimulator(!simulator);
           }}

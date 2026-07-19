@@ -37,6 +37,13 @@ jest.mock("./useShellTelemetry", () => {
 jest.mock("@rtc/domain", () => {
   return { ConnectionStatus: { CONNECTED: "CONNECTED" } };
 });
+jest.mock("react-native-safe-area-context", () => {
+  return {
+    useSafeAreaInsets: (): unknown => {
+      return { top: 47, bottom: 34, left: 0, right: 0 };
+    },
+  };
+});
 jest.mock("#/ui/theme/useTheme", () => {
   return {
     useTheme: () => {
