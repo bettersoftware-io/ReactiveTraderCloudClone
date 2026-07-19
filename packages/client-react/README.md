@@ -187,6 +187,12 @@ Full ADR + layout: [`tests/ui/visual/README.md`](tests/ui/visual/README.md).
 **Browser e2e, presenter integration, and full-stack smokes** — NOT here;
 they live in the [`tests/`](../../tests/README.md) workspace package.
 
+The UI-contract and visual tiers above are two of the three mechanisms that
+let `@rtc/client-solid` prove full parity against this package's own specs
+and goldens; see
+[§21 Cross-Framework Testing](../../docs/architecture/21-cross-framework-testing.md)
+for the synthesis of all three.
+
 ## See also
 
 - [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)

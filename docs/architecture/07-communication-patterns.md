@@ -200,7 +200,7 @@ All deploys are **manual** (`workflow_dispatch`) — merging to `main` runs CI b
 ```mermaid
 flowchart LR
     subgraph GH["GitHub Actions (workflow_dispatch only)"]
-        d1["deploy.yml<br/>deploy-server + deploy-client"]
+        d1["deploy.yml<br/>server + react + solid (checkboxes)"]
         d2["deploy-proto.yml"]
         d3["deploy-cd-proto.yml"]
     end
@@ -209,8 +209,9 @@ flowchart LR
         srv["rtc-clone-server<br/>@rtc/server · port 4000<br/>scale-to-zero · GET /health<br/>WS upgrade token-gated"]
     end
 
-    subgraph Vercel["Vercel (all password/Basic-Auth gated)"]
-        v1["rtc-clone<br/>@rtc/client-react<br/>VITE_SERVER_URL baked at build"]
+    subgraph Vercel["Vercel (real apps: login-gated · protos: password-gated)"]
+        v1["rtc-clone-react<br/>@rtc/client-react<br/>VITE_SERVER_URL baked at build"]
+        v1s["rtc-clone-solid<br/>@rtc/client-solid<br/>VITE_SERVER_URL baked at build"]
         v2["rtc-clone-proto<br/>@rtc/client-prototype<br/>(v2-design React port)"]
         v3["rtc-clone-web-cd-proto<br/>docs/design/web standalone HTML"]
         v4["rtc-clone-mobile-cd-proto<br/>docs/design/mobile standalone HTML"]
@@ -220,10 +221,12 @@ flowchart LR
 
     d1 --> srv
     d1 --> v1
+    d1 --> v1s
     d2 --> v2
     d3 --> v3
     d3 --> v4
     v1 -->|"wss:// + ?access= token"| srv
+    v1s -->|"wss:// + ?access= token"| srv
     mob -->|"wss:// + ?access= token<br/>(EXPO_PUBLIC_* baked at build)"| srv
 ```
 

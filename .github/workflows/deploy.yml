@@ -1,18 +1,41 @@
 name: Deploy
 
-# Production deploy of the WS server (Fly.io) and the client (Vercel). Runs
+# On-demand production deploy of any subset of the three deployables. Runs
 # ON DEMAND ONLY (manual trigger) — a merge to main does NOT auto-deploy. Start
-# a deploy from the Actions tab ("Run workflow") or `gh workflow run deploy.yml`.
-# The two jobs are independent — the Fly URL is a stable constant baked into the
-# client at build time, so the client build does not wait on the server deploy.
-# Both must go green.
+# it from the Actions tab ("Run workflow", tick the targets) or e.g.
+#   gh workflow run deploy.yml -f deploy_react=true -f deploy_server=true
 #
-# "the client" here is @rtc/client-react ONLY, BY DESIGN — the build command is
-# pinned in the root vercel.json (`--filter=@rtc/client-react`). @rtc/client-solid
-# is deployed separately by the `Deploy Solid` workflow (deploy-solid.yml), which
-# ships it to rtc-clone-solid.vercel.app against this same shared Fly WS server.
+# The three deploy jobs are INDEPENDENT — tick any combination:
+#   - deploy_react  → @rtc/client-react → Vercel (rtc-clone-react.vercel.app)
+#   - deploy_solid  → @rtc/client-solid → Vercel (rtc-clone-solid.vercel.app)
+#   - deploy_server → @rtc/server       → Fly.io  (rtc-clone-server.fly.dev)
+# Both web clients connect to the SAME shared Fly WS server (the Fly URL is a
+# build-time constant baked into each client), so a client build never waits on
+# the server job. The server is deployed far less often than the clients, hence
+# its own opt-in checkbox (default off).
+#
+# include_sourcemaps ships a debuggable build of the ticked CLIENT(s) — external
+# .map files, so a profiled deploy shows real component names in the flamechart.
+# It has no effect on the server job.
 on:
   workflow_dispatch:
+    inputs:
+      deploy_react:
+        description: "Deploy @rtc/client-react → Vercel (rtc-clone-react)"
+        type: boolean
+        default: true
+      deploy_solid:
+        description: "Deploy @rtc/client-solid → Vercel (rtc-clone-solid)"
+        type: boolean
+        default: false
+      deploy_server:
+        description: "Deploy @rtc/server → Fly.io"
+        type: boolean
+        default: false
+      include_sourcemaps:
+        description: "Ship debuggable client builds (external sourcemaps). React/Solid only."
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -22,8 +45,44 @@ permissions:
   contents: read
 
 jobs:
-  deploy-server:
+  # Fail a nothing-ticked dispatch loudly, rather than run green-but-do-nothing.
+  # All deploy jobs gate on this so an empty selection is a single visible red.
+  guard:
+    name: validate selection
+    runs-on: ubuntu-latest
+    steps:
+      - name: At least one target must be selected
+        env:
+          DEPLOY_REACT: ${{ inputs.deploy_react }}
+          DEPLOY_SOLID: ${{ inputs.deploy_solid }}
+          DEPLOY_SERVER: ${{ inputs.deploy_server }}
+          INCLUDE_SOURCEMAPS: ${{ inputs.include_sourcemaps }}
+        run: |
+          if [ "$DEPLOY_REACT" != "true" ] \
+             && [ "$DEPLOY_SOLID" != "true" ] \
+             && [ "$DEPLOY_SERVER" != "true" ]; then
+            echo "::error::No deploy target selected. Tick at least one of deploy_react / deploy_solid / deploy_server."
+            exit 1
+          fi
+          echo "Targets — react=$DEPLOY_REACT solid=$DEPLOY_SOLID server=$DEPLOY_SERVER sourcemaps=$INCLUDE_SOURCEMAPS"
+          # Surface the selection as a rendered panel on the run's Summary tab,
+          # so you can see at a glance what a run deployed (incl. sourcemaps)
+          # without digging into the guard step's logs.
+          {
+            echo "### Deploy selection"
+            echo ""
+            echo "| target | selected |"
+            echo "| --- | --- |"
+            echo "| client-react | $DEPLOY_REACT |"
+            echo "| client-solid | $DEPLOY_SOLID |"
+            echo "| server (Fly) | $DEPLOY_SERVER |"
+            echo "| include_sourcemaps | $INCLUDE_SOURCEMAPS |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  server:
     name: server → fly.io
+    needs: guard
+    if: ${{ inputs.deploy_server }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -35,11 +94,7 @@ jobs:
 
       # AUTH_SECRET (HMAC signing secret) and AUTH_USERS (the "user:pass,..."
       # credential roster) are Fly secrets set BY HAND (`flyctl secrets set`) —
-      # this deploy PAT/token can't set secrets, only deploy code. The old
-      # Vercel-side SITE_PASSWORD Basic-Auth wall and the shared WS_ACCESS_TOKEN
-      # / VITE_WS_TOKEN query-string gate are gone: the server now validates
-      # real per-user credentials (POST /login) and issues a signed token that
-      # gates the WS upgrade (see docs/env-files.md, packages/server/README.md).
+      # this deploy token can't set secrets, only deploy code.
       - name: Deploy
         run: flyctl deploy --remote-only
         env:
@@ -48,13 +103,18 @@ jobs:
       - name: Smoke — /health returns 200
         run: curl -fsS https://rtc-clone-server.fly.dev/health
 
-  deploy-client:
-    name: client → vercel
+  react:
+    name: client-react → vercel
+    needs: guard
+    if: ${{ inputs.deploy_react }}
     runs-on: ubuntu-latest
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # Symmetric with VERCEL_SOLID_PROJECT_ID. (Project id is stable across the
+      # rtc-clone → rtc-clone-react rename, so this holds the same value the old
+      # VERCEL_PROJECT_ID did.)
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_REACT_PROJECT_ID }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
@@ -73,16 +133,19 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
+      # `-A vercel.react.json` selects the React build (filter + output dir); once
+      # the root vercel.json was renamed, Vercel no longer auto-detects it, so
+      # every Vercel CLI call here must pass `-A`. RTC_SOURCEMAPS is inherited by
+      # the turbo/vite build (declared in turbo.json build.env).
       - name: Build (Vercel bakes VITE_SERVER_URL from pulled env)
-        run: vercel build --prod --token="$VERCEL_TOKEN"
+        run: vercel build --prod -A vercel.react.json --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RTC_SOURCEMAPS: ${{ inputs.include_sourcemaps && '1' || '' }}
 
       # If VITE_SERVER_URL is not inlined, the client silently falls back to the
       # in-browser simulator and never opens a WebSocket — no error, just wrong.
-      # (Root cause once: turbo strict-env mode filtered the undeclared VITE_*
-      # vars out of the vite build. See turbo.json `build.env`.) Fail loudly here
-      # BEFORE deploying, rather than ship a simulator build to production.
+      # Fail loudly BEFORE deploying rather than ship a simulator build.
       - name: Guard — server URL was inlined into the client bundle
         run: |
           if ! grep -rq "rtc-clone-server.fly.dev" .vercel/output/static; then
@@ -91,19 +154,95 @@ jobs:
           fi
           echo "OK: Fly WS URL is present in the built client bundle."
 
-      - name: Deploy prebuilt
-        id: deploy
+      # When a debug build is requested, prove the sourcemaps actually landed —
+      # turning a silent no-op (e.g. if the RTC_SOURCEMAPS wiring ever regresses)
+      # into a loud failure. Maps are INLINE data: URIs, not external .map files
+      # (Vercel's edge 403s served .map files), so grep the bundle for the inline
+      # marker. See docs/DEPLOY.md.
+      - name: Guard — inline sourcemaps embedded when requested
+        if: ${{ inputs.include_sourcemaps }}
         run: |
-          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
-          echo "url=$url" >> "$GITHUB_OUTPUT"
+          if ! grep -rlq "sourceMappingURL=data:" .vercel/output/static; then
+            echo "::error::include_sourcemaps=true but no inline sourcemap in the built output. Check RTC_SOURCEMAPS wiring (turbo.json build.env + client-react vite.config)."
+            exit 1
+          fi
+          echo "OK: inline sourcemaps embedded in the client-react bundle."
+          echo "- ✅ client-react: inline sourcemaps embedded" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy prebuilt
+        run: vercel deploy --prebuilt --prod -A vercel.react.json --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-      # The old Vercel Basic-Auth wall (SITE_PASSWORD, 401-gated) is gone — the
-      # deployed SPA is reachable directly and gates access via real login
-      # (POST /login against the Fly server), not a static edge password.
-      - name: Smoke — deployed client responds
+      # New Vercel projects default to Deployment Protection ON, which 302s the
+      # per-deploy hash URL but EXEMPTS the canonical alias. Smoke the alias.
+      - name: Smoke — deployed client responds on the canonical alias
         run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.url }}")
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://rtc-clone-react.vercel.app")
+          echo "Got HTTP $code"
+          test "$code" = "200"
+
+  solid:
+    name: client-solid → vercel
+    needs: guard
+    if: ${{ inputs.deploy_solid }}
+    runs-on: ubuntu-latest
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_SOLID_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 26
+
+      - name: Enable Corepack
+        run: npm install -g corepack@0.35.0 && corepack enable
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel project settings + env
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      # `-A vercel.solid.json` selects the Solid build (filter + output dir) so the
+      # React-pinned vercel.react.json is never auto-detected here.
+      - name: Build (Vercel bakes VITE_SERVER_URL from pulled env)
+        run: vercel build --prod -A vercel.solid.json --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RTC_SOURCEMAPS: ${{ inputs.include_sourcemaps && '1' || '' }}
+
+      - name: Guard — server URL was inlined into the client bundle
+        run: |
+          if ! grep -rq "rtc-clone-server.fly.dev" .vercel/output/static; then
+            echo "::error::VITE_SERVER_URL absent from build output — client would run the simulator with no WebSocket. Check turbo.json build.env and the Vercel Production env vars."
+            exit 1
+          fi
+          echo "OK: Fly WS URL is present in the built client bundle."
+
+      # See the client-react job for why this greps for an INLINE sourcemap.
+      - name: Guard — inline sourcemaps embedded when requested
+        if: ${{ inputs.include_sourcemaps }}
+        run: |
+          if ! grep -rlq "sourceMappingURL=data:" .vercel/output/static; then
+            echo "::error::include_sourcemaps=true but no inline sourcemap in the built output. Check RTC_SOURCEMAPS wiring (turbo.json build.env + client-solid vite.config)."
+            exit 1
+          fi
+          echo "OK: inline sourcemaps embedded in the client-solid bundle."
+          echo "- ✅ client-solid: inline sourcemaps embedded" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy prebuilt
+        run: vercel deploy --prebuilt --prod -A vercel.solid.json --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Smoke — deployed client responds on the canonical alias
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://rtc-clone-solid.vercel.app")
           echo "Got HTTP $code"
           test "$code" = "200"

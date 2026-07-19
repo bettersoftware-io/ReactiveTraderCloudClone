@@ -62,9 +62,9 @@ A single test suite is parameterised over **all** adapters that implement a port
 
 This is what makes "swap an adapter" a low-cost operation: the contract is encoded in tests and they all must pass.
 
-### 9.5 Ten-suite e2e stack (4 browser peers + 4 presenter peers + 2 fullstack smokes)
+### 9.5 Twelve-suite e2e stack (6 browser peers + 4 presenter peers + 2 fullstack smokes)
 
-`tests/scripts/run-all.ts` orchestrates **ten suites**: eight behavioural peers exercising the same spec surface via six binding styles, plus two full-stack smokes (`tests/fullstack/`) that boot a real `@rtc/server` and a real client and assert live WS data end-to-end — the only suites that exercise the server process itself. The eight peers: Cucumber-JS (with Playwright) and Cypress (via cypress-cucumber-preprocessor) bind Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree. Native `@playwright/test` and native Cypress bind scenarios programmatically through their own step trees. Four presenter-direct peers — **cucumber** (real timers), **cucumber-fake-timers**, **vitest-quickpickle-fake-timers**, and **vitest-fake-timers** (plain) — bind a subset of the same scenarios (tagged `@presenter`) to the RxJS presenter layer in pure Node with no browser; the `cucumber` peer uses wall-clock waits, `cucumber-fake-timers` wraps the same bodies in `@sinonjs/fake-timers` virtual time, `vitest-quickpickle-fake-timers` reruns the same bodies under Vitest + the qpickle-loader Vite plugin for Gherkin + `vi.useFakeTimers()`, and `vitest-fake-timers` reruns the same `_shared/` scenario modules under Vitest + raw `describe`/`it` (no Gherkin loader) + `vi.useFakeTimers()` to prove the `_shared/*.ts` / `_await.ts` / `_world.ts` abstractions are useful even without a BDD step-tree. See Phase 5B.1, 5B.2, 5B.3, and 5B.4 specs for details.
+`tests/scripts/run-all.ts` orchestrates **twelve suites**: ten behavioural peers exercising the same spec surface via six binding styles, plus two full-stack smokes (`tests/fullstack/`) that boot a real `@rtc/server` and a real client and assert live WS data end-to-end — the only suites that exercise the server process itself. The ten peers: Cucumber-JS (with Playwright) and Cypress (via cypress-cucumber-preprocessor) bind Gherkin scenarios in `tests/specs/**/*.feature` to a shared step-definition tree. Native `@playwright/test` and native Cypress bind scenarios programmatically through their own step trees. Both the native-Playwright and Cucumber+Playwright peers are additionally duplicated against `@rtc/client-solid` (via `RTC_CLIENT_PKG`, ports 3005/3006), bringing the browser family to six peers. Four presenter-direct peers — **cucumber** (real timers), **cucumber-fake-timers**, **vitest-quickpickle-fake-timers**, and **vitest-fake-timers** (plain) — bind a subset of the same scenarios (tagged `@presenter`) to the RxJS presenter layer in pure Node with no browser; the `cucumber` peer uses wall-clock waits, `cucumber-fake-timers` wraps the same bodies in `@sinonjs/fake-timers` virtual time, `vitest-quickpickle-fake-timers` reruns the same bodies under Vitest + the qpickle-loader Vite plugin for Gherkin + `vi.useFakeTimers()`, and `vitest-fake-timers` reruns the same `_shared/` scenario modules under Vitest + raw `describe`/`it` (no Gherkin loader) + `vi.useFakeTimers()` to prove the `_shared/*.ts` / `_await.ts` / `_world.ts` abstractions are useful even without a BDD step-tree. See Phase 5B.1, 5B.2, 5B.3, and 5B.4 specs for details.
 
 | Layer | Stack |
 |---|---|
@@ -77,7 +77,7 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 | Page-object contracts | TypeScript interfaces; `TESTIDS` and `STRINGS` SOTs |
 | Page-object impls (drivers) | `tests/browser/page-objects/playwright/` (Playwright) + `tests/browser/page-objects/cypress/` (Cypress) |
 | Per-runner support | `tests/browser/playwright-cucumber/{world,hooks}.ts` (Cucumber+Playwright) · `tests/browser/cypress-cucumber/{world,e2e}.ts` (Cucumber+Cypress) · `tests/browser/playwright/{_context,_openWorkspace}.ts` (native Playwright fixture) · `tests/browser/cypress/{_context,_openWorkspace}.ts` (native Cypress getCtx accessor) |
-| Orchestration | `tests/scripts/run-all.ts` — ten suites in parallel, per-suite dev servers (`RTC_DEV_PORT` 3001+), OR-ed exit codes; `RTC_E2E_MAX_PARALLEL` cap; `RTC_E2E_SKIP_CYPRESS` opt-out |
+| Orchestration | `tests/scripts/run-all.ts` — twelve suites in parallel, per-suite dev servers (`RTC_DEV_PORT` 3001+), OR-ed exit codes; `RTC_E2E_MAX_PARALLEL` cap; `RTC_E2E_SKIP_CYPRESS` opt-out |
 | Full-stack smokes | `tests/fullstack/{node-smoke,browser-smoke}.ts` + `tests/fullstack/browser/fullstack.spec.ts` — real server + real client on dedicated ports, live pricing/equities assertions |
 | Presenter-direct specs | Same `tests/specs/**/*.feature` files, scenarios tagged `@presenter` |
 | Presenter-direct step defs | `tests/presenter/steps/*.steps.ts` — bind to presenter streams; no driver imports |
@@ -143,9 +143,13 @@ Two golden sets are committed per tier: `__screenshots__/react/` (rendered on pi
 
 **Updating goldens** is its own operational runbook — the two sets, the three update routes (dispatch the CI workflow / regenerate locally in Docker / the native fast loop), and which to run for a regression vs. a deliberate change vs. a new scenario: [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md).
 
+How `client-solid` runs these same three tiers **assert-only** against these goldens — never writing one of its own — is [§21 Mechanism 2 — assert-only visual tiers](21-cross-framework-testing.md#mechanism-2--assert-only-visual-tiers).
+
 ### 9.8 UI contract tier
 
 `packages/client-react/tests/ui/contract/` is the second framework-swap pillar: **sociable RTL tests** where framework-neutral specs (`specs/**/*.contract.spec.ts`, per domain) drive framework-neutral page objects (`shared/pages/`), and only the thin `react/` directory (component registry, render adapter, `viewModelFromWorld`) knows React exists. CI enforces **≥95%** statement/branch/function/line coverage on this tier (`test:ui:contract:coverage`) — the strongest single gate in the repo, because it measures how much of the UI the swap-portable suite actually pins down.
+
+The `UiContractDriver` seam that lets the same specs run against `client-solid`'s Solid render target instead of React's is [§21 Mechanism 1 — the contract swap-trio](21-cross-framework-testing.md#mechanism-1--the-contract-swap-trio).
 
 ### 9.9 React Native testing
 

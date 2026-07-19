@@ -336,22 +336,33 @@ pnpm --filter @rtc/client-react dev
 
 ## Deploy
 
-A public, password-gated demo can be deployed to **Vercel** (the client) +
+A public, login-gated demo can be deployed to **Vercel** (the web clients) +
 **Fly.io** (the WebSocket server, London `lhr`). **Deploys are on-demand only —
 nothing auto-deploys on a push or merge, on any branch** (Vercel's Git
-integration is disabled via `"git": { "deploymentEnabled": false }` in
-`vercel.json`). There is exactly **one official way** to deploy each app: its
-GitHub Actions workflow, triggered manually.
+integration is disabled via `"git": { "deploymentEnabled": false }` in each
+client's `vercel.<client>.json`). There is exactly **one official way** to deploy
+each app: its GitHub Actions workflow, triggered manually.
 
-### Main app (client + server)
+### Main app (clients + server)
 
 **Actions tab → "Deploy" → Run workflow** (or `gh workflow run deploy.yml`).
+One workflow deploys any subset of three independent targets — tick the
+checkboxes:
 
-One run deploys **both** halves together and smoke-checks each — server
-`/health` → 200, client unauthenticated → 401 (the password wall). Deploying the
-two together is the whole point of the manual workflow: the client and server
-share a token and must move in lockstep, which a piecemeal auto-deploy can't
-guarantee.
+- **`deploy_react`** → `@rtc/client-react` → Vercel (`rtc-clone-react.vercel.app`)
+- **`deploy_solid`** → `@rtc/client-solid` → Vercel (`rtc-clone-solid.vercel.app`)
+- **`deploy_server`** → `@rtc/server` → Fly.io (`rtc-clone-server.fly.dev`)
+
+Both web clients connect to the **same** shared Fly WS server (its URL is a
+build-time constant baked into each client), so a client build never waits on
+the server — and the server, redeployed far less often, has its own opt-in
+checkbox (default off). Each ticked target is smoke-checked (server `/health`
+→ 200; each client → 200 on its canonical alias). Tick **`include_sourcemaps`**
+to ship a debuggable build of the ticked client(s) — external `.map` files, so a
+profiled deploy shows real component names in the flamechart.
+
+Reproduce the old combined client+server deploy with
+`gh workflow run deploy.yml -f deploy_react=true -f deploy_server=true`.
 
 See [`docs/DEPLOY.md`](docs/DEPLOY.md) for one-time setup (accounts, secrets,
 the shared password/token) and how the gating works.

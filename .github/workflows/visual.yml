@@ -32,6 +32,8 @@ jobs:
   visual:
     name: visual diffs
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     # Run inside the official Playwright image so chromium + fonts + OS libs are
     # byte-identical to where the goldens are generated. This eliminates the
     # cross-platform rendering diffs (sandbox/ubuntu) that fail toHaveScreenshot,
@@ -98,6 +100,8 @@ jobs:
       # long run (~20 min) — which is exactly why this job is post-merge and
       # not a PR gate.
       - name: Visual diffs — react (playwright-ct + playwright + vitest-browser)
+        id: visual_react
+        continue-on-error: true
         run: pnpm test:ui:visual --filter=@rtc/client-react
 
       # Solid owns NO goldens of its own — every scenario here asserts against
@@ -106,7 +110,46 @@ jobs:
       # react-side golden that hasn't been regenerated yet for a recent
       # scenario change — never a signal to add a solid golden.
       - name: Visual diffs — solid (playwright-ct fallback + playwright + vitest-browser)
+        id: visual_solid
+        continue-on-error: true
         run: pnpm test:ui:visual --filter=@rtc/client-solid
+
+      # Build the browsable /visual/ report from whatever diff images the two
+      # steps above produced (none on a green run → an "all green" page), then
+      # publish it to the gh-pages /visual/ subtree (disjoint from /coverage/;
+      # publish-to-pages.mjs's rebase loop serialises concurrent writers). Runs
+      # on pass and fail alike so a green run overwrites a stale red report.
+      - name: Build visual report site
+        if: always()
+        run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          rm -rf _stage
+          mkdir -p _stage/visual
+          FAILED=""
+          [ "${{ steps.visual_react.outcome }}" = "failure" ] && FAILED="$FAILED client-react"
+          [ "${{ steps.visual_solid.outcome }}" = "failure" ] && FAILED="$FAILED client-solid"
+          node scripts/pages/build-visual-report.mjs \
+            --out _stage/visual \
+            --react packages/client-react \
+            --solid packages/client-solid \
+            --branch "${GITHUB_REF_NAME}" --sha "${GITHUB_SHA}" --run-url "$RUN_URL" \
+            --failed "$FAILED"
+
+      - name: Publish visual report to gh-pages
+        if: always()
+        run: |
+          # The Playwright container checkout is owned by a different user than
+          # git runs as; clear the dubious-ownership guard before the worktree
+          # add inside publish-to-pages (mirrors coverage-report.yml).
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          node scripts/pages/publish-to-pages.mjs --source _stage --message "publish visual report @ ${GITHUB_SHA}"
+
+      - name: Live report link
+        if: always()
+        run: |
+          url="https://bettersoftware-io.github.io/ReactiveTraderCloudClone/visual/"
+          echo "Live visual diff report: $url"
+          echo "::notice title=Visual diff report (live HTML)::Browse the report → $url"
 
       # On a mismatch, publish the actual-vs-expected images so the regression (or
       # an intended change awaiting golden regen) can be inspected. Solid's own
@@ -114,7 +157,7 @@ jobs:
       # write into client-react's __screenshots__/, so react's actual/diff/
       # reference globs below are exhaustive for that package).
       - name: Upload visual diff report on failure
-        if: failure()
+        if: ${{ always() && (steps.visual_react.outcome == 'failure' || steps.visual_solid.outcome == 'failure') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ui-visual-report
@@ -126,3 +169,15 @@ jobs:
             packages/client-solid/reports/
           if-no-files-found: ignore
           retention-days: 7
+
+      # continue-on-error above lets both clients run and the report publish even
+      # on failure; re-assert the real result here so the post-merge signal (and
+      # this job's status) is still red when any tier failed.
+      - name: Gate — fail if any visual tier failed
+        if: always()
+        run: |
+          if [ "${{ steps.visual_react.outcome }}" = "failure" ] || [ "${{ steps.visual_solid.outcome }}" = "failure" ]; then
+            echo "::error title=Visual diffs failed::One or more tiers failed — see the published report."
+            exit 1
+          fi
+          echo "All visual tiers passed."
