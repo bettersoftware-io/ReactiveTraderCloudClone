@@ -10,47 +10,6 @@ import type { JSX } from "react";
 
 const mockNavigate = jest.fn();
 
-jest.mock("expo-router", () => {
-  return {
-    useRouter: (): unknown => {
-      return { navigate: mockNavigate };
-    },
-    usePathname: (): string => {
-      return "/";
-    },
-  };
-});
-jest.mock("expo-blur", () => {
-  const { View } = require("react-native");
-  return {
-    BlurView: (p: Record<string, unknown>): JSX.Element => {
-      return <View {...p} />;
-    },
-  };
-});
-jest.mock("./useShellMotionEnabled", () => {
-  return {
-    useShellMotionEnabled: (): boolean => {
-      return false;
-    },
-  };
-});
-jest.mock("react-native-safe-area-context", () => {
-  return {
-    useSafeAreaInsets: (): unknown => {
-      return { top: 47, bottom: 34, left: 0, right: 0 };
-    },
-  };
-});
-jest.mock("#/ui/theme/useTheme", () => {
-  const { rnThemeTokens } = require("#/ui/theme/tokens");
-  return {
-    useTheme: (): unknown => {
-      return rnThemeTokens.holo.dark;
-    },
-  };
-});
-
 const { RadialCommandDock } =
   require("./RadialCommandDock") as RadialCommandDockModule;
 
@@ -89,3 +48,48 @@ test("shows the active module's glyph on the FAB, then ✕ while open", async ()
 interface RadialCommandDockModule {
   RadialCommandDock: () => JSX.Element;
 }
+
+jest.mock("expo-router", () => {
+  return {
+    useRouter: (): unknown => {
+      return { navigate: mockNavigate };
+    },
+    usePathname: (): string => {
+      return "/";
+    },
+  };
+});
+
+jest.mock("expo-blur", () => {
+  const { View } = require("react-native");
+  return {
+    BlurView: (p: Record<string, unknown>): JSX.Element => {
+      return <View {...p} />;
+    },
+  };
+});
+
+jest.mock("./useShellMotionEnabled", () => {
+  return {
+    useShellMotionEnabled: (): boolean => {
+      return false;
+    },
+  };
+});
+
+jest.mock("react-native-safe-area-context", () => {
+  return {
+    useSafeAreaInsets: (): unknown => {
+      return { top: 47, bottom: 34, left: 0, right: 0 };
+    },
+  };
+});
+
+jest.mock("#/ui/theme/useTheme", () => {
+  const { rnThemeTokens } = require("#/ui/theme/tokens");
+  return {
+    useTheme: (): unknown => {
+      return rnThemeTokens.holo.dark;
+    },
+  };
+});

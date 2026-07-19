@@ -3,6 +3,11 @@ import { render, screen } from "@testing-library/react-native";
 
 import RootLayout from "./_layout";
 
+test("minimal root renders a Slot inside the gesture-handler root", async () => {
+  await render(<RootLayout />);
+  expect(screen.getByTestId("router-slot")).toBeTruthy();
+});
+
 // `Slot` needs a router/navigation context to render its matched child. This
 // test only asserts that the minimal root wires a Slot inside the gesture root
 // and renders NEITHER AuthGate NOR Chrome (those moved into the (app) group, so
@@ -17,9 +22,4 @@ jest.mock("expo-router", () => {
       return <View testID="router-slot" />;
     },
   };
-});
-
-test("minimal root renders a Slot inside the gesture-handler root", async () => {
-  await render(<RootLayout />);
-  expect(screen.getByTestId("router-slot")).toBeTruthy();
 });

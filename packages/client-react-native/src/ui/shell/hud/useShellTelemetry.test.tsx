@@ -3,31 +3,6 @@ import { expect, jest, test } from "@jest/globals";
 import { render, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
 
-// `useShellTelemetry` imports `useFrameCallback` + `runOnJS` + `useSharedValue`
-// from reanimated; stub all three so the local override doesn't drop a
-// binding the module loads. Motion is forced off so the meter is inert and
-// the seed/frozen path is deterministic.
-jest.mock("react-native-reanimated", () => {
-  return {
-    useFrameCallback: (): void => {
-      return;
-    },
-    runOnJS: (fn: unknown): unknown => {
-      return fn;
-    },
-    useSharedValue: <T,>(initial: T): SharedValueStub<T> => {
-      return { value: initial };
-    },
-  };
-});
-jest.mock("./useShellMotionEnabled", () => {
-  return {
-    useShellMotionEnabled: (): boolean => {
-      return false;
-    },
-  };
-});
-
 const { ShellTelemetryContext } =
   require("./ShellTelemetryContext") as ShellTelemetryContextModule;
 
@@ -88,3 +63,29 @@ function renderProbe(frozen: FrozenTelemetryFixture | null): Promise<unknown> {
     </ShellTelemetryContext.Provider>,
   );
 }
+
+// `useShellTelemetry` imports `useFrameCallback` + `runOnJS` + `useSharedValue`
+// from reanimated; stub all three so the local override doesn't drop a
+// binding the module loads. Motion is forced off so the meter is inert and
+// the seed/frozen path is deterministic.
+jest.mock("react-native-reanimated", () => {
+  return {
+    useFrameCallback: (): void => {
+      return;
+    },
+    runOnJS: (fn: unknown): unknown => {
+      return fn;
+    },
+    useSharedValue: <T,>(initial: T): SharedValueStub<T> => {
+      return { value: initial };
+    },
+  };
+});
+
+jest.mock("./useShellMotionEnabled", () => {
+  return {
+    useShellMotionEnabled: (): boolean => {
+      return false;
+    },
+  };
+});
