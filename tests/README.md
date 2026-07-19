@@ -2,6 +2,9 @@
 
 Browser e2e, presenter integration, and full-stack smoke suites. Unit tests and
 visual tests live inside each package (see `packages/client-react/README.md`).
+The **visual** (pixel-golden) tier has its own home under `client-react`:
+[layout & rationale](../packages/client-react/tests/ui/visual/README.md) and a
+[golden-update runbook](../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md).
 
 > This README is the **operational** reference (how to run, reports,
 > orchestration). For the **decision & migration** view — what the suites share,
