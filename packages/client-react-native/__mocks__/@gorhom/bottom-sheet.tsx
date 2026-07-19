@@ -6,11 +6,17 @@ interface SheetProps {
   children?: ReactNode;
 }
 
+interface BottomSheetHandle {
+  present: () => void;
+  dismiss: () => void;
+  close: () => void;
+}
+
 /** Test double: renders children inline (always "open") and exposes a no-op
  * imperative present/dismiss/close so tiles can call ref.present(). */
 export const BottomSheetModal = forwardRef(function BottomSheetModal(
   props: SheetProps,
-  ref: Ref<{ present: () => void; dismiss: () => void; close: () => void }>,
+  ref: Ref<BottomSheetHandle>,
 ) {
   useImperativeHandle(ref, () => {
     return { present: () => {}, dismiss: () => {}, close: () => {} };
@@ -28,8 +34,4 @@ export function BottomSheetView(props: SheetProps): React.JSX.Element {
 
 export function BottomSheetBackdrop(): null {
   return null;
-}
-
-export function useBottomSheetModal(): { dismiss: () => void; dismissAll: () => void } {
-  return { dismiss: () => {}, dismissAll: () => {} };
 }

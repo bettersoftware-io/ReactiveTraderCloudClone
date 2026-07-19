@@ -109,9 +109,7 @@
         "babel-preset-expo",
         "expo-blur",
         "expo-haptics",
-        "expo-sensors",
-        // TODO(phase-4a): consumed by TradeTicketSheet in Task 10; remove in Task 11
-        "@gorhom/bottom-sheet"
+        "expo-sensors"
       ]
     },
     "tests": {
