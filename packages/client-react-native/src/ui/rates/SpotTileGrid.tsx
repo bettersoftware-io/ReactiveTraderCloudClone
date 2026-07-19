@@ -18,11 +18,11 @@ import { SpotTile } from "#/ui/rates/SpotTile";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { SPACING } from "#/ui/theme/spacing";
 
-/** The animated FX spot-tile grid: a responsive `flexWrap` layout (1 column on
- * phones, 2 on tablet/landscape, via `fxColumnCount`) where each cell glides
- * to its new slot on filter changes. The FLIP itself is native Reanimated
- * `Layout` — not `@rtc/motion-core`'s `flipDeltas` — computed from the
- * `layout`/`entering`/`exiting` props on each cell's `Animated.View`; all
+/** The animated FX spot-tile grid: a responsive `flexWrap` layout (2 columns
+ * on phones, more on tablet/landscape, via `fxColumnCount`) where each cell
+ * glides to its new slot on filter changes. The FLIP itself is native
+ * Reanimated `Layout` — not `@rtc/motion-core`'s `flipDeltas` — computed from
+ * the `layout`/`entering`/`exiting` props on each cell's `Animated.View`; all
  * three are stripped to `undefined` when `useShellMotionEnabled()` is false,
  * yielding a static reflow (no glide, no fade). */
 export function SpotTileGrid({
@@ -30,7 +30,10 @@ export function SpotTileGrid({
   onOpenTicket,
 }: SpotTileGridProps): JSX.Element {
   const { width } = useWindowDimensions();
-  const columns = fxColumnCount(width);
+  // fxColumnCount returns 1 below the tablet breakpoint; the prototype and
+  // plan require at least a 2-column grid even on phone-width viewports, so
+  // floor it here rather than change the shared breakpoint helper.
+  const columns = Math.max(2, fxColumnCount(width));
   const motionEnabled = useShellMotionEnabled();
   const cellWidth: ViewStyle = { width: `${100 / columns}%` };
 

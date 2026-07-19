@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import type { JSX } from "react";
 import { useEffect, useRef } from "react";
 import {
+  Pressable,
   StyleSheet,
   Text,
   type TextStyle,
@@ -30,13 +31,18 @@ import { useTheme } from "#/ui/theme/useTheme";
  * tooLong → finished|timeout transitions) to the trade-ticket's execution
  * overlays: `ready` renders nothing; `started`/`tooLong` show a busy overlay
  * (spinner ring + scan bar + "EXECUTING {DIRECTION}"); `finished`/`timeout`
- * stamp the result (FILLED/REJECTED/TIMED OUT). Fires an `expo-haptics`
- * notification exactly once when a terminal state is newly entered — guarded
- * by a ref tracking the previously-seen terminality, so re-renders that keep
- * the same terminal status don't re-fire. All motion (spinner spin, scan-bar
- * loop, stamp spring) is gated by `useShellMotionEnabled`; every overlay's
- * text renders unconditionally so reduced-motion/Freeze users still see the
- * outcome, just without the animation. */
+ * stamp the result (FILLED/REJECTED/TIMED OUT). Both overlays render as a
+ * `Pressable` with a `theme.panel` scrim over the whole tile — opaque-ish
+ * (matches the prototype's clean busy state) and, since a `Pressable` is a
+ * touch responder with a no-op `onPress`, it also blocks taps from reaching
+ * the Notional/Buy-Sell pads underneath while execution is in flight. Fires
+ * an `expo-haptics` notification exactly once when a terminal state is newly
+ * entered — guarded by a ref tracking the previously-seen terminality, so
+ * re-renders that keep the same terminal status don't re-fire. All motion
+ * (spinner spin, scan-bar loop, stamp spring) is gated by
+ * `useShellMotionEnabled`; every overlay's text renders unconditionally so
+ * reduced-motion/Freeze users still see the outcome, just without the
+ * animation. */
 export function ExecutionCeremony({
   state,
   direction,
@@ -143,7 +149,11 @@ function BusyOverlay({ direction }: BusyOverlayProps): JSX.Element {
   });
 
   return (
-    <View testID="exec-ceremony-busy" style={styles.overlay}>
+    <Pressable
+      testID="exec-ceremony-busy"
+      style={[styles.overlay, { backgroundColor: t.panel }]}
+      onPress={NOOP}
+    >
       <Animated.View
         style={[
           styles.spinner,
@@ -170,7 +180,7 @@ function BusyOverlay({ direction }: BusyOverlayProps): JSX.Element {
           ]}
         />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -214,7 +224,11 @@ function Stamp({ text, detail, positive }: StampProps): JSX.Element {
   const color = positive ? t.accentPositive : t.accentNegative;
 
   return (
-    <View testID="exec-ceremony-stamp" style={styles.overlay}>
+    <Pressable
+      testID="exec-ceremony-stamp"
+      style={[styles.overlay, { backgroundColor: t.panel }]}
+      onPress={NOOP}
+    >
       <Animated.Text
         style={[
           styles.stamp,
@@ -232,13 +246,18 @@ function Stamp({ text, detail, positive }: StampProps): JSX.Element {
       >
         {detail}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
 const SPIN_MS = 800;
 const SCAN_MS = 1100;
 const SCAN_TRACK_W = 190;
+
+// No-op handler: the overlay is a `Pressable` purely so it intercepts touches
+// (blocking pass-through taps to the Notional/Buy-Sell pads beneath it while
+// execution is in flight) — it has nothing to do on press.
+function NOOP(): void {}
 
 interface ExecutionCeremonyStyles {
   overlay: ViewStyle;
