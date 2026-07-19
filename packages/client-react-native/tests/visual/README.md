@@ -7,11 +7,11 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 ## What's here
 
 - `shared/diff.ts` — `pixelmatch`/`pngjs` golden-diff core (tolerance `0.06`).
-- `shared/goldens.ts` — golden path resolver + device pin (`ios-iphone15-18`).
+- `shared/goldens.ts` — golden path resolver + device pin (`ios-iphone17-26`).
 - `scenarioIds.ts` — the pure, Node-safe list of scenario ids (the runner iterates this; importing the RN registry would crash tsx/esbuild).
 - `scenarios.tsx` — the RN scenario registry (each id → a leaf wrapped in `VisualScenarioHost`, which mounts it on sim ports with a pinned skin/mode and frozen motion).
 - `simctl/` — **Tier 1** capture driver + CLI runner (the shipped tier).
-- `__screenshots__/ios-iphone15-18/simctl/` — committed goldens.
+- `__screenshots__/ios-iphone17-26/simctl/` — committed goldens.
 
 **Scenarios** (provisional "prove-the-harness" fixtures — module goldens are pinned in their own rehaul phases, per spec §7):
 
@@ -24,7 +24,7 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 
 ## Prerequisites
 
-- macOS + Xcode iOS **17/18** simulator, device **iPhone 15** (the golden pin).
+- macOS + Xcode iOS **26** simulator, device **iPhone 17** (the golden pin).
 - A **dev client** installed on that sim. Fast path: reuse any recent `RTCMobile.app` from `~/Library/Developer/Xcode/DerivedData/` (Phase 0+ branches share native deps) — or `pnpm dev:ios` once.
 - **Metro** running from this worktree with the harness flag:
   `EXPO_PUBLIC_VISUAL_HARNESS=1 npx expo start --dev-client --port 8083`
@@ -34,10 +34,10 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 
 ```bash
 # from repo root, with the sim booted + dev client + Metro (8083) up:
-RTC_VISUAL_UDID=<iphone15-udid> RTC_VISUAL_METRO_PORT=8083 RTC_VISUAL_IDB=$(command -v idb) \
+RTC_VISUAL_UDID=<iphone17-udid> RTC_VISUAL_METRO_PORT=8083 RTC_VISUAL_IDB=$(command -v idb) \
   pnpm --filter @rtc/client-react-native test:rn:visual:simctl          # verify vs goldens
 
-# regenerate goldens (must use the iPhone 15 / iOS 18 pin):
+# regenerate goldens (must use the iPhone 17 / iOS 26 pin):
 … pnpm --filter @rtc/client-react-native test:rn:visual:simctl:update
 ```
 
