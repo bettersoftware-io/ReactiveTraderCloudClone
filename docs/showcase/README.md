@@ -12,6 +12,7 @@ markdown they visualize.
 | File | Visualizes | Authoritative doc |
 |---|---|---|
 | [`updating-goldens.html`](./updating-goldens.html) | The visual-golden update workflow: two golden sets, three update routes, an animated view of the selective CI refresh | [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md) |
+| [`aurora-blur-comparison.html`](./aurora-blur-comparison.html) | The live Aurora backdrop (holo-dark skin), with a Current / Reduced / None toggle showing the per-frame GPU cost of the curtain `filter: blur()` — the compositor trap the app removed | [`docs/performance.md`](../performance.md) (trap T6) |
 
 > Nothing here is deployed or built — this directory is outside every CI/deploy
 > glob. To share one, open it locally, or publish it deliberately.
