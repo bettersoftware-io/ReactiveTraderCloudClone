@@ -221,10 +221,12 @@ flowchart LR
 
     d1 --> srv
     d1 --> v1
+    d1 --> v1s
     d2 --> v2
     d3 --> v3
     d3 --> v4
     v1 -->|"wss:// + ?access= token"| srv
+    v1s -->|"wss:// + ?access= token"| srv
     mob -->|"wss:// + ?access= token<br/>(EXPO_PUBLIC_* baked at build)"| srv
 ```
 
