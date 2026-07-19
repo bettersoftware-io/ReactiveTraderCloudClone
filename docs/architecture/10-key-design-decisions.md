@@ -117,7 +117,7 @@
 
 **Cost accepted.** Every intentional UI change must regenerate *both* committed golden sets (the x86 set via a CI workflow, the local set via each runner's `:update` script) — no single command updates both, and `experimental-ct-react` itself is an unstable API surface across Playwright releases.
 
-### 10.10 A dedicated `tests` workspace running ten parallel e2e suites
+### 10.10 A dedicated `tests` workspace running twelve parallel e2e suites
 
 **Problem.** Proving the behavioural-spec-survives-a-swap claim from [§1.2 rule 4](01-overview.md#12-architectural-principles) needs more than one driver exercising the specs — otherwise "framework-agnostic" is asserted, not demonstrated, and a driver-specific bug (a Cypress queue quirk, a Playwright timing assumption) could hide inside the only implementation that runs.
 
@@ -125,7 +125,7 @@
 
 **Alternatives rejected.** A single browser driver (just Playwright, the CI-gating choice) was rejected as the sole e2e tier — the four presenter-direct peers exist specifically to prove the same specs validate the application layer with zero UI framework, closing the loop on the swap claim rather than assuming it.
 
-**Cost accepted.** Ten suites is real CI wall-clock and maintenance surface — mitigated by `RTC_E2E_MAX_PARALLEL`, a Cypress de-gate on CI (`RTC_E2E_SKIP_CYPRESS=1`), and the presenter-direct fake-timer peers running ~19× faster than their real-timer counterpart, but every new scenario still touches multiple step-definition trees.
+**Cost accepted.** Twelve suites is real CI wall-clock and maintenance surface — mitigated by `RTC_E2E_MAX_PARALLEL`, a Cypress de-gate on CI (`RTC_E2E_SKIP_CYPRESS=1`), and the presenter-direct fake-timer peers running ~19× faster than their real-timer counterpart, but every new scenario still touches multiple step-definition trees.
 
 ### 10.11 Continuous UI without fighting the framework
 
