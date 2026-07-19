@@ -64,9 +64,11 @@ the site hub, using the same publish primitive; none clobbers the others.
   copied alongside under `/visual/reports/<pkg>/<tier>/`.
 - Run metadata header: branch, short SHA, timestamp, link back to the workflow
   run.
-- A tier that failed for a **non-visual** reason (compile error, timeout) with
-  no diff images still appears as a text-only "failed — no snapshot diff" row so
-  it is never silently dropped.
+- A **"Full tier reports"** footer links every tier's native report that exists
+  on disk — so a tier that failed for a **non-visual** reason (compile error,
+  timeout) with no diff images is still reachable through its own report and is
+  never silently dropped, without the generator having to parse per-tier result
+  JSON.
 
 Everything published is failures-only *by construction*: passing scenarios
 produce no `actual`/`diff` images at all.
@@ -178,11 +180,16 @@ known locations, rather than hard-coding scenario lists.
 
 ## Error handling & edge cases
 
-- A tier that produced **no report dir** (crashed before writing) is listed as
-  "no report generated" rather than aborting the build — same philosophy as the
-  coverage assemble step.
-- The generator never throws on a missing/partial tree; it degrades to fewer
-  rows and always emits a valid `index.html`.
+- Discovery is failure-driven: the generator globs for `*-diff.png` under each
+  package's `reports/` and `tests/ui/visual/**/__screenshots__/` trees (a diff
+  image exists **only** for a failed scenario), then resolves the sibling
+  `-actual` and the reference (Playwright's `-expected` sibling, or the
+  vitest-browser golden `<name>.png`). Tiers differ in where they drop these;
+  the glob tolerates both.
+- The generator never throws on a missing/partial tree: an unreadable directory
+  yields zero rows for that tier, and it always emits a valid `index.html`. A
+  tier with no diff images contributes no wall rows but still appears in the
+  "Full tier reports" footer if its report dir exists.
 - Publishing is idempotent: `publish-to-pages.mjs` replaces the whole `/visual/`
   entry each run, so the green page fully overwrites a prior red wall (and vice
   versa).
