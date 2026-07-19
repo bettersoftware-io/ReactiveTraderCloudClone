@@ -88,6 +88,23 @@ overrides:
   # and syncpack is unaffected (an override is not a package.json dep). 7.29.7 is
   # already in the tree.
   "react-native-worklets>@babel/core": 7.29.7
+  # (3) BABEL GENERATOR/TRAVERSE: (2) scopes @babel/CORE to 7.29.7 inside worklets,
+  # but the plugin's makeWorkletFactory calls @babel/generator (and @babel/traverse)
+  # DIRECTLY, not via @babel/core — pnpm otherwise resolves those to the
+  # workspace-hoisted 8.0.0 (pulled at ^8 by client-react/devtools-app). A Babel-8
+  # generator printing the Babel-7 AST the plugin just built (a worklet's
+  # TSFunctionType param list) reads a field the 8.x node shape lacks →
+  # `Cannot read properties of undefined (reading 'length')` in @babel/generator's
+  # Printer._parameters, thrown from makeWorkletFactory on reanimated's
+  # Easing.ts / isSharedValue.ts. This is the SAME error signature as the version
+  # mismatch in (1) but a DIFFERENT cause (generator/traverse, not the worklets
+  # runtime). It regressed 2026-07-19 when a reinstall re-hoisted generator@8 into
+  # the worklets path; it also reproduces on arm64-local, not just x86 CI. Pin BOTH
+  # to the 7.29.7 that matches @babel/core@7.29.7 so the plugin's whole Babel
+  # toolchain is uniformly 7 (proven: redirecting these two to 7.29.7 transforms
+  # Easing.ts clean). Scoped to the worklets subtree only — web keeps @babel/*@8.
+  "react-native-worklets>@babel/generator": 7.29.7
+  "react-native-worklets>@babel/traverse": 7.29.7
 
 # Force @babel/core@7 for the RN Metro babel toolchain. The main Metro transform
 # runs through @expo/metro-config's babel-transformer, whose `require("@babel/core")`
