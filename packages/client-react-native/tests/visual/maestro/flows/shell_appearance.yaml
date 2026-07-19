@@ -3,9 +3,13 @@ appId: io.bettersoftware.rtcmobile
 # Step 1: load the Metro bundle via the dev client (two-step deep link).
 - openLink:
     link: "exp+rtc-mobile://expo-development-client/?url=http://localhost:${MAESTRO_METRO_PORT}"
+# Wait for the app to boot (bundle loaded). The unauthenticated LoginScreen
+# is the stable, scenario-agnostic boot marker; `visual-ready` only appears
+# AFTER the scenario deep link below, so waiting for it here would always
+# time out on the login screen.
 - extendedWaitUntil:
     visible:
-      id: "visual-pending|visual-ready"
+      id: "login-screen"
     timeout: 20000
 # Step 2: in-app navigation to the scenario route (release scheme).
 - openLink:
@@ -16,8 +20,10 @@ appId: io.bettersoftware.rtcmobile
       visible: "Open"
     commands:
       - tapOn: "Open"
-# Maestro CAN query the a11y tree (XCUITest) — unlike simctl/idb. If this
-# assert proves flaky on-device, fall back to a fixed wait (bake-off note).
-- assertVisible:
-    id: "visual-ready"
+# Maestro CAN query the a11y tree (XCUITest) — unlike simctl/idb. Wait for
+# the harness to signal ready (one frame after fonts load) before shooting.
+- extendedWaitUntil:
+    visible:
+      id: "visual-ready"
+    timeout: 20000
 - takeScreenshot: shots/shell_appearance

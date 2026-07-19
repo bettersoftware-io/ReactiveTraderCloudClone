@@ -10,4 +10,5 @@ web-build/
 
 # transient Maestro visual-tier capture output (goldens live in tests/visual/__screenshots__)
 /shots/
+/report.xml
 .maestro/
