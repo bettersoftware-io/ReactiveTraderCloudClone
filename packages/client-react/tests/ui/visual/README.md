@@ -121,7 +121,12 @@ environment:
 
 A non-CI run (no `CI` env var) reads/writes the `react-local/<plat>-<arch>` set;
 CI reads/writes `react/`. An intentional UI change therefore means updating
-**both** sets. See ADR-001 → "Cross-platform pixel drift" for the rationale.
+**both** sets. See ADR-001 → "Cross-platform pixel drift" for the rationale —
+including *why we keep the per-platform sets* rather than collapse to one
+container-canonical set (that was tried and reverted: it destroyed the instant,
+Docker-free native feedback loop). Note this per-*platform* split is orthogonal
+to the per-*tier* split (each runner keeps its own set too, because they render
+different pixels) — ADR-001 spells out both axes.
 
 ## The three implemented runners
 

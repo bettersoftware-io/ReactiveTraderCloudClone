@@ -40,19 +40,52 @@ Reasons, in priority order:
 ## Consequences / known weaknesses
 
 - **Experimental API.** `experimental-ct-*` can change between releases.
-- **Cross-platform pixel drift → two committed baselines.** Screenshot pixels
-  depend on OS/arch font rasterization (FreeType/HarfBuzz), so a single golden
-  filename is *not* portable across machines. We route by environment
-  (`snapshotPathTemplate` in both Playwright configs): CI renders on x86 Linux
-  inside the pinned Playwright container and owns the canonical `react/`
-  baseline — the cross-framework contract, and the only set the CI visual job
-  re-renders and enforces. A local dev machine writes its own committed
-  `react-local/<platform>-<arch>/` set, giving a fast local inner loop without
-  an emulated container (which on Apple Silicon would be slow qemu amd64). Both
-  sets are versioned and reviewed at commit time; an intentional UI change must
-  regenerate **both** — the x86 set via the `update-visual-goldens` workflow,
-  each local set via the runner's `:update` script — since no CI runner
-  reproduces a developer's architecture.
+- **Cross-platform pixel drift → two committed baselines (per platform).**
+  Screenshot pixels depend on OS/arch font rasterization (FreeType/HarfBuzz), so
+  a single golden filename is *not* portable across machines — native arm64
+  differs from x86 by ~30% of pixels. We route by environment
+  (`snapshotPathTemplate` in all three configs): CI renders on x86 Linux inside
+  the pinned Playwright container and owns the canonical `react/` baseline — the
+  cross-framework contract, and the only set the CI visual job re-renders and
+  enforces. A local dev machine writes its own committed
+  `react-local/<platform>-<arch>/` set, so `pnpm test:ui:visual` passes
+  **instantly and offline** against pixels that match that machine. Both sets are
+  versioned and reviewed at commit time; an intentional UI change regenerates the
+  x86 set via the `update-visual-goldens` workflow (or the `pnpm goldens:regen`
+  container wrapper) and each local set via the runner's `:update` script, since
+  no CI runner reproduces a developer's architecture.
+
+- **Why keep the per-platform sets, and not one container-canonical set?**
+  (Decision 2026-07-19, after a measured experiment.) An emulated x86 container
+  (`docker --platform linux/amd64`) *does* render byte-identical to CI on any
+  host — so a single `react/` set is technically viable, and it was implemented
+  (delete `react-local`, all six configs → a constant `react` baseline). **It was
+  reverted.** The reason: it destroyed the fast local inner loop. With one
+  x86-only set, a native `pnpm test:ui:visual` on a non-x86 host no longer matches
+  and *always fails*; the only *passing* local check becomes `pnpm goldens:verify`,
+  which needs Docker and pays ~1–2 min of container overhead (install + build) on
+  **every** run. Instant, Docker-free native feedback is worth far more than the
+  ~175 MB the single set would save. **So: keep the per-platform sets.** Revisit
+  the single-set idea only if a fast native quick-loop is preserved first (e.g. a
+  non-committed native "directional" render mode, with the container as the
+  commit gate). Note the efficiency wins that motivated the experiment — the
+  `pnpm goldens:*` container wrapper and the `scenario_pattern` targeted-regen +
+  auto-commit on `update-visual-goldens.yml` — were *kept*; they are orthogonal to
+  the number of committed sets.
+
+- **Two independent axes of golden duplication — don't conflate them.**
+  **(1) Per platform** (above): the *same tier's* `react/` vs
+  `react-local/<arch>` differ by CPU font-rasterization; kept for fast native
+  feedback. **(2) Per tier**: `playwright`, `playwright-ct`, and `vitest-browser`
+  each keep their **own** set *even on one machine*, because they render
+  differently — `vitest-browser` ignores its viewport (1280×720 vs the others'
+  1920×1080) and skips webfont loading (fallback fonts), and `playwright-ct`
+  mounts a component in an isolated per-scenario Vite bundle vs plain-`playwright`
+  navigating a URL against a shared host. They encode the same *intent* but not
+  the same *pixels*, so they cannot share one set. Reducing axis (2) is therefore
+  not a "merge the sets" problem — it's a "does every tier earn its keep?"
+  question (see the `vitest-browser` retire follow-up under "Fonts & component
+  fidelity"); collapsing axis (1) is the reverted single-set experiment above.
 - **No review UI.** Baselines are inspected by eye and committed (no
   Chromatic-style approve/reject workflow).
 
