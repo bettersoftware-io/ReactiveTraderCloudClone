@@ -1,3 +1,4 @@
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { defineConfig, devices } from "@playwright/test";
@@ -84,8 +85,10 @@ if (
   );
 }
 
-// Single container-canonical `react/` set, same as every other tier in this repo.
-const baseline = "react";
+// Same CI-vs-local baseline routing as every other tier in this repo.
+const baseline = process.env.CI
+  ? "react"
+  : `react-local/${os.platform()}-${os.arch()}`;
 
 // CROSS-PACKAGE: anchored at react's playwright-ct golden tree — the fallback
 // tier's whole point is to assert against the SAME golden set a real Solid CT

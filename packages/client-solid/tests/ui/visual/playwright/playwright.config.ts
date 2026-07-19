@@ -1,3 +1,4 @@
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { defineConfig, devices } from "@playwright/test";
@@ -40,12 +41,12 @@ if (
   );
 }
 
-// Assert-only against react's SINGLE container-canonical `react/` set (goldens
-// are owned by client-react). Every arch verifies through the pinned x86
-// container, byte-identical to CI, so there is no per-arch `react-local/<arch>/`
-// set. See react's own playwright.config.ts and
-// ../../../../client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md.
-const baseline = "react";
+// Same CI-vs-local baseline routing as react's own playwright.config.ts (see
+// its header comment for the full cross-platform-pixel-drift rationale) and
+// as this package's own vitest-browser tier.
+const baseline = process.env.CI
+  ? "react"
+  : `react-local/${os.platform()}-${os.arch()}`;
 
 // CROSS-PACKAGE: unlike react's own config (which owns its `__screenshots__`
 // tree), this tier's snapshotDir is anchored INSIDE packages/client-react —

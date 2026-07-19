@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import os from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,12 +41,17 @@ interface ScreenshotPathArgs {
 // "solid owns no goldens" design: never change resolveScreenshotPath to use
 // the local root, and never write a golden from this config.
 //
-// Solid asserts against react's SINGLE container-canonical `react/` set (see
-// ../../../../client-react/tests/ui/visual/playwright/playwright.config.ts): every
-// arch verifies through the pinned x86 container, byte-identical to CI, so there
-// is no per-arch `react-local/<arch>/` set. See
+// Baseline routed by environment exactly like the react tier's own config
+// (see ../../../../client-react/tests/ui/visual/vitest-browser/vitest-browser.config.ts
+// and ../../../../client-react/tests/ui/visual/playwright/playwright.config.ts):
+// CI (x86 Linux container) reads react's canonical `react/` set; a local dev
+// machine reads react's own committed `react-local/<plat>-<arch>/` set (font
+// rasterization differs by OS/arch, so solid must compare against the SAME
+// arch's set it would produce were it react). See
 // ../../../../client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md.
-const baseline = "react";
+const baseline = process.env.CI
+  ? "react"
+  : `react-local/${os.platform()}-${os.arch()}`;
 
 // Anchored at THIS config file's own location (packages/client-solid/tests/ui/
 // visual/vitest-browser/), five levels up to `packages/`, then into
