@@ -39,7 +39,7 @@ flowchart TB
         STIERS["3 visual tiers<br/>(assert-only)"]
         SE2E["e2e (ports 3005-3006)"]
     end
-    GOLD["ONE golden tree<br/>client-react/…/__screenshots__"]
+    GOLD["ONE golden tree<br/>ui-contract/goldens/…/__screenshots__"]
     SPECS --> RTRIO
     SPECS --> STRIO
     SCEN --> RTIERS
@@ -59,7 +59,7 @@ this section.
 | Tier | Shared source | React result | Solid result |
 |---|---|---|---|
 | UI contract (sociable RTL) | 86 `*.contract.spec.ts` files, one tree | 86 files, 622 tests passing | 86 files, 622 tests passing — **full parity**, `notYetPortedSpecs` is `[]` |
-| Visual goldens (3 tiers) | 1282 scenarios (`scenarios.ts`, theme-matrix expanded) × 3 runners each | Owns the golden tree — the only client permitted to `:update` it | Same 1282 scenarios × 3 tiers, **assert-only** against react's tree — owns zero goldens of its own |
+| Visual goldens (3 tiers) | 1282 scenarios (`scenarios.ts`, theme-matrix expanded) × 3 runners each | Owns the golden tree — the only client permitted to `:update` it | Same 1282 scenarios × 3 tiers, **assert-only** against the `ui-contract/goldens/` tree (generated only from client-react renders) — owns zero goldens of its own |
 | e2e (Gherkin behavioural) | Same `.feature` files + step definitions + page objects | 4 browser suites, ports 3001–3004 | 2 browser suites, ports 3005–3006 (`playwright`, `playwright-cucumber`) — 1 spec excluded (`login.spec.ts`, see [The fine print](#the-fine-print)) |
 | Devtools inspector panel | Same `@rtc/devtools-core` protocol + `InspectorApp` | App id `rtc-web` | App id `rtc-web-solid` — full panel parity shipped in PR #262 (one line: same four panels, same protocol, different app id) |
 
@@ -200,13 +200,15 @@ The cross-package anchor
 (`packages/client-solid/tests/ui/visual/playwright/playwright.config.ts`):
 
 ```ts
-// CROSS-PACKAGE: unlike react's own config (which owns its `__screenshots__`
-// tree), this tier's snapshotDir is anchored INSIDE packages/client-react —
+// CROSS-PACKAGE: unlike react's own config (which owns its slice of the
+// shared tree), this tier's snapshotDir is anchored INSIDE @rtc/ui-contract —
 // this package writes and owns no goldens of its own (assert-only by
 // construction, same design as ../vitest-browser/vitest-browser.config.ts).
+// Goldens are generated exclusively from client-react's renders; solid only
+// ever reads them. …
 const REACT_SNAPSHOT_DIR = fileURLToPath(
   new URL(
-    "../../../../../client-react/tests/ui/visual/playwright/__screenshots__",
+    "../../../../../ui-contract/goldens/playwright/__screenshots__",
     import.meta.url,
   ),
 );
@@ -247,7 +249,7 @@ unrelated flag.
 The vitest-browser tier enforces the same invariant differently, because
 vitest's `toMatchScreenshot` has no `updateSnapshots: "none"` equivalent — it
 auto-creates a missing golden unconditionally. So
-`packages/client-solid/tests/ui/visual/vitest-browser/vitest-browser.config.ts:155`
+`packages/client-solid/tests/ui/visual/vitest-browser/vitest-browser.config.ts:158`
 throws instead of ever returning a path that doesn't already exist:
 
 ```ts
@@ -255,7 +257,8 @@ if (!existsSync(screenshotPath)) {
   throw new Error(
     `assert-only tier: golden missing at ${screenshotPath} — ` +
       "goldens are owned by client-react; refusing to auto-create " +
-      "one from the solid tier.",
+      "one from the solid tier. Regenerate it via " +
+      "`pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:update`.",
   );
 }
 ```
@@ -270,7 +273,7 @@ flowchart TB
     SCEN["scenarios.ts — the shared manifest"]
     SCEN --> R["client-react<br/>vitest-browser · playwright · CT"]
     SCEN --> S["client-solid<br/>vitest-browser · playwright · CT-fallback"]
-    R -- "owns the tree<br/>(may :update)" --> G["__screenshots__/react/…"]
+    R -- "owns the tree<br/>(may :update)" --> G["ui-contract/goldens/…/__screenshots__/react/…"]
     S -- "assert-only<br/>snapshotDir anchored cross-package<br/>updateSnapshots: none · argv -u guard · existsSync throw" --> G
 ```
 

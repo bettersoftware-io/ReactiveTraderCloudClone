@@ -25,6 +25,34 @@ The framework-neutral UI test contract: the shared sociable-RTL harness, the `*.
 | `src/visual/fixtures.ts`, `src/visual/appData.ts` | Named fixture data sets + the `AppData` injectable-data contract |
 | `src/visual/goldenPath.ts` | The shared golden-path resolver both clients' Playwright configs route `snapshotPathTemplate` through |
 | `src/visual/freezeClock.ts` | Deterministic clock freezing for time-sensitive scenarios |
+| `goldens/` | The committed golden PNG trees all three visual tiers diff against — see [Goldens](#goldens) below |
+
+## Goldens
+
+`goldens/<tier>/__screenshots__/{react,react-local/<platform>-<arch>}/…` (one
+subtree per visual tier — `playwright-ct`, `playwright`, `vitest-browser`) is
+where the pixel-contract *artifact* lives, right beside the pixel-contract
+*specification* above it (`scenarios.ts`, `goldenPath.ts`). It moved here from
+`packages/client-react/tests/ui/visual/` (2026-07-19, pure `git mv`, byte-identical)
+so both clients resolve into it symmetrically instead of one client's tree
+reaching into another's.
+
+**Who writes it:** `client-react`'s three `:update` scripts and the
+`update-visual-goldens.yml` workflow are the only writers — goldens are
+generated exclusively from `client-react` renders. `client-solid` is
+**assert-only**: every one of its visual configs anchors `snapshotDir` into
+this tree, refuses `--update`/`-u` at the argv level, and throws rather than
+auto-creating a missing golden — see
+[§21 Mechanism 2 — assert-only visual tiers](../../docs/architecture/21-cross-framework-testing.md#mechanism-2--assert-only-visual-tiers)
+for the three enforcement layers. `client-solid` owns zero goldens of its own.
+
+`goldens/` sits outside `src/` — it is not compiled, not exported, and not a
+package entry point; it carries no effect on this package's `tsconfig`/knip/biome
+surface (PNG-only directories). Regeneration, the two-set (CI vs local) split,
+and the three update routes are documented in
+[`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../client-react/tests/ui/visual/UPDATING-GOLDENS.md) —
+that runbook, and the configs that point here, stay with `client-react`; only
+the PNGs moved.
 
 ## Where to start reading
 

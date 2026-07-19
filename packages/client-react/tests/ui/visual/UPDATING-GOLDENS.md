@@ -49,6 +49,11 @@ flowchart TB
 | **`__screenshots__/react/`** | The canonical **x86** baseline. The cross-framework contract `@rtc/client-solid` also asserts against. | ✅ **`visual.yml` on push to `main`** | pinned Playwright container (`v1.61.0-noble`) | `CI=1` |
 | **`__screenshots__/react-local/<arch>/`** | Your machine's **native** pixels (`darwin-arm64`, `linux-arm64`). Powers the instant local loop. | ❌ never — feedback only | your machine, no Docker | `CI` unset |
 
+Both live under `packages/ui-contract/goldens/<tier>/__screenshots__/` — a
+sibling package, alongside the shared scenario manifest/`goldenPath.ts` these
+tiers already depend on — generated only from this package's (`client-react`'s)
+renders; `client-solid` asserts against them and never writes.
+
 A plain local run (no `CI`) reads/writes `react-local/<arch>`; CI reads/writes
 `react/`. **A deliberate UI change therefore invalidates both.**
 
@@ -280,6 +285,7 @@ sequenceDiagram
 | [`scripts/goldens-in-container.mjs`](../../../../../scripts/goldens-in-container.mjs) | Route 2 — regen / verify wrapper |
 | `packages/client-react/package.json` → `test:ui:visual:*` | Route 3 — native `:update` scripts |
 | `tests/ui/visual/*/​*.config.ts` | baseline routing · `SCENARIO_PATTERN` filter |
+| [`packages/ui-contract/goldens/`](../../../../ui-contract/goldens/) | where all three tiers' `react/` + `react-local/<arch>/` sets actually live |
 | [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md) | why two sets exist; the collapse that was reverted |
 | [`.github/workflows/visual.yml`](../../../../../.github/workflows/visual.yml) | the gate — checks `react/` on push to `main` |
 

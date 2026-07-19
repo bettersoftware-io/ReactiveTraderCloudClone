@@ -139,7 +139,7 @@ via `makeHarness`, they don't reach into either implementation.
 | 2 | Plain Playwright over a Vite host | `playwright/` |
 | 3 | Vitest browser mode (`toMatchScreenshot`) | `vitest-browser/` |
 
-Two golden sets are committed per tier: `__screenshots__/react/` (rendered on pinned x86 CI — **the canonical cross-framework contract**) and `__screenshots__/react-local/<platform>-<arch>/` (local runs, committed for review but never compared on CI). The render target lives behind the `visual/react/` seam barrel — the directory a SolidJS port swaps.
+Two golden sets are committed per tier, under `packages/ui-contract/goldens/<tier>/__screenshots__/` — generated only from `client-react` renders: `react/` (rendered on pinned x86 CI — **the canonical cross-framework contract**) and `react-local/<platform>-<arch>/` (local runs, committed for review but never compared on CI). The render target lives behind the `visual/react/` seam barrel — the directory a SolidJS port swaps.
 
 **Updating goldens** is its own operational runbook — the two sets, the three update routes (dispatch the CI workflow / regenerate locally in Docker / the native fast loop), and which to run for a regression vs. a deliberate change vs. a new scenario: [`packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md`](../../packages/client-react/tests/ui/visual/UPDATING-GOLDENS.md).
 
@@ -185,7 +185,7 @@ flowchart TD
     postmerge["push to main (post-merge)"]
     postmerge --> visual
     subgraph visual["visual.yml — visual diffs (non-blocking, post-merge)"]
-        v1["3 golden tiers vs<br/>__screenshots__/react/"]
+        v1["3 golden tiers vs<br/>ui-contract/goldens/…/__screenshots__/react/"]
     end
 ```
 
