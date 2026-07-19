@@ -2,8 +2,6 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 
 import { visualHarnessEnabled } from "#/app/visualHarnessGate";
 
-type DevGlobal = { __DEV__?: boolean };
-
 const originalFlag: string | undefined = process.env.EXPO_PUBLIC_VISUAL_HARNESS;
 const originalDev: boolean | undefined = (globalThis as DevGlobal).__DEV__;
 
@@ -15,6 +13,7 @@ beforeEach(() => {
 
 afterEach(() => {
   (globalThis as DevGlobal).__DEV__ = originalDev;
+
   if (originalFlag === undefined) {
     delete process.env.EXPO_PUBLIC_VISUAL_HARNESS;
   } else {
@@ -42,3 +41,9 @@ test("stays inert in a release build even when the flag is set", () => {
   process.env.EXPO_PUBLIC_VISUAL_HARNESS = "1";
   expect(visualHarnessEnabled()).toBe(false);
 });
+
+/** Widens `globalThis` so the tests can toggle RN's `__DEV__` flag, which the
+ * node-based vitest env does not define. Declared below the tests per the
+ * repo's newspaper-order convention (type aliases hoist, so the casts above
+ * resolve). */
+type DevGlobal = { __DEV__?: boolean };
